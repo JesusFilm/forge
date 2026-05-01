@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { Bot, RefreshCw, X } from "lucide-react"
+import { createPortal } from "react-dom"
 import { apiFetch } from "@/lib/api-fetch"
 import type {
   AutomationDraft,
@@ -22,6 +24,7 @@ export function AgentsPage({
   const [dryRunAutomationIds, setDryRunAutomationIds] = useState<Set<string>>(
     () => new Set(),
   )
+  const modalRoot = typeof document === "undefined" ? null : document.body
 
   const activeAutomations = useMemo(
     () => automations.filter((automation) => automation.status === "active"),
@@ -50,6 +53,13 @@ export function AgentsPage({
 
     window.addEventListener("keydown", closeOnEscape)
     return () => window.removeEventListener("keydown", closeOnEscape)
+  }, [isCreateModalOpen])
+
+  useEffect(() => {
+    document.body.classList.toggle("studio-modal-open", isCreateModalOpen)
+    return () => {
+      document.body.classList.remove("studio-modal-open")
+    }
   }, [isCreateModalOpen])
 
   async function refreshAutomations() {
@@ -160,14 +170,16 @@ export function AgentsPage({
 
   return (
     <section className="collection-card jobs-card agents-card">
-      <div className="jobs-card-header">
-        <div>
-          <h2 className="jobs-card-title">Agents</h2>
-          <p className="small agents-subtitle">
-            Recurring enrichment automations.
+      <header className="studio-page-intro studio-page-intro--with-actions">
+        <div className="studio-page-intro-copy">
+          <span className="studio-page-eyebrow">Agent automations</span>
+          <h1>Agents</h1>
+          <p>
+            Schedule recurring enrichment runs for eligible videos and language
+            coverage.
           </p>
         </div>
-        <div className="agents-header-actions">
+        <div className="studio-page-intro-actions agents-header-actions">
           <button
             type="button"
             className="collection-cache-clear jobs-refresh-link"
@@ -175,6 +187,7 @@ export function AgentsPage({
               void refreshAutomations()
             }}
           >
+            <RefreshCw className="icon" aria-hidden="true" />
             Refresh
           </button>
           <button
@@ -182,53 +195,59 @@ export function AgentsPage({
             className="jobs-primary-button"
             onClick={() => setIsCreateModalOpen(true)}
           >
+            <Bot className="icon" aria-hidden="true" />
             New automation
           </button>
         </div>
-      </div>
+      </header>
 
-      {isCreateModalOpen && (
-        <div
-          className="agents-modal-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setIsCreateModalOpen(false)
-            }
-          }}
-        >
-          <section
-            className="agents-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="agents-create-title"
-          >
-            <div className="agents-modal-header">
-              <div>
-                <h3 id="agents-create-title" className="agents-modal-title">
-                  New automation
-                </h3>
-                <p className="small agents-modal-subtitle">
-                  Create recurring enrichment work for eligible videos.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="agents-modal-close"
-                onClick={() => setIsCreateModalOpen(false)}
+      {modalRoot && isCreateModalOpen
+        ? createPortal(
+            <div
+              className="agents-modal-backdrop"
+              role="presentation"
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) {
+                  setIsCreateModalOpen(false)
+                }
+              }}
+            >
+              <section
+                className="agents-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="agents-create-title"
               >
-                Close
-              </button>
-            </div>
-            <AutomationForm
-              languageOptions={languageOptions}
-              onCreate={createAutomation}
-              onCancel={() => setIsCreateModalOpen(false)}
-              onCreated={() => setIsCreateModalOpen(false)}
-            />
-          </section>
-        </div>
-      )}
+                <div className="agents-modal-header">
+                  <div>
+                    <h3 id="agents-create-title" className="agents-modal-title">
+                      New automation
+                    </h3>
+                    <p className="small agents-modal-subtitle">
+                      Create recurring enrichment work for eligible videos.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="agents-modal-close"
+                    aria-label="Close modal"
+                    title="Close modal"
+                    onClick={() => setIsCreateModalOpen(false)}
+                  >
+                    <X className="icon" aria-hidden="true" />
+                  </button>
+                </div>
+                <AutomationForm
+                  languageOptions={languageOptions}
+                  onCreate={createAutomation}
+                  onCancel={() => setIsCreateModalOpen(false)}
+                  onCreated={() => setIsCreateModalOpen(false)}
+                />
+              </section>
+            </div>,
+            modalRoot,
+          )
+        : null}
 
       {statusMessage && (
         <p className="jobs-status jobs-status-success">{statusMessage}</p>

@@ -296,15 +296,14 @@ function EmbeddingSyncDetails({
           >
             {isSubmitting ? (
               <>
-                <RefreshCw
-                  size={14}
-                  aria-hidden="true"
-                  className="jobs-spin-icon"
-                />
+                <RefreshCw className="icon is-spinning" aria-hidden="true" />
                 <span>Reindexing...</span>
               </>
             ) : (
-              "Override CMS Transcript Embeddings"
+              <>
+                <Network className="icon" aria-hidden="true" />
+                <span>Override CMS Transcript Embeddings</span>
+              </>
             )}
           </button>
         </div>

@@ -167,3 +167,15 @@ type SearchResponse = { pipelineHealth: "ok" | "degraded-keyword-only" }
   orchestrator.
 - `docs/solutions/best-practices/test-first-regression-snapshot-byte-identical-default-20260429.md` —
   the test pattern that gates this approach.
+
+## Admin-side counterpart
+
+- `apps/admin/src/services/hybrid-search.service.ts` — admin's
+  R4-extension `HybridSearchService.search()` with the same single-
+  branch shape (`if (pipelineMode === "keyword-first") …` around
+  the video retrieval block; semantic-video is shared, hybrid path
+  untouched).
+- `apps/admin/src/services/hybrid-search.regression.test.ts` —
+  byte-identity snapshot across `mode ∈ {undefined,null,"",hybrid,garbage}`
+  that gates Units 3-5 of the port.
+- `docs/solutions/platform/admin-hybrid-search-keyword-first-r4-extension-pattern.md`.

@@ -128,3 +128,19 @@ guard that's only meaningful for the expression case.
   the trigram GIN.
 - `apps/cms/src/api/search/services/keyword-weighted-search.ts` /
   `trigram-search.ts` — the two retrievers that exercise the distinction.
+
+## Admin-side counterpart
+
+The same distinction applies to admin's R4-extension keyword-first port:
+
+- `apps/admin/src/services/hybrid-search-sql.ts` — `WEIGHTED_TSV_INDEX_EXPR`
+  / `WEIGHTED_TSV_QUERY_EXPR` are byte-parity-guarded against
+  `prisma/migrations/0009_keyword_first_lexical/migration.sql`. No
+  shared constant for the trigram path — operator-class GIN
+  (`gin_trgm_ops`) selects via the `%>` operator.
+- `apps/admin/src/services/hybrid-search-sql.test.ts` — extended
+  byte-parity test asserts both invariants.
+- `apps/admin/src/services/hybrid-search-keyword-first-retrievers.ts` —
+  `searchByKeywordWeighted` (expression GIN) vs `searchByTrigram`
+  (operator-class GIN) showing the pattern in admin idiom.
+- `docs/solutions/platform/admin-hybrid-search-keyword-first-r4-extension-pattern.md`.

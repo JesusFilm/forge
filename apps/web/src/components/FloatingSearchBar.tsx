@@ -27,9 +27,9 @@ export function FloatingSearchBar() {
       onClick={() => setOpen(true)}
       inert={chromeHidden || undefined}
       aria-hidden={chromeHidden || undefined}
-      className={`fixed left-[calc(50%+8px)] z-50 -translate-x-1/2 rounded-[35px] bg-white/10 px-6 py-3 text-left text-white shadow-xl outline-1 outline-white/20 backdrop-blur-[10px] transition-[top,opacity] duration-300 ease-out w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] max-w-[810px] focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 ${topClass} ${openClass}`}
+      className={`fixed left-[calc(50%+8px)] z-50 -translate-x-1/2 rounded-[35px] bg-white/10 px-6 py-3 text-left text-white shadow-xl outline-1 outline-white/20 backdrop-blur-[10px] transition-[top,opacity] duration-300 ease-out w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] max-w-[810px] [text-shadow:0_1px_3px_rgba(0,0,0,0.5)] focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 ${topClass} ${openClass}`}
     >
-      <span className={isPlaceholder ? "text-white/70" : "text-white"}>
+      <span className={isPlaceholder ? "text-white/90" : "text-white"}>
         {display}
       </span>
     </button>

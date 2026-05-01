@@ -165,19 +165,106 @@ pnpm --filter @forge/admin typecheck
 
 ## Deployment
 
-Railway service `forge-admin` (Doppler project of the same name).
-Deployment caveats in `docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md`
-apply: set `HOSTNAME=0.0.0.0` in Railway dashboard (not `[deploy.env]`).
+Railway service `@forge/admin` in project `forge` (Doppler project
+`forge-admin` of the same name). The service is **configured via the
+Railway dashboard, NOT via `apps/admin/railway.toml`** — that file is
+dead config until the service's "Config-as-code Path" is wired up
+(see `apps/admin/railway.toml` header comment + the solutions doc
+linked below).
+
+**Authoritative dashboard configuration (as of 2026-04-29 recovery):**
+
+| Field                      | Value                                                                                                                                                     |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Custom Start Command       | `pnpm --filter @forge/admin db:migrate:deploy && HOSTNAME=0.0.0.0 node apps/admin/.next/standalone/apps/admin/server.js`                                  |
+| Custom Build Command       | `pnpm install --frozen-lockfile && pnpm --filter @forge/admin build && cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static` |
+| Custom Pre-Deploy Command  | (not set — migrate is chained into startCommand)                                                                                                          |
+| Healthcheck Path           | `/api/health`                                                                                                                                             |
+| Healthcheck Timeout        | 60s                                                                                                                                                       |
+| Restart Policy Max Retries | 3                                                                                                                                                         |
+
+The chained `startCommand` runs Prisma migrations BEFORE the
+standalone Next.js server boots. If `migrate deploy` fails, the
+container crashes and `restartPolicy` retries up to 3 times before
+the deploy is marked FAILED (see Migrations section for failure-mode
+recovery). Other deployment caveats in
+`docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md`
+still apply: set `HOSTNAME=0.0.0.0` in the Railway dashboard (not
+`[deploy.env]`).
+
+**Editing dashboard config via MCP:** always pair
+`mcp__railway__updateServiceTool` with
+`mcp__railway__accept-deploy(environmentId)` — the update tool stages
+patches into a buffer and a follow-up `redeploy` will snapshot the
+unchanged canonical config. See
+`docs/solutions/platform/railway-mcp-staged-config-never-commits-20260420.md`.
 
 ## Migrations
 
-History was collapsed into a single `0001_init` migration during Phase 2
-because no production database existed yet. Future schema changes append
-new migration files as normal — never rewrite `0001_init`.
+**Source of truth:** Prisma migrations in `apps/admin/prisma/migrations/`.
+Future schema changes append new migration files — never rewrite
+`0001_init`. Migrations apply in order at every container boot via
+the chained `startCommand`.
 
-If a deployed environment ever applied an earlier iteration of these
-migrations (none did), the recovery path is to drop and re-apply against a
-fresh DB.
+**Forward-only.** `prisma migrate deploy` is the only correct
+invocation against a deployed environment. NEVER run `prisma migrate
+dev` against prod or any deployed env. Rolling back to an earlier
+image leaves the schema ahead of the code; with today's contents
+(0001-0009 are all additive — new tables, new columns, new indexes)
+a code-side rollback is functionally safe. The first migration that
+drops or renames anything will change this rule and require a deeper
+rollback playbook.
+
+### Operational runbook — predeploy migration verification
+
+After every deploy of `@forge/admin`, verify migrations actually
+applied. The `apps/admin/railway.toml` shadow-override trap silently
+skipped migrations across 5 PRs in late April 2026; verification is
+mandatory until config-as-code is wired up.
+
+**Smoke probe (run from your workstation):**
+
+```bash
+railway run pnpm --filter @forge/admin exec prisma migrate status
+```
+
+Expected healthy output: every migration in `apps/admin/prisma/migrations/`
+listed as `Applied`, no `Pending` or `Following migrations have not
+yet been applied` lines.
+
+**Deploy-log probe (alternative):** grep the deploy log for
+`Applying migration` lines and `All migrations have been
+successfully applied`. Absence on a deploy that introduces a new
+migration is a red flag — same shape as the 2026-04-29 incident.
+
+### Failure-mode recovery
+
+| Prisma error                                             | Cause                                                           | Recovery                                                                                                                                                         |
+| -------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P3009** (`Migration … was rolled back, please review`) | A previous migration apply was interrupted or partially failed. | Fix the root cause (DB connectivity, privilege, etc.). Then `railway run pnpm --filter @forge/admin exec prisma migrate resolve --rolled-back <name>`. Redeploy. |
+| **P3018** (`Migration cannot be applied cleanly`)        | Logical error in the migration SQL.                             | Fix the migration in a follow-up PR. Do NOT use `--applied` to fake-resolve a real failure.                                                                      |
+| `permission denied for extension <name>`                 | Prod DB role lacks `CREATE` on the database.                    | Out-of-band: platform team grants `CREATE` on the role (or installs the extension directly). Redeploy.                                                           |
+| `DATABASE_URL` absent / network egress fail              | Env var missing, or DB service unreachable.                     | Operator confirms env in dashboard / Doppler; verify DB service `online`. Redeploy.                                                                              |
+
+**Manual fallback (emergency only):** if a deploy fails on
+`migrate deploy` and you need to apply migrations out-of-band:
+
+```bash
+railway run pnpm --filter @forge/admin db:migrate:deploy
+```
+
+This runs the same command the chained `startCommand` would, against
+the same env, without triggering a redeploy. Use sparingly — every
+production migration should ideally land via a normal deploy so the
+deploy log carries the audit trail.
+
+**Key cross-references:**
+
+- `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md` — the override-shadows-toml trap that this runbook exists to prevent recurrence of.
+- `docs/solutions/platform/railway-mcp-staged-config-never-commits-20260420.md` — staged-patch flush requirement when editing dashboard via MCP.
+- `docs/solutions/database-issues/prisma-unsupported-placeholder-for-raw-sql-generated-columns-20260429.md` — schema.prisma placeholders for raw-SQL-managed columns.
+- `docs/solutions/database-issues/postgres-generated-column-drift-add-column-if-not-exists-20260429.md` — generated-column drift trap on Postgres.
+- `docs/plans/2026-04-29-004-fix-admin-prod-migration-recovery-plan.md` — the recovery plan + the diagnostic walkthrough.
 
 ## Unit 4 — data model highlights
 
@@ -785,6 +872,177 @@ Note: the 3-layer video dedup + `cosineSimilarityFromText` live in
 recommendations consume one implementation. `deduplicateResults` below
 is a thin `FusedResult`-typed wrapper.
 
+## Hybrid search keyword-first mode (R4 extension)
+
+Opt-in `mode="keyword-first"` argument on the same `HybridSearchService`
+that R4 ships. Adds three lexical retrievers + a post-fusion semantic-
+dilution cap + an origin-gated debug payload. Default behavior stays
+byte-identical to R4 main when `mode` is unset / null / `""` / `"hybrid"`
+/ unknown — locked in by `src/services/hybrid-search.regression.test.ts`.
+
+This is an **extension of R4**, not a new R-stage. The cms-side
+`feat-109` work (apps/cms PR #852) lives on cms during the R3 → R8
+window; admin's surface matches the cms-side contract by R8 cutover.
+
+- **Schema:** Migration `0009_keyword_first_lexical/migration.sql`
+  provisions `pg_trgm`, two STORED generated tsvector columns on
+  `video_locale` (`title_tsv`, `description_tsv`), a weighted GIN
+  index over `(setweight(title_tsv,'A') || setweight(description_tsv,'B'))`,
+  and a trigram GIN index on `title gin_trgm_ops`. Generated columns
+  - GIN indexes attach to `VideoLocale`, NOT `Video` (per-locale
+    attachment per admin's data model). The legacy R4
+    `video_locale_fulltext_search_idx` from `0006` is untouched —
+    hybrid mode keeps reading it via `searchVideoKeyword`.
+
+- **Byte-parity invariant:** `WEIGHTED_TSV_INDEX_EXPR` /
+  `WEIGHTED_TSV_QUERY_EXPR` / `TITLE_TSV_GENERATED_EXPR` /
+  `DESCRIPTION_TSV_GENERATED_EXPR` in `src/services/hybrid-search-sql.ts`
+  must stay byte-equal to the migration. `hybrid-search-sql.test.ts`
+  reads the migration and asserts. The trigram path uses operator-class
+  GIN (`gin_trgm_ops`) — no expression byte-parity guard needed; index
+  selection happens via the `%>` operator. Per
+  `docs/solutions/best-practices/gin-byte-parity-trigram-vs-expression-indexes-20260429.md`.
+
+- **Generated-column drift trap:** Postgres has no `ALTER COLUMN ...
+GENERATED` editor for stored expressions. Any future rewrite of
+  `*_GENERATED_EXPR` requires a coordinated `DROP COLUMN ... CASCADE +
+ADD COLUMN ... GENERATED ALWAYS AS (...)` migration. Per
+  `docs/solutions/database-issues/postgres-generated-column-drift-add-column-if-not-exists-20260429.md`.
+
+- **Three new lexical retrievers** in
+  `src/services/hybrid-search-keyword-first-retrievers.ts`:
+  - `searchByKeywordWeighted` — phrase-aware
+    `websearch_to_tsquery('simple', q)`, ranked by `ts_rank_cd`
+    against the weighted tsvector. `Prisma.raw(WEIGHTED_TSV_QUERY_EXPR)`
+    for the unbindable expression fragment.
+  - `searchByTrigram` — `vl.title %> q` with `similarity(vl.title, q)`
+    ranking. Title-only (description trigram index would balloon).
+  - `searchByExactTitle` — dynamic AND-chain of `vl.title ILIKE ?`
+    via `Prisma.join`, ranked `LENGTH(title) ASC`. Tokenization is
+    Unicode letter / digit split, lowercased, deduped, **capped at
+    `MAX_EXACT_TITLE_TOKENS = 16`** (DoS guard from cms-side fix).
+    All three honor R4's locale + status + `deleted_at IS NULL` chain.
+
+- **Branched orchestrator:** Single `HybridSearchService.search()`
+  branches once on `pipelineMode === "keyword-first"`. Hybrid path
+  is UNTOUCHED. Keyword-first dispatches: semantic-video (shared) +
+  keyword-weighted-video + trigram-video + exact-title-video. The
+  R4 `searchVideoKeyword` is NOT called on the keyword-first branch.
+  Per `docs/solutions/design-patterns/branched-orchestrator-opt-in-mode-pattern-20260429.md`.
+
+- **Mode normalization:** `normalizeMode(raw, logger)` decodes the
+  free-form public arg to a closed `SearchPipelineMode` set. Unknown
+  values warn-and-fall-back to hybrid via a single sanitized log line
+  (`[search] event=search_unknown_mode mode=… falling_back=hybrid`)
+  — never throws. CR/LF/TAB stripped, length clamped to 64. Per
+  `docs/solutions/security-issues/log-injection-sanitizer-user-input-structured-logs-20260429.md`.
+
+- **Semantic-dilution cap:** Active only in keyword-first mode and
+  only when at least one exact-title result's lowercased title
+  contains every query token. When triggered, semantic-only fused
+  results whose `videoCoreId` is null OR not present in the top-3
+  keyword-side core_ids get `score *= 0.5` and the list re-sorts.
+  `applyDilutionCap` is exported for unit testing. Gated by
+  `SEARCH_DILUTION_CAP_ENABLED` (default `true`; only literal
+  `"false"` disables — tolerant parser is a documented follow-up).
+
+- **Origin-gated `debug` payload:** `isDebugAllowedForOrigin` in
+  `src/services/hybrid-search-debug-allowlist.ts` is the soft gate.
+  Boundary (REST + GraphQL) consults the allowlist; the service
+  trusts the boolean. Fail-closed on `Origin: undefined`. Allowlist:
+  `SEARCH_DEBUG_ALLOWED_ORIGINS` CSV; otherwise any origin in
+  non-production. Threat model is "soft feature flag, not auth" —
+  Origin headers are forgeable from non-browser clients. The payload
+  carries no PII / credentials, only retriever ranks + fused score
+  - cap state. Per
+    `docs/solutions/security-issues/origin-header-soft-gate-not-security-boundary-20260429.md`.
+
+- **GraphQL types:** `HybridSearchResult.debug` is a nullable
+  `HybridSearchResultDebug` (`retrieverRanks`, `fusedScore`,
+  `dilutionCapApplied`). `HybridSearchRetrieverRank.label` is
+  explicitly **UNSTABLE** in the schema description — operators
+  inspecting payloads are the audience; do NOT branch on those
+  strings in production code. `schema.test.ts` asserts no
+  `embed|vector|similarit` field leaks on either new type.
+
+- **REST endpoint:** Same `GET /api/search` extends with `mode` +
+  `debug` query params. `mode=` (empty) is forwarded as undefined to
+  avoid polluting the warn log. `debug=true` is the only opt-in
+  spelling — `debug=1` and other truthy values are treated as off
+  (debug is a deliberate developer affordance, not a fuzzy toggle).
+
+- **Endpoints + acceptance:**
+  - `GET /api/search?q=…&locale=…&mode=keyword-first&debug=true`
+  - GraphQL: `Query.search(q, locale, type?, limit?, offset?, mode?, debug?)`
+  - Bible Project headline test
+    (`src/services/hybrid-search.bible-project.test.ts`) asserts top-3
+    are all `/bible\s*project/i` titles for `q="the bible project"`.
+
+- **Test-first regression gate:**
+  `src/services/hybrid-search.regression.test.ts` asserts byte-identity
+  across `mode ∈ {undefined, null, "", "hybrid", "garbage"}` against
+  deterministic mocked retrievers. Adding a new retriever / debug
+  field / cap parameter is allowed only as long as that test stays
+  green. Per
+  `docs/solutions/best-practices/test-first-regression-snapshot-byte-identical-default-20260429.md`.
+
+**Operational runbook:**
+
+1. Apply migration `0009_keyword_first_lexical` in any environment
+   that wants keyword-first available. `prisma migrate dev` /
+   `prisma migrate deploy` is idempotent. The two new GIN indexes
+   add disk + write amplification proportional to corpus size; cost
+   is negligible at admin's current zero-row prod data and grows
+   when R0 backfills.
+2. Confirm `pg_trgm` extension permission on the prod DB role.
+   First migration that needs it; older R0–R5 migrations don't.
+3. To opt in via REST, append `?mode=keyword-first`. To opt in via
+   GraphQL, pass `mode: "keyword-first"`. Default behavior is
+   byte-identical to R4.
+4. To inspect scoring on a dev / preview environment: append
+   `&debug=true` AND make the request from an allowlisted origin
+   (any origin in non-production by default; explicit
+   `SEARCH_DEBUG_ALLOWED_ORIGINS` CSV overrides). Curl needs an
+   explicit `-H "Origin: <allowlisted>"` header.
+5. Verify GIN indexes are used. Probe SQL:
+   `EXPLAIN ANALYZE SELECT v.id FROM video_locale vl JOIN video v ON
+v.id = vl.video_id WHERE setweight(vl.title_tsv,'A') ||
+setweight(vl.description_tsv,'B') @@
+websearch_to_tsquery('simple', 'jesus') AND vl.locale = 'en'
+LIMIT 10;`
+   should show `Bitmap Index Scan on
+video_locale_lexical_weighted_idx`. Trigram probe:
+   `… WHERE vl.title %> 'jesus' …` should show
+   `video_locale_title_trgm_idx`.
+6. R0 dependency: admin's `video` / `video_locale` tables are 0 rows
+   in prod. Real-DB integration tests (canary diff vs cms keyword-first,
+   EXPLAIN-based GIN verification) are deferred to R0 readiness.
+
+**Common things to remember:**
+
+- The hybrid path is byte-identical to R4. Touching it without
+  updating `hybrid-search.regression.test.ts` is the definition of a
+  regression. Per `docs/solutions/best-practices/dead-invariant-checks-from-sibling-port-20260422.md`.
+- `searchMode` (response field) ≠ `mode` (input arg). The response
+  reports embedding-degradation; the input selects the pipeline.
+  GraphQL schema description on `Query.search.mode` explicitly
+  disambiguates.
+- Retriever labels in the debug payload are UNSTABLE — never branch
+  on them in production code.
+- `Prisma.raw(EXPR)` is reserved for the unbindable weighted tsvector
+  fragment. Bound parameters interpolate via `${expr}` in the
+  template literal. `searchByExactTitle` uses `Prisma.join` to
+  compose the variable-length AND-chain so the placeholder count
+  always matches the bound-value count (Postgres rejects unbound
+  placeholders at parse time, which is the safe failure mode).
+- The dilution cap is invisible on thematic queries
+  (`q="hope when life is hard"`) — those have no exact-title trigger,
+  so the cap silently does nothing. Hard filtering is intentionally
+  NOT used.
+
+The primary learnings doc is
+`docs/solutions/platform/admin-hybrid-search-keyword-first-r4-extension-pattern.md`.
+
 ## Scene recommendations (R5 of admin migration playbook)
 
 Admin owns public scene-similarity recommendations — given a seed video
@@ -896,8 +1154,128 @@ ORDER BY vsl.embedding <=> '[...]'::vector LIMIT 10;` should show
 The primary learnings doc is
 `docs/solutions/platform/admin-scene-recommendations-r5-pattern.md`.
 
+## Running embeds locally (R1 + R2)
+
+Local-dev workflow for populating a freshly-synced `forge_admin` DB
+with scene + transcript embeddings — bypasses the GraphQL trigger
+path and the Cloudflare 524 edge timeout. Per
+`docs/plans/2026-04-29-006-feat-local-embed-pipeline-and-manager-trigger-plan.md`.
+
+**Three-step runbook:**
+
+1. **Pull the prod mapping snapshot to local fallback:**
+
+   ```bash
+   RAILWAY_S3_ACCESS_KEY_ID=... \
+   RAILWAY_S3_SECRET_ACCESS_KEY=... \
+   pnpm --filter @forge/admin pull:mapping
+   ```
+
+   Downloads `s3://cms-storage-jbpuckp0lmqap/admin-migrations/core-id-mapping.json`
+   (admin's prod bucket — same key the GraphQL workflow reads in
+   prod) into `apps/admin/.tmp/objects/admin-migrations/core-id-mapping.json`.
+   Admin's `src/storage/s3.ts` `getObject` falls back to that path
+   when `RAILWAY_S3_BUCKET` is unset, so the workflow reads it
+   transparently at runtime.
+
+2. **Configure manager-bucket creds + (R1 only) an embedding key
+   in `apps/admin/.env`:**
+
+   ```
+   MANAGER_ARTIFACTS_S3_ENDPOINT=...
+   MANAGER_ARTIFACTS_S3_REGION=...
+   MANAGER_ARTIFACTS_S3_BUCKET=...
+   MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID=...
+   MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY=...
+   # R1 only — R2 reuses vectors from manager's embeddings.json
+   OPENROUTER_API_KEY=...
+   ```
+
+   Pull these from Railway's `forge-admin` service env (read-only —
+   manager bucket is read-only at the code layer).
+
+3. **Run the pipeline:**
+
+   ```bash
+   DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
+   pnpm --filter @forge/admin run-embeds --pipeline=transcript
+   #   --pipeline=scene|transcript|both         (required)
+   #   --core-id=<id>          (repeatable; restrict to specific videos)
+   #   --locale=<bcp47>        (repeatable; R1 filter)
+   #   --language=<bcp47>      (repeatable; R2 filter)
+   #   --mapping-key=admin-migrations/core-id-mapping.json   (default)
+   ```
+
+   Direct-invokes `runSceneEmbeddingBackfill` /
+   `runTranscriptEmbeddingBackfill` against the in-process Prisma
+   singleton, mirroring `pnpm run-sync`. Per-pipeline error
+   isolation; structured JSON output. R2 is free (vector reuse from
+   manager's `embeddings.json`); R1 hits OpenRouter.
+
+**Local DB is the destination.** `DATABASE_URL` is the only safety
+guard — there is no in-script check that detects a prod URL. Mirrors
+`run-sync.ts`'s posture; operator discipline applies.
+
+**Long-running invocations.** R1 + R2 runs across the full local
+catalogue can take many minutes — the CLI blocks in-process. If you
+need to walk away from the terminal, use `tmux` / `screen` / `nohup`
+so a session disconnect doesn't kill the run mid-flight:
+
+```bash
+nohup pnpm --filter @forge/admin run-embeds --pipeline=both \
+  > .tmp/run-embeds-$(date +%s).log 2>&1 &
+```
+
+The CLI is **safe to interrupt** — Ctrl-C / SIGTERM disconnects the
+prisma client cleanly and exits with code 130. Workflow upserts are
+idempotent, so re-running picks up where the last run left off. Do
+NOT assume a run completed if your terminal closed mid-stream
+without seeing the final `run-embeds.complete` event.
+
+The new solutions doc
+`docs/solutions/platform/local-embed-pipeline-pattern-20260429.md`
+captures the architectural pattern (local-fallback storage trick,
+direct-invoke shape, prod-mapping-pull rationale).
+
+## Triggering embeds from manager
+
+Manager exposes thin REST proxies that forward to admin's existing
+GraphQL trigger mutations. Same workflow runs end-to-end on admin's
+side — manager owns presentation, admin owns execution. No workflow
+duplication; data ownership stays with admin.
+
+**Endpoints (manager-side):**
+
+- `POST manager/api/admin-embeds/scene` — body `{ mappingS3Key?,
+coreIds?, locales? }`. Proxies to admin's
+  `triggerSceneEmbeddingBackfill`.
+- `POST manager/api/admin-embeds/transcript` — body `{ mappingS3Key?,
+coreIds?, languages? }`. Proxies to admin's
+  `triggerTranscriptEmbeddingBackfill`.
+
+Both gate manager-side via `authenticateRequest` (Strapi JWT cookie
+or `MANAGER_API_KEY` bearer) before forwarding.
+
+**Admin-side auth posture (plan 006):** admin's GraphQL context
+mints a request-bound `WORKFLOW_TRIGGER` principal when an incoming
+request carries `Authorization: Bearer <key>` matching one of the
+keys in `WORKFLOW_API_KEYS` (the same env var the workflow callback
+endpoint validates with HMAC). The `WORKFLOW_TRIGGER` role
+satisfies a narrow allowlist defined in `src/auth/permissions.ts`
+(`WORKFLOW_TRIGGER_PERMISSIONS`) — currently
+`write:scene-embeddings` + `write:transcript-embeddings` and
+nothing else. Adding mutations to that allowlist widens the bearer
+caller's blast radius; do so deliberately. See
+`src/auth/workflow-bearer.ts`.
+
+**Env (manager):** `ADMIN_GRAPHQL_URL` +
+`ADMIN_EMBED_TRIGGER_API_KEY` on `forge-manager` Doppler. The key
+must match an entry in admin's `WORKFLOW_API_KEYS` CSV.
+
 ## Common pitfalls (grows with each unit)
 
+- **`apps/admin/railway.toml` is dead config — Railway only auto-discovers `railway.toml` at the repo root**, not in per-service subdirectories. Editing it does NOT change deploy behavior. The Railway dashboard is authoritative until "Config-as-code Path" is wired up. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.
+- **Railway MCP writes are staged, not applied** — `updateServiceTool` writes to a buffer; flush with `accept-deploy(environmentId)`, not `redeploy`. See `docs/solutions/platform/railway-mcp-staged-config-never-commits-20260420.md`.
 - `[deploy.env]` in `railway.toml` is unreliable — put env vars in Railway dashboard.
 - PostgreSQL 18 on Railway: `?::jsonb::text[]` cast unsupported. Use PG array
   literal `{val1,val2}` with `?::text[]` — see `src/db/pgvector.ts::toPgArray()`.

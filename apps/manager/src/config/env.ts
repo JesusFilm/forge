@@ -47,6 +47,15 @@ export const env = createEnv({
     // API authentication — required for production
     MANAGER_API_KEY: z.string().min(1).optional(),
 
+    // Admin embed-trigger proxy (plan 006) — manager exposes
+    // /api/admin-embeds/{scene,transcript} which forward to admin's
+    // GraphQL trigger mutations using the bearer key below. Both vars
+    // are optional at boot so manager keeps starting in environments
+    // that don't have the proxy configured; the route handlers throw
+    // a clean 500 with a clear message if invoked without these set.
+    ADMIN_GRAPHQL_URL: z.string().url().optional(),
+    ADMIN_EMBED_TRIGGER_API_KEY: z.string().min(1).optional(),
+
     // ElevenLabs transcription (optional unless ElevenLabs routing is used)
     ELEVENLABS_REQUEST_TIMEOUT_MS: z.coerce
       .number()
@@ -87,6 +96,8 @@ export const env = createEnv({
       process.env.MANAGER_MOCK_DATA_PATH ?? ".tmp/mock-cms/store.json",
     WORKFLOW_API_KEY: process.env.WORKFLOW_API_KEY,
     MANAGER_API_KEY: process.env.MANAGER_API_KEY,
+    ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
+    ADMIN_EMBED_TRIGGER_API_KEY: process.env.ADMIN_EMBED_TRIGGER_API_KEY,
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:
       process.env.ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS,

@@ -707,19 +707,31 @@ model Video {
 /// Per-locale Video content. Editors curate localized title / description /
 /// snippet / imageAlt and publish them independently of other locales.
 model VideoLocale {
-  id          String       @id @default(cuid())
-  videoId     String       @map("video_id")
-  video       Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  id             String                       @id @default(cuid())
+  videoId        String                       @map("video_id")
+  video          Video                        @relation(fields: [videoId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 locale code, e.g. "en", "fr", "es-419".
-  locale      String
-  title       String?
-  description String?
-  snippet     String?
-  imageAlt    String?      @map("image_alt")
-  status      LocaleStatus @default(DRAFT)
-  publishedAt DateTime?    @map("published_at")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
+  locale         String
+  title          String?
+  description    String?
+  snippet        String?
+  imageAlt       String?                      @map("image_alt")
+  status         LocaleStatus                 @default(DRAFT)
+  publishedAt    DateTime?                    @map("published_at")
+  createdAt      DateTime                     @default(now()) @map("created_at")
+  updatedAt      DateTime                     @updatedAt @map("updated_at")
+  /// STORED generated tsvector columns — derived from `title` /
+  /// `description` by `0009_keyword_first_lexical/migration.sql`. Backed by
+  /// `video_locale_lexical_weighted_idx` (GIN over the per-field weighted
+  /// expression). Service code reads these via `Prisma.raw` only — Prisma
+  /// has no first-class generated-tsvector column type, so we expose the
+  /// columns to introspection through `Unsupported(...)?` placeholders to
+  /// keep `prisma migrate dev` from offering to drop them. Any change to
+  /// the generated expression requires a coordinated DROP CASCADE + ADD
+  /// COLUMN migration (Postgres has no in-place editor for stored
+  /// generated expressions).
+  titleTsv       Unsupported("tsvector")?     @map("title_tsv")
+  descriptionTsv Unsupported("tsvector")?     @map("description_tsv")
 
   @@unique([videoId, locale])
   @@index([locale])

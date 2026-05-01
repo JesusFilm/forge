@@ -92,9 +92,11 @@ export default async function AgentsDashboardPage() {
       : await loadLiveAgentsPageData()
 
   return (
-    <AgentsPage
-      initialAutomations={automations}
-      languageOptions={languageOptions}
-    />
+    <div className="studio-page studio-page--agents">
+      <AgentsPage
+        initialAutomations={automations}
+        languageOptions={languageOptions}
+      />
+    </div>
   )
 }

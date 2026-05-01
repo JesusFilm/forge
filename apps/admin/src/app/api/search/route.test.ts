@@ -19,7 +19,12 @@ vi.mock("@/services/hybrid-search.service", async () => {
 
 vi.mock("@/db/client", () => ({ prisma: {} }))
 
+vi.mock("@/services/hybrid-search-debug-allowlist", () => ({
+  isDebugAllowedForOrigin: vi.fn(),
+}))
+
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
+import { isDebugAllowedForOrigin } from "@/services/hybrid-search-debug-allowlist"
 import { GET } from "./route"
 
 const allowRateLimit = () =>
@@ -38,9 +43,18 @@ function req(path: string): Request {
   return new Request(`http://localhost${path}`, { method: "GET" })
 }
 
+function reqWithOrigin(path: string, origin: string): Request {
+  return new Request(`http://localhost${path}`, {
+    method: "GET",
+    headers: { origin },
+  })
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   allowRateLimit()
+  // Default: deny debug. Individual tests opt in.
+  vi.mocked(isDebugAllowedForOrigin).mockReturnValue(false)
   searchMock.mockResolvedValue({
     results: [],
     hasMore: false,
@@ -139,6 +153,90 @@ describe("GET /api/search", () => {
     denyRateLimit()
     const res = await GET(req("/api/search?q=jesus&locale=en"))
     expect(res.status).toBe(429)
+  })
+
+  it("forwards mode='keyword-first' to the service", async () => {
+    await GET(req("/api/search?q=jesus&locale=en&mode=keyword-first"))
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "keyword-first" }),
+    )
+  })
+
+  it("forwards arbitrary mode values verbatim (service warn-and-falls-back)", async () => {
+    await GET(req("/api/search?q=jesus&locale=en&mode=garbage"))
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "garbage" }),
+    )
+  })
+
+  it("treats empty mode (?mode=) as undefined to avoid polluting the warn log", async () => {
+    await GET(req("/api/search?q=jesus&locale=en&mode="))
+    const call = searchMock.mock.calls[0][0]
+    expect(call.mode).toBeUndefined()
+  })
+
+  it("treats omitted mode as undefined", async () => {
+    await GET(req("/api/search?q=jesus&locale=en"))
+    const call = searchMock.mock.calls[0][0]
+    expect(call.mode).toBeUndefined()
+  })
+
+  it("debug=true with allowlisted origin → service called with debug:true", async () => {
+    vi.mocked(isDebugAllowedForOrigin).mockReturnValue(true)
+    await GET(
+      reqWithOrigin(
+        "/api/search?q=jesus&locale=en&debug=true",
+        "http://localhost:3003",
+      ),
+    )
+    expect(isDebugAllowedForOrigin).toHaveBeenCalledWith(
+      "http://localhost:3003",
+    )
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ debug: true }),
+    )
+  })
+
+  it("debug=true with disallowed origin → service called with debug:false", async () => {
+    vi.mocked(isDebugAllowedForOrigin).mockReturnValue(false)
+    await GET(
+      reqWithOrigin(
+        "/api/search?q=jesus&locale=en&debug=true",
+        "https://attacker.test",
+      ),
+    )
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ debug: false }),
+    )
+  })
+
+  it("debug=true without Origin header → fails closed (debug:false)", async () => {
+    // No Origin header at all.
+    await GET(req("/api/search?q=jesus&locale=en&debug=true"))
+    expect(isDebugAllowedForOrigin).toHaveBeenCalledWith(undefined)
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ debug: false }),
+    )
+  })
+
+  it("debug omitted → service called with debug:false (no allowlist consultation needed)", async () => {
+    await GET(req("/api/search?q=jesus&locale=en"))
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ debug: false }),
+    )
+  })
+
+  it("debug=1 (truthy non-'true' value) is treated as opt-out", async () => {
+    vi.mocked(isDebugAllowedForOrigin).mockReturnValue(true)
+    await GET(
+      reqWithOrigin(
+        "/api/search?q=jesus&locale=en&debug=1",
+        "http://localhost:3003",
+      ),
+    )
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ debug: false }),
+    )
   })
 
   it("returns 503 when service throws", async () => {

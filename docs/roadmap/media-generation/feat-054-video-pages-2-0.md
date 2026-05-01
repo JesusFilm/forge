@@ -3,7 +3,7 @@ id: "feat-054"
 title: "Video Pages 2.0"
 owner: "vlad"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-04-21"
 duration: 14
 depends_on: []
@@ -14,6 +14,17 @@ tags:
   - "cms"
   - "video"
 ---
+
+> **Status note (2026-04-30):** in-progress. PR #860 (`feat/watch-page-mux-parity`, contributor: urim) ships the dedicated `/watch/[video]/[locale]` page with Mux Player + Experience-vocabulary parity, video-by-slug resolver with 4-tier locale-aware variant selection, and the synthetic-block / Experience-override merge layer. Verification criteria 1 ("single video page can render from CMS-backed data end to end") and partial 3 ("consistent across default and localized routes") are met. Outstanding for `complete`:
+>
+> - Subtitle data on the page contract — the new `WatchVideo` fragment doesn't project `Video.subtitles[]` yet (verification criterion 2 partial)
+> - Migration plan for any production 3-segment `/watch/[collection]/[video]/[locale]` URLs that may have indexed/inbound traffic (constraint: "Preserve existing watch-page URLs or add a clear migration plan")
+> - Body-zone wrapper extraction from `Section.tsx` (extensibility — verification criterion 4)
+> - Hardcoded English strings in `WatchStudyQuestions` / `BibleQuotesSection` (CMS-driven copy)
+> - Video/Experience slug-collision precedence audit (CMS data review)
+> - Resolver / route-level test coverage
+>
+> Ownership: ticket carries `vlad`; the PR contributor is urim. Coordinate before flipping `status: complete`.
 
 ## Problem
 

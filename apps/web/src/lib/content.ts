@@ -5,7 +5,16 @@ import { graphql, type ResultOf } from "@forge/graphql"
 import client from "@/lib/client"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
-import { watchExperienceFragment } from "@/lib/fragments"
+import {
+  getWatchVideoBySlugOperation,
+  getWatchVideoOperation,
+  watchExperienceFragment,
+  watchVideoFragment,
+} from "@/lib/fragments"
+
+// U2: import the new watch-page fragment so its presence keeps the gql.tada
+// introspection types live.
+void watchVideoFragment
 
 const GET_EXPERIENCE = graphql(`
   query GetExperience($slug: String!, $locale: I18NLocaleCode!) {
@@ -434,3 +443,577 @@ export const resolveWatchPage = cache(
     return fetchResolvedWatchPage(locale, slug ?? null)
   },
 )
+
+// ---------------------------------------------------------------------------
+// U3: dedicated watch route resolver
+// ---------------------------------------------------------------------------
+
+type GetWatchVideoData = ResultOf<typeof getWatchVideoOperation>
+type WatchVideoRecord = NonNullable<GetWatchVideoData["videos"][number]>
+type WatchParent = NonNullable<NonNullable<WatchVideoRecord["parents"]>[number]>
+type WatchVariant = NonNullable<
+  NonNullable<WatchVideoRecord["variants"]>[number]
+>
+
+export type WatchVideoErrorCode =
+  | "PARENT_NOT_FOUND"
+  | "LOCALE_NOT_FOUND"
+  | "NO_PLAYABLE_VARIANT"
+  | "VIDEO_NOT_FOUND"
+  | "INVALID_HERO_PLAYER_BLOCK"
+
+/**
+ * Typed error surfaced from `resolveWatchVideo` (and `mergeWatchExperience`)
+ * when the requested collection/video/locale combination cannot be rendered,
+ * or when an Experience supplies a Strapi-typed player block targeting the
+ * watch-page HeroPlayer slot. The route layer
+ * (`apps/web/src/app/[slug]/[video]/[locale]/page.tsx`) re-throws this so the
+ * sibling `error.tsx` boundary can map the code to copy.
+ *
+ * `INVALID_HERO_PLAYER_BLOCK` is thrown by `mergeWatchExperience` and may not
+ * have request-scope fields, so collectionSlug/videoSlug/languageSlug are
+ * optional and default to empty strings when omitted.
+ */
+export class WatchVideoError extends Error {
+  readonly code: WatchVideoErrorCode
+  readonly collectionSlug: string
+  readonly videoSlug: string
+  readonly languageSlug: string
+
+  constructor(
+    code: WatchVideoErrorCode,
+    {
+      collectionSlug,
+      videoSlug,
+      languageSlug,
+      cause,
+      message,
+    }: {
+      collectionSlug?: string
+      videoSlug?: string
+      languageSlug?: string
+      cause?: unknown
+      message?: string
+    } = {},
+  ) {
+    super(message ?? `watch-video:${code}`, cause ? { cause } : undefined)
+    this.name = "WatchVideoError"
+    this.code = code
+    this.collectionSlug = collectionSlug ?? ""
+    this.videoSlug = videoSlug ?? ""
+    this.languageSlug = languageSlug ?? ""
+  }
+}
+
+/**
+ * Resolved payload for `/watch/[collection]/[video]/[locale]`.
+ *
+ * The `video` field carries the full Strapi projection from
+ * `WatchVideoFragment`; `canonicalParent` and `selectedVariant` are
+ * resolver-side picks (URL slug match + language.slug filter) and are
+ * **also referenced by the same identity inside `video.parents` /
+ * `video.variants`** so downstream consumers can correlate without a second
+ * lookup.
+ */
+export type ResolvedWatchVideo = {
+  video: WatchVideoRecord
+  canonicalParent: WatchParent
+  selectedVariant: WatchVariant
+}
+
+type ResolveWatchVideoArgs = {
+  collectionSlug: string
+  videoSlug: string
+  languageSlug: string
+}
+
+const WATCH_VIDEO_I18N_LOCALE = "en"
+
+async function fetchWatchVideoRecord(
+  collectionSlug: string,
+  videoSlug: string,
+): Promise<WatchVideoRecord | null> {
+  const result = await client.query({
+    query: getWatchVideoOperation,
+    variables: {
+      i18nLocale: WATCH_VIDEO_I18N_LOCALE,
+      collectionSlug,
+      videoSlug,
+    },
+    fetchPolicy: "no-cache",
+  })
+
+  const error = graphqlError(
+    result as { error?: ErrorLike; errors?: unknown[] },
+  )
+  if (error) throw error
+
+  return (result.data?.videos?.[0] ?? null) as WatchVideoRecord | null
+}
+
+const fetchResolvedWatchVideo = unstable_cache(
+  async (
+    collectionSlug: string,
+    videoSlug: string,
+    languageSlug: string,
+  ): Promise<ResolvedWatchVideo> => {
+    const record = await fetchWatchVideoRecord(collectionSlug, videoSlug)
+    if (!record) {
+      throw new WatchVideoError("VIDEO_NOT_FOUND", {
+        collectionSlug,
+        videoSlug,
+        languageSlug,
+      })
+    }
+
+    const parents = (record.parents ?? []).filter(
+      (parent): parent is WatchParent => parent != null,
+    )
+    const canonicalParent =
+      parents.find((parent) => parent.slug === collectionSlug) ?? null
+    if (!canonicalParent) {
+      throw new WatchVideoError("PARENT_NOT_FOUND", {
+        collectionSlug,
+        videoSlug,
+        languageSlug,
+      })
+    }
+
+    const variants = (record.variants ?? []).filter(
+      (variant): variant is WatchVariant => variant != null,
+    )
+    const playableVariants = variants.filter(
+      (variant) => variant.published === true && Boolean(variant.hls),
+    )
+
+    const selectedVariant =
+      playableVariants.find(
+        (variant) => variant.language?.slug === languageSlug,
+      ) ?? null
+
+    if (!selectedVariant) {
+      // Distinguish "language not in this video" vs. "no playable variant at
+      // all" so the error boundary can show a useful English-fallback link.
+      const matchedLanguageVariant = variants.find(
+        (variant) => variant.language?.slug === languageSlug,
+      )
+      if (!playableVariants.length) {
+        throw new WatchVideoError("NO_PLAYABLE_VARIANT", {
+          collectionSlug,
+          videoSlug,
+          languageSlug,
+        })
+      }
+      // Either the requested language has a variant but it's unpublished or
+      // missing HLS, or the language is absent entirely. Both surface as
+      // LOCALE_NOT_FOUND — error.tsx handles fallback link.
+      void matchedLanguageVariant
+      throw new WatchVideoError("LOCALE_NOT_FOUND", {
+        collectionSlug,
+        videoSlug,
+        languageSlug,
+      })
+    }
+
+    const resolved: ResolvedWatchVideo = {
+      video: record,
+      canonicalParent,
+      selectedVariant,
+    }
+
+    // Match resolveWatchPage's plain-data normalization so the result is safe
+    // to serialize across the RSC boundary.
+    return JSON.parse(JSON.stringify(resolved)) as ResolvedWatchVideo
+  },
+  ["watch-video"],
+  { revalidate: 60 },
+)
+
+/**
+ * Resolve the dedicated watch-page payload for `/watch/[collection]/[video]/[locale]`.
+ *
+ * Throws `WatchVideoError` with a typed `code` when the request cannot be
+ * rendered. The caller (server component or `generateMetadata`) decides how
+ * to surface that — typically by re-throwing for `error.tsx` to map.
+ */
+export const resolveWatchVideo = cache(
+  async ({
+    collectionSlug,
+    videoSlug,
+    languageSlug,
+  }: ResolveWatchVideoArgs): Promise<ResolvedWatchVideo> => {
+    return fetchResolvedWatchVideo(collectionSlug, videoSlug, languageSlug)
+  },
+)
+
+// canonicalParent is null when the video has no parent (2-segment URL has no
+// collection slug — picks parents[0] as canonical, or null if parents empty).
+export type ResolvedWatchVideoBySlug = {
+  video: WatchVideoRecord
+  canonicalParent: WatchParent | null
+  selectedVariant: WatchVariant
+}
+
+async function fetchWatchVideoBySlug(
+  videoSlug: string,
+): Promise<WatchVideoRecord | null> {
+  const result = await client.query({
+    query: getWatchVideoBySlugOperation,
+    variables: {
+      i18nLocale: WATCH_VIDEO_I18N_LOCALE,
+      videoSlug,
+    },
+    fetchPolicy: "no-cache",
+  })
+
+  const error = graphqlError(
+    result as { error?: ErrorLike; errors?: unknown[] },
+  )
+  if (error) throw error
+
+  return (result.data?.videos?.[0] ?? null) as WatchVideoRecord | null
+}
+
+const fetchResolvedWatchVideoBySlug = unstable_cache(
+  async (
+    videoSlug: string,
+    locale: string,
+  ): Promise<ResolvedWatchVideoBySlug | null> => {
+    const record = await fetchWatchVideoBySlug(videoSlug)
+    if (!record) return null
+
+    const parents = (record.parents ?? []).filter(
+      (parent): parent is WatchParent => parent != null,
+    )
+    const canonicalParent = parents[0] ?? null
+
+    const variants = (record.variants ?? []).filter(
+      (variant): variant is WatchVariant => variant != null,
+    )
+    const playableVariants = variants.filter(
+      (variant) => variant.published === true && Boolean(variant.hls),
+    )
+    if (!playableVariants.length) return null
+
+    // Priority: URL locale (slug → bcp47), then primary, then first playable.
+    const localeMatch =
+      playableVariants.find((variant) => variant.language?.slug === locale) ??
+      playableVariants.find((variant) => variant.language?.bcp47 === locale)
+    const primaryLanguageId = record.primaryLanguage?.coreId ?? null
+    const primaryMatch = primaryLanguageId
+      ? playableVariants.find(
+          (variant) => variant.language?.coreId === primaryLanguageId,
+        )
+      : null
+    const selectedVariant =
+      localeMatch ?? primaryMatch ?? playableVariants[0] ?? null
+    if (!selectedVariant) return null
+
+    const resolved: ResolvedWatchVideoBySlug = {
+      video: record,
+      canonicalParent,
+      selectedVariant,
+    }
+    return JSON.parse(JSON.stringify(resolved)) as ResolvedWatchVideoBySlug
+  },
+  ["watch-video-by-slug"],
+  { revalidate: 60 },
+)
+
+// Returns null when the slug doesn't match a record OR the video has no
+// playable variant (published + hls). Caller falls through to Experience.
+export const resolveWatchVideoBySlug = cache(
+  async (
+    videoSlug: string,
+    locale: string,
+  ): Promise<ResolvedWatchVideoBySlug | null> => {
+    return fetchResolvedWatchVideoBySlug(videoSlug, locale)
+  },
+)
+
+// ---------------------------------------------------------------------------
+// U4: Hybrid resolver — synthetic watch blocks + per-block-type override merge
+// ---------------------------------------------------------------------------
+
+type WatchStudyQuestion = NonNullable<
+  NonNullable<WatchVideoRecord["studyQuestions"]>[number]
+>
+type WatchBibleCitation = NonNullable<
+  NonNullable<WatchVideoRecord["bibleCitations"]>[number]
+>
+
+/**
+ * Synthetic block-type discriminators owned by the watch route. These are NOT
+ * Strapi `__typename` values — they exist purely so `WatchSectionRenderer` can
+ * dispatch watch-only components (HeroPlayer, SiblingCarousel, WatchBody,
+ * StudyQuestions, BibleQuotes, Share) alongside Strapi-typed blocks coming
+ * out of an optional Experience.
+ *
+ * The `kind` field is the discriminator. We deliberately avoid `__typename`
+ * to make it impossible to confuse a synthetic block with a Strapi one in
+ * the renderer switch.
+ */
+export type WatchHeroPlayerBlock = {
+  kind: "HeroPlayer"
+  video: WatchVideoRecord
+  variant: WatchVariant
+}
+
+export type WatchSiblingCarouselBlock = {
+  kind: "SiblingCarousel"
+  canonicalParent: WatchParent
+  currentVideoDocumentId: string
+}
+
+export type WatchBodyBlock = {
+  kind: "WatchBody"
+  video: WatchVideoRecord
+  variant: WatchVariant
+}
+
+export type WatchStudyQuestionsBlock = {
+  kind: "StudyQuestions"
+  studyQuestions: WatchStudyQuestion[]
+}
+
+export type WatchBibleQuotesBlock = {
+  kind: "BibleQuotes"
+  bibleCitations: WatchBibleCitation[]
+}
+
+export type WatchShareBlock = {
+  kind: "Share"
+  video: WatchVideoRecord
+}
+
+export type WatchBlock =
+  | WatchHeroPlayerBlock
+  | WatchSiblingCarouselBlock
+  | WatchBodyBlock
+  | WatchStudyQuestionsBlock
+  | WatchBibleQuotesBlock
+  | WatchShareBlock
+
+/** Strapi-typed block coming from an Experience (matches `Section`). */
+export type StrapiWatchBlock = Section
+
+/** Discriminator for entries in the merged watch-block array. */
+export type MergedWatchBlock = WatchBlock | StrapiWatchBlock
+
+/**
+ * Strapi `__typename` values that mount their own player and would steal Mux
+ * Data attribution from the watch-page HeroPlayer. These are rejected at
+ * merge time when targeting the HeroPlayer slot.
+ */
+const PLAYER_BEARING_STRAPI_TYPES = new Set<string>([
+  "ComponentSectionsVideoHero",
+  "ComponentSectionsVideo",
+  "ComponentSectionsVideoCarousel",
+])
+
+const HERO_PLAYER_REJECTION_MESSAGE =
+  "HeroPlayer slot accepts only the watch-page Mux Player; use the auto-template HeroPlayer or override a different slot."
+
+// Auto-template builders ------------------------------------------------------
+
+/** Always returns a HeroPlayer block — the page is unrenderable without one. */
+export function buildHeroBlock(
+  video: WatchVideoRecord,
+  variant: WatchVariant,
+): WatchHeroPlayerBlock {
+  return { kind: "HeroPlayer", video, variant }
+}
+
+/** Returns null when the canonical parent has fewer than 2 children. */
+export function buildSiblingCarouselBlock(
+  canonicalParent: WatchParent | null,
+  video: WatchVideoRecord,
+): WatchSiblingCarouselBlock | null {
+  if (!canonicalParent) return null
+  const children = (canonicalParent.children ?? []).filter(
+    (child): child is NonNullable<typeof child> => child != null,
+  )
+  if (children.length < 2) return null
+  return {
+    kind: "SiblingCarousel",
+    canonicalParent,
+    currentVideoDocumentId: video.documentId,
+  }
+}
+
+/** Always returns a WatchBody block — the page always shows title + description. */
+export function buildWatchBodyBlock(
+  video: WatchVideoRecord,
+  variant: WatchVariant,
+): WatchBodyBlock {
+  return { kind: "WatchBody", video, variant }
+}
+
+/** Returns null when the video has no study questions. */
+export function buildStudyQuestionsBlock(
+  studyQuestions: WatchVideoRecord["studyQuestions"],
+): WatchStudyQuestionsBlock | null {
+  const items = (studyQuestions ?? []).filter(
+    (q): q is WatchStudyQuestion => q != null,
+  )
+  if (items.length === 0) return null
+  return { kind: "StudyQuestions", studyQuestions: items }
+}
+
+/** Returns null when the video has no Bible citations. */
+export function buildBibleQuotesBlock(
+  bibleCitations: WatchVideoRecord["bibleCitations"],
+): WatchBibleQuotesBlock | null {
+  const items = (bibleCitations ?? []).filter(
+    (c): c is WatchBibleCitation => c != null,
+  )
+  if (items.length === 0) return null
+  return { kind: "BibleQuotes", bibleCitations: items }
+}
+
+/** Always returns a Share block — every video is shareable. */
+export function buildShareBlock(video: WatchVideoRecord): WatchShareBlock {
+  return { kind: "Share", video }
+}
+
+// Slot mapping ----------------------------------------------------------------
+
+/**
+ * Slot identifiers for each of the 6 synthetic watch-block positions. Used
+ * internally by `mergeWatchExperience` to decide which Experience-supplied
+ * block (if any) overrides which auto-template builder.
+ */
+type WatchSlotKey =
+  | "HeroPlayer"
+  | "SiblingCarousel"
+  | "WatchBody"
+  | "StudyQuestions"
+  | "BibleQuotes"
+  | "Share"
+
+/**
+ * Maps an incoming Experience block (synthetic or Strapi-typed) to the
+ * synthetic watch slot it fills, or `null` if the block does not target any
+ * of the 6 slots and should pass through to delegated rendering.
+ *
+ * Slot mapping rules:
+ * - Synthetic blocks fill the slot named by their `kind`.
+ * - Strapi `ComponentSectionsRelatedQuestions` → StudyQuestions slot.
+ * - Strapi `ComponentSectionsBibleQuotesCarousel` → BibleQuotes slot.
+ * - All other Strapi blocks (PromoBanner, InfoBlocks, CTASection, etc.)
+ *   pass through and render after the 6 watch slots.
+ * - Strapi player-bearing blocks (VideoHero/Video/VideoCarousel) explicitly
+ *   target HeroPlayer slot for the rejection check.
+ */
+function blockSlot(block: MergedWatchBlock): WatchSlotKey | null {
+  if ("kind" in block) {
+    return block.kind
+  }
+  const tn = block.__typename
+  if (tn === "ComponentSectionsRelatedQuestions") return "StudyQuestions"
+  if (tn === "ComponentSectionsBibleQuotesCarousel") return "BibleQuotes"
+  if (PLAYER_BEARING_STRAPI_TYPES.has(tn)) return "HeroPlayer"
+  return null
+}
+
+/**
+ * Type guard distinguishing synthetic watch blocks from Strapi blocks.
+ * Synthetic blocks carry a `kind` discriminator; Strapi blocks carry
+ * `__typename`.
+ */
+export function isWatchBlock(block: MergedWatchBlock): block is WatchBlock {
+  return "kind" in block
+}
+
+// Merge -----------------------------------------------------------------------
+
+type MergeWatchExperienceArgs = {
+  video: WatchVideoRecord
+  variant: WatchVariant
+  /**
+   * Canonical parent for the sibling carousel. May be null when the watch
+   * page is hit via the 2-segment URL `/watch/[video]/[locale]` (no
+   * collection in the URL) AND the video has no parent at all. When null,
+   * the SiblingCarousel slot is omitted from the merged block array.
+   */
+  canonicalParent: WatchParent | null
+  /** Optional Experience override — when omitted, all 6 slots auto-template. */
+  experience?: WatchExperience | null
+}
+
+/**
+ * Merge an optional Experience override against the 6 auto-template watch
+ * slots, returning the final ordered block array consumed by
+ * `WatchSectionRenderer`.
+ *
+ * Behavior:
+ * - For each of the 6 synthetic slots: if the Experience supplies a block
+ *   targeting that slot, the override wins; else the slot's auto-template
+ *   builder runs. Builders returning `null` (empty data) omit the slot.
+ * - HeroPlayer slot is type-restricted: a Strapi-typed player-bearing block
+ *   targeting HeroPlayer throws `WatchVideoError('INVALID_HERO_PLAYER_BLOCK')`.
+ *   Only synthetic `HeroPlayer` overrides are accepted.
+ * - Strapi blocks not targeting any of the 6 slots (PromoBanner, InfoBlocks,
+ *   CTA, etc.) append after the 6 slots in the order the Experience supplied
+ *   them.
+ *
+ * The returned array order matches the visual watch-page order:
+ * HeroPlayer → SiblingCarousel → WatchBody → StudyQuestions → BibleQuotes →
+ * Share → ...passthrough Strapi blocks.
+ */
+export function mergeWatchExperience({
+  video,
+  variant,
+  canonicalParent,
+  experience,
+}: MergeWatchExperienceArgs): MergedWatchBlock[] {
+  const overrides = new Map<WatchSlotKey, MergedWatchBlock>()
+  const passthrough: StrapiWatchBlock[] = []
+
+  const experienceBlocks = (experience?.blocks ?? []).filter(
+    (b): b is StrapiWatchBlock => b != null && b.__typename !== "Error",
+  )
+
+  for (const block of experienceBlocks) {
+    const slot = blockSlot(block)
+    if (slot === "HeroPlayer" && !isWatchBlock(block)) {
+      // HeroPlayer slot is type-restricted: only synthetic HeroPlayer blocks
+      // are accepted. Any Strapi-typed player block reaching here is rejected
+      // to preserve Mux Data attribution to the watch-page player.
+      throw new WatchVideoError("INVALID_HERO_PLAYER_BLOCK", {
+        message: HERO_PLAYER_REJECTION_MESSAGE,
+      })
+    }
+    if (slot != null) {
+      // Last-write-wins inside Experience for a given slot.
+      overrides.set(slot, block)
+    } else {
+      passthrough.push(block)
+    }
+  }
+
+  const result: MergedWatchBlock[] = []
+
+  function pushSlot(slot: WatchSlotKey, fallback: MergedWatchBlock | null) {
+    const override = overrides.get(slot)
+    if (override !== undefined) {
+      result.push(override)
+      return
+    }
+    if (fallback !== null) result.push(fallback)
+  }
+
+  pushSlot("HeroPlayer", buildHeroBlock(video, variant))
+  pushSlot("SiblingCarousel", buildSiblingCarouselBlock(canonicalParent, video))
+  pushSlot("WatchBody", buildWatchBodyBlock(video, variant))
+  pushSlot(
+    "StudyQuestions",
+    buildStudyQuestionsBlock(video.studyQuestions ?? null),
+  )
+  pushSlot("BibleQuotes", buildBibleQuotesBlock(video.bibleCitations ?? null))
+  pushSlot("Share", buildShareBlock(video))
+
+  for (const block of passthrough) result.push(block)
+
+  return result
+}

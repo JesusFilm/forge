@@ -8,7 +8,23 @@
 //
 // Per Unit 6 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
-export type Role = "ADMIN" | "EDITOR" | "VIEWER" | "PUBLIC" | "SYSTEM"
+/**
+ * `WORKFLOW_TRIGGER` is a request-bound service-account role minted at
+ * GraphQL context creation when an incoming request carries a valid
+ * `Authorization: Bearer <key>` header that matches `WORKFLOW_API_KEYS`.
+ * It satisfies a narrow allowlist of embed-trigger permission keys
+ * (see `WORKFLOW_TRIGGER_PERMISSIONS` in `permissions.ts`) and nothing
+ * else — distinct from `SYSTEM` (workflow-internal, in-process only)
+ * and from `ADMIN` (full editorial override). Used by apps/manager to
+ * proxy embedding-backfill triggers without minting an admin session.
+ */
+export type Role =
+  | "ADMIN"
+  | "EDITOR"
+  | "VIEWER"
+  | "PUBLIC"
+  | "SYSTEM"
+  | "WORKFLOW_TRIGGER"
 
 export type Principal = {
   id: string | null
@@ -26,4 +42,15 @@ export type Principal = {
 export const SYSTEM_PRINCIPAL = {
   id: null,
   role: "SYSTEM",
+} as const satisfies Principal
+
+/**
+ * Service-account principal minted at GraphQL context creation when a
+ * valid bearer key matches. Satisfies only the narrow set of embed-trigger
+ * permissions defined in `WORKFLOW_TRIGGER_PERMISSIONS`; never satisfies
+ * editorial / SYSTEM gates.
+ */
+export const WORKFLOW_TRIGGER_PRINCIPAL = {
+  id: null,
+  role: "WORKFLOW_TRIGGER",
 } as const satisfies Principal

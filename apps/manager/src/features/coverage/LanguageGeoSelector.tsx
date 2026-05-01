@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import React, { useEffect, useMemo, useRef, useState } from "react"
-import { Languages, XCircle } from "lucide-react"
+import { Check, Languages, XCircle } from "lucide-react"
 import { normalizeCoverageLanguageSearchParams } from "./language-selection"
 import { apiFetch } from "@/lib/api-fetch"
 
@@ -45,6 +45,7 @@ interface LanguageGeoSelectorProps {
   attentionRequired?: boolean
   attentionRequestKey?: number
   openRequestKey?: number
+  onApplyLanguages?: (languageIds: string[]) => void
 }
 
 function normalizeText(value: string): string {
@@ -98,6 +99,7 @@ export function LanguageGeoSelector({
   attentionRequired = false,
   attentionRequestKey = 0,
   openRequestKey = 0,
+  onApplyLanguages,
 }: LanguageGeoSelectorProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -476,6 +478,11 @@ export function LanguageGeoSelector({
     }
 
     setIsLoading(true)
+    if (onApplyLanguages) {
+      onApplyLanguages(nextLanguageIds)
+      return
+    }
+
     if (navigationTimeoutRef.current) {
       window.clearTimeout(navigationTimeoutRef.current)
     }
@@ -568,10 +575,9 @@ export function LanguageGeoSelector({
     })
   }, [openRequestKey])
 
-  const hasLanguageData =
-    options.length > 0 || (geoData?.languages.length ?? 0) > 0
-  const shouldShowSelector =
-    options.length > 0 || (hasResolvedLanguageData && hasLanguageData)
+  const availableLanguageCount =
+    options.length > 0 ? options.length : (geoData?.languages.length ?? 0)
+  const shouldShowSelector = options.length > 0 || hasResolvedLanguageData
 
   if (!shouldShowSelector) {
     return null
@@ -619,7 +625,8 @@ export function LanguageGeoSelector({
             </div>
           ) : (
             <span className="geo-selected-count">
-              {geoData?.languages.length ?? "…"} languages available
+              {availableLanguageCount > 0 ? availableLanguageCount : "…"}{" "}
+              languages available
             </span>
           )}
           <button
@@ -634,6 +641,11 @@ export function LanguageGeoSelector({
                 : undefined
             }
           >
+            {isPickerExpanded ? (
+              <Check className="icon" aria-hidden="true" />
+            ) : (
+              <Languages className="icon" aria-hidden="true" />
+            )}
             {isPickerExpanded ? "Confirm" : "Select languages"}
           </button>
         </div>

@@ -131,3 +131,14 @@ attacker from requesting this."
   origin gate with the threat-model docstring.
 - `docs/solutions/security-issues/yoga-cors-origin-undefined-allows-all-origins.md` —
   the upstream yoga-cors gotcha and the fail-closed fix it prescribes.
+
+## Admin-side counterpart
+
+- `apps/admin/src/services/hybrid-search-debug-allowlist.ts` — verbatim
+  port of the cms gate to admin's R4-extension keyword-first surface.
+  Same threat model docstring; same fail-closed-on-undefined posture.
+- `apps/admin/src/services/hybrid-search-debug-allowlist.test.ts` —
+  origin-gate behavior across env + allowlist combinations.
+- `apps/admin/src/app/api/search/route.ts` + `apps/admin/src/graphql/queries/hybrid-search.ts`
+  — the two boundary integrations consulting the gate.
+- `docs/solutions/platform/admin-hybrid-search-keyword-first-r4-extension-pattern.md`.

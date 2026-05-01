@@ -14,3 +14,8 @@ export { videoCarouselFragment } from "./video-carousel"
 export { navigationCarouselFragment } from "./navigation-carousel"
 export { videoSectionFragment } from "./video-section"
 export { watchExperienceFragment } from "./watch-experience"
+export {
+  getWatchVideoBySlugOperation,
+  getWatchVideoOperation,
+  watchVideoFragment,
+} from "./watch-video"

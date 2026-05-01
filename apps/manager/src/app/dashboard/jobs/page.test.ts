@@ -80,10 +80,12 @@ describe("dashboard jobs page", () => {
     })
 
     const element = await JobsPage()
+    const table = element.props.children
 
     expect(getClientMock).not.toHaveBeenCalled()
-    expect(element.type).toBe(liveJobsTableMock)
-    expect(element.props).toMatchObject({
+    expect(element.props.className).toBe("studio-page studio-page--jobs")
+    expect(table.type).toBe(liveJobsTableMock)
+    expect(table.props).toMatchObject({
       initialJobs: [job],
       languageLabelsById: { 529: "English" },
     })
@@ -110,13 +112,15 @@ describe("dashboard jobs page", () => {
     toJobRecordMock.mockReturnValue(liveJob)
 
     const element = await JobsPage()
+    const table = element.props.children
 
     expect(getClientMock).toHaveBeenCalledTimes(1)
     expect(toJobRecordMock).toHaveBeenCalledWith({
       documentId: "job-live",
       raw: true,
     })
-    expect(element.props).toMatchObject({
+    expect(element.props.className).toBe("studio-page studio-page--jobs")
+    expect(table.props).toMatchObject({
       initialJobs: [liveJob],
       languageLabelsById: { 529: "English" },
     })

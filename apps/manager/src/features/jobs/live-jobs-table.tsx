@@ -191,9 +191,16 @@ export function LiveJobsTable({
 
   return (
     <section className="collection-card jobs-card">
-      <div className="jobs-card-header">
-        <h2 className="jobs-card-title">Jobs</h2>
-        <div className="collection-cache-refresh">
+      <header className="studio-page-intro studio-page-intro--with-actions">
+        <div className="studio-page-intro-copy">
+          <span className="studio-page-eyebrow">Job execution</span>
+          <h1>Jobs</h1>
+          <p>
+            Track enrichment runs, workflow progress, language targets, and
+            retry status.
+          </p>
+        </div>
+        <div className="studio-page-intro-actions collection-cache-refresh">
           <span
             className="small jobs-live-status"
             role="status"
@@ -211,10 +218,12 @@ export function LiveJobsTable({
             Refresh now
           </button>
         </div>
-      </div>
+      </header>
 
       {jobs.length === 0 ? (
-        <p className="small">No jobs yet. Create one to start the workflow.</p>
+        <p className="small jobs-empty-state">
+          No jobs yet. Create one to start the workflow.
+        </p>
       ) : (
         <div className="jobs-day-groups">
           {groupedJobs.map((group) => (
