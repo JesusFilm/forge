@@ -44,7 +44,7 @@ vi.mock("@/app/dashboard/live-data", () => ({
       id: "vid_8829_x_alpha_92",
       sourceLabel: "Mux",
       sourceTone: "info",
-      dubs: "EN, ES, FR",
+      dubs: "3 dubs · EN, ES, FR",
       updated: "10/24/2023, 14:02",
       duration: "04:22",
     },
