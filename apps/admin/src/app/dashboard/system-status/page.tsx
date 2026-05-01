@@ -107,7 +107,7 @@ export default async function SystemStatusPage() {
                 <th className="label-text px-4">Phase</th>
                 <th className="label-text px-4">Status</th>
                 <th className="label-text px-4">Last synced</th>
-                <th className="label-text px-4">Rows</th>
+                <th className="label-text px-4">Last run</th>
               </tr>
             </thead>
             <tbody>
@@ -124,7 +124,7 @@ export default async function SystemStatusPage() {
                   </td>
                   <td className="px-4 font-mono text-[11px]">{row.lag}</td>
                   <td className="px-4 font-mono text-[11px] text-[var(--color-text-secondary)]">
-                    {row.throughput}
+                    {row.lastRun}
                   </td>
                 </tr>
               ))}

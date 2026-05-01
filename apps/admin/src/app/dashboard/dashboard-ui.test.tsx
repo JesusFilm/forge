@@ -112,7 +112,7 @@ vi.mock("@/app/dashboard/ops-data", () => ({
         statusLabel: "Healthy",
         statusTone: "success",
         lag: "10m",
-        throughput: "10 rows",
+        lastRun: "10 changed",
       },
     ],
     incidents: [

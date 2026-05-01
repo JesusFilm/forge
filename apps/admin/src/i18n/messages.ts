@@ -439,9 +439,9 @@ export const adminMessages = {
           },
         ],
         matrix: {
-          title: "Sync Matrix",
+          title: "Sync State",
           meta: "CORE_ENTITY_DRIFT_VIEW",
-          columns: ["Entity", "Source", "State", "Lag", "Throughput"],
+          columns: ["Phase", "Status", "Last synced", "Last run"],
           rows: [
             {
               entity: "Videos",
@@ -449,7 +449,7 @@ export const adminMessages = {
               statusLabel: "Healthy",
               statusTone: "success",
               lag: "2h 14m",
-              throughput: "218 rows",
+              throughput: "218 changed",
             },
             {
               entity: "Languages",
@@ -457,7 +457,7 @@ export const adminMessages = {
               statusLabel: "Healthy",
               statusTone: "success",
               lag: "38m",
-              throughput: "4 rows",
+              throughput: "4 changed",
             },
             {
               entity: "Countries",
@@ -465,7 +465,7 @@ export const adminMessages = {
               statusLabel: "Review",
               statusTone: "warning",
               lag: "5h 03m",
-              throughput: "2 rows",
+              throughput: "2 changed",
             },
             {
               entity: "Keywords",
@@ -473,7 +473,7 @@ export const adminMessages = {
               statusLabel: "Retrying",
               statusTone: "info",
               lag: "1h 07m",
-              throughput: "41 rows",
+              throughput: "41 changed",
             },
           ],
         },

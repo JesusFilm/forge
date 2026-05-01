@@ -68,7 +68,7 @@ type SystemStatusData = {
     statusLabel: string
     statusTone: "success" | "warning" | "danger" | "info" | "muted"
     lag: string
-    throughput: string
+    lastRun: string
   }>
   incidents: QueueItem[]
   telemetry: Insight[]
@@ -225,6 +225,13 @@ function statusToneForWorkflowStatus(
   if (status === "RUNNING" || status === "running") return "info"
   if (status === "pending") return "muted"
   return "muted"
+}
+
+function phaseLabel(phase: string) {
+  return phase
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ")
 }
 
 function providerCount() {
@@ -627,13 +634,14 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
 
   const matrix = syncRows.map((row) => {
     const stats = parseSyncStats(row.stats)
+    const changed = stats.created + stats.updated
     return {
-      entity: row.phase,
+      entity: phaseLabel(row.phase),
       source: `core.${row.phase}`,
       statusLabel: stats.errors > 0 ? "Review" : "Healthy",
       statusTone: statusToneForSyncErrors(stats.errors),
       lag: formatLag(row.lastSyncedAt),
-      throughput: `${stats.created + stats.updated} rows`,
+      lastRun: `${changed} changed`,
     }
   })
 
