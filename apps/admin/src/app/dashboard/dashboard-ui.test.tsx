@@ -328,11 +328,12 @@ describe("dashboard UI routes", () => {
     expect(html).toContain(uiMessages.common.operatorNotes)
   })
 
-  it("renders core sync page with translated operator rail header", async () => {
+  it("renders core sync page around current sync state", async () => {
     const html = await htmlFrom(SystemStatusPage())
     expect(html).toContain(uiMessages.pages.systemStatus.title)
-    expect(html).toContain(uiMessages.pages.systemStatus.action)
-    expect(html).toContain(uiMessages.common.operatorNotes)
+    expect(html).toContain("Core Sync is healthy")
+    expect(html).toContain("Phase Freshness")
+    expect(html).toContain("Needs Attention")
   })
 
   it("renders operational secondary routes", async () => {
@@ -369,7 +370,8 @@ describe("dashboard UI routes", () => {
 
     for (const page of pages) {
       expect(page.html).toContain(page.title.replaceAll("&", "&amp;"))
-      expect(page.html).toContain(uiMessages.common.operatorNotes)
     }
+
+    expect(pages[0].html).toContain("Recent Workflow Runs")
   })
 })

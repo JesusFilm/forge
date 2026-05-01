@@ -1,11 +1,10 @@
 import { Workflow } from "lucide-react"
 import {
   DashboardPageHeader,
-  InsightGrid,
-  OperatorRail,
   PageSection,
   PrimaryButton,
   QueueList,
+  StatusPill,
 } from "@/components/admin-ui"
 import { hasPermission } from "@/auth/permissions"
 import { requireSession } from "@/auth/session"
@@ -35,73 +34,62 @@ export default async function WorkflowsPage() {
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {data.metrics.map((card) => (
-          <div key={card.label} className="app-card flex flex-col gap-2 p-4">
-            <span className="label-text">{card.label}</span>
-            <span className="font-mono text-xl font-medium">{card.value}</span>
-            <span className="font-mono text-[10px] uppercase text-[var(--color-text-muted)]">
-              {card.footer}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)]">
-        <div className="flex flex-col gap-6">
-          <PageSection
-            title="Workflow Activity"
-            meta="POSTGRES_WORLD / LEDGER / CORE_SYNC"
-            actions={
+      <section className="app-card p-4">
+        <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
               <Workflow
                 className="h-4 w-4 text-[var(--color-text-muted)]"
                 strokeWidth={1.5}
               />
-            }
-          >
-            <QueueList
-              items={data.queue.map((item) => ({
-                title: item.title,
-                meta: item.meta,
-                detail: item.detail,
-                status: {
-                  label: item.statusLabel,
-                  tone: item.statusTone,
-                },
-              }))}
-            />
-          </PageSection>
-
-          <PageSection title="Execution Signals" meta="WORKFLOW_POSTURE">
-            <div className="p-4">
-              <InsightGrid
-                items={data.insights.map((item) => ({
-                  ...item,
-                  icon: Workflow,
-                }))}
-              />
+              <StatusPill tone={data.syncLockHeld ? "info" : "success"}>
+                {data.syncLockHeld ? "Workflow running" : "No active lock"}
+              </StatusPill>
             </div>
-          </PageSection>
+            <p className="max-w-3xl text-[13px] leading-6 text-[var(--color-text-secondary)]">
+              Recent workflow runs are shown below. Use this page to confirm a
+              manual or scheduled Core Sync actually entered the runtime and
+              where it ended up.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {data.metrics.map((card) => (
+              <div
+                key={card.label}
+                className="min-w-[112px] rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2"
+              >
+                <div className="label-text mb-1">{card.label}</div>
+                <div className="font-mono text-[16px] font-medium">
+                  {card.value}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+      </section>
 
-        <OperatorRail
-          title={messages.common.operatorNotes}
-          meta={messages.common.fieldGuide}
-          notes={
-            data.syncLockHeld
-              ? "A sync workflow currently holds the DB-backed lock. Use this page to confirm the system is moving rather than piling on duplicate runs."
-              : "This page reads Workflow runtime rows first, then joins the admin workflow ledger for trigger, subject, and Core Sync context."
-          }
-          chips={[
-            { label: "Lock", value: data.syncLockHeld ? "HELD" : "CLEAR" },
-            {
-              label: "Manual Sync",
-              value: canTriggerSync ? "AVAILABLE" : "ADMIN_ONLY",
+      <PageSection
+        title="Recent Workflow Runs"
+        meta="RUNTIME / LEDGER"
+        actions={
+          <Workflow
+            className="h-4 w-4 text-[var(--color-text-muted)]"
+            strokeWidth={1.5}
+          />
+        }
+      >
+        <QueueList
+          items={data.queue.map((item) => ({
+            title: item.title,
+            meta: item.meta,
+            detail: item.detail,
+            status: {
+              label: item.statusLabel,
+              tone: item.statusTone,
             },
-            { label: "Surface", value: "WORKFLOW_OPERATIONS" },
-          ]}
+          }))}
         />
-      </div>
+      </PageSection>
     </div>
   )
 }
