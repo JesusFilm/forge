@@ -28,12 +28,12 @@ export default async function SystemStatusPage() {
   const lockState = metricValue(data.metrics, "Lock State")
   const coverageAudit = metricValue(data.metrics, "Coverage Audit")
   const exceptionCount = Number(metricValue(data.metrics, "Exceptions"))
-  const latestRun = metricValue(data.metrics, "Latest Run")
+  const latestAttemptedSync = metricValue(data.metrics, "Latest Attempted Sync")
   const isRunning = lockState === "HELD"
   const needsReview =
     coverageAudit === "REVIEW" ||
-    latestRun === "failed" ||
-    latestRun === "FAILED" ||
+    latestAttemptedSync === "failed" ||
+    latestAttemptedSync === "FAILED" ||
     exceptionCount > 0
   const verdict = isRunning
     ? {
@@ -89,7 +89,7 @@ export default async function SystemStatusPage() {
             {[
               ["Lock", lockState],
               ["Latest sync", metricValue(data.metrics, "Latest Sync")],
-              ["Latest run", latestRun],
+              ["Latest attempted sync", latestAttemptedSync],
               ["Coverage", coverageAudit],
             ].map(([label, value]) => (
               <div

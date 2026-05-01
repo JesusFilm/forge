@@ -719,9 +719,9 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
         accent: coverageAudit?.status === "review" ? "danger" : undefined,
       },
       {
-        label: "Latest Run",
+        label: "Latest Attempted Sync",
         value: workflowRows[0]?.status ?? "NONE",
-        footer: "WORKFLOW_LEDGER",
+        footer: "WORKFLOW_ATTEMPT",
         accent:
           workflowRows[0]?.status === "failed" ||
           workflowRows[0]?.status === "FAILED"
@@ -755,7 +755,7 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
         detail: "Persisted phases reporting non-zero errors on the last run.",
       },
       {
-        label: "Latest Run",
+        label: "Latest Attempted Sync",
         value: workflowRows[0]?.status ?? "None",
         detail: workflowRows[0]?.runtimeRunId
           ? `Runtime run ${workflowRows[0].runtimeRunId}.`
