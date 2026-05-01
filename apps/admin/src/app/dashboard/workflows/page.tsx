@@ -60,6 +60,29 @@ export default async function WorkflowsPage() {
       </section>
 
       <PageSection
+        title="Workers"
+        meta="PROCESS HEARTBEAT"
+        actions={
+          <Workflow
+            className="h-4 w-4 text-[var(--color-text-muted)]"
+            strokeWidth={1.5}
+          />
+        }
+      >
+        <QueueList
+          items={data.workers.map((item) => ({
+            title: item.title,
+            meta: item.meta,
+            detail: item.detail,
+            status: {
+              label: item.statusLabel,
+              tone: item.statusTone,
+            },
+          }))}
+        />
+      </PageSection>
+
+      <PageSection
         title="Recent Workflow Runs"
         meta="RUNTIME / LEDGER"
         actions={

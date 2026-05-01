@@ -253,6 +253,24 @@ model WorkflowRun {
   @@map("workflow_run")
 }
 
+/// Process heartbeat written by admin instances that start Workflow's
+/// Postgres World runner. Graphile Worker tracks locked jobs, but it does not
+/// persist idle workers, so this table is the dashboard's source for
+/// "is a worker process alive?"
+model WorkflowWorkerHeartbeat {
+  workerId     String   @id @map("worker_id")
+  service      String   @default("admin")
+  status       String   @default("online")
+  startedAt    DateTime @default(now()) @map("started_at")
+  lastSeenAt   DateTime @default(now()) @map("last_seen_at")
+  currentJob   String?  @map("current_job")
+  currentRunId String?  @map("current_run_id")
+  details      Json     @default("{}")
+
+  @@index([lastSeenAt])
+  @@map("workflow_worker_heartbeat")
+}
+
 /// Core Sync-specific detail for the generic workflow ledger. Kept separate so
 /// non-Core workflows can use `WorkflowRun` without carrying sync phase fields.
 model CoreSyncRun {

@@ -6,6 +6,7 @@ import { createServices } from "@/services"
 import { generateExperienceEmbedding } from "@/services/embeddings.service"
 import { getAllWatermarks } from "@/services/core-sync/watermark"
 import { loadWorkflowRuntimeRuns } from "@/services/workflow-runtime.service"
+import { loadWorkflowWorkerStatusRows } from "@/services/workflow-worker-heartbeat.service"
 
 type Metric = {
   label: string
@@ -76,6 +77,7 @@ type SystemStatusData = {
 type WorkflowsData = {
   metrics: Metric[]
   queue: QueueItem[]
+  workers: QueueItem[]
   insights: Insight[]
   syncLockHeld: boolean
 }
@@ -784,15 +786,17 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
 }
 
 export async function loadWorkflowsData(): Promise<WorkflowsData> {
-  const [syncRows, lock, workflowRows, runtimeRows] = await Promise.all([
-    getSyncRows(),
-    withTableFallback(
-      () => prisma.syncLock.findUnique({ where: { key: "core-sync" } }),
-      null,
-    ),
-    getWorkflowRunRows(),
-    loadWorkflowRuntimeRuns(10),
-  ])
+  const [syncRows, lock, workflowRows, runtimeRows, workerRows] =
+    await Promise.all([
+      getSyncRows(),
+      withTableFallback(
+        () => prisma.syncLock.findUnique({ where: { key: "core-sync" } }),
+        null,
+      ),
+      getWorkflowRunRows(),
+      loadWorkflowRuntimeRuns(10),
+      loadWorkflowWorkerStatusRows(),
+    ])
   const ledgerByRuntimeRunId = new Map(
     workflowRows
       .filter((row) => row.runtimeRunId)
@@ -882,6 +886,25 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
               detail:
                 "Workflow runs will appear here once scheduled jobs, manual jobs, or background backfills start.",
               statusLabel: "Idle",
+              statusTone: "muted" as const,
+            },
+          ],
+    workers:
+      workerRows.length > 0
+        ? workerRows.map((row) => ({
+            title: row.id,
+            meta: row.meta,
+            detail: row.detail,
+            statusLabel: row.statusLabel,
+            statusTone: row.statusTone,
+          }))
+        : [
+            {
+              title: "No workflow workers seen yet",
+              meta: "heartbeat missing",
+              detail:
+                "A worker row appears once an admin process starts Postgres World.",
+              statusLabel: "Offline",
               statusTone: "muted" as const,
             },
           ],

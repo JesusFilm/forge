@@ -11,6 +11,9 @@ export async function register(): Promise<void> {
   if (!shouldStartWorkflowWorld()) return
 
   const { getWorld } = await import("workflow/runtime")
+  const { startWorkflowWorkerHeartbeat } =
+    await import("@/services/workflow-worker-heartbeat.service")
   const world = getWorld()
   await world.start?.()
+  await startWorkflowWorkerHeartbeat()
 }

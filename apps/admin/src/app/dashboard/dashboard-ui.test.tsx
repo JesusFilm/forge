@@ -145,6 +145,15 @@ vi.mock("@/app/dashboard/ops-data", () => ({
         statusTone: "success",
       },
     ],
+    workers: [
+      {
+        title: "admin:test:123",
+        meta: "admin / started 1m ago",
+        detail: "Heartbeat 2s ago.",
+        statusLabel: "Online",
+        statusTone: "success",
+      },
+    ],
     insights: [
       { label: "Workflow API Keys", value: "Configured", detail: "detail" },
       { label: "HMAC Secret", value: "Configured", detail: "detail" },

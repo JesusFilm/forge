@@ -12,9 +12,13 @@ const mockEnv = vi.hoisted(() => ({
 
 const worldStart = vi.hoisted(() => vi.fn())
 const getWorld = vi.hoisted(() => vi.fn(() => ({ start: worldStart })))
+const startWorkflowWorkerHeartbeat = vi.hoisted(() => vi.fn())
 
 vi.mock("@/config/env", () => mockEnv)
 vi.mock("workflow/runtime", () => ({ getWorld }))
+vi.mock("@/services/workflow-worker-heartbeat.service", () => ({
+  startWorkflowWorkerHeartbeat,
+}))
 
 describe("workflow instrumentation", () => {
   beforeEach(() => {
@@ -32,6 +36,7 @@ describe("workflow instrumentation", () => {
 
     expect(getWorld).not.toHaveBeenCalled()
     expect(worldStart).not.toHaveBeenCalled()
+    expect(startWorkflowWorkerHeartbeat).not.toHaveBeenCalled()
   })
 
   it("does not start a world in the edge runtime", async () => {
@@ -45,6 +50,7 @@ describe("workflow instrumentation", () => {
 
     expect(getWorld).not.toHaveBeenCalled()
     expect(worldStart).not.toHaveBeenCalled()
+    expect(startWorkflowWorkerHeartbeat).not.toHaveBeenCalled()
   })
 
   it("starts Postgres World in the node runtime", async () => {
@@ -57,5 +63,6 @@ describe("workflow instrumentation", () => {
 
     expect(getWorld).toHaveBeenCalledTimes(1)
     expect(worldStart).toHaveBeenCalledTimes(1)
+    expect(startWorkflowWorkerHeartbeat).toHaveBeenCalledTimes(1)
   })
 })
