@@ -426,7 +426,7 @@ export const adminMessages = {
         eyebrow: "System / Core Sync",
         title: "Core Sync Dashboard",
         description: "Core sync health and freshness.",
-        action: "Trigger Delta Sync",
+        action: "Start Sync",
         metrics: [
           { label: "Live Connectors", value: "4", footer: "ACTIVE_NOW" },
           { label: "Last Success", value: "14:21", footer: "UTC" },

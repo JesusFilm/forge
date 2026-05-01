@@ -17,7 +17,7 @@ export function CoreSyncTriggerButton() {
     message: null,
   })
 
-  async function triggerDeltaSync() {
+  async function startSync() {
     setState({ status: "idle", message: null })
 
     try {
@@ -61,14 +61,14 @@ export function CoreSyncTriggerButton() {
       <button
         type="button"
         disabled={disabled}
-        onClick={triggerDeltaSync}
+        onClick={startSync}
         className="inline-flex h-8 items-center gap-2 rounded-sm bg-[var(--color-brand)] px-3 text-[13px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
       >
         <RefreshCcw
           className={isPending ? "h-4 w-4 animate-spin" : "h-4 w-4"}
           strokeWidth={1.5}
         />
-        {isPending ? "Queueing" : "Trigger Delta Sync"}
+        {isPending ? "Starting" : "Start Sync"}
       </button>
       {state.message ? (
         <span
