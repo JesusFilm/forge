@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  clearRememberedCoverageLanguageIds,
   hasSelectedLanguages,
+  readRememberedCoverageLanguageIds,
   normalizeCoverageLanguageSearchParams,
   parseRequestedLanguageIds,
+  resolveCoverageLanguageSelection,
+  resolveEnglishLanguageId,
   resolveLanguagePresets,
   resolveRequestedLanguageIds,
+  writeRememberedCoverageLanguageIds,
   type LanguageOption,
 } from "@/features/coverage/language-selection"
 
@@ -86,5 +91,136 @@ describe("language-selection", () => {
     expect(normalized.get("mediaType")).toBe("series")
     expect(normalized.get("languageIds")).toBeNull()
     expect(normalized.get("languageId")).toBeNull()
+  })
+
+  it("resolves English from the language catalog without hardcoding the id", () => {
+    const languages: LanguageOption[] = [
+      { id: "529", englishLabel: "English", nativeLabel: "English" },
+      { id: "6414", englishLabel: "French", nativeLabel: "Français" },
+    ]
+
+    expect(resolveEnglishLanguageId(languages)).toBe("529")
+    expect(
+      resolveEnglishLanguageId([
+        { id: "6414", englishLabel: "French", nativeLabel: "Français" },
+      ]),
+    ).toBeNull()
+  })
+
+  it("keeps explicit canonical languageId selection authoritative over memory", () => {
+    expect(
+      resolveCoverageLanguageSelection({
+        currentQuery: "languageId=529",
+        rememberedLanguageIds: ["6414"],
+        languages: [
+          { id: "529", englishLabel: "English", nativeLabel: "English" },
+        ],
+      }),
+    ).toEqual({
+      languageIds: ["529"],
+      reason: "query",
+      shouldReplaceUrl: false,
+      shouldRememberSelection: true,
+    })
+  })
+
+  it("normalizes legacy languageIds selection without letting memory win", () => {
+    expect(
+      resolveCoverageLanguageSelection({
+        currentQuery: "origin=jobs&languageIds=6414,529",
+        rememberedLanguageIds: ["21028"],
+        languages: [],
+      }),
+    ).toEqual({
+      languageIds: ["6414", "529"],
+      reason: "legacy-query",
+      shouldReplaceUrl: true,
+      shouldRememberSelection: true,
+    })
+  })
+
+  it("restores remembered languages for bare coverage routes", () => {
+    expect(
+      resolveCoverageLanguageSelection({
+        currentQuery: "",
+        rememberedLanguageIds: ["6414", "529"],
+        languages: [
+          { id: "529", englishLabel: "English", nativeLabel: "English" },
+        ],
+      }),
+    ).toEqual({
+      languageIds: ["6414", "529"],
+      reason: "remembered",
+      shouldReplaceUrl: true,
+      shouldRememberSelection: false,
+    })
+  })
+
+  it("falls back to English for bare routes without remembered languages", () => {
+    expect(
+      resolveCoverageLanguageSelection({
+        currentQuery: "",
+        rememberedLanguageIds: [],
+        languages: [
+          { id: "529", englishLabel: "English", nativeLabel: "English" },
+          { id: "6414", englishLabel: "French", nativeLabel: "Français" },
+        ],
+      }),
+    ).toEqual({
+      languageIds: ["529"],
+      reason: "default-english",
+      shouldReplaceUrl: true,
+      shouldRememberSelection: false,
+    })
+  })
+
+  it("does not invent a default when English is unavailable", () => {
+    expect(
+      resolveCoverageLanguageSelection({
+        currentQuery: "",
+        rememberedLanguageIds: [],
+        languages: [
+          { id: "6414", englishLabel: "French", nativeLabel: "Français" },
+        ],
+      }),
+    ).toEqual({
+      languageIds: [],
+      reason: "none",
+      shouldReplaceUrl: false,
+      shouldRememberSelection: false,
+    })
+  })
+
+  it("stores, reads, and clears remembered coverage language ids", () => {
+    const storage = new Map<string, string>()
+    const memoryStorage = {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        storage.set(key, value)
+      },
+      removeItem: (key: string) => {
+        storage.delete(key)
+      },
+    }
+
+    writeRememberedCoverageLanguageIds(memoryStorage, [
+      " 6414 ",
+      "529",
+      "6414",
+      "",
+    ])
+    expect(readRememberedCoverageLanguageIds(memoryStorage)).toEqual([
+      "6414",
+      "529",
+    ])
+
+    writeRememberedCoverageLanguageIds(memoryStorage, [])
+    expect(readRememberedCoverageLanguageIds(memoryStorage)).toEqual([])
+
+    writeRememberedCoverageLanguageIds(memoryStorage, ["21028"])
+    expect(readRememberedCoverageLanguageIds(memoryStorage)).toEqual(["21028"])
+
+    clearRememberedCoverageLanguageIds(memoryStorage)
+    expect(readRememberedCoverageLanguageIds(memoryStorage)).toEqual([])
   })
 })

@@ -1,7 +1,7 @@
 ---
 title: "fix: Manager coverage language persistence"
 type: fix
-status: active
+status: complete
 date: 2026-05-01
 branch: feat/114-manager-coverage-language-persistence
 origin: docs/brainstorms/2026-05-01-manager-coverage-language-persistence-requirements.md
@@ -258,20 +258,20 @@ Before PR:
 
 ## Acceptance Criteria
 
-- [ ] Bare `/dashboard/coverage` in a fresh Manager session resolves English from `/api/languages`.
-- [ ] Bare `/dashboard/coverage` canonicalizes to `?languageId=<englishId>` via replace-style navigation.
-- [ ] English coverage loads without the user manually selecting English.
-- [ ] Custom single-language selection is remembered across Jobs/Agents/Report dashboard navigation in the same tab.
-- [ ] Custom multi-language selection is remembered exactly and encoded as comma-separated canonical `languageId`.
-- [ ] Explicit `?languageId=...` always wins over remembered session selection.
-- [ ] Legacy `?languageIds=...` works, wins over memory, and normalizes to singular `languageId`.
-- [ ] Clearing the last selected language clears remembered custom state.
-- [ ] After clear/reset, a later bare `/dashboard/coverage` falls back to English.
-- [ ] If English cannot be resolved from the catalog, no hardcoded ID is used and the existing language-first state remains.
-- [ ] `/api/videos` continues to receive `languageIds` internally.
-- [ ] Metadata coverage remains library-wide and is not made language-specific.
-- [ ] Red/Green TDD evidence is captured before implementation is considered complete.
-- [ ] User smoke test evidence is captured before PR.
+- [x] Bare `/dashboard/coverage` in a fresh Manager session resolves English from `/api/languages`.
+- [x] Bare `/dashboard/coverage` canonicalizes to `?languageId=<englishId>` via replace-style navigation.
+- [x] English coverage loads without the user manually selecting English.
+- [x] Custom single-language selection is remembered across Jobs/Agents/Report dashboard navigation in the same tab.
+- [x] Custom multi-language selection is remembered exactly and encoded as comma-separated canonical `languageId`.
+- [x] Explicit `?languageId=...` always wins over remembered session selection.
+- [x] Legacy `?languageIds=...` works, wins over memory, and normalizes to singular `languageId`.
+- [x] Clearing the last selected language clears remembered custom state.
+- [x] After clear/reset, a later bare `/dashboard/coverage` falls back to English.
+- [x] If English cannot be resolved from the catalog, no hardcoded ID is used and the existing language-first state remains.
+- [x] `/api/videos` continues to receive `languageIds` internally.
+- [x] Metadata coverage remains library-wide and is not made language-specific.
+- [x] Red/Green TDD evidence is captured before implementation is considered complete.
+- [x] User smoke test evidence is captured before PR.
 
 ## Risks & Mitigations
 
@@ -288,14 +288,21 @@ Before PR:
 
 ## Verification Checklist
 
-- [ ] Red test fails before implementation.
-- [ ] Targeted helper tests pass after implementation.
-- [ ] API regression tests pass.
-- [ ] Lint passes.
-- [ ] Typecheck passes.
-- [ ] `git diff --check` passes.
-- [ ] Mock-mode browser smoke passes with screenshots or written evidence.
-- [ ] `docs/roadmap/platform/feat-114-manager-tailwind-design-system-migration.md` is returned to `status: "complete"` when implementation and smoke are done.
+- [x] Red test fails before implementation.
+- [x] Targeted helper tests pass after implementation.
+- [x] API regression tests pass.
+- [x] Lint passes.
+- [x] Typecheck passes.
+- [x] `git diff --check` passes.
+- [x] Mock-mode browser smoke passes with screenshots or written evidence.
+- [x] `docs/roadmap/platform/feat-114-manager-tailwind-design-system-migration.md` is returned to `status: "complete"` when implementation and smoke are done.
+
+## Completion Evidence
+
+- Red: `pnpm --filter @forge/manager test -- --run src/features/coverage/language-selection.test.ts` failed before helper implementation because the new resolver/storage helpers did not exist.
+- Green: `pnpm --filter @forge/manager test -- --run src/features/coverage/language-selection.test.ts src/app/api/videos/route.test.ts src/app/api/videos/route.mock.test.ts` passed with 19 tests.
+- Validation: `pnpm --filter @forge/manager lint`, `pnpm --filter @forge/manager typecheck`, and `git diff --check` passed.
+- Smoke: mock-mode Manager browser proof captured screenshots and HAR under `output/smoke/fcdb-coverage-language/`, including default English, custom French restore after Jobs navigation, explicit query override, legacy query normalization, and clear/reset fallback to English.
 
 ## References
 

@@ -3,7 +3,7 @@ id: "feat-114"
 title: "Manager Tailwind Design System Migration"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-04-20"
 duration: 4
 depends_on:
@@ -86,3 +86,4 @@ The follow-up keeps the Studio shell's route and session-state behavior aligned 
 - Tailwind 4 now powers the manager app through local `apps/manager` configuration, shared UI primitives in `src/components/ui`, and route-level Tailwind composition across shell, auth, coverage, jobs, and agents surfaces.
 - `apps/manager/src/app/globals.css` has been reduced to tokens, theme mapping, base rules, and small browser-specific affordances rather than screen-level styling systems.
 - Browser and route checks were completed for login, coverage, jobs, and agents on the local manager app. The current snapshot exposes no jobs, so a live `/dashboard/jobs/[id]` detail page could not be opened during this pass.
+- The attached coverage language persistence follow-up is complete: bare Coverage defaults to English, custom language selections persist for the dashboard session, explicit query state wins, legacy `languageIds` links normalize to `languageId`, and clearing the final custom language resets back to English fallback behavior.
