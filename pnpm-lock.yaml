@@ -446,6 +446,9 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
+      '@types/node':
+        specifier: ^22
+        version: 22.19.15
       eslint:
         specifier: ^9.0.0
         version: 9.39.2(jiti@2.6.1)
@@ -457,7 +460,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: 3.2.4
-        version: 3.2.4(@types/debug@4.1.12)(@types/node@25.2.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3)
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.15)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(msw@2.12.10(@types/node@22.19.15)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3)
 
   apps/mobile:
     dependencies:
@@ -21552,7 +21555,7 @@ snapshots:
       rollup: 4.60.1
       rollup-plugin-esbuild: 6.2.1(esbuild@0.27.3)(rollup@4.60.1)
       strip-json-comments: 5.0.3
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.15
       typescript-paths: 1.5.2(typescript@5.9.3)
       ws: 8.20.0
       zod: 4.3.6
@@ -25476,7 +25479,7 @@ snapshots:
       semver: 7.7.4
       slash: 3.0.0
       source-map: 0.7.6
-      tinyglobby: 0.2.15
+      tinyglobby: 0.2.16
     optionalDependencies:
       chokidar: 5.0.0
     transitivePeerDependencies:
