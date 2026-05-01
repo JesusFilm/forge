@@ -657,6 +657,9 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
     statusLabel: row.status,
     statusTone: statusToneForWorkflowStatus(row.status),
   }))
+  const runRowsNeedingAttention = recentRunRows.filter(
+    (row) => row.statusTone === "danger",
+  )
 
   const syncIncidentRows =
     matrix.filter((row) => row.statusTone !== "success").length > 0
@@ -680,7 +683,10 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
           },
         ]
 
-  const incidentRows = [...syncIncidentRows, ...recentRunRows].slice(0, 6)
+  const incidentRows = [...syncIncidentRows, ...runRowsNeedingAttention].slice(
+    0,
+    6,
+  )
 
   return {
     metrics: [
