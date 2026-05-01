@@ -11,6 +11,8 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 - Better Auth for identity; server-side Firebase email/password fallback for
   transparent lazy migration; native SSO for Facebook/Google/Apple/Okta.
 - useworkflow for durable background jobs.
+- For worktree previews, follow `apps/admin/docs/worktree-preview-setup.md`
+  before starting a server or mutating a shared local database.
 
 ## Architecture rules (load-bearing)
 

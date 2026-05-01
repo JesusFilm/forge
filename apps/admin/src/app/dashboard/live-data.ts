@@ -341,15 +341,26 @@ function formatDuration(dubs: VideoDubRow[]): string {
 }
 
 function dubCoverage(dubs: VideoDubRow[]): string {
-  const tags = dubs
-    .map(
-      (dub) => dub.language?.bcp47 ?? dub.language?.iso3 ?? dub.language?.slug,
-    )
-    .filter((tag): tag is string => !!tag)
-    .slice(0, 4)
-    .map((tag) => tag.toUpperCase())
+  if (dubs.length === 0) return "No dubs"
 
-  return tags.length ? tags.join(", ") : "N/A"
+  const allTags = Array.from(
+    new Set(
+      dubs.map(
+        (dub) =>
+          dub.language?.bcp47 ?? dub.language?.iso3 ?? dub.language?.slug,
+      ),
+    ),
+  )
+    .filter((tag): tag is string => !!tag)
+    .map((tag) => tag.toUpperCase())
+  const tags = allTags.slice(0, 4)
+
+  const count = dubs.length
+  const label = count === 1 ? "1 dub" : `${count} dubs`
+  if (tags.length === 0) return label
+
+  const suffix = allTags.length > tags.length ? ", ..." : ""
+  return `${label} · ${tags.join(", ")}${suffix}`
 }
 
 function preferredVideoImage(images: VideoImageRow[]) {
@@ -521,7 +532,6 @@ export async function loadVideoRows(principal: Principal) {
           },
         },
         orderBy: { updatedAt: "desc" },
-        take: 12 * Math.max(ids.length, 1),
       }),
       prisma.videoImage.findMany({
         where: { videoId: { in: ids } },
