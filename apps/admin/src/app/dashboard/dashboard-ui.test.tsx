@@ -133,15 +133,15 @@ vi.mock("@/app/dashboard/ops-data", () => ({
   loadWorkflowsData: vi.fn(async () => ({
     metrics: [
       { label: "Held Locks", value: "0", footer: "RUNNING_NOW" },
-      { label: "Synced Data Sets", value: "1", footer: "PERSISTED_JOBS" },
+      { label: "Workflow Ledger", value: "1", footer: "ADMIN_CONTEXT" },
       { label: "Failures", value: "0", footer: "LAST_RUN_ERRORS" },
     ],
     queue: [
       {
-        title: "videos",
-        meta: "watermark 10/24/2023, 14:02",
-        detail: "0 created, 0 updated, 0 soft-deleted",
-        statusLabel: "Ready",
+        title: "core-sync",
+        meta: "manual / wrun_123",
+        detail: "Finished 10/24/2023, 14:02",
+        statusLabel: "succeeded",
         statusTone: "success",
       },
     ],

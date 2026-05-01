@@ -814,17 +814,6 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
           },
         ]
       : []),
-    ...syncRows.slice(0, 5).map((row) => {
-      const stats = parseSyncStats(row.stats)
-      return {
-        title: phaseLabel(row.phase),
-        meta: `watermark ${formatDateTime(new Date(row.lastSyncedAt))}`,
-        detail: `${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted`,
-        statusLabel: stats.errors > 0 ? "Review" : "Ready",
-        statusTone:
-          stats.errors > 0 ? ("warning" as const) : ("success" as const),
-      }
-    }),
   ]
 
   return {
