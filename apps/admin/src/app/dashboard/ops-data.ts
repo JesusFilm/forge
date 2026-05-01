@@ -4,7 +4,6 @@ import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { createServices } from "@/services"
 import { generateExperienceEmbedding } from "@/services/embeddings.service"
-import { runCoverageAudit } from "@/services/core-sync/coverage-audit"
 import { getAllWatermarks } from "@/services/core-sync/watermark"
 import { loadWorkflowRuntimeRuns } from "@/services/workflow-runtime.service"
 
@@ -617,13 +616,12 @@ export async function loadDashboardOpsData(): Promise<DashboardOpsData> {
 }
 
 export async function loadSystemStatusData(): Promise<SystemStatusData> {
-  const [syncRows, lock, coverageAudit, workflowRows] = await Promise.all([
+  const [syncRows, lock, workflowRows] = await Promise.all([
     getSyncRows(),
     withTableFallback(
       () => prisma.syncLock.findUnique({ where: { key: "core-sync" } }),
       null,
     ),
-    withTableFallback(() => runCoverageAudit(prisma), null),
     getWorkflowRunRows(3),
   ])
 
@@ -671,15 +669,9 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
             title: "No active sync incidents",
             meta: lock?.heldBy ? `lock held by ${lock.heldBy}` : "lock clear",
             detail:
-              coverageAudit?.status === "review"
-                ? "Phase watermarks are healthy, but the coverage audit needs review."
-                : "Persisted sync state and coverage audit are healthy across the currently known phases.",
-            statusLabel:
-              coverageAudit?.status === "review" ? "Review" : "Healthy",
-            statusTone:
-              coverageAudit?.status === "review"
-                ? ("warning" as const)
-                : ("success" as const),
+              "Phase freshness is healthy across the currently known phases.",
+            statusLabel: "Healthy",
+            statusTone: "success" as const,
           },
         ]
 
@@ -713,12 +705,6 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
           : undefined,
       },
       {
-        label: "Coverage Audit",
-        value: coverageAudit?.status === "review" ? "REVIEW" : "PASS",
-        footer: "CORE_ENTITY_COVERAGE",
-        accent: coverageAudit?.status === "review" ? "danger" : undefined,
-      },
-      {
         label: "Latest Attempted Sync",
         value: workflowRows[0]?.status ?? "NONE",
         footer: "WORKFLOW_ATTEMPT",
@@ -732,14 +718,6 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
     matrix,
     incidents: incidentRows,
     telemetry: [
-      {
-        label: "Coverage Audit",
-        value: coverageAudit?.status === "review" ? "Review" : "Pass",
-        detail:
-          coverageAudit == null
-            ? "Coverage audit data is not available yet."
-            : `${coverageAudit.checks.length} Core entity coverage checks evaluated.`,
-      },
       {
         label: "Lock Holder",
         value: lock?.heldBy ? "ACTIVE" : "IDLE",
