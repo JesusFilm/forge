@@ -43,13 +43,15 @@ export default async function WorkflowsPage() {
                 strokeWidth={1.5}
               />
               <StatusPill tone={data.syncLockHeld ? "info" : "success"}>
-                {data.syncLockHeld ? "Workflow running" : "No active lock"}
+                {data.syncLockHeld
+                  ? "Core Sync running"
+                  : "Workflow monitor ready"}
               </StatusPill>
             </div>
             <p className="max-w-3xl text-[13px] leading-6 text-[var(--color-text-secondary)]">
-              Recent workflow runs are shown below. Use this page to confirm a
-              manual or scheduled Core Sync actually entered the runtime and
-              where it ended up.
+              Recent workflow runs are shown below. Use this page to confirm
+              scheduled jobs, manual jobs, and background backfills entered the
+              runtime and where they ended up.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3">

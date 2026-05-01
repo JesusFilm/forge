@@ -845,10 +845,10 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
         ? queue
         : [
             {
-              title: "No persisted workflow activity yet",
-              meta: "awaiting first sync or embedding run",
+              title: "No workflow runs yet",
+              meta: "waiting for the first runtime event",
               detail:
-                "This route reads Postgres World runtime rows and enriches them with admin workflow ledger context.",
+                "Workflow runs will appear here once scheduled jobs, manual jobs, or background backfills start.",
               statusLabel: "Idle",
               statusTone: "muted" as const,
             },
