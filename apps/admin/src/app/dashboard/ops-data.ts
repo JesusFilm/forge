@@ -80,6 +80,10 @@ type WorkflowsData = {
   syncLockHeld: boolean
 }
 
+type WorkflowMetricRow = {
+  status: string
+}
+
 type EmbeddingsData = {
   metrics: Metric[]
   rows: TableRow[]
@@ -224,6 +228,31 @@ function statusToneForWorkflowStatus(
   if (status === "RUNNING" || status === "running") return "info"
   if (status === "pending") return "muted"
   return "muted"
+}
+
+function workflowStatusBucket(status: string) {
+  const normalized = status.toLowerCase()
+  if (normalized === "running" || normalized === "queued") return "active"
+  if (normalized === "failed") return "failed"
+  if (
+    normalized === "succeeded" ||
+    normalized === "completed" ||
+    normalized === "skipped" ||
+    normalized === "cancelled"
+  ) {
+    return "completed"
+  }
+  return "active"
+}
+
+function countWorkflowStatuses(rows: WorkflowMetricRow[]) {
+  return rows.reduce(
+    (counts, row) => {
+      counts[workflowStatusBucket(row.status)] += 1
+      return counts
+    },
+    { active: 0, completed: 0, failed: 0 },
+  )
 }
 
 function phaseLabel(phase: string) {
@@ -770,6 +799,9 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
       .map((row) => [row.runtimeRunId, row]),
   )
   const runtimeRunIds = new Set(runtimeRows.map((row) => row.runId))
+  const workflowRowsWithoutRuntime = workflowRows.filter(
+    (row) => !row.runtimeRunId || !runtimeRunIds.has(row.runtimeRunId),
+  )
 
   const queue: QueueItem[] = [
     ...runtimeRows.map((row) => {
@@ -785,22 +817,18 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
         statusTone: statusToneForWorkflowStatus(row.status),
       }
     }),
-    ...workflowRows
-      .filter(
-        (row) => !row.runtimeRunId || !runtimeRunIds.has(row.runtimeRunId),
-      )
-      .map((row) => ({
-        title: row.workflowKey,
-        meta: `${row.trigger} / ${row.runtimeRunId ?? row.id}`,
-        detail:
-          row.summary ??
-          row.error ??
-          (row.startedAt
-            ? `Started ${formatDateTime(row.startedAt)}`
-            : `Queued ${formatDateTime(row.createdAt)}`),
-        statusLabel: row.status,
-        statusTone: statusToneForWorkflowStatus(row.status),
-      })),
+    ...workflowRowsWithoutRuntime.map((row) => ({
+      title: row.workflowKey,
+      meta: `${row.trigger} / ${row.runtimeRunId ?? row.id}`,
+      detail:
+        row.summary ??
+        row.error ??
+        (row.startedAt
+          ? `Started ${formatDateTime(row.startedAt)}`
+          : `Queued ${formatDateTime(row.createdAt)}`),
+      statusLabel: row.status,
+      statusTone: statusToneForWorkflowStatus(row.status),
+    })),
     ...(lock?.heldBy
       ? [
           {
@@ -815,29 +843,33 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
         ]
       : []),
   ]
+  const statusCounts = countWorkflowStatuses([
+    ...runtimeRows,
+    ...workflowRowsWithoutRuntime,
+  ])
+  const dataSetErrorCount = syncRows.filter(
+    (row) => parseSyncStats(row.stats).errors > 0,
+  ).length
+  const activeCount = statusCounts.active + (lock?.heldBy ? 1 : 0)
+  const failedCount = statusCounts.failed + dataSetErrorCount
 
   return {
     metrics: [
       {
-        label: "Runtime Runs",
-        value: runtimeRows.length.toString(),
-        footer: "POSTGRES_WORLD",
+        label: "Active",
+        value: activeCount.toString(),
+        footer: "RUNNING_OR_QUEUED",
       },
       {
-        label: "Workflow Ledger",
-        value: workflowRows.length.toString(),
-        footer: "ADMIN_CONTEXT",
+        label: "Completed",
+        value: statusCounts.completed.toString(),
+        footer: "RECENT_RUNS",
       },
       {
-        label: "Failures",
-        value: (
-          runtimeRows.filter((row) => row.status === "failed").length +
-          workflowRows.filter(
-            (row) => row.status === "FAILED" || row.status === "failed",
-          ).length +
-          syncRows.filter((row) => parseSyncStats(row.stats).errors > 0).length
-        ).toString(),
+        label: "Failed",
+        value: failedCount.toString(),
         footer: "LAST_RUN_ERRORS",
+        accent: failedCount > 0 ? "danger" : undefined,
       },
     ],
     queue:

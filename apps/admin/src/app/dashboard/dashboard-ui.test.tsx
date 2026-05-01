@@ -132,9 +132,9 @@ vi.mock("@/app/dashboard/ops-data", () => ({
   })),
   loadWorkflowsData: vi.fn(async () => ({
     metrics: [
-      { label: "Held Locks", value: "0", footer: "RUNNING_NOW" },
-      { label: "Workflow Ledger", value: "1", footer: "ADMIN_CONTEXT" },
-      { label: "Failures", value: "0", footer: "LAST_RUN_ERRORS" },
+      { label: "Active", value: "0", footer: "RUNNING_OR_QUEUED" },
+      { label: "Completed", value: "1", footer: "RECENT_RUNS" },
+      { label: "Failed", value: "0", footer: "LAST_RUN_ERRORS" },
     ],
     queue: [
       {

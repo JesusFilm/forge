@@ -553,9 +553,9 @@ export const adminMessages = {
         description:
           "Track durable job execution, retries, and queued operator tasks.",
         cards: [
-          { label: "Active Runs", value: "18", footer: "RUNNING_NOW" },
-          { label: "Queued", value: "42", footer: "READY_TO_START" },
-          { label: "Failures", value: "3", footer: "LAST_24_HOURS" },
+          { label: "Active", value: "18", footer: "RUNNING_OR_QUEUED" },
+          { label: "Completed", value: "124", footer: "RECENT_RUNS" },
+          { label: "Failed", value: "3", footer: "LAST_RUN_ERRORS" },
         ],
         queueTitle: "Workflow Queue",
         queueMeta: "RUNS / RETRIES / FAILURES",
