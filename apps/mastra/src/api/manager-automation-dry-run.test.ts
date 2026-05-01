@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import {
-  createHealthRoute,
-  createManagerAutomationDryRunRoute,
-} from "./manager-automation-dry-run"
+import { createManagerAutomationDryRunRoute } from "./manager-automation-dry-run"
 
 function jsonRequest(input: unknown, headers: HeadersInit = {}) {
   return new Request("http://localhost:4111/forge/manager-automation-dry-run", {
@@ -16,13 +13,32 @@ function jsonRequest(input: unknown, headers: HeadersInit = {}) {
   })
 }
 
-describe("manager automation dry-run API route", () => {
-  it("keeps health public", async () => {
-    const route = createHealthRoute()
-    const response = await route.handler()
+const validDryRunRequest = {
+  automationDocumentId: "automation-1",
+  requestedBy: { kind: "manager_user", id: "42" },
+  idempotencyKey: "manager:automation-1:dry-run",
+}
 
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({ ok: true })
+describe("manager automation dry-run API route", () => {
+  it("rejects invalid service bearer tokens before workflow launch", async () => {
+    const launcher = vi.fn()
+    const route = createManagerAutomationDryRunRoute({
+      serviceApiKey: "service-key",
+      launchDryRun: launcher,
+    })
+
+    const response = await route.handler(
+      jsonRequest(validDryRunRequest, {
+        authorization: "Bearer wrong-key",
+      }),
+    )
+
+    expect(response.status).toBe(401)
+    expect(launcher).not.toHaveBeenCalled()
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      code: "unauthorized",
+    })
   })
 
   it("rejects malformed payloads before workflow launch", async () => {
@@ -55,13 +71,7 @@ describe("manager automation dry-run API route", () => {
       launchDryRun: launcher,
     })
 
-    const response = await route.handler(
-      jsonRequest({
-        automationDocumentId: "automation-1",
-        requestedBy: { kind: "manager_user", id: "42" },
-        idempotencyKey: "manager:automation-1:dry-run",
-      }),
-    )
+    const response = await route.handler(jsonRequest(validDryRunRequest))
 
     expect(response.status).toBe(200)
     expect(launcher).toHaveBeenCalledWith(

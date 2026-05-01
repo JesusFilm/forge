@@ -54,4 +54,28 @@ describe("parseMastraEnv", () => {
       managerBaseUrl: "http://localhost:3002",
     })
   })
+
+  it("uses Railway PORT when MASTRA_PORT is not set", () => {
+    expect(
+      parseMastraEnv({
+        ...BASE_ENV,
+        MASTRA_PORT: undefined,
+        PORT: "4899",
+      }),
+    ).toMatchObject({
+      port: 4899,
+    })
+  })
+
+  it("prefers MASTRA_PORT over Railway PORT when both are set", () => {
+    expect(
+      parseMastraEnv({
+        ...BASE_ENV,
+        MASTRA_PORT: "4222",
+        PORT: "4899",
+      }),
+    ).toMatchObject({
+      port: 4222,
+    })
+  })
 })

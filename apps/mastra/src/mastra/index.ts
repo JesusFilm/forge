@@ -2,10 +2,7 @@ import { Mastra, type Config } from "@mastra/core"
 import { registerApiRoute } from "@mastra/core/server"
 import { LibSQLStore } from "@mastra/libsql"
 
-import {
-  createHealthRoute,
-  createManagerAutomationDryRunRoute,
-} from "@/api/manager-automation-dry-run"
+import { createManagerAutomationDryRunRoute } from "@/api/manager-automation-dry-run"
 import { loadMastraEnv, testMastraEnv, type MastraEnv } from "@/config/env"
 import {
   MANAGER_AUTOMATION_AGENT_ID,
@@ -25,6 +22,11 @@ export function buildMastra(env: MastraEnv) {
   return new Mastra(buildMastraConfig(env))
 }
 
+type MastraAuthUser = {
+  id: string
+  kind: "operator" | "service"
+}
+
 function buildMastraConfig(env: MastraEnv): Config {
   const managerAutomationDryRunRoute = createManagerAutomationDryRunRoute({
     serviceApiKey: env.serviceApiKey,
@@ -34,7 +36,6 @@ function buildMastraConfig(env: MastraEnv): Config {
         managerMastraApiKey: env.managerMastraApiKey,
       }),
   })
-  const healthRoute = createHealthRoute()
   const managerAutomationAgent = createManagerAutomationAgent({
     managerBaseUrl: env.managerBaseUrl,
     managerMastraApiKey: env.managerMastraApiKey,
@@ -75,6 +76,7 @@ function buildMastraConfig(env: MastraEnv): Config {
             context: {
               req: {
                 url: string
+                method?: string
                 header: (name: string) => string | undefined
               }
               json: (body: unknown, status?: number) => Response
@@ -88,9 +90,16 @@ function buildMastraConfig(env: MastraEnv): Config {
             }
 
             const authorization = context.req.header("authorization")
+            if (authorization === `Bearer ${env.operatorApiKey}`) {
+              await next()
+              return
+            }
+
             if (
-              authorization === `Bearer ${env.operatorApiKey}` ||
-              authorization === `Bearer ${env.serviceApiKey}`
+              authorization === `Bearer ${env.serviceApiKey}` &&
+              pathname === managerAutomationDryRunRoute.path &&
+              (context.req.method ?? "GET").toUpperCase() ===
+                managerAutomationDryRunRoute.method
             ) {
               await next()
               return
@@ -110,20 +119,29 @@ function buildMastraConfig(env: MastraEnv): Config {
       auth: {
         public: [["/health", "GET"]],
         protected: [/.*/],
-        authenticateToken: async (token) => {
-          if (token === env.operatorApiKey || token === env.serviceApiKey) {
-            return { id: "forge-operator" }
+        authenticateToken: async (token): Promise<MastraAuthUser> => {
+          if (token === env.operatorApiKey) {
+            return { id: "forge-operator", kind: "operator" }
+          }
+
+          if (token === env.serviceApiKey) {
+            return { id: "forge-service", kind: "service" }
           }
 
           throw new Error("Unauthorized")
         },
+        authorize: async (path, method, user: MastraAuthUser) => {
+          if (user.kind === "operator") {
+            return true
+          }
+
+          return (
+            path === managerAutomationDryRunRoute.path &&
+            method.toUpperCase() === managerAutomationDryRunRoute.method
+          )
+        },
       },
       apiRoutes: [
-        registerApiRoute(healthRoute.path, {
-          method: healthRoute.method,
-          requiresAuth: healthRoute.requiresAuth,
-          handler: async () => healthRoute.handler(),
-        }),
         registerApiRoute(managerAutomationDryRunRoute.path, {
           method: managerAutomationDryRunRoute.method,
           requiresAuth: managerAutomationDryRunRoute.requiresAuth,

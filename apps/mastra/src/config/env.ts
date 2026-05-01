@@ -3,6 +3,7 @@ import { z } from "zod"
 const envInputSchema = z.object({
   CI: z.string().optional(),
   NODE_ENV: z.string().optional(),
+  PORT: z.string().optional(),
   MASTRA_HOST: z.string().optional(),
   MASTRA_PORT: z.string().optional(),
   MASTRA_SERVICE_API_KEY: z.string().optional(),
@@ -74,6 +75,7 @@ export function parseMastraEnv(
 
   const parsed = schema.parse({
     ...base,
+    MASTRA_PORT: base.MASTRA_PORT ?? base.PORT,
     MASTRA_OPERATOR_API_KEY: operatorApiKey,
     MASTRA_MODEL: model,
   })

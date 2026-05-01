@@ -16,6 +16,7 @@ tool registry, workflow registry, and operational runtime storage.
 
 - Package: `@forge/mastra`
 - Local default port: `4111`
+- `MASTRA_PORT` overrides Railway `PORT`; `PORT` is used when `MASTRA_PORT` is unset.
 - Public health route: `GET /health`
 - Manager trigger route: `POST /forge/manager-automation-dry-run`
 - Mastra custom route note: `registerApiRoute` reserves `/api/*`, so custom
@@ -24,7 +25,8 @@ tool registry, workflow registry, and operational runtime storage.
 
 ## Auth
 
-- Studio and API routes require bearer auth.
+- Studio and built-in API routes require `MASTRA_OPERATOR_API_KEY` bearer auth.
+- `MASTRA_SERVICE_API_KEY` is only valid for `POST /forge/manager-automation-dry-run`.
 - `/health` must stay public.
 - Required secrets:
   - `MASTRA_SERVICE_API_KEY` for Manager-to-Mastra calls.

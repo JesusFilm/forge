@@ -254,6 +254,39 @@ Docs/metadata preparation should land before or with the app scaffold:
   - Authorized Studio `GET /` returned HTTP `200`.
   - Browser screenshots were captured at `output/mastra-studio-authorized-smoke.png` and `output/mastra-studio-anonymous-rejected-smoke.png`.
 
+### Phase 6 Mastra Docs-Alignment Follow-Up
+
+- External docs review found three setup mismatches after the first PR pass:
+  service credentials were too broad, `/health` was duplicated as a custom route
+  even though Mastra provides a built-in health endpoint, and Railway `PORT`
+  fallback was missing.
+- Red/Green TDD evidence:
+  - Red: `pnpm --filter @forge/mastra test` failed because `PORT` was ignored
+    and a service bearer token could pass the global middleware for Studio/root
+    access.
+  - Green: service bearer access is now limited to the Manager dry-run `POST`
+    route; operator bearer access covers Studio and built-in APIs; `/health`
+    relies on Mastra's built-in endpoint; `MASTRA_PORT` takes precedence over
+    Railway `PORT`, with `PORT` as the fallback.
+- Additional tests lock service-token rejection for `/` and `/api/agents`,
+  operator-token access for Studio/built-ins, direct `server.auth.authorize`
+  behavior, invalid service bearer rejection on the dry-run route, and port
+  precedence.
+- Follow-up smoke evidence:
+  - Built Mastra server ran on `http://127.0.0.1:4112` with `PORT=4112` and
+    `MASTRA_PORT` unset, proving Railway `PORT` fallback.
+  - `GET /health` returned HTTP `200` with Mastra built-in body
+    `{"success":true}`.
+  - Anonymous Studio `GET /` returned HTTP `401`.
+  - Operator Studio `GET /` returned HTTP `200`.
+  - Service bearer Studio `GET /` returned HTTP `401`.
+  - Service bearer `GET /api/agents` returned HTTP `401`.
+  - Service bearer `POST /forge/manager-automation-dry-run` returned HTTP `200`
+    with `managerAutomationRunDocumentId: "manager-run-smoke-2"`.
+  - Browser screenshots were captured at
+    `output/mastra-studio-operator-auth-followup.png` and
+    `output/mastra-studio-service-rejected-followup.png`.
+
 ## Red/Green TDD Requirements
 
 The implementation PR must begin with failing tests that demonstrate:

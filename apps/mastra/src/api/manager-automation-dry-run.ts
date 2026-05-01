@@ -20,26 +20,6 @@ export type ManagerAutomationDryRunRoute = {
   handler: (request: Request) => Promise<Response>
 }
 
-export type HealthRoute = {
-  path: "/health"
-  method: "GET"
-  requiresAuth: false
-  handler: () => Promise<Response>
-}
-
-export async function healthHandler(): Promise<Response> {
-  return jsonResponse({ ok: true }, 200)
-}
-
-export function createHealthRoute(): HealthRoute {
-  return {
-    path: "/health",
-    method: "GET",
-    requiresAuth: false,
-    handler: healthHandler,
-  }
-}
-
 export function createManagerAutomationDryRunRoute({
   serviceApiKey,
   launchDryRun,

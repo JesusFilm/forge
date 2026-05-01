@@ -25,11 +25,21 @@ Required for all non-test boots:
 Production rejects missing auth, storage, model, and Manager service config.
 CI may use placeholders from `.env.ci`.
 
+`MASTRA_PORT` is the preferred explicit runtime port. If it is unset, the app
+falls back to Railway's `PORT` env var before using the local default `4111`.
+
 ## Auth And Routes
 
-Mastra `server.auth` is the app-level source of truth for Studio and built-in
-API protection. `GET /health` is explicitly public. The Manager dry-run route is
-bearer-gated and accepts only:
+Mastra `server.auth` plus the app global middleware are the app-level source of
+truth for Studio and built-in API protection. `GET /health` uses Mastra's
+built-in health endpoint and stays public.
+
+`MASTRA_OPERATOR_API_KEY` is the only credential that can access Studio, root
+HTML, and built-in Mastra API routes. `MASTRA_SERVICE_API_KEY` is only valid for
+`POST /forge/manager-automation-dry-run`; it must not grant Studio or broad
+`/api/*` access.
+
+The Manager dry-run route is bearer-gated and accepts only:
 
 ```ts
 {
