@@ -59,7 +59,7 @@ vi.mock("@/app/dashboard/ops-data", () => ({
       { label: "Videos", value: "1", footer: "SYNCED_CATALOG" },
       { label: "Last Sync", value: "10m", footer: "CORE_REFRESH" },
       {
-        label: "Phases With Errors",
+        label: "Sync Errors",
         value: "0",
         footer: "ACTION_REQUIRED",
       },
@@ -86,7 +86,7 @@ vi.mock("@/app/dashboard/ops-data", () => ({
       {
         title: "Core sync",
         meta: "last sync 10/24/2023, 14:02",
-        detail: "No phase is currently reporting sync errors.",
+        detail: "No synced data set is currently reporting sync errors.",
         statusLabel: "Healthy",
         statusTone: "success",
       },
@@ -95,12 +95,12 @@ vi.mock("@/app/dashboard/ops-data", () => ({
       { label: "Published Locales", value: "1", detail: "detail" },
       { label: "Users", value: "1", detail: "detail" },
       { label: "Embedding Gap", value: "0", detail: "detail" },
-      { label: "Sync Phases", value: "1", detail: "detail" },
+      { label: "Synced Data Sets", value: "1", detail: "detail" },
     ],
   })),
   loadSystemStatusData: vi.fn(async () => ({
     metrics: [
-      { label: "Tracked Phases", value: "1", footer: "SYNC_STATE_ROWS" },
+      { label: "Synced Data Sets", value: "1", footer: "SYNC_STATE_ROWS" },
       { label: "Latest Sync", value: "10m", footer: "LATEST_WATERMARK" },
       { label: "Lock State", value: "CLEAR", footer: "CORE_SYNC_LOCK" },
       { label: "Exceptions", value: "0", footer: "REQUIRES_REVIEW" },
@@ -111,7 +111,6 @@ vi.mock("@/app/dashboard/ops-data", () => ({
         source: "core.videos",
         statusLabel: "Healthy",
         statusTone: "success",
-        lag: "10m",
         lastRun: "10 changed",
       },
     ],
@@ -127,14 +126,14 @@ vi.mock("@/app/dashboard/ops-data", () => ({
     telemetry: [
       { label: "Connected Sources", value: "1", detail: "detail" },
       { label: "Lock Holder", value: "IDLE", detail: "detail" },
-      { label: "Phases With Errors", value: "0", detail: "detail" },
+      { label: "Data Sets With Errors", value: "0", detail: "detail" },
       { label: "Latest Lag", value: "10m", detail: "detail" },
     ],
   })),
   loadWorkflowsData: vi.fn(async () => ({
     metrics: [
       { label: "Held Locks", value: "0", footer: "RUNNING_NOW" },
-      { label: "Tracked Phases", value: "1", footer: "PERSISTED_JOBS" },
+      { label: "Synced Data Sets", value: "1", footer: "PERSISTED_JOBS" },
       { label: "Failures", value: "0", footer: "LAST_RUN_ERRORS" },
     ],
     queue: [

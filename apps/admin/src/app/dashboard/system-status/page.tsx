@@ -43,7 +43,7 @@ export default async function SystemStatusPage() {
     : needsReview
       ? {
           label: "Core Sync needs review",
-          detail: "A phase or recent sync attempt is reporting a problem.",
+          detail: "A synced data set or recent sync attempt needs review.",
           tone: "warning" as const,
         }
       : {
@@ -104,9 +104,8 @@ export default async function SystemStatusPage() {
           <table className="w-full border-collapse text-left">
             <thead className="hairline-strong-b">
               <tr className="h-10">
-                <th className="label-text px-4">Phase</th>
+                <th className="label-text px-4">Data set</th>
                 <th className="label-text px-4">Status</th>
-                <th className="label-text px-4">Last synced</th>
                 <th className="label-text px-4">Last run</th>
               </tr>
             </thead>
@@ -122,7 +121,6 @@ export default async function SystemStatusPage() {
                       {row.statusLabel}
                     </StatusPill>
                   </td>
-                  <td className="px-4 font-mono text-[11px]">{row.lag}</td>
                   <td className="px-4 font-mono text-[11px] text-[var(--color-text-secondary)]">
                     {row.lastRun}
                   </td>

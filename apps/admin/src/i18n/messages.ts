@@ -441,7 +441,7 @@ export const adminMessages = {
         matrix: {
           title: "Sync State",
           meta: "CORE_ENTITY_DRIFT_VIEW",
-          columns: ["Phase", "Status", "Last synced", "Last run"],
+          columns: ["Data set", "Status", "Last run"],
           rows: [
             {
               entity: "Videos",

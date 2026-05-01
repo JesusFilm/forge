@@ -67,7 +67,6 @@ type SystemStatusData = {
     source: string
     statusLabel: string
     statusTone: "success" | "warning" | "danger" | "info" | "muted"
-    lag: string
     lastRun: string
   }>
   incidents: QueueItem[]
@@ -518,7 +517,7 @@ export async function loadDashboardOpsData(): Promise<DashboardOpsData> {
         footer: "CORE_REFRESH",
       },
       {
-        label: "Phases With Errors",
+        label: "Sync Errors",
         value: failingPhases.length.toString(),
         footer: "ACTION_REQUIRED",
         accent: failingPhases.length > 0 ? "danger" : undefined,
@@ -559,7 +558,7 @@ export async function loadDashboardOpsData(): Promise<DashboardOpsData> {
         ? failingPhases.slice(0, 3).map((row) => {
             const stats = parseSyncStats(row.stats)
             return {
-              title: `Sync phase ${row.phase}`,
+              title: `${phaseLabel(row.phase)} sync`,
               meta: `last sync ${formatDateTime(new Date(row.lastSyncedAt))}`,
               detail: `${stats.errors} error(s), ${stats.updated} updated, ${stats.created} created`,
               statusLabel: "Review",
@@ -573,7 +572,7 @@ export async function loadDashboardOpsData(): Promise<DashboardOpsData> {
                 ? `last sync ${formatDateTime(new Date(latestSync))}`
                 : "no sync watermark yet",
               detail:
-                "No phase is currently reporting sync errors in persisted status.",
+                "No synced data set is reporting errors in persisted status.",
               statusLabel: "Healthy",
               statusTone: "success",
             },
@@ -614,9 +613,9 @@ export async function loadDashboardOpsData(): Promise<DashboardOpsData> {
         detail: "Experience locales still missing semantic vectors.",
       },
       {
-        label: "Sync Phases",
+        label: "Synced Data Sets",
         value: syncRows.length.toString(),
-        detail: "Persisted phase watermarks visible to the operations layer.",
+        detail: "Core data sets with persisted sync state.",
       },
     ],
   }
@@ -640,7 +639,6 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
       source: `core.${row.phase}`,
       statusLabel: stats.errors > 0 ? "Review" : "Healthy",
       statusTone: statusToneForSyncErrors(stats.errors),
-      lag: formatLag(row.lastSyncedAt),
       lastRun: `${changed} changed`,
     }
   })
@@ -667,7 +665,7 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
           .slice(0, 4)
           .map((row) => ({
             title: `${row.entity} sync needs review`,
-            meta: `${row.source} / lag ${row.lag}`,
+            meta: row.source,
             detail: `Persisted sync status is ${row.statusLabel.toLowerCase()}.`,
             statusLabel: row.statusLabel,
             statusTone: row.statusTone,
@@ -676,8 +674,7 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
           {
             title: "No active sync incidents",
             meta: lock?.heldBy ? `lock held by ${lock.heldBy}` : "lock clear",
-            detail:
-              "Phase freshness is healthy across the currently known phases.",
+            detail: "No synced data sets are reporting issues.",
             statusLabel: "Healthy",
             statusTone: "success" as const,
           },
@@ -688,7 +685,7 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
   return {
     metrics: [
       {
-        label: "Tracked Phases",
+        label: "Synced Data Sets",
         value: syncRows.length.toString(),
         footer: "SYNC_STATE_ROWS",
       },
@@ -734,11 +731,11 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
           : "No process currently holds the sync lock.",
       },
       {
-        label: "Phases With Errors",
+        label: "Data Sets With Errors",
         value: incidentRows
           .filter((row) => row.statusTone !== "success")
           .length.toString(),
-        detail: "Persisted phases reporting non-zero errors on the last run.",
+        detail: "Synced data sets reporting non-zero errors on the last run.",
       },
       {
         label: "Latest Attempted Sync",
@@ -814,7 +811,7 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
     ...syncRows.slice(0, 5).map((row) => {
       const stats = parseSyncStats(row.stats)
       return {
-        title: row.phase,
+        title: phaseLabel(row.phase),
         meta: `watermark ${formatDateTime(new Date(row.lastSyncedAt))}`,
         detail: `${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted`,
         statusLabel: stats.errors > 0 ? "Review" : "Ready",
