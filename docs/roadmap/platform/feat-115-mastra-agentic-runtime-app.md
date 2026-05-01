@@ -3,7 +3,7 @@ id: "feat-115"
 title: "Mastra Agentic Runtime App"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-05-01"
 duration: 7
 depends_on: []

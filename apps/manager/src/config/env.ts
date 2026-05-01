@@ -56,6 +56,14 @@ export const env = createEnv({
     ADMIN_GRAPHQL_URL: z.string().url().optional(),
     ADMIN_EMBED_TRIGGER_API_KEY: z.string().min(1).optional(),
 
+    // Mastra agentic runtime — optional at boot so Manager can run
+    // without the agent runtime, but routes/clients fail closed when
+    // invoked before these service-to-service settings are configured.
+    MASTRA_BASE_URL: z.string().url().optional(),
+    MASTRA_SERVICE_API_KEY: z.string().min(1).optional(),
+    MANAGER_MASTRA_API_KEY: z.string().min(1).optional(),
+    MASTRA_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
+
     // ElevenLabs transcription (optional unless ElevenLabs routing is used)
     ELEVENLABS_REQUEST_TIMEOUT_MS: z.coerce
       .number()
@@ -98,6 +106,10 @@ export const env = createEnv({
     MANAGER_API_KEY: process.env.MANAGER_API_KEY,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     ADMIN_EMBED_TRIGGER_API_KEY: process.env.ADMIN_EMBED_TRIGGER_API_KEY,
+    MASTRA_BASE_URL: process.env.MASTRA_BASE_URL,
+    MASTRA_SERVICE_API_KEY: process.env.MASTRA_SERVICE_API_KEY,
+    MANAGER_MASTRA_API_KEY: process.env.MANAGER_MASTRA_API_KEY,
+    MASTRA_REQUEST_TIMEOUT_MS: process.env.MASTRA_REQUEST_TIMEOUT_MS,
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:
       process.env.ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS,

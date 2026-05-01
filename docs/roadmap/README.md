@@ -7,8 +7,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (April 29, 2026)
 
 - **Total tickets:** 126
-- **Complete:** 63
-- **In progress:** 7
+- **Complete:** 64
+- **In progress:** 6
 - **Not started:** 18
 - **Blocked:** 38
 - **Overdue and not complete:** 16
@@ -114,7 +114,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-106](platform/feat-106-manager-single-process-mock-cms-mode.md)            | Manager Single-Process Mock CMS Mode                    | vlad      | P1       | 2026-04-22 | 5    | 2026-04-26 | complete    |
 | [feat-109](platform/feat-109-roadmap-timeline-planned-current-modes.md)          | Roadmap Timeline Planned/Current Modes                  | vlad      | P1       | 2026-04-23 | 1    | 2026-04-23 | complete    |
 | [feat-110](platform/feat-110-roadmap-owner-stack-timeline-compaction.md)         | Roadmap Owner Stack Timeline Compaction                 | vlad      | P1       | 2026-04-23 | 1    | 2026-04-23 | complete    |
-| [feat-115](platform/feat-115-mastra-agentic-runtime-app.md)                      | Mastra Agentic Runtime App                              | vlad      | P1       | 2026-05-01 | 7    | 2026-05-07 | in-progress |
+| [feat-115](platform/feat-115-mastra-agentic-runtime-app.md)                      | Mastra Agentic Runtime App                              | vlad      | P1       | 2026-05-01 | 7    | 2026-05-07 | complete    |
 | [feat-040](platform/feat-040-partner-activation-network.md)                      | Partner Activation Network                              | urim      | P1       | 2026-06-16 | 28   | 2026-07-13 | blocked     |
 | [feat-042](platform/feat-042-video-contests-and-inspiration-feed.md)             | Video Contests and Inspiration Feed                     | urim      | P1       | 2026-06-30 | 28   | 2026-07-27 | blocked     |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                                 | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |

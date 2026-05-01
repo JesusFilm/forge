@@ -1,7 +1,7 @@
 ---
 title: "feat: Mastra Agentic Runtime App"
 type: feat
-status: active
+status: complete
 date: 2026-05-01
 origin: docs/roadmap/platform/feat-115-mastra-agentic-runtime-app.md
 branch: feat/115-mastra-agentic-runtime-app
@@ -94,7 +94,7 @@ The preferred V1 default is: Mastra stores operational state in its configured s
 Create a custom Mastra API route, exact framework wiring to be confirmed during implementation:
 
 ```http
-POST /api/forge/manager-automation-dry-run
+POST /forge/manager-automation-dry-run
 Authorization: Bearer ${MASTRA_SERVICE_API_KEY}
 Content-Type: application/json
 ```
@@ -214,6 +214,46 @@ Do not add root workspace globs. `pnpm-workspace.yaml` already covers `apps/*`.
   - Required proof that Railway `configFile` is not `null` when using a per-service toml.
 - Add PR checklist notes for Red/Green TDD, user smoke, and post-deploy health/config verification.
 
+### Phase 4 Implementation Notes
+
+Docs/metadata preparation should land before or with the app scaffold:
+
+- `apps/AGENTS.md` and `apps/README.md` list `apps/mastra` as a first-class app boundary and state that Manager is the first consumer through API contracts.
+- `.github/workflows/issue-labels.yml` accepts `mastra` as an issue/PR scope, so the implementation PR title can use `feat(mastra): ...`.
+- The PR description should include these validation commands once implementation files exist:
+  - `pnpm --filter @forge/mastra lint`
+  - `pnpm --filter @forge/mastra typecheck`
+  - `pnpm --filter @forge/mastra test`
+  - `pnpm --filter @forge/mastra build`
+  - `pnpm --filter @forge/manager test -- src/app/api/automations src/features/agents`
+  - `pnpm --filter @forge/manager typecheck`
+  - `pnpm run format:check`
+  - `git diff --check`
+- The PR description should include post-deploy monitoring notes for `apps/mastra`:
+  - Confirm the Railway deployment record has `configFile: "apps/mastra/railway.toml"` if the app-local toml is intended to be authoritative.
+  - Treat `configFile: null` as a failed deploy-configuration verification, not as an acceptable default.
+  - Confirm `/health` returns `200` without auth.
+  - Confirm Studio and Mastra API routes reject anonymous access and allow only the intended operator/service credential path.
+  - Capture exact local and deployed URLs used for the Manager dry-run smoke, Studio authorized smoke, and anonymous Studio rejection.
+
+### Phase 5 Implementation Notes
+
+- `apps/mastra` now exists as `@forge/mastra` with Mastra runtime, Studio, auth-gated custom route, LibSQL runtime storage configuration, package-local docs, and Railway config.
+- Manager integrates through HTTP only via `MASTRA_BASE_URL` and service bearer credentials; the first Manager route is dry-run-only and rejects `runMode: "live"`.
+- Mastra custom route path is `/forge/manager-automation-dry-run` rather than `/api/forge/manager-automation-dry-run`, because Mastra reserves `/api/*` routes for built-in API behavior.
+- Red/Green TDD evidence:
+  - Red: initial `pnpm --filter @forge/mastra test` failed on missing route/env/runtime registration behavior before implementation.
+  - Green: `pnpm --filter @forge/mastra test`, `typecheck`, `lint`, and `build` passed after implementation.
+  - Green: `pnpm --filter @forge/manager test -- src/app/api/automations src/features/agents src/lib/mastra-automation-dry-run.test.ts`, `typecheck`, and `lint` passed after implementation.
+- User smoke evidence:
+  - Local Mastra built server ran on `http://127.0.0.1:4111` with a fake Manager service on `http://127.0.0.1:3999`.
+  - `GET /health` returned HTTP `200`.
+  - Anonymous `POST /forge/manager-automation-dry-run` returned HTTP `401`.
+  - Authenticated `POST /forge/manager-automation-dry-run` returned HTTP `200` with `managerAutomationRunDocumentId: "manager-run-smoke"` and a dry-run summary.
+  - Anonymous Studio `GET /` returned HTTP `401`.
+  - Authorized Studio `GET /` returned HTTP `200`.
+  - Browser screenshots were captured at `output/mastra-studio-authorized-smoke.png` and `output/mastra-studio-anonymous-rejected-smoke.png`.
+
 ## Red/Green TDD Requirements
 
 The implementation PR must begin with failing tests that demonstrate:
@@ -245,18 +285,18 @@ If browser smoke is blocked by missing local dependencies or credentials, leave 
 
 ## Acceptance Criteria
 
-- [ ] `apps/mastra` exists as package `@forge/mastra` with standard `dev`, `build`, `start`, `lint`, `typecheck`, and `test` scripts.
-- [ ] `apps/mastra` follows Mastra project structure with `src/mastra/index.ts`, `agents`, `tools`, and `workflows`.
-- [ ] Studio and Mastra API routes are protected by an explicit auth/access layer; anonymous access is rejected in tests and smoke.
-- [ ] `GET /health` stays unauthenticated and returns `200`.
-- [ ] Manager calls Mastra through an HTTP/API contract only; no app-to-app imports.
-- [ ] Mastra can call only a Manager dry-run-only contract in V1.
-- [ ] Manager dry-run report remains operator-visible and no live jobs are created.
-- [ ] Runtime/session storage choice is documented, with production durability limits stated honestly.
-- [ ] `apps/mastra/AGENTS.md` and `apps/mastra/CLAUDE.md` explain ownership, env vars, auth, runtime state, tools/workflows, and cross-app rules.
-- [ ] `apps/AGENTS.md`, `apps/README.md`, and issue/PR label scopes are updated for the new app.
-- [ ] Railway deployment config source of truth is verified or explicitly documented.
-- [ ] Red/Green tests and user smoke test evidence are included in the PR.
+- [x] `apps/mastra` exists as package `@forge/mastra` with standard `dev`, `build`, `start`, `lint`, `typecheck`, and `test` scripts.
+- [x] `apps/mastra` follows Mastra project structure with `src/mastra/index.ts`, `agents`, `tools`, and `workflows`.
+- [x] Studio and Mastra API routes are protected by an explicit auth/access layer; anonymous access is rejected in tests and smoke.
+- [x] `GET /health` stays unauthenticated and returns `200`.
+- [x] Manager calls Mastra through an HTTP/API contract only; no app-to-app imports.
+- [x] Mastra can call only a Manager dry-run-only contract in V1.
+- [x] Manager dry-run report remains operator-visible and no live jobs are created.
+- [x] Runtime/session storage choice is documented, with production durability limits stated honestly.
+- [x] `apps/mastra/AGENTS.md` and `apps/mastra/CLAUDE.md` explain ownership, env vars, auth, runtime state, tools/workflows, and cross-app rules.
+- [x] `apps/AGENTS.md`, `apps/README.md`, and issue/PR label scopes are updated for the new app.
+- [x] Railway deployment config source of truth is verified or explicitly documented.
+- [x] Red/Green tests and user smoke test evidence are included in the PR.
 
 ## Validation Commands
 
@@ -310,4 +350,4 @@ curl -i "$MASTRA_BASE_URL/health"
 
 ## Next Steps
 
-Proceed to `/workflows:work docs/plans/2026-05-01-feat-mastra-agentic-runtime-app-plan.md` when ready to implement.
+Post-deploy verification remains: confirm Railway `configFile` references `apps/mastra/railway.toml`, then repeat `/health`, Studio auth, and Manager dry-run smoke against the deployed URLs.

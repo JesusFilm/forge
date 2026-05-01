@@ -8,5 +8,6 @@ packages/graphql/src/graphql-env.d.ts
 apps/cms/schema.graphql
 apps/cms/.strapi
 apps/cms/.strapi-updater.json
+apps/mastra/.mastra
 output/
 .cursor
