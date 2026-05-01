@@ -3,7 +3,7 @@ id: "feat-114"
 title: "Manager Tailwind Design System Migration"
 owner: "vlad"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-04-20"
 duration: 4
 depends_on:
@@ -49,7 +49,7 @@ The manager app now shares the Studio shell and page-level visual direction, but
 
 ## Attached Follow-up — Coverage Language Persistence
 
-This ticket also owns the small Manager coverage state follow-up captured in `docs/brainstorms/2026-05-01-manager-coverage-language-persistence-requirements.md`.
+This ticket also owns the small Manager coverage state follow-up captured in `docs/brainstorms/2026-05-01-manager-coverage-language-persistence-requirements.md` and planned in `docs/plans/2026-05-01-fix-manager-coverage-language-persistence-plan.md`.
 
 The follow-up keeps the Studio shell's route and session-state behavior aligned with the migrated Manager UI:
 
