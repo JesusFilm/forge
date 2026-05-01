@@ -14,16 +14,8 @@ export type CoverageLanguageSearchParams = {
   languageIds?: string
 }
 
-export type CoverageLanguageSelectionReason =
-  | "query"
-  | "legacy-query"
-  | "remembered"
-  | "default-english"
-  | "none"
-
 export type CoverageLanguageSelectionResolution = {
   languageIds: string[]
-  reason: CoverageLanguageSelectionReason
   shouldReplaceUrl: boolean
   shouldRememberSelection: boolean
 }
@@ -93,13 +85,6 @@ function toSearchParams(
   }
 
   return new URLSearchParams(currentQuery.replace(/^\?/, ""))
-}
-
-export function hasExplicitCoverageLanguageQuery(
-  currentQuery: string | URLSearchParams,
-): boolean {
-  const params = toSearchParams(currentQuery)
-  return params.has("languageId") || params.has("languageIds")
 }
 
 export function normalizeCoverageLanguageSearchParams(
@@ -196,7 +181,6 @@ export function resolveCoverageLanguageSelection({
   if (params.has("languageId")) {
     return {
       languageIds: requestedLanguageIds,
-      reason: "query",
       shouldReplaceUrl: false,
       shouldRememberSelection: requestedLanguageIds.length > 0,
     }
@@ -205,7 +189,6 @@ export function resolveCoverageLanguageSelection({
   if (params.has("languageIds")) {
     return {
       languageIds: requestedLanguageIds,
-      reason: "legacy-query",
       shouldReplaceUrl: true,
       shouldRememberSelection: requestedLanguageIds.length > 0,
     }
@@ -215,7 +198,6 @@ export function resolveCoverageLanguageSelection({
   if (remembered.length > 0) {
     return {
       languageIds: remembered,
-      reason: "remembered",
       shouldReplaceUrl: true,
       shouldRememberSelection: false,
     }
@@ -225,7 +207,6 @@ export function resolveCoverageLanguageSelection({
   if (englishLanguageId) {
     return {
       languageIds: [englishLanguageId],
-      reason: "default-english",
       shouldReplaceUrl: true,
       shouldRememberSelection: false,
     }
@@ -233,7 +214,6 @@ export function resolveCoverageLanguageSelection({
 
   return {
     languageIds: [],
-    reason: "none",
     shouldReplaceUrl: false,
     shouldRememberSelection: false,
   }

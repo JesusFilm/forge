@@ -118,7 +118,6 @@ describe("language-selection", () => {
       }),
     ).toEqual({
       languageIds: ["529"],
-      reason: "query",
       shouldReplaceUrl: false,
       shouldRememberSelection: true,
     })
@@ -133,7 +132,6 @@ describe("language-selection", () => {
       }),
     ).toEqual({
       languageIds: ["6414", "529"],
-      reason: "legacy-query",
       shouldReplaceUrl: true,
       shouldRememberSelection: true,
     })
@@ -150,7 +148,6 @@ describe("language-selection", () => {
       }),
     ).toEqual({
       languageIds: ["6414", "529"],
-      reason: "remembered",
       shouldReplaceUrl: true,
       shouldRememberSelection: false,
     })
@@ -168,7 +165,6 @@ describe("language-selection", () => {
       }),
     ).toEqual({
       languageIds: ["529"],
-      reason: "default-english",
       shouldReplaceUrl: true,
       shouldRememberSelection: false,
     })
@@ -185,7 +181,6 @@ describe("language-selection", () => {
       }),
     ).toEqual({
       languageIds: [],
-      reason: "none",
       shouldReplaceUrl: false,
       shouldRememberSelection: false,
     })
