@@ -2,22 +2,18 @@ import { Workflow } from "lucide-react"
 import {
   DashboardPageHeader,
   PageSection,
-  PrimaryButton,
   QueueList,
   StatusPill,
 } from "@/components/admin-ui"
-import { hasPermission } from "@/auth/permissions"
 import { requireSession } from "@/auth/session"
 import { getAdminMessages } from "@/i18n/server"
 import { loadWorkflowsData } from "@/app/dashboard/ops-data"
-import { CoreSyncTriggerButton } from "./core-sync-trigger-button"
 
 export default async function WorkflowsPage() {
   const messages = await getAdminMessages()
   const page = messages.pages.workflows
-  const principal = await requireSession()
+  await requireSession()
   const data = await loadWorkflowsData()
-  const canTriggerSync = hasPermission(principal, "system:trigger-workflow")
 
   return (
     <div className="flex flex-col gap-6">
@@ -25,13 +21,6 @@ export default async function WorkflowsPage() {
         eyebrow={page.eyebrow}
         title={page.title}
         description={page.description}
-        action={
-          canTriggerSync ? (
-            <CoreSyncTriggerButton />
-          ) : (
-            <PrimaryButton className="opacity-60">Read-only</PrimaryButton>
-          )
-        }
       />
 
       <section className="app-card p-4">
