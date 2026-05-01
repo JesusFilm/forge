@@ -45,6 +45,7 @@ interface LanguageGeoSelectorProps {
   attentionRequired?: boolean
   attentionRequestKey?: number
   openRequestKey?: number
+  onApplyLanguages?: (languageIds: string[]) => void
 }
 
 function normalizeText(value: string): string {
@@ -98,6 +99,7 @@ export function LanguageGeoSelector({
   attentionRequired = false,
   attentionRequestKey = 0,
   openRequestKey = 0,
+  onApplyLanguages,
 }: LanguageGeoSelectorProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -476,6 +478,11 @@ export function LanguageGeoSelector({
     }
 
     setIsLoading(true)
+    if (onApplyLanguages) {
+      onApplyLanguages(nextLanguageIds)
+      return
+    }
+
     if (navigationTimeoutRef.current) {
       window.clearTimeout(navigationTimeoutRef.current)
     }

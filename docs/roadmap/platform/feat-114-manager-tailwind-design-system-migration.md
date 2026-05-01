@@ -47,12 +47,26 @@ The manager app now shares the Studio shell and page-level visual direction, but
 4. Rebuild the Studio shell, auth shell, shared UI primitives, and production screens using Tailwind-backed components and utilities.
 5. Remove migrated global CSS sections as each subsystem moves into TSX-level Tailwind composition.
 
+## Attached Follow-up — Coverage Language Persistence
+
+This ticket also owns the small Manager coverage state follow-up captured in `docs/brainstorms/2026-05-01-manager-coverage-language-persistence-requirements.md` and planned in `docs/plans/2026-05-01-fix-manager-coverage-language-persistence-plan.md`.
+
+The follow-up keeps the Studio shell's route and session-state behavior aligned with the migrated Manager UI:
+
+1. Default bare `/dashboard/coverage` visits to English when no explicit query or remembered selection exists.
+2. Remember the user's latest custom coverage language selection for the current dashboard session.
+3. Restore that remembered selection when returning to bare `/dashboard/coverage` from Jobs, Agents, or other Manager pages.
+4. Preserve the canonical URL contract: explicit `languageId` wins, legacy `languageIds` remains accepted, and coverage writes normalize back to `languageId`.
+5. Treat clearing all selected languages as an explicit reset so later bare visits fall back to English.
+
 ## Constraints
 
 - Preserve the current Studio visual language; this is not a redesign.
 - Preserve existing route behavior, auth behavior, URL/query state, and page information architecture.
 - Do not introduce new color tokens or one-off hex values without explicit approval.
 - Keep third-party CSS only where inline migration is unrealistic.
+- Do not replace URL-backed coverage state with hidden-only preferences.
+- Do not hardcode an English core ID; resolve English from the existing language data path.
 
 ## Verification
 
@@ -65,9 +79,11 @@ The manager app now shares the Studio shell and page-level visual direction, but
   - `/dashboard/jobs/[id]`
   - `/dashboard/agents`
 - Confirm no large migrated screen blocks remain in `apps/manager/src/app/globals.css`.
+- Coverage language persistence browser smoke: open `/dashboard/coverage`, confirm English is selected; select a custom language set; navigate to Jobs or Agents; return to Report and confirm the same language set is selected.
 
 ## Completion Notes
 
 - Tailwind 4 now powers the manager app through local `apps/manager` configuration, shared UI primitives in `src/components/ui`, and route-level Tailwind composition across shell, auth, coverage, jobs, and agents surfaces.
 - `apps/manager/src/app/globals.css` has been reduced to tokens, theme mapping, base rules, and small browser-specific affordances rather than screen-level styling systems.
 - Browser and route checks were completed for login, coverage, jobs, and agents on the local manager app. The current snapshot exposes no jobs, so a live `/dashboard/jobs/[id]` detail page could not be opened during this pass.
+- The attached coverage language persistence follow-up is complete: bare Coverage defaults to English, custom language selections persist for the dashboard session, explicit query state wins, legacy `languageIds` links normalize to `languageId`, and clearing the final custom language resets back to English fallback behavior.
