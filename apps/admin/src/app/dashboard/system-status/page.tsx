@@ -48,7 +48,7 @@ export default async function SystemStatusPage() {
         }
       : {
           label: "Core Sync is healthy",
-          detail: "No active lock. Phases are fresh.",
+          detail: "No active lock. Sync state is current.",
           tone: "success" as const,
         }
 
@@ -100,13 +100,13 @@ export default async function SystemStatusPage() {
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <PageSection title="Phase Freshness" meta="SYNC_STATE">
+        <PageSection title="Sync State" meta="SYNC_STATE">
           <table className="w-full border-collapse text-left">
             <thead className="hairline-strong-b">
               <tr className="h-10">
                 <th className="label-text px-4">Phase</th>
                 <th className="label-text px-4">Status</th>
-                <th className="label-text px-4">Freshness</th>
+                <th className="label-text px-4">Last synced</th>
                 <th className="label-text px-4">Rows</th>
               </tr>
             </thead>

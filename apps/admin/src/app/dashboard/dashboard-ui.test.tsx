@@ -332,7 +332,7 @@ describe("dashboard UI routes", () => {
     const html = await htmlFrom(SystemStatusPage())
     expect(html).toContain(uiMessages.pages.systemStatus.title)
     expect(html).toContain("Core Sync is healthy")
-    expect(html).toContain("Phase Freshness")
+    expect(html).toContain("Sync State")
     expect(html).toContain("Needs Attention")
   })
 
