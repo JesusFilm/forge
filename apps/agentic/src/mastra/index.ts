@@ -4,16 +4,9 @@ import { LibSQLStore } from "@mastra/libsql"
 
 import { createManagerAutomationDryRunRoute } from "@/api/manager-automation-dry-run"
 import { loadAgenticEnv, testAgenticEnv, type AgenticEnv } from "@/config/env"
+import { createManagerAutomationAgent } from "@/mastra/agents/manager-automation-agent"
+import { createManagerAutomationDryRunTool } from "@/mastra/tools/manager-automation-dry-run-tool"
 import {
-  MANAGER_AUTOMATION_AGENT_ID,
-  createManagerAutomationAgent,
-} from "@/mastra/agents/manager-automation-agent"
-import {
-  MANAGER_AUTOMATION_DRY_RUN_TOOL_ID,
-  createManagerAutomationDryRunTool,
-} from "@/mastra/tools/manager-automation-dry-run-tool"
-import {
-  MANAGER_AUTOMATION_DRY_RUN_WORKFLOW_ID,
   createManagerAutomationDryRunWorkflow,
   launchManagerAutomationDryRunWorkflow,
 } from "@/mastra/workflows/manager-automation-dry-run-workflow"
@@ -34,21 +27,25 @@ function buildMastraConfig(env: AgenticEnv): Config {
       launchManagerAutomationDryRunWorkflow(input, {
         managerBaseUrl: env.managerBaseUrl,
         managerAgenticApiKey: env.managerAgenticApiKey,
+        requestTimeoutMs: env.managerRequestTimeoutMs,
       }),
   })
   const managerAutomationAgent = createManagerAutomationAgent({
     managerBaseUrl: env.managerBaseUrl,
     managerAgenticApiKey: env.managerAgenticApiKey,
     model: env.model,
+    requestTimeoutMs: env.managerRequestTimeoutMs,
   })
   const managerAutomationDryRunTool = createManagerAutomationDryRunTool({
     managerBaseUrl: env.managerBaseUrl,
     managerAgenticApiKey: env.managerAgenticApiKey,
+    requestTimeoutMs: env.managerRequestTimeoutMs,
   })
   const managerAutomationDryRunWorkflow = createManagerAutomationDryRunWorkflow(
     {
       managerBaseUrl: env.managerBaseUrl,
       managerAgenticApiKey: env.managerAgenticApiKey,
+      requestTimeoutMs: env.managerRequestTimeoutMs,
     },
   )
 
@@ -64,7 +61,7 @@ function buildMastraConfig(env: AgenticEnv): Config {
     },
     storage: new LibSQLStore({
       id: "agentic-runtime",
-      url: env.isCi ? ":memory:" : env.storageUrl,
+      url: env.storageUrl,
     }),
     server: {
       host: env.host,
@@ -154,40 +151,6 @@ function buildMastraConfig(env: AgenticEnv): Config {
 }
 
 export const mastra = new Mastra(buildMastraConfig(safeLoadAgenticEnv()))
-
-export const mastraRuntimeConfig = {
-  auth: {
-    mode: "bearer",
-  },
-  storage: {
-    kind: "libsql",
-    ownership: "operational_runtime",
-  },
-  routes: [
-    {
-      path: "/health",
-      method: "GET",
-      requiresAuth: false,
-    },
-    {
-      path: "/forge/manager-automation-dry-run",
-      method: "POST",
-      requiresAuth: true,
-    },
-  ],
-} as const
-
-export function getRegisteredWorkflowIds(): string[] {
-  return [MANAGER_AUTOMATION_DRY_RUN_WORKFLOW_ID]
-}
-
-export function getRegisteredToolIds(): string[] {
-  return [MANAGER_AUTOMATION_DRY_RUN_TOOL_ID]
-}
-
-export function getRegisteredAgentIds(): string[] {
-  return [MANAGER_AUTOMATION_AGENT_ID]
-}
 
 function safeLoadAgenticEnv() {
   if (process.env.NODE_ENV === "test") {

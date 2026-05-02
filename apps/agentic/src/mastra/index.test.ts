@@ -12,6 +12,7 @@ const env = {
   model: "openai/gpt-5-mini",
   managerBaseUrl: "http://localhost:3002",
   managerAgenticApiKey: "manager-agentic-key",
+  managerRequestTimeoutMs: 60000,
 } as const
 
 type MiddlewareTestContext = {

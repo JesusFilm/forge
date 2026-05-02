@@ -1,9 +1,11 @@
 import { createTool } from "@mastra/core/tools"
 
 import {
+  managerFailureCodeSchema,
   managerDryRunResponseSchema,
   managerDryRunToolOutputSchema,
   startManagerAutomationDryRunRequestSchema,
+  type ManagerFailureCode,
   type ManagerDryRunToolOutput,
   type StartManagerAutomationDryRunRequest,
 } from "@/contracts/manager-automation-dry-run"
@@ -14,7 +16,20 @@ export const MANAGER_AUTOMATION_DRY_RUN_TOOL_ID =
 export type ManagerDryRunToolDependencies = {
   managerBaseUrl: string
   managerAgenticApiKey: string
+  requestTimeoutMs?: number
   fetcher?: typeof fetch
+}
+
+export const DEFAULT_MANAGER_REQUEST_TIMEOUT_MS = 60000
+
+export class ManagerDryRunRequestError extends Error {
+  constructor(
+    public readonly code: ManagerFailureCode,
+    message: string,
+  ) {
+    super(message)
+    this.name = "ManagerDryRunRequestError"
+  }
 }
 
 export async function callManagerDryRunEndpoint(
@@ -33,6 +48,9 @@ export async function callManagerDryRunEndpoint(
         "content-type": "application/json",
         "idempotency-key": input.idempotencyKey,
       },
+      signal: AbortSignal.timeout(
+        dependencies.requestTimeoutMs ?? DEFAULT_MANAGER_REQUEST_TIMEOUT_MS,
+      ),
       body: JSON.stringify({
         requestedBy: input.requestedBy,
         idempotencyKey: input.idempotencyKey,
@@ -42,6 +60,13 @@ export async function callManagerDryRunEndpoint(
 
   const body: unknown = await response.json().catch(() => undefined)
   const parsed = managerDryRunResponseSchema.safeParse(body)
+
+  if (parsed.success && !parsed.data.ok) {
+    const code = managerFailureCodeSchema.safeParse(parsed.data.code)
+    if (code.success) {
+      throw new ManagerDryRunRequestError(code.data, parsed.data.message)
+    }
+  }
 
   if (!response.ok || !parsed.success || !parsed.data.ok) {
     throw new Error("Manager dry-run request failed")

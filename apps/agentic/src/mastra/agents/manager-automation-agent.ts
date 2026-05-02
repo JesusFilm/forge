@@ -8,10 +8,12 @@ export function createManagerAutomationAgent({
   managerBaseUrl,
   managerAgenticApiKey,
   model,
+  requestTimeoutMs,
 }: {
   managerBaseUrl: string
   managerAgenticApiKey: string
   model: string
+  requestTimeoutMs?: number
 }) {
   return new Agent({
     id: MANAGER_AUTOMATION_AGENT_ID,
@@ -23,6 +25,7 @@ export function createManagerAutomationAgent({
       managerAutomationDryRun: createManagerAutomationDryRunTool({
         managerBaseUrl,
         managerAgenticApiKey,
+        requestTimeoutMs,
       }),
     },
   })

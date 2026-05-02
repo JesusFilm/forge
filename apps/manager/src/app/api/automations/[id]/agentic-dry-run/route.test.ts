@@ -7,7 +7,10 @@ const {
   createAutomationRunMock,
   enqueueAutomationRunMock,
   getAutomationMock,
+  getAutomationRunByIdempotencyKeyMock,
+  getAutomationRunMock,
   hasInFlightAutomationRunMock,
+  markAutomationRunFailedIfInFlightMock,
   releaseAutomationDryRunClaimMock,
 } = vi.hoisted(() => ({
   authenticateServiceBearerRequestMock: vi.fn(),
@@ -16,7 +19,10 @@ const {
   createAutomationRunMock: vi.fn(),
   enqueueAutomationRunMock: vi.fn(),
   getAutomationMock: vi.fn(),
+  getAutomationRunByIdempotencyKeyMock: vi.fn(),
+  getAutomationRunMock: vi.fn(),
   hasInFlightAutomationRunMock: vi.fn(),
+  markAutomationRunFailedIfInFlightMock: vi.fn(),
   releaseAutomationDryRunClaimMock: vi.fn(),
 }))
 
@@ -33,7 +39,10 @@ vi.mock("@/features/agents/automation-store", () => ({
   completeAutomationRun: completeAutomationRunMock,
   createAutomationRun: createAutomationRunMock,
   getAutomation: getAutomationMock,
+  getAutomationRun: getAutomationRunMock,
+  getAutomationRunByIdempotencyKey: getAutomationRunByIdempotencyKeyMock,
   hasInFlightAutomationRun: hasInFlightAutomationRunMock,
+  markAutomationRunFailedIfInFlight: markAutomationRunFailedIfInFlightMock,
   releaseAutomationDryRunClaim: releaseAutomationDryRunClaimMock,
 }))
 
@@ -77,11 +86,17 @@ describe("POST /api/automations/[id]/agentic-dry-run", () => {
     createAutomationRunMock.mockReset()
     enqueueAutomationRunMock.mockReset()
     getAutomationMock.mockReset()
+    getAutomationRunByIdempotencyKeyMock.mockReset()
+    getAutomationRunMock.mockReset()
     hasInFlightAutomationRunMock.mockReset()
+    markAutomationRunFailedIfInFlightMock.mockReset()
     releaseAutomationDryRunClaimMock.mockReset()
     authenticateServiceBearerRequestMock.mockReturnValue(null)
     getAutomationMock.mockResolvedValue(automation)
+    getAutomationRunByIdempotencyKeyMock.mockResolvedValue(null)
+    getAutomationRunMock.mockResolvedValue(null)
     hasInFlightAutomationRunMock.mockResolvedValue(false)
+    markAutomationRunFailedIfInFlightMock.mockResolvedValue(false)
     claimAutomationDryRunMock.mockResolvedValue({
       documentId: "automation-1",
       leaseToken: "lease-1",
@@ -124,9 +139,15 @@ describe("POST /api/automations/[id]/agentic-dry-run", () => {
   })
 
   it("rejects attempts to request live mode", async () => {
-    const response = await POST(buildRequest({ runMode: "live" }), {
-      params: Promise.resolve({ id: "automation-1" }),
-    })
+    const response = await POST(
+      buildRequest({
+        idempotencyKey: "agentic-run-1",
+        runMode: "live",
+      }),
+      {
+        params: Promise.resolve({ id: "automation-1" }),
+      },
+    )
 
     expect(response.status).toBe(400)
     expect(enqueueAutomationRunMock).not.toHaveBeenCalled()
@@ -151,6 +172,7 @@ describe("POST /api/automations/[id]/agentic-dry-run", () => {
     expect(createAutomationRunMock).toHaveBeenCalledWith(
       expect.objectContaining({
         automationDocumentId: "automation-1",
+        idempotencyKey: "agentic-run-1",
         runMode: "dry_run",
       }),
     )
@@ -180,15 +202,130 @@ describe("POST /api/automations/[id]/agentic-dry-run", () => {
       template: "scene_embeddings_missing",
     })
 
-    const response = await POST(buildRequest(), {
-      params: Promise.resolve({ id: "automation-1" }),
-    })
+    const response = await POST(
+      buildRequest({ idempotencyKey: "agentic-run-1" }),
+      {
+        params: Promise.resolve({ id: "automation-1" }),
+      },
+    )
 
     expect(response.status).toBe(400)
     expect(enqueueAutomationRunMock).not.toHaveBeenCalled()
     await expect(response.json()).resolves.toMatchObject({
       ok: false,
       code: "invalid_automation",
+    })
+  })
+
+  it("rejects requests without an idempotency key", async () => {
+    const response = await POST(
+      buildRequest({ requestedBy: { kind: "service", id: "agentic" } }),
+      {
+        params: Promise.resolve({ id: "automation-1" }),
+      },
+    )
+
+    expect(response.status).toBe(400)
+    expect(createAutomationRunMock).not.toHaveBeenCalled()
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      code: "invalid_automation",
+    })
+  })
+
+  it("returns an existing terminal run for a repeated idempotency key", async () => {
+    getAutomationRunByIdempotencyKeyMock.mockResolvedValue({
+      documentId: "run-existing",
+      status: "success",
+      runMode: "dry_run",
+      scheduledFor: "2026-04-12T09:00:00.000Z",
+      startedAt: "2026-04-12T09:00:00.000Z",
+      finishedAt: "2026-04-12T09:01:00.000Z",
+      eligibleCount: 1,
+      enqueuedCount: 0,
+      skippedDuplicateCount: 0,
+      errorCount: 0,
+      jobDocumentIds: [],
+      errors: [],
+      summary: "Dry run complete.",
+      report: {
+        kind: "metadata",
+        data: {
+          runMode: "dry_run",
+          automationDocumentId: "automation-1",
+          automationRunDocumentId: "run-existing",
+          template: "metadata_missing",
+          refreshMode: "missing_only",
+          targetLanguageIds: [],
+          maxVideosPerRun: 1,
+          eligibleCount: 1,
+          skippedDuplicateCount: 0,
+          wouldEnqueueCount: 1,
+          selectedCandidates: [],
+          suppressedOperations: [],
+          summary: "Dry run complete.",
+          generatedAt: "2026-04-12T09:01:00.000Z",
+        },
+      },
+    })
+
+    const response = await POST(
+      buildRequest({
+        requestedBy: { kind: "service", id: "agentic" },
+        idempotencyKey: "same-agentic-run",
+      }),
+      {
+        params: Promise.resolve({ id: "automation-1" }),
+      },
+    )
+
+    expect(response.status).toBe(200)
+    expect(getAutomationRunByIdempotencyKeyMock).toHaveBeenCalledWith({
+      automationDocumentId: "automation-1",
+      idempotencyKey: "same-agentic-run",
+    })
+    expect(claimAutomationDryRunMock).not.toHaveBeenCalled()
+    expect(createAutomationRunMock).not.toHaveBeenCalled()
+    expect(enqueueAutomationRunMock).not.toHaveBeenCalled()
+    expect(completeAutomationRunMock).not.toHaveBeenCalled()
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      managerAutomationRunDocumentId: "run-existing",
+      status: "success",
+      summary: "Dry run complete.",
+    })
+  })
+
+  it("marks the run failed and releases the claim when completion persistence throws", async () => {
+    completeAutomationRunMock.mockRejectedValueOnce(
+      new Error("database timeout"),
+    )
+    markAutomationRunFailedIfInFlightMock.mockResolvedValueOnce(true)
+
+    const response = await POST(
+      buildRequest({
+        requestedBy: { kind: "service", id: "agentic" },
+        idempotencyKey: "agentic-run-1",
+      }),
+      {
+        params: Promise.resolve({ id: "automation-1" }),
+      },
+    )
+
+    expect(response.status).toBe(502)
+    expect(markAutomationRunFailedIfInFlightMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runDocumentId: "run-1",
+        error: "database timeout",
+      }),
+    )
+    expect(releaseAutomationDryRunClaimMock).toHaveBeenCalledWith(
+      "automation-1",
+      "lease-1",
+    )
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      code: "dry_run_failed",
     })
   })
 })

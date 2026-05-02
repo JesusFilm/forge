@@ -5,6 +5,17 @@ const MOCK_STRAPI_URL = "http://mock-cms.invalid"
 const MOCK_STRAPI_API_TOKEN = "mock-api-token"
 const MOCK_SESSION_SECRET_SENTINEL = "__manager_mock_session_secret_required__"
 
+function assertDistinctConfiguredSecrets(
+  leftName: string,
+  leftValue: string | undefined,
+  rightName: string,
+  rightValue: string | undefined,
+) {
+  if (leftValue && rightValue && leftValue === rightValue) {
+    throw new Error(`${leftName} and ${rightName} must be different`)
+  }
+}
+
 export const env = createEnv({
   server: {
     MANAGER_DATA_MODE: z.enum(["live", "mock"]).default("live"),
@@ -135,3 +146,16 @@ if (
     "MANAGER_MOCK_SESSION_SECRET is required when MANAGER_DATA_MODE=mock",
   )
 }
+
+assertDistinctConfiguredSecrets(
+  "MANAGER_AGENTIC_API_KEY",
+  env.MANAGER_AGENTIC_API_KEY,
+  "MANAGER_API_KEY",
+  env.MANAGER_API_KEY,
+)
+assertDistinctConfiguredSecrets(
+  "MANAGER_AGENTIC_API_KEY",
+  env.MANAGER_AGENTIC_API_KEY,
+  "AGENTIC_SERVICE_API_KEY",
+  env.AGENTIC_SERVICE_API_KEY,
+)

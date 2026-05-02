@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import { ChromeButton, formatTime } from "./ChromeButton"
@@ -17,10 +18,20 @@ export function HeroPlayerControls({
   player,
   playerRef,
   wrapperRef,
+  overlayAnchor,
 }: {
   player: MuxPlayerRef | null
   playerRef: React.RefObject<MuxPlayerRef | null>
   wrapperRef: React.RefObject<HTMLDivElement | null>
+  /**
+   * Out-of-flow anchor (zero-height div right after the sticky hero) into
+   * which the chrome control bar is portaled, so the bar slides up with the
+   * body section instead of being trapped at the sticky hero's pinned
+   * bottom and covered by the sliding body. The parent always renders the
+   * anchor div before this component mounts (gated on `chromeRevealed`),
+   * so this is null for one render at most before the ref callback fires.
+   */
+  overlayAnchor: HTMLDivElement | null
 }) {
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
@@ -151,26 +162,33 @@ export function HeroPlayerControls({
     }
   }, [playing, hoveringControls, scheduleHide])
 
-  // Reveal chrome on any user interaction inside the player wrapper.
-  // pointermove unifies mouse + pen + touch; keydown keeps chrome up while
-  // arrow-key seeking the timeline or volume slider.
+  // Reveal chrome on any user interaction inside the player wrapper OR on
+  // the overlay anchor (where the chrome bar is portaled). Native listeners
+  // only see events bubbling through their own DOM subtree; without binding
+  // to the anchor, hovering / keyboard-focusing the portaled chrome bar
+  // never triggers reveal, and the bar can't be re-summoned after auto-hide.
   useEffect(() => {
-    const wrapper = wrapperRef.current
-    if (!wrapper) return
     const reveal = () => showControls()
-    wrapper.addEventListener("pointermove", reveal)
-    wrapper.addEventListener("touchmove", reveal)
-    wrapper.addEventListener("touchstart", reveal)
-    wrapper.addEventListener("click", reveal)
-    wrapper.addEventListener("keydown", reveal)
-    return () => {
-      wrapper.removeEventListener("pointermove", reveal)
-      wrapper.removeEventListener("touchmove", reveal)
-      wrapper.removeEventListener("touchstart", reveal)
-      wrapper.removeEventListener("click", reveal)
-      wrapper.removeEventListener("keydown", reveal)
+    const targets = [wrapperRef.current, overlayAnchor].filter(
+      (t): t is HTMLDivElement => t != null,
+    )
+    for (const target of targets) {
+      target.addEventListener("pointermove", reveal)
+      target.addEventListener("touchmove", reveal)
+      target.addEventListener("touchstart", reveal)
+      target.addEventListener("click", reveal)
+      target.addEventListener("keydown", reveal)
     }
-  }, [wrapperRef, showControls])
+    return () => {
+      for (const target of targets) {
+        target.removeEventListener("pointermove", reveal)
+        target.removeEventListener("touchmove", reveal)
+        target.removeEventListener("touchstart", reveal)
+        target.removeEventListener("click", reveal)
+        target.removeEventListener("keydown", reveal)
+      }
+    }
+  }, [wrapperRef, overlayAnchor, showControls])
 
   // Hide the OS cursor when chrome auto-hides — sibling cursor styles aren't
   // enough to win over mux-player's own shadow-DOM styling, so set cursor on
@@ -392,6 +410,133 @@ export function HeroPlayerControls({
   const progressPct =
     duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0
 
+  // Chrome control bar — portaled into the overlay anchor (just below the
+  // sticky hero) so it rides on the body section's top edge as the body
+  // slides up over the pinned hero, matching the title-overlay behavior.
+  const chromeBar = (
+    <div
+      data-testid="hero-player-custom-chrome"
+      data-visible={controlsVisible ? "true" : "false"}
+      onMouseEnter={() => setHoveringControls(true)}
+      onMouseLeave={() => setHoveringControls(false)}
+      className={`absolute bottom-0 left-1/2 z-10 flex w-3/5 -translate-x-1/2 items-center gap-3 pb-6 transition-opacity duration-300 md:gap-4 md:pb-7 ${
+        controlsVisible ? "opacity-100" : "opacity-0"
+      }`}
+    >
+      <ChromeButton
+        onClick={togglePlay}
+        ariaLabel={playing ? "Pause" : "Play"}
+        testId="hero-chrome-play"
+      >
+        {playing ? <PauseIcon /> : <PlayIcon />}
+      </ChromeButton>
+
+      <div
+        ref={timelineRef}
+        role="slider"
+        tabIndex={0}
+        aria-label="Seek"
+        aria-valuemin={0}
+        aria-valuemax={Math.max(0, Math.floor(duration))}
+        aria-valuenow={Math.floor(currentTime)}
+        aria-valuetext={`${formatTime(currentTime)} of ${formatTime(duration)}`}
+        data-testid="hero-chrome-timeline"
+        onClick={handleTimelineClick}
+        onKeyDown={handleTimelineKey}
+        className="group relative h-1 flex-1 cursor-pointer rounded-full bg-white/20 focus:ring-2 focus:ring-white/60 focus:outline-none"
+      >
+        <div
+          className="absolute inset-y-0 left-0 rounded-l-full bg-white/40"
+          style={{ width: `${bufferedPct}%` }}
+        />
+        <div
+          className="absolute inset-y-0 left-0 rounded-l-full bg-[#cb333b]"
+          style={{ width: `${progressPct}%` }}
+        />
+        <div
+          className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#cb333b] opacity-0 shadow transition group-hover:opacity-100 group-focus:opacity-100"
+          style={{ left: `${progressPct}%` }}
+        />
+      </div>
+
+      <div
+        data-testid="hero-chrome-time"
+        data-current-time={Math.floor(currentTime)}
+        data-duration={Math.floor(duration)}
+        className="shrink-0 text-sm font-medium tabular-nums text-white drop-shadow md:text-base"
+      >
+        {formatTime(currentTime)} / {formatTime(duration)}
+      </div>
+
+      <div
+        className="relative flex shrink-0 items-center"
+        onMouseEnter={() => setVolumeOpen(true)}
+        onMouseLeave={() => setVolumeOpen(false)}
+        onFocus={() => setVolumeOpen(true)}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+            setVolumeOpen(false)
+          }
+        }}
+      >
+        <ChromeButton
+          onClick={toggleMute}
+          ariaLabel={muted || volume === 0 ? "Unmute" : "Mute"}
+          testId="hero-chrome-mute"
+        >
+          {muted || volume === 0 ? <ChromeMutedIcon /> : <ChromeVolumeIcon />}
+        </ChromeButton>
+        <div
+          data-testid="hero-chrome-volume-container"
+          data-open={volumeOpen || volumeDragging ? "true" : "false"}
+          className={`overflow-hidden transition-[width,margin] duration-200 ease-out ${
+            volumeOpen || volumeDragging ? "ml-2 w-24" : "ml-0 w-0"
+          }`}
+        >
+          <div
+            ref={volumeTrackRef}
+            role="slider"
+            tabIndex={0}
+            aria-label="Volume"
+            data-testid="hero-chrome-volume-slider"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round((muted ? 0 : volume) * 100)}
+            aria-valuetext={`${Math.round((muted ? 0 : volume) * 100)} percent`}
+            onPointerDown={handleVolumePointerDown}
+            onPointerMove={handleVolumePointerMove}
+            onPointerUp={handleVolumePointerUp}
+            onPointerCancel={handleVolumePointerUp}
+            onLostPointerCapture={handleVolumeLostPointerCapture}
+            onKeyDown={handleVolumeKey}
+            className="group relative h-1 w-full cursor-pointer touch-none rounded-full bg-white/20 focus:ring-2 focus:ring-white/60 focus:outline-none"
+          >
+            <div
+              className="absolute inset-y-0 left-0 rounded-l-full bg-white"
+              style={{ width: `${(muted ? 0 : volume) * 100}%` }}
+            />
+            <div
+              className={`absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow transition ${
+                muted || volume === 0
+                  ? "opacity-0"
+                  : "opacity-0 group-hover:opacity-100 group-focus:opacity-100"
+              }`}
+              style={{ left: `${(muted ? 0 : volume) * 100}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <ChromeButton
+        onClick={toggleFullscreen}
+        ariaLabel={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        testId="hero-chrome-fullscreen"
+      >
+        {isFullscreen ? <ExitFullscreenIcon /> : <EnterFullscreenIcon />}
+      </ChromeButton>
+    </div>
+  )
+
   return (
     <>
       {/* Click target only — the canonical "Play/Pause" affordance for AT
@@ -417,127 +562,7 @@ export function HeroPlayerControls({
       {/* Chrome stays pointer-active even when invisible so agent-driven and
           keyboard interactions reach the controls — the wrapper-level reveal
           listeners then bring it back to opacity-100 on the next interaction. */}
-      <div
-        data-testid="hero-player-custom-chrome"
-        data-visible={controlsVisible ? "true" : "false"}
-        onMouseEnter={() => setHoveringControls(true)}
-        onMouseLeave={() => setHoveringControls(false)}
-        className={`absolute bottom-0 left-1/2 z-10 flex w-3/5 -translate-x-1/2 items-center gap-3 pb-6 transition-opacity duration-300 md:gap-4 md:pb-7 ${
-          controlsVisible ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        <ChromeButton
-          onClick={togglePlay}
-          ariaLabel={playing ? "Pause" : "Play"}
-          testId="hero-chrome-play"
-        >
-          {playing ? <PauseIcon /> : <PlayIcon />}
-        </ChromeButton>
-
-        <div
-          ref={timelineRef}
-          role="slider"
-          tabIndex={0}
-          aria-label="Seek"
-          aria-valuemin={0}
-          aria-valuemax={Math.max(0, Math.floor(duration))}
-          aria-valuenow={Math.floor(currentTime)}
-          aria-valuetext={`${formatTime(currentTime)} of ${formatTime(duration)}`}
-          data-testid="hero-chrome-timeline"
-          onClick={handleTimelineClick}
-          onKeyDown={handleTimelineKey}
-          className="group relative h-1 flex-1 cursor-pointer rounded-full bg-white/20 focus:ring-2 focus:ring-white/60 focus:outline-none"
-        >
-          <div
-            className="absolute inset-y-0 left-0 rounded-l-full bg-white/40"
-            style={{ width: `${bufferedPct}%` }}
-          />
-          <div
-            className="absolute inset-y-0 left-0 rounded-l-full bg-[#cb333b]"
-            style={{ width: `${progressPct}%` }}
-          />
-          <div
-            className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#cb333b] opacity-0 shadow transition group-hover:opacity-100 group-focus:opacity-100"
-            style={{ left: `${progressPct}%` }}
-          />
-        </div>
-
-        <div
-          data-testid="hero-chrome-time"
-          data-current-time={Math.floor(currentTime)}
-          data-duration={Math.floor(duration)}
-          className="shrink-0 text-sm font-medium tabular-nums text-white drop-shadow md:text-base"
-        >
-          {formatTime(currentTime)} / {formatTime(duration)}
-        </div>
-
-        <div
-          className="relative flex shrink-0 items-center"
-          onMouseEnter={() => setVolumeOpen(true)}
-          onMouseLeave={() => setVolumeOpen(false)}
-          onFocus={() => setVolumeOpen(true)}
-          onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-              setVolumeOpen(false)
-            }
-          }}
-        >
-          <ChromeButton
-            onClick={toggleMute}
-            ariaLabel={muted || volume === 0 ? "Unmute" : "Mute"}
-            testId="hero-chrome-mute"
-          >
-            {muted || volume === 0 ? <ChromeMutedIcon /> : <ChromeVolumeIcon />}
-          </ChromeButton>
-          <div
-            data-testid="hero-chrome-volume-container"
-            data-open={volumeOpen || volumeDragging ? "true" : "false"}
-            className={`overflow-hidden transition-[width,margin] duration-200 ease-out ${
-              volumeOpen || volumeDragging ? "ml-2 w-24" : "ml-0 w-0"
-            }`}
-          >
-            <div
-              ref={volumeTrackRef}
-              role="slider"
-              tabIndex={0}
-              aria-label="Volume"
-              data-testid="hero-chrome-volume-slider"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round((muted ? 0 : volume) * 100)}
-              aria-valuetext={`${Math.round((muted ? 0 : volume) * 100)} percent`}
-              onPointerDown={handleVolumePointerDown}
-              onPointerMove={handleVolumePointerMove}
-              onPointerUp={handleVolumePointerUp}
-              onPointerCancel={handleVolumePointerUp}
-              onLostPointerCapture={handleVolumeLostPointerCapture}
-              onKeyDown={handleVolumeKey}
-              className="group relative h-1 w-full cursor-pointer touch-none rounded-full bg-white/20 focus:ring-2 focus:ring-white/60 focus:outline-none"
-            >
-              <div
-                className="absolute inset-y-0 left-0 rounded-l-full bg-white"
-                style={{ width: `${(muted ? 0 : volume) * 100}%` }}
-              />
-              <div
-                className={`absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow transition ${
-                  muted || volume === 0
-                    ? "opacity-0"
-                    : "opacity-0 group-hover:opacity-100 group-focus:opacity-100"
-                }`}
-                style={{ left: `${(muted ? 0 : volume) * 100}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
-        <ChromeButton
-          onClick={toggleFullscreen}
-          ariaLabel={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-          testId="hero-chrome-fullscreen"
-        >
-          {isFullscreen ? <ExitFullscreenIcon /> : <EnterFullscreenIcon />}
-        </ChromeButton>
-      </div>
+      {overlayAnchor != null ? createPortal(chromeBar, overlayAnchor) : null}
     </>
   )
 }

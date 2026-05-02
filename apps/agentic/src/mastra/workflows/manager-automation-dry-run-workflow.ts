@@ -9,6 +9,7 @@ import {
 import {
   callManagerDryRunEndpoint,
   createManagerAutomationDryRunTool,
+  ManagerDryRunRequestError,
   type ManagerDryRunToolDependencies,
 } from "@/mastra/tools/manager-automation-dry-run-tool"
 
@@ -36,7 +37,15 @@ export async function launchManagerAutomationDryRunWorkflow(
       reportUrl: managerResult.reportUrl,
       summary: managerResult.summary,
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof ManagerDryRunRequestError) {
+      return {
+        ok: false,
+        code: error.code,
+        message: error.message,
+      }
+    }
+
     return {
       ok: false,
       code: "manager_unavailable",
