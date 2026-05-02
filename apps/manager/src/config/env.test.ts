@@ -6,6 +6,14 @@ const REQUIRED_BASE_ENV = {
   OPENROUTER_API_KEY: "openrouter-key",
 }
 
+function stubMockModeEnv() {
+  vi.stubEnv("MANAGER_DATA_MODE", "mock")
+  vi.stubEnv("MUX_TOKEN_ID", REQUIRED_BASE_ENV.MUX_TOKEN_ID)
+  vi.stubEnv("MUX_TOKEN_SECRET", REQUIRED_BASE_ENV.MUX_TOKEN_SECRET)
+  vi.stubEnv("OPENROUTER_API_KEY", REQUIRED_BASE_ENV.OPENROUTER_API_KEY)
+  vi.stubEnv("MANAGER_MOCK_SESSION_SECRET", "mock-session-secret")
+}
+
 describe("manager env mode validation", () => {
   afterEach(() => {
     vi.unstubAllEnvs()
@@ -38,11 +46,7 @@ describe("manager env mode validation", () => {
   })
 
   it("allows mock mode without Strapi settings", async () => {
-    vi.stubEnv("MANAGER_DATA_MODE", "mock")
-    vi.stubEnv("MUX_TOKEN_ID", REQUIRED_BASE_ENV.MUX_TOKEN_ID)
-    vi.stubEnv("MUX_TOKEN_SECRET", REQUIRED_BASE_ENV.MUX_TOKEN_SECRET)
-    vi.stubEnv("OPENROUTER_API_KEY", REQUIRED_BASE_ENV.OPENROUTER_API_KEY)
-    vi.stubEnv("MANAGER_MOCK_SESSION_SECRET", "mock-session-secret")
+    stubMockModeEnv()
     delete process.env.STRAPI_URL
     delete process.env.STRAPI_API_TOKEN
 
@@ -50,5 +54,25 @@ describe("manager env mode validation", () => {
 
     expect(env.MANAGER_DATA_MODE).toBe("mock")
     expect(env.MANAGER_MOCK_DATA_PATH).toBe(".tmp/mock-cms/store.json")
+  })
+
+  it("rejects reused Manager API and Agentic callback tokens", async () => {
+    stubMockModeEnv()
+    vi.stubEnv("MANAGER_API_KEY", "shared-manager-token")
+    vi.stubEnv("MANAGER_AGENTIC_API_KEY", "shared-manager-token")
+
+    await expect(import("./env")).rejects.toThrow(
+      "MANAGER_AGENTIC_API_KEY and MANAGER_API_KEY must be different",
+    )
+  })
+
+  it("rejects reused Manager callback and Agentic service tokens", async () => {
+    stubMockModeEnv()
+    vi.stubEnv("MANAGER_AGENTIC_API_KEY", "shared-agentic-token")
+    vi.stubEnv("AGENTIC_SERVICE_API_KEY", "shared-agentic-token")
+
+    await expect(import("./env")).rejects.toThrow(
+      "MANAGER_AGENTIC_API_KEY and AGENTIC_SERVICE_API_KEY must be different",
+    )
   })
 })

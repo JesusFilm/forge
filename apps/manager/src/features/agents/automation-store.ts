@@ -25,6 +25,7 @@ type RawAutomationRun = {
   documentId: string
   status: AutomationRunStatus
   runMode?: AutomationRunMode | null
+  idempotencyKey?: string | null
   scheduledFor: string
   startedAt?: string | null
   finishedAt?: string | null
@@ -69,6 +70,7 @@ const AUTOMATION_RUN_FIELDS = gql`
     documentId
     status
     runMode
+    idempotencyKey
     scheduledFor
     startedAt
     finishedAt
@@ -132,6 +134,25 @@ const GET_AUTOMATION = gql`
 const GET_AUTOMATION_RUN = gql`
   query GetEnrichmentAutomationRun($documentId: ID!) {
     enrichmentAutomationRun(documentId: $documentId) {
+      ...AutomationRunFields
+    }
+  }
+  ${AUTOMATION_RUN_FIELDS}
+`
+
+const GET_AUTOMATION_RUN_BY_IDEMPOTENCY_KEY = gql`
+  query GetEnrichmentAutomationRunByIdempotencyKey(
+    $automationDocumentId: ID!
+    $idempotencyKey: String!
+  ) {
+    enrichmentAutomationRuns(
+      filters: {
+        automation: { documentId: { eq: $automationDocumentId } }
+        idempotencyKey: { eq: $idempotencyKey }
+      }
+      sort: ["startedAt:desc"]
+      pagination: { pageSize: 1 }
+    ) {
       ...AutomationRunFields
     }
   }
@@ -275,6 +296,7 @@ function normalizeRun(run: RawAutomationRun): EnrichmentAutomationRun {
     documentId: run.documentId,
     status: run.status,
     runMode: normalizeRunMode(run.runMode),
+    idempotencyKey: run.idempotencyKey,
     scheduledFor: run.scheduledFor,
     startedAt: run.startedAt,
     finishedAt: run.finishedAt,
@@ -379,6 +401,40 @@ export async function getAutomationRun(
   })
 
   const run = result.data?.enrichmentAutomationRun
+  return run ? normalizeRun(run) : null
+}
+
+export async function getAutomationRunByIdempotencyKey(input: {
+  automationDocumentId: string
+  idempotencyKey: string
+}): Promise<EnrichmentAutomationRun | null> {
+  const mockState = await readMockCmsState(getCmsGateway())
+  if (mockState) {
+    const automation = mockState.readModels.automations.find(
+      (candidate) => candidate.documentId === input.automationDocumentId,
+    )
+    return (
+      automation?.runs.find(
+        (run) => run.idempotencyKey === input.idempotencyKey,
+      ) ?? null
+    )
+  }
+
+  const client = getClient()
+  const result = await client.query<{
+    enrichmentAutomationRuns?: Array<RawAutomationRun | null>
+  }>({
+    query: GET_AUTOMATION_RUN_BY_IDEMPOTENCY_KEY,
+    variables: {
+      automationDocumentId: input.automationDocumentId,
+      idempotencyKey: input.idempotencyKey,
+    },
+    fetchPolicy: "no-cache",
+  })
+
+  const run = (result.data?.enrichmentAutomationRuns ?? []).find(
+    (candidate): candidate is RawAutomationRun => candidate != null,
+  )
   return run ? normalizeRun(run) : null
 }
 
@@ -643,6 +699,7 @@ export async function createAutomationRun(input: {
   runMode: AutomationRunMode
   scheduledFor: string
   startedAt: string
+  idempotencyKey?: string
 }): Promise<EnrichmentAutomationRun> {
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)
@@ -656,6 +713,7 @@ export async function createAutomationRun(input: {
       ),
       status: "running",
       runMode: input.runMode,
+      idempotencyKey: input.idempotencyKey ?? null,
       scheduledFor: input.scheduledFor,
       startedAt: input.startedAt,
       finishedAt: null,
@@ -691,6 +749,11 @@ export async function createAutomationRun(input: {
         automation: input.automationDocumentId,
         status: "running",
         runMode: input.runMode,
+        ...(input.idempotencyKey
+          ? {
+              idempotencyKey: input.idempotencyKey,
+            }
+          : {}),
         scheduledFor: input.scheduledFor,
         startedAt: input.startedAt,
         eligibleCount: 0,
