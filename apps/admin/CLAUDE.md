@@ -885,14 +885,27 @@ This is an **extension of R4**, not a new R-stage. The cms-side
 window; admin's surface matches the cms-side contract by R8 cutover.
 
 - **Schema:** Migration `0009_keyword_first_lexical/migration.sql`
-  provisions `pg_trgm`, two STORED generated tsvector columns on
-  `video_locale` (`title_tsv`, `description_tsv`), a weighted GIN
-  index over `(setweight(title_tsv,'A') || setweight(description_tsv,'B'))`,
-  and a trigram GIN index on `title gin_trgm_ops`. Generated columns
-  - GIN indexes attach to `VideoLocale`, NOT `Video` (per-locale
-    attachment per admin's data model). The legacy R4
-    `video_locale_fulltext_search_idx` from `0006` is untouched —
-    hybrid mode keeps reading it via `searchVideoKeyword`.
+  originally provisioned `pg_trgm`, two STORED generated tsvector
+  columns on `video_locale` (`title_tsv`, `description_tsv`), a
+  weighted GIN index over `(setweight(title_tsv,'A') ||
+setweight(description_tsv,'B'))`, and a trigram GIN index on
+  `title gin_trgm_ops`. Migration
+  `0010_camelcase_tsv_and_description_trigram` then DROP-CASCADEd
+  the generated columns and recreated them with a CamelCase-split
+  `regexp_replace` wrapper before `to_tsvector` (so `BibleProject`
+  tokenizes as `bible` + `project`, not just `bibleproject`),
+  recreated the weighted GIN index, and added a second trigram GIN
+  index on `description gin_trgm_ops`. **As of 0010:** generated
+  columns are owned by 0010, the title trigram index from 0009 is
+  untouched, and there are now TWO trigram indexes
+  (`video_locale_title_trgm_idx`, `video_locale_description_trgm_idx`).
+  Generated columns + GIN indexes attach to `VideoLocale`, NOT
+  `Video` (per-locale attachment per admin's data model). The legacy
+  R4 `video_locale_fulltext_search_idx` from `0006` is untouched —
+  hybrid mode keeps reading it via `searchVideoKeyword`, which is
+  why hybrid mode stays byte-identical to R4 even after 0010
+  changed the keyword-first tokenization. See
+  `docs/plans/2026-05-02-001-fix-keyword-first-camelcase-recall-plan.md`.
 
 - **Byte-parity invariant:** `WEIGHTED_TSV_INDEX_EXPR` /
   `WEIGHTED_TSV_QUERY_EXPR` / `TITLE_TSV_GENERATED_EXPR` /
@@ -915,8 +928,16 @@ ADD COLUMN ... GENERATED ALWAYS AS (...)` migration. Per
     `websearch_to_tsquery('simple', q)`, ranked by `ts_rank_cd`
     against the weighted tsvector. `Prisma.raw(WEIGHTED_TSV_QUERY_EXPR)`
     for the unbindable expression fragment.
-  - `searchByTrigram` — `vl.title %> q` with `similarity(vl.title, q)`
-    ranking. Title-only (description trigram index would balloon).
+  - `searchByTrigram` — `vl.title %> q OR vl.description %> q`
+    with ranking by
+    `GREATEST(similarity(vl.title, q), similarity(coalesce(vl.description, ''), q))`.
+    Per-row dedup via `DISTINCT ON (v.id)` collapses rows that match
+    via both fields. Backed by `video_locale_title_trgm_idx` (from 0009) and `video_locale_description_trgm_idx` (from 0010). The
+    description-side index is heavier than the title-side; current
+    catalog is 0 rows in prod, so the precaution that gated R4 on
+    title-only no longer applies — but capture
+    `pg_relation_size('video_locale_description_trgm_idx')` once R0
+    backfill lands and revisit if it grows beyond a few hundred MB.
   - `searchByExactTitle` — dynamic AND-chain of `vl.title ILIKE ?`
     via `Prisma.join`, ranked `LENGTH(title) ASC`. Tokenization is
     Unicode letter / digit split, lowercased, deduped, **capped at
@@ -988,12 +1009,18 @@ ADD COLUMN ... GENERATED ALWAYS AS (...)` migration. Per
 
 **Operational runbook:**
 
-1. Apply migration `0009_keyword_first_lexical` in any environment
+1. Apply migrations `0009_keyword_first_lexical` and
+   `0010_camelcase_tsv_and_description_trigram` in any environment
    that wants keyword-first available. `prisma migrate dev` /
-   `prisma migrate deploy` is idempotent. The two new GIN indexes
-   add disk + write amplification proportional to corpus size; cost
-   is negligible at admin's current zero-row prod data and grows
-   when R0 backfills.
+   `prisma migrate deploy` is idempotent against `_prisma_migrations`.
+   **Re-applying 0010 manually against a populated `video_locale` is
+   destructive** — DROP CASCADE removes the columns and the rebuild
+   takes AccessExclusiveLock. Treat fixes as forward-only
+   counter-migrations, never `migrate resolve --rolled-back` 0010
+   once R0 has populated the table. The three GIN indexes
+   (weighted, title trgm, description trgm) add disk + write
+   amplification proportional to corpus size; cost is negligible at
+   admin's current zero-row prod data and grows when R0 backfills.
 2. Confirm `pg_trgm` extension permission on the prod DB role.
    First migration that needs it; older R0–R5 migrations don't.
 3. To opt in via REST, append `?mode=keyword-first`. To opt in via
@@ -1011,9 +1038,14 @@ setweight(vl.description_tsv,'B') @@
 websearch_to_tsquery('simple', 'jesus') AND vl.locale = 'en'
 LIMIT 10;`
    should show `Bitmap Index Scan on
-video_locale_lexical_weighted_idx`. Trigram probe:
-   `… WHERE vl.title %> 'jesus' …` should show
-   `video_locale_title_trgm_idx`.
+video_locale_lexical_weighted_idx`. Trigram probe (post-0010, both
+   title and description halves should appear in the plan via
+   `BitmapOr`):
+   `… WHERE (vl.title %> 'jesus' OR vl.description %> 'jesus') …`
+   should show `BitmapOr` over `video_locale_title_trgm_idx` and
+   `video_locale_description_trgm_idx`. On an empty corpus the
+   planner correctly prefers Seq Scan; the BitmapOr plan only
+   matters once data lands. Re-run this probe at R0 readiness.
 6. R0 dependency: admin's `video` / `video_locale` tables are 0 rows
    in prod. Real-DB integration tests (canary diff vs cms keyword-first,
    EXPLAIN-based GIN verification) are deferred to R0 readiness.
