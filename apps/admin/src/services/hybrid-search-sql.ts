@@ -120,24 +120,36 @@ export const EXPERIENCE_LOCALE_TSVECTOR_QUERY_EXPR =
 /**
  * Generated-column expression for `video_locale.title_tsv`.
  *
- * Used by `prisma/migrations/0009_keyword_first_lexical/migration.sql`
- * inside `ALTER TABLE video_locale ADD COLUMN title_tsv tsvector
- * GENERATED ALWAYS AS (<expr>) STORED`. Must appear byte-equal in the
- * migration. Service code never references this expression directly —
- * the column it produces (`title_tsv`) is what queries read.
+ * Used by `prisma/migrations/0010_camelcase_tsv_and_description_trigram/migration.sql`
+ * (which superseded the original `0009_keyword_first_lexical/migration.sql`
+ * definition) inside `ALTER TABLE video_locale ADD COLUMN title_tsv
+ * tsvector GENERATED ALWAYS AS (<expr>) STORED`. Must appear byte-equal
+ * in the migration. Service code never references this expression
+ * directly — the column it produces (`title_tsv`) is what queries read.
+ *
+ * The `regexp_replace` injects a space at every camelCase boundary
+ * (`BibleProject` → `Bible Project`) BEFORE `to_tsvector` runs, so the
+ * single lexeme `bibleproject` becomes the two lexemes `bible` + `project`
+ * and a user query of `"the bible project"` (which
+ * `websearch_to_tsquery` parses as `'the' & 'bible' & 'project'`)
+ * matches descriptions where the brand is written joined-form. Regex
+ * is the conservative `([a-z])([A-Z])` form: preserves all-caps
+ * acronyms like `YHWH` / `LORD` intact while still splitting
+ * two-segment CamelCase. See
+ * `docs/plans/2026-05-02-001-fix-keyword-first-camelcase-recall-plan.md`.
  */
 export const TITLE_TSV_GENERATED_EXPR =
-  "to_tsvector('simple', coalesce(title, ''))"
+  "to_tsvector('simple', regexp_replace(coalesce(title, ''), '([a-z])([A-Z])', '\\1 \\2', 'g'))"
 
 /**
  * Generated-column expression for `video_locale.description_tsv`.
  *
- * Same byte-parity contract as `TITLE_TSV_GENERATED_EXPR`. Service
- * code reads the resulting `description_tsv` column rather than
- * recomputing the expression.
+ * Same byte-parity contract as `TITLE_TSV_GENERATED_EXPR`, same
+ * CamelCase-split rationale. Service code reads the resulting
+ * `description_tsv` column rather than recomputing the expression.
  */
 export const DESCRIPTION_TSV_GENERATED_EXPR =
-  "to_tsvector('simple', coalesce(description, ''))"
+  "to_tsvector('simple', regexp_replace(coalesce(description, ''), '([a-z])([A-Z])', '\\1 \\2', 'g'))"
 
 /**
  * Per-field weighted tsvector expression, INDEX form (bare columns).
@@ -181,3 +193,18 @@ export const VIDEO_LOCALE_LEXICAL_WEIGHTED_INDEX_NAME =
  * runbooks share one canonical name.
  */
 export const VIDEO_LOCALE_TITLE_TRGM_INDEX_NAME = "video_locale_title_trgm_idx"
+
+/**
+ * Index name for the trigram GIN index on `video_locale.description`.
+ *
+ * Provisioned by
+ * `0010_camelcase_tsv_and_description_trigram/migration.sql`. Backs the
+ * description-side of `searchByTrigram` (`vl.description %> q`), which
+ * the planner picks up by operator-class match — production code never
+ * names the index. **Exported only so the byte-parity test can assert
+ * the migration creates the index under a name we control; no
+ * production consumer references this constant.** Same shape as
+ * `VIDEO_LOCALE_TITLE_TRGM_INDEX_NAME` (also test-only).
+ */
+export const VIDEO_LOCALE_DESCRIPTION_TRGM_INDEX_NAME =
+  "video_locale_description_trgm_idx"

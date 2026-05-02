@@ -23,6 +23,10 @@
       "default": "live",
       "required": true
     },
+    "idempotencyKey": {
+      "type": "string",
+      "unique": true
+    },
     "status": {
       "type": "enumeration",
       "enum": ["claimed", "running", "success", "partial", "failed", "no_op"],

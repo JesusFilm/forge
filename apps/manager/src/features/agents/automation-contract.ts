@@ -90,6 +90,7 @@ export type EnrichmentAutomationRun = {
   documentId: string
   status: AutomationRunStatus
   runMode: AutomationRunMode
+  idempotencyKey?: string | null
   scheduledFor: string
   startedAt?: string | null
   finishedAt?: string | null

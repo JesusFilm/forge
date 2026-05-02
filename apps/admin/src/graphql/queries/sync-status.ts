@@ -1,8 +1,17 @@
 // systemStatus query — exposes per-phase sync watermarks and lag.
-// triggerSync mutation — ADMIN-only, kicks off a Core sync run.
+// triggerSync mutation — ADMIN-only, enqueues a Core sync run.
 
 import { builder } from "@/graphql/builder"
-import { getSyncStatus, runSync } from "@/services/core-sync/orchestrator"
+import { getSyncStatus } from "@/services/core-sync/orchestrator"
+import { dispatchCoreSync } from "@/services/core-sync/job"
+
+export function parseSyncScopeArg(scope?: string | null): string[] | undefined {
+  if (!scope) return undefined
+  return scope
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
 
 builder.queryFields((t) => ({
   systemStatus: t.field({
@@ -19,7 +28,7 @@ builder.mutationFields((t) => ({
     type: "JSON",
     authScopes: { hasPermission: "system:trigger-workflow" },
     description:
-      "Trigger a Core sync run. ADMIN only. Returns sync result with per-phase stats.",
+      "Enqueue a Core sync run. ADMIN only. Returns workflow dispatch metadata.",
     args: {
       scope: t.arg.string({
         required: false,
@@ -29,12 +38,11 @@ builder.mutationFields((t) => ({
       incremental: t.arg.boolean({ required: false, defaultValue: true }),
     },
     resolve: async (_root, args, ctx) => {
-      const scope = args.scope
-        ? args.scope.split(",").map((s) => s.trim())
-        : undefined
-      return runSync(ctx.prisma, {
-        scope,
+      void ctx
+      return dispatchCoreSync({
+        scope: parseSyncScopeArg(args.scope),
         incremental: args.incremental ?? true,
+        trigger: "graphql",
       })
     },
   }),

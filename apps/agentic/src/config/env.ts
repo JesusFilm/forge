@@ -13,12 +13,14 @@ const envInputSchema = z.object({
   AGENTIC_MODEL: z.string().optional(),
   AGENTIC_MODEL_PROVIDER: z.string().optional(),
   AGENTIC_MODEL_NAME: z.string().optional(),
+  AGENTIC_MANAGER_REQUEST_TIMEOUT_MS: z.string().optional(),
   MANAGER_BASE_URL: z.string().optional(),
   MANAGER_AGENTIC_API_KEY: z.string().optional(),
 })
 
 const requiredSecret = z.string().min(12)
 const ciAllowedSecret = z.string().min(1)
+const DEFAULT_MANAGER_REQUEST_TIMEOUT_MS = 60000
 
 export type AgenticEnv = {
   nodeEnv: string
@@ -30,8 +32,29 @@ export type AgenticEnv = {
   model: string
   managerBaseUrl: string
   managerAgenticApiKey: string
+  managerRequestTimeoutMs: number
   isProduction?: boolean
   isCi: boolean
+}
+
+function assertDistinctSecrets(
+  leftName: string,
+  leftValue: string,
+  rightName: string,
+  rightValue: string,
+) {
+  if (leftValue === rightValue) {
+    throw new Error(`${leftName} and ${rightName} must be different`)
+  }
+}
+
+function isRelativeFileStorageUrl(value: string): boolean {
+  return (
+    value === "file:." ||
+    value === "file:./" ||
+    value.startsWith("file:./") ||
+    value.startsWith("file:../")
+  )
 }
 
 export function parseAgenticEnv(
@@ -41,7 +64,7 @@ export function parseAgenticEnv(
   const nodeEnv = base.NODE_ENV ?? "development"
   const isProduction = base.NODE_ENV === "production"
   const isCi = base.CI === "true" || base.CI === "1"
-  const secretSchema = isProduction && !isCi ? requiredSecret : ciAllowedSecret
+  const secretSchema = isProduction ? requiredSecret : ciAllowedSecret
   const operatorApiKey =
     base.AGENTIC_OPERATOR_API_KEY ?? base.AGENTIC_OPERATOR_TOKEN
   const model =
@@ -58,8 +81,14 @@ export function parseAgenticEnv(
     throw new Error("AGENTIC_STORAGE_URL is required")
   }
 
-  if (isProduction && base.AGENTIC_STORAGE_URL === ":memory:") {
-    throw new Error("AGENTIC_STORAGE_URL must be durable in production")
+  if (isProduction) {
+    const storageUrl = base.AGENTIC_STORAGE_URL
+    if (
+      storageUrl === ":memory:" ||
+      (storageUrl && isRelativeFileStorageUrl(storageUrl))
+    ) {
+      throw new Error("AGENTIC_STORAGE_URL must be durable in production")
+    }
   }
 
   const schema = z.object({
@@ -71,6 +100,11 @@ export function parseAgenticEnv(
     AGENTIC_MODEL: z.string().min(1),
     MANAGER_BASE_URL: z.string().url(),
     MANAGER_AGENTIC_API_KEY: secretSchema,
+    AGENTIC_MANAGER_REQUEST_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(DEFAULT_MANAGER_REQUEST_TIMEOUT_MS),
   })
 
   const parsed = schema.parse({
@@ -79,6 +113,25 @@ export function parseAgenticEnv(
     AGENTIC_OPERATOR_API_KEY: operatorApiKey,
     AGENTIC_MODEL: model,
   })
+
+  assertDistinctSecrets(
+    "AGENTIC_SERVICE_API_KEY",
+    parsed.AGENTIC_SERVICE_API_KEY,
+    "AGENTIC_OPERATOR_API_KEY",
+    parsed.AGENTIC_OPERATOR_API_KEY,
+  )
+  assertDistinctSecrets(
+    "AGENTIC_OPERATOR_API_KEY",
+    parsed.AGENTIC_OPERATOR_API_KEY,
+    "MANAGER_AGENTIC_API_KEY",
+    parsed.MANAGER_AGENTIC_API_KEY,
+  )
+  assertDistinctSecrets(
+    "AGENTIC_SERVICE_API_KEY",
+    parsed.AGENTIC_SERVICE_API_KEY,
+    "MANAGER_AGENTIC_API_KEY",
+    parsed.MANAGER_AGENTIC_API_KEY,
+  )
 
   return {
     nodeEnv,
@@ -90,6 +143,7 @@ export function parseAgenticEnv(
     model: parsed.AGENTIC_MODEL,
     managerBaseUrl: parsed.MANAGER_BASE_URL.replace(/\/+$/, ""),
     managerAgenticApiKey: parsed.MANAGER_AGENTIC_API_KEY,
+    managerRequestTimeoutMs: parsed.AGENTIC_MANAGER_REQUEST_TIMEOUT_MS,
     isProduction,
     isCi,
   }
@@ -105,11 +159,11 @@ export function testAgenticEnv(): AgenticEnv {
   return loadAgenticEnv({
     CI: "true",
     NODE_ENV: "test",
-    AGENTIC_SERVICE_API_KEY: "ci-placeholder",
-    AGENTIC_OPERATOR_API_KEY: "ci-placeholder",
+    AGENTIC_SERVICE_API_KEY: "ci-agentic-service-key",
+    AGENTIC_OPERATOR_API_KEY: "ci-agentic-operator-key",
     AGENTIC_STORAGE_URL: ":memory:",
     AGENTIC_MODEL: "openai/gpt-5-mini",
     MANAGER_BASE_URL: "http://localhost:3002",
-    MANAGER_AGENTIC_API_KEY: "ci-placeholder",
+    MANAGER_AGENTIC_API_KEY: "ci-manager-agentic-key",
   })
 }

@@ -21,9 +21,12 @@ Required for all non-test boots:
 - `AGENTIC_MODEL`
 - `MANAGER_BASE_URL`
 - `MANAGER_AGENTIC_API_KEY`
+- `AGENTIC_MANAGER_REQUEST_TIMEOUT_MS` (optional, defaults to `60000`)
 
 Production rejects missing auth, storage, model, and Manager service config.
-CI may use placeholders from `.env.ci`.
+Production also rejects weak secrets, relative file storage, and `:memory:`
+storage even when `CI=true`. CI may use distinct placeholders from `.env.ci`;
+service, operator, and Manager callback tokens must not be reused.
 
 `AGENTIC_PORT` is the preferred explicit runtime port. If it is unset, the app
 falls back to Railway's `PORT` env var before using the local default `4111`.
@@ -59,8 +62,8 @@ contract.
 
 Mastra uses LibSQL storage via `AGENTIC_STORAGE_URL`. Local development may use a
 file URL such as `file:./.mastra/local.db`. Production must provision persistent
-storage if run/session history should survive deploys. Manager remains the
-operator-visible source for dry-run reports.
+storage; relative file URLs and `:memory:` are rejected in production. Manager
+remains the operator-visible source for dry-run reports.
 
 ## Deployment
 

@@ -31,13 +31,16 @@ const successStatusSchema = z.enum([
   "failed",
 ])
 
-const failureCodeSchema = z.enum([
+export const managerFailureCodeSchema = z.enum([
   "unauthorized",
   "not_found",
   "invalid_automation",
+  "run_in_progress",
   "manager_unavailable",
   "mastra_runtime_error",
 ])
+
+export type ManagerFailureCode = z.infer<typeof managerFailureCodeSchema>
 
 export const startManagerAutomationDryRunResponseSchema = z.discriminatedUnion(
   "ok",
@@ -52,7 +55,7 @@ export const startManagerAutomationDryRunResponseSchema = z.discriminatedUnion(
     }),
     z.object({
       ok: z.literal(false),
-      code: failureCodeSchema,
+      code: managerFailureCodeSchema,
       message: z.string().min(1),
     }),
   ],
@@ -78,7 +81,14 @@ export const managerDryRunResponseSchema = z.discriminatedUnion("ok", [
     ok: z.literal(true),
     automationDocumentId: z.string().min(1),
     managerAutomationRunDocumentId: z.string().min(1),
-    status: z.enum(["success", "no_op", "failed", "partial"]),
+    status: z.enum([
+      "queued",
+      "running",
+      "success",
+      "no_op",
+      "failed",
+      "partial",
+    ]),
     summary: z.string().min(1),
     reportUrl: z.string().min(1).optional(),
     report: z

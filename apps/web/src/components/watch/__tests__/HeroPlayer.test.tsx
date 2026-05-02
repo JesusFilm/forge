@@ -179,7 +179,7 @@ describe("HeroPlayer — initial mount", () => {
 })
 
 describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
-  it("synchronously assigns muted=false, currentTime=0, then calls play() inside the click task", async () => {
+  it("synchronously assigns muted=false then calls play() inside the click task — leaves currentTime alone so the muted-loop preview continues seamlessly", async () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -230,7 +230,7 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
       pill.click()
     })
 
-    expect(events).toEqual(["muted=false", "currentTime=0", "play()"])
+    expect(events).toEqual(["muted=false", "play()"])
     expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
   })
 
@@ -628,4 +628,156 @@ describe("HeroPlayer — auto-hide timer", () => {
   it.todo(
     "does not auto-hide while paused — needs mock listener-invocation upgrade so React state syncs to mock changes",
   )
+})
+
+// ---------------------------------------------------------------------------
+// Sticky-hero / portal layout (the scroll-over-hero refactor).
+// These tests cover what the visual refactor introduced: the chrome bar
+// gets portaled into the overlay anchor (not the sticky wrapper), the
+// tap-to-unmute branch leaves currentTime alone, and the sticky `top`
+// inline style is computed from the measured wrapper height.
+// ---------------------------------------------------------------------------
+
+describe("HeroPlayer — sticky-hero / portal layout", () => {
+  it("portals the chrome bar into the overlay anchor, not the sticky hero wrapper", async () => {
+    await revealChrome()
+    const chrome = container.querySelector(
+      '[data-testid="hero-player-custom-chrome"]',
+    )
+    const anchor = container.querySelector(
+      '[data-testid="hero-player-overlay-anchor"]',
+    )
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    expect(chrome).not.toBeNull()
+    expect(anchor).not.toBeNull()
+    expect(wrapper).not.toBeNull()
+    // Portal target — chrome bar lives under the zero-height anchor that
+    // scrolls with the body section, not under the sticky hero wrapper.
+    expect(anchor!.contains(chrome!)).toBe(true)
+    expect(wrapper!.contains(chrome!)).toBe(false)
+  })
+
+  it("tap-to-unmute branch calls play() without resetting currentTime", async () => {
+    // mockPlayerRef.current is null until the muxPlayerMock factory runs
+    // during render — so we have to render first, then swap play() to
+    // reject (driving the pill into 'tap-to-unmute' state on click 1).
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.play = vi.fn(() =>
+        Promise.reject(new Error("NotAllowedError")),
+      )
+    }
+
+    const pillFirst = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      pillFirst.click()
+    })
+
+    const pillNow = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    )
+    expect(pillNow).not.toBeNull()
+    expect(pillNow?.getAttribute("data-state")).toBe("tap-to-unmute")
+
+    // Phase 2: snapshot a non-zero playhead, swap play() back to resolve
+    // (so click 2 hits the tap-to-unmute branch's setChromeRevealed path),
+    // and trap any currentTime writes.
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.currentTime = 5.5
+      mockPlayerRef.current.play = vi.fn(() => Promise.resolve())
+    }
+    const events: string[] = []
+    if (mockPlayerRef.current) {
+      const player = mockPlayerRef.current
+      let currentTime = player.currentTime
+      Object.defineProperty(player, "currentTime", {
+        get: () => currentTime,
+        set: (v: number) => {
+          currentTime = v
+          events.push("currentTime=" + String(v))
+        },
+        configurable: true,
+      })
+    }
+
+    await act(async () => {
+      ;(pillNow as HTMLButtonElement).click()
+    })
+
+    // The tap-to-unmute branch must call play() but must NOT touch
+    // currentTime — resetting to 0 here is exactly the muted-preview
+    // restart the play-with-sound fix removed, and the same rule applies
+    // to the autoplay-blocked recovery path.
+    expect(events).toEqual([])
+    expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("computes sticky `top` from measured hero height once ResizeObserver fires", async () => {
+    // Stub ResizeObserver so we can trigger the height-update callback by
+    // hand. JSDOM ships without it; the component falls back to the initial
+    // getBoundingClientRect read (which returns 0 in JSDOM, so heroHeight
+    // stays null without this stub).
+    const callbacks: ResizeObserverCallback[] = []
+    class MockResizeObserver {
+      callback: ResizeObserverCallback
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback
+        callbacks.push(callback)
+      }
+      observe() {}
+      disconnect() {}
+      unobserve() {}
+    }
+    const originalRO = (
+      globalThis as { ResizeObserver?: typeof ResizeObserver }
+    ).ResizeObserver
+    ;(globalThis as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver =
+      MockResizeObserver as unknown as typeof ResizeObserver
+
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+
+      const wrapper = container.querySelector(
+        '[data-testid="hero-player-wrapper"]',
+      ) as HTMLDivElement
+      expect(wrapper).not.toBeNull()
+      // Pre-measurement: heroHeight is null, top falls back to "0px".
+      expect(wrapper.style.top).toBe("0px")
+
+      // Fire the observer with a 1071px (16:9 at 1920w) measurement.
+      await act(async () => {
+        callbacks[0]?.(
+          [
+            { contentRect: { height: 1071 } } as ResizeObserverEntry,
+          ] as ResizeObserverEntry[],
+          {} as ResizeObserver,
+        )
+      })
+
+      // Spot-check the substantive parts of the calc — JSDOM's CSS
+      // serializer normalizes whitespace inconsistently around operators
+      // inside min(), so we don't pin the exact format.
+      const top = wrapper.style.top
+      expect(top.startsWith("min(")).toBe(true)
+      expect(top).toContain("0px")
+      expect(top).toContain("calc(100svh - 1071px)")
+    } finally {
+      if (originalRO) {
+        ;(
+          globalThis as { ResizeObserver?: typeof ResizeObserver }
+        ).ResizeObserver = originalRO
+      } else {
+        delete (globalThis as { ResizeObserver?: typeof ResizeObserver })
+          .ResizeObserver
+      }
+    }
+  })
 })

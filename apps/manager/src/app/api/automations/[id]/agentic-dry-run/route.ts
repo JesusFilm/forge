@@ -16,6 +16,7 @@ import {
   createAutomationRun,
   getAutomation,
   getAutomationRun,
+  getAutomationRunByIdempotencyKey,
   hasInFlightAutomationRun,
   markAutomationRunFailedIfInFlight,
   releaseAutomationDryRunClaim,
@@ -31,7 +32,7 @@ const agenticDryRunRequestSchema = z
         id: z.string().trim().min(1).max(160),
       })
       .optional(),
-    idempotencyKey: z.string().trim().min(1).max(240).optional(),
+    idempotencyKey: z.string().trim().min(1).max(240),
   })
   .strict()
 
@@ -87,6 +88,25 @@ function isTerminalRun(
     run?.status === "failed" ||
     run?.status === "no_op"
   )
+}
+
+function buildDryRunSuccessResponse(input: {
+  automationDocumentId: string
+  run: EnrichmentAutomationRun
+  summary?: string | null
+  report?: AutomationRunResult["dryRunReport"]
+}) {
+  return NextResponse.json({
+    ok: true,
+    automationDocumentId: input.automationDocumentId,
+    managerAutomationRunDocumentId: input.run.documentId,
+    status: input.run.status,
+    summary: input.run.summary ?? input.summary ?? "Dry run complete.",
+    reportUrl: `/dashboard/agents?automationId=${encodeURIComponent(
+      input.automationDocumentId,
+    )}&runId=${encodeURIComponent(input.run.documentId)}`,
+    report: input.run.report ?? input.report,
+  })
 }
 
 async function completeDryRunOrMarkFailed(input: {
@@ -210,6 +230,28 @@ export async function POST(
       )
     }
 
+    const existingRun = await getAutomationRunByIdempotencyKey({
+      automationDocumentId: automation.documentId,
+      idempotencyKey: parsed.data.idempotencyKey,
+    })
+    if (existingRun) {
+      if (
+        existingRun.status === "claimed" ||
+        existingRun.status === "running"
+      ) {
+        return jsonError(
+          "run_in_progress",
+          "Automation already has a run in progress.",
+          409,
+        )
+      }
+
+      return buildDryRunSuccessResponse({
+        automationDocumentId: automation.documentId,
+        run: existingRun,
+      })
+    }
+
     if (
       hasActiveLease(automation, now) ||
       (await hasInFlightAutomationRun(automation.documentId))
@@ -233,6 +275,7 @@ export async function POST(
     const run = await createAutomationRun({
       automationDocumentId: automation.documentId,
       runMode: "dry_run",
+      idempotencyKey: parsed.data.idempotencyKey,
       scheduledFor: nowIso,
       startedAt: nowIso,
     })
@@ -271,16 +314,11 @@ export async function POST(
       )
     }
 
-    return NextResponse.json({
-      ok: true,
+    return buildDryRunSuccessResponse({
       automationDocumentId: automation.documentId,
-      managerAutomationRunDocumentId: completedRun.documentId,
-      status: completedRun.status,
-      summary: completedRun.summary ?? result.summary,
-      reportUrl: `/dashboard/agents?automationId=${encodeURIComponent(
-        automation.documentId,
-      )}&runId=${encodeURIComponent(completedRun.documentId)}`,
-      report: completedRun.report ?? result.dryRunReport,
+      run: completedRun,
+      summary: result.summary,
+      report: result.dryRunReport,
     })
   } catch (error) {
     console.error(

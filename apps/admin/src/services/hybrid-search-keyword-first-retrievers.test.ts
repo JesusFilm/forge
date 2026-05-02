@@ -234,7 +234,7 @@ describe("searchByTrigram", () => {
     expect(prisma.$queryRaw).not.toHaveBeenCalled()
   })
 
-  it("uses %> operator (operator-class trigram GIN selection)", async () => {
+  it("uses %> operator on BOTH title and description (operator-class trigram GIN selection)", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([])
     await searchByTrigram(prisma, {
       query: "bible",
@@ -243,8 +243,54 @@ describe("searchByTrigram", () => {
     })
     const [strings] = prisma.$queryRaw.mock.calls[0] as [TemplateStringsArray]
     const joined = strings.join("?")
+    // Title-side match drives `video_locale_title_trgm_idx`; description-side
+    // drives the new `video_locale_description_trgm_idx` from migration 0010.
     expect(joined).toMatch(/vl\.title\s*%>\s*\?/)
-    expect(joined).toMatch(/similarity\(vl\.title,\s*\?\)/)
+    expect(joined).toMatch(/vl\.description\s*%>\s*\?/)
+  })
+
+  it("ranks by GREATEST similarity across title and description", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+    await searchByTrigram(prisma, {
+      query: "bible project",
+      locale: "en",
+      limit: 10,
+    })
+    const [strings] = prisma.$queryRaw.mock.calls[0] as [TemplateStringsArray]
+    const joined = strings.join("?")
+    // GREATEST keeps a strong title match from being diluted by a weak
+    // description match (or vice versa) when the same row matches both.
+    expect(joined).toMatch(/GREATEST\(\s*similarity\(vl\.title/)
+    expect(joined).toMatch(/similarity\(coalesce\(vl\.description/)
+  })
+
+  it("returns rows whose match came via description-side trigram", async () => {
+    // Simulates a video like "The Lord's Prayer" whose title doesn't
+    // match the query but whose description contains "BibleProject"
+    // attribution text — only reachable post-0010 description trigram
+    // index.
+    prisma.$queryRaw.mockResolvedValueOnce([
+      {
+        video_id: "vid-2",
+        video_core_id: "11_Sermon0710",
+        video_slug: "lords-prayer",
+        video_title: "The Lord's Prayer",
+        description:
+          "Line-by-line breakdown of the Lord's Prayer. Thanks to BibleProject for providing this series.",
+        similarity: 0.42,
+      },
+    ])
+    const rows = await searchByTrigram(prisma, {
+      query: "bible project",
+      locale: "en",
+      limit: 10,
+    })
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      resultId: "vid-2",
+      videoTitle: "The Lord's Prayer",
+      similarity: 0.42,
+    })
   })
 })
 

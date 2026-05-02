@@ -1,6 +1,12 @@
 "use client"
 
-import { useCallback, useRef, useState, useSyncExternalStore } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { useSearchParams } from "next/navigation"
 import { MuxPlayer, type MuxPlayerRef } from "@forge/video-player"
 import type { MuxCSSProperties } from "@mux/mux-player-react"
@@ -57,6 +63,34 @@ export function HeroPlayer({
   const [pillState, setPillState] = useState<PillState>("play-with-sound")
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
 
+  // Anchor for the title/pill overlay AND the chrome control bar — both live
+  // in this zero-height div right after the sticky hero so they ride on the
+  // body section's top edge instead of being trapped at the pinned hero's
+  // bottom (which the body slides over).
+  const [overlayAnchor, setOverlayAnchor] = useState<HTMLDivElement | null>(
+    null,
+  )
+
+  // Measured rendered height drives the sticky `top` so the player pins
+  // exactly when its bottom reaches the viewport bottom. Aspect-ratio is
+  // determined by mux-player at runtime, so we measure rather than guess.
+  const [heroHeight, setHeroHeight] = useState<number | null>(null)
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!el) return
+    const apply = (h: number) => {
+      if (h > 0) setHeroHeight(h)
+    }
+    apply(el.getBoundingClientRect().height)
+    if (typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (entry) apply(entry.contentRect.height)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   const viewerUserId = useSyncExternalStore(
     subscribeViewerId,
     getViewerId,
@@ -98,8 +132,10 @@ export function HeroPlayer({
       return
     }
 
+    // Continue from the current playhead — the muted-loop preview is already
+    // running, so resetting currentTime would force a re-buffer and restart
+    // from frame 0, which the user reads as "the video reloaded."
     player.muted = false
-    player.currentTime = 0
     const result = player.play()
     if (result && typeof result.then === "function") {
       result
@@ -129,50 +165,80 @@ export function HeroPlayer({
   const muted = !chromeRevealed
 
   return (
-    <div
-      ref={wrapperRef}
-      data-block-type="HeroPlayer"
-      data-testid="hero-player-wrapper"
-      data-chrome-revealed={chromeRevealed ? "true" : "false"}
-      data-autoplay-blocked={autoplayBlocked ? "true" : "false"}
-      className="relative w-full overflow-hidden bg-black"
-    >
-      <MuxPlayer
-        ref={setPlayerRef}
-        playbackId={playbackId}
-        src={playbackId ? undefined : hlsSrc}
-        autoPlay="muted"
-        muted={muted}
-        loop={loop}
-        envKey={env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
-        disableCookies={true}
-        metadata={{
-          player_name: "forge-web-watch",
-          video_title: video.title ?? undefined,
-          video_id: video.documentId,
-          viewer_user_id: viewerUserId,
+    <>
+      <div
+        ref={wrapperRef}
+        data-block-type="HeroPlayer"
+        data-testid="hero-player-wrapper"
+        data-chrome-revealed={chromeRevealed ? "true" : "false"}
+        data-autoplay-blocked={autoplayBlocked ? "true" : "false"}
+        className="sticky w-full overflow-hidden bg-black"
+        style={{
+          // 100svh tracks the *small* viewport on iOS Safari (visible area
+          // when the URL bar is showing). Plain 100vh is the *large*
+          // viewport, so calc(100vh - heroHeight) goes positive while the
+          // URL bar is up and `min()` clamps `top` to 0 — defeating the
+          // pin-when-bottom-hits-viewport-bottom contract on mobile.
+          top:
+            heroHeight != null
+              ? `min(0px, calc(100svh - ${heroHeight}px))`
+              : "0px",
         }}
-        style={CHROME_HIDE_STYLE}
-        onLoadedMetadata={handleLoadedMetadata}
-        onError={handlePlayerError}
-        className="block h-full w-full"
-      />
-
-      {chromeRevealed ? (
-        <HeroPlayerControls
-          player={player}
-          playerRef={playerRef}
-          wrapperRef={wrapperRef}
+      >
+        <MuxPlayer
+          ref={setPlayerRef}
+          playbackId={playbackId}
+          src={playbackId ? undefined : hlsSrc}
+          autoPlay="muted"
+          muted={muted}
+          loop={loop}
+          envKey={env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
+          disableCookies={true}
+          metadata={{
+            player_name: "forge-web-watch",
+            video_title: video.title ?? undefined,
+            video_id: video.documentId,
+            viewer_user_id: viewerUserId,
+          }}
+          style={CHROME_HIDE_STYLE}
+          onLoadedMetadata={handleLoadedMetadata}
+          onError={handlePlayerError}
+          className="block h-full w-full"
         />
-      ) : (
-        <>
+
+        {chromeRevealed ? (
+          <HeroPlayerControls
+            player={player}
+            playerRef={playerRef}
+            wrapperRef={wrapperRef}
+            overlayAnchor={overlayAnchor}
+          />
+        ) : (
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
           />
+        )}
+      </div>
+
+      {/*
+        Zero-height anchor right after the sticky hero. The title/label/pill
+        (pre-reveal) and the chrome control bar (post-reveal, portaled in
+        from <HeroPlayerControls>) both attach to this anchor's bottom edge.
+        The anchor lives in normal flow and so scrolls with the document —
+        which means everything attached here rides up on the body section's
+        top edge instead of being trapped at the sticky hero's pinned bottom
+        (which the body slides over).
+      */}
+      <div
+        ref={setOverlayAnchor}
+        data-testid="hero-player-overlay-anchor"
+        className="relative z-10 h-0 w-full"
+      >
+        {!chromeRevealed ? (
           <div
             data-testid="hero-player-overlay"
-            className="absolute right-6 bottom-6 left-10 flex flex-col items-start gap-4 md:right-auto md:left-16 xl:left-24"
+            className="absolute right-6 bottom-0 left-10 flex flex-col items-start gap-4 pb-6 md:right-auto md:left-16 xl:left-24"
           >
             {video.label ? (
               <span
@@ -213,8 +279,8 @@ export function HeroPlayer({
               </span>
             </button>
           </div>
-        </>
-      )}
-    </div>
+        ) : null}
+      </div>
+    </>
   )
 }

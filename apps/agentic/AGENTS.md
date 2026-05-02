@@ -32,6 +32,10 @@ tool registry, workflow registry, and operational runtime storage.
   - `AGENTIC_SERVICE_API_KEY` for Manager-to-Agentic calls.
   - `AGENTIC_OPERATOR_API_KEY` for operator Studio/API access.
   - `MANAGER_AGENTIC_API_KEY` for Agentic-to-Manager calls.
+- These three tokens must be distinct. Production ignores CI placeholder
+  leniency and rejects `:memory:` or relative file storage.
+- Agentic-to-Manager callbacks use `AGENTIC_MANAGER_REQUEST_TIMEOUT_MS`, default
+  `60000`.
 
 ## Verification
 
