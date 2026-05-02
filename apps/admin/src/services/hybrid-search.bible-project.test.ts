@@ -365,15 +365,13 @@ describe("Bible Project headline (keyword-first mode)", () => {
     // pre-fix). This test locks in that the orchestrator surfaces such
     // attribution-matched videos within top-15 once retrievers feed
     // them in — i.e., the recall improvement isn't lost in fusion.
-    type AttributionFixture = Fixture & { __isAttribution: true }
-    const ATTRIBUTION_VIDEOS: AttributionFixture[] = [
+    const ATTRIBUTION_VIDEOS: Fixture[] = [
       {
         resultId: "att-1",
         videoCoreId: "11_Sermon0710",
         videoSlug: "lords-prayer",
         videoTitle: "The Lord's Prayer",
         description: "Thanks to BibleProject for providing this series.",
-        __isAttribution: true,
       },
       {
         resultId: "att-2",
@@ -381,7 +379,6 @@ describe("Bible Project headline (keyword-first mode)", () => {
         videoSlug: "shema-listen",
         videoTitle: "Shema / Listen",
         description: "Animated breakdown by BibleProject.",
-        __isAttribution: true,
       },
       {
         resultId: "att-3",
@@ -389,7 +386,6 @@ describe("Bible Project headline (keyword-first mode)", () => {
         videoSlug: "yhwh-lord",
         videoTitle: "YHWH / LORD",
         description: "From the BibleProject Sermon on the Mount series.",
-        __isAttribution: true,
       },
       {
         resultId: "att-4",
@@ -397,7 +393,6 @@ describe("Bible Project headline (keyword-first mode)", () => {
         videoSlug: "the-beatitudes",
         videoTitle: "The Beatitudes",
         description: "BibleProject overview of Matthew 5.",
-        __isAttribution: true,
       },
       {
         resultId: "att-5",
@@ -405,7 +400,6 @@ describe("Bible Project headline (keyword-first mode)", () => {
         videoSlug: "wealth-and-worry",
         videoTitle: "Wealth and Worry",
         description: "BibleProject explainer for Matthew 6:25-34.",
-        __isAttribution: true,
       },
     ]
 

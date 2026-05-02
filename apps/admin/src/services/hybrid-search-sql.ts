@@ -199,10 +199,12 @@ export const VIDEO_LOCALE_TITLE_TRGM_INDEX_NAME = "video_locale_title_trgm_idx"
  *
  * Provisioned by
  * `0010_camelcase_tsv_and_description_trigram/migration.sql`. Backs the
- * description-side of `searchByTrigram`, which UNIONs title and
- * description trigram matches in keyword-first mode. Same operator-class
- * (`gin_trgm_ops`) shape as the title trigram index — no expression
- * byte-parity guard needed.
+ * description-side of `searchByTrigram` (`vl.description %> q`), which
+ * the planner picks up by operator-class match — production code never
+ * names the index. **Exported only so the byte-parity test can assert
+ * the migration creates the index under a name we control; no
+ * production consumer references this constant.** Same shape as
+ * `VIDEO_LOCALE_TITLE_TRGM_INDEX_NAME` (also test-only).
  */
 export const VIDEO_LOCALE_DESCRIPTION_TRGM_INDEX_NAME =
   "video_locale_description_trgm_idx"

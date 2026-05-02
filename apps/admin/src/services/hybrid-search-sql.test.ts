@@ -129,6 +129,105 @@ describe("hybrid-search-sql byte-parity with keyword-first migration", () => {
 })
 
 /**
+ * Behavioural invariant for the CamelCase-split regex.
+ *
+ * The byte-parity tests above verify that the literal regex pattern
+ * appears character-identically inside the migration. They do NOT
+ * exercise the regex's behaviour. This block runs the same pattern
+ * (`([a-z])([A-Z])`, replacement `$1 $2`, global) as a JavaScript
+ * regex against representative inputs and asserts the expected
+ * tokenization split.
+ *
+ * Postgres' POSIX regex and JavaScript's regex implement
+ * non-Unicode-aware `[a-z]` / `[A-Z]` classes identically (both
+ * match only ASCII Latin code points), so the JS form is a faithful
+ * stand-in for Postgres' `regexp_replace` here. A future migration
+ * that broadens the classes to `[[:lower:]]` / `[[:upper:]]` would
+ * diverge — Postgres honors LC_CTYPE there, JS does not — and this
+ * test would need a real-DB run instead. Out of scope today;
+ * documented as a known limit in the migration comment.
+ */
+describe("CamelCase-split regex behaviour (locked in by byte-parity above)", () => {
+  // Same pattern + replacement string used in TITLE_TSV_GENERATED_EXPR /
+  // DESCRIPTION_TSV_GENERATED_EXPR. Re-derived here as a JS RegExp so
+  // we can exercise the transformation without a DB connection.
+  const splitCamel = (input: string): string =>
+    input.replace(/([a-z])([A-Z])/g, "$1 $2")
+
+  const cases: Array<{ input: string; expected: string; rationale: string }> = [
+    {
+      input: "BibleProject",
+      expected: "Bible Project",
+      rationale: "two-segment CamelCase brand splits",
+    },
+    {
+      input: "JesusFilm",
+      expected: "Jesus Film",
+      rationale: "two-segment CamelCase brand splits",
+    },
+    {
+      input: "MacOS",
+      expected: "Mac OS",
+      rationale: "lower-then-upper boundary splits",
+    },
+    {
+      input: "iPhone",
+      expected: "i Phone",
+      rationale: "single-letter prefix splits",
+    },
+    {
+      input: "BibleProjectVideo",
+      expected: "Bible Project Video",
+      rationale: "multi-segment CamelCase splits at every boundary",
+    },
+    {
+      input: "YHWH",
+      expected: "YHWH",
+      rationale: "all-caps acronym preserved (no lower-then-upper boundary)",
+    },
+    {
+      input: "LORD",
+      expected: "LORD",
+      rationale: "all-caps acronym preserved",
+    },
+    {
+      input: "iOS",
+      expected: "i OS",
+      rationale:
+        "single-lower-then-upper boundary splits even when followed by all-caps; trailing 'S' has no upper after it",
+    },
+    {
+      input: "ABCDef",
+      expected: "ABCDef",
+      rationale:
+        "no `[a-z]` followed by `[A-Z]` — leading all-caps run kept whole",
+    },
+    {
+      input: "Bible Project",
+      expected: "Bible Project",
+      rationale: "already split — regex is idempotent",
+    },
+    {
+      input: "",
+      expected: "",
+      rationale: "empty string short-circuits",
+    },
+    {
+      input: "СловоБожие",
+      expected: "СловоБожие",
+      rationale:
+        "ASCII-only regex does NOT split Cyrillic CamelCase — known limit, recall on those locales falls through to trigram retriever",
+    },
+  ]
+
+  for (const { input, expected, rationale } of cases) {
+    it(`splits ${JSON.stringify(input)} -> ${JSON.stringify(expected)} (${rationale})`, () => {
+      expect(splitCamel(input)).toBe(expected)
+    })
+  }
+})
+
+/**
  * Historical invariant for `0009_keyword_first_lexical/migration.sql`.
  *
  * 0009 originally created the `title_tsv` / `description_tsv` generated
