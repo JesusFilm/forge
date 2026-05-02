@@ -64,6 +64,14 @@ type VideoKeywordRowShape = RankedItem & {
 }
 
 export type KeywordWeightedResult = VideoKeywordRowShape & { rank: number }
+/**
+ * Result row from `searchByTrigram`. **As of migration 0010, `similarity`
+ * is the GREATEST of the title-side and description-side trigram
+ * similarities** (`similarity(vl.title, q)` vs
+ * `similarity(coalesce(vl.description, ''), q)`), not title-only as it
+ * was pre-0010. The retriever scans both columns and dedupes per video
+ * via `DISTINCT ON (v.id)`, keeping the higher-similarity row.
+ */
 export type TrigramResult = VideoKeywordRowShape & { similarity: number }
 export type ExactTitleResult = VideoKeywordRowShape & { titleLength: number }
 
@@ -217,16 +225,24 @@ export async function searchByKeywordWeighted(
  *     as the joined-form `BibleProject` matches via description
  *     trigrams (the brand's 3-grams overlap `bibleproject` directly).
  *
- * Uses the `%>` operator ("word similar to") on both fields. Per-row
- * dedup via `DISTINCT ON (v.id)` collapses the case where the same
- * video matches via both title and description; ranking takes the
- * GREATEST similarity across the two fields so a strong title match
- * doesn't get diluted by a weak description match.
+ * SQL shape: `WHERE (vl.title %> ? OR vl.description %> ?)` plus
+ * `DISTINCT ON (v.id) ORDER BY v.id, similarity DESC` to collapse
+ * rows that match via both fields, keeping the higher-similarity row.
+ * Ranking is `GREATEST(similarity(vl.title, q), similarity(coalesce(vl.description, ''), q))`
+ * so a strong title match doesn't get diluted by a weak description
+ * match.
+ *
+ * (Earlier framings called this a "UNION" — implementation is the
+ * equivalent OR + per-row dedup, which lets a single index probe pass
+ * cover both halves and avoids materializing two intermediate row
+ * sets.)
  *
  * Index selection happens via the `%>` operator against
  * `video_locale_title_trgm_idx` (provisioned by 0009) and
  * `video_locale_description_trgm_idx` (provisioned by 0010), both
- * operator-class GIN (`gin_trgm_ops`). No expression byte-parity
+ * operator-class GIN (`gin_trgm_ops`). On a populated table the
+ * planner should choose `BitmapOr` over the two indexes; on an empty
+ * corpus it correctly prefers Seq Scan. No expression byte-parity
  * guard needed — operator-class indexes are selected by the operator
  * regardless of column aliases. Per
  * docs/solutions/best-practices/gin-byte-parity-trigram-vs-expression-indexes-20260429.md.

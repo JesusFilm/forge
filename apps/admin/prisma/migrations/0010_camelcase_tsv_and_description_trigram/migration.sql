@@ -13,6 +13,16 @@
 --      videos with those titles), while still splitting two-segment
 --      CamelCase like `BibleProject` / `JesusFilm` / `MacOS`.
 --
+--      KNOWN LIMITATION (ASCII-only): POSIX bracket classes `[a-z]` /
+--      `[A-Z]` match ONLY ASCII Latin characters. Cyrillic, Greek, or
+--      accented-Latin CamelCase boundaries (e.g. `СловоБожие`) are
+--      NOT split. JFP is multilingual; recall on those queries falls
+--      through to the trigram retriever, which is locale-blind. A
+--      future migration can broaden the regex to `[[:lower:]]` /
+--      `[[:upper:]]` (Postgres POSIX classes that honor LC_CTYPE)
+--      once the recall trade-off is benchmarked against real corpus
+--      data — out of scope here.
+--
 --      Postgres has no in-place editor for stored generated expressions
 --      (`ALTER COLUMN ... GENERATED` doesn't accept a new expression),
 --      so the migration must DROP the columns CASCADE (which also drops
@@ -28,6 +38,19 @@
 --      is defense-in-depth beyond the CamelCase split for typos and
 --      partial input. The existing `video_locale_title_trgm_idx` is
 --      untouched.
+--
+--      SIZING REVISIT: pg_trgm GIN scales linearly with total characters
+--      indexed; descriptions are typically 10-100x longer than titles,
+--      so this index will be materially larger than the title trgm.
+--      R4 originally avoided it on a populated corpus citing balloon
+--      risk. Admin's prod is 0 rows today (R0 backfill not yet run),
+--      so the cost is theoretical. Capture
+--      `pg_relation_size('video_locale_description_trgm_idx')` once
+--      R0 lands and revisit when it exceeds ~500 MB or when write
+--      latency on `video_locale` INSERT/UPDATE regresses >20% — at
+--      that point consider partial indexing on `WHERE
+--      char_length(description) < N`, or fall back to title-only
+--      trigram with a documented recall trade-off.
 --
 -- Byte-parity invariant: the rewritten generated-column expressions
 -- and the recreated weighted index expression MUST stay byte-equal to
@@ -49,6 +72,19 @@
 -- Created non-CONCURRENTLY for the same reason as 0006 / 0009: admin's
 -- prod corpus is 0 rows today (R0 backfill not yet run) and the
 -- AccessExclusiveLock is acceptable.
+--
+-- POST-R0 WARNING: the DROP COLUMN + ADD COLUMN GENERATED pattern
+-- above takes AccessExclusiveLock on `video_locale` for the full
+-- duration of the column rebuild. On a 0-row table that's instant;
+-- on a hypothetical R0-backfilled table with 100k+ rows it's a full
+-- table rewrite. Any future migration of this shape should be
+-- staged out of the Prisma transaction (split DDL into pieces,
+-- use `CREATE INDEX CONCURRENTLY` via raw psql, or use Prisma's
+-- `Unsupported` escape hatch). Manually re-applying 0010 against a
+-- populated table is destructive — Prisma's `_prisma_migrations`
+-- ledger guards normal redeploys, but `migrate resolve --rolled-back`
+-- on this migration is forbidden post-R0; treat fixes as
+-- forward-only counter-migrations.
 
 ALTER TABLE "video_locale" DROP COLUMN IF EXISTS "title_tsv" CASCADE;
 ALTER TABLE "video_locale" DROP COLUMN IF EXISTS "description_tsv" CASCADE;
