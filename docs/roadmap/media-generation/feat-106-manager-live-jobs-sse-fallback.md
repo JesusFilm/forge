@@ -40,8 +40,9 @@ existing polling path retained as a fallback.
    `apps/manager/src/features/jobs/live-job-detail-screen.tsx` to refresh
    review context from a dedicated review-relevant key rather than every raw
    timestamp bump.
-5. Kept manual refresh and honest live-status copy in both jobs surfaces so the
-   UI distinguishes healthy SSE from degraded polling fallback.
+5. Kept the live-status copy in both jobs surfaces so the UI distinguishes
+   healthy SSE from degraded polling fallback without adding a separate manual
+   refresh control.
 6. Hardened
    `apps/manager/src/features/jobs/live-jobs-realtime.ts` so newer stream
    updates invalidate stale in-flight manual/resync polls and deferred
@@ -92,10 +93,10 @@ existing polling path retained as a fallback.
 - `pnpm --filter @forge/manager typecheck`
 - `pnpm --filter @forge/manager lint`
 - Regression coverage in
-  `apps/manager/src/features/jobs/live-jobs-realtime.test.ts` for manual
-  refresh and reconnect resync races against newer stream updates.
+  `apps/manager/src/features/jobs/live-jobs-realtime.test.ts` for reconnect
+  resync races against newer stream updates.
 - Real local browser smoke: jobs list auto-populated with a newly created job
-  without using `Refresh now`.
+  without a page reload.
 - Real local browser smoke: job detail updated from `Attempts: 1` to
   `Attempts: 2` immediately after `Rerun with Mux`.
 - Degraded-mode smoke: blocking `/api/jobs/events` switched the UI into polling

@@ -52,7 +52,6 @@ import {
 } from "./scene-embedding-sync-card"
 import { getPresentedMuxSyncComparisons } from "@/features/jobs/mux-sync-presenter"
 import { CollapsibleStepRow } from "./collapsible-step-row"
-import { formatTime } from "./jobs-table-presenter"
 
 type LiveJobStepsTableProps = {
   initialJob: JobRecord
@@ -397,9 +396,7 @@ export function LiveJobStepsTable({
   const [realtimeSnapshot, setRealtimeSnapshot] = useState(() =>
     createInitialLiveJobsRealtimeSnapshot(initialJob),
   )
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
   const job = realtimeSnapshot.state
-  const isRefreshing = realtimeSnapshot.isRefreshInFlight
   const embeddingSyncReport = useMemo(
     () => getEmbeddingSyncReport(job.artifacts),
     [job.artifacts],
@@ -433,11 +430,9 @@ export function LiveJobStepsTable({
 
   const controllerRef = useRef<LiveJobsDetailRealtimeController | null>(null)
   const lastSyncedJobRef = useRef(initialJob)
-  const lastSyncSourceRef = useRef(realtimeSnapshot.lastSyncSource)
 
   useEffect(() => {
     lastSyncedJobRef.current = initialJob
-    lastSyncSourceRef.current = "initial"
 
     const controller = createLiveJobDetailRealtimeController({
       initialJob,
@@ -471,11 +466,6 @@ export function LiveJobStepsTable({
 
     const unsubscribe = controller.subscribe((snapshot) => {
       const didStateChange = snapshot.state !== lastSyncedJobRef.current
-      const didApplySuccessfulSync =
-        snapshot.lastSyncSource !== "initial" &&
-        !snapshot.isRefreshInFlight &&
-        (didStateChange ||
-          snapshot.lastSyncSource !== lastSyncSourceRef.current)
 
       setRealtimeSnapshot(snapshot)
 
@@ -483,12 +473,6 @@ export function LiveJobStepsTable({
         lastSyncedJobRef.current = snapshot.state
         onJobUpdate?.(snapshot.state)
       }
-
-      if (didApplySuccessfulSync) {
-        setLastUpdatedAt(new Date().toISOString())
-      }
-
-      lastSyncSourceRef.current = snapshot.lastSyncSource
     })
 
     controller.start()
@@ -502,14 +486,9 @@ export function LiveJobStepsTable({
     }
   }, [initialJob, onJobUpdate])
 
-  const handleRefreshNow = useCallback(() => {
-    void controllerRef.current?.refreshNow()
-  }, [])
-
   const replaceJobState = useCallback(
     (nextJob: JobRecord) => {
       lastSyncedJobRef.current = nextJob
-      lastSyncSourceRef.current = "external"
       onJobUpdate?.(nextJob)
 
       if (controllerRef.current) {
@@ -643,32 +622,17 @@ export function LiveJobStepsTable({
     if (realtimeSnapshot.transportMode === "connecting") {
       return "Connecting live updates..."
     }
-    if (
-      realtimeSnapshot.isRefreshInFlight &&
-      realtimeSnapshot.transportMode !== "polling"
-    ) {
-      return "Refreshing job..."
-    }
     if (realtimeSnapshot.transportMode === "polling") {
-      const lastUpdateText = lastUpdatedAt
-        ? ` · Last update ${formatTime(lastUpdatedAt)}`
-        : ""
-
       if (realtimeSnapshot.isPollingPaused) {
-        return `Live updates reconnecting. Polling paused (${job.status})${lastUpdateText}`
+        return `Live updates reconnecting. Polling paused (${job.status})`
       }
 
-      return `Live updates reconnecting. Polling every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s${lastUpdateText}`
-    }
-    if (lastUpdatedAt) {
-      return `Live updates connected · Last update ${formatTime(lastUpdatedAt)}`
+      return `Live updates reconnecting. Polling every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
     }
     return "Live updates connected"
   }, [
     job.status,
-    lastUpdatedAt,
     realtimeSnapshot.isPollingPaused,
-    realtimeSnapshot.isRefreshInFlight,
     realtimeSnapshot.transportMode,
   ])
 
@@ -692,17 +656,6 @@ export function LiveJobStepsTable({
           >
             {liveStatus}
           </span>
-          <button
-            type="button"
-            className="collection-cache-clear jobs-refresh-link"
-            onClick={handleRefreshNow}
-            disabled={isRefreshing}
-            aria-label="Refresh now"
-            title="Refresh now"
-          >
-            <RefreshCw className="icon" aria-hidden="true" />
-            Refresh now
-          </button>
         </div>
       </div>
       <div className="jobs-table-wrap">

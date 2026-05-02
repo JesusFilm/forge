@@ -1,9 +1,8 @@
 "use client"
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { RefreshCw } from "lucide-react"
 import { formatStepName } from "@/lib/workflow-steps"
 import type { JobRecord } from "@/types/job"
 import { apiFetch } from "@/lib/api-fetch"
@@ -29,7 +28,6 @@ import {
   createInitialLiveJobsRealtimeSnapshot,
   createLiveJobsListEventSourceOpener,
   createLiveJobsListRealtimeController,
-  type LiveJobsListRealtimeController,
 } from "./live-jobs-realtime"
 
 const MAX_VISIBLE_LANGUAGE_BADGES = 6
@@ -60,18 +58,12 @@ export function LiveJobsTable({
   const [realtimeSnapshot, setRealtimeSnapshot] = useState(() =>
     createInitialLiveJobsRealtimeSnapshot(initialJobs),
   )
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
-
-  const controllerRef = useRef<LiveJobsListRealtimeController | null>(null)
-  const lastSyncedJobsRef = useRef(initialJobs)
-  const lastSyncSourceRef = useRef(realtimeSnapshot.lastSyncSource)
 
   const languageLabelMap = useMemo(
     () => new Map<string, string>(Object.entries(languageLabelsById)),
     [languageLabelsById],
   )
   const jobs = realtimeSnapshot.state
-  const isRefreshing = realtimeSnapshot.isRefreshInFlight
   const groupedJobs = useMemo(() => groupJobsByDay(jobs), [jobs])
   const jobsDetailQuerySuffix = useMemo(() => {
     const rawLanguageIds =
@@ -91,9 +83,6 @@ export function LiveJobsTable({
   }, [searchParams])
 
   useEffect(() => {
-    lastSyncedJobsRef.current = initialJobs
-    lastSyncSourceRef.current = "initial"
-
     const controller = createLiveJobsListRealtimeController({
       initialJobs,
       openStream: createLiveJobsListEventSourceOpener(),
@@ -116,66 +105,25 @@ export function LiveJobsTable({
             document.visibilityState === "hidden",
         ),
     })
-
-    controllerRef.current = controller
-
-    const unsubscribe = controller.subscribe((snapshot) => {
-      const didApplySuccessfulSync =
-        snapshot.lastSyncSource !== "initial" &&
-        !snapshot.isRefreshInFlight &&
-        (snapshot.state !== lastSyncedJobsRef.current ||
-          snapshot.lastSyncSource !== lastSyncSourceRef.current)
-
-      setRealtimeSnapshot(snapshot)
-
-      if (didApplySuccessfulSync) {
-        setLastUpdatedAt(new Date().toISOString())
-      }
-
-      lastSyncedJobsRef.current = snapshot.state
-      lastSyncSourceRef.current = snapshot.lastSyncSource
-    })
+    const unsubscribe = controller.subscribe(setRealtimeSnapshot)
 
     controller.start()
 
     return () => {
       unsubscribe()
       controller.stop()
-      if (controllerRef.current === controller) {
-        controllerRef.current = null
-      }
     }
   }, [initialJobs])
-
-  const handleRefreshNow = useCallback(() => {
-    void controllerRef.current?.refreshNow()
-  }, [])
 
   const liveStatus = useMemo(() => {
     if (realtimeSnapshot.transportMode === "connecting") {
       return "Connecting live updates..."
     }
-    if (
-      realtimeSnapshot.isRefreshInFlight &&
-      realtimeSnapshot.transportMode !== "polling"
-    ) {
-      return "Refreshing jobs..."
-    }
     if (realtimeSnapshot.transportMode === "polling") {
-      const lastUpdateText = lastUpdatedAt
-        ? ` · Last update ${formatTime(lastUpdatedAt)}`
-        : ""
-      return `Live updates reconnecting. Polling every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s${lastUpdateText}`
-    }
-    if (lastUpdatedAt) {
-      return `Live updates connected · Last update ${formatTime(lastUpdatedAt)}`
+      return `Live updates reconnecting. Polling every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
     }
     return "Live updates connected"
-  }, [
-    lastUpdatedAt,
-    realtimeSnapshot.isRefreshInFlight,
-    realtimeSnapshot.transportMode,
-  ])
+  }, [realtimeSnapshot.transportMode])
 
   return (
     <section className="collection-card jobs-card">
@@ -196,15 +144,6 @@ export function LiveJobsTable({
           >
             {liveStatus}
           </span>
-          <button
-            type="button"
-            className="collection-cache-clear jobs-refresh-link"
-            onClick={handleRefreshNow}
-            disabled={isRefreshing}
-          >
-            <RefreshCw className="icon" aria-hidden="true" />
-            Refresh now
-          </button>
         </div>
       </header>
 

@@ -28,7 +28,6 @@ export type LiveJobsRealtimeSnapshot<TState> = {
   transportMode: LiveJobsRealtimeTransportMode
   isPollingPaused: boolean
   isReconnectPending: boolean
-  isRefreshInFlight: boolean
   needsResync: boolean
   lastFailureReason: LiveJobsRealtimeFailureReason
   lastSyncSource: LiveJobsRealtimeSyncSource
@@ -60,7 +59,6 @@ export type LiveJobsRealtimeController<TState> = {
   stop: () => void
   subscribe: (listener: LiveJobsRealtimeListener<TState>) => () => void
   getSnapshot: () => LiveJobsRealtimeSnapshot<TState>
-  refreshNow: () => Promise<void>
   replaceState: (state: TState) => void
 }
 
@@ -115,7 +113,7 @@ export type CreateLiveJobDetailRealtimeControllerOptions = {
 }
 
 type ScheduledPollMode = "followup" | "resync"
-type ActivePollMode = ScheduledPollMode | "manual"
+type ActivePollMode = ScheduledPollMode
 type LiveJobsListStreamEvent =
   | {
       type: "snapshot"
@@ -366,7 +364,6 @@ function createLiveJobsRealtimeController<TState>({
     transportMode: "connecting",
     isPollingPaused: false,
     isReconnectPending: false,
-    isRefreshInFlight: false,
     needsResync: false,
     lastFailureReason: null,
     lastSyncSource: "initial",
@@ -425,7 +422,7 @@ function createLiveJobsRealtimeController<TState>({
   }
 
   const abortNonFollowupPoll = () => {
-    if (activePollMode === "manual" || activePollMode === "resync") {
+    if (activePollMode === "resync") {
       abortActivePoll()
     }
   }
@@ -520,11 +517,6 @@ function createLiveJobsRealtimeController<TState>({
   const runPoll = async (mode: ActivePollMode) => {
     const responseSeq = ++requestSeq
     const authoritativeStateSeqAtStart = authoritativeStateSeq
-    snapshot = {
-      ...snapshot,
-      isRefreshInFlight: true,
-    }
-    emit()
 
     abortActivePoll()
     const controller = new AbortController()
@@ -562,11 +554,6 @@ function createLiveJobsRealtimeController<TState>({
       if (responseSeq === requestSeq) {
         activePollController = null
         activePollMode = null
-        snapshot = {
-          ...snapshot,
-          isRefreshInFlight: false,
-        }
-        emit()
       }
 
       if (!disposed && pendingResyncAfterActivePoll) {
@@ -728,7 +715,6 @@ function createLiveJobsRealtimeController<TState>({
         transportMode: "stopped",
         isPollingPaused: false,
         isReconnectPending: false,
-        isRefreshInFlight: false,
         needsResync: false,
       }
       emit()
@@ -740,10 +726,6 @@ function createLiveJobsRealtimeController<TState>({
       }
     },
     getSnapshot: () => ({ ...snapshot }),
-    refreshNow: async () => {
-      clearPollTimer()
-      await runPoll("manual")
-    },
     replaceState: (nextState) => {
       markAuthoritativeStateUpdate()
       snapshot = {
@@ -786,7 +768,6 @@ export function createInitialLiveJobsRealtimeSnapshot<TState>(
     transportMode: "connecting",
     isPollingPaused: false,
     isReconnectPending: false,
-    isRefreshInFlight: false,
     needsResync: false,
     lastFailureReason: null,
     lastSyncSource: "initial",
