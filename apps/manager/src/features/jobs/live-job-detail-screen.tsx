@@ -7,6 +7,7 @@ import { LiveJobDetailHeader } from "./live-job-detail-header"
 import { getSourceTitle } from "./jobs-table-presenter"
 import { LiveJobStepsTable } from "./live-job-steps-table"
 import { ReviewPlayerCard } from "./review-player/review-player-card"
+import { getReviewContextRefreshKey } from "./review-player/review-context-refresh-key"
 import type { JobReviewContextResult } from "./review-player/review-player-types"
 
 type ReviewContextLoadState =
@@ -28,6 +29,10 @@ export function LiveJobDetailScreen({
   const [reviewContext, setReviewContext] = useState<ReviewContextLoadState>({
     status: "loading",
   })
+  const reviewContextRefreshKey = useMemo(
+    () => getReviewContextRefreshKey(job),
+    [job],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -74,7 +79,7 @@ export function LiveJobDetailScreen({
       cancelled = true
       controller.abort()
     }
-  }, [initialJob.id, job.updatedAt])
+  }, [initialJob.id, reviewContextRefreshKey])
 
   const muxPlaybackId = useMemo(
     () => job.muxPlaybackId ?? null,

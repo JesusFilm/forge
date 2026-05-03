@@ -69,6 +69,9 @@ export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL ?? "http://localhost:3003",
   trustedOrigins,
+  advanced: {
+    ...(env.AUTH_COOKIE_PREFIX ? { cookiePrefix: env.AUTH_COOKIE_PREFIX } : {}),
+  },
   plugins,
   emailAndPassword: {
     enabled: true,
