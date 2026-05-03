@@ -1,3 +1,30 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --font-sans: "IBM Plex Sans", "Avenir Next", sans-serif;
+  --font-mono: "IBM Plex Mono", "Menlo", monospace;
+  --color-background: var(--ds-bg);
+  --color-foreground: var(--ds-ink);
+  --color-card: var(--ds-panel);
+  --color-card-foreground: var(--ds-ink);
+  --color-secondary: var(--ds-panel-muted);
+  --color-secondary-foreground: var(--ds-ink);
+  --color-muted: var(--ds-panel-muted);
+  --color-muted-foreground: var(--ds-muted);
+  --color-accent: var(--ds-hover);
+  --color-accent-foreground: var(--ds-ink);
+  --color-border: var(--ds-line);
+  --color-input: var(--ds-line-strong);
+  --color-ring: var(--ds-black);
+  --radius-sm: var(--ds-radius-sm);
+  --radius-md: var(--ds-radius);
+  --radius-lg: var(--ds-radius);
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+}
+
 :root {
   --bg: #f6f7f9;
   --surface: #ffffff;
