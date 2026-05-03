@@ -159,6 +159,10 @@ function isActiveRoute(pathname: string, href: string): boolean {
 }
 
 function getBreadcrumbs(pathname: string): string[] {
+  if (pathname === "/design") {
+    return ["Studio", "Design system"]
+  }
+
   if (pathname.startsWith("/dashboard/jobs/")) {
     return ["Studio", "Jobs", "Job detail"]
   }
