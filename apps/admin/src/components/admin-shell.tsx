@@ -51,8 +51,9 @@ export function AdminShell({
   const [isSwitchingLocale, setIsSwitchingLocale] = useState(false)
   const activeItem = getNavItem(pathname)
   const isFullCanvasRoute =
-    pathname.startsWith("/dashboard/experiences/") &&
-    pathname !== "/dashboard/experiences"
+    (pathname.startsWith("/dashboard/experiences/") &&
+      pathname !== "/dashboard/experiences") ||
+    pathname.startsWith("/dashboard/media")
   const visibleNavItems = adminNavItems.filter((item) =>
     isNavItemVisible(principal.role, item),
   )

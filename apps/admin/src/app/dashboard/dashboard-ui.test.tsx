@@ -18,9 +18,60 @@ vi.mock("@/auth/session", () => ({
 }))
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({
+  usePathname: vi.fn(() => "/dashboard/media"),
+  useRouter: vi.fn(() => ({
+    push: vi.fn(),
     refresh: vi.fn(),
-  }),
+  })),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
+}))
+
+vi.mock("@/services", () => ({
+  createServices: vi.fn(() => ({
+    mediaAsset: {
+      getById: vi.fn(async () => ({
+        id: "media1",
+        kind: "IMAGE",
+        backend: "LOCAL",
+        visibility: "PRIVATE",
+        displayName: "poster",
+        description: null,
+        altText: "Poster alt",
+        mimeType: "image/webp",
+        byteSize: 2048n,
+        width: 1200,
+        height: 675,
+        durationMs: null,
+        originalFilename: "poster.webp",
+        checksumSha256: null,
+        objectKey: "media-assets/media1/original/poster.webp",
+        previewObjectKey: null,
+        muxPlaybackId: null,
+        updatedAt: new Date("2023-10-24T14:02:00.000Z"),
+      })),
+      usage: vi.fn(async () => [
+        {
+          experienceId: "exp_1",
+          experienceLocaleId: "loc_1",
+          locale: "en",
+          title: "Stories of Forgiveness",
+          location: "blocks",
+          fieldPath: "$.blocks[0].imageUrl",
+          fieldName: "imageUrl",
+          value: "/api/media-assets/media1/preview",
+          match: "url",
+        },
+      ]),
+    },
+  })),
+}))
+
+vi.mock("@/app/dashboard/media/folder-tree", () => ({
+  MediaFolderTree: vi.fn(
+    ({ folders }: { folders: Array<{ label: string }> }) => (
+      <div>{folders.map((folder) => folder.label).join(", ")}</div>
+    ),
+  ),
 }))
 
 vi.mock("@/app/dashboard/live-data", () => ({
@@ -268,9 +319,20 @@ vi.mock("@/app/dashboard/ops-data", () => ({
   })),
   loadMediaData: vi.fn(async () => ({
     metrics: [
-      { label: "Images", value: "2", footer: "VIDEO_IMAGES" },
-      { label: "Downloads", value: "2", footer: "DUB_ARTIFACTS" },
-      { label: "Subtitles", value: "2", footer: "TEXT_TRACKS" },
+      { label: "Assets", value: "2", footer: "MEDIA_ASSET_ROWS" },
+      { label: "Images", value: "2", footer: "IMAGE_LIBRARY" },
+      { label: "Processing", value: "0", footer: "ACTIVE_UPLOADS" },
+    ],
+    folders: [
+      {
+        id: "folder-1",
+        label: "Campaigns",
+        count: 1,
+        directAssetCount: 1,
+        childFolderCount: 0,
+        parentId: null,
+        depth: 0,
+      },
     ],
     rows: [
       {
@@ -280,13 +342,22 @@ vi.mock("@/app/dashboard/ops-data", () => ({
         statusLabel: "Ready",
         statusTone: "success",
         meta: "10/24/2023, 14:02",
+        kind: "IMAGE",
+        folderId: "folder-1",
+        backend: "LOCAL",
+        byteSize: "2.0 KB",
+        dimensions: "1200x675",
+        previewUrl: "/api/media-assets/media1/preview",
+        downloadUrl: "/api/media-assets/media1/download",
       },
     ],
     insights: [
-      { label: "Image Catalog", value: "2", detail: "detail" },
-      { label: "Download Artifacts", value: "2", detail: "detail" },
-      { label: "Subtitle Tracks", value: "2", detail: "detail" },
+      { label: "Image Assets", value: "2", detail: "detail" },
+      { label: "Video Assets", value: "0", detail: "detail" },
+      { label: "PDF Assets", value: "0", detail: "detail" },
     ],
+    totalCount: 2,
+    unfiledCount: 1,
   })),
 }))
 
@@ -371,8 +442,8 @@ describe("dashboard UI routes", () => {
         title: uiMessages.pages.languages.title,
       },
       {
-        html: await htmlFrom(MediaPage()),
-        title: uiMessages.pages.media.title,
+        html: await htmlFrom(MediaPage({ searchParams: Promise.resolve({}) })),
+        title: "Media Library",
       },
     ]
 
@@ -381,5 +452,8 @@ describe("dashboard UI routes", () => {
     }
 
     expect(pages[0].html).toContain("Recent Workflow Runs")
+    expect(pages[6].html).toContain("Media Library")
+    expect(pages[6].html).toContain("Library")
+    expect(pages[6].html).toContain("Campaigns")
   })
 })
