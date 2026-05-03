@@ -38,6 +38,11 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "languages",
         "countries",
         "keywords",
+        // Media assets
+        "mediaAsset",
+        "mediaAssets",
+        "mediaAssetUsage",
+        "mediaFolders",
         // Video
         "video",
         "videoBySlug",
@@ -61,6 +66,18 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(mutation).toBeTruthy()
     const fields = mutation!.getFields()
     expect(fields.triggerExperienceEmbedding).toBeDefined()
+  })
+
+  it("Mutation root exposes media asset write entry points", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const fields = mutation!.getFields()
+    expect(fields.registerMediaAsset).toBeDefined()
+    expect(fields.updateMediaAsset).toBeDefined()
+    expect(fields.deleteMediaAsset).toBeDefined()
+    expect(fields.createMediaFolder).toBeDefined()
+    expect(fields.updateMediaFolder).toBeDefined()
+    expect(fields.deleteMediaFolder).toBeDefined()
   })
 
   it("Mutation root exposes the scene embedding backfill trigger", () => {
@@ -257,6 +274,49 @@ describe("Video type", () => {
   it("does NOT expose subtitles directly (they attach to VideoEdition)", () => {
     const fields = fieldsOf("Video")
     expect(fields.subtitles).toBeUndefined()
+  })
+})
+
+describe("MediaAsset type", () => {
+  it("exposes media metadata and stable app routes without raw object keys", () => {
+    const fields = fieldsOf("MediaAsset")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "id",
+        "kind",
+        "backend",
+        "status",
+        "visibility",
+        "displayName",
+        "mimeType",
+        "byteSize",
+        "previewUrl",
+        "downloadUrl",
+        "editUrl",
+        "createdById",
+      ]),
+    )
+    expect(fields.objectKey).toBeUndefined()
+    expect(fields.previewObjectKey).toBeUndefined()
+    expect(fields.muxAssetId).toBeUndefined()
+    expect(fields.muxUploadId).toBeUndefined()
+  })
+})
+
+describe("MediaAssetUsage type", () => {
+  it("exposes structured where-used references", () => {
+    const fields = fieldsOf("MediaAssetUsage")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "experienceId",
+        "experienceLocaleId",
+        "locale",
+        "location",
+        "fieldPath",
+        "fieldName",
+        "match",
+      ]),
+    )
   })
 })
 

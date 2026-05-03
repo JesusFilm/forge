@@ -101,6 +101,39 @@ enum VideoSource {
   MUX        @map("mux")
 }
 
+/// Editorial media kind. The first UI slice is image-forward, but the model is
+/// generic enough for PDFs, miscellaneous files, and future Mux-backed videos.
+enum MediaAssetKind {
+  IMAGE @map("image")
+  VIDEO @map("video")
+  PDF   @map("pdf")
+  FILE  @map("file")
+}
+
+/// Where the original bytes or playback authority live.
+enum MediaAssetBackend {
+  LOCAL @map("local")
+  S3    @map("s3")
+  MUX   @map("mux")
+}
+
+/// Processing lifecycle for an editorial media asset.
+enum MediaAssetStatus {
+  PENDING    @map("pending")
+  UPLOADING  @map("uploading")
+  PROCESSING @map("processing")
+  READY      @map("ready")
+  FAILED     @map("failed")
+  MISSING    @map("missing")
+}
+
+/// Delivery visibility. Private assets require admin-mediated access; public
+/// assets can be exposed through generated preview/download URLs.
+enum MediaAssetVisibility {
+  PRIVATE @map("private")
+  PUBLIC  @map("public")
+}
+
 /// Generic workflow run lifecycle used by the admin-owned operator ledger.
 enum WorkflowRunStatus {
   QUEUED    @map("queued")
@@ -134,8 +167,10 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  sessions Session[]
-  accounts Account[]
+  sessions     Session[]
+  accounts     Account[]
+  mediaAssets  MediaAsset[]
+  mediaFolders MediaFolder[]
 
   @@unique([email])
   @@map("user")
@@ -351,6 +386,73 @@ model ContentRevision {
   @@index([entityType, entityId, status, revisedAt])
   @@index([revisedAt])
   @@map("content_revision")
+}
+
+// -----------------------------------------------------------------------------
+// Editorial media assets
+// -----------------------------------------------------------------------------
+
+/// Canonical editorial asset managed by apps/admin. The asset row is the stable
+/// identity used by editors and agents; storage object keys, local paths, Mux
+/// upload IDs, and playback IDs are backend-specific implementation details.
+///
+/// `VideoImage` remains separate: it represents Core/video-derived poster and
+/// still metadata. `MediaAsset` is for editorial uploads and reusable files.
+model MediaAsset {
+  id               String               @id @default(cuid())
+  kind             MediaAssetKind
+  backend          MediaAssetBackend
+  status           MediaAssetStatus     @default(PENDING)
+  visibility       MediaAssetVisibility @default(PRIVATE)
+  displayName      String               @map("display_name")
+  description      String?
+  altText          String?              @map("alt_text")
+  mimeType         String               @map("mime_type")
+  byteSize         BigInt?              @map("byte_size")
+  width            Int?
+  height           Int?
+  durationMs       BigInt?              @map("duration_ms")
+  originalFilename String?              @map("original_filename")
+  checksumSha256   String?              @map("checksum_sha256")
+  objectKey        String?              @map("object_key")
+  previewObjectKey String?              @map("preview_object_key")
+  muxAssetId       String?              @map("mux_asset_id")
+  muxUploadId      String?              @map("mux_upload_id")
+  muxPlaybackId    String?              @map("mux_playback_id")
+  errorCode        String?              @map("error_code")
+  errorMessage     String?              @map("error_message")
+  folderId         String?              @map("folder_id")
+  folder           MediaFolder?         @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  createdById      String?              @map("created_by_id")
+  createdBy        User?                @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+
+  @@index([kind, status, updatedAt])
+  @@index([backend, status])
+  @@index([visibility])
+  @@index([folderId, updatedAt])
+  @@index([createdById])
+  @@index([displayName])
+  @@map("media_asset")
+}
+
+model MediaFolder {
+  id          String        @id @default(cuid())
+  name        String
+  parentId    String?       @map("parent_id")
+  parent      MediaFolder?  @relation("MediaFolderTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children    MediaFolder[] @relation("MediaFolderTree")
+  createdById String?       @map("created_by_id")
+  createdBy   User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  assets      MediaAsset[]
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@unique([parentId, name])
+  @@index([parentId, updatedAt])
+  @@index([createdById])
+  @@map("media_folder")
 }
 
 // -----------------------------------------------------------------------------
@@ -707,19 +809,19 @@ model Video {
 /// Per-locale Video content. Editors curate localized title / description /
 /// snippet / imageAlt and publish them independently of other locales.
 model VideoLocale {
-  id             String                       @id @default(cuid())
-  videoId        String                       @map("video_id")
-  video          Video                        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  id             String                   @id @default(cuid())
+  videoId        String                   @map("video_id")
+  video          Video                    @relation(fields: [videoId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 locale code, e.g. "en", "fr", "es-419".
   locale         String
   title          String?
   description    String?
   snippet        String?
-  imageAlt       String?                      @map("image_alt")
-  status         LocaleStatus                 @default(DRAFT)
-  publishedAt    DateTime?                    @map("published_at")
-  createdAt      DateTime                     @default(now()) @map("created_at")
-  updatedAt      DateTime                     @updatedAt @map("updated_at")
+  imageAlt       String?                  @map("image_alt")
+  status         LocaleStatus             @default(DRAFT)
+  publishedAt    DateTime?                @map("published_at")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
   /// STORED generated tsvector columns — derived from `title` /
   /// `description` by `0009_keyword_first_lexical/migration.sql`. Backed by
   /// `video_locale_lexical_weighted_idx` (GIN over the per-field weighted
@@ -730,8 +832,8 @@ model VideoLocale {
   /// the generated expression requires a coordinated DROP CASCADE + ADD
   /// COLUMN migration (Postgres has no in-place editor for stored
   /// generated expressions).
-  titleTsv       Unsupported("tsvector")?     @map("title_tsv")
-  descriptionTsv Unsupported("tsvector")?     @map("description_tsv")
+  titleTsv       Unsupported("tsvector")? @map("title_tsv")
+  descriptionTsv Unsupported("tsvector")? @map("description_tsv")
 
   @@unique([videoId, locale])
   @@index([locale])

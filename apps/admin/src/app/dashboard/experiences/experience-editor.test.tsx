@@ -54,6 +54,17 @@ function renderEditor(
           previewStreamUrl: "https://example.com/video.mp4",
         },
       ]}
+      mediaLibrary={[
+        {
+          id: "asset-1",
+          displayName: "Managed hero",
+          altText: "Hero alt text",
+          mimeType: "image/webp",
+          byteSize: "12.0 KB",
+          previewUrl: "/api/media-assets/asset-1/preview",
+          updated: "2026-04-16T00:00:00.000Z",
+        },
+      ]}
       initialValues={{
         localeId: "locale-1",
         title: "Experience title",
