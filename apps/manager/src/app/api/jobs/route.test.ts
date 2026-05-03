@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { JobRecord } from "@/types/job"
 
 const {
   authenticateRequestMock,
@@ -63,9 +64,72 @@ vi.mock("@/workflows/videoEnrichment", () => ({
   runVideoEnrichment: runVideoEnrichmentMock,
 }))
 
-import { POST } from "@/app/api/jobs/route"
+import { GET, POST } from "@/app/api/jobs/route"
 import { wrapStartSpy } from "@/test-helpers/workflow-dispatch"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
+
+function buildJob(id: string): JobRecord {
+  return {
+    id,
+    muxAssetId: `asset-${id}`,
+    muxPlaybackId: `playback-${id}`,
+    languages: ["fr"],
+    options: {},
+    status: "running",
+    retries: 0,
+    createdAt: "2026-04-22T00:00:00.000Z",
+    updatedAt: "2026-04-22T00:01:00.000Z",
+    artifacts: {},
+    steps: [],
+    errors: [],
+  }
+}
+
+describe("GET /api/jobs", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    authenticateRequestMock.mockResolvedValue(null)
+    listJobSummariesMock.mockResolvedValue([
+      buildJob("job-1"),
+      buildJob("job-2"),
+    ])
+    countJobsMock.mockResolvedValue(2)
+  })
+
+  it("rejects unauthorized callers", async () => {
+    authenticateRequestMock.mockResolvedValueOnce(
+      Response.json({ error: "Authentication required" }, { status: 401 }),
+    )
+
+    const response = await GET(new Request("http://example.test/api/jobs"))
+
+    expect(response.status).toBe(401)
+  })
+
+  it("returns the summary envelope by default", async () => {
+    const response = await GET(new Request("http://example.test/api/jobs"))
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      jobs: expect.arrayContaining([expect.objectContaining({ id: "job-1" })]),
+      total: 2,
+    })
+    expect(listJobSummariesMock).toHaveBeenCalledTimes(1)
+    expect(countJobsMock).not.toHaveBeenCalled()
+  })
+
+  it("returns the count envelope when requested", async () => {
+    const response = await GET(
+      new Request("http://example.test/api/jobs?view=count"),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ total: 2 })
+    expect(countJobsMock).toHaveBeenCalledTimes(1)
+    expect(listJobSummariesMock).not.toHaveBeenCalled()
+  })
+})
 
 describe("POST /api/jobs", () => {
   const dispatch = wrapStartSpy(startMock)
