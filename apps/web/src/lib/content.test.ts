@@ -128,6 +128,14 @@ describe("resolveWatchPage", () => {
     expect(print(queryMock.mock.calls[1][0].query)).toMatch(
       /children\(pagination:\s*\{limit:\s*24\}\)/,
     )
+    // GET_ROUTE_VIDEO must paginate variants with `limit: -1` for the same
+    // reason WatchVideoFragment does (see watch-video.test.ts): the default
+    // 10-row return would silently drop the playable variant for any video
+    // whose first 10 variants don't include the primary language, sending
+    // the watch page to the wrong locale.
+    expect(print(queryMock.mock.calls[1][0].query)).toMatch(
+      /variants\(pagination:\s*\{\s*limit:\s*-1\s*\}\)/,
+    )
 
     expect(result.error).toBeNull()
     expect(result.data).toMatchObject({

@@ -71,7 +71,7 @@ const GET_ROUTE_VIDEO = graphql(`
       primaryLanguage {
         coreId
       }
-      variants {
+      variants(pagination: { limit: -1 }) {
         documentId
         hls
         published
@@ -551,80 +551,117 @@ async function fetchWatchVideoRecord(
   return (result.data?.videos?.[0] ?? null) as WatchVideoRecord | null
 }
 
+// Strip the heavy fields (`downloads`, `muxVideo`, `duration`) from every
+// variant in `record.variants` *except* the one matching `selectedDocumentId`.
+// Each non-selected variant retains documentId, slug, published, hls, and
+// language only — enough to power the language picker and the URL/locale
+// guards without shipping ~2KB of MP4 download metadata × 240+ variants.
+//
+// Runtime-only narrowing: the `WatchVideoRecord` type still claims those
+// fields are present on every variant, so we cast through `unknown` to keep
+// the public type stable. Consumers that reach for `variant.downloads` on a
+// non-selected variant will see `undefined` — that's the cost we pay for
+// keeping the RSC payload sub-100KB instead of the original ~500KB.
+function stripNonSelectedVariantFields(
+  record: WatchVideoRecord,
+  selectedDocumentId: string | null,
+): WatchVideoRecord {
+  if (!record.variants?.length) return record
+  const variants = record.variants.map((variant) => {
+    if (variant == null) return variant
+    if (variant.documentId === selectedDocumentId) return variant
+    return {
+      documentId: variant.documentId,
+      slug: variant.slug,
+      published: variant.published,
+      hls: variant.hls,
+      language: variant.language,
+    } as unknown as typeof variant
+  })
+  return { ...record, variants } as WatchVideoRecord
+}
+
+async function tryResolveWatchVideo(
+  collectionSlug: string,
+  videoSlug: string,
+  languageSlug: string,
+): Promise<ResolvedWatchVideo> {
+  const record = await fetchWatchVideoRecord(collectionSlug, videoSlug)
+  if (!record) {
+    throw new WatchVideoError("VIDEO_NOT_FOUND", {
+      collectionSlug,
+      videoSlug,
+      languageSlug,
+    })
+  }
+
+  const parents = (record.parents ?? []).filter(
+    (parent): parent is WatchParent => parent != null,
+  )
+  const canonicalParent =
+    parents.find((parent) => parent.slug === collectionSlug) ?? null
+  if (!canonicalParent) {
+    throw new WatchVideoError("PARENT_NOT_FOUND", {
+      collectionSlug,
+      videoSlug,
+      languageSlug,
+    })
+  }
+
+  const variants = (record.variants ?? []).filter(
+    (variant): variant is WatchVariant => variant != null,
+  )
+  const playableVariants = variants.filter(
+    (variant) => variant.published === true && Boolean(variant.hls),
+  )
+
+  const selectedVariant =
+    playableVariants.find(
+      (variant) => variant.language?.slug === languageSlug,
+    ) ?? null
+
+  if (!selectedVariant) {
+    // Distinguish "language not in this video" vs. "no playable variant at
+    // all" so the error boundary can show a useful English-fallback link.
+    const matchedLanguageVariant = variants.find(
+      (variant) => variant.language?.slug === languageSlug,
+    )
+    if (!playableVariants.length) {
+      throw new WatchVideoError("NO_PLAYABLE_VARIANT", {
+        collectionSlug,
+        videoSlug,
+        languageSlug,
+      })
+    }
+    // Either the requested language has a variant but it's unpublished or
+    // missing HLS, or the language is absent entirely. Both surface as
+    // LOCALE_NOT_FOUND — error.tsx handles fallback link.
+    void matchedLanguageVariant
+    throw new WatchVideoError("LOCALE_NOT_FOUND", {
+      collectionSlug,
+      videoSlug,
+      languageSlug,
+    })
+  }
+
+  const narrowedRecord = stripNonSelectedVariantFields(
+    record,
+    selectedVariant.documentId,
+  )
+
+  const resolved: ResolvedWatchVideo = {
+    video: narrowedRecord,
+    canonicalParent,
+    selectedVariant,
+  }
+
+  // Match resolveWatchPage's plain-data normalization so the result is safe
+  // to serialize across the RSC boundary.
+  return JSON.parse(JSON.stringify(resolved)) as ResolvedWatchVideo
+}
+
 const fetchResolvedWatchVideo = unstable_cache(
-  async (
-    collectionSlug: string,
-    videoSlug: string,
-    languageSlug: string,
-  ): Promise<ResolvedWatchVideo> => {
-    const record = await fetchWatchVideoRecord(collectionSlug, videoSlug)
-    if (!record) {
-      throw new WatchVideoError("VIDEO_NOT_FOUND", {
-        collectionSlug,
-        videoSlug,
-        languageSlug,
-      })
-    }
-
-    const parents = (record.parents ?? []).filter(
-      (parent): parent is WatchParent => parent != null,
-    )
-    const canonicalParent =
-      parents.find((parent) => parent.slug === collectionSlug) ?? null
-    if (!canonicalParent) {
-      throw new WatchVideoError("PARENT_NOT_FOUND", {
-        collectionSlug,
-        videoSlug,
-        languageSlug,
-      })
-    }
-
-    const variants = (record.variants ?? []).filter(
-      (variant): variant is WatchVariant => variant != null,
-    )
-    const playableVariants = variants.filter(
-      (variant) => variant.published === true && Boolean(variant.hls),
-    )
-
-    const selectedVariant =
-      playableVariants.find(
-        (variant) => variant.language?.slug === languageSlug,
-      ) ?? null
-
-    if (!selectedVariant) {
-      // Distinguish "language not in this video" vs. "no playable variant at
-      // all" so the error boundary can show a useful English-fallback link.
-      const matchedLanguageVariant = variants.find(
-        (variant) => variant.language?.slug === languageSlug,
-      )
-      if (!playableVariants.length) {
-        throw new WatchVideoError("NO_PLAYABLE_VARIANT", {
-          collectionSlug,
-          videoSlug,
-          languageSlug,
-        })
-      }
-      // Either the requested language has a variant but it's unpublished or
-      // missing HLS, or the language is absent entirely. Both surface as
-      // LOCALE_NOT_FOUND — error.tsx handles fallback link.
-      void matchedLanguageVariant
-      throw new WatchVideoError("LOCALE_NOT_FOUND", {
-        collectionSlug,
-        videoSlug,
-        languageSlug,
-      })
-    }
-
-    const resolved: ResolvedWatchVideo = {
-      video: record,
-      canonicalParent,
-      selectedVariant,
-    }
-
-    // Match resolveWatchPage's plain-data normalization so the result is safe
-    // to serialize across the RSC boundary.
-    return JSON.parse(JSON.stringify(resolved)) as ResolvedWatchVideo
-  },
+  tryResolveWatchVideo,
   ["watch-video"],
   { revalidate: 60 },
 )
@@ -674,48 +711,66 @@ async function fetchWatchVideoBySlug(
   return (result.data?.videos?.[0] ?? null) as WatchVideoRecord | null
 }
 
+// Sentinel thrown by the cached inner so unstable_cache never persists a
+// "no playable variant" miss. unstable_cache re-throws on error and does
+// NOT cache failures — the outer wrapper catches this sentinel and returns
+// null, while real downstream errors propagate as before.
+const WATCH_VIDEO_BY_SLUG_NOT_FOUND = "watch-video-by-slug:NOT_FOUND"
+
+async function tryResolveWatchVideoBySlug(
+  videoSlug: string,
+  locale: string,
+): Promise<ResolvedWatchVideoBySlug> {
+  const record = await fetchWatchVideoBySlug(videoSlug)
+  if (!record) throw new Error(WATCH_VIDEO_BY_SLUG_NOT_FOUND)
+
+  const parents = (record.parents ?? []).filter(
+    (parent): parent is WatchParent => parent != null,
+  )
+  const canonicalParent = parents[0] ?? null
+
+  const variants = (record.variants ?? []).filter(
+    (variant): variant is WatchVariant => variant != null,
+  )
+  const playableVariants = variants.filter(
+    (variant) => variant.published === true && Boolean(variant.hls),
+  )
+  if (!playableVariants.length) throw new Error(WATCH_VIDEO_BY_SLUG_NOT_FOUND)
+
+  // Priority: URL locale (slug → bcp47), then primary, then first playable.
+  const localeMatch =
+    playableVariants.find((variant) => variant.language?.slug === locale) ??
+    playableVariants.find((variant) => variant.language?.bcp47 === locale)
+  const primaryLanguageId = record.primaryLanguage?.coreId ?? null
+  const primaryMatch = primaryLanguageId
+    ? playableVariants.find(
+        (variant) => variant.language?.coreId === primaryLanguageId,
+      )
+    : null
+  const selectedVariant =
+    localeMatch ?? primaryMatch ?? playableVariants[0] ?? null
+  if (!selectedVariant) throw new Error(WATCH_VIDEO_BY_SLUG_NOT_FOUND)
+
+  const narrowedRecord = stripNonSelectedVariantFields(
+    record,
+    selectedVariant.documentId,
+  )
+
+  const resolved: ResolvedWatchVideoBySlug = {
+    video: narrowedRecord,
+    canonicalParent,
+    selectedVariant,
+  }
+  return JSON.parse(JSON.stringify(resolved)) as ResolvedWatchVideoBySlug
+}
+
+// Cache wraps only the success path. unstable_cache re-throws errors and does
+// NOT cache them, so the NOT_FOUND sentinel naturally bypasses the cache —
+// each request re-queries Strapi until a record exists. This avoids pinning
+// a 60s "null" entry in the cache for a record that just hasn't been
+// published yet (the original bug).
 const fetchResolvedWatchVideoBySlug = unstable_cache(
-  async (
-    videoSlug: string,
-    locale: string,
-  ): Promise<ResolvedWatchVideoBySlug | null> => {
-    const record = await fetchWatchVideoBySlug(videoSlug)
-    if (!record) return null
-
-    const parents = (record.parents ?? []).filter(
-      (parent): parent is WatchParent => parent != null,
-    )
-    const canonicalParent = parents[0] ?? null
-
-    const variants = (record.variants ?? []).filter(
-      (variant): variant is WatchVariant => variant != null,
-    )
-    const playableVariants = variants.filter(
-      (variant) => variant.published === true && Boolean(variant.hls),
-    )
-    if (!playableVariants.length) return null
-
-    // Priority: URL locale (slug → bcp47), then primary, then first playable.
-    const localeMatch =
-      playableVariants.find((variant) => variant.language?.slug === locale) ??
-      playableVariants.find((variant) => variant.language?.bcp47 === locale)
-    const primaryLanguageId = record.primaryLanguage?.coreId ?? null
-    const primaryMatch = primaryLanguageId
-      ? playableVariants.find(
-          (variant) => variant.language?.coreId === primaryLanguageId,
-        )
-      : null
-    const selectedVariant =
-      localeMatch ?? primaryMatch ?? playableVariants[0] ?? null
-    if (!selectedVariant) return null
-
-    const resolved: ResolvedWatchVideoBySlug = {
-      video: record,
-      canonicalParent,
-      selectedVariant,
-    }
-    return JSON.parse(JSON.stringify(resolved)) as ResolvedWatchVideoBySlug
-  },
+  tryResolveWatchVideoBySlug,
   ["watch-video-by-slug"],
   { revalidate: 60 },
 )
@@ -727,7 +782,17 @@ export const resolveWatchVideoBySlug = cache(
     videoSlug: string,
     locale: string,
   ): Promise<ResolvedWatchVideoBySlug | null> => {
-    return fetchResolvedWatchVideoBySlug(videoSlug, locale)
+    try {
+      return await fetchResolvedWatchVideoBySlug(videoSlug, locale)
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === WATCH_VIDEO_BY_SLUG_NOT_FOUND
+      ) {
+        return null
+      }
+      throw error
+    }
   },
 )
 

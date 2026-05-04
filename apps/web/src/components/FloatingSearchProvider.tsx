@@ -386,6 +386,12 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           aria-label="JesusFilm home"
           inert={chromeHidden || undefined}
           aria-hidden={chromeHidden || undefined}
+          // Clear the search query (and ?q= URL param + cached results) on
+          // click so the home navigation lands on a fresh search bar instead
+          // of carrying the previous query across.
+          onClick={() => {
+            void search("")
+          }}
           className={`fixed left-10 z-50 hidden sm:flex h-12 items-center transition-[top,opacity] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 ${
             pinned ? "top-3" : "top-10"
           } ${chromeHidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}
