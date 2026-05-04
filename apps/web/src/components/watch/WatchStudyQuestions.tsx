@@ -8,7 +8,13 @@ import { Button } from "@/components/ui/button"
 
 // Prompts are intentionally non-interactive: Video.studyQuestions has no
 // `answer` field, so any chevron/expand affordance would be a false promise.
-// Tests in WatchBody.test.tsx pin this contract.
+// The placeholder row shown when there are no editorial prompts is also
+// non-interactive -- it's an invite-to-engage copy string, not a question
+// with a hidden answer. Tests in WatchBody.test.tsx pin this contract for
+// both branches.
+const PLACEHOLDER_QUESTION =
+  "If you could ask the creator of this video a question, what would it be?"
+
 export function WatchStudyQuestions({
   prompts,
   onAskYoursClick,
@@ -16,6 +22,7 @@ export function WatchStudyQuestions({
   prompts: string[]
   onAskYoursClick: () => void
 }) {
+  const hasPrompts = prompts.length > 0
   return (
     <section
       data-testid="watch-study-questions"
@@ -44,18 +51,30 @@ export function WatchStudyQuestions({
         data-testid="watch-study-questions-list"
         className="relative flex flex-col"
       >
-        {prompts.map((prompt, index) => (
+        {hasPrompts ? (
+          prompts.map((prompt, index) => (
+            <li
+              key={`${index}-${prompt}`}
+              data-testid="watch-study-questions-item"
+              className="border-b border-stone-500/20 py-3"
+            >
+              <p className="flex text-base leading-[1.6] font-semibold text-stone-100 sm:pr-4 md:text-lg md:text-balance">
+                <QuestionIcon />
+                {prompt}
+              </p>
+            </li>
+          ))
+        ) : (
           <li
-            key={`${index}-${prompt}`}
-            data-testid="watch-study-questions-item"
+            data-testid="watch-study-questions-placeholder"
             className="border-b border-stone-500/20 py-3"
           >
             <p className="flex text-base leading-[1.6] font-semibold text-stone-100 sm:pr-4 md:text-lg md:text-balance">
               <QuestionIcon />
-              {prompt}
+              {PLACEHOLDER_QUESTION}
             </p>
           </li>
-        ))}
+        )}
       </ul>
     </section>
   )

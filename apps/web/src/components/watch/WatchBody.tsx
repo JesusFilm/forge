@@ -20,27 +20,27 @@ export function WatchBody({
   const prompts = (studyQuestions?.studyQuestions ?? [])
     .map((q) => q.value)
     .filter((v): v is string => v != null && v.length > 0)
-  const hasRightColumn = prompts.length > 0
 
+  // The right column (Related Questions + Ask Yours CTA) always renders.
+  // When there are no editorial prompts, WatchStudyQuestions falls back to
+  // a single placeholder row -- the Ask Yours flow is always relevant, so
+  // hiding the section was leaving the CTA stranded on prompt-less videos.
   return (
     <section
       data-block-type="WatchBody"
       data-testid="watch-body"
-      data-has-right-column={hasRightColumn ? "true" : "false"}
       className="grid w-full grid-cols-12 gap-10 py-8 text-stone-100 md:grid-cols-12 md:gap-6"
     >
       <div
         data-testid="watch-body-left"
-        className={
-          hasRightColumn
-            ? "col-span-12 flex min-w-0 flex-col gap-4 md:col-span-8"
-            : "col-span-12 flex min-w-0 flex-col gap-4 md:col-span-12"
-        }
+        className="col-span-12 flex min-w-0 flex-col gap-4 md:col-span-8"
       >
         {hasDownloads ? (
           // pt-6 xl:pt-4 matches WatchStudyQuestions' top padding so the
           // Download pill and the Related Questions / Ask Yours row align
           // on the same horizontal axis at the top of both columns.
+          // pr-12 xl:pr-16 fixes Download's right edge inside the left
+          // column.
           <div className="flex justify-end pt-6 md:pr-12 xl:pt-4 xl:pr-16">
             <DownloadButton onClick={onDownloadClick} />
           </div>
@@ -69,17 +69,15 @@ export function WatchBody({
         ) : null}
       </div>
 
-      {hasRightColumn ? (
-        <div
-          data-testid="watch-body-right"
-          className="col-span-12 flex min-w-0 flex-col gap-4 md:col-span-4"
-        >
-          <WatchStudyQuestions
-            prompts={prompts}
-            onAskYoursClick={onAskYoursClick}
-          />
-        </div>
-      ) : null}
+      <div
+        data-testid="watch-body-right"
+        className="col-span-12 flex min-w-0 flex-col gap-4 md:col-span-4"
+      >
+        <WatchStudyQuestions
+          prompts={prompts}
+          onAskYoursClick={onAskYoursClick}
+        />
+      </div>
     </section>
   )
 }
