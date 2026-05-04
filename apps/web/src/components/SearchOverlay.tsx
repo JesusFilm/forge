@@ -146,7 +146,13 @@ export function SearchOverlay() {
         <Link
           href={"/" as Route}
           aria-label="JesusFilm home"
-          onClick={(e) => e.stopPropagation()}
+          // stopPropagation keeps the overlay from intercepting the click as
+          // a backdrop dismiss; search("") clears the query + ?q= + cached
+          // results so home navigation lands on a fresh search bar.
+          onClick={(e) => {
+            e.stopPropagation()
+            void search("")
+          }}
           className="absolute left-4 top-[30px] z-10 flex items-center rounded-full p-1 sm:hidden focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
         >
           <Image
