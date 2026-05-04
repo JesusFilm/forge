@@ -68,17 +68,29 @@ function makeCitation(
 }
 
 describe("BibleQuotesSection — visibility", () => {
-  it("returns null (section hidden) when bibleCitations is empty", () => {
+  it("renders the section with the always-on promo card even when bibleCitations is empty", () => {
     act(() => {
       root.render(
         <BibleQuotesSection bibleCitations={[]} onShareClick={vi.fn()} />,
       )
     })
 
+    const section = container.querySelector(
+      '[data-testid="watch-bible-quotes"]',
+    )
+    expect(section).not.toBeNull()
+    expect(section!.getAttribute("data-block-type")).toBe("BibleQuotes")
+    // No reference cards rendered, but the trailing promo card is always present.
     expect(
-      container.querySelector('[data-testid="watch-bible-quotes"]'),
-    ).toBeNull()
-    expect(container.textContent).toBe("")
+      container.querySelectorAll('[data-testid="watch-bible-quotes-item"]')
+        .length,
+    ).toBe(0)
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-promo"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-promo-cta"]'),
+    ).not.toBeNull()
   })
 
   it("renders the section wrapper with data-block-type=BibleQuotes when citations are present", () => {
@@ -96,6 +108,31 @@ describe("BibleQuotesSection — visibility", () => {
     )
     expect(section).not.toBeNull()
     expect(section!.getAttribute("data-block-type")).toBe("BibleQuotes")
+  })
+})
+
+describe("BibleQuotesSection — promo CTA", () => {
+  it("renders an external-target anchor on the promo card pointing at the BSF join URL", () => {
+    act(() => {
+      root.render(
+        <BibleQuotesSection bibleCitations={[]} onShareClick={vi.fn()} />,
+      )
+    })
+
+    const cta = container.querySelector(
+      '[data-testid="watch-bible-quotes-promo-cta"]',
+    ) as HTMLAnchorElement | null
+    expect(cta).not.toBeNull()
+    expect(cta!.tagName.toLowerCase()).toBe("a")
+    expect(cta!.getAttribute("href")).toBe(
+      "https://join.bsfinternational.org/?utm_source=jesusfilm-watch",
+    )
+    expect(cta!.getAttribute("target")).toBe("_blank")
+    // rel must contain noreferrer + noopener so window.opener is null on the new tab.
+    const rel = cta!.getAttribute("rel") ?? ""
+    expect(rel).toContain("noopener")
+    expect(rel).toContain("noreferrer")
+    expect(cta!.textContent).toContain("Join our Bible study")
   })
 })
 

@@ -9,7 +9,7 @@ import { ExternalLink } from "lucide-react"
 
 import type { WatchBibleQuotesBlock } from "@/lib/content"
 import { formatCitation } from "@/lib/citation-format"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   CAROUSEL_BLEED_CLASSES,
   CAROUSEL_CONTENT_PADDING,
@@ -20,14 +20,16 @@ type BibleQuotesSectionProps = {
   onShareClick: () => void
 }
 
+const JOIN_BIBLE_STUDY_URL =
+  "https://join.bsfinternational.org/?utm_source=jesusfilm-watch"
+
 export function BibleQuotesSection({
   bibleCitations,
   onShareClick,
 }: BibleQuotesSectionProps) {
-  if (bibleCitations.length === 0) {
-    return null
-  }
-
+  // The carousel always renders, even when the video has no Bible citations —
+  // the trailing "Join Our Bible Study" promo card is the always-on CTA, and
+  // every video page should surface it.
   return (
     <section
       data-block-type="BibleQuotes"
@@ -84,6 +86,15 @@ export function BibleQuotesSection({
               <h3 className="mt-1 mb-4 text-xl font-bold leading-snug text-balance text-white/90">
                 Join Our Bible Study
               </h3>
+              <a
+                href={JOIN_BIBLE_STUDY_URL}
+                target="_blank"
+                rel="noreferrer noopener"
+                data-testid="watch-bible-quotes-promo-cta"
+                className={`${buttonVariants({ variant: "pill" })} self-start`}
+              >
+                Join our Bible study
+              </a>
             </BibleQuoteCard>
           </li>
         </ul>

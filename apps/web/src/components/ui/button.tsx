@@ -20,7 +20,7 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
-        pill: "cursor-pointer rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-red-500 hover:text-white",
+        pill: "cursor-pointer rounded-full bg-white px-5 py-3.5 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-red-500 hover:text-white",
       },
       size: {
         default:
@@ -36,6 +36,16 @@ const buttonVariants = cva(
         "icon-lg": "size-9",
       },
     },
+    compoundVariants: [
+      // The default size sets `h-8 px-2.5`, which would clobber the pill
+      // variant's chunky padding (`px-5 py-3.5`). Override with `h-auto` so
+      // the pill's vertical padding actually drives its height.
+      {
+        variant: "pill",
+        size: "default",
+        className: "h-auto px-5 py-3.5",
+      },
+    ],
     defaultVariants: {
       variant: "default",
       size: "default",

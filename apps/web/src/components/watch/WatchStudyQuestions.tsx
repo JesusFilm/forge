@@ -22,10 +22,10 @@ export function WatchStudyQuestions({
       aria-labelledby="watch-related-questions-heading"
       className="w-full pt-6 xl:pt-4"
     >
-      <div className="mb-6 flex flex-wrap items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between">
         <h4
           id="watch-related-questions-heading"
-          className="flex shrink-0 items-center gap-4 py-4 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg"
+          className="flex shrink-0 items-center gap-4 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg"
         >
           Related Questions
         </h4>

@@ -115,6 +115,21 @@ export function WatchPageClient({
       <DownloadModal
         open={modalState === "download"}
         downloads={downloadsForModal}
+        videoTitle={video.title ?? null}
+        // Prefer the editorial cinematic still over `images[].url` — that
+        // raw `url` is a misshaped Cloudflare Images URL (missing variant
+        // path segment) and 400s. Mux's thumbnail API is the last-resort
+        // fallback; it's a frame from the video, not the curated poster.
+        posterUrl={
+          video.images?.[0]?.mobileCinematicHigh ??
+          video.images?.[0]?.mobileCinematicLow ??
+          video.images?.[0]?.thumbnail ??
+          (variant.muxVideo?.playbackId
+            ? `https://image.mux.com/${variant.muxVideo.playbackId}/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop`
+            : (video.images?.[0]?.url ?? null))
+        }
+        durationSeconds={variant.duration ?? null}
+        languageName={variant.language?.name ?? null}
         onClose={closeModal}
       />
       <LanguagePickerModal
