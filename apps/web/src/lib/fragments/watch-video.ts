@@ -40,7 +40,7 @@ export const watchVideoFragment = graphql(`
         }
       }
     }
-    variants {
+    variants(pagination: { limit: -1 }) {
       documentId
       slug
       published

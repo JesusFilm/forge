@@ -46,18 +46,24 @@ describe("WatchVideoFragment", () => {
       /\bchildren\b\s*\{[\s\S]*?documentId[\s\S]*?\bslug\b[\s\S]*?\btitle\b[\s\S]*?\blabel\b[\s\S]*?images\s*\{\s*url/,
     )
 
-    // variants: identifying + playable + downloads + muxVideo
-    expect(printed).toMatch(/variants\s*\{[\s\S]*?\bhls\b/)
-    expect(printed).toMatch(/variants\s*\{[\s\S]*?\bpublished\b/)
+    // variants: identifying + playable + downloads + muxVideo.
+    // The relation is paginated with `limit: -1` so Strapi returns every
+    // variant — the 10-row default would silently drop the English variant
+    // for any video whose first 10 variants are non-English (242 variants
+    // on `mary-visit-to-elizabeth`, etc.) and the watch page would fall back
+    // to "first playable" → wrong-language playback.
+    expect(printed).toMatch(/variants\(pagination:\s*\{\s*limit:\s*-1\s*\}\)/)
+    expect(printed).toMatch(/variants\([^)]*\)\s*\{[\s\S]*?\bhls\b/)
+    expect(printed).toMatch(/variants\([^)]*\)\s*\{[\s\S]*?\bpublished\b/)
     expect(printed).toMatch(
-      /variants\s*\{[\s\S]*?\bmuxVideo\s*\{[\s\S]*?playbackId/,
+      /variants\([^)]*\)\s*\{[\s\S]*?\bmuxVideo\s*\{[\s\S]*?playbackId/,
     )
     expect(printed).toMatch(
-      /variants\s*\{[\s\S]*?downloads\s*\{[\s\S]*?\bquality\b[\s\S]*?\bsize\b[\s\S]*?\burl\b/,
+      /variants\([^)]*\)\s*\{[\s\S]*?downloads\s*\{[\s\S]*?\bquality\b[\s\S]*?\bsize\b[\s\S]*?\burl\b/,
     )
     // variants.language must include the slug U3 will key off
     expect(printed).toMatch(
-      /variants\s*\{[\s\S]*?language\s*\{[\s\S]*?coreId[\s\S]*?bcp47[\s\S]*?\bslug\b[\s\S]*?\bname\b/,
+      /variants\([^)]*\)\s*\{[\s\S]*?language\s*\{[\s\S]*?coreId[\s\S]*?bcp47[\s\S]*?\bslug\b[\s\S]*?\bname\b/,
     )
 
     // studyQuestions sorted ascending; only `value` + `order` (no `answer`)

@@ -1,7 +1,7 @@
 ---
 title: Mux Player + custom React-rendered chrome (HeroPlayerControls pattern)
 date: 2026-04-30
-last_updated: 2026-05-01
+last_updated: 2026-05-04
 category: docs/solutions/design-patterns
 module: apps/web, packages/video-player
 problem_type: design_pattern
@@ -172,7 +172,14 @@ The hero `<MuxPlayer>` is taller than the viewport on desktop (1071px tall in a 
 // apps/web/src/components/watch/HeroPlayer.tsx
 const [heroHeight, setHeroHeight] = useState<number | null>(null)
 
-useEffect(() => {
+// Updated 2026-05-04: this is `useLayoutEffect`, not `useEffect`. Once
+// `aspect-video` was added to the wrapper className (see below), the
+// wrapper has a real layout-derived height before the first paint.
+// `useEffect` runs after paint, so for one frame `heroHeight` would
+// still be null and `top` would render as `0px` instead of the
+// correct calc — visible on first load. `useLayoutEffect` runs after
+// DOM mutation but before paint, eliminating the flash.
+useLayoutEffect(() => {
   const el = wrapperRef.current
   if (!el) return
   const apply = (h: number) => {
@@ -191,7 +198,16 @@ useEffect(() => {
 // In JSX:
 <div
   ref={wrapperRef}
-  className="sticky w-full overflow-hidden bg-black"
+  // Updated 2026-05-04: `aspect-video` locks the wrapper to 16:9 of
+  // its width from the moment of mount. Without it, the wrapper has
+  // no intrinsic height until Mux Player resolves the video's
+  // dimensions — and Mux's element falls back to its built-in
+  // ~200px min-height during the buffer phase, collapsing the hero
+  // and stacking the title/Play-with-Sound pill on top of the
+  // floating search bar. With `aspect-video`, the wrapper is
+  // deterministic from the first paint and matches the eventual
+  // loaded size on a 16:9 asset.
+  className="sticky aspect-video w-full overflow-hidden bg-black"
   style={{
     top:
       heroHeight != null
@@ -323,6 +339,74 @@ The body section sibling-rendered after the hero already had `bg-stone-800` over
 **Tab-order caveat.** The portaled chrome bar appears far below the sticky hero in DOM source order. Keyboard users tabbing through the page will reach the chrome at a point in the tab sequence that does not match its visual position. Consider `tabindex` management or a focus trap when the chrome is revealed if tab-order fidelity is important.
 
 **Backdrop-blur compositor cost.** `backdrop-blur-2xl` (40px) repaints the blur over a moving Mux video texture every scroll frame. Flagship desktop and recent phones hold 60fps; midrange Android (~2–3 yr old Snapdragon) often drops to 30–45fps during scroll. Profile on a Pixel 6a / Galaxy A-series device before broad rollout. If frame drops are unacceptable, lower the blur radius (`backdrop-blur-xl` / `-lg`) on small viewports or fall back to a solid translucent color when `prefers-reduced-motion` is set. (session history — mobile counterpart pattern quantized scroll updates for the same reason; see Related)
+
+### 5f. Loading spinner with `onCanPlay` + `onError` recovery + render-phase reset (added 2026-05-04)
+
+Once `aspect-video` locks the wrapper at 16:9 (5a), the wrapper has a deterministic full-size box from mount — but Mux Player itself paints a black rectangle while the manifest fetches. On a search-result navigation that hits a cold Mux asset, that black rectangle can sit visible for 1-3 seconds before the muted-loop preview begins. A spinner overlay during that window gives the user feedback that the player is loading rather than broken.
+
+The state machine has three load-bearing pieces. Skip any one and the spinner either flashes incorrectly, sticks forever, or fails to re-show on language switch.
+
+```tsx
+const [videoReady, setVideoReady] = useState(false)
+const handleCanPlay = useCallback(() => {
+  setVideoReady(true)
+}, [])
+
+const handlePlayerError = useCallback((event: CustomEvent) => {
+  const code = (event?.detail as { code?: string } | undefined)?.code
+  if (code === "autoplay-blocked") {
+    setAutoplayBlocked(true)
+  }
+  // Any non-autoplay-blocked error (network, decode, manifest 404…)
+  // means we will never fire onCanPlay, so videoReady would otherwise
+  // stay false forever and the spinner would sit on a black box.
+  // Reveal the player element so Mux Player can render its own
+  // error UI.
+  setVideoReady(true)
+}, [])
+
+// Reset the buffered/ready spinner when the playable identity changes
+// (variant switch via the language picker, or new playback id).
+// Render-phase setState — NOT useEffect — to avoid the React Compiler
+// "cascading renders" lint rule. The new state is queued before commit.
+const [prevVariantKey, setPrevVariantKey] = useState(variant.documentId)
+if (prevVariantKey !== variant.documentId) {
+  setPrevVariantKey(variant.documentId)
+  setVideoReady(false)
+}
+
+// In JSX, layered inside the sticky wrapper from 5a:
+;<MuxPlayer
+  ref={setPlayerRef}
+  playbackId={playbackId}
+  onCanPlay={handleCanPlay}
+  onError={handlePlayerError}
+  /* ...rest of props... */
+/>
+{
+  !videoReady ? (
+    <div
+      data-testid="hero-player-loading"
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black"
+    >
+      <SpinnerIcon className="h-12 w-12 text-white/80" />
+    </div>
+  ) : null
+}
+```
+
+The three load-bearing pieces:
+
+1. **`onError` must call `setVideoReady(true)` for non-autoplay-blocked codes.** Without this, any hard Mux failure (network outage, 404 manifest, decode error, expired playback token) leaves `videoReady=false` permanently — the spinner overlays a black box forever with no recovery path. The spinner is only correct when there is a possibility of `onCanPlay` firing; if that possibility is gone, the spinner has to clear so Mux Player's own error UI becomes visible.
+2. **State reset on prop change must be render-phase, not effect-phase.** The naive pattern is `useEffect(() => setVideoReady(false), [variant.documentId, playbackId])`. The React Compiler ESLint rule (`react-hooks-rule-react-compiler`) flags this as "Calling setState synchronously within an effect can trigger cascading renders" and fails CI at error level. The canonical pattern is "adjust state during render": track the previous variant key in state and reset inline when it changes. The new state is queued before commit, so no cascade.
+3. **`pointer-events-none` on the spinner overlay.** The unmute pill below the wrapper has to remain clickable through the spinner; without `pointer-events-none`, the spinner intercepts the click and the pill never fires.
+
+`onCanPlay` is the right event for "first frame ready to render," not `loadedmetadata` (fires too early — duration is known but no frame is buffered) or `playing` (fires too late — already played past the first frame). The muted-loop preview's `autoPlay="muted"` will trigger `canplay` once enough buffer is available; on hard failures, `error` fires instead and the recovery branch above clears the spinner.
+
+**Stale-spinner-on-language-switch trap.** When the user opens the language picker and switches variants, `<HeroPlayer>` typically does not unmount — only `variant` changes. Without the render-phase reset above, `videoReady=true` from the previous variant suppresses the spinner during the new variant's buffer phase, and the user sees a frozen frame from the previous language while the new manifest loads. The render-phase reset on `variant.documentId` fixes this without remounting the component (which would lose `chromeRevealed`, autoplay state, current playhead, etc.).
+
+**Test coverage requires invoking captured callbacks.** The existing `muxPlayerMock` in `HeroPlayer.test.tsx` captures `onCanPlay`, `onError`, etc. as props but never invokes them. To test the spinner state machine, upgrade the mock to expose helpers like `fireCanPlay()` / `fireError({ code })` and assert the spinner's presence/absence around them. PR #878 includes the mock upgrade and the corresponding lifecycle tests.
 
 ## Why This Matters
 
@@ -621,3 +705,5 @@ The `HeroPlayerControls` test suite lives in `apps/web/src/components/watch/__te
 - `apps/tv/src/components/VideoPlayer.tsx` — TV-side parallel implementation (expo-video + D-pad). Different runtime but the timeline/scrubbing UX should converge with web. (session history)
 - PR [#866](https://github.com/JesusFilm/forge/pull/866) — the original implementation this pattern documents (chrome replacement and lift-to-state).
 - The 2026-05-01 update layer (sections 5a–5e and the iOS-safe sequence patch) was developed against `main` directly without a separate PR; the working tree carries the change.
+- [`docs/solutions/logic-errors/strapi-graphql-pagination-cap-wrong-language-watch-page-20260504.md`](../logic-errors/strapi-graphql-pagination-cap-wrong-language-watch-page-20260504.md) — sibling fix from the same PR (#878). The `aspect-video` + `useLayoutEffect` + `onCanPlay`+`onError` combination in section 5a/5f was added as part of fixing the wrong-language-variant bug, because the original watch page used `useEffect` for the ResizeObserver and had no loading-state coverage at all. Read together for the full context of PR #878.
+- PR [#878](https://github.com/JesusFilm/forge/pull/878) — `feat(web): fix English variant selection + redesign watch share modal + harden hero loading`. Source of the 2026-05-04 updates to sections 5a and 5f.
