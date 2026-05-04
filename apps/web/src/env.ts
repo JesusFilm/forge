@@ -32,7 +32,50 @@ export const env = createEnv({
     // for safer dev / CI experience — `z.url()` would otherwise hard-fail
     // boot on environments where the value isn't set explicitly. Production
     // and preview must override to `https://jesusfilm.org` (or equivalent).
-    NEXT_PUBLIC_CANONICAL_ORIGIN: z.url().default("http://localhost:3000"),
+    //
+    // F21: refine with a soft allowlist of known-good host shapes. When a
+    // value falls outside the allowlist we WARN at module-import time
+    // (visible in the deploy logs) but do NOT throw — staging, preview, and
+    // partner-co-deployed instances may legitimately use other hosts (custom
+    // domains, branch URLs, etc.) and we don't want a config drift in those
+    // environments to brick the entire app boot. The warning makes a
+    // misconfigured / leaked env value visible to whoever reads logs while
+    // still letting unrelated deployments stand up cleanly.
+    NEXT_PUBLIC_CANONICAL_ORIGIN: z
+      .url()
+      .default("http://localhost:3000")
+      .refine(
+        (value) => {
+          try {
+            const { hostname } = new URL(value)
+            const allowlistedSuffixes = [
+              ".jesusfilm.org",
+              ".local",
+              ".railway.app",
+            ]
+            const allowlistedExacts = [
+              "jesusfilm.org",
+              "localhost",
+              "127.0.0.1",
+            ]
+            const ok =
+              allowlistedExacts.includes(hostname) ||
+              allowlistedSuffixes.some((suffix) => hostname.endsWith(suffix))
+            if (!ok && typeof console !== "undefined") {
+              console.warn(
+                `[env] NEXT_PUBLIC_CANONICAL_ORIGIN host "${hostname}" is outside the soft allowlist (jesusfilm.org / *.jesusfilm.org / *.local / *.railway.app / localhost / 127.0.0.1). Continuing without throwing — verify this is intentional.`,
+              )
+            }
+          } catch {
+            // The outer z.url() already validates the URL shape; if URL
+            // parsing fails here we let z.url()'s error surface instead.
+          }
+          // Warn-only: always pass refinement so misconfigured hosts don't
+          // brick boot in legitimate-but-unknown deployment topologies.
+          return true
+        },
+        { message: "unreachable" },
+      ),
   },
   runtimeEnv: {
     INTERNAL_GRAPHQL_URL: process.env.INTERNAL_GRAPHQL_URL,

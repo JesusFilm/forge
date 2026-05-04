@@ -22,6 +22,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 type MuxPlayerCapturedProps = Record<string, unknown> & {
   ref?: React.Ref<unknown>
   onLoadedMetadata?: (event: Event) => void
+  onCanPlay?: (event: Event) => void
   onError?: (event: Event & { detail?: { code?: string } }) => void
 }
 
@@ -129,6 +130,25 @@ function makeBlock(): WatchHeroPlayerBlock {
 function lastMuxProps(): MuxPlayerCapturedProps {
   const calls = muxPlayerMock.mock.calls
   return calls[calls.length - 1]?.[0] as MuxPlayerCapturedProps
+}
+
+// Helpers for firing the captured event handlers — the mock doesn't render
+// a real Mux Player so the consumer-side `onCanPlay` / `onError` paths are
+// otherwise unobservable.
+async function fireCanPlay() {
+  const handler = lastMuxProps()?.onCanPlay
+  await act(async () => {
+    handler?.(new Event("canplay"))
+  })
+}
+
+async function fireError(code: string) {
+  const handler = lastMuxProps()?.onError
+  const evt = new Event("error") as Event & { detail?: { code?: string } }
+  evt.detail = { code }
+  await act(async () => {
+    handler?.(evt)
+  })
 }
 
 describe("HeroPlayer — initial mount", () => {
@@ -303,6 +323,56 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     expect(pillAfter).not.toBeNull()
     expect(pillAfter?.getAttribute("data-state")).toBe("tap-to-unmute")
     expect(pillAfter?.textContent).toContain("Tap to Unmute")
+  })
+})
+
+describe("HeroPlayer — loading spinner lifecycle", () => {
+  it("renders the spinner overlay on mount", () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).not.toBeNull()
+  })
+
+  it("removes the spinner once onCanPlay fires", async () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    await fireCanPlay()
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+  })
+
+  it("removes the spinner on a non-autoplay-blocked error so Mux's own error UI is visible", async () => {
+    // F1 verification: a network/decode/manifest error never fires onCanPlay,
+    // so without this fallback the spinner sits over a black box forever.
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).not.toBeNull()
+    await fireError("manifest-load-error")
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+  })
+
+  it("keeps the spinner up when the error is autoplay-blocked (recovery path is the unmute pill, not the player UI)", async () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    await fireError("autoplay-blocked")
+    // Spinner stays only until onCanPlay fires (which it will once the muted
+    // loop buffers). The autoplay-blocked branch must NOT pre-emptively hide
+    // it, because that would expose Mux's empty player while we're still
+    // showing the unmute pill.
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).not.toBeNull()
   })
 })
 

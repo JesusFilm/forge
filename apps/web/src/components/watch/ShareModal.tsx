@@ -1,105 +1,369 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import Image from "next/image"
+import { Copy, Facebook } from "lucide-react"
+
+// Inline X (formerly Twitter) glyph — lucide-react still ships the legacy
+// blue-bird Twitter icon AND exports its own `XIcon` (the close-button "x"),
+// so we use a brand-specific name to avoid both shadowing and confusion.
+// The X brand mark is a single-path SVG so an inline component keeps the
+// modal free of an extra dependency.
+function XBrandIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M18.244 2H21.5l-7.5 8.572L23 22h-6.86l-5.36-6.78L4.6 22H1.34l8.04-9.187L1 2h6.99l4.84 6.21L18.244 2zm-1.2 18h1.86L7.04 4H5.07l11.974 16z" />
+    </svg>
+  )
+}
 
 import { env } from "@/env"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  PUBLIC_SHARE_FALLBACK_ORIGIN,
+  isPublicShareableOrigin,
+} from "@/lib/url"
+import { buildEmbedSnippet, buildFbShareUrl, buildXShareUrl } from "@/lib/share"
+import { cn } from "@/lib/utils"
 
-// Embed-snippet section was removed alongside the embed route — shipping a
-// snippet that 404s would leak broken iframes onto partner sites.
+// Re-export for backwards compat with existing tests / consumers that import
+// these from `@/components/watch/ShareModal`.
+export { PUBLIC_SHARE_FALLBACK_ORIGIN, isPublicShareableOrigin }
+
+// Optional fields here accept explicit `null` from the parent's `?? null`
+// fallback chain in WatchPageClient (`video.title ?? null`). The effective
+// type is `string | null | undefined` — callers may pass any of the three
+// without forcing a `?? undefined` re-coercion at every call site.
 export type ShareModalProps = {
   open: boolean
   videoSlug: string
   currentLanguageSlug: string
+  videoTitle?: string | null
+  videoDescription?: string | null
+  posterUrl?: string | null
+  /** Mux playback id — used to build a portable iframe embed via player.mux.com. */
+  playbackId?: string | null
   onClose: () => void
 }
 
+type ShareTab = "link" | "embed"
 type CopyStatus = "idle" | "copied" | "failed"
 
 export function ShareModal({
   open,
   videoSlug,
   currentLanguageSlug,
+  videoTitle,
+  videoDescription,
+  posterUrl,
+  playbackId,
   onClose,
 }: ShareModalProps) {
-  const [linkStatus, setLinkStatus] = useState<CopyStatus>("idle")
+  const [tab, setTab] = useState<ShareTab>("link")
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle")
+  const embedRef = useRef<HTMLTextAreaElement | null>(null)
 
-  // Includes `/watch/` because this is the externally-shareable absolute URL,
-  // not a router.push target — basePath isn't auto-prepended on bare origins.
   const origin = env.NEXT_PUBLIC_CANONICAL_ORIGIN
   const canonicalUrl = `${origin}/watch/${videoSlug}/${currentLanguageSlug}`
+  // When the configured origin can't be reached by the FB / X scrapers
+  // (localhost, private hosts, etc.) we keep the share buttons VISIBLE but
+  // render them as disabled. Sharing a localhost URL via the public fallback
+  // would otherwise poison Facebook's negative cache for the canonical slug
+  // before it actually exists in production. The button stays as an
+  // affordance hint so the user knows where sharing will appear once the
+  // page is live.
+  const isShareable = isPublicShareableOrigin(origin)
+  // Used by the Facebook + X share intents only. Copy Link / Copy Code keep
+  // the configured origin so devs can copy a localhost URL when that's what
+  // they want.
+  const shareOrigin = isShareable ? origin : PUBLIC_SHARE_FALLBACK_ORIGIN
+  const shareableUrl = `${shareOrigin}/watch/${videoSlug}/${currentLanguageSlug}`
+  // buildEmbedSnippet validates playbackId against PLAYBACK_ID_PATTERN before
+  // interpolating into the iframe `src` and returns "" on null/invalid; the
+  // Embed Code tab is also gated on `playbackId ?` below, so an invalid id
+  // hides the tab entirely.
+  const embedSnippet = buildEmbedSnippet(playbackId)
+
+  const fbHref = buildFbShareUrl(shareableUrl)
+  const xHref = buildXShareUrl(shareableUrl, videoTitle ?? undefined)
+
+  const isEmbed = tab === "embed"
+  const currentValue = isEmbed ? embedSnippet : canonicalUrl
+  const copyLabel = isEmbed ? "Copy Code" : "Copy Link"
+
+  // Reset the "Copied" pill back to the default label after 2s so a second
+  // click reads as a fresh copy. Cleanup clears the timer on unmount or when
+  // copyStatus flips early (e.g. user switches tabs).
+  useEffect(() => {
+    if (copyStatus !== "copied") return
+    const timer = window.setTimeout(() => {
+      setCopyStatus("idle")
+    }, 2000)
+    return () => window.clearTimeout(timer)
+  }, [copyStatus])
 
   function handleOpenChange(next: boolean) {
     if (!next) {
-      setLinkStatus("idle")
+      setTab("link")
+      setCopyStatus("idle")
       onClose()
     }
   }
 
-  async function copy(
-    text: string,
-    setter: (status: CopyStatus) => void,
-  ): Promise<void> {
+  function selectTab(next: ShareTab) {
+    setTab(next)
+    setCopyStatus("idle")
+  }
+
+  async function copy(text: string) {
     try {
       await navigator.clipboard.writeText(text)
-      setter("copied")
+      setCopyStatus("copied")
     } catch {
-      setter("failed")
+      setCopyStatus("failed")
     }
   }
 
+  // Auto-fit the embed textarea to its content so the full snippet is visible
+  // without an inner scroll bar. Re-runs when the snippet changes (different
+  // playbackId) and on viewport resize, since the textarea wraps differently
+  // at different modal widths. `useLayoutEffect` runs before paint, so the
+  // user never sees the rows-default height flash.
+  //
+  // Cap the auto-fit at 40% of the viewport so an extreme zoom or a malformed
+  // snippet can't push the Copy Code button below the fold; switch the
+  // textarea to inner-scroll once it would otherwise blow past the cap.
+  useLayoutEffect(() => {
+    if (!isEmbed) return
+    const fit = () => {
+      // Read the ref inside the closure rather than capturing it on the
+      // outer effect run — concurrent rendering may swap the DOM node
+      // underneath us between the effect setup and the resize callback.
+      const el = embedRef.current
+      if (!el) return
+      el.style.height = "auto"
+      const cap = window.innerHeight * 0.4
+      const desired = el.scrollHeight
+      if (desired > cap) {
+        el.style.height = `${cap}px`
+        el.style.overflowY = "auto"
+      } else {
+        el.style.height = `${desired}px`
+        el.style.overflowY = "hidden"
+      }
+    }
+    fit()
+    window.addEventListener("resize", fit)
+    return () => window.removeEventListener("resize", fit)
+  }, [isEmbed, embedSnippet])
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent data-testid="watch-share-modal" className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Share</DialogTitle>
-          <DialogDescription>
-            Copy a link to this video, or embed it on another site.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        data-testid="watch-share-modal"
+        className="overflow-hidden rounded-2xl border border-stone-700/50 bg-stone-900 p-0 text-stone-100 sm:max-w-xl"
+      >
+        <DialogTitle className="sr-only">Share video</DialogTitle>
 
-        <section
-          data-testid="watch-share-modal-link"
-          className="flex flex-col gap-2"
-        >
-          <label className="text-xs font-semibold uppercase tracking-widest text-stone-300">
-            Copy link
-          </label>
-          {linkStatus === "failed" ? (
+        <div className="border-b border-stone-700/50 px-6 py-4">
+          <h2 className="text-lg font-semibold text-stone-50">
+            Share this video
+          </h2>
+        </div>
+
+        <div className="flex flex-col gap-4 p-6 pb-2 sm:flex-row sm:gap-6">
+          <div
+            data-testid="watch-share-modal-poster"
+            className="relative aspect-video w-full shrink-0 overflow-hidden rounded-lg bg-stone-800 sm:w-56"
+          >
+            {posterUrl ? (
+              <Image
+                src={posterUrl}
+                alt={videoTitle ?? "Video poster"}
+                fill
+                sizes="(min-width: 640px) 224px, 100vw"
+                className="object-cover"
+              />
+            ) : null}
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            {videoTitle ? (
+              <h3
+                data-testid="watch-share-modal-title"
+                className="text-xl font-bold text-stone-50 sm:text-2xl"
+              >
+                {videoTitle}
+              </h3>
+            ) : null}
+            {videoDescription ? (
+              <p
+                data-testid="watch-share-modal-description"
+                className="line-clamp-4 text-sm leading-relaxed text-stone-300"
+              >
+                {videoDescription}
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 px-6 pb-4">
+          <div className="flex gap-3">
+            {isShareable ? (
+              <a
+                href={fbHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Share on Facebook"
+                data-testid="watch-share-modal-facebook"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1877F2] text-white transition hover:bg-[#0c63d4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                <Facebook size={18} fill="currentColor" stroke="none" />
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled
+                aria-label="Share on Facebook (unavailable on this build)"
+                data-testid="watch-share-modal-facebook"
+                className="flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-full bg-[#1877F2] text-white opacity-50"
+              >
+                <Facebook size={18} fill="currentColor" stroke="none" />
+              </button>
+            )}
+            {isShareable ? (
+              <a
+                href={xHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Share on X"
+                data-testid="watch-share-modal-x"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-white transition hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                <XBrandIcon size={16} />
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled
+                aria-label="Share on X (unavailable on this build)"
+                data-testid="watch-share-modal-x"
+                className="flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-full bg-black text-white opacity-50"
+              >
+                <XBrandIcon size={16} />
+              </button>
+            )}
+          </div>
+          {!isShareable ? (
+            <p
+              data-testid="watch-share-modal-share-disabled-hint"
+              className="text-xs text-stone-400"
+            >
+              Sharing requires a deployed page — works once this video is in
+              production.
+            </p>
+          ) : null}
+        </div>
+
+        <div className="px-6">
+          <div
+            role="tablist"
+            aria-label="Share format"
+            className="flex border-b border-stone-700/50"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!isEmbed}
+              data-testid="watch-share-modal-tab-link"
+              onClick={() => selectTab("link")}
+              className={cn(
+                "flex-1 px-4 py-3 text-xs font-semibold tracking-[0.18em] uppercase transition",
+                !isEmbed
+                  ? "border-b-2 border-red-500 text-red-500"
+                  : "border-b-2 border-transparent text-stone-400 hover:text-stone-200",
+              )}
+            >
+              Share Link
+            </button>
+            {embedSnippet ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={isEmbed}
+                data-testid="watch-share-modal-tab-embed"
+                onClick={() => selectTab("embed")}
+                className={cn(
+                  "flex-1 px-4 py-3 text-xs font-semibold tracking-[0.18em] uppercase transition",
+                  isEmbed
+                    ? "border-b-2 border-red-500 text-red-500"
+                    : "border-b-2 border-transparent text-stone-400 hover:text-stone-200",
+                )}
+              >
+                Embed Code
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="px-6 pt-4">
+          {copyStatus === "failed" ? (
             <p
               data-testid="watch-share-modal-link-fallback"
               role="alert"
-              className="text-xs text-amber-400"
+              className="mb-2 text-xs text-amber-400"
             >
-              Couldn’t copy automatically — select the link below and copy
+              Couldn’t copy automatically — select the text below and copy
               manually.
             </p>
           ) : null}
-          <div className="flex items-stretch gap-2">
+          {isEmbed ? (
+            <textarea
+              ref={embedRef}
+              data-testid="watch-share-modal-embed-input"
+              readOnly
+              // `rows={2}` is the minimum baseline; the auto-fit effect below
+              // sets `style.height` to `scrollHeight` before paint so the full
+              // snippet is visible without an inner scroll bar (capped at 40vh).
+              rows={2}
+              value={embedSnippet}
+              onFocus={(e) => e.currentTarget.select()}
+              className="w-full resize-none rounded-lg border border-stone-700/70 bg-stone-950/40 px-4 py-3 font-mono text-xs text-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+            />
+          ) : (
             <input
               type="text"
               data-testid="watch-share-modal-link-input"
               readOnly
               value={canonicalUrl}
               onFocus={(e) => e.currentTarget.select()}
-              className="flex-1 rounded-md border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              className="w-full rounded-lg border border-stone-700/70 bg-stone-950/40 px-4 py-3 text-sm text-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
             />
-            <button
-              type="button"
-              data-testid="watch-share-modal-link-copy"
-              onClick={() => copy(canonicalUrl, setLinkStatus)}
-              className="rounded-md bg-amber-400 px-4 py-2 text-sm font-semibold text-stone-900 transition hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              {linkStatus === "copied" ? "Copied" : "Copy"}
-            </button>
-          </div>
-        </section>
+          )}
+        </div>
+
+        <div className="flex justify-end px-6 pt-4 pb-6">
+          <Button
+            variant="pill"
+            data-testid={
+              isEmbed
+                ? "watch-share-modal-embed-copy"
+                : "watch-share-modal-link-copy"
+            }
+            onClick={() => copy(currentValue)}
+            className="gap-2"
+          >
+            <Copy size={16} />
+            <span>{copyStatus === "copied" ? "Copied" : copyLabel}</span>
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   )
