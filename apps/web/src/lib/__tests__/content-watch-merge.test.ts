@@ -32,6 +32,7 @@ function makeVariant(overrides: Record<string, unknown> = {}) {
     slug: "en",
     published: true,
     hls: "https://cdn.example/jesus.m3u8",
+    duration: 7674,
     language: { coreId: "529", bcp47: "en", slug: "english", name: "English" },
     downloads: [],
     muxVideo: { playbackId: "playback-id-123" },
@@ -144,11 +145,13 @@ describe("mergeWatchExperience — auto-template fallback (Experience absent)", 
     expect(
       merged.some((b) => isWatchBlock(b) && b.kind === "SiblingCarousel"),
     ).toBe(false)
-    // HeroPlayer + WatchBody + Share always present even with empty data.
+    // HeroPlayer + WatchBody + BibleQuotes (always-on promo) + Share are
+    // present even with empty data — only SiblingCarousel + StudyQuestions
+    // are omitted when their source data is missing.
     const kinds = merged
       .filter(isWatchBlock)
       .map((b) => (b as { kind: string }).kind)
-    expect(kinds).toEqual(["HeroPlayer", "WatchBody", "Share"])
+    expect(kinds).toEqual(["HeroPlayer", "WatchBody", "BibleQuotes", "Share"])
   })
 
   it("omits the StudyQuestions block when video has empty studyQuestions[]", () => {
@@ -170,7 +173,7 @@ describe("mergeWatchExperience — auto-template fallback (Experience absent)", 
     ).toBe(false)
   })
 
-  it("omits the BibleQuotes block when video has empty bibleCitations[]", () => {
+  it("always emits a BibleQuotes block (with empty citations) so the carousel's always-on promo card surfaces on every video page", () => {
     const video = makeVideo({ bibleCitations: [] })
     const variant = makeVariant()
     const canonicalParent = makeParent()
@@ -179,9 +182,15 @@ describe("mergeWatchExperience — auto-template fallback (Experience absent)", 
       asArgs({ video, variant, canonicalParent }),
     )
 
+    const block = merged.find(
+      (b) => isWatchBlock(b) && b.kind === "BibleQuotes",
+    )
+    expect(block).toBeDefined()
     expect(
-      merged.some((b) => isWatchBlock(b) && b.kind === "BibleQuotes"),
-    ).toBe(false)
+      isWatchBlock(block!) && block.kind === "BibleQuotes"
+        ? block.bibleCitations
+        : null,
+    ).toEqual([])
   })
 })
 
@@ -360,8 +369,9 @@ describe("mergeWatchExperience — Experience overrides", () => {
       }),
     )
 
-    // 3 always-present synthetic blocks + 1 passthrough Strapi block.
-    expect(merged).toHaveLength(4)
+    // 4 always-present synthetic blocks (HeroPlayer + WatchBody + BibleQuotes
+    // + Share) + 1 passthrough Strapi block.
+    expect(merged).toHaveLength(5)
     expect(
       (merged[merged.length - 1] as { __typename?: string }).__typename,
     ).toBe("ComponentSectionsPromoBanner")
@@ -427,9 +437,15 @@ describe("Auto-template builders return null on empty data", () => {
     expect(buildStudyQuestionsBlock(null as never)).toBe(null)
   })
 
-  it("buildBibleQuotesBlock returns null on empty array", () => {
-    expect(buildBibleQuotesBlock([] as never)).toBe(null)
-    expect(buildBibleQuotesBlock(null as never)).toBe(null)
+  it("buildBibleQuotesBlock always returns a block (empty citations array) so the always-on promo CTA surfaces", () => {
+    const fromEmpty = buildBibleQuotesBlock([] as never)
+    expect(fromEmpty).not.toBeNull()
+    expect(fromEmpty?.kind).toBe("BibleQuotes")
+    expect(fromEmpty?.bibleCitations).toEqual([])
+    const fromNull = buildBibleQuotesBlock(null as never)
+    expect(fromNull).not.toBeNull()
+    expect(fromNull?.kind).toBe("BibleQuotes")
+    expect(fromNull?.bibleCitations).toEqual([])
   })
 
   it("buildHeroBlock, buildWatchBodyBlock, buildShareBlock never return null", () => {

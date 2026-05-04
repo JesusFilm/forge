@@ -18,6 +18,9 @@ export const watchVideoFragment = graphql(`
     imageAlt
     images {
       url
+      thumbnail
+      mobileCinematicHigh
+      mobileCinematicLow
     }
     primaryLanguage {
       coreId
@@ -42,6 +45,7 @@ export const watchVideoFragment = graphql(`
       slug
       published
       hls
+      duration
       language {
         coreId
         bcp47

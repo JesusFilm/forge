@@ -860,14 +860,17 @@ export function buildStudyQuestionsBlock(
   return { kind: "StudyQuestions", studyQuestions: items }
 }
 
-/** Returns null when the video has no Bible citations. */
+/**
+ * Always returns a BibleQuotes block — every watch page surfaces the carousel
+ * (the trailing "Join Our Bible Study" promo card is the always-on CTA).
+ * `bibleCitations` may be empty; the section still renders the promo card.
+ */
 export function buildBibleQuotesBlock(
   bibleCitations: WatchVideoRecord["bibleCitations"],
-): WatchBibleQuotesBlock | null {
+): WatchBibleQuotesBlock {
   const items = (bibleCitations ?? []).filter(
     (c): c is WatchBibleCitation => c != null,
   )
-  if (items.length === 0) return null
   return { kind: "BibleQuotes", bibleCitations: items }
 }
 
