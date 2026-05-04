@@ -2,7 +2,6 @@
 
 import {
   useCallback,
-  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -186,9 +185,14 @@ export function HeroPlayer({
   // Reset the buffered/ready spinner when the playable identity changes
   // (variant switch via the language picker, or new playback id), otherwise
   // the spinner stays hidden during the next variant's pre-canplay buffer.
-  useEffect(() => {
+  // The "adjust state during render" pattern (last-rendered key + render-phase
+  // setState) avoids the cascading-render warning the React Compiler raises
+  // on a useEffect-driven reset, since the new state is queued before commit.
+  const [prevVariantKey, setPrevVariantKey] = useState(variant.documentId)
+  if (prevVariantKey !== variant.documentId) {
+    setPrevVariantKey(variant.documentId)
     setVideoReady(false)
-  }, [variant.documentId, playbackId])
+  }
 
   const loop = !chromeRevealed
   const muted = !chromeRevealed
