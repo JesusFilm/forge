@@ -210,6 +210,10 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
     images: [],
     primaryLanguage: { coreId: "529", bcp47: "en" },
     parents: [],
+    // Top-level `children` powers the SiblingCarousel for parent/collection
+    // videos (e.g. JESUS). Default empty so the builder falls back to the
+    // canonicalParent.children path — mirrors content-watch-merge.test.ts.
+    children: [],
     variants: [],
     studyQuestions: [],
     bibleCitations: [],
@@ -284,30 +288,38 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     const rendered = Array.from(
       container.querySelectorAll("[data-block-type]"),
     ).map((el) => el.getAttribute("data-block-type"))
-    // SiblingCarousel is intentionally skipped at the renderer level (its
-    // dispatch case returns null) until the thumbnail-image plumbing is
-    // restored. The block is still emitted by `mergeWatchExperience`, but
-    // does not produce DOM today — so the rendered list omits it.
+    // SiblingCarousel is dispatched again (the prior `return null` was
+    // reverted once the chapter-children data path was wired up). The block
+    // is still emitted by `mergeWatchExperience` and now produces DOM.
     expect(rendered).toEqual([
       "HeroPlayer",
+      "SiblingCarousel",
       "WatchBody",
       "StudyQuestions",
       "BibleQuotes",
       "Share",
     ])
-    // Explicit negative guard: when the dispatch case is reverted, this
-    // assertion will start failing alongside the positive list above —
-    // making the "single-line revert" promise traceable in CI.
-    expect(rendered).not.toContain("SiblingCarousel")
-    // The block IS still emitted by `mergeWatchExperience` even though the
-    // renderer skips dispatch — protect that contract so a future change to
-    // the merge layer doesn't silently drop it.
+    // The block IS still emitted by `mergeWatchExperience` — protect that
+    // contract so a future change to the merge layer doesn't silently drop it.
     expect(
       blocks.some((b) => "kind" in b && b.kind === "SiblingCarousel"),
     ).toBe(true)
 
     // Synthetic types must NOT delegate to ExperienceSectionRenderer.
     expect(experienceSectionRendererMock).not.toHaveBeenCalled()
+
+    // SiblingCarousel must live INSIDE the watch-body-zone (the
+    // frosted-glass body wrapper), not as a top-level sibling alongside
+    // the sticky HeroPlayer. The carousel was originally rendered in the
+    // top zone; demoting it into the body zone keeps it in normal flow
+    // beneath the hero instead of scrolling over it. Guard that move
+    // here so a future refactor doesn't silently regress.
+    const bodyZone = container.querySelector("[data-testid='watch-body-zone']")
+    expect(bodyZone).not.toBeNull()
+    const siblingInsideBody = bodyZone!.querySelector(
+      "[data-block-type='SiblingCarousel']",
+    )
+    expect(siblingInsideBody).not.toBeNull()
   })
 
   it("HeroPlayer placeholder serializes playbackId and hls into data-content", () => {

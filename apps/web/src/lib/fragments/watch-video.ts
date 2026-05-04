@@ -6,6 +6,10 @@ import { graphql } from "@forge/graphql"
 // - Video.studyQuestions has no `answer` field — see WatchStudyQuestions.
 // - parents.children does NOT accept sort:"order:asc" — Video has no `order`
 //   field. Children come back in editor-curated relation order.
+// - Top-level `children` powers the SiblingCarousel when the current video
+//   is itself a parent/collection (e.g. JESUS with 61 chapter segments).
+//   When the current video is a chapter, the carousel falls back to
+//   `parents[0].children` for siblings — see buildSiblingCarouselBlock.
 export const watchVideoFragment = graphql(`
   fragment WatchVideo on Video @_unmask {
     documentId
@@ -30,14 +34,29 @@ export const watchVideoFragment = graphql(`
       documentId
       slug
       title
-      children {
+      children(pagination: { limit: -1 }) {
         documentId
         slug
         title
         label
         images {
           url
+          thumbnail
+          mobileCinematicHigh
+          mobileCinematicLow
         }
+      }
+    }
+    children(pagination: { limit: -1 }) {
+      documentId
+      slug
+      title
+      label
+      images {
+        url
+        thumbnail
+        mobileCinematicHigh
+        mobileCinematicLow
       }
     }
     variants(pagination: { limit: -1 }) {

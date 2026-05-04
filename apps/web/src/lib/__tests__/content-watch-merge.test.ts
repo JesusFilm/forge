@@ -70,6 +70,11 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
     images: [],
     primaryLanguage: { coreId: "529", bcp47: "en" },
     parents: [],
+    // Top-level `children` powers the SiblingCarousel for parent/collection
+    // videos (e.g. JESUS with 61 chapter segments). Default empty so the
+    // builder falls back to canonicalParent.children — matching the existing
+    // tests' assumption that the carousel is fed from sibling content.
+    children: [],
     variants: [],
     studyQuestions: [],
     bibleCitations: [],
@@ -420,6 +425,68 @@ describe("mergeWatchExperience — HeroPlayer slot type-restriction", () => {
       }
     },
   )
+})
+
+describe("buildSiblingCarouselBlock — virtualParent branch (parent/collection videos)", () => {
+  it("synthesizes a virtual parent from video.children when video has >= 2 own children", () => {
+    const ownChildren = [
+      makeChild("chapter-1", "chapter-1", "Chapter 1"),
+      makeChild("chapter-2", "chapter-2", "Chapter 2"),
+      makeChild("chapter-3", "chapter-3", "Chapter 3"),
+    ]
+    const video = makeVideo({
+      documentId: "jesus-parent",
+      slug: "jesus",
+      title: "JESUS",
+      children: ownChildren,
+    })
+
+    const block = buildSiblingCarouselBlock(null, video as never)
+
+    expect(block).not.toBeNull()
+    // (a) canonicalParent identity comes from the current video.
+    expect(block!.canonicalParent.documentId).toBe(video.documentId)
+    // (b) canonicalParent.children matches video.children content. Deep
+    // equality, not reference equality — the builder filters nulls out so
+    // it allocates a fresh array even when no entries are dropped.
+    expect(block!.canonicalParent.children).toEqual(ownChildren)
+    expect(block!.canonicalParent.children).toHaveLength(ownChildren.length)
+    // (c) currentVideoDocumentId === video.documentId — no child can match,
+    // so the "Playing now" badge never fires for the parent-page view.
+    expect(block!.currentVideoDocumentId).toBe(video.documentId)
+    expect(
+      ownChildren.some((c) => c.documentId === block!.currentVideoDocumentId),
+    ).toBe(false)
+  })
+
+  it("prefers video.children over canonicalParent.children when both are populated", () => {
+    const ownChildren = [
+      makeChild("chapter-1", "chapter-1", "Chapter 1"),
+      makeChild("chapter-2", "chapter-2", "Chapter 2"),
+    ]
+    const video = makeVideo({
+      documentId: "jesus-parent",
+      slug: "jesus",
+      title: "JESUS",
+      children: ownChildren,
+    })
+    const canonicalParent = makeParent({
+      children: [
+        makeChild("sibling-a", "sibling-a", "Sibling A"),
+        makeChild("sibling-b", "sibling-b", "Sibling B"),
+      ],
+    })
+
+    const block = buildSiblingCarouselBlock(
+      canonicalParent as never,
+      video as never,
+    )
+
+    expect(block).not.toBeNull()
+    // The video's own children win — virtual-parent identity is video.documentId.
+    expect(block!.canonicalParent.documentId).toBe(video.documentId)
+    expect(block!.canonicalParent.children).toEqual(ownChildren)
+  })
 })
 
 describe("Auto-template builders return null on empty data", () => {

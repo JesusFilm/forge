@@ -10,6 +10,7 @@ import { LanguagePickerModal } from "@/components/watch/LanguagePickerModal"
 import { ShareModal } from "@/components/watch/ShareModal"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
 import type { MergedWatchBlock, ResolvedWatchVideo } from "@/lib/content"
+import { resolvePosterUrl } from "@/lib/url"
 
 type WatchVideoRecord = ResolvedWatchVideo["video"]
 type WatchVariant = ResolvedWatchVideo["selectedVariant"]
@@ -91,14 +92,12 @@ export function WatchPageClient({
   // Prefer the editorial cinematic still over `images[].url` — that raw
   // `url` is a misshaped Cloudflare Images URL (missing variant path
   // segment) and 400s. Mux's thumbnail API is the last-resort fallback;
-  // it's a frame from the video, not the curated poster.
-  const posterUrl =
-    video.images?.[0]?.mobileCinematicHigh ??
-    video.images?.[0]?.mobileCinematicLow ??
-    video.images?.[0]?.thumbnail ??
-    (variant.muxVideo?.playbackId
-      ? `https://image.mux.com/${variant.muxVideo.playbackId}/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop`
-      : (video.images?.[0]?.url ?? null))
+  // it's a frame from the video, not the curated poster. See
+  // `resolvePosterUrl` for the full priority chain.
+  const posterUrl = resolvePosterUrl(
+    video.images?.[0],
+    variant.muxVideo?.playbackId,
+  )
 
   const [modalState, setModalState] = useState<WatchModalState>("none")
 
