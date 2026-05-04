@@ -30,6 +30,7 @@ related:
   - docs/solutions/cms/core-sync-bulk-update-temp-table-pattern.md
   - docs/solutions/graphql/pothos-relation-abac-filter-required-for-nested-types.md
   - docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md
+  - docs/solutions/platform/core-graphql-unbounded-relation-fan-out-20260504.md
 ---
 
 # Admin Core Sync Entity Coverage

@@ -9,13 +9,29 @@ const DEFAULT_URL = "https://api-gateway.central.jesusfilm.org/"
 const DEFAULT_TIMEOUT_MS = 120_000
 const DEFAULT_RETRIES = 2
 
+/**
+ * GraphQL `errors[]` entry shape per the spec. Carries `path`,
+ * `locations`, and `extensions` so per-page error loggers can surface
+ * `extensions.code` (e.g. `INTERNAL_SERVER_ERROR`) and `path[0]` for
+ * upstream diagnosis. Hive Gateway strips stack traces in production,
+ * so this metadata is the only diagnostic signal callers receive when
+ * Core fails opaquely. See
+ * docs/solutions/platform/core-graphql-unbounded-relation-fan-out-20260504.md.
+ */
+export type CoreGraphQLErrorDetail = {
+  message: string
+  path?: ReadonlyArray<string | number>
+  locations?: ReadonlyArray<{ line: number; column: number }>
+  extensions?: Record<string, unknown>
+}
+
 type CoreQueryResult<T> = {
   data: T | null
-  errors?: Array<{ message: string }>
+  errors?: Array<CoreGraphQLErrorDetail>
 }
 
 export class CoreGraphQLError extends Error {
-  constructor(readonly errors: Array<{ message: string }>) {
+  constructor(readonly errors: Array<CoreGraphQLErrorDetail>) {
     super(
       `Core API returned GraphQL errors: ${errors
         .map((error) => error.message)

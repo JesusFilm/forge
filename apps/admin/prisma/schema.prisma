@@ -769,7 +769,13 @@ model Video {
   source            SourceTier   @default(CORE)
   slug              String       @unique
   label             VideoLabel?
-  videoSource       VideoSource?
+  /// `@map("video_source")` is required: the column was created snake-
+  /// case in `0001_init` while the field is camelCase. Without the
+  /// mapping, `tx.video.upsert(...)` in `services/core-sync/phases/
+  /// sync-videos.ts` fails with `column "videoSource" does not exist`
+  /// and the entire videos phase aborts. Do not strip this in a
+  /// schema-style sweep.
+  videoSource       VideoSource? @map("video_source")
   publishedAt       DateTime?    @map("published_at")
   locked            Boolean      @default(false)
   noIndex           Boolean      @default(false) @map("no_index")
