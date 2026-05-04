@@ -41,6 +41,17 @@ import { DEFAULT_CORE_ID_MAPPING_S3_KEY } from "@/services/core-id-mapping.const
 
 type Pipeline = "scene" | "transcript" | "both"
 
+/**
+ * Default per-target concurrency mirrored from the workflow modules.
+ * Duplicated here so the start-event log can resolve the operator's
+ * effective value before the (transitive-DATABASE_URL-dependent)
+ * workflow imports run further down. Kept in sync with
+ * `DEFAULT_SCENE_EMBEDDING_CONCURRENCY` and
+ * `DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY`. Drift is harmless — the
+ * CLI log is informational; the workflow uses its own constant.
+ */
+const CLI_DEFAULT_CONCURRENCY = 10
+
 function parseSingle(name: string): string | undefined {
   const flag = `--${name}=`
   const arg = process.argv.find((a) => a.startsWith(flag))
@@ -57,6 +68,20 @@ function parseRepeated(name: string): string[] {
 
 function isPipeline(v: string): v is Pipeline {
   return v === "scene" || v === "transcript" || v === "both"
+}
+
+/**
+ * Parse a positive-int env value. Empty / unset / non-positive /
+ * non-integer all fall through to the supplied default. Mirrors the
+ * zod schema in src/config/env.ts but runs at the CLI boundary so the
+ * logged start event reflects the operator's intent before any lazy
+ * env validation kicks in.
+ */
+function parsePositiveInt(raw: string | undefined, fallback: number): number {
+  if (raw === undefined || raw === "") return fallback
+  const n = Number(raw)
+  if (!Number.isInteger(n) || n <= 0) return fallback
+  return n
 }
 
 async function main(): Promise<void> {
@@ -86,6 +111,15 @@ async function main(): Promise<void> {
   const locales = parseRepeated("locale")
   const languages = parseRepeated("language")
 
+  const sceneConcurrency = parsePositiveInt(
+    process.env.SCENE_EMBEDDING_CONCURRENCY,
+    CLI_DEFAULT_CONCURRENCY,
+  )
+  const transcriptConcurrency = parsePositiveInt(
+    process.env.TRANSCRIPT_EMBEDDING_CONCURRENCY,
+    CLI_DEFAULT_CONCURRENCY,
+  )
+
   const redacted = databaseUrl.replace(/:\/\/[^@]+@/, "://***:***@")
   process.stdout.write(
     JSON.stringify({
@@ -96,6 +130,8 @@ async function main(): Promise<void> {
       coreIds: coreIds.length > 0 ? coreIds : null,
       locales: locales.length > 0 ? locales : null,
       languages: languages.length > 0 ? languages : null,
+      sceneConcurrency,
+      transcriptConcurrency,
       managerArtifactsBucket:
         process.env.MANAGER_ARTIFACTS_S3_BUCKET ?? "(unset)",
     }) + "\n",

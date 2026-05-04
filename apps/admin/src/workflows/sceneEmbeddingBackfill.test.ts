@@ -1,5 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 
+// Concurrency must be set BEFORE the workflow is imported below so the
+// p-limit instance reads the override. vi.mock hoists ahead of the
+// dynamic imports.
+vi.mock("@/config/env", () => ({
+  env: {
+    SCENE_EMBEDDING_CONCURRENCY: 2,
+  },
+}))
+
 vi.mock("@/db/client", () => {
   const mock = {
     $queryRaw: vi.fn(async () => []),
@@ -271,6 +280,104 @@ describe("runSceneEmbeddingBackfill", () => {
     expect(report.totalTargets).toBe(0)
     expect(report.outcomes).toEqual([])
     expect(indexEditionScenes).not.toHaveBeenCalled()
+  })
+})
+
+describe("runSceneEmbeddingBackfill — bounded parallelism", () => {
+  beforeEach(() => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
+    vi.mocked(indexEditionScenes).mockClear()
+  })
+
+  it("isolates one rejecting target from siblings (no Promise.all regression)", async () => {
+    // Three targets: middle one rejects, the other two resolve. With
+    // p-limit + Promise.allSettled, the rejection must NOT abort the
+    // batch — the documented contract per
+    // docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-c", "e-c", "core-a", "es"),
+    ])
+
+    const ok = (locale: string) => ({
+      editionId: `e-${locale}`,
+      locale,
+      scenesIndexed: 1,
+      embeddingsWritten: 1,
+      scenesSkipped: 0,
+      scenesPruned: 0,
+      model: "openai/text-embedding-3-small",
+      dimensions: 1536,
+    })
+
+    vi.mocked(indexEditionScenes)
+      .mockResolvedValueOnce(ok("en"))
+      .mockRejectedValueOnce(new Error("kaboom"))
+      .mockResolvedValueOnce(ok("es"))
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.totalTargets).toBe(3)
+    expect(report.succeeded).toBe(2)
+    expect(report.failed).toBe(1)
+    expect(report.skipped).toBe(0)
+    // Indexer was invoked for every target — none aborted before
+    // reaching the service.
+    expect(indexEditionScenes).toHaveBeenCalledTimes(3)
+  })
+
+  it("caps concurrent in-flight indexer calls at SCENE_EMBEDDING_CONCURRENCY", async () => {
+    // With concurrency=2 and three targets each delayed >=20ms, the
+    // third target must NOT start before the first or second resolves.
+    // Asserts the bounded-parallelism behavioral guarantee.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-c", "e-c", "core-a", "es"),
+    ])
+
+    let inFlight = 0
+    let observedMaxInFlight = 0
+    const startTimes: number[] = []
+    const endTimes: number[] = []
+    const TARGET_MS = 25
+
+    vi.mocked(indexEditionScenes).mockImplementation(async (_prisma, args) => {
+      inFlight += 1
+      observedMaxInFlight = Math.max(observedMaxInFlight, inFlight)
+      startTimes.push(Date.now())
+      await new Promise((resolve) => setTimeout(resolve, TARGET_MS))
+      endTimes.push(Date.now())
+      inFlight -= 1
+      return {
+        editionId: args.editionId,
+        locale: args.locale,
+        scenesIndexed: 1,
+        embeddingsWritten: 1,
+        scenesSkipped: 0,
+        scenesPruned: 0,
+        model: "openai/text-embedding-3-small",
+        dimensions: 1536,
+      }
+    })
+
+    await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    // Concurrency cap held: at no point did more than 2 targets run
+    // simultaneously. (Mocked env to SCENE_EMBEDDING_CONCURRENCY=2.)
+    expect(observedMaxInFlight).toBeLessThanOrEqual(2)
+    // The third target started AFTER one of the first two finished.
+    // Using the earliest end-time among the first batch, with a small
+    // epsilon for scheduler jitter on slow CI hosts.
+    expect(startTimes.length).toBe(3)
+    expect(endTimes.length).toBe(3)
+    const earliestEnd = Math.min(endTimes[0]!, endTimes[1]!)
+    expect(startTimes[2]!).toBeGreaterThanOrEqual(earliestEnd - 5)
   })
 })
 

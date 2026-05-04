@@ -74,6 +74,19 @@ export const env = createEnv({
       .int()
       .positive()
       .optional(),
+    // Per-target concurrency caps for the R1 / R2 embed-backfill
+    // workflows (sceneEmbeddingBackfill / transcriptEmbeddingBackfill).
+    // Each workflow uses `p-limit(N) + Promise.allSettled` to fan out
+    // the per-target loop; one rejection never aborts siblings (cf.
+    // docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md).
+    // Default at the call site is 10. Tune up locally (20+); tune down
+    // in prod (start at 5, ramp after observation).
+    SCENE_EMBEDDING_CONCURRENCY: z.coerce.number().int().positive().optional(),
+    TRANSCRIPT_EMBEDDING_CONCURRENCY: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
     RAILWAY_S3_ENDPOINT: z.string().url().optional(),
     RAILWAY_S3_REGION: z.string().min(1).optional(),
     RAILWAY_S3_BUCKET: z.string().min(1).optional(),
@@ -170,6 +183,12 @@ export const env = createEnv({
     ),
     WORKFLOW_POSTGRES_MAX_POOL_SIZE: emptyToUndefined(
       process.env.WORKFLOW_POSTGRES_MAX_POOL_SIZE,
+    ),
+    SCENE_EMBEDDING_CONCURRENCY: emptyToUndefined(
+      process.env.SCENE_EMBEDDING_CONCURRENCY,
+    ),
+    TRANSCRIPT_EMBEDDING_CONCURRENCY: emptyToUndefined(
+      process.env.TRANSCRIPT_EMBEDDING_CONCURRENCY,
     ),
     RAILWAY_S3_ENDPOINT: emptyToUndefined(process.env.RAILWAY_S3_ENDPOINT),
     RAILWAY_S3_REGION: emptyToUndefined(process.env.RAILWAY_S3_REGION),

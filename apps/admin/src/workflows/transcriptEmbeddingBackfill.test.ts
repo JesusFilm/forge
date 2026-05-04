@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+// Concurrency must be set BEFORE the workflow is imported below so the
+// p-limit instance reads the override. vi.mock hoists ahead of the
+// dynamic imports.
+vi.mock("@/config/env", () => ({
+  env: {
+    TRANSCRIPT_EMBEDDING_CONCURRENCY: 2,
+  },
+}))
+
 vi.mock("@/db/client", () => {
   const mock = {
     $queryRaw: vi.fn(async () => []),
@@ -330,6 +339,97 @@ describe("runTranscriptEmbeddingBackfill", () => {
     expect(report.totalTargets).toBe(0)
     expect(report.outcomes).toEqual([])
     expect(indexEditionTranscript).not.toHaveBeenCalled()
+  })
+})
+
+describe("runTranscriptEmbeddingBackfill — bounded parallelism", () => {
+  beforeEach(() => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
+    vi.mocked(indexEditionTranscript).mockClear()
+  })
+
+  it("isolates one rejecting target from siblings (no Promise.all regression)", async () => {
+    // Three targets: middle one rejects, the other two resolve. With
+    // p-limit + Promise.allSettled, the rejection must NOT abort the
+    // batch — the documented contract per
+    // docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-c", "e-c", "core-a", "es"),
+    ])
+
+    const ok = (lang: string) => ({
+      editionId: `e-${lang}`,
+      language: lang,
+      chunksIndexed: 1,
+      embeddingsWritten: 1,
+      chunksPruned: 0,
+      model: "openai/text-embedding-3-small",
+      dimensions: 1536,
+    })
+
+    vi.mocked(indexEditionTranscript)
+      .mockResolvedValueOnce(ok("en"))
+      .mockRejectedValueOnce(new Error("kaboom"))
+      .mockResolvedValueOnce(ok("es"))
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.totalTargets).toBe(3)
+    expect(report.succeeded).toBe(2)
+    expect(report.failed).toBe(1)
+    expect(report.skipped).toBe(0)
+    expect(indexEditionTranscript).toHaveBeenCalledTimes(3)
+  })
+
+  it("caps concurrent in-flight indexer calls at TRANSCRIPT_EMBEDDING_CONCURRENCY", async () => {
+    // With concurrency=2 and three targets each delayed >=20ms, the
+    // third target must NOT start before one of the first two
+    // resolves. Asserts the bounded-parallelism behavioral guarantee.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-c", "e-c", "core-a", "es"),
+    ])
+
+    let inFlight = 0
+    let observedMaxInFlight = 0
+    const startTimes: number[] = []
+    const endTimes: number[] = []
+    const TARGET_MS = 25
+
+    vi.mocked(indexEditionTranscript).mockImplementation(
+      async (_prisma, args) => {
+        inFlight += 1
+        observedMaxInFlight = Math.max(observedMaxInFlight, inFlight)
+        startTimes.push(Date.now())
+        await new Promise((resolve) => setTimeout(resolve, TARGET_MS))
+        endTimes.push(Date.now())
+        inFlight -= 1
+        return {
+          editionId: args.editionId,
+          language: args.language,
+          chunksIndexed: 1,
+          embeddingsWritten: 1,
+          chunksPruned: 0,
+          model: "openai/text-embedding-3-small",
+          dimensions: 1536,
+        }
+      },
+    )
+
+    await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(observedMaxInFlight).toBeLessThanOrEqual(2)
+    expect(startTimes.length).toBe(3)
+    expect(endTimes.length).toBe(3)
+    const earliestEnd = Math.min(endTimes[0]!, endTimes[1]!)
+    expect(startTimes[2]!).toBeGreaterThanOrEqual(earliestEnd - 5)
   })
 })
 

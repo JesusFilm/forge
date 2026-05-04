@@ -581,6 +581,17 @@ scale.
   `docs/solutions/best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md`.
   Per-target error isolation; `artifact_missing` errors skip, provider
   errors fail but don't halt the run. Safe to re-run.
+- **Bounded parallelism:** the per-target loop uses
+  `pLimit(env.SCENE_EMBEDDING_CONCURRENCY ?? 10) +
+Promise.allSettled` — never bare `Promise.all` (one rejection
+  would abort the batch). See
+  `docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md`.
+  Outcome ordering follows `allSettled` resolution order, NOT the
+  enumeration order; downstream code that walks `outcomes` by index
+  is reading an undocumented contract. Tune via the
+  `SCENE_EMBEDDING_CONCURRENCY` env var on `forge-admin` Doppler
+  (start prod at `5`, ramp after observation; local can crank to
+  `20+`).
 - **Trigger:** `triggerSceneEmbeddingBackfill` GraphQL mutation
   (ADMIN-only; permission key `write:scene-embeddings`).
 
@@ -666,6 +677,13 @@ manager's stamp). See
   silent default). Per-target error isolation; `artifact_missing`
   → skipped, every other error → failed but the run continues.
   Safe to re-run.
+- **Bounded parallelism:** the per-target loop uses
+  `pLimit(env.TRANSCRIPT_EMBEDDING_CONCURRENCY ?? 10) +
+Promise.allSettled` — never bare `Promise.all`. Same shape /
+  same rule as R1; tune via the `TRANSCRIPT_EMBEDDING_CONCURRENCY`
+  env var. R2 is DB-bound (no provider call) so the bottleneck on
+  cranking concurrency is Postgres connection saturation, not
+  upstream rate limits.
 - **Trigger:** `triggerTranscriptEmbeddingBackfill` GraphQL mutation
   (ADMIN-only; permission key `write:transcript-embeddings`).
 

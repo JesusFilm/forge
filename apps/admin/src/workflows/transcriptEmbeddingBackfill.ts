@@ -33,8 +33,10 @@
 // and a `DEFAULT_LOCALES = ['en', 'es', 'fr']` constant. Both were
 // dropped once the enumeration became data-derived.
 
+import pLimit from "p-limit"
 import { prisma } from "@/db/client"
 import { SYSTEM_PRINCIPAL } from "@/auth/principal"
+import { env } from "@/config/env"
 import {
   loadCoreIdMapping,
   type CoreIdMapping,
@@ -44,6 +46,14 @@ import {
   indexEditionTranscript,
   type IndexEditionTranscriptResult,
 } from "@/services/transcript-embedding.service"
+
+/**
+ * Default per-target concurrency for the R2 transcript-embedding
+ * backfill. Override via `TRANSCRIPT_EMBEDDING_CONCURRENCY`
+ * (env-validated, positive int). R2 is DB-bound (no provider call) so
+ * the default is the same shape as R1; tune higher locally.
+ */
+export const DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY = 10
 
 export type TranscriptEmbeddingBackfillInput = {
   /** S3 key of the JSON mapping snapshot uploaded via the admin refresh CLI. */
@@ -133,10 +143,35 @@ export async function runTranscriptEmbeddingBackfill(
     ? allTargets.filter((t) => languageFilter.has(t.language))
     : allTargets
 
-  const outcomes: BackfillOutcome[] = []
-  for (const target of targets) {
-    const outcome = await stepIndexEditionTranscript(target)
-    outcomes.push(outcome)
+  // Bounded parallelism via `p-limit + Promise.allSettled` — see the
+  // R1 sibling for the rule and rationale. `stepIndexEditionTranscript`
+  // already returns a typed `failed` outcome on per-target errors; a
+  // settled `rejected` is unexpected (defensive synthetic outcome).
+  const concurrency =
+    env.TRANSCRIPT_EMBEDDING_CONCURRENCY ??
+    DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
+  const limit = pLimit(concurrency)
+
+  const settled = await Promise.allSettled(
+    targets.map((target) => limit(() => stepIndexEditionTranscript(target))),
+  )
+
+  const outcomes: BackfillOutcome[] = settled.map((result, i) => {
+    const target = targets[i]!
+    if (result.status === "fulfilled") return result.value
+    const reason =
+      result.reason instanceof Error
+        ? result.reason.message
+        : String(result.reason)
+    return {
+      status: "failed",
+      target,
+      language: target.language,
+      reason,
+      durationMs: 0,
+    }
+  })
+  for (const outcome of outcomes) {
     logOutcome(outcome)
   }
 

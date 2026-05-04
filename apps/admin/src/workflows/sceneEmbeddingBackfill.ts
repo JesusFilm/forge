@@ -25,8 +25,10 @@
 // The caller's `locales` filter, if supplied, narrows which BCP-47
 // tags are processed; omitted means all data-derived locales.
 
+import pLimit from "p-limit"
 import { prisma } from "@/db/client"
 import { SYSTEM_PRINCIPAL } from "@/auth/principal"
+import { env } from "@/config/env"
 import {
   loadCoreIdMapping,
   type CoreIdMapping,
@@ -36,6 +38,14 @@ import {
   indexEditionScenes,
   type IndexEditionScenesResult,
 } from "@/services/scene-embedding.service"
+
+/**
+ * Default per-target concurrency for the R1 scene-embedding backfill.
+ * Override via `SCENE_EMBEDDING_CONCURRENCY` (env-validated, positive
+ * int). Prod should ramp conservatively (start at 5); local can crank
+ * (20+).
+ */
+export const DEFAULT_SCENE_EMBEDDING_CONCURRENCY = 10
 
 export type SceneEmbeddingBackfillInput = {
   /** S3 key of the JSON mapping snapshot uploaded via the admin refresh CLI. */
@@ -129,10 +139,39 @@ export async function runSceneEmbeddingBackfill(
     ? allTargets.filter((t) => localeFilter.has(t.locale))
     : allTargets
 
-  const outcomes: BackfillOutcome[] = []
-  for (const target of targets) {
-    const outcome = await stepIndexEditionLocale(target)
-    outcomes.push(outcome)
+  // Bounded parallelism. `p-limit(N) + Promise.allSettled` is the
+  // documented robustness shape — never bare `Promise.all` (one
+  // rejection would abort the entire batch). See
+  // docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md.
+  // `stepIndexEditionLocale` already catches errors per-target and
+  // returns a `failed` outcome; a settled `rejected` is therefore
+  // unexpected (e.g. a throw inside `"use step"` plumbing). The
+  // defensive map below converts any rejection into a synthetic
+  // `failed` outcome so the report stats stay coherent.
+  const concurrency =
+    env.SCENE_EMBEDDING_CONCURRENCY ?? DEFAULT_SCENE_EMBEDDING_CONCURRENCY
+  const limit = pLimit(concurrency)
+
+  const settled = await Promise.allSettled(
+    targets.map((target) => limit(() => stepIndexEditionLocale(target))),
+  )
+
+  const outcomes: BackfillOutcome[] = settled.map((result, i) => {
+    const target = targets[i]!
+    if (result.status === "fulfilled") return result.value
+    const reason =
+      result.reason instanceof Error
+        ? result.reason.message
+        : String(result.reason)
+    return {
+      status: "failed",
+      target,
+      locale: target.locale,
+      reason,
+      durationMs: 0,
+    }
+  })
+  for (const outcome of outcomes) {
     logOutcome(outcome)
   }
 

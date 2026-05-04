@@ -3,7 +3,7 @@ id: "feat-115"
 title: "Embed Backfill — Stage 1 — Bounded Parallelism on Per-Target Loop"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-05-04"
 duration: 1
 depends_on: []
