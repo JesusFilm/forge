@@ -1660,6 +1660,7 @@ type EnrichmentAutomationRun {
   errorCount: Int
   errors: JSON
   finishedAt: DateTime
+  idempotencyKey: String
   jobDocumentIds: JSON
   publishedAt: DateTime
   report: JSON
@@ -1696,6 +1697,7 @@ input EnrichmentAutomationRunFiltersInput {
   errorCount: IntFilterInput
   errors: JSONFilterInput
   finishedAt: DateTimeFilterInput
+  idempotencyKey: StringFilterInput
   jobDocumentIds: JSONFilterInput
   not: EnrichmentAutomationRunFiltersInput
   or: [EnrichmentAutomationRunFiltersInput]
@@ -1717,6 +1719,7 @@ input EnrichmentAutomationRunInput {
   errorCount: Int
   errors: JSON
   finishedAt: DateTime
+  idempotencyKey: String
   jobDocumentIds: JSON
   publishedAt: DateTime
   report: JSON

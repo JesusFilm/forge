@@ -30,6 +30,7 @@ import {
   createAutomation,
   createAutomationRun,
   getAutomation,
+  getAutomationRunByIdempotencyKey,
   releaseAutomationDryRunClaim,
   updateAutomationStatus,
 } from "./automation-store"
@@ -100,6 +101,17 @@ describe("automation-store in mock mode", () => {
       runMode: "dry_run",
       scheduledFor: "2026-04-22T16:00:00.000Z",
       startedAt: "2026-04-22T16:00:00.000Z",
+      idempotencyKey: "agentic-run-1",
+    })
+
+    await expect(
+      getAutomationRunByIdempotencyKey({
+        automationDocumentId: "mock-automation-1",
+        idempotencyKey: "agentic-run-1",
+      }),
+    ).resolves.toMatchObject({
+      documentId: run.documentId,
+      idempotencyKey: "agentic-run-1",
     })
 
     const completed = await completeAutomationRun({
