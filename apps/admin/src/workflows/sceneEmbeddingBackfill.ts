@@ -1,29 +1,45 @@
 // Scene embedding backfill — durable useworkflow job that indexes
 // manager's scene-analysis artifacts into admin's Postgres.
 //
-// Flow:
+// Flow (Stage 2 — feat-116):
 //   1. stepLoadMapping        — load coreId → cms video id snapshot
 //   2. stepEnumerateTargets   — list (video, edition, locale) triples
 //                               where the locale is data-derived from
 //                               the union of each video's primary
 //                               language + edition-level subtitle
 //                               languages + edition-level dub languages
-//   3. stepIndexEditionLocale — per-target indexer call with isolated
-//                               error handling
-//   4. stepReport             — aggregate per-target outcomes
+//   3. groupTargetsByVideoEdition — flat targets → groups keyed by
+//                               (videoId, videoEditionId). The artifact
+//                               is shared across every locale in a
+//                               group, so fetching it once per group
+//                               collapses S3 reads from N×L to N.
+//   4. processGroup           — per-group worker:
+//        4a. Load scene-analysis artifact ONCE for the group.
+//        4b. For each locale in the group, call stepIndexEditionLocale
+//            with `loadedArtifact` so the service skips the S3 read
+//            and runs ONE batched provider call per locale.
+//   5. stepReport             — aggregate per-target outcomes.
 //
-// Per-target errors are caught inside the loop so one bad artifact
-// doesn't halt the whole backfill. The indexer itself is idempotent
-// (upserts on composite keys), so the workflow is safe to re-run.
+// Per-target errors are caught inside the per-locale step so one bad
+// artifact / provider response doesn't halt the whole backfill. A
+// group-level artifact-load failure cascades to per-locale outcomes
+// for every locale in that group with the right classification
+// (artifact_missing → skipped; everything else → failed). The indexer
+// itself remains idempotent (upserts on composite keys), so the
+// workflow is safe to re-run.
 //
-// Locale model: the default locale set is data-derived at enumeration
-// time ("every locale that exists for this video") rather than a
-// hardcoded list. An earlier prototype used
-// `DEFAULT_LOCALES = ["en", "es", "fr"]`; dropped when the sibling R2
-// surfaced the pattern as a class of bug. See
+// pLimit boundary moved up one level relative to Stage 1: the cap now
+// constrains concurrent (video, edition) GROUPS, not concurrent flat
+// targets. Inside a group, per-locale work runs sequentially so the
+// loaded artifact stays scoped to one stack frame.
+//
+// Locale model: data-derived at enumeration time ("every locale that
+// exists for this video"), not a hardcoded list. An earlier prototype
+// used `DEFAULT_LOCALES = ["en", "es", "fr"]`; dropped per
 // docs/solutions/best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md.
-// The caller's `locales` filter, if supplied, narrows which BCP-47
-// tags are processed; omitted means all data-derived locales.
+// The caller's `locales` filter narrows which BCP-47 tags are processed
+// (omitted means all data-derived locales). Filtering happens BEFORE
+// grouping so a group only spans the locales that survive the filter.
 
 import pLimit from "p-limit"
 import { prisma } from "@/db/client"
@@ -33,18 +49,34 @@ import {
   loadCoreIdMapping,
   type CoreIdMapping,
 } from "@/services/core-id-mapping.service"
-import { ManagerArtifactError } from "@/services/manager-artifacts.service"
+import {
+  ManagerArtifactError,
+  readSceneAnalysisArtifact,
+  type SceneAnalysisResult,
+} from "@/services/manager-artifacts.service"
 import {
   indexEditionScenes,
   type IndexEditionScenesResult,
 } from "@/services/scene-embedding.service"
 
 /**
- * Default per-target concurrency for the R1 scene-embedding backfill.
- * Override via `SCENE_EMBEDDING_CONCURRENCY` (env-validated, positive
- * int). Sized below admin's documented `connection_limit=10` Prisma
- * pool to leave headroom for concurrent GraphQL/REST traffic; local
- * dev can crank to 20+ via the env override.
+ * Default per-group concurrency for the R1 scene-embedding backfill.
+ * Stage 2: the unit changed from per-target to per-(video, edition)
+ * GROUP. A group typically holds several locales which run sequentially
+ * inside the worker, so 5 concurrent groups can produce >5 concurrent
+ * indexer/provider calls only if each group's per-locale loop overlaps
+ * — which it doesn't (sequential per-locale). Net concurrent indexer
+ * load stays ≤ N (one per active group). Override via
+ * `SCENE_EMBEDDING_CONCURRENCY` (env-validated, positive int). Sized
+ * below admin's documented `connection_limit=10` Prisma pool to leave
+ * headroom for concurrent GraphQL/REST traffic; local dev can crank to
+ * 20+ via the env override.
+ *
+ * Memory budget per active locale: ~250 KB artifact + ~370 KB
+ * embeddings array (1536 floats × ~30 scenes × 8 bytes) + ~10 KB
+ * sourceTexts ≈ ~630 KB. At default concurrency=5 that's ~3 MB peak
+ * resident across in-flight groups; released as soon as the
+ * per-locale transaction completes.
  */
 export const DEFAULT_SCENE_EMBEDDING_CONCURRENCY = 5
 
@@ -78,6 +110,18 @@ export type BackfillTarget = {
    * edition, the edition produces no targets.
    */
   locale: string
+}
+
+/**
+ * One group per (videoId, videoEditionId). Stage 2 groups flat targets
+ * along this axis so the manager-artifacts S3 read happens once and the
+ * loaded artifact is reused across every locale in the group.
+ *
+ * `targets` order is preserved from enumeration; the indexer fans out
+ * sequentially across that order inside the group worker.
+ */
+export type BackfillGroup = Omit<BackfillTarget, "locale"> & {
+  targets: readonly BackfillTarget[]
 }
 
 export type BackfillOutcome =
@@ -140,74 +184,85 @@ export async function runSceneEmbeddingBackfill(
     ? allTargets.filter((t) => localeFilter.has(t.locale))
     : allTargets
 
-  // Bounded parallelism. `p-limit(N) + Promise.allSettled` is the
-  // documented robustness shape — never bare `Promise.all` (one
-  // rejection would abort the entire batch). See
-  // docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md.
-  // `stepIndexEditionLocale` already catches errors per-target and
-  // returns a typed `failed` outcome; a settled `rejected` is
-  // therefore unexpected (e.g. a throw inside `"use step"` plumbing).
-  // The defensive branch in `limit(...)` below synthesizes a `failed`
-  // outcome carrying the real elapsed batch time so dashboards built
-  // on `outcomes[].durationMs` aren't polluted with `0`s.
+  // Group flat targets by (video, edition) so the artifact load
+  // collapses from per-target to per-group.
+  const groups = groupTargetsByVideoEdition(targets)
+
+  // Bounded parallelism over GROUPS (Stage 2 reshape). `pLimit(N) +
+  // Promise.allSettled` is the documented robustness shape — never
+  // bare `Promise.all`. See
+  // docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md
+  // and the canonical HOW in
+  // docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md.
+  // Stage 2's only divergence: the unit-of-parallelism is a (video,
+  // edition) group rather than a flat (video, edition, locale) target;
+  // per-locale work inside a group runs sequentially with the artifact
+  // in scope.
   const concurrency =
     env.SCENE_EMBEDDING_CONCURRENCY ?? DEFAULT_SCENE_EMBEDDING_CONCURRENCY
   const limit = pLimit(concurrency)
 
   // Emit a structured start log so the workflow's effective
   // concurrency is observable from any trigger path (GraphQL mutation
-  // or local CLI). Closes the agent-native gap where only the CLI
-  // logged this previously.
+  // or local CLI). `groupCount` surfaces Stage 2's reshape so an
+  // operator inspecting logs can see the artifact-fetch fan-in.
   console.log(
     JSON.stringify({
       workflow: "scene-embedding-backfill",
       event: "start",
       mappingGeneratedAt: mapping.generatedAt,
       totalTargets: targets.length,
+      groupCount: groups.length,
       concurrency,
       localeFilter:
         input.locales && input.locales.length > 0 ? input.locales : null,
     }),
   )
 
-  // Per-completion logging streams progress as each target settles
-  // (instead of bursting at the end), restoring the operational
-  // visibility the sequential `for…of` had. `Promise.allSettled`
-  // preserves input order, so the resulting `outcomes[i]` aligns
-  // positionally with `targets[i]`.
+  // One batch wall-clock baseline; reused for synthetic-failed
+  // outcomes so dashboards built on `outcomes[].durationMs` aren't
+  // polluted with `0`s when the defensive branch fires.
   const batchStartedAt = Date.now()
+
   const settled = await Promise.allSettled(
-    targets.map((target) =>
+    groups.map((group) =>
       limit(() =>
-        // Deliberately do NOT catch here. `stepIndexEditionLocale`
-        // already returns a typed `failed` outcome for every error it
-        // can see; an unexpected throw past that boundary should
-        // propagate as a `rejected` settled result so the synthetic-
-        // failed branch below records it (with real elapsed time) and
-        // the per-target isolation contract is observable to tests.
-        _internals.stepIndexEditionLocale(target).then((o) => {
-          logOutcome(o)
-          return o
-        }),
+        // Deliberately do NOT catch here. `processGroup` already
+        // returns typed outcomes for every per-target error it can see
+        // (including a group-level artifact-load failure cascaded to
+        // per-locale outcomes); an unexpected throw past that boundary
+        // should propagate as a `rejected` settled result so the
+        // synthetic-failed branch below records it (with real elapsed
+        // time) and the per-target isolation contract is observable to
+        // tests.
+        processGroup(group),
       ),
     ),
   )
 
-  const outcomes: BackfillOutcome[] = settled.map((result, i) => {
+  const outcomes: BackfillOutcome[] = settled.flatMap((result, i) => {
+    const group = groups[i]!
     if (result.status === "fulfilled") return result.value
-    const target = targets[i]!
-    const synthetic: BackfillOutcome = {
-      status: "failed",
-      target,
-      locale: target.locale,
-      reason:
-        result.reason instanceof Error
-          ? result.reason.message
-          : String(result.reason),
-      durationMs: Date.now() - batchStartedAt,
-    }
-    logOutcome(synthetic)
-    return synthetic
+    // Synthetic-failed cascade for the WHOLE group — a thrown error
+    // past `processGroup`'s defensive branch is a step-plumbing fault
+    // and should not aggregate as "one of the locales failed"; every
+    // locale in the affected group lost its work.
+    const reason =
+      result.reason instanceof Error
+        ? result.reason.message
+        : String(result.reason)
+    const durationMs = Date.now() - batchStartedAt
+    return group.targets.map((target) => {
+      const synthetic: BackfillOutcome = {
+        status: "failed",
+        target,
+        locale: target.locale,
+        reason,
+        durationMs,
+      }
+      logOutcome(synthetic)
+      return synthetic
+    })
   })
 
   return stepReport({
@@ -323,8 +378,128 @@ async function stepEnumerateTargets(
   return targets
 }
 
+/**
+ * Group flat (video, edition, locale) targets by (videoId,
+ * videoEditionId). Preserves first-seen order so a per-test or per-
+ * operator-reasoning ordering doesn't shift unexpectedly. Each group's
+ * `targets` keep their original enumeration order.
+ *
+ * Pure data transform — no Prisma access. Easy to unit-test in
+ * isolation and replay-safe inside `"use workflow"`.
+ */
+function groupTargetsByVideoEdition(
+  targets: readonly BackfillTarget[],
+): BackfillGroup[] {
+  // Map preserves insertion order, which matches the enumeration's
+  // `ORDER BY core_id, bcp47` so consumer logs stay deterministic.
+  const groupMap = new Map<
+    string,
+    { group: BackfillGroup; targets: BackfillTarget[] }
+  >()
+  for (const target of targets) {
+    const key = `${target.videoId}::${target.videoEditionId}`
+    let entry = groupMap.get(key)
+    if (entry === undefined) {
+      const targetsArr: BackfillTarget[] = []
+      // `satisfies BackfillGroup` makes a future field added to
+      // BackfillTarget surface as a compile error here: BackfillGroup
+      // is `Omit<BackfillTarget, "locale">`, so if BackfillTarget
+      // gains a `cmsLanguageId` (or anything else), this literal
+      // becomes incomplete and TS flags it. First-seen `cmsVideoId`
+      // wins if upstream data ever produces two targets for the same
+      // (videoId, videoEditionId) with diverging cmsVideoIds.
+      const group = {
+        videoId: target.videoId,
+        videoEditionId: target.videoEditionId,
+        coreId: target.coreId,
+        cmsVideoId: target.cmsVideoId,
+        targets: targetsArr,
+      } satisfies BackfillGroup
+      entry = { group, targets: targetsArr }
+      groupMap.set(key, entry)
+    }
+    entry.targets.push(target)
+  }
+  return Array.from(groupMap.values(), (e) => e.group)
+}
+
+/**
+ * Per-group worker. Loads the scene-analysis artifact ONCE, then fans
+ * out per-locale sequentially with the artifact in scope.
+ *
+ * Group-level artifact-load failure is cascaded to per-locale outcomes
+ * with the same classification the per-locale path would have produced
+ * (`artifact_missing` → skipped, anything else → failed). This
+ * preserves Stage 1's per-locale outcome shape so the report's
+ * succeeded/skipped/failed triple stays meaningful even when the load
+ * fault is shared.
+ */
+async function processGroup(group: BackfillGroup): Promise<BackfillOutcome[]> {
+  const groupStartedAt = Date.now()
+
+  // useworkflow replay note: this S3 read is NOT inside a `"use step"`
+  // boundary, so a worker restart mid-group re-fetches the artifact on
+  // resume. Trade-off was deliberate per the parent plan's residual-
+  // risks section — wrapping it in a step would persist the ~250 KB
+  // artifact JSON to durable storage on every group, which is
+  // disproportionate for an idempotent S3 GET. The per-locale step
+  // boundary downstream is what carries replay durability.
+
+  let loadedArtifact: SceneAnalysisResult
+  try {
+    loadedArtifact = await readSceneAnalysisArtifact(String(group.cmsVideoId))
+  } catch (error) {
+    // Cascade the load failure to all locales in the group with the
+    // right classification. A genuine "manager hasn't run scene
+    // analysis yet" → skipped. Anything else → failed (including
+    // ManagerArtifactError artifact_invalid / artifact_read_failed).
+    const durationMs = Date.now() - groupStartedAt
+    const isMissing =
+      error instanceof ManagerArtifactError && error.code === "artifact_missing"
+    const reason = isMissing
+      ? "artifact_missing"
+      : error instanceof Error
+        ? error.message
+        : String(error)
+    return group.targets.map((target) => {
+      const outcome: BackfillOutcome = isMissing
+        ? {
+            status: "skipped",
+            target,
+            locale: target.locale,
+            reason,
+            durationMs,
+          }
+        : {
+            status: "failed",
+            target,
+            locale: target.locale,
+            reason,
+            durationMs,
+          }
+      logOutcome(outcome)
+      return outcome
+    })
+  }
+
+  // Per-locale fan-out with the loaded artifact in scope. Sequential
+  // inside the group so the artifact stays bounded to one stack frame
+  // and the per-target step's timing measurement is honest.
+  const outcomes: BackfillOutcome[] = []
+  for (const target of group.targets) {
+    const outcome = await _internals.stepIndexEditionLocale(
+      target,
+      loadedArtifact,
+    )
+    logOutcome(outcome)
+    outcomes.push(outcome)
+  }
+  return outcomes
+}
+
 async function stepIndexEditionLocale(
   target: BackfillTarget,
+  loadedArtifact: SceneAnalysisResult,
 ): Promise<BackfillOutcome> {
   "use step"
 
@@ -337,6 +512,7 @@ async function stepIndexEditionLocale(
       coreId: target.coreId,
       locale: target.locale,
       cmsVideoId: target.cmsVideoId,
+      loadedArtifact,
       user: SYSTEM_PRINCIPAL,
     })
     return toSucceeded(target, target.locale, result, Date.now() - startedAt)
@@ -345,8 +521,12 @@ async function stepIndexEditionLocale(
     // Branch on the typed error class, not error-message regex. Only a
     // genuinely-missing artifact gets demoted to skipped; every other
     // error shape (including ManagerArtifactError artifact_invalid,
-    // artifact_read_failed, and Prisma P2025 "Record not found") stays
-    // classified as failed so the operator sees it in the report.
+    // artifact_read_failed, EmbeddingsBatchError, and Prisma P2025
+    // "Record not found") stays classified as failed so the operator
+    // sees it in the report. With Stage 2's group-level artifact load,
+    // an `artifact_missing` here would only fire if the indexer's
+    // empty-`loadedArtifact` short-circuit somehow bypassed the cache;
+    // keep the classification path intact for safety in depth.
     if (
       error instanceof ManagerArtifactError &&
       error.code === "artifact_missing"
@@ -429,12 +609,12 @@ function toSucceeded(
 }
 
 function logOutcome(outcome: BackfillOutcome): void {
-  // logOutcome runs OUTSIDE the per-target try/catch in the for-of
-  // loop, so a JSON.stringify throw (circular structure, BigInt,
-  // unstringifiable error in outcome.reason) would halt the run and
-  // leave remaining targets unprocessed. Same defensive wrap R3
-  // adopted; the per-target isolation contract demands log failures
-  // never escape.
+  // logOutcome runs OUTSIDE the per-target try/catch in `processGroup`
+  // and OUTSIDE the synthetic-failed branch's mapping, so a
+  // JSON.stringify throw (circular structure, BigInt, unstringifiable
+  // error in outcome.reason) would halt the run and leave remaining
+  // outcomes unprocessed. Same defensive wrap R3 adopted; the
+  // per-target isolation contract demands log failures never escape.
   try {
     switch (outcome.status) {
       case "succeeded":
@@ -494,18 +674,17 @@ function logOutcome(outcome: BackfillOutcome): void {
 }
 
 // Exported for tests — these are the pure functions inside the steps,
-// safe to exercise without the useworkflow runtime. `stepEnumerateTargets`
-// is wrapped in a thin helper that accepts a prisma instance so tests
-// can use a stub; the workflow step uses the module singleton.
+// safe to exercise without the useworkflow runtime.
 //
-// `stepIndexEditionLocale` is referenced through `_internals` from the
-// workflow body so tests can `vi.spyOn(_internals, "stepIndexEditionLocale")`
-// to force a `Promise.allSettled` rejection — the only way to exercise
-// the synthetic-failed defensive branch, since the real step body
-// catches everything internally.
+// `stepIndexEditionLocale` is referenced through `_internals` from
+// `processGroup` so tests can `vi.spyOn(_internals,
+// "stepIndexEditionLocale")` to force a `Promise.allSettled` rejection
+// — the only way to exercise the synthetic-failed defensive branch,
+// since the real step body catches everything internally.
 export const _internals = {
   stepReport,
   stepIndexEditionLocale,
   toSucceeded,
   logOutcome,
+  groupTargetsByVideoEdition,
 }

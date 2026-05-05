@@ -581,24 +581,56 @@ scale.
   `docs/solutions/best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md`.
   Per-target error isolation; `artifact_missing` errors skip, provider
   errors fail but don't halt the run. Safe to re-run.
-- **Bounded parallelism:** the per-target loop uses
-  `pLimit(env.SCENE_EMBEDDING_CONCURRENCY ?? 5) +
-Promise.allSettled` — never bare `Promise.all` (one rejection
-  would abort the batch). See
-  `docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md`.
-  `Promise.allSettled` preserves input order so `outcomes[i]` is
-  index-aligned to `targets[i]`; per-target work completes
-  out-of-order during the run, but the final array shape is stable.
-  Tune via the `SCENE_EMBEDDING_CONCURRENCY` env var on `forge-admin`
-  Doppler. Default `5` matches admin's documented Prisma
+- **Bounded parallelism (Stage 2 — feat-116):** the workflow groups
+  enumerated `(video, edition, locale)` targets by `(video, edition)`
+  and parallelises over GROUPS via
+  `pLimit(env.SCENE_EMBEDDING_CONCURRENCY ?? 5) + Promise.allSettled`
+  — never bare `Promise.all`. Per-locale work inside a group runs
+  sequentially with the artifact in scope. See
+  `docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md`
+  (the WHY) and
+  `docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md`
+  (the canonical HOW). The concurrency-cap test still asserts
+  `observedMaxInFlight === N` — a regression to sequential `for…of`
+  yields `1` and trips the assertion.
+- **Per-(video, edition) artifact memoization (Stage 2 — feat-116):**
+  the workflow fetches `scene-analysis.json` ONCE per `(video, edition)`
+  group via `readSceneAnalysisArtifact(...)` and passes the loaded JSON
+  down to each per-locale `indexEditionScenes(...)` call via the
+  service's `loadedArtifact` argument. S3 reads collapse from N×L (per
+  locale) to N (per group). Group-level artifact-load failures cascade
+  to per-locale outcomes with the right classification
+  (`artifact_missing` → skipped; everything else → failed) so the
+  report's succeeded/skipped/failed triple stays meaningful. Memory
+  budget per active locale: ~250 KB artifact + ~370 KB embeddings array
+  (1536 floats × ~30 scenes × 8 bytes) + ~10 KB sourceTexts ≈ ~630 KB.
+  At default concurrency=5 that's ~3 MB peak resident across in-flight
+  groups; released as soon as the per-locale transaction completes.
+- **Batched OpenRouter (Stage 2 — feat-116):** `indexEditionScenes`
+  issues ONE `generateExperienceEmbeddings(scenes.map(s => s.description))`
+  call per `(video, locale)` target instead of one call per scene.
+  Embeddings come back in input-array order (`embeddings[i]` ↔
+  `scenes[i]`) — verified by the position-stable test. Length /
+  dimension mismatches surface as typed `EmbeddingsBatchError` and
+  fail-fast for the whole target rather than partial-write. The
+  `scenesSkipped` field on `IndexEditionScenesResult` is preserved for
+  back-compat but is effectively `0` on the happy path now (Stage 1's
+  per-scene `Promise.allSettled` skip semantics no longer apply since
+  the provider call is batched).
+- Tune concurrency via the `SCENE_EMBEDDING_CONCURRENCY` env var on
+  `forge-admin` Doppler. Default `5` matches admin's documented Prisma
   `connection_limit=10` so a backfill leaves headroom for concurrent
   GraphQL/REST traffic; local dev can crank to `20+` via the env
   override. Per-target progress streams as `scene_index_complete` /
   `scene_index_skipped` / `scene_index_failed` JSON log events; the
   workflow also emits a single `event=start` log at dispatch carrying
-  the resolved concurrency for any trigger path.
+  the resolved concurrency AND `groupCount` (Stage 2's reshape
+  surfaces the artifact-fetch fan-in for any trigger path).
 - **Trigger:** `triggerSceneEmbeddingBackfill` GraphQL mutation
-  (ADMIN-only; permission key `write:scene-embeddings`).
+  (ADMIN-only; permission key `write:scene-embeddings`). Stage 2's
+  reshape is internal — the GraphQL JSON response shape is byte-
+  identical to Stage 1 (modulo `outcomes[]` ordering, already
+  documented as non-deterministic per `Promise.allSettled`).
 
 **Operational runbook:**
 
@@ -682,19 +714,41 @@ manager's stamp). See
   silent default). Per-target error isolation; `artifact_missing`
   → skipped, every other error → failed but the run continues.
   Safe to re-run.
-- **Bounded parallelism:** the per-target loop uses
+- **Bounded parallelism (Stage 2 — feat-116):** the workflow groups
+  enumerated `(video, edition, language)` targets by
+  `(video, edition)` and parallelises over GROUPS via
   `pLimit(env.TRANSCRIPT_EMBEDDING_CONCURRENCY ?? 5) +
-Promise.allSettled` — never bare `Promise.all`. Same shape /
-  same rule as R1; index-aligned `outcomes[i]` per `Promise.allSettled`
-  input-order semantics; per-target progress streams via
-  `transcript_index_complete` / `_skipped` / `_failed` log events
-  and a single `event=start` carrying resolved concurrency. Tune via
-  the `TRANSCRIPT_EMBEDDING_CONCURRENCY` env var. R2 is DB-bound (no
-  provider call) so the bottleneck on cranking concurrency is
-  Postgres connection saturation; default `5` leaves headroom on
-  admin's `connection_limit=10` pool.
+Promise.allSettled` — never bare `Promise.all`. Per-language work
+  inside a group runs sequentially with the artifact in scope. Same
+  shape / same rule as R1.
+- **Per-(video, edition) artifact memoization (Stage 2 — feat-116):**
+  the workflow fetches `embeddings.json` ONCE per `(video, edition)`
+  group via `readEmbeddingsArtifact(...)` and passes the loaded JSON
+  down to each per-language `indexEditionTranscript(...)` call via
+  the service's `loadedArtifact` argument. S3 reads collapse from N×L
+  (per language) to N (per group). Group-level artifact-load failures
+  cascade to per-language outcomes with the right classification
+  (`artifact_missing` → skipped; everything else → failed). Memory
+  budget per active language: ~250 KB artifact + per-chunk vectors
+  already inside the artifact (R2 doesn't generate a parallel
+  embeddings array — vectors are reused from the artifact). At default
+  concurrency=5 that's ~1.25 MB peak resident; released after the
+  per-language transaction completes.
+- **No batched provider call for R2.** R2 reuses vectors verbatim
+  from the artifact (the whole point of the R2 vs R1 divergence) — so
+  Stage 2's batched OpenRouter change applies to R1 only. R2 only
+  benefits from the S3 cache.
+- Tune via the `TRANSCRIPT_EMBEDDING_CONCURRENCY` env var. R2 is
+  DB-bound (no provider call) so the bottleneck on cranking
+  concurrency is Postgres connection saturation; default `5` leaves
+  headroom on admin's `connection_limit=10` pool. Per-target progress
+  streams via `transcript_index_complete` / `_skipped` / `_failed` log
+  events and a single `event=start` carrying resolved concurrency AND
+  `groupCount` (Stage 2's reshape surfaces the artifact-fetch fan-in).
 - **Trigger:** `triggerTranscriptEmbeddingBackfill` GraphQL mutation
-  (ADMIN-only; permission key `write:transcript-embeddings`).
+  (ADMIN-only; permission key `write:transcript-embeddings`). Stage 2's
+  reshape is internal — the GraphQL JSON response shape is byte-
+  identical to Stage 1.
 
 **Operational runbook** (shares the R1 mapping snapshot):
 

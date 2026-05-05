@@ -1,4 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
+import type { SceneAnalysisResult } from "@/services/manager-artifacts.service"
+import type { BackfillOutcome, BackfillTarget } from "./sceneEmbeddingBackfill"
 
 // Concurrency must be set BEFORE the workflow is imported below so the
 // p-limit instance reads the override. vi.mock hoists ahead of the
@@ -26,23 +28,68 @@ vi.mock("@/services/core-id-mapping.service", () => ({
   })),
 }))
 
-vi.mock("@/services/scene-embedding.service", () => ({
-  indexEditionScenes: vi.fn(async () => ({
-    editionId: "edition-stub",
-    locale: "en",
-    scenesIndexed: 2,
-    embeddingsWritten: 2,
-    scenesSkipped: 0,
-    scenesPruned: 0,
-    model: "openai/text-embedding-3-small",
-    dimensions: 1536,
-  })),
-}))
+vi.mock("@/services/scene-embedding.service", async (importOriginal) => {
+  // importOriginal forwards every export so a future named export
+  // (e.g. SceneIndexError, a new helper) doesn't get silently dropped
+  // and the consumer-facing error class identity stays live for any
+  // future `instanceof SceneIndexError` branching in the workflow.
+  const actual =
+    await importOriginal<typeof import("@/services/scene-embedding.service")>()
+  return {
+    ...actual,
+    indexEditionScenes: vi.fn(async () => ({
+      editionId: "edition-stub",
+      locale: "en",
+      scenesIndexed: 2,
+      embeddingsWritten: 2,
+      scenesSkipped: 0,
+      scenesPruned: 0,
+      model: "openai/text-embedding-3-small",
+      dimensions: 1536,
+    })),
+  }
+})
+
+// Stage 2: the workflow loads the scene-analysis artifact at the
+// (video, edition) GROUP level (once per group, not per locale).
+// Default-resolve to a non-empty artifact so tests that don't care
+// about the load path can ignore it. Keep `ManagerArtifactError`
+// reachable so the artifact_missing classification path stays
+// exercisable without re-deriving the class.
+// `satisfies` (per project convention) preserves literal-narrowing on
+// nested fields while still enforcing the type contract — useful if a
+// downstream test ever wants to read a literal value off the stub.
+const STUB_ARTIFACT = {
+  scenes: [
+    {
+      sceneIndex: 0,
+      startSeconds: 0,
+      endSeconds: 5,
+      chapterTitle: null,
+      description: "stub scene",
+      themes: [],
+      bibleVerses: [],
+      demographics: [],
+      spiritualContext: [],
+    },
+  ],
+} satisfies SceneAnalysisResult
+
+vi.mock("@/services/manager-artifacts.service", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@/services/manager-artifacts.service")
+    >()
+  return {
+    ...actual,
+    readSceneAnalysisArtifact: vi.fn(async () => STUB_ARTIFACT),
+  }
+})
 
 const { prisma } = await import("@/db/client")
 const { indexEditionScenes } =
   await import("@/services/scene-embedding.service")
-const { ManagerArtifactError } =
+const { ManagerArtifactError, readSceneAnalysisArtifact } =
   await import("@/services/manager-artifacts.service")
 const { runSceneEmbeddingBackfill, _internals } =
   await import("./sceneEmbeddingBackfill")
@@ -67,12 +114,15 @@ describe("runSceneEmbeddingBackfill", () => {
   beforeEach(() => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
     vi.mocked(indexEditionScenes).mockClear()
+    vi.mocked(readSceneAnalysisArtifact).mockReset()
+    vi.mocked(readSceneAnalysisArtifact).mockResolvedValue(STUB_ARTIFACT)
   })
 
   it("indexes one target per (edition, locale) triple returned by the enumeration", async () => {
     // The SQL now returns pre-crossed (video, edition, locale) rows;
-    // the workflow just iterates. Two editions with two locales each
-    // = four rows = four indexer calls.
+    // the workflow groups by (video, edition) and fans out per locale.
+    // Two editions with two locales each = four targets = four indexer
+    // calls.
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
       row("v-a", "e-a", "core-a", "es"),
@@ -99,6 +149,62 @@ describe("runSceneEmbeddingBackfill", () => {
         locale: "en",
       }),
     )
+  })
+
+  it("Stage 2: ONE s3.getObject per (video, edition) group across N locales (NOT per locale)", async () => {
+    // Five locales for a single (video, edition) group → exactly ONE
+    // S3 read at the group level. A regression that re-fetched per
+    // locale would surface here as 5 reads — the central efficiency
+    // win of feat-116.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-a", "e-a", "core-a", "fr"),
+      row("v-a", "e-a", "core-a", "de"),
+      row("v-a", "e-a", "core-a", "pt"),
+    ])
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.totalTargets).toBe(5)
+    expect(report.succeeded).toBe(5)
+    // ONE artifact load for the whole group.
+    expect(readSceneAnalysisArtifact).toHaveBeenCalledTimes(1)
+    // The cmsVideoId is passed to readSceneAnalysisArtifact as a string.
+    expect(readSceneAnalysisArtifact).toHaveBeenCalledWith("1")
+    // Indexer is still called per-locale (5×) — but each call receives
+    // the pre-loaded artifact, so the SERVICE skips its own S3 read.
+    expect(indexEditionScenes).toHaveBeenCalledTimes(5)
+    for (const call of vi.mocked(indexEditionScenes).mock.calls) {
+      expect(call[1]).toEqual(
+        expect.objectContaining({ loadedArtifact: STUB_ARTIFACT }),
+      )
+    }
+  })
+
+  it("Stage 2: TWO groups produce TWO s3.getObject calls (one per group)", async () => {
+    // Two distinct (video, edition) groups, each with multiple locales.
+    // Stage 2 contract: one S3 read per group, regardless of in-group
+    // locale count.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-b", "e-b", "core-b", "fr"),
+    ])
+
+    await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(readSceneAnalysisArtifact).toHaveBeenCalledTimes(2)
+    const calledWith = vi
+      .mocked(readSceneAnalysisArtifact)
+      .mock.calls.map((c) => c[0])
+      .sort()
+    expect(calledWith).toEqual(["1", "2"])
   })
 
   it("produces one target per (edition, locale) pair for multi-locale editions", async () => {
@@ -179,7 +285,82 @@ describe("runSceneEmbeddingBackfill", () => {
     expect(indexEditionScenes).toHaveBeenCalledTimes(1)
   })
 
-  it("converts artifact_missing errors to skipped outcomes", async () => {
+  it("Stage 2: a group-level artifact_missing cascades to skipped outcomes for every locale in the group", async () => {
+    // A `(video, edition)` group whose artifact is missing fans out
+    // skipped outcomes for every locale in the group, with one
+    // structured artifact_missing reason. Mirrors Stage 1's per-locale
+    // classification but lifted to group level (the natural place
+    // Stage 2's load happens).
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-a", "e-a", "core-a", "fr"),
+    ])
+    vi.mocked(readSceneAnalysisArtifact).mockRejectedValueOnce(
+      new ManagerArtifactError(
+        "artifact_missing",
+        "scene-analysis artifact not found for assetId=1",
+      ),
+    )
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.totalTargets).toBe(3)
+    expect(report.succeeded).toBe(0)
+    expect(report.skipped).toBe(3)
+    expect(report.failed).toBe(0)
+    // Explicit length guard: a regression that emitted ONE group-level
+    // outcome instead of cascading per-locale would still satisfy the
+    // skipped-status loop body (vacuous on small N), so pin it.
+    expect(report.outcomes).toHaveLength(3)
+    for (const outcome of report.outcomes) {
+      expect(outcome.status).toBe("skipped")
+      if (outcome.status === "skipped") {
+        expect(outcome.reason).toBe("artifact_missing")
+      }
+    }
+    // Indexer was never invoked because the load short-circuited.
+    expect(indexEditionScenes).not.toHaveBeenCalled()
+  })
+
+  it("Stage 2: a group-level non-missing artifact error cascades to failed outcomes for every locale in the group", async () => {
+    // A `(video, edition)` group whose artifact load fails for ANY
+    // reason other than missing → all locales `failed`. Same shape as
+    // Stage 1's "non-artifact_missing → failed" rule, lifted to group
+    // level.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-a", "e-a", "core-a", "es"),
+    ])
+    vi.mocked(readSceneAnalysisArtifact).mockRejectedValueOnce(
+      new ManagerArtifactError(
+        "artifact_invalid",
+        "scene-analysis artifact failed schema validation",
+      ),
+    )
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.failed).toBe(2)
+    expect(report.skipped).toBe(0)
+    expect(report.outcomes).toHaveLength(2)
+    for (const outcome of report.outcomes) {
+      expect(outcome.status).toBe("failed")
+    }
+    expect(indexEditionScenes).not.toHaveBeenCalled()
+  })
+
+  it("converts artifact_missing errors thrown by the indexer to skipped outcomes (defense-in-depth)", async () => {
+    // With Stage 2's group-level load, this path is theoretically
+    // unreachable in production (the workflow always supplies
+    // loadedArtifact, so the service never re-reads S3). The catch
+    // branch in `stepIndexEditionLocale` still classifies correctly
+    // for safety in depth — exercised here via a mocked indexer
+    // rejection.
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
     ])
@@ -280,6 +461,8 @@ describe("runSceneEmbeddingBackfill", () => {
     expect(report.totalTargets).toBe(0)
     expect(report.outcomes).toEqual([])
     expect(indexEditionScenes).not.toHaveBeenCalled()
+    // No groups → no S3 reads.
+    expect(readSceneAnalysisArtifact).not.toHaveBeenCalled()
   })
 })
 
@@ -287,11 +470,14 @@ describe("runSceneEmbeddingBackfill — bounded parallelism", () => {
   beforeEach(() => {
     // Restore any `vi.spyOn(_internals, ...)` from a prior test so
     // the next test sees the real `stepIndexEditionLocale`. Module-
-    // level `vi.mock` factories (e.g. `indexEditionScenes`) are
-    // unaffected by `restoreAllMocks` — they survive.
+    // level `vi.mock` factories (e.g. `indexEditionScenes`,
+    // `readSceneAnalysisArtifact`) are unaffected by `restoreAllMocks`
+    // — they survive.
     vi.restoreAllMocks()
     ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
     vi.mocked(indexEditionScenes).mockReset()
+    vi.mocked(readSceneAnalysisArtifact).mockReset()
+    vi.mocked(readSceneAnalysisArtifact).mockResolvedValue(STUB_ARTIFACT)
   })
 
   it("isolates a per-target indexer error: errors caught inside stepIndexEditionLocale → outcome stays `failed`, siblings continue", async () => {
@@ -333,32 +519,39 @@ describe("runSceneEmbeddingBackfill — bounded parallelism", () => {
     expect(indexEditionScenes).toHaveBeenCalledTimes(3)
   })
 
-  it("uses Promise.allSettled (not Promise.all) — a step-level rejection is recorded as a synthetic failed outcome instead of aborting the batch", async () => {
+  it("uses Promise.allSettled (not Promise.all) — a step-level rejection is recorded as a synthetic failed outcome (cascaded to every locale in the affected group)", async () => {
     // Distinguishes `Promise.allSettled` from `Promise.all`. Spy on
     // `_internals.stepIndexEditionLocale` so the rejection bypasses
     // the step's internal try/catch and reaches the workflow's
     // `Promise.allSettled` boundary directly. Under `Promise.all`,
     // the workflow body's `await` would throw and `stepReport` would
     // never run; under `Promise.allSettled`, the workflow synthesizes
-    // a `failed` outcome and the report comes back normally.
+    // failed outcomes (one per locale in the cascaded group) and the
+    // report comes back normally.
+    //
+    // Stage 2: each row below is a distinct (video, edition) group
+    // (e-a, e-b, e-c) with a single locale, so a step-level throw on
+    // core-b's group cascades to a single failed outcome.
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
       row("v-b", "e-b", "core-b", "en"),
       row("v-c", "e-c", "core-a", "es"),
     ])
 
+    // Use the real BackfillTarget / BackfillOutcome types so a future
+    // field added to BackfillOutcome.succeeded surfaces as a compile
+    // error here instead of being silently absent under `as never`.
     const okOutcome = (
-      target: { videoEditionId: string; locale: string },
+      target: BackfillTarget,
       durationMs: number,
-    ) =>
-      ({
-        status: "succeeded" as const,
-        target: target as never,
-        locale: target.locale,
-        scenesIndexed: 1,
-        embeddingsWritten: 1,
-        durationMs,
-      }) as never
+    ): BackfillOutcome => ({
+      status: "succeeded",
+      target,
+      locale: target.locale,
+      scenesIndexed: 1,
+      embeddingsWritten: 1,
+      durationMs,
+    })
 
     vi.spyOn(_internals, "stepIndexEditionLocale").mockImplementation(
       async (target) => {
@@ -390,11 +583,17 @@ describe("runSceneEmbeddingBackfill — bounded parallelism", () => {
     }
   })
 
-  it("caps concurrent in-flight indexer calls at SCENE_EMBEDDING_CONCURRENCY (and uses parallelism, not sequential)", async () => {
+  it("caps concurrent in-flight (video, edition) groups at SCENE_EMBEDDING_CONCURRENCY (and uses parallelism, not sequential)", async () => {
     // Asserts BOTH that the concurrency cap is honored (≤ 2
     // in-flight) AND that real parallelism is used (max in-flight
-    // > 1). A regression to sequential `for…of` would yield
+    // === N). A regression to sequential `for…of` would yield
     // `observedMaxInFlight === 1` and fail the second assertion.
+    //
+    // Stage 2: each row is a distinct (video, edition) group, so the
+    // group-level pLimit cap is observable as in-flight indexer
+    // calls — one indexer call active per group at any given moment
+    // (per-locale work inside a group is sequential and there's only
+    // one locale per group in this fixture).
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
       row("v-b", "e-b", "core-b", "en"),
@@ -432,6 +631,154 @@ describe("runSceneEmbeddingBackfill — bounded parallelism", () => {
     // Mocked env to SCENE_EMBEDDING_CONCURRENCY=2.
     expect(observedMaxInFlight).toBe(2)
     expect(indexEditionScenes).toHaveBeenCalledTimes(3)
+  })
+
+  it("Stage 2: per-locale work inside a group runs sequentially — multi-locale groups do NOT multiply concurrent indexer calls beyond the cap", async () => {
+    // The cap variant above gives every group exactly ONE locale, so
+    // observedMaxInFlight only proves the per-GROUP cap. This variant
+    // gives each of the 2 groups THREE locales (6 total targets at
+    // concurrency=2). If processGroup ever fanned out per-locale work
+    // in parallel (Promise.all over group.targets.map), maxInFlight
+    // would jump to 6 (or 4+ if partially batched). Sequential per-
+    // locale inside the group keeps it pinned at SCENE_EMBEDDING_CONCURRENCY=2.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-a", "e-a", "core-a", "fr"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-b", "e-b", "core-b", "es"),
+      row("v-b", "e-b", "core-b", "fr"),
+    ])
+
+    let inFlight = 0
+    let observedMaxInFlight = 0
+
+    vi.mocked(indexEditionScenes).mockImplementation(async (_prisma, args) => {
+      inFlight += 1
+      observedMaxInFlight = Math.max(observedMaxInFlight, inFlight)
+      await new Promise((resolve) => setTimeout(resolve, 15))
+      inFlight -= 1
+      return {
+        editionId: args.editionId,
+        locale: args.locale,
+        scenesIndexed: 1,
+        embeddingsWritten: 1,
+        scenesSkipped: 0,
+        scenesPruned: 0,
+        model: "openai/text-embedding-3-small",
+        dimensions: 1536,
+      }
+    })
+
+    await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    // 2 groups × 3 locales = 6 total indexer calls; cap stays at 2.
+    expect(indexEditionScenes).toHaveBeenCalledTimes(6)
+    expect(observedMaxInFlight).toBe(2)
+  })
+})
+
+describe("runSceneEmbeddingBackfill — start log", () => {
+  beforeEach(() => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
+    vi.mocked(indexEditionScenes).mockClear()
+    vi.mocked(readSceneAnalysisArtifact).mockReset()
+    vi.mocked(readSceneAnalysisArtifact).mockResolvedValue(STUB_ARTIFACT)
+  })
+
+  it("emits a structured start log with workflow, event, mappingGeneratedAt, totalTargets, groupCount, concurrency, localeFilter", async () => {
+    // Operators rely on log-grep dashboards (per CLAUDE.md operational
+    // runbook). Pin the start-log shape so a future refactor can't
+    // silently drop a field. `groupCount` is the Stage 2 addition that
+    // surfaces the artifact-fetch fan-in; assert it's present and
+    // matches the actual group count.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-b", "e-b", "core-b", "en"),
+    ])
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+    let calls: unknown[][] = []
+    try {
+      await runSceneEmbeddingBackfill({
+        mappingS3Key: "admin-migrations/core-id-mapping.json",
+        locales: ["en", "es"],
+      })
+      // Snapshot calls BEFORE mockRestore — restore clears mock.calls.
+      calls = logSpy.mock.calls
+    } finally {
+      logSpy.mockRestore()
+    }
+
+    const startPayload = calls
+      .map((args) => {
+        try {
+          return JSON.parse(String(args[0]))
+        } catch {
+          return null
+        }
+      })
+      .find(
+        (p): p is Record<string, unknown> =>
+          p != null &&
+          p.event === "start" &&
+          p.workflow === "scene-embedding-backfill",
+      )
+
+    expect(startPayload).toBeDefined()
+    expect(startPayload).toMatchObject({
+      workflow: "scene-embedding-backfill",
+      event: "start",
+      mappingGeneratedAt: "2026-04-19T00:00:00.000Z",
+      totalTargets: 3,
+      groupCount: 2,
+      concurrency: 2,
+      localeFilter: ["en", "es"],
+    })
+  })
+})
+
+describe("groupTargetsByVideoEdition", () => {
+  it("groups (video, edition, locale) targets by (video, edition) preserving target order", () => {
+    const targets = [
+      {
+        videoId: "v-a",
+        videoEditionId: "e-a",
+        coreId: "core-a",
+        cmsVideoId: 1,
+        locale: "en",
+      },
+      {
+        videoId: "v-a",
+        videoEditionId: "e-a",
+        coreId: "core-a",
+        cmsVideoId: 1,
+        locale: "es",
+      },
+      {
+        videoId: "v-b",
+        videoEditionId: "e-b",
+        coreId: "core-b",
+        cmsVideoId: 2,
+        locale: "en",
+      },
+      {
+        videoId: "v-a",
+        videoEditionId: "e-a",
+        coreId: "core-a",
+        cmsVideoId: 1,
+        locale: "fr",
+      },
+    ]
+    const groups = _internals.groupTargetsByVideoEdition(targets)
+    expect(groups).toHaveLength(2)
+    expect(groups[0]?.cmsVideoId).toBe(1)
+    expect(groups[0]?.targets.map((t) => t.locale)).toEqual(["en", "es", "fr"])
+    expect(groups[1]?.cmsVideoId).toBe(2)
+    expect(groups[1]?.targets.map((t) => t.locale)).toEqual(["en"])
   })
 })
 
