@@ -54,7 +54,15 @@ import { randomUUID } from "node:crypto"
 import { type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { canWriteDerived } from "@/auth/permissions"
-import { toPgArray, toPgVector } from "@/db/pgvector"
+import {
+  assertParallelArrayLengthsMatch,
+  toPgArray,
+  toPgVector,
+} from "@/db/pgvector"
+import {
+  isPrismaRuntimeError,
+  sanitizePrismaErrorMessage,
+} from "@/db/prisma-errors"
 import {
   EXPERIENCE_EMBEDDING_DIMENSIONS,
   OPENROUTER_EMBEDDING_MODEL,
@@ -122,13 +130,39 @@ export class SceneIndexError extends Error {
       | "artifact_missing"
       | "artifact_invalid"
       | "duplicate_scene_index"
-      | "empty_description",
+      | "empty_description"
+      | "storage_failed",
     message: string,
     readonly cause?: unknown,
   ) {
     super(message)
     this.name = "SceneIndexError"
   }
+}
+
+/**
+ * Map each prepared scene to its parent `video_scene.id` via the
+ * `scene_index → id` map produced by the post-INSERT recovery SELECT.
+ * Throws `SceneIndexError("artifact_invalid", ...)` on the first miss —
+ * a missing id implies either a concurrent delete, an RLS view, or a
+ * planner bug, none of which are recoverable mid-transaction. Hoisted
+ * out of the bulk-write builder pass so the invariant check is
+ * separated from the array-build orchestration.
+ */
+function resolveVideoSceneIds(
+  prepared: ReadonlyArray<{ scene: { sceneIndex: number } }>,
+  sceneIndexToId: ReadonlyMap<number, string>,
+): string[] {
+  return prepared.map((p) => {
+    const id = sceneIndexToId.get(p.scene.sceneIndex)
+    if (id === undefined) {
+      throw new SceneIndexError(
+        "artifact_invalid",
+        `parent video_scene id not found for scene_index=${p.scene.sceneIndex} after bulk INSERT — concurrency or RLS bug`,
+      )
+    }
+    return id
+  })
 }
 
 function assertNoDuplicateSceneIndexes(scenes: readonly SceneAnalysis[]): void {
@@ -141,27 +175,6 @@ function assertNoDuplicateSceneIndexes(scenes: readonly SceneAnalysis[]): void {
       )
     }
     seen.add(scene.sceneIndex)
-  }
-}
-
-/**
- * Length-equality preflight. PostgreSQL 18's `unnest(arr1, arr2, ...)`
- * silently NULL-pads unequal-length arrays — a regression that drops a
- * row from a parallel-array bind would corrupt the INSERT without
- * raising. Throwing BEFORE `$executeRaw` makes the bug visible at the
- * call site rather than at downstream read time.
- */
-function assertParallelArrayLengthsMatch(
-  expected: number,
-  arrays: ReadonlyArray<{ name: string; length: number }>,
-): void {
-  for (const arr of arrays) {
-    if (arr.length !== expected) {
-      throw new SceneIndexError(
-        "artifact_invalid",
-        `internal: parallel-array length mismatch in scene bulk INSERT (expected=${expected}, ${arr.name}=${arr.length})`,
-      )
-    }
   }
 }
 
@@ -272,55 +285,67 @@ export async function indexEditionScenes(
   let embeddingsWritten = 0
   let scenesPruned = 0
 
-  await prisma.$transaction(
-    async (tx) => {
-      // Prune locale rows whose scene_index is no longer in the artifact —
-      // covers the case where manager re-analyzes and produces fewer
-      // scenes. Bounded to the current (editionId, locale) so other
-      // locales' rows are untouched. Runs before upserts so the
-      // idempotent-rerun path stays the same.
-      const pruneResult = await tx.videoSceneLocale.deleteMany({
-        where: {
-          locale: input.locale,
-          videoScene: {
-            videoEditionId: input.editionId,
-            sceneIndex: { notIn: incomingIndexes },
+  try {
+    await prisma.$transaction(
+      async (tx) => {
+        // Prune locale rows whose scene_index is no longer in the artifact —
+        // covers the case where manager re-analyzes and produces fewer
+        // scenes. Bounded to the current (editionId, locale) so other
+        // locales' rows are untouched. Runs before upserts so the
+        // idempotent-rerun path stays the same.
+        const pruneResult = await tx.videoSceneLocale.deleteMany({
+          where: {
+            locale: input.locale,
+            videoScene: {
+              videoEditionId: input.editionId,
+              sceneIndex: { notIn: incomingIndexes },
+            },
           },
-        },
-      })
-      scenesPruned = pruneResult.count
+        })
+        scenesPruned = pruneResult.count
 
-      // ─── Stage 3 (feat-117) — Bulk parent INSERT ────────────────────
-      // Generate ids client-side. `VideoScene.id` is `String @id @default(cuid())`
-      // in schema.prisma; the DB column is plain `text` with no shape
-      // constraint, so any unique string is valid. `randomUUID()` keeps
-      // the dep tree lean (no `cuid` package) and produces a 36-char ID
-      // distinguishable at a glance from cuid-shaped ids on existing rows.
-      const parentIds = prepared.map(() => randomUUID())
-      const sceneIndexes = prepared.map((p) => p.scene.sceneIndex)
-      const parentVideoEditionIds = prepared.map(() => input.editionId)
-      const parentVideoIds = prepared.map(() => input.videoId)
-      const parentStartSeconds = prepared.map((p) =>
-        String(p.scene.startSeconds),
-      )
-      const parentEndSeconds = prepared.map((p) =>
-        p.scene.endSeconds == null ? null : String(p.scene.endSeconds),
-      )
-      const parentChapterTitles = prepared.map(
-        (p) => p.scene.chapterTitle ?? null,
-      )
+        // ─── Stage 3 (feat-117) — Bulk parent INSERT ────────────────────
+        // Generate ids client-side. `VideoScene.id` is `String @id @default(cuid())`
+        // in schema.prisma; the DB column is plain `text` with no shape
+        // constraint, so any unique string is valid. `randomUUID()` keeps
+        // the dep tree lean (no `cuid` package) and produces a 36-char ID
+        // distinguishable at a glance from cuid-shaped ids on existing rows.
+        const parentIds = prepared.map(() => randomUUID())
+        const sceneIndexes = prepared.map((p) => p.scene.sceneIndex)
+        const parentVideoEditionIds = prepared.map(() => input.editionId)
+        const parentVideoIds = prepared.map(() => input.videoId)
+        const parentStartSeconds = prepared.map((p) =>
+          String(p.scene.startSeconds),
+        )
+        const parentEndSeconds = prepared.map((p) =>
+          p.scene.endSeconds == null ? null : String(p.scene.endSeconds),
+        )
+        const parentChapterTitles = prepared.map(
+          (p) => p.scene.chapterTitle ?? null,
+        )
 
-      assertParallelArrayLengthsMatch(prepared.length, [
-        { name: "parentIds", length: parentIds.length },
-        { name: "sceneIndexes", length: sceneIndexes.length },
-        { name: "parentVideoEditionIds", length: parentVideoEditionIds.length },
-        { name: "parentVideoIds", length: parentVideoIds.length },
-        { name: "parentStartSeconds", length: parentStartSeconds.length },
-        { name: "parentEndSeconds", length: parentEndSeconds.length },
-        { name: "parentChapterTitles", length: parentChapterTitles.length },
-      ])
+        assertParallelArrayLengthsMatch(
+          prepared.length,
+          [
+            { name: "parentIds", length: parentIds.length },
+            { name: "sceneIndexes", length: sceneIndexes.length },
+            {
+              name: "parentVideoEditionIds",
+              length: parentVideoEditionIds.length,
+            },
+            { name: "parentVideoIds", length: parentVideoIds.length },
+            { name: "parentStartSeconds", length: parentStartSeconds.length },
+            { name: "parentEndSeconds", length: parentEndSeconds.length },
+            { name: "parentChapterTitles", length: parentChapterTitles.length },
+          ],
+          (msg) =>
+            new SceneIndexError(
+              "artifact_invalid",
+              `internal: ${msg} (scene parent INSERT)`,
+            ),
+        )
 
-      await tx.$executeRaw`
+        await tx.$executeRaw`
         INSERT INTO video_scene (
           id, video_edition_id, video_id, scene_index,
           start_seconds, end_seconds, chapter_title,
@@ -351,24 +376,24 @@ export async function indexEditionScenes(
         ON CONFLICT (video_edition_id, scene_index) DO NOTHING
       `
 
-      // ON CONFLICT DO NOTHING does not return rows for the pre-existing
-      // matches, so RETURNING id alone would lose ids for any rerun
-      // where some scenes existed already. Run ONE follow-up SELECT to
-      // recover the full `scene_index → id` map for all incoming
-      // sceneIndexes (both freshly-inserted and previously-existing).
-      const sceneIndexLiteral = toPgArray(sceneIndexes.map((n) => String(n)))
-      // Recover ids for ALL incoming sceneIndexes (both freshly inserted
-      // and previously existing). `ON CONFLICT DO NOTHING` doesn't return
-      // the existing rows, so a `RETURNING id` alone would lose them on
-      // reruns where some scenes already existed.
-      //
-      // The parameter is a `text[]` literal; the inner subquery casts each
-      // element to int so the outer `= ANY(...)` matches the int column.
-      // Avoids the PG18 chained-cast trap (`?::jsonb::text[]`-style) by
-      // unnesting before the per-element cast.
-      const parentRows = await tx.$queryRaw<
-        ReadonlyArray<{ id: string; scene_index: number }>
-      >`
+        // ON CONFLICT DO NOTHING does not return rows for the pre-existing
+        // matches, so RETURNING id alone would lose ids for any rerun
+        // where some scenes existed already. Run ONE follow-up SELECT to
+        // recover the full `scene_index → id` map for all incoming
+        // sceneIndexes (both freshly-inserted and previously-existing).
+        const sceneIndexLiteral = toPgArray(sceneIndexes.map((n) => String(n)))
+        // Recover ids for ALL incoming sceneIndexes (both freshly inserted
+        // and previously existing). `ON CONFLICT DO NOTHING` doesn't return
+        // the existing rows, so a `RETURNING id` alone would lose them on
+        // reruns where some scenes already existed.
+        //
+        // The parameter is a `text[]` literal; the inner subquery casts each
+        // element to int so the outer `= ANY(...)` matches the int column.
+        // Avoids the PG18 chained-cast trap (`?::jsonb::text[]`-style) by
+        // unnesting before the per-element cast.
+        const parentRows = await tx.$queryRaw<
+          ReadonlyArray<{ id: string; scene_index: number }>
+        >`
         SELECT id, scene_index
         FROM video_scene
         WHERE video_edition_id = ${input.editionId}
@@ -376,63 +401,70 @@ export async function indexEditionScenes(
             SELECT s::int FROM unnest(${sceneIndexLiteral}::text[]) AS s
           )
       `
-      const sceneIndexToId = new Map<number, string>()
-      for (const row of parentRows) {
-        sceneIndexToId.set(Number(row.scene_index), row.id)
-      }
-
-      // ─── Stage 3 (feat-117) — Bulk locale INSERT … ON CONFLICT … DO UPDATE ─
-      // Build parallel arrays. text[] columns (themes, bibleVerses,
-      // demographics, spiritualContext) are bound as JSON-stringified
-      // strings and unfolded inside the SELECT seam via
-      // `json_array_elements_text(u.<col>_json::jsonb)` — Way A
-      // discipline keeps the cast at the seam, not on the parameter.
-      const localeIds = prepared.map(() => randomUUID())
-      const videoSceneIds = prepared.map((p) => {
-        const id = sceneIndexToId.get(p.scene.sceneIndex)
-        if (id === undefined) {
-          throw new SceneIndexError(
-            "artifact_invalid",
-            `parent video_scene id not found for scene_index=${p.scene.sceneIndex} after bulk INSERT — concurrency or RLS bug`,
-          )
+        // `tx.$queryRaw<{ scene_index: number }>` declares the field as
+        // `number`; Prisma's `Int` mapping returns plain numbers here.
+        // Trust the typed declaration and avoid a defensive `Number(...)`
+        // coercion that would imply a runtime distrust the type assertion
+        // doesn't admit.
+        const sceneIndexToId = new Map<number, string>()
+        for (const row of parentRows) {
+          sceneIndexToId.set(row.scene_index, row.id)
         }
-        return id
-      })
-      const locales = prepared.map(() => input.locale)
-      const sourceTextsArr = prepared.map((p) => p.sourceText)
-      const descriptions = prepared.map((p) => p.scene.description)
-      const themesJson = prepared.map((p) =>
-        JSON.stringify(p.scene.themes ?? []),
-      )
-      const bibleVersesJson = prepared.map((p) =>
-        JSON.stringify(p.scene.bibleVerses ?? []),
-      )
-      const demographicsJson = prepared.map((p) =>
-        JSON.stringify(p.scene.demographics ?? []),
-      )
-      const spiritualContextJson = prepared.map((p) =>
-        JSON.stringify(p.scene.spiritualContext ?? []),
-      )
-      const models = prepared.map(() => modelStamp)
-      const dimensionsArr = prepared.map(() => String(dimensions))
-      const vectorTexts = prepared.map((p) => toPgVector(p.embedding))
 
-      assertParallelArrayLengthsMatch(prepared.length, [
-        { name: "localeIds", length: localeIds.length },
-        { name: "videoSceneIds", length: videoSceneIds.length },
-        { name: "locales", length: locales.length },
-        { name: "sourceTextsArr", length: sourceTextsArr.length },
-        { name: "descriptions", length: descriptions.length },
-        { name: "themesJson", length: themesJson.length },
-        { name: "bibleVersesJson", length: bibleVersesJson.length },
-        { name: "demographicsJson", length: demographicsJson.length },
-        { name: "spiritualContextJson", length: spiritualContextJson.length },
-        { name: "models", length: models.length },
-        { name: "dimensionsArr", length: dimensionsArr.length },
-        { name: "vectorTexts", length: vectorTexts.length },
-      ])
+        // ─── Stage 3 (feat-117) — Bulk locale INSERT … ON CONFLICT … DO UPDATE ─
+        // Build parallel arrays. text[] columns (themes, bibleVerses,
+        // demographics, spiritualContext) are bound as JSON-stringified
+        // strings and unfolded inside the SELECT seam via
+        // `json_array_elements_text(u.<col>_json::jsonb)` — Way A
+        // discipline keeps the cast at the seam, not on the parameter.
+        const localeIds = prepared.map(() => randomUUID())
+        const videoSceneIds = resolveVideoSceneIds(prepared, sceneIndexToId)
+        const locales = prepared.map(() => input.locale)
+        const sourceTextsArr = prepared.map((p) => p.sourceText)
+        const descriptions = prepared.map((p) => p.scene.description)
+        const themesJson = prepared.map((p) =>
+          JSON.stringify(p.scene.themes ?? []),
+        )
+        const bibleVersesJson = prepared.map((p) =>
+          JSON.stringify(p.scene.bibleVerses ?? []),
+        )
+        const demographicsJson = prepared.map((p) =>
+          JSON.stringify(p.scene.demographics ?? []),
+        )
+        const spiritualContextJson = prepared.map((p) =>
+          JSON.stringify(p.scene.spiritualContext ?? []),
+        )
+        const models = prepared.map(() => modelStamp)
+        const dimensionsArr = prepared.map(() => String(dimensions))
+        const vectorTexts = prepared.map((p) => toPgVector(p.embedding))
 
-      const writeAffected = await tx.$executeRaw`
+        assertParallelArrayLengthsMatch(
+          prepared.length,
+          [
+            { name: "localeIds", length: localeIds.length },
+            { name: "videoSceneIds", length: videoSceneIds.length },
+            { name: "locales", length: locales.length },
+            { name: "sourceTextsArr", length: sourceTextsArr.length },
+            { name: "descriptions", length: descriptions.length },
+            { name: "themesJson", length: themesJson.length },
+            { name: "bibleVersesJson", length: bibleVersesJson.length },
+            { name: "demographicsJson", length: demographicsJson.length },
+            {
+              name: "spiritualContextJson",
+              length: spiritualContextJson.length,
+            },
+            { name: "models", length: models.length },
+            { name: "dimensionsArr", length: dimensionsArr.length },
+            { name: "vectorTexts", length: vectorTexts.length },
+          ],
+          (msg) =>
+            new SceneIndexError(
+              "artifact_invalid",
+              `internal: ${msg} (scene locale INSERT)`,
+            ),
+        )
+
+        const writeAffected = await tx.$executeRaw`
         INSERT INTO video_scene_locale (
           id, video_scene_id, locale, source_text, description,
           themes, bible_verses, demographics, spiritual_context,
@@ -485,10 +517,40 @@ export async function indexEditionScenes(
           embedding         = EXCLUDED.embedding,
           updated_at        = NOW()
       `
-      embeddingsWritten = Number(writeAffected)
-    },
-    { timeout: TRANSACTION_TIMEOUT_MS },
-  )
+        embeddingsWritten = Number(writeAffected)
+      },
+      { timeout: TRANSACTION_TIMEOUT_MS },
+    )
+  } catch (error) {
+    // Remap Prisma runtime errors so their raw `message` (which on
+    // $executeRaw failures includes the bound vector literal as well as
+    // every other text[] parameter) does NOT round-trip into the
+    // workflow's `outcome.reason` and out the GraphQL mutation response.
+    // Mirrors the transcript-embedding indexer's posture. Non-Prisma
+    // errors propagate unchanged.
+    if (isPrismaRuntimeError(error)) {
+      console.error(
+        JSON.stringify({
+          event: "scene_index_storage_error",
+          editionId: input.editionId,
+          locale: input.locale,
+          name: (error as { name?: unknown }).name,
+          code: (error as { code?: unknown }).code,
+          // Deliberately truncated: the first 200 chars of the raw
+          // message are enough to identify the query shape without
+          // leaking the full vector parameter or text[] payloads.
+          messagePreview:
+            error instanceof Error ? error.message.slice(0, 200) : undefined,
+        }),
+      )
+      throw new SceneIndexError(
+        "storage_failed",
+        sanitizePrismaErrorMessage(error, "scene-embedding write"),
+        error,
+      )
+    }
+    throw error
+  }
 
   return {
     editionId: input.editionId,

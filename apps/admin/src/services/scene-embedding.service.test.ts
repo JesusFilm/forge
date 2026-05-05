@@ -425,7 +425,7 @@ describe("indexEditionScenes", () => {
     expect(small.localeBindCount).toBe(large.localeBindCount)
   })
 
-  it("length-equality preflight throws BEFORE $executeRaw when batched provider returns wrong count", async () => {
+  it("embedding count mismatch from provider throws BEFORE $executeRaw (length check between provider response and scenes.length)", async () => {
     // Inject a length mismatch: the provider mock returns ONE vector
     // for a TWO-scene artifact. The service's construction-time check
     // throws SceneIndexError("artifact_invalid") and $executeRaw is
@@ -693,5 +693,103 @@ describe("indexEditionScenes", () => {
       foundEmpty,
       `empty-array JSON literal not present in bound params`,
     ).toBeDefined()
+  })
+
+  it("throws artifact_invalid when the parent SELECT misses a sceneIndex (and never runs the locale INSERT)", async () => {
+    // Defensive guard test: the parent INSERT + follow-up SELECT must
+    // surface ids for ALL incoming sceneIndexes. If a row goes missing
+    // (concurrent delete, RLS view, planner bug), the indexer must fail
+    // BEFORE attempting the locale INSERT — otherwise it would land
+    // locale rows pointing at the wrong parent. The parent INSERT runs
+    // (executeRaw call 0); the locale INSERT (call 1) must never fire.
+    const { prisma, executeRaw } = buildStubPrisma({
+      // Return parent rows for sceneIndex=0 only; sceneIndex=1 is missing.
+      parentRowsFor: (indexes) =>
+        indexes
+          .filter((idx) => idx === 0)
+          .map((idx) => ({ id: `parent-${idx}`, scene_index: idx })),
+    })
+
+    await expect(
+      indexEditionScenes(prisma, {
+        editionId: "edition-1",
+        videoId: "video-1",
+        coreId: "core-1",
+        locale: "en",
+        user: SYSTEM,
+        loadedArtifact: ARTIFACT,
+      }),
+    ).rejects.toMatchObject({
+      name: "SceneIndexError",
+      code: "artifact_invalid",
+      message: expect.stringMatching(/parent video_scene id not found/),
+    })
+
+    // Parent INSERT did fire; locale INSERT (call index 1) must NOT have.
+    expect(executeRaw).toHaveBeenCalledTimes(1)
+  })
+
+  it("passes the 30s timeout option to $transaction", async () => {
+    const { prisma } = buildStubPrisma()
+    await indexEditionScenes(prisma, {
+      editionId: "edition-1",
+      videoId: "video-1",
+      coreId: "core-1",
+      locale: "en",
+      user: SYSTEM,
+      loadedArtifact: ARTIFACT,
+    })
+    const txMock = prisma.$transaction as unknown as ReturnType<typeof vi.fn>
+    expect(txMock).toHaveBeenCalledTimes(1)
+    const [, opts] = txMock.mock.calls[0]!
+    expect(opts).toMatchObject({ timeout: 30_000 })
+  })
+
+  it("remaps Prisma runtime errors to SceneIndexError('storage_failed') without leaking the raw message (Fix 2 — feat-117 review)", async () => {
+    const vectorLiteral = `[${new Array(1536).fill(0.42).join(",")}]`
+    class FakePrismaError extends Error {
+      readonly code = "P2010"
+      constructor(message: string) {
+        super(message)
+        this.name = "PrismaClientKnownRequestError"
+      }
+    }
+    const rawMessage = `Raw query failed. Code: \`P2010\`. Message: \`ERROR: malformed vector literal ${vectorLiteral}\``
+
+    const { prisma } = buildStubPrisma()
+    ;(
+      prisma.$transaction as unknown as ReturnType<typeof vi.fn>
+    ).mockImplementationOnce(async () => {
+      throw new FakePrismaError(rawMessage)
+    })
+
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    try {
+      const thrown = await indexEditionScenes(prisma, {
+        editionId: "edition-1",
+        videoId: "video-1",
+        coreId: "core-1",
+        locale: "en",
+        user: SYSTEM,
+        loadedArtifact: ARTIFACT,
+      }).catch((e) => e)
+
+      expect((thrown as { name?: string }).name).toBe("SceneIndexError")
+      expect((thrown as { code: string }).code).toBe("storage_failed")
+      // The raw vector literal MUST NOT appear in the sanitized message.
+      expect((thrown as Error).message).not.toContain("0.42")
+      expect((thrown as Error).message).not.toContain(vectorLiteral)
+      // The stable Prisma code SHOULD appear so operators can grep.
+      expect((thrown as Error).message).toContain("P2010")
+      expect(errorSpy).toHaveBeenCalledTimes(1)
+      const [payload] = errorSpy.mock.calls[0]!
+      const parsed = JSON.parse(String(payload))
+      expect(parsed).toMatchObject({
+        event: "scene_index_storage_error",
+        code: "P2010",
+      })
+    } finally {
+      errorSpy.mockRestore()
+    }
   })
 })

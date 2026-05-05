@@ -649,7 +649,7 @@ scale.
      `ON CONFLICT DO NOTHING` doesn't return rows for existing matches,
      and the rerun path needs ids for those too.
   3. Bulk locale `INSERT … unnest(...) ON CONFLICT (video_scene_id,
-   locale) DO UPDATE SET …`. The `embedding` cast is per-row at the
+locale) DO UPDATE SET …`. The `embedding` cast is per-row at the
      SELECT seam (`u.embedding_text::vector(1536)`) — Way A discipline,
      NOT `::vector(1536)[]` on the parameter. The `text[]` columns
      (`themes`, `bible_verses`, `demographics`, `spiritual_context`,
@@ -759,11 +759,19 @@ Promise.allSettled` — never bare `Promise.all`. Per-language work
   (per language) to N (per group). Group-level artifact-load failures
   cascade to per-language outcomes with the right classification
   (`artifact_missing` → skipped; everything else → failed). Memory
-  budget per active language: ~250 KB artifact + per-chunk vectors
-  already inside the artifact (R2 doesn't generate a parallel
-  embeddings array — vectors are reused from the artifact). At default
-  concurrency=5 that's ~1.25 MB peak resident; released after the
-  per-language transaction completes.
+  budget per active language (Stage 3 — feat-117 update): the
+  steady-state artifact (~250 KB) plus per-chunk vectors already inside
+  the artifact (R2 doesn't generate a parallel embeddings array —
+  vectors are reused from the artifact) is dwarfed by Stage 3's
+  TRANSIENT bulk INSERT footprint. At ~200 chunks per artifact, each
+  `toPgVector(c.embedding)` text serialization is ~15-30 KB, the
+  per-row vector-text array is ~4 MB, and the `toPgArray` envelope
+  copy adds another ~4 MB during string concat — about ~6-12 MB
+  transient at the bulk write site for hundreds-of-chunks artifacts.
+  At default concurrency=5 that's ~30-60 MB transient peak across
+  in-flight groups (vs the steady-state ~1.25 MB before the bulk
+  rewrite); GC reclaims as soon as `$executeRaw` returns. The figure
+  includes the Way A vector-text array AND the toPgArray literal copy.
 - **No batched provider call for R2.** R2 reuses vectors verbatim
   from the artifact (the whole point of the R2 vs R1 divergence) — so
   Stage 2's batched OpenRouter change applies to R1 only. R2 only

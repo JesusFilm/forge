@@ -40,6 +40,7 @@ related:
   - "docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md"
   - "docs/solutions/platform/admin-experience-content-dump-pattern.md"
   - "docs/solutions/platform/backfill-worker-pattern-manager-20260407.md"
+  - "docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md"
 related_prs:
   - "JesusFilm/forge#882"
 related_features:

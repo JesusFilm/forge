@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest"
-import { toPgArray, toPgVector } from "@/db/pgvector"
+import { describe, expect, it, vi } from "vitest"
+import {
+  assertParallelArrayLengthsMatch,
+  toPgArray,
+  toPgVector,
+} from "@/db/pgvector"
 
 describe("toPgArray", () => {
   it("returns empty literal for empty input", () => {
@@ -64,6 +68,100 @@ describe("toPgArray", () => {
         '{NULL,"a","he said \\"hi\\"","a\\\\b",NULL}',
       )
     })
+  })
+})
+
+describe("assertParallelArrayLengthsMatch", () => {
+  // Stage 3 (feat-117) — shared preflight guard for `INSERT … unnest(...)`
+  // bulk writes. PG18's `unnest(arr1, arr2, ...)` silently NULL-pads
+  // unequal-length arrays, so the helper throws via the caller-supplied
+  // typed-error factory BEFORE `$executeRaw` ships the bad SQL.
+
+  it("returns void without throwing when every parallel array matches the expected length", () => {
+    const factory = vi.fn(
+      (msg: string) => new Error(`should-not-be-called: ${msg}`),
+    )
+    expect(() =>
+      assertParallelArrayLengthsMatch(
+        3,
+        [
+          { name: "a", length: 3 },
+          { name: "b", length: 3 },
+          { name: "c", length: 3 },
+        ],
+        factory,
+      ),
+    ).not.toThrow()
+    expect(factory).not.toHaveBeenCalled()
+  })
+
+  it("throws via the error factory with the mismatching column name and a length-mismatch message", () => {
+    class TestError extends Error {
+      constructor(
+        readonly code: "artifact_invalid",
+        message: string,
+      ) {
+        super(message)
+        this.name = "TestError"
+      }
+    }
+    const factory = vi.fn(
+      (msg: string) => new TestError("artifact_invalid", msg),
+    )
+    expect(() =>
+      assertParallelArrayLengthsMatch(
+        3,
+        [
+          { name: "ids", length: 3 },
+          { name: "vectors", length: 2 }, // mismatched
+          { name: "models", length: 3 },
+        ],
+        factory,
+      ),
+    ).toThrow(TestError)
+    expect(factory).toHaveBeenCalledTimes(1)
+    const [message] = factory.mock.calls[0]!
+    expect(message).toContain("vectors")
+    expect(message).toMatch(/expected=3/)
+    expect(message).toMatch(/vectors=2/)
+  })
+
+  it("invokes the factory with a string message and propagates whatever Error class the factory returns", () => {
+    class CustomError extends Error {
+      readonly tag = "custom" as const
+    }
+    const factory = vi.fn((msg: string) => new CustomError(msg))
+    expect(() =>
+      assertParallelArrayLengthsMatch(
+        2,
+        [{ name: "only", length: 1 }],
+        factory,
+      ),
+    ).toThrow(CustomError)
+    const [message] = factory.mock.calls[0]!
+    expect(typeof message).toBe("string")
+    expect(message).toContain("only")
+  })
+
+  it("throws on the FIRST mismatched column (later columns are not evaluated by the factory)", () => {
+    const factory = vi.fn((msg: string) => new Error(msg))
+    expect(() =>
+      assertParallelArrayLengthsMatch(
+        4,
+        [
+          { name: "first-bad", length: 3 },
+          { name: "second-bad", length: 5 },
+        ],
+        factory,
+      ),
+    ).toThrow(/first-bad/)
+    expect(factory).toHaveBeenCalledTimes(1)
+  })
+
+  it("treats an empty arrays list as a no-op (no throw, factory not called)", () => {
+    const factory = vi.fn((msg: string) => new Error(msg))
+    expect(() => assertParallelArrayLengthsMatch(0, [], factory)).not.toThrow()
+    expect(factory).not.toHaveBeenCalled()
   })
 })
 

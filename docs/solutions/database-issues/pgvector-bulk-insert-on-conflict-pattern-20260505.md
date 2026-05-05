@@ -32,6 +32,9 @@ related:
   - docs/solutions/best-practices/prisma-raw-sql-invariant-assertions-20260423.md
   - docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md
   - docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md
+  - docs/solutions/best-practices/per-parent-child-memoization-loadedartifact-pattern-20260505.md
+  - docs/solutions/best-practices/batched-provider-input-position-stable-contract-20260505.md
+  - docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md
 ---
 
 # pgvector bulk INSERT … unnest(...) ON CONFLICT pattern with per-row Way A vector cast

@@ -165,6 +165,22 @@ describe("indexEditionTranscript", () => {
 
   it("returns zero counts for an empty artifact without touching the DB", async () => {
     const { prisma, videoTranscriptUpsert, executeRaw } = buildStubPrisma()
+    // Mirror the symmetry of scene-embedding's empty-artifact test: even
+    // though R2 reuses vectors verbatim from the artifact (the embedding
+    // provider isn't imported into the transcript indexer at all), spy on
+    // the embeddings module to lock the invariant. A regression that
+    // accidentally re-introduced a provider call on R2 would fire this
+    // assertion long before any other test caught the round-trip.
+    const embeddingsModule = await import("@/services/embeddings.service")
+    const generateSpy = vi.spyOn(
+      embeddingsModule,
+      "generateExperienceEmbedding",
+    )
+    const generateBatchedSpy = vi.spyOn(
+      embeddingsModule,
+      "generateExperienceEmbeddings",
+    )
+
     const result = await indexEditionTranscript(prisma, {
       editionId: "edition-1",
       videoId: "video-1",
@@ -177,6 +193,8 @@ describe("indexEditionTranscript", () => {
     expect(result.embeddingsWritten).toBe(0)
     expect(videoTranscriptUpsert).not.toHaveBeenCalled()
     expect(executeRaw).not.toHaveBeenCalled()
+    expect(generateSpy).not.toHaveBeenCalled()
+    expect(generateBatchedSpy).not.toHaveBeenCalled()
   })
 
   it("rejects an artifact with dimensions != 1536", async () => {

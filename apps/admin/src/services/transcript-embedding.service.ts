@@ -34,7 +34,15 @@ import { randomUUID } from "node:crypto"
 import { type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { canWriteDerived } from "@/auth/permissions"
-import { toPgArray, toPgVector } from "@/db/pgvector"
+import {
+  assertParallelArrayLengthsMatch,
+  toPgArray,
+  toPgVector,
+} from "@/db/pgvector"
+import {
+  isPrismaRuntimeError,
+  sanitizePrismaErrorMessage,
+} from "@/db/prisma-errors"
 import {
   readEmbeddingsArtifact,
   type EmbeddingsResult,
@@ -121,50 +129,6 @@ export class TranscriptIndexError extends Error {
   }
 }
 
-/**
- * Prisma raw SQL errors (especially `$executeRaw` failures on vector
- * writes) can surface the full statement text and parameter values in
- * `error.message`. Our vector literal is a 1536-element float string;
- * letting it round-trip through `outcome.reason` in the workflow and
- * out the GraphQL mutation response would leak the vector into the
- * caller's payload. Mirrors the zod-echo hardening already applied to
- * `readEmbeddingsArtifact` —
- * see docs/solutions/best-practices/zod-validation-errors-must-not-echo-user-controlled-input-20260420.md.
- *
- * Detection is shape-based rather than `instanceof`-based because the
- * Prisma error class tree differs across runtime/dev and we don't
- * want to import @prisma/client at the service boundary just to
- * `instanceof` a specific subclass. `code` / `meta` presence is
- * stable across Prisma 6.x.
- */
-function isPrismaRuntimeError(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false
-  const err = error as { name?: unknown; code?: unknown }
-  if (typeof err.name === "string" && err.name.startsWith("PrismaClient")) {
-    return true
-  }
-  // Prisma P-codes (P2002, P2025, etc.) are the engine's stable
-  // error code surface. Any P-prefixed string is a Prisma error.
-  if (typeof err.code === "string" && /^P\d{4}$/.test(err.code)) {
-    return true
-  }
-  return false
-}
-
-function sanitizePrismaErrorMessage(error: unknown): string {
-  const name =
-    typeof (error as { name?: unknown }).name === "string"
-      ? (error as { name: string }).name
-      : "PrismaError"
-  const code =
-    typeof (error as { code?: unknown }).code === "string"
-      ? (error as { code: string }).code
-      : "unknown"
-  // Explicitly do NOT include error.message — it can carry the raw
-  // SQL statement with a bound vector literal.
-  return `${name}(${code}) during transcript-embedding write`
-}
-
 // Chunk index uniqueness is not asserted: the indexer derives chunkIndex
 // from the loop counter rather than the opaque `chunk.chunkId`, so
 // duplicates are impossible by construction. Uniqueness of the upstream
@@ -210,27 +174,6 @@ function logModelStampDriftIfAny(artifactModel: string): void {
       note: "reusing vector regardless; re-embedding is R2 scope-out",
     }),
   )
-}
-
-/**
- * Length-equality preflight. PostgreSQL 18's `unnest(arr1, arr2, ...)`
- * silently NULL-pads unequal-length arrays — a regression that drops a
- * row from a parallel-array bind would corrupt the INSERT without
- * raising. Throwing BEFORE `$executeRaw` makes the bug visible at the
- * call site rather than at downstream read time.
- */
-function assertParallelArrayLengthsMatch(
-  expected: number,
-  arrays: ReadonlyArray<{ name: string; length: number }>,
-): void {
-  for (const arr of arrays) {
-    if (arr.length !== expected) {
-      throw new TranscriptIndexError(
-        "artifact_invalid",
-        `internal: parallel-array length mismatch in transcript chunk bulk INSERT (expected=${expected}, ${arr.name}=${arr.length})`,
-      )
-    }
-  }
 }
 
 /**
@@ -371,20 +314,28 @@ export async function indexEditionTranscript(
         )
         const vectorTexts = artifact.chunks.map((c) => toPgVector(c.embedding))
 
-        assertParallelArrayLengthsMatch(artifact.chunks.length, [
-          { name: "ids", length: ids.length },
-          { name: "transcriptIds", length: transcriptIds.length },
-          { name: "languages", length: languages.length },
-          { name: "chunkIndexes", length: chunkIndexes.length },
-          { name: "chunkIds", length: chunkIds.length },
-          { name: "texts", length: texts.length },
-          { name: "tokenCounts", length: tokenCounts.length },
-          { name: "startSeconds", length: startSeconds.length },
-          { name: "endSeconds", length: endSeconds.length },
-          { name: "models", length: models.length },
-          { name: "dimensionsArr", length: dimensionsArr.length },
-          { name: "vectorTexts", length: vectorTexts.length },
-        ])
+        assertParallelArrayLengthsMatch(
+          artifact.chunks.length,
+          [
+            { name: "ids", length: ids.length },
+            { name: "transcriptIds", length: transcriptIds.length },
+            { name: "languages", length: languages.length },
+            { name: "chunkIndexes", length: chunkIndexes.length },
+            { name: "chunkIds", length: chunkIds.length },
+            { name: "texts", length: texts.length },
+            { name: "tokenCounts", length: tokenCounts.length },
+            { name: "startSeconds", length: startSeconds.length },
+            { name: "endSeconds", length: endSeconds.length },
+            { name: "models", length: models.length },
+            { name: "dimensionsArr", length: dimensionsArr.length },
+            { name: "vectorTexts", length: vectorTexts.length },
+          ],
+          (msg) =>
+            new TranscriptIndexError(
+              "artifact_invalid",
+              `internal: ${msg} (transcript chunk INSERT)`,
+            ),
+        )
 
         const writeAffected = await tx.$executeRaw`
           INSERT INTO video_transcript_chunk (
@@ -466,7 +417,7 @@ export async function indexEditionTranscript(
       )
       throw new TranscriptIndexError(
         "storage_failed",
-        sanitizePrismaErrorMessage(error),
+        sanitizePrismaErrorMessage(error, "transcript-embedding write"),
         error,
       )
     }
