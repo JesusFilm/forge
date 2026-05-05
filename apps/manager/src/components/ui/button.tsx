@@ -20,9 +20,9 @@ const buttonVariants = cva(
           "border-transparent bg-[color:var(--ds-brand-red)] text-white shadow-[0_1px_2px_rgba(239,51,64,0.2)] hover:bg-[color:color-mix(in_srgb,var(--ds-brand-red)_88%,black)]",
       },
       size: {
-        sm: "h-7.5 px-2.5 text-[12px]",
+        sm: "h-7 px-2 text-[12px]",
         md: "h-8.5 px-3 text-[13px]",
-        lg: "h-9 px-3.5 text-[14px]",
+        lg: "h-9.5 px-4 text-[14px]",
         icon: "size-8.5",
       },
     },
