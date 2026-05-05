@@ -581,6 +581,22 @@ scale.
   `docs/solutions/best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md`.
   Per-target error isolation; `artifact_missing` errors skip, provider
   errors fail but don't halt the run. Safe to re-run.
+- **Bounded parallelism:** the per-target loop uses
+  `pLimit(env.SCENE_EMBEDDING_CONCURRENCY ?? 5) +
+Promise.allSettled` — never bare `Promise.all` (one rejection
+  would abort the batch). See
+  `docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md`.
+  `Promise.allSettled` preserves input order so `outcomes[i]` is
+  index-aligned to `targets[i]`; per-target work completes
+  out-of-order during the run, but the final array shape is stable.
+  Tune via the `SCENE_EMBEDDING_CONCURRENCY` env var on `forge-admin`
+  Doppler. Default `5` matches admin's documented Prisma
+  `connection_limit=10` so a backfill leaves headroom for concurrent
+  GraphQL/REST traffic; local dev can crank to `20+` via the env
+  override. Per-target progress streams as `scene_index_complete` /
+  `scene_index_skipped` / `scene_index_failed` JSON log events; the
+  workflow also emits a single `event=start` log at dispatch carrying
+  the resolved concurrency for any trigger path.
 - **Trigger:** `triggerSceneEmbeddingBackfill` GraphQL mutation
   (ADMIN-only; permission key `write:scene-embeddings`).
 
@@ -666,6 +682,17 @@ manager's stamp). See
   silent default). Per-target error isolation; `artifact_missing`
   → skipped, every other error → failed but the run continues.
   Safe to re-run.
+- **Bounded parallelism:** the per-target loop uses
+  `pLimit(env.TRANSCRIPT_EMBEDDING_CONCURRENCY ?? 5) +
+Promise.allSettled` — never bare `Promise.all`. Same shape /
+  same rule as R1; index-aligned `outcomes[i]` per `Promise.allSettled`
+  input-order semantics; per-target progress streams via
+  `transcript_index_complete` / `_skipped` / `_failed` log events
+  and a single `event=start` carrying resolved concurrency. Tune via
+  the `TRANSCRIPT_EMBEDDING_CONCURRENCY` env var. R2 is DB-bound (no
+  provider call) so the bottleneck on cranking concurrency is
+  Postgres connection saturation; default `5` leaves headroom on
+  admin's `connection_limit=10` pool.
 - **Trigger:** `triggerTranscriptEmbeddingBackfill` GraphQL mutation
   (ADMIN-only; permission key `write:transcript-embeddings`).
 

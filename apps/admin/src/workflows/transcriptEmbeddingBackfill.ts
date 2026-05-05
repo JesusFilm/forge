@@ -33,8 +33,10 @@
 // and a `DEFAULT_LOCALES = ['en', 'es', 'fr']` constant. Both were
 // dropped once the enumeration became data-derived.
 
+import pLimit from "p-limit"
 import { prisma } from "@/db/client"
 import { SYSTEM_PRINCIPAL } from "@/auth/principal"
+import { env } from "@/config/env"
 import {
   loadCoreIdMapping,
   type CoreIdMapping,
@@ -44,6 +46,16 @@ import {
   indexEditionTranscript,
   type IndexEditionTranscriptResult,
 } from "@/services/transcript-embedding.service"
+
+/**
+ * Default per-target concurrency for the R2 transcript-embedding
+ * backfill. Override via `TRANSCRIPT_EMBEDDING_CONCURRENCY`
+ * (env-validated, positive int). R2 is DB-bound (no provider call);
+ * the default is sized below admin's documented `connection_limit=10`
+ * Prisma pool to leave headroom for concurrent traffic. Local dev can
+ * crank to 20+ via the env override.
+ */
+export const DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY = 5
 
 export type TranscriptEmbeddingBackfillInput = {
   /** S3 key of the JSON mapping snapshot uploaded via the admin refresh CLI. */
@@ -133,12 +145,67 @@ export async function runTranscriptEmbeddingBackfill(
     ? allTargets.filter((t) => languageFilter.has(t.language))
     : allTargets
 
-  const outcomes: BackfillOutcome[] = []
-  for (const target of targets) {
-    const outcome = await stepIndexEditionTranscript(target)
-    outcomes.push(outcome)
-    logOutcome(outcome)
-  }
+  // Bounded parallelism via `p-limit + Promise.allSettled` — see the
+  // R1 sibling for the full rationale. `stepIndexEditionTranscript`
+  // already returns a typed `failed` outcome on per-target errors; a
+  // settled `rejected` is therefore unexpected and the synthetic-
+  // failed branch below carries real elapsed time so dashboards
+  // built on `outcomes[].durationMs` aren't polluted with `0`s.
+  const concurrency =
+    env.TRANSCRIPT_EMBEDDING_CONCURRENCY ??
+    DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
+  const limit = pLimit(concurrency)
+
+  // Structured start log so the workflow's effective concurrency is
+  // observable from any trigger path (GraphQL mutation or local CLI).
+  console.log(
+    JSON.stringify({
+      workflow: "transcript-embedding-backfill",
+      event: "start",
+      mappingGeneratedAt: mapping.generatedAt,
+      totalTargets: targets.length,
+      concurrency,
+      languageFilter:
+        input.languages && input.languages.length > 0 ? input.languages : null,
+    }),
+  )
+
+  // Per-completion logging streams progress. `Promise.allSettled`
+  // preserves input order, so `outcomes[i]` aligns with `targets[i]`.
+  const batchStartedAt = Date.now()
+  const settled = await Promise.allSettled(
+    targets.map((target) =>
+      limit(() =>
+        // Deliberately do NOT catch here. `stepIndexEditionTranscript`
+        // already returns a typed `failed` outcome for every error it
+        // can see; an unexpected throw past that boundary should
+        // propagate as a `rejected` settled result so the synthetic-
+        // failed branch below records it (with real elapsed time) and
+        // the per-target isolation contract is observable to tests.
+        _internals.stepIndexEditionTranscript(target).then((o) => {
+          logOutcome(o)
+          return o
+        }),
+      ),
+    ),
+  )
+
+  const outcomes: BackfillOutcome[] = settled.map((result, i) => {
+    if (result.status === "fulfilled") return result.value
+    const target = targets[i]!
+    const synthetic: BackfillOutcome = {
+      status: "failed",
+      target,
+      language: target.language,
+      reason:
+        result.reason instanceof Error
+          ? result.reason.message
+          : String(result.reason),
+      durationMs: Date.now() - batchStartedAt,
+    }
+    logOutcome(synthetic)
+    return synthetic
+  })
 
   return stepReport({
     mappingGeneratedAt: mapping.generatedAt,
@@ -418,10 +485,15 @@ function logOutcome(outcome: BackfillOutcome): void {
 }
 
 // Exported for tests — pure helpers safe to exercise without the
-// useworkflow runtime. Tests using the step bodies import those
-// directly through the workflow entry.
+// useworkflow runtime. `stepIndexEditionTranscript` is referenced
+// through `_internals` from the workflow body so tests can
+// `vi.spyOn(_internals, "stepIndexEditionTranscript")` to force a
+// `Promise.allSettled` rejection — the only way to exercise the
+// synthetic-failed defensive branch, since the real step body catches
+// everything internally.
 export const _internals = {
   stepReport,
+  stepIndexEditionTranscript,
   toSucceeded,
   logOutcome,
 }

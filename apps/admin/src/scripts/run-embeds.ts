@@ -86,6 +86,28 @@ async function main(): Promise<void> {
   const locales = parseRepeated("locale")
   const languages = parseRepeated("language")
 
+  // Lazy-import the workflow modules AFTER the DATABASE_URL guard
+  // above so a missing var produces our friendly stderr line instead
+  // of zod's validation crash on the transitive `@/config/env` import.
+  // Imports happen BEFORE the try/finally so the finally always sees
+  // a bound prisma reference. Importing the workflows here also pulls
+  // in the validated `env` and the workflow defaults — single source
+  // of truth for both the CLI's start-event log and the workflow body.
+  const { runSceneEmbeddingBackfill, DEFAULT_SCENE_EMBEDDING_CONCURRENCY } =
+    await import("@/workflows/sceneEmbeddingBackfill")
+  const {
+    runTranscriptEmbeddingBackfill,
+    DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY,
+  } = await import("@/workflows/transcriptEmbeddingBackfill")
+  const { prisma } = await import("@/db/client")
+  const { env } = await import("@/config/env")
+
+  const sceneConcurrency =
+    env.SCENE_EMBEDDING_CONCURRENCY ?? DEFAULT_SCENE_EMBEDDING_CONCURRENCY
+  const transcriptConcurrency =
+    env.TRANSCRIPT_EMBEDDING_CONCURRENCY ??
+    DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
+
   const redacted = databaseUrl.replace(/:\/\/[^@]+@/, "://***:***@")
   process.stdout.write(
     JSON.stringify({
@@ -96,22 +118,12 @@ async function main(): Promise<void> {
       coreIds: coreIds.length > 0 ? coreIds : null,
       locales: locales.length > 0 ? locales : null,
       languages: languages.length > 0 ? languages : null,
+      sceneConcurrency,
+      transcriptConcurrency,
       managerArtifactsBucket:
         process.env.MANAGER_ARTIFACTS_S3_BUCKET ?? "(unset)",
     }) + "\n",
   )
-
-  // Lazy-import the workflow modules AFTER env validation so the
-  // admin env validator (`@/config/env`) sees DATABASE_URL when it
-  // initialises during the workflow's transitive imports. Imports
-  // happen BEFORE the try/finally so the finally always sees a bound
-  // prisma reference (or fails-fast at import time with a clear
-  // error rather than masking it inside a finally cast).
-  const { runSceneEmbeddingBackfill } =
-    await import("@/workflows/sceneEmbeddingBackfill")
-  const { runTranscriptEmbeddingBackfill } =
-    await import("@/workflows/transcriptEmbeddingBackfill")
-  const { prisma } = await import("@/db/client")
 
   // SIGINT/SIGTERM handler so Ctrl-C / docker stop / Railway stop
   // doesn't leak the prisma connection. Workflow upserts are

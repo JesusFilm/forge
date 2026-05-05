@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+// Concurrency must be set BEFORE the workflow is imported below so the
+// p-limit instance reads the override. vi.mock hoists ahead of the
+// dynamic imports.
+vi.mock("@/config/env", () => ({
+  env: {
+    TRANSCRIPT_EMBEDDING_CONCURRENCY: 2,
+  },
+}))
+
 vi.mock("@/db/client", () => {
   const mock = {
     $queryRaw: vi.fn(async () => []),
@@ -330,6 +339,137 @@ describe("runTranscriptEmbeddingBackfill", () => {
     expect(report.totalTargets).toBe(0)
     expect(report.outcomes).toEqual([])
     expect(indexEditionTranscript).not.toHaveBeenCalled()
+  })
+})
+
+describe("runTranscriptEmbeddingBackfill — bounded parallelism", () => {
+  beforeEach(() => {
+    // Restore any `vi.spyOn(_internals, ...)` from a prior test so
+    // the next test sees the real `stepIndexEditionTranscript`.
+    vi.restoreAllMocks()
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
+    vi.mocked(indexEditionTranscript).mockReset()
+  })
+
+  it("isolates a per-target indexer error: errors caught inside stepIndexEditionTranscript → outcome stays `failed`, siblings continue", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-c", "e-c", "core-a", "es"),
+    ])
+
+    const ok = (lang: string) => ({
+      editionId: `e-${lang}`,
+      language: lang,
+      chunksIndexed: 1,
+      embeddingsWritten: 1,
+      chunksPruned: 0,
+      model: "openai/text-embedding-3-small",
+      dimensions: 1536,
+    })
+
+    vi.mocked(indexEditionTranscript)
+      .mockResolvedValueOnce(ok("en"))
+      .mockRejectedValueOnce(new Error("kaboom"))
+      .mockResolvedValueOnce(ok("es"))
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.totalTargets).toBe(3)
+    expect(report.succeeded).toBe(2)
+    expect(report.failed).toBe(1)
+    expect(report.skipped).toBe(0)
+    expect(indexEditionTranscript).toHaveBeenCalledTimes(3)
+  })
+
+  it("uses Promise.allSettled (not Promise.all) — a step-level rejection is recorded as a synthetic failed outcome instead of aborting the batch", async () => {
+    // Spy on `_internals.stepIndexEditionTranscript` so the rejection
+    // bypasses the step's internal try/catch and reaches the
+    // workflow's `Promise.allSettled` boundary directly. Under
+    // `Promise.all`, the workflow body's `await` would throw and
+    // `stepReport` would never run.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-c", "e-c", "core-a", "es"),
+    ])
+
+    const okOutcome = (target: { videoEditionId: string; language: string }) =>
+      ({
+        status: "succeeded" as const,
+        target: target as never,
+        language: target.language,
+        chunksIndexed: 1,
+        embeddingsWritten: 1,
+        chunksPruned: 0,
+        durationMs: 5,
+      }) as never
+
+    vi.spyOn(_internals, "stepIndexEditionTranscript").mockImplementation(
+      async (target) => {
+        if (target.coreId === "core-b") {
+          throw new Error("step plumbing fault")
+        }
+        return okOutcome(target)
+      },
+    )
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.totalTargets).toBe(3)
+    expect(report.succeeded).toBe(2)
+    expect(report.failed).toBe(1)
+    expect(report.skipped).toBe(0)
+    const failedOutcome = report.outcomes.find((o) => o.status === "failed")
+    expect(failedOutcome).toBeDefined()
+    if (failedOutcome?.status === "failed") {
+      expect(failedOutcome.target.coreId).toBe("core-b")
+      expect(failedOutcome.reason).toBe("step plumbing fault")
+      expect(failedOutcome.durationMs).toBeGreaterThanOrEqual(0)
+    }
+  })
+
+  it("caps concurrent in-flight indexer calls at TRANSCRIPT_EMBEDDING_CONCURRENCY (and uses parallelism, not sequential)", async () => {
+    // Asserts BOTH the concurrency cap (≤ 2) AND that parallelism is
+    // used (max in-flight > 1). A regression to sequential `for…of`
+    // would yield `observedMaxInFlight === 1` and fail the assertion.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-c", "e-c", "core-a", "es"),
+    ])
+
+    let inFlight = 0
+    let observedMaxInFlight = 0
+
+    vi.mocked(indexEditionTranscript).mockImplementation(
+      async (_prisma, args) => {
+        inFlight += 1
+        observedMaxInFlight = Math.max(observedMaxInFlight, inFlight)
+        await new Promise((resolve) => setTimeout(resolve, 25))
+        inFlight -= 1
+        return {
+          editionId: args.editionId,
+          language: args.language,
+          chunksIndexed: 1,
+          embeddingsWritten: 1,
+          chunksPruned: 0,
+          model: "openai/text-embedding-3-small",
+          dimensions: 1536,
+        }
+      },
+    )
+
+    await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(observedMaxInFlight).toBe(2)
+    expect(indexEditionTranscript).toHaveBeenCalledTimes(3)
   })
 })
 

@@ -1,5 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 
+// Concurrency must be set BEFORE the workflow is imported below so the
+// p-limit instance reads the override. vi.mock hoists ahead of the
+// dynamic imports.
+vi.mock("@/config/env", () => ({
+  env: {
+    SCENE_EMBEDDING_CONCURRENCY: 2,
+  },
+}))
+
 vi.mock("@/db/client", () => {
   const mock = {
     $queryRaw: vi.fn(async () => []),
@@ -271,6 +280,158 @@ describe("runSceneEmbeddingBackfill", () => {
     expect(report.totalTargets).toBe(0)
     expect(report.outcomes).toEqual([])
     expect(indexEditionScenes).not.toHaveBeenCalled()
+  })
+})
+
+describe("runSceneEmbeddingBackfill — bounded parallelism", () => {
+  beforeEach(() => {
+    // Restore any `vi.spyOn(_internals, ...)` from a prior test so
+    // the next test sees the real `stepIndexEditionLocale`. Module-
+    // level `vi.mock` factories (e.g. `indexEditionScenes`) are
+    // unaffected by `restoreAllMocks` — they survive.
+    vi.restoreAllMocks()
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
+    vi.mocked(indexEditionScenes).mockReset()
+  })
+
+  it("isolates a per-target indexer error: errors caught inside stepIndexEditionLocale → outcome stays `failed`, siblings continue", async () => {
+    // Indexer-level failure path: `indexEditionScenes` rejects, the
+    // step's internal try/catch converts it to a typed `failed`
+    // outcome, the workflow records it without aborting siblings.
+    // This test exercises the per-target catch branch — separate from
+    // the `Promise.allSettled` defensive branch (covered below).
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-c", "e-c", "core-a", "es"),
+    ])
+
+    const ok = (locale: string) => ({
+      editionId: `e-${locale}`,
+      locale,
+      scenesIndexed: 1,
+      embeddingsWritten: 1,
+      scenesSkipped: 0,
+      scenesPruned: 0,
+      model: "openai/text-embedding-3-small",
+      dimensions: 1536,
+    })
+
+    vi.mocked(indexEditionScenes)
+      .mockResolvedValueOnce(ok("en"))
+      .mockRejectedValueOnce(new Error("kaboom"))
+      .mockResolvedValueOnce(ok("es"))
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.totalTargets).toBe(3)
+    expect(report.succeeded).toBe(2)
+    expect(report.failed).toBe(1)
+    expect(report.skipped).toBe(0)
+    expect(indexEditionScenes).toHaveBeenCalledTimes(3)
+  })
+
+  it("uses Promise.allSettled (not Promise.all) — a step-level rejection is recorded as a synthetic failed outcome instead of aborting the batch", async () => {
+    // Distinguishes `Promise.allSettled` from `Promise.all`. Spy on
+    // `_internals.stepIndexEditionLocale` so the rejection bypasses
+    // the step's internal try/catch and reaches the workflow's
+    // `Promise.allSettled` boundary directly. Under `Promise.all`,
+    // the workflow body's `await` would throw and `stepReport` would
+    // never run; under `Promise.allSettled`, the workflow synthesizes
+    // a `failed` outcome and the report comes back normally.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-c", "e-c", "core-a", "es"),
+    ])
+
+    const okOutcome = (
+      target: { videoEditionId: string; locale: string },
+      durationMs: number,
+    ) =>
+      ({
+        status: "succeeded" as const,
+        target: target as never,
+        locale: target.locale,
+        scenesIndexed: 1,
+        embeddingsWritten: 1,
+        durationMs,
+      }) as never
+
+    vi.spyOn(_internals, "stepIndexEditionLocale").mockImplementation(
+      async (target) => {
+        if (target.coreId === "core-b") {
+          // Genuine rejection that escapes the step boundary.
+          throw new Error("step plumbing fault")
+        }
+        return okOutcome(target, 5)
+      },
+    )
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.totalTargets).toBe(3)
+    expect(report.succeeded).toBe(2)
+    expect(report.failed).toBe(1)
+    expect(report.skipped).toBe(0)
+    const failedOutcome = report.outcomes.find((o) => o.status === "failed")
+    expect(failedOutcome).toBeDefined()
+    if (failedOutcome?.status === "failed") {
+      expect(failedOutcome.target.coreId).toBe("core-b")
+      expect(failedOutcome.reason).toBe("step plumbing fault")
+      // Synthetic outcome carries real elapsed batch time, not 0 —
+      // dashboards built on durationMs aren't polluted by the
+      // defensive branch firing.
+      expect(failedOutcome.durationMs).toBeGreaterThanOrEqual(0)
+    }
+  })
+
+  it("caps concurrent in-flight indexer calls at SCENE_EMBEDDING_CONCURRENCY (and uses parallelism, not sequential)", async () => {
+    // Asserts BOTH that the concurrency cap is honored (≤ 2
+    // in-flight) AND that real parallelism is used (max in-flight
+    // > 1). A regression to sequential `for…of` would yield
+    // `observedMaxInFlight === 1` and fail the second assertion.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-c", "e-c", "core-a", "es"),
+    ])
+
+    let inFlight = 0
+    let observedMaxInFlight = 0
+
+    vi.mocked(indexEditionScenes).mockImplementation(async (_prisma, args) => {
+      inFlight += 1
+      observedMaxInFlight = Math.max(observedMaxInFlight, inFlight)
+      // Yield to the event loop so concurrent invocations can
+      // observably overlap. 25 ms is plenty for parallel start
+      // detection without leaning on wall-clock comparison
+      // assertions.
+      await new Promise((resolve) => setTimeout(resolve, 25))
+      inFlight -= 1
+      return {
+        editionId: args.editionId,
+        locale: args.locale,
+        scenesIndexed: 1,
+        embeddingsWritten: 1,
+        scenesSkipped: 0,
+        scenesPruned: 0,
+        model: "openai/text-embedding-3-small",
+        dimensions: 1536,
+      }
+    })
+
+    await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    // Mocked env to SCENE_EMBEDDING_CONCURRENCY=2.
+    expect(observedMaxInFlight).toBe(2)
+    expect(indexEditionScenes).toHaveBeenCalledTimes(3)
   })
 })
 
