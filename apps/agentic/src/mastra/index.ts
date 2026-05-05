@@ -3,6 +3,7 @@ import { registerApiRoute } from "@mastra/core/server"
 import { LibSQLStore } from "@mastra/libsql"
 
 import { createManagerAutomationDryRunRoute } from "@/api/manager-automation-dry-run"
+import { createSubtitleEnrichmentRunRoute } from "@/api/subtitle-enrichment-run"
 import { loadAgenticEnv, testAgenticEnv, type AgenticEnv } from "@/config/env"
 import { createManagerAutomationAgent } from "@/mastra/agents/manager-automation-agent"
 import { createManagerAutomationDryRunTool } from "@/mastra/tools/manager-automation-dry-run-tool"
@@ -10,6 +11,10 @@ import {
   createManagerAutomationDryRunWorkflow,
   launchManagerAutomationDryRunWorkflow,
 } from "@/mastra/workflows/manager-automation-dry-run-workflow"
+import {
+  createSubtitleEnrichmentWorkflow,
+  launchSubtitleEnrichmentWorkflow,
+} from "@/mastra/workflows/subtitle-enrichment-workflow"
 
 export function buildMastra(env: AgenticEnv) {
   return new Mastra(buildMastraConfig(env))
@@ -25,6 +30,15 @@ function buildMastraConfig(env: AgenticEnv): Config {
     serviceApiKey: env.serviceApiKey,
     launchDryRun: (input) =>
       launchManagerAutomationDryRunWorkflow(input, {
+        managerBaseUrl: env.managerBaseUrl,
+        managerAgenticApiKey: env.managerAgenticApiKey,
+        requestTimeoutMs: env.managerRequestTimeoutMs,
+      }),
+  })
+  const subtitleEnrichmentRunRoute = createSubtitleEnrichmentRunRoute({
+    serviceApiKey: env.serviceApiKey,
+    launchRun: (input) =>
+      launchSubtitleEnrichmentWorkflow(input, {
         managerBaseUrl: env.managerBaseUrl,
         managerAgenticApiKey: env.managerAgenticApiKey,
         requestTimeoutMs: env.managerRequestTimeoutMs,
@@ -48,6 +62,7 @@ function buildMastraConfig(env: AgenticEnv): Config {
       requestTimeoutMs: env.managerRequestTimeoutMs,
     },
   )
+  const subtitleEnrichmentWorkflow = createSubtitleEnrichmentWorkflow()
 
   return {
     agents: {
@@ -58,6 +73,7 @@ function buildMastraConfig(env: AgenticEnv): Config {
     },
     workflows: {
       managerAutomationDryRunWorkflow,
+      subtitleEnrichmentWorkflow,
     },
     storage: new LibSQLStore({
       id: "agentic-runtime",
@@ -94,9 +110,10 @@ function buildMastraConfig(env: AgenticEnv): Config {
 
             if (
               authorization === `Bearer ${env.serviceApiKey}` &&
-              pathname === managerAutomationDryRunRoute.path &&
-              (context.req.method ?? "GET").toUpperCase() ===
-                managerAutomationDryRunRoute.method
+              isServiceRoute(pathname, context.req.method ?? "GET", [
+                managerAutomationDryRunRoute,
+                subtitleEnrichmentRunRoute,
+              ])
             ) {
               await next()
               return
@@ -132,10 +149,10 @@ function buildMastraConfig(env: AgenticEnv): Config {
             return true
           }
 
-          return (
-            path === managerAutomationDryRunRoute.path &&
-            method.toUpperCase() === managerAutomationDryRunRoute.method
-          )
+          return isServiceRoute(path, method, [
+            managerAutomationDryRunRoute,
+            subtitleEnrichmentRunRoute,
+          ])
         },
       },
       apiRoutes: [
@@ -145,9 +162,25 @@ function buildMastraConfig(env: AgenticEnv): Config {
           handler: async (context: { req: { raw: Request } }) =>
             managerAutomationDryRunRoute.handler(context.req.raw),
         }),
+        registerApiRoute(subtitleEnrichmentRunRoute.path, {
+          method: subtitleEnrichmentRunRoute.method,
+          requiresAuth: subtitleEnrichmentRunRoute.requiresAuth,
+          handler: async (context: { req: { raw: Request } }) =>
+            subtitleEnrichmentRunRoute.handler(context.req.raw),
+        }),
       ],
     },
   }
+}
+
+function isServiceRoute(
+  path: string,
+  method: string,
+  routes: Array<{ path: string; method: string }>,
+): boolean {
+  return routes.some(
+    (route) => path === route.path && method.toUpperCase() === route.method,
+  )
 }
 
 export const mastra = new Mastra(buildMastraConfig(safeLoadAgenticEnv()))

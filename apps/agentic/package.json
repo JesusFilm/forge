@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "mastra dev --port 4111",
+    "dev": "mastra dev",
     "build": "tsc --noEmit && mastra build",
     "start": "mastra start",
     "lint": "eslint .",

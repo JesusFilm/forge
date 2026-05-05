@@ -5,22 +5,28 @@ const {
   authenticateRequestMock,
   clientQueryMock,
   createJobMock,
+  envMock,
   ensureGeneratedSubtitlesForAssetMock,
   isAudioCleanupConfiguredMock,
   materializeEnrichmentTargetForJobMock,
   runVideoEnrichmentMock,
   startMock,
+  triggerAgenticSubtitleEnrichmentMock,
   updateJobMock,
 } = vi.hoisted(() => ({
   afterMock: vi.fn(),
   authenticateRequestMock: vi.fn(),
   clientQueryMock: vi.fn(),
   createJobMock: vi.fn(),
+  envMock: {
+    AGENTIC_SUBTITLE_ENRICHMENT_ENABLED: "false",
+  },
   ensureGeneratedSubtitlesForAssetMock: vi.fn(),
   isAudioCleanupConfiguredMock: vi.fn(),
   materializeEnrichmentTargetForJobMock: vi.fn(),
   runVideoEnrichmentMock: vi.fn(),
   startMock: vi.fn(),
+  triggerAgenticSubtitleEnrichmentMock: vi.fn(),
   updateJobMock: vi.fn(),
 }))
 
@@ -42,10 +48,18 @@ vi.mock("@/lib/auth", () => ({
   authenticateRequest: authenticateRequestMock,
 }))
 
+vi.mock("@/config/env", () => ({
+  env: envMock,
+}))
+
 vi.mock("@/cms/client", () => ({
   default: () => ({
     query: clientQueryMock,
   }),
+}))
+
+vi.mock("@/lib/agentic-subtitle-enrichment", () => ({
+  triggerAgenticSubtitleEnrichment: triggerAgenticSubtitleEnrichmentMock,
 }))
 
 vi.mock("@/lib/state", () => ({
@@ -358,6 +372,14 @@ describe("createEnrichmentJobs", () => {
       chapters: [],
       tags: [],
     })
+    envMock.AGENTIC_SUBTITLE_ENRICHMENT_ENABLED = "false"
+    triggerAgenticSubtitleEnrichmentMock.mockResolvedValue({
+      ok: true,
+      agenticRunId: "agentic-run-1",
+      managerJobId: "job-1",
+      status: "queued",
+      summary: "Agentic subtitle enrichment queued.",
+    })
   })
 
   it("dispatches enrichment jobs through workflow start()", async () => {
@@ -386,6 +408,83 @@ describe("createEnrichmentJobs", () => {
     ])
     expect(dispatch.spy).toHaveBeenCalledTimes(1)
     expect(runVideoEnrichment).not.toHaveBeenCalled()
+  })
+
+  it("dispatches subtitle-only enrichment jobs through Agentic behind the feature flag", async () => {
+    envMock.AGENTIC_SUBTITLE_ENRICHMENT_ENABLED = "true"
+
+    const result = await createEnrichmentJobs({
+      videoIds: ["video-1"],
+      targetLanguageIds: ["6414"],
+    })
+
+    expect(result).toMatchObject({
+      created: 1,
+      failed: 0,
+      jobs: [{ videoId: "video-1", jobId: "job-1" }],
+    })
+    expect(triggerAgenticSubtitleEnrichmentMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-1",
+        assetId: "mux-target-1",
+        muxAssetId: "mux-target-1",
+        muxPlaybackId: "mux-target-playback-1",
+        sourceLanguage: "en",
+        targetLanguage: "fr",
+        requestedTranscriptionProvider: "automatic",
+        idempotencyKey: "manager:subtitle-enrichment:job-1",
+      }),
+    )
+    dispatch.expectNotDispatched()
+    expect(runVideoEnrichment).not.toHaveBeenCalled()
+  })
+
+  it("rejects Agentic subtitle-only dispatch with more than one target language", async () => {
+    envMock.AGENTIC_SUBTITLE_ENRICHMENT_ENABLED = "true"
+    clientQueryMock.mockReset()
+    clientQueryMock
+      .mockResolvedValueOnce({
+        data: {
+          videos: [
+            {
+              documentId: "video-doc-1",
+              coreId: "video-1",
+              title: "Video 1",
+              primaryLanguage: {
+                coreId: "529",
+                bcp47: "en",
+                iso3: "eng",
+              },
+              variants: [],
+            },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          languages: [
+            { coreId: "6414", bcp47: "fr", iso3: "fra" },
+            { coreId: "496", bcp47: "es", iso3: "spa" },
+          ],
+        },
+      })
+
+    await expect(
+      createEnrichmentJobs({
+        videoIds: ["video-1"],
+        targetLanguageIds: ["6414", "496"],
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      responseBody: {
+        error:
+          "Agentic subtitle enrichment requires exactly one target language.",
+      },
+    })
+
+    expect(createJobMock).not.toHaveBeenCalled()
+    expect(triggerAgenticSubtitleEnrichmentMock).not.toHaveBeenCalled()
+    dispatch.expectNotDispatched()
   })
 
   it("reports per-video launch failures as batch errors", async () => {

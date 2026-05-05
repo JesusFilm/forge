@@ -7,8 +7,8 @@ tool registry, workflow registry, and operational runtime storage.
 
 - Manager, CMS, Web, and other apps must consume Agentic through HTTP contracts.
 - Do not import Manager internals from this app.
-- V1 Manager automation support is dry-run only. Live job creation remains
-  Manager-owned and requires a later approval plan.
+- V1 Manager automation support is dry-run only. Subtitle enrichment may start
+  Agentic workflow runs only after Manager has created the approved job.
 - Canonical content remains in Strapi/CMS. Mastra storage is operational state,
   not user-visible content truth.
 
@@ -18,7 +18,8 @@ tool registry, workflow registry, and operational runtime storage.
 - Local default port: `4111`
 - `AGENTIC_PORT` overrides Railway `PORT`; `PORT` is used when `AGENTIC_PORT` is unset.
 - Public health route: `GET /health`
-- Manager trigger route: `POST /forge/manager-automation-dry-run`
+- Manager dry-run route: `POST /forge/manager-automation-dry-run`
+- Manager subtitle workflow route: `POST /forge/subtitle-enrichment-runs`
 - Mastra custom route note: `registerApiRoute` reserves `/api/*`, so custom
   Forge routes should use non-`/api` root paths unless platform ingress adds a
   proxy later.
@@ -26,7 +27,9 @@ tool registry, workflow registry, and operational runtime storage.
 ## Auth
 
 - Studio and built-in API routes require `AGENTIC_OPERATOR_API_KEY` bearer auth.
-- `AGENTIC_SERVICE_API_KEY` is only valid for `POST /forge/manager-automation-dry-run`.
+- `AGENTIC_SERVICE_API_KEY` is only valid for Manager service routes:
+  `POST /forge/manager-automation-dry-run` and
+  `POST /forge/subtitle-enrichment-runs`.
 - `/health` must stay public.
 - Required secrets:
   - `AGENTIC_SERVICE_API_KEY` for Manager-to-Agentic calls.

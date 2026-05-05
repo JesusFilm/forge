@@ -39,7 +39,7 @@ type TestAuthConfig = {
 }
 
 describe("Mastra registry", () => {
-  it("registers Manager automation workflow, tool, and auth-gated custom route", () => {
+  it("registers Manager automation and subtitle enrichment workflows with auth-gated custom routes", () => {
     const instance = buildMastra(env)
 
     expect(instance.getAgent("managerAutomationAgent").id).toBe(
@@ -51,6 +51,9 @@ describe("Mastra registry", () => {
     expect(instance.getWorkflow("managerAutomationDryRunWorkflow").id).toBe(
       "manager-automation-dry-run-workflow",
     )
+    expect(instance.getWorkflow("subtitleEnrichmentWorkflow").id).toBe(
+      "subtitle-enrichment-workflow",
+    )
 
     const server = instance.getServer()
     expect(server?.auth).toBeDefined()
@@ -58,6 +61,11 @@ describe("Mastra registry", () => {
       expect.arrayContaining([
         expect.objectContaining({
           path: "/forge/manager-automation-dry-run",
+          method: "POST",
+          requiresAuth: true,
+        }),
+        expect.objectContaining({
+          path: "/forge/subtitle-enrichment-runs",
           method: "POST",
           requiresAuth: true,
         }),
@@ -81,13 +89,18 @@ describe("Mastra registry", () => {
     expect(apiResult.response).toBeUndefined()
   })
 
-  it("limits service bearer access to the Manager dry-run custom route", async () => {
+  it("limits service bearer access to Manager dry-run and subtitle run custom routes", async () => {
     const rootResult = await runGlobalMiddleware({
       path: "/",
       authorization: `Bearer ${env.serviceApiKey}`,
     })
     const dryRunResult = await runGlobalMiddleware({
       path: "/forge/manager-automation-dry-run",
+      method: "POST",
+      authorization: `Bearer ${env.serviceApiKey}`,
+    })
+    const subtitleRunResult = await runGlobalMiddleware({
+      path: "/forge/subtitle-enrichment-runs",
       method: "POST",
       authorization: `Bearer ${env.serviceApiKey}`,
     })
@@ -102,6 +115,8 @@ describe("Mastra registry", () => {
     expect(apiResult.response?.status).toBe(401)
     expect(dryRunResult.next).toHaveBeenCalledOnce()
     expect(dryRunResult.response).toBeUndefined()
+    expect(subtitleRunResult.next).toHaveBeenCalledOnce()
+    expect(subtitleRunResult.response).toBeUndefined()
   })
 
   it("applies the same operator and service authorization in Mastra auth config", async () => {
@@ -119,6 +134,9 @@ describe("Mastra registry", () => {
     )
     await expect(
       auth.authorize("/forge/manager-automation-dry-run", "POST", service),
+    ).resolves.toBe(true)
+    await expect(
+      auth.authorize("/forge/subtitle-enrichment-runs", "POST", service),
     ).resolves.toBe(true)
   })
 

@@ -4,7 +4,7 @@ type: feat
 status: active
 date: 2026-05-05
 origin: docs/roadmap/media-generation/feat-116-agentic-subtitle-enrichment-backend.md
-branch: docs/agentic-subtitle-enrichment-workflow
+branch: feat/116-agentic-subtitle-enrichment-workflow
 ---
 
 # feat: Agentic Subtitle Enrichment Workflow
@@ -400,31 +400,69 @@ Railway/stage proof:
 
 ### Functional
 
-- [ ] Manager can start subtitle-only enrichment through Agentic behind a feature flag.
-- [ ] Manager remains the source of user-visible job truth.
+- [x] Manager can start subtitle-only enrichment through Agentic behind a feature flag.
+- [x] Manager remains the source of user-visible job truth.
 - [ ] Agentic owns the Mastra workflow run and appears in Studio.
-- [ ] Manual Coverage Agentic dispatch requires exactly one target language.
+- [x] Manual Coverage Agentic dispatch requires exactly one target language.
 - [ ] Automation live dispatch still uses Manager eligibility, caps, and duplicate suppression before Agentic execution.
 - [ ] Automation dry-run still stops before job creation and suppresses artifact/Mux mutations.
-- [ ] Agentic events update Manager job status, subtitle step status, artifacts, and errors.
-- [ ] Duplicate idempotency key with the same payload returns the same run or stable result.
-- [ ] Duplicate idempotency key with a different payload returns `idempotency_conflict`.
-- [ ] Agentic does not receive broad CMS mutation credentials.
+- [x] Agentic events update Manager job status, subtitle step status, artifacts, and errors.
+- [x] Duplicate idempotency key with the same payload returns the same run or stable result.
+- [x] Duplicate idempotency key with a different payload returns `idempotency_conflict`.
+- [x] Agentic does not receive broad CMS mutation credentials.
 
 ### Red/Green TDD
 
-- [ ] Red tests are committed or at least captured before implementation for Agentic contracts.
-- [ ] Red tests are committed or at least captured before implementation for Manager Agentic client behavior.
-- [ ] Red tests are committed or at least captured before implementation for Manager event ingestion.
-- [ ] Green implementation makes those tests pass without weakening existing local workflow tests.
-- [ ] Existing Manager full enrichment dispatch tests continue to pass.
+- [x] Red tests are committed or at least captured before implementation for Agentic contracts.
+- [x] Red tests are committed or at least captured before implementation for Manager Agentic client behavior.
+- [x] Red tests are committed or at least captured before implementation for Manager event ingestion.
+- [x] Green implementation makes those tests pass without weakening existing local workflow tests.
+- [x] Existing Manager full enrichment dispatch tests continue to pass.
 
 ### User Smoke
 
 - [ ] Manager Coverage to job detail flow is tested in a browser.
 - [ ] Mastra Studio run visibility is tested with operator auth.
-- [ ] Anonymous Studio/API access rejection is tested.
-- [ ] Smoke evidence is saved under `output/playwright/` or the current repo proof location.
+- [x] Anonymous Studio/API access rejection is tested.
+- [x] Smoke evidence is saved under `output/playwright/` or the current repo proof location.
+
+## Implementation Progress
+
+Completed in the first implementation branch:
+
+- Added Agentic subtitle enrichment request/response contracts, service route,
+  idempotency handling, Mastra workflow registration, and prototype workflow
+  event emission.
+- Added Manager Agentic client, feature flag, subtitle-only job step model, and
+  callback event ingestion.
+- Wired Manager `/api/enrich` to call Agentic behind
+  `AGENTIC_SUBTITLE_ENRICHMENT_ENABLED` for exactly one target language.
+- Proved service bearer access is limited to the Forge service route while
+  anonymous/built-in API access remains rejected.
+
+Deferred follow-up:
+
+- Real subtitle transcription, subtitle translation artifact generation, Mux
+  subtitle publication, Manager Coverage browser proof, and Studio run browser
+  proof are tracked in
+  `todos/016-pending-p1-complete-agentic-subtitle-execution-and-smoke.md`.
+
+Smoke evidence captured:
+
+- `output/playwright/agentic-subtitle-health-smoke.png`
+- `output/playwright/agentic-subtitle-unauthorized-smoke.png`
+
+Validation completed on 2026-05-05:
+
+- `pnpm --filter @forge/agentic lint`
+- `pnpm --filter @forge/agentic typecheck`
+- `pnpm --filter @forge/agentic test`
+- `pnpm --filter @forge/agentic build`
+- `pnpm --filter @forge/manager lint`
+- `pnpm --filter @forge/manager typecheck`
+- `pnpm --filter @forge/manager test`
+- `pnpm run format:check`
+- `git diff --check`
 
 ## Validation Commands
 
@@ -470,7 +508,7 @@ pnpm --filter @forge/manager test -- src/lib/workflow-steps.test.ts
 
 ## PR And Branch Requirements
 
-- Continue on branch `docs/agentic-subtitle-enrichment-workflow` unless implementation work is split to a new `feat/116-agentic-subtitle-enrichment-workflow` branch.
+- Continue on branch `feat/116-agentic-subtitle-enrichment-workflow`.
 - Use a PR title like `feat(agentic): add subtitle enrichment workflow backend`.
 - Keep PR scope to `apps/agentic`, `apps/manager`, focused docs, and any deliberately scoped shared package.
 - Do not include unrelated lockfile or generated GraphQL churn unless the implementation actually requires it.

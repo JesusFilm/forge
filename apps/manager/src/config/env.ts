@@ -74,6 +74,9 @@ export const env = createEnv({
     AGENTIC_SERVICE_API_KEY: z.string().min(1).optional(),
     MANAGER_AGENTIC_API_KEY: z.string().min(1).optional(),
     AGENTIC_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
+    AGENTIC_SUBTITLE_ENRICHMENT_ENABLED: z
+      .enum(["true", "false"])
+      .default("false"),
 
     // ElevenLabs transcription (optional unless ElevenLabs routing is used)
     ELEVENLABS_REQUEST_TIMEOUT_MS: z.coerce
@@ -121,6 +124,8 @@ export const env = createEnv({
     AGENTIC_SERVICE_API_KEY: process.env.AGENTIC_SERVICE_API_KEY,
     MANAGER_AGENTIC_API_KEY: process.env.MANAGER_AGENTIC_API_KEY,
     AGENTIC_REQUEST_TIMEOUT_MS: process.env.AGENTIC_REQUEST_TIMEOUT_MS,
+    AGENTIC_SUBTITLE_ENRICHMENT_ENABLED:
+      process.env.AGENTIC_SUBTITLE_ENRICHMENT_ENABLED ?? "false",
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:
       process.env.ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS,

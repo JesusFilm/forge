@@ -9,7 +9,7 @@ Manager first and future apps later.
 - Owns: Mastra runtime config, Studio access, agents, tools, workflows,
   operational traces, and runtime storage.
 - Does not own: canonical content, Manager automation definitions, enrichment
-  job truth, live job creation, or human approval semantics.
+  job truth, initial live job creation, or human approval semantics.
 
 ## Environment
 
@@ -39,7 +39,8 @@ built-in health endpoint and stays public.
 
 `AGENTIC_OPERATOR_API_KEY` is the only credential that can access Studio, root
 HTML, and built-in Mastra API routes. `AGENTIC_SERVICE_API_KEY` is only valid for
-`POST /forge/manager-automation-dry-run`; it must not grant Studio or broad
+Manager service routes such as `POST /forge/manager-automation-dry-run` and
+`POST /forge/subtitle-enrichment-runs`; it must not grant Studio or broad
 `/api/*` access.
 
 The Manager dry-run route is bearer-gated and accepts only:
@@ -58,12 +59,18 @@ The Manager dry-run route is bearer-gated and accepts only:
 V1 does not accept `runMode`; Agentic can only call Manager's dry-run-only
 contract.
 
+The Manager subtitle enrichment route is bearer-gated and accepts a
+Manager-created job id, one source language, one target language, Mux
+materialization context, request provenance, and an idempotency key. It starts
+the Mastra `subtitleEnrichmentWorkflow` and reports progress back to Manager
+through `/api/agentic/subtitle-enrichment-runs/:runId/events`.
+
 ## Runtime State
 
 Mastra uses LibSQL storage via `AGENTIC_STORAGE_URL`. Local development may use a
 file URL such as `file:./.mastra/local.db`. Production must provision persistent
 storage; relative file URLs and `:memory:` are rejected in production. Manager
-remains the operator-visible source for dry-run reports.
+remains the operator-visible source for dry-run reports and enrichment job truth.
 
 ## Deployment
 

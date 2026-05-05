@@ -3,8 +3,10 @@ import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
   buildInitialSteps,
+  buildSubtitleOnlyInitialSteps,
   formatStepName,
   FORGE_WORKFLOW_STEPS,
+  SUBTITLE_ONLY_WORKFLOW_STEPS,
 } from "@/lib/workflow-steps"
 
 describe("buildInitialSteps", () => {
@@ -95,6 +97,27 @@ describe("buildInitialSteps", () => {
       status: "skipped",
       retries: 0,
     })
+  })
+})
+
+describe("buildSubtitleOnlyInitialSteps", () => {
+  it("uses only subtitle workflow steps for Agentic subtitle-only jobs", () => {
+    expect(SUBTITLE_ONLY_WORKFLOW_STEPS).toEqual([
+      "transcription",
+      "translation",
+      "mux_upload",
+    ])
+    expect(buildSubtitleOnlyInitialSteps().map((step) => step.name)).toEqual(
+      SUBTITLE_ONLY_WORKFLOW_STEPS,
+    )
+  })
+
+  it("does not leave non-subtitle enrichment steps pending", () => {
+    expect(buildSubtitleOnlyInitialSteps()).toEqual([
+      { name: "transcription", status: "pending", retries: 0 },
+      { name: "translation", status: "pending", retries: 0 },
+      { name: "mux_upload", status: "pending", retries: 0 },
+    ])
   })
 })
 
