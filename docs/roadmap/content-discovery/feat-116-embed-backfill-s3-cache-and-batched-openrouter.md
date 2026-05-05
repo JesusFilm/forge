@@ -3,7 +3,7 @@ id: "feat-116"
 title: "Embed Backfill — Stage 2 — S3 Artifact Memoization + Batched OpenRouter Calls"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-05-06"
 duration: 2
 depends_on:

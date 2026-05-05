@@ -337,4 +337,7 @@ When all three hold, apply the pattern. When they don't, sequential `for…of` i
 - `docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md` — R1 indexer pattern that this parallelizes.
 - `docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md` — R2 indexer pattern that this parallelizes.
 - `docs/solutions/platform/backfill-worker-pattern-manager-20260407.md` — earlier (manager-side) backfill pattern; durability layer this sits on top of.
+- `docs/solutions/best-practices/per-parent-child-memoization-loadedartifact-pattern-20260505.md` — Stage 2 evolution. Lifts the pLimit boundary from per-target to per-`(video, edition)` GROUP, fetches the manager-artifacts S3 read once per group, threads the loaded artifact down via a service `loadedArtifact` parameter. The 11-item prevention checklist in the present doc still applies — re-validate against the new shape (concurrent groups instead of concurrent targets) when adopting.
+- `docs/solutions/best-practices/batched-provider-input-position-stable-contract-20260505.md` — Stage 2 sibling pattern for the per-`(video, locale)` batched OpenRouter call.
 - PR #882 — originating PR (`feat-115`, Stage 1 of embed-backfill performance plan).
+- Stage 2 PR (`feat-116`) — applies the boundary lift.

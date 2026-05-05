@@ -279,3 +279,13 @@ vi.mocked(indexEditionScenes).mockRejectedValueOnce(
   — parent migration playbook (R1–R9) that will exercise these patterns
   repeatedly as additional work streams (R2 transcript embeddings,
   R4 hybrid search, R6 personalization ingest) follow the same shape.
+- `docs/solutions/best-practices/per-parent-child-memoization-loadedartifact-pattern-20260505.md`
+  — Stage 2 (feat-116) extends the typed-error rule to a new failure
+  shape: a group-level artifact-load failure cascades to per-child
+  outcomes (one outcome per child of the failed group), each branched
+  on `error instanceof ManagerArtifactError && error.code === "artifact_missing"`
+  for the skipped/failed split. Same rule, new application shape.
+- `docs/solutions/best-practices/batched-provider-input-position-stable-contract-20260505.md`
+  — Stage 2's `EmbeddingsBatchError` is the canonical application of
+  this doc's "literal-union `code`" rule. 7-code union, all branches
+  reachable in tests.

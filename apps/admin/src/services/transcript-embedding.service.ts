@@ -67,11 +67,18 @@ export type IndexEditionTranscriptInput = {
   /** BCP-47 tag stamped on the new `VideoTranscript` row. */
   language: string
   user: Principal | null
-  /** Override for tests — injects a pre-loaded artifact instead of S3 read. */
-  artifactOverride?: EmbeddingsResult
+  /**
+   * Pre-loaded embeddings artifact. When provided, the service skips
+   * the S3 read. Stage 2 of the embed-backfill performance plan: the
+   * workflow fetches once per (video, edition) group and passes the
+   * same artifact into each per-language invocation — collapsing S3
+   * reads from N×L to N. Tests can also use this to inject a fixture
+   * without touching S3.
+   */
+  loadedArtifact?: EmbeddingsResult
   /** Override for tests — use this cmsVideoId instead of the mapping lookup. */
   cmsVideoIdOverride?: number
-  /** Required when artifactOverride is not set. */
+  /** Required when `loadedArtifact` is not set. */
   cmsVideoId?: number
 }
 
@@ -210,8 +217,8 @@ export async function indexEditionTranscript(
   }
 
   let artifact: EmbeddingsResult
-  if (input.artifactOverride !== undefined) {
-    artifact = input.artifactOverride
+  if (input.loadedArtifact !== undefined) {
+    artifact = input.loadedArtifact
   } else {
     const cmsVideoId = input.cmsVideoIdOverride ?? input.cmsVideoId
     if (cmsVideoId === undefined) {

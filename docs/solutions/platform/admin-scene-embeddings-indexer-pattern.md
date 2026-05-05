@@ -136,3 +136,16 @@ locale = ?` predicate is present — well-documented in the
   — R1 origin doc.
 - `docs/plans/2026-04-19-001-feat-admin-scene-embeddings-infra-plan.md`
   — implementation plan.
+- `docs/solutions/best-practices/per-parent-child-memoization-loadedartifact-pattern-20260505.md`
+  — Stage 2 (feat-116) widens this indexer's input with a first-class
+  `loadedArtifact?: SceneAnalysisResult` parameter (renamed from the
+  test-only `artifactOverride?`). The workflow now fetches the
+  scene-analysis artifact ONCE per `(video, edition)` group and passes
+  it to each per-locale `indexEditionScenes(...)` call so the service
+  short-circuits the S3 read.
+- `docs/solutions/best-practices/batched-provider-input-position-stable-contract-20260505.md`
+  — Stage 2 sibling: this indexer now issues ONE batched
+  `generateExperienceEmbeddings(scenes.map(s => s.description))` call
+  per `(video, locale)` target instead of one per scene. Length /
+  dimension mismatches surface as typed `EmbeddingsBatchError` and
+  fail-fast for the whole target rather than partial-write.

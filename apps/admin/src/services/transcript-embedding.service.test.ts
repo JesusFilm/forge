@@ -125,7 +125,7 @@ describe("indexEditionTranscript", () => {
         coreId: "core-1",
         language: "en",
         user: null,
-        artifactOverride: buildArtifact(),
+        loadedArtifact: buildArtifact(),
       }),
     ).rejects.toMatchObject({
       name: "TranscriptIndexError",
@@ -142,7 +142,7 @@ describe("indexEditionTranscript", () => {
         coreId: "core-1",
         language: "en",
         user: VIEWER,
-        artifactOverride: buildArtifact(),
+        loadedArtifact: buildArtifact(),
       }),
     ).rejects.toMatchObject({ code: "forbidden" })
   })
@@ -168,7 +168,7 @@ describe("indexEditionTranscript", () => {
       coreId: "core-1",
       language: "en",
       user: SYSTEM,
-      artifactOverride: buildArtifact({ chunkCount: 0 }),
+      loadedArtifact: buildArtifact({ chunkCount: 0 }),
     })
     expect(result.chunksIndexed).toBe(0)
     expect(result.embeddingsWritten).toBe(0)
@@ -185,7 +185,7 @@ describe("indexEditionTranscript", () => {
         coreId: "core-1",
         language: "en",
         user: SYSTEM,
-        artifactOverride: buildArtifact({ dimensions: 768 }),
+        loadedArtifact: buildArtifact({ dimensions: 768 }),
       }),
     ).rejects.toMatchObject({ code: "dimension_mismatch" })
     expect(executeRaw).not.toHaveBeenCalled()
@@ -203,7 +203,7 @@ describe("indexEditionTranscript", () => {
         coreId: "core-1",
         language: "en",
         user: SYSTEM,
-        artifactOverride: artifact,
+        loadedArtifact: artifact,
       }),
     ).rejects.toMatchObject({ code: "dimension_mismatch" })
     expect(executeRaw).not.toHaveBeenCalled()
@@ -220,7 +220,7 @@ describe("indexEditionTranscript", () => {
         coreId: "core-1",
         language: "en",
         user: SYSTEM,
-        artifactOverride: artifact,
+        loadedArtifact: artifact,
       }),
     ).rejects.toMatchObject({ code: "empty_chunk_text" })
   })
@@ -240,7 +240,7 @@ describe("indexEditionTranscript", () => {
       coreId: "core-1",
       language: "en",
       user: ADMIN,
-      artifactOverride: buildArtifact({ chunkCount: 3 }),
+      loadedArtifact: buildArtifact({ chunkCount: 3 }),
     })
 
     expect(result).toMatchObject({
@@ -300,10 +300,33 @@ describe("indexEditionTranscript", () => {
       coreId: "core-1",
       language: "en",
       user: SYSTEM,
-      artifactOverride: buildArtifact({ chunkCount: 2 }),
+      loadedArtifact: buildArtifact({ chunkCount: 2 }),
     })
 
     expect(spy).not.toHaveBeenCalled()
+  })
+
+  it("skips the S3 read when loadedArtifact is supplied (Stage 2 per-(video, edition) cache)", async () => {
+    // Stage 2 hands a pre-loaded artifact down from the workflow's
+    // group-level fetch. The service must NOT re-read S3 when that's
+    // the case. Spy on `readEmbeddingsArtifact` to lock the invariant
+    // — a regression that "helpfully" re-fetches would re-introduce
+    // the per-locale S3 read storm Stage 2 was designed to eliminate.
+    const managerArtifactsModule =
+      await import("@/services/manager-artifacts.service")
+    const s3ReadSpy = vi.spyOn(managerArtifactsModule, "readEmbeddingsArtifact")
+
+    const { prisma } = buildStubPrisma()
+    await indexEditionTranscript(prisma, {
+      editionId: "edition-1",
+      videoId: "video-1",
+      coreId: "core-1",
+      language: "en",
+      user: SYSTEM,
+      loadedArtifact: buildArtifact({ chunkCount: 2 }),
+    })
+
+    expect(s3ReadSpy).not.toHaveBeenCalled()
   })
 
   it("warns on model-stamp drift with a structured payload and still writes the vectors", async () => {
@@ -316,7 +339,7 @@ describe("indexEditionTranscript", () => {
       coreId: "core-1",
       language: "en",
       user: SYSTEM,
-      artifactOverride: buildArtifact({
+      loadedArtifact: buildArtifact({
         chunkCount: 1,
         model: "openai/text-embedding-future-model",
       }),
@@ -355,7 +378,7 @@ describe("indexEditionTranscript", () => {
       coreId: "core-1",
       language: "en",
       user: SYSTEM,
-      artifactOverride: buildArtifact({ chunkCount: 2 }),
+      loadedArtifact: buildArtifact({ chunkCount: 2 }),
     })
 
     expect(result.chunksPruned).toBe(5)
@@ -379,7 +402,7 @@ describe("indexEditionTranscript", () => {
       coreId: "core-1",
       language: "en",
       user: SYSTEM,
-      artifactOverride: buildArtifact({ chunkCount: 1 }),
+      loadedArtifact: buildArtifact({ chunkCount: 1 }),
     })
     // The parent upsert's `update` clause must include videoId so a
     // re-run after an edition-move updates the denormalized column.
@@ -400,7 +423,7 @@ describe("indexEditionTranscript", () => {
       coreId: "core-1",
       language: "en",
       user: SYSTEM,
-      artifactOverride: buildArtifact({ chunkCount: 3 }),
+      loadedArtifact: buildArtifact({ chunkCount: 3 }),
     })
 
     const secondRun = buildStubPrisma()
@@ -410,7 +433,7 @@ describe("indexEditionTranscript", () => {
       coreId: "core-1",
       language: "en",
       user: SYSTEM,
-      artifactOverride: buildArtifact({ chunkCount: 3 }),
+      loadedArtifact: buildArtifact({ chunkCount: 3 }),
     })
 
     expect(firstResult.chunksIndexed).toBe(3)
@@ -437,7 +460,7 @@ describe("indexEditionTranscript", () => {
       coreId: "core-1",
       language: "en",
       user: SYSTEM,
-      artifactOverride: buildArtifact({ chunkCount: 1 }),
+      loadedArtifact: buildArtifact({ chunkCount: 1 }),
     })
     expect(executeRaw).toHaveBeenCalledTimes(1)
     const [strings, ...values] = executeRaw.mock.calls[0] as unknown as [
@@ -484,7 +507,7 @@ describe("indexEditionTranscript", () => {
         coreId: "core-1",
         language: "en",
         user: SYSTEM,
-        artifactOverride: buildArtifact({ chunkCount: 1 }),
+        loadedArtifact: buildArtifact({ chunkCount: 1 }),
       }).catch((e) => e)
 
       expect(thrown).toBeInstanceOf(TranscriptIndexError)
@@ -522,7 +545,7 @@ describe("indexEditionTranscript", () => {
       coreId: "core-1",
       language: "en",
       user: SYSTEM,
-      artifactOverride: buildArtifact({ chunkCount: 1 }),
+      loadedArtifact: buildArtifact({ chunkCount: 1 }),
     }).catch((e) => e)
 
     // Identity preserved — not wrapped in TranscriptIndexError.
@@ -537,7 +560,7 @@ describe("indexEditionTranscript", () => {
       coreId: "core-1",
       language: "en",
       user: SYSTEM,
-      artifactOverride: buildArtifact({ chunkCount: 1 }),
+      loadedArtifact: buildArtifact({ chunkCount: 1 }),
     })
     const txMock = prisma.$transaction as unknown as ReturnType<typeof vi.fn>
     expect(txMock).toHaveBeenCalledTimes(1)

@@ -191,3 +191,13 @@ WHERE language = 'en' LIMIT 10` should hit
   — implementation plan.
 - `docs/brainstorms/2026-04-19-admin-migration-playbook-requirements.md`
   — R2 origin.
+- `docs/solutions/best-practices/per-parent-child-memoization-loadedartifact-pattern-20260505.md`
+  — Stage 2 (feat-116) widens this indexer's input with a first-class
+  `loadedArtifact?: EmbeddingsResult` parameter (renamed from the
+  test-only `artifactOverride?`). The workflow now fetches the
+  embeddings artifact ONCE per `(video, edition)` group and passes
+  it to each per-language `indexEditionTranscript(...)` call so the
+  service short-circuits the S3 read. NOTE: Stage 2's batched-
+  provider sibling pattern does NOT apply to R2 — R2 reuses vectors
+  verbatim from the artifact and never calls the provider, which is
+  the whole point of the R2 vs R1 divergence documented above.
