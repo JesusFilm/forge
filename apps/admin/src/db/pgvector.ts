@@ -16,12 +16,22 @@ const UNSAFE_BRACE = /[{}]/
  * Values are quoted and escaped so that commas, spaces, and double quotes
  * inside values survive the round-trip.
  *
+ * `null` elements emit the unquoted literal `NULL` token, which Postgres
+ * parses as a SQL NULL when the literal is bound through `?::text[]` (and
+ * subsequently unfolded via `unnest(...)`). The literal three-character
+ * string `"NULL"` survives as a quoted element distinct from a NULL.
+ * Stage 3 (feat-117) of the embed-backfill performance plan added this
+ * variant to support per-row Way A casts on nullable columns
+ * (`chapter_title`, `start_seconds`, `end_seconds`, etc.) inside a single
+ * `INSERT … unnest(...)` call.
+ *
  * Reject `{` or `}` at the input boundary: braces are structural in PG array
  * literals. Pass already-validated input.
  */
-export function toPgArray(values: readonly string[]): string {
+export function toPgArray(values: readonly (string | null)[]): string {
   if (values.length === 0) return "{}"
   const escaped = values.map((value) => {
+    if (value === null) return "NULL"
     if (UNSAFE_BRACE.test(value)) {
       throw new Error(
         `toPgArray: value contains unsupported brace character: ${value}`,

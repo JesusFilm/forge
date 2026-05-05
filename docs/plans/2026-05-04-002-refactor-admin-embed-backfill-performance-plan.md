@@ -3,6 +3,7 @@ title: "refactor: Admin embed-backfill (R1 + R2) performance — bounded paralle
 type: refactor
 status: active
 date: 2026-05-04
+deepened: 2026-05-05
 origin: docs/roadmap/content-discovery/feat-115-embed-backfill-bounded-parallelism.md
 related:
   - docs/roadmap/content-discovery/feat-116-embed-backfill-s3-cache-and-batched-openrouter.md
@@ -120,13 +121,16 @@ External research **skipped**. The OpenRouter / OpenAI embeddings batch shape (`
 
 ### Resolved Mid-Plan
 
-- **JSONB column binding shape for Stage 3 (R1's `themes` / `bibleVerses` / `demographics` / `spiritualContext`).** **Locked: Way A** — bind each scene's JSON value as a `JSON.stringify`'d string inside a regular `toPgArray(text[])` literal, cast `::jsonb` at the SELECT seam (per-row), e.g. `themes_text::jsonb` in the `SELECT ... FROM unnest(...) AS u(...)` clause. Reuses the proven `text[]` bind discipline; sidesteps the PG18 `jsonb`-cast warning in root `CLAUDE.md`. Stage 3 fixture tests must include at least one JSON value containing an embedded double-quote to prove the round-trip escape survives. If Way A trips an escaping issue against PG18 the test surfaces during Stage 3, fall back to Way C (separate `unnest(...) WITH ORDINALITY` per column joined by position). Way B (`::jsonb[]` directly on the array seam) is rejected.
+- **R1 multi-value column binding shape for Stage 3 (R1's `themes` / `bibleVerses` / `demographics` / `spiritualContext`).** **Correction (deepened 2026-05-05):** these columns are `String[]` in `apps/admin/prisma/schema.prisma:1169-1172` (Postgres `text[]`), **NOT `jsonb`**. The original "Way A JSONB" framing was factually wrong; no `::jsonb` cast is needed. The Way A discipline still applies — bind per-row at the parameter site, cast at the SELECT seam — but the seam-side cast is `::text[]`, not `::jsonb`. Concrete shape locked: bind each scene's per-column array as a JSON-encoded string via `JSON.stringify(values)` inside an outer `toPgArray(text[])`, then unfold at the seam via `ARRAY(SELECT json_array_elements_text(u.col_json::jsonb))` OR via `string_to_array(u.col, '')` with a control-char delimiter. Both bind a constant parameter count; pick whichever yields the shorter SQL-invariant assertion at impl time. Stage 3 fixture tests must include: embedded double-quote, embedded backslash, empty array, Unicode astral codepoint, AND an explicit assertion that a value containing `{` or `}` throws cleanly at `toPgArray` rather than corrupting the literal (`toPgArray` at `apps/admin/src/db/pgvector.ts:22-33` rejects unsafe braces — verify the rejection path).
+- **R1 parent `videoScene` upsert collapse (deepened 2026-05-05).** **Locked: COLLAPSE.** The parent upsert is structurally simple (7 columns, no JSONB, no vector, today's `update: {}` semantics map cleanly to `ON CONFLICT … DO NOTHING`). The locale-row INSERT depends on the parent's `id` (Prisma `@default(cuid())` — client-generated, NOT a DB default; `apps/admin/prisma/schema.prisma:1131`), so a bulk `INSERT … ON CONFLICT DO NOTHING RETURNING id` does NOT recover ids for pre-existing parents (rerun path). The cleanest shape is two statements: (a) generate cuids client-side, bulk `INSERT INTO video_scene (id, …) SELECT * FROM unnest(...) ON CONFLICT (video_edition_id, scene_index) DO NOTHING`, then (b) one `SELECT id, scene_index FROM video_scene WHERE video_edition_id = $1 AND scene_index = ANY($2::int[])` to recover the full `scene_index → id` mapping for both new and pre-existing parents. Reduces ~30 parent round-trips to 2; combined with the locale-row collapse takes the per-target write batch from ~90 round-trips to ~3.
+- **R2 `unnest(...)` arg list shape (deepened 2026-05-05).** **Locked: Shape A** (parallel typed arrays). 9 fields total in `video_transcript_chunk` write per `apps/admin/src/services/transcript-embedding.service.ts` (~lines 312-351) and `apps/admin/prisma/schema.prisma` (~lines 1341-1369). Bind site reads: `unnest($1::text[], $2::text[], $3::int[], $4::text[], $5::text[], $6::int[], $7::double precision[], $8::double precision[], $9::text[]) AS u(transcript_id, language, chunk_index, chunk_id, text, token_count, start_seconds, end_seconds, embedding_text)` with `embedding_text` cast per-row via `u.embedding_text::vector(1536)` at the SELECT seam (Way A discipline applied to vectors — see Risks §"pgvector array param cast" below). Shape B (single JSON-envelope `text[]`) was rejected: it doubles vector binding regardless (vectors don't fit cleanly inside JSONB) and adds server-side parsing without a clearer SQL-invariant assertion.
+- **`toPgArray` extension for nullable elements (deepened 2026-05-05).** R2's `startSeconds`/`endSeconds`/`chunkId` are nullable. Today's `toPgArray` at `apps/admin/src/db/pgvector.ts:22-33` quotes every element as `"…"` — a literal `"NULL"` string round-trips as the text `NULL`, NOT SQL NULL. PG array-literal NULL is the unquoted token `NULL` (any case), and quoted `"NULL"` is unambiguously the three-character string per PG18 docs §8.15.6. Stage 3 extends `toPgArray` to accept `readonly (string | null)[]` and emit the unquoted `NULL` token for nullish elements. Existing callers' types stay `readonly string[]` (additive change, no migration). Add a regression test for `[null, "x"]` round-trip (asserts the literal contains `{NULL,"x"}`, NOT `{"NULL","x"}`).
 
 ### Deferred to Implementation
 
-- **Exact `unnest(...)` arg list for R2.** R2 has more nullable columns (`startSeconds`, `endSeconds`, `chunkId`) and a `tokenCount` int. Determine at implementation time whether the cleanest shape is `unnest(text[], text[], int[], double precision[], double precision[], text[], int[], vector(1536)[])` with `coalesce(..., NULL)` or a JSONB-shaped staging row. Both bind a constant parameter count; pick the one whose SQL invariant test reads cleanest.
-- **Whether to widen `IndexEditionScenesInput.artifactOverride` from "test-only" to a first-class `loadedArtifact` parameter.** Today it's marked "test-only" in the comment. The cleanest Stage-2 shape is a renamed, non-test param (`loadedArtifact?`) with the test-only path collapsed into the same field. Decide at implementation time whether the rename earns its weight.
-- **Pre-allocate the bound `synced_at` array vs `ARRAY(SELECT NOW() FROM generate_series(1, N))`.** Both work; pick whichever the SQL invariant test reads cleanest.
+- **Whether to widen `IndexEditionScenesInput.artifactOverride` from "test-only" to a first-class `loadedArtifact` parameter.** Resolved during Stage 2 implementation — `loadedArtifact` rename shipped in PR #885; left here for plan-history continuity.
+- **Pre-allocate the bound `synced_at` array vs `ARRAY(SELECT NOW() FROM generate_series(1, N))`.** Today's per-row `UPDATE … SET … updated_at = NOW()` becomes a single `NOW()` literal inside the bulk INSERT (see §High-Level Technical Design), so this question is moot for the locale-row write. Still relevant if the parent collapse needs a `synced_at` column; verify schema at impl time.
+- **`toPgArray` numeric companion vs caller-side `String(n)` coercion.** Stage 3's R2 binds `int[]` and `double precision[]` literals. Whether to add a `toPgNumericArray` helper or have callers `String(n)` numerics first is a one-call-site decision; pick whichever keeps the bind site shortest. Both bind constant parameter count.
 - **Whether to add a benchmark assertion as a CI gate or development-only affordance.** Hard timing in CI is brittle; default to "development affordance only" but capture wall-time numbers in the PR description for each stage so reviewers see the actual delta.
 
 ## High-Level Technical Design
@@ -162,16 +166,26 @@ Stage 2 (within indexEditionScenes, called via outer (video, edition) group):
     /* same DB write loop */
   }
 
-Stage 3:
+Stage 3 (deepened 2026-05-05):
   /* same enumerate + cache + batch */
   await prisma.$transaction(async tx => {
-    /* parent upserts unchanged */
+    /* R1 parent collapse — 2 round-trips for parents + locale */
+    sceneIdMap = await bulkUpsertVideoScenes(tx, ...)        // INSERT … ON CONFLICT DO NOTHING
+                                                             // + SELECT id, scene_index = ANY(...)
+    /* pre-prune deleteMany unchanged */
+    /* length-equality preflight on parallel arrays — guards PG's silent NULL-pad */
+    assertParallelLength([sceneIds, locales, sourceTexts, ..., vectorTexts])
     await tx.$executeRaw`
       INSERT INTO video_scene_locale (...)
-      SELECT * FROM unnest(${toPgArray(...)}::text[], ...,
-                           ${toPgArray(vecStrings)}::vector(1536)[])
+      SELECT u.video_scene_id, u.locale, u.source_text, u.description,
+             ARRAY(SELECT json_array_elements_text(u.themes_json::jsonb)),
+             /* … other multi-value text[] columns same shape … */
+             u.embedding_text::vector(1536),                 /* Way A — per-row cast */
+             NOW()
+      FROM unnest(${toPgArray(sceneIds)}::text[], ...,
+                  ${toPgArray(vectorTexts)}::text[]) AS u(...)
       ON CONFLICT (video_scene_id, locale) DO UPDATE SET ...
-    `                                                       // ONE round-trip
+    `                                                       // ONE round-trip for locale rows
   })
 ```
 
@@ -295,62 +309,103 @@ Stage 3:
 
 - Modify: `apps/admin/src/services/scene-embedding.service.ts`
 - Modify: `apps/admin/src/services/transcript-embedding.service.ts`
-- Modify: `apps/admin/src/db/pgvector.ts` (only if a new helper for `vector[]`-array binding is genuinely needed; default position is to use `toPgArray(vecStrings)` directly with a `::vector(1536)[]` cast in SQL)
+- Modify: `apps/admin/src/db/pgvector.ts` — extend `toPgArray` to accept `readonly (string | null)[]` and emit unquoted `NULL` for nullish elements (deepened 2026-05-05; see §Resolved Mid-Plan). Existing `string[]` callers stay typed as `readonly string[]` (additive change). Per-row Way A `::vector(1536)` cast at the SELECT seam is the binding shape — no `vector[]`-array helper needed.
 - Modify: `apps/admin/CLAUDE.md` (R1 + R2 subsections)
 - Modify: `docs/roadmap/content-discovery/feat-117-...md`
 - Modify: `docs/roadmap/README.md`
 - Create: `docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260504.md` (or similar date — the new pattern doc)
 - Test: `apps/admin/src/services/scene-embedding.service.test.ts`
 - Test: `apps/admin/src/services/transcript-embedding.service.test.ts`
+- Test: `apps/admin/src/db/pgvector.test.ts` — `toPgArray` nullable round-trip + brace-rejection regression (deepened 2026-05-05)
 
-**Approach:**
+**Approach (deepened 2026-05-05):**
 
-- Inside the per-target `prisma.$transaction`:
-  - Parent upserts (`videoScene` / `videoTranscript`) stay unchanged (1–N parents per target — typically 1 for R2; for R1 it's one `videoScene` per scene which today is also a per-row upsert).
-  - **R1 parent upsert collapse (optional, do this if it stays surgical):** parent-row upserts for `videoScene` can also collapse to a bulk `INSERT … unnest(...) ON CONFLICT` since they touch one row per scene. If it complicates the SQL, defer to a follow-up — the user-visible win is on the locale rows.
-  - Pre-prune `deleteMany` unchanged.
-  - One `$executeRaw` for the locale's child rows, binding parallel arrays via `toPgArray` and casting server-side. Sketch (R1):
+Inside the per-target `prisma.$transaction`, take R1 from ~90 round-trips to ~3 (parent INSERT + parent SELECT + locale INSERT) and R2 from ~30+ to 1 (chunk INSERT). The path is:
 
-  ```ts
-  await tx.$executeRaw`
-    INSERT INTO video_scene_locale (
-      video_scene_id, locale, source_text, description, themes, bible_verses,
-      demographics, spiritual_context, model, dimensions, embedding, updated_at
-    )
-    SELECT * FROM unnest(
-      ${toPgArray(sceneIds)}::text[],
-      ${toPgArray(localesArr)}::text[],
-      ${toPgArray(sourceTexts)}::text[],
-      ${toPgArray(descriptions)}::text[],
-      /* themes / bibleVerses / demographics / spiritualContext are JSONB —
-         decide at impl time between unnest of jsonb[] vs a per-row CTE. */
-      ...,
-      ${toPgArray(models)}::text[],
-      ${dims}::int,                                /* scalar broadcast */
-      ${toPgArray(vecStrings)}::vector(1536)[],
-      NOW()
-    )
-    ON CONFLICT (video_scene_id, locale)
-    DO UPDATE SET
-      source_text = EXCLUDED.source_text,
-      description = EXCLUDED.description,
-      themes = EXCLUDED.themes,
-      bible_verses = EXCLUDED.bible_verses,
-      demographics = EXCLUDED.demographics,
-      spiritual_context = EXCLUDED.spiritual_context,
-      model = EXCLUDED.model,
-      dimensions = EXCLUDED.dimensions,
-      embedding = EXCLUDED.embedding,
-      updated_at = NOW()
-  `
-  ```
+1. **R1 parent `videoScene` collapse (locked: COLLAPSE).** Generate cuids client-side for all incoming scenes. Bulk-insert parents with explicit ids:
 
-  - The JSONB columns (`themes`, `bibleVerses`, `demographics`, `spiritualContext`) need a chosen binding shape. PG18 rejects `?::jsonb::text[]`; use either a per-row `unnest(text[])` of stringified JSON cast to `::jsonb[]` server-side, or a CTE that joins parallel arrays and applies casts. Pick whichever the SQL invariant test reads cleanest.
-  - R2 mirrors the same shape against `video_transcript_chunk`. Columns differ (`startSeconds` / `endSeconds` are nullable doubles; `tokenCount` is int; `chunkId` is text). All bind via `toPgArray`-style single-parameter literals.
+   ```ts
+   const sceneIdMap = await bulkUpsertVideoScenes(tx, {
+     editionId: input.editionId,
+     videoId: input.videoId,
+     scenes: artifact.scenes, // generates cuids client-side
+   })
+   // INSERT INTO video_scene (id, video_edition_id, video_id, scene_index, …)
+   // SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::int[], …)
+   // ON CONFLICT (video_edition_id, scene_index) DO NOTHING
+   //
+   // Then ONE follow-up SELECT recovers the full scene_index → id map for
+   // BOTH new and pre-existing parents:
+   // SELECT id, scene_index FROM video_scene
+   // WHERE video_edition_id = $1 AND scene_index = ANY($2::int[])
+   ```
+
+   Returns `Map<sceneIndex, videoSceneId>` consumed by step 3. `RETURNING id` alone is insufficient because rerun's pre-existing rows are skipped by `ON CONFLICT DO NOTHING`.
+
+2. **Pre-prune `deleteMany` unchanged.**
+
+3. **R1 locale-row collapse — one `$executeRaw` with Way A discipline applied to vectors and to the multi-value PG-array columns.** Sketch:
+
+   ```ts
+   await tx.$executeRaw`
+     INSERT INTO video_scene_locale (
+       video_scene_id, locale, source_text, description, themes, bible_verses,
+       demographics, spiritual_context, model, dimensions, embedding, updated_at
+     )
+     SELECT
+       u.video_scene_id,
+       u.locale,
+       u.source_text,
+       u.description,
+       /* Per-row cast at SELECT seam — Way A, ::text[] not ::jsonb. */
+       ARRAY(SELECT json_array_elements_text(u.themes_json::jsonb)),
+       ARRAY(SELECT json_array_elements_text(u.bible_verses_json::jsonb)),
+       ARRAY(SELECT json_array_elements_text(u.demographics_json::jsonb)),
+       ARRAY(SELECT json_array_elements_text(u.spiritual_context_json::jsonb)),
+       u.model,
+       u.dimensions,
+       /* Way A applied to vectors — per-row cast, NOT ::vector(1536)[] on the param. */
+       u.embedding_text::vector(1536),
+       NOW()
+     FROM unnest(
+       ${toPgArray(sceneIds)}::text[],
+       ${toPgArray(locales)}::text[],
+       ${toPgArray(sourceTexts)}::text[],
+       ${toPgArray(descriptions)}::text[],
+       ${toPgArray(themesJson)}::text[],          /* JSON.stringify(values) per row */
+       ${toPgArray(bibleVersesJson)}::text[],
+       ${toPgArray(demographicsJson)}::text[],
+       ${toPgArray(spiritualContextJson)}::text[],
+       ${toPgArray(models)}::text[],
+       ${toPgArray(dimensionsArr)}::int[],
+       ${toPgArray(vectorTexts)}::text[]          /* toPgVector(embedding) per row */
+     ) AS u(
+       video_scene_id, locale, source_text, description,
+       themes_json, bible_verses_json, demographics_json, spiritual_context_json,
+       model, dimensions, embedding_text
+     )
+     ON CONFLICT (video_scene_id, locale)
+     DO UPDATE SET
+       source_text = EXCLUDED.source_text,
+       description = EXCLUDED.description,
+       themes = EXCLUDED.themes,
+       bible_verses = EXCLUDED.bible_verses,
+       demographics = EXCLUDED.demographics,
+       spiritual_context = EXCLUDED.spiritual_context,
+       model = EXCLUDED.model,
+       dimensions = EXCLUDED.dimensions,
+       embedding = EXCLUDED.embedding,
+       updated_at = NOW()
+   `
+   ```
+
+   **Length-equality preflight is mandatory.** Per PG18 docs, `unnest(arr1, arr2, ...)` silently NULL-pads unequal-length arrays. Assert `parallelArrays.every(a => a.length === scenes.length)` before invoking `$executeRaw` and throw `SceneIndexError("artifact_invalid", …)` otherwise (see Risks §"unnest silent NULL-pad").
+
+4. **R2 mirrors the same shape against `video_transcript_chunk`** with Shape A locked (see §Open Questions / Resolved Mid-Plan). Bind 9 parallel arrays via `toPgArray` (extended to handle `(string | null)[]`) and apply Way A vector cast at the seam. Same length-equality preflight rule.
 
 - **No enum columns are written** in either table today, so the enum-mapping seam doc is preserved by exclusion. If a future field is added, that doc applies.
-- **`updated_at` and `synced_at`:** today's per-row `UPDATE … SET … updated_at = NOW()` is replaced by `NOW()` directly inside the bulk INSERT and `EXCLUDED`-mirroring on conflict. No per-row `synced_at` column on these tables.
-- The new solutions doc captures: the bulk-insert + bind-as-array pattern, the `vector(1536)[]` cast, the cross-references to the bind-var-cap and enum-seam docs, and the explicit "HNSW maintenance is per-row internally; bulk insert helps round-trip cost only — operator-mode `DROP INDEX → bulk INSERT → CREATE INDEX` is a future enhancement."
+- **`updated_at`:** today's per-row `UPDATE … SET … updated_at = NOW()` is replaced by `NOW()` directly inside the bulk INSERT and `EXCLUDED`-mirroring on conflict. No per-row `synced_at` column on these tables.
+- The new solutions doc captures: the bulk-insert + bind-as-array pattern, the per-row Way A `::vector(1536)` cast (vs. the rejected `::vector(1536)[]` array-param cast), the length-equality preflight rule, the cross-references to the bind-var-cap and enum-seam docs, and the explicit "HNSW maintenance is per-row internally; bulk insert helps round-trip cost only — operator-mode `DROP INDEX → bulk INSERT → CREATE INDEX` is a future enhancement."
 
 **Patterns to follow:**
 
@@ -360,13 +415,18 @@ Stage 3:
 
 **Test scenarios:**
 
-- **SQL-shape invariants** (R1 test): captured raw SQL contains `INSERT INTO video_scene_locale`, `unnest(`, `::text[]`, `::vector(1536)[]`, `ON CONFLICT (video_scene_id, locale)`, `DO UPDATE SET`, `EXCLUDED.embedding`. Same for R2 against `video_transcript_chunk` with `::vector(1536)[]` and `::text[]` for the chunk-text array.
-- **Bind-count regression guard:** `mock.calls[0].args.length` (the bound-parameter count, not the array length) is constant — independent of `scenes.length` / `chunks.length`. Prevents accidental re-introduction of per-row binding.
+- **SQL-shape invariants** (R1 test): captured raw SQL contains `INSERT INTO video_scene_locale`, `unnest(`, `::text[]`, `::vector(1536)` (per-row cast at the SELECT seam, NOT `::vector(1536)[]` on the parameter — Way A discipline applied to vectors per Risks §"pgvector array param cast"), `ON CONFLICT (video_scene_id, locale)`, `DO UPDATE SET`, `EXCLUDED.embedding`. Same shape for R2 against `video_transcript_chunk`.
+- **R1 parent-collapse SQL-shape invariant (deepened 2026-05-05):** captured raw SQL for the parent path contains `INSERT INTO video_scene`, `unnest(`, `ON CONFLICT (video_edition_id, scene_index) DO NOTHING`, AND a follow-up `SELECT id, scene_index FROM video_scene WHERE video_edition_id = ` with `scene_index = ANY(`. The two-statement parent path is the load-bearing assertion; a regression to per-row parent upserts must trip this test.
+- **Bind-count regression guard:** `mock.calls[0].args.length` (the bound-parameter count, not the array length) is constant — independent of `scenes.length` / `chunks.length`. Prevents accidental re-introduction of per-row binding. R1 parent INSERT, R1 locale INSERT, and R2 chunk INSERT all carry their own bind-count assertion.
+- **Length-equality preflight (deepened 2026-05-05):** when the call site is given parallel arrays of unequal length (e.g. `embeddings.length !== scenes.length`), the bulk-INSERT helper throws BEFORE issuing `$executeRaw`. Regression guard against PG18's silent NULL-pad-on-mismatch behavior. Test mocks `$executeRaw` and asserts it is NEVER called when lengths differ.
+- **`toPgArray` nullable round-trip (deepened 2026-05-05):** `toPgArray([null, "x"])` produces `{NULL,"x"}` (unquoted NULL token), NOT `{"NULL","x"}` (quoted three-char string). Add a paired test that a quoted `"NULL"` element bound through the helper survives as the literal three-character string when round-tripped through PG.
+- **`toPgArray` brace rejection (deepened 2026-05-05):** an element containing `{` throws at `toPgArray` rather than corrupting the literal. The `description` round-trip path (which goes through normal element-quoting) survives `{`/`}` cleanly — assert both behaviors.
 - **Mixed insert + update fixture:** half new scenes, half pre-existing rows; assert post-call DB state has all rows correct (the existing rows updated, the new rows inserted).
 - **Idempotency:** running twice with identical input produces identical row state; running with one scene's description changed updates only that row's `description` + `embedding`.
 - **R2 dimension mismatch on one chunk:** typed error short-circuits the whole target before the SQL runs (existing pre-validation path; just confirm Stage 3 doesn't bypass it).
 - **No partial writes on SQL error:** if the bulk INSERT throws (e.g., unique violation on a parent row that was deleted between pre-prune and INSERT), the surrounding `$transaction` rolls back; no orphan vectors.
-- **Vector serialization round-trip:** a multi-row insert of three deterministic vectors round-trips via a real / testcontainer Postgres; assert `SELECT embedding::text` matches `toPgVector(input)` for each row in input order.
+- **Vector serialization round-trip:** a multi-row insert of three deterministic vectors round-trips via a real / testcontainer Postgres; assert `SELECT embedding::text` matches `toPgVector(input)` for each row in input order. Mock-side variant: assert each per-row `unnest(...)::vector(1536)` cast site gets the right vector literal in input order (position-stable contract from Stage 2 carries through Stage 3 unchanged).
+- **R1 multi-value columns escape fixtures (deepened 2026-05-05):** the JSON-encoded `themes`/`bibleVerses`/`demographics`/`spiritualContext` round-trip cleanly for: embedded double-quote, embedded backslash, empty array `[]`, Unicode astral codepoint, single-element array. Assert post-INSERT `SELECT themes` matches input.
 - **R2 sanitized-error preservation:** the existing `isPrismaRuntimeError` + `sanitizePrismaErrorMessage` path still wraps `$executeRaw` failures so the bound vector literal does not leak into `outcome.reason`. This is not new code — Stage 3 simply must not bypass the wrap.
 
 **Verification:**
@@ -416,9 +476,10 @@ When PR #4 ships, flip `feat-118` to `complete` with a `## Resolution` section.
 
 - **Risk: Outcome-ordering regressions in callers.** Mitigation: search for `outcomes[0]` / array-index access patterns in tests and admin code; convert to find-by-key. Already a documented test bug per the workflow-robustness solutions doc.
 - **Risk: OpenRouter rate-limit pressure with concurrency=10 batched calls in flight.** A batched call counts as one request; net pressure is lower than today's per-scene fan-out. Mitigation: start prod at concurrency=5 via env override; ramp after observation.
-- **Risk: pgvector `vector(1536)[]` cast with `unnest(toPgArray(vecStrings))` — first time this codebase casts a text-array of vector literals server-side.** Mitigation: integration test against a real / testcontainer Postgres that inserts ≥3 rows and round-trips `embedding::text` byte-equal to `toPgVector(input)`.
+- **Risk: pgvector `vector(1536)[]` array-parameter cast is not in pgvector's documented test surface (deepened 2026-05-05).** Mitigation: apply Way A discipline to vectors too — bind an outer `text[]` of `[..]`-form vector literals via `toPgArray(scenes.map(s => toPgVector(s.embedding)))`, cast per-row via `unnest(?::text[])::vector(1536)` at the SELECT seam. Avoid `?::vector(1536)[]` parameter cast (multi-element pgvector array input parser is less-trodden code). Integration test against a real / testcontainer Postgres that inserts ≥3 rows and round-trips `embedding::text` byte-equal to `toPgVector(input)`.
 - **Risk: Pre-prune `deleteMany` removes a row that the bulk INSERT then re-inserts in the same transaction.** Postgres handles this within a single transaction without serializability issues; document the ordering contract in the new solutions doc and verify with a fixture test.
-- **Risk: JSONB column binding shape (`themes`, `bibleVerses`, `demographics`, `spiritualContext`) may not accept the obvious `unnest(...)` form on PG18.** Mitigation: pick the binding shape during Stage 3 implementation against the local PG18 instance; the test shape is the SQL invariant assertion, not a value test, so the choice doesn't ripple to the workflow.
+- **Risk (deepened 2026-05-05): `unnest(arr1, arr2, ...)` SILENTLY NULL-pads arrays of unequal length.** Per PG18 docs §functions-array.html: "If the arrays are not all the same length then the shorter ones are padded with NULLs." A length-mismatch bug yields silent NULL rows with NO error. Mitigation: in both R1 and R2 bulk-INSERT call sites, assert `parallelArrays.every(a => a.length === N)` before invoking `$executeRaw`. Add a unit test that bulk-INSERTs unequal-length arrays and confirms the assertion throws BEFORE the SQL is sent.
+- **Risk (deepened 2026-05-05): `toPgArray` rejects literal `{` and `}` characters in element values.** Existing behavior at `apps/admin/src/db/pgvector.ts:22-33`. The R1 multi-value columns (`themes`, `bibleVerses`, etc.) get JSON-encoded values that cannot contain raw `{`/`}`, but a free-form scene `description` containing `{`/`}` round-trips through normal `toPgArray` element-quoting and is safe. Mitigation: explicit fixture test that a value containing `{` throws cleanly at `toPgArray` (verifies the rejection path) AND a fixture that a `description` containing `{some context}` round-trips correctly via the standard quoting path.
 - **Risk: Branch is currently behind `main` — tickets `feat-115`..`feat-118` exist on `origin/main` but not on this branch.** Mitigation: merge `main` (or rebase) before opening the first PR so the ticket frontmatter is editable on-branch and the auto-blocked status flips work as documented in each ticket.
 - **Dependency: `p-limit` direct dependency** — currently transitive (lockfile shows multiple versions). Stage 1 should make the dependency explicit in `apps/admin/package.json` if not already.
 - **Dependency: Stage ordering matters.** Stage 3's bulk SQL benefits from Stage 2's batched embedding only because the embeddings are already a `number[][]` in input order; if Stage 3 were attempted before Stage 2 the per-row vector update would still need to round-trip per scene. Land the stages in order.

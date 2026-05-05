@@ -27,6 +27,44 @@ describe("toPgArray", () => {
       /unsupported brace character/,
     )
   })
+
+  // Stage 3 (feat-117) — nullable element support. Per-row Way A casts at
+  // the SELECT seam need NULL-bearing arrays so that `chapter_title`,
+  // `start_seconds`, `end_seconds`, and the per-chunk optional fields
+  // round-trip cleanly inside a single `INSERT … unnest(...)` call.
+  describe("nullable element support (Stage 3 — feat-117)", () => {
+    it("emits the unquoted NULL token for null elements, preserving sibling quoting", () => {
+      // Critical contract: the NULL token must be UNQUOTED so Postgres's
+      // text-array parser interprets it as a SQL NULL when bound via
+      // `?::text[]`. A quoted `"NULL"` would round-trip as the literal
+      // 4-character string and silently corrupt downstream nullability.
+      expect(toPgArray([null, "x"])).toBe('{NULL,"x"}')
+    })
+
+    it("emits NULL for every position when the entire array is null", () => {
+      expect(toPgArray([null, null, null])).toBe("{NULL,NULL,NULL}")
+    })
+
+    it('preserves the literal three-character string "NULL" as a quoted value (distinct from null)', () => {
+      // The quoted form is a distinct element from the unquoted token.
+      // A future bug that conflated the two (e.g. `if (v === null || v === "NULL")`)
+      // would silently convert the string "NULL" into a SQL NULL —
+      // catching it requires testing both spellings.
+      expect(toPgArray(["NULL", "x"])).toBe('{"NULL","x"}')
+    })
+
+    it("still rejects brace characters when the array also contains nulls", () => {
+      expect(() => toPgArray([null, "before{after"])).toThrow(
+        /unsupported brace character/,
+      )
+    })
+
+    it("accepts a mix of nulls, plain values, escaped quotes, and backslashes", () => {
+      expect(toPgArray([null, "a", 'he said "hi"', "a\\b", null])).toBe(
+        '{NULL,"a","he said \\"hi\\"","a\\\\b",NULL}',
+      )
+    })
+  })
 })
 
 describe("toPgVector", () => {

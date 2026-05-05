@@ -18,11 +18,23 @@
 // `VideoTranscript` and overwrites child chunks. A pre-transaction
 // prune removes chunks whose chunkIndex is outside the incoming range
 // so re-chunking with fewer segments doesn't leave orphans.
+//
+// Stage 3 of the embed-backfill performance plan (feat-117) collapses
+// the per-chunk write loop into ONE bulk SQL statement per
+// `(video, edition, language)` target — `INSERT INTO
+// video_transcript_chunk … SELECT * FROM unnest(9 parallel arrays)
+// ON CONFLICT (transcript_id, chunk_index) DO UPDATE`. Per-row Way A
+// `::vector(1536)` cast at the SELECT seam (NOT a `::vector(1536)[]`
+// parameter cast — that array-input parser is less-trodden code; Way A
+// keeps the cast at one site per row). See
+// docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md.
+
+import { randomUUID } from "node:crypto"
 
 import { type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { canWriteDerived } from "@/auth/permissions"
-import { toPgVector } from "@/db/pgvector"
+import { toPgArray, toPgVector } from "@/db/pgvector"
 import {
   readEmbeddingsArtifact,
   type EmbeddingsResult,
@@ -53,10 +65,10 @@ const ACCEPTED_MODEL_STAMPS = new Set<string>([
 const ACCEPTED_MODEL_STAMPS_LIST = Array.from(ACCEPTED_MODEL_STAMPS)
 
 /**
- * Prisma's default interactive-transaction timeout is 5s. Long
- * transcripts chunk into 30+ segments; 5s is too tight once chunk
- * upserts + per-row `::vector` writes are accounted for. 30s matches
- * R1's scene indexer.
+ * Prisma's default interactive-transaction timeout is 5s. Stage 3
+ * collapses chunk upserts to a single bulk INSERT, but the 30s ceiling
+ * is preserved for safety against one-off pgvector planner regressions
+ * on large fixture sets. Matches R1's scene indexer.
  */
 const TRANSACTION_TIMEOUT_MS = 30_000
 
@@ -99,7 +111,8 @@ export class TranscriptIndexError extends Error {
       | "missing_cms_video_id"
       | "dimension_mismatch"
       | "empty_chunk_text"
-      | "storage_failed",
+      | "storage_failed"
+      | "artifact_invalid",
     message: string,
     readonly cause?: unknown,
   ) {
@@ -197,6 +210,27 @@ function logModelStampDriftIfAny(artifactModel: string): void {
       note: "reusing vector regardless; re-embedding is R2 scope-out",
     }),
   )
+}
+
+/**
+ * Length-equality preflight. PostgreSQL 18's `unnest(arr1, arr2, ...)`
+ * silently NULL-pads unequal-length arrays — a regression that drops a
+ * row from a parallel-array bind would corrupt the INSERT without
+ * raising. Throwing BEFORE `$executeRaw` makes the bug visible at the
+ * call site rather than at downstream read time.
+ */
+function assertParallelArrayLengthsMatch(
+  expected: number,
+  arrays: ReadonlyArray<{ name: string; length: number }>,
+): void {
+  for (const arr of arrays) {
+    if (arr.length !== expected) {
+      throw new TranscriptIndexError(
+        "artifact_invalid",
+        `internal: parallel-array length mismatch in transcript chunk bulk INSERT (expected=${expected}, ${arr.name}=${arr.length})`,
+      )
+    }
+  }
 }
 
 /**
@@ -309,48 +343,103 @@ export async function indexEditionTranscript(
         })
         chunksPruned = pruneResult.count
 
-        for (let i = 0; i < artifact.chunks.length; i += 1) {
-          const chunk = artifact.chunks[i]!
-          const row = await tx.videoTranscriptChunk.upsert({
-            where: {
-              transcriptId_chunkIndex: {
-                transcriptId: transcript.id,
-                chunkIndex: i,
-              },
-            },
-            create: {
-              transcriptId: transcript.id,
-              language: input.language,
-              chunkIndex: i,
-              chunkId: chunk.chunkId,
-              text: chunk.text,
-              tokenCount: chunk.metadata.tokenCount,
-              startSeconds: chunk.metadata.startTime ?? null,
-              endSeconds: chunk.metadata.endTime ?? null,
-              model: artifact.model,
-              dimensions: artifact.dimensions,
-            },
-            update: {
-              language: input.language,
-              chunkId: chunk.chunkId,
-              text: chunk.text,
-              tokenCount: chunk.metadata.tokenCount,
-              startSeconds: chunk.metadata.startTime ?? null,
-              endSeconds: chunk.metadata.endTime ?? null,
-              model: artifact.model,
-              dimensions: artifact.dimensions,
-            },
-            select: { id: true },
-          })
+        // ─── Stage 3 (feat-117) — Bulk chunk INSERT … ON CONFLICT … DO UPDATE ─
+        // Build 12 parallel arrays. text[] params unfold via
+        // `u.<col>::<type>` per-row casts at the SELECT seam (Way A
+        // discipline). The vector cast lives on the SELECT seam too —
+        // `u.embedding_text::vector(1536)` — NOT `::vector(1536)[]` on
+        // the parameter (the array-input parser is less-trodden code;
+        // single-row casts are documented and well-exercised).
+        const ids = artifact.chunks.map(() => randomUUID())
+        const transcriptIds = artifact.chunks.map(() => transcript.id)
+        const languages = artifact.chunks.map(() => input.language)
+        const chunkIndexes = artifact.chunks.map((_, i) => String(i))
+        const chunkIds = artifact.chunks.map((c) => c.chunkId)
+        const texts = artifact.chunks.map((c) => c.text)
+        const tokenCounts = artifact.chunks.map((c) =>
+          String(c.metadata.tokenCount),
+        )
+        const startSeconds = artifact.chunks.map((c) =>
+          c.metadata.startTime == null ? null : String(c.metadata.startTime),
+        )
+        const endSeconds = artifact.chunks.map((c) =>
+          c.metadata.endTime == null ? null : String(c.metadata.endTime),
+        )
+        const models = artifact.chunks.map(() => artifact.model)
+        const dimensionsArr = artifact.chunks.map(() =>
+          String(artifact.dimensions),
+        )
+        const vectorTexts = artifact.chunks.map((c) => toPgVector(c.embedding))
 
-          await tx.$executeRaw`
-          UPDATE video_transcript_chunk
-          SET embedding = ${toPgVector(chunk.embedding)}::vector,
-              updated_at = NOW()
-          WHERE id = ${row.id}
+        assertParallelArrayLengthsMatch(artifact.chunks.length, [
+          { name: "ids", length: ids.length },
+          { name: "transcriptIds", length: transcriptIds.length },
+          { name: "languages", length: languages.length },
+          { name: "chunkIndexes", length: chunkIndexes.length },
+          { name: "chunkIds", length: chunkIds.length },
+          { name: "texts", length: texts.length },
+          { name: "tokenCounts", length: tokenCounts.length },
+          { name: "startSeconds", length: startSeconds.length },
+          { name: "endSeconds", length: endSeconds.length },
+          { name: "models", length: models.length },
+          { name: "dimensionsArr", length: dimensionsArr.length },
+          { name: "vectorTexts", length: vectorTexts.length },
+        ])
+
+        const writeAffected = await tx.$executeRaw`
+          INSERT INTO video_transcript_chunk (
+            id, transcript_id, language, chunk_index, chunk_id,
+            text, token_count, start_seconds, end_seconds,
+            model, dimensions, embedding,
+            created_at, updated_at
+          )
+          SELECT
+            u.id,
+            u.transcript_id,
+            u.language,
+            u.chunk_index::int,
+            u.chunk_id,
+            u.text,
+            u.token_count::int,
+            u.start_seconds::double precision,
+            u.end_seconds::double precision,
+            u.model,
+            u.dimensions::int,
+            u.embedding_text::vector(1536),
+            NOW(),
+            NOW()
+          FROM unnest(
+            ${toPgArray(ids)}::text[],
+            ${toPgArray(transcriptIds)}::text[],
+            ${toPgArray(languages)}::text[],
+            ${toPgArray(chunkIndexes)}::text[],
+            ${toPgArray(chunkIds)}::text[],
+            ${toPgArray(texts)}::text[],
+            ${toPgArray(tokenCounts)}::text[],
+            ${toPgArray(startSeconds)}::text[],
+            ${toPgArray(endSeconds)}::text[],
+            ${toPgArray(models)}::text[],
+            ${toPgArray(dimensionsArr)}::text[],
+            ${toPgArray(vectorTexts)}::text[]
+          ) AS u(
+            id, transcript_id, language, chunk_index, chunk_id,
+            text, token_count, start_seconds, end_seconds,
+            model, dimensions, embedding_text
+          )
+          ON CONFLICT (transcript_id, chunk_index)
+          DO UPDATE SET
+            language      = EXCLUDED.language,
+            chunk_id      = EXCLUDED.chunk_id,
+            text          = EXCLUDED.text,
+            token_count   = EXCLUDED.token_count,
+            start_seconds = EXCLUDED.start_seconds,
+            end_seconds   = EXCLUDED.end_seconds,
+            model         = EXCLUDED.model,
+            dimensions    = EXCLUDED.dimensions,
+            embedding     = EXCLUDED.embedding,
+            updated_at    = NOW()
         `
-          embeddingsWritten += 1
-        }
+        embeddingsWritten = Number(writeAffected)
       },
       { timeout: TRANSACTION_TIMEOUT_MS },
     )

@@ -1,9 +1,11 @@
 // Unit tests for indexEditionScenes.
 //
 // DB interactions are tested against a stub Prisma client that mirrors
-// the call surface we use — $transaction + upsert + $executeRaw. True
+// the call surface we use after Stage 3 (feat-117): $transaction +
+// videoSceneLocale.deleteMany + tx.$executeRaw (bulk parent INSERT and
+// bulk locale INSERT) + tx.$queryRaw (parent id-recovery SELECT). True
 // end-to-end verification against a live Postgres with pgvector is
-// covered by Unit 7's smoke test.
+// covered by Unit 7's smoke test plus the Stage 3 manual prod smoke run.
 
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import type { Principal } from "@/auth/principal"
@@ -41,42 +43,86 @@ const SYSTEM = { id: null, role: "SYSTEM" } as const satisfies Principal
 const ADMIN = { id: "admin-1", role: "ADMIN" } as const satisfies Principal
 const VIEWER = { id: "viewer-1", role: "VIEWER" } as const satisfies Principal
 
-type UpsertCall = { where: unknown; create: unknown; update: unknown }
-
-type StubPrismaRecord = {
-  videoScene: { upsert: ReturnType<typeof vi.fn> }
+type StubPrismaTx = {
   videoSceneLocale: {
-    upsert: ReturnType<typeof vi.fn>
     deleteMany: ReturnType<typeof vi.fn>
   }
   $executeRaw: ReturnType<typeof vi.fn>
+  $queryRaw: ReturnType<typeof vi.fn>
 }
 
-function buildStubPrisma(opts?: { prunedCount?: number }) {
-  const videoSceneUpsert = vi.fn(async (args: UpsertCall) => ({
-    id: `scene-${JSON.stringify(args.where)}`,
-  }))
-  const videoSceneLocaleUpsert = vi.fn(async (args: UpsertCall) => ({
-    id: `locale-${JSON.stringify(args.where)}`,
-  }))
+function buildStubPrisma(opts?: {
+  prunedCount?: number
+  parentRows?: ReadonlyArray<{ id: string; scene_index: number }>
+  parentRowsFor?: (sceneIndexes: number[]) => ReadonlyArray<{
+    id: string
+    scene_index: number
+  }>
+  /** Bulk INSERT row-counts in call order (parent, then locale, then any subsequent). */
+  executeRawAffected?: ReadonlyArray<number>
+}) {
   const videoSceneLocaleDeleteMany = vi.fn(async () => ({
     count: opts?.prunedCount ?? 0,
   }))
-  const executeRaw = vi.fn(async () => 1)
 
-  const tx: StubPrismaRecord = {
-    videoScene: { upsert: videoSceneUpsert },
+  // Bulk INSERTs return the affected-row count (Prisma `$executeRaw`
+  // returns a number). Default: 1 affected row per call so SQL-shape
+  // tests don't need explicit values; tests that assert
+  // `embeddingsWritten` provide explicit overrides.
+  const affected = opts?.executeRawAffected ?? []
+  let executeRawCallIdx = 0
+  const executeRaw = vi.fn(async () => {
+    const v = affected[executeRawCallIdx] ?? 1
+    executeRawCallIdx += 1
+    return v
+  })
+
+  // The follow-up SELECT recovers `scene_index → id` for every incoming
+  // sceneIndex. Default: derive ids from the captured bound text[]
+  // literal so tests don't need to re-state the input set. The literal
+  // is the second-to-last bound value before the editionId.
+  const queryRaw = vi.fn(async (...args: unknown[]) => {
+    if (opts?.parentRows) return opts.parentRows
+    if (opts?.parentRowsFor) {
+      // Args layout: [TemplateStringsArray, editionId, sceneIndexLiteral]
+      const literal = args[2] as string | undefined
+      if (typeof literal === "string") {
+        const inner = literal.slice(1, -1) // strip braces
+        const indexes = inner
+          .split(",")
+          .map((s) => s.replace(/"/g, ""))
+          .map((s) => Number(s))
+          .filter((n) => Number.isFinite(n))
+        return opts.parentRowsFor(indexes)
+      }
+    }
+    // Fallback: synthesize {id, scene_index} pairs by parsing the bound
+    // literal from the second positional argument (the toPgArray result).
+    const literal = args[2] as string | undefined
+    if (typeof literal === "string") {
+      const inner = literal.slice(1, -1)
+      const indexes = inner
+        .split(",")
+        .map((s) => s.replace(/"/g, ""))
+        .map((s) => Number(s))
+        .filter((n) => Number.isFinite(n))
+      return indexes.map((idx) => ({ id: `parent-${idx}`, scene_index: idx }))
+    }
+    return []
+  })
+
+  const tx: StubPrismaTx = {
     videoSceneLocale: {
-      upsert: videoSceneLocaleUpsert,
       deleteMany: videoSceneLocaleDeleteMany,
     },
     $executeRaw: executeRaw,
+    $queryRaw: queryRaw,
   }
 
   const prisma = {
     $transaction: vi.fn(
       async (
-        fn: (tx: StubPrismaRecord) => Promise<void>,
+        fn: (tx: StubPrismaTx) => Promise<void>,
         _opts?: { timeout?: number },
       ) => {
         return fn(tx)
@@ -88,10 +134,9 @@ function buildStubPrisma(opts?: { prunedCount?: number }) {
   return {
     prisma: prisma as unknown as import("@prisma/client").PrismaClient,
     tx,
-    videoSceneUpsert,
-    videoSceneLocaleUpsert,
     videoSceneLocaleDeleteMany,
     executeRaw,
+    queryRaw,
   }
 }
 
@@ -158,7 +203,7 @@ describe("indexEditionScenes", () => {
   })
 
   it("returns zero counts for an empty artifact without touching the DB", async () => {
-    const { prisma, videoSceneUpsert, executeRaw } = buildStubPrisma()
+    const { prisma, executeRaw, queryRaw } = buildStubPrisma()
     const result = await indexEditionScenes(prisma, {
       editionId: "edition-1",
       videoId: "video-1",
@@ -169,8 +214,8 @@ describe("indexEditionScenes", () => {
     })
     expect(result.scenesIndexed).toBe(0)
     expect(result.embeddingsWritten).toBe(0)
-    expect(videoSceneUpsert).not.toHaveBeenCalled()
     expect(executeRaw).not.toHaveBeenCalled()
+    expect(queryRaw).not.toHaveBeenCalled()
     // Empty artifact short-circuits BEFORE the provider call too —
     // no point paying for an empty batch.
     expect(generateExperienceEmbeddings).not.toHaveBeenCalled()
@@ -233,14 +278,11 @@ describe("indexEditionScenes", () => {
     ])
   })
 
-  it("embeds + upserts each scene inside a transaction for ADMIN with position-stable vectors", async () => {
-    const {
-      prisma,
-      videoSceneUpsert,
-      videoSceneLocaleUpsert,
-      videoSceneLocaleDeleteMany,
-      executeRaw,
-    } = buildStubPrisma()
+  it("collapses per-target writes to: 1 deleteMany + 1 parent INSERT + 1 parent SELECT + 1 locale INSERT (Stage 3)", async () => {
+    // Stage 3 (feat-117) contract: per-row upserts collapse to a small
+    // CONSTANT number of bulk statements regardless of scenes.length.
+    const { prisma, videoSceneLocaleDeleteMany, executeRaw, queryRaw } =
+      buildStubPrisma({ executeRawAffected: [2, 2] })
 
     const result = await indexEditionScenes(prisma, {
       editionId: "edition-1",
@@ -256,33 +298,166 @@ describe("indexEditionScenes", () => {
     expect(result.scenesSkipped).toBe(0)
     expect(result.scenesPruned).toBe(0)
     expect(result.locale).toBe("en")
-    // ONE batched call (down from per-scene N).
     expect(generateExperienceEmbeddings).toHaveBeenCalledTimes(1)
     expect(videoSceneLocaleDeleteMany).toHaveBeenCalledTimes(1)
-    expect(videoSceneUpsert).toHaveBeenCalledTimes(2)
-    expect(videoSceneLocaleUpsert).toHaveBeenCalledTimes(2)
+    // EXACTLY 2 $executeRaw calls: parent INSERT + locale INSERT.
     expect(executeRaw).toHaveBeenCalledTimes(2)
-
-    // Ensure the update preserves the description text per locale.
-    expect(videoSceneLocaleUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({
-          locale: "en",
-          description: "Opening shot on a desert road.",
-          sourceText: "Opening shot on a desert road.",
-          themes: ["journey"],
-        }),
-      }),
-    )
+    // EXACTLY 1 $queryRaw call: parent id-recovery SELECT.
+    expect(queryRaw).toHaveBeenCalledTimes(1)
   })
 
-  it("writes vectors position-stably: scene[i] gets embeddings[i] in the $executeRaw call", async () => {
+  it("R1 parent-INSERT SQL invariants — INSERT INTO video_scene + ON CONFLICT DO NOTHING + follow-up SELECT", async () => {
+    const { prisma, executeRaw, queryRaw } = buildStubPrisma()
+    await indexEditionScenes(prisma, {
+      editionId: "edition-1",
+      videoId: "video-1",
+      coreId: "core-1",
+      locale: "en",
+      user: SYSTEM,
+      loadedArtifact: ARTIFACT,
+    })
+    // First $executeRaw is the parent INSERT.
+    const [parentStrings] = executeRaw.mock.calls[0] as unknown as [
+      readonly string[],
+      ...unknown[],
+    ]
+    const parentSql = parentStrings.join("?")
+    expect(parentSql).toContain("INSERT INTO video_scene")
+    expect(parentSql).toContain("unnest(")
+    expect(parentSql).toContain("::text[]")
+    expect(parentSql).toMatch(
+      /ON\s+CONFLICT\s*\(\s*video_edition_id\s*,\s*scene_index\s*\)\s*DO\s+NOTHING/i,
+    )
+
+    // The follow-up SELECT recovers ids for both new and pre-existing parents.
+    const [selectStrings] = queryRaw.mock.calls[0] as unknown as [
+      readonly string[],
+      ...unknown[],
+    ]
+    const selectSql = selectStrings.join("?")
+    expect(selectSql).toMatch(
+      /SELECT\s+id\s*,\s*scene_index\s+FROM\s+video_scene/i,
+    )
+    expect(selectSql).toContain("video_edition_id =")
+    expect(selectSql).toContain("scene_index = ANY(")
+  })
+
+  it("R1 locale-INSERT SQL invariants — Way A vector cast + text[] casts + ON CONFLICT DO UPDATE + EXCLUDED.embedding", async () => {
+    const { prisma, executeRaw } = buildStubPrisma()
+    await indexEditionScenes(prisma, {
+      editionId: "edition-1",
+      videoId: "video-1",
+      coreId: "core-1",
+      locale: "en",
+      user: SYSTEM,
+      loadedArtifact: ARTIFACT,
+    })
+    // Second $executeRaw is the locale INSERT.
+    const [strings] = executeRaw.mock.calls[1] as unknown as [
+      readonly string[],
+      ...unknown[],
+    ]
+    const sql = strings.join("?")
+    expect(sql).toContain("INSERT INTO video_scene_locale")
+    expect(sql).toContain("unnest(")
+    expect(sql).toContain("::text[]")
+    // Way A vector cast — per-row at the SELECT seam, NOT
+    // `::vector(1536)[]` on the parameter.
+    expect(sql).toContain("::vector(1536)")
+    expect(sql).not.toMatch(/::vector\(1536\)\[\]/)
+    // Way A text[] unfold for the multi-value PG-array columns.
+    expect(sql).toContain("json_array_elements_text")
+    expect(sql).toMatch(
+      /ON\s+CONFLICT\s*\(\s*video_scene_id\s*,\s*locale\s*\)/i,
+    )
+    expect(sql).toMatch(/DO\s+UPDATE\s+SET/i)
+    expect(sql).toContain("EXCLUDED.embedding")
+  })
+
+  it("bind-count regression — parent INSERT and locale INSERT bind a CONSTANT number of params regardless of scenes.length (Stage 3 — feat-117)", async () => {
+    // Way A discipline + array-bind pattern: each parallel array binds
+    // as ONE positional parameter, so the placeholder count is fixed.
+    // A regression to per-row binding (one parameter per scene) would
+    // make the bind count grow with N — this test catches it.
+    const makeArtifact = (n: number): SceneAnalysisResult => ({
+      scenes: Array.from({ length: n }, (_, i) => ({
+        sceneIndex: i,
+        startSeconds: i * 5,
+        endSeconds: (i + 1) * 5,
+        chapterTitle: i === 0 ? "Intro" : null,
+        description: `Scene ${i} description text.`,
+        themes: ["t"],
+        bibleVerses: [],
+        demographics: [],
+        spiritualContext: [],
+      })),
+    })
+
+    const runWith = async (n: number) => {
+      const { prisma, executeRaw } = buildStubPrisma()
+      await indexEditionScenes(prisma, {
+        editionId: "edition-1",
+        videoId: "video-1",
+        coreId: "core-1",
+        locale: "en",
+        user: SYSTEM,
+        loadedArtifact: makeArtifact(n),
+      })
+      const parentCall = executeRaw.mock.calls[0] as unknown as [
+        readonly string[],
+        ...unknown[],
+      ]
+      const localeCall = executeRaw.mock.calls[1] as unknown as [
+        readonly string[],
+        ...unknown[],
+      ]
+      return {
+        parentBindCount: parentCall.length - 1,
+        localeBindCount: localeCall.length - 1,
+      }
+    }
+
+    const small = await runWith(3)
+    const large = await runWith(30)
+
+    // Constant bind counts independent of input size.
+    expect(small.parentBindCount).toBe(large.parentBindCount)
+    expect(small.localeBindCount).toBe(large.localeBindCount)
+  })
+
+  it("length-equality preflight throws BEFORE $executeRaw when batched provider returns wrong count", async () => {
+    // Inject a length mismatch: the provider mock returns ONE vector
+    // for a TWO-scene artifact. The service's construction-time check
+    // throws SceneIndexError("artifact_invalid") and $executeRaw is
+    // never invoked.
+    vi.mocked(generateExperienceEmbeddings).mockResolvedValueOnce({
+      model: "openai/text-embedding-3-small",
+      dimensions: 1536,
+      embeddings: [Array.from({ length: 1536 }, () => 0.5)],
+    })
+
+    const { prisma, executeRaw, queryRaw } = buildStubPrisma()
+    await expect(
+      indexEditionScenes(prisma, {
+        editionId: "edition-1",
+        videoId: "video-1",
+        coreId: "core-1",
+        locale: "en",
+        user: SYSTEM,
+        loadedArtifact: ARTIFACT,
+      }),
+    ).rejects.toMatchObject({ code: "artifact_invalid" })
+    // The bulk INSERTs MUST NOT have run — preflight is the regression
+    // guard against PG18's silent NULL-pad on unnest mismatch.
+    expect(executeRaw).not.toHaveBeenCalled()
+    expect(queryRaw).not.toHaveBeenCalled()
+  })
+
+  it("vector position stability — embeddings[i] is bound at position i in the locale INSERT vector array (Stage 2 carry-through)", async () => {
     // The batched provider returns one vector per input in input order;
-    // the indexer must thread `embeddings[i]` into the upsert for
-    // `scenes[i]`. A bug that swapped the indices would silently land
-    // the wrong vector on the wrong scene with no other test catching
-    // it. Mock the batched call to return distinct vectors per input
-    // so the mapping is observable.
+    // the indexer must thread `embeddings[i]` into the bulk INSERT for
+    // `scenes[i]`. A bug that swapped indices would silently land the
+    // wrong vector on the wrong scene with no other test catching it.
     const v0 = Array.from({ length: 1536 }, () => 0.111) // for scene 0
     const v1 = Array.from({ length: 1536 }, () => 0.222) // for scene 1
     vi.mocked(generateExperienceEmbeddings).mockResolvedValueOnce({
@@ -291,7 +466,7 @@ describe("indexEditionScenes", () => {
       embeddings: [v0, v1],
     })
 
-    const { prisma, executeRaw, videoSceneUpsert } = buildStubPrisma()
+    const { prisma, executeRaw } = buildStubPrisma()
     await indexEditionScenes(prisma, {
       editionId: "edition-1",
       videoId: "video-1",
@@ -301,40 +476,38 @@ describe("indexEditionScenes", () => {
       loadedArtifact: ARTIFACT,
     })
 
-    // The upsert's where-clause encodes the sceneIndex; we use that
-    // ordering to confirm the executeRaw vector matches the right scene.
-    const sceneIndexInOrder = videoSceneUpsert.mock.calls.map((c) => {
-      const where = (
-        c[0] as { where: { videoEditionId_sceneIndex: { sceneIndex: number } } }
-      ).where
-      return where.videoEditionId_sceneIndex.sceneIndex
-    })
-    expect(sceneIndexInOrder).toEqual([0, 1])
-
-    // The first $executeRaw bound the v0 literal (for scene 0); the
-    // second bound the v1 literal (for scene 1). Find the bound vector
-    // literal by SHAPE (`[n,n,n,...]`) rather than by parameter index
-    // — a future SQL refactor that adds a leading parameter (e.g. an
-    // explicit updated_at literal) would silently shift the vector to
-    // a different position; matching by shape stays correct.
-    const calls = executeRaw.mock.calls as unknown as [unknown, ...unknown[]][]
-    const VECTOR_LITERAL = /^\[[0-9.,-]+\]$/
-    const findVectorLiteral = (call: unknown[]): string => {
-      // Skip index 0 (TemplateStringsArray); scan bound values.
+    // The locale INSERT is the second $executeRaw call. The vector
+    // array literal is one of its bound parameters — find by shape:
+    // `{"[0.111,...]","[0.222,...]"}`.
+    const localeCall = executeRaw.mock.calls[1] as unknown as [
+      readonly string[],
+      ...unknown[],
+    ]
+    const VECTOR_ARRAY_LITERAL_SHAPE = /^\{".*"\}$/
+    const ARRAY_OF_VECTORS = /\[[0-9.,-]+\]/g
+    const findVectorArrayLiteral = (call: unknown[]): string => {
       for (let i = 1; i < call.length; i += 1) {
         const v = call[i]
-        if (typeof v === "string" && VECTOR_LITERAL.test(v)) return v
+        if (
+          typeof v === "string" &&
+          VECTOR_ARRAY_LITERAL_SHAPE.test(v) &&
+          v.includes("[") &&
+          v.includes("0.111")
+        ) {
+          return v
+        }
       }
       throw new Error(
-        `no vector literal in $executeRaw call: ${JSON.stringify(call.slice(1))}`,
+        `no vector array literal in locale-INSERT call: ${call.slice(1).map((x) => (typeof x === "string" ? x.slice(0, 80) : x))}`,
       )
     }
-    const firstVectorLiteral = findVectorLiteral(calls[0]!)
-    const secondVectorLiteral = findVectorLiteral(calls[1]!)
-    expect(firstVectorLiteral).toContain("0.111")
-    expect(firstVectorLiteral).not.toContain("0.222")
-    expect(secondVectorLiteral).toContain("0.222")
-    expect(secondVectorLiteral).not.toContain("0.111")
+    const literal = findVectorArrayLiteral(localeCall)
+    const vectors = literal.match(ARRAY_OF_VECTORS) ?? []
+    expect(vectors.length).toBe(2)
+    expect(vectors[0]).toContain("0.111")
+    expect(vectors[0]).not.toContain("0.222")
+    expect(vectors[1]).toContain("0.222")
+    expect(vectors[1]).not.toContain("0.111")
   })
 
   it("rejects a null (unauthenticated) principal with forbidden", async () => {
@@ -373,7 +546,7 @@ describe("indexEditionScenes", () => {
     // the whole `(video, locale)` target rather than partial-write.
     // The workflow's per-target catch demotes this to a `failed`
     // outcome (covered in workflow tests).
-    const { prisma, executeRaw, videoSceneUpsert } = buildStubPrisma()
+    const { prisma, executeRaw, queryRaw } = buildStubPrisma()
     vi.mocked(generateExperienceEmbeddings).mockRejectedValueOnce(
       new Error("provider 503"),
     )
@@ -390,43 +563,66 @@ describe("indexEditionScenes", () => {
     ).rejects.toThrow("provider 503")
 
     // No partial DB writes — the transaction never opened.
-    expect(videoSceneUpsert).not.toHaveBeenCalled()
     expect(executeRaw).not.toHaveBeenCalled()
+    expect(queryRaw).not.toHaveBeenCalled()
   })
 
-  it("writes embeddings via $executeRaw tagged template with ::vector cast", async () => {
-    const { prisma, executeRaw } = buildStubPrisma()
-    await indexEditionScenes(prisma, {
+  it("mixed insert + update fixture — half new scenes (no pre-existing), half pre-existing rows recovered via follow-up SELECT", async () => {
+    // Mixed fixture: parent INSERT runs with ON CONFLICT DO NOTHING.
+    // The follow-up SELECT must surface ids for BOTH the freshly-
+    // inserted and the pre-existing parents — otherwise the locale
+    // INSERT would be missing the pre-existing parents' ids.
+    const artifact: SceneAnalysisResult = {
+      scenes: [
+        { ...ARTIFACT.scenes[0]!, sceneIndex: 0 }, // pre-existing
+        {
+          ...ARTIFACT.scenes[0]!,
+          sceneIndex: 1,
+          description: "fresh scene 1",
+        }, // new
+        { ...ARTIFACT.scenes[0]!, sceneIndex: 2 }, // pre-existing
+      ],
+    }
+    const { prisma, executeRaw, queryRaw } = buildStubPrisma({
+      // Simulate: only the freshly-inserted scene_index=1 was created
+      // by the bulk INSERT (parents 0 and 2 already existed). The
+      // follow-up SELECT returns ids for ALL three.
+      parentRowsFor: (indexes) =>
+        indexes.map((idx) => ({
+          id: idx === 1 ? "parent-fresh-1" : `parent-existing-${idx}`,
+          scene_index: idx,
+        })),
+      executeRawAffected: [1, 3], // 1 parent inserted, 3 locales upserted
+    })
+
+    const result = await indexEditionScenes(prisma, {
       editionId: "edition-1",
       videoId: "video-1",
       coreId: "core-1",
       locale: "en",
       user: SYSTEM,
-      loadedArtifact: { scenes: [ARTIFACT.scenes[0]!] },
+      loadedArtifact: artifact,
     })
-    expect(executeRaw).toHaveBeenCalledTimes(1)
-    // With the tagged-template call form, the first arg is a
-    // TemplateStringsArray (array-like of literal fragments) and the
-    // rest are the bound values.
-    const [strings, ...values] = executeRaw.mock.calls[0] as unknown as [
+
+    expect(result.scenesIndexed).toBe(3)
+    // The locale INSERT writes for ALL three scenes (pre-existing + new).
+    expect(result.embeddingsWritten).toBe(3)
+    // Parent SELECT was queried with all 3 incoming sceneIndexes.
+    expect(queryRaw).toHaveBeenCalledTimes(1)
+    // The locale INSERT (call index 1) bound an array of three video_scene_id
+    // values; capture and assert all three parent ids appear.
+    const localeCall = executeRaw.mock.calls[1] as unknown as [
       readonly string[],
       ...unknown[],
     ]
-    const rawSql = strings.join("?")
-    expect(rawSql).toContain("UPDATE video_scene_locale")
-    expect(rawSql).toContain("::vector")
-    // Vector literal flows through as a parameter, not a string splice.
-    expect(typeof values[0]).toBe("string")
-    expect(values[0] as string).toMatch(/^\[[0-9.,-]+\]$/)
+    const allBound = localeCall.slice(1).map((v) => String(v))
+    const joined = allBound.join("|")
+    expect(joined).toContain("parent-existing-0")
+    expect(joined).toContain("parent-fresh-1")
+    expect(joined).toContain("parent-existing-2")
   })
 
   it("skips the S3 read when loadedArtifact is supplied (Stage 2 per-(video, edition) cache)", async () => {
-    // Stage 2 hands a pre-loaded artifact down from the workflow's
-    // group-level fetch. The service must NOT re-read S3 when that's
-    // the case. Spy on `readSceneAnalysisArtifact` to lock the
-    // invariant — a regression that "helpfully" re-fetches would re-
-    // introduce the per-locale S3 read storm Stage 2 was designed to
-    // eliminate.
     const managerArtifactsModule =
       await import("@/services/manager-artifacts.service")
     const s3ReadSpy = vi.spyOn(
@@ -445,5 +641,57 @@ describe("indexEditionScenes", () => {
     })
 
     expect(s3ReadSpy).not.toHaveBeenCalled()
+  })
+
+  it("R1 multi-value text[] columns escape cleanly through Way A unfold (embedded quotes, backslashes, empty arrays, single-element)", async () => {
+    // The themes/bibleVerses/etc. payload is bound via JSON.stringify
+    // and unfolded inside the SQL via `json_array_elements_text(... )`.
+    // The bound JSON literal must survive embedded double quotes,
+    // backslashes, empty arrays, and single-element arrays without
+    // breaking either the JSON parser or the surrounding `text[]`
+    // array-literal envelope. We assert on the BOUND PARAMETERS rather
+    // than re-implementing the round-trip — a real DB integration test
+    // covers the full SELECT-side parse.
+    const artifact: SceneAnalysisResult = {
+      scenes: [
+        {
+          ...ARTIFACT.scenes[0]!,
+          sceneIndex: 0,
+          themes: ['theme with "quote"'],
+          bibleVerses: ["a\\b\\c"],
+          demographics: [], // empty array
+          spiritualContext: ["only"], // single element
+        },
+      ],
+    }
+    const { prisma, executeRaw } = buildStubPrisma()
+    await indexEditionScenes(prisma, {
+      editionId: "edition-1",
+      videoId: "video-1",
+      coreId: "core-1",
+      locale: "en",
+      user: SYSTEM,
+      loadedArtifact: artifact,
+    })
+
+    const localeCall = executeRaw.mock.calls[1] as unknown as [
+      readonly string[],
+      ...unknown[],
+    ]
+    const allBound = localeCall
+      .slice(1)
+      .map((v) => (typeof v === "string" ? v : ""))
+    // The themes JSON literal is one of the bound text[] parameters;
+    // its element parses as JSON and contains the embedded quote.
+    const found = allBound.find(
+      (s) => s.includes("theme with") && s.includes("quote"),
+    )
+    expect(found, `themes JSON not present in bound params`).toBeDefined()
+    // Empty-array case appears as JSON "[]".
+    const foundEmpty = allBound.find((s) => s.includes('"[]"'))
+    expect(
+      foundEmpty,
+      `empty-array JSON literal not present in bound params`,
+    ).toBeDefined()
   })
 })

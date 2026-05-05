@@ -3,7 +3,7 @@ id: "feat-117"
 title: "Embed Backfill — Stage 3 — Bulk DB Writes via INSERT … ON CONFLICT"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-05-08"
 duration: 2
 depends_on:
