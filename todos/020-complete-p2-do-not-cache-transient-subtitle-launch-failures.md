@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "020"
 tags: [code-review, reliability, idempotency, agentic]
@@ -77,11 +77,11 @@ Affected files:
 
 ## Acceptance Criteria
 
-- [ ] Same-payload retry after a transient launch failure attempts launch again.
-- [ ] Same-payload retry after an accepted run returns the stable accepted run.
-- [ ] Different-payload retry with the same key still returns
+- [x] Same-payload retry after a transient launch failure attempts launch again.
+- [x] Same-payload retry after an accepted run returns the stable accepted run.
+- [x] Different-payload retry with the same key still returns
   `idempotency_conflict`.
-- [ ] Manager retry semantics are documented or tested.
+- [x] Manager retry semantics are documented or tested.
 
 ## Work Log
 
@@ -96,3 +96,17 @@ Affected files:
 **Learnings:**
 - Idempotency should stabilize accepted side effects, not permanently pin
   temporary startup failures.
+
+### 2026-05-05 - Retry Semantics Fix
+
+**By:** Codex
+
+**Actions:**
+- Updated the Agentic subtitle run handler to cache idempotency records only for
+  successful accepted launches.
+- Added a red/green test where the same idempotency key receives a transient
+  `manager_unavailable` response and then succeeds on retry.
+
+**Learnings:**
+- The idempotency map should represent accepted workflow side effects, not
+  temporary runtime startup errors.

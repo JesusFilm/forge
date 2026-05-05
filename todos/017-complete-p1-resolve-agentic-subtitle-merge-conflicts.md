@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p1
 issue_id: "017"
 tags: [code-review, mergeability, agentic, lockfile, roadmap]
@@ -78,10 +78,10 @@ Affected files:
 
 ## Acceptance Criteria
 
-- [ ] `git merge-tree --write-tree origin/main HEAD` exits 0.
-- [ ] `pnpm-lock.yaml` is refreshed against current `origin/main`.
-- [ ] Roadmap conflicts preserve both current-main changes and PR #886 updates.
-- [ ] PR validation is rerun after conflict resolution.
+- [x] `git merge-tree --write-tree origin/main HEAD` exits 0.
+- [x] `pnpm-lock.yaml` is refreshed against current `origin/main`.
+- [x] Roadmap conflicts preserve both current-main changes and PR #886 updates.
+- [x] PR validation is rerun after conflict resolution.
 
 ## Work Log
 
@@ -97,3 +97,19 @@ Affected files:
 **Learnings:**
 - The branch was green locally but no longer mergeable after `origin/main`
   advanced.
+
+### 2026-05-05 - Conflict Resolution
+
+**By:** Codex
+
+**Actions:**
+- Merged current `origin/main` into `feat/116-agentic-subtitle-enrichment-workflow`.
+- Resolved roadmap conflicts by preserving both feat-106 mainline updates and
+  feat-116 Agentic subtitle updates.
+- Refreshed `pnpm-lock.yaml` with `pnpm install --lockfile-only`.
+- Reran Agentic and Manager tests, lint, typecheck, root format check, and local
+  Agentic API smoke.
+
+**Learnings:**
+- The lockfile conflict resolved cleanly by taking current main and regenerating
+  the lockfile in this worktree.

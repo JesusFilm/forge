@@ -1,24 +1,40 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { envMock, mergeJobArtifactsMock, updateJobMock, updateStepStatusMock } =
-  vi.hoisted(() => ({
-    envMock: {
-      MANAGER_AGENTIC_API_KEY: "manager-agentic-key",
-    },
-    mergeJobArtifactsMock: vi.fn(),
-    updateJobMock: vi.fn(),
-    updateStepStatusMock: vi.fn(),
-  }))
+const {
+  envMock,
+  getJobMock,
+  mergeJobArtifactsMock,
+  updateJobMock,
+  updateStepStatusMock,
+} = vi.hoisted(() => ({
+  envMock: {
+    MANAGER_AGENTIC_API_KEY: "manager-agentic-key",
+  },
+  getJobMock: vi.fn(),
+  mergeJobArtifactsMock: vi.fn(),
+  updateJobMock: vi.fn(),
+  updateStepStatusMock: vi.fn(),
+}))
 
 vi.mock("@/config/env", () => ({
   env: envMock,
 }))
 
-vi.mock("@/lib/state", () => ({
-  mergeJobArtifacts: mergeJobArtifactsMock,
-  updateJob: updateJobMock,
-  updateStepStatus: updateStepStatusMock,
-}))
+vi.mock("@/lib/state", () => {
+  return {
+    getJob: getJobMock,
+    mergeArtifactEntries: (
+      existing: Record<string, unknown>,
+      incoming: Record<string, unknown>,
+    ) => ({
+      ...existing,
+      ...incoming,
+    }),
+    mergeJobArtifacts: mergeJobArtifactsMock,
+    updateJob: updateJobMock,
+    updateStepStatus: updateStepStatusMock,
+  }
+})
 
 import { POST } from "./route"
 
@@ -44,12 +60,32 @@ const baseEvent = {
   sequence: 1,
 }
 
+function mockJob(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "job-1",
+    muxAssetId: "mux-asset-1",
+    muxPlaybackId: "mux-playback-1",
+    languages: ["fr"],
+    options: {},
+    status: "pending",
+    retries: 0,
+    createdAt: "2026-05-05T09:00:00.000Z",
+    updatedAt: "2026-05-05T09:00:00.000Z",
+    artifacts: {},
+    steps: [],
+    errors: [],
+    ...overrides,
+  }
+}
+
 describe("POST /api/agentic/subtitle-enrichment-runs/[runId]/events", () => {
   beforeEach(() => {
     envMock.MANAGER_AGENTIC_API_KEY = "manager-agentic-key"
     mergeJobArtifactsMock.mockReset()
     updateJobMock.mockReset()
     updateStepStatusMock.mockReset()
+    getJobMock.mockReset()
+    getJobMock.mockResolvedValue(mockJob())
     mergeJobArtifactsMock.mockResolvedValue({})
     updateJobMock.mockResolvedValue({})
     updateStepStatusMock.mockResolvedValue({})
@@ -119,10 +155,13 @@ describe("POST /api/agentic/subtitle-enrichment-runs/[runId]/events", () => {
       "translation",
       "completed",
     )
-    expect(mergeJobArtifactsMock).toHaveBeenCalledWith("job-1", {
-      "subtitles-fr": { kind: "downloadable" },
-      "translation-fr": { kind: "downloadable" },
-    })
+    expect(mergeJobArtifactsMock).toHaveBeenCalledWith(
+      "job-1",
+      expect.objectContaining({
+        "subtitles-fr": { kind: "downloadable" },
+        "translation-fr": { kind: "downloadable" },
+      }),
+    )
   })
 
   it("maps failed events to failed job or step state with sanitized errors", async () => {
@@ -147,6 +186,163 @@ describe("POST /api/agentic/subtitle-enrichment-runs/[runId]/events", () => {
       "translation",
       "failed",
       "Translator rejected request",
+    )
+  })
+
+  it("deduplicates already persisted callback events across restarts", async () => {
+    getJobMock.mockResolvedValue(
+      mockJob({
+        artifacts: {
+          agenticSubtitleCallbackState: {
+            kind: "metadata",
+            data: {
+              runId: "persisted-run",
+              lastAcceptedSequence: 7,
+              acceptedEventIds: ["persisted-event"],
+              lastEventId: "persisted-event",
+              lastEventType: "step_completed",
+              updatedAt: "2026-05-05T10:07:00.000Z",
+            },
+          },
+        },
+      }),
+    )
+
+    const response = await POST(
+      buildRequest({
+        ...baseEvent,
+        eventId: "persisted-event",
+        runId: "persisted-run",
+        idempotencyKey: "agentic:persisted-event",
+        type: "step_completed",
+        sequence: 7,
+        step: "translation",
+      }),
+      {
+        params: Promise.resolve({ runId: "persisted-run" }),
+      },
+    )
+
+    expect(response.status).toBe(202)
+    expect(updateStepStatusMock).not.toHaveBeenCalled()
+    expect(updateJobMock).not.toHaveBeenCalled()
+    expect(mergeJobArtifactsMock).not.toHaveBeenCalled()
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      deduped: true,
+    })
+  })
+
+  it("ignores stale non-terminal events after a job is already terminal", async () => {
+    getJobMock.mockResolvedValue(
+      mockJob({
+        status: "completed",
+        completedAt: "2026-05-05T10:10:00.000Z",
+      }),
+    )
+
+    const response = await POST(
+      buildRequest({
+        ...baseEvent,
+        eventId: "terminal-stale-event",
+        runId: "terminal-run",
+        idempotencyKey: "agentic:terminal-stale-event",
+        type: "step_started",
+        sequence: 50,
+        step: "translation",
+      }),
+      {
+        params: Promise.resolve({ runId: "terminal-run" }),
+      },
+    )
+
+    expect(response.status).toBe(202)
+    expect(updateStepStatusMock).not.toHaveBeenCalled()
+    expect(updateJobMock).not.toHaveBeenCalled()
+    expect(mergeJobArtifactsMock).not.toHaveBeenCalled()
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      deduped: true,
+    })
+  })
+
+  it("persists workflow failure errors without leaking raw upstream objects", async () => {
+    getJobMock.mockResolvedValue(
+      mockJob({
+        currentStep: "translation",
+        errors: [],
+      }),
+    )
+
+    const response = await POST(
+      buildRequest({
+        ...baseEvent,
+        eventId: "workflow-failed-event",
+        runId: "workflow-failed-run",
+        idempotencyKey: "agentic:workflow-failed-event",
+        type: "workflow_failed",
+        sequence: 20,
+        occurredAt: "2026-05-05T10:20:00.000Z",
+        error: {
+          message: "Translator rejected request",
+          secret: "hidden",
+        },
+      }),
+      {
+        params: Promise.resolve({ runId: "workflow-failed-run" }),
+      },
+    )
+
+    expect(response.status).toBe(202)
+    expect(updateJobMock).toHaveBeenCalledWith(
+      "job-1",
+      expect.objectContaining({
+        status: "failed",
+        completedAt: "2026-05-05T10:20:00.000Z",
+        errors: [
+          {
+            step: "translation",
+            message: "Translator rejected request",
+            at: "2026-05-05T10:20:00.000Z",
+            code: "agentic_workflow_failed",
+          },
+        ],
+      }),
+    )
+    expect(JSON.stringify(updateJobMock.mock.calls[0]?.[1])).not.toContain(
+      "hidden",
+    )
+  })
+
+  it("persists callback state with accepted events", async () => {
+    const response = await POST(
+      buildRequest({
+        ...baseEvent,
+        eventId: "persist-state-event",
+        runId: "persist-state-run",
+        idempotencyKey: "agentic:persist-state-event",
+        type: "workflow_started",
+        sequence: 10,
+        occurredAt: "2026-05-05T10:10:00.000Z",
+      }),
+      {
+        params: Promise.resolve({ runId: "persist-state-run" }),
+      },
+    )
+
+    expect(response.status).toBe(202)
+    expect(mergeJobArtifactsMock).toHaveBeenCalledWith(
+      "job-1",
+      expect.objectContaining({
+        agenticSubtitleCallbackState: expect.objectContaining({
+          kind: "metadata",
+          data: expect.objectContaining({
+            runId: "persist-state-run",
+            lastAcceptedSequence: 10,
+            acceptedEventIds: ["persist-state-event"],
+          }),
+        }),
+      }),
     )
   })
 

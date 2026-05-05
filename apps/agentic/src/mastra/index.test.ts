@@ -146,6 +146,80 @@ describe("Mastra registry", () => {
     expect(result.next).toHaveBeenCalledOnce()
     expect(result.response).toBeUndefined()
   })
+
+  it("starts subtitle enrichment through the registered Mastra workflow runtime", async () => {
+    const server = buildMastra(env).getServer()
+    const route = server?.apiRoutes?.find(
+      (apiRoute) => apiRoute.path === "/forge/subtitle-enrichment-runs",
+    )
+    const startAsync = vi.fn().mockResolvedValue({
+      runId: "subtitle-enrichment:manager:job-1:subtitle:fr",
+    })
+    const createRun = vi.fn().mockResolvedValue({ startAsync })
+    const mastraRuntime = {
+      getWorkflow: vi.fn().mockReturnValue({ createRun }),
+    }
+    const requestContext = { traceId: "subtitle-runtime-test" }
+
+    const response = await (
+      route as unknown as {
+        handler: (context: {
+          req: { raw: Request }
+          get: (key: "mastra" | "requestContext") => unknown
+        }) => Promise<Response>
+      }
+    ).handler({
+      req: {
+        raw: new Request(
+          "http://localhost:4111/forge/subtitle-enrichment-runs",
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              authorization: `Bearer ${env.serviceApiKey}`,
+            },
+            body: JSON.stringify({
+              jobId: "job-1",
+              videoDocumentId: "video-1",
+              assetId: "asset-1",
+              muxAssetId: "mux-asset-1",
+              muxPlaybackId: "mux-playback-1",
+              sourceLanguage: "en",
+              targetLanguage: "fr",
+              materialization: {
+                mode: "direct_mux_asset_reuse",
+                targetEnvironment: "mux-production",
+              },
+              requestedTranscriptionProvider: "automatic",
+              requestedBy: { kind: "service", id: "manager" },
+              idempotencyKey: "manager:job-1:subtitle:fr",
+            }),
+          },
+        ),
+      },
+      get: (key) => (key === "mastra" ? mastraRuntime : requestContext),
+    })
+
+    expect(response.status).toBe(202)
+    expect(mastraRuntime.getWorkflow).toHaveBeenCalledWith(
+      "subtitleEnrichmentWorkflow",
+    )
+    expect(createRun).toHaveBeenCalledWith({
+      runId: "subtitle-enrichment:manager:job-1:subtitle:fr",
+      resourceId: "job-1",
+    })
+    expect(startAsync).toHaveBeenCalledWith({
+      inputData: expect.objectContaining({
+        jobId: "job-1",
+        idempotencyKey: "manager:job-1:subtitle:fr",
+      }),
+      requestContext,
+    })
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      agenticRunId: "subtitle-enrichment:manager:job-1:subtitle:fr",
+    })
+  })
 })
 
 async function runGlobalMiddleware({

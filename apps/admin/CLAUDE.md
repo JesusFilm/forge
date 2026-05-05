@@ -460,6 +460,93 @@ verified against a live Postgres on 2026-04-13 and the go/no-go gate passed.
 Remove `Ping`/`PingChild` (schema + migration + graphql types + tests) in
 the first Unit 4 commit after sign-off.
 
+## Core sync — video-dubs phase
+
+Admin owns the dub catalogue locally. The video-dubs sync phase
+(`src/services/core-sync/phases/sync-dubs.ts`) writes Core's variants
+into admin's `VideoDub` + `VideoDubDownload` + `VideoEdition` +
+`MuxVideo` rows. Downstream embed enumeration (R1, R2) JOINs
+`video_dub` to derive each video's dub-language set, so a partial dub
+catalogue silently shrinks the embed target list — keep this phase
+green.
+
+- **Query shape:** flat top-level `videoVariants(offset, limit, input)`,
+  not `videos { variants { … }}`. The nested form trips Core's resolver
+  fan-out cliff on megavideos like JFP-Classic and aborts after ~50 s
+  with `INTERNAL_SERVER_ERROR`. Both `since` (incremental) and full
+  sync route through the same paginated loop; `since` populates
+  `input: { updatedAt: { gte: since }}`, full passes `input: undefined`.
+  See `docs/solutions/platform/core-graphql-unbounded-relation-fan-out-20260504.md`.
+- **PAGE_SIZE = 100.** Inside Core's per-call cost ceiling for the
+  flat query. Probe data: `videos(limit:5)+variants` ok in 240 ms,
+  `videos(limit:25)+variants+downloads` times out at 50.4 s. The flat
+  `videoVariants(limit:N)` shape spreads megavideo variants across
+  pages, so 100 is comfortable today; raise it once Core lands a `take`
+  cap on `Video.variants`.
+- **Per-page error isolation.** The page loop wraps `coreQuery` in
+  try/catch. A failing page logs `core-sync.video-dub.page.error` (with
+  `offset`, `pageSize`, and `error.message`), increments `stats.errors`,
+  advances `offset`, and continues. One transient Core hiccup mid-
+  pagination must NOT abort the rest of the phase.
+- **Soft-delete via array-bound raw SQL.** When `!since &&
+stats.errors === 0 && seenCoreIds.size > 0`, the phase soft-deletes
+  Core-sourced rows missing from the seen set via:
+  ```
+  UPDATE "video_dub"
+  SET    "deleted_at" = NOW()
+  WHERE  "source"     = 'core'
+    AND  "deleted_at" IS NULL
+    AND  NOT ("core_id" = ANY(${toPgArray([...seenCoreIds])}::text[]))
+  ```
+  Note: `'core'` is the lowercase DB enum value (`SourceTier ENUM('core',
+  'manager')` from `0001_init`). Prisma's TS enum maps `CORE` → `'core'`
+  automatically; raw SQL bypasses that mapping so the literal must match
+  the DB value.
+  NOT `prisma.videoDub.updateMany({ coreId: { notIn: [...] }})` — that
+  generates one prepared-statement parameter per ID and Postgres caps
+  prepared-statement params at 32,767 (`PG_INT16_MAX`). The 209k-row
+  catalogue blew past the cap. The array-literal-as-text pattern keeps
+  the parameter count at 1 regardless of catalogue size; per
+  `apps/admin/src/db/pgvector.ts::toPgArray()` and the PG18 cast note
+  in root `CLAUDE.md`.
+- **Soft-delete safety:** the gating expression `!since && stats.errors
+=== 0` means a partial seen-set (one or more page errors) NEVER
+  triggers mass soft-delete. The phase silently records the in-flight
+  errors and leaves Core-sourced rows alone for the next full sync to
+  reconcile.
+
+**Operational runbook:**
+
+1. `pnpm --filter @forge/admin core-sync:run --full --scope=video-dubs`
+   from a workstation with `DATABASE_URL` pointed at a target Postgres.
+   Local destinations are safe; prod requires the usual operator
+   discipline (`run-sync.ts` posture — there is no in-script prod-URL
+   guard).
+2. Expect ~30-40 min on a fresh DB at the current catalogue size; ~85%
+   of wall time is variants of JFP-Classic-class megavideos. Per-page
+   logging is silent on the happy path; failure events are JSON
+   structured for easy filtering.
+3. Re-run is idempotent and safe. Each re-run re-walks every page; row
+   writes upsert-on-conflict; soft-delete is gated on zero page errors
+   so a partial run never decimates the catalogue.
+
+**Common pitfalls:**
+
+- Re-introducing the nested `videos { variants { … }}` query shape
+  (e.g., as a "we only need a few videos" optimisation). Don't — the
+  same Core-side timeout will trip and a single megavideo in the
+  batch aborts the whole call. Use the flat `videoVariants` query
+  with a `where` filter on `videoId` if scoping is genuinely needed.
+- Replacing the soft-delete `$executeRaw` with `prisma.videoDub
+.updateMany({ coreId: { notIn: [...] }})` for stylistic reasons.
+  Don't — the bind-variable cap re-asserts immediately. The test in
+  `sync-dubs.test.ts` is a regression guard.
+- Lowering `PAGE_SIZE` to "make it safer." It does not. The cost
+  ceiling is set by Core's resolver, not by per-page network cost on
+  our side. Use the diagnostic probe in
+  `docs/solutions/platform/core-graphql-unbounded-relation-fan-out-20260504.md`
+  to re-measure before changing the value.
+
 ## Scene embeddings (R1 of admin migration playbook)
 
 Admin owns scene-level embeddings in its own Postgres. Source data is
@@ -494,6 +581,22 @@ scale.
   `docs/solutions/best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md`.
   Per-target error isolation; `artifact_missing` errors skip, provider
   errors fail but don't halt the run. Safe to re-run.
+- **Bounded parallelism:** the per-target loop uses
+  `pLimit(env.SCENE_EMBEDDING_CONCURRENCY ?? 5) +
+Promise.allSettled` — never bare `Promise.all` (one rejection
+  would abort the batch). See
+  `docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md`.
+  `Promise.allSettled` preserves input order so `outcomes[i]` is
+  index-aligned to `targets[i]`; per-target work completes
+  out-of-order during the run, but the final array shape is stable.
+  Tune via the `SCENE_EMBEDDING_CONCURRENCY` env var on `forge-admin`
+  Doppler. Default `5` matches admin's documented Prisma
+  `connection_limit=10` so a backfill leaves headroom for concurrent
+  GraphQL/REST traffic; local dev can crank to `20+` via the env
+  override. Per-target progress streams as `scene_index_complete` /
+  `scene_index_skipped` / `scene_index_failed` JSON log events; the
+  workflow also emits a single `event=start` log at dispatch carrying
+  the resolved concurrency for any trigger path.
 - **Trigger:** `triggerSceneEmbeddingBackfill` GraphQL mutation
   (ADMIN-only; permission key `write:scene-embeddings`).
 
@@ -579,6 +682,17 @@ manager's stamp). See
   silent default). Per-target error isolation; `artifact_missing`
   → skipped, every other error → failed but the run continues.
   Safe to re-run.
+- **Bounded parallelism:** the per-target loop uses
+  `pLimit(env.TRANSCRIPT_EMBEDDING_CONCURRENCY ?? 5) +
+Promise.allSettled` — never bare `Promise.all`. Same shape /
+  same rule as R1; index-aligned `outcomes[i]` per `Promise.allSettled`
+  input-order semantics; per-target progress streams via
+  `transcript_index_complete` / `_skipped` / `_failed` log events
+  and a single `event=start` carrying resolved concurrency. Tune via
+  the `TRANSCRIPT_EMBEDDING_CONCURRENCY` env var. R2 is DB-bound (no
+  provider call) so the bottleneck on cranking concurrency is
+  Postgres connection saturation; default `5` leaves headroom on
+  admin's `connection_limit=10` pool.
 - **Trigger:** `triggerTranscriptEmbeddingBackfill` GraphQL mutation
   (ADMIN-only; permission key `write:transcript-embeddings`).
 

@@ -466,6 +466,40 @@ describe("BlocksSchema", () => {
     expect(BlocksSchema.safeParse(input).success).toBe(true)
   })
 
+  it("accepts canonical media asset ids beside transitional URL fields", () => {
+    const input = [
+      {
+        t: "section",
+        backgroundImageUrl: "https://example.com/section.jpg",
+        backgroundImageAssetId: "asset-section",
+        content: [
+          {
+            t: "card",
+            title: "A",
+            description: "B",
+            mediaUrl: "https://example.com/card.jpg",
+            mediaAssetId: "asset-card",
+          },
+          {
+            t: "mediaCollection",
+            variant: "grid",
+            itemsSource: "manual",
+            imageUrl: "https://example.com/collection.jpg",
+            imageAssetId: "asset-collection",
+            items: [
+              {
+                imageOverrideUrl: "https://example.com/item.jpg",
+                imageOverrideAssetId: "asset-item",
+              },
+            ],
+          },
+        ],
+      },
+    ]
+
+    expect(BlocksSchema.safeParse(input).success).toBe(true)
+  })
+
   it("rejects if any single block is invalid", () => {
     const input = [
       { t: "text", heading: "ok" },

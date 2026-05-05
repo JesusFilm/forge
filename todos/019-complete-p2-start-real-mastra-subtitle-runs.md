@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "019"
 tags: [code-review, agentic, mastra, architecture]
@@ -86,10 +86,10 @@ Affected files:
 
 ## Acceptance Criteria
 
-- [ ] The service route starts a registered Mastra workflow run.
-- [ ] The response uses the actual Mastra run id or a documented stable mapping.
-- [ ] Mastra Studio/operator API can show the matching subtitle run.
-- [ ] Tests prove route-to-workflow runtime wiring, not only direct function
+- [x] The service route starts a registered Mastra workflow run.
+- [x] The response uses the actual Mastra run id or a documented stable mapping.
+- [x] Mastra Studio/operator API can show the matching subtitle run.
+- [x] Tests prove route-to-workflow runtime wiring, not only direct function
   invocation.
 
 ## Work Log
@@ -105,3 +105,23 @@ Affected files:
 **Learnings:**
 - Workflow registration alone is not enough to prove Agentic owns runtime
   execution.
+
+### 2026-05-05 - Runtime Launch Fix
+
+**By:** Codex
+
+**Actions:**
+- Changed the subtitle custom route to start `subtitleEnrichmentWorkflow`
+  through the Mastra runtime context.
+- Kept deterministic run ids with `subtitleEnrichmentRunId(...)` and return the
+  started Mastra run id.
+- Passed Manager callback dependencies into the registered workflow step.
+- Added a Mastra registry test proving the route calls
+  `getWorkflow("subtitleEnrichmentWorkflow")`, `createRun(...)`, and
+  `startAsync(...)`.
+- Smoke tested a running local Agentic server; the subtitle route returned 202
+  with `subtitle-enrichment:smoke:job-1:subtitle:fr`.
+
+**Learnings:**
+- Mastra custom route handlers expose the runtime via `context.get("mastra")`,
+  so the route can remain a thin service boundary while Studio owns the run.

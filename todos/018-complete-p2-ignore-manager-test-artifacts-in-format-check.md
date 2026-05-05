@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "018"
 tags: [code-review, validation, prettier, manager]
@@ -79,10 +79,10 @@ Affected files:
 
 ## Acceptance Criteria
 
-- [ ] `pnpm --filter @forge/manager test` followed by `pnpm run format:check`
+- [x] `pnpm --filter @forge/manager test` followed by `pnpm run format:check`
   passes without manually deleting `.tmp` files.
-- [ ] Runtime/test artifact files remain untracked.
-- [ ] No generated source, schema, or lockfile outputs are hidden accidentally.
+- [x] Runtime/test artifact files remain untracked.
+- [x] No generated source, schema, or lockfile outputs are hidden accidentally.
 
 ## Work Log
 
@@ -96,3 +96,17 @@ Affected files:
 
 **Learnings:**
 - Root Prettier ignores some generated paths, but not Manager `.tmp` artifacts.
+
+### 2026-05-05 - Prettier Ignore Fix
+
+**By:** Codex
+
+**Actions:**
+- Added `apps/manager/.tmp` to `.prettierignore`.
+- Ran `pnpm --filter @forge/manager test`.
+- Ran `pnpm format:check` successfully after the Manager suite generated test
+  artifacts.
+
+**Learnings:**
+- Root format validation can stay repeatable without moving Manager's existing
+  mock artifact path.

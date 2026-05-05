@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "021"
 tags: [code-review, reliability, manager, callbacks]
@@ -87,10 +87,10 @@ Affected files:
 
 ## Acceptance Criteria
 
-- [ ] Duplicate events remain harmless after process restart.
-- [ ] Stale non-terminal events cannot mutate a completed or failed job.
-- [ ] `workflow_failed` preserves a sanitized operator-facing error message.
-- [ ] Tests cover duplicate/stale events without relying only on process-local
+- [x] Duplicate events remain harmless after process restart.
+- [x] Stale non-terminal events cannot mutate a completed or failed job.
+- [x] `workflow_failed` preserves a sanitized operator-facing error message.
+- [x] Tests cover duplicate/stale events without relying only on process-local
   maps.
 
 ## Work Log
@@ -106,3 +106,21 @@ Affected files:
 **Learnings:**
 - Callback ordering guarantees need to survive restarts and retries, not only a
   single warm process.
+
+### 2026-05-05 - Persisted Callback State
+
+**By:** Codex
+
+**Actions:**
+- Persisted accepted event ids, last accepted sequence, last event metadata, and
+  terminal callback state in the existing job artifact manifest under
+  `agenticSubtitleCallbackState`.
+- Re-read the Manager job before applying callback events, dedupe from persisted
+  callback state, and ignore stale non-terminal events after terminal jobs.
+- Persisted sanitized `workflow_failed` errors into the job errors array.
+- Added tests for persisted duplicate dedupe, terminal stale event suppression,
+  workflow failure error persistence, and callback state persistence.
+
+**Learnings:**
+- The existing metadata artifact manifest is enough for V1 callback idempotency
+  without adding a CMS schema or separate event ledger.

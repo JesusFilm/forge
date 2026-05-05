@@ -47,7 +47,9 @@ export async function launchSubtitleEnrichmentWorkflow(
   }
 }
 
-export function createSubtitleEnrichmentWorkflow() {
+export function createSubtitleEnrichmentWorkflow(
+  dependencies: SubtitleEnrichmentWorkflowDependencies = {},
+) {
   const queueSubtitleRunStep = createStep({
     id: "queue-subtitle-enrichment-run",
     description:
@@ -55,7 +57,7 @@ export function createSubtitleEnrichmentWorkflow() {
     inputSchema: startSubtitleEnrichmentRunRequestSchema,
     outputSchema: startSubtitleEnrichmentRunResponseSchema,
     execute: async ({ inputData }) =>
-      launchSubtitleEnrichmentWorkflow(inputData),
+      launchSubtitleEnrichmentWorkflow(inputData, dependencies),
   })
 
   return createWorkflow({
@@ -68,7 +70,7 @@ export function createSubtitleEnrichmentWorkflow() {
     .commit()
 }
 
-function subtitleEnrichmentRunId(idempotencyKey: string): string {
+export function subtitleEnrichmentRunId(idempotencyKey: string): string {
   return `subtitle-enrichment:${idempotencyKey}`
 }
 

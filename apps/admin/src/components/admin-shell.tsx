@@ -5,7 +5,15 @@ import type { Route } from "next"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
-import { Command, Globe, HelpCircle, Search, Sparkles } from "lucide-react"
+import {
+  Command,
+  Globe,
+  HelpCircle,
+  Menu,
+  Search,
+  Sparkles,
+  X,
+} from "lucide-react"
 import {
   adminNavItems,
   adminNavSections,
@@ -21,6 +29,12 @@ type PrincipalView = {
   role: Role
 }
 
+type ProfileView = {
+  name: string | null
+  email: string | null
+  image: string | null
+}
+
 function isActive(pathname: string, href: string) {
   if (href === "/dashboard") {
     return pathname === href
@@ -28,31 +42,55 @@ function isActive(pathname: string, href: string) {
   return pathname.startsWith(href)
 }
 
-function initialsFromPrincipal(principal: PrincipalView) {
-  const source = principal.id ?? principal.role
-  const letters = source
-    .replace(/[^a-zA-Z]/g, "")
-    .slice(0, 2)
-    .toUpperCase()
-  return letters || "FA"
+function initialsFromProfile(profile: ProfileView | null) {
+  const source = profileLabel(profile)
+  return source.slice(0, 1).toUpperCase() || "F"
+}
+
+function prettifyName(value: string) {
+  const words = value
+    .replace(/[_\-.]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+
+  if (!words) return ""
+
+  return words
+    .split(" ")
+    .map((word) => `${word.slice(0, 1).toUpperCase()}${word.slice(1)}`)
+    .join(" ")
+}
+
+function profileLabel(profile: ProfileView | null) {
+  const name = profile?.name?.trim()
+  if (name) return name
+
+  const emailLocalPart = profile?.email?.split("@")[0]
+  if (emailLocalPart) return prettifyName(emailLocalPart)
+
+  return "Forge Admin"
 }
 
 export function AdminShell({
   principal,
+  profile = null,
   children,
 }: {
   principal: PrincipalView
+  profile?: ProfileView | null
   children: ReactNode
 }) {
   const pathname = usePathname()
   const router = useRouter()
   const { locale, messages } = useAdminI18n()
   const [isPaletteOpen, setPaletteOpen] = useState(false)
+  const [isNavOpen, setNavOpen] = useState(false)
   const [isSwitchingLocale, setIsSwitchingLocale] = useState(false)
   const activeItem = getNavItem(pathname)
   const isFullCanvasRoute =
-    pathname.startsWith("/dashboard/experiences/") &&
-    pathname !== "/dashboard/experiences"
+    (pathname.startsWith("/dashboard/experiences/") &&
+      pathname !== "/dashboard/experiences") ||
+    pathname.startsWith("/dashboard/media")
   const visibleNavItems = adminNavItems.filter((item) =>
     isNavItemVisible(principal.role, item),
   )
@@ -79,12 +117,17 @@ export function AdminShell({
 
       if (event.key === "Escape") {
         setPaletteOpen(false)
+        setNavOpen(false)
       }
     }
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [])
+
+  useEffect(() => {
+    setNavOpen(false)
+  }, [pathname])
 
   async function handleLocaleChange(nextLocale: string) {
     if (nextLocale === locale) {
@@ -106,74 +149,62 @@ export function AdminShell({
 
   return (
     <div className="flex min-h-screen bg-[var(--color-bg)] text-[var(--color-text-primary)]">
-      <aside className="fixed inset-y-0 left-0 z-40 flex w-[240px] flex-col border-r border-[var(--color-hairline)] bg-[var(--color-surface)]">
-        <div className="px-6 py-4">
-          <div className="text-lg font-semibold tracking-[-0.02em]">
-            {messages.common.shell.brandName}
-          </div>
-          <div className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-            {messages.common.shell.brandTag}
-          </div>
-        </div>
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
-          {visibleNavSections.map((section) => (
-            <div key={section.label} className="mb-5">
-              <div className="label-text px-3 pb-2">
-                {messages.nav.sections[section.label]}
-              </div>
-              <div className="space-y-1">
-                {section.items.map((item) => {
-                  const active = isActive(pathname, item.href)
-                  const Icon = item.icon
-                  const navItem = messages.nav.items[item.id]
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href as Route}
-                      className={cx(
-                        "flex h-8 items-center gap-3 rounded-sm px-3 transition-all duration-[120ms] ease-out",
-                        active
-                          ? "border-l-2 border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
-                          : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]",
-                      )}
-                    >
-                      <Icon
-                        className={cx(
-                          "h-4 w-4",
-                          active
-                            ? "text-[var(--color-text-primary)]"
-                            : "text-[var(--color-text-muted)]",
-                        )}
-                        strokeWidth={1.5}
-                      />
-                      <span className="text-[13px] font-medium">
-                        {navItem.label}
-                      </span>
-                    </Link>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-        </nav>
-        <div className="flex items-center gap-3 border-t border-[var(--color-hairline)] p-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] font-mono text-[11px]">
-            {initialsFromPrincipal(principal)}
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-[12px] font-medium">
-              {principal.id ?? messages.common.shell.fallbackPrincipal}
-            </div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
-              {principal.role}
-            </div>
-          </div>
-        </div>
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[240px] flex-col border-r border-[var(--color-hairline)] bg-[var(--color-surface)] xl:flex">
+        <ShellSidebarContent
+          messages={messages}
+          pathname={pathname}
+          principal={principal}
+          profile={profile}
+          visibleNavSections={visibleNavSections}
+        />
       </aside>
 
-      <div className="ml-[240px] flex min-h-screen flex-1 flex-col">
+      <div
+        className={cx(
+          "fixed inset-0 z-50 xl:hidden",
+          isNavOpen ? "pointer-events-auto" : "pointer-events-none",
+        )}
+        aria-hidden={!isNavOpen}
+      >
+        <button
+          type="button"
+          className={cx(
+            "absolute inset-0 bg-black/55 backdrop-blur-[3px] transition-opacity duration-200 ease-out",
+            isNavOpen ? "opacity-100" : "opacity-0",
+          )}
+          aria-label="Close navigation"
+          tabIndex={isNavOpen ? 0 : -1}
+          onClick={() => setNavOpen(false)}
+        />
+        <aside
+          className={cx(
+            "absolute inset-y-0 left-0 flex w-[min(300px,calc(100vw-3rem))] flex-col border-r border-[var(--color-hairline)] bg-[var(--color-surface)] shadow-[16px_0_48px_rgba(0,0,0,0.4)] transition-transform duration-200 ease-out will-change-transform",
+            isNavOpen ? "translate-x-0" : "-translate-x-full",
+          )}
+        >
+          <ShellSidebarContent
+            messages={messages}
+            pathname={pathname}
+            principal={principal}
+            profile={profile}
+            visibleNavSections={visibleNavSections}
+            onClose={() => setNavOpen(false)}
+          />
+        </aside>
+      </div>
+
+      <div className="flex min-h-screen flex-1 flex-col xl:ml-[240px]">
         <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-6">
           <div className="flex min-w-0 items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setNavOpen(true)}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] xl:hidden"
+              aria-label="Open navigation"
+              aria-expanded={isNavOpen}
+            >
+              <Menu className="h-4 w-4" strokeWidth={1.5} />
+            </button>
             {activeItem ? (
               <BreadcrumbTrail
                 section={messages.nav.sections[activeItem.section]}
@@ -340,5 +371,115 @@ export function AdminShell({
         </div>
       ) : null}
     </div>
+  )
+}
+
+type ShellSidebarContentProps = {
+  messages: ReturnType<typeof useAdminI18n>["messages"]
+  pathname: string
+  principal: PrincipalView
+  profile: ProfileView | null
+  visibleNavSections: Array<{
+    label: keyof ReturnType<typeof useAdminI18n>["messages"]["nav"]["sections"]
+    items: typeof adminNavItems
+  }>
+  onClose?: () => void
+}
+
+function ShellSidebarContent({
+  messages,
+  pathname,
+  principal,
+  profile,
+  visibleNavSections,
+  onClose,
+}: ShellSidebarContentProps) {
+  return (
+    <>
+      <div className="flex items-start justify-between gap-3 px-6 py-4">
+        <div className="min-w-0">
+          <div className="text-lg font-semibold tracking-[-0.02em]">
+            {messages.common.shell.brandName}
+          </div>
+          <div className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+            {messages.common.shell.brandTag}
+          </div>
+        </div>
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]"
+            aria-label="Close navigation"
+          >
+            <X className="h-4 w-4" strokeWidth={1.5} />
+          </button>
+        ) : null}
+      </div>
+      <nav className="flex-1 overflow-y-auto px-3 py-4">
+        {visibleNavSections.map((section) => (
+          <div key={section.label} className="mb-5">
+            <div className="label-text px-3 pb-2">
+              {messages.nav.sections[section.label]}
+            </div>
+            <div className="space-y-1">
+              {section.items.map((item) => {
+                const active = isActive(pathname, item.href)
+                const Icon = item.icon
+                const navItem = messages.nav.items[item.id]
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href as Route}
+                    onClick={onClose}
+                    className={cx(
+                      "flex h-8 items-center gap-3 rounded-sm px-3 transition-all duration-[120ms] ease-out",
+                      active
+                        ? "border-l-2 border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
+                        : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]",
+                    )}
+                  >
+                    <Icon
+                      className={cx(
+                        "h-4 w-4",
+                        active
+                          ? "text-[var(--color-text-primary)]"
+                          : "text-[var(--color-text-muted)]",
+                      )}
+                      strokeWidth={1.5}
+                    />
+                    <span className="text-[13px] font-medium">
+                      {navItem.label}
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+      <div className="flex items-center gap-3 border-t border-[var(--color-hairline)] p-4">
+        {profile?.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={profile.image}
+            alt=""
+            className="h-9 w-9 rounded-sm border border-[var(--color-hairline)] object-cover"
+          />
+        ) : (
+          <div className="flex h-9 w-9 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] text-[13px] font-semibold text-[var(--color-text-primary)]">
+            {initialsFromProfile(profile)}
+          </div>
+        )}
+        <div className="min-w-0" title={profile?.email ?? undefined}>
+          <div className="truncate text-[13px] font-medium">
+            {profileLabel(profile) ?? messages.common.shell.fallbackPrincipal}
+          </div>
+          <div className="truncate font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
+            {principal.role}
+          </div>
+        </div>
+      </div>
+    </>
   )
 }

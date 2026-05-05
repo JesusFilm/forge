@@ -93,6 +93,7 @@ describe("subtitle enrichment run API route", () => {
         targetLanguage: "fr",
         idempotencyKey: "manager:job-1:subtitle:fr",
       }),
+      undefined,
     )
     await expect(response.json()).resolves.toMatchObject({
       ok: true,
@@ -171,6 +172,42 @@ describe("subtitle enrichment run API route", () => {
     await expect(response.json()).resolves.toMatchObject({
       ok: false,
       code: "mastra_runtime_error",
+    })
+  })
+
+  it("does not cache transient launch failures for the same idempotency key", async () => {
+    const launcher = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        code: "manager_unavailable",
+        message: "Manager subtitle event callback was unavailable.",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        agenticRunId: "subtitle-enrichment:manager:job-1:subtitle:fr",
+        managerJobId: "job-1",
+        status: "queued",
+        summary: "Subtitle enrichment run queued.",
+      })
+    const route = createSubtitleEnrichmentRunRoute({
+      serviceApiKey: "service-key",
+      launchRun: launcher,
+    })
+
+    const firstResponse = await route.handler(
+      jsonRequest(validSubtitleRunRequest),
+    )
+    const secondResponse = await route.handler(
+      jsonRequest(validSubtitleRunRequest),
+    )
+
+    expect(firstResponse.status).toBe(502)
+    expect(secondResponse.status).toBe(202)
+    expect(launcher).toHaveBeenCalledTimes(2)
+    await expect(secondResponse.json()).resolves.toMatchObject({
+      ok: true,
+      managerJobId: "job-1",
     })
   })
 })

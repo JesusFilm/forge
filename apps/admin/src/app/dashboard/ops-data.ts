@@ -1,10 +1,20 @@
-import { Prisma, type LocaleStatus } from "@prisma/client"
+import {
+  Prisma,
+  type LocaleStatus,
+  type MediaAssetKind,
+  type MediaImageEnrichmentStatus,
+  type MediaAssetStatus,
+} from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { createServices } from "@/services"
 import { generateExperienceEmbedding } from "@/services/embeddings.service"
 import { getAllWatermarks } from "@/services/core-sync/watermark"
+import {
+  mediaAssetDownloadUrl,
+  mediaAssetPreviewUrl,
+} from "@/services/media-asset.service"
 import { loadWorkflowRuntimeRuns } from "@/services/workflow-runtime.service"
 import { loadWorkflowWorkerStatusRows } from "@/services/workflow-worker-heartbeat.service"
 
@@ -101,9 +111,50 @@ type LanguagesData = {
 
 type MediaData = {
   metrics: Metric[]
-  rows: TableRow[]
+  folders: MediaFolderRow[]
+  rows: MediaAssetTableRow[]
   insights: Insight[]
+  totalCount: number
+  unfiledCount: number
 }
+
+export type MediaFolderRow = {
+  id: string
+  label: string
+  count: number
+  directAssetCount: number
+  childFolderCount: number
+  parentId: string | null
+  depth: number
+}
+
+type MediaAssetTableRow = TableRow & {
+  kind: MediaAssetKind
+  folderId: string | null
+  backend: string
+  byteSize: string
+  byteSizeValue: bigint | null
+  dimensions: string
+  previewUrl: string | null
+  downloadUrl: string | null
+  blurDataUrl: string | null
+  imageEnrichmentStatus: MediaImageEnrichmentStatus
+  imageEnrichmentErrorMessage: string | null
+  updatedAtValue: Date
+}
+
+type MediaAssetWithEnglishLocale = Awaited<
+  ReturnType<typeof createServices>
+>["mediaAsset"] extends {
+  list: (...args: never[]) => Promise<Array<infer Row>>
+}
+  ? Row & {
+      locales?: Array<{
+        locale: string
+        displayName: string | null
+      }>
+    }
+  : never
 
 type UsersData = {
   metrics: Metric[]
@@ -232,6 +283,47 @@ function statusToneForWorkflowStatus(
   return "muted"
 }
 
+function statusToneForMediaAsset(
+  status: MediaAssetStatus,
+): "success" | "warning" | "danger" | "info" | "muted" {
+  if (status === "READY") return "success"
+  if (status === "FAILED" || status === "MISSING") return "danger"
+  if (status === "PROCESSING" || status === "UPLOADING") return "info"
+  return "warning"
+}
+
+function statusToneForImageEnrichment(
+  status: MediaImageEnrichmentStatus,
+): "success" | "warning" | "danger" | "info" | "muted" {
+  if (status === "COMPLETE") return "success"
+  if (status === "FAILED") return "danger"
+  if (status === "PROCESSING") return "info"
+  if (status === "WAITING") return "warning"
+  return "muted"
+}
+
+function formatBytes(value: bigint | null) {
+  if (value == null) return "N/A"
+  const bytes = Number(value)
+  if (!Number.isFinite(bytes)) return value.toString()
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+}
+
+function mediaDimensions(row: {
+  width: number | null
+  height: number | null
+  durationMs: bigint | null
+}) {
+  if (row.width && row.height) return `${row.width}x${row.height}`
+  if (row.durationMs != null) return `${Number(row.durationMs / 1000n)}s`
+  return "N/A"
+}
+
 function workflowStatusBucket(status: string) {
   const normalized = status.toLowerCase()
   if (normalized === "running" || normalized === "queued") return "active"
@@ -323,6 +415,40 @@ async function getSyncRows() {
     () => getAllWatermarks(prisma),
     [] as SyncWatermarkRow[],
   )
+}
+
+function mediaSupplementalLabel(
+  displayName: string,
+  originalFilename: string | null,
+  mimeType: string,
+) {
+  if (!originalFilename) {
+    return mimeType
+  }
+
+  const normalizedDisplayName = displayName.trim().toLowerCase()
+  const normalizedFilename = originalFilename.trim().toLowerCase()
+  const normalizedFilenameStem = normalizedFilename.replace(/\.[^.]+$/, "")
+
+  if (
+    normalizedDisplayName === normalizedFilename ||
+    normalizedDisplayName === normalizedFilenameStem
+  ) {
+    return ""
+  }
+
+  return originalFilename
+}
+
+function localizedMediaAssetLabel(row: {
+  id: string
+  originalFilename: string | null
+  locales?: Array<{ locale: string; displayName: string | null }>
+}) {
+  const englishName = row.locales
+    ?.find((locale) => locale.locale === "en")
+    ?.displayName?.trim()
+  return englishName || row.originalFilename || `Media asset ${row.id}`
 }
 
 async function getWorkflowRunRows(limit = 5) {
@@ -1086,75 +1212,184 @@ export async function loadLanguagesData(): Promise<LanguagesData> {
   }
 }
 
-export async function loadMediaData(): Promise<MediaData> {
-  const [images, downloads, subtitles, rows] = await Promise.all([
-    withTableFallback(() => prisma.videoImage.count(), 0),
-    withTableFallback(() => prisma.videoDubDownload.count(), 0),
-    withTableFallback(() => prisma.videoSubtitle.count(), 0),
-    withTableFallback(
-      () =>
-        prisma.videoImage.findMany({
-          select: {
-            id: true,
-            kind: true,
-            url: true,
-            blurhash: true,
-            updatedAt: true,
-            video: { select: { slug: true } },
-          },
-          orderBy: { updatedAt: "desc" },
-          take: 8,
-        }),
-      [] as Array<{
-        id: string
-        kind: string | null
-        url: string | null
-        blurhash: string | null
-        updatedAt: Date
-        video: { slug: string } | null
-      }>,
-    ),
-  ])
+export async function loadMediaData(principal: Principal): Promise<MediaData> {
+  const services = createServices(prisma)
+  const [total, images, videos, pdfs, processing, rows, folders, folderCounts] =
+    await Promise.all([
+      withTableFallback(() => prisma.mediaAsset.count(), 0),
+      withTableFallback(
+        () => prisma.mediaAsset.count({ where: { kind: "IMAGE" } }),
+        0,
+      ),
+      withTableFallback(
+        () => prisma.mediaAsset.count({ where: { kind: "VIDEO" } }),
+        0,
+      ),
+      withTableFallback(
+        () => prisma.mediaAsset.count({ where: { kind: "PDF" } }),
+        0,
+      ),
+      withTableFallback(
+        () =>
+          prisma.mediaAsset.count({
+            where: { status: { in: ["PENDING", "UPLOADING", "PROCESSING"] } },
+          }),
+        0,
+      ),
+      withTableFallback(
+        () =>
+          services.mediaAsset.list({
+            input: { limit: 120, offset: 0 },
+            user: principal,
+            query: {
+              include: {
+                locales: {
+                  where: { locale: "en" },
+                  select: { locale: true, displayName: true },
+                  take: 1,
+                },
+              },
+            },
+          }),
+        [] as MediaAssetWithEnglishLocale[],
+      ),
+      withTableFallback(
+        () =>
+          services.mediaFolder.list({
+            input: {},
+            user: principal,
+            query: {},
+          }),
+        [] as Awaited<ReturnType<typeof services.mediaFolder.list>>,
+      ),
+      withTableFallback(
+        () =>
+          prisma.mediaAsset.groupBy({
+            by: ["folderId"],
+            _count: { _all: true },
+          }),
+        [] as Array<{
+          folderId: string | null
+          _count: { _all: number }
+        }>,
+      ),
+    ])
+
+  const directFolderCount = new Map<string | null, number>()
+  for (const row of folderCounts) {
+    directFolderCount.set(row.folderId, row._count._all)
+  }
+
+  const foldersByParent = new Map<string | null, typeof folders>()
+  for (const folder of folders) {
+    const siblings = foldersByParent.get(folder.parentId) ?? []
+    siblings.push(folder)
+    foldersByParent.set(folder.parentId, siblings)
+  }
+
+  const flattenedFolders: MediaFolderRow[] = []
+
+  function visit(parentId: string | null, depth: number): number {
+    const siblings = foldersByParent.get(parentId) ?? []
+    let branchCount = 0
+
+    for (const folder of siblings) {
+      const ownCount = directFolderCount.get(folder.id) ?? 0
+      const childFolders = foldersByParent.get(folder.id) ?? []
+      flattenedFolders.push({
+        id: folder.id,
+        label: folder.name,
+        count: ownCount,
+        directAssetCount: ownCount,
+        childFolderCount: childFolders.length,
+        parentId: folder.parentId,
+        depth,
+      })
+      const childCount = visit(folder.id, depth + 1)
+      const totalCount = ownCount + childCount
+      branchCount += totalCount
+    }
+
+    return branchCount
+  }
+
+  visit(null, 0)
+  const unfiledCount = directFolderCount.get(null) ?? 0
 
   return {
     metrics: [
-      { label: "Images", value: images.toString(), footer: "VIDEO_IMAGES" },
       {
-        label: "Downloads",
-        value: downloads.toString(),
-        footer: "DUB_ARTIFACTS",
+        label: "Assets",
+        value: total.toString(),
+        footer: "MEDIA_ASSET_ROWS",
       },
       {
-        label: "Subtitles",
-        value: subtitles.toString(),
-        footer: "TEXT_TRACKS",
+        label: "Images",
+        value: images.toString(),
+        footer: "IMAGE_LIBRARY",
+      },
+      {
+        label: "Processing",
+        value: processing.toString(),
+        footer: "ACTIVE_UPLOADS",
       },
     ],
-    rows: rows.map((row) => ({
-      key: row.id,
-      title: row.kind ?? "video-image",
-      detail: row.video?.slug ?? row.url ?? row.id,
-      statusLabel: row.blurhash ? "Ready" : "Review",
-      statusTone: row.blurhash ? "success" : "warning",
-      meta: formatDateTime(row.updatedAt),
-    })),
+    folders: flattenedFolders,
+    rows: rows.map((row) => {
+      const displayName = localizedMediaAssetLabel(row)
+      const showEnrichmentStatus =
+        row.kind === "IMAGE" &&
+        row.imageEnrichmentStatus !== "COMPLETE" &&
+        row.imageEnrichmentStatus !== "SKIPPED"
+
+      return {
+        key: row.id,
+        title: displayName,
+        detail: mediaSupplementalLabel(
+          displayName,
+          row.originalFilename,
+          row.mimeType,
+        ),
+        statusLabel: showEnrichmentStatus
+          ? row.imageEnrichmentStatus
+          : row.status,
+        statusTone: showEnrichmentStatus
+          ? statusToneForImageEnrichment(row.imageEnrichmentStatus)
+          : statusToneForMediaAsset(row.status),
+        meta: formatDateTime(row.updatedAt),
+        kind: row.kind,
+        folderId: row.folderId ?? null,
+        backend: row.backend,
+        byteSize: formatBytes(row.byteSize),
+        byteSizeValue: row.byteSize,
+        dimensions: mediaDimensions(row),
+        previewUrl: mediaAssetPreviewUrl(row),
+        downloadUrl: mediaAssetDownloadUrl(row),
+        blurDataUrl: row.blurDataUrl,
+        imageEnrichmentStatus: row.imageEnrichmentStatus,
+        imageEnrichmentErrorMessage: row.imageEnrichmentErrorMessage,
+        updatedAtValue: row.updatedAt,
+      }
+    }),
     insights: [
       {
-        label: "Image Catalog",
+        label: "Image Assets",
         value: images.toString(),
-        detail: "Persisted image rows associated with synced videos.",
+        detail: "Reusable image files registered in the admin media library.",
       },
       {
-        label: "Download Artifacts",
-        value: downloads.toString(),
-        detail: "Quality-tier downloads currently attached to video dubs.",
+        label: "Video Assets",
+        value: videos.toString(),
+        detail: "Video placeholders ready for the future Mux storage backend.",
       },
       {
-        label: "Subtitle Tracks",
-        value: subtitles.toString(),
-        detail: "Timed-text resources available across video editions.",
+        label: "PDF Assets",
+        value: pdfs.toString(),
+        detail: "Document uploads tracked by the generic asset model.",
       },
     ],
+    totalCount: total,
+    unfiledCount,
   }
 }
 

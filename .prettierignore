@@ -9,5 +9,6 @@ apps/cms/schema.graphql
 apps/cms/.strapi
 apps/cms/.strapi-updater.json
 apps/agentic/.mastra
+apps/manager/.tmp
 output/
 .cursor

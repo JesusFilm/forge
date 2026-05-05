@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
@@ -10,6 +10,7 @@ import { LanguagePickerModal } from "@/components/watch/LanguagePickerModal"
 import { ShareModal } from "@/components/watch/ShareModal"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
 import type { MergedWatchBlock, ResolvedWatchVideo } from "@/lib/content"
+import { resolvePosterUrl } from "@/lib/url"
 
 type WatchVideoRecord = ResolvedWatchVideo["video"]
 type WatchVariant = ResolvedWatchVideo["selectedVariant"]
@@ -69,20 +70,34 @@ export function WatchPageClient({
       url: d.url as string,
     }))
 
-  const variantsForLanguagePicker = (video.variants ?? [])
-    .filter((v): v is NonNullable<typeof v> => v != null)
-    .map((v) => ({
-      documentId: v.documentId,
-      hls: v.hls,
-      published: v.published,
-      language: v.language
-        ? {
-            coreId: v.language.coreId,
-            slug: v.language.slug,
-            name: v.language.name,
-          }
-        : null,
-    }))
+  const variantsForLanguagePicker = useMemo(
+    () =>
+      (video.variants ?? [])
+        .filter((v): v is NonNullable<typeof v> => v != null)
+        .map((v) => ({
+          documentId: v.documentId,
+          hls: v.hls,
+          published: v.published,
+          language: v.language
+            ? {
+                coreId: v.language.coreId,
+                slug: v.language.slug,
+                name: v.language.name,
+              }
+            : null,
+        })),
+    [video.variants],
+  )
+
+  // Prefer the editorial cinematic still over `images[].url` — that raw
+  // `url` is a misshaped Cloudflare Images URL (missing variant path
+  // segment) and 400s. Mux's thumbnail API is the last-resort fallback;
+  // it's a frame from the video, not the curated poster. See
+  // `resolvePosterUrl` for the full priority chain.
+  const posterUrl = resolvePosterUrl(
+    video.images?.[0],
+    variant.muxVideo?.playbackId,
+  )
 
   const [modalState, setModalState] = useState<WatchModalState>("none")
 
@@ -115,6 +130,10 @@ export function WatchPageClient({
       <DownloadModal
         open={modalState === "download"}
         downloads={downloadsForModal}
+        videoTitle={video.title ?? null}
+        posterUrl={posterUrl}
+        durationSeconds={variant.duration ?? null}
+        languageName={variant.language?.name ?? null}
         onClose={closeModal}
       />
       <LanguagePickerModal
@@ -129,6 +148,10 @@ export function WatchPageClient({
         open={modalState === "share"}
         videoSlug={video.slug ?? ""}
         currentLanguageSlug={currentLanguageSlug}
+        videoTitle={video.title ?? null}
+        videoDescription={video.snippet ?? video.description ?? null}
+        posterUrl={posterUrl}
+        playbackId={variant.muxVideo?.playbackId ?? null}
         onClose={closeModal}
       />
       <AskYoursPanel open={modalState === "ask-yours"} onClose={closeModal} />

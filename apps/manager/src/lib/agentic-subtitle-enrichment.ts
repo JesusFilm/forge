@@ -1,8 +1,17 @@
 import { timingSafeEqual } from "node:crypto"
 import { env } from "@/config/env"
-import { mergeJobArtifacts, updateJob, updateStepStatus } from "@/lib/state"
+import {
+  getJob,
+  mergeArtifactEntries,
+  mergeJobArtifacts,
+  updateJob,
+  updateStepStatus,
+} from "@/lib/state"
 import type {
   JobArtifactManifest,
+  JobError,
+  JobRecord,
+  JobStatus,
   WorkflowStepName,
   StepStatus,
 } from "@/types/job"
@@ -156,6 +165,21 @@ export type AgenticSubtitleEventResult = {
 
 const acceptedEventKeys = new Set<string>()
 const lastSequenceByRunId = new Map<string, number>()
+const CALLBACK_STATE_ARTIFACT_KEY = "agenticSubtitleCallbackState"
+const MAX_PERSISTED_EVENT_IDS = 50
+
+type PersistedCallbackState = {
+  runId: string
+  lastAcceptedSequence: number
+  acceptedEventIds: string[]
+  lastEventId: string
+  lastEventType: AgenticSubtitleEvent["type"]
+  updatedAt: string
+  terminal?: {
+    type: "workflow_completed" | "workflow_failed"
+    at: string
+  }
+}
 
 function eventDedupKey(event: Pick<AgenticSubtitleEvent, "eventId">) {
   return event.eventId
@@ -203,29 +227,164 @@ export function parseAgenticSubtitleEvent(input: unknown) {
 async function mergeArtifactsIfPresent(
   jobId: string,
   artifacts: JobArtifactManifest | undefined,
+  callbackStateArtifacts?: JobArtifactManifest,
 ) {
-  if (!artifacts || Object.keys(artifacts).length === 0) {
+  const mergedArtifacts = mergeArtifactInputs(artifacts, callbackStateArtifacts)
+  if (Object.keys(mergedArtifacts).length === 0) {
     return
   }
 
-  await mergeJobArtifacts(jobId, artifacts)
+  await mergeJobArtifacts(jobId, mergedArtifacts)
 }
 
-async function mapWorkflowEvent(event: AgenticSubtitleEvent) {
+function mergeArtifactInputs(
+  left: JobArtifactManifest | undefined,
+  right: JobArtifactManifest | undefined,
+) {
+  return mergeArtifactEntries(left ?? {}, right ?? {})
+}
+
+function readPersistedCallbackState(
+  job: JobRecord,
+): PersistedCallbackState | null {
+  const entry = job.artifacts[CALLBACK_STATE_ARTIFACT_KEY]
+  if (entry?.kind !== "metadata") {
+    return null
+  }
+
+  const data = entry.data
+  if (
+    typeof data.runId !== "string" ||
+    typeof data.lastAcceptedSequence !== "number" ||
+    !Array.isArray(data.acceptedEventIds) ||
+    typeof data.lastEventId !== "string" ||
+    typeof data.lastEventType !== "string" ||
+    typeof data.updatedAt !== "string"
+  ) {
+    return null
+  }
+
+  const terminal = readPersistedTerminalState(data.terminal)
+
+  return {
+    runId: data.runId,
+    lastAcceptedSequence: data.lastAcceptedSequence,
+    acceptedEventIds: data.acceptedEventIds.filter(
+      (eventId): eventId is string => typeof eventId === "string",
+    ),
+    lastEventId: data.lastEventId,
+    lastEventType: data.lastEventType as AgenticSubtitleEvent["type"],
+    updatedAt: data.updatedAt,
+    ...(terminal ? { terminal } : {}),
+  }
+}
+
+function readPersistedTerminalState(
+  value: unknown,
+): PersistedCallbackState["terminal"] | undefined {
+  if (typeof value !== "object" || value == null) {
+    return undefined
+  }
+
+  const type = (value as { type?: unknown }).type
+  const at = (value as { at?: unknown }).at
+  if (
+    (type === "workflow_completed" || type === "workflow_failed") &&
+    typeof at === "string"
+  ) {
+    return { type, at }
+  }
+
+  return undefined
+}
+
+function buildCallbackStateArtifacts(
+  event: AgenticSubtitleEvent,
+  previousState: PersistedCallbackState | null,
+): JobArtifactManifest {
+  const acceptedEventIds = [
+    ...(previousState?.acceptedEventIds ?? []),
+    event.eventId,
+  ].slice(-MAX_PERSISTED_EVENT_IDS)
+  const terminal =
+    event.type === "workflow_completed" || event.type === "workflow_failed"
+      ? { type: event.type, at: getTerminalTimestamp(event) }
+      : previousState?.terminal
+
+  return {
+    [CALLBACK_STATE_ARTIFACT_KEY]: {
+      kind: "metadata",
+      data: {
+        runId: event.runId,
+        lastAcceptedSequence: event.sequence,
+        acceptedEventIds: Array.from(new Set(acceptedEventIds)),
+        lastEventId: event.eventId,
+        lastEventType: event.type,
+        updatedAt: getTerminalTimestamp(event),
+        ...(terminal ? { terminal } : {}),
+      },
+    },
+  }
+}
+
+function hasPersistedEvent(
+  state: PersistedCallbackState | null,
+  event: AgenticSubtitleEvent,
+): boolean {
+  return Boolean(
+    state?.runId === event.runId &&
+    (state.acceptedEventIds.includes(event.eventId) ||
+      event.sequence <= state.lastAcceptedSequence),
+  )
+}
+
+function isTerminalJobStatus(status: JobStatus): boolean {
+  return status === "completed" || status === "failed"
+}
+
+function isTerminalWorkflowEvent(event: AgenticSubtitleEvent): boolean {
+  return event.type === "workflow_completed" || event.type === "workflow_failed"
+}
+
+function workflowFailureError(
+  event: AgenticSubtitleEvent,
+  job: JobRecord,
+): JobError {
+  const error = "error" in event ? event.error : undefined
+  return {
+    step: job.currentStep ?? "translation",
+    message: getErrorMessage(error),
+    at: getTerminalTimestamp(event),
+    code: "agentic_workflow_failed",
+  }
+}
+
+async function mapWorkflowEvent(
+  event: AgenticSubtitleEvent,
+  job: JobRecord,
+  callbackStateArtifacts: JobArtifactManifest,
+) {
   if (event.type === "workflow_started") {
     await updateJob(event.jobId, {
       status: "running",
       startedAt: getTerminalTimestamp(event),
     })
-    await mergeArtifactsIfPresent(event.jobId, event.artifacts)
+    await mergeArtifactsIfPresent(
+      event.jobId,
+      event.artifacts,
+      callbackStateArtifacts,
+    )
     return
   }
 
   if (event.type === "workflow_completed") {
-    await mergeArtifactsIfPresent(event.jobId, event.artifacts)
     await updateJob(event.jobId, {
       status: "completed",
       completedAt: getTerminalTimestamp(event),
+      artifacts: mergeArtifactInputs(
+        job.artifacts,
+        mergeArtifactInputs(event.artifacts, callbackStateArtifacts),
+      ),
     })
     return
   }
@@ -234,8 +393,12 @@ async function mapWorkflowEvent(event: AgenticSubtitleEvent) {
     await updateJob(event.jobId, {
       status: "failed",
       completedAt: getTerminalTimestamp(event),
+      artifacts: mergeArtifactInputs(
+        job.artifacts,
+        mergeArtifactInputs(event.artifacts, callbackStateArtifacts),
+      ),
+      errors: [...job.errors, workflowFailureError(event, job)],
     })
-    await mergeArtifactsIfPresent(event.jobId, event.artifacts)
   }
 }
 
@@ -250,6 +413,7 @@ function stepStatusForEvent(
 
 async function mapStepEvent(
   event: Extract<AgenticSubtitleEvent, { step: WorkflowStepName }>,
+  callbackStateArtifacts: JobArtifactManifest,
 ) {
   const status = stepStatusForEvent(event.type)
   if (!status) return
@@ -261,12 +425,20 @@ async function mapStepEvent(
       status,
       getErrorMessage(event.error),
     )
-    await mergeArtifactsIfPresent(event.jobId, event.artifacts)
+    await mergeArtifactsIfPresent(
+      event.jobId,
+      event.artifacts,
+      callbackStateArtifacts,
+    )
     return
   }
 
   await updateStepStatus(event.jobId, event.step, status)
-  await mergeArtifactsIfPresent(event.jobId, event.artifacts)
+  await mergeArtifactsIfPresent(
+    event.jobId,
+    event.artifacts,
+    callbackStateArtifacts,
+  )
 }
 
 export async function ingestAgenticSubtitleEvent(
@@ -282,10 +454,29 @@ export async function ingestAgenticSubtitleEvent(
     return { ok: true, deduped: true }
   }
 
+  const job = await getJob(event.jobId)
+  if (!job) {
+    throw new Error(`Manager job ${event.jobId} was not found.`)
+  }
+
+  const persistedState = readPersistedCallbackState(job)
+  if (hasPersistedEvent(persistedState, event)) {
+    return { ok: true, deduped: true }
+  }
+
+  if (isTerminalJobStatus(job.status) && !isTerminalWorkflowEvent(event)) {
+    return { ok: true, deduped: true }
+  }
+
+  const callbackStateArtifacts = buildCallbackStateArtifacts(
+    event,
+    persistedState,
+  )
+
   if ("step" in event) {
-    await mapStepEvent(event)
+    await mapStepEvent(event, callbackStateArtifacts)
   } else {
-    await mapWorkflowEvent(event)
+    await mapWorkflowEvent(event, job, callbackStateArtifacts)
   }
 
   acceptedEventKeys.add(dedupKey)

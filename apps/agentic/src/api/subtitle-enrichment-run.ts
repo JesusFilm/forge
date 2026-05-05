@@ -6,7 +6,13 @@ import {
 
 export type LaunchSubtitleEnrichmentRunWorkflow = (
   input: StartSubtitleEnrichmentRunRequest,
+  context: SubtitleEnrichmentRunRuntimeContext | undefined,
 ) => Promise<StartSubtitleEnrichmentRunResponse>
+
+export type SubtitleEnrichmentRunRuntimeContext = {
+  mastra?: unknown
+  requestContext?: unknown
+}
 
 export type SubtitleEnrichmentRunHandlerDependencies = {
   serviceApiKey: string
@@ -17,7 +23,10 @@ export type SubtitleEnrichmentRunRoute = {
   path: "/forge/subtitle-enrichment-runs"
   method: "POST"
   requiresAuth: true
-  handler: (request: Request) => Promise<Response>
+  handler: (
+    request: Request,
+    context?: SubtitleEnrichmentRunRuntimeContext,
+  ) => Promise<Response>
 }
 
 type IdempotencyRecord = {
@@ -49,7 +58,10 @@ export function createSubtitleEnrichmentRunHandler({
 }: SubtitleEnrichmentRunHandlerDependencies) {
   const runsByIdempotencyKey = new Map<string, IdempotencyRecord>()
 
-  return async (request: Request): Promise<Response> => {
+  return async (
+    request: Request,
+    context?: SubtitleEnrichmentRunRuntimeContext,
+  ): Promise<Response> => {
     if (!isAuthorized(request, serviceApiKey)) {
       return jsonResponse(
         {
@@ -94,15 +106,17 @@ export function createSubtitleEnrichmentRunHandler({
       return jsonResponse(existing.result, responseStatus(existing.result))
     }
 
-    const result = await launchWorkflow(parsed.data).catch(() => ({
+    const result = await launchWorkflow(parsed.data, context).catch(() => ({
       ok: false as const,
       code: "mastra_runtime_error" as const,
       message: "Failed to start subtitle enrichment workflow.",
     }))
-    runsByIdempotencyKey.set(parsed.data.idempotencyKey, {
-      fingerprint,
-      result,
-    })
+    if (result.ok) {
+      runsByIdempotencyKey.set(parsed.data.idempotencyKey, {
+        fingerprint,
+        result,
+      })
+    }
 
     return jsonResponse(result, responseStatus(result))
   }

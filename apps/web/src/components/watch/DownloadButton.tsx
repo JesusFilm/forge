@@ -1,16 +1,18 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
+
 export function DownloadButton({ onClick }: { onClick: () => void }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="pill"
+      aria-label="Download"
       data-testid="watch-download-button"
       onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-full border border-stone-700 bg-stone-800 px-5 py-2.5 text-sm font-semibold text-stone-100 transition hover:bg-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
     >
       <DownloadIcon />
       <span>Download</span>
-    </button>
+    </Button>
   )
 }
 

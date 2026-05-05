@@ -261,6 +261,13 @@ vi.mocked(indexEditionScenes).mockRejectedValueOnce(
 
 ## Related
 
+- `docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md`
+  — operationalizes the no-`Promise.all` rule documented here. The 04/20
+  doc establishes the WHY (don't let one item kill the batch); the 05/05
+  doc specifies the HOW (concrete `pLimit + Promise.allSettled` shape,
+  env-var wiring, the `_internals`-spy testing pattern that genuinely
+  distinguishes `allSettled` from `Promise.all`). Read together when
+  adding bounded parallelism to any new per-target workflow.
 - `docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md` —
   R1 of admin migration playbook; first concrete application of these
   patterns in `apps/admin`.
