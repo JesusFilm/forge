@@ -386,7 +386,7 @@ export function StudioUserMenuPanel({
         role="menuitem"
         onClick={onClick}
         className={cn(
-          "group flex w-full cursor-pointer select-none items-center gap-3 rounded-xl border-0 bg-transparent px-2.5 py-2 text-left transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_5%,transparent)] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:bg-[color:color-mix(in_srgb,var(--ds-black)_9%,transparent)]",
+          "group flex min-h-[50px] w-full cursor-pointer select-none items-center gap-3 rounded-xl border-0 bg-transparent px-2.5 py-1.5 text-left transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_5%,transparent)] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:bg-[color:color-mix(in_srgb,var(--ds-black)_9%,transparent)]",
           isDanger &&
             "hover:bg-[color:color-mix(in_srgb,var(--ds-danger)_8%,transparent)] active:bg-[color:color-mix(in_srgb,var(--ds-danger)_12%,transparent)]",
         )}
@@ -400,16 +400,16 @@ export function StudioUserMenuPanel({
         >
           <Icon size={17} strokeWidth={2} aria-hidden="true" />
         </span>
-        <span className="grid min-w-0 flex-1 gap-0.5">
+        <span className="grid min-w-0 flex-1 content-center gap-0">
           <span
             className={cn(
-              "truncate text-sm font-semibold leading-tight text-[color:var(--ds-ink)]",
+              "truncate text-sm font-semibold leading-[1.08] text-[color:var(--ds-ink)]",
               isDanger && "text-[color:var(--ds-danger)]",
             )}
           >
             {label}
           </span>
-          <span className="truncate text-xs font-medium leading-tight text-[color:var(--ds-muted)]">
+          <span className="mt-0.5 truncate text-xs font-medium leading-[1.08] text-[color:var(--ds-muted)]">
             {description}
           </span>
         </span>
@@ -434,11 +434,11 @@ export function StudioUserMenuPanel({
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[color:color-mix(in_srgb,var(--ds-black)_7%,transparent)] text-[color:var(--ds-black)]">
             <UserRound size={24} strokeWidth={2} aria-hidden="true" />
           </span>
-          <div className="grid min-w-0 flex-1 gap-0.5">
-            <strong className="truncate text-base font-semibold leading-tight text-[color:var(--ds-ink)]">
+          <div className="grid min-w-0 flex-1 content-center gap-0">
+            <strong className="truncate text-base font-semibold leading-[1.08] text-[color:var(--ds-ink)]">
               {user.username}
             </strong>
-            <span className="truncate text-sm font-medium leading-tight text-[color:var(--ds-muted)]">
+            <span className="mt-0.5 truncate text-sm font-medium leading-[1.08] text-[color:var(--ds-muted)]">
               {user.email}
             </span>
           </div>
