@@ -57,7 +57,7 @@ const swatches = [
 const utilityRows = [
   "flex items-center justify-between gap-3",
   "grid grid-cols-1 gap-3 md:grid-cols-3",
-  "rounded-xl border border-border bg-card p-4",
+  "rounded-md border border-border bg-card p-4",
   "shadow-[0_8px_22px_rgba(8,8,8,0.05)]",
   "text-muted-foreground hover:text-foreground",
   "focus-visible:ring-4 focus-visible:ring-black/10",
@@ -145,7 +145,7 @@ export function DesignSystemKitchenSink() {
               <div className="flex items-center gap-3" key={label}>
                 <span
                   aria-hidden="true"
-                  className={`size-10 rounded-xl border border-border ${className}`}
+                  className={`size-10 rounded-md border border-border ${className}`}
                 />
                 <span className="min-w-0">
                   <strong className="block text-sm text-foreground">
@@ -235,7 +235,7 @@ export function DesignSystemKitchenSink() {
                 ["Blocked", AlertCircle, "text-[color:var(--ds-brand-red)]"],
               ].map(([label, Icon, className]) => (
                 <div
-                  className="flex items-center gap-3 rounded-xl border border-border bg-secondary p-3"
+                  className="flex items-center gap-3 rounded-md border border-border bg-secondary p-3"
                   key={label as string}
                 >
                   <Icon
@@ -272,7 +272,7 @@ export function DesignSystemKitchenSink() {
             <div className="grid gap-3 md:grid-cols-2">
               <label className="grid gap-2 text-sm font-medium text-foreground">
                 Language
-                <select className="h-10 rounded-[16px] border border-border bg-card px-4 text-[13px] text-foreground shadow-[0_1px_2px_rgba(8,8,8,0.04)] outline-none focus-visible:border-foreground focus-visible:ring-4 focus-visible:ring-black/12">
+                <select className="h-10 rounded-md border border-border bg-card px-4 text-[13px] text-foreground shadow-[0_1px_2px_rgba(8,8,8,0.04)] outline-none focus-visible:border-foreground focus-visible:ring-4 focus-visible:ring-black/12">
                   <option>English</option>
                   <option>Spanish</option>
                   <option>Arabic</option>
@@ -287,7 +287,7 @@ export function DesignSystemKitchenSink() {
             <label className="grid gap-2 text-sm font-medium text-foreground">
               Notes
               <textarea
-                className="min-h-24 rounded-[16px] border border-border bg-white px-4 py-3 text-[13px] text-foreground shadow-[0_1px_2px_rgba(8,8,8,0.04)] outline-none placeholder:text-muted-foreground/70 focus-visible:border-foreground focus-visible:ring-4 focus-visible:ring-black/12"
+                className="min-h-24 rounded-md border border-border bg-white px-4 py-3 text-[13px] text-foreground shadow-[0_1px_2px_rgba(8,8,8,0.04)] outline-none placeholder:text-muted-foreground/70 focus-visible:border-foreground focus-visible:ring-4 focus-visible:ring-black/12"
                 defaultValue="Inspect subtitles, metadata, and audio artifacts before approval."
               />
             </label>
@@ -331,7 +331,7 @@ export function DesignSystemKitchenSink() {
             </SegmentedControl>
 
             <button
-              className="flex w-full items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 text-left text-sm font-medium text-foreground shadow-[0_1px_2px_rgba(8,8,8,0.05)]"
+              className="flex w-full items-center justify-between rounded-md border border-border bg-card px-4 py-3 text-left text-sm font-medium text-foreground shadow-[0_1px_2px_rgba(8,8,8,0.05)]"
               type="button"
             >
               Report selector
@@ -367,7 +367,7 @@ export function DesignSystemKitchenSink() {
               </StepperNav>
               <StepperPanel>
                 <StepperContent value={2}>
-                  <div className="rounded-xl border border-border bg-secondary p-3 text-sm text-foreground">
+                  <div className="rounded-md border border-border bg-secondary p-3 text-sm text-foreground">
                     Review panel content with active step state.
                   </div>
                 </StepperContent>
@@ -388,7 +388,7 @@ export function DesignSystemKitchenSink() {
             </p>
           </CardHeader>
           <CardContent>
-            <div className="overflow-hidden rounded-2xl border border-border">
+            <div className="overflow-hidden rounded-md border border-border">
               <table className="w-full border-collapse text-left text-sm">
                 <thead className="bg-secondary text-xs uppercase tracking-[0.08em] text-muted-foreground">
                   <tr>
@@ -445,13 +445,13 @@ export function DesignSystemKitchenSink() {
             </p>
           </CardHeader>
           <CardContent className="grid gap-3">
-            <div className="rounded-2xl border border-border bg-secondary p-4">
+            <div className="rounded-md border border-border bg-secondary p-4">
               <p className="font-medium text-foreground">No jobs selected</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Select rows to enable enrichment actions.
               </p>
             </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
+            <div className="flex items-center gap-3 rounded-md border border-border bg-card p-4">
               <LoaderCircle
                 aria-hidden="true"
                 className="animate-spin text-muted-foreground"
@@ -461,7 +461,7 @@ export function DesignSystemKitchenSink() {
                 Loading coverage snapshot
               </span>
             </div>
-            <div className="rounded-2xl border border-[color:rgba(239,51,64,0.24)] bg-[color:rgba(239,51,64,0.08)] p-4">
+            <div className="rounded-md border border-[color:rgba(239,51,64,0.24)] bg-[color:rgba(239,51,64,0.08)] p-4">
               <p className="font-medium text-[color:var(--ds-brand-red)]">
                 Publish blocked
               </p>
@@ -486,7 +486,7 @@ export function DesignSystemKitchenSink() {
           <CardContent className="grid gap-2">
             {utilityRows.map((utility) => (
               <code
-                className="block rounded-xl border border-border bg-secondary px-3 py-2 text-xs text-muted-foreground"
+                className="block rounded-md border border-border bg-secondary px-3 py-2 text-xs text-muted-foreground"
                 key={utility}
               >
                 {utility}
@@ -506,7 +506,7 @@ export function DesignSystemKitchenSink() {
             </p>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 rounded-2xl border border-dashed border-border bg-background p-4">
+            <div className="grid gap-3 rounded-md border border-dashed border-border bg-background p-4">
               <h1>Raw heading one</h1>
               <h2>Raw heading two</h2>
               <p>
@@ -527,7 +527,7 @@ export function DesignSystemKitchenSink() {
         </Card>
       </section>
 
-      <section className="rounded-3xl border border-border bg-black p-5 text-white shadow-[0_18px_60px_rgba(8,8,8,0.16)]">
+      <section className="rounded-md border border-border bg-black p-5 text-white shadow-[0_18px_60px_rgba(8,8,8,0.16)]">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-medium text-white/60">Dark surface</p>

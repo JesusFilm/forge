@@ -20,9 +20,9 @@
   --radius-sm: var(--ds-radius-sm);
   --radius-md: var(--ds-radius);
   --radius-lg: var(--ds-radius);
-  --radius-xl: 18px;
-  --radius-2xl: 24px;
-  --radius-3xl: 32px;
+  --radius-xl: var(--ds-radius);
+  --radius-2xl: var(--ds-radius);
+  --radius-3xl: var(--ds-radius);
 }
 
 :root {
@@ -48,8 +48,8 @@
   --ds-brand-red: #ef3340;
   --ds-success: #1db954;
   --ds-danger: #ef3340;
-  --ds-radius: 10px;
-  --ds-radius-sm: 8px;
+  --ds-radius: 16px;
+  --ds-radius-sm: 12px;
 }
 
 * {
@@ -6709,8 +6709,8 @@ body.jobs-standalone main:has(.design-system-eleven) {
   --ds-brand-red: #ef3340;
   --ds-success: #1db954;
   --ds-danger: #ef3340;
-  --ds-radius: 10px;
-  --ds-radius-sm: 8px;
+  --ds-radius: 16px;
+  --ds-radius-sm: 12px;
   display: grid;
   gap: 24px;
   min-height: 100vh;
