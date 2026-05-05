@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json",
-  "name": "Claude Code Sandbox",
+  "name": "Forge",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
   "features": {
@@ -9,7 +9,7 @@
   "updateRemoteUserUID": true,
   "customizations": {
     "vscode": {
-      "extensions": ["anthropic.claude-code"],
+      "extensions": ["anthropic.claude-code", "openai.chatgpt"],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",
         "terminal.integrated.profiles.linux": {
