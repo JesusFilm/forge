@@ -400,16 +400,16 @@ export function StudioUserMenuPanel({
         >
           <Icon size={17} strokeWidth={2} aria-hidden="true" />
         </span>
-        <span className="grid min-w-0 flex-1 content-center gap-0">
+        <span className="flex min-w-0 flex-1 flex-col justify-center gap-px">
           <span
             className={cn(
-              "truncate text-sm font-semibold leading-[1.08] text-[color:var(--ds-ink)]",
+              "truncate text-sm font-semibold leading-[1.05] text-[color:var(--ds-ink)]",
               isDanger && "text-[color:var(--ds-danger)]",
             )}
           >
             {label}
           </span>
-          <span className="mt-0.5 truncate text-xs font-medium leading-[1.08] text-[color:var(--ds-muted)]">
+          <span className="truncate text-xs font-medium leading-[1.05] text-[color:var(--ds-muted)]">
             {description}
           </span>
         </span>
@@ -434,11 +434,11 @@ export function StudioUserMenuPanel({
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[color:color-mix(in_srgb,var(--ds-black)_7%,transparent)] text-[color:var(--ds-black)]">
             <UserRound size={24} strokeWidth={2} aria-hidden="true" />
           </span>
-          <div className="grid min-w-0 flex-1 content-center gap-0">
-            <strong className="truncate text-base font-semibold leading-[1.08] text-[color:var(--ds-ink)]">
+          <div className="flex min-w-0 flex-1 flex-col justify-center gap-px">
+            <strong className="truncate text-base font-semibold leading-[1.05] text-[color:var(--ds-ink)]">
               {user.username}
             </strong>
-            <span className="mt-0.5 truncate text-sm font-medium leading-[1.08] text-[color:var(--ds-muted)]">
+            <span className="truncate text-sm font-medium leading-[1.05] text-[color:var(--ds-muted)]">
               {user.email}
             </span>
           </div>
