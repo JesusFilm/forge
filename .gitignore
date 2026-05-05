@@ -40,3 +40,6 @@ todos/*.md
 output/
 forge.code-workspace
 .worktrees
+
+# Local devcontainer scratch (e.g., bind-mounted pgdata)
+.tmp/
