@@ -50,7 +50,7 @@ Surfaced in PR #882 (Stage 1 of the embed-backfill performance plan, `feat-115`)
 
 ## What Didn't Work
 
-- **Wrapping `readSceneAnalysisArtifact(...)` in a `"use step"` boundary** so the workflow runtime would memoize the result. The artifact is ~250 KB JSON; persisting that as a step result on every group means writing ~250 KB to durable storage per group, which is disproportionate for an idempotent S3 GET. Replay cost > re-fetch cost for this artifact size.
+- **A plain (non-step) per-group worker function calling the artifact reader directly.** The original Stage 2 design had `processGroup` as a plain async function called from workflow scope, with the S3 read inline. The aim was to avoid journaling the ~250 KB artifact JSON per group as a step result. **The useworkflow build plugin (`workflow-node-module-error`) rejects this shape**: any module reachable from workflow scope via plain (non-step) function calls is treated as workflow scope, and `s3.ts` imports `node:fs/promises` + `node:path` for its local-fallback path. The plugin error explicitly says "Move this function into a step function." A separate `_steps/load-manager-artifact.ts` module wrapping the readers in `"use step"` did NOT satisfy the plugin either — `processGroup` itself transitively reached `s3.ts` through `_internals.stepIndexEditionLocale → indexEditionScenes → readSceneAnalysisArtifact`, and the plugin treated that whole chain as workflow scope. The fix is to make `processGroup` itself a `"use step"`. Trade-off accepted: the per-group `BackfillOutcome[]` AND the loaded artifact get journaled, costing ~280 KB per group of journal storage. Across a 6,000-group full backfill that's ~1.7 GB extra — acceptable for the wall-time + cost wins.
 - **Caching the artifact in module scope keyed by `cmsVideoId`.** Breaks isolation between concurrent backfills and leaks across replays — a replayed worker would see stale data from a sibling run. Also unsafe in environments where multiple workflows run in the same process.
 - **An LRU at the storage layer (`s3.ts::getObject`).** Cross-request bleed risk; cache-eviction tuning surface; lifetime decoupled from the workflow that owns the data. Rejected in plan §Key Technical Decisions.
 - **Per-child `Promise.allSettled` with the artifact fetched in parallel.** Same N S3 reads, same rate-limit pressure — concurrent rather than serial. Doesn't address the actual cost.
@@ -94,21 +94,23 @@ function groupTargetsByVideoEdition(
 }
 ```
 
-### 2. Per-group worker loads the artifact ONCE
+### 2. Per-group worker is itself a `"use step"`
 
 ```ts
 async function processGroup(group: BackfillGroup): Promise<BackfillOutcome[]> {
+  "use step"
   const groupStartedAt = Date.now()
 
-  // useworkflow replay note: this S3 read is NOT inside a `"use step"`
-  // boundary, so a worker restart mid-group re-fetches the artifact on
-  // resume. Trade-off was deliberate — wrapping it in a step would
-  // persist the ~250 KB artifact JSON to durable storage on every
-  // group, which is disproportionate for an idempotent S3 GET. The
-  // per-locale step boundary downstream is what carries replay durability.
+  // The artifact load + per-child fan-out are journaled by useworkflow
+  // as part of this step's input/result graph. Required by the build
+  // plugin: any code reachable from workflow scope via plain
+  // (non-step) functions is treated as workflow scope, and `s3.ts`
+  // imports Node-only modules (`node:fs/promises`, `node:path`) for
+  // its local-fallback path which are forbidden there. Making
+  // `processGroup` a `"use step"` cleanly demarcates scope.
   let loadedArtifact: SceneAnalysisResult
   try {
-    loadedArtifact = await readSceneAnalysisArtifact(String(group.cmsVideoId))
+    loadedArtifact = await stepLoadSceneAnalysisArtifact(group.cmsVideoId)
   } catch (error) {
     // Group-level cascade — see §4 below.
     return cascadeLoadFailureToChildren(group, error, groupStartedAt)
@@ -129,6 +131,20 @@ async function processGroup(group: BackfillGroup): Promise<BackfillOutcome[]> {
   return outcomes
 }
 ```
+
+The `stepLoadSceneAnalysisArtifact` wrapper lives in a separate `_steps/load-manager-artifact.ts` module so the workflow file doesn't directly import the underlying `readSceneAnalysisArtifact` reader. This is belt-and-suspenders against the build plugin's import-graph reachability check — by the time we made `processGroup` a step, the separate-file move was redundant for the build, but it keeps the workflow module's import surface clean and documents the constraint inline:
+
+```ts
+// apps/admin/src/workflows/_steps/load-manager-artifact.ts
+export async function stepLoadSceneAnalysisArtifact(
+  cmsVideoId: number,
+): Promise<SceneAnalysisResult> {
+  "use step"
+  return readSceneAnalysisArtifact(String(cmsVideoId))
+}
+```
+
+**Replay durability note:** because `processGroup` is now a step, the loaded artifact AND the per-child outcomes get journaled as the step's input/result graph (~280 KB per group). On worker restart mid-backfill, completed groups replay from the journal; only incomplete groups re-execute. Operators monitoring useworkflow journal storage should expect ~1.7 GB per full 6,000-group backfill — small relative to the wall-time + cost wins, but worth knowing.
 
 ### 3. Service-side parameter widening
 
@@ -261,14 +277,14 @@ Unit tests that lock in the contract (per workflow):
 1. **Identify the artifact's identity axis.** If it's `(parent)` and you're paying per-child to fetch it, you have this problem. If it's `(parent, child)`, this pattern doesn't apply — keep the per-child fetch.
 2. **Add the load-once parameter to the service input as `loadedArtifact?: T`** — first-class, not test-only. Document that callers passing it short-circuit the fetch. Keep the fetch fallback so legacy/ad-hoc callers still work.
 3. **Group flat targets at the workflow boundary with a pure function.** Type the result as `Omit<Target, "child"> & { targets: readonly Target[] }` so a future field added to `Target` surfaces as a compile error in the grouper via `satisfies`.
-4. **Do NOT wrap the artifact load in `"use step"` if the artifact is large** (rule of thumb: > 50 KB). Pay the re-fetch on replay rather than persisting bulk JSON to durable storage. The per-child step downstream carries replay durability.
+4. **Make the per-group worker function itself a `"use step"`.** The useworkflow build plugin treats any module reachable from workflow scope via plain (non-step) functions as workflow scope; if your storage layer imports Node-only modules (`node:fs`, `node:path`, etc.), the plugin will reject the build. The `"use step"` directive on the worker function cleanly demarcates scope so the storage layer's Node imports are seen as step-runtime (where Node modules are allowed). Side-effect: the worker's input/result graph (artifact + outcomes) gets journaled per group. For a ~250 KB artifact + ~30 KB outcomes per group × 6,000 groups, that's ~1.7 GB of journal storage per full backfill. Acceptable for the wall-time wins; document it in the worker's JSDoc so a future agent doesn't naively un-step it.
 5. **Run children sequentially inside the group.** This caps memory to one artifact + one child's working set per active group. Concurrent groups are the unit of parallelism, not concurrent children of the same group.
 6. **Move the pLimit boundary up to GROUPS, not children.** Update the concurrency doc/comment so an operator inspecting env vars knows the unit changed. Add a `groupCount` field to the workflow's `event=start` log so an operator inspecting trigger logs can see the artifact-fetch fan-in independently of total target count.
 7. **Cascade group-level load failures to per-child outcomes with classification preserved.** Branch on the typed error class (`error instanceof ManagerArtifactError && error.code === "artifact_missing"`), not on message regex. The report's succeeded/skipped/failed triple must stay meaningful.
 8. **Add a "single S3 read per group" test** that mocks the storage call, runs a multi-child group, and asserts call count = 1.
 9. **Add a "multi-child-per-group concurrency-cap" test variant.** Two groups × 3+ children each at concurrency=2 — `observedMaxInFlight === N` (exact equality) must hold. A regression that fans out per-child work in parallel inside `processGroup` would jump to 6, failing the test.
 10. **Add a group-level cascade test** that forces `readArtifact` to throw, asserts L cascaded outcomes, identical `durationMs` per group, and the right classification.
-11. **Add a code comment in `processGroup` explaining the "NOT a use step" choice.** Future readers must understand the replay trade-off; without the comment, a well-meaning agent will "fix" it.
+11. **Add a code comment in the per-group worker explaining WHY it's a `"use step"`.** The plugin constraint is non-obvious from reading the function body alone — without the comment, a future agent looking to reduce journal storage will naively un-step it and break the build. Reference the build plugin's error class (`workflow-node-module-error`) so the comment is grep-able when CI breaks.
 
 ## Cross-references
 

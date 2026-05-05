@@ -606,6 +606,14 @@ scale.
   (1536 floats × ~30 scenes × 8 bytes) + ~10 KB sourceTexts ≈ ~630 KB.
   At default concurrency=5 that's ~3 MB peak resident across in-flight
   groups; released as soon as the per-locale transaction completes.
+  **useworkflow journal cost:** the `processGroup` worker is itself a
+  `"use step"` (required by the build plugin —
+  `workflow-node-module-error` rejects `s3.ts`'s Node-only imports
+  reachable from workflow scope). The artifact + per-locale outcomes
+  get journaled per group: ~280 KB × ~6,000 groups ≈ ~1.7 GB extra
+  journal storage per full backfill. Acceptable for the wall-time +
+  cost wins; operators monitoring useworkflow journal storage should
+  expect this growth.
 - **Batched OpenRouter (Stage 2 — feat-116):** `indexEditionScenes`
   issues ONE `generateExperienceEmbeddings(scenes.map(s => s.description))`
   call per `(video, locale)` target instead of one call per scene.
@@ -733,7 +741,11 @@ Promise.allSettled` — never bare `Promise.all`. Per-language work
   already inside the artifact (R2 doesn't generate a parallel
   embeddings array — vectors are reused from the artifact). At default
   concurrency=5 that's ~1.25 MB peak resident; released after the
-  per-language transaction completes.
+  per-language transaction completes. **useworkflow journal cost:**
+  same as R1 — the `processGroup` worker is a `"use step"` for the
+  build plugin's sake; artifact + per-language outcomes journaled per
+  group (~250 KB × ~6,000 groups ≈ ~1.5 GB extra journal storage per
+  full backfill).
 - **No batched provider call for R2.** R2 reuses vectors verbatim
   from the artifact (the whole point of the R2 vs R1 divergence) — so
   Stage 2's batched OpenRouter change applies to R1 only. R2 only
