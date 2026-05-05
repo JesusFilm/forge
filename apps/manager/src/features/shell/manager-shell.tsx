@@ -20,6 +20,7 @@ import {
   BarChart2,
   Bell,
   Bot,
+  Building2,
   Captions,
   ChevronDown,
   ChevronRight,
@@ -35,6 +36,7 @@ import {
   UserRound,
 } from "lucide-react"
 import { apiFetch } from "@/lib/api-fetch"
+import { cn } from "@/lib/utils"
 
 export type ManagerShellUser = {
   username: string
@@ -42,18 +44,25 @@ export type ManagerShellUser = {
 }
 
 export type ManagerShellReportType = "subtitles" | "audio" | "meta"
-export type ManagerShellMode = "explore" | "select"
 
 type ManagerShellContextValue = {
-  mode: ManagerShellMode
   reportType: ManagerShellReportType
   setHeaderContent: (content: ReactNode | null) => void
   setSidebarContent: (content: ReactNode | null) => void
-  setMode: (mode: ManagerShellMode) => void
   setReportType: (reportType: ManagerShellReportType) => void
 }
 
-const MODE_STORAGE_KEY = "forge-coverage-mode"
+type UserMenuRow = {
+  description: string
+  icon: LucideIcon
+  label: string
+  tone?: "danger"
+  onClick?: () => void
+}
+
+const TOPBAR_ICON_BUTTON_CLASS =
+  "inline-flex h-[54px] min-h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[var(--ds-radius)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] p-0 text-[color:var(--ds-muted)] shadow-none transition-[background-color,border-color,box-shadow,transform,color] duration-150 hover:border-[color:var(--ds-line-strong)] hover:bg-[color:var(--ds-hover)] hover:text-[color:var(--ds-ink)] hover:shadow-[0_8px_18px_rgba(17,17,17,0.08)] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:translate-y-px active:border-[color:var(--ds-line-strong)] active:bg-[color:color-mix(in_srgb,var(--ds-black)_8%,var(--ds-panel))]"
+
 const REPORT_STORAGE_KEY = "forge-coverage-report"
 
 const ManagerShellContext = createContext<ManagerShellContextValue | null>(null)
@@ -109,23 +118,6 @@ const navItems: Array<{
     icon: Bot,
   },
 ]
-
-function readStoredMode(): ManagerShellMode {
-  if (typeof window === "undefined") {
-    return "explore"
-  }
-
-  try {
-    const stored = window.sessionStorage.getItem(MODE_STORAGE_KEY)
-    if (stored === "explore" || stored === "select") {
-      return stored
-    }
-  } catch {
-    // ignore storage errors
-  }
-
-  return "explore"
-}
 
 function readStoredReportType(): ManagerShellReportType {
   if (typeof window === "undefined") {
@@ -313,72 +305,175 @@ function StudioUserMenu({ user }: { user: ManagerShellUser }) {
   }, [router])
 
   return (
-    <div
-      className={`design-system-user-menu${menuOpen ? " is-open" : ""}`}
-      ref={menuRef}
-    >
+    <div className="relative h-[54px] min-h-[54px]" ref={menuRef}>
       <button
         type="button"
-        className="design-system-user-trigger"
+        className={cn(
+          TOPBAR_ICON_BUTTON_CLASS,
+          menuOpen &&
+            "border-[color:var(--ds-black)] text-[color:var(--ds-black)] ring-[0.5px] ring-[color:var(--ds-black)]",
+        )}
         aria-label="Open user menu"
         aria-expanded={menuOpen}
+        aria-haspopup="menu"
         onClick={() => setMenuOpen((open) => !open)}
       >
-        <span className="design-system-user-trigger-avatar">
-          <UserRound size={16} aria-hidden="true" />
-        </span>
+        <UserRound size={17} aria-hidden="true" />
       </button>
 
       {menuOpen ? (
-        <div className="design-system-user-menu-panel">
-          <section className="design-system-user-menu-card">
-            <div className="design-system-user-menu-balance">
-              <div>
-                <strong>{user.username}</strong>
-                <span>{user.email}</span>
-              </div>
-              <button className="design-system-button is-primary" type="button">
-                Workspace
-              </button>
-            </div>
-          </section>
-
-          <div className="design-system-user-menu-group">
-            <button type="button">
-              <Settings2 size={16} aria-hidden="true" />
-              Workspace settings
-            </button>
-            <button type="button">
-              <KeyRound size={16} aria-hidden="true" />
-              Manager API keys
-            </button>
-            <button type="button">
-              <ShieldCheck size={16} aria-hidden="true" />
-              Access and permissions
-            </button>
-          </div>
-
-          <div className="design-system-user-menu-group">
-            <button type="button">
-              <FileJson2 size={16} aria-hidden="true" />
-              Docs and resources
-              <ChevronRight size={16} aria-hidden="true" />
-            </button>
-            <button type="button">
-              <ExternalLink size={16} aria-hidden="true" />
-              Terms and privacy
-              <ChevronRight size={16} aria-hidden="true" />
-            </button>
-          </div>
-
-          <div className="design-system-user-menu-group">
-            <button type="button" onClick={handleLogout}>
-              <LogOut size={16} aria-hidden="true" />
-              Sign out
-            </button>
-          </div>
-        </div>
+        <StudioUserMenuPanel user={user} onLogout={handleLogout} />
       ) : null}
+    </div>
+  )
+}
+
+export function StudioUserMenuPanel({
+  onLogout,
+  user,
+}: {
+  onLogout: () => void
+  user: ManagerShellUser
+}) {
+  const userMenuRows: UserMenuRow[] = [
+    {
+      label: "Workspace settings",
+      description: "Manage workspace preferences",
+      icon: Settings2,
+    },
+    {
+      label: "Manager API keys",
+      description: "View and manage API keys",
+      icon: KeyRound,
+    },
+    {
+      label: "Access and permissions",
+      description: "Manage access for your workspace",
+      icon: ShieldCheck,
+    },
+    {
+      label: "Docs and resources",
+      description: "Guides, references and help",
+      icon: FileJson2,
+    },
+    {
+      label: "Terms and privacy",
+      description: "View terms of service and privacy policy",
+      icon: ExternalLink,
+    },
+    {
+      label: "Sign out",
+      description: "Sign out of your account",
+      icon: LogOut,
+      tone: "danger",
+      onClick: onLogout,
+    },
+  ]
+
+  const renderMenuRow = ({
+    description,
+    icon: Icon,
+    label,
+    onClick,
+    tone,
+  }: UserMenuRow) => {
+    const isDanger = tone === "danger"
+
+    return (
+      <button
+        key={label}
+        type="button"
+        role="menuitem"
+        onClick={onClick}
+        className={cn(
+          "group flex w-full cursor-pointer select-none items-center gap-4 rounded-xl border-0 bg-transparent px-3 py-3 text-left transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_5%,transparent)] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:bg-[color:color-mix(in_srgb,var(--ds-black)_9%,transparent)]",
+          isDanger &&
+            "hover:bg-[color:color-mix(in_srgb,var(--ds-danger)_8%,transparent)] active:bg-[color:color-mix(in_srgb,var(--ds-danger)_12%,transparent)]",
+        )}
+      >
+        <span
+          className={cn(
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:color-mix(in_srgb,var(--ds-black)_5%,transparent)] text-[color:var(--ds-ink)] transition-colors duration-75 group-hover:bg-[color:color-mix(in_srgb,var(--ds-black)_8%,transparent)]",
+            isDanger &&
+              "bg-[color:color-mix(in_srgb,var(--ds-danger)_9%,transparent)] text-[color:var(--ds-danger)] group-hover:bg-[color:color-mix(in_srgb,var(--ds-danger)_13%,transparent)]",
+          )}
+        >
+          <Icon size={20} strokeWidth={2} aria-hidden="true" />
+        </span>
+        <span className="grid min-w-0 flex-1 gap-0.5">
+          <span
+            className={cn(
+              "truncate text-base font-semibold leading-tight text-[color:var(--ds-ink)]",
+              isDanger && "text-[color:var(--ds-danger)]",
+            )}
+          >
+            {label}
+          </span>
+          <span className="truncate text-sm font-medium leading-tight text-[color:var(--ds-muted)]">
+            {description}
+          </span>
+        </span>
+        {!isDanger ? (
+          <ChevronRight
+            className="h-5 w-5 shrink-0 text-[color:var(--ds-muted)] transition-transform duration-75 group-hover:translate-x-0.5 group-hover:text-[color:var(--ds-ink)]"
+            aria-hidden="true"
+          />
+        ) : null}
+      </button>
+    )
+  }
+
+  return (
+    <div
+      className="absolute right-0 top-[calc(100%+18px)] z-[70] w-[min(35rem,calc(100vw-2rem))] overflow-hidden rounded-[calc(var(--ds-radius)+18px)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] p-5 shadow-[0_24px_70px_rgba(17,17,17,0.16)] animate-in fade-in-0 zoom-in-95 duration-150"
+      role="menu"
+      aria-label="User menu"
+    >
+      <section className="rounded-[calc(var(--ds-radius)+10px)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] p-5 shadow-[0_8px_24px_rgba(17,17,17,0.04)]">
+        <div className="flex items-center gap-4">
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[color:color-mix(in_srgb,var(--ds-black)_7%,transparent)] text-[color:var(--ds-black)]">
+            <UserRound size={32} strokeWidth={2} aria-hidden="true" />
+          </span>
+          <div className="grid min-w-0 flex-1 gap-1">
+            <strong className="truncate text-xl font-semibold leading-tight text-[color:var(--ds-ink)]">
+              {user.username}
+            </strong>
+            <span className="truncate text-base font-medium leading-tight text-[color:var(--ds-muted)]">
+              {user.email}
+            </span>
+          </div>
+          <button
+            type="button"
+            role="menuitem"
+            className="inline-flex h-12 shrink-0 cursor-pointer select-none items-center gap-2 rounded-xl border border-[color:var(--ds-black)] bg-[color:var(--ds-black)] px-5 text-base font-semibold text-white shadow-[0_10px_24px_rgba(17,17,17,0.18)] transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_88%,white)] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:translate-y-px"
+          >
+            <Building2 size={20} strokeWidth={2} aria-hidden="true" />
+            Workspace
+          </button>
+        </div>
+      </section>
+
+      <div className="px-3 pb-1 pt-6 text-sm font-semibold uppercase tracking-[0.08em] text-[color:var(--ds-muted)]">
+        Workspace
+      </div>
+      <div className="grid gap-1">
+        {userMenuRows.slice(0, 3).map(renderMenuRow)}
+      </div>
+
+      <div className="my-4 h-px bg-[color:var(--ds-line)]" />
+
+      <div className="px-3 pb-1 text-sm font-semibold uppercase tracking-[0.08em] text-[color:var(--ds-muted)]">
+        Resources
+      </div>
+      <div className="grid gap-1">
+        {userMenuRows.slice(3, 5).map(renderMenuRow)}
+      </div>
+
+      <div className="my-4 h-px bg-[color:var(--ds-line)]" />
+
+      <div className="grid gap-1">
+        {userMenuRows.slice(5).map(renderMenuRow)}
+      </div>
     </div>
   )
 }
@@ -446,28 +541,11 @@ export function ManagerDashboardShell({
   const toggleId = useId()
   const [headerContent, setHeaderContent] = useState<ReactNode | null>(null)
   const [sidebarContent, setSidebarContent] = useState<ReactNode | null>(null)
-  const [mode, setModeState] = useState<ManagerShellMode>(() =>
-    readStoredMode(),
-  )
   const [reportType, setReportTypeState] = useState<ManagerShellReportType>(
     () => readStoredReportType(),
   )
   const [queueCount, setQueueCount] = useState<number | null>(null)
   const breadcrumbs = useMemo(() => getBreadcrumbs(pathname), [pathname])
-
-  const setMode = useCallback((nextMode: ManagerShellMode) => {
-    setModeState(nextMode)
-
-    if (typeof window === "undefined") {
-      return
-    }
-
-    try {
-      window.sessionStorage.setItem(MODE_STORAGE_KEY, nextMode)
-    } catch {
-      // ignore storage errors
-    }
-  }, [])
 
   const setReportType = useCallback(
     (nextReportType: ManagerShellReportType) => {
@@ -521,14 +599,12 @@ export function ManagerDashboardShell({
 
   const contextValue = useMemo<ManagerShellContextValue>(
     () => ({
-      mode,
       reportType,
       setHeaderContent,
       setSidebarContent,
-      setMode,
       setReportType,
     }),
-    [mode, reportType, setMode, setReportType],
+    [reportType, setReportType],
   )
 
   return (
@@ -627,28 +703,11 @@ export function ManagerDashboardShell({
               </div>
 
               <div className="design-system-topbar-actions">
-                <div
-                  className="design-system-segmented design-system-topbar-switch"
-                  role="tablist"
-                  aria-label="Workspace mode"
+                <button
+                  type="button"
+                  className={TOPBAR_ICON_BUTTON_CLASS}
+                  aria-label="Notifications"
                 >
-                  <button
-                    type="button"
-                    className={mode === "explore" ? "is-active" : undefined}
-                    onClick={() => setMode("explore")}
-                  >
-                    Explore
-                  </button>
-                  <button
-                    type="button"
-                    className={mode === "select" ? "is-active" : undefined}
-                    onClick={() => setMode("select")}
-                  >
-                    Select
-                  </button>
-                </div>
-
-                <button type="button" aria-label="Notifications">
                   <Bell size={17} aria-hidden="true" />
                 </button>
 

@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { RefreshCw } from "lucide-react"
 import { formatStepName } from "@/lib/workflow-steps"
 import type { JobRecord } from "@/types/job"
@@ -26,6 +26,7 @@ import {
   getNextPollDelayMs,
   shouldApplyPollResult,
 } from "./live-jobs-polling"
+import { buildJobDetailHref } from "./job-detail-href"
 
 const MAX_VISIBLE_LANGUAGE_BADGES = 6
 
@@ -55,9 +56,10 @@ export function LiveJobsTable({
   initialJobs,
   languageLabelsById,
 }: LiveJobsTableProps) {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [jobs, setJobs] = useState(initialJobs)
-  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isManualRefreshPending, setIsManualRefreshPending] = useState(false)
   const [isPollingError, setIsPollingError] = useState(false)
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
 
@@ -90,6 +92,25 @@ export function LiveJobsTable({
     return `?languageId=${encodeURIComponent(normalizedLanguageIds.join(","))}`
   }, [searchParams])
 
+  const buildJobHref = useCallback(
+    (jobId: string) => buildJobDetailHref(jobId, jobsDetailQuerySuffix),
+    [jobsDetailQuerySuffix],
+  )
+
+  const prefetchJobHref = useCallback(
+    (jobId: string) => {
+      router.prefetch(buildJobHref(jobId))
+    },
+    [buildJobHref, router],
+  )
+
+  const navigateToJobHref = useCallback(
+    (jobId: string) => {
+      router.push(buildJobHref(jobId))
+    },
+    [buildJobHref, router],
+  )
+
   useEffect(() => {
     let cancelled = false
 
@@ -114,7 +135,6 @@ export function LiveJobsTable({
 
     const runPoll = async ({ scheduleNext }: RunPollOptions) => {
       const responseSeq = ++requestSeqRef.current
-      setIsRefreshing(true)
       activeControllerRef.current?.abort()
       const controller = new AbortController()
       activeControllerRef.current = controller
@@ -150,9 +170,6 @@ export function LiveJobsTable({
           setIsPollingError(true)
         }
       } finally {
-        if (responseSeq === requestSeqRef.current) {
-          setIsRefreshing(false)
-        }
         if (scheduleNext && !cancelled) {
           scheduleNextPoll()
         }
@@ -173,21 +190,24 @@ export function LiveJobsTable({
   const handleRefreshNow = useCallback(() => {
     const runPoll = runPollRef.current
     if (!runPoll) return
-    void runPoll({ scheduleNext: false })
+    setIsManualRefreshPending(true)
+    void runPoll({ scheduleNext: false }).finally(() => {
+      setIsManualRefreshPending(false)
+    })
   }, [])
 
   const liveStatus = useMemo(() => {
     if (isPollingError) {
       return "Auto-update retrying after a network error."
     }
-    if (isRefreshing) {
-      return "Updating jobs..."
+    if (isManualRefreshPending) {
+      return "Refreshing jobs now..."
     }
     if (lastUpdatedAt) {
       return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s · Last update ${formatTime(lastUpdatedAt)}`
     }
     return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
-  }, [isPollingError, isRefreshing, lastUpdatedAt])
+  }, [isManualRefreshPending, isPollingError, lastUpdatedAt])
 
   return (
     <section className="collection-card jobs-card">
@@ -212,7 +232,7 @@ export function LiveJobsTable({
             type="button"
             className="collection-cache-clear jobs-refresh-link"
             onClick={handleRefreshNow}
-            disabled={isRefreshing}
+            disabled={isManualRefreshPending}
           >
             <RefreshCw className="icon" aria-hidden="true" />
             Refresh now
@@ -267,6 +287,8 @@ export function LiveJobsTable({
                         <React.Fragment key={job.id}>
                           <tr
                             className={`jobs-clickable-row${latestError ? " jobs-row-with-issue" : ""}`}
+                            onMouseEnter={() => prefetchJobHref(job.id)}
+                            onFocus={() => prefetchJobHref(job.id)}
                             onClick={(event) => {
                               if (
                                 shouldIgnoreRowNavigation(
@@ -275,9 +297,7 @@ export function LiveJobsTable({
                                 )
                               )
                                 return
-                              window.location.assign(
-                                `/dashboard/jobs/${job.id}${jobsDetailQuerySuffix}`,
-                              )
+                              navigateToJobHref(job.id)
                             }}
                             onKeyDown={(event) => {
                               if (
@@ -290,9 +310,7 @@ export function LiveJobsTable({
                               if (event.key !== "Enter" && event.key !== " ")
                                 return
                               event.preventDefault()
-                              window.location.assign(
-                                `/dashboard/jobs/${job.id}${jobsDetailQuerySuffix}`,
-                              )
+                              navigateToJobHref(job.id)
                             }}
                             tabIndex={0}
                             role="link"
@@ -355,7 +373,7 @@ export function LiveJobsTable({
                                   {getProgressSummary(job)}
                                 </p>
                                 <Link
-                                  href={`/dashboard/jobs/${job.id}${jobsDetailQuerySuffix}`}
+                                  href={buildJobHref(job.id)}
                                   className="jobs-open-link"
                                 >
                                   Open
