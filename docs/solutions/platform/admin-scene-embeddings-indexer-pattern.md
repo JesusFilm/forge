@@ -40,7 +40,7 @@ locale)` target. Per-row Way A casts at the SELECT seam apply both to
 the vector column (`u.embedding_text::vector(1536)`) and to the
 `text[]` columns (`themes`, `bible_verses`, `demographics`,
 `spiritual_context`, all unfolded via
-`json_array_elements_text(u.<col>_json::jsonb)`). Round-trip count
+`jsonb_array_elements_text(u.<col>_json::jsonb)`). Round-trip count
 drops from `O(scenes × locales)` to `O(1)` per `(video, edition, locale)`.
 The full bulk-write recipe + invariant tests + bind-count regression
 guard live in

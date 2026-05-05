@@ -109,7 +109,7 @@ const parentRows = await tx.$queryRaw<{ id: string; scene_index: number }[]>`
 
 // 3. Bulk leaf INSERT … ON CONFLICT … DO UPDATE — Way A vector cast at the
 //    SELECT seam, NOT a `::vector(1536)[]` parameter cast. Way A also applied
-//    to the `text[]` columns (themes etc.) via `json_array_elements_text`.
+//    to the `text[]` columns (themes etc.) via `jsonb_array_elements_text`.
 await tx.$executeRaw`
   INSERT INTO video_scene_locale (
     id, video_scene_id, locale, source_text, description,
@@ -123,10 +123,10 @@ await tx.$executeRaw`
     u.locale,
     u.source_text,
     u.description,
-    ARRAY(SELECT json_array_elements_text(u.themes_json::jsonb)),
-    ARRAY(SELECT json_array_elements_text(u.bible_verses_json::jsonb)),
-    ARRAY(SELECT json_array_elements_text(u.demographics_json::jsonb)),
-    ARRAY(SELECT json_array_elements_text(u.spiritual_context_json::jsonb)),
+    ARRAY(SELECT jsonb_array_elements_text(u.themes_json::jsonb)),
+    ARRAY(SELECT jsonb_array_elements_text(u.bible_verses_json::jsonb)),
+    ARRAY(SELECT jsonb_array_elements_text(u.demographics_json::jsonb)),
+    ARRAY(SELECT jsonb_array_elements_text(u.spiritual_context_json::jsonb)),
     u.model,
     u.dimensions::int,
     u.embedding_text::vector(1536),
@@ -183,14 +183,14 @@ function assertParallelArrayLengthsMatch(
 
 **`toPgArray` extension.** The helper at `apps/admin/src/db/pgvector.ts` accepts `readonly (string | null)[]` and emits the unquoted `NULL` token for nullish elements (Stage 3 widening). The literal three-character string `"NULL"` survives as a quoted element distinct from a SQL NULL. Brace characters (`{`, `}`) still throw at the input boundary — they are structural in PG array literals.
 
-**JSONB-vs-text[] correction.** `themes`, `bibleVerses`, `demographics`, `spiritualContext` are `String[]` in `schema.prisma` (i.e. PG `text[]`), NOT `jsonb`. An earlier version of the implementation plan suggested casting through `jsonb` with `?::jsonb::text[]`; PostgreSQL 18 on Railway rejects that chained cast (see root `CLAUDE.md`'s "Known Patterns"). The Way A unfold via `ARRAY(SELECT json_array_elements_text(u.<col>_json::jsonb))` is the right shape: bind a JSON-stringified payload as `text[]`, parse-and-unfold inside the SELECT, never reach for the chained cast.
+**JSONB-vs-text[] correction.** `themes`, `bibleVerses`, `demographics`, `spiritualContext` are `String[]` in `schema.prisma` (i.e. PG `text[]`), NOT `jsonb`. An earlier version of the implementation plan suggested casting through `jsonb` with `?::jsonb::text[]`; PostgreSQL 18 on Railway rejects that chained cast (see root `CLAUDE.md`'s "Known Patterns"). The Way A unfold via `ARRAY(SELECT jsonb_array_elements_text(u.<col>_json::jsonb))` is the right shape: bind a JSON-stringified payload as `text[]`, parse-and-unfold inside the SELECT, never reach for the chained cast.
 
 ## Why this works
 
 - **Round-trip count drops from O(scenes × locales) to O(1)** per `(video, edition, locale)` write batch, plus one parent INSERT and one parent SELECT per `(video, edition)`.
 - **Bind-variable count is constant.** Each parallel array binds as ONE positional parameter. Doubling the row count adds zero parameters; the bind-variable cap (`PG_INT16_MAX = 32,767`) is no longer in play.
 - **Way A vector cast (`u.embedding_text::vector(1536)` per row in the SELECT) is the documented and well-exercised pgvector idiom.** The avoided alternative (`?::vector(1536)[]` parameter cast) is the multi-element array-input parser path which has fewer real-world references at our pgvector / Postgres version.
-- **Way A `text[]` unfold via `json_array_elements_text(u.col_json::jsonb)`** sidesteps PG18's chained-cast trap while keeping the per-row cast at the SELECT seam — same discipline as the vector cast.
+- **Way A `text[]` unfold via `jsonb_array_elements_text(u.col_json::jsonb)`** sidesteps PG18's chained-cast trap while keeping the per-row cast at the SELECT seam — same discipline as the vector cast.
 - **`DO NOTHING` parent + follow-up SELECT** preserves rerun idempotency for both fresh and pre-existing rows. `RETURNING id` alone fails reruns; the SELECT covers both cases at one round-trip.
 - **Length-equality preflight** turns PG's silent NULL-pad-on-mismatch into a typed throw at the call site, before the bad SQL ships. Tests assert `$executeRaw` is never called on length mismatch.
 
@@ -200,7 +200,7 @@ The `embedding` column carries a partial HNSW index (per-locale on R1, per-langu
 
 ## Prevention
 
-- **SQL invariant tests** (per `docs/solutions/best-practices/prisma-raw-sql-invariant-assertions-20260423.md`). Capture the `$executeRaw` template-strings argument via mock; assert the SQL contains: `INSERT INTO <table>`, `unnest(`, `::text[]`, `::vector(1536)` (NOT followed by `[]`), `ON CONFLICT (<conflict_key>)`, `DO UPDATE SET`, `EXCLUDED.embedding`, `json_array_elements_text` (proves Way A unfold for text[] columns).
+- **SQL invariant tests** (per `docs/solutions/best-practices/prisma-raw-sql-invariant-assertions-20260423.md`). Capture the `$executeRaw` template-strings argument via mock; assert the SQL contains: `INSERT INTO <table>`, `unnest(`, `::text[]`, `::vector(1536)` (NOT followed by `[]`), `ON CONFLICT (<conflict_key>)`, `DO UPDATE SET`, `EXCLUDED.embedding`, `jsonb_array_elements_text` (proves Way A unfold for text[] columns).
 - **Bind-count regression test.** Run the bulk INSERT with N=3 and N=30; assert the bound-parameter count is identical. Catches a regression to per-row `INSERT … VALUES ($1,$2,…)` shape that would re-introduce the bind-variable cap at scale.
 - **Length-equality preflight test.** Inject parallel arrays of unequal length; assert `$executeRaw` is never called and the throw fires. Catches a regression that drops the preflight (silent NULL-pad on PG18).
 - **Vector position stability test.** Bind two known-distinct vectors (e.g. `[0.111,...]` and `[0.222,...]`); assert the bound `text[]` of vector literals contains them in input-array order. Catches a regression that swaps `embeddings[i]` with `embeddings[j]` somewhere in the prep loop.

@@ -366,7 +366,7 @@ describe("indexEditionScenes", () => {
     expect(sql).toContain("::vector(1536)")
     expect(sql).not.toMatch(/::vector\(1536\)\[\]/)
     // Way A text[] unfold for the multi-value PG-array columns.
-    expect(sql).toContain("json_array_elements_text")
+    expect(sql).toContain("jsonb_array_elements_text")
     expect(sql).toMatch(
       /ON\s+CONFLICT\s*\(\s*video_scene_id\s*,\s*locale\s*\)/i,
     )
@@ -645,7 +645,7 @@ describe("indexEditionScenes", () => {
 
   it("R1 multi-value text[] columns escape cleanly through Way A unfold (embedded quotes, backslashes, empty arrays, single-element)", async () => {
     // The themes/bibleVerses/etc. payload is bound via JSON.stringify
-    // and unfolded inside the SQL via `json_array_elements_text(... )`.
+    // and unfolded inside the SQL via `jsonb_array_elements_text(... )`.
     // The bound JSON literal must survive embedded double quotes,
     // backslashes, empty arrays, and single-element arrays without
     // breaking either the JSON parser or the surrounding `text[]`

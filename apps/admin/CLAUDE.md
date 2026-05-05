@@ -655,7 +655,7 @@ locale) DO UPDATE SET …`. The `embedding` cast is per-row at the
      (`themes`, `bible_verses`, `demographics`, `spiritual_context`,
      all `String[]` in `schema.prisma` — NOT jsonb) are bound as
      `JSON.stringify`'d strings inside a `text[]` literal and unfolded
-     per-row via `ARRAY(SELECT json_array_elements_text(u.<col>_json::jsonb))`.
+     per-row via `ARRAY(SELECT jsonb_array_elements_text(u.<col>_json::jsonb))`.
      Length-equality preflight asserts ALL parallel arrays match
      `prepared.length` BEFORE invoking `$executeRaw`. PG18's
      `unnest(arr1, arr2, ...)` silently NULL-pads unequal-length arrays —

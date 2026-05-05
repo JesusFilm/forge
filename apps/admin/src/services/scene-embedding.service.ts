@@ -44,7 +44,7 @@
 //      the per-row `embedding` cast (`u.embedding_text::vector(1536)`)
 //      and the per-row `text[]` columns (`themes`, `bible_verses`,
 //      `demographics`, `spiritual_context`) which are bound as JSON-
-//      stringified arrays and unfolded via `json_array_elements_text`.
+//      stringified arrays and unfolded via `jsonb_array_elements_text`.
 //      No `::vector(1536)[]` parameter cast — that array-input parser is
 //      less-trodden code; Way A keeps the seam at one cast per row.
 //   See docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md.
@@ -415,7 +415,7 @@ export async function indexEditionScenes(
         // Build parallel arrays. text[] columns (themes, bibleVerses,
         // demographics, spiritualContext) are bound as JSON-stringified
         // strings and unfolded inside the SELECT seam via
-        // `json_array_elements_text(u.<col>_json::jsonb)` — Way A
+        // `jsonb_array_elements_text(u.<col>_json::jsonb)` — Way A
         // discipline keeps the cast at the seam, not on the parameter.
         const localeIds = prepared.map(() => randomUUID())
         const videoSceneIds = resolveVideoSceneIds(prepared, sceneIndexToId)
@@ -477,10 +477,10 @@ export async function indexEditionScenes(
           u.locale,
           u.source_text,
           u.description,
-          ARRAY(SELECT json_array_elements_text(u.themes_json::jsonb)),
-          ARRAY(SELECT json_array_elements_text(u.bible_verses_json::jsonb)),
-          ARRAY(SELECT json_array_elements_text(u.demographics_json::jsonb)),
-          ARRAY(SELECT json_array_elements_text(u.spiritual_context_json::jsonb)),
+          ARRAY(SELECT jsonb_array_elements_text(u.themes_json::jsonb)),
+          ARRAY(SELECT jsonb_array_elements_text(u.bible_verses_json::jsonb)),
+          ARRAY(SELECT jsonb_array_elements_text(u.demographics_json::jsonb)),
+          ARRAY(SELECT jsonb_array_elements_text(u.spiritual_context_json::jsonb)),
           u.model,
           u.dimensions::int,
           u.embedding_text::vector(1536),
