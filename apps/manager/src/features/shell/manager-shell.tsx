@@ -386,36 +386,36 @@ export function StudioUserMenuPanel({
         role="menuitem"
         onClick={onClick}
         className={cn(
-          "group flex w-full cursor-pointer select-none items-center gap-4 rounded-xl border-0 bg-transparent px-3 py-3 text-left transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_5%,transparent)] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:bg-[color:color-mix(in_srgb,var(--ds-black)_9%,transparent)]",
+          "group flex w-full cursor-pointer select-none items-center gap-3 rounded-xl border-0 bg-transparent px-2.5 py-2 text-left transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_5%,transparent)] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:bg-[color:color-mix(in_srgb,var(--ds-black)_9%,transparent)]",
           isDanger &&
             "hover:bg-[color:color-mix(in_srgb,var(--ds-danger)_8%,transparent)] active:bg-[color:color-mix(in_srgb,var(--ds-danger)_12%,transparent)]",
         )}
       >
         <span
           className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:color-mix(in_srgb,var(--ds-black)_5%,transparent)] text-[color:var(--ds-ink)] transition-colors duration-75 group-hover:bg-[color:color-mix(in_srgb,var(--ds-black)_8%,transparent)]",
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color:color-mix(in_srgb,var(--ds-black)_5%,transparent)] text-[color:var(--ds-ink)] transition-colors duration-75 group-hover:bg-[color:color-mix(in_srgb,var(--ds-black)_8%,transparent)]",
             isDanger &&
               "bg-[color:color-mix(in_srgb,var(--ds-danger)_9%,transparent)] text-[color:var(--ds-danger)] group-hover:bg-[color:color-mix(in_srgb,var(--ds-danger)_13%,transparent)]",
           )}
         >
-          <Icon size={20} strokeWidth={2} aria-hidden="true" />
+          <Icon size={17} strokeWidth={2} aria-hidden="true" />
         </span>
         <span className="grid min-w-0 flex-1 gap-0.5">
           <span
             className={cn(
-              "truncate text-base font-semibold leading-tight text-[color:var(--ds-ink)]",
+              "truncate text-sm font-semibold leading-tight text-[color:var(--ds-ink)]",
               isDanger && "text-[color:var(--ds-danger)]",
             )}
           >
             {label}
           </span>
-          <span className="truncate text-sm font-medium leading-tight text-[color:var(--ds-muted)]">
+          <span className="truncate text-xs font-medium leading-tight text-[color:var(--ds-muted)]">
             {description}
           </span>
         </span>
         {!isDanger ? (
           <ChevronRight
-            className="h-5 w-5 shrink-0 text-[color:var(--ds-muted)] transition-transform duration-75 group-hover:translate-x-0.5 group-hover:text-[color:var(--ds-ink)]"
+            className="h-4 w-4 shrink-0 text-[color:var(--ds-muted)] transition-transform duration-75 group-hover:translate-x-0.5 group-hover:text-[color:var(--ds-ink)]"
             aria-hidden="true"
           />
         ) : null}
@@ -425,53 +425,53 @@ export function StudioUserMenuPanel({
 
   return (
     <div
-      className="absolute right-0 top-[calc(100%+18px)] z-[70] w-[min(35rem,calc(100vw-2rem))] overflow-hidden rounded-[calc(var(--ds-radius)+18px)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] p-5 shadow-[0_24px_70px_rgba(17,17,17,0.16)] animate-in fade-in-0 zoom-in-95 duration-150"
+      className="absolute right-0 top-[calc(100%+12px)] z-[70] w-[min(28rem,calc(100vw-2rem))] overflow-hidden rounded-[calc(var(--ds-radius)+12px)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] p-3.5 shadow-[0_20px_55px_rgba(17,17,17,0.14)] animate-in fade-in-0 zoom-in-95 duration-150"
       role="menu"
       aria-label="User menu"
     >
-      <section className="rounded-[calc(var(--ds-radius)+10px)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] p-5 shadow-[0_8px_24px_rgba(17,17,17,0.04)]">
-        <div className="flex items-center gap-4">
-          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[color:color-mix(in_srgb,var(--ds-black)_7%,transparent)] text-[color:var(--ds-black)]">
-            <UserRound size={32} strokeWidth={2} aria-hidden="true" />
+      <section className="rounded-[calc(var(--ds-radius)+8px)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] p-3.5 shadow-[0_8px_20px_rgba(17,17,17,0.035)]">
+        <div className="flex items-center gap-3">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[color:color-mix(in_srgb,var(--ds-black)_7%,transparent)] text-[color:var(--ds-black)]">
+            <UserRound size={24} strokeWidth={2} aria-hidden="true" />
           </span>
-          <div className="grid min-w-0 flex-1 gap-1">
-            <strong className="truncate text-xl font-semibold leading-tight text-[color:var(--ds-ink)]">
+          <div className="grid min-w-0 flex-1 gap-0.5">
+            <strong className="truncate text-base font-semibold leading-tight text-[color:var(--ds-ink)]">
               {user.username}
             </strong>
-            <span className="truncate text-base font-medium leading-tight text-[color:var(--ds-muted)]">
+            <span className="truncate text-sm font-medium leading-tight text-[color:var(--ds-muted)]">
               {user.email}
             </span>
           </div>
           <button
             type="button"
             role="menuitem"
-            className="inline-flex h-12 shrink-0 cursor-pointer select-none items-center gap-2 rounded-xl border border-[color:var(--ds-black)] bg-[color:var(--ds-black)] px-5 text-base font-semibold text-white shadow-[0_10px_24px_rgba(17,17,17,0.18)] transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_88%,white)] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:translate-y-px"
+            className="inline-flex h-10 shrink-0 cursor-pointer select-none items-center gap-2 rounded-xl border border-[color:var(--ds-black)] bg-[color:var(--ds-black)] px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(17,17,17,0.16)] transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_88%,white)] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:translate-y-px"
           >
-            <Building2 size={20} strokeWidth={2} aria-hidden="true" />
+            <Building2 size={17} strokeWidth={2} aria-hidden="true" />
             Workspace
           </button>
         </div>
       </section>
 
-      <div className="px-3 pb-1 pt-6 text-sm font-semibold uppercase tracking-[0.08em] text-[color:var(--ds-muted)]">
+      <div className="px-2.5 pb-1 pt-4 text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--ds-muted)]">
         Workspace
       </div>
-      <div className="grid gap-1">
+      <div className="grid gap-0.5">
         {userMenuRows.slice(0, 3).map(renderMenuRow)}
       </div>
 
-      <div className="my-4 h-px bg-[color:var(--ds-line)]" />
+      <div className="my-2.5 h-px bg-[color:var(--ds-line)]" />
 
-      <div className="px-3 pb-1 text-sm font-semibold uppercase tracking-[0.08em] text-[color:var(--ds-muted)]">
+      <div className="px-2.5 pb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--ds-muted)]">
         Resources
       </div>
-      <div className="grid gap-1">
+      <div className="grid gap-0.5">
         {userMenuRows.slice(3, 5).map(renderMenuRow)}
       </div>
 
-      <div className="my-4 h-px bg-[color:var(--ds-line)]" />
+      <div className="my-2.5 h-px bg-[color:var(--ds-line)]" />
 
-      <div className="grid gap-1">
+      <div className="grid gap-0.5">
         {userMenuRows.slice(5).map(renderMenuRow)}
       </div>
     </div>
