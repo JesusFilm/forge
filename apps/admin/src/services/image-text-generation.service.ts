@@ -81,7 +81,7 @@ function openRouterImageTextModels(): string[] {
 }
 
 function shouldTryNextModel(status: number, body: string): boolean {
-  if (status === 429 || status >= 500) {
+  if (status === 404 || status === 429 || status >= 500) {
     return true
   }
 
@@ -278,7 +278,28 @@ export async function generateLocalizedImageText({
         )
       }
 
+      const requestedLocales = locales.map((locale) => locale.toLowerCase())
       const wanted = new Set(locales.map((locale) => locale.toLowerCase()))
+      const generatedLocales = new Set(
+        parsed.data.locales.map((item) => item.locale.toLowerCase()),
+      )
+      const missingLocales = requestedLocales.filter(
+        (locale) => !generatedLocales.has(locale),
+      )
+      if (missingLocales.length > 0) {
+        failures.push(
+          `${model}: response omitted requested locales ${missingLocales.join(", ")}`,
+        )
+
+        if (index < models.length - 1) {
+          continue
+        }
+
+        throw new Error(
+          `Image text generation response omitted requested locales after trying ${models.length} models: ${failures.join(" | ")}`,
+        )
+      }
+
       return {
         status: "generated",
         values: parsed.data.locales
