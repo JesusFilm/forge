@@ -35,16 +35,6 @@ export function WatchBody({
         data-testid="watch-body-left"
         className="col-span-12 flex min-w-0 flex-col gap-4 md:col-span-8"
       >
-        {hasDownloads ? (
-          // pt-6 xl:pt-4 matches WatchStudyQuestions' top padding so the
-          // Download pill and the Related Questions / Ask Yours row align
-          // on the same horizontal axis at the top of both columns.
-          // pr-12 xl:pr-16 fixes Download's right edge inside the left
-          // column.
-          <div className="flex justify-end pt-6 md:pr-12 xl:pt-4 xl:pr-16">
-            <DownloadButton onClick={onDownloadClick} />
-          </div>
-        ) : null}
         {video.label ? (
           <span
             data-testid="watch-body-label"
@@ -53,12 +43,27 @@ export function WatchBody({
             {video.label}
           </span>
         ) : null}
-        <h1
-          data-testid="watch-body-title"
-          className="text-3xl font-bold text-stone-100 md:text-4xl xl:text-5xl"
+        {/* Download lives in the title row so its Y axis matches the h1
+            (and, by symmetry, the Related Questions / Ask Yours row in the
+            right column whose pt is tuned to match this same Y). With
+            Download here instead of above the SEGMENT label, increasing pt
+            on a sibling can no longer push Download out of alignment. */}
+        <div
+          data-testid="watch-body-title-row"
+          className="flex items-center justify-between gap-4"
         >
-          {video.title ?? ""}
-        </h1>
+          <h1
+            data-testid="watch-body-title"
+            className="min-w-0 text-3xl font-bold text-stone-100 md:text-4xl xl:text-5xl"
+          >
+            {video.title ?? ""}
+          </h1>
+          {hasDownloads ? (
+            <div className="shrink-0">
+              <DownloadButton onClick={onDownloadClick} />
+            </div>
+          ) : null}
+        </div>
         {video.description ? (
           <p
             data-testid="watch-body-description"

@@ -27,8 +27,14 @@ export function WatchStudyQuestions({
     <section
       data-testid="watch-study-questions"
       aria-labelledby="watch-related-questions-heading"
-      className="w-full pt-6 xl:pt-4"
+      className="w-full pt-0 md:pt-9 xl:pt-11"
     >
+      {/* Section pt is tuned so the header (Related Questions + Ask Yours)
+          lands on the same Y axis as the h1 title in the left column --
+          which now hosts the Download pill in its flex row. The mb below
+          the header is sized so the first prompt / placeholder row lines
+          up with the start of the video description, keeping the two
+          columns visually parallel. */}
       <div className="mb-4 flex flex-wrap items-center justify-between">
         <h4
           id="watch-related-questions-heading"

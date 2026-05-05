@@ -143,6 +143,36 @@ describe("WatchBody — two-column layout", () => {
     // Download button visible.
     const dl = container.querySelector('[data-testid="watch-download-button"]')
     expect(dl).not.toBeNull()
+
+    // Title and Download share the same flex row (alignment contract for the
+    // top-of-watch-page UI -- Download must sit on the same Y axis as the
+    // h1 title; a future move out of this row would break that intent).
+    const titleRow = container.querySelector(
+      '[data-testid="watch-body-title-row"]',
+    )
+    expect(titleRow).not.toBeNull()
+    expect(titleRow!.className).toContain("flex")
+    expect(titleRow!.className).toContain("items-center")
+    expect(titleRow!.className).toContain("justify-between")
+    const titleEl = container.querySelector('[data-testid="watch-body-title"]')
+    expect(titleEl!.parentElement).toBe(titleRow)
+    expect(dl!.closest('[data-testid="watch-body-title-row"]')).toBe(titleRow)
+
+    // Right-column header pt and mb are alignment-critical -- pinning them
+    // so a revert / merge resolution cannot silently clobber the values.
+    // pt-0 mobile (columns stack, no extra gap) -> md:pt-9 (text-4xl h1)
+    // -> xl:pt-11 (text-5xl h1) tracks the h1 size scale across breakpoints.
+    const studySection = container.querySelector(
+      '[data-testid="watch-study-questions"]',
+    )
+    expect(studySection).not.toBeNull()
+    expect(studySection!.className).toContain("pt-0")
+    expect(studySection!.className).toContain("md:pt-9")
+    expect(studySection!.className).toContain("xl:pt-11")
+    const headerRow = studySection!.querySelector(
+      "div.mb-4.flex.flex-wrap.items-center.justify-between",
+    )
+    expect(headerRow).not.toBeNull()
   })
 
   it("renders the optional uppercase label tag when present", () => {
