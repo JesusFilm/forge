@@ -11,17 +11,21 @@ import {
 import { ExperienceSectionRenderer } from "@/components/sections"
 import { BibleQuotesSection } from "@/components/watch/BibleQuotesSection"
 import { HeroPlayer } from "@/components/watch/HeroPlayer"
-// `SiblingCarousel` import skipped — dispatch case below returns null until
-// thumbnail-image plumbing is restored.
+import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
 import { WatchBody } from "@/components/watch/WatchBody"
 import type { WatchModalCallbacks } from "@/components/watch/WatchPageClient"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 
 // Typo guard: literal-union typing fails the type check on misspellings.
-const TOP_ZONE_KINDS: Set<WatchBlock["kind"]> = new Set([
-  "HeroPlayer",
-  "SiblingCarousel",
-])
+//
+// `HeroPlayer` is the only top-zone block — it's the sticky cinematic player
+// that pins to the viewport while body content slides over it. The
+// `SiblingCarousel` was originally part of this zone too, but rendering it
+// alongside the sticky hero meant the carousel would scroll over and visually
+// "cover" the hero during scroll. Demoting the carousel into the body zone
+// keeps it directly below the hero in normal flow, with the rest of the body
+// content (WatchBody, StudyQuestions, BibleQuotes, Share) following it.
+const TOP_ZONE_KINDS: Set<WatchBlock["kind"]> = new Set(["HeroPlayer"])
 
 export function WatchSectionRenderer({
   blocks,
@@ -79,7 +83,7 @@ export function WatchSectionRenderer({
               aria-hidden="true"
             />
             <div
-              className={`relative z-2 flex flex-col items-stretch justify-center gap-10 pt-4 pb-16 ${CONTENT_WIDTH_CLASSES}`}
+              className={`relative z-2 flex flex-col items-stretch justify-center gap-6 pt-2 pb-16 ${CONTENT_WIDTH_CLASSES}`}
             >
               {bodyBlocks.map((block, index) => (
                 <WatchBlockEntry
@@ -140,8 +144,8 @@ function SyntheticBlock({
     case "HeroPlayer":
       return <HeroPlayer block={block} onPlayerReady={onPlayerReady} />
     case "SiblingCarousel":
-      // Hidden until thumbnail-image plumbing is restored. Single-line revert.
-      return null
+      return <SiblingCarousel block={block} />
+
     case "WatchBody":
       return (
         <WatchBody

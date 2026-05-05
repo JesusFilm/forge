@@ -851,3 +851,261 @@ describe("HeroPlayer — sticky-hero / portal layout", () => {
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// Timeline pointer-driven scrub. JSDOM's getBoundingClientRect returns zeros,
+// so we stub it on the timeline element. The vitest setup polyfills rAF as
+// `setTimeout(fn, 0)`, so `vi.useFakeTimers()` lets us deterministically flush
+// the coalesced seek by advancing 0ms.
+// ---------------------------------------------------------------------------
+
+function stubTimelineRect(): HTMLDivElement {
+  const tl = container.querySelector(
+    '[data-testid="hero-chrome-timeline"]',
+  ) as HTMLDivElement
+  Object.defineProperty(tl, "getBoundingClientRect", {
+    value: () =>
+      ({
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 100,
+        bottom: 1,
+        width: 100,
+        height: 1,
+        toJSON() {
+          return this
+        },
+      }) as DOMRect,
+    configurable: true,
+  })
+  // JSDOM lacks setPointerCapture / hasPointerCapture. Stub them to no-ops
+  // so the production code's defensive guards don't throw under test. Cast
+  // through unknown so we can attach element-level methods that JSDOM
+  // hasn't implemented; production browsers ship them on every Element.
+  const noop = (): void => undefined
+  ;(tl as unknown as { setPointerCapture: () => void }).setPointerCapture = noop
+  ;(
+    tl as unknown as { releasePointerCapture: () => void }
+  ).releasePointerCapture = noop
+  ;(tl as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture =
+    () => false
+  return tl
+}
+
+function makePointerEvent(
+  type: string,
+  init: { clientX?: number; pointerId?: number } = {},
+): PointerEvent {
+  // JSDOM lacks PointerEvent; fall back to MouseEvent + manual fields.
+  const Ctor =
+    typeof PointerEvent === "function" ? PointerEvent : (MouseEvent as never)
+  const evt = new Ctor(type, {
+    bubbles: true,
+    cancelable: true,
+    clientX: init.clientX ?? 0,
+  }) as PointerEvent
+  Object.defineProperty(evt, "pointerId", {
+    value: init.pointerId ?? 1,
+    configurable: true,
+  })
+  return evt
+}
+
+describe("HeroPlayer — timeline pointer-driven scrub", () => {
+  it("data-dragging flips to 'true' on pointerdown and 'false' on pointerup", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.duration = 60
+      mockPlayerRef.current.paused = false
+    }
+    const tl = stubTimelineRect()
+    expect(tl.getAttribute("data-dragging")).toBe("false")
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerdown", { clientX: 50 }))
+    })
+    expect(tl.getAttribute("data-dragging")).toBe("true")
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerup", { clientX: 50 }))
+    })
+    expect(tl.getAttribute("data-dragging")).toBe("false")
+  })
+
+  it("data-current-time reflects scrubPct * duration during drag (not player.currentTime)", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.duration = 60
+      mockPlayerRef.current.currentTime = 10
+      mockPlayerRef.current.paused = false
+    }
+    const tl = stubTimelineRect()
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerdown", { clientX: 25 })) // 25/100 * 60 = 15
+    })
+    const time = container.querySelector(
+      '[data-testid="hero-chrome-time"]',
+    ) as HTMLElement
+    // displayTime should follow the scrub thumb (15s), not currentTime (10s).
+    expect(time.getAttribute("data-current-time")).toBe("15")
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointermove", { clientX: 75 })) // 75/100 * 60 = 45
+    })
+    expect(time.getAttribute("data-current-time")).toBe("45")
+  })
+
+  it("pointerdown pauses a playing player; pointerup resumes if was playing", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.duration = 60
+      mockPlayerRef.current.paused = false
+      mockPlayerRef.current.pause.mockClear()
+      mockPlayerRef.current.play.mockClear()
+    }
+    const tl = stubTimelineRect()
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerdown", { clientX: 50 }))
+    })
+    expect(mockPlayerRef.current?.pause).toHaveBeenCalledTimes(1)
+    // Simulate the pause taking effect so the resume gate (p.paused) is true.
+    if (mockPlayerRef.current) mockPlayerRef.current.paused = true
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerup", { clientX: 60 }))
+    })
+    expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("lostPointerCapture clears drag state and resumes if was playing", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.duration = 60
+      mockPlayerRef.current.paused = false
+      mockPlayerRef.current.play.mockClear()
+    }
+    const tl = stubTimelineRect()
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerdown", { clientX: 50 }))
+    })
+    expect(tl.getAttribute("data-dragging")).toBe("true")
+    if (mockPlayerRef.current) mockPlayerRef.current.paused = true
+    await act(async () => {
+      tl.dispatchEvent(
+        new Event("lostpointercapture", { bubbles: true }) as never,
+      )
+    })
+    expect(tl.getAttribute("data-dragging")).toBe("false")
+    expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("HeroPlayer — timeline pointer-driven scrub (fake-timer driven)", () => {
+  // Fake timers let us hold the rAF (polyfilled as setTimeout(0)) before it
+  // flushes, so we can prove the coalescing window and the unmount
+  // cancellation path. Microtasks (the play() promise inside revealChrome)
+  // still resolve under fake timers, so reveal works without real time.
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("multiple pointermoves coalesce into a single rAF flush per batch", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      // Mock's addEventListener is vi.fn() so durationchange never fires —
+      // React state is whatever the initial sync() captured (default 60).
+      // The rAF callback reads p.duration directly (F6), so 100 is what the
+      // coalesced seek will use; the synchronous pointerdown seek uses the
+      // closed-over state duration of 60.
+      mockPlayerRef.current.duration = 100
+      mockPlayerRef.current.currentTime = 0
+      mockPlayerRef.current.paused = false
+    }
+    const tl = stubTimelineRect()
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerdown", { clientX: 10 }))
+    })
+    // Pointerdown's synchronous seek uses state-duration (60): 0.1 * 60 = 6.
+    expect(mockPlayerRef.current?.currentTime).toBe(6)
+
+    // Track every currentTime write to prove only one happens per batch.
+    let writes = 0
+    let lastWrite = mockPlayerRef.current?.currentTime ?? 0
+    if (mockPlayerRef.current) {
+      const player = mockPlayerRef.current
+      let ct = player.currentTime
+      Object.defineProperty(player, "currentTime", {
+        get: () => ct,
+        set: (v: number) => {
+          ct = v
+          writes++
+          lastWrite = v
+        },
+        configurable: true,
+      })
+    }
+
+    // Three pointermoves before the rAF flushes — only the last should land.
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointermove", { clientX: 30 }))
+      tl.dispatchEvent(makePointerEvent("pointermove", { clientX: 50 }))
+      tl.dispatchEvent(makePointerEvent("pointermove", { clientX: 70 }))
+    })
+    // Before timers fire, no seek write has landed since the trap was
+    // installed.
+    expect(writes).toBe(0)
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    // Exactly one rAF wrote the latest pct (0.7 * live p.duration = 70).
+    expect(writes).toBe(1)
+    expect(lastWrite).toBe(70)
+  })
+
+  it("unmounting mid-drag does not write currentTime after unmount", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.duration = 100
+      mockPlayerRef.current.currentTime = 0
+      mockPlayerRef.current.paused = false
+    }
+    const tl = stubTimelineRect()
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerdown", { clientX: 10 }))
+    })
+
+    // Trap any subsequent currentTime writes.
+    let writes = 0
+    if (mockPlayerRef.current) {
+      const player = mockPlayerRef.current
+      let ct = player.currentTime
+      Object.defineProperty(player, "currentTime", {
+        get: () => ct,
+        set: (v: number) => {
+          ct = v
+          writes++
+        },
+        configurable: true,
+      })
+    }
+
+    // Queue a coalesced seek for the pending rAF.
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointermove", { clientX: 90 }))
+    })
+    // Pre-flush: the rAF hasn't fired, so no seek write yet.
+    expect(writes).toBe(0)
+
+    act(() => {
+      root.unmount()
+    })
+    // Re-create root so afterEach's unmount() targets a fresh tree.
+    root = createRoot(container)
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    expect(writes).toBe(0)
+  })
+})
