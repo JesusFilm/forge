@@ -34,7 +34,7 @@ export function BibleQuotesSection({
     <section
       data-block-type="BibleQuotes"
       data-testid="watch-bible-quotes"
-      className="pt-14 pb-6"
+      className="pt-4 pb-6"
     >
       <div
         data-testid="watch-bible-quotes-header"

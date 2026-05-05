@@ -824,9 +824,23 @@ export type WatchHeroPlayerBlock = {
   variant: WatchVariant
 }
 
+/**
+ * Structural subtype shared between the canonical-parent and
+ * synthesized-from-current-video carousel sources. Captures the exact set
+ * of fields the carousel UI reads, so the virtualParent literal in
+ * `buildSiblingCarouselBlock` satisfies the type without an `as` cast or
+ * a cross-path filter assertion.
+ */
+export type CarouselParent = {
+  documentId: string
+  slug: string | null
+  title: string | null
+  children: NonNullable<WatchParent["children"]>
+}
+
 export type WatchSiblingCarouselBlock = {
   kind: "SiblingCarousel"
-  canonicalParent: WatchParent
+  canonicalParent: CarouselParent
   currentVideoDocumentId: string
 }
 
@@ -889,19 +903,61 @@ export function buildHeroBlock(
   return { kind: "HeroPlayer", video, variant }
 }
 
-/** Returns null when the canonical parent has fewer than 2 children. */
+/**
+ * Returns a carousel block with the most relevant peer set, or null when none
+ * is available:
+ *
+ * 1. When the current video has its **own** children (a parent / collection
+ *    video like JESUS with 61 chapter segments), surface those — the user is
+ *    looking at the parent, so chapters are the relevant peers.
+ * 2. Otherwise, fall back to the canonical parent's children — the current
+ *    video is itself a chapter, and the user wants to navigate between
+ *    siblings of the same parent (e.g. between segments of JESUS).
+ *
+ * Returns null when neither source has at least 2 entries.
+ */
 export function buildSiblingCarouselBlock(
   canonicalParent: WatchParent | null,
   video: WatchVideoRecord,
 ): WatchSiblingCarouselBlock | null {
-  if (!canonicalParent) return null
-  const children = (canonicalParent.children ?? []).filter(
+  // Narrow nulls only — both the parent's children and the current video's
+  // children share the same element type at the schema level, so we don't
+  // need a cross-path type assertion (each branch's narrow already lands
+  // inside `CarouselParent.children`).
+  const ownChildren = (video.children ?? []).filter(
     (child): child is NonNullable<typeof child> => child != null,
   )
-  if (children.length < 2) return null
+  if (ownChildren.length >= 2) {
+    // Synthesize a virtual parent from the current video so the carousel's
+    // header reads correctly ("JESUS · Clip N of M") and so the existing
+    // canonicalParent.children consumer in <SiblingCarousel> doesn't need a
+    // second branch. `currentVideoDocumentId` won't match any of its own
+    // children, so no "Playing now" badge — accurate for a parent-page view.
+    const virtualParent: CarouselParent = {
+      documentId: video.documentId,
+      slug: video.slug ?? "",
+      title: video.title ?? "",
+      children: ownChildren,
+    }
+    return {
+      kind: "SiblingCarousel",
+      canonicalParent: virtualParent,
+      currentVideoDocumentId: video.documentId,
+    }
+  }
+  if (!canonicalParent) return null
+  const siblings = (canonicalParent.children ?? []).filter(
+    (child): child is NonNullable<typeof child> => child != null,
+  )
+  if (siblings.length < 2) return null
   return {
     kind: "SiblingCarousel",
-    canonicalParent,
+    canonicalParent: {
+      documentId: canonicalParent.documentId,
+      slug: canonicalParent.slug ?? null,
+      title: canonicalParent.title ?? null,
+      children: siblings,
+    },
     currentVideoDocumentId: video.documentId,
   }
 }

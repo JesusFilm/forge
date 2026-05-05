@@ -126,13 +126,34 @@ afterEach(() => {
   container.remove()
 })
 
-function makeChild(i: number, opts: { thumb?: boolean } = {}) {
+type ImageVariantFields = {
+  url?: string | null
+  thumbnail?: string | null
+  mobileCinematicHigh?: string | null
+  mobileCinematicLow?: string | null
+}
+
+function makeChild(
+  i: number,
+  opts: { thumb?: boolean; image?: ImageVariantFields } = {},
+) {
+  // When `opts.image` is supplied, use it verbatim — lets tests assert on
+  // the priority chain (`mobileCinematicHigh` > `mobileCinematicLow` >
+  // `thumbnail` > nothing; `url` is intentionally NOT in the chain).
+  // Default fixture uses `thumbnail` (NOT `url`) because resolvePosterUrl
+  // dropped `url` entirely — see F2 in the watch-page review queue.
+  const images =
+    opts.thumb === false
+      ? []
+      : opts.image
+        ? [opts.image]
+        : [{ thumbnail: `https://cdn.test/${i}.jpg` }]
   return {
     documentId: `child-${i}`,
     slug: `child-${i}-slug`,
     title: `Child ${i}`,
     label: i % 2 === 0 ? `Label ${i}` : null,
-    images: opts.thumb === false ? [] : [{ url: `https://cdn.test/${i}.jpg` }],
+    images,
   }
 }
 
@@ -174,9 +195,9 @@ describe("SiblingCarousel — happy path", () => {
       "[data-testid='sibling-carousel-item'][data-active='true']",
     )
     expect(active).not.toBeNull()
-    expect(active!.getAttribute("data-href")).toBe(
-      "/jesus-collection/child-3-slug/english",
-    )
+    // 2-segment route shape: `/{slug}/{locale}` — the parent slug segment
+    // was removed when the watch route migrated to flat `[slug]/[locale]`.
+    expect(active!.getAttribute("data-href")).toBe("/child-3-slug/english")
 
     const playingNow = container.querySelector(
       "[data-testid='sibling-carousel-playing-now']",
@@ -203,7 +224,8 @@ describe("SiblingCarousel — happy path", () => {
       const href = item.getAttribute("data-href") ?? ""
       // basePath auto-prepends; in-app hrefs MUST NOT include /watch/ literal.
       expect(href.startsWith("/watch/")).toBe(false)
-      expect(href.startsWith("/jesus-collection/")).toBe(true)
+      // 2-segment route — child slug then locale, no parent segment.
+      expect(href).toMatch(/^\/child-\d+-slug\/english$/)
       expect(href.endsWith("/english")).toBe(true)
     }
   })
@@ -281,9 +303,7 @@ describe("SiblingCarousel — edge cases", () => {
       "[data-testid='sibling-carousel-item'][data-active='true']",
     )
     expect(active).not.toBeNull()
-    expect(active!.getAttribute("data-href")).toBe(
-      "/jesus-collection/child-12-slug/english",
-    )
+    expect(active!.getAttribute("data-href")).toBe("/child-12-slug/english")
     const label = container.querySelector(
       "[data-testid='sibling-carousel-label']",
     )
@@ -303,8 +323,110 @@ describe("SiblingCarousel — edge cases", () => {
     )
     // Trailing slash with empty locale segment — caller is responsible for
     // ensuring `[locale]` is present in the route; we don't fabricate one.
-    expect(item!.getAttribute("data-href")).toBe(
-      "/jesus-collection/child-2-slug/",
+    expect(item!.getAttribute("data-href")).toBe("/child-2-slug/")
+  })
+})
+
+describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
+  // Each test renders a single-active-item block and reads the active item's
+  // <Image> stand-in (`data-src`) to assert which image variant won the
+  // priority chain. The variant order is:
+  //   mobileCinematicHigh > mobileCinematicLow > thumbnail > placeholder
+  //   (`url` is intentionally NOT in the chain — it 400s on Cloudflare.)
+  function singleChildBlock(
+    image: ImageVariantFields,
+  ): WatchSiblingCarouselBlock {
+    return {
+      kind: "SiblingCarousel",
+      canonicalParent: {
+        documentId: "parent-1",
+        slug: "p",
+        title: "P",
+        children: [
+          makeChild(1, { image }),
+          makeChild(2), // sibling so children.length >= 2 (carousel renders)
+        ],
+      } as never,
+      currentVideoDocumentId: "child-1",
+    }
+  }
+
+  function activeImage(): HTMLElement | null {
+    return container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-active='true'] [data-testid='next-image-mock']",
     )
+  }
+
+  function activePlaceholder(): HTMLElement | null {
+    return container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-active='true'] [data-testid='sibling-carousel-thumb-placeholder']",
+    )
+  }
+
+  it("uses mobileCinematicHigh when all four variants are present", () => {
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={singleChildBlock({
+            mobileCinematicHigh: "https://cdn.test/high.jpg",
+            mobileCinematicLow: "https://cdn.test/low.jpg",
+            thumbnail: "https://cdn.test/thumb.jpg",
+            url: "https://cdn.test/url.jpg",
+          })}
+        />,
+      )
+    })
+    const img = activeImage()
+    expect(img).not.toBeNull()
+    expect(img!.getAttribute("data-src")).toBe("https://cdn.test/high.jpg")
+  })
+
+  it("falls through to mobileCinematicLow when mobileCinematicHigh is absent", () => {
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={singleChildBlock({
+            mobileCinematicLow: "https://cdn.test/low.jpg",
+            thumbnail: "https://cdn.test/thumb.jpg",
+            url: "https://cdn.test/url.jpg",
+          })}
+        />,
+      )
+    })
+    expect(activeImage()!.getAttribute("data-src")).toBe(
+      "https://cdn.test/low.jpg",
+    )
+  })
+
+  it("falls through to thumbnail when both mobileCinematic* variants are absent", () => {
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={singleChildBlock({
+            thumbnail: "https://cdn.test/thumb.jpg",
+            url: "https://cdn.test/url.jpg",
+          })}
+        />,
+      )
+    })
+    expect(activeImage()!.getAttribute("data-src")).toBe(
+      "https://cdn.test/thumb.jpg",
+    )
+  })
+
+  it("renders the placeholder when only `url` is present (url is dropped from the chain)", () => {
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={singleChildBlock({
+            url: "https://cdn.test/url.jpg",
+          })}
+        />,
+      )
+    })
+    // No image — `url` is intentionally NOT a fallback (returns 400 on
+    // Cloudflare due to a misshaped variant path). Placeholder wins.
+    expect(activeImage()).toBeNull()
+    expect(activePlaceholder()).not.toBeNull()
   })
 })

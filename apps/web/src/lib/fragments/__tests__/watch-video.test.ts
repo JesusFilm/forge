@@ -43,7 +43,24 @@ describe("WatchVideoFragment", () => {
     // (U6) will fall back to client-side ordering if needed.
     expect(printed).toMatch(/parents\s*\{[\s\S]*?\bchildren\b/)
     expect(printed).toMatch(
-      /\bchildren\b\s*\{[\s\S]*?documentId[\s\S]*?\bslug\b[\s\S]*?\btitle\b[\s\S]*?\blabel\b[\s\S]*?images\s*\{\s*url/,
+      /\bchildren\b[^{]*\{[\s\S]*?documentId[\s\S]*?\bslug\b[\s\S]*?\btitle\b[\s\S]*?\blabel\b[\s\S]*?images\s*\{\s*url/,
+    )
+
+    // Top-level `children(pagination: { limit: -1 })` — required so Strapi
+    // returns every chapter for parent/collection videos (e.g. JESUS has 61
+    // segments). The default 10-row pagination would silently drop chapters
+    // and the SiblingCarousel would render an incomplete strip. Mirrors the
+    // variants assertion shape below. graphql-js prints selections in source
+    // order, so the printed fragment shape is:
+    //   parents { ... children(pagination) { ... } }
+    //   children(pagination) { ... }      ← top-level
+    //   variants(pagination) { ... }
+    // The top-level occurrence is uniquely anchored by what appears AFTER
+    // the closing `}` of the children block — the next field is
+    // `variants(`. The nested occurrence is followed by another `}` (the
+    // parents block close) instead.
+    expect(printed).toMatch(
+      /\bchildren\(pagination:\s*\{\s*limit:\s*-1\s*\}\)\s*\{[\s\S]*?\}\s*variants\s*\(/,
     )
 
     // variants: identifying + playable + downloads + muxVideo.
