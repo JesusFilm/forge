@@ -48,7 +48,7 @@
   --ds-brand-red: #ef3340;
   --ds-success: #1db954;
   --ds-danger: #ef3340;
-  --ds-radius: 16px;
+  --ds-radius: 14px;
   --ds-radius-sm: 12px;
 }
 
@@ -6709,7 +6709,7 @@ body.jobs-standalone main:has(.design-system-eleven) {
   --ds-brand-red: #ef3340;
   --ds-success: #1db954;
   --ds-danger: #ef3340;
-  --ds-radius: 16px;
+  --ds-radius: 14px;
   --ds-radius-sm: 12px;
   display: grid;
   gap: 24px;
