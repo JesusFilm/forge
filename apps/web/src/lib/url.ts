@@ -29,3 +29,43 @@ export function isPublicShareableOrigin(origin: string): boolean {
     return false
   }
 }
+
+/**
+ * Resolve a usable poster URL for a watch-page video image.
+ *
+ * Priority order:
+ *   1. mobileCinematicHigh (curated cinematic still, large)
+ *   2. mobileCinematicLow  (curated cinematic still, small)
+ *   3. thumbnail           (thumbnail crop)
+ *   4. Mux fallback when `muxPlaybackId` is provided — a frame from the
+ *      video, not a curated poster, but always available.
+ *   5. null
+ *
+ * The raw `images[].url` field from Strapi is intentionally NOT in the
+ * fallback chain: that value is a misshaped Cloudflare Images URL (missing
+ * the variant path segment) and returns 400 from Cloudflare, so including
+ * it as a "last resort" only ever produces broken images.
+ */
+export function resolvePosterUrl(
+  image:
+    | {
+        mobileCinematicHigh?: string | null
+        mobileCinematicLow?: string | null
+        thumbnail?: string | null
+        url?: string | null
+      }
+    | null
+    | undefined,
+  muxPlaybackId?: string | null,
+): string | null {
+  const editorial =
+    image?.mobileCinematicHigh ??
+    image?.mobileCinematicLow ??
+    image?.thumbnail ??
+    null
+  if (editorial) return editorial
+  if (muxPlaybackId) {
+    return `https://image.mux.com/${muxPlaybackId}/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop`
+  }
+  return null
+}

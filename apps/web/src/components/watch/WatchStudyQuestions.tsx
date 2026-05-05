@@ -8,7 +8,13 @@ import { Button } from "@/components/ui/button"
 
 // Prompts are intentionally non-interactive: Video.studyQuestions has no
 // `answer` field, so any chevron/expand affordance would be a false promise.
-// Tests in WatchBody.test.tsx pin this contract.
+// The placeholder row shown when there are no editorial prompts is also
+// non-interactive -- it's an invite-to-engage copy string, not a question
+// with a hidden answer. Tests in WatchBody.test.tsx pin this contract for
+// both branches.
+const PLACEHOLDER_QUESTION =
+  "If you could ask the creator of this video a question, what would it be?"
+
 export function WatchStudyQuestions({
   prompts,
   onAskYoursClick,
@@ -16,12 +22,19 @@ export function WatchStudyQuestions({
   prompts: string[]
   onAskYoursClick: () => void
 }) {
+  const hasPrompts = prompts.length > 0
   return (
     <section
       data-testid="watch-study-questions"
       aria-labelledby="watch-related-questions-heading"
-      className="w-full pt-6 xl:pt-4"
+      className="w-full pt-0 md:pt-9 xl:pt-11"
     >
+      {/* Section pt is tuned so the header (Related Questions + Ask Yours)
+          lands on the same Y axis as the h1 title in the left column --
+          which now hosts the Download pill in its flex row. The mb below
+          the header is sized so the first prompt / placeholder row lines
+          up with the start of the video description, keeping the two
+          columns visually parallel. */}
       <div className="mb-4 flex flex-wrap items-center justify-between">
         <h4
           id="watch-related-questions-heading"
@@ -44,18 +57,30 @@ export function WatchStudyQuestions({
         data-testid="watch-study-questions-list"
         className="relative flex flex-col"
       >
-        {prompts.map((prompt, index) => (
+        {hasPrompts ? (
+          prompts.map((prompt, index) => (
+            <li
+              key={`${index}-${prompt}`}
+              data-testid="watch-study-questions-item"
+              className="border-b border-stone-500/20 py-3"
+            >
+              <p className="flex text-base leading-[1.6] font-semibold text-stone-100 sm:pr-4 md:text-lg md:text-balance">
+                <QuestionIcon />
+                {prompt}
+              </p>
+            </li>
+          ))
+        ) : (
           <li
-            key={`${index}-${prompt}`}
-            data-testid="watch-study-questions-item"
+            data-testid="watch-study-questions-placeholder"
             className="border-b border-stone-500/20 py-3"
           >
             <p className="flex text-base leading-[1.6] font-semibold text-stone-100 sm:pr-4 md:text-lg md:text-balance">
               <QuestionIcon />
-              {prompt}
+              {PLACEHOLDER_QUESTION}
             </p>
           </li>
-        ))}
+        )}
       </ul>
     </section>
   )

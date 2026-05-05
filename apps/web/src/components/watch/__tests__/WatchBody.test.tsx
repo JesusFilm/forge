@@ -5,12 +5,13 @@
  *
  * Covers:
  *  - Two-column layout when both columns have content.
- *  - Right column collapse + `md:col-span-2` when no study questions.
+ *  - Right column always renders -- placeholder row + Ask Yours CTA appear
+ *    even when studyQuestions is null or empty (the CTA is always relevant).
  *  - Download button hidden when `variant.downloads` empty.
- *  - Both columns empty → only left column rendered, no Download button.
  *  - Mobile DOM order — left column first in source.
  *  - Click integration for both modal triggers.
- *  - UX regression: WatchStudyQuestions has NO chevron / accordion semantics.
+ *  - UX regression: WatchStudyQuestions has NO chevron / accordion semantics
+ *    on either prompt rows or the placeholder row.
  */
 
 import { act } from "react"
@@ -117,7 +118,6 @@ describe("WatchBody — two-column layout", () => {
 
     const wrapper = container.querySelector('[data-testid="watch-body"]')
     expect(wrapper).not.toBeNull()
-    expect(wrapper!.getAttribute("data-has-right-column")).toBe("true")
     // Two-column grid classes present (12-col grid mirroring Container.tsx).
     expect(wrapper!.className).toContain("md:grid-cols-12")
     const left = container.querySelector('[data-testid="watch-body-left"]')
@@ -143,6 +143,36 @@ describe("WatchBody — two-column layout", () => {
     // Download button visible.
     const dl = container.querySelector('[data-testid="watch-download-button"]')
     expect(dl).not.toBeNull()
+
+    // Title and Download share the same flex row (alignment contract for the
+    // top-of-watch-page UI -- Download must sit on the same Y axis as the
+    // h1 title; a future move out of this row would break that intent).
+    const titleRow = container.querySelector(
+      '[data-testid="watch-body-title-row"]',
+    )
+    expect(titleRow).not.toBeNull()
+    expect(titleRow!.className).toContain("flex")
+    expect(titleRow!.className).toContain("items-center")
+    expect(titleRow!.className).toContain("justify-between")
+    const titleEl = container.querySelector('[data-testid="watch-body-title"]')
+    expect(titleEl!.parentElement).toBe(titleRow)
+    expect(dl!.closest('[data-testid="watch-body-title-row"]')).toBe(titleRow)
+
+    // Right-column header pt and mb are alignment-critical -- pinning them
+    // so a revert / merge resolution cannot silently clobber the values.
+    // pt-0 mobile (columns stack, no extra gap) -> md:pt-9 (text-4xl h1)
+    // -> xl:pt-11 (text-5xl h1) tracks the h1 size scale across breakpoints.
+    const studySection = container.querySelector(
+      '[data-testid="watch-study-questions"]',
+    )
+    expect(studySection).not.toBeNull()
+    expect(studySection!.className).toContain("pt-0")
+    expect(studySection!.className).toContain("md:pt-9")
+    expect(studySection!.className).toContain("xl:pt-11")
+    const headerRow = studySection!.querySelector(
+      "div.mb-4.flex.flex-wrap.items-center.justify-between",
+    )
+    expect(headerRow).not.toBeNull()
   })
 
   it("renders the optional uppercase label tag when present", () => {
@@ -184,8 +214,8 @@ describe("WatchBody — two-column layout", () => {
   })
 })
 
-describe("WatchBody — collapse to single column when right column is empty", () => {
-  it("hides right column and applies md:col-span-2 to left when studyQuestions block is null", () => {
+describe("WatchBody — right column always renders (Ask Yours CTA is always relevant)", () => {
+  it("renders right column with placeholder row when studyQuestions block is null", () => {
     const block = makeBlock({ downloadCount: 2 })
 
     act(() => {
@@ -199,14 +229,26 @@ describe("WatchBody — collapse to single column when right column is empty", (
       )
     })
 
-    const wrapper = container.querySelector('[data-testid="watch-body"]')
-    expect(wrapper!.getAttribute("data-has-right-column")).toBe("false")
-
     const left = container.querySelector('[data-testid="watch-body-left"]')
-    expect(left!.className).toContain("md:col-span-12")
+    expect(left!.className).toContain("md:col-span-8")
 
     const right = container.querySelector('[data-testid="watch-body-right"]')
-    expect(right).toBeNull()
+    expect(right).not.toBeNull()
+
+    // Placeholder row + Ask Yours CTA both present.
+    const placeholder = container.querySelector(
+      '[data-testid="watch-study-questions-placeholder"]',
+    )
+    expect(placeholder).not.toBeNull()
+    // Pin the user-visible copy so silent edits to the constant get caught.
+    expect(placeholder!.textContent).toContain(
+      "If you could ask the creator of this video a question, what would it be?",
+    )
+    expect(
+      container.querySelector(
+        '[data-testid="watch-study-questions-ask-yours"]',
+      ),
+    ).not.toBeNull()
 
     // Download button still visible.
     expect(
@@ -214,7 +256,7 @@ describe("WatchBody — collapse to single column when right column is empty", (
     ).not.toBeNull()
   })
 
-  it("treats an empty studyQuestions array as empty right column too", () => {
+  it("renders right column with placeholder when studyQuestions array is empty", () => {
     const block = makeBlock({ downloadCount: 1 })
     const emptySq: WatchStudyQuestionsBlock = {
       kind: "StudyQuestions",
@@ -232,10 +274,20 @@ describe("WatchBody — collapse to single column when right column is empty", (
       )
     })
 
-    const wrapper = container.querySelector('[data-testid="watch-body"]')
-    expect(wrapper!.getAttribute("data-has-right-column")).toBe("false")
     const left = container.querySelector('[data-testid="watch-body-left"]')
-    expect(left!.className).toContain("md:col-span-12")
+    expect(left!.className).toContain("md:col-span-8")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-study-questions-placeholder"]',
+      ),
+    ).not.toBeNull()
+    // Ask Yours CTA must also render in the empty-array path; the null path
+    // already pins this and the two cases should stay symmetric.
+    expect(
+      container.querySelector(
+        '[data-testid="watch-study-questions-ask-yours"]',
+      ),
+    ).not.toBeNull()
   })
 })
 
@@ -260,14 +312,12 @@ describe("WatchBody — Download button visibility", () => {
     ).toBeNull()
 
     // Two-column layout still preserved.
-    const wrapper = container.querySelector('[data-testid="watch-body"]')
-    expect(wrapper!.getAttribute("data-has-right-column")).toBe("true")
     expect(
       container.querySelector('[data-testid="watch-body-right"]'),
     ).not.toBeNull()
   })
 
-  it("renders only left column with no Download button when both are empty", () => {
+  it("renders right column placeholder with no Download button when both are empty", () => {
     const block = makeBlock({ downloadCount: 0 })
 
     act(() => {
@@ -281,16 +331,24 @@ describe("WatchBody — Download button visibility", () => {
       )
     })
 
+    // Right column with placeholder still renders -- the Ask Yours CTA is
+    // always relevant, even when there are no editorial prompts and no
+    // downloadable variants.
     expect(
       container.querySelector('[data-testid="watch-body-right"]'),
-    ).toBeNull()
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="watch-study-questions-placeholder"]',
+      ),
+    ).not.toBeNull()
     expect(
       container.querySelector('[data-testid="watch-download-button"]'),
     ).toBeNull()
 
     const left = container.querySelector('[data-testid="watch-body-left"]')
     expect(left).not.toBeNull()
-    expect(left!.className).toContain("md:col-span-12")
+    expect(left!.className).toContain("md:col-span-8")
   })
 })
 
@@ -465,6 +523,56 @@ describe("WatchStudyQuestions — UX regression: no false-affordance chevrons", 
       )
     })
 
+    const section = container.querySelector(
+      '[data-testid="watch-study-questions"]',
+    )
+    expect(section).not.toBeNull()
+    const buttons = section!.querySelectorAll("button")
+    expect(buttons.length).toBe(1)
+    expect(buttons[0]?.getAttribute("data-testid")).toBe(
+      "watch-study-questions-ask-yours",
+    )
+  })
+
+  it("placeholder row (empty prompts) is non-interactive: no nested button/anchor, decorative SVG only, and Ask Yours stays the only button", () => {
+    act(() => {
+      root.render(
+        <WatchStudyQuestions prompts={[]} onAskYoursClick={vi.fn()} />,
+      )
+    })
+
+    // Accordion semantics still banned across the placeholder branch.
+    expect(container.querySelectorAll("details").length).toBe(0)
+    expect(container.querySelectorAll("summary").length).toBe(0)
+
+    const placeholder = container.querySelector(
+      '[data-testid="watch-study-questions-placeholder"]',
+    )
+    expect(placeholder).not.toBeNull()
+    expect(placeholder!.tagName.toLowerCase()).toBe("li")
+    expect(placeholder!.hasAttribute("aria-haspopup")).toBe(false)
+    expect(placeholder!.hasAttribute("aria-expanded")).toBe(false)
+    expect(placeholder!.hasAttribute("role")).toBe(false)
+    expect(placeholder!.querySelector("button")).toBeNull()
+    expect(placeholder!.querySelector("a")).toBeNull()
+    // Any SVG inside the placeholder row must be decorative and free of
+    // rotate/transition classes that would suggest an expandable affordance.
+    const svgs = placeholder!.querySelectorAll("svg")
+    expect(svgs.length).toBeGreaterThan(0)
+    for (const svg of svgs) {
+      expect(svg.getAttribute("aria-hidden")).toBe("true")
+      const cls = svg.getAttribute("class") ?? ""
+      expect(cls).not.toMatch(/\brotate-/)
+      expect(cls).not.toMatch(/\btransition\b/)
+    }
+
+    // Real prompt rows must be absent in the placeholder branch.
+    expect(
+      container.querySelectorAll('[data-testid="watch-study-questions-item"]')
+        .length,
+    ).toBe(0)
+
+    // Singleton-button contract holds across the empty-prompts path too.
     const section = container.querySelector(
       '[data-testid="watch-study-questions"]',
     )
