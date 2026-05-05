@@ -100,13 +100,10 @@ export function MediaFolderInspector({
 
   return (
     <aside className="relative flex min-h-0 flex-col border-l border-[var(--color-hairline)] bg-[var(--color-surface-raised)]">
-      <div className="hairline-strong-b flex items-start justify-between gap-3 px-4 py-3">
+      <div className="hairline-strong-b flex h-12 shrink-0 items-center justify-between gap-3 px-4">
         <div className="min-w-0">
           <div className="truncate text-[13px] font-medium text-[var(--color-text-primary)]">
             {folder.label}
-          </div>
-          <div className="mono-meta mt-1 truncate text-[var(--color-text-muted)]">
-            {folder.pathLabel}
           </div>
         </div>
         <Link

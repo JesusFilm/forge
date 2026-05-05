@@ -69,6 +69,8 @@ export const env = createEnv({
     CORE_API_RETRIES: z.coerce.number().int().min(0).optional(),
     CORE_SYNC_CRON_SECRET: z.string().min(1).optional(),
     OPENROUTER_API_KEY: z.string().min(1).optional(),
+    OPENROUTER_IMAGE_TEXT_MODEL: z.string().min(1).optional(),
+    OPENROUTER_IMAGE_TEXT_MODELS: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BASE_URL: z.string().url().optional(),
     WORKFLOW_API_KEYS: z.string().min(1).optional(),
@@ -179,6 +181,12 @@ export const env = createEnv({
     CORE_API_RETRIES: emptyToUndefined(process.env.CORE_API_RETRIES),
     CORE_SYNC_CRON_SECRET: emptyToUndefined(process.env.CORE_SYNC_CRON_SECRET),
     OPENROUTER_API_KEY: emptyToUndefined(process.env.OPENROUTER_API_KEY),
+    OPENROUTER_IMAGE_TEXT_MODEL: emptyToUndefined(
+      process.env.OPENROUTER_IMAGE_TEXT_MODEL,
+    ),
+    OPENROUTER_IMAGE_TEXT_MODELS: emptyToUndefined(
+      process.env.OPENROUTER_IMAGE_TEXT_MODELS,
+    ),
     OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
     OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
     WORKFLOW_API_KEYS: emptyToUndefined(process.env.WORKFLOW_API_KEYS),

@@ -11,9 +11,16 @@ function mockPrisma() {
     mediaAsset: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       delete: vi.fn(),
+    },
+    mediaAssetLocale: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
     },
     mediaFolder: {
       findFirst: vi.fn(),
@@ -60,7 +67,7 @@ describe("MediaAssetService", () => {
         status: "READY",
         folderId: "folder-1",
       })
-      expect(call.where.OR).toHaveLength(3)
+      expect(call.where.OR).toHaveLength(2)
     })
 
     it("VIEWER cannot list media assets", async () => {
@@ -113,7 +120,6 @@ describe("MediaAssetService", () => {
       await service.create({
         input: {
           kind: "IMAGE",
-          displayName: "Hero image",
           mimeType: "image/webp",
           byteSize: "12345",
           folderId: "folder-1",
@@ -144,7 +150,6 @@ describe("MediaAssetService", () => {
         service.create({
           input: {
             kind: "IMAGE",
-            displayName: "Hero image",
             mimeType: "image/webp",
             folderId: "missing-folder",
           },
@@ -158,7 +163,6 @@ describe("MediaAssetService", () => {
         service.create({
           input: {
             kind: "IMAGE",
-            displayName: "Not an image",
             mimeType: "application/pdf",
           },
           user: EDITOR,
@@ -171,7 +175,6 @@ describe("MediaAssetService", () => {
         service.create({
           input: {
             kind: "IMAGE",
-            displayName: "Hero image",
             mimeType: "image/webp",
             objectKey: "../secret",
           },
@@ -186,7 +189,6 @@ describe("MediaAssetService", () => {
           input: {
             kind: "PDF",
             backend: "MUX",
-            displayName: "PDF",
             mimeType: "application/pdf",
           },
           user: EDITOR,
@@ -199,7 +201,6 @@ describe("MediaAssetService", () => {
         service.create({
           input: {
             kind: "PDF",
-            displayName: "Doc",
             mimeType: "application/pdf",
           },
           user: VIEWER,
@@ -209,15 +210,13 @@ describe("MediaAssetService", () => {
   })
 
   describe("update", () => {
-    it("ADMIN can update asset metadata", async () => {
+    it("ADMIN can update asset folder", async () => {
       prisma.mediaFolder.findFirst.mockResolvedValueOnce({ id: "folder-2" })
       prisma.mediaAsset.update.mockResolvedValueOnce({ id: "asset-1" })
 
       await service.update({
         input: {
           id: "asset-1",
-          displayName: "Updated",
-          altText: "A clear alt text",
           folderId: "folder-2",
         },
         user: ADMIN,
@@ -226,8 +225,6 @@ describe("MediaAssetService", () => {
       expect(prisma.mediaAsset.update).toHaveBeenCalledWith({
         where: { id: "asset-1" },
         data: {
-          displayName: "Updated",
-          altText: "A clear alt text",
           folderId: "folder-2",
         },
       })
@@ -244,6 +241,109 @@ describe("MediaAssetService", () => {
         }),
       ).rejects.toThrow("Invalid media object key")
       expect(prisma.mediaAsset.update).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("image locales", () => {
+    it("does not throw when enrichment status is updated for a missing asset", async () => {
+      prisma.mediaAsset.updateMany.mockResolvedValueOnce({ count: 0 })
+
+      await expect(
+        service.updateImageEnrichmentState({
+          mediaAssetId: "missing-asset",
+          user: ADMIN,
+          data: {
+            imageEnrichmentStatus: "FAILED",
+            imageEnrichmentErrorCode: "image_enrichment_failed",
+          },
+        }),
+      ).resolves.toEqual({ count: 0 })
+
+      expect(prisma.mediaAsset.updateMany).toHaveBeenCalledWith({
+        where: { id: "missing-asset" },
+        data: {
+          imageEnrichmentStatus: "FAILED",
+          imageEnrichmentErrorCode: "image_enrichment_failed",
+        },
+      })
+    })
+
+    it("human edits lock localized fields against future regeneration", async () => {
+      prisma.mediaAsset.findFirst.mockResolvedValueOnce({
+        id: "asset-1",
+        kind: "IMAGE",
+      })
+      prisma.mediaAssetLocale.upsert.mockResolvedValueOnce({ id: "loc-1" })
+
+      await service.updateImageLocale({
+        input: {
+          mediaAssetId: "asset-1",
+          locale: "fr",
+          displayName: "Titre humain",
+          altText: "Description humaine",
+        },
+        user: EDITOR,
+      })
+
+      expect(prisma.mediaAssetLocale.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: expect.objectContaining({
+            displayNameSource: "USER",
+            altTextSource: "USER",
+            displayNameLocked: true,
+            altTextLocked: true,
+          }),
+        }),
+      )
+    })
+
+    it("AI upsert preserves locked display name while updating AI-owned alt text", async () => {
+      prisma.mediaAssetLocale.findUnique.mockResolvedValueOnce({
+        id: "loc-1",
+        mediaAssetId: "asset-1",
+        locale: "fr",
+        displayName: "Titre humain",
+        altText: "Old AI alt",
+        displayNameSource: "USER",
+        altTextSource: "AI",
+        displayNameLocked: true,
+        altTextLocked: false,
+      })
+      prisma.mediaAssetLocale.upsert.mockResolvedValueOnce({ id: "loc-1" })
+
+      await service.upsertAiImageLocale({
+        input: {
+          mediaAssetId: "asset-1",
+          locale: "fr",
+          displayName: "AI title",
+          altText: "New AI alt",
+        },
+        user: { id: null, role: "SYSTEM" },
+      })
+
+      expect(prisma.mediaAssetLocale.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: expect.objectContaining({
+            displayName: "Titre humain",
+            altText: "New AI alt",
+            displayNameSource: "USER",
+            altTextSource: "AI",
+          }),
+        }),
+      )
+    })
+
+    it("non-derived callers cannot write AI localized values", async () => {
+      await expect(
+        service.upsertAiImageLocale({
+          input: {
+            mediaAssetId: "asset-1",
+            locale: "en",
+            displayName: "AI title",
+          },
+          user: EDITOR,
+        }),
+      ).rejects.toThrow("Forbidden")
     })
   })
 

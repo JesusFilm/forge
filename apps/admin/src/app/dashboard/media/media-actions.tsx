@@ -99,21 +99,6 @@ export function MediaActions({
                   className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-bg)] px-3 py-2 text-[13px] outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-[var(--color-surface-raised)] file:px-3 file:py-1.5 file:text-[12px] file:text-[var(--color-text-primary)]"
                 />
               </label>
-              <label className="grid gap-1.5">
-                <span className="label-text">Display name</span>
-                <input
-                  name="displayName"
-                  placeholder="Campaign hero image"
-                  className="h-9 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-bg)] px-3 text-[13px] outline-none transition-all duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)]"
-                />
-              </label>
-              <label className="grid gap-1.5">
-                <span className="label-text">Alt text</span>
-                <input
-                  name="altText"
-                  className="h-9 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-bg)] px-3 text-[13px] outline-none transition-all duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)]"
-                />
-              </label>
               <div className="mt-1 flex items-center justify-end gap-2">
                 <button
                   type="button"

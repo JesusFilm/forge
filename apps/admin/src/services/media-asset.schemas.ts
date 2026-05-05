@@ -16,6 +16,20 @@ export const MediaAssetStatusSchema = z.enum([
   "MISSING",
 ])
 export const MediaAssetVisibilitySchema = z.enum(["PRIVATE", "PUBLIC"])
+export const MediaImageEnrichmentStatusSchema = z.enum([
+  "WAITING",
+  "PROCESSING",
+  "COMPLETE",
+  "FAILED",
+  "SKIPPED",
+])
+export const MediaAssetLocaleStatusSchema = z.enum([
+  "WAITING",
+  "PROCESSING",
+  "COMPLETE",
+  "FAILED",
+  "SKIPPED",
+])
 
 const NullableString = z.string().max(2000).nullable().optional()
 const OptionalPositiveInt = z.number().int().positive().nullable().optional()
@@ -54,13 +68,17 @@ export const CreateMediaAssetInput = z.object({
   backend: MediaAssetBackendSchema.default("LOCAL"),
   status: MediaAssetStatusSchema.default("READY"),
   visibility: MediaAssetVisibilitySchema.default("PRIVATE"),
-  displayName: z.string().trim().min(1).max(300),
-  description: NullableString,
-  altText: z.string().max(500).nullable().optional(),
   mimeType: z.string().trim().min(1).max(255),
   byteSize: OptionalBigInt,
   width: OptionalPositiveInt,
   height: OptionalPositiveInt,
+  blurDataUrl: NullableString,
+  dominantColor: z.string().max(32).nullable().optional(),
+  imageEnrichmentStatus: MediaImageEnrichmentStatusSchema.optional(),
+  imageEnrichmentErrorCode: z.string().max(100).nullable().optional(),
+  imageEnrichmentErrorMessage: z.string().max(1000).nullable().optional(),
+  imageEnrichmentStartedAt: z.date().nullable().optional(),
+  imageEnrichmentCompletedAt: z.date().nullable().optional(),
   durationMs: OptionalBigInt,
   originalFilename: z.string().max(255).nullable().optional(),
   checksumSha256: z.string().length(64).nullable().optional(),
@@ -77,12 +95,16 @@ export const UpdateMediaAssetInput = z.object({
   id: z.string().min(1),
   status: MediaAssetStatusSchema.optional(),
   visibility: MediaAssetVisibilitySchema.optional(),
-  displayName: z.string().trim().min(1).max(300).optional(),
-  description: NullableString,
-  altText: z.string().max(500).nullable().optional(),
   byteSize: OptionalBigInt,
   width: OptionalPositiveInt,
   height: OptionalPositiveInt,
+  blurDataUrl: NullableString,
+  dominantColor: z.string().max(32).nullable().optional(),
+  imageEnrichmentStatus: MediaImageEnrichmentStatusSchema.optional(),
+  imageEnrichmentErrorCode: z.string().max(100).nullable().optional(),
+  imageEnrichmentErrorMessage: z.string().max(1000).nullable().optional(),
+  imageEnrichmentStartedAt: z.date().nullable().optional(),
+  imageEnrichmentCompletedAt: z.date().nullable().optional(),
   durationMs: OptionalBigInt,
   originalFilename: z.string().max(255).nullable().optional(),
   checksumSha256: z.string().length(64).nullable().optional(),
@@ -96,3 +118,34 @@ export const UpdateMediaAssetInput = z.object({
   errorMessage: z.string().max(1000).nullable().optional(),
 })
 export type UpdateMediaAssetInput = z.infer<typeof UpdateMediaAssetInput>
+
+export const ImageLocaleCode = z
+  .string()
+  .trim()
+  .min(2)
+  .max(35)
+  .regex(/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/)
+  .transform((value) => value.toLowerCase())
+
+export const UpdateMediaAssetLocaleInput = z.object({
+  mediaAssetId: z.string().min(1),
+  locale: ImageLocaleCode,
+  displayName: z.string().trim().max(300).nullable().optional(),
+  altText: z.string().trim().max(500).nullable().optional(),
+})
+export type UpdateMediaAssetLocaleInput = z.infer<
+  typeof UpdateMediaAssetLocaleInput
+>
+
+export const UpsertAiMediaAssetLocaleInput = z.object({
+  mediaAssetId: z.string().min(1),
+  locale: ImageLocaleCode,
+  displayName: z.string().trim().max(300).nullable().optional(),
+  altText: z.string().trim().max(500).nullable().optional(),
+  status: MediaAssetLocaleStatusSchema.default("COMPLETE"),
+  errorCode: z.string().max(100).nullable().optional(),
+  errorMessage: z.string().max(1000).nullable().optional(),
+})
+export type UpsertAiMediaAssetLocaleInput = z.infer<
+  typeof UpsertAiMediaAssetLocaleInput
+>
