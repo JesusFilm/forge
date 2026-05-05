@@ -2,6 +2,8 @@ import type { ErrorLike } from "@apollo/client"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import { graphql, type ResultOf } from "@forge/graphql"
+import { env } from "@/env"
+import { getAdminExperienceBySlug } from "@/lib/admin-content"
 import client from "@/lib/client"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
@@ -363,6 +365,13 @@ async function resolveSlugPage(
   locale: string,
   slug: string,
 ): Promise<ResolvedWatchPage | null> {
+  if (env.FORGE_CONTENT_API === "admin") {
+    const adminExperience = await getAdminExperienceBySlug(locale, slug)
+    if (adminExperience) {
+      return { kind: "experience", experience: adminExperience }
+    }
+  }
+
   const explicitExperience = asNonTemplateExperience(
     await getExperienceByFilters(locale, {
       slug: { eq: slug },
@@ -431,6 +440,29 @@ const fetchResolvedWatchPage = unstable_cache(
 /** Shared watch-page resolver for page rendering and metadata generation. */
 export const resolveWatchPage = cache(
   async (locale: string, slug?: string): Promise<WatchPageResult> => {
+    if (env.FORGE_CONTENT_API === "admin") {
+      try {
+        const resolved =
+          slug == null
+            ? await resolveHomepage(locale)
+            : await resolveSlugPage(locale, slug)
+
+        if (!resolved) {
+          return { data: null, error: new Error(NO_EXPERIENCE_FOUND_MESSAGE) }
+        }
+
+        return {
+          data: JSON.parse(JSON.stringify(resolved)) as ResolvedWatchPage,
+          error: null,
+        }
+      } catch (error) {
+        return {
+          data: null,
+          error: error instanceof Error ? error : new Error(String(error)),
+        }
+      }
+    }
+
     return fetchResolvedWatchPage(locale, slug ?? null)
   },
 )

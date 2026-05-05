@@ -50,6 +50,14 @@ export const env = createEnv({
     OPENROUTER_API_KEY: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BASE_URL: z.string().url().optional(),
+    // Gates the local-only codex CLI fallback for Experience AI drafting.
+    // Defaults to false so production deployments without OPENROUTER_API_KEY
+    // / OPENAI_API_KEY surface NOT_CONFIGURED instead of silently spawning
+    // a CLI process at request time. Set to true on developer machines to
+    // keep AI drafting available without an API key.
+    EXPERIENCE_AI_ALLOW_CODEX_FALLBACK: z.coerce.boolean().default(false),
+    OLLAMA_BASE_URL: z.string().url().optional(),
+    OLLAMA_EMBEDDING_MODEL: z.string().min(1).optional(),
     WORKFLOW_API_KEYS: z.string().min(1).optional(),
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
     RAILWAY_S3_ENDPOINT: z.string().url().optional(),
@@ -67,6 +75,7 @@ export const env = createEnv({
   },
   client: {
     NEXT_PUBLIC_APP_NAME: z.string().min(1).default("forge-admin"),
+    NEXT_PUBLIC_WATCH_URL: z.string().url().optional(),
   },
   skipValidation: !!process.env.CI,
   runtimeEnv: {
@@ -106,6 +115,13 @@ export const env = createEnv({
     OPENROUTER_API_KEY: emptyToUndefined(process.env.OPENROUTER_API_KEY),
     OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
     OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
+    EXPERIENCE_AI_ALLOW_CODEX_FALLBACK: emptyToUndefined(
+      process.env.EXPERIENCE_AI_ALLOW_CODEX_FALLBACK,
+    ),
+    OLLAMA_BASE_URL: emptyToUndefined(process.env.OLLAMA_BASE_URL),
+    OLLAMA_EMBEDDING_MODEL: emptyToUndefined(
+      process.env.OLLAMA_EMBEDDING_MODEL,
+    ),
     WORKFLOW_API_KEYS: emptyToUndefined(process.env.WORKFLOW_API_KEYS),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
     RAILWAY_S3_ENDPOINT: emptyToUndefined(process.env.RAILWAY_S3_ENDPOINT),
@@ -120,5 +136,6 @@ export const env = createEnv({
     CMS_DATABASE_URL: emptyToUndefined(process.env.CMS_DATABASE_URL),
     NODE_ENV: emptyToUndefined(process.env.NODE_ENV),
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
+    NEXT_PUBLIC_WATCH_URL: emptyToUndefined(process.env.NEXT_PUBLIC_WATCH_URL),
   },
 })

@@ -2626,6 +2626,7 @@ enum PublicationStatus {
 type Query {
   bibleBook(
     documentId: ID!
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2633,6 +2634,7 @@ type Query {
   ): BibleBook
   bibleBooks(
     filters: BibleBookFiltersInput
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2642,6 +2644,7 @@ type Query {
   ): [BibleBook]!
   bibleBooks_connection(
     filters: BibleBookFiltersInput
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2649,14 +2652,15 @@ type Query {
     sort: [String] = []
     status: PublicationStatus = PUBLISHED
   ): BibleBookEntityResponseCollection
-  bibleCitation(documentId: ID!, status: PublicationStatus = PUBLISHED): BibleCitation
-  bibleCitations(filters: BibleCitationFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [BibleCitation]!
-  bibleCitations_connection(filters: BibleCitationFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): BibleCitationEntityResponseCollection
-  cloudflareR2(documentId: ID!, status: PublicationStatus = PUBLISHED): CloudflareR2
-  cloudflareR2S(filters: CloudflareR2FiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [CloudflareR2]!
-  cloudflareR2S_connection(filters: CloudflareR2FiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): CloudflareR2EntityResponseCollection
+  bibleCitation(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): BibleCitation
+  bibleCitations(filters: BibleCitationFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [BibleCitation]!
+  bibleCitations_connection(filters: BibleCitationFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): BibleCitationEntityResponseCollection
+  cloudflareR2(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): CloudflareR2
+  cloudflareR2S(filters: CloudflareR2FiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [CloudflareR2]!
+  cloudflareR2S_connection(filters: CloudflareR2FiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): CloudflareR2EntityResponseCollection
   continent(
     documentId: ID!
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2664,6 +2668,7 @@ type Query {
   ): Continent
   continents(
     filters: ContinentFiltersInput
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2673,6 +2678,7 @@ type Query {
   ): [Continent]!
   continents_connection(
     filters: ContinentFiltersInput
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2682,6 +2688,7 @@ type Query {
   ): ContinentEntityResponseCollection
   countries(
     filters: CountryFiltersInput
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2691,6 +2698,7 @@ type Query {
   ): [Country]!
   countries_connection(
     filters: CountryFiltersInput
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2700,28 +2708,30 @@ type Query {
   ): CountryEntityResponseCollection
   country(
     documentId: ID!
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
     status: PublicationStatus = PUBLISHED
   ): Country
-  countryLanguage(documentId: ID!, status: PublicationStatus = PUBLISHED): CountryLanguage
-  countryLanguages(filters: CountryLanguageFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [CountryLanguage]!
-  countryLanguages_connection(filters: CountryLanguageFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): CountryLanguageEntityResponseCollection
-  coverageSnapshot(documentId: ID!, status: PublicationStatus = PUBLISHED): CoverageSnapshot
-  coverageSnapshots(filters: CoverageSnapshotFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [CoverageSnapshot]!
-  coverageSnapshots_connection(filters: CoverageSnapshotFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): CoverageSnapshotEntityResponseCollection
-  enrichmentAutomation(documentId: ID!, status: PublicationStatus = PUBLISHED): EnrichmentAutomation
-  enrichmentAutomationRun(documentId: ID!, status: PublicationStatus = PUBLISHED): EnrichmentAutomationRun
-  enrichmentAutomationRuns(filters: EnrichmentAutomationRunFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [EnrichmentAutomationRun]!
-  enrichmentAutomationRuns_connection(filters: EnrichmentAutomationRunFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): EnrichmentAutomationRunEntityResponseCollection
-  enrichmentAutomations(filters: EnrichmentAutomationFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [EnrichmentAutomation]!
-  enrichmentAutomations_connection(filters: EnrichmentAutomationFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): EnrichmentAutomationEntityResponseCollection
-  enrichmentJob(documentId: ID!, status: PublicationStatus = PUBLISHED): EnrichmentJob
-  enrichmentJobs(filters: EnrichmentJobFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [EnrichmentJob]!
-  enrichmentJobs_connection(filters: EnrichmentJobFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): EnrichmentJobEntityResponseCollection
+  countryLanguage(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): CountryLanguage
+  countryLanguages(filters: CountryLanguageFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [CountryLanguage]!
+  countryLanguages_connection(filters: CountryLanguageFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): CountryLanguageEntityResponseCollection
+  coverageSnapshot(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): CoverageSnapshot
+  coverageSnapshots(filters: CoverageSnapshotFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [CoverageSnapshot]!
+  coverageSnapshots_connection(filters: CoverageSnapshotFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): CoverageSnapshotEntityResponseCollection
+  enrichmentAutomation(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): EnrichmentAutomation
+  enrichmentAutomationRun(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): EnrichmentAutomationRun
+  enrichmentAutomationRuns(filters: EnrichmentAutomationRunFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [EnrichmentAutomationRun]!
+  enrichmentAutomationRuns_connection(filters: EnrichmentAutomationRunFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): EnrichmentAutomationRunEntityResponseCollection
+  enrichmentAutomations(filters: EnrichmentAutomationFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [EnrichmentAutomation]!
+  enrichmentAutomations_connection(filters: EnrichmentAutomationFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): EnrichmentAutomationEntityResponseCollection
+  enrichmentJob(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): EnrichmentJob
+  enrichmentJobs(filters: EnrichmentJobFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [EnrichmentJob]!
+  enrichmentJobs_connection(filters: EnrichmentJobFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): EnrichmentJobEntityResponseCollection
   experience(
     documentId: ID!
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2729,6 +2739,7 @@ type Query {
   ): Experience
   experiences(
     filters: ExperienceFiltersInput
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2738,6 +2749,7 @@ type Query {
   ): [Experience]!
   experiences_connection(
     filters: ExperienceFiltersInput
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2745,24 +2757,26 @@ type Query {
     sort: [String] = []
     status: PublicationStatus = PUBLISHED
   ): ExperienceEntityResponseCollection
-  i18NLocale(documentId: ID!, status: PublicationStatus = PUBLISHED): I18NLocale
-  i18NLocales(filters: I18NLocaleFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [I18NLocale]!
-  i18NLocales_connection(filters: I18NLocaleFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): I18NLocaleEntityResponseCollection
-  keyword(documentId: ID!, status: PublicationStatus = PUBLISHED): Keyword
-  keywords(filters: KeywordFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [Keyword]!
-  keywords_connection(filters: KeywordFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): KeywordEntityResponseCollection
+  i18NLocale(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): I18NLocale
+  i18NLocales(filters: I18NLocaleFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [I18NLocale]!
+  i18NLocales_connection(filters: I18NLocaleFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): I18NLocaleEntityResponseCollection
+  keyword(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): Keyword
+  keywords(filters: KeywordFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [Keyword]!
+  keywords_connection(filters: KeywordFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): KeywordEntityResponseCollection
   language(
     documentId: ID!
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
     status: PublicationStatus = PUBLISHED
   ): Language
-  languageAudioPreview(documentId: ID!, status: PublicationStatus = PUBLISHED): LanguageAudioPreview
-  languageAudioPreviews(filters: LanguageAudioPreviewFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [LanguageAudioPreview]!
-  languageAudioPreviews_connection(filters: LanguageAudioPreviewFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): LanguageAudioPreviewEntityResponseCollection
+  languageAudioPreview(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): LanguageAudioPreview
+  languageAudioPreviews(filters: LanguageAudioPreviewFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [LanguageAudioPreview]!
+  languageAudioPreviews_connection(filters: LanguageAudioPreviewFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): LanguageAudioPreviewEntityResponseCollection
   languages(
     filters: LanguageFiltersInput
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2772,6 +2786,7 @@ type Query {
   ): [Language]!
   languages_connection(
     filters: LanguageFiltersInput
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2780,15 +2795,15 @@ type Query {
     status: PublicationStatus = PUBLISHED
   ): LanguageEntityResponseCollection
   me: UsersPermissionsMe
-  muxVideo(documentId: ID!, status: PublicationStatus = PUBLISHED): MuxVideo
-  muxVideos(filters: MuxVideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [MuxVideo]!
-  muxVideos_connection(filters: MuxVideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): MuxVideoEntityResponseCollection
-  reviewWorkflowsWorkflow(documentId: ID!, status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflow
-  reviewWorkflowsWorkflowStage(documentId: ID!, status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflowStage
-  reviewWorkflowsWorkflowStages(filters: ReviewWorkflowsWorkflowStageFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [ReviewWorkflowsWorkflowStage]!
-  reviewWorkflowsWorkflowStages_connection(filters: ReviewWorkflowsWorkflowStageFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflowStageEntityResponseCollection
-  reviewWorkflowsWorkflows(filters: ReviewWorkflowsWorkflowFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [ReviewWorkflowsWorkflow]!
-  reviewWorkflowsWorkflows_connection(filters: ReviewWorkflowsWorkflowFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflowEntityResponseCollection
+  muxVideo(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): MuxVideo
+  muxVideos(filters: MuxVideoFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [MuxVideo]!
+  muxVideos_connection(filters: MuxVideoFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): MuxVideoEntityResponseCollection
+  reviewWorkflowsWorkflow(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflow
+  reviewWorkflowsWorkflowStage(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflowStage
+  reviewWorkflowsWorkflowStages(filters: ReviewWorkflowsWorkflowStageFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [ReviewWorkflowsWorkflowStage]!
+  reviewWorkflowsWorkflowStages_connection(filters: ReviewWorkflowsWorkflowStageFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflowStageEntityResponseCollection
+  reviewWorkflowsWorkflows(filters: ReviewWorkflowsWorkflowFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [ReviewWorkflowsWorkflow]!
+  reviewWorkflowsWorkflows_connection(filters: ReviewWorkflowsWorkflowFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): ReviewWorkflowsWorkflowEntityResponseCollection
   sceneRecommendations(limit: Int, locale: String!, sceneIndex: Int, slug: String, videoId: Int): [SceneRecommendation!]!
   semanticSearch(
     limit: Int
@@ -2801,33 +2816,35 @@ type Query {
     """
     type: String
   ): SearchResponse!
-  uploadFile(documentId: ID!, status: PublicationStatus = PUBLISHED): UploadFile
-  uploadFiles(filters: UploadFileFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [UploadFile]!
-  uploadFiles_connection(filters: UploadFileFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): UploadFileEntityResponseCollection
-  usersPermissionsRole(documentId: ID!, status: PublicationStatus = PUBLISHED): UsersPermissionsRole
-  usersPermissionsRoles(filters: UsersPermissionsRoleFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [UsersPermissionsRole]!
-  usersPermissionsRoles_connection(filters: UsersPermissionsRoleFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): UsersPermissionsRoleEntityResponseCollection
-  usersPermissionsUser(documentId: ID!, status: PublicationStatus = PUBLISHED): UsersPermissionsUser
-  usersPermissionsUsers(filters: UsersPermissionsUserFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [UsersPermissionsUser]!
-  usersPermissionsUsers_connection(filters: UsersPermissionsUserFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): UsersPermissionsUserEntityResponseCollection
+  uploadFile(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): UploadFile
+  uploadFiles(filters: UploadFileFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [UploadFile]!
+  uploadFiles_connection(filters: UploadFileFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): UploadFileEntityResponseCollection
+  usersPermissionsRole(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): UsersPermissionsRole
+  usersPermissionsRoles(filters: UsersPermissionsRoleFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [UsersPermissionsRole]!
+  usersPermissionsRoles_connection(filters: UsersPermissionsRoleFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): UsersPermissionsRoleEntityResponseCollection
+  usersPermissionsUser(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): UsersPermissionsUser
+  usersPermissionsUsers(filters: UsersPermissionsUserFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [UsersPermissionsUser]!
+  usersPermissionsUsers_connection(filters: UsersPermissionsUserFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): UsersPermissionsUserEntityResponseCollection
   video(
     documentId: ID!
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
     status: PublicationStatus = PUBLISHED
   ): Video
-  videoEdition(documentId: ID!, status: PublicationStatus = PUBLISHED): VideoEdition
-  videoEditions(filters: VideoEditionFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoEdition]!
-  videoEditions_connection(filters: VideoEditionFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoEditionEntityResponseCollection
-  videoImage(documentId: ID!, status: PublicationStatus = PUBLISHED): VideoImage
-  videoImages(filters: VideoImageFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoImage]!
-  videoImages_connection(filters: VideoImageFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoImageEntityResponseCollection
-  videoOrigin(documentId: ID!, status: PublicationStatus = PUBLISHED): VideoOrigin
-  videoOrigins(filters: VideoOriginFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoOrigin]!
-  videoOrigins_connection(filters: VideoOriginFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoOriginEntityResponseCollection
+  videoEdition(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): VideoEdition
+  videoEditions(filters: VideoEditionFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoEdition]!
+  videoEditions_connection(filters: VideoEditionFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoEditionEntityResponseCollection
+  videoImage(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): VideoImage
+  videoImages(filters: VideoImageFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoImage]!
+  videoImages_connection(filters: VideoImageFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoImageEntityResponseCollection
+  videoOrigin(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): VideoOrigin
+  videoOrigins(filters: VideoOriginFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoOrigin]!
+  videoOrigins_connection(filters: VideoOriginFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoOriginEntityResponseCollection
   videoStudyQuestion(
     documentId: ID!
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2835,6 +2852,7 @@ type Query {
   ): VideoStudyQuestion
   videoStudyQuestions(
     filters: VideoStudyQuestionFiltersInput
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2844,6 +2862,7 @@ type Query {
   ): [VideoStudyQuestion]!
   videoStudyQuestions_connection(
     filters: VideoStudyQuestionFiltersInput
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2851,17 +2870,18 @@ type Query {
     sort: [String] = []
     status: PublicationStatus = PUBLISHED
   ): VideoStudyQuestionEntityResponseCollection
-  videoSubtitle(documentId: ID!, status: PublicationStatus = PUBLISHED): VideoSubtitle
-  videoSubtitles(filters: VideoSubtitleFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoSubtitle]!
-  videoSubtitles_connection(filters: VideoSubtitleFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoSubtitleEntityResponseCollection
-  videoVariant(documentId: ID!, status: PublicationStatus = PUBLISHED): VideoVariant
-  videoVariantDownload(documentId: ID!, status: PublicationStatus = PUBLISHED): VideoVariantDownload
-  videoVariantDownloads(filters: VideoVariantDownloadFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoVariantDownload]!
-  videoVariantDownloads_connection(filters: VideoVariantDownloadFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoVariantDownloadEntityResponseCollection
-  videoVariants(filters: VideoVariantFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoVariant]!
-  videoVariants_connection(filters: VideoVariantFiltersInput, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoVariantEntityResponseCollection
+  videoSubtitle(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): VideoSubtitle
+  videoSubtitles(filters: VideoSubtitleFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoSubtitle]!
+  videoSubtitles_connection(filters: VideoSubtitleFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoSubtitleEntityResponseCollection
+  videoVariant(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): VideoVariant
+  videoVariantDownload(documentId: ID!, hasPublishedVersion: Boolean, status: PublicationStatus = PUBLISHED): VideoVariantDownload
+  videoVariantDownloads(filters: VideoVariantDownloadFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoVariantDownload]!
+  videoVariantDownloads_connection(filters: VideoVariantDownloadFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoVariantDownloadEntityResponseCollection
+  videoVariants(filters: VideoVariantFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): [VideoVariant]!
+  videoVariants_connection(filters: VideoVariantFiltersInput, hasPublishedVersion: Boolean, pagination: PaginationArg = {}, sort: [String] = [], status: PublicationStatus = PUBLISHED): VideoVariantEntityResponseCollection
   videos(
     filters: VideoFiltersInput
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2871,6 +2891,7 @@ type Query {
   ): [Video]!
   videos_connection(
     filters: VideoFiltersInput
+    hasPublishedVersion: Boolean
 
     """The locale to use for the query"""
     locale: I18NLocaleCode
@@ -2879,6 +2900,8 @@ type Query {
     status: PublicationStatus = PUBLISHED
   ): VideoEntityResponseCollection
   watchSetting(
+    hasPublishedVersion: Boolean
+
     """The locale to use for the query"""
     locale: I18NLocaleCode
     status: PublicationStatus = PUBLISHED

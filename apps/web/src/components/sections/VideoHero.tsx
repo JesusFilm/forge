@@ -83,7 +83,7 @@ function VideoHeroPlayer({
 
   return (
     <div
-      className={`fixed top-0 right-0 left-0 z-0 h-[85%] bg-stone-950 md:h-[85%] ${CONTENT_WIDTH_ALIGN_CLASSES}`}
+      className={`absolute inset-0 z-0 h-full bg-stone-950 ${CONTENT_WIDTH_ALIGN_CLASSES}`}
       data-testid="VideoHeroPlayer"
     >
       <video

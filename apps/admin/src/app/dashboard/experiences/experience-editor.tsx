@@ -79,7 +79,10 @@ import {
 } from "lucide-react"
 import { cx } from "@/components/admin-ui"
 import { ConfirmModal } from "@/components/confirm-modal"
+import { env } from "@/config/env"
 import { ToastStack, useToastStack } from "@/components/toast-stack"
+import type { GenerateDraftActionResult } from "./generate-draft-action"
+import { AiDraftPanel } from "./experience-editor/ai-draft-panel"
 import {
   BackgroundColorPicker,
   normalizeHexColor,
@@ -190,6 +193,16 @@ function stableSectionContentBlockKey(item: unknown, childIndex: number) {
   return nextKey
 }
 
+export function applyGeneratedDraftToEditorState(draft: GeneratedDraftPayload) {
+  return {
+    title: draft.title,
+    metaDescription: draft.metaDescription,
+    parsedBlocks: Array.isArray(draft.blocks) ? draft.blocks : [],
+    selectedBlockIndex:
+      Array.isArray(draft.blocks) && draft.blocks.length > 0 ? 0 : null,
+  }
+}
+
 type BlockCategoryFilter = "All" | BlockTemplateDefinition["category"]
 type InsertedBlockAnimation = {
   key: string
@@ -201,6 +214,11 @@ type PendingContainerSlotDelete = {
   slotIndex: number
   blockCount: number
 }
+
+type GeneratedDraftPayload = Extract<
+  GenerateDraftActionResult,
+  { ok: true }
+>["draft"]
 
 type NavigationDestinationPickerPosition = {
   top: number
@@ -846,6 +864,32 @@ function localizedVideoLabelFallback(label: string | null, localeCode: string) {
   return labels[label as keyof typeof labels] ?? ""
 }
 
+function inferWatchBaseUrl() {
+  if (env.NEXT_PUBLIC_WATCH_URL) {
+    return env.NEXT_PUBLIC_WATCH_URL.replace(/\/$/, "")
+  }
+
+  if (typeof window === "undefined") return ""
+
+  const { protocol, hostname, origin } = window.location
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return `${protocol}//${hostname}:3000`
+  }
+
+  return origin.replace(/\/$/, "")
+}
+
+function buildPublishedWatchUrl(slug: string, locale: string) {
+  const normalizedSlug = cleanRoutePart(slug)
+  const normalizedLocale = cleanLocaleCode(locale)
+  if (!normalizedSlug || !normalizedLocale) return null
+
+  const baseUrl = inferWatchBaseUrl()
+  if (!baseUrl) return null
+
+  return `${baseUrl}/watch/${normalizedSlug}/${normalizedLocale}`
+}
+
 export function ExperienceEditor({
   canPublish,
   hasPublishedVersion,
@@ -858,6 +902,7 @@ export function ExperienceEditor({
   publishAction,
   createLocaleAction,
   restoreAction,
+  generateDraftAction,
 }: {
   canPublish: boolean
   hasPublishedVersion: boolean
@@ -882,9 +927,17 @@ export function ExperienceEditor({
   publishAction: (localeId: string) => Promise<EditorActionResult>
   createLocaleAction: (formData: FormData) => Promise<CreateLocaleActionResult>
   restoreAction: (revisionId: string) => Promise<EditorActionResult>
+  generateDraftAction: (input: {
+    prompt: string
+    currentTitle: string
+    currentMetaDescription: string
+  }) => Promise<GenerateDraftActionResult>
 }) {
   const router = useRouter()
   const { toasts, pushToast, dismissToast } = useToastStack()
+  const [publishedSlug, setPublishedSlug] = useState<string | null>(
+    hasPublishedVersion ? cleanRoutePart(initialValues.slug) : null,
+  )
   const [editorDateSnapshot, setEditorDateSnapshot] = useState(calendarDate)
   const editorToday = parseEditorDateSnapshot(editorDateSnapshot)
   const [title, setTitle] = useState(initialValues.title)
@@ -1025,6 +1078,10 @@ export function ExperienceEditor({
   const [insertedBlockAnimation, setInsertedBlockAnimation] =
     useState<InsertedBlockAnimation | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [isGeneratingDraft, startDraftTransition] = useTransition()
+  const [aiDraftPanelOpen, setAiDraftPanelOpen] = useState(false)
+  const [aiDraftPrompt, setAiDraftPrompt] = useState("")
+  const [aiDraftError, setAiDraftError] = useState("")
   const blockCardRefs = useRef(new Map<string, HTMLDivElement>())
   const navigationDestinationPopoverRef = useRef<HTMLDivElement | null>(null)
   const videoPickerPreviewContainerRef = useRef<HTMLDivElement | null>(null)
@@ -1087,6 +1144,44 @@ export function ExperienceEditor({
     setLocaleDrawerOpen(false)
   }
 
+  function applyGeneratedDraft(draft: GeneratedDraftPayload) {
+    const nextState = applyGeneratedDraftToEditorState(draft)
+    setTitle(nextState.title)
+    setMetaDescription(nextState.metaDescription)
+    setParsedBlocks(nextState.parsedBlocks)
+    setSelectedBlockIndex(nextState.selectedBlockIndex)
+    setAiDraftPanelOpen(false)
+    setAiDraftPrompt("")
+    setAiDraftError("")
+  }
+
+  function handleGenerateDraft() {
+    if (isGeneratingDraft) return
+
+    const prompt = aiDraftPrompt.trim()
+    if (!prompt) {
+      setAiDraftError("Enter a theme or story prompt first.")
+      return
+    }
+
+    setAiDraftError("")
+    startDraftTransition(async () => {
+      const result = await generateDraftAction({
+        prompt,
+        currentTitle: title,
+        currentMetaDescription: metaDescription,
+      })
+
+      if (!result.ok) {
+        setAiDraftError(result.error)
+        return
+      }
+
+      applyGeneratedDraft(result.draft)
+      pushToast("AI draft applied to the canvas.", "success")
+    })
+  }
+
   const serializedBlocks = JSON.stringify(parsedBlocks)
   const normalizedParsedBlocks = normalizeEditorBlocks(parsedBlocks)
   const initialSerializedBlocks = JSON.stringify(
@@ -1107,6 +1202,14 @@ export function ExperienceEditor({
     34,
   )}ch`
   const canPublishNow = canPublish && (!hasPublishedVersion || hasChanges)
+  const activeLocaleCode =
+    localeEntries.find((entry) => entry.active)?.code ?? ""
+  const publishedWatchUrl = buildPublishedWatchUrl(
+    publishedSlug ?? "",
+    activeLocaleCode,
+  )
+  const canOpenPublishedPage = publishedWatchUrl !== null
+  const shouldShowPreviewAction = canOpenPublishedPage && !hasChanges
   const isFloatingDrawerOpen =
     inlineBlockLibraryOpen || revisionHistoryOpen || localeDrawerOpen
   const isAddingToContainerSlot = focusedContainerIndex !== null
@@ -8980,17 +9083,37 @@ export function ExperienceEditor({
                 <Save className="h-4 w-4" strokeWidth={1.5} />
                 Save Draft
               </button>
-              <button
-                type="submit"
-                form={`experience-editor-${initialValues.localeId}`}
-                name="intent"
-                value="publish"
-                disabled={isPending || !canPublishNow}
-                className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] bg-[var(--color-brand)] px-3 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <UploadCloud className="h-4 w-4" strokeWidth={1.5} />
-                Publish
-              </button>
+              {shouldShowPreviewAction ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!publishedWatchUrl) return
+                    window.open(
+                      publishedWatchUrl,
+                      "_blank",
+                      "noopener,noreferrer",
+                    )
+                  }}
+                  disabled={isPending}
+                  className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] bg-[var(--color-brand)] px-3 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
+                  title="Open published page"
+                >
+                  <Eye className="h-4 w-4" strokeWidth={1.5} />
+                  Preview
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  form={`experience-editor-${initialValues.localeId}`}
+                  name="intent"
+                  value="publish"
+                  disabled={isPending || !canPublishNow}
+                  className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] bg-[var(--color-brand)] px-3 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <UploadCloud className="h-4 w-4" strokeWidth={1.5} />
+                  Publish
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -9839,10 +9962,32 @@ export function ExperienceEditor({
                         Start with a first block
                       </div>
                       <p className="mt-2 max-w-xl text-[13px] leading-6 text-[var(--color-text-secondary)]">
-                        Pick a starter block below, or open the full block
-                        library if you want to build from a different pattern.
+                        Generate a first draft from a prompt, or pick a starter
+                        block below if you want to build manually.
                       </p>
                     </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <AiDraftPanel
+                      open={aiDraftPanelOpen}
+                      prompt={aiDraftPrompt}
+                      pending={isGeneratingDraft}
+                      error={aiDraftError}
+                      onPromptChange={(value) => {
+                        setAiDraftPrompt(value)
+                        if (aiDraftError) setAiDraftError("")
+                      }}
+                      onOpen={() => {
+                        setAiDraftPanelOpen(true)
+                        setAiDraftError("")
+                      }}
+                      onCancel={() => {
+                        setAiDraftPanelOpen(false)
+                        setAiDraftError("")
+                      }}
+                      onGenerate={handleGenerateDraft}
+                    />
                   </div>
 
                   <div className="mt-6 grid gap-3 md:grid-cols-3">
@@ -9935,6 +10080,19 @@ export function ExperienceEditor({
                   "error",
                 )
                 return
+              }
+              const nextPublishedSlug = cleanRoutePart(slug)
+              setPublishedSlug(nextPublishedSlug)
+              const nextPublishedWatchUrl = buildPublishedWatchUrl(
+                nextPublishedSlug,
+                activeLocaleCode,
+              )
+              if (nextPublishedWatchUrl) {
+                window.open(
+                  nextPublishedWatchUrl,
+                  "_blank",
+                  "noopener,noreferrer",
+                )
               }
               pushToast("Locale published.", "success")
             } else {

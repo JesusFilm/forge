@@ -492,7 +492,7 @@ model Video {
   source          SourceTier  @default(CORE)
   slug            String      @unique
   label           VideoLabel?
-  videoSource     VideoSource?
+  videoSource     VideoSource? @map("video_source")
   locked          Boolean     @default(false)
   noIndex         Boolean     @default(false) @map("no_index")
   /// True when AI-generated metadata has been applied to this video.

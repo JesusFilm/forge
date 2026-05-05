@@ -1,7 +1,12 @@
+// @vitest-environment jsdom
+
+import { act } from "react"
+import { createRoot, type Root } from "react-dom/client"
 import { renderToStaticMarkup } from "react-dom/server"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   ExperienceEditor,
+  applyGeneratedDraftToEditorState,
   cleanLocaleCode,
   cleanRoutePart,
 } from "./experience-editor"
@@ -13,16 +18,37 @@ vi.mock("next/navigation", () => ({
   }),
 }))
 
-const action = vi.fn(async () => ({ ok: true }))
+vi.mock("@/config/env", () => ({
+  env: {
+    NEXT_PUBLIC_APP_NAME: "forge-admin",
+    NEXT_PUBLIC_WATCH_URL: "http://localhost:3000",
+  },
+}))
 
-function renderEditor(
+const action = vi.fn(async () => ({ ok: true }))
+const generateDraftAction = vi.fn(async () => ({
+  ok: true as const,
+  draft: {
+    title: "Generated",
+    metaDescription: "Generated description",
+    blocks: [{ t: "text", heading: "Generated" }],
+  },
+}))
+
+function renderEditorElement(
   blocks: unknown[],
-  options: { isTemplate?: boolean } = {},
+  options: {
+    isTemplate?: boolean
+    saveAction?: typeof action
+    publishAction?: typeof action
+    generateDraftAction?: typeof generateDraftAction
+    hasPublishedVersion?: boolean
+  } = {},
 ) {
-  return renderToStaticMarkup(
+  return (
     <ExperienceEditor
       canPublish
-      hasPublishedVersion={false}
+      hasPublishedVersion={options.hasPublishedVersion ?? false}
       calendarDate="2026-04-17"
       revisionEntries={[]}
       localeEntries={[
@@ -67,15 +93,96 @@ function renderEditor(
         isTemplate: options.isTemplate ?? false,
         blocksJson: JSON.stringify(blocks),
       }}
-      saveAction={action}
-      publishAction={action}
+      saveAction={options.saveAction ?? action}
+      publishAction={options.publishAction ?? action}
       createLocaleAction={action}
       restoreAction={action}
-    />,
+      generateDraftAction={options.generateDraftAction ?? generateDraftAction}
+    />
   )
 }
 
+function renderEditor(
+  blocks: unknown[],
+  options: Parameters<typeof renderEditorElement>[1] = {},
+) {
+  return renderToStaticMarkup(renderEditorElement(blocks, options))
+}
+
+function renderEditorDom(
+  blocks: unknown[],
+  options: Parameters<typeof renderEditorElement>[1] = {},
+) {
+  const container = document.createElement("div")
+  document.body.appendChild(container)
+  const root: Root = createRoot(container)
+
+  act(() => {
+    root.render(renderEditorElement(blocks, options))
+  })
+
+  return {
+    container,
+    cleanup() {
+      act(() => {
+        root.unmount()
+      })
+      container.remove()
+    },
+  }
+}
+
+function findButtonByText(container: HTMLElement, label: string) {
+  const button = Array.from(container.querySelectorAll("button")).find(
+    (candidate) => candidate.textContent?.includes(label),
+  )
+  if (!(button instanceof HTMLButtonElement)) {
+    throw new Error(`Button not found: ${label}`)
+  }
+  return button
+}
+
+function setTextareaValue(textarea: HTMLTextAreaElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(
+    HTMLTextAreaElement.prototype,
+    "value",
+  )?.set
+
+  act(() => {
+    setter?.call(textarea, value)
+    textarea.dispatchEvent(new Event("input", { bubbles: true }))
+    textarea.dispatchEvent(new Event("change", { bubbles: true }))
+  })
+}
+
+function deferredResult() {
+  let resolve!: (value: Awaited<ReturnType<typeof generateDraftAction>>) => void
+  const promise = new Promise<Awaited<ReturnType<typeof generateDraftAction>>>(
+    (nextResolve) => {
+      resolve = nextResolve
+    },
+  )
+  return { promise, resolve }
+}
+
 describe("ExperienceEditor", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    document.body.innerHTML = ""
+    ;(
+      globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true
+    window.requestAnimationFrame ??= ((callback: FrameRequestCallback) =>
+      window.setTimeout(
+        () => callback(performance.now()),
+        0,
+      )) as typeof window.requestAnimationFrame
+    window.cancelAnimationFrame ??= ((handle: number) => {
+      window.clearTimeout(handle)
+    }) as typeof window.cancelAnimationFrame
+    HTMLElement.prototype.scrollIntoView ??= vi.fn()
+  })
+
   it("normalizes route editor values to slug-compatible path parts", () => {
     expect(cleanRoutePart("  Easter Story 2026  ", true)).toBe(
       "easter-story-2026",
@@ -130,6 +237,166 @@ describe("ExperienceEditor", () => {
     expect(html).not.toContain(
       "Container slot composition is edited in the JSON field below.",
     )
+  })
+
+  it("shows Generate with AI only on an empty canvas", () => {
+    const emptyHtml = renderEditor([])
+    const filledHtml = renderEditor([{ t: "text", heading: "Filled" }])
+
+    expect(emptyHtml).toContain("Generate with AI")
+    expect(emptyHtml).toContain("AI Draft")
+    expect(filledHtml).not.toContain("Generate with AI")
+  })
+
+  it("hides the AI entry point entirely when parsedBlocks is non-empty", () => {
+    const view = renderEditorDom([
+      { t: "text", sectionKey: "intro", heading: "Existing content" },
+    ])
+
+    try {
+      const aiButton = Array.from(
+        view.container.querySelectorAll("button"),
+      ).find((candidate) => candidate.textContent?.includes("Generate with AI"))
+      expect(aiButton).toBeUndefined()
+      expect(view.container.textContent).not.toContain("AI Draft")
+      expect(view.container.textContent).not.toContain("Empty Canvas")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("builds editor state from generated drafts with the first block selected", () => {
+    expect(
+      applyGeneratedDraftToEditorState({
+        title: "Generated title",
+        metaDescription: "Generated description",
+        blocks: [{ t: "text", heading: "Generated section" }],
+      }),
+    ).toEqual({
+      title: "Generated title",
+      metaDescription: "Generated description",
+      parsedBlocks: [{ t: "text", heading: "Generated section" }],
+      selectedBlockIndex: 0,
+    })
+  })
+
+  it("submits the AI prompt once while pending and applies the returned draft locally", async () => {
+    const saveAction = vi.fn(async () => ({ ok: true }))
+    const publishAction = vi.fn(async () => ({ ok: true }))
+    const pending = deferredResult()
+    const generateDraftAction = vi.fn(() => pending.promise)
+    const view = renderEditorDom([], {
+      saveAction,
+      publishAction,
+      generateDraftAction,
+    })
+
+    act(() => {
+      findButtonByText(view.container, "Generate with AI").click()
+    })
+
+    const promptTextarea = view.container.querySelector(
+      "#ai-draft-prompt",
+    ) as HTMLTextAreaElement | null
+    expect(promptTextarea).not.toBeNull()
+    setTextareaValue(promptTextarea!, "Build a hopeful Easter welcome page.")
+
+    const submitButton = findButtonByText(view.container, "Generate Draft")
+    await act(async () => {
+      submitButton.click()
+    })
+
+    expect(generateDraftAction).toHaveBeenCalledTimes(1)
+    expect(submitButton.disabled).toBe(true)
+
+    await act(async () => {
+      submitButton.click()
+    })
+    expect(generateDraftAction).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      pending.resolve({
+        ok: true,
+        draft: {
+          title: "AI Easter Welcome",
+          metaDescription: "A generated welcome draft.",
+          blocks: [
+            {
+              t: "text",
+              heading: "You are invited",
+            },
+          ],
+        },
+      })
+      await pending.promise
+    })
+
+    const titleInput = view.container.querySelector(
+      'input[placeholder="Untitled Experience"]',
+    ) as HTMLInputElement | null
+    const descriptionInput = view.container.querySelector(
+      'textarea[aria-label="Description"]',
+    ) as HTMLTextAreaElement | null
+
+    expect(titleInput?.value).toBe("AI Easter Welcome")
+    expect(descriptionInput?.value).toBe("A generated welcome draft.")
+    expect(view.container.textContent).toContain("A generated welcome draft.")
+    expect(view.container.textContent).toContain("Text")
+    expect(view.container.textContent).not.toContain("Empty Canvas")
+    expect(saveAction).not.toHaveBeenCalled()
+    expect(publishAction).not.toHaveBeenCalled()
+
+    view.cleanup()
+  })
+
+  it("shows inline AI errors and allows retry", async () => {
+    const generateDraftAction = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false as const,
+        error:
+          "No suitable in-catalog videos were found for this theme. Try broader wording.",
+      })
+      .mockResolvedValueOnce({
+        ok: true as const,
+        draft: {
+          title: "Recovered draft",
+          metaDescription: "Retry succeeded.",
+          blocks: [{ t: "text", heading: "Recovered block" }],
+        },
+      })
+    const view = renderEditorDom([], { generateDraftAction })
+
+    act(() => {
+      findButtonByText(view.container, "Generate with AI").click()
+    })
+
+    const promptTextarea = view.container.querySelector(
+      "#ai-draft-prompt",
+    ) as HTMLTextAreaElement | null
+    expect(promptTextarea).not.toBeNull()
+    setTextareaValue(promptTextarea!, "A very narrow prompt.")
+
+    await act(async () => {
+      findButtonByText(view.container, "Generate Draft").click()
+    })
+
+    expect(view.container.textContent).toContain(
+      "No suitable in-catalog videos were found for this theme. Try broader wording.",
+    )
+
+    const retryButton = findButtonByText(view.container, "Generate Draft")
+    expect(retryButton.disabled).toBe(false)
+
+    await act(async () => {
+      retryButton.click()
+    })
+
+    expect(generateDraftAction).toHaveBeenCalledTimes(2)
+    expect(view.container.textContent).toContain("Retry succeeded.")
+    expect(view.container.textContent).not.toContain("Empty Canvas")
+
+    view.cleanup()
   })
 
   it("renders a compact empty preview when a container has no slots", () => {
@@ -528,6 +795,37 @@ describe("ExperienceEditor", () => {
     expect(html).toContain("Video settings")
     expect(html).toContain("Save Draft")
     expect(html).toContain("Publish")
+  })
+
+  it("renders preview instead of publish when nothing changed on a published locale", () => {
+    const html = renderEditor([], { hasPublishedVersion: true })
+    expect(html).toContain("Preview")
+    expect(html).not.toContain("Open Published Page")
+  })
+
+  it("opens the published page from preview when a published version exists", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null)
+    const { container, cleanup } = renderEditorDom([], {
+      hasPublishedVersion: true,
+    })
+
+    try {
+      const previewButton = findButtonByText(container, "Preview")
+      expect(previewButton.disabled).toBe(false)
+
+      await act(async () => {
+        previewButton.click()
+      })
+
+      expect(openSpy).toHaveBeenCalledWith(
+        "http://localhost:3000/watch/experience-title/en",
+        "_blank",
+        "noopener,noreferrer",
+      )
+    } finally {
+      cleanup()
+      openSpy.mockRestore()
+    }
   })
 
   it("gates route video block templates behind template mode", () => {

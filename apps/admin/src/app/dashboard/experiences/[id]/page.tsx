@@ -2,6 +2,7 @@ import type { RevisionStatus } from "@prisma/client"
 import { notFound } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { ExperienceEditor } from "@/app/dashboard/experiences/experience-editor"
+import { runGenerateDraftAction } from "@/app/dashboard/experiences/generate-draft-action"
 import { loadVideoRows } from "@/app/dashboard/live-data"
 import { requireSession } from "@/auth/session"
 import { prisma } from "@/db/client"
@@ -484,6 +485,30 @@ export default async function ExperienceEditorPage({
     return { ok: true }
   }
 
+  async function generateDraftAction(input: {
+    prompt: string
+    currentTitle: string
+    currentMetaDescription: string
+  }) {
+    "use server"
+
+    const user = await requireSession()
+
+    return runGenerateDraftAction(
+      {
+        prisma,
+        user,
+      },
+      {
+        localeId: selectedLocale.id,
+        locale: selectedLocale.locale,
+        prompt: input.prompt,
+        currentTitle: input.currentTitle,
+        currentMetaDescription: input.currentMetaDescription,
+      },
+    )
+  }
+
   return (
     <div className="flex min-h-[calc(100vh-3rem)] flex-col">
       <ExperienceEditor
@@ -519,6 +544,7 @@ export default async function ExperienceEditorPage({
         publishAction={publishLocaleAction}
         createLocaleAction={createLocaleAction}
         restoreAction={restoreRevisionAction}
+        generateDraftAction={generateDraftAction}
       />
     </div>
   )

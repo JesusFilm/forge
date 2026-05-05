@@ -25,6 +25,26 @@ import { builder } from "@/graphql/builder"
 // module can reference `type: "JSON"` below. Also exports `LocaleStatusEnum`.
 import { LocaleStatusEnum } from "@/graphql/types/reference"
 
+function collectVideoIdsFromBlocks(value: unknown, ids = new Set<string>()) {
+  if (Array.isArray(value)) {
+    for (const entry of value) collectVideoIdsFromBlocks(entry, ids)
+    return ids
+  }
+
+  if (!value || typeof value !== "object") return ids
+
+  const record = value as Record<string, unknown>
+  if (typeof record.videoId === "string" && record.videoId.trim()) {
+    ids.add(record.videoId)
+  }
+
+  for (const entry of Object.values(record)) {
+    collectVideoIdsFromBlocks(entry, ids)
+  }
+
+  return ids
+}
+
 // -----------------------------------------------------------------------------
 // ExperienceLocale
 // -----------------------------------------------------------------------------
@@ -55,6 +75,24 @@ builder.prismaObject("ExperienceLocale", {
       description:
         "Array of Experience blocks. Schema shape enforced at write time by the domain Zod union; see `src/domain/blocks.ts`.",
       resolve: (row) => row.blocks,
+    }),
+    referencedVideos: t.prismaField({
+      type: ["Video"],
+      authScopes: { public: true },
+      description:
+        "Videos referenced by this locale's JSON blocks. Used by public preview renderers to hydrate admin-authored videoId refs without exposing arbitrary video lookups.",
+      resolve: (query, row, _args, ctx) => {
+        const ids = Array.from(collectVideoIdsFromBlocks(row.blocks))
+        if (ids.length === 0) return []
+
+        return ctx.prisma.video.findMany({
+          ...query,
+          where: {
+            id: { in: ids },
+            deletedAt: null,
+          },
+        })
+      },
     }),
     status: t.expose("status", { type: LocaleStatusEnum }),
     publishedAt: t.string({
