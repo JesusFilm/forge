@@ -40,6 +40,32 @@ export const MediaAssetStatusEnum = builder.enumType("MediaAssetStatus", {
   } as const,
 })
 
+export const MediaImageEnrichmentStatusEnum = builder.enumType(
+  "MediaImageEnrichmentStatus",
+  {
+    values: {
+      WAITING: { value: "WAITING" },
+      PROCESSING: { value: "PROCESSING" },
+      COMPLETE: { value: "COMPLETE" },
+      FAILED: { value: "FAILED" },
+      SKIPPED: { value: "SKIPPED" },
+    } as const,
+  },
+)
+
+export const MediaAssetLocaleStatusEnum = builder.enumType(
+  "MediaAssetLocaleStatus",
+  {
+    values: {
+      WAITING: { value: "WAITING" },
+      PROCESSING: { value: "PROCESSING" },
+      COMPLETE: { value: "COMPLETE" },
+      FAILED: { value: "FAILED" },
+      SKIPPED: { value: "SKIPPED" },
+    } as const,
+  },
+)
+
 export const MediaAssetVisibilityEnum = builder.enumType(
   "MediaAssetVisibility",
   {
@@ -49,6 +75,37 @@ export const MediaAssetVisibilityEnum = builder.enumType(
     } as const,
   },
 )
+
+/** @classification abac-gated */
+builder.prismaObject("MediaAssetLocale", {
+  description:
+    "Localized display name and alt text for an uploaded media asset, including AI provenance and human override locks.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    mediaAssetId: t.exposeID("mediaAssetId"),
+    locale: t.exposeString("locale"),
+    displayName: t.exposeString("displayName", { nullable: true }),
+    altText: t.exposeString("altText", { nullable: true }),
+    displayNameSource: t.string({
+      nullable: true,
+      resolve: (row) => row.displayNameSource ?? null,
+    }),
+    altTextSource: t.string({
+      nullable: true,
+      resolve: (row) => row.altTextSource ?? null,
+    }),
+    displayNameLocked: t.exposeBoolean("displayNameLocked"),
+    altTextLocked: t.exposeBoolean("altTextLocked"),
+    status: t.expose("status", { type: MediaAssetLocaleStatusEnum }),
+    errorCode: t.exposeString("errorCode", { nullable: true }),
+    errorMessage: t.exposeString("errorMessage", { nullable: true }),
+    generatedAt: t.string({
+      nullable: true,
+      resolve: (row) => row.generatedAt?.toISOString() ?? null,
+    }),
+    updatedAt: t.string({ resolve: (row) => row.updatedAt.toISOString() }),
+  }),
+})
 
 const MediaAssetUsageRef = builder
   .objectRef<MediaAssetUsageRow>("MediaAssetUsage")
@@ -78,9 +135,6 @@ builder.prismaObject("MediaAsset", {
     backend: t.expose("backend", { type: MediaAssetBackendEnum }),
     status: t.expose("status", { type: MediaAssetStatusEnum }),
     visibility: t.expose("visibility", { type: MediaAssetVisibilityEnum }),
-    displayName: t.exposeString("displayName"),
-    description: t.exposeString("description", { nullable: true }),
-    altText: t.exposeString("altText", { nullable: true }),
     mimeType: t.exposeString("mimeType"),
     byteSize: t.string({
       nullable: true,
@@ -88,6 +142,25 @@ builder.prismaObject("MediaAsset", {
     }),
     width: t.exposeInt("width", { nullable: true }),
     height: t.exposeInt("height", { nullable: true }),
+    blurDataUrl: t.exposeString("blurDataUrl", { nullable: true }),
+    dominantColor: t.exposeString("dominantColor", { nullable: true }),
+    imageEnrichmentStatus: t.expose("imageEnrichmentStatus", {
+      type: MediaImageEnrichmentStatusEnum,
+    }),
+    imageEnrichmentErrorCode: t.exposeString("imageEnrichmentErrorCode", {
+      nullable: true,
+    }),
+    imageEnrichmentErrorMessage: t.exposeString("imageEnrichmentErrorMessage", {
+      nullable: true,
+    }),
+    imageEnrichmentStartedAt: t.string({
+      nullable: true,
+      resolve: (row) => row.imageEnrichmentStartedAt?.toISOString() ?? null,
+    }),
+    imageEnrichmentCompletedAt: t.string({
+      nullable: true,
+      resolve: (row) => row.imageEnrichmentCompletedAt?.toISOString() ?? null,
+    }),
     durationMs: t.string({
       nullable: true,
       resolve: (row) => row.durationMs?.toString() ?? null,
@@ -106,6 +179,7 @@ builder.prismaObject("MediaAsset", {
     editUrl: t.string({
       resolve: (row) => `/dashboard/media?asset=${row.id}`,
     }),
+    locales: t.relation("locales"),
     createdById: t.exposeID("createdById", { nullable: true }),
     createdAt: t.string({ resolve: (row) => row.createdAt.toISOString() }),
     updatedAt: t.string({ resolve: (row) => row.updatedAt.toISOString() }),

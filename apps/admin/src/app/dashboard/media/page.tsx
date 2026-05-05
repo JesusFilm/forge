@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache"
 import type { Route } from "next"
 import Link from "next/link"
 import { Fragment } from "react"
+import { start } from "workflow/api"
 import { Upload } from "lucide-react"
 import { cx } from "@/components/admin-ui"
 import { MediaAssetDropTarget } from "@/app/dashboard/media/media-asset-drop-target"
@@ -14,6 +15,7 @@ import { MediaLibraryDndProvider } from "@/app/dashboard/media/media-library-dnd
 import { MediaFolderTree } from "@/app/dashboard/media/folder-tree"
 import { MediaLibraryToolbar } from "@/app/dashboard/media/media-library-toolbar"
 import { hasPermission } from "@/auth/permissions"
+import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import { requireSession } from "@/auth/session"
 import { prisma } from "@/db/client"
 import { loadMediaData } from "@/app/dashboard/ops-data"
@@ -30,6 +32,7 @@ import {
   writeMediaObject,
 } from "@/storage/media"
 import { MediaFolderValidationError } from "@/services/media-folder.service"
+import { runMediaImageEnrichment } from "@/workflows/mediaImageEnrichment"
 
 type CreateFolderActionResult =
   | { ok: true; id: string }
@@ -63,7 +66,7 @@ type MoveAssetActionResult =
       message: string
     }
 
-type UpdateAssetMetadataActionResult =
+type DeleteAssetActionResult =
   | { ok: true }
   | {
       ok: false
@@ -71,7 +74,15 @@ type UpdateAssetMetadataActionResult =
       message: string
     }
 
-type DeleteAssetActionResult =
+type UpdateAssetLocaleActionResult =
+  | { ok: true }
+  | {
+      ok: false
+      error: "forbidden" | "validation" | "unknown"
+      message: string
+    }
+
+type RetryImageEnrichmentActionResult =
   | { ok: true }
   | {
       ok: false
@@ -315,8 +326,8 @@ async function performRenameMediaAsset(
   }
 
   try {
-    await services.mediaAsset.update({
-      input: { id, displayName },
+    await services.mediaAsset.updateImageLocale({
+      input: { mediaAssetId: id, locale: "en", displayName },
       user,
     })
   } catch (error) {
@@ -340,62 +351,6 @@ async function performRenameMediaAsset(
       ok: false as const,
       error: "unknown" as const,
       message: "We couldn't rename that file just now.",
-    }
-  }
-
-  revalidatePath("/dashboard/media")
-  return { ok: true as const }
-}
-
-async function performUpdateMediaAssetMetadata(
-  formData: FormData,
-): Promise<UpdateAssetMetadataActionResult> {
-  const user = await requireSession()
-  const services = createServices(prisma)
-  const id = String(formData.get("id") ?? "").trim()
-  const displayName = String(formData.get("displayName") ?? "").trim()
-  const description = String(formData.get("description") ?? "").trim()
-  const altText = String(formData.get("altText") ?? "").trim()
-
-  if (!id || !displayName) {
-    return {
-      ok: false as const,
-      error: "validation" as const,
-      message: "Name the file before saving.",
-    }
-  }
-
-  try {
-    await services.mediaAsset.update({
-      input: {
-        id,
-        displayName,
-        description: description || null,
-        altText: altText || null,
-      },
-      user,
-    })
-  } catch (error) {
-    if (error instanceof ForbiddenError) {
-      return {
-        ok: false as const,
-        error: "forbidden" as const,
-        message: "Your account cannot edit media metadata.",
-      }
-    }
-
-    if (error instanceof MediaAssetValidationError) {
-      return {
-        ok: false as const,
-        error: "validation" as const,
-        message: error.message,
-      }
-    }
-
-    return {
-      ok: false as const,
-      error: "unknown" as const,
-      message: "We couldn't save those asset details just now.",
     }
   }
 
@@ -656,12 +611,21 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
         query: {},
       })
     : null
+  const selectedAssetLabel =
+    selectedRow?.title ?? selectedAsset?.originalFilename ?? selectedAsset?.id
   const selectedUsage = selectedAsset
     ? await services.mediaAsset.usage({ id: selectedAsset.id, user: principal })
     : []
+  const selectedLocales =
+    selectedAsset && selectedAsset.kind === "IMAGE"
+      ? await services.mediaAsset.listImageLocales({
+          mediaAssetId: selectedAsset.id,
+          user: principal,
+        })
+      : []
   const selectedAssetSupplementalLabel = selectedAsset
     ? mediaSupplementalLabel(
-        selectedAsset.displayName,
+        selectedAssetLabel ?? selectedAsset.id,
         selectedAsset.originalFilename,
         selectedAsset.mimeType,
       )
@@ -772,9 +736,7 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
 
     const folderId = String(formData.get("folderId") ?? "").trim()
     const backend = defaultBackend()
-    const displayName =
-      String(formData.get("displayName") ?? "").trim() || file.name
-    const altText = String(formData.get("altText") ?? "").trim()
+    const displayName = file.name
     const kind = mediaKindForMimeType(file.type)
 
     try {
@@ -783,12 +745,18 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
           kind,
           backend,
           status: "UPLOADING",
-          displayName,
-          altText: altText || undefined,
           mimeType: file.type || "application/octet-stream",
           byteSize: file.size.toString(),
           originalFilename: file.name,
           ...(folderId ? { folderId } : {}),
+        },
+        user,
+      })
+      await services.mediaAsset.updateImageLocale({
+        input: {
+          mediaAssetId: asset.id,
+          locale: "en",
+          displayName,
         },
         user,
       })
@@ -810,6 +778,24 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
         },
         user,
       })
+
+      if (kind === "IMAGE") {
+        try {
+          await start(runMediaImageEnrichment, [{ mediaAssetId: asset.id }])
+        } catch (error) {
+          await services.mediaAsset.updateImageEnrichmentState({
+            mediaAssetId: asset.id,
+            user: SYSTEM_PRINCIPAL,
+            data: {
+              imageEnrichmentStatus: "FAILED",
+              imageEnrichmentErrorCode: "workflow_dispatch_failed",
+              imageEnrichmentErrorMessage:
+                error instanceof Error ? error.message : String(error),
+              imageEnrichmentCompletedAt: new Date(),
+            },
+          })
+        }
+      }
     } catch (error) {
       if (error instanceof ForbiddenError) {
         return { ok: false as const, error: "forbidden" as const }
@@ -872,6 +858,102 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
         message: "We couldn't create that folder just now.",
       }
     }
+  }
+
+  async function updateMediaAssetLocaleAction(
+    formData: FormData,
+  ): Promise<UpdateAssetLocaleActionResult> {
+    "use server"
+
+    const user = await requireSession()
+    const services = createServices(prisma)
+    const mediaAssetId = String(formData.get("mediaAssetId") ?? "").trim()
+    const locale = String(formData.get("locale") ?? "").trim()
+    const displayName = String(formData.get("displayName") ?? "").trim()
+    const altText = String(formData.get("altText") ?? "").trim()
+
+    try {
+      await services.mediaAsset.updateImageLocale({
+        input: {
+          mediaAssetId,
+          locale,
+          displayName: displayName || null,
+          altText: altText || null,
+        },
+        user,
+      })
+    } catch (error) {
+      if (error instanceof ForbiddenError) {
+        return {
+          ok: false,
+          error: "forbidden",
+          message: "Your account cannot edit media localizations.",
+        }
+      }
+      if (error instanceof MediaAssetValidationError) {
+        return { ok: false, error: "validation", message: error.message }
+      }
+      return {
+        ok: false,
+        error: "unknown",
+        message: "Unable to save localized metadata.",
+      }
+    }
+
+    revalidatePath("/dashboard/media")
+    return { ok: true }
+  }
+
+  async function retryMediaImageEnrichmentAction(
+    formData: FormData,
+  ): Promise<RetryImageEnrichmentActionResult> {
+    "use server"
+
+    const user = await requireSession()
+    const services = createServices(prisma)
+    const mediaAssetId = String(formData.get("mediaAssetId") ?? "").trim()
+
+    if (!hasPermission(user, "write:media-assets")) {
+      return {
+        ok: false,
+        error: "forbidden",
+        message: "Your account cannot retry image enrichment.",
+      }
+    }
+
+    try {
+      await services.mediaAsset.updateImageEnrichmentState({
+        mediaAssetId,
+        user: SYSTEM_PRINCIPAL,
+        data: {
+          imageEnrichmentStatus: "WAITING",
+          imageEnrichmentErrorCode: null,
+          imageEnrichmentErrorMessage: null,
+          imageEnrichmentCompletedAt: null,
+        },
+      })
+      await start(runMediaImageEnrichment, [{ mediaAssetId }])
+    } catch (error) {
+      await services.mediaAsset.updateImageEnrichmentState({
+        mediaAssetId,
+        user: SYSTEM_PRINCIPAL,
+        data: {
+          imageEnrichmentStatus: "FAILED",
+          imageEnrichmentErrorCode: "workflow_dispatch_failed",
+          imageEnrichmentErrorMessage:
+            error instanceof Error ? error.message : String(error),
+          imageEnrichmentCompletedAt: new Date(),
+        },
+      })
+      return {
+        ok: false,
+        error: "unknown",
+        message: "Unable to retry image enrichment.",
+      }
+    }
+
+    revalidatePath("/dashboard/media")
+    return { ok: true }
   }
 
   async function renameMediaFolderAction(
@@ -944,14 +1026,6 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
     return { ok: true as const }
   }
 
-  async function updateMediaAssetMetadataAction(
-    formData: FormData,
-  ): Promise<UpdateAssetMetadataActionResult> {
-    "use server"
-
-    return performUpdateMediaAssetMetadata(formData)
-  }
-
   async function deleteMediaAssetAction(
     formData: FormData,
   ): Promise<DeleteAssetActionResult> {
@@ -1017,8 +1091,8 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-3rem)] flex-col">
-      <div className="hairline-strong-b flex items-center justify-between gap-4 px-4 py-3">
+    <div className="flex h-[calc(100vh-3rem)] min-h-0 flex-col overflow-hidden">
+      <div className="hairline-strong-b flex h-14 shrink-0 items-center justify-between gap-4 px-4">
         <MediaLibraryToolbar
           queryText={queryText}
           selectedType={selectedType}
@@ -1034,13 +1108,13 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
       <MediaLibraryDndProvider>
         <div
           className={cx(
-            "grid min-h-0 flex-1",
+            "grid min-h-0 flex-1 overflow-hidden",
             selectedAsset || selectedFolder
-              ? "xl:grid-cols-[260px_minmax(0,1fr)_minmax(320px,380px)]"
-              : "xl:grid-cols-[260px_minmax(0,1fr)]",
+              ? "md:grid-cols-[220px_minmax(0,1fr)_minmax(300px,360px)] lg:grid-cols-[260px_minmax(0,1fr)_minmax(320px,380px)]"
+              : "md:grid-cols-[220px_minmax(0,1fr)] lg:grid-cols-[260px_minmax(0,1fr)]",
           )}
         >
-          <aside className="flex min-h-0 flex-col border-r border-[var(--color-hairline)] bg-[var(--color-surface-raised)]">
+          <aside className="flex min-h-0 flex-col overflow-hidden border-r border-[var(--color-hairline)] bg-[var(--color-surface-raised)]">
             <MediaFolderTree
               folders={data.folders}
               selectedFolderId={selectedFolder?.id ?? null}
@@ -1055,8 +1129,8 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
             />
           </aside>
 
-          <section className="flex min-h-0 flex-col">
-            <div className="flex items-center gap-2 border-b border-[var(--color-hairline)] px-4 py-2">
+          <section className="flex min-h-0 flex-col overflow-hidden">
+            <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[var(--color-hairline)] px-4">
               {currentPathSegments.map((segment, index) => (
                 <Fragment key={`${segment.href}-${index}`}>
                   {index > 0 ? (
@@ -1132,9 +1206,7 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
               asset={{
                 id: selectedAsset.id,
                 kind: selectedAsset.kind,
-                displayName: selectedAsset.displayName,
-                description: selectedAsset.description,
-                altText: selectedAsset.altText,
+                displayName: selectedAssetLabel ?? selectedAsset.id,
                 folderLabel: selectedAssetFolderLabel,
                 originalFilename: selectedAsset.originalFilename,
                 supplementalLabel: selectedAssetSupplementalLabel,
@@ -1143,14 +1215,32 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
                 updatedAtLabel: formatDateTime(selectedAsset.updatedAt),
                 width: selectedAsset.width,
                 height: selectedAsset.height,
+                blurDataUrl: selectedAsset.blurDataUrl,
+                imageEnrichmentStatus: selectedAsset.imageEnrichmentStatus,
+                imageEnrichmentErrorMessage:
+                  selectedAsset.imageEnrichmentErrorMessage,
                 previewUrl: mediaAssetPreviewUrl(selectedAsset),
                 downloadUrl: mediaAssetDownloadUrl(selectedAsset),
               }}
+              locales={selectedLocales.map((locale) => ({
+                id: locale.id,
+                locale: locale.locale,
+                displayName: locale.displayName,
+                altText: locale.altText,
+                displayNameSource: locale.displayNameSource,
+                altTextSource: locale.altTextSource,
+                displayNameLocked: locale.displayNameLocked,
+                altTextLocked: locale.altTextLocked,
+                status: locale.status,
+                errorMessage: locale.errorMessage,
+                updatedAtLabel: formatDateTime(locale.updatedAt),
+              }))}
               closeHref={closeInspectorHref}
               usage={selectedUsage}
               canEditMetadata={canEditMetadata}
               canDeleteAsset={canDeleteAsset}
-              onUpdateAsset={updateMediaAssetMetadataAction}
+              onUpdateLocale={updateMediaAssetLocaleAction}
+              onRetryEnrichment={retryMediaImageEnrichmentAction}
               onDeleteAsset={deleteMediaAssetAction}
             />
           ) : selectedFolder ? (

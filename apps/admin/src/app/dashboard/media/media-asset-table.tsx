@@ -406,9 +406,9 @@ export function MediaAssetTable({
 
   const tableStyle = useMemo(
     () => ({
-      gridTemplateColumns: `80px ${nameWidth}px ${sizeWidth}px ${updatedWidth}px`,
-      justifyContent: "start",
-      minWidth: `${80 + nameWidth + sizeWidth + updatedWidth}px`,
+      gridTemplateColumns: `80px minmax(${MIN_NAME_WIDTH}px, ${nameWidth}fr) minmax(${MIN_SIZE_WIDTH}px, ${sizeWidth}fr) minmax(${MIN_UPDATED_WIDTH}px, ${updatedWidth}fr)`,
+      minWidth: `${80 + MIN_NAME_WIDTH + MIN_SIZE_WIDTH + MIN_UPDATED_WIDTH}px`,
+      width: "100%",
     }),
     [nameWidth, sizeWidth, updatedWidth],
   )
@@ -568,11 +568,11 @@ export function MediaAssetTable({
       ref={tableRootRef}
       tabIndex={-1}
       onKeyDown={handleAssetTableKeyDown}
-      className="min-h-full overflow-x-auto focus:outline-none"
+      className="min-h-0 flex-1 overflow-auto focus:outline-none"
     >
       <div className="min-h-full">
         <div
-          className="grid items-center gap-4 border-b border-[var(--color-hairline)] px-4 py-2"
+          className="sticky top-0 z-10 grid items-center gap-4 border-b border-[var(--color-hairline)] bg-[var(--color-bg)] px-4 py-2"
           style={tableStyle}
         >
           <div />
