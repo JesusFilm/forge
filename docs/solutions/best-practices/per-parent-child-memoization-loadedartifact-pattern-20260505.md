@@ -30,6 +30,7 @@ related:
   - "docs/solutions/best-practices/batched-provider-input-position-stable-contract-20260505.md"
   - "docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md"
   - "docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md"
+  - "docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md"
 ---
 
 # Per-(parent, child) memoization via loadedArtifact parameter widening on a useworkflow indexer

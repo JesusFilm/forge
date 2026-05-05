@@ -29,6 +29,24 @@ related:
 date_learned: 2026-04-22
 ---
 
+## Stage 3 (feat-117) update
+
+The per-chunk `videoTranscriptChunk.upsert(...)` + per-row `$executeRaw …
+UPDATE … embedding` write loop has been collapsed into ONE bulk
+`INSERT INTO video_transcript_chunk … SELECT * FROM unnest(12 parallel
+arrays) ON CONFLICT (transcript_id, chunk_index) DO UPDATE` per
+`(video, edition, language)` target. Per-row Way A vector cast at the
+SELECT seam (`u.embedding_text::vector(1536)`, NOT `::vector(1536)[]`
+on the parameter — the array-input parser is less-trodden code), with
+length-equality preflight asserting all 12 parallel arrays match
+`artifact.chunks.length` BEFORE `$executeRaw` (PG18 silently NULL-pads
+unequal-length unnest args). Round-trip count drops from `O(chunks)` to
+`O(1)` per target. The parent `videoTranscript.upsert(...)` stays as a
+Prisma call. The full bulk-write recipe + invariant tests + bind-count
+regression guard live in
+`docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
+Mirrors the bullet that landed in `apps/admin/CLAUDE.md`.
+
 ## Problem
 
 Admin and cms both need chunk-level transcript embeddings. The two

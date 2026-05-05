@@ -20,11 +20,13 @@ tags:
   - best-practice
 related_features:
   - "feat-116"
+  - "feat-117"
 related:
   - "docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md"
   - "docs/solutions/best-practices/per-parent-child-memoization-loadedartifact-pattern-20260505.md"
   - "docs/solutions/runtime-errors/silent-semantic-search-degradation-missing-openrouter-key-20260415.md"
   - "docs/solutions/best-practices/experience-embedding-pipeline-pgvector-strapi-v5-20260414.md"
+  - "docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md"
 ---
 
 # Batched provider call with input-position-stable output contract
