@@ -29,7 +29,7 @@ export function WatchBody({
     <section
       data-block-type="WatchBody"
       data-testid="watch-body"
-      className="grid w-full grid-cols-12 gap-10 py-8 text-stone-100 md:grid-cols-12 md:gap-6"
+      className="grid w-full grid-cols-12 gap-10 py-8 text-stone-100 md:grid-cols-12 md:gap-12 xl:gap-16 2xl:gap-20"
     >
       <div
         data-testid="watch-body-left"
