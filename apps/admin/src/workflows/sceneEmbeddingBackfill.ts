@@ -51,13 +51,18 @@ import {
 } from "@/services/core-id-mapping.service"
 import {
   ManagerArtifactError,
-  readSceneAnalysisArtifact,
   type SceneAnalysisResult,
 } from "@/services/manager-artifacts.service"
 import {
   indexEditionScenes,
   type IndexEditionScenesResult,
 } from "@/services/scene-embedding.service"
+// The artifact-load step lives in a separate module on purpose — the
+// useworkflow build plugin treats functions imported into a workflow
+// file as workflow scope, so importing `readSceneAnalysisArtifact`
+// here would trip the Node-module reachability check even though the
+// actual call is inside `"use step"`. See `_steps/load-manager-artifact.ts`.
+import { stepLoadSceneAnalysisArtifact } from "./_steps/load-manager-artifact"
 
 /**
  * Default per-group concurrency for the R1 scene-embedding backfill.
@@ -435,19 +440,23 @@ function groupTargetsByVideoEdition(
  * fault is shared.
  */
 async function processGroup(group: BackfillGroup): Promise<BackfillOutcome[]> {
+  "use step"
   const groupStartedAt = Date.now()
 
-  // useworkflow replay note: this S3 read is NOT inside a `"use step"`
-  // boundary, so a worker restart mid-group re-fetches the artifact on
-  // resume. Trade-off was deliberate per the parent plan's residual-
-  // risks section — wrapping it in a step would persist the ~250 KB
-  // artifact JSON to durable storage on every group, which is
-  // disproportionate for an idempotent S3 GET. The per-locale step
-  // boundary downstream is what carries replay durability.
+  // useworkflow replay note: the S3 read goes through `stepLoadArtifact`
+  // (a `"use step"` function below) so a worker restart mid-group
+  // replays the journaled result instead of re-fetching. The build
+  // plugin requires this — `s3.ts` imports Node-only modules
+  // (`node:fs/promises`, `node:path`) for the local-fallback path, so
+  // any direct call from the workflow scope is rejected at compile
+  // time. Persisting ~250 KB JSON per group as a step result is the
+  // necessary trade-off; it's small per-call but adds up across a full
+  // backfill — operators monitoring useworkflow journal size should be
+  // aware.
 
   let loadedArtifact: SceneAnalysisResult
   try {
-    loadedArtifact = await readSceneAnalysisArtifact(String(group.cmsVideoId))
+    loadedArtifact = await stepLoadSceneAnalysisArtifact(group.cmsVideoId)
   } catch (error) {
     // Cascade the load failure to all locales in the group with the
     // right classification. A genuine "manager hasn't run scene
