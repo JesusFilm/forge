@@ -6790,6 +6790,12 @@ body.jobs-standalone main:has(.design-system-eleven) {
   cursor: text;
 }
 
+.design-system-eleven
+  :where(input[type="checkbox"], input[type="radio"], input[type="range"]) {
+  accent-color: var(--ds-brand-red);
+  cursor: pointer;
+}
+
 .design-system-eleven select,
 .design-system-eleven label:has(input[type="checkbox"]) {
   cursor: pointer;
