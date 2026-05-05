@@ -344,15 +344,14 @@ describe("runTranscriptEmbeddingBackfill", () => {
 
 describe("runTranscriptEmbeddingBackfill — bounded parallelism", () => {
   beforeEach(() => {
+    // Restore any `vi.spyOn(_internals, ...)` from a prior test so
+    // the next test sees the real `stepIndexEditionTranscript`.
+    vi.restoreAllMocks()
     ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
-    vi.mocked(indexEditionTranscript).mockClear()
+    vi.mocked(indexEditionTranscript).mockReset()
   })
 
-  it("isolates one rejecting target from siblings (no Promise.all regression)", async () => {
-    // Three targets: middle one rejects, the other two resolve. With
-    // p-limit + Promise.allSettled, the rejection must NOT abort the
-    // batch — the documented contract per
-    // docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md.
+  it("isolates a per-target indexer error: errors caught inside stepIndexEditionTranscript → outcome stays `failed`, siblings continue", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
       row("v-b", "e-b", "core-b", "en"),
@@ -385,10 +384,59 @@ describe("runTranscriptEmbeddingBackfill — bounded parallelism", () => {
     expect(indexEditionTranscript).toHaveBeenCalledTimes(3)
   })
 
-  it("caps concurrent in-flight indexer calls at TRANSCRIPT_EMBEDDING_CONCURRENCY", async () => {
-    // With concurrency=2 and three targets each delayed >=20ms, the
-    // third target must NOT start before one of the first two
-    // resolves. Asserts the bounded-parallelism behavioral guarantee.
+  it("uses Promise.allSettled (not Promise.all) — a step-level rejection is recorded as a synthetic failed outcome instead of aborting the batch", async () => {
+    // Spy on `_internals.stepIndexEditionTranscript` so the rejection
+    // bypasses the step's internal try/catch and reaches the
+    // workflow's `Promise.allSettled` boundary directly. Under
+    // `Promise.all`, the workflow body's `await` would throw and
+    // `stepReport` would never run.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-c", "e-c", "core-a", "es"),
+    ])
+
+    const okOutcome = (target: { videoEditionId: string; language: string }) =>
+      ({
+        status: "succeeded" as const,
+        target: target as never,
+        language: target.language,
+        chunksIndexed: 1,
+        embeddingsWritten: 1,
+        chunksPruned: 0,
+        durationMs: 5,
+      }) as never
+
+    vi.spyOn(_internals, "stepIndexEditionTranscript").mockImplementation(
+      async (target) => {
+        if (target.coreId === "core-b") {
+          throw new Error("step plumbing fault")
+        }
+        return okOutcome(target)
+      },
+    )
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.totalTargets).toBe(3)
+    expect(report.succeeded).toBe(2)
+    expect(report.failed).toBe(1)
+    expect(report.skipped).toBe(0)
+    const failedOutcome = report.outcomes.find((o) => o.status === "failed")
+    expect(failedOutcome).toBeDefined()
+    if (failedOutcome?.status === "failed") {
+      expect(failedOutcome.target.coreId).toBe("core-b")
+      expect(failedOutcome.reason).toBe("step plumbing fault")
+      expect(failedOutcome.durationMs).toBeGreaterThanOrEqual(0)
+    }
+  })
+
+  it("caps concurrent in-flight indexer calls at TRANSCRIPT_EMBEDDING_CONCURRENCY (and uses parallelism, not sequential)", async () => {
+    // Asserts BOTH the concurrency cap (≤ 2) AND that parallelism is
+    // used (max in-flight > 1). A regression to sequential `for…of`
+    // would yield `observedMaxInFlight === 1` and fail the assertion.
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
       row("v-b", "e-b", "core-b", "en"),
@@ -397,17 +445,12 @@ describe("runTranscriptEmbeddingBackfill — bounded parallelism", () => {
 
     let inFlight = 0
     let observedMaxInFlight = 0
-    const startTimes: number[] = []
-    const endTimes: number[] = []
-    const TARGET_MS = 25
 
     vi.mocked(indexEditionTranscript).mockImplementation(
       async (_prisma, args) => {
         inFlight += 1
         observedMaxInFlight = Math.max(observedMaxInFlight, inFlight)
-        startTimes.push(Date.now())
-        await new Promise((resolve) => setTimeout(resolve, TARGET_MS))
-        endTimes.push(Date.now())
+        await new Promise((resolve) => setTimeout(resolve, 25))
         inFlight -= 1
         return {
           editionId: args.editionId,
@@ -425,11 +468,8 @@ describe("runTranscriptEmbeddingBackfill — bounded parallelism", () => {
       mappingS3Key: "admin-migrations/core-id-mapping.json",
     })
 
-    expect(observedMaxInFlight).toBeLessThanOrEqual(2)
-    expect(startTimes.length).toBe(3)
-    expect(endTimes.length).toBe(3)
-    const earliestEnd = Math.min(endTimes[0]!, endTimes[1]!)
-    expect(startTimes[2]!).toBeGreaterThanOrEqual(earliestEnd - 5)
+    expect(observedMaxInFlight).toBe(2)
+    expect(indexEditionTranscript).toHaveBeenCalledTimes(3)
   })
 })
 

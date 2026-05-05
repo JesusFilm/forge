@@ -42,10 +42,11 @@ import {
 /**
  * Default per-target concurrency for the R1 scene-embedding backfill.
  * Override via `SCENE_EMBEDDING_CONCURRENCY` (env-validated, positive
- * int). Prod should ramp conservatively (start at 5); local can crank
- * (20+).
+ * int). Sized below admin's documented `connection_limit=10` Prisma
+ * pool to leave headroom for concurrent GraphQL/REST traffic; local
+ * dev can crank to 20+ via the env override.
  */
-export const DEFAULT_SCENE_EMBEDDING_CONCURRENCY = 10
+export const DEFAULT_SCENE_EMBEDDING_CONCURRENCY = 5
 
 export type SceneEmbeddingBackfillInput = {
   /** S3 key of the JSON mapping snapshot uploaded via the admin refresh CLI. */
@@ -144,36 +145,70 @@ export async function runSceneEmbeddingBackfill(
   // rejection would abort the entire batch). See
   // docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md.
   // `stepIndexEditionLocale` already catches errors per-target and
-  // returns a `failed` outcome; a settled `rejected` is therefore
-  // unexpected (e.g. a throw inside `"use step"` plumbing). The
-  // defensive map below converts any rejection into a synthetic
-  // `failed` outcome so the report stats stay coherent.
+  // returns a typed `failed` outcome; a settled `rejected` is
+  // therefore unexpected (e.g. a throw inside `"use step"` plumbing).
+  // The defensive branch in `limit(...)` below synthesizes a `failed`
+  // outcome carrying the real elapsed batch time so dashboards built
+  // on `outcomes[].durationMs` aren't polluted with `0`s.
   const concurrency =
     env.SCENE_EMBEDDING_CONCURRENCY ?? DEFAULT_SCENE_EMBEDDING_CONCURRENCY
   const limit = pLimit(concurrency)
 
+  // Emit a structured start log so the workflow's effective
+  // concurrency is observable from any trigger path (GraphQL mutation
+  // or local CLI). Closes the agent-native gap where only the CLI
+  // logged this previously.
+  console.log(
+    JSON.stringify({
+      workflow: "scene-embedding-backfill",
+      event: "start",
+      mappingGeneratedAt: mapping.generatedAt,
+      totalTargets: targets.length,
+      concurrency,
+      localeFilter:
+        input.locales && input.locales.length > 0 ? input.locales : null,
+    }),
+  )
+
+  // Per-completion logging streams progress as each target settles
+  // (instead of bursting at the end), restoring the operational
+  // visibility the sequential `for…of` had. `Promise.allSettled`
+  // preserves input order, so the resulting `outcomes[i]` aligns
+  // positionally with `targets[i]`.
+  const batchStartedAt = Date.now()
   const settled = await Promise.allSettled(
-    targets.map((target) => limit(() => stepIndexEditionLocale(target))),
+    targets.map((target) =>
+      limit(() =>
+        // Deliberately do NOT catch here. `stepIndexEditionLocale`
+        // already returns a typed `failed` outcome for every error it
+        // can see; an unexpected throw past that boundary should
+        // propagate as a `rejected` settled result so the synthetic-
+        // failed branch below records it (with real elapsed time) and
+        // the per-target isolation contract is observable to tests.
+        _internals.stepIndexEditionLocale(target).then((o) => {
+          logOutcome(o)
+          return o
+        }),
+      ),
+    ),
   )
 
   const outcomes: BackfillOutcome[] = settled.map((result, i) => {
-    const target = targets[i]!
     if (result.status === "fulfilled") return result.value
-    const reason =
-      result.reason instanceof Error
-        ? result.reason.message
-        : String(result.reason)
-    return {
+    const target = targets[i]!
+    const synthetic: BackfillOutcome = {
       status: "failed",
       target,
       locale: target.locale,
-      reason,
-      durationMs: 0,
+      reason:
+        result.reason instanceof Error
+          ? result.reason.message
+          : String(result.reason),
+      durationMs: Date.now() - batchStartedAt,
     }
+    logOutcome(synthetic)
+    return synthetic
   })
-  for (const outcome of outcomes) {
-    logOutcome(outcome)
-  }
 
   return stepReport({
     mappingGeneratedAt: mapping.generatedAt,
@@ -462,8 +497,15 @@ function logOutcome(outcome: BackfillOutcome): void {
 // safe to exercise without the useworkflow runtime. `stepEnumerateTargets`
 // is wrapped in a thin helper that accepts a prisma instance so tests
 // can use a stub; the workflow step uses the module singleton.
+//
+// `stepIndexEditionLocale` is referenced through `_internals` from the
+// workflow body so tests can `vi.spyOn(_internals, "stepIndexEditionLocale")`
+// to force a `Promise.allSettled` rejection — the only way to exercise
+// the synthetic-failed defensive branch, since the real step body
+// catches everything internally.
 export const _internals = {
   stepReport,
+  stepIndexEditionLocale,
   toSucceeded,
   logOutcome,
 }

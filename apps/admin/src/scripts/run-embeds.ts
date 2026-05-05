@@ -41,17 +41,6 @@ import { DEFAULT_CORE_ID_MAPPING_S3_KEY } from "@/services/core-id-mapping.const
 
 type Pipeline = "scene" | "transcript" | "both"
 
-/**
- * Default per-target concurrency mirrored from the workflow modules.
- * Duplicated here so the start-event log can resolve the operator's
- * effective value before the (transitive-DATABASE_URL-dependent)
- * workflow imports run further down. Kept in sync with
- * `DEFAULT_SCENE_EMBEDDING_CONCURRENCY` and
- * `DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY`. Drift is harmless — the
- * CLI log is informational; the workflow uses its own constant.
- */
-const CLI_DEFAULT_CONCURRENCY = 10
-
 function parseSingle(name: string): string | undefined {
   const flag = `--${name}=`
   const arg = process.argv.find((a) => a.startsWith(flag))
@@ -68,20 +57,6 @@ function parseRepeated(name: string): string[] {
 
 function isPipeline(v: string): v is Pipeline {
   return v === "scene" || v === "transcript" || v === "both"
-}
-
-/**
- * Parse a positive-int env value. Empty / unset / non-positive /
- * non-integer all fall through to the supplied default. Mirrors the
- * zod schema in src/config/env.ts but runs at the CLI boundary so the
- * logged start event reflects the operator's intent before any lazy
- * env validation kicks in.
- */
-function parsePositiveInt(raw: string | undefined, fallback: number): number {
-  if (raw === undefined || raw === "") return fallback
-  const n = Number(raw)
-  if (!Number.isInteger(n) || n <= 0) return fallback
-  return n
 }
 
 async function main(): Promise<void> {
@@ -111,14 +86,27 @@ async function main(): Promise<void> {
   const locales = parseRepeated("locale")
   const languages = parseRepeated("language")
 
-  const sceneConcurrency = parsePositiveInt(
-    process.env.SCENE_EMBEDDING_CONCURRENCY,
-    CLI_DEFAULT_CONCURRENCY,
-  )
-  const transcriptConcurrency = parsePositiveInt(
-    process.env.TRANSCRIPT_EMBEDDING_CONCURRENCY,
-    CLI_DEFAULT_CONCURRENCY,
-  )
+  // Lazy-import the workflow modules AFTER the DATABASE_URL guard
+  // above so a missing var produces our friendly stderr line instead
+  // of zod's validation crash on the transitive `@/config/env` import.
+  // Imports happen BEFORE the try/finally so the finally always sees
+  // a bound prisma reference. Importing the workflows here also pulls
+  // in the validated `env` and the workflow defaults — single source
+  // of truth for both the CLI's start-event log and the workflow body.
+  const { runSceneEmbeddingBackfill, DEFAULT_SCENE_EMBEDDING_CONCURRENCY } =
+    await import("@/workflows/sceneEmbeddingBackfill")
+  const {
+    runTranscriptEmbeddingBackfill,
+    DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY,
+  } = await import("@/workflows/transcriptEmbeddingBackfill")
+  const { prisma } = await import("@/db/client")
+  const { env } = await import("@/config/env")
+
+  const sceneConcurrency =
+    env.SCENE_EMBEDDING_CONCURRENCY ?? DEFAULT_SCENE_EMBEDDING_CONCURRENCY
+  const transcriptConcurrency =
+    env.TRANSCRIPT_EMBEDDING_CONCURRENCY ??
+    DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
 
   const redacted = databaseUrl.replace(/:\/\/[^@]+@/, "://***:***@")
   process.stdout.write(
@@ -136,18 +124,6 @@ async function main(): Promise<void> {
         process.env.MANAGER_ARTIFACTS_S3_BUCKET ?? "(unset)",
     }) + "\n",
   )
-
-  // Lazy-import the workflow modules AFTER env validation so the
-  // admin env validator (`@/config/env`) sees DATABASE_URL when it
-  // initialises during the workflow's transitive imports. Imports
-  // happen BEFORE the try/finally so the finally always sees a bound
-  // prisma reference (or fails-fast at import time with a clear
-  // error rather than masking it inside a finally cast).
-  const { runSceneEmbeddingBackfill } =
-    await import("@/workflows/sceneEmbeddingBackfill")
-  const { runTranscriptEmbeddingBackfill } =
-    await import("@/workflows/transcriptEmbeddingBackfill")
-  const { prisma } = await import("@/db/client")
 
   // SIGINT/SIGTERM handler so Ctrl-C / docker stop / Railway stop
   // doesn't leak the prisma connection. Workflow upserts are
