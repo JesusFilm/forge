@@ -57,7 +57,7 @@ export function BibleQuotesSection({
       <div className={CAROUSEL_BLEED_CLASSES}>
         <ul
           data-testid="watch-bible-quotes-list"
-          className={`flex w-full snap-x snap-mandatory gap-4 overflow-x-auto pb-4 -ml-4 ${CAROUSEL_CONTENT_PADDING} pr-4 sm:pr-8 lg:pr-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}
+          className={`flex w-full snap-x snap-mandatory gap-4 overflow-x-auto pb-4 -ml-4 ${CAROUSEL_CONTENT_PADDING} pr-4 sm:pr-8 lg:pr-12 xl:pr-16 2xl:pr-24 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}
         >
           {bibleCitations.map((citation) => (
             <li
