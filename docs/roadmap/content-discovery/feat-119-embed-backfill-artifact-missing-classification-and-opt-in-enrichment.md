@@ -3,7 +3,7 @@ id: "feat-119"
 title: "Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger"
 owner: "nisal"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-05-06"
 duration: 4
 depends_on: []
@@ -15,6 +15,54 @@ tags:
   - "observability"
   - "manager-artifacts"
 ---
+
+## Resolution
+
+**Shipped:** 2026-05-06 across two stacked PRs plus a follow-up compound docs PR.
+
+| PR                                                                                                                                                         | Scope                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [PR #892](https://github.com/JesusFilm/forge/pull/892) (`feat(admin): classify NoSuchKey as artifact_missing + emit missingArtifacts list (feat-119 PR1)`) | NoSuchKey → `skipped { artifact_missing }` reclassification via typed `isArtifactMissing` helper at the storage-service boundary; `missingArtifacts: [{ assetId, coreId, kind }]` projection on R1 + R2 reports; `pnpm run-embeds --report-out=<path>`.                                                                                   |
+| [PR #893](https://github.com/JesusFilm/forge/pull/893) (`feat(admin): decoupled enrichment-trigger endpoint + GraphQL mutation + CLI (feat-119 PR2)`)      | First admin → manager outbound dispatch in repo. New `triggerManagerEnrichment` GraphQL mutation, `manager-trigger.service.ts` outbound HTTPS client, manager `/api/admin-trigger/{scene-analysis,transcript}` REST endpoints, `pnpm trigger-enrichment --from-report=<path>` CLI. New permission key `write:manager-enrichment-trigger`. |
+| [PR #894](https://github.com/JesusFilm/forge/pull/894) (`docs(solutions): compound four PR2 patterns missed in initial /ce:compound (feat-119)`)           | Formal `/ce:compound` follow-up — four new solutions docs (timeout-budget, slot-leak guard, client-mirror-server-dedupe, Pothos parallel-arrays-vs-input-list) capturing patterns the manual compound pass missed.                                                                                                                        |
+
+**Operator workflow (now possible end-to-end):**
+
+```bash
+# 1. PR1: run embed backfill — produces missingArtifacts list.
+pnpm --filter @forge/admin run-embeds --pipeline=both \
+  --core-id=<id> --report-out=.tmp/embeds.json
+
+# 2. PR2: operator decides — backfill the missing upstream artifacts.
+pnpm --filter @forge/admin trigger-enrichment \
+  --from-report=.tmp/embeds.json --kind=transcript
+```
+
+CLI prints one JSON line per outcome plus a summary. Exit 0 happy / 1 if any outcome is `NOT_FOUND | VALIDATION_FAILED | DISPATCH_FAILED` / 2 on argv error / 130 on SIGINT.
+
+**Compounded patterns** (eight new solutions docs across PR1 + PR2 + follow-up):
+
+PR1:
+
+- [`docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md`](../../solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md) — typed `error.name` first, legacy `error.Code` second, tightened regex backstop. Plus the META rule: tests must throw the REAL typed shape.
+- [`docs/solutions/best-practices/workflow-report-operator-actionable-projection-pattern-20260506.md`](../../solutions/best-practices/workflow-report-operator-actionable-projection-pattern-20260506.md) — deduped+sorted projection by stable id as a first-class report field.
+- [`docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`](../../solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md) — META home for the typed-discriminator-branch testing rule (now five worked instances).
+
+PR2:
+
+- [`docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`](../../solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md) — full architecture doc for the bidirectional cross-app trigger pattern, including all three deliberate plan deviations (in-memory idempotency, transcript-only pipeline composition, assetId+coreId wire shape).
+- [`docs/solutions/best-practices/producer-consumer-report-file-contract-pattern-20260506.md`](../../solutions/best-practices/producer-consumer-report-file-contract-pattern-20260506.md) — generalizable producer-consumer pattern + typed-literal alignment trap (caught by /ce:review with conf 0.95: PR2's CLI was filtering for `kind: "scene"` while PR1 emitted `"scene-analysis"`).
+
+PR4 follow-up:
+
+- [`docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md`](../../solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md) — inner downstream timeout MUST be strictly shorter than upstream caller's ceiling, with typed `TimeoutError`.
+- [`docs/solutions/best-practices/in-memory-slot-reservation-fire-and-forget-20260506.md`](../../solutions/best-practices/in-memory-slot-reservation-fire-and-forget-20260506.md) — wrap ENTIRE `after()` callback body in try/finally; sync-throw test required.
+- [`docs/solutions/best-practices/client-mirror-server-dedupe-per-id-contract-20260506.md`](../../solutions/best-practices/client-mirror-server-dedupe-per-id-contract-20260506.md) — when server dedupes by stable id, client must mirror by SAME key.
+- [`docs/solutions/graphql/pothos-parallel-arg-arrays-vs-input-list-20260506.md`](../../solutions/graphql/pothos-parallel-arg-arrays-vs-input-list-20260506.md) — Pothos design pattern with documented decision rule.
+
+**`feat-118` (Stage 4 — content-hash skip) unblocked.** Its `skipped_unchanged` outcome can now roll into a `skipped` bucket that's not dishonestly empty (PR1's classification fix); operators have a path to backfill genuinely-missing upstream artifacts before re-running R1/R2 (PR2's trigger endpoint).
+
+**Quality gates across all three PRs:** admin 1620+ tests + 533 manager tests passing; both apps lint+typecheck clean. /ce:review fix loop applied to PR2 surfaced 12 findings, all resolved before merge.
 
 ## Problem
 
