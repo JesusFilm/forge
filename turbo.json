@@ -43,8 +43,11 @@
       ]
     },
     "generate": {
-      "inputs": ["../../apps/cms/schema.graphql"],
-      "outputs": ["src/graphql-env.d.ts"]
+      "inputs": [
+        "../../apps/cms/schema.graphql",
+        "../../apps/admin/schema.graphql"
+      ],
+      "outputs": ["src/graphql-env.d.ts", "src/admin-graphql-env.d.ts"]
     },
     "schema:print": {
       "outputs": ["schema.graphql"]

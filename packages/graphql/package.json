@@ -17,6 +17,7 @@
     "graphql": "16.13.1"
   },
   "devDependencies": {
+    "@forge/admin": "workspace:*",
     "@forge/cms": "workspace:*",
     "typescript": "^5"
   }
