@@ -20,6 +20,7 @@
     "refresh:core-id-mapping": "tsx src/scripts/refresh-core-id-mapping.ts",
     "pull:mapping": "tsx src/scripts/pull-mapping-from-prod.ts",
     "run-embeds": "tsx src/scripts/run-embeds.ts",
+    "run-experience-dump": "tsx src/scripts/run-experience-dump.ts",
     "run-sync": "tsx src/scripts/run-sync.ts",
     "schema:print": "tsx src/scripts/print-schema.ts",
     "seed-easter": "tsx --env-file=.env src/scripts/seed-easter.ts",

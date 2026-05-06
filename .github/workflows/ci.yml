@@ -92,7 +92,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Verify generated code
-        run: pnpm turbo run generate --filter=@forge/graphql && git diff --exit-code packages/graphql/src/graphql-env.d.ts
+        run: pnpm turbo run generate --filter=@forge/graphql && git diff --exit-code packages/graphql/src/graphql-env.d.ts packages/graphql/src/admin-graphql-env.d.ts
 
   admin-schema-drift:
     runs-on: ubuntu-latest
