@@ -127,6 +127,26 @@ enum MediaAssetStatus {
   MISSING    @map("missing")
 }
 
+/// Image-specific enrichment lifecycle. Kept separate from MediaAssetStatus so
+/// an uploaded image can be storage-ready while derived metadata is still
+/// waiting or processing.
+enum MediaImageEnrichmentStatus {
+  WAITING    @map("waiting")
+  PROCESSING @map("processing")
+  COMPLETE   @map("complete")
+  FAILED     @map("failed")
+  SKIPPED    @map("skipped")
+}
+
+/// Per-locale localized image metadata lifecycle.
+enum MediaAssetLocaleStatus {
+  WAITING    @map("waiting")
+  PROCESSING @map("processing")
+  COMPLETE   @map("complete")
+  FAILED     @map("failed")
+  SKIPPED    @map("skipped")
+}
+
 /// Delivery visibility. Private assets require admin-mediated access; public
 /// assets can be exposed through generated preview/download URLs.
 enum MediaAssetVisibility {
@@ -326,6 +346,61 @@ model CoreSyncRun {
   @@map("core_sync_run")
 }
 
+/// Manager-facing coverage snapshot history. This preserves the Manager
+/// `/api/coverage-snapshots` shape while Admin becomes the backend authority.
+model ManagerCoverageSnapshot {
+  id                       String   @id @default(cuid())
+  date                     DateTime
+  computedAt               DateTime @default(now()) @map("computed_at")
+  totalVideos              Int      @default(0) @map("total_videos")
+  videosWithAiMetadata     Int      @default(0) @map("videos_with_ai_metadata")
+  videosWithHumanMetadata  Int      @default(0) @map("videos_with_human_metadata")
+  subtitlesHumanTotal      Int      @default(0) @map("subtitles_human_total")
+  subtitlesAiTotal         Int      @default(0) @map("subtitles_ai_total")
+  audioHumanTotal          Int      @default(0) @map("audio_human_total")
+  audioAiTotal             Int      @default(0) @map("audio_ai_total")
+  languageCoverage         Json     @default("[]") @map("language_coverage")
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  @@unique([date])
+  @@index([date])
+  @@map("manager_coverage_snapshot")
+}
+
+/// Admin-owned persistence for Manager enrichment jobs. Field names mirror the
+/// existing Manager JobRecord so Manager can move transport without UI churn.
+model ManagerEnrichmentJob {
+  id                                 String   @id @default(cuid())
+  muxAssetId                         String   @map("mux_asset_id")
+  muxPlaybackId                      String?  @map("mux_playback_id")
+  videoDocumentId                    String?  @map("video_document_id")
+  languages                          String[] @default([])
+  sourceLanguageId                   String?  @map("source_language_id")
+  sourceLanguageCode                 String?  @map("source_language_code")
+  sourceSelectionReason              String?  @map("source_selection_reason")
+  primaryRequestedTargetLanguageCode String?  @map("primary_requested_target_language_code")
+  resolvedTargetLanguageCodes        String[] @default([]) @map("resolved_target_language_codes")
+  sourceCollectionTitle              String?  @map("source_collection_title")
+  sourceMediaTitle                   String?  @map("source_media_title")
+  requestedLanguageAbbreviations     String[] @default([]) @map("requested_language_abbreviations")
+  options                            Json     @default("{}")
+  status                             String   @default("pending")
+  currentStep                        String?  @map("current_step")
+  retries                            Int      @default(0)
+  startedAt                          DateTime? @map("started_at")
+  completedAt                        DateTime? @map("completed_at")
+  artifacts                          Json     @default("{}")
+  steps                              Json     @default("[]")
+  errors                             Json     @default("[]")
+  createdAt                          DateTime @default(now()) @map("created_at")
+  updatedAt                          DateTime @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([videoDocumentId])
+  @@map("manager_enrichment_job")
+}
+
 // -----------------------------------------------------------------------------
 // Editor revision history
 // -----------------------------------------------------------------------------
@@ -404,14 +479,18 @@ model MediaAsset {
   backend          MediaAssetBackend
   status           MediaAssetStatus     @default(PENDING)
   visibility       MediaAssetVisibility @default(PRIVATE)
-  displayName      String               @map("display_name")
-  description      String?
-  altText          String?              @map("alt_text")
   mimeType         String               @map("mime_type")
   byteSize         BigInt?              @map("byte_size")
   width            Int?
   height           Int?
   durationMs       BigInt?              @map("duration_ms")
+  blurDataUrl      String?              @map("blur_data_url")
+  dominantColor    String?              @map("dominant_color")
+  imageEnrichmentStatus MediaImageEnrichmentStatus @default(WAITING) @map("image_enrichment_status")
+  imageEnrichmentErrorCode String?       @map("image_enrichment_error_code")
+  imageEnrichmentErrorMessage String?    @map("image_enrichment_error_message")
+  imageEnrichmentStartedAt DateTime?     @map("image_enrichment_started_at")
+  imageEnrichmentCompletedAt DateTime?   @map("image_enrichment_completed_at")
   originalFilename String?              @map("original_filename")
   checksumSha256   String?              @map("checksum_sha256")
   objectKey        String?              @map("object_key")
@@ -425,16 +504,43 @@ model MediaAsset {
   folder           MediaFolder?         @relation(fields: [folderId], references: [id], onDelete: SetNull)
   createdById      String?              @map("created_by_id")
   createdBy        User?                @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  locales          MediaAssetLocale[]
   createdAt        DateTime             @default(now()) @map("created_at")
   updatedAt        DateTime             @updatedAt @map("updated_at")
 
   @@index([kind, status, updatedAt])
   @@index([backend, status])
+  @@index([kind, imageEnrichmentStatus, updatedAt])
   @@index([visibility])
   @@index([folderId, updatedAt])
   @@index([createdById])
-  @@index([displayName])
   @@map("media_asset")
+}
+
+/// Localized display name and alt text for an editorial media asset. Blur data
+/// and byte-derived facts stay on MediaAsset; user-facing language varies here.
+model MediaAssetLocale {
+  id            String                 @id @default(cuid())
+  mediaAssetId  String                 @map("media_asset_id")
+  mediaAsset    MediaAsset             @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+  locale        String
+  displayName   String?                @map("display_name")
+  altText       String?                @map("alt_text")
+  displayNameSource RevisedByKind?     @map("display_name_source")
+  altTextSource RevisedByKind?         @map("alt_text_source")
+  displayNameLocked Boolean            @default(false) @map("display_name_locked")
+  altTextLocked Boolean                @default(false) @map("alt_text_locked")
+  status        MediaAssetLocaleStatus @default(WAITING)
+  errorCode     String?                @map("error_code")
+  errorMessage  String?                @map("error_message")
+  generatedAt   DateTime?              @map("generated_at")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+
+  @@unique([mediaAssetId, locale])
+  @@index([locale])
+  @@index([status, updatedAt])
+  @@map("media_asset_locale")
 }
 
 model MediaFolder {

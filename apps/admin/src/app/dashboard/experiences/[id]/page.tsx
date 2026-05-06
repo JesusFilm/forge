@@ -118,14 +118,18 @@ async function loadMediaLibrary() {
     select: {
       id: true,
       backend: true,
-      displayName: true,
-      altText: true,
+      originalFilename: true,
       mimeType: true,
       byteSize: true,
       objectKey: true,
       previewObjectKey: true,
       muxPlaybackId: true,
       updatedAt: true,
+      locales: {
+        where: { locale: "en" },
+        select: { displayName: true, altText: true },
+        take: 1,
+      },
     },
     orderBy: { updatedAt: "desc" },
     take: 80,
@@ -133,8 +137,11 @@ async function loadMediaLibrary() {
 
   return assets.map((asset) => ({
     id: asset.id,
-    displayName: asset.displayName,
-    altText: asset.altText,
+    displayName:
+      asset.locales[0]?.displayName?.trim() ||
+      asset.originalFilename ||
+      asset.id,
+    altText: asset.locales[0]?.altText ?? null,
     mimeType: asset.mimeType,
     byteSize: formatBytes(asset.byteSize),
     previewUrl: mediaAssetPreviewUrl(asset),

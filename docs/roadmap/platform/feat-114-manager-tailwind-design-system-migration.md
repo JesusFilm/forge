@@ -85,5 +85,8 @@ The follow-up keeps the Studio shell's route and session-state behavior aligned 
 
 - Tailwind 4 now powers the manager app through local `apps/manager` configuration, shared UI primitives in `src/components/ui`, and route-level Tailwind composition across shell, auth, coverage, jobs, and agents surfaces.
 - `apps/manager/src/app/globals.css` has been reduced to tokens, theme mapping, base rules, and small browser-specific affordances rather than screen-level styling systems.
+- Follow-up coverage selector polish stayed within this same styling lane: region rows now read as the parent interactive block, with text-only labels and full-width country rows instead of inset chip-style buttons.
+- Follow-up coverage mode polish removed the Explore/Translate switch: Subtitles now always opens in translation selection behavior, while Audio and Meta remain coverage-only surfaces.
+- Follow-up user menu polish replaced the legacy global-class dropdown with a Tailwind-composed account menu, added focused menu semantics, and covered the panel with a render regression test.
 - Browser and route checks were completed for login, coverage, jobs, and agents on the local manager app. The current snapshot exposes no jobs, so a live `/dashboard/jobs/[id]` detail page could not be opened during this pass.
 - The attached coverage language persistence follow-up is complete: bare Coverage defaults to English, custom language selections persist for the dashboard session, explicit query state wins, legacy `languageIds` links normalize to `languageId`, and clearing the final custom language resets back to English fallback behavior.

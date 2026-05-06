@@ -2,7 +2,8 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { getCmsGateway } from "@/cms/gateway"
-import "@/lib/auth"
+import { hasManagerAccess } from "@/lib/auth"
+import { MANAGER_SESSION_COOKIE } from "@/lib/session-cookie"
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -27,12 +28,12 @@ export async function POST(request: Request) {
 
   const { email, password } = parsed.data
   const session = await getCmsGateway().loginManagerUser(email, password)
-  if (!session || session.user.role.name !== "Manager") {
+  if (!session || !hasManagerAccess(session.user)) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
   }
 
   const cookieStore = await cookies()
-  cookieStore.set("strapi-jwt", session.token, {
+  cookieStore.set(MANAGER_SESSION_COOKIE, session.token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

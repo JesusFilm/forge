@@ -33,7 +33,7 @@ describe("POST /api/auth/login", () => {
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
   })
 
-  it("logs in through the mock gateway and sets the session cookie", async () => {
+  it("logs in through the gateway and sets the neutral Manager session cookie", async () => {
     loginManagerUserMock.mockResolvedValue({
       token: "mock-session-token",
       user: {
@@ -68,13 +68,50 @@ describe("POST /api/auth/login", () => {
       "demo-manager-password",
     )
     expect(cookieSet).toHaveBeenCalledWith(
-      "strapi-jwt",
+      "manager-session",
       "mock-session-token",
       expect.objectContaining({
         httpOnly: true,
         path: "/",
         sameSite: "lax",
       }),
+    )
+  })
+
+  it("accepts Admin role names after Admin grants Manager access", async () => {
+    loginManagerUserMock.mockResolvedValue({
+      token: "admin-session-token",
+      user: {
+        id: "admin-user-1",
+        email: "viewer@example.test",
+        role: { name: "VIEWER", type: "viewer" },
+      },
+    })
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://example.test/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "viewer@example.test",
+          password: "admin-password",
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      user: {
+        id: "admin-user-1",
+        email: "viewer@example.test",
+        role: "VIEWER",
+      },
+    })
+    expect(cookieSet).toHaveBeenCalledWith(
+      "manager-session",
+      "admin-session-token",
+      expect.objectContaining({ httpOnly: true }),
     )
   })
 

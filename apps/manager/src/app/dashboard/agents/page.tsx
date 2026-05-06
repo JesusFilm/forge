@@ -84,12 +84,36 @@ async function loadLiveAgentsPageData(): Promise<{
   return { automations, languageOptions }
 }
 
+async function loadAdminAgentsPageData(
+  gateway: ReturnType<typeof getCmsGateway>,
+): Promise<{
+  automations: EnrichmentAutomation[]
+  languageOptions: LanguageOption[]
+}> {
+  const [automations, languageGeo] = await Promise.all([
+    listAutomations(),
+    gateway.getLanguageGeo(),
+  ])
+
+  return {
+    automations,
+    languageOptions: buildLanguageOptions(
+      languageGeo.languages.map((language) => ({
+        coreId: language.id,
+        name: language.englishLabel,
+      })),
+    ),
+  }
+}
+
 export default async function AgentsDashboardPage() {
   const gateway = getCmsGateway()
   const { automations, languageOptions } =
     gateway.mode === "mock"
       ? await loadMockAgentsPageData(gateway)
-      : await loadLiveAgentsPageData()
+      : gateway.mode === "admin"
+        ? await loadAdminAgentsPageData(gateway)
+        : await loadLiveAgentsPageData()
 
   return (
     <div className="studio-page studio-page--agents">

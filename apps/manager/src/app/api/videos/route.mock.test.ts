@@ -102,4 +102,20 @@ describe("GET /api/videos in mock mode", () => {
       await frenchResponse.json(),
     )
   })
+
+  it("passes selected language ids to the admin coverage gateway", async () => {
+    getCmsGatewayMock.mockReturnValue({
+      mode: "admin",
+      getVideoCoverage: getVideoCoverageMock.mockResolvedValue([
+        DEFAULT_MOCK_CMS_SEED.readModels.videoCoverage[3],
+      ]),
+    })
+
+    const response = await GET(
+      new Request("http://example.test/api/videos?languageIds=999"),
+    )
+
+    expect(response.status).toBe(200)
+    expect(getVideoCoverageMock).toHaveBeenCalledWith(["999"])
+  })
 })

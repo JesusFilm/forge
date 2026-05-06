@@ -149,7 +149,7 @@ describe("cms gateway auth foundation", () => {
     }
   })
 
-  it("allows live auth handlers to be registered for later Strapi wiring", async () => {
+  it("allows strapi auth handlers to be registered for compatibility wiring", async () => {
     registerLiveCmsGatewayAuthHandlers({
       async loginManagerUser(email) {
         return {
@@ -178,7 +178,7 @@ describe("cms gateway auth foundation", () => {
       },
     })
 
-    const gateway = createCmsGateway({ mode: "live" })
+    const gateway = createCmsGateway({ mode: "strapi" })
 
     await expect(
       gateway.loginManagerUser("live@forge.test", "ignored"),
@@ -192,10 +192,12 @@ describe("cms gateway auth foundation", () => {
   })
 
   it("normalizes env mode values", () => {
-    expect(readModeFromEnv(undefined)).toBe("live")
-    expect(readModeFromEnv("live")).toBe("live")
+    expect(readModeFromEnv(undefined)).toBe("strapi")
+    expect(readModeFromEnv("admin")).toBe("admin")
+    expect(readModeFromEnv("live")).toBe("strapi")
+    expect(readModeFromEnv("strapi")).toBe("strapi")
     expect(readModeFromEnv("mock")).toBe("mock")
-    expect(readModeFromEnv("unexpected")).toBe("live")
+    expect(readModeFromEnv("unexpected")).toBe("strapi")
   })
 
   it("derives different mock video coverage for different selected languages", async () => {

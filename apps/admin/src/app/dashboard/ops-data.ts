@@ -2,6 +2,7 @@ import {
   Prisma,
   type LocaleStatus,
   type MediaAssetKind,
+  type MediaImageEnrichmentStatus,
   type MediaAssetStatus,
 } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
@@ -136,8 +137,24 @@ type MediaAssetTableRow = TableRow & {
   dimensions: string
   previewUrl: string | null
   downloadUrl: string | null
+  blurDataUrl: string | null
+  imageEnrichmentStatus: MediaImageEnrichmentStatus
+  imageEnrichmentErrorMessage: string | null
   updatedAtValue: Date
 }
+
+type MediaAssetWithEnglishLocale = Awaited<
+  ReturnType<typeof createServices>
+>["mediaAsset"] extends {
+  list: (...args: never[]) => Promise<Array<infer Row>>
+}
+  ? Row & {
+      locales?: Array<{
+        locale: string
+        displayName: string | null
+      }>
+    }
+  : never
 
 type UsersData = {
   metrics: Metric[]
@@ -273,6 +290,16 @@ function statusToneForMediaAsset(
   if (status === "FAILED" || status === "MISSING") return "danger"
   if (status === "PROCESSING" || status === "UPLOADING") return "info"
   return "warning"
+}
+
+function statusToneForImageEnrichment(
+  status: MediaImageEnrichmentStatus,
+): "success" | "warning" | "danger" | "info" | "muted" {
+  if (status === "COMPLETE") return "success"
+  if (status === "FAILED") return "danger"
+  if (status === "PROCESSING") return "info"
+  if (status === "WAITING") return "warning"
+  return "muted"
 }
 
 function formatBytes(value: bigint | null) {
@@ -411,6 +438,17 @@ function mediaSupplementalLabel(
   }
 
   return originalFilename
+}
+
+function localizedMediaAssetLabel(row: {
+  id: string
+  originalFilename: string | null
+  locales?: Array<{ locale: string; displayName: string | null }>
+}) {
+  const englishName = row.locales
+    ?.find((locale) => locale.locale === "en")
+    ?.displayName?.trim()
+  return englishName || row.originalFilename || `Media asset ${row.id}`
 }
 
 async function getWorkflowRunRows(limit = 5) {
@@ -1203,9 +1241,17 @@ export async function loadMediaData(principal: Principal): Promise<MediaData> {
           services.mediaAsset.list({
             input: { limit: 120, offset: 0 },
             user: principal,
-            query: {},
+            query: {
+              include: {
+                locales: {
+                  where: { locale: "en" },
+                  select: { locale: true, displayName: true },
+                  take: 1,
+                },
+              },
+            },
           }),
-        [] as Awaited<ReturnType<typeof services.mediaAsset.list>>,
+        [] as MediaAssetWithEnglishLocale[],
       ),
       withTableFallback(
         () =>
@@ -1289,27 +1335,42 @@ export async function loadMediaData(principal: Principal): Promise<MediaData> {
       },
     ],
     folders: flattenedFolders,
-    rows: rows.map((row) => ({
-      key: row.id,
-      title: row.displayName,
-      detail: mediaSupplementalLabel(
-        row.displayName,
-        row.originalFilename,
-        row.mimeType,
-      ),
-      statusLabel: row.status,
-      statusTone: statusToneForMediaAsset(row.status),
-      meta: formatDateTime(row.updatedAt),
-      kind: row.kind,
-      folderId: row.folderId ?? null,
-      backend: row.backend,
-      byteSize: formatBytes(row.byteSize),
-      byteSizeValue: row.byteSize,
-      dimensions: mediaDimensions(row),
-      previewUrl: mediaAssetPreviewUrl(row),
-      downloadUrl: mediaAssetDownloadUrl(row),
-      updatedAtValue: row.updatedAt,
-    })),
+    rows: rows.map((row) => {
+      const displayName = localizedMediaAssetLabel(row)
+      const showEnrichmentStatus =
+        row.kind === "IMAGE" &&
+        row.imageEnrichmentStatus !== "COMPLETE" &&
+        row.imageEnrichmentStatus !== "SKIPPED"
+
+      return {
+        key: row.id,
+        title: displayName,
+        detail: mediaSupplementalLabel(
+          displayName,
+          row.originalFilename,
+          row.mimeType,
+        ),
+        statusLabel: showEnrichmentStatus
+          ? row.imageEnrichmentStatus
+          : row.status,
+        statusTone: showEnrichmentStatus
+          ? statusToneForImageEnrichment(row.imageEnrichmentStatus)
+          : statusToneForMediaAsset(row.status),
+        meta: formatDateTime(row.updatedAt),
+        kind: row.kind,
+        folderId: row.folderId ?? null,
+        backend: row.backend,
+        byteSize: formatBytes(row.byteSize),
+        byteSizeValue: row.byteSize,
+        dimensions: mediaDimensions(row),
+        previewUrl: mediaAssetPreviewUrl(row),
+        downloadUrl: mediaAssetDownloadUrl(row),
+        blurDataUrl: row.blurDataUrl,
+        imageEnrichmentStatus: row.imageEnrichmentStatus,
+        imageEnrichmentErrorMessage: row.imageEnrichmentErrorMessage,
+        updatedAtValue: row.updatedAt,
+      }
+    }),
     insights: [
       {
         label: "Image Assets",

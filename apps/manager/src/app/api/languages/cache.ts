@@ -9,6 +9,8 @@ type CmsLanguageGeo = {
     id: string
     englishLabel: string
     nativeLabel: string
+    bcp47?: string | null
+    iso3?: string | null
     countryIds: string[]
     continentIds: string[]
     countrySpeakers: Record<string, number>
@@ -17,7 +19,7 @@ type CmsLanguageGeo = {
 
 async function fetchLanguageGeo(): Promise<string> {
   const gateway = getCmsGateway()
-  if (gateway.mode === "mock") {
+  if (gateway.mode !== "strapi") {
     return JSON.stringify(await gateway.getLanguageGeo())
   }
 

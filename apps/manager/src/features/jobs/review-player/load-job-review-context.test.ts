@@ -199,6 +199,27 @@ describe("loadJobReviewContext", () => {
     })
   })
 
+  it("does not fall back to live CMS review sources in Admin mode", async () => {
+    getCmsGatewayMock.mockReturnValue({
+      mode: "admin",
+    })
+
+    const result = await loadJobReviewContext(buildJob(), {
+      buildArtifactHref: (jobId, artifactKey) =>
+        `/api/jobs/${jobId}/artifacts/${artifactKey}`,
+    })
+
+    expect(result.status).toBe("ready")
+    if (result.status !== "ready") {
+      throw new Error("expected ready result")
+    }
+
+    expect(result.context.before.metadata).toEqual({
+      status: "unavailable",
+      reason: "no_live_metadata",
+    })
+  })
+
   it("drops unsafe CMS subtitle URLs while keeping approved tracks", async () => {
     const result = await loadJobReviewContext(buildJob(), {
       loadVideoReviewSource: async () => ({

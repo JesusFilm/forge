@@ -454,6 +454,45 @@ describe("POST /api/enrich", () => {
     expect(createJobMock).not.toHaveBeenCalled()
   })
 
+  it("explicitly blocks Admin-mode enrichment launch instead of falling through to Strapi", async () => {
+    vi.resetModules()
+    vi.stubEnv("MANAGER_BACKEND_MODE", "admin")
+    vi.stubEnv("ADMIN_GRAPHQL_URL", "https://admin.example/api/graphql")
+    vi.stubEnv("ADMIN_MANAGER_API_KEY", "manager-service-key")
+    vi.stubEnv("MUX_TOKEN_ID", "mux-token-id")
+    vi.stubEnv("MUX_TOKEN_SECRET", "mux-token-secret")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const { POST: adminModePost } = await import("@/app/api/enrich/route")
+    const response = await adminModePost(
+      new Request("https://manager.test/api/enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          videoIds: ["video-1"],
+          targetLanguageIds: ["6414"],
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      created: 0,
+      failed: 1,
+      jobs: [],
+      errors: [
+        {
+          videoId: "video-1",
+          error:
+            "Admin backend mode does not yet expose the enrichment materialization contract.",
+        },
+      ],
+    })
+    expect(clientQueryMock).not.toHaveBeenCalled()
+    expect(createJobMock).not.toHaveBeenCalled()
+    dispatch.expectNotDispatched()
+  })
+
   it("keeps a batch 201 response while surfacing per-video launch failures", async () => {
     clientQueryMock
       .mockResolvedValueOnce({

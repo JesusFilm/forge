@@ -1,17 +1,34 @@
 // Media asset service — permissioned registry for images, videos, PDFs, and
-// other uploaded files. The service stores canonical metadata and exposes
-// stable routes; storage backends remain an implementation detail.
+// other uploaded files. User-facing metadata lives in localized rows; storage
+// backends remain an implementation detail.
 
 import type { MediaAssetKind, Prisma, PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
-import { hasPermission } from "@/auth/permissions"
+import { canWriteDerived, hasPermission } from "@/auth/permissions"
 import { ForbiddenError } from "./errors"
 import {
   CreateMediaAssetInput,
   ListMediaAssetsInput,
+  UpdateMediaAssetLocaleInput,
   UpdateMediaAssetInput,
+  UpsertAiMediaAssetLocaleInput,
 } from "./media-asset.schemas"
 import { scanMediaAssetUsage } from "./media-asset.usage"
+
+export const TOP_GLOBAL_IMAGE_LOCALES = [
+  "en",
+  "es",
+  "pt",
+  "fr",
+  "ar",
+  "zh",
+  "hi",
+  "id",
+  "ru",
+  "bn",
+  "de",
+  "ja",
+] as const
 
 export class MediaAssetValidationError extends Error {
   constructor(message: string) {
@@ -45,12 +62,20 @@ export class MediaAssetService {
       ...(input.search
         ? {
             OR: [
-              { displayName: { contains: input.search, mode: "insensitive" } },
-              { description: { contains: input.search, mode: "insensitive" } },
               {
                 originalFilename: {
                   contains: input.search,
                   mode: "insensitive",
+                },
+              },
+              {
+                locales: {
+                  some: {
+                    displayName: {
+                      contains: input.search,
+                      mode: "insensitive",
+                    },
+                  },
                 },
               },
             ],
@@ -105,6 +130,9 @@ export class MediaAssetService {
     return this.prisma.mediaAsset.create({
       data: {
         ...input,
+        imageEnrichmentStatus:
+          input.imageEnrichmentStatus ??
+          (input.kind === "IMAGE" ? "WAITING" : "SKIPPED"),
         createdById: user?.id ?? null,
       },
     })
@@ -127,6 +155,206 @@ export class MediaAssetService {
 
     return this.prisma.mediaAsset.update({
       where: { id },
+      data,
+    })
+  }
+
+  async listImageLocales({
+    mediaAssetId,
+    user,
+  }: {
+    mediaAssetId: string
+    user: Principal | null
+  }) {
+    if (!hasPermission(user, "read:media-assets")) {
+      throw new ForbiddenError()
+    }
+
+    return this.prisma.mediaAssetLocale.findMany({
+      where: { mediaAssetId },
+      orderBy: { locale: "asc" },
+    })
+  }
+
+  async updateImageLocale({
+    input: raw,
+    user,
+  }: {
+    input: unknown
+    user: Principal | null
+  }) {
+    if (!hasPermission(user, "write:media-assets")) {
+      throw new ForbiddenError()
+    }
+
+    const input = UpdateMediaAssetLocaleInput.parse(raw)
+    await this.assertMediaAsset(input.mediaAssetId)
+
+    const data: Prisma.MediaAssetLocaleUpdateInput = {
+      status: "COMPLETE",
+      errorCode: null,
+      errorMessage: null,
+    }
+
+    if (input.displayName !== undefined) {
+      data.displayName = input.displayName
+      data.displayNameSource = "USER"
+      data.displayNameLocked = true
+    }
+
+    if (input.altText !== undefined) {
+      data.altText = input.altText
+      data.altTextSource = "USER"
+      data.altTextLocked = true
+    }
+
+    return this.prisma.mediaAssetLocale.upsert({
+      where: {
+        mediaAssetId_locale: {
+          mediaAssetId: input.mediaAssetId,
+          locale: input.locale,
+        },
+      },
+      create: {
+        mediaAssetId: input.mediaAssetId,
+        locale: input.locale,
+        displayName: input.displayName ?? null,
+        altText: input.altText ?? null,
+        displayNameSource: input.displayName !== undefined ? "USER" : null,
+        altTextSource: input.altText !== undefined ? "USER" : null,
+        displayNameLocked: input.displayName !== undefined,
+        altTextLocked: input.altText !== undefined,
+        status: "COMPLETE",
+      },
+      update: data,
+    })
+  }
+
+  async upsertAiImageLocale({
+    input: raw,
+    user,
+  }: {
+    input: unknown
+    user: Principal | null
+  }) {
+    if (!canWriteDerived(user)) {
+      throw new ForbiddenError()
+    }
+
+    const input = UpsertAiMediaAssetLocaleInput.parse(raw)
+    const existing = await this.prisma.mediaAssetLocale.findUnique({
+      where: {
+        mediaAssetId_locale: {
+          mediaAssetId: input.mediaAssetId,
+          locale: input.locale,
+        },
+      },
+    })
+
+    const nextDisplayName =
+      existing?.displayNameLocked === true
+        ? existing.displayName
+        : (input.displayName ?? null)
+    const nextAltText =
+      existing?.altTextLocked === true
+        ? existing.altText
+        : (input.altText ?? null)
+
+    const displayNameSource =
+      existing?.displayNameLocked === true
+        ? existing.displayNameSource
+        : input.displayName !== undefined
+          ? "AI"
+          : (existing?.displayNameSource ?? null)
+    const altTextSource =
+      existing?.altTextLocked === true
+        ? existing.altTextSource
+        : input.altText !== undefined
+          ? "AI"
+          : (existing?.altTextSource ?? null)
+
+    return this.prisma.mediaAssetLocale.upsert({
+      where: {
+        mediaAssetId_locale: {
+          mediaAssetId: input.mediaAssetId,
+          locale: input.locale,
+        },
+      },
+      create: {
+        mediaAssetId: input.mediaAssetId,
+        locale: input.locale,
+        displayName: input.displayName ?? null,
+        altText: input.altText ?? null,
+        displayNameSource: input.displayName !== undefined ? "AI" : null,
+        altTextSource: input.altText !== undefined ? "AI" : null,
+        status: input.status,
+        errorCode: input.errorCode ?? null,
+        errorMessage: input.errorMessage ?? null,
+        generatedAt: input.status === "COMPLETE" ? new Date() : null,
+      },
+      update: {
+        displayName: nextDisplayName,
+        altText: nextAltText,
+        displayNameSource,
+        altTextSource,
+        status: input.status,
+        errorCode: input.errorCode ?? null,
+        errorMessage: input.errorMessage ?? null,
+        generatedAt: input.status === "COMPLETE" ? new Date() : undefined,
+      },
+    })
+  }
+
+  async seedTopImageLocales({
+    mediaAssetId,
+    user,
+  }: {
+    mediaAssetId: string
+    user: Principal | null
+  }) {
+    if (!canWriteDerived(user)) {
+      throw new ForbiddenError()
+    }
+
+    await this.assertImageAsset(mediaAssetId)
+
+    await Promise.all(
+      TOP_GLOBAL_IMAGE_LOCALES.map((locale) =>
+        this.prisma.mediaAssetLocale.upsert({
+          where: { mediaAssetId_locale: { mediaAssetId, locale } },
+          create: { mediaAssetId, locale, status: "WAITING" },
+          update: {},
+        }),
+      ),
+    )
+  }
+
+  async updateImageEnrichmentState({
+    mediaAssetId,
+    user,
+    data,
+  }: {
+    mediaAssetId: string
+    user: Principal | null
+    data: Pick<
+      Prisma.MediaAssetUpdateInput,
+      | "blurDataUrl"
+      | "dominantColor"
+      | "width"
+      | "height"
+      | "imageEnrichmentStatus"
+      | "imageEnrichmentErrorCode"
+      | "imageEnrichmentErrorMessage"
+      | "imageEnrichmentStartedAt"
+      | "imageEnrichmentCompletedAt"
+    >
+  }) {
+    if (!canWriteDerived(user)) {
+      throw new ForbiddenError()
+    }
+
+    return this.prisma.mediaAsset.updateMany({
+      where: { id: mediaAssetId },
       data,
     })
   }
@@ -167,6 +395,28 @@ export class MediaAssetService {
         (value): value is string => Boolean(value),
       ),
     })
+  }
+
+  private async assertMediaAsset(id: string) {
+    const asset = await this.prisma.mediaAsset.findFirst({
+      where: { id },
+      select: { id: true, kind: true },
+    })
+    if (!asset) {
+      throw new MediaAssetValidationError("Media asset not found")
+    }
+  }
+
+  private async assertImageAsset(id: string) {
+    const asset = await this.prisma.mediaAsset.findFirst({
+      where: { id },
+      select: { id: true, kind: true },
+    })
+    if (!asset || asset.kind !== "IMAGE") {
+      throw new MediaAssetValidationError(
+        "Image enrichment requires an image asset",
+      )
+    }
   }
 }
 

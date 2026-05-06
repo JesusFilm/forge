@@ -51,14 +51,15 @@ pnpm lint / pnpm typecheck
 
 ## Authentication
 
-Dashboard access requires a user with the "Manager" role.
+Dashboard access requires a user with Manager access.
 
-- `MANAGER_DATA_MODE=live`: Login page → `POST /api/auth/login` → Strapi `/api/auth/local` → `strapi-jwt` cookie → middleware protects `/dashboard`.
-- `MANAGER_DATA_MODE=mock`: Login page → `POST /api/auth/login` → Manager mock gateway/session signer → `strapi-jwt` cookie → middleware protects `/dashboard`.
+- `MANAGER_BACKEND_MODE=admin`: Login page → `POST /api/auth/login` → Admin GraphQL Manager session contract → `manager-session` cookie → middleware protects `/dashboard`.
+- `MANAGER_BACKEND_MODE=mock` or `MANAGER_DATA_MODE=mock`: Login page → `POST /api/auth/login` → Manager mock gateway/session signer → `manager-session` cookie → middleware protects `/dashboard`.
+- `MANAGER_BACKEND_MODE=strapi` or legacy `MANAGER_DATA_MODE=live`: compatibility path through Strapi Users & Permissions. Manager still reads the old `strapi-jwt` cookie during the migration window, but new logins write `manager-session`.
 
 API routes also accept Bearer token (`MANAGER_API_KEY`) for external clients.
 
-Local live-mode dev requires a Strapi user with role name exactly `Manager`. Create via Strapi admin at `http://localhost:1337/admin` > Settings > Users & Permissions > Roles.
+Admin backend mode requires `ADMIN_GRAPHQL_URL` and, when the Admin contract is configured to require service auth, `ADMIN_MANAGER_API_KEY`. Legacy Strapi compatibility mode still requires a Strapi user with role name exactly `Manager`.
 
 Local mock-mode smoke tests can use the seeded credentials:
 
@@ -146,7 +147,8 @@ composite keys, so retries are idempotent.
 | RAILWAY_S3_BUCKET            | Railway S3 bucket name (optional — triggers S3 mode)                      |
 | RAILWAY_S3_ACCESS_KEY_ID     | Railway S3 access key (optional)                                          |
 | RAILWAY_S3_SECRET_ACCESS_KEY | Railway S3 secret key (optional)                                          |
-| MANAGER_DATA_MODE            | `live` or `mock` (default `live`)                                         |
+| MANAGER_BACKEND_MODE         | `admin`, `mock`, or `strapi`; set `admin` for the Admin backend migration |
+| MANAGER_DATA_MODE            | Legacy `live`/`mock` compatibility flag                                   |
 | MANAGER_MOCK_SESSION_SECRET  | Required in `mock` mode to sign Manager-issued mock sessions              |
 | MANAGER_MOCK_DATA_PATH       | Optional mock runtime store path (default `.tmp/mock-cms/store.json`)     |
 | STRAPI_URL                   | URL of apps/cms (required in `live`, ignored in `mock`)                   |
@@ -154,7 +156,8 @@ composite keys, so retries are idempotent.
 | STRAPI_INTERNAL_API_TOKEN    | Optional internal CMS token for live-only writer paths                    |
 | WORKFLOW_API_KEY             | workflow API key (optional, for production durability)                    |
 | MANAGER_API_KEY              | API key for external clients (optional in dev)                            |
-| ADMIN_GRAPHQL_URL            | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)        |
+| ADMIN_GRAPHQL_URL            | Full URL of admin's `/api/graphql` (admin backend and embed proxy)        |
+| ADMIN_MANAGER_API_KEY        | Required in `admin` mode; must match admin's `WORKFLOW_API_KEYS`          |
 | ADMIN_EMBED_TRIGGER_API_KEY  | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`            |
 | NEXT_PUBLIC_WATCH_URL        | Public video watch URL (optional)                                         |
 

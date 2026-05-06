@@ -81,4 +81,35 @@ describe("GET /api/coverage-snapshots in mock mode", () => {
       ],
     })
   })
+
+  it("queries admin snapshots through the backend gateway", async () => {
+    const snapshots = cloneMockCmsSeed(
+      DEFAULT_MOCK_CMS_SEED.readModels.coverageSnapshots,
+    )
+    const getCoverageSnapshots = vi.fn(async () => snapshots)
+
+    getCmsGatewayMock.mockReturnValue({
+      mode: "admin",
+      getCoverageSnapshots,
+    })
+
+    const response = await GET(
+      new Request(
+        "http://example.test/api/coverage-snapshots?startDate=2026-04-15&endDate=2026-04-15",
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      snapshots: [
+        expect.objectContaining({
+          documentId: "snapshot-2026-04-15",
+        }),
+      ],
+    })
+    expect(getCoverageSnapshots).toHaveBeenCalledWith({
+      startDate: "2026-04-15",
+      endDate: "2026-04-15",
+    })
+  })
 })

@@ -102,4 +102,59 @@ describe("createJob", () => {
     expect(job.id).toBe("job-2")
     expect(publishJobEventMock).toHaveBeenCalledWith(job)
   })
+
+  it("creates jobs through Admin GraphQL in admin backend mode", async () => {
+    vi.resetModules()
+    const createAdminJobMock = vi.fn(async () => ({
+      id: "admin-job-1",
+      muxAssetId: "asset-admin",
+      muxPlaybackId: "playback-admin",
+      videoDocumentId: "video-doc-1",
+      languages: ["529"],
+      options: {},
+      status: "pending",
+      retries: 0,
+      createdAt: "2026-05-06T00:00:00.000Z",
+      updatedAt: "2026-05-06T00:00:00.000Z",
+      artifacts: {},
+      steps: [],
+      errors: [],
+    }))
+
+    vi.doMock("@/config/env", () => ({
+      env: {
+        ADMIN_GRAPHQL_URL: "https://admin.example/api/graphql",
+        ADMIN_MANAGER_API_KEY: "manager-service-key",
+      },
+    }))
+    vi.doMock("@/cms/gateway", () => ({
+      getCmsGateway: () => ({ mode: "admin" }),
+      readMockCmsState: vi.fn(async () => null),
+      updateMockCmsState: vi.fn(),
+    }))
+    vi.doMock("@/backend/admin-client", () => ({
+      AdminGraphqlClient: class {
+        createJob = createAdminJobMock
+      },
+    }))
+
+    const { createJob } = await import("./state")
+
+    const job = await createJob("asset-admin", "playback-admin", ["529"], {
+      videoDocumentId: "video-doc-1",
+    })
+
+    expect(createAdminJobMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        muxAssetId: "asset-admin",
+        muxPlaybackId: "playback-admin",
+        videoDocumentId: "video-doc-1",
+        languages: ["529"],
+      }),
+    )
+    expect(cmsPostMock).not.toHaveBeenCalled()
+    expect(mutateMock).not.toHaveBeenCalled()
+    expect(job.id).toBe("admin-job-1")
+    expect(publishJobEventMock).toHaveBeenCalledWith(job)
+  })
 })

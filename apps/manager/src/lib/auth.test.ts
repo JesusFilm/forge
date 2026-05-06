@@ -88,7 +88,7 @@ describe("authenticateManagerOverrideRequest", () => {
 
     const request = new Request("http://example.test", {
       headers: {
-        cookie: "strapi-jwt=mock-session-token",
+        cookie: "manager-session=mock-session-token",
       },
     })
 
@@ -104,5 +104,72 @@ describe("authenticateManagerOverrideRequest", () => {
       },
     })
     expect(verifyManagerSessionMock).toHaveBeenCalledWith("mock-session-token")
+  })
+
+  it("accepts Admin role names after Admin verifies access:manager", async () => {
+    vi.stubEnv("MANAGER_BACKEND_MODE", "admin")
+    vi.stubEnv("ADMIN_GRAPHQL_URL", "https://admin.example/api/graphql")
+    vi.stubEnv("ADMIN_MANAGER_API_KEY", "manager-service-key")
+    vi.stubEnv("MUX_TOKEN_ID", "mux-token-id")
+    vi.stubEnv("MUX_TOKEN_SECRET", "mux-token-secret")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    verifyManagerSessionMock.mockResolvedValue({
+      id: "admin-user-1",
+      username: "viewer@example.test",
+      email: "viewer@example.test",
+      role: { name: "VIEWER", type: "viewer" },
+    })
+
+    const { authenticateRequest, authenticateManagerOverrideRequest } =
+      await import("./auth")
+
+    const request = new Request("http://example.test", {
+      headers: {
+        cookie: "manager-session=admin-session-token",
+      },
+    })
+
+    await expect(authenticateRequest(request)).resolves.toBeNull()
+    await expect(authenticateManagerOverrideRequest(request)).resolves.toEqual({
+      kind: "session",
+      approvedByUserId: "admin-user-1",
+      user: {
+        id: "admin-user-1",
+        username: "viewer@example.test",
+        email: "viewer@example.test",
+        role: { name: "VIEWER", type: "viewer" },
+      },
+    })
+  })
+
+  it("still accepts the legacy Strapi cookie during the transition window", async () => {
+    vi.stubEnv("MANAGER_DATA_MODE", "mock")
+    vi.stubEnv("MANAGER_MOCK_SESSION_SECRET", "mock-session-secret")
+    vi.stubEnv("MUX_TOKEN_ID", "mux-token-id")
+    vi.stubEnv("MUX_TOKEN_SECRET", "mux-token-secret")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    verifyManagerSessionMock.mockResolvedValue({
+      id: 7,
+      username: "manager",
+      email: "manager@forge.test",
+      role: { name: "Manager", type: "manager" },
+    })
+
+    const { authenticateRequest } = await import("./auth")
+
+    await expect(
+      authenticateRequest(
+        new Request("http://example.test", {
+          headers: {
+            cookie: "strapi-jwt=legacy-session-token",
+          },
+        }),
+      ),
+    ).resolves.toBeNull()
+    expect(verifyManagerSessionMock).toHaveBeenCalledWith(
+      "legacy-session-token",
+    )
   })
 })

@@ -1,23 +1,29 @@
 // Server component authentication guard.
-// Validates the Strapi JWT signature via /api/users/me and ensures the Manager role.
+// Validates the Manager backend session and ensures the Manager role.
 // Redirects to /login if authentication fails.
 
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { verifyManagerSession } from "@/lib/auth"
+import { hasManagerAccess, verifyManagerSession } from "@/lib/auth"
+import {
+  LEGACY_STRAPI_SESSION_COOKIE,
+  MANAGER_SESSION_COOKIE,
+} from "@/lib/session-cookie"
 
 type AuthUser = { username: string; email: string }
 
 export async function requireAuth(): Promise<AuthUser> {
   const cookieStore = await cookies()
-  const jwt = cookieStore.get("strapi-jwt")?.value
+  const sessionToken =
+    cookieStore.get(MANAGER_SESSION_COOKIE)?.value ??
+    cookieStore.get(LEGACY_STRAPI_SESSION_COOKIE)?.value
 
-  if (!jwt) {
+  if (!sessionToken) {
     redirect("/login")
   }
 
-  const user = await verifyManagerSession(jwt)
-  if (!user || user.role?.name !== "Manager") {
+  const user = await verifyManagerSession(sessionToken)
+  if (!hasManagerAccess(user)) {
     redirect("/login")
   }
 

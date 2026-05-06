@@ -21,7 +21,7 @@ async function fetchVideoCoverage(
   languageIds?: string[],
 ): Promise<CmsVideoCoverage[]> {
   const gateway = getCmsGateway()
-  if (gateway.mode === "mock") {
+  if (gateway.mode !== "strapi") {
     return gateway.getVideoCoverage(languageIds)
   }
 

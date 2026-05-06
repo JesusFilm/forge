@@ -135,9 +135,14 @@ async function defaultReadArtifactJson(
 async function defaultLoadVideoReviewSource(
   videoDocumentId: string,
 ): Promise<LoadVideoReviewSourceResult | null> {
-  const mockState = await readMockCmsState(getCmsGateway())
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
   if (mockState) {
     return mockState.readModels.reviewSources[videoDocumentId] ?? null
+  }
+
+  if (gateway.mode === "admin") {
+    return null
   }
 
   const client = getClient()

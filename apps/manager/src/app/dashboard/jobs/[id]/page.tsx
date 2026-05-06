@@ -2,9 +2,9 @@ import React from "react"
 import { notFound } from "next/navigation"
 import { graphql } from "@forge/graphql"
 import getClient from "@/cms/client"
-import { getCmsGateway, readMockCmsState } from "@/cms/gateway"
+import { getCmsGateway, type CmsGateway } from "@/cms/gateway"
 import { LiveJobDetailScreen } from "@/features/jobs/live-job-detail-screen"
-import { toJobRecord } from "@/lib/state"
+import { getJob, toJobRecord } from "@/lib/state"
 import type { JobRecord } from "@/types/job"
 
 export const dynamic = "force-dynamic"
@@ -59,32 +59,30 @@ const GET_LANGUAGE_LABELS = graphql(`
 `)
 
 function buildLanguageLabelsById(
-  languages: Array<{ coreId: string; name: string }>,
-): Record<string, string> {
+  languages: Array<{ id: string; name: string }>,
+) {
   return Object.fromEntries(
-    languages.map((language) => [language.coreId, language.name]),
+    languages.map((language) => [language.id, language.name]),
   )
 }
 
-async function loadMockJobDetailPageData(
-  gateway: ReturnType<typeof getCmsGateway>,
+async function loadBackendJobDetailPageData(
+  gateway: CmsGateway,
   id: string,
 ): Promise<{
   job: JobRecord | null
   languageLabelsById: Record<string, string>
 }> {
-  const mockState = await readMockCmsState(gateway)
-  if (!mockState) {
-    return { job: null, languageLabelsById: {} }
-  }
+  const [job, languageGeo] = await Promise.all([
+    getJob(id),
+    gateway.getLanguageGeo(),
+  ])
 
   return {
-    job:
-      mockState.readModels.jobs.find((candidate) => candidate.id === id) ??
-      null,
+    job,
     languageLabelsById: buildLanguageLabelsById(
-      mockState.readModels.languageGeo.languages.map((language) => ({
-        coreId: language.id,
+      languageGeo.languages.map((language) => ({
+        id: language.id,
         name: language.englishLabel,
       })),
     ),
@@ -125,10 +123,12 @@ async function loadLiveJobDetailPageData(id: string): Promise<{
 
     const languages = languagesResult.data?.languages ?? []
     languageLabelsById = buildLanguageLabelsById(
-      languages.filter(
-        (lang): lang is { coreId: string; name: string } =>
-          lang != null && lang.coreId != null && lang.name != null,
-      ),
+      languages
+        .filter(
+          (lang): lang is { coreId: string; name: string } =>
+            lang != null && lang.coreId != null && lang.name != null,
+        )
+        .map((language) => ({ id: language.coreId, name: language.name })),
     )
   } catch (error) {
     console.error("[jobs/[id]/page] Failed to fetch data from Strapi:", error)
@@ -151,8 +151,8 @@ export default async function JobDetailPage({
 
   const gateway = getCmsGateway()
   const { job, languageLabelsById } =
-    gateway.mode === "mock"
-      ? await loadMockJobDetailPageData(gateway, id)
+    gateway.mode !== "strapi"
+      ? await loadBackendJobDetailPageData(gateway, id)
       : await loadLiveJobDetailPageData(id)
 
   if (!job) {

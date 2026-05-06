@@ -2,13 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { DEFAULT_MOCK_CMS_SEED, cloneMockCmsSeed } from "@/cms/mock-seed"
 import type { JobRecord } from "@/types/job"
 
-const { getClientMock, getCmsGatewayMock, liveJobsTableMock, toJobRecordMock } =
-  vi.hoisted(() => ({
-    getClientMock: vi.fn(),
-    getCmsGatewayMock: vi.fn(),
-    liveJobsTableMock: vi.fn(() => null),
-    toJobRecordMock: vi.fn(),
-  }))
+const {
+  getClientMock,
+  getCmsGatewayMock,
+  listJobSummariesMock,
+  liveJobsTableMock,
+  toJobRecordMock,
+} = vi.hoisted(() => ({
+  getClientMock: vi.fn(),
+  getCmsGatewayMock: vi.fn(),
+  liveJobsTableMock: vi.fn(() => null),
+  listJobSummariesMock: vi.fn(),
+  toJobRecordMock: vi.fn(),
+}))
 
 vi.mock("@/cms/client", () => ({
   default: getClientMock,
@@ -28,6 +34,7 @@ vi.mock("@/features/jobs/live-jobs-table", () => ({
 }))
 
 vi.mock("@/lib/state", () => ({
+  listJobSummaries: listJobSummariesMock,
   toJobRecord: toJobRecordMock,
 }))
 
@@ -55,15 +62,17 @@ beforeEach(() => {
   getClientMock.mockReset()
   getCmsGatewayMock.mockReset()
   liveJobsTableMock.mockClear()
+  listJobSummariesMock.mockReset()
   toJobRecordMock.mockReset()
 })
 
 describe("dashboard jobs page", () => {
   it("loads initial data from the mock gateway state", async () => {
     const job = makeJobRecord()
-    const mockState = cloneMockCmsSeed(DEFAULT_MOCK_CMS_SEED)
-    mockState.readModels.jobs = [job]
-    mockState.readModels.languageGeo.languages = [
+    const languageGeo = cloneMockCmsSeed(
+      DEFAULT_MOCK_CMS_SEED.readModels.languageGeo,
+    )
+    languageGeo.languages = [
       {
         id: "529",
         englishLabel: "English",
@@ -74,15 +83,17 @@ describe("dashboard jobs page", () => {
       },
     ]
 
+    listJobSummariesMock.mockResolvedValue([job])
     getCmsGatewayMock.mockReturnValue({
-      mode: "mock",
-      readMockState: vi.fn(async () => mockState),
+      mode: "admin",
+      getLanguageGeo: vi.fn(async () => languageGeo),
     })
 
     const element = await JobsPage()
     const table = element.props.children
 
     expect(getClientMock).not.toHaveBeenCalled()
+    expect(listJobSummariesMock).toHaveBeenCalledTimes(1)
     expect(element.props.className).toBe("studio-page studio-page--jobs")
     expect(table.type).toBe(liveJobsTableMock)
     expect(table.props).toMatchObject({
@@ -94,7 +105,7 @@ describe("dashboard jobs page", () => {
   it("keeps the live GraphQL loader intact", async () => {
     const liveJob = makeJobRecord({ id: "job-live" })
 
-    getCmsGatewayMock.mockReturnValue({ mode: "live" })
+    getCmsGatewayMock.mockReturnValue({ mode: "strapi" })
     getClientMock.mockReturnValue({
       query: vi
         .fn()

@@ -13,8 +13,10 @@ import {
   type ManagerUser,
 } from "@/cms/gateway"
 import { env } from "@/config/env"
+import { readManagerSessionToken } from "@/lib/session-cookie"
 
 type StrapiUser = ManagerUser
+const ADMIN_MANAGER_ROLE_NAMES = new Set(["ADMIN", "EDITOR", "VIEWER"])
 
 export type ManagerOverrideActor =
   | {
@@ -36,6 +38,17 @@ function isValidManagerApiKey(token: string): boolean {
   const a = Buffer.from(token)
   const b = Buffer.from(apiKey)
   return a.length === b.length && timingSafeEqual(a, b)
+}
+
+export function hasManagerAccess(
+  user: ManagerUser | null | undefined,
+): user is ManagerUser {
+  const roleName = user?.role?.name
+  if (!roleName) {
+    return false
+  }
+
+  return roleName === "Manager" || ADMIN_MANAGER_ROLE_NAMES.has(roleName)
 }
 
 /**
@@ -185,14 +198,12 @@ export async function authenticateRequest(
     }
   }
 
-  // Check Strapi JWT cookie (for dashboard UI)
-  // Verify the JWT signature via Strapi's /api/users/me, then check the role.
   const cookieHeader = request.headers.get("cookie") ?? ""
-  const jwtMatch = cookieHeader.match(/strapi-jwt=([^;]+)/)
-  if (jwtMatch?.[1]) {
-    const user = await verifyManagerSession(jwtMatch[1])
-    if (user?.role?.name === "Manager") {
-      return null // Authenticated via validated Strapi session
+  const sessionToken = readManagerSessionToken(cookieHeader)
+  if (sessionToken) {
+    const user = await verifyManagerSession(sessionToken)
+    if (hasManagerAccess(user)) {
+      return null
     }
     return NextResponse.json(
       { error: "Invalid or expired token" },
@@ -242,19 +253,17 @@ export async function authenticateManagerOverrideRequest(
     )
   }
 
-  // Check Strapi JWT cookie (for dashboard UI)
-  // Verify the JWT signature via Strapi's /api/users/me, then check the role.
   const cookieHeader = request.headers.get("cookie") ?? ""
-  const jwtMatch = cookieHeader.match(/strapi-jwt=([^;]+)/)
-  if (!jwtMatch?.[1]) {
+  const sessionToken = readManagerSessionToken(cookieHeader)
+  if (!sessionToken) {
     return NextResponse.json(
       { error: "Interactive Manager session or API key required" },
       { status: 403 },
     )
   }
 
-  const user = await verifyManagerSession(jwtMatch[1])
-  if (user?.role?.name === "Manager") {
+  const user = await verifyManagerSession(sessionToken)
+  if (hasManagerAccess(user)) {
     return {
       kind: "session",
       user,

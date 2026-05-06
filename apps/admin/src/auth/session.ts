@@ -5,7 +5,22 @@ import type { Principal } from "@/auth/principal"
 import { auth } from "@/auth/config"
 import { prisma } from "@/db/client"
 
+export type SessionPrincipal = Principal & {
+  email: string
+  expiresAt?: Date | null
+}
+
 async function resolveFromHeaders(headers: Headers): Promise<Principal | null> {
+  const session = await resolveSessionFromHeaders(headers)
+  if (!session) {
+    return null
+  }
+  return { id: session.id, role: session.role }
+}
+
+async function resolveSessionFromHeaders(
+  headers: Headers,
+): Promise<SessionPrincipal | null> {
   const session = await auth.api.getSession({ headers })
   if (!session?.user?.id) {
     return null
@@ -13,20 +28,38 @@ async function resolveFromHeaders(headers: Headers): Promise<Principal | null> {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, role: true },
+    select: { id: true, email: true, role: true },
   })
 
   if (!user) {
     return null
   }
 
-  return { id: user.id, role: user.role }
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    expiresAt:
+      "session" in session &&
+      session.session != null &&
+      typeof session.session === "object" &&
+      "expiresAt" in session.session &&
+      session.session.expiresAt instanceof Date
+        ? session.session.expiresAt
+        : null,
+  }
 }
 
 export async function resolvePrincipalFromRequest(
   request: Request,
 ): Promise<Principal | null> {
   return resolveFromHeaders(request.headers)
+}
+
+export async function resolveManagerSessionFromRequest(
+  request: Request,
+): Promise<SessionPrincipal | null> {
+  return resolveSessionFromHeaders(request.headers)
 }
 
 export async function requireSession(): Promise<Principal> {
