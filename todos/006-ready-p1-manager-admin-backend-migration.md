@@ -61,13 +61,13 @@ Execute the plan with Red/Green TDD:
 
 ## Acceptance Criteria
 
-- [ ] Manager production/admin mode boots without `STRAPI_*` env vars.
-- [ ] Manager login/session validation uses Admin-owned auth contracts.
-- [ ] `/api/videos`, `/api/languages`, `/api/coverage-snapshots`, and job
+- [x] Manager production/admin mode boots without `STRAPI_*` env vars.
+- [x] Manager login/session validation uses Admin-owned auth contracts.
+- [x] `/api/videos`, `/api/languages`, `/api/coverage-snapshots`, and job
       routes preserve Manager-visible response contracts.
-- [ ] Admin owns Manager read/job contracts through services + GraphQL.
-- [ ] Manager writeback paths no longer call Strapi/CMS in admin mode.
-- [ ] Manager mock mode remains available and honest.
+- [x] Admin owns Manager read/job contracts through services + GraphQL.
+- [x] Manager writeback paths no longer call Strapi/CMS in admin mode.
+- [x] Manager mock mode remains available and honest.
 - [ ] Relevant Admin and Manager tests pass.
 - [ ] User-like browser smoke proves login/dashboard/coverage/jobs with Admin
       backend mode.
@@ -86,3 +86,25 @@ Execute the plan with Red/Green TDD:
 **Learnings:**
 - The worktree already contained the active plan/roadmap docs, so this branch
   continues from that state rather than creating a second worktree.
+
+### 2026-05-06 - Auth/Read/Job Cutover Implemented
+
+**By:** Codex
+
+**Actions:**
+- Added Admin `access:manager`, Manager auth/session GraphQL contracts,
+  Manager read-model GraphQL contracts, and Admin-owned Manager job models.
+- Switched Manager backend mode defaults to `admin`, added a neutral
+  `manager-session` cookie, and kept legacy `strapi-jwt` reads only for the
+  transition window.
+- Routed Manager videos, languages, coverage snapshots, and job state through
+  the Admin backend gateway in admin mode.
+- Disabled `cmsClient` Strapi REST calls in admin mode.
+- Created follow-up todo `007` for the remaining Admin-native embedding and
+  backfill writeback replacement.
+
+**Validation So Far:**
+- Red tests were captured for admin backend env, neutral session cookie,
+  Admin permission/session/read/job contracts, and Admin client behavior.
+- Targeted Green suites passed for Manager auth/read/job/cms guard tests and
+  Admin manager contract tests.

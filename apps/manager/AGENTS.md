@@ -7,13 +7,14 @@ This app orchestrates AI video enrichment pipelines. Agents working here should 
 ## Key files
 
 - `src/config/env.ts` — validated env schema; update here first when adding new variables
-- `src/cms/gateway.ts` — live/mock CMS boundary; new Manager-facing CMS reads and auth should go through here first
+- `src/cms/gateway.ts` — admin/mock/strapi backend boundary; new Manager-facing backend reads and auth should go through here first
+- `src/backend/admin-client.ts` — Manager-to-Admin GraphQL transport adapter
 - `src/cms/mock-store.ts` + `src/cms/mock-seed.ts` — demo-only single-process mock CMS state and seeded artifacts
 - `src/workflows/videoEnrichment.ts` — main pipeline; add new steps here
 - `src/services/` — one file per external service
 - `src/services/openrouter.ts` — shared OpenRouter client plus strict structured-output helper for JSON-shaped LLM requests
-- `src/cms/client.ts` — Apollo Client for CMS (same pattern as apps/web); use typed ops from `@forge/graphql`
-- `src/lib/auth.ts` — API route authentication (JWT cookie + Bearer token)
+- `src/cms/client.ts` — legacy Strapi GraphQL client; keep new Admin-backed Manager contracts in the backend gateway instead
+- `src/lib/auth.ts` — API route authentication (`manager-session`/legacy cookie + Bearer token)
 - `src/lib/state.ts` — local job state (file-backed; replace with durable store in production)
 
 ## Cross-package impact

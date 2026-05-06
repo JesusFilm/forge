@@ -17,7 +17,7 @@ type CmsLanguageGeo = {
 
 async function fetchLanguageGeo(): Promise<string> {
   const gateway = getCmsGateway()
-  if (gateway.mode === "mock") {
+  if (gateway.mode !== "strapi") {
     return JSON.stringify(await gateway.getLanguageGeo())
   }
 

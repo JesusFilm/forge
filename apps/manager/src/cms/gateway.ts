@@ -18,10 +18,14 @@ import {
   createMockCmsStore,
   type MockCmsStore,
 } from "./mock-store"
+import {
+  AdminGraphqlClient,
+  type CoverageSnapshotQuery,
+} from "@/backend/admin-client"
 
 export type { ManagerSession, ManagerUser } from "./mock-seed"
 
-export type CmsGatewayMode = "live" | "mock"
+export type CmsGatewayMode = "admin" | "mock" | "strapi"
 
 export type CmsGatewayAuthHandlers = {
   loginManagerUser?: (
@@ -55,7 +59,9 @@ export interface CmsGateway {
   ): Promise<MockCmsState>
   getLanguageGeo(): Promise<MockLanguageGeo>
   getVideoCoverage(languageIds?: string[]): Promise<MockVideoCoverage[]>
-  getCoverageSnapshots(): Promise<MockCoverageSnapshot[]>
+  getCoverageSnapshots(
+    query?: CoverageSnapshotQuery,
+  ): Promise<MockCoverageSnapshot[]>
 }
 
 type ManagerSessionPayload = {
@@ -197,9 +203,9 @@ function parseSessionToken(
   }
 }
 
-function createLiveGateway(): CmsGateway {
+function createStrapiGateway(): CmsGateway {
   return {
-    mode: "live",
+    mode: "strapi",
     async loginManagerUser(email, password) {
       return (
         (await registeredLiveAuthHandlers.loginManagerUser?.(
@@ -227,8 +233,45 @@ function createLiveGateway(): CmsGateway {
     },
     async getCoverageSnapshots() {
       throw new Error(
-        "Live CMS gateway coverage snapshots are not configured yet.",
+        "Strapi CMS gateway coverage snapshots are not configured yet.",
       )
+    },
+  }
+}
+
+function createAdminGateway(): CmsGateway {
+  const graphqlUrl = process.env.ADMIN_GRAPHQL_URL
+  if (!graphqlUrl) {
+    throw new Error("ADMIN_GRAPHQL_URL is required for Manager admin backend")
+  }
+
+  const client = new AdminGraphqlClient({
+    graphqlUrl,
+    apiKey: process.env.ADMIN_MANAGER_API_KEY,
+  })
+
+  return {
+    mode: "admin",
+    loginManagerUser(email, password) {
+      return client.loginManagerUser(email, password)
+    },
+    verifyManagerSession(token) {
+      return client.verifyManagerSession(token)
+    },
+    async readMockState() {
+      throw new Error("Admin Manager gateway mock state is not available.")
+    },
+    async updateMockState() {
+      throw new Error("Admin Manager gateway mock state is not available.")
+    },
+    getLanguageGeo() {
+      return client.getLanguageGeo()
+    },
+    getVideoCoverage(languageIds) {
+      return client.getVideoCoverage(languageIds)
+    },
+    getCoverageSnapshots(query) {
+      return client.getCoverageSnapshots(query)
     },
   }
 }
@@ -323,9 +366,22 @@ function createMockGateway(options: CmsGatewayOptions): CmsGateway {
         }),
       )
     },
-    async getCoverageSnapshots() {
+    async getCoverageSnapshots(query) {
       const state = await store.readState()
-      return cloneMockCmsSeed(state.readModels.coverageSnapshots)
+      const snapshots = cloneMockCmsSeed(state.readModels.coverageSnapshots)
+      if (!query) {
+        return snapshots
+      }
+      if ("latest" in query) {
+        return snapshots
+          .slice()
+          .sort((left, right) => right.date.localeCompare(left.date))
+          .slice(0, 1)
+      }
+      return snapshots.filter(
+        (snapshot) =>
+          snapshot.date >= query.startDate && snapshot.date <= query.endDate,
+      )
     },
   }
 }
@@ -342,7 +398,11 @@ export function resetCmsGatewayForTests(): void {
 }
 
 export function createCmsGateway(options: CmsGatewayOptions = {}): CmsGateway {
-  const mode = options.mode ?? readModeFromEnv(process.env.MANAGER_DATA_MODE)
+  const mode =
+    options.mode ??
+    readModeFromEnv(
+      process.env.MANAGER_BACKEND_MODE ?? process.env.MANAGER_DATA_MODE,
+    )
   if (mode === "mock") {
     return createMockGateway(options)
   }
@@ -351,13 +411,19 @@ export function createCmsGateway(options: CmsGatewayOptions = {}): CmsGateway {
     registerLiveCmsGatewayAuthHandlers(options.liveAuth)
   }
 
-  return createLiveGateway()
+  if (mode === "strapi") {
+    return createStrapiGateway()
+  }
+
+  return createAdminGateway()
 }
 
 export function getCmsGateway(): CmsGateway {
   if (!singletonGateway) {
     singletonGateway = createCmsGateway({
-      mode: readModeFromEnv(process.env.MANAGER_DATA_MODE),
+      mode: readModeFromEnv(
+        process.env.MANAGER_BACKEND_MODE ?? process.env.MANAGER_DATA_MODE,
+      ),
       mockSecret: process.env.MANAGER_MOCK_SESSION_SECRET,
       mockDataPath:
         process.env.MANAGER_MOCK_DATA_PATH ?? DEFAULT_MOCK_CMS_DATA_PATH,
@@ -368,7 +434,10 @@ export function getCmsGateway(): CmsGateway {
 }
 
 export function readModeFromEnv(value: string | undefined): CmsGatewayMode {
-  return value === "mock" ? "mock" : "live"
+  if (value === "mock") return "mock"
+  if (value === "strapi" || value === "live") return "strapi"
+  if (value === "admin") return "admin"
+  return "strapi"
 }
 
 export async function readMockCmsState(

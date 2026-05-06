@@ -47,6 +47,13 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "video",
         "videoBySlug",
         "videos",
+        // Manager backend migration contracts
+        "managerViewer",
+        "managerLanguageGeo",
+        "managerVideoCoverage",
+        "managerCoverageSnapshots",
+        "managerJobs",
+        "managerJob",
         // Experience
         "experience",
         "experiences",
@@ -111,6 +118,14 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(mutation).toBeTruthy()
     const fields = mutation!.getFields()
     expect(fields.triggerExperienceContentDump).toBeDefined()
+  })
+
+  it("Mutation root exposes Manager job persistence scaffolding", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const fields = mutation!.getFields()
+    expect(fields.createManagerJob).toBeDefined()
+    expect(fields.updateManagerJob).toBeDefined()
   })
 
   it("triggerExperienceContentDump declares optional documentIds + locales args", () => {

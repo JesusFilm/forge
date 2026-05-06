@@ -8,7 +8,7 @@ export type ManagerUserRole = {
 }
 
 export type ManagerUser = {
-  id: number
+  id: number | string
   username: string
   email: string
   role: ManagerUserRole
@@ -19,7 +19,8 @@ export type ManagerSession = {
   user: ManagerUser
 }
 
-export type MockManagerUserRecord = ManagerUser & {
+export type MockManagerUserRecord = Omit<ManagerUser, "id"> & {
+  id: number
   passwordHash: string
 }
 

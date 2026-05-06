@@ -1,7 +1,9 @@
-// Job state manager backed by Strapi CMS via GraphQL.
-// Uses typed operations from @forge/graphql with gql.tada.
+// Job state manager backed by the configured Manager backend.
+// Admin mode uses apps/admin GraphQL; mock mode uses the local mock store;
+// strapi mode is retained as a temporary migration compatibility path.
 
 import { graphql, type ResultOf, type VariablesOf } from "@forge/graphql"
+import { AdminGraphqlClient } from "@/backend/admin-client"
 import getClient from "@/cms/client"
 import { publishJobEvent } from "@/lib/job-events"
 import {
@@ -10,6 +12,7 @@ import {
   updateMockCmsState,
 } from "@/cms/gateway"
 import { cmsPost } from "@/services/cmsClient"
+import { env } from "@/config/env"
 import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
   JobArtifactEntry,
@@ -36,6 +39,19 @@ export type JobLookupResult =
       status: "error"
       error: unknown
     }
+
+let adminJobClient: AdminGraphqlClient | undefined
+
+function getAdminJobClient(): AdminGraphqlClient {
+  if (!env.ADMIN_GRAPHQL_URL) {
+    throw new Error("ADMIN_GRAPHQL_URL is required for Manager job state")
+  }
+  adminJobClient ??= new AdminGraphqlClient({
+    graphqlUrl: env.ADMIN_GRAPHQL_URL,
+    apiKey: env.ADMIN_MANAGER_API_KEY,
+  })
+  return adminJobClient
+}
 
 // ---------------------------------------------------------------------------
 // GraphQL fragments & operations (typed via gql.tada)
@@ -547,6 +563,19 @@ export async function createJob(
     return job
   }
 
+  if (gateway.mode === "admin") {
+    const job = await getAdminJobClient().createJob({
+      muxAssetId,
+      muxPlaybackId,
+      languages,
+      videoDocumentId: options?.videoDocumentId,
+      options: {},
+      steps,
+    })
+    publishJobEvent(job)
+    return job
+  }
+
   if (options?.videoDocumentId) {
     const response = await cmsPost<{ documentId: string }>(
       "/enrichment-job/internal-create",
@@ -605,7 +634,8 @@ export async function getJob(id: string): Promise<JobRecord | null> {
 }
 
 export async function getJobLookup(id: string): Promise<JobLookupResult> {
-  const mockState = await readMockCmsState(getCmsGateway())
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
   if (mockState) {
     const job = mockState.readModels.jobs.find(
       (candidate) => candidate.id === id,
@@ -619,6 +649,20 @@ export async function getJobLookup(id: string): Promise<JobLookupResult> {
       job,
     }
   }
+
+  if (gateway.mode === "admin") {
+    try {
+      const job = await getAdminJobClient().getJob(id)
+      return job ? { status: "found", job } : { status: "not-found" }
+    } catch (err) {
+      console.warn(`[state] getJob(${id}) failed:`, err)
+      return {
+        status: "error",
+        error: err,
+      }
+    }
+  }
+
   const client = getClient()
 
   try {
@@ -646,9 +690,14 @@ export async function getJobLookup(id: string): Promise<JobLookupResult> {
 }
 
 export async function listJobs(): Promise<JobRecord[]> {
-  const mockState = await readMockCmsState(getCmsGateway())
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
   if (mockState) {
     return mockState.readModels.jobs
+  }
+
+  if (gateway.mode === "admin") {
+    return getAdminJobClient().listJobs(100)
   }
 
   const client = getClient()
@@ -664,9 +713,14 @@ export async function listJobs(): Promise<JobRecord[]> {
 }
 
 export async function listJobSummaries(): Promise<JobRecord[]> {
-  const mockState = await readMockCmsState(getCmsGateway())
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
   if (mockState) {
     return mockState.readModels.jobs
+  }
+
+  if (gateway.mode === "admin") {
+    return getAdminJobClient().listJobs(100)
   }
 
   const client = getClient()
@@ -682,9 +736,14 @@ export async function listJobSummaries(): Promise<JobRecord[]> {
 }
 
 export async function countJobs(): Promise<number> {
-  const mockState = await readMockCmsState(getCmsGateway())
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
   if (mockState) {
     return mockState.readModels.jobs.length
+  }
+
+  if (gateway.mode === "admin") {
+    return (await getAdminJobClient().listJobs(100)).length
   }
 
   const client = getClient()
@@ -740,6 +799,19 @@ export async function updateJob(
     }
 
     return job ?? null
+  }
+
+  if (gateway.mode === "admin") {
+    try {
+      const job = await getAdminJobClient().updateJob(id, updates)
+      if (job) {
+        publishJobEvent(job)
+      }
+      return job
+    } catch (err) {
+      console.warn(`[state] updateJob(${id}) failed:`, err)
+      return null
+    }
   }
 
   const client = getClient()
@@ -916,6 +988,10 @@ async function doUpdateStepStatus(
     }
 
     return jobRecord
+  }
+
+  if (gateway.mode === "admin") {
+    return updateJob(jobId, { steps, errors })
   }
 
   const client = getClient()

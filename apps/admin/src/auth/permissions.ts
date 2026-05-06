@@ -44,6 +44,7 @@ export type PermissionKey =
   | "read:videos"
   | "read:media-assets"
   | "read:reference"
+  | "access:manager"
   // Write scopes (admin-write on Core-sourced is intentionally restricted)
   | "write:experiences"
   | "write:videos"
@@ -76,6 +77,10 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "read:media-assets": "EDITOR",
   // Reference data is public-shape; PUBLIC may read.
   "read:reference": "PUBLIC",
+  // Manager app access is deliberately narrower than Admin access.
+  // Any authenticated Admin account can be allowed into Manager-facing
+  // contracts, but unauthenticated and bearer workflow callers cannot.
+  "access:manager": "VIEWER",
   // Editor writes
   "write:experiences": "EDITOR",
   // Core-sourced; only ADMIN may override (also flips source='manager').

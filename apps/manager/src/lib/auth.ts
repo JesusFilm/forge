@@ -13,6 +13,7 @@ import {
   type ManagerUser,
 } from "@/cms/gateway"
 import { env } from "@/config/env"
+import { readManagerSessionToken } from "@/lib/session-cookie"
 
 type StrapiUser = ManagerUser
 
@@ -185,14 +186,12 @@ export async function authenticateRequest(
     }
   }
 
-  // Check Strapi JWT cookie (for dashboard UI)
-  // Verify the JWT signature via Strapi's /api/users/me, then check the role.
   const cookieHeader = request.headers.get("cookie") ?? ""
-  const jwtMatch = cookieHeader.match(/strapi-jwt=([^;]+)/)
-  if (jwtMatch?.[1]) {
-    const user = await verifyManagerSession(jwtMatch[1])
+  const sessionToken = readManagerSessionToken(cookieHeader)
+  if (sessionToken) {
+    const user = await verifyManagerSession(sessionToken)
     if (user?.role?.name === "Manager") {
-      return null // Authenticated via validated Strapi session
+      return null
     }
     return NextResponse.json(
       { error: "Invalid or expired token" },
@@ -242,18 +241,16 @@ export async function authenticateManagerOverrideRequest(
     )
   }
 
-  // Check Strapi JWT cookie (for dashboard UI)
-  // Verify the JWT signature via Strapi's /api/users/me, then check the role.
   const cookieHeader = request.headers.get("cookie") ?? ""
-  const jwtMatch = cookieHeader.match(/strapi-jwt=([^;]+)/)
-  if (!jwtMatch?.[1]) {
+  const sessionToken = readManagerSessionToken(cookieHeader)
+  if (!sessionToken) {
     return NextResponse.json(
       { error: "Interactive Manager session or API key required" },
       { status: 403 },
     )
   }
 
-  const user = await verifyManagerSession(jwtMatch[1])
+  const user = await verifyManagerSession(sessionToken)
   if (user?.role?.name === "Manager") {
     return {
       kind: "session",

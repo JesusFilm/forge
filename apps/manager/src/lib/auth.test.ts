@@ -88,7 +88,7 @@ describe("authenticateManagerOverrideRequest", () => {
 
     const request = new Request("http://example.test", {
       headers: {
-        cookie: "strapi-jwt=mock-session-token",
+        cookie: "manager-session=mock-session-token",
       },
     })
 
@@ -104,5 +104,35 @@ describe("authenticateManagerOverrideRequest", () => {
       },
     })
     expect(verifyManagerSessionMock).toHaveBeenCalledWith("mock-session-token")
+  })
+
+  it("still accepts the legacy Strapi cookie during the transition window", async () => {
+    vi.stubEnv("MANAGER_DATA_MODE", "mock")
+    vi.stubEnv("MANAGER_MOCK_SESSION_SECRET", "mock-session-secret")
+    vi.stubEnv("MUX_TOKEN_ID", "mux-token-id")
+    vi.stubEnv("MUX_TOKEN_SECRET", "mux-token-secret")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    verifyManagerSessionMock.mockResolvedValue({
+      id: 7,
+      username: "manager",
+      email: "manager@forge.test",
+      role: { name: "Manager", type: "manager" },
+    })
+
+    const { authenticateRequest } = await import("./auth")
+
+    await expect(
+      authenticateRequest(
+        new Request("http://example.test", {
+          headers: {
+            cookie: "strapi-jwt=legacy-session-token",
+          },
+        }),
+      ),
+    ).resolves.toBeNull()
+    expect(verifyManagerSessionMock).toHaveBeenCalledWith(
+      "legacy-session-token",
+    )
   })
 })

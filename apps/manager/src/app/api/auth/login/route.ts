@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { getCmsGateway } from "@/cms/gateway"
 import "@/lib/auth"
+import { MANAGER_SESSION_COOKIE } from "@/lib/session-cookie"
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
   }
 
   const cookieStore = await cookies()
-  cookieStore.set("strapi-jwt", session.token, {
+  cookieStore.set(MANAGER_SESSION_COOKIE, session.token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

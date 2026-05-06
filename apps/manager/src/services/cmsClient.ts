@@ -80,6 +80,12 @@ async function cmsRequest<T>(
   body?: unknown,
   options?: CmsRequestOptions,
 ): Promise<T> {
+  if (env.MANAGER_BACKEND_MODE === "admin") {
+    throw new CmsConfigurationError(
+      `CMS ${method} ${path} is disabled when MANAGER_BACKEND_MODE=admin`,
+    )
+  }
+
   const response = await fetch(`${env.STRAPI_URL}/api${path}`, {
     method,
     headers: {

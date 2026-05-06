@@ -9,6 +9,7 @@ describe("cmsClient", () => {
   })
 
   it("fails before the request when override scope has no internal token", async () => {
+    vi.stubEnv("MANAGER_BACKEND_MODE", "strapi")
     vi.stubEnv("STRAPI_URL", "http://localhost:1337")
     vi.stubEnv("STRAPI_API_TOKEN", "default-token")
     vi.stubEnv("STRAPI_INTERNAL_API_TOKEN", "")
@@ -31,6 +32,7 @@ describe("cmsClient", () => {
   })
 
   it("fails before the request when sync scope has neither sync nor internal token", async () => {
+    vi.stubEnv("MANAGER_BACKEND_MODE", "strapi")
     vi.stubEnv("STRAPI_URL", "http://localhost:1337")
     vi.stubEnv("STRAPI_API_TOKEN", "default-token")
     vi.stubEnv("STRAPI_INTERNAL_API_TOKEN", "")
@@ -49,6 +51,24 @@ describe("cmsClient", () => {
         },
       ),
     ).rejects.toBeInstanceOf(CmsConfigurationError)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("does not allow Strapi REST calls in admin backend mode", async () => {
+    vi.stubEnv("MANAGER_BACKEND_MODE", "admin")
+    vi.stubEnv("ADMIN_GRAPHQL_URL", "https://admin.example/api/graphql")
+
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { cmsPost, CmsConfigurationError } = await import("./cmsClient")
+
+    await expect(cmsPost("/embedding/index", {})).rejects.toThrow(
+      "CMS POST /embedding/index is disabled when MANAGER_BACKEND_MODE=admin",
+    )
+    await expect(cmsPost("/embedding/index", {})).rejects.toBeInstanceOf(
+      CmsConfigurationError,
+    )
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

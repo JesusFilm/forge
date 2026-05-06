@@ -326,6 +326,61 @@ model CoreSyncRun {
   @@map("core_sync_run")
 }
 
+/// Manager-facing coverage snapshot history. This preserves the Manager
+/// `/api/coverage-snapshots` shape while Admin becomes the backend authority.
+model ManagerCoverageSnapshot {
+  id                       String   @id @default(cuid())
+  date                     DateTime
+  computedAt               DateTime @default(now()) @map("computed_at")
+  totalVideos              Int      @default(0) @map("total_videos")
+  videosWithAiMetadata     Int      @default(0) @map("videos_with_ai_metadata")
+  videosWithHumanMetadata  Int      @default(0) @map("videos_with_human_metadata")
+  subtitlesHumanTotal      Int      @default(0) @map("subtitles_human_total")
+  subtitlesAiTotal         Int      @default(0) @map("subtitles_ai_total")
+  audioHumanTotal          Int      @default(0) @map("audio_human_total")
+  audioAiTotal             Int      @default(0) @map("audio_ai_total")
+  languageCoverage         Json     @default("[]") @map("language_coverage")
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  @@unique([date])
+  @@index([date])
+  @@map("manager_coverage_snapshot")
+}
+
+/// Admin-owned persistence for Manager enrichment jobs. Field names mirror the
+/// existing Manager JobRecord so Manager can move transport without UI churn.
+model ManagerEnrichmentJob {
+  id                                 String   @id @default(cuid())
+  muxAssetId                         String   @map("mux_asset_id")
+  muxPlaybackId                      String?  @map("mux_playback_id")
+  videoDocumentId                    String?  @map("video_document_id")
+  languages                          String[] @default([])
+  sourceLanguageId                   String?  @map("source_language_id")
+  sourceLanguageCode                 String?  @map("source_language_code")
+  sourceSelectionReason              String?  @map("source_selection_reason")
+  primaryRequestedTargetLanguageCode String?  @map("primary_requested_target_language_code")
+  resolvedTargetLanguageCodes        String[] @default([]) @map("resolved_target_language_codes")
+  sourceCollectionTitle              String?  @map("source_collection_title")
+  sourceMediaTitle                   String?  @map("source_media_title")
+  requestedLanguageAbbreviations     String[] @default([]) @map("requested_language_abbreviations")
+  options                            Json     @default("{}")
+  status                             String   @default("pending")
+  currentStep                        String?  @map("current_step")
+  retries                            Int      @default(0)
+  startedAt                          DateTime? @map("started_at")
+  completedAt                        DateTime? @map("completed_at")
+  artifacts                          Json     @default("{}")
+  steps                              Json     @default("[]")
+  errors                             Json     @default("[]")
+  createdAt                          DateTime @default(now()) @map("created_at")
+  updatedAt                          DateTime @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([videoDocumentId])
+  @@map("manager_enrichment_job")
+}
+
 // -----------------------------------------------------------------------------
 // Editor revision history
 // -----------------------------------------------------------------------------

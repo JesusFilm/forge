@@ -52,8 +52,13 @@ export async function GET(request: Request) {
 
     const { startDate, endDate } = query.data
 
-    if (gateway.mode === "mock") {
-      const snapshots = (await gateway.getCoverageSnapshots()).filter(
+    if (gateway.mode !== "strapi") {
+      const snapshots = (
+        await gateway.getCoverageSnapshots({
+          startDate,
+          endDate,
+        })
+      ).filter(
         (snapshot) => snapshot.date >= startDate && snapshot.date <= endDate,
       )
       return NextResponse.json({ snapshots })

@@ -213,7 +213,7 @@ remain a deliberate cross-app boundary for expensive enrichment outputs.
 
 ## Implementation Units
 
-- [ ] **Unit 1: Characterize Manager's current backend contracts**
+- [x] **Unit 1: Characterize Manager's current backend contracts**
 
 **Goal:** Pin the Manager route/session/job contracts before replacing their
 upstream backend.
@@ -264,7 +264,7 @@ the migration changes Manager-visible behavior.
 
 - Existing Manager tests pass before the backend adapter is changed.
 
-- [ ] **Unit 2: Add Admin Manager access/session contract**
+- [x] **Unit 2: Add Admin Manager access/session contract**
 
 **Goal:** Let Manager authenticate and validate users through Admin Better Auth
 and a Manager-specific permission.
@@ -316,7 +316,7 @@ and a Manager-specific permission.
 
 - Admin schema exposes a Manager session contract gated by Admin auth.
 
-- [ ] **Unit 3: Add Admin Manager read models for languages, coverage, and snapshots**
+- [x] **Unit 3: Add Admin Manager read models for languages, coverage, and snapshots**
 
 **Goal:** Provide Admin-owned equivalents of the Strapi read models Manager
 currently calls.
@@ -369,7 +369,7 @@ currently calls.
 
 - Admin GraphQL can serve every Manager read model without Strapi.
 
-- [ ] **Unit 4: Add Admin enrichment job state model and mutations**
+- [x] **Unit 4: Add Admin enrichment job state model and mutations**
 
 **Goal:** Move Manager job persistence from Strapi `EnrichmentJob` to Admin
 Postgres while preserving Manager's `JobRecord` contract.
@@ -420,7 +420,7 @@ Postgres while preserving Manager's `JobRecord` contract.
 - A synthetic Manager job can be created, updated, listed, and fetched through
   Admin without Strapi.
 
-- [ ] **Unit 5: Replace Manager Strapi transport with an Admin backend adapter**
+- [x] **Unit 5: Replace Manager Strapi transport with an Admin backend adapter**
 
 **Goal:** Switch Manager server code from Strapi clients to a Manager backend
 gateway with Admin and mock adapters.
@@ -488,6 +488,12 @@ route should have a failing adapter test before the route is rewired.
 - Manager tests pass in admin mode with Strapi env unset.
 
 - [ ] **Unit 6: Move enrichment writeback and sync communication off CMS**
+
+**Status 2026-05-06:** Admin mode now hard-disables `cmsClient` so Manager no
+longer silently calls Strapi REST in the new production mode. The full
+Admin-native replacement for embedding/scene/backfill writebacks is tracked as
+`todos/007-ready-p1-manager-admin-writeback-cutover.md` and should be executed
+as the next `workflows-work` pass.
 
 **Goal:** Remove remaining Manager-to-Strapi writeback calls and route
 enrichment outputs to Admin-owned workflows/contracts.

@@ -33,7 +33,7 @@ describe("POST /api/auth/login", () => {
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
   })
 
-  it("logs in through the mock gateway and sets the session cookie", async () => {
+  it("logs in through the gateway and sets the neutral Manager session cookie", async () => {
     loginManagerUserMock.mockResolvedValue({
       token: "mock-session-token",
       user: {
@@ -68,7 +68,7 @@ describe("POST /api/auth/login", () => {
       "demo-manager-password",
     )
     expect(cookieSet).toHaveBeenCalledWith(
-      "strapi-jwt",
+      "manager-session",
       "mock-session-token",
       expect.objectContaining({
         httpOnly: true,
