@@ -7,8 +7,7 @@ status: "in-progress"
 start_date: "2026-05-06"
 duration: 4
 depends_on: []
-blocks:
-  - "feat-118"
+blocks: []
 tags:
   - "admin"
   - "manager"
@@ -30,8 +29,7 @@ Surfaced by the smoke run for `feat-115` (PR #882). A 10-minute scoped run produ
 
 The "failures" are **not real failures** — they're upstream-data-readiness signals. Manager hasn't run scene-analysis against those `assetId`s yet. The admin embed job is correctly tolerating the gap (per-target isolation works), but it's labeling the outcome with the wrong word in the report's `succeeded / skipped / failed` triple. Two consequences:
 
-1. **Operator signal degrades.** `report.failed` becomes meaningless (mostly benign data gaps); `report.skipped` becomes dishonestly always-zero. Operators learn to ignore both, then miss real failures when they happen.
-2. **Stage 4 (`feat-118`) breaks immediately.** Its new `skipped_unchanged` outcome rolls into the `skipped` bucket. With today's classifier, a re-run of a corpus with mostly-missing artifacts reports `0 skipped` instead of `~70k skipped`. The whole point of `feat-118` (cheap, observable re-runs) is undermined.
+**Operator signal degrades.** `report.failed` becomes meaningless (mostly benign data gaps); `report.skipped` becomes dishonestly always-zero. Operators learn to ignore both, then miss real failures when they happen.
 
 ### Architectural context — why the artifact is missing
 
@@ -312,7 +310,7 @@ The embed workflow has zero knowledge of the enrichment workflow. The trigger en
 
 - **PR1** branches off `origin/main` (`feat/embed-backfill-artifact-missing-classification`). Lands first.
 - **PR2** stacks on PR1 (`feat/embed-backfill-enrichment-trigger-endpoint`, branched off PR1's branch). Lands after PR1 merges, rebased onto main.
-- **PR3 (closure)**: branches off `main` post-merge, flips feat-119 to `complete`, updates `docs/roadmap/README.md`, confirms `feat-118` unblocks.
+- **PR3 (closure)**: branches off `main` post-merge, flips feat-119 to `complete`, updates `docs/roadmap/README.md`.
 - All three PRs are local-only smoke for now (no prod core-sync exists yet to run the full embed corpus against). PR descriptions include explicit pre-merge prod-readiness checklists so the eventual prod rollout is mechanical.
 
 ## Constraints
