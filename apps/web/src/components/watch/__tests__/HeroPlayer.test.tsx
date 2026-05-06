@@ -22,6 +22,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 type MuxPlayerCapturedProps = Record<string, unknown> & {
   ref?: React.Ref<unknown>
   onLoadedMetadata?: (event: Event) => void
+  onCanPlay?: (event: Event) => void
   onError?: (event: Event & { detail?: { code?: string } }) => void
 }
 
@@ -131,6 +132,25 @@ function lastMuxProps(): MuxPlayerCapturedProps {
   return calls[calls.length - 1]?.[0] as MuxPlayerCapturedProps
 }
 
+// Helpers for firing the captured event handlers — the mock doesn't render
+// a real Mux Player so the consumer-side `onCanPlay` / `onError` paths are
+// otherwise unobservable.
+async function fireCanPlay() {
+  const handler = lastMuxProps()?.onCanPlay
+  await act(async () => {
+    handler?.(new Event("canplay"))
+  })
+}
+
+async function fireError(code: string) {
+  const handler = lastMuxProps()?.onError
+  const evt = new Event("error") as Event & { detail?: { code?: string } }
+  evt.detail = { code }
+  await act(async () => {
+    handler?.(evt)
+  })
+}
+
 describe("HeroPlayer — initial mount", () => {
   it("mounts MuxPlayer with playbackId, autoplay-muted, loop, and chrome-hide CSS variables", () => {
     act(() => {
@@ -179,7 +199,7 @@ describe("HeroPlayer — initial mount", () => {
 })
 
 describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
-  it("synchronously assigns muted=false, currentTime=0, then calls play() inside the click task", async () => {
+  it("synchronously assigns muted=false then calls play() inside the click task — leaves currentTime alone so the muted-loop preview continues seamlessly", async () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -230,7 +250,7 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
       pill.click()
     })
 
-    expect(events).toEqual(["muted=false", "currentTime=0", "play()"])
+    expect(events).toEqual(["muted=false", "play()"])
     expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
   })
 
@@ -303,6 +323,56 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     expect(pillAfter).not.toBeNull()
     expect(pillAfter?.getAttribute("data-state")).toBe("tap-to-unmute")
     expect(pillAfter?.textContent).toContain("Tap to Unmute")
+  })
+})
+
+describe("HeroPlayer — loading spinner lifecycle", () => {
+  it("renders the spinner overlay on mount", () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).not.toBeNull()
+  })
+
+  it("removes the spinner once onCanPlay fires", async () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    await fireCanPlay()
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+  })
+
+  it("removes the spinner on a non-autoplay-blocked error so Mux's own error UI is visible", async () => {
+    // F1 verification: a network/decode/manifest error never fires onCanPlay,
+    // so without this fallback the spinner sits over a black box forever.
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).not.toBeNull()
+    await fireError("manifest-load-error")
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+  })
+
+  it("keeps the spinner up when the error is autoplay-blocked (recovery path is the unmute pill, not the player UI)", async () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    await fireError("autoplay-blocked")
+    // Spinner stays only until onCanPlay fires (which it will once the muted
+    // loop buffers). The autoplay-blocked branch must NOT pre-emptively hide
+    // it, because that would expose Mux's empty player while we're still
+    // showing the unmute pill.
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).not.toBeNull()
   })
 })
 
@@ -628,4 +698,414 @@ describe("HeroPlayer — auto-hide timer", () => {
   it.todo(
     "does not auto-hide while paused — needs mock listener-invocation upgrade so React state syncs to mock changes",
   )
+})
+
+// ---------------------------------------------------------------------------
+// Sticky-hero / portal layout (the scroll-over-hero refactor).
+// These tests cover what the visual refactor introduced: the chrome bar
+// gets portaled into the overlay anchor (not the sticky wrapper), the
+// tap-to-unmute branch leaves currentTime alone, and the sticky `top`
+// inline style is computed from the measured wrapper height.
+// ---------------------------------------------------------------------------
+
+describe("HeroPlayer — sticky-hero / portal layout", () => {
+  it("portals the chrome bar into the overlay anchor, not the sticky hero wrapper", async () => {
+    await revealChrome()
+    const chrome = container.querySelector(
+      '[data-testid="hero-player-custom-chrome"]',
+    )
+    const anchor = container.querySelector(
+      '[data-testid="hero-player-overlay-anchor"]',
+    )
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    expect(chrome).not.toBeNull()
+    expect(anchor).not.toBeNull()
+    expect(wrapper).not.toBeNull()
+    // Portal target — chrome bar lives under the zero-height anchor that
+    // scrolls with the body section, not under the sticky hero wrapper.
+    expect(anchor!.contains(chrome!)).toBe(true)
+    expect(wrapper!.contains(chrome!)).toBe(false)
+  })
+
+  it("tap-to-unmute branch calls play() without resetting currentTime", async () => {
+    // mockPlayerRef.current is null until the muxPlayerMock factory runs
+    // during render — so we have to render first, then swap play() to
+    // reject (driving the pill into 'tap-to-unmute' state on click 1).
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.play = vi.fn(() =>
+        Promise.reject(new Error("NotAllowedError")),
+      )
+    }
+
+    const pillFirst = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      pillFirst.click()
+    })
+
+    const pillNow = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    )
+    expect(pillNow).not.toBeNull()
+    expect(pillNow?.getAttribute("data-state")).toBe("tap-to-unmute")
+
+    // Phase 2: snapshot a non-zero playhead, swap play() back to resolve
+    // (so click 2 hits the tap-to-unmute branch's setChromeRevealed path),
+    // and trap any currentTime writes.
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.currentTime = 5.5
+      mockPlayerRef.current.play = vi.fn(() => Promise.resolve())
+    }
+    const events: string[] = []
+    if (mockPlayerRef.current) {
+      const player = mockPlayerRef.current
+      let currentTime = player.currentTime
+      Object.defineProperty(player, "currentTime", {
+        get: () => currentTime,
+        set: (v: number) => {
+          currentTime = v
+          events.push("currentTime=" + String(v))
+        },
+        configurable: true,
+      })
+    }
+
+    await act(async () => {
+      ;(pillNow as HTMLButtonElement).click()
+    })
+
+    // The tap-to-unmute branch must call play() but must NOT touch
+    // currentTime — resetting to 0 here is exactly the muted-preview
+    // restart the play-with-sound fix removed, and the same rule applies
+    // to the autoplay-blocked recovery path.
+    expect(events).toEqual([])
+    expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("computes sticky `top` from measured hero height once ResizeObserver fires", async () => {
+    // Stub ResizeObserver so we can trigger the height-update callback by
+    // hand. JSDOM ships without it; the component falls back to the initial
+    // getBoundingClientRect read (which returns 0 in JSDOM, so heroHeight
+    // stays null without this stub).
+    const callbacks: ResizeObserverCallback[] = []
+    class MockResizeObserver {
+      callback: ResizeObserverCallback
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback
+        callbacks.push(callback)
+      }
+      observe() {}
+      disconnect() {}
+      unobserve() {}
+    }
+    const originalRO = (
+      globalThis as { ResizeObserver?: typeof ResizeObserver }
+    ).ResizeObserver
+    ;(globalThis as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver =
+      MockResizeObserver as unknown as typeof ResizeObserver
+
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+
+      const wrapper = container.querySelector(
+        '[data-testid="hero-player-wrapper"]',
+      ) as HTMLDivElement
+      expect(wrapper).not.toBeNull()
+      // Pre-measurement: heroHeight is null, top falls back to "0px".
+      expect(wrapper.style.top).toBe("0px")
+
+      // Fire the observer with a 1071px (16:9 at 1920w) measurement.
+      await act(async () => {
+        callbacks[0]?.(
+          [
+            { contentRect: { height: 1071 } } as ResizeObserverEntry,
+          ] as ResizeObserverEntry[],
+          {} as ResizeObserver,
+        )
+      })
+
+      // Spot-check the substantive parts of the calc — JSDOM's CSS
+      // serializer normalizes whitespace inconsistently around operators
+      // inside min(), so we don't pin the exact format.
+      const top = wrapper.style.top
+      expect(top.startsWith("min(")).toBe(true)
+      expect(top).toContain("0px")
+      expect(top).toContain("calc(100svh - 1071px)")
+    } finally {
+      if (originalRO) {
+        ;(
+          globalThis as { ResizeObserver?: typeof ResizeObserver }
+        ).ResizeObserver = originalRO
+      } else {
+        delete (globalThis as { ResizeObserver?: typeof ResizeObserver })
+          .ResizeObserver
+      }
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Timeline pointer-driven scrub. JSDOM's getBoundingClientRect returns zeros,
+// so we stub it on the timeline element. The vitest setup polyfills rAF as
+// `setTimeout(fn, 0)`, so `vi.useFakeTimers()` lets us deterministically flush
+// the coalesced seek by advancing 0ms.
+// ---------------------------------------------------------------------------
+
+function stubTimelineRect(): HTMLDivElement {
+  const tl = container.querySelector(
+    '[data-testid="hero-chrome-timeline"]',
+  ) as HTMLDivElement
+  Object.defineProperty(tl, "getBoundingClientRect", {
+    value: () =>
+      ({
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 100,
+        bottom: 1,
+        width: 100,
+        height: 1,
+        toJSON() {
+          return this
+        },
+      }) as DOMRect,
+    configurable: true,
+  })
+  // JSDOM lacks setPointerCapture / hasPointerCapture. Stub them to no-ops
+  // so the production code's defensive guards don't throw under test. Cast
+  // through unknown so we can attach element-level methods that JSDOM
+  // hasn't implemented; production browsers ship them on every Element.
+  const noop = (): void => undefined
+  ;(tl as unknown as { setPointerCapture: () => void }).setPointerCapture = noop
+  ;(
+    tl as unknown as { releasePointerCapture: () => void }
+  ).releasePointerCapture = noop
+  ;(tl as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture =
+    () => false
+  return tl
+}
+
+function makePointerEvent(
+  type: string,
+  init: { clientX?: number; pointerId?: number } = {},
+): PointerEvent {
+  // JSDOM lacks PointerEvent; fall back to MouseEvent + manual fields.
+  const Ctor =
+    typeof PointerEvent === "function" ? PointerEvent : (MouseEvent as never)
+  const evt = new Ctor(type, {
+    bubbles: true,
+    cancelable: true,
+    clientX: init.clientX ?? 0,
+  }) as PointerEvent
+  Object.defineProperty(evt, "pointerId", {
+    value: init.pointerId ?? 1,
+    configurable: true,
+  })
+  return evt
+}
+
+describe("HeroPlayer — timeline pointer-driven scrub", () => {
+  it("data-dragging flips to 'true' on pointerdown and 'false' on pointerup", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.duration = 60
+      mockPlayerRef.current.paused = false
+    }
+    const tl = stubTimelineRect()
+    expect(tl.getAttribute("data-dragging")).toBe("false")
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerdown", { clientX: 50 }))
+    })
+    expect(tl.getAttribute("data-dragging")).toBe("true")
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerup", { clientX: 50 }))
+    })
+    expect(tl.getAttribute("data-dragging")).toBe("false")
+  })
+
+  it("data-current-time reflects scrubPct * duration during drag (not player.currentTime)", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.duration = 60
+      mockPlayerRef.current.currentTime = 10
+      mockPlayerRef.current.paused = false
+    }
+    const tl = stubTimelineRect()
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerdown", { clientX: 25 })) // 25/100 * 60 = 15
+    })
+    const time = container.querySelector(
+      '[data-testid="hero-chrome-time"]',
+    ) as HTMLElement
+    // displayTime should follow the scrub thumb (15s), not currentTime (10s).
+    expect(time.getAttribute("data-current-time")).toBe("15")
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointermove", { clientX: 75 })) // 75/100 * 60 = 45
+    })
+    expect(time.getAttribute("data-current-time")).toBe("45")
+  })
+
+  it("pointerdown pauses a playing player; pointerup resumes if was playing", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.duration = 60
+      mockPlayerRef.current.paused = false
+      mockPlayerRef.current.pause.mockClear()
+      mockPlayerRef.current.play.mockClear()
+    }
+    const tl = stubTimelineRect()
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerdown", { clientX: 50 }))
+    })
+    expect(mockPlayerRef.current?.pause).toHaveBeenCalledTimes(1)
+    // Simulate the pause taking effect so the resume gate (p.paused) is true.
+    if (mockPlayerRef.current) mockPlayerRef.current.paused = true
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerup", { clientX: 60 }))
+    })
+    expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("lostPointerCapture clears drag state and resumes if was playing", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.duration = 60
+      mockPlayerRef.current.paused = false
+      mockPlayerRef.current.play.mockClear()
+    }
+    const tl = stubTimelineRect()
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerdown", { clientX: 50 }))
+    })
+    expect(tl.getAttribute("data-dragging")).toBe("true")
+    if (mockPlayerRef.current) mockPlayerRef.current.paused = true
+    await act(async () => {
+      tl.dispatchEvent(
+        new Event("lostpointercapture", { bubbles: true }) as never,
+      )
+    })
+    expect(tl.getAttribute("data-dragging")).toBe("false")
+    expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("HeroPlayer — timeline pointer-driven scrub (fake-timer driven)", () => {
+  // Fake timers let us hold the rAF (polyfilled as setTimeout(0)) before it
+  // flushes, so we can prove the coalescing window and the unmount
+  // cancellation path. Microtasks (the play() promise inside revealChrome)
+  // still resolve under fake timers, so reveal works without real time.
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("multiple pointermoves coalesce into a single rAF flush per batch", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      // Mock's addEventListener is vi.fn() so durationchange never fires —
+      // React state is whatever the initial sync() captured (default 60).
+      // The rAF callback reads p.duration directly (F6), so 100 is what the
+      // coalesced seek will use; the synchronous pointerdown seek uses the
+      // closed-over state duration of 60.
+      mockPlayerRef.current.duration = 100
+      mockPlayerRef.current.currentTime = 0
+      mockPlayerRef.current.paused = false
+    }
+    const tl = stubTimelineRect()
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerdown", { clientX: 10 }))
+    })
+    // Pointerdown's synchronous seek uses state-duration (60): 0.1 * 60 = 6.
+    expect(mockPlayerRef.current?.currentTime).toBe(6)
+
+    // Track every currentTime write to prove only one happens per batch.
+    let writes = 0
+    let lastWrite = mockPlayerRef.current?.currentTime ?? 0
+    if (mockPlayerRef.current) {
+      const player = mockPlayerRef.current
+      let ct = player.currentTime
+      Object.defineProperty(player, "currentTime", {
+        get: () => ct,
+        set: (v: number) => {
+          ct = v
+          writes++
+          lastWrite = v
+        },
+        configurable: true,
+      })
+    }
+
+    // Three pointermoves before the rAF flushes — only the last should land.
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointermove", { clientX: 30 }))
+      tl.dispatchEvent(makePointerEvent("pointermove", { clientX: 50 }))
+      tl.dispatchEvent(makePointerEvent("pointermove", { clientX: 70 }))
+    })
+    // Before timers fire, no seek write has landed since the trap was
+    // installed.
+    expect(writes).toBe(0)
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    // Exactly one rAF wrote the latest pct (0.7 * live p.duration = 70).
+    expect(writes).toBe(1)
+    expect(lastWrite).toBe(70)
+  })
+
+  it("unmounting mid-drag does not write currentTime after unmount", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.duration = 100
+      mockPlayerRef.current.currentTime = 0
+      mockPlayerRef.current.paused = false
+    }
+    const tl = stubTimelineRect()
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointerdown", { clientX: 10 }))
+    })
+
+    // Trap any subsequent currentTime writes.
+    let writes = 0
+    if (mockPlayerRef.current) {
+      const player = mockPlayerRef.current
+      let ct = player.currentTime
+      Object.defineProperty(player, "currentTime", {
+        get: () => ct,
+        set: (v: number) => {
+          ct = v
+          writes++
+        },
+        configurable: true,
+      })
+    }
+
+    // Queue a coalesced seek for the pending rAF.
+    await act(async () => {
+      tl.dispatchEvent(makePointerEvent("pointermove", { clientX: 90 }))
+    })
+    // Pre-flush: the rAF hasn't fired, so no seek write yet.
+    expect(writes).toBe(0)
+
+    act(() => {
+      root.unmount()
+    })
+    // Re-create root so afterEach's unmount() targets a fresh tree.
+    root = createRoot(container)
+
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+    expect(writes).toBe(0)
+  })
 })

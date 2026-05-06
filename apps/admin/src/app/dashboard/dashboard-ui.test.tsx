@@ -17,6 +17,63 @@ vi.mock("@/auth/session", () => ({
   requireAdminSession: vi.fn(async () => ({ id: "test-user", role: "ADMIN" })),
 }))
 
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(() => "/dashboard/media"),
+  useRouter: vi.fn(() => ({
+    push: vi.fn(),
+    refresh: vi.fn(),
+  })),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
+}))
+
+vi.mock("@/services", () => ({
+  createServices: vi.fn(() => ({
+    mediaAsset: {
+      getById: vi.fn(async () => ({
+        id: "media1",
+        kind: "IMAGE",
+        backend: "LOCAL",
+        visibility: "PRIVATE",
+        displayName: "poster",
+        description: null,
+        altText: "Poster alt",
+        mimeType: "image/webp",
+        byteSize: 2048n,
+        width: 1200,
+        height: 675,
+        durationMs: null,
+        originalFilename: "poster.webp",
+        checksumSha256: null,
+        objectKey: "media-assets/media1/original/poster.webp",
+        previewObjectKey: null,
+        muxPlaybackId: null,
+        updatedAt: new Date("2023-10-24T14:02:00.000Z"),
+      })),
+      usage: vi.fn(async () => [
+        {
+          experienceId: "exp_1",
+          experienceLocaleId: "loc_1",
+          locale: "en",
+          title: "Stories of Forgiveness",
+          location: "blocks",
+          fieldPath: "$.blocks[0].imageUrl",
+          fieldName: "imageUrl",
+          value: "/api/media-assets/media1/preview",
+          match: "url",
+        },
+      ]),
+    },
+  })),
+}))
+
+vi.mock("@/app/dashboard/media/folder-tree", () => ({
+  MediaFolderTree: vi.fn(
+    ({ folders }: { folders: Array<{ label: string }> }) => (
+      <div>{folders.map((folder) => folder.label).join(", ")}</div>
+    ),
+  ),
+}))
+
 vi.mock("@/app/dashboard/live-data", () => ({
   loadExperienceRows: vi.fn(async () => [
     {
@@ -38,7 +95,7 @@ vi.mock("@/app/dashboard/live-data", () => ({
       id: "vid_8829_x_alpha_92",
       sourceLabel: "Mux",
       sourceTone: "info",
-      dubs: "EN, ES, FR",
+      dubs: "3 dubs · EN, ES, FR",
       updated: "10/24/2023, 14:02",
       duration: "04:22",
     },
@@ -53,7 +110,7 @@ vi.mock("@/app/dashboard/ops-data", () => ({
       { label: "Videos", value: "1", footer: "SYNCED_CATALOG" },
       { label: "Last Sync", value: "10m", footer: "CORE_REFRESH" },
       {
-        label: "Phases With Errors",
+        label: "Sync Errors",
         value: "0",
         footer: "ACTION_REQUIRED",
       },
@@ -78,9 +135,9 @@ vi.mock("@/app/dashboard/ops-data", () => ({
     ],
     watchlist: [
       {
-        title: "Core sync posture",
+        title: "Core sync",
         meta: "last sync 10/24/2023, 14:02",
-        detail: "No phase is currently reporting sync errors.",
+        detail: "No synced data set is currently reporting sync errors.",
         statusLabel: "Healthy",
         statusTone: "success",
       },
@@ -89,12 +146,12 @@ vi.mock("@/app/dashboard/ops-data", () => ({
       { label: "Published Locales", value: "1", detail: "detail" },
       { label: "Users", value: "1", detail: "detail" },
       { label: "Embedding Gap", value: "0", detail: "detail" },
-      { label: "Sync Phases", value: "1", detail: "detail" },
+      { label: "Synced Data Sets", value: "1", detail: "detail" },
     ],
   })),
   loadSystemStatusData: vi.fn(async () => ({
     metrics: [
-      { label: "Tracked Phases", value: "1", footer: "SYNC_STATE_ROWS" },
+      { label: "Synced Data Sets", value: "1", footer: "SYNC_STATE_ROWS" },
       { label: "Latest Sync", value: "10m", footer: "LATEST_WATERMARK" },
       { label: "Lock State", value: "CLEAR", footer: "CORE_SYNC_LOCK" },
       { label: "Exceptions", value: "0", footer: "REQUIRES_REVIEW" },
@@ -105,8 +162,7 @@ vi.mock("@/app/dashboard/ops-data", () => ({
         source: "core.videos",
         statusLabel: "Healthy",
         statusTone: "success",
-        lag: "10m",
-        throughput: "10 rows",
+        lastRun: "10 changed",
       },
     ],
     incidents: [
@@ -121,22 +177,31 @@ vi.mock("@/app/dashboard/ops-data", () => ({
     telemetry: [
       { label: "Connected Sources", value: "1", detail: "detail" },
       { label: "Lock Holder", value: "IDLE", detail: "detail" },
-      { label: "Phases With Errors", value: "0", detail: "detail" },
+      { label: "Data Sets With Errors", value: "0", detail: "detail" },
       { label: "Latest Lag", value: "10m", detail: "detail" },
     ],
   })),
   loadWorkflowsData: vi.fn(async () => ({
     metrics: [
-      { label: "Held Locks", value: "0", footer: "RUNNING_NOW" },
-      { label: "Tracked Phases", value: "1", footer: "PERSISTED_JOBS" },
-      { label: "Failures", value: "0", footer: "LAST_RUN_ERRORS" },
+      { label: "Active", value: "0", footer: "RUNNING_OR_QUEUED" },
+      { label: "Completed", value: "1", footer: "RECENT_RUNS" },
+      { label: "Failed", value: "0", footer: "LAST_RUN_ERRORS" },
     ],
     queue: [
       {
-        title: "videos",
-        meta: "watermark 10/24/2023, 14:02",
-        detail: "0 created, 0 updated, 0 soft-deleted",
-        statusLabel: "Ready",
+        title: "core-sync",
+        meta: "manual / wrun_123",
+        detail: "Finished 10/24/2023, 14:02",
+        statusLabel: "succeeded",
+        statusTone: "success",
+      },
+    ],
+    workers: [
+      {
+        title: "admin:test:123",
+        meta: "admin / started 1m ago",
+        detail: "Heartbeat 2s ago.",
+        statusLabel: "Online",
         statusTone: "success",
       },
     ],
@@ -254,9 +319,20 @@ vi.mock("@/app/dashboard/ops-data", () => ({
   })),
   loadMediaData: vi.fn(async () => ({
     metrics: [
-      { label: "Images", value: "2", footer: "VIDEO_IMAGES" },
-      { label: "Downloads", value: "2", footer: "DUB_ARTIFACTS" },
-      { label: "Subtitles", value: "2", footer: "TEXT_TRACKS" },
+      { label: "Assets", value: "2", footer: "MEDIA_ASSET_ROWS" },
+      { label: "Images", value: "2", footer: "IMAGE_LIBRARY" },
+      { label: "Processing", value: "0", footer: "ACTIVE_UPLOADS" },
+    ],
+    folders: [
+      {
+        id: "folder-1",
+        label: "Campaigns",
+        count: 1,
+        directAssetCount: 1,
+        childFolderCount: 0,
+        parentId: null,
+        depth: 0,
+      },
     ],
     rows: [
       {
@@ -266,13 +342,22 @@ vi.mock("@/app/dashboard/ops-data", () => ({
         statusLabel: "Ready",
         statusTone: "success",
         meta: "10/24/2023, 14:02",
+        kind: "IMAGE",
+        folderId: "folder-1",
+        backend: "LOCAL",
+        byteSize: "2.0 KB",
+        dimensions: "1200x675",
+        previewUrl: "/api/media-assets/media1/preview",
+        downloadUrl: "/api/media-assets/media1/download",
       },
     ],
     insights: [
-      { label: "Image Catalog", value: "2", detail: "detail" },
-      { label: "Download Artifacts", value: "2", detail: "detail" },
-      { label: "Subtitle Tracks", value: "2", detail: "detail" },
+      { label: "Image Assets", value: "2", detail: "detail" },
+      { label: "Video Assets", value: "0", detail: "detail" },
+      { label: "PDF Assets", value: "0", detail: "detail" },
     ],
+    totalCount: 2,
+    unfiledCount: 1,
   })),
 }))
 
@@ -322,11 +407,12 @@ describe("dashboard UI routes", () => {
     expect(html).toContain(uiMessages.common.operatorNotes)
   })
 
-  it("renders core sync page with translated operator rail header", async () => {
+  it("renders core sync page around current sync state", async () => {
     const html = await htmlFrom(SystemStatusPage())
     expect(html).toContain(uiMessages.pages.systemStatus.title)
-    expect(html).toContain(uiMessages.pages.systemStatus.action)
-    expect(html).toContain(uiMessages.common.operatorNotes)
+    expect(html).toContain("Core Sync is healthy")
+    expect(html).toContain("Sync State")
+    expect(html).toContain("Needs Attention")
   })
 
   it("renders operational secondary routes", async () => {
@@ -356,14 +442,18 @@ describe("dashboard UI routes", () => {
         title: uiMessages.pages.languages.title,
       },
       {
-        html: await htmlFrom(MediaPage()),
-        title: uiMessages.pages.media.title,
+        html: await htmlFrom(MediaPage({ searchParams: Promise.resolve({}) })),
+        title: "Media Library",
       },
     ]
 
     for (const page of pages) {
       expect(page.html).toContain(page.title.replaceAll("&", "&amp;"))
-      expect(page.html).toContain(uiMessages.common.operatorNotes)
     }
+
+    expect(pages[0].html).toContain("Recent Workflow Runs")
+    expect(pages[6].html).toContain("Media Library")
+    expect(pages[6].html).toContain("Library")
+    expect(pages[6].html).toContain("Campaigns")
   })
 })

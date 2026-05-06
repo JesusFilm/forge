@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const mutateMock = vi.fn()
 const queryMock = vi.fn()
 const cmsPostMock = vi.fn()
+const publishJobEventMock = vi.fn()
 
 vi.mock("@/cms/client", () => ({
   default: () => ({
@@ -13,6 +14,10 @@ vi.mock("@/cms/client", () => ({
 
 vi.mock("@/services/cmsClient", () => ({
   cmsPost: cmsPostMock,
+}))
+
+vi.mock("@/lib/job-events", () => ({
+  publishJobEvent: publishJobEventMock,
 }))
 
 function buildGraphqlJob(documentId: string) {
@@ -39,6 +44,7 @@ describe("createJob", () => {
     mutateMock.mockReset()
     queryMock.mockReset()
     cmsPostMock.mockReset()
+    publishJobEventMock.mockReset()
   })
 
   afterEach(() => {
@@ -77,6 +83,7 @@ describe("createJob", () => {
     expect(mutateMock).not.toHaveBeenCalled()
     expect(queryMock).toHaveBeenCalled()
     expect(job.id).toBe("job-1")
+    expect(publishJobEventMock).toHaveBeenCalledWith(job)
   })
 
   it("falls back to the GraphQL mutation when no videoDocumentId is provided", async () => {
@@ -93,5 +100,6 @@ describe("createJob", () => {
     expect(cmsPostMock).not.toHaveBeenCalled()
     expect(mutateMock).toHaveBeenCalled()
     expect(job.id).toBe("job-2")
+    expect(publishJobEventMock).toHaveBeenCalledWith(job)
   })
 })

@@ -349,6 +349,107 @@ describe("Bible Project headline (keyword-first mode)", () => {
     expect(result.searchMode).toBe("hybrid")
   })
 
+  it("surfaces attribution-matched videos in top-N when retrievers return them (post-0010 CamelCase + description-trigram fix)", async () => {
+    // Models the post-0010 world: descriptions writing the brand as
+    // joined-form `BibleProject` are now reachable via two paths —
+    //   (a) `searchByKeywordWeighted` because the new generated columns
+    //       CamelCase-split the input before tokenizing, so
+    //       `bibleproject` lexes to `bible` + `project` and matches
+    //       `websearch_to_tsquery('the bible project')`'s AND-of-tokens.
+    //   (b) `searchByTrigram` because trigrams ignore token boundaries
+    //       and now run over both title AND description (the new
+    //       `video_locale_description_trgm_idx` from migration 0010).
+    //
+    // Live verification ran against the local DB on 2026-05-02 and
+    // returned 25 keyword-weighted matches for the same query (vs 6
+    // pre-fix). This test locks in that the orchestrator surfaces such
+    // attribution-matched videos within top-15 once retrievers feed
+    // them in — i.e., the recall improvement isn't lost in fusion.
+    const ATTRIBUTION_VIDEOS: Fixture[] = [
+      {
+        resultId: "att-1",
+        videoCoreId: "11_Sermon0710",
+        videoSlug: "lords-prayer",
+        videoTitle: "The Lord's Prayer",
+        description: "Thanks to BibleProject for providing this series.",
+      },
+      {
+        resultId: "att-2",
+        videoCoreId: "11_Shema0106",
+        videoSlug: "shema-listen",
+        videoTitle: "Shema / Listen",
+        description: "Animated breakdown by BibleProject.",
+      },
+      {
+        resultId: "att-3",
+        videoCoreId: "11_Shema0206",
+        videoSlug: "yhwh-lord",
+        videoTitle: "YHWH / LORD",
+        description: "From the BibleProject Sermon on the Mount series.",
+      },
+      {
+        resultId: "att-4",
+        videoCoreId: "11_Sermon0210",
+        videoSlug: "the-beatitudes",
+        videoTitle: "The Beatitudes",
+        description: "BibleProject overview of Matthew 5.",
+      },
+      {
+        resultId: "att-5",
+        videoCoreId: "11_Sermon0810",
+        videoSlug: "wealth-and-worry",
+        videoTitle: "Wealth and Worry",
+        description: "BibleProject explainer for Matthew 6:25-34.",
+      },
+    ]
+
+    vi.mocked(searchVideoSemantic).mockResolvedValue([])
+    // Keyword-weighted: BP titles (5) + 5 attribution-matched
+    // descriptions all clear the AND-of-tokens gate.
+    vi.mocked(searchByKeywordWeighted).mockResolvedValue([
+      ...BIBLE_PROJECT_VIDEOS.map((f, i) => asKeywordWeighted(f, 1 - i * 0.05)),
+      ...ATTRIBUTION_VIDEOS.map((f, i) => asKeywordWeighted(f, 0.4 - i * 0.03)),
+    ])
+    // Trigram: title-side matches BP collection; description-side
+    // matches the attribution videos (BibleProject as one word).
+    vi.mocked(searchByTrigram).mockResolvedValue([
+      ...BIBLE_PROJECT_VIDEOS.map((f, i) => asTrigram(f, 0.6 - i * 0.05)),
+      ...ATTRIBUTION_VIDEOS.map((f, i) => asTrigram(f, 0.45 - i * 0.03)),
+    ])
+    // Exact-title: only BP titles satisfy "the AND bible AND project"
+    // all in title.
+    vi.mocked(searchByExactTitle).mockResolvedValue(
+      BIBLE_PROJECT_VIDEOS.map((f, i) =>
+        asExactTitle(f, f.videoTitle.length + i),
+      ),
+    )
+
+    const service = new HybridSearchService({
+      prisma: mockPrisma,
+      embedder: successEmbedder(),
+      logger: { warn: vi.fn(), error: vi.fn() },
+    })
+
+    const result = await service.search({
+      query: "the bible project",
+      locale: "en",
+      mode: "keyword-first",
+      contentTypes: ["video"],
+      limit: 15,
+    })
+
+    const titles = result.results.map((r) => r.title)
+    const attributionTitles = ATTRIBUTION_VIDEOS.map((v) => v.videoTitle)
+    const attributionMatchedInTopN = titles.filter((t) =>
+      attributionTitles.includes(t),
+    )
+
+    // ≥5 attribution-matched videos (Sermon on the Mount series, etc.)
+    // appear within top-15. This is the recall floor that locks in the
+    // 0010 fix at the orchestrator boundary.
+    expect(attributionMatchedInTopN.length).toBeGreaterThanOrEqual(5)
+  })
+
   // Reference fixture coverage marker so unused-export linting flags
   // don't fire on intentionally-shared fixtures.
   it("fixture coverage sanity — every fixture is reachable by ID", () => {

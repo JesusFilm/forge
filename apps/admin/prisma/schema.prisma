@@ -101,6 +101,78 @@ enum VideoSource {
   MUX        @map("mux")
 }
 
+/// Editorial media kind. The first UI slice is image-forward, but the model is
+/// generic enough for PDFs, miscellaneous files, and future Mux-backed videos.
+enum MediaAssetKind {
+  IMAGE @map("image")
+  VIDEO @map("video")
+  PDF   @map("pdf")
+  FILE  @map("file")
+}
+
+/// Where the original bytes or playback authority live.
+enum MediaAssetBackend {
+  LOCAL @map("local")
+  S3    @map("s3")
+  MUX   @map("mux")
+}
+
+/// Processing lifecycle for an editorial media asset.
+enum MediaAssetStatus {
+  PENDING    @map("pending")
+  UPLOADING  @map("uploading")
+  PROCESSING @map("processing")
+  READY      @map("ready")
+  FAILED     @map("failed")
+  MISSING    @map("missing")
+}
+
+/// Image-specific enrichment lifecycle. Kept separate from MediaAssetStatus so
+/// an uploaded image can be storage-ready while derived metadata is still
+/// waiting or processing.
+enum MediaImageEnrichmentStatus {
+  WAITING    @map("waiting")
+  PROCESSING @map("processing")
+  COMPLETE   @map("complete")
+  FAILED     @map("failed")
+  SKIPPED    @map("skipped")
+}
+
+/// Per-locale localized image metadata lifecycle.
+enum MediaAssetLocaleStatus {
+  WAITING    @map("waiting")
+  PROCESSING @map("processing")
+  COMPLETE   @map("complete")
+  FAILED     @map("failed")
+  SKIPPED    @map("skipped")
+}
+
+/// Delivery visibility. Private assets require admin-mediated access; public
+/// assets can be exposed through generated preview/download URLs.
+enum MediaAssetVisibility {
+  PRIVATE @map("private")
+  PUBLIC  @map("public")
+}
+
+/// Generic workflow run lifecycle used by the admin-owned operator ledger.
+enum WorkflowRunStatus {
+  QUEUED    @map("queued")
+  RUNNING   @map("running")
+  SUCCEEDED @map("succeeded")
+  FAILED    @map("failed")
+  SKIPPED   @map("skipped")
+  CANCELLED @map("cancelled")
+}
+
+/// Source that requested a workflow run.
+enum WorkflowRunTrigger {
+  MANUAL    @map("manual")
+  SCHEDULED @map("scheduled")
+  GRAPHQL   @map("graphql")
+  USER      @map("user")
+  SYSTEM    @map("system")
+}
+
 // -----------------------------------------------------------------------------
 // Better Auth (Unit 5)
 // -----------------------------------------------------------------------------
@@ -115,8 +187,10 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  sessions Session[]
-  accounts Account[]
+  sessions     Session[]
+  accounts     Account[]
+  mediaAssets  MediaAsset[]
+  mediaFolders MediaFolder[]
 
   @@unique([email])
   @@map("user")
@@ -204,6 +278,74 @@ model SyncLock {
   @@map("sync_locks")
 }
 
+/// Admin-owned product ledger for workflow runs. Postgres World remains the
+/// runtime source of truth; this table adds operator context that can be joined
+/// to runtime rows by `runtime_run_id`.
+model WorkflowRun {
+  id           String             @id @default(cuid())
+  runtimeRunId String?            @unique @map("runtime_run_id")
+  workflowKey  String             @map("workflow_key")
+  workflowName String?            @map("workflow_name")
+  trigger      WorkflowRunTrigger
+  actorId      String?            @map("actor_id")
+  subjectType  String?            @map("subject_type")
+  subjectId    String?            @map("subject_id")
+  status       WorkflowRunStatus  @default(QUEUED)
+  summary      String?
+  error        String?
+  startedAt    DateTime?          @map("started_at")
+  finishedAt   DateTime?          @map("finished_at")
+  durationMs   Int?               @map("duration_ms")
+  details      Json               @default("{}")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  coreSyncRun CoreSyncRun?
+
+  @@index([workflowKey, createdAt])
+  @@index([status, createdAt])
+  @@index([trigger, createdAt])
+  @@map("workflow_run")
+}
+
+/// Process heartbeat written by admin instances that start Workflow's
+/// Postgres World runner. Graphile Worker tracks locked jobs, but it does not
+/// persist idle workers, so this table is the dashboard's source for
+/// "is a worker process alive?"
+model WorkflowWorkerHeartbeat {
+  workerId     String   @id @map("worker_id")
+  service      String   @default("admin")
+  status       String   @default("online")
+  startedAt    DateTime @default(now()) @map("started_at")
+  lastSeenAt   DateTime @default(now()) @map("last_seen_at")
+  currentJob   String?  @map("current_job")
+  currentRunId String?  @map("current_run_id")
+  details      Json     @default("{}")
+
+  @@index([lastSeenAt])
+  @@map("workflow_worker_heartbeat")
+}
+
+/// Core Sync-specific detail for the generic workflow ledger. Kept separate so
+/// non-Core workflows can use `WorkflowRun` without carrying sync phase fields.
+model CoreSyncRun {
+  id            String      @id @default(cuid())
+  workflowRunId String      @unique @map("workflow_run_id")
+  workflowRun   WorkflowRun @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
+  skippedLock   Boolean     @default(false) @map("skipped_lock")
+  incremental   Boolean
+  createdCount  Int         @default(0) @map("created_count")
+  updatedCount  Int         @default(0) @map("updated_count")
+  deletedCount  Int         @default(0) @map("deleted_count")
+  errorCount    Int         @default(0) @map("error_count")
+  phaseSummary  Json        @default("[]") @map("phase_summary")
+  coverageAudit Json?       @map("coverage_audit")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  @@map("core_sync_run")
+}
+
 // -----------------------------------------------------------------------------
 // Editor revision history
 // -----------------------------------------------------------------------------
@@ -264,6 +406,104 @@ model ContentRevision {
   @@index([entityType, entityId, status, revisedAt])
   @@index([revisedAt])
   @@map("content_revision")
+}
+
+// -----------------------------------------------------------------------------
+// Editorial media assets
+// -----------------------------------------------------------------------------
+
+/// Canonical editorial asset managed by apps/admin. The asset row is the stable
+/// identity used by editors and agents; storage object keys, local paths, Mux
+/// upload IDs, and playback IDs are backend-specific implementation details.
+///
+/// `VideoImage` remains separate: it represents Core/video-derived poster and
+/// still metadata. `MediaAsset` is for editorial uploads and reusable files.
+model MediaAsset {
+  id               String               @id @default(cuid())
+  kind             MediaAssetKind
+  backend          MediaAssetBackend
+  status           MediaAssetStatus     @default(PENDING)
+  visibility       MediaAssetVisibility @default(PRIVATE)
+  mimeType         String               @map("mime_type")
+  byteSize         BigInt?              @map("byte_size")
+  width            Int?
+  height           Int?
+  durationMs       BigInt?              @map("duration_ms")
+  blurDataUrl      String?              @map("blur_data_url")
+  dominantColor    String?              @map("dominant_color")
+  imageEnrichmentStatus MediaImageEnrichmentStatus @default(WAITING) @map("image_enrichment_status")
+  imageEnrichmentErrorCode String?       @map("image_enrichment_error_code")
+  imageEnrichmentErrorMessage String?    @map("image_enrichment_error_message")
+  imageEnrichmentStartedAt DateTime?     @map("image_enrichment_started_at")
+  imageEnrichmentCompletedAt DateTime?   @map("image_enrichment_completed_at")
+  originalFilename String?              @map("original_filename")
+  checksumSha256   String?              @map("checksum_sha256")
+  objectKey        String?              @map("object_key")
+  previewObjectKey String?              @map("preview_object_key")
+  muxAssetId       String?              @map("mux_asset_id")
+  muxUploadId      String?              @map("mux_upload_id")
+  muxPlaybackId    String?              @map("mux_playback_id")
+  errorCode        String?              @map("error_code")
+  errorMessage     String?              @map("error_message")
+  folderId         String?              @map("folder_id")
+  folder           MediaFolder?         @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  createdById      String?              @map("created_by_id")
+  createdBy        User?                @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  locales          MediaAssetLocale[]
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+
+  @@index([kind, status, updatedAt])
+  @@index([backend, status])
+  @@index([kind, imageEnrichmentStatus, updatedAt])
+  @@index([visibility])
+  @@index([folderId, updatedAt])
+  @@index([createdById])
+  @@map("media_asset")
+}
+
+/// Localized display name and alt text for an editorial media asset. Blur data
+/// and byte-derived facts stay on MediaAsset; user-facing language varies here.
+model MediaAssetLocale {
+  id            String                 @id @default(cuid())
+  mediaAssetId  String                 @map("media_asset_id")
+  mediaAsset    MediaAsset             @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+  locale        String
+  displayName   String?                @map("display_name")
+  altText       String?                @map("alt_text")
+  displayNameSource RevisedByKind?     @map("display_name_source")
+  altTextSource RevisedByKind?         @map("alt_text_source")
+  displayNameLocked Boolean            @default(false) @map("display_name_locked")
+  altTextLocked Boolean                @default(false) @map("alt_text_locked")
+  status        MediaAssetLocaleStatus @default(WAITING)
+  errorCode     String?                @map("error_code")
+  errorMessage  String?                @map("error_message")
+  generatedAt   DateTime?              @map("generated_at")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+
+  @@unique([mediaAssetId, locale])
+  @@index([locale])
+  @@index([status, updatedAt])
+  @@map("media_asset_locale")
+}
+
+model MediaFolder {
+  id          String        @id @default(cuid())
+  name        String
+  parentId    String?       @map("parent_id")
+  parent      MediaFolder?  @relation("MediaFolderTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children    MediaFolder[] @relation("MediaFolderTree")
+  createdById String?       @map("created_by_id")
+  createdBy   User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  assets      MediaAsset[]
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@unique([parentId, name])
+  @@index([parentId, updatedAt])
+  @@index([createdById])
+  @@map("media_folder")
 }
 
 // -----------------------------------------------------------------------------
@@ -580,7 +820,13 @@ model Video {
   source            SourceTier   @default(CORE)
   slug              String       @unique
   label             VideoLabel?
-  videoSource       VideoSource?
+  /// `@map("video_source")` is required: the column was created snake-
+  /// case in `0001_init` while the field is camelCase. Without the
+  /// mapping, `tx.video.upsert(...)` in `services/core-sync/phases/
+  /// sync-videos.ts` fails with `column "videoSource" does not exist`
+  /// and the entire videos phase aborts. Do not strip this in a
+  /// schema-style sweep.
+  videoSource       VideoSource? @map("video_source")
   publishedAt       DateTime?    @map("published_at")
   locked            Boolean      @default(false)
   noIndex           Boolean      @default(false) @map("no_index")
@@ -620,19 +866,19 @@ model Video {
 /// Per-locale Video content. Editors curate localized title / description /
 /// snippet / imageAlt and publish them independently of other locales.
 model VideoLocale {
-  id             String                       @id @default(cuid())
-  videoId        String                       @map("video_id")
-  video          Video                        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  id             String                   @id @default(cuid())
+  videoId        String                   @map("video_id")
+  video          Video                    @relation(fields: [videoId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 locale code, e.g. "en", "fr", "es-419".
   locale         String
   title          String?
   description    String?
   snippet        String?
-  imageAlt       String?                      @map("image_alt")
-  status         LocaleStatus                 @default(DRAFT)
-  publishedAt    DateTime?                    @map("published_at")
-  createdAt      DateTime                     @default(now()) @map("created_at")
-  updatedAt      DateTime                     @updatedAt @map("updated_at")
+  imageAlt       String?                  @map("image_alt")
+  status         LocaleStatus             @default(DRAFT)
+  publishedAt    DateTime?                @map("published_at")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
   /// STORED generated tsvector columns — derived from `title` /
   /// `description` by `0009_keyword_first_lexical/migration.sql`. Backed by
   /// `video_locale_lexical_weighted_idx` (GIN over the per-field weighted
@@ -643,8 +889,8 @@ model VideoLocale {
   /// the generated expression requires a coordinated DROP CASCADE + ADD
   /// COLUMN migration (Postgres has no in-place editor for stored
   /// generated expressions).
-  titleTsv       Unsupported("tsvector")?     @map("title_tsv")
-  descriptionTsv Unsupported("tsvector")?     @map("description_tsv")
+  titleTsv       Unsupported("tsvector")? @map("title_tsv")
+  descriptionTsv Unsupported("tsvector")? @map("description_tsv")
 
   @@unique([videoId, locale])
   @@index([locale])

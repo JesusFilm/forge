@@ -3,6 +3,7 @@
 
 import { graphql, type ResultOf, type VariablesOf } from "@forge/graphql"
 import getClient from "@/cms/client"
+import { publishJobEvent } from "@/lib/job-events"
 import {
   getCmsGateway,
   readMockCmsState,
@@ -23,6 +24,18 @@ import type {
 } from "@/types/job"
 
 export type { JobRecord, JobStatus, WorkflowStepName, StepStatus }
+export type JobLookupResult =
+  | {
+      status: "found"
+      job: JobRecord
+    }
+  | {
+      status: "not-found"
+    }
+  | {
+      status: "error"
+      error: unknown
+    }
 
 // ---------------------------------------------------------------------------
 // GraphQL fragments & operations (typed via gql.tada)
@@ -530,6 +543,7 @@ export async function createJob(
       },
     }))
 
+    publishJobEvent(job)
     return job
   }
 
@@ -553,6 +567,7 @@ export async function createJob(
     if (!job) {
       throw new Error("Failed to load enrichment job after CMS creation")
     }
+    publishJobEvent(job)
     return job
   }
 
@@ -579,15 +594,31 @@ export async function createJob(
   if (!data?.createEnrichmentJob) {
     throw new Error("Failed to create enrichment job")
   }
-  return toJobRecord(data.createEnrichmentJob)
+  const job = toJobRecord(data.createEnrichmentJob)
+  publishJobEvent(job)
+  return job
 }
 
 export async function getJob(id: string): Promise<JobRecord | null> {
+  const result = await getJobLookup(id)
+  return result.status === "found" ? result.job : null
+}
+
+export async function getJobLookup(id: string): Promise<JobLookupResult> {
   const mockState = await readMockCmsState(getCmsGateway())
   if (mockState) {
-    return mockState.readModels.jobs.find((job) => job.id === id) ?? null
-  }
+    const job = mockState.readModels.jobs.find(
+      (candidate) => candidate.id === id,
+    )
+    if (!job) {
+      return { status: "not-found" }
+    }
 
+    return {
+      status: "found",
+      job,
+    }
+  }
   const client = getClient()
 
   try {
@@ -597,11 +628,20 @@ export async function getJob(id: string): Promise<JobRecord | null> {
       fetchPolicy: "no-cache",
     })
 
-    if (!result.data?.enrichmentJob) return null
-    return toJobRecord(result.data.enrichmentJob)
+    if (!result.data?.enrichmentJob) {
+      return { status: "not-found" }
+    }
+
+    return {
+      status: "found",
+      job: toJobRecord(result.data.enrichmentJob),
+    }
   } catch (err) {
     console.warn(`[state] getJob(${id}) failed:`, err)
-    return null
+    return {
+      status: "error",
+      error: err,
+    }
   }
 }
 
@@ -692,7 +732,14 @@ export async function updateJob(
       },
     }))
 
-    return nextState?.readModels.jobs.find((job) => job.id === id) ?? null
+    const job = nextState?.readModels.jobs.find(
+      (candidate) => candidate.id === id,
+    )
+    if (job) {
+      publishJobEvent(job)
+    }
+
+    return job ?? null
   }
 
   const client = getClient()
@@ -707,7 +754,9 @@ export async function updateJob(
 
     const result = mutResult.data
     if (!result?.updateEnrichmentJob) return null
-    return toJobRecord(result.updateEnrichmentJob)
+    const job = toJobRecord(result.updateEnrichmentJob)
+    publishJobEvent(job)
+    return job
   } catch (err) {
     console.warn(`[state] updateJob(${id}) failed:`, err)
     return null
@@ -859,10 +908,14 @@ async function doUpdateStepStatus(
       },
     }))
 
-    return (
+    const jobRecord =
       nextState?.readModels.jobs.find((candidate) => candidate.id === jobId) ??
       null
-    )
+    if (jobRecord) {
+      publishJobEvent(jobRecord)
+    }
+
+    return jobRecord
   }
 
   const client = getClient()
@@ -881,7 +934,9 @@ async function doUpdateStepStatus(
 
     const resultData = mutResult.data
     if (!resultData?.updateEnrichmentJob) return null
-    return toJobRecord(resultData.updateEnrichmentJob)
+    const jobRecord = toJobRecord(resultData.updateEnrichmentJob)
+    publishJobEvent(jobRecord)
+    return jobRecord
   } catch (err) {
     console.warn(`[state] updateStepStatus(${jobId}, ${stepName}) failed:`, err)
     return null

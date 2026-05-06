@@ -16,10 +16,12 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
+    "core-sync:run": "tsx src/scripts/run-core-sync.ts",
     "refresh:core-id-mapping": "tsx src/scripts/refresh-core-id-mapping.ts",
     "pull:mapping": "tsx src/scripts/pull-mapping-from-prod.ts",
+    "run-embeds": "tsx src/scripts/run-embeds.ts",
     "run-sync": "tsx src/scripts/run-sync.ts",
-    "run-embeds": "tsx src/scripts/run-embeds.ts"
+    "workflow:setup:postgres": "workflow-postgres-setup"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "1.6.2",
@@ -39,6 +41,7 @@
     "@prisma/client": "^6",
     "@t3-oss/env-nextjs": "^0.13.10",
     "@tailwindcss/postcss": "4.2.2",
+    "@workflow/world-postgres": "4.1.1",
     "better-auth": "1.6.2",
     "dataloader": "2.2.3",
     "firebase-admin": "13.8.0",
@@ -47,6 +50,7 @@
     "ioredis": "5.10.1",
     "lucide-react": "^0.577.0",
     "next": "^16.2.4",
+    "p-limit": "^7.3.0",
     "pg": "^8.13.0",
     "prisma": "^6",
     "react": "19.2.4",
@@ -64,6 +68,7 @@
     "@types/react-dom": "19.2.3",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.1.6",
+    "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "3.2.4"
   }

@@ -30,6 +30,7 @@ const BASE_REPORT: SceneEmbeddingBackfillReport = {
   succeeded: 1,
   skipped: 0,
   failed: 0,
+  missingArtifacts: [],
 }
 
 describe("dispatchSceneEmbeddingBackfill", () => {

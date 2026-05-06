@@ -1,9 +1,8 @@
 "use client"
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { RefreshCw } from "lucide-react"
 import { formatStepName } from "@/lib/workflow-steps"
 import type { JobRecord } from "@/types/job"
 import { apiFetch } from "@/lib/api-fetch"
@@ -24,19 +23,19 @@ import {
 import {
   FOREGROUND_POLL_DELAY_MS,
   getNextPollDelayMs,
-  shouldApplyPollResult,
 } from "./live-jobs-polling"
 import { buildJobDetailHref } from "./job-detail-href"
+import {
+  createInitialLiveJobsRealtimeSnapshot,
+  createLiveJobsListEventSourceOpener,
+  createLiveJobsListRealtimeController,
+} from "./live-jobs-realtime"
 
 const MAX_VISIBLE_LANGUAGE_BADGES = 6
 
 type LiveJobsTableProps = {
   initialJobs: JobRecord[]
   languageLabelsById: Record<string, string>
-}
-
-type RunPollOptions = {
-  scheduleNext: boolean
 }
 
 const INTERACTIVE_TARGET_SELECTOR =
@@ -58,22 +57,15 @@ export function LiveJobsTable({
 }: LiveJobsTableProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [jobs, setJobs] = useState(initialJobs)
-  const [isManualRefreshPending, setIsManualRefreshPending] = useState(false)
-  const [isPollingError, setIsPollingError] = useState(false)
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
-
-  const requestSeqRef = useRef(0)
-  const timeoutIdRef = useRef<number | null>(null)
-  const activeControllerRef = useRef<AbortController | null>(null)
-  const runPollRef = useRef<
-    ((options: RunPollOptions) => Promise<void>) | null
-  >(null)
+  const [realtimeSnapshot, setRealtimeSnapshot] = useState(() =>
+    createInitialLiveJobsRealtimeSnapshot(initialJobs),
+  )
 
   const languageLabelMap = useMemo(
     () => new Map<string, string>(Object.entries(languageLabelsById)),
     [languageLabelsById],
   )
+  const jobs = realtimeSnapshot.state
   const groupedJobs = useMemo(() => groupJobsByDay(jobs), [jobs])
   const jobsDetailQuerySuffix = useMemo(() => {
     const rawLanguageIds =
@@ -112,102 +104,47 @@ export function LiveJobsTable({
   )
 
   useEffect(() => {
-    let cancelled = false
-
-    const clearScheduledPoll = () => {
-      if (timeoutIdRef.current !== null) {
-        window.clearTimeout(timeoutIdRef.current)
-        timeoutIdRef.current = null
-      }
-    }
-
-    const scheduleNextPoll = () => {
-      if (cancelled) return
-      clearScheduledPoll()
-      const isDocumentHidden =
-        typeof document !== "undefined" && document.visibilityState === "hidden"
-      timeoutIdRef.current = window.setTimeout(() => {
-        const currentRunPoll = runPollRef.current
-        if (!currentRunPoll) return
-        void currentRunPoll({ scheduleNext: true })
-      }, getNextPollDelayMs(isDocumentHidden))
-    }
-
-    const runPoll = async ({ scheduleNext }: RunPollOptions) => {
-      const responseSeq = ++requestSeqRef.current
-      activeControllerRef.current?.abort()
-      const controller = new AbortController()
-      activeControllerRef.current = controller
-
-      try {
+    const controller = createLiveJobsListRealtimeController({
+      initialJobs,
+      openStream: createLiveJobsListEventSourceOpener(),
+      poll: async (signal) => {
         const response = await apiFetch("/api/jobs?view=summary", {
           cache: "no-store",
-          signal: controller.signal,
+          signal,
         })
+
         if (!response.ok) {
-          if (!controller.signal.aborted) {
-            setIsPollingError(true)
-          }
-          return
+          throw new Error(`Jobs refresh failed (${response.status})`)
         }
 
-        const raw = (await response.json()) as { jobs: JobRecord[] }
-        const payload = raw.jobs
-        if (
-          shouldApplyPollResult({
-            cancelled,
-            activeRequestSeq: requestSeqRef.current,
-            responseSeq,
-            aborted: controller.signal.aborted,
-          })
-        ) {
-          setJobs(payload)
-          setIsPollingError(false)
-          setLastUpdatedAt(new Date().toISOString())
-        }
-      } catch {
-        if (!controller.signal.aborted) {
-          setIsPollingError(true)
-        }
-      } finally {
-        if (scheduleNext && !cancelled) {
-          scheduleNextPoll()
-        }
-      }
-    }
+        const payload = (await response.json()) as { jobs: JobRecord[] }
+        return payload.jobs
+      },
+      getPollDelayMs: () =>
+        getNextPollDelayMs(
+          typeof document !== "undefined" &&
+            document.visibilityState === "hidden",
+        ),
+    })
+    const unsubscribe = controller.subscribe(setRealtimeSnapshot)
 
-    runPollRef.current = runPoll
-    void runPoll({ scheduleNext: true })
+    controller.start()
 
     return () => {
-      cancelled = true
-      runPollRef.current = null
-      clearScheduledPoll()
-      activeControllerRef.current?.abort()
+      unsubscribe()
+      controller.stop()
     }
-  }, [])
-
-  const handleRefreshNow = useCallback(() => {
-    const runPoll = runPollRef.current
-    if (!runPoll) return
-    setIsManualRefreshPending(true)
-    void runPoll({ scheduleNext: false }).finally(() => {
-      setIsManualRefreshPending(false)
-    })
-  }, [])
+  }, [initialJobs])
 
   const liveStatus = useMemo(() => {
-    if (isPollingError) {
-      return "Auto-update retrying after a network error."
+    if (realtimeSnapshot.transportMode === "connecting") {
+      return "Connecting live updates..."
     }
-    if (isManualRefreshPending) {
-      return "Refreshing jobs now..."
+    if (realtimeSnapshot.transportMode === "polling") {
+      return `Live updates reconnecting. Polling every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
     }
-    if (lastUpdatedAt) {
-      return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s · Last update ${formatTime(lastUpdatedAt)}`
-    }
-    return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
-  }, [isManualRefreshPending, isPollingError, lastUpdatedAt])
+    return "Live updates connected"
+  }, [realtimeSnapshot.transportMode])
 
   return (
     <section className="collection-card jobs-card">
@@ -228,15 +165,6 @@ export function LiveJobsTable({
           >
             {liveStatus}
           </span>
-          <button
-            type="button"
-            className="collection-cache-clear jobs-refresh-link"
-            onClick={handleRefreshNow}
-            disabled={isManualRefreshPending}
-          >
-            <RefreshCw className="icon" aria-hidden="true" />
-            Refresh now
-          </button>
         </div>
       </header>
 

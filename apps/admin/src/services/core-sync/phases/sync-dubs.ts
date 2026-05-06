@@ -6,9 +6,46 @@
 
 import type { PrismaClient } from "@prisma/client"
 import type { SyncStats, ProgressReporter } from "../types"
-import { coreQuery } from "../core-client"
+import { coreQuery, CoreGraphQLError } from "../core-client"
 import { CoreDubSchema } from "../schemas/dub"
 import { emptySyncStats } from "../types"
+import { toPgArray } from "@/db/pgvector"
+
+// Page size sized to Core's resolver fan-out budget, not to client-side
+// throughput. Exported so the test suite can size full-page mocks against
+// the same constant — a hard-coded literal in the test silently degrades
+// into a single-page case the moment this value moves.
+// See `docs/solutions/platform/core-graphql-unbounded-relation-fan-out-20260504.md`.
+export const PAGE_SIZE = 100
+
+// Circuit-breaker for the page loop. Without this guard a hard Core
+// outage causes the loop to advance `offset` indefinitely, retry-storm
+// Core every PAGE_SIZE pages, and pin a worker. We trip after this many
+// consecutive page-fetch failures with a structured log event.
+const MAX_CONSECUTIVE_PAGE_ERRORS = 5
+
+function describeCoreError(
+  err: unknown,
+):
+  | { name: string; message: string; errors?: unknown }
+  | { name: string; message: string }
+  | { message: string } {
+  if (err instanceof CoreGraphQLError) {
+    return {
+      name: err.name,
+      message: err.message,
+      errors: err.errors.map((detail) => ({
+        message: detail.message,
+        path: detail.path,
+        code: detail.extensions?.code,
+      })),
+    }
+  }
+  if (err instanceof Error) {
+    return { name: err.name, message: err.message }
+  }
+  return { message: String(err) }
+}
 
 const DUBS_QUERY = `
   query VideoVariants($offset: Int!, $limit: Int!, $input: VideoVariantFilter) {
@@ -45,40 +82,6 @@ const DUBS_QUERY = `
   }
 `
 
-const DUBS_BY_VIDEOS_QUERY = `
-  query VideoDubsByVideos($offset: Int!, $limit: Int!, $where: VideosFilter) {
-    videos(offset: $offset, limit: $limit, where: $where) {
-      id
-      variants {
-        id
-        videoId
-        slug
-        duration
-        lengthInMilliseconds
-        hls
-        dash
-        share
-        downloadable
-        published
-        brightcoveId
-        updatedAt
-        language { id }
-        videoEdition { id name }
-        muxVideo { id assetId playbackId }
-        downloads {
-          id
-          quality
-          size
-          height
-          width
-          bitrate
-          url
-        }
-      }
-    }
-  }
-`
-
 type CoreVariant = {
   id: string
   videoId: string
@@ -110,11 +113,6 @@ type CoreVariant = {
   updatedAt?: string
 }
 
-type CoreVideoWithVariants = {
-  id: string
-  variants: CoreVariant[]
-}
-
 export async function syncDubs({
   prisma,
   progress,
@@ -136,10 +134,9 @@ export async function syncDubs({
   })
   const langMap = new Map(languages.map((l) => [l.coreId, l.id]))
 
-  const PAGE_SIZE = 500
-  const VIDEO_BATCH_SIZE = 25
   let offset = 0
-  let firstPageCount = 0
+  let firstPageWasEmpty = false
+  let consecutivePageErrors = 0
   const seenCoreIds = new Set<string>()
 
   async function processVariantPage(
@@ -345,7 +342,7 @@ export async function syncDubs({
         JSON.stringify({
           event: "core-sync.video-dub.error",
           offset: pageOffset,
-          error: err instanceof Error ? err.message : String(err),
+          error: describeCoreError(err),
         }),
       )
     }
@@ -353,55 +350,60 @@ export async function syncDubs({
     progress.increment(variants.length)
   }
 
-  if (since) {
-    while (true) {
+  const variantsInput = since ? { updatedAt: { gte: since } } : undefined
+  while (true) {
+    let rawVariants: CoreVariant[] = []
+    try {
       const result = await coreQuery<{ videoVariants: CoreVariant[] }>(
         DUBS_QUERY,
         {
           offset,
           limit: PAGE_SIZE,
-          input: { updatedAt: { gte: since } },
+          input: variantsInput,
         },
       )
-
-      const rawVariants = result.data?.videoVariants ?? []
-      if (offset === 0) {
-        firstPageCount = rawVariants.length
+      rawVariants = result.data?.videoVariants ?? []
+      consecutivePageErrors = 0
+    } catch (err) {
+      stats.errors++
+      consecutivePageErrors++
+      console.error(
+        JSON.stringify({
+          event: "core-sync.video-dub.page.error",
+          offset,
+          pageSize: PAGE_SIZE,
+          consecutivePageErrors,
+          error: describeCoreError(err),
+        }),
+      )
+      if (consecutivePageErrors >= MAX_CONSECUTIVE_PAGE_ERRORS) {
+        console.error(
+          JSON.stringify({
+            event: "core-sync.video-dub.aborted-too-many-errors",
+            offset,
+            consecutivePageErrors,
+            threshold: MAX_CONSECUTIVE_PAGE_ERRORS,
+          }),
+        )
+        break
       }
-
-      if (rawVariants.length === 0) break
-
-      await processVariantPage(rawVariants, offset)
-
-      if (rawVariants.length < PAGE_SIZE) break
       offset += PAGE_SIZE
+      continue
     }
-  } else {
-    firstPageCount = videos.length
-    for (let index = 0; index < videos.length; index += VIDEO_BATCH_SIZE) {
-      const batch = videos.slice(index, index + VIDEO_BATCH_SIZE)
-      const result = await coreQuery<{ videos: CoreVideoWithVariants[] }>(
-        DUBS_BY_VIDEOS_QUERY,
-        {
-          offset: 0,
-          limit: batch.length,
-          where: { ids: batch.map((video) => video.coreId) },
-        },
-      )
 
-      const rawVariants =
-        result.data?.videos.flatMap((video) =>
-          video.variants.map((variant) => ({
-            ...variant,
-            videoId: variant.videoId ?? video.id,
-          })),
-        ) ?? []
-
-      await processVariantPage(rawVariants, index)
+    if (offset === 0 && rawVariants.length === 0) {
+      firstPageWasEmpty = true
     }
+
+    if (rawVariants.length === 0) break
+
+    await processVariantPage(rawVariants, offset)
+
+    if (rawVariants.length < PAGE_SIZE) break
+    offset += PAGE_SIZE
   }
 
-  if (!since && firstPageCount === 0) {
+  if (!since && firstPageWasEmpty) {
     console.warn(
       JSON.stringify({
         event: "core-sync.video-dub.soft-delete.skipped",
@@ -412,15 +414,40 @@ export async function syncDubs({
   }
 
   if (!since && stats.errors === 0 && seenCoreIds.size > 0) {
-    const result = await prisma.videoDub.updateMany({
-      where: {
-        source: "CORE",
-        coreId: { notIn: [...seenCoreIds] },
-        deletedAt: null,
-      },
-      data: { deletedAt: new Date() },
-    })
-    stats.softDeleted += result.count
+    // Soft-delete via array-bound raw SQL, NOT
+    // `prisma.videoDub.updateMany({ coreId: { notIn: [...] } })`. The
+    // `notIn` translation emits one prepared-statement parameter per
+    // ID, and Postgres caps that at 32,767 (PG_INT16_MAX). On a 200k+
+    // dub catalogue the cleanup tail throws "too many bind variables
+    // in prepared statement, expected maximum of 32767" and aborts.
+    // Binding the seen-id set as a single PG array literal keeps the
+    // parameter count at 1 regardless of catalogue size. Per
+    // docs/solutions/platform/core-graphql-unbounded-relation-fan-out-20260504.md.
+    //
+    // Enum literal note: `'core'` is the lowercase DB value for
+    // `SourceTier` (see `0001_init` line 27 — `('core','manager')`).
+    // Prisma's TS enum maps `CORE` → `'core'` automatically; raw SQL
+    // bypasses that mapping so the literal must match the DB value.
+    const seenIdsLiteral = toPgArray(Array.from(seenCoreIds))
+    try {
+      const affected = await prisma.$executeRaw`
+        UPDATE "video_dub"
+        SET    "deleted_at" = NOW()
+        WHERE  "source"     = 'core'
+          AND  "deleted_at" IS NULL
+          AND  NOT ("core_id" = ANY(${seenIdsLiteral}::text[]))
+      `
+      stats.softDeleted += affected
+    } catch (err) {
+      stats.errors++
+      console.error(
+        JSON.stringify({
+          event: "core-sync.video-dub.soft-delete.error",
+          seenCount: seenCoreIds.size,
+          error: describeCoreError(err),
+        }),
+      )
+    }
   }
 
   return stats

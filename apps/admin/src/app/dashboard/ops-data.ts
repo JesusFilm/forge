@@ -1,10 +1,22 @@
-import { Prisma, type LocaleStatus } from "@prisma/client"
+import {
+  Prisma,
+  type LocaleStatus,
+  type MediaAssetKind,
+  type MediaImageEnrichmentStatus,
+  type MediaAssetStatus,
+} from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { createServices } from "@/services"
 import { generateExperienceEmbedding } from "@/services/embeddings.service"
 import { getAllWatermarks } from "@/services/core-sync/watermark"
+import {
+  mediaAssetDownloadUrl,
+  mediaAssetPreviewUrl,
+} from "@/services/media-asset.service"
+import { loadWorkflowRuntimeRuns } from "@/services/workflow-runtime.service"
+import { loadWorkflowWorkerStatusRows } from "@/services/workflow-worker-heartbeat.service"
 
 type Metric = {
   label: string
@@ -66,8 +78,7 @@ type SystemStatusData = {
     source: string
     statusLabel: string
     statusTone: "success" | "warning" | "danger" | "info" | "muted"
-    lag: string
-    throughput: string
+    lastRun: string
   }>
   incidents: QueueItem[]
   telemetry: Insight[]
@@ -76,8 +87,13 @@ type SystemStatusData = {
 type WorkflowsData = {
   metrics: Metric[]
   queue: QueueItem[]
+  workers: QueueItem[]
   insights: Insight[]
   syncLockHeld: boolean
+}
+
+type WorkflowMetricRow = {
+  status: string
 }
 
 type EmbeddingsData = {
@@ -95,9 +111,50 @@ type LanguagesData = {
 
 type MediaData = {
   metrics: Metric[]
-  rows: TableRow[]
+  folders: MediaFolderRow[]
+  rows: MediaAssetTableRow[]
   insights: Insight[]
+  totalCount: number
+  unfiledCount: number
 }
+
+export type MediaFolderRow = {
+  id: string
+  label: string
+  count: number
+  directAssetCount: number
+  childFolderCount: number
+  parentId: string | null
+  depth: number
+}
+
+type MediaAssetTableRow = TableRow & {
+  kind: MediaAssetKind
+  folderId: string | null
+  backend: string
+  byteSize: string
+  byteSizeValue: bigint | null
+  dimensions: string
+  previewUrl: string | null
+  downloadUrl: string | null
+  blurDataUrl: string | null
+  imageEnrichmentStatus: MediaImageEnrichmentStatus
+  imageEnrichmentErrorMessage: string | null
+  updatedAtValue: Date
+}
+
+type MediaAssetWithEnglishLocale = Awaited<
+  ReturnType<typeof createServices>
+>["mediaAsset"] extends {
+  list: (...args: never[]) => Promise<Array<infer Row>>
+}
+  ? Row & {
+      locales?: Array<{
+        locale: string
+        displayName: string | null
+      }>
+    }
+  : never
 
 type UsersData = {
   metrics: Metric[]
@@ -135,6 +192,21 @@ type SyncWatermarkRow = {
   phase: string
   lastSyncedAt: string
   stats: unknown
+}
+
+type WorkflowRunRow = {
+  id: string
+  runtimeRunId: string | null
+  workflowKey: string
+  trigger: string
+  status: string
+  summary: string | null
+  error: string | null
+  createdAt: Date
+  startedAt: Date | null
+  finishedAt: Date | null
+  durationMs: number | null
+  skippedLock: boolean | null
 }
 
 function isMissingTableError(error: unknown) {
@@ -199,6 +271,91 @@ function statusToneForSyncErrors(
   return "success"
 }
 
+function statusToneForWorkflowStatus(
+  status: string,
+): "success" | "warning" | "danger" | "info" | "muted" {
+  if (status === "SUCCEEDED" || status === "succeeded") return "success"
+  if (status === "completed") return "success"
+  if (status === "FAILED" || status === "failed") return "danger"
+  if (status === "SKIPPED" || status === "skipped") return "warning"
+  if (status === "RUNNING" || status === "running") return "info"
+  if (status === "pending") return "muted"
+  return "muted"
+}
+
+function statusToneForMediaAsset(
+  status: MediaAssetStatus,
+): "success" | "warning" | "danger" | "info" | "muted" {
+  if (status === "READY") return "success"
+  if (status === "FAILED" || status === "MISSING") return "danger"
+  if (status === "PROCESSING" || status === "UPLOADING") return "info"
+  return "warning"
+}
+
+function statusToneForImageEnrichment(
+  status: MediaImageEnrichmentStatus,
+): "success" | "warning" | "danger" | "info" | "muted" {
+  if (status === "COMPLETE") return "success"
+  if (status === "FAILED") return "danger"
+  if (status === "PROCESSING") return "info"
+  if (status === "WAITING") return "warning"
+  return "muted"
+}
+
+function formatBytes(value: bigint | null) {
+  if (value == null) return "N/A"
+  const bytes = Number(value)
+  if (!Number.isFinite(bytes)) return value.toString()
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+}
+
+function mediaDimensions(row: {
+  width: number | null
+  height: number | null
+  durationMs: bigint | null
+}) {
+  if (row.width && row.height) return `${row.width}x${row.height}`
+  if (row.durationMs != null) return `${Number(row.durationMs / 1000n)}s`
+  return "N/A"
+}
+
+function workflowStatusBucket(status: string) {
+  const normalized = status.toLowerCase()
+  if (normalized === "running" || normalized === "queued") return "active"
+  if (normalized === "failed") return "failed"
+  if (
+    normalized === "succeeded" ||
+    normalized === "completed" ||
+    normalized === "skipped" ||
+    normalized === "cancelled"
+  ) {
+    return "completed"
+  }
+  return "active"
+}
+
+function countWorkflowStatuses(rows: WorkflowMetricRow[]) {
+  return rows.reduce(
+    (counts, row) => {
+      counts[workflowStatusBucket(row.status)] += 1
+      return counts
+    },
+    { active: 0, completed: 0, failed: 0 },
+  )
+}
+
+function phaseLabel(phase: string) {
+  return phase
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ")
+}
+
 function providerCount() {
   return [
     env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET,
@@ -257,6 +414,66 @@ async function getSyncRows() {
   return withTableFallback(
     () => getAllWatermarks(prisma),
     [] as SyncWatermarkRow[],
+  )
+}
+
+function mediaSupplementalLabel(
+  displayName: string,
+  originalFilename: string | null,
+  mimeType: string,
+) {
+  if (!originalFilename) {
+    return mimeType
+  }
+
+  const normalizedDisplayName = displayName.trim().toLowerCase()
+  const normalizedFilename = originalFilename.trim().toLowerCase()
+  const normalizedFilenameStem = normalizedFilename.replace(/\.[^.]+$/, "")
+
+  if (
+    normalizedDisplayName === normalizedFilename ||
+    normalizedDisplayName === normalizedFilenameStem
+  ) {
+    return ""
+  }
+
+  return originalFilename
+}
+
+function localizedMediaAssetLabel(row: {
+  id: string
+  originalFilename: string | null
+  locales?: Array<{ locale: string; displayName: string | null }>
+}) {
+  const englishName = row.locales
+    ?.find((locale) => locale.locale === "en")
+    ?.displayName?.trim()
+  return englishName || row.originalFilename || `Media asset ${row.id}`
+}
+
+async function getWorkflowRunRows(limit = 5) {
+  return withTableFallback(
+    () =>
+      prisma.$queryRaw<WorkflowRunRow[]>(Prisma.sql`
+        SELECT
+          wr.id,
+          wr.runtime_run_id AS "runtimeRunId",
+          wr.workflow_key AS "workflowKey",
+          wr.trigger::text AS trigger,
+          wr.status::text AS status,
+          wr.summary,
+          wr.error,
+          wr.created_at AS "createdAt",
+          wr.started_at AS "startedAt",
+          wr.finished_at AS "finishedAt",
+          wr.duration_ms AS "durationMs",
+          csr.skipped_lock AS "skippedLock"
+        FROM workflow_run wr
+        LEFT JOIN core_sync_run csr ON csr.workflow_run_id = wr.id
+        ORDER BY wr.created_at DESC
+        LIMIT ${limit}
+      `),
+    [] as WorkflowRunRow[],
   )
 }
 
@@ -457,7 +674,7 @@ export async function loadDashboardOpsData(): Promise<DashboardOpsData> {
         footer: "CORE_REFRESH",
       },
       {
-        label: "Phases With Errors",
+        label: "Sync Errors",
         value: failingPhases.length.toString(),
         footer: "ACTION_REQUIRED",
         accent: failingPhases.length > 0 ? "danger" : undefined,
@@ -498,7 +715,7 @@ export async function loadDashboardOpsData(): Promise<DashboardOpsData> {
         ? failingPhases.slice(0, 3).map((row) => {
             const stats = parseSyncStats(row.stats)
             return {
-              title: `Sync phase ${row.phase}`,
+              title: `${phaseLabel(row.phase)} sync`,
               meta: `last sync ${formatDateTime(new Date(row.lastSyncedAt))}`,
               detail: `${stats.errors} error(s), ${stats.updated} updated, ${stats.created} created`,
               statusLabel: "Review",
@@ -507,12 +724,12 @@ export async function loadDashboardOpsData(): Promise<DashboardOpsData> {
           })
         : [
             {
-              title: "Core sync posture",
+              title: "Core sync",
               meta: latestSync
                 ? `last sync ${formatDateTime(new Date(latestSync))}`
                 : "no sync watermark yet",
               detail:
-                "No phase is currently reporting sync errors in persisted status.",
+                "No synced data set is reporting errors in persisted status.",
               statusLabel: "Healthy",
               statusTone: "success",
             },
@@ -553,41 +770,62 @@ export async function loadDashboardOpsData(): Promise<DashboardOpsData> {
         detail: "Experience locales still missing semantic vectors.",
       },
       {
-        label: "Sync Phases",
+        label: "Synced Data Sets",
         value: syncRows.length.toString(),
-        detail: "Persisted phase watermarks visible to the operations layer.",
+        detail: "Core data sets with persisted sync state.",
       },
     ],
   }
 }
 
 export async function loadSystemStatusData(): Promise<SystemStatusData> {
-  const syncRows = await getSyncRows()
-  const lock = await withTableFallback(
-    () => prisma.syncLock.findUnique({ where: { key: "core-sync" } }),
-    null,
-  )
+  const [syncRows, lock, workflowRows] = await Promise.all([
+    getSyncRows(),
+    withTableFallback(
+      () => prisma.syncLock.findUnique({ where: { key: "core-sync" } }),
+      null,
+    ),
+    getWorkflowRunRows(3),
+  ])
 
   const matrix = syncRows.map((row) => {
     const stats = parseSyncStats(row.stats)
+    const changed = stats.created + stats.updated
     return {
-      entity: row.phase,
+      entity: phaseLabel(row.phase),
       source: `core.${row.phase}`,
       statusLabel: stats.errors > 0 ? "Review" : "Healthy",
       statusTone: statusToneForSyncErrors(stats.errors),
-      lag: formatLag(row.lastSyncedAt),
-      throughput: `${stats.created + stats.updated} rows`,
+      lastRun: `${changed} changed`,
     }
   })
 
-  const incidentRows =
+  const recentRunRows = workflowRows.map((row) => ({
+    title: `${row.workflowKey} ${row.status}`,
+    meta: `${row.trigger} / ${row.runtimeRunId ?? row.id}`,
+    detail:
+      row.summary ??
+      row.error ??
+      (row.finishedAt
+        ? `Finished ${formatDateTime(row.finishedAt)}`
+        : row.startedAt
+          ? `Started ${formatDateTime(row.startedAt)}`
+          : `Queued ${formatDateTime(row.createdAt)}`),
+    statusLabel: row.status,
+    statusTone: statusToneForWorkflowStatus(row.status),
+  }))
+  const runRowsNeedingAttention = recentRunRows.filter(
+    (row) => row.statusTone === "danger",
+  )
+
+  const syncIncidentRows =
     matrix.filter((row) => row.statusTone !== "success").length > 0
       ? matrix
           .filter((row) => row.statusTone !== "success")
           .slice(0, 4)
           .map((row) => ({
             title: `${row.entity} sync needs review`,
-            meta: `${row.source} / lag ${row.lag}`,
+            meta: row.source,
             detail: `Persisted sync status is ${row.statusLabel.toLowerCase()}.`,
             statusLabel: row.statusLabel,
             statusTone: row.statusTone,
@@ -596,17 +834,21 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
           {
             title: "No active sync incidents",
             meta: lock?.heldBy ? `lock held by ${lock.heldBy}` : "lock clear",
-            detail:
-              "Persisted sync state is healthy across the currently known phases.",
+            detail: "No synced data sets are reporting issues.",
             statusLabel: "Healthy",
             statusTone: "success" as const,
           },
         ]
 
+  const incidentRows = [...syncIncidentRows, ...runRowsNeedingAttention].slice(
+    0,
+    6,
+  )
+
   return {
     metrics: [
       {
-        label: "Tracked Phases",
+        label: "Synced Data Sets",
         value: syncRows.length.toString(),
         footer: "SYNC_STATE_ROWS",
       },
@@ -630,16 +872,20 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
           ? "danger"
           : undefined,
       },
+      {
+        label: "Latest Attempted Sync",
+        value: workflowRows[0]?.status ?? "NONE",
+        footer: "WORKFLOW_ATTEMPT",
+        accent:
+          workflowRows[0]?.status === "failed" ||
+          workflowRows[0]?.status === "FAILED"
+            ? "danger"
+            : undefined,
+      },
     ],
     matrix,
     incidents: incidentRows,
     telemetry: [
-      {
-        label: "Connected Sources",
-        value: syncRows.length.toString(),
-        detail:
-          "Number of phase watermarks currently persisted in the admin DB.",
-      },
       {
         label: "Lock Holder",
         value: lock?.heldBy ? "ACTIVE" : "IDLE",
@@ -648,31 +894,71 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
           : "No process currently holds the sync lock.",
       },
       {
-        label: "Phases With Errors",
+        label: "Data Sets With Errors",
         value: incidentRows
           .filter((row) => row.statusTone !== "success")
           .length.toString(),
-        detail: "Persisted phases reporting non-zero errors on the last run.",
+        detail: "Synced data sets reporting non-zero errors on the last run.",
       },
       {
-        label: "Latest Lag",
-        value: formatLag(syncRows[0]?.lastSyncedAt),
-        detail: "Age of the freshest persisted watermark.",
+        label: "Latest Attempted Sync",
+        value: workflowRows[0]?.status ?? "None",
+        detail: workflowRows[0]?.runtimeRunId
+          ? `Runtime run ${workflowRows[0].runtimeRunId}.`
+          : "No workflow ledger rows have been persisted yet.",
       },
     ],
   }
 }
 
 export async function loadWorkflowsData(): Promise<WorkflowsData> {
-  const [syncRows, lock] = await Promise.all([
-    getSyncRows(),
-    withTableFallback(
-      () => prisma.syncLock.findUnique({ where: { key: "core-sync" } }),
-      null,
-    ),
-  ])
+  const [syncRows, lock, workflowRows, runtimeRows, workerRows] =
+    await Promise.all([
+      getSyncRows(),
+      withTableFallback(
+        () => prisma.syncLock.findUnique({ where: { key: "core-sync" } }),
+        null,
+      ),
+      getWorkflowRunRows(),
+      loadWorkflowRuntimeRuns(10),
+      loadWorkflowWorkerStatusRows(),
+    ])
+  const ledgerByRuntimeRunId = new Map(
+    workflowRows
+      .filter((row) => row.runtimeRunId)
+      .map((row) => [row.runtimeRunId, row]),
+  )
+  const runtimeRunIds = new Set(runtimeRows.map((row) => row.runId))
+  const workflowRowsWithoutRuntime = workflowRows.filter(
+    (row) => !row.runtimeRunId || !runtimeRunIds.has(row.runtimeRunId),
+  )
 
   const queue: QueueItem[] = [
+    ...runtimeRows.map((row) => {
+      const ledger = ledgerByRuntimeRunId.get(row.runId)
+      return {
+        title: ledger?.workflowKey ?? row.displayName,
+        meta: `${row.runId} / ${ledger?.trigger ?? "runtime"}`,
+        detail:
+          ledger?.summary ??
+          row.error ??
+          `${row.stepCount} step(s), ${row.eventCount} event(s)`,
+        statusLabel: row.status,
+        statusTone: statusToneForWorkflowStatus(row.status),
+      }
+    }),
+    ...workflowRowsWithoutRuntime.map((row) => ({
+      title: row.workflowKey,
+      meta: `${row.trigger} / ${row.runtimeRunId ?? row.id}`,
+      detail:
+        row.summary ??
+        row.error ??
+        (row.startedAt
+          ? `Started ${formatDateTime(row.startedAt)}`
+          : `Queued ${formatDateTime(row.createdAt)}`),
+      statusLabel: row.status,
+      statusTone: statusToneForWorkflowStatus(row.status),
+    })),
     ...(lock?.heldBy
       ? [
           {
@@ -686,37 +972,34 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
           },
         ]
       : []),
-    ...syncRows.slice(0, 5).map((row) => {
-      const stats = parseSyncStats(row.stats)
-      return {
-        title: row.phase,
-        meta: `watermark ${formatDateTime(new Date(row.lastSyncedAt))}`,
-        detail: `${stats.created} created, ${stats.updated} updated, ${stats.softDeleted} soft-deleted`,
-        statusLabel: stats.errors > 0 ? "Review" : "Ready",
-        statusTone:
-          stats.errors > 0 ? ("warning" as const) : ("success" as const),
-      }
-    }),
   ]
+  const statusCounts = countWorkflowStatuses([
+    ...runtimeRows,
+    ...workflowRowsWithoutRuntime,
+  ])
+  const dataSetErrorCount = syncRows.filter(
+    (row) => parseSyncStats(row.stats).errors > 0,
+  ).length
+  const activeCount = statusCounts.active + (lock?.heldBy ? 1 : 0)
+  const failedCount = statusCounts.failed + dataSetErrorCount
 
   return {
     metrics: [
       {
-        label: "Held Locks",
-        value: lock?.heldBy ? "1" : "0",
-        footer: "RUNNING_NOW",
+        label: "Active",
+        value: activeCount.toString(),
+        footer: "RUNNING_OR_QUEUED",
       },
       {
-        label: "Tracked Phases",
-        value: syncRows.length.toString(),
-        footer: "PERSISTED_JOBS",
+        label: "Completed",
+        value: statusCounts.completed.toString(),
+        footer: "RECENT_RUNS",
       },
       {
-        label: "Failures",
-        value: syncRows
-          .filter((row) => parseSyncStats(row.stats).errors > 0)
-          .length.toString(),
+        label: "Failed",
+        value: failedCount.toString(),
         footer: "LAST_RUN_ERRORS",
+        accent: failedCount > 0 ? "danger" : undefined,
       },
     ],
     queue:
@@ -724,15 +1007,43 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
         ? queue
         : [
             {
-              title: "No persisted workflow activity yet",
-              meta: "awaiting first sync or embedding run",
+              title: "No workflow runs yet",
+              meta: "waiting for the first runtime event",
               detail:
-                "This route becomes richer as workflows persist lock and sync state.",
+                "Workflow runs will appear here once scheduled jobs, manual jobs, or background backfills start.",
               statusLabel: "Idle",
               statusTone: "muted" as const,
             },
           ],
+    workers:
+      workerRows.length > 0
+        ? workerRows.map((row) => ({
+            title: row.id,
+            meta: row.meta,
+            detail: row.detail,
+            statusLabel: row.statusLabel,
+            statusTone: row.statusTone,
+          }))
+        : [
+            {
+              title: "No workflow workers seen yet",
+              meta: "heartbeat missing",
+              detail:
+                "A worker row appears once an admin process starts Postgres World.",
+              statusLabel: "Offline",
+              statusTone: "muted" as const,
+            },
+          ],
     insights: [
+      {
+        label: "Postgres World",
+        value:
+          env.WORKFLOW_TARGET_WORLD === "@workflow/world-postgres"
+            ? "Enabled"
+            : "Local",
+        detail:
+          "Runtime run, step, and event rows are read from the selected Workflow World.",
+      },
       {
         label: "Workflow API Keys",
         value: env.WORKFLOW_API_KEYS ? "Configured" : "Missing",
@@ -742,13 +1053,6 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
         label: "HMAC Secret",
         value: env.WORKFLOW_HMAC_SECRET ? "Configured" : "Missing",
         detail: "Request signing for workflow endpoints.",
-      },
-      {
-        label: "Experience Embedding",
-        value:
-          env.OPENROUTER_API_KEY || env.OPENAI_API_KEY ? "Ready" : "Blocked",
-        detail:
-          "Embedding workflow can only execute when an embedding provider is configured.",
       },
     ],
     syncLockHeld: Boolean(lock?.heldBy),
@@ -908,75 +1212,184 @@ export async function loadLanguagesData(): Promise<LanguagesData> {
   }
 }
 
-export async function loadMediaData(): Promise<MediaData> {
-  const [images, downloads, subtitles, rows] = await Promise.all([
-    withTableFallback(() => prisma.videoImage.count(), 0),
-    withTableFallback(() => prisma.videoDubDownload.count(), 0),
-    withTableFallback(() => prisma.videoSubtitle.count(), 0),
-    withTableFallback(
-      () =>
-        prisma.videoImage.findMany({
-          select: {
-            id: true,
-            kind: true,
-            url: true,
-            blurhash: true,
-            updatedAt: true,
-            video: { select: { slug: true } },
-          },
-          orderBy: { updatedAt: "desc" },
-          take: 8,
-        }),
-      [] as Array<{
-        id: string
-        kind: string | null
-        url: string | null
-        blurhash: string | null
-        updatedAt: Date
-        video: { slug: string } | null
-      }>,
-    ),
-  ])
+export async function loadMediaData(principal: Principal): Promise<MediaData> {
+  const services = createServices(prisma)
+  const [total, images, videos, pdfs, processing, rows, folders, folderCounts] =
+    await Promise.all([
+      withTableFallback(() => prisma.mediaAsset.count(), 0),
+      withTableFallback(
+        () => prisma.mediaAsset.count({ where: { kind: "IMAGE" } }),
+        0,
+      ),
+      withTableFallback(
+        () => prisma.mediaAsset.count({ where: { kind: "VIDEO" } }),
+        0,
+      ),
+      withTableFallback(
+        () => prisma.mediaAsset.count({ where: { kind: "PDF" } }),
+        0,
+      ),
+      withTableFallback(
+        () =>
+          prisma.mediaAsset.count({
+            where: { status: { in: ["PENDING", "UPLOADING", "PROCESSING"] } },
+          }),
+        0,
+      ),
+      withTableFallback(
+        () =>
+          services.mediaAsset.list({
+            input: { limit: 120, offset: 0 },
+            user: principal,
+            query: {
+              include: {
+                locales: {
+                  where: { locale: "en" },
+                  select: { locale: true, displayName: true },
+                  take: 1,
+                },
+              },
+            },
+          }),
+        [] as MediaAssetWithEnglishLocale[],
+      ),
+      withTableFallback(
+        () =>
+          services.mediaFolder.list({
+            input: {},
+            user: principal,
+            query: {},
+          }),
+        [] as Awaited<ReturnType<typeof services.mediaFolder.list>>,
+      ),
+      withTableFallback(
+        () =>
+          prisma.mediaAsset.groupBy({
+            by: ["folderId"],
+            _count: { _all: true },
+          }),
+        [] as Array<{
+          folderId: string | null
+          _count: { _all: number }
+        }>,
+      ),
+    ])
+
+  const directFolderCount = new Map<string | null, number>()
+  for (const row of folderCounts) {
+    directFolderCount.set(row.folderId, row._count._all)
+  }
+
+  const foldersByParent = new Map<string | null, typeof folders>()
+  for (const folder of folders) {
+    const siblings = foldersByParent.get(folder.parentId) ?? []
+    siblings.push(folder)
+    foldersByParent.set(folder.parentId, siblings)
+  }
+
+  const flattenedFolders: MediaFolderRow[] = []
+
+  function visit(parentId: string | null, depth: number): number {
+    const siblings = foldersByParent.get(parentId) ?? []
+    let branchCount = 0
+
+    for (const folder of siblings) {
+      const ownCount = directFolderCount.get(folder.id) ?? 0
+      const childFolders = foldersByParent.get(folder.id) ?? []
+      flattenedFolders.push({
+        id: folder.id,
+        label: folder.name,
+        count: ownCount,
+        directAssetCount: ownCount,
+        childFolderCount: childFolders.length,
+        parentId: folder.parentId,
+        depth,
+      })
+      const childCount = visit(folder.id, depth + 1)
+      const totalCount = ownCount + childCount
+      branchCount += totalCount
+    }
+
+    return branchCount
+  }
+
+  visit(null, 0)
+  const unfiledCount = directFolderCount.get(null) ?? 0
 
   return {
     metrics: [
-      { label: "Images", value: images.toString(), footer: "VIDEO_IMAGES" },
       {
-        label: "Downloads",
-        value: downloads.toString(),
-        footer: "DUB_ARTIFACTS",
+        label: "Assets",
+        value: total.toString(),
+        footer: "MEDIA_ASSET_ROWS",
       },
       {
-        label: "Subtitles",
-        value: subtitles.toString(),
-        footer: "TEXT_TRACKS",
+        label: "Images",
+        value: images.toString(),
+        footer: "IMAGE_LIBRARY",
+      },
+      {
+        label: "Processing",
+        value: processing.toString(),
+        footer: "ACTIVE_UPLOADS",
       },
     ],
-    rows: rows.map((row) => ({
-      key: row.id,
-      title: row.kind ?? "video-image",
-      detail: row.video?.slug ?? row.url ?? row.id,
-      statusLabel: row.blurhash ? "Ready" : "Review",
-      statusTone: row.blurhash ? "success" : "warning",
-      meta: formatDateTime(row.updatedAt),
-    })),
+    folders: flattenedFolders,
+    rows: rows.map((row) => {
+      const displayName = localizedMediaAssetLabel(row)
+      const showEnrichmentStatus =
+        row.kind === "IMAGE" &&
+        row.imageEnrichmentStatus !== "COMPLETE" &&
+        row.imageEnrichmentStatus !== "SKIPPED"
+
+      return {
+        key: row.id,
+        title: displayName,
+        detail: mediaSupplementalLabel(
+          displayName,
+          row.originalFilename,
+          row.mimeType,
+        ),
+        statusLabel: showEnrichmentStatus
+          ? row.imageEnrichmentStatus
+          : row.status,
+        statusTone: showEnrichmentStatus
+          ? statusToneForImageEnrichment(row.imageEnrichmentStatus)
+          : statusToneForMediaAsset(row.status),
+        meta: formatDateTime(row.updatedAt),
+        kind: row.kind,
+        folderId: row.folderId ?? null,
+        backend: row.backend,
+        byteSize: formatBytes(row.byteSize),
+        byteSizeValue: row.byteSize,
+        dimensions: mediaDimensions(row),
+        previewUrl: mediaAssetPreviewUrl(row),
+        downloadUrl: mediaAssetDownloadUrl(row),
+        blurDataUrl: row.blurDataUrl,
+        imageEnrichmentStatus: row.imageEnrichmentStatus,
+        imageEnrichmentErrorMessage: row.imageEnrichmentErrorMessage,
+        updatedAtValue: row.updatedAt,
+      }
+    }),
     insights: [
       {
-        label: "Image Catalog",
+        label: "Image Assets",
         value: images.toString(),
-        detail: "Persisted image rows associated with synced videos.",
+        detail: "Reusable image files registered in the admin media library.",
       },
       {
-        label: "Download Artifacts",
-        value: downloads.toString(),
-        detail: "Quality-tier downloads currently attached to video dubs.",
+        label: "Video Assets",
+        value: videos.toString(),
+        detail: "Video placeholders ready for the future Mux storage backend.",
       },
       {
-        label: "Subtitle Tracks",
-        value: subtitles.toString(),
-        detail: "Timed-text resources available across video editions.",
+        label: "PDF Assets",
+        value: pdfs.toString(),
+        detail: "Document uploads tracked by the generic asset model.",
       },
     ],
+    totalCount: total,
+    unfiledCount,
   }
 }
 

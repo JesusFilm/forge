@@ -261,6 +261,13 @@ vi.mocked(indexEditionScenes).mockRejectedValueOnce(
 
 ## Related
 
+- `docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md`
+  — operationalizes the no-`Promise.all` rule documented here. The 04/20
+  doc establishes the WHY (don't let one item kill the batch); the 05/05
+  doc specifies the HOW (concrete `pLimit + Promise.allSettled` shape,
+  env-var wiring, the `_internals`-spy testing pattern that genuinely
+  distinguishes `allSettled` from `Promise.all`). Read together when
+  adding bounded parallelism to any new per-target workflow.
 - `docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md` —
   R1 of admin migration playbook; first concrete application of these
   patterns in `apps/admin`.
@@ -272,3 +279,31 @@ vi.mocked(indexEditionScenes).mockRejectedValueOnce(
   — parent migration playbook (R1–R9) that will exercise these patterns
   repeatedly as additional work streams (R2 transcript embeddings,
   R4 hybrid search, R6 personalization ingest) follow the same shape.
+- `docs/solutions/best-practices/per-parent-child-memoization-loadedartifact-pattern-20260505.md`
+  — Stage 2 (feat-116) extends the typed-error rule to a new failure
+  shape: a group-level artifact-load failure cascades to per-child
+  outcomes (one outcome per child of the failed group), each branched
+  on `error instanceof ManagerArtifactError && error.code === "artifact_missing"`
+  for the skipped/failed split. Same rule, new application shape.
+- `docs/solutions/best-practices/batched-provider-input-position-stable-contract-20260505.md`
+  — Stage 2's `EmbeddingsBatchError` is the canonical application of
+  this doc's "literal-union `code`" rule. 7-code union, all branches
+  reachable in tests.
+- `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`
+  — META doc that names the "tests must throw the real error class"
+  rule and tracks it across instances (this doc, the AWS S3
+  classification pattern, the pgvector bulk-insert lesson, the
+  verify-infra-writes pattern). Read first when a typed-discriminator
+  branch passes via the regex backstop without exercising the typed
+  path.
+- `docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md`
+  — Storage-seam application of this doc's typed-error rule:
+  `error.name === "NoSuchKey"` first (typed AWS SDK v3 surface),
+  legacy `error.Code` second, regex backstop third. Extends the
+  in-house typed-error rule to AWS SDK error shapes.
+- `docs/solutions/best-practices/workflow-report-operator-actionable-projection-pattern-20260506.md`
+  — Sibling pattern: once the typed-error rule cleanly classifies
+  outcomes into the `succeeded/skipped/failed` triple, a deduped
+  projection of the operator-actionable subset (e.g., `missingArtifacts`)
+  is the natural next surface. Applies whenever the cascade emits L
+  duplicate-meaning outcomes per group.

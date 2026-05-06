@@ -91,7 +91,7 @@ export const adminMessages = {
         },
         systemStatus: {
           label: "Core Sync",
-          description: "Sync health, lag, and pipeline posture.",
+          description: "Sync health and freshness.",
         },
         workflows: {
           label: "Workflows",
@@ -425,9 +425,8 @@ export const adminMessages = {
       systemStatus: {
         eyebrow: "System / Core Sync",
         title: "Core Sync Dashboard",
-        description:
-          "Monitor drift, ingest cadence, and the operational health of system-to-system content refresh.",
-        action: "Trigger Delta Sync",
+        description: "Core sync health and freshness.",
+        action: "Start Sync",
         metrics: [
           { label: "Live Connectors", value: "4", footer: "ACTIVE_NOW" },
           { label: "Last Success", value: "14:21", footer: "UTC" },
@@ -440,9 +439,9 @@ export const adminMessages = {
           },
         ],
         matrix: {
-          title: "Sync Matrix",
+          title: "Sync State",
           meta: "CORE_ENTITY_DRIFT_VIEW",
-          columns: ["Entity", "Source", "State", "Lag", "Throughput"],
+          columns: ["Data set", "Status", "Last run"],
           rows: [
             {
               entity: "Videos",
@@ -450,7 +449,7 @@ export const adminMessages = {
               statusLabel: "Healthy",
               statusTone: "success",
               lag: "2h 14m",
-              throughput: "218 rows",
+              throughput: "218 changed",
             },
             {
               entity: "Languages",
@@ -458,7 +457,7 @@ export const adminMessages = {
               statusLabel: "Healthy",
               statusTone: "success",
               lag: "38m",
-              throughput: "4 rows",
+              throughput: "4 changed",
             },
             {
               entity: "Countries",
@@ -466,7 +465,7 @@ export const adminMessages = {
               statusLabel: "Review",
               statusTone: "warning",
               lag: "5h 03m",
-              throughput: "2 rows",
+              throughput: "2 changed",
             },
             {
               entity: "Keywords",
@@ -474,7 +473,7 @@ export const adminMessages = {
               statusLabel: "Retrying",
               statusTone: "info",
               lag: "1h 07m",
-              throughput: "41 rows",
+              throughput: "41 changed",
             },
           ],
         },
@@ -554,9 +553,9 @@ export const adminMessages = {
         description:
           "Track durable job execution, retries, and queued operator tasks.",
         cards: [
-          { label: "Active Runs", value: "18", footer: "RUNNING_NOW" },
-          { label: "Queued", value: "42", footer: "READY_TO_START" },
-          { label: "Failures", value: "3", footer: "LAST_24_HOURS" },
+          { label: "Active", value: "18", footer: "RUNNING_OR_QUEUED" },
+          { label: "Completed", value: "124", footer: "RECENT_RUNS" },
+          { label: "Failed", value: "3", footer: "LAST_RUN_ERRORS" },
         ],
         queueTitle: "Workflow Queue",
         queueMeta: "RUNS / RETRIES / FAILURES",

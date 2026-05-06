@@ -6,6 +6,20 @@ import { z } from "zod"
 // `undefined` before validation.
 const emptyToUndefined = (v: string | undefined) => (v === "" ? undefined : v)
 
+/**
+ * Shared schema fragment for env vars representing a positive-int
+ * concurrency cap (e.g. `SCENE_EMBEDDING_CONCURRENCY`,
+ * `TRANSCRIPT_EMBEDDING_CONCURRENCY`). Exported so test code and the
+ * `run-embeds` CLI can parse via the same shape rather than
+ * hand-rolling a parallel parser. Contract: undefined → undefined,
+ * positive int (coerced from string) → number, anything else throws.
+ */
+export const concurrencyEnvSchema = z.coerce
+  .number()
+  .int()
+  .positive()
+  .optional()
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -23,6 +37,10 @@ export const env = createEnv({
     // production so all apps on *.jesusfilm.org share the session cookie.
     // Omit in local dev to default to host-only (localhost).
     AUTH_COOKIE_DOMAIN: z.string().min(1).optional(),
+    // Optional Better Auth cookie prefix. Use a unique value for local
+    // worktree previews sharing localhost so branches do not overwrite each
+    // other's session cookies.
+    AUTH_COOKIE_PREFIX: z.string().min(1).optional(),
     // Comma-separated origins allowed to call the auth API cross-origin.
     // e.g. "https://web.jesusfilm.org,https://manager.jesusfilm.org"
     AUTH_TRUSTED_ORIGINS: z.string().min(1).optional(),
@@ -49,11 +67,38 @@ export const env = createEnv({
     CORE_API_TOKEN: z.string().min(1).optional(),
     CORE_API_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
     CORE_API_RETRIES: z.coerce.number().int().min(0).optional(),
+    CORE_SYNC_CRON_SECRET: z.string().min(1).optional(),
     OPENROUTER_API_KEY: z.string().min(1).optional(),
+    OPENROUTER_IMAGE_TEXT_MODEL: z.string().min(1).optional(),
+    OPENROUTER_IMAGE_TEXT_MODELS: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BASE_URL: z.string().url().optional(),
     WORKFLOW_API_KEYS: z.string().min(1).optional(),
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
+    WORKFLOW_TARGET_WORLD: z
+      .enum(["local", "@workflow/world-postgres"])
+      .optional(),
+    WORKFLOW_POSTGRES_URL: z.string().url().optional(),
+    WORKFLOW_POSTGRES_JOB_PREFIX: z.string().min(1).optional(),
+    WORKFLOW_POSTGRES_WORKER_CONCURRENCY: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
+    WORKFLOW_POSTGRES_MAX_POOL_SIZE: z.coerce
+      .number()
+      .int()
+      .positive()
+      .optional(),
+    // Per-target concurrency caps for the R1 / R2 embed-backfill
+    // workflows (sceneEmbeddingBackfill / transcriptEmbeddingBackfill).
+    // Each workflow uses `p-limit(N) + Promise.allSettled` to fan out
+    // the per-target loop; one rejection never aborts siblings (cf.
+    // docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md).
+    // Default at the call site is 10. Tune up locally (20+); tune down
+    // in prod (start at 5, ramp after observation).
+    SCENE_EMBEDDING_CONCURRENCY: concurrencyEnvSchema,
+    TRANSCRIPT_EMBEDDING_CONCURRENCY: concurrencyEnvSchema,
     RAILWAY_S3_ENDPOINT: z.string().url().optional(),
     RAILWAY_S3_REGION: z.string().min(1).optional(),
     RAILWAY_S3_BUCKET: z.string().min(1).optional(),
@@ -77,6 +122,7 @@ export const env = createEnv({
     // configuration error if a runtime caller invokes it without this
     // env set. Recommend a dedicated read-only PG role on cms.
     CMS_DATABASE_URL: z.string().url().optional(),
+    NEXT_RUNTIME: z.enum(["nodejs", "edge"]).optional(),
     // Algolia (watch-project parity demo column on /watch/demo-keyword-search).
     // Server-side only — the demo route's `searchAlgolia` server action
     // (`apps/admin/src/app/watch/demo-keyword-search/algolia-action.ts`)
@@ -102,6 +148,7 @@ export const env = createEnv({
     BETTER_AUTH_SECRET: emptyToUndefined(process.env.BETTER_AUTH_SECRET),
     BETTER_AUTH_URL: emptyToUndefined(process.env.BETTER_AUTH_URL),
     AUTH_COOKIE_DOMAIN: emptyToUndefined(process.env.AUTH_COOKIE_DOMAIN),
+    AUTH_COOKIE_PREFIX: emptyToUndefined(process.env.AUTH_COOKIE_PREFIX),
     AUTH_TRUSTED_ORIGINS: emptyToUndefined(process.env.AUTH_TRUSTED_ORIGINS),
     FACEBOOK_CLIENT_ID: emptyToUndefined(process.env.FACEBOOK_CLIENT_ID),
     FACEBOOK_CLIENT_SECRET: emptyToUndefined(
@@ -132,11 +179,35 @@ export const env = createEnv({
     CORE_API_TOKEN: emptyToUndefined(process.env.CORE_API_TOKEN),
     CORE_API_TIMEOUT_MS: emptyToUndefined(process.env.CORE_API_TIMEOUT_MS),
     CORE_API_RETRIES: emptyToUndefined(process.env.CORE_API_RETRIES),
+    CORE_SYNC_CRON_SECRET: emptyToUndefined(process.env.CORE_SYNC_CRON_SECRET),
     OPENROUTER_API_KEY: emptyToUndefined(process.env.OPENROUTER_API_KEY),
+    OPENROUTER_IMAGE_TEXT_MODEL: emptyToUndefined(
+      process.env.OPENROUTER_IMAGE_TEXT_MODEL,
+    ),
+    OPENROUTER_IMAGE_TEXT_MODELS: emptyToUndefined(
+      process.env.OPENROUTER_IMAGE_TEXT_MODELS,
+    ),
     OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
     OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
     WORKFLOW_API_KEYS: emptyToUndefined(process.env.WORKFLOW_API_KEYS),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
+    WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
+    WORKFLOW_POSTGRES_URL: emptyToUndefined(process.env.WORKFLOW_POSTGRES_URL),
+    WORKFLOW_POSTGRES_JOB_PREFIX: emptyToUndefined(
+      process.env.WORKFLOW_POSTGRES_JOB_PREFIX,
+    ),
+    WORKFLOW_POSTGRES_WORKER_CONCURRENCY: emptyToUndefined(
+      process.env.WORKFLOW_POSTGRES_WORKER_CONCURRENCY,
+    ),
+    WORKFLOW_POSTGRES_MAX_POOL_SIZE: emptyToUndefined(
+      process.env.WORKFLOW_POSTGRES_MAX_POOL_SIZE,
+    ),
+    SCENE_EMBEDDING_CONCURRENCY: emptyToUndefined(
+      process.env.SCENE_EMBEDDING_CONCURRENCY,
+    ),
+    TRANSCRIPT_EMBEDDING_CONCURRENCY: emptyToUndefined(
+      process.env.TRANSCRIPT_EMBEDDING_CONCURRENCY,
+    ),
     RAILWAY_S3_ENDPOINT: emptyToUndefined(process.env.RAILWAY_S3_ENDPOINT),
     RAILWAY_S3_REGION: emptyToUndefined(process.env.RAILWAY_S3_REGION),
     RAILWAY_S3_BUCKET: emptyToUndefined(process.env.RAILWAY_S3_BUCKET),
@@ -162,6 +233,7 @@ export const env = createEnv({
       process.env.MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY,
     ),
     CMS_DATABASE_URL: emptyToUndefined(process.env.CMS_DATABASE_URL),
+    NEXT_RUNTIME: emptyToUndefined(process.env.NEXT_RUNTIME),
     ALGOLIA_APP_ID: emptyToUndefined(process.env.ALGOLIA_APP_ID),
     ALGOLIA_SEARCH_API_KEY: emptyToUndefined(
       process.env.ALGOLIA_SEARCH_API_KEY,

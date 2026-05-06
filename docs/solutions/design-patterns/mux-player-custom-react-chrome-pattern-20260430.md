@@ -1,6 +1,7 @@
 ---
 title: Mux Player + custom React-rendered chrome (HeroPlayerControls pattern)
 date: 2026-04-30
+last_updated: 2026-05-04
 category: docs/solutions/design-patterns
 module: apps/web, packages/video-player
 problem_type: design_pattern
@@ -20,12 +21,18 @@ tags:
   - keyboard-accessibility
   - lift-state
   - ios-fullscreen
+  - sticky-positioning
+  - react-portal
+  - scroll-over-video
+  - resize-observer
+  - svh-units
 applies_when:
   - You need to customize Mux Player chrome beyond what its CSS Custom Properties expose
   - You need a layout that media-chrome's slot system cannot express (e.g., play+timeline inline at 60% width with auto-hide)
   - You need first-party React state for the chrome (auto-hide timers, hover-pauses-timer logic, focus-within keyboard reveal)
   - You need agent-native test IDs / data attributes that you can't add to Mux's shadow DOM
   - You need iOS Safari fullscreen on the wrapper element (requires webkit-prefixed fallbacks)
+  - You want a sticky-hero scroll-over layout where body content slides over the pinned video with a frosted-glass effect
   - You explicitly accept the trade — losing Mux's accessibility, captions, AirPlay, and quality-selector affordances and rebuilding only what you ship
 ---
 
@@ -151,7 +158,255 @@ Stack the chrome layers explicitly. Inside the player wrapper:
 | Backdrop gradient (`<div aria-hidden>`)              | (no z)  | none           | Visual readability backdrop                       |
 | Chrome (`<div data-visible={...}>`)                  | `z-10`  | auto (always)  | Play / timeline / time / volume / fullscreen      |
 
-Do **not** flip the chrome to `pointer-events-none` when auto-hiding. Doing so blocks agent `.click()` and keyboard interactions even though the user can still see roughly where the controls were. Keep `pointer-events: auto` always; toggle only `opacity` (and let the wrapper-level reveal listeners bring it back to opacity-100 on the next interaction).
+Do **not** flip the chrome to `pointer-events-none` when auto-hiding. Doing so blocks agent `.click()` and keyboard interactions even though the user can still see roughly where the controls were. Keep `pointer-events: auto` always; toggle only `opacity` (and let the reveal listeners — see section 5 below for the dual-target binding rule once chrome is portaled — bring it back to opacity-100 on the next interaction).
+
+### 5. Sticky-hero scroll-over-video layout (added 2026-05-01)
+
+When the watch page wants the video to **pin** at the viewport while body content slides over it with a frosted-glass effect, four pieces are load-bearing. Skip any one and the layout breaks subtly.
+
+#### 5a. Sticky positioning with measured height — `top: min(0px, calc(100svh - heroHeight))`
+
+The hero `<MuxPlayer>` is taller than the viewport on desktop (1071px tall in a 783px viewport at 1920w). Naive `position: sticky; top: 0` pins the **top** edge immediately and the hero never scrolls — users never reach the bottom of the player. The desired contract is _let the hero scroll naturally until its bottom edge reaches the viewport bottom, then pin._ That requires a negative `top` value derived from the live measured height.
+
+```tsx
+// apps/web/src/components/watch/HeroPlayer.tsx
+const [heroHeight, setHeroHeight] = useState<number | null>(null)
+
+// Updated 2026-05-04: this is `useLayoutEffect`, not `useEffect`. Once
+// `aspect-video` was added to the wrapper className (see below), the
+// wrapper has a real layout-derived height before the first paint.
+// `useEffect` runs after paint, so for one frame `heroHeight` would
+// still be null and `top` would render as `0px` instead of the
+// correct calc — visible on first load. `useLayoutEffect` runs after
+// DOM mutation but before paint, eliminating the flash.
+useLayoutEffect(() => {
+  const el = wrapperRef.current
+  if (!el) return
+  const apply = (h: number) => {
+    if (h > 0) setHeroHeight(h)
+  }
+  apply(el.getBoundingClientRect().height)
+  if (typeof ResizeObserver === "undefined") return
+  const observer = new ResizeObserver((entries) => {
+    const entry = entries[0]
+    if (entry) apply(entry.contentRect.height)
+  })
+  observer.observe(el)
+  return () => observer.disconnect()
+}, [])
+
+// In JSX:
+<div
+  ref={wrapperRef}
+  // Updated 2026-05-04: `aspect-video` locks the wrapper to 16:9 of
+  // its width from the moment of mount. Without it, the wrapper has
+  // no intrinsic height until Mux Player resolves the video's
+  // dimensions — and Mux's element falls back to its built-in
+  // ~200px min-height during the buffer phase, collapsing the hero
+  // and stacking the title/Play-with-Sound pill on top of the
+  // floating search bar. With `aspect-video`, the wrapper is
+  // deterministic from the first paint and matches the eventual
+  // loaded size on a 16:9 asset.
+  className="sticky aspect-video w-full overflow-hidden bg-black"
+  style={{
+    top:
+      heroHeight != null
+        ? `min(0px, calc(100svh - ${heroHeight}px))`
+        : "0px",
+  }}
+>
+```
+
+The formula `min(0px, calc(100svh - heroHeight))` has two cases:
+
+- When `heroHeight > 100svh`: the result is negative. The hero scrolls naturally until its bottom hits the viewport bottom, then pins.
+- When `heroHeight <= 100svh`: the result is `0px` or positive; `min` clamps it to `0px`. The hero pins flush to the top from the start. (Equivalent to ordinary sticky-top-zero on small viewports.)
+
+**Use `100svh`, not `100vh`.** On iOS Safari, `100vh` resolves to the _large_ viewport (URL bar hidden) regardless of whether the URL bar is currently showing. While the URL bar is up, `getBoundingClientRect` reflects the actual constrained height — so `100vh - heroHeight` may go slightly positive, `min(0px, +)` clamps to zero, and the hero pins immediately at the top. `100svh` (small viewport) is always ≤ the visible height, keeping the formula negative when the hero is taller than the current visible area.
+
+The `if (h > 0)` guard prevents a brief flash where `getBoundingClientRect` returns zero before layout. The `typeof ResizeObserver === "undefined"` guard keeps the effect compatible with jsdom (the test environment ships without RO; the initial getBoundingClientRect read is enough for `top: 0px` fallback rendering).
+
+#### 5b. Zero-height anchor in normal flow
+
+Render a `<div className="relative z-10 h-0 w-full">` immediately after the sticky wrapper. The anchor is in normal flow (not sticky), so it scrolls with the document body. Anything absolutely-positioned to its `bottom-0` edge therefore travels upward as the user scrolls — exactly tracking the top of the body section.
+
+```tsx
+const [overlayAnchor, setOverlayAnchor] = useState<HTMLDivElement | null>(null)
+
+return (
+  <>
+    <div ref={wrapperRef} className="sticky ...">
+      {/* MuxPlayer + click surface + gradient */}
+    </div>
+    <div
+      ref={setOverlayAnchor}
+      data-testid="hero-player-overlay-anchor"
+      className="relative z-10 h-0 w-full"
+    >
+      {!chromeRevealed ? (
+        <div
+          data-testid="hero-player-overlay"
+          className="absolute right-6 bottom-0 left-10 pb-6 ..."
+        >
+          {/* SHORTFILM label, title, Play with Sound pill */}
+        </div>
+      ) : null}
+    </div>
+  </>
+)
+```
+
+`h-0` is critical. The anchor takes up no vertical space in layout — it is purely a positioning origin. Two pieces attach to its `bottom-0`:
+
+- The pre-reveal title/label/Play-with-Sound overlay renders as a direct child while `chromeRevealed === false`.
+- The post-reveal chrome control bar from `<HeroPlayerControls>` is portaled into the same anchor while `chromeRevealed === true` (see 5c).
+
+Both ride the body section's top edge during scroll instead of being trapped at the sticky hero's pinned bottom (where they would otherwise be covered by the sliding body).
+
+#### 5c. Portal the chrome bar into the anchor
+
+Inside `HeroPlayerControls`, the chrome bar JSX is portaled into the anchor passed in as a prop. The click-surface and bottom gradient stay inside the sticky wrapper (they need to cover/darken the player); only the chrome bar moves out.
+
+```tsx
+// apps/web/src/components/watch/HeroPlayerControls.tsx
+import { createPortal } from "react-dom"
+
+const chromeBar = (
+  <div
+    data-testid="hero-player-custom-chrome"
+    className="absolute bottom-0 left-1/2 z-10 -translate-x-1/2 ..."
+  >
+    {/* Play / Timeline / Time / Mute / Fullscreen */}
+  </div>
+)
+
+return (
+  <>
+    <button
+      data-testid="hero-player-click-surface" /* inside wrapper, click-anywhere-to-pause */
+    />
+    <div /* gradient at bottom of wrapper */ />
+    {overlayAnchor != null ? createPortal(chromeBar, overlayAnchor) : null}
+  </>
+)
+```
+
+The portal severs the React component tree from the DOM tree: `<HeroPlayerControls>` lives under `<HeroPlayer>` in React (receiving `player`, `playerRef`, `wrapperRef`, `overlayAnchor` props naturally), but its chrome-bar DOM is injected into the anchor that lives in normal flow. This is the only way to keep a single component reading wrapper/player refs while rendering chrome DOM at a different scroll-tracking position.
+
+The parent always renders the anchor div before this component mounts (gated on `chromeRevealed`), so `overlayAnchor` is non-null by the time `HeroPlayerControls` renders. There is no need for an inline-render fallback — at first that path looked defensive, but it is unreachable in practice and adds confusion.
+
+#### 5d. Reveal listeners on BOTH the wrapper AND the anchor
+
+This is the gotcha that wasted real time. `HeroPlayerControls` attaches reveal listeners (`pointermove`, `touchmove`, `touchstart`, `click`, `keydown`) to a target element so `showControls()` re-runs on user interaction. The naive choice is `wrapperRef.current` — and that worked when the chrome bar was a child of the wrapper. **Once the chrome bar is portaled into the anchor**, the chrome bar lives in a DOM subtree that is a _sibling_ of the wrapper, not a descendant. Native event listeners only fire on events bubbling through their own DOM subtree. Wrapper-only binding silently misses every event on the portaled chrome bar — the auto-hide cycle becomes one-way: 3-second timer hides controls, hovering or keyboard-focusing the bar never re-reveals them.
+
+Bind to **both** targets:
+
+```tsx
+useEffect(() => {
+  const reveal = () => showControls()
+  const targets = [wrapperRef.current, overlayAnchor].filter(
+    (t): t is HTMLDivElement => t != null,
+  )
+  for (const target of targets) {
+    target.addEventListener("pointermove", reveal)
+    target.addEventListener("touchmove", reveal)
+    target.addEventListener("touchstart", reveal)
+    target.addEventListener("click", reveal)
+    target.addEventListener("keydown", reveal)
+  }
+  return () => {
+    for (const target of targets) {
+      target.removeEventListener("pointermove", reveal)
+      target.removeEventListener("touchmove", reveal)
+      target.removeEventListener("touchstart", reveal)
+      target.removeEventListener("click", reveal)
+      target.removeEventListener("keydown", reveal)
+    }
+  }
+}, [wrapperRef, overlayAnchor, showControls])
+```
+
+Pointermove on the chrome bar bubbles through chrome → anchor → reveal handler. Pointermove on the video itself bubbles through MuxPlayer → wrapper → reveal handler. Both paths covered.
+
+**Verify by dispatching `new PointerEvent("pointermove", { bubbles: true })` on the chrome bar** after auto-hide and confirming `data-visible` flips back to `"true"`. This is the single behavior worth a Playwright assertion.
+
+#### 5e. Frosted-glass body slides over the pinned hero
+
+The body section sibling-rendered after the hero already had `bg-stone-800` overridden with `rgb(var(--color-section-default) / 0.65)` plus `backdrop-blur-2xl`. With sticky hero behind it in paint order and `backdrop-filter: blur(40px)` on the body, the browser samples the playing video texture through the translucent body — the dark frosted-glass effect "for free." No JavaScript or canvas compositing is required.
+
+**Stacking-context caveat.** The pattern depends on the sticky hero and the body section sharing a stacking context rooted at or near the page root. Any ancestor with `transform`, `filter`, `backdrop-filter`, `will-change`, `opacity < 1`, or `isolation: isolate` between page root and the hero will silently create a new stacking context and can flip paint order — breaking the glass effect or trapping the chrome bar under the body. Cross-reference [`docs/solutions/best-practices/nextjs-search-overlay-ui-patterns-20260415.md`](../best-practices/nextjs-search-overlay-ui-patterns-20260415.md) §2 for the full list of stacking-context-creating CSS properties; portaling out of trapping subtrees is the same escape hatch used by the search overlay.
+
+**Tab-order caveat.** The portaled chrome bar appears far below the sticky hero in DOM source order. Keyboard users tabbing through the page will reach the chrome at a point in the tab sequence that does not match its visual position. Consider `tabindex` management or a focus trap when the chrome is revealed if tab-order fidelity is important.
+
+**Backdrop-blur compositor cost.** `backdrop-blur-2xl` (40px) repaints the blur over a moving Mux video texture every scroll frame. Flagship desktop and recent phones hold 60fps; midrange Android (~2–3 yr old Snapdragon) often drops to 30–45fps during scroll. Profile on a Pixel 6a / Galaxy A-series device before broad rollout. If frame drops are unacceptable, lower the blur radius (`backdrop-blur-xl` / `-lg`) on small viewports or fall back to a solid translucent color when `prefers-reduced-motion` is set. (session history — mobile counterpart pattern quantized scroll updates for the same reason; see Related)
+
+### 5f. Loading spinner with `onCanPlay` + `onError` recovery + render-phase reset (added 2026-05-04)
+
+Once `aspect-video` locks the wrapper at 16:9 (5a), the wrapper has a deterministic full-size box from mount — but Mux Player itself paints a black rectangle while the manifest fetches. On a search-result navigation that hits a cold Mux asset, that black rectangle can sit visible for 1-3 seconds before the muted-loop preview begins. A spinner overlay during that window gives the user feedback that the player is loading rather than broken.
+
+The state machine has three load-bearing pieces. Skip any one and the spinner either flashes incorrectly, sticks forever, or fails to re-show on language switch.
+
+```tsx
+const [videoReady, setVideoReady] = useState(false)
+const handleCanPlay = useCallback(() => {
+  setVideoReady(true)
+}, [])
+
+const handlePlayerError = useCallback((event: CustomEvent) => {
+  const code = (event?.detail as { code?: string } | undefined)?.code
+  if (code === "autoplay-blocked") {
+    setAutoplayBlocked(true)
+  }
+  // Any non-autoplay-blocked error (network, decode, manifest 404…)
+  // means we will never fire onCanPlay, so videoReady would otherwise
+  // stay false forever and the spinner would sit on a black box.
+  // Reveal the player element so Mux Player can render its own
+  // error UI.
+  setVideoReady(true)
+}, [])
+
+// Reset the buffered/ready spinner when the playable identity changes
+// (variant switch via the language picker, or new playback id).
+// Render-phase setState — NOT useEffect — to avoid the React Compiler
+// "cascading renders" lint rule. The new state is queued before commit.
+const [prevVariantKey, setPrevVariantKey] = useState(variant.documentId)
+if (prevVariantKey !== variant.documentId) {
+  setPrevVariantKey(variant.documentId)
+  setVideoReady(false)
+}
+
+// In JSX, layered inside the sticky wrapper from 5a:
+;<MuxPlayer
+  ref={setPlayerRef}
+  playbackId={playbackId}
+  onCanPlay={handleCanPlay}
+  onError={handlePlayerError}
+  /* ...rest of props... */
+/>
+{
+  !videoReady ? (
+    <div
+      data-testid="hero-player-loading"
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black"
+    >
+      <SpinnerIcon className="h-12 w-12 text-white/80" />
+    </div>
+  ) : null
+}
+```
+
+The three load-bearing pieces:
+
+1. **`onError` must call `setVideoReady(true)` for non-autoplay-blocked codes.** Without this, any hard Mux failure (network outage, 404 manifest, decode error, expired playback token) leaves `videoReady=false` permanently — the spinner overlays a black box forever with no recovery path. The spinner is only correct when there is a possibility of `onCanPlay` firing; if that possibility is gone, the spinner has to clear so Mux Player's own error UI becomes visible.
+2. **State reset on prop change must be render-phase, not effect-phase.** The naive pattern is `useEffect(() => setVideoReady(false), [variant.documentId, playbackId])`. The React Compiler ESLint rule (`react-hooks-rule-react-compiler`) flags this as "Calling setState synchronously within an effect can trigger cascading renders" and fails CI at error level. The canonical pattern is "adjust state during render": track the previous variant key in state and reset inline when it changes. The new state is queued before commit, so no cascade.
+3. **`pointer-events-none` on the spinner overlay.** The unmute pill below the wrapper has to remain clickable through the spinner; without `pointer-events-none`, the spinner intercepts the click and the pill never fires.
+
+`onCanPlay` is the right event for "first frame ready to render," not `loadedmetadata` (fires too early — duration is known but no frame is buffered) or `playing` (fires too late — already played past the first frame). The muted-loop preview's `autoPlay="muted"` will trigger `canplay` once enough buffer is available; on hard failures, `error` fires instead and the recovery branch above clears the spinner.
+
+**Stale-spinner-on-language-switch trap.** When the user opens the language picker and switches variants, `<HeroPlayer>` typically does not unmount — only `variant` changes. Without the render-phase reset above, `videoReady=true` from the previous variant suppresses the spinner during the new variant's buffer phase, and the user sees a frozen frame from the previous language while the new manifest loads. The render-phase reset on `variant.documentId` fixes this without remounting the component (which would lose `chromeRevealed`, autoplay state, current playhead, etc.).
+
+**Test coverage requires invoking captured callbacks.** The existing `muxPlayerMock` in `HeroPlayer.test.tsx` captures `onCanPlay`, `onError`, etc. as props but never invokes them. To test the spinner state machine, upgrade the mock to expose helpers like `fireCanPlay()` / `fireError({ code })` and assert the spinner's presence/absence around them. PR #878 includes the mock upgrade and the corresponding lifecycle tests.
 
 ## Why This Matters
 
@@ -309,7 +564,9 @@ const handleVolumeLostPointerCapture = useCallback(() => {
 
 ### Pre-reveal pill iOS-safe sequence (preserve from prior session)
 
-Do not perturb this sequence. Both the unmute branch and the tap-to-unmute (autoplay-blocked) branch must call `play()` synchronously inside the click handler with no `await` separating them. (session history — load-bearing invariant)
+The load-bearing invariant is **"no `await` between the click gesture and `player.play()`"** — both branches must call `play()` synchronously in the same task as the click. (session history — iOS user-activation requirement)
+
+**Updated 2026-05-01:** the `player.currentTime = 0` reset that originally appeared in the play-with-sound branch was removed. The muted-loop preview is already running by the time the user clicks Play with Sound (typically 2–8 seconds in); resetting to frame 0 on unmute sends a visual + auditory cue users read as "the video reloaded." Continuing from the current playhead is the correct affordance, and it does not perturb the iOS invariant — only the `await`-free contract between click and `play()` is load-bearing.
 
 ```tsx
 const handleUnmuteClick = useCallback(() => {
@@ -326,8 +583,10 @@ const handleUnmuteClick = useCallback(() => {
     return
   }
 
+  // Continue from the current playhead — the muted-loop preview is already
+  // running, so resetting currentTime would force a re-buffer and restart
+  // from frame 0, which the user reads as "the video reloaded."
   player.muted = false
-  player.currentTime = 0
   const result = player.play()
   if (result?.then) {
     result
@@ -344,20 +603,107 @@ const handleUnmuteClick = useCallback(() => {
 }, [pillState])
 ```
 
+**Race window worth knowing about (not currently fixed).** `loop = !chromeRevealed` flips on the next render after `setChromeRevealed(true)`. There is a ~16ms window where the muted-loop preview is at `currentTime ≈ duration` and the user clicks Play with Sound: `play()` resolves, `setChromeRevealed(true)` is queued, but `ended` could fire while `loop` is still `true` — looping the preview to `0`, the very symptom the `currentTime = 0` removal was avoiding. Worst on short clips clicked within milliseconds of `duration`. Narrow window, low impact; flagged for future hardening if it turns into a reproducible regression.
+
 ### Don't rebuild what's already there
 
 Before building the chrome from scratch, check `packages/video-player/src/useVideoPlayerCore.ts` — it already exposes `formatTime()`, `handlePlayPause`, `handleMuteToggle`, `handleSeek`, `handleFullscreen` for the legacy video.js 8 surface. Some of those primitives can be lifted directly (e.g., `formatTime`). The HeroPlayerControls implementation duplicated `formatTime` rather than importing it — a minor follow-up to consolidate. (session history — prior art exists; check before reimplementing)
 
 ### Test fixture pattern
 
-The new `HeroPlayerControls` test suite lives in `apps/web/src/components/watch/__tests__/HeroPlayer.test.tsx`. The Mux Player is mocked at the module boundary with a singleton mock player exposing `paused`, `muted`, `volume`, `currentTime`, `duration`, `buffered`, `play`, `pause`, `addEventListener`, `removeEventListener`. The `revealChrome()` helper renders `<HeroPlayer>`, clicks the pill, awaits the play promise — the chrome is now mounted and `mockPlayerRef.current` is the singleton. Tests then directly mutate the mock and dispatch `KeyboardEvent`s on `data-testid="hero-chrome-timeline"` etc.
+The `HeroPlayerControls` test suite lives in `apps/web/src/components/watch/__tests__/HeroPlayer.test.tsx`. The Mux Player is mocked at the module boundary with a singleton mock player exposing `paused`, `muted`, `volume`, `currentTime`, `duration`, `buffered`, `play`, `pause`, `addEventListener`, `removeEventListener`. The `revealChrome()` helper renders `<HeroPlayer>`, clicks the pill, awaits the play promise — the chrome is now mounted and `mockPlayerRef.current` is the singleton. Tests then directly mutate the mock and dispatch `KeyboardEvent`s on `data-testid="hero-chrome-timeline"` etc.
 
 **Limitation to be aware of:** the mock's `addEventListener` is `vi.fn()` — it doesn't actually invoke captured callbacks. So tests that need React state to _react_ to mock-state changes (e.g., "does not auto-hide while paused" needs `playingRef.current` to flip to `false`) currently fail and are marked `it.todo`. Upgrading the mock to capture and replay listeners would unlock those tests; tracked as a follow-up.
+
+**Coverage added 2026-05-01 for the sticky/portal layout.** Three tests cover the new layer:
+
+1. **Portal placement** — asserts the chrome bar lives inside the overlay anchor, not the sticky hero wrapper. Required because both DOM positions resolve the same `[data-testid="hero-player-custom-chrome"]` selector (`container.querySelector` finds it whether portaled or rendered inline), so the assertions in the existing chrome-render tests pass for either branch. Without this test, the portal contract is unenforced.
+
+   ```tsx
+   it("portals the chrome bar into the overlay anchor, not the sticky hero wrapper", async () => {
+     await revealChrome()
+     const chrome = container.querySelector(
+       '[data-testid="hero-player-custom-chrome"]',
+     )
+     const anchor = container.querySelector(
+       '[data-testid="hero-player-overlay-anchor"]',
+     )
+     const wrapper = container.querySelector(
+       '[data-testid="hero-player-wrapper"]',
+     )
+     expect(anchor!.contains(chrome!)).toBe(true)
+     expect(wrapper!.contains(chrome!)).toBe(false)
+   })
+   ```
+
+2. **Tap-to-unmute leaves currentTime alone** — the play-with-sound branch's no-restart contract is already covered by the iOS-safe click sequence test (event order `["muted=false", "play()"]` with no `currentTime=0`). The tap-to-unmute branch needs the same coverage. Phase 1: render, swap `mockPlayerRef.current.play` to reject so the pill flips into `data-state="tap-to-unmute"`. Phase 2: snapshot a non-zero playhead, swap `play` back to resolve, install an `Object.defineProperty` setter spy on `currentTime`, click. Assert no `currentTime` writes occurred.
+
+3. **Sticky `top` from measured height** — JSDOM ships without `ResizeObserver`, so the component's RO branch is normally unreachable in tests. Stub it locally:
+
+   ```tsx
+   const callbacks: ResizeObserverCallback[] = []
+   class MockResizeObserver {
+     constructor(cb: ResizeObserverCallback) {
+       callbacks.push(cb)
+     }
+     observe() {}
+     disconnect() {}
+     unobserve() {}
+   }
+   const originalRO = (globalThis as { ResizeObserver?: typeof ResizeObserver })
+     .ResizeObserver
+   ;(globalThis as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver =
+     MockResizeObserver as unknown as typeof ResizeObserver
+
+   try {
+     act(() => {
+       root.render(<HeroPlayer block={makeBlock()} />)
+     })
+     // Trigger the captured RO callback with a measured height.
+     await act(async () => {
+       callbacks[0]?.(
+         [
+           { contentRect: { height: 1071 } } as ResizeObserverEntry,
+         ] as ResizeObserverEntry[],
+         {} as ResizeObserver,
+       )
+     })
+     const wrapper = container.querySelector(
+       '[data-testid="hero-player-wrapper"]',
+     ) as HTMLDivElement
+     // JSDOM's CSSOM normalizes whitespace inside min() inconsistently
+     // across engines — check structure rather than exact format.
+     expect(wrapper.style.top).toContain("calc(100svh - 1071px)")
+   } finally {
+     if (originalRO) {
+       ;(
+         globalThis as { ResizeObserver?: typeof ResizeObserver }
+       ).ResizeObserver = originalRO
+     } else {
+       delete (globalThis as { ResizeObserver?: typeof ResizeObserver })
+         .ResizeObserver
+     }
+   }
+   ```
+
+   The `finally` block restores the prior global unconditionally (in JSDOM, `originalRO` is `undefined`, so the block deletes the global rather than reassigning it) — preventing test pollution across the suite.
+
+**Live verification before declaring done.** The dev server + browser-automation MCP catch the things JSDOM cannot. The minimum smoke after a sticky/portal change:
+
+- `wrapper.getBoundingClientRect().height` matches the rendered video aspect (1071px on a 1920w window for 16:9).
+- `getComputedStyle(wrapper).top` is negative (e.g., `-288.56px`) on a desktop viewport.
+- After clicking Play with Sound: `anchor.contains(chrome) === true && wrapper.contains(chrome) === false`.
+- After 3s auto-hide, dispatching `new PointerEvent("pointermove", { bubbles: true })` on the chrome bar flips `data-visible` from `"false"` back to `"true"`.
 
 ## Related
 
 - [`docs/solutions/design-patterns/react-strictmode-dom-wrapping-widget-teardown-20260424.md`](./react-strictmode-dom-wrapping-widget-teardown-20260424.md) — sibling pattern for the widget setup/teardown rules; the lift-to-state guidance here is the same principle applied to event subscription.
+- [`docs/solutions/best-practices/nextjs-search-overlay-ui-patterns-20260415.md`](../best-practices/nextjs-search-overlay-ui-patterns-20260415.md) — `createPortal` and the stacking-context trap. Same escape hatch (portal out of trapping subtrees) used by the search overlay; the load-bearing rule about ancestors that silently create stacking contexts (`transform`, `filter`, `backdrop-filter`, `will-change`, `opacity < 1`, `isolation`) applies equally here.
+- [`docs/solutions/mobile/full-bleed-video-hero-with-scroll-over-content.md`](../mobile/full-bleed-video-hero-with-scroll-over-content.md) — the React Native counterpart of the same UX. Different runtime (RN absolute positioning + JS scroll callbacks vs. CSS sticky + portal), but the design decisions translate: render overlay content inside the scroll content (not the hero layer), quantize scroll updates to avoid 60fps re-renders, and avoid event-binding patterns whose silent failure mode hides controls forever.
 - [`docs/plans/2026-04-29-001-feat-watch-page-mux-parity-plan.md`](../../plans/2026-04-29-001-feat-watch-page-mux-parity-plan.md) — the plan that documented the Mux-vs-Video.js decision, the iOS-safe play() invariant (U5), and the original "hide-then-reveal" model that this pattern diverges from.
 - `packages/video-player/src/useVideoPlayerCore.ts` — direct prior art for the timeline/slider/play-pause/fullscreen primitives on video.js 8; reference when extending the Mux chrome with new controls.
 - `apps/tv/src/components/VideoPlayer.tsx` — TV-side parallel implementation (expo-video + D-pad). Different runtime but the timeline/scrubbing UX should converge with web. (session history)
-- PR [#866](https://github.com/JesusFilm/forge/pull/866) — the implementation this pattern documents.
+- PR [#866](https://github.com/JesusFilm/forge/pull/866) — the original implementation this pattern documents (chrome replacement and lift-to-state).
+- The 2026-05-01 update layer (sections 5a–5e and the iOS-safe sequence patch) was developed against `main` directly without a separate PR; the working tree carries the change.
+- [`docs/solutions/logic-errors/strapi-graphql-pagination-cap-wrong-language-watch-page-20260504.md`](../logic-errors/strapi-graphql-pagination-cap-wrong-language-watch-page-20260504.md) — sibling fix from the same PR (#878). The `aspect-video` + `useLayoutEffect` + `onCanPlay`+`onError` combination in section 5a/5f was added as part of fixing the wrong-language-variant bug, because the original watch page used `useEffect` for the ResizeObserver and had no loading-state coverage at all. Read together for the full context of PR #878.
+- PR [#878](https://github.com/JesusFilm/forge/pull/878) — `feat(web): fix English variant selection + redesign watch share modal + harden hero loading`. Source of the 2026-05-04 updates to sections 5a and 5f.

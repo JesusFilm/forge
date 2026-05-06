@@ -25,7 +25,7 @@ import {
   Tags,
   X,
 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,9 +33,13 @@ import { LanguageSelectionEmptyState } from "./coverage-empty-state"
 import { EnrichActionControls } from "./enrich-action-controls"
 import { LanguageGeoSelector } from "./LanguageGeoSelector"
 import {
+  clearRememberedCoverageLanguageIds,
   hasSelectedLanguages as hasSelectedLanguagesInSelection,
   normalizeCoverageLanguageSearchParams,
+  readRememberedCoverageLanguageIds,
+  resolveCoverageLanguageSelection,
   resolveLanguagePresets,
+  writeRememberedCoverageLanguageIds,
   type LanguageOption,
   type LanguagePreset,
 } from "./language-selection"
@@ -1147,6 +1151,8 @@ export function CoverageReportClient({
   initialLanguages,
 }: CoverageReportClientProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const currentCoverageQuery = searchParams.toString()
   const shell = useOptionalManagerShellState()
   const [videoCollections, setVideoCollections] = useState<CmsCollection[]>([])
   const [videoCollectionsLoadFailed, setVideoCollectionsLoadFailed] =
@@ -1186,6 +1192,7 @@ export function CoverageReportClient({
   const [languageNameMap, setLanguageNameMap] = useState<Map<string, string>>(
     new Map(),
   )
+  const automaticCoverageSelectionQueryRef = useRef<string | null>(null)
   // Fetch language names once for display in the selection bar
   useEffect(() => {
     void (async () => {
@@ -1206,6 +1213,57 @@ export function CoverageReportClient({
       }
     })()
   }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const currentQuery = currentCoverageQuery
+    const rememberedLanguageIds = readRememberedCoverageLanguageIds(
+      window.sessionStorage,
+    )
+    if (
+      languageCatalog.length === 0 &&
+      currentQuery.length === 0 &&
+      rememberedLanguageIds.length === 0
+    ) {
+      return
+    }
+
+    const resolution = resolveCoverageLanguageSelection({
+      currentQuery,
+      rememberedLanguageIds,
+      languages: languageCatalog,
+    })
+
+    if (automaticCoverageSelectionQueryRef.current === currentQuery) {
+      automaticCoverageSelectionQueryRef.current = null
+    } else if (resolution.shouldRememberSelection) {
+      writeRememberedCoverageLanguageIds(
+        window.sessionStorage,
+        resolution.languageIds,
+      )
+    }
+
+    if (!resolution.shouldReplaceUrl) return
+
+    const nextParams = normalizeCoverageLanguageSearchParams(
+      currentQuery,
+      resolution.languageIds,
+    )
+    const queryString = nextParams.toString()
+    const nextUrl = queryString
+      ? `/dashboard/coverage?${queryString}`
+      : "/dashboard/coverage"
+
+    if (`${window.location.pathname}${window.location.search}` === nextUrl) {
+      return
+    }
+
+    automaticCoverageSelectionQueryRef.current = queryString
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- typed routes does not accept dynamic query strings here
+    router.replace(nextUrl as any)
+  }, [currentCoverageQuery, languageCatalog, router])
   const errorMessage = initialErrorMessage
   const [filter, setFilter] = useState<CoverageFilter>("all")
   const [hoveredVideo, setHoveredVideo] = useState<HoveredVideoDetails | null>(
@@ -1792,6 +1850,14 @@ export function CoverageReportClient({
 
   const applySelectedLanguages = useCallback(
     (languageIds: string[]) => {
+      if (typeof window !== "undefined") {
+        if (languageIds.length > 0) {
+          writeRememberedCoverageLanguageIds(window.sessionStorage, languageIds)
+        } else {
+          clearRememberedCoverageLanguageIds(window.sessionStorage)
+        }
+      }
+
       const nextParams = normalizeCoverageLanguageSearchParams(
         typeof window === "undefined" ? "" : window.location.search,
         languageIds,
@@ -1928,6 +1994,7 @@ export function CoverageReportClient({
                 attentionRequired={languageSelectionRequired}
                 attentionRequestKey={languageSelectorFocusRequestCount}
                 openRequestKey={languageSelectorOpenRequestCount}
+                onApplyLanguages={applySelectedLanguages}
               />
             </div>
           </div>

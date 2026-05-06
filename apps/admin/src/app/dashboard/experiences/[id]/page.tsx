@@ -8,6 +8,16 @@ import { prisma } from "@/db/client"
 import { getAdminLocale } from "@/i18n/server"
 import { createServices } from "@/services"
 import { ForbiddenError } from "@/services/errors"
+import { mediaAssetPreviewUrl } from "@/services/media-asset.service"
+
+function formatBytes(value: bigint | null) {
+  if (value == null) return "N/A"
+  const bytes = Number(value)
+  if (!Number.isFinite(bytes)) return value.toString()
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 type LocaleSnapshot = {
   title: string | null
@@ -102,6 +112,43 @@ function snapshotFromLocale(locale: {
   }
 }
 
+async function loadMediaLibrary() {
+  const assets = await prisma.mediaAsset.findMany({
+    where: { kind: "IMAGE", status: "READY" },
+    select: {
+      id: true,
+      backend: true,
+      originalFilename: true,
+      mimeType: true,
+      byteSize: true,
+      objectKey: true,
+      previewObjectKey: true,
+      muxPlaybackId: true,
+      updatedAt: true,
+      locales: {
+        where: { locale: "en" },
+        select: { displayName: true, altText: true },
+        take: 1,
+      },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 80,
+  })
+
+  return assets.map((asset) => ({
+    id: asset.id,
+    displayName:
+      asset.locales[0]?.displayName?.trim() ||
+      asset.originalFilename ||
+      asset.id,
+    altText: asset.locales[0]?.altText ?? null,
+    mimeType: asset.mimeType,
+    byteSize: formatBytes(asset.byteSize),
+    previewUrl: mediaAssetPreviewUrl(asset),
+    updated: formatDateTime(asset.updatedAt),
+  }))
+}
+
 function summarizeSnapshotDiff(
   previous: LocaleSnapshot | null,
   current: LocaleSnapshot,
@@ -177,7 +224,10 @@ export default async function ExperienceEditorPage({
       requireSession(),
       getAdminLocale(),
     ])
-  const videoLibrary = await loadVideoRows(principal)
+  const [videoLibrary, mediaLibrary] = await Promise.all([
+    loadVideoRows(principal),
+    loadMediaLibrary(),
+  ])
 
   const services = createServices(prisma)
   const experienceSummary = await services.experience.getById({
@@ -515,6 +565,7 @@ export default async function ExperienceEditorPage({
         }))}
         revisionEntries={revisionEntries}
         videoLibrary={videoLibrary}
+        mediaLibrary={mediaLibrary}
         saveAction={saveLocaleAction}
         publishAction={publishLocaleAction}
         createLocaleAction={createLocaleAction}

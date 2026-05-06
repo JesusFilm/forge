@@ -64,6 +64,14 @@ type VideoKeywordRowShape = RankedItem & {
 }
 
 export type KeywordWeightedResult = VideoKeywordRowShape & { rank: number }
+/**
+ * Result row from `searchByTrigram`. **As of migration 0010, `similarity`
+ * is the GREATEST of the title-side and description-side trigram
+ * similarities** (`similarity(vl.title, q)` vs
+ * `similarity(coalesce(vl.description, ''), q)`), not title-only as it
+ * was pre-0010. The retriever scans both columns and dedupes per video
+ * via `DISTINCT ON (v.id)`, keeping the higher-similarity row.
+ */
 export type TrigramResult = VideoKeywordRowShape & { similarity: number }
 export type ExactTitleResult = VideoKeywordRowShape & { titleLength: number }
 
@@ -206,20 +214,38 @@ export async function searchByKeywordWeighted(
 }
 
 /**
- * Trigram word-similarity retrieval over `video_locale.title`.
+ * Trigram word-similarity retrieval over `video_locale.title` AND
+ * `video_locale.description`.
  *
- * Closes the typo / partial-prefix gap that `websearch_to_tsquery`
- * misses: `q="bibel project"` won't match a tsvector lemma but will
- * still score highly here, because pg_trgm computes character-trigram
- * overlap.
+ * Closes the typo / partial-prefix / CamelCase gap that
+ * `websearch_to_tsquery` misses:
+ *   - `q="bibel project"` (typo) won't match a tsvector lemma but
+ *     scores highly via character-trigram overlap.
+ *   - `q="the bible project"` against a description writing the brand
+ *     as the joined-form `BibleProject` matches via description
+ *     trigrams (the brand's 3-grams overlap `bibleproject` directly).
  *
- * Uses the `%>` operator ("word similar to") rather than `%`, which
- * tends to overmatch on long descriptions. Title-only — the
- * description trigram index would balloon without meaningful gain.
+ * SQL shape: `WHERE (vl.title %> ? OR vl.description %> ?)` plus
+ * `DISTINCT ON (v.id) ORDER BY v.id, similarity DESC` to collapse
+ * rows that match via both fields, keeping the higher-similarity row.
+ * Ranking is `GREATEST(similarity(vl.title, q), similarity(coalesce(vl.description, ''), q))`
+ * so a strong title match doesn't get diluted by a weak description
+ * match.
  *
- * Index selection happens via the `%>` operator against the
- * `video_locale_title_trgm_idx` GIN trigram index (operator-class
- * `gin_trgm_ops`); no expression byte-parity guard needed.
+ * (Earlier framings called this a "UNION" — implementation is the
+ * equivalent OR + per-row dedup, which lets a single index probe pass
+ * cover both halves and avoids materializing two intermediate row
+ * sets.)
+ *
+ * Index selection happens via the `%>` operator against
+ * `video_locale_title_trgm_idx` (provisioned by 0009) and
+ * `video_locale_description_trgm_idx` (provisioned by 0010), both
+ * operator-class GIN (`gin_trgm_ops`). On a populated table the
+ * planner should choose `BitmapOr` over the two indexes; on an empty
+ * corpus it correctly prefers Seq Scan. No expression byte-parity
+ * guard needed — operator-class indexes are selected by the operator
+ * regardless of column aliases. Per
+ * docs/solutions/best-practices/gin-byte-parity-trigram-vs-expression-indexes-20260429.md.
  *
  * Empty input short-circuits to `[]`.
  */
@@ -240,11 +266,14 @@ export async function searchByTrigram(
         v.slug         AS video_slug,
         vl.title       AS video_title,
         vl.description AS description,
-        similarity(vl.title, ${trimmed}) AS similarity
+        GREATEST(
+          similarity(vl.title, ${trimmed}),
+          similarity(coalesce(vl.description, ''), ${trimmed})
+        ) AS similarity
       FROM video_locale vl
       JOIN video v ON v.id = vl.video_id
         AND v.deleted_at IS NULL
-      WHERE vl.title %> ${trimmed}
+      WHERE (vl.title %> ${trimmed} OR vl.description %> ${trimmed})
         AND vl.locale = ${locale}
         AND vl.status = 'published'
       ORDER BY v.id, similarity DESC

@@ -42,16 +42,19 @@ export type PermissionKey =
   // Read scopes
   | "read:experiences"
   | "read:videos"
+  | "read:media-assets"
   | "read:reference"
   // Write scopes (admin-write on Core-sourced is intentionally restricted)
   | "write:experiences"
   | "write:videos"
+  | "write:media-assets"
   | "write:scene-embeddings"
   | "write:transcript-embeddings"
   | "write:experience-content-dump"
   // Lifecycle scopes (publish / archive ExperienceLocale, etc.)
   | "publish:experiences"
   | "archive:experiences"
+  | "delete:media-assets"
   // Workflow / system scopes
   | "system:trigger-workflow"
   | "system:write-derived"
@@ -70,12 +73,14 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // narrow to "is the entity actually published?" or "do I own this draft?"
   "read:experiences": "VIEWER",
   "read:videos": "VIEWER",
+  "read:media-assets": "EDITOR",
   // Reference data is public-shape; PUBLIC may read.
   "read:reference": "PUBLIC",
   // Editor writes
   "write:experiences": "EDITOR",
   // Core-sourced; only ADMIN may override (also flips source='manager').
   "write:videos": "ADMIN",
+  "write:media-assets": "EDITOR",
   // Derived-column trigger (scene-embedding backfill). ADMIN-only.
   "write:scene-embeddings": "ADMIN",
   // Derived-column trigger (transcript-embedding backfill). ADMIN-only.
@@ -87,6 +92,7 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // Lifecycle
   "publish:experiences": "EDITOR",
   "archive:experiences": "EDITOR",
+  "delete:media-assets": "ADMIN",
   // System / workflow
   "system:trigger-workflow": "ADMIN",
   "system:write-derived": "SYSTEM",
