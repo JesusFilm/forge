@@ -78,6 +78,43 @@ describe("POST /api/auth/login", () => {
     )
   })
 
+  it("accepts Admin role names after Admin grants Manager access", async () => {
+    loginManagerUserMock.mockResolvedValue({
+      token: "admin-session-token",
+      user: {
+        id: "admin-user-1",
+        email: "viewer@example.test",
+        role: { name: "VIEWER", type: "viewer" },
+      },
+    })
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://example.test/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "viewer@example.test",
+          password: "admin-password",
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      user: {
+        id: "admin-user-1",
+        email: "viewer@example.test",
+        role: "VIEWER",
+      },
+    })
+    expect(cookieSet).toHaveBeenCalledWith(
+      "manager-session",
+      "admin-session-token",
+      expect.objectContaining({ httpOnly: true }),
+    )
+  })
+
   it("rejects invalid mock credentials", async () => {
     loginManagerUserMock.mockResolvedValue(null)
 

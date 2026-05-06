@@ -57,6 +57,7 @@ describe("cmsClient", () => {
   it("does not allow Strapi REST calls in admin backend mode", async () => {
     vi.stubEnv("MANAGER_BACKEND_MODE", "admin")
     vi.stubEnv("ADMIN_GRAPHQL_URL", "https://admin.example/api/graphql")
+    vi.stubEnv("ADMIN_MANAGER_API_KEY", "manager-service-key")
 
     const fetchMock = vi.fn()
     vi.stubGlobal("fetch", fetchMock)

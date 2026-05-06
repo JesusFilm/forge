@@ -157,7 +157,7 @@ composite keys, so retries are idempotent.
 | WORKFLOW_API_KEY             | workflow API key (optional, for production durability)                    |
 | MANAGER_API_KEY              | API key for external clients (optional in dev)                            |
 | ADMIN_GRAPHQL_URL            | Full URL of admin's `/api/graphql` (admin backend and embed proxy)        |
-| ADMIN_MANAGER_API_KEY        | Optional bearer key for Manager-to-Admin GraphQL backend calls            |
+| ADMIN_MANAGER_API_KEY        | Required in `admin` mode; must match admin's `WORKFLOW_API_KEYS`          |
 | ADMIN_EMBED_TRIGGER_API_KEY  | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`            |
 | NEXT_PUBLIC_WATCH_URL        | Public video watch URL (optional)                                         |
 

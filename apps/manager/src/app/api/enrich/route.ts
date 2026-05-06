@@ -32,6 +32,7 @@ import {
 import { launchVideoEnrichment } from "@/workflows/launchVideoEnrichment"
 import getClient from "@/cms/client"
 import type { JobArtifactManifest } from "@/types/job"
+import { env } from "@/config/env"
 
 const enrichSchema = z.object({
   videoIds: z.array(z.string().min(1)).min(1).max(100),
@@ -252,6 +253,19 @@ export async function createEnrichmentJobs(
       failed: errors.length,
       jobs,
       ...(errors.length > 0 ? { errors } : {}),
+    }
+  }
+
+  if (env.MANAGER_BACKEND_MODE === "admin") {
+    return {
+      created: 0,
+      failed: videoIds.length,
+      jobs: [],
+      errors: videoIds.map((videoId) => ({
+        videoId,
+        error:
+          "Admin backend mode does not yet expose the enrichment materialization contract.",
+      })),
     }
   }
 

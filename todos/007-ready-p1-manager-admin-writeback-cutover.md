@@ -24,6 +24,12 @@ Strapi can be deleted entirely.
   embedding writeback as a CMS `/scene-embedding/index` operation.
 - `apps/manager/src/services/backfillQueue.ts` still reads legacy CMS
   backfill queue and processed-video-id endpoints.
+- `apps/manager/src/app/api/enrich/route.ts` now refuses Admin-mode enrichment
+  launch before the legacy CMS materialization lookup can run; Admin needs an
+  equivalent media/materialization contract before this control is re-enabled.
+- `apps/manager/src/features/jobs/review-player/load-job-review-context.ts`
+  avoids Strapi in Admin mode by returning no legacy review source; Admin needs
+  a review-source contract before before/after metadata can be fully restored.
 - `apps/manager/src/services/cmsClient.ts` now throws before any network call
   in admin backend mode, so these paths no longer silently reach Strapi in the
   new production mode.
@@ -34,7 +40,8 @@ Relaunch `workflows-work` against this todo after the auth/read/job cutover PR
 lands:
 
 1. Add Admin-owned GraphQL mutations or workflow triggers for transcript
-   embedding indexing, scene embedding indexing, and backfill queue reads.
+   embedding indexing, scene embedding indexing, enrichment materialization,
+   review sources, and backfill queue reads.
 2. Replace `cmsPost`/`cmsGet` callsites in Manager services with those Admin
    contracts.
 3. Preserve existing Manager report shapes (`EmbeddingSyncReport`,
@@ -50,5 +57,7 @@ lands:
 - [ ] Embedding sync and scene embedding sync operate through Admin in
       `MANAGER_BACKEND_MODE=admin`.
 - [ ] Backfill queue reads operate through Admin or are removed from Manager.
+- [ ] Enrichment launch materialization and review-source reads operate through
+      Admin or remain explicitly disabled with user-visible messaging.
 - [ ] Existing report shapes and UI controls remain stable.
 - [ ] Admin and Manager tests, typecheck, lint, and browser smoke pass.

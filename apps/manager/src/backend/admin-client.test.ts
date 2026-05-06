@@ -19,7 +19,7 @@ describe("AdminGraphqlClient", () => {
                 id: "42",
                 username: "operator",
                 email: "operator@example.test",
-                role: "Manager",
+                role: "VIEWER",
               },
             },
           },
@@ -41,7 +41,7 @@ describe("AdminGraphqlClient", () => {
         id: 42,
         username: "operator",
         email: "operator@example.test",
-        role: { name: "Manager", type: "manager" },
+        role: { name: "VIEWER", type: "viewer" },
       },
     })
 
@@ -91,6 +91,7 @@ describe("AdminGraphqlClient", () => {
 
     const client = new AdminGraphqlClient({
       graphqlUrl: "https://admin.example/api/graphql",
+      apiKey: "manager-service-key",
       fetchImpl: fetchMock,
     })
 
@@ -106,6 +107,14 @@ describe("AdminGraphqlClient", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
       variables: { languageIds: ["529"] },
     })
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://admin.example/api/graphql",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer manager-service-key",
+        }),
+      }),
+    )
   })
 
   it("surfaces Admin GraphQL failures as transport errors", async () => {

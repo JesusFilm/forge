@@ -16,6 +16,7 @@ import { env } from "@/config/env"
 import { readManagerSessionToken } from "@/lib/session-cookie"
 
 type StrapiUser = ManagerUser
+const ADMIN_MANAGER_ROLE_NAMES = new Set(["ADMIN", "EDITOR", "VIEWER"])
 
 export type ManagerOverrideActor =
   | {
@@ -37,6 +38,17 @@ function isValidManagerApiKey(token: string): boolean {
   const a = Buffer.from(token)
   const b = Buffer.from(apiKey)
   return a.length === b.length && timingSafeEqual(a, b)
+}
+
+export function hasManagerAccess(
+  user: ManagerUser | null | undefined,
+): user is ManagerUser {
+  const roleName = user?.role?.name
+  if (!roleName) {
+    return false
+  }
+
+  return roleName === "Manager" || ADMIN_MANAGER_ROLE_NAMES.has(roleName)
 }
 
 /**
@@ -190,7 +202,7 @@ export async function authenticateRequest(
   const sessionToken = readManagerSessionToken(cookieHeader)
   if (sessionToken) {
     const user = await verifyManagerSession(sessionToken)
-    if (user?.role?.name === "Manager") {
+    if (hasManagerAccess(user)) {
       return null
     }
     return NextResponse.json(
@@ -251,7 +263,7 @@ export async function authenticateManagerOverrideRequest(
   }
 
   const user = await verifyManagerSession(sessionToken)
-  if (user?.role?.name === "Manager") {
+  if (hasManagerAccess(user)) {
     return {
       kind: "session",
       user,

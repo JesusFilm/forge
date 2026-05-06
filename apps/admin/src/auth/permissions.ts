@@ -153,18 +153,20 @@ function meetsTier(role: Role, min: MinTier): boolean {
  * incoming request carries a valid bearer key matching
  * `WORKFLOW_API_KEYS`. It is intentionally narrower than ADMIN — the
  * bearer-auth path is for service-to-service trigger calls (apps/manager
- * → admin's embed-backfill mutations), NOT a generic admin session.
+ * → admin's embed-backfill mutations and manager-scoped backend read/job
+ * contracts), NOT a generic admin session.
  *
  * **Adding a key here widens the bearer caller's blast radius.** It also
  * widens the manager proxy's reach: any user with the Strapi "Manager"
  * role (or a holder of `MANAGER_API_KEY`) who can hit
  * `apps/manager/src/app/api/admin-embeds/*` will gain access to whatever
  * mutation that key gates. Add a key here only when you have explicitly
- * decided that every Manager-tier identity should be able to invoke that
- * mutation. The narrow allowlist is the only narrowing mechanism — the
+ * decided that every Manager-tier service key should be able to invoke that
+ * contract. The narrow allowlist is the only narrowing mechanism — the
  * editorial tier ladder is bypassed for this role.
  */
 const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "access:manager",
   "write:scene-embeddings",
   "write:transcript-embeddings",
 ])

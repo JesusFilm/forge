@@ -34,12 +34,28 @@ describe("manager env mode validation", () => {
     )
   })
 
+  it("requires the Admin manager service key in admin backend mode", async () => {
+    vi.stubEnv("MANAGER_BACKEND_MODE", "admin")
+    vi.stubEnv("MUX_TOKEN_ID", REQUIRED_BASE_ENV.MUX_TOKEN_ID)
+    vi.stubEnv("MUX_TOKEN_SECRET", REQUIRED_BASE_ENV.MUX_TOKEN_SECRET)
+    vi.stubEnv("OPENROUTER_API_KEY", REQUIRED_BASE_ENV.OPENROUTER_API_KEY)
+    vi.stubEnv("ADMIN_GRAPHQL_URL", "https://admin.example/api/graphql")
+    delete process.env.ADMIN_MANAGER_API_KEY
+    delete process.env.STRAPI_URL
+    delete process.env.STRAPI_API_TOKEN
+
+    await expect(import("./env")).rejects.toThrow(
+      "ADMIN_MANAGER_API_KEY is required when MANAGER_BACKEND_MODE=admin",
+    )
+  })
+
   it("allows admin backend mode without Strapi settings", async () => {
     vi.stubEnv("MANAGER_BACKEND_MODE", "admin")
     vi.stubEnv("MUX_TOKEN_ID", REQUIRED_BASE_ENV.MUX_TOKEN_ID)
     vi.stubEnv("MUX_TOKEN_SECRET", REQUIRED_BASE_ENV.MUX_TOKEN_SECRET)
     vi.stubEnv("OPENROUTER_API_KEY", REQUIRED_BASE_ENV.OPENROUTER_API_KEY)
     vi.stubEnv("ADMIN_GRAPHQL_URL", "https://admin.example/api/graphql")
+    vi.stubEnv("ADMIN_MANAGER_API_KEY", "manager-service-key")
     delete process.env.STRAPI_URL
     delete process.env.STRAPI_API_TOKEN
 
@@ -47,6 +63,7 @@ describe("manager env mode validation", () => {
 
     expect(env.MANAGER_BACKEND_MODE).toBe("admin")
     expect(env.ADMIN_GRAPHQL_URL).toBe("https://admin.example/api/graphql")
+    expect(env.ADMIN_MANAGER_API_KEY).toBe("manager-service-key")
   })
 
   it("requires a mock session secret in mock mode", async () => {

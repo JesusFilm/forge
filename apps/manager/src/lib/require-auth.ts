@@ -4,7 +4,7 @@
 
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { verifyManagerSession } from "@/lib/auth"
+import { hasManagerAccess, verifyManagerSession } from "@/lib/auth"
 import {
   LEGACY_STRAPI_SESSION_COOKIE,
   MANAGER_SESSION_COOKIE,
@@ -23,7 +23,7 @@ export async function requireAuth(): Promise<AuthUser> {
   }
 
   const user = await verifyManagerSession(sessionToken)
-  if (!user || user.role?.name !== "Manager") {
+  if (!hasManagerAccess(user)) {
     redirect("/login")
   }
 

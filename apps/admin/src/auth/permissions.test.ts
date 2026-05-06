@@ -413,6 +413,10 @@ describe("permission matrix completeness", () => {
       ).toBe(true)
     })
 
+    it("satisfies Manager backend access for service-to-service calls", () => {
+      expect(hasPermission(WORKFLOW_TRIGGER, "access:manager")).toBe(true)
+    })
+
     it("does NOT satisfy any permission key outside the narrow allowlist", () => {
       // Iterate every PermissionKey via TypeScript's exhaustive Record
       // pattern so adding a new key without explicitly deciding
@@ -421,6 +425,7 @@ describe("permission matrix completeness", () => {
       // key is added to WORKFLOW_TRIGGER_PERMISSIONS without updating
       // the allowedKeys list.
       const allowedKeys: ReadonlySet<PermissionKey> = new Set([
+        "access:manager",
         "write:scene-embeddings",
         "write:transcript-embeddings",
       ])

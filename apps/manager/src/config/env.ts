@@ -149,6 +149,12 @@ if (env.MANAGER_BACKEND_MODE === "admin") {
       "ADMIN_GRAPHQL_URL is required when MANAGER_BACKEND_MODE=admin",
     )
   }
+
+  if (!process.env.ADMIN_MANAGER_API_KEY) {
+    throw new Error(
+      "ADMIN_MANAGER_API_KEY is required when MANAGER_BACKEND_MODE=admin",
+    )
+  }
 }
 
 if (env.MANAGER_BACKEND_MODE === "strapi") {
