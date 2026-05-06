@@ -59,6 +59,47 @@ export class ManagerArtifactError extends Error {
 }
 
 /**
+ * Decide whether a thrown error from `readManagerArtifact` represents a
+ * genuinely-missing artifact (manager hasn't enriched this asset yet)
+ * vs an actual transport / config failure.
+ *
+ * Order matters: typed surface FIRST (stable across AWS SDK message
+ * rewordings — historically AWS has rephrased the textual NoSuchKey
+ * message at least once), regex backstop SECOND (covers local-fallback
+ * `ENOENT` and any future alt-storage backends that don't carry an AWS
+ * SDK-typed shape).
+ *
+ * The regex is deliberately TIGHT — narrower than the legacy
+ * `/not found|missing|no such key|ENOENT|NoSuchKey/i` it replaces.
+ * Tokens dropped:
+ *   - `NoSuchKey` / `no such key`: typed branch above covers AWS SDK
+ *     verbatim; the regex would over-match unrelated S3-shaped errors.
+ *   - `missing` (bare): too loose — matches "missing field 'foo'" and
+ *     other unrelated bug messages, mis-demoting real failures to
+ *     skipped. The remaining tokens (`not found`, `does not exist`,
+ *     `ENOENT`) are specific enough that no observed-in-practice error
+ *     message has been mis-classified.
+ *
+ * Tests must throw the REAL typed shape (`Object.assign(new Error(...),
+ * { name: "NoSuchKey" })`), not a generic `new Error("NoSuchKey: ...")`
+ * — otherwise the regex backstop satisfies the test while the typed
+ * branch stays untested, which is the trap captured in
+ * `docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`
+ * generalized to mocks. See also
+ * `docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md`.
+ */
+function isArtifactMissing(error: unknown): boolean {
+  if (typeof error === "object" && error !== null) {
+    const name = (error as { name?: unknown }).name
+    if (name === "NoSuchKey" || name === "NotFound") return true
+    const code = (error as { Code?: unknown }).Code
+    if (code === "NoSuchKey" || code === "NotFound") return true
+  }
+  const message = error instanceof Error ? error.message : String(error)
+  return /not found|does not exist|ENOENT/i.test(message)
+}
+
+/**
  * Read a scene-analysis artifact from manager's Railway S3 bucket
  * (MANAGER_ARTIFACTS_S3_*) or local
  * `.tmp/artifacts/{assetId}/scene-analysis.json` fallback and return
@@ -76,14 +117,14 @@ export async function readSceneAnalysisArtifact(
   try {
     bytes = await readManagerArtifact(assetId, "scene-analysis", "json")
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    if (/not found|missing|no such key|ENOENT|NoSuchKey/i.test(message)) {
+    if (isArtifactMissing(error)) {
       throw new ManagerArtifactError(
         "artifact_missing",
         `scene-analysis artifact not found for assetId=${assetId}`,
         error,
       )
     }
+    const message = error instanceof Error ? error.message : String(error)
     throw new ManagerArtifactError(
       "artifact_read_failed",
       `failed to read scene-analysis artifact for assetId=${assetId}: ${message}`,
@@ -206,14 +247,14 @@ export async function readEmbeddingsArtifact(
   try {
     bytes = await readManagerArtifact(assetId, "embeddings", "json")
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    if (/not found|missing|no such key|ENOENT|NoSuchKey/i.test(message)) {
+    if (isArtifactMissing(error)) {
       throw new ManagerArtifactError(
         "artifact_missing",
         `embeddings artifact not found for assetId=${assetId}`,
         error,
       )
     }
+    const message = error instanceof Error ? error.message : String(error)
     throw new ManagerArtifactError(
       "artifact_read_failed",
       `failed to read embeddings artifact for assetId=${assetId}: ${message}`,

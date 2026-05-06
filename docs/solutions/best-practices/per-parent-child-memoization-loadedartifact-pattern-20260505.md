@@ -280,5 +280,17 @@ Unit tests that lock in the contract (per workflow):
 - `docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md` — R2 sibling. Same `loadedArtifact` parameter on `indexEditionTranscript`.
 - `apps/admin/src/workflows/sceneEmbeddingBackfill.ts` — canonical Stage 2 implementation (R1).
 - `apps/admin/src/workflows/transcriptEmbeddingBackfill.ts` — same shape (R2; no provider call).
+- `docs/solutions/best-practices/workflow-report-operator-actionable-projection-pattern-20260506.md`
+  — Sibling pattern that handles the reverse problem this cascade
+  creates: when the L-outcome shape preserves the per-target dashboard
+  contract but the operator wants a deduped/sorted unique-set view
+  of the upstream gaps. The projection runs at report-assembly time
+  over the cascade's outcomes; cascade contract intact, operator
+  signal usable. feat-119 PR1 applies it to `missingArtifacts`.
+- `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`
+  — META doc covering the "tests must throw the real typed class"
+  rule. The §4 group-level cascade tests in this doc rely on real
+  `ManagerArtifactError` throws, which is one of the named instances
+  in the META.
 - PR #882 — Stage 1 (the per-target loop this pattern reshapes).
 - Stage 2 PR (`feat-116`) — originating PR.

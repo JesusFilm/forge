@@ -152,6 +152,27 @@ export type BackfillOutcome =
       durationMs: number
     }
 
+/**
+ * One entry per upstream gap surfaced by this run. Mirrors the R1
+ * (scene-embedding) shape — see that file for the dedup-by-assetId +
+ * sort-ascending rationale. The R2 workflow stamps every entry with
+ * `kind: "transcript"` so PR2's trigger endpoint dispatches the
+ * transcript pipeline (vs scene-analysis). Only
+ * `skipped { reason: "artifact_missing" }` outcomes feed this list;
+ * `failed` outcomes are real failures, not upstream gaps.
+ *
+ * **Naming**: `assetId` here IS the same number as `BackfillTarget.cmsVideoId`
+ * (Strapi's PK on the cms videos table). It is renamed to `assetId`
+ * because manager-side artifact storage and PR2's enrichment trigger
+ * universally use that name. Keeping it consistent with the downstream
+ * consumer reduces friction.
+ */
+export type MissingArtifact = {
+  readonly assetId: number
+  readonly coreId: string
+  readonly kind: "transcript"
+}
+
 export type TranscriptEmbeddingBackfillReport = {
   mappingGeneratedAt: string
   totalTargets: number
@@ -160,6 +181,12 @@ export type TranscriptEmbeddingBackfillReport = {
   succeeded: number
   skipped: number
   failed: number
+  /**
+   * Deduped, sorted-ascending list of upstream gaps the operator can
+   * feed into PR2's enrichment trigger. Length 0 when every target
+   * had its embeddings artifact present. See `MissingArtifact`.
+   */
+  missingArtifacts: ReadonlyArray<MissingArtifact>
 }
 
 export async function runTranscriptEmbeddingBackfill(
@@ -541,6 +568,31 @@ async function stepIndexEditionTranscript(
   }
 }
 
+/**
+ * Project the outcome list to the deduped, sorted set of missing
+ * embeddings artifacts. See R1's `deriveMissingArtifacts` for the full
+ * rationale (dedup-by-assetId, ascending sort, first-seen-coreId
+ * tiebreak, `failed`-outcomes excluded). The only difference here is
+ * the literal `kind: "transcript"` stamp on each entry. Pure function —
+ * no DB access, no side effects.
+ */
+function deriveMissingArtifacts(
+  outcomes: readonly BackfillOutcome[],
+): MissingArtifact[] {
+  const byAssetId = new Map<number, MissingArtifact>()
+  for (const outcome of outcomes) {
+    if (outcome.status !== "skipped") continue
+    if (outcome.reason !== "artifact_missing") continue
+    if (byAssetId.has(outcome.target.cmsVideoId)) continue
+    byAssetId.set(outcome.target.cmsVideoId, {
+      assetId: outcome.target.cmsVideoId,
+      coreId: outcome.target.coreId,
+      kind: "transcript",
+    })
+  }
+  return Array.from(byAssetId.values()).sort((a, b) => a.assetId - b.assetId)
+}
+
 function stepReport(args: {
   mappingGeneratedAt: string
   targets: number
@@ -580,6 +632,7 @@ function stepReport(args: {
     succeeded,
     skipped,
     failed,
+    missingArtifacts: deriveMissingArtifacts(args.outcomes),
   }
 }
 

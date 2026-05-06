@@ -631,6 +631,20 @@ scale.
   reshape is internal — the GraphQL JSON response shape is byte-
   identical to Stage 1 (modulo `outcomes[]` ordering, already
   documented as non-deterministic per `Promise.allSettled`).
+- **NoSuchKey classification + missingArtifacts list (feat-119 PR1):**
+  AWS S3 `NoSuchKey` errors classify as `skipped { reason: "artifact_missing" }`
+  via the typed-error helper `isArtifactMissing` in
+  `manager-artifacts.service.ts` (typed `error.name` first, legacy
+  `error.Code` second, tightened regex backstop third). Re-running
+  the embed workflow does NOT produce the artifact — the operator
+  must explicitly trigger enrichment via PR2's
+  `triggerManagerEnrichment` mutation. The workflow report carries a
+  `missingArtifacts: ReadonlyArray<{ assetId, coreId, kind }>` field
+  (deduped by `assetId`, sorted ascending) so an operator can pipe
+  it into `pnpm trigger-enrichment --from-report=<path>` (PR2).
+  Only `skipped { artifact_missing }` outcomes feed the list — `failed`
+  outcomes are real failures, not upstream gaps. See
+  `docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md`.
 - **Bulk SQL writes (Stage 3 — feat-117):** the per-target write batch
   collapses from a per-row `videoSceneLocale.upsert()` + per-row
   `$executeRaw … UPDATE … embedding` loop into THREE bulk statements
@@ -787,6 +801,12 @@ Promise.allSettled` — never bare `Promise.all`. Per-language work
   (ADMIN-only; permission key `write:transcript-embeddings`). Stage 2's
   reshape is internal — the GraphQL JSON response shape is byte-
   identical to Stage 1.
+- **NoSuchKey classification + missingArtifacts list (feat-119 PR1):**
+  identical contract to R1 (see above). The R2 report's
+  `missingArtifacts` entries stamp `kind: "transcript"` so PR2's
+  `triggerManagerEnrichment` dispatches the transcript pipeline (vs
+  scene-analysis). See
+  `docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md`.
 - **Bulk SQL writes (Stage 3 — feat-117):** the per-chunk
   `videoTranscriptChunk.upsert()` + per-row `$executeRaw … UPDATE …
 embedding` loop collapses to ONE `INSERT INTO video_transcript_chunk

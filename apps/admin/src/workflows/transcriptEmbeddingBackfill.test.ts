@@ -504,6 +504,156 @@ describe("runTranscriptEmbeddingBackfill", () => {
   })
 })
 
+// feat-119 PR1 — `missingArtifacts` projection. Mirror of the R1
+// dedup-by-assetId / sort-ascending / failed-excluded / kind-stamp
+// tests in sceneEmbeddingBackfill.test.ts. Only difference: the kind
+// literal is `"transcript"`.
+describe("runTranscriptEmbeddingBackfill — missingArtifacts projection", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
+    vi.mocked(indexEditionTranscript).mockReset()
+    vi.mocked(readEmbeddingsArtifact).mockReset()
+    vi.mocked(readEmbeddingsArtifact).mockResolvedValue(STUB_ARTIFACT)
+    vi.mocked(indexEditionTranscript).mockResolvedValue({
+      editionId: "edition-stub",
+      language: "en",
+      chunksIndexed: 1,
+      embeddingsWritten: 1,
+      chunksPruned: 0,
+      model: "openai/text-embedding-3-small",
+      dimensions: 1536,
+    })
+  })
+
+  it("dedupes by assetId — 3 languages of one missing group produce ONE missingArtifacts entry", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-a", "e-a", "core-a", "fr"),
+    ])
+    vi.mocked(readEmbeddingsArtifact).mockRejectedValueOnce(
+      new ManagerArtifactError(
+        "artifact_missing",
+        "embeddings artifact not found for assetId=1",
+      ),
+    )
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.skipped).toBe(3)
+    expect(report.missingArtifacts).toHaveLength(1)
+    expect(report.missingArtifacts[0]).toEqual({
+      assetId: 1,
+      coreId: "core-a",
+      kind: "transcript",
+    })
+  })
+
+  it("sorts ascending by assetId — two distinct missing groups yield two entries in numeric order", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-a", "e-a", "core-a", "en"),
+    ])
+    vi.mocked(readEmbeddingsArtifact).mockRejectedValue(
+      new ManagerArtifactError(
+        "artifact_missing",
+        "embeddings artifact not found",
+      ),
+    )
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.missingArtifacts.map((m) => m.assetId)).toEqual([1, 2])
+    expect(report.missingArtifacts[0]?.coreId).toBe("core-a")
+    expect(report.missingArtifacts[1]?.coreId).toBe("core-b")
+  })
+
+  it("returns an empty array when every target succeeds (NOT undefined)", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+    ])
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.succeeded).toBe(1)
+    expect(report.missingArtifacts).toEqual([])
+    expect(Array.isArray(report.missingArtifacts)).toBe(true)
+  })
+
+  it("excludes failed outcomes — only `skipped { artifact_missing }` enters the list", async () => {
+    // assetId-keyed mock decouples this test from group invocation
+    // order. See R1 sibling test for full rationale.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+    ])
+    vi.mocked(readEmbeddingsArtifact).mockImplementation(
+      async (assetId: string) => {
+        if (assetId === "1") {
+          throw new ManagerArtifactError(
+            "artifact_invalid",
+            "embeddings artifact failed schema validation",
+          )
+        }
+        if (assetId === "2") {
+          throw new ManagerArtifactError(
+            "artifact_missing",
+            "embeddings artifact not found",
+          )
+        }
+        return STUB_ARTIFACT
+      },
+    )
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.failed).toBe(1)
+    expect(report.skipped).toBe(1)
+    expect(report.missingArtifacts).toHaveLength(1)
+    expect(report.missingArtifacts[0]?.assetId).toBe(2)
+    expect(report.missingArtifacts[0]?.coreId).toBe("core-b")
+    expect(report.missingArtifacts[0]?.kind).toBe("transcript")
+  })
+
+  it("mixed run: one missing group + one present group → one missingArtifacts entry, succeeded > 0", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-b", "e-b", "core-b", "en"),
+    ])
+    vi.mocked(readEmbeddingsArtifact).mockImplementation(
+      async (assetId: string) => {
+        if (assetId === "2") {
+          throw new ManagerArtifactError(
+            "artifact_missing",
+            "embeddings artifact not found",
+          )
+        }
+        return STUB_ARTIFACT
+      },
+    )
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.succeeded).toBeGreaterThan(0)
+    expect(report.skipped).toBeGreaterThan(0)
+    expect(report.missingArtifacts).toHaveLength(1)
+    expect(report.missingArtifacts[0]?.assetId).toBe(2)
+    expect(report.missingArtifacts[0]?.coreId).toBe("core-b")
+  })
+})
+
 describe("runTranscriptEmbeddingBackfill — bounded parallelism", () => {
   beforeEach(() => {
     // Restore any `vi.spyOn(_internals, ...)` from a prior test so

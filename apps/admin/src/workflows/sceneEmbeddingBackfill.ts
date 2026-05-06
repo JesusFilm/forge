@@ -153,6 +153,40 @@ export type BackfillOutcome =
       durationMs: number
     }
 
+/**
+ * One entry per upstream gap surfaced by this run. Derived at
+ * report-assembly time from `skipped { reason: "artifact_missing" }`
+ * outcomes — see `deriveMissingArtifacts`. The list is deduped by
+ * `assetId` (R1's group-level cascade emits L outcomes per missing
+ * `(video, edition)` for L locales — operators want the unique set
+ * of upstream gaps, not L copies) and sorted ascending so an operator
+ * piping the list into `pnpm trigger-enrichment --from-report=…`
+ * (PR2 of feat-119) gets a deterministic ordering.
+ *
+ * **Naming**: `assetId` here IS the same number as `BackfillTarget.cmsVideoId`
+ * (Strapi's PK on the cms videos table). It is renamed to `assetId` in this
+ * type because manager-side artifact storage and PR2's enrichment trigger
+ * universally call it `assetId` — keeping the name consistent with the
+ * downstream consumer reduces friction.
+ *
+ * `kind` is a literal-union member identifying which manager-side
+ * pipeline produces the missing artifact. The R1 workflow always
+ * produces `"scene-analysis"`; R2 produces `"transcript"`. The PR2
+ * trigger endpoint dispatches the right pipeline based on this field.
+ *
+ * Note: ONLY skipped-with-reason-artifact_missing outcomes feed this
+ * list. A `failed` outcome is a real failure for the operator to
+ * investigate, not an upstream gap to enrich. Conflating them was the
+ * pre-feat-119 misclassification bug — see
+ * docs/roadmap/content-discovery/feat-119-*.md and
+ * docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md.
+ */
+export type MissingArtifact = {
+  readonly assetId: number
+  readonly coreId: string
+  readonly kind: "scene-analysis"
+}
+
 export type SceneEmbeddingBackfillReport = {
   mappingGeneratedAt: string
   totalTargets: number
@@ -166,6 +200,12 @@ export type SceneEmbeddingBackfillReport = {
   succeeded: number
   skipped: number
   failed: number
+  /**
+   * Deduped, sorted-ascending list of upstream gaps the operator can
+   * feed into PR2's enrichment trigger. Length 0 when every target
+   * had its scene-analysis artifact present. See `MissingArtifact`.
+   */
+  missingArtifacts: ReadonlyArray<MissingArtifact>
 }
 
 export async function runSceneEmbeddingBackfill(
@@ -559,6 +599,42 @@ async function stepIndexEditionLocale(
   }
 }
 
+/**
+ * Project the outcome list to the deduped, sorted set of missing
+ * scene-analysis artifacts. Pure function — no DB access, no side
+ * effects, deterministic per input. Cascade dedup by assetId is the
+ * key invariant: R1's per-locale fan-out emits L outcomes per missing
+ * `(video, edition)` group, and the operator wants ONE entry per
+ * missing asset (not L copies that all point at the same upstream
+ * gap). Filters `failed` outcomes out — a real failure is a
+ * different operator action than an upstream gap.
+ *
+ * **Tiebreak**: when multiple outcomes share the same `assetId`, the
+ * FIRST one encountered wins (`Map.has` short-circuit). In production
+ * this is invisible because all outcomes for one assetId share the
+ * same `coreId` (assetId === cmsVideoId, coreId is mapping-derived
+ * 1:1). The tiebreak only matters if a future refactor introduces two
+ * distinct coreIds for the same cmsVideoId — at which point the
+ * first-seen wins. Stable across runs because `outcomes` is built in
+ * a deterministic enumeration order from `stepEnumerateTargets`.
+ */
+function deriveMissingArtifacts(
+  outcomes: readonly BackfillOutcome[],
+): MissingArtifact[] {
+  const byAssetId = new Map<number, MissingArtifact>()
+  for (const outcome of outcomes) {
+    if (outcome.status !== "skipped") continue
+    if (outcome.reason !== "artifact_missing") continue
+    if (byAssetId.has(outcome.target.cmsVideoId)) continue
+    byAssetId.set(outcome.target.cmsVideoId, {
+      assetId: outcome.target.cmsVideoId,
+      coreId: outcome.target.coreId,
+      kind: "scene-analysis",
+    })
+  }
+  return Array.from(byAssetId.values()).sort((a, b) => a.assetId - b.assetId)
+}
+
 function stepReport(args: {
   mappingGeneratedAt: string
   targets: number
@@ -598,6 +674,7 @@ function stepReport(args: {
     succeeded,
     skipped,
     failed,
+    missingArtifacts: deriveMissingArtifacts(args.outcomes),
   }
 }
 
