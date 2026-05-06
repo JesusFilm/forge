@@ -10,9 +10,7 @@
 # server — admin disables introspection in production via
 # @envelop/disable-introspection.
 
-"""
-A Core-sourced Bible book reference used by video citations.
-"""
+"""A Core-sourced Bible book reference used by video citations."""
 type BibleBook {
   alternateName: String
   coreId: String
@@ -25,9 +23,7 @@ type BibleBook {
   testament: String
 }
 
-"""
-A Core-sourced Bible passage cited by a video.
-"""
+"""A Core-sourced Bible passage cited by a video."""
 type BibleCitation {
   bibleBook: BibleBook
   chapterEnd: Int
@@ -40,9 +36,7 @@ type BibleCitation {
   verseStart: Int
 }
 
-"""
-A continent synced from Core.
-"""
+"""A continent synced from Core."""
 type Continent {
   coreId: String
   id: ID
@@ -51,9 +45,7 @@ type Continent {
   slug: String
 }
 
-"""
-A localized display name for a Core continent.
-"""
+"""A localized display name for a Core continent."""
 type ContinentLocale {
   continent: Continent
   id: ID
@@ -63,9 +55,7 @@ type ContinentLocale {
   value: String
 }
 
-"""
-A country synced from Core.
-"""
+"""A country synced from Core."""
 type Country {
   continent: Continent
   coreId: String
@@ -97,9 +87,7 @@ type CountryLanguage {
   suggested: Boolean
 }
 
-"""
-A localized display name for a Core country.
-"""
+"""A localized display name for a Core country."""
 type CountryLocale {
   country: Country
   id: ID
@@ -162,9 +150,7 @@ type ExperienceLocale {
   updatedAt: String
 }
 
-"""
-Content corpus filter for hybrid search.
-"""
+"""Content corpus filter for hybrid search."""
 enum HybridSearchContentType {
   EXPERIENCE
   VIDEO
@@ -244,9 +230,7 @@ Arbitrary JSON value. Consumer types narrow this with a locale map or block unio
 """
 scalar JSON
 
-"""
-A searchable keyword tag attached to videos.
-"""
+"""A searchable keyword tag attached to videos."""
 type Keyword {
   coreId: String
   id: ID
@@ -254,9 +238,7 @@ type Keyword {
   value: String
 }
 
-"""
-A spoken/written language synced from JesusFilm Core.
-"""
+"""A spoken/written language synced from JesusFilm Core."""
 type Language {
   audioPreviewBitrate: Int
   audioPreviewCodec: String
@@ -274,9 +256,7 @@ type Language {
   updatedAt: String
 }
 
-"""
-A localized display name for a Core language.
-"""
+"""A localized display name for a Core language."""
 type LanguageLocale {
   id: ID
   language: Language
@@ -417,25 +397,13 @@ enum MediaImageEnrichmentStatus {
 }
 
 type Mutation {
-  """
-  Archive an Experience. Owner or ADMIN.
-  """
+  """Archive an Experience. Owner or ADMIN."""
   archiveExperience(id: ID!): Experience
 
-  """
-  Create a new Experience with an initial locale. Caller becomes owner.
-  """
-  createExperience(
-    blocks: JSON
-    isTemplate: Boolean
-    locale: String!
-    slug: String!
-    title: String
-  ): Experience
+  """Create a new Experience with an initial locale. Caller becomes owner."""
+  createExperience(blocks: JSON, isTemplate: Boolean, locale: String!, slug: String!, title: String): Experience
 
-  """
-  Create a media folder at the root or inside another folder.
-  """
+  """Create a media folder at the root or inside another folder."""
   createMediaFolder(name: String!, parentId: ID): MediaFolder
 
   """
@@ -456,23 +424,7 @@ type Mutation {
   """
   Register an uploaded file in the media library after its bytes are stored.
   """
-  registerMediaAsset(
-    backend: MediaAssetBackend
-    byteSize: String
-    checksumSha256: String
-    durationMs: String
-    folderId: ID
-    height: Int
-    kind: MediaAssetKind!
-    mimeType: String!
-    muxAssetId: String
-    muxPlaybackId: String
-    muxUploadId: String
-    originalFilename: String
-    status: MediaAssetStatus
-    visibility: MediaAssetVisibility
-    width: Int
-  ): MediaAsset
+  registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
 
   """
   Enqueue the experience-content-dump workflow. Reads cms's Strapi v5 experiences directly via CMS_DATABASE_URL, transforms each (documentId, locale) into admin's per-locale row + Zod BlockSchema shape, merge-upserts into Experience + ExperienceLocale, and dispatches runExperienceEmbedding for locales whose hashable content changed. ADMIN-only. Reruns are idempotent — repeated invocation against unchanged cms produces zero content writes (only the cms_dumped_at timestamp updates). See docs/plans/2026-04-23-001-feat-admin-r3-experience-migration-plan.md.
@@ -508,9 +460,7 @@ type Mutation {
     """
     coreIds: [String!]!
 
-    """
-    Enrichment kind. Must be "scene-analysis" or "transcript".
-    """
+    """Enrichment kind. Must be "scene-analysis" or "transcript"."""
     kind: String!
   ): JSON
 
@@ -523,9 +473,7 @@ type Mutation {
   Enqueue the scene-embedding backfill workflow. Re-indexes apps/manager's scene-analysis artifacts into VideoScene + VideoSceneLocale. One target per (video, edition, locale) where the locale set is data-derived from the video's primary language + subtitle languages + dub languages. ADMIN-only.
   """
   triggerSceneEmbeddingBackfill(
-    """
-    Restrict to these coreIds. Omitted = all mapped videos.
-    """
+    """Restrict to these coreIds. Omitted = all mapped videos."""
     coreIds: [String!]
 
     """
@@ -555,9 +503,7 @@ type Mutation {
   Enqueue the transcript-embedding backfill workflow. Re-indexes apps/manager's embeddings.json artifacts into VideoTranscript + VideoTranscriptChunk. One target per (video, edition, language) where the language set is data-derived from the video's primary language + subtitle languages + dub languages. Vectors are reused from the artifact (no OpenRouter call). ADMIN-only.
   """
   triggerTranscriptEmbeddingBackfill(
-    """
-    Restrict to these coreIds. Omitted = all mapped videos.
-    """
+    """Restrict to these coreIds. Omitted = all mapped videos."""
     coreIds: [String!]
 
     """
@@ -571,57 +517,18 @@ type Mutation {
     mappingS3Key: String = "admin-migrations/core-id-mapping.json"
   ): JSON
 
-  """
-  Update an ExperienceLocale (slug, title, blocks, etc.).
-  """
-  updateExperienceLocale(
-    blocks: JSON
-    id: ID!
-    isHomepage: Boolean
-    isTemplate: Boolean
-    metaDescription: String
-    ogDescription: String
-    ogImageUrl: String
-    ogTitle: String
-    pathSegment: String
-    slug: String
-    title: String
-  ): ExperienceLocale
+  """Update an ExperienceLocale (slug, title, blocks, etc.)."""
+  updateExperienceLocale(blocks: JSON, id: ID!, isHomepage: Boolean, isTemplate: Boolean, metaDescription: String, ogDescription: String, ogImageUrl: String, ogTitle: String, pathSegment: String, slug: String, title: String): ExperienceLocale
 
-  """
-  Update editable media asset metadata and processing state.
-  """
-  updateMediaAsset(
-    byteSize: String
-    checksumSha256: String
-    durationMs: String
-    errorCode: String
-    errorMessage: String
-    folderId: ID
-    height: Int
-    id: ID!
-    muxAssetId: String
-    muxPlaybackId: String
-    muxUploadId: String
-    originalFilename: String
-    status: MediaAssetStatus
-    visibility: MediaAssetVisibility
-    width: Int
-  ): MediaAsset
+  """Update editable media asset metadata and processing state."""
+  updateMediaAsset(byteSize: String, checksumSha256: String, durationMs: String, errorCode: String, errorMessage: String, folderId: ID, height: Int, id: ID!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
 
   """
   Edit localized media display name or alt text. Edited fields become human-protected and are not overwritten by future AI retries.
   """
-  updateMediaAssetLocale(
-    altText: String
-    displayName: String
-    locale: String!
-    mediaAssetId: ID!
-  ): MediaAssetLocale
+  updateMediaAssetLocale(altText: String, displayName: String, locale: String!, mediaAssetId: ID!): MediaAssetLocale
 
-  """
-  Rename a media folder.
-  """
+  """Rename a media folder."""
   updateMediaFolder(id: ID!, name: String!): MediaFolder
 }
 
@@ -635,14 +542,10 @@ type MuxVideo {
 }
 
 type Query {
-  """
-  List active (non-soft-deleted) countries.
-  """
+  """List active (non-soft-deleted) countries."""
   countries(limit: Int = 250, offset: Int = 0): [Country!]
 
-  """
-  Fetch a single Experience by id. ABAC-filtered.
-  """
+  """Fetch a single Experience by id. ABAC-filtered."""
   experience(id: ID!): Experience
 
   """
@@ -650,28 +553,16 @@ type Query {
   """
   experienceBySlug(locale: String!, slug: String!): ExperienceLocale
 
-  """
-  List Experiences. ABAC-filtered.
-  """
-  experiences(
-    includeArchived: Boolean = false
-    limit: Int = 50
-    offset: Int = 0
-  ): [Experience!]
+  """List Experiences. ABAC-filtered."""
+  experiences(includeArchived: Boolean = false, limit: Int = 50, offset: Int = 0): [Experience!]
 
-  """
-  List active (non-soft-deleted) keywords.
-  """
+  """List active (non-soft-deleted) keywords."""
   keywords(limit: Int = 100, offset: Int = 0): [Keyword!]
 
-  """
-  List active (non-soft-deleted) languages.
-  """
+  """List active (non-soft-deleted) languages."""
   languages(limit: Int = 100, offset: Int = 0): [Language!]
 
-  """
-  Fetch a single media asset by id.
-  """
+  """Fetch a single media asset by id."""
   mediaAsset(id: ID!): MediaAsset
 
   """
@@ -679,34 +570,16 @@ type Query {
   """
   mediaAssetUsage(id: ID!): [MediaAssetUsage!]
 
-  """
-  List media assets ordered by most recent update.
-  """
-  mediaAssets(
-    backend: MediaAssetBackend
-    folderId: ID
-    kind: MediaAssetKind
-    limit: Int = 50
-    offset: Int = 0
-    search: String
-    status: MediaAssetStatus
-  ): [MediaAsset!]
+  """List media assets ordered by most recent update."""
+  mediaAssets(backend: MediaAssetBackend, folderId: ID, kind: MediaAssetKind, limit: Int = 50, offset: Int = 0, search: String, status: MediaAssetStatus): [MediaAsset!]
 
-  """
-  List media folders ordered for tree rendering.
-  """
+  """List media folders ordered for tree rendering."""
   mediaFolders: [MediaFolder!]
 
   """
   Per-scene cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.
   """
-  sceneRecommendations(
-    limit: Int
-    locale: String!
-    sceneIndex: Int
-    slug: String
-    videoId: ID
-  ): [SceneRecommendation!]!
+  sceneRecommendations(limit: Int, locale: String!, sceneIndex: Int, slug: String, videoId: ID): [SceneRecommendation!]!
 
   """
   Hybrid (semantic + keyword) search across videos and experiences. PUBLIC — see published + non-archived rows only.
@@ -731,26 +604,18 @@ type Query {
   """
   Semantic search over Experience locales. Pass a 1536-dimension embedding vector. PUBLIC sees published only; EDITOR/ADMIN see all statuses.
   """
-  searchExperiences(
-    limit: Int = 10
-    locale: String
-    vector: JSON!
-  ): [ExperienceLocale!]
+  searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
 
   """
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
   systemStatus: JSON
 
-  """
-  Fetch a single Video by id.
-  """
+  """Fetch a single Video by id."""
   video(id: ID!): Video
   videoBySlug(slug: String!): Video
 
-  """
-  List active Videos ordered by most recent Core update.
-  """
+  """List active Videos ordered by most recent Core update."""
   videos(limit: Int = 50, offset: Int = 0): [Video!]
 }
 
@@ -789,9 +654,7 @@ type Video {
   images: [VideoImage!]
   label: VideoLabel
 
-  """
-  Per-locale content rows (title, description, etc.).
-  """
+  """Per-locale content rows (title, description, etc.)."""
   locales: [VideoLocale!]
   locked: Boolean
   noIndex: Boolean
@@ -825,9 +688,7 @@ type VideoDub {
   videoEdition: VideoEdition
 }
 
-"""
-A downloadable quality tier for a Core-sourced video dub.
-"""
+"""A downloadable quality tier for a Core-sourced video dub."""
 type VideoDubDownload {
   bitrate: Int
   coreId: String
@@ -845,9 +706,7 @@ A specific cut of a Video (theatrical, director's, extended, …). Subtitles att
 type VideoEdition {
   coreId: String
 
-  """
-  Language-specific audio dubs of this edition.
-  """
+  """Language-specific audio dubs of this edition."""
   dubs: [VideoDub!]
   id: ID
   name: String
@@ -914,9 +773,7 @@ type VideoScene {
   endSeconds: Float
   id: ID
 
-  """
-  Per-locale scene description + metadata.
-  """
+  """Per-locale scene description + metadata."""
   locales: [VideoSceneLocale!]
   sceneIndex: Int
   startSeconds: Float
@@ -951,9 +808,7 @@ enum VideoSourceHost {
   YOUTUBE
 }
 
-"""
-A per-locale Core-sourced study question attached to a video.
-"""
+"""A per-locale Core-sourced study question attached to a video."""
 type VideoStudyQuestion {
   coreId: String
   id: ID
