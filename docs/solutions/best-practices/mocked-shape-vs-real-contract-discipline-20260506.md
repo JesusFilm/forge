@@ -101,7 +101,7 @@ expect(error.code).toBe("artifact_missing")
 
 ## Worked instances in this codebase
 
-The same trap, four different surfaces:
+The same trap, five different surfaces:
 
 | Surface                                             | Doc                                                                                                                             | Trap                                                                                                                                                                                                                                                                                                                                          |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -109,8 +109,9 @@ The same trap, four different surfaces:
 | **PG function resolution**                          | [pgvector-bulk-insert-on-conflict-pattern-20260505.md](../database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md) | Mocked SQL-shape test asserts `WHERE` clause structure. PG's actual function-resolution rules (jsonb vs json overload set, enum case sensitivity, NULL-pad behavior of multi-arg `unnest`) only fail at runtime against real Postgres. (feat-117 captured this lesson after the bulk-insert path passed mocked tests but errored on real PG.) |
 | **In-house typed errors with literal-union `code`** | [parallel-workflow-error-robustness-20260420.md](parallel-workflow-error-robustness-20260420.md)                                | Mock rejects with generic `new Error("artifact_missing: ...")`. The workflow's `instanceof TypedError && error.code === "..."` branching never fires (the regex-message check above it does). A real `TypedError` thrown from production has a different code path than the test exercises.                                                   |
 | **Infrastructure writes (Railway MCP staging)**     | [verify-infra-writes-via-independent-read-path-20260420.md](verify-infra-writes-via-independent-read-path-20260420.md)          | The MCP `updateServiceTool` returns "applied" even when the change is staged-but-not-deployed. Verifying via the same MCP's `getServiceConfigTool` returns the same masked value either way. Only an independent read path (curl the runtime endpoint, check the deployed service's actual environment) proves the contract.                  |
+| **Cross-PR file-format contract literals**          | [producer-consumer-report-file-contract-pattern-20260506.md](producer-consumer-report-file-contract-pattern-20260506.md)        | feat-119 PR2's CLI filtered for `kind: "scene"` while PR1 emitted `kind: "scene-analysis"`. Test fixture used the WRONG literal (matching the buggy filter), making the test self-confirming. The discriminator branch was never tested against a real producer literal — green tests, broken operator workflow.                              |
 
-These four are the same rule four times. If you find a fifth
+These five are the same rule five times. If you find a sixth
 instance, add it here — that's the META home.
 
 ## Why the rule keeps recurring
