@@ -21,6 +21,7 @@
     "pull:mapping": "tsx src/scripts/pull-mapping-from-prod.ts",
     "run-embeds": "tsx src/scripts/run-embeds.ts",
     "run-sync": "tsx src/scripts/run-sync.ts",
+    "seed-easter": "tsx --env-file=.env src/scripts/seed-easter.ts",
     "trigger-enrichment": "tsx src/scripts/trigger-enrichment.ts",
     "workflow:setup:postgres": "workflow-postgres-setup"
   },
