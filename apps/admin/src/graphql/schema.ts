@@ -19,6 +19,7 @@ import "@/graphql/mutations/experience"
 import "@/graphql/mutations/scene-embedding"
 import "@/graphql/mutations/transcript-embedding"
 import "@/graphql/mutations/experience-content-dump"
+import "@/graphql/mutations/manager-enrichment"
 import "@/graphql/queries/search"
 // Debug-payload types must register before the hybrid-search query
 // references them via SearchResultDebugRef.
