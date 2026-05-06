@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./graphql": "./src/graphql.ts"
+    "./graphql": "./src/graphql.ts",
+    "./admin": "./src/admin.ts"
   },
   "scripts": {
     "generate": "gql-tada generate output",
