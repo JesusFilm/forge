@@ -4,11 +4,11 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (April 29, 2026)
+## Status (May 6, 2026)
 
-- **Total tickets:** 126
+- **Total tickets:** 127
 - **Complete:** 64
-- **In progress:** 6
+- **In progress:** 7
 - **Not started:** 18
 - **Blocked:** 38
 - **Overdue and not complete:** 16
@@ -102,6 +102,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-104](platform/feat-104-admin-railway-provisioning.md)                      | Provision apps/admin on Railway                         | nisal     | P0       | 2026-04-20 | 1    | 2026-04-20 | in-progress |
 | [feat-105](platform/feat-105-admin-sso-firebase-auth-wiring.md)                  | Wire SSO + Firebase fallback auth on @forge/admin       | tataihono | P0       | 2026-04-21 | 3    | 2026-04-23 | blocked     |
 | [feat-104](platform/feat-104-admin-core-consumer-migration-plan.md)              | Admin Core Consumer Migration Plan                      | tataihono | P0       | 2026-04-22 | 2    | 2026-04-23 | in-progress |
+| [feat-120](platform/feat-120-manager-admin-backend-migration.md)                 | Manager Admin Backend Migration                         | vlad      | P0       | 2026-05-06 | 14   | 2026-05-19 | in-progress |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md) | CMS local PostgreSQL I/O concurrency compatibility      | tataihono | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                        | Scaffolding Support for Urim                            | tataihono | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
 | [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)            | Roadmap Operations and Owner Hygiene                    | josh      | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |

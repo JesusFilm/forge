@@ -13,6 +13,7 @@ blocks:
   - "feat-092"
   - "feat-093"
   - "feat-097"
+  - "feat-120"
 tags:
   - "platform"
   - "cms"
