@@ -45,6 +45,9 @@
     "generate": {
       "inputs": ["../../apps/cms/schema.graphql"],
       "outputs": ["src/graphql-env.d.ts"]
+    },
+    "schema:print": {
+      "outputs": ["schema.graphql"]
     }
   }
 }
