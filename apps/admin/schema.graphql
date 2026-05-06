@@ -116,7 +116,6 @@ type Experience {
   createdAt: String
   id: ID
   isTemplate: Boolean
-
   """
   Per-locale ExperienceLocale rows. ABAC-filtered: VIEWER/PUBLIC see PUBLISHED only.
   """
@@ -171,7 +170,6 @@ type HybridSearchResponse {
   hasMore: Boolean!
   query: String!
   results: [HybridSearchResult!]!
-
   """
   Embedding-degradation signal — 'hybrid' when semantic retrieval ran, 'keyword-only' when the embedding provider failed. ORTHOGONAL to the input arg `mode`, which selects the retrieval pipeline. Same name, different concern.
   """
@@ -205,12 +203,10 @@ type HybridSearchResultDebug {
   Whether the keyword-first semantic-dilution cap halved this row's score. The cap only runs in `mode="keyword-first"` when an exact-title hit covered every query token. In hybrid mode the cap never runs — the field reads `false` because 'cap was not applicable on this code path', NOT because 'cap considered this row and chose not to'. Use `mode` alongside this flag to interpret it correctly.
   """
   dilutionCapApplied: Boolean!
-
   """
   Reciprocal Rank Fusion score BEFORE the keyword-first dilution cap. The visible `score` field on `HybridSearchResult` reflects the post-cap value; comparing the two reveals exactly how much the cap down-weighted this row (0.5× when `dilutionCapApplied` is true, identical otherwise).
   """
   fusedScore: Float!
-
   """
   Per-list contributions that produced this fused result, in dispatch order (semantic-video, keyword-* / lexical retrievers, semantic-experience, keyword-experience). Each entry's `rank` is 1-based.
   """
@@ -399,33 +395,26 @@ enum MediaImageEnrichmentStatus {
 type Mutation {
   """Archive an Experience. Owner or ADMIN."""
   archiveExperience(id: ID!): Experience
-
   """Create a new Experience with an initial locale. Caller becomes owner."""
   createExperience(blocks: JSON, isTemplate: Boolean, locale: String!, slug: String!, title: String): Experience
-
   """Create a media folder at the root or inside another folder."""
   createMediaFolder(name: String!, parentId: ID): MediaFolder
-
   """
   Delete a media asset only when no experience metadata or block fields still reference it.
   """
   deleteMediaAsset(id: ID!): DeleteMediaAssetResult
-
   """
   Delete an empty media folder. Fails when child folders or assets remain.
   """
   deleteMediaFolder(id: ID!): DeleteMediaFolderResult
-
   """
   Publish an ExperienceLocale (flip status to PUBLISHED). Owner or ADMIN.
   """
   publishExperienceLocale(id: ID!): ExperienceLocale
-
   """
   Register an uploaded file in the media library after its bytes are stored.
   """
   registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
-
   """
   Enqueue the experience-content-dump workflow. Reads cms's Strapi v5 experiences directly via CMS_DATABASE_URL, transforms each (documentId, locale) into admin's per-locale row + Zod BlockSchema shape, merge-upserts into Experience + ExperienceLocale, and dispatches runExperienceEmbedding for locales whose hashable content changed. ADMIN-only. Reruns are idempotent — repeated invocation against unchanged cms produces zero content writes (only the cms_dumped_at timestamp updates). See docs/plans/2026-04-23-001-feat-admin-r3-experience-migration-plan.md.
   """
@@ -434,18 +423,15 @@ type Mutation {
     Restrict to these cms Strapi v5 documentIds. Omitted = every cms experience document.
     """
     documentIds: [String!]
-
     """
     Restrict to these BCP-47 locales as a pure inclusion filter. Omitted = every locale that exists in cms's experiences corpus, derived at enumeration time. No hardcoded list, no `en` fallback.
     """
     locales: [String!]
   ): JSON
-
   """
   Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.
   """
   triggerExperienceEmbedding(localeId: ID!): JSON
-
   """
   Dispatch apps/manager's enrichment pipeline (scene-analysis or transcript-only) for a list of cms videos. Forwards to manager's `/api/admin-trigger/{kind}` endpoint and returns one outcome per requested assetId. Operator-driven: typically called after reading the `missingArtifacts` projection emitted by `triggerSceneEmbeddingBackfill` / `triggerTranscriptEmbeddingBackfill` (feat-119 PR1). ADMIN-only.
   """
@@ -454,80 +440,65 @@ type Mutation {
     Strapi numeric PKs of the cms videos to enrich. Used by manager as the storage-key prefix when writing produced artifacts. Length must match coreIds.
     """
     assetIds: [Int!]!
-
     """
     Per-id Core identifiers, paired positionally with assetIds. Manager filters cms by `coreId` (Strapi v5 GraphQL exposes no numeric-id filter on Video). Length must match assetIds.
     """
     coreIds: [String!]!
-
     """Enrichment kind. Must be "scene-analysis" or "transcript"."""
     kind: String!
   ): JSON
-
   """
   Queue or retry image enrichment for a media asset. Human-protected localized fields are preserved by the workflow.
   """
   triggerMediaImageEnrichment(id: ID!): MediaAsset
-
   """
   Enqueue the scene-embedding backfill workflow. Re-indexes apps/manager's scene-analysis artifacts into VideoScene + VideoSceneLocale. One target per (video, edition, locale) where the locale set is data-derived from the video's primary language + subtitle languages + dub languages. ADMIN-only.
   """
   triggerSceneEmbeddingBackfill(
     """Restrict to these coreIds. Omitted = all mapped videos."""
     coreIds: [String!]
-
     """
     Restrict to these BCP-47 tags. Omitted = every locale that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. Filters on the `VideoSceneLocale.locale` storage row — i.e. which language-specific scene description + embedding to (re)write. Contrast with `triggerTranscriptEmbeddingBackfill(languages)`, which filters on the Video's source transcription language (a different semantic axis despite the similar arg name).
     """
     locales: [String!]
-
     """
     S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`). Defaults to admin-migrations/core-id-mapping.json.
     """
     mappingS3Key: String = "admin-migrations/core-id-mapping.json"
   ): JSON
-
   """
   Enqueue a Core sync run. ADMIN only. Returns workflow dispatch metadata.
   """
   triggerSync(
     incremental: Boolean = true
-
     """
     Phase scope: "all" or a comma-separated list like "languages,videos"
     """
     scope: String
   ): JSON
-
   """
   Enqueue the transcript-embedding backfill workflow. Re-indexes apps/manager's embeddings.json artifacts into VideoTranscript + VideoTranscriptChunk. One target per (video, edition, language) where the language set is data-derived from the video's primary language + subtitle languages + dub languages. Vectors are reused from the artifact (no OpenRouter call). ADMIN-only.
   """
   triggerTranscriptEmbeddingBackfill(
     """Restrict to these coreIds. Omitted = all mapped videos."""
     coreIds: [String!]
-
     """
     Restrict to these BCP-47 tags. Omitted = every language that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. NOT an override for the stamped language on the written row; the arg filters which `(video, edition, language)` targets get processed. The arg is named `languages` (not `locales` as in `triggerSceneEmbeddingBackfill`) because the filter axis is source transcription language, not per-locale publish state.
     """
     languages: [String!]
-
     """
     S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`, shared with scene-embedding backfill). Defaults to admin-migrations/core-id-mapping.json.
     """
     mappingS3Key: String = "admin-migrations/core-id-mapping.json"
   ): JSON
-
   """Update an ExperienceLocale (slug, title, blocks, etc.)."""
   updateExperienceLocale(blocks: JSON, id: ID!, isHomepage: Boolean, isTemplate: Boolean, metaDescription: String, ogDescription: String, ogImageUrl: String, ogTitle: String, pathSegment: String, slug: String, title: String): ExperienceLocale
-
   """Update editable media asset metadata and processing state."""
   updateMediaAsset(byteSize: String, checksumSha256: String, durationMs: String, errorCode: String, errorMessage: String, folderId: ID, height: Int, id: ID!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
-
   """
   Edit localized media display name or alt text. Edited fields become human-protected and are not overwritten by future AI retries.
   """
   updateMediaAssetLocale(altText: String, displayName: String, locale: String!, mediaAssetId: ID!): MediaAssetLocale
-
   """Rename a media folder."""
   updateMediaFolder(id: ID!, name: String!): MediaFolder
 }
@@ -544,43 +515,32 @@ type MuxVideo {
 type Query {
   """List active (non-soft-deleted) countries."""
   countries(limit: Int = 250, offset: Int = 0): [Country!]
-
   """Fetch a single Experience by id. ABAC-filtered."""
   experience(id: ID!): Experience
-
   """
   Find an Experience locale by (locale, slug). PUBLIC sees published only; EDITOR/ADMIN see all.
   """
   experienceBySlug(locale: String!, slug: String!): ExperienceLocale
-
   """List Experiences. ABAC-filtered."""
   experiences(includeArchived: Boolean = false, limit: Int = 50, offset: Int = 0): [Experience!]
-
   """List active (non-soft-deleted) keywords."""
   keywords(limit: Int = 100, offset: Int = 0): [Keyword!]
-
   """List active (non-soft-deleted) languages."""
   languages(limit: Int = 100, offset: Int = 0): [Language!]
-
   """Fetch a single media asset by id."""
   mediaAsset(id: ID!): MediaAsset
-
   """
   List experience metadata and block fields that currently reference a media asset.
   """
   mediaAssetUsage(id: ID!): [MediaAssetUsage!]
-
   """List media assets ordered by most recent update."""
   mediaAssets(backend: MediaAssetBackend, folderId: ID, kind: MediaAssetKind, limit: Int = 50, offset: Int = 0, search: String, status: MediaAssetStatus): [MediaAsset!]
-
   """List media folders ordered for tree rendering."""
   mediaFolders: [MediaFolder!]
-
   """
   Per-scene cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.
   """
   sceneRecommendations(limit: Int, locale: String!, sceneIndex: Int, slug: String, videoId: ID): [SceneRecommendation!]!
-
   """
   Hybrid (semantic + keyword) search across videos and experiences. PUBLIC — see published + non-archived rows only.
   """
@@ -591,7 +551,6 @@ type Query {
     debug: Boolean
     limit: Int
     locale: String!
-
     """
     Selects the retrieval pipeline. Default: 'hybrid' (the R4 baseline). Currently accepts 'hybrid' and 'keyword-first'. Unknown values fall back to 'hybrid' with a server-side warn log; never throws. Kept as a nullable String (not an enum) so future modes ship without GraphQL schema changes. ORTHOGONAL to the response field `searchMode`, which reports the embedding-degradation signal ('hybrid' | 'keyword-only') based on whether semantic retrieval ran — these two share a name but answer different questions.
     """
@@ -600,21 +559,17 @@ type Query {
     q: String!
     type: HybridSearchContentType
   ): HybridSearchResponse
-
   """
   Semantic search over Experience locales. Pass a 1536-dimension embedding vector. PUBLIC sees published only; EDITOR/ADMIN see all statuses.
   """
   searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
-
   """
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
   systemStatus: JSON
-
   """Fetch a single Video by id."""
   video(id: ID!): Video
   videoBySlug(slug: String!): Video
-
   """List active Videos ordered by most recent Core update."""
   videos(limit: Int = 50, offset: Int = 0): [Video!]
 }
@@ -645,7 +600,6 @@ type Video {
   aiMetadata: Boolean
   bibleCitations: [BibleCitation!]
   coreId: String
-
   """
   Language-specific audio dubs + their encoded playback (formerly exposed as `variants`).
   """
@@ -653,7 +607,6 @@ type Video {
   id: ID
   images: [VideoImage!]
   label: VideoLabel
-
   """Per-locale content rows (title, description, etc.)."""
   locales: [VideoLocale!]
   locked: Boolean
@@ -705,12 +658,10 @@ A specific cut of a Video (theatrical, director's, extended, …). Subtitles att
 """
 type VideoEdition {
   coreId: String
-
   """Language-specific audio dubs of this edition."""
   dubs: [VideoDub!]
   id: ID
   name: String
-
   """
   Timed text tracks. Same-language-as-source = transcript; different language = translation; same-language-as-dub = closed captions.
   """
@@ -772,7 +723,6 @@ type VideoScene {
   createdAt: String
   endSeconds: Float
   id: ID
-
   """Per-locale scene description + metadata."""
   locales: [VideoSceneLocale!]
   sceneIndex: Int
