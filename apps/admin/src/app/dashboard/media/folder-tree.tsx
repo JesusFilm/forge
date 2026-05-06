@@ -1268,7 +1268,7 @@ export function MediaFolderTree({
       onKeyDown={handleFolderTreeKeyDown}
       className="flex min-h-0 flex-1 flex-col focus:outline-none"
     >
-      <div className="flex items-center justify-between border-b border-[var(--color-hairline)] px-2 py-2 text-[12px] font-medium text-[var(--color-text-primary)]">
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--color-hairline)] px-2 text-[12px] font-medium text-[var(--color-text-primary)]">
         <span className="flex items-center gap-2">
           <Folder className="h-4 w-4" strokeWidth={1.5} />
           Folders
@@ -1284,7 +1284,7 @@ export function MediaFolderTree({
       </div>
       <div
         className={cx(
-          "relative flex min-h-0 flex-1 flex-col rounded-sm border border-[color-mix(in_srgb,var(--color-brand)_18%,transparent)]",
+          "relative flex min-h-0 flex-1 flex-col border border-[color-mix(in_srgb,var(--color-brand)_18%,transparent)]",
           rootDropActive && "border-[var(--color-brand)]",
         )}
       >

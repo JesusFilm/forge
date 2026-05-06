@@ -2,12 +2,15 @@
 // permission checks, validation, storage-shape rules, and Prisma writes.
 
 import { builder } from "@/graphql/builder"
+import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import {
   MediaAssetBackendEnum,
   MediaAssetKindEnum,
   MediaAssetStatusEnum,
   MediaAssetVisibilityEnum,
 } from "@/graphql/types/mediaAsset"
+import { runMediaImageEnrichment } from "@/workflows/mediaImageEnrichment"
+import { start } from "workflow/api"
 
 type DeleteMediaAssetResult = {
   deleted: boolean
@@ -34,9 +37,6 @@ builder.mutationFields((t) => ({
       backend: t.arg({ type: MediaAssetBackendEnum, required: false }),
       status: t.arg({ type: MediaAssetStatusEnum, required: false }),
       visibility: t.arg({ type: MediaAssetVisibilityEnum, required: false }),
-      displayName: t.arg.string({ required: true }),
-      description: t.arg.string({ required: false }),
-      altText: t.arg.string({ required: false }),
       mimeType: t.arg.string({ required: true }),
       folderId: t.arg.id({ required: false }),
       byteSize: t.arg.string({ required: false }),
@@ -56,11 +56,6 @@ builder.mutationFields((t) => ({
           ...(args.backend != null ? { backend: args.backend } : {}),
           ...(args.status != null ? { status: args.status } : {}),
           ...(args.visibility != null ? { visibility: args.visibility } : {}),
-          displayName: args.displayName,
-          ...(args.description !== undefined
-            ? { description: args.description }
-            : {}),
-          ...(args.altText !== undefined ? { altText: args.altText } : {}),
           mimeType: args.mimeType,
           ...(args.folderId != null ? { folderId: String(args.folderId) } : {}),
           ...(args.byteSize != null ? { byteSize: args.byteSize } : {}),
@@ -95,9 +90,6 @@ builder.mutationFields((t) => ({
       id: t.arg.id({ required: true }),
       status: t.arg({ type: MediaAssetStatusEnum, required: false }),
       visibility: t.arg({ type: MediaAssetVisibilityEnum, required: false }),
-      displayName: t.arg.string({ required: false }),
-      description: t.arg.string({ required: false }),
-      altText: t.arg.string({ required: false }),
       folderId: t.arg.id({ required: false }),
       byteSize: t.arg.string({ required: false }),
       width: t.arg.int({ required: false }),
@@ -117,13 +109,6 @@ builder.mutationFields((t) => ({
           id: String(args.id),
           ...(args.status != null ? { status: args.status } : {}),
           ...(args.visibility != null ? { visibility: args.visibility } : {}),
-          ...(args.displayName !== undefined
-            ? { displayName: args.displayName }
-            : {}),
-          ...(args.description !== undefined
-            ? { description: args.description }
-            : {}),
-          ...(args.altText !== undefined ? { altText: args.altText } : {}),
           ...(args.folderId !== undefined
             ? { folderId: args.folderId ? String(args.folderId) : null }
             : {}),
@@ -170,5 +155,79 @@ builder.mutationFields((t) => ({
         id: String(args.id),
         user: ctx.user,
       }),
+  }),
+
+  updateMediaAssetLocale: t.prismaField({
+    type: "MediaAssetLocale",
+    authScopes: { hasPermission: "write:media-assets" },
+    description:
+      "Edit localized media display name or alt text. Edited fields become human-protected and are not overwritten by future AI retries.",
+    args: {
+      mediaAssetId: t.arg.id({ required: true }),
+      locale: t.arg.string({ required: true }),
+      displayName: t.arg.string({ required: false }),
+      altText: t.arg.string({ required: false }),
+    },
+    resolve: (_query, _root, args, ctx) =>
+      ctx.services.mediaAsset.updateImageLocale({
+        input: {
+          mediaAssetId: String(args.mediaAssetId),
+          locale: args.locale,
+          ...(args.displayName !== undefined
+            ? { displayName: args.displayName }
+            : {}),
+          ...(args.altText !== undefined ? { altText: args.altText } : {}),
+        },
+        user: ctx.user,
+      }),
+  }),
+
+  triggerMediaImageEnrichment: t.prismaField({
+    type: "MediaAsset",
+    authScopes: { hasPermission: "write:media-assets" },
+    description:
+      "Queue or retry image enrichment for a media asset. Human-protected localized fields are preserved by the workflow.",
+    args: {
+      id: t.arg.id({ required: true }),
+    },
+    resolve: async (query, _root, args, ctx) => {
+      const mediaAssetId = String(args.id)
+      await ctx.services.mediaAsset.updateImageEnrichmentState({
+        mediaAssetId,
+        user: SYSTEM_PRINCIPAL,
+        data: {
+          imageEnrichmentStatus: "WAITING",
+          imageEnrichmentErrorCode: null,
+          imageEnrichmentErrorMessage: null,
+          imageEnrichmentCompletedAt: null,
+        },
+      })
+
+      try {
+        await start(runMediaImageEnrichment, [{ mediaAssetId }])
+      } catch (error) {
+        await ctx.services.mediaAsset.updateImageEnrichmentState({
+          mediaAssetId,
+          user: SYSTEM_PRINCIPAL,
+          data: {
+            imageEnrichmentStatus: "FAILED",
+            imageEnrichmentErrorCode: "workflow_dispatch_failed",
+            imageEnrichmentErrorMessage:
+              error instanceof Error ? error.message : String(error),
+            imageEnrichmentCompletedAt: new Date(),
+          },
+        })
+      }
+
+      const asset = await ctx.services.mediaAsset.getById({
+        id: mediaAssetId,
+        user: ctx.user,
+        query,
+      })
+      if (!asset) {
+        throw new Error("Media asset not found")
+      }
+      return asset
+    },
   }),
 }))

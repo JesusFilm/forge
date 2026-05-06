@@ -6,6 +6,20 @@ import { z } from "zod"
 // `undefined` before validation.
 const emptyToUndefined = (v: string | undefined) => (v === "" ? undefined : v)
 
+/**
+ * Shared schema fragment for env vars representing a positive-int
+ * concurrency cap (e.g. `SCENE_EMBEDDING_CONCURRENCY`,
+ * `TRANSCRIPT_EMBEDDING_CONCURRENCY`). Exported so test code and the
+ * `run-embeds` CLI can parse via the same shape rather than
+ * hand-rolling a parallel parser. Contract: undefined → undefined,
+ * positive int (coerced from string) → number, anything else throws.
+ */
+export const concurrencyEnvSchema = z.coerce
+  .number()
+  .int()
+  .positive()
+  .optional()
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -55,6 +69,8 @@ export const env = createEnv({
     CORE_API_RETRIES: z.coerce.number().int().min(0).optional(),
     CORE_SYNC_CRON_SECRET: z.string().min(1).optional(),
     OPENROUTER_API_KEY: z.string().min(1).optional(),
+    OPENROUTER_IMAGE_TEXT_MODEL: z.string().min(1).optional(),
+    OPENROUTER_IMAGE_TEXT_MODELS: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BASE_URL: z.string().url().optional(),
     WORKFLOW_API_KEYS: z.string().min(1).optional(),
@@ -74,6 +90,15 @@ export const env = createEnv({
       .int()
       .positive()
       .optional(),
+    // Per-target concurrency caps for the R1 / R2 embed-backfill
+    // workflows (sceneEmbeddingBackfill / transcriptEmbeddingBackfill).
+    // Each workflow uses `p-limit(N) + Promise.allSettled` to fan out
+    // the per-target loop; one rejection never aborts siblings (cf.
+    // docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md).
+    // Default at the call site is 10. Tune up locally (20+); tune down
+    // in prod (start at 5, ramp after observation).
+    SCENE_EMBEDDING_CONCURRENCY: concurrencyEnvSchema,
+    TRANSCRIPT_EMBEDDING_CONCURRENCY: concurrencyEnvSchema,
     RAILWAY_S3_ENDPOINT: z.string().url().optional(),
     RAILWAY_S3_REGION: z.string().min(1).optional(),
     RAILWAY_S3_BUCKET: z.string().min(1).optional(),
@@ -156,6 +181,12 @@ export const env = createEnv({
     CORE_API_RETRIES: emptyToUndefined(process.env.CORE_API_RETRIES),
     CORE_SYNC_CRON_SECRET: emptyToUndefined(process.env.CORE_SYNC_CRON_SECRET),
     OPENROUTER_API_KEY: emptyToUndefined(process.env.OPENROUTER_API_KEY),
+    OPENROUTER_IMAGE_TEXT_MODEL: emptyToUndefined(
+      process.env.OPENROUTER_IMAGE_TEXT_MODEL,
+    ),
+    OPENROUTER_IMAGE_TEXT_MODELS: emptyToUndefined(
+      process.env.OPENROUTER_IMAGE_TEXT_MODELS,
+    ),
     OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
     OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
     WORKFLOW_API_KEYS: emptyToUndefined(process.env.WORKFLOW_API_KEYS),
@@ -170,6 +201,12 @@ export const env = createEnv({
     ),
     WORKFLOW_POSTGRES_MAX_POOL_SIZE: emptyToUndefined(
       process.env.WORKFLOW_POSTGRES_MAX_POOL_SIZE,
+    ),
+    SCENE_EMBEDDING_CONCURRENCY: emptyToUndefined(
+      process.env.SCENE_EMBEDDING_CONCURRENCY,
+    ),
+    TRANSCRIPT_EMBEDDING_CONCURRENCY: emptyToUndefined(
+      process.env.TRANSCRIPT_EMBEDDING_CONCURRENCY,
     ),
     RAILWAY_S3_ENDPOINT: emptyToUndefined(process.env.RAILWAY_S3_ENDPOINT),
     RAILWAY_S3_REGION: emptyToUndefined(process.env.RAILWAY_S3_REGION),

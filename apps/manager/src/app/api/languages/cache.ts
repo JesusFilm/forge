@@ -9,6 +9,8 @@ type CmsLanguageGeo = {
     id: string
     englishLabel: string
     nativeLabel: string
+    bcp47?: string | null
+    iso3?: string | null
     countryIds: string[]
     continentIds: string[]
     countrySpeakers: Record<string, number>

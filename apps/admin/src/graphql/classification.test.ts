@@ -165,6 +165,7 @@ describe("public-shape types do not relate to abac-gated types", () => {
     CountryLanguage: { country: "Country", language: "Language" },
     Keyword: { language: "Language" },
     BibleCitation: { bibleBook: "BibleBook" },
+    MediaAsset: { locales: "MediaAssetLocale" },
     VideoSubtitle: { video: "Video", language: "Language" },
     VideoStudyQuestion: { language: "Language" },
     VideoDub: {

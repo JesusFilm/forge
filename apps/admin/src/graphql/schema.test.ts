@@ -81,6 +81,8 @@ describe("GraphQL schema — Unit 4 content types", () => {
     const fields = mutation!.getFields()
     expect(fields.registerMediaAsset).toBeDefined()
     expect(fields.updateMediaAsset).toBeDefined()
+    expect(fields.updateMediaAssetLocale).toBeDefined()
+    expect(fields.triggerMediaImageEnrichment).toBeDefined()
     expect(fields.deleteMediaAsset).toBeDefined()
     expect(fields.createMediaFolder).toBeDefined()
     expect(fields.updateMediaFolder).toBeDefined()
@@ -139,6 +141,36 @@ describe("GraphQL schema — Unit 4 content types", () => {
     // null; the workflow itself treats length-0 arrays as omitted.
     expect(String(documentIds!.type)).toBe("[String!]")
     expect(String(locales!.type)).toBe("[String!]")
+  })
+})
+
+describe("MediaAsset type", () => {
+  it("exposes image enrichment metadata and localized rows", () => {
+    const fields = fieldsOf("MediaAsset")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "blurDataUrl",
+        "imageEnrichmentStatus",
+        "imageEnrichmentErrorMessage",
+        "locales",
+      ]),
+    )
+  })
+
+  it("MediaAssetLocale exposes provenance and override locks", () => {
+    const fields = fieldsOf("MediaAssetLocale")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "locale",
+        "displayName",
+        "altText",
+        "displayNameSource",
+        "altTextSource",
+        "displayNameLocked",
+        "altTextLocked",
+        "status",
+      ]),
+    )
   })
 })
 
@@ -302,7 +334,6 @@ describe("MediaAsset type", () => {
         "backend",
         "status",
         "visibility",
-        "displayName",
         "mimeType",
         "byteSize",
         "previewUrl",

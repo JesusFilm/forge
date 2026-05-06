@@ -105,7 +105,7 @@ and edge contexts do not accidentally spawn workers.
 ```ts
 export function shouldStartWorkflowWorld(): boolean {
   return (
-    env.NEXT_RUNTIME !== "edge" &&
+    process.env.NEXT_RUNTIME === "nodejs" &&
     env.WORKFLOW_TARGET_WORLD === "@workflow/world-postgres"
   )
 }

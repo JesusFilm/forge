@@ -29,6 +29,24 @@ related:
 date_learned: 2026-04-22
 ---
 
+## Stage 3 (feat-117) update
+
+The per-chunk `videoTranscriptChunk.upsert(...)` + per-row `$executeRaw …
+UPDATE … embedding` write loop has been collapsed into ONE bulk
+`INSERT INTO video_transcript_chunk … SELECT * FROM unnest(12 parallel
+arrays) ON CONFLICT (transcript_id, chunk_index) DO UPDATE` per
+`(video, edition, language)` target. Per-row Way A vector cast at the
+SELECT seam (`u.embedding_text::vector(1536)`, NOT `::vector(1536)[]`
+on the parameter — the array-input parser is less-trodden code), with
+length-equality preflight asserting all 12 parallel arrays match
+`artifact.chunks.length` BEFORE `$executeRaw` (PG18 silently NULL-pads
+unequal-length unnest args). Round-trip count drops from `O(chunks)` to
+`O(1)` per target. The parent `videoTranscript.upsert(...)` stays as a
+Prisma call. The full bulk-write recipe + invariant tests + bind-count
+regression guard live in
+`docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
+Mirrors the bullet that landed in `apps/admin/CLAUDE.md`.
+
 ## Problem
 
 Admin and cms both need chunk-level transcript embeddings. The two
@@ -191,3 +209,13 @@ WHERE language = 'en' LIMIT 10` should hit
   — implementation plan.
 - `docs/brainstorms/2026-04-19-admin-migration-playbook-requirements.md`
   — R2 origin.
+- `docs/solutions/best-practices/per-parent-child-memoization-loadedartifact-pattern-20260505.md`
+  — Stage 2 (feat-116) widens this indexer's input with a first-class
+  `loadedArtifact?: EmbeddingsResult` parameter (renamed from the
+  test-only `artifactOverride?`). The workflow now fetches the
+  embeddings artifact ONCE per `(video, edition)` group and passes
+  it to each per-language `indexEditionTranscript(...)` call so the
+  service short-circuits the S3 read. NOTE: Stage 2's batched-
+  provider sibling pattern does NOT apply to R2 — R2 reuses vectors
+  verbatim from the artifact and never calls the provider, which is
+  the whole point of the R2 vs R1 divergence documented above.
