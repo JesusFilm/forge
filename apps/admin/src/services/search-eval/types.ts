@@ -23,6 +23,8 @@ import type { HarnessLocale, Tier } from "./locales"
 // canonical SearchResult type. Bumping admin's contract surfaces here
 // at compile time.
 export type { SearchMode, SearchResponse, SearchResult }
+// Re-export Tier so consumers don't need to know it lives in locales.ts.
+export type { Tier }
 
 /**
  * Pairwise judge verdict. Six values — five on the
