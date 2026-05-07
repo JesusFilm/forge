@@ -15,11 +15,14 @@ export const createJobSchema = z.object({
 
 export type CreateJobRequest = z.infer<typeof createJobSchema>
 
+type PersistedJobLanguageRequest = {
+  generateVoiceover?: boolean
+  language?: string
+  translateTo?: string[]
+}
+
 export function getPersistedJobLanguages(
-  request: Pick<
-    CreateJobRequest,
-    "generateVoiceover" | "language" | "translateTo"
-  >,
+  request: PersistedJobLanguageRequest,
 ): string[] {
   const targets = request.translateTo ?? []
   if (!request.generateVoiceover) {

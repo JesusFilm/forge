@@ -293,7 +293,7 @@ export function LiveJobStepsTable({
       clearScheduledPoll()
       activeControllerRef.current?.abort()
     }
-  }, [initialJob.id, onJobUpdate])
+  }, [initialJob.id, initialJob.status, onJobUpdate])
 
   const handleRefreshNow = useCallback(() => {
     const runPoll = runPollRef.current
@@ -315,7 +315,7 @@ export function LiveJobStepsTable({
       return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
     }
     return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
-  }, [isPollingError, isRefreshing, lastUpdatedAt])
+  }, [isPollingError, isRefreshing, job.status, lastUpdatedAt])
 
   return (
     <section className="collection-card jobs-card">

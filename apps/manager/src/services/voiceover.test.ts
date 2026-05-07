@@ -139,39 +139,29 @@ test("generateVoiceover chunks long text and passes continuity hints", async () 
 })
 
 test("generateVoiceover fails with a targeted config error when api key is missing", async () => {
-  const originalApiKey = process.env.ELEVENLABS_API_KEY
-  process.env.MUX_TOKEN_ID ??= "test-mux-token-id"
-  process.env.MUX_TOKEN_SECRET ??= "test-mux-token-secret"
-  process.env.OPENROUTER_API_KEY ??= "test-openrouter-api-key"
-  process.env.STRAPI_URL ??= "https://cms.example.test"
-  process.env.STRAPI_API_TOKEN ??= "test-strapi-api-token"
-  delete process.env.ELEVENLABS_API_KEY
-
-  try {
-    await assert.rejects(
-      () =>
-        generateVoiceover({
+  await assert.rejects(
+    () =>
+      generateVoiceover(
+        {
           assetId: "asset789",
           language: "en",
           text: "Hello world.",
-        }),
-      (error: unknown) => {
-        assert.ok(error instanceof VoiceoverConfigError)
-        const typedError = error as VoiceoverConfigError
-        assert.equal(
-          typedError.message,
-          "ELEVENLABS_API_KEY is required to generate voiceover audio.",
-        )
-        return true
-      },
-    )
-  } finally {
-    if (originalApiKey === undefined) {
-      delete process.env.ELEVENLABS_API_KEY
-    } else {
-      process.env.ELEVENLABS_API_KEY = originalApiKey
-    }
-  }
+        },
+        {
+          apiKey: "",
+          voiceId: "JBFqnCBsd6RMkjVDRZzb",
+        },
+      ),
+    (error: unknown) => {
+      assert.ok(error instanceof VoiceoverConfigError)
+      const typedError = error as VoiceoverConfigError
+      assert.equal(
+        typedError.message,
+        "ELEVENLABS_API_KEY is required to generate voiceover audio.",
+      )
+      return true
+    },
+  )
 })
 
 test("generateVoiceover fails with a targeted runtime error for empty text", async () => {
