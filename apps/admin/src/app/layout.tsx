@@ -32,7 +32,10 @@ export default async function RootLayout({
   const { locale, messages } = await getAdminI18n()
 
   return (
-    <html lang={locale} className={`${plexSans.variable} ${plexMono.variable}`}>
+    <html
+      lang={locale}
+      className={`${plexSans.variable} ${plexMono.variable} dark`}
+    >
       <body>
         <AdminI18nProvider locale={locale} messages={messages}>
           {children}

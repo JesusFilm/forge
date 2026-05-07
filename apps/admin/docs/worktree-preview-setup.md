@@ -166,6 +166,10 @@ curl -I -sS "http://localhost:${PORT}/dashboard/workflows" | sed -n '1,20p'
 curl -I -sS "http://localhost:${PORT}/dashboard/system-status" | sed -n '1,20p'
 ```
 
+If Workflow Postgres World has runtime rows, open
+`/dashboard/workflows/<runId>` in the browser to smoke the embedded
+`@workflow/web-shared` trace/detail view.
+
 For Workflow/Postgres previews, confirm schemas exist:
 
 ```bash

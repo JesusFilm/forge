@@ -30,16 +30,5 @@ export const CoreDubSchema = z.object({
       playbackId: z.string().nullable(),
     })
     .nullable(),
-  downloads: z.array(
-    z.object({
-      id: z.string().min(1),
-      quality: z.string().nullable(),
-      size: z.union([z.string(), z.number().int()]).nullable(),
-      height: z.number().int().nullable(),
-      width: z.number().int().nullable(),
-      bitrate: z.number().int().nullable(),
-      url: z.string().nullable(),
-    }),
-  ),
   updatedAt: z.string().min(1).optional(),
 })
