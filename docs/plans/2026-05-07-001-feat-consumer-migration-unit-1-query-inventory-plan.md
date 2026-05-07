@@ -1,7 +1,7 @@
 ---
 title: "feat: consumer migration Unit 1 — query & shape inventory"
 type: feat
-status: active
+status: completed
 date: 2026-05-07
 origin: docs/plans/2026-04-22-001-feat-admin-core-consumer-migration-plan.md
 ---
