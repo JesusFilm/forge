@@ -43,7 +43,18 @@ describe("core sync job", () => {
     const { normalizeCoreSyncInput } = await import("./job")
 
     expect(normalizeCoreSyncInput({ trigger: "scheduled" })).toEqual({
-      scope: ["languages", "countries", "keywords", "videos", "video-dubs"],
+      scope: [
+        "languages",
+        "countries",
+        "keywords",
+        "video-origins",
+        "videos",
+        "video-images",
+        "video-editions",
+        "video-subtitles",
+        "video-dubs",
+        "video-dub-downloads",
+      ],
       incremental: true,
       trigger: "scheduled",
     })
@@ -180,7 +191,18 @@ describe("core sync job", () => {
     ).resolves.toMatchObject({
       skipped: true,
       incremental: true,
-      scope: ["languages", "countries", "keywords", "videos", "video-dubs"],
+      scope: [
+        "languages",
+        "countries",
+        "keywords",
+        "video-origins",
+        "videos",
+        "video-images",
+        "video-editions",
+        "video-subtitles",
+        "video-dubs",
+        "video-dub-downloads",
+      ],
       trigger: "scheduled",
     })
   })
