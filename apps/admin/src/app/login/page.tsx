@@ -1,4 +1,13 @@
+import { headers as nextHeaders } from "next/headers"
+import { redirect } from "next/navigation"
 import { env } from "@/config/env"
+import {
+  getAuthBaseURL,
+  getDefaultPostLoginURL,
+  getLoginDestinationName,
+  isTrustedAuthOrigin,
+  resolveAuthCallbackURL,
+} from "@/auth/origins"
 import {
   LoginPageClient,
   type LoginProviderId,
@@ -10,6 +19,19 @@ type LoginPageProps = {
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
+}
+
+function getRequestOrigin(headers: Headers): string | undefined {
+  const host = headers.get("x-forwarded-host") ?? headers.get("host")
+  if (!host) {
+    return undefined
+  }
+
+  const forwardedProto = headers.get("x-forwarded-proto")?.split(",")[0]?.trim()
+  const proto =
+    forwardedProto ?? (host.startsWith("localhost") ? "http" : "https")
+
+  return `${proto}://${host}`
 }
 
 function getEnabledProviders(): LoginProviderId[] {
@@ -33,11 +55,31 @@ function getEnabledProviders(): LoginProviderId[] {
 
 export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
   const params = (await searchParams) ?? {}
+  const authBaseURL = getAuthBaseURL()
+  const requestOrigin = getRequestOrigin(await nextHeaders()) ?? authBaseURL
+  const callbackURL = resolveAuthCallbackURL(
+    firstParam(params.callbackURL),
+    requestOrigin === authBaseURL
+      ? getDefaultPostLoginURL()
+      : `${requestOrigin}/dashboard`,
+  )
   const initialError =
     firstParam(params.error) === "forbidden" ? "forbidden" : undefined
 
+  if (requestOrigin !== authBaseURL && isTrustedAuthOrigin(requestOrigin)) {
+    const url = new URL("/login", authBaseURL)
+    url.searchParams.set("callbackURL", callbackURL)
+    if (initialError) {
+      url.searchParams.set("error", initialError)
+    }
+    redirect(url.toString() as Parameters<typeof redirect>[0])
+  }
+
   return (
     <LoginPageClient
+      authBaseURL={authBaseURL}
+      callbackURL={callbackURL}
+      destinationName={getLoginDestinationName(callbackURL)}
       enabledProviders={getEnabledProviders()}
       initialError={initialError}
     />
