@@ -214,8 +214,8 @@ export async function readArtifact(
 // Admin's R1 (scene embeddings) and R2 (transcript embeddings) backfills
 // re-index `{assetId}/scene-analysis.json` and `{assetId}/embeddings.json`
 // produced by apps/manager. Those artifacts live in manager's own
-// Railway bucket, NOT admin's RAILWAY_S3_* (cms-storage) bucket — admin's
-// reads must be routed there.
+// Railway bucket, NOT admin's RAILWAY_S3_* bucket — admin's reads
+// must be routed there.
 //
 // Distinct env block (MANAGER_ARTIFACTS_S3_*) so admin's writes (which
 // continue to land in RAILWAY_S3_BUCKET) never mix with manager's bucket.

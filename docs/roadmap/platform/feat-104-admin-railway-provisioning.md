@@ -81,7 +81,7 @@ deploy lands in production.
 | `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD`      | Optional for R1; wire when Redis plugin lands                                                            |
 | `CORE_API_URL`                                      | `https://api-gateway.central.jesusfilm.org/`                                                             |
 | `CORE_API_TOKEN`                                    | Pull from Doppler `forge-admin` if present; skip otherwise                                               |
-| `RAILWAY_S3_*`                                      | Copy from `@forge/cms` or `@forge/manager` (shared bucket)                                               |
+| `RAILWAY_S3_*`                                      | Railway S3-compatible object storage for admin artifacts                                                 |
 | `GRAPHQL_INTROSPECTION_ENABLED`                     | Leave unset in production (defaults off)                                                                 |
 | `NODE_ENV`                                          | `production`                                                                                             |
 | `HOSTNAME`                                          | Set to `0.0.0.0` in railway.toml startCommand — no env var needed                                        |
@@ -122,7 +122,7 @@ guidance.
 
 ### R1 smoke test
 
-1. Refresh the coreId mapping into the shared Railway S3 bucket:
+1. Refresh the coreId mapping into Railway S3:
    ```
    pnpm --filter @forge/admin refresh:core-id-mapping
    ```

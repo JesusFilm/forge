@@ -16,7 +16,7 @@
  * The key assertion: this helper resolves Bucket/creds from the
  * MANAGER_ARTIFACTS_S3_* env block — NOT from RAILWAY_S3_*. This
  * locks in the two-bucket separation introduced when admin moved its
- * artifact reads off the cms-storage bucket and onto manager's bucket.
+ * artifact reads off admin's own artifacts bucket and onto manager's bucket.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"

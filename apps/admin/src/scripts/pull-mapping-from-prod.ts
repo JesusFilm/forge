@@ -13,7 +13,7 @@
  *
  *   # Override defaults:
  *   pnpm --filter @forge/admin pull:mapping \
- *     --bucket=cms-storage-jbpuckp0lmqap \
+ *     --bucket=<admin-artifacts-bucket> \
  *     --key=admin-migrations/core-id-mapping.json \
  *     --endpoint=https://t3.storageapi.dev \
  *     --region=sjc \
@@ -27,7 +27,7 @@
  * shape.
  *
  * NOT run against prod write paths. Read-only download. The bucket
- * defaults to admin's prod bucket because that's where
+ * defaults to `RAILWAY_S3_BUCKET` because that's where
  * `refresh:core-id-mapping` uploads the canonical snapshot — the
  * operator who refreshed it from cms PG most-recently is the source
  * of truth.
@@ -38,7 +38,6 @@ import { dirname, join, resolve as resolvePath } from "node:path"
 
 import { DEFAULT_CORE_ID_MAPPING_S3_KEY } from "@/services/core-id-mapping.constants"
 
-const DEFAULT_BUCKET = "cms-storage-jbpuckp0lmqap"
 const DEFAULT_ENDPOINT = "https://t3.storageapi.dev"
 const DEFAULT_REGION = "sjc"
 
@@ -106,10 +105,16 @@ export async function downloadMapping(args: PullMappingArgs): Promise<number> {
 }
 
 export async function main(): Promise<void> {
-  const bucket = parseArg("bucket", DEFAULT_BUCKET)
+  const bucket = parseArg("bucket", process.env.RAILWAY_S3_BUCKET ?? "")
   const key = parseArg("key", DEFAULT_CORE_ID_MAPPING_S3_KEY)
-  const endpoint = parseArg("endpoint", DEFAULT_ENDPOINT)
-  const region = parseArg("region", DEFAULT_REGION)
+  const endpoint = parseArg(
+    "endpoint",
+    process.env.RAILWAY_S3_ENDPOINT ?? DEFAULT_ENDPOINT,
+  )
+  const region = parseArg(
+    "region",
+    process.env.RAILWAY_S3_REGION ?? DEFAULT_REGION,
+  )
   // Default output path resolves relative to the operator's CWD;
   // `pnpm --filter @forge/admin` runs the script from
   // `apps/admin`, so the default `.tmp/...` lands inside admin's
@@ -122,6 +127,12 @@ export async function main(): Promise<void> {
 
   const accessKeyId = process.env.RAILWAY_S3_ACCESS_KEY_ID
   const secretAccessKey = process.env.RAILWAY_S3_SECRET_ACCESS_KEY
+  if (!bucket) {
+    process.stderr.write(
+      "[pull-mapping] RAILWAY_S3_BUCKET is required unless --bucket is provided\n",
+    )
+    process.exit(2)
+  }
   if (!accessKeyId || !secretAccessKey) {
     process.stderr.write(
       "[pull-mapping] RAILWAY_S3_ACCESS_KEY_ID and RAILWAY_S3_SECRET_ACCESS_KEY are required\n",

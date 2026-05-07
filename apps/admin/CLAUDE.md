@@ -688,13 +688,11 @@ locale) DO UPDATE SET …`. The `embedding` cast is per-row at the
 2. Ensure both S3 env blocks are set on the `forge-admin` Railway
    service:
    - `RAILWAY_S3_*` → admin's write bucket
-     (`cms-storage-jbpuckp0lmqap`, Railway bucket resource
-     `17368fd5-23e7-45bb-b007-e3f843b3d710`). Used for the coreId
-     mapping snapshot and any other `admin-migrations/*` writes.
+     in Railway S3. Used for the coreId mapping snapshot and any
+     other `admin-migrations/*` writes.
    - `MANAGER_ARTIFACTS_S3_*` → manager's bucket
-     (`forgemanagerartifacts-xtgld8`, Railway bucket resource
-     `b1c705c6-5add-48a0-a153-5ef40f876a4f`). Read-only;
-     `{assetId}/scene-analysis.json` + `{assetId}/embeddings.json`.
+     read-only; `{assetId}/scene-analysis.json` +
+     `{assetId}/embeddings.json`.
 
    Also ensure `OPENROUTER_API_KEY` or `OPENAI_API_KEY` is set so
    admin can re-embed scene descriptions.
@@ -1448,7 +1446,7 @@ path and the Cloudflare 524 edge timeout. Per
    pnpm --filter @forge/admin pull:mapping
    ```
 
-   Downloads `s3://cms-storage-jbpuckp0lmqap/admin-migrations/core-id-mapping.json`
+   Downloads `s3://<admin-artifacts-bucket>/admin-migrations/core-id-mapping.json`
    (admin's prod bucket — same key the GraphQL workflow reads in
    prod) into `apps/admin/.tmp/objects/admin-migrations/core-id-mapping.json`.
    Admin's `src/storage/s3.ts` `getObject` falls back to that path
