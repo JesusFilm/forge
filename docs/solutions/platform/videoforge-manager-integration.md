@@ -24,7 +24,7 @@ JFP needed an AI video enrichment platform (transcription, translation, chapters
 Ported VideoForge as `apps/manager` (`@forge/manager`) — a Next.js App Router app with:
 
 - **8 service modules** (transcription, translation, voiceover, chapters, metadata, embeddings, mux, storage)
-- **Durable workflow orchestration** via Vercel's `workflow` SDK (`"use workflow"` / `"use step"` directives)
+- **Durable workflow orchestration** via the `workflow` package (`"use workflow"` / `"use step"` directives)
 - **Strapi JWT auth** — Users & Permissions plugin with a "Manager" role, HTTP-only cookie, Next.js middleware
 - **Railway S3** for artifact storage (`@aws-sdk/client-s3` with `forcePathStyle: true`)
 - **Apollo Client** + `@forge/graphql` for typed CMS operations
@@ -58,13 +58,13 @@ The multi-agent review (`/ce:review`) caught critical issues before deployment:
 - No API authentication (P1) → Added Strapi JWT + API key auth
 - SSRF via unvalidated `inputUrl` (P1) → Zod schema, HTTPS-only
 - File state race conditions (P1) → Promise mutex + atomic writes
-- Fire-and-forget workflow (P1) → `after()` API
+- Fire-and-forget workflow (P1) → shared `start()` dispatch via `workflow/api`
 - Missing `output: "standalone"` (P1) → Added to next.config.ts
 - Transcription returning empty/hallucinated data (P2) → Rewrote with VTT parsing
 
 ## Key Gotchas
 
-1. **`workflow` npm package** is Vercel's Workflow DevKit (not `@workflowdev/sdk`). Currently `4.2.0-beta.70`. Uses `"use workflow"` and `"use step"` string directive literals.
+1. **`workflow` npm package** powers the manager workflow runtime. Uses `"use workflow"` and `"use step"` string directive literals.
 
 2. **Railway S3 requires `forcePathStyle: true`** in the S3Client config. Same pattern as `apps/cms` upload provider. Use `RAILWAY_S3_*` env vars.
 

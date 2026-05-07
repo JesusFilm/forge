@@ -14,7 +14,7 @@ This app orchestrates AI video enrichment pipelines. Agents working here should 
 - `src/services/openrouter.ts` — shared OpenRouter client plus strict structured-output helper for JSON-shaped LLM requests
 - `src/cms/client.ts` — Apollo Client for CMS (same pattern as apps/web); use typed ops from `@forge/graphql`
 - `src/lib/auth.ts` — API route authentication (JWT cookie + Bearer token)
-- `src/lib/state.ts` — local job state (file-backed; replace with durable store in production)
+- `src/lib/state.ts` — Strapi-backed job state; keep it as the operator-visible source of truth while workflow handles execution durability
 
 ## Cross-package impact
 

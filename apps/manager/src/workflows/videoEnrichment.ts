@@ -1,9 +1,7 @@
-// NOTE: The "use workflow" and "use step" directives require the workflow SDK's
-// build plugin to be active for durable execution. Without the plugin configured
-// in next.config.ts, these directives are inert and the workflow runs as a plain
-// async function (no durability, no step-level retries, no checkpointing).
-// To enable: configure the workflow plugin and set WORKFLOW_API_KEY in env.
-// See: https://useworkflow.dev/
+// NOTE: Manager enables the workflow build plugin in next.config.ts, so
+// "use workflow" / "use step" run with real workflow-runtime semantics.
+// Keep Node-only service imports behind explicit step helpers so the build
+// stays workflow-safe. See: https://useworkflow.dev/
 //
 // Video enrichment workflow — orchestrates the full pipeline for a single video asset.
 // Steps: transcribe -> translate -> chapters -> metadata -> embeddings
