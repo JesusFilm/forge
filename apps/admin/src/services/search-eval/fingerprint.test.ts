@@ -77,6 +77,36 @@ describe("readFingerprint", () => {
     ).toHaveLength(1)
   })
 
+  it("SQL invariant: every count gates on `embedding IS NOT NULL`, experiences also gate on status='published'", async () => {
+    // Per `docs/solutions/best-practices/prisma-raw-sql-invariant-assertions-20260423.md`,
+    // raw SQL clauses that the search service depends on must be
+    // pinned by a test that reads the joined template-strings array.
+    // This is the canary that catches a refactor accidentally dropping
+    // the embedding-non-null gate or the published-only gate.
+    const prisma = buildPrismaStub([
+      {
+        scene_count: 0n,
+        scene_max_updated_at: null,
+        transcript_count: 0n,
+        transcript_max_updated_at: null,
+        experience_count: 0n,
+        experience_max_updated_at: null,
+      },
+    ])
+    await readFingerprint(prisma)
+
+    const queryRaw = prisma as unknown as {
+      $queryRaw: { mock: { calls: [TemplateStringsArray, ...unknown[]][] } }
+    }
+    const sql = queryRaw.$queryRaw.mock.calls[0]?.[0]?.join(" ") ?? ""
+
+    expect((sql.match(/embedding IS NOT NULL/g) ?? []).length).toBe(6)
+    expect(sql).toMatch(/experience_locale[\s\S]*status\s*=\s*'published'/)
+    expect(sql).toMatch(
+      /experience_locale[\s\S]*status\s*=\s*'published'[\s\S]*experience_locale/,
+    )
+  })
+
   it("filters scene + transcript by `embedding IS NOT NULL`", async () => {
     const prisma = buildPrismaStub([
       {

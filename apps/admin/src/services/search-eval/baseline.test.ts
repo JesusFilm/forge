@@ -8,7 +8,6 @@ import {
   BaselineNotFoundError,
   BaselineSchemaError,
   detectDrift,
-  getQueriesForRun,
   loadBaseline,
   saveBaseline,
 } from "./baseline"
@@ -137,39 +136,6 @@ describe("loadBaseline error cases", () => {
     await expect(
       loadBaseline("bad", { directory: tmp }),
     ).rejects.toBeInstanceOf(BaselineSchemaError)
-  })
-})
-
-describe("getQueriesForRun", () => {
-  it("filters by quick locales", () => {
-    const out = getQueriesForRun(sampleBaseline, {
-      mode: "quick",
-      quickLocales: ["en"],
-    })
-    expect(out).toHaveLength(1)
-    expect(out[0]?.locale).toBe("en")
-  })
-
-  it("returns every query for full mode", () => {
-    const out = getQueriesForRun(sampleBaseline, { mode: "full" })
-    expect(out).toEqual(sampleBaseline.queries)
-  })
-
-  it("filters by single locale (regardless of source)", () => {
-    const out = getQueriesForRun(sampleBaseline, {
-      mode: "locale",
-      locale: "fr",
-    })
-    expect(out).toHaveLength(2)
-    expect(out.every((q) => q.locale === "fr")).toBe(true)
-  })
-
-  it("returns [] when locale filter matches nothing", () => {
-    const out = getQueriesForRun(sampleBaseline, {
-      mode: "locale",
-      locale: "xx",
-    })
-    expect(out).toEqual([])
   })
 })
 

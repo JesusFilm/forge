@@ -93,15 +93,40 @@ async function runSubcommand(args: {
   baseUrl: string
 }): Promise<void> {
   const filterLocale = parseSingle("locale")
+  const quickFlag = hasFlag("quick")
+  const fullFlag = hasFlag("full")
+
+  // Reject conflicting flag combinations up-front so operators get a
+  // loud signal rather than silent precedence-based behavior.
+  if (filterLocale && quickFlag) {
+    process.stderr.write(
+      "[eval-search] --quick and --locale=<bcp47> are mutually exclusive\n",
+    )
+    process.exit(2)
+  }
+  if (filterLocale && fullFlag) {
+    process.stderr.write(
+      "[eval-search] --full and --locale=<bcp47> are mutually exclusive\n",
+    )
+    process.exit(2)
+  }
+  if (quickFlag && fullFlag) {
+    process.stderr.write(
+      "[eval-search] --quick and --full are mutually exclusive\n",
+    )
+    process.exit(2)
+  }
+
   let mode: RunMode
   if (filterLocale) {
     mode = "locale"
-  } else if (hasFlag("quick")) {
+  } else if (quickFlag) {
     mode = "quick"
   } else {
     mode = "full"
   }
 
+  const { env } = await import("@/config/env")
   const { prisma } = await import("@/db/client")
   const { createSearchClient } =
     await import("@/services/search-eval/search-client")
@@ -137,7 +162,9 @@ async function runSubcommand(args: {
       prisma,
       searchClient,
       judge,
-      gitSha: process.env.GIT_SHA ?? "unknown",
+      searchConcurrency: env.EVAL_SEARCH_CONCURRENCY,
+      judgeConcurrency: env.EVAL_JUDGE_CONCURRENCY,
+      gitSha: env.EVAL_GIT_SHA ?? "unknown",
       logger: { info: () => {}, warn: (m) => process.stderr.write(m + "\n") },
     })
 
@@ -183,6 +210,7 @@ async function rebaselineSubcommand(args: {
     process.exit(2)
   }
 
+  const { env } = await import("@/config/env")
   const { prisma } = await import("@/db/client")
   const { createSearchClient } =
     await import("@/services/search-eval/search-client")
@@ -198,6 +226,8 @@ async function rebaselineSubcommand(args: {
   const generator = createQueryGenerator()
   const queryLoader = createSyntheticQueryLoader({ generator })
 
+  const searchConcurrency = env.EVAL_SEARCH_CONCURRENCY ?? 4
+
   const onSignal = createSignalHandler(prisma)
   process.once("SIGINT", onSignal)
   process.once("SIGTERM", onSignal)
@@ -209,19 +239,35 @@ async function rebaselineSubcommand(args: {
         baselineName: args.baselineName,
         baseUrl: args.baseUrl,
         locales: HARNESS_LOCALES,
+        searchConcurrency,
       }) + "\n",
     )
 
     const fingerprint = await readFingerprint(prisma)
 
-    // Synthetic queries: load-or-generate per locale.
-    const syntheticByLocale = await Promise.all(
-      HARNESS_LOCALES.map(async (locale) => {
-        const queries = await queryLoader.loadOrGenerate(locale)
-        return queries
-      }),
+    // Synthetic queries: load-or-generate per locale, with bounded
+    // parallelism + per-locale error isolation. A single transient
+    // OpenRouter failure for one locale must not abort the run for
+    // the other 29.
+    const queryGenLimit = pLimit(searchConcurrency)
+    const syntheticSettled = await Promise.allSettled(
+      HARNESS_LOCALES.map((locale) =>
+        queryGenLimit(() => queryLoader.loadOrGenerate(locale)),
+      ),
     )
-    const syntheticAll = syntheticByLocale.flat()
+    const syntheticAll = syntheticSettled.flatMap((r, idx) => {
+      if (r.status === "fulfilled") return r.value
+      const locale = HARNESS_LOCALES[idx]
+      process.stderr.write(
+        JSON.stringify({
+          event: "eval-search.rebaseline.query_gen_error",
+          locale,
+          error:
+            r.reason instanceof Error ? r.reason.message : String(r.reason),
+        }) + "\n",
+      )
+      return []
+    })
 
     const regressions = await loadRegressions()
 
@@ -233,11 +279,16 @@ async function rebaselineSubcommand(args: {
         synthetic: syntheticAll.length,
         regression: regressions.length,
         total: allQueries.length,
+        queryGenFailures: syntheticSettled.filter(
+          (r) => r.status === "rejected",
+        ).length,
       }) + "\n",
     )
 
-    // Run searches with concurrency cap.
-    const searchLimit = pLimit(4)
+    // Run searches with concurrency cap. Per-query try/catch absorbs
+    // individual failures; allSettled prevents one rejection from
+    // taking down the batch.
+    const searchLimit = pLimit(searchConcurrency)
     const baselineQueries = await Promise.all(
       allQueries.map((q) =>
         searchLimit(async () => {
@@ -273,7 +324,7 @@ async function rebaselineSubcommand(args: {
       schemaVersion: "1",
       name: args.baselineName,
       capturedAt: new Date().toISOString(),
-      gitSha: process.env.GIT_SHA ?? "unknown",
+      gitSha: env.EVAL_GIT_SHA ?? "unknown",
       contentFingerprint: fingerprint,
       queries: baselineQueries,
     })

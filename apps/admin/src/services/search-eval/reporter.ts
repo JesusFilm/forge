@@ -156,11 +156,14 @@ function renderPerLocaleTable(r: RunReport): string[] {
   return lines
 }
 
+// Type predicate narrowing the `kind: "win" | "loss" | "tie"` arm
+// to just losses — these are the outcomes that carry a `rationale`.
+type LosingOutcome = Extract<Outcome, { kind: "win" | "loss" | "tie" }> & {
+  kind: "loss"
+}
+
 function renderTopRegressions(r: RunReport): string[] {
-  const losing = r.outcomes.filter((o) => o.kind === "loss") as Extract<
-    Outcome,
-    { kind: "win" | "loss" | "tie" }
-  >[]
+  const losing = r.outcomes.filter((o): o is LosingOutcome => o.kind === "loss")
   if (losing.length === 0) return []
 
   // Sort by judge confidence (clearly > slightly > other), then by
@@ -221,6 +224,12 @@ function pad(s: string, n: number): string {
   return s.length >= n ? s : s + " ".repeat(n - s.length)
 }
 
+/** Codepoint-safe truncation (matches `search-client.ts::truncateSnippet`).
+ *  `s.slice` cuts UTF-16 units which can split an emoji or non-BMP CJK
+ *  character mid-codepoint. `Array.from(s)` yields codepoints.
+ */
 function truncate(s: string, max: number): string {
-  return s.length <= max ? s : `${s.slice(0, max - 1)}…`
+  const codepoints = Array.from(s)
+  if (codepoints.length <= max) return s
+  return `${codepoints.slice(0, max - 1).join("")}…`
 }

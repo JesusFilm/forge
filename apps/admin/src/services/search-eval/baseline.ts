@@ -14,42 +14,22 @@
  * Plan §Unit 7.
  */
 
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises"
 import path from "node:path"
 
 import { z } from "zod"
 
 import { compareFingerprints } from "./fingerprint"
 import { baselinesDir } from "./paths"
+import { FingerprintSchema, SearchResultSchema } from "./schemas"
 import type { Baseline, DriftResult, Fingerprint } from "./types"
-
-const SearchResultSchema = z.object({
-  type: z.enum(["video", "experience"]),
-  id: z.string(),
-  slug: z.string(),
-  title: z.string(),
-  imageUrl: z.string().nullable(),
-  snippet: z.string(),
-  startSeconds: z.number().nullable(),
-  playbackId: z.string().nullable(),
-  score: z.number(),
-})
-
-const FingerprintSchema = z.object({
-  count: z.number().int().min(0),
-  maxUpdatedAt: z.string().nullable(),
-})
 
 const BaselineSchema = z.object({
   schemaVersion: z.literal("1"),
   name: z.string().min(1),
   capturedAt: z.string(),
   gitSha: z.string(),
-  contentFingerprint: z.object({
-    sceneEmbeddings: FingerprintSchema,
-    transcriptEmbeddings: FingerprintSchema,
-    experiences: FingerprintSchema,
-  }),
+  contentFingerprint: FingerprintSchema,
   queries: z.array(
     z.object({
       locale: z.string().min(1),
@@ -143,36 +123,21 @@ export async function saveBaseline(
   const filePath = pathFor(baseline.name, directory)
   const tmpPath = `${filePath}.tmp`
   await writeFile(tmpPath, JSON.stringify(validated, null, 2) + "\n", "utf8")
-  await rename(tmpPath, filePath)
+  try {
+    await rename(tmpPath, filePath)
+  } catch (cause) {
+    // Clean up the orphaned .tmp before bubbling the rename failure.
+    // unlink errors are swallowed — the rename failure is the
+    // operator-relevant signal; the .tmp will be cleaned up on the
+    // next successful save.
+    await unlink(tmpPath).catch(() => undefined)
+    throw cause
+  }
   return { path: filePath }
 }
 
-export type RunFilter =
-  | { mode: "quick"; quickLocales: readonly string[] }
-  | { mode: "full" }
-  | { mode: "locale"; locale: string }
-
-/** Filter the baseline's queries down to the set this run cares
- *  about. Returns the same shape the runner can iterate.
- *
- *  - `quick`: only queries whose locale is in `quickLocales`.
- *  - `full`: every query.
- *  - `locale`: only queries matching that single locale. */
-export function getQueriesForRun(
-  baseline: Baseline,
-  filter: RunFilter,
-): Baseline["queries"] {
-  switch (filter.mode) {
-    case "quick": {
-      const allowed = new Set(filter.quickLocales)
-      return baseline.queries.filter((q) => allowed.has(q.locale))
-    }
-    case "full":
-      return baseline.queries
-    case "locale":
-      return baseline.queries.filter((q) => q.locale === filter.locale)
-  }
-}
+// Query filtering by run-mode lives in `runner.ts::filterQueries` —
+// this module deliberately doesn't duplicate it.
 
 /** Drift between baseline and current fingerprints. Wraps
  *  `compareFingerprints` so consumers don't have to import two

@@ -19,6 +19,7 @@ import { z } from "zod"
 
 import type { Judge } from "./judge"
 import { calibrationPath } from "./paths"
+import { SearchResultSchema } from "./schemas"
 import type { CalibrationCase, CalibrationReport, Verdict } from "./types"
 
 const VERDICT_VALUES = [
@@ -29,18 +30,6 @@ const VERDICT_VALUES = [
   "clearly-B-better",
   "both-irrelevant",
 ] as const
-
-const SearchResultSchema = z.object({
-  type: z.enum(["video", "experience"]),
-  id: z.string(),
-  slug: z.string(),
-  title: z.string(),
-  imageUrl: z.string().nullable(),
-  snippet: z.string(),
-  startSeconds: z.number().nullable(),
-  playbackId: z.string().nullable(),
-  score: z.number(),
-})
 
 const CalibrationCaseSchema = z.object({
   id: z.string().min(1),
@@ -111,12 +100,7 @@ export async function loadCalibrationCases(
     )
   }
 
-  // Cast through unknown to satisfy the structural mismatch between
-  // the Zod schema's enum-typed locale (z.string()) and our nominal
-  // HarnessLocale union — calibration cases are operator-authored
-  // and may target locales outside the harness set during one-off
-  // probes.
-  return validated.data.cases as unknown as CalibrationCase[]
+  return validated.data.cases
 }
 
 export type RunCalibrationOptions = {

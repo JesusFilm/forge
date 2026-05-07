@@ -27,6 +27,7 @@ import { z } from "zod"
 import { env } from "@/config/env"
 
 import { DEFAULT_JUDGE_MODEL } from "./judge"
+import { extractMessageContent, safeReadBody } from "./openrouter-helpers"
 import { syntheticQueriesDir } from "./paths"
 import type { QuerySource } from "./types"
 
@@ -37,9 +38,11 @@ const QUERY_GENERATOR_TIMEOUT_MS = 60_000
 const DEFAULT_QUERY_COUNT = 50
 
 /** Schema validates the LLM output. Bounds force the model to respect
- *  the requested count + drops empty/silly entries. */
+ *  the requested count + drops empty entries. Single-codepoint queries
+ *  are legitimate in CJK locales (`愛`, `恵`), so the per-item floor is
+ *  1 char, not 2. */
 const QueryGeneratorResponseSchema = z.object({
-  queries: z.array(z.string().trim().min(2).max(200)).min(1).max(200),
+  queries: z.array(z.string().trim().min(1).max(200)).min(1).max(200),
 })
 
 export class QueryGeneratorError extends Error {
@@ -211,7 +214,9 @@ function buildRequestBody(model: string, locale: string, count: number) {
           properties: {
             queries: {
               type: "array",
-              items: { type: "string" },
+              minItems: 1,
+              maxItems: 200,
+              items: { type: "string", minLength: 1, maxLength: 200 },
             },
           },
           required: ["queries"],
@@ -242,32 +247,6 @@ function buildUserPrompt(locale: string, count: number): string {
     "Each query should be a plain string (no numbering, no bullet points, no extra punctuation).",
     `Return JSON: { "queries": [<${count} strings>] }`,
   ].join("\n")
-}
-
-function extractMessageContent(payload: unknown): string | null {
-  if (payload == null || typeof payload !== "object") return null
-  const choices = (payload as Record<string, unknown>).choices
-  if (!Array.isArray(choices) || choices.length === 0) return null
-  const message = (choices[0] as Record<string, unknown>).message
-  if (message == null || typeof message !== "object") return null
-  const content = (message as Record<string, unknown>).content
-  if (typeof content === "string") return content
-  if (Array.isArray(content)) {
-    for (const part of content) {
-      if (part == null || typeof part !== "object") continue
-      const text = (part as Record<string, unknown>).text
-      if (typeof text === "string") return text
-    }
-  }
-  return null
-}
-
-async function safeReadBody(response: Response): Promise<string> {
-  try {
-    return await response.text()
-  } catch {
-    return `(unreadable body, status=${response.status})`
-  }
 }
 
 // ---------- File persistence ----------

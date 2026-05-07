@@ -217,7 +217,7 @@ describe("createSearchClient", () => {
       expect(fetchImpl).not.toHaveBeenCalled()
     })
 
-    it("throws validation_failed on malformed response shape", async () => {
+    it("throws response_invalid on malformed response shape", async () => {
       const fetchImpl = vi.fn().mockResolvedValue(
         new Response(JSON.stringify({ unexpected: true }), {
           status: 200,
@@ -231,11 +231,11 @@ describe("createSearchClient", () => {
       })
 
       await expect(client.search("q", "en")).rejects.toMatchObject({
-        code: "validation_failed",
+        code: "response_invalid",
       })
     })
 
-    it("throws validation_failed on invalid JSON body", async () => {
+    it("throws response_invalid on invalid JSON body", async () => {
       const fetchImpl = vi.fn().mockResolvedValue(
         new Response("not json", {
           status: 200,
@@ -249,7 +249,7 @@ describe("createSearchClient", () => {
       })
 
       await expect(client.search("q", "en")).rejects.toMatchObject({
-        code: "validation_failed",
+        code: "response_invalid",
       })
     })
   })

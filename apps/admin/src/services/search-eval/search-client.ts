@@ -12,7 +12,8 @@
  * (emoji/CJK don't slice mid-character).
  */
 
-import type { SearchResponse, SearchResult } from "./types"
+import { SearchResponseSchema } from "./schemas"
+import type { SearchResult } from "./types"
 
 /**
  * Per-request abort cap. Long enough to cover admin's slowest hybrid
@@ -41,7 +42,7 @@ export class SearchClientError extends Error {
       | "server_error"
       | "transport"
       | "timeout"
-      | "validation_failed",
+      | "response_invalid",
     message: string,
     readonly status?: number,
     readonly cause?: unknown,
@@ -157,22 +158,23 @@ export function createSearchClient(
         payload = await response.json()
       } catch (cause) {
         throw new SearchClientError(
-          "validation_failed",
+          "response_invalid",
           "search response was not valid JSON",
           response.status,
           cause,
         )
       }
 
-      if (!isSearchResponse(payload)) {
+      const validated = SearchResponseSchema.safeParse(payload)
+      if (!validated.success) {
         throw new SearchClientError(
-          "validation_failed",
-          "search response did not match expected shape",
+          "response_invalid",
+          `search response did not match expected shape: ${validated.error.issues.map((i) => i.path.join(".") + ": " + i.message).join("; ")}`,
           response.status,
         )
       }
 
-      return payload.results.map(truncateSnippet)
+      return validated.data.results.map(truncateSnippet)
     },
   }
 }
@@ -220,29 +222,5 @@ export function truncateSnippet<T extends { snippet: string | null }>(
   }
 }
 
-/**
- * Lightweight runtime validator for admin's search response. Avoids
- * a Zod dep for a shape we control on both ends — admin's REST contract
- * is documented in `apps/admin/src/services/hybrid-search.service.ts`.
- */
-function isSearchResponse(value: unknown): value is SearchResponse {
-  if (value == null || typeof value !== "object") return false
-  const v = value as Record<string, unknown>
-  if (!Array.isArray(v.results)) return false
-  if (typeof v.query !== "string") return false
-  if (typeof v.searchMode !== "string") return false
-  if (typeof v.hasMore !== "boolean") return false
-  return v.results.every(isSearchResult)
-}
-
-function isSearchResult(value: unknown): value is SearchResult {
-  if (value == null || typeof value !== "object") return false
-  const v = value as Record<string, unknown>
-  if (v.type !== "video" && v.type !== "experience") return false
-  if (typeof v.id !== "string") return false
-  if (typeof v.slug !== "string") return false
-  if (typeof v.title !== "string") return false
-  if (typeof v.snippet !== "string") return false
-  if (typeof v.score !== "number") return false
-  return true
-}
+// Validation now uses SearchResponseSchema from ./schemas — shared with
+// baseline.ts and calibration.ts so the contract has one source of truth.

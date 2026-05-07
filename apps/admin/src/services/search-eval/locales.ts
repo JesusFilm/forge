@@ -18,6 +18,18 @@
  * LOCALE_TIER. Do NOT add `it`, `nl`, or other languages just because
  * the LLM judge is good at them — the constraint is JFP corpus depth,
  * not judge quality.
+ *
+ * Refresh command:
+ *
+ * ```
+ * curl -s -X POST https://api-gateway.central.jesusfilm.org/ \
+ *   -H "Content-Type: application/json" \
+ *   -d '{"query":"{ languages(limit: 500, offset: 0) { bcp47 labeledVideoCounts { seriesCount featureFilmCount shortFilmCount } } }"}' \
+ *   | jq -r '.data.languages | map(. + {total: (.labeledVideoCounts.seriesCount + .labeledVideoCounts.featureFilmCount + .labeledVideoCounts.shortFilmCount)}) | sort_by(-.total) | .[0:30] | map(.bcp47)'
+ * ```
+ *
+ * (Repeat with offset=500, 1000, 1500, 2000 to cover the full ~2300
+ * languages, dedupe by bcp47 keeping max total, then take top 30.)
  */
 
 export const HARNESS_LOCALES = [
@@ -60,14 +72,14 @@ export type HarnessLocale = (typeof HARNESS_LOCALES)[number]
  * with high confidence. Used by `eval:search:quick` to keep the
  * iteration loop fast (target ~3 min wall time per run).
  */
-export const QUICK_LOCALES: readonly HarnessLocale[] = [
+export const QUICK_LOCALES = [
   "en",
   "fr",
   "es",
   "de",
   "pt",
   "ja",
-] as const
+] as const satisfies readonly HarnessLocale[]
 
 /**
  * Per-locale judge confidence tier. Surfaced in run output so a
@@ -81,7 +93,7 @@ export const QUICK_LOCALES: readonly HarnessLocale[] = [
  */
 export type Tier = 1 | 2 | 3
 
-export const LOCALE_TIER: Readonly<Record<HarnessLocale, Tier>> = {
+export const LOCALE_TIER = {
   // Tier 1 — Romance/Germanic
   en: 1,
   fr: 1,
@@ -115,7 +127,7 @@ export const LOCALE_TIER: Readonly<Record<HarnessLocale, Tier>> = {
   kk: 3,
   ta: 3,
   pl: 3,
-} as const
+} as const satisfies Record<HarnessLocale, Tier>
 
 export function isHarnessLocale(value: string): value is HarnessLocale {
   return (HARNESS_LOCALES as readonly string[]).includes(value)

@@ -17,7 +17,7 @@ import type {
   SearchResult,
 } from "@/services/hybrid-search.service"
 
-import type { HarnessLocale, Tier } from "./locales"
+import type { Tier } from "./locales"
 
 // Re-export admin's response shape so harness modules import a single
 // canonical SearchResult type. Bumping admin's contract surfaces here
@@ -125,11 +125,13 @@ export type Outcome =
       verdicts: [Verdict, Verdict]
     }
 
-/** One calibration case as run by Unit 8. */
+/** One calibration case as run by Unit 8. Locale is `string` (not
+ *  `HarnessLocale`) because operator-authored cases may target locales
+ *  outside the harness set during one-off probes. */
 export type CalibrationCase = {
   id: string
   query: string
-  locale: HarnessLocale
+  locale: string
   listA: SearchResult[]
   listB: SearchResult[]
   expected: Verdict

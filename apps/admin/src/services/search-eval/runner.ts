@@ -33,8 +33,6 @@ import { runCalibration } from "./calibration"
 import { readFingerprint } from "./fingerprint"
 import type { Judge, JudgeVerdictResult } from "./judge"
 import { LOCALE_TIER, QUICK_LOCALES } from "./locales"
-import { loadRegressions } from "./regressions"
-import { createSyntheticQueryLoader } from "./query-generator"
 import type { SearchClient } from "./search-client"
 import type {
   Baseline,
@@ -51,9 +49,13 @@ import type {
   Verdict,
 } from "./types"
 
-/** Token-cost constants for Haiku 4.5 on OpenRouter. Best-effort.
- *  Re-verify periodically — OpenRouter pricing is the source of truth.
- *  Per plan §Key Decision (cost tracking). */
+/** Token-cost constants for `anthropic/claude-haiku-4-5` on OpenRouter.
+ *  Source of truth: https://openrouter.ai/anthropic/claude-haiku-4-5
+ *
+ *  **Priced 2026-05-07.** Re-verify quarterly. If `OPENROUTER_JUDGE_MODEL`
+ *  is overridden to a different model, these constants no longer apply
+ *  and `report.cost.totalUsd` will be wrong; this is documented as a
+ *  known risk in the plan. */
 export const HAIKU_INPUT_USD_PER_TOKEN = 1.0 / 1_000_000
 export const HAIKU_OUTPUT_USD_PER_TOKEN = 5.0 / 1_000_000
 
@@ -81,11 +83,6 @@ export type RunEvalOptions = {
   prisma?: PrismaClient
   judge?: Judge
   searchClient?: SearchClient
-  /** Override the synthetic-query loader. Tests provide a fake to
-   *  return canned queries without hitting OpenRouter. */
-  syntheticQueryLoader?: ReturnType<typeof createSyntheticQueryLoader>
-  /** Override the regression loader. Defaults to `loadRegressions`. */
-  loadRegressionsImpl?: typeof loadRegressions
   /** Override the calibration runner. Tests provide a stub so the
    *  runner doesn't have to wire the calibration JSON file. */
   runCalibrationImpl?: (judge: Judge) => Promise<RunReport["calibration"]>
@@ -136,18 +133,11 @@ export async function runEval(options: RunEvalOptions): Promise<RunReport> {
   const queries = filterQueries(baseline, options.mode, options.filterLocale)
 
   // ----- Read current fingerprint + detect drift -----
-  if (!options.prisma && !options.readFingerprintImpl) {
-    throw new Error(
-      "runEval requires either a prisma client or a readFingerprintImpl override",
-    )
-  }
-  const readImpl =
-    options.readFingerprintImpl ?? ((p: PrismaClient) => readFingerprint(p))
-  const currentFingerprint = await readImpl(options.prisma as PrismaClient)
+  const currentFingerprint = await readCurrentFingerprint(options)
   const drift = detectDrift(baseline, currentFingerprint)
   if (drift.detected) {
     logger.warn(
-      `[search-eval] event=fingerprint_drift_detected details="${drift.details}"`,
+      `[search-eval] event=fingerprint_drift_detected details="${sanitizeForLog(drift.details)}"`,
     )
   }
 
@@ -155,9 +145,10 @@ export async function runEval(options: RunEvalOptions): Promise<RunReport> {
   if (!options.judge) {
     throw new Error("runEval requires a judge")
   }
+  const judge = options.judge
   const calibration = options.runCalibrationImpl
-    ? await options.runCalibrationImpl(options.judge)
-    : await runCalibration(options.judge, {
+    ? await options.runCalibrationImpl(judge)
+    : await runCalibration(judge, {
         cases: options.calibrationCases,
         logger,
       })
@@ -183,7 +174,7 @@ export async function runEval(options: RunEvalOptions): Promise<RunReport> {
           return { ...q, currentResults: results, searchError: null }
         } catch (err) {
           logger.warn(
-            `[search-eval] event=search_error locale=${q.locale} query="${truncateForLog(q.query)}" error=${err instanceof Error ? err.message : String(err)}`,
+            `[search-eval] event=search_error locale=${sanitizeForLog(q.locale)} query="${sanitizeForLog(truncateForLog(q.query))}" error=${sanitizeForLog(err instanceof Error ? err.message : String(err))}`,
           )
           return {
             ...q,
@@ -196,14 +187,16 @@ export async function runEval(options: RunEvalOptions): Promise<RunReport> {
   )
 
   // ----- Judge each query pairwise (A/B + B/A swap) -----
-  let totalInputTokens = 0
-  let totalOutputTokens = 0
-
+  // Tokens are returned on each attempt and summed after the
+  // fan-out completes — avoids shared mutable accumulators across
+  // pLimit-controlled async callbacks.
   type JudgeAttempt = {
     entry: CurrentResultEntry
     forwardVerdict: Verdict
     swappedVerdict: Verdict
     rationale: string
+    inputTokens: number
+    outputTokens: number
   }
 
   const judgeAttempts: JudgeAttempt[] = await Promise.all(
@@ -217,33 +210,44 @@ export async function runEval(options: RunEvalOptions): Promise<RunReport> {
             forwardVerdict: "tie" as Verdict,
             swappedVerdict: "tie" as Verdict,
             rationale: `search failed: ${entry.searchError.message}`,
+            inputTokens: 0,
+            outputTokens: 0,
           }
         }
 
         // A=baseline, B=current
-        const forward = await safeJudge(options.judge as Judge, {
+        const forward = await safeJudge(judge, {
           query: entry.query,
           locale: entry.locale,
           listA: entry.results,
           listB: entry.currentResults,
         })
         // A=current, B=baseline (swapped)
-        const swapped = await safeJudge(options.judge as Judge, {
+        const swapped = await safeJudge(judge, {
           query: entry.query,
           locale: entry.locale,
           listA: entry.currentResults,
           listB: entry.results,
         })
-        totalInputTokens += forward.tokens.input + swapped.tokens.input
-        totalOutputTokens += forward.tokens.output + swapped.tokens.output
         return {
           entry,
           forwardVerdict: forward.verdict,
           swappedVerdict: swapped.verdict,
           rationale: forward.rationale,
+          inputTokens: forward.tokens.input + swapped.tokens.input,
+          outputTokens: forward.tokens.output + swapped.tokens.output,
         }
       }),
     ),
+  )
+
+  const totalInputTokens = judgeAttempts.reduce(
+    (sum, a) => sum + a.inputTokens,
+    0,
+  )
+  const totalOutputTokens = judgeAttempts.reduce(
+    (sum, a) => sum + a.outputTokens,
+    0,
   )
 
   // ----- Combine A/B-swap verdicts → Outcome -----
@@ -534,10 +538,41 @@ function truncateForLog(s: string, max = 80): string {
   return s.length <= max ? s : `${s.slice(0, max)}…`
 }
 
+/**
+ * Strip CR/LF/TAB so a query / locale / error-message string can't
+ * inject forged structured-log entries. Mirrors the project-wide
+ * pattern documented in
+ * `docs/solutions/security-issues/log-injection-sanitizer-user-input-structured-logs-20260429.md`.
+ */
+function sanitizeForLog(s: string): string {
+  return s.replace(/[\r\n\t]/g, " ")
+}
+
+/** Read the current content fingerprint, honoring a test override. */
+async function readCurrentFingerprint(
+  options: RunEvalOptions,
+): Promise<RunReport["contentFingerprint"]> {
+  if (options.readFingerprintImpl) {
+    // Override path: tests pass a stub. The override's signature
+    // tolerates `undefined` for prisma — only the production path
+    // needs a real client.
+    return options.readFingerprintImpl(
+      (options.prisma ?? undefined) as PrismaClient,
+    )
+  }
+  if (!options.prisma) {
+    throw new Error(
+      "runEval requires either a prisma client or a readFingerprintImpl override",
+    )
+  }
+  return readFingerprint(options.prisma)
+}
+
 /** Exposed for unit tests. Treat as internal. */
 export const _internal = {
   collapseSwapVerdicts,
   computeTotals,
   computePerLocale,
   detectSnippetImprovementHeuristic,
+  sanitizeForLog,
 }

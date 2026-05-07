@@ -27,6 +27,11 @@ import { z } from "zod"
 
 import { env } from "@/config/env"
 
+import {
+  extractMessageContent,
+  extractTokenCounts,
+  safeReadBody,
+} from "./openrouter-helpers"
 import type { SearchResult, Verdict } from "./types"
 
 /** Default judge model. Override via `OPENROUTER_JUDGE_MODEL`. Verify
@@ -52,10 +57,12 @@ const VERDICT_VALUES = [
   "both-irrelevant",
 ] as const
 
-const JudgeResponseSchema = z.object({
-  verdict: z.enum(VERDICT_VALUES),
-  rationale: z.string().trim().min(1).max(1000),
-})
+const JudgeResponseSchema = z
+  .object({
+    verdict: z.enum(VERDICT_VALUES),
+    rationale: z.string().trim().min(1).max(1000),
+  })
+  .strict()
 
 /**
  * Discriminated error class so callers branch on `code`. Mirrors
@@ -176,7 +183,9 @@ function buildRequestBody(model: string, input: JudgePairInput) {
           additionalProperties: false,
           properties: {
             verdict: { type: "string", enum: [...VERDICT_VALUES] },
-            rationale: { type: "string" },
+            // Match the client-side Zod schema's bounds so a wire-
+            // valid response can't fail Zod re-parse downstream.
+            rationale: { type: "string", minLength: 1, maxLength: 1000 },
           },
           required: ["verdict", "rationale"],
         },
@@ -204,52 +213,6 @@ function parseRetryAfterMs(value: string | null): number | null {
 
 function isRetryableStatus(status: number): boolean {
   return status === 429 || status >= 500
-}
-
-function extractMessageContent(payload: unknown): string | null {
-  if (payload == null || typeof payload !== "object") return null
-  const choices = (payload as Record<string, unknown>).choices
-  if (!Array.isArray(choices) || choices.length === 0) return null
-  const message = (choices[0] as Record<string, unknown>).message
-  if (message == null || typeof message !== "object") return null
-  const content = (message as Record<string, unknown>).content
-  if (typeof content === "string") return content
-  if (Array.isArray(content)) {
-    for (const part of content) {
-      if (part == null || typeof part !== "object") continue
-      const text = (part as Record<string, unknown>).text
-      if (typeof text === "string") return text
-    }
-  }
-  return null
-}
-
-function extractTokenCounts(payload: unknown): {
-  input: number
-  output: number
-} {
-  if (payload == null || typeof payload !== "object") {
-    return { input: 0, output: 0 }
-  }
-  const usage = (payload as Record<string, unknown>).usage
-  if (usage == null || typeof usage !== "object") {
-    return { input: 0, output: 0 }
-  }
-  const u = usage as Record<string, unknown>
-  return {
-    input:
-      typeof u.prompt_tokens === "number"
-        ? u.prompt_tokens
-        : typeof u.input_tokens === "number"
-          ? u.input_tokens
-          : 0,
-    output:
-      typeof u.completion_tokens === "number"
-        ? u.completion_tokens
-        : typeof u.output_tokens === "number"
-          ? u.output_tokens
-          : 0,
-  }
 }
 
 const defaultLogger = {
@@ -425,12 +388,4 @@ export function createJudge(options: CreateJudgeOptions = {}): Judge {
 function backoffMs(attempt: number): number {
   // Exponential with a small base — first retry ~500ms, second ~1s.
   return Math.min(RETRY_BASE_DELAY_MS * 2 ** (attempt - 1), RETRY_AFTER_CAP_MS)
-}
-
-async function safeReadBody(response: Response): Promise<string> {
-  try {
-    return (await response.text()).slice(0, 1000)
-  } catch {
-    return `(unreadable body, status=${response.status})`
-  }
 }
