@@ -14,11 +14,11 @@
  */
 
 import { readFile } from "node:fs/promises"
-import path from "node:path"
 
 import { z } from "zod"
 
 import type { Judge } from "./judge"
+import { calibrationPath } from "./paths"
 import type { CalibrationCase, CalibrationReport, Verdict } from "./types"
 
 const VERDICT_VALUES = [
@@ -74,17 +74,13 @@ export type CalibrationLoaderOptions = {
   filePath?: string
 }
 
-function defaultPath(): string {
-  return path.resolve(process.cwd(), "apps/admin/eval/calibration.json")
-}
-
 /** Read + validate the calibration cases file. Strict on shape — we
  *  want to catch a hand-edit typo before it shows up as a "judge is
  *  wrong" false alarm at run-time. */
 export async function loadCalibrationCases(
   options: CalibrationLoaderOptions = {},
 ): Promise<CalibrationCase[]> {
-  const filePath = options.filePath ?? defaultPath()
+  const filePath = options.filePath ?? calibrationPath()
   let raw: string
   try {
     raw = await readFile(filePath, "utf8")

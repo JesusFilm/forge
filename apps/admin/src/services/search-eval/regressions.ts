@@ -12,10 +12,10 @@
  */
 
 import { readFile } from "node:fs/promises"
-import path from "node:path"
 
 import { z } from "zod"
 
+import { regressionsPath } from "./paths"
 import type { QuerySource } from "./types"
 
 export const REGRESSION_ENTRY_SCHEMA = z.object({
@@ -59,28 +59,10 @@ export type LoadRegressionsOptions = {
   allowMissing?: boolean
 }
 
-const DEFAULT_REGRESSION_PATH = path.resolve(
-  process.cwd(),
-  "apps/admin/eval/regressions.json",
-)
-
-/** Resolve the default path relative to admin's working dir.
- *
- *  The CLI typically runs from repo root (`pnpm --filter @forge/admin
- *  eval:search`) so process.cwd() is repo root; the path above is
- *  relative to that. When run from inside `apps/admin` the same path
- *  doesn't resolve, so callers can override `filePath`. */
-function resolveDefaultPath(): string {
-  // Re-resolve at call-time so tests + `pnpm --filter` invocations
-  // both work; using the module-load constant would lock in the
-  // wrong cwd for some callers.
-  return path.resolve(process.cwd(), "apps/admin/eval/regressions.json")
-}
-
 export async function loadRegressions(
   options: LoadRegressionsOptions = {},
 ): Promise<LoadedRegressionQuery[]> {
-  const filePath = options.filePath ?? resolveDefaultPath()
+  const filePath = options.filePath ?? regressionsPath()
   const allowMissing = options.allowMissing ?? true
 
   let raw: string
@@ -127,9 +109,4 @@ export async function loadRegressions(
     source: "regression",
     notes: entry.notes,
   }))
-}
-
-export const _internal = {
-  DEFAULT_REGRESSION_PATH,
-  resolveDefaultPath,
 }

@@ -1,10 +1,5 @@
-import { mkdtemp, rm } from "node:fs/promises"
-import { tmpdir } from "node:os"
-import path from "node:path"
+import { describe, expect, it, vi } from "vitest"
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-
-import { saveBaseline } from "./baseline"
 import type { Judge } from "./judge"
 import { _internal, runEval } from "./runner"
 import type { SearchClient } from "./search-client"
@@ -70,35 +65,6 @@ function makeBaseline(): Baseline {
   }
 }
 
-let tmp: string
-
-beforeEach(async () => {
-  tmp = await mkdtemp(path.join(tmpdir(), "runner-test-"))
-})
-afterEach(async () => {
-  await rm(tmp, { recursive: true, force: true })
-})
-
-async function writeBaseline(name = "default"): Promise<Baseline> {
-  const b = makeBaseline()
-  b.name = name
-  // saveBaseline uses default cwd, so chdir to tmp temporarily
-  const cwd = process.cwd()
-  // Stand up apps/admin/eval/baselines so saveBaseline's default
-  // path resolves.
-  const evalDir = path.join(tmp, "apps/admin/eval/baselines")
-  process.chdir(tmp)
-  try {
-    await saveBaseline(b)
-  } finally {
-    process.chdir(cwd)
-  }
-  // sanity
-  const fs = await import("node:fs/promises")
-  await fs.access(path.join(evalDir, `${name}.json`))
-  return b
-}
-
 function judgeStub(plan: Record<string, [Verdict, Verdict]>): Judge {
   // Map keyed by query text; values are [forward, swapped] verdicts.
   // Stateful: first call per-query returns the forward verdict, second
@@ -150,24 +116,19 @@ async function runWithFixture(opts: {
   fingerprint?: Fingerprint
   mode?: "quick" | "full" | "locale"
   filterLocale?: string
+  baseline?: Baseline
 }) {
-  await writeBaseline()
-  const cwd = process.cwd()
-  process.chdir(tmp)
-  try {
-    return await runEval({
-      mode: opts.mode ?? "full",
-      filterLocale: opts.filterLocale,
-      judge: opts.judge,
-      searchClient: opts.searchClient,
-      readFingerprintImpl: async () => opts.fingerprint ?? baselineFp,
-      runCalibrationImpl: async () => calibrationStub,
-      now: () => new Date("2026-05-07T12:34:56.000Z"),
-      gitSha: "test1234",
-    })
-  } finally {
-    process.chdir(cwd)
-  }
+  return runEval({
+    mode: opts.mode ?? "full",
+    filterLocale: opts.filterLocale,
+    judge: opts.judge,
+    searchClient: opts.searchClient,
+    baselineOverride: opts.baseline ?? makeBaseline(),
+    readFingerprintImpl: async () => opts.fingerprint ?? baselineFp,
+    runCalibrationImpl: async () => calibrationStub,
+    now: () => new Date("2026-05-07T12:34:56.000Z"),
+    gitSha: "test1234",
+  })
 }
 
 describe("runEval", () => {
@@ -271,35 +232,25 @@ describe("runEval", () => {
       source: "synthetic",
       results: [r("p1")],
     })
-    const cwd = process.cwd()
-    process.chdir(tmp)
-    try {
-      await saveBaseline(baselineWithTier3)
-      const judge = judgeStub({
-        hope: ["tie", "tie"],
-        espoir: ["tie", "tie"],
-        "regression-1": ["tie", "tie"],
-      })
-      const search = searchClientStub({
-        hope: [r("a")],
-        espoir: [r("c")],
-        "regression-1": [r("e")],
-      })
-      const report = await runEval({
-        mode: "quick",
-        judge,
-        searchClient: search,
-        readFingerprintImpl: async () => baselineFp,
-        runCalibrationImpl: async () => calibrationStub,
-        now: () => new Date("2026-05-07T12:34:56.000Z"),
-        gitSha: "test1234",
-      })
-      expect(report.totals.queries).toBe(3) // en + fr + fr; pl dropped
-      const localesSeen = new Set(report.outcomes.map((o) => o.locale))
-      expect(localesSeen.has("pl")).toBe(false)
-    } finally {
-      process.chdir(cwd)
-    }
+    const judge = judgeStub({
+      hope: ["tie", "tie"],
+      espoir: ["tie", "tie"],
+      "regression-1": ["tie", "tie"],
+    })
+    const search = searchClientStub({
+      hope: [r("a")],
+      espoir: [r("c")],
+      "regression-1": [r("e")],
+    })
+    const report = await runWithFixture({
+      judge,
+      searchClient: search,
+      baseline: baselineWithTier3,
+      mode: "quick",
+    })
+    expect(report.totals.queries).toBe(3) // en + fr + fr; pl dropped
+    const localesSeen = new Set(report.outcomes.map((o) => o.locale))
+    expect(localesSeen.has("pl")).toBe(false)
   })
 
   it("filters by --locale=fr", async () => {

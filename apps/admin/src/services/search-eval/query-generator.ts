@@ -27,6 +27,7 @@ import { z } from "zod"
 import { env } from "@/config/env"
 
 import { DEFAULT_JUDGE_MODEL } from "./judge"
+import { syntheticQueriesDir } from "./paths"
 import type { QuerySource } from "./types"
 
 const OPENROUTER_CHAT_COMPLETIONS_URL =
@@ -306,14 +307,10 @@ const FILE_SCHEMA = z.object({
   queries: z.array(z.string().min(1)).min(1),
 })
 
-function defaultDirectory(): string {
-  return path.resolve(process.cwd(), "apps/admin/eval/synthetic-queries")
-}
-
 export function createSyntheticQueryLoader(
   options: CreateLoaderOptions = {},
 ): SyntheticQueryLoader {
-  const directory = options.directory ?? defaultDirectory()
+  const directory = options.directory ?? syntheticQueriesDir()
   const now = options.now ?? (() => new Date())
 
   function getGenerator(): QueryGenerator {

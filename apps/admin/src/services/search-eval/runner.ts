@@ -95,6 +95,9 @@ export type RunEvalOptions = {
   /** Override the fingerprint reader. Tests stub this to return a
    *  fixed shape. */
   readFingerprintImpl?: typeof readFingerprint
+  /** Pre-loaded baseline. Skips the disk read. Tests use this to
+   *  avoid wiring up `apps/admin/eval/baselines/`. */
+  baselineOverride?: Baseline
   /** Concurrency caps. Default 4 search / 8 judge per the plan. */
   searchConcurrency?: number
   judgeConcurrency?: number
@@ -125,7 +128,9 @@ export async function runEval(options: RunEvalOptions): Promise<RunReport> {
   const runId = (options.runIdFor ?? defaultRunIdFor)(startedAt, gitSha)
 
   // ----- Load baseline -----
-  const baseline = await loadBaseline(options.baselineName ?? "default")
+  const baseline =
+    options.baselineOverride ??
+    (await loadBaseline(options.baselineName ?? "default"))
 
   // ----- Filter queries based on mode -----
   const queries = filterQueries(baseline, options.mode, options.filterLocale)

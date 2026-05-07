@@ -21,6 +21,12 @@
     "pull:mapping": "tsx src/scripts/pull-mapping-from-prod.ts",
     "run-embeds": "tsx src/scripts/run-embeds.ts",
     "run-sync": "tsx src/scripts/run-sync.ts",
+    "eval:search": "tsx src/scripts/eval-search.ts run",
+    "eval:search:quick": "tsx src/scripts/eval-search.ts run --quick",
+    "eval:search:full": "tsx src/scripts/eval-search.ts run --full",
+    "eval:search:rebaseline": "tsx src/scripts/eval-search.ts rebaseline",
+    "eval:search:regenerate-queries": "tsx src/scripts/eval-search.ts regenerate-queries",
+    "eval:search:calibrate": "tsx src/scripts/eval-search.ts calibrate",
     "workflow:setup:postgres": "workflow-postgres-setup"
   },
   "dependencies": {

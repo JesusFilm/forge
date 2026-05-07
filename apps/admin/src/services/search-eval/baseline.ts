@@ -20,6 +20,7 @@ import path from "node:path"
 import { z } from "zod"
 
 import { compareFingerprints } from "./fingerprint"
+import { baselinesDir } from "./paths"
 import type { Baseline, DriftResult, Fingerprint } from "./types"
 
 const SearchResultSchema = z.object({
@@ -79,12 +80,8 @@ export type BaselineFilesystem = {
   directory?: string
 }
 
-function defaultDirectory(): string {
-  return path.resolve(process.cwd(), "apps/admin/eval/baselines")
-}
-
 function pathFor(name: string, directory?: string): string {
-  return path.join(directory ?? defaultDirectory(), `${name}.json`)
+  return path.join(directory ?? baselinesDir(), `${name}.json`)
 }
 
 /** Load a committed baseline by name. Throws `BaselineNotFoundError`
@@ -135,7 +132,7 @@ export async function saveBaseline(
   baseline: Baseline,
   fs: BaselineFilesystem = {},
 ): Promise<{ path: string }> {
-  const directory = fs.directory ?? defaultDirectory()
+  const directory = fs.directory ?? baselinesDir()
   await mkdir(directory, { recursive: true })
 
   // Validate before write — same Zod schema used on read. Catches
