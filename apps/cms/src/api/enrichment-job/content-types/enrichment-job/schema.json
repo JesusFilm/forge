@@ -26,6 +26,9 @@
     "languages": {
       "type": "json"
     },
+    "options": {
+      "type": "json"
+    },
     "status": {
       "type": "enumeration",
       "enum": ["pending", "running", "completed", "failed"],

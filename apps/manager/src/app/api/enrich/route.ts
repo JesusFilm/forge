@@ -105,7 +105,10 @@ export async function POST(request: Request) {
     }
 
     try {
-      const job = await createJob(muxAssetId, muxPlaybackId, languages)
+      const job = await createJob(muxAssetId, muxPlaybackId, languages, {
+        options: { notifyCms: true },
+        videoDocumentId: video.documentId,
+      })
       jobs.push({ videoId: coreId, jobId: job.id })
 
       // Run enrichment in the background after the response is sent

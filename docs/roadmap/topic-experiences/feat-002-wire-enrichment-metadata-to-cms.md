@@ -3,7 +3,7 @@ id: "feat-002"
 title: "Wire Enrichment Metadata Back to CMS"
 owner: "vlad"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-04-01"
 duration: 14
 depends_on: []

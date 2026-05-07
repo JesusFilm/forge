@@ -1317,6 +1317,12 @@ enum ENUM_KEYWORD_SOURCE {
   manager
 }
 
+enum ENUM_KEYWORD_TYPE {
+  keyword
+  speaker
+  topic
+}
+
 enum ENUM_LANGUAGEAUDIOPREVIEW_SOURCE {
   core
   manager
@@ -1413,6 +1419,7 @@ type EnrichmentJob {
   languages: JSON
   muxAssetId: String!
   muxPlaybackId: String
+  options: JSON
   publishedAt: DateTime
   retries: Int
   startedAt: DateTime
@@ -1466,6 +1473,7 @@ input EnrichmentJobInput {
   languages: JSON
   muxAssetId: String
   muxPlaybackId: String
+  options: JSON
   publishedAt: DateTime
   retries: Int
   startedAt: DateTime
@@ -1724,6 +1732,7 @@ type Keyword {
   language: Language
   publishedAt: DateTime
   source: ENUM_KEYWORD_SOURCE!
+  type: ENUM_KEYWORD_TYPE
   updatedAt: DateTime
   value: String
   videos(filters: VideoFiltersInput, pagination: PaginationArg = {}, sort: [String] = []): [Video]!
@@ -1754,6 +1763,7 @@ input KeywordFiltersInput {
   or: [KeywordFiltersInput]
   publishedAt: DateTimeFilterInput
   source: StringFilterInput
+  type: StringFilterInput
   updatedAt: DateTimeFilterInput
   value: StringFilterInput
   videos: VideoFiltersInput
@@ -1764,6 +1774,7 @@ input KeywordInput {
   language: ID
   publishedAt: DateTime
   source: ENUM_KEYWORD_SOURCE
+  type: ENUM_KEYWORD_TYPE
   value: String
   videos: [ID]
 }
