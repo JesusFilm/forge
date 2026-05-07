@@ -23,6 +23,17 @@ import type { SearchResult } from "./types"
  */
 const SEARCH_REQUEST_TIMEOUT_MS = 30_000
 
+/**
+ * Retry parameters mirror `judge.ts`. Search calls retry on the same
+ * three classes (5xx, 429, transport) — admin's `GET /api/search` is
+ * rate-limited at 30/min/IP via Redis, so a high-throughput rebaseline
+ * or full run will routinely hit 429s without retry. The backoff cap
+ * matches admin's sliding window.
+ */
+const MAX_RETRY_ATTEMPTS = 3
+const RETRY_AFTER_CAP_MS = 30_000
+const RETRY_BASE_DELAY_MS = 500
+
 /** Default top-K. Plan §R3 fixes the harness at top-20. */
 export const SEARCH_DEFAULT_LIMIT = 20
 
@@ -78,6 +89,14 @@ export type CreateSearchClientOptions = {
   baseUrl: string
   /** Override `fetch` for tests. Defaults to global `fetch`. */
   fetchImpl?: typeof fetch
+  /** Override max retry attempts. Tests use 1 to assert single-shot
+   *  failure paths. Default 3. */
+  maxAttempts?: number
+  /** Override sleep between retries. Tests stub it to zero so retries
+   *  are instant. */
+  sleep?: (ms: number) => Promise<void>
+  /** Optional logger; emits structured retry events. */
+  logger?: { warn: (message: string) => void; info: (message: string) => void }
 }
 
 /**
@@ -87,11 +106,19 @@ export type CreateSearchClientOptions = {
  * stub `fetchImpl` without `vi.stubGlobal`, and callers can plumb
  * one client through the runner without rebuilding the URL each call.
  */
+const noopLogger = { warn: () => {}, info: () => {} }
+
+const defaultSleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms))
+
 export function createSearchClient(
   options: CreateSearchClientOptions,
 ): SearchClient {
   const baseUrl = options.baseUrl.replace(/\/$/, "")
   const fetchImpl = options.fetchImpl ?? fetch
+  const maxAttempts = options.maxAttempts ?? MAX_RETRY_ATTEMPTS
+  const sleep = options.sleep ?? defaultSleep
+  const logger = options.logger ?? noopLogger
 
   return {
     async search(query, locale, opts = {}) {
@@ -104,79 +131,133 @@ export function createSearchClient(
 
       const url = buildSearchUrl(baseUrl, query, locale, opts)
       const timeoutMs = opts.timeoutMs ?? SEARCH_REQUEST_TIMEOUT_MS
+      const failures: string[] = []
 
-      let response: Response
-      try {
-        response = await fetchImpl(url, {
-          method: "GET",
-          headers: { accept: "application/json" },
-          signal: AbortSignal.timeout(timeoutMs),
-        })
-      } catch (cause) {
-        if (cause instanceof DOMException && cause.name === "TimeoutError") {
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        let response: Response
+        try {
+          response = await fetchImpl(url, {
+            method: "GET",
+            headers: { accept: "application/json" },
+            signal: AbortSignal.timeout(timeoutMs),
+          })
+        } catch (cause) {
+          if (cause instanceof DOMException && cause.name === "TimeoutError") {
+            failures.push(`attempt ${attempt}: timeout after ${timeoutMs}ms`)
+            if (attempt < maxAttempts) {
+              await sleep(backoffMs(attempt))
+              continue
+            }
+            throw new SearchClientError(
+              "timeout",
+              `search request timed out after ${timeoutMs}ms (${maxAttempts} attempts)`,
+              undefined,
+              cause,
+            )
+          }
+          failures.push(
+            `attempt ${attempt}: ${cause instanceof Error ? cause.message : String(cause)}`,
+          )
+          if (attempt < maxAttempts) {
+            await sleep(backoffMs(attempt))
+            continue
+          }
           throw new SearchClientError(
-            "timeout",
-            `search request timed out after ${timeoutMs}ms`,
+            "transport",
+            `search transport error after ${maxAttempts} attempts: ${failures.join(" | ")}`,
             undefined,
             cause,
           )
         }
-        throw new SearchClientError(
-          "transport",
-          cause instanceof Error ? cause.message : String(cause),
-          undefined,
-          cause,
-        )
+
+        // Non-2xx classification with retry decision.
+        if (!response.ok) {
+          if (isRetryableStatus(response.status) && attempt < maxAttempts) {
+            const retryAfter = parseRetryAfterMs(
+              response.headers.get("retry-after"),
+            )
+            const wait = retryAfter ?? backoffMs(attempt)
+            failures.push(`attempt ${attempt}: status ${response.status}`)
+            logger.info(
+              `[search-eval] event=search.retry attempt=${attempt} status=${response.status} wait_ms=${wait}`,
+            )
+            await sleep(wait)
+            continue
+          }
+
+          const message = await safeReadErrorMessage(response)
+          if (response.status === 400) {
+            throw new SearchClientError("validation", message, 400)
+          }
+          if (response.status === 429) {
+            throw new SearchClientError(
+              "rate_limited",
+              `search rate limit exceeded (429) after ${attempt} attempts: ${message}`,
+              429,
+            )
+          }
+          if (response.status >= 500) {
+            throw new SearchClientError(
+              "server_error",
+              `search server error (${response.status}) after ${attempt} attempts: ${message}`,
+              response.status,
+            )
+          }
+          throw new SearchClientError(
+            "server_error",
+            `unexpected status ${response.status}: ${message}`,
+            response.status,
+          )
+        }
+
+        let payload: unknown
+        try {
+          payload = await response.json()
+        } catch (cause) {
+          throw new SearchClientError(
+            "response_invalid",
+            "search response was not valid JSON",
+            response.status,
+            cause,
+          )
+        }
+
+        const validated = SearchResponseSchema.safeParse(payload)
+        if (!validated.success) {
+          throw new SearchClientError(
+            "response_invalid",
+            `search response did not match expected shape: ${validated.error.issues.map((i) => i.path.join(".") + ": " + i.message).join("; ")}`,
+            response.status,
+          )
+        }
+
+        return validated.data.results.map(truncateSnippet)
       }
 
-      if (response.status === 429) {
-        throw new SearchClientError(
-          "rate_limited",
-          "search rate limit exceeded (429)",
-          429,
-        )
-      }
-      if (response.status === 400) {
-        const message = await safeReadErrorMessage(response)
-        throw new SearchClientError("validation", message, 400)
-      }
-      if (response.status >= 500) {
-        const message = await safeReadErrorMessage(response)
-        throw new SearchClientError("server_error", message, response.status)
-      }
-      if (!response.ok) {
-        const message = await safeReadErrorMessage(response)
-        throw new SearchClientError(
-          "server_error",
-          `unexpected status ${response.status}: ${message}`,
-          response.status,
-        )
-      }
-
-      let payload: unknown
-      try {
-        payload = await response.json()
-      } catch (cause) {
-        throw new SearchClientError(
-          "response_invalid",
-          "search response was not valid JSON",
-          response.status,
-          cause,
-        )
-      }
-
-      const validated = SearchResponseSchema.safeParse(payload)
-      if (!validated.success) {
-        throw new SearchClientError(
-          "response_invalid",
-          `search response did not match expected shape: ${validated.error.issues.map((i) => i.path.join(".") + ": " + i.message).join("; ")}`,
-          response.status,
-        )
-      }
-
-      return validated.data.results.map(truncateSnippet)
+      // Unreachable; the loop either returns or throws.
+      throw new SearchClientError(
+        "server_error",
+        `search exhausted ${maxAttempts} attempts: ${failures.join(" | ")}`,
+      )
     },
   }
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || status >= 500
+}
+
+function parseRetryAfterMs(value: string | null): number | null {
+  if (value == null) return null
+  const seconds = Number(value)
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.min(seconds * 1000, RETRY_AFTER_CAP_MS)
+  }
+  return null
+}
+
+function backoffMs(attempt: number): number {
+  return Math.min(RETRY_BASE_DELAY_MS * 2 ** (attempt - 1), RETRY_AFTER_CAP_MS)
 }
 
 function buildSearchUrl(

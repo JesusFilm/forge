@@ -121,7 +121,9 @@ describe("createSearchClient", () => {
   })
 
   describe("error paths", () => {
-    it("throws rate_limited on 429", async () => {
+    const fastSleep = () => Promise.resolve()
+
+    it("throws rate_limited on persistent 429", async () => {
       const fetchImpl = vi.fn().mockResolvedValue(
         new Response(JSON.stringify({ error: "Too many requests" }), {
           status: 429,
@@ -132,6 +134,7 @@ describe("createSearchClient", () => {
       const client = createSearchClient({
         baseUrl: "http://localhost:3003",
         fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: fastSleep,
       })
 
       await expect(client.search("q", "en")).rejects.toMatchObject({
@@ -139,9 +142,10 @@ describe("createSearchClient", () => {
         code: "rate_limited",
         status: 429,
       })
+      expect(fetchImpl).toHaveBeenCalledTimes(3) // retried twice
     })
 
-    it("throws validation on 400", async () => {
+    it("throws validation on 400 (no retry — 400 is not retryable)", async () => {
       const fetchImpl = vi.fn().mockResolvedValue(
         new Response(JSON.stringify({ error: "locale is required" }), {
           status: 400,
@@ -152,15 +156,17 @@ describe("createSearchClient", () => {
       const client = createSearchClient({
         baseUrl: "http://localhost:3003",
         fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: fastSleep,
       })
 
       await expect(client.search("q", "en")).rejects.toMatchObject({
         code: "validation",
         status: 400,
       })
+      expect(fetchImpl).toHaveBeenCalledTimes(1) // 400 not retried
     })
 
-    it("throws server_error on 503", async () => {
+    it("throws server_error on persistent 503", async () => {
       const fetchImpl = vi.fn().mockResolvedValue(
         new Response(JSON.stringify({ error: "unavailable" }), {
           status: 503,
@@ -171,12 +177,14 @@ describe("createSearchClient", () => {
       const client = createSearchClient({
         baseUrl: "http://localhost:3003",
         fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: fastSleep,
       })
 
       await expect(client.search("q", "en")).rejects.toMatchObject({
         code: "server_error",
         status: 503,
       })
+      expect(fetchImpl).toHaveBeenCalledTimes(3) // retried twice
     })
 
     it("throws transport on network error", async () => {
@@ -184,6 +192,7 @@ describe("createSearchClient", () => {
       const client = createSearchClient({
         baseUrl: "http://localhost:3003",
         fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: fastSleep,
       })
 
       await expect(client.search("q", "en")).rejects.toMatchObject({
@@ -191,17 +200,19 @@ describe("createSearchClient", () => {
       })
     })
 
-    it("throws timeout when AbortSignal fires", async () => {
+    it("throws timeout when AbortSignal fires on every attempt", async () => {
       const timeoutErr = new DOMException("aborted", "TimeoutError")
       const fetchImpl = vi.fn().mockRejectedValue(timeoutErr)
       const client = createSearchClient({
         baseUrl: "http://localhost:3003",
         fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: fastSleep,
       })
 
       await expect(client.search("q", "en")).rejects.toMatchObject({
         code: "timeout",
       })
+      expect(fetchImpl).toHaveBeenCalledTimes(3)
     })
 
     it("rejects an empty query before issuing fetch", async () => {
@@ -251,6 +262,192 @@ describe("createSearchClient", () => {
       await expect(client.search("q", "en")).rejects.toMatchObject({
         code: "response_invalid",
       })
+    })
+  })
+
+  describe("retry behavior (P1 fix)", () => {
+    const fastSleep = () => Promise.resolve()
+    const muteLogger = { warn: () => {}, info: () => {} }
+
+    it("retries on 5xx then succeeds", async () => {
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response("err", {
+            status: 502,
+            headers: { "content-type": "text/plain" },
+          }),
+        )
+        .mockResolvedValueOnce(buildResponse([sampleVideoResult]))
+
+      const client = createSearchClient({
+        baseUrl: "http://localhost:3003",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: fastSleep,
+        logger: muteLogger,
+      })
+
+      const results = await client.search("q", "en")
+      expect(results).toHaveLength(1)
+      expect(fetchImpl).toHaveBeenCalledTimes(2)
+    })
+
+    it("retries on 429 then succeeds", async () => {
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ error: "Too many" }), {
+            status: 429,
+            headers: { "content-type": "application/json" },
+          }),
+        )
+        .mockResolvedValueOnce(buildResponse([sampleVideoResult]))
+
+      const client = createSearchClient({
+        baseUrl: "http://localhost:3003",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: fastSleep,
+        logger: muteLogger,
+      })
+
+      const results = await client.search("q", "en")
+      expect(results).toHaveLength(1)
+      expect(fetchImpl).toHaveBeenCalledTimes(2)
+    })
+
+    it("honors Retry-After header on 429", async () => {
+      const sleepCalls: number[] = []
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response("rate", {
+            status: 429,
+            headers: { "retry-after": "5" },
+          }),
+        )
+        .mockResolvedValueOnce(buildResponse([sampleVideoResult]))
+
+      const client = createSearchClient({
+        baseUrl: "http://localhost:3003",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: async (ms) => {
+          sleepCalls.push(ms)
+        },
+        logger: muteLogger,
+      })
+
+      await client.search("q", "en")
+      expect(sleepCalls[0]).toBe(5_000)
+    })
+
+    it("caps Retry-After at 30s", async () => {
+      const sleepCalls: number[] = []
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response("rate", {
+            status: 429,
+            headers: { "retry-after": "120" },
+          }),
+        )
+        .mockResolvedValueOnce(buildResponse([sampleVideoResult]))
+
+      const client = createSearchClient({
+        baseUrl: "http://localhost:3003",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: async (ms) => {
+          sleepCalls.push(ms)
+        },
+        logger: muteLogger,
+      })
+
+      await client.search("q", "en")
+      expect(sleepCalls[0]).toBe(30_000)
+    })
+
+    it("retries on transport error then succeeds", async () => {
+      const fetchImpl = vi
+        .fn()
+        .mockRejectedValueOnce(new Error("ECONNRESET"))
+        .mockResolvedValueOnce(buildResponse([sampleVideoResult]))
+
+      const client = createSearchClient({
+        baseUrl: "http://localhost:3003",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: fastSleep,
+        logger: muteLogger,
+      })
+
+      const results = await client.search("q", "en")
+      expect(results).toHaveLength(1)
+      expect(fetchImpl).toHaveBeenCalledTimes(2)
+    })
+
+    it("does NOT retry on 400 (validation)", async () => {
+      const fetchImpl = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: "bad" }), {
+          status: 400,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+
+      const client = createSearchClient({
+        baseUrl: "http://localhost:3003",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: fastSleep,
+        logger: muteLogger,
+      })
+
+      await expect(client.search("q", "en")).rejects.toMatchObject({
+        code: "validation",
+      })
+      expect(fetchImpl).toHaveBeenCalledTimes(1)
+    })
+
+    it("respects maxAttempts override (single-shot mode)", async () => {
+      const fetchImpl = vi.fn().mockResolvedValue(
+        new Response("err", {
+          status: 503,
+          headers: { "content-type": "text/plain" },
+        }),
+      )
+
+      const client = createSearchClient({
+        baseUrl: "http://localhost:3003",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        maxAttempts: 1,
+        sleep: fastSleep,
+        logger: muteLogger,
+      })
+
+      await expect(client.search("q", "en")).rejects.toMatchObject({
+        code: "server_error",
+        status: 503,
+      })
+      expect(fetchImpl).toHaveBeenCalledTimes(1)
+    })
+
+    it("emits structured retry log on retryable status", async () => {
+      const log = { warn: vi.fn(), info: vi.fn() }
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response("err", { status: 503, headers: { "retry-after": "1" } }),
+        )
+        .mockResolvedValueOnce(buildResponse([sampleVideoResult]))
+
+      const client = createSearchClient({
+        baseUrl: "http://localhost:3003",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: () => Promise.resolve(),
+        logger: log,
+      })
+
+      await client.search("q", "en")
+      const retryLine = log.info.mock.calls.find((c) =>
+        String(c[0]).includes("event=search.retry"),
+      )
+      expect(retryLine).toBeDefined()
     })
   })
 })

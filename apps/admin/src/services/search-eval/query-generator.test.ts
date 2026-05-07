@@ -178,24 +178,77 @@ describe("createSyntheticQueryLoader", () => {
   it("load() throws when no file exists", async () => {
     const gen = fakeGenerator([])
     const loader = buildLoader(gen)
-    await expect(loader.load("missing-locale")).rejects.toBeInstanceOf(
-      QueryGeneratorError,
-    )
+    await expect(loader.load("xx")).rejects.toBeInstanceOf(QueryGeneratorError)
   })
 
   it("load() throws on schema mismatch", async () => {
     const gen = fakeGenerator([])
     const loader = buildLoader(gen)
-    await mkdtemp(path.join(tmp, "x")).catch(() => undefined)
-    // write malformed file
+    // write malformed file at a valid-BCP47 path
     const fs = await import("node:fs/promises")
     await fs.writeFile(
-      path.join(tmp, "broken.json"),
+      path.join(tmp, "ba.json"),
       JSON.stringify({ wrong: true }),
       "utf8",
     )
-    await expect(loader.load("broken")).rejects.toMatchObject({
+    await expect(loader.load("ba")).rejects.toMatchObject({
       code: "validation",
+    })
+  })
+
+  describe("locale validation (path-traversal guard)", () => {
+    it("rejects path-traversal attempts", async () => {
+      const gen = fakeGenerator([])
+      const loader = buildLoader(gen)
+      for (const evil of [
+        "../foo",
+        "../../etc/passwd",
+        "..",
+        "en/..",
+        "en\\foo",
+      ]) {
+        await expect(loader.regenerate(evil)).rejects.toMatchObject({
+          name: "QueryGeneratorError",
+          code: "validation",
+        })
+        await expect(loader.loadOrGenerate(evil)).rejects.toMatchObject({
+          code: "validation",
+        })
+        await expect(loader.load(evil)).rejects.toMatchObject({
+          code: "validation",
+        })
+      }
+    })
+
+    it("rejects whitespace and unsafe characters", async () => {
+      const gen = fakeGenerator([])
+      const loader = buildLoader(gen)
+      for (const bad of ["en bar", "en\nfoo", "en;rm", "en|cat", ""]) {
+        await expect(loader.load(bad)).rejects.toMatchObject({
+          code: "validation",
+        })
+      }
+    })
+
+    it("accepts canonical BCP-47 forms", async () => {
+      const gen = fakeGenerator(["q"])
+      const loader = buildLoader(gen)
+      // These should bypass validation entirely; load() will still
+      // throw because no file exists, but with a *different* error
+      // code (request_failed) — confirming validation passed.
+      for (const ok of ["en", "fr", "pt-PT", "zh-Hans", "es-419", "fil"]) {
+        const result = await loader.regenerate(ok)
+        expect(result[0]?.locale).toBe(ok)
+      }
+    })
+
+    it("never invokes the generator when locale is invalid", async () => {
+      const gen = fakeGenerator(["q"])
+      const loader = buildLoader(gen)
+      await expect(loader.regenerate("../evil")).rejects.toMatchObject({
+        code: "validation",
+      })
+      expect(gen.generateQueries).not.toHaveBeenCalled()
     })
   })
 })

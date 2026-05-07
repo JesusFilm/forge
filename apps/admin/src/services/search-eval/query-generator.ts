@@ -286,6 +286,29 @@ const FILE_SCHEMA = z.object({
   queries: z.array(z.string().min(1)).min(1),
 })
 
+/**
+ * BCP-47 sanity check before a locale string is used as a path
+ * segment. The synthetic-queries loader joins `locale` into the on-
+ * disk filename — without validation, `../../etc/passwd` would
+ * resolve outside the eval directory. Real BCP-47 tags are
+ * conservative: 2–3 alpha primary tag, optional alphanumeric subtags
+ * separated by `-`. This regex deliberately rejects any character
+ * that could be a path separator (`/`, `\`, `.`, etc.) or whitespace.
+ *
+ * Examples accepted: `en`, `pt-PT`, `zh-Hans`, `es-419`, `fil`.
+ * Examples rejected: `..`, `../foo`, `en/`, `en\foo`, `en bar`.
+ */
+const BCP47_REGEX = /^[a-zA-Z]{2,3}(-[A-Za-z0-9]{2,8})*$/
+
+function validateLocale(locale: string): void {
+  if (!BCP47_REGEX.test(locale)) {
+    throw new QueryGeneratorError(
+      "validation",
+      `locale "${locale}" is not a valid BCP-47 tag (must match ${BCP47_REGEX.source})`,
+    )
+  }
+}
+
 export function createSyntheticQueryLoader(
   options: CreateLoaderOptions = {},
 ): SyntheticQueryLoader {
@@ -363,6 +386,7 @@ export function createSyntheticQueryLoader(
 
   return {
     async load(locale) {
+      validateLocale(locale)
       const fromDisk = await readFromDisk(locale)
       if (fromDisk == null) {
         throw new QueryGeneratorError(
@@ -374,6 +398,7 @@ export function createSyntheticQueryLoader(
     },
 
     async loadOrGenerate(locale, count) {
+      validateLocale(locale)
       const cached = await readFromDisk(locale)
       if (cached != null) return cached
       const generator = getGenerator()
@@ -387,6 +412,7 @@ export function createSyntheticQueryLoader(
     },
 
     async regenerate(locale, count) {
+      validateLocale(locale)
       const generator = getGenerator()
       const queries = await generator.generateQueries(locale, count)
       await writeToDisk(locale, queries, options.modelLabel ?? generator.model)
@@ -398,3 +424,5 @@ export function createSyntheticQueryLoader(
     },
   }
 }
+
+export const _internal = { validateLocale, BCP47_REGEX }
