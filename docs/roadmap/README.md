@@ -7,8 +7,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (April 29, 2026)
 
 - **Total tickets:** 126
-- **Complete:** 63
-- **In progress:** 7
+- **Complete:** 65
+- **In progress:** 5
 - **Not started:** 18
 - **Blocked:** 38
 - **Overdue and not complete:** 16
@@ -38,6 +38,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-117](content-discovery/feat-117-embed-backfill-bulk-sql-writes.md)                                       | Embed Backfill — Stage 3 — Bulk DB Writes                                   | nisal     | P0       | 2026-05-08 | 2    | 2026-05-09 | complete    |
 | [feat-041](content-discovery/feat-041-scene-embeddings-table.md)                                               | Video Vectorization — Scene Embeddings Table + Indexing                     | nisal     | P1       | 2026-05-11 | 7    | 2026-05-17 | complete    |
 | [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — NoSuchKey classify + missingArtifacts + enrichment trigger | nisal     | P2       | 2026-05-06 | 4    | 2026-05-09 | in-progress |
+| [feat-120](content-discovery/feat-120-localized-scene-embeddings-and-snippets.md)                              | Localized Scene Embeddings + Translated Snippets                            | nisal     | P1       | 2026-05-13 | 7    | 2026-05-19 | not-started |
 | [feat-092](content-discovery/feat-092-two-tower-neural-recommendations.md)                                     | Two-Tower Neural Recommendation Model                                       | nisal     | P1       | 2026-05-24 | 21   | 2026-06-13 | not-started |
 | [feat-042](content-discovery/feat-042-backfill-worker.md)                                                      | Video Vectorization — Phase 1 Backfill Worker (en/es/fr)                    | nisal     | P1       | 2026-05-18 | 10   | 2026-05-27 | complete    |
 | [feat-044](content-discovery/feat-044-recommendation-query-api.md)                                             | Video Vectorization — Recommendation Query API                              | nisal     | P1       | 2026-05-28 | 7    | 2026-06-03 | complete    |
@@ -155,7 +156,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-074](topic-experiences/feat-074-tv-app-home-screen.md)                                | TV App — Home Screen (Hero + Experiences Rail)              | urim      | P1       | 2026-04-15 | 5    | 2026-04-19 | complete    |
 | [feat-075](topic-experiences/feat-075-tv-app-experience-screen.md)                          | TV App — Experience Detail Screen (SDUI Renderers)          | urim      | P1       | 2026-04-15 | 7    | 2026-04-21 | complete    |
 | [feat-017](topic-experiences/feat-017-topic-browsing-web.md)                                | Topic Browsing — Web                                        | urim      | P1       | 2026-04-21 | 28   | 2026-05-18 | blocked     |
-| [feat-076](topic-experiences/feat-076-tv-app-video-playback.md)                             | TV App — Video Playback + Polish                            | urim      | P1       | 2026-04-22 | 7    | 2026-04-28 | in-progress |
+| [feat-076](topic-experiences/feat-076-tv-app-video-playback.md)                             | TV App — Video Playback + Polish                            | urim      | P1       | 2026-04-22 | 7    | 2026-04-28 | complete    |
+| [feat-106](topic-experiences/feat-106-tv-app-search-ui.md)                                  | TV App — Search UI                                          | urim      | P1       | 2026-04-24 | 7    | 2026-04-30 | complete    |
 | [feat-016](topic-experiences/feat-016-topic-experience-graphql.md)                          | Topic / Experience GraphQL Wiring                           | nisal     | P1       | 2026-05-07 | 28   | 2026-06-03 | blocked     |
 | [feat-018](topic-experiences/feat-018-topic-browsing-mobile.md)                             | Topic Browsing — Mobile                                     | urim      | P1       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-036](topic-experiences/feat-036-semantic-visualization-workbench.md)                  | Semantic Visualization Workbench                            | ekkasit   | P1       | 2026-05-19 | 21   | 2026-06-08 | blocked     |
