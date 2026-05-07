@@ -205,16 +205,27 @@ This repo uses the compound engineering workflow. After completing work:
 
 ### The GraphQL Change Flow
 
-This is the most common cross-package workflow. Every agent should know it:
+`packages/graphql` consumes TWO GraphQL schemas during the consumer migration window — Strapi (`apps/cms`) and admin (`apps/admin`) — and emits two typed factories (`graphql()` and `adminGraphql()`). Each schema has its own change flow. Never skip the codegen step in either flow; stale types are the #1 source of runtime GraphQL errors.
+
+**Strapi-side change flow:**
 
 1. Add or modify content type in `apps/cms/` (Strapi admin or code)
-2. Run Strapi locally so the GraphQL schema is available
-3. Run codegen in `packages/graphql/` to regenerate typed operations
-4. Update or add queries/mutations/fragments in `packages/graphql/`
-5. Update consuming code in `apps/web/` and/or `apps/mobile/`
+2. Run Strapi locally so the GraphQL schema is available; `apps/cms/schema.graphql` auto-emits
+3. Run `pnpm --filter @forge/graphql generate` to regenerate `packages/graphql/src/graphql-env.d.ts`
+4. Update or add queries/mutations/fragments using the `graphql()` factory in consuming apps
+5. Update consuming code in `apps/web/`, `apps/mobile/`, `apps/tv/`
 6. Commit generated files alongside source changes
 
-Never skip step 3. Stale types are the #1 source of runtime GraphQL errors.
+**Admin-side change flow:**
+
+1. Add or modify Pothos types in `apps/admin/src/graphql/types/` or related modules
+2. Run `pnpm --filter @forge/admin schema:print` to regenerate `apps/admin/schema.graphql`
+3. Run `pnpm --filter @forge/graphql generate` to regenerate `packages/graphql/src/admin-graphql-env.d.ts`
+4. Update or add queries/mutations/fragments using the `adminGraphql()` factory in consuming apps
+5. Update consuming code (admin-targeted routes only — see `packages/graphql/CLAUDE.md` for which factory to use when)
+6. Commit all three regenerated files alongside source changes
+
+CI's `admin-schema-drift` job catches step 2 if you forget; CI's `graphql-generate` job catches step 3.
 
 ### Known Patterns (add to this list as you compound)
 

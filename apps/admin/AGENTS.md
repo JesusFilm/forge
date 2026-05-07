@@ -40,6 +40,28 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 - Plan: `docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md`
 - Follow compound engineering: `ce:plan` -> `ce:work` -> `ce:review` -> `ce:compound`.
 
+## SDL emission for consumer codegen
+
+After ANY change to admin's Pothos schema (`src/graphql/types/`, `src/graphql/mutations/`, `src/graphql/queries/`, `src/graphql/builder.ts`):
+
+1. Run `pnpm --filter @forge/admin schema:print` to regenerate `apps/admin/schema.graphql`.
+2. Run `pnpm --filter @forge/graphql generate` to regenerate `packages/graphql/src/admin-graphql-env.d.ts`.
+3. Commit all three (Pothos source change + `schema.graphql` + `admin-graphql-env.d.ts`) in the same PR.
+
+CI's `admin-schema-drift` job catches step 1 if forgotten. CI's `graphql-generate` job catches step 2. The committed SDL is the contract handoff between admin (producer) and `packages/graphql` (consumer); see `packages/graphql/CLAUDE.md` for the consumer side.
+
+`schema:print` uses Pothos `printSchema(lexicographicSortSchema(builder.toSchema()))` and strips Pothos plugin directives (`@authScopes` etc.) post-print so gql.tada's parser can consume the output.
+
+## Local-dev scripts (not deployed)
+
+| Script                                           | Purpose                                                        | Env requirement                                                    |
+| ------------------------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `pnpm --filter @forge/admin run-sync`            | Run the Core data sync against any DATABASE_URL                | DATABASE_URL + Core API creds                                      |
+| `pnpm --filter @forge/admin run-embeds`          | Run scene/transcript embedding workflows locally               | DATABASE_URL + manager S3 + OpenRouter (R1 only)                   |
+| `pnpm --filter @forge/admin run-experience-dump` | Run R3 experience-content-dump from a workstation              | DATABASE_URL + CMS_DATABASE_URL                                    |
+| `pnpm --filter @forge/admin seed-easter`         | Seed Easter experience into local Postgres for UI/E2E fixtures | DATABASE_URL (loaded via `--env-file=.env`); destructive on re-run |
+| `pnpm --filter @forge/admin schema:print`        | Regenerate the committed admin SDL artifact                    | None (uses Pothos schema directly)                                 |
+
 ## Boundaries
 
 - Do not break admin-app internal contracts by importing from `apps/web`,
