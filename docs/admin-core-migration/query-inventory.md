@@ -1350,7 +1350,148 @@ literals, and DO NOT belong in this mapping table.
 
 ## PUBLIC Access Classification
 
-> Populated in U5.
+> **Source of truth.** Admin's PUBLIC tier is enforced **per-Pothos-field**
+> via `authScopes: { public: true }` annotations — there is NO central
+> allowlist. Verified by:
+>
+> ```sh
+> rg 'authScopes:\s*\{\s*public:\s*true\s*\}' apps/admin/src/graphql/
+> ```
+>
+> Returns exactly 4 hits in this worktree:
+>
+> | Admin field            | File                                                         |
+> | ---------------------- | ------------------------------------------------------------ |
+> | `experienceBySlug`     | `apps/admin/src/graphql/types/experience.ts:149`             |
+> | `searchExperiences`    | `apps/admin/src/graphql/queries/search.ts:10`                |
+> | `search`               | `apps/admin/src/graphql/queries/hybrid-search.ts:103`        |
+> | `sceneRecommendations` | `apps/admin/src/graphql/queries/scene-recommendations.ts:66` |
+>
+> **Naming-trap callouts.**
+>
+> - The hybrid search field is named `search`, NOT `hybridSearch` (the file
+>   `hybrid-search.ts` is named for the algorithm, not the GraphQL field).
+> - `apps/admin/src/auth/permissions.ts` is a `hasPermission(user, key)`
+>   helper, NOT the PUBLIC tier source. Do not cite it here.
+> - `sceneRecommendations` ↔ `web:SCENE_RECOMMENDATIONS` (the raw-`gql`
+>   callsite at `apps/web/src/lib/recommendations.ts:27`). It is **NOT**
+>   `web:GET_VIDEO_BY_SLUG`, which queries the Strapi `videos` endpoint
+>   with a slug filter and returns `documentId/title/slug/images` — an
+>   unrelated field set. Conflating the two would silently break consumer
+>   rendering of `similarity` / `themes` / `demographics` /
+>   `spiritualContext` / `startSeconds` / `endSeconds` / `playbackId`.
+>
+> **Multi-channel preview detection.** Run all three:
+>
+> ```sh
+> rg "publicationState\s*:\s*['\"]?PREVIEW" apps/web/src apps/mobile/src apps/tv/src
+> rg "draftMode\(" apps/web/src apps/mobile/src apps/tv/src
+> rg "isEnabled" apps/web/src apps/mobile/src apps/tv/src
+> ```
+>
+> In this worktree: `publicationState: PREVIEW` returns **0 hits**;
+> `draftMode(` returns **1 hit** (`apps/web/src/app/api/preview/route.ts:23`,
+> the toggle endpoint itself, gated on `STRAPI_PREVIEW_SECRET`); `isEnabled`
+> returns **0 hits** in consumer code. **No current consumer operation
+> branches on `draftMode().isEnabled`.** See `MUST-stay-authenticated`
+> bucket below for the explicit forward-looking finding.
+
+### PUBLIC-current — maps to one of admin's 4 PUBLIC queries today
+
+| Operation                                                    | Admin PUBLIC query → field           | Notes                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------------------ | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`web:GET_EXPERIENCE`](#webget_experience)                   | `experienceBySlug`                   | Slug-keyed Experience lookup; `Query.experiences(filters: { slug: { eq: $slug } })` is the Strapi shape that maps onto admin's `experienceBySlug(slug, locale)`. Strapi-side: optional bearer (no auth required for the public read path — see `apps/web/src/lib/client.ts:9-12`).                                                                               |
+| [`web:GET_WATCH_EXPERIENCE`](#webget_watch_experience)       | `experienceBySlug`                   | Same slug-based Experience read; powers the unauthenticated watch route. Strapi-side: optional bearer. The 15-fragment composition translates to the JSON `blocks` payload Unit 5/6 adapters parse via `t` discriminator (see U4 mapping table).                                                                                                                 |
+| [`mobile:GET_WATCH_EXPERIENCE`](#mobileget_watch_experience) | `experienceBySlug`                   | Mobile sends bearer via `getApiToken()` (`apps/mobile/src/lib/apolloClient.ts:34-36`) but the admin endpoint must succeed without auth too (PR-flow / fresh-install scenarios). Same slug-based Experience read; same 12-fragment composition through the JSON-blocks seam.                                                                                      |
+| [`tv:GET_WATCH_EXPERIENCE`](#tvget_watch_experience)         | `experienceBySlug`                   | Same as mobile (TV uses identical bearer pattern, `apps/tv/src/lib/apolloClient.ts:34-36`). 13-fragment composition (one extra over mobile due to TV's hero divergence in `LIST_EXPERIENCES`, but `GET_WATCH_EXPERIENCE` itself matches mobile byte-for-byte at the operation level).                                                                            |
+| [`web:SEMANTIC_SEARCH`](#websemantic_search)                 | `search` (hybrid keyword + semantic) | Drives unauthenticated `/search` page. Selects `searchMode` on the response envelope — already PUBLIC on admin (`hybrid-search.ts:103` covers the field; the response sub-field surface is in scope of the parent PUBLIC field).                                                                                                                                 |
+| [`mobile:SEMANTIC_SEARCH`](#mobilesemantic_search)           | `search`                             | Drives Watch-tab search. Does NOT select `searchMode` (mobile↔TV divergence captured in U2/U3); admin's PUBLIC contract is unaffected — fewer selected fields is always safe for PUBLIC.                                                                                                                                                                         |
+| [`tv:SEMANTIC_SEARCH`](#tvsemantic_search)                   | `search`                             | Drives TV `/search`. Selects `searchMode` to drive the degraded-backend `keyword-only` UX branch (`apps/tv/src/lib/search.ts:236-241`). **`searchMode` is already PUBLIC on both Strapi (today) and admin** — see `tv:SEMANTIC_SEARCH`'s "U5 disposition note" inline. This is a CONFIRMATION of intentional public exposure, NOT a pending decision for Unit 2. |
+| [`web:SCENE_RECOMMENDATIONS`](#webscene_recommendations)     | `sceneRecommendations`               | The raw-Apollo `gql` callsite at `apps/web/src/lib/recommendations.ts:27`. Listed in the parent migration plan as one of the 4 PUBLIC admin queries. **NOT to be confused with `web:GET_VIDEO_BY_SLUG`** — that hits `videos`, not `sceneRecommendations`. See naming-trap callout above.                                                                        |
+
+**PUBLIC-current count: 8** (4 Experience reads + 3 SemanticSearch reads + 1
+SceneRecommendations read).
+
+### PUBLIC-eligible-needs-widening — feeds Unit 2 of the parent migration plan
+
+These operations are safe to expose publicly (no PII, no preview-only
+fields, no auth-required header on the call site beyond Strapi's optional
+bearer) but admin does NOT currently expose a corresponding PUBLIC query.
+Each row's "Fields needed" column references the per-app subsection above
+plus, where relevant, the U4 block-mapping table — Unit 2's planner can
+read those for the exact selection sets.
+
+| Operation                                                              | Strapi field today        | What admin needs to expose for parity                                                                                                                                                                                                                                                                                 | Fields needed (cross-ref)                                                                                                                                                  |
+| ---------------------------------------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`web:GET_WATCH_SETTINGS`](#webget_watch_settings)                     | `watchSetting(locale)`    | A `Query.watchSetting(locale): WatchSetting` PUBLIC field returning `{ documentId, homepageExperience, defaultTemplateExperience }` with both Experience pointers usable by `experienceBySlug`.                                                                                                                       | Selection set: `WatchSetting.{documentId, homepageExperience, defaultTemplateExperience}` (each Experience selects `WatchExperience` fragment, see U4).                    |
+| [`web:GET_ROUTE_VIDEO`](#webget_route_video)                           | `videos(filters, locale)` | A PUBLIC `Query.videoBySlug(slug, locale): Video` (or equivalent slug-keyed projection) carrying the inline 13-field shape used by the route fallback.                                                                                                                                                                | Selection set: see [`web:GET_ROUTE_VIDEO`](#webget_route_video) parity table (13 leaf fields, no fragment).                                                                |
+| [`web:GET_DEMO_VIDEO`](#webget_demo_video)                             | `videos(filters, locale)` | Same slug-keyed PUBLIC video read as `GET_ROUTE_VIDEO`; smaller projection (8 leaf fields). Could share the same admin field with a leaner sub-selection.                                                                                                                                                             | Selection set: see [`web:GET_DEMO_VIDEO`](#webget_demo_video) parity table.                                                                                                |
+| [`web:GET_VIDEO_BY_SLUG`](#webget_video_by_slug)                       | `videos(filters, locale)` | A thin Video metadata projection alongside `sceneRecommendations` results. Same admin slug-keyed video field as `GET_ROUTE_VIDEO` / `GET_DEMO_VIDEO` would suffice.                                                                                                                                                   | Selection set: 6 leaf fields (`documentId, title, slug, description, images.{url, thumbnail, mobileCinematicHigh}`).                                                       |
+| [`web:getWatchVideoOperation`](#webgetwatchvideooperation)             | `videos(filters, locale)` | A PUBLIC video-by-slug+collection read; richer than `GET_ROUTE_VIDEO` (composes `WatchVideo` fragment with 22+ leaf fields including variants, downloads, study questions, bible citations).                                                                                                                          | Fragment: `WatchVideo` — see [`web:getWatchVideoOperation`](#webgetwatchvideooperation) parity table.                                                                      |
+| [`web:getWatchVideoBySlugOperation`](#webgetwatchvideobyslugoperation) | `videos(filters, locale)` | Same `WatchVideo` fragment, slug-only filter (no parents collection). Could share admin field with `getWatchVideoOperation` at a different filter shape.                                                                                                                                                              | Fragment: `WatchVideo` (identical to row above).                                                                                                                           |
+| [`mobile:LIST_EXPERIENCES`](#mobilelist_experiences)                   | `experiences(locale)`     | A PUBLIC `Query.experiences(locale)` listing returning `{ documentId, slug, title, metaDescription, isHomepage, ogImage }` — metadata only (no `blocks`).                                                                                                                                                             | Selection set: 7 leaf fields (see parity table).                                                                                                                           |
+| [`tv:LIST_EXPERIENCES`](#tvlist_experiences)                           | `experiences(locale)`     | Same as mobile PLUS an inline `Experience.blocks { ... on ComponentSectionsVideoHero { ...VideoHeroFields } }` selection. Admin's PUBLIC field must support partial `blocks` projection (or admin returns full `blocks` JSON and TV adapter discards everything except the first `videoHero` `t` row at render time). | Selection set: same 7 metadata fields as mobile + inline `VideoHero` projection. See [`tv:LIST_EXPERIENCES`](#tvlist_experiences) parity table and U4 row for `videoHero`. |
+
+**PUBLIC-eligible-needs-widening count: 8** (1 web watch-settings + 4 web
+video-by-slug variants + 2 list-experiences + 1 web video-by-slug
+recommendations companion).
+
+> **Adapter handoff.** All 8 rows above need an `adapter-required` parity
+> classification eventually (rename Strapi → admin field, fold or unfold
+> nested relations as needed). U4's mapping table covers per-block
+> typename adapters — these operation-level adapters are larger-scope and
+> belong in Unit 5 / 6 of the parent plan.
+
+### MUST-stay-authenticated — preview/draft reads, admin-only state
+
+**Empty today.** No current consumer operation reads `draftMode().isEnabled`,
+selects `publicationState: PREVIEW`, or routes through a draft-only Apollo
+client.
+
+> **Forward-looking finding (do not skip).** Preview infrastructure exists
+> at `apps/web/src/app/api/preview/route.ts` (uses Next.js
+> `draftMode().enable()` / `.disable()` gated on `STRAPI_PREVIEW_SECRET`).
+> The route toggles the `__prerender_bypass` cookie for editors who land
+> via Strapi's "Preview" button; downstream RSC / route handlers can read
+> `draftMode().isEnabled` to branch on draft vs published content. **No
+> current consumer operation does so.** Any future operation added to the
+> preview flow — i.e. one that selects unpublished content based on
+> `draftMode().isEnabled === true` — MUST be classified
+> `MUST-stay-authenticated` regardless of name. Single-pattern call-site
+> scanning (e.g. only grepping `publicationState`) will miss this; future
+> Unit-5/6 PRs that add a preview path MUST run all three rg patterns from
+> the multi-channel preview detection block above.
+
+**MUST-stay-authenticated count: 0 today; structurally non-empty for any
+future preview-flow op.**
+
+### Fields flagged for Unit 2 access-control review
+
+Two admin-side fields on `Experience` are exposed via the PUBLIC
+`experienceBySlug` query but have no Strapi parity and carry internal
+state. R4's parity-tagging vocabulary (`direct-admin-parity`,
+`adapter-required`, `missing`, `intentionally-deprecated`, `?`) does NOT
+include a "leak" tag. Surfaced here so Unit 2's access-control planner
+sees them as part of the migration scope, not a default-on PUBLIC contract:
+
+| Admin field             | Source                                             | Concern                                                                                                                                                                                  |
+| ----------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Experience.ownerId`    | `apps/admin/src/graphql/types/experience.ts:85`    | Internal user identifier. Currently exposed via PUBLIC `experienceBySlug` (parent field carries `authScopes: { public: true }`; child field has no separate guard).                      |
+| `Experience.archivedAt` | `apps/admin/src/graphql/types/experience.ts:86-89` | Internal lifecycle state (a non-null `archivedAt` should generally hide an Experience from public reads, not be returned with one). Currently exposed via PUBLIC `experienceBySlug` too. |
+
+> Unit 2's job: decide whether each of these stays PUBLIC, gets a
+> per-field `authScopes` guard, or is dropped from the PUBLIC selection
+> set entirely. The inventory does NOT prescribe a fix — it surfaces the
+> exposure so the decision can't slip past the parent plan.
+
+### PUBLIC-classification summary
+
+| Bucket                           | Count  | Operations                                                                                                                                                                                                         |
+| -------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PUBLIC-current`                 | 8      | `web:GET_EXPERIENCE`, `web:GET_WATCH_EXPERIENCE`, `mobile:GET_WATCH_EXPERIENCE`, `tv:GET_WATCH_EXPERIENCE`, `web:SEMANTIC_SEARCH`, `mobile:SEMANTIC_SEARCH`, `tv:SEMANTIC_SEARCH`, `web:SCENE_RECOMMENDATIONS`     |
+| `PUBLIC-eligible-needs-widening` | 8      | `web:GET_WATCH_SETTINGS`, `web:GET_ROUTE_VIDEO`, `web:GET_DEMO_VIDEO`, `web:GET_VIDEO_BY_SLUG`, `web:getWatchVideoOperation`, `web:getWatchVideoBySlugOperation`, `mobile:LIST_EXPERIENCES`, `tv:LIST_EXPERIENCES` |
+| `MUST-stay-authenticated`        | 0      | (none today; preview infra exists but no consumer op reads `draftMode().isEnabled`)                                                                                                                                |
+| **Total**                        | **16** | 10 web + 3 mobile + 3 TV — matches inventory.                                                                                                                                                                      |
 
 ---
 
@@ -1535,3 +1676,135 @@ literals, and DO NOT belong in this mapping table.
 - **`adapter-required` rows: 4** — `ComponentSectionsContainer` (slots → flat content + slot markers), `ComponentSectionsMediaCollection` (item.video relation → videoId FK), `ComponentSectionsSection` (sectionContent → content rename + recursive child reshape), `ComponentSectionsVideo` (video relation → videoId FK), `ComponentSectionsVideoCarousel` (item.video relation → videoId FK). All other rows are `?` (parity TBD; aliases and id-stripping noted but classified as parity-harness output, not adapter-required, until the harness confirms the field-rename is the only delta).
 - **Mobile↔TV `TYPENAME_TO_KIND` parity reconfirmed.** U3 verification log already established byte-for-byte parity between `apps/mobile/src/lib/normalizer.ts` and `apps/tv/src/lib/normalizer.ts` (single difference: TV's `// SYNC: keep in sync …` header comment on line 1; map entries identical). U4 re-checks this confirmation by re-reading the mobile normalizer; no drift introduced since U3.
 - **Synthetic web WatchBlock 6-kind union NOT included** in the main table (per doc-review constraint). Recorded in a small "Synthetic web `WatchBlock` 6-kind union (out of scope)" subsection below the admin-additional subsection, with a forward pointer to the existing `### web — Synthetic WatchBlock discriminants` section higher in the document.
+
+### U5 (PUBLIC classification + verification + assembly)
+
+#### Dual-rg verification sweep (run from worktree root)
+
+Sweep 1: `rg "graphql\(" apps/web/src apps/mobile/src apps/tv/src` → **63 matches** (web 27 + mobile 18 + tv 18). Output verbatim:
+
+```
+apps/web/src/lib/demo-search.ts:const GET_DEMO_VIDEO = graphql(`
+apps/tv/src/lib/queries.ts: * "Operations are defined in apps using graphql() from this package."
+apps/tv/src/lib/queries.ts:export const VideoHeroFragment = graphql(`
+apps/tv/src/lib/queries.ts:export const TextSectionFragment = graphql(`
+apps/tv/src/lib/queries.ts:export const RelatedQuestionsFragment = graphql(`
+apps/tv/src/lib/queries.ts:export const BibleQuotesCarouselFragment = graphql(`
+apps/tv/src/lib/queries.ts:export const EasterDatesFragment = graphql(`
+apps/tv/src/lib/queries.ts:export const AdventCountdownFragment = graphql(`
+apps/tv/src/lib/queries.ts:export const CTASectionFragment = graphql(`
+apps/tv/src/lib/queries.ts:export const VideoSectionFragment = graphql(`
+apps/tv/src/lib/queries.ts:export const NavigationCarouselFragment = graphql(`
+apps/tv/src/lib/queries.ts:export const MediaCollectionFragment = graphql(`
+apps/tv/src/lib/queries.ts:export const VideoCarouselFragment = graphql(`
+apps/tv/src/lib/queries.ts:export const QuizButtonFragment = graphql(`
+apps/tv/src/lib/queries.ts:export const ContainerFragment = graphql(
+apps/tv/src/lib/queries.ts:export const SectionFragment = graphql(
+apps/tv/src/lib/queries.ts:export const GET_WATCH_EXPERIENCE = graphql(
+apps/tv/src/lib/queries.ts:export const LIST_EXPERIENCES = graphql(
+apps/tv/src/lib/queries.ts:export const SEMANTIC_SEARCH = graphql(`
+apps/web/src/lib/recommendations.ts:const GET_VIDEO_BY_SLUG = graphql(`
+apps/mobile/src/lib/queries.ts: * "Operations are defined in apps using graphql() from this package."
+apps/mobile/src/lib/queries.ts:export const VideoHeroFragment = graphql(`
+apps/mobile/src/lib/queries.ts:export const TextSectionFragment = graphql(`
+apps/mobile/src/lib/queries.ts:export const RelatedQuestionsFragment = graphql(`
+apps/mobile/src/lib/queries.ts:export const BibleQuotesCarouselFragment = graphql(`
+apps/mobile/src/lib/queries.ts:export const EasterDatesFragment = graphql(`
+apps/mobile/src/lib/queries.ts:export const AdventCountdownFragment = graphql(`
+apps/mobile/src/lib/queries.ts:export const CTASectionFragment = graphql(`
+apps/mobile/src/lib/queries.ts:export const VideoSectionFragment = graphql(`
+apps/mobile/src/lib/queries.ts:export const NavigationCarouselFragment = graphql(`
+apps/mobile/src/lib/queries.ts:export const MediaCollectionFragment = graphql(`
+apps/mobile/src/lib/queries.ts:export const VideoCarouselFragment = graphql(`
+apps/mobile/src/lib/queries.ts:export const QuizButtonFragment = graphql(`
+apps/mobile/src/lib/queries.ts:export const ContainerFragment = graphql(
+apps/mobile/src/lib/queries.ts:export const SectionFragment = graphql(
+apps/mobile/src/lib/queries.ts:export const GET_WATCH_EXPERIENCE = graphql(
+apps/mobile/src/lib/queries.ts:export const LIST_EXPERIENCES = graphql(`
+apps/mobile/src/lib/queries.ts:export const SEMANTIC_SEARCH = graphql(`
+apps/web/src/lib/search.ts:export const SEMANTIC_SEARCH = graphql(`
+apps/web/src/lib/content.ts:const GET_EXPERIENCE = graphql(`
+apps/web/src/lib/content.ts:const GET_WATCH_EXPERIENCE = graphql(
+apps/web/src/lib/content.ts:const GET_WATCH_SETTINGS = graphql(
+apps/web/src/lib/content.ts:const GET_ROUTE_VIDEO = graphql(`
+apps/web/src/lib/fragments/related-questions.ts:export const relatedQuestionsFragment = graphql(`
+apps/web/src/lib/fragments/video-section.ts:export const videoSectionFragment = graphql(`
+apps/web/src/lib/fragments/cta-section.ts:export const ctaSectionFragment = graphql(`
+apps/web/src/lib/fragments/section.ts:export const sectionFragment = graphql(`
+apps/web/src/lib/fragments/text-section.ts:export const textSectionFragment = graphql(`
+apps/web/src/lib/fragments/bible-quotes-carousel.ts:export const bibleQuotesCarouselFragment = graphql(`
+apps/web/src/lib/fragments/navigation-carousel.ts:export const navigationCarouselFragment = graphql(`
+apps/web/src/lib/fragments/watch-experience.ts:export const watchExperienceFragment = graphql(
+apps/web/src/lib/fragments/info-blocks.ts:export const infoBlocksFragment = graphql(`
+apps/web/src/lib/fragments/video-carousel.ts:export const videoCarouselFragment = graphql(`
+apps/web/src/lib/fragments/easter-dates.ts:export const easterDatesFragment = graphql(`
+apps/web/src/lib/fragments/media-collection.ts:export const mediaCollectionFragment = graphql(`
+apps/web/src/lib/fragments/watch-video.ts:export const watchVideoFragment = graphql(`
+apps/web/src/lib/fragments/watch-video.ts:export const getWatchVideoOperation = graphql(
+apps/web/src/lib/fragments/watch-video.ts:export const getWatchVideoBySlugOperation = graphql(
+apps/web/src/lib/fragments/quiz-button-section.ts:export const quizButtonSectionFragment = graphql(`
+apps/web/src/lib/fragments/container.ts:export const containerFragment = graphql(
+apps/web/src/lib/fragments/promo-banner.ts:export const promoBannerFragment = graphql(`
+apps/web/src/lib/fragments/video-hero.ts:export const videoHeroFragment = graphql(`
+apps/web/src/lib/fragments/advent-countdown.ts:export const adventCountdownFragment = graphql(`
+```
+
+Sweep 2: ``rg "= gql\`" apps/web/src apps/mobile/src apps/tv/src`` → **1 match**:
+
+```
+apps/web/src/lib/recommendations.ts:const SCENE_RECOMMENDATIONS = gql`
+```
+
+#### Per-line cross-check (✓ = inventoried, ✗ = orphan)
+
+- All 27 web `graphql(` lines: ✓ (9 operation definitions covered by the 9 `### web:{ConstantName}` subsections, + `GET_VIDEO_BY_SLUG` and `GET_DEMO_VIDEO` and `SEMANTIC_SEARCH` subsections; 18 fragment definitions accounted for in the U1 verification log fragment enumeration).
+- All 18 mobile `graphql(` lines: ✓ (3 operations + 12 leaf fragments + 2 composite fragments + 1 banner-comment, exactly matching U2's reconciled count).
+- All 18 tv `graphql(` lines: ✓ (3 operations + 12 leaf fragments + 2 composite fragments + 1 banner-comment, exactly matching U3's reconciled count).
+- 1 `= gql\`` line (`SCENE_RECOMMENDATIONS`): ✓ inventoried as `web:SCENE_RECOMMENDATIONS`.
+- **Orphan inventory entries (rows in inventory with no rg line):** 0.
+- **Orphan rg lines (rg matches with no inventory entry):** 0.
+
+#### Multi-channel preview detection
+
+- `rg "publicationState\s*:\s*['\"]?PREVIEW" apps/web/src apps/mobile/src apps/tv/src` → **0 hits**. No consumer operation passes `publicationState: PREVIEW` as a GraphQL variable.
+- `rg "draftMode\(" apps/web/src apps/mobile/src apps/tv/src` → **1 hit**: `apps/web/src/app/api/preview/route.ts:23` (the toggle endpoint itself: `const draft = await draftMode()` followed by `draft.enable() / .disable()` based on `?status` param, gated on `STRAPI_PREVIEW_SECRET`). No consumer operation reads `draftMode().isEnabled`.
+- `rg "isEnabled" apps/web/src apps/mobile/src apps/tv/src` → **0 hits** in consumer code.
+- Apollo client header inspection: `apps/web/src/lib/client.ts:9-12` attaches an optional Strapi bearer only when `env.STRAPI_API_TOKEN` is set on the server; mobile/tv attach optional bearer via `getApiToken()`. No header signals draft mode or auth-only access.
+- **Conclusion:** PUBLIC `MUST-stay-authenticated` bucket is structurally empty today. The forward-looking finding is captured in the PUBLIC classification section's `MUST-stay-authenticated` subsection.
+
+#### Admin PUBLIC-tier annotations verified in worktree
+
+`rg 'authScopes:\s*\{\s*public:\s*true\s*\}' apps/admin/src/graphql/` → exactly 4 hits (all 4 PUBLIC queries are present on the worktree's branch — no `deferred until #902 lands` situation):
+
+```
+apps/admin/src/graphql/queries/hybrid-search.ts:103:    authScopes: { public: true },
+apps/admin/src/graphql/queries/search.ts:10:    authScopes: { public: true },
+apps/admin/src/graphql/queries/scene-recommendations.ts:66:    authScopes: { public: true },
+apps/admin/src/graphql/types/experience.ts:149:    authScopes: { public: true },
+```
+
+(Plan referenced lines 146 / 8 / 101 / 63; worktree has them at 149 / 10 / 103 / 66 — a small drift consistent with edits since the plan was written. Functionally identical.)
+
+#### End-to-end coherence pass
+
+- Read every `### {app}:{ConstantName}` subsection top-to-bottom. **All 16 operations carry the 7 R3-required field markers** (Source, Variables, Access expectation, Cache behavior, Renderer/resolver dependency, Composed fragments, Selected fields & parity tags). Verified by `grep -A 50 "^### {op}$" | grep -cE "^\- \*\*(Source|Variables|...)\*\*"` per operation; minimum count was 7 (single-table operations with no inline fragments) — no operation is missing a required field.
+- Anchor-link check: every cross-reference link in the new PUBLIC classification section (e.g. `[web:GET_EXPERIENCE](#webget_experience)`) follows GitHub-flavored Markdown auto-anchor convention (lowercase, colons stripped, underscores preserved). Verified by spot-rendering inputs against GitHub's heading-anchor rules.
+- Markdown table syntax: all 4 new tables (PUBLIC-current, PUBLIC-eligible-needs-widening, fields flagged, summary) have balanced pipe counts and matching header underlines — verified by reading.
+- **No `?`-parity tags resolved during the assembly pass.** U4's mapping table only resolved typename-level parity (4 typenames bumped to `adapter-required`, 13 still `?` pending the parity harness). The per-app field-level tables retain `?` everywhere because U4 explicitly defers individual-field parity to the Unit-4 (parent plan) parity harness, NOT to this inventory pass. The operation-level rows that delegate to fragments (e.g. "ComponentSectionsContainer (via ...Container)") use the "see fragment table below" pointer rather than `?` — so there is nothing to flip in this pass.
+- **No structural fix-ups applied.** The U1/U2/U3 sections all use consistent subsection structure; no copy-paste drift detected; cross-app divergence notes (mobile↔TV `LIST_EXPERIENCES`, mobile↔TV `SEMANTIC_SEARCH`, TV vs mobile Apollo client cache defaults) are bidirectionally cross-referenced and consistent with each other.
+
+#### Final summary
+
+| Bucket                           | Count  |
+| -------------------------------- | ------ |
+| `PUBLIC-current`                 | 8      |
+| `PUBLIC-eligible-needs-widening` | 8      |
+| `MUST-stay-authenticated`        | 0      |
+| **Total inventoried operations** | **16** |
+
+- Total inventoried operations: **16** = 10 web + 3 mobile + 3 TV. Matches the parent plan's enumeration exactly.
+- 8 of 16 operations are PUBLIC-current (admin already exposes a matching public field).
+- 8 of 16 operations need Unit 2 widening (`PUBLIC-eligible-needs-widening`).
+- 0 of 16 operations are draft/preview-reading today; preview infrastructure exists but is unused — surfaced as a forward-looking finding so any future preview-flow op gets classified `MUST-stay-authenticated`.
+- 2 admin-side fields on `Experience` (`ownerId`, `archivedAt`) are PUBLIC-exposed via `experienceBySlug` with no Strapi parity — flagged for Unit 2 access-control review (not a defect; an explicit decision point).
+- All 4 admin PUBLIC queries (`experienceBySlug`, `searchExperiences`, `search`, `sceneRecommendations`) are present in this worktree at `authScopes: { public: true }` annotations — no `deferred until #902 lands` qualification required.
