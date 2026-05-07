@@ -7,7 +7,8 @@ status: "in-progress"
 start_date: "2026-05-06"
 duration: 4
 depends_on: []
-blocks: []
+blocks:
+  - "feat-120"
 tags:
   - "admin"
   - "manager"
