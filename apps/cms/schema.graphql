@@ -1419,6 +1419,7 @@ type EnrichmentJob {
   languages: JSON
   muxAssetId: String!
   muxPlaybackId: String
+  options: JSON
   publishedAt: DateTime
   retries: Int
   startedAt: DateTime
@@ -1472,6 +1473,7 @@ input EnrichmentJobInput {
   languages: JSON
   muxAssetId: String
   muxPlaybackId: String
+  options: JSON
   publishedAt: DateTime
   retries: Int
   startedAt: DateTime

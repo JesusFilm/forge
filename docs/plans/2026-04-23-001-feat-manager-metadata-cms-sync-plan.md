@@ -138,7 +138,7 @@ The roadmap ticket is directionally correct but no longer matches the planning-b
 
   **Automation progress, 2026-04-23:** Added `Keyword.type`, updated `apps/cms/schema.graphql`, regenerated `packages/graphql/src/graphql-env.d.ts`, and validated JSON/schema formatting plus gql.tada generation.
 
-- [ ] **Unit 2: Persist video + CMS-sync intent in manager job state**
+- [x] **Unit 2: Persist video + CMS-sync intent in manager job state**
 
   **Goal:** Ensure enrichment jobs launched for existing CMS videos retain enough context for downstream metadata sync.
 
@@ -167,6 +167,8 @@ The roadmap ticket is directionally correct but no longer matches the planning-b
   - `/api/enrich` stores the target video relation on the created job
   - Jobs without a related video do not attempt CMS sync
   - Existing non-CMS job flows keep working unchanged
+
+  **Automation progress, 2026-05-07:** Added persistent `EnrichmentJob.options`, mapped `video` relation context into Manager job records, and made `/api/enrich` create CMS-backed jobs with `notifyCms: true` while leaving URL-ingest jobs without CMS sync intent.
 
 - [ ] **Unit 3: Implement manager-side metadata-to-CMS sync service**
 

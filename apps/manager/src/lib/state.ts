@@ -8,6 +8,7 @@ import type {
   JobRecord,
   JobStatus,
   JobStepState,
+  JobOptions,
   WorkflowStepName,
   StepStatus,
 } from "@/types/job"
@@ -23,6 +24,7 @@ const JOB_FIELDS = graphql(`
     documentId
     muxAssetId
     muxPlaybackId
+    options
     languages
     status
     currentStep
@@ -40,6 +42,11 @@ const JOB_FIELDS = graphql(`
       startedAt
       finishedAt
       error
+    }
+    video {
+      documentId
+      coreId
+      title
     }
   }
 `)
@@ -93,6 +100,10 @@ const LIST_JOBS = graphql(
 // ---------------------------------------------------------------------------
 
 type EnrichmentJobNode = NonNullable<ResultOf<typeof GET_JOB>["enrichmentJob"]>
+type CreateJobContext = {
+  options?: JobOptions
+  videoDocumentId?: string
+}
 
 // ---------------------------------------------------------------------------
 // Mapping helpers
@@ -104,8 +115,11 @@ export function toJobRecord(node: EnrichmentJobNode): JobRecord {
     id: node.documentId,
     muxAssetId: node.muxAssetId,
     muxPlaybackId: node.muxPlaybackId ?? "",
+    videoDocumentId: node.video?.documentId,
+    videoCoreId: node.video?.coreId ?? undefined,
     languages: (node.languages ?? []) as string[],
-    options: {},
+    sourceMediaTitle: node.video?.title ?? undefined,
+    options: toJobOptions(node.options),
     status: node.status as JobStatus,
     currentStep: node.currentStep as WorkflowStepName | undefined,
     retries: node.retries ?? 0,
@@ -117,6 +131,25 @@ export function toJobRecord(node: EnrichmentJobNode): JobRecord {
     steps: (node.steps ?? []).map(toStepState),
     errors: (node.errors ?? []) as JobRecord["errors"],
   }
+}
+
+function toJobOptions(value: unknown): JobOptions {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {}
+  }
+
+  const raw = value as Record<string, unknown>
+  const options: JobOptions = {}
+  if (typeof raw.generateVoiceover === "boolean") {
+    options.generateVoiceover = raw.generateVoiceover
+  }
+  if (typeof raw.uploadMux === "boolean") {
+    options.uploadMux = raw.uploadMux
+  }
+  if (typeof raw.notifyCms === "boolean") {
+    options.notifyCms = raw.notifyCms
+  }
+  return options
 }
 
 function toStepState(
@@ -169,9 +202,14 @@ export async function createJob(
   muxAssetId: string,
   muxPlaybackId: string,
   languages: string[] = [],
+  context: CreateJobContext = {},
 ): Promise<JobRecord> {
   const client = getClient()
   const steps = buildInitialSteps()
+  const options: JobOptions = { ...context.options }
+  if (options.notifyCms && !context.videoDocumentId) {
+    options.notifyCms = false
+  }
 
   const result = await client.mutate({
     mutation: CREATE_JOB,
@@ -180,6 +218,8 @@ export async function createJob(
         muxAssetId,
         muxPlaybackId,
         languages,
+        options,
+        ...(context.videoDocumentId ? { video: context.videoDocumentId } : {}),
         status: "pending",
         retries: 0,
         artifacts: {},
