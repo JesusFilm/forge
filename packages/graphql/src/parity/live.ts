@@ -138,12 +138,13 @@ export async function runLiveComparison(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<LiveModeResult> {
   const config = assertLiveModeEnabled(env)
+  // When the caller overrides URLs via options, re-validate them since
+  // assertLiveModeEnabled only validated the env-driven values.
   const strapiUrl = options.strapiUrl ?? config.strapiUrl
   const adminUrl = options.adminUrl ?? config.adminUrl
   const baseOrigin = options.baseOrigin ?? config.baseOrigin
-
-  validateHost(adminUrl, "FORGE_ADMIN_URL")
-  validateHost(strapiUrl, "FORGE_STRAPI_URL")
+  if (options.strapiUrl) validateHost(strapiUrl, "FORGE_STRAPI_URL")
+  if (options.adminUrl) validateHost(adminUrl, "FORGE_ADMIN_URL")
 
   const tStrapiStart = Date.now()
   const strapiInput = await fetchers.fetchStrapi(

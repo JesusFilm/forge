@@ -24,15 +24,26 @@
  */
 
 import { BlocksSchema } from "@forge/admin/domain/blocks"
-import { ZodError } from "zod"
+import type { ZodIssue } from "zod"
 
 import { canonicalizeUrl } from "./canonicalize-url"
+import {
+  canonicalizeNestedUrls,
+  nullify,
+  stripBlockMeta,
+} from "./normalize-shared"
 import type {
   NormalizedBlock,
   NormalizedExperienceRoute,
   NormalizedMeta,
   NormalizedOgImage,
 } from "./shared-shape"
+
+const ADMIN_BLOCK_SKIP_KEYS: ReadonlySet<string> = new Set([
+  "t",
+  "id",
+  "content",
+])
 
 // ---------------------------------------------------------------------------
 // Input shape
@@ -65,8 +76,8 @@ export type NormalizeAdminOptions = {
 
 export class AdminBlocksValidationError extends Error {
   override readonly name = "AdminBlocksValidationError"
-  readonly issues: ZodError["issues"]
-  constructor(message: string, issues: ZodError["issues"]) {
+  readonly issues: ReadonlyArray<ZodIssue>
+  constructor(message: string, issues: ReadonlyArray<ZodIssue>) {
     super(message)
     this.issues = issues
   }
@@ -162,11 +173,6 @@ export function normalizeAdmin(
 // Helpers
 // ---------------------------------------------------------------------------
 
-function nullify<T>(value: T | null | undefined): T | null {
-  if (value === undefined || value === null) return null
-  return value
-}
-
 function normalizeAdminOgImage(
   raw: string | null,
   baseOrigin: string,
@@ -220,7 +226,7 @@ function normalizeAdminBlock(
       kind: "container",
       id: typeof b.id === "string" ? b.id : "",
       data: {
-        ...stripBlockMeta(b),
+        ...stripBlockMeta(b, ADMIN_BLOCK_SKIP_KEYS),
         content: innerContent,
       },
     }
@@ -237,16 +243,16 @@ function normalizeAdminBlock(
       kind: "section",
       id: typeof b.id === "string" ? b.id : "",
       data: {
-        ...stripBlockMeta(b),
+        ...stripBlockMeta(b, ADMIN_BLOCK_SKIP_KEYS),
         content: innerContent,
       },
     }
   }
 
-  // Generic kinds: canonicalize URL-shaped fields in the payload.
-  const stripped = stripBlockMeta(b)
+  const stripped = stripBlockMeta(b, ADMIN_BLOCK_SKIP_KEYS)
   const dataWithCanonicalUrls = canonicalizeNestedUrls(
     stripped,
+    "admin",
     baseOrigin,
     rawUrls,
   ) as Readonly<Record<string, unknown>>
@@ -256,48 +262,4 @@ function normalizeAdminBlock(
     id: typeof b.id === "string" ? b.id : "",
     data: dataWithCanonicalUrls,
   }
-}
-
-function stripBlockMeta(
-  block: Record<string, unknown>,
-): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(block)) {
-    if (key === "t" || key === "id" || key === "content") continue
-    out[key] = value
-  }
-  return out
-}
-
-function canonicalizeNestedUrls(
-  value: unknown,
-  baseOrigin: string,
-  rawUrls: Record<string, string>,
-): unknown {
-  if (value === null || value === undefined) return null
-  if (typeof value !== "object") return value
-  if (Array.isArray(value)) {
-    return value.map((v) => canonicalizeNestedUrls(v, baseOrigin, rawUrls))
-  }
-  const out: Record<string, unknown> = {}
-  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-    if (typeof child === "string" && looksLikeUrlKey(key) && child !== "") {
-      const result = canonicalizeUrl(child, { schema: "admin", baseOrigin })
-      if (result.canonical !== null) {
-        out[key] = result.canonical
-        rawUrls[result.canonical] = result.raw
-      } else {
-        out[key] = child
-      }
-    } else if (child === undefined || child === null) {
-      out[key] = null
-    } else {
-      out[key] = canonicalizeNestedUrls(child, baseOrigin, rawUrls)
-    }
-  }
-  return out
-}
-
-function looksLikeUrlKey(key: string): boolean {
-  return /^(url|.*Url|.*URL|.*Link|.*Href)$/.test(key)
 }

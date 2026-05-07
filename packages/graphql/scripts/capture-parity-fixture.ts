@@ -28,10 +28,7 @@
  * actual chosen route. See plan U6.
  */
 
-import { writeFileSync } from "node:fs"
-import { resolve } from "node:path"
-
-import { assertLiveModeEnabled, validateHost } from "../src/parity/live"
+import { assertLiveModeEnabled } from "../src/parity/live"
 
 type Args = {
   slug: string | null
@@ -66,38 +63,25 @@ async function main(): Promise<void> {
     process.exit(2)
   }
 
-  const config = assertLiveModeEnabled(process.env)
-  validateHost(config.adminUrl, "FORGE_ADMIN_URL")
-  validateHost(config.strapiUrl, "FORGE_STRAPI_URL")
+  // assertLiveModeEnabled validates env + both host URLs; no extra
+  // validateHost calls needed here.
+  assertLiveModeEnabled(process.env)
 
   // The actual GraphQL query wiring is deferred to U5's canary PR
   // (per plan: "Whether the canary route's captured fixture lives in
-  // this PR or the U5 canary PR" — leaning U5). The structure here
-  // proves the script's framing works: env validation, host
-  // validation, output sanitization, and on-disk write.
+  // this PR or the U5 canary PR" — leaning U5). Until the wiring
+  // lands, the script exits with a deferred-message rather than
+  // writing a misleading null-payload fixture.
   process.stderr.write(
     `[capture-parity-fixture] env validated; slug=${args.slug} locale=${args.locale}\n`,
   )
   process.stderr.write(
-    "[capture-parity-fixture] GraphQL fetcher wiring deferred to canary PR (per U6 plan).\n",
+    "[capture-parity-fixture] GraphQL fetcher wiring is deferred to U5's canary PR.\n",
   )
-
-  const placeholder = {
-    metadata: {
-      capturedAt: new Date().toISOString(),
-      slug: args.slug,
-      locale: args.locale,
-      strapiHost: new URL(config.strapiUrl).host,
-      adminHost: new URL(config.adminUrl).host,
-      note: "Placeholder — real Strapi/admin fetchers land in U5's canary PR.",
-    },
-    strapi: null,
-    admin: null,
-  }
-
-  const outPath = resolve(process.cwd(), args.out)
-  writeFileSync(outPath, JSON.stringify(placeholder, null, 2) + "\n", "utf-8")
-  process.stderr.write(`[capture-parity-fixture] wrote ${outPath}\n`)
+  process.stderr.write(
+    "[capture-parity-fixture] No fixture file written — see plan U6 Open Questions.\n",
+  )
+  process.exit(2)
 }
 
 main().catch((error: unknown) => {

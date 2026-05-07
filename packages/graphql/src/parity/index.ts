@@ -34,7 +34,10 @@
 // =============================================================================
 
 // Public surface — exposed via the `@forge/graphql/parity` subpath.
-// Internals (helpers, regex predicates, etc.) stay un-exported.
+// Internal helpers (path-pointer encoding, discriminator lookup tables,
+// canonicalization regex predicates) are NOT exported — consumers
+// should use the high-level API (`compareNormalizedRoutes`, normalizers,
+// live mode) and the surfaced types.
 
 export {
   compareNormalizedRoutes,
@@ -71,41 +74,17 @@ export {
   type NormalizeAdminOptions,
 } from "./normalize-admin"
 
-export {
-  canonicalizeUrl,
-  CanonicalizeUrlError,
-  type CanonicalUrl,
-  type CanonicalUrlFailure,
-  type CanonicalizeUrlConfig,
-} from "./canonicalize-url"
-
-export {
-  STRAPI_TO_ADMIN_KIND,
-  ADMIN_KIND_TO_STRAPI,
-  ADMIN_ONLY_KINDS,
-  strapiTypenameToAdminKind,
-  adminKindToStrapiTypename,
-  type StrapiTypename,
-  type AdminKind,
-  type AdminOnlyKind,
-  type UnknownDiscriminator,
-} from "./discriminator-map"
-
-export { comparePointer, encodePointer } from "./path-pointer"
-
 export type {
   NormalizedExperienceRoute,
   NormalizedBlock,
   NormalizedBlockKind,
   NormalizedMeta,
   NormalizedOgImage,
-  ContainerSlotMarker,
 } from "./shared-shape"
 
 export {
   runLiveComparison,
   assertLiveModeEnabled,
-  validateHost,
   LiveModeDisabledError,
   LiveModeConfigError,
   type LiveModeOptions,

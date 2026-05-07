@@ -87,6 +87,14 @@ export type CompareOptions = {
   readonly allowList?: ReadonlyArray<AllowListEntry>
 }
 
+const byPath = (a: { path: string }, b: { path: string }): number =>
+  comparePointer(a.path, b.path)
+
+const byPathThenChannel = (
+  a: { path: string; channel: string },
+  b: { path: string; channel: string },
+): number => byPath(a, b) || a.channel.localeCompare(b.channel)
+
 // ---------------------------------------------------------------------------
 // Main entry
 // ---------------------------------------------------------------------------
@@ -107,16 +115,12 @@ export function compareNormalizedRoutes(
   }
 
   // Resolved-locale equality — semantic class. Both sides' locale must
-  // equal the URL locale. (We keep this BEFORE the structural walk so
-  // the locale path is treated as semantic, not value-class.)
-  if (strapi.locale !== options.urlLocale) {
-    ctx.semantic.push({
-      path: "/locale",
-      subclass: "locale-mismatch",
-      strapi: strapi.locale,
-      admin: admin.locale,
-    })
-  } else if (admin.locale !== options.urlLocale) {
+  // equal the URL locale. Kept BEFORE the structural walk so the
+  // locale path is treated as semantic, not value-class.
+  if (
+    strapi.locale !== options.urlLocale ||
+    admin.locale !== options.urlLocale
+  ) {
     ctx.semantic.push({
       path: "/locale",
       subclass: "locale-mismatch",
@@ -158,15 +162,12 @@ export function compareNormalizedRoutes(
   const semantic = filterChannel("semantic", ctx.semantic)
 
   // Sort each channel by JSON-Pointer numeric-aware order — determinism.
-  structural.sort((a, b) => comparePointer(a.path, b.path))
-  valueChannel.sort((a, b) => comparePointer(a.path, b.path))
-  order.sort((a, b) => comparePointer(a.path, b.path))
-  semantic.sort((a, b) => comparePointer(a.path, b.path))
-  ctx.potentiallyTruncated.sort((a, b) => comparePointer(a.path, b.path))
-  applied.sort(
-    (a, b) =>
-      comparePointer(a.path, b.path) || a.channel.localeCompare(b.channel),
-  )
+  structural.sort(byPath)
+  valueChannel.sort(byPath)
+  order.sort(byPath)
+  semantic.sort(byPath)
+  ctx.potentiallyTruncated.sort(byPath)
+  applied.sort(byPathThenChannel)
 
   return {
     structural: Object.freeze(structural),

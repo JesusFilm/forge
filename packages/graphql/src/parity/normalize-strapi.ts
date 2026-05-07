@@ -27,12 +27,22 @@
 
 import { canonicalizeUrl } from "./canonicalize-url"
 import { strapiTypenameToAdminKind } from "./discriminator-map"
+import {
+  canonicalizeNestedUrls,
+  nullify,
+  stripBlockMeta,
+} from "./normalize-shared"
 import type {
   NormalizedBlock,
   NormalizedExperienceRoute,
   NormalizedMeta,
   NormalizedOgImage,
 } from "./shared-shape"
+
+const STRAPI_BLOCK_SKIP_KEYS: ReadonlySet<string> = new Set([
+  "__typename",
+  "id",
+])
 
 // ---------------------------------------------------------------------------
 // Input shape — what the parity Strapi query returns at the structural
@@ -185,15 +195,6 @@ export function normalizeStrapi(
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Map `null` / `undefined` / missing inputs to `null` so the differ's
- * structural-class equivalence rule applies post-normalization.
- */
-function nullify<T>(value: T | null | undefined): T | null {
-  if (value === undefined || value === null) return null
-  return value
-}
-
 function detectTruncation(
   responseMeta: StrapiExperienceInput["_meta"],
 ): boolean {
@@ -312,7 +313,10 @@ function normalizeSection(
     id: section.id,
     data: {
       content: normalizedInner,
-      ...stripBlockMeta(section as Record<string, unknown>),
+      ...stripBlockMeta(
+        section as Record<string, unknown>,
+        STRAPI_BLOCK_SKIP_KEYS,
+      ),
     },
   }
 }
@@ -333,11 +337,13 @@ function normalizeGenericBlock(
       },
     } as NormalizedBlock
   }
-  // Strip __typename and id (carried on the wrapper); canonicalize URLs
-  // present anywhere in the payload.
-  const rest = stripBlockMeta(block as Record<string, unknown>)
+  const rest = stripBlockMeta(
+    block as Record<string, unknown>,
+    STRAPI_BLOCK_SKIP_KEYS,
+  )
   const dataWithCanonicalUrls = canonicalizeNestedUrls(
     rest,
+    "strapi",
     baseOrigin,
     rawUrls,
   )
@@ -346,61 +352,4 @@ function normalizeGenericBlock(
     id: block.id,
     data: dataWithCanonicalUrls as Readonly<Record<string, unknown>>,
   }
-}
-
-/**
- * Strip `__typename` and `id` from a block payload — both are surfaced
- * at the wrapper level on `NormalizedBlock`, not the inner data.
- */
-function stripBlockMeta(
-  block: Record<string, unknown>,
-): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(block)) {
-    if (key === "__typename" || key === "id") continue
-    out[key] = value
-  }
-  return out
-}
-
-/**
- * Walk the data payload and canonicalize any field whose key suggests
- * it carries a URL (`url`, `*Url`, `image`, `*Image.url`). This is
- * conservative — only string values whose key matches the URL-shape
- * heuristic are passed to the canonicalizer.
- */
-function canonicalizeNestedUrls(
-  value: unknown,
-  baseOrigin: string,
-  rawUrls: Record<string, string>,
-): unknown {
-  if (value === null || value === undefined) return null
-  if (typeof value === "string") return value
-  if (typeof value !== "object") return value
-  if (Array.isArray(value)) {
-    return value.map((v) => canonicalizeNestedUrls(v, baseOrigin, rawUrls))
-  }
-  const out: Record<string, unknown> = {}
-  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-    if (typeof child === "string" && looksLikeUrlKey(key) && child !== "") {
-      const result = canonicalizeUrl(child, { schema: "strapi", baseOrigin })
-      if (result.canonical !== null) {
-        out[key] = result.canonical
-        rawUrls[result.canonical] = result.raw
-      } else {
-        out[key] = child
-      }
-    } else if (child === undefined || child === null) {
-      out[key] = null
-    } else {
-      out[key] = canonicalizeNestedUrls(child, baseOrigin, rawUrls)
-    }
-  }
-  return out
-}
-
-function looksLikeUrlKey(key: string): boolean {
-  // Match common URL-bearing field names. Conservative; expand if a
-  // captured fixture surfaces a URL field that doesn't match.
-  return /^(url|.*Url|.*URL|.*Link|.*Href)$/.test(key)
 }
