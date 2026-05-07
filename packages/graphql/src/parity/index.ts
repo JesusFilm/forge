@@ -19,7 +19,8 @@
 //     (only if no other test surface in this package needs them)
 //   - The vitest config: packages/graphql/vitest.config.ts
 //     (only if no other test surface in this package needs it)
-//   - The "./parity" re-export in packages/graphql/src/index.ts
+//   - The zod devDep in packages/graphql/package.json
+//     (only used by parity/normalize-admin.ts via @forge/admin/domain/blocks)
 //   - The exports-map entry "./domain/blocks" in apps/admin/package.json
 //     (only if no other workspace consumer imports it; if it becomes the
 //     last entry, the entire `exports` map is also removed)
@@ -32,5 +33,81 @@
 //
 // =============================================================================
 
-// Public surface — empty initially, populated by U2-U6 implementation units.
-export {}
+// Public surface — exposed via the `@forge/graphql/parity` subpath.
+// Internals (helpers, regex predicates, etc.) stay un-exported.
+
+export {
+  compareNormalizedRoutes,
+  type DiffReport,
+  type StructuralDiff,
+  type ValueDiff,
+  type OrderDiff,
+  type SemanticDiff,
+  type SemanticSubclass,
+  type PotentialTruncationDiff,
+  type CompareOptions,
+} from "./compare"
+
+export {
+  DEFAULT_ALLOW_LIST,
+  type AllowListEntry,
+  type AllowListChannel,
+  type AppliedAllowListEntry,
+} from "./allow-list"
+
+export {
+  normalizeStrapi,
+  StrapiNormalizationError,
+  type StrapiExperienceInput,
+  type StrapiBlockInput,
+  type NormalizeStrapiOptions,
+} from "./normalize-strapi"
+
+export {
+  normalizeAdmin,
+  AdminNormalizationError,
+  AdminBlocksValidationError,
+  type AdminExperienceLocaleInput,
+  type NormalizeAdminOptions,
+} from "./normalize-admin"
+
+export {
+  canonicalizeUrl,
+  CanonicalizeUrlError,
+  type CanonicalUrl,
+  type CanonicalUrlFailure,
+  type CanonicalizeUrlConfig,
+} from "./canonicalize-url"
+
+export {
+  STRAPI_TO_ADMIN_KIND,
+  ADMIN_KIND_TO_STRAPI,
+  ADMIN_ONLY_KINDS,
+  strapiTypenameToAdminKind,
+  adminKindToStrapiTypename,
+  type StrapiTypename,
+  type AdminKind,
+  type AdminOnlyKind,
+  type UnknownDiscriminator,
+} from "./discriminator-map"
+
+export { comparePointer, encodePointer } from "./path-pointer"
+
+export type {
+  NormalizedExperienceRoute,
+  NormalizedBlock,
+  NormalizedBlockKind,
+  NormalizedMeta,
+  NormalizedOgImage,
+  ContainerSlotMarker,
+} from "./shared-shape"
+
+export {
+  runLiveComparison,
+  assertLiveModeEnabled,
+  validateHost,
+  LiveModeDisabledError,
+  LiveModeConfigError,
+  type LiveModeOptions,
+  type LiveModeResult,
+} from "./live"
