@@ -832,7 +832,428 @@ Section's own scalars:
 
 ## apps/tv Operations
 
-> Populated in U3.
+Three standalone operations, all defined in `apps/tv/src/lib/queries.ts`:
+`GET_WATCH_EXPERIENCE` (rich watch query composing 13 fragments — same
+shape as mobile's), `LIST_EXPERIENCES` (TV home-screen listing — DIVERGES
+from mobile by selecting an inline `ComponentSectionsVideoHero` block per
+experience to power the focus-driven hero), and `SEMANTIC_SEARCH`
+(paginated search — DIVERGES from mobile by selecting `searchMode`). The
+remaining 15 `graphql()` callsites in `queries.ts` are fragments — 11 leaf
+fragments and 2 composite fragments (`ContainerFragment`, `SectionFragment`)
+that compose other leaves. Fragments are listed inline under the operation
+that pulls them in, NOT as standalone operation rows. TV uses
+`@apollo/client/react` `useQuery` for `GET_WATCH_EXPERIENCE` /
+`LIST_EXPERIENCES`, and `getApolloClient().query()` for `SEMANTIC_SEARCH`.
+TV does NOT use Apollo's `gql` template literal anywhere (verified by the
+`rg "= gql\`"` sweep returning zero matches).
+
+**Apollo client cache divergence (TV vs mobile):** TV's
+`getApolloClient()` (`apps/tv/src/lib/apolloClient.ts:45-53`) sets
+`defaultOptions.watchQuery.fetchPolicy: "cache-and-network"` GLOBALLY for
+every `useQuery`, whereas mobile sets per-call `fetchPolicy` and has no
+global default. Per-operation overrides recorded below still win, but TV's
+`useQuery` callsites that omit `fetchPolicy` (notably the home `index.tsx`
+`LIST_EXPERIENCES` consumer) inherit `cache-and-network` from this default
+rather than mobile's "no default → falls through to Apollo's
+`cache-first`" semantics.
+
+### tv:GET_WATCH_EXPERIENCE
+
+- **Source:** `apps/tv/src/lib/queries.ts:361-431`
+- **Variables:** `$locale: I18NLocaleCode!`, `$filters: ExperienceFiltersInput!`
+- **Access expectation (best guess; final in U5):** PUBLIC — drives the
+  unauthenticated TV experience-detail screen. TV bearer token is set via
+  `getApiToken()` in `apolloClient.ts` but the admin endpoint must support
+  either a user-less token or treat this query as
+  `authScopes: { public: true }` for the consumer migration (parity with
+  `mobile:GET_WATCH_EXPERIENCE`).
+- **Cache behavior:** `useQuery(GET_WATCH_EXPERIENCE, { variables, skip: !decodedSlug })`
+  in `apps/tv/app/experience/[slug].tsx:27-33`. No per-call `fetchPolicy`
+  override — inherits the client-wide
+  `defaultOptions.watchQuery.fetchPolicy: "cache-and-network"` set in
+  `apolloClient.ts:48-52`. Renders cached data immediately while issuing
+  a background refetch; the screen exposes a `refetch` button bound to
+  Apollo's `refetch()`. Apollo `InMemoryCache` is the default, lazy-
+  initialized once via the `getApolloClient()` singleton. No normalized
+  type policies, no `keyFields` overrides — Apollo's default
+  identity-by-`id` keying applies.
+- **Renderer/resolver dependency:**
+  `apps/tv/app/experience/[slug].tsx:23-34` (route screen) →
+  `normalizeExperience(...)` (`apps/tv/src/lib/normalizer.ts`) →
+  `ExperienceProvider` → `SectionDispatcher` →
+  `apps/tv/src/components/sections/*` renderers. `normalizer.ts`'s
+  17-entry `TYPENAME_TO_KIND` map dispatches each `__typename` in
+  `Experience.blocks` to a `kind` literal (the map is byte-identical to
+  mobile's; see "Normalizer" note in the Verification Log).
+- **Composed fragments:** 13 fragments composed at the operation level —
+  `VideoHeroFragment`, `SectionFragment`, `VideoCarouselFragment`,
+  `MediaCollectionFragment`, `NavigationCarouselFragment`,
+  `TextSectionFragment`, `EasterDatesFragment`, `AdventCountdownFragment`,
+  `BibleQuotesCarouselFragment`, `CTASectionFragment`,
+  `RelatedQuestionsFragment`, `ContainerFragment`, `VideoSectionFragment`.
+  `SectionFragment` and `ContainerFragment` further compose 10 and 8 leaf
+  fragments respectively — see fragment tables below. `QuizButtonFragment`
+  is reachable only via `SectionFragment` (Section's
+  `ComponentSectionsQuizButton` arm spreads `...QuizButtonFields`); it
+  never appears at the operation top level.
+- **Cross-app parity:** Selection set is byte-equivalent to
+  `mobile:GET_WATCH_EXPERIENCE` (same 13 top-level arms, same fragment
+  bodies). No divergence at this operation.
+- **Selected fields & parity tags:**
+
+| Type.field                                                                  | Parity tag               |
+| --------------------------------------------------------------------------- | ------------------------ |
+| `Query.experiences(filters, locale)`                                        | `?`                      |
+| `Experience.documentId`                                                     | `?`                      |
+| `Experience.slug`                                                           | `?`                      |
+| `Experience.title`                                                          | `?`                      |
+| `Experience.blocks.__typename`                                              | `?`                      |
+| `ComponentSectionsVideoHero` (via `...VideoHeroFields`)                     | see fragment table below |
+| `ComponentSectionsSection` (via `...SectionFields`)                         | see fragment table below |
+| `ComponentSectionsVideoCarousel` (via `...VideoCarouselFields`)             | see fragment table below |
+| `ComponentSectionsMediaCollection` (via `...MediaCollectionFields`)         | see fragment table below |
+| `ComponentSectionsNavigationCarousel` (via `...NavigationCarouselFields`)   | see fragment table below |
+| `ComponentSectionsText` (via `...TextSectionFields`)                        | see fragment table below |
+| `ComponentSectionsEasterDates` (via `...EasterDatesFields`)                 | see fragment table below |
+| `ComponentSectionsAdventCountdown` (via `...AdventCountdownFields`)         | see fragment table below |
+| `ComponentSectionsBibleQuotesCarousel` (via `...BibleQuotesCarouselFields`) | see fragment table below |
+| `ComponentSectionsCta` (via `...CTASectionFields`)                          | see fragment table below |
+| `ComponentSectionsRelatedQuestions` (via `...RelatedQuestionsFields`)       | see fragment table below |
+| `ComponentSectionsContainer` (via `...ContainerFields`)                     | see fragment table below |
+| `ComponentSectionsVideo` (via `...VideoSectionFields`)                      | see fragment table below |
+
+#### Fragment: `VideoHeroFragment` (queries.ts:22-42)
+
+| Type.field                                                                       | Parity tag |
+| -------------------------------------------------------------------------------- | ---------- |
+| `ComponentSectionsVideoHero.id`                                                  | `?`        |
+| `ComponentSectionsVideoHero.sectionKey`                                          | `?`        |
+| `ComponentSectionsVideoHero.heading`                                             | `?`        |
+| `ComponentSectionsVideoHero.subheading`                                          | `?`        |
+| `ComponentSectionsVideoHero.ctaLabel`                                            | `?`        |
+| `ComponentSectionsVideoHero.ctaLink`                                             | `?`        |
+| `ComponentSectionsVideoHero.streamingUrl`                                        | `?`        |
+| `ComponentSectionsVideoHero.video.{documentId, title, slug}`                     | `?`        |
+| `ComponentSectionsVideoHero.video.images.{url, mobileCinematicHigh, videoStill}` | `?`        |
+
+#### Fragment: `TextSectionFragment` (queries.ts:44-54)
+
+| Type.field                                              | Parity tag |
+| ------------------------------------------------------- | ---------- |
+| `ComponentSectionsText.id`                              | `?`        |
+| `ComponentSectionsText.sectionKey`                      | `?`        |
+| `ComponentSectionsText.heading` (aliased `textHeading`) | `?`        |
+| `ComponentSectionsText.headingLevel`                    | `?`        |
+| `ComponentSectionsText.subtitle`                        | `?`        |
+| `ComponentSectionsText.contentParagraphs`               | `?`        |
+| `ComponentSectionsText.variant` (aliased `textVariant`) | `?`        |
+
+#### Fragment: `RelatedQuestionsFragment` (queries.ts:56-70)
+
+| Type.field                                                           | Parity tag |
+| -------------------------------------------------------------------- | ---------- |
+| `ComponentSectionsRelatedQuestions.id`                               | `?`        |
+| `ComponentSectionsRelatedQuestions.sectionKey`                       | `?`        |
+| `ComponentSectionsRelatedQuestions.heading` (aliased `rqHeading`)    | `?`        |
+| `ComponentSectionsRelatedQuestions.ctaLabel`                         | `?`        |
+| `ComponentSectionsRelatedQuestions.ctaLink`                          | `?`        |
+| `ComponentSectionsRelatedQuestions.questions.{id, question, answer}` | `?`        |
+
+#### Fragment: `BibleQuotesCarouselFragment` (queries.ts:72-89)
+
+| Type.field                                                                                                                     | Parity tag |
+| ------------------------------------------------------------------------------------------------------------------------------ | ---------- |
+| `ComponentSectionsBibleQuotesCarousel.id`                                                                                      | `?`        |
+| `ComponentSectionsBibleQuotesCarousel.sectionKey`                                                                              | `?`        |
+| `ComponentSectionsBibleQuotesCarousel.heading` (aliased `bqcHeading`)                                                          | `?`        |
+| `ComponentSectionsBibleQuotesCarousel.quotes.{id, reference, text, attribution, imageUrl, backgroundColor, ctaLabel, ctaLink}` | `?`        |
+
+#### Fragment: `EasterDatesFragment` (queries.ts:91-101)
+
+| Type.field                                         | Parity tag |
+| -------------------------------------------------- | ---------- |
+| `ComponentSectionsEasterDates.id`                  | `?`        |
+| `ComponentSectionsEasterDates.sectionKey`          | `?`        |
+| `ComponentSectionsEasterDates.easterDatesTitle`    | `?`        |
+| `ComponentSectionsEasterDates.westernEasterLabel`  | `?`        |
+| `ComponentSectionsEasterDates.orthodoxEasterLabel` | `?`        |
+| `ComponentSectionsEasterDates.passoverLabel`       | `?`        |
+| `ComponentSectionsEasterDates.locale`              | `?`        |
+
+#### Fragment: `AdventCountdownFragment` (queries.ts:103-112)
+
+| Type.field                                                       | Parity tag |
+| ---------------------------------------------------------------- | ---------- |
+| `ComponentSectionsAdventCountdown.id`                            | `?`        |
+| `ComponentSectionsAdventCountdown.sectionKey`                    | `?`        |
+| `ComponentSectionsAdventCountdown.title` (aliased `adventTitle`) | `?`        |
+| `ComponentSectionsAdventCountdown.scripture`                     | `?`        |
+| `ComponentSectionsAdventCountdown.scriptureReference`            | `?`        |
+| `ComponentSectionsAdventCountdown.locale`                        | `?`        |
+
+#### Fragment: `CTASectionFragment` (queries.ts:114-124)
+
+| Type.field                                            | Parity tag |
+| ----------------------------------------------------- | ---------- |
+| `ComponentSectionsCta.id`                             | `?`        |
+| `ComponentSectionsCta.sectionKey`                     | `?`        |
+| `ComponentSectionsCta.heading` (aliased `ctaHeading`) | `?`        |
+| `ComponentSectionsCta.body`                           | `?`        |
+| `ComponentSectionsCta.buttonLabel`                    | `?`        |
+| `ComponentSectionsCta.buttonLink`                     | `?`        |
+| `ComponentSectionsCta.variant` (aliased `ctaVariant`) | `?`        |
+
+#### Fragment: `VideoSectionFragment` (queries.ts:126-148)
+
+| Type.field                                                                              | Parity tag |
+| --------------------------------------------------------------------------------------- | ---------- |
+| `ComponentSectionsVideo.id`                                                             | `?`        |
+| `ComponentSectionsVideo.sectionKey`                                                     | `?`        |
+| `ComponentSectionsVideo.streamingUrl`                                                   | `?`        |
+| `ComponentSectionsVideo.title` (aliased `videoTitle`)                                   | `?`        |
+| `ComponentSectionsVideo.subtitle` (aliased `videoSubtitle`)                             | `?`        |
+| `ComponentSectionsVideo.media.url`                                                      | `?`        |
+| `ComponentSectionsVideo.video` (aliased `videoRef`).{documentId, title, slug, imageAlt} | `?`        |
+| `ComponentSectionsVideo.video.images.{url, mobileCinematicHigh, videoStill}`            | `?`        |
+
+#### Fragment: `NavigationCarouselFragment` (queries.ts:150-164)
+
+| Type.field                                                                                              | Parity tag |
+| ------------------------------------------------------------------------------------------------------- | ---------- |
+| `ComponentSectionsNavigationCarousel.id`                                                                | `?`        |
+| `ComponentSectionsNavigationCarousel.sectionKey`                                                        | `?`        |
+| `ComponentSectionsNavigationCarousel.items.{id, contentId, title, category, imageUrl, backgroundColor}` | `?`        |
+
+#### Fragment: `MediaCollectionFragment` (queries.ts:166-200)
+
+| Type.field                                                                                                                                | Parity tag |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `ComponentSectionsMediaCollection.id`                                                                                                     | `?`        |
+| `ComponentSectionsMediaCollection.sectionKey`                                                                                             | `?`        |
+| `ComponentSectionsMediaCollection.title` (aliased `mcTitle`)                                                                              | `?`        |
+| `ComponentSectionsMediaCollection.subtitle` (aliased `mcSubtitle`)                                                                        | `?`        |
+| `ComponentSectionsMediaCollection.description` (aliased `mcDescription`)                                                                  | `?`        |
+| `ComponentSectionsMediaCollection.categoryLabel`                                                                                          | `?`        |
+| `ComponentSectionsMediaCollection.ctaLink` (aliased `mcCtaLink`)                                                                          | `?`        |
+| `ComponentSectionsMediaCollection.ctaLabel` (aliased `mcCtaLabel`)                                                                        | `?`        |
+| `ComponentSectionsMediaCollection.showItemNumbers`                                                                                        | `?`        |
+| `ComponentSectionsMediaCollection.variant` (aliased `mcVariant`)                                                                          | `?`        |
+| `ComponentSectionsMediaCollection.footerText`                                                                                             | `?`        |
+| `ComponentSectionsMediaCollection.items.{id, titleOverride, subtitleOverride, labelOverride, collectionSize, imageUrl, linkToSectionKey}` | `?`        |
+| `ComponentSectionsMediaCollection.items.video.{documentId, title, slug, imageAlt}`                                                        | `?`        |
+| `ComponentSectionsMediaCollection.items.video.images.{url, mobileCinematicHigh, videoStill}`                                              | `?`        |
+
+#### Fragment: `VideoCarouselFragment` (queries.ts:202-228)
+
+| Type.field                                                                                          | Parity tag |
+| --------------------------------------------------------------------------------------------------- | ---------- |
+| `ComponentSectionsVideoCarousel.id`                                                                 | `?`        |
+| `ComponentSectionsVideoCarousel.sectionKey`                                                         | `?`        |
+| `ComponentSectionsVideoCarousel.title` (aliased `vcTitle`)                                          | `?`        |
+| `ComponentSectionsVideoCarousel.subtitle` (aliased `vcSubtitle`)                                    | `?`        |
+| `ComponentSectionsVideoCarousel.description` (aliased `vcDescription`)                              | `?`        |
+| `ComponentSectionsVideoCarousel.items.{id, streamingUrl, imageUrl, titleOverride, backgroundColor}` | `?`        |
+| `ComponentSectionsVideoCarousel.items.video.{documentId, title, slug, imageAlt}`                    | `?`        |
+| `ComponentSectionsVideoCarousel.items.video.images.{url, mobileCinematicHigh, videoStill}`          | `?`        |
+
+#### Fragment: `QuizButtonFragment` (queries.ts:230-236, reachable only via SectionFragment)
+
+| Type.field                               | Parity tag |
+| ---------------------------------------- | ---------- |
+| `ComponentSectionsQuizButton.id`         | `?`        |
+| `ComponentSectionsQuizButton.buttonText` | `?`        |
+| `ComponentSectionsQuizButton.iframeSrc`  | `?`        |
+
+#### Fragment: `ContainerFragment` (queries.ts:244-293, composite)
+
+`ContainerFields` selects `id`, `sectionKey`, and a `slots` collection
+where each slot has `id`, `gridSpan`, `spans`, and a polymorphic
+`content` (aliased `slotContent`) constrained to the
+`ContainerSlotContentDynamicZone` union (per source comment, members:
+`AdventCountdown`, `BibleQuotesCarousel`, `Card`, `Cta`, `EasterDates`,
+`MediaCollection`, `RelatedQuestions`, `Text`, `Video` — note `Container`,
+`NavigationCarousel`, `VideoCarousel`, `QuizButton` are NOT in this
+union). The Container fragment composes 8 leaf fragments via inline-spread
+(only the union members the fragment actually projects):
+
+| Composed via                                                                   | Composed fragment             |
+| ------------------------------------------------------------------------------ | ----------------------------- |
+| `... on ComponentSectionsText { ...TextSectionFields }`                        | `TextSectionFragment`         |
+| `... on ComponentSectionsEasterDates { ...EasterDatesFields }`                 | `EasterDatesFragment`         |
+| `... on ComponentSectionsAdventCountdown { ...AdventCountdownFields }`         | `AdventCountdownFragment`     |
+| `... on ComponentSectionsCta { ...CTASectionFields }`                          | `CTASectionFragment`          |
+| `... on ComponentSectionsVideo { ...VideoSectionFields }`                      | `VideoSectionFragment`        |
+| `... on ComponentSectionsRelatedQuestions { ...RelatedQuestionsFields }`       | `RelatedQuestionsFragment`    |
+| `... on ComponentSectionsBibleQuotesCarousel { ...BibleQuotesCarouselFields }` | `BibleQuotesCarouselFragment` |
+| `... on ComponentSectionsMediaCollection { ...MediaCollectionFields }`         | `MediaCollectionFragment`     |
+
+Container's own scalars:
+
+| Type.field                                                                    | Parity tag |
+| ----------------------------------------------------------------------------- | ---------- |
+| `ComponentSectionsContainer.id`                                               | `?`        |
+| `ComponentSectionsContainer.sectionKey`                                       | `?`        |
+| `ComponentSectionsContainer.slots.{id, gridSpan, spans}`                      | `?`        |
+| `ComponentSectionsContainer.slots.content.__typename` (aliased `slotContent`) | `?`        |
+
+#### Fragment: `SectionFragment` (queries.ts:299-357, composite)
+
+`SectionFields` selects `id`, `sectionKey`, background-related scalars,
+and a polymorphic `content` (aliased `sectionContent`) constrained to
+`SectionContentDynamicZone` (per source comment, members:
+`BibleQuotesCarousel`, `Card`, `Container`, `Cta`, `InfoBlocks`,
+`MediaCollection`, `NavigationCarousel`, `PromoBanner`, `QuizButton`,
+`RelatedQuestions`, `Text`, `Video`, `VideoCarousel` — note `EasterDates`
+and `AdventCountdown` are NOT in this union; they live only in
+`ContainerSlotContentDynamicZone`). Section composes 10 fragments via
+inline-spread:
+
+| Composed via                                                                   | Composed fragment             |
+| ------------------------------------------------------------------------------ | ----------------------------- |
+| `... on ComponentSectionsContainer { ...ContainerFields }`                     | `ContainerFragment`           |
+| `... on ComponentSectionsVideo { ...VideoSectionFields }`                      | `VideoSectionFragment`        |
+| `... on ComponentSectionsRelatedQuestions { ...RelatedQuestionsFields }`       | `RelatedQuestionsFragment`    |
+| `... on ComponentSectionsBibleQuotesCarousel { ...BibleQuotesCarouselFields }` | `BibleQuotesCarouselFragment` |
+| `... on ComponentSectionsMediaCollection { ...MediaCollectionFields }`         | `MediaCollectionFragment`     |
+| `... on ComponentSectionsQuizButton { ...QuizButtonFields }`                   | `QuizButtonFragment`          |
+| `... on ComponentSectionsVideoCarousel { ...VideoCarouselFields }`             | `VideoCarouselFragment`       |
+| `... on ComponentSectionsNavigationCarousel { ...NavigationCarouselFields }`   | `NavigationCarouselFragment`  |
+| `... on ComponentSectionsText { ...TextSectionFields }`                        | `TextSectionFragment`         |
+| `... on ComponentSectionsCta { ...CTASectionFields }`                          | `CTASectionFragment`          |
+
+Section's own scalars:
+
+| Type.field                                                               | Parity tag |
+| ------------------------------------------------------------------------ | ---------- |
+| `ComponentSectionsSection.id`                                            | `?`        |
+| `ComponentSectionsSection.sectionKey`                                    | `?`        |
+| `ComponentSectionsSection.backgroundColor`                               | `?`        |
+| `ComponentSectionsSection.backgroundImageUrl`                            | `?`        |
+| `ComponentSectionsSection.backgroundOpacity`                             | `?`        |
+| `ComponentSectionsSection.dynamicBackgroundImage`                        | `?`        |
+| `ComponentSectionsSection.staticOverlay`                                 | `?`        |
+| `ComponentSectionsSection.blurHash`                                      | `?`        |
+| `ComponentSectionsSection.content.__typename` (aliased `sectionContent`) | `?`        |
+
+### tv:LIST_EXPERIENCES
+
+- **Source:** `apps/tv/src/lib/queries.ts:450-475`
+- **Variables:** `$locale: I18NLocaleCode!`
+- **Access expectation (best guess; final in U5):** PUBLIC — invoked on
+  TV home-screen mount before any user interaction. Drives both the
+  experience rail and the focus-driven hero (see divergence note below).
+- **Cache behavior:**
+  - Home-screen consumer (`apps/tv/app/index.tsx:139-144`):
+    `useQuery(LIST_EXPERIENCES, { variables: { locale: "en" } })` — no
+    per-call `fetchPolicy` override, so it inherits the client-wide
+    `defaultOptions.watchQuery.fetchPolicy: "cache-and-network"` from
+    `apolloClient.ts:48-52`.
+  - Search-browse consumer (`apps/tv/src/components/search/SearchBrowse.tsx:42-45`):
+    `useQuery(LIST_EXPERIENCES, { variables: { locale: "en" }, fetchPolicy: "cache-first" })`
+    — explicit override. SearchBrowse intentionally only mounts when
+    `/search` has an empty query, so it instantly renders whatever the
+    home screen already populated and only network-fetches on cold cache
+    (deep-link case).
+  - Apollo `InMemoryCache` (default) — no normalized typePolicies, no
+    query-level cache eviction. The two consumers share the same cache
+    entry by `(query, variables)` key.
+- **Renderer/resolver dependency:**
+  1. `apps/tv/app/index.tsx:139-155` (TV home screen) — picks
+     `experiences.find((e) => e.isHomepage) ?? experiences[0] ?? null`
+     as the homepage anchor, drives the focus-debounced hero state
+     machine off the `VideoHero` block per experience (see source lines
+     157-169 of `index.tsx`), and renders the experience rail of cards.
+  2. `apps/tv/src/components/search/SearchBrowse.tsx:42-52` — slices
+     the first `POPULAR_COUNT` (8) experiences as a "popular" rail in
+     the empty-query state of `/search`.
+- **Composed fragments:** 1 fragment composed inline —
+  `VideoHeroFragment`, applied to the first
+  `ComponentSectionsVideoHero` arm of `Experience.blocks`. Per the
+  source comment (queries.ts:435-448), non-`VideoHero` blocks are still
+  returned over the wire with only `__typename` (cheap; ~30 bytes per
+  block); for the current experience count (<20) the total payload
+  stays small.
+- **Cross-app divergence (closes the loop with U2):** Mobile's
+  `mobile:LIST_EXPERIENCES` (queries.ts:426-442) selects metadata only
+  (`documentId`, `slug`, `title`, `metaDescription`, `isHomepage`,
+  `ogImage.{url, alternativeText, width, height}`). TV's
+  `LIST_EXPERIENCES` selects ALL of those PLUS an inline
+  `Experience.blocks { __typename ... on ComponentSectionsVideoHero { ...VideoHeroFields } }`
+  selection set. This is the focus-driven home-hero divergence U2's
+  `mobile:LIST_EXPERIENCES` "Cross-app divergence" note flagged for
+  pickup here. The TV-side rationale (per source comment lines 435-448)
+  is that swapping the hero on focus must require zero extra round-trips.
+- **Selected fields & parity tags:**
+
+| Type.field                                                 | Parity tag                                                                                                                  |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `Query.experiences(locale)`                                | `?`                                                                                                                         |
+| `Experience.documentId`                                    | `?`                                                                                                                         |
+| `Experience.slug`                                          | `?`                                                                                                                         |
+| `Experience.title`                                         | `?`                                                                                                                         |
+| `Experience.metaDescription`                               | `?`                                                                                                                         |
+| `Experience.isHomepage`                                    | `?`                                                                                                                         |
+| `Experience.ogImage.{url, alternativeText, width, height}` | `?`                                                                                                                         |
+| `Experience.blocks.__typename`                             | `?` (TV-specific selection — mobile does NOT select `blocks` here)                                                          |
+| `ComponentSectionsVideoHero` (via `...VideoHeroFields`)    | `?` (TV-specific selection — see fragment table under `tv:GET_WATCH_EXPERIENCE` for the body; same fragment, single-spread) |
+
+### tv:SEMANTIC_SEARCH
+
+- **Source:** `apps/tv/src/lib/queries.ts:490-519`
+- **Variables:** `$query: String!`, `$locale: String!`, `$limit: Int`,
+  `$offset: Int`. (Same shape as mobile's `mobile:SEMANTIC_SEARCH`; no
+  `$type` argument unlike web's `web:SEMANTIC_SEARCH`. Per source comment
+  lines 485-488: `$locale` is `String!` not `I18NLocaleCode!` because
+  `semanticSearch` is a CMS custom resolver, not a Strapi-generated query.)
+- **Access expectation (best guess; final in U5):** PUBLIC — drives the
+  TV `/search` screen's debounced semantic-search field for
+  unauthenticated viewers.
+- **Cache behavior:** `getApolloClient().query({ query: SEMANTIC_SEARCH, variables, fetchPolicy: "no-cache" })`
+  in `apps/tv/src/lib/search.ts:198-209` (sole callsite — the TV
+  search hook centralizes both initial search and load-more through
+  this one function with `offset`/`limit` parameter changes). The
+  Apollo `InMemoryCache` is bypassed entirely — every debounced search
+  is a fresh network call. The hook adds two TV-specific protections
+  beyond mobile's: a 15s safety timeout (`SEARCH_SAFETY_TIMEOUT_MS`,
+  search.ts:179-196) that forces the UI out of `loading` if Apollo's
+  promise neither resolves nor rejects, and a `requestIdRef`
+  staleness guard (search.ts:181, 233-234) that drops superseded
+  responses. The `keyword-only` branch on `searchMode` (search.ts:236-241)
+  routes to a distinct `degraded` UI state.
+- **Renderer/resolver dependency:** `apps/tv/src/lib/search.ts`
+  (the `useSearch` hook) — exports a `search(text)` callback bound
+  to a debounced text input on the TV `/search` screen. Result rows
+  consume `SearchResult = ResultOf<typeof SEMANTIC_SEARCH>["semanticSearch"]["results"][number]`
+  (queries.ts:521-523) and the `searchMode` literal drives the
+  three-way state machine (`hybrid` → `ready`, `keyword-only` →
+  `degraded`, no results → `empty`).
+- **Composed fragments:** none.
+- **Cross-app divergence (closes the loop with U2):** TV selects
+  `searchMode` on `SemanticSearchResult`, mobile does NOT. Web (per U1)
+  also selects `searchMode`. The TV-side rationale (per source comment
+  lines 479-483): TV consumes the degraded-backend signal to render a
+  distinct "temporarily unavailable" UX (see search.ts:236-241,
+  `mode === "keyword-only"` branch); mobile does not consume the
+  signal today.
+- **U5 disposition note for `searchMode`:** `searchMode` is **already
+  PUBLIC on both Strapi (today) and admin** (admin's Pothos field
+  defined at `apps/admin/src/graphql/queries/hybrid-search.ts:86` —
+  the response-envelope `searchMode` reports the embedding-degradation
+  signal `'hybrid' | 'keyword-only'`; not to be confused with the
+  ORTHOGONAL request-arg `searchMode` on the input that selects the
+  retrieval pipeline, see hybrid-search.ts:115). This is a
+  CONFIRMATION of intentional public exposure on both sides — NOT a
+  pending decision for Unit 2 of the parent migration plan. U5
+  classification is `PUBLIC-current` (not `PUBLIC-eligible-needs-widening`).
+- **Selected fields & parity tags:**
+
+| Type.field                                                                                                 | Parity tag                                                              |
+| ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `Query.semanticSearch(query, locale, limit, offset)`                                                       | `?`                                                                     |
+| `SemanticSearchResult.query`                                                                               | `?`                                                                     |
+| `SemanticSearchResult.hasMore`                                                                             | `?`                                                                     |
+| `SemanticSearchResult.searchMode`                                                                          | `?` (TV-specific selection — mobile does NOT select; web DOES — see U1) |
+| `SemanticSearchResult.results.{type, id, slug, title, imageUrl, snippet, startSeconds, playbackId, score}` | `?`                                                                     |
 
 ---
 
@@ -931,3 +1352,87 @@ Section's own scalars:
   for `GET_WATCH_EXPERIENCE`, `ExperienceShell.tsx` for `LIST_EXPERIENCES`,
   `app/(tabs)/watch.tsx` for `SEMANTIC_SEARCH` (twice — initial search +
   load-more).
+
+### U3 (apps/tv)
+
+- `rg "graphql\(" apps/tv/src` → 18 matches, all in
+  `apps/tv/src/lib/queries.ts`. Breakdown:
+  - 3 standalone operations (one `### tv:{ConstantName}` subsection
+    each): `GET_WATCH_EXPERIENCE` (queries.ts:361), `LIST_EXPERIENCES`
+    (queries.ts:450), `SEMANTIC_SEARCH` (queries.ts:490).
+  - 12 leaf fragments composed into `GET_WATCH_EXPERIENCE` (one of which —
+    `QuizButtonFragment` — is reachable only via `SectionFragment`):
+    `VideoHeroFragment`, `TextSectionFragment`, `RelatedQuestionsFragment`,
+    `BibleQuotesCarouselFragment`, `EasterDatesFragment`,
+    `AdventCountdownFragment`, `CTASectionFragment`, `VideoSectionFragment`,
+    `NavigationCarouselFragment`, `MediaCollectionFragment`,
+    `VideoCarouselFragment`, `QuizButtonFragment`. `VideoHeroFragment`
+    is additionally re-composed inline by `LIST_EXPERIENCES` (TV-specific
+    divergence — see below).
+  - 2 composite fragments composed into `GET_WATCH_EXPERIENCE`:
+    `ContainerFragment` (queries.ts:244), `SectionFragment` (queries.ts:299).
+  - 1 banner-comment match (`queries.ts:14`: `"Operations are defined in apps using graphql() from this package."`)
+    — a JSDoc string, NOT a `graphql()` callsite. Excluded from the
+    inventory by inspection.
+  - Reconciled count: 3 operations + 12 leaf fragments + 2 composite
+    fragments + 1 comment = 18 rg matches accounted for. (Identical
+    structural composition to mobile.)
+- ``rg "= gql\`" apps/tv/src`` → **0 matches**. TV uses ONLY gql.tada
+  `graphql()`; no raw Apollo `gql` template literals exist anywhere
+  under `apps/tv/src`. (Web's dual-rg need does not apply to TV; the
+  sweep is still mandatory per regeneration discipline.)
+- Total TV standalone operations inventoried: **3** (12 fragments
+  composed inline, 2 of them composite).
+- **Mobile↔TV `LIST_EXPERIENCES` divergence captured** (closes the loop
+  with U2): TV's `LIST_EXPERIENCES` selects an inline
+  `Experience.blocks { __typename ... on ComponentSectionsVideoHero { ...VideoHeroFields } }`
+  to power the focus-driven home hero (queries.ts:465-470 + source
+  comment 435-448). Mobile's `LIST_EXPERIENCES` does NOT select
+  `blocks` at all. Cross-references: forward note in
+  `mobile:LIST_EXPERIENCES` "Cross-app divergence" (U2), backward note
+  in `tv:LIST_EXPERIENCES` "Cross-app divergence" (this unit).
+- **Mobile↔TV `SEMANTIC_SEARCH` divergence captured** (closes the loop
+  with U2): TV selects `searchMode` on `SemanticSearchResult`
+  (queries.ts:505) to drive the degraded-backend `keyword-only` UX
+  branch in `search.ts:236-241`. Mobile does NOT select `searchMode`.
+  Web (per U1) also selects `searchMode`. Cross-references: forward
+  note in `mobile:SEMANTIC_SEARCH` "Cross-app divergence" (U2),
+  backward note in `tv:SEMANTIC_SEARCH` "Cross-app divergence" (this
+  unit). U5 disposition note recorded inline in `tv:SEMANTIC_SEARCH`:
+  `searchMode` is **already PUBLIC** on Strapi (today) AND admin (per
+  `apps/admin/src/graphql/queries/hybrid-search.ts:86`). This is a
+  CONFIRMATION of intentional public exposure, NOT a pending decision
+  for Unit 2 of the parent migration plan. (Note: admin's
+  `hybrid-search.ts:115` documents an ORTHOGONAL request-arg
+  `searchMode` selecting the retrieval pipeline — not to be confused
+  with the response-envelope `searchMode` selected here.)
+- **Normalizer drift check:** No drift; TV normalizer
+  (`apps/tv/src/lib/normalizer.ts`) mirrors mobile normalizer
+  (`apps/mobile/src/lib/normalizer.ts`) byte-for-byte except for the
+  `// SYNC: keep in sync with apps/mobile/src/lib/normalizer.ts`
+  header comment on TV line 1. The 17-entry `TYPENAME_TO_KIND` map is
+  byte-identical to mobile's (verified via
+  `diff apps/mobile/src/lib/normalizer.ts apps/tv/src/lib/normalizer.ts`,
+  output: 1 added line — the SYNC header — and zero map-entry
+  differences). No U4 mapping-table concern.
+- Anomaly: `QuizButtonFragment` is exported from `queries.ts` but
+  unreachable at the operation top level — composed only by
+  `SectionFragment` (Section's `ComponentSectionsQuizButton` arm).
+  Same pattern as mobile (per U2) and web (per U1).
+- **Cache-behavior anomaly (vs mobile):** TV's `getApolloClient()` sets
+  `defaultOptions.watchQuery.fetchPolicy: "cache-and-network"` GLOBALLY
+  (`apolloClient.ts:48-52`); mobile does not set a global default.
+  Recorded inline at the top of the `## apps/tv Operations` section so
+  Unit 5 / 6 reviewers don't read the per-op cache notes in isolation.
+  TV's `tv:GET_WATCH_EXPERIENCE` and `tv:LIST_EXPERIENCES` (home-screen
+  consumer) inherit this default; the SearchBrowse `LIST_EXPERIENCES`
+  consumer overrides with `cache-first`; `tv:SEMANTIC_SEARCH` uses
+  `getApolloClient().query(..., { fetchPolicy: "no-cache" })` which is
+  an explicit per-call override that ignores `defaultOptions`.
+- Renderer-dependency sourcing: 4 Apollo callsites total —
+  `app/experience/[slug].tsx` for `GET_WATCH_EXPERIENCE` (1 callsite);
+  `app/index.tsx` AND `src/components/search/SearchBrowse.tsx` for
+  `LIST_EXPERIENCES` (2 callsites — same query, two consumers sharing
+  the cache entry); `src/lib/search.ts` for `SEMANTIC_SEARCH` (1
+  callsite — initial search and load-more both flow through the same
+  hook, parameterized on `offset`/`limit`).
