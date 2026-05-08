@@ -1,7 +1,7 @@
 ---
 title: "feat(web): admin-core consumer migration — web canary (Unit 5)"
 type: feat
-status: active
+status: completed
 date: 2026-05-08
 deepened: 2026-05-08
 origin: docs/brainstorms/2026-05-05-consumer-migration-implementer-brief-requirements.md
