@@ -1,6 +1,26 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
+// =============================================================================
+// U5 (feat-104 consumer migration) — FORGE_CONTENT_API + ADMIN_GRAPHQL_URL
+//
+// Both vars are server-only. They power the dual-read parity canary that
+// fans out to admin's experienceBySlug GraphQL query in parallel with
+// Strapi. Retire alongside the rest of U5's scaffolding when admin
+// becomes the sole consumer source. See:
+//   apps/web/src/lib/content-api-mode.ts (deletion checklist)
+//   docs/plans/2026-05-08-001-feat-consumer-migration-web-canary-unit-5-plan.md
+// =============================================================================
+const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES = [
+  ".jesusfilm.org",
+  ".railway.app",
+  ".local",
+] as const
+const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS = [
+  "localhost",
+  "127.0.0.1",
+] as const
+
 export const env = createEnv({
   server: {
     INTERNAL_GRAPHQL_URL: z.url(),
@@ -11,6 +31,43 @@ export const env = createEnv({
     // Absent in most preview environments; the server action surfaces a
     // graceful "not configured" state when unset.
     OPENROUTER_API_KEY: z.string().optional(),
+    // U5 — dual-read parity canary mode. U5 ships only `strapi` (default,
+    // byte-identical to current behavior) and `dual-read` (canary). Origin
+    // R7 names two additional values (`admin-with-fallback`, `admin`) which
+    // ship in U5b alongside the admin → WatchExperience shape adapter.
+    FORGE_CONTENT_API: z.enum(["strapi", "dual-read"]).default("strapi"),
+    // U5 — admin GraphQL URL for the dual-read shadow fetch. Required (boot
+    // fails fast if absent). Host allowlist is warn-only — emits a visible
+    // boot warning on misconfigured hosts but does NOT brick boot, so
+    // legitimate-but-unknown deployment topologies (custom domains, branch
+    // URLs) can still stand up. Mirrors NEXT_PUBLIC_CANONICAL_ORIGIN's
+    // allowlist shape.
+    ADMIN_GRAPHQL_URL: z.url().refine(
+      (value) => {
+        try {
+          const { hostname } = new URL(value)
+          const ok =
+            ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS.includes(
+              hostname as (typeof ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS)[number],
+            ) ||
+            ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES.some((suffix) =>
+              hostname.endsWith(suffix),
+            )
+          if (!ok && typeof console !== "undefined") {
+            console.warn(
+              `[env] ADMIN_GRAPHQL_URL host "${hostname}" is outside the soft allowlist (jesusfilm.org / *.jesusfilm.org / *.railway.app / *.local / localhost / 127.0.0.1). Continuing without throwing — verify this is intentional.`,
+            )
+          }
+        } catch {
+          // The outer z.url() already validates URL shape; if URL parsing
+          // fails here we let z.url()'s error surface instead.
+        }
+        // Warn-only: always pass refinement so misconfigured hosts don't
+        // brick boot in legitimate-but-unknown deployment topologies.
+        return true
+      },
+      { message: "unreachable" },
+    ),
   },
   client: {
     NEXT_PUBLIC_GRAPHQL_URL: z.url(),
@@ -83,6 +140,8 @@ export const env = createEnv({
     STRAPI_PREVIEW_SECRET: process.env.STRAPI_PREVIEW_SECRET,
     REVALIDATION_SECRET: process.env.REVALIDATION_SECRET,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+    FORGE_CONTENT_API: process.env.FORGE_CONTENT_API,
+    ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     NEXT_PUBLIC_GRAPHQL_URL: process.env.NEXT_PUBLIC_GRAPHQL_URL,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
