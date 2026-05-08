@@ -13,7 +13,7 @@ describe("Agentic Studio dashboard page", () => {
     expect(iframe.props.src).toBe("/api/agentic-studio")
     expect(iframe.props.title).toBe("Agentic Studio")
     expect(iframe.props.sandbox).toContain("allow-scripts")
-    expect(iframe.props.sandbox).not.toContain("allow-same-origin")
+    expect(iframe.props.sandbox).toContain("allow-same-origin")
     expect(JSON.stringify(iframe.props)).not.toContain(
       "AGENTIC_OPERATOR_API_KEY",
     )

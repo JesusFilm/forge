@@ -9,6 +9,7 @@ duration: 7
 depends_on: []
 blocks:
   - "feat-116"
+  - "feat-120"
 tags:
   - "manager"
   - "tooling"

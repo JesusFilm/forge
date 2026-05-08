@@ -7,7 +7,7 @@ export default async function AgenticStudioPage() {
         className="agentic-studio-frame"
         src="/api/agentic-studio"
         title="Agentic Studio"
-        sandbox="allow-scripts allow-forms allow-downloads allow-popups"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups"
         referrerPolicy="same-origin"
       />
     </div>

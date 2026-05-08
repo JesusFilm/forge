@@ -8,7 +8,8 @@ start_date: "2026-05-08"
 duration: 2
 depends_on:
   - "feat-115"
-blocks: []
+blocks:
+  - "feat-121"
 tags:
   - "manager"
   - "tooling"
@@ -29,6 +30,13 @@ browser-visible operator credential.
 4. `apps/manager/src/features/shell/manager-shell.tsx`
 5. `apps/agentic/src/mastra/index.ts`
 6. `apps/agentic/CLAUDE.md`
+
+## Grep These
+
+- `agentic-studio` in `apps/manager/src/` -- Manager page, proxy, tests, and shell entry
+- `AGENTIC_STUDIO_ORIGIN|AGENTIC_OPERATOR_API_KEY` in `apps/manager/` -- server-only env and docs
+- `MASTRA_STUDIO_BASE_PATH|mastra studio` in `apps/agentic/` -- private Studio service docs
+- `AGENTIC_BASE_URL` in `apps/manager/src/lib/` -- runtime calls stay pointed at the Agentic backend, not Studio
 
 ## What To Build
 

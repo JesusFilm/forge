@@ -24,13 +24,18 @@ function assertPrivateAgenticStudioOrigin(origin: string | undefined) {
   const parsed = new URL(origin)
   if (
     parsed.protocol === "http:" &&
-    parsed.hostname.endsWith(".railway.internal")
+    parsed.hostname === "agentic-studio.railway.internal" &&
+    !parsed.username &&
+    !parsed.password &&
+    (parsed.pathname === "" || parsed.pathname === "/") &&
+    !parsed.search &&
+    !parsed.hash
   ) {
     return
   }
 
   throw new Error(
-    "AGENTIC_STUDIO_ORIGIN must use Railway private networking in production",
+    "AGENTIC_STUDIO_ORIGIN must be the private agentic-studio Railway origin in production",
   )
 }
 
