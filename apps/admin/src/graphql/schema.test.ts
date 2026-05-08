@@ -254,6 +254,7 @@ describe("ExperienceLocale type", () => {
     >
     expect(fields.blocks.type.toString()).toMatch(/JSON/)
     expect(fields.status.type.toString()).toMatch(/LocaleStatus/)
+    expect(fields.referencedVideos.type.toString()).toMatch(/Video/)
   })
 
   it("does not expose any embedding-shaped field", () => {

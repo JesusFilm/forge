@@ -143,6 +143,10 @@ type ExperienceLocale {
   ogTitle: String
   pathSegment: String
   publishedAt: String
+  """
+  Videos referenced by this locale's JSON blocks. Used by public preview renderers to hydrate admin-authored videoId refs without exposing arbitrary video lookups.
+  """
+  referencedVideos: [Video!]
   slug: String
   status: LocaleStatus
   title: String
