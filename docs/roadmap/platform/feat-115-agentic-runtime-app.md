@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-05-01"
 duration: 7
 depends_on: []
-blocks: []
+blocks:
+  - "feat-120"
 tags:
   - "manager"
   - "tooling"

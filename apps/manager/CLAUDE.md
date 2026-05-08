@@ -210,6 +210,7 @@ where admin's first call 401s.
 | RAILWAY_S3_BUCKET            | Railway S3 bucket name (optional — triggers S3 mode)                           |
 | RAILWAY_S3_ACCESS_KEY_ID     | Railway S3 access key (optional)                                               |
 | RAILWAY_S3_SECRET_ACCESS_KEY | Railway S3 secret key (optional)                                               |
+| MANAGER_BACKEND_MODE         | `admin`, `mock`, or `strapi`; set `admin` for the Admin backend migration      |
 | MANAGER_DATA_MODE            | `live` or `mock` (default `live`)                                              |
 | MANAGER_MOCK_SESSION_SECRET  | Required in `mock` mode to sign Manager-issued mock sessions                   |
 | MANAGER_MOCK_DATA_PATH       | Optional mock runtime store path (default `.tmp/mock-cms/store.json`)          |
@@ -219,9 +220,31 @@ where admin's first call 401s.
 | WORKFLOW_API_KEY             | workflow API key (optional, for production durability)                         |
 | MANAGER_API_KEY              | API key for external clients (optional in dev)                                 |
 | ADMIN_GRAPHQL_URL            | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)             |
+| ADMIN_MANAGER_API_KEY        | Required in `admin` mode; must match admin's `WORKFLOW_API_KEYS`               |
 | ADMIN_EMBED_TRIGGER_API_KEY  | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`                 |
 | ADMIN_TRIGGER_API_KEYS       | CSV of bearer keys admin can use to call `/api/admin-trigger/*` (feat-119 PR2) |
+| AGENTIC_BASE_URL             | Agentic runtime origin for Manager-to-Agentic service routes                   |
+| AGENTIC_SERVICE_API_KEY      | Service bearer for Manager-to-Agentic runtime calls                            |
+| MANAGER_AGENTIC_API_KEY      | Bearer accepted by Manager for Agentic-to-Manager callbacks                    |
+| AGENTIC_STUDIO_ORIGIN        | Private `agentic-studio` origin proxied by `/api/agentic-studio/*`             |
+| AGENTIC_OPERATOR_API_KEY     | Operator bearer Manager injects only server-side for proxied Studio calls      |
 | NEXT_PUBLIC_WATCH_URL        | Public video watch URL (optional)                                              |
+
+## Agentic Studio access
+
+`/dashboard/agentic-studio` embeds Mastra Studio through Manager. The browser
+must only see Manager URLs; it must not receive `AGENTIC_OPERATOR_API_KEY`,
+`AGENTIC_STUDIO_ORIGIN`, Railway private DNS, or the public Agentic runtime
+origin. The proxy route `/api/agentic-studio/[[...path]]` validates the
+interactive `strapi-jwt` session with the `Manager` role, rejects Manager API-key
+access, allowlists outbound headers, injects `AGENTIC_OPERATOR_API_KEY`, and
+fails closed when Studio config would make the browser bypass Manager.
+
+Production `AGENTIC_STUDIO_ORIGIN` must point at Railway private networking,
+for example `http://agentic-studio.railway.internal:<port>`. Existing Manager
+runtime flows such as automation dry-runs and subtitle enrichment continue to use
+`AGENTIC_BASE_URL` plus `AGENTIC_SERVICE_API_KEY`; they must not call the Studio
+service.
 
 ## Standalone smoke
 

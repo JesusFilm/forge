@@ -8062,6 +8062,19 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
   justify-content: flex-start;
 }
 
+.studio-page--agentic-studio {
+  min-height: calc(100vh - 112px);
+  padding: 0;
+}
+
+.agentic-studio-frame {
+  display: block;
+  width: 100%;
+  min-height: calc(100vh - 112px);
+  border: 0;
+  background: var(--ds-surface);
+}
+
 .studio-page--job-detail .jobs-review-card,
 .studio-page--job-detail .jobs-error-card,
 .studio-page--job-detail .jobs-summary-card {
