@@ -267,6 +267,83 @@ describe("proxyAgenticStudioRequest", () => {
     expect(fetch).toHaveBeenCalledOnce()
   })
 
+  it("allows mutating iframe requests with same-origin fetch metadata", async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response("ok", { status: 200 }))
+
+    const response = await proxyAgenticStudioRequest(
+      request("/api/agentic-studio/api/agents", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "sec-fetch-site": "same-origin",
+        },
+        body: JSON.stringify({ name: "Agent" }),
+      }),
+      { path: ["api", "agents"] },
+    )
+
+    expect(response.status).toBe(200)
+    expect(fetch).toHaveBeenCalledOnce()
+  })
+
+  it("allows mutating Studio iframe requests with the proxy-scoped browser header", async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response("ok", { status: 200 }))
+
+    const response = await proxyAgenticStudioRequest(
+      request("/api/agentic-studio/api/agents", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-agentic-studio-request": "1",
+        },
+        body: JSON.stringify({ name: "Agent" }),
+      }),
+      { path: ["api", "agents"] },
+    )
+
+    expect(response.status).toBe(200)
+    const init = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit
+    expect(new Headers(init.headers).get("x-agentic-studio-request")).toBeNull()
+  })
+
+  it("allows mutating Studio iframe requests with the signed frame token", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response("<html><head></head><body>Studio</body></html>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      }),
+    )
+
+    const htmlResponse = await proxyAgenticStudioRequest(request(), {
+      path: [],
+    })
+    const token = (await htmlResponse.text()).match(
+      /_agentic_studio_token";const t="([^"]+)/,
+    )?.[1]
+    expect(token).toBeTruthy()
+
+    vi.mocked(fetch).mockReset()
+    vi.mocked(fetch).mockResolvedValue(new Response("ok", { status: 200 }))
+
+    const response = await proxyAgenticStudioRequest(
+      new Request(
+        `https://manager.test/api/agentic-studio/api/agents?_agentic_studio_token=${token}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ name: "Agent" }),
+        },
+      ),
+      { path: ["api", "agents"] },
+    )
+
+    expect(response.status).toBe(200)
+    expect(fetch).toHaveBeenCalledWith(
+      "http://agentic-studio.railway.internal:4111/api/agents",
+      expect.any(Object),
+    )
+  })
+
   it("rewrites known public runtime references in Studio config", async () => {
     vi.mocked(fetch).mockResolvedValue(
       new Response(
@@ -316,6 +393,24 @@ describe("proxyAgenticStudioRequest", () => {
     await expect(response.text()).resolves.toContain(
       'fetch("/api/agentic-studio/api/agents")',
     )
+  })
+
+  it("injects a fetch wrapper and signed frame token into Studio HTML for mutating proxy calls", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response("<html><head></head><body>Studio</body></html>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      }),
+    )
+
+    const response = await proxyAgenticStudioRequest(request(), {
+      path: ["index.html"],
+    })
+
+    const html = await response.text()
+    expect(html).toContain("x-agentic-studio-request")
+    expect(html).toContain("_agentic_studio_token")
+    expect(html).toContain("window.fetch")
   })
 
   it("rewrites safe Studio redirects back through the Manager proxy", async () => {

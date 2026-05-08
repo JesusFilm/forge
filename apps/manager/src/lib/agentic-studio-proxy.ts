@@ -1,3 +1,4 @@
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto"
 import { NextResponse } from "next/server"
 import { env } from "@/config/env"
 import { verifyManagerSession } from "@/lib/auth"
@@ -9,6 +10,9 @@ type AgenticStudioRouteParams = {
 type AgenticStudioAuthResult = { ok: true } | { ok: false; response: Response }
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"])
+const STUDIO_BROWSER_REQUEST_HEADER = "x-agentic-studio-request"
+const STUDIO_FRAME_TOKEN_PARAM = "_agentic_studio_token"
+const STUDIO_FRAME_TOKEN_TTL_MS = 15 * 60 * 1000
 const SAFE_REQUEST_HEADERS = new Set([
   "accept",
   "accept-language",
@@ -54,6 +58,52 @@ function forbiddenSecretPattern(text: string): boolean {
   ].some((secret) => secret && text.includes(secret))
 }
 
+function signStudioFrameTokenPayload(payload: string): string | null {
+  if (!env.AGENTIC_OPERATOR_API_KEY) {
+    return null
+  }
+
+  return createHmac("sha256", env.AGENTIC_OPERATOR_API_KEY)
+    .update(payload)
+    .digest("base64url")
+}
+
+function createStudioFrameToken(): string | null {
+  const expiresAt = Date.now() + STUDIO_FRAME_TOKEN_TTL_MS
+  const nonce = randomUUID()
+  const payload = `${expiresAt}.${nonce}`
+  const signature = signStudioFrameTokenPayload(payload)
+
+  return signature ? `v1.${payload}.${signature}` : null
+}
+
+function verifyStudioFrameToken(token: string | null): boolean {
+  if (!token) {
+    return false
+  }
+
+  const [version, expiresAt, nonce, signature] = token.split(".")
+  if (version !== "v1" || !expiresAt || !nonce || !signature) {
+    return false
+  }
+
+  if (Number(expiresAt) < Date.now()) {
+    return false
+  }
+
+  const expected = signStudioFrameTokenPayload(`${expiresAt}.${nonce}`)
+  if (!expected) {
+    return false
+  }
+
+  const actualBuffer = Buffer.from(signature)
+  const expectedBuffer = Buffer.from(expected)
+  return (
+    actualBuffer.length === expectedBuffer.length &&
+    timingSafeEqual(actualBuffer, expectedBuffer)
+  )
+}
+
 function json(status: number, body: Record<string, unknown>): Response {
   return NextResponse.json(body, { status })
 }
@@ -85,8 +135,24 @@ function isTrustedBrowserOrigin(request: Request): boolean {
   const managerOrigin = getManagerOrigin(request)
   const origin = request.headers.get("origin")
 
+  if (
+    verifyStudioFrameToken(
+      new URL(request.url).searchParams.get(STUDIO_FRAME_TOKEN_PARAM),
+    )
+  ) {
+    return true
+  }
+
+  if (request.headers.get(STUDIO_BROWSER_REQUEST_HEADER) === "1") {
+    return true
+  }
+
   if (origin) {
     return origin === managerOrigin
+  }
+
+  if (request.headers.get("sec-fetch-site") === "same-origin") {
+    return true
   }
 
   const referer = request.headers.get("referer")
@@ -114,6 +180,7 @@ function buildUpstreamUrl(
   const basePath = upstream.pathname.replace(/\/$/, "")
   upstream.pathname = `${basePath}/${encodedPath}`.replace(/\/+$/, "") || "/"
   upstream.search = new URL(request.url).search
+  upstream.searchParams.delete(STUDIO_FRAME_TOKEN_PARAM)
   return upstream.toString()
 }
 
@@ -179,6 +246,19 @@ function rewriteStudioBody(body: string): string {
     )
 }
 
+function injectStudioBrowserRequestToken(
+  body: string,
+  frameToken: string,
+): string {
+  const patch = `<script>(()=>{const h="${STUDIO_BROWSER_REQUEST_HEADER}";const q="${STUDIO_FRAME_TOKEN_PARAM}";const t="${frameToken}";const f=window.fetch.bind(window);window.fetch=(i,n={})=>{const u=typeof i==="string"?i:i instanceof URL?i.href:i&&"url"in i?i.url:"";const target=new URL(u||location.href,location.href);if(target.pathname.startsWith("/api/agentic-studio/")){target.searchParams.set(q,t);const headers=new Headers(n.headers||i.headers||{});headers.set(h,"1");n={...n,headers,credentials:"include"};return f(target.toString(),n)}return f(i,n)}})();</script>`
+
+  if (body.includes("</head>")) {
+    return body.replace("</head>", `${patch}</head>`)
+  }
+
+  return `${patch}${body}`
+}
+
 function rewriteSafeRedirectLocation(
   location: string,
   upstreamUrl: string,
@@ -211,6 +291,11 @@ async function buildSafeResponse(
     }
 
     if (headers.get("content-type")?.includes("text/html")) {
+      const frameToken = createStudioFrameToken()
+      if (!frameToken) {
+        return json(503, { error: "Agentic Studio proxy is not configured" })
+      }
+
       headers.set(
         "content-security-policy",
         [
@@ -224,6 +309,15 @@ async function buildSafeResponse(
           "base-uri 'self'",
           "form-action 'self'",
         ].join("; "),
+      )
+
+      return new Response(
+        injectStudioBrowserRequestToken(rewritten, frameToken),
+        {
+          status: upstreamResponse.status,
+          statusText: upstreamResponse.statusText,
+          headers,
+        },
       )
     }
 
@@ -244,6 +338,14 @@ async function buildSafeResponse(
 export async function authorizeAgenticStudioSession(
   request: Request,
 ): Promise<AgenticStudioAuthResult> {
+  if (
+    verifyStudioFrameToken(
+      new URL(request.url).searchParams.get(STUDIO_FRAME_TOKEN_PARAM),
+    )
+  ) {
+    return { ok: true }
+  }
+
   const jwt = getCookieValue(request, "strapi-jwt")
   if (!jwt) {
     return {
