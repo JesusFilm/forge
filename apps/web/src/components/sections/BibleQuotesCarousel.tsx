@@ -60,7 +60,11 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
                 )}
               </CarouselItem>
             ))}
-            <CarouselItem className="basis-auto pl-0" aria-hidden="true">
+            <CarouselItem
+              className="basis-auto pl-0"
+              aria-hidden="true"
+              tabIndex={-1}
+            >
               <div className={CAROUSEL_END_SPACER} />
             </CarouselItem>
           </CarouselContent>

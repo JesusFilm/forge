@@ -18,7 +18,10 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { BibleQuotesSection } from "@/components/watch/BibleQuotesSection"
+import {
+  BibleQuotesSection,
+  shouldEnableDrag,
+} from "@/components/watch/BibleQuotesSection"
 import type { WatchBibleQuotesBlock } from "@/lib/content"
 
 let container: HTMLDivElement
@@ -64,7 +67,7 @@ function makeCitation(
       documentId: overrides.bibleBookDocumentId ?? "bb-galatians",
       name: overrides.bookName === undefined ? "Galatians" : overrides.bookName,
     },
-  } as never
+  } satisfies Citation
 }
 
 describe("BibleQuotesSection — visibility", () => {
@@ -177,17 +180,20 @@ describe("BibleQuotesSection — citations + promo", () => {
     expect(refs[0]?.textContent).toBe("Galatians 2:20")
     expect(refs[1]?.textContent).toBe("Galatians 3:1-5")
 
-    // The promo card is appended last as an <li>.
-    const list = container.querySelector(
-      '[data-testid="watch-bible-quotes-list"]',
+    // The promo card is rendered as a slide; a trailing aria-hidden spacer
+    // mirrors the carousel's left bleed padding.
+    const promo = container.querySelector(
+      '[data-testid="watch-bible-quotes-promo"]',
     )
-    expect(list?.tagName.toLowerCase()).toBe("ul")
-    const lastChild = list!.lastElementChild
-    expect(lastChild?.getAttribute("data-testid")).toBe(
-      "watch-bible-quotes-promo",
+    expect(promo).not.toBeNull()
+    expect(promo!.textContent).toContain("Free Resources")
+    expect(promo!.textContent).toContain("Join Our Bible Study")
+    const spacer = container.querySelector(
+      '[data-testid="watch-bible-quotes-end-spacer"]',
     )
-    expect(lastChild?.textContent).toContain("Free Resources")
-    expect(lastChild?.textContent).toContain("Join Our Bible Study")
+    expect(spacer).not.toBeNull()
+    expect(spacer!.getAttribute("aria-hidden")).toBe("true")
+    expect(spacer!.getAttribute("tabindex")).toBe("-1")
   })
 
   it("renders the cross-chapter en-dash form via formatCitation()", () => {
@@ -257,5 +263,20 @@ describe("BibleQuotesSection — Share button", () => {
     })
 
     expect(onShareClick).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("BibleQuotesSection — drag predicate", () => {
+  // jsdom's zero-width layout means scrollSnapList() always returns []
+  // through the rendered carousel, so the drag-enable branch is unreachable
+  // via component tests. Unit-test the predicate directly.
+  it("returns false when zero or one snap point exists", () => {
+    expect(shouldEnableDrag({ scrollSnapList: () => [] })).toBe(false)
+    expect(shouldEnableDrag({ scrollSnapList: () => [0] })).toBe(false)
+  })
+
+  it("returns true when two or more snap points exist", () => {
+    expect(shouldEnableDrag({ scrollSnapList: () => [0, 1] })).toBe(true)
+    expect(shouldEnableDrag({ scrollSnapList: () => [0, 1, 2, 3] })).toBe(true)
   })
 })

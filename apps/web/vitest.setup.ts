@@ -23,3 +23,45 @@ if (!globalThis.cancelAnimationFrame) {
   globalThis.cancelAnimationFrame = ((handle: number) =>
     clearTimeout(handle)) as typeof cancelAnimationFrame
 }
+
+// Embla (used by Carousel) reads matchMedia / IntersectionObserver /
+// ResizeObserver during init. jsdom omits all three; the stubs below let
+// the carousel mount without throwing in `// @vitest-environment jsdom`
+// tests. node-environment tests retain the missing globals — the guards
+// only install when nothing is already there.
+if (typeof window !== "undefined" && !window.matchMedia) {
+  window.matchMedia = (query: string) =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList
+}
+
+if (typeof globalThis !== "undefined" && !globalThis.IntersectionObserver) {
+  class MockIntersectionObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords(): IntersectionObserverEntry[] {
+      return []
+    }
+  }
+  ;(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver =
+    MockIntersectionObserver as unknown as typeof IntersectionObserver
+}
+
+if (typeof globalThis !== "undefined" && !globalThis.ResizeObserver) {
+  class MockResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver =
+    MockResizeObserver as unknown as typeof ResizeObserver
+}
