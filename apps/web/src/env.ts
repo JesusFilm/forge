@@ -101,12 +101,19 @@ export const env = createEnv({
     // no-op. Schema-registered here to give boot-time visibility and
     // typo protection. Optional: absence is the production default.
     FORGE_PARITY_DEBUG: z.enum(["0", "1"]).default("0"),
-    // U5 — admin GraphQL URL for the dual-read shadow fetch. Required (boot
-    // fails fast if absent). Host allowlist is warn-only — emits a visible
-    // boot warning on misconfigured hosts but does NOT brick boot, so
-    // legitimate-but-unknown deployment topologies (custom domains, branch
-    // URLs) can still stand up. Mirrors NEXT_PUBLIC_CANONICAL_ORIGIN's
-    // allowlist shape.
+    // U5 — admin GraphQL URL for the dual-read shadow fetch. OPTIONAL so
+    // the default `FORGE_CONTENT_API=strapi` mode (byte-identical to main)
+    // doesn't require any new env var to be set in Railway. The admin
+    // Apollo client only fires when an operator flips FORGE_CONTENT_API
+    // to `dual-read`; if the URL is unset at that point, the fetch fails
+    // and the bridge emits forge.parity.harness_error subkind
+    // `admin_fetch_error` — visible in logs, operator notices and sets
+    // the URL. Refines still run when a value IS provided.
+    //
+    // Host allowlist is warn-only — emits a visible boot warning on
+    // misconfigured hosts but does NOT brick boot, so legitimate-but-
+    // unknown deployment topologies (custom domains, branch URLs) can
+    // still stand up. Mirrors NEXT_PUBLIC_CANONICAL_ORIGIN's shape.
     ADMIN_GRAPHQL_URL: z
       .url()
       // Hard-reject known non-GraphQL hosts (auth.jesusfilm.org, etc.) —
@@ -138,7 +145,8 @@ export const env = createEnv({
           ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES,
         ),
         { message: "unreachable" },
-      ),
+      )
+      .optional(),
   },
   client: {
     NEXT_PUBLIC_GRAPHQL_URL: z.url(),

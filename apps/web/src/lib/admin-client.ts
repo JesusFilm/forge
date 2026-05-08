@@ -35,14 +35,18 @@ const timeoutFetch: typeof fetch = (input, init) => {
   return fetch(input, { ...init, signal })
 }
 
-// `env.ADMIN_GRAPHQL_URL` is server-only; reading it from a client bundle
-// throws "Attempted to access a server-side environment variable on the
-// client." Mirror client.ts's `typeof window` guard so this module can be
-// imported transitively by client components without throwing at module
-// load. The URL fallback empty string is unreachable from a real query
-// path because dual-read mode only runs server-side; on the client the
-// admin client object exists but is never invoked.
-const uri = typeof window === "undefined" ? env.ADMIN_GRAPHQL_URL : ""
+// `env.ADMIN_GRAPHQL_URL` is server-only AND optional (so default
+// `FORGE_CONTENT_API=strapi` mode doesn't require any new env var to be
+// set in Railway). Mirror client.ts's `typeof window` guard so this
+// module can be imported transitively by client components without
+// throwing at module load. Empty-string fallback is reached when:
+//   - We're on the client (admin client never invoked there anyway), OR
+//   - We're on the server but ADMIN_GRAPHQL_URL is unset (operator
+//     hasn't configured it yet — admin queries fail with a non-URL fetch
+//     error, caught by fetchAdminSlugExperience and surfaced as a
+//     forge.parity.harness_error subkind admin_fetch_error in the
+//     parity log so the operator notices and configures the var).
+const uri = typeof window === "undefined" ? (env.ADMIN_GRAPHQL_URL ?? "") : ""
 
 const adminClient = new ApolloClient({
   link: new HttpLink({
