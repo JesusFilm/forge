@@ -3,63 +3,22 @@
  *
  * U6 — SiblingCarousel tests.
  *
- * jsdom has no `matchMedia` and embla calls it during init, so we polyfill
- * before importing the component. We also mock `next/navigation`'s
- * `useParams` to feed a stable `currentLocale` and `next/image` to a plain
- * `<img>` so we don't need a Next.js runtime.
+ * Embla browser-API polyfills are in vitest.setup.ts. We mock
+ * `next/navigation`'s `useParams` to feed a stable `currentLocale` and
+ * `next/image` to a plain `<img>` so we don't need a Next.js runtime.
  *
- * Embla itself is not mocked — we let it run inside jsdom (with the
- * matchMedia shim) so we can spy on the real `scrollTo` it installs on the
- * captured `setApi` instance, verifying U6's auto-scroll-on-mount behavior.
+ * Embla itself is not mocked — we let it run inside jsdom so we can spy on
+ * the real `scrollTo` it installs on the captured `setApi` instance,
+ * verifying U6's auto-scroll-on-mount behavior.
  */
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-// Polyfill the browser APIs embla touches during init. jsdom omits all
-// three; without these the carousel throws synchronously inside the first
-// useEffect.
-if (typeof window !== "undefined" && !window.matchMedia) {
-  // Minimal stub matching the shape embla reads.
-  window.matchMedia = (query: string) =>
-    ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: () => {},
-      removeListener: () => {},
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      dispatchEvent: () => false,
-    }) as unknown as MediaQueryList
-}
-
-if (typeof globalThis !== "undefined" && !globalThis.IntersectionObserver) {
-  // Embla uses IntersectionObserver to track which slides are in view; jsdom
-  // doesn't ship one. The no-op stub is enough for unit tests — visibility
-  // tracking is out of scope here.
-  class MockIntersectionObserver {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-    takeRecords(): IntersectionObserverEntry[] {
-      return []
-    }
-  }
-  ;(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver =
-    MockIntersectionObserver as unknown as typeof IntersectionObserver
-}
-
-if (typeof globalThis !== "undefined" && !globalThis.ResizeObserver) {
-  class MockResizeObserver {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  }
-  ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver =
-    MockResizeObserver as unknown as typeof ResizeObserver
-}
+// Embla browser-API polyfills (matchMedia / IntersectionObserver /
+// ResizeObserver) live in vitest.setup.ts so every Embla-backed test inherits
+// them automatically.
 
 const { useParamsMock } = vi.hoisted(() => ({
   // The component reads `params?.locale`, so a loose return type matches the

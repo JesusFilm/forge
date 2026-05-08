@@ -8,7 +8,7 @@ export const CONTENT_MAX_WIDTH = "max-w-[1920px]"
 export const CONTENT_WIDTH_ALIGN_CLASSES = `mx-auto w-full ${CONTENT_MAX_WIDTH}`
 
 /** Content area: same width + horizontal padding for inner content. */
-export const CONTENT_WIDTH_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} px-4 sm:px-8 lg:px-12 xl:px-16 2xl:px-24`
+export const CONTENT_WIDTH_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12`
 
 /**
  * Carousel bleed: lets a carousel inside a Section break out of the content
@@ -20,13 +20,13 @@ export const CONTENT_WIDTH_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} px-4 sm:px-
  * CarouselContent so the first slide starts at the content edge.
  */
 export const CAROUSEL_BLEED_CLASSES =
-  "-mx-4 sm:-mx-8 lg:-mx-12 xl:-mx-16 2xl:-mx-24"
+  "-mx-4 sm:-mx-6 lg:-mx-8 xl:-mx-10 2xl:-mx-12"
 export const CAROUSEL_CONTENT_PADDING =
-  "pl-4 sm:pl-8 lg:pl-12 xl:pl-16 2xl:pl-24"
+  "pl-4 sm:pl-6 lg:pl-8 xl:pl-10 2xl:pl-12"
 
 /**
  * Width classes for the trailing spacer slide in a carousel.
  * Embla's containScroll trims CSS padding-right, so we add a real
  * CarouselItem as the last slide to mirror the left content padding.
  */
-export const CAROUSEL_END_SPACER = "w-4 sm:w-8 lg:w-12 xl:w-16 2xl:w-24"
+export const CAROUSEL_END_SPACER = "w-4 sm:w-6 lg:w-8 xl:w-10 2xl:w-12"
