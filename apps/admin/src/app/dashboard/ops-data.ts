@@ -10,6 +10,7 @@ import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { createServices } from "@/services"
 import { generateExperienceEmbedding } from "@/services/embeddings.service"
+import { DEFAULT_SYNC_LOCK_STALE_AFTER_MS } from "@/services/core-sync/lock"
 import { getAllWatermarks } from "@/services/core-sync/watermark"
 import {
   mediaAssetDownloadUrl,
@@ -209,6 +210,12 @@ type WorkflowRunRow = {
   skippedLock: boolean | null
 }
 
+type CoreSyncLockView = {
+  heldBy: string | null
+  acquiredAt: Date | null
+  updatedAt: Date
+}
+
 function isMissingTableError(error: unknown) {
   return (
     typeof error === "object" &&
@@ -239,6 +246,13 @@ function formatDateTime(value: Date) {
     hour12: false,
     timeZone: "UTC",
   }).format(value)
+}
+
+function isCoreSyncLockActive(lock: CoreSyncLockView | null) {
+  if (!lock?.heldBy) return false
+  return (
+    Date.now() - lock.updatedAt.getTime() <= DEFAULT_SYNC_LOCK_STALE_AFTER_MS
+  )
 }
 
 function formatLag(value: Date | string | null | undefined) {
@@ -787,6 +801,7 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
     ),
     getWorkflowRunRows(3),
   ])
+  const lockActive = isCoreSyncLockActive(lock)
 
   const matrix = syncRows.map((row) => {
     const stats = parseSyncStats(row.stats)
@@ -833,7 +848,7 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
       : [
           {
             title: "No active sync incidents",
-            meta: lock?.heldBy ? `lock held by ${lock.heldBy}` : "lock clear",
+            meta: lockActive ? `lock held by ${lock?.heldBy}` : "lock clear",
             detail: "No synced data sets are reporting issues.",
             statusLabel: "Healthy",
             statusTone: "success" as const,
@@ -859,7 +874,7 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
       },
       {
         label: "Lock State",
-        value: lock?.heldBy ? "HELD" : "CLEAR",
+        value: lockActive ? "HELD" : "CLEAR",
         footer: "CORE_SYNC_LOCK",
       },
       {
@@ -888,10 +903,12 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
     telemetry: [
       {
         label: "Lock Holder",
-        value: lock?.heldBy ? "ACTIVE" : "IDLE",
-        detail: lock?.heldBy
+        value: lockActive ? "ACTIVE" : "IDLE",
+        detail: lockActive
           ? "A sync run is currently holding the DB-backed lock."
-          : "No process currently holds the sync lock.",
+          : lock?.heldBy
+            ? "The previous sync lock is stale and can be reclaimed by the next run."
+            : "No process currently holds the sync lock.",
       },
       {
         label: "Data Sets With Errors",
@@ -923,6 +940,7 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
       loadWorkflowRuntimeRuns(10),
       loadWorkflowWorkerStatusRows(),
     ])
+  const lockActive = isCoreSyncLockActive(lock)
   const ledgerByRuntimeRunId = new Map(
     workflowRows
       .filter((row) => row.runtimeRunId)
@@ -959,7 +977,7 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
       statusLabel: row.status,
       statusTone: statusToneForWorkflowStatus(row.status),
     })),
-    ...(lock?.heldBy
+    ...(lockActive && lock?.heldBy
       ? [
           {
             title: "core-sync lock holder",
@@ -980,7 +998,7 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
   const dataSetErrorCount = syncRows.filter(
     (row) => parseSyncStats(row.stats).errors > 0,
   ).length
-  const activeCount = statusCounts.active + (lock?.heldBy ? 1 : 0)
+  const activeCount = statusCounts.active + (lockActive ? 1 : 0)
   const failedCount = statusCounts.failed + dataSetErrorCount
 
   return {
@@ -1055,7 +1073,7 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
         detail: "Request signing for workflow endpoints.",
       },
     ],
-    syncLockHeld: Boolean(lock?.heldBy),
+    syncLockHeld: lockActive,
   }
 }
 

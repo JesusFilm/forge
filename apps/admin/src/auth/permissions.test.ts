@@ -59,7 +59,6 @@ describe("hasPermission — tier-based gate", () => {
       { key: "read:experiences", role: "PUBLIC", expected: false },
       { key: "read:videos", role: "PUBLIC", expected: false },
       { key: "read:media-assets", role: "PUBLIC", expected: false },
-      { key: "access:manager", role: "PUBLIC", expected: false },
       { key: "write:experiences", role: "PUBLIC", expected: false },
       { key: "write:media-assets", role: "PUBLIC", expected: false },
       { key: "admin:all", role: "PUBLIC", expected: false },
@@ -69,7 +68,6 @@ describe("hasPermission — tier-based gate", () => {
       { key: "read:experiences", role: "VIEWER", expected: true },
       { key: "read:videos", role: "VIEWER", expected: true },
       { key: "read:media-assets", role: "VIEWER", expected: false },
-      { key: "access:manager", role: "VIEWER", expected: true },
       { key: "write:experiences", role: "VIEWER", expected: false },
       { key: "write:media-assets", role: "VIEWER", expected: false },
       { key: "publish:experiences", role: "VIEWER", expected: false },
@@ -80,7 +78,6 @@ describe("hasPermission — tier-based gate", () => {
       { key: "publish:experiences", role: "EDITOR", expected: true },
       { key: "archive:experiences", role: "EDITOR", expected: true },
       { key: "read:media-assets", role: "EDITOR", expected: true },
-      { key: "access:manager", role: "EDITOR", expected: true },
       { key: "write:media-assets", role: "EDITOR", expected: true },
       { key: "delete:media-assets", role: "EDITOR", expected: false },
       { key: "write:videos", role: "EDITOR", expected: false },
@@ -92,7 +89,6 @@ describe("hasPermission — tier-based gate", () => {
       { key: "write:experiences", role: "ADMIN", expected: true },
       { key: "write:videos", role: "ADMIN", expected: true },
       { key: "read:media-assets", role: "ADMIN", expected: true },
-      { key: "access:manager", role: "ADMIN", expected: true },
       { key: "write:media-assets", role: "ADMIN", expected: true },
       { key: "delete:media-assets", role: "ADMIN", expected: true },
       { key: "publish:experiences", role: "ADMIN", expected: true },
@@ -109,7 +105,6 @@ describe("hasPermission — tier-based gate", () => {
       { key: "read:experiences", role: "SYSTEM", expected: false },
       { key: "write:experiences", role: "SYSTEM", expected: false },
       { key: "read:media-assets", role: "SYSTEM", expected: false },
-      { key: "access:manager", role: "SYSTEM", expected: false },
       { key: "write:media-assets", role: "SYSTEM", expected: false },
       { key: "system:write-derived", role: "SYSTEM", expected: true },
       { key: "system:trigger-workflow", role: "SYSTEM", expected: false },
@@ -354,6 +349,7 @@ describe("permission matrix completeness", () => {
       "write:scene-embeddings",
       "write:transcript-embeddings",
       "write:experience-content-dump",
+      "write:manager-enrichment-trigger",
       "delete:media-assets",
       "publish:experiences",
       "archive:experiences",
@@ -367,6 +363,22 @@ describe("permission matrix completeness", () => {
         expect(() => hasPermission(p, key)).not.toThrow()
       }
     }
+  })
+
+  it("write:manager-enrichment-trigger is ADMIN-only at the editorial-tier ladder", () => {
+    expect(hasPermission(ADMIN, "write:manager-enrichment-trigger")).toBe(true)
+    expect(
+      hasPermission(EDITOR_ALICE, "write:manager-enrichment-trigger"),
+    ).toBe(false)
+    expect(hasPermission(VIEWER, "write:manager-enrichment-trigger")).toBe(
+      false,
+    )
+    expect(hasPermission(PUBLIC_USER, "write:manager-enrichment-trigger")).toBe(
+      false,
+    )
+    expect(hasPermission(SYSTEM, "write:manager-enrichment-trigger")).toBe(
+      false,
+    )
   })
 
   it("write:transcript-embeddings is ADMIN-only", () => {
@@ -413,8 +425,10 @@ describe("permission matrix completeness", () => {
       ).toBe(true)
     })
 
-    it("satisfies Manager backend access for service-to-service calls", () => {
-      expect(hasPermission(WORKFLOW_TRIGGER, "access:manager")).toBe(true)
+    it("satisfies write:manager-enrichment-trigger (feat-119 PR2 CLI path)", () => {
+      expect(
+        hasPermission(WORKFLOW_TRIGGER, "write:manager-enrichment-trigger"),
+      ).toBe(true)
     })
 
     it("does NOT satisfy any permission key outside the narrow allowlist", () => {
@@ -425,22 +439,23 @@ describe("permission matrix completeness", () => {
       // key is added to WORKFLOW_TRIGGER_PERMISSIONS without updating
       // the allowedKeys list.
       const allowedKeys: ReadonlySet<PermissionKey> = new Set([
-        "access:manager",
         "write:scene-embeddings",
         "write:transcript-embeddings",
+        "write:manager-enrichment-trigger",
       ])
       const allKeys: Record<PermissionKey, true> = {
         "read:experiences": true,
         "read:videos": true,
         "read:reference": true,
         "read:media-assets": true,
-        "access:manager": true,
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
         "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
         "write:experience-content-dump": true,
+        "write:manager-enrichment-trigger": true,
+        "access:manager": true,
         "delete:media-assets": true,
         "publish:experiences": true,
         "archive:experiences": true,

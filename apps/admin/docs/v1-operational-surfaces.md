@@ -15,8 +15,9 @@ version of `apps/admin`.
   actions, locale switching, and revision/audit visibility for experience
   locales.
 - `/dashboard/videos` reads real video catalog rows and associated dub coverage.
-- `/dashboard/workflows` shows persisted sync/workflow-adjacent state and lets
-  an authorized operator trigger a delta sync.
+- `/dashboard/workflows` lists real Workflow runtime runs; each
+  `/dashboard/workflows/[runId]` route embeds the `@workflow/web-shared`
+  trace/detail UI for runtime events.
 - `/dashboard/embeddings` shows real embedding coverage and lets an authorized
   operator trigger the experience-embedding workflow for a locale id.
 - `/dashboard/search` performs a real text-to-vector semantic search when an
@@ -31,8 +32,9 @@ version of `apps/admin`.
 ## What Is Intentionally Limited In V1
 
 - Several routes are read-only operational views rather than full CRUD UIs.
-- Workflow history is inferred from persisted sync locks and watermarks because
-  this branch does not yet persist a richer workflow-run timeline.
+- Workflow run inspection uses the Workflow runtime event log. Forge-owned
+  trigger actions still live on their domain surfaces, such as Core Sync on
+  `/dashboard/system-status`.
 - Semantic search requires `OPENROUTER_API_KEY` or `OPENAI_API_KEY`. Without one
   of those, the page stays usable but reports the missing provider explicitly.
 

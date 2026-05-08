@@ -9,8 +9,18 @@
     "plugins": [
       {
         "name": "gql.tada/ts-plugin",
-        "schema": "../../apps/cms/schema.graphql",
-        "tadaOutputLocation": "./src/graphql-env.d.ts"
+        "schemas": [
+          {
+            "name": "strapi",
+            "schema": "../../apps/cms/schema.graphql",
+            "tadaOutputLocation": "./src/graphql-env.d.ts"
+          },
+          {
+            "name": "admin",
+            "schema": "../../apps/admin/schema.graphql",
+            "tadaOutputLocation": "./src/admin-graphql-env.d.ts"
+          }
+        ]
       }
     ]
   },

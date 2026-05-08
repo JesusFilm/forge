@@ -90,7 +90,8 @@ export function AdminShell({
   const isFullCanvasRoute =
     (pathname.startsWith("/dashboard/experiences/") &&
       pathname !== "/dashboard/experiences") ||
-    pathname.startsWith("/dashboard/media")
+    pathname.startsWith("/dashboard/media") ||
+    pathname.startsWith("/dashboard/workflows/")
   const visibleNavItems = adminNavItems.filter((item) =>
     isNavItemVisible(principal.role, item),
   )

@@ -361,6 +361,34 @@ vi.mock("@/app/dashboard/ops-data", () => ({
   })),
 }))
 
+vi.mock("@/services/workflow-runtime.service", () => ({
+  loadWorkflowRuntimeRuns: vi.fn(async () => [
+    {
+      runId: "wrun_123",
+      workflowName: "workflow//./src/workflows/coreSync//runCoreSync",
+      displayName: "runCoreSync",
+      status: "completed",
+      createdAt: new Date("2023-10-24T14:02:00.000Z"),
+      startedAt: new Date("2023-10-24T14:02:01.000Z"),
+      completedAt: new Date("2023-10-24T14:02:05.000Z"),
+      stepCount: 2,
+      eventCount: 5,
+    },
+  ]),
+}))
+
+vi.mock("@/services/workflow-worker-heartbeat.service", () => ({
+  loadWorkflowWorkerStatusRows: vi.fn(async () => [
+    {
+      id: "admin:test:123",
+      meta: "admin / started 1m ago",
+      detail: "Heartbeat 2s ago.",
+      statusLabel: "Online",
+      statusTone: "success",
+    },
+  ]),
+}))
+
 import DashboardPage from "./page"
 import SystemStatusPage from "./system-status/page"
 import ExperiencesPage from "./experiences/page"
@@ -451,7 +479,9 @@ describe("dashboard UI routes", () => {
       expect(page.html).toContain(page.title.replaceAll("&", "&amp;"))
     }
 
-    expect(pages[0].html).toContain("Recent Workflow Runs")
+    expect(pages[0].html).toContain("Workflow Runs")
+    expect(pages[0].html).toContain("/dashboard/workflows/wrun_123")
+    expect(pages[0].html).not.toContain("Recent Workflow Runs")
     expect(pages[6].html).toContain("Media Library")
     expect(pages[6].html).toContain("Library")
     expect(pages[6].html).toContain("Campaigns")

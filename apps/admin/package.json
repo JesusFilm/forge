@@ -2,6 +2,9 @@
   "name": "@forge/admin",
   "private": true,
   "version": "0.0.1",
+  "exports": {
+    "./domain/blocks": "./src/domain/blocks.ts"
+  },
   "scripts": {
     "dev": "next dev --port 3003",
     "build": "next build",
@@ -20,7 +23,11 @@
     "refresh:core-id-mapping": "tsx src/scripts/refresh-core-id-mapping.ts",
     "pull:mapping": "tsx src/scripts/pull-mapping-from-prod.ts",
     "run-embeds": "tsx src/scripts/run-embeds.ts",
+    "run-experience-dump": "tsx src/scripts/run-experience-dump.ts",
     "run-sync": "tsx src/scripts/run-sync.ts",
+    "schema:print": "tsx src/scripts/print-schema.ts",
+    "seed-easter": "tsx --env-file=.env src/scripts/seed-easter.ts",
+    "trigger-enrichment": "tsx src/scripts/trigger-enrichment.ts",
     "workflow:setup:postgres": "workflow-postgres-setup"
   },
   "dependencies": {
@@ -41,6 +48,8 @@
     "@prisma/client": "^6",
     "@t3-oss/env-nextjs": "^0.13.10",
     "@tailwindcss/postcss": "4.2.2",
+    "@workflow/web-shared": "4.1.5",
+    "@workflow/world": "4.1.1",
     "@workflow/world-postgres": "4.1.1",
     "better-auth": "1.6.2",
     "dataloader": "2.2.3",

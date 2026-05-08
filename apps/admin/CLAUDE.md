@@ -1549,6 +1549,65 @@ caller's blast radius; do so deliberately. See
 `ADMIN_EMBED_TRIGGER_API_KEY` on `forge-manager` Doppler. The key
 must match an entry in admin's `WORKFLOW_API_KEYS` CSV.
 
+## Triggering manager enrichment from admin (feat-119 PR2)
+
+Inverse direction of "Triggering embeds from manager" above. The
+operator runs PR1's `pnpm run-embeds --report-out=<path>`, reads
+the resulting `missingArtifacts: [{ assetId, coreId, kind }]` list,
+and either accepts the gap or asks manager to PRODUCE the missing
+upstream artifacts via the new outbound dispatch.
+
+**GraphQL mutation:** `triggerManagerEnrichment(assetIds: [Int!]!,
+coreIds: [String!]!, kind: String!): JSON!`. Gated by the new
+permission key `write:manager-enrichment-trigger` (ADMIN-only at
+the editorial-tier ladder; also on the WORKFLOW_TRIGGER allowlist
+so the CLI's bearer mint can invoke it).
+
+**Outbound HTTPS client:** `src/services/manager-trigger.service.ts`.
+POSTs to `${MANAGER_API_BASE_URL}/api/admin-trigger/${kind}` with
+`Authorization: Bearer ${MANAGER_TRIGGER_API_KEY}`. Returns a
+discriminated `ManagerEnrichmentDispatchResult[]` envelope:
+`STARTED | ALREADY_IN_FLIGHT | NOT_FOUND | VALIDATION_FAILED |
+DISPATCH_FAILED`. Never throws — synthesises a `DISPATCH_FAILED`
+entry per requested assetId on transport / auth / config failure.
+`AbortSignal.timeout(15_000)` ceiling.
+
+**CLI:** `pnpm --filter @forge/admin trigger-enrichment`. Two
+modes:
+
+- `--from-report=<path> --kind=scene-analysis|transcript`
+  (operator-pipeline mode — reads PR1's `missingArtifacts`
+  projection, filters by kind, dedupes by assetId).
+- `--asset-id=<n> --core-id=<id> --kind=...` (manual paired flags,
+  repeatable for multi-id triggers).
+
+The CLI prints one JSON line per outcome plus a summary line.
+Exits non-zero if any outcome is `NOT_FOUND | VALIDATION_FAILED |
+DISPATCH_FAILED`.
+
+**Env on `forge-admin` Doppler:**
+
+- `MANAGER_API_BASE_URL` — manager's base URL (e.g.
+  `https://manager.jesusfilm.org` in prod, `http://localhost:3002`
+  locally).
+- `MANAGER_TRIGGER_API_KEY` — must match an entry in manager's
+  `ADMIN_TRIGGER_API_KEYS` CSV. Rotation is symmetric to the
+  reverse direction (stage on receiver first, then deploy caller).
+
+**Wire format note:** the mutation accepts parallel `assetIds` /
+`coreIds` arrays paired positionally (rather than an input-object
+list). Both come from PR1's `missingArtifacts` projection, so the
+CLI populates them trivially. Strapi v5 GraphQL exposes no numeric
+`id` filter on `Video`, so manager looks up the cms record by
+`coreId`; `assetId` is the operator-facing identifier and the
+storage-key prefix manager uses when writing artifacts.
+
+See `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`
+for the full architecture, deviation rationale (in-memory
+idempotency vs EnrichmentJob; new transcript-only pipeline vs
+videoEnrichment.ts extraction), and Railway deploy-ordering
+invariant.
+
 ## Common pitfalls (grows with each unit)
 
 - **`apps/admin/railway.toml` is dead config — Railway only auto-discovers `railway.toml` at the repo root**, not in per-service subdirectories. Editing it does NOT change deploy behavior. The Railway dashboard is authoritative until "Config-as-code Path" is wired up. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.

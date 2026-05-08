@@ -8,8 +8,7 @@ start_date: "2026-05-08"
 duration: 2
 depends_on:
   - "feat-116"
-blocks:
-  - "feat-118"
+blocks: []
 tags:
   - "admin"
   - "ai-pipeline"
@@ -41,8 +40,6 @@ tags:
 **Compounded patterns** in [`docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`](../../solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md): bulk INSERT … unnest(...) ON CONFLICT shape, per-row Way A vector cast, JSONB-vs-`text[]` correction, length-equality preflight, parent two-statement DO NOTHING + follow-up SELECT, `json_array_elements_text(jsonb)` doesn't-exist trap, real-DB smoke as mandatory pre-merge gate. Bidirectionally cross-linked with the Stage 2 sibling docs (`per-parent-child-memoization-loadedartifact-pattern-20260505.md`, `batched-provider-input-position-stable-contract-20260505.md`, `bounded-parallelism-per-target-workflow-pattern-20260505.md`) and the platform indexer docs.
 
 **Verification gates:** typecheck ✓, lint ✓, vitest 61/61 passing on the 3 affected test files (full admin suite 1,517 passing). Real-DB smoke against `forge_admin` ✓.
-
-**Stage 4 (`feat-118` content-hash skip) auto-unblocks.** `feat-119` (NoSuchKey classification gap) became more visible under Stage 2's group cascade and should ship before `feat-118`.
 
 **Residual risks documented in the PR description** for follow-up:
 
