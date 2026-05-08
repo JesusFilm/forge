@@ -85,6 +85,26 @@ promoting a deployment, verify the Railway service `configFile` points at
 `apps/agentic/railway.toml` and is not `null`; dashboard overrides can shadow
 repo config.
 
+### Private Agentic Studio service
+
+Manager-gated Studio access is deployed as a separate Railway service named
+`agentic-studio` in the same project/environment as Manager and `agentic`.
+
+- Branch: `stage`
+- Root directory: `/`
+- Build command: `pnpm --filter @forge/agentic build`
+- Start command: start from `pnpm --filter @forge/agentic exec mastra studio --port $PORT`, then include the proven base-path/server-target/private-bind settings required for Manager proxying.
+- Required vars: `PNPM_CONFIG_PROD=false`, `HUSKY=0`, `NODE_ENV=production`,
+  `MASTRA_STUDIO_BASE_PATH=/api/agentic-studio`, and the same
+  `AGENTIC_OPERATOR_API_KEY` used by the runtime.
+
+Do not attach a public domain to `agentic-studio`. Manager should use
+`AGENTIC_STUDIO_ORIGIN=http://agentic-studio.railway.internal:<port>` or the
+Railway reference-variable equivalent, validate the Manager session, and inject
+the operator bearer server-side. Deployment proof must include Railway config
+readback and an outside-Railway unauthenticated probe showing no known Studio
+public domain serves Mastra Studio.
+
 ## External Docs Used
 
 - Mastra project structure: `src/mastra/index.ts`, `agents`, `tools`,

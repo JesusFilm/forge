@@ -4,6 +4,8 @@ vi.mock("@/config/env", () => ({
   env: {} as {
     AGENTIC_BASE_URL?: string
     AGENTIC_SERVICE_API_KEY?: string
+    AGENTIC_STUDIO_ORIGIN?: string
+    AGENTIC_OPERATOR_API_KEY?: string
     AGENTIC_REQUEST_TIMEOUT_MS?: number
   },
 }))
@@ -15,6 +17,8 @@ const { triggerAgenticAutomationDryRun } =
 const envMutable = env as {
   AGENTIC_BASE_URL?: string
   AGENTIC_SERVICE_API_KEY?: string
+  AGENTIC_STUDIO_ORIGIN?: string
+  AGENTIC_OPERATOR_API_KEY?: string
   AGENTIC_REQUEST_TIMEOUT_MS?: number
 }
 
@@ -31,6 +35,9 @@ describe("agentic-automation-dry-run", () => {
   beforeEach(() => {
     envMutable.AGENTIC_BASE_URL = "https://agentic.example"
     envMutable.AGENTIC_SERVICE_API_KEY = "service-key"
+    envMutable.AGENTIC_STUDIO_ORIGIN =
+      "http://agentic-studio.railway.internal:4111"
+    envMutable.AGENTIC_OPERATOR_API_KEY = "operator-key"
     envMutable.AGENTIC_REQUEST_TIMEOUT_MS = 2500
     fetchSpy.mockReset()
   })
@@ -38,6 +45,8 @@ describe("agentic-automation-dry-run", () => {
   afterEach(() => {
     envMutable.AGENTIC_BASE_URL = undefined
     envMutable.AGENTIC_SERVICE_API_KEY = undefined
+    envMutable.AGENTIC_STUDIO_ORIGIN = undefined
+    envMutable.AGENTIC_OPERATOR_API_KEY = undefined
     envMutable.AGENTIC_REQUEST_TIMEOUT_MS = undefined
   })
 
