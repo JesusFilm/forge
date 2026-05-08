@@ -75,4 +75,63 @@ describe("manager env mode validation", () => {
       "MANAGER_AGENTIC_API_KEY and AGENTIC_SERVICE_API_KEY must be different",
     )
   })
+
+  it("rejects reused Agentic operator and Manager API tokens", async () => {
+    stubMockModeEnv()
+    vi.stubEnv("MANAGER_API_KEY", "shared-operator-token")
+    vi.stubEnv("AGENTIC_OPERATOR_API_KEY", "shared-operator-token")
+
+    await expect(import("./env")).rejects.toThrow(
+      "AGENTIC_OPERATOR_API_KEY and MANAGER_API_KEY must be different",
+    )
+  })
+
+  it("rejects reused Agentic operator and service tokens", async () => {
+    stubMockModeEnv()
+    vi.stubEnv("AGENTIC_OPERATOR_API_KEY", "shared-agentic-token")
+    vi.stubEnv("AGENTIC_SERVICE_API_KEY", "shared-agentic-token")
+
+    await expect(import("./env")).rejects.toThrow(
+      "AGENTIC_OPERATOR_API_KEY and AGENTIC_SERVICE_API_KEY must be different",
+    )
+  })
+
+  it("rejects a public Agentic Studio origin in production", async () => {
+    stubMockModeEnv()
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("AGENTIC_STUDIO_ORIGIN", "https://public.example.com")
+    vi.stubEnv("AGENTIC_OPERATOR_API_KEY", "operator-token")
+
+    await expect(import("./env")).rejects.toThrow(
+      "AGENTIC_STUDIO_ORIGIN must be the private agentic-studio Railway origin in production",
+    )
+  })
+
+  it("rejects a non-Studio Railway private origin in production", async () => {
+    stubMockModeEnv()
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("AGENTIC_STUDIO_ORIGIN", "http://agentic.railway.internal:4111")
+    vi.stubEnv("AGENTIC_OPERATOR_API_KEY", "operator-token")
+
+    await expect(import("./env")).rejects.toThrow(
+      "AGENTIC_STUDIO_ORIGIN must be the private agentic-studio Railway origin in production",
+    )
+  })
+
+  it("allows a Railway private Agentic Studio origin in production", async () => {
+    stubMockModeEnv()
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv(
+      "AGENTIC_STUDIO_ORIGIN",
+      "http://agentic-studio.railway.internal:4111",
+    )
+    vi.stubEnv("AGENTIC_OPERATOR_API_KEY", "operator-token")
+
+    const { env } = await import("./env")
+
+    expect(env.AGENTIC_STUDIO_ORIGIN).toBe(
+      "http://agentic-studio.railway.internal:4111",
+    )
+    expect(env.AGENTIC_OPERATOR_API_KEY).toBe("operator-token")
+  })
 })

@@ -156,7 +156,28 @@ composite keys, so retries are idempotent.
 | MANAGER_API_KEY              | API key for external clients (optional in dev)                            |
 | ADMIN_GRAPHQL_URL            | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)        |
 | ADMIN_EMBED_TRIGGER_API_KEY  | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`            |
+| AGENTIC_BASE_URL             | Agentic runtime origin for Manager-to-Agentic service routes              |
+| AGENTIC_SERVICE_API_KEY      | Service bearer for Manager-to-Agentic runtime calls                       |
+| MANAGER_AGENTIC_API_KEY      | Bearer accepted by Manager for Agentic-to-Manager callbacks               |
+| AGENTIC_STUDIO_ORIGIN        | Private `agentic-studio` origin proxied by `/api/agentic-studio/*`        |
+| AGENTIC_OPERATOR_API_KEY     | Operator bearer Manager injects only server-side for proxied Studio calls |
 | NEXT_PUBLIC_WATCH_URL        | Public video watch URL (optional)                                         |
+
+## Agentic Studio access
+
+`/dashboard/agentic-studio` embeds Mastra Studio through Manager. The browser
+must only see Manager URLs; it must not receive `AGENTIC_OPERATOR_API_KEY`,
+`AGENTIC_STUDIO_ORIGIN`, Railway private DNS, or the public Agentic runtime
+origin. The proxy route `/api/agentic-studio/[[...path]]` validates the
+interactive `strapi-jwt` session with the `Manager` role, rejects Manager API-key
+access, allowlists outbound headers, injects `AGENTIC_OPERATOR_API_KEY`, and
+fails closed when Studio config would make the browser bypass Manager.
+
+Production `AGENTIC_STUDIO_ORIGIN` must point at Railway private networking,
+for example `http://agentic-studio.railway.internal:<port>`. Existing Manager
+runtime flows such as automation dry-runs and subtitle enrichment continue to use
+`AGENTIC_BASE_URL` plus `AGENTIC_SERVICE_API_KEY`; they must not call the Studio
+service.
 
 ## Standalone smoke
 
