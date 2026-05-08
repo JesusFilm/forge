@@ -55,6 +55,15 @@ export const PARITY_LOG_EVENTS = [
 export type ParityLogEvent = (typeof PARITY_LOG_EVENTS)[number]
 
 /**
+ * Stable route discriminator for the parity log payload. Hard-coded to
+ * "[slug]" because U5's canary surface is the slug-page Experience
+ * branch only. Future units that add other route surfaces (homepage,
+ * /watch/[collection]/[video]/[locale]) will introduce their own
+ * route literals.
+ */
+const PARITY_ROUTE = "[slug]" as const
+
+/**
  * Subkind discriminator for `harness_error` events. Tells the operator
  * which boundary surfaced the error (admin fetch, admin parse, Strapi
  * parse, or generic comparator failure).
@@ -136,7 +145,7 @@ export type DualReadOutcome = {
  */
 export type ParityLogPayload = {
   readonly event: ParityLogEvent
-  readonly route: "[slug]"
+  readonly route: typeof PARITY_ROUTE
   readonly slug: string
   readonly locale: string
   readonly timings: {
@@ -180,7 +189,7 @@ export function runDualReadComparison(outcome: DualReadOutcome): void {
   if (outcome.strapi.ok !== true && outcome.admin.ok !== true) {
     emit({
       event: "forge.parity.both_failed",
-      route: "[slug]",
+      route: PARITY_ROUTE,
       slug: outcome.slug,
       locale: outcome.urlLocale,
       timings: baseTimings,
@@ -193,7 +202,7 @@ export function runDualReadComparison(outcome: DualReadOutcome): void {
   if (outcome.strapi.ok !== true && outcome.admin.ok === true) {
     emit({
       event: "forge.parity.strapi_failed_admin_succeeded",
-      route: "[slug]",
+      route: PARITY_ROUTE,
       slug: outcome.slug,
       locale: outcome.urlLocale,
       timings: baseTimings,
@@ -206,7 +215,7 @@ export function runDualReadComparison(outcome: DualReadOutcome): void {
   if (outcome.strapi.ok === true && outcome.admin.ok === "timeout") {
     emit({
       event: "forge.parity.admin_timeout",
-      route: "[slug]",
+      route: PARITY_ROUTE,
       slug: outcome.slug,
       locale: outcome.urlLocale,
       timings: baseTimings,
@@ -218,7 +227,7 @@ export function runDualReadComparison(outcome: DualReadOutcome): void {
   if (outcome.strapi.ok === true && outcome.admin.ok === "error") {
     emit({
       event: "forge.parity.harness_error",
-      route: "[slug]",
+      route: PARITY_ROUTE,
       slug: outcome.slug,
       locale: outcome.urlLocale,
       timings: baseTimings,
@@ -241,7 +250,7 @@ export function runDualReadComparison(outcome: DualReadOutcome): void {
   if (!strapiResponse || !adminResponse) {
     emit({
       event: "forge.parity.harness_error",
-      route: "[slug]",
+      route: PARITY_ROUTE,
       slug: outcome.slug,
       locale: outcome.urlLocale,
       timings: baseTimings,
@@ -277,7 +286,7 @@ export function runDualReadComparison(outcome: DualReadOutcome): void {
 
     emit({
       event: "forge.parity.diff",
-      route: "[slug]",
+      route: PARITY_ROUTE,
       slug: outcome.slug,
       locale: outcome.urlLocale,
       timings: baseTimings,
@@ -297,7 +306,7 @@ export function runDualReadComparison(outcome: DualReadOutcome): void {
   } catch (error) {
     emit({
       event: "forge.parity.harness_error",
-      route: "[slug]",
+      route: PARITY_ROUTE,
       slug: outcome.slug,
       locale: outcome.urlLocale,
       timings: baseTimings,

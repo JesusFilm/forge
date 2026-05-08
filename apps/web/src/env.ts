@@ -11,6 +11,42 @@ import { z } from "zod"
 //   apps/web/src/lib/content-api-mode.ts (deletion checklist)
 //   docs/plans/2026-05-08-001-feat-consumer-migration-web-canary-unit-5-plan.md
 // =============================================================================
+
+/**
+ * Build a warn-only host-allowlist `.refine()` callback. Always returns
+ * true so misconfigured hosts don't brick boot — emits a console.warn so
+ * the misconfig is visible in deploy logs. Used by both
+ * `ADMIN_GRAPHQL_URL` (server) and `NEXT_PUBLIC_CANONICAL_ORIGIN`
+ * (client) — same shape, different allowlists.
+ */
+function softHostAllowlistRefine(
+  varName: string,
+  exacts: readonly string[],
+  suffixes: readonly string[],
+): (value: string) => true {
+  const allowlistDescription = [
+    ...exacts,
+    ...suffixes.map((s) => `*${s}`),
+  ].join(" / ")
+  return (value) => {
+    try {
+      const { hostname } = new URL(value)
+      const ok =
+        exacts.includes(hostname) ||
+        suffixes.some((suffix) => hostname.endsWith(suffix))
+      if (!ok && typeof console !== "undefined") {
+        console.warn(
+          `[env] ${varName} host "${hostname}" is outside the soft allowlist (${allowlistDescription}). Continuing without throwing — verify this is intentional.`,
+        )
+      }
+    } catch {
+      // The outer z.url() already validates URL shape; if URL parsing
+      // fails here we let z.url()'s error surface instead.
+    }
+    return true
+  }
+}
+
 const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES = [
   ".jesusfilm.org",
   ".railway.app",
@@ -72,34 +108,13 @@ export const env = createEnv({
             "ADMIN_GRAPHQL_URL points at a known non-GraphQL host (e.g. auth.jesusfilm.org). Admin GraphQL lives at admin.jesusfilm.org/api/graphql, not the auth host (PR #909).",
         },
       )
-      // Warn-only soft allowlist for everything else: legitimate-but-
-      // unknown deployment topologies (custom domains, branch URLs)
-      // shouldn't brick boot, but a misconfigured value should still be
-      // visible in deploy logs.
+      // Warn-only soft allowlist for everything else.
       .refine(
-        (value) => {
-          try {
-            const { hostname } = new URL(value)
-            const ok =
-              ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS.includes(
-                hostname as (typeof ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS)[number],
-              ) ||
-              ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES.some((suffix) =>
-                hostname.endsWith(suffix),
-              )
-            if (!ok && typeof console !== "undefined") {
-              console.warn(
-                `[env] ADMIN_GRAPHQL_URL host "${hostname}" is outside the soft allowlist (jesusfilm.org / *.jesusfilm.org / *.railway.app / *.local / localhost / 127.0.0.1). Continuing without throwing — verify this is intentional.`,
-              )
-            }
-          } catch {
-            // The outer z.url() already validates URL shape; if URL parsing
-            // fails here we let z.url()'s error surface instead.
-          }
-          // Warn-only: always pass refinement so misconfigured hosts don't
-          // brick boot in legitimate-but-unknown deployment topologies.
-          return true
-        },
+        softHostAllowlistRefine(
+          "ADMIN_GRAPHQL_URL",
+          ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS,
+          ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES,
+        ),
         { message: "unreachable" },
       ),
   },
@@ -136,35 +151,11 @@ export const env = createEnv({
       .url()
       .default("http://localhost:3000")
       .refine(
-        (value) => {
-          try {
-            const { hostname } = new URL(value)
-            const allowlistedSuffixes = [
-              ".jesusfilm.org",
-              ".local",
-              ".railway.app",
-            ]
-            const allowlistedExacts = [
-              "jesusfilm.org",
-              "localhost",
-              "127.0.0.1",
-            ]
-            const ok =
-              allowlistedExacts.includes(hostname) ||
-              allowlistedSuffixes.some((suffix) => hostname.endsWith(suffix))
-            if (!ok && typeof console !== "undefined") {
-              console.warn(
-                `[env] NEXT_PUBLIC_CANONICAL_ORIGIN host "${hostname}" is outside the soft allowlist (jesusfilm.org / *.jesusfilm.org / *.local / *.railway.app / localhost / 127.0.0.1). Continuing without throwing — verify this is intentional.`,
-              )
-            }
-          } catch {
-            // The outer z.url() already validates the URL shape; if URL
-            // parsing fails here we let z.url()'s error surface instead.
-          }
-          // Warn-only: always pass refinement so misconfigured hosts don't
-          // brick boot in legitimate-but-unknown deployment topologies.
-          return true
-        },
+        softHostAllowlistRefine(
+          "NEXT_PUBLIC_CANONICAL_ORIGIN",
+          ["jesusfilm.org", "localhost", "127.0.0.1"],
+          [".jesusfilm.org", ".local", ".railway.app"],
+        ),
         { message: "unreachable" },
       ),
   },

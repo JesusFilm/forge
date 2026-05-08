@@ -504,29 +504,26 @@ describe("U5 regression — default behavior across mode values", () => {
     }
   }
 
-  // The plan's canonical 5 mode values. Each maps to a mode the helper
-  // actually accepts: undefined/null/""/garbage all fall back to strapi
-  // via env.ts's z.enum.default; "strapi" is explicit; "dual-read"
-  // activates the canary.
-  const STRAPI_ALIAS_MODES: Array<"strapi"> = ["strapi"]
+  // The undefined/null/empty-string/garbage cases fall back to "strapi"
+  // via env.ts's z.enum.default before reaching content-api-mode, so the
+  // mocked getContentApiMode only ever receives the typed union values.
+  // The "strapi" branch is the regression-protected default; "dual-read"
+  // is exercised in the canary tests above.
+  it("mode='strapi' returns Strapi-equivalent value and never touches admin", async () => {
+    modeRef.current = "strapi"
+    queryMock.mockResolvedValueOnce(fixture())
 
-  for (const mode of STRAPI_ALIAS_MODES) {
-    it(`mode="${mode}" returns Strapi-equivalent value and never touches admin`, async () => {
-      modeRef.current = mode
-      queryMock.mockResolvedValueOnce(fixture())
+    const { resolveWatchPage } = await import("./content")
+    const result = await resolveWatchPage("en", "christmas")
 
-      const { resolveWatchPage } = await import("./content")
-      const result = await resolveWatchPage("en", "christmas")
-
-      expect(result.error).toBeNull()
-      expect(result.data).toMatchObject({
-        kind: "experience",
-        experience: { documentId: "regression-1", slug: "christmas" },
-      })
-      expect(adminQueryMock).not.toHaveBeenCalled()
-      expect(runDualReadComparisonMock).not.toHaveBeenCalled()
+    expect(result.error).toBeNull()
+    expect(result.data).toMatchObject({
+      kind: "experience",
+      experience: { documentId: "regression-1", slug: "christmas" },
     })
-  }
+    expect(adminQueryMock).not.toHaveBeenCalled()
+    expect(runDualReadComparisonMock).not.toHaveBeenCalled()
+  })
 
   it("mode='dual-read' still returns Strapi value to the user (admin runs in shadow)", async () => {
     modeRef.current = "dual-read"

@@ -301,17 +301,22 @@ async function fetchStrapiSlugExperience(
   }
 }
 
+// Match the typed AbortSignal.timeout / AbortController shapes the AWS-SDK-v3
+// classification pattern recommends — error.name first, then cause.name. No
+// message-substring fallback: a real GraphQL error mentioning "timeout"
+// would be misclassified as forge.parity.admin_timeout, polluting the
+// canary's gating signal. See:
+//   docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md
 function isAbortTimeoutError(error: unknown): boolean {
   if (!(error instanceof Error)) return false
-  if (error.name === "TimeoutError") return true
-  if (error.name === "AbortError") return true
+  if (error.name === "TimeoutError" || error.name === "AbortError") return true
   const cause = (error as { cause?: unknown }).cause
   if (cause instanceof Error) {
-    if (cause.name === "TimeoutError") return true
-    if (cause.name === "AbortError") return true
+    if (cause.name === "TimeoutError" || cause.name === "AbortError") {
+      return true
+    }
   }
-  const lower = error.message.toLowerCase()
-  return lower.includes("timeout") || lower.includes("aborted")
+  return false
 }
 
 async function fetchAdminSlugExperience(
@@ -319,6 +324,7 @@ async function fetchAdminSlugExperience(
   slug: string,
 ): Promise<DualReadOutcome["admin"]> {
   const start = performance.now()
+  const elapsed = () => Math.round(performance.now() - start)
   try {
     const result = await adminClient.query({
       query: adminExperienceBySlugOperation,
@@ -326,29 +332,21 @@ async function fetchAdminSlugExperience(
       fetchPolicy: "no-cache",
     })
     if (result.error) {
-      return {
-        ok: isAbortTimeoutError(result.error) ? "timeout" : "error",
-        ...(isAbortTimeoutError(result.error) ? {} : { error: result.error }),
-        durationMs: Math.round(performance.now() - start),
-      } as DualReadOutcome["admin"]
+      if (isAbortTimeoutError(result.error)) {
+        return { ok: "timeout", durationMs: elapsed() }
+      }
+      return { ok: "error", error: result.error, durationMs: elapsed() }
     }
     return {
       ok: true,
       response: result.data?.experienceBySlug ?? undefined,
-      durationMs: Math.round(performance.now() - start),
+      durationMs: elapsed(),
     }
   } catch (error) {
     if (isAbortTimeoutError(error)) {
-      return {
-        ok: "timeout",
-        durationMs: Math.round(performance.now() - start),
-      }
+      return { ok: "timeout", durationMs: elapsed() }
     }
-    return {
-      ok: "error",
-      error,
-      durationMs: Math.round(performance.now() - start),
-    }
+    return { ok: "error", error, durationMs: elapsed() }
   }
 }
 
@@ -383,10 +381,11 @@ async function fetchSlugExperience(
   if (strapiOutcome.ok === "error") {
     throw strapiOutcome.error
   }
-  // Strapi has no timeout-class branch in this codebase — its 10 s budget
-  // is enforced inside client.ts as an AbortSignal that surfaces as
-  // ok: "error" with an abort cause. Defensive default kept for type
-  // exhaustiveness.
+  // Exhaustive default for the SideOutcome union. Strapi's `client.ts`
+  // 10s AbortSignal surfaces as ok:"error" (not ok:"timeout") because
+  // fetchStrapiSlugExperience does not classify timeout vs error — only
+  // the admin side does. This branch is unreachable today; kept for
+  // type-narrowing safety if the union ever gains a new variant.
   throw new Error("fetchSlugExperience: Strapi side returned no value")
 }
 
