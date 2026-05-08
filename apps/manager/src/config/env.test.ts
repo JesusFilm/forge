@@ -156,14 +156,14 @@ describe("manager env mode validation", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv(
       "AGENTIC_STUDIO_ORIGIN",
-      "http://agentic-studio.railway.internal:4111",
+      "http://forgeagentic-studio.railway.internal",
     )
     vi.stubEnv("AGENTIC_OPERATOR_API_KEY", "operator-token")
 
     const { env } = await import("./env")
 
     expect(env.AGENTIC_STUDIO_ORIGIN).toBe(
-      "http://agentic-studio.railway.internal:4111",
+      "http://forgeagentic-studio.railway.internal",
     )
     expect(env.AGENTIC_OPERATOR_API_KEY).toBe("operator-token")
   })

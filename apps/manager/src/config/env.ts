@@ -35,7 +35,7 @@ function assertPrivateAgenticStudioOrigin(origin: string | undefined) {
   const parsed = new URL(origin)
   if (
     parsed.protocol === "http:" &&
-    parsed.hostname === "agentic-studio.railway.internal" &&
+    parsed.hostname.endsWith("agentic-studio.railway.internal") &&
     !parsed.username &&
     !parsed.password &&
     (parsed.pathname === "" || parsed.pathname === "/") &&
