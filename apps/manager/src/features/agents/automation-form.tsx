@@ -341,17 +341,17 @@ export function AutomationForm({
   function renderRecipeStep() {
     return (
       <section
-        className="space-y-8 px-6 py-6 sm:px-8 sm:py-8"
+        className="space-y-6 px-5 py-5 sm:space-y-8 sm:px-8 sm:py-8"
         aria-labelledby="agents-recipe-title"
       >
         <div className="space-y-3">
           <h4
             id="agents-recipe-title"
-            className="text-[clamp(2rem,4.5vw,3rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-foreground"
+            className="text-[clamp(1.45rem,8vw,2.7rem)] font-semibold leading-[1] tracking-[-0.04em] text-foreground"
           >
             Choose the workflow to automate
           </h4>
-          <p className="max-w-3xl text-[1.125rem] leading-8 tracking-[-0.02em] text-muted-foreground sm:text-[1.25rem]">
+          <p className="max-w-3xl text-[1rem] leading-7 tracking-[-0.02em] text-muted-foreground sm:text-[1.25rem] sm:leading-8">
             Start from a ready-made playbook, then move into the setup details
             for the one you want to launch.
           </p>
@@ -424,17 +424,17 @@ export function AutomationForm({
   function renderConfigStep() {
     return (
       <section
-        className="space-y-8 px-6 py-6 sm:px-8 sm:py-8"
+        className="space-y-6 px-5 py-5 sm:space-y-8 sm:px-8 sm:py-8"
         aria-labelledby="agents-config-title"
       >
         <div className="space-y-3">
           <h4
             id="agents-config-title"
-            className="text-[clamp(2rem,4.5vw,3rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-foreground"
+            className="text-[clamp(1.75rem,10vw,3rem)] font-semibold leading-[0.98] tracking-[-0.04em] text-foreground"
           >
             Tune the rules
           </h4>
-          <p className="max-w-3xl text-[1.125rem] leading-8 tracking-[-0.02em] text-muted-foreground sm:text-[1.25rem]">
+          <p className="max-w-3xl text-[1rem] leading-7 tracking-[-0.02em] text-muted-foreground sm:text-[1.25rem] sm:leading-8">
             Shape how often the automation runs and how aggressively it
             refreshes existing output.
           </p>
@@ -658,17 +658,17 @@ export function AutomationForm({
   function renderReviewStep() {
     return (
       <section
-        className="space-y-8 px-6 py-6 sm:px-8 sm:py-8"
+        className="space-y-6 px-5 py-5 sm:space-y-8 sm:px-8 sm:py-8"
         aria-labelledby="agents-review-title"
       >
         <div className="space-y-3">
           <h4
             id="agents-review-title"
-            className="text-[clamp(2rem,4.5vw,3rem)] font-semibold leading-[1.02] tracking-[-0.04em] text-foreground"
+            className="text-[clamp(1.75rem,10vw,3rem)] font-semibold leading-[0.98] tracking-[-0.04em] text-foreground"
           >
             Review and launch
           </h4>
-          <p className="max-w-3xl text-[1.125rem] leading-8 tracking-[-0.02em] text-muted-foreground sm:text-[1.25rem]">
+          <p className="max-w-3xl text-[1rem] leading-7 tracking-[-0.02em] text-muted-foreground sm:text-[1.25rem] sm:leading-8">
             Check the setup, then create the automation when it looks right.
           </p>
         </div>
@@ -763,7 +763,7 @@ export function AutomationForm({
   }
 
   return (
-    <form className="space-y-0" onSubmit={handleSubmit}>
+    <form className="min-w-0 space-y-0" onSubmit={handleSubmit}>
       <Stepper
         value={activeStep + 1}
         onValueChange={(value) => {
@@ -775,7 +775,7 @@ export function AutomationForm({
         className="space-y-2"
       >
         <StepperNav
-          className="grid grid-cols-3 gap-3 px-6 pt-6 sm:px-8 sm:pt-8 md:gap-5"
+          className="grid grid-cols-3 gap-2 px-5 pt-5 sm:gap-3 sm:px-8 sm:pt-8 md:gap-5"
           aria-label="Automation setup progress"
         >
           {stepItems.map((step, index) => (
@@ -787,11 +787,11 @@ export function AutomationForm({
               className="min-w-0"
             >
               <StepperTrigger
-                className="flex w-full flex-col items-start gap-3"
+                className="flex w-full flex-col items-start gap-2 px-2 py-2 sm:gap-3 sm:px-2.5 sm:py-2.5"
                 aria-label={`${step.label}. ${step.hint}`}
               >
                 <StepperIndicator className="h-1 w-full rounded-full border-0 bg-border data-[state=completed]:bg-foreground data-[state=active]:bg-foreground" />
-                <StepperTitle className="w-full text-left text-[clamp(1rem,2.9vw,1.55rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground group-data-[state=inactive]/step:text-muted-foreground">
+                <StepperTitle className="w-full text-left text-[clamp(0.82rem,4.1vw,1.55rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground group-data-[state=inactive]/step:text-muted-foreground sm:text-[clamp(1rem,2.9vw,1.55rem)]">
                   <span className="hidden sm:inline">{step.label}</span>
                   <span className="sm:hidden">{step.shortLabel}</span>
                 </StepperTitle>
@@ -807,7 +807,7 @@ export function AutomationForm({
         </StepperPanel>
       </Stepper>
 
-      <div className="flex flex-col gap-5 border-t border-border/70 px-6 py-6 sm:px-8">
+      <div className="flex flex-col gap-4 border-t border-border/70 px-5 py-5 sm:gap-5 sm:px-8 sm:py-6">
         <p className="text-[0.95rem] leading-6 text-muted-foreground">
           {activeStep === 0
             ? "Choose a live automation to continue."

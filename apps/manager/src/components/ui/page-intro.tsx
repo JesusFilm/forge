@@ -45,7 +45,7 @@ export function PageTitle({
   return (
     <h1
       className={cn(
-        "mt-2.5 text-[32px] leading-[0.98] font-semibold tracking-[-0.03em] text-foreground sm:text-[38px]",
+        "mt-0 text-[32px] leading-[0.98] font-semibold tracking-[-0.03em] text-foreground sm:text-[38px]",
         className,
       )}
       {...props}
@@ -60,7 +60,7 @@ export function PageDescription({
   return (
     <p
       className={cn(
-        "mt-2.5 max-w-4xl text-[15px] leading-[1.45] font-normal tracking-[-0.01em] text-muted-foreground sm:text-[16px]",
+        "mt-2.5 max-w-4xl text-[15px] leading-[1.45] font-normal tracking-[-0.01em] text-foreground/68 sm:text-[16px]",
         className,
       )}
       {...props}

@@ -29,6 +29,7 @@ import {
   LayoutTemplate,
   ListChecks,
   LogOut,
+  Menu,
   PanelLeft,
   Settings2,
   ShieldCheck,
@@ -226,6 +227,7 @@ function StudioBrand({
     <div
       className={cn(
         "flex items-center gap-4",
+        mobile && "gap-3",
         collapsed && !mobile && "justify-center",
       )}
     >
@@ -243,7 +245,7 @@ function StudioBrand({
           <span
             className={cn(
               "text-[32px] font-semibold leading-none tracking-[-0.4px] text-foreground",
-              mobile && "text-[30px] text-foreground",
+              mobile && "text-[30px] font-bold text-foreground",
             )}
           >
             Studio
@@ -385,7 +387,13 @@ function StudioReportSwitcher({ collapsed = false }: { collapsed?: boolean }) {
   )
 }
 
-function StudioUserMenu({ user }: { user: ManagerShellUser }) {
+function StudioUserMenu({
+  user,
+  mobile = false,
+}: {
+  user: ManagerShellUser
+  mobile?: boolean
+}) {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -430,6 +438,7 @@ function StudioUserMenu({ user }: { user: ManagerShellUser }) {
         size="icon"
         className={cn(
           "size-10 rounded-[1.25rem] border-border shadow-none",
+          mobile && "size-9 rounded-[1rem]",
           menuOpen && "bg-secondary",
         )}
         aria-label="Open user menu"
@@ -440,7 +449,14 @@ function StudioUserMenu({ user }: { user: ManagerShellUser }) {
       </Button>
 
       {menuOpen ? (
-        <div className="absolute right-0 top-full z-30 mt-3 w-[20rem] overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_24px_56px_rgba(8,8,8,0.14)]">
+        <div
+          className={cn(
+            "z-30 overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_24px_56px_rgba(8,8,8,0.14)]",
+            mobile
+              ? "fixed inset-x-3 top-[5.5rem] max-h-[calc(100dvh-7rem)] overflow-y-auto"
+              : "absolute right-0 top-full mt-3 w-[20rem]",
+          )}
+        >
           <div className="border-b border-border p-3.5">
             <div className="rounded-[1.125rem] border border-border bg-secondary/35 p-3.5">
               <strong className="block text-[16px] font-semibold tracking-[-0.02em] text-foreground">
@@ -554,28 +570,125 @@ function DesktopNav({
 }
 
 function MobileNav({ pathname }: { pathname: string }) {
-  return (
-    <nav className="flex items-center gap-3" aria-label="Primary">
-      {navItems.map((item) => {
-        const Icon = item.icon
-        const isActive = isActiveRoute(pathname, item.href)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
 
-        return (
-          <Link
-            key={item.key}
-            href={item.href}
-            aria-label={item.label}
-            className={cn(
-              "inline-flex size-10.5 items-center justify-center rounded-[1rem] text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground",
-              isActive && "bg-secondary text-[var(--ds-brand-red)]",
-            )}
-            {...(isActive ? { "aria-current": "page" as const } : {})}
-          >
-            <Icon className="size-5" aria-hidden="true" />
-          </Link>
-        )
-      })}
-    </nav>
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false)
+      }
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    document.addEventListener("mousedown", handleClickOutside)
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown)
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <nav
+        className="flex items-center gap-3 max-[360px]:hidden"
+        aria-label="Primary"
+      >
+        {navItems.map((item) => {
+          const Icon = item.icon
+          const isActive = isActiveRoute(pathname, item.href)
+
+          return (
+            <Link
+              key={item.key}
+              href={item.href}
+              aria-label={item.label}
+              className={cn(
+                "inline-flex size-10.5 items-center justify-center rounded-[1rem] text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground",
+                isActive && "bg-secondary text-[var(--ds-brand-red)]",
+              )}
+              {...(isActive ? { "aria-current": "page" as const } : {})}
+            >
+              <Icon className="size-5" aria-hidden="true" />
+            </Link>
+          )
+        })}
+      </nav>
+
+      <div className="hidden max-[360px]:block">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className={cn(
+            "size-9 rounded-[1rem] border-border shadow-none",
+            menuOpen && "bg-secondary",
+          )}
+          aria-label="Open navigation menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <Menu className="size-5" aria-hidden="true" />
+        </Button>
+      </div>
+
+      {menuOpen ? (
+        <div className="fixed inset-x-3 top-[5.5rem] z-30 hidden max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-[1.5rem] border border-border bg-card shadow-[0_24px_56px_rgba(8,8,8,0.14)] max-[360px]:block">
+          <nav className="p-2.5" aria-label="Primary mobile menu">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const isActive = isActiveRoute(pathname, item.href)
+
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-[0.95rem] px-3.5 py-2.5 text-[14px] font-medium tracking-[-0.01em] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                    isActive && "bg-secondary text-foreground",
+                  )}
+                  onClick={() => setMenuOpen(false)}
+                  {...(isActive ? { "aria-current": "page" as const } : {})}
+                >
+                  <Icon
+                    className={cn(
+                      "size-4 shrink-0 text-muted-foreground",
+                      isActive && "text-[var(--ds-brand-red)]",
+                    )}
+                    aria-hidden="true"
+                  />
+                  <span className="flex-1">{item.label}</span>
+                </Link>
+              )
+            })}
+          </nav>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function NotificationButton({ mobile = false }: { mobile?: boolean }) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      className={cn(
+        "size-9 rounded-[1rem] border-border shadow-none",
+        mobile && "size-9 rounded-[1rem]",
+      )}
+      aria-label="Notifications"
+    >
+      <Bell className="size-5" aria-hidden="true" />
+    </Button>
   )
 }
 
@@ -777,7 +890,11 @@ export function ManagerDashboardShell({
               <div className="space-y-4 px-5 py-4.5 sm:px-6 sm:py-5">
                 <div className="flex items-center justify-between gap-4">
                   <StudioBrand mobile />
-                  <MobileNav pathname={pathname} />
+                  <div className="flex items-center gap-2">
+                    <NotificationButton mobile />
+                    <StudioUserMenu user={user} mobile />
+                    <MobileNav pathname={pathname} />
+                  </div>
                 </div>
 
                 <StudioReportSwitcher />
@@ -851,17 +968,13 @@ export function ManagerDashboardShell({
                     </SegmentedControlButton>
                   </SegmentedControl>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="size-9 rounded-[1rem] border-border shadow-none"
-                    aria-label="Notifications"
-                  >
-                    <Bell className="size-5" aria-hidden="true" />
-                  </Button>
+                  <div className="hidden lg:block">
+                    <NotificationButton />
+                  </div>
 
-                  <StudioUserMenu user={user} />
+                  <div className="hidden lg:block">
+                    <StudioUserMenu user={user} />
+                  </div>
                 </div>
               </div>
             </header>

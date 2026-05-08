@@ -440,8 +440,6 @@ function CoverageBar({
               segment.key === "human" && "bg-[#22a34a]",
               segment.key === "ai" && "bg-[#7440ef]",
               segment.key === "none" && "bg-[var(--ds-brand-red)]",
-              activeFilter === segment.key &&
-                "shadow-[inset_0_0_0_2px_rgba(255,255,255,0.9)]",
               !isExplore && "cursor-default",
             )}
             style={{ width: `${segment.percent}%` }}

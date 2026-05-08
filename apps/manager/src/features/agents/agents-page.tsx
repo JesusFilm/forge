@@ -133,6 +133,7 @@ export function AgentsPage({
   return (
     <section className="space-y-10">
       <PageIntro
+        className="border-b-0 pb-0"
         actions={
           <>
             <Button
@@ -185,18 +186,19 @@ export function AgentsPage({
                 aria-labelledby="agents-create-title"
               >
                 <ModalHeader>
-                  <div className="space-y-2">
+                  <div className="min-w-0 flex-1 space-y-2 pr-2 sm:pr-0">
                     <h3
                       id="agents-create-title"
-                      className="text-[clamp(2rem,4vw,2.75rem)] font-semibold tracking-[-0.04em] text-foreground"
+                      className="text-[clamp(1.45rem,9vw,2.45rem)] leading-[0.95] font-semibold tracking-[-0.04em] text-foreground"
                     >
                       New automation
                     </h3>
-                    <p className="max-w-[32rem] text-[1rem] leading-7 text-muted-foreground sm:text-[1.125rem]">
+                    <p className="max-w-[28rem] text-[0.95rem] leading-6 text-muted-foreground sm:max-w-[32rem] sm:text-[1.125rem] sm:leading-7">
                       Create recurring enrichment work for eligible videos.
                     </p>
                   </div>
                   <ModalCloseButton
+                    className="shrink-0"
                     onClick={() => setIsCreateModalOpen(false)}
                   />
                 </ModalHeader>
@@ -218,7 +220,7 @@ export function AgentsPage({
         </p>
       )}
 
-      <section className="space-y-4 border-t border-border/70 pt-8">
+      <section className="space-y-4 pt-2">
         <h3 className="text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
           Active
         </h3>
@@ -230,7 +232,7 @@ export function AgentsPage({
         />
       </section>
 
-      <section className="space-y-4 border-t border-border/70 pt-8">
+      <section className="space-y-4 pt-2">
         <h3 className="text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
           Paused
         </h3>

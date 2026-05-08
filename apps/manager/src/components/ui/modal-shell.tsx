@@ -12,7 +12,7 @@ export function ModalBackdrop({
   return (
     <div
       className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center bg-[rgba(255,254,250,0.28)] px-4 py-8 backdrop-blur-xl",
+        "fixed inset-0 z-50 flex items-start justify-center bg-[rgba(255,254,250,0.28)] px-3 py-3 backdrop-blur-xl sm:items-center sm:px-4 sm:py-8",
         className,
       )}
       {...props}
@@ -27,7 +27,7 @@ export function ModalPanel({
   return (
     <section
       className={cn(
-        "relative max-h-[calc(100vh-4rem)] w-full max-w-[920px] overflow-auto rounded-[32px] border border-border bg-card shadow-[0_32px_80px_rgba(8,8,8,0.16)]",
+        "relative max-h-[calc(100dvh-1.5rem)] w-full max-w-[920px] overflow-x-hidden overflow-y-auto rounded-[28px] border border-border bg-card shadow-[0_32px_80px_rgba(8,8,8,0.16)] sm:max-h-[calc(100vh-4rem)] sm:rounded-[32px]",
         className,
       )}
       {...props}
@@ -42,7 +42,7 @@ export function ModalHeader({
   return (
     <div
       className={cn(
-        "sticky top-0 z-10 flex items-start justify-between gap-5 border-b border-border/70 bg-card/90 px-6 py-5 backdrop-blur-sm",
+        "sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border/70 bg-card/90 px-5 py-4 backdrop-blur-sm sm:gap-5 sm:px-6 sm:py-5",
         className,
       )}
       {...props}
