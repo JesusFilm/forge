@@ -117,6 +117,12 @@ const navItems: Array<{
     label: "Agents",
     icon: Bot,
   },
+  {
+    key: "agentic-studio",
+    href: "/dashboard/agentic-studio",
+    label: "Agentic Studio",
+    icon: ShieldCheck,
+  },
 ]
 
 function readStoredReportType(): ManagerShellReportType {
@@ -161,6 +167,10 @@ function getBreadcrumbs(pathname: string): string[] {
 
   if (pathname.startsWith("/dashboard/agents")) {
     return ["Studio", "Agents"]
+  }
+
+  if (pathname.startsWith("/dashboard/agentic-studio")) {
+    return ["Studio", "Agentic Studio"]
   }
 
   return ["Studio", "Coverage"]

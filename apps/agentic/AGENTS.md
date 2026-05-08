@@ -37,6 +37,19 @@ tool registry, workflow registry, and operational runtime storage.
 - Agentic-to-Manager callbacks use `AGENTIC_MANAGER_REQUEST_TIMEOUT_MS`, default
   `60000`.
 
+## Private Studio service
+
+- The primary runtime Railway service remains `agentic` and serves `/health`,
+  `/forge/*`, and authenticated Mastra APIs.
+- Manager-gated Studio access uses a separate private Railway service named
+  `agentic-studio`.
+- `agentic-studio` must have no public Railway domain. Manager reaches it through
+  Railway private networking and exposes it only through `/api/agentic-studio/*`.
+- The Studio service should use the same `AGENTIC_OPERATOR_API_KEY` as the
+  runtime. The browser never receives that token; Manager injects it server-side.
+- Set `MASTRA_STUDIO_BASE_PATH=/api/agentic-studio` and prove in browser smoke
+  that Studio requests stay under the Manager origin.
+
 ## Verification
 
 Run:

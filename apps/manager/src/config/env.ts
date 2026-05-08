@@ -27,6 +27,29 @@ function resolveBackendMode(): "admin" | "mock" | "strapi" {
 
 const managerBackendMode = resolveBackendMode()
 
+function assertPrivateAgenticStudioOrigin(origin: string | undefined) {
+  if (!origin || process.env.NODE_ENV !== "production") {
+    return
+  }
+
+  const parsed = new URL(origin)
+  if (
+    parsed.protocol === "http:" &&
+    parsed.hostname === "agentic-studio.railway.internal" &&
+    !parsed.username &&
+    !parsed.password &&
+    (parsed.pathname === "" || parsed.pathname === "/") &&
+    !parsed.search &&
+    !parsed.hash
+  ) {
+    return
+  }
+
+  throw new Error(
+    "AGENTIC_STUDIO_ORIGIN must be the private agentic-studio Railway origin in production",
+  )
+}
+
 export const env = createEnv({
   server: {
     MANAGER_BACKEND_MODE: z.enum(["admin", "mock", "strapi"]).default("strapi"),
@@ -86,6 +109,8 @@ export const env = createEnv({
     AGENTIC_BASE_URL: z.string().url().optional(),
     AGENTIC_SERVICE_API_KEY: z.string().min(1).optional(),
     MANAGER_AGENTIC_API_KEY: z.string().min(1).optional(),
+    AGENTIC_STUDIO_ORIGIN: z.string().url().optional(),
+    AGENTIC_OPERATOR_API_KEY: z.string().min(1).optional(),
     AGENTIC_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
 
     // ElevenLabs transcription (optional unless ElevenLabs routing is used)
@@ -135,6 +160,8 @@ export const env = createEnv({
     AGENTIC_BASE_URL: process.env.AGENTIC_BASE_URL,
     AGENTIC_SERVICE_API_KEY: process.env.AGENTIC_SERVICE_API_KEY,
     MANAGER_AGENTIC_API_KEY: process.env.MANAGER_AGENTIC_API_KEY,
+    AGENTIC_STUDIO_ORIGIN: process.env.AGENTIC_STUDIO_ORIGIN,
+    AGENTIC_OPERATOR_API_KEY: process.env.AGENTIC_OPERATOR_API_KEY,
     AGENTIC_REQUEST_TIMEOUT_MS: process.env.AGENTIC_REQUEST_TIMEOUT_MS,
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:
@@ -190,3 +217,22 @@ assertDistinctConfiguredSecrets(
   "AGENTIC_SERVICE_API_KEY",
   env.AGENTIC_SERVICE_API_KEY,
 )
+assertDistinctConfiguredSecrets(
+  "AGENTIC_OPERATOR_API_KEY",
+  env.AGENTIC_OPERATOR_API_KEY,
+  "MANAGER_API_KEY",
+  env.MANAGER_API_KEY,
+)
+assertDistinctConfiguredSecrets(
+  "AGENTIC_OPERATOR_API_KEY",
+  env.AGENTIC_OPERATOR_API_KEY,
+  "AGENTIC_SERVICE_API_KEY",
+  env.AGENTIC_SERVICE_API_KEY,
+)
+assertDistinctConfiguredSecrets(
+  "AGENTIC_OPERATOR_API_KEY",
+  env.AGENTIC_OPERATOR_API_KEY,
+  "MANAGER_AGENTIC_API_KEY",
+  env.MANAGER_AGENTIC_API_KEY,
+)
+assertPrivateAgenticStudioOrigin(env.AGENTIC_STUDIO_ORIGIN)
