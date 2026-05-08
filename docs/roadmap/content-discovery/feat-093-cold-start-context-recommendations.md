@@ -4,7 +4,7 @@ title: "Cold Start Context-Based Recommendations"
 owner: "nisal"
 priority: "P2"
 status: "not-started"
-start_date: "2026-06-05"
+start_date: "2026-06-14"
 duration: 7
 depends_on:
   - "feat-092"

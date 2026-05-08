@@ -30,6 +30,8 @@ export type MockLanguageGeo = {
     id: string
     englishLabel: string
     nativeLabel: string
+    bcp47?: string | null
+    iso3?: string | null
     countryIds: string[]
     continentIds: string[]
     countrySpeakers: Record<string, number>
@@ -415,6 +417,8 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
           id: "529",
           englishLabel: "English",
           nativeLabel: "English",
+          bcp47: "en",
+          iso3: "eng",
           countryIds: ["us"],
           continentIds: ["na"],
           countrySpeakers: { us: 331000000 },
@@ -423,6 +427,8 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
           id: "21028",
           englishLabel: "Spanish",
           nativeLabel: "Espanol",
+          bcp47: "es",
+          iso3: "spa",
           countryIds: ["mx", "us"],
           continentIds: ["na"],
           countrySpeakers: { mx: 126000000, us: 42000000 },
@@ -431,6 +437,8 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
           id: "6414",
           englishLabel: "French",
           nativeLabel: "Francais",
+          bcp47: "fr",
+          iso3: "fra",
           countryIds: ["fr"],
           continentIds: ["eu"],
           countrySpeakers: { fr: 65000000 },

@@ -56,6 +56,18 @@ export const env = createEnv({
     ADMIN_GRAPHQL_URL: z.string().url().optional(),
     ADMIN_EMBED_TRIGGER_API_KEY: z.string().min(1).optional(),
 
+    // feat-119 PR2 — admin → manager outbound enrichment trigger.
+    // Manager exposes /api/admin-trigger/{scene-analysis,transcript}
+    // which admin's `triggerManagerEnrichment` GraphQL mutation calls
+    // when an operator has decided (after reading PR1's
+    // `missingArtifacts` list) to backfill upstream pipeline output.
+    // CSV of accepted bearer keys; mirrors admin's WORKFLOW_API_KEYS
+    // shape so the receiver-side rotation pattern is symmetric.
+    // Optional at boot so manager keeps starting in environments that
+    // don't have the trigger endpoint configured; the route handlers
+    // return 503 if invoked without this set.
+    ADMIN_TRIGGER_API_KEYS: z.string().min(1).optional(),
+
     // ElevenLabs transcription (optional unless ElevenLabs routing is used)
     ELEVENLABS_REQUEST_TIMEOUT_MS: z.coerce
       .number()
@@ -98,6 +110,7 @@ export const env = createEnv({
     MANAGER_API_KEY: process.env.MANAGER_API_KEY,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     ADMIN_EMBED_TRIGGER_API_KEY: process.env.ADMIN_EMBED_TRIGGER_API_KEY,
+    ADMIN_TRIGGER_API_KEYS: process.env.ADMIN_TRIGGER_API_KEYS,
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:
       process.env.ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS,

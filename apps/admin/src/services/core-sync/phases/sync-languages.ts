@@ -62,7 +62,7 @@ export async function syncLanguages({
   since?: string
 }): Promise<SyncStats> {
   const stats = { ...emptySyncStats }
-  const PAGE_SIZE = 500
+  const PAGE_SIZE = 10000
   let offset = 0
   let firstPageCount = 0
   const seenCoreIds = new Set<string>()

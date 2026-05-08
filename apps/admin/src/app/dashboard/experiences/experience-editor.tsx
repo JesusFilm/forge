@@ -141,6 +141,23 @@ type RevisionEntry = {
   isActive: boolean
 }
 
+type MediaLibraryItem = {
+  id: string
+  displayName: string
+  altText: string | null
+  mimeType: string
+  byteSize: string
+  previewUrl: string | null
+  updated: string
+}
+
+type ImagePickerTarget = {
+  blockIndex: number
+  urlField: "backgroundImageUrl" | "imageUrl" | "mediaUrl"
+  assetField: "backgroundImageAssetId" | "imageAssetId" | "mediaAssetId"
+  label: string
+}
+
 type LocaleEntry = {
   id: string
   code: string
@@ -852,6 +869,7 @@ export function ExperienceEditor({
   revisionEntries,
   localeEntries,
   videoLibrary,
+  mediaLibrary,
   calendarDate,
   initialValues,
   saveAction,
@@ -864,6 +882,7 @@ export function ExperienceEditor({
   revisionEntries: RevisionEntry[]
   localeEntries: LocaleEntry[]
   videoLibrary: VideoLibraryItem[]
+  mediaLibrary: MediaLibraryItem[]
   calendarDate: string
   initialValues: {
     localeId: string
@@ -966,6 +985,9 @@ export function ExperienceEditor({
   const [videoLibrarySort, setVideoLibrarySort] = useState<
     "recent" | "title" | "duration"
   >("recent")
+  const [imagePickerTarget, setImagePickerTarget] =
+    useState<ImagePickerTarget | null>(null)
+  const [imageLibraryQuery, setImageLibraryQuery] = useState("")
   const [carouselDragState, setCarouselDragState] =
     useState<CarouselDragState | null>(null)
   const [carouselDragHandleState, setCarouselDragHandleState] =
@@ -1235,6 +1257,15 @@ export function ExperienceEditor({
       (item) => item.key !== videoPickerCurrentVideo?.key,
     ),
   ]
+  const normalizedImageLibraryQuery = imageLibraryQuery.trim().toLowerCase()
+  const filteredImageLibrary = mediaLibrary.filter((asset) => {
+    const haystack =
+      `${asset.displayName} ${asset.altText ?? ""} ${asset.mimeType} ${asset.id}`.toLowerCase()
+    return (
+      normalizedImageLibraryQuery.length === 0 ||
+      haystack.includes(normalizedImageLibraryQuery)
+    )
+  })
   const videoPickerSelectedVideo = findVideoLibraryItem(
     videoPickerDraft.videoKey,
   )
@@ -2903,36 +2934,60 @@ export function ExperienceEditor({
     })
   }
 
-  function updateContainerVisual(
-    index: number,
-    field: "backgroundColor" | "backgroundImageUrl",
-    value: string,
-  ) {
-    updateBlockAt(index, (block) => {
-      if (block.t !== "container") return block
-      return {
-        ...block,
-        [field]: value,
-      }
-    })
-  }
-
   function chooseBackgroundImage(
     index: number,
     block: BlockRecord,
-    field: "backgroundImageUrl" | "imageUrl",
+    field: ImagePickerTarget["urlField"],
   ) {
-    const current = asString(block[field])
-    const nextValue = window.prompt("Background image URL", current)
-    if (nextValue === null) return
-    updateBlockStringField(index, field, nextValue.trim())
+    openImagePicker(index, block, field)
   }
 
   function chooseContainerBackgroundImage(index: number, block: BlockRecord) {
-    const current = asString(block.backgroundImageUrl)
-    const nextValue = window.prompt("Background image URL", current)
-    if (nextValue === null) return
-    updateContainerVisual(index, "backgroundImageUrl", nextValue.trim())
+    openImagePicker(index, block, "backgroundImageUrl")
+  }
+
+  function openImagePicker(
+    blockIndex: number,
+    block: BlockRecord,
+    urlField: ImagePickerTarget["urlField"],
+  ) {
+    const blockType = asString(block.t) || "block"
+    setImagePickerTarget({
+      blockIndex,
+      urlField,
+      assetField: visualIdentityAssetField(urlField),
+      label: blockType === "card" ? "card image" : `${blockType} image`,
+    })
+    setImageLibraryQuery("")
+  }
+
+  function closeImagePicker() {
+    setImagePickerTarget(null)
+    setImageLibraryQuery("")
+  }
+
+  function applyImagePickerSelection(asset: MediaLibraryItem) {
+    if (!imagePickerTarget || !asset.previewUrl) return
+
+    updateBlockAt(imagePickerTarget.blockIndex, (block) => ({
+      ...block,
+      [imagePickerTarget.urlField]: asset.previewUrl,
+      [imagePickerTarget.assetField]: asset.id,
+    }))
+    pushToast(`Attached ${asset.displayName}.`, "success")
+    closeImagePicker()
+  }
+
+  function clearVisualIdentityImage(
+    index: number,
+    urlField: ImagePickerTarget["urlField"],
+  ) {
+    const assetField = visualIdentityAssetField(urlField)
+    updateBlockAt(index, (block) => ({
+      ...block,
+      [urlField]: "",
+      [assetField]: "",
+    }))
   }
 
   function appendContainerSlot(index: number) {
@@ -3685,6 +3740,12 @@ export function ExperienceEditor({
   function visualIdentityImageField(type: string) {
     if (type === "container" || type === "section") return "backgroundImageUrl"
     return type === "card" ? "mediaUrl" : "imageUrl"
+  }
+
+  function visualIdentityAssetField(field: ImagePickerTarget["urlField"]) {
+    if (field === "backgroundImageUrl") return "backgroundImageAssetId"
+    if (field === "mediaUrl") return "mediaAssetId"
+    return "imageAssetId"
   }
 
   function blockVisualIdentity(block: BlockRecord | null) {
@@ -7073,9 +7134,7 @@ export function ExperienceEditor({
                     chooseBackgroundImage(
                       index,
                       blockRecord ?? {},
-                      visualIdentityImageFieldName as
-                        | "backgroundImageUrl"
-                        | "imageUrl",
+                      visualIdentityImageFieldName as ImagePickerTarget["urlField"],
                     )
                   }}
                   className={cx(
@@ -7099,10 +7158,9 @@ export function ExperienceEditor({
                       event.preventDefault()
                       event.stopPropagation()
                       activateBlock(index)
-                      updateBlockStringField(
+                      clearVisualIdentityImage(
                         index,
-                        visualIdentityImageFieldName,
-                        "",
+                        visualIdentityImageFieldName as ImagePickerTarget["urlField"],
                       )
                     }}
                     className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-r-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:text-[var(--color-danger)]"
@@ -9133,6 +9191,132 @@ export function ExperienceEditor({
           </div>
         </div>
       ) : null}
+      <div
+        className={cx(
+          "fixed inset-0 z-50 flex items-center justify-center px-4 transition-all duration-180 ease-out sm:px-6",
+          imagePickerTarget
+            ? "pointer-events-auto bg-[rgba(4,6,10,0.78)] backdrop-blur-[8px]"
+            : "pointer-events-none bg-[rgba(4,6,10,0)] backdrop-blur-0",
+        )}
+        onClick={(event) => {
+          if (event.target !== event.currentTarget) return
+          closeImagePicker()
+        }}
+        role="presentation"
+        aria-hidden={!imagePickerTarget}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="image-library-title"
+          className={cx(
+            "flex h-[min(80vh,760px)] w-full max-w-[920px] flex-col overflow-hidden rounded-sm border border-[var(--color-hairline-strong)] bg-[color-mix(in_oklab,var(--color-surface)_96%,black)] p-5 shadow-[0_32px_120px_rgba(0,0,0,0.58)] transition-[opacity,transform] duration-180 ease-out",
+            imagePickerTarget
+              ? "translate-y-0 scale-100 opacity-100"
+              : "translate-y-2 scale-[0.98] opacity-0",
+          )}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                Media Library
+              </div>
+              <h2
+                id="image-library-title"
+                className="mt-2 text-[22px] font-semibold tracking-[-0.03em] text-[var(--color-text-primary)]"
+              >
+                Choose an image
+              </h2>
+              <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[var(--color-text-secondary)]">
+                Attach a managed image asset to this{" "}
+                {imagePickerTarget?.label ?? "block"}. The editor stores the
+                asset ID and keeps the preview URL for current renderers.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={closeImagePicker}
+              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
+              aria-label="Close image library"
+            >
+              <X className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </div>
+
+          <label className="mt-5 grid gap-1.5 border-b border-[var(--color-hairline)] pb-4">
+            <span className="label-text">Search</span>
+            <div className="flex h-10 items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3">
+              <Search className="h-4 w-4 text-[var(--color-text-muted)]" />
+              <input
+                value={imageLibraryQuery}
+                onChange={(event) => setImageLibraryQuery(event.target.value)}
+                className="w-full border-0 bg-transparent text-[13px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-disabled)]"
+                placeholder="Search display name, alt text, MIME type, or asset ID"
+              />
+            </div>
+          </label>
+
+          <div className="mt-4 min-h-0 flex-1 overflow-y-auto [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
+            {filteredImageLibrary.length === 0 ? (
+              <div className="rounded-sm border border-dashed border-[var(--color-hairline)] px-4 py-8 text-center">
+                <div className="text-[14px] font-medium text-[var(--color-text-primary)]">
+                  No image assets match these filters
+                </div>
+                <div className="mt-2 text-[12px] leading-5 text-[var(--color-text-muted)]">
+                  Upload images in the Media Library, then return here to use
+                  them in experience blocks.
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-3 pb-6 md:grid-cols-2 xl:grid-cols-3">
+                {filteredImageLibrary.map((asset) => (
+                  <button
+                    key={asset.id}
+                    type="button"
+                    disabled={!asset.previewUrl}
+                    onClick={() => applyImagePickerSelection(asset)}
+                    className="group grid cursor-pointer overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <div className="aspect-video bg-[var(--color-bg)]">
+                      {asset.previewUrl ? (
+                        <div
+                          className="h-full w-full bg-cover bg-center transition-transform duration-[180ms] ease-out group-hover:scale-[1.02]"
+                          style={{
+                            backgroundImage: `url("${asset.previewUrl}")`,
+                          }}
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <ImageIcon
+                            className="h-8 w-8 text-[var(--color-text-muted)]"
+                            strokeWidth={1.5}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="grid gap-2 p-3">
+                      <div className="truncate text-[13px] font-medium text-[var(--color-text-primary)]">
+                        {asset.displayName}
+                      </div>
+                      <div className="mono-meta truncate text-[var(--color-text-muted)]">
+                        {asset.altText || asset.id}
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="mono-meta text-[var(--color-text-secondary)]">
+                          {asset.byteSize}
+                        </span>
+                        <span className="mono-meta text-[var(--color-text-muted)]">
+                          {asset.updated}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
       <div
         className={cx(
           "fixed inset-0 z-50 flex items-center justify-center px-4 transition-all duration-180 ease-out sm:px-6",

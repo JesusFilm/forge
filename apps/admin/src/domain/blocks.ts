@@ -40,6 +40,7 @@ const sectionKey = z.string().min(1).max(200).optional()
 
 /** Explicit union of Strapi heading levels so downstream renderers are narrow. */
 const headingLevel = z.enum(["h1", "h2", "h3", "h4", "h5", "h6"])
+const assetId = z.string().min(1).optional()
 
 // -----------------------------------------------------------------------------
 // Leaf components (embedded inside blocks; not top-level)
@@ -51,11 +52,13 @@ export const BibleQuoteItemSchema = z
     reference: z.string().min(1),
     text: z.string().min(1),
     backgroundImageUrl: z.string().url().optional(),
+    backgroundImageAssetId: assetId,
     ctaEnabled: z.boolean().optional(),
     ctaLabel: z.string().optional(),
     ctaLink: z.string().optional(),
     attribution: z.string().optional(),
     imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     backgroundColor: z.string().optional(),
   })
   .strict()
@@ -75,11 +78,13 @@ export const MediaCollectionItemSchema = z
     /** Reference to a Video row by id (resolved on read). */
     videoId: z.string().optional(),
     imageOverrideUrl: z.string().url().optional(),
+    imageOverrideAssetId: assetId,
     titleOverride: z.string().optional(),
     subtitleOverride: z.string().optional(),
     labelOverride: z.string().optional(),
     collectionSize: z.string().optional(),
     imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     linkToSectionKey: z.string().optional(),
   })
   .strict()
@@ -91,6 +96,7 @@ export const NavigationCarouselItemSchema = z
     title: z.string().min(1),
     category: z.string().optional(),
     imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     backgroundColor: z.string().optional(),
   })
   .strict()
@@ -110,7 +116,9 @@ export const VideoCarouselItemSchema = z
     videoId: z.string().optional(),
     streamingUrl: z.string().optional(),
     imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     imageOverrideUrl: z.string().url().optional(),
+    imageOverrideAssetId: assetId,
     titleOverride: z.string().optional(),
     subtitleOverride: z.string().optional(),
     backgroundColor: z.string().optional(),
@@ -126,6 +134,7 @@ export const AdventCountdownBlockSchema = z
     t: z.literal("adventCountdown"),
     sectionKey,
     imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     title: z.string().min(1),
     scripture: z.string().optional(),
@@ -139,6 +148,7 @@ export const BibleQuotesCarouselBlockSchema = z
     t: z.literal("bibleQuotesCarousel"),
     sectionKey,
     imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
     quotes: z.array(BibleQuoteItemSchema).default([]),
@@ -152,6 +162,7 @@ export const CardBlockSchema = z
     title: z.string().min(1),
     description: z.string().min(1),
     mediaUrl: z.string().url().optional(),
+    mediaAssetId: assetId,
     backgroundColor: z.string().optional(),
     link: z.string().optional(),
     variant: z.enum(["default", "featured"]).default("default"),
@@ -163,6 +174,7 @@ export const CtaBlockSchema = z
     t: z.literal("cta"),
     sectionKey,
     imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
     body: z.string().optional(),
@@ -177,6 +189,7 @@ export const EasterDatesBlockSchema = z
     t: z.literal("easterDates"),
     sectionKey,
     imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     easterDatesTitle: z.string().min(1),
     westernEasterLabel: z.string().min(1),
@@ -194,6 +207,7 @@ export const InfoBlocksBlockSchema = z
     t: z.literal("infoBlocks"),
     sectionKey,
     imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     widthPercent: z.number().int().min(1).max(100).optional(),
     intro: z.string().optional(),
@@ -208,6 +222,7 @@ export const MediaCollectionBlockSchema = z
     t: z.literal("mediaCollection"),
     sectionKey,
     imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     categoryLabel: z.string().optional(),
     variant: z.enum(["carousel", "grid", "collection", "hero", "player"]),
@@ -228,6 +243,7 @@ export const NavigationCarouselBlockSchema = z
     t: z.literal("navigationCarousel"),
     sectionKey,
     imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     items: z.array(NavigationCarouselItemSchema).default([]),
   })
@@ -238,6 +254,7 @@ export const PromoBannerBlockSchema = z
     t: z.literal("promoBanner"),
     sectionKey,
     imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     widthPercent: z.number().int().min(1).max(100).optional(),
     intro: z.string().optional(),
@@ -270,6 +287,7 @@ export const RelatedQuestionsBlockSchema = z
     t: z.literal("relatedQuestions"),
     sectionKey,
     imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
     questions: z.array(RelatedQuestionItemSchema).default([]),
@@ -284,6 +302,7 @@ export const TextBlockSchema = z
     t: z.literal("text"),
     sectionKey,
     imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
     headingLevel: headingLevel.optional(),
@@ -302,6 +321,7 @@ export const VideoBlockSchema = z
     /** Reference to a Video row by id. */
     videoId: z.string().optional(),
     mediaUrl: z.string().url().optional(),
+    mediaAssetId: assetId,
     clipStartSeconds: z.number().min(0).optional(),
     clipEndSeconds: z.number().min(0).optional(),
     autoplay: z.boolean().optional(),
@@ -320,6 +340,7 @@ export const VideoCarouselBlockSchema = z
     t: z.literal("videoCarousel"),
     sectionKey,
     imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     itemsSource: z.enum(["manual", "routeVideoChildren"]).default("manual"),
     title: z.string().optional(),
@@ -404,6 +425,7 @@ export const ContainerSlotBlockSchema = z
     spans: ContainerSlotSpansSchema.optional(),
     backgroundColor: z.string().optional(),
     backgroundImageUrl: z.string().url().optional(),
+    backgroundImageAssetId: assetId,
   })
   .strict()
 
@@ -434,6 +456,7 @@ export const ContainerBlockSchema = z
     sectionKey,
     backgroundColor: z.string().optional(),
     backgroundImageUrl: z.string().url().optional(),
+    backgroundImageAssetId: assetId,
     content: z.array(ContainerContentBlockSchema).default([]),
     /** Legacy nested-slot payloads are tolerated so old drafts can be opened. */
     slots: z.custom<never>(() => true).optional(),
@@ -479,6 +502,7 @@ export const SectionBlockSchema = z
     sectionKey,
     backgroundColor: z.string().optional(),
     backgroundImageUrl: z.string().url().optional(),
+    backgroundImageAssetId: assetId,
     blurHash: z.string().optional(),
     backgroundOpacity: z.number().min(0).max(1).optional(),
     dynamicBackgroundImage: z.boolean().default(false),

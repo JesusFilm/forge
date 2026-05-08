@@ -23,7 +23,7 @@ vi.mock("@/services/workflow-worker-heartbeat.service", () => ({
 describe("workflow instrumentation", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockEnv.env.NEXT_RUNTIME = "nodejs"
+    process.env.NEXT_RUNTIME = "nodejs"
     mockEnv.env.WORKFLOW_TARGET_WORLD = undefined
   })
 
@@ -40,7 +40,7 @@ describe("workflow instrumentation", () => {
   })
 
   it("does not start a world in the edge runtime", async () => {
-    mockEnv.env.NEXT_RUNTIME = "edge"
+    process.env.NEXT_RUNTIME = "edge"
     mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
     const { register, shouldStartWorkflowWorld } =
       await import("./instrumentation")

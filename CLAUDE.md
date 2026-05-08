@@ -205,16 +205,27 @@ This repo uses the compound engineering workflow. After completing work:
 
 ### The GraphQL Change Flow
 
-This is the most common cross-package workflow. Every agent should know it:
+`packages/graphql` consumes TWO GraphQL schemas during the consumer migration window — Strapi (`apps/cms`) and admin (`apps/admin`) — and emits two typed factories (`graphql()` and `adminGraphql()`). Each schema has its own change flow. Never skip the codegen step in either flow; stale types are the #1 source of runtime GraphQL errors.
+
+**Strapi-side change flow:**
 
 1. Add or modify content type in `apps/cms/` (Strapi admin or code)
-2. Run Strapi locally so the GraphQL schema is available
-3. Run codegen in `packages/graphql/` to regenerate typed operations
-4. Update or add queries/mutations/fragments in `packages/graphql/`
-5. Update consuming code in `apps/web/` and/or `apps/mobile/`
+2. Run Strapi locally so the GraphQL schema is available; `apps/cms/schema.graphql` auto-emits
+3. Run `pnpm --filter @forge/graphql generate` to regenerate `packages/graphql/src/graphql-env.d.ts`
+4. Update or add queries/mutations/fragments using the `graphql()` factory in consuming apps
+5. Update consuming code in `apps/web/`, `apps/mobile/`, `apps/tv/`
 6. Commit generated files alongside source changes
 
-Never skip step 3. Stale types are the #1 source of runtime GraphQL errors.
+**Admin-side change flow:**
+
+1. Add or modify Pothos types in `apps/admin/src/graphql/types/` or related modules
+2. Run `pnpm --filter @forge/admin schema:print` to regenerate `apps/admin/schema.graphql`
+3. Run `pnpm --filter @forge/graphql generate` to regenerate `packages/graphql/src/admin-graphql-env.d.ts`
+4. Update or add queries/mutations/fragments using the `adminGraphql()` factory in consuming apps
+5. Update consuming code (admin-targeted routes only — see `packages/graphql/CLAUDE.md` for which factory to use when)
+6. Commit all three regenerated files alongside source changes
+
+CI's `admin-schema-drift` job catches step 2 if you forget; CI's `graphql-generate` job catches step 3.
 
 ### Known Patterns (add to this list as you compound)
 
@@ -225,6 +236,16 @@ Never skip step 3. Stale types are the #1 source of runtime GraphQL errors.
 - Devcontainer + pnpm: use `corepack prepare pnpm@<version> --activate` pinned to match `packageManager` in root `package.json` — see `docs/solutions/platform/devcontainer-setup.md`
 - Manager backfill pattern: claim lock synchronously before `after()`, use output table as progress tracker, constrain SQL DISTINCT ON joins — see `docs/solutions/platform/backfill-worker-pattern-manager-20260407.md`
 - Strapi v5 raw SQL: field names are snake-cased in DB (`bcp47` → `bcp_47`). Always verify with `\d tablename` against prod before writing raw SQL.
-- PostgreSQL 18 (Railway): `?::jsonb::text[]` cast is NOT supported. Use PG array literal format (`{val1,val2}`) with `?::text[]` instead. See `apps/cms/src/api/scene-embedding/services/indexer.ts` `toPgArray()`.
+- PostgreSQL 18 (Railway): `?::jsonb::text[]` cast is NOT supported. Use PG array literal format (`{val1,val2}`) with `?::text[]` instead. See `apps/cms/src/api/scene-embedding/services/indexer.ts` `toPgArray()`. Bulk-write pattern with per-row Way A vector + `text[]` casts at the SELECT seam: `docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
+- PostgreSQL `jsonb_array_elements_text(jsonb)` ≠ `json_array_elements_text(json)`. Distinct functions, NOT overloaded across the json/jsonb seam — `json_array_elements_text(jsonb)` does NOT exist (parse error 42883). When using Way A unfold (`u.col_json::jsonb`), call `jsonb_array_elements_text`. Mocked SQL-shape tests catch clause SHAPE but NOT function-resolution; only a real-DB smoke catches this. See `docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
 - Mux data model: `mux_videos.duration` is always 0. Duration lives on `video_variants.duration`.
 - Local embed pipeline + manager-trigger proxy: admin owns the embedding workflows + destination Postgres; manager exposes thin REST proxies at `/api/admin-embeds/{scene,transcript}` that forward to admin's GraphQL trigger mutations via a bearer key matching admin's `WORKFLOW_API_KEYS`. Local-dev path is `pnpm --filter @forge/admin pull:mapping` + `pnpm run-embeds` against any `DATABASE_URL` — see `docs/solutions/platform/local-embed-pipeline-pattern-20260429.md`.
+- Cross-app trigger pattern (bidirectional): admin↔manager service-to-service triggers use a caller-side single key + receiver-side CSV asymmetry. Both directions are now wired: manager → admin (`/api/admin-embeds/*` → `triggerSceneEmbeddingBackfill`/`triggerTranscriptEmbeddingBackfill`, with admin holding the CSV `WORKFLOW_API_KEYS`) and admin → manager (`triggerManagerEnrichment` → `/api/admin-trigger/*`, with manager holding the CSV `ADMIN_TRIGGER_API_KEYS`). Receiver deploys keyring entry FIRST; then caller deploys env var. Reverse order produces a dead minute where the first call 401s. See `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`.
+- AWS S3 NoSuchKey classification: never branch on the error MESSAGE — match `error.name === "NoSuchKey" | "NotFound"` (AWS SDK v3 typed surface) first, legacy `error.Code === "NoSuchKey" | "NotFound"` second, tightened regex `/not found|does not exist|ENOENT/i` as backstop only. Tests must throw the REAL typed shape (`Object.assign(new Error(...), { name: "NoSuchKey" })`), not generic `new Error("NoSuchKey: ...")` — otherwise the regex backstop satisfies the test while the typed branch stays untested. See `docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md`.
+- Mocked-vs-real testing discipline (META): mocked tests prove BRANCH SHAPE; real fixtures prove PRODUCTION CONTRACT. Every typed-discriminator branch needs at least one test where ONLY that branch can match — otherwise deleting a branch wouldn't fail any test. Same trap shows up in AWS error shapes, PG function resolution, in-house typed errors with literal-union codes, infrastructure-write tools that return success on staged-but-not-deployed changes, AND cross-PR file-format contracts (feat-119 PR2's `kind: "scene"` vs PR1's `kind: "scene-analysis"`). See `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md` for the META home + five worked instances.
+- Producer-consumer report-file contract: when two stacked PRs share a file format (PR1 `--report-out` + PR2 `--from-report`), the discriminator literals (kinds, statuses) MUST align across the boundary. Pick ONE source of truth (typically the wire shape — URL paths or GraphQL enums) and align both halves to it; don't rename through layers. Test fixtures must use the producer's actual literals, not the consumer's assumptions. See `docs/solutions/best-practices/producer-consumer-report-file-contract-pattern-20260506.md`.
+- Outbound timeout MUST be shorter than the upstream caller's budget: any server-route function that calls a downstream client (Apollo, pg, http) which doesn't honor an explicit per-call timeout must wrap with `Promise.race` + a typed `TimeoutError` rejection, with a budget strictly smaller than the upstream caller's ceiling. Otherwise the upstream classifier wins the race ("network_error retryable" → retry storm) while the inner call keeps running. Pick the mechanism that matches the client (`AbortSignal.timeout` for fetch; `Promise.race` for Apollo; `statement_timeout` + race for pg). See `docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md`.
+- Fire-and-forget slot-leak guard: any `after()`-style or queue-style background dispatch that reserves in-memory state (idempotency map, semaphore, claim token) before dispatch must wrap the ENTIRE callback body in `try/finally` — not just the `await dispatch`. A naive `try { await dispatch } finally { delete }` leaks the slot if anything earlier in the callback (structured-log JSON.stringify, getter on a proxy, future side-effect) throws synchronously. Add a sync-throw test (not just async-reject) for every reserve/release pair. See `docs/solutions/best-practices/in-memory-slot-reservation-fire-and-forget-20260506.md`.
+- Client mirrors server dedupe: when a client → server pair has the server deduping by a stable id, the client MUST mirror that dedupe by the SAME key, before the request. Otherwise request and response array lengths diverge and the client synthesizes confused outcomes (was this NOT_FOUND or just deduped?). Document the dedupe key in BOTH halves' code comments so future maintainers can't accidentally diverge them. See `docs/solutions/best-practices/client-mirror-server-dedupe-per-id-contract-20260506.md`.
+- Pothos mutations — parallel arg arrays vs input-object list: default to `[InputType!]!`. Use parallel `[T1!]! + [T2!]!` arrays paired by index ONLY when ≤2 fields, the producer naturally projects them as separate arrays, AND the field set is unlikely to grow within 6 months. Length-equality validation in the resolver is a smell — input objects make it unrepresentable. See `docs/solutions/graphql/pothos-parallel-arg-arrays-vs-input-list-20260506.md`.
+- Operator-actionable projections in workflow reports: when a `succeeded/skipped/failed` count triple accumulates duplicate signals via a cascade (e.g., L outcomes per missing `(parent, child)` group), surface a deduped+sorted projection by stable id (`{ assetId, coreId, kind }`) AS A FIRST-CLASS REPORT FIELD. Dedup at projection time, not in the cascade — preserves the per-target outcome contract for dashboards while giving operators an actionable unique-set view. feat-119 PR1's `missingArtifacts` field is the canonical example. See `docs/solutions/best-practices/workflow-report-operator-actionable-projection-pattern-20260506.md`.

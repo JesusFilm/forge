@@ -9,10 +9,18 @@ import { ExternalLink } from "lucide-react"
 
 import type { WatchBibleQuotesBlock } from "@/lib/content"
 import { formatCitation } from "@/lib/citation-format"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel"
 import {
   CAROUSEL_BLEED_CLASSES,
   CAROUSEL_CONTENT_PADDING,
+  CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
 
 type BibleQuotesSectionProps = {
@@ -20,19 +28,44 @@ type BibleQuotesSectionProps = {
   onShareClick: () => void
 }
 
+const JOIN_BIBLE_STUDY_URL =
+  "https://join.bsfinternational.org/?utm_source=jesusfilm-watch"
+
+// Disable click-and-drag when the carousel has at most one snap point —
+// dragging a single visible card is a no-op gesture that visibly tugs and
+// snaps back. Exported for direct unit-testing because jsdom collapses
+// layout to zero, making `scrollSnapList()` always return [] in component
+// tests.
+export function shouldEnableDrag(api: {
+  scrollSnapList: () => unknown[]
+}): boolean {
+  return api.scrollSnapList().length > 1
+}
+
+// Stable opts reference. embla-carousel-reactive-utils compares opts via
+// areOptionsEqual, which serializes function values with .toString(). A
+// module-level constant guarantees a stable identity across renders so a
+// future captured prop in watchDrag can't silently trigger reInit
+// mid-scroll, briefly tearing down event listeners.
+const CAROUSEL_OPTS = {
+  align: "start",
+  dragFree: true,
+  containScroll: "trimSnaps",
+  watchDrag: shouldEnableDrag,
+} as const
+
 export function BibleQuotesSection({
   bibleCitations,
   onShareClick,
 }: BibleQuotesSectionProps) {
-  if (bibleCitations.length === 0) {
-    return null
-  }
-
+  // The carousel always renders, even when the video has no Bible citations —
+  // the trailing "Join Our Bible Study" promo card is the always-on CTA, and
+  // every video page should surface it.
   return (
     <section
       data-block-type="BibleQuotes"
       data-testid="watch-bible-quotes"
-      className="pt-14 pb-6"
+      className="pt-4 pb-6"
     >
       <div
         data-testid="watch-bible-quotes-header"
@@ -53,40 +86,74 @@ export function BibleQuotesSection({
       </div>
 
       <div className={CAROUSEL_BLEED_CLASSES}>
-        <ul
-          data-testid="watch-bible-quotes-list"
-          className={`flex w-full snap-x snap-mandatory gap-4 overflow-x-auto pb-4 -ml-4 ${CAROUSEL_CONTENT_PADDING} pr-4 sm:pr-8 lg:pr-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}
+        <Carousel
+          aria-label="Bible Quotes"
+          opts={CAROUSEL_OPTS}
+          className="w-full"
         >
-          {bibleCitations.map((citation) => (
-            <li
-              key={citation.documentId}
-              data-testid="watch-bible-quotes-item"
-              className="shrink-0 basis-[85vw] snap-start pl-4 sm:basis-[50%] lg:basis-1/4"
-            >
-              <BibleQuoteCard>
-                <span
-                  data-testid="watch-bible-quotes-reference"
-                  className="block text-[10px] font-semibold tracking-[0.15em] text-amber-200/60 uppercase"
-                >
-                  {formatCitation(citation)}
-                </span>
-              </BibleQuoteCard>
-            </li>
-          ))}
-          <li
-            data-testid="watch-bible-quotes-promo"
-            className="shrink-0 basis-[85vw] snap-start pl-4 sm:basis-[50%] lg:basis-1/4"
+          <CarouselContent
+            data-testid="watch-bible-quotes-list"
+            className={`-ml-4 ${CAROUSEL_CONTENT_PADDING}`}
           >
-            <BibleQuoteCard bgColor="#3a2510">
-              <span className="mb-1 block text-xs font-semibold tracking-[0.15em] text-white/70 uppercase">
-                Free Resources
-              </span>
-              <h3 className="mt-1 mb-4 text-xl font-bold leading-snug text-balance text-white/90">
-                Join Our Bible Study
-              </h3>
-            </BibleQuoteCard>
-          </li>
-        </ul>
+            {bibleCitations.map((citation) => (
+              <CarouselItem
+                key={citation.documentId}
+                data-testid="watch-bible-quotes-item"
+                className="basis-[85vw] pl-4 sm:basis-[50%] lg:basis-1/4"
+              >
+                <BibleQuoteCard>
+                  <span
+                    data-testid="watch-bible-quotes-reference"
+                    className="block text-[10px] font-semibold tracking-[0.15em] text-amber-200/60 uppercase"
+                  >
+                    {formatCitation(citation)}
+                  </span>
+                </BibleQuoteCard>
+              </CarouselItem>
+            ))}
+            <CarouselItem
+              data-testid="watch-bible-quotes-promo"
+              className="basis-[85vw] pl-4 sm:basis-[50%] lg:basis-1/4"
+            >
+              <BibleQuoteCard bgColor="#3a2510">
+                <span className="mb-1 block text-xs font-semibold tracking-[0.15em] text-white/70 uppercase">
+                  Free Resources
+                </span>
+                <h3 className="mt-1 mb-4 text-xl font-bold leading-snug text-balance text-white/90">
+                  Join Our Bible Study
+                </h3>
+                <a
+                  href={JOIN_BIBLE_STUDY_URL}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  data-testid="watch-bible-quotes-promo-cta"
+                  className={`${buttonVariants({ variant: "pill" })} self-start`}
+                >
+                  Join our Bible study
+                </a>
+              </BibleQuoteCard>
+            </CarouselItem>
+            <CarouselItem
+              className="basis-auto pl-0"
+              aria-hidden="true"
+              tabIndex={-1}
+              data-testid="watch-bible-quotes-end-spacer"
+            >
+              <div className={CAROUSEL_END_SPACER} />
+            </CarouselItem>
+          </CarouselContent>
+          {/* Keyboard / assistive-tech / headless-agent step controls. The
+              design surface is drag-and-scroll, so these are visually
+              hidden but reachable by Tab + Enter. */}
+          <CarouselPrevious
+            className="sr-only"
+            data-testid="watch-bible-quotes-prev"
+          />
+          <CarouselNext
+            className="sr-only"
+            data-testid="watch-bible-quotes-next"
+          />
+        </Carousel>
       </div>
     </section>
   )

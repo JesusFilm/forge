@@ -58,14 +58,18 @@ describe("hasPermission — tier-based gate", () => {
       { key: "read:reference", role: "PUBLIC", expected: true },
       { key: "read:experiences", role: "PUBLIC", expected: false },
       { key: "read:videos", role: "PUBLIC", expected: false },
+      { key: "read:media-assets", role: "PUBLIC", expected: false },
       { key: "write:experiences", role: "PUBLIC", expected: false },
+      { key: "write:media-assets", role: "PUBLIC", expected: false },
       { key: "admin:all", role: "PUBLIC", expected: false },
 
       // VIEWER reach
       { key: "read:reference", role: "VIEWER", expected: true },
       { key: "read:experiences", role: "VIEWER", expected: true },
       { key: "read:videos", role: "VIEWER", expected: true },
+      { key: "read:media-assets", role: "VIEWER", expected: false },
       { key: "write:experiences", role: "VIEWER", expected: false },
+      { key: "write:media-assets", role: "VIEWER", expected: false },
       { key: "publish:experiences", role: "VIEWER", expected: false },
 
       // EDITOR reach
@@ -73,6 +77,9 @@ describe("hasPermission — tier-based gate", () => {
       { key: "write:experiences", role: "EDITOR", expected: true },
       { key: "publish:experiences", role: "EDITOR", expected: true },
       { key: "archive:experiences", role: "EDITOR", expected: true },
+      { key: "read:media-assets", role: "EDITOR", expected: true },
+      { key: "write:media-assets", role: "EDITOR", expected: true },
+      { key: "delete:media-assets", role: "EDITOR", expected: false },
       { key: "write:videos", role: "EDITOR", expected: false },
       { key: "system:trigger-workflow", role: "EDITOR", expected: false },
       { key: "admin:all", role: "EDITOR", expected: false },
@@ -81,6 +88,9 @@ describe("hasPermission — tier-based gate", () => {
       { key: "read:experiences", role: "ADMIN", expected: true },
       { key: "write:experiences", role: "ADMIN", expected: true },
       { key: "write:videos", role: "ADMIN", expected: true },
+      { key: "read:media-assets", role: "ADMIN", expected: true },
+      { key: "write:media-assets", role: "ADMIN", expected: true },
+      { key: "delete:media-assets", role: "ADMIN", expected: true },
       { key: "publish:experiences", role: "ADMIN", expected: true },
       { key: "system:trigger-workflow", role: "ADMIN", expected: true },
       { key: "admin:all", role: "ADMIN", expected: true },
@@ -94,6 +104,8 @@ describe("hasPermission — tier-based gate", () => {
       // SYSTEM is workflow-only — never satisfies editorial gates.
       { key: "read:experiences", role: "SYSTEM", expected: false },
       { key: "write:experiences", role: "SYSTEM", expected: false },
+      { key: "read:media-assets", role: "SYSTEM", expected: false },
+      { key: "write:media-assets", role: "SYSTEM", expected: false },
       { key: "system:write-derived", role: "SYSTEM", expected: true },
       { key: "system:trigger-workflow", role: "SYSTEM", expected: false },
     ]
@@ -330,10 +342,15 @@ describe("permission matrix completeness", () => {
       "read:experiences",
       "read:videos",
       "read:reference",
+      "read:media-assets",
       "write:experiences",
       "write:videos",
+      "write:media-assets",
       "write:scene-embeddings",
       "write:transcript-embeddings",
+      "write:experience-content-dump",
+      "write:manager-enrichment-trigger",
+      "delete:media-assets",
       "publish:experiences",
       "archive:experiences",
       "system:trigger-workflow",
@@ -346,6 +363,22 @@ describe("permission matrix completeness", () => {
         expect(() => hasPermission(p, key)).not.toThrow()
       }
     }
+  })
+
+  it("write:manager-enrichment-trigger is ADMIN-only at the editorial-tier ladder", () => {
+    expect(hasPermission(ADMIN, "write:manager-enrichment-trigger")).toBe(true)
+    expect(
+      hasPermission(EDITOR_ALICE, "write:manager-enrichment-trigger"),
+    ).toBe(false)
+    expect(hasPermission(VIEWER, "write:manager-enrichment-trigger")).toBe(
+      false,
+    )
+    expect(hasPermission(PUBLIC_USER, "write:manager-enrichment-trigger")).toBe(
+      false,
+    )
+    expect(hasPermission(SYSTEM, "write:manager-enrichment-trigger")).toBe(
+      false,
+    )
   })
 
   it("write:transcript-embeddings is ADMIN-only", () => {
@@ -363,6 +396,15 @@ describe("permission matrix completeness", () => {
     // SYSTEM does not satisfy editorial write gates (intentional; the
     // indexer's canWriteDerived is the SYSTEM-reachable path).
     expect(hasPermission(SYSTEM, "write:transcript-embeddings")).toBe(false)
+  })
+
+  it("media asset write is EDITOR+, but delete is ADMIN-only", () => {
+    expect(hasPermission(EDITOR_ALICE, "read:media-assets")).toBe(true)
+    expect(hasPermission(EDITOR_ALICE, "write:media-assets")).toBe(true)
+    expect(hasPermission(EDITOR_ALICE, "delete:media-assets")).toBe(false)
+    expect(hasPermission(ADMIN, "delete:media-assets")).toBe(true)
+    expect(hasPermission(VIEWER, "read:media-assets")).toBe(false)
+    expect(hasPermission(PUBLIC_USER, "read:media-assets")).toBe(false)
   })
 
   describe("WORKFLOW_TRIGGER (service-account, plan 006)", () => {
@@ -383,6 +425,12 @@ describe("permission matrix completeness", () => {
       ).toBe(true)
     })
 
+    it("satisfies write:manager-enrichment-trigger (feat-119 PR2 CLI path)", () => {
+      expect(
+        hasPermission(WORKFLOW_TRIGGER, "write:manager-enrichment-trigger"),
+      ).toBe(true)
+    })
+
     it("does NOT satisfy any permission key outside the narrow allowlist", () => {
       // Iterate every PermissionKey via TypeScript's exhaustive Record
       // pattern so adding a new key without explicitly deciding
@@ -393,16 +441,21 @@ describe("permission matrix completeness", () => {
       const allowedKeys: ReadonlySet<PermissionKey> = new Set([
         "write:scene-embeddings",
         "write:transcript-embeddings",
+        "write:manager-enrichment-trigger",
       ])
       const allKeys: Record<PermissionKey, true> = {
         "read:experiences": true,
         "read:videos": true,
         "read:reference": true,
+        "read:media-assets": true,
         "write:experiences": true,
         "write:videos": true,
+        "write:media-assets": true,
         "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
         "write:experience-content-dump": true,
+        "write:manager-enrichment-trigger": true,
+        "delete:media-assets": true,
         "publish:experiences": true,
         "archive:experiences": true,
         "system:trigger-workflow": true,

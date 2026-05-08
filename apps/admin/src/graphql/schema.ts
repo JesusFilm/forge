@@ -5,16 +5,21 @@
 
 import { builder } from "@/graphql/builder"
 // Order matters: reference types first (they define the JSON scalar used by
-// Experience), then Video, then Experience.
+// Experience), then asset/content types, then mutations.
 import "@/graphql/types/reference"
+import "@/graphql/types/mediaAsset"
+import "@/graphql/types/mediaFolder"
 import "@/graphql/types/video"
 import "@/graphql/types/videoScene"
 import "@/graphql/types/videoTranscript"
 import "@/graphql/types/experience"
+import "@/graphql/mutations/media-asset"
+import "@/graphql/mutations/media-folder"
 import "@/graphql/mutations/experience"
 import "@/graphql/mutations/scene-embedding"
 import "@/graphql/mutations/transcript-embedding"
 import "@/graphql/mutations/experience-content-dump"
+import "@/graphql/mutations/manager-enrichment"
 import "@/graphql/queries/search"
 // Debug-payload types must register before the hybrid-search query
 // references them via SearchResultDebugRef.

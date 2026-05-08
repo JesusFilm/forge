@@ -460,6 +460,93 @@ verified against a live Postgres on 2026-04-13 and the go/no-go gate passed.
 Remove `Ping`/`PingChild` (schema + migration + graphql types + tests) in
 the first Unit 4 commit after sign-off.
 
+## Core sync — video-dubs phase
+
+Admin owns the dub catalogue locally. The video-dubs sync phase
+(`src/services/core-sync/phases/sync-dubs.ts`) writes Core's variants
+into admin's `VideoDub` + `VideoDubDownload` + `VideoEdition` +
+`MuxVideo` rows. Downstream embed enumeration (R1, R2) JOINs
+`video_dub` to derive each video's dub-language set, so a partial dub
+catalogue silently shrinks the embed target list — keep this phase
+green.
+
+- **Query shape:** flat top-level `videoVariants(offset, limit, input)`,
+  not `videos { variants { … }}`. The nested form trips Core's resolver
+  fan-out cliff on megavideos like JFP-Classic and aborts after ~50 s
+  with `INTERNAL_SERVER_ERROR`. Both `since` (incremental) and full
+  sync route through the same paginated loop; `since` populates
+  `input: { updatedAt: { gte: since }}`, full passes `input: undefined`.
+  See `docs/solutions/platform/core-graphql-unbounded-relation-fan-out-20260504.md`.
+- **PAGE_SIZE = 100.** Inside Core's per-call cost ceiling for the
+  flat query. Probe data: `videos(limit:5)+variants` ok in 240 ms,
+  `videos(limit:25)+variants+downloads` times out at 50.4 s. The flat
+  `videoVariants(limit:N)` shape spreads megavideo variants across
+  pages, so 100 is comfortable today; raise it once Core lands a `take`
+  cap on `Video.variants`.
+- **Per-page error isolation.** The page loop wraps `coreQuery` in
+  try/catch. A failing page logs `core-sync.video-dub.page.error` (with
+  `offset`, `pageSize`, and `error.message`), increments `stats.errors`,
+  advances `offset`, and continues. One transient Core hiccup mid-
+  pagination must NOT abort the rest of the phase.
+- **Soft-delete via array-bound raw SQL.** When `!since &&
+stats.errors === 0 && seenCoreIds.size > 0`, the phase soft-deletes
+  Core-sourced rows missing from the seen set via:
+  ```
+  UPDATE "video_dub"
+  SET    "deleted_at" = NOW()
+  WHERE  "source"     = 'core'
+    AND  "deleted_at" IS NULL
+    AND  NOT ("core_id" = ANY(${toPgArray([...seenCoreIds])}::text[]))
+  ```
+  Note: `'core'` is the lowercase DB enum value (`SourceTier ENUM('core',
+  'manager')` from `0001_init`). Prisma's TS enum maps `CORE` → `'core'`
+  automatically; raw SQL bypasses that mapping so the literal must match
+  the DB value.
+  NOT `prisma.videoDub.updateMany({ coreId: { notIn: [...] }})` — that
+  generates one prepared-statement parameter per ID and Postgres caps
+  prepared-statement params at 32,767 (`PG_INT16_MAX`). The 209k-row
+  catalogue blew past the cap. The array-literal-as-text pattern keeps
+  the parameter count at 1 regardless of catalogue size; per
+  `apps/admin/src/db/pgvector.ts::toPgArray()` and the PG18 cast note
+  in root `CLAUDE.md`.
+- **Soft-delete safety:** the gating expression `!since && stats.errors
+=== 0` means a partial seen-set (one or more page errors) NEVER
+  triggers mass soft-delete. The phase silently records the in-flight
+  errors and leaves Core-sourced rows alone for the next full sync to
+  reconcile.
+
+**Operational runbook:**
+
+1. `pnpm --filter @forge/admin core-sync:run --full --scope=video-dubs`
+   from a workstation with `DATABASE_URL` pointed at a target Postgres.
+   Local destinations are safe; prod requires the usual operator
+   discipline (`run-sync.ts` posture — there is no in-script prod-URL
+   guard).
+2. Expect ~30-40 min on a fresh DB at the current catalogue size; ~85%
+   of wall time is variants of JFP-Classic-class megavideos. Per-page
+   logging is silent on the happy path; failure events are JSON
+   structured for easy filtering.
+3. Re-run is idempotent and safe. Each re-run re-walks every page; row
+   writes upsert-on-conflict; soft-delete is gated on zero page errors
+   so a partial run never decimates the catalogue.
+
+**Common pitfalls:**
+
+- Re-introducing the nested `videos { variants { … }}` query shape
+  (e.g., as a "we only need a few videos" optimisation). Don't — the
+  same Core-side timeout will trip and a single megavideo in the
+  batch aborts the whole call. Use the flat `videoVariants` query
+  with a `where` filter on `videoId` if scoping is genuinely needed.
+- Replacing the soft-delete `$executeRaw` with `prisma.videoDub
+.updateMany({ coreId: { notIn: [...] }})` for stylistic reasons.
+  Don't — the bind-variable cap re-asserts immediately. The test in
+  `sync-dubs.test.ts` is a regression guard.
+- Lowering `PAGE_SIZE` to "make it safer." It does not. The cost
+  ceiling is set by Core's resolver, not by per-page network cost on
+  our side. Use the diagnostic probe in
+  `docs/solutions/platform/core-graphql-unbounded-relation-fan-out-20260504.md`
+  to re-measure before changing the value.
+
 ## Scene embeddings (R1 of admin migration playbook)
 
 Admin owns scene-level embeddings in its own Postgres. Source data is
@@ -494,8 +581,100 @@ scale.
   `docs/solutions/best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md`.
   Per-target error isolation; `artifact_missing` errors skip, provider
   errors fail but don't halt the run. Safe to re-run.
+- **Bounded parallelism (Stage 2 — feat-116):** the workflow groups
+  enumerated `(video, edition, locale)` targets by `(video, edition)`
+  and parallelises over GROUPS via
+  `pLimit(env.SCENE_EMBEDDING_CONCURRENCY ?? 5) + Promise.allSettled`
+  — never bare `Promise.all`. Per-locale work inside a group runs
+  sequentially with the artifact in scope. See
+  `docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md`
+  (the WHY) and
+  `docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md`
+  (the canonical HOW). The concurrency-cap test still asserts
+  `observedMaxInFlight === N` — a regression to sequential `for…of`
+  yields `1` and trips the assertion.
+- **Per-(video, edition) artifact memoization (Stage 2 — feat-116):**
+  the workflow fetches `scene-analysis.json` ONCE per `(video, edition)`
+  group via `readSceneAnalysisArtifact(...)` and passes the loaded JSON
+  down to each per-locale `indexEditionScenes(...)` call via the
+  service's `loadedArtifact` argument. S3 reads collapse from N×L (per
+  locale) to N (per group). Group-level artifact-load failures cascade
+  to per-locale outcomes with the right classification
+  (`artifact_missing` → skipped; everything else → failed) so the
+  report's succeeded/skipped/failed triple stays meaningful. Memory
+  budget per active locale: ~250 KB artifact + ~370 KB embeddings array
+  (1536 floats × ~30 scenes × 8 bytes) + ~10 KB sourceTexts ≈ ~630 KB.
+  At default concurrency=5 that's ~3 MB peak resident across in-flight
+  groups; released as soon as the per-locale transaction completes.
+- **Batched OpenRouter (Stage 2 — feat-116):** `indexEditionScenes`
+  issues ONE `generateExperienceEmbeddings(scenes.map(s => s.description))`
+  call per `(video, locale)` target instead of one call per scene.
+  Embeddings come back in input-array order (`embeddings[i]` ↔
+  `scenes[i]`) — verified by the position-stable test. Length /
+  dimension mismatches surface as typed `EmbeddingsBatchError` and
+  fail-fast for the whole target rather than partial-write. The
+  `scenesSkipped` field on `IndexEditionScenesResult` is preserved for
+  back-compat but is effectively `0` on the happy path now (Stage 1's
+  per-scene `Promise.allSettled` skip semantics no longer apply since
+  the provider call is batched).
+- Tune concurrency via the `SCENE_EMBEDDING_CONCURRENCY` env var on
+  `forge-admin` Doppler. Default `5` matches admin's documented Prisma
+  `connection_limit=10` so a backfill leaves headroom for concurrent
+  GraphQL/REST traffic; local dev can crank to `20+` via the env
+  override. Per-target progress streams as `scene_index_complete` /
+  `scene_index_skipped` / `scene_index_failed` JSON log events; the
+  workflow also emits a single `event=start` log at dispatch carrying
+  the resolved concurrency AND `groupCount` (Stage 2's reshape
+  surfaces the artifact-fetch fan-in for any trigger path).
 - **Trigger:** `triggerSceneEmbeddingBackfill` GraphQL mutation
-  (ADMIN-only; permission key `write:scene-embeddings`).
+  (ADMIN-only; permission key `write:scene-embeddings`). Stage 2's
+  reshape is internal — the GraphQL JSON response shape is byte-
+  identical to Stage 1 (modulo `outcomes[]` ordering, already
+  documented as non-deterministic per `Promise.allSettled`).
+- **NoSuchKey classification + missingArtifacts list (feat-119 PR1):**
+  AWS S3 `NoSuchKey` errors classify as `skipped { reason: "artifact_missing" }`
+  via the typed-error helper `isArtifactMissing` in
+  `manager-artifacts.service.ts` (typed `error.name` first, legacy
+  `error.Code` second, tightened regex backstop third). Re-running
+  the embed workflow does NOT produce the artifact — the operator
+  must explicitly trigger enrichment via PR2's
+  `triggerManagerEnrichment` mutation. The workflow report carries a
+  `missingArtifacts: ReadonlyArray<{ assetId, coreId, kind }>` field
+  (deduped by `assetId`, sorted ascending) so an operator can pipe
+  it into `pnpm trigger-enrichment --from-report=<path>` (PR2).
+  Only `skipped { artifact_missing }` outcomes feed the list — `failed`
+  outcomes are real failures, not upstream gaps. See
+  `docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md`.
+- **Bulk SQL writes (Stage 3 — feat-117):** the per-target write batch
+  collapses from a per-row `videoSceneLocale.upsert()` + per-row
+  `$executeRaw … UPDATE … embedding` loop into THREE bulk statements
+  inside the same per-target `prisma.$transaction`:
+  1. Bulk parent INSERT with client-generated ids:
+     `INSERT INTO video_scene … SELECT * FROM unnest(...) ON CONFLICT
+(video_edition_id, scene_index) DO NOTHING`. Ids are bound as a
+     `text[]` literal via `toPgArray` (extended Stage 3 to emit the
+     unquoted `NULL` token for nullish elements). `randomUUID()` from
+     `node:crypto` is the id source — `VideoScene.id` is `String @id`
+     in Prisma (`@default(cuid())` is the schema default; nothing in
+     the DB enforces cuid shape). Avoids adding a runtime cuid dep.
+  2. ONE follow-up SELECT recovers the full `scene_index → id` map for
+     ALL incoming sceneIndexes (both freshly-inserted AND pre-existing
+     parents). `RETURNING id` alone is insufficient because
+     `ON CONFLICT DO NOTHING` doesn't return rows for existing matches,
+     and the rerun path needs ids for those too.
+  3. Bulk locale `INSERT … unnest(...) ON CONFLICT (video_scene_id,
+locale) DO UPDATE SET …`. The `embedding` cast is per-row at the
+     SELECT seam (`u.embedding_text::vector(1536)`) — Way A discipline,
+     NOT `::vector(1536)[]` on the parameter. The `text[]` columns
+     (`themes`, `bible_verses`, `demographics`, `spiritual_context`,
+     all `String[]` in `schema.prisma` — NOT jsonb) are bound as
+     `JSON.stringify`'d strings inside a `text[]` literal and unfolded
+     per-row via `ARRAY(SELECT jsonb_array_elements_text(u.<col>_json::jsonb))`.
+     Length-equality preflight asserts ALL parallel arrays match
+     `prepared.length` BEFORE invoking `$executeRaw`. PG18's
+     `unnest(arr1, arr2, ...)` silently NULL-pads unequal-length arrays —
+     the preflight is the regression guard. See
+     `docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
 
 **Operational runbook:**
 
@@ -579,8 +758,74 @@ manager's stamp). See
   silent default). Per-target error isolation; `artifact_missing`
   → skipped, every other error → failed but the run continues.
   Safe to re-run.
+- **Bounded parallelism (Stage 2 — feat-116):** the workflow groups
+  enumerated `(video, edition, language)` targets by
+  `(video, edition)` and parallelises over GROUPS via
+  `pLimit(env.TRANSCRIPT_EMBEDDING_CONCURRENCY ?? 5) +
+Promise.allSettled` — never bare `Promise.all`. Per-language work
+  inside a group runs sequentially with the artifact in scope. Same
+  shape / same rule as R1.
+- **Per-(video, edition) artifact memoization (Stage 2 — feat-116):**
+  the workflow fetches `embeddings.json` ONCE per `(video, edition)`
+  group via `readEmbeddingsArtifact(...)` and passes the loaded JSON
+  down to each per-language `indexEditionTranscript(...)` call via
+  the service's `loadedArtifact` argument. S3 reads collapse from N×L
+  (per language) to N (per group). Group-level artifact-load failures
+  cascade to per-language outcomes with the right classification
+  (`artifact_missing` → skipped; everything else → failed). Memory
+  budget per active language (Stage 3 — feat-117 update): the
+  steady-state artifact (~250 KB) plus per-chunk vectors already inside
+  the artifact (R2 doesn't generate a parallel embeddings array —
+  vectors are reused from the artifact) is dwarfed by Stage 3's
+  TRANSIENT bulk INSERT footprint. At ~200 chunks per artifact, each
+  `toPgVector(c.embedding)` text serialization is ~15-30 KB, the
+  per-row vector-text array is ~4 MB, and the `toPgArray` envelope
+  copy adds another ~4 MB during string concat — about ~6-12 MB
+  transient at the bulk write site for hundreds-of-chunks artifacts.
+  At default concurrency=5 that's ~30-60 MB transient peak across
+  in-flight groups (vs the steady-state ~1.25 MB before the bulk
+  rewrite); GC reclaims as soon as `$executeRaw` returns. The figure
+  includes the Way A vector-text array AND the toPgArray literal copy.
+- **No batched provider call for R2.** R2 reuses vectors verbatim
+  from the artifact (the whole point of the R2 vs R1 divergence) — so
+  Stage 2's batched OpenRouter change applies to R1 only. R2 only
+  benefits from the S3 cache.
+- Tune via the `TRANSCRIPT_EMBEDDING_CONCURRENCY` env var. R2 is
+  DB-bound (no provider call) so the bottleneck on cranking
+  concurrency is Postgres connection saturation; default `5` leaves
+  headroom on admin's `connection_limit=10` pool. Per-target progress
+  streams via `transcript_index_complete` / `_skipped` / `_failed` log
+  events and a single `event=start` carrying resolved concurrency AND
+  `groupCount` (Stage 2's reshape surfaces the artifact-fetch fan-in).
 - **Trigger:** `triggerTranscriptEmbeddingBackfill` GraphQL mutation
-  (ADMIN-only; permission key `write:transcript-embeddings`).
+  (ADMIN-only; permission key `write:transcript-embeddings`). Stage 2's
+  reshape is internal — the GraphQL JSON response shape is byte-
+  identical to Stage 1.
+- **NoSuchKey classification + missingArtifacts list (feat-119 PR1):**
+  identical contract to R1 (see above). The R2 report's
+  `missingArtifacts` entries stamp `kind: "transcript"` so PR2's
+  `triggerManagerEnrichment` dispatches the transcript pipeline (vs
+  scene-analysis). See
+  `docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md`.
+- **Bulk SQL writes (Stage 3 — feat-117):** the per-chunk
+  `videoTranscriptChunk.upsert()` + per-row `$executeRaw … UPDATE …
+embedding` loop collapses to ONE `INSERT INTO video_transcript_chunk
+… SELECT * FROM unnest(12 parallel arrays) ON CONFLICT (transcript_id,
+chunk_index) DO UPDATE SET …`. The 12 parallel arrays are: `id`,
+  `transcript_id`, `language`, `chunk_index`, `chunk_id`, `text`,
+  `token_count`, `start_seconds` (nullable), `end_seconds` (nullable),
+  `model`, `dimensions`, `embedding_text`. Each is bound as a single
+  `text[]` literal via `toPgArray`; per-row casts at the SELECT seam
+  recover the int / double precision / vector(1536) types. Way A vector
+  cast is `u.embedding_text::vector(1536)` — NOT `::vector(1536)[]` on
+  the parameter (the array-input parser is less-trodden code). Length-
+  equality preflight asserts ALL parallel arrays match
+  `artifact.chunks.length` BEFORE invoking `$executeRaw` (PG18 silently
+  NULL-pads unequal-length unnest args). The parent
+  `videoTranscript.upsert(...)` stays as a Prisma call (one row per
+  target — bulk-INSERT shape would not save a round-trip and would
+  complicate the Prisma type story). See
+  `docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
 
 **Operational runbook** (shares the R1 mapping snapshot):
 
@@ -1303,6 +1548,65 @@ caller's blast radius; do so deliberately. See
 **Env (manager):** `ADMIN_GRAPHQL_URL` +
 `ADMIN_EMBED_TRIGGER_API_KEY` on `forge-manager` Doppler. The key
 must match an entry in admin's `WORKFLOW_API_KEYS` CSV.
+
+## Triggering manager enrichment from admin (feat-119 PR2)
+
+Inverse direction of "Triggering embeds from manager" above. The
+operator runs PR1's `pnpm run-embeds --report-out=<path>`, reads
+the resulting `missingArtifacts: [{ assetId, coreId, kind }]` list,
+and either accepts the gap or asks manager to PRODUCE the missing
+upstream artifacts via the new outbound dispatch.
+
+**GraphQL mutation:** `triggerManagerEnrichment(assetIds: [Int!]!,
+coreIds: [String!]!, kind: String!): JSON!`. Gated by the new
+permission key `write:manager-enrichment-trigger` (ADMIN-only at
+the editorial-tier ladder; also on the WORKFLOW_TRIGGER allowlist
+so the CLI's bearer mint can invoke it).
+
+**Outbound HTTPS client:** `src/services/manager-trigger.service.ts`.
+POSTs to `${MANAGER_API_BASE_URL}/api/admin-trigger/${kind}` with
+`Authorization: Bearer ${MANAGER_TRIGGER_API_KEY}`. Returns a
+discriminated `ManagerEnrichmentDispatchResult[]` envelope:
+`STARTED | ALREADY_IN_FLIGHT | NOT_FOUND | VALIDATION_FAILED |
+DISPATCH_FAILED`. Never throws — synthesises a `DISPATCH_FAILED`
+entry per requested assetId on transport / auth / config failure.
+`AbortSignal.timeout(15_000)` ceiling.
+
+**CLI:** `pnpm --filter @forge/admin trigger-enrichment`. Two
+modes:
+
+- `--from-report=<path> --kind=scene-analysis|transcript`
+  (operator-pipeline mode — reads PR1's `missingArtifacts`
+  projection, filters by kind, dedupes by assetId).
+- `--asset-id=<n> --core-id=<id> --kind=...` (manual paired flags,
+  repeatable for multi-id triggers).
+
+The CLI prints one JSON line per outcome plus a summary line.
+Exits non-zero if any outcome is `NOT_FOUND | VALIDATION_FAILED |
+DISPATCH_FAILED`.
+
+**Env on `forge-admin` Doppler:**
+
+- `MANAGER_API_BASE_URL` — manager's base URL (e.g.
+  `https://manager.jesusfilm.org` in prod, `http://localhost:3002`
+  locally).
+- `MANAGER_TRIGGER_API_KEY` — must match an entry in manager's
+  `ADMIN_TRIGGER_API_KEYS` CSV. Rotation is symmetric to the
+  reverse direction (stage on receiver first, then deploy caller).
+
+**Wire format note:** the mutation accepts parallel `assetIds` /
+`coreIds` arrays paired positionally (rather than an input-object
+list). Both come from PR1's `missingArtifacts` projection, so the
+CLI populates them trivially. Strapi v5 GraphQL exposes no numeric
+`id` filter on `Video`, so manager looks up the cms record by
+`coreId`; `assetId` is the operator-facing identifier and the
+storage-key prefix manager uses when writing artifacts.
+
+See `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`
+for the full architecture, deviation rationale (in-memory
+idempotency vs EnrichmentJob; new transcript-only pipeline vs
+videoEnrichment.ts extraction), and Railway deploy-ordering
+invariant.
 
 ## Common pitfalls (grows with each unit)
 

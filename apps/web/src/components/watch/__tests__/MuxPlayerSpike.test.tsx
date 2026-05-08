@@ -163,16 +163,28 @@ import MuxVideo from "@mux/mux-video-react"
 // Sample Mux test playback ID (well-known Mux demo asset).
 const SAMPLE_PLAYBACK_ID = "DS00Spx1CV902MCtPj5WknGlR102V5HFkDe"
 
-// Filter for the known jsdom × media-chrome incompatibility documented in
-// the comment block at the top of this file (section 5). The error is a
-// jsdom limitation, not a Mux/React/integration bug — re-emitting it as
+// Filter for the known jsdom × media-chrome incompatibilities documented in
+// the comment block at the top of this file (section 5). The errors are
+// jsdom limitations, not Mux/React/integration bugs — re-emitting them as
 // uncaught would fail the whole vitest run while the actual test
 // assertions all pass. Any OTHER uncaught error is re-thrown verbatim.
+//
+// Patterns we know about:
+//   1. "this.append is not a function" — media-chrome's shadow-DOM template
+//      synthesizes a host that jsdom v26 doesn't fully implement.
+//   2. "nativeTracks.addEventListener is not a function" — media-tracks
+//      reads `<video>.audioTracks` (jsdom returns undefined or a value
+//      without addEventListener) when media-chrome's media-store updates
+//      run after the new global ResizeObserver/IntersectionObserver stubs
+//      reach a deeper init path.
 function isKnownMediaChromeJsdomError(err: unknown): boolean {
   if (!(err instanceof Error)) return false
+  const stack = err.stack ?? ""
   return (
-    err.message.includes("this.append is not a function") &&
-    (err.stack ?? "").includes("media-chrome")
+    (err.message.includes("this.append is not a function") &&
+      stack.includes("media-chrome")) ||
+    (err.message.includes("nativeTracks.addEventListener is not a function") &&
+      (stack.includes("media-chrome") || stack.includes("media-tracks")))
   )
 }
 
@@ -182,6 +194,14 @@ beforeAll(() => {
       event.preventDefault()
       event.stopImmediatePropagation()
     }
+  })
+  // Unhandled rejection path: vitest surfaces these as run-failing too.
+  process.on("unhandledRejection", (reason) => {
+    if (isKnownMediaChromeJsdomError(reason)) {
+      // Swallow — handled by the document above.
+      return
+    }
+    throw reason
   })
 })
 

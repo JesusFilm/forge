@@ -15,6 +15,8 @@ type RawRow = {
   lang_core_id: string | null
   lang_document_id: string
   lang_name: string | null
+  lang_bcp_47: string | null
+  lang_iso_3: string | null
   speakers: number | null
   country_core_id: string | null
   country_document_id: string
@@ -39,9 +41,18 @@ type Language = {
   id: string
   englishLabel: string
   nativeLabel: string
+  bcp47: string | null
+  iso3: string | null
   countryIds: string[]
   continentIds: string[]
   countrySpeakers: Record<string, number>
+}
+
+type LanguageMetadata = {
+  bcp47: string | null
+  englishLabel: string
+  iso3: string | null
+  nativeLabel: string
 }
 
 // Must match CmsLanguageGeo in apps/manager/src/app/api/languages/route.ts
@@ -49,6 +60,41 @@ type LanguageGeoResult = {
   continents: Continent[]
   countries: Country[]
   languages: Language[]
+}
+
+function resolveLanguageDisplayName({
+  code,
+  fallback,
+  locale,
+}: {
+  code: string | null
+  fallback: string
+  locale: string
+}): string {
+  if (!code) return fallback
+
+  const normalized = code.trim().replace(/_/g, "-")
+  if (!normalized) return fallback
+
+  const candidates = Array.from(
+    new Set([normalized, normalized.split("-")[0]].filter(Boolean)),
+  )
+
+  for (const candidate of candidates) {
+    try {
+      const label = new Intl.DisplayNames([locale], { type: "language" }).of(
+        candidate,
+      )
+
+      if (label && label !== candidate) {
+        return label
+      }
+    } catch {
+      // Some legacy or private language tags are not recognized by Intl.
+    }
+  }
+
+  return fallback
 }
 
 export async function queryLanguageGeo(
@@ -59,6 +105,8 @@ export async function queryLanguageGeo(
       l.core_id        AS lang_core_id,
       l.document_id    AS lang_document_id,
       l.name           AS lang_name,
+      l.bcp_47         AS lang_bcp_47,
+      l.iso_3          AS lang_iso_3,
       cl.speakers,
       c.core_id        AS country_core_id,
       c.document_id    AS country_document_id,
@@ -84,7 +132,7 @@ export async function queryLanguageGeo(
   const langCountryIds = new Map<string, Set<string>>()
   const langContinentIds = new Map<string, Set<string>>()
   const langCountrySpeakers = new Map<string, Record<string, number>>()
-  const langNames = new Map<string, string>()
+  const langMetadata = new Map<string, LanguageMetadata>()
 
   for (const row of result.rows) {
     const continentId = String(
@@ -110,9 +158,23 @@ export async function queryLanguageGeo(
       })
     }
 
-    // Track language name
-    if (!langNames.has(langId)) {
-      langNames.set(langId, String(row.lang_name ?? langId))
+    // Track language display labels. Core's primary name is often the native
+    // label; derive the English label from the normalized language code when
+    // possible so clients can render English-first/native-second rows.
+    if (!langMetadata.has(langId)) {
+      const nativeLabel = String(row.lang_name ?? langId)
+      const languageCode = row.lang_bcp_47 ?? row.lang_iso_3
+
+      langMetadata.set(langId, {
+        bcp47: row.lang_bcp_47,
+        englishLabel: resolveLanguageDisplayName({
+          code: languageCode,
+          fallback: nativeLabel,
+          locale: "en",
+        }),
+        iso3: row.lang_iso_3,
+        nativeLabel,
+      })
     }
 
     // Track country IDs per language
@@ -134,11 +196,13 @@ export async function queryLanguageGeo(
 
   // Build languages array from all unique language IDs
   const languages: Language[] = []
-  for (const [langId, name] of langNames) {
+  for (const [langId, metadata] of langMetadata) {
     languages.push({
       id: langId,
-      englishLabel: name,
-      nativeLabel: name,
+      englishLabel: metadata.englishLabel,
+      nativeLabel: metadata.nativeLabel,
+      bcp47: metadata.bcp47,
+      iso3: metadata.iso3,
       countryIds: Array.from(langCountryIds.get(langId) ?? []),
       continentIds: Array.from(langContinentIds.get(langId) ?? []),
       countrySpeakers: langCountrySpeakers.get(langId) ?? {},

@@ -4,6 +4,7 @@ import { genericOAuth, okta } from "better-auth/plugins"
 import { prismaAdapter } from "@better-auth/prisma-adapter"
 import { env } from "@/config/env"
 import { prisma } from "@/db/client"
+import { getAuthBaseURL, getAuthTrustedOrigins } from "@/auth/origins"
 
 const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
 if (env.NODE_ENV === "production" && !isNextBuild && !env.BETTER_AUTH_SECRET) {
@@ -57,9 +58,7 @@ const plugins = [
     : []),
 ]
 
-const trustedOrigins = env.AUTH_TRUSTED_ORIGINS
-  ? env.AUTH_TRUSTED_ORIGINS.split(",").map((o) => o.trim())
-  : []
+const trustedOrigins = getAuthTrustedOrigins()
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -67,7 +66,7 @@ export const auth = betterAuth({
     transaction: true,
   }),
   secret: env.BETTER_AUTH_SECRET,
-  baseURL: env.BETTER_AUTH_URL ?? "http://localhost:3003",
+  baseURL: getAuthBaseURL(),
   trustedOrigins,
   advanced: {
     ...(env.AUTH_COOKIE_PREFIX ? { cookiePrefix: env.AUTH_COOKIE_PREFIX } : {}),

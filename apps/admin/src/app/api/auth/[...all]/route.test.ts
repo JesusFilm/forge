@@ -52,6 +52,9 @@ vi.mock("@/config/env", () => ({
   env: {
     FIREBASE_MIGRATION_CUTOFF_AT: undefined,
     FIREBASE_WEB_API_KEY: "test-firebase-key",
+    AUTH_TRUSTED_ORIGINS: "https://admin.jesusfilm.org",
+    BETTER_AUTH_URL: "https://auth.jesusfilm.org",
+    NODE_ENV: "production",
   },
 }))
 
@@ -225,5 +228,24 @@ describe("auth route handler", () => {
     mockSignInWithFirebasePassword.mockResolvedValueOnce(null)
     const r2 = await POST(signInRequest(), signInContext)
     expect(await r2.json()).toEqual(expected)
+  })
+
+  it("answers trusted auth preflights with credentialed CORS headers", async () => {
+    const { OPTIONS } = await import("./route")
+    const res = await OPTIONS(
+      new Request("https://auth.jesusfilm.org/api/auth/sign-in/email", {
+        method: "OPTIONS",
+        headers: {
+          origin: "https://admin.jesusfilm.org",
+          "access-control-request-headers": "content-type",
+        },
+      }),
+    )
+
+    expect(res.status).toBe(204)
+    expect(res.headers.get("access-control-allow-origin")).toBe(
+      "https://admin.jesusfilm.org",
+    )
+    expect(res.headers.get("access-control-allow-credentials")).toBe("true")
   })
 })

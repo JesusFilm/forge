@@ -42,16 +42,24 @@ export type PermissionKey =
   // Read scopes
   | "read:experiences"
   | "read:videos"
+  | "read:media-assets"
   | "read:reference"
   // Write scopes (admin-write on Core-sourced is intentionally restricted)
   | "write:experiences"
   | "write:videos"
+  | "write:media-assets"
   | "write:scene-embeddings"
   | "write:transcript-embeddings"
   | "write:experience-content-dump"
+  // feat-119 PR2 — admin → manager outbound enrichment trigger.
+  // Admin's `triggerManagerEnrichment` mutation gates on this key;
+  // the mutation forwards the call to apps/manager's
+  // `/api/admin-trigger/{scene-analysis,transcript}` endpoint.
+  | "write:manager-enrichment-trigger"
   // Lifecycle scopes (publish / archive ExperienceLocale, etc.)
   | "publish:experiences"
   | "archive:experiences"
+  | "delete:media-assets"
   // Workflow / system scopes
   | "system:trigger-workflow"
   | "system:write-derived"
@@ -70,12 +78,14 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // narrow to "is the entity actually published?" or "do I own this draft?"
   "read:experiences": "VIEWER",
   "read:videos": "VIEWER",
+  "read:media-assets": "EDITOR",
   // Reference data is public-shape; PUBLIC may read.
   "read:reference": "PUBLIC",
   // Editor writes
   "write:experiences": "EDITOR",
   // Core-sourced; only ADMIN may override (also flips source='manager').
   "write:videos": "ADMIN",
+  "write:media-assets": "EDITOR",
   // Derived-column trigger (scene-embedding backfill). ADMIN-only.
   "write:scene-embeddings": "ADMIN",
   // Derived-column trigger (transcript-embedding backfill). ADMIN-only.
@@ -84,9 +94,17 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // ADMIN-only because it overwrites admin-side ExperienceLocale rows from
   // the cms snapshot — must not be invokable by EDITOR sessions.
   "write:experience-content-dump": "ADMIN",
+  // feat-119 PR2 — admin → manager outbound enrichment trigger.
+  // ADMIN-only at the editorial-tier ladder; the bearer-mintable
+  // `WORKFLOW_TRIGGER` role is also granted via the per-key allowlist
+  // below so apps/manager can in turn call BACK to admin in the
+  // existing reverse direction without the new key piggybacking on
+  // that path.
+  "write:manager-enrichment-trigger": "ADMIN",
   // Lifecycle
   "publish:experiences": "EDITOR",
   "archive:experiences": "EDITOR",
+  "delete:media-assets": "ADMIN",
   // System / workflow
   "system:trigger-workflow": "ADMIN",
   "system:write-derived": "SYSTEM",
@@ -156,6 +174,15 @@ function meetsTier(role: Role, min: MinTier): boolean {
 const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "write:scene-embeddings",
   "write:transcript-embeddings",
+  // feat-119 PR2: the `pnpm trigger-enrichment` CLI authenticates
+  // with `WORKFLOW_API_KEYS` (mints `WORKFLOW_TRIGGER`) when an
+  // operator pipes PR1's `missingArtifacts` projection into the
+  // outbound trigger. Granting it here keeps the CLI path symmetric
+  // with the embed-backfill triggers above. The opposite direction
+  // (manager → admin) does NOT acquire any new reach: there is no
+  // manager-side REST proxy forwarding to this mutation, so a
+  // Manager-tier identity cannot pivot through this key.
+  "write:manager-enrichment-trigger",
 ])
 
 /**

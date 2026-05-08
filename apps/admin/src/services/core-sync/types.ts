@@ -4,15 +4,25 @@ export type SyncPhase =
   | "languages"
   | "countries"
   | "keywords"
+  | "video-origins"
   | "videos"
+  | "video-images"
+  | "video-editions"
+  | "video-subtitles"
   | "video-dubs"
+  | "video-dub-downloads"
 
 export const PHASE_ORDER: SyncPhase[] = [
   "languages",
   "countries",
   "keywords",
+  "video-origins",
   "videos",
+  "video-images",
+  "video-editions",
+  "video-subtitles",
   "video-dubs",
+  "video-dub-downloads",
 ]
 
 export type SyncStats = {
