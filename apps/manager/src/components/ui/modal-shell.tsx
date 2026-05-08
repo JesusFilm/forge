@@ -27,7 +27,7 @@ export function ModalPanel({
   return (
     <section
       className={cn(
-        "relative max-h-[calc(100vh-4rem)] w-full max-w-[920px] overflow-auto rounded-[32px] border border-border bg-card shadow-[0_32px_80px_rgba(8,8,8,0.16)]",
+        "relative max-h-[calc(100vh-4rem)] w-full max-w-[920px] overflow-auto rounded-md border border-border bg-card shadow-[0_32px_80px_rgba(8,8,8,0.16)]",
         className,
       )}
       {...props}
@@ -59,7 +59,7 @@ export function ModalCloseButton(
       variant="ghost"
       size="icon"
       aria-label="Close modal"
-      className="rounded-2xl"
+      className="rounded-md"
       {...props}
     >
       <X aria-hidden="true" />

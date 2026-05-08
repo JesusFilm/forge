@@ -1,4 +1,29 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --font-sans: "IBM Plex Sans", "Avenir Next", sans-serif;
+  --font-mono: "IBM Plex Mono", "Menlo", monospace;
+  --color-background: var(--ds-bg);
+  --color-foreground: var(--ds-ink);
+  --color-card: var(--ds-panel);
+  --color-card-foreground: var(--ds-ink);
+  --color-secondary: var(--ds-panel-muted);
+  --color-secondary-foreground: var(--ds-ink);
+  --color-muted: var(--ds-panel-muted);
+  --color-muted-foreground: var(--ds-muted);
+  --color-accent: var(--ds-hover);
+  --color-accent-foreground: var(--ds-ink);
+  --color-border: var(--ds-line);
+  --color-input: var(--ds-line-strong);
+  --color-ring: var(--ds-black);
+  --radius-sm: var(--ds-radius-sm);
+  --radius-md: var(--ds-radius);
+  --radius-lg: var(--ds-radius);
+  --radius-xl: var(--ds-radius);
+  --radius-2xl: var(--ds-radius);
+  --radius-3xl: var(--ds-radius);
+}
 
 :root {
   --bg: #f6f7f9;
@@ -23,8 +48,8 @@
   --ds-brand-red: #ef3340;
   --ds-success: #1db954;
   --ds-danger: #ef3340;
-  --ds-radius: 10px;
-  --ds-radius-sm: 8px;
+  --ds-radius: 12px;
+  --ds-radius-sm: 12px;
 }
 
 * {
@@ -6769,8 +6794,8 @@ body.jobs-standalone main:has(.design-system-eleven) {
   --ds-brand-red: #ef3340;
   --ds-success: #1db954;
   --ds-danger: #ef3340;
-  --ds-radius: 10px;
-  --ds-radius-sm: 8px;
+  --ds-radius: 12px;
+  --ds-radius-sm: 12px;
   display: grid;
   gap: 24px;
   min-height: 100vh;
@@ -6848,6 +6873,12 @@ body.jobs-standalone main:has(.design-system-eleven) {
 .design-system-eleven input,
 .design-system-eleven textarea {
   cursor: text;
+}
+
+.design-system-eleven
+  :where(input[type="checkbox"], input[type="radio"], input[type="range"]) {
+  accent-color: var(--ds-brand-red);
+  cursor: pointer;
 }
 
 .design-system-eleven select,
