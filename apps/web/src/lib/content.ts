@@ -3,9 +3,16 @@ import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import { graphql, type ResultOf } from "@forge/graphql"
 import client from "@/lib/client"
+import adminClient from "@/lib/admin-client"
+import { getContentApiMode } from "@/lib/content-api-mode"
+import {
+  runDualReadComparison,
+  type DualReadOutcome,
+} from "@/lib/parity-bridge"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
 import {
+  adminExperienceBySlugOperation,
   getWatchVideoBySlugOperation,
   getWatchVideoOperation,
   watchExperienceFragment,
@@ -251,6 +258,138 @@ async function getExperienceByFilters(
     null) as NonNullable<WatchExperience> | null
 }
 
+// ---------------------------------------------------------------------------
+// U5 (feat-104) — dual-read parity canary for the slug-page Experience
+//
+// `fetchSlugExperience` is the inner branch site for the canary. It is
+// called only from `resolveSlugPage`'s slug-equality case. The homepage
+// path (`resolveHomepage`) and the legacy-homepage call still use
+// `getExperienceByFilters` directly — out of U5 scope.
+//
+// Modes (read once at module scope from FORGE_CONTENT_API):
+//   - strapi (default): identical to `getExperienceByFilters(locale,
+//     { slug: { eq: slug } })`. Byte-identical to current `main`.
+//   - dual-read: runs Strapi + admin in parallel via Promise.all,
+//     hands both outcomes to the parity bridge for diff logging,
+//     returns Strapi to the user. Admin failures/timeouts NEVER
+//     affect user-facing render.
+//
+// Retire alongside the rest of U5's scaffolding. See:
+//   apps/web/src/lib/content-api-mode.ts (deletion checklist)
+// ---------------------------------------------------------------------------
+
+async function fetchStrapiSlugExperience(
+  locale: string,
+  slug: string,
+): Promise<DualReadOutcome["strapi"]> {
+  const start = performance.now()
+  try {
+    const response = await getExperienceByFilters(locale, {
+      slug: { eq: slug },
+    })
+    return {
+      ok: true,
+      response: response ?? undefined,
+      durationMs: Math.round(performance.now() - start),
+    }
+  } catch (error) {
+    return {
+      ok: "error",
+      error,
+      durationMs: Math.round(performance.now() - start),
+    }
+  }
+}
+
+function isAbortTimeoutError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  if (error.name === "TimeoutError") return true
+  if (error.name === "AbortError") return true
+  const cause = (error as { cause?: unknown }).cause
+  if (cause instanceof Error) {
+    if (cause.name === "TimeoutError") return true
+    if (cause.name === "AbortError") return true
+  }
+  const lower = error.message.toLowerCase()
+  return lower.includes("timeout") || lower.includes("aborted")
+}
+
+async function fetchAdminSlugExperience(
+  locale: string,
+  slug: string,
+): Promise<DualReadOutcome["admin"]> {
+  const start = performance.now()
+  try {
+    const result = await adminClient.query({
+      query: adminExperienceBySlugOperation,
+      variables: { locale, slug },
+      fetchPolicy: "no-cache",
+    })
+    if (result.error) {
+      return {
+        ok: isAbortTimeoutError(result.error) ? "timeout" : "error",
+        ...(isAbortTimeoutError(result.error) ? {} : { error: result.error }),
+        durationMs: Math.round(performance.now() - start),
+      } as DualReadOutcome["admin"]
+    }
+    return {
+      ok: true,
+      response: result.data?.experienceBySlug ?? undefined,
+      durationMs: Math.round(performance.now() - start),
+    }
+  } catch (error) {
+    if (isAbortTimeoutError(error)) {
+      return {
+        ok: "timeout",
+        durationMs: Math.round(performance.now() - start),
+      }
+    }
+    return {
+      ok: "error",
+      error,
+      durationMs: Math.round(performance.now() - start),
+    }
+  }
+}
+
+async function fetchSlugExperience(
+  locale: string,
+  slug: string,
+): Promise<NonNullable<WatchExperience> | null> {
+  const mode = getContentApiMode()
+  if (mode === "strapi") {
+    return getExperienceByFilters(locale, { slug: { eq: slug } })
+  }
+
+  // dual-read: parallel fetch, log diff, serve Strapi.
+  const [strapiOutcome, adminOutcome] = await Promise.all([
+    fetchStrapiSlugExperience(locale, slug),
+    fetchAdminSlugExperience(locale, slug),
+  ])
+
+  // Bridge swallows all errors and emits structured logs. Never throws.
+  runDualReadComparison({
+    slug,
+    urlLocale: locale,
+    strapi: strapiOutcome,
+    admin: adminOutcome,
+  })
+
+  // User-facing source is always Strapi in dual-read.
+  if (strapiOutcome.ok === true) {
+    return (strapiOutcome.response ??
+      null) as NonNullable<WatchExperience> | null
+  }
+  if (strapiOutcome.ok === "error") {
+    throw strapiOutcome.error
+  }
+  // Strapi has no timeout-class branch in this codebase — its 10 s budget
+  // is enforced inside client.ts as an AbortSignal that surfaces as
+  // ok: "error" with an abort cause. Defensive default kept for type
+  // exhaustiveness.
+  throw new Error("fetchSlugExperience: Strapi side returned no value")
+}
+
 async function getWatchSettings(locale: string): Promise<WatchSetting | null> {
   const result = await client.query({
     query: GET_WATCH_SETTINGS,
@@ -372,10 +511,11 @@ async function resolveSlugPage(
   locale: string,
   slug: string,
 ): Promise<ResolvedWatchPage | null> {
+  // U5 — slug-page Experience branch goes through fetchSlugExperience so
+  // dual-read mode can fan out to admin in shadow. Behavior in `strapi`
+  // mode (default) is identical to the previous direct call.
   const explicitExperience = asNonTemplateExperience(
-    await getExperienceByFilters(locale, {
-      slug: { eq: slug },
-    }),
+    await fetchSlugExperience(locale, slug),
   )
   if (explicitExperience) {
     return { kind: "experience", experience: explicitExperience }

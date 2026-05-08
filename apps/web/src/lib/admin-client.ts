@@ -27,9 +27,18 @@ const timeoutFetch: typeof fetch = (input, init) =>
     signal: AbortSignal.timeout(ADMIN_REQUEST_TIMEOUT_MS),
   })
 
+// `env.ADMIN_GRAPHQL_URL` is server-only; reading it from a client bundle
+// throws "Attempted to access a server-side environment variable on the
+// client." Mirror client.ts's `typeof window` guard so this module can be
+// imported transitively by client components without throwing at module
+// load. The URL fallback empty string is unreachable from a real query
+// path because dual-read mode only runs server-side; on the client the
+// admin client object exists but is never invoked.
+const uri = typeof window === "undefined" ? env.ADMIN_GRAPHQL_URL : ""
+
 const adminClient = new ApolloClient({
   link: new HttpLink({
-    uri: env.ADMIN_GRAPHQL_URL,
+    uri,
     fetch: timeoutFetch,
   }),
   cache: new InMemoryCache(),

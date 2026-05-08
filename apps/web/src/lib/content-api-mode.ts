@@ -86,12 +86,15 @@ export function normalizeContentApiMode(raw: unknown): ContentApiMode {
  * `cookies()` to make the flag per-request silently disables Next.js's
  * Full Route Cache (see docs/solutions/web/nextjs-headers-defeats-route-cache.md).
  *
- * The validated `env.FORGE_CONTENT_API` is already a typed enum, so this
- * is effectively a passthrough. The `normalizeContentApiMode` helper
- * exists as a defensive layer for callers that work with raw `unknown`
- * inputs (e.g., reading `process.env.FORGE_CONTENT_API` directly in tests).
+ * `env.FORGE_CONTENT_API` is server-only; reading it from a client bundle
+ * throws via t3-oss/env-nextjs's Proxy. The `typeof window` guard mirrors
+ * apps/web/src/lib/client.ts so this module can be imported transitively
+ * by client components without throwing at module load. On the client the
+ * mode is always `"strapi"` because the canary's dual-fetch only runs
+ * server-side anyway.
  */
-const cachedMode: ContentApiMode = env.FORGE_CONTENT_API
+const cachedMode: ContentApiMode =
+  typeof window === "undefined" ? env.FORGE_CONTENT_API : "strapi"
 
 export function getContentApiMode(): ContentApiMode {
   return cachedMode
