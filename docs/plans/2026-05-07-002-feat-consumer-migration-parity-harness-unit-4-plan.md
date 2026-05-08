@@ -1,7 +1,7 @@
 ---
 title: "feat: response parity harness for consumer migration (Unit 4)"
 type: feat
-status: active
+status: completed
 date: 2026-05-07
 deepened: 2026-05-08
 origin: docs/brainstorms/2026-05-05-consumer-migration-implementer-brief-requirements.md
