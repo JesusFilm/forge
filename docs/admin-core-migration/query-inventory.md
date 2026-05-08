@@ -431,6 +431,32 @@ file. U4 reconciles each of these 16 Strapi `__typename`s against admin's
 | `SceneRecommendation.spiritualContext`            | `?`        |
 | `SceneRecommendation.playbackId`                  | `?`        |
 
+### web:adminExperienceBySlugOperation
+
+- **Source:** `apps/web/src/lib/fragments/admin-experience.ts:21-35` (gql.tada
+  `adminGraphql()` factory — admin-side, NOT Strapi).
+- **Variables:** `$locale: String!`, `$slug: String!`.
+- **Access expectation:** PUBLIC — admin's `experienceBySlug` resolver is
+  marked `authScopes: { public: true }` (`apps/admin/src/graphql/types/experience.ts:149`).
+- **Cache behavior:** `adminClient.query(...)` with `fetchPolicy: "no-cache"`.
+  Called only in dual-read mode from `fetchSlugExperience` in
+  `apps/web/src/lib/content.ts`. Outer `unstable_cache(["watch-page"],
+{ revalidate: 60 })` shared with the Strapi side.
+- **Renderer/resolver dependency:** never reaches a renderer in U5 —
+  shadow-only. `parity-bridge.ts` runs the U4 harness against this response
+  and emits a structured log line; the user-facing render always uses Strapi.
+- **Composed fragments:** none.
+- **Selected fields & parity tags:**
+
+| Type.field                                                                                                                      | Parity tag |
+| ------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `Query.experienceBySlug(locale, slug)`                                                                                          | `migrated` |
+| `ExperienceLocale.{ id, slug, locale, title, metaDescription, ogImageUrl, ogTitle, ogDescription, pathSegment, blocks (JSON) }` | `migrated` |
+
+- **U5 deletion checklist:** retire alongside the rest of U5's scaffolding
+  when admin becomes the sole consumer source. Tracked in
+  `apps/web/src/lib/content-api-mode.ts` top-of-file checklist.
+
 ### web — Synthetic WatchBlock discriminants (NOT Strapi typenames)
 
 `apps/web/src/lib/content.ts:868-874` defines a 6-kind discriminated union
