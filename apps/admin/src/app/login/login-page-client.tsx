@@ -1,7 +1,7 @@
 "use client"
 
 import { ArrowRight, Facebook, Lock, Shield, UserCircle2 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { useState, type FormEvent } from "react"
 import { useAdminI18n } from "@/i18n/client"
 
@@ -15,18 +15,27 @@ const providerIcons = {
 export type LoginProviderId = keyof typeof providerIcons
 
 export function LoginPageClient({
+  authBaseURL,
+  callbackURL,
+  destinationName,
   enabledProviders,
   initialError,
 }: {
+  authBaseURL?: string
+  callbackURL?: string
+  destinationName?: string
   enabledProviders: LoginProviderId[]
   initialError?: "forbidden"
 }) {
-  const router = useRouter()
   const { messages } = useAdminI18n()
   const [error, setError] = useState(
     initialError === "forbidden" ? messages.login.errors.forbidden : "",
   )
   const [loading, setLoading] = useState(false)
+
+  const authApiBase = authBaseURL ? `${authBaseURL}/api/auth` : "/api/auth"
+  const resolvedDestinationName =
+    destinationName ?? messages.login.destination.defaultName
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -35,17 +44,21 @@ export function LoginPageClient({
 
     try {
       const form = new FormData(e.currentTarget)
-      const res = await fetch("/api/auth/sign-in/email", {
+      const resolvedCallbackURL =
+        callbackURL ?? `${window.location.origin}/dashboard`
+      const res = await fetch(`${authApiBase}/sign-in/email`, {
         method: "POST",
+        credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           email: form.get("email"),
           password: form.get("password"),
+          callbackURL: resolvedCallbackURL,
         }),
       })
 
       if (res.ok) {
-        router.push("/dashboard")
+        window.location.assign(resolvedCallbackURL)
         return
       }
     } catch {
@@ -86,17 +99,31 @@ export function LoginPageClient({
     <main className="flex min-h-screen w-full bg-[var(--color-bg)] text-[var(--color-text-primary)]">
       <section className="hidden w-[45%] flex-col justify-center border-r border-[var(--color-hairline)] px-12 py-12 lg:flex">
         <div>
-          <div className="mb-10 flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-[var(--color-brand)] text-white">
-              <Shield className="h-4 w-4" strokeWidth={1.75} />
-            </div>
-            <span className="text-lg font-semibold uppercase tracking-[-0.02em] text-[var(--color-brand)]">
-              {messages.login.brandName}
-            </span>
+          <div className="mb-10">
+            <Image
+              src="/images/jesus-film-logo-full.svg"
+              alt={messages.login.brandName}
+              width={139}
+              height={36}
+              className="h-9 w-auto"
+              priority
+            />
           </div>
-          <h1 className="max-w-md text-5xl font-semibold leading-[1.05] tracking-[-0.03em]">
+          <h1 className="max-w-md text-5xl font-semibold leading-[1.05]">
             {messages.login.hero}
           </h1>
+          <div className="mt-10 inline-flex items-center gap-3 border-l-2 border-[var(--color-brand)] pl-4">
+            <Shield
+              className="h-4 w-4 text-[var(--color-brand)]"
+              strokeWidth={1.75}
+            />
+            <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
+              {messages.login.destination.context.replace(
+                "{destination}",
+                resolvedDestinationName,
+              )}
+            </span>
+          </div>
         </div>
       </section>
 
@@ -112,12 +139,23 @@ export function LoginPageClient({
 
         <div className="relative z-10 w-full max-w-[420px] rounded-sm border border-[var(--color-hairline)] bg-[var(--color-bg)] p-8 md:p-10">
           <header className="mb-8">
-            <span className="label-text mb-2 block">
-              {messages.login.labels.signIn}
-            </span>
+            <Image
+              src="/images/jesus-film-logo-full.svg"
+              alt={messages.login.brandName}
+              width={139}
+              height={36}
+              className="mb-7 h-8 w-auto lg:hidden"
+              priority
+            />
             <h2 className="text-2xl font-semibold tracking-[-0.02em]">
               {messages.login.labels.welcomeBack}
             </h2>
+            <p className="mt-3 text-[13px] leading-5 text-[var(--color-text-muted)]">
+              {messages.login.destination.helper.replace(
+                "{destination}",
+                resolvedDestinationName,
+              )}
+            </p>
           </header>
 
           <form className="space-y-5" onSubmit={handleSubmit}>
@@ -203,14 +241,20 @@ export function LoginPageClient({
                       className="flex h-10 items-center justify-center gap-3 rounded-sm border border-[var(--color-hairline)] bg-transparent text-[13px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
                       onClick={async () => {
                         try {
-                          const res = await fetch("/api/auth/sign-in/social", {
-                            method: "POST",
-                            headers: { "content-type": "application/json" },
-                            body: JSON.stringify({
-                              provider: providerId,
-                              callbackURL: "/dashboard",
-                            }),
-                          })
+                          const resolvedCallbackURL =
+                            callbackURL ?? `${window.location.origin}/dashboard`
+                          const res = await fetch(
+                            `${authApiBase}/sign-in/social`,
+                            {
+                              method: "POST",
+                              credentials: "include",
+                              headers: { "content-type": "application/json" },
+                              body: JSON.stringify({
+                                provider: providerId,
+                                callbackURL: resolvedCallbackURL,
+                              }),
+                            },
+                          )
 
                           const redirectUrl = await resolveSocialRedirect(res)
                           if (redirectUrl) {

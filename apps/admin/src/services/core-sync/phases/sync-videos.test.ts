@@ -41,7 +41,7 @@ describe("syncVideos", () => {
               publishedAt: "2026-01-01T00:00:00.000Z",
               primaryLanguageId: "lang-en",
               source: "mux",
-              origin: { id: "origin-1", name: "Studio", description: "Desc" },
+              origin: { id: "origin-1" },
               title: [{ value: "Title", language: { id: "lang-en" } }],
               description: [
                 { value: "Description", language: { id: "lang-en" } },
@@ -70,39 +70,6 @@ describe("syncVideos", () => {
                 },
               ],
               keywords: [{ id: "keyword-1" }],
-              images: [
-                {
-                  id: "image-1",
-                  aspectRatio: "16:9",
-                  mobileCinematicHigh: "high",
-                  mobileCinematicLow: "low",
-                  mobileCinematicVeryLow: "very-low",
-                  thumbnail: "thumb",
-                  videoStill: "still",
-                  blurhash: "blur",
-                  url: "image.jpg",
-                },
-              ],
-              subtitles: [
-                {
-                  id: "subtitle-1",
-                  primary: true,
-                  vttSrc: "sub.vtt",
-                  srtSrc: "sub.srt",
-                  value: "Subtitle",
-                  language: { id: "lang-en" },
-                  videoEdition: { id: "edition-1", name: "Standard" },
-                },
-                {
-                  id: "subtitle-2",
-                  primary: false,
-                  vttSrc: "sub-2.vtt",
-                  srtSrc: "sub-2.srt",
-                  value: "Subtitle 2",
-                  language: { id: "lang-en" },
-                  videoEdition: { id: "edition-1", name: "Standard" },
-                },
-              ],
               children: [{ id: "child-core-1" }],
               locked: false,
               noIndex: false,
@@ -172,6 +139,11 @@ describe("syncVideos", () => {
             { id: "language-1", coreId: "lang-en", bcp47: "en" },
           ]),
       },
+      videoOrigin: {
+        findMany: vi
+          .fn()
+          .mockResolvedValue([{ id: "origin-1", coreId: "origin-1" }]),
+      },
       $transaction: vi.fn(async (fn: (trx: typeof tx) => Promise<void>) =>
         fn(tx),
       ),
@@ -196,15 +168,8 @@ describe("syncVideos", () => {
       }),
     )
     expect(tx.videoStudyQuestion.upsert).toHaveBeenCalled()
-    expect(tx.videoSubtitle.upsert).toHaveBeenCalledTimes(2)
-    expect(tx.videoSubtitle.upsert).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({ where: { coreId: "subtitle-1" } }),
-    )
-    expect(tx.videoSubtitle.upsert).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ where: { coreId: "subtitle-2" } }),
-    )
+    expect(tx.videoImage.upsert).not.toHaveBeenCalled()
+    expect(tx.videoSubtitle.upsert).not.toHaveBeenCalled()
     expect(tx.videoRelation.create).toHaveBeenCalledWith({
       data: { parentId: "video-1", childId: "child-1" },
     })

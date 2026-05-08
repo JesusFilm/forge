@@ -23,11 +23,11 @@ describe("login UI", () => {
       <LoginPageClient enabledProviders={["google"]} />,
     )
 
-    expect(html).toContain(adminMessages.es.login.labels.signIn)
     expect(html).toContain(adminMessages.es.login.labels.welcomeBack)
     expect(html).toContain(adminMessages.es.login.labels.emailAddress)
     expect(html).toContain(adminMessages.es.login.labels.password)
     expect(html).toContain(adminMessages.es.login.hero)
+    expect(html).toContain(adminMessages.es.login.destination.defaultName)
     expect(html).toContain(
       adminMessages.es.login.actions.continueWith.replace(
         "{provider}",

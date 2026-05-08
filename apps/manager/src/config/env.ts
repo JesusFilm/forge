@@ -16,17 +16,6 @@ function assertDistinctConfiguredSecrets(
   }
 }
 
-function resolveBackendMode(): "admin" | "mock" | "strapi" {
-  if (process.env.MANAGER_BACKEND_MODE === "admin") return "admin"
-  if (process.env.MANAGER_BACKEND_MODE === "mock") return "mock"
-  if (process.env.MANAGER_BACKEND_MODE === "strapi") return "strapi"
-  if (process.env.MANAGER_DATA_MODE === "mock") return "mock"
-  if (process.env.MANAGER_DATA_MODE === "live") return "strapi"
-  return "strapi"
-}
-
-const managerBackendMode = resolveBackendMode()
-
 function assertPrivateAgenticStudioOrigin(origin: string | undefined) {
   if (!origin || process.env.NODE_ENV !== "production") {
     return
@@ -52,7 +41,6 @@ function assertPrivateAgenticStudioOrigin(origin: string | undefined) {
 
 export const env = createEnv({
   server: {
-    MANAGER_BACKEND_MODE: z.enum(["admin", "mock", "strapi"]).default("strapi"),
     MANAGER_DATA_MODE: z.enum(["live", "mock"]).default("live"),
 
     // Mux
@@ -100,8 +88,19 @@ export const env = createEnv({
     // that don't have the proxy configured; the route handlers throw
     // a clean 500 with a clear message if invoked without these set.
     ADMIN_GRAPHQL_URL: z.string().url().optional(),
-    ADMIN_MANAGER_API_KEY: z.string().min(1).optional(),
     ADMIN_EMBED_TRIGGER_API_KEY: z.string().min(1).optional(),
+
+    // feat-119 PR2 — admin → manager outbound enrichment trigger.
+    // Manager exposes /api/admin-trigger/{scene-analysis,transcript}
+    // which admin's `triggerManagerEnrichment` GraphQL mutation calls
+    // when an operator has decided (after reading PR1's
+    // `missingArtifacts` list) to backfill upstream pipeline output.
+    // CSV of accepted bearer keys; mirrors admin's WORKFLOW_API_KEYS
+    // shape so the receiver-side rotation pattern is symmetric.
+    // Optional at boot so manager keeps starting in environments that
+    // don't have the trigger endpoint configured; the route handlers
+    // return 503 if invoked without this set.
+    ADMIN_TRIGGER_API_KEYS: z.string().min(1).optional(),
 
     // Mastra agentic runtime — optional at boot so Manager can run
     // without the agent runtime, but routes/clients fail closed when
@@ -130,7 +129,6 @@ export const env = createEnv({
   },
   skipValidation: !!process.env.CI,
   runtimeEnv: {
-    MANAGER_BACKEND_MODE: managerBackendMode,
     MANAGER_DATA_MODE: process.env.MANAGER_DATA_MODE ?? "live",
     MUX_TOKEN_ID: process.env.MUX_TOKEN_ID,
     MUX_TOKEN_SECRET: process.env.MUX_TOKEN_SECRET,
@@ -155,8 +153,8 @@ export const env = createEnv({
     WORKFLOW_API_KEY: process.env.WORKFLOW_API_KEY,
     MANAGER_API_KEY: process.env.MANAGER_API_KEY,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
-    ADMIN_MANAGER_API_KEY: process.env.ADMIN_MANAGER_API_KEY,
     ADMIN_EMBED_TRIGGER_API_KEY: process.env.ADMIN_EMBED_TRIGGER_API_KEY,
+    ADMIN_TRIGGER_API_KEYS: process.env.ADMIN_TRIGGER_API_KEYS,
     AGENTIC_BASE_URL: process.env.AGENTIC_BASE_URL,
     AGENTIC_SERVICE_API_KEY: process.env.AGENTIC_SERVICE_API_KEY,
     MANAGER_AGENTIC_API_KEY: process.env.MANAGER_AGENTIC_API_KEY,
@@ -170,34 +168,18 @@ export const env = createEnv({
   },
 })
 
-if (env.MANAGER_BACKEND_MODE === "admin") {
-  if (!process.env.ADMIN_GRAPHQL_URL) {
-    throw new Error(
-      "ADMIN_GRAPHQL_URL is required when MANAGER_BACKEND_MODE=admin",
-    )
-  }
-
-  if (!process.env.ADMIN_MANAGER_API_KEY) {
-    throw new Error(
-      "ADMIN_MANAGER_API_KEY is required when MANAGER_BACKEND_MODE=admin",
-    )
-  }
-}
-
-if (env.MANAGER_BACKEND_MODE === "strapi") {
+if (env.MANAGER_DATA_MODE === "live") {
   if (!process.env.STRAPI_URL) {
-    throw new Error("STRAPI_URL is required when MANAGER_BACKEND_MODE=strapi")
+    throw new Error("STRAPI_URL is required when MANAGER_DATA_MODE=live")
   }
 
   if (!process.env.STRAPI_API_TOKEN) {
-    throw new Error(
-      "STRAPI_API_TOKEN is required when MANAGER_BACKEND_MODE=strapi",
-    )
+    throw new Error("STRAPI_API_TOKEN is required when MANAGER_DATA_MODE=live")
   }
 }
 
 if (
-  env.MANAGER_BACKEND_MODE === "mock" &&
+  env.MANAGER_DATA_MODE === "mock" &&
   env.MANAGER_MOCK_SESSION_SECRET === MOCK_SESSION_SECRET_SENTINEL
 ) {
   throw new Error(

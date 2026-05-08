@@ -31,7 +31,7 @@ tags:
 
 **Pattern doc.** PR #882 also shipped [`docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md`](../../solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md) — the canonical HOW that complements the prior 04/20 WHY doc. Stage 2 (`feat-116`) and any future per-target useworkflow loop must honor its 11-item prevention checklist.
 
-**Residual risk surfaced.** Stage 1's smoke run revealed that S3 `NoSuchKey` errors (upstream-data-readiness gaps) classify as `failed` instead of `skipped`, polluting operator signal. Tracked separately as [`feat-119`](feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) (P2, blocks `feat-118`). Out of scope for Stages 2–3.
+**Residual risk surfaced.** Stage 1's smoke run revealed that S3 `NoSuchKey` errors (upstream-data-readiness gaps) classify as `failed` instead of `skipped`, polluting operator signal. Tracked separately as [`feat-119`](feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) (P2). Out of scope for Stages 2–3.
 
 **Stage 2 unblocked.** `feat-116` (S3 artifact memoization + batched OpenRouter) is the natural next block.
 

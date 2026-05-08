@@ -39,7 +39,7 @@ tags:
 
 Bidirectional cross-refs added to the bounded-parallelism (`20260505`), parallel-workflow-error-robustness (`20260420`), and both R1/R2 platform docs.
 
-**Stage 3 unblocked.** `feat-117` (bulk SQL writes) is the natural next block. Note: `feat-119` (NoSuchKey classification gap) became more noisy under Stage 2's group cascade and should land before `feat-118` Stage 4 ships.
+**Stage 3 unblocked.** `feat-117` (bulk SQL writes) is the natural next block. Note: `feat-119` (NoSuchKey classification gap) became more noisy under Stage 2's group cascade and is the recommended next stage after `feat-117`.
 
 **Residual risks documented in PR description** for follow-up: timeout sizing for batched calls, no retry layer for transient OpenRouter failures, `feat-119` classification gap, `scenesSkipped` always-zero shim cleanup.
 

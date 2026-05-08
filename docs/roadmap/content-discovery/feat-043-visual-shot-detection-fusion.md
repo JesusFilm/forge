@@ -4,7 +4,7 @@ title: "Video Vectorization — Visual Shot Detection Fusion"
 owner: "nisal"
 priority: "P2"
 status: "not-started"
-start_date: "2026-05-28"
+start_date: "2026-06-06"
 duration: 10
 depends_on:
   - "feat-039"
