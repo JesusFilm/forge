@@ -2,6 +2,9 @@
   "name": "@forge/admin",
   "private": true,
   "version": "0.0.1",
+  "exports": {
+    "./domain/blocks": "./src/domain/blocks.ts"
+  },
   "scripts": {
     "dev": "next dev --port 3003",
     "build": "next build",
