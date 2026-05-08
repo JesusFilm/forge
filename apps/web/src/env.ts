@@ -20,6 +20,13 @@ const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS = [
   "localhost",
   "127.0.0.1",
 ] as const
+// Explicit hard-reject set. These hosts pass the soft allowlist
+// (.jesusfilm.org suffix) but are NOT the admin GraphQL surface and
+// will always 404 — the auth host (PR #909) is the canonical case.
+// Mirrors packages/graphql/src/parity/live-config.ts:24 REJECTED_HOSTS.
+const ADMIN_GRAPHQL_URL_HOST_REJECT_SET = new Set<string>([
+  "auth.jesusfilm.org",
+])
 
 export const env = createEnv({
   server: {
@@ -42,32 +49,59 @@ export const env = createEnv({
     // legitimate-but-unknown deployment topologies (custom domains, branch
     // URLs) can still stand up. Mirrors NEXT_PUBLIC_CANONICAL_ORIGIN's
     // allowlist shape.
-    ADMIN_GRAPHQL_URL: z.url().refine(
-      (value) => {
-        try {
-          const { hostname } = new URL(value)
-          const ok =
-            ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS.includes(
-              hostname as (typeof ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS)[number],
-            ) ||
-            ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES.some((suffix) =>
-              hostname.endsWith(suffix),
+    ADMIN_GRAPHQL_URL: z
+      .url()
+      // Hard-reject known non-GraphQL hosts (auth.jesusfilm.org, etc.) —
+      // these pass the soft allowlist's suffix match but always 404 on
+      // /api/graphql due to admin's auth-host proxy gating (PR #909).
+      // Throwing at boot is preferable to a silent run-time canary that
+      // emits forge.parity.harness_error events on every request.
+      .refine(
+        (value) => {
+          try {
+            const { hostname } = new URL(value)
+            return !ADMIN_GRAPHQL_URL_HOST_REJECT_SET.has(
+              hostname.toLowerCase(),
             )
-          if (!ok && typeof console !== "undefined") {
-            console.warn(
-              `[env] ADMIN_GRAPHQL_URL host "${hostname}" is outside the soft allowlist (jesusfilm.org / *.jesusfilm.org / *.railway.app / *.local / localhost / 127.0.0.1). Continuing without throwing — verify this is intentional.`,
-            )
+          } catch {
+            return true
           }
-        } catch {
-          // The outer z.url() already validates URL shape; if URL parsing
-          // fails here we let z.url()'s error surface instead.
-        }
-        // Warn-only: always pass refinement so misconfigured hosts don't
-        // brick boot in legitimate-but-unknown deployment topologies.
-        return true
-      },
-      { message: "unreachable" },
-    ),
+        },
+        {
+          message:
+            "ADMIN_GRAPHQL_URL points at a known non-GraphQL host (e.g. auth.jesusfilm.org). Admin GraphQL lives at admin.jesusfilm.org/api/graphql, not the auth host (PR #909).",
+        },
+      )
+      // Warn-only soft allowlist for everything else: legitimate-but-
+      // unknown deployment topologies (custom domains, branch URLs)
+      // shouldn't brick boot, but a misconfigured value should still be
+      // visible in deploy logs.
+      .refine(
+        (value) => {
+          try {
+            const { hostname } = new URL(value)
+            const ok =
+              ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS.includes(
+                hostname as (typeof ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS)[number],
+              ) ||
+              ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES.some((suffix) =>
+                hostname.endsWith(suffix),
+              )
+            if (!ok && typeof console !== "undefined") {
+              console.warn(
+                `[env] ADMIN_GRAPHQL_URL host "${hostname}" is outside the soft allowlist (jesusfilm.org / *.jesusfilm.org / *.railway.app / *.local / localhost / 127.0.0.1). Continuing without throwing — verify this is intentional.`,
+              )
+            }
+          } catch {
+            // The outer z.url() already validates URL shape; if URL parsing
+            // fails here we let z.url()'s error surface instead.
+          }
+          // Warn-only: always pass refinement so misconfigured hosts don't
+          // brick boot in legitimate-but-unknown deployment topologies.
+          return true
+        },
+        { message: "unreachable" },
+      ),
   },
   client: {
     NEXT_PUBLIC_GRAPHQL_URL: z.url(),
