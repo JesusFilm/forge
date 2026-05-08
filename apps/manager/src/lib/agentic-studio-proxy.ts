@@ -43,6 +43,17 @@ function forbiddenInternalPattern(text: string): boolean {
   )
 }
 
+function forbiddenSecretPattern(text: string): boolean {
+  return [
+    env.AGENTIC_OPERATOR_API_KEY,
+    env.MANAGER_API_KEY,
+    env.AGENTIC_SERVICE_API_KEY,
+    env.MANAGER_AGENTIC_API_KEY,
+    env.STRAPI_API_TOKEN,
+    env.STRAPI_INTERNAL_API_TOKEN,
+  ].some((secret) => secret && text.includes(secret))
+}
+
 function json(status: number, body: Record<string, unknown>): Response {
   return NextResponse.json(body, { status })
 }
@@ -55,7 +66,15 @@ function getCookieValue(request: Request, name: string): string | null {
     .map((part) => part.trim())
     .find((part) => part.startsWith(encodedName))
 
-  return cookie ? decodeURIComponent(cookie.slice(encodedName.length)) : null
+  if (!cookie) {
+    return null
+  }
+
+  try {
+    return decodeURIComponent(cookie.slice(encodedName.length))
+  } catch {
+    return null
+  }
 }
 
 function getManagerOrigin(request: Request): string {
@@ -125,6 +144,9 @@ function sanitizeResponseHeaders(upstreamHeaders: Headers): Headers {
     }
   }
 
+  headers.set("cache-control", "private, no-store")
+  headers.set("vary", "Cookie")
+
   return headers
 }
 
@@ -146,6 +168,28 @@ function rewriteStudioBody(body: string): string {
   }
 
   return rewritten
+    .replace(/(["'`])\/(api|assets)\//g, "$1/api/agentic-studio/$2/")
+    .replace(
+      /\b(href|src|action)=("|')\/(?!api\/agentic-studio\/)([^"'#?:][^"']*)/g,
+      "$1=$2/api/agentic-studio/$3",
+    )
+    .replace(
+      /\burl\(["']?\/(?!api\/agentic-studio\/)([^"')]+)["']?\)/g,
+      (_match, assetPath: string) => `url("/api/agentic-studio/${assetPath}")`,
+    )
+}
+
+function rewriteSafeRedirectLocation(
+  location: string,
+  upstreamUrl: string,
+  studioOrigin: string,
+): string | null {
+  const resolvedLocation = new URL(location, upstreamUrl)
+  if (resolvedLocation.origin !== new URL(studioOrigin).origin) {
+    return null
+  }
+
+  return `/api/agentic-studio${resolvedLocation.pathname}${resolvedLocation.search}${resolvedLocation.hash}`
 }
 
 async function buildSafeResponse(
@@ -158,6 +202,11 @@ async function buildSafeResponse(
     if (forbiddenInternalPattern(rewritten)) {
       return json(503, {
         error: "Agentic Studio response is not safe to expose",
+      })
+    }
+    if (forbiddenSecretPattern(rewritten)) {
+      return json(503, {
+        error: "Agentic Studio response included a server secret",
       })
     }
 
@@ -235,31 +284,40 @@ export async function proxyAgenticStudioRequest(
   }
 
   try {
-    const upstreamResponse = await fetch(
-      buildUpstreamUrl(request, env.AGENTIC_STUDIO_ORIGIN, params),
-      {
-        method: request.method,
-        headers: buildUpstreamHeaders(request, env.AGENTIC_OPERATOR_API_KEY),
-        body:
-          request.method === "GET" || request.method === "HEAD"
-            ? undefined
-            : request.body,
-        redirect: "manual",
-        signal: AbortSignal.timeout(env.AGENTIC_REQUEST_TIMEOUT_MS ?? 15000),
-        // Required by undici when forwarding a streamed Request body.
-        duplex: "half",
-      } as RequestInit & { duplex: "half" },
+    const upstreamUrl = buildUpstreamUrl(
+      request,
+      env.AGENTIC_STUDIO_ORIGIN,
+      params,
     )
+    const upstreamResponse = await fetch(upstreamUrl, {
+      method: request.method,
+      headers: buildUpstreamHeaders(request, env.AGENTIC_OPERATOR_API_KEY),
+      body:
+        request.method === "GET" || request.method === "HEAD"
+          ? undefined
+          : request.body,
+      redirect: "manual",
+      signal: AbortSignal.timeout(env.AGENTIC_REQUEST_TIMEOUT_MS ?? 15000),
+      // Required by undici when forwarding a streamed Request body.
+      duplex: "half",
+    } as RequestInit & { duplex: "half" })
 
     const location = upstreamResponse.headers.get("location")
     if (location) {
-      const managerOrigin = getManagerOrigin(request)
-      const rewrittenLocation = new URL(location, managerOrigin)
-      if (rewrittenLocation.origin !== managerOrigin) {
+      const rewrittenLocation = rewriteSafeRedirectLocation(
+        location,
+        upstreamUrl,
+        env.AGENTIC_STUDIO_ORIGIN,
+      )
+      if (!rewrittenLocation) {
         return json(503, {
           error: "Agentic Studio redirect is not safe to expose",
         })
       }
+
+      const response = await buildSafeResponse(upstreamResponse)
+      response.headers.set("location", rewrittenLocation)
+      return response
     }
 
     return await buildSafeResponse(upstreamResponse)

@@ -1,6 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { verifyManagerSessionMock } = vi.hoisted(() => ({
+const { envMock, verifyManagerSessionMock } = vi.hoisted(() => ({
+  envMock: {
+    AGENTIC_STUDIO_ORIGIN: "http://agentic-studio.railway.internal:4111" as
+      | string
+      | undefined,
+    AGENTIC_OPERATOR_API_KEY: "operator-token" as string | undefined,
+    AGENTIC_BASE_URL: "https://forgeagentic-stage.up.railway.app" as
+      | string
+      | undefined,
+    MANAGER_API_KEY: undefined as string | undefined,
+    AGENTIC_SERVICE_API_KEY: undefined as string | undefined,
+    MANAGER_AGENTIC_API_KEY: undefined as string | undefined,
+    STRAPI_API_TOKEN: undefined as string | undefined,
+    STRAPI_INTERNAL_API_TOKEN: undefined as string | undefined,
+  },
   verifyManagerSessionMock: vi.fn(),
 }))
 
@@ -9,11 +23,7 @@ vi.mock("@/lib/auth", () => ({
 }))
 
 vi.mock("@/config/env", () => ({
-  env: {
-    AGENTIC_STUDIO_ORIGIN: "http://agentic-studio.railway.internal:4111",
-    AGENTIC_OPERATOR_API_KEY: "operator-token",
-    AGENTIC_BASE_URL: "https://forgeagentic-stage.up.railway.app",
-  },
+  env: envMock,
 }))
 
 import {
@@ -45,6 +55,16 @@ function request(
 
 describe("authorizeAgenticStudioSession", () => {
   beforeEach(() => {
+    Object.assign(envMock, {
+      AGENTIC_STUDIO_ORIGIN: "http://agentic-studio.railway.internal:4111",
+      AGENTIC_OPERATOR_API_KEY: "operator-token",
+      AGENTIC_BASE_URL: "https://forgeagentic-stage.up.railway.app",
+      MANAGER_API_KEY: undefined,
+      AGENTIC_SERVICE_API_KEY: undefined,
+      MANAGER_AGENTIC_API_KEY: undefined,
+      STRAPI_API_TOKEN: undefined,
+      STRAPI_INTERNAL_API_TOKEN: undefined,
+    })
     verifyManagerSessionMock.mockReset()
   })
 
@@ -61,8 +81,31 @@ describe("authorizeAgenticStudioSession", () => {
     expect(verifyManagerSessionMock).not.toHaveBeenCalled()
   })
 
+  it("treats malformed session cookies as invalid sessions", async () => {
+    const result = await authorizeAgenticStudioSession(
+      new Request("https://manager.test/api/agentic-studio", {
+        headers: { cookie: "strapi-jwt=%E0%A4%A" },
+      }),
+    )
+
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error("expected authorization failure")
+    expect(result.response.status).toBe(403)
+    expect(verifyManagerSessionMock).not.toHaveBeenCalled()
+  })
+
   it("rejects verified non-Manager sessions", async () => {
     verifyManagerSessionMock.mockResolvedValue(managerUser("Editor"))
+
+    const result = await authorizeAgenticStudioSession(request())
+
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error("expected authorization failure")
+    expect(result.response.status).toBe(403)
+  })
+
+  it("rejects invalid verified sessions", async () => {
+    verifyManagerSessionMock.mockResolvedValue(null)
 
     const result = await authorizeAgenticStudioSession(request())
 
@@ -83,9 +126,41 @@ describe("authorizeAgenticStudioSession", () => {
 
 describe("proxyAgenticStudioRequest", () => {
   beforeEach(() => {
+    Object.assign(envMock, {
+      AGENTIC_STUDIO_ORIGIN: "http://agentic-studio.railway.internal:4111",
+      AGENTIC_OPERATOR_API_KEY: "operator-token",
+      AGENTIC_BASE_URL: "https://forgeagentic-stage.up.railway.app",
+      MANAGER_API_KEY: undefined,
+      AGENTIC_SERVICE_API_KEY: undefined,
+      MANAGER_AGENTIC_API_KEY: undefined,
+      STRAPI_API_TOKEN: undefined,
+      STRAPI_INTERNAL_API_TOKEN: undefined,
+    })
     vi.stubGlobal("fetch", vi.fn())
     verifyManagerSessionMock.mockReset()
     verifyManagerSessionMock.mockResolvedValue(managerUser())
+  })
+
+  it("fails closed when the Studio origin is missing", async () => {
+    envMock.AGENTIC_STUDIO_ORIGIN = undefined
+
+    const response = await proxyAgenticStudioRequest(request(), {
+      path: ["api", "agents"],
+    })
+
+    expect(response.status).toBe(503)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("fails closed when the operator key is missing", async () => {
+    envMock.AGENTIC_OPERATOR_API_KEY = undefined
+
+    const response = await proxyAgenticStudioRequest(request(), {
+      path: ["api", "agents"],
+    })
+
+    expect(response.status).toBe(503)
+    expect(fetch).not.toHaveBeenCalled()
   })
 
   it("forwards requests to the private Studio origin with operator auth", async () => {
@@ -209,6 +284,73 @@ describe("proxyAgenticStudioRequest", () => {
     await expect(response.text()).resolves.toContain("/api/agentic-studio/api")
   })
 
+  it("rewrites root-relative Studio API and asset references under the proxy prefix", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        '<script src="/assets/index.js"></script><script>fetch("/api/agents")</script>',
+        { status: 200, headers: { "content-type": "text/html" } },
+      ),
+    )
+
+    const response = await proxyAgenticStudioRequest(request(), {
+      path: ["index.html"],
+    })
+
+    await expect(response.text()).resolves.toContain(
+      'src="/api/agentic-studio/assets/index.js"',
+    )
+  })
+
+  it("rewrites root-relative Studio fetch calls under the proxy prefix", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response('<script>fetch("/api/agents")</script>', {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      }),
+    )
+
+    const response = await proxyAgenticStudioRequest(request(), {
+      path: ["index.html"],
+    })
+
+    await expect(response.text()).resolves.toContain(
+      'fetch("/api/agentic-studio/api/agents")',
+    )
+  })
+
+  it("rewrites safe Studio redirects back through the Manager proxy", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(null, {
+        status: 302,
+        headers: { location: "/auth/callback?ok=1" },
+      }),
+    )
+
+    const response = await proxyAgenticStudioRequest(request(), {
+      path: ["login"],
+    })
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get("location")).toBe(
+      "/api/agentic-studio/auth/callback?ok=1",
+    )
+  })
+
+  it("rejects Studio redirects outside the private origin", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(null, {
+        status: 302,
+        headers: { location: "https://evil.test/auth" },
+      }),
+    )
+
+    const response = await proxyAgenticStudioRequest(request(), {
+      path: ["login"],
+    })
+
+    expect(response.status).toBe(503)
+  })
+
   it("fails closed when rewritten Studio config still exposes internal origins", async () => {
     vi.mocked(fetch).mockResolvedValue(
       new Response(
@@ -227,6 +369,45 @@ describe("proxyAgenticStudioRequest", () => {
     await expect(response.json()).resolves.toMatchObject({
       error: "Agentic Studio response is not safe to expose",
     })
+  })
+
+  it("fails closed when upstream text echoes the injected operator token", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          authorization: "Bearer operator-token",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    )
+
+    const response = await proxyAgenticStudioRequest(request(), {
+      path: ["debug", "headers"],
+    })
+
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toMatchObject({
+      error: "Agentic Studio response included a server secret",
+    })
+  })
+
+  it("overrides upstream cache policy for authenticated Studio responses", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response("ok", {
+        status: 200,
+        headers: {
+          "cache-control": "public, max-age=3600",
+          "content-type": "text/plain",
+        },
+      }),
+    )
+
+    const response = await proxyAgenticStudioRequest(request(), {
+      path: ["api", "agents"],
+    })
+
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    expect(response.headers.get("vary")).toBe("Cookie")
   })
 
   it("drops upstream set-cookie headers", async () => {

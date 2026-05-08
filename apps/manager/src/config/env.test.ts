@@ -136,7 +136,18 @@ describe("manager env mode validation", () => {
     vi.stubEnv("AGENTIC_OPERATOR_API_KEY", "operator-token")
 
     await expect(import("./env")).rejects.toThrow(
-      "AGENTIC_STUDIO_ORIGIN must use Railway private networking in production",
+      "AGENTIC_STUDIO_ORIGIN must be the private agentic-studio Railway origin in production",
+    )
+  })
+
+  it("rejects a non-Studio Railway private origin in production", async () => {
+    stubMockModeEnv()
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("AGENTIC_STUDIO_ORIGIN", "http://agentic.railway.internal:4111")
+    vi.stubEnv("AGENTIC_OPERATOR_API_KEY", "operator-token")
+
+    await expect(import("./env")).rejects.toThrow(
+      "AGENTIC_STUDIO_ORIGIN must be the private agentic-studio Railway origin in production",
     )
   })
 
