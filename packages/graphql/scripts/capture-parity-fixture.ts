@@ -28,7 +28,12 @@
  * actual chosen route. See plan U6.
  */
 
-import { assertLiveModeEnabled } from "../src/parity/live"
+// Import from live-config directly, NOT from live.ts. live.ts transitively
+// pulls in normalize-admin.ts which imports BlocksSchema from
+// @forge/admin/domain/blocks — tsx's ESM static-link step can't resolve
+// named exports from a cross-workspace .ts source path. The script only
+// needs env validation, which lives in live-config (no normalize-* imports).
+import { assertLiveModeEnabled } from "../src/parity/live-config"
 
 type Args = {
   slug: string | null

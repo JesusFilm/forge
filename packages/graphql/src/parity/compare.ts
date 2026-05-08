@@ -305,7 +305,7 @@ function walkArrays(
     if (i >= strapi.length) {
       // Admin has more entries.
       const tailPath = encodePointer([...segments, i])
-      if (ctx.strapiTruncated && i >= strapi.length) {
+      if (ctx.strapiTruncated) {
         ctx.potentiallyTruncated.push({
           path: tailPath,
           side: "strapi",

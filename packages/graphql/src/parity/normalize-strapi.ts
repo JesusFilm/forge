@@ -42,6 +42,14 @@ import type {
 const STRAPI_BLOCK_SKIP_KEYS: ReadonlySet<string> = new Set([
   "__typename",
   "id",
+  // `content` is normalized separately and re-emitted explicitly by
+  // `normalizeSection` and `flattenContainer`. Excluding it here ensures
+  // the spread can never re-introduce the raw (un-flattened, un-canonicalized)
+  // children — mirrors ADMIN_BLOCK_SKIP_KEYS.
+  "content",
+  // `slots` is consumed by `flattenContainer` to build the flat content[]
+  // shape; never include the raw two-level structure on the normalized output.
+  "slots",
 ])
 
 // ---------------------------------------------------------------------------
@@ -275,7 +283,9 @@ function flattenContainer(
   for (const slot of slots) {
     containerContent.push({
       kind: "containerSlot",
-      id: slot.id,
+      // Mirror admin's containerSlot id guard for symmetry — admin emits
+      // empty string when the slot id is missing/non-string.
+      id: typeof slot.id === "string" ? slot.id : "",
       gridSpan: nullify(slot.gridSpan),
       spans: slot.spans ? Object.freeze([...slot.spans]) : null,
     })
@@ -286,12 +296,18 @@ function flattenContainer(
   }
   // Container itself is a normalized block whose `data.content` carries
   // the flattened sequence. The differ walks data.content[] like any
-  // other ordered array.
+  // other ordered array. Container's other layout fields (gap, padding,
+  // background, etc.) are surfaced via stripBlockMeta so the data shape
+  // matches admin's container payload.
   return [
     {
       kind: "container",
       id: container.id,
       data: {
+        ...stripBlockMeta(
+          container as Record<string, unknown>,
+          STRAPI_BLOCK_SKIP_KEYS,
+        ),
         content: containerContent,
       },
     },
@@ -308,15 +324,20 @@ function normalizeSection(
   for (const inner of innerBlocks) {
     normalizedInner.push(normalizeGenericBlock(inner, baseOrigin, rawUrls))
   }
+  // Spread non-content fields FIRST, then assign normalized content
+  // explicitly LAST. Reverse order would let the spread overwrite the
+  // normalized content with the raw Strapi children. Mirrors admin's
+  // section path. STRAPI_BLOCK_SKIP_KEYS now also excludes `content` so
+  // the spread can't reintroduce it even if order were edited.
   return {
     kind: "section",
     id: section.id,
     data: {
-      content: normalizedInner,
       ...stripBlockMeta(
         section as Record<string, unknown>,
         STRAPI_BLOCK_SKIP_KEYS,
       ),
+      content: normalizedInner,
     },
   }
 }

@@ -242,6 +242,57 @@ describe("normalizeStrapi — container flatten", () => {
     expect(flat[5]).toMatchObject({ kind: "card", id: "card-1" })
   })
 
+  it("preserves container's non-content layout fields (gap, padding, etc.) — symmetry with admin", () => {
+    // Regression: an earlier flattenContainer dropped every non-content
+    // field, producing a guaranteed false-positive structural diff per
+    // container against admin's preserved-fields output.
+    const container: StrapiBlockInput = {
+      __typename: "ComponentSectionsContainer",
+      id: "ctr-2",
+      gap: "lg",
+      padding: 24,
+      backgroundColor: "#fff",
+      slots: [],
+    }
+    const result = normalizeStrapi(baseInput({ blocks: [container] }), OPTIONS)
+    const top = result.blocks[0]
+    if (!top || top.kind !== "container") throw new Error("expected container")
+    expect(top.data.gap).toBe("lg")
+    expect(top.data.padding).toBe(24)
+    expect(top.data.backgroundColor).toBe("#fff")
+    expect(top.data.content).toEqual([])
+    expect(top.data).not.toHaveProperty("slots")
+    expect(top.data).not.toHaveProperty("__typename")
+  })
+
+  it("section preserves NORMALIZED inner content[] (not raw Strapi children) — regression for spread-overwrite bug", () => {
+    // Regression: an earlier normalizeSection placed the spread of raw
+    // section fields AFTER the explicit `content: normalizedInner`,
+    // causing the raw `content` array to overwrite the normalized one.
+    const section: StrapiBlockInput = {
+      __typename: "ComponentSectionsSection",
+      id: "sec-1",
+      heading: "Section Title",
+      content: [
+        { __typename: "ComponentSectionsText", id: "txt-1" },
+        { __typename: "ComponentSectionsCta", id: "cta-1" },
+      ],
+    }
+    const result = normalizeStrapi(baseInput({ blocks: [section] }), OPTIONS)
+    const top = result.blocks[0]
+    if (!top || top.kind !== "section") throw new Error("expected section")
+    const inner = top.data.content as ReadonlyArray<{
+      kind: string
+      id: string
+    }>
+    expect(inner).toHaveLength(2)
+    // Normalized: kind values are admin-canonical, NOT Strapi typenames
+    expect(inner[0]).toMatchObject({ kind: "text", id: "txt-1" })
+    expect(inner[1]).toMatchObject({ kind: "cta", id: "cta-1" })
+    expect(top.data.heading).toBe("Section Title")
+    expect(top.data).not.toHaveProperty("__typename")
+  })
+
   it("emits empty container content when slots is null", () => {
     const container: StrapiBlockInput = {
       __typename: "ComponentSectionsContainer",

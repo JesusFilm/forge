@@ -17,27 +17,27 @@
  */
 
 import { compareNormalizedRoutes, type DiffReport } from "./compare"
+import {
+  LiveModeConfigError,
+  LiveModeDisabledError,
+  assertLiveModeEnabled,
+  validateHost,
+} from "./live-config"
 import { normalizeAdmin } from "./normalize-admin"
 import { normalizeStrapi, type StrapiExperienceInput } from "./normalize-strapi"
 import type { AdminExperienceLocaleInput } from "./normalize-admin"
 
-export class LiveModeDisabledError extends Error {
-  override readonly name = "LiveModeDisabledError"
+// Re-export the env-config surface so callers don't need to import from
+// two different modules. Implementation lives in `live-config.ts` so the
+// capture script can use it without transitively pulling in
+// `normalize-admin.ts` (whose cross-workspace `BlocksSchema` import
+// breaks tsx's ESM static-link).
+export {
+  LiveModeConfigError,
+  LiveModeDisabledError,
+  assertLiveModeEnabled,
+  validateHost,
 }
-
-export class LiveModeConfigError extends Error {
-  override readonly name = "LiveModeConfigError"
-}
-
-/**
- * Hosts on the rejection list — the admin auth host and any other
- * known non-GraphQL host. Add new entries here when admin's deployment
- * topology adds another non-GraphQL host.
- */
-const REJECTED_HOSTS = new Set([
-  "auth.jesusfilm.org",
-  // Add other known non-GraphQL hosts here as they emerge.
-])
 
 export type LiveModeOptions = {
   readonly slug: string
@@ -54,62 +54,6 @@ export type LiveModeResult = {
   readonly diff: DiffReport
   readonly strapiResponseTimeMs: number
   readonly adminResponseTimeMs: number
-}
-
-/**
- * Asserts live mode is enabled and configured. Throws a typed error
- * with the missing env var name when it isn't. Exposed separately for
- * the capture script to share validation logic.
- */
-export function assertLiveModeEnabled(env: NodeJS.ProcessEnv = process.env): {
-  readonly strapiUrl: string
-  readonly adminUrl: string
-  readonly baseOrigin: string
-} {
-  if (env.FORGE_PARITY_LIVE !== "1") {
-    throw new LiveModeDisabledError(
-      "live mode is disabled — set FORGE_PARITY_LIVE=1 to enable",
-    )
-  }
-  const strapiUrl = env.FORGE_STRAPI_URL
-  const adminUrl = env.FORGE_ADMIN_URL
-  const baseOrigin = env.FORGE_STRAPI_PUBLIC_ORIGIN
-  if (!strapiUrl) {
-    throw new LiveModeConfigError(
-      "live mode requires FORGE_STRAPI_URL to be set",
-    )
-  }
-  if (!adminUrl) {
-    throw new LiveModeConfigError(
-      "live mode requires FORGE_ADMIN_URL to be set",
-    )
-  }
-  if (!baseOrigin) {
-    throw new LiveModeConfigError(
-      "live mode requires FORGE_STRAPI_PUBLIC_ORIGIN to be set",
-    )
-  }
-  validateHost(adminUrl, "FORGE_ADMIN_URL")
-  validateHost(strapiUrl, "FORGE_STRAPI_URL")
-  return { strapiUrl, adminUrl, baseOrigin }
-}
-
-/**
- * Reject the URL if its hostname is on the rejection list.
- * Throws `LiveModeConfigError` with a clear message on rejection.
- */
-export function validateHost(rawUrl: string, varName: string): void {
-  let parsed: URL
-  try {
-    parsed = new URL(rawUrl)
-  } catch {
-    throw new LiveModeConfigError(`${varName} is not a valid URL: ${rawUrl}`)
-  }
-  if (REJECTED_HOSTS.has(parsed.host)) {
-    throw new LiveModeConfigError(
-      `${varName} points at a rejected host '${parsed.host}'. Admin GraphQL lives at admin.jesusfilm.org/api/graphql or localhost:3003/api/graphql, NOT auth.jesusfilm.org (per PR #909).`,
-    )
-  }
 }
 
 /**

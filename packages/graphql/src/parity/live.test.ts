@@ -96,6 +96,21 @@ describe("validateHost", () => {
     ).toThrow(LiveModeConfigError)
   })
 
+  it("REJECTS auth.jesusfilm.org with non-default port (e.g. :8443) — port-bypass guard", () => {
+    expect(() =>
+      validateHost(
+        "https://auth.jesusfilm.org:8443/api/graphql",
+        "FORGE_ADMIN_URL",
+      ),
+    ).toThrow(LiveModeConfigError)
+  })
+
+  it("REJECTS auth.jesusfilm.org with mixed-case host", () => {
+    expect(() =>
+      validateHost("https://AUTH.JesusFilm.ORG/api/graphql", "FORGE_ADMIN_URL"),
+    ).toThrow(LiveModeConfigError)
+  })
+
   it("rejection error names auth.jesusfilm.org explicitly so misconfig is debuggable", () => {
     try {
       validateHost("https://auth.jesusfilm.org/api/graphql", "FORGE_ADMIN_URL")
