@@ -293,13 +293,35 @@ describe("parity-bridge — runDualReadComparison", () => {
     expect(payload.subkind).toBe("admin_blocks_validation")
   })
 
-  it("emits forge.parity.harness_error subkind comparator_unknown when admin response is null", () => {
+  it("emits forge.parity.admin_missing when admin response is null and Strapi has data (typical backfill gap)", () => {
     runDualReadComparison(
       makeOutcome(strapiOk(), {
         ok: true,
         response: null,
         durationMs: 50,
       }),
+    )
+    const payload = lastLogPayload()
+    expect(payload.event).toBe("forge.parity.admin_missing")
+    // No subkind — admin_missing isn't a harness_error variant.
+    expect(payload.subkind).toBeUndefined()
+  })
+
+  it("emits forge.parity.harness_error subkind comparator_unknown when both responses are null", () => {
+    runDualReadComparison(
+      makeOutcome(
+        { ok: true, response: null, durationMs: 30 },
+        { ok: true, response: null, durationMs: 40 },
+      ),
+    )
+    const payload = lastLogPayload()
+    expect(payload.event).toBe("forge.parity.harness_error")
+    expect(payload.subkind).toBe("comparator_unknown")
+  })
+
+  it("emits forge.parity.harness_error subkind comparator_unknown when Strapi is null but admin has data (anomalous)", () => {
+    runDualReadComparison(
+      makeOutcome({ ok: true, response: null, durationMs: 30 }, adminOk()),
     )
     const payload = lastLogPayload()
     expect(payload.event).toBe("forge.parity.harness_error")
@@ -322,17 +344,51 @@ describe("parity-bridge — runDualReadComparison", () => {
     })
   })
 
-  it("PARITY_LOG_EVENTS lists exactly the five events the bridge emits", () => {
-    // If a new event is added to the bridge but not to the union, this
-    // test would still pass — the real protection is the closed type
-    // union (TypeScript would error). This test pins the count so an
-    // accidental addition or removal is loud.
-    expect(PARITY_LOG_EVENTS).toEqual([
-      "forge.parity.diff",
-      "forge.parity.admin_timeout",
-      "forge.parity.harness_error",
-      "forge.parity.strapi_failed_admin_succeeded",
-      "forge.parity.both_failed",
-    ])
+  it("PARITY_LOG_EVENTS pins the seven events the bridge emits", () => {
+    // The closed type union enforces compile-time exhaustiveness; this
+    // test pins the count so an accidental addition or removal is loud
+    // at runtime too.
+    expect(new Set(PARITY_LOG_EVENTS)).toEqual(
+      new Set([
+        "forge.parity.diff",
+        "forge.parity.admin_timeout",
+        "forge.parity.harness_error",
+        "forge.parity.strapi_failed_admin_succeeded",
+        "forge.parity.both_failed",
+        "forge.parity.admin_missing",
+        "forge.parity.canary_failed",
+      ]),
+    )
+    expect(PARITY_LOG_EVENTS).toHaveLength(7)
+  })
+
+  // ---------------------------------------------------------------------------
+  // R13 defense-in-depth — production strips raw values even when
+  // FORGE_PARITY_DEBUG is set in error
+  // ---------------------------------------------------------------------------
+
+  it("does NOT include diffSamples when FORGE_PARITY_DEBUG=1 + NODE_ENV=production (defense-in-depth)", () => {
+    const env = process.env as Record<string, string | undefined>
+    const originalNodeEnv = env.NODE_ENV
+    env.FORGE_PARITY_DEBUG = "1"
+    env.NODE_ENV = "production"
+    try {
+      const strapi = strapiOk()
+      ;(strapi as { response: { title: string } }).response.title =
+        "STRAPI_PROD_TITLE"
+      const admin = adminOk()
+      ;(admin as { response: { title: string } }).response.title =
+        "ADMIN_PROD_TITLE"
+      runDualReadComparison(makeOutcome(strapi, admin))
+
+      const raw = logSpy.mock.calls.at(-1)?.[0] as string
+      // R13 invariant holds: production NEVER carries raw content
+      // values, even when FORGE_PARITY_DEBUG=1 is set in error.
+      expect(raw).not.toContain("diffSamples")
+      expect(raw).not.toContain("STRAPI_PROD_TITLE")
+      expect(raw).not.toContain("ADMIN_PROD_TITLE")
+    } finally {
+      env.NODE_ENV = originalNodeEnv
+    }
   })
 })

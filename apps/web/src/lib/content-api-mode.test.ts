@@ -79,7 +79,14 @@ describe("normalizeContentApiMode", () => {
 })
 
 describe("getContentApiMode", () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+  })
+
   afterEach(() => {
+    warnSpy.mockRestore()
     vi.resetModules()
     mockEnv.FORGE_CONTENT_API = "strapi"
   })
@@ -94,6 +101,26 @@ describe("getContentApiMode", () => {
     mockEnv.FORGE_CONTENT_API = "dual-read"
     const { getContentApiMode } = await import("./content-api-mode")
     expect(getContentApiMode()).toBe("dual-read")
+  })
+
+  // env.ts widens FORGE_CONTENT_API to accept all four origin-R7 values
+  // so an operator pre-setting a U5b value doesn't brick boot. The
+  // runtime narrower (normalizeContentApiMode) coerces U5b values to
+  // "strapi" with a warn until U5b ships admin-mode rendering.
+  it("returns 'strapi' (with warn) when env.FORGE_CONTENT_API is 'admin-with-fallback' (U5b value)", async () => {
+    mockEnv.FORGE_CONTENT_API = "admin-with-fallback"
+    const { getContentApiMode } = await import("./content-api-mode")
+    expect(getContentApiMode()).toBe("strapi")
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+    expect(warnSpy.mock.calls[0]?.[0]).toMatch(/admin-with-fallback/)
+  })
+
+  it("returns 'strapi' (with warn) when env.FORGE_CONTENT_API is 'admin' (U5b value)", async () => {
+    mockEnv.FORGE_CONTENT_API = "admin"
+    const { getContentApiMode } = await import("./content-api-mode")
+    expect(getContentApiMode()).toBe("strapi")
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+    expect(warnSpy.mock.calls[0]?.[0]).toMatch(/FORGE_CONTENT_API="admin"/)
   })
 
   it("caches the mode at module-import time and returns the same value across calls", async () => {

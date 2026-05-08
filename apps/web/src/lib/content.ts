@@ -302,21 +302,32 @@ async function fetchStrapiSlugExperience(
 }
 
 // Match the typed AbortSignal.timeout / AbortController shapes the AWS-SDK-v3
-// classification pattern recommends — error.name first, then cause.name. No
-// message-substring fallback: a real GraphQL error mentioning "timeout"
-// would be misclassified as forge.parity.admin_timeout, polluting the
-// canary's gating signal. See:
+// classification pattern recommends — error.name first, then cause.name, then
+// Apollo Client v4's `networkError` surface (which wraps fetch-link errors
+// and may itself carry the typed AbortSignal cause). No message-substring
+// fallback: a real GraphQL error mentioning "timeout" would be misclassified
+// as forge.parity.admin_timeout, polluting the canary's gating signal. See:
 //   docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md
 function isAbortTimeoutError(error: unknown): boolean {
   if (!(error instanceof Error)) return false
-  if (error.name === "TimeoutError" || error.name === "AbortError") return true
+  if (hasTimeoutOrAbortName(error)) return true
   const cause = (error as { cause?: unknown }).cause
-  if (cause instanceof Error) {
-    if (cause.name === "TimeoutError" || cause.name === "AbortError") {
+  if (cause instanceof Error && hasTimeoutOrAbortName(cause)) return true
+  // Apollo Client v4 surfaces transport errors via `error.networkError`.
+  // The networkError itself or its cause may carry the typed shape.
+  const networkError = (error as { networkError?: unknown }).networkError
+  if (networkError instanceof Error) {
+    if (hasTimeoutOrAbortName(networkError)) return true
+    const networkCause = (networkError as { cause?: unknown }).cause
+    if (networkCause instanceof Error && hasTimeoutOrAbortName(networkCause)) {
       return true
     }
   }
   return false
+}
+
+function hasTimeoutOrAbortName(error: Error): boolean {
+  return error.name === "TimeoutError" || error.name === "AbortError"
 }
 
 async function fetchAdminSlugExperience(
@@ -365,13 +376,35 @@ async function fetchSlugExperience(
     fetchAdminSlugExperience(locale, slug),
   ])
 
-  // Bridge swallows all errors and emits structured logs. Never throws.
-  runDualReadComparison({
-    slug,
-    urlLocale: locale,
-    strapi: strapiOutcome,
-    admin: adminOutcome,
-  })
+  // Bridge swallows harness errors and emits structured logs internally,
+  // but a sync throw at the bridge boundary (circular ref in payload,
+  // throwing toString on a proxy field, JSON.stringify failure on BigInt)
+  // would bubble out and break the user-facing render despite Strapi
+  // having already succeeded. Defense-in-depth: the canary must NEVER
+  // affect the user's response. Catch any such throw and emit a
+  // structured forge.parity.canary_failed log line so operators can see
+  // it, then continue and serve Strapi as planned.
+  try {
+    runDualReadComparison({
+      slug,
+      urlLocale: locale,
+      strapi: strapiOutcome,
+      admin: adminOutcome,
+    })
+  } catch (canaryErr) {
+    if (typeof console !== "undefined") {
+      console.log(
+        JSON.stringify({
+          event: "forge.parity.canary_failed",
+          route: "[slug]",
+          slug,
+          locale,
+          errorMessage:
+            canaryErr instanceof Error ? canaryErr.message : String(canaryErr),
+        }),
+      )
+    }
+  }
 
   // User-facing source is always Strapi in dual-read.
   if (strapiOutcome.ok === true) {

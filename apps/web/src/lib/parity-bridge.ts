@@ -51,6 +51,16 @@ export const PARITY_LOG_EVENTS = [
   "forge.parity.harness_error",
   "forge.parity.strapi_failed_admin_succeeded",
   "forge.parity.both_failed",
+  // Both fetches succeeded but admin returned null — typical during
+  // backfill (slug exists in Strapi, not yet in admin). Distinct from
+  // harness_error/comparator_unknown so dashboards can separate
+  // legitimate-gap from real comparator failures.
+  "forge.parity.admin_missing",
+  // Defense-in-depth: the bridge itself threw. Emitted from the
+  // orchestrator (content.ts) when runDualReadComparison surfaces a
+  // sync error (circular ref in payload, throwing toString, etc.).
+  // The user's render is unaffected — Strapi already returned.
+  "forge.parity.canary_failed",
 ] as const
 export type ParityLogEvent = (typeof PARITY_LOG_EVENTS)[number]
 
@@ -243,11 +253,21 @@ export function runDualReadComparison(outcome: DualReadOutcome): void {
   const strapiResponse = outcome.strapi.response
   const adminResponse = outcome.admin.response
 
-  // Either response can be null when the slug doesn't exist on that side.
-  // Treat null as a structural absence for now; the harness expects a
-  // populated input. If either is missing, log harness_error subkind
-  // `comparator_unknown` rather than feeding the normalizers garbage.
-  if (!strapiResponse || !adminResponse) {
+  // Both fetches succeeded HTTP-wise but one or both responses are null
+  // (slug doesn't exist on that side). Three distinct signals:
+  //
+  //   - admin null + Strapi has data → forge.parity.admin_missing.
+  //     Typical during backfill: Strapi is the source of truth; admin
+  //     hasn't synced this slug yet. R-18a uses this rate as a gating
+  //     metric for advancing to admin-mode rendering.
+  //   - both null → harness_error/comparator_unknown. Rare; both sides
+  //     agree the slug doesn't exist. Real comparator failures share
+  //     this bucket with this case — operators triage on count, not
+  //     individual events.
+  //   - Strapi null + admin has data → harness_error/comparator_unknown.
+  //     Anomalous: Strapi is supposed to be the source of truth in U5.
+  //     Logged as an error because it indicates schema/sync drift.
+  if (!strapiResponse && !adminResponse) {
     emit({
       event: "forge.parity.harness_error",
       route: PARITY_ROUTE,
@@ -255,12 +275,35 @@ export function runDualReadComparison(outcome: DualReadOutcome): void {
       locale: outcome.urlLocale,
       timings: baseTimings,
       subkind: "comparator_unknown",
-      errorMessage: !strapiResponse
-        ? "strapi response was null/undefined"
-        : "admin response was null/undefined",
+      errorMessage: "both responses were null/undefined",
     })
     return
   }
+  if (strapiResponse && !adminResponse) {
+    emit({
+      event: "forge.parity.admin_missing",
+      route: PARITY_ROUTE,
+      slug: outcome.slug,
+      locale: outcome.urlLocale,
+      timings: baseTimings,
+    })
+    return
+  }
+  if (!strapiResponse && adminResponse) {
+    emit({
+      event: "forge.parity.harness_error",
+      route: PARITY_ROUTE,
+      slug: outcome.slug,
+      locale: outcome.urlLocale,
+      timings: baseTimings,
+      subkind: "comparator_unknown",
+      errorMessage: "strapi response was null/undefined while admin succeeded",
+    })
+    return
+  }
+  // Defensive narrowing — TS can't infer both are non-null after the three
+  // checks above without an explicit re-assert.
+  if (!strapiResponse || !adminResponse) return
 
   try {
     const strapiInput = adaptStrapi(strapiResponse, outcome.urlLocale)
@@ -282,7 +325,13 @@ export function runDualReadComparison(outcome: DualReadOutcome): void {
     })
 
     const diffPaths = collectDiffPaths(report)
-    const debugEnabled = process.env.FORGE_PARITY_DEBUG === "1"
+    // R13 defense-in-depth: production NEVER includes raw values, even if
+    // FORGE_PARITY_DEBUG=1 is set in error. The dev-opt-in path requires
+    // BOTH the explicit flag AND a non-production NODE_ENV. A typo or
+    // copy-paste of the dev flag into a production env config is a no-op.
+    const debugEnabled =
+      process.env.NODE_ENV !== "production" &&
+      process.env.FORGE_PARITY_DEBUG === "1"
 
     emit({
       event: "forge.parity.diff",

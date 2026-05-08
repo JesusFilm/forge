@@ -92,9 +92,17 @@ export function normalizeContentApiMode(raw: unknown): ContentApiMode {
  * by client components without throwing at module load. On the client the
  * mode is always `"strapi"` because the canary's dual-fetch only runs
  * server-side anyway.
+ *
+ * env.FORGE_CONTENT_API admits four values (strapi / dual-read /
+ * admin-with-fallback / admin) so an operator pre-setting a U5b value
+ * doesn't brick boot. `normalizeContentApiMode` is the load-bearing
+ * narrower: U5b values coerce to `"strapi"` with a warn until U5b ships
+ * admin-mode rendering.
  */
 const cachedMode: ContentApiMode =
-  typeof window === "undefined" ? env.FORGE_CONTENT_API : "strapi"
+  typeof window === "undefined"
+    ? normalizeContentApiMode(env.FORGE_CONTENT_API)
+    : "strapi"
 
 export function getContentApiMode(): ContentApiMode {
   return cachedMode

@@ -395,6 +395,151 @@ describe("fetchSlugExperience (U5 canary)", () => {
     expect(outcome.admin.ok).toBe("timeout")
   })
 
+  // AbortSignal.timeout() emits TimeoutError per WHATWG; AbortError is the
+  // older shape from AbortController.abort(). Both must classify as timeout.
+  it("dual-read mode: admin TimeoutError (WHATWG) classified as 'timeout'", async () => {
+    modeRef.current = "dual-read"
+    queryMock.mockResolvedValueOnce(strapiHit())
+    const timeoutError = Object.assign(new Error("timed out"), {
+      name: "TimeoutError",
+    })
+    adminQueryMock.mockRejectedValueOnce(timeoutError)
+
+    const { resolveWatchPage } = await import("./content")
+    await resolveWatchPage("en", "christmas")
+
+    const outcome = runDualReadComparisonMock.mock.calls[0][0]
+    expect(outcome.admin.ok).toBe("timeout")
+  })
+
+  // Apollo Client v4 may surface fetch transport errors as
+  // ApolloError.networkError, with the typed AbortSignal cause one level
+  // deeper. The classifier must walk this shape too — otherwise real
+  // timeouts in production misclassify as forge.parity.harness_error /
+  // admin_fetch_error and pollute the U5b advance signal.
+  it("dual-read mode: timeout wrapped in Apollo networkError classified as 'timeout'", async () => {
+    modeRef.current = "dual-read"
+    queryMock.mockResolvedValueOnce(strapiHit())
+    const apolloErrorWithNetworkTimeout = Object.assign(
+      new Error("network error"),
+      {
+        name: "ApolloError",
+        networkError: Object.assign(new Error("aborted"), {
+          name: "AbortError",
+        }),
+      },
+    )
+    adminQueryMock.mockRejectedValueOnce(apolloErrorWithNetworkTimeout)
+
+    const { resolveWatchPage } = await import("./content")
+    await resolveWatchPage("en", "christmas")
+
+    const outcome = runDualReadComparisonMock.mock.calls[0][0]
+    expect(outcome.admin.ok).toBe("timeout")
+  })
+
+  // Apollo errors with a typed cause chain — networkError -> cause -> AbortError.
+  it("dual-read mode: timeout wrapped via Apollo networkError.cause chain classified as 'timeout'", async () => {
+    modeRef.current = "dual-read"
+    queryMock.mockResolvedValueOnce(strapiHit())
+    const apolloErrorWithNestedCause = Object.assign(
+      new Error("apollo wrapper"),
+      {
+        name: "ApolloError",
+        networkError: Object.assign(new Error("fetch failed"), {
+          name: "FetchError",
+          cause: Object.assign(new Error("aborted"), {
+            name: "AbortError",
+          }),
+        }),
+      },
+    )
+    adminQueryMock.mockRejectedValueOnce(apolloErrorWithNestedCause)
+
+    const { resolveWatchPage } = await import("./content")
+    await resolveWatchPage("en", "christmas")
+
+    const outcome = runDualReadComparisonMock.mock.calls[0][0]
+    expect(outcome.admin.ok).toBe("timeout")
+  })
+
+  // Apollo's `result.error` (resolved-with-error, not rejected) is a
+  // distinct production shape from rejection. The fetchAdminSlugExperience
+  // catch handles rejection; the result.error branch handles in-resolution
+  // errors. Both must classify timeout-vs-error consistently.
+  it("dual-read mode: Apollo resolves with result.error AbortError → classifies as 'timeout'", async () => {
+    modeRef.current = "dual-read"
+    queryMock.mockResolvedValueOnce(strapiHit())
+    const abortError = Object.assign(new Error("aborted"), {
+      name: "AbortError",
+    })
+    adminQueryMock.mockResolvedValueOnce({
+      data: null,
+      error: abortError,
+    })
+
+    const { resolveWatchPage } = await import("./content")
+    await resolveWatchPage("en", "christmas")
+
+    const outcome = runDualReadComparisonMock.mock.calls[0][0]
+    expect(outcome.admin.ok).toBe("timeout")
+  })
+
+  it("dual-read mode: Apollo resolves with result.error generic Error → classifies as 'error'", async () => {
+    modeRef.current = "dual-read"
+    queryMock.mockResolvedValueOnce(strapiHit())
+    const apolloResultError = Object.assign(new Error("admin schema drift"), {
+      name: "ApolloError",
+    })
+    adminQueryMock.mockResolvedValueOnce({
+      data: null,
+      error: apolloResultError,
+    })
+
+    const { resolveWatchPage } = await import("./content")
+    await resolveWatchPage("en", "christmas")
+
+    const outcome = runDualReadComparisonMock.mock.calls[0][0]
+    expect(outcome.admin.ok).toBe("error")
+  })
+
+  // The bridge MUST never break the user's render. If runDualReadComparison
+  // throws synchronously (circular ref, throwing toString, JSON.stringify
+  // failure), the orchestrator catches it and emits a structured
+  // forge.parity.canary_failed log line. User still gets Strapi.
+  it("dual-read mode: bridge sync-throw is caught — user gets Strapi, canary_failed event logged", async () => {
+    modeRef.current = "dual-read"
+    queryMock.mockResolvedValueOnce(strapiHit())
+    adminQueryMock.mockResolvedValueOnce(adminHit())
+    runDualReadComparisonMock.mockImplementation(() => {
+      throw new Error("circular reference in payload")
+    })
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
+
+    try {
+      const { resolveWatchPage } = await import("./content")
+      const result = await resolveWatchPage("en", "christmas")
+
+      // User gets Strapi result, NOT a 500.
+      expect(result.error).toBeNull()
+      expect(result.data).toMatchObject({ kind: "experience" })
+
+      // canary_failed event was logged with the error message.
+      const canaryFailedCall = logSpy.mock.calls.find((call) => {
+        const arg = call[0]
+        return (
+          typeof arg === "string" && arg.includes("forge.parity.canary_failed")
+        )
+      })
+      expect(canaryFailedCall).toBeDefined()
+      const payload = JSON.parse(canaryFailedCall?.[0] as string)
+      expect(payload.event).toBe("forge.parity.canary_failed")
+      expect(payload.errorMessage).toBe("circular reference in payload")
+    } finally {
+      logSpy.mockRestore()
+    }
+  })
+
   // ---------------------------------------------------------------------------
   // dual-read: Strapi throws, admin succeeds — gating signal for U5b advance
   // ---------------------------------------------------------------------------

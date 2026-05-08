@@ -74,11 +74,24 @@ export const env = createEnv({
     // Absent in most preview environments; the server action surfaces a
     // graceful "not configured" state when unset.
     OPENROUTER_API_KEY: z.string().optional(),
-    // U5 — dual-read parity canary mode. U5 ships only `strapi` (default,
-    // byte-identical to current behavior) and `dual-read` (canary). Origin
-    // R7 names two additional values (`admin-with-fallback`, `admin`) which
-    // ship in U5b alongside the admin → WatchExperience shape adapter.
-    FORGE_CONTENT_API: z.enum(["strapi", "dual-read"]).default("strapi"),
+    // U5 — dual-read parity canary mode. U5 wires `strapi` (default,
+    // byte-identical to current behavior) and `dual-read` (canary). The
+    // schema accepts all four origin-R7 values so an operator pre-setting
+    // a U5b value (`admin-with-fallback`, `admin`) does NOT brick boot;
+    // the runtime narrowing in apps/web/src/lib/content-api-mode.ts coerces
+    // unknown-to-U5 values to `"strapi"` with a console.warn until U5b
+    // implements admin-mode rendering.
+    FORGE_CONTENT_API: z
+      .enum(["strapi", "dual-read", "admin-with-fallback", "admin"])
+      .default("strapi"),
+    // U5 — opt-in dev flag that includes raw ValueDiff/SemanticDiff field
+    // values in the parity log payload (diffSamples, first 3). Production
+    // strips raw values unconditionally per R13 — the bridge ALSO gates
+    // on NODE_ENV !== "production" as defense-in-depth (apps/web/src/lib/
+    // parity-bridge.ts), so accidentally setting this in production is a
+    // no-op. Schema-registered here to give boot-time visibility and
+    // typo protection. Optional: absence is the production default.
+    FORGE_PARITY_DEBUG: z.enum(["0", "1"]).default("0"),
     // U5 — admin GraphQL URL for the dual-read shadow fetch. Required (boot
     // fails fast if absent). Host allowlist is warn-only — emits a visible
     // boot warning on misconfigured hosts but does NOT brick boot, so
@@ -166,6 +179,7 @@ export const env = createEnv({
     REVALIDATION_SECRET: process.env.REVALIDATION_SECRET,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     FORGE_CONTENT_API: process.env.FORGE_CONTENT_API,
+    FORGE_PARITY_DEBUG: process.env.FORGE_PARITY_DEBUG,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     NEXT_PUBLIC_GRAPHQL_URL: process.env.NEXT_PUBLIC_GRAPHQL_URL,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
