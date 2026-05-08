@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const { mockEnv } = vi.hoisted(() => ({
-  mockEnv: { NEXT_PUBLIC_CANONICAL_ORIGIN: "https://canonical.local" },
+  mockEnv: {
+    NEXT_PUBLIC_CANONICAL_ORIGIN: "https://canonical.local",
+    FORGE_PARITY_DEBUG: "0" as "0" | "1",
+  },
 }))
 
 vi.mock("@/env", () => ({
@@ -92,12 +95,12 @@ describe("parity-bridge — runDualReadComparison", () => {
 
   beforeEach(() => {
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
-    delete process.env.FORGE_PARITY_DEBUG
+    mockEnv.FORGE_PARITY_DEBUG = "0"
   })
 
   afterEach(() => {
     logSpy.mockRestore()
-    delete process.env.FORGE_PARITY_DEBUG
+    mockEnv.FORGE_PARITY_DEBUG = "0"
   })
 
   function lastLogPayload(): Record<string, unknown> {
@@ -189,7 +192,7 @@ describe("parity-bridge — runDualReadComparison", () => {
   })
 
   it("DOES include diffSamples with raw values when FORGE_PARITY_DEBUG=1 (dev opt-in)", () => {
-    process.env.FORGE_PARITY_DEBUG = "1"
+    mockEnv.FORGE_PARITY_DEBUG = "1"
     const strapi = strapiOk()
     ;(strapi as { response: { title: string } }).response.title =
       "STRAPI_TITLE_X"
@@ -368,10 +371,10 @@ describe("parity-bridge — runDualReadComparison", () => {
   // ---------------------------------------------------------------------------
 
   it("does NOT include diffSamples when FORGE_PARITY_DEBUG=1 + NODE_ENV=production (defense-in-depth)", () => {
-    const env = process.env as Record<string, string | undefined>
-    const originalNodeEnv = env.NODE_ENV
-    env.FORGE_PARITY_DEBUG = "1"
-    env.NODE_ENV = "production"
+    const procEnv = process.env as Record<string, string | undefined>
+    const originalNodeEnv = procEnv.NODE_ENV
+    mockEnv.FORGE_PARITY_DEBUG = "1"
+    procEnv.NODE_ENV = "production"
     try {
       const strapi = strapiOk()
       ;(strapi as { response: { title: string } }).response.title =
@@ -388,7 +391,7 @@ describe("parity-bridge — runDualReadComparison", () => {
       expect(raw).not.toContain("STRAPI_PROD_TITLE")
       expect(raw).not.toContain("ADMIN_PROD_TITLE")
     } finally {
-      env.NODE_ENV = originalNodeEnv
+      procEnv.NODE_ENV = originalNodeEnv
     }
   })
 })

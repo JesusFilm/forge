@@ -61,6 +61,7 @@ describe("normalizeContentApiMode", () => {
     const { normalizeContentApiMode } = await import("./content-api-mode")
     expect(normalizeContentApiMode("admin-with-fallback")).toBe("strapi")
     expect(warnSpy).toHaveBeenCalledTimes(1)
+    expect(warnSpy.mock.calls[0]?.[0]).toMatch(/admin-with-fallback/)
   })
 
   it("falls back to 'strapi' and warns on non-string types (number)", async () => {

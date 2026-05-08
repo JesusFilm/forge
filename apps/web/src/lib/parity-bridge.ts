@@ -16,10 +16,11 @@
 //   - This file: apps/web/src/lib/parity-bridge.ts
 //   - The companion test: apps/web/src/lib/parity-bridge.test.ts
 //   - Every callsite of `runDualReadComparison` in content.ts
-//   - All five parity log event names from any log alerting / dashboards
+//   - All seven parity log event names from any log alerting / dashboards
 //     (forge.parity.diff, forge.parity.admin_timeout,
 //      forge.parity.harness_error, forge.parity.strapi_failed_admin_succeeded,
-//      forge.parity.both_failed)
+//      forge.parity.both_failed, forge.parity.admin_missing,
+//      forge.parity.canary_failed)
 //   - The FORGE_PARITY_DEBUG env var from any deployed env config
 //   - The `@forge/graphql/parity` package import — once nothing else
 //     consumes it, the harness directory can also retire
@@ -62,7 +63,7 @@ export const PARITY_LOG_EVENTS = [
   // The user's render is unaffected — Strapi already returned.
   "forge.parity.canary_failed",
 ] as const
-export type ParityLogEvent = (typeof PARITY_LOG_EVENTS)[number]
+type ParityLogEvent = (typeof PARITY_LOG_EVENTS)[number]
 
 /**
  * Stable route discriminator for the parity log payload. Hard-coded to
@@ -78,7 +79,7 @@ const PARITY_ROUTE = "[slug]" as const
  * which boundary surfaced the error (admin fetch, admin parse, Strapi
  * parse, or generic comparator failure).
  */
-export type HarnessErrorSubkind =
+type HarnessErrorSubkind =
   | "admin_fetch_error"
   | "admin_blocks_validation"
   | "admin_normalization"
@@ -90,7 +91,7 @@ export type HarnessErrorSubkind =
  * fetch with try/catch + Promise.race timeout and hands the bridge the
  * resulting tagged union.
  */
-export type SideOutcome<T> =
+type SideOutcome<T> =
   | { readonly ok: true; readonly response: T; readonly durationMs: number }
   | {
       readonly ok: "error"
@@ -105,7 +106,7 @@ export type SideOutcome<T> =
  * fields off this and synthesizes missing ones (notably `locale`,
  * which the existing fragment may not select).
  */
-export type StrapiExperienceResponse = {
+type StrapiExperienceResponse = {
   readonly documentId?: string | null
   readonly slug?: string | null
   readonly locale?: string | null
@@ -126,7 +127,7 @@ export type StrapiExperienceResponse = {
  * field name; the bridge remaps to `description` before invoking
  * `normalizeAdmin` (which consumes `description`, NOT `metaDescription`).
  */
-export type AdminExperienceResponse = {
+type AdminExperienceResponse = {
   readonly id?: string | null
   readonly slug?: string | null
   readonly locale?: string | null
@@ -153,7 +154,7 @@ export type DualReadOutcome = {
  * production logs. The full `DiffReport` (with values) is opt-in for
  * dev under `FORGE_PARITY_DEBUG=1`; production strips unconditionally.
  */
-export type ParityLogPayload = {
+type ParityLogPayload = {
   readonly event: ParityLogEvent
   readonly route: typeof PARITY_ROUTE
   readonly slug: string
@@ -329,9 +330,11 @@ export function runDualReadComparison(outcome: DualReadOutcome): void {
     // FORGE_PARITY_DEBUG=1 is set in error. The dev-opt-in path requires
     // BOTH the explicit flag AND a non-production NODE_ENV. A typo or
     // copy-paste of the dev flag into a production env config is a no-op.
+    // Read FORGE_PARITY_DEBUG via the typed env (not process.env) so the
+    // schema's z.enum validation actually runs against the value the
+    // bridge reads. NODE_ENV stays on process.env — Next.js inlines it.
     const debugEnabled =
-      process.env.NODE_ENV !== "production" &&
-      process.env.FORGE_PARITY_DEBUG === "1"
+      process.env.NODE_ENV !== "production" && env.FORGE_PARITY_DEBUG === "1"
 
     emit({
       event: "forge.parity.diff",

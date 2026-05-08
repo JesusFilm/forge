@@ -81,8 +81,17 @@ export const env = createEnv({
     // the runtime narrowing in apps/web/src/lib/content-api-mode.ts coerces
     // unknown-to-U5 values to `"strapi"` with a console.warn until U5b
     // implements admin-mode rendering.
+    //
+    // The `z.preprocess` step trims whitespace and lowercases the value
+    // before the enum match so `"DUAL-READ"` or `"dual-read "` (trailing
+    // newline from a copy-paste) don't brick boot — common operator-
+    // typo failure modes that the runtime narrower can't recover from
+    // because the schema rejects first.
     FORGE_CONTENT_API: z
-      .enum(["strapi", "dual-read", "admin-with-fallback", "admin"])
+      .preprocess(
+        (val) => (typeof val === "string" ? val.trim().toLowerCase() : val),
+        z.enum(["strapi", "dual-read", "admin-with-fallback", "admin"]),
+      )
       .default("strapi"),
     // U5 — opt-in dev flag that includes raw ValueDiff/SemanticDiff field
     // values in the parity log payload (diffSamples, first 3). Production

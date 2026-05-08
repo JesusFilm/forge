@@ -278,6 +278,12 @@ async function getExperienceByFilters(
 //   apps/web/src/lib/content-api-mode.ts (deletion checklist)
 // ---------------------------------------------------------------------------
 
+// IMPORTANT: this fetcher only ever produces `ok: true` or `ok: "error"`.
+// The SideOutcome union also admits `ok: "timeout"` (used by the admin
+// side); if you add timeout classification to Strapi here, also add the
+// matching branch to parity-bridge.ts's runDualReadComparison branch
+// table — otherwise (strapi:timeout, admin:true) silently falls through
+// to the unreachable narrowing return at the bottom of the bridge.
 async function fetchStrapiSlugExperience(
   locale: string,
   slug: string,
@@ -399,6 +405,13 @@ async function fetchSlugExperience(
           route: "[slug]",
           slug,
           locale,
+          // Match the ParityLogPayload contract — every other parity event
+          // carries timings; canary_failed must too so dashboards filtering
+          // on timings.* don't see undefined on this branch.
+          timings: {
+            strapiMs: strapiOutcome.durationMs,
+            adminMs: adminOutcome.durationMs,
+          },
           errorMessage:
             canaryErr instanceof Error ? canaryErr.message : String(canaryErr),
         }),
