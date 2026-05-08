@@ -210,6 +210,7 @@ where admin's first call 401s.
 | RAILWAY_S3_BUCKET            | Railway S3 bucket name (optional — triggers S3 mode)                           |
 | RAILWAY_S3_ACCESS_KEY_ID     | Railway S3 access key (optional)                                               |
 | RAILWAY_S3_SECRET_ACCESS_KEY | Railway S3 secret key (optional)                                               |
+| MANAGER_BACKEND_MODE         | `admin`, `mock`, or `strapi`; set `admin` for the Admin backend migration      |
 | MANAGER_DATA_MODE            | `live` or `mock` (default `live`)                                              |
 | MANAGER_MOCK_SESSION_SECRET  | Required in `mock` mode to sign Manager-issued mock sessions                   |
 | MANAGER_MOCK_DATA_PATH       | Optional mock runtime store path (default `.tmp/mock-cms/store.json`)          |
@@ -219,6 +220,7 @@ where admin's first call 401s.
 | WORKFLOW_API_KEY             | workflow API key (optional, for production durability)                         |
 | MANAGER_API_KEY              | API key for external clients (optional in dev)                                 |
 | ADMIN_GRAPHQL_URL            | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)             |
+| ADMIN_MANAGER_API_KEY        | Required in `admin` mode; must match admin's `WORKFLOW_API_KEYS`               |
 | ADMIN_EMBED_TRIGGER_API_KEY  | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`                 |
 | ADMIN_TRIGGER_API_KEYS       | CSV of bearer keys admin can use to call `/api/admin-trigger/*` (feat-119 PR2) |
 | AGENTIC_BASE_URL             | Agentic runtime origin for Manager-to-Agentic service routes                   |
