@@ -35,6 +35,7 @@ export type CmsGatewayAuthHandlers = {
   verifyManagerSession?: (
     token: string,
   ) => Promise<ManagerUser | null> | ManagerUser | null
+  logoutManagerSession?: (token: string) => Promise<boolean> | boolean
 }
 
 export type CmsGatewayOptions = {
@@ -53,6 +54,7 @@ export interface CmsGateway {
     password: string,
   ): Promise<ManagerSession | null>
   verifyManagerSession(token: string): Promise<ManagerUser | null>
+  logoutManagerSession(token: string): Promise<boolean>
   readMockState?(): Promise<MockCmsState>
   updateMockState?(
     updater: (current: MockCmsState) => MockCmsState,
@@ -68,6 +70,7 @@ type ManagerSessionPayload = {
   sub: number
   email: string
   roleName: string
+  managerRole: "OPERATOR"
   issuedAt: string
   version: 1
 }
@@ -119,7 +122,16 @@ function sanitizeManagerUser(user: MockManagerUserRecord): ManagerUser {
     username: user.username,
     email: user.email,
     role: cloneMockCmsSeed(user.role),
+    managerRole: mockManagerRole(user),
   }
+}
+
+function mockManagerRole(
+  user: MockManagerUserRecord,
+): ManagerUser["managerRole"] {
+  return (
+    user.managerRole ?? (user.role.name === "Manager" ? "OPERATOR" : undefined)
+  )
 }
 
 function createSessionToken(
@@ -138,6 +150,7 @@ function createSessionToken(
       sub: user.id,
       email: normalizeEmail(user.email),
       roleName: user.role.name,
+      managerRole: "OPERATOR",
       issuedAt: new Date().toISOString(),
       version: SESSION_VERSION,
     } satisfies ManagerSessionPayload),
@@ -184,6 +197,7 @@ function parseSessionToken(
       decodedPayload.email.length === 0 ||
       typeof decodedPayload.roleName !== "string" ||
       decodedPayload.roleName.length === 0 ||
+      decodedPayload.managerRole !== "OPERATOR" ||
       typeof decodedPayload.issuedAt !== "string" ||
       decodedPayload.issuedAt.length === 0 ||
       decodedPayload.version !== SESSION_VERSION
@@ -195,6 +209,7 @@ function parseSessionToken(
       sub: decodedPayload.sub,
       email: decodedPayload.email,
       roleName: decodedPayload.roleName,
+      managerRole: decodedPayload.managerRole,
       issuedAt: decodedPayload.issuedAt,
       version: SESSION_VERSION,
     }
@@ -217,6 +232,11 @@ function createStrapiGateway(): CmsGateway {
     async verifyManagerSession(token) {
       return (
         (await registeredLiveAuthHandlers.verifyManagerSession?.(token)) ?? null
+      )
+    },
+    async logoutManagerSession(token) {
+      return (
+        (await registeredLiveAuthHandlers.logoutManagerSession?.(token)) ?? true
       )
     },
     async readMockState() {
@@ -258,6 +278,9 @@ function createAdminGateway(): CmsGateway {
     verifyManagerSession(token) {
       return client.verifyManagerSession(token)
     },
+    logoutManagerSession(token) {
+      return client.logoutManagerSession(token)
+    },
     async readMockState() {
       throw new Error("Admin Manager gateway mock state is not available.")
     },
@@ -292,7 +315,7 @@ function createMockGateway(options: CmsGatewayOptions): CmsGateway {
     mode: "mock",
     async loginManagerUser(email, password) {
       const user = await store.findUserByEmail(normalizeEmail(email))
-      if (!user || user.role.name !== "Manager") {
+      if (!user || mockManagerRole(user) !== "OPERATOR") {
         return null
       }
 
@@ -307,12 +330,12 @@ function createMockGateway(options: CmsGatewayOptions): CmsGateway {
     },
     async verifyManagerSession(token) {
       const payload = parseSessionToken(token, secret)
-      if (!payload || payload.roleName !== "Manager") {
+      if (!payload) {
         return null
       }
 
       const user = await store.findUserById(payload.sub)
-      if (!user || user.role.name !== "Manager") {
+      if (!user || mockManagerRole(user) !== "OPERATOR") {
         return null
       }
 
@@ -321,6 +344,9 @@ function createMockGateway(options: CmsGatewayOptions): CmsGateway {
       }
 
       return sanitizeManagerUser(user)
+    },
+    async logoutManagerSession() {
+      return true
     },
     async readMockState() {
       return store.readState()

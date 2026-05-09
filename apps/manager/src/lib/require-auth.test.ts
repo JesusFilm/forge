@@ -34,7 +34,7 @@ describe("requireAuth", () => {
     verifyManagerSessionMock.mockReset()
   })
 
-  it("accepts Admin role names after Admin verifies access:manager", async () => {
+  it("accepts Admin-backed users with ManagerRole.OPERATOR", async () => {
     cookiesMock.mockResolvedValue({
       get: (name: string) =>
         name === "manager-session"
@@ -46,6 +46,7 @@ describe("requireAuth", () => {
       username: "viewer@example.test",
       email: "viewer@example.test",
       role: { name: "VIEWER", type: "viewer" },
+      managerRole: "OPERATOR",
     })
 
     const { requireAuth } = await import("./require-auth")

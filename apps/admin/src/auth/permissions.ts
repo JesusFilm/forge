@@ -45,6 +45,7 @@ export type PermissionKey =
   | "read:media-assets"
   | "read:reference"
   | "access:manager"
+  | "read:manager-read-models"
   // Write scopes (admin-write on Core-sourced is intentionally restricted)
   | "write:experiences"
   | "write:videos"
@@ -57,6 +58,7 @@ export type PermissionKey =
   // the mutation forwards the call to apps/manager's
   // `/api/admin-trigger/{scene-analysis,transcript}` endpoint.
   | "write:manager-enrichment-trigger"
+  | "write:manager-jobs"
   // Lifecycle scopes (publish / archive ExperienceLocale, etc.)
   | "publish:experiences"
   | "archive:experiences"
@@ -82,10 +84,10 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "read:media-assets": "EDITOR",
   // Reference data is public-shape; PUBLIC may read.
   "read:reference": "PUBLIC",
-  // Manager app access is deliberately narrower than Admin access.
-  // Any authenticated Admin account can be allowed into Manager-facing
-  // contracts, but unauthenticated and bearer workflow callers cannot.
-  "access:manager": "VIEWER",
+  // Manager panel and Manager backend contracts are gated below by
+  // ManagerMembership, not by the editorial role ladder.
+  "access:manager": "PUBLIC",
+  "read:manager-read-models": "PUBLIC",
   // Editor writes
   "write:experiences": "EDITOR",
   // Core-sourced; only ADMIN may override (also flips source='manager').
@@ -106,6 +108,7 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // existing reverse direction without the new key piggybacking on
   // that path.
   "write:manager-enrichment-trigger": "ADMIN",
+  "write:manager-jobs": "PUBLIC",
   // Lifecycle
   "publish:experiences": "EDITOR",
   "archive:experiences": "EDITOR",
@@ -164,23 +167,20 @@ function meetsTier(role: Role, min: MinTier): boolean {
  * allowed to satisfy. This role is minted by `createContext` when an
  * incoming request carries a valid bearer key matching
  * `WORKFLOW_API_KEYS`. It is intentionally narrower than ADMIN — the
- * bearer-auth path is for service-to-service trigger calls (apps/manager
- * → admin's embed-backfill mutations and manager-scoped backend read/job
- * contracts), NOT a generic admin session.
+ * bearer-auth path is for service-to-service trigger calls and
+ * manager-scoped backend read/job contracts, NOT a generic admin session
+ * and NOT Manager panel access.
  *
  * **Adding a key here widens the bearer caller's blast radius.** It also
- * widens the manager proxy's reach: any user with the Strapi "Manager"
- * role (or a holder of `MANAGER_API_KEY`) who can hit
- * `apps/manager/src/app/api/admin-embeds/*` will gain access to whatever
- * mutation that key gates. Add a key here only when you have explicitly
- * decided that every Manager-tier service key should be able to invoke that
- * contract. The narrow allowlist is the only narrowing mechanism — the
- * editorial tier ladder is bypassed for this role.
+ * grants that service credential reach to the gated contract. The narrow
+ * allowlist is the only narrowing mechanism — the editorial tier ladder is
+ * bypassed for this role.
  */
 const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
-  "access:manager",
+  "read:manager-read-models",
   "write:scene-embeddings",
   "write:transcript-embeddings",
+  "write:manager-jobs",
   // feat-119 PR2: the `pnpm trigger-enrichment` CLI authenticates
   // with `WORKFLOW_API_KEYS` (mints `WORKFLOW_TRIGGER`) when an
   // operator pipes PR1's `missingArtifacts` projection into the
@@ -190,6 +190,12 @@ const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   // manager-side REST proxy forwarding to this mutation, so a
   // Manager-tier identity cannot pivot through this key.
   "write:manager-enrichment-trigger",
+])
+
+const MANAGER_MEMBERSHIP_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "access:manager",
+  "read:manager-read-models",
+  "write:manager-jobs",
 ])
 
 /**
@@ -212,6 +218,9 @@ export function hasPermission(
   // ADMIN-only mutation.
   if (role === "WORKFLOW_TRIGGER") {
     return WORKFLOW_TRIGGER_PERMISSIONS.has(key)
+  }
+  if (MANAGER_MEMBERSHIP_PERMISSIONS.has(key)) {
+    return user?.managerRole === "OPERATOR"
   }
   const min = permissionMatrix[key]
   return meetsTier(role, min)

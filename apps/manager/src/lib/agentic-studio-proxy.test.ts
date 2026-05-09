@@ -19,6 +19,8 @@ const { envMock, verifyManagerSessionMock } = vi.hoisted(() => ({
 }))
 
 vi.mock("@/lib/auth", () => ({
+  hasManagerAccess: (user: { managerRole?: string } | null | undefined) =>
+    user?.managerRole === "OPERATOR",
   verifyManagerSession: verifyManagerSessionMock,
 }))
 
@@ -37,6 +39,7 @@ function managerUser(roleName = "Manager") {
     username: "manager",
     email: "manager@forge.test",
     role: { name: roleName, type: roleName.toLowerCase() },
+    managerRole: roleName === "Manager" ? "OPERATOR" : undefined,
   }
 }
 
@@ -47,7 +50,7 @@ function request(
   return new Request(`https://manager.test${path}`, {
     ...init,
     headers: {
-      cookie: "strapi-jwt=manager-session",
+      cookie: "manager-session=manager-session",
       ...init.headers,
     },
   })
@@ -84,7 +87,20 @@ describe("authorizeAgenticStudioSession", () => {
   it("treats malformed session cookies as invalid sessions", async () => {
     const result = await authorizeAgenticStudioSession(
       new Request("https://manager.test/api/agentic-studio", {
-        headers: { cookie: "strapi-jwt=%E0%A4%A" },
+        headers: { cookie: "manager-session=%E0%A4%A" },
+      }),
+    )
+
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error("expected authorization failure")
+    expect(result.response.status).toBe(403)
+    expect(verifyManagerSessionMock).not.toHaveBeenCalled()
+  })
+
+  it("does not accept legacy strapi-jwt cookies", async () => {
+    const result = await authorizeAgenticStudioSession(
+      new Request("https://manager.test/api/agentic-studio", {
+        headers: { cookie: "strapi-jwt=manager-session" },
       }),
     )
 
@@ -193,7 +209,7 @@ describe("proxyAgenticStudioRequest", () => {
       request("/api/agentic-studio/api/agents", {
         headers: {
           authorization: "Bearer browser-token",
-          cookie: "strapi-jwt=manager-session; other=value",
+          cookie: "manager-session=manager-session; other=value",
           forwarded: "host=evil.test",
           "x-forwarded-host": "evil.test",
           "x-forwarded-proto": "https",

@@ -268,6 +268,149 @@ enum LocaleStatus {
   PUBLISHED
 }
 
+type ManagerAuthPayload {
+  token: String
+  user: ManagerViewer
+}
+
+type ManagerContinent {
+  id: ID
+  name: String
+}
+
+type ManagerCountry {
+  continentId: String
+  id: ID
+  name: String
+}
+
+type ManagerCoverageCounts {
+  ai: Int
+  human: Int
+}
+
+type ManagerCoverageSnapshot {
+  audioAiTotal: Int
+  audioHumanTotal: Int
+  computedAt: String
+  date: String
+  documentId: ID
+  languageCoverage: JSON
+  subtitlesAiTotal: Int
+  subtitlesHumanTotal: Int
+  totalVideos: Int
+  videosWithAiMetadata: Int
+  videosWithHumanMetadata: Int
+}
+
+type ManagerJob {
+  artifacts: JSON
+  completedAt: String
+  createdAt: String
+  currentStep: String
+  errors: JSON
+  id: ID
+  languages: [String!]
+  muxAssetId: String
+  muxPlaybackId: String
+  options: JSON
+  primaryRequestedTargetLanguageCode: String
+  requestedLanguageAbbreviations: [String!]
+  resolvedTargetLanguageCodes: [String!]
+  retries: Int
+  sourceCollectionTitle: String
+  sourceLanguageCode: String
+  sourceLanguageId: String
+  sourceMediaTitle: String
+  sourceSelectionReason: String
+  startedAt: String
+  status: String
+  steps: [ManagerJobStep!]
+  updatedAt: String
+  videoDocumentId: String
+}
+
+enum ManagerJobStatus {
+  completed
+  failed
+  pending
+  running
+}
+
+type ManagerJobStep {
+  details: JSON
+  error: String
+  finishedAt: String
+  name: String
+  retries: Int
+  startedAt: String
+  status: String
+}
+
+input ManagerJobStepInput {
+  details: JSON
+  error: String
+  finishedAt: String
+  name: String!
+  retries: Int
+  startedAt: String
+  status: ManagerJobStepStatus!
+}
+
+enum ManagerJobStepStatus {
+  completed
+  failed
+  pending
+  running
+  skipped
+}
+
+type ManagerLanguage {
+  continentIds: [String!]
+  countryIds: [String!]
+  countrySpeakers: JSON
+  englishLabel: String
+  id: ID
+  nativeLabel: String
+}
+
+type ManagerLanguageGeo {
+  continents: [ManagerContinent!]
+  countries: [ManagerCountry!]
+  languages: [ManagerLanguage!]
+}
+
+enum ManagerRole {
+  OPERATOR
+}
+
+type ManagerVideoCoverage {
+  aiMetadata: Boolean
+  coreId: String
+  coverage: ManagerVideoCoverageBreakdown
+  documentId: ID
+  imageUrl: String
+  label: String
+  parentDocumentIds: [String!]
+  slug: String
+  title: String
+}
+
+type ManagerVideoCoverageBreakdown {
+  audio: ManagerCoverageCounts
+  subtitles: ManagerCoverageCounts
+}
+
+"""Manager-scoped interactive user shape backed by Admin Better Auth."""
+type ManagerViewer {
+  email: String
+  id: ID
+  managerRole: ManagerRole!
+  permission: String
+  role: String
+  username: String
+}
+
 """
 An uploaded image, video, PDF, or file registered in the Apps admin media library.
 """
@@ -397,6 +540,7 @@ type Mutation {
   archiveExperience(id: ID!): Experience
   """Create a new Experience with an initial locale. Caller becomes owner."""
   createExperience(blocks: JSON, isTemplate: Boolean, locale: String!, slug: String!, title: String): Experience
+  createManagerJob(languages: [String!], muxAssetId: String!, muxPlaybackId: String, options: JSON, steps: [ManagerJobStepInput!], videoDocumentId: String): ManagerJob
   """Create a media folder at the root or inside another folder."""
   createMediaFolder(name: String!, parentId: ID): MediaFolder
   """
@@ -407,6 +551,12 @@ type Mutation {
   Delete an empty media folder. Fails when child folders or assets remain.
   """
   deleteMediaFolder(id: ID!): DeleteMediaFolderResult
+  """
+  Signs in with Admin Better Auth and returns a Manager-held session token.
+  """
+  managerLogin(email: String!, password: String!): ManagerAuthPayload
+  """Revokes the Manager-held Admin session in Better Auth."""
+  managerLogout: Boolean
   """
   Publish an ExperienceLocale (flip status to PUBLISHED). Owner or ADMIN.
   """
@@ -493,6 +643,7 @@ type Mutation {
   ): JSON
   """Update an ExperienceLocale (slug, title, blocks, etc.)."""
   updateExperienceLocale(blocks: JSON, id: ID!, isHomepage: Boolean, isTemplate: Boolean, metaDescription: String, ogDescription: String, ogImageUrl: String, ogTitle: String, pathSegment: String, slug: String, title: String): ExperienceLocale
+  updateManagerJob(artifacts: JSON, completedAt: String, currentStep: String, errors: JSON, id: ID!, options: JSON, retries: Int, startedAt: String, status: ManagerJobStatus, steps: [ManagerJobStepInput!]): ManagerJob
   """Update editable media asset metadata and processing state."""
   updateMediaAsset(byteSize: String, checksumSha256: String, durationMs: String, errorCode: String, errorMessage: String, folderId: ID, height: Int, id: ID!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
   """
@@ -527,6 +678,19 @@ type Query {
   keywords(limit: Int = 100, offset: Int = 0): [Keyword!]
   """List active (non-soft-deleted) languages."""
   languages(limit: Int = 100, offset: Int = 0): [Language!]
+  managerCoverageSnapshots(endDate: String, latest: Boolean, startDate: String): [ManagerCoverageSnapshot!]
+  managerJob(id: ID!): ManagerJob
+  managerJobs(limit: Int): [ManagerJob!]
+  managerLanguageGeo: ManagerLanguageGeo
+  """
+  Validates a Manager-held Admin session cookie from request headers and returns the Manager user shape.
+  """
+  managerSession: ManagerViewer
+  managerVideoCoverage(languageIds: [String!]): [ManagerVideoCoverage!]
+  """
+  Current Admin session projected into the narrow Manager access contract.
+  """
+  managerViewer: ManagerViewer
   """Fetch a single media asset by id."""
   mediaAsset(id: ID!): MediaAsset
   """

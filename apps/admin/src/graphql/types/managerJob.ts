@@ -137,7 +137,7 @@ function parseErrors(value: unknown): unknown[] | undefined {
 builder.queryFields((t) => ({
   managerJobs: t.field({
     type: [ManagerJobRef],
-    authScopes: { hasPermission: "access:manager" },
+    authScopes: { hasPermission: "write:manager-jobs" },
     args: {
       limit: t.arg.int({ required: false }),
     },
@@ -149,7 +149,7 @@ builder.queryFields((t) => ({
   }),
   managerJob: t.field({
     type: ManagerJobRef,
-    authScopes: { hasPermission: "access:manager" },
+    authScopes: { hasPermission: "write:manager-jobs" },
     args: { id: t.arg.id({ required: true }) },
     resolve: (_root, args, ctx) =>
       ctx.services.managerJob.get({ user: ctx.user, id: String(args.id) }),
@@ -159,7 +159,7 @@ builder.queryFields((t) => ({
 builder.mutationFields((t) => ({
   createManagerJob: t.field({
     type: ManagerJobRef,
-    authScopes: { hasPermission: "access:manager" },
+    authScopes: { hasPermission: "write:manager-jobs" },
     args: {
       muxAssetId: t.arg.string({ required: true }),
       muxPlaybackId: t.arg.string({ required: false }),
@@ -187,7 +187,7 @@ builder.mutationFields((t) => ({
   }),
   updateManagerJob: t.field({
     type: ManagerJobRef,
-    authScopes: { hasPermission: "access:manager" },
+    authScopes: { hasPermission: "write:manager-jobs" },
     args: {
       id: t.arg.id({ required: true }),
       status: t.arg({ type: ManagerJobStatusEnum, required: false }),

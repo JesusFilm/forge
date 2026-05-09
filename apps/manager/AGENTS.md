@@ -14,8 +14,17 @@ This app orchestrates AI video enrichment pipelines. Agents working here should 
 - `src/services/` — one file per external service
 - `src/services/openrouter.ts` — shared OpenRouter client plus strict structured-output helper for JSON-shaped LLM requests
 - `src/cms/client.ts` — legacy Strapi GraphQL client; keep new Admin-backed Manager contracts in the backend gateway instead
-- `src/lib/auth.ts` — API route authentication (`manager-session`/legacy cookie + Bearer token)
+- `src/lib/auth.ts` — API route authentication (`manager-session` + Bearer token)
 - `src/lib/state.ts` — local job state (file-backed; replace with durable store in production)
+
+## Auth boundary
+
+- Manager login still posts to `POST /api/auth/login` and writes
+  `manager-session`.
+- In Admin-backed mode, the user must be a registered Admin user with an
+  active Admin `ManagerMembership` and `ManagerRole.OPERATOR`.
+- Admin editorial roles alone do not grant Manager panel access.
+- Legacy `strapi-jwt` cookies are not accepted for Manager panel access.
 
 ## Cross-package impact
 

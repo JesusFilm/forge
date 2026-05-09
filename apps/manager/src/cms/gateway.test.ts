@@ -52,6 +52,7 @@ describe("cms gateway auth foundation", () => {
         user: {
           email: DEFAULT_MOCK_MANAGER_CREDENTIALS.email,
           role: { name: "Manager" },
+          managerRole: "OPERATOR",
         },
       })
 
@@ -120,6 +121,48 @@ describe("cms gateway auth foundation", () => {
       await expect(
         gateway.loginManagerUser("viewer@forge.test", "viewer-password"),
       ).resolves.toBeNull()
+    } finally {
+      await cleanupTempStorePath(dataPath)
+    }
+  })
+
+  it("verifies mock Admin-shaped operator users after login", async () => {
+    const dataPath = await createTempStorePath()
+    const seed = cloneMockCmsSeed(DEFAULT_MOCK_CMS_SEED)
+    seed.users = [
+      {
+        id: 3,
+        username: "operator",
+        email: "operator@forge.test",
+        passwordHash: hashMockPassword("operator-password"),
+        role: {
+          name: "VIEWER",
+          type: "viewer",
+        },
+        managerRole: "OPERATOR",
+      },
+    ]
+
+    try {
+      const gateway = createCmsGateway({
+        mode: "mock",
+        mockSecret: "test-secret",
+        mockDataPath: dataPath,
+        mockSeed: seed,
+      })
+
+      const session = await gateway.loginManagerUser(
+        "operator@forge.test",
+        "operator-password",
+      )
+      expect(session?.user).toMatchObject({
+        email: "operator@forge.test",
+        role: { name: "VIEWER" },
+        managerRole: "OPERATOR",
+      })
+      await expect(
+        gateway.verifyManagerSession(session!.token),
+      ).resolves.toEqual(session!.user)
     } finally {
       await cleanupTempStorePath(dataPath)
     }

@@ -15,7 +15,11 @@ async function resolveFromHeaders(headers: Headers): Promise<Principal | null> {
   if (!session) {
     return null
   }
-  return { id: session.id, role: session.role }
+  return {
+    id: session.id,
+    role: session.role,
+    managerRole: session.managerRole,
+  }
 }
 
 async function resolveSessionFromHeaders(
@@ -28,7 +32,14 @@ async function resolveSessionFromHeaders(
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, email: true, role: true },
+    select: {
+      id: true,
+      email: true,
+      role: true,
+      managerMembership: {
+        select: { role: true, revokedAt: true },
+      },
+    },
   })
 
   if (!user) {
@@ -39,6 +50,10 @@ async function resolveSessionFromHeaders(
     id: user.id,
     email: user.email,
     role: user.role,
+    managerRole:
+      user.managerMembership?.revokedAt == null
+        ? (user.managerMembership?.role ?? null)
+        : null,
     expiresAt:
       "session" in session &&
       session.session != null &&

@@ -27,6 +27,7 @@
     "run-sync": "tsx src/scripts/run-sync.ts",
     "schema:print": "tsx src/scripts/print-schema.ts",
     "seed-easter": "tsx --env-file=.env src/scripts/seed-easter.ts",
+    "manager:grant-operator": "tsx --env-file=.env src/scripts/grant-manager-operator.ts",
     "trigger-enrichment": "tsx src/scripts/trigger-enrichment.ts",
     "workflow:setup:postgres": "workflow-postgres-setup"
   },
