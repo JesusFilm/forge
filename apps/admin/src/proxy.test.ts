@@ -1,12 +1,16 @@
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock("@/config/env", () => ({
-  env: {
-    AUTH_TRUSTED_ORIGINS: undefined,
-    BETTER_AUTH_URL: undefined,
+const { envMock } = vi.hoisted(() => ({
+  envMock: {
+    AUTH_TRUSTED_ORIGINS: undefined as string | undefined,
+    BETTER_AUTH_URL: undefined as string | undefined,
     NODE_ENV: "production",
   },
+}))
+
+vi.mock("@/config/env", () => ({
+  env: envMock,
 }))
 
 function request(path: string, host = "auth.jesusfilm.org") {
@@ -21,6 +25,9 @@ function request(path: string, host = "auth.jesusfilm.org") {
 
 describe("admin proxy auth host guard", () => {
   beforeEach(() => {
+    envMock.AUTH_TRUSTED_ORIGINS = undefined
+    envMock.BETTER_AUTH_URL = undefined
+    envMock.NODE_ENV = "production"
     vi.resetModules()
   })
 
@@ -83,6 +90,19 @@ describe("admin proxy auth host guard", () => {
 
     const response = proxy(
       request("/dashboard/workflows", "admin.jesusfilm.org"),
+    )
+
+    expect(response.headers.get("x-middleware-next")).toBe("1")
+  })
+
+  it("allows admin pages when stage uses one host for auth and admin", async () => {
+    envMock.BETTER_AUTH_URL = "https://forgeadmin-stage.up.railway.app"
+    envMock.AUTH_TRUSTED_ORIGINS =
+      "https://forgeadmin-stage.up.railway.app,https://manager-stage.jesusfilm.org"
+    const { proxy } = await import("./proxy")
+
+    const response = proxy(
+      request("/dashboard", "forgeadmin-stage.up.railway.app"),
     )
 
     expect(response.headers.get("x-middleware-next")).toBe("1")

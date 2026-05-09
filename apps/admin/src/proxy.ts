@@ -39,6 +39,14 @@ function isAuthHostAllowedPath(pathname: string): boolean {
   )
 }
 
+function hasSameOrigin(left: string, right: string): boolean {
+  try {
+    return new URL(left).origin === new URL(right).origin
+  } catch {
+    return false
+  }
+}
+
 function redirectAuthRootToLogin(request: NextRequest, authBaseURL: string) {
   const loginURL = new URL("/login", authBaseURL)
   loginURL.searchParams.set(
@@ -61,8 +69,13 @@ function redirectAuthPageToAdmin(request: NextRequest) {
 
 export function proxy(request: NextRequest) {
   const authBaseURL = getAuthBaseURL()
+  const requestOrigin = getRequestOrigin(request)
 
-  if (getRequestOrigin(request) !== authBaseURL) {
+  if (requestOrigin !== authBaseURL) {
+    return NextResponse.next()
+  }
+
+  if (hasSameOrigin(authBaseURL, getDefaultPostLoginURL())) {
     return NextResponse.next()
   }
 
