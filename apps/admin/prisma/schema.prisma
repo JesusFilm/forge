@@ -81,6 +81,11 @@ enum UserRole {
   VIEWER @map("VIEWER")
 }
 
+/// Manager panel authorization role. Admin owns identity; Manager owns panel access.
+enum ManagerRole {
+  OPERATOR @map("OPERATOR")
+}
+
 /// Video classification (mirrors Core schema enum).
 enum VideoLabel {
   COLLECTION        @map("collection")
@@ -189,6 +194,7 @@ model User {
 
   sessions     Session[]
   accounts     Account[]
+  managerMembership ManagerMembership?
   mediaAssets  MediaAsset[]
   mediaFolders MediaFolder[]
 
@@ -242,6 +248,20 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+model ManagerMembership {
+  id        String      @id @default(cuid())
+  userId    String      @unique @map("user_id")
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      ManagerRole @default(OPERATOR)
+  revokedAt DateTime?   @map("revoked_at")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  @@index([role])
+  @@index([revokedAt])
+  @@map("manager_membership")
 }
 
 // -----------------------------------------------------------------------------

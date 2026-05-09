@@ -40,6 +40,7 @@ describe("POST /api/auth/login", () => {
         id: 7,
         email: "manager@forge.test",
         role: { name: "Manager", type: "manager" },
+        managerRole: "OPERATOR",
       },
     })
 
@@ -78,13 +79,14 @@ describe("POST /api/auth/login", () => {
     )
   })
 
-  it("accepts Admin role names after Admin grants Manager access", async () => {
+  it("accepts Admin users after Admin grants ManagerRole.OPERATOR", async () => {
     loginManagerUserMock.mockResolvedValue({
       token: "admin-session-token",
       user: {
         id: "admin-user-1",
         email: "viewer@example.test",
         role: { name: "VIEWER", type: "viewer" },
+        managerRole: "OPERATOR",
       },
     })
 
@@ -113,6 +115,35 @@ describe("POST /api/auth/login", () => {
       "admin-session-token",
       expect.objectContaining({ httpOnly: true }),
     )
+  })
+
+  it("rejects a valid Admin user without Manager membership", async () => {
+    loginManagerUserMock.mockResolvedValue({
+      token: "admin-session-token",
+      user: {
+        id: "admin-user-1",
+        email: "admin@example.test",
+        role: { name: "ADMIN", type: "admin" },
+      },
+    })
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://example.test/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "admin@example.test",
+          password: "admin-password",
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(401)
+    await expect(response.json()).resolves.toEqual({
+      error: "Invalid credentials",
+    })
+    expect(cookieSet).not.toHaveBeenCalled()
   })
 
   it("rejects invalid mock credentials", async () => {

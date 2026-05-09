@@ -94,3 +94,15 @@ rg -n "builder.queryFields|builder.mutationFields|hasPermission|read:videos|writ
 - `pnpm --filter @forge/manager lint`
 - Admin GraphQL contract smoke proves Manager can authenticate to Admin, list languages, fetch video coverage with two different `languageIds`, read snapshot ranges, create/update/list one enrichment job, and trigger the existing admin embedding workflow.
 - Manager browser smoke proves login, Coverage, language filter changes, Jobs list/detail, job creation, and admin-embed trigger routes work with `MANAGER_BACKEND_MODE=admin` and no `STRAPI_*` env vars.
+
+## Manager Membership Rollout Note
+
+Manager panel access is explicit membership, not Admin editorial role. Deploy
+Admin first, run the Prisma migration, grant the stage operator with:
+
+```
+pnpm --filter @forge/admin manager:grant-operator <admin-email>
+```
+
+Then deploy Manager in `MANAGER_BACKEND_MODE=admin`. A registered Admin user
+without `ManagerMembership.OPERATOR` must be denied Manager login.

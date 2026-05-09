@@ -81,6 +81,7 @@ describe("authenticateManagerOverrideRequest", () => {
       username: "manager",
       email: "manager@forge.test",
       role: { name: "Manager", type: "manager" },
+      managerRole: "OPERATOR",
     })
 
     const { authenticateRequest, authenticateManagerOverrideRequest } =
@@ -101,12 +102,13 @@ describe("authenticateManagerOverrideRequest", () => {
         username: "manager",
         email: "manager@forge.test",
         role: { name: "Manager", type: "manager" },
+        managerRole: "OPERATOR",
       },
     })
     expect(verifyManagerSessionMock).toHaveBeenCalledWith("mock-session-token")
   })
 
-  it("accepts Admin role names after Admin verifies access:manager", async () => {
+  it("accepts Admin-backed sessions only when Admin returns ManagerRole.OPERATOR", async () => {
     vi.stubEnv("MANAGER_BACKEND_MODE", "admin")
     vi.stubEnv("ADMIN_GRAPHQL_URL", "https://admin.example/api/graphql")
     vi.stubEnv("ADMIN_MANAGER_API_KEY", "manager-service-key")
@@ -119,6 +121,7 @@ describe("authenticateManagerOverrideRequest", () => {
       username: "viewer@example.test",
       email: "viewer@example.test",
       role: { name: "VIEWER", type: "viewer" },
+      managerRole: "OPERATOR",
     })
 
     const { authenticateRequest, authenticateManagerOverrideRequest } =
@@ -139,37 +142,61 @@ describe("authenticateManagerOverrideRequest", () => {
         username: "viewer@example.test",
         email: "viewer@example.test",
         role: { name: "VIEWER", type: "viewer" },
+        managerRole: "OPERATOR",
       },
     })
   })
 
-  it("still accepts the legacy Strapi cookie during the transition window", async () => {
+  it("rejects Admin editorial roles without Manager membership", async () => {
+    vi.stubEnv("MANAGER_BACKEND_MODE", "admin")
+    vi.stubEnv("ADMIN_GRAPHQL_URL", "https://admin.example/api/graphql")
+    vi.stubEnv("ADMIN_MANAGER_API_KEY", "manager-service-key")
+    vi.stubEnv("MUX_TOKEN_ID", "mux-token-id")
+    vi.stubEnv("MUX_TOKEN_SECRET", "mux-token-secret")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    verifyManagerSessionMock.mockResolvedValue({
+      id: "admin-user-1",
+      username: "admin@example.test",
+      email: "admin@example.test",
+      role: { name: "ADMIN", type: "admin" },
+    })
+
+    const { authenticateRequest } = await import("./auth")
+
+    const response = await authenticateRequest(
+      new Request("http://example.test", {
+        headers: {
+          cookie: "manager-session=admin-session-token",
+        },
+      }),
+    )
+
+    expect(response).toBeInstanceOf(Response)
+    expect(response?.status).toBe(401)
+  })
+
+  it("rejects legacy strapi-jwt cookies", async () => {
     vi.stubEnv("MANAGER_DATA_MODE", "mock")
     vi.stubEnv("MANAGER_MOCK_SESSION_SECRET", "mock-session-secret")
     vi.stubEnv("MUX_TOKEN_ID", "mux-token-id")
     vi.stubEnv("MUX_TOKEN_SECRET", "mux-token-secret")
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
 
-    verifyManagerSessionMock.mockResolvedValue({
-      id: 7,
-      username: "manager",
-      email: "manager@forge.test",
-      role: { name: "Manager", type: "manager" },
-    })
-
     const { authenticateRequest } = await import("./auth")
 
-    await expect(
-      authenticateRequest(
-        new Request("http://example.test", {
-          headers: {
-            cookie: "strapi-jwt=legacy-session-token",
-          },
-        }),
-      ),
-    ).resolves.toBeNull()
-    expect(verifyManagerSessionMock).toHaveBeenCalledWith(
-      "legacy-session-token",
+    const response = await authenticateRequest(
+      new Request("http://example.test", {
+        headers: {
+          cookie: "strapi-jwt=legacy-session-token",
+        },
+      }),
     )
+    expect(response).toBeInstanceOf(Response)
+    expect(response?.status).toBe(401)
+    await expect(response?.json()).resolves.toEqual({
+      error: "Authentication required",
+    })
+    expect(verifyManagerSessionMock).not.toHaveBeenCalled()
   })
 })

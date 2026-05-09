@@ -146,13 +146,13 @@ const ManagerCoverageSnapshotRef = builder
 builder.queryFields((t) => ({
   managerLanguageGeo: t.field({
     type: ManagerLanguageGeoRef,
-    authScopes: { hasPermission: "access:manager" },
+    authScopes: { hasPermission: "read:manager-read-models" },
     resolve: (_root, _args, ctx) =>
       ctx.services.managerReadModel.getLanguageGeo({ user: ctx.user }),
   }),
   managerVideoCoverage: t.field({
     type: [ManagerVideoCoverageRef],
-    authScopes: { hasPermission: "access:manager" },
+    authScopes: { hasPermission: "read:manager-read-models" },
     args: {
       languageIds: t.arg.stringList({ required: false }),
     },
@@ -164,7 +164,7 @@ builder.queryFields((t) => ({
   }),
   managerCoverageSnapshots: t.field({
     type: [ManagerCoverageSnapshotRef],
-    authScopes: { hasPermission: "access:manager" },
+    authScopes: { hasPermission: "read:manager-read-models" },
     args: {
       latest: t.arg.boolean({ required: false }),
       startDate: t.arg.string({ required: false }),

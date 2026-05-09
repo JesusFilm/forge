@@ -102,7 +102,7 @@ type ManagerJobRow = {
 }
 
 function assertManagerAccess(user: Principal | null) {
-  if (!hasPermission(user, "access:manager")) {
+  if (!hasPermission(user, "write:manager-jobs")) {
     throw new ForbiddenError()
   }
 }

@@ -29,7 +29,10 @@ export type Role =
 export type Principal = {
   id: string | null
   role: Role
+  managerRole?: ManagerRole | null
 }
+
+export type ManagerRole = "OPERATOR"
 
 /**
  * The workflow-tier principal. Used by every useworkflow job that

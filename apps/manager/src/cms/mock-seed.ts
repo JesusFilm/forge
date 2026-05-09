@@ -12,6 +12,7 @@ export type ManagerUser = {
   username: string
   email: string
   role: ManagerUserRole
+  managerRole?: "OPERATOR"
 }
 
 export type ManagerSession = {
@@ -180,6 +181,7 @@ const DEFAULT_MANAGER_USER: MockManagerUserRecord = {
     name: "Manager",
     type: "manager",
   },
+  managerRole: "OPERATOR",
 }
 
 const DEFAULT_MOCK_JOBS: JobRecord[] = [

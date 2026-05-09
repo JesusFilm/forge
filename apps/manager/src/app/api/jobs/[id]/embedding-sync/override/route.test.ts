@@ -100,6 +100,7 @@ function buildManagerAuthResult() {
       username: "manager",
       email: "manager@example.test",
       role: { name: "Manager", type: "manager" },
+      managerRole: "OPERATOR" as const,
     },
   }
 }

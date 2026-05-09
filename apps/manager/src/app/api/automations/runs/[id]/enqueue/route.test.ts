@@ -62,9 +62,12 @@ describe("POST /api/automations/runs/[id]/enqueue", () => {
   })
 
   it("rejects cookie-only session callers", async () => {
-    const response = await POST(buildRequest({ cookie: "strapi-jwt=test" }), {
-      params: Promise.resolve({ id: "run-1" }),
-    })
+    const response = await POST(
+      buildRequest({ cookie: "manager-session=test" }),
+      {
+        params: Promise.resolve({ id: "run-1" }),
+      },
+    )
 
     expect(response.status).toBe(403)
     expect(enqueueAutomationRunMock).not.toHaveBeenCalled()

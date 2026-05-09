@@ -50,7 +50,7 @@ export type ManagerCoverageSnapshot = {
 }
 
 function assertManagerAccess(user: Principal | null) {
-  if (!hasPermission(user, "access:manager")) {
+  if (!hasPermission(user, "read:manager-read-models")) {
     throw new ForbiddenError()
   }
 }

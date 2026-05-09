@@ -1,8 +1,6 @@
 // API route authentication.
-// Supports two auth methods:
-// 1. Strapi JWT cookie (set by /api/auth/login) — for dashboard UI
-// 2. Bearer token header (MANAGER_API_KEY) — for external API clients
-// Auth is enforced in all environments (dev included).
+// Supports Manager session cookies for dashboard UI and bearer tokens
+// (MANAGER_API_KEY) for external API clients.
 
 import { timingSafeEqual } from "node:crypto"
 import { NextResponse } from "next/server"
@@ -16,7 +14,6 @@ import { env } from "@/config/env"
 import { readManagerSessionToken } from "@/lib/session-cookie"
 
 type StrapiUser = ManagerUser
-const ADMIN_MANAGER_ROLE_NAMES = new Set(["ADMIN", "EDITOR", "VIEWER"])
 
 export type ManagerOverrideActor =
   | {
@@ -43,12 +40,7 @@ function isValidManagerApiKey(token: string): boolean {
 export function hasManagerAccess(
   user: ManagerUser | null | undefined,
 ): user is ManagerUser {
-  const roleName = user?.role?.name
-  if (!roleName) {
-    return false
-  }
-
-  return roleName === "Manager" || ADMIN_MANAGER_ROLE_NAMES.has(roleName)
+  return user?.managerRole === "OPERATOR"
 }
 
 /**

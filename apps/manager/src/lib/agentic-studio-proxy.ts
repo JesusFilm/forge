@@ -1,7 +1,8 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto"
 import { NextResponse } from "next/server"
 import { env } from "@/config/env"
-import { verifyManagerSession } from "@/lib/auth"
+import { hasManagerAccess, verifyManagerSession } from "@/lib/auth"
+import { readManagerSessionToken } from "@/lib/session-cookie"
 
 type AgenticStudioRouteParams = {
   path?: string[]
@@ -106,25 +107,6 @@ function verifyStudioFrameToken(token: string | null): boolean {
 
 function json(status: number, body: Record<string, unknown>): Response {
   return NextResponse.json(body, { status })
-}
-
-function getCookieValue(request: Request, name: string): string | null {
-  const cookieHeader = request.headers.get("cookie") ?? ""
-  const encodedName = `${name}=`
-  const cookie = cookieHeader
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(encodedName))
-
-  if (!cookie) {
-    return null
-  }
-
-  try {
-    return decodeURIComponent(cookie.slice(encodedName.length))
-  } catch {
-    return null
-  }
 }
 
 function getManagerOrigin(request: Request): string {
@@ -346,16 +328,18 @@ export async function authorizeAgenticStudioSession(
     return { ok: true }
   }
 
-  const jwt = getCookieValue(request, "strapi-jwt")
-  if (!jwt) {
+  const sessionToken = readManagerSessionToken(
+    request.headers.get("cookie") ?? "",
+  )
+  if (!sessionToken) {
     return {
       ok: false,
       response: json(403, { error: "Manager session required" }),
     }
   }
 
-  const user = await verifyManagerSession(jwt)
-  if (user?.role?.name !== "Manager") {
+  const user = await verifyManagerSession(sessionToken)
+  if (!hasManagerAccess(user)) {
     return {
       ok: false,
       response: json(403, { error: "Manager session required" }),

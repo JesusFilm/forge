@@ -30,6 +30,7 @@ const USER_SELECTION = `
   username
   email
   role
+  managerRole
 `
 
 const VIDEO_COVERAGE_SELECTION = `
@@ -109,7 +110,7 @@ const JOB_SELECTION = `
   errors
 `
 
-function normalizeRole(role: unknown): ManagerUser["role"] {
+function normalizeRole(role: unknown): ManagerUser["role"] | null {
   if (typeof role === "string") {
     return { name: role, type: role.toLowerCase() }
   }
@@ -127,7 +128,7 @@ function normalizeRole(role: unknown): ManagerUser["role"] {
     }
   }
 
-  return { name: "Manager", type: "manager" }
+  return null
 }
 
 function normalizeUser(raw: unknown): ManagerUser | null {
@@ -140,6 +141,7 @@ function normalizeUser(raw: unknown): ManagerUser | null {
     username?: unknown
     email?: unknown
     role?: unknown
+    managerRole?: unknown
   }
   const id =
     typeof candidate.id === "number"
@@ -150,7 +152,12 @@ function normalizeUser(raw: unknown): ManagerUser | null {
           : candidate.id
         : null
 
-  if (id == null || typeof candidate.email !== "string") {
+  const role = normalizeRole(candidate.role)
+  if (id == null || typeof candidate.email !== "string" || !role) {
+    return null
+  }
+
+  if (candidate.managerRole !== "OPERATOR") {
     return null
   }
 
@@ -161,7 +168,8 @@ function normalizeUser(raw: unknown): ManagerUser | null {
         ? candidate.username
         : candidate.email,
     email: candidate.email,
-    role: normalizeRole(candidate.role),
+    role,
+    managerRole: "OPERATOR",
   }
 }
 
@@ -201,9 +209,11 @@ export class AdminGraphqlClient {
   private async request<T>(
     query: string,
     variables?: Record<string, unknown>,
+    additionalHeaders?: Record<string, string>,
   ): Promise<T> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
+      ...additionalHeaders,
     }
     if (this.apiKey) {
       headers.Authorization = `Bearer ${this.apiKey}`
@@ -259,17 +269,29 @@ export class AdminGraphqlClient {
   async verifyManagerSession(token: string): Promise<ManagerUser | null> {
     const data = await this.request<Record<string, unknown>>(
       `
-        query ManagerSession($token: String!) {
-          managerSession(token: $token) {
-            user { ${USER_SELECTION} }
-          }
+        query ManagerSession {
+          managerSession { ${USER_SELECTION} }
         }
       `,
-      { token },
+      {},
+      { Cookie: token },
     )
 
-    const session = readField<{ user?: unknown }>(data, "managerSession")
-    return normalizeUser(session?.user)
+    return normalizeUser(readField(data, "managerSession"))
+  }
+
+  async logoutManagerSession(token: string): Promise<boolean> {
+    const data = await this.request<Record<string, unknown>>(
+      `
+        mutation ManagerLogout {
+          managerLogout
+        }
+      `,
+      {},
+      { Cookie: token },
+    )
+
+    return readField<boolean>(data, "managerLogout") === true
   }
 
   async getLanguageGeo(): Promise<MockLanguageGeo> {
@@ -293,7 +315,7 @@ export class AdminGraphqlClient {
   ): Promise<MockVideoCoverage[]> {
     const data = await this.request<Record<string, unknown>>(
       `
-        query ManagerVideoCoverage($languageIds: [ID!]) {
+        query ManagerVideoCoverage($languageIds: [String!]) {
           managerVideoCoverage(languageIds: $languageIds) { ${VIDEO_COVERAGE_SELECTION} }
         }
       `,

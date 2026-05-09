@@ -8,6 +8,7 @@ type ManagerViewer = {
   username: string
   email: string
   role: string
+  managerRole: "OPERATOR"
   permission: string
 }
 
@@ -15,6 +16,12 @@ type ManagerAuthPayload = {
   token: string
   user: ManagerViewer
 }
+
+const ManagerRoleEnum = builder.enumType("ManagerRole", {
+  values: {
+    OPERATOR: { value: "OPERATOR" },
+  } as const,
+})
 
 const ManagerViewerRef = builder
   .objectRef<ManagerViewer>("ManagerViewer")
@@ -26,6 +33,11 @@ const ManagerViewerRef = builder
       username: t.exposeString("username"),
       email: t.exposeString("email"),
       role: t.exposeString("role"),
+      managerRole: t.field({
+        type: ManagerRoleEnum,
+        nullable: false,
+        resolve: (row) => row.managerRole,
+      }),
       permission: t.exposeString("permission"),
     }),
   })
@@ -47,11 +59,26 @@ async function userToManagerViewer(
 ): Promise<ManagerViewer | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, name: true, role: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      managerMembership: {
+        select: { role: true, revokedAt: true },
+      },
+    },
   })
+  const managerRole =
+    user?.managerMembership?.revokedAt == null
+      ? user?.managerMembership?.role
+      : null
   if (
     !user ||
-    !hasPermission({ id: user.id, role: user.role }, "access:manager")
+    !hasPermission(
+      { id: user.id, role: user.role, managerRole },
+      "access:manager",
+    )
   ) {
     return null
   }
@@ -60,6 +87,7 @@ async function userToManagerViewer(
     username: user.name ?? user.email,
     email: user.email,
     role: user.role,
+    managerRole: managerRole as "OPERATOR",
     permission: "access:manager",
   }
 }
@@ -82,9 +110,23 @@ builder.queryFields((t) => ({
       }
       const user = await ctx.prisma.user.findUnique({
         where: { id: ctx.user.id },
-        select: { id: true, email: true, role: true },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          managerMembership: {
+            select: { role: true, revokedAt: true },
+          },
+        },
       })
       if (!user) {
+        return null
+      }
+      const managerRole =
+        user.managerMembership?.revokedAt == null
+          ? user.managerMembership?.role
+          : null
+      if (managerRole !== "OPERATOR") {
         return null
       }
       return {
@@ -92,25 +134,23 @@ builder.queryFields((t) => ({
         username: user.email,
         email: user.email,
         role: user.role,
+        managerRole: managerRole as "OPERATOR",
         permission: "access:manager",
       }
     },
   }),
   managerSession: t.field({
-    type: ManagerAuthPayloadRef,
+    type: ManagerViewerRef,
     nullable: true,
-    args: {
-      token: t.arg.string({ required: true }),
-    },
     description:
-      "Validates a Manager-held Admin session cookie and returns the Manager user shape.",
-    resolve: async (_root, args) => {
+      "Validates a Manager-held Admin session cookie from request headers and returns the Manager user shape.",
+    resolve: async (_root, _args, ctx) => {
       const session = await auth.api.getSession({
-        headers: new Headers({ cookie: args.token }),
+        headers: ctx.request.headers,
       })
       if (!session?.user?.id) return null
       const user = await userToManagerViewer(session.user.id)
-      return user ? { token: args.token, user } : null
+      return user
     },
   }),
 }))
@@ -143,7 +183,17 @@ builder.mutationFields((t) => ({
       })
       if (!session?.user?.id) return null
       const user = await userToManagerViewer(session.user.id)
-      return user ? { token: encodeURIComponent(cookie), user } : null
+      return user ? { token: cookie, user } : null
+    },
+  }),
+  managerLogout: t.field({
+    type: "Boolean",
+    description: "Revokes the Manager-held Admin session in Better Auth.",
+    resolve: async (_root, _args, ctx) => {
+      const response = await auth.api.signOut({
+        headers: ctx.request.headers,
+      })
+      return response.success === true
     },
   }),
 }))

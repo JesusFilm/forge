@@ -13,12 +13,31 @@ describe("Manager session GraphQL contract", () => {
   it("exposes a Manager-scoped viewer query", () => {
     const fields = schema.getQueryType()!.getFields()
     expect(fields.managerViewer).toBeDefined()
+    expect(fields.managerSession).toBeDefined()
+  })
+
+  it("exposes Manager logout as a mutation", () => {
+    const fields = schema.getMutationType()!.getFields()
+    expect(fields.managerLogout).toBeDefined()
   })
 
   it("returns the stable user/session shape Manager needs", () => {
     const fields = fieldsOf("ManagerViewer")
     expect(Object.keys(fields)).toEqual(
-      expect.arrayContaining(["id", "email", "role", "permission"]),
+      expect.arrayContaining([
+        "id",
+        "email",
+        "role",
+        "managerRole",
+        "permission",
+      ]),
+    )
+  })
+
+  it("exposes managerRole as the ManagerRole enum", () => {
+    const fields = fieldsOf("ManagerViewer")
+    expect(String((fields.managerRole as { type: unknown }).type)).toBe(
+      "ManagerRole!",
     )
   })
 })

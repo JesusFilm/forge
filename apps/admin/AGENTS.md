@@ -10,6 +10,9 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 - Prisma + Postgres + pgvector — sole data access layer.
 - Better Auth for identity; server-side Firebase email/password fallback for
   transparent lazy migration; native SSO for Facebook/Google/Apple/Okta.
+- Manager panel access is not inherited from Admin `VIEWER` / `EDITOR` /
+  `ADMIN`. Admin owns identity, but `ManagerMembership.role =
+OPERATOR` is the source of Manager panel authorization.
 - useworkflow for durable background jobs.
 - For worktree previews, follow `apps/admin/docs/worktree-preview-setup.md`
   before starting a server or mutating a shared local database.
@@ -54,13 +57,14 @@ CI's `admin-schema-drift` job catches step 1 if forgotten. CI's `graphql-generat
 
 ## Local-dev scripts (not deployed)
 
-| Script                                           | Purpose                                                        | Env requirement                                                    |
-| ------------------------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `pnpm --filter @forge/admin run-sync`            | Run the Core data sync against any DATABASE_URL                | DATABASE_URL + Core API creds                                      |
-| `pnpm --filter @forge/admin run-embeds`          | Run scene/transcript embedding workflows locally               | DATABASE_URL + manager S3 + OpenRouter (R1 only)                   |
-| `pnpm --filter @forge/admin run-experience-dump` | Run R3 experience-content-dump from a workstation              | DATABASE_URL + CMS_DATABASE_URL                                    |
-| `pnpm --filter @forge/admin seed-easter`         | Seed Easter experience into local Postgres for UI/E2E fixtures | DATABASE_URL (loaded via `--env-file=.env`); destructive on re-run |
-| `pnpm --filter @forge/admin schema:print`        | Regenerate the committed admin SDL artifact                    | None (uses Pothos schema directly)                                 |
+| Script                                                      | Purpose                                                          | Env requirement                                                    |
+| ----------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `pnpm --filter @forge/admin run-sync`                       | Run the Core data sync against any DATABASE_URL                  | DATABASE_URL + Core API creds                                      |
+| `pnpm --filter @forge/admin run-embeds`                     | Run scene/transcript embedding workflows locally                 | DATABASE_URL + manager S3 + OpenRouter (R1 only)                   |
+| `pnpm --filter @forge/admin run-experience-dump`            | Run R3 experience-content-dump from a workstation                | DATABASE_URL + CMS_DATABASE_URL                                    |
+| `pnpm --filter @forge/admin seed-easter`                    | Seed Easter experience into local Postgres for UI/E2E fixtures   | DATABASE_URL (loaded via `--env-file=.env`); destructive on re-run |
+| `pnpm --filter @forge/admin manager:grant-operator <email>` | Grant or restore ManagerRole.OPERATOR for an existing Admin user | DATABASE_URL (loaded via `--env-file=.env`)                        |
+| `pnpm --filter @forge/admin schema:print`                   | Regenerate the committed admin SDL artifact                      | None (uses Pothos schema directly)                                 |
 
 ## Boundaries
 
