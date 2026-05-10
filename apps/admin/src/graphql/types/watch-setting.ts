@@ -15,9 +15,8 @@
 // inner `ExperienceLocale` are stripped by U2's field-level authScopes
 // on the `Experience` and `ExperienceLocale` types.
 
-import type { ExperienceLocale } from "@prisma/client"
-
 import { builder } from "@/graphql/builder"
+import type { WatchSettingShape } from "@/services/watch-setting.service"
 
 /**
  * @classification public-shape
@@ -32,11 +31,6 @@ import { builder } from "@/graphql/builder"
  * service is the gate, not the type. See consumer-migration U2 plan
  * §System-Wide Impact for the service-mediated bridge discipline.
  */
-type WatchSettingShape = {
-  documentId: string | null
-  homepageExperience: ExperienceLocale | null
-  defaultTemplateExperience: ExperienceLocale | null
-}
 
 const WatchSettingRef = builder.objectRef<WatchSettingShape>("WatchSetting")
 

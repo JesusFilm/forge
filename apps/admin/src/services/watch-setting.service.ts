@@ -27,16 +27,22 @@
 
 import type { ExperienceLocale, PrismaClient } from "@prisma/client"
 
+export type WatchSettingShape = {
+  documentId: string | null
+  homepageExperience: ExperienceLocale | null
+  defaultTemplateExperience: ExperienceLocale | null
+}
+
 export class WatchSettingService {
   constructor(private prisma: PrismaClient) {}
 
-  async get({ locale }: { locale: string }): Promise<{
-    documentId: string | null
-    homepageExperience: ExperienceLocale | null
-    defaultTemplateExperience: ExperienceLocale | null
-  }> {
-    const homepage = await this.findHomepageLocale(locale)
-    const template = await this.findTemplateLocale(locale)
+  async get({ locale }: { locale: string }): Promise<WatchSettingShape> {
+    // Parallel reads — no data dependency between homepage and template
+    // lookups. Halves wall-clock latency on the consumer homepage hot path.
+    const [homepage, template] = await Promise.all([
+      this.findHomepageLocale(locale),
+      this.findTemplateLocale(locale),
+    ])
 
     // documentId mirrors Strapi's stable cross-locale identifier. Admin's
     // Experience.id is a cuid that is stable for the lifetime of the
@@ -81,6 +87,15 @@ export class WatchSettingService {
     return matches[0] ?? null
   }
 
+  // The isTemplate flag lives on the parent Experience (not on
+  // ExperienceLocale like isHomepage), so the query shape is asymmetric
+  // with findHomepageLocale by necessity — we read the parent and pull
+  // its single matching published locale via `include`. The multi-row
+  // tiebreak that findHomepageLocale logs about can also happen here
+  // if two Experiences both have `isTemplate: true`; today the
+  // editorial UI doesn't prevent that and the impact is silent
+  // wrong-template selection. Left for a follow-up — flagged here so
+  // a future maintainer can mirror the homepage warning shape.
   private async findTemplateLocale(
     locale: string,
   ): Promise<ExperienceLocale | null> {

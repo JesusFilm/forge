@@ -24,7 +24,7 @@
 // service-layer resolvers exist to be tested.
 
 import { describe, expect, it, test } from "vitest"
-import { readdirSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
 const TYPES_DIR = resolve(__dirname, "types")
@@ -228,8 +228,6 @@ describe("public-shape types do not relate to abac-gated types", () => {
 //
 // Per consumer-migration U2 plan (2026-05-11) review.
 // -----------------------------------------------------------------------------
-
-import { existsSync } from "node:fs"
 
 describe("public-resolvers regression test meta-defense", () => {
   it("apps/admin/src/graphql/public-resolvers.regression.test.ts exists", () => {

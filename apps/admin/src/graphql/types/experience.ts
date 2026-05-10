@@ -20,10 +20,36 @@
 //
 // Per Unit 4 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
+import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
 // Import for side effect: registers the JSON scalar on the builder so this
 // module can reference `type: "JSON"` below. Also exports `LocaleStatusEnum`.
 import { LocaleStatusEnum } from "@/graphql/types/reference"
+
+// -----------------------------------------------------------------------------
+// PUBLIC strip helper (consumer-migration U2 — 2026-05-11)
+//
+// Anonymous callers must receive null (with no `errors[]` entry) for
+// editorial/internal fields on Experience and ExperienceLocale. The
+// triplet { nullable, authScopes, unauthorizedResolver } repeats on 8
+// fields; this constant localizes the permission-key literal to one
+// place and makes "this field is stripped for PUBLIC" greppable.
+//
+// Why `unauthorizedResolver: () => null`: Pothos scope-auth's default
+// `unauthorizedResolver` is `(_, _, _, _, error) => { throw error }`
+// (see `node_modules/.pnpm/@pothos+plugin-scope-auth@4.1.6/.../resolve-helper.js`).
+// The thrown ForbiddenError populates `response.errors[]` even on
+// nullable fields — the U5 parity comparator on PR #915 inspects both
+// `data` AND `errors[]` per call, so a populated `errors[]` would mark
+// every PUBLIC `experienceBySlug` request as an admin failure. The
+// `() => null` override returns null cleanly with no error entry.
+// -----------------------------------------------------------------------------
+
+const STRIPPED_FOR_PUBLIC = {
+  nullable: true as const,
+  authScopes: { hasPermission: "read:experiences" as const },
+  unauthorizedResolver: () => null,
+}
 
 // -----------------------------------------------------------------------------
 // ExperienceLocale
@@ -38,18 +64,10 @@ builder.prismaObject("ExperienceLocale", {
     experienceId: t.exposeID("experienceId"),
     locale: t.exposeString("locale"),
     slug: t.exposeString("slug"),
-    // Field-level strip: anonymous callers cannot enumerate which locales are
-    // homepage-flagged. EDITOR/ADMIN see the real value. The `unauthorizedResolver`
-    // overrides Pothos's default-throw so anonymous callers get a clean null
-    // with no entry in `errors[]` — required to keep the U5 parity comparator
-    // signal clean. Nullability flip is paired (Pothos's default error path
-    // still throws on a non-nullable scope-failed field). See consumer-migration
-    // U2 plan.
-    isHomepage: t.exposeBoolean("isHomepage", {
-      nullable: true,
-      authScopes: { hasPermission: "read:experiences" },
-      unauthorizedResolver: () => null,
-    }),
+    // Editorial-state flag — stripped for PUBLIC so anonymous callers cannot
+    // enumerate which locales are homepage-flagged. See `STRIPPED_FOR_PUBLIC`
+    // at the top of this file for the why behind the triplet.
+    isHomepage: t.exposeBoolean("isHomepage", { ...STRIPPED_FOR_PUBLIC }),
     pathSegment: t.exposeString("pathSegment", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
     metaDescription: t.exposeString("metaDescription", { nullable: true }),
@@ -72,18 +90,13 @@ builder.prismaObject("ExperienceLocale", {
       nullable: true,
       resolve: (row) => row.publishedAt?.toISOString() ?? null,
     }),
-    // Internal timestamps stripped from PUBLIC responses (consumer-migration U2).
-    // EDITOR/ADMIN see the real values.
+    // Internal timestamps stripped for PUBLIC.
     createdAt: t.string({
-      nullable: true,
-      authScopes: { hasPermission: "read:experiences" },
-      unauthorizedResolver: () => null,
+      ...STRIPPED_FOR_PUBLIC,
       resolve: (row) => row.createdAt.toISOString(),
     }),
     updatedAt: t.string({
-      nullable: true,
-      authScopes: { hasPermission: "read:experiences" },
-      unauthorizedResolver: () => null,
+      ...STRIPPED_FOR_PUBLIC,
       resolve: (row) => row.updatedAt.toISOString(),
     }),
   }),
@@ -104,46 +117,28 @@ builder.prismaObject("Experience", {
     "A page-builder Experience. Canonical row holds non-localized state; per-locale content (slug, blocks, title) lives in ExperienceLocale. Embedding vector is stored here but NEVER exposed via GraphQL.",
   fields: (t) => ({
     id: t.exposeID("id"),
-    // Internal/editorial fields stripped from PUBLIC responses (consumer-migration U2).
-    // Anonymous callers receive null; EDITOR/ADMIN see real values.
-    // `unauthorizedResolver: () => null` overrides Pothos's default-throw so
-    // `response.errors[]` stays empty for anonymous selections — required to keep
-    // the U5 parity comparator from treating strip events as admin failures.
-    isTemplate: t.exposeBoolean("isTemplate", {
-      nullable: true,
-      authScopes: { hasPermission: "read:experiences" },
-      unauthorizedResolver: () => null,
-    }),
-    ownerId: t.exposeID("ownerId", {
-      nullable: true,
-      authScopes: { hasPermission: "read:experiences" },
-      unauthorizedResolver: () => null,
-    }),
+    // Internal/editorial fields stripped for PUBLIC. Anonymous callers
+    // receive null; EDITOR/ADMIN see real values. See `STRIPPED_FOR_PUBLIC`
+    // at the top of this file for the why behind the triplet.
+    isTemplate: t.exposeBoolean("isTemplate", { ...STRIPPED_FOR_PUBLIC }),
+    ownerId: t.exposeID("ownerId", { ...STRIPPED_FOR_PUBLIC }),
     archivedAt: t.string({
-      nullable: true,
-      authScopes: { hasPermission: "read:experiences" },
-      unauthorizedResolver: () => null,
+      ...STRIPPED_FOR_PUBLIC,
       resolve: (row) => row.archivedAt?.toISOString() ?? null,
     }),
     createdAt: t.string({
-      nullable: true,
-      authScopes: { hasPermission: "read:experiences" },
-      unauthorizedResolver: () => null,
+      ...STRIPPED_FOR_PUBLIC,
       resolve: (row) => row.createdAt.toISOString(),
     }),
     updatedAt: t.string({
-      nullable: true,
-      authScopes: { hasPermission: "read:experiences" },
-      unauthorizedResolver: () => null,
+      ...STRIPPED_FOR_PUBLIC,
       resolve: (row) => row.updatedAt.toISOString(),
     }),
     locales: t.relation("locales", {
       description:
         "Per-locale ExperienceLocale rows. ABAC-filtered: VIEWER/PUBLIC see PUBLISHED only.",
       query: (_args, ctx) =>
-        ctx.user?.role === "ADMIN" || ctx.user?.role === "EDITOR"
-          ? {}
-          : { where: { status: "PUBLISHED" } },
+        isEditorOrAdmin(ctx.user) ? {} : { where: { status: "PUBLISHED" } },
     }),
   }),
 })

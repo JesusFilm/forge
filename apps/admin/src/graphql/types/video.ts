@@ -13,6 +13,7 @@
 //
 // Per Unit 4 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
+import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
 
@@ -285,9 +286,7 @@ builder.prismaObject("Video", {
       description:
         "Per-locale content rows (title, description, etc.). PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all.",
       query: (_args, ctx) =>
-        ctx.user?.role === "ADMIN" || ctx.user?.role === "EDITOR"
-          ? {}
-          : { where: { status: "PUBLISHED" } },
+        isEditorOrAdmin(ctx.user) ? {} : { where: { status: "PUBLISHED" } },
     }),
     dubs: t.relation("dubs", {
       description:
