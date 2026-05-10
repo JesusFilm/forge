@@ -20,6 +20,7 @@ export const watchExperienceFragment = graphql(
     fragment WatchExperience on Experience @_unmask {
       documentId
       slug
+      locale
       isTemplate
       title
       metaDescription
