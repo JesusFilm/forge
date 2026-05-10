@@ -1,7 +1,20 @@
 // Video service — read-only in v1. Writes come via Core sync (Unit 10).
 //
 // Videos are public-shape (Core-sourced, read-only at GraphQL layer).
-// Tier-only auth gate: VIEWER+ can list/read; no ABAC ownership checks.
+//
+// Auth contract (post consumer-migration U2 — 2026-05-11):
+//   - `list`, `getById`, `getBySlug` are exposed via PUBLIC GraphQL resolvers
+//     in `apps/admin/src/graphql/types/video.ts`. The resolver's
+//     `authScopes: { public: true }` is the single auth contract for these
+//     three methods. Service-layer `hasPermission` defense-in-depth was
+//     dropped intentionally — keeping it would 403 anonymous callers after
+//     the resolver lets them through, making the widening a hidden no-op.
+//     Any future re-addition of the `hasPermission` guard here will
+//     break the regression assertions in `video.service.test.ts` flipping
+//     PUBLIC from Forbidden → resolution.
+//   - `getByCoreId` is NOT exposed via GraphQL; it is called by Core sync
+//     internals via service-to-service paths. Its `hasPermission` guard
+//     stays — it is the only auth wall for that method.
 
 import type { PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
@@ -13,17 +26,13 @@ export class VideoService {
 
   async list({
     input: raw,
-    user,
+    user: _user,
     query,
   }: {
     input: { limit?: number; offset?: number }
     user: Principal | null
     query: object
   }) {
-    if (!hasPermission(user, "read:videos")) {
-      throw new ForbiddenError()
-    }
-
     return this.prisma.video.findMany({
       ...query,
       where: { deletedAt: null },
@@ -35,17 +44,13 @@ export class VideoService {
 
   async getById({
     id,
-    user,
+    user: _user,
     query,
   }: {
     id: string
     user: Principal | null
     query: object
   }) {
-    if (!hasPermission(user, "read:videos")) {
-      throw new ForbiddenError()
-    }
-
     return this.prisma.video.findFirst({
       ...query,
       where: { id, deletedAt: null },
@@ -54,17 +59,13 @@ export class VideoService {
 
   async getBySlug({
     slug,
-    user,
+    user: _user,
     query,
   }: {
     slug: string
     user: Principal | null
     query: object
   }) {
-    if (!hasPermission(user, "read:videos")) {
-      throw new ForbiddenError()
-    }
-
     return this.prisma.video.findFirst({
       ...query,
       where: { slug, deletedAt: null },
@@ -80,6 +81,8 @@ export class VideoService {
     user: Principal | null
     query: object
   }) {
+    // Service-to-service path (Core sync internals). Not exposed via GraphQL.
+    // Auth wall lives here, not at any resolver.
     if (!hasPermission(user, "read:videos")) {
       throw new ForbiddenError()
     }

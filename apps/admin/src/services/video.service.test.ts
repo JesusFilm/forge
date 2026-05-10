@@ -35,10 +35,13 @@ describe("VideoService", () => {
       expect(call.where).toHaveProperty("deletedAt", null)
     })
 
-    it("PUBLIC cannot list videos", async () => {
-      await expect(
-        service.list({ input: {}, user: PUBLIC_USER, query: {} }),
-      ).rejects.toThrow("Forbidden")
+    it("PUBLIC can list videos (consumer migration U2 — auth contract now resolver-level only)", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: {}, user: PUBLIC_USER, query: {} })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where).toHaveProperty("deletedAt", null)
     })
 
     it("clamps limit to 200", async () => {
@@ -72,10 +75,16 @@ describe("VideoService", () => {
       )
     })
 
-    it("PUBLIC cannot get by id", async () => {
-      await expect(
-        service.getById({ id: "v-1", user: PUBLIC_USER, query: {} }),
-      ).rejects.toThrow("Forbidden")
+    it("PUBLIC can get by id (consumer migration U2 — auth contract now resolver-level only)", async () => {
+      prisma.video.findFirst.mockResolvedValueOnce({ id: "v-1" })
+
+      const result = await service.getById({
+        id: "v-1",
+        user: PUBLIC_USER,
+        query: {},
+      })
+
+      expect(result).toEqual({ id: "v-1" })
     })
   })
 
@@ -86,6 +95,18 @@ describe("VideoService", () => {
       await service.getBySlug({ slug: "jf", user: ADMIN, query: {} })
 
       expect(prisma.video.findFirst).toHaveBeenCalled()
+    })
+
+    it("PUBLIC can get by slug (consumer migration U2 — auth contract now resolver-level only)", async () => {
+      prisma.video.findFirst.mockResolvedValueOnce({ id: "v-1", slug: "jf" })
+
+      const result = await service.getBySlug({
+        slug: "jf",
+        user: PUBLIC_USER,
+        query: {},
+      })
+
+      expect(result).toEqual({ id: "v-1", slug: "jf" })
     })
   })
 
@@ -106,6 +127,16 @@ describe("VideoService", () => {
         "coreId",
         "core-1",
       )
+    })
+
+    it("PUBLIC cannot get by coreId (Core sync internal — auth wall stays at the service)", async () => {
+      await expect(
+        service.getByCoreId({
+          coreId: "core-1",
+          user: PUBLIC_USER,
+          query: {},
+        }),
+      ).rejects.toThrow("Forbidden")
     })
   })
 })

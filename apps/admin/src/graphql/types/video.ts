@@ -282,7 +282,12 @@ builder.prismaObject("Video", {
     primaryLanguage: t.relation("primaryLanguage", { nullable: true }),
     origin: t.relation("origin", { nullable: true }),
     locales: t.relation("locales", {
-      description: "Per-locale content rows (title, description, etc.).",
+      description:
+        "Per-locale content rows (title, description, etc.). PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all.",
+      query: (_args, ctx) =>
+        ctx.user?.role === "ADMIN" || ctx.user?.role === "EDITOR"
+          ? {}
+          : { where: { status: "PUBLISHED" } },
     }),
     dubs: t.relation("dubs", {
       description:
@@ -309,8 +314,9 @@ builder.queryFields((t) => ({
   video: t.prismaField({
     type: "Video",
     nullable: true,
-    authScopes: { hasPermission: "read:videos" },
-    description: "Fetch a single Video by id.",
+    authScopes: { public: true },
+    description:
+      "Fetch a single Video by id. PUBLIC since consumer-migration U2 (2026-05-11) — apps/web, apps/mobile, apps/tv read anonymously.",
     args: {
       id: t.arg.id({ required: true }),
     },
@@ -324,7 +330,9 @@ builder.queryFields((t) => ({
   videoBySlug: t.prismaField({
     type: "Video",
     nullable: true,
-    authScopes: { hasPermission: "read:videos" },
+    authScopes: { public: true },
+    description:
+      "Fetch a single Video by slug. PUBLIC since consumer-migration U2 (2026-05-11).",
     args: {
       slug: t.arg.string({ required: true }),
     },
@@ -337,8 +345,9 @@ builder.queryFields((t) => ({
   }),
   videos: t.prismaField({
     type: ["Video"],
-    authScopes: { hasPermission: "read:videos" },
-    description: "List active Videos ordered by most recent Core update.",
+    authScopes: { public: true },
+    description:
+      "List active Videos ordered by most recent Core update. PUBLIC since consumer-migration U2 (2026-05-11).",
     args: {
       limit: t.arg.int({ required: false, defaultValue: 50 }),
       offset: t.arg.int({ required: false, defaultValue: 0 }),
