@@ -38,7 +38,18 @@ builder.prismaObject("ExperienceLocale", {
     experienceId: t.exposeID("experienceId"),
     locale: t.exposeString("locale"),
     slug: t.exposeString("slug"),
-    isHomepage: t.exposeBoolean("isHomepage"),
+    // Field-level strip: anonymous callers cannot enumerate which locales are
+    // homepage-flagged. EDITOR/ADMIN see the real value. The `unauthorizedResolver`
+    // overrides Pothos's default-throw so anonymous callers get a clean null
+    // with no entry in `errors[]` — required to keep the U5 parity comparator
+    // signal clean. Nullability flip is paired (Pothos's default error path
+    // still throws on a non-nullable scope-failed field). See consumer-migration
+    // U2 plan.
+    isHomepage: t.exposeBoolean("isHomepage", {
+      nullable: true,
+      authScopes: { hasPermission: "read:experiences" },
+      unauthorizedResolver: () => null,
+    }),
     pathSegment: t.exposeString("pathSegment", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
     metaDescription: t.exposeString("metaDescription", { nullable: true }),
@@ -61,8 +72,20 @@ builder.prismaObject("ExperienceLocale", {
       nullable: true,
       resolve: (row) => row.publishedAt?.toISOString() ?? null,
     }),
-    createdAt: t.string({ resolve: (row) => row.createdAt.toISOString() }),
-    updatedAt: t.string({ resolve: (row) => row.updatedAt.toISOString() }),
+    // Internal timestamps stripped from PUBLIC responses (consumer-migration U2).
+    // EDITOR/ADMIN see the real values.
+    createdAt: t.string({
+      nullable: true,
+      authScopes: { hasPermission: "read:experiences" },
+      unauthorizedResolver: () => null,
+      resolve: (row) => row.createdAt.toISOString(),
+    }),
+    updatedAt: t.string({
+      nullable: true,
+      authScopes: { hasPermission: "read:experiences" },
+      unauthorizedResolver: () => null,
+      resolve: (row) => row.updatedAt.toISOString(),
+    }),
   }),
 })
 
@@ -81,14 +104,39 @@ builder.prismaObject("Experience", {
     "A page-builder Experience. Canonical row holds non-localized state; per-locale content (slug, blocks, title) lives in ExperienceLocale. Embedding vector is stored here but NEVER exposed via GraphQL.",
   fields: (t) => ({
     id: t.exposeID("id"),
-    isTemplate: t.exposeBoolean("isTemplate"),
-    ownerId: t.exposeID("ownerId", { nullable: true }),
+    // Internal/editorial fields stripped from PUBLIC responses (consumer-migration U2).
+    // Anonymous callers receive null; EDITOR/ADMIN see real values.
+    // `unauthorizedResolver: () => null` overrides Pothos's default-throw so
+    // `response.errors[]` stays empty for anonymous selections — required to keep
+    // the U5 parity comparator from treating strip events as admin failures.
+    isTemplate: t.exposeBoolean("isTemplate", {
+      nullable: true,
+      authScopes: { hasPermission: "read:experiences" },
+      unauthorizedResolver: () => null,
+    }),
+    ownerId: t.exposeID("ownerId", {
+      nullable: true,
+      authScopes: { hasPermission: "read:experiences" },
+      unauthorizedResolver: () => null,
+    }),
     archivedAt: t.string({
       nullable: true,
+      authScopes: { hasPermission: "read:experiences" },
+      unauthorizedResolver: () => null,
       resolve: (row) => row.archivedAt?.toISOString() ?? null,
     }),
-    createdAt: t.string({ resolve: (row) => row.createdAt.toISOString() }),
-    updatedAt: t.string({ resolve: (row) => row.updatedAt.toISOString() }),
+    createdAt: t.string({
+      nullable: true,
+      authScopes: { hasPermission: "read:experiences" },
+      unauthorizedResolver: () => null,
+      resolve: (row) => row.createdAt.toISOString(),
+    }),
+    updatedAt: t.string({
+      nullable: true,
+      authScopes: { hasPermission: "read:experiences" },
+      unauthorizedResolver: () => null,
+      resolve: (row) => row.updatedAt.toISOString(),
+    }),
     locales: t.relation("locales", {
       description:
         "Per-locale ExperienceLocale rows. ABAC-filtered: VIEWER/PUBLIC see PUBLISHED only.",

@@ -567,10 +567,17 @@ type Query {
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
   systemStatus: JSON
-  """Fetch a single Video by id."""
+  """
+  Fetch a single Video by id. PUBLIC since consumer-migration U2 (2026-05-11) — apps/web, apps/mobile, apps/tv read anonymously.
+  """
   video(id: ID!): Video
+  """
+  Fetch a single Video by slug. PUBLIC since consumer-migration U2 (2026-05-11).
+  """
   videoBySlug(slug: String!): Video
-  """List active Videos ordered by most recent Core update."""
+  """
+  List active Videos ordered by most recent Core update. PUBLIC since consumer-migration U2 (2026-05-11).
+  """
   videos(limit: Int = 50, offset: Int = 0): [Video!]
 }
 
@@ -607,7 +614,9 @@ type Video {
   id: ID
   images: [VideoImage!]
   label: VideoLabel
-  """Per-locale content rows (title, description, etc.)."""
+  """
+  Per-locale content rows (title, description, etc.). PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all.
+  """
   locales: [VideoLocale!]
   locked: Boolean
   noIndex: Boolean
