@@ -11,6 +11,7 @@ export function shouldHideGlobalHeader(pathname: string | null): boolean {
 
   return (
     pathname === "/login" ||
+    pathname === "/design" ||
     pathname === "/dashboard" ||
     pathname.startsWith("/dashboard/")
   )
