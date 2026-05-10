@@ -47,9 +47,13 @@ export class WatchSettingService {
     // documentId mirrors Strapi's stable cross-locale identifier. Admin's
     // Experience.id is a cuid that is stable for the lifetime of the
     // migration (the content dump upserts by cms_document_id rather than
-    // re-creating rows). For the homepage path we surface the parent
-    // Experience id; if neither homepage nor template exists, the
-    // documentId is null.
+    // re-creating rows). Derived from the locale rows actually returned,
+    // not from the parent Experience id — otherwise documentId would
+    // resolve to the template's parent Experience even when
+    // defaultTemplateExperience is null (template Experience exists but
+    // has no PUBLISHED locale for $locale), leaking template existence to
+    // anonymous callers in locales that have no published template
+    // content.
     const documentId = homepage?.experienceId ?? template?.experienceId ?? null
 
     return {
@@ -78,7 +82,10 @@ export class WatchSettingService {
         JSON.stringify({
           event: "watch_setting.homepage.multiple_rows",
           locale,
-          count: matches.length,
+          // take: 2 caps the actual count above; surface that explicitly so an
+          // operator reading the log knows "at least 2", not exactly 2.
+          count_min: matches.length,
+          capped_at_take: 2,
           chosen_id: matches[0].id,
         }),
       )

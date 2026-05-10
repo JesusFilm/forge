@@ -35,11 +35,21 @@ import { describe, expect, it } from "vitest"
 import { readdirSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
-// Root resolvers in admin live in either `src/graphql/types/` (per-type
-// modules that register their root queries alongside the type) or
-// `src/graphql/queries/` (standalone query modules like search and
-// scene-recommendations). Scan both.
-const SOURCE_DIRS = [resolve(__dirname, "types"), resolve(__dirname, "queries")]
+// Root resolvers in admin live in three places:
+//   - `src/graphql/types/` — per-type modules that register their root
+//     queries alongside the type (e.g., video.ts, experience.ts)
+//   - `src/graphql/queries/` — standalone query modules (search,
+//     scene-recommendations, hybrid-search, sync-status)
+//   - `src/graphql/mutations/` — write resolvers (today all gated, but
+//     scanning this dir means a future accidental PUBLIC mutation
+//     trips the "manifest exhaustiveness" assertion below)
+// Scan all three. The manifest-exhaustiveness check below catches any
+// PUBLIC resolver under these dirs that isn't in INTENDED_PUBLIC_RESOLVERS.
+const SOURCE_DIRS = [
+  resolve(__dirname, "types"),
+  resolve(__dirname, "queries"),
+  resolve(__dirname, "mutations"),
+]
 const SOURCE_FILES = SOURCE_DIRS.flatMap((dir) =>
   readdirSync(dir)
     .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))
@@ -63,20 +73,21 @@ const SOURCE_FILES = SOURCE_DIRS.flatMap((dir) =>
  * apps/mobile, and apps/tv.
  */
 const INTENDED_PUBLIC_RESOLVERS = [
-  // Pre-U2 (already PUBLIC before consumer-migration Unit 2 widening)
+  // Pre-existing (PUBLIC before consumer-migration Unit 2)
   "experienceBySlug",
   "searchExperiences",
   "search",
   "sceneRecommendations",
-  // Added by consumer-migration U1 (video reads)
+  // Added by consumer-migration Unit 2 (video reads, reference data, watchSetting)
+  // All landed together in the U2 PR — the commit groups (u1/u2/u3/u4 prefixes)
+  // are this PR's internal implementation phases, not separate units in the
+  // brief's numbering. See docs/plans/2026-05-11-001-feat-consumer-migration-unit-2-admin-public-widening-plan.md.
   "video",
   "videoBySlug",
   "videos",
-  // Added by consumer-migration U3 (reference data widening)
   "languages",
   "countries",
   "keywords",
-  // Added by consumer-migration U4 (new homepage configuration resolver)
   "watchSetting",
 ] as const
 

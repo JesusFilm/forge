@@ -129,7 +129,10 @@ describe("WatchSettingService.get", () => {
     expect(logged).toMatchObject({
       event: "watch_setting.homepage.multiple_rows",
       locale: "en",
-      count: 2,
+      // count_min reflects the bounded take:2 result — the actual anomaly
+      // could be 3+ rows; the log surfaces a lower bound, not an exact count.
+      count_min: 2,
+      capped_at_take: 2,
       chosen_id: "loc-1",
     })
     expect(prisma.experienceLocale.findMany.mock.calls[0][0].orderBy).toEqual({

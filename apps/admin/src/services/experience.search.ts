@@ -13,7 +13,7 @@
 // Per Unit 8 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
 import { Prisma, type PrismaClient } from "@prisma/client"
-import type { Principal } from "@/auth/principal"
+import { isEditorOrAdmin, type Principal } from "@/auth/principal"
 import { toPgVector } from "@/db/pgvector"
 
 type SearchHit = { id: string; distance: number }
@@ -59,8 +59,7 @@ export class ExperienceSearchService {
     query: object
   }) {
     const safeVector = validateVector(vector)
-    const role = user?.role ?? "PUBLIC"
-    const isPrivileged = role === "ADMIN" || role === "EDITOR"
+    const isPrivileged = isEditorOrAdmin(user)
 
     const safeEfSearch = Math.max(1, Math.min(500, Number(efSearch) || 40))
     const pgVector = toPgVector(safeVector)
