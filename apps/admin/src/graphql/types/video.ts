@@ -322,7 +322,6 @@ builder.queryFields((t) => ({
     resolve: (query, _root, args, ctx) =>
       ctx.services.video.getById({
         id: String(args.id),
-        user: ctx.user,
         query,
       }),
   }),
@@ -338,7 +337,6 @@ builder.queryFields((t) => ({
     resolve: (query, _root, args, ctx) =>
       ctx.services.video.getBySlug({
         slug: args.slug,
-        user: ctx.user,
         query,
       }),
   }),
@@ -354,7 +352,6 @@ builder.queryFields((t) => ({
     resolve: (query, _root, args, ctx) =>
       ctx.services.video.list({
         input: { limit: args.limit ?? 50, offset: args.offset ?? 0 },
-        user: ctx.user,
         query,
       }),
   }),

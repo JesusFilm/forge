@@ -26,11 +26,9 @@ export class VideoService {
 
   async list({
     input: raw,
-    user: _user,
     query,
   }: {
     input: { limit?: number; offset?: number }
-    user: Principal | null
     query: object
   }) {
     return this.prisma.video.findMany({
@@ -42,30 +40,14 @@ export class VideoService {
     })
   }
 
-  async getById({
-    id,
-    user: _user,
-    query,
-  }: {
-    id: string
-    user: Principal | null
-    query: object
-  }) {
+  async getById({ id, query }: { id: string; query: object }) {
     return this.prisma.video.findFirst({
       ...query,
       where: { id, deletedAt: null },
     })
   }
 
-  async getBySlug({
-    slug,
-    user: _user,
-    query,
-  }: {
-    slug: string
-    user: Principal | null
-    query: object
-  }) {
+  async getBySlug({ slug, query }: { slug: string; query: object }) {
     return this.prisma.video.findFirst({
       ...query,
       where: { slug, deletedAt: null },

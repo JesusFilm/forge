@@ -12,7 +12,6 @@ function mockPrisma() {
   } as any
 }
 
-const ADMIN: Principal = { id: "admin-1", role: "ADMIN" }
 const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
 const PUBLIC_USER: Principal | null = null
 
@@ -26,47 +25,45 @@ describe("VideoService", () => {
   })
 
   describe("list", () => {
-    it("VIEWER can list videos", async () => {
+    it("returns non-deleted videos ordered by updatedAt", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
 
-      await service.list({ input: {}, user: VIEWER, query: {} })
+      await service.list({ input: {}, query: {} })
 
       const call = prisma.video.findMany.mock.calls[0][0]
       expect(call.where).toHaveProperty("deletedAt", null)
-    })
-
-    it("PUBLIC can list videos (consumer migration U2 — auth contract now resolver-level only)", async () => {
-      prisma.video.findMany.mockResolvedValueOnce([])
-
-      await service.list({ input: {}, user: PUBLIC_USER, query: {} })
-
-      const call = prisma.video.findMany.mock.calls[0][0]
-      expect(call.where).toHaveProperty("deletedAt", null)
+      expect(call.orderBy).toEqual({ updatedAt: "desc" })
     })
 
     it("clamps limit to 200", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
 
-      await service.list({
-        input: { limit: 500 },
-        user: VIEWER,
-        query: {},
-      })
+      await service.list({ input: { limit: 500 }, query: {} })
 
       const call = prisma.video.findMany.mock.calls[0][0]
       expect(call.take).toBe(200)
     })
+
+    // Consumer-migration U2 (2026-05-11): the resolver's authScopes:{public:true}
+    // is the single auth contract for list/getById/getBySlug. The service no
+    // longer takes a `user` parameter — if a future contributor re-adds one
+    // to gate by tier, this assertion fails because the signature drift
+    // breaks the call.
+    it("does not require a user principal (resolver-only auth contract)", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+      // No `user` field passed — type-checks because the method signature
+      // does not declare one.
+      await expect(
+        service.list({ input: {}, query: {} }),
+      ).resolves.not.toThrow()
+    })
   })
 
   describe("getById", () => {
-    it("VIEWER can get by id", async () => {
+    it("returns the matching non-deleted row", async () => {
       prisma.video.findFirst.mockResolvedValueOnce({ id: "v-1" })
 
-      const result = await service.getById({
-        id: "v-1",
-        user: VIEWER,
-        query: {},
-      })
+      const result = await service.getById({ id: "v-1", query: {} })
 
       expect(result).toEqual({ id: "v-1" })
       expect(prisma.video.findFirst.mock.calls[0][0].where).toHaveProperty(
@@ -74,37 +71,13 @@ describe("VideoService", () => {
         null,
       )
     })
-
-    it("PUBLIC can get by id (consumer migration U2 — auth contract now resolver-level only)", async () => {
-      prisma.video.findFirst.mockResolvedValueOnce({ id: "v-1" })
-
-      const result = await service.getById({
-        id: "v-1",
-        user: PUBLIC_USER,
-        query: {},
-      })
-
-      expect(result).toEqual({ id: "v-1" })
-    })
   })
 
   describe("getBySlug", () => {
-    it("ADMIN can get by slug", async () => {
+    it("returns the matching non-deleted row", async () => {
       prisma.video.findFirst.mockResolvedValueOnce({ id: "v-1", slug: "jf" })
 
-      await service.getBySlug({ slug: "jf", user: ADMIN, query: {} })
-
-      expect(prisma.video.findFirst).toHaveBeenCalled()
-    })
-
-    it("PUBLIC can get by slug (consumer migration U2 — auth contract now resolver-level only)", async () => {
-      prisma.video.findFirst.mockResolvedValueOnce({ id: "v-1", slug: "jf" })
-
-      const result = await service.getBySlug({
-        slug: "jf",
-        user: PUBLIC_USER,
-        query: {},
-      })
+      const result = await service.getBySlug({ slug: "jf", query: {} })
 
       expect(result).toEqual({ id: "v-1", slug: "jf" })
     })

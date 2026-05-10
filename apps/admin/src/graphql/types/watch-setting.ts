@@ -43,8 +43,11 @@ WatchSettingRef.implement({
     documentId: t.exposeID("documentId", {
       nullable: true,
       description:
-        "Stable cross-locale identifier (admin Experience cuid). Null when " +
-        "neither homepage nor template exists for the requested locale.",
+        "Identifier for the resolved Experience — set to homepageExperience.experienceId " +
+        "when a homepage row exists, otherwise to defaultTemplateExperience.experienceId. " +
+        "Null when neither exists for the requested locale. NOTE: not exclusively a " +
+        "homepage identifier — consumers should treat it as 'the Experience this " +
+        "watchSetting derives from for this locale', not 'the homepage Experience'.",
     }),
     homepageExperience: t.prismaField({
       type: "ExperienceLocale",
