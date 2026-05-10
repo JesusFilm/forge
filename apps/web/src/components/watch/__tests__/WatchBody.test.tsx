@@ -10,8 +10,10 @@
  *  - Download button hidden when `variant.downloads` empty.
  *  - Mobile DOM order — left column first in source.
  *  - Click integration for both modal triggers.
- *  - UX regression: WatchStudyQuestions has NO chevron / accordion semantics
- *    on either prompt rows or the placeholder row.
+ *  - WatchStudyQuestions accordion: each prompt row (and the placeholder row)
+ *    is expandable; the expanded body always renders the "no-answer"
+ *    fallback (private-discussion line + Chat / Ask-a-Bible-question CTAs),
+ *    mirroring core/apps/watch's DiscussionQuestions component.
  */
 
 import { act } from "react"
@@ -452,29 +454,8 @@ describe("WatchBody — modal trigger integration", () => {
   })
 })
 
-describe("WatchStudyQuestions — UX regression: no false-affordance chevrons", () => {
-  it("renders prompts as a static <ul> bullet list (no <details>/<summary>)", () => {
-    act(() => {
-      root.render(
-        <WatchStudyQuestions
-          prompts={["A?", "B?"]}
-          onAskYoursClick={vi.fn()}
-        />,
-      )
-    })
-
-    const ul = container.querySelector(
-      '[data-testid="watch-study-questions-list"]',
-    )
-    expect(ul).not.toBeNull()
-    expect(ul!.tagName.toLowerCase()).toBe("ul")
-
-    // No accordion semantics anywhere in the rendered tree.
-    expect(container.querySelectorAll("details").length).toBe(0)
-    expect(container.querySelectorAll("summary").length).toBe(0)
-  })
-
-  it("does not put aria-haspopup or expand affordances on prompt items", () => {
+describe("WatchStudyQuestions — accordion expand with no-answer fallback", () => {
+  it("each prompt row carries a trigger button with aria-expanded=false by default", () => {
     act(() => {
       root.render(
         <WatchStudyQuestions
@@ -490,98 +471,229 @@ describe("WatchStudyQuestions — UX regression: no false-affordance chevrons", 
     expect(items.length).toBe(3)
     for (const item of items) {
       expect(item.tagName.toLowerCase()).toBe("li")
-      // Prompt rows must NOT signal interactivity.
-      expect(item.hasAttribute("aria-haspopup")).toBe(false)
-      expect(item.hasAttribute("aria-expanded")).toBe(false)
-      expect(item.hasAttribute("role")).toBe(false)
-      // No nested button or link inside the prompt rows. Decorative SVG (the
-      // shared `QuestionIcon` mirrored from RelatedQuestions) is allowed —
-      // what's banned is anything that *implies* interactivity, e.g. a
-      // chevron with `rotate` transitions.
-      expect(item.querySelector("button")).toBeNull()
-      expect(item.querySelector("a")).toBeNull()
-      // Any SVG present must be explicitly decorative (`aria-hidden="true"`)
-      // and must not carry rotate/transition classes that would suggest an
-      // expandable affordance.
-      const svgs = item.querySelectorAll("svg")
-      for (const svg of svgs) {
-        expect(svg.getAttribute("aria-hidden")).toBe("true")
-        const cls = svg.getAttribute("class") ?? ""
-        expect(cls).not.toMatch(/\brotate-/)
-        expect(cls).not.toMatch(/\btransition\b/)
-      }
+      const trigger = item.querySelector(
+        '[data-testid="watch-study-questions-item-trigger"]',
+      ) as HTMLButtonElement | null
+      expect(trigger).not.toBeNull()
+      expect(trigger!.tagName.toLowerCase()).toBe("button")
+      expect(trigger!.getAttribute("aria-expanded")).toBe("false")
+      // Panel is unmounted while collapsed so closed rows stay free of
+      // fallback body text.
+      expect(
+        item.querySelector('[data-testid="watch-study-questions-item-panel"]'),
+      ).toBeNull()
     }
   })
 
-  it("renders the Ask Yours CTA as the only interactive element in the section", () => {
+  it("clicking a row opens its panel and reveals the no-answer fallback + two CTAs", () => {
     act(() => {
       root.render(
         <WatchStudyQuestions
-          prompts={["A?", "B?"]}
+          prompts={["What is hope?"]}
           onAskYoursClick={vi.fn()}
         />,
       )
     })
 
-    const section = container.querySelector(
-      '[data-testid="watch-study-questions"]',
+    const trigger = container.querySelector(
+      '[data-testid="watch-study-questions-item-trigger"]',
+    ) as HTMLButtonElement
+    expect(trigger).not.toBeNull()
+    act(() => {
+      trigger.click()
+    })
+    expect(trigger.getAttribute("aria-expanded")).toBe("true")
+
+    const panel = container.querySelector(
+      '[data-testid="watch-study-questions-item-panel"]',
     )
-    expect(section).not.toBeNull()
-    const buttons = section!.querySelectorAll("button")
-    expect(buttons.length).toBe(1)
-    expect(buttons[0]?.getAttribute("data-testid")).toBe(
-      "watch-study-questions-ask-yours",
+    expect(panel).not.toBeNull()
+    expect(panel!.textContent).toContain(
+      "Have a private discussion with someone who is ready to listen.",
     )
+
+    const chat = container.querySelector(
+      '[data-testid="watch-study-questions-chat-cta"]',
+    ) as HTMLAnchorElement | null
+    expect(chat).not.toBeNull()
+    expect(chat!.tagName.toLowerCase()).toBe("a")
+    expect(chat!.getAttribute("href")).toBe(
+      "https://chataboutjesus.com/chat/?utm_source=jesusfilm-watch",
+    )
+    expect(chat!.getAttribute("target")).toBe("_blank")
+    const chatRel = chat!.getAttribute("rel") ?? ""
+    expect(chatRel).toContain("noopener")
+    expect(chatRel).toContain("noreferrer")
+    expect(chat!.textContent).toContain("Chat with a person")
+
+    const ask = container.querySelector(
+      '[data-testid="watch-study-questions-ask-bible-cta"]',
+    ) as HTMLAnchorElement | null
+    expect(ask).not.toBeNull()
+    expect(ask!.tagName.toLowerCase()).toBe("a")
+    expect(ask!.getAttribute("href")).toBe(
+      "https://www.everystudent.com/contact.php?utm_source=jesusfilm-watch",
+    )
+    expect(ask!.getAttribute("target")).toBe("_blank")
+    const askRel = ask!.getAttribute("rel") ?? ""
+    expect(askRel).toContain("noopener")
+    expect(askRel).toContain("noreferrer")
+    expect(ask!.textContent).toContain("Ask a Bible question")
   })
 
-  it("placeholder row (empty prompts) is non-interactive: no nested button/anchor, decorative SVG only, and Ask Yours stays the only button", () => {
+  it("only one row is open at a time — clicking a second row closes the first", () => {
+    act(() => {
+      root.render(
+        <WatchStudyQuestions
+          prompts={["First?", "Second?"]}
+          onAskYoursClick={vi.fn()}
+        />,
+      )
+    })
+
+    const triggers = container.querySelectorAll(
+      '[data-testid="watch-study-questions-item-trigger"]',
+    )
+    expect(triggers.length).toBe(2)
+    act(() => {
+      ;(triggers[0] as HTMLButtonElement).click()
+    })
+    expect(
+      container.querySelectorAll(
+        '[data-testid="watch-study-questions-item-panel"]',
+      ).length,
+    ).toBe(1)
+    act(() => {
+      ;(triggers[1] as HTMLButtonElement).click()
+    })
+    const panels = container.querySelectorAll(
+      '[data-testid="watch-study-questions-item-panel"]',
+    )
+    expect(panels.length).toBe(1)
+    expect(triggers[0]?.getAttribute("aria-expanded")).toBe("false")
+    expect(triggers[1]?.getAttribute("aria-expanded")).toBe("true")
+  })
+
+  it("resets openIndex when the prompts array reference changes — stale index never reveals a different question's panel", () => {
+    // Open the second row, then re-render with a shorter prompts array that
+    // no longer has an index 1 — the new render must NOT show any panel.
+    const firstPrompts = ["A?", "B?"]
+    const secondPrompts = ["Only one?"]
+
+    act(() => {
+      root.render(
+        <WatchStudyQuestions
+          prompts={firstPrompts}
+          onAskYoursClick={vi.fn()}
+        />,
+      )
+    })
+
+    const triggers = container.querySelectorAll(
+      '[data-testid="watch-study-questions-item-trigger"]',
+    )
+    expect(triggers.length).toBe(2)
+    act(() => {
+      ;(triggers[1] as HTMLButtonElement).click()
+    })
+    expect(
+      container.querySelectorAll(
+        '[data-testid="watch-study-questions-item-panel"]',
+      ).length,
+    ).toBe(1)
+
+    // Re-render with a different (shorter) prompts reference.
+    act(() => {
+      root.render(
+        <WatchStudyQuestions
+          prompts={secondPrompts}
+          onAskYoursClick={vi.fn()}
+        />,
+      )
+    })
+
+    // No panel should be open after prompts changed.
+    expect(
+      container.querySelectorAll(
+        '[data-testid="watch-study-questions-item-panel"]',
+      ).length,
+    ).toBe(0)
+    const newTriggers = container.querySelectorAll(
+      '[data-testid="watch-study-questions-item-trigger"]',
+    )
+    expect(newTriggers.length).toBe(1)
+    expect(newTriggers[0]?.getAttribute("aria-expanded")).toBe("false")
+  })
+
+  it("clicking an open row's trigger again collapses it (toggle off)", () => {
+    act(() => {
+      root.render(
+        <WatchStudyQuestions prompts={["A?"]} onAskYoursClick={vi.fn()} />,
+      )
+    })
+
+    const trigger = container.querySelector(
+      '[data-testid="watch-study-questions-item-trigger"]',
+    ) as HTMLButtonElement
+    act(() => {
+      trigger.click()
+    })
+    expect(trigger.getAttribute("aria-expanded")).toBe("true")
+    act(() => {
+      trigger.click()
+    })
+    expect(trigger.getAttribute("aria-expanded")).toBe("false")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-study-questions-item-panel"]',
+      ),
+    ).toBeNull()
+  })
+
+  it("placeholder row (empty prompts) is also expandable and reveals the same fallback content", () => {
     act(() => {
       root.render(
         <WatchStudyQuestions prompts={[]} onAskYoursClick={vi.fn()} />,
       )
     })
 
-    // Accordion semantics still banned across the placeholder branch.
-    expect(container.querySelectorAll("details").length).toBe(0)
-    expect(container.querySelectorAll("summary").length).toBe(0)
-
     const placeholder = container.querySelector(
       '[data-testid="watch-study-questions-placeholder"]',
     )
     expect(placeholder).not.toBeNull()
     expect(placeholder!.tagName.toLowerCase()).toBe("li")
-    expect(placeholder!.hasAttribute("aria-haspopup")).toBe(false)
-    expect(placeholder!.hasAttribute("aria-expanded")).toBe(false)
-    expect(placeholder!.hasAttribute("role")).toBe(false)
-    expect(placeholder!.querySelector("button")).toBeNull()
-    expect(placeholder!.querySelector("a")).toBeNull()
-    // Any SVG inside the placeholder row must be decorative and free of
-    // rotate/transition classes that would suggest an expandable affordance.
-    const svgs = placeholder!.querySelectorAll("svg")
-    expect(svgs.length).toBeGreaterThan(0)
-    for (const svg of svgs) {
-      expect(svg.getAttribute("aria-hidden")).toBe("true")
-      const cls = svg.getAttribute("class") ?? ""
-      expect(cls).not.toMatch(/\brotate-/)
-      expect(cls).not.toMatch(/\btransition\b/)
-    }
+    const trigger = placeholder!.querySelector(
+      '[data-testid="watch-study-questions-placeholder-trigger"]',
+    ) as HTMLButtonElement | null
+    expect(trigger).not.toBeNull()
+    expect(trigger!.getAttribute("aria-expanded")).toBe("false")
 
-    // Real prompt rows must be absent in the placeholder branch.
+    act(() => {
+      trigger!.click()
+    })
+    expect(trigger!.getAttribute("aria-expanded")).toBe("true")
+    const panel = container.querySelector(
+      '[data-testid="watch-study-questions-placeholder-panel"]',
+    )
+    expect(panel).not.toBeNull()
+    expect(panel!.textContent).toContain(
+      "Have a private discussion with someone who is ready to listen.",
+    )
+    // Same external-target CTAs are reachable from the placeholder body.
+    expect(
+      container.querySelector('[data-testid="watch-study-questions-chat-cta"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="watch-study-questions-ask-bible-cta"]',
+      ),
+    ).not.toBeNull()
+
+    // Real prompt rows must still be absent in the placeholder branch.
     expect(
       container.querySelectorAll('[data-testid="watch-study-questions-item"]')
         .length,
     ).toBe(0)
-
-    // Singleton-button contract holds across the empty-prompts path too.
-    const section = container.querySelector(
-      '[data-testid="watch-study-questions"]',
-    )
-    expect(section).not.toBeNull()
-    const buttons = section!.querySelectorAll("button")
-    expect(buttons.length).toBe(1)
-    expect(buttons[0]?.getAttribute("data-testid")).toBe(
-      "watch-study-questions-ask-yours",
-    )
   })
 })
 
