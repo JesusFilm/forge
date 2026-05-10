@@ -1,7 +1,7 @@
 ---
 title: "feat: consumer migration Unit 2 — admin PUBLIC widenings"
 type: feat
-status: active
+status: completed
 date: 2026-05-11
 origin: docs/brainstorms/2026-05-05-consumer-migration-implementer-brief-requirements.md
 ---
