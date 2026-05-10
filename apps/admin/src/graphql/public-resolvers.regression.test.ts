@@ -76,6 +76,8 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "languages",
   "countries",
   "keywords",
+  // Added by consumer-migration U4 (new homepage configuration resolver)
+  "watchSetting",
 ] as const
 
 /**
