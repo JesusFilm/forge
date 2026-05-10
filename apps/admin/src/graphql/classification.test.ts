@@ -216,6 +216,34 @@ describe("public-shape types do not relate to abac-gated types", () => {
 })
 
 // -----------------------------------------------------------------------------
+// Meta-defense: the centralized PUBLIC-resolvers regression test exists.
+//
+// `public-resolvers.regression.test.ts` is the substitute for SDL-drift CI's
+// blindness to `authScopes` changes (the directive is stripped pre-commit by
+// `src/scripts/print-schema.ts`). Deleting that file silently removes the
+// only structural assertion that intended-PUBLIC resolvers stay PUBLIC.
+//
+// One-way meta-defense: this classification test asserts the regression file
+// exists. Both files must survive together — deleting either breaks CI.
+//
+// Per consumer-migration U2 plan (2026-05-11) review.
+// -----------------------------------------------------------------------------
+
+import { existsSync } from "node:fs"
+
+describe("public-resolvers regression test meta-defense", () => {
+  it("apps/admin/src/graphql/public-resolvers.regression.test.ts exists", () => {
+    const path = resolve(__dirname, "public-resolvers.regression.test.ts")
+    expect(
+      existsSync(path),
+      "The centralized PUBLIC-resolvers regression test is the substitute " +
+        "for SDL-drift CI's blindness to authScopes changes. Deleting it " +
+        "removes the only structural guard that intended-PUBLIC resolvers " +
+        "stay PUBLIC. If you really meant to delete it, also remove this " +
+        "assertion AND document the new safeguard in `docs/solutions/`.",
+    ).toBe(true)
+  })
+})
 
 test.todo(
   "ABAC parity (runtime, requires Unit 7 services + live DB): " +
