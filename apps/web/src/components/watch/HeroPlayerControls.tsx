@@ -636,7 +636,7 @@ export function HeroPlayerControls({
     <div
       aria-hidden="true"
       data-testid="hero-player-chrome-backdrop"
-      className={`pointer-events-none absolute inset-x-0 bottom-0 z-0 h-40 bg-gradient-to-t from-black/85 via-black/45 to-transparent transition-opacity duration-300 ${
+      className={`pointer-events-none absolute inset-x-0 bottom-0 z-0 h-24 bg-gradient-to-t from-black/85 via-black/45 to-transparent transition-opacity duration-300 ${
         controlsVisible ? "opacity-100" : "opacity-0"
       }`}
     />
