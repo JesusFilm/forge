@@ -47,25 +47,29 @@ export const CHAT_ERROR_PRESENTATION: Readonly<
   },
   provider_not_configured: {
     title: "AI not configured",
-    message: "OpenRouter is not configured for draft generation.",
+    message:
+      "The selected AI provider isn't configured for this environment. Try a different channel from the dropdown.",
     retry: false,
     severity: "error",
   },
   provider_unavailable: {
     title: "AI unavailable",
-    message: "The free AI provider is unavailable right now. Try again soon.",
+    message:
+      "The selected AI provider is unavailable right now. Try again or switch channels.",
     retry: true,
     severity: "error",
   },
   provider_rate_limited: {
     title: "AI rate limited",
-    message: "The free AI models are rate-limited right now. Try again later.",
+    message:
+      "The selected AI provider is rate-limited right now. Try again later or switch channels.",
     retry: true,
     severity: "error",
   },
   provider_timeout: {
     title: "Took too long",
-    message: "The free AI model took too long. Try again.",
+    message:
+      "The selected AI provider took too long. Try again or switch channels.",
     retry: true,
     severity: "error",
   },
