@@ -31,6 +31,15 @@ beforeEach(() => {
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
+  // Stub fetch globally so non-fetch-focused tests don't accidentally hit
+  // undici with a cross-realm AbortSignal (which logs a noisy TypeError
+  // through the component's catch block but does not affect rendered DOM).
+  // Tests in the verse-fetch describe block install their own mock and
+  // override this one.
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => new Promise(() => undefined)),
+  )
 })
 
 afterEach(() => {
@@ -38,6 +47,7 @@ afterEach(() => {
     root.unmount()
   })
   container.remove()
+  vi.unstubAllGlobals()
 })
 
 type Citation = WatchBibleQuotesBlock["bibleCitations"][number]
@@ -187,7 +197,16 @@ describe("BibleQuotesSection — citations + promo", () => {
     )
     expect(promo).not.toBeNull()
     expect(promo!.textContent).toContain("Free Resources")
-    expect(promo!.textContent).toContain("Join Our Bible Study")
+    expect(promo!.textContent).toContain(
+      "Want to grow deep in your understanding of the Bible?",
+    )
+    // The fixed Bible-photo background must always appear on the promo card —
+    // verifies the "blank card" regression from May 11 doesn't return.
+    const promoImg = promo!.querySelector("img")
+    expect(promoImg).not.toBeNull()
+    expect(promoImg!.getAttribute("src") ?? "").toContain(
+      "photo-1650658720644-e1588bd66de3",
+    )
     const spacer = container.querySelector(
       '[data-testid="watch-bible-quotes-end-spacer"]',
     )
@@ -263,6 +282,390 @@ describe("BibleQuotesSection — Share button", () => {
     })
 
     expect(onShareClick).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("BibleQuotesSection — Unsplash image + verse fetch", () => {
+  const fetchMock = vi.fn()
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchMock)
+    fetchMock.mockReset()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it("renders an <img> per citation using the index-cycled Unsplash URLs", () => {
+    fetchMock.mockImplementation(() => new Promise(() => undefined))
+    const citations: Citation[] = [
+      makeCitation({
+        documentId: "bc-1",
+        bookName: "Psalms",
+        chapterStart: 139,
+        verseStart: 13,
+        verseEnd: 18,
+      }),
+      makeCitation({
+        documentId: "bc-2",
+        bookName: "Luke",
+        chapterStart: 8,
+        verseStart: 2,
+      }),
+    ]
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={citations}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+    const imgs = container.querySelectorAll(
+      '[data-testid="watch-bible-quotes-item"] img',
+    )
+    // next/image emits an <img> per card; both src values should reference
+    // an Unsplash URL (next/image wraps the original).
+    expect(imgs.length).toBeGreaterThanOrEqual(2)
+    const src0 = imgs[0]?.getAttribute("src") ?? ""
+    const src1 = imgs[1]?.getAttribute("src") ?? ""
+    expect(src0).toContain("images.unsplash.com")
+    expect(src1).toContain("images.unsplash.com")
+    // Different index → different underlying URL.
+    expect(src0).not.toBe(src1)
+  })
+
+  it("fetches the verse text from wldeh/bible-api with lowercased book name", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({ text: "Verse body", reference: "Psalms 139:13" }),
+        { status: 200 },
+      ),
+    )
+    const citation = makeCitation({
+      documentId: "bc-psalms",
+      bookName: "Psalms",
+      chapterStart: 139,
+      verseStart: 13,
+      verseEnd: 18,
+    })
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[citation]}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+    // Effect ran on mount; flush microtasks so the fetched body renders.
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(fetchMock).toHaveBeenCalled()
+    const url = String(fetchMock.mock.calls[0]?.[0] ?? "")
+    expect(url).toContain(
+      "https://cdn.jsdelivr.net/gh/wldeh/bible-api/bibles/en-asv/books/psalms/chapters/139/verses/13.json",
+    )
+    const verse = container.querySelector(
+      '[data-testid="watch-bible-quotes-verse"]',
+    )
+    expect(verse?.textContent).toBe("Verse body")
+  })
+
+  it("uses the locale-mapped Bible version when locale='es'", async () => {
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }))
+    const citation = makeCitation({
+      bookName: "Lucas",
+      chapterStart: 8,
+      verseStart: 2,
+    })
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[citation]}
+          onShareClick={vi.fn()}
+          locale="es"
+        />,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    const url = String(fetchMock.mock.calls[0]?.[0] ?? "")
+    expect(url).toContain("/bibles/es-rvr1960/")
+  })
+
+  it("renders a Read more... link only when verseEnd is present", () => {
+    fetchMock.mockImplementation(() => new Promise(() => undefined))
+    const citations: Citation[] = [
+      makeCitation({ documentId: "single", verseStart: 20, verseEnd: null }),
+      makeCitation({ documentId: "range", verseStart: 20, verseEnd: 25 }),
+    ]
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={citations}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+    const readMores = container.querySelectorAll(
+      '[data-testid="watch-bible-quotes-read-more"]',
+    )
+    expect(readMores.length).toBe(1)
+    const anchor = readMores[0] as HTMLAnchorElement
+    expect(anchor.getAttribute("target")).toBe("_blank")
+    const rel = anchor.getAttribute("rel") ?? ""
+    expect(rel).toContain("noopener")
+    expect(rel).toContain("noreferrer")
+    expect(anchor.getAttribute("href")).toContain("biblegateway.com/passage/")
+    expect(anchor.getAttribute("href")).toContain("version=NIV")
+  })
+
+  it("locale='es' maps the BibleGateway Read-more link to version=NVI", () => {
+    fetchMock.mockImplementation(() => new Promise(() => undefined))
+    const citation = makeCitation({
+      bookName: "Lucas",
+      chapterStart: 8,
+      verseStart: 2,
+      verseEnd: 5,
+    })
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[citation]}
+          onShareClick={vi.fn()}
+          locale="es"
+        />,
+      )
+    })
+    const anchor = container.querySelector(
+      '[data-testid="watch-bible-quotes-read-more"]',
+    ) as HTMLAnchorElement | null
+    expect(anchor).not.toBeNull()
+    expect(anchor!.getAttribute("href")).toContain("version=NVI")
+    expect(anchor!.getAttribute("href")).not.toContain("version=NIV")
+  })
+
+  it("multi-word book names are normalized to whitespace-stripped slugs in the jsdelivr URL", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ verse: "1", text: "Body" }), {
+        status: 200,
+      }),
+    )
+    const citation = makeCitation({
+      bookName: "1 Corinthians",
+      chapterStart: 13,
+      verseStart: 4,
+      verseEnd: 7,
+    })
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[citation]}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(fetchMock).toHaveBeenCalled()
+    const url = String(fetchMock.mock.calls[0]?.[0] ?? "")
+    expect(url).toContain("/books/1corinthians/")
+    expect(url).not.toContain("%20")
+    expect(url).not.toContain(" ")
+  })
+
+  it("hostile book names containing path-traversal segments are rejected before fetch", () => {
+    fetchMock.mockImplementation(() => new Promise(() => undefined))
+    const citation = makeCitation({
+      bookName: "../etc/passwd",
+      chapterStart: 1,
+      verseStart: 1,
+    })
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[citation]}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("null bookName / null chapterStart / null verseStart skip the fetch entirely", () => {
+    fetchMock.mockImplementation(() => new Promise(() => undefined))
+    const citations: Citation[] = [
+      makeCitation({
+        documentId: "null-book",
+        bookName: null,
+        chapterStart: 1,
+        verseStart: 1,
+      }),
+    ]
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={citations}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-verse"]'),
+    ).toBeNull()
+  })
+
+  it("fetch is called with cache: 'force-cache' so cross-navigation hits dedupe", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ text: "Body" }), { status: 200 }),
+    )
+    const citation = makeCitation({
+      bookName: "Psalms",
+      chapterStart: 23,
+      verseStart: 1,
+    })
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[citation]}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(fetchMock).toHaveBeenCalled()
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined
+    expect(init?.cache).toBe("force-cache")
+  })
+
+  it("non-ok fetch responses render the card without a verse element", async () => {
+    fetchMock.mockResolvedValue(new Response("", { status: 404 }))
+    const citation = makeCitation({
+      bookName: "Psalms",
+      chapterStart: 1,
+      verseStart: 1,
+    })
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[citation]}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-verse"]'),
+    ).toBeNull()
+  })
+
+  it("fetch reject (network error) renders the card without a verse element", async () => {
+    fetchMock.mockRejectedValue(new TypeError("network unreachable"))
+    const citation = makeCitation({
+      bookName: "Psalms",
+      chapterStart: 1,
+      verseStart: 1,
+    })
+    // Swallow the expected error log so the test output stays clean.
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    try {
+      act(() => {
+        root.render(
+          <BibleQuotesSection
+            bibleCitations={[citation]}
+            onShareClick={vi.fn()}
+          />,
+        )
+      })
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(
+        container.querySelector('[data-testid="watch-bible-quotes-verse"]'),
+      ).toBeNull()
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it("formatScripture strips ';N:N…' and ',N:N…' footnote markers before rendering", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          text: "For God so loved the world;1 he gave,2:3 his only Son.",
+        }),
+        { status: 200 },
+      ),
+    )
+    const citation = makeCitation({
+      bookName: "John",
+      chapterStart: 3,
+      verseStart: 16,
+      verseEnd: 16,
+    })
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[citation]}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    const verse = container.querySelector(
+      '[data-testid="watch-bible-quotes-verse"]',
+    )
+    // Semicolon-footnote regex strips everything from `;1` onward, so the
+    // rendered text is just the lead-in.
+    expect(verse?.textContent).toBe("For God so loved the world")
+  })
+
+  it("BIBLE_IMAGES cycles by index modulo array length (no silent repeat of image 0)", () => {
+    fetchMock.mockImplementation(() => new Promise(() => undefined))
+    const citations: Citation[] = Array.from({ length: 9 }).map((_, i) =>
+      makeCitation({
+        documentId: `bc-${i}`,
+        bookName: "Psalms",
+        chapterStart: 1,
+        verseStart: i + 1,
+      }),
+    )
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={citations}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+    const imgs = container.querySelectorAll(
+      '[data-testid="watch-bible-quotes-item"] img',
+    )
+    const src0 = imgs[0]?.getAttribute("src") ?? ""
+    const src7 = imgs[7]?.getAttribute("src") ?? ""
+    // 7 % 7 === 0, so the 8th citation card should reuse image 0.
+    expect(src7).toBe(src0)
+    // 8 % 7 === 1, so the 9th citation should reuse image 1 (NOT image 0).
+    const src8 = imgs[8]?.getAttribute("src") ?? ""
+    const src1 = imgs[1]?.getAttribute("src") ?? ""
+    expect(src8).toBe(src1)
+    expect(src8).not.toBe(src0)
   })
 })
 

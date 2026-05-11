@@ -31,10 +31,16 @@ export function WatchSectionRenderer({
   blocks,
   modalCallbacks,
   onPlayerReady,
+  locale,
 }: {
   blocks: MergedWatchBlock[]
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
+  /**
+   * Validated ISO locale passed down to locale-aware children
+   * (currently: BibleQuotesSection's verse fetch + Read-more link).
+   */
+  locale?: string
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
   // renders as a hidden marker to avoid double-mounting.
@@ -64,6 +70,7 @@ export function WatchSectionRenderer({
           studyQuestionsBlock={studyQuestionsBlock}
           modalCallbacks={modalCallbacks}
           onPlayerReady={onPlayerReady}
+          locale={locale}
         />
       ))}
       {bodyBlocks.length > 0 ? (
@@ -93,6 +100,7 @@ export function WatchSectionRenderer({
                   studyQuestionsBlock={studyQuestionsBlock}
                   modalCallbacks={modalCallbacks}
                   onPlayerReady={onPlayerReady}
+                  locale={locale}
                 />
               ))}
             </div>
@@ -109,12 +117,14 @@ function WatchBlockEntry({
   studyQuestionsBlock,
   modalCallbacks,
   onPlayerReady,
+  locale,
 }: {
   block: MergedWatchBlock
   index: number
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
+  locale?: string
 }) {
   if (isWatchBlock(block)) {
     return (
@@ -123,6 +133,7 @@ function WatchBlockEntry({
         studyQuestionsBlock={studyQuestionsBlock}
         modalCallbacks={modalCallbacks}
         onPlayerReady={onPlayerReady}
+        locale={locale}
       />
     )
   }
@@ -134,11 +145,13 @@ function SyntheticBlock({
   studyQuestionsBlock,
   modalCallbacks,
   onPlayerReady,
+  locale,
 }: {
   block: WatchBlock
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
+  locale?: string
 }) {
   switch (block.kind) {
     case "HeroPlayer":
@@ -173,6 +186,7 @@ function SyntheticBlock({
         <BibleQuotesSection
           bibleCitations={block.bibleCitations}
           onShareClick={modalCallbacks?.openShare ?? noop}
+          locale={locale}
         />
       )
     case "Share":
