@@ -175,6 +175,60 @@ describe("POST /api/experience-chat/stream", () => {
     expect(frames.find((f) => f.startsWith("event: error"))).toBeDefined()
   })
 
+  it("forwards provider undefined when omitted from body (R8)", async () => {
+    streamChatTurnMock.mockReturnValue(
+      eventGenerator([{ type: "done", messageId: "m" }]),
+    )
+
+    const res = await POST(postJson({ threadId: "t1", prompt: "hi" }))
+    expect(res.status).toBe(200)
+    expect(streamChatTurnMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        threadId: "t1",
+        prompt: "hi",
+        provider: undefined,
+      }),
+      expect.anything(),
+    )
+  })
+
+  it.each(["ollama", "codex", "claude-code"] as const)(
+    "forwards provider %s into streamChatTurn input",
+    async (provider) => {
+      streamChatTurnMock.mockReturnValue(
+        eventGenerator([{ type: "done", messageId: "m" }]),
+      )
+
+      const res = await POST(
+        postJson({ threadId: "t1", prompt: "hi", provider }),
+      )
+      expect(res.status).toBe(200)
+      expect(streamChatTurnMock).toHaveBeenCalledWith(
+        expect.objectContaining({ provider }),
+        expect.anything(),
+      )
+    },
+  )
+
+  it("returns 400 with Zod issues mentioning provider on unknown value", async () => {
+    const res = await POST(
+      postJson({ threadId: "t1", prompt: "hi", provider: "unknown" }),
+    )
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toBe("Invalid request body")
+    expect(JSON.stringify(body.issues)).toMatch(/provider/)
+    expect(streamChatTurnMock).not.toHaveBeenCalled()
+  })
+
+  it("returns 400 when provider is null (closed enum rejects null)", async () => {
+    const res = await POST(
+      postJson({ threadId: "t1", prompt: "hi", provider: null }),
+    )
+    expect(res.status).toBe(400)
+    expect(streamChatTurnMock).not.toHaveBeenCalled()
+  })
+
   it("passes request.signal to the service", async () => {
     streamChatTurnMock.mockReturnValue(
       eventGenerator([{ type: "done", messageId: "m" }]),
