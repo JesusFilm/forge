@@ -177,14 +177,14 @@ export async function runCodexChat({
     }
   }
 
-  return await withTempDir(async (dir) => {
-    let schemaPath: string | null = null
-    if (schemaJson !== undefined) {
-      schemaPath = join(dir, "schema.json")
-      await writeFile(schemaPath, JSON.stringify(schemaJson), "utf8")
-    }
-
-    return await new Promise<CodexRunResult>((resolve) => {
+  // When no schema is provided, skip the temp-dir + writeFile detour
+  // entirely — the chat-turn legacy path doesn't pass a schema and
+  // adding async fs work between spawn and listener-attachment changes
+  // observable timing (test fixtures emit `error` events synchronously
+  // after spawnReturn — moving spawn behind an await window breaks
+  // them).
+  const runSpawn = (schemaPath: string | null) =>
+    new Promise<CodexRunResult>((resolve) => {
       let proc: CodexProcess
       try {
         proc = spawn(
@@ -377,6 +377,15 @@ export async function runCodexChat({
         })
       }
     })
+
+  if (schemaJson === undefined) {
+    return await runSpawn(null)
+  }
+
+  return await withTempDir(async (dir) => {
+    const schemaPath = join(dir, "schema.json")
+    await writeFile(schemaPath, JSON.stringify(schemaJson), "utf8")
+    return await runSpawn(schemaPath)
   })
 }
 

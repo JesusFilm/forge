@@ -21,11 +21,7 @@
  * later (see `experienceChatMessage.snapshotDiff` schema).
  */
 
-import { spawn, type ChildProcessByStdio } from "node:child_process"
-import readline from "node:readline"
-import type { Readable, Writable } from "node:stream"
 import type { PrismaClient } from "@prisma/client"
-import { z } from "zod"
 
 import { canEditExperienceLocale } from "@/auth/permissions"
 import type { Principal } from "@/auth/principal"
@@ -49,10 +45,17 @@ import {
   type EditorialBriefField,
 } from "./experience-ai-chat-brief"
 import {
+  ChatMutationEnvelopeSchema,
+  ChatMutationsSchema,
+  buildChatMutationEnvelopeJsonSchema,
+  type ChatMutationEnvelope,
+} from "./experience-ai-chat-envelope"
+import {
   buildChatPrompt,
   type ChatHistoryTurn,
   type EditableLocaleSummary,
 } from "./experience-ai-chat-prompts"
+import { runCodexChat } from "./experience-ai-codex"
 import {
   generateQualityExperienceDraft,
   QualityExperienceDraftError,
@@ -109,44 +112,18 @@ export type StreamChatTurnDeps = {
 // Tunables
 // -----------------------------------------------------------------------------
 
-// Codex with model_reasoning_effort="medium" can stall for 30-60s before
-// emitting the first token. Higher than the one-shot draft path's ceiling on
-// purpose — the chat surface is interactive and a low ceiling produces
-// noisy idle_timeout errors with no real failure.
-const TOTAL_TIMEOUT_MS = 180_000
-const IDLE_TIMEOUT_MS = 120_000
-const CODEX_CHAT_MODEL = "gpt-5.5"
 const CANDIDATE_LIMIT = 8
 
 // -----------------------------------------------------------------------------
-// Envelope schema
+// Envelope schemas — re-exported from `experience-ai-chat-envelope.ts` for
+// back-compat with test consumers and any caller that imported them from
+// this module before the U5 refactor.
 // -----------------------------------------------------------------------------
 
-/**
- * Envelope contract — `.strict()` so any unknown key (including `slug`)
- * is rejected at the schema layer. The route handler logs the rejection
- * code; the service maps `slug` specifically to the more specific
- * `slug_change_rejected` code before falling through to
- * `schema_violation`.
- */
-const ChatMutationsSchema = z
-  .object({
-    title: z.string().optional(),
-    metaDescription: z.string().nullable().optional(),
-    blocks: z.array(z.unknown()).optional(),
-    ogImageUrl: z.string().url().nullable().optional(),
-  })
-  .strict()
-
-const ChatMutationEnvelopeSchema = z
-  .object({
-    mutations: ChatMutationsSchema,
-    localesAffected: z.array(z.string()).optional(),
-    reason: z.string().optional(),
-  })
-  .strict()
-
-type ChatMutationEnvelope = z.infer<typeof ChatMutationEnvelopeSchema>
+export {
+  ChatMutationEnvelopeSchema,
+  ChatMutationsSchema,
+} from "./experience-ai-chat-envelope"
 
 // -----------------------------------------------------------------------------
 // Implementation
@@ -160,19 +137,6 @@ function providerErrorEvent(
   error: QualityExperienceDraftError,
 ): ChatStreamEvent {
   return errorEvent(error.code, error.message)
-}
-
-function isPotentialEnvelopeLine(line: string): boolean {
-  const trimmed = line.trim()
-  return trimmed.startsWith("{") && trimmed.endsWith("}")
-}
-
-function tryParseEnvelope(line: string): unknown | null {
-  try {
-    return JSON.parse(line.trim())
-  } catch {
-    return null
-  }
 }
 
 function looksLikeSlugRejection(rawObject: unknown): boolean {
@@ -215,232 +179,8 @@ function isEmptyCanvas(state: EditableLocaleState): boolean {
   return state.blocks.length === 0
 }
 
-/**
- * Spawn Codex and consume stdout line-by-line until the terminal JSON
- * envelope arrives (or one of the failure timers fires). Yields
- * `token_delta` for every non-envelope line and resolves with the
- * parsed envelope on success.
- *
- * Caller-provided callbacks (`onToken`) keep this generator-friendly
- * without forcing us to plumb async iterators through the spawn boundary.
- */
-type CodexRunResult =
-  | { kind: "envelope"; raw: unknown }
-  | { kind: "error"; code: ChatErrorCode; message: string }
-
-async function runCodexChat({
-  prompt,
-  abortSignal,
-  onToken,
-}: {
-  prompt: string
-  abortSignal?: AbortSignal
-  onToken: (text: string) => void
-}): Promise<CodexRunResult> {
-  return await new Promise<CodexRunResult>((resolve) => {
-    let proc: ChildProcessByStdio<Writable, Readable, Readable>
-    try {
-      proc = spawn(
-        "codex",
-        [
-          "exec",
-          "-m",
-          CODEX_CHAT_MODEL,
-          "-c",
-          'model_reasoning_effort="medium"',
-          "--sandbox",
-          "read-only",
-          "-",
-        ],
-        {
-          env: { ...process.env, LANG: "en_US.UTF-8" },
-          stdio: ["pipe", "pipe", "pipe"],
-        },
-      ) as ChildProcessByStdio<Writable, Readable, Readable>
-    } catch (error) {
-      resolve({
-        kind: "error",
-        code: "codex_unavailable",
-        message:
-          error instanceof Error ? error.message : "codex CLI failed to start",
-      })
-      return
-    }
-
-    let stderrBuf = ""
-    let envelope: unknown | null = null
-    let sawAnyLine = false
-    let settled = false
-    const tailLines: string[] = []
-
-    const totalTimer = setTimeout(() => {
-      if (settled) return
-      settle({
-        kind: "error",
-        code: "codex_timeout",
-        message: `Codex turn timed out after ${TOTAL_TIMEOUT_MS}ms`,
-      })
-    }, TOTAL_TIMEOUT_MS)
-
-    let idleTimer = setTimeout(() => {
-      if (settled) return
-      settle({
-        kind: "error",
-        code: "codex_idle_timeout",
-        message: `Codex produced no output for ${IDLE_TIMEOUT_MS}ms`,
-      })
-    }, IDLE_TIMEOUT_MS)
-
-    function bumpIdle() {
-      clearTimeout(idleTimer)
-      idleTimer = setTimeout(() => {
-        if (settled) return
-        settle({
-          kind: "error",
-          code: "codex_idle_timeout",
-          message: `Codex produced no output for ${IDLE_TIMEOUT_MS}ms`,
-        })
-      }, IDLE_TIMEOUT_MS)
-    }
-
-    function settle(result: CodexRunResult) {
-      if (settled) return
-      settled = true
-      clearTimeout(totalTimer)
-      clearTimeout(idleTimer)
-      try {
-        proc.kill("SIGTERM")
-      } catch {
-        // ignore — proc may have already exited
-      }
-      if (abortSignal && abortListener) {
-        abortSignal.removeEventListener("abort", abortListener)
-      }
-      resolve(result)
-    }
-
-    const abortListener = abortSignal
-      ? () =>
-          settle({
-            kind: "error",
-            code: "cancelled",
-            message: "request aborted by client",
-          })
-      : null
-
-    if (abortSignal && abortListener) {
-      if (abortSignal.aborted) {
-        abortListener()
-        return
-      }
-      abortSignal.addEventListener("abort", abortListener, { once: true })
-    }
-
-    const rl = readline.createInterface({ input: proc.stdout })
-    rl.on("line", (line) => {
-      sawAnyLine = true
-      bumpIdle()
-      tailLines.push(line)
-      if (tailLines.length > 64) tailLines.shift()
-
-      // Try a multi-line tail-buffer parse first (envelopes can wrap).
-      const tail = tailLines.join("\n").trim()
-      if (isPotentialEnvelopeLine(tail)) {
-        const parsedTail = tryParseEnvelope(tail)
-        if (parsedTail !== null) {
-          envelope = parsedTail
-          settle({ kind: "envelope", raw: envelope })
-          return
-        }
-      }
-
-      // Single-line envelope path (preferred — model is told to emit
-      // the envelope on its own final line).
-      if (isPotentialEnvelopeLine(line)) {
-        const parsed = tryParseEnvelope(line)
-        if (parsed !== null) {
-          envelope = parsed
-          settle({ kind: "envelope", raw: envelope })
-          return
-        }
-      }
-
-      // Otherwise treat as a freeform token chunk.
-      onToken(line)
-    })
-
-    proc.stderr.on("data", (chunk: Buffer | string) => {
-      stderrBuf += chunk.toString()
-    })
-
-    proc.on("error", (error: NodeJS.ErrnoException) => {
-      if (error?.code === "ENOENT") {
-        settle({
-          kind: "error",
-          code: "codex_unavailable",
-          message: "codex CLI is not installed or not available on PATH",
-        })
-        return
-      }
-      settle({
-        kind: "error",
-        code: "codex_unavailable",
-        message: error?.message ?? "codex CLI failed to start",
-      })
-    })
-
-    proc.on("close", (code, signal) => {
-      if (settled) return
-      // We reached close without a parsed envelope.
-      if (!sawAnyLine) {
-        settle({
-          kind: "error",
-          code: "empty_response",
-          message: "codex closed stdout without emitting any output",
-        })
-        return
-      }
-      if (signal === "SIGTERM") {
-        // Already settled paths handle their own message; this is a
-        // safety net.
-        settle({
-          kind: "error",
-          code: "codex_timeout",
-          message: "codex terminated before emitting an envelope",
-        })
-        return
-      }
-      if (code !== 0) {
-        const sanitizedStderr = stderrBuf.trim().slice(0, 500)
-        settle({
-          kind: "error",
-          code: "codex_unavailable",
-          message:
-            sanitizedStderr || `codex exited with status ${code ?? "unknown"}`,
-        })
-        return
-      }
-      // Exit 0 but no envelope ever parsed → invalid JSON.
-      settle({
-        kind: "error",
-        code: "invalid_json",
-        message: "codex finished without emitting a parseable JSON envelope",
-      })
-    })
-
-    try {
-      proc.stdin.write(prompt)
-      proc.stdin.end()
-    } catch (error) {
-      settle({
-        kind: "error",
-        code: "codex_unavailable",
-        message:
-          error instanceof Error ? error.message : "codex stdin write failed",
-      })
-    }
-  })
-}
+// `runCodexChat` lives in `experience-ai-codex.ts`. The chat-turn
+// branch of streamChatTurn imports it from there.
 
 /**
  * Streaming chat-turn pipeline. See module docstring for the flow.
@@ -680,21 +420,10 @@ export async function* streamChatTurn(
   }
 
   // ---- Spawn Codex -------------------------------------------------------
-  // The codex fallback gate ALSO guards the chat path. Without the gate
-  // we surface `codex_unavailable` immediately so the operator knows
-  // why the spawn was skipped — without the gate, prod would otherwise
-  // ENOENT loudly on every chat call.
-  if (env.EXPERIENCE_AI_ALLOW_CODEX_FALLBACK !== true) {
-    yield errorEvent(
-      "codex_unavailable",
-      "Chat is not configured for this environment (EXPERIENCE_AI_ALLOW_CODEX_FALLBACK is off)",
-    )
-    return
-  }
-
-  // We collect token chunks in a buffer that the generator drains; the
-  // codex run is a single `await` so we can't yield from inside a
-  // callback. Drain at end-of-run + on settle.
+  // The Codex adapter checks the EXPERIENCE_AI_ALLOW_CODEX gate before
+  // spawning and surfaces `codex_unavailable` if it's off. We collect
+  // token chunks in a buffer that the generator drains; the codex run
+  // is a single `await` so we can't yield from inside a callback.
   const tokenBuffer: string[] = []
   const onToken = (text: string) => {
     tokenBuffer.push(text)
@@ -844,11 +573,3 @@ export async function* streamChatTurn(
   yield { type: "done", messageId: assistantMessage.id }
 }
 
-// Re-exports for tests and callers that want the same envelope shape
-// the service uses internally.
-export {
-  ChatMutationEnvelopeSchema,
-  ChatMutationsSchema,
-  TOTAL_TIMEOUT_MS,
-  IDLE_TIMEOUT_MS,
-}
