@@ -625,6 +625,23 @@ export function HeroPlayerControls({
   const progressPct =
     duration > 0 ? Math.min(100, (displayTime / duration) * 100) : 0
 
+  // Dark gradient that sits BEHIND the chrome bar so the white icons stay
+  // legible. It used to live inside the sticky hero wrapper, but the
+  // chrome bar is portaled to `overlayAnchor` and scrolls up with the
+  // body section — leaving the gradient stranded at the bottom of the
+  // pinned hero where it darkened nothing. Portaling the gradient
+  // alongside the chrome keeps it under the controls at every scroll
+  // position.
+  const chromeBackdrop = (
+    <div
+      aria-hidden="true"
+      data-testid="hero-player-chrome-backdrop"
+      className={`pointer-events-none absolute inset-x-0 bottom-0 z-0 h-40 bg-gradient-to-t from-black/85 via-black/45 to-transparent transition-opacity duration-300 ${
+        controlsVisible ? "opacity-100" : "opacity-0"
+      }`}
+    />
+  )
+
   // Chrome control bar — portaled into the overlay anchor (just below the
   // sticky hero) so it rides on the body section's top edge as the body
   // slides up over the pinned hero, matching the title-overlay behavior.
@@ -775,16 +792,20 @@ export function HeroPlayerControls({
           controlsVisible ? "cursor-pointer" : "cursor-none"
         }`}
       />
-      <div
-        aria-hidden="true"
-        className={`pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/85 via-black/45 to-transparent transition-opacity duration-300 ${
-          controlsVisible ? "opacity-100" : "opacity-0"
-        }`}
-      />
       {/* Chrome stays pointer-active even when invisible so agent-driven and
           keyboard interactions reach the controls — the wrapper-level reveal
-          listeners then bring it back to opacity-100 on the next interaction. */}
-      {overlayAnchor != null ? createPortal(chromeBar, overlayAnchor) : null}
+          listeners then bring it back to opacity-100 on the next interaction.
+          Backdrop + chrome bar share one portal so the gradient travels
+          with the controls as the body section slides up. */}
+      {overlayAnchor != null
+        ? createPortal(
+            <>
+              {chromeBackdrop}
+              {chromeBar}
+            </>,
+            overlayAnchor,
+          )
+        : null}
     </>
   )
 }
