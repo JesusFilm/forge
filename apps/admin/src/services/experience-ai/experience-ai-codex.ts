@@ -32,10 +32,7 @@
  * an ENOENT race.
  */
 
-import {
-  spawn,
-  type ChildProcessByStdio,
-} from "node:child_process"
+import { spawn, type ChildProcessByStdio } from "node:child_process"
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -132,9 +129,32 @@ function buildCodexArgs({
   return args
 }
 
-async function withTempDir<T>(
-  fn: (dir: string) => Promise<T>,
-): Promise<T> {
+/**
+ * Codex's `--output-schema` flag forwards the schema to OpenAI's
+ * `response_format: json_schema strict: true` path, which requires every
+ * `{type: "object"}` node to carry `additionalProperties: false`.
+ * Our hand-coded schemas only set it at the top level (and OpenRouter +
+ * Claude Code don't enforce this). This walker adds the property
+ * everywhere it's missing so the same schema can feed all three CLIs.
+ */
+function strictifyJsonSchema(schema: unknown): unknown {
+  if (Array.isArray(schema)) {
+    return schema.map(strictifyJsonSchema)
+  }
+  if (schema == null || typeof schema !== "object") return schema
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(
+    schema as Record<string, unknown>,
+  )) {
+    out[key] = strictifyJsonSchema(value)
+  }
+  if (out.type === "object" && !("additionalProperties" in out)) {
+    out.additionalProperties = false
+  }
+  return out
+}
+
+async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
   const dir = await mkdtemp(join(tmpdir(), "forge-codex-"))
   try {
     return await fn(dir)
@@ -358,8 +378,7 @@ export async function runCodexChat({
         settle({
           kind: "error",
           code: "invalid_json",
-          message:
-            "codex finished without emitting a parseable JSON envelope",
+          message: "codex finished without emitting a parseable JSON envelope",
         })
       })
 
@@ -371,9 +390,7 @@ export async function runCodexChat({
           kind: "error",
           code: "codex_unavailable",
           message:
-            error instanceof Error
-              ? error.message
-              : "codex stdin write failed",
+            error instanceof Error ? error.message : "codex stdin write failed",
         })
       }
     })
@@ -384,7 +401,11 @@ export async function runCodexChat({
 
   return await withTempDir(async (dir) => {
     const schemaPath = join(dir, "schema.json")
-    await writeFile(schemaPath, JSON.stringify(schemaJson), "utf8")
+    await writeFile(
+      schemaPath,
+      JSON.stringify(strictifyJsonSchema(schemaJson)),
+      "utf8",
+    )
     return await runSpawn(schemaPath)
   })
 }
@@ -424,7 +445,11 @@ export async function generateCodexStructuredOutput<T>({
   return await withTempDir(async (dir) => {
     const schemaPath = join(dir, "schema.json")
     const outputPath = join(dir, "output.txt")
-    await writeFile(schemaPath, JSON.stringify(schemaJson), "utf8")
+    await writeFile(
+      schemaPath,
+      JSON.stringify(strictifyJsonSchema(schemaJson)),
+      "utf8",
+    )
 
     const { stderr, exitCode, signal } = await new Promise<{
       stderr: string
@@ -468,7 +493,9 @@ export async function generateCodexStructuredOutput<T>({
         settled = true
         try {
           proc.kill("SIGTERM")
-        } catch {}
+        } catch {
+          /* proc may already be dead */
+        }
         resolve({ stderr: stderrBuf, exitCode: null, signal: "SIGTERM" })
       }, CODEX_TOTAL_TIMEOUT_MS)
 
@@ -479,7 +506,9 @@ export async function generateCodexStructuredOutput<T>({
             clearTimeout(totalTimer)
             try {
               proc.kill("SIGTERM")
-            } catch {}
+            } catch {
+              /* proc may already be dead */
+            }
             resolve({ stderr: stderrBuf, exitCode: null, signal: "SIGINT" })
           }
         : null
@@ -507,7 +536,9 @@ export async function generateCodexStructuredOutput<T>({
           abortSignal.removeEventListener("abort", abortListener)
         }
         const code: number | null =
-          error?.code === "ENOENT" ? null : (error as { errno?: number }).errno ?? null
+          error?.code === "ENOENT"
+            ? null
+            : ((error as { errno?: number }).errno ?? null)
         resolve({
           stderr: stderrBuf + (error?.message ?? ""),
           exitCode: code,
@@ -634,7 +665,10 @@ export async function generateCodexStructuredOutput<T>({
         payload,
         model,
         usedModel: model,
-        attempts: [...attempts, { model, usedModel: model, status: "succeeded" }],
+        attempts: [
+          ...attempts,
+          { model, usedModel: model, status: "succeeded" },
+        ],
       }
     } catch (error) {
       attempts.push({
