@@ -114,6 +114,13 @@ function buildCodexArgs({
   outputFilePath,
   model,
 }: SpawnArgs): string[] {
+  // Codex's `--output-schema` forwards to OpenAI's responses-format
+  // `json_schema strict:true`, which rejects schemas with `oneOf`,
+  // missing `additionalProperties:false`, and other patterns the
+  // editor's quality-draft package uses freely (16-variant
+  // discriminated union on blocks). Skip the flag and rely on the
+  // prompt's outputContract + Zod re-validation post-hoc — per the
+  // plan's "CLI schema enforcement is a hint, not a guarantee" stance.
   const args = [
     "exec",
     "-m",
@@ -123,7 +130,7 @@ function buildCodexArgs({
     "--sandbox",
     "read-only",
   ]
-  if (schemaPath) args.push("--output-schema", schemaPath)
+  void schemaPath
   if (outputFilePath) args.push("-o", outputFilePath)
   args.push("-")
   return args

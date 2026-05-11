@@ -290,7 +290,7 @@ describe("runCodexChat", () => {
     })
   })
 
-  it("passes --output-schema when schemaJson is provided", async () => {
+  it("does NOT pass --output-schema even when schemaJson is provided (OpenAI strict mode rejects oneOf / missing additionalProperties:false in our schemas)", async () => {
     const proc = makeProc()
     spawnMock.mockReturnValue(proc)
     const promise = runCodexChat({
@@ -304,8 +304,7 @@ describe("runCodexChat", () => {
     await promise
 
     const [, args] = spawnMock.mock.calls[0]!
-    expect(args).toContain("--output-schema")
-    expect(fsMocks.writeFile).toHaveBeenCalled()
+    expect(args).not.toContain("--output-schema")
   })
 })
 
