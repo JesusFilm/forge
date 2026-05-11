@@ -792,6 +792,133 @@ describe("ExperienceChatPanel", () => {
     ).not.toBeNull()
   })
 
+  it("renders the provider dropdown defaulted to openrouter with cost-posture option labels", async () => {
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={makeActions()}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+
+    const select = view.container.querySelector(
+      '[data-testid="experience-chat-provider"]',
+    ) as HTMLSelectElement
+    expect(select).not.toBeNull()
+    expect(select.value).toBe("openrouter")
+
+    const optionText = Array.from(select.querySelectorAll("option"))
+      .map((o) => o.textContent ?? "")
+      .join("\n")
+    expect(optionText).toContain("OpenRouter (free, cloud)")
+    expect(optionText).toContain("Ollama (local, free)")
+    expect(optionText).toContain("Codex (paid, local CLI)")
+    expect(optionText).toContain("Claude Code (paid, local CLI)")
+  })
+
+  it("passes the selected provider through to openChatStream on send", async () => {
+    const actions = makeActions()
+    const streamFactory = makeStreamFactory([
+      { type: "done", messageId: "m-final" },
+    ])
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={actions}
+        streamFactory={streamFactory as never}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+
+    const select = view.container.querySelector(
+      '[data-testid="experience-chat-provider"]',
+    ) as HTMLSelectElement
+    const setter = Object.getOwnPropertyDescriptor(
+      HTMLSelectElement.prototype,
+      "value",
+    )?.set
+    act(() => {
+      setter?.call(select, "ollama")
+      select.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+    await flush()
+    expect(select.value).toBe("ollama")
+
+    const input = view.container.querySelector(
+      '[data-testid="experience-chat-input"]',
+    ) as HTMLTextAreaElement
+    setTextareaValue(input, "use ollama")
+    await flush()
+    act(() =>
+      (
+        view.container.querySelector(
+          '[data-testid="experience-chat-send"]',
+        ) as HTMLButtonElement
+      ).click(),
+    )
+    await flush()
+
+    expect(streamFactory).toHaveBeenCalledTimes(1)
+    const [body] = (streamFactory as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect(body).toMatchObject({
+      prompt: "use ollama",
+      provider: "ollama",
+    })
+  })
+
+  it("disables the provider dropdown while a turn is streaming", async () => {
+    const actions = makeActions()
+    const streamFactory = vi.fn(async function* (
+      _body: unknown,
+      opts: { signal?: AbortSignal },
+    ) {
+      yield { type: "token_delta" as const, text: "..." }
+      // Hang until aborted so the panel stays in streaming state.
+      await new Promise<void>((resolve) => {
+        opts.signal?.addEventListener("abort", () => resolve())
+      })
+    })
+
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={actions}
+        streamFactory={streamFactory as never}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+
+    const select = view.container.querySelector(
+      '[data-testid="experience-chat-provider"]',
+    ) as HTMLSelectElement
+    expect(select.disabled).toBe(false)
+
+    const input = view.container.querySelector(
+      '[data-testid="experience-chat-input"]',
+    ) as HTMLTextAreaElement
+    setTextareaValue(input, "go long")
+    await flush()
+    act(() =>
+      (
+        view.container.querySelector(
+          '[data-testid="experience-chat-send"]',
+        ) as HTMLButtonElement
+      ).click(),
+    )
+    await flush()
+
+    expect(select.disabled).toBe(true)
+  })
+
   it("renders cancelled errors with severity=warn and no retry button", async () => {
     const actions = makeActions()
     const streamFactory = makeStreamFactory([

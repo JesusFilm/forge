@@ -47,6 +47,7 @@ import type {
   EditorialBrief,
   EditorialBriefField,
 } from "@/services/experience-ai/experience-ai-chat-brief"
+import type { ChatProvider } from "@/services/experience-ai/experience-ai-chat-provider"
 import type { QualityDraftReview } from "@/services/experience-ai/experience-ai-quality-draft.schemas"
 import {
   type ChatMessageDTO,
@@ -158,6 +159,7 @@ export function ExperienceChatPanel({
   const [messages, setMessages] = useState<LocalMessage[]>([])
   const [draft, setDraft] = useState("")
   const [confirmAcrossLocales, setConfirmAcrossLocales] = useState(false)
+  const [provider, setProvider] = useState<ChatProvider>("openrouter")
   const [crossLocaleModalOpen, setCrossLocaleModalOpen] = useState(false)
   const [stream, setStream] = useState<StreamStatus>({ kind: "idle" })
   const [bootError, setBootError] = useState<string | null>(null)
@@ -201,7 +203,6 @@ export function ExperienceChatPanel({
     }
     // experienceLocaleId is the lifecycle key — re-mount via parent `key`
     // resets this state cleanly when the user switches locale.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [experienceLocaleId])
 
   // -- Load messages on thread change -------------------------------------
@@ -305,7 +306,13 @@ export function ExperienceChatPanel({
 
       try {
         const iter = streamFactory(
-          { threadId, prompt, confirmedAcrossLocales, confirmedBrief },
+          {
+            threadId,
+            prompt,
+            confirmedAcrossLocales,
+            confirmedBrief,
+            provider,
+          },
           { signal: abort.signal },
         )
         let finalMessageId: string | null = null
@@ -419,7 +426,7 @@ export function ExperienceChatPanel({
         })
       }
     },
-    [canvasController, streamFactory],
+    [canvasController, provider, streamFactory],
   )
 
   const handleSend = useCallback(async () => {
@@ -772,16 +779,33 @@ export function ExperienceChatPanel({
         className="relative z-10 shrink-0 border-t border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-3 py-3"
         data-testid="experience-chat-composer"
       >
-        <label className="flex items-center gap-2 pb-2 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-          <input
-            type="checkbox"
-            checked={confirmAcrossLocales}
-            onChange={(e) => setConfirmAcrossLocales(e.target.checked)}
-            data-testid="experience-chat-cross-locale-toggle"
-            className="h-3 w-3 rounded-sm border-[var(--color-hairline-strong)]"
-          />
-          Apply across locales
-        </label>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pb-2">
+          <label className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+            <input
+              type="checkbox"
+              checked={confirmAcrossLocales}
+              onChange={(e) => setConfirmAcrossLocales(e.target.checked)}
+              data-testid="experience-chat-cross-locale-toggle"
+              className="h-3 w-3 rounded-sm border-[var(--color-hairline-strong)]"
+            />
+            Apply across locales
+          </label>
+          <label className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+            Provider
+            <select
+              value={provider}
+              onChange={(e) => setProvider(e.target.value as ChatProvider)}
+              disabled={stream.kind === "streaming"}
+              data-testid="experience-chat-provider"
+              className="h-6 rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface-inset)] px-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-primary)] outline-none disabled:cursor-not-allowed disabled:text-[var(--color-text-disabled)]"
+            >
+              <option value="openrouter">OpenRouter (free, cloud)</option>
+              <option value="ollama">Ollama (local, free)</option>
+              <option value="codex">Codex (paid, local CLI)</option>
+              <option value="claude-code">Claude Code (paid, local CLI)</option>
+            </select>
+          </label>
+        </div>
 
         <div className="flex items-end gap-2">
           <textarea
