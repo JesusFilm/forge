@@ -141,6 +141,53 @@ Pothos resolver → Prisma with the Pothos `...query` argument, the Prisma
 plugin already issues a single batched query. Adding a DataLoader on top
 is redundant and loses the plugin's column-pruning.
 
+## Experience AI Chat providers
+
+The chat surface routes through one of four channels selected by the
+editor in the composer dropdown. The selected channel drives BOTH the
+quality-draft generation and chat-turn mutation envelope flows.
+
+| Channel       | Quality-draft path                          | Chat-turn path                               | Cost / posture               |
+| ------------- | ------------------------------------------- | -------------------------------------------- | ---------------------------- |
+| `openrouter`  | OpenRouter free models (HTTP)               | Codex CLI (legacy)                           | Free, cloud                  |
+| `ollama`      | Ollama HTTP `/api/chat` (`format: "json"`)  | Ollama NDJSON stream                         | Local, free                  |
+| `codex`       | `codex exec --output-schema <tmp> -o <out>` | `codex exec` (stdin/stdout)                  | Paid subscription, local CLI |
+| `claude-code` | `claude --print --json-schema <inline>`     | `claude --print --output-format stream-json` | Paid subscription, local CLI |
+
+Defaults to `openrouter` when omitted; the chat-turn half of the
+`openrouter` pick still spawns Codex CLI (legacy default, gated by
+`EXPERIENCE_AI_ALLOW_CODEX`).
+
+**Env gates** — CLI providers refuse to spawn unless their gate is on,
+returning `provider_not_configured` (Claude Code) or `codex_unavailable`
+(Codex) before any subprocess. Production Railway containers do not ship
+the binaries; CLI channels are local-dev primary.
+
+- `EXPERIENCE_AI_ALLOW_CODEX` — opt in Codex (new name).
+  `EXPERIENCE_AI_ALLOW_CODEX_FALLBACK` is the legacy name, still honored
+  with a one-shot deprecation log. Removal target: one release window
+  after this PR merges.
+- `EXPERIENCE_AI_ALLOW_CLAUDE_CODE` — opt in Claude Code.
+
+**Per-channel model overrides** (optional; each channel uses its
+config-file default when unset):
+
+- `OLLAMA_CHAT_MODEL` (default `gemma4:e4b`)
+- `EXPERIENCE_AI_CODEX_MODEL` (default `gpt-5.5`)
+- `EXPERIENCE_AI_CLAUDE_CODE_MODEL` (default `sonnet` alias)
+
+**Adapter modules** — peer files in `src/services/experience-ai/`:
+
+- `experience-ai-openrouter-free.ts` — HTTP, multi-model fallback ladder.
+- `experience-ai-ollama.ts` — HTTP, single-shot + NDJSON stream.
+- `experience-ai-codex.ts` — `codex exec` spawn, schema via temp file + `-o`.
+- `experience-ai-claude-code.ts` — `claude --print` spawn, schema inline.
+
+Each adapter exposes a `generate*StructuredOutput` (quality-draft) and a
+`run*Chat` (chat-turn). The chat service composes both via
+`generateQualityExperienceDraft` (quality-draft path) and
+`runChatTurnForProvider` (chat-turn path).
+
 ## Conventions (Unit 1 baseline — expands with each unit)
 
 - Env vars validated at startup via `src/config/env.ts`. Never read `process.env` directly.
