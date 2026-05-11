@@ -89,6 +89,7 @@ export const env = createEnv({
     OLLAMA_BASE_URL: z.string().url().optional(),
     OLLAMA_EMBEDDING_MODEL: z.string().min(1).optional(),
     OLLAMA_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().optional(),
+    OLLAMA_CHAT_MODEL: z.string().min(1).optional(),
     WORKFLOW_API_KEYS: z.string().min(1).optional(),
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
     WORKFLOW_TARGET_WORLD: z
@@ -238,6 +239,7 @@ export const env = createEnv({
     OLLAMA_EMBEDDING_DIMENSIONS: emptyToUndefined(
       process.env.OLLAMA_EMBEDDING_DIMENSIONS,
     ),
+    OLLAMA_CHAT_MODEL: emptyToUndefined(process.env.OLLAMA_CHAT_MODEL),
     WORKFLOW_API_KEYS: emptyToUndefined(process.env.WORKFLOW_API_KEYS),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
     WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
