@@ -109,12 +109,34 @@ function bucketDownloads(downloads: DownloadModalDownload[]): TierOption[] {
   ]
 }
 
-function formatSize(bytes: number | null): string {
-  if (bytes == null) return ""
+function formatSize(bytes: number | null | undefined): string {
+  if (bytes == null || !Number.isFinite(bytes) || bytes <= 0) return ""
   const mb = bytes / 1024 / 1024
   if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`
   if (mb >= 100) return `${mb.toFixed(0)} MB`
   return `${mb.toFixed(2)} MB`
+}
+
+// Probe the same-origin download proxy for a `Content-Length` when the
+// CMS-provided `size` is missing or zero. Returns null on any failure so
+// the UI can fall back to rendering just the tier label.
+async function fetchSizeFromProxy(
+  url: string,
+  signal: AbortSignal,
+): Promise<number | null> {
+  try {
+    const res = await fetch(
+      `${DOWNLOAD_PROXY_PATH}?url=${encodeURIComponent(url)}`,
+      { method: "HEAD", signal },
+    )
+    if (!res.ok) return null
+    const len = res.headers.get("content-length")
+    if (!len) return null
+    const n = Number.parseInt(len, 10)
+    return Number.isFinite(n) && n > 0 ? n : null
+  } catch {
+    return null
+  }
 }
 
 function formatDuration(seconds: number | null | undefined): string | null {
@@ -140,6 +162,12 @@ export function DownloadModal({
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Keyed by download URL since the CMS-generated `documentId` is stable
+  // per-variant but the URL is what we probe — lookups for the same URL
+  // (which happens when the CMS sets fhd === highest) dedupe naturally.
+  const [probedSizes, setProbedSizes] = useState<Record<string, number | null>>(
+    {},
+  )
   const dropdownId = useId()
   const dropdownListId = `${dropdownId}-list`
   const triggerRef = useRef<HTMLButtonElement | null>(null)
@@ -150,6 +178,18 @@ export function DownloadModal({
   const downloadInFlight = useRef<boolean>(false)
 
   const tiers = useMemo(() => bucketDownloads(downloads), [downloads])
+
+  // Resolves the effective size for a tier: prefer the CMS-provided
+  // value if valid, else a previously probed value, else null.
+  const resolveSize = useCallback(
+    (download: DownloadModalDownload): number | null => {
+      const cms = download.size
+      if (cms != null && cms > 0) return cms
+      const probed = probedSizes[download.url]
+      return probed ?? null
+    },
+    [probedSizes],
+  )
 
   // `selectedTier` is `null` until the user explicitly picks a tier, and
   // is reset to `null` on modal close (see handleOpenChange). The
@@ -181,6 +221,37 @@ export function DownloadModal({
     },
     [onClose],
   )
+
+  // Lazy size probe: for any tier whose CMS-provided `size` is missing
+  // or zero, HEAD the source URL via the same-origin proxy when the
+  // modal opens. The CMS English variant ships with `size: 0` for all
+  // qualities; without this the UI shows "(0.00 MB)" which is wrong.
+  useEffect(() => {
+    if (!open) return
+    const missing = tiers
+      .map((t) => t.download)
+      .filter((d) => !(d.size != null && d.size > 0))
+      .filter((d) => !(d.url in probedSizes))
+    if (missing.length === 0) return
+    const controller = new AbortController()
+    // Dedupe by URL: when fhd and highest point at the same MP4, one
+    // HEAD covers both.
+    const uniqueUrls = Array.from(new Set(missing.map((d) => d.url)))
+    void Promise.all(
+      uniqueUrls.map(async (url) => {
+        const size = await fetchSizeFromProxy(url, controller.signal)
+        return [url, size] as const
+      }),
+    ).then((results) => {
+      if (controller.signal.aborted) return
+      setProbedSizes((prev) => {
+        const next = { ...prev }
+        for (const [url, size] of results) next[url] = size
+        return next
+      })
+    })
+    return () => controller.abort()
+  }, [open, tiers, probedSizes])
 
   // Click-outside / Escape-first close for the custom dropdown. Without
   // this, clicking elsewhere in the modal leaves the listbox open
@@ -279,7 +350,7 @@ export function DownloadModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="watch-download-modal"
-        className="overflow-hidden rounded-2xl border border-stone-700/50 bg-stone-900 p-0 text-stone-100 sm:max-w-xl"
+        className="rounded-2xl border border-stone-700/50 bg-stone-900 p-0 text-stone-100 sm:max-w-xl"
       >
         <DialogTitle className="sr-only">Download video</DialogTitle>
 
@@ -365,9 +436,16 @@ export function DownloadModal({
                     {selected ? (
                       <>
                         <span className="font-semibold">{selected.label}</span>
-                        <span className="ml-1 text-stone-300">
-                          ({formatSize(selected.download.size)})
-                        </span>
+                        {(() => {
+                          const label = formatSize(
+                            resolveSize(selected.download),
+                          )
+                          return label ? (
+                            <span className="ml-1 text-stone-300">
+                              ({label})
+                            </span>
+                          ) : null
+                        })()}
                       </>
                     ) : (
                       "Select a file size"
@@ -418,14 +496,21 @@ export function DownloadModal({
                               }
                             />
                             <span className="font-semibold">{t.label}</span>
-                            <span
-                              className={cn(
-                                "text-xs",
-                                isSelected ? "text-white/80" : "text-stone-400",
-                              )}
-                            >
-                              ({formatSize(t.download.size)})
-                            </span>
+                            {(() => {
+                              const label = formatSize(resolveSize(t.download))
+                              return label ? (
+                                <span
+                                  className={cn(
+                                    "text-xs",
+                                    isSelected
+                                      ? "text-white/80"
+                                      : "text-stone-400",
+                                  )}
+                                >
+                                  ({label})
+                                </span>
+                              ) : null
+                            })()}
                           </button>
                         </li>
                       )

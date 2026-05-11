@@ -8,12 +8,10 @@ export function WatchBody({
   block,
   studyQuestions,
   onDownloadClick,
-  onAskYoursClick,
 }: {
   block: WatchBodyBlock
   studyQuestions: WatchStudyQuestionsBlock | null
   onDownloadClick: () => void
-  onAskYoursClick: () => void
 }) {
   const { video, variant } = block
   const hasDownloads = (variant.downloads ?? []).length > 0
@@ -78,10 +76,7 @@ export function WatchBody({
         data-testid="watch-body-right"
         className="col-span-12 flex min-w-0 flex-col gap-4 md:col-span-4"
       >
-        <WatchStudyQuestions
-          prompts={prompts}
-          onAskYoursClick={onAskYoursClick}
-        />
+        <WatchStudyQuestions prompts={prompts} />
       </div>
     </section>
   )

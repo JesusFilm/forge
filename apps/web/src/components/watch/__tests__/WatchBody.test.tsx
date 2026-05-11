@@ -113,7 +113,6 @@ describe("WatchBody — two-column layout", () => {
           block={block}
           studyQuestions={sq}
           onDownloadClick={vi.fn()}
-          onAskYoursClick={vi.fn()}
         />,
       )
     })
@@ -186,7 +185,6 @@ describe("WatchBody — two-column layout", () => {
           block={block}
           studyQuestions={null}
           onDownloadClick={vi.fn()}
-          onAskYoursClick={vi.fn()}
         />,
       )
     })
@@ -205,7 +203,6 @@ describe("WatchBody — two-column layout", () => {
           block={block}
           studyQuestions={null}
           onDownloadClick={vi.fn()}
-          onAskYoursClick={vi.fn()}
         />,
       )
     })
@@ -226,7 +223,6 @@ describe("WatchBody — right column always renders (Ask Yours CTA is always rel
           block={block}
           studyQuestions={null}
           onDownloadClick={vi.fn()}
-          onAskYoursClick={vi.fn()}
         />,
       )
     })
@@ -271,7 +267,6 @@ describe("WatchBody — right column always renders (Ask Yours CTA is always rel
           block={block}
           studyQuestions={emptySq}
           onDownloadClick={vi.fn()}
-          onAskYoursClick={vi.fn()}
         />,
       )
     })
@@ -304,7 +299,6 @@ describe("WatchBody — Download button visibility", () => {
           block={block}
           studyQuestions={sq}
           onDownloadClick={vi.fn()}
-          onAskYoursClick={vi.fn()}
         />,
       )
     })
@@ -328,7 +322,6 @@ describe("WatchBody — Download button visibility", () => {
           block={block}
           studyQuestions={null}
           onDownloadClick={vi.fn()}
-          onAskYoursClick={vi.fn()}
         />,
       )
     })
@@ -365,7 +358,6 @@ describe("WatchBody — responsive class names", () => {
           block={block}
           studyQuestions={sq}
           onDownloadClick={vi.fn()}
-          onAskYoursClick={vi.fn()}
         />,
       )
     })
@@ -385,7 +377,6 @@ describe("WatchBody — responsive class names", () => {
           block={block}
           studyQuestions={sq}
           onDownloadClick={vi.fn()}
-          onAskYoursClick={vi.fn()}
         />,
       )
     })
@@ -408,7 +399,6 @@ describe("WatchBody — modal trigger integration", () => {
           block={block}
           studyQuestions={null}
           onDownloadClick={onDownloadClick}
-          onAskYoursClick={vi.fn()}
         />,
       )
     })
@@ -425,8 +415,7 @@ describe("WatchBody — modal trigger integration", () => {
     expect(onDownloadClick).toHaveBeenCalledTimes(1)
   })
 
-  it("invokes onAskYoursClick when the Ask Yours CTA is clicked", () => {
-    const onAskYoursClick = vi.fn()
+  it("Ask Yours CTA links to the external talk page in a new tab", () => {
     const block = makeBlock({ downloadCount: 0 })
     const sq = makeStudyQuestions(["Q1?"])
 
@@ -436,33 +425,31 @@ describe("WatchBody — modal trigger integration", () => {
           block={block}
           studyQuestions={sq}
           onDownloadClick={vi.fn()}
-          onAskYoursClick={onAskYoursClick}
         />,
       )
     })
 
     const ay = container.querySelector(
       '[data-testid="watch-study-questions-ask-yours"]',
-    ) as HTMLButtonElement | null
+    ) as HTMLAnchorElement | null
     expect(ay).not.toBeNull()
-
-    act(() => {
-      ay!.click()
-    })
-
-    expect(onAskYoursClick).toHaveBeenCalledTimes(1)
+    expect(ay!.tagName.toLowerCase()).toBe("a")
+    expect(ay!.getAttribute("href")).toBe(
+      "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
+    )
+    expect(ay!.getAttribute("target")).toBe("_blank")
+    // noopener prevents window.opener access; noreferrer additionally
+    // strips the Referer header on the cross-origin navigation.
+    const rel = ay!.getAttribute("rel") ?? ""
+    expect(rel).toContain("noopener")
+    expect(rel).toContain("noreferrer")
   })
 })
 
 describe("WatchStudyQuestions — accordion expand with no-answer fallback", () => {
   it("each prompt row carries a trigger button with aria-expanded=false by default", () => {
     act(() => {
-      root.render(
-        <WatchStudyQuestions
-          prompts={["A?", "B?", "C?"]}
-          onAskYoursClick={vi.fn()}
-        />,
-      )
+      root.render(<WatchStudyQuestions prompts={["A?", "B?", "C?"]} />)
     })
 
     const items = container.querySelectorAll(
@@ -487,12 +474,7 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
 
   it("clicking a row opens its panel and reveals the no-answer fallback + two CTAs", () => {
     act(() => {
-      root.render(
-        <WatchStudyQuestions
-          prompts={["What is hope?"]}
-          onAskYoursClick={vi.fn()}
-        />,
-      )
+      root.render(<WatchStudyQuestions prompts={["What is hope?"]} />)
     })
 
     const trigger = container.querySelector(
@@ -543,12 +525,7 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
 
   it("only one row is open at a time — clicking a second row closes the first", () => {
     act(() => {
-      root.render(
-        <WatchStudyQuestions
-          prompts={["First?", "Second?"]}
-          onAskYoursClick={vi.fn()}
-        />,
-      )
+      root.render(<WatchStudyQuestions prompts={["First?", "Second?"]} />)
     })
 
     const triggers = container.querySelectorAll(
@@ -581,12 +558,7 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
     const secondPrompts = ["Only one?"]
 
     act(() => {
-      root.render(
-        <WatchStudyQuestions
-          prompts={firstPrompts}
-          onAskYoursClick={vi.fn()}
-        />,
-      )
+      root.render(<WatchStudyQuestions prompts={firstPrompts} />)
     })
 
     const triggers = container.querySelectorAll(
@@ -604,12 +576,7 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
 
     // Re-render with a different (shorter) prompts reference.
     act(() => {
-      root.render(
-        <WatchStudyQuestions
-          prompts={secondPrompts}
-          onAskYoursClick={vi.fn()}
-        />,
-      )
+      root.render(<WatchStudyQuestions prompts={secondPrompts} />)
     })
 
     // No panel should be open after prompts changed.
@@ -627,9 +594,7 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
 
   it("clicking an open row's trigger again collapses it (toggle off)", () => {
     act(() => {
-      root.render(
-        <WatchStudyQuestions prompts={["A?"]} onAskYoursClick={vi.fn()} />,
-      )
+      root.render(<WatchStudyQuestions prompts={["A?"]} />)
     })
 
     const trigger = container.querySelector(
@@ -652,9 +617,7 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
 
   it("placeholder row (empty prompts) is also expandable and reveals the same fallback content", () => {
     act(() => {
-      root.render(
-        <WatchStudyQuestions prompts={[]} onAskYoursClick={vi.fn()} />,
-      )
+      root.render(<WatchStudyQuestions prompts={[]} />)
     })
 
     const placeholder = container.querySelector(

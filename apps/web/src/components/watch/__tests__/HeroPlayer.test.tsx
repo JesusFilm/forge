@@ -708,6 +708,179 @@ describe("HeroPlayer — auto-hide timer", () => {
 // inline style is computed from the measured wrapper height.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Pause-on-scroll-past-hero. The hero wrapper is sticky and its bounding
+// rect never actually leaves the viewport (the body content slides over
+// it). So we pause based on scroll position vs. measured hero height
+// rather than IntersectionObserver. Applies to BOTH states (pre-reveal
+// muted loop AND post-reveal committed playback); on scroll-back we
+// auto-resume only the muted preview.
+// ---------------------------------------------------------------------------
+
+// Install a ResizeObserver stub that lets us drive heroHeight from tests
+// (jsdom has no RO; the component falls back to getBoundingClientRect
+// which returns 0 in jsdom, leaving heroHeight=null and the scroll
+// effect inert). Returns a "set" helper that fires the RO callback with
+// the supplied height.
+function installResizeObserverStub(): {
+  setHeight: (h: number) => Promise<void>
+  restore: () => void
+} {
+  const callbacks: ResizeObserverCallback[] = []
+  class MockResizeObserver {
+    callback: ResizeObserverCallback
+    constructor(callback: ResizeObserverCallback) {
+      this.callback = callback
+      callbacks.push(callback)
+    }
+    observe() {}
+    disconnect() {}
+    unobserve() {}
+  }
+  const slot = globalThis as { ResizeObserver?: typeof ResizeObserver }
+  const original = slot.ResizeObserver
+  slot.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver
+  return {
+    setHeight: async (h: number) => {
+      const cb = callbacks[callbacks.length - 1]
+      if (!cb) return
+      await act(async () => {
+        cb(
+          [{ contentRect: { height: h } } as ResizeObserverEntry],
+          {} as ResizeObserver,
+        )
+      })
+    },
+    restore: () => {
+      if (original) {
+        slot.ResizeObserver = original
+      } else {
+        delete slot.ResizeObserver
+      }
+    },
+  }
+}
+
+// Drive scroll: set window.scrollY, dispatch the event, then flush the
+// rAF tick the component throttles on. We use fake timers because the
+// component's rAF (polyfilled as setTimeout(0) by vitest.setup.ts) needs
+// to be drained deterministically — without fake timers + runAllTimers,
+// the scroll handler enqueues a task but the test's microtask awaits
+// don't always pump it through before assertions.
+async function scrollTo(y: number): Promise<void> {
+  Object.defineProperty(window, "scrollY", {
+    value: y,
+    configurable: true,
+    writable: true,
+  })
+  await act(async () => {
+    window.dispatchEvent(new Event("scroll"))
+    await vi.runAllTimersAsync()
+  })
+}
+
+describe("HeroPlayer — pause when scrolled past the hero", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("pauses the muted-loop preview when scrollY exceeds the measured hero height", async () => {
+    const ro = installResizeObserverStub()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+      await ro.setHeight(1072)
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = false
+        mockPlayerRef.current.pause.mockClear()
+      }
+      await scrollTo(1500)
+      expect(mockPlayerRef.current?.pause).toHaveBeenCalledTimes(1)
+    } finally {
+      ro.restore()
+    }
+  })
+
+  it("auto-resumes the muted preview when scrolling back to the top (pre-reveal only)", async () => {
+    const ro = installResizeObserverStub()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+      await ro.setHeight(1072)
+      // Simulate a prior scroll-past pause.
+      await scrollTo(1500)
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = true
+        mockPlayerRef.current.play.mockClear()
+      }
+      await scrollTo(0)
+      expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+    } finally {
+      ro.restore()
+    }
+  })
+
+  it("pauses post-reveal playback when scrolled past the hero", async () => {
+    const ro = installResizeObserverStub()
+    try {
+      await revealChrome()
+      await ro.setHeight(1072)
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = false
+        mockPlayerRef.current.pause.mockClear()
+      }
+      await scrollTo(1500)
+      expect(mockPlayerRef.current?.pause).toHaveBeenCalledTimes(1)
+    } finally {
+      ro.restore()
+    }
+  })
+
+  it("auto-resumes post-reveal playback when scrolling back to the hero", async () => {
+    const ro = installResizeObserverStub()
+    try {
+      await revealChrome()
+      await ro.setHeight(1072)
+      await scrollTo(1500)
+      if (mockPlayerRef.current) {
+        // Simulate the pause having taken effect.
+        mockPlayerRef.current.paused = true
+        mockPlayerRef.current.play.mockClear()
+      }
+      await scrollTo(0)
+      // Symmetric resume — when the hero is the main element on screen
+      // again, playback should pick up where it left off in both states.
+      expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+    } finally {
+      ro.restore()
+    }
+  })
+
+  it("does not pause when the scroll is still within the hero (covered transition not reached)", async () => {
+    const ro = installResizeObserverStub()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+      await ro.setHeight(1072)
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = false
+        mockPlayerRef.current.pause.mockClear()
+      }
+      // scrollY < heroHeight — body has only started to enter the viewport.
+      await scrollTo(500)
+      expect(mockPlayerRef.current?.pause).not.toHaveBeenCalled()
+    } finally {
+      ro.restore()
+    }
+  })
+})
+
 describe("HeroPlayer — sticky-hero / portal layout", () => {
   it("portals the chrome bar into the overlay anchor, not the sticky hero wrapper", async () => {
     await revealChrome()

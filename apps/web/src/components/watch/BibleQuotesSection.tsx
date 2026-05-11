@@ -310,12 +310,20 @@ function BibleCitationCard({
       ? bookSlugForApi(citation.bibleBook.name)
       : null
 
+  // Chapter-only citations (editor left verseStart blank to point at a whole
+  // chapter, e.g. "Genesis 3") still get a verse preview — we fetch verse 1
+  // as the body text and surface "Read more..." so the user can read the
+  // rest of the chapter on BibleGateway. For verse-bearing citations the
+  // CMS-supplied verseStart is used directly.
+  const isChapterOnly = citation.verseStart == null
+  const fetchVerse = citation.verseStart ?? 1
+
   // Reset scripture when the fetch key (book+chapter+verse+translation)
   // changes — locale switch, variant switch, or citation reshape. Done in
   // render via React's "adjusting state in render" pattern instead of a
   // useEffect so the stale verse text never paints alongside the new
   // citation reference for even one frame.
-  const fetchKey = `${bibleApi}|${bookSlug ?? ""}|${citation.chapterStart ?? ""}|${citation.verseStart ?? ""}`
+  const fetchKey = `${bibleApi}|${bookSlug ?? ""}|${citation.chapterStart ?? ""}|${fetchVerse}`
   const [prevFetchKey, setPrevFetchKey] = useState(fetchKey)
   if (prevFetchKey !== fetchKey) {
     setPrevFetchKey(fetchKey)
@@ -323,11 +331,7 @@ function BibleCitationCard({
   }
 
   useEffect(() => {
-    if (
-      bookSlug == null ||
-      citation.chapterStart == null ||
-      citation.verseStart == null
-    ) {
+    if (bookSlug == null || citation.chapterStart == null) {
       // Missing required field(s) — no fetch possible. Initial state is
       // already null, so nothing to set.
       return
@@ -348,7 +352,7 @@ function BibleCitationCard({
     let cancelled = false
     void (async () => {
       try {
-        const url = `https://cdn.jsdelivr.net/gh/wldeh/bible-api/bibles/${bibleApi}/books/${bookSlug}/chapters/${citation.chapterStart}/verses/${citation.verseStart}.json`
+        const url = `https://cdn.jsdelivr.net/gh/wldeh/bible-api/bibles/${bibleApi}/books/${bookSlug}/chapters/${citation.chapterStart}/verses/${fetchVerse}.json`
         const res = await fetch(url, {
           signal: controller.signal,
           cache: "force-cache",
@@ -373,7 +377,7 @@ function BibleCitationCard({
         console.error(
           "[BibleCitationCard] verse fetch failed",
           {
-            url: `${bibleApi}/${bookSlug}/${citation.chapterStart}:${citation.verseStart}`,
+            url: `${bibleApi}/${bookSlug}/${citation.chapterStart}:${fetchVerse}`,
           },
           error,
         )
@@ -386,10 +390,14 @@ function BibleCitationCard({
       controller.abort()
       clearTimeout(timeoutId)
     }
-  }, [bibleApi, bookSlug, citation.chapterStart, citation.verseStart])
+  }, [bibleApi, bookSlug, citation.chapterStart, fetchVerse])
 
   const referenceLabel = formatCitation(citation)
   const bibleGatewayUrl = `https://www.biblegateway.com/passage/?search=${encodeURIComponent(referenceLabel)}&version=${bibleGateway}`
+  // "Read more..." appears whenever the card only previews a slice of the
+  // cited range: a verse range (verseEnd set) shows only verse 1 of N, and
+  // a chapter-only citation shows only verse 1 of the whole chapter.
+  const showReadMore = citation.verseEnd != null || isChapterOnly
 
   return (
     <div
@@ -419,7 +427,7 @@ function BibleCitationCard({
             {formatScripture(scripture.text)}
           </p>
         )}
-        {citation.verseEnd != null && (
+        {showReadMore && (
           <a
             href={bibleGatewayUrl}
             target="_blank"

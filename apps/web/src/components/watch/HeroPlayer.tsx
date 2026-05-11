@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -105,6 +106,56 @@ export function HeroPlayer({
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
+
+  // Pause the player when the user scrolls past the hero, resume when
+  // they scroll back up to it. The wrapper is sticky and its bounding
+  // rect never actually leaves the viewport — the body section slides
+  // UP over the hero, covering it visually. So we compare
+  // `window.scrollY` against the measured hero height: once the user
+  // has scrolled by at least one hero-height the body has fully covered
+  // the player and we pause; once they scroll back the player is the
+  // main element on screen again and we resume. IntersectionObserver
+  // doesn't work here because a sticky element keeps reporting "in
+  // viewport" even when it's been visually painted over.
+  //
+  // Applies symmetrically in BOTH states: the pre-reveal muted-loop
+  // preview AND post-reveal committed playback after "Play with Sound"
+  // / "Tap to Unmute".
+  useEffect(() => {
+    if (heroHeight == null) return
+    let ticking = false
+    let prevCovered: boolean | null = null
+    const evaluate = () => {
+      ticking = false
+      const player = playerRef.current
+      if (!player) return
+      const covered = window.scrollY >= heroHeight
+      if (covered === prevCovered) return
+      prevCovered = covered
+      if (covered) {
+        if (!player.paused) player.pause()
+        return
+      }
+      if (!player.paused) return
+      const result = player.play()
+      if (result && typeof result.then === "function") {
+        // Autoplay may still be blocked on resume (e.g. mobile Safari
+        // after a long background tab). Swallow rejection — the user
+        // can tap the pill to start playback explicitly.
+        result.catch(() => undefined)
+      }
+    }
+    const handleScroll = () => {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(evaluate)
+    }
+    evaluate()
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+    }
+  }, [heroHeight])
 
   const viewerUserId = useSyncExternalStore(
     subscribeViewerId,

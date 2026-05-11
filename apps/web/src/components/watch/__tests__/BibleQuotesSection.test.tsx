@@ -57,7 +57,7 @@ function makeCitation(
     documentId: string
     chapterStart: number
     chapterEnd: number | null
-    verseStart: number
+    verseStart: number | null
     verseEnd: number | null
     order: number
     osisId: string
@@ -69,7 +69,7 @@ function makeCitation(
     documentId: overrides.documentId ?? "bc-1",
     chapterStart: overrides.chapterStart ?? 2,
     chapterEnd: overrides.chapterEnd ?? null,
-    verseStart: overrides.verseStart ?? 20,
+    verseStart: overrides.verseStart === undefined ? 20 : overrides.verseStart,
     verseEnd: overrides.verseEnd ?? null,
     order: overrides.order ?? 1,
     osisId: overrides.osisId ?? "Gal.2.20",
@@ -397,11 +397,18 @@ describe("BibleQuotesSection — Unsplash image + verse fetch", () => {
     expect(url).toContain("/bibles/es-rvr1960/")
   })
 
-  it("renders a Read more... link only when verseEnd is present", () => {
+  it("renders a Read more... link for verse ranges and chapter-only citations, not for single verses", () => {
     fetchMock.mockImplementation(() => new Promise(() => undefined))
     const citations: Citation[] = [
       makeCitation({ documentId: "single", verseStart: 20, verseEnd: null }),
       makeCitation({ documentId: "range", verseStart: 20, verseEnd: 25 }),
+      makeCitation({
+        documentId: "chapter-only",
+        bookName: "Genesis",
+        chapterStart: 3,
+        verseStart: null,
+        verseEnd: null,
+      }),
     ]
     act(() => {
       root.render(
@@ -414,14 +421,86 @@ describe("BibleQuotesSection — Unsplash image + verse fetch", () => {
     const readMores = container.querySelectorAll(
       '[data-testid="watch-bible-quotes-read-more"]',
     )
-    expect(readMores.length).toBe(1)
-    const anchor = readMores[0] as HTMLAnchorElement
-    expect(anchor.getAttribute("target")).toBe("_blank")
-    const rel = anchor.getAttribute("rel") ?? ""
-    expect(rel).toContain("noopener")
-    expect(rel).toContain("noreferrer")
-    expect(anchor.getAttribute("href")).toContain("biblegateway.com/passage/")
-    expect(anchor.getAttribute("href")).toContain("version=NIV")
+    expect(readMores.length).toBe(2)
+    for (const node of readMores) {
+      const anchor = node as HTMLAnchorElement
+      expect(anchor.getAttribute("target")).toBe("_blank")
+      const rel = anchor.getAttribute("rel") ?? ""
+      expect(rel).toContain("noopener")
+      expect(rel).toContain("noreferrer")
+      expect(anchor.getAttribute("href")).toContain("biblegateway.com/passage/")
+      expect(anchor.getAttribute("href")).toContain("version=NIV")
+    }
+  })
+
+  it("chapter-only citation: label is 'Genesis 3' (no ':0') and Read more points at the whole chapter", () => {
+    fetchMock.mockImplementation(() => new Promise(() => undefined))
+    const citation = makeCitation({
+      bookName: "Genesis",
+      chapterStart: 3,
+      verseStart: null,
+      verseEnd: null,
+    })
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[citation]}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+    const label = container.querySelector(
+      '[data-testid="watch-bible-quotes-reference"]',
+    )
+    expect(label?.textContent).toBe("Genesis 3")
+    expect(label?.textContent).not.toContain(":")
+
+    const readMore = container.querySelector(
+      '[data-testid="watch-bible-quotes-read-more"]',
+    ) as HTMLAnchorElement | null
+    expect(readMore).not.toBeNull()
+    // BibleGateway accepts "Genesis 3" as a chapter-level search.
+    expect(decodeURIComponent(readMore!.getAttribute("href") ?? "")).toContain(
+      "search=Genesis 3",
+    )
+  })
+
+  it("chapter-only citation: fetches verse 1 from the jsdelivr API as the body preview", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({ verse: "1", text: "In the beginning..." }),
+        { status: 200 },
+      ),
+    )
+    const citation = makeCitation({
+      bookName: "Genesis",
+      chapterStart: 3,
+      verseStart: null,
+      verseEnd: null,
+    })
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[citation]}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+    // Drain the microtask queue so the effect's fetch + json + setState
+    // settle before we inspect the DOM.
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const url = String(fetchMock.mock.calls[0]?.[0] ?? "")
+    expect(url).toContain("/books/genesis/chapters/3/verses/1.json")
+
+    const body = container.querySelector(
+      '[data-testid="watch-bible-quotes-verse"]',
+    )
+    expect(body?.textContent).toContain("In the beginning")
   })
 
   it("locale='es' maps the BibleGateway Read-more link to version=NVI", () => {
