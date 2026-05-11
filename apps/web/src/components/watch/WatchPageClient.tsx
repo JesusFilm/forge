@@ -40,6 +40,12 @@ type WatchPageClientProps = {
    * links round-trip cleanly.
    */
   languageSlug?: string
+  /**
+   * Validated ISO locale ("en" | "es" | ...) from the URL `[locale]` segment.
+   * Threaded into `BibleQuotesSection` so the wldeh/bible-api fetch and
+   * BibleGateway "Read more..." link pick the right translation.
+   */
+  locale?: string
 }
 
 export function WatchPageClient({
@@ -47,6 +53,7 @@ export function WatchPageClient({
   variant,
   video,
   languageSlug,
+  locale,
 }: WatchPageClientProps) {
   // Lifted so LanguagePickerModal can read `currentTime` for the `?t=` clamp
   // on language switches.
@@ -125,6 +132,7 @@ export function WatchPageClient({
         blocks={mergedBlocks}
         modalCallbacks={modalCallbacks}
         onPlayerReady={handlePlayerReady}
+        locale={locale}
       />
 
       <DownloadModal

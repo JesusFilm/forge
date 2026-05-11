@@ -50,6 +50,7 @@ export default async function SlugLocalePage({ params }: PageProps) {
         variant={watchVideo.selectedVariant}
         video={watchVideo.video}
         languageSlug={watchVideo.selectedVariant.language?.slug ?? rawLocale}
+        locale={locale}
       />
     )
   }
