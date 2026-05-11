@@ -1642,8 +1642,7 @@ export async function runSemanticSearch(params: {
       results: [],
       queryText,
       locale,
-      unavailableReason:
-        "Semantic search requires OPENROUTER_API_KEY.",
+      unavailableReason: "Semantic search requires OPENROUTER_API_KEY.",
     }
   }
 

@@ -24,6 +24,22 @@ import {
   ArchiveExperienceInput,
   ChatMutationInput,
 } from "./experience.schemas"
+import {
+  notifyWatchExperienceRevalidation,
+  type WatchExperienceRevalidationEntry,
+} from "./experience-watch-revalidation"
+
+type WatchExperienceRevalidator = (
+  entry: WatchExperienceRevalidationEntry,
+) => Promise<unknown>
+
+type RevalidatableLocale = {
+  locale: string
+  slug: string
+  status: string
+  publishedAt: Date | null
+  experience?: Record<string, unknown> | null
+}
 
 function snapshotEnvelope(
   data: Prisma.InputJsonObject,
@@ -80,7 +96,48 @@ function asSnapshotRecord(value: unknown): Record<string, unknown> | null {
 }
 
 export class ExperienceService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(
+    private prisma: PrismaClient,
+    private revalidateWatchExperience: WatchExperienceRevalidator = notifyWatchExperienceRevalidation,
+  ) {}
+
+  private async revalidateWatchLocales(
+    ...locales: Array<RevalidatableLocale | null | undefined>
+  ) {
+    const targets = new Map<string, WatchExperienceRevalidationEntry>()
+    for (const locale of locales) {
+      if (!locale) continue
+      if (locale.status !== "PUBLISHED" && locale.publishedAt === null) {
+        continue
+      }
+
+      const slug = locale.slug.trim()
+      const localeCode = locale.locale.trim()
+      if (!slug || !localeCode) continue
+
+      const isTemplate =
+        locale.experience != null && locale.experience.isTemplate === true
+      targets.set(`${localeCode}:${slug}`, {
+        slug,
+        locale: localeCode,
+        isTemplate,
+      })
+    }
+
+    await Promise.all(
+      [...targets.values()].map(async (entry) => {
+        try {
+          await this.revalidateWatchExperience(entry)
+        } catch (error) {
+          console.warn("[experience] watch revalidation failed", {
+            slug: entry.slug,
+            locale: entry.locale,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        }
+      }),
+    )
+  }
 
   async create({
     input: raw,
@@ -255,7 +312,7 @@ export class ExperienceService {
     }
 
     const { id, isTemplate, ...data } = input
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       await tx.contentRevision.create({
         data: {
           entityType: "ExperienceLocale",
@@ -280,6 +337,9 @@ export class ExperienceService {
         data,
       })
     })
+
+    await this.revalidateWatchLocales(existing, updated)
+    return updated
   }
 
   async publishLocale({
@@ -318,7 +378,7 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       await tx.contentRevision.create({
         data: {
           entityType: "ExperienceLocale",
@@ -339,6 +399,9 @@ export class ExperienceService {
         },
       })
     })
+
+    await this.revalidateWatchLocales(existing, updated)
+    return updated
   }
 
   async restoreLocaleRevision({
@@ -392,7 +455,7 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const restored = await this.prisma.$transaction(async (tx) => {
       const restoredAt = new Date()
 
       await tx.contentRevision.update({
@@ -453,6 +516,9 @@ export class ExperienceService {
         },
       })
     })
+
+    await this.revalidateWatchLocales(existing, restored)
+    return restored
   }
 
   async archive({
@@ -544,7 +610,7 @@ export class ExperienceService {
     }
 
     const { id, ...data } = parsed
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.contentRevision.create({
         data: {
           entityType: "ExperienceLocale",
@@ -564,6 +630,9 @@ export class ExperienceService {
 
       return { before: existing, after: updated }
     })
+
+    await this.revalidateWatchLocales(existing, result.after)
+    return result
   }
 
   async triggerEmbedding({

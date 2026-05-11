@@ -1,7 +1,7 @@
 ---
 title: "feat: Admin AI Chat Quality-First Generation"
 type: feat
-status: active
+status: completed
 date: 2026-05-11
 origin: docs/brainstorms/2026-05-11-admin-ai-chat-quality-first-generation-requirements.md
 ---

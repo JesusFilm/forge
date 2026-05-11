@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (April 29, 2026)
 
-- **Total tickets:** 126
-- **Complete:** 65
+- **Total tickets:** 128
+- **Complete:** 67
 - **In progress:** 5
 - **Not started:** 18
 - **Blocked:** 38
@@ -84,54 +84,56 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ### Platform
 
-| ID                                                                               | Feature                                                 | Owner     | Priority | Start      | Days | Due        | Status      |
-| -------------------------------------------------------------------------------- | ------------------------------------------------------- | --------- | -------- | ---------- | ---- | ---------- | ----------- |
-| [feat-026](platform/feat-026-graphql-pipeline.md)                                | GraphQL Pipeline (Contract-First Typed Client)          | tataihono | P0       | 2026-02-12 | 47   | 2026-03-30 | complete    |
-| [feat-032](platform/feat-032-tooling-developer-experience.md)                    | Tooling & Developer Experience                          | tataihono | P0       | 2026-02-12 | 47   | 2026-03-30 | complete    |
-| [feat-022](platform/feat-022-cms-foundation.md)                                  | CMS Foundation (Strapi v5 Content Modeling)             | tataihono | P0       | 2026-02-17 | 24   | 2026-03-12 | complete    |
-| [feat-027](platform/feat-027-infrastructure-evolution.md)                        | Infrastructure Evolution (AWS → Railway)                | tataihono | P0       | 2026-03-03 | 28   | 2026-03-30 | complete    |
-| [feat-028](platform/feat-028-content-sync-pipeline.md)                           | Content Sync Pipeline (Core Sync)                       | nisal     | P0       | 2026-03-20 | 11   | 2026-03-30 | complete    |
-| [feat-033](platform/feat-033-roadmap-dashboard-app.md)                           | Roadmap Dashboard App                                   | tataihono | P0       | 2026-03-30 | 2    | 2026-03-31 | complete    |
-| [feat-004](platform/feat-004-web-app-onboarding.md)                              | Web App Onboarding                                      | urim      | P0       | 2026-04-01 | 14   | 2026-04-14 | not-started |
-| [feat-005](platform/feat-005-graphql-contract-stewardship.md)                    | GraphQL Contract Stewardship                            | tataihono | P0       | 2026-04-01 | 56   | 2026-05-26 | not-started |
-| [feat-006](platform/feat-006-code-review-unblocking.md)                          | Code Review and Unblocking                              | tataihono | P0       | 2026-04-01 | 56   | 2026-05-26 | not-started |
-| [feat-086](platform/feat-086-admin-app-graphql-postgres-foundation.md)           | Admin App GraphQL + Postgres Foundation                 | tataihono | P0       | 2026-04-13 | 21   | 2026-05-03 | complete    |
-| [feat-092](platform/feat-092-admin-experience-embedding-workflow.md)             | Admin Experience Embedding Workflow and Safety Controls | tataihono | P0       | 2026-04-14 | 3    | 2026-04-16 | complete    |
-| [feat-093](platform/feat-093-admin-app-sync-hardening-and-rate-limit.md)         | Admin App Sync Hardening and GraphQL Rate Limit         | tataihono | P0       | 2026-04-14 | 3    | 2026-04-16 | complete    |
-| [feat-097](platform/feat-097-admin-v1-pr-hardening.md)                           | Admin App V1 PR Hardening and Operational Surfaces      | tataihono | P0       | 2026-04-14 | 1    | 2026-04-14 | complete    |
-| [feat-098](platform/feat-098-admin-cms-expansion-loop.md)                        | Admin CMS Expansion Loop                                | tataihono | P0       | 2026-04-14 | 14   | 2026-04-27 | complete    |
-| [feat-104](platform/feat-104-admin-railway-provisioning.md)                      | Provision apps/admin on Railway                         | nisal     | P0       | 2026-04-20 | 1    | 2026-04-20 | in-progress |
-| [feat-105](platform/feat-105-admin-sso-firebase-auth-wiring.md)                  | Wire SSO + Firebase fallback auth on @forge/admin       | tataihono | P0       | 2026-04-21 | 3    | 2026-04-23 | blocked     |
-| [feat-104](platform/feat-104-admin-core-consumer-migration-plan.md)              | Admin Core Consumer Migration Plan                      | tataihono | P0       | 2026-04-22 | 2    | 2026-04-23 | in-progress |
-| [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md) | CMS local PostgreSQL I/O concurrency compatibility      | tataihono | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
-| [feat-019](platform/feat-019-scaffolding-support-urim.md)                        | Scaffolding Support for Urim                            | tataihono | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
-| [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)            | Roadmap Operations and Owner Hygiene                    | josh      | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |
-| [feat-051](platform/feat-051-public-report-role.md)                              | Public Report Role                                      | vlad      | P1       | 2026-04-13 | 14   | 2026-04-26 | not-started |
-| [feat-090](platform/feat-090-admin-facebook-sso.md)                              | Add Facebook SSO to admin app                           | tataihono | P1       | 2026-04-14 | 1    | 2026-04-14 | complete    |
-| [feat-091](platform/feat-091-admin-dashboard-ui.md)                              | Build Forge admin dashboard UI                          | tataihono | P1       | 2026-04-14 | 2    | 2026-04-15 | complete    |
-| [feat-099](platform/feat-099-devcontainer-codex-install-and-vm-permissions.md)   | Devcontainer Codex Install And VM Permissions           | tataihono | P1       | 2026-04-15 | 1    | 2026-04-15 | complete    |
-| [feat-100](platform/feat-100-admin-video-and-media-editorial-workflows.md)       | Admin Video And Media Editorial Workflows               | tataihono | P1       | 2026-04-15 | 10   | 2026-04-24 | in-progress |
-| [feat-101](platform/feat-101-admin-experience-block-editor-parity.md)            | Admin Experience Block Editor Parity                    | tataihono | P1       | 2026-04-15 | 7    | 2026-04-21 | complete    |
-| [feat-102](platform/feat-102-dependabot-security-remediation.md)                 | Dependabot Security Remediation                         | tataihono | P1       | 2026-04-16 | 1    | 2026-04-16 | complete    |
-| [feat-103](platform/feat-103-admin-experience-editor-refinement.md)              | Admin Experience Editor Refinement                      | tataihono | P1       | 2026-04-16 | 5    | 2026-04-20 | complete    |
-| [feat-112](platform/feat-112-manager-studio-shell-rollout.md)                    | Manager Studio Shell Rollout                            | vlad      | P1       | 2026-04-15 | 2    | 2026-04-16 | complete    |
-| [feat-113](platform/feat-113-manager-studio-page-restyle.md)                     | Manager Studio Page Restyle                             | vlad      | P1       | 2026-04-16 | 1    | 2026-04-16 | complete    |
-| [feat-114](platform/feat-114-manager-tailwind-design-system-migration.md)        | Manager Tailwind Design System Migration                | vlad      | P1       | 2026-04-20 | 4    | 2026-04-23 | complete    |
-| [feat-106](platform/feat-106-manager-single-process-mock-cms-mode.md)            | Manager Single-Process Mock CMS Mode                    | vlad      | P1       | 2026-04-22 | 5    | 2026-04-26 | complete    |
-| [feat-109](platform/feat-109-roadmap-timeline-planned-current-modes.md)          | Roadmap Timeline Planned/Current Modes                  | vlad      | P1       | 2026-04-23 | 1    | 2026-04-23 | complete    |
-| [feat-110](platform/feat-110-roadmap-owner-stack-timeline-compaction.md)         | Roadmap Owner Stack Timeline Compaction                 | vlad      | P1       | 2026-04-23 | 1    | 2026-04-23 | complete    |
-| [feat-125](platform/feat-125-admin-ai-chat-quality-first-generation.md)          | Admin AI Chat Quality-First Generation                  | ekkasit   | P1       | 2026-05-11 | 5    | 2026-05-15 | in-progress |
-| [feat-040](platform/feat-040-partner-activation-network.md)                      | Partner Activation Network                              | urim      | P1       | 2026-06-16 | 28   | 2026-07-13 | blocked     |
-| [feat-042](platform/feat-042-video-contests-and-inspiration-feed.md)             | Video Contests and Inspiration Feed                     | urim      | P1       | 2026-06-30 | 28   | 2026-07-27 | blocked     |
-| [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                                 | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
-| [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                | Agent-Agnostic Repo Instructions                        | josh      | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
-| [feat-102](platform/feat-102-admin-login-copy-simplification.md)                 | Admin Login Copy Simplification                         | tataihono | P2       | 2026-04-16 | 1    | 2026-04-16 | complete    |
-| [feat-108](platform/feat-108-admin-experiences-dashboard-card-refinement.md)     | Admin Experiences Dashboard Card Refinement             | tataihono | P2       | 2026-04-23 | 1    | 2026-04-23 | complete    |
-| [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)            | Partner Publishing and User Accounts                    | tataihono | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
-| [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)          | LLM Steering System (RAG + Guardrails)                  | tataihono | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
-| [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)           | Optimize Through Data-Driven Insights                   | tataihono | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |
-| [feat-067](platform/feat-067-doctrinal-validation-engine.md)                     | Doctrinal Validation Engine                             | vlad      | P2       | 2026-12-01 | 31   | 2026-12-31 | blocked     |
-| [feat-070](platform/feat-070-public-ai-entry-point.md)                           | Public AI Entry Point                                   | tataihono | P2       | 2026-12-01 | 31   | 2026-12-31 | blocked     |
+| ID                                                                                   | Feature                                                 | Owner     | Priority | Start      | Days | Due        | Status      |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------- | --------- | -------- | ---------- | ---- | ---------- | ----------- |
+| [feat-026](platform/feat-026-graphql-pipeline.md)                                    | GraphQL Pipeline (Contract-First Typed Client)          | tataihono | P0       | 2026-02-12 | 47   | 2026-03-30 | complete    |
+| [feat-032](platform/feat-032-tooling-developer-experience.md)                        | Tooling & Developer Experience                          | tataihono | P0       | 2026-02-12 | 47   | 2026-03-30 | complete    |
+| [feat-022](platform/feat-022-cms-foundation.md)                                      | CMS Foundation (Strapi v5 Content Modeling)             | tataihono | P0       | 2026-02-17 | 24   | 2026-03-12 | complete    |
+| [feat-027](platform/feat-027-infrastructure-evolution.md)                            | Infrastructure Evolution (AWS → Railway)                | tataihono | P0       | 2026-03-03 | 28   | 2026-03-30 | complete    |
+| [feat-028](platform/feat-028-content-sync-pipeline.md)                               | Content Sync Pipeline (Core Sync)                       | nisal     | P0       | 2026-03-20 | 11   | 2026-03-30 | complete    |
+| [feat-033](platform/feat-033-roadmap-dashboard-app.md)                               | Roadmap Dashboard App                                   | tataihono | P0       | 2026-03-30 | 2    | 2026-03-31 | complete    |
+| [feat-004](platform/feat-004-web-app-onboarding.md)                                  | Web App Onboarding                                      | urim      | P0       | 2026-04-01 | 14   | 2026-04-14 | not-started |
+| [feat-005](platform/feat-005-graphql-contract-stewardship.md)                        | GraphQL Contract Stewardship                            | tataihono | P0       | 2026-04-01 | 56   | 2026-05-26 | not-started |
+| [feat-006](platform/feat-006-code-review-unblocking.md)                              | Code Review and Unblocking                              | tataihono | P0       | 2026-04-01 | 56   | 2026-05-26 | not-started |
+| [feat-086](platform/feat-086-admin-app-graphql-postgres-foundation.md)               | Admin App GraphQL + Postgres Foundation                 | tataihono | P0       | 2026-04-13 | 21   | 2026-05-03 | complete    |
+| [feat-092](platform/feat-092-admin-experience-embedding-workflow.md)                 | Admin Experience Embedding Workflow and Safety Controls | tataihono | P0       | 2026-04-14 | 3    | 2026-04-16 | complete    |
+| [feat-093](platform/feat-093-admin-app-sync-hardening-and-rate-limit.md)             | Admin App Sync Hardening and GraphQL Rate Limit         | tataihono | P0       | 2026-04-14 | 3    | 2026-04-16 | complete    |
+| [feat-097](platform/feat-097-admin-v1-pr-hardening.md)                               | Admin App V1 PR Hardening and Operational Surfaces      | tataihono | P0       | 2026-04-14 | 1    | 2026-04-14 | complete    |
+| [feat-098](platform/feat-098-admin-cms-expansion-loop.md)                            | Admin CMS Expansion Loop                                | tataihono | P0       | 2026-04-14 | 14   | 2026-04-27 | complete    |
+| [feat-104](platform/feat-104-admin-railway-provisioning.md)                          | Provision apps/admin on Railway                         | nisal     | P0       | 2026-04-20 | 1    | 2026-04-20 | in-progress |
+| [feat-105](platform/feat-105-admin-sso-firebase-auth-wiring.md)                      | Wire SSO + Firebase fallback auth on @forge/admin       | tataihono | P0       | 2026-04-21 | 3    | 2026-04-23 | blocked     |
+| [feat-104](platform/feat-104-admin-core-consumer-migration-plan.md)                  | Admin Core Consumer Migration Plan                      | tataihono | P0       | 2026-04-22 | 2    | 2026-04-23 | in-progress |
+| [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)     | CMS local PostgreSQL I/O concurrency compatibility      | tataihono | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
+| [feat-019](platform/feat-019-scaffolding-support-urim.md)                            | Scaffolding Support for Urim                            | tataihono | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
+| [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)                | Roadmap Operations and Owner Hygiene                    | josh      | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |
+| [feat-051](platform/feat-051-public-report-role.md)                                  | Public Report Role                                      | vlad      | P1       | 2026-04-13 | 14   | 2026-04-26 | not-started |
+| [feat-090](platform/feat-090-admin-facebook-sso.md)                                  | Add Facebook SSO to admin app                           | tataihono | P1       | 2026-04-14 | 1    | 2026-04-14 | complete    |
+| [feat-091](platform/feat-091-admin-dashboard-ui.md)                                  | Build Forge admin dashboard UI                          | tataihono | P1       | 2026-04-14 | 2    | 2026-04-15 | complete    |
+| [feat-099](platform/feat-099-devcontainer-codex-install-and-vm-permissions.md)       | Devcontainer Codex Install And VM Permissions           | tataihono | P1       | 2026-04-15 | 1    | 2026-04-15 | complete    |
+| [feat-100](platform/feat-100-admin-video-and-media-editorial-workflows.md)           | Admin Video And Media Editorial Workflows               | tataihono | P1       | 2026-04-15 | 10   | 2026-04-24 | in-progress |
+| [feat-101](platform/feat-101-admin-experience-block-editor-parity.md)                | Admin Experience Block Editor Parity                    | tataihono | P1       | 2026-04-15 | 7    | 2026-04-21 | complete    |
+| [feat-102](platform/feat-102-dependabot-security-remediation.md)                     | Dependabot Security Remediation                         | tataihono | P1       | 2026-04-16 | 1    | 2026-04-16 | complete    |
+| [feat-103](platform/feat-103-admin-experience-editor-refinement.md)                  | Admin Experience Editor Refinement                      | tataihono | P1       | 2026-04-16 | 5    | 2026-04-20 | complete    |
+| [feat-112](platform/feat-112-manager-studio-shell-rollout.md)                        | Manager Studio Shell Rollout                            | vlad      | P1       | 2026-04-15 | 2    | 2026-04-16 | complete    |
+| [feat-113](platform/feat-113-manager-studio-page-restyle.md)                         | Manager Studio Page Restyle                             | vlad      | P1       | 2026-04-16 | 1    | 2026-04-16 | complete    |
+| [feat-114](platform/feat-114-manager-tailwind-design-system-migration.md)            | Manager Tailwind Design System Migration                | vlad      | P1       | 2026-04-20 | 4    | 2026-04-23 | complete    |
+| [feat-106](platform/feat-106-manager-single-process-mock-cms-mode.md)                | Manager Single-Process Mock CMS Mode                    | vlad      | P1       | 2026-04-22 | 5    | 2026-04-26 | complete    |
+| [feat-109](platform/feat-109-roadmap-timeline-planned-current-modes.md)              | Roadmap Timeline Planned/Current Modes                  | vlad      | P1       | 2026-04-23 | 1    | 2026-04-23 | complete    |
+| [feat-110](platform/feat-110-roadmap-owner-stack-timeline-compaction.md)             | Roadmap Owner Stack Timeline Compaction                 | vlad      | P1       | 2026-04-23 | 1    | 2026-04-23 | complete    |
+| [feat-125](platform/feat-125-admin-ai-chat-quality-first-generation.md)              | Admin AI Chat Quality-First Generation                  | ekkasit   | P1       | 2026-05-11 | 5    | 2026-05-15 | complete    |
+| [feat-126](platform/feat-126-admin-experience-watch-revalidation.md)                 | Admin Experience Watch Revalidation                     | ekkasit   | P1       | 2026-05-11 | 1    | 2026-05-11 | complete    |
+| [feat-127](platform/feat-127-admin-experience-editor-referenced-video-thumbnails.md) | Admin Experience Editor Referenced Video Thumbnails     | ekkasit   | P1       | 2026-05-11 | 1    | 2026-05-11 | complete    |
+| [feat-040](platform/feat-040-partner-activation-network.md)                          | Partner Activation Network                              | urim      | P1       | 2026-06-16 | 28   | 2026-07-13 | blocked     |
+| [feat-042](platform/feat-042-video-contests-and-inspiration-feed.md)                 | Video Contests and Inspiration Feed                     | urim      | P1       | 2026-06-30 | 28   | 2026-07-27 | blocked     |
+| [feat-088](platform/feat-088-internal-tools-branding.md)                             | Internal Tools Branding                                 | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
+| [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                    | Agent-Agnostic Repo Instructions                        | josh      | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
+| [feat-102](platform/feat-102-admin-login-copy-simplification.md)                     | Admin Login Copy Simplification                         | tataihono | P2       | 2026-04-16 | 1    | 2026-04-16 | complete    |
+| [feat-108](platform/feat-108-admin-experiences-dashboard-card-refinement.md)         | Admin Experiences Dashboard Card Refinement             | tataihono | P2       | 2026-04-23 | 1    | 2026-04-23 | complete    |
+| [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                | Partner Publishing and User Accounts                    | tataihono | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
+| [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)              | LLM Steering System (RAG + Guardrails)                  | tataihono | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
+| [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)               | Optimize Through Data-Driven Insights                   | tataihono | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |
+| [feat-067](platform/feat-067-doctrinal-validation-engine.md)                         | Doctrinal Validation Engine                             | vlad      | P2       | 2026-12-01 | 31   | 2026-12-31 | blocked     |
+| [feat-070](platform/feat-070-public-ai-entry-point.md)                               | Public AI Entry Point                                   | tataihono | P2       | 2026-12-01 | 31   | 2026-12-31 | blocked     |
 
 ### Topic Experiences
 

@@ -17,7 +17,9 @@ import { builder } from "@/graphql/builder"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
 import type { Prisma } from "@prisma/client"
 
-function canReadUnpublishedVideoFields(ctx: { user?: { role?: string } | null }) {
+function canReadUnpublishedVideoFields(ctx: {
+  user?: { role?: string } | null
+}) {
   return ctx.user?.role === "ADMIN" || ctx.user?.role === "EDITOR"
 }
 

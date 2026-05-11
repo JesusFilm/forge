@@ -71,8 +71,15 @@ export const env = createEnv({
     OPENROUTER_API_KEY: z.string().min(1).optional(),
     OPENROUTER_IMAGE_TEXT_MODEL: z.string().min(1).optional(),
     OPENROUTER_IMAGE_TEXT_MODELS: z.string().min(1).optional(),
+    OPENROUTER_EXPERIENCE_CHAT_MODEL: z.string().min(1).optional(),
+    OPENROUTER_EXPERIENCE_CHAT_MODELS: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BASE_URL: z.string().url().optional(),
+    // Optional admin -> web ISR hook. When configured, Experience locale
+    // saves/publishes notify apps/web so published previews reflect edits
+    // immediately instead of waiting for the 60s ISR safety window.
+    WATCH_REVALIDATION_URL: z.string().url().optional(),
+    WATCH_REVALIDATION_SECRET: z.string().min(1).optional(),
     // Gates the local-only codex CLI fallback for Experience AI drafting.
     // Defaults to false so production deployments without OPENROUTER_API_KEY
     // / OPENAI_API_KEY surface NOT_CONFIGURED instead of silently spawning
@@ -207,8 +214,20 @@ export const env = createEnv({
     OPENROUTER_IMAGE_TEXT_MODELS: emptyToUndefined(
       process.env.OPENROUTER_IMAGE_TEXT_MODELS,
     ),
+    OPENROUTER_EXPERIENCE_CHAT_MODEL: emptyToUndefined(
+      process.env.OPENROUTER_EXPERIENCE_CHAT_MODEL,
+    ),
+    OPENROUTER_EXPERIENCE_CHAT_MODELS: emptyToUndefined(
+      process.env.OPENROUTER_EXPERIENCE_CHAT_MODELS,
+    ),
     OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
     OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
+    WATCH_REVALIDATION_URL: emptyToUndefined(
+      process.env.WATCH_REVALIDATION_URL,
+    ),
+    WATCH_REVALIDATION_SECRET: emptyToUndefined(
+      process.env.WATCH_REVALIDATION_SECRET,
+    ),
     EXPERIENCE_AI_ALLOW_CODEX_FALLBACK: emptyToUndefined(
       process.env.EXPERIENCE_AI_ALLOW_CODEX_FALLBACK,
     ),

@@ -45,6 +45,36 @@ export const CHAT_ERROR_PRESENTATION: Readonly<
     retry: true,
     severity: "error",
   },
+  provider_not_configured: {
+    title: "AI not configured",
+    message: "OpenRouter is not configured for draft generation.",
+    retry: false,
+    severity: "error",
+  },
+  provider_unavailable: {
+    title: "AI unavailable",
+    message: "The free AI provider is unavailable right now. Try again soon.",
+    retry: true,
+    severity: "error",
+  },
+  provider_rate_limited: {
+    title: "AI rate limited",
+    message: "The free AI models are rate-limited right now. Try again later.",
+    retry: true,
+    severity: "error",
+  },
+  provider_timeout: {
+    title: "Took too long",
+    message: "The free AI model took too long. Try again.",
+    retry: true,
+    severity: "error",
+  },
+  provider_validation_failed: {
+    title: "Draft rejected",
+    message: "The generated draft did not pass validation. Try again.",
+    retry: true,
+    severity: "error",
+  },
   invalid_json: {
     title: "Garbled response",
     message: "The AI's response couldn't be parsed. Try rephrasing.",

@@ -43,6 +43,11 @@ import type {
   ChatErrorCode,
   ChatStreamEvent,
 } from "@/services/experience-ai/experience-ai-chat.service"
+import type {
+  EditorialBrief,
+  EditorialBriefField,
+} from "@/services/experience-ai/experience-ai-chat-brief"
+import type { QualityDraftReview } from "@/services/experience-ai/experience-ai-quality-draft.schemas"
 import {
   type ChatMessageDTO,
   type ChatThreadDTO,
@@ -127,6 +132,13 @@ type StagedDraftPreview = {
   metaDescription: string
   blocksJson: string
   error: string | null
+  review?: QualityDraftReview
+}
+
+type BriefConfirmationPreview = {
+  messageId: string
+  content: string
+  brief: EditorialBrief
 }
 
 // -----------------------------------------------------------------------------
@@ -152,6 +164,8 @@ export function ExperienceChatPanel({
   const [stagedDraft, setStagedDraft] = useState<StagedDraftPreview | null>(
     null,
   )
+  const [briefConfirmation, setBriefConfirmation] =
+    useState<BriefConfirmationPreview | null>(null)
 
   const messageListRef = useRef<HTMLDivElement | null>(null)
   const stagedDraftRef = useRef<HTMLLIElement | null>(null)
@@ -159,6 +173,7 @@ export function ExperienceChatPanel({
   const lastSubmissionRef = useRef<{
     prompt: string
     confirmedAcrossLocales: boolean
+    confirmedBrief: boolean
   } | null>(null)
 
   // -- Initial load --------------------------------------------------------
@@ -265,9 +280,14 @@ export function ExperienceChatPanel({
       threadId: string,
       prompt: string,
       confirmedAcrossLocales: boolean,
+      confirmedBrief = false,
     ) => {
       const abort = new AbortController()
-      lastSubmissionRef.current = { prompt, confirmedAcrossLocales }
+      lastSubmissionRef.current = {
+        prompt,
+        confirmedAcrossLocales,
+        confirmedBrief,
+      }
       setStream({ kind: "streaming", tokens: "", abort })
 
       // Optimistic user bubble.
@@ -285,7 +305,7 @@ export function ExperienceChatPanel({
 
       try {
         const iter = streamFactory(
-          { threadId, prompt, confirmedAcrossLocales },
+          { threadId, prompt, confirmedAcrossLocales, confirmedBrief },
           { signal: abort.signal },
         )
         let finalMessageId: string | null = null
@@ -345,6 +365,7 @@ export function ExperienceChatPanel({
               })
               return
             case "mutation_proposal":
+              setBriefConfirmation(null)
               setStagedDraft({
                 messageId: event.messageId,
                 initial: event.draft,
@@ -352,7 +373,38 @@ export function ExperienceChatPanel({
                 metaDescription: event.draft.metaDescription ?? "",
                 blocksJson: JSON.stringify(event.draft.blocks, null, 2),
                 error: null,
+                review: event.review,
               })
+              break
+            case "brief_update":
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: event.messageId,
+                  role: "ASSISTANT",
+                  content: event.content,
+                  createdAt: new Date().toISOString(),
+                  snapshotDiff: null,
+                  mutationsApplied: {
+                    kind: "editorial_brief",
+                    status: event.confirmationRequired
+                      ? "confirmation_required"
+                      : "collecting",
+                    brief: event.brief,
+                    missingFields: event.missingFields,
+                    question: event.question,
+                  },
+                },
+              ])
+              setBriefConfirmation(
+                event.confirmationRequired
+                  ? {
+                      messageId: event.messageId,
+                      content: event.content,
+                      brief: event.brief,
+                    }
+                  : null,
+              )
               break
           }
         }
@@ -439,7 +491,18 @@ export function ExperienceChatPanel({
     if (!threadId) return
     // Append a fresh user message via the optimistic-append path inside
     // beginStream — don't reuse the failed bubble.
-    void beginStream(threadId, last.prompt, last.confirmedAcrossLocales)
+    void beginStream(
+      threadId,
+      last.prompt,
+      last.confirmedAcrossLocales,
+      last.confirmedBrief,
+    )
+  }, [activeThreadId, beginStream, stream])
+
+  const handleConfirmBrief = useCallback(() => {
+    const threadId = activeThreadId
+    if (!threadId || stream.kind === "streaming") return
+    void beginStream(threadId, "Generate from this brief", false, true)
   }, [activeThreadId, beginStream, stream])
 
   const handleStop = useCallback(() => {
@@ -692,6 +755,15 @@ export function ExperienceChatPanel({
               />
             </li>
           ) : null}
+
+          {briefConfirmation && !stagedDraft ? (
+            <li className="flex justify-start">
+              <BriefConfirmationCard
+                preview={briefConfirmation}
+                onConfirm={handleConfirmBrief}
+              />
+            </li>
+          ) : null}
         </ul>
       </div>
 
@@ -885,6 +957,7 @@ function StagedDraftCard({
             {draft.error}
           </div>
         ) : null}
+        {draft.review ? <QualityReviewCard review={draft.review} /> : null}
         <div className="flex items-center justify-end gap-2">
           <button
             type="button"
@@ -903,6 +976,99 @@ function StagedDraftCard({
           </button>
         </div>
       </div>
+    </section>
+  )
+}
+
+const BRIEF_FIELD_LABELS: Record<EditorialBriefField, string> = {
+  topicOrPassage: "Topic or passage",
+  language: "Language",
+  audience: "Audience",
+  desiredOutcome: "Desired outcome",
+  tone: "Tone",
+  pageType: "Page type",
+  scriptureEmphasis: "Scripture emphasis",
+  ctaOrNextStep: "CTA or next step",
+}
+
+const BRIEF_FIELD_ORDER = Object.keys(
+  BRIEF_FIELD_LABELS,
+) as EditorialBriefField[]
+
+function BriefConfirmationCard({
+  preview,
+  onConfirm,
+}: {
+  preview: BriefConfirmationPreview
+  onConfirm: () => void
+}) {
+  return (
+    <section
+      className="w-full rounded-sm border border-[color:color-mix(in_oklab,var(--color-brand)_28%,var(--color-hairline))] bg-[var(--color-surface-inset)] p-3"
+      data-testid="experience-chat-brief-confirmation"
+    >
+      <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+        Editorial brief
+      </div>
+      <dl className="mt-2 space-y-2">
+        {BRIEF_FIELD_ORDER.map((field) => (
+          <div key={field}>
+            <dt className="text-[11px] font-medium text-[var(--color-text-muted)]">
+              {BRIEF_FIELD_LABELS[field]}
+            </dt>
+            <dd className="text-[13px] leading-5 text-[var(--color-text-primary)]">
+              {preview.brief[field] ?? "—"}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <div className="mt-3 flex justify-end">
+        <button
+          type="button"
+          onClick={onConfirm}
+          data-testid="experience-chat-brief-confirm"
+          className="inline-flex h-8 items-center rounded-sm bg-[var(--color-brand)] px-2.5 text-[12px] font-medium text-white hover:bg-[var(--color-brand-pressed)]"
+        >
+          Generate from brief
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function QualityReviewCard({ review }: { review: QualityDraftReview }) {
+  return (
+    <section
+      className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] p-2.5"
+      data-testid="experience-chat-quality-review"
+    >
+      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+        Review notes
+      </div>
+      <ul className="mt-2 space-y-1 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+        {review.scriptureNotes.slice(0, 3).map((note) => (
+          <li key={note}>{note}</li>
+        ))}
+      </ul>
+      {review.referenceLedger.length > 0 ? (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-[12px] font-medium text-[var(--color-text-secondary)]">
+            Reference ledger
+          </summary>
+          <ul
+            className="mt-1 space-y-1 text-[12px] leading-5 text-[var(--color-text-secondary)]"
+            data-testid="experience-chat-reference-ledger"
+          >
+            {review.referenceLedger.slice(0, 5).map((entry, index) => (
+              <li key={`${entry.sourceKind}-${entry.reference}-${index}`}>
+                <span className="font-medium">{entry.reference}</span>
+                {" — "}
+                {entry.claim}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
     </section>
   )
 }

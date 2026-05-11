@@ -8,6 +8,8 @@ const { envState } = vi.hoisted(() => ({
   envState: {
     EXPERIENCE_AI_ALLOW_CODEX_FALLBACK: true as boolean,
     OPENROUTER_API_KEY: undefined as string | undefined,
+    OPENROUTER_EXPERIENCE_CHAT_MODEL: undefined as string | undefined,
+    OPENROUTER_EXPERIENCE_CHAT_MODELS: undefined as string | undefined,
     OPENAI_API_KEY: undefined as string | undefined,
     OPENAI_BASE_URL: undefined as string | undefined,
   },
@@ -15,17 +17,35 @@ const { envState } = vi.hoisted(() => ({
 
 const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }))
 
-const { generateDraftMock, loadCandidatesMock } = vi.hoisted(() => ({
-  generateDraftMock: vi.fn(),
+const { loadCandidatesMock } = vi.hoisted(() => ({
   loadCandidatesMock: vi.fn(),
 }))
+
+const { generateQualityDraftMock, QualityExperienceDraftErrorMock } =
+  vi.hoisted(() => ({
+    generateQualityDraftMock: vi.fn(),
+    QualityExperienceDraftErrorMock: class QualityExperienceDraftError extends Error {
+      constructor(
+        readonly code: string,
+        message: string,
+        readonly attempts: unknown[] = [],
+      ) {
+        super(message)
+        this.name = "QualityExperienceDraftError"
+      }
+    },
+  }))
 
 vi.mock("@/config/env", () => ({ env: envState }))
 vi.mock("node:child_process", () => ({ spawn: spawnMock }))
 
 vi.mock("./experience-ai.service", () => ({
-  generateExperienceAiDraft: generateDraftMock,
   loadExperienceAiVideoCandidates: loadCandidatesMock,
+}))
+
+vi.mock("./experience-ai-quality-draft", () => ({
+  generateQualityExperienceDraft: generateQualityDraftMock,
+  QualityExperienceDraftError: QualityExperienceDraftErrorMock,
 }))
 
 import {
@@ -76,6 +96,7 @@ function makeMockPrisma(opts?: {
   thread?: unknown
   blocks?: unknown
   applyResult?: unknown
+  messages?: unknown[]
 }) {
   const thread = {
     findUnique: vi.fn().mockResolvedValue(
@@ -102,7 +123,7 @@ function makeMockPrisma(opts?: {
       id: data.role === "ASSISTANT" ? "msg-assistant" : "msg-user",
       ...data,
     })),
-    findMany: vi.fn().mockResolvedValue([]),
+    findMany: vi.fn().mockResolvedValue(opts?.messages ?? []),
   }
   const locale = {
     findUniqueOrThrow: vi.fn().mockResolvedValue({
@@ -198,10 +219,30 @@ beforeEach(() => {
       label: null,
     },
   ])
-  generateDraftMock.mockResolvedValue({
+  generateQualityDraftMock.mockReset()
+  generateQualityDraftMock.mockResolvedValue({
     title: "Generated Title",
     metaDescription: "Generated description",
-    blocks: [{ type: "text", text: "Generated block" }],
+    blocks: [{ t: "text", contentParagraphs: ["Generated block"] }],
+    review: {
+      scriptureNotes: ["Matthew 11:28-30 anchors the page."],
+      researchNotes: [],
+      theologyReview: { status: "passed", notes: [] },
+      referenceLedger: [
+        {
+          sourceKind: "scripture",
+          claim: "Jesus invites weary people to come to him.",
+          reference: "Matthew 11:28-30",
+        },
+      ],
+    },
+    imageDirection: "Warm portrait-oriented hero imagery.",
+    provider: {
+      kind: "openrouter-free",
+      model: "model-a",
+      usedModel: "model-a",
+      attempts: [{ model: "model-a", status: "succeeded" }],
+    },
   })
 })
 
@@ -210,7 +251,7 @@ beforeEach(() => {
 // -----------------------------------------------------------------------------
 
 describe("streamChatTurn — happy path", () => {
-  it("routes empty-canvas creation prompts through the draft generator and yields a staged proposal", async () => {
+  it("routes empty-canvas creation prompts through the guided brief workflow", async () => {
     const prisma = makeMockPrisma()
 
     const events = await collectEvents(
@@ -220,32 +261,37 @@ describe("streamChatTurn — happy path", () => {
       ),
     )
 
-    expect(generateDraftMock).toHaveBeenCalledWith(
-      prisma,
-      expect.objectContaining({
-        experienceLocaleId: "locale-1",
-        locale: "en",
-        prompt: "Generate AI draft about hope",
-      }),
-    )
+    expect(loadCandidatesMock).not.toHaveBeenCalled()
+    expect(generateQualityDraftMock).not.toHaveBeenCalled()
     expect(spawnMock).not.toHaveBeenCalled()
     expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
     expect(events).toEqual([
       expect.objectContaining({
-        type: "mutation_proposal",
+        type: "brief_update",
         messageId: "msg-assistant",
-        draft: expect.objectContaining({
-          title: "Generated Title",
-          metaDescription: "Generated description",
-          blocks: [{ type: "text", text: "Generated block" }],
+        brief: expect.objectContaining({
+          topicOrPassage: "hope",
         }),
+        missingFields: expect.arrayContaining(["language"]),
+        confirmationRequired: false,
       }),
       { type: "done", messageId: "msg-assistant" },
     ])
   })
 
-  it("treats a plain empty-canvas editorial prompt as first-draft generation", async () => {
+  it("uses normal chat routing for plain empty-canvas prompts without creation intent", async () => {
     const prisma = makeMockPrisma()
+    const proc = makeProc()
+    spawnMock.mockReturnValue(proc)
+
+    queueMicrotask(() => {
+      emitLines(proc, [
+        JSON.stringify({
+          mutations: { title: "Honest Questions" },
+          reason: "set starter title",
+        }),
+      ])
+    })
 
     await collectEvents(
       streamChatTurn(
@@ -257,13 +303,139 @@ describe("streamChatTurn — happy path", () => {
       ),
     )
 
-    expect(generateDraftMock).toHaveBeenCalledWith(
+    expect(generateQualityDraftMock).not.toHaveBeenCalled()
+    expect(spawnMock).toHaveBeenCalled()
+  })
+
+  it("generates an OpenRouter-backed quality draft after a complete brief is confirmed", async () => {
+    const brief = {
+      topicOrPassage: "Matthew 11:28-30",
+      language: "English",
+      audience: "young adults",
+      desiredOutcome: "Help readers trust Jesus with weariness.",
+      tone: "Warm and invitational",
+      pageType: "Experience page",
+      scriptureEmphasis: "Center the page on Matthew 11:28-30.",
+      ctaOrNextStep: "Invite readers to pray.",
+    }
+    const prisma = makeMockPrisma({
+      messages: [
+        {
+          role: "ASSISTANT",
+          content: "Confirm this brief.",
+          mutationsApplied: {
+            kind: "editorial_brief",
+            status: "confirmation_required",
+            brief,
+            missingFields: [],
+          },
+        },
+      ],
+    })
+
+    const events = await collectEvents(
+      streamChatTurn(
+        {
+          threadId: "thread-1",
+          prompt: "Generate from this brief",
+          confirmedBrief: true,
+        },
+        { prisma, user: EDITOR },
+      ),
+    )
+
+    expect(loadCandidatesMock).toHaveBeenCalledWith(
       prisma,
       expect.objectContaining({
-        prompt: "Meet Jesus with honest questions about doubt",
+        locale: "en",
+        prompt: expect.stringContaining("Matthew 11:28-30"),
+      }),
+    )
+    expect(generateQualityDraftMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        brief,
+        locale: "en",
+        candidates: expect.any(Array),
       }),
     )
     expect(spawnMock).not.toHaveBeenCalled()
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "mutation_proposal",
+        messageId: "msg-assistant",
+        draft: expect.objectContaining({
+          title: "Generated Title",
+          metaDescription: "Generated description",
+        }),
+        review: expect.objectContaining({
+          scriptureNotes: ["Matthew 11:28-30 anchors the page."],
+        }),
+      }),
+      { type: "done", messageId: "msg-assistant" },
+    ])
+  })
+
+  it("returns to normal chat routing after a quality draft closes the brief", async () => {
+    const brief = {
+      topicOrPassage: "Matthew 11:28-30",
+      language: "English",
+      audience: "young adults",
+      desiredOutcome: "Help readers trust Jesus with weariness.",
+      tone: "Warm and invitational",
+      pageType: "Experience page",
+      scriptureEmphasis: "Center the page on Matthew 11:28-30.",
+      ctaOrNextStep: "Invite readers to pray.",
+    }
+    const prisma = makeMockPrisma({
+      blocks: [{ t: "text", contentParagraphs: ["Existing draft"] }],
+      messages: [
+        {
+          role: "ASSISTANT",
+          content: "Confirm this brief.",
+          mutationsApplied: {
+            kind: "editorial_brief",
+            status: "confirmation_required",
+            brief,
+            missingFields: [],
+          },
+        },
+        {
+          role: "ASSISTANT",
+          content: "Generated a quality-first draft for review.",
+          mutationsApplied: {
+            kind: "quality_draft",
+            brief,
+          },
+        },
+      ],
+    })
+    const proc = makeProc()
+    spawnMock.mockReturnValue(proc)
+
+    queueMicrotask(() => {
+      emitLines(proc, [
+        JSON.stringify({
+          mutations: { title: "Sharper Title" },
+          reason: "refined title",
+        }),
+      ])
+    })
+
+    const events = await collectEvents(
+      streamChatTurn(
+        {
+          threadId: "thread-1",
+          prompt: "Make the title sharper",
+        },
+        { prisma, user: EDITOR },
+      ),
+    )
+
+    expect(generateQualityDraftMock).not.toHaveBeenCalled()
+    expect(spawnMock).toHaveBeenCalled()
+    expect(
+      events.find((event) => event.type === "mutation_applied"),
+    ).toBeDefined()
   })
 
   it("yields token_delta, mutation_applied, done and persists assistant message", async () => {
@@ -561,6 +733,55 @@ describe("streamChatTurn — failure modes", () => {
       code: "cancelled",
     })
     expect(proc.kill).toHaveBeenCalledWith("SIGTERM")
+  })
+
+  it("emits provider errors from confirmed quality-draft generation", async () => {
+    const brief = {
+      topicOrPassage: "Matthew 11:28-30",
+      language: "English",
+      audience: "young adults",
+      desiredOutcome: "Help readers trust Jesus with weariness.",
+      tone: "Warm and invitational",
+      pageType: "Experience page",
+      scriptureEmphasis: "Center the page on Matthew 11:28-30.",
+      ctaOrNextStep: "Invite readers to pray.",
+    }
+    const prisma = makeMockPrisma({
+      messages: [
+        {
+          role: "ASSISTANT",
+          content: "Confirm this brief.",
+          mutationsApplied: {
+            kind: "editorial_brief",
+            status: "confirmation_required",
+            brief,
+            missingFields: [],
+          },
+        },
+      ],
+    })
+    generateQualityDraftMock.mockRejectedValueOnce(
+      new QualityExperienceDraftErrorMock(
+        "provider_rate_limited",
+        "All free models are rate limited",
+      ),
+    )
+
+    const events = await collectEvents(
+      streamChatTurn(
+        {
+          threadId: "thread-1",
+          prompt: "Generate from this brief",
+          confirmedBrief: true,
+        },
+        { prisma, user: EDITOR },
+      ),
+    )
+
+    expect(events.find((e) => e.type === "error")).toMatchObject({
+      code: "provider_rate_limited",
+    })
+    expect(spawnMock).not.toHaveBeenCalled()
   })
 })
 

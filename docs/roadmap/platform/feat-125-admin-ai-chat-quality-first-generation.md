@@ -3,7 +3,7 @@ id: "feat-125"
 title: "Admin AI Chat Quality-First Generation"
 owner: "ekkasit"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-05-11"
 duration: 5
 depends_on: []

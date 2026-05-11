@@ -416,6 +416,18 @@ describe("ExperienceChatPanel", () => {
           ogImageUrl: null,
           blocks: [{ type: "text", text: "Generated block" }],
         },
+        review: {
+          scriptureNotes: ["Matthew 11:28-30 anchors the draft."],
+          researchNotes: [],
+          theologyReview: { status: "passed", notes: [] },
+          referenceLedger: [
+            {
+              sourceKind: "scripture",
+              claim: "Jesus invites weary people to come to him.",
+              reference: "Matthew 11:28-30",
+            },
+          ],
+        },
       },
       { type: "done", messageId: "draft-1" },
     ])
@@ -437,11 +449,13 @@ describe("ExperienceChatPanel", () => {
     ) as HTMLTextAreaElement
     setTextareaValue(input, "Generate AI draft about hope")
     await flush()
-    ;(
-      view.container.querySelector(
-        '[data-testid="experience-chat-send"]',
-      ) as HTMLButtonElement
-    ).click()
+    act(() =>
+      (
+        view.container.querySelector(
+          '[data-testid="experience-chat-send"]',
+        ) as HTMLButtonElement
+      ).click(),
+    )
     await flush()
 
     expect(canvas.applyDiff).not.toHaveBeenCalled()
@@ -458,6 +472,11 @@ describe("ExperienceChatPanel", () => {
     )
     expect(userMessage).not.toBeNull()
     expect(preview).not.toBeNull()
+    expect(
+      view.container.querySelector(
+        '[data-testid="experience-chat-quality-review"]',
+      )?.textContent,
+    ).toContain("Matthew 11:28-30 anchors the draft.")
     const orderedConversationItems = Array.from(
       view.container.querySelectorAll(
         '[data-testid^="experience-chat-message-pending-user-"], [data-testid="experience-chat-draft-preview"]',
@@ -470,11 +489,13 @@ describe("ExperienceChatPanel", () => {
     ) as HTMLInputElement
     setInputValue(titleInput, "Edited")
     await flush()
-    ;(
-      view.container.querySelector(
-        '[data-testid="experience-chat-draft-apply"]',
-      ) as HTMLButtonElement
-    ).click()
+    act(() =>
+      (
+        view.container.querySelector(
+          '[data-testid="experience-chat-draft-apply"]',
+        ) as HTMLButtonElement
+      ).click(),
+    )
     await flush()
 
     expect(canvas.applyDiff).toHaveBeenCalledWith({
@@ -489,6 +510,83 @@ describe("ExperienceChatPanel", () => {
         '[data-testid="experience-chat-message-draft-1"]',
       ),
     ).not.toBeNull()
+  })
+
+  it("renders a completed brief card and confirms generation with confirmedBrief", async () => {
+    const actions = makeActions()
+    const streamFactory = vi.fn(async function* (body: {
+      confirmedBrief?: boolean
+    }) {
+      if (body.confirmedBrief) {
+        yield { type: "done" as const, messageId: "final" }
+        return
+      }
+      yield {
+        type: "brief_update" as const,
+        messageId: "brief-1",
+        content: "Confirm this brief.",
+        brief: {
+          topicOrPassage: "Matthew 11:28-30",
+          language: "English",
+          audience: "young adults",
+          desiredOutcome: "Trust Jesus with weariness.",
+          tone: "Warm",
+          pageType: "Experience page",
+          scriptureEmphasis: "Center Matthew 11:28-30.",
+          ctaOrNextStep: "Invite readers to pray.",
+        },
+        missingFields: [],
+        confirmationRequired: true,
+      }
+      yield { type: "done" as const, messageId: "brief-1" }
+    })
+
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={actions}
+        streamFactory={streamFactory as never}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+
+    const input = view.container.querySelector(
+      '[data-testid="experience-chat-input"]',
+    ) as HTMLTextAreaElement
+    setTextareaValue(input, "Create an experience about rest")
+    await flush()
+    act(() =>
+      (
+        view.container.querySelector(
+          '[data-testid="experience-chat-send"]',
+        ) as HTMLButtonElement
+      ).click(),
+    )
+    await flush()
+
+    expect(
+      view.container.querySelector(
+        '[data-testid="experience-chat-brief-confirmation"]',
+      )?.textContent,
+    ).toContain("Matthew 11:28-30")
+    act(() =>
+      (
+        view.container.querySelector(
+          '[data-testid="experience-chat-brief-confirm"]',
+        ) as HTMLButtonElement
+      ).click(),
+    )
+    await flush()
+
+    expect(streamFactory).toHaveBeenCalledTimes(2)
+    expect(streamFactory.mock.calls[1][0]).toMatchObject({
+      threadId: "new-thread",
+      prompt: "Generate from this brief",
+      confirmedBrief: true,
+    })
   })
 
   it("stop button aborts the in-flight stream", async () => {
@@ -524,11 +622,13 @@ describe("ExperienceChatPanel", () => {
     ) as HTMLTextAreaElement
     setTextareaValue(input, "long task")
     await flush()
-    ;(
-      view.container.querySelector(
-        '[data-testid="experience-chat-send"]',
-      ) as HTMLButtonElement
-    ).click()
+    act(() =>
+      (
+        view.container.querySelector(
+          '[data-testid="experience-chat-send"]',
+        ) as HTMLButtonElement
+      ).click(),
+    )
     await flush()
 
     const stop = view.container.querySelector(
@@ -617,11 +717,13 @@ describe("ExperienceChatPanel", () => {
     ) as HTMLTextAreaElement
     setTextareaValue(input, "do the thing across locales")
     await flush()
-    ;(
-      view.container.querySelector(
-        '[data-testid="experience-chat-send"]',
-      ) as HTMLButtonElement
-    ).click()
+    act(() =>
+      (
+        view.container.querySelector(
+          '[data-testid="experience-chat-send"]',
+        ) as HTMLButtonElement
+      ).click(),
+    )
     await flush()
 
     // Modal opened (it's portalled into the panel root with role=dialog).
@@ -662,11 +764,13 @@ describe("ExperienceChatPanel", () => {
     ) as HTMLTextAreaElement
     setTextareaValue(input, "force error")
     await flush()
-    ;(
-      view.container.querySelector(
-        '[data-testid="experience-chat-send"]',
-      ) as HTMLButtonElement
-    ).click()
+    act(() =>
+      (
+        view.container.querySelector(
+          '[data-testid="experience-chat-send"]',
+        ) as HTMLButtonElement
+      ).click(),
+    )
     await flush()
 
     const errorEl = view.container.querySelector(
@@ -711,11 +815,13 @@ describe("ExperienceChatPanel", () => {
     ) as HTMLTextAreaElement
     setTextareaValue(input, "stop me")
     await flush()
-    ;(
-      view.container.querySelector(
-        '[data-testid="experience-chat-send"]',
-      ) as HTMLButtonElement
-    ).click()
+    act(() =>
+      (
+        view.container.querySelector(
+          '[data-testid="experience-chat-send"]',
+        ) as HTMLButtonElement
+      ).click(),
+    )
     await flush()
 
     const errorEl = view.container.querySelector(

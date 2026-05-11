@@ -150,7 +150,7 @@ describe("normalizeExperienceDraft", () => {
     )
   })
 
-  it("fails on duplicate section refs", () => {
+  it("repairs duplicate section refs with unique section keys", () => {
     const draft: DraftExperience = {
       title: "Duplicate refs",
       metaDescription: "Duplicate refs",
@@ -160,9 +160,11 @@ describe("normalizeExperienceDraft", () => {
       ],
     }
 
-    expect(() => normalizeExperienceDraft(draft, candidates)).toThrowError(
-      ExperienceAiNormalizationError,
-    )
+    const normalized = normalizeExperienceDraft(draft, candidates)
+    expect(normalized.blocks).toMatchObject([
+      { t: "text", sectionKey: "ai-s01", heading: "One" },
+      { t: "text", sectionKey: "ai-s01-1", heading: "Two" },
+    ])
   })
 
   describe("presentation defaults", () => {

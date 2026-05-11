@@ -136,7 +136,7 @@ describe("POST /api/experience-chat/stream", () => {
     expect(frames[3]).toMatch(/^event: done/)
   })
 
-  it("forwards confirmedAcrossLocales through to the service", async () => {
+  it("forwards confirmation flags through to the service", async () => {
     streamChatTurnMock.mockReturnValue(
       eventGenerator([{ type: "done", messageId: "m" }]),
     )
@@ -146,6 +146,7 @@ describe("POST /api/experience-chat/stream", () => {
         threadId: "t1",
         prompt: "hi",
         confirmedAcrossLocales: true,
+        confirmedBrief: true,
       }),
     )
 
@@ -154,6 +155,7 @@ describe("POST /api/experience-chat/stream", () => {
         threadId: "t1",
         prompt: "hi",
         confirmedAcrossLocales: true,
+        confirmedBrief: true,
       }),
       expect.objectContaining({
         user: expect.objectContaining({ role: "EDITOR" }),

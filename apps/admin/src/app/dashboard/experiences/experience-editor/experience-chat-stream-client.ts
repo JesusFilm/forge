@@ -21,6 +21,7 @@ export type StreamChatRequestBody = {
   threadId: string
   prompt: string
   confirmedAcrossLocales?: boolean
+  confirmedBrief?: boolean
 }
 
 export type StreamChatOptions = {

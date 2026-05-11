@@ -436,6 +436,72 @@ describe("ExperienceService", () => {
       expect(prisma.experience.update).not.toHaveBeenCalled()
     })
 
+    it("notifies watch revalidation after updating a published locale", async () => {
+      const revalidateWatchExperience = vi.fn().mockResolvedValue({
+        status: "revalidated",
+        paths: ["/updated/en"],
+      })
+      service = new ExperienceService(prisma, revalidateWatchExperience)
+      const publishedLocale = {
+        ...localeRow,
+        status: "PUBLISHED",
+        publishedAt: new Date("2026-04-15T13:00:00.000Z"),
+      }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        publishedLocale,
+      )
+      prisma.experienceLocale.update.mockResolvedValueOnce({
+        ...publishedLocale,
+        slug: "updated-locale",
+        title: "Updated",
+      })
+
+      await service.updateLocale({
+        input: { id: "loc-1", slug: "updated-locale", title: "Updated" },
+        user: EDITOR_ALICE,
+      })
+
+      expect(revalidateWatchExperience).toHaveBeenCalledWith({
+        slug: "test-locale",
+        locale: "en",
+        isTemplate: false,
+      })
+      expect(revalidateWatchExperience).toHaveBeenCalledWith({
+        slug: "updated-locale",
+        locale: "en",
+        isTemplate: false,
+      })
+    })
+
+    it("does not fail the update when watch revalidation fails", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+      const revalidateWatchExperience = vi
+        .fn()
+        .mockRejectedValue(new Error("watch offline"))
+      service = new ExperienceService(prisma, revalidateWatchExperience)
+      const publishedLocale = {
+        ...localeRow,
+        status: "PUBLISHED",
+        publishedAt: new Date("2026-04-15T13:00:00.000Z"),
+      }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        publishedLocale,
+      )
+      prisma.experienceLocale.update.mockResolvedValueOnce({
+        ...publishedLocale,
+        title: "Updated",
+      })
+
+      await expect(
+        service.updateLocale({
+          input: { id: "loc-1", title: "Updated" },
+          user: EDITOR_ALICE,
+        }),
+      ).resolves.toMatchObject({ title: "Updated" })
+
+      warnSpy.mockRestore()
+    })
+
     it("SYSTEM cannot update locale (editorial isolation)", async () => {
       prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
 
@@ -502,6 +568,14 @@ describe("ExperienceService", () => {
       })
 
       expect(result.status).toBe("PUBLISHED")
+      expect(prisma.experienceLocale.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: "PUBLISHED",
+            publishedAt: expect.any(Date),
+          }),
+        }),
+      )
       expect(prisma.contentRevision.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -511,6 +585,50 @@ describe("ExperienceService", () => {
           }),
         }),
       )
+    })
+
+    it("notifies watch revalidation after publishing", async () => {
+      const revalidateWatchExperience = vi.fn().mockResolvedValue({
+        status: "revalidated",
+        paths: ["/publish-test/en"],
+      })
+      service = new ExperienceService(prisma, revalidateWatchExperience)
+      const localeRow = {
+        id: "loc-1",
+        experienceId: "exp-1",
+        locale: "en",
+        slug: "publish-test",
+        isHomepage: false,
+        pathSegment: null,
+        status: "DRAFT",
+        title: "Before publish",
+        metaDescription: null,
+        ogTitle: null,
+        ogDescription: null,
+        ogImageUrl: null,
+        blocks: [],
+        publishedAt: null,
+        createdAt: new Date("2026-04-15T12:00:00.000Z"),
+        updatedAt: new Date("2026-04-15T12:00:00.000Z"),
+        experience: { ownerId: "alice", archivedAt: null },
+      }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.experienceLocale.update.mockResolvedValueOnce({
+        ...localeRow,
+        status: "PUBLISHED",
+        publishedAt: new Date("2026-04-15T13:00:00.000Z"),
+      })
+
+      await service.publishLocale({
+        input: { id: "loc-1" },
+        user: EDITOR_ALICE,
+      })
+
+      expect(revalidateWatchExperience).toHaveBeenCalledWith({
+        slug: "publish-test",
+        locale: "en",
+        isTemplate: false,
+      })
     })
 
     it("VIEWER cannot publish", async () => {

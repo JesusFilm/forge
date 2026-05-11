@@ -1,7 +1,8 @@
 import { z } from "zod"
 import { env } from "@/config/env"
 
-export const OLLAMA_EMBEDDING_DIMENSIONS = env.OLLAMA_EMBEDDING_DIMENSIONS ?? 768
+export const OLLAMA_EMBEDDING_DIMENSIONS =
+  env.OLLAMA_EMBEDDING_DIMENSIONS ?? 768
 
 const OllamaEmbedResponseSchema = z.object({
   embeddings: z.array(z.array(z.number().finite())).min(1),

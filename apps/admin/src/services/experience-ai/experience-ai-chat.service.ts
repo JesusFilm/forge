@@ -36,15 +36,28 @@ import {
   type EditableLocaleState,
   type ExperienceChatDiff,
 } from "./experience-chat-diff"
+import { loadExperienceAiVideoCandidates } from "./experience-ai.service"
 import {
-  generateExperienceAiDraft,
-  loadExperienceAiVideoCandidates,
-} from "./experience-ai.service"
+  confirmedBriefMetadata,
+  isBriefConfirmationPrompt,
+  isCompleteBrief,
+  isExplicitRebriefPrompt,
+  isFullCreatePrompt,
+  latestBriefMetadata,
+  updateBriefFromTurn,
+  type EditorialBrief,
+  type EditorialBriefField,
+} from "./experience-ai-chat-brief"
 import {
   buildChatPrompt,
   type ChatHistoryTurn,
   type EditableLocaleSummary,
 } from "./experience-ai-chat-prompts"
+import {
+  generateQualityExperienceDraft,
+  QualityExperienceDraftError,
+} from "./experience-ai-quality-draft"
+import type { QualityDraftReview } from "./experience-ai-quality-draft.schemas"
 
 // -----------------------------------------------------------------------------
 // Public types
@@ -54,6 +67,11 @@ export type ChatErrorCode =
   | "codex_unavailable"
   | "codex_timeout"
   | "codex_idle_timeout"
+  | "provider_not_configured"
+  | "provider_unavailable"
+  | "provider_rate_limited"
+  | "provider_timeout"
+  | "provider_validation_failed"
   | "invalid_json"
   | "schema_violation"
   | "slug_change_rejected"
@@ -73,6 +91,16 @@ export type ChatStreamEvent =
       messageId: string
       diff: ExperienceChatDiff
       draft: EditableLocaleState
+      review?: QualityDraftReview
+    }
+  | {
+      type: "brief_update"
+      messageId: string
+      content: string
+      brief: EditorialBrief
+      missingFields: EditorialBriefField[]
+      question?: string
+      confirmationRequired: boolean
     }
   | {
       type: "mutation_applied"
@@ -86,6 +114,7 @@ export type StreamChatTurnInput = {
   threadId: string
   prompt: string
   confirmedAcrossLocales?: boolean
+  confirmedBrief?: boolean
 }
 
 export type StreamChatTurnDeps = {
@@ -106,10 +135,6 @@ const TOTAL_TIMEOUT_MS = 180_000
 const IDLE_TIMEOUT_MS = 120_000
 const CODEX_CHAT_MODEL = "gpt-5.5"
 const CANDIDATE_LIMIT = 8
-const EXPLICIT_DRAFT_INTENT_RE =
-  /\b(create|draft|generate|build|start|make|compose|write|design)\b.*\b(experience|draft|page|canvas|version)\b|\b(generate|create)\s+(an?\s+)?ai\s+draft\b/i
-const DISCOVERY_PROMPT_RE =
-  /^\s*(what|which|where|who|why|how)\b|\b(find|search|show|list|suggest)\b.*\b(videos?|candidates?|catalog|library)\b/i
 
 // -----------------------------------------------------------------------------
 // Envelope schema
@@ -147,6 +172,12 @@ type ChatMutationEnvelope = z.infer<typeof ChatMutationEnvelopeSchema>
 
 function errorEvent(code: ChatErrorCode, message: string): ChatStreamEvent {
   return { type: "error", code, message }
+}
+
+function providerErrorEvent(
+  error: QualityExperienceDraftError,
+): ChatStreamEvent {
+  return errorEvent(error.code, error.message)
 }
 
 function isPotentialEnvelopeLine(line: string): boolean {
@@ -200,16 +231,6 @@ function toLocaleSummary(
 
 function isEmptyCanvas(state: EditableLocaleState): boolean {
   return state.blocks.length === 0
-}
-
-function isFirstDraftPrompt(prompt: string): boolean {
-  const trimmed = prompt.trim()
-  if (!trimmed) return false
-  if (DISCOVERY_PROMPT_RE.test(trimmed)) return false
-  if (EXPLICIT_DRAFT_INTENT_RE.test(trimmed)) return true
-  // On an empty canvas, most editor prompts are implicitly asking for a
-  // first draft. Keep only explicit discovery prompts on the normal chat path.
-  return true
 }
 
 /**
@@ -498,14 +519,6 @@ export async function* streamChatTurn(
     },
   })
 
-  // ---- Build candidate retrieval (mirrors the one-shot path) ------------
-  const candidates = await loadExperienceAiVideoCandidates(prisma, {
-    locale: localeRow.locale,
-    prompt: input.prompt,
-    limit: CANDIDATE_LIMIT,
-  })
-
-  // ---- Build prompt ------------------------------------------------------
   const beforeState = toEditableLocaleState({
     title: localeRow.title,
     metaDescription: localeRow.metaDescription,
@@ -513,52 +526,124 @@ export async function* streamChatTurn(
     blocks: localeRow.blocks,
   })
 
-  if (isEmptyCanvas(beforeState) && isFirstDraftPrompt(input.prompt)) {
-    let draft
-    try {
-      draft = await generateExperienceAiDraft(prisma, {
-        experienceLocaleId: localeRow.id,
+  const history = await prisma.experienceChatMessage.findMany({
+    where: { threadId: thread.id },
+    orderBy: { createdAt: "asc" },
+    select: { role: true, content: true, mutationsApplied: true },
+    take: 200, // hard ceiling; trimHistory will further bound
+  })
+  const latestBrief = latestBriefMetadata(
+    history.map((message) => message.mutationsApplied),
+  )
+  const emptyCanvas = isEmptyCanvas(beforeState)
+  const inBriefMode =
+    input.confirmedBrief === true ||
+    latestBrief?.status === "collecting" ||
+    latestBrief?.status === "confirmation_required" ||
+    (emptyCanvas && isFullCreatePrompt(input.prompt)) ||
+    (!emptyCanvas && isExplicitRebriefPrompt(input.prompt))
+  const wantsBriefGeneration =
+    input.confirmedBrief === true ||
+    (latestBrief?.status === "confirmation_required" &&
+      isCompleteBrief(latestBrief.brief) &&
+      isBriefConfirmationPrompt(input.prompt))
+
+  if (inBriefMode) {
+    if (
+      wantsBriefGeneration &&
+      latestBrief &&
+      isCompleteBrief(latestBrief.brief)
+    ) {
+      const confirmed = confirmedBriefMetadata(latestBrief)
+      const candidates = await loadExperienceAiVideoCandidates(prisma, {
         locale: localeRow.locale,
-        prompt: input.prompt,
-        user,
-        candidateLimit: CANDIDATE_LIMIT,
-        experienceId: localeRow.experienceId,
+        prompt: Object.values(confirmed.brief).filter(Boolean).join("\n"),
+        limit: CANDIDATE_LIMIT,
       })
-    } catch (error) {
-      yield errorEvent(
-        "unknown",
-        error instanceof Error ? error.message : "Draft generation failed",
-      )
+
+      let draft
+      try {
+        draft = await generateQualityExperienceDraft({
+          brief: confirmed.brief,
+          locale: localeRow.locale,
+          candidates,
+        })
+      } catch (error) {
+        if (error instanceof QualityExperienceDraftError) {
+          yield providerErrorEvent(error)
+          return
+        }
+        yield errorEvent(
+          "provider_validation_failed",
+          error instanceof Error
+            ? error.message
+            : "Quality draft generation failed",
+        )
+        return
+      }
+
+      const draftState: EditableLocaleState = {
+        title: draft.title,
+        metaDescription: draft.metaDescription,
+        ogImageUrl: beforeState.ogImageUrl,
+        blocks: draft.blocks,
+      }
+      const diff = computeDiff(beforeState, draftState)
+      const persistableDiff = {
+        scalars: diff.scalars,
+        blocks: diff.blocks ?? [],
+        beforeBlocks: beforeState.blocks,
+      }
+      const assistantMessage = await prisma.experienceChatMessage.create({
+        data: {
+          threadId: thread.id,
+          role: "ASSISTANT",
+          content: "Generated a quality-first draft for review.",
+          providerKind: "openrouter-free",
+          snapshotDiff: persistableDiff as unknown as object,
+          mutationsApplied: {
+            kind: "quality_draft",
+            staged: true,
+            brief: confirmed.brief,
+            review: draft.review,
+            provider: draft.provider,
+            imageDirection: draft.imageDirection,
+            mutations: {
+              title: draftState.title,
+              metaDescription: draftState.metaDescription,
+              blocks: draftState.blocks,
+            },
+          } as unknown as object,
+        },
+      })
+
+      await prisma.experienceChatThread.update({
+        where: { id: thread.id },
+        data: { lastMessageAt: new Date() },
+      })
+
+      yield {
+        type: "mutation_proposal",
+        messageId: assistantMessage.id,
+        diff,
+        draft: draftState,
+        review: draft.review,
+      }
+      yield { type: "done", messageId: assistantMessage.id }
       return
     }
 
-    const draftState: EditableLocaleState = {
-      title: draft.title,
-      metaDescription: draft.metaDescription,
-      ogImageUrl: beforeState.ogImageUrl,
-      blocks: draft.blocks,
-    }
-    const diff = computeDiff(beforeState, draftState)
-    const persistableDiff = {
-      scalars: diff.scalars,
-      blocks: diff.blocks ?? [],
-      beforeBlocks: beforeState.blocks,
-    }
+    const briefTurn = updateBriefFromTurn({
+      previous: latestBrief,
+      prompt: input.prompt,
+    })
     const assistantMessage = await prisma.experienceChatMessage.create({
       data: {
         threadId: thread.id,
         role: "ASSISTANT",
-        content: "Generated a first draft for review.",
-        providerKind: "draft-generation",
-        snapshotDiff: persistableDiff as unknown as object,
-        mutationsApplied: {
-          staged: true,
-          mutations: {
-            title: draftState.title,
-            metaDescription: draftState.metaDescription,
-            blocks: draftState.blocks,
-          },
-        } as unknown as object,
+        content: briefTurn.content,
+        providerKind: "brief",
+        mutationsApplied: briefTurn.metadata as unknown as object,
       },
     })
 
@@ -568,21 +653,25 @@ export async function* streamChatTurn(
     })
 
     yield {
-      type: "mutation_proposal",
+      type: "brief_update",
       messageId: assistantMessage.id,
-      diff,
-      draft: draftState,
+      content: briefTurn.content,
+      brief: briefTurn.metadata.brief,
+      missingFields: briefTurn.metadata.missingFields,
+      question: briefTurn.metadata.question,
+      confirmationRequired: briefTurn.confirmationRequired,
     }
     yield { type: "done", messageId: assistantMessage.id }
     return
   }
 
-  const history = await prisma.experienceChatMessage.findMany({
-    where: { threadId: thread.id },
-    orderBy: { createdAt: "asc" },
-    select: { role: true, content: true },
-    take: 200, // hard ceiling; trimHistory will further bound
+  // ---- Build candidate retrieval (mirrors the one-shot path) ------------
+  const candidates = await loadExperienceAiVideoCandidates(prisma, {
+    locale: localeRow.locale,
+    prompt: input.prompt,
+    limit: CANDIDATE_LIMIT,
   })
+
   const historyTurns: ChatHistoryTurn[] = history.map((m) => ({
     role:
       m.role === "USER"
@@ -599,6 +688,14 @@ export async function* streamChatTurn(
     candidates,
     userPrompt: input.prompt,
   })
+
+  if (emptyCanvas && isFullCreatePrompt(input.prompt)) {
+    yield errorEvent(
+      "provider_validation_failed",
+      "Empty-canvas generation requires a confirmed editorial brief",
+    )
+    return
+  }
 
   // ---- Spawn Codex -------------------------------------------------------
   // The codex fallback gate ALSO guards the chat path. Without the gate

@@ -165,6 +165,11 @@ function videoIdsFromBlocks(blocks: readonly Block[]) {
   return Array.from(ids)
 }
 
+export function videoIdsFromExperienceBlocks(blocks: unknown) {
+  const parsed = BlocksSchema.safeParse(blocks)
+  return parsed.success ? videoIdsFromBlocks(parsed.data) : []
+}
+
 function parsedExperienceBlocks(locale: Pick<ExperienceLocaleRow, "blocks">) {
   const parsed = BlocksSchema.safeParse(locale.blocks)
   return parsed.success ? parsed.data : []
@@ -486,7 +491,10 @@ export async function loadExperienceRows(principal: Principal) {
   })
 }
 
-export async function loadVideoRows(principal: Principal) {
+export async function loadVideoRows(
+  principal: Principal,
+  options: { includeVideoIds?: readonly string[] } = {},
+) {
   const services = createServices(prisma)
   const locale = await getAdminLocale()
   let videos: Awaited<ReturnType<typeof services.video.list>>
@@ -501,6 +509,23 @@ export async function loadVideoRows(principal: Principal) {
       return []
     }
     throw error
+  }
+
+  const currentVideoIds = new Set(videos.map((video) => video.id))
+  const extraVideoIds = Array.from(
+    new Set(
+      (options.includeVideoIds ?? [])
+        .map((id) => compactText(id))
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ).filter((id) => !currentVideoIds.has(id))
+
+  if (extraVideoIds.length > 0) {
+    const extraVideos = await prisma.video.findMany({
+      where: { id: { in: extraVideoIds }, deletedAt: null },
+      orderBy: { updatedAt: "desc" },
+    })
+    videos = [...videos, ...extraVideos]
   }
 
   const ids = videos.map((item) => item.id)

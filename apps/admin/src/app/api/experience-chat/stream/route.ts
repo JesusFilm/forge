@@ -1,7 +1,8 @@
 /**
  * POST /api/experience-chat/stream — server-sent-events endpoint that
- * streams a single chat turn's `token_delta` / `mutation_applied` /
- * `error` / `done` events to the experience-editor chat panel.
+ * streams a single chat turn's `token_delta` / `brief_update` /
+ * `mutation_proposal` / `mutation_applied` / `error` / `done` events
+ * to the experience-editor chat panel.
  *
  * Wire format (matches the U4 client expectation): each event becomes
  * a frame of the form
@@ -33,6 +34,7 @@ const Body = z.object({
   threadId: z.string().min(1),
   prompt: z.string().min(1).max(10_000),
   confirmedAcrossLocales: z.boolean().optional(),
+  confirmedBrief: z.boolean().optional(),
 })
 
 function jsonError(status: number, body: unknown): Response {
@@ -88,6 +90,7 @@ export async function POST(request: Request): Promise<Response> {
           threadId: parsedBody.threadId,
           prompt: parsedBody.prompt,
           confirmedAcrossLocales: parsedBody.confirmedAcrossLocales,
+          confirmedBrief: parsedBody.confirmedBrief,
         },
         {
           prisma,

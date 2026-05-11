@@ -8,7 +8,10 @@ import {
   getMessagesAction as getChatMessagesCore,
   listThreadsAction as listChatThreadsCore,
 } from "@/app/dashboard/experiences/experience-chat-actions"
-import { loadVideoRows } from "@/app/dashboard/live-data"
+import {
+  loadVideoRows,
+  videoIdsFromExperienceBlocks,
+} from "@/app/dashboard/live-data"
 import { requireSession } from "@/auth/session"
 import { prisma } from "@/db/client"
 import { getAdminLocale } from "@/i18n/server"
@@ -230,10 +233,7 @@ export default async function ExperienceEditorPage({
       requireSession(),
       getAdminLocale(),
     ])
-  const [videoLibrary, mediaLibrary] = await Promise.all([
-    loadVideoRows(principal),
-    loadMediaLibrary(),
-  ])
+  const mediaLibraryPromise = loadMediaLibrary()
 
   const services = createServices(prisma)
   const experienceSummary = await services.experience.getById({
@@ -268,6 +268,13 @@ export default async function ExperienceEditorPage({
   if (!selectedLocale) {
     notFound()
   }
+
+  const [videoLibrary, mediaLibrary] = await Promise.all([
+    loadVideoRows(principal, {
+      includeVideoIds: videoIdsFromExperienceBlocks(selectedLocale.blocks),
+    }),
+    mediaLibraryPromise,
+  ])
 
   const currentExperienceId = experience.id
 

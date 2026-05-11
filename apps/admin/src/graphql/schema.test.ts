@@ -212,7 +212,9 @@ describe("VideoLocale public field contract", () => {
     const locales = fields.locales as unknown as {
       args: { name: string; type: { toString(): string } }[]
     }
-    const byName = Object.fromEntries(locales.args.map((arg) => [arg.name, arg]))
+    const byName = Object.fromEntries(
+      locales.args.map((arg) => [arg.name, arg]),
+    )
     expect(String(byName.locale!.type)).toBe("String")
   })
 })

@@ -14,7 +14,7 @@ const candidate = {
 }
 
 describe("buildChatPrompt", () => {
-  it("treats empty canvas chat as the first-draft generation path", () => {
+  it("keeps empty-canvas full creation out of the Codex prompt path", () => {
     const prompt = buildChatPrompt({
       state: {
         locale: "en",
@@ -28,11 +28,9 @@ describe("buildChatPrompt", () => {
       userPrompt: "Create an experience about forgiveness",
     })
 
-    expect(prompt).toContain("generate a complete first draft")
-    expect(prompt).toContain(
-      "Include title, metaDescription, and a diverse blocks array",
-    )
-    expect(prompt).toContain("3-6 blocks")
+    expect(prompt).toContain("guided editorial brief workflow")
+    expect(prompt).toContain("do NOT generate a full draft here")
+    expect(prompt).not.toContain("generate a complete first draft")
   })
 
   it("exposes candidate videoId values for generated block references", () => {
