@@ -8,11 +8,16 @@
  * literal drift across UI, route, service, and provider adapters.
  */
 
-export type ChatProvider = "openrouter" | "ollama"
+export type ChatProvider = "openrouter" | "ollama" | "codex" | "claude-code"
 
 export const DEFAULT_CHAT_PROVIDER: ChatProvider = "openrouter"
 
-const KNOWN_PROVIDERS: readonly ChatProvider[] = ["openrouter", "ollama"]
+const KNOWN_PROVIDERS: readonly ChatProvider[] = [
+  "openrouter",
+  "ollama",
+  "codex",
+  "claude-code",
+]
 
 export type NormalizeChatProviderLogger = {
   warn: (message: string, meta?: Record<string, unknown>) => void
@@ -35,7 +40,14 @@ export function normalizeChatProvider(
   if (raw == null) return DEFAULT_CHAT_PROVIDER
   if (typeof raw !== "string") return DEFAULT_CHAT_PROVIDER
 
-  const normalized = raw.replace(/[\r\n\t]/g, "").trim().toLowerCase()
+  // Strip control chars (log-injection guard), trim, lowercase, then map
+  // underscores to hyphens so wire-format flexibility (`claude_code` vs
+  // `claude-code`) doesn't fragment the canonical literal set.
+  const normalized = raw
+    .replace(/[\r\n\t]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, "-")
   if (normalized.length === 0) return DEFAULT_CHAT_PROVIDER
 
   if ((KNOWN_PROVIDERS as readonly string[]).includes(normalized)) {

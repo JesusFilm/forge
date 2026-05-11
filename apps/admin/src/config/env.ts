@@ -85,7 +85,15 @@ export const env = createEnv({
     // / OPENAI_API_KEY surface NOT_CONFIGURED instead of silently spawning
     // a CLI process at request time. Set to true on developer machines to
     // keep AI drafting available without an API key.
-    EXPERIENCE_AI_ALLOW_CODEX_FALLBACK: z.coerce.boolean().default(false),
+    // Legacy name retained for one release window after the
+    // multi-channel provider PR ships. New code reads
+    // EXPERIENCE_AI_ALLOW_CODEX via the gate helper; the helper falls
+    // back to this var with a one-shot deprecation log when set.
+    EXPERIENCE_AI_ALLOW_CODEX_FALLBACK: z.coerce.boolean().optional(),
+    EXPERIENCE_AI_ALLOW_CODEX: z.coerce.boolean().optional(),
+    EXPERIENCE_AI_ALLOW_CLAUDE_CODE: z.coerce.boolean().optional(),
+    EXPERIENCE_AI_CODEX_MODEL: z.string().min(1).optional(),
+    EXPERIENCE_AI_CLAUDE_CODE_MODEL: z.string().min(1).optional(),
     OLLAMA_BASE_URL: z.string().url().optional(),
     OLLAMA_EMBEDDING_MODEL: z.string().min(1).optional(),
     OLLAMA_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().optional(),
@@ -231,6 +239,18 @@ export const env = createEnv({
     ),
     EXPERIENCE_AI_ALLOW_CODEX_FALLBACK: emptyToUndefined(
       process.env.EXPERIENCE_AI_ALLOW_CODEX_FALLBACK,
+    ),
+    EXPERIENCE_AI_ALLOW_CODEX: emptyToUndefined(
+      process.env.EXPERIENCE_AI_ALLOW_CODEX,
+    ),
+    EXPERIENCE_AI_ALLOW_CLAUDE_CODE: emptyToUndefined(
+      process.env.EXPERIENCE_AI_ALLOW_CLAUDE_CODE,
+    ),
+    EXPERIENCE_AI_CODEX_MODEL: emptyToUndefined(
+      process.env.EXPERIENCE_AI_CODEX_MODEL,
+    ),
+    EXPERIENCE_AI_CLAUDE_CODE_MODEL: emptyToUndefined(
+      process.env.EXPERIENCE_AI_CLAUDE_CODE_MODEL,
     ),
     OLLAMA_BASE_URL: emptyToUndefined(process.env.OLLAMA_BASE_URL),
     OLLAMA_EMBEDDING_MODEL: emptyToUndefined(

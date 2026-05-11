@@ -9,6 +9,13 @@ describe("normalizeChatProvider", () => {
   it("returns the matched literal for known values", () => {
     expect(normalizeChatProvider("openrouter")).toBe("openrouter")
     expect(normalizeChatProvider("ollama")).toBe("ollama")
+    expect(normalizeChatProvider("codex")).toBe("codex")
+    expect(normalizeChatProvider("claude-code")).toBe("claude-code")
+  })
+
+  it("accepts underscore variant for claude-code", () => {
+    expect(normalizeChatProvider("claude_code")).toBe("claude-code")
+    expect(normalizeChatProvider("CLAUDE_CODE")).toBe("claude-code")
   })
 
   it("returns the default when input is undefined or null", () => {
@@ -26,6 +33,18 @@ describe("normalizeChatProvider", () => {
     expect(normalizeChatProvider("OLLAMA")).toBe("ollama")
     expect(normalizeChatProvider("   ollama  ")).toBe("ollama")
     expect(normalizeChatProvider("OpenRouter")).toBe("openrouter")
+    expect(normalizeChatProvider("  Claude-Code  ")).toBe("claude-code")
+  })
+
+  it("rejects close-but-wrong values to surface typos (claude alone)", () => {
+    // `claude` without the `-code` suffix is ambiguous — could mean the API
+    // (not in scope) or be a typo for `claude-code`. Bias toward making
+    // the editor notice the typo rather than silently substituting.
+    const warn = vi.fn()
+    expect(normalizeChatProvider("claude", { warn })).toBe(
+      DEFAULT_CHAT_PROVIDER,
+    )
+    expect(warn).toHaveBeenCalledTimes(1)
   })
 
   it("returns the default for an empty string", () => {
