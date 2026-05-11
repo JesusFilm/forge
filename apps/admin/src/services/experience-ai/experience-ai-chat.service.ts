@@ -63,26 +63,8 @@ import type { QualityDraftReview } from "./experience-ai-quality-draft.schemas"
 // Public types
 // -----------------------------------------------------------------------------
 
-export type ChatErrorCode =
-  | "codex_unavailable"
-  | "codex_timeout"
-  | "codex_idle_timeout"
-  | "provider_not_configured"
-  | "provider_unavailable"
-  | "provider_rate_limited"
-  | "provider_timeout"
-  | "provider_validation_failed"
-  | "invalid_json"
-  | "schema_violation"
-  | "slug_change_rejected"
-  | "cross_locale_unconfirmed"
-  | "rate_limited"
-  | "forbidden"
-  | "locale_not_found"
-  | "thread_not_found"
-  | "cancelled"
-  | "empty_response"
-  | "unknown"
+export type { ChatErrorCode } from "./experience-ai-chat-error-codes"
+import type { ChatErrorCode } from "./experience-ai-chat-error-codes"
 
 export type ChatStreamEvent =
   | { type: "token_delta"; text: string }
