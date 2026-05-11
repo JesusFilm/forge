@@ -1,21 +1,8 @@
-/**
- * Resolver wiring tests for the public `watchSetting` GraphQL query.
- *
- * Invokes the resolver function directly via `schema.getFields()` to
- * dodge vitest's transitive-graphql double-instance issue (same pattern
- * used by `scene-recommendations.test.ts` and `hybrid-search.test.ts`).
- * Mocks WatchSettingService so we verify resolver wiring + arg pass-
- * through without touching Prisma.
- *
- * What this does NOT cover (and why):
- *   - End-to-end PUBLIC auth resolution through the scope-auth plugin.
- *     The transitive-graphql issue makes full-pipeline execution
- *     fragile; the `public-resolvers.regression.test.ts` static check
- *     compensates by asserting `authScopes: { public: true }` is
- *     declared on the resolver source.
- *   - Service-layer Prisma WHERE shape — that lives in
- *     `watch-setting.service.test.ts`.
- */
+// Resolver wiring tests for `watchSetting`. Calls the resolver directly via
+// `schema.getFields()` to dodge vitest's transitive-graphql double-instance
+// (same pattern as `scene-recommendations.test.ts`, `hybrid-search.test.ts`).
+// Auth posture is covered by `public-resolvers.regression.test.ts`; Prisma
+// WHERE shape lives in `watch-setting.service.test.ts`.
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 

@@ -1,49 +1,15 @@
-// Pothos types for Experience and ExperienceLocale.
-//
-// Classification: both types are `@classification abac-gated`. Ownership +
-// publish state apply (see canEditExperience / canViewExperience helpers in
-// Unit 6). Per the architectural tension resolution in the plan, access to
-// abac-gated types from a nested relation MUST route through a service
-// resolver that re-applies the ABAC WHERE — DO NOT add `t.relation` pointing
-// at Experience or ExperienceLocale from another Pothos type without wrapping
-// it in a service call. (See parity test coming in Unit 6.)
-//
-// Embedding vector EXCLUDED from this type by explicit field list — the
-// exclusion is a technical control, not a naming convention (R20). Unit 9
-// adds a resolver-surface test that walks every field and asserts no
-// 1536-length numeric array leaks.
-//
-// Blocks exposed as the generic JSON scalar. The Zod discriminated union in
-// src/domain/blocks.ts validates writes; on reads the shape is whatever was
-// written (agent-extensibility goal — adding a block type doesn't touch the
-// schema).
-//
-// Per Unit 4 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
+// Pothos types for Experience and ExperienceLocale (abac-gated).
+// Embedding column is intentionally excluded (R20). Per Unit 4 of
+// docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
 import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
-// Import for side effect: registers the JSON scalar on the builder so this
-// module can reference `type: "JSON"` below. Also exports `LocaleStatusEnum`.
 import { LocaleStatusEnum } from "@/graphql/types/reference"
 
-// -----------------------------------------------------------------------------
-// PUBLIC strip helper (consumer-migration U2 — 2026-05-11)
-//
-// Anonymous callers must receive null (with no `errors[]` entry) for
-// editorial/internal fields on Experience and ExperienceLocale. The
-// triplet { nullable, authScopes, unauthorizedResolver } repeats on 8
-// fields; this constant localizes the permission-key literal to one
-// place and makes "this field is stripped for PUBLIC" greppable.
-//
-// Why `unauthorizedResolver: () => null`: Pothos scope-auth's default
-// `unauthorizedResolver` is `(_, _, _, _, error) => { throw error }`
-// (see `node_modules/.pnpm/@pothos+plugin-scope-auth@4.1.6/.../resolve-helper.js`).
-// The thrown ForbiddenError populates `response.errors[]` even on
-// nullable fields — the U5 parity comparator on PR #915 inspects both
-// `data` AND `errors[]` per call, so a populated `errors[]` would mark
-// every PUBLIC `experienceBySlug` request as an admin failure. The
-// `() => null` override returns null cleanly with no error entry.
-// -----------------------------------------------------------------------------
+// PUBLIC field-strip triplet (consumer-migration U2 — 2026-05-11). The
+// `unauthorizedResolver: () => null` overrides Pothos scope-auth's default
+// throw so anonymous callers get null without populating `errors[]` — the
+// U5 parity comparator (PR #915) inspects both `data` and `errors[]`.
 
 const STRIPPED_FOR_PUBLIC = {
   nullable: true as const,
@@ -64,9 +30,7 @@ builder.prismaObject("ExperienceLocale", {
     experienceId: t.exposeID("experienceId"),
     locale: t.exposeString("locale"),
     slug: t.exposeString("slug"),
-    // Editorial-state flag — stripped for PUBLIC so anonymous callers cannot
-    // enumerate which locales are homepage-flagged. See `STRIPPED_FOR_PUBLIC`
-    // at the top of this file for the why behind the triplet.
+    // Stripped for PUBLIC so anonymous callers cannot enumerate homepage flags.
     isHomepage: t.exposeBoolean("isHomepage", { ...STRIPPED_FOR_PUBLIC }),
     pathSegment: t.exposeString("pathSegment", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
@@ -74,15 +38,10 @@ builder.prismaObject("ExperienceLocale", {
     ogTitle: t.exposeString("ogTitle", { nullable: true }),
     ogDescription: t.exposeString("ogDescription", { nullable: true }),
     ogImageUrl: t.exposeString("ogImageUrl", { nullable: true }),
-    /**
-     * Block array — JSON scalar. Writes are validated by `BlocksSchema` in
-     * `src/domain/blocks.ts` before persistence. Reads return whatever was
-     * persisted; the GraphQL schema stays stable as block types evolve.
-     */
     blocks: t.field({
       type: "JSON",
       description:
-        "Array of Experience blocks. Schema shape enforced at write time by the domain Zod union; see `src/domain/blocks.ts`.",
+        "Array of Experience blocks. Shape enforced at write time by `src/domain/blocks.ts`.",
       resolve: (row) => row.blocks,
     }),
     status: t.expose("status", { type: LocaleStatusEnum }),
@@ -90,7 +49,6 @@ builder.prismaObject("ExperienceLocale", {
       nullable: true,
       resolve: (row) => row.publishedAt?.toISOString() ?? null,
     }),
-    // Internal timestamps stripped for PUBLIC.
     createdAt: t.string({
       ...STRIPPED_FOR_PUBLIC,
       resolve: (row) => row.createdAt.toISOString(),
@@ -102,24 +60,12 @@ builder.prismaObject("ExperienceLocale", {
   }),
 })
 
-// -----------------------------------------------------------------------------
-// Experience
-//
-// Intentional omissions:
-//   - `embedding` — NEVER exposed. Excluded by field list; Unit 9 adds a
-//     resolver-surface test that proves no field of this type ever returns
-//     a 1536-length numeric array even indirectly.
-// -----------------------------------------------------------------------------
-
 /** @classification abac-gated */
 builder.prismaObject("Experience", {
   description:
-    "A page-builder Experience. Canonical row holds non-localized state; per-locale content (slug, blocks, title) lives in ExperienceLocale. Embedding vector is stored here but NEVER exposed via GraphQL.",
+    "A page-builder Experience. Per-locale content lives in ExperienceLocale. Embedding vector is stored here but never exposed via GraphQL.",
   fields: (t) => ({
     id: t.exposeID("id"),
-    // Internal/editorial fields stripped for PUBLIC. Anonymous callers
-    // receive null; EDITOR/ADMIN see real values. See `STRIPPED_FOR_PUBLIC`
-    // at the top of this file for the why behind the triplet.
     isTemplate: t.exposeBoolean("isTemplate", { ...STRIPPED_FOR_PUBLIC }),
     ownerId: t.exposeID("ownerId", { ...STRIPPED_FOR_PUBLIC }),
     archivedAt: t.string({
@@ -135,17 +81,12 @@ builder.prismaObject("Experience", {
       resolve: (row) => row.updatedAt.toISOString(),
     }),
     locales: t.relation("locales", {
-      description:
-        "Per-locale ExperienceLocale rows. ABAC-filtered: VIEWER/PUBLIC see PUBLISHED only.",
+      description: "VIEWER/PUBLIC see PUBLISHED only; EDITOR/ADMIN see all.",
       query: (_args, ctx) =>
         isEditorOrAdmin(ctx.user) ? {} : { where: { status: "PUBLISHED" } },
     }),
   }),
 })
-
-// -----------------------------------------------------------------------------
-// Root queries — delegate to ExperienceService for ABAC filtering.
-// -----------------------------------------------------------------------------
 
 builder.queryFields((t) => ({
   experience: t.prismaField({

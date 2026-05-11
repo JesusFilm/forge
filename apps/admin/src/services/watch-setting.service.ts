@@ -1,29 +1,10 @@
-// WatchSetting service — public read-only homepage configuration.
-//
-// Returns the same shape apps/web consumes from Strapi today via the
-// `watchSetting(locale)` query (see `apps/web/src/lib/content.ts:48-63`).
-// Once the homepage migrates to admin, the web `WatchExperience`
-// fragment must rewrite from `on Experience` to `on ExperienceLocale`
-// because admin's per-locale model puts slug/title/blocks/etc on
-// ExperienceLocale, not Experience. That fragment rewrite is tracked
-// under U5b/U6 and is NOT part of Unit 2.
-//
-// Auth contract: PUBLIC. No `hasPermission` guard because the resolver's
-// `authScopes: { public: true }` is the auth contract. Both Prisma reads
-// gate on `status: "PUBLISHED"` and `archivedAt: null` for anonymous-safe
-// content — this is a service-layer-level filter, not an authz check.
-//
-// Locale-fallback semantics: STRICT NULL. If no homepage Experience has
-// an ExperienceLocale row for the requested `$locale` with
-// `status: "PUBLISHED"`, returns `null`. Matches Strapi v5 GraphQL
-// plugin's default behavior for singleType + i18n localized content.
-// If a non-`en` locale request returns null in production, that signals
-// a data-readiness gap, not a service bug.
-//
-// Multi-row tiebreak: if two ExperienceLocale rows somehow have
-// `isHomepage: true` for the same locale (data anomaly), the service
-// returns the most recently updated one (orderBy: updatedAt desc) and
-// logs a structured warning so operators can investigate.
+// WatchSetting service — PUBLIC homepage configuration. Shape mirrors
+// Strapi's `watchSetting(locale)` at `apps/web/src/lib/content.ts:48-63`.
+// Both reads gate on `status: "PUBLISHED"` + `archivedAt: null` (content
+// filter, not authz — auth lives at the resolver's `public: true`).
+// Locale-fallback is STRICT NULL (Strapi v5 i18n parity). The web-side
+// `WatchExperience` fragment rewrite from `on Experience` to
+// `on ExperienceLocale` is tracked under U5b/U6.
 
 import type { ExperienceLocale, PrismaClient } from "@prisma/client"
 
@@ -37,23 +18,14 @@ export class WatchSettingService {
   constructor(private prisma: PrismaClient) {}
 
   async get({ locale }: { locale: string }): Promise<WatchSettingShape> {
-    // Parallel reads — no data dependency between homepage and template
-    // lookups. Halves wall-clock latency on the consumer homepage hot path.
     const [homepage, template] = await Promise.all([
       this.findHomepageLocale(locale),
       this.findTemplateLocale(locale),
     ])
 
-    // documentId mirrors Strapi's stable cross-locale identifier. Admin's
-    // Experience.id is a cuid that is stable for the lifetime of the
-    // migration (the content dump upserts by cms_document_id rather than
-    // re-creating rows). Derived from the locale rows actually returned,
-    // not from the parent Experience id — otherwise documentId would
-    // resolve to the template's parent Experience even when
-    // defaultTemplateExperience is null (template Experience exists but
-    // has no PUBLISHED locale for $locale), leaking template existence to
-    // anonymous callers in locales that have no published template
-    // content.
+    // Derived from returned locale rows (not parent Experience.id) —
+    // otherwise an unpublished-locale template would leak its existence to
+    // anonymous callers via documentId.
     const documentId = homepage?.experienceId ?? template?.experienceId ?? null
 
     return {
@@ -82,8 +54,7 @@ export class WatchSettingService {
         JSON.stringify({
           event: "watch_setting.homepage.multiple_rows",
           locale,
-          // take: 2 caps the actual count above; surface that explicitly so an
-          // operator reading the log knows "at least 2", not exactly 2.
+          // take:2 caps the count — log a lower bound, not exact.
           count_min: matches.length,
           capped_at_take: 2,
           chosen_id: matches[0].id,
@@ -94,15 +65,9 @@ export class WatchSettingService {
     return matches[0] ?? null
   }
 
-  // The isTemplate flag lives on the parent Experience (not on
-  // ExperienceLocale like isHomepage), so the query shape is asymmetric
-  // with findHomepageLocale by necessity — we read the parent and pull
-  // its single matching published locale via `include`. The multi-row
-  // tiebreak that findHomepageLocale logs about can also happen here
-  // if two Experiences both have `isTemplate: true`; today the
-  // editorial UI doesn't prevent that and the impact is silent
-  // wrong-template selection. Left for a follow-up — flagged here so
-  // a future maintainer can mirror the homepage warning shape.
+  // Asymmetric with findHomepageLocale because isTemplate lives on the
+  // parent Experience. TODO: mirror the multi-row warning if two
+  // Experiences both have `isTemplate: true`.
   private async findTemplateLocale(
     locale: string,
   ): Promise<ExperienceLocale | null> {

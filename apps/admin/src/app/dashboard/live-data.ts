@@ -491,9 +491,7 @@ export async function loadVideoRows(principal: Principal) {
   const locale = await getAdminLocale()
   let videos: Awaited<ReturnType<typeof services.video.list>>
   try {
-    // VideoService.list dropped its `user` param in consumer-migration U2 —
-    // the resolver's authScopes is the single auth contract. This dashboard
-    // SSR path is gated upstream by the route's requireSession() call.
+    // U2: VideoService.list dropped its `user` param. Route is gated by requireSession().
     void principal
     videos = await services.video.list({
       input: { limit: 30, offset: 0 },

@@ -51,7 +51,6 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "experience",
         "experiences",
         "experienceBySlug",
-        // WatchSetting (consumer migration U2)
         "watchSetting",
       ]),
     )

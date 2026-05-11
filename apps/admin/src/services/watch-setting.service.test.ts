@@ -96,7 +96,7 @@ describe("WatchSettingService.get", () => {
     prisma.experienceLocale.findMany.mockResolvedValueOnce([])
     prisma.experience.findFirst.mockResolvedValueOnce({
       id: "exp-tmpl-1",
-      locales: [], // no published locale for this language
+      locales: [],
     })
 
     const result = await service.get({ locale: "de" })
@@ -105,7 +105,6 @@ describe("WatchSettingService.get", () => {
   })
 
   it("strict-null locale fallback: missing homepage returns null, not a fallback locale", async () => {
-    // Mirrors Strapi v5 singleType+i18n default behavior.
     prisma.experienceLocale.findMany.mockResolvedValueOnce([])
     prisma.experience.findFirst.mockResolvedValueOnce(null)
 
@@ -129,8 +128,7 @@ describe("WatchSettingService.get", () => {
     expect(logged).toMatchObject({
       event: "watch_setting.homepage.multiple_rows",
       locale: "en",
-      // count_min reflects the bounded take:2 result — the actual anomaly
-      // could be 3+ rows; the log surfaces a lower bound, not an exact count.
+      // count_min is bounded by take:2 — actual anomaly may be 3+ rows.
       count_min: 2,
       capped_at_take: 2,
       chosen_id: "loc-1",

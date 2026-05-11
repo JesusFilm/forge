@@ -27,7 +27,7 @@ import "@/graphql/types/hybrid-search-debug"
 import "@/graphql/queries/hybrid-search"
 import "@/graphql/queries/scene-recommendations"
 import "@/graphql/queries/sync-status"
-// WatchSetting must register after Experience (depends on ExperienceLocale type).
+// Must register after Experience (depends on ExperienceLocale).
 import "@/graphql/types/watch-setting"
 
 export const schema = builder.toSchema()

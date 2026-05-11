@@ -28,9 +28,7 @@ describe("isEditorOrAdmin", () => {
   }
 
   it("treats an unknown role string as not privileged", () => {
-    // Future-tier insurance: a contributor adding a new role to the Role
-    // union but forgetting to update this predicate gets a 'not privileged'
-    // default instead of accidental escalation.
+    // Default-deny so a new Role union entry can't accidentally escalate.
     expect(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       isEditorOrAdmin({ id: "x", role: "NEW_TIER" as any }),

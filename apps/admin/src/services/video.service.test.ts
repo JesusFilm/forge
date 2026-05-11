@@ -44,15 +44,10 @@ describe("VideoService", () => {
       expect(call.take).toBe(200)
     })
 
-    // Consumer-migration U2 (2026-05-11): the resolver's authScopes:{public:true}
-    // is the single auth contract for list/getById/getBySlug. The service no
-    // longer takes a `user` parameter — if a future contributor re-adds one
-    // to gate by tier, this assertion fails because the signature drift
-    // breaks the call.
+    // U2 (2026-05-11): resolver authScopes is the sole gate for list/getById/
+    // getBySlug. Re-adding a `user` param here breaks this assertion.
     it("does not require a user principal (resolver-only auth contract)", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
-      // No `user` field passed — type-checks because the method signature
-      // does not declare one.
       await expect(
         service.list({ input: {}, query: {} }),
       ).resolves.not.toThrow()
