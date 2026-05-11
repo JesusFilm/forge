@@ -1,14 +1,5 @@
-import type { FragmentOf } from "@forge/graphql"
 import type { CSSProperties } from "react"
 import type { RouteVideo } from "@/lib/content"
-import { containerFragment } from "@/lib/fragments/container"
-import type { textSectionFragment } from "@/lib/fragments/text-section"
-import type { adventCountdownFragment } from "@/lib/fragments/advent-countdown"
-import type { easterDatesFragment } from "@/lib/fragments/easter-dates"
-import type { mediaCollectionFragment } from "@/lib/fragments/media-collection"
-import type { ctaSectionFragment } from "@/lib/fragments/cta-section"
-import type { videoSectionFragment } from "@/lib/fragments/video-section"
-import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
 import { Text } from "./Text"
 import { AdventCountdown } from "./AdventCountdown"
 import { EasterDates } from "./EasterDates"
@@ -16,17 +7,23 @@ import { MediaCollection } from "./MediaCollection"
 import { CTASection } from "./CTASection"
 import { Video } from "./Video"
 import { RelatedQuestions } from "./RelatedQuestions"
-
-export { containerFragment }
+import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
+import type {
+  ContainerBlock,
+  ContainerContentBlock,
+  VideoMap,
+} from "./block-types"
 
 type ContainerProps = {
-  data: FragmentOf<typeof containerFragment>
+  data: ContainerBlock
   routeVideo?: RouteVideo | null
+  videoMap?: VideoMap
 }
 
-type ContainerData = FragmentOf<typeof containerFragment>
-type Slot = NonNullable<NonNullable<ContainerData["slots"]>[number]>
-type SlotContentItem = NonNullable<NonNullable<Slot["content"]>[number]>
+type Slot = Extract<ContainerContentBlock, { t: "containerSlot" }> & {
+  content: SlotContentItem[]
+}
+type SlotContentItem = Exclude<ContainerContentBlock, { t: "containerSlot" }>
 type GridBreakpoint = "xs" | "sm" | "md" | "lg" | "xl"
 type SlotSpanStyles = CSSProperties & Record<`--slot-${GridBreakpoint}`, number>
 
@@ -66,91 +63,92 @@ function slotSpanStyle(slot: Slot): SlotSpanStyles {
 function SlotContentRenderer({
   item,
   routeVideo,
+  videoMap,
 }: {
   item: SlotContentItem
   routeVideo?: RouteVideo | null
+  videoMap?: VideoMap
 }) {
-  if (!item || item.__typename === "Error") return null
-  switch (item.__typename) {
-    case "ComponentSectionsText":
-      return (
-        <Text
-          data={item as unknown as FragmentOf<typeof textSectionFragment>}
-        />
-      )
-    case "ComponentSectionsAdventCountdown":
-      return (
-        <AdventCountdown
-          data={item as unknown as FragmentOf<typeof adventCountdownFragment>}
-        />
-      )
-    case "ComponentSectionsEasterDates":
-      return (
-        <EasterDates
-          data={item as unknown as FragmentOf<typeof easterDatesFragment>}
-        />
-      )
-    case "ComponentSectionsMediaCollection":
+  switch (item.t) {
+    case "text":
+      return <Text data={item} />
+    case "adventCountdown":
+      return <AdventCountdown data={item} />
+    case "easterDates":
+      return <EasterDates data={item} />
+    case "mediaCollection":
       return (
         <MediaCollection
-          data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
+          data={item}
           routeVideo={routeVideo}
+          videoMap={videoMap}
         />
       )
-    case "ComponentSectionsCta":
-      return (
-        <CTASection
-          data={item as unknown as FragmentOf<typeof ctaSectionFragment>}
-        />
-      )
-    case "ComponentSectionsVideo":
-      return (
-        <Video
-          data={item as unknown as FragmentOf<typeof videoSectionFragment>}
-          routeVideo={routeVideo}
-        />
-      )
-    case "ComponentSectionsRelatedQuestions":
-      return (
-        <RelatedQuestions
-          data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
-        />
-      )
+    case "cta":
+      return <CTASection data={item} />
+    case "video":
+      return <Video data={item} routeVideo={routeVideo} videoMap={videoMap} />
+    case "relatedQuestions":
+      return <RelatedQuestions data={item} />
+    case "bibleQuotesCarousel":
+      return <BibleQuotesCarousel data={item} />
+    case "card":
+      return null
     default:
       return null
   }
 }
 
-export function Container({ data, routeVideo }: ContainerProps) {
-  const { id, slots } = data
-  const validSlots =
-    slots?.filter((s): s is NonNullable<typeof s> => s != null) ?? []
+function buildSlots(content: ContainerContentBlock[]): Slot[] {
+  const slots: Slot[] = []
+  let current: Slot | null = null
+
+  for (const item of content) {
+    if (item.t === "containerSlot") {
+      current = { ...item, content: [] }
+      slots.push(current)
+      continue
+    }
+
+    if (!current) {
+      current = {
+        t: "containerSlot",
+        gridSpan: 12,
+        content: [],
+      }
+      slots.push(current)
+    }
+    current.content.push(item)
+  }
+
+  return slots
+}
+
+export function Container({ data, routeVideo, videoMap }: ContainerProps) {
+  const { sectionKey, content } = data
+  const validSlots = buildSlots(content ?? [])
   if (!validSlots.length) return null
 
   return (
     <section
-      id={id ?? undefined}
+      id={sectionKey ?? undefined}
+      data-section-key={sectionKey ?? undefined}
       className="grid w-full grid-cols-12 gap-10 py-8 text-stone-100 md:gap-6"
       data-testid="Container"
     >
-      {validSlots.map((slot) => (
+      {validSlots.map((slot, slotIndex) => (
         <div
-          key={slot.id}
+          key={`${sectionKey ?? "container"}-${slotIndex}`}
           className="min-w-0 space-y-10 [grid-column:span_var(--slot-xs)_/_span_var(--slot-xs)] sm:[grid-column:span_var(--slot-sm)_/_span_var(--slot-sm)] md:space-y-6 md:[grid-column:span_var(--slot-md)_/_span_var(--slot-md)] lg:[grid-column:span_var(--slot-lg)_/_span_var(--slot-lg)] xl:[grid-column:span_var(--slot-xl)_/_span_var(--slot-xl)]"
           style={slotSpanStyle(slot)}
         >
           {slot.content?.map((item, index) => {
-            if (
-              !item ||
-              (item as { __typename?: string }).__typename === "Error"
-            ) {
-              return null
-            }
             return (
               <SlotContentRenderer
-                key={`${slot.id}-${index}`}
+                key={`${sectionKey ?? "slot"}-${slotIndex}-${index}`}
                 item={item as SlotContentItem}
                 routeVideo={routeVideo}
+                videoMap={videoMap}
               />
             )
           })}

@@ -49,10 +49,10 @@ import {
 } from "@/services/manager-artifacts.service"
 
 /**
- * Admin stores `text-embedding-3-small` vectors at 1536 dimensions
- * across experiences, scenes, and transcripts. Artifacts with a
- * different dimension count are rejected as invalid rather than
- * silently truncated or padded.
+ * Manager transcript artifacts still store `text-embedding-3-small`
+ * vectors at 1536 dimensions. Artifacts with a different dimension
+ * count are rejected as invalid rather than silently truncated or
+ * padded.
  */
 export const EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS = 1536
 

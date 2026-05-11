@@ -1,8 +1,6 @@
 "use client"
 
 import Image from "next/image"
-import type { FragmentOf } from "@forge/graphql"
-import { navigationCarouselFragment } from "@/lib/fragments/navigation-carousel"
 import {
   Carousel,
   CarouselContent,
@@ -14,16 +12,16 @@ import {
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
-
-export { navigationCarouselFragment }
+import type {
+  NavigationCarouselBlock,
+  NavigationCarouselItem,
+} from "./block-types"
 
 type NavigationCarouselProps = {
-  data: FragmentOf<typeof navigationCarouselFragment>
+  data: NavigationCarouselBlock
 }
 
-type NavItem = NonNullable<
-  NonNullable<FragmentOf<typeof navigationCarouselFragment>["items"]>[number]
->
+type NavItem = NavigationCarouselItem
 
 function handleNavigationClick(contentId: string) {
   const element = document.querySelector(
@@ -109,7 +107,7 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
         <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
           {items.map((item, index) => (
             <CarouselItem
-              key={item.id}
+              key={item.contentId}
               className="basis-auto pl-5"
               data-testid={`CarouselSlide-${item.contentId.split("/")[0]}`}
             >

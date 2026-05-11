@@ -15,6 +15,7 @@ import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
 import { WatchBody } from "@/components/watch/WatchBody"
 import type { WatchModalCallbacks } from "@/components/watch/WatchPageClient"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
+import type { Block, VideoMap } from "@/components/sections/block-types"
 
 // Typo guard: literal-union typing fails the type check on misspellings.
 //
@@ -31,10 +32,12 @@ export function WatchSectionRenderer({
   blocks,
   modalCallbacks,
   onPlayerReady,
+  videoMap,
 }: {
   blocks: MergedWatchBlock[]
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
+  videoMap?: VideoMap
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
   // renders as a hidden marker to avoid double-mounting.
@@ -64,6 +67,7 @@ export function WatchSectionRenderer({
           studyQuestionsBlock={studyQuestionsBlock}
           modalCallbacks={modalCallbacks}
           onPlayerReady={onPlayerReady}
+          videoMap={videoMap}
         />
       ))}
       {bodyBlocks.length > 0 ? (
@@ -93,6 +97,7 @@ export function WatchSectionRenderer({
                   studyQuestionsBlock={studyQuestionsBlock}
                   modalCallbacks={modalCallbacks}
                   onPlayerReady={onPlayerReady}
+                  videoMap={videoMap}
                 />
               ))}
             </div>
@@ -109,12 +114,14 @@ function WatchBlockEntry({
   studyQuestionsBlock,
   modalCallbacks,
   onPlayerReady,
+  videoMap,
 }: {
   block: MergedWatchBlock
   index: number
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
+  videoMap?: VideoMap
 }) {
   if (isWatchBlock(block)) {
     return (
@@ -126,7 +133,13 @@ function WatchBlockEntry({
       />
     )
   }
-  return <ExperienceSectionRenderer section={block} key={`strapi-${index}`} />
+  return (
+    <ExperienceSectionRenderer
+      section={block as Block}
+      key={`block-${index}`}
+      videoMap={videoMap}
+    />
+  )
 }
 
 function SyntheticBlock({
@@ -201,5 +214,6 @@ function noop() {}
 
 function blockKey(block: MergedWatchBlock, index: number): string {
   if (isWatchBlock(block)) return `${block.kind}-${index}`
-  return `strapi-${index}`
+  const section = block as Block
+  return `${section.sectionKey ?? section.t}-${index}`
 }

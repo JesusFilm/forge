@@ -26,10 +26,10 @@ vi.mock("@/services/embeddings.service", async (importOriginal) => {
   return {
     ...actual,
     generateExperienceEmbeddings: vi.fn(async (inputs: readonly string[]) => ({
-      model: "openai/text-embedding-3-small",
-      dimensions: 1536,
+      model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+      dimensions: 2048,
       embeddings: inputs.map((_, idx) =>
-        Array.from({ length: 1536 }, (__, i) => (idx + 1) * 0.1 + i * 0.0001),
+        Array.from({ length: 2048 }, (__, i) => (idx + 1) * 0.1 + i * 0.0001),
       ),
     })),
   }
@@ -362,9 +362,9 @@ describe("indexEditionScenes", () => {
     expect(sql).toContain("unnest(")
     expect(sql).toContain("::text[]")
     // Way A vector cast — per-row at the SELECT seam, NOT
-    // `::vector(1536)[]` on the parameter.
-    expect(sql).toContain("::vector(1536)")
-    expect(sql).not.toMatch(/::vector\(1536\)\[\]/)
+    // `::vector(2048)[]` on the parameter.
+    expect(sql).toContain("::vector(2048)")
+    expect(sql).not.toMatch(/::vector\(2048\)\[\]/)
     // Way A text[] unfold for the multi-value PG-array columns.
     expect(sql).toContain("jsonb_array_elements_text")
     expect(sql).toMatch(
@@ -431,9 +431,9 @@ describe("indexEditionScenes", () => {
     // throws SceneIndexError("artifact_invalid") and $executeRaw is
     // never invoked.
     vi.mocked(generateExperienceEmbeddings).mockResolvedValueOnce({
-      model: "openai/text-embedding-3-small",
-      dimensions: 1536,
-      embeddings: [Array.from({ length: 1536 }, () => 0.5)],
+      model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+      dimensions: 2048,
+      embeddings: [Array.from({ length: 2048 }, () => 0.5)],
     })
 
     const { prisma, executeRaw, queryRaw } = buildStubPrisma()
@@ -458,11 +458,11 @@ describe("indexEditionScenes", () => {
     // the indexer must thread `embeddings[i]` into the bulk INSERT for
     // `scenes[i]`. A bug that swapped indices would silently land the
     // wrong vector on the wrong scene with no other test catching it.
-    const v0 = Array.from({ length: 1536 }, () => 0.111) // for scene 0
-    const v1 = Array.from({ length: 1536 }, () => 0.222) // for scene 1
+    const v0 = Array.from({ length: 2048 }, () => 0.111) // for scene 0
+    const v1 = Array.from({ length: 2048 }, () => 0.222) // for scene 1
     vi.mocked(generateExperienceEmbeddings).mockResolvedValueOnce({
-      model: "openai/text-embedding-3-small",
-      dimensions: 1536,
+      model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+      dimensions: 2048,
       embeddings: [v0, v1],
     })
 
@@ -746,7 +746,7 @@ describe("indexEditionScenes", () => {
   })
 
   it("remaps Prisma runtime errors to SceneIndexError('storage_failed') without leaking the raw message (Fix 2 — feat-117 review)", async () => {
-    const vectorLiteral = `[${new Array(1536).fill(0.42).join(",")}]`
+    const vectorLiteral = `[${new Array(2048).fill(0.42).join(",")}]`
     class FakePrismaError extends Error {
       readonly code = "P2010"
       constructor(message: string) {

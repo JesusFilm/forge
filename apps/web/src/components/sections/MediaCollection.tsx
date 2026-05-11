@@ -1,12 +1,9 @@
 "use client"
 
 import Image from "next/image"
-import type { FragmentOf } from "@forge/graphql"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
-import { enrichMediaItem } from "@/lib/enrichment"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import type { RouteVideo } from "@/lib/content"
-import { mediaCollectionFragment } from "@/lib/fragments/media-collection"
 import {
   Carousel,
   CarouselContent,
@@ -17,28 +14,37 @@ import {
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
 import { useDynamicBackground } from "./DynamicBackground"
-
-export { mediaCollectionFragment }
+import type {
+  MediaCollectionBlock,
+  MediaCollectionItem,
+  VideoMap,
+} from "./block-types"
+import { videoImageUrl, videoTitle } from "./block-types"
 
 const BASE_PATH = "/watch"
 
 type MediaCollectionProps = {
-  data: FragmentOf<typeof mediaCollectionFragment>
+  data: MediaCollectionBlock
   routeVideo?: RouteVideo | null
+  videoMap?: VideoMap
 }
 
-export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
+export function MediaCollection({
+  data,
+  routeVideo,
+  videoMap,
+}: MediaCollectionProps) {
   const onBackgroundImageChange = useDynamicBackground()
   const {
-    id,
+    sectionKey,
     title,
     subtitle,
-    mediaDescription: description,
+    description,
     categoryLabel,
-    mediaCtaLink: ctaLink,
-    mediaCtaLabel: rawCtaLabel,
+    ctaLink,
+    ctaLabel: rawCtaLabel,
     showItemNumbers,
-    mediaCollectionVariant: variant,
+    variant,
     itemsSource,
     footerText: rawFooterText,
     items,
@@ -51,8 +57,8 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
     selectedSource === "routeVideoChildren"
       ? (routeVideo?.relatedItems ?? [])
       : (items ?? [])
-          .filter((i): i is NonNullable<typeof i> => i != null)
-          .map(enrichMediaItem)
+          .filter((i): i is MediaCollectionItem => i != null)
+          .map((item, index) => enrichBlockMediaItem(item, index, videoMap))
 
   if (
     process.env.NODE_ENV === "development" &&
@@ -69,7 +75,7 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
   if (variant === "carousel") {
     return (
       <CarouselVariant
-        id={id}
+        id={sectionKey}
         title={title}
         subtitle={categoryLabel}
         ctaLink={ctaLink}
@@ -91,7 +97,11 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
           : "grid grid-cols-1 md:grid-cols-2 gap-4"
 
   return (
-    <section id={id} className="py-8">
+    <section
+      id={sectionKey ?? undefined}
+      data-section-key={sectionKey ?? undefined}
+      className="py-8"
+    >
       <div className="container mx-auto px-4">
         {title && <h2 className="mb-2 text-2xl font-bold">{title}</h2>}
         {subtitle && <p className="mb-2 text-gray-600">{subtitle}</p>}
@@ -145,6 +155,23 @@ function PlayIcon({ className }: { className?: string }) {
   )
 }
 
+function enrichBlockMediaItem(
+  item: MediaCollectionItem,
+  index: number,
+  videoMap?: VideoMap,
+): EnrichedMediaItem {
+  const video = item.videoId ? videoMap?.get(item.videoId) : null
+  return {
+    id: item.videoId ?? item.linkToSectionKey ?? `media-${index}`,
+    title: item.titleOverride ?? videoTitle(video) ?? "",
+    subtitle: item.subtitleOverride ?? "",
+    label: item.labelOverride ?? "",
+    collectionSize: item.collectionSize ?? "",
+    imageUrl: item.imageOverrideUrl ?? item.imageUrl ?? videoImageUrl(video),
+    videoSlug: video?.slug ?? "",
+  }
+}
+
 function CarouselVariant({
   id,
   title,
@@ -155,10 +182,10 @@ function CarouselVariant({
   items,
   onBackgroundImageChange,
 }: {
-  id: string
-  title: string | null
-  subtitle: string | null
-  ctaLink: string | null
+  id: string | undefined
+  title: string | undefined
+  subtitle: string | undefined
+  ctaLink: string | null | undefined
   ctaLabel: string | null
   footerText: string | null
   items: EnrichedMediaItem[]

@@ -22,6 +22,7 @@ import {
   PublishExperienceLocaleInput,
   RestoreExperienceLocaleRevisionInput,
   ArchiveExperienceInput,
+  ChatMutationInput,
 } from "./experience.schemas"
 
 function snapshotEnvelope(
@@ -479,6 +480,89 @@ export class ExperienceService {
     return this.prisma.experience.update({
       where: { id: input.id },
       data: { archivedAt: new Date() },
+    })
+  }
+
+  /**
+   * Apply a chat-driven mutation to an ExperienceLocale.
+   *
+   * Mirrors `updateLocale` (Zod parse → ABAC → snapshot → mutate inside
+   * a $transaction) but stamps the resulting ContentRevision with
+   * `revisedByKind: "AI"` so the audit trail distinguishes AI-driven
+   * writes from USER edits. Returns the pre- and post-mutation locale
+   * rows so the chat service can compute a snapshot diff.
+   *
+   * Slug is intentionally NOT writable from this method — the chat
+   * panel is barred from changing slugs (see U6/U7 of the chat plan).
+   * The Zod input below omits `slug` entirely so a `.strict()` envelope
+   * coming from Codex can never sneak it through.
+   */
+  async applyChatMutation({
+    input,
+    user,
+    reason,
+  }: {
+    input: {
+      id: string
+      title?: string
+      metaDescription?: string | null
+      ogImageUrl?: string | null
+      blocks?: unknown[]
+    }
+    user: Principal | null
+    reason: string
+  }) {
+    const parsed = ChatMutationInput.parse(input)
+
+    const existing = await this.prisma.experienceLocale.findUniqueOrThrow({
+      where: { id: parsed.id },
+      select: {
+        id: true,
+        experienceId: true,
+        locale: true,
+        slug: true,
+        isHomepage: true,
+        pathSegment: true,
+        title: true,
+        metaDescription: true,
+        ogTitle: true,
+        ogDescription: true,
+        ogImageUrl: true,
+        blocks: true,
+        status: true,
+        publishedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        experience: {
+          select: { ownerId: true, archivedAt: true, isTemplate: true },
+        },
+      },
+    })
+
+    if (!canEditExperienceLocale(user, existing)) {
+      throw new ForbiddenError()
+    }
+
+    const { id, ...data } = parsed
+    return this.prisma.$transaction(async (tx) => {
+      await tx.contentRevision.create({
+        data: {
+          entityType: "ExperienceLocale",
+          entityId: existing.id,
+          snapshot: snapshotExperienceLocale(existing),
+          status: "HISTORICAL",
+          revisedBy: user?.id ?? null,
+          revisedByKind: "AI",
+          reason,
+        },
+      })
+
+      const updated = await tx.experienceLocale.update({
+        where: { id },
+        data: data as Prisma.ExperienceLocaleUncheckedUpdateInput,
+      })
+
+      return { before: existing, after: updated }
     })
   }
 

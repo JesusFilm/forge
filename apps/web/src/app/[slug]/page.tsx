@@ -44,7 +44,7 @@ export default async function SlugPage({ params }: PageProps) {
     page?.kind === "video-template" ? page.template : (page?.experience ?? null)
   const routeVideo = page?.kind === "video-template" ? page.routeVideo : null
   const blocks = (experience?.blocks ?? []).filter(
-    (b): b is Section => b !== null && b.__typename !== "Error",
+    (b): b is Section => b !== null,
   )
   if (!blocks.length) {
     return <ExperienceEmpty />
@@ -53,12 +53,14 @@ export default async function SlugPage({ params }: PageProps) {
   return (
     <main className="min-h-screen bg-stone-900">
       {blocks.map((block, i) => {
-        const key =
-          "id" in block && typeof block.id === "string"
-            ? block.id
-            : `block-${i}`
+        const key = block.sectionKey ?? `block-${i}`
         return (
-          <SectionRenderer key={key} section={block} routeVideo={routeVideo} />
+          <SectionRenderer
+            key={key}
+            section={block}
+            routeVideo={routeVideo}
+            videoMap={experience?.videoMap}
+          />
         )
       })}
     </main>

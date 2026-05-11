@@ -6,9 +6,9 @@ import { env } from "@/config/env"
 import { BlockSchema } from "@/domain/blocks"
 import { toPgVector } from "@/db/pgvector"
 
-export const EXPERIENCE_EMBEDDING_DIMENSIONS = 1536
-export const OPENROUTER_EMBEDDING_MODEL = "openai/text-embedding-3-small"
-export const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
+export const EXPERIENCE_EMBEDDING_DIMENSIONS = 2048
+export const OPENROUTER_EMBEDDING_MODEL =
+  "nvidia/llama-nemotron-embed-vl-1b-v2:free"
 
 /**
  * Hard timeout for provider requests. Node's default fetch has no
@@ -121,10 +121,6 @@ function collectBlockText(
   }
 }
 
-function embeddingEndpointFromBase(baseUrl: string): string {
-  return new URL("embeddings", `${baseUrl.replace(/\/$/, "")}/`).toString()
-}
-
 export function buildExperienceEmbeddingText(
   locale: ExperienceEmbeddingLocaleInput,
 ): string {
@@ -164,18 +160,9 @@ function selectProvider(): EmbeddingProvider {
       url: "https://openrouter.ai/api/v1/embeddings",
     }
   }
-  if (env.OPENAI_API_KEY) {
-    return {
-      apiKey: env.OPENAI_API_KEY,
-      model: OPENAI_EMBEDDING_MODEL,
-      url: embeddingEndpointFromBase(
-        env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
-      ),
-    }
-  }
   throw new EmbeddingsBatchError(
     "missing_credentials",
-    "OPENROUTER_API_KEY or OPENAI_API_KEY is required for embedding generation",
+    "OPENROUTER_API_KEY is required for embedding generation",
   )
 }
 
@@ -187,11 +174,12 @@ function selectProvider(): EmbeddingProvider {
  * per `(video, locale)` target.
  *
  * Fail-fast on length mismatch (provider returned a different number of
- * vectors) or dimension mismatch (any vector ≠ 1536). Both shape errors
- * surface as `EmbeddingsBatchError` with a typed `code`; the scene
- * indexer's outer try/catch demotes the whole `(video, locale)` target
- * to `failed` rather than partial-write — preserves correctness on the
- * tail while still capturing the 99% happy path in a single round-trip.
+ * vectors) or dimension mismatch (any vector ≠
+ * EXPERIENCE_EMBEDDING_DIMENSIONS). Both shape errors surface as
+ * `EmbeddingsBatchError` with a typed `code`; the scene indexer's outer
+ * try/catch demotes the whole `(video, locale)` target to `failed`
+ * rather than partial-write — preserves correctness on the tail while
+ * still capturing the 99% happy path in a single round-trip.
  */
 export async function generateExperienceEmbeddings(
   inputs: readonly string[],

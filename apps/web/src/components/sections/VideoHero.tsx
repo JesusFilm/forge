@@ -5,20 +5,19 @@ import videojs from "video.js"
 import type Player from "video.js/dist/types/player"
 import "video.js/dist/video-js.css"
 import { MuxVideo } from "@forge/video-player"
-import type { FragmentOf } from "@forge/graphql"
 import type { RouteVideo } from "@/lib/content"
 import {
   CONTENT_WIDTH_ALIGN_CLASSES,
   CONTENT_WIDTH_CLASSES,
 } from "@/lib/content-width"
-import { videoHeroFragment } from "@/lib/fragments/video-hero"
 import { env } from "@/env"
-
-export { videoHeroFragment }
+import type { VideoHeroBlock, VideoMap } from "./block-types"
+import { videoDescription, videoTitle } from "./block-types"
 
 type VideoHeroProps = {
-  data: FragmentOf<typeof videoHeroFragment>
+  data: VideoHeroBlock
   routeVideo?: RouteVideo | null
+  videoMap?: VideoMap
 }
 
 const VIDEO_JS_OPTIONS = {
@@ -437,33 +436,38 @@ function VideoHeroOverlay({
   )
 }
 
-export function VideoHero({ data, routeVideo }: VideoHeroProps) {
+export function VideoHero({ data, routeVideo, videoMap }: VideoHeroProps) {
   const {
-    id,
+    sectionKey,
     heading,
     subheading,
     ctaLabel,
     ctaLink,
     streamingUrl,
     useRouteVideo,
+    videoId,
   } = data
+  const blockVideo = videoId ? videoMap?.get(videoId) : null
 
   const src =
     useRouteVideo === true
       ? (routeVideo?.streamingUrl ?? null)
-      : (streamingUrl ?? null)
+      : (streamingUrl ?? blockVideo?.streamingUrl ?? null)
   const resolvedHeading =
-    heading ?? (useRouteVideo === true ? (routeVideo?.title ?? null) : null)
+    heading ??
+    (useRouteVideo === true
+      ? (routeVideo?.title ?? null)
+      : videoTitle(blockVideo))
   const resolvedSubheading =
     subheading ??
     (useRouteVideo === true
       ? (routeVideo?.snippet ?? routeVideo?.description ?? null)
-      : null)
+      : videoDescription(blockVideo))
 
   if (env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION) {
     return (
       <MuxBackedVideoHero
-        id={id}
+        id={sectionKey}
         src={src}
         resolvedHeading={resolvedHeading}
         resolvedSubheading={resolvedSubheading}
@@ -475,7 +479,7 @@ export function VideoHero({ data, routeVideo }: VideoHeroProps) {
 
   return (
     <VideojsBackedVideoHero
-      id={id}
+      id={sectionKey}
       src={src}
       resolvedHeading={resolvedHeading}
       resolvedSubheading={resolvedSubheading}

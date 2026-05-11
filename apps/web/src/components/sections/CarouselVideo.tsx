@@ -3,9 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import "video.js/dist/video-js.css"
-import type { FragmentOf } from "@forge/graphql"
 import { MuxVideo, useVideoPlayerCore } from "@forge/video-player"
-import { videoCarouselFragment } from "@/lib/fragments/video-carousel"
 import {
   Carousel,
   CarouselContent,
@@ -19,16 +17,22 @@ import {
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
 import { env } from "@/env"
-
-export { videoCarouselFragment }
+import type {
+  HydratedBlockVideo,
+  VideoCarouselBlock,
+  VideoCarouselItem,
+  VideoMap,
+} from "./block-types"
+import { videoImageUrl, videoTitle } from "./block-types"
 
 type CarouselVideoProps = {
-  data: FragmentOf<typeof videoCarouselFragment>
+  data: VideoCarouselBlock
+  videoMap?: VideoMap
 }
 
-type CarouselItemData = NonNullable<
-  NonNullable<FragmentOf<typeof videoCarouselFragment>["items"]>[number]
->
+type CarouselItemData = VideoCarouselItem & {
+  video?: HydratedBlockVideo | null
+}
 
 function FullscreenIcon({ isFullscreen }: { isFullscreen: boolean }) {
   return isFullscreen ? (
@@ -471,8 +475,9 @@ function ThumbnailCard({
   isSelected: boolean
   onClick: () => void
 }) {
-  const imageUrl = item.imageUrl ?? item.video?.images?.[0]?.url
-  const title = item.titleOverride ?? item.video?.title ?? ""
+  const imageUrl =
+    item.imageOverrideUrl ?? item.imageUrl ?? videoImageUrl(item.video)
+  const title = item.titleOverride ?? videoTitle(item.video) ?? ""
 
   return (
     <div
@@ -527,11 +532,14 @@ function ThumbnailCard({
   )
 }
 
-export function CarouselVideo({ data }: CarouselVideoProps) {
-  const { title, subtitle, carouselDescription, items } = data
-  const validItems = items?.filter(
-    (item): item is NonNullable<typeof item> => item != null,
-  )
+export function CarouselVideo({ data, videoMap }: CarouselVideoProps) {
+  const { title, subtitle, description, items } = data
+  const validItems = items
+    ?.filter((item): item is VideoCarouselItem => item != null)
+    .map((item) => ({
+      ...item,
+      video: item.videoId ? videoMap?.get(item.videoId) : null,
+    }))
 
   const [selectedIndex, setSelectedIndex] = useState(0)
 
@@ -540,15 +548,18 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
   const clampedIndex = Math.min(selectedIndex, validItems.length - 1)
   const selectedItem = validItems[clampedIndex]
   const posterUrl =
-    selectedItem.imageUrl ?? selectedItem.video?.images?.[0]?.url ?? undefined
+    selectedItem.imageOverrideUrl ??
+    selectedItem.imageUrl ??
+    videoImageUrl(selectedItem.video) ??
+    undefined
 
-  const descriptionWords = carouselDescription?.split(" ") ?? []
+  const descriptionWords = description?.split(" ") ?? []
   const boldPart = descriptionWords.slice(0, 4).join(" ")
   const restPart = descriptionWords.slice(4).join(" ")
 
   return (
     <div className="flex w-full flex-col gap-8">
-      {(subtitle || title || carouselDescription) && (
+      {(subtitle || title || description) && (
         <div className="flex flex-col gap-1">
           {subtitle && (
             <h4 className="mb-0 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:mb-1 xl:text-base 2xl:text-lg">
@@ -560,7 +571,7 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
               {title}
             </h3>
           )}
-          {carouselDescription && (
+          {description && (
             <p className="mt-2 text-lg leading-relaxed text-stone-200/80 xl:text-xl">
               <span className="font-bold text-white">{boldPart}</span>
               {restPart ? ` ${restPart}` : ""}
@@ -587,7 +598,7 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
           <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
             {validItems.map((item, index) => (
               <CarouselItem
-                key={item.id ?? index}
+                key={item.videoId ?? item.streamingUrl ?? index}
                 className="max-w-[200px] pl-5"
               >
                 <ThumbnailCard

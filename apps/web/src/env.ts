@@ -3,8 +3,7 @@ import { z } from "zod"
 
 export const env = createEnv({
   server: {
-    INTERNAL_GRAPHQL_URL: z.url(),
-    STRAPI_API_TOKEN: z.string(),
+    INTERNAL_ADMIN_GRAPHQL_URL: z.url(),
     STRAPI_PREVIEW_SECRET: z.string(),
     REVALIDATION_SECRET: z.string(),
     // Optional: used only by the /demo-search AI experience generator.
@@ -13,7 +12,7 @@ export const env = createEnv({
     OPENROUTER_API_KEY: z.string().optional(),
   },
   client: {
-    NEXT_PUBLIC_GRAPHQL_URL: z.url(),
+    NEXT_PUBLIC_ADMIN_GRAPHQL_URL: z.url(),
     // U12 — Mux watch-page player migration flag.
     // Boolean env var (true|false). Per-environment value, no per-user
     // targeting. When `true`, VideoHero/Video/CarouselVideo render via
@@ -78,12 +77,11 @@ export const env = createEnv({
       ),
   },
   runtimeEnv: {
-    INTERNAL_GRAPHQL_URL: process.env.INTERNAL_GRAPHQL_URL,
-    STRAPI_API_TOKEN: process.env.STRAPI_API_TOKEN,
+    INTERNAL_ADMIN_GRAPHQL_URL: process.env.INTERNAL_ADMIN_GRAPHQL_URL,
     STRAPI_PREVIEW_SECRET: process.env.STRAPI_PREVIEW_SECRET,
     REVALIDATION_SECRET: process.env.REVALIDATION_SECRET,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
-    NEXT_PUBLIC_GRAPHQL_URL: process.env.NEXT_PUBLIC_GRAPHQL_URL,
+    NEXT_PUBLIC_ADMIN_GRAPHQL_URL: process.env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY,

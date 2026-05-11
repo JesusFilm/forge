@@ -1,7 +1,7 @@
 process.env.CI ??= "1"
-process.env.INTERNAL_GRAPHQL_URL ??= "http://localhost:1437/graphql"
-process.env.NEXT_PUBLIC_GRAPHQL_URL ??= "http://localhost:1437/graphql"
-process.env.STRAPI_API_TOKEN ??= "test-strapi-api-token"
+process.env.INTERNAL_ADMIN_GRAPHQL_URL ??= "http://localhost:3003/api/graphql"
+process.env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL ??=
+  "http://localhost:3003/api/graphql"
 process.env.STRAPI_PREVIEW_SECRET ??= "test-strapi-preview-secret"
 process.env.REVALIDATION_SECRET ??= "test-revalidation-secret"
 

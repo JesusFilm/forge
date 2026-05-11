@@ -1,11 +1,8 @@
 "use client"
 
 import { useState, useEffect, useId } from "react"
-import type { FragmentOf } from "@forge/graphql"
 import { HDate, months } from "@hebcal/hdate"
-import { easterDatesFragment } from "@/lib/fragments/easter-dates"
-
-export { easterDatesFragment }
+import type { EasterDatesBlock } from "./block-types"
 
 function calculateWesternEaster(year: number): Date {
   const a = year % 19
@@ -43,7 +40,7 @@ function calculatePassover(year: number): Date {
 }
 
 type EasterDatesProps = {
-  data: FragmentOf<typeof easterDatesFragment>
+  data: EasterDatesBlock
 }
 
 const DATE_OPTIONS: Intl.DateTimeFormatOptions = {

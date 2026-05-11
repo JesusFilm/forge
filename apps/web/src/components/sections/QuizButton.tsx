@@ -3,15 +3,10 @@
 import { type ReactElement, useState } from "react"
 import { Loader2, XIcon } from "lucide-react"
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog"
-
-type QuizButtonData = {
-  id: string
-  buttonText: string
-  iframeSrc: string
-}
+import type { QuizButtonBlock } from "./block-types"
 
 type QuizButtonProps = {
-  data: QuizButtonData
+  data: QuizButtonBlock
 }
 
 export function QuizButton({ data }: QuizButtonProps): ReactElement {

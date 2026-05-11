@@ -1,18 +1,20 @@
 import { unstable_cache } from "next/cache"
-import { graphql, type ResultOf } from "@forge/graphql"
+import { adminGraphql, type AdminResultOf } from "@forge/graphql"
 import client from "@/lib/client"
 
 // Minimal fetch for the /demo-search watch page. Intentionally decoupled from
 // lib/content.ts's richer ResolvedWatchPage tree so the demo route does not
 // drag along the template-experience lookup path.
 
-const GET_DEMO_VIDEO = graphql(`
-  query GetDemoVideo($slug: String!, $locale: I18NLocaleCode!) {
-    videos(filters: { slug: { eq: $slug } }, locale: $locale) {
-      documentId
+const GET_DEMO_VIDEO = adminGraphql(`
+  query GetDemoVideo($slug: String!, $locale: String!) {
+    videoBySlug(slug: $slug, locale: $locale) {
+      id
       slug
-      title
-      description
+      locales(locale: $locale) {
+        title
+        description
+      }
       images {
         url
         mobileCinematicHigh
@@ -20,8 +22,8 @@ const GET_DEMO_VIDEO = graphql(`
       primaryLanguage {
         coreId
       }
-      variants {
-        documentId
+      dubs {
+        id
         hls
         published
         language {
@@ -33,8 +35,8 @@ const GET_DEMO_VIDEO = graphql(`
 `)
 
 type DemoVideoRecord = NonNullable<
-  ResultOf<typeof GET_DEMO_VIDEO>["videos"]
->[number]
+  AdminResultOf<typeof GET_DEMO_VIDEO>["videoBySlug"]
+>
 
 export type DemoPlayableVideo = {
   title: string
@@ -45,18 +47,16 @@ export type DemoPlayableVideo = {
 }
 
 function selectPlayableVariant(video: NonNullable<DemoVideoRecord>) {
-  const variants = (video.variants ?? []).filter(
-    (variant): variant is NonNullable<typeof variant> => variant != null,
-  )
-  const playable = variants.filter(
-    (variant) => variant.published === true && Boolean(variant.hls),
+  const dubs = video.dubs ?? []
+  const playable = dubs.filter(
+    (dub) => dub.published === true && Boolean(dub.hls),
   )
   if (!playable.length) return null
 
   const primaryLanguageId = video.primaryLanguage?.coreId ?? null
   if (primaryLanguageId) {
     const primary = playable.find(
-      (variant) => variant.language?.coreId === primaryLanguageId,
+      (dub) => dub.language?.coreId === primaryLanguageId,
     )
     if (primary) return primary
   }
@@ -71,19 +71,18 @@ const fetchDemoVideo = unstable_cache(
         variables: { slug, locale },
         fetchPolicy: "no-cache",
       })
-      const record = result.data?.videos?.[0] as
-        | NonNullable<DemoVideoRecord>
-        | undefined
+      const record = result.data?.videoBySlug as DemoVideoRecord | undefined
       if (!record) return null
 
       const variant = selectPlayableVariant(record)
       const image = record.images?.[0]
       const imageUrl =
         (image?.mobileCinematicHigh as string | undefined) ?? image?.url ?? null
+      const localeContent = record.locales?.[0]
 
       return {
-        title: record.title ?? slug,
-        description: record.description ?? null,
+        title: localeContent?.title ?? slug,
+        description: localeContent?.description ?? null,
         streamingUrl: variant?.hls ?? null,
         posterUrl: imageUrl,
         imageUrl,

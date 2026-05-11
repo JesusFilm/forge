@@ -9,7 +9,7 @@ builder.queryFields((t) => ({
     type: ["ExperienceLocale"],
     authScopes: { public: true },
     description:
-      "Semantic search over Experience locales. Pass a 1536-dimension embedding vector. " +
+      "Semantic search over Experience locales. Pass a 2048-dimension embedding vector. " +
       "PUBLIC sees published only; EDITOR/ADMIN see all statuses.",
     args: {
       vector: t.arg({ type: "JSON", required: true }),

@@ -130,8 +130,8 @@ describe("runExperienceContentDump", () => {
     })
     dispatch.mockReturnValue({
       localeId: "loc-1",
-      dimensions: 1536,
-      model: "text-embedding-3-small",
+      dimensions: 2048,
+      model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
       updated: true,
     })
 
@@ -383,8 +383,8 @@ describe("runExperienceContentDump", () => {
     // in place so the next rerun retries.
     dispatch.mockReturnValue({
       localeId: "loc-h",
-      dimensions: 1536,
-      model: "text-embedding-3-small",
+      dimensions: 2048,
+      model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
       updated: true,
     })
     serviceMocks.persistContentHash.mockRejectedValueOnce(
@@ -552,8 +552,8 @@ describe("runExperienceContentDump", () => {
       )
     dispatch.mockReturnValue({
       localeId: "loc-a",
-      dimensions: 1536,
-      model: "text-embedding-3-small",
+      dimensions: 2048,
+      model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
       updated: true,
     })
 

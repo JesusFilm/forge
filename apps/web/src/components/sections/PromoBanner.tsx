@@ -1,22 +1,17 @@
-import type { FragmentOf } from "@forge/graphql"
-import { promoBannerFragment } from "@/lib/fragments/promo-banner"
-
-export { promoBannerFragment }
+import type { PromoBannerBlock } from "./block-types"
 
 type PromoBannerProps = {
-  data: FragmentOf<typeof promoBannerFragment>
+  data: PromoBannerBlock
 }
 
 export function PromoBanner({ data }: PromoBannerProps) {
-  const {
-    id,
-    promoHeading: heading,
-    promoDescription: description,
-    intro,
-    promoCtaLink: ctaLink,
-  } = data
+  const { sectionKey, heading, description, intro, ctaLink, ctaLabel } = data
   return (
-    <section id={id} className="bg-blue-50 py-12">
+    <section
+      id={sectionKey ?? undefined}
+      data-section-key={sectionKey ?? undefined}
+      className="bg-blue-50 py-12"
+    >
       <div className="container mx-auto px-4 text-center">
         {intro && (
           <p className="mb-2 text-sm uppercase tracking-wide text-blue-600">
@@ -31,7 +26,7 @@ export function PromoBanner({ data }: PromoBannerProps) {
             rel="noopener noreferrer"
             className="inline-block rounded bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700"
           >
-            Learn more
+            {ctaLabel ?? "Learn more"}
           </a>
         )}
       </div>

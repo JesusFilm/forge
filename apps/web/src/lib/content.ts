@@ -1,104 +1,461 @@
 import type { ErrorLike } from "@apollo/client"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
-import { graphql, type ResultOf } from "@forge/graphql"
+import { adminGraphql, type AdminResultOf } from "@forge/graphql"
+import {
+  BlocksSchema,
+  type Block,
+  type Blocks,
+} from "../../../admin/src/domain/blocks"
 import client from "@/lib/client"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
-import {
-  getWatchVideoBySlugOperation,
-  getWatchVideoOperation,
-  watchExperienceFragment,
-  watchVideoFragment,
-} from "@/lib/fragments"
 
-// U2: import the new watch-page fragment so its presence keeps the gql.tada
-// introspection types live.
-void watchVideoFragment
-
-const GET_EXPERIENCE = graphql(`
-  query GetExperience($slug: String!, $locale: I18NLocaleCode!) {
-    experiences(filters: { slug: { eq: $slug } }, locale: $locale) {
-      documentId
-    }
-  }
-`)
-
-const GET_WATCH_EXPERIENCE = graphql(
-  `
-    query GetWatchExperience(
-      $locale: I18NLocaleCode!
-      $filters: ExperienceFiltersInput!
-    ) {
-      experiences(filters: $filters, locale: $locale) {
-        ...WatchExperience
-      }
-    }
-  `,
-  [watchExperienceFragment],
-)
-
-const GET_WATCH_SETTINGS = graphql(
-  `
-    query GetWatchSettings($locale: I18NLocaleCode!) {
-      watchSetting(locale: $locale) {
-        documentId
-        homepageExperience {
-          ...WatchExperience
-        }
-        defaultTemplateExperience {
-          ...WatchExperience
-        }
-      }
-    }
-  `,
-  [watchExperienceFragment],
-)
-
-const GET_ROUTE_VIDEO = graphql(`
-  query GetRouteVideo($slug: String!, $locale: I18NLocaleCode!) {
-    videos(filters: { slug: { eq: $slug } }, locale: $locale) {
-      documentId
-      slug
+const EXPERIENCE_FIELDS = `
+  id
+  slug
+  isHomepage
+  title
+  metaDescription
+  ogTitle
+  ogDescription
+  ogImageUrl
+  pathSegment
+  blocks
+  referencedVideos {
+    documentId: id
+    slug
+    noIndex
+    locales(locale: $locale) {
+      id
+      locale
       title
       snippet
       description
       imageAlt
-      noIndex
-      images {
-        url
-      }
-      primaryLanguage {
+    }
+    images {
+      id
+      url
+      thumbnail
+      mobileCinematicHigh
+      mobileCinematicLow
+    }
+    variants: dubs {
+      documentId: id
+      published
+      hls
+      language {
         coreId
       }
-      variants(pagination: { limit: -1 }) {
-        documentId
-        hls
-        published
-        language {
-          coreId
-        }
-      }
-      children(pagination: { limit: 24 }) {
-        documentId
-        slug
+    }
+  }
+`
+
+const WATCH_VIDEO_FIELDS = `
+  documentId: id
+  slug
+  noIndex
+  label
+  primaryLanguage {
+    id
+    coreId
+    bcp47
+    slug
+    name
+  }
+  locales(locale: $locale) {
+    id
+    locale
+    title
+    snippet
+    description
+    imageAlt
+  }
+  images {
+    id
+    url
+    thumbnail
+    mobileCinematicHigh
+    mobileCinematicLow
+  }
+  parents {
+    documentId: id
+    slug
+    locales(locale: $locale) {
+      id
+      locale
+      title
+    }
+    children {
+      documentId: id
+      slug
+      label
+      locales(locale: $locale) {
+        id
+        locale
         title
-        label
-        images {
-          url
-        }
+        snippet
+        description
+        imageAlt
       }
+      images {
+        id
+        url
+        thumbnail
+        mobileCinematicHigh
+        mobileCinematicLow
+      }
+    }
+  }
+  children {
+    documentId: id
+    slug
+    label
+    locales(locale: $locale) {
+      id
+      locale
+      title
+      snippet
+      description
+      imageAlt
+    }
+    images {
+      id
+      url
+      thumbnail
+      mobileCinematicHigh
+      mobileCinematicLow
+    }
+  }
+  variants: dubs {
+    documentId: id
+    slug
+    published
+    hls
+    duration
+    language {
+      id
+      coreId
+      bcp47
+      slug
+      name
+    }
+    downloads {
+      documentId: id
+      quality
+      size
+      url
+    }
+    muxVideo {
+      playbackId
+    }
+  }
+  studyQuestions {
+    documentId: id
+    value: text
+    order
+  }
+  bibleCitations {
+    documentId: id
+    chapterStart
+    chapterEnd
+    verseStart
+    verseEnd
+    order
+    osisId
+    bibleBook {
+      documentId: id
+      name
+    }
+  }
+`
+
+const GET_EXPERIENCE = adminGraphql(`
+  query GetExperience($slug: String!, $locale: String!) {
+    experienceBySlug(slug: $slug, locale: $locale) {
+      id
     }
   }
 `)
 
-type WatchData = ResultOf<typeof GET_WATCH_EXPERIENCE>
-type WatchSettingsData = ResultOf<typeof GET_WATCH_SETTINGS>
-type RouteVideoData = ResultOf<typeof GET_ROUTE_VIDEO>
+const GET_WATCH_EXPERIENCE = adminGraphql(`
+  query GetWatchExperience($slug: String!, $locale: String!) {
+    experienceBySlug(slug: $slug, locale: $locale) {
+      ${EXPERIENCE_FIELDS}
+    }
+  }
+`)
 
-export type WatchExperience = WatchData["experiences"][number]
-type WatchSetting = WatchSettingsData["watchSetting"]
-type RouteVideoRecord = RouteVideoData["videos"][number]
+const GET_WATCH_SETTINGS = adminGraphql(`
+  query GetWatchSettings($locale: String!) {
+    homepageExperienceLocale(locale: $locale) {
+      ${EXPERIENCE_FIELDS}
+    }
+    defaultTemplateExperienceLocale(locale: $locale) {
+      ${EXPERIENCE_FIELDS}
+    }
+  }
+`)
+
+const GET_ROUTE_VIDEO = adminGraphql(`
+  query GetRouteVideo($slug: String!, $locale: String!) {
+    videoBySlug(slug: $slug, locale: $locale) {
+      ${WATCH_VIDEO_FIELDS}
+    }
+  }
+`)
+
+const GET_WATCH_VIDEO = adminGraphql(`
+  query GetWatchVideo($videoSlug: String!, $locale: String!) {
+    videoBySlug(slug: $videoSlug, locale: $locale) {
+      ${WATCH_VIDEO_FIELDS}
+    }
+  }
+`)
+
+const GET_WATCH_VIDEO_BY_SLUG = adminGraphql(`
+  query GetWatchVideoBySlug($videoSlug: String!, $locale: String!) {
+    videoBySlug(slug: $videoSlug, locale: $locale) {
+      ${WATCH_VIDEO_FIELDS}
+    }
+  }
+`)
+
+type WatchData = AdminResultOf<typeof GET_WATCH_EXPERIENCE>
+type RouteVideoData = AdminResultOf<typeof GET_ROUTE_VIDEO>
+type WatchVideoData = AdminResultOf<typeof GET_WATCH_VIDEO>
+
+type AdminExperienceLocale = NonNullable<WatchData["experienceBySlug"]>
+type AdminRouteVideoRecord = NonNullable<RouteVideoData["videoBySlug"]>
+type AdminWatchVideoRecord = NonNullable<WatchVideoData["videoBySlug"]>
+type AdminVideoLocale = NonNullable<
+  NonNullable<AdminRouteVideoRecord["locales"]>[number]
+>
+type AdminReferencedVideo = NonNullable<
+  NonNullable<AdminExperienceLocale["referencedVideos"]>[number]
+>
+type AdminLanguage = NonNullable<AdminRouteVideoRecord["primaryLanguage"]>
+
+type LegacyMedia = {
+  url?: string | null
+  width?: number | null
+  height?: number | null
+  alternativeText?: string | null
+}
+
+type NormalizedExperience = Omit<
+  AdminExperienceLocale,
+  "blocks" | "ogImageUrl" | "referencedVideos"
+> & {
+  documentId: string
+  isTemplate: boolean
+  blocks: Section[]
+  ogImage: LegacyMedia | null
+  referencedVideos: (AdminReferencedVideo & {
+    documentId: string
+    id: string
+    streamingUrl: string | null
+  })[]
+  videoMap: Map<
+    string,
+    AdminReferencedVideo & {
+      documentId: string
+      id: string
+      streamingUrl: string | null
+    }
+  >
+}
+
+type NormalizedRouteVideoRecord = AdminRouteVideoRecord & {
+  title: string | null
+  snippet: string | null
+  description: string | null
+  imageAlt: string | null
+}
+
+export type WatchExperience = NormalizedExperience
+type WatchSetting = {
+  homepageExperience: WatchExperience | null
+  defaultTemplateExperience: WatchExperience | null
+}
+type RouteVideoRecord = NormalizedRouteVideoRecord
+
+function displayNameFromJson(value: unknown): string | null {
+  if (typeof value === "string") return value
+  if (value && typeof value === "object") {
+    const entries = Object.values(value as Record<string, unknown>)
+    const primary = entries.find((entry) => typeof entry === "string")
+    if (typeof primary === "string") return primary
+  }
+  return null
+}
+
+function normalizeLanguage<T extends AdminLanguage | null | undefined>(
+  language: T,
+): T {
+  if (!language) return language
+  return {
+    ...language,
+    name: displayNameFromJson(language.name),
+  } as T
+}
+
+function pickLocale<T extends { locale?: string | null } | null | undefined>(
+  locales: readonly T[] | null | undefined,
+  locale: string,
+): NonNullable<T> | null {
+  const items = (locales ?? []).filter(
+    (item): item is NonNullable<T> => item != null,
+  )
+  return (
+    items.find((item) => item.locale === locale) ??
+    items.find((item) => item.locale === "en") ??
+    items[0] ??
+    null
+  )
+}
+
+function parseBlocks(rawBlocks: AdminExperienceLocale["blocks"]): Blocks {
+  if (!Array.isArray(rawBlocks)) return []
+  return BlocksSchema.parse(rawBlocks)
+}
+
+function referencedVideoStreamingUrl(
+  video: AdminReferencedVideo,
+): string | null {
+  const variants =
+    "variants" in video && Array.isArray(video.variants) ? video.variants : []
+  const playableVariants = variants.filter(
+    (variant): variant is NonNullable<(typeof variants)[number]> =>
+      variant != null && Boolean(variant.hls),
+  )
+  return (
+    playableVariants.find((variant) => variant.published === true)?.hls ??
+    playableVariants[0]?.hls ??
+    null
+  )
+}
+
+function normalizeExperience(
+  experience: AdminExperienceLocale | null | undefined,
+  isTemplate = false,
+): WatchExperience | null {
+  if (!experience) return null
+  const referencedVideos = (experience.referencedVideos ?? [])
+    .filter(
+      (video): video is AdminReferencedVideo & { documentId: string } =>
+        video != null && typeof video.documentId === "string",
+    )
+    .map((video) => ({
+      ...video,
+      id: video.documentId,
+      streamingUrl: referencedVideoStreamingUrl(video),
+    }))
+
+  return {
+    ...experience,
+    documentId: experience.id ?? "",
+    isTemplate,
+    blocks: parseBlocks(experience.blocks),
+    ogImage: experience.ogImageUrl
+      ? {
+          url: experience.ogImageUrl,
+        }
+      : null,
+    referencedVideos,
+    videoMap: new Map(
+      referencedVideos.map((video) => [video.documentId, video]),
+    ),
+  }
+}
+
+function hydrateExperienceVideoMap(
+  experience: WatchExperience,
+): WatchExperience {
+  const referencedVideos = (experience.referencedVideos ?? []).filter(
+    (
+      video,
+    ): video is AdminReferencedVideo & {
+      documentId: string
+      id: string
+      streamingUrl: string | null
+    } => video != null && typeof video.documentId === "string",
+  )
+  return {
+    ...experience,
+    referencedVideos,
+    videoMap: new Map(
+      referencedVideos.map((video) => [video.documentId, video]),
+    ),
+  }
+}
+
+function hydrateWatchPageVideoMaps(page: ResolvedWatchPage): ResolvedWatchPage {
+  if (page.kind === "experience") {
+    return {
+      ...page,
+      experience: hydrateExperienceVideoMap(page.experience),
+    }
+  }
+
+  return {
+    ...page,
+    template: hydrateExperienceVideoMap(page.template),
+  }
+}
+
+function normalizeVideoLocaleFields<
+  T extends AdminRouteVideoRecord | AdminWatchVideoRecord,
+>(video: T, locale: string): T & NormalizedRouteVideoRecord {
+  const localized = pickLocale(video.locales as AdminVideoLocale[], locale)
+  const normalizeChild = (child: NonNullable<T["children"]>[number]) => {
+    const childLocale = pickLocale(child?.locales ?? null, locale)
+    return {
+      ...child,
+      title: childLocale?.title ?? child?.slug ?? null,
+      snippet: childLocale?.snippet ?? null,
+      description: childLocale?.description ?? null,
+      imageAlt: childLocale?.imageAlt ?? null,
+    }
+  }
+  const normalizeParent = (parent: NonNullable<T["parents"]>[number]) => {
+    const parentLocale = pickLocale(parent?.locales ?? null, locale)
+    return {
+      ...parent,
+      title: parentLocale?.title ?? parent?.slug ?? null,
+      children: (parent?.children ?? []).map(normalizeChild),
+    }
+  }
+  return {
+    ...video,
+    title: localized?.title ?? video.slug ?? null,
+    snippet: localized?.snippet ?? null,
+    description: localized?.description ?? null,
+    imageAlt: localized?.imageAlt ?? null,
+    primaryLanguage: normalizeLanguage(video.primaryLanguage),
+    variants: (video.variants ?? []).map((variant) =>
+      variant
+        ? { ...variant, language: normalizeLanguage(variant.language) }
+        : variant,
+    ),
+    bibleCitations: (video.bibleCitations ?? []).map((citation) =>
+      citation
+        ? {
+            ...citation,
+            bibleBook: citation.bibleBook
+              ? {
+                  ...citation.bibleBook,
+                  name: displayNameFromJson(citation.bibleBook.name),
+                }
+              : null,
+          }
+        : citation,
+    ),
+    children: (video.children ?? []).map(normalizeChild),
+    parents: (video.parents ?? []).map(normalizeParent),
+  } as T & NormalizedRouteVideoRecord
+}
 
 export type ExperienceMetadata = {
   title: string
@@ -161,7 +518,7 @@ export function experienceToMetadata(
     ogTitle,
     ogDescription,
     pathSegment: exp.pathSegment ?? null,
-    ogImage: exp.ogImage
+    ogImage: exp.ogImage?.url
       ? {
           url: exp.ogImage.url,
           width: exp.ogImage.width ?? null,
@@ -178,14 +535,13 @@ export async function readPublishedContent(slug: string, locale: string) {
     variables: { slug, locale },
   })
   if (result.error) return null
-  const items = result.data?.experiences
-  return items?.[0] ?? null
+  return result.data?.experienceBySlug ?? null
 }
 
-export type Section = Exclude<
-  NonNullable<NonNullable<NonNullable<WatchExperience>["blocks"]>[number]>,
-  null | { __typename: "Error" }
->
+// Legacy section renderers still consume Strapi-shaped blocks until the U5
+// component rewrite lands. U4 owns parsing admin blocks but keeps this public
+// alias permissive so existing routes/components continue to typecheck.
+export type Section = Block & { __typename?: string | null; id?: string | null }
 
 export function isWatchPageMissingError(
   error: ErrorLike | Error | null | undefined,
@@ -232,13 +588,13 @@ function asTemplateExperience(
   return experience as NonNullable<WatchExperience>
 }
 
-async function getExperienceByFilters(
+async function getExperienceBySlug(
   locale: string,
-  filters: Record<string, unknown>,
+  slug: string,
 ): Promise<NonNullable<WatchExperience> | null> {
   const result = await client.query({
     query: GET_WATCH_EXPERIENCE,
-    variables: { locale, filters },
+    variables: { locale, slug },
     fetchPolicy: "no-cache",
   })
 
@@ -247,8 +603,7 @@ async function getExperienceByFilters(
   )
   if (error) throw error
 
-  return (result.data?.experiences?.[0] ??
-    null) as NonNullable<WatchExperience> | null
+  return normalizeExperience(result.data?.experienceBySlug)
 }
 
 async function getWatchSettings(locale: string): Promise<WatchSetting | null> {
@@ -263,7 +618,17 @@ async function getWatchSettings(locale: string): Promise<WatchSetting | null> {
   )
   if (error) throw error
 
-  return result.data?.watchSetting ?? null
+  if (!result.data) return null
+
+  return {
+    homepageExperience: normalizeExperience(
+      result.data.homepageExperienceLocale,
+    ),
+    defaultTemplateExperience: normalizeExperience(
+      result.data.defaultTemplateExperienceLocale,
+      true,
+    ),
+  }
 }
 
 async function getVideoBySlug(
@@ -281,7 +646,8 @@ async function getVideoBySlug(
   )
   if (error) throw error
 
-  return (result.data?.videos?.[0] ?? null) as RouteVideoRecord | null
+  const video = result.data?.videoBySlug ?? null
+  return video ? normalizeVideoLocaleFields(video, locale) : null
 }
 
 function selectPlayableVariant(video: NonNullable<RouteVideoRecord>) {
@@ -318,7 +684,15 @@ function normalizeRelatedRouteItems(
       if (selfSlug && child.slug === selfSlug) return false
       return true
     })
-    .map(enrichRouteRelatedVideo)
+    .map((child) =>
+      enrichRouteRelatedVideo({
+        documentId: child.documentId ?? "",
+        slug: child.slug ?? null,
+        title: "title" in child ? (child.title as string | null) : null,
+        label: child.label ?? null,
+        images: child.images ?? null,
+      }),
+    )
     .filter((item): item is EnrichedMediaItem => item != null)
     .slice(0, 24)
 }
@@ -330,7 +704,7 @@ function normalizeRouteVideo(
   if (!selectedVariant?.hls) return null
 
   return {
-    documentId: video.documentId,
+    documentId: video.documentId ?? "",
     slug: video.slug ?? "",
     title: video.title ?? "",
     snippet: video.snippet ?? null,
@@ -357,15 +731,7 @@ async function resolveHomepage(
   if (homepageExperience) {
     return { kind: "experience", experience: homepageExperience }
   }
-
-  const legacyHomepage = asNonTemplateExperience(
-    await getExperienceByFilters(locale, {
-      isHomepage: { eq: true },
-    }),
-  )
-  if (!legacyHomepage) return null
-
-  return { kind: "experience", experience: legacyHomepage }
+  return null
 }
 
 async function resolveSlugPage(
@@ -373,9 +739,7 @@ async function resolveSlugPage(
   slug: string,
 ): Promise<ResolvedWatchPage | null> {
   const explicitExperience = asNonTemplateExperience(
-    await getExperienceByFilters(locale, {
-      slug: { eq: slug },
-    }),
+    await getExperienceBySlug(locale, slug),
   )
   if (explicitExperience) {
     return { kind: "experience", experience: explicitExperience }
@@ -440,7 +804,12 @@ const fetchResolvedWatchPage = unstable_cache(
 /** Shared watch-page resolver for page rendering and metadata generation. */
 export const resolveWatchPage = cache(
   async (locale: string, slug?: string): Promise<WatchPageResult> => {
-    return fetchResolvedWatchPage(locale, slug ?? null)
+    const result = await fetchResolvedWatchPage(locale, slug ?? null)
+    if (!result.data) return result
+    return {
+      ...result,
+      data: hydrateWatchPageVideoMaps(result.data),
+    }
   },
 )
 
@@ -448,12 +817,72 @@ export const resolveWatchPage = cache(
 // U3: dedicated watch route resolver
 // ---------------------------------------------------------------------------
 
-type GetWatchVideoData = ResultOf<typeof getWatchVideoOperation>
-type WatchVideoRecord = NonNullable<GetWatchVideoData["videos"][number]>
-type WatchParent = NonNullable<NonNullable<WatchVideoRecord["parents"]>[number]>
-type WatchVariant = NonNullable<
-  NonNullable<WatchVideoRecord["variants"]>[number]
->
+type WatchImage = { url?: string | null; thumbnail?: string | null } | null
+type WatchLanguage = {
+  coreId?: string | null
+  bcp47?: string | null
+  slug?: string | null
+  name?: string | null
+} | null
+type WatchChild = {
+  documentId: string
+  slug: string | null
+  title: string | null
+  label?: string | null
+  images?: WatchImage[] | null
+}
+type WatchParent = WatchChild & { children?: WatchChild[] | null }
+type WatchVariant = {
+  documentId: string
+  slug?: string | null
+  published?: boolean | null
+  hls?: string | null
+  duration?: number | null
+  language?: WatchLanguage
+  downloads?:
+    | {
+        documentId: string
+        quality?: string | null
+        size?: string | null
+        url?: string | null
+      }[]
+    | null
+  muxVideo?: { playbackId?: string | null } | null
+}
+type WatchVideoRecord = {
+  documentId: string
+  slug: string | null
+  title: string | null
+  snippet: string | null
+  description: string | null
+  noIndex: boolean | null
+  label?: string | null
+  imageAlt?: string | null
+  images?: WatchImage[] | null
+  primaryLanguage?: WatchLanguage
+  parents?: WatchParent[] | null
+  children?: WatchChild[] | null
+  variants?: WatchVariant[] | null
+  studyQuestions?:
+    | {
+        documentId?: string | null
+        value?: string | null
+        order?: number | null
+      }[]
+    | null
+  bibleCitations?:
+    | {
+        documentId?: string | null
+        chapterStart?: number | null
+        chapterEnd?: number | null
+        verseStart?: number | null
+        verseEnd?: number | null
+        order?: number | null
+        osisId?: string | null
+        bibleBook?: { documentId?: string | null; name?: string | null } | null
+      }[]
+    | null
+}
 
 export type WatchVideoErrorCode =
   | "PARENT_NOT_FOUND"
@@ -465,7 +894,7 @@ export type WatchVideoErrorCode =
 /**
  * Typed error surfaced from `resolveWatchVideo` (and `mergeWatchExperience`)
  * when the requested collection/video/locale combination cannot be rendered,
- * or when an Experience supplies a Strapi-typed player block targeting the
+ * or when an Experience supplies an admin-authored player block targeting the
  * watch-page HeroPlayer slot. The route layer
  * (`apps/web/src/app/[slug]/[video]/[locale]/page.tsx`) re-throws this so the
  * sibling `error.tsx` boundary can map the code to copy.
@@ -508,8 +937,8 @@ export class WatchVideoError extends Error {
 /**
  * Resolved payload for `/watch/[collection]/[video]/[locale]`.
  *
- * The `video` field carries the full Strapi projection from
- * `WatchVideoFragment`; `canonicalParent` and `selectedVariant` are
+ * The `video` field carries the admin Video projection; `canonicalParent` and
+ * `selectedVariant` are
  * resolver-side picks (URL slug match + language.slug filter) and are
  * **also referenced by the same identity inside `video.parents` /
  * `video.variants`** so downstream consumers can correlate without a second
@@ -527,18 +956,16 @@ type ResolveWatchVideoArgs = {
   languageSlug: string
 }
 
-const WATCH_VIDEO_I18N_LOCALE = "en"
-
 async function fetchWatchVideoRecord(
   collectionSlug: string,
   videoSlug: string,
+  locale: string,
 ): Promise<WatchVideoRecord | null> {
   const result = await client.query({
-    query: getWatchVideoOperation,
+    query: GET_WATCH_VIDEO,
     variables: {
-      i18nLocale: WATCH_VIDEO_I18N_LOCALE,
-      collectionSlug,
       videoSlug,
+      locale,
     },
     fetchPolicy: "no-cache",
   })
@@ -548,7 +975,16 @@ async function fetchWatchVideoRecord(
   )
   if (error) throw error
 
-  return (result.data?.videos?.[0] ?? null) as WatchVideoRecord | null
+  const record = result.data?.videoBySlug ?? null
+  if (!record) return null
+
+  const normalized = normalizeVideoLocaleFields(record, locale)
+  const parents = (normalized.parents ?? []).filter(
+    (parent) => parent != null,
+  ) as unknown as WatchParent[]
+  if (!parents.some((parent) => parent.slug === collectionSlug)) return null
+
+  return normalized as unknown as WatchVideoRecord
 }
 
 // Strip the heavy fields (`downloads`, `muxVideo`, `duration`) from every
@@ -586,7 +1022,11 @@ async function tryResolveWatchVideo(
   videoSlug: string,
   languageSlug: string,
 ): Promise<ResolvedWatchVideo> {
-  const record = await fetchWatchVideoRecord(collectionSlug, videoSlug)
+  const record = await fetchWatchVideoRecord(
+    collectionSlug,
+    videoSlug,
+    languageSlug,
+  )
   if (!record) {
     throw new WatchVideoError("VIDEO_NOT_FOUND", {
       collectionSlug,
@@ -693,12 +1133,13 @@ export type ResolvedWatchVideoBySlug = {
 
 async function fetchWatchVideoBySlug(
   videoSlug: string,
+  locale: string,
 ): Promise<WatchVideoRecord | null> {
   const result = await client.query({
-    query: getWatchVideoBySlugOperation,
+    query: GET_WATCH_VIDEO_BY_SLUG,
     variables: {
-      i18nLocale: WATCH_VIDEO_I18N_LOCALE,
       videoSlug,
+      locale,
     },
     fetchPolicy: "no-cache",
   })
@@ -708,7 +1149,13 @@ async function fetchWatchVideoBySlug(
   )
   if (error) throw error
 
-  return (result.data?.videos?.[0] ?? null) as WatchVideoRecord | null
+  const record = result.data?.videoBySlug ?? null
+  return record
+    ? (normalizeVideoLocaleFields(
+        record,
+        locale,
+      ) as unknown as WatchVideoRecord)
+    : null
 }
 
 // Sentinel thrown by the cached inner so unstable_cache never persists a
@@ -721,7 +1168,7 @@ async function tryResolveWatchVideoBySlug(
   videoSlug: string,
   locale: string,
 ): Promise<ResolvedWatchVideoBySlug> {
-  const record = await fetchWatchVideoBySlug(videoSlug)
+  const record = await fetchWatchVideoBySlug(videoSlug, locale)
   if (!record) throw new Error(WATCH_VIDEO_BY_SLUG_NOT_FOUND)
 
   const parents = (record.parents ?? []).filter(
@@ -766,7 +1213,7 @@ async function tryResolveWatchVideoBySlug(
 
 // Cache wraps only the success path. unstable_cache re-throws errors and does
 // NOT cache them, so the NOT_FOUND sentinel naturally bypasses the cache —
-// each request re-queries Strapi until a record exists. This avoids pinning
+// each request re-queries admin until a record exists. This avoids pinning
 // a 60s "null" entry in the cache for a record that just hasn't been
 // published yet (the original bug).
 const fetchResolvedWatchVideoBySlug = unstable_cache(
@@ -809,13 +1256,13 @@ type WatchBibleCitation = NonNullable<
 
 /**
  * Synthetic block-type discriminators owned by the watch route. These are NOT
- * Strapi `__typename` values — they exist purely so `WatchSectionRenderer` can
+ * Admin block `t` values — they exist purely so `WatchSectionRenderer` can
  * dispatch watch-only components (HeroPlayer, SiblingCarousel, WatchBody,
- * StudyQuestions, BibleQuotes, Share) alongside Strapi-typed blocks coming
+ * StudyQuestions, BibleQuotes, Share) alongside admin blocks coming
  * out of an optional Experience.
  *
  * The `kind` field is the discriminator. We deliberately avoid `__typename`
- * to make it impossible to confuse a synthetic block with a Strapi one in
+ * to make it impossible to confuse a synthetic block with an admin one in
  * the renderer switch.
  */
 export type WatchHeroPlayerBlock = {
@@ -873,21 +1320,21 @@ export type WatchBlock =
   | WatchBibleQuotesBlock
   | WatchShareBlock
 
-/** Strapi-typed block coming from an Experience (matches `Section`). */
-export type StrapiWatchBlock = Section
+/** Admin-authored block coming from an Experience. */
+export type AdminWatchBlock = Block
 
 /** Discriminator for entries in the merged watch-block array. */
-export type MergedWatchBlock = WatchBlock | StrapiWatchBlock
+export type MergedWatchBlock = WatchBlock | AdminWatchBlock
 
 /**
- * Strapi `__typename` values that mount their own player and would steal Mux
+ * Admin `t` values that mount their own player and would steal Mux
  * Data attribution from the watch-page HeroPlayer. These are rejected at
  * merge time when targeting the HeroPlayer slot.
  */
-const PLAYER_BEARING_STRAPI_TYPES = new Set<string>([
-  "ComponentSectionsVideoHero",
-  "ComponentSectionsVideo",
-  "ComponentSectionsVideoCarousel",
+const PLAYER_BEARING_ADMIN_TYPES = new Set<string>([
+  "videoHero",
+  "video",
+  "videoCarousel",
 ])
 
 const HERO_PLAYER_REJECTION_MESSAGE =
@@ -934,7 +1381,7 @@ export function buildSiblingCarouselBlock(
     // second branch. `currentVideoDocumentId` won't match any of its own
     // children, so no "Playing now" badge — accurate for a parent-page view.
     const virtualParent: CarouselParent = {
-      documentId: video.documentId,
+      documentId: video.documentId ?? "",
       slug: video.slug ?? "",
       title: video.title ?? "",
       children: ownChildren,
@@ -942,23 +1389,23 @@ export function buildSiblingCarouselBlock(
     return {
       kind: "SiblingCarousel",
       canonicalParent: virtualParent,
-      currentVideoDocumentId: video.documentId,
+      currentVideoDocumentId: video.documentId ?? "",
     }
   }
   if (!canonicalParent) return null
   const siblings = (canonicalParent.children ?? []).filter(
-    (child): child is NonNullable<typeof child> => child != null,
+    (child): child is WatchChild => child != null,
   )
   if (siblings.length < 2) return null
   return {
     kind: "SiblingCarousel",
     canonicalParent: {
-      documentId: canonicalParent.documentId,
+      documentId: canonicalParent.documentId ?? "",
       slug: canonicalParent.slug ?? null,
       title: canonicalParent.title ?? null,
       children: siblings,
     },
-    currentVideoDocumentId: video.documentId,
+    currentVideoDocumentId: video.documentId ?? "",
   }
 }
 
@@ -1016,34 +1463,33 @@ type WatchSlotKey =
   | "Share"
 
 /**
- * Maps an incoming Experience block (synthetic or Strapi-typed) to the
+ * Maps an incoming Experience block (synthetic or admin-authored) to the
  * synthetic watch slot it fills, or `null` if the block does not target any
  * of the 6 slots and should pass through to delegated rendering.
  *
  * Slot mapping rules:
  * - Synthetic blocks fill the slot named by their `kind`.
- * - Strapi `ComponentSectionsRelatedQuestions` → StudyQuestions slot.
- * - Strapi `ComponentSectionsBibleQuotesCarousel` → BibleQuotes slot.
- * - All other Strapi blocks (PromoBanner, InfoBlocks, CTASection, etc.)
+ * - Admin `relatedQuestions` → StudyQuestions slot.
+ * - Admin `bibleQuotesCarousel` → BibleQuotes slot.
+ * - All other admin blocks (promoBanner, infoBlocks, cta, etc.)
  *   pass through and render after the 6 watch slots.
- * - Strapi player-bearing blocks (VideoHero/Video/VideoCarousel) explicitly
+ * - Admin player-bearing blocks (videoHero/video/videoCarousel) explicitly
  *   target HeroPlayer slot for the rejection check.
  */
 function blockSlot(block: MergedWatchBlock): WatchSlotKey | null {
   if ("kind" in block) {
     return block.kind
   }
-  const tn = block.__typename
-  if (tn === "ComponentSectionsRelatedQuestions") return "StudyQuestions"
-  if (tn === "ComponentSectionsBibleQuotesCarousel") return "BibleQuotes"
-  if (PLAYER_BEARING_STRAPI_TYPES.has(tn)) return "HeroPlayer"
+  const type = block.t
+  if (type === "relatedQuestions") return "StudyQuestions"
+  if (type === "bibleQuotesCarousel") return "BibleQuotes"
+  if (PLAYER_BEARING_ADMIN_TYPES.has(type)) return "HeroPlayer"
   return null
 }
 
 /**
- * Type guard distinguishing synthetic watch blocks from Strapi blocks.
- * Synthetic blocks carry a `kind` discriminator; Strapi blocks carry
- * `__typename`.
+ * Type guard distinguishing synthetic watch blocks from admin blocks.
+ * Synthetic blocks carry a `kind` discriminator; admin blocks carry `t`.
  */
 export function isWatchBlock(block: MergedWatchBlock): block is WatchBlock {
   return "kind" in block
@@ -1092,10 +1538,10 @@ export function mergeWatchExperience({
   experience,
 }: MergeWatchExperienceArgs): MergedWatchBlock[] {
   const overrides = new Map<WatchSlotKey, MergedWatchBlock>()
-  const passthrough: StrapiWatchBlock[] = []
+  const passthrough: AdminWatchBlock[] = []
 
   const experienceBlocks = (experience?.blocks ?? []).filter(
-    (b): b is StrapiWatchBlock => b != null && b.__typename !== "Error",
+    (b): b is AdminWatchBlock => b != null,
   )
 
   for (const block of experienceBlocks) {

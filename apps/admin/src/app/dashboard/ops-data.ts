@@ -10,6 +10,7 @@ import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { createServices } from "@/services"
 import { generateExperienceEmbedding } from "@/services/embeddings.service"
+import { DEFAULT_SYNC_LOCK_STALE_AFTER_MS } from "@/services/core-sync/lock"
 import { getAllWatermarks } from "@/services/core-sync/watermark"
 import {
   mediaAssetDownloadUrl,
@@ -209,6 +210,12 @@ type WorkflowRunRow = {
   skippedLock: boolean | null
 }
 
+type CoreSyncLockView = {
+  heldBy: string | null
+  acquiredAt: Date | null
+  updatedAt: Date
+}
+
 function isMissingTableError(error: unknown) {
   return (
     typeof error === "object" &&
@@ -239,6 +246,13 @@ function formatDateTime(value: Date) {
     hour12: false,
     timeZone: "UTC",
   }).format(value)
+}
+
+function isCoreSyncLockActive(lock: CoreSyncLockView | null) {
+  if (!lock?.heldBy) return false
+  return (
+    Date.now() - lock.updatedAt.getTime() <= DEFAULT_SYNC_LOCK_STALE_AFTER_MS
+  )
 }
 
 function formatLag(value: Date | string | null | undefined) {
@@ -787,6 +801,7 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
     ),
     getWorkflowRunRows(3),
   ])
+  const lockActive = isCoreSyncLockActive(lock)
 
   const matrix = syncRows.map((row) => {
     const stats = parseSyncStats(row.stats)
@@ -833,7 +848,7 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
       : [
           {
             title: "No active sync incidents",
-            meta: lock?.heldBy ? `lock held by ${lock.heldBy}` : "lock clear",
+            meta: lockActive ? `lock held by ${lock?.heldBy}` : "lock clear",
             detail: "No synced data sets are reporting issues.",
             statusLabel: "Healthy",
             statusTone: "success" as const,
@@ -859,7 +874,7 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
       },
       {
         label: "Lock State",
-        value: lock?.heldBy ? "HELD" : "CLEAR",
+        value: lockActive ? "HELD" : "CLEAR",
         footer: "CORE_SYNC_LOCK",
       },
       {
@@ -888,10 +903,12 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
     telemetry: [
       {
         label: "Lock Holder",
-        value: lock?.heldBy ? "ACTIVE" : "IDLE",
-        detail: lock?.heldBy
+        value: lockActive ? "ACTIVE" : "IDLE",
+        detail: lockActive
           ? "A sync run is currently holding the DB-backed lock."
-          : "No process currently holds the sync lock.",
+          : lock?.heldBy
+            ? "The previous sync lock is stale and can be reclaimed by the next run."
+            : "No process currently holds the sync lock.",
       },
       {
         label: "Data Sets With Errors",
@@ -923,6 +940,7 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
       loadWorkflowRuntimeRuns(10),
       loadWorkflowWorkerStatusRows(),
     ])
+  const lockActive = isCoreSyncLockActive(lock)
   const ledgerByRuntimeRunId = new Map(
     workflowRows
       .filter((row) => row.runtimeRunId)
@@ -959,7 +977,7 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
       statusLabel: row.status,
       statusTone: statusToneForWorkflowStatus(row.status),
     })),
-    ...(lock?.heldBy
+    ...(lockActive && lock?.heldBy
       ? [
           {
             title: "core-sync lock holder",
@@ -980,7 +998,7 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
   const dataSetErrorCount = syncRows.filter(
     (row) => parseSyncStats(row.stats).errors > 0,
   ).length
-  const activeCount = statusCounts.active + (lock?.heldBy ? 1 : 0)
+  const activeCount = statusCounts.active + (lockActive ? 1 : 0)
   const failedCount = statusCounts.failed + dataSetErrorCount
 
   return {
@@ -1055,7 +1073,7 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
         detail: "Request signing for workflow endpoints.",
       },
     ],
-    syncLockHeld: Boolean(lock?.heldBy),
+    syncLockHeld: lockActive,
   }
 }
 
@@ -1080,8 +1098,8 @@ export async function loadEmbeddingsData(): Promise<EmbeddingsData> {
       },
       {
         label: "Index Dim",
-        value: "1536",
-        footer: "PGVECTOR_HNSW",
+        value: "2048",
+        footer: "PGVECTOR_EXACT",
       },
     ],
     rows: rows.map((row) => ({
@@ -1095,11 +1113,7 @@ export async function loadEmbeddingsData(): Promise<EmbeddingsData> {
     insights: [
       {
         label: "Provider",
-        value: env.OPENROUTER_API_KEY
-          ? "OpenRouter"
-          : env.OPENAI_API_KEY
-            ? "OpenAI"
-            : "Missing",
+        value: env.OPENROUTER_API_KEY ? "OpenRouter" : "Missing",
         detail:
           "Embedding generation backend currently configured for admin workflows.",
       },
@@ -1117,7 +1131,7 @@ export async function loadEmbeddingsData(): Promise<EmbeddingsData> {
         detail: "Published locales participating in retrieval once embedded.",
       },
     ],
-    providerReady: Boolean(env.OPENROUTER_API_KEY || env.OPENAI_API_KEY),
+    providerReady: Boolean(env.OPENROUTER_API_KEY),
   }
 }
 
@@ -1555,11 +1569,7 @@ export async function loadSettingsData(): Promise<SettingsData> {
       },
       {
         label: "Embedding Backend",
-        value: env.OPENROUTER_API_KEY
-          ? "OpenRouter"
-          : env.OPENAI_API_KEY
-            ? "OpenAI"
-            : "Missing",
+        value: env.OPENROUTER_API_KEY ? "OpenRouter" : "Missing",
         detail: "Provider used for admin-side semantic embedding generation.",
       },
     ],
@@ -1574,7 +1584,7 @@ export async function runSemanticSearch(params: {
   const queryText = params.queryText?.trim() ?? ""
   const locale = params.locale?.trim() ?? "en"
   const embeddingCounts = await getEmbeddingCounts()
-  const providerReady = Boolean(env.OPENROUTER_API_KEY || env.OPENAI_API_KEY)
+  const providerReady = Boolean(env.OPENROUTER_API_KEY)
 
   const metrics: Metric[] = [
     {
@@ -1602,8 +1612,8 @@ export async function runSemanticSearch(params: {
     },
     {
       label: "Vector Dimension",
-      value: "1536",
-      detail: "Experience semantic search expects 1536-dimension vectors.",
+      value: "2048",
+      detail: "Experience semantic search expects 2048-dimension vectors.",
     },
     {
       label: "Input",
@@ -1633,7 +1643,7 @@ export async function runSemanticSearch(params: {
       queryText,
       locale,
       unavailableReason:
-        "Semantic search requires OPENROUTER_API_KEY or OPENAI_API_KEY.",
+        "Semantic search requires OPENROUTER_API_KEY.",
     }
   }
 

@@ -1,25 +1,20 @@
-import type { FragmentOf } from "@forge/graphql"
-import { infoBlocksFragment } from "@/lib/fragments/info-blocks"
-
-export { infoBlocksFragment }
+import type { InfoBlocksBlock } from "./block-types"
 
 type InfoBlocksProps = {
-  data: FragmentOf<typeof infoBlocksFragment>
+  data: InfoBlocksBlock
 }
 
 export function InfoBlocks({ data }: InfoBlocksProps) {
-  const {
-    id,
-    infoHeading: heading,
-    intro,
-    infoDescription: description,
-    blocks,
-  } = data
+  const { sectionKey, heading, intro, description, blocks } = data
   const filteredBlocks = (blocks ?? []).filter(
     (b): b is NonNullable<typeof b> => b != null,
   )
   return (
-    <section id={id} className="py-12">
+    <section
+      id={sectionKey ?? undefined}
+      data-section-key={sectionKey ?? undefined}
+      className="py-12"
+    >
       <div className="container mx-auto px-4">
         {heading && <h2 className="mb-2 text-2xl font-bold">{heading}</h2>}
         {intro && <p className="mb-4 text-gray-600">{intro}</p>}
@@ -28,7 +23,7 @@ export function InfoBlocks({ data }: InfoBlocksProps) {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredBlocks.map((block) => (
               <article
-                key={block.id}
+                key={`${block.icon}-${block.title}`}
                 className="rounded-lg border bg-white p-6 shadow-sm"
               >
                 {block.icon && (

@@ -60,14 +60,14 @@ function createMockPlayer() {
 }
 
 const baseFragment = {
-  id: "v-1",
+  t: "video",
   sectionKey: "video",
   useRouteVideo: false,
   streamingUrl: "https://example.com/test.m3u8",
-  title: null,
-  subtitle: null,
-  media: null,
-  videoRef: null,
+  title: undefined,
+  subtitle: undefined,
+  mediaUrl: undefined,
+  videoId: undefined,
 } as Parameters<typeof Video>[0]["data"]
 
 let container: HTMLDivElement
@@ -108,6 +108,38 @@ describe("Video — flag-off (videojs branch)", () => {
     ).not.toBeNull()
     expect(videojsMock).toHaveBeenCalledTimes(1)
   })
+
+  it("uses the hydrated video stream when a block only stores videoId", async () => {
+    setFlag(false)
+
+    await act(async () => {
+      root.render(
+        <Video
+          data={{
+            ...baseFragment,
+            streamingUrl: undefined,
+            videoId: "video-1",
+          }}
+          videoMap={
+            new Map([
+              [
+                "video-1",
+                {
+                  id: "video-1",
+                  streamingUrl: "https://example.com/from-video-map.m3u8",
+                },
+              ],
+            ])
+          }
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="VideoSection"]'),
+    ).not.toBeNull()
+    expect(videojsMock).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe("Video — flag-on (Mux branch)", () => {
@@ -132,7 +164,7 @@ describe("Video — flag-on (Mux branch)", () => {
 
     const emptyFragment = {
       ...baseFragment,
-      streamingUrl: null,
+      streamingUrl: undefined,
     } as Parameters<typeof Video>[0]["data"]
 
     await act(async () => {

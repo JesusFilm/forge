@@ -41,11 +41,11 @@
 //   2. Bulk-upsert locale rows via `INSERT INTO video_scene_locale …
 //      SELECT * FROM unnest(...) ON CONFLICT (video_scene_id, locale)
 //      DO UPDATE`. Per-row Way A casts at the SELECT seam apply to both
-//      the per-row `embedding` cast (`u.embedding_text::vector(1536)`)
+//      the per-row `embedding` cast (`u.embedding_text::vector(2048)`)
 //      and the per-row `text[]` columns (`themes`, `bible_verses`,
 //      `demographics`, `spiritual_context`) which are bound as JSON-
 //      stringified arrays and unfolded via `jsonb_array_elements_text`.
-//      No `::vector(1536)[]` parameter cast — that array-input parser is
+//      No `::vector(2048)[]` parameter cast — that array-input parser is
 //      less-trodden code; Way A keeps the seam at one cast per row.
 //   See docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md.
 
@@ -483,7 +483,7 @@ export async function indexEditionScenes(
           ARRAY(SELECT jsonb_array_elements_text(u.spiritual_context_json::jsonb)),
           u.model,
           u.dimensions::int,
-          u.embedding_text::vector(1536),
+          u.embedding_text::vector(2048),
           NOW(),
           NOW()
         FROM unnest(

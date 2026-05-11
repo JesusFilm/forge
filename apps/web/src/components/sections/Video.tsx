@@ -2,19 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import "video.js/dist/video-js.css"
-import type { FragmentOf } from "@forge/graphql"
 import type { RouteVideo } from "@/lib/content"
 import type Player from "video.js/dist/types/player"
 import { MuxVideo, useVideoPlayerCore } from "@forge/video-player"
-import { videoSectionFragment } from "@/lib/fragments/video-section"
 import { env } from "@/env"
-
-export { videoSectionFragment }
+import type { VideoBlock, VideoMap } from "./block-types"
+import { videoImageUrl } from "./block-types"
 export { formatTime, VIDEO_JS_OPTIONS } from "@forge/video-player"
 
 type VideoProps = {
-  data: FragmentOf<typeof videoSectionFragment>
+  data: VideoBlock
   routeVideo?: RouteVideo | null
+  videoMap?: VideoMap
 }
 
 function FullscreenButton({
@@ -441,16 +440,17 @@ export function VideoPlayer({
   )
 }
 
-export function Video({ data, routeVideo }: VideoProps) {
-  const { id, sectionKey, streamingUrl, media, videoRef, useRouteVideo } = data
+export function Video({ data, routeVideo, videoMap }: VideoProps) {
+  const { sectionKey, streamingUrl, mediaUrl, videoId, useRouteVideo } = data
+  const blockVideo = videoId ? videoMap?.get(videoId) : null
   const resolvedStreamingUrl =
     useRouteVideo === true
       ? (routeVideo?.streamingUrl ?? null)
-      : (streamingUrl ?? null)
+      : (streamingUrl ?? blockVideo?.streamingUrl ?? null)
   const posterUrl =
     useRouteVideo === true
       ? (routeVideo?.imageUrl ?? undefined)
-      : (media?.url ?? videoRef?.images?.[0]?.url ?? undefined)
+      : (mediaUrl ?? videoImageUrl(blockVideo) ?? undefined)
 
   if (!resolvedStreamingUrl) {
     if (process.env.NODE_ENV === "development") {
@@ -464,7 +464,7 @@ export function Video({ data, routeVideo }: VideoProps) {
 
   return (
     <section
-      id={id ?? undefined}
+      id={sectionKey ?? undefined}
       data-section-key={sectionKey ?? undefined}
       data-testid="VideoSection"
       className="w-full"

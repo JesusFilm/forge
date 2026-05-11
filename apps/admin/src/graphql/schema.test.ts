@@ -51,6 +51,8 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "experience",
         "experiences",
         "experienceBySlug",
+        "homepageExperienceLocale",
+        "defaultTemplateExperienceLocale",
       ]),
     )
   })
@@ -204,6 +206,17 @@ describe("VideoScene and VideoSceneLocale types", () => {
   })
 })
 
+describe("VideoLocale public field contract", () => {
+  it("Video.locales accepts an optional locale argument", () => {
+    const fields = fieldsOf("Video")
+    const locales = fields.locales as unknown as {
+      args: { name: string; type: { toString(): string } }[]
+    }
+    const byName = Object.fromEntries(locales.args.map((arg) => [arg.name, arg]))
+    expect(String(byName.locale!.type)).toBe("String")
+  })
+})
+
 describe("Experience type", () => {
   it("exposes the canonical shape (no embedding field)", () => {
     const fields = fieldsOf("Experience")
@@ -254,6 +267,7 @@ describe("ExperienceLocale type", () => {
     >
     expect(fields.blocks.type.toString()).toMatch(/JSON/)
     expect(fields.status.type.toString()).toMatch(/LocaleStatus/)
+    expect(fields.referencedVideos.type.toString()).toMatch(/Video/)
   })
 
   it("does not expose any embedding-shaped field", () => {
@@ -292,10 +306,20 @@ describe("Video type", () => {
         "aiMetadata",
         "locales",
         "dubs",
+        "parents",
+        "children",
         "studyQuestions",
         "bibleCitations",
       ]),
     )
+  })
+
+  it("videoBySlug requires a locale argument for public consumer reads", () => {
+    const fields = schema.getQueryType()!.getFields()
+    const field = fields.videoBySlug!
+    const byName = Object.fromEntries(field.args.map((arg) => [arg.name, arg]))
+    expect(String(byName.slug!.type)).toBe("String!")
+    expect(String(byName.locale!.type)).toBe("String!")
   })
 
   it("no longer exposes the legacy `variants` alias", () => {

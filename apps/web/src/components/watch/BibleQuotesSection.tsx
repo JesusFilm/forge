@@ -70,7 +70,13 @@ export function BibleQuotesSection({
                   data-testid="watch-bible-quotes-reference"
                   className="block text-[10px] font-semibold tracking-[0.15em] text-amber-200/60 uppercase"
                 >
-                  {formatCitation(citation)}
+                  {formatCitation({
+                    chapterStart: citation.chapterStart ?? null,
+                    chapterEnd: citation.chapterEnd ?? null,
+                    verseStart: citation.verseStart ?? null,
+                    verseEnd: citation.verseEnd ?? null,
+                    bibleBook: citation.bibleBook ?? null,
+                  })}
                 </span>
               </BibleQuoteCard>
             </li>

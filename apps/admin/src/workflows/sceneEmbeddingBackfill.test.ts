@@ -44,8 +44,8 @@ vi.mock("@/services/scene-embedding.service", async (importOriginal) => {
       embeddingsWritten: 2,
       scenesSkipped: 0,
       scenesPruned: 0,
-      model: "openai/text-embedding-3-small",
-      dimensions: 1536,
+      model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+      dimensions: 2048,
     })),
   }
 })
@@ -412,8 +412,8 @@ describe("runSceneEmbeddingBackfill", () => {
         embeddingsWritten: 1,
         scenesSkipped: 0,
         scenesPruned: 0,
-        model: "openai/text-embedding-3-small",
-        dimensions: 1536,
+        model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+        dimensions: 2048,
       })
 
     const report = await runSceneEmbeddingBackfill({
@@ -466,6 +466,178 @@ describe("runSceneEmbeddingBackfill", () => {
   })
 })
 
+// feat-119 PR1 — `missingArtifacts` is a deduped, sorted projection of
+// `skipped { reason: "artifact_missing" }` outcomes. The operator pipes
+// it into PR2's `pnpm trigger-enrichment --from-report=…` so the upstream
+// gaps surfaced by an embed run can be enriched without scrolling the
+// full outcome array. These tests pin the dedup-by-assetId, ascending
+// sort, exclusion of `failed` outcomes, and the kind: "scene-analysis"
+// stamp.
+describe("runSceneEmbeddingBackfill — missingArtifacts projection", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
+    vi.mocked(indexEditionScenes).mockReset()
+    vi.mocked(readSceneAnalysisArtifact).mockReset()
+    vi.mocked(readSceneAnalysisArtifact).mockResolvedValue(STUB_ARTIFACT)
+    vi.mocked(indexEditionScenes).mockResolvedValue({
+      editionId: "edition-stub",
+      locale: "en",
+      scenesIndexed: 1,
+      embeddingsWritten: 1,
+      scenesSkipped: 0,
+      scenesPruned: 0,
+      model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+      dimensions: 2048,
+    })
+  })
+
+  it("dedupes by assetId — 3 locales of one missing group produce ONE missingArtifacts entry", async () => {
+    // The group cascade emits L skipped outcomes per missing
+    // `(video, edition)` for L locales. Operators want the unique set
+    // of upstream gaps, not L copies.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-a", "e-a", "core-a", "fr"),
+    ])
+    vi.mocked(readSceneAnalysisArtifact).mockRejectedValueOnce(
+      new ManagerArtifactError(
+        "artifact_missing",
+        "scene-analysis artifact not found for assetId=1",
+      ),
+    )
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.skipped).toBe(3)
+    expect(report.missingArtifacts).toHaveLength(1)
+    expect(report.missingArtifacts[0]).toEqual({
+      assetId: 1,
+      coreId: "core-a",
+      kind: "scene-analysis",
+    })
+  })
+
+  it("sorts ascending by assetId — two distinct missing groups yield two entries in numeric order", async () => {
+    // mapping: core-a → 1, core-b → 2. Reverse the row order so an
+    // unsorted projection would yield [2, 1] — assert the sort.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-b", "e-b", "core-b", "en"),
+      row("v-a", "e-a", "core-a", "en"),
+    ])
+    vi.mocked(readSceneAnalysisArtifact).mockRejectedValue(
+      new ManagerArtifactError(
+        "artifact_missing",
+        "scene-analysis artifact not found",
+      ),
+    )
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.missingArtifacts.map((m) => m.assetId)).toEqual([1, 2])
+    expect(report.missingArtifacts[0]?.coreId).toBe("core-a")
+    expect(report.missingArtifacts[1]?.coreId).toBe("core-b")
+  })
+
+  it("returns an empty array when every target succeeds (NOT undefined)", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+    ])
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.succeeded).toBe(1)
+    expect(report.missingArtifacts).toEqual([])
+    // Defensive — undefined would also be a regression because
+    // downstream JSON consumers would have to nil-check.
+    expect(Array.isArray(report.missingArtifacts)).toBe(true)
+  })
+
+  it("excludes failed outcomes — only `skipped { artifact_missing }` enters the list", async () => {
+    // Two distinct groups: core-a's group has an `artifact_invalid`
+    // error (cascades as `failed`); core-b's group is MISSING
+    // (cascades as `skipped`). The list must contain only the missing
+    // entry — a failed outcome is a real failure, not an upstream gap.
+    //
+    // Use mockImplementation keyed on the assetId argument so this
+    // test does NOT depend on group invocation order. If the workflow
+    // ever switches to a parallel cascade (Promise.allSettled across
+    // groups), call ordering becomes nondeterministic but the
+    // assertions below keep working.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+    ])
+    vi.mocked(readSceneAnalysisArtifact).mockImplementation(
+      async (assetId: string) => {
+        if (assetId === "1") {
+          throw new ManagerArtifactError(
+            "artifact_invalid",
+            "scene-analysis artifact failed schema validation",
+          )
+        }
+        if (assetId === "2") {
+          throw new ManagerArtifactError(
+            "artifact_missing",
+            "scene-analysis artifact not found",
+          )
+        }
+        return STUB_ARTIFACT
+      },
+    )
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.failed).toBe(1)
+    expect(report.skipped).toBe(1)
+    expect(report.missingArtifacts).toHaveLength(1)
+    expect(report.missingArtifacts[0]?.assetId).toBe(2)
+    expect(report.missingArtifacts[0]?.coreId).toBe("core-b")
+  })
+
+  it("mixed run: one missing group + one present group → one missingArtifacts entry, succeeded > 0", async () => {
+    // Confirms the projection coexists with the success path. The
+    // present group's outcomes are `succeeded` and contribute nothing
+    // to missingArtifacts. assetId-keyed mock to decouple from group
+    // invocation order.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-b", "e-b", "core-b", "en"),
+    ])
+    vi.mocked(readSceneAnalysisArtifact).mockImplementation(
+      async (assetId: string) => {
+        if (assetId === "2") {
+          throw new ManagerArtifactError(
+            "artifact_missing",
+            "scene-analysis artifact not found",
+          )
+        }
+        return STUB_ARTIFACT
+      },
+    )
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.succeeded).toBeGreaterThan(0)
+    expect(report.skipped).toBeGreaterThan(0)
+    expect(report.missingArtifacts).toHaveLength(1)
+    expect(report.missingArtifacts[0]?.assetId).toBe(2)
+    expect(report.missingArtifacts[0]?.coreId).toBe("core-b")
+  })
+})
+
 describe("runSceneEmbeddingBackfill — bounded parallelism", () => {
   beforeEach(() => {
     // Restore any `vi.spyOn(_internals, ...)` from a prior test so
@@ -499,8 +671,8 @@ describe("runSceneEmbeddingBackfill — bounded parallelism", () => {
       embeddingsWritten: 1,
       scenesSkipped: 0,
       scenesPruned: 0,
-      model: "openai/text-embedding-3-small",
-      dimensions: 1536,
+      model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+      dimensions: 2048,
     })
 
     vi.mocked(indexEditionScenes)
@@ -619,8 +791,8 @@ describe("runSceneEmbeddingBackfill — bounded parallelism", () => {
         embeddingsWritten: 1,
         scenesSkipped: 0,
         scenesPruned: 0,
-        model: "openai/text-embedding-3-small",
-        dimensions: 1536,
+        model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+        dimensions: 2048,
       }
     })
 
@@ -665,8 +837,8 @@ describe("runSceneEmbeddingBackfill — bounded parallelism", () => {
         embeddingsWritten: 1,
         scenesSkipped: 0,
         scenesPruned: 0,
-        model: "openai/text-embedding-3-small",
-        dimensions: 1536,
+        model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+        dimensions: 2048,
       }
     })
 

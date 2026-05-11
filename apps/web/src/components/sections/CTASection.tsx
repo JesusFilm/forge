@@ -1,16 +1,17 @@
-import type { FragmentOf } from "@forge/graphql"
-import { ctaSectionFragment } from "@/lib/fragments/cta-section"
-
-export { ctaSectionFragment }
+import type { CtaBlock } from "./block-types"
 
 type CTASectionProps = {
-  data: FragmentOf<typeof ctaSectionFragment>
+  data: CtaBlock
 }
 
 export function CTASection({ data }: CTASectionProps) {
-  const { id, ctaHeading: heading, body, buttonLabel, buttonLink } = data
+  const { sectionKey, heading, body, buttonLabel, buttonLink } = data
   return (
-    <section id={id} className="bg-gray-100 py-12">
+    <section
+      id={sectionKey ?? undefined}
+      data-section-key={sectionKey ?? undefined}
+      className="bg-gray-100 py-12"
+    >
       <div className="container mx-auto px-4 text-center">
         <h2 className="mb-4 text-2xl font-bold">{heading}</h2>
         <p className="mb-6 text-gray-700">{body}</p>

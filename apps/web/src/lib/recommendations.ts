@@ -1,13 +1,10 @@
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
-import { gql } from "@apollo/client"
-import { graphql, type ResultOf } from "@forge/graphql"
+import { adminGraphql, type AdminResultOf } from "@forge/graphql"
 import client from "@/lib/client"
 
-// --- SceneRecommendation types (custom extension, not in gql.tada introspection) ---
-
 export type SceneRecommendation = {
-  videoId: number
+  videoId: string
   videoSlug: string
   videoTitle: string
   imageUrl: string | null
@@ -22,9 +19,7 @@ export type SceneRecommendation = {
   playbackId: string
 }
 
-// Use raw gql tag — sceneRecommendations is a custom GraphQL extension type
-// not present in Strapi's auto-generated introspection schema.
-const SCENE_RECOMMENDATIONS = gql`
+const SCENE_RECOMMENDATIONS = adminGraphql(`
   query SceneRecommendations($slug: String!, $locale: String!, $limit: Int) {
     sceneRecommendations(slug: $slug, locale: $locale, limit: $limit) {
       videoId
@@ -42,21 +37,19 @@ const SCENE_RECOMMENDATIONS = gql`
       playbackId
     }
   }
-`
+`)
 
-type SceneRecommendationsResult = {
-  sceneRecommendations: SceneRecommendation[]
-}
+type SceneRecommendationsResult = AdminResultOf<typeof SCENE_RECOMMENDATIONS>
 
-// --- Video lookup (uses gql.tada typed query) ---
-
-const GET_VIDEO_BY_SLUG = graphql(`
-  query GetVideoBySlug($slug: String!, $locale: I18NLocaleCode!) {
-    videos(filters: { slug: { eq: $slug } }, locale: $locale) {
-      documentId
-      title
+const GET_VIDEO_BY_SLUG = adminGraphql(`
+  query GetVideoBySlug($slug: String!, $locale: String!) {
+    videoBySlug(slug: $slug, locale: $locale) {
+      id
       slug
-      description
+      locales(locale: $locale) {
+        title
+        description
+      }
       images {
         url
         thumbnail
@@ -66,9 +59,37 @@ const GET_VIDEO_BY_SLUG = graphql(`
   }
 `)
 
-export type VideoBySlug = NonNullable<
-  ResultOf<typeof GET_VIDEO_BY_SLUG>["videos"]
->[number]
+type AdminVideoBySlug = NonNullable<
+  AdminResultOf<typeof GET_VIDEO_BY_SLUG>["videoBySlug"]
+>
+
+export type VideoBySlug = {
+  documentId: string | null
+  title: string | null
+  slug: string | null
+  description: string | null
+  images: {
+    url: string | null
+    thumbnail: string | null
+    mobileCinematicHigh: string | null
+  }[]
+}
+
+function toVideoBySlug(video: AdminVideoBySlug): VideoBySlug {
+  const locale = video.locales?.[0]
+
+  return {
+    documentId: video.id ?? null,
+    title: locale?.title ?? null,
+    slug: video.slug ?? null,
+    description: locale?.description ?? null,
+    images: (video.images ?? []).map((image) => ({
+      url: image.url ?? null,
+      thumbnail: image.thumbnail ?? null,
+      mobileCinematicHigh: image.mobileCinematicHigh ?? null,
+    })),
+  }
+}
 
 // --- Data fetching functions ---
 
@@ -84,7 +105,13 @@ const fetchRecommendations = unstable_cache(
         variables: { slug, locale, limit },
         fetchPolicy: "no-cache",
       })
-      return result.data?.sceneRecommendations ?? []
+      return (
+        result.data?.sceneRecommendations.map((recommendation) => ({
+          ...recommendation,
+          imageUrl: recommendation.imageUrl ?? null,
+          endSeconds: recommendation.endSeconds ?? null,
+        })) ?? []
+      )
     } catch {
       return []
     }
@@ -111,7 +138,8 @@ const fetchVideoBySlug = unstable_cache(
         variables: { slug, locale },
         fetchPolicy: "no-cache",
       })
-      return result.data?.videos?.[0] ?? null
+      const video = result.data?.videoBySlug
+      return video ? toVideoBySlug(video) : null
     } catch {
       return null
     }

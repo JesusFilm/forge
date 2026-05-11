@@ -1,25 +1,19 @@
-import type { FragmentOf } from "@forge/graphql"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import type { RouteVideo } from "@/lib/content"
-import { sectionFragment } from "@/lib/fragments/section"
-import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
-import type { containerFragment } from "@/lib/fragments/container"
-import type { mediaCollectionFragment } from "@/lib/fragments/media-collection"
-import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
-import type { navigationCarouselFragment } from "@/lib/fragments/navigation-carousel"
-import type { videoCarouselFragment } from "@/lib/fragments/video-carousel"
-import type { videoSectionFragment } from "@/lib/fragments/video-section"
 import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
 import { Container } from "./Container"
+import { CTASection } from "./CTASection"
 import { DynamicBackground } from "./DynamicBackground"
+import { InfoBlocks } from "./InfoBlocks"
 import { MediaCollection } from "./MediaCollection"
 import { CarouselVideo } from "./CarouselVideo"
 import { NavigationCarousel } from "./NavigationCarousel"
+import { PromoBanner } from "./PromoBanner"
 import { QuizButton } from "./QuizButton"
 import { RelatedQuestions } from "./RelatedQuestions"
+import { Text } from "./Text"
 import { Video } from "./Video"
-
-export { sectionFragment }
+import type { SectionBlock, SectionContentBlock, VideoMap } from "./block-types"
 
 const BASE_BACKGROUND_OPACITY = 0.65
 
@@ -55,23 +49,20 @@ function isHexColor(value: unknown) {
 }
 
 type SectionProps = {
-  data: FragmentOf<typeof sectionFragment>
+  data: SectionBlock
   routeVideo?: RouteVideo | null
+  videoMap?: VideoMap
 }
 
-type SectionData = FragmentOf<typeof sectionFragment>
-type SectionContentItem = NonNullable<
-  NonNullable<SectionData["sectionContent"]>[number]
->
+type SectionContentItem = SectionContentBlock
 
-export function Section({ data, routeVideo }: SectionProps) {
+export function Section({ data, routeVideo, videoMap }: SectionProps) {
   const {
-    id,
     sectionKey,
     backgroundColor,
     backgroundImageUrl,
     backgroundOpacity,
-    sectionContent,
+    content: sectionContent,
   } = data
 
   const raw = data as Record<string, unknown>
@@ -83,11 +74,12 @@ export function Section({ data, routeVideo }: SectionProps) {
   if (!validContent.length) return null
 
   const content = validContent.map((item, index) =>
-    item && (item as { __typename?: string }).__typename !== "Error" ? (
+    item ? (
       <SectionContentRenderer
-        key={`section-${id ?? index}-${index}`}
+        key={`section-${sectionKey ?? index}-${item.sectionKey ?? index}`}
         item={item as SectionContentItem}
         routeVideo={routeVideo}
+        videoMap={videoMap}
       />
     ) : null,
   )
@@ -103,7 +95,7 @@ export function Section({ data, routeVideo }: SectionProps) {
 
     return (
       <section
-        id={id ?? undefined}
+        id={sectionKey ?? undefined}
         data-section-key={sectionKey ?? undefined}
         data-testid="Section"
         className={`relative w-full overflow-hidden ${textColor}`}
@@ -139,7 +131,7 @@ export function Section({ data, routeVideo }: SectionProps) {
 
   return (
     <section
-      id={id ?? undefined}
+      id={sectionKey ?? undefined}
       data-section-key={sectionKey ?? undefined}
       data-testid="Section"
       className={`relative w-full ${textColor}`}
@@ -180,77 +172,48 @@ export function Section({ data, routeVideo }: SectionProps) {
 function SectionContentRenderer({
   item,
   routeVideo,
+  videoMap,
 }: {
   item: SectionContentItem
   routeVideo?: RouteVideo | null
+  videoMap?: VideoMap
 }) {
-  if (!item || item.__typename === "Error") return null
-  const typename = item.__typename as string
-  switch (typename) {
-    case "ComponentSectionsContainer":
+  switch (item.t) {
+    case "container":
       return (
-        <Container
-          data={item as unknown as FragmentOf<typeof containerFragment>}
-          routeVideo={routeVideo}
-        />
+        <Container data={item} routeVideo={routeVideo} videoMap={videoMap} />
       )
-    case "ComponentSectionsVideo":
-      return (
-        <Video
-          data={item as unknown as FragmentOf<typeof videoSectionFragment>}
-          routeVideo={routeVideo}
-        />
-      )
-    case "ComponentSectionsRelatedQuestions":
-      return (
-        <RelatedQuestions
-          data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
-        />
-      )
-    case "ComponentSectionsBibleQuotesCarousel":
-      return (
-        <BibleQuotesCarousel
-          data={
-            item as unknown as FragmentOf<typeof bibleQuotesCarouselFragment>
-          }
-        />
-      )
-    case "ComponentSectionsMediaCollection":
+    case "video":
+      return <Video data={item} routeVideo={routeVideo} videoMap={videoMap} />
+    case "relatedQuestions":
+      return <RelatedQuestions data={item} />
+    case "bibleQuotesCarousel":
+      return <BibleQuotesCarousel data={item} />
+    case "mediaCollection":
       return (
         <MediaCollection
-          data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
+          data={item}
           routeVideo={routeVideo}
+          videoMap={videoMap}
         />
       )
-    case "ComponentSectionsQuizButton":
-      return (
-        <QuizButton
-          data={
-            item as unknown as {
-              id: string
-              buttonText: string
-              iframeSrc: string
-            }
-          }
-        />
-      )
-    case "ComponentSectionsVideoCarousel":
-      return (
-        <CarouselVideo
-          data={item as unknown as FragmentOf<typeof videoCarouselFragment>}
-        />
-      )
-    case "ComponentSectionsNavigationCarousel":
-      return (
-        <NavigationCarousel
-          data={
-            item as unknown as FragmentOf<typeof navigationCarouselFragment>
-          }
-        />
-      )
+    case "quizButton":
+      return <QuizButton data={item} />
+    case "videoCarousel":
+      return <CarouselVideo data={item} videoMap={videoMap} />
+    case "navigationCarousel":
+      return <NavigationCarousel data={item} />
+    case "text":
+      return <Text data={item} />
+    case "promoBanner":
+      return <PromoBanner data={item} />
+    case "infoBlocks":
+      return <InfoBlocks data={item} />
+    case "cta":
+      return <CTASection data={item} />
     default: {
       if (process.env.NODE_ENV === "development") {
-        console.warn("[Section] Unhandled content type:", typename)
+        console.warn("[Section] Unhandled content type:", item.t)
       }
       return null
     }

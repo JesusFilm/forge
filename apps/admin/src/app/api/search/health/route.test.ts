@@ -42,9 +42,9 @@ afterEach(() => {
 describe("GET /api/search/health", () => {
   it("returns 200 + status=ok when embedding succeeds", async () => {
     vi.mocked(generateExperienceEmbedding).mockResolvedValue({
-      model: "text-embedding-3-small",
-      dimensions: 1536,
-      embedding: new Array(1536).fill(0.1),
+      model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+      dimensions: 2048,
+      embedding: new Array(2048).fill(0.1),
     })
 
     const res = await GET(req())

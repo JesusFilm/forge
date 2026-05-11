@@ -1,10 +1,7 @@
-import type { FragmentOf } from "@forge/graphql"
-import { textSectionFragment } from "@/lib/fragments/text-section"
-
-export { textSectionFragment }
+import type { TextBlock } from "./block-types"
 
 type TextProps = {
-  data: FragmentOf<typeof textSectionFragment>
+  data: TextBlock
 }
 
 const HEADING_TAG = {
@@ -30,12 +27,12 @@ function BoldLeadParagraph({ text }: { text: string }) {
 
 export function Text({ data }: TextProps) {
   const {
-    id,
     heading,
     headingLevel,
     subtitle,
     contentParagraphs,
-    textVariant: variant,
+    variant,
+    sectionKey,
   } = data
   const Tag =
     headingLevel && HEADING_TAG[headingLevel as keyof typeof HEADING_TAG]
@@ -49,7 +46,8 @@ export function Text({ data }: TextProps) {
   if (variant === "lead") {
     return (
       <section
-        id={id ?? undefined}
+        id={sectionKey ?? undefined}
+        data-section-key={sectionKey ?? undefined}
         className="text-stone-100"
         data-testid="Text"
       >
@@ -81,7 +79,8 @@ export function Text({ data }: TextProps) {
 
   return (
     <section
-      id={id ?? undefined}
+      id={sectionKey ?? undefined}
+      data-section-key={sectionKey ?? undefined}
       className="space-y-6 text-stone-100"
       data-testid="Text"
     >

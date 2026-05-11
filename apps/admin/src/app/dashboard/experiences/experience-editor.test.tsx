@@ -1,10 +1,21 @@
+// @vitest-environment jsdom
+
+import { act } from "react"
+import { createRoot, type Root } from "react-dom/client"
 import { renderToStaticMarkup } from "react-dom/server"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   ExperienceEditor,
   cleanLocaleCode,
   cleanRoutePart,
 } from "./experience-editor"
+
+const { envState } = vi.hoisted(() => ({
+  envState: {
+    NEXT_PUBLIC_APP_NAME: "forge-admin",
+    NEXT_PUBLIC_WATCH_URL: "http://localhost:3000" as string | undefined,
+  },
+}))
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -13,16 +24,24 @@ vi.mock("next/navigation", () => ({
   }),
 }))
 
-const action = vi.fn(async () => ({ ok: true }))
+vi.mock("@/config/env", () => ({
+  env: envState,
+}))
 
-function renderEditor(
+const action = vi.fn(async () => ({ ok: true }))
+function renderEditorElement(
   blocks: unknown[],
-  options: { isTemplate?: boolean } = {},
+  options: {
+    isTemplate?: boolean
+    saveAction?: typeof action
+    publishAction?: typeof action
+    hasPublishedVersion?: boolean
+  } = {},
 ) {
-  return renderToStaticMarkup(
+  return (
     <ExperienceEditor
       canPublish
-      hasPublishedVersion={false}
+      hasPublishedVersion={options.hasPublishedVersion ?? false}
       calendarDate="2026-04-17"
       revisionEntries={[]}
       localeEntries={[
@@ -78,15 +97,73 @@ function renderEditor(
         isTemplate: options.isTemplate ?? false,
         blocksJson: JSON.stringify(blocks),
       }}
-      saveAction={action}
-      publishAction={action}
+      saveAction={options.saveAction ?? action}
+      publishAction={options.publishAction ?? action}
       createLocaleAction={action}
       restoreAction={action}
-    />,
+    />
   )
 }
 
+function renderEditor(
+  blocks: unknown[],
+  options: Parameters<typeof renderEditorElement>[1] = {},
+) {
+  return renderToStaticMarkup(renderEditorElement(blocks, options))
+}
+
+function renderEditorDom(
+  blocks: unknown[],
+  options: Parameters<typeof renderEditorElement>[1] = {},
+) {
+  const container = document.createElement("div")
+  document.body.appendChild(container)
+  const root: Root = createRoot(container)
+
+  act(() => {
+    root.render(renderEditorElement(blocks, options))
+  })
+
+  return {
+    container,
+    cleanup() {
+      act(() => {
+        root.unmount()
+      })
+      container.remove()
+    },
+  }
+}
+
+function findButtonByText(container: HTMLElement, label: string) {
+  const button = Array.from(container.querySelectorAll("button")).find(
+    (candidate) => candidate.textContent?.includes(label),
+  )
+  if (!(button instanceof HTMLButtonElement)) {
+    throw new Error(`Button not found: ${label}`)
+  }
+  return button
+}
+
 describe("ExperienceEditor", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    envState.NEXT_PUBLIC_WATCH_URL = "http://localhost:3000"
+    document.body.innerHTML = ""
+    ;(
+      globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true
+    window.requestAnimationFrame ??= ((callback: FrameRequestCallback) =>
+      window.setTimeout(
+        () => callback(performance.now()),
+        0,
+      )) as typeof window.requestAnimationFrame
+    window.cancelAnimationFrame ??= ((handle: number) => {
+      window.clearTimeout(handle)
+    }) as typeof window.cancelAnimationFrame
+    HTMLElement.prototype.scrollIntoView ??= vi.fn()
+  })
+
   it("normalizes route editor values to slug-compatible path parts", () => {
     expect(cleanRoutePart("  Easter Story 2026  ", true)).toBe(
       "easter-story-2026",
@@ -141,6 +218,45 @@ describe("ExperienceEditor", () => {
     expect(html).not.toContain(
       "Container slot composition is edited in the JSON field below.",
     )
+  })
+
+  it("points empty-canvas AI generation to chat instead of the legacy AI Draft panel", () => {
+    const emptyHtml = renderEditor([])
+    const filledHtml = renderEditor([{ t: "text", heading: "Filled" }])
+
+    expect(emptyHtml).toContain("Use AI Chat to generate a first draft")
+    expect(emptyHtml).not.toContain("AI Draft")
+    expect(emptyHtml).not.toContain("Generate with AI")
+    expect(filledHtml).not.toContain("Use AI Chat to generate a first draft")
+  })
+
+  it("scopes bottom editor chrome to the canvas instead of the shell sidebar", () => {
+    const html = renderEditor([{ t: "text", heading: "Filled" }])
+
+    expect(html).toContain("relative flex h-[calc(100vh-3rem)] overflow-hidden")
+    expect(html).toContain(
+      "pointer-events-none absolute bottom-0 left-0 right-0 z-[29]",
+    )
+    expect(html).toContain(
+      "pointer-events-none absolute bottom-4 left-0 right-0 z-30",
+    )
+    expect(html).not.toContain("left-[240px]")
+  })
+
+  it("hides the empty canvas guidance entirely when parsedBlocks is non-empty", () => {
+    const view = renderEditorDom([
+      { t: "text", sectionKey: "intro", heading: "Existing content" },
+    ])
+
+    try {
+      expect(view.container.textContent).not.toContain(
+        "Use AI Chat to generate a first draft",
+      )
+      expect(view.container.textContent).not.toContain("AI Draft")
+      expect(view.container.textContent).not.toContain("Empty Canvas")
+    } finally {
+      view.cleanup()
+    }
   })
 
   it("renders a compact empty preview when a container has no slots", () => {
@@ -539,6 +655,46 @@ describe("ExperienceEditor", () => {
     expect(html).toContain("Video settings")
     expect(html).toContain("Save Draft")
     expect(html).toContain("Publish")
+  })
+
+  it("renders preview instead of publish when nothing changed on a published locale", () => {
+    const html = renderEditor([], { hasPublishedVersion: true })
+    expect(html).toContain("Preview")
+    expect(html).not.toContain("Open Published Page")
+  })
+
+  it("renders preview on the server even when the watch URL is inferred in the browser", () => {
+    envState.NEXT_PUBLIC_WATCH_URL = undefined
+
+    const html = renderEditor([], { hasPublishedVersion: true })
+
+    expect(html).toContain("Preview")
+    expect(html).not.toContain("Publish")
+  })
+
+  it("opens the published page from preview when a published version exists", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null)
+    const { container, cleanup } = renderEditorDom([], {
+      hasPublishedVersion: true,
+    })
+
+    try {
+      const previewButton = findButtonByText(container, "Preview")
+      expect(previewButton.disabled).toBe(false)
+
+      await act(async () => {
+        previewButton.click()
+      })
+
+      expect(openSpy).toHaveBeenCalledWith(
+        "http://localhost:3000/watch/experience-title/en",
+        "_blank",
+        "noopener,noreferrer",
+      )
+    } finally {
+      cleanup()
+      openSpy.mockRestore()
+    }
   })
 
   it("gates route video block templates behind template mode", () => {

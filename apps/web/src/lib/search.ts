@@ -1,16 +1,17 @@
-import { graphql, type ResultOf } from "@forge/graphql"
+import type { TypedDocumentNode } from "@apollo/client"
+import { adminGraphql, type AdminResultOf } from "@forge/graphql"
 import client from "@/lib/client"
 
-export const SEMANTIC_SEARCH = graphql(`
+const ADMIN_SEARCH_WITH_TYPE = adminGraphql(`
   query SemanticSearch(
     $query: String!
     $locale: String!
     $limit: Int
     $offset: Int
-    $type: String
+    $type: HybridSearchContentType
   ) {
-    semanticSearch(
-      query: $query
+    semanticSearch: search(
+      q: $query
       locale: $locale
       limit: $limit
       offset: $offset
@@ -34,11 +35,31 @@ export const SEMANTIC_SEARCH = graphql(`
   }
 `)
 
-export type SearchResult = ResultOf<
-  typeof SEMANTIC_SEARCH
->["semanticSearch"]["results"][number]
+type AdminSearchResponse = NonNullable<
+  AdminResultOf<typeof ADMIN_SEARCH_WITH_TYPE>["semanticSearch"]
+>
 
-type SearchResponse = ResultOf<typeof SEMANTIC_SEARCH>["semanticSearch"]
+type AdminSearchResult = AdminSearchResponse["results"][number]
+
+export type SearchResult = Omit<AdminSearchResult, "type"> & {
+  type: SearchContentType | AdminSearchContentType
+}
+
+type SearchResponse = Omit<AdminSearchResponse, "results"> & {
+  results: SearchResult[]
+}
+
+export const SEMANTIC_SEARCH =
+  ADMIN_SEARCH_WITH_TYPE as unknown as TypedDocumentNode<
+    { semanticSearch: SearchResponse | null },
+    {
+      query: string
+      locale: string
+      limit?: number | null
+      offset?: number | null
+      type?: SearchContentType | AdminSearchContentType | null
+    }
+  >
 
 export type SearchError = {
   code: string
@@ -49,6 +70,28 @@ export type SearchError = {
 const MAX_QUERY_LENGTH = 200
 
 export type SearchContentType = "video" | "experience"
+
+type AdminSearchContentType = "VIDEO" | "EXPERIENCE"
+
+function toAdminSearchType(
+  type: SearchContentType | undefined,
+): AdminSearchContentType | undefined {
+  if (type === "video") return "VIDEO"
+  if (type === "experience") return "EXPERIENCE"
+  return undefined
+}
+
+function toSearchResult(result: AdminSearchResult): SearchResult {
+  return {
+    ...result,
+    type: result.type.toLowerCase() as SearchContentType,
+  }
+}
+
+function toSearchMode(mode: AdminSearchResponse["searchMode"]): string {
+  if (mode === "KEYWORD_ONLY") return "keyword-only"
+  return "hybrid"
+}
 
 export async function searchVideos(
   query: string,
@@ -66,13 +109,13 @@ export async function searchVideos(
 
   const startedAt = performance.now()
   const result = await client.query({
-    query: SEMANTIC_SEARCH,
+    query: ADMIN_SEARCH_WITH_TYPE,
     variables: {
       query: truncatedQuery,
       locale: "en",
       limit,
       offset,
-      type,
+      type: toAdminSearchType(type),
     },
     fetchPolicy: "no-cache",
   })
@@ -112,13 +155,13 @@ export async function searchVideos(
     } satisfies SearchError
   }
 
-  const data = result.data?.semanticSearch as SearchResponse | undefined
+  const data = result.data?.semanticSearch
 
   return {
-    results: data?.results ?? [],
+    results: data?.results.map(toSearchResult) ?? [],
     hasMore: data?.hasMore ?? false,
     query: data?.query ?? truncatedQuery,
-    searchMode: data?.searchMode ?? "hybrid",
+    searchMode: data ? toSearchMode(data.searchMode) : "hybrid",
     latencyMs,
   }
 }

@@ -85,12 +85,14 @@ export function AdminShell({
   const { locale, messages } = useAdminI18n()
   const [isPaletteOpen, setPaletteOpen] = useState(false)
   const [isNavOpen, setNavOpen] = useState(false)
+  const [isDesktopSidebarOpen, setDesktopSidebarOpen] = useState(true)
   const [isSwitchingLocale, setIsSwitchingLocale] = useState(false)
   const activeItem = getNavItem(pathname)
   const isFullCanvasRoute =
     (pathname.startsWith("/dashboard/experiences/") &&
       pathname !== "/dashboard/experiences") ||
-    pathname.startsWith("/dashboard/media")
+    pathname.startsWith("/dashboard/media") ||
+    pathname.startsWith("/dashboard/workflows/")
   const visibleNavItems = adminNavItems.filter((item) =>
     isNavItemVisible(principal.role, item),
   )
@@ -149,15 +151,20 @@ export function AdminShell({
 
   return (
     <div className="flex min-h-screen bg-[var(--color-bg)] text-[var(--color-text-primary)]">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[240px] flex-col border-r border-[var(--color-hairline)] bg-[var(--color-surface)] xl:flex">
-        <ShellSidebarContent
-          messages={messages}
-          pathname={pathname}
-          principal={principal}
-          profile={profile}
-          visibleNavSections={visibleNavSections}
-        />
-      </aside>
+      {isDesktopSidebarOpen ? (
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[240px] flex-col border-r border-[var(--color-hairline)] bg-[var(--color-surface)] xl:flex">
+          <ShellSidebarContent
+            messages={messages}
+            pathname={pathname}
+            principal={principal}
+            profile={profile}
+            visibleNavSections={visibleNavSections}
+            onClose={() => setDesktopSidebarOpen(false)}
+            closeLabel="Hide sidebar"
+            closeOnNavigate={false}
+          />
+        </aside>
+      ) : null}
 
       <div
         className={cx(
@@ -193,7 +200,12 @@ export function AdminShell({
         </aside>
       </div>
 
-      <div className="flex min-h-screen flex-1 flex-col xl:ml-[240px]">
+      <div
+        className={cx(
+          "flex min-h-screen flex-1 flex-col transition-[margin] duration-200 ease-out",
+          isDesktopSidebarOpen ? "xl:ml-[240px]" : "xl:ml-0",
+        )}
+      >
         <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-6">
           <div className="flex min-w-0 items-center gap-4">
             <button
@@ -205,6 +217,16 @@ export function AdminShell({
             >
               <Menu className="h-4 w-4" strokeWidth={1.5} />
             </button>
+            {!isDesktopSidebarOpen ? (
+              <button
+                type="button"
+                onClick={() => setDesktopSidebarOpen(true)}
+                className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] xl:inline-flex"
+                aria-label="Show sidebar"
+              >
+                <Menu className="h-4 w-4" strokeWidth={1.5} />
+              </button>
+            ) : null}
             {activeItem ? (
               <BreadcrumbTrail
                 section={messages.nav.sections[activeItem.section]}
@@ -384,6 +406,8 @@ type ShellSidebarContentProps = {
     items: typeof adminNavItems
   }>
   onClose?: () => void
+  closeLabel?: string
+  closeOnNavigate?: boolean
 }
 
 function ShellSidebarContent({
@@ -393,6 +417,8 @@ function ShellSidebarContent({
   profile,
   visibleNavSections,
   onClose,
+  closeLabel = "Close navigation",
+  closeOnNavigate = true,
 }: ShellSidebarContentProps) {
   return (
     <>
@@ -410,7 +436,7 @@ function ShellSidebarContent({
             type="button"
             onClick={onClose}
             className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]"
-            aria-label="Close navigation"
+            aria-label={closeLabel}
           >
             <X className="h-4 w-4" strokeWidth={1.5} />
           </button>
@@ -431,7 +457,7 @@ function ShellSidebarContent({
                   <Link
                     key={item.href}
                     href={item.href as Route}
-                    onClick={onClose}
+                    onClick={closeOnNavigate ? onClose : undefined}
                     className={cx(
                       "flex h-8 items-center gap-3 rounded-sm px-3 transition-all duration-[120ms] ease-out",
                       active

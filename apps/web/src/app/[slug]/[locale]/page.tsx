@@ -70,7 +70,7 @@ export default async function SlugLocalePage({ params }: PageProps) {
   // Video, Container) get the video record.
   const routeVideo = page.kind === "video-template" ? page.routeVideo : null
   const blocks = (experienceLike.blocks ?? []).filter(
-    (b): b is Section => b !== null && b.__typename !== "Error",
+    (b): b is Section => b !== null,
   )
   if (!blocks.length) {
     return <ExperienceEmpty />
@@ -79,12 +79,14 @@ export default async function SlugLocalePage({ params }: PageProps) {
   return (
     <main className="min-h-screen bg-stone-900">
       {blocks.map((block, i) => {
-        const key =
-          "id" in block && typeof block.id === "string"
-            ? block.id
-            : `block-${i}`
+        const key = block.sectionKey ?? `block-${i}`
         return (
-          <SectionRenderer key={key} section={block} routeVideo={routeVideo} />
+          <SectionRenderer
+            key={key}
+            section={block}
+            routeVideo={routeVideo}
+            videoMap={experienceLike.videoMap}
+          />
         )
       })}
     </main>

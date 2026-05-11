@@ -1,10 +1,7 @@
 "use client"
 
 import { useState, useEffect, useId } from "react"
-import type { FragmentOf } from "@forge/graphql"
-import { adventCountdownFragment } from "@/lib/fragments/advent-countdown"
-
-export { adventCountdownFragment }
+import type { AdventCountdownBlock } from "./block-types"
 
 function getDaysUntilChristmas(): { days: number; targetYear: number } {
   const now = new Date()
@@ -32,11 +29,11 @@ function getDaysUntilChristmas(): { days: number; targetYear: number } {
 }
 
 type AdventCountdownProps = {
-  data: FragmentOf<typeof adventCountdownFragment>
+  data: AdventCountdownBlock
 }
 
 export function AdventCountdown({ data }: AdventCountdownProps) {
-  const { adventTitle: title, scripture, scriptureReference } = data
+  const { title, scripture, scriptureReference } = data
 
   const instanceId = useId()
   const headerId = `advent-countdown-header-${instanceId}`

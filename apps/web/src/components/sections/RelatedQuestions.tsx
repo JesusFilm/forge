@@ -1,15 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import type { FragmentOf } from "@forge/graphql"
 import Markdown from "react-markdown"
-import { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
 import { Button } from "@/components/ui/button"
-
-export { relatedQuestionsFragment }
+import type { RelatedQuestionsBlock, RelatedQuestionItem } from "./block-types"
 
 type RelatedQuestionsProps = {
-  data: FragmentOf<typeof relatedQuestionsFragment>
+  data: RelatedQuestionsBlock
 }
 
 /**
@@ -117,23 +114,21 @@ function QuestionItem({
 }
 
 export function RelatedQuestions({ data }: RelatedQuestionsProps) {
-  const { id, sectionKey, heading, questions } = data
-  const ctaLabel = String((data as Record<string, unknown>).ctaLabel ?? "")
-  const ctaLink = String((data as Record<string, unknown>).ctaLink ?? "")
+  const { sectionKey, heading, questions, ctaLabel, ctaLink } = data
   const [openQuestion, setOpenQuestion] = useState<string | null>(null)
 
   const validQuestions =
-    questions?.filter((q): q is NonNullable<typeof q> => q != null) ?? []
+    questions?.filter((q): q is RelatedQuestionItem => q != null) ?? []
 
   if (!validQuestions.length) return null
 
-  const handleToggle = (qId: string) => {
-    setOpenQuestion(openQuestion === qId ? null : qId)
+  const handleToggle = (question: string) => {
+    setOpenQuestion(openQuestion === question ? null : question)
   }
 
   return (
     <section
-      id={id ?? undefined}
+      id={sectionKey ?? undefined}
       data-section-key={sectionKey ?? undefined}
       data-testid="RelatedQuestionsSection"
       className="w-full pt-6 xl:pt-4"
@@ -162,11 +157,11 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
       <div className="relative">
         {validQuestions.map((q) => (
           <QuestionItem
-            key={q.id}
-            question={q.question ?? ""}
-            answer={q.answer ?? ""}
-            isOpen={openQuestion === q.id}
-            onToggle={() => handleToggle(q.id)}
+            key={q.question}
+            question={q.question}
+            answer={q.answer}
+            isOpen={openQuestion === q.question}
+            onToggle={() => handleToggle(q.question)}
           />
         ))}
       </div>

@@ -79,6 +79,7 @@ import {
 } from "lucide-react"
 import { cx } from "@/components/admin-ui"
 import { ConfirmModal } from "@/components/confirm-modal"
+import { env } from "@/config/env"
 import { ToastStack, useToastStack } from "@/components/toast-stack"
 import {
   BackgroundColorPicker,
@@ -863,6 +864,32 @@ function localizedVideoLabelFallback(label: string | null, localeCode: string) {
   return labels[label as keyof typeof labels] ?? ""
 }
 
+function inferWatchBaseUrl() {
+  if (env.NEXT_PUBLIC_WATCH_URL) {
+    return env.NEXT_PUBLIC_WATCH_URL.replace(/\/$/, "")
+  }
+
+  if (typeof window === "undefined") return ""
+
+  const { protocol, hostname, origin } = window.location
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return `${protocol}//${hostname}:3000`
+  }
+
+  return origin.replace(/\/$/, "")
+}
+
+function buildPublishedWatchUrl(slug: string, locale: string) {
+  const normalizedSlug = cleanRoutePart(slug)
+  const normalizedLocale = cleanLocaleCode(locale)
+  if (!normalizedSlug || !normalizedLocale) return null
+
+  const baseUrl = inferWatchBaseUrl()
+  if (!baseUrl) return null
+
+  return `${baseUrl}/watch/${normalizedSlug}/${normalizedLocale}`
+}
+
 export function ExperienceEditor({
   canPublish,
   hasPublishedVersion,
@@ -876,6 +903,7 @@ export function ExperienceEditor({
   publishAction,
   createLocaleAction,
   restoreAction,
+  onCanvasController,
 }: {
   canPublish: boolean
   hasPublishedVersion: boolean
@@ -901,9 +929,55 @@ export function ExperienceEditor({
   publishAction: (localeId: string) => Promise<EditorActionResult>
   createLocaleAction: (formData: FormData) => Promise<CreateLocaleActionResult>
   restoreAction: (revisionId: string) => Promise<EditorActionResult>
+  /**
+   * Optional imperative bridge published once on mount so the chat panel
+   * (sibling component at the page level) can read current canvas state
+   * and apply / revert hybrid diffs without coupling its state into this
+   * 10k-line component. See `experience-editor/experience-chat-panel.tsx`
+   * for the consumer.
+   */
+  onCanvasController?: (controller: {
+    getState: () => {
+      title: string
+      metaDescription: string | null
+      ogImageUrl: string | null
+      blocks: unknown[]
+    }
+    applyDiff: (diff: {
+      scalars: {
+        title?: { before: string; after: string }
+        metaDescription?: {
+          before: string | null
+          after: string | null
+        }
+        ogImageUrl?: {
+          before: string | null
+          after: string | null
+        }
+      }
+      blocks?: ReadonlyArray<unknown>
+    }) => void
+    revertDiff: (diff: {
+      scalars: {
+        title?: { before: string; after: string }
+        metaDescription?: {
+          before: string | null
+          after: string | null
+        }
+        ogImageUrl?: {
+          before: string | null
+          after: string | null
+        }
+      }
+      blocks?: ReadonlyArray<unknown>
+    }) => void
+  }) => void
 }) {
   const router = useRouter()
   const { toasts, pushToast, dismissToast } = useToastStack()
+  const [publishedSlug, setPublishedSlug] = useState<string | null>(
+    hasPublishedVersion ? cleanRoutePart(initialValues.slug) : null,
+  )
   const [editorDateSnapshot, setEditorDateSnapshot] = useState(calendarDate)
   const editorToday = parseEditorDateSnapshot(editorDateSnapshot)
   const [title, setTitle] = useState(initialValues.title)
@@ -914,7 +988,7 @@ export function ExperienceEditor({
   )
   const [ogTitle] = useState(initialValues.ogTitle)
   const [ogDescription] = useState(initialValues.ogDescription)
-  const [ogImageUrl] = useState(initialValues.ogImageUrl)
+  const [ogImageUrl, setOgImageUrl] = useState(initialValues.ogImageUrl)
   const [isHomepage] = useState(initialValues.isHomepage)
   const isTemplate = initialValues.isTemplate
   const [parsedBlocks, setParsedBlocks] = useState<unknown[]>(() => {
@@ -929,6 +1003,123 @@ export function ExperienceEditor({
   const [selectedBlockIndex, setSelectedBlockIndex] = useState<number | null>(
     parsedBlocks.length > 0 ? 0 : null,
   )
+  // ---- Chat panel canvas bridge (U4) ----------------------------------
+  // Refs always read the latest state without triggering reruns of the
+  // publish effect. The controller object itself is stable for the
+  // lifetime of the component.
+  const canvasStateRef = useRef({
+    title,
+    metaDescription,
+    ogImageUrl,
+    blocks: parsedBlocks,
+  })
+  canvasStateRef.current = {
+    title,
+    metaDescription,
+    ogImageUrl,
+    blocks: parsedBlocks,
+  }
+  useEffect(() => {
+    if (!onCanvasController) return
+    const controller = {
+      getState: () => ({
+        title: canvasStateRef.current.title,
+        metaDescription: canvasStateRef.current.metaDescription,
+        ogImageUrl: canvasStateRef.current.ogImageUrl,
+        blocks: canvasStateRef.current.blocks,
+      }),
+      applyDiff: (diff: {
+        scalars: {
+          title?: { before: string; after: string }
+          metaDescription?: {
+            before: string | null
+            after: string | null
+          }
+          ogImageUrl?: {
+            before: string | null
+            after: string | null
+          }
+        }
+        blocks?: ReadonlyArray<unknown>
+      }) => {
+        if (diff.scalars.title) setTitle(diff.scalars.title.after)
+        if (diff.scalars.metaDescription) {
+          setMetaDescription(diff.scalars.metaDescription.after ?? "")
+        }
+        if (diff.scalars.ogImageUrl) {
+          setOgImageUrl(diff.scalars.ogImageUrl.after ?? "")
+        }
+        // Block patches are applied via the diff utility in the chat
+        // panel; here we set the next blocks array directly when the
+        // panel passes a fully-resolved next state via the canvas
+        // context. The chat panel is the source of truth for hybrid
+        // diff application — it reads `getState`, runs `applyDiff`
+        // from the diff utility, and we trust the next blocks via a
+        // separate setter not exposed here. Blocks live updates from
+        // the chat path go through `setParsedBlocks` directly via the
+        // controller's optional onBlocks hook (the chat panel currently
+        // applies block patches client-side and re-publishes them by
+        // calling `applyDiff` with `blocks` set; we honor that here).
+        if (diff.blocks && Array.isArray(diff.blocks)) {
+          // The chat panel sends ALREADY-applied next blocks under the
+          // `blocks` key for live preview. Cast to unknown[] so the
+          // editor's render machinery picks them up.
+          setParsedBlocks((current) => {
+            // If the chat panel passed a resolved array, use it; else
+            // leave current. An RFC-6902 patch op array has objects
+            // with `op` keys — distinguish by sniffing.
+            const looksLikePatch =
+              diff.blocks!.length > 0 &&
+              typeof diff.blocks![0] === "object" &&
+              diff.blocks![0] !== null &&
+              "op" in (diff.blocks![0] as Record<string, unknown>)
+            if (looksLikePatch) return current
+            return diff.blocks as unknown[]
+          })
+        }
+      },
+      revertDiff: (diff: {
+        scalars: {
+          title?: { before: string; after: string }
+          metaDescription?: {
+            before: string | null
+            after: string | null
+          }
+          ogImageUrl?: {
+            before: string | null
+            after: string | null
+          }
+        }
+        blocks?: ReadonlyArray<unknown>
+      }) => {
+        if (diff.scalars.title) setTitle(diff.scalars.title.before)
+        if (diff.scalars.metaDescription) {
+          setMetaDescription(diff.scalars.metaDescription.before ?? "")
+        }
+        if (diff.scalars.ogImageUrl) {
+          setOgImageUrl(diff.scalars.ogImageUrl.before ?? "")
+        }
+        // Block revert: the chat panel side runs `revertDiff` from the
+        // diff utility against current state and sends us the resolved
+        // before-image; same sniffing rule applies.
+        if (diff.blocks && Array.isArray(diff.blocks)) {
+          setParsedBlocks((current) => {
+            const looksLikePatch =
+              diff.blocks!.length > 0 &&
+              typeof diff.blocks![0] === "object" &&
+              diff.blocks![0] !== null &&
+              "op" in (diff.blocks![0] as Record<string, unknown>)
+            if (looksLikePatch) return current
+            return diff.blocks as unknown[]
+          })
+        }
+      },
+    }
+    onCanvasController(controller)
+    // Publish exactly once per editor instance — re-mounting on locale
+    // switch (via the parent `key`) handles teardown.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [inlineBlockLibraryOpen, setInlineBlockLibraryOpen] = useState(false)
   const [revisionHistoryOpen, setRevisionHistoryOpen] = useState(false)
   const [localeDrawerOpen, setLocaleDrawerOpen] = useState(false)
@@ -1129,6 +1320,23 @@ export function ExperienceEditor({
     34,
   )}ch`
   const canPublishNow = canPublish && (!hasPublishedVersion || hasChanges)
+  const activeLocaleCode =
+    localeEntries.find((entry) => entry.active)?.code ?? ""
+  const publishedRouteSlug = cleanRoutePart(publishedSlug ?? "")
+  const canOpenPublishedPage =
+    publishedRouteSlug !== "" && activeLocaleCode !== ""
+  const shouldShowPreviewAction = canOpenPublishedPage && !hasChanges
+  function openPublishedWatchPage(routeSlug = publishedRouteSlug) {
+    const nextPublishedWatchUrl = buildPublishedWatchUrl(
+      routeSlug,
+      activeLocaleCode,
+    )
+    if (!nextPublishedWatchUrl) {
+      pushToast("Unable to build the published preview URL.", "error")
+      return
+    }
+    window.open(nextPublishedWatchUrl, "_blank", "noopener,noreferrer")
+  }
   const isFloatingDrawerOpen =
     inlineBlockLibraryOpen || revisionHistoryOpen || localeDrawerOpen
   const isAddingToContainerSlot = focusedContainerIndex !== null
@@ -8953,7 +9161,7 @@ export function ExperienceEditor({
     focusedSectionIndex !== null && focusedSectionRecord?.t === "section"
 
   return (
-    <div className="flex h-[calc(100vh-3rem)] overflow-hidden bg-[var(--color-surface)]">
+    <div className="relative flex h-[calc(100vh-3rem)] overflow-hidden bg-[var(--color-surface)]">
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
       {navigationDestinationPortal}
       {ctaLinkModal}
@@ -8969,12 +9177,12 @@ export function ExperienceEditor({
       {renderRevisionHistoryDrawer()}
       {renderLocaleDrawer()}
       <div
-        className="pointer-events-none fixed bottom-0 left-[240px] right-0 z-[29] h-32 overflow-hidden"
+        className="pointer-events-none absolute bottom-0 left-0 right-0 z-[29] h-32 overflow-hidden"
         aria-hidden="true"
       >
         <div className="absolute inset-x-0 bottom-0 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,0.52)_62%,rgba(0,0,0,0.92)_100%)]" />
       </div>
-      <div className="pointer-events-none fixed bottom-4 left-[240px] right-0 z-30">
+      <div className="pointer-events-none absolute bottom-4 left-0 right-0 z-30">
         <div className="mx-auto w-full max-w-4xl px-6">
           <div className="pointer-events-auto flex items-center justify-between gap-2 rounded-sm border border-[var(--color-hairline)] bg-[color-mix(in_oklab,var(--color-surface)_94%,black)] p-1.5 shadow-[0_18px_56px_rgba(0,0,0,0.36)]">
             <button
@@ -9038,17 +9246,32 @@ export function ExperienceEditor({
                 <Save className="h-4 w-4" strokeWidth={1.5} />
                 Save Draft
               </button>
-              <button
-                type="submit"
-                form={`experience-editor-${initialValues.localeId}`}
-                name="intent"
-                value="publish"
-                disabled={isPending || !canPublishNow}
-                className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] bg-[var(--color-brand)] px-3 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <UploadCloud className="h-4 w-4" strokeWidth={1.5} />
-                Publish
-              </button>
+              {shouldShowPreviewAction ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    openPublishedWatchPage()
+                  }}
+                  disabled={isPending}
+                  className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] bg-[var(--color-brand)] px-3 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
+                  title="Open published page"
+                >
+                  <Eye className="h-4 w-4" strokeWidth={1.5} />
+                  Preview
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  form={`experience-editor-${initialValues.localeId}`}
+                  name="intent"
+                  value="publish"
+                  disabled={isPending || !canPublishNow}
+                  className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] bg-[var(--color-brand)] px-3 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <UploadCloud className="h-4 w-4" strokeWidth={1.5} />
+                  Publish
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -10023,8 +10246,9 @@ export function ExperienceEditor({
                         Start with a first block
                       </div>
                       <p className="mt-2 max-w-xl text-[13px] leading-6 text-[var(--color-text-secondary)]">
-                        Pick a starter block below, or open the full block
-                        library if you want to build from a different pattern.
+                        Use AI Chat to generate a first draft from a prompt, or
+                        pick a starter block below if you want to build
+                        manually.
                       </p>
                     </div>
                   </div>
@@ -10120,6 +10344,9 @@ export function ExperienceEditor({
                 )
                 return
               }
+              const nextPublishedSlug = cleanRoutePart(slug)
+              setPublishedSlug(nextPublishedSlug)
+              openPublishedWatchPage(nextPublishedSlug)
               pushToast("Locale published.", "success")
             } else {
               pushToast("Locale saved.", "success")

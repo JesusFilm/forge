@@ -80,15 +80,15 @@ function createMockPlayer(): MockPlayer {
 }
 
 const baseFragment = {
-  id: "vh-1",
+  t: "videoHero",
   sectionKey: "hero",
   useRouteVideo: false,
   heading: "Test Heading",
   subheading: "Test Subheading",
-  ctaLabel: null,
-  ctaLink: null,
+  ctaLabel: undefined,
+  ctaLink: undefined,
   streamingUrl: "https://example.com/test.m3u8",
-  video: null,
+  videoId: undefined,
 } as Parameters<typeof VideoHero>[0]["data"]
 
 let container: HTMLDivElement
@@ -142,6 +142,38 @@ describe("VideoHero — flag-off (videojs branch)", () => {
     expect(container.textContent).toContain("Test Subheading")
 
     // videojs() was invoked exactly once with the <video> element.
+    expect(videojsMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("uses the hydrated video stream when a hero only stores videoId", async () => {
+    setFlag(false)
+
+    await act(async () => {
+      root.render(
+        <VideoHero
+          data={{
+            ...baseFragment,
+            streamingUrl: undefined,
+            videoId: "video-1",
+          }}
+          videoMap={
+            new Map([
+              [
+                "video-1",
+                {
+                  id: "video-1",
+                  streamingUrl: "https://example.com/from-video-map.m3u8",
+                },
+              ],
+            ])
+          }
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="VideoHeroPlayer"]'),
+    ).not.toBeNull()
     expect(videojsMock).toHaveBeenCalledTimes(1)
   })
 

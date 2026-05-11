@@ -15,6 +15,11 @@
 
 import { builder } from "@/graphql/builder"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
+import type { Prisma } from "@prisma/client"
+
+function canReadUnpublishedVideoFields(ctx: { user?: { role?: string } | null }) {
+  return ctx.user?.role === "ADMIN" || ctx.user?.role === "EDITOR"
+}
 
 // -----------------------------------------------------------------------------
 // Enums — imported from the generated Prisma types.
@@ -281,13 +286,33 @@ builder.prismaObject("Video", {
     aiMetadata: t.exposeBoolean("aiMetadata"),
     primaryLanguage: t.relation("primaryLanguage", { nullable: true }),
     origin: t.relation("origin", { nullable: true }),
-    locales: t.relation("locales", {
+    locales: t.prismaField({
+      type: ["VideoLocale"],
       description: "Per-locale content rows (title, description, etc.).",
+      args: {
+        locale: t.arg.string({ required: false }),
+      },
+      resolve: (query, row, args, ctx) =>
+        ctx.prisma.videoLocale.findMany({
+          ...query,
+          where: {
+            videoId: row.id,
+            ...(canReadUnpublishedVideoFields(ctx)
+              ? {}
+              : { status: "PUBLISHED" }),
+            ...(args.locale ? { locale: args.locale } : {}),
+          },
+        }),
     }),
     dubs: t.relation("dubs", {
       description:
         "Language-specific audio dubs + their encoded playback (formerly exposed as `variants`).",
-      query: { where: { deletedAt: null } },
+      query: (_args, ctx) => ({
+        where: {
+          deletedAt: null,
+          ...(canReadUnpublishedVideoFields(ctx) ? {} : { published: true }),
+        },
+      }),
     }),
     images: t.relation("images", {
       query: { where: { deletedAt: null } },
@@ -297,6 +322,40 @@ builder.prismaObject("Video", {
     }),
     bibleCitations: t.relation("bibleCitations", {
       query: { where: { deletedAt: null } },
+    }),
+    parents: t.prismaField({
+      type: ["Video"],
+      authScopes: { public: true },
+      description: "Parent videos related through the VideoRelation table.",
+      resolve: (query, row, _args, ctx) =>
+        ctx.prisma.video.findMany({
+          ...query,
+          where: {
+            deletedAt: null,
+            ...(canReadUnpublishedVideoFields(ctx)
+              ? {}
+              : { locales: { some: { status: "PUBLISHED" } } }),
+            parents: { some: { childId: row.id } },
+          },
+          orderBy: { updatedAt: "desc" },
+        }),
+    }),
+    children: t.prismaField({
+      type: ["Video"],
+      authScopes: { public: true },
+      description: "Child videos related through the VideoRelation table.",
+      resolve: (query, row, _args, ctx) =>
+        ctx.prisma.video.findMany({
+          ...query,
+          where: {
+            deletedAt: null,
+            ...(canReadUnpublishedVideoFields(ctx)
+              ? {}
+              : { locales: { some: { status: "PUBLISHED" } } }),
+            children: { some: { parentId: row.id } },
+          },
+          orderBy: { updatedAt: "desc" },
+        }),
     }),
   }),
 })
@@ -324,16 +383,37 @@ builder.queryFields((t) => ({
   videoBySlug: t.prismaField({
     type: "Video",
     nullable: true,
-    authScopes: { hasPermission: "read:videos" },
+    authScopes: { public: true },
     args: {
       slug: t.arg.string({ required: true }),
+      locale: t.arg.string({ required: true }),
     },
-    resolve: (query, _root, args, ctx) =>
-      ctx.services.video.getBySlug({
+    resolve: async (query, _root, args, ctx) => {
+      const video = await ctx.services.video.getBySlug({
         slug: args.slug,
         user: ctx.user,
         query,
-      }),
+        allowPublic: true,
+        publicLocale: args.locale,
+      })
+
+      if (!video) return video
+
+      const videoWithLocales = video as typeof video & {
+        locales?: Prisma.VideoLocaleGetPayload<object>[]
+      }
+      if (!Array.isArray(videoWithLocales.locales)) return video
+
+      return {
+        ...video,
+        locales: videoWithLocales.locales.filter(
+          (locale) =>
+            locale.locale === args.locale &&
+            (canReadUnpublishedVideoFields(ctx) ||
+              locale.status === "PUBLISHED"),
+        ),
+      }
+    },
   }),
   videos: t.prismaField({
     type: ["Video"],

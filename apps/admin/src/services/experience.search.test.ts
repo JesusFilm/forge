@@ -24,7 +24,7 @@ const ADMIN: Principal = { id: "admin-1", role: "ADMIN" }
 const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
 const PUBLIC_USER: Principal | null = null
 
-const VECTOR = Array.from({ length: 1536 }, () => 0.1)
+const VECTOR = Array.from({ length: 2048 }, () => 0.1)
 
 describe("ExperienceSearchService", () => {
   let prisma: ReturnType<typeof mockPrisma>

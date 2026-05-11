@@ -1,7 +1,13 @@
 import type { RevisionStatus } from "@prisma/client"
 import { notFound } from "next/navigation"
 import { revalidatePath } from "next/cache"
-import { ExperienceEditor } from "@/app/dashboard/experiences/experience-editor"
+import { ExperienceEditorWithChat } from "@/app/dashboard/experiences/experience-editor-with-chat"
+import {
+  archiveThreadAction as archiveChatThreadCore,
+  createThreadAction as createChatThreadCore,
+  getMessagesAction as getChatMessagesCore,
+  listThreadsAction as listChatThreadsCore,
+} from "@/app/dashboard/experiences/experience-chat-actions"
 import { loadVideoRows } from "@/app/dashboard/live-data"
 import { requireSession } from "@/auth/session"
 import { prisma } from "@/db/client"
@@ -534,43 +540,82 @@ export default async function ExperienceEditorPage({
     return { ok: true }
   }
 
+  async function listChatThreads() {
+    "use server"
+    const user = await requireSession()
+    return listChatThreadsCore(
+      { prisma, user },
+      { experienceLocaleId: selectedLocale.id },
+    )
+  }
+
+  async function createChatThread(input: { firstPrompt: string }) {
+    "use server"
+    const user = await requireSession()
+    return createChatThreadCore(
+      { prisma, user },
+      {
+        experienceLocaleId: selectedLocale.id,
+        firstPrompt: input.firstPrompt,
+      },
+    )
+  }
+
+  async function archiveChatThread(threadId: string) {
+    "use server"
+    const user = await requireSession()
+    await archiveChatThreadCore({ prisma, user }, { threadId })
+  }
+
+  async function getChatMessages(threadId: string) {
+    "use server"
+    const user = await requireSession()
+    return getChatMessagesCore({ prisma, user }, { threadId })
+  }
+
   return (
-    <div className="flex min-h-[calc(100vh-3rem)] flex-col">
-      <ExperienceEditor
-        key={`${selectedLocale.id}:${selectedLocale.updatedAt.toISOString()}:${selectedLocale.status}`}
-        canPublish={selectedLocale.status !== "PUBLISHED"}
-        hasPublishedVersion={selectedLocale.publishedAt !== null}
-        calendarDate={new Date().toISOString().slice(0, 10)}
-        initialValues={{
-          localeId: selectedLocale.id,
-          title: selectedLocale.title ?? "",
-          slug: selectedLocale.slug,
-          metaDescription: selectedLocale.metaDescription ?? "",
-          ogTitle: selectedLocale.ogTitle ?? "",
-          ogDescription: selectedLocale.ogDescription ?? "",
-          ogImageUrl: selectedLocale.ogImageUrl ?? "",
-          pathSegment: selectedLocale.pathSegment ?? "",
-          isHomepage: selectedLocale.isHomepage,
-          isTemplate: experience.isTemplate,
-          blocksJson: JSON.stringify(selectedLocale.blocks ?? [], null, 2),
-        }}
-        localeEntries={experience.locales.map((locale) => ({
-          id: locale.id,
-          code: locale.locale,
-          title: locale.title?.trim() || "Untitled Locale",
-          href: `/dashboard/experiences/${experience.id}?locale=${locale.locale}`,
-          stateLabel: locale.status,
-          stateTone: statusTone(locale.status),
-          active: locale.id === selectedLocale.id,
-        }))}
-        revisionEntries={revisionEntries}
-        videoLibrary={videoLibrary}
-        mediaLibrary={mediaLibrary}
-        saveAction={saveLocaleAction}
-        publishAction={publishLocaleAction}
-        createLocaleAction={createLocaleAction}
-        restoreAction={restoreRevisionAction}
-      />
-    </div>
+    <ExperienceEditorWithChat
+      key={`${selectedLocale.id}:${selectedLocale.updatedAt.toISOString()}:${selectedLocale.status}`}
+      experienceLocaleId={selectedLocale.id}
+      locale={selectedLocale.locale}
+      chatActions={{
+        listThreads: listChatThreads,
+        createThread: createChatThread,
+        archiveThread: archiveChatThread,
+        getMessages: getChatMessages,
+      }}
+      canPublish={selectedLocale.status !== "PUBLISHED"}
+      hasPublishedVersion={selectedLocale.publishedAt !== null}
+      calendarDate={new Date().toISOString().slice(0, 10)}
+      initialValues={{
+        localeId: selectedLocale.id,
+        title: selectedLocale.title ?? "",
+        slug: selectedLocale.slug,
+        metaDescription: selectedLocale.metaDescription ?? "",
+        ogTitle: selectedLocale.ogTitle ?? "",
+        ogDescription: selectedLocale.ogDescription ?? "",
+        ogImageUrl: selectedLocale.ogImageUrl ?? "",
+        pathSegment: selectedLocale.pathSegment ?? "",
+        isHomepage: selectedLocale.isHomepage,
+        isTemplate: experience.isTemplate,
+        blocksJson: JSON.stringify(selectedLocale.blocks ?? [], null, 2),
+      }}
+      localeEntries={experience.locales.map((locale) => ({
+        id: locale.id,
+        code: locale.locale,
+        title: locale.title?.trim() || "Untitled Locale",
+        href: `/dashboard/experiences/${experience.id}?locale=${locale.locale}`,
+        stateLabel: locale.status,
+        stateTone: statusTone(locale.status),
+        active: locale.id === selectedLocale.id,
+      }))}
+      revisionEntries={revisionEntries}
+      videoLibrary={videoLibrary}
+      mediaLibrary={mediaLibrary}
+      saveAction={saveLocaleAction}
+      publishAction={publishLocaleAction}
+      createLocaleAction={createLocaleAction}
+      restoreAction={restoreRevisionAction}
+    />
   )
 }

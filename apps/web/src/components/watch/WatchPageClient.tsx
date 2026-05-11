@@ -10,6 +10,7 @@ import { LanguagePickerModal } from "@/components/watch/LanguagePickerModal"
 import { ShareModal } from "@/components/watch/ShareModal"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
 import type { MergedWatchBlock, ResolvedWatchVideo } from "@/lib/content"
+import type { VideoMap } from "@/components/sections/block-types"
 import { resolvePosterUrl } from "@/lib/url"
 
 type WatchVideoRecord = ResolvedWatchVideo["video"]
@@ -40,6 +41,7 @@ type WatchPageClientProps = {
    * links round-trip cleanly.
    */
   languageSlug?: string
+  videoMap?: VideoMap
 }
 
 export function WatchPageClient({
@@ -47,6 +49,7 @@ export function WatchPageClient({
   variant,
   video,
   languageSlug,
+  videoMap,
 }: WatchPageClientProps) {
   // Lifted so LanguagePickerModal can read `currentTime` for the `?t=` clamp
   // on language switches.
@@ -66,7 +69,7 @@ export function WatchPageClient({
     .map((d) => ({
       documentId: d.documentId,
       quality: d.quality as string,
-      size: d.size,
+      size: d.size == null ? null : Number(d.size),
       url: d.url as string,
     }))
 
@@ -76,13 +79,13 @@ export function WatchPageClient({
         .filter((v): v is NonNullable<typeof v> => v != null)
         .map((v) => ({
           documentId: v.documentId,
-          hls: v.hls,
-          published: v.published,
+          hls: v.hls ?? null,
+          published: v.published ?? null,
           language: v.language
             ? {
-                coreId: v.language.coreId,
-                slug: v.language.slug,
-                name: v.language.name,
+                coreId: v.language.coreId ?? null,
+                slug: v.language.slug ?? null,
+                name: v.language.name ?? null,
               }
             : null,
         })),
@@ -125,6 +128,7 @@ export function WatchPageClient({
         blocks={mergedBlocks}
         modalCallbacks={modalCallbacks}
         onPlayerReady={handlePlayerReady}
+        videoMap={videoMap}
       />
 
       <DownloadModal

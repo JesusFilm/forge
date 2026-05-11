@@ -56,18 +56,32 @@ export class VideoService {
     slug,
     user,
     query,
+    allowPublic = false,
+    publicLocale,
   }: {
     slug: string
     user: Principal | null
     query: object
+    allowPublic?: boolean
+    publicLocale?: string
   }) {
-    if (!hasPermission(user, "read:videos")) {
+    if (!allowPublic && !hasPermission(user, "read:videos")) {
       throw new ForbiddenError()
     }
 
     return this.prisma.video.findFirst({
       ...query,
-      where: { slug, deletedAt: null },
+      where: {
+        slug,
+        deletedAt: null,
+        ...(allowPublic && publicLocale
+          ? {
+              locales: {
+                some: { locale: publicLocale, status: "PUBLISHED" },
+              },
+            }
+          : {}),
+      },
     })
   }
 

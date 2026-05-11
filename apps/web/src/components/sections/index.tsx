@@ -1,4 +1,4 @@
-import type { RouteVideo, Section } from "@/lib/content"
+import type { RouteVideo } from "@/lib/content"
 import { MediaCollection } from "./MediaCollection"
 import { PromoBanner } from "./PromoBanner"
 import { InfoBlocks } from "./InfoBlocks"
@@ -16,7 +16,8 @@ import { CarouselVideo } from "./CarouselVideo"
 import { NavigationCarousel } from "./NavigationCarousel"
 import { VideoRecommendations } from "./VideoRecommendations"
 import { getSceneRecommendations } from "@/lib/recommendations"
-export type { Section } from "@/lib/content"
+import type { Block, VideoMap } from "./block-types"
+export type { Block as Section } from "./block-types"
 
 async function VideoRecommendationsBlock({
   slug,
@@ -43,69 +44,84 @@ async function VideoRecommendationsBlock({
 export function ExperienceSectionRenderer({
   section,
   routeVideo,
+  videoMap,
 }: {
-  section: Section
+  section: Block
   routeVideo?: RouteVideo | null
+  videoMap?: VideoMap
 }) {
-  switch (section.__typename) {
-    case "ComponentSectionsMediaCollection":
-      return <MediaCollection data={section} routeVideo={routeVideo} />
-    case "ComponentSectionsPromoBanner":
+  switch (section.t) {
+    case "mediaCollection":
+      return (
+        <MediaCollection
+          data={section}
+          routeVideo={routeVideo}
+          videoMap={videoMap}
+        />
+      )
+    case "promoBanner":
       return <PromoBanner data={section} />
-    case "ComponentSectionsInfoBlocks":
+    case "infoBlocks":
       return <InfoBlocks data={section} />
-    case "ComponentSectionsCta":
+    case "cta":
       return <CTASection data={section} />
-    case "ComponentSectionsVideoHero":
-      return <VideoHero data={section} routeVideo={routeVideo} />
-    case "ComponentSectionsVideo":
-      return <Video data={section} routeVideo={routeVideo} />
-    case "ComponentSectionsBibleQuotesCarousel":
+    case "videoHero":
+      return (
+        <VideoHero data={section} routeVideo={routeVideo} videoMap={videoMap} />
+      )
+    case "video":
+      return (
+        <Video data={section} routeVideo={routeVideo} videoMap={videoMap} />
+      )
+    case "bibleQuotesCarousel":
       return <BibleQuotesCarousel data={section} />
-    case "ComponentSectionsText":
+    case "text":
       return <Text data={section} />
-    case "ComponentSectionsAdventCountdown":
+    case "adventCountdown":
       return <AdventCountdown data={section} />
-    case "ComponentSectionsEasterDates":
+    case "easterDates":
       return <EasterDates data={section} />
-    case "ComponentSectionsContainer":
-      return <Container data={section} routeVideo={routeVideo} />
-    case "ComponentSectionsSection":
-      return <SectionBlock data={section} routeVideo={routeVideo} />
-    case "ComponentSectionsRelatedQuestions":
+    case "container":
+      return (
+        <Container data={section} routeVideo={routeVideo} videoMap={videoMap} />
+      )
+    case "section":
+      return (
+        <SectionBlock
+          data={section}
+          routeVideo={routeVideo}
+          videoMap={videoMap}
+        />
+      )
+    case "relatedQuestions":
       return <RelatedQuestions data={section} />
-    case "ComponentSectionsVideoCarousel":
-      return <CarouselVideo data={section} />
-    case "ComponentSectionsNavigationCarousel":
+    case "videoCarousel":
+      return <CarouselVideo data={section} videoMap={videoMap} />
+    case "navigationCarousel":
       return <NavigationCarousel data={section} />
+    case "videoRecommendations": {
+      const sourceVideo = section.sourceVideoId
+        ? videoMap?.get(section.sourceVideoId)
+        : null
+      const slug = sourceVideo?.slug ?? routeVideo?.slug
+      if (!slug) return null
+      return (
+        <VideoRecommendationsBlock
+          slug={slug}
+          locale="en"
+          limit={section.limit}
+          title={section.title}
+        />
+      )
+    }
+    case "card":
+      return null
     default: {
-      // Forward-looking: handle VideoRecommendations block before codegen
-      // adds it to the Section union type. Once the Strapi component
-      // ComponentBlocksVideoRecommendations exists and codegen runs, move
-      // this to a proper case above.
-      const tn = (section as { __typename?: string }).__typename
-      if (tn === "ComponentBlocksVideoRecommendations") {
-        const block = section as {
-          sourceVideo?: { slug?: string } | null
-          title?: string | null
-          limit?: number | null
-          locale?: string | null
-        }
-        const slug = block.sourceVideo?.slug
-        if (!slug) return null
-        const locale = block.locale ?? "en"
-        const limit = block.limit ?? 10
-        return (
-          <VideoRecommendationsBlock
-            slug={slug}
-            locale={locale}
-            limit={limit}
-            title={block.title ?? undefined}
-          />
-        )
-      }
       if (process.env.NODE_ENV === "development") {
-        console.warn("[sections] Unhandled block type:", tn ?? "unknown")
+        console.warn(
+          "[sections] Unhandled block type:",
+          (section as { t?: string }).t ?? "unknown",
+        )
       }
       return null
     }
@@ -116,9 +132,17 @@ export function ExperienceSectionRenderer({
 export function SectionRenderer({
   section,
   routeVideo,
+  videoMap,
 }: {
-  section: Section
+  section: Block
   routeVideo?: RouteVideo | null
+  videoMap?: VideoMap
 }) {
-  return <ExperienceSectionRenderer section={section} routeVideo={routeVideo} />
+  return (
+    <ExperienceSectionRenderer
+      section={section}
+      routeVideo={routeVideo}
+      videoMap={videoMap}
+    />
+  )
 }

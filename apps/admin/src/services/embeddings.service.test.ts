@@ -59,7 +59,7 @@ describe("generateExperienceEmbedding", () => {
   })
 
   it("calls OpenRouter and validates the vector length", async () => {
-    const vector = Array.from({ length: 1536 }, () => 0.1)
+    const vector = Array.from({ length: 2048 }, () => 0.1)
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ data: [{ embedding: vector }] }), {
         status: 200,
@@ -84,7 +84,7 @@ describe("generateExperienceEmbedding", () => {
     )
     expect(result).toEqual({
       model: OPENROUTER_EMBEDDING_MODEL,
-      dimensions: 1536,
+      dimensions: 2048,
       embedding: vector,
     })
   })
@@ -107,7 +107,7 @@ describe("generateExperienceEmbeddings (batched)", () => {
   })
 
   function vectorOf(seed: number): number[] {
-    return Array.from({ length: 1536 }, () => seed)
+    return Array.from({ length: 2048 }, () => seed)
   }
 
   it("issues exactly ONE fetch per call with body.input deep-equal to the inputs (in order)", async () => {
@@ -148,7 +148,7 @@ describe("generateExperienceEmbeddings (batched)", () => {
     // Position-stable: embeddings[i] aligns with inputs[i].
     expect(result.embeddings).toEqual([v0, v1, v2])
     expect(result.model).toBe(OPENROUTER_EMBEDDING_MODEL)
-    expect(result.dimensions).toBe(1536)
+    expect(result.dimensions).toBe(2048)
   })
 
   it("rejects an empty input list with EmbeddingsBatchError(empty_input)", async () => {

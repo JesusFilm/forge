@@ -173,6 +173,15 @@ enum WorkflowRunTrigger {
   SYSTEM    @map("system")
 }
 
+/// Role of a message turn in an Experience AI chat thread. Stored lowercase to
+/// match OpenAI/Anthropic provider conventions; Prisma `@map` handles the
+/// uppercase TS enum surface.
+enum ExperienceChatMessageRole {
+  USER      @map("user")
+  ASSISTANT @map("assistant")
+  SYSTEM    @map("system")
+}
+
 // -----------------------------------------------------------------------------
 // Better Auth (Unit 5)
 // -----------------------------------------------------------------------------
@@ -187,10 +196,11 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  sessions     Session[]
-  accounts     Account[]
-  mediaAssets  MediaAsset[]
-  mediaFolders MediaFolder[]
+  sessions           Session[]
+  accounts           Account[]
+  mediaAssets        MediaAsset[]
+  mediaFolders       MediaFolder[]
+  chatThreadsCreated ExperienceChatThread[]
 
   @@unique([email])
   @@map("user")
@@ -419,39 +429,39 @@ model ContentRevision {
 /// `VideoImage` remains separate: it represents Core/video-derived poster and
 /// still metadata. `MediaAsset` is for editorial uploads and reusable files.
 model MediaAsset {
-  id               String               @id @default(cuid())
-  kind             MediaAssetKind
-  backend          MediaAssetBackend
-  status           MediaAssetStatus     @default(PENDING)
-  visibility       MediaAssetVisibility @default(PRIVATE)
-  mimeType         String               @map("mime_type")
-  byteSize         BigInt?              @map("byte_size")
-  width            Int?
-  height           Int?
-  durationMs       BigInt?              @map("duration_ms")
-  blurDataUrl      String?              @map("blur_data_url")
-  dominantColor    String?              @map("dominant_color")
-  imageEnrichmentStatus MediaImageEnrichmentStatus @default(WAITING) @map("image_enrichment_status")
-  imageEnrichmentErrorCode String?       @map("image_enrichment_error_code")
-  imageEnrichmentErrorMessage String?    @map("image_enrichment_error_message")
-  imageEnrichmentStartedAt DateTime?     @map("image_enrichment_started_at")
-  imageEnrichmentCompletedAt DateTime?   @map("image_enrichment_completed_at")
-  originalFilename String?              @map("original_filename")
-  checksumSha256   String?              @map("checksum_sha256")
-  objectKey        String?              @map("object_key")
-  previewObjectKey String?              @map("preview_object_key")
-  muxAssetId       String?              @map("mux_asset_id")
-  muxUploadId      String?              @map("mux_upload_id")
-  muxPlaybackId    String?              @map("mux_playback_id")
-  errorCode        String?              @map("error_code")
-  errorMessage     String?              @map("error_message")
-  folderId         String?              @map("folder_id")
-  folder           MediaFolder?         @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  createdById      String?              @map("created_by_id")
-  createdBy        User?                @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  locales          MediaAssetLocale[]
-  createdAt        DateTime             @default(now()) @map("created_at")
-  updatedAt        DateTime             @updatedAt @map("updated_at")
+  id                          String                     @id @default(cuid())
+  kind                        MediaAssetKind
+  backend                     MediaAssetBackend
+  status                      MediaAssetStatus           @default(PENDING)
+  visibility                  MediaAssetVisibility       @default(PRIVATE)
+  mimeType                    String                     @map("mime_type")
+  byteSize                    BigInt?                    @map("byte_size")
+  width                       Int?
+  height                      Int?
+  durationMs                  BigInt?                    @map("duration_ms")
+  blurDataUrl                 String?                    @map("blur_data_url")
+  dominantColor               String?                    @map("dominant_color")
+  imageEnrichmentStatus       MediaImageEnrichmentStatus @default(WAITING) @map("image_enrichment_status")
+  imageEnrichmentErrorCode    String?                    @map("image_enrichment_error_code")
+  imageEnrichmentErrorMessage String?                    @map("image_enrichment_error_message")
+  imageEnrichmentStartedAt    DateTime?                  @map("image_enrichment_started_at")
+  imageEnrichmentCompletedAt  DateTime?                  @map("image_enrichment_completed_at")
+  originalFilename            String?                    @map("original_filename")
+  checksumSha256              String?                    @map("checksum_sha256")
+  objectKey                   String?                    @map("object_key")
+  previewObjectKey            String?                    @map("preview_object_key")
+  muxAssetId                  String?                    @map("mux_asset_id")
+  muxUploadId                 String?                    @map("mux_upload_id")
+  muxPlaybackId               String?                    @map("mux_playback_id")
+  errorCode                   String?                    @map("error_code")
+  errorMessage                String?                    @map("error_message")
+  folderId                    String?                    @map("folder_id")
+  folder                      MediaFolder?               @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  createdById                 String?                    @map("created_by_id")
+  createdBy                   User?                      @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  locales                     MediaAssetLocale[]
+  createdAt                   DateTime                   @default(now()) @map("created_at")
+  updatedAt                   DateTime                   @updatedAt @map("updated_at")
 
   @@index([kind, status, updatedAt])
   @@index([backend, status])
@@ -465,22 +475,22 @@ model MediaAsset {
 /// Localized display name and alt text for an editorial media asset. Blur data
 /// and byte-derived facts stay on MediaAsset; user-facing language varies here.
 model MediaAssetLocale {
-  id            String                 @id @default(cuid())
-  mediaAssetId  String                 @map("media_asset_id")
-  mediaAsset    MediaAsset             @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
-  locale        String
-  displayName   String?                @map("display_name")
-  altText       String?                @map("alt_text")
-  displayNameSource RevisedByKind?     @map("display_name_source")
-  altTextSource RevisedByKind?         @map("alt_text_source")
-  displayNameLocked Boolean            @default(false) @map("display_name_locked")
-  altTextLocked Boolean                @default(false) @map("alt_text_locked")
-  status        MediaAssetLocaleStatus @default(WAITING)
-  errorCode     String?                @map("error_code")
-  errorMessage  String?                @map("error_message")
-  generatedAt   DateTime?              @map("generated_at")
-  createdAt     DateTime               @default(now()) @map("created_at")
-  updatedAt     DateTime               @updatedAt @map("updated_at")
+  id                String                 @id @default(cuid())
+  mediaAssetId      String                 @map("media_asset_id")
+  mediaAsset        MediaAsset             @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+  locale            String
+  displayName       String?                @map("display_name")
+  altText           String?                @map("alt_text")
+  displayNameSource RevisedByKind?         @map("display_name_source")
+  altTextSource     RevisedByKind?         @map("alt_text_source")
+  displayNameLocked Boolean                @default(false) @map("display_name_locked")
+  altTextLocked     Boolean                @default(false) @map("alt_text_locked")
+  status            MediaAssetLocaleStatus @default(WAITING)
+  errorCode         String?                @map("error_code")
+  errorMessage      String?                @map("error_message")
+  generatedAt       DateTime?              @map("generated_at")
+  createdAt         DateTime               @default(now()) @map("created_at")
+  updatedAt         DateTime               @updatedAt @map("updated_at")
 
   @@unique([mediaAssetId, locale])
   @@index([locale])
@@ -1154,7 +1164,9 @@ model VideoScene {
 /// sceneEmbeddingBackfill workflow runs. NEVER exposed in GraphQL (the
 /// Pothos type in `src/graphql/types/video.ts` omits this field, and
 /// `schema.test.ts` asserts no embed/vector/similarity field leaks). Search
-/// uses raw SQL with `<=>` cosine distance + the partial HNSW index.
+/// uses raw SQL with `<=>` cosine distance. 2048-dim vectors exceed the
+/// HNSW index cap on some pgvector installs, so generated embeddings run
+/// without a vector index until a halfvec/index strategy is added.
 model VideoSceneLocale {
   id               String                       @id @default(cuid())
   videoSceneId     String                       @map("video_scene_id")
@@ -1170,9 +1182,9 @@ model VideoSceneLocale {
   bibleVerses      String[]                     @default([]) @map("bible_verses")
   demographics     String[]                     @default([])
   spiritualContext String[]                     @default([]) @map("spiritual_context")
-  embedding        Unsupported("vector(1536)")?
-  model            String                       @default("text-embedding-3-small")
-  dimensions       Int                          @default(1536)
+  embedding        Unsupported("vector(2048)")?
+  model            String                       @default("nvidia/llama-nemotron-embed-vl-1b-v2:free")
+  dimensions       Int                          @default(2048)
   createdAt        DateTime                     @default(now()) @map("created_at")
   updatedAt        DateTime                     @updatedAt @map("updated_at")
 
@@ -1241,9 +1253,10 @@ model ExperienceLocale {
   /// Per-locale embedding vector. NULL until the experienceEmbedding workflow
   /// runs against this locale's text. Excluded from Pothos types (technical
   /// control — schema test asserts no embed/vector/similarity field leaks).
-  /// Search uses raw SQL inside services with `<=>` cosine distance + the
-  /// partial HNSW index `WHERE embedding IS NOT NULL`.
-  embedding       Unsupported("vector(1536)")?
+  /// Search uses raw SQL inside services with `<=>` cosine distance.
+  /// 2048-dim vectors exceed the HNSW index cap on some pgvector installs,
+  /// so this generated embedding column is currently unindexed.
+  embedding       Unsupported("vector(2048)")?
   status          LocaleStatus                 @default(DRAFT)
   publishedAt     DateTime?                    @map("published_at")
   createdAt       DateTime                     @default(now()) @map("created_at")
@@ -1273,10 +1286,59 @@ model ExperienceLocale {
   cmsDumpedAt     DateTime?                    @map("cms_dumped_at")
   cmsContentHash  String?                      @map("cms_content_hash")
 
+  chatThreads ExperienceChatThread[]
+
   @@unique([experienceId, locale])
   @@index([locale])
   @@index([status])
   @@map("experience_locale")
+}
+
+// -----------------------------------------------------------------------------
+// Experience AI chat (U1 of the experience-ai-chat-panel plan)
+// -----------------------------------------------------------------------------
+
+/// A conversational thread on a single ExperienceLocale.
+/// Multiple threads per locale are allowed for conversational scoping;
+/// underlying entity state is shared across threads (single ContentRevision
+/// DRAFT per locale).
+model ExperienceChatThread {
+  id                 String           @id @default(cuid())
+  experienceLocaleId String           @map("experience_locale_id")
+  experienceLocale   ExperienceLocale @relation(fields: [experienceLocaleId], references: [id], onDelete: Cascade)
+  title              String
+  createdByUserId    String           @map("created_by_user_id")
+  createdBy          User             @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+  lastMessageAt      DateTime         @default(now()) @map("last_message_at")
+  archivedAt         DateTime?        @map("archived_at")
+
+  messages ExperienceChatMessage[]
+
+  @@index([experienceLocaleId, lastMessageAt(sort: Desc)], map: "experience_chat_thread_locale_last_message_idx")
+  @@index([createdByUserId], map: "experience_chat_thread_created_by_idx")
+  @@map("experience_chat_thread")
+}
+
+/// One turn in a chat thread. Assistant turns may carry a snapshot_diff
+/// (hybrid RFC-6902 + scalar before/after envelope) and mutations_applied
+/// (the validated AI envelope).
+model ExperienceChatMessage {
+  id               String                    @id @default(cuid())
+  threadId         String                    @map("thread_id")
+  thread           ExperienceChatThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  role             ExperienceChatMessageRole
+  content          String
+  providerKind     String?                   @map("provider_kind")
+  promptTokens     Int?                      @map("prompt_tokens")
+  completionTokens Int?                      @map("completion_tokens")
+  snapshotDiff     Json?                     @map("snapshot_diff")
+  mutationsApplied Json?                     @map("mutations_applied")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+
+  @@index([threadId, createdAt(sort: Asc)], map: "experience_chat_message_thread_created_idx")
+  @@map("experience_chat_message")
 }
 
 // -----------------------------------------------------------------------------

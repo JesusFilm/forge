@@ -127,14 +127,18 @@ export const adminMessages = {
       },
     },
     login: {
-      brandName: "Forge",
-      hero: "Help people hear the good news of Jesus clearly.",
+      brandName: "JesusFilm",
+      hero: "Sign in with your JesusFilm account.",
       labels: {
-        signIn: "Sign In",
-        welcomeBack: "Welcome back",
+        welcomeBack: "Sign in to continue",
         emailAddress: "Email address",
         password: "Password",
         divider: "OR",
+      },
+      destination: {
+        context: "Continuing to {destination}",
+        helper: "You are signing in to access {destination}.",
+        defaultName: "Forge administration panel",
       },
       placeholders: {
         email: "admin@example.com",
@@ -619,7 +623,7 @@ export const adminMessages = {
             footer: "EXPERIENCE_LOCALES",
           },
           { label: "Missing", value: "842", footer: "NULL_VECTORS" },
-          { label: "Index Dim", value: "1536", footer: "PGVECTOR_HNSW" },
+          { label: "Index Dim", value: "2048", footer: "PGVECTOR_EXACT" },
         ],
         queueTitle: "Embedding Work Queue",
         queueMeta: "BACKFILLS / INDEX_HEALTH / FRESHNESS",
@@ -1109,14 +1113,18 @@ export const adminMessages = {
       },
     },
     login: {
-      brandName: "Forge",
-      hero: "Ayuda a las personas a escuchar claramente las buenas nuevas de Jesus.",
+      brandName: "JesusFilm",
+      hero: "Inicia sesion con tu cuenta JesusFilm.",
       labels: {
-        signIn: "Ingresar",
-        welcomeBack: "Bienvenido de nuevo",
+        welcomeBack: "Inicia sesion para continuar",
         emailAddress: "Correo electronico",
         password: "Contrasena",
         divider: "O",
+      },
+      destination: {
+        context: "Continuando a {destination}",
+        helper: "Estas iniciando sesion para acceder a {destination}.",
+        defaultName: "panel de administracion Forge",
       },
       placeholders: {
         email: "admin@example.com",

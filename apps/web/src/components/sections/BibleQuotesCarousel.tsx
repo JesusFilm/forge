@@ -2,9 +2,7 @@
 
 import Image from "next/image"
 import type { ReactNode } from "react"
-import type { FragmentOf } from "@forge/graphql"
 import { BookOpen, ExternalLink } from "lucide-react"
-import { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 import { Button } from "@/components/ui/button"
 import {
   Carousel,
@@ -16,16 +14,13 @@ import {
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
-
-export { bibleQuotesCarouselFragment }
+import type { BibleQuoteItem, BibleQuotesCarouselBlock } from "./block-types"
 
 type BibleQuotesCarouselProps = {
-  data: FragmentOf<typeof bibleQuotesCarouselFragment>
+  data: BibleQuotesCarouselBlock
 }
 
-type QuoteItem = NonNullable<
-  NonNullable<FragmentOf<typeof bibleQuotesCarouselFragment>["quotes"]>[number]
->
+type QuoteItem = BibleQuoteItem
 
 export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
   const { heading, quotes } = data
@@ -36,7 +31,7 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
 
   return (
     <div data-testid="bible-quotes-carousel" className="pt-14 pb-6">
-      <BibleQuotesHeader heading={heading} />
+      <BibleQuotesHeader heading={heading ?? null} />
       <div className={CAROUSEL_BLEED_CLASSES}>
         <Carousel
           opts={{
@@ -50,7 +45,7 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
           <CarouselContent className={`-ml-4 ${CAROUSEL_CONTENT_PADDING}`}>
             {validQuotes.map((quote) => (
               <CarouselItem
-                key={quote.id}
+                key={`${quote.reference}-${quote.text}`}
                 className="basis-[85vw] pl-4 sm:basis-[50%] lg:basis-1/4"
               >
                 {quote.ctaLabel ? (

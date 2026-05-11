@@ -87,6 +87,31 @@ describe("VideoService", () => {
 
       expect(prisma.video.findFirst).toHaveBeenCalled()
     })
+
+    it("PUBLIC can get by slug when explicitly allowed", async () => {
+      prisma.video.findFirst.mockResolvedValueOnce({ id: "v-1", slug: "jf" })
+
+      const result = await service.getBySlug({
+        slug: "jf",
+        user: PUBLIC_USER,
+        query: {},
+        allowPublic: true,
+        publicLocale: "en",
+      })
+
+      expect(result).toEqual({ id: "v-1", slug: "jf" })
+      expect(prisma.video.findFirst.mock.calls[0][0].where).toEqual({
+        slug: "jf",
+        deletedAt: null,
+        locales: { some: { locale: "en", status: "PUBLISHED" } },
+      })
+    })
+
+    it("PUBLIC cannot get by slug unless public access is explicit", async () => {
+      await expect(
+        service.getBySlug({ slug: "jf", user: PUBLIC_USER, query: {} }),
+      ).rejects.toThrow("Forbidden")
+    })
   })
 
   describe("getByCoreId", () => {
