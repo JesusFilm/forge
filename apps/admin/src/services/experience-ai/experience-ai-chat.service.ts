@@ -51,6 +51,13 @@ import {
   type ChatMutationEnvelope,
 } from "./experience-ai-chat-envelope"
 import {
+  DEFAULT_CHAT_PROVIDER,
+  normalizeChatProvider,
+  type ChatProvider,
+} from "./experience-ai-chat-provider"
+import { runClaudeCodeChat } from "./experience-ai-claude-code"
+import { runOllamaChat } from "./experience-ai-ollama"
+import {
   buildChatPrompt,
   type ChatHistoryTurn,
   type EditableLocaleSummary,
@@ -100,6 +107,14 @@ export type StreamChatTurnInput = {
   prompt: string
   confirmedAcrossLocales?: boolean
   confirmedBrief?: boolean
+  /**
+   * Selected provider channel. Optional; defaults to `openrouter` so
+   * existing callers behave unchanged. `normalizeChatProvider` accepts
+   * raw input (string | unknown) and coerces to the closed
+   * `ChatProvider` union; the route boundary applies a tighter Zod enum
+   * but the service trusts the normalized value.
+   */
+  provider?: ChatProvider
 }
 
 export type StreamChatTurnDeps = {
@@ -179,6 +194,65 @@ function isEmptyCanvas(state: EditableLocaleState): boolean {
   return state.blocks.length === 0
 }
 
+/**
+ * Route a chat turn through the editor-selected provider channel.
+ *
+ * - `openrouter` → Codex CLI (legacy default; the OpenRouter HTTP API
+ *   doesn't have a peer interactive-shell shape, and the existing
+ *   chat-turn path has shipped on Codex since v1).
+ * - `ollama`, `codex`, `claude-code` → the matching adapter.
+ *
+ * Each adapter returns the same discriminated `{kind: "envelope" |
+ * "error"}` shape and forwards token deltas via `onToken`.
+ */
+type ChatTurnRunResult =
+  | { kind: "envelope"; raw: unknown }
+  | { kind: "error"; code: ChatErrorCode; message: string }
+
+async function runChatTurnForProvider({
+  provider,
+  prompt,
+  schemaJson,
+  abortSignal,
+  onToken,
+}: {
+  provider: ChatProvider
+  prompt: string
+  schemaJson: unknown
+  abortSignal?: AbortSignal
+  onToken: (text: string) => void
+}): Promise<ChatTurnRunResult> {
+  if (provider === "ollama") {
+    return await runOllamaChat({ prompt, abortSignal, onToken })
+  }
+  if (provider === "claude-code") {
+    return await runClaudeCodeChat({
+      prompt,
+      schemaJson,
+      abortSignal,
+      onToken,
+    })
+  }
+  // openrouter (default) + codex both currently spawn Codex CLI for the
+  // chat-turn path. The OpenRouter HTTP API doesn't have an interactive
+  // peer and Codex has shipped this branch since v1.
+  return await runCodexChat({ prompt, abortSignal, onToken })
+}
+
+function providerKindForChatTurn(provider: ChatProvider): string {
+  switch (provider) {
+    case "ollama":
+      return "ollama-gemma4"
+    case "codex":
+      return "codex"
+    case "claude-code":
+      return "claude-code"
+    case "openrouter":
+      // Legacy stamp — the chat-turn path on openrouter pick runs Codex.
+      return "codex"
+  }
+}
+
 // `runCodexChat` lives in `experience-ai-codex.ts`. The chat-turn
 // branch of streamChatTurn imports it from there.
 
@@ -190,6 +264,7 @@ export async function* streamChatTurn(
   deps: StreamChatTurnDeps,
 ): AsyncIterable<ChatStreamEvent> {
   const { prisma, user } = deps
+  const provider: ChatProvider = normalizeChatProvider(input.provider)
 
   // ---- Resolve thread + locale ------------------------------------------
   const thread = await prisma.experienceChatThread.findUnique({
@@ -289,6 +364,7 @@ export async function* streamChatTurn(
           brief: confirmed.brief,
           locale: localeRow.locale,
           candidates,
+          provider,
         })
       } catch (error) {
         if (error instanceof QualityExperienceDraftError) {
@@ -321,7 +397,7 @@ export async function* streamChatTurn(
           threadId: thread.id,
           role: "ASSISTANT",
           content: "Generated a quality-first draft for review.",
-          providerKind: "openrouter-free",
+          providerKind: draft.provider.kind,
           snapshotDiff: persistableDiff as unknown as object,
           mutationsApplied: {
             kind: "quality_draft",
@@ -419,18 +495,22 @@ export async function* streamChatTurn(
     return
   }
 
-  // ---- Spawn Codex -------------------------------------------------------
-  // The Codex adapter checks the EXPERIENCE_AI_ALLOW_CODEX gate before
-  // spawning and surfaces `codex_unavailable` if it's off. We collect
-  // token chunks in a buffer that the generator drains; the codex run
-  // is a single `await` so we can't yield from inside a callback.
+  // ---- Run chat turn via the selected provider --------------------------
+  // Each adapter is responsible for its own gate check (CLI providers
+  // surface provider_not_configured / codex_unavailable before spawning).
+  // We collect token chunks in a buffer because the adapter calls onToken
+  // synchronously and the surrounding generator can only yield between
+  // awaits.
   const tokenBuffer: string[] = []
   const onToken = (text: string) => {
     tokenBuffer.push(text)
   }
 
-  const codexResult = await runCodexChat({
+  const envelopeSchema = buildChatMutationEnvelopeJsonSchema()
+  const runResult = await runChatTurnForProvider({
+    provider,
     prompt: promptText,
+    schemaJson: envelopeSchema,
     abortSignal: deps.abortSignal,
     onToken,
   })
@@ -440,13 +520,13 @@ export async function* streamChatTurn(
     yield { type: "token_delta", text: tok }
   }
 
-  if (codexResult.kind === "error") {
-    yield errorEvent(codexResult.code, codexResult.message)
+  if (runResult.kind === "error") {
+    yield errorEvent(runResult.code, runResult.message)
     return
   }
 
   // ---- Validate envelope -------------------------------------------------
-  const rawEnvelope = codexResult.raw
+  const rawEnvelope = runResult.raw
 
   // Fast-path slug rejection before strict-parse so we can return the
   // more specific error code.
@@ -554,7 +634,7 @@ export async function* streamChatTurn(
       threadId: thread.id,
       role: "ASSISTANT",
       content: assistantContent,
-      providerKind: "codex",
+      providerKind: providerKindForChatTurn(provider),
       snapshotDiff: persistableDiff as unknown as object,
       mutationsApplied: envelope as unknown as object,
     },

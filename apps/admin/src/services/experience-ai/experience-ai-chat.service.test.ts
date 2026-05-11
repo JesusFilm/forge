@@ -17,6 +17,11 @@ const { envState } = vi.hoisted(() => ({
 
 const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }))
 
+const { runOllamaChatMock, runClaudeCodeChatMock } = vi.hoisted(() => ({
+  runOllamaChatMock: vi.fn(),
+  runClaudeCodeChatMock: vi.fn(),
+}))
+
 const { loadCandidatesMock } = vi.hoisted(() => ({
   loadCandidatesMock: vi.fn(),
 }))
@@ -46,6 +51,14 @@ vi.mock("./experience-ai.service", () => ({
 vi.mock("./experience-ai-quality-draft", () => ({
   generateQualityExperienceDraft: generateQualityDraftMock,
   QualityExperienceDraftError: QualityExperienceDraftErrorMock,
+}))
+
+vi.mock("./experience-ai-ollama", () => ({
+  runOllamaChat: runOllamaChatMock,
+}))
+
+vi.mock("./experience-ai-claude-code", () => ({
+  runClaudeCodeChat: runClaudeCodeChatMock,
 }))
 
 import {
@@ -206,6 +219,8 @@ async function collectEvents(
 beforeEach(() => {
   envState.EXPERIENCE_AI_ALLOW_CODEX_FALLBACK = true
   spawnMock.mockReset()
+  runOllamaChatMock.mockReset()
+  runClaudeCodeChatMock.mockReset()
   loadCandidatesMock.mockReset()
   loadCandidatesMock.mockResolvedValue([
     {
@@ -849,5 +864,155 @@ describe("streamChatTurn — auth + lookup", () => {
       code: "codex_unavailable",
     })
     expect(spawnMock).not.toHaveBeenCalled()
+  })
+})
+
+// -----------------------------------------------------------------------------
+// U7: provider routing for chat-turn (post-brief envelope path)
+// -----------------------------------------------------------------------------
+
+describe("streamChatTurn — provider routing", () => {
+  it("provider='ollama' routes chat-turn through runOllamaChat, not Codex spawn", async () => {
+    const prisma = makeMockPrisma({ blocks: [{ t: "text" }] })
+    runOllamaChatMock.mockResolvedValue({
+      kind: "envelope",
+      raw: { mutations: { title: "From Ollama" } },
+    })
+
+    const events = await collectEvents(
+      streamChatTurn(
+        { threadId: "thread-1", prompt: "hi", provider: "ollama" },
+        { prisma, user: EDITOR },
+      ),
+    )
+
+    expect(runOllamaChatMock).toHaveBeenCalledTimes(1)
+    expect(spawnMock).not.toHaveBeenCalled()
+    expect(runClaudeCodeChatMock).not.toHaveBeenCalled()
+
+    const applied = events.find((e) => e.type === "mutation_applied")
+    expect(applied).toBeDefined()
+
+    expect(prisma.experienceChatMessage.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          role: "ASSISTANT",
+          providerKind: "ollama-gemma4",
+        }),
+      }),
+    )
+  })
+
+  it("provider='claude-code' routes chat-turn through runClaudeCodeChat", async () => {
+    const prisma = makeMockPrisma({ blocks: [{ t: "text" }] })
+    runClaudeCodeChatMock.mockResolvedValue({
+      kind: "envelope",
+      raw: { mutations: { metaDescription: "From Claude" } },
+    })
+
+    const events = await collectEvents(
+      streamChatTurn(
+        { threadId: "thread-1", prompt: "hi", provider: "claude-code" },
+        { prisma, user: EDITOR },
+      ),
+    )
+
+    expect(runClaudeCodeChatMock).toHaveBeenCalledTimes(1)
+    expect(spawnMock).not.toHaveBeenCalled()
+    expect(runOllamaChatMock).not.toHaveBeenCalled()
+
+    // The schemaJson is the chat envelope JSON Schema — assert the
+    // adapter was called with it so future drift in either side breaks.
+    const callArgs = runClaudeCodeChatMock.mock.calls[0]![0]
+    expect(callArgs).toMatchObject({
+      prompt: expect.any(String),
+      schemaJson: expect.objectContaining({ type: "object" }),
+      onToken: expect.any(Function),
+    })
+
+    expect(prisma.experienceChatMessage.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          role: "ASSISTANT",
+          providerKind: "claude-code",
+        }),
+      }),
+    )
+  })
+
+  it("provider='codex' routes chat-turn through Codex spawn (explicit pick)", async () => {
+    const prisma = makeMockPrisma({ blocks: [{ t: "text" }] })
+    const proc = makeProc()
+    spawnMock.mockReturnValue(proc)
+
+    queueMicrotask(() => {
+      emitLines(proc, ['{"mutations":{"title":"Explicit Codex"}}'])
+      endProc(proc, 0)
+    })
+
+    const events = await collectEvents(
+      streamChatTurn(
+        { threadId: "thread-1", prompt: "hi", provider: "codex" },
+        { prisma, user: EDITOR },
+      ),
+    )
+
+    expect(spawnMock).toHaveBeenCalledTimes(1)
+    expect(runOllamaChatMock).not.toHaveBeenCalled()
+    expect(runClaudeCodeChatMock).not.toHaveBeenCalled()
+
+    expect(events.find((e) => e.type === "mutation_applied")).toBeDefined()
+    expect(prisma.experienceChatMessage.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          role: "ASSISTANT",
+          providerKind: "codex",
+        }),
+      }),
+    )
+  })
+
+  it("provider omitted falls back to Codex chat-turn (R8 invariant)", async () => {
+    const prisma = makeMockPrisma({ blocks: [{ t: "text" }] })
+    const proc = makeProc()
+    spawnMock.mockReturnValue(proc)
+
+    queueMicrotask(() => {
+      emitLines(proc, ['{"mutations":{"title":"Default"}}'])
+      endProc(proc, 0)
+    })
+
+    await collectEvents(
+      streamChatTurn(
+        { threadId: "thread-1", prompt: "hi" },
+        { prisma, user: EDITOR },
+      ),
+    )
+
+    expect(spawnMock).toHaveBeenCalledTimes(1)
+    expect(runOllamaChatMock).not.toHaveBeenCalled()
+    expect(runClaudeCodeChatMock).not.toHaveBeenCalled()
+  })
+
+  it("surfaces adapter errors verbatim without falling back to a sibling channel", async () => {
+    const prisma = makeMockPrisma({ blocks: [{ t: "text" }] })
+    runOllamaChatMock.mockResolvedValue({
+      kind: "error",
+      code: "provider_unavailable",
+      message: "ollama down",
+    })
+
+    const events = await collectEvents(
+      streamChatTurn(
+        { threadId: "thread-1", prompt: "hi", provider: "ollama" },
+        { prisma, user: EDITOR },
+      ),
+    )
+
+    expect(events.find((e) => e.type === "error")).toMatchObject({
+      code: "provider_unavailable",
+    })
+    expect(spawnMock).not.toHaveBeenCalled()
+    expect(runClaudeCodeChatMock).not.toHaveBeenCalled()
   })
 })
