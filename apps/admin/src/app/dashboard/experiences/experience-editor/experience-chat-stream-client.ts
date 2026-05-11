@@ -16,12 +16,14 @@
  */
 
 import type { ChatStreamEvent } from "@/services/experience-ai/experience-ai-chat.service"
+import type { ChatProvider } from "@/services/experience-ai/experience-ai-chat-provider"
 
 export type StreamChatRequestBody = {
   threadId: string
   prompt: string
   confirmedAcrossLocales?: boolean
   confirmedBrief?: boolean
+  provider?: ChatProvider
 }
 
 export type StreamChatOptions = {
