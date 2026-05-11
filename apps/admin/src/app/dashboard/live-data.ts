@@ -491,9 +491,10 @@ export async function loadVideoRows(principal: Principal) {
   const locale = await getAdminLocale()
   let videos: Awaited<ReturnType<typeof services.video.list>>
   try {
+    // U2: VideoService.list dropped its `user` param. Route is gated by requireSession().
+    void principal
     videos = await services.video.list({
       input: { limit: 30, offset: 0 },
-      user: principal,
       query: {},
     })
   } catch (error) {

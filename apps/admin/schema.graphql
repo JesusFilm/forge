@@ -109,16 +109,14 @@ type DeleteMediaFolderResult {
 }
 
 """
-A page-builder Experience. Canonical row holds non-localized state; per-locale content (slug, blocks, title) lives in ExperienceLocale. Embedding vector is stored here but NEVER exposed via GraphQL.
+A page-builder Experience. Per-locale content lives in ExperienceLocale. Embedding vector is stored here but never exposed via GraphQL.
 """
 type Experience {
   archivedAt: String
   createdAt: String
   id: ID
   isTemplate: Boolean
-  """
-  Per-locale ExperienceLocale rows. ABAC-filtered: VIEWER/PUBLIC see PUBLISHED only.
-  """
+  """VIEWER/PUBLIC see PUBLISHED only; EDITOR/ADMIN see all."""
   locales: [ExperienceLocale!]
   ownerId: ID
   updatedAt: String
@@ -129,7 +127,7 @@ Per-locale content for an Experience — slug, blocks, title, publish state. Edi
 """
 type ExperienceLocale {
   """
-  Array of Experience blocks. Schema shape enforced at write time by the domain Zod union; see `src/domain/blocks.ts`.
+  Array of Experience blocks. Shape enforced at write time by `src/domain/blocks.ts`.
   """
   blocks: JSON
   createdAt: String
@@ -504,7 +502,7 @@ type Mutation {
 }
 
 """
-Mux asset metadata. Note: MuxVideo.duration is always 0 in legacy data — canonical duration lives on VideoVariant.lengthInMilliseconds.
+Mux asset metadata. MuxVideo.duration is always 0 in legacy data — canonical duration lives on VideoDub.lengthInMilliseconds.
 """
 type MuxVideo {
   assetId: String
@@ -569,9 +567,14 @@ type Query {
   systemStatus: JSON
   """Fetch a single Video by id."""
   video(id: ID!): Video
+  """Fetch a single Video by slug."""
   videoBySlug(slug: String!): Video
   """List active Videos ordered by most recent Core update."""
   videos(limit: Int = 50, offset: Int = 0): [Video!]
+  """
+  Per-locale homepage configuration. Replaces Strapi's `watchSetting` (consumer-migration U2, 2026-05-11). Locale-fallback is STRICT NULL.
+  """
+  watchSetting(locale: String!): WatchSetting
 }
 
 """
@@ -594,20 +597,17 @@ type SceneRecommendation {
 }
 
 """
-A video sourced from JesusFilm Core. Read-only at the GraphQL layer in v1 — editor writes land in a later phase.
+A video sourced from JesusFilm Core. Read-only at the GraphQL layer in v1.
 """
 type Video {
   aiMetadata: Boolean
   bibleCitations: [BibleCitation!]
   coreId: String
-  """
-  Language-specific audio dubs + their encoded playback (formerly exposed as `variants`).
-  """
   dubs: [VideoDub!]
   id: ID
   images: [VideoImage!]
   label: VideoLabel
-  """Per-locale content rows (title, description, etc.)."""
+  """PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all."""
   locales: [VideoLocale!]
   locked: Boolean
   noIndex: Boolean
@@ -654,17 +654,13 @@ type VideoDubDownload {
 }
 
 """
-A specific cut of a Video (theatrical, director's, extended, …). Subtitles attach here because timecodes are an edition property; dubs attach here because each dub is the audio for a specific cut.
+A specific cut of a Video. Subtitles + dubs attach here because timecodes and audio are per-cut.
 """
 type VideoEdition {
   coreId: String
-  """Language-specific audio dubs of this edition."""
   dubs: [VideoDub!]
   id: ID
   name: String
-  """
-  Timed text tracks. Same-language-as-source = transcript; different language = translation; same-language-as-dub = closed captions.
-  """
   subtitles: [VideoSubtitle!]
 }
 
@@ -694,9 +690,7 @@ enum VideoLabel {
   TRAILER
 }
 
-"""
-Per-locale title/description/snippet/imageAlt for a Video. Editors publish locales independently.
-"""
+"""Per-locale title/description/snippet/imageAlt for a Video."""
 type VideoLocale {
   description: String
   id: ID
@@ -812,4 +806,20 @@ type VideoTranscriptChunk {
   tokenCount: Int
   transcriptId: ID
   updatedAt: String
+}
+
+"""Per-locale homepage configuration for PUBLIC consumer apps."""
+type WatchSetting {
+  """
+  Published ExperienceLocale of the isTemplate Experience for the requested locale.
+  """
+  defaultTemplateExperience: ExperienceLocale
+  """
+  Experience id this watchSetting derives from — homepageExperience.experienceId if set, else defaultTemplateExperience.experienceId. Not exclusively the homepage id.
+  """
+  documentId: ID
+  """
+  Published ExperienceLocale flagged isHomepage for the requested locale.
+  """
+  homepageExperience: ExperienceLocale
 }

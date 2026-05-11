@@ -242,7 +242,7 @@ builder.prismaObject("Keyword", {
 builder.queryFields((t) => ({
   languages: t.prismaField({
     type: ["Language"],
-    authScopes: { loggedIn: true },
+    authScopes: { public: true },
     description: "List active (non-soft-deleted) languages.",
     args: {
       limit: t.arg.int({ required: false, defaultValue: 100 }),
@@ -259,7 +259,7 @@ builder.queryFields((t) => ({
   }),
   countries: t.prismaField({
     type: ["Country"],
-    authScopes: { loggedIn: true },
+    authScopes: { public: true },
     description: "List active (non-soft-deleted) countries.",
     args: {
       limit: t.arg.int({ required: false, defaultValue: 250 }),
@@ -275,7 +275,7 @@ builder.queryFields((t) => ({
   }),
   keywords: t.prismaField({
     type: ["Keyword"],
-    authScopes: { loggedIn: true },
+    authScopes: { public: true },
     description: "List active (non-soft-deleted) keywords.",
     args: {
       limit: t.arg.int({ required: false, defaultValue: 100 }),
