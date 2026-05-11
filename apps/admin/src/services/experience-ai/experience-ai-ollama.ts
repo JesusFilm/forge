@@ -138,11 +138,12 @@ export async function generateOllamaStructuredOutput<T>({
   if (signal) signals.push(signal)
   // Older Node lacks AbortSignal.any; fall back to a manual merge.
   const mergedSignal =
-    typeof (AbortSignal as unknown as { any?: (s: AbortSignal[]) => AbortSignal })
-      .any === "function"
-      ? (AbortSignal as unknown as { any: (s: AbortSignal[]) => AbortSignal }).any(
-          signals,
-        )
+    typeof (
+      AbortSignal as unknown as { any?: (s: AbortSignal[]) => AbortSignal }
+    ).any === "function"
+      ? (
+          AbortSignal as unknown as { any: (s: AbortSignal[]) => AbortSignal }
+        ).any(signals)
       : timeoutController.signal
 
   try {
@@ -176,7 +177,9 @@ export async function generateOllamaStructuredOutput<T>({
       if (
         !isAbort &&
         error instanceof Error &&
-        /fetch failed|ECONNREFUSED|ENOTFOUND|not configured/i.test(error.message)
+        /fetch failed|ECONNREFUSED|ENOTFOUND|not configured/i.test(
+          error.message,
+        )
       ) {
         throw new OllamaProviderError(
           "missing_provider",
@@ -252,6 +255,17 @@ export async function generateOllamaStructuredOutput<T>({
         attempts: [...attempts, { model, usedModel, status: "succeeded" }],
       }
     } catch (error) {
+      console.warn(
+        "[experience-chat] ollama validation_error",
+        JSON.stringify({
+          model,
+          error: error instanceof Error ? error.message : String(error),
+          rawSample:
+            typeof parsedJson === "object" && parsedJson != null
+              ? JSON.stringify(parsedJson).slice(0, 1000)
+              : String(parsedJson).slice(0, 1000),
+        }),
+      )
       attempts.push({
         model,
         status: "failed",
