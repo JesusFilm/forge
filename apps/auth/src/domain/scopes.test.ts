@@ -1,0 +1,30 @@
+import { describe, expect, it } from "vitest"
+
+import { assertKnownScopes, describeScopes, isKnownScope } from "./scopes"
+
+describe("Auth scopes", () => {
+  it("recognizes known scope keys", () => {
+    expect(isKnownScope("openid")).toBe(true)
+    expect(isKnownScope("admin:access")).toBe(true)
+    expect(isKnownScope("made:up")).toBe(false)
+  })
+
+  it("deduplicates known scopes", () => {
+    expect(assertKnownScopes(["openid", "openid", "email:read"])).toEqual([
+      "openid",
+      "email:read",
+    ])
+  })
+
+  it("rejects unknown scopes", () => {
+    expect(() => assertKnownScopes(["openid", "not:real"])).toThrow(
+      "Unknown Auth scope(s): not:real",
+    )
+  })
+
+  it("returns user-facing scope descriptions in catalog order", () => {
+    expect(
+      describeScopes(["email:read", "openid"]).map((scope) => scope.key),
+    ).toEqual(["openid", "email:read"])
+  })
+})

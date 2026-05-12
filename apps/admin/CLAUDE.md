@@ -20,9 +20,14 @@ See the origin docs for full context:
 - Next.js 16+ App Router with TypeScript strict mode
 - GraphQL Yoga + Pothos (with Prisma + scope-auth plugins) — single API at `/api/graphql`
 - Prisma 6.x + PostgreSQL + pgvector (HNSW index) — sole data access layer
-- Better Auth (DB-backed sessions, cross-subdomain cookies) + server-side Firebase email/password fallback for transparent migration
-- SSO via Better Auth adapters/plugins: Facebook, Google, Apple, Okta
-- Auth is subdomain-scoped: cookie domain set via `AUTH_COOKIE_DOMAIN` (`.jesusfilm.org` in prod) so all apps on `*.jesusfilm.org` share the session
+- Auth modes:
+  - `ADMIN_AUTH_MODE=embedded` keeps the legacy admin-local Better Auth route,
+    Firebase email/password fallback, and social provider plugins available as
+    the rollback path.
+  - `ADMIN_AUTH_MODE=oauth` sends admin login through the standalone
+    `apps/auth` OAuth/OIDC provider and creates an admin-local signed session.
+- Admin must not depend on shared `.jesusfilm.org` cookies in OAuth mode.
+  `AUTH_COOKIE_DOMAIN` is legacy embedded-mode config only.
 - useworkflow (`workflow` npm package) for durable background jobs
 - Redis (TCP via `ioredis`) for rate limiting
 - Railway deployment (NIXPACKS, standalone output)
@@ -162,6 +167,24 @@ pnpm --filter @forge/admin test
 pnpm --filter @forge/admin lint
 pnpm --filter @forge/admin typecheck
 ```
+
+### Jesus Film Auth client mode
+
+For local OAuth-mode development, run Auth on `http://localhost:3004`, seed its
+first-party app registrations, then run admin on `http://localhost:3003` with:
+
+```bash
+ADMIN_AUTH_MODE=oauth
+AUTH_ISSUER_URL=http://localhost:3004/api/auth
+AUTH_ADMIN_CLIENT_ID=jesus-film-admin-local
+ADMIN_BASE_URL=http://localhost:3003
+```
+
+Admin uses authorization code + PKCE and stores only admin-local session state
+after callback. The callback route verifies issuer, audience, expiry, and the
+`admin:access` scope before mapping Auth scopes onto admin's existing
+VIEWER/EDITOR role ladder. Keep `ADMIN_AUTH_MODE=embedded` as the rollback flag
+until production cutover is observed.
 
 ## Deployment
 
