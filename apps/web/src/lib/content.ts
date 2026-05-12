@@ -876,25 +876,34 @@ export type ResolvedWatchVideoBySlug = {
   selectedVariant: WatchVariant
 }
 
-async function fetchWatchVideoBySlug(
-  videoSlug: string,
-): Promise<WatchVideoRecord | null> {
-  const result = await client.query({
-    query: getWatchVideoBySlugOperation,
-    variables: {
-      i18nLocale: WATCH_VIDEO_I18N_LOCALE,
-      videoSlug,
-    },
-    fetchPolicy: "no-cache",
-  })
+// React `cache()`-wrapped so that resolveWatchVideoBySlug and
+// resolveSeriesBySlug, which both delegate to this fetch, dedupe to a
+// single HTTP round-trip within one RSC render pass. Without this
+// wrapper the trailerless-series cold path makes two sequential Strapi
+// calls (each with its own 10 s AbortSignal budget) before falling
+// through to resolveWatchPage. unstable_cache around the outer
+// resolvers does NOT dedupe across them — each resolver has its own
+// cache-key namespace, so the deduplication has to live at the inner
+// fetch instead.
+const fetchWatchVideoBySlug = cache(
+  async (videoSlug: string): Promise<WatchVideoRecord | null> => {
+    const result = await client.query({
+      query: getWatchVideoBySlugOperation,
+      variables: {
+        i18nLocale: WATCH_VIDEO_I18N_LOCALE,
+        videoSlug,
+      },
+      fetchPolicy: "no-cache",
+    })
 
-  const error = graphqlError(
-    result as { error?: ErrorLike; errors?: unknown[] },
-  )
-  if (error) throw error
+    const error = graphqlError(
+      result as { error?: ErrorLike; errors?: unknown[] },
+    )
+    if (error) throw error
 
-  return (result.data?.videos?.[0] ?? null) as WatchVideoRecord | null
-}
+    return (result.data?.videos?.[0] ?? null) as WatchVideoRecord | null
+  },
+)
 
 // Sentinel thrown by the cached inner so unstable_cache never persists a
 // "no playable variant" miss. unstable_cache re-throws on error and does

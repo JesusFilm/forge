@@ -47,7 +47,15 @@ export function SeriesEpisodesGrid({
       className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
     >
       {episodes
-        .filter((episode): episode is Episode => episode != null)
+        // Reject null entries AND episodes missing a slug. Without the
+        // slug guard, `toSearchResult` sets slug: "" and the hrefBuilder
+        // emits `//<locale>` — a protocol-relative URL the browser
+        // interprets as `https://<locale>/`, producing a broken
+        // off-site navigation.
+        .filter(
+          (episode): episode is Episode =>
+            episode != null && Boolean(episode.slug),
+        )
         .map((episode, index) => (
           <VideoCard
             key={episode.documentId}

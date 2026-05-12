@@ -31,30 +31,44 @@ export async function generateMetadata({
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
 
   // Resolve the video first so the series-shaped branch can read title /
-  // description / poster directly from the record. resolveWatchVideoBySlug
-  // wraps `cache()` (content.ts:1025), so the same call from
-  // SlugLocalePage below reuses the result without a second admin
-  // round-trip — see Key Technical Decisions in the plan.
-  const watchVideo = await resolveWatchVideoBySlug(slug, locale)
-  if (watchVideo && isSeriesRecord(watchVideo.video)) {
-    return generateSeriesMetadata(locale, {
-      series: watchVideo.video,
-      pathLocale: rawLocale,
-      pathPrefix: "watch",
-    })
-  }
-  // A series without a playable trailer is rejected by the video resolver
-  // (NOT_FOUND on the playableVariants guard). Try the series resolver as
-  // a fallback so its metadata still routes to the series helper.
-  if (!watchVideo) {
-    const series = await resolveSeriesBySlug(slug, locale)
-    if (series) {
+  // description / poster directly from the record. fetchWatchVideoBySlug
+  // is wrapped in React `cache()` so the same call from SlugLocalePage
+  // below reuses the result without a second admin round-trip.
+  //
+  // Wrap the resolver calls in try/catch so that a transient Apollo or
+  // GraphQL error here doesn't drop metadata entirely (Next silently
+  // skips metadata emission when generateMetadata throws). The page
+  // body has its own error boundary; metadata should degrade gracefully
+  // by falling through to the experience helper rather than emitting an
+  // empty <title> and no OG tags for the 60 s revalidate window.
+  try {
+    const watchVideo = await resolveWatchVideoBySlug(slug, locale)
+    if (watchVideo && isSeriesRecord(watchVideo.video)) {
       return generateSeriesMetadata(locale, {
-        series: series.video,
+        series: watchVideo.video,
         pathLocale: rawLocale,
         pathPrefix: "watch",
       })
     }
+    // A series without a playable trailer is rejected by the video
+    // resolver (NOT_FOUND on the playableVariants guard). Try the series
+    // resolver as a fallback so its metadata still routes to the series
+    // helper.
+    if (!watchVideo) {
+      const series = await resolveSeriesBySlug(slug, locale)
+      if (series) {
+        return generateSeriesMetadata(locale, {
+          series: series.video,
+          pathLocale: rawLocale,
+          pathPrefix: "watch",
+        })
+      }
+    }
+  } catch {
+    // Fall through to getWatchPageMetadata. Logging the error here is
+    // intentionally omitted — Next's RSC pipeline surfaces the failure
+    // via its own telemetry, and the page body will hit the same error
+    // path with full context if the slug is unrecoverable.
   }
 
   return getWatchPageMetadata(locale, {
