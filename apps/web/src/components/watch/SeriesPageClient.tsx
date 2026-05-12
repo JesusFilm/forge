@@ -124,5 +124,3 @@ export function SeriesPageClient({
     </main>
   )
 }
-
-export type SeriesPageClientResolved = ResolvedSeriesBySlug

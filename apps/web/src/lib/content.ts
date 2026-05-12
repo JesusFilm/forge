@@ -1001,7 +1001,13 @@ export type ResolvedSeriesBySlug = {
   selectedVariant: WatchVariant | null
 }
 
-const SERIES_LABEL_VALUES = new Set(["collection", "series"])
+// Explicit `Set<string>` annotation so the deliberate widening to string
+// (to accept admin-uppercase labels via the `String(label).toLowerCase()`
+// normalization below) is declared on the container, not buried in the
+// call-site cast. Without this annotation the Set is inferred as
+// `Set<"collection" | "series">` and a future typo in the contents
+// (e.g. `"collectionn"`) would still pass the literal-union check.
+const SERIES_LABEL_VALUES = new Set<string>(["collection", "series"])
 
 // Consumed by `apps/web/src/app/[slug]/[locale]/page.tsx` (routing
 // branch + `generateMetadata`) AND by unit tests that exercise the
