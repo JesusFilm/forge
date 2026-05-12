@@ -177,6 +177,28 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it("uses t=0 when the player ref is null", () => {
+    const playerRef = { current: null } as unknown as ReturnType<
+      typeof makePlayerRef
+    >
+    renderModal({ open: true, variants: baseVariants, playerRef })
+
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find((el) =>
+      el.textContent?.includes("spanish"),
+    )!
+    act(() => {
+      spanish.click()
+    })
+    act(() => {
+      $('[data-testid="watch-language-picker-apply"]')?.click()
+    })
+
+    expect(routerPushMock).toHaveBeenCalledWith("/the-call/spanish?t=0")
+  })
+
   it("Close does not write the cookie and does not navigate", () => {
     const onClose = vi.fn()
     renderModal({ open: true, variants: baseVariants, onClose })

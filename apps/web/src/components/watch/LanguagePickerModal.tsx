@@ -92,6 +92,7 @@ export function LanguagePickerModal({
       <DialogContent
         data-testid="watch-language-picker-modal"
         className="sm:max-w-lg"
+        showCloseButton={false}
       >
         <DialogHeader className="flex flex-row items-baseline justify-between gap-3">
           <DialogTitle className="text-2xl font-bold">Language</DialogTitle>
@@ -99,7 +100,7 @@ export function LanguagePickerModal({
             data-testid="watch-language-picker-count"
             className="text-sm text-stone-400"
           >
-            {options.length} languages
+            {options.length} {options.length === 1 ? "language" : "languages"}
           </span>
         </DialogHeader>
 
@@ -116,18 +117,18 @@ export function LanguagePickerModal({
             type="button"
             data-testid="watch-language-picker-close"
             onClick={onClose}
-            className="px-6 py-2 text-sm font-semibold text-stone-300 transition hover:text-stone-100"
+            className="px-6 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-stone-300 transition hover:text-stone-100"
           >
-            CLOSE
+            Close
           </button>
           <button
             type="button"
             data-testid="watch-language-picker-apply"
             disabled={!isDirty}
             onClick={handleApply}
-            className="rounded-full bg-stone-100 px-6 py-2 text-sm font-semibold text-stone-900 transition disabled:cursor-not-allowed disabled:bg-stone-500 disabled:text-stone-800"
+            className="rounded-full bg-stone-100 px-6 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-stone-900 transition disabled:cursor-not-allowed disabled:bg-stone-500 disabled:text-stone-800"
           >
-            APPLY
+            Apply
           </button>
         </div>
       </DialogContent>
