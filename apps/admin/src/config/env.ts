@@ -168,10 +168,8 @@ export const env = createEnv({
     // search rate-limit.
     EVAL_JUDGE_CONCURRENCY: concurrencyEnvSchema,
     EVAL_SEARCH_CONCURRENCY: concurrencyEnvSchema,
-    // ADMIN_BASE_URL: target for the harness's `GET /api/search` calls.
-    // Defaults to the local dev port (`http://localhost:3003`) at the
-    // call site; override to point at staging or prod admin.
-    ADMIN_BASE_URL: z.string().url().optional(),
+    // The eval harness reuses ADMIN_BASE_URL as the target for `GET /api/search`.
+    // It defaults to the local dev port at the call site when unset.
     // EVAL_GIT_SHA: stamped into the run JSON's metadata header so an
     // operator reviewing an old report can correlate it with a commit.
     // Optional; defaults to "unknown" at the call site. Operators set
@@ -299,7 +297,6 @@ export const env = createEnv({
     EVAL_SEARCH_CONCURRENCY: emptyToUndefined(
       process.env.EVAL_SEARCH_CONCURRENCY,
     ),
-    ADMIN_BASE_URL: emptyToUndefined(process.env.ADMIN_BASE_URL),
     EVAL_GIT_SHA: emptyToUndefined(process.env.EVAL_GIT_SHA),
     NODE_ENV: emptyToUndefined(process.env.NODE_ENV),
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,

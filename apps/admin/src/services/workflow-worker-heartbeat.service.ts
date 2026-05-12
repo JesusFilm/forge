@@ -32,6 +32,10 @@ type LockedGraphileJobRow = {
   queueName: string | null
 }
 
+type RelationExistsRow = {
+  exists: boolean
+}
+
 export type WorkflowWorkerStatusRow = {
   id: string
   statusLabel: string
@@ -150,20 +154,23 @@ async function loadHeartbeatRows() {
 }
 
 async function loadLockedGraphileJobRows() {
+  const [jobsView] = await prisma.$queryRaw<RelationExistsRow[]>(Prisma.sql`
+    SELECT to_regclass('graphile_worker.jobs') IS NOT NULL AS "exists"
+  `)
+
+  if (!jobsView?.exists) return []
+
   return prisma.$queryRaw<LockedGraphileJobRow[]>(Prisma.sql`
     SELECT
-      jobs.locked_by AS "workerId",
+      locked_by AS "workerId",
       count(*)::bigint AS "lockedJobs",
-      min(jobs.locked_at) AS "lockedAt",
-      min(tasks.identifier) AS "task",
-      min(queues.queue_name) AS "queueName"
-    FROM graphile_worker._private_jobs jobs
-    JOIN graphile_worker._private_tasks tasks ON tasks.id = jobs.task_id
-    LEFT JOIN graphile_worker._private_job_queues queues
-      ON queues.id = jobs.job_queue_id
-    WHERE jobs.locked_by IS NOT NULL
-    GROUP BY jobs.locked_by
-    ORDER BY min(jobs.locked_at) ASC
+      min(locked_at) AS "lockedAt",
+      min(task_identifier) AS "task",
+      min(queue_name) AS "queueName"
+    FROM graphile_worker.jobs
+    WHERE locked_by IS NOT NULL
+    GROUP BY locked_by
+    ORDER BY min(locked_at) ASC
     LIMIT 10
   `)
 }
@@ -172,10 +179,8 @@ export async function loadWorkflowWorkerStatusRows(): Promise<
   WorkflowWorkerStatusRow[]
 > {
   try {
-    const [heartbeats, lockedJobs] = await Promise.all([
-      loadHeartbeatRows(),
-      loadLockedGraphileJobRows(),
-    ])
+    const heartbeats = await loadHeartbeatRows()
+    const lockedJobs = await loadLockedGraphileJobRows().catch(() => [])
 
     const heartbeatRows = heartbeats.map((row) => {
       const status = workerStatus(row)
