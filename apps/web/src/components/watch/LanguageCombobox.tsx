@@ -13,6 +13,8 @@ import {
 export type LanguageComboboxOption = {
   slug: string
   name: string
+  /** Optional native-script name; rendered as a muted subtitle below `name`. */
+  nativeName?: string | null
 }
 
 export type LanguageComboboxProps = {
@@ -41,7 +43,11 @@ export function LanguageCombobox({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return options
-    return options.filter((o) => o.name.toLowerCase().includes(q))
+    return options.filter((o) => {
+      if (o.name.toLowerCase().includes(q)) return true
+      if (o.nativeName?.toLowerCase().includes(q)) return true
+      return false
+    })
   }, [options, query])
 
   // Keep ref in sync with state
@@ -172,7 +178,7 @@ export function LanguageCombobox({
           <ul
             role="listbox"
             aria-label="Languages"
-            className="max-h-72 overflow-y-auto py-1"
+            className="max-h-72 overflow-y-auto py-1 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 hover:[&::-webkit-scrollbar-thumb]:bg-stone-600 [&::-webkit-scrollbar-track]:bg-transparent"
           >
             {filtered.length === 0 ? (
               <li
@@ -196,13 +202,23 @@ export function LanguageCombobox({
                       data-active={active ? "true" : "false"}
                       onMouseEnter={() => setActiveIndex(index)}
                       onClick={() => handleSelect(option.slug)}
-                      className={`w-full px-4 py-2 text-left text-sm transition ${
+                      className={`block w-full px-4 py-2 text-left transition ${
                         active
                           ? "bg-stone-700 text-stone-50"
                           : "text-stone-200 hover:bg-stone-800"
                       }`}
                     >
-                      {option.name}
+                      <span className="block text-sm font-semibold">
+                        {option.name}
+                      </span>
+                      {option.nativeName ? (
+                        <span
+                          data-testid="language-combobox-option-native"
+                          className="block text-xs text-stone-400"
+                        >
+                          {option.nativeName}
+                        </span>
+                      ) : null}
                     </button>
                   </li>
                 )

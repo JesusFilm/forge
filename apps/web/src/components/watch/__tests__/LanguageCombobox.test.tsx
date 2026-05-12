@@ -239,4 +239,58 @@ describe("LanguageCombobox", () => {
     )
     expect($$('[data-testid="language-combobox-option"]').length).toBe(0)
   })
+
+  it("renders the nativeName as a subtitle when provided", () => {
+    const OPTIONS_WITH_NATIVE = [
+      { slug: "french", name: "French", nativeName: "Français" },
+      { slug: "english", name: "English", nativeName: null },
+    ]
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_NATIVE}
+          value="english"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const natives = $$('[data-testid="language-combobox-option-native"]')
+    expect(natives.length).toBe(1)
+    expect(natives[0]?.textContent).toBe("Français")
+  })
+
+  it("matches the search query against nativeName too", () => {
+    const OPTIONS_WITH_NATIVE = [
+      { slug: "french", name: "French", nativeName: "Français" },
+      { slug: "spanish", name: "Spanish", nativeName: "Español" },
+    ]
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_NATIVE}
+          value="french"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "Español"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    const items = $$('[data-testid="language-combobox-option"]')
+    expect(items.length).toBe(1)
+    expect(items[0]?.getAttribute("data-language-slug")).toBe("spanish")
+  })
 })

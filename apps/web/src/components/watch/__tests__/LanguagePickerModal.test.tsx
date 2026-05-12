@@ -139,8 +139,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     act(() => {
       $('[data-testid="language-combobox-trigger"]')?.click()
     })
-    const spanish = $$('[data-testid="language-combobox-option"]').find((el) =>
-      el.textContent?.includes("spanish"),
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
     )!
     act(() => {
       spanish.click()
@@ -158,8 +158,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     act(() => {
       $('[data-testid="language-combobox-trigger"]')?.click()
     })
-    const spanish = $$('[data-testid="language-combobox-option"]').find((el) =>
-      el.textContent?.includes("spanish"),
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
     )!
     act(() => {
       spanish.click()
@@ -186,8 +186,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     act(() => {
       $('[data-testid="language-combobox-trigger"]')?.click()
     })
-    const spanish = $$('[data-testid="language-combobox-option"]').find((el) =>
-      el.textContent?.includes("spanish"),
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
     )!
     act(() => {
       spanish.click()
@@ -206,8 +206,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     act(() => {
       $('[data-testid="language-combobox-trigger"]')?.click()
     })
-    const spanish = $$('[data-testid="language-combobox-option"]').find((el) =>
-      el.textContent?.includes("spanish"),
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
     )!
     act(() => {
       spanish.click()
@@ -226,8 +226,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     act(() => {
       $('[data-testid="language-combobox-trigger"]')?.click()
     })
-    const spanish = $$('[data-testid="language-combobox-option"]').find((el) =>
-      el.textContent?.includes("spanish"),
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
     )!
     act(() => {
       spanish.click()
@@ -255,8 +255,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     act(() => {
       $('[data-testid="language-combobox-trigger"]')?.click()
     })
-    const english = $$('[data-testid="language-combobox-option"]').find((el) =>
-      el.textContent?.includes("english"),
+    const english = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "english",
     )!
     act(() => {
       english.click()

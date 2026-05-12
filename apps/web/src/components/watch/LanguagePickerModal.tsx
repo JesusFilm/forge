@@ -10,6 +10,7 @@ import type { MuxPlayerRef } from "@forge/video-player"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
+import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 
 export type LanguagePickerVariant = {
@@ -50,10 +51,7 @@ export function LanguagePickerModal({
           (v) =>
             v.published === true && v.hls != null && v.language?.slug != null,
         )
-        .map((v) => ({
-          slug: v.language!.slug!,
-          name: v.language!.name ?? v.language!.slug!,
-        }))
+        .map((v) => deriveLanguageDisplay(v.language!.slug!, v.language!.name))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [variants],
   )
