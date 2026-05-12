@@ -89,7 +89,10 @@ const STRAPI_EXPERIENCE_QUERY = /* GraphQL */ `
         height
         alternativeText
       }
-      blocks {
+      # REL-03: pagination: { limit: -1 } prevents Strapi v5's silent 10-row
+      # nested-relation cap from truncating block counts on rich experiences,
+      # which would surface as false structural diffs in the cutover gate.
+      blocks(pagination: { limit: -1 }) {
         __typename
       }
     }

@@ -705,11 +705,29 @@ describe("runBatchVerification", () => {
 // ---------------------------------------------------------------------------
 
 describe("backoffDelayMs", () => {
-  it("grows exponentially and caps at 30000", () => {
-    expect(backoffDelayMs(0)).toBe(500)
-    expect(backoffDelayMs(1)).toBe(1000)
-    expect(backoffDelayMs(2)).toBe(2000)
-    expect(backoffDelayMs(20)).toBe(30000)
+  it("scales exponentially within the jitter envelope and caps at 30000", () => {
+    // Inject rng=()=>1 to get the ceiling (jitter would scale by 1.0 → full
+    // cap value) and rng=()=>0 to get the floor (0ms).
+    const ceil = (n: number) => () => n
+    expect(backoffDelayMs(0, ceil(0.999))).toBeLessThanOrEqual(500)
+    expect(backoffDelayMs(1, ceil(0.999))).toBeLessThanOrEqual(1000)
+    expect(backoffDelayMs(2, ceil(0.999))).toBeLessThanOrEqual(2000)
+    expect(backoffDelayMs(20, ceil(0.999))).toBeLessThanOrEqual(30000)
+    expect(backoffDelayMs(20, ceil(0.999))).toBeGreaterThan(29000)
+  })
+  it("REL-02 jitter: delay is bounded by [0, exponential cap)", () => {
+    // 50 samples at attempt=3 (cap = 4000). Every sample must be < 4000.
+    for (let i = 0; i < 50; i++) {
+      const delay = backoffDelayMs(3)
+      expect(delay).toBeGreaterThanOrEqual(0)
+      expect(delay).toBeLessThan(4000)
+    }
+  })
+  it("REL-02 jitter: delay is non-deterministic across calls (different RNG outcomes)", () => {
+    const samples = Array.from({ length: 20 }, () => backoffDelayMs(5))
+    const unique = new Set(samples)
+    // Allow rare RNG collisions but assert the distribution is not constant.
+    expect(unique.size).toBeGreaterThan(5)
   })
 })
 

@@ -477,25 +477,32 @@ export async function compareSlug(
   entry: CorpusEntry,
   deps: RunSlugDeps,
 ): Promise<SlugReport> {
+  // PERF-01: fetch Strapi and admin in parallel via Promise.allSettled.
+  // Sequential `await` doubles the per-slug wall-clock (strapi+admin in
+  // series); parallel is bounded by max(strapi, admin). Across a 1000-slug
+  // corpus this materially shortens the editorial-freeze window the
+  // runbook requires.
   const tStrapiStart = Date.now()
-  let strapiInput: StrapiExperienceInput | null = null
-  let strapiErr: string | null = null
-  try {
-    strapiInput = await deps.fetchers.fetchStrapi(entry.slug, entry.locale)
-  } catch (err) {
-    strapiErr = sanitizeError(err, deps.bearer)
-  }
+  const tAdminStart = tStrapiStart
+  const [strapiSettled, adminSettled] = await Promise.allSettled([
+    deps.fetchers.fetchStrapi(entry.slug, entry.locale),
+    deps.fetchers.fetchAdmin(entry.slug, entry.locale),
+  ])
   const tStrapiEnd = Date.now()
+  const tAdminEnd = tStrapiEnd
 
-  const tAdminStart = Date.now()
-  let adminInput: AdminExperienceLocaleInput | null = null
-  let adminErr: string | null = null
-  try {
-    adminInput = await deps.fetchers.fetchAdmin(entry.slug, entry.locale)
-  } catch (err) {
-    adminErr = sanitizeError(err, deps.bearer)
-  }
-  const tAdminEnd = Date.now()
+  const strapiInput: StrapiExperienceInput | null =
+    strapiSettled.status === "fulfilled" ? strapiSettled.value : null
+  const strapiErr: string | null =
+    strapiSettled.status === "rejected"
+      ? sanitizeError(strapiSettled.reason, deps.bearer)
+      : null
+  const adminInput: AdminExperienceLocaleInput | null =
+    adminSettled.status === "fulfilled" ? adminSettled.value : null
+  const adminErr: string | null =
+    adminSettled.status === "rejected"
+      ? sanitizeError(adminSettled.reason, deps.bearer)
+      : null
 
   // Both failed — record "both" so the operator sees the join-failure case.
   if (strapiErr && adminErr) {
@@ -790,10 +797,31 @@ export function readBearerFromEnv(
  * caller is responsible for tracking retry count and giving up after
  * 3 attempts (RateLimitExhaustedError).
  */
-export function backoffDelayMs(attempt: number): number {
-  // Exponential, base 500ms, cap 30000ms.
+export function backoffDelayMs(
+  attempt: number,
+  rng: () => number = Math.random,
+): number {
+  // Exponential, base 500ms, cap 30000ms. REL-02: full-jitter scaling so
+  // N concurrent workers hitting 429 simultaneously don't all resume at
+  // the same millisecond (which would re-trigger the rate limiter).
+  // `rng` is injectable so tests can assert deterministic delays.
   const raw = 500 * Math.pow(2, attempt)
-  return Math.min(raw, 30000)
+  const capped = Math.min(raw, 30000)
+  return Math.floor(rng() * capped)
+}
+
+/**
+ * Discriminator for AbortError / TimeoutError. AbortSignal.timeout() in
+ * Node produces `name: "TimeoutError"`; manual abort produces
+ * `name: "AbortError"`. Both indicate the request hit the outbound budget
+ * and should fast-fail in the harness rather than retry — a persistent
+ * admin slowness is not a transient blip and 3× retries × 3s wastes
+ * gate-convergence wall time.
+ */
+function isTimeoutOrAbortError(err: unknown): boolean {
+  if (err == null || typeof err !== "object") return false
+  const name = (err as { name?: unknown }).name
+  return name === "AbortError" || name === "TimeoutError"
 }
 
 export const FETCH_TIMEOUT_MS = 3000
@@ -860,10 +888,14 @@ export async function postGraphQL(args: {
       clearTimeout(timer)
       // Re-throw rate-limit so the outer caller can classify it.
       if (err instanceof RateLimitExhaustedError) throw err
+      // REL-01: fast-fail timeouts/aborts. A persistent admin slowness
+      // surfaces as the same error 3× and consumes 9s + backoff. The
+      // outer caller (compareSlug) records this as a per-slug error
+      // and continues — retries don't recover a hung backend.
+      if (isTimeoutOrAbortError(err)) throw err
       // On the last attempt, surface the error.
       if (attempt === FETCH_MAX_RETRIES - 1) throw err
-      // Otherwise, brief backoff and retry (covers transient AbortError /
-      // network blips).
+      // Otherwise, brief backoff and retry (covers transient network blips).
       await sleep(backoffDelayMs(attempt))
     }
   }
