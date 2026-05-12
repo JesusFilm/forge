@@ -19,17 +19,17 @@
     "seed:first-party-apps": "tsx src/scripts/seed-first-party-apps.ts"
   },
   "dependencies": {
-    "@better-auth/oauth-provider": "1.6.2",
-    "@better-auth/prisma-adapter": "1.6.2",
-    "@prisma/client": "^6",
-    "@t3-oss/env-nextjs": "^0.13.10",
-    "better-auth": "1.6.2",
-    "firebase-admin": "13.8.0",
+    "@better-auth/oauth-provider": "1.6.10",
+    "@better-auth/prisma-adapter": "1.6.10",
+    "@prisma/client": "^7",
+    "@t3-oss/env-nextjs": "^0.13.11",
+    "better-auth": "1.6.10",
+    "firebase-admin": "13.9.0",
     "ioredis": "5.10.1",
-    "next": "^16.2.4",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "zod": "^4.3.6"
+    "next": "^16.2.6",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22",
@@ -37,7 +37,7 @@
     "@types/react-dom": "19.2.3",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.1.6",
-    "prisma": "^6",
+    "prisma": "^7",
     "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "3.2.4"
