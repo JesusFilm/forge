@@ -42,6 +42,14 @@ export type AppliedAllowListEntry = {
  *
  * Adding entries here without a rationale that points to a tracked
  * decision is the documented anti-pattern — see plan Risks.
+ *
+ * Plan-003 U8 (batch verification harness): operators pass a
+ * `--allow-list <path>` JSON file to extend this default at runtime.
+ * Entries added there carry the same auditing contract — every entry
+ * MUST cite a decision doc in its rationale. See
+ * `packages/graphql/scripts/run-batch-verification.ts` for the CLI flow
+ * and `packages/graphql/src/parity/batch-verification.ts` for the file-
+ * format validation.
  */
 export const DEFAULT_ALLOW_LIST: ReadonlyArray<AllowListEntry> = [
   {
