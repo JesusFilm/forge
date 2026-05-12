@@ -390,7 +390,8 @@ export function HeroPlayer({
               type="button"
               data-testid="hero-player-language-button"
               onClick={onLanguageClick}
-              aria-label="Switch language"
+              aria-label="Change audio language"
+              title="Change audio language"
               className="pointer-events-auto absolute top-4 right-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-stone-900/60 text-stone-100 backdrop-blur-sm transition hover:bg-stone-900/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
             >
               <Globe aria-hidden className="h-5 w-5" />

@@ -1385,3 +1385,49 @@ describe("HeroPlayer — timeline pointer-driven scrub (fake-timer driven)", () 
     expect(writes).toBe(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Language switch button (Task 4 — globe overlay).
+// Render-shape only: the button is conditional on a valid `onLanguageClick`
+// callback AND `playableLanguageCount >= 2`. Wiring into WatchSectionRenderer
+// is Task 5 and out of scope here.
+// ---------------------------------------------------------------------------
+
+describe("HeroPlayer — language switch button", () => {
+  it("does not render when playableLanguageCount < 2", () => {
+    const onLanguageClick = vi.fn()
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          onLanguageClick={onLanguageClick}
+          playableLanguageCount={1}
+        />,
+      )
+    })
+    expect(
+      container.querySelector('[data-testid="hero-player-language-button"]'),
+    ).toBeNull()
+  })
+
+  it("renders when playableLanguageCount >= 2 with onLanguageClick, and click invokes the callback exactly once", async () => {
+    const onLanguageClick = vi.fn()
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          onLanguageClick={onLanguageClick}
+          playableLanguageCount={2}
+        />,
+      )
+    })
+    const btn = container.querySelector(
+      '[data-testid="hero-player-language-button"]',
+    ) as HTMLButtonElement | null
+    expect(btn).not.toBeNull()
+    await act(async () => {
+      btn!.click()
+    })
+    expect(onLanguageClick).toHaveBeenCalledTimes(1)
+  })
+})
