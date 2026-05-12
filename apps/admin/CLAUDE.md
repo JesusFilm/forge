@@ -1608,6 +1608,203 @@ idempotency vs EnrichmentJob; new transcript-only pipeline vs
 videoEnrichment.ts extraction), and Railway deploy-ordering
 invariant.
 
+## Semantic search eval harness
+
+Local CLI tool that compares admin's hybrid-search results against a
+saved baseline using pairwise LLM-as-judge. Built so that iteration
+on `hybrid-search.service.ts`, `hybrid-search-retrievers.ts`, RRF
+fusion, or any indexing change has a quantitative "is this better or
+worse?" signal instead of vibes. **Strictly local-only**: no CI
+gating, no new admin endpoints, read-only against admin's data.
+
+- **Brainstorm:** `docs/brainstorms/2026-05-06-semantic-search-eval-harness-requirements.md`
+- **Plan:** `docs/plans/2026-05-07-001-feat-semantic-search-eval-harness-plan.md`
+- **Code lives at** `apps/admin/src/services/search-eval/` (14 modules)
+  - `runner.ts` — orchestrator (fan-out + A/B-swap + aggregation)
+  - `search-client.ts` — wraps `GET /api/search` with retry
+  - `judge.ts` — OpenRouter chat-completions client (Haiku 4.5)
+  - `query-generator.ts` — synthetic-query LLM generator
+  - `regressions.ts` — loader for the hand-edited regressions file
+  - `baseline.ts` — load/save committed baseline JSON
+  - `calibration.ts` — 10 hand-labeled cases run on every invocation
+  - `fingerprint.ts` — `prisma.$queryRaw` for content-drift detection
+  - `reporter.ts` — console summary + per-run JSON file
+  - `paths.ts` — `import.meta.url`-anchored paths
+  - `openrouter-helpers.ts` — shared OpenRouter response parsing
+  - `schemas.ts` — shared Zod schemas
+  - `types.ts`, `locales.ts`
+- **CLI entry:** `apps/admin/src/scripts/eval-search.ts`
+- **Operator data files** (committed): `apps/admin/eval/`
+  - `baselines/{name}.json` — frozen snapshot of (queries, results, content fingerprint)
+  - `synthetic-queries/{locale}.json` — committed per-locale query lists
+  - `regressions.json` — hand-edited adversarial queries
+  - `calibration.json` — 10 hand-labeled judge-sanity cases
+- **Per-run output** (gitignored): `apps/admin/.tmp/eval/runs/{runId}.json`
+
+### Architecture (one paragraph)
+
+The runner loads a committed baseline (frozen `(query, top-K results)`
+pairs for a known-good state), then for each query in scope: calls
+`GET /api/search` against current admin to get current top-K, judges
+`(baseline, current)` and `(current, baseline)` pairs with Haiku 4.5
+via OpenRouter, collapses the A/B-swapped verdicts into one outcome
+(win / loss / tie / both-irrelevant / judge-disagreement), and
+aggregates into a `RunReport` with net-win-rate, per-locale
+breakdown, top-10 regressions, calibration result, and drift warning.
+Search + judge calls run under `pLimit()` for bounded parallelism.
+Net-win-rate is `(wins − losses) / (total − bothIrrelevant)`,
+range `[-1, +1]`. A six-verdict ladder + A/B-swap collapse rule
+removes position bias from the LLM judge; content-fingerprint drift
+warns when admin's indexed data changed between baseline-capture and
+run-time so operators don't read "the code changed" into "admin
+reindexed."
+
+### Hard-coded locale set
+
+`HARNESS_LOCALES` (30 entries) is committed in `locales.ts`, picked
+by Core's `Language.labeledVideoCounts` on 2026-05-06. Only ~30
+locales have ≥40 labeled videos; everything else has 1–2.
+Re-running the eval against a stable HARNESS_LOCALES is what makes
+baselines comparable across runs — do NOT data-derive the list at
+run-time. Refresh command (with the exact curl + jq) is in the
+file's doc-comment.
+
+### Operational runbook
+
+Prerequisites:
+
+1. `pnpm install` + `pnpm --filter @forge/admin db:generate`.
+2. Admin running locally: `pnpm --filter @forge/admin dev` (port 3003).
+3. `OPENROUTER_API_KEY` and `DATABASE_URL` set (Doppler / `.env`).
+
+Day-zero — first ever run:
+
+```bash
+cd apps/admin
+
+# 1. Sanity-check the judge against 10 easy cases. ~30s, ~$0.01.
+pnpm eval:search:calibrate
+
+# 2. Capture the first baseline. Generates synthetic queries per
+#    locale, runs admin search for all of them, writes
+#    apps/admin/eval/baselines/default.json + per-locale query files.
+#    Both should be committed.
+pnpm eval:search:rebaseline -- --yes
+# ~10-15 min, ~$3-5 (synthetic generation + ~1500 searches).
+```
+
+Day-N — iteration loop:
+
+```bash
+# Make a code change to hybrid-search or its retrievers, then:
+pnpm eval:search:quick       # 6 high-resource locales, ~2 min, < $1
+# OR for full coverage before merging:
+pnpm eval:search             # all 30 locales, ~15 min, ~$5-15
+# OR drill into one locale:
+pnpm eval:search --locale=fr
+
+# Console prints: net win rate, per-locale breakdown, top-10
+# regressions with judge confidence + 1-line rationale.
+# Full per-query detail lands at apps/admin/.tmp/eval/runs/{runId}.json.
+```
+
+Adding regressions / regenerating synthetic queries:
+
+```bash
+# Spotted a bad search result in the wild?
+# Hand-edit apps/admin/eval/regressions.json — append an entry
+# { locale, query, notes, addedAt, addedBy }. Next eval run includes
+# it automatically.
+
+# Synthetic queries for one locale look broken?
+pnpm eval:search:regenerate-queries -- --locale=fr
+```
+
+Accepting a change as the new baseline:
+
+```bash
+# Once you've confirmed an improvement is real, re-baseline so it
+# becomes the new bar. Overwrites apps/admin/eval/baselines/default.json
+# — commit it.
+pnpm eval:search:rebaseline -- --yes
+```
+
+CLI exit codes (matters for shell scripting):
+
+- `0` — run completed (regardless of net-win-rate sign)
+- `1` — fatal (e.g. baseline missing, OpenRouter unreachable)
+- `2` — argument validation (missing `--yes`, bad `--locale`, etc.)
+- `3` — calibration failed (the run still wrote its JSON; treat results as suspect)
+- `130` — SIGINT/SIGTERM (clean exit; prisma disconnected)
+
+### Env vars (all optional, registered in `src/config/env.ts`)
+
+- `OPENROUTER_JUDGE_MODEL` — override default `anthropic/claude-haiku-4-5`
+- `EVAL_JUDGE_CONCURRENCY` (default 8) / `EVAL_SEARCH_CONCURRENCY` (default 4)
+- `ADMIN_BASE_URL` (default `http://localhost:3003`) — point at staging/prod admin
+- `EVAL_GIT_SHA` — stamped into the run JSON metadata header
+
+### Calibration set + judge-instability
+
+10 hand-labeled cases at `apps/admin/eval/calibration.json` run on
+every invocation. PASS = ≥80% match expected verdict. Failure does
+NOT abort the run (operator decides whether to trust it) but emits
+`event=judge_calibration_failure` log line + CLI exit 3. Cases cover
+three types: obvious-A-wins (judge must pick A), obvious-tie
+(identical lists), both-irrelevant (gibberish query against unrelated
+content). If calibration consistently fails, the judge model is
+unstable — switch `OPENROUTER_JUDGE_MODEL` to Sonnet or pause iteration.
+
+### Content fingerprint drift
+
+`fingerprint.ts` runs one combined `prisma.$queryRaw` against
+`video_scene_locale`, `video_transcript_chunk`, `experience_locale`
+filtered by `embedding IS NOT NULL` (and `status='published'` for
+experiences). When the count or `max(updated_at)` differs from
+baseline, the console warns `⚠ INDEXED CONTENT DRIFTED since
+baseline (Δrows: scene+512, transcript+1024; latest update 3d after
+baseline). Net-win-rate may reflect content changes, not code.
+Consider re-baselining.` The warn never blocks the run.
+
+### Common things to remember
+
+- The harness is **read-only** against admin's data. It never calls
+  `/api/admin-embeds/*` proxies or any mutation; only `GET /api/search`
+  and three read-only count queries.
+- `OPENROUTER_API_KEY` is shared across multiple services in the
+  monorepo (`cms`, `manager`, admin's own embedding + experience-
+  enrichment workflows). The harness is another consumer — a key
+  rotation affects all of them.
+- `HARNESS_LOCALES` is a deliberate hard-code (not data-derived) —
+  baselines must be comparable across runs. Updating it requires
+  re-baselining.
+- Synthetic queries are **committed** at
+  `apps/admin/eval/synthetic-queries/{locale}.json`, not regenerated
+  each run. Same queries must hit both sides of the comparison.
+- `regressions.json` is hand-edit only; the BCP-47 regex in
+  `query-generator.ts::validateLocale` guards path traversal on the
+  `--locale=` flag.
+- Search-client and judge MUST share retry semantics (both retry
+  on 5xx/429/transport, max 3 attempts, Retry-After honored capped
+  30s). The runner's per-item try/catch is a safety net, not a
+  retry policy — if one peer is missing retry, the runner silently
+  persists corrupted data with exit 0. See
+  `docs/solutions/best-practices/external-client-retry-parity-in-runner-fanout-20260512.md`.
+- Cost math: 1500 queries × 2 (A/B-swap) × Haiku 4.5 at top-20 ≈
+  $5-15 per full run. Pricing constants in `runner.ts:54-58` are
+  stamped 2026-05-07 — re-verify quarterly against the OpenRouter
+  model page.
+
+**Pointers:**
+
+- `apps/admin/eval/README.md` — quick reference for the operator data
+  files committed under `apps/admin/eval/`.
+- `docs/brainstorms/2026-05-06-semantic-search-eval-harness-requirements.md`
+  and `docs/plans/2026-05-07-001-feat-semantic-search-eval-harness-plan.md`
+  — canonical design history (every decision + the rationale).
+- `docs/solutions/best-practices/external-client-retry-parity-in-runner-fanout-20260512.md`
+  — the load-bearing learning extracted from this PR's review.
+
 ## Common pitfalls (grows with each unit)
 
 - **`apps/admin/railway.toml` is dead config — Railway only auto-discovers `railway.toml` at the repo root**, not in per-service subdirectories. Editing it does NOT change deploy behavior. The Railway dashboard is authoritative until "Config-as-code Path" is wired up. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.
