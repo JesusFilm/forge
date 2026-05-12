@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -39,6 +40,11 @@ const CHROME_HIDE_STYLE: MuxCSSProperties = {
   "--center-controls": "none",
   "--bottom-controls": "none",
 }
+
+// Fraction of the visible video that must be obscured by the body section
+// before the scroll listener pauses the player. 0.6 = 60% obscured — past
+// this point the player is no longer the main element on screen.
+const OBSCURED_PAUSE_THRESHOLD = 0.6
 
 export function HeroPlayer({
   block,
@@ -105,6 +111,106 @@ export function HeroPlayer({
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
+
+  // Tracks whether the current paused state was caused by THIS scroll
+  // listener, so the auto-resume on scroll-back only fires when WE
+  // paused. If the user paused manually (chrome button, keyboard) and
+  // then scrolled away, scrolling back must not override their intent.
+  const pausedByScrollRef = useRef(false)
+
+  // Pause the player when the user has scrolled enough that the body
+  // section covers >=60% of the visible video, resume when scrolling
+  // back drops below that. The hero wrapper is sticky and its bounding
+  // rect never leaves the viewport — the body section slides UP over
+  // the hero, covering it visually. We measure how much of the visible
+  // video has been covered by the body and pause once it crosses the
+  // threshold. IntersectionObserver doesn't work here because a sticky
+  // element keeps reporting "in viewport" even when painted over.
+  //
+  // Applies symmetrically in BOTH states: the pre-reveal muted-loop
+  // preview AND post-reveal committed playback after "Play with Sound"
+  // / "Tap to Unmute".
+  //
+  // Depends on `player` (not just `playerRef`) so the effect re-runs
+  // once the MuxPlayer ref attaches — without this, a deep-link past
+  // the hero would never re-evaluate after mount and the muted preview
+  // would keep autoplaying painted-over.
+  useEffect(() => {
+    if (heroHeight == null) return
+    // Reset the scroll-pause provenance flag on every effect mount.
+    // Otherwise a heroHeight change while the player was scroll-paused
+    // would carry the flag into the new geometry regime and could
+    // auto-resume on a resize-driven covered-to-uncovered transition.
+    pausedByScrollRef.current = false
+    let ticking = false
+    let rafHandle = 0
+    let prevCovered: boolean | null = null
+    const evaluate = () => {
+      ticking = false
+      rafHandle = 0
+      const player = playerRef.current
+      if (!player) return
+      // Visible video area in the viewport. When the hero is taller than
+      // the viewport (typical wide-screen 16:9 layout), the sticky pin
+      // keeps the wrapper filling the viewport, so visible = viewport.
+      // Otherwise visible = the wrapper's own height.
+      const viewportHeight = window.innerHeight
+      const visibleVideoHeight = Math.min(heroHeight, viewportHeight)
+      // The body section sits right after the hero in flow at doc-y =
+      // heroHeight; in the viewport its top is heroHeight - scrollY.
+      // Body covers everything BELOW that line; the unobscured part of
+      // the visible video is from the wrapper's visible top down to
+      // that line.
+      const bodyTopInViewport = heroHeight - window.scrollY
+      const unobscuredHeight = Math.max(
+        0,
+        Math.min(visibleVideoHeight, bodyTopInViewport),
+      )
+      const obscuredFraction =
+        visibleVideoHeight > 0 ? 1 - unobscuredHeight / visibleVideoHeight : 1
+      const covered = obscuredFraction >= OBSCURED_PAUSE_THRESHOLD
+      if (covered === prevCovered) return
+      prevCovered = covered
+      if (covered) {
+        // If the player is already paused (user clicked pause before
+        // scrolling), leave it alone — and don't claim the scroll-pause
+        // flag, so the next scroll-back doesn't override their intent.
+        if (player.paused) return
+        pausedByScrollRef.current = true
+        player.pause()
+        return
+      }
+      // Scroll-back: only auto-resume if WE paused via this listener.
+      if (!pausedByScrollRef.current) return
+      pausedByScrollRef.current = false
+      if (!player.paused) return
+      const result = player.play()
+      if (result && typeof result.then === "function") {
+        // Autoplay may still be blocked on resume (e.g. mobile Safari
+        // after a long background tab). Swallow rejection — the user
+        // can tap the pill to start playback explicitly.
+        result.catch(() => undefined)
+      }
+    }
+    const handleScroll = () => {
+      if (ticking) return
+      ticking = true
+      rafHandle = requestAnimationFrame(evaluate)
+    }
+    evaluate()
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    // Viewport resize changes visibleVideoHeight, so the obscured
+    // fraction can cross the threshold without any scroll event.
+    window.addEventListener("resize", handleScroll, { passive: true })
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+      window.removeEventListener("resize", handleScroll)
+      // Cancel any pending rAF so a stale closure can't fire after
+      // cleanup with the previous heroHeight (and trigger a wrong
+      // pause/play on the player).
+      if (rafHandle !== 0) cancelAnimationFrame(rafHandle)
+    }
+  }, [heroHeight, player])
 
   const viewerUserId = useSyncExternalStore(
     subscribeViewerId,

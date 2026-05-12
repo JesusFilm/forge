@@ -165,7 +165,6 @@ function SyntheticBlock({
           block={block}
           studyQuestions={studyQuestionsBlock}
           onDownloadClick={modalCallbacks?.openDownload ?? noop}
-          onAskYoursClick={modalCallbacks?.openAskYours ?? noop}
         />
       )
     case "StudyQuestions":

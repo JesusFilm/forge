@@ -45,3 +45,8 @@ export const CATEGORIES = [
     gradient: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
   },
 ] as const satisfies readonly SearchCategory[]
+
+// `searchTerm` is the stable identifier (used as the React key + the
+// search query); display-text fields like `title` are subject to copy
+// passes and rebrands and shouldn't be used as a structural key.
+export type CategorySearchTerm = (typeof CATEGORIES)[number]["searchTerm"]

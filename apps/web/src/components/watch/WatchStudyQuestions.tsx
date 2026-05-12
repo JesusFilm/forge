@@ -27,14 +27,9 @@ const CHAT_WITH_PERSON_URL =
   "https://chataboutjesus.com/chat/?utm_source=jesusfilm-watch"
 const ASK_BIBLE_QUESTION_URL =
   "https://www.everystudent.com/contact.php?utm_source=jesusfilm-watch"
+const ASK_YOURS_URL = "https://issuesiface.com/talk?utm_source=jesusfilm-watch"
 
-export function WatchStudyQuestions({
-  prompts,
-  onAskYoursClick,
-}: {
-  prompts: string[]
-  onAskYoursClick: () => void
-}) {
+export function WatchStudyQuestions({ prompts }: { prompts: string[] }) {
   const hasPrompts = prompts.length > 0
   const items = hasPrompts ? prompts : [PLACEHOLDER_QUESTION]
   const itemTestId = hasPrompts
@@ -74,9 +69,12 @@ export function WatchStudyQuestions({
         </h4>
         <Button
           variant="pill"
+          nativeButton={false}
           aria-label="Ask yours"
           data-testid="watch-study-questions-ask-yours"
-          onClick={onAskYoursClick}
+          render={
+            <a href={ASK_YOURS_URL} target="_blank" rel="noopener noreferrer" />
+          }
         >
           <MessageCircleIcon />
           <span>Ask yours</span>
@@ -123,7 +121,7 @@ function StudyQuestionRow({
         aria-expanded={isOpen}
         aria-controls={panelId}
         data-testid={`${testId}-trigger`}
-        className="group flex w-full cursor-pointer items-start justify-between rounded-lg py-3 text-left transition-colors hover:bg-white/5"
+        className="group flex w-full cursor-pointer items-start justify-between rounded-lg px-4 py-3 text-left transition-colors hover:bg-white/5"
       >
         <p className="flex text-base leading-[1.6] font-semibold text-stone-100 sm:pr-4 md:text-lg md:text-balance">
           <QuestionIcon />

@@ -4,7 +4,6 @@ import { useCallback, useMemo, useRef, useState } from "react"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
-import { AskYoursPanel } from "@/components/watch/AskYoursPanel"
 import { DownloadModal } from "@/components/watch/DownloadModal"
 import { LanguagePickerModal } from "@/components/watch/LanguagePickerModal"
 import { ShareModal } from "@/components/watch/ShareModal"
@@ -15,18 +14,12 @@ import { resolvePosterUrl } from "@/lib/url"
 type WatchVideoRecord = ResolvedWatchVideo["video"]
 type WatchVariant = ResolvedWatchVideo["selectedVariant"]
 
-export type WatchModalState =
-  | "none"
-  | "download"
-  | "language"
-  | "share"
-  | "ask-yours"
+export type WatchModalState = "none" | "download" | "language" | "share"
 
 export type WatchModalCallbacks = {
   openDownload: () => void
   openLanguage: () => void
   openShare: () => void
-  openAskYours: () => void
   closeModal: () => void
 }
 
@@ -111,14 +104,12 @@ export function WatchPageClient({
   const openDownload = useCallback(() => setModalState("download"), [])
   const openLanguage = useCallback(() => setModalState("language"), [])
   const openShare = useCallback(() => setModalState("share"), [])
-  const openAskYours = useCallback(() => setModalState("ask-yours"), [])
   const closeModal = useCallback(() => setModalState("none"), [])
 
   const modalCallbacks: WatchModalCallbacks = {
     openDownload,
     openLanguage,
     openShare,
-    openAskYours,
     closeModal,
   }
 
@@ -162,7 +153,6 @@ export function WatchPageClient({
         playbackId={variant.muxVideo?.playbackId ?? null}
         onClose={closeModal}
       />
-      <AskYoursPanel open={modalState === "ask-yours"} onClose={closeModal} />
     </main>
   )
 }

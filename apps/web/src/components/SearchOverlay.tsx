@@ -6,6 +6,7 @@ import Link from "next/link"
 import type { Route } from "next"
 
 import { useFloatingSearch } from "./FloatingSearchProvider"
+import { CATEGORY_ICON_BY_SEARCH_TERM } from "./SearchCategoryIcons"
 import { VideoCard } from "./search/VideoCard"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { CATEGORIES } from "@/lib/search-categories"
@@ -239,22 +240,39 @@ export function SearchOverlay() {
         >
           {showCategoryGrid && (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.searchTerm}
-                  type="button"
-                  onClick={() => handleCategoryClick(cat.searchTerm)}
-                  className="relative aspect-video w-full overflow-hidden rounded-lg p-3 text-white transition-transform duration-200 active:scale-95 [@media(hover:hover)]:hover:scale-105 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 sm:p-6"
-                  style={{ background: cat.gradient }}
-                >
-                  <span
-                    className="absolute bottom-3 left-3 text-base font-semibold leading-tight sm:text-lg md:text-xl"
-                    style={{ textShadow: "0 1px 3px rgba(0,0,0,0.4)" }}
+              {CATEGORIES.map((cat) => {
+                const Icon = CATEGORY_ICON_BY_SEARCH_TERM[cat.searchTerm]
+                return (
+                  <button
+                    key={cat.searchTerm}
+                    type="button"
+                    onClick={() => handleCategoryClick(cat.searchTerm)}
+                    aria-label={cat.title}
+                    data-testid={`search-overlay-category-${cat.searchTerm.replace(/\s+/g, "-")}`}
+                    className="relative aspect-video w-full overflow-hidden rounded-lg p-3 text-white transition-transform duration-200 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 [@media(hover:hover)]:hover:scale-105 sm:p-6"
+                    style={{ background: cat.gradient }}
                   >
-                    {cat.title}
-                  </span>
-                </button>
-              ))}
+                    {Icon ? (
+                      // Decorative top-right icon. Sized at roughly a
+                      // quarter of the rectangle's width so it reads as
+                      // a prominent corner badge (matching the reference
+                      // from core/apps/watch's CategoryGrid). `pointer-
+                      // events-none` keeps clicks falling through to
+                      // the button.
+                      <Icon
+                        aria-hidden="true"
+                        className="pointer-events-none absolute right-1 top-1 h-16 w-16 opacity-30 drop-shadow-lg sm:right-2 sm:top-2 sm:h-24 sm:w-24"
+                      />
+                    ) : null}
+                    <span
+                      className="absolute bottom-3 left-3 text-base font-semibold leading-tight sm:text-lg md:text-xl"
+                      style={{ textShadow: "0 1px 3px rgba(0,0,0,0.4)" }}
+                    >
+                      {cat.title}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           )}
 

@@ -12,7 +12,10 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { isAllowedDownloadOrigin } from "@/lib/download-allowlist"
+import {
+  SAFE_DOWNLOAD_EXTENSIONS,
+  isAllowedDownloadOrigin,
+} from "@/lib/download-allowlist"
 import { cn } from "@/lib/utils"
 
 export type DownloadModalDownload = {
@@ -109,12 +112,49 @@ function bucketDownloads(downloads: DownloadModalDownload[]): TierOption[] {
   ]
 }
 
-function formatSize(bytes: number | null): string {
-  if (bytes == null) return ""
+function formatSize(bytes: number | null | undefined): string {
+  if (bytes == null || !Number.isFinite(bytes) || bytes <= 0) return ""
   const mb = bytes / 1024 / 1024
   if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`
   if (mb >= 100) return `${mb.toFixed(0)} MB`
   return `${mb.toFixed(2)} MB`
+}
+
+// Probe the same-origin download proxy for a `Content-Length` when the
+// CMS-provided `size` is missing or zero. Returns null on any failure so
+// the UI can fall back to rendering just the tier label.
+async function fetchSizeFromProxy(
+  url: string,
+  signal: AbortSignal,
+): Promise<number | null> {
+  try {
+    const res = await fetch(
+      `${DOWNLOAD_PROXY_PATH}?url=${encodeURIComponent(url)}`,
+      { method: "HEAD", signal },
+    )
+    if (!res.ok) return null
+    const len = res.headers.get("content-length")
+    if (!len) return null
+    const n = Number.parseInt(len, 10)
+    return Number.isFinite(n) && n > 0 ? n : null
+  } catch {
+    return null
+  }
+}
+
+// Renders `({formatted})` when the size is known, nothing otherwise.
+// Used by both the dropdown trigger and each option row so the hide-when-
+// unknown behavior is defined once.
+function SizeLabel({
+  bytes,
+  className,
+}: {
+  bytes: number | null | undefined
+  className?: string
+}) {
+  const label = formatSize(bytes)
+  if (!label) return null
+  return <span className={className}>({label})</span>
 }
 
 function formatDuration(seconds: number | null | undefined): string | null {
@@ -140,6 +180,18 @@ export function DownloadModal({
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Keyed by download URL since the CMS-generated `documentId` is stable
+  // per-variant but the URL is what we probe — lookups for the same URL
+  // (which happens when the CMS sets fhd === highest) dedupe naturally.
+  const [probedSizes, setProbedSizes] = useState<Record<string, number | null>>(
+    {},
+  )
+  // Probe attempts (success OR failure) are tracked here so dedup is
+  // decoupled from result state — using `probedSizes` for both would put
+  // it in the probe effect's deps and cause an extra no-op effect run per
+  // batch. Survives modal close/reopen so a rapid open-close-open cycle
+  // doesn't re-issue HEAD requests for URLs we already tried.
+  const attemptedUrlsRef = useRef<Set<string>>(new Set())
   const dropdownId = useId()
   const dropdownListId = `${dropdownId}-list`
   const triggerRef = useRef<HTMLButtonElement | null>(null)
@@ -150,6 +202,18 @@ export function DownloadModal({
   const downloadInFlight = useRef<boolean>(false)
 
   const tiers = useMemo(() => bucketDownloads(downloads), [downloads])
+
+  // Resolves the effective size for a tier: prefer the CMS-provided
+  // value if valid, else a previously probed value, else null.
+  const resolveSize = useCallback(
+    (download: DownloadModalDownload): number | null => {
+      const cms = download.size
+      if (cms != null && cms > 0) return cms
+      const probed = probedSizes[download.url]
+      return probed ?? null
+    },
+    [probedSizes],
+  )
 
   // `selectedTier` is `null` until the user explicitly picks a tier, and
   // is reset to `null` on modal close (see handleOpenChange). The
@@ -181,6 +245,53 @@ export function DownloadModal({
     },
     [onClose],
   )
+
+  // Lazy size probe: for any tier whose CMS-provided `size` is missing
+  // or zero, HEAD the source URL via the same-origin proxy when the
+  // modal opens. The CMS English variant ships with `size: 0` for all
+  // qualities; without this the UI shows "(0.00 MB)" which is wrong.
+  // Dedup uses `attemptedUrlsRef` (not `probedSizes`) so the effect
+  // doesn't re-run on its own setState. Each URL is HEAD-probed once
+  // per page-load lifetime.
+  useEffect(() => {
+    if (!open) return
+    const attempted = attemptedUrlsRef.current
+    const missingUrls = Array.from(
+      new Set(
+        tiers
+          .map((t) => t.download)
+          .filter((d) => !(d.size != null && d.size > 0))
+          .map((d) => d.url)
+          .filter((url) => !attempted.has(url)),
+      ),
+    )
+    if (missingUrls.length === 0) return
+    // Reserve slots synchronously so a re-open during the in-flight
+    // batch doesn't trigger duplicate HEADs.
+    for (const url of missingUrls) attempted.add(url)
+    const controller = new AbortController()
+    void Promise.all(
+      missingUrls.map(async (url) => {
+        const size = await fetchSizeFromProxy(url, controller.signal)
+        return [url, size] as const
+      }),
+    )
+      .then((results) => {
+        if (controller.signal.aborted) return
+        setProbedSizes((prev) => {
+          const next = { ...prev }
+          for (const [url, size] of results) next[url] = size
+          return next
+        })
+      })
+      .catch((err) => {
+        // fetchSizeFromProxy catches internally so this is defense in
+        // depth — any future throw inside `.then()` lands here rather
+        // than as an unhandled rejection.
+        console.error("[DownloadModal] size probe pipeline failed", err)
+      })
+    return () => controller.abort()
+  }, [open, tiers])
 
   // Click-outside / Escape-first close for the custom dropdown. Without
   // this, clicking elsewhere in the modal leaves the listbox open
@@ -217,7 +328,6 @@ export function DownloadModal({
   }, [dropdownOpen])
 
   function buildFilename(sourceUrl: string, tier: Tier): string {
-    const SAFE_EXTENSIONS = new Set(["mp4", "m4v", "mov", "webm", "mkv", "mp3"])
     // Strip query string before extracting the extension so a `?token=...`
     // CDN URL doesn't end up with `mp4?token=abc` as the ext.
     const path = sourceUrl.split("?")[0] ?? ""
@@ -230,7 +340,7 @@ export function DownloadModal({
       lastDot > lastSlash && lastDot < path.length - 1
         ? path.slice(lastDot + 1).toLowerCase()
         : ""
-    const ext = SAFE_EXTENSIONS.has(candidate) ? candidate : "mp4"
+    const ext = SAFE_DOWNLOAD_EXTENSIONS.has(candidate) ? candidate : "mp4"
 
     const slug = (videoTitle ?? "video")
       .replace(/[^a-z0-9]+/gi, "-")
@@ -279,7 +389,7 @@ export function DownloadModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="watch-download-modal"
-        className="overflow-hidden rounded-2xl border border-stone-700/50 bg-stone-900 p-0 text-stone-100 sm:max-w-xl"
+        className="rounded-2xl border border-stone-700/50 bg-stone-900 p-0 text-stone-100 sm:max-w-xl"
       >
         <DialogTitle className="sr-only">Download video</DialogTitle>
 
@@ -365,9 +475,10 @@ export function DownloadModal({
                     {selected ? (
                       <>
                         <span className="font-semibold">{selected.label}</span>
-                        <span className="ml-1 text-stone-300">
-                          ({formatSize(selected.download.size)})
-                        </span>
+                        <SizeLabel
+                          bytes={resolveSize(selected.download)}
+                          className="ml-1 text-stone-300"
+                        />
                       </>
                     ) : (
                       "Select a file size"
@@ -400,6 +511,7 @@ export function DownloadModal({
                             aria-selected={isSelected}
                             data-testid="watch-download-modal-size-option"
                             data-tier={t.tier}
+                            data-size-bytes={resolveSize(t.download) ?? ""}
                             onClick={() => {
                               setSelectedTier(t.tier)
                               setDropdownOpen(false)
@@ -418,14 +530,13 @@ export function DownloadModal({
                               }
                             />
                             <span className="font-semibold">{t.label}</span>
-                            <span
+                            <SizeLabel
+                              bytes={resolveSize(t.download)}
                               className={cn(
                                 "text-xs",
                                 isSelected ? "text-white/80" : "text-stone-400",
                               )}
-                            >
-                              ({formatSize(t.download.size)})
-                            </span>
+                            />
                           </button>
                         </li>
                       )

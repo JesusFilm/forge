@@ -27,7 +27,7 @@ vi.mock("node:dns", () => ({
 
 import { promises as dns } from "node:dns"
 
-import { GET } from "./route"
+import { GET, HEAD } from "./route"
 
 const ROUTE_URL = "https://example.test/watch/api/download"
 
@@ -368,6 +368,117 @@ describe("GET /watch/api/download — filename sanitization", () => {
     )
     const cd = res.headers.get("content-disposition") ?? ""
     expect(cd).toContain('filename="download"')
+  })
+})
+
+describe("HEAD /watch/api/download — size probe", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+  })
+
+  it("returns 200 with Content-Length forwarded from upstream HEAD", async () => {
+    mockUpstream(
+      new Response(null, {
+        status: 200,
+        headers: {
+          "content-type": "video/mp4",
+          "content-length": "296924373",
+        },
+      }),
+    )
+    const res = await HEAD(
+      makeRequest({ url: "https://stream.mux.com/abc/1080p.mp4" }),
+    )
+    expect(res.status).toBe(200)
+    expect(res.headers.get("content-length")).toBe("296924373")
+    expect(res.headers.get("content-type")).toBe("video/mp4")
+    // Body must be empty on HEAD.
+    expect(await res.text()).toBe("")
+  })
+
+  it("rejects with 403 when the URL is not allowlisted (same allowlist as GET)", async () => {
+    const res = await HEAD(makeRequest({ url: "https://evil.com/payload.mp4" }))
+    expect(res.status).toBe(403)
+  })
+
+  it("rejects with 403 when DNS resolves to private space (shared SSRF defense)", async () => {
+    vi.mocked(dns.resolve4).mockResolvedValueOnce(["10.0.0.5"])
+    const res = await HEAD(
+      makeRequest({ url: "https://stream.mux.com/abc.mp4" }),
+    )
+    expect(res.status).toBe(403)
+  })
+
+  it("rejects upstream redirects with 502 (no allowlist-bypass via 3xx)", async () => {
+    mockUpstream(
+      new Response(null, {
+        status: 302,
+        headers: { location: "https://attacker.com/payload.mp4" },
+      }),
+    )
+    const res = await HEAD(
+      makeRequest({ url: "https://stream.mux.com/redirect.mp4" }),
+    )
+    expect(res.status).toBe(502)
+  })
+
+  it("does NOT forward Set-Cookie or other non-allowlisted upstream headers", async () => {
+    mockUpstream(
+      new Response(null, {
+        status: 200,
+        headers: {
+          "content-length": "100",
+          "set-cookie": "tracker=abc; HttpOnly",
+          "x-attacker-frame": "yes",
+        },
+      }),
+    )
+    const res = await HEAD(
+      makeRequest({ url: "https://stream.mux.com/abc.mp4" }),
+    )
+    expect(res.headers.has("set-cookie")).toBe(false)
+    expect(res.headers.has("x-attacker-frame")).toBe(false)
+    expect(res.headers.get("content-length")).toBe("100")
+  })
+
+  it("returns 502 when upstream fetch throws", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("ECONNREFUSED")
+      }),
+    )
+    const res = await HEAD(
+      makeRequest({ url: "https://stream.mux.com/abc.mp4" }),
+    )
+    expect(res.status).toBe(502)
+  })
+
+  it("passes through upstream non-OK status codes (e.g. 404)", async () => {
+    // Mirrors the GET-side coverage of the !upstream.ok passthrough so a
+    // regression that turned 404 into a generic 502 (or 200) would fail.
+    mockUpstream(new Response(null, { status: 404 }))
+    const res = await HEAD(
+      makeRequest({ url: "https://stream.mux.com/missing.mp4" }),
+    )
+    expect(res.status).toBe(404)
+  })
+
+  it("preserves 206 Partial Content from upstream (parity with GET)", async () => {
+    // Some CDNs respond to bare HEADs with 206. Treating that as 502 would
+    // make legitimate sizes invisible to the download modal; GET allows
+    // 206 and HEAD must mirror.
+    mockUpstream(
+      new Response(null, {
+        status: 206,
+        headers: { "content-length": "100", "content-type": "video/mp4" },
+      }),
+    )
+    const res = await HEAD(
+      makeRequest({ url: "https://stream.mux.com/abc.mp4" }),
+    )
+    expect(res.status).toBe(206)
+    expect(res.headers.get("content-length")).toBe("100")
   })
 })
 
