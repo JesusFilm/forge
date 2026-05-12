@@ -342,3 +342,7 @@ When all three hold, apply the pattern. When they don't, sequential `for…of` i
 - `docs/solutions/best-practices/batched-provider-input-position-stable-contract-20260505.md` — Stage 2 sibling pattern for the per-`(video, locale)` batched OpenRouter call.
 - PR #882 — originating PR (`feat-115`, Stage 1 of embed-backfill performance plan).
 - Stage 2 PR (`feat-116`) — applies the boundary lift.
+
+## See Also
+
+- `docs/solutions/best-practices/external-client-retry-parity-in-runner-fanout-20260512.md` — failure mode of this pattern: when ≥2 external clients share the same `pLimit()` fan-out but have asymmetric retry policies, the runner's per-item try/catch silently corrupts the persisted data.
