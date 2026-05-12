@@ -19,9 +19,8 @@ export const DEFAULT_CORE_ID_MAPPING_S3_KEY =
 
 /**
  * Any S3 key handed to the mutation must live under this prefix. The
- * bucket is shared across services (manager writes
- * `{assetId}/scene-analysis.json` etc.); confining ADMIN-supplied keys
- * to the admin namespace stops a compromised ADMIN session from using
- * the mutation to enumerate other apps' objects via error-code timing.
+ * bucket is dedicated to admin artifacts; confining ADMIN-supplied keys
+ * to the migration namespace stops a compromised ADMIN session from using
+ * the mutation to probe unrelated admin objects via error-code timing.
  */
 export const ADMIN_MIGRATIONS_S3_PREFIX = "admin-migrations/"

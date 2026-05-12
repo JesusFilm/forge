@@ -385,7 +385,7 @@ export class HybridSearchService {
       if (pipelineMode === "keyword-first") {
         // Three-list lexical stack: phrase-aware weighted tsvector,
         // typo-tolerant trigram on title, and exact-token-in-title
-        // (Algolia-like). The legacy R4 `searchVideoKeyword` is NOT
+        // (lexical search style). The legacy R4 `searchVideoKeyword` is NOT
         // dispatched on this branch — its concatenated tsvector is
         // strictly weaker than the weighted one for this workload.
         retrievals.push({

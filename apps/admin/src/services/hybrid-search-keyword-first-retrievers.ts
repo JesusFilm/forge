@@ -156,7 +156,7 @@ export function tokenizeForExactTitle(query: string): string[] {
  * Phrase-aware, per-field weighted full-text retrieval.
  *
  * `websearch_to_tsquery('simple', ?)` accepts user-typed double-quotes
- * as exact phrases (Algolia-like). Ranking uses `ts_rank_cd` against
+ * as exact phrases (lexical search style). Ranking uses `ts_rank_cd` against
  * the per-field weighted tsvector
  * `(setweight(vl.title_tsv,'A') || setweight(vl.description_tsv,'B'))`
  * so a query word in the title outranks the same word in the
@@ -306,7 +306,7 @@ export async function searchByTrigram(
  * Wired into RRF as the 4th list in keyword-first mode. Together with
  * `searchByKeywordWeighted` and `searchByTrigram`, it produces the
  * "every query token must appear in the most-important attribute"
- * Algolia-like behavior the keyword-first plan calls for.
+ * lexical phrase behavior the keyword-first plan calls for.
  *
  * Token count is capped at `MAX_EXACT_TITLE_TOKENS` (16) — see
  * `tokenizeForExactTitle`. Empty / whitespace-only / all-punctuation

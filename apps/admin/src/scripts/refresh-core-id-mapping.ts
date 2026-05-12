@@ -2,7 +2,7 @@
  * Refresh the admin coreId → cms video id mapping snapshot.
  *
  * Dumps from cms via `pnpm --filter @forge/cms dump:core-id-mapping` and
- * uploads the resulting JSON to the shared Railway S3 bucket at
+ * uploads the resulting JSON to Railway S3 at
  * `admin-migrations/core-id-mapping.json`. That key is the default
  * consumed by `triggerSceneEmbeddingBackfill` (and future admin-migration
  * mutations).
@@ -13,7 +13,7 @@
  * Env:
  *   RAILWAY_S3_BUCKET, RAILWAY_S3_ENDPOINT, RAILWAY_S3_REGION,
  *   RAILWAY_S3_ACCESS_KEY_ID, RAILWAY_S3_SECRET_ACCESS_KEY must point
- *   at the shared bucket. Local fallback (no bucket) writes to
+ *   at Railway S3. Local fallback (no bucket) writes to
  *   `apps/admin/.tmp/objects/admin-migrations/core-id-mapping.json`.
  *
  * The cms dump inherits apps/cms/.env for its DATABASE_URL — point
