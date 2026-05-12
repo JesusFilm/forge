@@ -10,6 +10,7 @@ import type { MuxPlayerRef } from "@forge/video-player"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
+import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 
 export type LanguagePickerVariant = {
@@ -43,12 +44,11 @@ export function LanguagePickerModal({
 }: LanguagePickerModalProps) {
   const router = useRouter()
 
-  // Strapi exposes a single `name` field per Language (sometimes the English
-  // form like "A-Hmao", sometimes the native form like "Shqip"). Use it
-  // verbatim as the primary display and sort alphabetically by it. Until the
-  // schema exposes a separate englishName + nativeName pair (matching what
-  // arclight exposes through core's /api/languages), there's no reliable
-  // English subtitle to compute — leave nativeName null.
+  // Per row, deriveLanguageDisplay decides whether Strapi's `name` is a
+  // formatted-up English (use it verbatim, e.g. "A-Hmao", "Achi, Rabinal")
+  // or the native form (slug-derived English as primary, name as subtitle,
+  // e.g. "Adygey" / "Адыгэбзэ", "French" / "Français"). Sort by the primary
+  // so the list stays A→Z by English form.
   const options = useMemo(
     () =>
       variants
@@ -56,11 +56,7 @@ export function LanguagePickerModal({
           (v) =>
             v.published === true && v.hls != null && v.language?.slug != null,
         )
-        .map((v) => ({
-          slug: v.language!.slug!,
-          name: (v.language!.name ?? v.language!.slug!).trim(),
-          nativeName: null,
-        }))
+        .map((v) => deriveLanguageDisplay(v.language!.slug!, v.language!.name))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [variants],
   )
