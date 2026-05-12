@@ -12,6 +12,8 @@ import { useSearchParams } from "next/navigation"
 import { MuxPlayer, type MuxPlayerRef } from "@forge/video-player"
 import type { MuxCSSProperties } from "@mux/mux-player-react"
 
+import { Globe } from "lucide-react"
+
 import { env } from "@/env"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
 import { getViewerId } from "@/lib/viewer-id"
@@ -49,9 +51,13 @@ const OBSCURED_PAUSE_THRESHOLD = 0.6
 export function HeroPlayer({
   block,
   onPlayerReady,
+  onLanguageClick,
+  playableLanguageCount,
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
+  onLanguageClick?: () => void
+  playableLanguageCount?: number
 }) {
   const { video, variant } = block
   const wrapperRef = useRef<HTMLDivElement | null>(null)
@@ -303,6 +309,9 @@ export function HeroPlayer({
   const loop = !chromeRevealed
   const muted = !chromeRevealed
 
+  const showLanguageSwitch =
+    typeof onLanguageClick === "function" && (playableLanguageCount ?? 0) >= 2
+
   return (
     <>
       <div
@@ -369,6 +378,25 @@ export function HeroPlayer({
             className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
           />
         )}
+
+        {/* Approach B: independent full-hero overlay so top-4 right-4 is
+            relative to the hero itself, not the bottom-anchored pill wrapper.
+            pointer-events-none on the container avoids blocking Mux Player
+            chrome hit-testing; pointer-events-auto on the button restores
+            interactivity only where needed. */}
+        {showLanguageSwitch ? (
+          <div className="pointer-events-none absolute inset-0 z-10">
+            <button
+              type="button"
+              data-testid="hero-player-language-button"
+              onClick={onLanguageClick}
+              aria-label="Switch language"
+              className="pointer-events-auto absolute top-4 right-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-stone-900/60 text-stone-100 backdrop-blur-sm transition hover:bg-stone-900/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
+            >
+              <Globe aria-hidden className="h-5 w-5" />
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {/*
