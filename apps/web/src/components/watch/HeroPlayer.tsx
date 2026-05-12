@@ -379,11 +379,12 @@ export function HeroPlayer({
           />
         )}
 
-        {/* Approach B: independent full-hero overlay so top-4 right-4 is
-            relative to the hero itself, not the bottom-anchored pill wrapper.
-            pointer-events-none on the container avoids blocking Mux Player
-            chrome hit-testing; pointer-events-auto on the button restores
-            interactivity only where needed. */}
+        {/* Independent full-hero overlay so top/right are relative to the
+            hero itself, not the bottom-anchored pill wrapper.
+            top-10 right-10 mirrors the floating search bar and JFP logo's
+            offset (both fixed at top-10) so the globe aligns horizontally
+            with them at page load. pointer-events-none on the container
+            avoids blocking Mux Player chrome hit-testing. */}
         {showLanguageSwitch ? (
           <div className="pointer-events-none absolute inset-0 z-10">
             <button
@@ -392,9 +393,12 @@ export function HeroPlayer({
               onClick={onLanguageClick}
               aria-label="Change audio language"
               title="Change audio language"
-              className="pointer-events-auto absolute top-4 right-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-stone-900/60 text-stone-100 backdrop-blur-sm transition hover:bg-stone-900/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
+              className="pointer-events-auto absolute top-10 right-10 inline-flex h-12 w-12 items-center justify-center rounded-full text-stone-100 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
             >
-              <Globe aria-hidden className="h-5 w-5" />
+              <Globe
+                aria-hidden
+                className="h-6 w-6 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
+              />
             </button>
           </div>
         ) : null}
