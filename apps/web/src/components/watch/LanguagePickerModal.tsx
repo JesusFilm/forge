@@ -86,6 +86,7 @@ export function LanguagePickerModal({
       <DialogContent
         data-testid="watch-language-picker-modal"
         className="rounded-2xl border border-stone-700/50 bg-stone-900 p-0 text-stone-100 sm:max-w-xl"
+        overlayClassName="bg-black/75"
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">Language</DialogTitle>
