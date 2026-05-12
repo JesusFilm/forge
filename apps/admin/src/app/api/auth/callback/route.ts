@@ -38,7 +38,16 @@ export async function GET(request: Request) {
     state !== expectedState ||
     !codeVerifier
   ) {
-    return NextResponse.redirect(new URL("/login?error=forbidden", request.url))
+    console.warn("admin.oauth.callback.forbidden", {
+      reason: "invalid_state",
+      hasCode: Boolean(code),
+      hasState: Boolean(state),
+      hasExpectedState: Boolean(expectedState),
+      stateMatches: state === expectedState,
+      hasCodeVerifier: Boolean(codeVerifier),
+    })
+
+    return redirectToForbiddenLogin(config)
   }
 
   try {
@@ -71,9 +80,22 @@ export async function GET(request: Request) {
     response.cookies.delete(ADMIN_OAUTH_CALLBACK_COOKIE)
 
     return response
-  } catch {
-    return NextResponse.redirect(new URL("/login?error=forbidden", request.url))
+  } catch (error) {
+    console.warn("admin.oauth.callback.forbidden", {
+      reason: "callback_failed",
+      message: error instanceof Error ? error.message : "unknown",
+    })
+
+    return redirectToForbiddenLogin(config)
   }
+}
+
+function redirectToForbiddenLogin(
+  config: NonNullable<ReturnType<typeof getAdminOAuthConfig>>,
+) {
+  return NextResponse.redirect(
+    new URL("/login?error=forbidden", config.adminBaseUrl),
+  )
 }
 
 type AdminUserRole = "ADMIN" | "EDITOR" | "VIEWER"
