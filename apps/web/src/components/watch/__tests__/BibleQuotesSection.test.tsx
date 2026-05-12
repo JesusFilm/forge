@@ -366,7 +366,7 @@ describe("BibleQuotesSection — Unsplash image + verse fetch", () => {
     expect(fetchMock).toHaveBeenCalled()
     const url = String(fetchMock.mock.calls[0]?.[0] ?? "")
     expect(url).toContain(
-      "https://cdn.jsdelivr.net/gh/wldeh/bible-api/bibles/en-asv/books/psalms/chapters/139/verses/13.json",
+      "https://cdn.jsdelivr.net/gh/wldeh/bible-api/bibles/en-web/books/psalms/chapters/139/verses/13.json",
     )
     const verse = container.querySelector(
       '[data-testid="watch-bible-quotes-verse"]',
@@ -429,7 +429,7 @@ describe("BibleQuotesSection — Unsplash image + verse fetch", () => {
       expect(rel).toContain("noopener")
       expect(rel).toContain("noreferrer")
       expect(anchor.getAttribute("href")).toContain("biblegateway.com/passage/")
-      expect(anchor.getAttribute("href")).toContain("version=NIV")
+      expect(anchor.getAttribute("href")).toContain("version=WEB")
     }
   })
 
@@ -525,7 +525,8 @@ describe("BibleQuotesSection — Unsplash image + verse fetch", () => {
     ) as HTMLAnchorElement | null
     expect(anchor).not.toBeNull()
     expect(anchor!.getAttribute("href")).toContain("version=NVI")
-    expect(anchor!.getAttribute("href")).not.toContain("version=NIV")
+    // Negative guard: es locale must NOT fall back to the English default.
+    expect(anchor!.getAttribute("href")).not.toContain("version=WEB")
   })
 
   it("multi-word book names are normalized to whitespace-stripped slugs in the jsdelivr URL", async () => {

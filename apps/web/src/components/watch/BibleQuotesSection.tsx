@@ -73,9 +73,15 @@ type BibleVersion = { bibleApi: string; bibleGateway: string }
 // Declared as an independent literal first so the default does not depend on
 // the map's key being present at lookup time. `satisfies` preserves the
 // narrow key inference per CLAUDE.md TypeScript rules.
+//
+// WEB (World English Bible) is the chosen English default — modern,
+// public-domain, and translated from the same Masoretic + critical Greek
+// text as the NIV/ESV. ASV (the previous choice) reads archaically
+// despite using the same textual basis. Both wldeh/bible-api (en-web)
+// and BibleGateway (?version=WEB) carry it.
 const DEFAULT_BIBLE_VERSION = {
-  bibleApi: "en-asv",
-  bibleGateway: "NIV",
+  bibleApi: "en-web",
+  bibleGateway: "WEB",
 } as const satisfies BibleVersion
 
 const LOCALE_TO_BIBLE_VERSION_MAP = {
