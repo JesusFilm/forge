@@ -10,6 +10,19 @@
 # server — admin disables introspection in production via
 # @envelop/disable-introspection.
 
+"""Advent calendar countdown block."""
+type AdventCountdownBlock {
+  backgroundColor: String
+  imageAssetId: String
+  imageUrl: String
+  locale: String
+  scripture: String
+  scriptureReference: String
+  sectionKey: String
+  t: String
+  title: String
+}
+
 """A Core-sourced Bible book reference used by video citations."""
 type BibleBook {
   alternateName: String
@@ -34,6 +47,89 @@ type BibleCitation {
   osisId: String
   verseEnd: Int
   verseStart: Int
+}
+
+"""Single entry in BibleQuotesCarouselBlock.quotes."""
+type BibleQuoteItem {
+  attribution: String
+  backgroundColor: String
+  backgroundImageAssetId: String
+  backgroundImageUrl: String
+  ctaEnabled: Boolean
+  ctaLabel: String
+  ctaLink: String
+  imageAssetId: String
+  imageUrl: String
+  reference: String
+  text: String
+}
+
+"""Carousel of Bible quote items."""
+type BibleQuotesCarouselBlock {
+  backgroundColor: String
+  heading: String
+  imageAssetId: String
+  imageUrl: String
+  quotes: [BibleQuoteItem!]!
+  sectionKey: String
+  t: String
+}
+
+"""Simple title/description card with optional media + link."""
+type CardBlock {
+  backgroundColor: String
+  description: String
+  link: String
+  mediaAssetId: String
+  mediaUrl: String
+  sectionKey: String
+  t: String
+  title: String
+  variant: CardVariant!
+}
+
+enum CardVariant {
+  default
+  featured
+}
+
+"""
+Side-by-side layout container with repeatable slots. `content` dispatches into ContainerContentBlock.
+"""
+type ContainerBlock {
+  backgroundColor: String
+  backgroundImageAssetId: String
+  backgroundImageUrl: String
+  content: [ContainerContentBlock!]!
+  sectionKey: String
+  slots: JSON
+  t: String
+}
+
+"""
+Discriminated union of block kinds allowed inside container.content. The narrowest scope.
+"""
+union ContainerContentBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerSlotBlock | CtaBlock | EasterDatesBlock | MediaCollectionBlock | RelatedQuestionsBlock | TextBlock | VideoBlock
+
+"""
+Slot divider marker inside ContainerBlock.content. Only valid inside ContainerContent.
+"""
+type ContainerSlotBlock {
+  backgroundColor: String
+  backgroundImageAssetId: String
+  backgroundImageUrl: String
+  gridSpan: Int
+  spans: ContainerSlotSpans
+  t: String
+}
+
+"""Per-breakpoint grid span overrides on a ContainerSlotBlock."""
+type ContainerSlotSpans {
+  lg: Int
+  md: Int
+  sm: Int
+  xl: Int
+  xs: Int
 }
 
 """A continent synced from Core."""
@@ -97,6 +193,25 @@ type CountryLocale {
   value: String
 }
 
+"""Call-to-action block with button label + link."""
+type CtaBlock {
+  backgroundColor: String
+  body: String
+  buttonLabel: String
+  buttonLink: String
+  heading: String
+  imageAssetId: String
+  imageUrl: String
+  sectionKey: String
+  t: String
+  variant: CtaVariant!
+}
+
+enum CtaVariant {
+  primary
+  secondary
+}
+
 type DeleteMediaAssetResult {
   deleted: Boolean
   usageCount: Int
@@ -106,6 +221,23 @@ type DeleteMediaFolderResult {
   assetCount: Int
   childCount: Int
   deleted: Boolean
+}
+
+"""Yearly Easter / Passover dates display block."""
+type EasterDatesBlock {
+  backgroundColor: String
+  easterDatesTitle: String
+  imageAssetId: String
+  imageUrl: String
+  locale: String
+  orthodoxEasterEnabled: Boolean
+  orthodoxEasterLabel: String
+  passoverEnabled: Boolean
+  passoverLabel: String
+  sectionKey: String
+  t: String
+  westernEasterEnabled: Boolean
+  westernEasterLabel: String
 }
 
 """
@@ -123,13 +255,18 @@ type Experience {
 }
 
 """
+Discriminated union of every block kind admin's editor can place at the top level of ExperienceLocale.blocks. Wire-discriminate via __typename or the explicit `t` field — both project from the Zod discriminator.
+"""
+union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | InfoBlocksBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock
+
+"""
 Per-locale content for an Experience — slug, blocks, title, publish state. Editors publish locales independently.
 """
 type ExperienceLocale {
   """
-  Array of Experience blocks. Shape enforced at write time by `src/domain/blocks.ts`.
+  Array of Experience blocks. Shape mirrors `src/domain/blocks.ts` BlockSchema (Zod). Mutations still accept opaque JSON; only the query output is typed.
   """
-  blocks: JSON
+  blocks: [ExperienceBlock!]!
   createdAt: String
   experienceId: ID
   id: ID
@@ -217,6 +354,35 @@ One contributing retriever's rank for a single fused result. The `label` is an U
 type HybridSearchRetrieverRank {
   label: String!
   rank: Int!
+}
+
+"""Single entry in InfoBlocksBlock.blocks."""
+type InfoBlockItem {
+  description: String
+  icon: String
+  title: String
+}
+
+"""Grouped info-tile block."""
+type InfoBlocksBlock {
+  backgroundColor: String
+  blocks: [InfoBlockItem!]!
+  description: String
+  heading: String
+  imageAssetId: String
+  imageUrl: String
+  intro: String
+  sectionKey: String
+  t: String
+  widthPercent: Int
+}
+
+"""
+Where a collection's items come from. Shared by MediaCollectionBlock.itemsSource and VideoCarouselBlock.itemsSource.
+"""
+enum ItemsSource {
+  manual
+  routeVideoChildren
 }
 
 """
@@ -369,6 +535,48 @@ enum MediaAssetVisibility {
   PUBLIC
 }
 
+"""A configurable collection of media items (carousel, grid, hero, etc.)."""
+type MediaCollectionBlock {
+  backgroundColor: String
+  categoryLabel: String
+  ctaLabel: String
+  ctaLink: String
+  description: String
+  footerText: String
+  imageAssetId: String
+  imageUrl: String
+  items: [MediaCollectionItem!]!
+  itemsSource: ItemsSource!
+  sectionKey: String
+  showItemNumbers: Boolean
+  subtitle: String
+  t: String
+  title: String
+  variant: MediaCollectionVariant!
+}
+
+"""Single entry in MediaCollectionBlock.items."""
+type MediaCollectionItem {
+  collectionSize: String
+  imageAssetId: String
+  imageOverrideAssetId: String
+  imageOverrideUrl: String
+  imageUrl: String
+  labelOverride: String
+  linkToSectionKey: String
+  subtitleOverride: String
+  titleOverride: String
+  videoId: String
+}
+
+enum MediaCollectionVariant {
+  carousel
+  collection
+  grid
+  hero
+  player
+}
+
 """
 A logical folder used to organize media assets in the Apps admin library.
 """
@@ -510,6 +718,42 @@ type MuxVideo {
   playbackId: String
 }
 
+"""Cross-block navigation carousel."""
+type NavigationCarouselBlock {
+  backgroundColor: String
+  imageAssetId: String
+  imageUrl: String
+  items: [NavigationCarouselItem!]!
+  sectionKey: String
+  t: String
+}
+
+"""Single entry in NavigationCarouselBlock.items."""
+type NavigationCarouselItem {
+  backgroundColor: String
+  category: String
+  contentId: String
+  imageAssetId: String
+  imageUrl: String
+  title: String
+}
+
+"""Promotional banner with heading, description, and CTA."""
+type PromoBannerBlock {
+  backgroundColor: String
+  ctaEnabled: Boolean
+  ctaLabel: String
+  ctaLink: String
+  description: String
+  heading: String
+  imageAssetId: String
+  imageUrl: String
+  intro: String
+  sectionKey: String
+  t: String
+  widthPercent: Int
+}
+
 type Query {
   """List active (non-soft-deleted) countries."""
   countries(limit: Int = 250, offset: Int = 0): [Country!]
@@ -577,6 +821,34 @@ type Query {
   watchSetting(locale: String!): WatchSetting
 }
 
+"""Quiz launcher button. Only valid inside SectionContent."""
+type QuizButtonBlock {
+  buttonText: String
+  iframeSrc: String
+  sectionKey: String
+  t: String
+}
+
+"""Single entry in RelatedQuestionsBlock.questions."""
+type RelatedQuestionItem {
+  answer: String
+  question: String
+}
+
+"""Accordion of related Q&A pairs with optional CTA."""
+type RelatedQuestionsBlock {
+  backgroundColor: String
+  ctaEnabled: Boolean
+  ctaLabel: String
+  ctaLink: String
+  heading: String
+  imageAssetId: String
+  imageUrl: String
+  questions: [RelatedQuestionItem!]!
+  sectionKey: String
+  t: String
+}
+
 """
 A single scene-similarity recommendation. Matches cms's SceneRecommendation shape modulo the cuid-string videoId.
 """
@@ -594,6 +866,54 @@ type SceneRecommendation {
   videoId: ID!
   videoSlug: String!
   videoTitle: String!
+}
+
+"""
+Wrapper section with background + dynamic content. Cannot contain another section.
+"""
+type SectionBlock {
+  backgroundColor: String
+  backgroundImageAssetId: String
+  backgroundImageUrl: String
+  backgroundOpacity: Float
+  blurHash: String
+  content: [SectionContentBlock!]!
+  dynamicBackgroundImage: Boolean
+  sectionKey: String
+  staticOverlay: Boolean
+  t: String
+}
+
+"""Discriminated union of block kinds allowed inside section.content."""
+union SectionContentBlock = BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | InfoBlocksBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | QuizButtonBlock | RelatedQuestionsBlock | TextBlock | VideoBlock | VideoCarouselBlock
+
+"""Rich text block with heading, subtitle, and paragraphs."""
+type TextBlock {
+  backgroundColor: String
+  contentParagraphs: [String!]
+  heading: String
+  headingLevel: TextHeadingLevel
+  imageAssetId: String
+  imageUrl: String
+  sectionKey: String
+  subtitle: String
+  t: String
+  variant: TextVariant
+}
+
+enum TextHeadingLevel {
+  h1
+  h2
+  h3
+  h4
+  h5
+  h6
+}
+
+enum TextVariant {
+  default
+  lead
+  small
 }
 
 """
@@ -617,6 +937,54 @@ type Video {
   slug: String
   studyQuestions: [VideoStudyQuestion!]
   videoSource: VideoSourceHost
+}
+
+"""Embedded video block with playback controls + clip range."""
+type VideoBlock {
+  autoplay: Boolean
+  clipEndSeconds: Float
+  clipStartSeconds: Float
+  loop: Boolean
+  mediaAssetId: String
+  mediaUrl: String
+  muted: Boolean
+  sectionKey: String
+  showControls: Boolean
+  streamingUrl: String
+  subtitle: String
+  subtitleSource: VideoSubtitleSource
+  t: String
+  title: String
+  titleSource: VideoTitleSource
+  useRouteVideo: Boolean
+  videoId: String
+}
+
+"""Horizontal video carousel."""
+type VideoCarouselBlock {
+  backgroundColor: String
+  description: String
+  imageAssetId: String
+  imageUrl: String
+  items: [VideoCarouselItem!]!
+  itemsSource: ItemsSource!
+  sectionKey: String
+  subtitle: String
+  t: String
+  title: String
+}
+
+"""Single entry in VideoCarouselBlock.items."""
+type VideoCarouselItem {
+  backgroundColor: String
+  imageAssetId: String
+  imageOverrideAssetId: String
+  imageOverrideUrl: String
+  imageUrl: String
+  streamingUrl: String
+  subtitleOverride: String
+  titleOverride: String
+  videoId: String
 }
 
 """
@@ -664,6 +1032,38 @@ type VideoEdition {
   subtitles: [VideoSubtitle!]
 }
 
+"""Full-bleed hero video block with optional CTA overlay."""
+type VideoHeroBlock {
+  autoplay: Boolean
+  clipEndSeconds: Float
+  clipStartSeconds: Float
+  ctaEnabled: Boolean
+  ctaLabel: String
+  ctaLink: String
+  heading: String
+  headingSource: VideoHeroHeadingSource
+  loop: Boolean
+  muted: Boolean
+  sectionKey: String
+  showControls: Boolean
+  streamingUrl: String
+  subheading: String
+  subheadingSource: VideoHeroSubheadingSource
+  t: String
+  useRouteVideo: Boolean
+  videoId: String
+}
+
+enum VideoHeroHeadingSource {
+  manual
+  videoTitle
+}
+
+enum VideoHeroSubheadingSource {
+  manual
+  videoDescription
+}
+
 type VideoImage {
   aspectRatio: String
   blurhash: String
@@ -707,6 +1107,22 @@ type VideoOrigin {
   description: String
   id: ID
   name: String
+}
+
+"""
+Forward-looking recommendations carousel powered at render time by sceneRecommendations(...). No editor UX yet.
+"""
+type VideoRecommendationsBlock {
+  backgroundColor: String
+  description: String
+  imageUrl: String
+  limit: Int
+  sectionKey: String
+  sourceSceneIndex: Int
+  sourceVideoId: String
+  subtitle: String
+  t: String
+  title: String
 }
 
 """
@@ -772,6 +1188,16 @@ type VideoSubtitle {
   value: String
   video: Video
   vttSrc: String
+}
+
+enum VideoSubtitleSource {
+  manual
+  videoDescription
+}
+
+enum VideoTitleSource {
+  manual
+  videoTitle
 }
 
 """
