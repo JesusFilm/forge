@@ -70,19 +70,11 @@ const BIBLE_IMAGES = [
 // "Read more..." link.
 type BibleVersion = { bibleApi: string; bibleGateway: string }
 
-// Declared as an independent literal first so the default does not depend on
-// the map's key being present at lookup time. `satisfies` preserves the
-// narrow key inference per CLAUDE.md TypeScript rules.
-//
-// WEBBE (World English Bible British Edition) is the chosen English
-// default — public-domain, modern, same NIV/ESV-aligned textual basis,
-// and renders the divine name as "the LORD" (matching NIV/ESV
-// convention) rather than "Yahweh" (which the plain en-web uses).
-// BSB would be the closer match to NIV/ESV philosophy but the
-// wldeh/bible-api source bakes BSB translator footnotes inline into
-// the verse text, which would render as broken mid-sentence content.
-// Both jsdelivr (en-webbe) and BibleGateway (?version=WEB) carry the
-// underlying World English Bible.
+// WEBBE chosen over en-web because it renders the divine name as
+// "the LORD" (NIV/ESV convention) rather than "Yahweh". BSB was the
+// closer NIV/ESV match but wldeh/bible-api bakes BSB translator
+// footnotes inline into verse text. BibleGateway has no WEBBE version
+// code, so Read-more falls back to ?version=WEB (same underlying text).
 const DEFAULT_BIBLE_VERSION = {
   bibleApi: "en-webbe",
   bibleGateway: "WEB",

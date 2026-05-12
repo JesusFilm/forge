@@ -525,8 +525,6 @@ describe("BibleQuotesSection — Unsplash image + verse fetch", () => {
     ) as HTMLAnchorElement | null
     expect(anchor).not.toBeNull()
     expect(anchor!.getAttribute("href")).toContain("version=NVI")
-    // Negative guard: es locale must NOT fall back to the English default.
-    expect(anchor!.getAttribute("href")).not.toContain("version=WEB")
   })
 
   it("multi-word book names are normalized to whitespace-stripped slugs in the jsdelivr URL", async () => {

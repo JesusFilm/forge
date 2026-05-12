@@ -6,7 +6,7 @@ import Link from "next/link"
 import type { Route } from "next"
 
 import { useFloatingSearch } from "./FloatingSearchProvider"
-import { CATEGORY_ICON_BY_TITLE } from "./SearchCategoryIcons"
+import { CATEGORY_ICON_BY_SEARCH_TERM } from "./SearchCategoryIcons"
 import { VideoCard } from "./search/VideoCard"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { CATEGORIES } from "@/lib/search-categories"
@@ -241,12 +241,14 @@ export function SearchOverlay() {
           {showCategoryGrid && (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
               {CATEGORIES.map((cat) => {
-                const Icon = CATEGORY_ICON_BY_TITLE[cat.title]
+                const Icon = CATEGORY_ICON_BY_SEARCH_TERM[cat.searchTerm]
                 return (
                   <button
                     key={cat.searchTerm}
                     type="button"
                     onClick={() => handleCategoryClick(cat.searchTerm)}
+                    aria-label={cat.title}
+                    data-testid={`search-overlay-category-${cat.searchTerm.replace(/\s+/g, "-")}`}
                     className="relative aspect-video w-full overflow-hidden rounded-lg p-3 text-white transition-transform duration-200 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 [@media(hover:hover)]:hover:scale-105 sm:p-6"
                     style={{ background: cat.gradient }}
                   >

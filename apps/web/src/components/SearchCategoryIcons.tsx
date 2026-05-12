@@ -1,17 +1,15 @@
-// Category-rectangle icons ported from core/apps/watch's CategoryGrid.
-// The originals live at core/libs/shared/ui/src/components/icons/ and are
-// built with MUI's createSvgIcon helper; here we inline the SVG paths
-// directly to avoid pulling MUI into the forge web bundle. All six use
-// MUI's default 24×24 viewBox and `currentColor` fill.
-//
-// Mapping (category title → icon) mirrors core/apps/watch/.../CategoryGrid.tsx.
+// MUI-free port of core/libs/shared/ui/src/components/icons/{Bible,
+// MessageText1, MediaStrip1, Bulb, UsersProfiles2, Star2}. We keep the
+// same path data byte-for-byte so the rendering matches the upstream;
+// avoiding @mui/material/utils' createSvgIcon keeps MUI out of the web
+// bundle.
 
-import type { ReactElement, SVGProps } from "react"
+import type { ComponentType, SVGProps } from "react"
+import type { CategorySearchTerm } from "@/lib/search-categories"
 
 type IconProps = SVGProps<SVGSVGElement>
-type IconComponent = (props: IconProps) => ReactElement
 
-function makeIcon(d: string, displayName: string) {
+function makeIcon(d: string, displayName: string): ComponentType<IconProps> {
   function Icon(props: IconProps) {
     return (
       <svg
@@ -59,14 +57,17 @@ export const Star2Icon = makeIcon(
   "Star2Icon",
 )
 
-// Title → icon component map. Title is the stable key from CATEGORIES
-// (search-categories.ts), keeping the icon definitions out of that
-// React-free module so the verification script can still import it.
-export const CATEGORY_ICON_BY_TITLE: Record<string, IconComponent> = {
-  "Bible Stories": BibleIcon,
-  Parables: MessageText1Icon,
-  Animated: MediaStrip1Icon,
-  Study: BulbIcon,
-  Family: UsersProfiles2Icon,
-  Christmas: Star2Icon,
+// Keyed by `searchTerm` (the stable category identifier) and constrained
+// to the literal union so adding a category to CATEGORIES without a
+// matching icon entry becomes a compile error.
+export const CATEGORY_ICON_BY_SEARCH_TERM: Record<
+  CategorySearchTerm,
+  ComponentType<IconProps>
+> = {
+  "bible stories": BibleIcon,
+  parables: MessageText1Icon,
+  animated: MediaStrip1Icon,
+  study: BulbIcon,
+  family: UsersProfiles2Icon,
+  christmas: Star2Icon,
 }
