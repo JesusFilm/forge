@@ -575,3 +575,260 @@ describe("DownloadModal — empty + lifecycle", () => {
     expect($('[data-testid="watch-download-modal"]')).toBeNull()
   })
 })
+
+describe("DownloadModal — formatSize edge cases", () => {
+  // The CMS English variant ships with `size: 0` for all downloads; the
+  // formatter must treat that as "no size known" (empty label) so the
+  // lazy HEAD probe can fill in the real value. These tests pin the
+  // negative-path of the formatter so a regression that resurrected
+  // "0.00 MB" labels would fail.
+  it("renders no size label when CMS size is 0 (waits for HEAD probe)", () => {
+    // Stub fetch with a never-resolving promise so the probe stays in
+    // flight and we observe the pre-probe label state.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise(() => undefined)),
+    )
+    act(() => {
+      root.render(
+        <DownloadModal
+          open
+          downloads={[
+            makeDownload({ documentId: "dl-1", quality: "fhd", size: 0 }),
+          ]}
+          videoTitle="JESUS"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+    const trigger = $(
+      '[data-testid="watch-download-modal-size-trigger"]',
+    ) as HTMLButtonElement
+    expect(trigger.textContent).toContain("Highest")
+    // No parenthetical size — the empty `formatSize` return must hide
+    // the `(...)` span entirely, not render `(0.00 MB)`.
+    expect(trigger.textContent).not.toContain("(")
+    expect(trigger.textContent).not.toContain("MB")
+  })
+})
+
+describe("DownloadModal — lazy HEAD probe", () => {
+  it("issues one HEAD per unique URL when CMS size is missing", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(null, {
+          status: 200,
+          headers: { "content-length": "12582912" }, // 12 MB
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    act(() => {
+      root.render(
+        <DownloadModal
+          open
+          downloads={[
+            makeDownload({
+              documentId: "dl-1",
+              quality: "fhd",
+              size: 0,
+              url: "https://stream.mux.com/a/1080p.mp4",
+            }),
+            makeDownload({
+              documentId: "dl-2",
+              quality: "high",
+              size: 0,
+              url: "https://stream.mux.com/a/720p.mp4",
+            }),
+            makeDownload({
+              documentId: "dl-3",
+              quality: "low",
+              size: 0,
+              url: "https://stream.mux.com/a/270p.mp4",
+            }),
+          ]}
+          videoTitle="JESUS"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+    // Flush probe pipeline (fetch → json → setState).
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    // All three were HEAD requests through the same-origin proxy.
+    for (const call of fetchMock.mock.calls) {
+      const [url, init] = call as unknown as [string, RequestInit | undefined]
+      expect(url).toContain("/watch/api/download?url=")
+      expect(init?.method).toBe("HEAD")
+    }
+    // Probed size landed in the trigger label.
+    const trigger = $(
+      '[data-testid="watch-download-modal-size-trigger"]',
+    ) as HTMLButtonElement
+    expect(trigger.textContent).toContain("12.00 MB")
+  })
+
+  it("deduplicates HEADs across tiers that share a URL", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(null, {
+          status: 200,
+          headers: { "content-length": "10000000" },
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const sharedUrl = "https://stream.mux.com/shared/1080p.mp4"
+    act(() => {
+      root.render(
+        <DownloadModal
+          open
+          // Two tiers with the SAME source URL (e.g., fhd === highest).
+          downloads={[
+            makeDownload({
+              documentId: "fhd",
+              quality: "fhd",
+              size: 0,
+              url: sharedUrl,
+            }),
+            makeDownload({
+              documentId: "highest",
+              quality: "highest",
+              size: 0,
+              url: sharedUrl,
+            }),
+            makeDownload({
+              documentId: "low",
+              quality: "low",
+              size: 0,
+              url: "https://stream.mux.com/other/270p.mp4",
+            }),
+          ]}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    // 2 unique URLs → 2 HEADs, not 3.
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("skips the HEAD probe when CMS already provides a valid size", () => {
+    const fetchMock = vi.fn(() => new Promise(() => undefined))
+    vi.stubGlobal("fetch", fetchMock)
+    act(() => {
+      root.render(
+        <DownloadModal
+          open
+          downloads={[
+            makeDownload({
+              documentId: "dl-1",
+              quality: "fhd",
+              size: 50 * 1024 * 1024, // 50 MB from CMS
+            }),
+          ]}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+    const trigger = $(
+      '[data-testid="watch-download-modal-size-trigger"]',
+    ) as HTMLButtonElement
+    expect(trigger.textContent).toContain("50.00 MB")
+  })
+
+  it("does not re-issue HEAD after probe completion (no dep-loop)", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(null, {
+          status: 200,
+          headers: { "content-length": "5000000" },
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    act(() => {
+      root.render(
+        <DownloadModal
+          open
+          downloads={[
+            makeDownload({
+              documentId: "dl-1",
+              quality: "fhd",
+              size: 0,
+              url: "https://stream.mux.com/x/1080p.mp4",
+            }),
+          ]}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    const callsAfterFirstSettle = fetchMock.mock.calls.length
+    // Give the effect a couple more flushes — if `probedSizes` were in
+    // the dep array, the effect would re-run and re-issue (or at least
+    // re-construct an AbortController per cycle).
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(fetchMock.mock.calls.length).toBe(callsAfterFirstSettle)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("exposes probed size on the option element as data-size-bytes", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(null, {
+          status: 200,
+          headers: { "content-length": "9437184" }, // 9 MB
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    act(() => {
+      root.render(
+        <DownloadModal
+          open
+          downloads={[
+            makeDownload({
+              documentId: "dl-1",
+              quality: "fhd",
+              size: 0,
+              url: "https://stream.mux.com/x/1080p.mp4",
+            }),
+          ]}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    // Open the dropdown to reveal the option element.
+    const trigger = $(
+      '[data-testid="watch-download-modal-size-trigger"]',
+    ) as HTMLButtonElement
+    act(() => {
+      trigger.click()
+    })
+    const option = $(
+      '[data-testid="watch-download-modal-size-option"][data-tier="highest"]',
+    ) as HTMLButtonElement
+    expect(option).not.toBeNull()
+    // Machine-readable size for agents that want to pick by byte count.
+    expect(option.getAttribute("data-size-bytes")).toBe("9437184")
+  })
+})

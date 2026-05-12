@@ -453,6 +453,33 @@ describe("HEAD /watch/api/download — size probe", () => {
     )
     expect(res.status).toBe(502)
   })
+
+  it("passes through upstream non-OK status codes (e.g. 404)", async () => {
+    // Mirrors the GET-side coverage of the !upstream.ok passthrough so a
+    // regression that turned 404 into a generic 502 (or 200) would fail.
+    mockUpstream(new Response(null, { status: 404 }))
+    const res = await HEAD(
+      makeRequest({ url: "https://stream.mux.com/missing.mp4" }),
+    )
+    expect(res.status).toBe(404)
+  })
+
+  it("preserves 206 Partial Content from upstream (parity with GET)", async () => {
+    // Some CDNs respond to bare HEADs with 206. Treating that as 502 would
+    // make legitimate sizes invisible to the download modal; GET allows
+    // 206 and HEAD must mirror.
+    mockUpstream(
+      new Response(null, {
+        status: 206,
+        headers: { "content-length": "100", "content-type": "video/mp4" },
+      }),
+    )
+    const res = await HEAD(
+      makeRequest({ url: "https://stream.mux.com/abc.mp4" }),
+    )
+    expect(res.status).toBe(206)
+    expect(res.headers.get("content-length")).toBe("100")
+  })
 })
 
 describe("GET /watch/api/download — response header allowlist", () => {

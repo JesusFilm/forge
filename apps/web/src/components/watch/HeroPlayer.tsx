@@ -41,6 +41,11 @@ const CHROME_HIDE_STYLE: MuxCSSProperties = {
   "--bottom-controls": "none",
 }
 
+// Fraction of the visible video that must be obscured by the body section
+// before the scroll listener pauses the player. 0.6 = 60% obscured — past
+// this point the player is no longer the main element on screen.
+const OBSCURED_PAUSE_THRESHOLD = 0.6
+
 export function HeroPlayer({
   block,
   onPlayerReady,
@@ -113,12 +118,6 @@ export function HeroPlayer({
   // then scrolled away, scrolling back must not override their intent.
   const pausedByScrollRef = useRef(false)
 
-  // Fraction of the visible video that must be obscured by the body
-  // section before we pause. 0.6 = 60% obscured — past this point the
-  // user has scrolled far enough that the player is no longer the main
-  // element on screen.
-  const OBSCURED_PAUSE_THRESHOLD = 0.6
-
   // Pause the player when the user has scrolled enough that the body
   // section covers >=60% of the visible video, resume when scrolling
   // back drops below that. The hero wrapper is sticky and its bounding
@@ -131,12 +130,24 @@ export function HeroPlayer({
   // Applies symmetrically in BOTH states: the pre-reveal muted-loop
   // preview AND post-reveal committed playback after "Play with Sound"
   // / "Tap to Unmute".
+  //
+  // Depends on `player` (not just `playerRef`) so the effect re-runs
+  // once the MuxPlayer ref attaches — without this, a deep-link past
+  // the hero would never re-evaluate after mount and the muted preview
+  // would keep autoplaying painted-over.
   useEffect(() => {
     if (heroHeight == null) return
+    // Reset the scroll-pause provenance flag on every effect mount.
+    // Otherwise a heroHeight change while the player was scroll-paused
+    // would carry the flag into the new geometry regime and could
+    // auto-resume on a resize-driven covered-to-uncovered transition.
+    pausedByScrollRef.current = false
     let ticking = false
+    let rafHandle = 0
     let prevCovered: boolean | null = null
     const evaluate = () => {
       ticking = false
+      rafHandle = 0
       const player = playerRef.current
       if (!player) return
       // Visible video area in the viewport. When the hero is taller than
@@ -184,7 +195,7 @@ export function HeroPlayer({
     const handleScroll = () => {
       if (ticking) return
       ticking = true
-      requestAnimationFrame(evaluate)
+      rafHandle = requestAnimationFrame(evaluate)
     }
     evaluate()
     window.addEventListener("scroll", handleScroll, { passive: true })
@@ -194,8 +205,12 @@ export function HeroPlayer({
     return () => {
       window.removeEventListener("scroll", handleScroll)
       window.removeEventListener("resize", handleScroll)
+      // Cancel any pending rAF so a stale closure can't fire after
+      // cleanup with the previous heroHeight (and trigger a wrong
+      // pause/play on the player).
+      if (rafHandle !== 0) cancelAnimationFrame(rafHandle)
     }
-  }, [heroHeight])
+  }, [heroHeight, player])
 
   const viewerUserId = useSyncExternalStore(
     subscribeViewerId,

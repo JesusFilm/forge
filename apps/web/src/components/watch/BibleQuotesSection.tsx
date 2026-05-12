@@ -323,7 +323,13 @@ function BibleCitationCard({
   // render via React's "adjusting state in render" pattern instead of a
   // useEffect so the stale verse text never paints alongside the new
   // citation reference for even one frame.
-  const fetchKey = `${bibleApi}|${bookSlug ?? ""}|${citation.chapterStart ?? ""}|${fetchVerse}`
+  //
+  // Use the raw `verseStart` (or a "chapter-only" sentinel) in the key so
+  // a transition between an explicit `verseStart: 1` citation and a
+  // chapter-only one resets the scripture state — both fetch the same
+  // URL but the Read-more affordance differs, and a stale scripture
+  // pointer would skip the intended reset.
+  const fetchKey = `${bibleApi}|${bookSlug ?? ""}|${citation.chapterStart ?? ""}|${citation.verseStart ?? "chapter-only"}`
   const [prevFetchKey, setPrevFetchKey] = useState(fetchKey)
   if (prevFetchKey !== fetchKey) {
     setPrevFetchKey(fetchKey)
@@ -381,8 +387,6 @@ function BibleCitationCard({
           },
           error,
         )
-      } finally {
-        clearTimeout(timeoutId)
       }
     })()
     return () => {

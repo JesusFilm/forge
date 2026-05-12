@@ -13,7 +13,10 @@ import { isIP } from "node:net"
 import type { ServerRuntime } from "next"
 import { NextResponse } from "next/server"
 
-import { isAllowedDownloadOrigin } from "@/lib/download-allowlist"
+import {
+  SAFE_DOWNLOAD_EXTENSIONS,
+  isAllowedDownloadOrigin,
+} from "@/lib/download-allowlist"
 
 // Use the Node runtime so streaming bodies are fully supported across
 // hosts. The Edge runtime would also work, but Node gives us long
@@ -61,19 +64,6 @@ const BIDI_CONTROL_RE = /[‪-‮⁦-⁩]/g
 // Path separators and shell-meta characters that have no business in a
 // `Content-Disposition: filename` value.
 const FILENAME_UNSAFE_RE = /[\\/;,"]/g
-
-const SAFE_EXTENSIONS = new Set([
-  "mp4",
-  "m4v",
-  "mov",
-  "webm",
-  "mkv",
-  "mp3",
-  "m4a",
-  "aac",
-  "wav",
-  "ogg",
-])
 
 function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ error: message }, { status })
@@ -161,7 +151,7 @@ function sanitizeFilename(raw: string): string {
   const lastDot = clamped.lastIndexOf(".")
   if (lastDot > 0 && lastDot < clamped.length - 1) {
     const ext = clamped.slice(lastDot + 1).toLowerCase()
-    if (!SAFE_EXTENSIONS.has(ext)) {
+    if (!SAFE_DOWNLOAD_EXTENSIONS.has(ext)) {
       return `${clamped.slice(0, lastDot)}.mp4`
     }
   }
@@ -179,14 +169,23 @@ function safeLogUrl(target: string): string {
   }
 }
 
+// Discriminated union — callers branch on `ok` (a literal tag) rather
+// than `in`-narrowing on a structural field name. A future caller that
+// misspells the variant field will produce a type error instead of
+// silently reading `undefined`.
+type ValidateTargetResult =
+  | { ok: true; safeUrl: string }
+  | { ok: false; errorResponse: NextResponse }
+
 // Validates the `?url=` target against the allowlist + DNS pre-flight and
 // returns a sanitized URL string ready to fetch. Shared by GET (stream) and
 // HEAD (size probe) so both methods enforce the same SSRF defenses.
 async function validateTarget(
   target: string | null,
-): Promise<{ safeUrl: string } | { errorResponse: NextResponse }> {
+): Promise<ValidateTargetResult> {
   if (!target) {
     return {
+      ok: false,
       errorResponse: jsonError("Missing required `url` parameter", 400),
     }
   }
@@ -200,7 +199,7 @@ async function validateTarget(
         }
       })(),
     })
-    return { errorResponse: jsonError("Forbidden", 403) }
+    return { ok: false, errorResponse: jsonError("Forbidden", 403) }
   }
   const parsed = new URL(target)
   try {
@@ -208,19 +207,38 @@ async function validateTarget(
       console.error("[api/download] rejected non-public IP resolution", {
         host: parsed.hostname,
       })
-      return { errorResponse: jsonError("Forbidden", 403) }
+      return { ok: false, errorResponse: jsonError("Forbidden", 403) }
     }
   } catch (err) {
     console.error("[api/download] DNS pre-flight failed", {
       host: parsed.hostname,
       err: err instanceof Error ? err.message : String(err),
     })
-    return { errorResponse: jsonError("Forbidden", 403) }
+    return { ok: false, errorResponse: jsonError("Forbidden", 403) }
   }
   // Reconstruct from validated components only. Drops userinfo
   // (`https://user:pass@host/`) and fragment that survived the hostname
   // allowlist check.
-  return { safeUrl: parsed.origin + parsed.pathname + parsed.search }
+  return { ok: true, safeUrl: parsed.origin + parsed.pathname + parsed.search }
+}
+
+// Builds an abort signal that combines the client's request signal with a
+// connect-phase timeout, so a stalled CDN can't pin a Node worker forever.
+// Returned `clear()` MUST be called in a `finally` to release the timer.
+// Choose `timeoutMs` strictly less than the route's `maxDuration`; if the
+// platform ceiling fires first, the signal never aborts and the upstream
+// classifier may declare a stalled connection a network error.
+function buildUpstreamSignal(
+  request: Request,
+  timeoutMs: number,
+): { signal: AbortSignal; clear: () => void } {
+  const timeoutController = new AbortController()
+  const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs)
+  const signal =
+    typeof AbortSignal.any === "function"
+      ? AbortSignal.any([request.signal, timeoutController.signal])
+      : timeoutController.signal
+  return { signal, clear: () => clearTimeout(timeoutId) }
 }
 
 export async function GET(request: Request): Promise<Response> {
@@ -229,7 +247,7 @@ export async function GET(request: Request): Promise<Response> {
   const rawFilename = searchParams.get("filename")
 
   const validation = await validateTarget(target)
-  if ("errorResponse" in validation) return validation.errorResponse
+  if (!validation.ok) return validation.errorResponse
   const { safeUrl } = validation
 
   const filename = sanitizeFilename(rawFilename ?? "download")
@@ -245,15 +263,13 @@ export async function GET(request: Request): Promise<Response> {
     if (value) upstreamHeaders[name] = value
   }
 
-  // Combine the client's abort signal with our own connect-phase timeout
-  // so a stalled CDN can't pin a Node worker forever. AbortSignal.any is
-  // available on Node 20.5+ and supported by Vercel/Railway runtimes.
-  const timeoutController = new AbortController()
-  const timeoutId = setTimeout(() => timeoutController.abort(), 30_000)
-  const signal =
-    typeof AbortSignal.any === "function"
-      ? AbortSignal.any([request.signal, timeoutController.signal])
-      : timeoutController.signal
+  // 30s connect-phase timeout — generous because the GET path streams
+  // multi-GB feature-film downloads. Must remain strictly less than the
+  // route's `maxDuration` (600s).
+  const { signal, clear: clearUpstreamTimeout } = buildUpstreamSignal(
+    request,
+    30_000,
+  )
 
   let upstream: Response
   try {
@@ -294,7 +310,7 @@ export async function GET(request: Request): Promise<Response> {
     })
     return jsonError("Upstream fetch failed", 502)
   } finally {
-    clearTimeout(timeoutId)
+    clearUpstreamTimeout()
   }
 
   // `redirect: "manual"` surfaces 3xx as `type === "opaqueredirect"` with
@@ -353,17 +369,17 @@ export async function HEAD(request: Request): Promise<Response> {
   const target = searchParams.get("url")
 
   const validation = await validateTarget(target)
-  if ("errorResponse" in validation) return validation.errorResponse
+  if (!validation.ok) return validation.errorResponse
   const { safeUrl } = validation
 
   // 10s is generous for a metadata-only round trip; longer than that and
-  // the CDN has effectively timed out.
-  const timeoutController = new AbortController()
-  const timeoutId = setTimeout(() => timeoutController.abort(), 10_000)
-  const signal =
-    typeof AbortSignal.any === "function"
-      ? AbortSignal.any([request.signal, timeoutController.signal])
-      : timeoutController.signal
+  // the CDN has effectively timed out. Tighter than GET's 30s because a
+  // HEAD probe should never need to wait that long, and the client (the
+  // download modal) is willing to fall back to no size display.
+  const { signal, clear: clearUpstreamTimeout } = buildUpstreamSignal(
+    request,
+    10_000,
+  )
 
   let upstream: Response
   try {
@@ -383,7 +399,7 @@ export async function HEAD(request: Request): Promise<Response> {
     })
     return jsonError("Upstream fetch failed", 502)
   } finally {
-    clearTimeout(timeoutId)
+    clearUpstreamTimeout()
   }
 
   if (
@@ -396,7 +412,10 @@ export async function HEAD(request: Request): Promise<Response> {
     return jsonError("Upstream redirected; refusing to follow", 502)
   }
 
-  if (!upstream.ok) {
+  // Mirror GET: a 206 Partial Content is a valid metadata response from
+  // some CDNs, not an error. Returning 502 here would make legitimate
+  // sizes invisible to the client.
+  if (!upstream.ok && upstream.status !== 206) {
     return jsonError(`Upstream ${upstream.status}`, upstream.status)
   }
 
@@ -412,5 +431,7 @@ export async function HEAD(request: Request): Promise<Response> {
   headers.set("Cache-Control", "private, no-cache, no-store, must-revalidate")
   headers.set("X-Content-Type-Options", "nosniff")
 
-  return new NextResponse(null, { status: 200, headers })
+  // Forward upstream's status (200 or 206) so callers see exactly what
+  // the CDN reported — mirroring GET's pass-through behavior.
+  return new NextResponse(null, { status: upstream.status, headers })
 }

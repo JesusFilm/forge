@@ -940,13 +940,50 @@ describe("HeroPlayer — pause when scrolled past the hero", () => {
       })
     }
   })
+
+  it("pins the exact 60% boundary: scrollY=680 pauses, scrollY=679 does not", async () => {
+    // Boundary value pins the >= comparison and the OBSCURED_PAUSE_THRESHOLD
+    // constant at 0.6. With heroHeight=1000, viewport=800, the exact threshold
+    // scrollY is 680. One pixel below must NOT pause; the threshold itself must.
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", {
+      value: 800,
+      configurable: true,
+    })
+    const ro = installResizeObserverStub()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+      await ro.setHeight(1000)
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = false
+        mockPlayerRef.current.pause.mockClear()
+      }
+      // Just below the threshold — must NOT pause.
+      await scrollTo(679)
+      expect(mockPlayerRef.current?.pause).not.toHaveBeenCalled()
+      // At the threshold (>=) — must pause.
+      await scrollTo(680)
+      expect(mockPlayerRef.current?.pause).toHaveBeenCalledTimes(1)
+    } finally {
+      ro.restore()
+      Object.defineProperty(window, "innerHeight", {
+        value: originalInnerHeight,
+        configurable: true,
+      })
+    }
+  })
 })
 
 describe("HeroPlayer — sticky-hero / portal layout", () => {
-  it("portals the chrome bar into the overlay anchor, not the sticky hero wrapper", async () => {
+  it("portals the chrome bar AND the backdrop into the overlay anchor, not the sticky hero wrapper", async () => {
     await revealChrome()
     const chrome = container.querySelector(
       '[data-testid="hero-player-custom-chrome"]',
+    )
+    const backdrop = container.querySelector(
+      '[data-testid="hero-player-chrome-backdrop"]',
     )
     const anchor = container.querySelector(
       '[data-testid="hero-player-overlay-anchor"]',
@@ -955,12 +992,17 @@ describe("HeroPlayer — sticky-hero / portal layout", () => {
       '[data-testid="hero-player-wrapper"]',
     )
     expect(chrome).not.toBeNull()
+    expect(backdrop).not.toBeNull()
     expect(anchor).not.toBeNull()
     expect(wrapper).not.toBeNull()
-    // Portal target — chrome bar lives under the zero-height anchor that
-    // scrolls with the body section, not under the sticky hero wrapper.
+    // Portal target — chrome bar AND its backing gradient live under the
+    // zero-height anchor that scrolls with the body section, not under
+    // the sticky hero wrapper. Backdrop must travel with the chrome so
+    // the controls stay legible at every scroll position.
     expect(anchor!.contains(chrome!)).toBe(true)
     expect(wrapper!.contains(chrome!)).toBe(false)
+    expect(anchor!.contains(backdrop!)).toBe(true)
+    expect(wrapper!.contains(backdrop!)).toBe(false)
   })
 
   it("tap-to-unmute branch calls play() without resetting currentTime", async () => {
