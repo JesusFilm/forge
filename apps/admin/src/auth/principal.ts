@@ -17,6 +17,15 @@
  * else — distinct from `SYSTEM` (workflow-internal, in-process only)
  * and from `ADMIN` (full editorial override). Used by apps/manager to
  * proxy embedding-backfill triggers without minting an admin session.
+ *
+ * `CONSUMER_BEARER` is a request-bound rate-limit-only identity minted
+ * at GraphQL context creation when an incoming request carries a valid
+ * `Authorization: Bearer <key>` matching `WEB_ADMIN_API_KEYS`. It is
+ * granted ZERO permissions beyond PUBLIC — its sole purpose is to
+ * bucket consumer SSR traffic (apps/web) separately from anonymous-IP
+ * traffic in admin's rate-limit identifier. The principal carries the
+ * matched key as `rateLimitBucketKey` so the identifyFn can produce
+ * `consumer:<key>` without re-inspecting headers downstream.
  */
 export type Role =
   | "ADMIN"
@@ -25,10 +34,17 @@ export type Role =
   | "PUBLIC"
   | "SYSTEM"
   | "WORKFLOW_TRIGGER"
+  | "CONSUMER_BEARER"
 
 export type Principal = {
   id: string | null
   role: Role
+  /**
+   * Set only on `CONSUMER_BEARER` principals — the matched
+   * `WEB_ADMIN_API_KEYS` CSV entry. The rate-limit identifyFn reads
+   * this without re-inspecting headers. Never logged.
+   */
+  rateLimitBucketKey?: string
 }
 
 /**
@@ -56,9 +72,34 @@ export const WORKFLOW_TRIGGER_PRINCIPAL = {
 } as const satisfies Principal
 
 /**
+ * Factory for the request-bound consumer-bearer principal. Mints a
+ * Principal carrying the matched bearer key so the rate-limit
+ * identifyFn can bucket as `consumer:<key>` without re-inspecting the
+ * Authorization header downstream. `id: null` matches the
+ * WORKFLOW_TRIGGER convention — bearer principals are non-user
+ * identities, no DB row to point at.
+ *
+ * `CONSUMER_BEARER` grants NO permissions beyond PUBLIC. See
+ * `CONSUMER_BEARER_PERMISSIONS` in `permissions.ts` (empty set,
+ * CI-asserted) and the early-return in `hasPermission`.
+ */
+export function CONSUMER_BEARER_PRINCIPAL({
+  rateLimitBucketKey,
+}: {
+  rateLimitBucketKey: string
+}): Principal {
+  return {
+    id: null,
+    role: "CONSUMER_BEARER",
+    rateLimitBucketKey,
+  }
+}
+
+/**
  * Editorial-tier predicate: true only for EDITOR/ADMIN. PUBLIC, VIEWER,
- * SYSTEM, WORKFLOW_TRIGGER all return false — none should see drafts via
- * consumer-facing relation paths (Experience.locales, Video.locales).
+ * SYSTEM, WORKFLOW_TRIGGER, CONSUMER_BEARER all return false — none
+ * should see drafts via consumer-facing relation paths
+ * (Experience.locales, Video.locales).
  */
 export function isEditorOrAdmin(user: Principal | null): boolean {
   return user?.role === "ADMIN" || user?.role === "EDITOR"

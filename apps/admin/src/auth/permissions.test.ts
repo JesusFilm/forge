@@ -11,7 +11,7 @@ import {
   hasPermission,
   type PermissionKey,
 } from "@/auth/permissions"
-import type { Principal } from "@/auth/principal"
+import { CONSUMER_BEARER_PRINCIPAL, type Principal } from "@/auth/principal"
 
 const PUBLIC_USER: Principal | null = null
 const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
@@ -466,6 +466,102 @@ describe("permission matrix completeness", () => {
         const expected = allowedKeys.has(key)
         expect(hasPermission(WORKFLOW_TRIGGER, key)).toBe(expected)
       }
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // CONSUMER_BEARER (plan 003) — rate-limit-only identity; ZERO permissions.
+  //
+  // Two CI surfaces enforce the empty-set invariant:
+  //  1. Every PermissionKey returns false from hasPermission for any
+  //     CONSUMER_BEARER principal — regardless of the bearer's
+  //     `rateLimitBucketKey`.
+  //  2. CONSUMER_BEARER role is never a member of any workflow-trigger
+  //     allowlist, AND the env-var split (WEB_ADMIN_API_KEYS vs
+  //     WORKFLOW_API_KEYS) is preserved so widening one set cannot
+  //     accidentally widen the other.
+  // ---------------------------------------------------------------------------
+
+  describe("CONSUMER_BEARER (plan 003 — rate-limit-only identity)", () => {
+    it("returns false for every PermissionKey, regardless of bucket key", () => {
+      // Adding a new PermissionKey forces a compile error here AND a
+      // test failure unless explicitly added to the registry. The
+      // Record exhaustiveness check pairs with the runtime walk.
+      const allKeys: Record<PermissionKey, true> = {
+        "read:experiences": true,
+        "read:videos": true,
+        "read:reference": true,
+        "read:media-assets": true,
+        "write:experiences": true,
+        "write:videos": true,
+        "write:media-assets": true,
+        "write:scene-embeddings": true,
+        "write:transcript-embeddings": true,
+        "write:experience-content-dump": true,
+        "write:manager-enrichment-trigger": true,
+        "delete:media-assets": true,
+        "publish:experiences": true,
+        "archive:experiences": true,
+        "system:trigger-workflow": true,
+        "system:write-derived": true,
+        "admin:all": true,
+      }
+      const bearer = CONSUMER_BEARER_PRINCIPAL({ rateLimitBucketKey: "any" })
+      for (const key of Object.keys(allKeys) as PermissionKey[]) {
+        expect(hasPermission(bearer, key)).toBe(false)
+      }
+    })
+
+    it("returns false across a range of bucket keys (bucket key never grants permission)", () => {
+      const someKey: PermissionKey = "read:reference"
+      for (const bucketKey of ["a", "key-aaa", "very-long-bearer-key", "1"]) {
+        const bearer = CONSUMER_BEARER_PRINCIPAL({
+          rateLimitBucketKey: bucketKey,
+        })
+        expect(hasPermission(bearer, someKey)).toBe(false)
+      }
+    })
+
+    it("never appears in WORKFLOW_TRIGGER_PERMISSIONS-style enumerations (role isolation)", () => {
+      // Role-isolation invariant: CONSUMER_BEARER must not be promoted
+      // to the workflow-trigger allowlist via the WORKFLOW_TRIGGER
+      // role string aliasing. Construct a CONSUMER_BEARER principal
+      // and assert that the workflow-trigger permission keys are NOT
+      // satisfied (because the bearer's role is CONSUMER_BEARER, not
+      // WORKFLOW_TRIGGER — the two principal types share the bearer
+      // surface but not the permission surface).
+      const bearer = CONSUMER_BEARER_PRINCIPAL({ rateLimitBucketKey: "any" })
+      expect(hasPermission(bearer, "write:scene-embeddings")).toBe(false)
+      expect(hasPermission(bearer, "write:transcript-embeddings")).toBe(false)
+      expect(hasPermission(bearer, "write:manager-enrichment-trigger")).toBe(
+        false,
+      )
+    })
+
+    it("env-var split: WEB_ADMIN_API_KEYS is NOT equal to WORKFLOW_API_KEYS (CSV isolation)", async () => {
+      // Asserts that the two CSV env vars are read from distinct
+      // sources. A regression that pointed `consumer-bearer.ts` at
+      // `WORKFLOW_API_KEYS` (or vice versa) would silently merge the
+      // two principal mints — workflow callers would bucket as
+      // consumer (rate-limit isolation collapse) and consumer callers
+      // would mint WORKFLOW_TRIGGER (permission widening). The
+      // distinct env vars are the load-bearing boundary.
+      const { readFile } = await import("node:fs/promises")
+      const { fileURLToPath } = await import("node:url")
+      const consumerSource = await readFile(
+        fileURLToPath(new URL("./consumer-bearer.ts", import.meta.url)),
+        "utf8",
+      )
+      const workflowSource = await readFile(
+        fileURLToPath(new URL("./workflow-bearer.ts", import.meta.url)),
+        "utf8",
+      )
+      // Each file references its own env var…
+      expect(consumerSource).toMatch(/env\.WEB_ADMIN_API_KEYS/)
+      expect(workflowSource).toMatch(/env\.WORKFLOW_API_KEYS/)
+      // …and NOT the other's.
+      expect(consumerSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
+      expect(workflowSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
     })
   })
 })

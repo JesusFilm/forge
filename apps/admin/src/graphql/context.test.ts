@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const resolvePrincipalFromRequest = vi.fn()
 const isValidWorkflowBearer = vi.fn()
+const isValidConsumerBearer = vi.fn()
 
 vi.mock("@/auth/session", () => ({
   resolvePrincipalFromRequest,
@@ -11,11 +12,17 @@ vi.mock("@/auth/workflow-bearer", () => ({
   isValidWorkflowBearer,
 }))
 
+vi.mock("@/auth/consumer-bearer", () => ({
+  isValidConsumerBearer,
+}))
+
 describe("createContext", () => {
   beforeEach(() => {
     resolvePrincipalFromRequest.mockReset()
     isValidWorkflowBearer.mockReset()
+    isValidConsumerBearer.mockReset()
     isValidWorkflowBearer.mockReturnValue(false)
+    isValidConsumerBearer.mockReturnValue({ valid: false, bucketKey: null })
   })
 
   it("returns PUBLIC when no session resolves", async () => {
@@ -90,5 +97,163 @@ describe("createContext", () => {
     })
 
     expect(ctx.user).toBeNull()
+  })
+
+  // ---------------------------------------------------------------------------
+  // Plan 003 (U1) — CONSUMER_BEARER resolution
+  // ---------------------------------------------------------------------------
+
+  it("mints CONSUMER_BEARER when no session, workflow-bearer invalid, consumer-bearer valid", async () => {
+    resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+    isValidWorkflowBearer.mockReturnValue(false)
+    isValidConsumerBearer.mockReturnValue({
+      valid: true,
+      bucketKey: "consumer-key-aaa",
+    })
+    const { createContext } = await import("@/graphql/context")
+
+    const ctx = await createContext({
+      request: new Request("http://localhost/api/graphql", {
+        headers: { authorization: "Bearer consumer-key-aaa" },
+      }),
+    })
+
+    expect(ctx.user).toEqual({
+      id: null,
+      role: "CONSUMER_BEARER",
+      rateLimitBucketKey: "consumer-key-aaa",
+    })
+    expect(isValidConsumerBearer).toHaveBeenCalledWith(
+      "Bearer consumer-key-aaa",
+    )
+  })
+
+  it("session principal wins over consumer-bearer (no accidental downgrade)", async () => {
+    // Editor with a session cookie who ALSO forwards a consumer-app
+    // bearer keeps their editorial role. The bearer is not consulted
+    // because the session resolved first.
+    resolvePrincipalFromRequest.mockResolvedValueOnce({
+      id: "alice",
+      role: "EDITOR",
+    })
+    isValidConsumerBearer.mockReturnValue({
+      valid: true,
+      bucketKey: "consumer-key-aaa",
+    })
+    const { createContext } = await import("@/graphql/context")
+
+    const ctx = await createContext({
+      request: new Request("http://localhost/api/graphql", {
+        headers: { authorization: "Bearer consumer-key-aaa" },
+      }),
+    })
+
+    expect(ctx.user).toEqual({ id: "alice", role: "EDITOR" })
+  })
+
+  it("workflow-bearer wins over consumer-bearer when both validators would accept", async () => {
+    // If the same header somehow satisfies both validators (e.g. a
+    // deployment that accidentally placed the same key in both CSVs),
+    // the workflow path takes precedence — preserves its narrow
+    // permission allowlist semantics rather than silently demoting
+    // workflow callers to the permissionless consumer bucket.
+    resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+    isValidWorkflowBearer.mockReturnValue(true)
+    isValidConsumerBearer.mockReturnValue({
+      valid: true,
+      bucketKey: "shared-key",
+    })
+    const { createContext } = await import("@/graphql/context")
+
+    const ctx = await createContext({
+      request: new Request("http://localhost/api/graphql", {
+        headers: { authorization: "Bearer shared-key" },
+      }),
+    })
+
+    expect(ctx.user).toEqual({ id: null, role: "WORKFLOW_TRIGGER" })
+    // consumer-bearer never consulted because workflow-bearer matched
+    // first.
+    expect(isValidConsumerBearer).not.toHaveBeenCalled()
+  })
+
+  it("returns PUBLIC when no session and neither bearer validator accepts", async () => {
+    resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+    isValidWorkflowBearer.mockReturnValue(false)
+    isValidConsumerBearer.mockReturnValue({ valid: false, bucketKey: null })
+    const { createContext } = await import("@/graphql/context")
+
+    const ctx = await createContext({
+      request: new Request("http://localhost/api/graphql", {
+        headers: { authorization: "Bearer mystery-key" },
+      }),
+    })
+
+    expect(ctx.user).toBeNull()
+  })
+
+  // ---------------------------------------------------------------------------
+  // Log scrubbing — neither the raw header nor the matched key may
+  // ever appear in console output from createContext.
+  // ---------------------------------------------------------------------------
+
+  it("does NOT log the Authorization header or bearer key on any resolution path", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {})
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {})
+    try {
+      const { createContext } = await import("@/graphql/context")
+
+      // Walk every principal-resolution branch.
+      resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+      isValidWorkflowBearer.mockReturnValueOnce(true)
+      await createContext({
+        request: new Request("http://localhost/api/graphql", {
+          headers: { authorization: "Bearer workflow-secret-aaa" },
+        }),
+      })
+      resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+      isValidWorkflowBearer.mockReturnValueOnce(false)
+      isValidConsumerBearer.mockReturnValueOnce({
+        valid: true,
+        bucketKey: "consumer-secret-bbb",
+      })
+      await createContext({
+        request: new Request("http://localhost/api/graphql", {
+          headers: { authorization: "Bearer consumer-secret-bbb" },
+        }),
+      })
+      resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+      isValidWorkflowBearer.mockReturnValueOnce(false)
+      isValidConsumerBearer.mockReturnValueOnce({
+        valid: false,
+        bucketKey: null,
+      })
+      await createContext({
+        request: new Request("http://localhost/api/graphql", {
+          headers: { authorization: "Bearer wrong-key-ccc" },
+        }),
+      })
+
+      const combined = JSON.stringify([
+        ...logSpy.mock.calls,
+        ...warnSpy.mock.calls,
+        ...errorSpy.mock.calls,
+        ...infoSpy.mock.calls,
+        ...debugSpy.mock.calls,
+      ])
+      expect(combined).not.toContain("workflow-secret-aaa")
+      expect(combined).not.toContain("consumer-secret-bbb")
+      expect(combined).not.toContain("wrong-key-ccc")
+      expect(combined).not.toContain("Bearer ")
+    } finally {
+      logSpy.mockRestore()
+      warnSpy.mockRestore()
+      errorSpy.mockRestore()
+      infoSpy.mockRestore()
+      debugSpy.mockRestore()
+    }
   })
 })
