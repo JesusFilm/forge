@@ -1,11 +1,22 @@
 import { headers as nextHeaders } from "next/headers"
 import { redirect } from "next/navigation"
+import {
+  ADMIN_OAUTH_SESSION_COOKIE,
+  readAdminOAuthSessionCookie,
+} from "@/auth/auth-session"
 import { hasPermission } from "@/auth/permissions"
 import type { Principal } from "@/auth/principal"
 import { auth } from "@/auth/config"
+import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 
 async function resolveFromHeaders(headers: Headers): Promise<Principal | null> {
+  if (env.ADMIN_AUTH_MODE === "oauth") {
+    return await readAdminOAuthSessionCookie(
+      readCookie(headers.get("cookie"), ADMIN_OAUTH_SESSION_COOKIE),
+    )
+  }
+
   const session = await auth.api.getSession({ headers })
   if (!session?.user?.id) {
     return null
@@ -21,6 +32,14 @@ async function resolveFromHeaders(headers: Headers): Promise<Principal | null> {
   }
 
   return { id: user.id, role: user.role }
+}
+
+function readCookie(cookieHeader: string | null, name: string) {
+  return cookieHeader
+    ?.split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`))
+    ?.slice(name.length + 1)
 }
 
 export async function resolvePrincipalFromRequest(

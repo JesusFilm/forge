@@ -102,6 +102,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-098](platform/feat-098-admin-cms-expansion-loop.md)                        | Admin CMS Expansion Loop                                | tataihono | P0       | 2026-04-14 | 14   | 2026-04-27 | complete    |
 | [feat-104](platform/feat-104-admin-railway-provisioning.md)                      | Provision apps/admin on Railway                         | nisal     | P0       | 2026-04-20 | 1    | 2026-04-20 | in-progress |
 | [feat-105](platform/feat-105-admin-sso-firebase-auth-wiring.md)                  | Wire SSO + Firebase fallback auth on @forge/admin       | tataihono | P0       | 2026-04-21 | 3    | 2026-04-23 | blocked     |
+| [feat-121](platform/feat-121-jesus-film-auth-platform.md)                        | Jesus Film Auth Platform                                | tataihono | P0       | 2026-05-11 | 14   | 2026-05-24 | in-progress |
 | [feat-104](platform/feat-104-admin-core-consumer-migration-plan.md)              | Admin Core Consumer Migration Plan                      | tataihono | P0       | 2026-04-22 | 2    | 2026-04-23 | in-progress |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md) | CMS local PostgreSQL I/O concurrency compatibility      | tataihono | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                        | Scaffolding Support for Urim                            | tataihono | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |

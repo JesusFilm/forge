@@ -44,6 +44,11 @@ export const env = createEnv({
     // Comma-separated origins allowed to call the auth API cross-origin.
     // e.g. "https://web.jesusfilm.org,https://manager.jesusfilm.org"
     AUTH_TRUSTED_ORIGINS: z.string().min(1).optional(),
+    ADMIN_AUTH_MODE: z.enum(["embedded", "oauth"]).default("embedded"),
+    AUTH_ISSUER_URL: z.string().url().optional(),
+    AUTH_ADMIN_CLIENT_ID: z.string().min(1).optional(),
+    AUTH_ADMIN_CLIENT_SECRET: z.string().min(1).optional(),
+    ADMIN_BASE_URL: z.string().url().optional(),
     FACEBOOK_CLIENT_ID: z.string().min(1).optional(),
     FACEBOOK_CLIENT_SECRET: z.string().min(1).optional(),
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
@@ -160,6 +165,13 @@ export const env = createEnv({
     AUTH_COOKIE_DOMAIN: emptyToUndefined(process.env.AUTH_COOKIE_DOMAIN),
     AUTH_COOKIE_PREFIX: emptyToUndefined(process.env.AUTH_COOKIE_PREFIX),
     AUTH_TRUSTED_ORIGINS: emptyToUndefined(process.env.AUTH_TRUSTED_ORIGINS),
+    ADMIN_AUTH_MODE: emptyToUndefined(process.env.ADMIN_AUTH_MODE),
+    AUTH_ISSUER_URL: emptyToUndefined(process.env.AUTH_ISSUER_URL),
+    AUTH_ADMIN_CLIENT_ID: emptyToUndefined(process.env.AUTH_ADMIN_CLIENT_ID),
+    AUTH_ADMIN_CLIENT_SECRET: emptyToUndefined(
+      process.env.AUTH_ADMIN_CLIENT_SECRET,
+    ),
+    ADMIN_BASE_URL: emptyToUndefined(process.env.ADMIN_BASE_URL),
     FACEBOOK_CLIENT_ID: emptyToUndefined(process.env.FACEBOOK_CLIENT_ID),
     FACEBOOK_CLIENT_SECRET: emptyToUndefined(
       process.env.FACEBOOK_CLIENT_SECRET,
