@@ -1,7 +1,7 @@
 ---
 title: "feat(web): Series Details Page"
 type: feat
-status: active
+status: completed
 date: 2026-05-12
 origin: docs/brainstorms/2026-05-12-series-details-page-requirements.md
 ---
@@ -89,7 +89,7 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 
 - `docs/solutions/design-patterns/mux-player-custom-react-chrome-pattern-20260430.md` — Lift player to React state (not just `useRef`) for subscription rebinding on remount. Render-phase spinner reset on playback-ID change (not in `useEffect`). Sticky `aspect-video` + `useLayoutEffect` for the ResizeObserver. `SeriesHero` reuses `HeroPlayer` untouched, so these contracts ride along for free.
 - `docs/solutions/best-practices/nextjs-route-shape-migration-cross-cutting-contract-drift-20260430.md` — `ShareModal` builds canonical URLs from props. Verified the existing `${origin}/watch/${slug}/${locale}` form is correct for both video and series pages under `basePath: "/watch"`; no `pathPrefix` widening required. Locale must drive variant selection, not just appear in the cache key — applies if/when the series page ever fetches variant-specific data (not in v1).
-- `docs/solutions/best-practices/graphql-callsite-inventory-dual-pattern-sweep-20260507.md` — Before authoring any new admin operation, sweep both `rg "adminGraphql\("` AND `rg "= gql\`"` against `apps/web/src` to inventory existing fields. This plan does NOT add a new fragment (reuses `WatchVideo`), so the sweep is a verification-only step in U1.
+- `docs/solutions/best-practices/graphql-callsite-inventory-dual-pattern-sweep-20260507.md` — Before authoring any new admin operation, sweep both `rg "adminGraphql\("` AND `rg "= gql\`"`against`apps/web/src`to inventory existing fields. This plan does NOT add a new fragment (reuses`WatchVideo`), so the sweep is a verification-only step in U1.
 - `docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md` — Verified: this plan introduces no new env vars; `ADMIN_GRAPHQL_URL` is already provisioned per the Unit-5 PR. Carry the discipline forward only if future iterations add a feature flag.
 - `docs/solutions/logic-errors/strapi-graphql-pagination-cap-wrong-language-watch-page-20260504.md` — Strapi-side 10-row cap on list relations does not apply here (admin GraphQL via Pothos). The existing `WatchVideo` fragment already uses `children(pagination: { limit: -1 })` defensively against Strapi reads, so admin-Pothos behavior is also covered against future re-routing.
 
@@ -129,13 +129,13 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 - **Exact prop signature for `SeriesHero`**: Likely `{ series: WatchVideoRecord, locale: string }` mirroring `HeroPlayer`'s `block` prop shape, but the exact type lives next to the component once we touch the file.
 - **Whether `resolveSeriesBySlug` should also short-circuit when `series.children.length === 0`**: A `COLLECTION` with no children is editorially broken. Either render the page anyway (R3-style empty state) or 404 it. Pick during U1 based on what `ExperienceEmpty` looks like for series.
 - **Where the floating search bar + JFP logo are rendered today** (layout vs. WatchPageClient): If layout-level (likely per the prompt's framing), `SeriesPageClient` inherits them for free. If component-level, U4 must include them explicitly. One `grep` at the start of U4 resolves this.
-- *(Resolved during planning — pluralization rule now lives in R8: `N === 1 → "SERIES · 1 EPISODE"`, otherwise `"SERIES · {N} EPISODES"`.)*
+- _(Resolved during planning — pluralization rule now lives in R8: `N === 1 → "SERIES · 1 EPISODE"`, otherwise `"SERIES · {N} EPISODES"`.)_
 
 ### Deferred from Document Review (2026-05-12)
 
-- **Static-hero overlay legibility on arbitrary posters** *(design-lens, U2)*: R7 specifies the title overlay rides the body-section scroll in both modes via the overlay anchor, but does not specify a gradient scrim, drop shadow, or contrast treatment for the static-image branch. The video-page overlay assumes a dark video frame; a light or saturated poster could make white title text unreadable. Decide before U2 lands: keep the overlay-anchor pattern as-is and accept the poster-contrast risk, or add a scrim layer behind the title in static mode (mirrors `VideoCard`'s `bg-gradient-to-t from-black via-black/25 to-transparent`).
-- **Series with zero children — visual fallback** *(design-lens, U1/Risks)*: A `COLLECTION` with `children.length === 0` is editorially valid (mid-population) but produces an empty grid that may look broken. Decide before U4 lands: render `ExperienceEmpty`, render the hero + metadata with an empty grid (low-content acceptable), or 404. Tie the decision to what admin data actually looks like for series records mid-population — check during U1's pre-implementation gate.
-- **Episode card hover state in a persistent series grid** *(design-lens, U3)*: `VideoCard`'s existing hover style (`hover:scale-[1.02] hover:shadow-2xl`) was designed for a transient search-results list, not a persistent episode grid. Decide before U3 lands: inherit unchanged, suppress via a prop on `VideoCard` (would widen its API), or accept a small custom variant for the series page (would violate R16). Defer until the implementer can see both contexts side-by-side.
+- **Static-hero overlay legibility on arbitrary posters** _(design-lens, U2)_: R7 specifies the title overlay rides the body-section scroll in both modes via the overlay anchor, but does not specify a gradient scrim, drop shadow, or contrast treatment for the static-image branch. The video-page overlay assumes a dark video frame; a light or saturated poster could make white title text unreadable. Decide before U2 lands: keep the overlay-anchor pattern as-is and accept the poster-contrast risk, or add a scrim layer behind the title in static mode (mirrors `VideoCard`'s `bg-gradient-to-t from-black via-black/25 to-transparent`).
+- **Series with zero children — visual fallback** _(design-lens, U1/Risks)_: A `COLLECTION` with `children.length === 0` is editorially valid (mid-population) but produces an empty grid that may look broken. Decide before U4 lands: render `ExperienceEmpty`, render the hero + metadata with an empty grid (low-content acceptable), or 404. Tie the decision to what admin data actually looks like for series records mid-population — check during U1's pre-implementation gate.
+- **Episode card hover state in a persistent series grid** _(design-lens, U3)_: `VideoCard`'s existing hover style (`hover:scale-[1.02] hover:shadow-2xl`) was designed for a transient search-results list, not a persistent episode grid. Decide before U3 lands: inherit unchanged, suppress via a prop on `VideoCard` (would widen its API), or accept a small custom variant for the series page (would violate R16). Defer until the implementer can see both contexts side-by-side.
 
 ---
 
@@ -150,10 +150,12 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 **Dependencies:** None.
 
 **Files:**
+
 - Modify: `apps/web/src/lib/content.ts`
 - Test: `apps/web/src/lib/__tests__/content-series.test.ts` (new) — or extend `content-watch-merge.test.ts` if the existing test file owns content.ts coverage.
 
 **Approach:**
+
 - **Pre-implementation gate (hard prerequisite — runs before any code is written):** query the admin GraphQL endpoint for a known series slug (the StoryClubs equivalent in admin) and record the actual `label` value in this section of the plan body. The plan currently assumes `COLLECTION`; if admin data returns `SERIES` (or `null`, with `children.length > 0` as the actual discriminator), update R2, R5, and the U5 branch condition to match before writing the resolver. Discriminator must be locked in writing before U1 implementation begins.
 - Extract a shared `cache()`-wrapped inner fetch (e.g., `getWatchVideoBySlugCached`) consumed by BOTH `resolveWatchVideoBySlug` and `resolveSeriesBySlug` so the COLLECTION-without-trailer path makes one admin round-trip, not two. The existing inner `tryResolveWatchVideoBySlug` (content.ts:965) becomes a thin wrapper that adds the `playableVariants.length` guard on top of the shared cache; `resolveSeriesBySlug` is the parallel wrapper that skips that guard and filters on `video.label === "COLLECTION"`.
 - Mirror `tryResolveWatchVideoBySlug` (line 965 — the inner uncached helper wrapped by the public `resolveWatchVideoBySlug` at line 1025) but skip the `!playableVariants.length` rejection at line 983.
@@ -164,9 +166,11 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 - Before writing the resolver, run the dual-pattern sweep from `docs/solutions/best-practices/graphql-callsite-inventory-dual-pattern-sweep-20260507.md`: `rg "adminGraphql\(" apps/web/src` AND `rg "= gql\\\`" apps/web/src` to verify no fragment widening is needed. The plan asserts none is — the sweep is a safety check, not exploratory.
 
 **Patterns to follow:**
+
 - `resolveWatchVideoBySlug` for the resolver shape, locale handling, error envelope (`isWatchVideoBySlugMissingError`), and Apollo client construction.
 
 **Test scenarios:**
+
 - Happy path: given a slug for a `COLLECTION` record with `children.length > 0` and at least one variant with `muxVideo.playbackId`, the resolver returns the record with `selectedVariant` populated to that variant.
 - Happy path: given a slug for a `COLLECTION` record with `children.length > 0` and NO variants with `muxVideo.playbackId`, the resolver returns the record with `selectedVariant === null` (this is the case `resolveWatchVideoBySlug` currently filters out — proves AE2's data path).
 - Edge case: given a slug for a `COLLECTION` record with `children.length === 0`, the resolver returns a structurally valid record so the page layer can decide whether to render an empty grid or 404 (resolution deferred to U4/U5).
@@ -174,6 +178,7 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 - Error path: given an Apollo network error, the resolver propagates the error in the same shape `resolveWatchVideoBySlug` produces, so the page-level error UI matches.
 
 **Verification:**
+
 - New resolver exports cleanly from `content.ts` and is callable from `page.tsx`.
 - `pnpm typecheck` clean.
 - New unit tests pass and cover all five scenarios above.
@@ -189,10 +194,12 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 **Dependencies:** None.
 
 **Files:**
+
 - Create: `apps/web/src/components/watch/SeriesHero.tsx`
 - Create: `apps/web/src/components/watch/__tests__/SeriesHero.test.tsx`
 
 **Approach:**
+
 - Props: `{ series: WatchVideoRecord, selectedVariant: WatchVariant | null, locale: string, onPlayerReady?: (player) => void }`.
 - Branch: `if (selectedVariant && (selectedVariant.muxVideo?.playbackId || selectedVariant.hls))` → mount `<HeroPlayer block={{ kind: "HeroPlayer", video: series, variant: selectedVariant }} onPlayerReady={…} />` with the existing `WatchHeroPlayerBlock` shape.
 - Otherwise → render a `sticky aspect-video w-full overflow-hidden bg-black` wrapper containing `<Image fill src={resolvePosterUrl(series.images?.[0], null)} alt="" priority className="object-cover" />` plus the same zero-height `<div ref={setOverlayAnchor} data-testid="hero-player-overlay-anchor" className="relative z-10 h-0 w-full" />` div the video page uses.
@@ -200,16 +207,19 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 - **Alt text rationale (accessibility):** `alt=""` on the static-hero Image is intentional — the series title is rendered in the overlay immediately following the image in DOM order (per R7), making the image decorative for screen readers. Add an inline code comment near the `<Image>` capturing this reasoning so any future refactor that relocates the title overlay is forced to reconsider the alt value.
 
 **Patterns to follow:**
+
 - `apps/web/src/components/watch/HeroPlayer.tsx` lines 200-330 for the sticky wrapper + overlayAnchor pattern.
 - `apps/web/src/lib/url.ts` `resolvePosterUrl` for the thumbnail URL chain.
 
 **Test scenarios:**
+
 - **Covers AE1.** Happy path (trailer mode): given a `selectedVariant` with `muxVideo.playbackId`, the component renders `<HeroPlayer />` and a `data-testid="hero-player-wrapper"` is present.
 - **Covers AE2.** Happy path (static mode): given `selectedVariant === null` (or a variant with neither `muxVideo.playbackId` nor `hls`), the component renders `<img>` from `series.images[0]` and does NOT mount any `<mux-player>` element. The `data-testid="hero-player-overlay-anchor"` zero-height div is still present.
 - Edge case: given a series with no `images` array, the component renders a black background placeholder (no broken `<img>` src).
 - Edge case: given `selectedVariant` with `hls` but no `muxVideo.playbackId`, the component falls through to HeroPlayer (which handles the `hls` src fallback path).
 
 **Verification:**
+
 - `pnpm typecheck` clean.
 - Unit tests pass for both trailer-mode and static-mode branches.
 
@@ -224,22 +234,26 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 **Dependencies:** None (parallel with U2).
 
 **Files:**
+
 - Create: `apps/web/src/components/watch/SeriesEpisodesGrid.tsx`
 - Create: `apps/web/src/components/watch/__tests__/SeriesEpisodesGrid.test.tsx`
 
 **Approach:**
+
 - Props: `{ episodes: NonNullable<WatchVideoRecord["children"]>, locale: string }`.
 - Inline (unexported) `toSearchResult(child)` mapper: `id = child.documentId`, `slug = child.slug`, `title = child.title`, `imageUrl = child.images?.[0]?.mobileCinematicHigh ?? child.images?.[0]?.thumbnail ?? null`, `type = "video"`, `snippet = null`, `startSeconds = null`, `playbackId = null`, `score = 0`.
 - Wrapper className: `grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4` (verbatim from `SearchOverlay.tsx:329`).
-- Custom `hrefBuilder={(result) => \`/${result.slug}/${locale}\` as Route}` passed to each `<VideoCard>`.
+- Custom `hrefBuilder={(result) => \`/${result.slug}/${locale}\` as Route}`passed to each`<VideoCard>`.
 - No animations (drop the `animate-card-enter`/`animate-card-exit` modifiers — those are search-result-specific).
 
 **Patterns to follow:**
+
 - `apps/web/src/components/SearchOverlay.tsx` line 329 for the grid wrapper className.
 - `apps/web/src/components/search/VideoCard.tsx` for the `hrefBuilder` signature.
 - `apps/web/src/lib/search.ts` lines 37-39 for the `SearchResult` shape the adapter must produce.
 
 **Test scenarios:**
+
 - Happy path: given a series with 3 episode children, the component renders 3 `<a>` elements with `data-testid` patterns matching `VideoCard`'s anchor.
 - **Covers AE5.** Happy path: given a child with `slug === "storyclubs-birth-of-jesus"` and the page locale is `en`, the rendered anchor's `href` attribute is `/storyclubs-birth-of-jesus/en`.
 - Edge case: given an empty children array, the component renders the grid wrapper but no cards. No layout shift, no error.
@@ -247,6 +261,7 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 - Integration: given a child whose `documentId` is the same as another child's `slug` (collision), each `VideoCard` still uses `documentId` as React key (no duplicate-key warnings).
 
 **Verification:**
+
 - `pnpm typecheck` clean.
 - Unit tests pass for all five scenarios.
 - Wrapper className matches the search-results grid byte-for-byte (regression guard against future divergence).
@@ -262,10 +277,12 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 **Dependencies:** U2 (`SeriesHero`), U3 (`SeriesEpisodesGrid`).
 
 **Files:**
+
 - Create: `apps/web/src/components/watch/SeriesPageClient.tsx`
 - Create: `apps/web/src/components/watch/__tests__/SeriesPageClient.test.tsx`
 
 **Approach:**
+
 - Before writing: grep `apps/web/src/app/` for where `FloatingSearchProvider` / `SearchOverlay` / JFP logo are mounted. If they live in the root layout, `SeriesPageClient` inherits them automatically — no work. If they live inside `WatchPageClient`, `SeriesPageClient` must render the same wrappers. Resolution at the top of this unit (10-minute discovery, not a rewrite).
 - Props: `{ series: WatchVideoRecord, selectedVariant: WatchVariant | null, locale: string }`.
 - State: `[modalState, setModalState] = useState<"none" | "share">("none")`. Drop `WatchModalState`'s `"download"` and `"language"` arms.
@@ -279,12 +296,14 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 - **Focus management (accessibility):** confirm the existing `ShareModal` implements a focus trap (Radix Dialog or manual). If yes, note it in the U4 test scenarios and rely on existing behavior. If no, add focus-on-open (first focusable element inside the modal) and focus-return-on-close (back to the Share pill on `setModalState("none")`) as explicit implementation steps inside `SeriesPageClient`.
 
 **Patterns to follow:**
+
 - `apps/web/src/components/watch/WatchPageClient.tsx` for the `<main>` shape, the modal-state-machine pattern, and the `ShareModal` integration.
 - `apps/web/src/components/watch/WatchBody.tsx` for the title H1 + description paragraph styling.
 - `apps/web/src/components/watch/HeroPlayer.tsx` lines 289-294 for the label styling (`text-sm font-semibold tracking-wider text-amber-400 uppercase`).
 - `apps/web/src/components/watch/BibleQuotesSection.tsx` lines 170-178 for the Share pill (`Button variant="pill"` + `ExternalLink` icon).
 
 **Test scenarios:**
+
 - **Covers AE4.** Happy path: given a series with 13 children, the rendered `data-testid="series-page-client"` element contains text matching `SERIES · 13 EPISODES`.
 - Pluralization (R8 singular): given a series with exactly 1 child, the rendered label reads `SERIES · 1 EPISODE`.
 - Happy path: given the user clicks the `data-testid="series-page-share"` (or equivalent) pill, the modal opens (`ShareModal` becomes visible with `data-testid="watch-share-modal"` or its existing testid).
@@ -295,6 +314,7 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 - Integration: given a series WITH a trailer, `SeriesHero` mounts `HeroPlayer`; given a series without, `SeriesHero` mounts the static `<img>`. (One representative test per branch is enough — full hero coverage lives in U2.)
 
 **Verification:**
+
 - `pnpm typecheck` clean.
 - All test scenarios pass.
 - A manual visual check at a known series slug (whatever slug ends up being the StoryClubs equivalent in admin) shows the page rendering with the correct hero, label, title, share pill, description, and episode grid.
@@ -310,12 +330,14 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 **Dependencies:** U1 (`resolveSeriesBySlug`), U4 (`SeriesPageClient`).
 
 **Files:**
+
 - Modify: `apps/web/src/app/[slug]/[locale]/page.tsx`
 - Modify: `apps/web/src/lib/experience-metadata.ts`
 - Test: `apps/web/src/app/[slug]/[locale]/__tests__/page-routing.test.tsx` (new, OR extend any existing page-level test if present) — verifies the routing branch picks `SeriesPageClient` for `label === "COLLECTION"` and `WatchPageClient` otherwise.
 - Test: `apps/web/src/lib/__tests__/experience-metadata.test.ts` (extend if present, new otherwise) — verifies `generateSeriesMetadata` populates from the series record.
 
 **Approach:**
+
 - In `page.tsx` after the existing `resolveWatchVideoBySlug` call (lines 40-55):
   - If `watchVideo != null` AND `watchVideo.video.label === "COLLECTION"`: render `<SeriesPageClient series={watchVideo.video} selectedVariant={watchVideo.selectedVariant} locale={locale} />`. Return.
   - Else if `watchVideo != null`: continue with the existing `WatchPageClient` rendering. (Unchanged.)
@@ -325,10 +347,12 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 - `generateSeriesMetadata` mirrors `getWatchPageMetadata` but reads title/description/poster directly from the series `WatchVideoRecord`. No Strapi experience lookup. The OG image uses `resolvePosterUrl(series.images?.[0], null)`.
 
 **Patterns to follow:**
+
 - The existing branch order in `page.tsx` lines 40-65 (video-by-slug → experience/template fallback).
 - `apps/web/src/lib/experience-metadata.ts` `getWatchPageMetadata` for the metadata helper shape (title, description, openGraph.images, openGraph.type, canonical URL construction).
 
 **Test scenarios:**
+
 - **Covers AE5 (route correctness).** Happy path: given a slug for a `COLLECTION` record, the page renders the `data-testid="series-page-client"` element and NOT `data-testid="watch-page-client"`.
 - Happy path: given a slug for a non-`COLLECTION` video, the page renders `data-testid="watch-page-client"` (regression guard — verifies the branch doesn't break the existing video page).
 - Happy path (series-without-trailer): given a slug that `resolveWatchVideoBySlug` rejects (no playable variant) but `resolveSeriesBySlug` accepts as a `COLLECTION`, the page falls through and renders `SeriesPageClient` with `selectedVariant={null}`.
@@ -337,6 +361,7 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 - Metadata edge case: given a series record with null description, `generateSeriesMetadata` returns metadata with a sensible fallback (empty string or omitted description, matching how `getWatchPageMetadata` handles missing fields).
 
 **Verification:**
+
 - `pnpm typecheck` clean.
 - `pnpm test` passes for the route-branching test + the metadata test.
 - Manual browser smoke: visiting a known `COLLECTION` slug renders the series page; visiting a known video slug renders the video page (unchanged); visiting an experience slug renders the experience page (unchanged).
@@ -356,14 +381,14 @@ Full background, requirements, and acceptance criteria live in the [origin requi
 
 ## Risks & Dependencies
 
-| Risk | Mitigation |
-|------|------------|
-| *(Resolved during planning — hoisted into U1 as a pre-implementation gate that locks the discriminator before code is written.)* | |
-| Floating search + JFP logo are inside `WatchPageClient` rather than the root layout, requiring `SeriesPageClient` to compose them too. | U4 starts with a grep step to confirm placement. If layout-level → free reuse. If component-level → add the same wrappers to `SeriesPageClient`. Either way contained to U4. |
+| Risk                                                                                                                                                                 | Mitigation                                                                                                                                                                                                                                                     |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| _(Resolved during planning — hoisted into U1 as a pre-implementation gate that locks the discriminator before code is written.)_                                     |                                                                                                                                                                                                                                                                |
+| Floating search + JFP logo are inside `WatchPageClient` rather than the root layout, requiring `SeriesPageClient` to compose them too.                               | U4 starts with a grep step to confirm placement. If layout-level → free reuse. If component-level → add the same wrappers to `SeriesPageClient`. Either way contained to U4.                                                                                   |
 | `HeroPlayer`'s sticky-top math relies on the wrapper's measured `heroHeight`, and the static-mode branch in `SeriesHero` would need the same measurement for parity. | U2 mirrors the sticky-top pattern from `HeroPlayer.tsx` (the `useLayoutEffect` + `ResizeObserver` + `min(0px, calc(100svh - heroHeight))` style). Static mode uses the same measurement so the title overlay's scroll behavior matches the video page exactly. |
-| Episode-card adapter loses fields that `VideoCard` quietly depends on (e.g., a future addition to `SearchResult` becomes required), regressing the grid. | TypeScript catches drift at compile time: the unexported, co-located adapter fails typecheck if its return value no longer satisfies `SearchResult`. No runtime "renders-without-warnings" assertion is needed — typecheck is the cheaper, sharper signal. |
-| `generateSeriesMetadata` drifts from `getWatchPageMetadata` over time (e.g., the OG image format diverges, breaking series share previews). | Both helpers live in the same file (`experience-metadata.ts`). U5 leaves a code comment cross-referencing the two so future edits naturally consider both. |
-| Series records with no children render an empty grid that looks broken. | Deferred to U4 implementation — picks between rendering the page with an empty grid (acceptable, low-content) or rendering `ExperienceEmpty` instead. Pick based on what admin data actually looks like for series records mid-population. |
+| Episode-card adapter loses fields that `VideoCard` quietly depends on (e.g., a future addition to `SearchResult` becomes required), regressing the grid.             | TypeScript catches drift at compile time: the unexported, co-located adapter fails typecheck if its return value no longer satisfies `SearchResult`. No runtime "renders-without-warnings" assertion is needed — typecheck is the cheaper, sharper signal.     |
+| `generateSeriesMetadata` drifts from `getWatchPageMetadata` over time (e.g., the OG image format diverges, breaking series share previews).                          | Both helpers live in the same file (`experience-metadata.ts`). U5 leaves a code comment cross-referencing the two so future edits naturally consider both.                                                                                                     |
+| Series records with no children render an empty grid that looks broken.                                                                                              | Deferred to U4 implementation — picks between rendering the page with an empty grid (acceptable, low-content) or rendering `ExperienceEmpty` instead. Pick based on what admin data actually looks like for series records mid-population.                     |
 
 ---
 
