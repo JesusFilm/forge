@@ -259,7 +259,7 @@ export function SearchOverlay() {
                       // the button.
                       <Icon
                         aria-hidden="true"
-                        className="pointer-events-none absolute right-3 top-3 h-16 w-16 opacity-30 drop-shadow-lg sm:right-4 sm:top-4 sm:h-24 sm:w-24"
+                        className="pointer-events-none absolute right-1 top-1 h-16 w-16 opacity-30 drop-shadow-lg sm:right-2 sm:top-2 sm:h-24 sm:w-24"
                       />
                     ) : null}
                     <span
