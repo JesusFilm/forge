@@ -31,6 +31,24 @@
  * (`//host/path`) — `new URL()` requires an absolute URL when called with
  * a single argument and throws otherwise; the throw is caught here.
  */
+// Shared allowlist of media file extensions the download proxy may serve
+// AND the client may stamp on the saved file's name. Keep these in sync —
+// a server-allowed extension that isn't in this set will be silently
+// renamed to `.mp4` by the client (e.g., a .wav download would land as
+// `<slug>-highest.mp4`).
+export const SAFE_DOWNLOAD_EXTENSIONS: ReadonlySet<string> = new Set([
+  "mp4",
+  "m4v",
+  "mov",
+  "webm",
+  "mkv",
+  "mp3",
+  "m4a",
+  "aac",
+  "wav",
+  "ogg",
+])
+
 export function isAllowedDownloadOrigin(url: string): boolean {
   let parsed: URL
   try {
