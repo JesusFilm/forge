@@ -366,7 +366,7 @@ describe("BibleQuotesSection — Unsplash image + verse fetch", () => {
     expect(fetchMock).toHaveBeenCalled()
     const url = String(fetchMock.mock.calls[0]?.[0] ?? "")
     expect(url).toContain(
-      "https://cdn.jsdelivr.net/gh/wldeh/bible-api/bibles/en-web/books/psalms/chapters/139/verses/13.json",
+      "https://cdn.jsdelivr.net/gh/wldeh/bible-api/bibles/en-webbe/books/psalms/chapters/139/verses/13.json",
     )
     const verse = container.querySelector(
       '[data-testid="watch-bible-quotes-verse"]',
