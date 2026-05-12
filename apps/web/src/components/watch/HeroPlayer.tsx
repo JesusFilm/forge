@@ -107,6 +107,12 @@ export function HeroPlayer({
     return () => observer.disconnect()
   }, [])
 
+  // Tracks whether the current paused state was caused by THIS scroll
+  // listener, so the auto-resume on scroll-back only fires when WE
+  // paused. If the user paused manually (chrome button, keyboard) and
+  // then scrolled away, scrolling back must not override their intent.
+  const pausedByScrollRef = useRef(false)
+
   // Pause the player when the user scrolls past the hero, resume when
   // they scroll back up to it. The wrapper is sticky and its bounding
   // rect never actually leaves the viewport — the body section slides
@@ -114,9 +120,10 @@ export function HeroPlayer({
   // `window.scrollY` against the measured hero height: once the user
   // has scrolled by at least one hero-height the body has fully covered
   // the player and we pause; once they scroll back the player is the
-  // main element on screen again and we resume. IntersectionObserver
-  // doesn't work here because a sticky element keeps reporting "in
-  // viewport" even when it's been visually painted over.
+  // main element on screen again and we resume — but only if WE were
+  // the one who paused. IntersectionObserver doesn't work here because
+  // a sticky element keeps reporting "in viewport" even when it's been
+  // visually painted over.
   //
   // Applies symmetrically in BOTH states: the pre-reveal muted-loop
   // preview AND post-reveal committed playback after "Play with Sound"
@@ -133,9 +140,17 @@ export function HeroPlayer({
       if (covered === prevCovered) return
       prevCovered = covered
       if (covered) {
-        if (!player.paused) player.pause()
+        // If the player is already paused (user clicked pause before
+        // scrolling), leave it alone — and don't claim the scroll-pause
+        // flag, so the next scroll-back doesn't override their intent.
+        if (player.paused) return
+        pausedByScrollRef.current = true
+        player.pause()
         return
       }
+      // Scroll-back: only auto-resume if WE paused via this listener.
+      if (!pausedByScrollRef.current) return
+      pausedByScrollRef.current = false
       if (!player.paused) return
       const result = player.play()
       if (result && typeof result.then === "function") {

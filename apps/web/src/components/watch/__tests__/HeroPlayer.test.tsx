@@ -861,6 +861,30 @@ describe("HeroPlayer — pause when scrolled past the hero", () => {
     }
   })
 
+  it("does NOT auto-resume on scroll-back when the user manually paused before scrolling away", async () => {
+    const ro = installResizeObserverStub()
+    try {
+      await revealChrome()
+      await ro.setHeight(1072)
+      // Simulate a user-initiated pause (chrome button / keyboard) BEFORE
+      // any scroll happens. The scroll listener must not claim this pause
+      // and must not auto-resume on scroll-back.
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = true
+        mockPlayerRef.current.pause.mockClear()
+        mockPlayerRef.current.play.mockClear()
+      }
+      await scrollTo(1500)
+      // We did not call pause — player was already paused.
+      expect(mockPlayerRef.current?.pause).not.toHaveBeenCalled()
+      await scrollTo(0)
+      // And we must NOT auto-resume because we never claimed the pause.
+      expect(mockPlayerRef.current?.play).not.toHaveBeenCalled()
+    } finally {
+      ro.restore()
+    }
+  })
+
   it("does not pause when the scroll is still within the hero (covered transition not reached)", async () => {
     const ro = installResizeObserverStub()
     try {
