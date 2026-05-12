@@ -903,6 +903,43 @@ describe("HeroPlayer — pause when scrolled past the hero", () => {
       ro.restore()
     }
   })
+
+  it("pauses at the 60% obscured threshold, not at 100%", async () => {
+    // Pin viewport to a known size so the threshold math is deterministic.
+    // With heroHeight=1000 and viewport=800, visibleVideoHeight=800; the
+    // 60% threshold means body must cover >=480px of the 800px visible
+    // video, i.e. scrollY >= 1000 - (0.4 * 800) = 680.
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", {
+      value: 800,
+      configurable: true,
+    })
+    const ro = installResizeObserverStub()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+      await ro.setHeight(1000)
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = false
+        mockPlayerRef.current.pause.mockClear()
+      }
+      // 50% obscured (scrollY=600 → unobscured=400, fraction=0.5).
+      // Should NOT pause.
+      await scrollTo(600)
+      expect(mockPlayerRef.current?.pause).not.toHaveBeenCalled()
+      // 70% obscured (scrollY=760 → unobscured=240, fraction=0.7).
+      // Should pause.
+      await scrollTo(760)
+      expect(mockPlayerRef.current?.pause).toHaveBeenCalledTimes(1)
+    } finally {
+      ro.restore()
+      Object.defineProperty(window, "innerHeight", {
+        value: originalInnerHeight,
+        configurable: true,
+      })
+    }
+  })
 })
 
 describe("HeroPlayer — sticky-hero / portal layout", () => {
