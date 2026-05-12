@@ -176,6 +176,23 @@ export const env = createEnv({
     // CONSUMER_BEARER. Symmetric name on both sides eliminates the
     // KEY-vs-KEYS copy-paste error class.
     WEB_ADMIN_API_KEYS: z.string().optional(),
+    // U9 (plan-003 PR-B) — emergency-only route disable.
+    //
+    // CSV of route paths to disable; matching slugs serve
+    // <MaintenanceFallback> instead of normal rendering. Read at module
+    // scope. Primary fast rollback layer (seconds) per cutover runbook:
+    //   docs/admin-core-migration/cutover-runbook.md — "Layer 1".
+    //
+    // Format: comma-separated route paths (e.g. "/some-slug,/another-slug").
+    // Whitespace around each entry is trimmed. Empty entries are skipped.
+    // Unknown / typo'd entries warn-and-fall-through to normal rendering —
+    // a typo'd disable entry does NOT brick the route.
+    //
+    // EMERGENCY ONLY. This is NOT a general traffic-shaping mechanism. Do
+    // not leave a slug in this list longer than a debug session; longer
+    // disables route through the canonical-plan U7 no-redeploy mechanism
+    // (TODO(U7) per runbook).
+    FORGE_DISABLE_WATCH_ROUTES: z.string().optional(),
   },
   client: {
     NEXT_PUBLIC_GRAPHQL_URL: z.url(),
@@ -228,6 +245,7 @@ export const env = createEnv({
     FORGE_PARITY_DEBUG: process.env.FORGE_PARITY_DEBUG,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
+    FORGE_DISABLE_WATCH_ROUTES: process.env.FORGE_DISABLE_WATCH_ROUTES,
     NEXT_PUBLIC_GRAPHQL_URL: process.env.NEXT_PUBLIC_GRAPHQL_URL,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
