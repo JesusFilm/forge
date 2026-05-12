@@ -1,13 +1,12 @@
 import { print } from "graphql"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { queryMock, adminQueryMock, modeRef, runDualReadComparisonMock } =
-  vi.hoisted(() => ({
-    queryMock: vi.fn(),
-    adminQueryMock: vi.fn(),
-    modeRef: { current: "strapi" as "strapi" | "dual-read" },
-    runDualReadComparisonMock: vi.fn(),
-  }))
+const { queryMock, adminQueryMock, modeRef, envRef } = vi.hoisted(() => ({
+  queryMock: vi.fn(),
+  adminQueryMock: vi.fn(),
+  modeRef: { current: "strapi" as "strapi" | "admin" },
+  envRef: { WEB_ADMIN_API_KEYS: "key-1,key-2" as string | undefined },
+}))
 
 vi.mock("next/cache", () => ({
   unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
@@ -21,6 +20,10 @@ vi.mock("react", async () => {
     cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
   }
 })
+
+vi.mock("@/env", () => ({
+  env: envRef,
+}))
 
 vi.mock("@/lib/client", () => ({
   default: {
@@ -38,19 +41,15 @@ vi.mock("@/lib/content-api-mode", () => ({
   getContentApiMode: () => modeRef.current,
 }))
 
-vi.mock("@/lib/parity-bridge", () => ({
-  runDualReadComparison: runDualReadComparisonMock,
-}))
-
 describe("resolveWatchPage", () => {
   beforeEach(() => {
     modeRef.current = "strapi"
+    envRef.WEB_ADMIN_API_KEYS = "key-1,key-2"
   })
 
   afterEach(() => {
     queryMock.mockReset()
     adminQueryMock.mockReset()
-    runDualReadComparisonMock.mockReset()
     vi.resetModules()
   })
 
@@ -242,22 +241,23 @@ describe("resolveWatchPage", () => {
 })
 
 // ---------------------------------------------------------------------------
-// U5 — fetchSlugExperience canary mode tests
+// U6 (plan-003 PR-B) — fetchSlugExperience direct cutover branch
 //
-// These exercise the dual-read branching introduced in U3. The canary
-// surface is the slug-page Experience fetcher; resolveWatchPage uses it
-// for the slug-equality case but NOT for the homepage path.
+// The branch table is now 2-case: `strapi` (default, unchanged) and
+// `admin` (direct cutover). Admin failures throw a typed
+// `WatchPageAdminError("NOT_FOUND" | "UNAVAILABLE")` that the cache
+// wrapper re-throws so the segment error boundary can fire.
 // ---------------------------------------------------------------------------
 
-describe("fetchSlugExperience (U5 canary)", () => {
+describe("fetchSlugExperience (U6 admin cutover)", () => {
   beforeEach(() => {
     modeRef.current = "strapi"
+    envRef.WEB_ADMIN_API_KEYS = "key-1,key-2"
   })
 
   afterEach(() => {
     queryMock.mockReset()
     adminQueryMock.mockReset()
-    runDualReadComparisonMock.mockReset()
     vi.resetModules()
   })
 
@@ -285,6 +285,7 @@ describe("fetchSlugExperience (U5 canary)", () => {
           slug: "christmas",
           locale: "en",
           title,
+          isTemplate: false,
           metaDescription: null,
           ogImageUrl: null,
           blocks: [],
@@ -293,9 +294,9 @@ describe("fetchSlugExperience (U5 canary)", () => {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Default mode — strapi
-  // ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Happy paths
+  // -------------------------------------------------------------------------
 
   it("strapi mode: serves Strapi unchanged and never touches admin", async () => {
     modeRef.current = "strapi"
@@ -306,7 +307,6 @@ describe("fetchSlugExperience (U5 canary)", () => {
 
     expect(queryMock).toHaveBeenCalledTimes(1)
     expect(adminQueryMock).not.toHaveBeenCalled()
-    expect(runDualReadComparisonMock).not.toHaveBeenCalled()
     expect(result.error).toBeNull()
     expect(result.data).toMatchObject({
       kind: "experience",
@@ -314,162 +314,187 @@ describe("fetchSlugExperience (U5 canary)", () => {
     })
   })
 
-  // ---------------------------------------------------------------------------
-  // dual-read happy path
-  // ---------------------------------------------------------------------------
-
-  it("dual-read mode: serves Strapi to user and hands both responses to bridge", async () => {
-    modeRef.current = "dual-read"
-    queryMock.mockResolvedValueOnce(strapiHit("strapi-1"))
+  it("admin mode: serves admin response and never touches Strapi", async () => {
+    modeRef.current = "admin"
     adminQueryMock.mockResolvedValueOnce(adminHit("admin-1"))
 
     const { resolveWatchPage } = await import("./content")
     const result = await resolveWatchPage("en", "christmas")
 
-    expect(queryMock).toHaveBeenCalledTimes(1)
     expect(adminQueryMock).toHaveBeenCalledTimes(1)
-    expect(runDualReadComparisonMock).toHaveBeenCalledTimes(1)
-
-    // User-facing source is Strapi (documentId from the strapiHit fixture).
+    expect(queryMock).not.toHaveBeenCalled()
     expect(result.error).toBeNull()
+    // Renderer receives admin-shape WatchExperience (admin's `id` field
+    // is the discriminator vs Strapi's `documentId`).
     expect(result.data).toMatchObject({
       kind: "experience",
-      experience: { documentId: "strapi-1", slug: "christmas" },
-    })
-
-    // Bridge received both outcomes with ok: true.
-    const outcome = runDualReadComparisonMock.mock.calls[0][0]
-    expect(outcome).toMatchObject({
-      slug: "christmas",
-      urlLocale: "en",
-      strapi: { ok: true },
-      admin: { ok: true },
+      experience: { id: "admin-1", slug: "christmas" },
     })
   })
 
-  // ---------------------------------------------------------------------------
-  // dual-read: admin fails, Strapi succeeds — user unaffected
-  // ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Admin error paths
+  // -------------------------------------------------------------------------
 
-  it("dual-read mode: admin throws ApolloError → user gets Strapi, bridge sees error outcome", async () => {
-    modeRef.current = "dual-read"
-    queryMock.mockResolvedValueOnce(strapiHit())
-    // Typed Apollo error shape (mocked-shape-vs-real-contract discipline).
+  it("admin mode + admin returns null → throws WatchPageAdminError('NOT_FOUND')", async () => {
+    modeRef.current = "admin"
+    adminQueryMock.mockResolvedValueOnce({
+      data: { experienceBySlug: null },
+    })
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
+
+    try {
+      const { resolveWatchPage, WatchPageAdminError } =
+        await import("./content")
+      // Cache wrapper re-throws WatchPageAdminError — must reach caller.
+      await expect(resolveWatchPage("en", "christmas")).rejects.toBeInstanceOf(
+        WatchPageAdminError,
+      )
+
+      // Re-run to assert the code field on the thrown instance.
+      adminQueryMock.mockResolvedValueOnce({
+        data: { experienceBySlug: null },
+      })
+      try {
+        await resolveWatchPage("en", "christmas")
+      } catch (err) {
+        expect(err).toBeInstanceOf(WatchPageAdminError)
+        expect((err as InstanceType<typeof WatchPageAdminError>).code).toBe(
+          "NOT_FOUND",
+        )
+      }
+
+      // forge.parity.admin_null event was logged.
+      const adminNullCall = logSpy.mock.calls.find((call) => {
+        const arg = call[0]
+        return (
+          typeof arg === "string" && arg.includes("forge.parity.admin_null")
+        )
+      })
+      expect(adminNullCall).toBeDefined()
+    } finally {
+      logSpy.mockRestore()
+    }
+  })
+
+  // Mocked-shape-vs-real-contract discipline (per
+  // docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md):
+  // typed Apollo error shape — name === "ApolloError" + networkError —
+  // not generic Error("...").
+  it("admin mode + Apollo error → throws WatchPageAdminError('UNAVAILABLE') with cause", async () => {
+    modeRef.current = "admin"
     const apolloError = Object.assign(new Error("admin network error"), {
       name: "ApolloError",
       networkError: new Error("ECONNREFUSED"),
       graphQLErrors: [],
     })
     adminQueryMock.mockRejectedValueOnce(apolloError)
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
 
-    const { resolveWatchPage } = await import("./content")
-    const result = await resolveWatchPage("en", "christmas")
+    try {
+      const { resolveWatchPage, WatchPageAdminError } =
+        await import("./content")
+      let thrown: unknown
+      try {
+        await resolveWatchPage("en", "christmas")
+      } catch (err) {
+        thrown = err
+      }
 
-    expect(result.error).toBeNull()
-    expect(result.data).toMatchObject({ kind: "experience" })
+      expect(thrown).toBeInstanceOf(WatchPageAdminError)
+      const watchErr = thrown as InstanceType<typeof WatchPageAdminError>
+      expect(watchErr.code).toBe("UNAVAILABLE")
+      // Original Apollo error is preserved as cause.
+      expect(watchErr.cause).toBe(apolloError)
 
-    expect(runDualReadComparisonMock).toHaveBeenCalledTimes(1)
-    const outcome = runDualReadComparisonMock.mock.calls[0][0]
-    expect(outcome.strapi.ok).toBe(true)
-    expect(outcome.admin.ok).toBe("error")
+      // forge.parity.admin_fetch_error event was logged with original message.
+      const fetchErrCall = logSpy.mock.calls.find((call) => {
+        const arg = call[0]
+        return (
+          typeof arg === "string" &&
+          arg.includes("forge.parity.admin_fetch_error")
+        )
+      })
+      expect(fetchErrCall).toBeDefined()
+      const payload = JSON.parse(fetchErrCall?.[0] as string)
+      expect(payload.errorMessage).toBe("admin network error")
+    } finally {
+      logSpy.mockRestore()
+    }
   })
 
-  // ---------------------------------------------------------------------------
-  // dual-read: admin times out — user unaffected
-  // ---------------------------------------------------------------------------
-
-  it("dual-read mode: admin AbortError classified as 'timeout', user gets Strapi", async () => {
-    modeRef.current = "dual-read"
-    queryMock.mockResolvedValueOnce(strapiHit())
+  it("admin mode + AbortError → throws WatchPageAdminError('UNAVAILABLE') (timeout)", async () => {
+    modeRef.current = "admin"
     const abortError = Object.assign(new Error("aborted"), {
       name: "AbortError",
     })
     adminQueryMock.mockRejectedValueOnce(abortError)
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
 
-    const { resolveWatchPage } = await import("./content")
-    const result = await resolveWatchPage("en", "christmas")
+    try {
+      const { resolveWatchPage, WatchPageAdminError } =
+        await import("./content")
+      let thrown: unknown
+      try {
+        await resolveWatchPage("en", "christmas")
+      } catch (err) {
+        thrown = err
+      }
 
-    expect(result.error).toBeNull()
-    expect(runDualReadComparisonMock).toHaveBeenCalledTimes(1)
-    const outcome = runDualReadComparisonMock.mock.calls[0][0]
-    expect(outcome.admin.ok).toBe("timeout")
+      expect(thrown).toBeInstanceOf(WatchPageAdminError)
+      expect((thrown as InstanceType<typeof WatchPageAdminError>).code).toBe(
+        "UNAVAILABLE",
+      )
+      // Logged as admin_timeout (NOT admin_fetch_error) — classification
+      // is by error.name, not message substring.
+      const timeoutCall = logSpy.mock.calls.find((call) => {
+        const arg = call[0]
+        return (
+          typeof arg === "string" && arg.includes("forge.parity.admin_timeout")
+        )
+      })
+      expect(timeoutCall).toBeDefined()
+    } finally {
+      logSpy.mockRestore()
+    }
   })
 
-  // AbortSignal.timeout() emits TimeoutError per WHATWG; AbortError is the
-  // older shape from AbortController.abort(). Both must classify as timeout.
-  it("dual-read mode: admin TimeoutError (WHATWG) classified as 'timeout'", async () => {
-    modeRef.current = "dual-read"
-    queryMock.mockResolvedValueOnce(strapiHit())
-    const timeoutError = Object.assign(new Error("timed out"), {
-      name: "TimeoutError",
+  // Apollo Client v4 wraps fetch transport errors in networkError. The
+  // classifier must walk this shape so a real 3s timeout still classifies
+  // as admin_timeout, not admin_fetch_error.
+  it("admin mode + timeout via Apollo networkError chain → classified as timeout", async () => {
+    modeRef.current = "admin"
+    const apolloWithNetworkTimeout = Object.assign(new Error("network error"), {
+      name: "ApolloError",
+      networkError: Object.assign(new Error("aborted"), {
+        name: "AbortError",
+      }),
     })
-    adminQueryMock.mockRejectedValueOnce(timeoutError)
+    adminQueryMock.mockRejectedValueOnce(apolloWithNetworkTimeout)
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
 
-    const { resolveWatchPage } = await import("./content")
-    await resolveWatchPage("en", "christmas")
+    try {
+      const { resolveWatchPage } = await import("./content")
+      await resolveWatchPage("en", "christmas").catch(() => {})
 
-    const outcome = runDualReadComparisonMock.mock.calls[0][0]
-    expect(outcome.admin.ok).toBe("timeout")
+      const timeoutCall = logSpy.mock.calls.find((call) => {
+        const arg = call[0]
+        return (
+          typeof arg === "string" && arg.includes("forge.parity.admin_timeout")
+        )
+      })
+      expect(timeoutCall).toBeDefined()
+    } finally {
+      logSpy.mockRestore()
+    }
   })
 
-  // Apollo Client v4 may surface fetch transport errors as
-  // ApolloError.networkError, with the typed AbortSignal cause one level
-  // deeper. The classifier must walk this shape too — otherwise real
-  // timeouts in production misclassify as forge.parity.harness_error /
-  // admin_fetch_error and pollute the U5b advance signal.
-  it("dual-read mode: timeout wrapped in Apollo networkError classified as 'timeout'", async () => {
-    modeRef.current = "dual-read"
-    queryMock.mockResolvedValueOnce(strapiHit())
-    const apolloErrorWithNetworkTimeout = Object.assign(
-      new Error("network error"),
-      {
-        name: "ApolloError",
-        networkError: Object.assign(new Error("aborted"), {
-          name: "AbortError",
-        }),
-      },
-    )
-    adminQueryMock.mockRejectedValueOnce(apolloErrorWithNetworkTimeout)
-
-    const { resolveWatchPage } = await import("./content")
-    await resolveWatchPage("en", "christmas")
-
-    const outcome = runDualReadComparisonMock.mock.calls[0][0]
-    expect(outcome.admin.ok).toBe("timeout")
-  })
-
-  // Apollo errors with a typed cause chain — networkError -> cause -> AbortError.
-  it("dual-read mode: timeout wrapped via Apollo networkError.cause chain classified as 'timeout'", async () => {
-    modeRef.current = "dual-read"
-    queryMock.mockResolvedValueOnce(strapiHit())
-    const apolloErrorWithNestedCause = Object.assign(
-      new Error("apollo wrapper"),
-      {
-        name: "ApolloError",
-        networkError: Object.assign(new Error("fetch failed"), {
-          name: "FetchError",
-          cause: Object.assign(new Error("aborted"), {
-            name: "AbortError",
-          }),
-        }),
-      },
-    )
-    adminQueryMock.mockRejectedValueOnce(apolloErrorWithNestedCause)
-
-    const { resolveWatchPage } = await import("./content")
-    await resolveWatchPage("en", "christmas")
-
-    const outcome = runDualReadComparisonMock.mock.calls[0][0]
-    expect(outcome.admin.ok).toBe("timeout")
-  })
-
-  // Apollo's `result.error` (resolved-with-error, not rejected) is a
-  // distinct production shape from rejection. The fetchAdminSlugExperience
-  // catch handles rejection; the result.error branch handles in-resolution
-  // errors. Both must classify timeout-vs-error consistently.
-  it("dual-read mode: Apollo resolves with result.error AbortError → classifies as 'timeout'", async () => {
-    modeRef.current = "dual-read"
-    queryMock.mockResolvedValueOnce(strapiHit())
+  // Apollo result.error (resolved-with-error, not rejected) is a distinct
+  // production shape. The fetcher's catch handles rejection; the
+  // result.error branch handles in-resolution errors. Both must classify
+  // consistently.
+  it("admin mode + Apollo result.error AbortError → classified as timeout", async () => {
+    modeRef.current = "admin"
     const abortError = Object.assign(new Error("aborted"), {
       name: "AbortError",
     })
@@ -477,242 +502,126 @@ describe("fetchSlugExperience (U5 canary)", () => {
       data: null,
       error: abortError,
     })
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
 
-    const { resolveWatchPage } = await import("./content")
-    await resolveWatchPage("en", "christmas")
+    try {
+      const { resolveWatchPage } = await import("./content")
+      await resolveWatchPage("en", "christmas").catch(() => {})
 
-    const outcome = runDualReadComparisonMock.mock.calls[0][0]
-    expect(outcome.admin.ok).toBe("timeout")
+      const timeoutCall = logSpy.mock.calls.find((call) => {
+        const arg = call[0]
+        return (
+          typeof arg === "string" && arg.includes("forge.parity.admin_timeout")
+        )
+      })
+      expect(timeoutCall).toBeDefined()
+    } finally {
+      logSpy.mockRestore()
+    }
   })
 
-  it("dual-read mode: Apollo resolves with result.error generic Error → classifies as 'error'", async () => {
-    modeRef.current = "dual-read"
-    queryMock.mockResolvedValueOnce(strapiHit())
-    const apolloResultError = Object.assign(new Error("admin schema drift"), {
-      name: "ApolloError",
-    })
-    adminQueryMock.mockResolvedValueOnce({
-      data: null,
-      error: apolloResultError,
-    })
+  // -------------------------------------------------------------------------
+  // Runtime safety net — WEB_ADMIN_API_KEYS unset
+  // -------------------------------------------------------------------------
 
-    const { resolveWatchPage } = await import("./content")
-    await resolveWatchPage("en", "christmas")
-
-    const outcome = runDualReadComparisonMock.mock.calls[0][0]
-    expect(outcome.admin.ok).toBe("error")
-  })
-
-  // The bridge MUST never break the user's render. If runDualReadComparison
-  // throws synchronously (circular ref, throwing toString, JSON.stringify
-  // failure), the orchestrator catches it and emits a structured
-  // forge.parity.canary_failed log line. User still gets Strapi.
-  it("dual-read mode: bridge sync-throw is caught — user gets Strapi, canary_failed event logged", async () => {
-    modeRef.current = "dual-read"
-    queryMock.mockResolvedValueOnce(strapiHit())
-    adminQueryMock.mockResolvedValueOnce(adminHit())
-    runDualReadComparisonMock.mockImplementation(() => {
-      throw new Error("circular reference in payload")
-    })
+  it("admin mode + WEB_ADMIN_API_KEYS unset → logs consumer_bearer_missing and falls back to strapi", async () => {
+    modeRef.current = "admin"
+    envRef.WEB_ADMIN_API_KEYS = undefined
+    queryMock.mockResolvedValueOnce(strapiHit("strapi-fallback"))
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
 
     try {
       const { resolveWatchPage } = await import("./content")
       const result = await resolveWatchPage("en", "christmas")
 
-      // User gets Strapi result, NOT a 500.
-      expect(result.error).toBeNull()
-      expect(result.data).toMatchObject({ kind: "experience" })
+      // Strapi mock was called, admin mock was not.
+      expect(queryMock).toHaveBeenCalledTimes(1)
+      expect(adminQueryMock).not.toHaveBeenCalled()
 
-      // canary_failed event was logged with the error message.
-      const canaryFailedCall = logSpy.mock.calls.find((call) => {
+      // User got the Strapi response — fallback is transparent for this request.
+      expect(result.error).toBeNull()
+      expect(result.data).toMatchObject({
+        kind: "experience",
+        experience: { documentId: "strapi-fallback" },
+      })
+
+      // forge.parity.consumer_bearer_missing event was logged.
+      const bearerMissingCall = logSpy.mock.calls.find((call) => {
         const arg = call[0]
         return (
-          typeof arg === "string" && arg.includes("forge.parity.canary_failed")
+          typeof arg === "string" &&
+          arg.includes("forge.parity.consumer_bearer_missing")
         )
       })
-      expect(canaryFailedCall).toBeDefined()
-      const payload = JSON.parse(canaryFailedCall?.[0] as string)
-      expect(payload.event).toBe("forge.parity.canary_failed")
-      expect(payload.errorMessage).toBe("circular reference in payload")
+      expect(bearerMissingCall).toBeDefined()
     } finally {
       logSpy.mockRestore()
     }
   })
 
-  // ---------------------------------------------------------------------------
-  // dual-read: Strapi throws, admin succeeds — gating signal for U5b advance
-  // ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // unstable_cache re-throw — load-bearing for UB7 error boundary
+  // -------------------------------------------------------------------------
 
-  it("dual-read mode: Strapi throws + admin OK → Strapi error propagates, bridge sees the gating signal", async () => {
-    modeRef.current = "dual-read"
-    const strapiError = new Error("strapi 503")
-    queryMock.mockRejectedValueOnce(strapiError)
-    adminQueryMock.mockResolvedValueOnce(adminHit())
+  it("unstable_cache callback re-throws WatchPageAdminError past the cache wrapper", async () => {
+    modeRef.current = "admin"
+    adminQueryMock.mockResolvedValueOnce({
+      data: { experienceBySlug: null },
+    })
+
+    const { resolveWatchPage, WatchPageAdminError } = await import("./content")
+
+    // The cache wrapper's catch block must detect WatchPageAdminError
+    // and re-throw — NOT convert to the `{ data, error }` sentinel.
+    // resolveWatchPage's promise rejects, doesn't resolve.
+    await expect(resolveWatchPage("en", "christmas")).rejects.toBeInstanceOf(
+      WatchPageAdminError,
+    )
+  })
+
+  it("unstable_cache callback returns sentinel for generic Errors (strapi-mode path unchanged)", async () => {
+    modeRef.current = "strapi"
+    queryMock.mockRejectedValueOnce(new Error("strapi 503"))
 
     const { resolveWatchPage } = await import("./content")
+    // Strapi-mode error keeps the sentinel path — resolves with `{ data: null, error }`.
     const result = await resolveWatchPage("en", "christmas")
 
-    // User-facing: Strapi error propagates (Strapi is the served source).
     expect(result.data).toBeNull()
     expect(result.error?.message).toBe("strapi 503")
-
-    expect(runDualReadComparisonMock).toHaveBeenCalledTimes(1)
-    const outcome = runDualReadComparisonMock.mock.calls[0][0]
-    expect(outcome.strapi.ok).toBe("error")
-    expect(outcome.admin.ok).toBe(true)
   })
 
-  // ---------------------------------------------------------------------------
-  // dual-read: both fail — Strapi error propagates
-  // ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Integration — error propagation chain through the cache wrapper
+  // -------------------------------------------------------------------------
 
-  it("dual-read mode: both throw → Strapi error propagates, bridge sees both_failed", async () => {
-    modeRef.current = "dual-read"
-    queryMock.mockRejectedValueOnce(new Error("strapi down"))
-    adminQueryMock.mockRejectedValueOnce(new Error("admin down"))
+  it("integration: admin throw propagates through resolveWatchPage to the caller", async () => {
+    modeRef.current = "admin"
+    const apolloError = Object.assign(new Error("admin 500"), {
+      name: "ApolloError",
+      networkError: new Error("server error"),
+    })
+    adminQueryMock.mockRejectedValueOnce(apolloError)
 
-    const { resolveWatchPage } = await import("./content")
-    const result = await resolveWatchPage("en", "christmas")
+    const { resolveWatchPage, WatchPageAdminError } = await import("./content")
 
-    expect(result.data).toBeNull()
-    expect(result.error?.message).toBe("strapi down")
-
-    expect(runDualReadComparisonMock).toHaveBeenCalledTimes(1)
-    const outcome = runDualReadComparisonMock.mock.calls[0][0]
-    expect(outcome.strapi.ok).toBe("error")
-    expect(outcome.admin.ok).toBe("error")
-  })
-
-  // ---------------------------------------------------------------------------
-  // Integration — resolveSlugPage shape stable across modes
-  // ---------------------------------------------------------------------------
-
-  it("resolveSlugPage shape is identical across strapi and dual-read for the same fixture", async () => {
-    // Run once in strapi mode, once in dual-read mode, with identical
-    // Strapi mocks. The user-facing return value should match.
-    modeRef.current = "strapi"
-    queryMock.mockResolvedValueOnce(strapiHit("shared-1", "Shared"))
-    let mod = await import("./content")
-    const strapiResult = await mod.resolveWatchPage("en", "christmas")
-
-    vi.resetModules()
-    queryMock.mockReset()
-    adminQueryMock.mockReset()
-
-    modeRef.current = "dual-read"
-    queryMock.mockResolvedValueOnce(strapiHit("shared-1", "Shared"))
-    adminQueryMock.mockResolvedValueOnce(adminHit("shared-1", "Shared"))
-    mod = await import("./content")
-    const dualReadResult = await mod.resolveWatchPage("en", "christmas")
-
-    expect(dualReadResult).toEqual(strapiResult)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// U5 — Regression snapshot: default behavior unchanged
-//
-// First-line-of-defense test that asserts every accepted mode value
-// produces a Strapi-equivalent return for the slug-page Experience fetch.
-// The "garbage" / null / undefined / empty-string cases all flow through
-// the strapi default branch (normalizeContentApiMode falls back). The
-// "dual-read" case asserts the user-facing return is still Strapi-driven
-// and that adminQueryMock was called (proving the canary is active).
-// ---------------------------------------------------------------------------
-
-describe("U5 regression — default behavior across mode values", () => {
-  beforeEach(() => {
-    modeRef.current = "strapi"
-  })
-
-  afterEach(() => {
-    queryMock.mockReset()
-    adminQueryMock.mockReset()
-    runDualReadComparisonMock.mockReset()
-    vi.resetModules()
-  })
-
-  function fixture() {
-    return {
-      data: {
-        experiences: [
-          {
-            documentId: "regression-1",
-            slug: "christmas",
-            locale: "en",
-            isTemplate: false,
-            title: "Regression Fixture",
-          },
-        ],
-      },
+    let thrown: unknown
+    try {
+      await resolveWatchPage("en", "christmas")
+    } catch (err) {
+      thrown = err
     }
-  }
 
-  // The undefined/null/empty-string/garbage cases fall back to "strapi"
-  // via env.ts's z.enum.default before reaching content-api-mode, so the
-  // mocked getContentApiMode only ever receives the typed union values.
-  // The "strapi" branch is the regression-protected default; "dual-read"
-  // is exercised in the canary tests above.
-  it("mode='strapi' returns Strapi-equivalent value and never touches admin", async () => {
-    modeRef.current = "strapi"
-    queryMock.mockResolvedValueOnce(fixture())
-
-    const { resolveWatchPage } = await import("./content")
-    const result = await resolveWatchPage("en", "christmas")
-
-    expect(result.error).toBeNull()
-    expect(result.data).toMatchObject({
-      kind: "experience",
-      experience: { documentId: "regression-1", slug: "christmas" },
-    })
-    expect(adminQueryMock).not.toHaveBeenCalled()
-    expect(runDualReadComparisonMock).not.toHaveBeenCalled()
-  })
-
-  it("mode='dual-read' still returns Strapi value to the user (admin runs in shadow)", async () => {
-    modeRef.current = "dual-read"
-    queryMock.mockResolvedValueOnce(fixture())
-    adminQueryMock.mockResolvedValueOnce({
-      data: {
-        experienceBySlug: {
-          id: "admin-shadow",
-          slug: "christmas",
-          locale: "en",
-          title: "Regression Fixture",
-          metaDescription: null,
-          ogImageUrl: null,
-          blocks: [],
-        },
-      },
-    })
-
-    const { resolveWatchPage } = await import("./content")
-    const result = await resolveWatchPage("en", "christmas")
-
-    expect(result.error).toBeNull()
-    // Strapi documentId is what reaches the user, NOT admin's id.
-    expect(result.data).toMatchObject({
-      kind: "experience",
-      experience: { documentId: "regression-1" },
-    })
-    expect(adminQueryMock).toHaveBeenCalledTimes(1)
-    expect(runDualReadComparisonMock).toHaveBeenCalledTimes(1)
-  })
-
-  // print() round-trip — the GET_WATCH_EXPERIENCE query is unchanged
-  // shape across U5; if a future refactor inadvertently rewrites it,
-  // this catches the drift.
-  it("GET_WATCH_EXPERIENCE selects WatchExperience (with locale field)", async () => {
-    modeRef.current = "strapi"
-    queryMock.mockResolvedValueOnce(fixture())
-    const { resolveWatchPage } = await import("./content")
-    await resolveWatchPage("en", "christmas")
-    const sentQuery = print(queryMock.mock.calls[0][0].query)
-    // U5 added `locale` to the WatchExperience fragment so normalizeStrapi
-    // can validate without the bridge's synth fallback. This pins it.
-    expect(sentQuery).toMatch(
-      /fragment WatchExperience on Experience[\s\S]*locale/,
+    // The full chain: fetchSlugExperience throws → resolveSlugPage
+    // re-throws → unstable_cache re-throws (load-bearing) →
+    // resolveWatchPage's outer `cache()` re-throws → caller catches.
+    expect(thrown).toBeInstanceOf(WatchPageAdminError)
+    expect((thrown as InstanceType<typeof WatchPageAdminError>).code).toBe(
+      "UNAVAILABLE",
+    )
+    // Original Apollo error preserved through the chain via `cause`.
+    expect((thrown as InstanceType<typeof WatchPageAdminError>).cause).toBe(
+      apolloError,
     )
   })
 })
