@@ -1,30 +1,10 @@
-// Pothos type classification enforcement.
-//
-// Every type in `src/graphql/types/` carries a `@classification` JSDoc
-// tag with one of two values:
-//
-//   abac-gated    — ownership and/or state-based ABAC applies. Reads via
-//                   direct query AND nested relation paths must resolve
-//                   to the same row set for any given principal. In Unit 7,
-//                   relations targeting abac-gated types route through
-//                   service-layer resolvers that re-apply the ABAC WHERE.
-//   public-shape  — Core-sourced read-only data. Safe to expose via
-//                   `t.relation` from other types; tier-only auth gates.
-//
-// This test enforces:
-//   1. Every `builder.prismaObject(...)` call has a preceding
-//      `@classification` JSDoc tag.
-//   2. No type tagged `public-shape` declares a `t.relation(...)` whose
-//      target is a type tagged `abac-gated` — that would let a public read
-//      reach ABAC-gated data without re-applying ABAC.
-//
-// The runtime ABAC PARITY test (assert that direct-query and nested-
-// relation paths return identical row sets for the same principal against
-// a live DB) lives as a `.todo` placeholder — it lands in Unit 7 once
-// service-layer resolvers exist to be tested.
+// Pothos `@classification` enforcement. Asserts (1) every prismaObject has
+// a `@classification abac-gated|public-shape` tag and (2) no public-shape
+// type declares a `t.relation` to an abac-gated target. Runtime ABAC parity
+// test is `.todo` until Unit 7 service-layer resolvers exist.
 
 import { describe, expect, it, test } from "vitest"
-import { readdirSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
 const TYPES_DIR = resolve(__dirname, "types")
@@ -42,41 +22,24 @@ type ParsedType = {
   relations: string[]
 }
 
-/**
- * Parse a single type module file and extract all `builder.prismaObject`
- * declarations along with their preceding JSDoc classification tag and
- * the `t.relation(...)` references inside their fields block.
- *
- * This is a deliberately simple regex/string parser — using ts-morph would
- * be more robust but adds dependency weight for a single-purpose check.
- * The patterns we look for are small and stable.
- */
 function parseTypeFile(file: string): ParsedType[] {
   const source = readFileSync(resolve(TYPES_DIR, file), "utf8")
   const results: ParsedType[] = []
 
-  // Find every `builder.prismaObject("X", ...)` call. For each, walk
-  // backwards from the call site to find the most recent JSDoc block, and
-  // forward into the fields block to collect t.relation("...") references
-  // up to the closing }) for this prismaObject call.
   const callRegex = /builder\.prismaObject\(\s*"([^"]+)"\s*,/g
   let match: RegExpExecArray | null
   while ((match = callRegex.exec(source)) !== null) {
     const typeName = match[1]
     const callStart = match.index
 
-    // Look for a preceding JSDoc block in the ~500 characters above.
-    // Pothos types in this codebase always have the JSDoc tag on the
-    // immediately preceding line, so a small backwards window suffices.
+    // 500-char backward window: JSDoc tags live immediately above the call.
     const lookback = source.slice(Math.max(0, callStart - 500), callStart)
     const jsdocMatch = lookback.match(
       /\/\*\*[\s\S]*?@classification\s+(abac-gated|public-shape)[\s\S]*?\*\//,
     )
     const classification = jsdocMatch ? (jsdocMatch[1] as Classification) : null
 
-    // Find the matching closing `})` for this prismaObject call to bound
-    // the fields-block scan. Walk forward counting parens; bail at 5000
-    // chars (no Pothos type is that large in this codebase).
+    // Bail at 5000 chars — no Pothos type in this codebase is that large.
     const fieldsStart = source.indexOf("{", callStart)
     let depth = 0
     let fieldsEnd = source.length
@@ -131,13 +94,8 @@ describe("Pothos type classification — every prismaObject is tagged", () => {
 // -----------------------------------------------------------------------------
 
 describe("public-shape types do not relate to abac-gated types", () => {
-  // Map (parentTypeName, relationFieldName) → target Pothos type. Pothos
-  // Prisma plugin resolves `t.relation("foo")` to the type registered
-  // for the Prisma model field `foo` on the parent's model — but
-  // relation names are NOT globally unique (e.g. both Experience and
-  // Video have a `locales` field pointing at different per-locale tables).
-  // Without parsing the Prisma DMMF here, we maintain an explicit per-
-  // parent registry. New abac-gated relations require an entry.
+  // Per-parent map: relation names aren't globally unique (Experience.locales
+  // ≠ Video.locales). New abac-gated relations require an entry here.
   const RELATION_TARGETS: Record<string, Record<string, string>> = {
     Experience: { locales: "ExperienceLocale" },
     Video: {
@@ -176,11 +134,8 @@ describe("public-shape types do not relate to abac-gated types", () => {
     },
   }
 
-  // Every relation on every type MUST appear in RELATION_TARGETS. Silently
-  // skipping unknown relations would let a new abac-gated relation slip
-  // past the classification gate because nothing ever checks it. If you
-  // see a failure here, add the (parent, relation) → targetType pair to
-  // RELATION_TARGETS above.
+  // Registry exhaustiveness — silent skips would let new abac-gated relations
+  // bypass the classification gate. On failure: add the entry to RELATION_TARGETS.
   for (const t of ALL_TYPES) {
     const parentRegistry = RELATION_TARGETS[t.typeName] ?? {}
     for (const relName of t.relations) {
@@ -215,7 +170,22 @@ describe("public-shape types do not relate to abac-gated types", () => {
   }
 })
 
-// -----------------------------------------------------------------------------
+// Meta-defense: pair file `public-resolvers.regression.test.ts` exists. Deleting
+// it silently removes the only structural guard that intended-PUBLIC resolvers
+// stay PUBLIC (SDL-drift CI is blind to `authScopes`). U2, 2026-05-11.
+describe("public-resolvers regression test meta-defense", () => {
+  it("apps/admin/src/graphql/public-resolvers.regression.test.ts exists", () => {
+    const path = resolve(__dirname, "public-resolvers.regression.test.ts")
+    expect(
+      existsSync(path),
+      "The centralized PUBLIC-resolvers regression test is the substitute " +
+        "for SDL-drift CI's blindness to authScopes changes. Deleting it " +
+        "removes the only structural guard that intended-PUBLIC resolvers " +
+        "stay PUBLIC. If you really meant to delete it, also remove this " +
+        "assertion AND document the new safeguard in `docs/solutions/`.",
+    ).toBe(true)
+  })
+})
 
 test.todo(
   "ABAC parity (runtime, requires Unit 7 services + live DB): " +

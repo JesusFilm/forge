@@ -5,5 +5,10 @@ import nextVitals from "eslint-config-next/core-web-vitals"
 export default defineConfig([
   ...commonConfig,
   ...nextVitals,
-  globalIgnores([".next/**", "out/**", "next-env.d.ts"]),
+  globalIgnores([
+    ".next/**",
+    "out/**",
+    "next-env.d.ts",
+    "src/app/.well-known/workflow/**",
+  ]),
 ])

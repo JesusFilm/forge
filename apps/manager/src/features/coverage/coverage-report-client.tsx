@@ -8,9 +8,27 @@ import React, {
   useRef,
   useState,
 } from "react"
-import { FilterX, Search, ServerOff } from "lucide-react"
+import { createPortal } from "react-dom"
+import {
+  BadgeCheck,
+  Bot,
+  ChevronDown,
+  Circle,
+  Clapperboard,
+  Film,
+  LibraryBig,
+  ListFilter,
+  ListVideo,
+  Search,
+  ServerOff,
+  SquarePlay,
+  Tags,
+  X,
+} from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { LanguageSelectionEmptyState } from "./coverage-empty-state"
 import { EnrichActionControls } from "./enrich-action-controls"
 import { LanguageGeoSelector } from "./LanguageGeoSelector"
@@ -50,6 +68,7 @@ import {
   useOptionalManagerShellState,
 } from "@/features/shell/manager-shell"
 import { apiFetch } from "@/lib/api-fetch"
+import { cn } from "@/lib/utils"
 import type { JobRecord } from "@/types/job"
 
 function useHydrated(): boolean {
@@ -67,20 +86,111 @@ interface CoverageReportClientProps {
   initialLanguages: LanguageOption[]
 }
 
-type Mode = "explore" | "select"
-
 type HoveredVideoDetails = {
   video: ClientVideo
   collectionTitle: string
   status: CoverageStatus
 }
 
+type FilterDropdownOption = {
+  value: string
+  label: string
+}
+
+function FilterDropdownOptionIcon({
+  className,
+  option,
+}: {
+  className?: string
+  option: FilterDropdownOption
+}) {
+  const label = option.label.toLowerCase()
+  const normalizedValue = option.value.toLowerCase()
+
+  if (label === "media type") {
+    return <ListFilter className={className} aria-hidden="true" />
+  }
+  if (label === "origin") {
+    return <Tags className={className} aria-hidden="true" />
+  }
+  if (label === "collection") {
+    return <LibraryBig className={className} aria-hidden="true" />
+  }
+  if (label === "feature film") {
+    return <Film className={className} aria-hidden="true" />
+  }
+  if (label === "series") {
+    return <ListVideo className={className} aria-hidden="true" />
+  }
+  if (label === "short film") {
+    return <Clapperboard className={className} aria-hidden="true" />
+  }
+  if (label === "standalone") {
+    return <SquarePlay className={className} aria-hidden="true" />
+  }
+  if (normalizedValue === "human") {
+    return <BadgeCheck className={className} aria-hidden="true" />
+  }
+  if (normalizedValue === "ai") {
+    return <Bot className={className} aria-hidden="true" />
+  }
+  if (normalizedValue === "none") {
+    return <Circle className={className} aria-hidden="true" />
+  }
+
+  return <Tags className={className} aria-hidden="true" />
+}
+
+type ToggleVideoSelectionOptions = {
+  animate?: boolean
+  revealStackVideoIds?: string[]
+  sourceElement?: HTMLElement | null
+}
+
+type FlightRect = {
+  height: number
+  left: number
+  top: number
+  width: number
+}
+
+type FlyingSelection = {
+  from: FlightRect
+  id: string
+  mid: {
+    x: number
+    y: number
+  }
+  revealVideoIds: string[]
+  to: FlightRect
+  video: ClientVideo
+}
+
+type LeavingStackVideo = {
+  id: string
+  index: number
+  video: ClientVideo
+}
+
+type SelectedStackSlot = {
+  id: string
+  index: number
+  state: "leaving" | "selected"
+  video: ClientVideo
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const SESSION_MODE_KEY = "forge-coverage-mode"
 const SESSION_REPORT_KEY = "forge-coverage-report"
+const SELECTED_VIDEO_STACK_THUMB_WIDTH = 44
+const SELECTED_VIDEO_STACK_THUMB_HEIGHT = 34
+const SELECTED_VIDEO_STACK_OVERLAP = 12
+const SELECTED_VIDEO_STACK_LEFT_PADDING = 2
+const SELECTED_VIDEO_STACK_OVERFLOW_WIDTH = 38
+const SELECTED_VIDEO_FLYER_MIN_WIDTH = 92
+const SELECTED_VIDEO_FLYER_MIN_HEIGHT = 58
 
 // ---------------------------------------------------------------------------
 // Report configuration
@@ -93,7 +203,6 @@ const REPORT_CONFIG: Record<
     description: string
     intro: string
     ariaLabel: string
-    hintExplore: string
     segmentLabels: Record<CoverageStatus, string>
     statusLabels: Record<CoverageStatus, string>
     legendLabels: Record<CoverageStatus, string>
@@ -105,7 +214,6 @@ const REPORT_CONFIG: Record<
     intro:
       "Track subtitle coverage by language, collection, and generation state.",
     ariaLabel: "Subtitle coverage",
-    hintExplore: "Explore subtitle coverage across video collections.",
     segmentLabels: {
       human: "Verified",
       ai: "AI",
@@ -127,7 +235,6 @@ const REPORT_CONFIG: Record<
     description: "Audio coverage for the selected language.",
     intro: "Track audio coverage by language, collection, and source state.",
     ariaLabel: "Audio coverage",
-    hintExplore: "Explore audio coverage across video collections.",
     segmentLabels: {
       human: "Verified",
       ai: "AI",
@@ -150,7 +257,6 @@ const REPORT_CONFIG: Record<
     intro:
       "Track metadata coverage across titles, summaries, and generated review states.",
     ariaLabel: "Metadata coverage",
-    hintExplore: "Explore metadata coverage across video collections.",
     segmentLabels: {
       human: "Verified",
       ai: "AI",
@@ -184,36 +290,73 @@ function getSelectableNoneVideos(videos: ClientVideo[]): ClientVideo[] {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Hooks
-// ---------------------------------------------------------------------------
+function rectFromDomRect(rect: DOMRect): FlightRect {
+  return {
+    height: rect.height,
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+  }
+}
 
-function useSessionMode(initial: Mode): [Mode, (value: Mode) => void] {
-  const [mode, setMode] = useState<Mode>(initial)
+function rectFromFlySource(rect: DOMRect): FlightRect {
+  if (
+    rect.width >= SELECTED_VIDEO_STACK_THUMB_WIDTH &&
+    rect.height >= SELECTED_VIDEO_STACK_THUMB_HEIGHT
+  ) {
+    return rectFromDomRect(rect)
+  }
 
-  /* eslint-disable react-hooks/set-state-in-effect -- intentional: hydrate from sessionStorage after mount to avoid SSR mismatch */
-  useEffect(() => {
-    try {
-      const stored = window.sessionStorage.getItem(SESSION_MODE_KEY)
-      if (stored === "explore" || stored === "select") {
-        setMode(stored)
-      }
-    } catch {
-      // ignore storage errors
-    }
-  }, [])
-  /* eslint-enable react-hooks/set-state-in-effect */
+  return {
+    height: SELECTED_VIDEO_FLYER_MIN_HEIGHT,
+    left: rect.left + rect.width / 2 - SELECTED_VIDEO_FLYER_MIN_WIDTH / 2,
+    top: rect.top + rect.height / 2 - SELECTED_VIDEO_FLYER_MIN_HEIGHT / 2,
+    width: SELECTED_VIDEO_FLYER_MIN_WIDTH,
+  }
+}
 
-  const updateMode = useCallback((value: Mode) => {
-    setMode(value)
-    try {
-      window.sessionStorage.setItem(SESSION_MODE_KEY, value)
-    } catch {
-      // ignore storage errors
-    }
-  }, [])
+function rectFromStackRightEnd(
+  target: HTMLElement,
+  visibleVideoCount: number,
+): FlightRect {
+  const rect = target.getBoundingClientRect()
+  const visibleThumbCount = Math.min(visibleVideoCount, 4)
+  const hasOverflow = visibleVideoCount > 4
+  const slotCount = visibleThumbCount + (hasOverflow ? 1 : 0)
+  const slotIndex = Math.max(0, slotCount - 1)
+  const width = hasOverflow
+    ? SELECTED_VIDEO_STACK_OVERFLOW_WIDTH
+    : SELECTED_VIDEO_STACK_THUMB_WIDTH
 
-  return [mode, updateMode]
+  return {
+    height: SELECTED_VIDEO_STACK_THUMB_HEIGHT,
+    left:
+      rect.left +
+      SELECTED_VIDEO_STACK_LEFT_PADDING +
+      slotIndex *
+        (SELECTED_VIDEO_STACK_THUMB_WIDTH - SELECTED_VIDEO_STACK_OVERLAP),
+    top:
+      rect.top +
+      Math.max(
+        0,
+        (Math.max(rect.height, 40) - SELECTED_VIDEO_STACK_THUMB_HEIGHT) / 2,
+      ),
+    width,
+  }
+}
+
+function midpointForFlyer(
+  from: FlightRect,
+  to: FlightRect,
+): FlyingSelection["mid"] {
+  return {
+    x: (to.left - from.left) * 0.52,
+    y: (to.top - from.top) * 0.42 - 52,
+  }
+}
+
+function getVideoInitial(title: string): string {
+  return title.trim().charAt(0).toUpperCase() || "V"
 }
 
 function useSessionReportType(
@@ -251,85 +394,18 @@ function useSessionReportType(
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function ModeToggle({
-  mode,
-  onChange,
-  translateDisabled,
-}: {
-  mode: Mode
-  onChange: (mode: Mode) => void
-  translateDisabled?: boolean
-}) {
-  return (
-    <div className="mode-toggle" role="group" aria-label="Interaction mode">
-      <div className="mode-toggle-buttons">
-        <button
-          type="button"
-          className={`mode-toggle-button${mode === "explore" ? " is-active" : ""}`}
-          onClick={() => onChange("explore")}
-          aria-pressed={mode === "explore"}
-        >
-          <svg
-            className="icon"
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-          Explore
-        </button>
-        <span
-          className={
-            translateDisabled ? "mode-toggle-disabled-wrap" : undefined
-          }
-          data-tooltip={translateDisabled ? "Coming soon" : undefined}
-        >
-          <button
-            type="button"
-            className={`mode-toggle-button${mode === "select" && !translateDisabled ? " is-active" : ""}${translateDisabled ? " is-disabled" : ""}`}
-            onClick={() => !translateDisabled && onChange("select")}
-            aria-pressed={!translateDisabled && mode === "select"}
-            disabled={translateDisabled}
-          >
-            <svg
-              className="icon"
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect width="18" height="18" x="3" y="3" rx="2" />
-              <path d="m9 12 2 2 4-4" />
-            </svg>
-            Translate
-          </button>
-        </span>
-      </div>
-    </div>
-  )
-}
-
 function CoverageBar({
   counts,
   activeFilter,
   onFilter,
-  mode,
+  interactive,
   labels,
   ariaLabel,
 }: {
   counts: { human: number; ai: number; none: number }
   activeFilter: CoverageFilter
   onFilter: (filter: CoverageFilter) => void
-  mode: Mode
+  interactive: boolean
   labels: Record<CoverageStatus, string>
   ariaLabel: string
 }) {
@@ -365,15 +441,12 @@ function CoverageBar({
     },
   ]
 
-  const isExplore = mode === "explore"
-
   const handleSegmentClick = (status: CoverageStatus) => {
     onFilter(status)
   }
 
   return (
-    <div className={`coverage-bar${isExplore ? " is-interactive" : ""}`}>
-      <p className="coverage-hint">Click a segment to filter.</p>
+    <div className={`coverage-bar${interactive ? " is-interactive" : ""}`}>
       <div className="stat-bar" aria-label={ariaLabel}>
         {segments.map((segment) => (
           <button
@@ -386,7 +459,7 @@ function CoverageBar({
             title={`${segment.label} videos: ${counts[segment.key]}`}
             aria-pressed={activeFilter === segment.key}
             onClick={() => handleSegmentClick(segment.key)}
-            disabled={!isExplore}
+            disabled={!interactive}
           />
         ))}
       </div>
@@ -399,12 +472,83 @@ function CoverageBar({
               activeFilter === segment.key ? " is-active" : ""
             }`}
             onClick={() => handleSegmentClick(segment.key)}
-            disabled={!isExplore}
+            disabled={!interactive}
           >
             {segment.label} {segment.percent}%
           </button>
         ))}
       </div>
+    </div>
+  )
+}
+
+function CoverageNumberDiagram({
+  counts,
+  activeFilter,
+  onFilter,
+  interactive,
+  labels,
+  ariaLabel,
+}: {
+  counts: { human: number; ai: number; none: number }
+  activeFilter: CoverageFilter
+  onFilter: (filter: CoverageFilter) => void
+  interactive: boolean
+  labels: Record<CoverageStatus, string>
+  ariaLabel: string
+}) {
+  const total = counts.human + counts.ai + counts.none
+  const humanPercent = formatPercent(counts.human, total)
+  const aiPercent = formatPercent(counts.ai, total)
+  const segments: Array<{
+    key: CoverageStatus
+    label: string
+    percent: number
+  }> = [
+    {
+      key: "human",
+      label: labels.human,
+      percent: humanPercent,
+    },
+    {
+      key: "none",
+      label: labels.none,
+      percent: Math.max(0, 100 - humanPercent - aiPercent),
+    },
+    {
+      key: "ai",
+      label: labels.ai,
+      percent: aiPercent,
+    },
+  ]
+  const toggleFilter = (status: CoverageStatus) => {
+    onFilter(activeFilter === status ? "all" : status)
+  }
+
+  return (
+    <div
+      className={`coverage-number-diagram${interactive ? " is-interactive" : ""}`}
+      aria-label={ariaLabel}
+    >
+      {segments.map((segment) => (
+        <button
+          key={segment.key}
+          type="button"
+          className={`coverage-number-item coverage-number-item--${segment.key}${
+            activeFilter === segment.key ? " is-active" : ""
+          }`}
+          aria-pressed={interactive ? activeFilter === segment.key : undefined}
+          aria-label={`${segment.label} ${segment.percent}%`}
+          onClick={() => toggleFilter(segment.key)}
+          disabled={!interactive}
+        >
+          <span className="coverage-number-value">
+            {segment.percent}
+            <span className="coverage-number-percent">%</span>
+          </span>
+          <span className="coverage-number-label">{segment.label}</span>
+        </button>
+      ))}
     </div>
   )
 }
@@ -418,12 +562,12 @@ function CoverageFilterDropdown({
   value: string
   onChange: (value: string) => void
   labels?: Record<CoverageStatus, string>
-  options?: Array<{ value: string; label: string }>
+  options?: FilterDropdownOption[]
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const shellRef = useRef<HTMLSpanElement | null>(null)
 
-  const options: Array<{ value: string; label: string }> = customOptions ?? [
+  const options: FilterDropdownOption[] = customOptions ?? [
     { value: "all", label: "Origin" },
     { value: "human", label: labels?.human ?? "Verified" },
     { value: "ai", label: labels?.ai ?? "AI" },
@@ -431,6 +575,9 @@ function CoverageFilterDropdown({
   ]
 
   const currentLabel = options.find((o) => o.value === value)?.label ?? "Origin"
+  const defaultValue = options[0]?.value ?? "all"
+  const isActive = value !== defaultValue
+  const currentOption = { value, label: currentLabel }
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -453,35 +600,51 @@ function CoverageFilterDropdown({
   }, [])
 
   return (
-    <span className="filter-dropdown-shell" ref={shellRef}>
-      <button
+    <span className="relative w-auto shrink-0" ref={shellRef}>
+      <Button
         type="button"
-        className="filter-dropdown-trigger"
+        variant="outline"
+        size="lg"
+        className={cn(
+          "h-10 w-[7.5rem] max-w-full cursor-pointer select-none justify-between gap-1 rounded-xl border-[color:color-mix(in_srgb,var(--ds-black)_14%,transparent)] bg-transparent px-2 text-sm font-medium text-[color:var(--ds-muted)] shadow-none ring-0 transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_6%,transparent)] active:bg-[color:color-mix(in_srgb,var(--ds-black)_10%,transparent)] focus-visible:border-[color:var(--ds-black)] focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] sm:w-[10.5rem] sm:gap-2 sm:px-3",
+          (isOpen || isActive) &&
+            "border-[color:var(--ds-black)] bg-[color:color-mix(in_srgb,var(--ds-black)_3%,transparent)] ring-[0.5px] ring-[color:var(--ds-black)]",
+          isActive && "text-[color:var(--ds-ink)]",
+        )}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-pressed={isActive}
         onClick={() => setIsOpen((prev) => !prev)}
       >
-        <span className="filter-dropdown-sizer" aria-hidden="true">
-          {options.map((o) => (
-            <span key={o.value} className="filter-dropdown-sizer-item">
-              {o.label}
-            </span>
-          ))}
+        <span className="flex min-w-0 items-center gap-2">
+          <FilterDropdownOptionIcon
+            className="size-4 shrink-0 text-[color:var(--ds-muted)]"
+            option={currentOption}
+          />
+          <span className="truncate text-left">{currentLabel}</span>
         </span>
-        <span className="filter-dropdown-label">{currentLabel}</span>
-        <span className="control-chevron" aria-hidden="true" />
-      </button>
+        <ChevronDown
+          className="size-4 text-[color:var(--ds-muted)] sm:size-5"
+          aria-hidden="true"
+        />
+      </Button>
       {isOpen && (
         <div
-          className="filter-dropdown-menu"
+          className="absolute left-0 right-0 top-full z-[70] mt-1.5 flex flex-col gap-1 rounded-[var(--ds-radius)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] p-1 shadow-[0_12px_30px_rgba(8,8,8,0.12)] sm:left-auto sm:min-w-full"
           role="listbox"
           aria-label="Coverage filter"
         >
           {options.map((option) => (
-            <button
+            <Button
               key={option.value}
               type="button"
-              className={`filter-dropdown-option${option.value === value ? " is-selected" : ""}`}
+              variant="ghost"
+              size="lg"
+              className={cn(
+                "h-9 justify-start gap-2 rounded-lg px-3 text-sm font-medium text-[color:var(--ds-ink)] transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_6%,transparent)]",
+                option.value === value &&
+                  "bg-[color:var(--ds-hover)] font-medium text-[color:var(--ds-black)]",
+              )}
               onClick={() => {
                 onChange(option.value)
                 setIsOpen(false)
@@ -489,12 +652,89 @@ function CoverageFilterDropdown({
               role="option"
               aria-selected={option.value === value}
             >
-              {option.label}
-            </button>
+              <FilterDropdownOptionIcon
+                className="size-4 shrink-0 text-[color:var(--ds-muted)]"
+                option={option}
+              />
+              <span className="min-w-0 truncate">{option.label}</span>
+            </Button>
           ))}
         </div>
       )}
     </span>
+  )
+}
+
+export function SelectedVideoStack({
+  leavingVideos = [],
+  videos,
+}: {
+  leavingVideos?: LeavingStackVideo[]
+  videos: ClientVideo[]
+}) {
+  if (videos.length === 0 && leavingVideos.length === 0) {
+    return null
+  }
+
+  const selectedSlots: SelectedStackSlot[] = videos
+    .slice(0, 4)
+    .map((video, index) => ({
+      id: video.id,
+      index,
+      state: "selected",
+      video,
+    }))
+  const selectedIds = new Set(videos.map((video) => video.id))
+  const stackSlots: SelectedStackSlot[] = [...selectedSlots]
+
+  for (const leaving of leavingVideos) {
+    if (selectedIds.has(leaving.video.id) || leaving.index > 3) {
+      continue
+    }
+
+    stackSlots.splice(Math.min(leaving.index, stackSlots.length), 0, {
+      id: leaving.id,
+      index: leaving.index,
+      state: "leaving" as const,
+      video: leaving.video,
+    })
+  }
+
+  const visibleSlots = stackSlots.slice(0, 4)
+  const overflowCount = Math.max(0, videos.length - 4)
+
+  return (
+    <div
+      className="selected-video-stack"
+      aria-label={`${videos.length} selected video${videos.length === 1 ? "" : "s"}`}
+    >
+      <div className="selected-video-stack-list" aria-hidden="true">
+        {visibleSlots.map((slot, index) => (
+          <span
+            key={slot.id}
+            className={`selected-video-stack-thumb${
+              slot.state === "leaving" ? " is-leaving" : ""
+            }${slot.video.imageUrl ? " has-image" : ""}`}
+            style={
+              {
+                "--stack-index": index,
+                backgroundImage: slot.video.imageUrl
+                  ? `url("${slot.video.imageUrl}")`
+                  : undefined,
+              } as React.CSSProperties
+            }
+            aria-label={slot.video.title}
+          >
+            {slot.video.imageUrl ? null : getVideoInitial(slot.video.title)}
+          </span>
+        ))}
+        {overflowCount > 0 ? (
+          <span className="selected-video-stack-overflow">
+            +{overflowCount}
+          </span>
+        ) : null}
+      </div>
+    </div>
   )
 }
 
@@ -509,13 +749,14 @@ type CollectionCardProps = {
   isExpanded: boolean
   isSelectMode: boolean
   selectionLocked: boolean
-  selectedExploreVideoId: string | null
   selectedVideoIds: Set<string>
   searchMatchIds: Set<string>
   onToggleExpanded: (collectionId: string) => void
   onHoverVideo: (details: HoveredVideoDetails | null) => void
-  onToggleVideo: (videoId: string) => void
-  onSelectExploreVideo: (details: HoveredVideoDetails) => void
+  onToggleVideo: (
+    videoId: string,
+    options?: ToggleVideoSelectionOptions,
+  ) => void
 }
 
 const CollectionCard = memo(function CollectionCard({
@@ -525,13 +766,11 @@ const CollectionCard = memo(function CollectionCard({
   isExpanded,
   isSelectMode,
   selectionLocked,
-  selectedExploreVideoId,
   selectedVideoIds,
   searchMatchIds,
   onToggleExpanded,
   onHoverVideo,
   onToggleVideo,
-  onSelectExploreVideo,
 }: CollectionCardProps) {
   const total = collection.videos.length
 
@@ -560,6 +799,39 @@ const CollectionCard = memo(function CollectionCard({
       return order[a.coverageStatus] - order[b.coverageStatus]
     })
   }, [filteredVideos])
+
+  const toggleCollectionNoneVideos = useCallback(
+    (sourceElement?: HTMLElement | null) => {
+      const noneVideos = getSelectableNoneVideos(collection.videos)
+      const allNoneSelected =
+        noneVideos.length > 0 &&
+        noneVideos.every((v) => selectedVideoIds.has(v.id))
+
+      if (allNoneSelected) {
+        for (const v of noneVideos) {
+          onToggleVideo(v.id, { animate: false })
+        }
+        return
+      }
+
+      const newlySelectedVideos = noneVideos.filter(
+        (v) => !selectedVideoIds.has(v.id),
+      )
+      const revealStackVideoIds = newlySelectedVideos.map((v) => v.id)
+
+      newlySelectedVideos.forEach((v, index) => {
+        onToggleVideo(v.id, {
+          animate: index === 0,
+          revealStackVideoIds:
+            index === 0 && revealStackVideoIds.length > 0
+              ? revealStackVideoIds
+              : undefined,
+          sourceElement,
+        })
+      })
+    },
+    [collection.videos, onToggleVideo, selectedVideoIds],
+  )
 
   return (
     <section className="collection-card" key={collection.id}>
@@ -600,28 +872,14 @@ const CollectionCard = memo(function CollectionCard({
                   onClick={(e) => {
                     e.stopPropagation()
                     if (!selectionInputEnabled) return
-
-                    if (allNoneSelected) {
-                      for (const v of noneVideos) onToggleVideo(v.id)
-                    } else {
-                      for (const v of noneVideos) {
-                        if (!selectedVideoIds.has(v.id)) onToggleVideo(v.id)
-                      }
-                    }
+                    toggleCollectionNoneVideos(e.currentTarget)
                   }}
                   onKeyDown={(e) => {
                     if (e.key === " " || e.key === "Enter") {
                       e.preventDefault()
                       e.stopPropagation()
                       if (!selectionInputEnabled) return
-
-                      if (allNoneSelected) {
-                        for (const v of noneVideos) onToggleVideo(v.id)
-                      } else {
-                        for (const v of noneVideos) {
-                          if (!selectedVideoIds.has(v.id)) onToggleVideo(v.id)
-                        }
-                      }
+                      toggleCollectionNoneVideos(e.currentTarget)
                     }
                   }}
                 >
@@ -653,7 +911,7 @@ const CollectionCard = memo(function CollectionCard({
             counts={counts}
             activeFilter="all"
             onFilter={() => {}}
-            mode="explore"
+            interactive={false}
             labels={reportConfig.segmentLabels}
             ariaLabel={reportConfig.ariaLabel}
           />
@@ -727,7 +985,8 @@ const CollectionCard = memo(function CollectionCard({
               <div className="detail-group-list">
                 {groupVideos.map((video) => {
                   const status = groupStatus
-                  const isSelected = selectedVideoIds.has(video.id)
+                  const isSelected =
+                    isSelectMode && selectedVideoIds.has(video.id)
                   const isSelectable = isVideoQaSelectable(video.id)
                   const selectionInputEnabled = isEnrichSelectionInputEnabled({
                     isSelectMode,
@@ -735,16 +994,39 @@ const CollectionCard = memo(function CollectionCard({
                     isSubmitting: selectionLocked,
                   })
                   const detailRowDisabled =
-                    !isSelectable || (isSelectMode && selectionLocked)
+                    isSelectMode &&
+                    (!isSelectable || (isSelectMode && selectionLocked))
                   const disabledReason = getVideoQaSelectionDisabledReason(
                     video.id,
                   )
+                  const rowContent = (
+                    <>
+                      {isSelectMode ? (
+                        <input
+                          type="checkbox"
+                          className={`detail-row-checkbox detail-row-checkbox--${status}${status !== "none" && video.coverageCounts.none > 0 ? " detail-row-checkbox--partial" : ""}${searchMatchIds.has(video.id) ? " detail-row-checkbox--search-match" : ""}`}
+                          checked={isSelected}
+                          disabled={!selectionInputEnabled}
+                          onChange={(event) =>
+                            onToggleVideo(video.id, {
+                              sourceElement: event.currentTarget,
+                            })
+                          }
+                        />
+                      ) : null}
+                      <span className="detail-content">
+                        {video.id.startsWith("collection:")
+                          ? `${video.title} (collection)`
+                          : video.title}
+                      </span>
+                    </>
+                  )
 
-                  return (
+                  return isSelectMode ? (
                     <label
                       className={`collection-detail-row${searchMatchIds.has(video.id) ? " detail-row--search-match" : ""}${detailRowDisabled ? " is-disabled" : ""}`}
                       key={video.id}
-                      title={
+                      aria-label={
                         isSelectMode && selectionLocked
                           ? "Creating enrichment jobs..."
                           : (disabledReason ?? undefined)
@@ -758,19 +1040,23 @@ const CollectionCard = memo(function CollectionCard({
                       }
                       onMouseLeave={() => onHoverVideo(null)}
                     >
-                      <input
-                        type="checkbox"
-                        className={`detail-row-checkbox detail-row-checkbox--${status}${status !== "none" && video.coverageCounts.none > 0 ? " detail-row-checkbox--partial" : ""}${searchMatchIds.has(video.id) ? " detail-row-checkbox--search-match" : ""}`}
-                        checked={isSelected}
-                        disabled={!selectionInputEnabled}
-                        onChange={() => onToggleVideo(video.id)}
-                      />
-                      <span className="detail-content">
-                        {video.id.startsWith("collection:")
-                          ? `${video.title} (collection)`
-                          : video.title}
-                      </span>
+                      {rowContent}
                     </label>
+                  ) : (
+                    <div
+                      className={`collection-detail-row${searchMatchIds.has(video.id) ? " detail-row--search-match" : ""}`}
+                      key={video.id}
+                      onMouseEnter={() =>
+                        onHoverVideo({
+                          video,
+                          collectionTitle: collection.title,
+                          status,
+                        })
+                      }
+                      onMouseLeave={() => onHoverVideo(null)}
+                    >
+                      {rowContent}
+                    </div>
                   )
                 })}
               </div>
@@ -787,10 +1073,7 @@ const CollectionCard = memo(function CollectionCard({
             collectionTitle: collection.title,
             status,
           } satisfies HoveredVideoDetails
-          const isExploreSelected = selectedExploreVideoId === video.id
-          const isSelected = isSelectMode
-            ? selectedVideoIds.has(video.id)
-            : isExploreSelected
+          const isSelected = isSelectMode && selectedVideoIds.has(video.id)
           const isSelectable = isVideoQaSelectable(video.id)
           const isInteractive = isSelectMode
             ? isEnrichSelectionInputEnabled({
@@ -798,7 +1081,7 @@ const CollectionCard = memo(function CollectionCard({
                 isSelectable,
                 isSubmitting: selectionLocked,
               })
-            : true
+            : false
           const disabledReason = getVideoQaSelectionDisabledReason(video.id)
           const title = isSelectMode
             ? selectionLocked
@@ -811,25 +1094,17 @@ const CollectionCard = memo(function CollectionCard({
           return (
             <span
               key={video.id}
-              role={
-                isInteractive
-                  ? isSelectMode
-                    ? "checkbox"
-                    : "radio"
-                  : undefined
-              }
+              role={isInteractive ? "checkbox" : undefined}
               aria-checked={isInteractive ? isSelected : undefined}
               tabIndex={isInteractive ? 0 : undefined}
-              className={`tile ${video.id.startsWith("collection:") ? "tile--collection" : "tile--video"} tile--${status}${status !== "none" && video.coverageCounts.none > 0 ? " tile--partial" : ""}${searchMatchIds.has(video.id) ? " tile--search-match" : ""}${isSelectMode ? " tile--select" : " tile--explore"}${isSelected ? " is-selected" : ""}${isSelectMode && !isSelectable ? " is-unselectable" : ""}${isSelectMode && selectionLocked ? " is-disabled" : ""}`}
-              title={title}
+              className={`tile ${video.id.startsWith("collection:") ? "tile--collection" : "tile--video"} tile--${status}${status !== "none" && video.coverageCounts.none > 0 ? " tile--partial" : ""}${searchMatchIds.has(video.id) ? " tile--search-match" : ""}${isSelectMode ? " tile--select" : " tile--coverage"}${isSelected ? " is-selected" : ""}${isSelectMode && !isSelectable ? " is-unselectable" : ""}${isSelectMode && selectionLocked ? " is-disabled" : ""}`}
+              aria-label={title}
               onClick={
                 isInteractive
-                  ? () => {
-                      if (isSelectMode) {
-                        onToggleVideo(video.id)
-                        return
-                      }
-                      onSelectExploreVideo(videoDetails)
+                  ? (event) => {
+                      onToggleVideo(video.id, {
+                        sourceElement: event.currentTarget,
+                      })
                     }
                   : undefined
               }
@@ -838,11 +1113,9 @@ const CollectionCard = memo(function CollectionCard({
                   ? (e) => {
                       if (e.key === " " || e.key === "Enter") {
                         e.preventDefault()
-                        if (isSelectMode) {
-                          onToggleVideo(video.id)
-                          return
-                        }
-                        onSelectExploreVideo(videoDetails)
+                        onToggleVideo(video.id, {
+                          sourceElement: e.currentTarget,
+                        })
                       }
                     }
                   : undefined
@@ -996,20 +1269,27 @@ export function CoverageReportClient({
   const [hoveredVideo, setHoveredVideo] = useState<HoveredVideoDetails | null>(
     null,
   )
-  const [selectedExploreVideoId, setSelectedExploreVideoId] = useState<
-    string | null
-  >(null)
   const [expandedCollections, setExpandedCollections] = useState<string[]>([])
 
   const [selectedVideoIds, setSelectedVideoIds] = useState<Set<string>>(
     new Set(),
   )
+  const [flyingSelection, setFlyingSelection] =
+    useState<FlyingSelection | null>(null)
+  const [leavingStackVideos, setLeavingStackVideos] = useState<
+    LeavingStackVideo[]
+  >([])
+  const [withheldStackVideoIds, setWithheldStackVideoIds] = useState<
+    Set<string>
+  >(new Set())
   const [enrichFeedback, setEnrichFeedback] = useState<EnrichFeedback | null>(
     null,
   )
   const [isEnrichSubmitting, setIsEnrichSubmitting] = useState(false)
   const enrichRequestSeqRef = useRef(0)
   const cancelledEnrichRequestSeqRef = useRef<number | null>(null)
+  const selectedStackTargetRef = useRef<HTMLDivElement | null>(null)
+  const leavingStackTimeoutsRef = useRef<number[]>([])
   const [
     languageSelectorFocusRequestCount,
     setLanguageSelectorFocusRequestCount,
@@ -1022,13 +1302,30 @@ export function CoverageReportClient({
   const reportConfig = REPORT_CONFIG[reportType]
   const [searchQuery, setSearchQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
-  const [storedInteractionMode, setStoredInteractionMode] =
-    useSessionMode("explore")
-  const interactionMode = shell?.mode ?? storedInteractionMode
-  const setInteractionMode = shell?.setMode ?? setStoredInteractionMode
   const hasSelectedLanguages =
     hasSelectedLanguagesInSelection(selectedLanguageIds)
-  const isSelectMode = interactionMode === "select"
+  const isSelectMode = reportType === "subtitles"
+  const videoById = useMemo(() => {
+    const byId = new Map<string, ClientVideo>()
+    for (const collection of collections) {
+      for (const video of collection.videos) {
+        byId.set(video.id, video)
+      }
+    }
+    return byId
+  }, [collections])
+  const selectedVideos = useMemo(
+    () =>
+      Array.from(selectedVideoIds)
+        .map((videoId) => videoById.get(videoId))
+        .filter((video): video is ClientVideo => Boolean(video)),
+    [selectedVideoIds, videoById],
+  )
+  const displayedSelectedVideos = useMemo(
+    () =>
+      selectedVideos.filter((video) => !withheldStackVideoIds.has(video.id)),
+    [selectedVideos, withheldStackVideoIds],
+  )
   const selectableVideoIds = useMemo(
     () =>
       new Set(
@@ -1058,21 +1355,146 @@ export function CoverageReportClient({
     setLanguageSelectorFocusRequestCount((prev) => prev + 1)
   }, [languageSelectionRequired, selectedVideoCount])
 
+  useEffect(() => {
+    return () => {
+      for (const timeoutId of leavingStackTimeoutsRef.current) {
+        window.clearTimeout(timeoutId)
+      }
+      leavingStackTimeoutsRef.current = []
+    }
+  }, [])
+
+  const queueLeavingStackVideo = useCallback(
+    (video: ClientVideo, index: number) => {
+      const leavingId = `${video.id}-${Date.now()}`
+      setLeavingStackVideos((prev) => [
+        ...prev.filter((item) => item.video.id !== video.id),
+        { id: leavingId, index, video },
+      ])
+
+      const timeoutId = window.setTimeout(() => {
+        setLeavingStackVideos((prev) =>
+          prev.filter((item) => item.id !== leavingId),
+        )
+        leavingStackTimeoutsRef.current =
+          leavingStackTimeoutsRef.current.filter((id) => id !== timeoutId)
+      }, 220)
+      leavingStackTimeoutsRef.current.push(timeoutId)
+    },
+    [],
+  )
+
+  const startFlyingSelection = useCallback(
+    (
+      video: ClientVideo,
+      sourceElement?: HTMLElement | null,
+      revealVideoIds: string[] = [video.id],
+      visibleStackVideoCountAfterReveal = revealVideoIds.length,
+    ) => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          const previewElement = document.querySelector<HTMLElement>(
+            "[data-fly-preview-video-id]",
+          )
+          const sourceRect =
+            previewElement?.dataset.flyPreviewVideoId === video.id
+              ? previewElement.getBoundingClientRect()
+              : sourceElement?.getBoundingClientRect()
+          const stackTarget = selectedStackTargetRef.current
+          const targetRect = stackTarget
+            ? rectFromStackRightEnd(
+                stackTarget,
+                visibleStackVideoCountAfterReveal,
+              )
+            : null
+
+          if (!sourceRect || !targetRect) {
+            setWithheldStackVideoIds((prev) => {
+              const next = new Set(prev)
+              for (const id of revealVideoIds) {
+                next.delete(id)
+              }
+              return next
+            })
+            return
+          }
+
+          const from = rectFromFlySource(sourceRect)
+
+          setFlyingSelection({
+            from,
+            id: `${video.id}-${Date.now()}`,
+            mid: midpointForFlyer(from, targetRect),
+            revealVideoIds,
+            to: targetRect,
+            video,
+          })
+        })
+      })
+    },
+    [],
+  )
+
   const toggleVideoSelection = useCallback(
-    (videoId: string) => {
+    (videoId: string, options: ToggleVideoSelectionOptions = {}) => {
       if (isEnrichSubmitting || !selectableVideoIds.has(videoId)) {
         return
       }
 
+      const video = videoById.get(videoId)
+      const wasSelected = selectedVideoIds.has(videoId)
+      const revealStackVideoIds = options.revealStackVideoIds ?? [videoId]
+
       setEnrichFeedback(null)
+
+      if (wasSelected && video && options.animate !== false) {
+        queueLeavingStackVideo(
+          video,
+          Array.from(selectedVideoIds).indexOf(videoId),
+        )
+      }
+
+      if (wasSelected) {
+        setWithheldStackVideoIds((prev) => {
+          if (!prev.has(videoId)) return prev
+          const next = new Set(prev)
+          next.delete(videoId)
+          return next
+        })
+      } else if (video && options.animate !== false) {
+        setWithheldStackVideoIds((prev) => {
+          const next = new Set(prev)
+          for (const id of revealStackVideoIds) {
+            next.add(id)
+          }
+          return next
+        })
+      }
+
       setSelectedVideoIds((prev) => {
         const next = new Set(prev)
         if (next.has(videoId)) next.delete(videoId)
         else next.add(videoId)
         return next
       })
+
+      if (!wasSelected && video && options.animate !== false) {
+        startFlyingSelection(
+          video,
+          options.sourceElement,
+          revealStackVideoIds,
+          selectedVideoIds.size + revealStackVideoIds.length,
+        )
+      }
     },
-    [isEnrichSubmitting, selectableVideoIds],
+    [
+      isEnrichSubmitting,
+      queueLeavingStackVideo,
+      selectableVideoIds,
+      selectedVideoIds,
+      startFlyingSelection,
+      videoById,
+    ],
   )
 
   useEffect(() => {
@@ -1087,31 +1509,28 @@ export function CoverageReportClient({
 
       return next
     })
+    setWithheldStackVideoIds((prev) => {
+      const next = new Set(
+        Array.from(prev).filter((videoId) => selectableVideoIds.has(videoId)),
+      )
+
+      if (next.size === prev.size) {
+        return prev
+      }
+
+      return next
+    })
   }, [selectableVideoIds])
 
-  // Clear selection when switching away from select mode
-  const handleModeChange = useCallback(
-    (mode: Mode) => {
-      setEnrichFeedback(null)
-      if (mode === "explore") setSelectedVideoIds(new Set())
-      setInteractionMode(mode)
-    },
-    [setInteractionMode],
-  )
-
-  const interactionModeRef = useRef<Mode>(interactionMode)
-
   useEffect(() => {
-    if (
-      interactionModeRef.current !== interactionMode &&
-      interactionMode === "explore"
-    ) {
+    if (!isSelectMode) {
       setEnrichFeedback(null)
+      setFlyingSelection(null)
+      setLeavingStackVideos([])
+      setWithheldStackVideoIds(new Set())
       setSelectedVideoIds(new Set())
     }
-
-    interactionModeRef.current = interactionMode
-  }, [interactionMode])
+  }, [isSelectMode])
 
   const handleEnrichSelection = useCallback(async () => {
     if (!enrichActionReady || isEnrichSubmitting) {
@@ -1162,7 +1581,6 @@ export function CoverageReportClient({
       setSelectedVideoIds(outcome.nextSelectedVideoIds)
 
       if (outcome.redirectPath) {
-        handleModeChange("explore")
         router.push(
           outcome.redirectPath as
             | "/dashboard/jobs"
@@ -1181,7 +1599,6 @@ export function CoverageReportClient({
     }
   }, [
     enrichActionReady,
-    handleModeChange,
     isEnrichSubmitting,
     router,
     selectedLanguageIds,
@@ -1193,8 +1610,12 @@ export function CoverageReportClient({
       cancelledEnrichRequestSeqRef.current = enrichRequestSeqRef.current
     }
 
-    handleModeChange("explore")
-  }, [handleModeChange, isEnrichSubmitting])
+    setEnrichFeedback(null)
+    setFlyingSelection(null)
+    setLeavingStackVideos([])
+    setWithheldStackVideoIds(new Set())
+    setSelectedVideoIds(new Set())
+  }, [isEnrichSubmitting])
 
   // Fetch video coverage data from proxy API when languages change
   useEffect(() => {
@@ -1284,25 +1705,6 @@ export function CoverageReportClient({
       .sort((a, b) => a[1].localeCompare(b[1]))
       .map(([value, label]) => ({ value, label }))
   }, [collections])
-
-  const exploreVideoDetailsById = useMemo(() => {
-    const byId = new Map<string, HoveredVideoDetails>()
-    for (const collection of collections) {
-      for (const video of collection.videos) {
-        byId.set(video.id, {
-          video,
-          collectionTitle: collection.title,
-          status: video.coverageStatus,
-        })
-      }
-    }
-    return byId
-  }, [collections])
-
-  const selectedExploreVideo = useMemo(() => {
-    if (!selectedExploreVideoId) return null
-    return exploreVideoDetailsById.get(selectedExploreVideoId) ?? null
-  }, [exploreVideoDetailsById, selectedExploreVideoId])
 
   // Derive header bar counts from snapshot data (instant, pre-computed)
   const snapshotCounts = useMemo(() => {
@@ -1431,28 +1833,15 @@ export function CoverageReportClient({
     [],
   )
 
-  const handleSelectExploreVideo = useCallback(
-    (details: HoveredVideoDetails) => {
-      setSelectedExploreVideoId(details.video.id)
-      setHoveredVideo(details)
-    },
-    [],
-  )
-
-  useEffect(() => {
-    if (!selectedExploreVideoId) return
-    if (exploreVideoDetailsById.has(selectedExploreVideoId)) return
-    setSelectedExploreVideoId(null)
-  }, [exploreVideoDetailsById, selectedExploreVideoId])
-
-  const activePreviewVideo = isSelectMode
-    ? hoveredVideo
-    : (selectedExploreVideo ?? hoveredVideo)
+  const activePreviewVideo = hoveredVideo
 
   const totalCollections = visibleCollections.length
   const showCoverageControls =
     gatewayConfigured && !errorMessage && !videoCollectionsLoadFailed
   const showCollectionControls = showCoverageControls && hasSelectedLanguages
+  const coverageBarCounts = isLoadingVideos
+    ? (snapshotCounts ?? overallCounts)
+    : overallCounts
 
   const presetLanguages = useMemo<LanguagePreset[]>(
     () => resolveLanguagePresets(languageCatalog),
@@ -1496,6 +1885,19 @@ export function CoverageReportClient({
                 {selectedVideoIds.size} video
                 {selectedVideoIds.size === 1 ? "" : "s"} selected
               </div>
+              <div
+                ref={selectedStackTargetRef}
+                className={`selected-video-stack-target${
+                  selectedVideos.length > 0 || leavingStackVideos.length > 0
+                    ? " has-videos"
+                    : ""
+                }`}
+              >
+                <SelectedVideoStack
+                  videos={displayedSelectedVideos}
+                  leavingVideos={leavingStackVideos}
+                />
+              </div>
               <div className="translation-target">
                 Languages:{" "}
                 {selectedLanguageIds.length > 0
@@ -1519,91 +1921,54 @@ export function CoverageReportClient({
       </ManagerShellSidebarSlot>
 
       <header className="studio-page-intro studio-page-intro--coverage">
-        <span className="studio-page-eyebrow">Coverage report</span>
-        <h1>{reportConfig.label}</h1>
-        <p>{reportConfig.intro}</p>
-      </header>
-
-      {showCoverageControls && (
-        <section className="language-panel-section">
-          <div className="language-panel-layout">
-            <div className="language-panel-diagram">
-              <CoverageBar
-                counts={
-                  isLoadingVideos
-                    ? (snapshotCounts ?? overallCounts)
-                    : overallCounts
-                }
-                activeFilter={filter}
-                onFilter={setFilter}
-                mode={interactionMode}
-                labels={reportConfig.segmentLabels}
-                ariaLabel={reportConfig.ariaLabel}
-              />
-            </div>
-            <LanguageGeoSelector
-              value={selectedLanguageIds}
-              options={languageOptions}
-              attentionRequired={languageSelectionRequired}
-              attentionRequestKey={languageSelectorFocusRequestCount}
-              openRequestKey={languageSelectorOpenRequestCount}
-              onApplyLanguages={applySelectedLanguages}
+        <div className="studio-page-intro-copy">
+          <span className="studio-page-eyebrow">Coverage report</span>
+          <h1>{reportConfig.label}</h1>
+          <p>{reportConfig.intro}</p>
+        </div>
+        {showCoverageControls ? (
+          <div className="studio-page-intro-diagram">
+            <CoverageNumberDiagram
+              counts={coverageBarCounts}
+              activeFilter={filter}
+              onFilter={setFilter}
+              interactive
+              labels={reportConfig.segmentLabels}
+              ariaLabel={reportConfig.ariaLabel}
             />
           </div>
-        </section>
-      )}
+        ) : null}
+      </header>
 
       {showCollectionControls && (
-        <section className="mode-panel">
-          {hydrated && (
-            <ModeToggle
-              mode={interactionMode}
-              onChange={handleModeChange}
-              translateDisabled={reportType !== "subtitles"}
-            />
-          )}
-          <p className="mode-hint">
-            {hydrated && isSelectMode && reportType === "subtitles"
-              ? "Select videos for translation."
-              : reportConfig.hintExplore}
-          </p>
-        </section>
-      )}
-
-      {showCollectionControls && (
-        <section className="search-filter-card">
-          <div className="search-filter-row">
-            <div className="collection-search-shell">
-              <Search className="collection-search-icon" aria-hidden="true" />
-              <input
+        <section className="relative z-[60] mb-5">
+          <div
+            className="flex w-[calc(100vw-2.5rem)] max-w-full flex-row items-center gap-2 sm:w-full"
+            id="coverage-collection-filters"
+          >
+            <div className="relative min-w-0 flex-1">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-[color:var(--ds-muted)]"
+                aria-hidden="true"
+              />
+              <Input
                 type="search"
-                className="collection-search"
+                className="h-10 rounded-xl border-[color:color-mix(in_srgb,var(--ds-black)_14%,transparent)] bg-transparent pl-10 pr-10 text-sm font-medium text-[color:var(--ds-ink)] shadow-none ring-0 transition-colors duration-75 placeholder:text-[color:var(--ds-soft)] hover:bg-[color:color-mix(in_srgb,var(--ds-black)_6%,transparent)] active:bg-[color:color-mix(in_srgb,var(--ds-black)_10%,transparent)] focus-visible:border-[color:var(--ds-black)] focus-visible:bg-[color:color-mix(in_srgb,var(--ds-black)_3%,transparent)] focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
                 placeholder="Search by name or ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               {searchQuery.length > 0 && (
-                <button
+                <Button
                   type="button"
-                  className="collection-search-clear"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1.5 top-1/2 size-7 -translate-y-1/2 rounded-lg text-[color:var(--ds-muted)] transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_6%,transparent)] hover:text-[color:var(--ds-ink)]"
                   onClick={() => setSearchQuery("")}
                   aria-label="Clear search"
                 >
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="16"
-                    height="16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="m15 9-6 6" />
-                    <path d="m9 9 6 6" />
-                  </svg>
-                </button>
+                  <X className="size-[18px]" aria-hidden="true" />
+                </Button>
               )}
             </div>
             <CoverageFilterDropdown
@@ -1615,42 +1980,24 @@ export function CoverageReportClient({
                 ...collectionTypeOptions,
               ]}
             />
-            <CoverageFilterDropdown
-              value={filter}
-              onChange={(v) => setFilter(v as CoverageFilter)}
-              labels={reportConfig.segmentLabels}
-            />
           </div>
-          {collections.length > 0 && (
-            <div
-              className="search-filter-status"
-              role="status"
-              aria-live="polite"
-            >
-              Showing {totalCollections}
-              {totalCollections !== collections.length
-                ? ` of ${collections.length}`
-                : ""}{" "}
-              collection
-              {collections.length === 1 ? "" : "s"}
-              {(filter !== "all" ||
-                typeFilter !== "all" ||
-                searchQuery.trim()) && (
-                <button
-                  type="button"
-                  className="clear-filters-button"
-                  onClick={() => {
-                    setFilter("all")
-                    setTypeFilter("all")
-                    setSearchQuery("")
-                  }}
-                >
-                  <FilterX className="icon" aria-hidden="true" />
-                  Clear filters
-                </button>
-              )}
+        </section>
+      )}
+
+      {showCoverageControls && (
+        <section className="language-panel-section">
+          <div className="language-panel-layout">
+            <div className="language-panel-header-row">
+              <LanguageGeoSelector
+                value={selectedLanguageIds}
+                options={languageOptions}
+                attentionRequired={languageSelectionRequired}
+                attentionRequestKey={languageSelectorFocusRequestCount}
+                openRequestKey={languageSelectorOpenRequestCount}
+                onApplyLanguages={applySelectedLanguages}
+              />
             </div>
-          )}
+          </div>
         </section>
       )}
 
@@ -1724,14 +2071,12 @@ export function CoverageReportClient({
                 filter={effectiveFilter}
                 isExpanded={isExpanded}
                 isSelectMode={isSelectMode}
-                selectedExploreVideoId={selectedExploreVideoId}
                 selectedVideoIds={selectedVideoIds}
                 selectionLocked={isSelectMode && isEnrichSubmitting}
                 searchMatchIds={searchMatchIds}
                 onToggleExpanded={toggleExpanded}
                 onHoverVideo={handleHoverVideo}
                 onToggleVideo={toggleVideoSelection}
-                onSelectExploreVideo={handleSelectExploreVideo}
               />
             )
           })}
@@ -1786,7 +2131,16 @@ export function CoverageReportClient({
       {/* Hover / pinned detail bar */}
       {hydrated && activePreviewVideo && (
         <div
-          className="translation-bar is-detail is-explore"
+          className={`translation-bar is-detail is-preview${
+            activePreviewVideo.video.imageUrl ? " has-detail-bg" : ""
+          }`}
+          style={
+            activePreviewVideo.video.imageUrl
+              ? ({
+                  "--detail-bg-image": `url("${activePreviewVideo.video.imageUrl}")`,
+                } as React.CSSProperties)
+              : undefined
+          }
           role="status"
           aria-live="polite"
         >
@@ -1799,10 +2153,12 @@ export function CoverageReportClient({
                     className="detail-thumb"
                     src={activePreviewVideo.video.imageUrl}
                     alt={activePreviewVideo.video.title}
+                    data-fly-preview-video-id={activePreviewVideo.video.id}
                   />
                 ) : (
                   <div
                     className="detail-thumb detail-thumb--empty"
+                    data-fly-preview-video-id={activePreviewVideo.video.id}
                     aria-hidden="true"
                   />
                 )}
@@ -1854,6 +2210,64 @@ export function CoverageReportClient({
           </div>
         </div>
       )}
+
+      {flyingSelection
+        ? createPortal(
+            <span
+              key={flyingSelection.id}
+              className={`selected-video-flyer${
+                flyingSelection.video.imageUrl ? " has-image" : ""
+              }`}
+              style={
+                {
+                  "--fly-from-height": `${flyingSelection.from.height}px`,
+                  "--fly-from-left": `${flyingSelection.from.left}px`,
+                  "--fly-from-top": `${flyingSelection.from.top}px`,
+                  "--fly-from-width": `${flyingSelection.from.width}px`,
+                  "--fly-mid-left": `${
+                    flyingSelection.from.left + flyingSelection.mid.x
+                  }px`,
+                  "--fly-mid-top": `${
+                    flyingSelection.from.top + flyingSelection.mid.y
+                  }px`,
+                  "--fly-mid-x": `${flyingSelection.mid.x}px`,
+                  "--fly-mid-y": `${flyingSelection.mid.y}px`,
+                  "--fly-scale-x": `${flyingSelection.to.width / flyingSelection.from.width}`,
+                  "--fly-scale-y": `${flyingSelection.to.height / flyingSelection.from.height}`,
+                  "--fly-translate-x": `${
+                    flyingSelection.to.left - flyingSelection.from.left
+                  }px`,
+                  "--fly-translate-y": `${
+                    flyingSelection.to.top - flyingSelection.from.top
+                  }px`,
+                  "--fly-to-height": `${flyingSelection.to.height}px`,
+                  "--fly-to-left": `${flyingSelection.to.left}px`,
+                  "--fly-to-top": `${flyingSelection.to.top}px`,
+                  "--fly-to-width": `${flyingSelection.to.width}px`,
+                  backgroundImage: flyingSelection.video.imageUrl
+                    ? `url("${flyingSelection.video.imageUrl}")`
+                    : undefined,
+                } as React.CSSProperties
+              }
+              aria-hidden="true"
+              onAnimationEnd={() => {
+                setWithheldStackVideoIds((prev) => {
+                  const next = new Set(prev)
+                  for (const id of flyingSelection.revealVideoIds) {
+                    next.delete(id)
+                  }
+                  return next
+                })
+                setFlyingSelection(null)
+              }}
+            >
+              {flyingSelection.video.imageUrl
+                ? null
+                : getVideoInitial(flyingSelection.video.title)}
+            </span>,
+            document.body,
+          )
+        : null}
     </>
   )
 }

@@ -13,12 +13,15 @@
 
 - `/dashboard/videos`
 - `/dashboard/media`
-- `/dashboard/workflows`
 - `/dashboard/embeddings`
 - `/dashboard/search`
 
 These surfaces expose real data and some operator actions, but they are not yet
 complete editorial workflows.
+
+`/dashboard/workflows` is intentionally operational rather than editorial: the
+index lists real Workflow runtime runs, and `/dashboard/workflows/[runId]`
+embeds the library-provided trace/detail UI from `@workflow/web-shared`.
 
 ## Deferred
 
@@ -28,7 +31,7 @@ complete editorial workflows.
 - User-management actions beyond visibility
 - Settings mutation surfaces and guarded admin actions
 - Search-to-edit handoff that jumps directly into matching records
-- Rich workflow-run history beyond current operational state views
+- Workflow action controls beyond the embedded trace/detail inspection surface
 
 ## Current Boundary
 

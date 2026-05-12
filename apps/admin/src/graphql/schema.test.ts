@@ -51,6 +51,18 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "experience",
         "experiences",
         "experienceBySlug",
+        "watchSetting",
+      ]),
+    )
+  })
+
+  it("WatchSetting type exposes the consumer-shape fields (documentId, homepageExperience, defaultTemplateExperience)", () => {
+    const fields = fieldsOf("WatchSetting")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "documentId",
+        "homepageExperience",
+        "defaultTemplateExperience",
       ]),
     )
   })

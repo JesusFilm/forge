@@ -28,6 +28,25 @@ related:
 date_learned: 2026-04-19
 ---
 
+## Stage 3 (feat-117) update
+
+The per-target write loop has been collapsed into bulk SQL: ONE parent
+INSERT (`INSERT INTO video_scene … unnest(...) ON CONFLICT (video_edition_id,
+scene_index) DO NOTHING`) plus ONE follow-up SELECT to recover the
+`scene_index → id` map for both freshly-inserted and pre-existing rows,
+plus ONE locale INSERT (`INSERT INTO video_scene_locale … unnest(...) ON
+CONFLICT (video_scene_id, locale) DO UPDATE`) per `(video, edition,
+locale)` target. Per-row Way A casts at the SELECT seam apply both to
+the vector column (`u.embedding_text::vector(1536)`) and to the
+`text[]` columns (`themes`, `bible_verses`, `demographics`,
+`spiritual_context`, all unfolded via
+`jsonb_array_elements_text(u.<col>_json::jsonb)`). Round-trip count
+drops from `O(scenes × locales)` to `O(1)` per `(video, edition, locale)`.
+The full bulk-write recipe + invariant tests + bind-count regression
+guard live in
+`docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
+Mirrors the bullet that landed in `apps/admin/CLAUDE.md`.
+
 ## Problem
 
 `apps/admin` needs the same scene-embedding search capability as

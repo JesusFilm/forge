@@ -4,7 +4,7 @@ title: "Recommendation A/B Comparison Logging"
 owner: "nisal"
 priority: "P2"
 status: "not-started"
-start_date: "2026-06-12"
+start_date: "2026-06-21"
 duration: 7
 depends_on:
   - "feat-091"

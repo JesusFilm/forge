@@ -1,24 +1,11 @@
-// Pothos types for Video and its relations.
-//
-// Classification: Video and VideoLocale are `@classification public-shape`
-// in v1 — they're Core-sourced and read-only at the GraphQL layer. Once a
-// Locale is published, any authenticated principal can read it. Ownership-
-// based ABAC doesn't apply because Core is authoritative; editors don't
-// own individual videos, they curate localized titles/descriptions that
-// land via Core sync or a future editor workflow.
-//
-// Naming mirrors Strapi: `video`, `videos`, `video(by: { slug: ... })`.
-// `lengthInMilliseconds` is BigInt → exposed as a string to avoid JS
-// Number precision loss.
-//
-// Per Unit 4 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
+// Pothos types for Video and its relations (public-shape, Core-sourced,
+// read-only at the GraphQL layer). `lengthInMilliseconds` is BigInt →
+// exposed as String to avoid JS Number precision loss. Per Unit 4 of
+// docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
+import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
-
-// -----------------------------------------------------------------------------
-// Enums — imported from the generated Prisma types.
-// -----------------------------------------------------------------------------
 
 const VideoLabelEnum = builder.enumType("VideoLabel", {
   values: {
@@ -44,10 +31,6 @@ const VideoSourceEnum = builder.enumType("VideoSourceHost", {
   } as const,
 })
 
-// -----------------------------------------------------------------------------
-// Simple related types referenced by Video
-// -----------------------------------------------------------------------------
-
 /** @classification public-shape */
 builder.prismaObject("VideoOrigin", {
   fields: (t) => ({
@@ -61,18 +44,15 @@ builder.prismaObject("VideoOrigin", {
 /** @classification public-shape */
 builder.prismaObject("VideoEdition", {
   description:
-    "A specific cut of a Video (theatrical, director's, extended, …). Subtitles attach here because timecodes are an edition property; dubs attach here because each dub is the audio for a specific cut.",
+    "A specific cut of a Video. Subtitles + dubs attach here because timecodes and audio are per-cut.",
   fields: (t) => ({
     id: t.exposeID("id"),
     coreId: t.exposeString("coreId"),
     name: t.exposeString("name"),
     dubs: t.relation("dubs", {
-      description: "Language-specific audio dubs of this edition.",
       query: { where: { deletedAt: null } },
     }),
     subtitles: t.relation("subtitles", {
-      description:
-        "Timed text tracks. Same-language-as-source = transcript; different language = translation; same-language-as-dub = closed captions.",
       query: { where: { deletedAt: null } },
     }),
   }),
@@ -81,7 +61,7 @@ builder.prismaObject("VideoEdition", {
 /** @classification public-shape */
 builder.prismaObject("MuxVideo", {
   description:
-    "Mux asset metadata. Note: MuxVideo.duration is always 0 in legacy data — canonical duration lives on VideoVariant.lengthInMilliseconds.",
+    "Mux asset metadata. MuxVideo.duration is always 0 in legacy data — canonical duration lives on VideoDub.lengthInMilliseconds.",
   fields: (t) => ({
     id: t.exposeID("id"),
     assetId: t.exposeString("assetId", { nullable: true }),
@@ -179,12 +159,7 @@ builder.prismaObject("VideoDubDownload", {
   }),
 })
 
-// -----------------------------------------------------------------------------
-// VideoDub — formerly VideoVariant. See the rename rationale in migration
-// 0006 and apps/admin/CLAUDE.md. Core sync translates "coreVariant → dub"
-// at the boundary so the model name reflects the varying axis (audio dub)
-// rather than Core's legacy umbrella term.
-// -----------------------------------------------------------------------------
+// VideoDub — formerly VideoVariant; see migration 0006 + apps/admin/CLAUDE.md.
 
 /** @classification public-shape */
 builder.prismaObject("VideoDub", {
@@ -195,10 +170,7 @@ builder.prismaObject("VideoDub", {
     coreId: t.exposeString("coreId"),
     slug: t.exposeString("slug", { nullable: true }),
     duration: t.exposeInt("duration", { nullable: true }),
-    /**
-     * BigInt exposed as a string to avoid loss of precision when >2^53.
-     * Clients parse as BigInt or Number at their own risk.
-     */
+    // BigInt → String to avoid precision loss above 2^53.
     lengthInMilliseconds: t.string({
       nullable: true,
       resolve: (row) =>
@@ -222,14 +194,9 @@ builder.prismaObject("VideoDub", {
   }),
 })
 
-// -----------------------------------------------------------------------------
-// Video + VideoLocale
-// -----------------------------------------------------------------------------
-
 /** @classification public-shape */
 builder.prismaObject("VideoLocale", {
-  description:
-    "Per-locale title/description/snippet/imageAlt for a Video. Editors publish locales independently.",
+  description: "Per-locale title/description/snippet/imageAlt for a Video.",
   fields: (t) => ({
     id: t.exposeID("id"),
     locale: t.exposeString("locale"),
@@ -262,7 +229,7 @@ builder.prismaObject("VideoStudyQuestion", {
 /** @classification public-shape */
 builder.prismaObject("Video", {
   description:
-    "A video sourced from JesusFilm Core. Read-only at the GraphQL layer in v1 — editor writes land in a later phase.",
+    "A video sourced from JesusFilm Core. Read-only at the GraphQL layer in v1.",
   fields: (t) => ({
     id: t.exposeID("id"),
     coreId: t.exposeString("coreId"),
@@ -282,11 +249,11 @@ builder.prismaObject("Video", {
     primaryLanguage: t.relation("primaryLanguage", { nullable: true }),
     origin: t.relation("origin", { nullable: true }),
     locales: t.relation("locales", {
-      description: "Per-locale content rows (title, description, etc.).",
+      description: "PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all.",
+      query: (_args, ctx) =>
+        isEditorOrAdmin(ctx.user) ? {} : { where: { status: "PUBLISHED" } },
     }),
     dubs: t.relation("dubs", {
-      description:
-        "Language-specific audio dubs + their encoded playback (formerly exposed as `variants`).",
       query: { where: { deletedAt: null } },
     }),
     images: t.relation("images", {
@@ -301,15 +268,12 @@ builder.prismaObject("Video", {
   }),
 })
 
-// -----------------------------------------------------------------------------
-// Root queries
-// -----------------------------------------------------------------------------
-
+// Root queries — PUBLIC since consumer-migration U2 (2026-05-11).
 builder.queryFields((t) => ({
   video: t.prismaField({
     type: "Video",
     nullable: true,
-    authScopes: { hasPermission: "read:videos" },
+    authScopes: { public: true },
     description: "Fetch a single Video by id.",
     args: {
       id: t.arg.id({ required: true }),
@@ -317,27 +281,26 @@ builder.queryFields((t) => ({
     resolve: (query, _root, args, ctx) =>
       ctx.services.video.getById({
         id: String(args.id),
-        user: ctx.user,
         query,
       }),
   }),
   videoBySlug: t.prismaField({
     type: "Video",
     nullable: true,
-    authScopes: { hasPermission: "read:videos" },
+    authScopes: { public: true },
+    description: "Fetch a single Video by slug.",
     args: {
       slug: t.arg.string({ required: true }),
     },
     resolve: (query, _root, args, ctx) =>
       ctx.services.video.getBySlug({
         slug: args.slug,
-        user: ctx.user,
         query,
       }),
   }),
   videos: t.prismaField({
     type: ["Video"],
-    authScopes: { hasPermission: "read:videos" },
+    authScopes: { public: true },
     description: "List active Videos ordered by most recent Core update.",
     args: {
       limit: t.arg.int({ required: false, defaultValue: 50 }),
@@ -346,7 +309,6 @@ builder.queryFields((t) => ({
     resolve: (query, _root, args, ctx) =>
       ctx.services.video.list({
         input: { limit: args.limit ?? 50, offset: args.offset ?? 0 },
-        user: ctx.user,
         query,
       }),
   }),

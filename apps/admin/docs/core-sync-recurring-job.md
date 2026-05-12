@@ -11,8 +11,8 @@ calls `runSync(syncPrisma, ...)`.
   for example `connection_limit=2`.
 - `WORKFLOW_TARGET_WORLD` - set to `@workflow/world-postgres` in Railway.
 - `WORKFLOW_POSTGRES_URL` - Postgres World storage database. Use the admin
-  database when the workflow dashboard should join runtime rows to admin ledger
-  context.
+  database when the workflows run index and detail routes should read runtime
+  rows alongside admin ledger context.
 - `WORKFLOW_POSTGRES_JOB_PREFIX` - recommended: `forge_admin`.
 - `WORKFLOW_POSTGRES_WORKER_CONCURRENCY` - recommended starting point: `2`.
 - `WORKFLOW_POSTGRES_MAX_POOL_SIZE` - recommended starting point: `4`.
@@ -71,8 +71,9 @@ calls `runSync(syncPrisma, ...)`.
 7. Confirm `sync_state` watermarks advance for zero-error phases.
 8. Confirm `/dashboard/system-status` shows Core Sync lock, phase, coverage
    audit, and latest-run posture.
-9. Confirm `/dashboard/workflows` shows Postgres World runtime rows enriched
-   with admin ledger context.
+9. Confirm `/dashboard/workflows` lists Postgres World runtime rows.
+10. Open `/dashboard/workflows/<runId>` for a recent run and confirm the
+    embedded `@workflow/web-shared` trace/detail view shows runtime events.
 
 ## Local Benchmark Plan
 

@@ -54,3 +54,12 @@ export const WORKFLOW_TRIGGER_PRINCIPAL = {
   id: null,
   role: "WORKFLOW_TRIGGER",
 } as const satisfies Principal
+
+/**
+ * Editorial-tier predicate: true only for EDITOR/ADMIN. PUBLIC, VIEWER,
+ * SYSTEM, WORKFLOW_TRIGGER all return false — none should see drafts via
+ * consumer-facing relation paths (Experience.locales, Video.locales).
+ */
+export function isEditorOrAdmin(user: Principal | null): boolean {
+  return user?.role === "ADMIN" || user?.role === "EDITOR"
+}

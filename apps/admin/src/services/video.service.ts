@@ -1,7 +1,12 @@
 // Video service — read-only in v1. Writes come via Core sync (Unit 10).
 //
-// Videos are public-shape (Core-sourced, read-only at GraphQL layer).
-// Tier-only auth gate: VIEWER+ can list/read; no ABAC ownership checks.
+// Auth contract (consumer-migration U2 — 2026-05-11): `list`/`getById`/
+// `getBySlug` are exposed via PUBLIC resolvers in
+// `apps/admin/src/graphql/types/video.ts:316,332,346`; the resolver's
+// `authScopes: { public: true }` is the sole auth wall — re-adding a
+// service-layer `hasPermission` guard would 403 anonymous callers and
+// breaks `video.service.test.ts:52`. `getByCoreId` is service-to-service
+// only (Core sync internals) and keeps its guard.
 
 import type { PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
@@ -13,17 +18,11 @@ export class VideoService {
 
   async list({
     input: raw,
-    user,
     query,
   }: {
     input: { limit?: number; offset?: number }
-    user: Principal | null
     query: object
   }) {
-    if (!hasPermission(user, "read:videos")) {
-      throw new ForbiddenError()
-    }
-
     return this.prisma.video.findMany({
       ...query,
       where: { deletedAt: null },
@@ -33,38 +32,14 @@ export class VideoService {
     })
   }
 
-  async getById({
-    id,
-    user,
-    query,
-  }: {
-    id: string
-    user: Principal | null
-    query: object
-  }) {
-    if (!hasPermission(user, "read:videos")) {
-      throw new ForbiddenError()
-    }
-
+  async getById({ id, query }: { id: string; query: object }) {
     return this.prisma.video.findFirst({
       ...query,
       where: { id, deletedAt: null },
     })
   }
 
-  async getBySlug({
-    slug,
-    user,
-    query,
-  }: {
-    slug: string
-    user: Principal | null
-    query: object
-  }) {
-    if (!hasPermission(user, "read:videos")) {
-      throw new ForbiddenError()
-    }
-
+  async getBySlug({ slug, query }: { slug: string; query: object }) {
     return this.prisma.video.findFirst({
       ...query,
       where: { slug, deletedAt: null },
@@ -80,6 +55,7 @@ export class VideoService {
     user: Principal | null
     query: object
   }) {
+    // Service-to-service only (Core sync). Auth wall lives here, not at a resolver.
     if (!hasPermission(user, "read:videos")) {
       throw new ForbiddenError()
     }

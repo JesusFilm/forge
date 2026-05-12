@@ -44,7 +44,7 @@ const VIDEOS_QUERY = `
       publishedAt
       primaryLanguageId
       source
-      origin { id name description }
+      origin { id }
       title { value language { bcp47 } }
       description { value language { bcp47 } }
       snippet { value language { bcp47 } }
@@ -67,26 +67,6 @@ const VIDEOS_QUERY = `
         bibleBook { id osisId }
       }
       keywords { id }
-      images {
-        id
-        aspectRatio
-        mobileCinematicHigh
-        mobileCinematicLow
-        mobileCinematicVeryLow
-        thumbnail
-        videoStill
-        blurhash
-        url
-      }
-      subtitles {
-        id
-        primary
-        vttSrc
-        srtSrc
-        value
-        language { id }
-        videoEdition { id name }
-      }
       children { id }
       locked
       noIndex
@@ -102,7 +82,7 @@ type CoreVideo = {
   publishedAt: string | null
   primaryLanguageId: string | null
   source: string | null
-  origin: { id: string; name: string; description: string | null } | null
+  origin: { id: string } | null
   title: Array<{
     value: string
     primary?: boolean | null
@@ -141,26 +121,6 @@ type CoreVideo = {
     bibleBook: { id: string; osisId: string | null }
   }>
   keywords: Array<{ id: string }>
-  images: Array<{
-    id: string
-    aspectRatio: string | null
-    mobileCinematicHigh: string | null
-    mobileCinematicLow: string | null
-    mobileCinematicVeryLow: string | null
-    thumbnail: string | null
-    videoStill: string | null
-    blurhash: string | null
-    url: string | null
-  }>
-  subtitles: Array<{
-    id: string
-    primary: boolean | null
-    vttSrc: string | null
-    srtSrc: string | null
-    value: string | null
-    language: { id: string } | null
-    videoEdition: { id: string; name: string | null } | null
-  }>
   children: Array<{ id: string }>
   locked: boolean
   noIndex: boolean
@@ -193,6 +153,10 @@ export async function syncVideos({
   })
   const langMap = new Map(languages.map((l) => [l.coreId, l.id]))
   const bcp47ByCoreId = new Map(languages.map((l) => [l.coreId, l.bcp47]))
+  const origins = await prisma.videoOrigin.findMany({
+    select: { id: true, coreId: true },
+  })
+  const originMap = new Map(origins.map((origin) => [origin.coreId, origin.id]))
 
   if (!since) {
     const bibleResult = await coreQuery<{ bibleBooks: CoreBibleBook[] }>(
@@ -251,7 +215,7 @@ export async function syncVideos({
     }
   }
 
-  const PAGE_SIZE = 500
+  const PAGE_SIZE = 10000
   let offset = 0
   let firstPageCount = 0
   const seenCoreIds = new Set<string>()
@@ -315,25 +279,9 @@ export async function syncVideos({
             const primaryLanguageId = video.primaryLanguageId
               ? (langMap.get(video.primaryLanguageId) ?? null)
               : null
-            let originId: string | undefined
-            if (video.origin) {
-              const origin = await tx.videoOrigin.upsert({
-                where: { coreId: video.origin.id },
-                create: {
-                  coreId: video.origin.id,
-                  name: video.origin.name,
-                  description: video.origin.description,
-                  syncedAt: new Date(),
-                },
-                update: {
-                  name: video.origin.name,
-                  description: video.origin.description,
-                  syncedAt: new Date(),
-                  deletedAt: null,
-                },
-              })
-              originId = origin.id
-            }
+            const originId = video.origin
+              ? (originMap.get(video.origin.id) ?? null)
+              : null
 
             const existing = await tx.video.findUnique({
               where: { coreId: video.id },
@@ -358,7 +306,7 @@ export async function syncVideos({
                 aiMetadata: false,
                 source: "CORE",
                 primaryLanguageId,
-                originId: originId ?? null,
+                originId,
                 updatedAt: new Date(video.updatedAt),
                 syncedAt: new Date(),
               },
@@ -372,7 +320,7 @@ export async function syncVideos({
                 locked: video.locked,
                 noIndex: video.noIndex,
                 primaryLanguageId,
-                originId: originId ?? null,
+                originId,
                 updatedAt: new Date(video.updatedAt),
                 syncedAt: new Date(),
                 deletedAt: null,
@@ -418,48 +366,6 @@ export async function syncVideos({
                 },
               })
             }
-
-            const seenImageIds = new Set(video.images.map((image) => image.id))
-            for (const image of video.images) {
-              await tx.videoImage.upsert({
-                where: { coreId: image.id },
-                create: {
-                  coreId: image.id,
-                  videoId: videoRow.id,
-                  url: image.url,
-                  aspectRatio: image.aspectRatio,
-                  mobileCinematicHigh: image.mobileCinematicHigh,
-                  mobileCinematicLow: image.mobileCinematicLow,
-                  mobileCinematicVeryLow: image.mobileCinematicVeryLow,
-                  thumbnail: image.thumbnail,
-                  videoStill: image.videoStill,
-                  blurhash: image.blurhash,
-                  syncedAt: new Date(),
-                },
-                update: {
-                  videoId: videoRow.id,
-                  url: image.url,
-                  aspectRatio: image.aspectRatio,
-                  mobileCinematicHigh: image.mobileCinematicHigh,
-                  mobileCinematicLow: image.mobileCinematicLow,
-                  mobileCinematicVeryLow: image.mobileCinematicVeryLow,
-                  thumbnail: image.thumbnail,
-                  videoStill: image.videoStill,
-                  blurhash: image.blurhash,
-                  syncedAt: new Date(),
-                  deletedAt: null,
-                },
-              })
-            }
-            await tx.videoImage.updateMany({
-              where: {
-                videoId: videoRow.id,
-                source: "CORE",
-                coreId: { notIn: [...seenImageIds] },
-                deletedAt: null,
-              },
-              data: { deletedAt: new Date() },
-            })
 
             const seenStudyQuestionIds = new Set(
               video.studyQuestions.map((question) => question.id),
@@ -570,68 +476,6 @@ export async function syncVideos({
                 data: { videoId: videoRow.id, keywordId },
               })
             }
-
-            const seenSubtitleIds = new Set(
-              video.subtitles.map((subtitle) => subtitle.id),
-            )
-            for (const subtitle of video.subtitles) {
-              let videoEditionId: string | null = null
-              if (subtitle.videoEdition) {
-                const edition = await tx.videoEdition.upsert({
-                  where: { coreId: subtitle.videoEdition.id },
-                  create: {
-                    coreId: subtitle.videoEdition.id,
-                    name: subtitle.videoEdition.name ?? "",
-                    syncedAt: new Date(),
-                  },
-                  update: {
-                    name: subtitle.videoEdition.name ?? "",
-                    syncedAt: new Date(),
-                    deletedAt: null,
-                  },
-                })
-                videoEditionId = edition.id
-              }
-              if (!videoEditionId) continue
-              await tx.videoSubtitle.upsert({
-                where: { coreId: subtitle.id },
-                create: {
-                  coreId: subtitle.id,
-                  videoId: videoRow.id,
-                  videoEditionId,
-                  languageId: subtitle.language
-                    ? (langMap.get(subtitle.language.id) ?? null)
-                    : null,
-                  value: subtitle.value,
-                  primary: subtitle.primary ?? false,
-                  vttSrc: subtitle.vttSrc,
-                  srtSrc: subtitle.srtSrc,
-                  syncedAt: new Date(),
-                },
-                update: {
-                  videoId: videoRow.id,
-                  videoEditionId,
-                  languageId: subtitle.language
-                    ? (langMap.get(subtitle.language.id) ?? null)
-                    : null,
-                  value: subtitle.value,
-                  primary: subtitle.primary ?? false,
-                  vttSrc: subtitle.vttSrc,
-                  srtSrc: subtitle.srtSrc,
-                  syncedAt: new Date(),
-                  deletedAt: null,
-                },
-              })
-            }
-            await tx.videoSubtitle.updateMany({
-              where: {
-                videoId: videoRow.id,
-                source: "CORE",
-                coreId: { notIn: [...seenSubtitleIds] },
-                deletedAt: null,
-              },
-              data: { deletedAt: new Date() },
-            })
 
             await tx.videoRelation.deleteMany({
               where: { parentId: videoRow.id },

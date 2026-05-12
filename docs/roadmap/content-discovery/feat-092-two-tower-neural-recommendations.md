@@ -4,7 +4,7 @@ title: "Two-Tower Neural Recommendation Model"
 owner: "nisal"
 priority: "P1"
 status: "not-started"
-start_date: "2026-05-15"
+start_date: "2026-05-24"
 duration: 21
 depends_on:
   - "feat-090"

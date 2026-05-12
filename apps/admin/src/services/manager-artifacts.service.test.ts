@@ -9,6 +9,7 @@ import {
   expect,
   it,
   vi,
+  type MockInstance,
 } from "vitest"
 import * as s3 from "@/storage/s3"
 import {
@@ -234,9 +235,15 @@ describe("readEmbeddingsArtifact", () => {
     expect(result.chunks).toHaveLength(2)
   })
 
+  // Updated to throw the REAL AWS SDK v3 error shape (`name: "NoSuchKey"`)
+  // — generic `new Error("NoSuchKey: ...")` would pass via the regex
+  // backstop while leaving the typed branch untested. See
+  // docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md.
   it("throws artifact_missing when the underlying storage reports NoSuchKey", async () => {
     readArtifactSpy.mockRejectedValueOnce(
-      new Error("NoSuchKey: object not found"),
+      Object.assign(new Error("The specified key does not exist."), {
+        name: "NoSuchKey",
+      }),
     )
     await expect(readEmbeddingsArtifact("1")).rejects.toMatchObject({
       name: "ManagerArtifactError",
@@ -389,4 +396,166 @@ describe("readEmbeddingsArtifact", () => {
     const error = await readEmbeddingsArtifact("1").catch((e) => e)
     expect((error as { code: string }).code).toBe("artifact_read_failed")
   })
+})
+
+// -----------------------------------------------------------------------------
+// Classifier coverage — exercises `isArtifactMissing` against the full set of
+// error shapes that can reach the readSceneAnalysisArtifact / readEmbeddingsArtifact
+// catch blocks in production. Tests use the spy pattern (NOT file fixtures) so
+// each test injects an EXACT error shape — including the typed AWS SDK v3
+// shapes that the regex-only classifier would have missed.
+//
+// Per docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md:
+// these tests must throw the REAL typed shape, not generic `new Error("NoSuchKey: ...")`.
+// -----------------------------------------------------------------------------
+
+type ClassifierCase = {
+  readonly label: string
+  readonly factory: () => unknown
+  readonly expectedCode:
+    | "artifact_missing"
+    | "artifact_invalid"
+    | "artifact_read_failed"
+}
+
+const CLASSIFIER_CASES: readonly ClassifierCase[] = [
+  {
+    label: "AWS SDK v3 typed GET miss (name: 'NoSuchKey')",
+    factory: () =>
+      Object.assign(new Error("The specified key does not exist."), {
+        name: "NoSuchKey",
+      }),
+    expectedCode: "artifact_missing",
+  },
+  {
+    label:
+      "AWS SDK v3 typed GET miss with regex-incompatible message — proves Tier 1 (typed name) fires INDEPENDENTLY of the regex backstop",
+    // The default AWS textual rendering matches `does not exist` in the
+    // regex backstop — so a regression that deletes the typed-name
+    // branch entirely would still pass the case above. This case uses
+    // a message that the regex CANNOT match, so the test fails iff the
+    // typed branch is broken. See the testing-1 finding from PR1
+    // /ce:review for the trap.
+    factory: () =>
+      Object.assign(new Error("Server returned HTTP 500"), {
+        name: "NoSuchKey",
+      }),
+    expectedCode: "artifact_missing",
+  },
+  {
+    label: "AWS SDK v3 typed HEAD miss (name: 'NotFound')",
+    factory: () => Object.assign(new Error("Not Found"), { name: "NotFound" }),
+    expectedCode: "artifact_missing",
+  },
+  {
+    label:
+      "AWS SDK v3 typed HEAD miss with regex-incompatible message — Tier 1 independence",
+    factory: () => Object.assign(new Error("HTTP 404"), { name: "NotFound" }),
+    expectedCode: "artifact_missing",
+  },
+  {
+    label: "Legacy AWS Code-shape (Code: 'NoSuchKey')",
+    // Some older AWS SDK paths and some S3-compatible providers
+    // surface the error code on `Code` rather than `name`. Keep the
+    // legacy branch covered until we're confident no producer in
+    // our stack emits this. Note the message here is regex-
+    // incompatible — proves Tier 2 fires independently.
+    factory: () =>
+      Object.assign(new Error("Some legacy SDK message"), {
+        Code: "NoSuchKey",
+      }),
+    expectedCode: "artifact_missing",
+  },
+  {
+    label:
+      "Local fallback ENOENT (Node fs error, classified via regex backstop)",
+    factory: () =>
+      Object.assign(new Error("ENOENT: no such file or directory"), {
+        code: "ENOENT",
+      }),
+    expectedCode: "artifact_missing",
+  },
+  {
+    label:
+      "Plain Error with 'does not exist' (no typed shape) — regex backstop fires",
+    // An untyped error from a hypothetical alt-storage backend emitting
+    // S3-textual phrasing without `name`/`Code` should still classify
+    // as missing via the regex backstop. Proves Tier 3 fires when
+    // Tier 1 and Tier 2 don't.
+    factory: () => new Error("object 'foo' does not exist at key /bar"),
+    expectedCode: "artifact_missing",
+  },
+  {
+    label: "Unrelated transport error — connection reset",
+    factory: () => new Error("connection reset by peer"),
+    expectedCode: "artifact_read_failed",
+  },
+  {
+    label:
+      "Unrelated error mentioning 'missing field' must NOT mis-classify (dropped 'missing' token)",
+    // Tightness probe: a bug message that uses the bare word "missing"
+    // (e.g., "missing field 'foo'") is unrelated to artifact-presence.
+    // The legacy regex `/missing/i` matched this — meaning a real bug
+    // got silently demoted to `skipped { artifact_missing }`. The
+    // tightened regex drops the bare `missing` token, so this case
+    // correctly classifies as `artifact_read_failed` and surfaces in
+    // the report as a real failure for the operator to investigate.
+    factory: () => new Error("missing field 'foo' in api response"),
+    expectedCode: "artifact_read_failed",
+  },
+  {
+    label:
+      "Plain Error with bare 'no such key' (no typed shape, dropped regex token) — must NOT mis-classify",
+    // Regression-pin: the legacy regex matched `no such key` (lowercase
+    // bare phrase). The typed branches above cover AWS SDK verbatim,
+    // so this token was dropped from the regex. A non-typed-shape
+    // emitter that says "no such key" in its message is no longer
+    // demoted to skipped — it surfaces as a real failure. If a future
+    // alt-storage backend emerges that emits this phrasing without a
+    // typed `name`/`Code`, this test will fail and we'll re-evaluate.
+    factory: () => new Error("s3-compatible: no such key in bucket"),
+    expectedCode: "artifact_read_failed",
+  },
+] as const
+
+describe("isArtifactMissing classifier (R1: readSceneAnalysisArtifact)", () => {
+  let readArtifactSpy: MockInstance<typeof s3.readManagerArtifact>
+
+  beforeEach(() => {
+    readArtifactSpy = vi.spyOn(s3, "readManagerArtifact")
+  })
+
+  afterEach(() => {
+    readArtifactSpy.mockRestore()
+  })
+
+  for (const c of CLASSIFIER_CASES) {
+    it(`classifies ${c.label} as ${c.expectedCode}`, async () => {
+      readArtifactSpy.mockRejectedValueOnce(c.factory())
+      const error = await readSceneAnalysisArtifact("1").catch((e) => e)
+      expect(error).toBeInstanceOf(ManagerArtifactError)
+      expect((error as ManagerArtifactError).code).toBe(c.expectedCode)
+    })
+  }
+})
+
+describe("isArtifactMissing classifier (R2: readEmbeddingsArtifact)", () => {
+  let readArtifactSpy: MockInstance<typeof s3.readManagerArtifact>
+
+  beforeEach(() => {
+    readArtifactSpy = vi.spyOn(s3, "readManagerArtifact")
+  })
+
+  afterEach(() => {
+    readArtifactSpy.mockRestore()
+  })
+
+  for (const c of CLASSIFIER_CASES) {
+    it(`classifies ${c.label} as ${c.expectedCode}`, async () => {
+      readArtifactSpy.mockRejectedValueOnce(c.factory())
+      const error = await readEmbeddingsArtifact("1").catch((e) => e)
+      expect(error).toBeInstanceOf(ManagerArtifactError)
+      expect((error as ManagerArtifactError).code).toBe(c.expectedCode)
+    })
+  }
 })

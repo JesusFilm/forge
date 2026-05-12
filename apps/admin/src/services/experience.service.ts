@@ -5,7 +5,7 @@
 // Resolvers delegate here; they never call Prisma directly for mutations.
 
 import { Prisma, type PrismaClient } from "@prisma/client"
-import type { Principal } from "@/auth/principal"
+import { isEditorOrAdmin, type Principal } from "@/auth/principal"
 import {
   hasPermission,
   canEditExperienceLocale,
@@ -66,10 +66,6 @@ function snapshotExperienceLocale(locale: {
     createdAt: locale.createdAt?.toISOString() ?? null,
     updatedAt: locale.updatedAt?.toISOString() ?? null,
   })
-}
-
-function isPrivileged(user: Principal | null): boolean {
-  return user?.role === "ADMIN" || user?.role === "EDITOR"
 }
 
 function asSnapshotRecord(value: unknown): Record<string, unknown> | null {
@@ -159,7 +155,7 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    const includeArchived = raw.includeArchived && isPrivileged(user)
+    const includeArchived = raw.includeArchived && isEditorOrAdmin(user)
 
     return this.prisma.experience.findMany({
       ...query,
@@ -185,7 +181,7 @@ export class ExperienceService {
     }
 
     const where: Record<string, unknown> = { id }
-    if (!isPrivileged(user)) {
+    if (!isEditorOrAdmin(user)) {
       where.archivedAt = null
     }
 
@@ -207,7 +203,7 @@ export class ExperienceService {
 
     // PUBLIC and VIEWER see published only + exclude archived parents.
     // EDITOR and ADMIN see all statuses including drafts.
-    if (!isPrivileged(user)) {
+    if (!isEditorOrAdmin(user)) {
       where.status = "PUBLISHED"
       where.experience = { archivedAt: null }
     }

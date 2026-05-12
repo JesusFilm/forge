@@ -1,8 +1,14 @@
 import { start } from "workflow/api"
 import { syncPrisma } from "@/db/client"
 import {
+  abortSyncRun,
+  finishSyncRun,
+  runSyncPhase,
   runSync,
   resolveScope,
+  startSyncRun,
+  type PhaseResult,
+  type SyncRunContext,
   type SyncResult,
 } from "@/services/core-sync/orchestrator"
 import type { SyncPhase } from "@/services/core-sync/types"
@@ -34,6 +40,17 @@ export type CoreSyncJobResult = SyncResult & {
   scope: SyncPhase[]
   trigger: CoreSyncTrigger
 }
+
+export type CoreSyncJobStart =
+  | { skipped: true; result: CoreSyncJobResult }
+  | {
+      skipped: false
+      run: SyncRunContext
+      scope: SyncPhase[]
+      incremental: boolean
+      trigger: CoreSyncTrigger
+      ledgerRunId?: string
+    }
 
 export type CoreSyncDispatchResult = {
   workflow: "core-sync"
@@ -123,5 +140,78 @@ export async function runCoreSyncJob(
     ...result,
     scope: normalized.scope,
     trigger: normalized.trigger,
+  }
+}
+
+export async function startCoreSyncJob(
+  input: CoreSyncWorkflowInput = {},
+): Promise<CoreSyncJobStart> {
+  const normalized = normalizeCoreSyncInput(input)
+  if (input.ledgerRunId) {
+    await markWorkflowRunStarted(input.ledgerRunId)
+  }
+
+  const start = await startSyncRun(syncPrisma, {
+    scope: normalized.scope,
+    incremental: normalized.incremental,
+  })
+
+  if (start.skipped) {
+    const result = {
+      ...start.result,
+      scope: normalized.scope,
+      trigger: normalized.trigger,
+    }
+
+    if (input.ledgerRunId) {
+      await recordCoreSyncRunResult(input.ledgerRunId, result)
+    }
+
+    return { skipped: true, result }
+  }
+
+  return {
+    skipped: false,
+    run: start.run,
+    scope: normalized.scope,
+    incremental: normalized.incremental,
+    trigger: normalized.trigger,
+    ledgerRunId: input.ledgerRunId,
+  }
+}
+
+export async function runCoreSyncPhaseJob(
+  start: Exclude<CoreSyncJobStart, { skipped: true }>,
+  phase: SyncPhase,
+): Promise<PhaseResult> {
+  return runSyncPhase(syncPrisma, start.run, phase)
+}
+
+export async function finishCoreSyncJob(
+  start: Exclude<CoreSyncJobStart, { skipped: true }>,
+  phases: PhaseResult[],
+): Promise<CoreSyncJobResult> {
+  const result = await finishSyncRun(syncPrisma, start.run, phases)
+  const jobResult = {
+    ...result,
+    scope: start.scope,
+    trigger: start.trigger,
+  }
+
+  if (start.ledgerRunId) {
+    await recordCoreSyncRunResult(start.ledgerRunId, jobResult)
+  }
+
+  return jobResult
+}
+
+export async function failCoreSyncJob(
+  start: Exclude<CoreSyncJobStart, { skipped: true }>,
+  error: unknown,
+): Promise<void> {
+  await abortSyncRun(syncPrisma, start.run)
+
+  if (start.ledgerRunId) {
+    await markWorkflowRunFailed(start.ledgerRunId, error).catch(() => {})
   }
 }

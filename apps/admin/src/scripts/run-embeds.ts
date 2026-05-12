@@ -26,18 +26,87 @@
  *   --core-id=<id>                                         # repeatable
  *   --locale=<bcp47>                                       # scene pipeline filter
  *   --language=<bcp47>                                     # transcript pipeline filter
+ *   --report-out=<path>                                    # optional; dump final report JSON
  *
  * The mapping snapshot must already exist at the configured S3 key
  * (or the local-fallback path when RAILWAY_S3_BUCKET is unset).
  * Run `pnpm --filter @forge/admin pull:mapping` first to populate
  * it from prod admin S3.
  *
+ * `--report-out=<path>` writes the final `run-embeds.complete` JSON
+ * payload to a file in addition to stdout, so PR2's
+ * `pnpm trigger-enrichment --from-report=<path>` (feat-119) has a
+ * stable input format. Stdout output is unchanged.
+ *
+ * **Structured stdout/stderr events emitted (single grep target for
+ * CI parsers and downstream tooling):**
+ *
+ *   stdout:
+ *     - `run-embeds.start` — one line at startup with resolved config
+ *     - `run-embeds.scene.start`           (pipeline=scene|both)
+ *     - `run-embeds.scene.complete`        (pipeline=scene|both)
+ *     - `run-embeds.scene.error`           (pipeline=scene|both, on error)
+ *     - `run-embeds.transcript.start`      (pipeline=transcript|both)
+ *     - `run-embeds.transcript.complete`   (pipeline=transcript|both)
+ *     - `run-embeds.transcript.error`      (pipeline=transcript|both, on error)
+ *     - `run-embeds.complete` — final aggregated report (pretty-printed JSON)
+ *     - `run-embeds.report_out_written` — when --report-out succeeded
+ *
+ *   stderr:
+ *     - `run-embeds.report_out_error` — write-to-file failed (NON-fatal)
+ *     - `run-embeds.interrupted` — SIGINT/SIGTERM received
+ *     - `run-embeds.fatal` — unhandled error in main()
+ *
  * NOT run against prod by default — operator must set DATABASE_URL
  * explicitly. Local DB is the destination; the CLI does no safety
  * check beyond the explicit env var (mirrors run-sync.ts).
  */
 
+import { mkdir, writeFile } from "node:fs/promises"
+import { dirname, isAbsolute, resolve } from "node:path"
 import { DEFAULT_CORE_ID_MAPPING_S3_KEY } from "@/services/core-id-mapping.constants"
+
+/**
+ * Resolve a `--report-out=<path>` argument to an absolute path, or
+ * `undefined` if not set. Bare relative paths are anchored to
+ * `process.cwd()` (matches how an operator naturally types
+ * `--report-out=.tmp/report.json` from the repo root).
+ *
+ * Exported for tests; used internally by `main()`.
+ */
+export function resolveReportOutPath(
+  arg: string | undefined,
+): string | undefined {
+  if (arg === undefined || arg === "") return undefined
+  return isAbsolute(arg) ? arg : resolve(process.cwd(), arg)
+}
+
+/**
+ * Write the final `run-embeds.complete` JSON to disk. Creates parent
+ * directories as needed. On failure, logs a structured
+ * `run-embeds.report_out_error` event to stderr but does NOT throw —
+ * the report is already on stdout, so a side-channel write failure
+ * (ENOSPC, EACCES, broken path) is a logging concern, not a workflow
+ * outcome. PR2's `pnpm trigger-enrichment --from-report=<path>`
+ * (feat-119) consumes the file format produced here.
+ *
+ * Exported for tests.
+ */
+export async function writeReportToPath(
+  reportOutPath: string,
+  finalReport: unknown,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await mkdir(dirname(reportOutPath), { recursive: true })
+    await writeFile(reportOutPath, JSON.stringify(finalReport, null, 2) + "\n")
+    return { ok: true }
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    }
+  }
+}
 
 type Pipeline = "scene" | "transcript" | "both"
 
@@ -85,6 +154,10 @@ async function main(): Promise<void> {
   const coreIds = parseRepeated("core-id")
   const locales = parseRepeated("locale")
   const languages = parseRepeated("language")
+  // feat-119 PR1 — operators piping the report into PR2's
+  // `pnpm trigger-enrichment --from-report=<path>` need a stable
+  // file format. When unset, behavior is unchanged (stdout only).
+  const reportOutPath = resolveReportOutPath(parseSingle("report-out"))
 
   // Lazy-import the workflow modules AFTER the DATABASE_URL guard
   // above so a missing var produces our friendly stderr line instead
@@ -218,19 +291,38 @@ async function main(): Promise<void> {
       }
     }
 
-    process.stdout.write(
-      JSON.stringify(
-        {
-          event: "run-embeds.complete",
-          pipeline: pipelineArg,
-          wallClockMs: Date.now() - startedAt,
-          reports,
-          errors: Object.keys(errors).length > 0 ? errors : undefined,
-        },
-        null,
-        2,
-      ) + "\n",
-    )
+    const finalReport = {
+      event: "run-embeds.complete" as const,
+      pipeline: pipelineArg,
+      wallClockMs: Date.now() - startedAt,
+      reports,
+      errors: Object.keys(errors).length > 0 ? errors : undefined,
+    }
+
+    process.stdout.write(JSON.stringify(finalReport, null, 2) + "\n")
+
+    // feat-119 PR1 — optional file dump. Side-channel write failures
+    // do NOT alter the script's exit code (the report is already on
+    // stdout). See `writeReportToPath`.
+    if (reportOutPath !== undefined) {
+      const writeResult = await writeReportToPath(reportOutPath, finalReport)
+      if (writeResult.ok) {
+        process.stdout.write(
+          JSON.stringify({
+            event: "run-embeds.report_out_written",
+            path: reportOutPath,
+          }) + "\n",
+        )
+      } else {
+        process.stderr.write(
+          JSON.stringify({
+            event: "run-embeds.report_out_error",
+            path: reportOutPath,
+            error: writeResult.error,
+          }) + "\n",
+        )
+      }
+    }
 
     if (Object.keys(errors).length > 0) {
       process.exit(1)

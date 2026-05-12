@@ -122,6 +122,16 @@ export const env = createEnv({
     // configuration error if a runtime caller invokes it without this
     // env set. Recommend a dedicated read-only PG role on cms.
     CMS_DATABASE_URL: z.string().url().optional(),
+
+    // feat-119 PR2 — admin → manager outbound enrichment trigger.
+    // Admin's `triggerManagerEnrichment` GraphQL mutation POSTs to
+    // apps/manager's `/api/admin-trigger/{scene-analysis,transcript}`
+    // endpoint. Both are optional at boot so admin keeps starting
+    // when the trigger surface isn't configured; the outbound client
+    // returns a typed `DISPATCH_FAILED { reason: "config_missing" }`
+    // result per requested assetId in that case.
+    MANAGER_API_BASE_URL: z.string().url().optional(),
+    MANAGER_TRIGGER_API_KEY: z.string().min(1).optional(),
     NEXT_RUNTIME: z.enum(["nodejs", "edge"]).optional(),
     // Algolia (watch-project parity demo column on /watch/demo-keyword-search).
     // Server-side only — the demo route's `searchAlgolia` server action
@@ -258,6 +268,10 @@ export const env = createEnv({
       process.env.MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY,
     ),
     CMS_DATABASE_URL: emptyToUndefined(process.env.CMS_DATABASE_URL),
+    MANAGER_API_BASE_URL: emptyToUndefined(process.env.MANAGER_API_BASE_URL),
+    MANAGER_TRIGGER_API_KEY: emptyToUndefined(
+      process.env.MANAGER_TRIGGER_API_KEY,
+    ),
     NEXT_RUNTIME: emptyToUndefined(process.env.NEXT_RUNTIME),
     ALGOLIA_APP_ID: emptyToUndefined(process.env.ALGOLIA_APP_ID),
     ALGOLIA_SEARCH_API_KEY: emptyToUndefined(

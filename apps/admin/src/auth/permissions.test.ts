@@ -349,6 +349,7 @@ describe("permission matrix completeness", () => {
       "write:scene-embeddings",
       "write:transcript-embeddings",
       "write:experience-content-dump",
+      "write:manager-enrichment-trigger",
       "delete:media-assets",
       "publish:experiences",
       "archive:experiences",
@@ -362,6 +363,22 @@ describe("permission matrix completeness", () => {
         expect(() => hasPermission(p, key)).not.toThrow()
       }
     }
+  })
+
+  it("write:manager-enrichment-trigger is ADMIN-only at the editorial-tier ladder", () => {
+    expect(hasPermission(ADMIN, "write:manager-enrichment-trigger")).toBe(true)
+    expect(
+      hasPermission(EDITOR_ALICE, "write:manager-enrichment-trigger"),
+    ).toBe(false)
+    expect(hasPermission(VIEWER, "write:manager-enrichment-trigger")).toBe(
+      false,
+    )
+    expect(hasPermission(PUBLIC_USER, "write:manager-enrichment-trigger")).toBe(
+      false,
+    )
+    expect(hasPermission(SYSTEM, "write:manager-enrichment-trigger")).toBe(
+      false,
+    )
   })
 
   it("write:transcript-embeddings is ADMIN-only", () => {
@@ -408,6 +425,12 @@ describe("permission matrix completeness", () => {
       ).toBe(true)
     })
 
+    it("satisfies write:manager-enrichment-trigger (feat-119 PR2 CLI path)", () => {
+      expect(
+        hasPermission(WORKFLOW_TRIGGER, "write:manager-enrichment-trigger"),
+      ).toBe(true)
+    })
+
     it("does NOT satisfy any permission key outside the narrow allowlist", () => {
       // Iterate every PermissionKey via TypeScript's exhaustive Record
       // pattern so adding a new key without explicitly deciding
@@ -418,6 +441,7 @@ describe("permission matrix completeness", () => {
       const allowedKeys: ReadonlySet<PermissionKey> = new Set([
         "write:scene-embeddings",
         "write:transcript-embeddings",
+        "write:manager-enrichment-trigger",
       ])
       const allKeys: Record<PermissionKey, true> = {
         "read:experiences": true,
@@ -430,6 +454,7 @@ describe("permission matrix completeness", () => {
         "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
         "write:experience-content-dump": true,
+        "write:manager-enrichment-trigger": true,
         "delete:media-assets": true,
         "publish:experiences": true,
         "archive:experiences": true,

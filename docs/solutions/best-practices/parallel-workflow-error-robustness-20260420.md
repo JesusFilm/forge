@@ -289,3 +289,21 @@ vi.mocked(indexEditionScenes).mockRejectedValueOnce(
   — Stage 2's `EmbeddingsBatchError` is the canonical application of
   this doc's "literal-union `code`" rule. 7-code union, all branches
   reachable in tests.
+- `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`
+  — META doc that names the "tests must throw the real error class"
+  rule and tracks it across instances (this doc, the AWS S3
+  classification pattern, the pgvector bulk-insert lesson, the
+  verify-infra-writes pattern). Read first when a typed-discriminator
+  branch passes via the regex backstop without exercising the typed
+  path.
+- `docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md`
+  — Storage-seam application of this doc's typed-error rule:
+  `error.name === "NoSuchKey"` first (typed AWS SDK v3 surface),
+  legacy `error.Code` second, regex backstop third. Extends the
+  in-house typed-error rule to AWS SDK error shapes.
+- `docs/solutions/best-practices/workflow-report-operator-actionable-projection-pattern-20260506.md`
+  — Sibling pattern: once the typed-error rule cleanly classifies
+  outcomes into the `succeeded/skipped/failed` triple, a deduped
+  projection of the operator-actionable subset (e.g., `missingArtifacts`)
+  is the natural next surface. Applies whenever the cascade emits L
+  duplicate-meaning outcomes per group.

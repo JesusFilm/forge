@@ -1,10 +1,11 @@
 // Unit tests for indexEditionTranscript.
 //
 // DB interactions are tested against a stub Prisma client that mirrors
-// the call surface we use — $transaction + upsert + $executeRaw. True
-// end-to-end verification against a live Postgres with pgvector is
-// out of scope for R2 (same infra constraint as R1; see the R2 plan's
-// Scope Boundaries for rationale).
+// the call surface we use after Stage 3 (feat-117): $transaction +
+// videoTranscript.upsert + videoTranscriptChunk.deleteMany +
+// tx.$executeRaw (one bulk chunk INSERT). True end-to-end verification
+// against a live Postgres with pgvector is out of scope for the unit
+// tests; the prod smoke run for Stage 3 covers it.
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Principal } from "@/auth/principal"
@@ -24,28 +25,31 @@ type UpsertCall = { where: unknown; create: unknown; update: unknown }
 type StubPrismaTx = {
   videoTranscript: { upsert: ReturnType<typeof vi.fn> }
   videoTranscriptChunk: {
-    upsert: ReturnType<typeof vi.fn>
     deleteMany: ReturnType<typeof vi.fn>
   }
   $executeRaw: ReturnType<typeof vi.fn>
 }
 
-function buildStubPrisma(opts?: { prunedCount?: number }) {
-  const videoTranscriptUpsert = vi.fn(async (args: UpsertCall) => ({
-    id: `transcript-${JSON.stringify(args.where)}`,
-  }))
-  const videoTranscriptChunkUpsert = vi.fn(async (args: UpsertCall) => ({
-    id: `chunk-${JSON.stringify(args.where)}`,
+function buildStubPrisma(opts?: {
+  prunedCount?: number
+  /** Number returned by the bulk chunk INSERT (default 1). */
+  executeRawAffected?: number
+}) {
+  // A brace-free synthetic id so the bulk INSERT's toPgArray brace-rejection
+  // doesn't trip on the stub's payload echo. The original test's
+  // `transcript-${JSON.stringify(args.where)}` shape carried `{`/`}` through
+  // and broke Stage 3's bound `text[]` of transcriptIds.
+  const videoTranscriptUpsert = vi.fn(async (_args: UpsertCall) => ({
+    id: "transcript-stub-id",
   }))
   const videoTranscriptChunkDeleteMany = vi.fn(async () => ({
     count: opts?.prunedCount ?? 0,
   }))
-  const executeRaw = vi.fn(async () => 1)
+  const executeRaw = vi.fn(async () => opts?.executeRawAffected ?? 1)
 
   const tx: StubPrismaTx = {
     videoTranscript: { upsert: videoTranscriptUpsert },
     videoTranscriptChunk: {
-      upsert: videoTranscriptChunkUpsert,
       deleteMany: videoTranscriptChunkDeleteMany,
     },
     $executeRaw: executeRaw,
@@ -67,7 +71,6 @@ function buildStubPrisma(opts?: { prunedCount?: number }) {
     prisma: prisma as unknown as import("@prisma/client").PrismaClient,
     tx,
     videoTranscriptUpsert,
-    videoTranscriptChunkUpsert,
     videoTranscriptChunkDeleteMany,
     executeRaw,
   }
@@ -162,6 +165,22 @@ describe("indexEditionTranscript", () => {
 
   it("returns zero counts for an empty artifact without touching the DB", async () => {
     const { prisma, videoTranscriptUpsert, executeRaw } = buildStubPrisma()
+    // Mirror the symmetry of scene-embedding's empty-artifact test: even
+    // though R2 reuses vectors verbatim from the artifact (the embedding
+    // provider isn't imported into the transcript indexer at all), spy on
+    // the embeddings module to lock the invariant. A regression that
+    // accidentally re-introduced a provider call on R2 would fire this
+    // assertion long before any other test caught the round-trip.
+    const embeddingsModule = await import("@/services/embeddings.service")
+    const generateSpy = vi.spyOn(
+      embeddingsModule,
+      "generateExperienceEmbedding",
+    )
+    const generateBatchedSpy = vi.spyOn(
+      embeddingsModule,
+      "generateExperienceEmbeddings",
+    )
+
     const result = await indexEditionTranscript(prisma, {
       editionId: "edition-1",
       videoId: "video-1",
@@ -174,6 +193,8 @@ describe("indexEditionTranscript", () => {
     expect(result.embeddingsWritten).toBe(0)
     expect(videoTranscriptUpsert).not.toHaveBeenCalled()
     expect(executeRaw).not.toHaveBeenCalled()
+    expect(generateSpy).not.toHaveBeenCalled()
+    expect(generateBatchedSpy).not.toHaveBeenCalled()
   })
 
   it("rejects an artifact with dimensions != 1536", async () => {
@@ -194,7 +215,6 @@ describe("indexEditionTranscript", () => {
   it("rejects a chunk whose embedding length disagrees with top-level dimensions", async () => {
     const { prisma, executeRaw } = buildStubPrisma()
     const artifact = buildArtifact({ chunkCount: 1 })
-    // Corrupt just the one chunk's vector length.
     artifact.chunks[0]!.embedding = new Array(100).fill(0)
     await expect(
       indexEditionTranscript(prisma, {
@@ -225,14 +245,15 @@ describe("indexEditionTranscript", () => {
     ).rejects.toMatchObject({ code: "empty_chunk_text" })
   })
 
-  it("upserts transcript + chunks inside a transaction and reuses artifact vectors", async () => {
+  it("collapses per-target writes to: 1 parent upsert + 1 deleteMany + 1 bulk chunk INSERT (Stage 3)", async () => {
+    // Stage 3 (feat-117) contract: per-chunk upsert + per-row UPDATE
+    // collapse to ONE bulk INSERT regardless of chunks.length.
     const {
       prisma,
       videoTranscriptUpsert,
-      videoTranscriptChunkUpsert,
       videoTranscriptChunkDeleteMany,
       executeRaw,
-    } = buildStubPrisma()
+    } = buildStubPrisma({ executeRawAffected: 3 })
 
     const result = await indexEditionTranscript(prisma, {
       editionId: "edition-1",
@@ -254,24 +275,10 @@ describe("indexEditionTranscript", () => {
     })
     expect(videoTranscriptUpsert).toHaveBeenCalledTimes(1)
     expect(videoTranscriptChunkDeleteMany).toHaveBeenCalledTimes(1)
-    expect(videoTranscriptChunkUpsert).toHaveBeenCalledTimes(3)
-    expect(executeRaw).toHaveBeenCalledTimes(3)
+    // EXACTLY 1 $executeRaw call: the bulk chunk INSERT.
+    expect(executeRaw).toHaveBeenCalledTimes(1)
 
-    // Chunk text and chunkId flow through verbatim.
-    expect(videoTranscriptChunkUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({
-          chunkId: "chunk-0",
-          chunkIndex: 0,
-          language: "en",
-          tokenCount: 10,
-          startSeconds: 0,
-          endSeconds: 5,
-        }),
-      }),
-    )
-
-    // Artifact's own metadata lands on the parent row.
+    // Artifact's own metadata still lands on the parent row.
     expect(videoTranscriptUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({
@@ -284,6 +291,64 @@ describe("indexEditionTranscript", () => {
         }),
       }),
     )
+  })
+
+  it("R2 chunk-INSERT SQL invariants — INSERT INTO video_transcript_chunk + Way A vector cast + ON CONFLICT DO UPDATE + EXCLUDED.embedding", async () => {
+    const { prisma, executeRaw } = buildStubPrisma()
+    await indexEditionTranscript(prisma, {
+      editionId: "edition-1",
+      videoId: "video-1",
+      coreId: "core-1",
+      language: "en",
+      user: SYSTEM,
+      loadedArtifact: buildArtifact({ chunkCount: 2 }),
+    })
+    expect(executeRaw).toHaveBeenCalledTimes(1)
+    const [strings] = executeRaw.mock.calls[0] as unknown as [
+      readonly string[],
+      ...unknown[],
+    ]
+    const sql = strings.join("?")
+    expect(sql).toContain("INSERT INTO video_transcript_chunk")
+    expect(sql).toContain("unnest(")
+    expect(sql).toContain("::text[]")
+    // Way A vector cast — per-row at the SELECT seam, NOT
+    // `::vector(1536)[]` on the parameter.
+    expect(sql).toContain("::vector(1536)")
+    expect(sql).not.toMatch(/::vector\(1536\)\[\]/)
+    expect(sql).toMatch(
+      /ON\s+CONFLICT\s*\(\s*transcript_id\s*,\s*chunk_index\s*\)/i,
+    )
+    expect(sql).toMatch(/DO\s+UPDATE\s+SET/i)
+    expect(sql).toContain("EXCLUDED.embedding")
+  })
+
+  it("bind-count regression — chunk INSERT binds a CONSTANT number of params regardless of chunks.length (Stage 3 — feat-117)", async () => {
+    // Same regression guard as R1's locale INSERT: each parallel array
+    // binds as ONE positional parameter, so the placeholder count is
+    // fixed. A regression to per-row binding (one parameter per chunk)
+    // would make the bind count grow with N — this test catches it.
+    const runWith = async (n: number) => {
+      const { prisma, executeRaw } = buildStubPrisma()
+      await indexEditionTranscript(prisma, {
+        editionId: "edition-1",
+        videoId: "video-1",
+        coreId: "core-1",
+        language: "en",
+        user: SYSTEM,
+        loadedArtifact: buildArtifact({ chunkCount: n }),
+      })
+      const call = executeRaw.mock.calls[0] as unknown as [
+        readonly string[],
+        ...unknown[],
+      ]
+      return call.length - 1
+    }
+
+    const small = await runWith(3)
+    const large = await runWith(30)
+
+    expect(small).toBe(large)
   })
 
   it("does not call the embedding provider (vector reuse)", async () => {
@@ -307,11 +372,6 @@ describe("indexEditionTranscript", () => {
   })
 
   it("skips the S3 read when loadedArtifact is supplied (Stage 2 per-(video, edition) cache)", async () => {
-    // Stage 2 hands a pre-loaded artifact down from the workflow's
-    // group-level fetch. The service must NOT re-read S3 when that's
-    // the case. Spy on `readEmbeddingsArtifact` to lock the invariant
-    // — a regression that "helpfully" re-fetches would re-introduce
-    // the per-locale S3 read storm Stage 2 was designed to eliminate.
     const managerArtifactsModule =
       await import("@/services/manager-artifacts.service")
     const s3ReadSpy = vi.spyOn(managerArtifactsModule, "readEmbeddingsArtifact")
@@ -349,9 +409,6 @@ describe("indexEditionTranscript", () => {
     expect(result.embeddingsWritten).toBe(1)
     expect(executeRaw).toHaveBeenCalledTimes(1)
     expect(warnSpy).toHaveBeenCalledTimes(1)
-    // Structured log contract — assert the payload shape, not just the
-    // event name, so dropping a field (artifactModel / expected / note)
-    // can't silently regress log-based alerting.
     const [payload] = warnSpy.mock.calls[0]!
     const parsed = JSON.parse(String(payload))
     expect(parsed).toMatchObject({
@@ -383,9 +440,6 @@ describe("indexEditionTranscript", () => {
 
     expect(result.chunksPruned).toBe(5)
     expect(result.chunksIndexed).toBe(2)
-    // Guard the prune scope: bounded to this transcript, only chunks
-    // outside the incoming [0, 1] range. A bug that inverts `notIn`
-    // or drops the transcriptId scope would fail this.
     expect(videoTranscriptChunkDeleteMany).toHaveBeenCalledWith({
       where: {
         transcriptId: "transcript-abc",
@@ -404,8 +458,6 @@ describe("indexEditionTranscript", () => {
       user: SYSTEM,
       loadedArtifact: buildArtifact({ chunkCount: 1 }),
     })
-    // The parent upsert's `update` clause must include videoId so a
-    // re-run after an edition-move updates the denormalized column.
     expect(videoTranscriptUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
         update: expect.objectContaining({ videoId: "video-moved-to-B" }),
@@ -413,9 +465,87 @@ describe("indexEditionTranscript", () => {
     )
   })
 
+  it("vector position stability — chunk[i] vector lands at position i in the bound text[] of vector literals (Stage 3)", async () => {
+    // The bulk INSERT binds an ARRAY of vector literals (one per chunk)
+    // as ONE positional parameter; the per-row Way A cast at the SELECT
+    // seam attaches each vector literal to its parallel-array sibling.
+    // Position-stability between chunks[i].embedding and the bound
+    // literal[i] is the load-bearing invariant.
+    const { prisma, executeRaw } = buildStubPrisma()
+    const artifact = buildArtifact({ chunkCount: 2 })
+    artifact.chunks[0]!.embedding = new Array(
+      EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+    ).fill(0.111)
+    artifact.chunks[1]!.embedding = new Array(
+      EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+    ).fill(0.222)
+
+    await indexEditionTranscript(prisma, {
+      editionId: "edition-1",
+      videoId: "video-1",
+      coreId: "core-1",
+      language: "en",
+      user: SYSTEM,
+      loadedArtifact: artifact,
+    })
+
+    const call = executeRaw.mock.calls[0] as unknown as [
+      readonly string[],
+      ...unknown[],
+    ]
+    const VECTOR_ARRAY_LITERAL_SHAPE = /^\{".*"\}$/
+    const ARRAY_OF_VECTORS = /\[[0-9.,-]+\]/g
+    const vectorArrayLiteral = call
+      .slice(1)
+      .find(
+        (v): v is string =>
+          typeof v === "string" &&
+          VECTOR_ARRAY_LITERAL_SHAPE.test(v) &&
+          v.includes("0.111"),
+      )
+    if (!vectorArrayLiteral) {
+      throw new Error("no vector array literal in chunk INSERT bound params")
+    }
+    const vectors = vectorArrayLiteral.match(ARRAY_OF_VECTORS) ?? []
+    expect(vectors.length).toBe(2)
+    expect(vectors[0]).toContain("0.111")
+    expect(vectors[0]).not.toContain("0.222")
+    expect(vectors[1]).toContain("0.222")
+    expect(vectors[1]).not.toContain("0.111")
+  })
+
+  it('nullable timecode columns bind via the unquoted NULL token, not the quoted string "NULL"', async () => {
+    // Bulk INSERT must support chunks where startTime/endTime are
+    // null/undefined. The toPgArray nullable extension emits the
+    // unquoted NULL token; a regression that quoted "NULL" would
+    // round-trip as the literal four-char string and break the
+    // `::double precision` cast at the SELECT seam.
+    const { prisma, executeRaw } = buildStubPrisma()
+    const artifact = buildArtifact({ chunkCount: 1 })
+    artifact.chunks[0]!.metadata.startTime = null as unknown as number
+    artifact.chunks[0]!.metadata.endTime = null as unknown as number
+
+    await indexEditionTranscript(prisma, {
+      editionId: "edition-1",
+      videoId: "video-1",
+      coreId: "core-1",
+      language: "en",
+      user: SYSTEM,
+      loadedArtifact: artifact,
+    })
+    const call = executeRaw.mock.calls[0] as unknown as [
+      readonly string[],
+      ...unknown[],
+    ]
+    // The startSeconds and endSeconds bound params are PG text[] literals
+    // with `{NULL}`. Confirm the bound NULL token is unquoted.
+    const nullArrays = call
+      .slice(1)
+      .filter((v): v is string => typeof v === "string" && v === "{NULL}")
+    expect(nullArrays.length).toBeGreaterThanOrEqual(2)
+  })
+
   it("is idempotent across repeated invocations against the same artifact", async () => {
-    // Fresh stubs per invocation so we can compare the calls in isolation;
-    // both runs should see the same upsert where-clauses land.
     const firstRun = buildStubPrisma()
     const firstResult = await indexEditionTranscript(firstRun.prisma, {
       editionId: "edition-1",
@@ -440,47 +570,16 @@ describe("indexEditionTranscript", () => {
     expect(secondResult.chunksIndexed).toBe(3)
     expect(firstResult.chunksPruned).toBe(0)
     expect(secondResult.chunksPruned).toBe(0)
-    // The upsert `where` clauses (the idempotency keys) are identical
-    // run-to-run — a refactor that introduced a random chunkId into the
-    // where would fail this.
-    const firstWheres = firstRun.videoTranscriptChunkUpsert.mock.calls.map(
-      (c) => (c[0] as { where: unknown }).where,
+    // The bound transcriptId/chunkIndex parameter literals are stable
+    // run-to-run when the parent transcript id is stable.
+    const firstParentWhere = firstRun.videoTranscriptUpsert.mock.calls[0]![0]
+    const secondParentWhere = secondRun.videoTranscriptUpsert.mock.calls[0]![0]
+    expect((secondParentWhere as { where: unknown }).where).toEqual(
+      (firstParentWhere as { where: unknown }).where,
     )
-    const secondWheres = secondRun.videoTranscriptChunkUpsert.mock.calls.map(
-      (c) => (c[0] as { where: unknown }).where,
-    )
-    expect(secondWheres).toEqual(firstWheres)
-  })
-
-  it("writes embeddings via $executeRaw tagged template with ::vector cast", async () => {
-    const { prisma, executeRaw } = buildStubPrisma()
-    await indexEditionTranscript(prisma, {
-      editionId: "edition-1",
-      videoId: "video-1",
-      coreId: "core-1",
-      language: "en",
-      user: SYSTEM,
-      loadedArtifact: buildArtifact({ chunkCount: 1 }),
-    })
-    expect(executeRaw).toHaveBeenCalledTimes(1)
-    const [strings, ...values] = executeRaw.mock.calls[0] as unknown as [
-      readonly string[],
-      ...unknown[],
-    ]
-    const rawSql = strings.join("?")
-    expect(rawSql).toContain("UPDATE video_transcript_chunk")
-    expect(rawSql).toContain("::vector")
-    // Vector literal flows through as a bound parameter (pg array
-    // syntax), never string-spliced into the SQL.
-    expect(typeof values[0]).toBe("string")
-    expect(values[0] as string).toMatch(/^\[[0-9.,-]+\]$/)
   })
 
   it("remaps Prisma runtime errors to TranscriptIndexError('storage_failed') without leaking the raw message", async () => {
-    // Inject a Prisma-shaped error with a raw message that includes
-    // a vector literal (simulating what a $executeRaw failure looks
-    // like in practice). The remap must swallow the raw message so
-    // the caller doesn't see the 1536-float parameter.
     const vectorLiteral = `[${new Array(1536).fill(0.42).join(",")}]`
     class FakePrismaError extends Error {
       readonly code = "P2010"
@@ -498,7 +597,6 @@ describe("indexEditionTranscript", () => {
       throw new FakePrismaError(rawMessage)
     })
 
-    // Suppress the intentional server-side log.
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
     try {
       const thrown = await indexEditionTranscript(prisma, {
@@ -512,12 +610,9 @@ describe("indexEditionTranscript", () => {
 
       expect(thrown).toBeInstanceOf(TranscriptIndexError)
       expect((thrown as { code: string }).code).toBe("storage_failed")
-      // The remapped message must NOT contain the vector payload.
       expect((thrown as Error).message).not.toContain("0.42")
       expect((thrown as Error).message).not.toContain(vectorLiteral)
-      // It SHOULD name the Prisma shape so operators can debug.
       expect((thrown as Error).message).toContain("P2010")
-      // Server-side log got the truncated detail.
       expect(errorSpy).toHaveBeenCalledTimes(1)
       const [payload] = errorSpy.mock.calls[0]!
       const parsed = JSON.parse(String(payload))
@@ -548,7 +643,6 @@ describe("indexEditionTranscript", () => {
       loadedArtifact: buildArtifact({ chunkCount: 1 }),
     }).catch((e) => e)
 
-    // Identity preserved — not wrapped in TranscriptIndexError.
     expect(thrown).toBe(boom)
   })
 
