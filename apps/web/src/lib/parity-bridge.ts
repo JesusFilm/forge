@@ -39,6 +39,26 @@ import {
   type AdminExperienceLocaleInput,
 } from "@forge/graphql/parity"
 import { env } from "@/env"
+import { getContentApiMode } from "@/lib/content-api-mode"
+
+/**
+ * Mode guard for every canary emit-site. After U4 collapsed the active
+ * `ContentApiMode` union to `"strapi" | "admin"`, `"dual-read"` is no
+ * longer a reachable mode — the comparison is against a string literal
+ * the typed union cannot match. This is intentional: the guard kills
+ * canary emission across the board post-cutover so U9's runbook does
+ * NOT have to disambiguate "real admin failure" from "leftover canary
+ * noise".
+ *
+ * The bridge module + its callsite in content.ts will retire entirely
+ * once the cutover holds for a parity-clean window (see the deletion
+ * checklist at the top of this file). Until then, the explicit cast to
+ * `string` documents that the dead-branch behavior is deliberate, not
+ * an accidental TS narrowing artifact.
+ */
+function isCanaryEmissionEnabled(): boolean {
+  return (getContentApiMode() as string) === "dual-read"
+}
 
 /**
  * Closed union of every parity log event ce-work emits. Exporting the
@@ -188,8 +208,16 @@ type ParityLogPayload = {
  * appropriate log event, and emits a single `console.log(JSON.stringify(...))`
  * line. Never re-throws — all harness errors are caught and routed to
  * `forge.parity.harness_error`.
+ *
+ * U5 (PR-B) mode guard: if the active `ContentApiMode` is anything
+ * other than `"dual-read"`, the bridge short-circuits before any
+ * normalization / comparison work. After U4's mode-set collapse,
+ * `"dual-read"` is unreachable in production — so this guard
+ * effectively kills canary emission across the board.
  */
 export function runDualReadComparison(outcome: DualReadOutcome): void {
+  if (!isCanaryEmissionEnabled()) return
+
   const baseTimings = {
     strapiMs: outcome.strapi.durationMs,
     adminMs: outcome.admin.durationMs,
@@ -409,6 +437,14 @@ function adaptStrapi(
 function adaptAdmin(
   response: AdminExperienceResponse,
 ): AdminExperienceLocaleInput {
+  // Post-PR-A, `AdminExperienceLocaleInput.blocks` is
+  // `ReadonlyArray<Block>` from `@forge/admin/domain/blocks`. The wire
+  // shape returned by admin's typed [ExperienceBlock!]! field matches
+  // that at runtime — but the loose `AdminExperienceResponse` here is
+  // typed `unknown` so legacy callers (and the mode guard's
+  // short-circuit) don't have to know about the @forge/admin import.
+  // The cast is safe under the harness's defensive
+  // `BlocksSchema.safeParse(...)` which still runs on the input.
   return {
     id: response.id ?? "",
     slug: response.slug ?? "",
@@ -416,7 +452,7 @@ function adaptAdmin(
     title: response.title ?? "",
     description: response.metaDescription,
     ogImageUrl: response.ogImageUrl,
-    blocks: response.blocks,
+    blocks: response.blocks as AdminExperienceLocaleInput["blocks"],
   }
 }
 

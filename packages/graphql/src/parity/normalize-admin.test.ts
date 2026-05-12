@@ -1,4 +1,4 @@
-import { BlocksSchema } from "@forge/admin/domain/blocks"
+import { BlocksSchema, type Block } from "@forge/admin/domain/blocks"
 import { describe, expect, it } from "vitest"
 
 import { ADMIN_ONLY_KINDS, STRAPI_TO_ADMIN_KIND } from "./discriminator-map"
@@ -14,9 +14,15 @@ const OPTIONS = {
   baseOrigin: "https://cdn.example.com",
 } as const
 
-function baseInput(
-  overrides: Partial<AdminExperienceLocaleInput> = {},
-): AdminExperienceLocaleInput {
+// Post-PR-A `AdminExperienceLocaleInput.blocks` is `ReadonlyArray<Block>`.
+// Many adversarial fixtures below intentionally violate that contract to
+// exercise the defensive `BlocksSchema.safeParse(...)` branch — they go
+// in via this loose-typed shape so the call site doesn't have to cast.
+type LooseAdminInput = Omit<AdminExperienceLocaleInput, "blocks"> & {
+  readonly blocks: ReadonlyArray<unknown>
+}
+
+function baseInput(overrides: Partial<LooseAdminInput> = {}): LooseAdminInput {
   return {
     id: "exp-loc-1",
     slug: "test-slug",
@@ -24,34 +30,47 @@ function baseInput(
     title: "Test Experience",
     description: "test description",
     ogImageUrl: null,
-    blocks: [],
+    blocks: [] as ReadonlyArray<Block>,
     ...overrides,
   }
+}
+
+// Pass-through helper: casts the loose-typed fixture to the strict
+// `AdminExperienceLocaleInput` shape at the boundary. Production code
+// receives `Block[]` typed by gql.tada off the regenerated admin SDL;
+// test fixtures use the loose union so adversarial cases compile.
+function toInput(input: LooseAdminInput): AdminExperienceLocaleInput {
+  return input as unknown as AdminExperienceLocaleInput
 }
 
 // Minimal valid admin block fixtures — one per shared kind. The shape
 // mirrors what BlocksSchema accepts at write time (`.strict()` rejects
 // unknown keys; admin blocks have NO per-block `id` field — they're
-// JSON nodes inside ExperienceLocale.blocks, not table rows).
+// JSON nodes inside ExperienceLocale.blocks, not table rows). Each
+// fixture matches its `BlockSchema.options[N]` member exactly so the
+// safeParse roundtrip succeeds.
 
-function adminMediaCollection() {
+function adminMediaCollection(): Block {
   return {
     t: "mediaCollection",
     sectionKey: "key-1",
-    variant: "carousel" as const,
-  }
+    variant: "carousel",
+    itemsSource: "manual",
+    showItemNumbers: false,
+    items: [],
+  } as Block
 }
 
-function adminText() {
+function adminText(): Block {
   return {
     t: "text",
     sectionKey: "key-2",
-  }
+  } as Block
 }
 
 describe("normalizeAdmin — happy paths", () => {
   it("returns a NormalizedExperienceRoute with required fields populated", () => {
-    const result = normalizeAdmin(baseInput(), OPTIONS)
+    const result = normalizeAdmin(toInput(baseInput()), OPTIONS)
     expect(result.id).toBe("exp-loc-1")
     expect(result.slug).toBe("test-slug")
     expect(result.locale).toBe("en")
@@ -63,21 +82,21 @@ describe("normalizeAdmin — happy paths", () => {
   })
 
   it("locale field surfaces verbatim on normalized.locale (resolved-locale equality)", () => {
-    const result = normalizeAdmin(baseInput({ locale: "es" }), OPTIONS)
+    const result = normalizeAdmin(toInput(baseInput({ locale: "es" })), OPTIONS)
     expect(result.locale).toBe("es")
   })
 })
 
 describe("normalizeAdmin — error paths", () => {
   it("throws AdminNormalizationError naming missing 'id'", () => {
-    expect(() => normalizeAdmin(baseInput({ id: "" }), OPTIONS)).toThrow(
-      AdminNormalizationError,
-    )
+    expect(() =>
+      normalizeAdmin(toInput(baseInput({ id: "" })), OPTIONS),
+    ).toThrow(AdminNormalizationError)
   })
 
   it("throws AdminNormalizationError naming missing 'slug'", () => {
     try {
-      normalizeAdmin(baseInput({ slug: "" }), OPTIONS)
+      normalizeAdmin(toInput(baseInput({ slug: "" })), OPTIONS)
     } catch (e) {
       expect((e as AdminNormalizationError).missingField).toBe("slug")
       return
@@ -86,10 +105,14 @@ describe("normalizeAdmin — error paths", () => {
   })
 
   it("throws AdminBlocksValidationError on a block with an unknown 't' discriminator", () => {
+    // Adversarial fixture — drifted `t` literal. The loose-typed
+    // LooseAdminInput accepts the shape; the defensive parse rejects
+    // it. This is exactly the scenario `BlocksSchema.safeParse(...)`
+    // exists for after the wire type narrows.
     const input = baseInput({
       blocks: [{ t: "totallyNew" }],
     })
-    expect(() => normalizeAdmin(input, OPTIONS)).toThrow(
+    expect(() => normalizeAdmin(toInput(input), OPTIONS)).toThrow(
       AdminBlocksValidationError,
     )
   })
@@ -101,7 +124,7 @@ describe("normalizeAdmin — error paths", () => {
       blocks: [{ t: "text", extraField: "not-allowed" }],
     })
     try {
-      normalizeAdmin(input, OPTIONS)
+      normalizeAdmin(toInput(input), OPTIONS)
     } catch (e) {
       expect(e).toBeInstanceOf(AdminBlocksValidationError)
       const err = e as AdminBlocksValidationError
@@ -115,13 +138,16 @@ describe("normalizeAdmin — error paths", () => {
 
 describe("normalizeAdmin — absent-field contract", () => {
   it("normalizes description: null to null", () => {
-    const result = normalizeAdmin(baseInput({ description: null }), OPTIONS)
+    const result = normalizeAdmin(
+      toInput(baseInput({ description: null })),
+      OPTIONS,
+    )
     expect(result.description).toBeNull()
   })
 
   it("normalizes description: undefined to null", () => {
     const result = normalizeAdmin(
-      baseInput({ description: undefined }),
+      toInput(baseInput({ description: undefined })),
       OPTIONS,
     )
     expect(result.description).toBeNull()
@@ -136,13 +162,16 @@ describe("normalizeAdmin — absent-field contract", () => {
   })
 
   it("normalizes null ogImageUrl to null on output", () => {
-    const result = normalizeAdmin(baseInput({ ogImageUrl: null }), OPTIONS)
+    const result = normalizeAdmin(
+      toInput(baseInput({ ogImageUrl: null })),
+      OPTIONS,
+    )
     expect(result.ogImage).toBeNull()
   })
 
   it("ogImage shape on present ogImageUrl: width/height/alt are null (admin lossy superset)", () => {
     const result = normalizeAdmin(
-      baseInput({ ogImageUrl: "https://cdn.example.com/og.jpg" }),
+      toInput(baseInput({ ogImageUrl: "https://cdn.example.com/og.jpg" })),
       OPTIONS,
     )
     expect(result.ogImage).toEqual({
@@ -157,7 +186,7 @@ describe("normalizeAdmin — absent-field contract", () => {
 describe("normalizeAdmin — URL canonicalization", () => {
   it("canonicalizes ogImageUrl (trailing slash strip, host lowercase)", () => {
     const result = normalizeAdmin(
-      baseInput({ ogImageUrl: "https://CDN.example.com/og.jpg/" }),
+      toInput(baseInput({ ogImageUrl: "https://CDN.example.com/og.jpg/" })),
       OPTIONS,
     )
     expect(result.ogImage?.url).toBe("https://cdn.example.com/og.jpg")
@@ -169,8 +198,12 @@ describe("normalizeAdmin — URL canonicalization", () => {
 
 describe("normalizeAdmin — block discriminator coverage", () => {
   it("maps admin t: 'mediaCollection' to kind: 'mediaCollection'", () => {
+    // Typed-union shape: matches `BlockSchema.options[N]` for
+    // `mediaCollection` exactly. Required-field set comes from
+    // MediaCollectionBlockSchema (variant, itemsSource, items,
+    // showItemNumbers).
     const result = normalizeAdmin(
-      baseInput({ blocks: [adminMediaCollection()] }),
+      toInput(baseInput({ blocks: [adminMediaCollection()] })),
       OPTIONS,
     )
     expect(result.blocks[0]?.kind).toBe("mediaCollection")
@@ -179,21 +212,23 @@ describe("normalizeAdmin — block discriminator coverage", () => {
   })
 
   it("maps admin t: 'text' to kind: 'text'", () => {
-    const result = normalizeAdmin(baseInput({ blocks: [adminText()] }), OPTIONS)
+    const result = normalizeAdmin(
+      toInput(baseInput({ blocks: [adminText()] })),
+      OPTIONS,
+    )
     expect(result.blocks[0]?.kind).toBe("text")
   })
 
   it("accepts admin-only 'videoRecommendations' kind via BlocksSchema", () => {
+    // VideoRecommendationsBlockSchema's required fields: t, limit.
+    // sectionKey is optional.
+    const block: Block = {
+      t: "videoRecommendations",
+      sectionKey: "key-vr",
+      limit: 6,
+    } as Block
     const result = normalizeAdmin(
-      baseInput({
-        blocks: [
-          {
-            t: "videoRecommendations",
-            sectionKey: "key-vr",
-            limit: 6,
-          },
-        ],
-      }),
+      toInput(baseInput({ blocks: [block] })),
       OPTIONS,
     )
     expect(result.blocks[0]?.kind).toBe("videoRecommendations")

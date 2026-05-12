@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./graphql": "./src/graphql.ts",
     "./admin": "./src/admin.ts",
+    "./admin/fragments": "./src/fragments/admin/index.ts",
     "./parity": "./src/parity/index.ts"
   },
   "scripts": {
