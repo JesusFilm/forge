@@ -154,8 +154,23 @@ function SyntheticBlock({
   locale?: string
 }) {
   switch (block.kind) {
-    case "HeroPlayer":
-      return <HeroPlayer block={block} onPlayerReady={onPlayerReady} />
+    case "HeroPlayer": {
+      const playableLanguageCount = (block.video.variants ?? []).filter(
+        (v) =>
+          v != null &&
+          v.published === true &&
+          v.hls != null &&
+          v.language?.slug != null,
+      ).length
+      return (
+        <HeroPlayer
+          block={block}
+          onPlayerReady={onPlayerReady}
+          onLanguageClick={modalCallbacks?.openLanguage}
+          playableLanguageCount={playableLanguageCount}
+        />
+      )
+    }
     case "SiblingCarousel":
       return <SiblingCarousel block={block} />
 
