@@ -406,10 +406,17 @@ async function fetchSlugExperience(
   // request so a deploy-order mistake doesn't 500 every page. Log it so
   // operators see the misconfig in the log stream.
   //
+  // C2 (ce-code-review): align the presence check with admin-client.ts —
+  // both must classify whitespace-only / empty-first-CSV-entry as
+  // "unset" so the safety net fires even when the env var is technically
+  // set but useless. admin-client.ts does `.split(",")[0]?.trim() || undefined`
+  // at module scope; we mirror that here.
+  //
   // TODO(post-strapi-removal): switch to throwing WatchPageAdminError("UNAVAILABLE")
   // once Strapi service is decommissioned. See plan-003 Key Technical Decisions:
   // "Safety-net `strapi` fallback has a lifecycle tied to Strapi service liveness."
-  if (!env.WEB_ADMIN_API_KEYS) {
+  const bearerFirstEntry = env.WEB_ADMIN_API_KEYS?.split(",")[0]?.trim()
+  if (!bearerFirstEntry) {
     logAdminEvent("forge.parity.consumer_bearer_missing", slug, locale)
     return getExperienceByFilters(locale, { slug: { eq: slug } })
   }
@@ -441,11 +448,19 @@ async function fetchSlugExperience(
     outcome.error instanceof Error
       ? outcome.error
       : new Error(String(outcome.error))
+  // sec-002 (ce-code-review): scrub the bearer key from the error message
+  // BEFORE logging. Apollo's response-error formatter can include
+  // downstream-server-controlled response body text in `message`; a
+  // misconfigured/hostile admin echoing the Authorization header in a
+  // 500 response would leak the bearer to Railway logs without this.
+  const sanitizedMessage = bearerFirstEntry
+    ? causeError.message.split(bearerFirstEntry).join("<redacted>")
+    : causeError.message
   logAdminEvent(
     "forge.parity.admin_fetch_error",
     slug,
     locale,
-    causeError.message,
+    sanitizedMessage,
   )
   throw new WatchPageAdminError("UNAVAILABLE", { cause: causeError })
 }
