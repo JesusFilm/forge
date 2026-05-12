@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { redirect } from "next/navigation"
 import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
 import {
   isWatchPageMissingError,
@@ -7,6 +8,10 @@ import {
   mergeWatchExperience,
 } from "@/lib/content"
 import { getWatchPageMetadata } from "@/lib/experience-metadata"
+import {
+  readPreferredLanguageSlug,
+  shouldRedirectForPreference,
+} from "@/lib/language-preference-server"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
@@ -38,6 +43,18 @@ export default async function SlugLocalePage({ params }: PageProps) {
   // Video-by-slug first — bypasses resolveWatchPage's Watch Settings +
   // default template dependency, which isn't always present in dev.
   const watchVideo = await resolveWatchVideoBySlug(slug, locale)
+
+  const preferredSlug = await readPreferredLanguageSlug()
+  const redirectSlug = shouldRedirectForPreference({
+    preferredSlug,
+    rawLocale,
+    variants: watchVideo?.video.variants ?? [],
+  })
+  if (redirectSlug) {
+    // basePath '/watch' is auto-prepended at runtime; do NOT include here.
+    redirect(`/${slug}/${redirectSlug}`)
+  }
+
   if (watchVideo) {
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
