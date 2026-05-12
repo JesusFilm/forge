@@ -48,8 +48,17 @@ function asciiLetters(s: string): string {
 
 function nameIsNativeForm(slug: string, name: string): boolean {
   if (NON_ASCII.test(name)) return true
-  const slugLetters = new Set(asciiLetters(slug))
-  for (const ch of asciiLetters(name)) {
+  const slugAscii = asciiLetters(slug)
+  const nameAscii = asciiLetters(name)
+  // First-letter mismatch is a strong signal that name is a different word,
+  // not a punctuation variant of the slug — e.g. slug "alur" + name "Lur",
+  // or slug "acholi" + name "Lwo". Just-formatted names always share the
+  // slug's leading letter (slug "a-hmao" + name "A-Hmao").
+  if (slugAscii && nameAscii && slugAscii[0] !== nameAscii[0]) return true
+  // Any letter in name that doesn't appear in slug is also a strong signal
+  // (e.g. slug "albanian" + name "Shqip" — 'q' is not in the slug).
+  const slugLetters = new Set(slugAscii)
+  for (const ch of nameAscii) {
     if (!slugLetters.has(ch)) return true
   }
   return false

@@ -113,6 +113,24 @@ describe("deriveLanguageDisplay — Strapi name is the native form", () => {
     })
   })
 
+  it("surfaces an ASCII-only native whose letters all happen to appear in the slug ('Lur' under 'Alur')", () => {
+    // l, u, r are all letters of "alur", so the all-letters-in-slug check
+    // is insufficient; the first-letter mismatch ('l' vs 'a') is what saves it.
+    expect(deriveLanguageDisplay("alur", "Lur")).toEqual({
+      slug: "alur",
+      name: "Alur",
+      nativeName: "Lur",
+    })
+  })
+
+  it("surfaces 'Lwo' under 'Acholi' (different first letter)", () => {
+    expect(deriveLanguageDisplay("acholi", "Lwo")).toEqual({
+      slug: "acholi",
+      name: "Acholi",
+      nativeName: "Lwo",
+    })
+  })
+
   it("suppresses the subtitle when slug-derived English exactly equals name", () => {
     expect(deriveLanguageDisplay("shqip", "Shqip")).toEqual({
       slug: "shqip",
