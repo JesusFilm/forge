@@ -3,17 +3,18 @@
 import type { Route } from "next"
 import { useRouter } from "next/navigation"
 import type { RefObject } from "react"
-import { useCallback } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
+import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 
 export type LanguagePickerVariant = {
   documentId: string
@@ -46,103 +47,90 @@ export function LanguagePickerModal({
 }: LanguagePickerModalProps) {
   const router = useRouter()
 
-  const playable = variants.filter(
-    (v) => v.published === true && v.hls != null && v.language?.slug != null,
+  const options = useMemo(
+    () =>
+      variants
+        .filter(
+          (v) =>
+            v.published === true && v.hls != null && v.language?.slug != null,
+        )
+        .map((v) => ({
+          slug: v.language!.slug!,
+          name: v.language!.name ?? v.language!.slug!,
+        })),
+    [variants],
   )
+
+  const [draftSlug, setDraftSlug] = useState(currentLanguageSlug)
+
+  // Reset the draft each time the modal opens.
+  useEffect(() => {
+    if (open) setDraftSlug(currentLanguageSlug)
+  }, [open, currentLanguageSlug])
+
+  const isDirty = draftSlug !== currentLanguageSlug
+
+  const handleApply = useCallback(() => {
+    if (!isDirty) return
+    // Write cookie BEFORE router.push — the order is asserted by tests and
+    // matters for middleware: the cookie must be present before the navigation
+    // lands on the new route.
+    writePreferredLanguageSlug(draftSlug)
+    const t = playerRef.current?.currentTime ?? 0
+    // basePath '/watch' auto-prepended at runtime — do NOT include here.
+    const href = `/${videoSlug}/${draftSlug}?t=${t}` as Route
+    router.push(href)
+    onClose()
+  }, [draftSlug, isDirty, onClose, playerRef, router, videoSlug])
 
   function handleOpenChange(next: boolean) {
     if (!next) onClose()
   }
 
-  const handleSelect = useCallback(
-    (slug: string) => {
-      if (slug === currentLanguageSlug) {
-        onClose()
-        return
-      }
-      const t = playerRef.current?.currentTime ?? 0
-      // basePath '/watch' auto-prepended at runtime — do NOT include here.
-      const href = `/${videoSlug}/${slug}?t=${t}` as Route
-      router.push(href)
-      onClose()
-    },
-    [currentLanguageSlug, onClose, playerRef, router, videoSlug],
-  )
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="watch-language-picker-modal"
-        className="sm:max-w-md"
+        className="sm:max-w-lg"
       >
-        <DialogHeader>
-          <DialogTitle>Language</DialogTitle>
-          <DialogDescription>
-            Choose a language for this video.
-          </DialogDescription>
+        <DialogHeader className="flex flex-row items-baseline justify-between gap-3">
+          <DialogTitle className="text-2xl font-bold">Language</DialogTitle>
+          <span
+            data-testid="watch-language-picker-count"
+            className="text-sm text-stone-400"
+          >
+            {options.length} languages
+          </span>
         </DialogHeader>
 
-        {playable.length === 0 ? (
-          <p
-            data-testid="watch-language-picker-empty"
-            className="text-sm text-muted-foreground"
+        <div className="mt-4">
+          <LanguageCombobox
+            options={options}
+            value={draftSlug}
+            onChange={setDraftSlug}
+          />
+        </div>
+
+        <div className="mt-8 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            data-testid="watch-language-picker-close"
+            onClick={onClose}
+            className="px-6 py-2 text-sm font-semibold text-stone-300 transition hover:text-stone-100"
           >
-            No additional languages are available for this video.
-          </p>
-        ) : (
-          <ul
-            data-testid="watch-language-picker-options"
-            className="flex max-h-80 flex-col gap-1 overflow-y-auto"
+            CLOSE
+          </button>
+          <button
+            type="button"
+            data-testid="watch-language-picker-apply"
+            disabled={!isDirty}
+            onClick={handleApply}
+            className="rounded-full bg-stone-100 px-6 py-2 text-sm font-semibold text-stone-900 transition disabled:cursor-not-allowed disabled:bg-stone-500 disabled:text-stone-800"
           >
-            {playable.map((variant) => {
-              const slug = variant.language?.slug ?? ""
-              const name = variant.language?.name ?? slug
-              const active = slug === currentLanguageSlug
-              return (
-                <li key={variant.documentId}>
-                  <button
-                    type="button"
-                    data-testid="watch-language-picker-option"
-                    data-language-slug={slug}
-                    data-active={active ? "true" : "false"}
-                    onClick={() => handleSelect(slug)}
-                    aria-current={active ? "true" : undefined}
-                    className="flex w-full items-center justify-between gap-3 rounded-md border border-stone-700 bg-stone-800 px-3 py-2 text-left text-sm font-semibold text-stone-100 transition hover:bg-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                  >
-                    <span>{name}</span>
-                    {active ? (
-                      <span
-                        data-testid="watch-language-picker-checkmark"
-                        aria-hidden="true"
-                        className="text-amber-400"
-                      >
-                        <CheckIcon />
-                      </span>
-                    ) : null}
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
+            APPLY
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function CheckIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width={16}
-      height={16}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={3}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
   )
 }
