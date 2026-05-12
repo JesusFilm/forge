@@ -14,8 +14,9 @@ type SeriesEpisodesGridProps = {
 
 // Adapter projecting a series child onto the SearchResult shape VideoCard
 // consumes. Inline + unexported per the plan's Key Technical Decisions —
-// six lines of pure data shaping, blast radius scoped to this file. If
-// SearchResult ever gains a required field, typecheck flags this site.
+// six lines of pure data shaping, blast radius scoped to this file. No
+// `as SearchResult` cast — the structural conformance check is the point:
+// if SearchResult gains a required field, this site fails typecheck.
 function toSearchResult(episode: Episode): SearchResult {
   return {
     id: 0,
@@ -30,7 +31,7 @@ function toSearchResult(episode: Episode): SearchResult {
     startSeconds: null,
     playbackId: null,
     score: 0,
-  } as SearchResult
+  }
 }
 
 export function SeriesEpisodesGrid({

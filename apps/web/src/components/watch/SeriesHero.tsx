@@ -2,7 +2,6 @@
 
 import { useLayoutEffect, useRef, useState } from "react"
 import Image from "next/image"
-import type { MuxPlayerRef } from "@forge/video-player"
 
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { resolvePosterUrl } from "@/lib/url"
@@ -11,7 +10,6 @@ import { HeroPlayer } from "./HeroPlayer"
 type SeriesHeroProps = {
   series: ResolvedSeriesBySlug["video"]
   selectedVariant: ResolvedSeriesBySlug["selectedVariant"]
-  onPlayerReady?: (player: MuxPlayerRef | null) => void
 }
 
 // Mirrors `apps/web/src/components/watch/HeroPlayer.tsx`'s playability
@@ -25,16 +23,11 @@ function hasPlayableTrailer(
   return variant != null && Boolean(variant.hls)
 }
 
-export function SeriesHero({
-  series,
-  selectedVariant,
-  onPlayerReady,
-}: SeriesHeroProps) {
+export function SeriesHero({ series, selectedVariant }: SeriesHeroProps) {
   if (hasPlayableTrailer(selectedVariant)) {
     return (
       <HeroPlayer
         block={{ kind: "HeroPlayer", video: series, variant: selectedVariant }}
-        onPlayerReady={onPlayerReady}
       />
     )
   }

@@ -1003,8 +1003,9 @@ export type ResolvedSeriesBySlug = {
 
 const SERIES_LABEL_VALUES = new Set(["collection", "series"])
 
-// Exported so unit tests can exercise the discriminator without standing
-// up Apollo. The page layer uses `resolveSeriesBySlug` directly.
+// Consumed by `apps/web/src/app/[slug]/[locale]/page.tsx` (routing
+// branch + `generateMetadata`) AND by unit tests that exercise the
+// discriminator without standing up Apollo.
 export function isSeriesRecord(record: WatchVideoRecord): boolean {
   const label = record.label
   if (label) return SERIES_LABEL_VALUES.has(String(label).toLowerCase())

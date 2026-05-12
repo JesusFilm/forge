@@ -1,9 +1,7 @@
 "use client"
 
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useState } from "react"
 import { ExternalLink } from "lucide-react"
-
-import type { MuxPlayerRef } from "@forge/video-player"
 
 import { Button } from "@/components/ui/button"
 import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
@@ -36,11 +34,6 @@ export function SeriesPageClient({
   selectedVariant,
   locale,
 }: SeriesPageClientProps) {
-  const playerRef = useRef<MuxPlayerRef | null>(null)
-  const handlePlayerReady = useCallback((player: MuxPlayerRef | null) => {
-    playerRef.current = player
-  }, [])
-
   const [modalState, setModalState] = useState<SeriesModalState>("none")
   const openShare = useCallback(() => setModalState("share"), [])
   const closeModal = useCallback(() => setModalState("none"), [])
@@ -59,11 +52,7 @@ export function SeriesPageClient({
       data-modal-state={modalState}
       className="min-h-screen bg-stone-900 text-stone-100"
     >
-      <SeriesHero
-        series={series}
-        selectedVariant={selectedVariant}
-        onPlayerReady={handlePlayerReady}
-      />
+      <SeriesHero series={series} selectedVariant={selectedVariant} />
 
       {/* Metadata block — mirrors the WatchBody section's outer padding so
           the body column sits on the same Y as the video page when both
