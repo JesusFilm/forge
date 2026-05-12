@@ -251,24 +251,16 @@ export function SearchOverlay() {
                     style={{ background: cat.gradient }}
                   >
                     {Icon ? (
-                      // Decorative top-right watermark icon. Anchored to
-                      // the top-right corner and scaled up so the icon
-                      // bleeds into the gradient at low opacity, matching
-                      // core/apps/watch's CategoryGrid styling. `pointer-
-                      // events-none` keeps clicks falling through to the
-                      // button.
-                      <span
+                      // Decorative top-right icon. Sized at roughly a
+                      // quarter of the rectangle's width so it reads as
+                      // a prominent corner badge (matching the reference
+                      // from core/apps/watch's CategoryGrid). `pointer-
+                      // events-none` keeps clicks falling through to
+                      // the button.
+                      <Icon
                         aria-hidden="true"
-                        className="pointer-events-none absolute inset-0 flex items-start justify-end"
-                      >
-                        <Icon
-                          className="h-12 w-12 opacity-20 mix-blend-overlay drop-shadow-lg"
-                          style={{
-                            transform: "scale(5)",
-                            transformOrigin: "top right",
-                          }}
-                        />
-                      </span>
+                        className="pointer-events-none absolute right-3 top-3 h-16 w-16 opacity-30 drop-shadow-lg sm:right-4 sm:top-4 sm:h-24 sm:w-24"
+                      />
                     ) : null}
                     <span
                       className="absolute bottom-3 left-3 text-base font-semibold leading-tight sm:text-lg md:text-xl"
