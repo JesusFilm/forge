@@ -40,6 +40,7 @@ vi.mock("@/db/client", () => ({
 
 describe("admin OAuth callback route", () => {
   beforeEach(() => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined)
     cookieGet.mockReset()
     cookieSet.mockReset()
     cookieDelete.mockReset()
@@ -62,6 +63,19 @@ describe("admin OAuth callback route", () => {
       "http://localhost:3003/login?error=forbidden",
     )
     expect(exchangeAdminAuthorizationCode).not.toHaveBeenCalled()
+  })
+
+  it("uses the public admin base URL for forbidden redirects", async () => {
+    cookieGet.mockReturnValue(undefined)
+    const { GET } = await import("./route")
+
+    const response = await GET(
+      new Request("http://0.0.0.0:8080/api/auth/callback?code=c&state=s"),
+    )
+
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3003/login?error=forbidden",
+    )
   })
 
   it("exchanges the code and creates an admin-local session", async () => {
