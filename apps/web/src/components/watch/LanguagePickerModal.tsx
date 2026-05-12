@@ -53,7 +53,8 @@ export function LanguagePickerModal({
         .map((v) => ({
           slug: v.language!.slug!,
           name: v.language!.name ?? v.language!.slug!,
-        })),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
     [variants],
   )
 
@@ -86,7 +87,7 @@ export function LanguagePickerModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="watch-language-picker-modal"
-        className="overflow-hidden rounded-2xl border border-stone-700/50 bg-stone-900 p-0 text-stone-100 sm:max-w-xl"
+        className="rounded-2xl border border-stone-700/50 bg-stone-900 p-0 text-stone-100 sm:max-w-xl"
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">Language</DialogTitle>
