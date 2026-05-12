@@ -15,7 +15,10 @@
 //
 //   - This file: apps/web/src/lib/parity-bridge.ts
 //   - The companion test: apps/web/src/lib/parity-bridge.test.ts
-//   - Every callsite of `runDualReadComparison` in content.ts
+//   - Every callsite of `runDualReadComparison` (currently zero —
+//     content.ts removed the only callsite at U6/plan-003 cutover;
+//     parity-bridge.ts retained only for the U5 deletion PR to lift
+//     wholesale)
 //   - All seven parity log event names from any log alerting / dashboards
 //     (forge.parity.diff, forge.parity.admin_timeout,
 //      forge.parity.harness_error, forge.parity.strapi_failed_admin_succeeded,

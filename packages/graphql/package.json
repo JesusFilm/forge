@@ -13,6 +13,7 @@
   "scripts": {
     "generate": "gql-tada generate output",
     "lint": "eslint .",
+    "run-batch-verification": "tsx scripts/run-batch-verification.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"

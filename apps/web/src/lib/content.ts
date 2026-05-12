@@ -719,7 +719,10 @@ export type WatchPageAdminErrorCode = "NOT_FOUND" | "UNAVAILABLE"
  * existing `{ data: null, error }` sentinel path. This typed surface is
  * additive for admin-mode throws only.
  *
- * Following `WatchVideoError`'s pattern below.
+ * Following `WatchVideoError`'s pattern below. The discriminator field
+ * is `code` (not `kind`) for parity with `WatchVideoError` — plan-003's
+ * prose used "kind" interchangeably with "code"; the codebase converged
+ * on `code`. Consumers (`[slug]/error.tsx`) dispatch on `error.code`.
  */
 export class WatchPageAdminError extends Error {
   readonly code: WatchPageAdminErrorCode

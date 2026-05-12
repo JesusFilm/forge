@@ -800,6 +800,16 @@ SectionBlockRef.implement({
  * Admin Zod `t` discriminator → Pothos GraphQL type name. Used by every
  * union's `resolveType` callback. Exported for drift-CI consumption.
  */
+/**
+ * AC-04 (ce-code-review): the `satisfies` annotation against
+ * `Record<Block["t"], string>` is the load-bearing compile-time check —
+ * `Block["t"]` is the Zod-derived union of all valid discriminator
+ * literals. Adding a new variant to admin's Zod `BlockSchema` without
+ * adding a matching entry here now fails `tsc` directly, before
+ * drift-CI runs. Pairs with the runtime three-way bijection assertion
+ * in blocks.drift.test.ts (which catches typename-typo regressions
+ * that satisfies cannot see — the typename values are strings).
+ */
 export const T_TO_TYPENAME = {
   adventCountdown: "AdventCountdownBlock",
   bibleQuotesCarousel: "BibleQuotesCarouselBlock",
@@ -820,7 +830,10 @@ export const T_TO_TYPENAME = {
   videoCarousel: "VideoCarouselBlock",
   videoHero: "VideoHeroBlock",
   videoRecommendations: "VideoRecommendationsBlock",
-} as const
+} as const satisfies Record<
+  Block["t"] | SectionContentBlockValue["t"] | ContainerContentBlockValue["t"],
+  string
+>
 
 export type BlockKind = keyof typeof T_TO_TYPENAME
 export type BlockTypename = (typeof T_TO_TYPENAME)[BlockKind]
