@@ -211,4 +211,32 @@ describe("LanguageCombobox", () => {
 
     expect($('[data-testid="language-combobox-popover"]')).toBeNull()
   })
+
+  it("shows the empty state when the search has no matches", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS}
+          value="english"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "zzzzz"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    expect($('[data-testid="language-combobox-empty"]')?.textContent).toBe(
+      "No matches",
+    )
+    expect($$('[data-testid="language-combobox-option"]').length).toBe(0)
+  })
 })

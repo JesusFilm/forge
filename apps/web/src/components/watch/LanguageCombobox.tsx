@@ -19,14 +19,12 @@ export type LanguageComboboxProps = {
   options: LanguageComboboxOption[]
   value: string
   onChange: (slug: string) => void
-  placeholder?: string
 }
 
 export function LanguageCombobox({
   options,
   value,
   onChange,
-  placeholder = "Select language",
 }: LanguageComboboxProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -64,13 +62,6 @@ export function LanguageCombobox({
   }, [open])
 
   useEffect(() => {
-    if (activeIndex >= filtered.length) {
-      setActiveIndex(0)
-      activeIndexRef.current = 0
-    }
-  }, [filtered.length, activeIndex])
-
-  useEffect(() => {
     if (!open) return
     function onDocMouseDown(event: MouseEvent) {
       const target = event.target as Node
@@ -86,10 +77,19 @@ export function LanguageCombobox({
     return () => document.removeEventListener("mousedown", onDocMouseDown)
   }, [open])
 
+  // Reset query and active index together so the list is always in sync with
+  // the search input — avoids the off-by-one that a post-render clamp useEffect produces.
+  const resetQuery = useCallback((next: string) => {
+    setQuery(next)
+    setActiveIndex(0)
+    activeIndexRef.current = 0
+  }, [])
+
   const handleSelect = useCallback(
     (slug: string) => {
       onChange(slug)
       setOpen(false)
+      triggerRef.current?.focus()
     },
     [onChange],
   )
@@ -118,6 +118,7 @@ export function LanguageCombobox({
       } else if (event.key === "Escape") {
         event.preventDefault()
         setOpen(false)
+        triggerRef.current?.focus()
       }
     },
     [handleSelect],
@@ -136,7 +137,7 @@ export function LanguageCombobox({
       >
         <span className="flex items-center gap-3">
           <Languages aria-hidden className="h-5 w-5 text-stone-400" />
-          <span>{selected?.name ?? placeholder}</span>
+          <span>{selected?.name}</span>
         </span>
         <ChevronsUpDown aria-hidden className="h-4 w-4 text-stone-400" />
       </button>
@@ -145,7 +146,6 @@ export function LanguageCombobox({
         <div
           ref={popoverRef}
           data-testid="language-combobox-popover"
-          role="dialog"
           className="absolute left-0 right-0 z-20 mt-2 rounded-2xl border border-stone-700 bg-stone-900 shadow-xl"
         >
           <div className="border-b border-stone-700 px-3 py-2">
@@ -154,17 +154,26 @@ export function LanguageCombobox({
               data-testid="language-combobox-search"
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              // Also handle the native "input" event so jsdom tests that set
-              // input.value + dispatchEvent(new Event("input")) work without
-              // React Testing Library's fireEvent.
-              onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
+              onChange={(e) => resetQuery(e.target.value)}
+              // jsdom-only: dispatchEvent(new Event("input")) does not trigger React's synthetic onChange.
+              // In production both fire on every keystroke; React batches identical setQuery values, so no double-render.
+              onInput={(e) => resetQuery((e.target as HTMLInputElement).value)}
               onKeyDown={handleSearchKeyDown}
               placeholder="Search languages…"
+              aria-activedescendant={
+                filtered[activeIndex]
+                  ? `lcb-opt-${filtered[activeIndex].slug}`
+                  : undefined
+              }
               className="w-full bg-transparent text-sm text-stone-100 placeholder:text-stone-500 focus:outline-none"
             />
           </div>
-          <ul role="listbox" className="max-h-72 overflow-y-auto py-1">
+          {/* Non-virtualised: acceptable up to a few thousand items. Revisit if scroll jank appears on lower-end devices. */}
+          <ul
+            role="listbox"
+            aria-label="Languages"
+            className="max-h-72 overflow-y-auto py-1"
+          >
             {filtered.length === 0 ? (
               <li
                 data-testid="language-combobox-empty"
@@ -179,6 +188,9 @@ export function LanguageCombobox({
                   <li key={option.slug}>
                     <button
                       type="button"
+                      id={`lcb-opt-${option.slug}`}
+                      role="option"
+                      aria-selected={active}
                       data-testid="language-combobox-option"
                       data-language-slug={option.slug}
                       data-active={active ? "true" : "false"}
