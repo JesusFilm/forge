@@ -86,6 +86,17 @@ describe("proxy — language preference cookie", () => {
     const response = proxy(request)
     expect(response.status).not.toBe(307)
   })
+
+  it("ignores a cookie value longer than the 64-char cap", () => {
+    // Pathological tampered cookie — passes the regex shape check but is
+    // not plausibly a real language slug.
+    const longSlug = "a".repeat(100)
+    const request = makeRequest("/jesus/english", {
+      cookies: { forge_watch_lang: longSlug },
+    })
+    const response = proxy(request)
+    expect(response.status).not.toBe(307)
+  })
 })
 
 describe("proxy — non-watch routes are unaffected by the cookie", () => {

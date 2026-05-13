@@ -10,6 +10,13 @@ import { DEFAULT_LOCALE, isLocale, parseAcceptLanguage } from "@/lib/locale"
 // path traversal via tampered cookies).
 const PREFERRED_LANG_SLUG = /^[a-z0-9-]+$/
 
+// Hard length cap on the cookie value. The longest real Arclight
+// language slug observed in production is ~50 chars
+// ("arabic-modern-standard-egyptian"). 64 leaves margin for new
+// additions without admitting pathological values from a tampered
+// cookie (e.g. a megabyte-sized string passing the regex).
+const PREFERRED_LANG_SLUG_MAX_LEN = 64
+
 // Matched after Next.js strips `basePath: '/watch'`, so a real request
 // for `/watch/foo/en` is matched here as `/foo/en`. Recognises both
 // bcp47 codes ('en', 'es') and slug-form language identifiers
@@ -73,6 +80,7 @@ function maybeRedirectToPreferredLanguage(
     return null
   }
   if (!preferredSlug) return null
+  if (preferredSlug.length > PREFERRED_LANG_SLUG_MAX_LEN) return null
   if (!PREFERRED_LANG_SLUG.test(preferredSlug)) return null
   const segments = pathname.split("/").filter(Boolean)
   const [slug, currentLocale] = segments
