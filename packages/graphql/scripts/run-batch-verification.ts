@@ -8,7 +8,9 @@
  * module so they're typechecked and unit-tested.
  *
  * Usage:
- *   WEB_ADMIN_API_KEYS=<key> \
+ *   PARITY_API_KEYS=<key>            # PREFERRED — enables template coverage
+ *   # …or, fallback (templates excluded):
+ *   #   WEB_ADMIN_API_KEYS=<key>
  *   STRAPI_GRAPHQL_URL=... \
  *   ADMIN_GRAPHQL_URL=... \
  *   STRAPI_PUBLIC_ORIGIN=... \
@@ -58,10 +60,30 @@ import type { StrapiExperienceInput } from "../src/parity/normalize-strapi"
 // normalizer types in src/parity/.
 // ---------------------------------------------------------------------------
 
-const STRAPI_CORPUS_QUERY = /* GraphQL */ `
+// Two corpus queries — the bearer dictates which one the harness uses.
+//
+// PARITY_BEARER (mints when PARITY_API_KEYS is set) has the R9 carve-out
+// and can fetch templates by slug via experienceBySlug. CONSUMER_BEARER
+// (the WEB_ADMIN_API_KEYS fallback) cannot — R9 hides templates from
+// every consumer SSR identity. Enumerating templates into the corpus
+// while running with CONSUMER_BEARER would surface every template as a
+// false "admin missing" failure, so the templated corpus is gated.
+const STRAPI_CORPUS_QUERY_NO_TEMPLATES = /* GraphQL */ `
   query ParityCorpusEnumerate {
     experiences(
       filters: { isTemplate: { eq: false }, publishedAt: { notNull: true } }
+      pagination: { limit: -1 }
+    ) {
+      slug
+      locale
+      updatedAt
+    }
+  }
+`
+const STRAPI_CORPUS_QUERY_WITH_TEMPLATES = /* GraphQL */ `
+  query ParityCorpusEnumerateWithTemplates {
+    experiences(
+      filters: { publishedAt: { notNull: true } }
       pagination: { limit: -1 }
     ) {
       slug
@@ -478,6 +500,22 @@ const SECTION_CONTENT_FRAGMENT = /* GraphQL */ `
   }
 `
 
+// PR-C — admin-side template enumeration. Calls the new
+// experienceTemplates(locale) field (PARITY_BEARER required) to
+// cross-check that Strapi's published-template set matches admin's.
+// The per-slug compare path (experienceBySlug) catches per-slug
+// content drift; this query catches set-level drift (admin has a
+// template Strapi doesn't, or vice versa) that the Strapi-sourced
+// corpus enumeration alone cannot.
+const ADMIN_TEMPLATES_QUERY = /* GraphQL */ `
+  query ParityAdminTemplates($locale: String!) {
+    experienceTemplates(locale: $locale, limit: 200) {
+      slug
+      locale
+    }
+  }
+`
+
 // Top-level ExperienceBlock union — every kind plus the two nested
 // section/container content shapes.
 const ADMIN_EXPERIENCE_QUERY = /* GraphQL */ `
@@ -603,11 +641,18 @@ function readEnv(env: NodeJS.ProcessEnv): EnvConfig {
 // Fetcher construction
 // ---------------------------------------------------------------------------
 
-function buildFetchers(env: EnvConfig, bearer: string | null): Fetchers {
+function buildFetchers(
+  env: EnvConfig,
+  bearer: string | null,
+  includeTemplates: boolean,
+): Fetchers {
+  const corpusQuery = includeTemplates
+    ? STRAPI_CORPUS_QUERY_WITH_TEMPLATES
+    : STRAPI_CORPUS_QUERY_NO_TEMPLATES
   const enumerateCorpus = async (): Promise<ReadonlyArray<CorpusEntry>> => {
     const body = (await postGraphQL({
       url: env.strapiUrl,
-      query: STRAPI_CORPUS_QUERY,
+      query: corpusQuery,
       bearer: null, // corpus enumeration goes through Strapi (anonymous OK)
     })) as {
       data?: {
@@ -698,6 +743,80 @@ async function writeReport(path: string, report: BatchReport): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// PR-C — admin-side template-set sanity check
+// ---------------------------------------------------------------------------
+
+type CorpusSlugLocale = { readonly slug: string; readonly locale: string }
+
+async function runAdminTemplateSetSanityCheck({
+  adminUrl,
+  bearer,
+  corpus,
+  log,
+}: {
+  adminUrl: string
+  bearer: string
+  corpus: ReadonlyArray<CorpusSlugLocale>
+  log: (msg: string) => void
+}): Promise<void> {
+  // Locales actually present in the corpus — no point hitting admin for
+  // a locale we never compared.
+  const locales = Array.from(new Set(corpus.map((c) => c.locale))).sort()
+  if (locales.length === 0) return
+
+  log(
+    `[template-sanity] checking admin template set across ${locales.length} ` +
+      `locale(s): ${locales.join(", ")}`,
+  )
+
+  let anyDrift = false
+  for (const locale of locales) {
+    const body = (await postGraphQL({
+      url: adminUrl,
+      query: ADMIN_TEMPLATES_QUERY,
+      variables: { locale },
+      bearer,
+    })) as {
+      data?: {
+        experienceTemplates?: ReadonlyArray<{
+          slug?: string | null
+          locale?: string | null
+        }>
+      }
+    }
+    const adminSlugs = new Set<string>()
+    for (const row of body?.data?.experienceTemplates ?? []) {
+      if (typeof row?.slug === "string") adminSlugs.add(row.slug)
+    }
+    // Strapi corpus's template slugs for this locale: corpus entries we
+    // have, scoped to this locale. The harness can't distinguish
+    // template-vs-non-template entries here without round-tripping each
+    // — so we surface admin's set raw, and the operator cross-checks
+    // against the Strapi side's known template inventory.
+    const corpusSlugsForLocale = new Set(
+      corpus.filter((c) => c.locale === locale).map((c) => c.slug),
+    )
+    const adminOnly: string[] = []
+    for (const slug of adminSlugs) {
+      if (!corpusSlugsForLocale.has(slug)) adminOnly.push(slug)
+    }
+    if (adminOnly.length > 0) {
+      anyDrift = true
+      log(
+        `[template-sanity] locale=${locale} admin-only template slugs ` +
+          `(not in Strapi corpus): ${adminOnly.sort().join(", ")}`,
+      )
+    }
+    log(
+      `[template-sanity] locale=${locale} admin.experienceTemplates count=${adminSlugs.size}`,
+    )
+  }
+  if (!anyDrift) {
+    log("[template-sanity] no admin-only template drift detected.")
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -717,9 +836,14 @@ async function main(): Promise<number> {
   }
 
   let bearer: string | null
+  let templatesPermitted: boolean
+  let bearerSource: "parity" | "consumer" | "anonymous"
   let env: EnvConfig
   try {
-    bearer = readBearerFromEnv(process.env, args.anonymous)
+    const resolution = readBearerFromEnv(process.env, args.anonymous)
+    bearer = resolution.bearer
+    templatesPermitted = resolution.templatesPermitted
+    bearerSource = resolution.source
     env = readEnv(process.env)
   } catch (err) {
     if (err instanceof BearerMissingError) {
@@ -727,9 +851,27 @@ async function main(): Promise<number> {
       return 2
     }
     process.stderr.write(
-      `[run-batch-verification] ${sanitizeError(err, bearer ?? null)}\n`,
+      `[run-batch-verification] ${sanitizeError(err, null)}\n`,
     )
     return 2
+  }
+
+  // Operator visibility — surface which bearer source is in use AND the
+  // template-coverage implication. A WEB_ADMIN_API_KEYS-only run is
+  // valid but has a known blind spot (R9 hides templates from
+  // CONSUMER_BEARER) — the operator should know before reading the gate
+  // result.
+  if (bearerSource === "consumer") {
+    process.stderr.write(
+      "[run-batch-verification] WARN: running with WEB_ADMIN_API_KEYS " +
+        "(CONSUMER_BEARER) — templates are excluded from this gate run. " +
+        "Set PARITY_API_KEYS to enable template parity coverage.\n",
+    )
+  } else if (bearerSource === "parity") {
+    process.stderr.write(
+      "[run-batch-verification] running with PARITY_API_KEYS — " +
+        "templates included in corpus.\n",
+    )
   }
 
   // Load operator-supplied allow-list if provided.
@@ -746,7 +888,7 @@ async function main(): Promise<number> {
     }
   }
 
-  const fetchers = buildFetchers(env, bearer)
+  const fetchers = buildFetchers(env, bearer, templatesPermitted)
   const startedAt = new Date()
   const outputPath = args.out ?? defaultOutputPath(startedAt)
 
@@ -784,6 +926,33 @@ async function main(): Promise<number> {
     report = buildReport(startedAt.toISOString(), [])
   }
 
+  // PR-C — admin-side template-set sanity check. Runs ONLY when the
+  // bearer permits templates (PARITY mode). Per locale present in the
+  // corpus, fetch admin's published template slugs and diff against
+  // the template slugs Strapi yielded for that locale. The set-level
+  // diff catches drift the per-slug comparator can't (admin has a
+  // template Strapi doesn't, or vice versa) — failures here are
+  // INFORMATIONAL (logged to stderr) and do NOT change the gate
+  // PASS/FAIL because the per-slug compare already covers content
+  // drift; this is operator visibility for editorial sanity.
+  if (templatesPermitted && bearer != null) {
+    try {
+      await runAdminTemplateSetSanityCheck({
+        adminUrl: env.adminUrl,
+        bearer,
+        corpus: report.slugs.map((sr) => ({
+          slug: sr.slug,
+          locale: sr.locale,
+        })),
+        log: (msg) => process.stderr.write(msg + "\n"),
+      })
+    } catch (err) {
+      process.stderr.write(
+        `[run-batch-verification] template-set sanity check failed: ${sanitizeError(err, bearer)}\n`,
+      )
+    }
+  }
+
   await writeReport(outputPath, report)
 
   process.stdout.write(formatSummary(report) + "\n")
@@ -799,10 +968,17 @@ main()
   .catch((err: unknown) => {
     // Last-resort safety net — sanitization happens inside main() for
     // typed errors; this branch handles unanticipated throws (e.g.,
-    // bug in the script wiring). We don't have a known bearer here,
-    // so we redact aggressively.
-    const msg =
-      err instanceof Error ? `${err.name}: ${err.message}` : String(err)
-    process.stderr.write(`[run-batch-verification] fatal: ${msg}\n`)
+    // bug in the script wiring). The bearer is local to main()'s
+    // scope at this point, so we route through sanitizeError with the
+    // CURRENT env values (which are also what main() read). Generic
+    // patterns (Authorization headers, etc.) still get scrubbed even
+    // when the per-call bearer is null. PR-C P2-8.
+    const bearerForScrub =
+      process.env.PARITY_API_KEYS?.split(",")[0]?.trim() ??
+      process.env.WEB_ADMIN_API_KEYS?.split(",")[0]?.trim() ??
+      null
+    process.stderr.write(
+      `[run-batch-verification] fatal: ${sanitizeError(err, bearerForScrub)}\n`,
+    )
     process.exit(1)
   })

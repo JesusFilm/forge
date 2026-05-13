@@ -152,6 +152,70 @@ describe("identifyForRateLimit", () => {
   })
 
   // ---------------------------------------------------------------------------
+  // PARITY_BEARER → parity:<bucketKey> — PR-C P1-1 ce-code-review fix.
+  // Without this branch the principal would fall through to public:<ip>
+  // and the harness would self-DoS on its own egress IP. Distinct
+  // namespace from consumer: so a key collision (P1-2 invariant) doesn't
+  // collapse both surfaces into one quota.
+  // ---------------------------------------------------------------------------
+
+  it("buckets PARITY_BEARER principals by the bearer's rateLimitBucketKey (parity: namespace)", () => {
+    expect(
+      identifyForRateLimit(
+        makeCtx({
+          user: {
+            id: null,
+            role: "PARITY_BEARER",
+            rateLimitBucketKey: "parity-aaa",
+          },
+          request: makeRequest({ "cf-connecting-ip": "1.2.3.4" }),
+        }),
+      ),
+    ).toBe("parity:parity-aaa")
+  })
+
+  it("CONSUMER and PARITY with the SAME bucket key produce DISTINCT buckets (namespace isolation)", () => {
+    // P1-2 defense-in-depth: if an operator misconfiguration ever
+    // produced the same key in both CSVs (the disjoint-CSV check in
+    // env.ts should catch this at boot — but if it doesn't, the
+    // namespaces here keep quotas independent).
+    const consumer = identifyForRateLimit(
+      makeCtx({
+        user: {
+          id: null,
+          role: "CONSUMER_BEARER",
+          rateLimitBucketKey: "shared-key",
+        },
+        request: makeRequest({ "cf-connecting-ip": "1.2.3.4" }),
+      }),
+    )
+    const parity = identifyForRateLimit(
+      makeCtx({
+        user: {
+          id: null,
+          role: "PARITY_BEARER",
+          rateLimitBucketKey: "shared-key",
+        },
+        request: makeRequest({ "cf-connecting-ip": "1.2.3.4" }),
+      }),
+    )
+    expect(consumer).toBe("consumer:shared-key")
+    expect(parity).toBe("parity:shared-key")
+    expect(consumer).not.toBe(parity)
+  })
+
+  it("falls back to public:<ip> when PARITY_BEARER lacks a bucket key (defensive)", () => {
+    expect(
+      identifyForRateLimit(
+        makeCtx({
+          user: { id: null, role: "PARITY_BEARER" } as Principal,
+          request: makeRequest({ "cf-connecting-ip": "1.2.3.4" }),
+        }),
+      ),
+    ).toBe("public:1.2.3.4")
+  })
+
+  // ---------------------------------------------------------------------------
   // Authenticated principals → user.id
   // ---------------------------------------------------------------------------
 

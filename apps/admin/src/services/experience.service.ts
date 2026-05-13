@@ -208,8 +208,14 @@ export class ExperienceService {
       const experienceFilter: Record<string, unknown> = { archivedAt: null }
       // R9: hide template experiences from PUBLIC + CONSUMER_BEARER (web
       // SSR's identity) so consumer's asNonTemplateExperience check stays
-      // sound at the server-side seam. VIEWER keeps current behavior —
-      // editorial-tier read-only access still surfaces templates.
+      // sound at the server-side seam.
+      //
+      // Roles that pass through (i.e., DO see templates here):
+      //   - VIEWER: editorial-tier read access; templates are editorial
+      //     artifacts staff translators/reviewers need to inspect.
+      //   - PARITY_BEARER: pre-cutover batch-verification harness needs
+      //     the full record (template content) for Strapi↔admin compare.
+      // EDITOR/ADMIN bypass this entire branch via isEditorOrAdmin.
       if (user === null || user.role === "CONSUMER_BEARER") {
         experienceFilter.isTemplate = false
       }
@@ -217,6 +223,47 @@ export class ExperienceService {
     }
 
     return this.prisma.experienceLocale.findFirst({ ...query, where })
+  }
+
+  /**
+   * Enumerate published template Experience locales for one locale.
+   * Used by the pre-cutover batch-verification harness via the
+   * PARITY_BEARER role; also accessible to EDITOR/ADMIN via the
+   * `read:experience-templates` tier ladder. PUBLIC and CONSUMER_BEARER
+   * are blocked at the scope-auth layer (R9 carve-out).
+   *
+   * Always returns PUBLISHED non-archived rows regardless of caller
+   * role — drafts and archived templates aren't useful inputs to the
+   * parity check, and EDITOR/ADMIN have other surfaces to inspect
+   * non-published state.
+   */
+  async listTemplateLocales({
+    locale,
+    limit,
+    offset,
+    user,
+    query,
+  }: {
+    locale: string
+    limit?: number
+    offset?: number
+    user: Principal | null
+    query: object
+  }) {
+    if (!hasPermission(user, "read:experience-templates")) {
+      throw new ForbiddenError()
+    }
+    return this.prisma.experienceLocale.findMany({
+      ...query,
+      where: {
+        locale,
+        status: "PUBLISHED",
+        experience: { isTemplate: true, archivedAt: null },
+      },
+      orderBy: { slug: "asc" },
+      take: Math.min(limit ?? 50, 200),
+      skip: offset ?? 0,
+    })
   }
 
   async updateLocale({
