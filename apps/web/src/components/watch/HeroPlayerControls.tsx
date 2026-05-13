@@ -1,5 +1,6 @@
 "use client"
 
+import { Globe } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import type { MuxPlayerRef } from "@forge/video-player"
@@ -19,6 +20,8 @@ export function HeroPlayerControls({
   playerRef,
   wrapperRef,
   overlayAnchor,
+  onLanguageClick,
+  showLanguageButton,
 }: {
   player: MuxPlayerRef | null
   playerRef: React.RefObject<MuxPlayerRef | null>
@@ -32,6 +35,14 @@ export function HeroPlayerControls({
    * so this is null for one render at most before the ref callback fires.
    */
   overlayAnchor: HTMLDivElement | null
+  /** Click handler for the in-chrome globe (mirrors the top-right globe). */
+  onLanguageClick?: () => void
+  /**
+   * Whether to render the in-chrome globe button. The parent applies the
+   * same gate it uses for the top-right globe (>= 2 playable variants AND
+   * a callback is provided), so both surfaces appear together.
+   */
+  showLanguageButton?: boolean
 }) {
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
@@ -765,6 +776,16 @@ export function HeroPlayerControls({
           </div>
         </div>
       </div>
+
+      {showLanguageButton && onLanguageClick ? (
+        <ChromeButton
+          onClick={onLanguageClick}
+          ariaLabel="Change audio language"
+          testId="hero-chrome-language"
+        >
+          <Globe aria-hidden className="h-5 w-5" />
+        </ChromeButton>
+      ) : null}
 
       <ChromeButton
         onClick={toggleFullscreen}

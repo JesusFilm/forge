@@ -454,6 +454,15 @@ export function HeroPlayer({
             playerRef={playerRef}
             wrapperRef={wrapperRef}
             overlayAnchor={overlayAnchor}
+            onLanguageClick={onLanguageClick}
+            // Both globe surfaces share the >= 2 playable variants gate, but
+            // the in-chrome one stays visible in fullscreen (the top-right
+            // one is hidden via isFullscreen in HeroPlayer) so users still
+            // have a path to the picker without exiting fullscreen.
+            showLanguageButton={
+              typeof onLanguageClick === "function" &&
+              (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
+            }
           />
         ) : (
           <div
