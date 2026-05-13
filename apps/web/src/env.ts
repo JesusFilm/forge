@@ -87,6 +87,14 @@ export const env = createEnv({
     // newline from a copy-paste) don't brick boot — common operator-
     // typo failure modes that the runtime narrower can't recover from
     // because the schema rejects first.
+    // U4 (plan-003) collapses the ACTIVE ContentApiMode set to two values
+    // ("strapi" | "admin") in `content-api-mode.ts`. The env-level enum
+    // intentionally remains permissive over the four historical strings
+    // so operators who still have `dual-read` or `admin-with-fallback`
+    // set in Doppler don't brick boot — the runtime narrower coerces
+    // legacy values to "strapi" with a warn (soft-removal, not hard
+    // schema rejection). Once Strapi removes (R3), the U5 deletion PR
+    // collapses both this enum and the narrower to a single value.
     FORGE_CONTENT_API: z
       .preprocess(
         (val) => (typeof val === "string" ? val.trim().toLowerCase() : val),
@@ -147,6 +155,44 @@ export const env = createEnv({
         { message: "unreachable" },
       )
       .optional(),
+    // U4 (plan-003) — bearer key web's SSR sends in `Authorization: Bearer`
+    // to admin so traffic buckets as `consumer:<key>` rather than
+    // `public:<railway-egress-ip>`. Without this, web's SSR fanout collides
+    // on Railway's shared egress IP and self-DoSes admin's per-IP rate limit.
+    //
+    // The key carries NO permissions — admin's `CONSUMER_BEARER` principal
+    // sees exactly what PUBLIC sees. The bearer is an identity LABEL for
+    // rate-limiting, not an authorization credential.
+    //
+    // OPTIONAL: when unset, web omits the header and admin treats the
+    // request as anonymous. Default `FORGE_CONTENT_API=strapi` doesn't need
+    // this set. Required-without-default would brick Railway deploys for
+    // environments that haven't provisioned the value yet (per
+    // `docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md`).
+    //
+    // Format: single string OR comma-separated CSV mirroring admin's
+    // `WEB_ADMIN_API_KEYS` Doppler value. Web reads the first entry as its
+    // outbound bearer; admin recognizes any entry as a valid
+    // CONSUMER_BEARER. Symmetric name on both sides eliminates the
+    // KEY-vs-KEYS copy-paste error class.
+    WEB_ADMIN_API_KEYS: z.string().optional(),
+    // U9 (plan-003 PR-B) — emergency-only route disable.
+    //
+    // CSV of route paths to disable; matching slugs serve
+    // <MaintenanceFallback> instead of normal rendering. Read at module
+    // scope. Primary fast rollback layer (seconds) per cutover runbook:
+    //   docs/admin-core-migration/cutover-runbook.md — "Layer 1".
+    //
+    // Format: comma-separated route paths (e.g. "/some-slug,/another-slug").
+    // Whitespace around each entry is trimmed. Empty entries are skipped.
+    // Unknown / typo'd entries warn-and-fall-through to normal rendering —
+    // a typo'd disable entry does NOT brick the route.
+    //
+    // EMERGENCY ONLY. This is NOT a general traffic-shaping mechanism. Do
+    // not leave a slug in this list longer than a debug session; longer
+    // disables route through the canonical-plan U7 no-redeploy mechanism
+    // (TODO(U7) per runbook).
+    FORGE_DISABLE_WATCH_ROUTES: z.string().optional(),
   },
   client: {
     NEXT_PUBLIC_GRAPHQL_URL: z.url(),
@@ -198,6 +244,8 @@ export const env = createEnv({
     FORGE_CONTENT_API: process.env.FORGE_CONTENT_API,
     FORGE_PARITY_DEBUG: process.env.FORGE_PARITY_DEBUG,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
+    WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
+    FORGE_DISABLE_WATCH_ROUTES: process.env.FORGE_DISABLE_WATCH_ROUTES,
     NEXT_PUBLIC_GRAPHQL_URL: process.env.NEXT_PUBLIC_GRAPHQL_URL,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
