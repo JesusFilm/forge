@@ -41,9 +41,14 @@ export type Principal = {
   id: string | null
   role: Role
   /**
-   * Set only on `CONSUMER_BEARER` principals — the matched
-   * `WEB_ADMIN_API_KEYS` CSV entry. The rate-limit identifyFn reads
-   * this without re-inspecting headers. Never logged.
+   * Set on bearer principals that need rate-limit bucketing — the matched
+   * CSV entry from the mint-source env var. Today: `CONSUMER_BEARER`
+   * (from `WEB_ADMIN_API_KEYS`) and `PARITY_BEARER` (from
+   * `PARITY_API_KEYS`). The rate-limit identifyFn reads this without
+   * re-inspecting headers, and namespaces it differently per role
+   * (`consumer:<key>` for CONSUMER_BEARER, `parity:<key>` for
+   * PARITY_BEARER) so the two surfaces have independent quotas. Never
+   * logged.
    */
   rateLimitBucketKey?: string
 }

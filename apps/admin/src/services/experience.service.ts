@@ -208,10 +208,14 @@ export class ExperienceService {
       const experienceFilter: Record<string, unknown> = { archivedAt: null }
       // R9: hide template experiences from PUBLIC + CONSUMER_BEARER (web
       // SSR's identity) so consumer's asNonTemplateExperience check stays
-      // sound at the server-side seam. VIEWER and PARITY_BEARER keep
-      // current behavior — editorial-tier read-only access and the
-      // pre-cutover parity-verification harness both need to see
-      // templates by slug.
+      // sound at the server-side seam.
+      //
+      // Roles that pass through (i.e., DO see templates here):
+      //   - VIEWER: editorial-tier read access; templates are editorial
+      //     artifacts staff translators/reviewers need to inspect.
+      //   - PARITY_BEARER: pre-cutover batch-verification harness needs
+      //     the full record (template content) for Strapi↔admin compare.
+      // EDITOR/ADMIN bypass this entire branch via isEditorOrAdmin.
       if (user === null || user.role === "CONSUMER_BEARER") {
         experienceFilter.isTemplate = false
       }

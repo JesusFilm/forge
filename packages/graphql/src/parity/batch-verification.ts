@@ -128,11 +128,17 @@ FLAGS
   --help                Print this help and exit 0.
 
 REQUIRED ENV
-  WEB_ADMIN_API_KEYS    Comma-separated bearer keys (first entry used).
-                        Mandatory unless --anonymous is set.
-                        Hard-fail rationale: anonymous queries consume
-                        admin's \`public:\${ip}\` bucket and would self-DoS
-                        the verification window.
+  PARITY_API_KEYS       Comma-separated PARITY_BEARER keys (first entry used).
+                        PREFERRED — enables template parity coverage via
+                        admin's R9 carve-out.
+  WEB_ADMIN_API_KEYS    Comma-separated CONSUMER_BEARER keys (first entry used).
+                        FALLBACK — used only when PARITY_API_KEYS is unset.
+                        Templates are EXCLUDED from the corpus in this mode
+                        (CONSUMER_BEARER cannot see them under R9).
+                        At least one of PARITY/WEB_ADMIN must be set unless
+                        --anonymous. Hard-fail rationale: anonymous queries
+                        consume admin's \`public:\${ip}\` bucket and would
+                        self-DoS the verification window.
   STRAPI_GRAPHQL_URL    Strapi GraphQL endpoint URL.
   ADMIN_GRAPHQL_URL     Admin GraphQL endpoint URL.
   STRAPI_PUBLIC_ORIGIN  Base origin for URL canonicalization.
