@@ -44,13 +44,21 @@ function DialogContent({
   children,
   showCloseButton = true,
   overlayClassName,
+  portalContainer,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
   overlayClassName?: string
+  /**
+   * Override the portal mount point. Defaults to `<body>`. Used by callers
+   * that need the dialog to render inside a specific subtree — e.g. so it
+   * remains visible when an ancestor is in fullscreen mode (browsers
+   * hide everything outside the fullscreen element).
+   */
+  portalContainer?: HTMLElement | null
 }) {
   return (
-    <DialogPortal>
+    <DialogPortal container={portalContainer ?? undefined}>
       <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Popup
         data-slot="dialog-content"

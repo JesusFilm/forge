@@ -29,6 +29,48 @@ vi.mock("@/components/watch/SeriesEpisodesGrid", () => ({
   )),
 }))
 
+// Mock LanguageCombobox to a thin shell so SeriesPageClient tests don't
+// need to drive the full combobox interaction (its own test suite owns
+// behavior coverage). The mock just exposes the option count so passthrough
+// can be asserted.
+vi.mock("@/components/watch/LanguageCombobox", () => ({
+  LanguageCombobox: vi.fn(
+    ({
+      options,
+      value,
+    }: {
+      options: { slug: string; name: string }[]
+      value: string
+    }) => (
+      <div
+        data-testid="language-combobox-mock"
+        data-option-count={options.length}
+        data-value={value}
+      />
+    ),
+  ),
+}))
+
+// next/navigation's useRouter requires app-router context that
+// createRoot tests don't provide. Stub it to a no-op router so the
+// click → router.push path is observable without app-router setup.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}))
+
+// language-preference-client writes a document.cookie value. Stub it so
+// tests don't depend on jsdom's cookie store behavior.
+vi.mock("@/lib/language-preference-client", () => ({
+  writePreferredLanguageSlug: vi.fn(),
+}))
+
 const { shareModalMock } = vi.hoisted(() => ({
   shareModalMock: vi.fn(
     ({

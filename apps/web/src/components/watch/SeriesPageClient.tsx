@@ -1,29 +1,28 @@
 "use client"
 
 import { useCallback, useMemo, useState } from "react"
+import type { Route } from "next"
 import { useRouter } from "next/navigation"
-import { ChevronsUpDown, ExternalLink, Globe } from "lucide-react"
+import { ExternalLink } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
 import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import { deriveLanguageDisplay } from "@/lib/language-display"
+import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
+import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 import { resolvePosterUrl } from "@/lib/url"
 
 // Narrowed from WatchModalState ("none" | "download" | "language" | "share")
 // because the series page only ever opens the share modal — there is no
-// download (R-scope: no series-level downloads). The language switcher
-// (scope expansion vs the original brainstorm) uses a native <select>
-// rather than the LanguagePickerModal so the locale switch is a single
-// click without an intermediate modal.
+// download (R-scope: no series-level downloads). The language picker is
+// inline (LanguageCombobox in the meta section), not modal-based, so the
+// language state is owned by the combobox rather than this modal-state
+// machine.
 type SeriesModalState = "none" | "share"
-
-type SeriesLanguage = {
-  documentId: string
-  slug: string
-  name: string
-}
 
 type SeriesPageClientProps = {
   series: ResolvedSeriesBySlug["video"]
@@ -56,51 +55,42 @@ export function SeriesPageClient({
   const description = series.description ?? series.snippet ?? null
   const posterUrl = resolvePosterUrl(series.images?.[0], null)
 
-  // Available languages mirror LanguagePickerModal's filter: published
-  // variants with a usable hls source and a language slug. Memoised so
-  // <select>'s render-time identity is stable across modal toggles.
-  const availableLanguages = useMemo<SeriesLanguage[]>(() => {
+  // Build LanguageCombobox options from series variants using the same
+  // filter (isPlayableLanguageVariant) and display derivation
+  // (deriveLanguageDisplay) the watch page uses, so the series-page
+  // dropdown reads "French / Français" and sorts identically.
+  const languageOptions = useMemo(() => {
     const variants = series.variants ?? []
-    const list: SeriesLanguage[] = []
-    const seen = new Set<string>()
-    for (const variant of variants) {
-      if (!variant) continue
-      if (variant.published !== true) continue
-      if (!variant.hls) continue
-      const slug = variant.language?.slug ?? null
-      const name = variant.language?.name ?? null
-      if (!slug || !name) continue
-      if (seen.has(slug)) continue
-      seen.add(slug)
-      list.push({ documentId: variant.documentId, slug, name })
-    }
-    return list
+    return variants
+      .filter(isPlayableLanguageVariant)
+      .map((v) => deriveLanguageDisplay(v.language.slug, v.language.name))
+      .sort((a, b) => a.name.localeCompare(b.name))
   }, [series.variants])
 
-  // Match against the URL locale OR the BCP-47 form, since either can
-  // appear in the URL (the watch-video resolver accepts both forms when
-  // matching variants). Falls back to the first available so the
-  // <select>'s controlled value always has a matching option.
+  // Resolve the current language slug against the URL locale. Falls back
+  // to the first available so the combobox's controlled value always has
+  // a matching option to render.
   const currentLanguageSlug =
-    availableLanguages.find(
-      (lang) =>
-        lang.slug === locale ||
-        lang.slug.toLowerCase() === locale.toLowerCase(),
+    languageOptions.find(
+      (opt) =>
+        opt.slug === locale || opt.slug.toLowerCase() === locale.toLowerCase(),
     )?.slug ??
-    availableLanguages[0]?.slug ??
+    languageOptions[0]?.slug ??
     ""
 
   const handleLanguageChange = useCallback(
-    (event: React.ChangeEvent<HTMLSelectElement>) => {
-      const next = event.target.value
+    (nextSlug: string) => {
       const seriesSlug = series.slug
-      if (!next || !seriesSlug || next === currentLanguageSlug) return
-      router.push(`/${seriesSlug}/${next}`)
+      if (!nextSlug || !seriesSlug || nextSlug === currentLanguageSlug) return
+      // Persist preference cookie so subsequent visits respect the choice
+      // — matches the watch page's behavior via proxy.ts canonical redirect.
+      writePreferredLanguageSlug(nextSlug)
+      router.push(`/${seriesSlug}/${nextSlug}` as Route)
     },
     [router, series.slug, currentLanguageSlug],
   )
 
-  const showMetaSection = Boolean(description) || availableLanguages.length > 0
+  const showMetaSection = Boolean(description) || languageOptions.length > 0
 
   return (
     <main
@@ -146,7 +136,7 @@ export function SeriesPageClient({
       />
 
       {/* Meta section sits below the hero. Two-column on md+: description
-          on the left (col-span 2/3), language selector on the right
+          on the left (col-span 2/3), language combobox on the right
           (col-span 1/3). Single-column on mobile stacks them top-to-
           bottom. Tight padding keeps the section visually attached to
           the hero band above and the episode grid below. */}
@@ -165,11 +155,11 @@ export function SeriesPageClient({
               </p>
             </div>
           ) : (
-            // Reserve the left column so the language selector stays in
-            // the right rail even when description is missing.
+            // Reserve the left column so the combobox stays in the right
+            // rail even when description is missing.
             <div className="hidden md:col-span-2 md:block" aria-hidden="true" />
           )}
-          {availableLanguages.length > 0 ? (
+          {languageOptions.length > 0 ? (
             <div
               data-testid="series-page-languages"
               className="flex flex-col gap-2"
@@ -180,35 +170,11 @@ export function SeriesPageClient({
               >
                 Languages
               </span>
-              <div className="relative">
-                <Globe
-                  size={16}
-                  aria-hidden="true"
-                  className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-stone-300"
-                />
-                <ChevronsUpDown
-                  size={16}
-                  aria-hidden="true"
-                  className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-stone-400"
-                />
-                <select
-                  data-testid="series-page-language-select"
-                  aria-label="Choose language"
-                  value={currentLanguageSlug}
-                  onChange={handleLanguageChange}
-                  className="w-full cursor-pointer appearance-none rounded-lg border border-stone-700/70 bg-stone-800/40 py-3 pr-10 pl-10 text-stone-100 hover:bg-stone-800/60 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"
-                >
-                  {availableLanguages.map((lang) => (
-                    <option
-                      key={lang.documentId}
-                      value={lang.slug}
-                      className="bg-stone-900 text-stone-100"
-                    >
-                      {lang.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <LanguageCombobox
+                options={languageOptions}
+                value={currentLanguageSlug}
+                onChange={handleLanguageChange}
+              />
             </div>
           ) : null}
         </section>

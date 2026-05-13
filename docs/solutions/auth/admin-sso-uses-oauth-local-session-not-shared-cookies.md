@@ -50,6 +50,12 @@ In this shape:
   Keep `/login` responsible for resolving the callback URL, then redirect to an
   admin-local route such as `/api/auth/login` to set cookies and build the Auth
   authorize URL.
+- Better Auth's JWT plugin requires a persisted `jwks` model when Auth is an
+  OAuth provider. The Prisma model must expose `prisma.jwks` and include
+  `publicKey`, `privateKey`, `createdAt`, optional `expiresAt`, plus nullable
+  `alg` and `crv` because generated keys include those values. Missing this
+  model causes Admin callback failures during token exchange even after the user
+  successfully signs in.
 
 ## Prevention
 
@@ -75,8 +81,19 @@ deployed `/login` page returned:
 Cookies can only be modified in a Server Action or Route Handler.
 ```
 
+Also verify `https://auth.jesusfilm.org/api/auth/jwks` returns a key set after
+deploying Auth as an OAuth provider. A production callback failure with:
+
+```text
+Auth code exchange failed.
+```
+
+can be caused by the token endpoint failing to sign OAuth tokens because the
+Better Auth JWKS model is absent from the generated Prisma client or database.
+
 ## Related
 
+- `apps/auth/prisma/schema.prisma`
 - `apps/auth/src/auth/config.ts`
 - `apps/auth/src/scripts/seed-first-party-apps.ts`
 - `apps/admin/src/auth/oauth-client.ts`

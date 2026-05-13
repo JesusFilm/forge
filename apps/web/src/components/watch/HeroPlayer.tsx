@@ -13,8 +13,11 @@ import { useSearchParams } from "next/navigation"
 import { MuxPlayer, type MuxPlayerRef } from "@forge/video-player"
 import type { MuxCSSProperties } from "@mux/mux-player-react"
 
+import { Globe } from "lucide-react"
+
 import { env } from "@/env"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
+import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { getViewerId } from "@/lib/viewer-id"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { HeroPlayerControls } from "./HeroPlayerControls"
@@ -47,14 +50,22 @@ const CHROME_HIDE_STYLE: MuxCSSProperties = {
 // this point the player is no longer the main element on screen.
 const OBSCURED_PAUSE_THRESHOLD = 0.6
 
+// Minimum number of playable language variants before the language-switch
+// globe button appears. With only one variant there's nothing to switch to.
+const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
+
 export function HeroPlayer({
   block,
   onPlayerReady,
+  onLanguageClick,
+  playableLanguageCount,
   darkenOverlay = false,
   overlay,
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
+  onLanguageClick?: () => void
+  playableLanguageCount?: number
   // When true, layers a flat black tint over the player so the hero reads
   // as decorative background rather than a primary playback surface.
   // Used by the series page where the trailer is aesthetic, not the
@@ -236,6 +247,7 @@ export function HeroPlayer({
 
   const searchParams = useSearchParams()
   const tParam = searchParams?.get("t")
+  const autoplayParam = searchParams?.get("autoplay")
   const handleLoadedMetadata = useCallback(() => {
     const player = playerRef.current
     if (!player) return
@@ -247,6 +259,70 @@ export function HeroPlayer({
     player.currentTime =
       safeDuration > 0 ? Math.min(parsed, safeDuration) : parsed
   }, [tParam])
+
+  // One-shot autoplay-with-sound when the URL carries `?autoplay=1`.
+  // LanguagePickerModal appends this signal so the new page knows the
+  // navigation came from a deliberate user gesture (Apply click). The
+  // browser's autoplay-with-sound permission is granted via MEI on
+  // engaged sites, so the attempt usually succeeds for returning users;
+  // for new users the catch falls back to the existing muted-pill flow.
+  // The signal is stripped from the URL after the attempt so a page
+  // refresh (no gesture) doesn't re-trigger the unmuted play.
+  const autoplayAttemptedRef = useRef(false)
+  useEffect(() => {
+    if (!videoReady) return
+    // Read through the ref instead of the state-captured `player` so
+    // React Compiler doesn't flag `.muted = false` as state mutation
+    // (refs are mutable; useState-returned values are not, per the
+    // compiler's analysis). The state value is still in deps below so
+    // the effect re-runs when the player attaches.
+    const livePlayer = playerRef.current
+    if (!livePlayer) return
+    if (autoplayAttemptedRef.current) return
+    if (autoplayParam !== "1") return
+    autoplayAttemptedRef.current = true
+
+    // Strip ?autoplay=1 from the URL up front. Use replaceState (not
+    // router.replace) to avoid triggering a Next.js navigation/re-render
+    // mid-playback. Stripping before play() settles is intentional: this
+    // is a one-shot signal — no retry on rejection, so leaving the param
+    // in place would only enable a refresh-induced re-trigger (refresh
+    // has no user gesture; the play attempt would be blocked anyway).
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href)
+      url.searchParams.delete("autoplay")
+      window.history.replaceState(
+        null,
+        "",
+        url.pathname + url.search + url.hash,
+      )
+    }
+
+    // Normalise to a Promise so the React Compiler treats the setState
+    // calls as occurring in an async continuation (not a render-phase
+    // cascade). Modern Mux Player returns a Promise from play(); on legacy
+    // shims that return undefined, the Promise.resolve() wrap is a no-op
+    // success path that still routes through the same `.then` resolution.
+    Promise.resolve(livePlayer.play())
+      .then(() => {
+        // Only commit unmute AFTER play() resolves so the player can't
+        // sit unmuted-but-paused (silent surprise) on a Mux Player shim
+        // that returns a resolved promise without actually playing.
+        const settledPlayer = playerRef.current
+        if (settledPlayer) settledPlayer.muted = false
+        setChromeRevealed(true)
+        setAutoplayBlocked(false)
+      })
+      .catch(() => {
+        // Browser blocked unmuted play (no MEI grant). Player is still
+        // muted (we never set it false), so the existing muted-preview
+        // + "Play with Sound" pill flow takes over — the user can still
+        // commit playback manually.
+      })
+    // Intentionally omits chromeRevealed and setChromeRevealed: the ref
+    // guard above is the idempotency lock; chromeRevealed in deps would
+    // re-run the effect after a successful attempt commits.
+  }, [player, videoReady, autoplayParam, playerRef])
 
   // iOS user-activation gate: NO `await` between click and play(), or
   // play() will be rejected as not-from-user-gesture.
@@ -315,9 +391,36 @@ export function HeroPlayer({
     setPrevVariantKey(variant.documentId)
     setVideoReady(false)
   }
+  // Variant-scope the autoplay one-shot — without this, a same-component
+  // re-render with a new variant id (e.g. soft variant swap) would carry
+  // the previous true and skip the new variant's autoplay attempt. Done in
+  // an effect rather than the render-phase block above because React
+  // Compiler rejects render-phase ref writes (refs aren't reactive).
+  useEffect(() => {
+    autoplayAttemptedRef.current = false
+  }, [variant.documentId])
 
   const loop = !chromeRevealed
   const muted = !chromeRevealed
+
+  // Hide the language-switch globe while the player is in fullscreen so it
+  // doesn't sit on top of the playing video chrome. Restores when the user
+  // exits fullscreen. Listen for both the standard event and the webkit
+  // prefix so Safari is covered.
+  // Shared hook — same source of truth as HeroPlayerControls, prevents the
+  // dual-listener desync where the late-mounted controls could miss the
+  // initial fullscreenchange event.
+  const isFullscreen = useIsFullscreen()
+
+  // Both globe surfaces (top-right floating + in-chrome) share this gate:
+  // a wired callback AND enough variants to warrant a switcher. The
+  // top-right surface adds `!isFullscreen` because it overlaps the
+  // browser's fullscreen chrome; the in-chrome surface intentionally
+  // stays visible in fullscreen so the user can still reach the picker.
+  const hasLanguageSwitcher =
+    typeof onLanguageClick === "function" &&
+    (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
+  const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
 
   return (
     <>
@@ -378,6 +481,10 @@ export function HeroPlayer({
             playerRef={playerRef}
             wrapperRef={wrapperRef}
             overlayAnchor={overlayAnchor}
+            onLanguageClick={onLanguageClick}
+            // In-chrome globe intentionally stays visible in fullscreen
+            // (the top-right one is hidden by isFullscreen).
+            showLanguageButton={hasLanguageSwitcher}
           />
         ) : (
           <div
@@ -391,6 +498,30 @@ export function HeroPlayer({
             data-testid="hero-player-darken-overlay"
             className="pointer-events-none absolute inset-0 bg-black/50"
           />
+        ) : null}
+
+        {/* Independent full-hero overlay so top/right are relative to the
+            hero itself, not the bottom-anchored pill wrapper.
+            top-10 right-10 mirrors the floating search bar and JFP logo's
+            offset (both fixed at top-10) so the globe aligns horizontally
+            with them at page load. pointer-events-none on the container
+            avoids blocking Mux Player chrome hit-testing. */}
+        {showLanguageSwitch ? (
+          <div className="pointer-events-none absolute inset-0 z-10">
+            <button
+              type="button"
+              data-testid="hero-player-language-button"
+              onClick={onLanguageClick}
+              aria-label="Change audio language"
+              title="Change audio language"
+              className="pointer-events-auto absolute top-10 right-10 inline-flex h-12 w-12 items-center justify-center rounded-full text-stone-100 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
+            >
+              <Globe
+                aria-hidden
+                className="h-6 w-6 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
+              />
+            </button>
+          </div>
         ) : null}
       </div>
 

@@ -1,9 +1,11 @@
 "use client"
 
+import { Globe } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import type { MuxPlayerRef } from "@forge/video-player"
 
+import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { ChromeButton, formatTime } from "./ChromeButton"
 import {
   ChromeMutedIcon,
@@ -19,6 +21,8 @@ export function HeroPlayerControls({
   playerRef,
   wrapperRef,
   overlayAnchor,
+  onLanguageClick,
+  showLanguageButton,
 }: {
   player: MuxPlayerRef | null
   playerRef: React.RefObject<MuxPlayerRef | null>
@@ -32,6 +36,14 @@ export function HeroPlayerControls({
    * so this is null for one render at most before the ref callback fires.
    */
   overlayAnchor: HTMLDivElement | null
+  /** Click handler for the in-chrome globe (mirrors the top-right globe). */
+  onLanguageClick?: () => void
+  /**
+   * Whether to render the in-chrome globe button. The parent applies the
+   * same gate it uses for the top-right globe (>= 2 playable variants AND
+   * a callback is provided), so both surfaces appear together.
+   */
+  showLanguageButton?: boolean
 }) {
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
@@ -39,7 +51,19 @@ export function HeroPlayerControls({
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [bufferedPct, setBufferedPct] = useState(0)
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  // Shared with HeroPlayer via the useIsFullscreen hook — same source of
+  // truth prevents the dual-listener desync that could leave the portal
+  // target pointing at overlayAnchor while HeroPlayer thinks we're in
+  // fullscreen.
+  const isFullscreen = useIsFullscreen()
+  // Mirror wrapperRef.current in state so the portal-target swap below can
+  // read it without touching a ref during render (React Compiler rejects
+  // that). wrapperRef attaches in the parent on mount, so the effect runs
+  // once and the value stays stable for the component's lifetime.
+  const [wrapperEl, setWrapperEl] = useState<HTMLDivElement | null>(null)
+  useEffect(() => {
+    setWrapperEl(wrapperRef.current)
+  }, [wrapperRef])
   const [controlsVisible, setControlsVisible] = useState(true)
   const [hoveringControls, setHoveringControls] = useState(false)
   const [volumeOpen, setVolumeOpen] = useState(false)
@@ -178,21 +202,8 @@ export function HeroPlayerControls({
     }
   }, [player])
 
-  useEffect(() => {
-    const handleFsChange = () => {
-      const fsEl =
-        document.fullscreenElement ??
-        (document as Document & { webkitFullscreenElement?: Element | null })
-          .webkitFullscreenElement
-      setIsFullscreen(!!fsEl)
-    }
-    document.addEventListener("fullscreenchange", handleFsChange)
-    document.addEventListener("webkitfullscreenchange", handleFsChange)
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFsChange)
-      document.removeEventListener("webkitfullscreenchange", handleFsChange)
-    }
-  }, [])
+  // Fullscreen state now comes from useIsFullscreen() above — no
+  // component-local listener needed.
 
   // When playing/hovering state changes, reschedule (or cancel) the hide
   // timer. The mousemove listener also calls scheduleHide on every move,
@@ -766,6 +777,16 @@ export function HeroPlayerControls({
         </div>
       </div>
 
+      {showLanguageButton && onLanguageClick ? (
+        <ChromeButton
+          onClick={onLanguageClick}
+          ariaLabel="Change audio language"
+          testId="hero-chrome-language"
+        >
+          <Globe aria-hidden className="h-5 w-5" />
+        </ChromeButton>
+      ) : null}
+
       <ChromeButton
         onClick={toggleFullscreen}
         ariaLabel={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
@@ -796,16 +817,26 @@ export function HeroPlayerControls({
           keyboard interactions reach the controls — the wrapper-level reveal
           listeners then bring it back to opacity-100 on the next interaction.
           Backdrop + chrome bar share one portal so the gradient travels
-          with the controls as the body section slides up. */}
-      {overlayAnchor != null
-        ? createPortal(
-            <>
-              {chromeBackdrop}
-              {chromeBar}
-            </>,
-            overlayAnchor,
-          )
-        : null}
+          with the controls as the body section slides up.
+
+          In fullscreen the portal target swaps to the hero wrapper itself
+          (the element the browser puts in fullscreen). The default target
+          — overlayAnchor — sits OUTSIDE the wrapper and is hidden by the
+          browser's fullscreen render, which is why the chrome disappeared
+          on entering fullscreen. Both targets render the chromeBar at the
+          bottom edge via `absolute bottom-0`, so the visual position is
+          identical in either mode. */}
+      {(() => {
+        const target = isFullscreen ? wrapperEl : overlayAnchor
+        if (target == null) return null
+        return createPortal(
+          <>
+            {chromeBackdrop}
+            {chromeBar}
+          </>,
+          target,
+        )
+      })()}
     </>
   )
 }
