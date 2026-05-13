@@ -7,11 +7,20 @@ export const ADMIN_OAUTH_SESSION_COOKIE = "forge_admin_oauth_session"
 export const ADMIN_OAUTH_STATE_COOKIE = "forge_admin_oauth_state"
 export const ADMIN_OAUTH_VERIFIER_COOKIE = "forge_admin_oauth_verifier"
 export const ADMIN_OAUTH_CALLBACK_COOKIE = "forge_admin_oauth_callback"
+export const ADMIN_OAUTH_ACCESS_REQUEST_COOKIE =
+  "forge_admin_oauth_access_request"
 
 const maxAgeSeconds = 60 * 60 * 24 * 7
+const accessRequestMaxAgeSeconds = 60 * 10
 
 type AdminOAuthSessionPayload = Principal & {
   scopes: string[]
+}
+
+export type AdminOAuthAccessRequestPayload = {
+  subject: string
+  email?: string
+  name?: string
 }
 
 export function createAdminOAuthSessionCookie(
@@ -25,6 +34,15 @@ export function createAdminOAuthSessionCookie(
   })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime(`${maxAgeSeconds}s`)
+    .sign(getSigningKey())
+}
+
+export function createAdminOAuthAccessRequestCookie(
+  payload: AdminOAuthAccessRequestPayload,
+) {
+  return new SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime(`${accessRequestMaxAgeSeconds}s`)
     .sign(getSigningKey())
 }
 
@@ -44,6 +62,37 @@ export async function readAdminOAuthSessionCookie(
   }
 }
 
+export async function readAdminOAuthAccessRequestCookie(
+  value?: string,
+): Promise<AdminOAuthAccessRequestPayload | null> {
+  if (!value) return null
+
+  try {
+    const { payload } = await jwtVerify(value, getSigningKey(), {
+      algorithms: ["HS256"],
+    })
+
+    if (
+      typeof payload.subject !== "string" ||
+      ("email" in payload && typeof payload.email !== "string") ||
+      ("name" in payload && typeof payload.name !== "string")
+    ) {
+      return null
+    }
+
+    const email = typeof payload.email === "string" ? payload.email : undefined
+    const name = typeof payload.name === "string" ? payload.name : undefined
+
+    return {
+      subject: payload.subject,
+      email,
+      name,
+    }
+  } catch {
+    return null
+  }
+}
+
 export function adminOAuthCookieOptions() {
   return {
     httpOnly: true,
@@ -51,6 +100,13 @@ export function adminOAuthCookieOptions() {
     secure: env.NODE_ENV === "production",
     path: "/",
     maxAge: maxAgeSeconds,
+  }
+}
+
+export function adminOAuthAccessRequestCookieOptions() {
+  return {
+    ...adminOAuthCookieOptions(),
+    maxAge: accessRequestMaxAgeSeconds,
   }
 }
 

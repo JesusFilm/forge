@@ -42,7 +42,7 @@ describe("token policy", () => {
     expect(() =>
       assertTokenPolicy({
         family: "client_credentials",
-        requestedScopes: ["openid", "admin:content:write"],
+        requestedScopes: ["openid", "email:read"],
         grantedScopes: ["openid"],
         environmentKind: "local",
         audience: "http://localhost:3003",
@@ -50,7 +50,7 @@ describe("token policy", () => {
         now,
         serviceKey: "admin-sync",
       }),
-    ).toThrow("Requested scope(s) not granted: admin:content:write")
+    ).toThrow("Requested scope(s) not granted: email:read")
   })
 
   it("requires matching token subjects", () => {

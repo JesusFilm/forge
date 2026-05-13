@@ -45,6 +45,8 @@ describe("admin OAuth client", () => {
     expect(url.searchParams.get("response_type")).toBe("code")
     expect(url.searchParams.get("code_challenge_method")).toBe("S256")
     expect(url.searchParams.get("scope")).toContain("admin:access")
+    expect(url.searchParams.get("scope")).not.toContain("admin:content:read")
+    expect(url.searchParams.get("scope")).not.toContain("admin:content:write")
     expect(url.searchParams.get("callbackURL")).toBe(
       "https://admin.jesusfilm.org/dashboard",
     )

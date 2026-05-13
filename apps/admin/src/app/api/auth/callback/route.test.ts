@@ -8,6 +8,7 @@ const verifyAdminIdToken = vi.fn()
 const userFindUnique = vi.fn()
 const userUpdate = vi.fn()
 const userUpsert = vi.fn()
+const userCreate = vi.fn()
 
 vi.mock("next/headers", () => ({
   cookies: vi.fn(async () => ({
@@ -34,6 +35,7 @@ vi.mock("@/db/client", () => ({
       findUnique: (...args: unknown[]) => userFindUnique(...args),
       update: (...args: unknown[]) => userUpdate(...args),
       upsert: (...args: unknown[]) => userUpsert(...args),
+      create: (...args: unknown[]) => userCreate(...args),
     },
   },
 }))
@@ -49,6 +51,7 @@ describe("admin OAuth callback route", () => {
     userFindUnique.mockReset()
     userUpdate.mockReset()
     userUpsert.mockReset()
+    userCreate.mockReset()
   })
 
   it("rejects callbacks with invalid state", async () => {
@@ -78,7 +81,7 @@ describe("admin OAuth callback route", () => {
     )
   })
 
-  it("exchanges the code and creates an admin-local session", async () => {
+  it("offers access request actions for a first-time OAuth user without creating a row", async () => {
     cookieGet.mockImplementation((name: string) => {
       const values: Record<string, string> = {
         forge_admin_oauth_state: "state_123",
@@ -91,16 +94,15 @@ describe("admin OAuth callback route", () => {
     exchangeAdminAuthorizationCode.mockResolvedValueOnce({
       access_token: "access",
       id_token: "id",
-      scope: "openid admin:access admin:content:write",
+      scope: "openid admin:access",
     })
     verifyAdminIdToken.mockResolvedValueOnce({
       subject: "user_123",
       email: "user@example.com",
       name: "Test User",
-      scopes: ["openid", "admin:access", "admin:content:write"],
+      scopes: ["openid", "admin:access"],
     })
-    userFindUnique.mockResolvedValueOnce(null)
-    userUpsert.mockResolvedValueOnce({ id: "user_123", role: "EDITOR" })
+    userFindUnique.mockResolvedValueOnce(null).mockResolvedValueOnce(null)
 
     const { GET } = await import("./route")
     const response = await GET(
@@ -110,7 +112,7 @@ describe("admin OAuth callback route", () => {
     )
 
     expect(response.headers.get("location")).toBe(
-      "http://localhost:3003/dashboard",
+      "http://localhost:3003/login?error=forbidden&request=available",
     )
     expect(exchangeAdminAuthorizationCode).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -118,13 +120,12 @@ describe("admin OAuth callback route", () => {
         codeVerifier: "verifier_123",
       }),
     )
-    expect(userUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: "user_123" },
-        create: expect.objectContaining({ role: "EDITOR" }),
-      }),
-    )
+    expect(userUpsert).not.toHaveBeenCalled()
+    expect(userCreate).not.toHaveBeenCalled()
     expect(response.headers.get("set-cookie")).toContain(
+      "forge_admin_oauth_access_request=",
+    )
+    expect(response.headers.get("set-cookie")).not.toContain(
       "forge_admin_oauth_session=",
     )
   })
@@ -141,13 +142,13 @@ describe("admin OAuth callback route", () => {
     })
     exchangeAdminAuthorizationCode.mockResolvedValueOnce({
       access_token: "access",
-      scope: "openid admin:access admin:content:write",
+      scope: "openid admin:access",
     })
     verifyAdminIdToken.mockResolvedValueOnce({
       subject: "auth_user_123",
       email: "admin@example.com",
       name: "Admin User",
-      scopes: ["openid", "admin:access", "admin:content:write"],
+      scopes: ["openid", "admin:access"],
     })
     userFindUnique.mockResolvedValueOnce({
       id: "existing_admin_user",
@@ -172,7 +173,110 @@ describe("admin OAuth callback route", () => {
     expect(userUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "existing_admin_user" },
-        data: expect.objectContaining({ role: "ADMIN" }),
+        data: expect.not.objectContaining({ role: expect.any(String) }),
+      }),
+    )
+  })
+
+  it("offers access request actions for existing viewer users", async () => {
+    cookieGet.mockImplementation((name: string) => {
+      const values: Record<string, string> = {
+        forge_admin_oauth_state: "state_123",
+        forge_admin_oauth_verifier: "verifier_123",
+        forge_admin_oauth_callback: "/dashboard",
+      }
+
+      return values[name] ? { value: values[name] } : undefined
+    })
+    exchangeAdminAuthorizationCode.mockResolvedValueOnce({
+      access_token: "access",
+      scope: "openid admin:access",
+    })
+    verifyAdminIdToken.mockResolvedValueOnce({
+      subject: "viewer_user_123",
+      email: "viewer@example.com",
+      name: "Viewer User",
+      scopes: ["openid", "admin:access"],
+    })
+    userFindUnique.mockResolvedValueOnce({
+      id: "viewer_user_123",
+      role: "VIEWER",
+    })
+    userUpdate.mockResolvedValueOnce({
+      id: "viewer_user_123",
+      role: "VIEWER",
+    })
+
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(
+        "http://localhost:3003/api/auth/callback?code=code_123&state=state_123",
+      ),
+    )
+
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3003/login?error=forbidden&request=available",
+    )
+    expect(userUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "viewer_user_123" },
+        data: expect.not.objectContaining({ role: expect.any(String) }),
+      }),
+    )
+    expect(userCreate).not.toHaveBeenCalled()
+    expect(userUpsert).not.toHaveBeenCalled()
+    expect(response.headers.get("set-cookie")).toContain(
+      "forge_admin_oauth_access_request=",
+    )
+    expect(response.headers.get("set-cookie")).not.toContain(
+      "forge_admin_oauth_session=",
+    )
+  })
+
+  it("preserves an existing subject-only user's stored role", async () => {
+    cookieGet.mockImplementation((name: string) => {
+      const values: Record<string, string> = {
+        forge_admin_oauth_state: "state_123",
+        forge_admin_oauth_verifier: "verifier_123",
+        forge_admin_oauth_callback: "/dashboard",
+      }
+
+      return values[name] ? { value: values[name] } : undefined
+    })
+    exchangeAdminAuthorizationCode.mockResolvedValueOnce({
+      access_token: "access",
+      scope: "openid admin:access",
+    })
+    verifyAdminIdToken.mockResolvedValueOnce({
+      subject: "auth_subject_123",
+      name: undefined,
+      scopes: ["openid", "admin:access"],
+    })
+    userFindUnique.mockResolvedValueOnce({
+      id: "auth_subject_123",
+      role: "ADMIN",
+    })
+    userUpdate.mockResolvedValueOnce({
+      id: "auth_subject_123",
+      role: "ADMIN",
+    })
+
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(
+        "http://localhost:3003/api/auth/callback?code=code_123&state=state_123",
+      ),
+    )
+
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3003/dashboard",
+    )
+    expect(userCreate).not.toHaveBeenCalled()
+    expect(userUpsert).not.toHaveBeenCalled()
+    expect(userUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "auth_subject_123" },
+        data: expect.not.objectContaining({ role: expect.any(String) }),
       }),
     )
   })

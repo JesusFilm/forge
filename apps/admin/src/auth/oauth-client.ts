@@ -61,8 +61,6 @@ export function buildAdminAuthorizeUrl({
       "email:read",
       "membership:read",
       "admin:access",
-      "admin:content:read",
-      "admin:content:write",
     ].join(" "),
   )
   url.searchParams.set("state", state)

@@ -148,6 +148,9 @@ export const adminMessages = {
         continue: "Continue",
         signingIn: "Signing in…",
         continueWith: "Continue with {provider}",
+        requestAccess: "Request access",
+        requestingAccess: "Requesting access…",
+        tryDifferentAccount: "Try a different account",
       },
       providers: {
         facebook: "Facebook",
@@ -158,6 +161,11 @@ export const adminMessages = {
       errors: {
         forbidden: "Your account does not have access to the admin dashboard.",
         invalidCredentials: "Invalid email or password",
+        requestAccessFailed: "Access request failed. Try signing in again.",
+      },
+      access: {
+        requested:
+          "Access requested. An administrator must approve your account before you can enter the dashboard.",
       },
     },
     pages: {
@@ -1134,6 +1142,9 @@ export const adminMessages = {
         continue: "Continuar",
         signingIn: "Ingresando…",
         continueWith: "Continuar con {provider}",
+        requestAccess: "Solicitar acceso",
+        requestingAccess: "Solicitando acceso…",
+        tryDifferentAccount: "Probar otra cuenta",
       },
       providers: {
         facebook: "Facebook",
@@ -1144,6 +1155,12 @@ export const adminMessages = {
       errors: {
         forbidden: "Tu cuenta no tiene acceso al panel de administracion.",
         invalidCredentials: "Correo o contrasena no validos",
+        requestAccessFailed:
+          "No se pudo solicitar acceso. Intenta iniciar sesion de nuevo.",
+      },
+      access: {
+        requested:
+          "Acceso solicitado. Un administrador debe aprobar tu cuenta antes de que puedas entrar al panel.",
       },
     },
     pages: {} as Record<string, never>,
