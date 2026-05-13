@@ -1,6 +1,7 @@
 ---
 module: apps/admin
 date: "2026-05-13"
+last_updated: "2026-05-13"
 problem_type: architecture_pattern
 component: authentication
 severity: medium
@@ -120,7 +121,9 @@ Resolution chain order matters: session wins, then workflow-bearer, then consume
 
 ## Why This Matters
 
-**Public-equivalent permissions, no widening risk.** The empty `CONSUMER_BEARER_PERMISSIONS` set means the bearer can't access anything an anonymous public request can't. Editorial data, drafts, workflow triggers — all remain behind their existing gates. The caller gains a stable rate-limit identity, nothing else.
+**Public-equivalent permissions, no widening risk.** `CONSUMER_BEARER_PERMISSIONS` is specifically empty so the bearer can't access anything an anonymous public request can't. Editorial data, drafts, workflow triggers — all remain behind their existing gates. The caller gains a stable rate-limit identity, nothing else.
+
+The empty-set property is specific to CONSUMER_BEARER's purpose (rate-limit bucketing, not authorization). Other bearer-minted principals may carry narrow non-empty permission sets — see [PARITY_BEARER narrow-carve-out pattern](./parity-bearer-narrow-carveout-pattern-20260513.md) for the carve-out variant.
 
 **Per-app isolation.** Each consumer service gets its own `WEB_ADMIN_API_KEYS` CSV entry. One app's traffic can't exhaust another's rate-limit budget; they get separate buckets keyed by their distinct bearer values.
 
@@ -139,7 +142,7 @@ Apply this pattern when all four conditions hold:
 
 1. The caller is a known service (web SSR, internal tool, another app) with a stable, operator-controlled identity.
 2. The caller's traffic routes through a shared upstream IP — Railway egress NAT, a proxy cluster, a VPC egress, or any shared NAT that collapses multiple logical clients onto one IP.
-3. You need rate-limit isolation for the caller, NOT permission elevation. If the caller needs to satisfy any permission key, use a different role or extend `WORKFLOW_TRIGGER_PERMISSIONS` with deliberate blast-radius analysis.
+3. You need rate-limit isolation for the caller, NOT permission elevation. If the caller needs to satisfy any permission key, either extend `WORKFLOW_TRIGGER_PERMISSIONS` with deliberate blast-radius analysis (when the audience is genuinely the same) OR mint a new bearer role with its own narrow allowlist (see [PARITY_BEARER pattern](./parity-bearer-narrow-carveout-pattern-20260513.md)).
 4. Per-device callers (mobile, TV, end-user browsers) don't need this — their IPs are already distinct and distribute naturally across the anonymous-IP bucket.
 
 ## Examples
@@ -196,6 +199,7 @@ expect(env.WEB_ADMIN_API_KEYS).not.toBe(env.WORKFLOW_API_KEYS)
 
 ## Related Patterns
 
+- [`docs/solutions/architecture-patterns/parity-bearer-narrow-carveout-pattern-20260513.md`](./parity-bearer-narrow-carveout-pattern-20260513.md) — **second worked instance**, extending this pattern in three ways: (1) narrow non-empty permission allowlist (one key grant rather than the empty set), (2) three-way disjointness invariant across N bearer CSVs with module-load assertion, (3) distinct rate-limit namespace prefixes per role so siblings don't share quotas. Read first when introducing a third bearer-minted principal — the two-way `WEB_ADMIN_API_KEYS !== WORKFLOW_API_KEYS` assertion in this doc doesn't generalize to N siblings.
 - [`docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`](../platform/admin-manager-enrichment-trigger-endpoint-20260506.md) — cross-app receiver-first rotation rule. Apply the same deploy-receiver-first ordering when rotating `WEB_ADMIN_API_KEYS`: update admin's keyring CSV first, deploy admin, then update web's value, then deploy web. Reverse ordering produces a dead window where the caller's request 401s.
 - [`docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md`](../runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md) — `WEB_ADMIN_API_KEYS` must be `.optional()` in both web and admin env schemas. Required-without-default has bricked Railway deploys before; opt-in scaffolding env vars need defensive optionality.
 - [`docs/solutions/auth/spike-auth-header-must-be-env-gated.md`](../auth/spike-auth-header-must-be-env-gated.md) — contrast note: spike auth-header patterns grant a role; CONSUMER_BEARER grants nothing. The patterns are kin but on opposite ends of the "permissions granted by a header" spectrum.
@@ -206,5 +210,4 @@ expect(env.WEB_ADMIN_API_KEYS).not.toBe(env.WORKFLOW_API_KEYS)
 - **Plan-003 cutover sourcing.** This pattern was introduced in PR #932 (`feat(admin): admin-core consumer migration — CONSUMER_BEARER principal (Unit 1)`) on branch `feat/admin-consumer-migration-pr-a`. Cutover plan: [`docs/plans/2026-05-11-003-feat-web-admin-direct-cutover-plan.md`](../../plans/2026-05-11-003-feat-web-admin-direct-cutover-plan.md). Brainstorm: [`docs/brainstorms/2026-05-11-consumer-migration-u5b-strapi-sunset-strategy-requirements.md`](../../brainstorms/2026-05-11-consumer-migration-u5b-strapi-sunset-strategy-requirements.md).
 - **Session-history search:** skipped on the 2026-05-13 compound run due to context-budget constraints. The pattern documented here was newly authored in this session; no prior-session investigation was needed.
 - **Discoverability check:** root `CLAUDE.md` Known Patterns list should add a one-line entry referencing this doc and the `docs/solutions/` index so future planner brainstorms grep it. Filed as `PS-001` in the parallel ce-code-review pass; intentional follow-up.
-  </content>
-  </invoke>
+- **2026-05-13 update:** PARITY_BEARER landed as the second worked instance of this pattern (PR #935). Three sections in this doc were softened to acknowledge that the empty-permission-set property is specific to CONSUMER_BEARER's rate-limit-bucketing purpose, not a universal property of the bearer-identity pattern. The sibling doc carries the carve-out variant.
