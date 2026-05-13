@@ -1,14 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { mockEnv } = vi.hoisted(() => ({
+const { mockEnv, modeRef } = vi.hoisted(() => ({
   mockEnv: {
     NEXT_PUBLIC_CANONICAL_ORIGIN: "https://canonical.local",
     FORGE_PARITY_DEBUG: "0" as "0" | "1",
   },
+  // The bridge's U5 mode guard short-circuits unless the active mode
+  // is `"dual-read"`. After U4 collapsed the active union to
+  // `"strapi" | "admin"`, that mode is unreachable in production — but
+  // these tests exercise the bridge's emission contract directly, so
+  // we default-mock to the historical canary mode and let the mode-
+  // guard tests flip `modeRef.value` to exercise the short-circuit.
+  modeRef: { value: "dual-read" as string },
 }))
 
 vi.mock("@/env", () => ({
   env: mockEnv,
+}))
+
+vi.mock("@/lib/content-api-mode", () => ({
+  getContentApiMode: () => modeRef.value,
 }))
 
 import {
@@ -393,5 +404,82 @@ describe("parity-bridge — runDualReadComparison", () => {
     } finally {
       procEnv.NODE_ENV = originalNodeEnv
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// U5 (PR-B) mode guard — short-circuit when the active mode is anything
+// other than `"dual-read"`. After U4 collapsed the active union, this
+// effectively kills all canary emission.
+// ---------------------------------------------------------------------------
+
+describe("parity-bridge — mode guard", () => {
+  let logSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    logSpy.mockRestore()
+    // Restore the dual-read default after every test so unrelated suites
+    // run against the historical emission contract.
+    modeRef.value = "dual-read"
+  })
+
+  it("emits ZERO log events when the active mode is 'admin'", () => {
+    modeRef.value = "admin"
+    runDualReadComparison({
+      slug: "christmas",
+      urlLocale: "en",
+      strapi: {
+        ok: true,
+        response: {
+          documentId: "id",
+          slug: "christmas",
+          locale: "en",
+          title: "T",
+          metaDescription: "D",
+          ogImage: null,
+          blocks: [],
+        },
+        durationMs: 10,
+      },
+      admin: {
+        ok: true,
+        response: {
+          id: "id",
+          slug: "christmas",
+          locale: "en",
+          title: "T",
+          metaDescription: "D",
+          ogImageUrl: null,
+          blocks: [],
+        },
+        durationMs: 10,
+      },
+    })
+
+    expect(logSpy).not.toHaveBeenCalled()
+  })
+
+  it("emits ZERO log events when the active mode is 'strapi'", () => {
+    modeRef.value = "strapi"
+    runDualReadComparison({
+      slug: "any",
+      urlLocale: "en",
+      strapi: {
+        ok: "error",
+        error: new Error("upstream"),
+        durationMs: 0,
+      },
+      admin: {
+        ok: "error",
+        error: new Error("upstream"),
+        durationMs: 0,
+      },
+    })
+
+    expect(logSpy).not.toHaveBeenCalled()
   })
 })

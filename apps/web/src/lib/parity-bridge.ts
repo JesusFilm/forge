@@ -1,31 +1,19 @@
-// =============================================================================
-// U5 (feat-104 consumer migration) — parity bridge
-//
-// Consumer-side adapter that takes the orchestrated outcome of a
-// Strapi + admin parallel fetch (from fetchSlugExperience in
-// content.ts), runs the U4 harness's normalizers + comparator, and
-// emits a single structured log line per request.
+// Consumer-side parity adapter — runs the harness's normalizers + comparator
+// over the orchestrated outcome and emits one structured log line per request.
 //
 // Cross-references:
-//   apps/web/src/lib/content-api-mode.ts       (U1 — flag deletion list)
+//   apps/web/src/lib/content-api-mode.ts       (flag deletion list)
 //   packages/graphql/src/parity/index.ts:1-34  (harness deletion list)
-//   docs/plans/2026-05-08-001-feat-consumer-migration-web-canary-unit-5-plan.md
 //
-// At retirement, remove ALL of the following in one PR:
-//
-//   - This file: apps/web/src/lib/parity-bridge.ts
-//   - The companion test: apps/web/src/lib/parity-bridge.test.ts
-//   - Every callsite of `runDualReadComparison` in content.ts
-//   - All seven parity log event names from any log alerting / dashboards
-//     (forge.parity.diff, forge.parity.admin_timeout,
-//      forge.parity.harness_error, forge.parity.strapi_failed_admin_succeeded,
-//      forge.parity.both_failed, forge.parity.admin_missing,
-//      forge.parity.canary_failed)
-//   - The FORGE_PARITY_DEBUG env var from any deployed env config
-//   - The `@forge/graphql/parity` package import — once nothing else
-//     consumes it, the harness directory can also retire
-//
-// =============================================================================
+// Deletion checklist (remove together in one PR):
+//   - This file + parity-bridge.test.ts
+//   - Every callsite of runDualReadComparison (currently zero)
+//   - All seven parity log event names from log alerting / dashboards:
+//     forge.parity.{diff, admin_timeout, harness_error,
+//     strapi_failed_admin_succeeded, both_failed, admin_missing, canary_failed}
+//   - FORGE_PARITY_DEBUG env var from deployed env config
+//   - @forge/graphql/parity import; the harness directory can retire too
+//     once nothing else consumes it
 
 import {
   AdminBlocksValidationError,
@@ -39,46 +27,35 @@ import {
   type AdminExperienceLocaleInput,
 } from "@forge/graphql/parity"
 import { env } from "@/env"
+import { getContentApiMode } from "@/lib/content-api-mode"
 
-/**
- * Closed union of every parity log event ce-work emits. Exporting the
- * union as `as const`-derived type lets callers type-check event names
- * at compile time. Adding a new event requires updating this list AND
- * the deletion checklist above.
- */
+// `"dual-read"` is no longer in the typed ContentApiMode union, so this
+// guard returns false in production — kills canary emission across the
+// board so operators don't have to disambiguate real admin failures from
+// leftover canary noise. Explicit string cast documents the dead branch
+// is deliberate.
+function isCanaryEmissionEnabled(): boolean {
+  return (getContentApiMode() as string) === "dual-read"
+}
+
 export const PARITY_LOG_EVENTS = [
   "forge.parity.diff",
   "forge.parity.admin_timeout",
   "forge.parity.harness_error",
   "forge.parity.strapi_failed_admin_succeeded",
   "forge.parity.both_failed",
-  // Both fetches succeeded but admin returned null — typical during
-  // backfill (slug exists in Strapi, not yet in admin). Distinct from
-  // harness_error/comparator_unknown so dashboards can separate
-  // legitimate-gap from real comparator failures.
+  // Both fetched OK but admin returned null — typical during backfill.
+  // Distinct from harness_error so dashboards can split legitimate-gap
+  // from real comparator failures.
   "forge.parity.admin_missing",
-  // Defense-in-depth: the bridge itself threw. Emitted from the
-  // orchestrator (content.ts) when runDualReadComparison surfaces a
-  // sync error (circular ref in payload, throwing toString, etc.).
-  // The user's render is unaffected — Strapi already returned.
+  // The bridge itself threw (circular ref in payload, throwing toString).
+  // User render unaffected — Strapi already returned.
   "forge.parity.canary_failed",
 ] as const
 type ParityLogEvent = (typeof PARITY_LOG_EVENTS)[number]
 
-/**
- * Stable route discriminator for the parity log payload. Hard-coded to
- * "[slug]" because U5's canary surface is the slug-page Experience
- * branch only. Future units that add other route surfaces (homepage,
- * /watch/[collection]/[video]/[locale]) will introduce their own
- * route literals.
- */
 const PARITY_ROUTE = "[slug]" as const
 
-/**
- * Subkind discriminator for `harness_error` events. Tells the operator
- * which boundary surfaced the error (admin fetch, admin parse, Strapi
- * parse, or generic comparator failure).
- */
 type HarnessErrorSubkind =
   | "admin_fetch_error"
   | "admin_blocks_validation"
@@ -86,11 +63,6 @@ type HarnessErrorSubkind =
   | "strapi_normalization"
   | "comparator_unknown"
 
-/**
- * Outcome shape per source. The orchestrator (content.ts) wraps each
- * fetch with try/catch + Promise.race timeout and hands the bridge the
- * resulting tagged union.
- */
 type SideOutcome<T> =
   | { readonly ok: true; readonly response: T; readonly durationMs: number }
   | {
@@ -100,12 +72,6 @@ type SideOutcome<T> =
     }
   | { readonly ok: "timeout"; readonly durationMs: number }
 
-/**
- * Loose Strapi response shape — matches what `WatchExperience` selects
- * from `GET_WATCH_EXPERIENCE`. The bridge picks the harness-required
- * fields off this and synthesizes missing ones (notably `locale`,
- * which the existing fragment may not select).
- */
 type StrapiExperienceResponse = {
   readonly documentId?: string | null
   readonly slug?: string | null
@@ -121,12 +87,8 @@ type StrapiExperienceResponse = {
   readonly blocks?: ReadonlyArray<unknown> | null
 }
 
-/**
- * Loose admin response shape — matches `experienceBySlug` returning
- * `ExperienceLocale | null`. Note `metaDescription` is the admin schema
- * field name; the bridge remaps to `description` before invoking
- * `normalizeAdmin` (which consumes `description`, NOT `metaDescription`).
- */
+// Note: admin schema's `metaDescription` is remapped to `description` in
+// `adaptAdmin` before invoking `normalizeAdmin`.
 type AdminExperienceResponse = {
   readonly id?: string | null
   readonly slug?: string | null
@@ -144,16 +106,10 @@ export type DualReadOutcome = {
   readonly admin: SideOutcome<AdminExperienceResponse | null | undefined>
 }
 
-/**
- * Production log payload. NEVER carries raw `ValueDiff.strapi` or
- * `SemanticDiff.admin` field values from the harness's `DiffReport` —
- * those are content fields (titles, descriptions, URLs) that would
- * bypass CMS access control if indexed by Vercel/Railway log search.
- *
- * Only `paths` (RFC6901 JSON Pointers) and per-channel `counts` reach
- * production logs. The full `DiffReport` (with values) is opt-in for
- * dev under `FORGE_PARITY_DEBUG=1`; production strips unconditionally.
- */
+// SECURITY: production payload NEVER carries raw diff values (titles,
+// descriptions, URLs) — those would bypass CMS access control if indexed
+// by Vercel/Railway log search. Only paths + counts reach prod; full
+// DiffReport is dev-opt-in via FORGE_PARITY_DEBUG=1.
 type ParityLogPayload = {
   readonly event: ParityLogEvent
   readonly route: typeof PARITY_ROUTE
@@ -184,12 +140,13 @@ type ParityLogPayload = {
 }
 
 /**
- * Bridge entry. Inspects the orchestrated outcome, routes to the
- * appropriate log event, and emits a single `console.log(JSON.stringify(...))`
- * line. Never re-throws — all harness errors are caught and routed to
- * `forge.parity.harness_error`.
+ * Routes the orchestrated outcome to one parity log event. Never re-throws —
+ * harness errors are caught and routed to `forge.parity.harness_error`.
+ * Short-circuits when not in `dual-read` mode (currently always — see above).
  */
 export function runDualReadComparison(outcome: DualReadOutcome): void {
+  if (!isCanaryEmissionEnabled()) return
+
   const baseTimings = {
     strapiMs: outcome.strapi.durationMs,
     adminMs: outcome.admin.durationMs,
@@ -254,20 +211,10 @@ export function runDualReadComparison(outcome: DualReadOutcome): void {
   const strapiResponse = outcome.strapi.response
   const adminResponse = outcome.admin.response
 
-  // Both fetches succeeded HTTP-wise but one or both responses are null
-  // (slug doesn't exist on that side). Three distinct signals:
-  //
-  //   - admin null + Strapi has data → forge.parity.admin_missing.
-  //     Typical during backfill: Strapi is the source of truth; admin
-  //     hasn't synced this slug yet. R-18a uses this rate as a gating
-  //     metric for advancing to admin-mode rendering.
-  //   - both null → harness_error/comparator_unknown. Rare; both sides
-  //     agree the slug doesn't exist. Real comparator failures share
-  //     this bucket with this case — operators triage on count, not
-  //     individual events.
-  //   - Strapi null + admin has data → harness_error/comparator_unknown.
-  //     Anomalous: Strapi is supposed to be the source of truth in U5.
-  //     Logged as an error because it indicates schema/sync drift.
+  // Null-response signals:
+  //   admin null + Strapi data → admin_missing (typical during backfill;
+  //     gating metric for advancing to admin-mode rendering)
+  //   both null OR Strapi null + admin data → comparator_unknown
   if (!strapiResponse && !adminResponse) {
     emit({
       event: "forge.parity.harness_error",
@@ -302,8 +249,6 @@ export function runDualReadComparison(outcome: DualReadOutcome): void {
     })
     return
   }
-  // Defensive narrowing — TS can't infer both are non-null after the three
-  // checks above without an explicit re-assert.
   if (!strapiResponse || !adminResponse) return
 
   try {
@@ -326,13 +271,9 @@ export function runDualReadComparison(outcome: DualReadOutcome): void {
     })
 
     const diffPaths = collectDiffPaths(report)
-    // R13 defense-in-depth: production NEVER includes raw values, even if
-    // FORGE_PARITY_DEBUG=1 is set in error. The dev-opt-in path requires
-    // BOTH the explicit flag AND a non-production NODE_ENV. A typo or
-    // copy-paste of the dev flag into a production env config is a no-op.
-    // Read FORGE_PARITY_DEBUG via the typed env (not process.env) so the
-    // schema's z.enum validation actually runs against the value the
-    // bridge reads. NODE_ENV stays on process.env — Next.js inlines it.
+    // SECURITY: dev opt-in requires BOTH the flag AND non-prod NODE_ENV, so
+    // a typo'd flag in prod env is a no-op. NODE_ENV stays on process.env
+    // (Next inlines it); FORGE_PARITY_DEBUG via typed env so z.enum runs.
     const debugEnabled =
       process.env.NODE_ENV !== "production" && env.FORGE_PARITY_DEBUG === "1"
 
@@ -368,16 +309,9 @@ export function runDualReadComparison(outcome: DualReadOutcome): void {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Input adaptation
-// ---------------------------------------------------------------------------
 
-/**
- * Adapt the Strapi `WatchExperience` shape to the harness's
- * `StrapiExperienceInput` shape. Synthesizes `locale` from the URL
- * locale if the response lacks it (defense-in-depth for fragments
- * that haven't yet added `locale` to their selection set).
- */
+/** Synthesizes `locale` from URL when the Strapi fragment hasn't selected it. */
 function adaptStrapi(
   response: StrapiExperienceResponse,
   urlLocale: string,
@@ -400,15 +334,11 @@ function adaptStrapi(
   }
 }
 
-/**
- * Adapt the admin `experienceBySlug` shape to the harness's
- * `AdminExperienceLocaleInput` shape. The single semantic delta is
- * `metaDescription → description` — admin's schema field is
- * `metaDescription` but the harness consumes `description`.
- */
+/** Single semantic delta: `metaDescription → description` for the harness. */
 function adaptAdmin(
   response: AdminExperienceResponse,
 ): AdminExperienceLocaleInput {
+  // Blocks cast is safe under the harness's BlocksSchema.safeParse.
   return {
     id: response.id ?? "",
     slug: response.slug ?? "",
@@ -416,13 +346,11 @@ function adaptAdmin(
     title: response.title ?? "",
     description: response.metaDescription,
     ogImageUrl: response.ogImageUrl,
-    blocks: response.blocks,
+    blocks: response.blocks as AdminExperienceLocaleInput["blocks"],
   }
 }
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 function emit(payload: ParityLogPayload): void {
   if (typeof console === "undefined") return
