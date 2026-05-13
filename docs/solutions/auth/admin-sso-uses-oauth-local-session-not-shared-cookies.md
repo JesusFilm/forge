@@ -43,6 +43,19 @@ In this shape:
   from the live login page without printing client secrets.
 - Railway deploy context should ignore local Next build output (`**/.next`) so
   local verification artifacts are not copied into the deployment image.
+- In Next.js App Router, start the Admin OAuth flow from a Route Handler, not
+  directly inside the `/login` page render. OAuth initiation must set
+  short-lived PKCE/state/callback cookies before redirecting to Auth; Next.js
+  16 only allows those cookie mutations in a Server Action or Route Handler.
+  Keep `/login` responsible for resolving the callback URL, then redirect to an
+  admin-local route such as `/api/auth/login` to set cookies and build the Auth
+  authorize URL.
+- Better Auth's JWT plugin requires a persisted `jwks` model when Auth is an
+  OAuth provider. The Prisma model must expose `prisma.jwks` and include
+  `publicKey`, `privateKey`, `createdAt`, optional `expiresAt`, plus nullable
+  `alg` and `crv` because generated keys include those values. Missing this
+  model causes Admin callback failures during token exchange even after the user
+  successfully signs in.
 
 ## Prevention
 
@@ -50,13 +63,44 @@ When adding a first-party app to Jesus Film SSO, register it as an OAuth client
 with explicit redirect URIs and scopes. Do not widen Auth cookie domains to make
 SSO "work"; that recreates the same coupling the Auth extraction is removing.
 
+When smoke-testing the deployed OAuth path, verify the whole unauthenticated
+redirect chain:
+
+1. `https://admin.jesusfilm.org/dashboard` redirects to `/login`.
+2. `https://admin.jesusfilm.org/login` redirects to `/api/auth/login`.
+3. `/api/auth/login` sets `forge_admin_oauth_state`,
+   `forge_admin_oauth_verifier`, and `forge_admin_oauth_callback` as host-only
+   Admin cookies and redirects to Auth's OAuth authorize endpoint.
+4. Auth's authorize endpoint redirects unauthenticated users to the Auth login
+   page while preserving the OAuth request parameters.
+
+This catches the production failure mode where local tests passed but the
+deployed `/login` page returned:
+
+```text
+Cookies can only be modified in a Server Action or Route Handler.
+```
+
+Also verify `https://auth.jesusfilm.org/api/auth/jwks` returns a key set after
+deploying Auth as an OAuth provider. A production callback failure with:
+
+```text
+Auth code exchange failed.
+```
+
+can be caused by the token endpoint failing to sign OAuth tokens because the
+Better Auth JWKS model is absent from the generated Prisma client or database.
+
 ## Related
 
+- `apps/auth/prisma/schema.prisma`
 - `apps/auth/src/auth/config.ts`
 - `apps/auth/src/scripts/seed-first-party-apps.ts`
 - `apps/admin/src/auth/oauth-client.ts`
 - `apps/admin/src/auth/auth-session.ts`
 - `apps/admin/src/auth/session.ts`
+- `apps/admin/src/app/api/auth/login/route.ts`
+- `apps/admin/src/app/login/page.tsx`
 - `apps/auth/src/auth/operator.ts`
 - `apps/auth/src/app/login/login-page-client.tsx`
 - `.dockerignore`

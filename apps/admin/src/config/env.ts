@@ -152,6 +152,29 @@ export const env = createEnv({
     ALGOLIA_SEARCH_API_KEY: z.string().min(1).optional(),
     ALGOLIA_INDEX: z.string().min(1).optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).optional(),
+    // Search eval harness — local CLI only. None of these are read by
+    // production code paths; see src/scripts/eval-search.ts and
+    // src/services/search-eval/*.
+    //
+    // OPENROUTER_JUDGE_MODEL: OpenRouter model id used by the pairwise
+    // relevance judge. Defaults to the `DEFAULT_JUDGE_MODEL` constant
+    // declared inside the judge module so production builds without
+    // this env still typecheck.
+    OPENROUTER_JUDGE_MODEL: z.string().min(1).optional(),
+    // EVAL_JUDGE_CONCURRENCY / EVAL_SEARCH_CONCURRENCY: parallel-call
+    // caps for the judge and search clients. Defaults are baked into
+    // the runner; raise them locally when iterating, lower them when
+    // pointing at a shared admin instance to stay under its 30/min
+    // search rate-limit.
+    EVAL_JUDGE_CONCURRENCY: concurrencyEnvSchema,
+    EVAL_SEARCH_CONCURRENCY: concurrencyEnvSchema,
+    // The eval harness reuses ADMIN_BASE_URL as the target for `GET /api/search`.
+    // It defaults to the local dev port at the call site when unset.
+    // EVAL_GIT_SHA: stamped into the run JSON's metadata header so an
+    // operator reviewing an old report can correlate it with a commit.
+    // Optional; defaults to "unknown" at the call site. Operators set
+    // this before running a baseline so the baseline carries provenance.
+    EVAL_GIT_SHA: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_NAME: z.string().min(1).default("forge-admin"),
@@ -265,6 +288,16 @@ export const env = createEnv({
       process.env.ALGOLIA_SEARCH_API_KEY,
     ),
     ALGOLIA_INDEX: emptyToUndefined(process.env.ALGOLIA_INDEX),
+    OPENROUTER_JUDGE_MODEL: emptyToUndefined(
+      process.env.OPENROUTER_JUDGE_MODEL,
+    ),
+    EVAL_JUDGE_CONCURRENCY: emptyToUndefined(
+      process.env.EVAL_JUDGE_CONCURRENCY,
+    ),
+    EVAL_SEARCH_CONCURRENCY: emptyToUndefined(
+      process.env.EVAL_SEARCH_CONCURRENCY,
+    ),
+    EVAL_GIT_SHA: emptyToUndefined(process.env.EVAL_GIT_SHA),
     NODE_ENV: emptyToUndefined(process.env.NODE_ENV),
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
   },

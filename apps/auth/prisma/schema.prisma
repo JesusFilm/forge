@@ -145,6 +145,19 @@ model Verification {
   @@map("verification")
 }
 
+model Jwks {
+  id         String    @id @default(cuid())
+  publicKey  String    @map("public_key")
+  privateKey String    @map("private_key")
+  alg        String?
+  crv        String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+  expiresAt  DateTime? @map("expires_at")
+
+  @@index([createdAt])
+  @@map("jwks")
+}
+
 model OauthClient {
   id                      String   @id @default(cuid())
   clientId                String   @unique @map("client_id")
