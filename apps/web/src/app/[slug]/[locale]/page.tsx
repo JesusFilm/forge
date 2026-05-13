@@ -42,7 +42,14 @@ export default async function SlugLocalePage({ params }: PageProps) {
 
   // Video-by-slug first — bypasses resolveWatchPage's Watch Settings +
   // default template dependency, which isn't always present in dev.
-  const watchVideo = await resolveWatchVideoBySlug(slug, locale)
+  //
+  // Pass rawLocale (not the bcp47-normalised `locale`): the resolver picks
+  // the variant by either `variant.language.slug === locale` OR
+  // `variant.language.bcp47 === locale`, so slug-form URLs like /the-call/korean
+  // need to land in the resolver as "korean", not "en". Normalising here
+  // would silently fall back to the primary (English) variant for every
+  // non-bcp47-locale URL — exactly what the language switcher writes.
+  const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
   if (watchVideo) {
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
