@@ -55,26 +55,50 @@ export function SeriesPageClient({
   const description = series.description ?? series.snippet ?? null
   const posterUrl = resolvePosterUrl(series.images?.[0], null)
 
-  // Build LanguageCombobox options from series variants using the same
-  // filter (isPlayableLanguageVariant) and display derivation
-  // (deriveLanguageDisplay) the watch page uses, so the series-page
-  // dropdown reads "French / Français" and sorts identically.
-  const languageOptions = useMemo(() => {
-    const variants = series.variants ?? []
-    return variants
-      .filter(isPlayableLanguageVariant)
-      .map((v) => deriveLanguageDisplay(v.language.slug, v.language.name))
-      .sort((a, b) => a.name.localeCompare(b.name))
-  }, [series.variants])
+  // Aggregate language options from every child episode's variants
+  // rather than from `series.variants` (series records have no
+  // variants of their own — variants live on each individual episode).
+  // Dedupe by language slug so a language that appears across all
+  // 13 episodes shows up once. Same filter / display / sort the watch
+  // page uses, so "French / Français" formatting + A→Z ordering match.
+  // We also build a bcp47 → slug map alongside the options so the URL
+  // locale can be resolved to a combobox option regardless of which
+  // form the URL uses ("en" vs "english").
+  const { languageOptions, slugByBcp47 } = useMemo(() => {
+    const seenSlugs = new Set<string>()
+    const aggregated: ReturnType<typeof deriveLanguageDisplay>[] = []
+    const bcp47Map = new Map<string, string>()
+    for (const child of series.children ?? []) {
+      if (!child) continue
+      for (const variant of child.variants ?? []) {
+        if (!variant) continue
+        if (!isPlayableLanguageVariant(variant)) continue
+        const slug = variant.language.slug
+        const bcp47 = variant.language.bcp47 ?? null
+        if (bcp47 && !bcp47Map.has(bcp47.toLowerCase())) {
+          bcp47Map.set(bcp47.toLowerCase(), slug)
+        }
+        if (seenSlugs.has(slug)) continue
+        seenSlugs.add(slug)
+        aggregated.push(deriveLanguageDisplay(slug, variant.language.name))
+      }
+    }
+    return {
+      languageOptions: aggregated.sort((a, b) => a.name.localeCompare(b.name)),
+      slugByBcp47: bcp47Map,
+    }
+  }, [series.children])
 
-  // Resolve the current language slug against the URL locale. Falls back
-  // to the first available so the combobox's controlled value always has
-  // a matching option to render.
+  // Resolve the current language slug from the URL locale. Accept either
+  // form — language-slug form ("english") OR bcp47 ("en") — since the
+  // resolver matches variants on either. Falls back to the first option
+  // so the combobox's controlled value always has a matching entry.
   const currentLanguageSlug =
     languageOptions.find(
       (opt) =>
         opt.slug === locale || opt.slug.toLowerCase() === locale.toLowerCase(),
     )?.slug ??
+    slugByBcp47.get(locale.toLowerCase()) ??
     languageOptions[0]?.slug ??
     ""
 
@@ -102,34 +126,40 @@ export function SeriesPageClient({
         series={series}
         selectedVariant={selectedVariant}
         overlay={
+          // Stack the label on top, then a horizontal row with the title
+          // on the left and the share pill on the right. Using
+          // `items-center` on that row aligns the share button to the
+          // title's vertical midline rather than its bottom — earlier
+          // `items-end` alignment positioned the share slightly below
+          // the title baseline because the pill is shorter than the H1.
           <div
             data-testid="series-page-hero-overlay"
-            className="absolute right-10 bottom-0 left-10 flex items-end justify-between gap-4 pb-2 md:right-16 md:left-16 xl:right-24 xl:left-24"
+            className="absolute right-10 bottom-0 left-10 flex flex-col items-stretch gap-3 pb-8 md:right-16 md:left-16 md:pb-10 xl:right-24 xl:left-24"
           >
-            <div className="flex min-w-0 flex-col items-start gap-2">
-              <span
-                data-testid="series-page-label"
-                className="text-sm font-semibold tracking-wider text-amber-400 uppercase md:text-base"
-              >
-                {`SERIES · ${episodeLabel}`}
-              </span>
+            <span
+              data-testid="series-page-label"
+              className="text-sm font-semibold tracking-wider text-amber-400 uppercase md:text-base"
+            >
+              {`SERIES · ${episodeLabel}`}
+            </span>
+            <div className="flex items-baseline justify-between gap-4">
               <h1
                 data-testid="series-page-title"
                 className="min-w-0 text-3xl font-bold text-white drop-shadow-lg md:text-5xl xl:text-6xl"
               >
                 {series.title ?? ""}
               </h1>
-            </div>
-            <div className="shrink-0">
-              <Button
-                variant="pill"
-                onClick={openShare}
-                aria-label="Share"
-                data-testid="series-page-share-button"
-              >
-                <ExternalLink size={16} />
-                <span>Share</span>
-              </Button>
+              <div className="shrink-0">
+                <Button
+                  variant="pill"
+                  onClick={openShare}
+                  aria-label="Share"
+                  data-testid="series-page-share-button"
+                >
+                  <ExternalLink size={16} />
+                  <span>Share</span>
+                </Button>
+              </div>
             </div>
           </div>
         }
@@ -139,14 +169,19 @@ export function SeriesPageClient({
           on the left (col-span 2/3), language combobox on the right
           (col-span 1/3). Single-column on mobile stacks them top-to-
           bottom. Tight padding keeps the section visually attached to
-          the hero band above and the episode grid below. */}
+          the hero band above and the episode grid below.
+          `bg-stone-900` is load-bearing — the hero is `position: sticky`
+          and stays painted in the viewport as the body scrolls up. A
+          transparent meta section lets the still-pinned hero bleed
+          through (description text on top of trailer = unreadable). The
+          opaque bg covers the hero as soon as the section overlaps it. */}
       {showMetaSection ? (
         <section
           data-testid="series-page-meta"
-          className="grid w-full grid-cols-1 gap-6 pt-3 pb-4 text-stone-100 md:grid-cols-3 md:gap-10"
+          className="relative z-30 grid w-full grid-cols-1 gap-6 bg-stone-900 px-10 pt-10 pb-16 text-stone-100 md:grid-cols-4 md:gap-10 md:px-16 md:pt-12 md:pb-20 xl:px-24"
         >
           {description ? (
-            <div className="md:col-span-2">
+            <div className="md:col-span-3">
               <p
                 data-testid="series-page-description"
                 className="text-base leading-relaxed text-stone-200/80 md:text-lg"
@@ -155,9 +190,9 @@ export function SeriesPageClient({
               </p>
             </div>
           ) : (
-            // Reserve the left column so the combobox stays in the right
+            // Reserve the left columns so the combobox stays in the right
             // rail even when description is missing.
-            <div className="hidden md:col-span-2 md:block" aria-hidden="true" />
+            <div className="hidden md:col-span-3 md:block" aria-hidden="true" />
           )}
           {languageOptions.length > 0 ? (
             <div
@@ -185,8 +220,14 @@ export function SeriesPageClient({
           editors mid-populating a series still see the hero + metadata
           so they can confirm they're on the right page). If product
           decides this should fall through to ExperienceEmpty instead,
-          gate the render here. */}
-      <SeriesEpisodesGrid episodes={episodes} locale={locale} />
+          gate the render here.
+          Wrapper provides the same opaque background + horizontal
+          padding as the meta section so the grid covers the sticky
+          hero (same rationale as above) and aligns with the meta
+          column rail. */}
+      <div className="relative z-20 bg-stone-900 px-10 pb-12 md:px-16 xl:px-24">
+        <SeriesEpisodesGrid episodes={episodes} locale={locale} />
+      </div>
 
       <ShareModal
         open={modalState === "share"}

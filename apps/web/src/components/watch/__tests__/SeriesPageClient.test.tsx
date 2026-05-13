@@ -146,6 +146,7 @@ function makeChildren(count: number): Series["children"] {
     title: `Episode ${i + 1}`,
     label: "episode" as const,
     images: [],
+    variants: [],
   })) as Series["children"]
 }
 
