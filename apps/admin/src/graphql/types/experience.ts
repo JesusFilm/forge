@@ -155,14 +155,16 @@ builder.queryFields((t) => ({
   }),
   // PR-C of the consumer-migration — template enumeration for the
   // pre-cutover batch-verification harness. Gated by
-  // `read:experience-templates` so CONSUMER_BEARER (web/mobile/TV SSR)
-  // and PUBLIC are blocked — R9's defense-in-depth stays intact.
-  // PARITY_BEARER and EDITOR+ are the allowed callers.
+  // `read:experience-templates`. PARITY_BEARER gets the permission via
+  // explicit allowlist; VIEWER+ gets it via the editorial tier ladder
+  // (templates are editorial artifacts staff translators/reviewers
+  // legitimately need). PUBLIC and CONSUMER_BEARER are blocked so R9's
+  // defense-in-depth stays intact for consumer SSR.
   experienceTemplates: t.prismaField({
     type: ["ExperienceLocale"],
     authScopes: { hasPermission: "read:experience-templates" },
     description:
-      "Enumerate published template Experience locales for one locale. PARITY_BEARER (pre-cutover parity harness) and EDITOR+ only. PUBLIC and CONSUMER_BEARER are blocked because R9 hides templates from consumer SSR identities.",
+      "INTERNAL — pre-cutover parity verification only; will be removed at R8 cutover. Enumerate published template Experience locales for one locale. PARITY_BEARER (pre-cutover parity harness) or VIEWER+ (editorial staff). PUBLIC and CONSUMER_BEARER are blocked because R9 hides templates from consumer SSR identities.",
     args: {
       locale: t.arg.string({ required: true }),
     },

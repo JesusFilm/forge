@@ -764,7 +764,7 @@ type Query {
   """
   experienceBySlug(locale: String!, slug: String!): ExperienceLocale
   """
-  Enumerate published template Experience locales for one locale. PARITY_BEARER (pre-cutover parity harness) and EDITOR+ only. PUBLIC and CONSUMER_BEARER are blocked because R9 hides templates from consumer SSR identities.
+  INTERNAL — pre-cutover parity verification only; will be removed at R8 cutover. Enumerate published template Experience locales for one locale. PARITY_BEARER (pre-cutover parity harness) or VIEWER+ (editorial staff). PUBLIC and CONSUMER_BEARER are blocked because R9 hides templates from consumer SSR identities.
   """
   experienceTemplates(locale: String!): [ExperienceLocale!]
   """List Experiences. ABAC-filtered."""

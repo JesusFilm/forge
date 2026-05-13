@@ -331,3 +331,75 @@ export const env = createEnv({
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
   },
 })
+
+// ---------------------------------------------------------------------------
+// PR-C P1-2 — runtime bearer-CSV disjointness invariant.
+//
+// `permissions.test.ts` source-greps each bearer module to assert each
+// reads only its own env var (PARITY != CONSUMER != WORKFLOW), but
+// nothing prevents an operator from pasting the same KEY VALUE into
+// two different CSVs during rotation. The auth chain in `context.ts`
+// is `workflow → parity → consumer → public`, so a duplicated key
+// silently mints the higher-tier principal — permission widening
+// without an audit trail.
+//
+// `assertBearerCsvsDisjoint` parses the three CSVs into Sets and
+// throws if any pair intersects. Called at module load below so any
+// boot path that imports `env` enforces the invariant. The error
+// message MUST NOT include the offending key value.
+// ---------------------------------------------------------------------------
+
+function parseBearerCsvSet(csv: string | undefined): ReadonlySet<string> {
+  if (!csv || csv.trim() === "") return new Set()
+  return new Set(
+    csv
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0),
+  )
+}
+
+export type BearerCsvSnapshot = {
+  readonly WORKFLOW_API_KEYS?: string
+  readonly WEB_ADMIN_API_KEYS?: string
+  readonly PARITY_API_KEYS?: string
+}
+
+export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
+  const workflow = parseBearerCsvSet(snapshot.WORKFLOW_API_KEYS)
+  const consumer = parseBearerCsvSet(snapshot.WEB_ADMIN_API_KEYS)
+  const parity = parseBearerCsvSet(snapshot.PARITY_API_KEYS)
+
+  const pairs: ReadonlyArray<
+    readonly [string, ReadonlySet<string>, string, ReadonlySet<string>]
+  > = [
+    ["WORKFLOW_API_KEYS", workflow, "PARITY_API_KEYS", parity],
+    ["WORKFLOW_API_KEYS", workflow, "WEB_ADMIN_API_KEYS", consumer],
+    ["PARITY_API_KEYS", parity, "WEB_ADMIN_API_KEYS", consumer],
+  ]
+
+  for (const [aName, aSet, bName, bSet] of pairs) {
+    for (const key of aSet) {
+      if (bSet.has(key)) {
+        // NEVER include the key value — error stays grep-friendly for
+        // logs but doesn't echo the leaked credential.
+        throw new Error(
+          `Bearer API key value appears in multiple CSVs: ${aName} and ${bName} ` +
+            `must be disjoint (admin auth chain is workflow → parity → ` +
+            `consumer → public; a shared value silently widens permissions). ` +
+            `Check the offending Doppler entries — key value redacted.`,
+        )
+      }
+    }
+  }
+}
+
+// Boot-time invariant — fires on every import of `env`. Skipping this
+// during build-phase would let the disjointness contract bypass CI;
+// build phase passes empty/undefined for unset vars, which trivially
+// satisfies the check.
+assertBearerCsvsDisjoint({
+  WORKFLOW_API_KEYS: env.WORKFLOW_API_KEYS,
+  WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
+  PARITY_API_KEYS: env.PARITY_API_KEYS,
+})
