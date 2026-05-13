@@ -75,8 +75,21 @@ export function LanguagePickerModal({
 
   const isDirty = draftSlug !== currentLanguageSlug
 
+  // Track in-flight navigation so a rapid second Apply (double-click,
+  // accessibility tooling, etc.) doesn't dispatch a second router.push.
+  // router.push is fire-and-forget; without this guard the URL + cookie can
+  // both change twice before the first navigation commits.
+  const [navigating, setNavigating] = useState(false)
+  useEffect(() => {
+    // Page navigation lands when currentLanguageSlug catches up to draftSlug.
+    if (navigating && currentLanguageSlug === draftSlug) {
+      setNavigating(false)
+    }
+  }, [navigating, currentLanguageSlug, draftSlug])
+
   const handleApply = useCallback(() => {
     if (!isDirty) return
+    if (navigating) return
     if (!videoSlug) return
     // Write cookie BEFORE router.push — order asserted by tests and required
     // so middleware sees the cookie on the next request.
@@ -85,9 +98,10 @@ export function LanguagePickerModal({
     const t = Number.isFinite(rawT) ? rawT : 0
     // basePath '/watch' auto-prepended at runtime — do NOT include here.
     const href = `/${videoSlug}/${draftSlug}?t=${t}` as Route
+    setNavigating(true)
     router.push(href)
     onClose()
-  }, [draftSlug, isDirty, onClose, playerRef, router, videoSlug])
+  }, [draftSlug, isDirty, navigating, onClose, playerRef, router, videoSlug])
 
   function handleOpenChange(next: boolean) {
     if (!next) onClose()
@@ -133,7 +147,7 @@ export function LanguagePickerModal({
           <Button
             variant="pill"
             data-testid="watch-language-picker-apply"
-            disabled={!isDirty}
+            disabled={!isDirty || navigating}
             onClick={handleApply}
           >
             Apply
