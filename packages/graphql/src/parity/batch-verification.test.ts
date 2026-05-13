@@ -188,39 +188,93 @@ describe("parseArgs", () => {
 // ---------------------------------------------------------------------------
 
 describe("readBearerFromEnv", () => {
-  it("returns null when --anonymous is set", () => {
-    expect(readBearerFromEnv({}, true)).toBeNull()
+  it("returns anonymous resolution when --anonymous is set", () => {
+    expect(readBearerFromEnv({}, true)).toEqual({
+      bearer: null,
+      templatesPermitted: false,
+      source: "anonymous",
+    })
   })
 
   it("throws BearerMissingError when env unset and --anonymous not passed", () => {
     expect(() => readBearerFromEnv({}, false)).toThrow(BearerMissingError)
   })
 
-  it("error message names the self-DoS risk", () => {
+  it("error message names BOTH env vars + the self-DoS risk", () => {
     try {
       readBearerFromEnv({}, false)
     } catch (err) {
-      expect((err as Error).message).toMatch(/self-DoS|public:\$\{ip\}/)
+      const msg = (err as Error).message
+      expect(msg).toMatch(/PARITY_API_KEYS/)
+      expect(msg).toMatch(/WEB_ADMIN_API_KEYS/)
+      expect(msg).toMatch(/self-DoS|public:\$\{ip\}/)
       return
     }
     throw new Error("expected throw")
   })
 
-  it("returns first CSV entry, trimmed", () => {
+  // PARITY precedence — PR-C, A1
+  it("prefers PARITY_API_KEYS over WEB_ADMIN_API_KEYS when both set", () => {
     expect(
-      readBearerFromEnv({ WEB_ADMIN_API_KEYS: " key-a , key-b " }, false),
-    ).toBe("key-a")
+      readBearerFromEnv(
+        { PARITY_API_KEYS: "parity-a", WEB_ADMIN_API_KEYS: "consumer-a" },
+        false,
+      ),
+    ).toEqual({
+      bearer: "parity-a",
+      templatesPermitted: true,
+      source: "parity",
+    })
   })
 
-  it("throws when env value is only whitespace", () => {
+  it("uses PARITY_API_KEYS (first CSV entry, trimmed) and permits templates", () => {
+    expect(
+      readBearerFromEnv({ PARITY_API_KEYS: " parity-a , parity-b " }, false),
+    ).toEqual({
+      bearer: "parity-a",
+      templatesPermitted: true,
+      source: "parity",
+    })
+  })
+
+  it("falls back to WEB_ADMIN_API_KEYS when PARITY_API_KEYS unset; excludes templates", () => {
+    expect(
+      readBearerFromEnv({ WEB_ADMIN_API_KEYS: " key-a , key-b " }, false),
+    ).toEqual({
+      bearer: "key-a",
+      templatesPermitted: false,
+      source: "consumer",
+    })
+  })
+
+  it("treats PARITY_API_KEYS=whitespace as unset (falls through to WEB_ADMIN_API_KEYS)", () => {
+    expect(
+      readBearerFromEnv(
+        { PARITY_API_KEYS: "   ", WEB_ADMIN_API_KEYS: "key-a" },
+        false,
+      ),
+    ).toEqual({
+      bearer: "key-a",
+      templatesPermitted: false,
+      source: "consumer",
+    })
+  })
+
+  it("throws when WEB_ADMIN_API_KEYS is only whitespace", () => {
     expect(() =>
       readBearerFromEnv({ WEB_ADMIN_API_KEYS: "   " }, false),
     ).toThrow(BearerMissingError)
   })
 
-  it("throws when first CSV entry is empty", () => {
+  it("throws when WEB_ADMIN_API_KEYS first CSV entry is empty (and PARITY unset)", () => {
     expect(() =>
       readBearerFromEnv({ WEB_ADMIN_API_KEYS: ",key-b" }, false),
+    ).toThrow(BearerMissingError)
+  })
+
+  it("throws when PARITY_API_KEYS first CSV entry is empty", () => {
+    expect(() =>
+      readBearerFromEnv({ PARITY_API_KEYS: ",parity-b" }, false),
     ).toThrow(BearerMissingError)
   })
 })

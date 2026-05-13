@@ -704,27 +704,54 @@ export class RateLimitExhaustedError extends Error {
 }
 
 /**
- * SECURITY: hard-fails when neither `WEB_ADMIN_API_KEYS` nor `--anonymous`
- * is set. Anonymous against admin would consume `public:${ip}` and self-DoS
+ * SECURITY: hard-fails when neither bearer env var nor `--anonymous` is
+ * set. Anonymous against admin would consume `public:${ip}` and self-DoS
  * the verification window — operators must opt in explicitly.
+ *
+ * **Bearer precedence:** prefers `PARITY_API_KEYS` (PR-C, A1 — mints
+ * PARITY_BEARER, which can enumerate AND fetch template Experiences via
+ * the R9 carve-out). Falls back to `WEB_ADMIN_API_KEYS` (PR-A — mints
+ * CONSUMER_BEARER, which CANNOT see templates by design). The caller
+ * uses `templatesPermitted` to decide whether to include templates in
+ * the corpus query.
  */
+export type BearerResolution = {
+  readonly bearer: string | null
+  readonly templatesPermitted: boolean
+  readonly source: "parity" | "consumer" | "anonymous"
+}
+
 export function readBearerFromEnv(
   env: NodeJS.ProcessEnv,
   anonymous: boolean,
-): string | null {
-  if (anonymous) return null
-  const raw = env.WEB_ADMIN_API_KEYS
-  if (!raw || raw.trim() === "") {
-    throw new BearerMissingError(
-      "WEB_ADMIN_API_KEYS is required (or pass --anonymous to opt out). " +
-        "Running anonymous against admin consumes the public:${ip} bucket " +
-        "and may self-DoS the verification window.",
-    )
+): BearerResolution {
+  if (anonymous) {
+    return { bearer: null, templatesPermitted: false, source: "anonymous" }
   }
+  const parity = firstCsvEntry(env.PARITY_API_KEYS)
+  if (parity !== null) {
+    return { bearer: parity, templatesPermitted: true, source: "parity" }
+  }
+  const consumer = firstCsvEntry(env.WEB_ADMIN_API_KEYS)
+  if (consumer !== null) {
+    return { bearer: consumer, templatesPermitted: false, source: "consumer" }
+  }
+  // Both vars are unset/empty AND --anonymous wasn't passed.
+  throw new BearerMissingError(
+    "PARITY_API_KEYS (preferred — enables template parity coverage) or " +
+      "WEB_ADMIN_API_KEYS (fallback — excludes templates) is required, " +
+      "or pass --anonymous to opt out. Running anonymous against admin " +
+      "consumes the public:${ip} bucket and may self-DoS the " +
+      "verification window.",
+  )
+}
+
+function firstCsvEntry(raw: string | undefined): string | null {
+  if (!raw || raw.trim() === "") return null
   const first = raw.split(",")[0]?.trim() ?? ""
   if (first === "") {
     throw new BearerMissingError(
-      "WEB_ADMIN_API_KEYS is set but its first CSV entry is empty.",
+      "Bearer env var is set but its first CSV entry is empty.",
     )
   }
   return first

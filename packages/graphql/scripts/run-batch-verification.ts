@@ -8,7 +8,9 @@
  * module so they're typechecked and unit-tested.
  *
  * Usage:
- *   WEB_ADMIN_API_KEYS=<key> \
+ *   PARITY_API_KEYS=<key>            # PREFERRED — enables template coverage
+ *   # …or, fallback (templates excluded):
+ *   #   WEB_ADMIN_API_KEYS=<key>
  *   STRAPI_GRAPHQL_URL=... \
  *   ADMIN_GRAPHQL_URL=... \
  *   STRAPI_PUBLIC_ORIGIN=... \
@@ -58,10 +60,30 @@ import type { StrapiExperienceInput } from "../src/parity/normalize-strapi"
 // normalizer types in src/parity/.
 // ---------------------------------------------------------------------------
 
-const STRAPI_CORPUS_QUERY = /* GraphQL */ `
+// Two corpus queries — the bearer dictates which one the harness uses.
+//
+// PARITY_BEARER (mints when PARITY_API_KEYS is set) has the R9 carve-out
+// and can fetch templates by slug via experienceBySlug. CONSUMER_BEARER
+// (the WEB_ADMIN_API_KEYS fallback) cannot — R9 hides templates from
+// every consumer SSR identity. Enumerating templates into the corpus
+// while running with CONSUMER_BEARER would surface every template as a
+// false "admin missing" failure, so the templated corpus is gated.
+const STRAPI_CORPUS_QUERY_NO_TEMPLATES = /* GraphQL */ `
   query ParityCorpusEnumerate {
     experiences(
       filters: { isTemplate: { eq: false }, publishedAt: { notNull: true } }
+      pagination: { limit: -1 }
+    ) {
+      slug
+      locale
+      updatedAt
+    }
+  }
+`
+const STRAPI_CORPUS_QUERY_WITH_TEMPLATES = /* GraphQL */ `
+  query ParityCorpusEnumerateWithTemplates {
+    experiences(
+      filters: { publishedAt: { notNull: true } }
       pagination: { limit: -1 }
     ) {
       slug
@@ -603,11 +625,18 @@ function readEnv(env: NodeJS.ProcessEnv): EnvConfig {
 // Fetcher construction
 // ---------------------------------------------------------------------------
 
-function buildFetchers(env: EnvConfig, bearer: string | null): Fetchers {
+function buildFetchers(
+  env: EnvConfig,
+  bearer: string | null,
+  includeTemplates: boolean,
+): Fetchers {
+  const corpusQuery = includeTemplates
+    ? STRAPI_CORPUS_QUERY_WITH_TEMPLATES
+    : STRAPI_CORPUS_QUERY_NO_TEMPLATES
   const enumerateCorpus = async (): Promise<ReadonlyArray<CorpusEntry>> => {
     const body = (await postGraphQL({
       url: env.strapiUrl,
-      query: STRAPI_CORPUS_QUERY,
+      query: corpusQuery,
       bearer: null, // corpus enumeration goes through Strapi (anonymous OK)
     })) as {
       data?: {
@@ -717,9 +746,14 @@ async function main(): Promise<number> {
   }
 
   let bearer: string | null
+  let templatesPermitted: boolean
+  let bearerSource: "parity" | "consumer" | "anonymous"
   let env: EnvConfig
   try {
-    bearer = readBearerFromEnv(process.env, args.anonymous)
+    const resolution = readBearerFromEnv(process.env, args.anonymous)
+    bearer = resolution.bearer
+    templatesPermitted = resolution.templatesPermitted
+    bearerSource = resolution.source
     env = readEnv(process.env)
   } catch (err) {
     if (err instanceof BearerMissingError) {
@@ -727,9 +761,27 @@ async function main(): Promise<number> {
       return 2
     }
     process.stderr.write(
-      `[run-batch-verification] ${sanitizeError(err, bearer ?? null)}\n`,
+      `[run-batch-verification] ${sanitizeError(err, null)}\n`,
     )
     return 2
+  }
+
+  // Operator visibility — surface which bearer source is in use AND the
+  // template-coverage implication. A WEB_ADMIN_API_KEYS-only run is
+  // valid but has a known blind spot (R9 hides templates from
+  // CONSUMER_BEARER) — the operator should know before reading the gate
+  // result.
+  if (bearerSource === "consumer") {
+    process.stderr.write(
+      "[run-batch-verification] WARN: running with WEB_ADMIN_API_KEYS " +
+        "(CONSUMER_BEARER) — templates are excluded from this gate run. " +
+        "Set PARITY_API_KEYS to enable template parity coverage.\n",
+    )
+  } else if (bearerSource === "parity") {
+    process.stderr.write(
+      "[run-batch-verification] running with PARITY_API_KEYS — " +
+        "templates included in corpus.\n",
+    )
   }
 
   // Load operator-supplied allow-list if provided.
@@ -746,7 +798,7 @@ async function main(): Promise<number> {
     }
   }
 
-  const fetchers = buildFetchers(env, bearer)
+  const fetchers = buildFetchers(env, bearer, templatesPermitted)
   const startedAt = new Date()
   const outputPath = args.out ?? defaultOutputPath(startedAt)
 
