@@ -10,22 +10,9 @@ import { env } from "@/env"
 
 export const revalidate = 60
 
-// U9 (plan-003 PR-B) — emergency-only route disable.
-//
-// `FORGE_DISABLE_WATCH_ROUTES` is parsed ONCE at module scope. Reading
-// per-request via headers()/cookies() would silently disable Next's Full
-// Route Cache (see docs/solutions/web/nextjs-headers-defeats-route-cache.md);
-// reading at module scope is load-bearing for ISR.
-//
-// Parse rules:
-//   - Comma-separated route paths. Whitespace trimmed per entry.
-//   - Empty entries (consecutive commas, leading/trailing whitespace) skipped.
-//   - Entries are matched verbatim against `/${slug}` in the page component.
-//   - Unknown/malformed values warn-and-fall-through: a typo'd entry does
-//     NOT brick rendering — it just doesn't disable anything. Visible
-//     console.warn surfaces the misconfig in deploy logs.
-//
-// Runbook reference: docs/admin-core-migration/cutover-runbook.md "Layer 1".
+// Parsed once at module scope — per-request reads via headers()/cookies()
+// would disable Next's Full Route Cache.
+// See docs/solutions/web/nextjs-headers-defeats-route-cache.md.
 const DISABLED_ROUTES: ReadonlySet<string> = (() => {
   const raw = env.FORGE_DISABLE_WATCH_ROUTES
   if (raw == null || raw === "") return new Set()
@@ -33,9 +20,8 @@ const DISABLED_ROUTES: ReadonlySet<string> = (() => {
     .split(",")
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
-  // Surface entries that don't look like route paths so an operator who
-  // types `foo` instead of `/foo` sees the warn in deploy logs rather
-  // than silently shipping a non-matching flag.
+  // Warn on entries missing the leading `/` so operators see the typo in
+  // deploy logs rather than shipping a silently-non-matching flag.
   const malformed = entries.filter((s) => !s.startsWith("/"))
   if (malformed.length > 0 && typeof console !== "undefined") {
     console.warn(
@@ -63,9 +49,7 @@ export async function generateMetadata({
 export default async function SlugPage({ params }: PageProps) {
   const { slug } = await params
 
-  // U9 emergency rollback — short-circuit BEFORE any data fetch when the
-  // requested route is in the disable set. Static maintenance UX. Reads
-  // from the module-scope `DISABLED_ROUTES` set; no per-request env read.
+  // Emergency rollback — short-circuit before any data fetch.
   if (DISABLED_ROUTES.has(`/${slug}`)) {
     return <MaintenanceFallback />
   }

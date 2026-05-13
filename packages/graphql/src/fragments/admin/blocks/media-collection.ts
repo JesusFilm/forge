@@ -1,16 +1,9 @@
 import { adminGraphql } from "../../../admin"
 
 /**
- * Admin-shape MediaCollectionBlock fragment.
- *
- * Field aliases mirror the Strapi fragment's output vocabulary so the
- * web renderer's destructure (`mediaCollectionVariant`, `mediaCtaLink`,
- * `mediaCtaLabel`, `mediaDescription`) stays compatible across the
- * cutover. Items are FLAT in admin — there is no `items[].video`
- * relation or `items[].imageOverride { url }` wrapper. Renderers that
- * historically read those nested paths will see `undefined`; the
- * runtime fallbacks (`titleOverride`, `imageUrl`) already cover the
- * common rendering path. Video-relation hydration is U6's scope.
+ * Items are FLAT in admin (no `items[].video` join or `imageOverride { url }`
+ * wrapper). Renderers reading those nested paths see undefined; runtime
+ * fallbacks via `titleOverride` / `imageUrl` cover the common path.
  */
 export const adminMediaCollectionFragment = adminGraphql(`
   fragment AdminMediaCollection on MediaCollectionBlock @_unmask {

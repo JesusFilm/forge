@@ -10,15 +10,7 @@ import { adminRelatedQuestionsFragment } from "./related-questions"
 import { adminTextFragment } from "./text"
 import { adminVideoFragment } from "./video"
 
-/**
- * ContainerBlock — admin's flat container shape. Slot dividers are
- * sibling `containerSlot` markers inside `content[]`; no
- * `slots[].content[]` nesting like Strapi.
- *
- * The 10-member ContainerContentBlock union mirrors admin's Zod
- * `ContainerContentBlockSchema` exactly (see
- * apps/admin/src/graphql/types/blocks.ts).
- */
+/** Flat container — slot dividers are sibling `containerSlot` markers in `content[]`, not Strapi-style `slots[].content[]`. */
 export const adminContainerFragment = adminGraphql(
   `
     fragment AdminContainer on ContainerBlock @_unmask {

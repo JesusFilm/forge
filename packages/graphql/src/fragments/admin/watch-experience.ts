@@ -18,29 +18,12 @@ import { adminVideoHeroFragment } from "./blocks/video-hero"
 import { adminVideoRecommendationsFragment } from "./blocks/video-recommendations"
 
 /**
- * Root admin-shape `WatchExperience` fragment on `ExperienceLocale`.
- *
- * Mirrors the Strapi `WatchExperience` fragment vocabulary so consumer
- * apps can switch between Strapi and admin sources without rewriting
- * downstream rendering. Field-level diffs:
- *
- *   - Strapi: `documentId`. Admin: `id` (cuid string). Aliased to
- *     `documentId` so renderers consuming `exp.documentId` keep
- *     working unmodified.
- *   - Strapi: `ogImage { url, width, height, alternativeText }`.
- *     Admin: `ogImageUrl: String` (single scalar). The admin shape
- *     synthesizes the missing `width / height / alternativeText` as
- *     `null` at the consumer boundary (see normalizeAdmin); renderers
- *     reading `exp.ogImage?.url` get the URL from `ogImageUrl`
- *     aliased to `ogImage_url` — but we keep two parallel selections
- *     here (`ogImageUrl` + the aliased `ogImage` shape) so consumers
- *     can pick the form that matches their existing accessor.
- *   - Strapi: `isTemplate` lives on the Experience parent. Admin: on
- *     the parent Experience too, but ExperienceLocale carries
- *     `isHomepage` for homepage-routing affordance.
- *
- * The 17-member `ExperienceBlock` union covers every top-level block
- * kind admin's editor can store (see apps/admin/src/graphql/types/blocks.ts).
+ * Root admin-shape WatchExperience fragment on ExperienceLocale.
+ * Mirrors Strapi vocabulary via aliases so consumer renderers stay byte-
+ * identical across the cutover. Diffs:
+ *   - admin `id` (cuid) ≠ Strapi `documentId` (aliased so renderers work)
+ *   - admin `ogImageUrl: String` ≠ Strapi `ogImage { url, width, height, alt }`
+ *     (missing dimensions synthesized as null in normalizeAdmin)
  */
 export const adminWatchExperienceFragment = adminGraphql(
   `

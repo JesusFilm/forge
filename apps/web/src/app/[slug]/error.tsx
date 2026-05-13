@@ -7,29 +7,9 @@ import { ExperienceError } from "@/components/ExperienceError"
 import { WatchPageAdminError } from "@/lib/content"
 
 /**
- * Slug-page error boundary — additive in admin mode only.
- *
- * The boundary catches the typed `WatchPageAdminError` that
- * `fetchSlugExperience` throws when admin returns null or fails (admin
- * mode only; Strapi-mode errors continue through the existing sentinel
- * path in `page.tsx` and never reach this boundary).
- *
- * Information-disclosure discipline: `error.message` is NEVER rendered as
- * visible text. The classifier dispatches on `error.code` and renders one
- * of two static UX shapes that match the Strapi-mode inline rendering of
- * `<ExperienceEmpty>` / `<ExperienceError>` — end users see no behavior
- * difference between admin-mode and Strapi-mode failures.
- *
- * Catch-all behavior: any non-typed error that escapes here (defense
- * against unexpected throws) re-throws to Next.js's segment-default error
- * boundary. That route emits a generic 500 page without echoing the
- * underlying error.message. The boundary's safe contract: "renders
- * `<ExperienceEmpty>` for NOT_FOUND, `<ExperienceError>` with reset for
- * UNAVAILABLE, re-throws everything else."
- *
- * Pattern follows `apps/web/src/app/[slug]/[locale]/error.tsx`.
- *
- * Plan reference: docs/plans/2026-05-11-003-feat-web-admin-direct-cutover-plan.md UB7.
+ * Slug-page error boundary, additive for admin-mode WatchPageAdminError
+ * throws. `error.message` MUST NEVER render (info disclosure). Non-typed
+ * errors re-throw to Next's segment-default. See plan-003 UB7.
  */
 export default function SlugPageError({
   error,
@@ -49,11 +29,8 @@ export default function SlugPageError({
       return <ExperienceEmpty />
     }
     if (error.code === "UNAVAILABLE") {
-      // Generic operator-facing message — NEVER pass error.message through.
-      // ExperienceError additionally sanitizes via its KNOWN_ERRORS table;
-      // we feed it a stable "service unavailable" string that maps to its
-      // generic fallback, so admin-mode UNAVAILABLE and Strapi-mode
-      // generic-error renderings stay visually consistent.
+      // SECURITY: never pass error.message; feed ExperienceError a stable
+      // string that maps to its KNOWN_ERRORS generic fallback.
       return (
         <main className="min-h-screen bg-stone-900 text-stone-100">
           <ExperienceError message="Service temporarily unavailable" />
@@ -71,7 +48,6 @@ export default function SlugPageError({
     }
   }
 
-  // Unexpected error — re-throw to Next's segment-default boundary.
-  // The default renders a generic 500 page without echoing error.message.
+  // Re-throw to Next's segment-default (generic 500 without echoing message).
   throw error
 }

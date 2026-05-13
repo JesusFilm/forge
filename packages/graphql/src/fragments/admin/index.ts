@@ -1,12 +1,6 @@
 // Admin-shape fragments for the web/mobile/tv `WatchExperience` route.
-// Authored against admin's regenerated SDL (apps/admin/schema.graphql)
-// via the `adminGraphql()` factory. Field aliases on shared fragment
-// selections preserve the Strapi fragment vocabulary so downstream
-// renderers in `apps/web/src/components/sections/` stay byte-identical
-// across the cutover.
-//
-// Used by `apps/web/src/lib/content.ts` once U6 wires admin-mode
-// fetching, AND available for future apps/mobile + apps/tv reuse.
+// Field aliases on shared fragment selections preserve the Strapi vocabulary
+// so downstream renderers stay byte-identical across the cutover.
 
 export { adminAdventCountdownFragment } from "./blocks/advent-countdown"
 export { adminBibleQuotesCarouselFragment } from "./blocks/bible-quotes-carousel"

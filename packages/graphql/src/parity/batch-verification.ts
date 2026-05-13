@@ -1,38 +1,24 @@
 /**
- * Batch verification harness — THE cutover gate (plan-003 U8).
+ * Batch verification harness — the cutover gate. Operators read this report
+ * before flipping consumers from Strapi to admin; zero non-allow-listed
+ * diffs across all four channels means the migration is safe to ship.
  *
- * Drives the four-class differ across every published slug from Strapi
- * and admin in parallel, producing a structured per-slug report. The
- * harness is the gate operators read before flipping consumer apps from
- * Strapi to admin: when the report shows zero non-allow-listed diffs
- * across all four channels, the migration is safe to ship.
- *
- * Design split — the CLI shim (`scripts/run-batch-verification.ts`)
- * provides real GraphQL fetchers and parses argv; the orchestration
- * loop, gate logic, and JSON-report shape live HERE so they're
- * typechecked and unit-tested. Mirrors the live.ts / capture-parity-
- * fixture.ts split — same reason: scripts/ is outside tsconfig's
- * include glob, but src/ is unit-testable + typechecked.
+ * The CLI shim (scripts/run-batch-verification.ts) provides fetchers + argv;
+ * orchestration + report shape live here so they're typechecked + testable.
  *
  * Critical invariants:
+ * - Bounded parallelism via p-limit + Promise.allSettled (never bare
+ *   Promise.all). See docs/solutions/best-practices/bounded-parallelism-
+ *   per-target-workflow-pattern-20260505.md.
+ * - SECURITY: bearer is auto-read from env, never a CLI flag. Anonymous
+ *   mode requires explicit opt-in (anonymous-against-admin consumes
+ *   `public:${ip}` and self-DoSes the verification window). The bearer
+ *   never appears in any log; `sanitizeError` strips it before surfacing.
+ * - Report JSON shape is a DOWNSTREAM CONTRACT — operator dashboards
+ *   automate against it. Adding is safe; renaming/removing breaks tooling.
+ *   Snapshot test locks it.
  *
- * - Bounded parallelism via p-limit + Promise.allSettled — never bare
- *   Promise.all. Per `docs/solutions/best-practices/bounded-parallelism-
- *   per-target-workflow-pattern-20260505.md`.
- * - Bearer is auto-read from env (`WEB_ADMIN_API_KEYS`, first CSV
- *   entry) — NOT a CLI flag. Anonymous mode requires explicit opt-in.
- *   Running anonymous against admin would consume the `public:${ip}`
- *   bucket and self-DoS the verification window.
- * - The bearer never appears in any log, error message, or JSON report
- *   field. `sanitizeError` strips it from any error string before
- *   surfacing.
- * - The report JSON shape is a DOWNSTREAM CONTRACT. Operators automate
- *   dashboards against this shape. Adding a field is safe; renaming or
- *   removing one breaks operator tooling. The snapshot test locks it.
- *
- * This harness is throwaway scaffolding — it ships with the rest of
- * parity/ and gets deleted when consumer migration completes. See
- * `parity/index.ts` deletion checklist.
+ * Throwaway; deletes with the rest of parity/. See parity/index.ts checklist.
  */
 
 import pLimit from "p-limit"
@@ -49,15 +35,9 @@ import {
 } from "./normalize-admin"
 import { normalizeStrapi, type StrapiExperienceInput } from "./normalize-strapi"
 
-// ---------------------------------------------------------------------------
 // Public types — the JSON report shape is a downstream contract.
-// ---------------------------------------------------------------------------
 
-/**
- * Per-channel projection of diff entries by path. Operators dedupe and
- * pivot on this — keeping `count` alongside `paths` lets dashboards
- * sum counts without re-scanning `paths`.
- */
+/** `count` alongside `paths` lets dashboards sum without re-scanning paths. */
 export type ChannelSummary = {
   readonly count: number
   readonly paths: ReadonlyArray<string>
@@ -76,12 +56,7 @@ export type SlugError = {
   readonly message: string
 }
 
-/**
- * Per-slug report entry. This shape is the cutover-gate contract —
- * locked by the snapshot test. ADDING fields is safe; renaming or
- * removing breaks operator tooling. Do not change without a coordinated
- * dashboard update.
- */
+/** Cutover-gate contract — snapshot-locked. Add fields freely; never rename/remove. */
 export type SlugReport = {
   readonly slug: string
   readonly locale: string
@@ -113,9 +88,7 @@ export type BatchReport = {
   readonly slugs: ReadonlyArray<SlugReport>
 }
 
-// ---------------------------------------------------------------------------
 // Args + CLI parsing
-// ---------------------------------------------------------------------------
 
 export type BatchArgs = {
   /** Random-stratified sample size. `null` = full corpus. */
@@ -175,10 +148,6 @@ EXIT CODES
   2   Misconfiguration (bad args, missing env).
 `
 
-/**
- * Parse argv (post-`process.argv.slice(2)`). Throws `Error` with a
- * human-friendly message on unrecognized flag or invalid value.
- */
 export function parseArgs(argv: ReadonlyArray<string>): BatchArgs {
   const args: BatchArgs = {
     sample: null,
@@ -189,7 +158,6 @@ export function parseArgs(argv: ReadonlyArray<string>): BatchArgs {
     anonymous: false,
     help: false,
   }
-  // Mutable shadow so we can assign on each flag pass without losing readonly.
   const mut = args as { -readonly [K in keyof BatchArgs]: BatchArgs[K] }
 
   for (let i = 0; i < argv.length; i++) {
@@ -252,16 +220,9 @@ export function parseArgs(argv: ReadonlyArray<string>): BatchArgs {
   return args
 }
 
-// ---------------------------------------------------------------------------
 // Allow-list combination
-// ---------------------------------------------------------------------------
 
-/**
- * Parse an allow-list JSON file's contents into a typed array. The file
- * format is a top-level JSON array of `AllowListEntry` objects.
- * Mismatched shape throws — operators should fix the file, not silently
- * suppress unrelated diffs.
- */
+/** Mismatched shape throws — operators fix the file, not silently suppress unrelated diffs. */
 export function parseAllowListFile(raw: string): ReadonlyArray<AllowListEntry> {
   let parsed: unknown
   try {
@@ -311,29 +272,18 @@ export function parseAllowListFile(raw: string): ReadonlyArray<AllowListEntry> {
   return out
 }
 
-/**
- * Combine DEFAULT_ALLOW_LIST with operator-supplied entries. Operator
- * entries are appended after defaults — both halves are auditable.
- */
 export function combineAllowLists(
   operator: ReadonlyArray<AllowListEntry>,
 ): ReadonlyArray<AllowListEntry> {
   return [...DEFAULT_ALLOW_LIST, ...operator]
 }
 
-// ---------------------------------------------------------------------------
 // Sampling
-// ---------------------------------------------------------------------------
 
 /**
- * Stratified random sample of an enumerated corpus. The corpus is
- * expected to be pre-sorted by `updatedAt` ascending (oldest first); we
- * stratify into newest 30 / oldest 30 / middle 40 so the report's
- * coverage spans editorial recency rather than skewing to the heaviest
- * bucket.
- *
- * When `sample >= corpus.length`, returns the whole corpus unchanged.
- * `rng` is injectable for deterministic tests.
+ * Corpus must be sorted by `updatedAt` ascending. Stratifies newest 30 /
+ * oldest 30 / middle 40 so coverage spans editorial recency rather than
+ * skewing to the heaviest bucket. `rng` is injectable for deterministic tests.
  */
 export function stratifiedSample<T>(
   corpus: ReadonlyArray<T>,
@@ -408,14 +358,11 @@ function shuffleInPlace<T>(arr: T[], rng: () => number): void {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Fetcher interfaces — transport is injected from the CLI shim.
-// ---------------------------------------------------------------------------
 
 export type CorpusEntry = {
   readonly slug: string
   readonly locale: string
-  /** ISO timestamp of source-of-truth last update. Used for `--since` filter. */
   readonly updatedAt: string | null
 }
 
@@ -437,15 +384,8 @@ export type Fetchers = {
   readonly fetchAdmin: FetchAdmin
 }
 
-// ---------------------------------------------------------------------------
-// Sanitization — bearer key must never appear in output.
-// ---------------------------------------------------------------------------
-
-/**
- * Strip the bearer key (and any obvious bearer-prefixed string) from
- * an error message. The bearer is the only secret the harness touches;
- * URLs, slugs, and locales are safe to surface.
- */
+// SECURITY: bearer key must never appear in output.
+// URLs / slugs / locales are safe; the bearer is the only secret here.
 export function sanitizeError(err: unknown, bearer: string | null): string {
   let msg: string
   if (err instanceof Error) msg = `${err.name}: ${err.message}`
@@ -456,9 +396,7 @@ export function sanitizeError(err: unknown, bearer: string | null): string {
   return msg
 }
 
-// ---------------------------------------------------------------------------
 // Per-slug worker
-// ---------------------------------------------------------------------------
 
 export type RunSlugDeps = {
   readonly fetchers: Fetchers
@@ -468,20 +406,13 @@ export type RunSlugDeps = {
 }
 
 /**
- * Compare one slug. Catches all per-side errors and converts them into
- * a SlugReport with an `error` field — the orchestrator never sees a
- * thrown exception from this function (matches Promise.allSettled
- * usage pattern).
+ * Catches per-side errors → SlugReport.error; orchestrator never sees throws.
  */
 export async function compareSlug(
   entry: CorpusEntry,
   deps: RunSlugDeps,
 ): Promise<SlugReport> {
-  // PERF-01: fetch Strapi and admin in parallel via Promise.allSettled.
-  // Sequential `await` doubles the per-slug wall-clock (strapi+admin in
-  // series); parallel is bounded by max(strapi, admin). Across a 1000-slug
-  // corpus this materially shortens the editorial-freeze window the
-  // runbook requires.
+  // Parallel Strapi+admin halves the per-slug wall-clock vs sequential.
   const tStrapiStart = Date.now()
   const tAdminStart = tStrapiStart
   const [strapiSettled, adminSettled] = await Promise.allSettled([
@@ -597,9 +528,7 @@ function channelSummary(paths: ReadonlyArray<string>): ChannelSummary {
   return { count: paths.length, paths: Object.freeze([...paths]) }
 }
 
-// ---------------------------------------------------------------------------
 // Orchestrator
-// ---------------------------------------------------------------------------
 
 export type RunBatchOptions = {
   readonly args: BatchArgs
@@ -624,7 +553,6 @@ export async function runBatchVerification(
   const generatedAt = (opts.now?.() ?? new Date()).toISOString()
   const corpus = await opts.fetchers.enumerateCorpus()
 
-  // Apply --since filter if set.
   const filtered = opts.args.since
     ? corpus.filter((e) => {
         if (e.updatedAt === null) return false
@@ -632,13 +560,11 @@ export async function runBatchVerification(
       })
     : corpus
 
-  // Apply --sample if set.
   const targets =
     opts.args.sample !== null
       ? stratifiedSample(filtered, opts.args.sample, opts.rng)
       : filtered
 
-  // Bounded parallelism — never bare Promise.all.
   const limit = pLimit(opts.args.concurrency)
   const deps: RunSlugDeps = {
     fetchers: opts.fetchers,
@@ -659,9 +585,8 @@ export async function runBatchVerification(
     ),
   )
 
-  // compareSlug catches its own errors; a rejection here means a bug
-  // (e.g., onSlugComplete threw). Surface as an error row so the harness
-  // never crashes mid-run.
+  // A rejection here is a bug (onSlugComplete threw). Surface as an error
+  // row so the harness never crashes mid-run.
   const slugs: SlugReport[] = []
   for (let i = 0; i < settled.length; i++) {
     const result = settled[i]
@@ -726,9 +651,7 @@ export function buildReport(
   }
 }
 
-// ---------------------------------------------------------------------------
 // Stdout summary
-// ---------------------------------------------------------------------------
 
 export function formatSummary(report: BatchReport): string {
   const t = report.totals
@@ -746,11 +669,8 @@ export function formatSummary(report: BatchReport): string {
   return lines.join("\n")
 }
 
-// ---------------------------------------------------------------------------
-// HTTP helpers (used by the CLI shim) — exposed here so the test suite
-// can verify the 429-backoff + timeout shape against a mocked fetcher
-// rather than reaching the network.
-// ---------------------------------------------------------------------------
+// HTTP helpers — exposed so tests can drive 429-backoff + timeout shape
+// against a mocked fetcher without reaching the network.
 
 export class BearerMissingError extends Error {
   override readonly name = "BearerMissingError"
@@ -761,14 +681,9 @@ export class RateLimitExhaustedError extends Error {
 }
 
 /**
- * Read the first CSV entry from `WEB_ADMIN_API_KEYS`. Returns `null`
- * when the caller has explicitly opted into anonymous mode; throws
- * `BearerMissingError` when neither is provided (the hard-fail path).
- *
- * Rationale for hard-fail: running anonymous against admin would
- * consume the `public:${ip}` rate-limit bucket and could self-DoS the
- * verification window. Operators who genuinely want anonymous (against
- * a non-rate-limited local target) must opt in explicitly.
+ * SECURITY: hard-fails when neither `WEB_ADMIN_API_KEYS` nor `--anonymous`
+ * is set. Anonymous against admin would consume `public:${ip}` and self-DoS
+ * the verification window — operators must opt in explicitly.
  */
 export function readBearerFromEnv(
   env: NodeJS.ProcessEnv,
@@ -792,32 +707,18 @@ export function readBearerFromEnv(
   return first
 }
 
-/**
- * Compute the next backoff delay for a 429 response. Caps at 30s; the
- * caller is responsible for tracking retry count and giving up after
- * 3 attempts (RateLimitExhaustedError).
- */
+/** Exponential base-500ms, cap 30s, full-jitter to avoid retry-storm collisions. */
 export function backoffDelayMs(
   attempt: number,
   rng: () => number = Math.random,
 ): number {
-  // Exponential, base 500ms, cap 30000ms. REL-02: full-jitter scaling so
-  // N concurrent workers hitting 429 simultaneously don't all resume at
-  // the same millisecond (which would re-trigger the rate limiter).
-  // `rng` is injectable so tests can assert deterministic delays.
   const raw = 500 * Math.pow(2, attempt)
   const capped = Math.min(raw, 30000)
   return Math.floor(rng() * capped)
 }
 
-/**
- * Discriminator for AbortError / TimeoutError. AbortSignal.timeout() in
- * Node produces `name: "TimeoutError"`; manual abort produces
- * `name: "AbortError"`. Both indicate the request hit the outbound budget
- * and should fast-fail in the harness rather than retry — a persistent
- * admin slowness is not a transient blip and 3× retries × 3s wastes
- * gate-convergence wall time.
- */
+// Fast-fail timeouts/aborts rather than retry — a persistent admin slowness
+// is not a transient blip; 3× retries × 3s wastes gate-convergence time.
 function isTimeoutOrAbortError(err: unknown): boolean {
   if (err == null || typeof err !== "object") return false
   const name = (err as { name?: unknown }).name
@@ -827,15 +728,7 @@ function isTimeoutOrAbortError(err: unknown): boolean {
 export const FETCH_TIMEOUT_MS = 3000
 export const FETCH_MAX_RETRIES = 3
 
-/**
- * Issue a GraphQL POST with the U6 outbound budget (3s) and 429 retry.
- * Returns the parsed JSON body; throws on non-2xx-after-retries or
- * timeout. The caller wraps the JSON.parse if it needs typed shape
- * narrowing.
- *
- * `fetchImpl` is injected so tests can drive 429-then-200 sequences
- * without spinning a real HTTP server.
- */
+/** GraphQL POST with 3s budget + 429 retry. `fetchImpl` is injected for tests. */
 export async function postGraphQL(args: {
   readonly url: string
   readonly query: string
@@ -886,28 +779,18 @@ export async function postGraphQL(args: {
       return (await res.json()) as unknown
     } catch (err) {
       clearTimeout(timer)
-      // Re-throw rate-limit so the outer caller can classify it.
       if (err instanceof RateLimitExhaustedError) throw err
-      // REL-01: fast-fail timeouts/aborts. A persistent admin slowness
-      // surfaces as the same error 3× and consumes 9s + backoff. The
-      // outer caller (compareSlug) records this as a per-slug error
-      // and continues — retries don't recover a hung backend.
+      // Don't retry timeouts/aborts — see isTimeoutOrAbortError above.
       if (isTimeoutOrAbortError(err)) throw err
-      // On the last attempt, surface the error.
       if (attempt === FETCH_MAX_RETRIES - 1) throw err
-      // Otherwise, brief backoff and retry (covers transient network blips).
       await sleep(backoffDelayMs(attempt))
     }
   }
-  // Unreachable — the loop either returns or throws.
   throw new Error("postGraphQL: exhausted retries without returning")
 }
 
-/**
- * Strip query-string and userinfo from a URL when surfacing in errors —
- * the URL path is useful diagnostically but credentials and tokens in
- * query strings must never appear in logs.
- */
+// SECURITY: strip query-string + userinfo before surfacing in errors — path
+// is diagnostic but tokens in query strings must never reach logs.
 function redactUrl(url: string): string {
   try {
     const parsed = new URL(url)

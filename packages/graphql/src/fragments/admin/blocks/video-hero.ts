@@ -1,10 +1,6 @@
 import { adminGraphql } from "../../../admin"
 
-/**
- * VideoHeroBlock — full-bleed hero video. Same flat-video posture as
- * VideoBlock: admin returns `videoId` + `streamingUrl` only. No nested
- * `video { documentId, title, slug, images { url } }` join.
- */
+/** Flat-video posture (no `video { ... }` join); admin returns `videoId` + `streamingUrl` only. */
 export const adminVideoHeroFragment = adminGraphql(`
   fragment AdminVideoHero on VideoHeroBlock @_unmask {
     __typename

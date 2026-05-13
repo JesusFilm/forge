@@ -1,11 +1,6 @@
 import { adminGraphql } from "../../../admin"
 
-/**
- * Admin-only block (no Strapi precedent). The renderer dispatches
- * dynamically into the VideoRecommendations component which fetches
- * scene-similarity recommendations at render time via the public
- * `sceneRecommendations` query.
- */
+/** Admin-only; renderer fetches scene-similarity at render time via `sceneRecommendations`. */
 export const adminVideoRecommendationsFragment = adminGraphql(`
   fragment AdminVideoRecommendations on VideoRecommendationsBlock @_unmask {
     __typename

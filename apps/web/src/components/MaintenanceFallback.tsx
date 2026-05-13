@@ -1,16 +1,8 @@
 /**
- * Static maintenance fallback rendered when `FORGE_DISABLE_WATCH_ROUTES`
- * lists the current slug. Layer 1 of the cutover-runbook rollback story —
- * the fastest emergency rollback surface (seconds; no redeploy).
- *
- * Intentionally static: NO admin/Strapi fetch, NO dynamic data, NO client
- * interactivity. This component is the failsafe — every dependency it
- * pulls in is another way for the failsafe to fail. Mirrors the shape of
- * <ExperienceEmpty> / <ExperienceError> so layout regressions are
- * impossible.
- *
- * Plan reference: docs/plans/2026-05-11-003-feat-web-admin-direct-cutover-plan.md U9.
- * Runbook reference: docs/admin-core-migration/cutover-runbook.md "Layer 1".
+ * Static fallback for slugs listed in FORGE_DISABLE_WATCH_ROUTES. Fastest
+ * emergency rollback (seconds; no redeploy). MUST stay static — no fetch,
+ * no dynamic data, no client interactivity. Every dependency is another
+ * way the failsafe can fail.
  */
 export function MaintenanceFallback() {
   return (

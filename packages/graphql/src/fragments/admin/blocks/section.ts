@@ -13,15 +13,7 @@ import { adminTextFragment } from "./text"
 import { adminVideoFragment } from "./video"
 import { adminVideoCarouselFragment } from "./video-carousel"
 
-/**
- * SectionBlock — wrapper section with background + dynamic content.
- *
- * The 13-member SectionContentBlock union mirrors admin's Zod
- * `SectionContentBlockSchema` exactly. SectionBlock CANNOT nest
- * another SectionBlock (no recursion); ContainerBlock IS allowed as
- * content, and ContainerBlock can in turn carry its own content
- * recursion via AdminContainer.
- */
+/** SectionBlock cannot nest another SectionBlock; ContainerBlock IS allowed. */
 export const adminSectionFragment = adminGraphql(
   `
     fragment AdminSection on SectionBlock @_unmask {

@@ -1,30 +1,11 @@
-// Pothos types for Experience blocks — projects the Zod `BlockSchema`
-// discriminated unions in `src/domain/blocks.ts` onto GraphQL. The
-// `ExperienceLocale.blocks` field switches from a raw `JSON` scalar to a
-// typed `[ExperienceBlock!]!` list, with three discriminated unions covering
-// every block kind admin can store:
+// Pothos types projecting the Zod `BlockSchema` discriminated unions onto
+// GraphQL. Each block is a POJO from the JSON column (not a Prisma model),
+// so registered via `builder.objectRef<Block>`. Mutations still accept
+// `blocks` as `JSON` input — only QUERY OUTPUT is strongly typed.
 //
-//   - `ExperienceBlock`         (top-level, 17 members)
-//   - `SectionContentBlock`     (allowed inside `section.content`, 13 members)
-//   - `ContainerContentBlock`   (allowed inside `container.content`, 10 members)
-//
-// `resolveType` dispatches on the Zod discriminator `t` via `T_TO_TYPENAME`.
-// The underlying value is a POJO parsed from the JSON column on read — NOT a
-// Prisma model — so each block is registered via `builder.objectRef<Block>`
-// rather than `builder.prismaObject`. Mutations on admin
-// (`createExperience` / `updateExperienceLocale`) still accept `blocks` as
-// `JSON` input; only the QUERY OUTPUT shape changes. This input/output
-// asymmetry is intentional: editors send opaque JSON validated by Zod
-// at the service boundary, while readers consume a strongly-typed shape.
-//
-// Drift between Zod and Pothos is caught at test time by
-// `blocks.drift.test.ts`. Adding a new block kind requires four things:
-//   1. New Zod schema + `t` literal in `src/domain/blocks.ts`
-//   2. Append to the appropriate Zod scope union(s)
-//   3. Register the Pothos object type below + add `T_TO_TYPENAME` entry
-//   4. Append to the matching Pothos `builder.unionType` member list
-//
-// All four steps are enforced by the drift test — skip any and CI fails.
+// Adding a new block kind: update Zod schema + scope union(s) + the Pothos
+// type + T_TO_TYPENAME + matching union list. All four are enforced by
+// `blocks.drift.test.ts`.
 //
 // Pre-implementation Zod construct audit (recorded for future drift):
 //   - `.url()` (×25) → projects to `String` (no native URL scalar registered)
@@ -69,10 +50,7 @@ import type {
 import type { z } from "zod"
 import { builder } from "@/graphql/builder"
 
-// -----------------------------------------------------------------------------
-// Typed value helpers — each block POJO mirrors its Zod schema's output type.
-// Pothos `objectRef<T>` produces a builder ref whose resolvers receive `T`.
-// -----------------------------------------------------------------------------
+// Typed value helpers — each block POJO mirrors its Zod schema output.
 
 type AdventCountdownBlock = z.infer<typeof AdventCountdownBlockSchema>
 type BibleQuotesCarouselBlock = z.infer<typeof BibleQuotesCarouselBlockSchema>
@@ -101,11 +79,7 @@ type VideoCarouselItem = z.infer<typeof VideoCarouselItemSchema>
 type VideoHeroBlock = z.infer<typeof VideoHeroBlockSchema>
 type VideoRecommendationsBlock = z.infer<typeof VideoRecommendationsBlockSchema>
 
-/**
- * Resolver-time error thrown when a stored block carries an unknown `t`
- * discriminator (e.g., the JSON column drifted ahead of admin's code). Surfaces
- * as a GraphQL error rather than silently dropping the block.
- */
+/** Surfaces unknown stored `t` discriminators as GraphQL errors instead of silently dropping. */
 export class UnknownBlockKindError extends Error {
   readonly kind: string
   constructor(kind: string) {
@@ -117,9 +91,7 @@ export class UnknownBlockKindError extends Error {
   }
 }
 
-// -----------------------------------------------------------------------------
 // Shared enums
-// -----------------------------------------------------------------------------
 
 const TextHeadingLevelEnum = builder.enumType("TextHeadingLevel", {
   values: {
@@ -164,9 +136,7 @@ const MediaCollectionVariantEnum = builder.enumType("MediaCollectionVariant", {
   } as const,
 })
 
-// `mediaCollection.itemsSource` and `videoCarousel.itemsSource` share the same
-// enum surface in Zod; collapse to one GraphQL enum to avoid two near-identical
-// types.
+// Shared by both `mediaCollection` and `videoCarousel` — one GraphQL enum.
 const ItemsSourceEnum = builder.enumType("ItemsSource", {
   description:
     "Where a collection's items come from. Shared by MediaCollectionBlock.itemsSource and VideoCarouselBlock.itemsSource.",
@@ -207,9 +177,7 @@ const VideoHeroSubheadingSourceEnum = builder.enumType(
   },
 )
 
-// -----------------------------------------------------------------------------
-// Leaf (non-block) object types — embedded inside their parent block
-// -----------------------------------------------------------------------------
+// Leaf (non-block) object types embedded inside their parent block.
 
 const BibleQuoteItemRef = builder.objectRef<BibleQuoteItem>("BibleQuoteItem")
 BibleQuoteItemRef.implement({
@@ -322,11 +290,9 @@ ContainerSlotSpansRef.implement({
   }),
 })
 
-// -----------------------------------------------------------------------------
 // Block object types — one per Zod discriminated-union member.
-// Each `t` field re-exposes the Zod discriminator alongside GraphQL's
-// auto-injected `__typename` so consumers can dispatch on either.
-// -----------------------------------------------------------------------------
+// `t` re-exposes the Zod discriminator alongside `__typename` so consumers
+// can dispatch on either.
 
 const AdventCountdownBlockRef = builder.objectRef<AdventCountdownBlock>(
   "AdventCountdownBlock",
@@ -539,8 +505,7 @@ QuizButtonBlockRef.implement({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
     buttonText: t.exposeString("buttonText"),
-    // The Zod schema enforces a nextstep.is URL pattern via `.regex(...)` at
-    // write time; GraphQL has no pattern scalar, so the wire shape is String.
+    // Zod `.regex(...)` enforces nextstep.is URL at write time; GraphQL has no pattern scalar.
     iframeSrc: t.exposeString("iframeSrc"),
   }),
 })
@@ -749,9 +714,7 @@ ContainerBlockRef.implement({
       nullable: false,
       resolve: (row) => row.content,
     }),
-    // Legacy-tolerated nested-slot payloads. Zod stamps this `z.custom<never>`
-    // (i.e., "accept anything") so old drafts can be opened without throwing.
-    // Wire shape is opaque JSON — consumers should ignore.
+    // Legacy-tolerated nested-slot payloads; opaque JSON — consumers should ignore.
     slots: t.field({
       type: "JSON",
       nullable: true,
@@ -786,30 +749,12 @@ SectionBlockRef.implement({
   }),
 })
 
-// -----------------------------------------------------------------------------
-// Discriminator → typename lookup tables.
+// Discriminator → typename lookup. Bijective; drift-CI asserts round-trip.
 //
-// Each Zod `t` literal maps to exactly one Pothos type name. The mapping is
-// bijective: every typename also appears in `TYPENAME_TO_T`, and the
-// drift-CI test asserts the round-trip. Adding a new block kind requires a
-// new entry here (TypeScript catches missing keys via the index signature
-// at the consumer site; the drift test catches stale entries).
-// -----------------------------------------------------------------------------
-
-/**
- * Admin Zod `t` discriminator → Pothos GraphQL type name. Used by every
- * union's `resolveType` callback. Exported for drift-CI consumption.
- */
-/**
- * AC-04 (ce-code-review): the `satisfies` annotation against
- * `Record<Block["t"], string>` is the load-bearing compile-time check —
- * `Block["t"]` is the Zod-derived union of all valid discriminator
- * literals. Adding a new variant to admin's Zod `BlockSchema` without
- * adding a matching entry here now fails `tsc` directly, before
- * drift-CI runs. Pairs with the runtime three-way bijection assertion
- * in blocks.drift.test.ts (which catches typename-typo regressions
- * that satisfies cannot see — the typename values are strings).
- */
+// The `satisfies Record<Block["t"], string>` is the load-bearing compile-time
+// check — adding a Zod variant without an entry here fails tsc before drift-CI
+// runs. Drift test still catches typename-typo regressions that satisfies
+// cannot see (typename values are strings).
 export const T_TO_TYPENAME = {
   adventCountdown: "AdventCountdownBlock",
   bibleQuotesCarousel: "BibleQuotesCarouselBlock",
@@ -838,10 +783,7 @@ export const T_TO_TYPENAME = {
 export type BlockKind = keyof typeof T_TO_TYPENAME
 export type BlockTypename = (typeof T_TO_TYPENAME)[BlockKind]
 
-/**
- * Inverse table — Pothos typename → admin Zod `t`. Drift-CI asserts this is
- * a true inverse (bijection) of T_TO_TYPENAME.
- */
+/** Inverse of T_TO_TYPENAME; drift-CI asserts the bijection. */
 export const TYPENAME_TO_T: Readonly<Record<BlockTypename, BlockKind>> =
   Object.freeze(
     Object.fromEntries(
@@ -849,12 +791,6 @@ export const TYPENAME_TO_T: Readonly<Record<BlockTypename, BlockKind>> =
     ) as Record<BlockTypename, BlockKind>,
   )
 
-/**
- * Resolve a block POJO to its Pothos type name. Throws `UnknownBlockKindError`
- * when the value's `t` is not a known kind — surfaces as a GraphQL error
- * rather than silently dropping the block. Shared across all three unions
- * because the resolveType contract is the same.
- */
 function resolveBlockTypename(value: { t: string }): BlockTypename {
   const typename = (T_TO_TYPENAME as Record<string, BlockTypename | undefined>)[
     value.t
@@ -865,15 +801,8 @@ function resolveBlockTypename(value: { t: string }): BlockTypename {
   return typename
 }
 
-// -----------------------------------------------------------------------------
-// Unions
-// -----------------------------------------------------------------------------
-
-/**
- * Top-level discriminated union — what `ExperienceLocale.blocks` holds. 17
- * members (the 17 kinds present in `BlockSchema.options`). Excludes
- * `quizButton` (section-only) and `containerSlot` (container-only).
- */
+// Unions — 17 top-level members. Excludes `quizButton` (section-only) and
+// `containerSlot` (container-only).
 export const ExperienceBlock = builder.unionType("ExperienceBlock", {
   description:
     "Discriminated union of every block kind admin's editor can place at the top level of ExperienceLocale.blocks. Wire-discriminate via __typename or the explicit `t` field — both project from the Zod discriminator.",
@@ -899,11 +828,7 @@ export const ExperienceBlock = builder.unionType("ExperienceBlock", {
   resolveType: (value: Block) => resolveBlockTypename(value),
 })
 
-/**
- * Allowed inside `section.content`. 13 members — includes `container` and
- * `quizButton`, deliberately excludes `section` (cannot recurse) and
- * `videoHero` / top-level-only blocks.
- */
+/** 13 members allowed inside `section.content`. Excludes `section` (no recursion) and top-level-only blocks. */
 export const SectionContentBlock = builder.unionType("SectionContentBlock", {
   description:
     "Discriminated union of block kinds allowed inside section.content.",
@@ -925,10 +850,7 @@ export const SectionContentBlock = builder.unionType("SectionContentBlock", {
   resolveType: (value: SectionContentBlockValue) => resolveBlockTypename(value),
 })
 
-/**
- * Allowed inside `container.content`. 10 members — the narrowest scope. No
- * containers, no sections; includes the `containerSlot` divider marker.
- */
+/** 10 members allowed inside `container.content` (narrowest scope). Includes `containerSlot` divider. */
 export const ContainerContentBlock = builder.unionType(
   "ContainerContentBlock",
   {
