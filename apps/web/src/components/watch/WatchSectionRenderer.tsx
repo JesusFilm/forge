@@ -15,6 +15,7 @@ import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
 import { WatchBody } from "@/components/watch/WatchBody"
 import type { WatchModalCallbacks } from "@/components/watch/WatchPageClient"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
+import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 
 // Typo guard: literal-union typing fails the type check on misspellings.
 //
@@ -154,8 +155,19 @@ function SyntheticBlock({
   locale?: string
 }) {
   switch (block.kind) {
-    case "HeroPlayer":
-      return <HeroPlayer block={block} onPlayerReady={onPlayerReady} />
+    case "HeroPlayer": {
+      const playableLanguageCount = (block.video.variants ?? []).filter(
+        isPlayableLanguageVariant,
+      ).length
+      return (
+        <HeroPlayer
+          block={block}
+          onPlayerReady={onPlayerReady}
+          onLanguageClick={modalCallbacks?.openLanguage}
+          playableLanguageCount={playableLanguageCount}
+        />
+      )
+    }
     case "SiblingCarousel":
       return <SiblingCarousel block={block} />
 

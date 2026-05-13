@@ -12,6 +12,11 @@ import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 
+// ISR: pages cached for 60s. The cookie-driven language redirect lives in
+// apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
+// route preserves ISR for the ~majority of traffic without the preference
+// cookie. See docs/solutions/web/nextjs-headers-defeats-route-cache.md for
+// the rationale.
 export const revalidate = 60
 
 type PageProps = {
@@ -37,7 +42,14 @@ export default async function SlugLocalePage({ params }: PageProps) {
 
   // Video-by-slug first — bypasses resolveWatchPage's Watch Settings +
   // default template dependency, which isn't always present in dev.
-  const watchVideo = await resolveWatchVideoBySlug(slug, locale)
+  //
+  // Pass rawLocale (not the bcp47-normalised `locale`): the resolver picks
+  // the variant by either `variant.language.slug === locale` OR
+  // `variant.language.bcp47 === locale`, so slug-form URLs like /the-call/korean
+  // need to land in the resolver as "korean", not "en". Normalising here
+  // would silently fall back to the primary (English) variant for every
+  // non-bcp47-locale URL — exactly what the language switcher writes.
+  const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
   if (watchVideo) {
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
