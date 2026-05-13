@@ -230,6 +230,7 @@ export function HeroPlayer({
 
   const searchParams = useSearchParams()
   const tParam = searchParams?.get("t")
+  const autoplayParam = searchParams?.get("autoplay")
   const handleLoadedMetadata = useCallback(() => {
     const player = playerRef.current
     if (!player) return
@@ -241,6 +242,55 @@ export function HeroPlayer({
     player.currentTime =
       safeDuration > 0 ? Math.min(parsed, safeDuration) : parsed
   }, [tParam])
+
+  // One-shot autoplay-with-sound when the URL carries `?autoplay=1`.
+  // LanguagePickerModal appends this signal so the new page knows the
+  // navigation came from a deliberate user gesture (Apply click). The
+  // browser's autoplay-with-sound permission is granted via MEI on
+  // engaged sites, so the attempt usually succeeds for returning users;
+  // for new users the catch falls back to the existing muted-pill flow.
+  // The signal is stripped from the URL after the attempt so a page
+  // refresh (no gesture) doesn't re-trigger the unmuted play.
+  const autoplayAttemptedRef = useRef(false)
+  useEffect(() => {
+    if (!videoReady) return
+    if (!player) return
+    if (autoplayAttemptedRef.current) return
+    if (autoplayParam !== "1") return
+    if (chromeRevealed) return
+    autoplayAttemptedRef.current = true
+
+    player.muted = false
+    const result = player.play()
+
+    // Strip ?autoplay=1 from the URL. Use replaceState (not router.replace)
+    // to avoid triggering a Next.js navigation/re-render mid-playback.
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href)
+      url.searchParams.delete("autoplay")
+      window.history.replaceState(
+        null,
+        "",
+        url.pathname + url.search + url.hash,
+      )
+    }
+
+    if (result && typeof result.then === "function") {
+      result
+        .then(() => {
+          setChromeRevealed(true)
+          setAutoplayBlocked(false)
+        })
+        .catch(() => {
+          // Browser blocked unmuted play (no MEI grant). Re-mute and let
+          // the existing muted-preview + "Play with Sound" pill flow take
+          // over — the user can still commit playback manually.
+          player.muted = true
+        })
+    } else {
+      setChromeRevealed(true)
+    }
+  }, [player, videoReady, autoplayParam, chromeRevealed])
 
   // iOS user-activation gate: NO `await` between click and play(), or
   // play() will be rejected as not-from-user-gesture.

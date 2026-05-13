@@ -169,7 +169,9 @@ describe("LanguagePickerModal — globe overlay", () => {
     })
 
     expect(writePreferredLanguageSlugMock).toHaveBeenCalledWith("spanish")
-    expect(routerPushMock).toHaveBeenCalledWith("/the-call/spanish?t=42")
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/the-call/spanish?t=42&autoplay=1",
+    )
     const writeOrder =
       writePreferredLanguageSlugMock.mock.invocationCallOrder[0]!
     const pushOrder = routerPushMock.mock.invocationCallOrder[0]!
@@ -196,7 +198,9 @@ describe("LanguagePickerModal — globe overlay", () => {
       $('[data-testid="watch-language-picker-apply"]')?.click()
     })
 
-    expect(routerPushMock).toHaveBeenCalledWith("/the-call/spanish?t=0")
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/the-call/spanish?t=0&autoplay=1",
+    )
   })
 
   it("Close does not write the cookie and does not navigate", () => {

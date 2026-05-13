@@ -97,7 +97,11 @@ export function LanguagePickerModal({
     const rawT = playerRef.current?.currentTime
     const t = Number.isFinite(rawT) ? rawT : 0
     // basePath '/watch' auto-prepended at runtime — do NOT include here.
-    const href = `/${videoSlug}/${draftSlug}?t=${t}` as Route
+    // autoplay=1 signals to HeroPlayer that this navigation came from a
+    // deliberate user gesture, so it should attempt unmuted playback
+    // immediately. HeroPlayer strips the param after the attempt so a
+    // page refresh (no gesture) doesn't re-trigger autoplay.
+    const href = `/${videoSlug}/${draftSlug}?t=${t}&autoplay=1` as Route
     setNavigating(true)
     router.push(href)
     onClose()
