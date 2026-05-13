@@ -33,6 +33,42 @@ describe("isValidParityBearer", () => {
       valid: true,
       bucketKey: "parity-aaa",
     })
+    expect(isValidParityBearer("BEARER parity-aaa")).toEqual({
+      valid: true,
+      bucketKey: "parity-aaa",
+    })
+    expect(isValidParityBearer("BeArEr parity-aaa")).toEqual({
+      valid: true,
+      bucketKey: "parity-aaa",
+    })
+  })
+
+  // P2-14 — match consumer-bearer.test.ts coverage: multi-whitespace
+  // bearer prefix, whitespace-only key, empty-string env (vs undefined).
+  it("accepts multi-whitespace between Bearer and key", () => {
+    expect(isValidParityBearer("Bearer    parity-aaa")).toEqual({
+      valid: true,
+      bucketKey: "parity-aaa",
+    })
+    expect(isValidParityBearer("Bearer\tparity-aaa")).toEqual({
+      valid: true,
+      bucketKey: "parity-aaa",
+    })
+  })
+
+  it("rejects bearer with whitespace-only key after prefix", () => {
+    expect(isValidParityBearer("Bearer    ")).toEqual({
+      valid: false,
+      bucketKey: null,
+    })
+  })
+
+  it("rejects when PARITY_API_KEYS is the empty string (distinct from undefined)", () => {
+    envMutable.PARITY_API_KEYS = ""
+    expect(isValidParityBearer("Bearer parity-aaa")).toEqual({
+      valid: false,
+      bucketKey: null,
+    })
   })
 
   it("trims whitespace around allowlist entries when matching", () => {
@@ -112,8 +148,24 @@ describe("isValidParityBearer", () => {
   })
 
   it("does not throw on non-ASCII allowlist entries (Buffer.byteLength guard)", () => {
+    // P2-14 — strengthen vs. the consumer-bearer mirror. Without the
+    // Buffer.byteLength guard, a string-length-equal but UTF-8-byte-
+    // length-different presented/allowlist pair would reach
+    // timingSafeEqual and throw RangeError. AND the function must
+    // return {valid:false} (not crash AND not wrongly match).
     envMutable.PARITY_API_KEYS = "péy-aaa" // 7 code units, 8 bytes
     expect(() => isValidParityBearer("Bearer key-aaaa")).not.toThrow()
+    expect(isValidParityBearer("Bearer key-aaaa")).toEqual({
+      valid: false,
+      bucketKey: null,
+    })
+    // The string `key-aaa` is 7 ASCII bytes; the allowlist entry
+    // `péy-aaa` is 8 bytes. timingSafeEqual would reject if reached,
+    // but the byteLength guard should skip the comparison entirely.
+    expect(isValidParityBearer("Bearer key-aaa")).toEqual({
+      valid: false,
+      bucketKey: null,
+    })
   })
 
   it("uses timingSafeEqual from node:crypto", async () => {

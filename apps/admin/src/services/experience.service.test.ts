@@ -1006,5 +1006,47 @@ describe("ExperienceService", () => {
       const call = prisma.experienceLocale.findMany.mock.calls[0][0]
       expect(call.include).toEqual({ experience: true })
     })
+
+    // P2-5 — pagination defaults + ceiling. Defaults mirror `experiences`
+    // (limit=50, offset=0). Ceiling caps caller-supplied limit at 200 to
+    // bound the work an authenticated PARITY/VIEWER caller can drive in a
+    // single request.
+    it("applies pagination defaults (take: 50, skip: 0) when args omitted", async () => {
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      await service.listTemplateLocales({
+        locale: "en",
+        user: PARITY_BEARER_USER,
+        query: {},
+      })
+      const call = prisma.experienceLocale.findMany.mock.calls[0][0]
+      expect(call.take).toBe(50)
+      expect(call.skip).toBe(0)
+    })
+
+    it("honors caller-supplied limit + offset", async () => {
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      await service.listTemplateLocales({
+        locale: "en",
+        limit: 25,
+        offset: 100,
+        user: PARITY_BEARER_USER,
+        query: {},
+      })
+      const call = prisma.experienceLocale.findMany.mock.calls[0][0]
+      expect(call.take).toBe(25)
+      expect(call.skip).toBe(100)
+    })
+
+    it("clamps limit to 200 (max ceiling)", async () => {
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      await service.listTemplateLocales({
+        locale: "en",
+        limit: 10_000,
+        user: PARITY_BEARER_USER,
+        query: {},
+      })
+      const call = prisma.experienceLocale.findMany.mock.calls[0][0]
+      expect(call.take).toBe(200)
+    })
   })
 })

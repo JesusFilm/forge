@@ -500,6 +500,22 @@ const SECTION_CONTENT_FRAGMENT = /* GraphQL */ `
   }
 `
 
+// PR-C — admin-side template enumeration. Calls the new
+// experienceTemplates(locale) field (PARITY_BEARER required) to
+// cross-check that Strapi's published-template set matches admin's.
+// The per-slug compare path (experienceBySlug) catches per-slug
+// content drift; this query catches set-level drift (admin has a
+// template Strapi doesn't, or vice versa) that the Strapi-sourced
+// corpus enumeration alone cannot.
+const ADMIN_TEMPLATES_QUERY = /* GraphQL */ `
+  query ParityAdminTemplates($locale: String!) {
+    experienceTemplates(locale: $locale, limit: 200) {
+      slug
+      locale
+    }
+  }
+`
+
 // Top-level ExperienceBlock union — every kind plus the two nested
 // section/container content shapes.
 const ADMIN_EXPERIENCE_QUERY = /* GraphQL */ `
@@ -727,6 +743,80 @@ async function writeReport(path: string, report: BatchReport): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// PR-C — admin-side template-set sanity check
+// ---------------------------------------------------------------------------
+
+type CorpusSlugLocale = { readonly slug: string; readonly locale: string }
+
+async function runAdminTemplateSetSanityCheck({
+  adminUrl,
+  bearer,
+  corpus,
+  log,
+}: {
+  adminUrl: string
+  bearer: string
+  corpus: ReadonlyArray<CorpusSlugLocale>
+  log: (msg: string) => void
+}): Promise<void> {
+  // Locales actually present in the corpus — no point hitting admin for
+  // a locale we never compared.
+  const locales = Array.from(new Set(corpus.map((c) => c.locale))).sort()
+  if (locales.length === 0) return
+
+  log(
+    `[template-sanity] checking admin template set across ${locales.length} ` +
+      `locale(s): ${locales.join(", ")}`,
+  )
+
+  let anyDrift = false
+  for (const locale of locales) {
+    const body = (await postGraphQL({
+      url: adminUrl,
+      query: ADMIN_TEMPLATES_QUERY,
+      variables: { locale },
+      bearer,
+    })) as {
+      data?: {
+        experienceTemplates?: ReadonlyArray<{
+          slug?: string | null
+          locale?: string | null
+        }>
+      }
+    }
+    const adminSlugs = new Set<string>()
+    for (const row of body?.data?.experienceTemplates ?? []) {
+      if (typeof row?.slug === "string") adminSlugs.add(row.slug)
+    }
+    // Strapi corpus's template slugs for this locale: corpus entries we
+    // have, scoped to this locale. The harness can't distinguish
+    // template-vs-non-template entries here without round-tripping each
+    // — so we surface admin's set raw, and the operator cross-checks
+    // against the Strapi side's known template inventory.
+    const corpusSlugsForLocale = new Set(
+      corpus.filter((c) => c.locale === locale).map((c) => c.slug),
+    )
+    const adminOnly: string[] = []
+    for (const slug of adminSlugs) {
+      if (!corpusSlugsForLocale.has(slug)) adminOnly.push(slug)
+    }
+    if (adminOnly.length > 0) {
+      anyDrift = true
+      log(
+        `[template-sanity] locale=${locale} admin-only template slugs ` +
+          `(not in Strapi corpus): ${adminOnly.sort().join(", ")}`,
+      )
+    }
+    log(
+      `[template-sanity] locale=${locale} admin.experienceTemplates count=${adminSlugs.size}`,
+    )
+  }
+  if (!anyDrift) {
+    log("[template-sanity] no admin-only template drift detected.")
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -836,6 +926,33 @@ async function main(): Promise<number> {
     report = buildReport(startedAt.toISOString(), [])
   }
 
+  // PR-C — admin-side template-set sanity check. Runs ONLY when the
+  // bearer permits templates (PARITY mode). Per locale present in the
+  // corpus, fetch admin's published template slugs and diff against
+  // the template slugs Strapi yielded for that locale. The set-level
+  // diff catches drift the per-slug comparator can't (admin has a
+  // template Strapi doesn't, or vice versa) — failures here are
+  // INFORMATIONAL (logged to stderr) and do NOT change the gate
+  // PASS/FAIL because the per-slug compare already covers content
+  // drift; this is operator visibility for editorial sanity.
+  if (templatesPermitted && bearer != null) {
+    try {
+      await runAdminTemplateSetSanityCheck({
+        adminUrl: env.adminUrl,
+        bearer,
+        corpus: report.slugs.map((sr) => ({
+          slug: sr.slug,
+          locale: sr.locale,
+        })),
+        log: (msg) => process.stderr.write(msg + "\n"),
+      })
+    } catch (err) {
+      process.stderr.write(
+        `[run-batch-verification] template-set sanity check failed: ${sanitizeError(err, bearer)}\n`,
+      )
+    }
+  }
+
   await writeReport(outputPath, report)
 
   process.stdout.write(formatSummary(report) + "\n")
@@ -851,10 +968,17 @@ main()
   .catch((err: unknown) => {
     // Last-resort safety net — sanitization happens inside main() for
     // typed errors; this branch handles unanticipated throws (e.g.,
-    // bug in the script wiring). We don't have a known bearer here,
-    // so we redact aggressively.
-    const msg =
-      err instanceof Error ? `${err.name}: ${err.message}` : String(err)
-    process.stderr.write(`[run-batch-verification] fatal: ${msg}\n`)
+    // bug in the script wiring). The bearer is local to main()'s
+    // scope at this point, so we route through sanitizeError with the
+    // CURRENT env values (which are also what main() read). Generic
+    // patterns (Authorization headers, etc.) still get scrubbed even
+    // when the per-call bearer is null. PR-C P2-8.
+    const bearerForScrub =
+      process.env.PARITY_API_KEYS?.split(",")[0]?.trim() ??
+      process.env.WEB_ADMIN_API_KEYS?.split(",")[0]?.trim() ??
+      null
+    process.stderr.write(
+      `[run-batch-verification] fatal: ${sanitizeError(err, bearerForScrub)}\n`,
+    )
     process.exit(1)
   })

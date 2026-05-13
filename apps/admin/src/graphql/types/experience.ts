@@ -162,15 +162,20 @@ builder.queryFields((t) => ({
   // defense-in-depth stays intact for consumer SSR.
   experienceTemplates: t.prismaField({
     type: ["ExperienceLocale"],
+    nullable: false,
     authScopes: { hasPermission: "read:experience-templates" },
     description:
       "INTERNAL — pre-cutover parity verification only; will be removed at R8 cutover. Enumerate published template Experience locales for one locale. PARITY_BEARER (pre-cutover parity harness) or VIEWER+ (editorial staff). PUBLIC and CONSUMER_BEARER are blocked because R9 hides templates from consumer SSR identities.",
     args: {
       locale: t.arg.string({ required: true }),
+      limit: t.arg.int({ required: false, defaultValue: 50 }),
+      offset: t.arg.int({ required: false, defaultValue: 0 }),
     },
     resolve: (query, _root, args, ctx) =>
       ctx.services.experience.listTemplateLocales({
         locale: args.locale,
+        limit: args.limit ?? 50,
+        offset: args.offset ?? 0,
         user: ctx.user,
         query,
       }),

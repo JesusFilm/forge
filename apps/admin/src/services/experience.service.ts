@@ -239,10 +239,14 @@ export class ExperienceService {
    */
   async listTemplateLocales({
     locale,
+    limit,
+    offset,
     user,
     query,
   }: {
     locale: string
+    limit?: number
+    offset?: number
     user: Principal | null
     query: object
   }) {
@@ -257,6 +261,8 @@ export class ExperienceService {
         experience: { isTemplate: true, archivedAt: null },
       },
       orderBy: { slug: "asc" },
+      take: Math.min(limit ?? 50, 200),
+      skip: offset ?? 0,
     })
   }
 
