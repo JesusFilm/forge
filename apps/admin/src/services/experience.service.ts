@@ -205,7 +205,15 @@ export class ExperienceService {
     // EDITOR and ADMIN see all statuses including drafts.
     if (!isEditorOrAdmin(user)) {
       where.status = "PUBLISHED"
-      where.experience = { archivedAt: null }
+      const experienceFilter: Record<string, unknown> = { archivedAt: null }
+      // R9: hide template experiences from PUBLIC + CONSUMER_BEARER (web
+      // SSR's identity) so consumer's asNonTemplateExperience check stays
+      // sound at the server-side seam. VIEWER keeps current behavior —
+      // editorial-tier read-only access still surfaces templates.
+      if (user === null || user.role === "CONSUMER_BEARER") {
+        experienceFilter.isTemplate = false
+      }
+      where.experience = experienceFilter
     }
 
     return this.prisma.experienceLocale.findFirst({ ...query, where })

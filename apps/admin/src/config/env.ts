@@ -79,6 +79,20 @@ export const env = createEnv({
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BASE_URL: z.string().url().optional(),
     WORKFLOW_API_KEYS: z.string().min(1).optional(),
+    // Plan 003 — consumer-app bearer allowlist (apps/web SSR).
+    // CSV-parsed, matched against `Authorization: Bearer <key>` by
+    // `consumer-bearer.ts`. A matched key mints a CONSUMER_BEARER
+    // principal (permissions = empty set) whose sole effect is to
+    // bucket consumer SSR traffic as `consumer:<key>` in admin's
+    // rate-limit identifyFn — separate from anonymous-IP.
+    // `.optional()` because environments without web cutover (preview,
+    // local dev) don't need it. Required-without-default would brick
+    // those Railway deploys — see
+    // docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md.
+    // Distinct from `WORKFLOW_API_KEYS` so widening one set does not
+    // widen the other; the `WEB_ADMIN_API_KEYS !== WORKFLOW_API_KEYS`
+    // invariant is asserted at unit-test time.
+    WEB_ADMIN_API_KEYS: z.string().optional(),
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
     WORKFLOW_TARGET_WORLD: z
       .enum(["local", "@workflow/world-postgres"])
@@ -235,6 +249,7 @@ export const env = createEnv({
     OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
     OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
     WORKFLOW_API_KEYS: emptyToUndefined(process.env.WORKFLOW_API_KEYS),
+    WEB_ADMIN_API_KEYS: emptyToUndefined(process.env.WEB_ADMIN_API_KEYS),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
     WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
     WORKFLOW_POSTGRES_URL: emptyToUndefined(process.env.WORKFLOW_POSTGRES_URL),
