@@ -78,9 +78,20 @@ vi.mock("@forge/video-player", () => ({
   MuxPlayer: muxPlayerMock,
 }))
 
-vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(),
+// Configurable URLSearchParams stand-in so individual tests can drive the
+// useSearchParams hook to specific values (e.g. ?autoplay=1) without
+// shadowing the module-scope mock.
+const { mockSearchParams } = vi.hoisted(() => ({
+  mockSearchParams: { current: new URLSearchParams() },
 }))
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => mockSearchParams.current,
+}))
+
+function setSearchParams(query: string) {
+  mockSearchParams.current = new URLSearchParams(query)
+}
 
 import { HeroPlayer } from "@/components/watch/HeroPlayer"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
@@ -91,6 +102,7 @@ let root: Root
 beforeEach(() => {
   muxPlayerMock.mockClear()
   mockPlayerRef.current = null
+  mockSearchParams.current = new URLSearchParams()
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -1429,5 +1441,118 @@ describe("HeroPlayer — language switch button", () => {
       btn!.click()
     })
     expect(onLanguageClick).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("HeroPlayer — autoplay on ?autoplay=1", () => {
+  // The effect signals language-switch arrivals: fired by LanguagePickerModal
+  // Apply, consumed here as a one-shot unmuted play attempt. Each test sets
+  // the URL params before render, fires onCanPlay to satisfy videoReady,
+  // and waits a tick so the post-then setState commits.
+
+  async function nextTick() {
+    await act(async () => {
+      await Promise.resolve()
+    })
+  }
+
+  it("attempts unmuted play and reveals chrome when ?autoplay=1 is set and play resolves", async () => {
+    setSearchParams("autoplay=1")
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    await fireCanPlay()
+    // play() default mock returns Promise.resolve() — wait for the .then
+    // microtask so setChromeRevealed commits.
+    await nextTick()
+    await nextTick()
+
+    const player = mockPlayerRef.current!
+    expect(player.play).toHaveBeenCalled()
+    expect(player.muted).toBe(false)
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    expect(wrapper?.getAttribute("data-chrome-revealed")).toBe("true")
+  })
+
+  it("leaves the player muted when play() rejects (no MEI grant)", async () => {
+    setSearchParams("autoplay=1")
+    // Re-prime the player factory: install a play() that rejects on the
+    // FIRST call only (the autoplay attempt). Subsequent calls (e.g. the
+    // unmute pill click) resolve normally.
+    muxPlayerMock.mockImplementationOnce((props) => {
+      const { ref } = props
+      const player = {
+        muted: true,
+        currentTime: 0,
+        paused: false,
+        duration: 60,
+        volume: 1,
+        loop: true,
+        buffered: null,
+        play: vi.fn(() => Promise.reject(new Error("NotAllowedError"))),
+        pause: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }
+      mockPlayerRef.current = player as unknown as typeof mockPlayerRef.current
+      useImperativeHandle(ref as React.RefObject<unknown>, () => player)
+      return null
+    })
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    await fireCanPlay()
+    await nextTick()
+    await nextTick()
+
+    const player = mockPlayerRef.current!
+    expect(player.play).toHaveBeenCalled()
+    // muted stays true because we set muted=false only inside .then() so
+    // the rejection path leaves the player in the safe muted state.
+    expect(player.muted).toBe(true)
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    expect(wrapper?.getAttribute("data-chrome-revealed")).toBe("false")
+  })
+
+  it("is a no-op when ?autoplay=1 is absent (no play attempt, player stays muted)", async () => {
+    // mockSearchParams default = empty
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    await fireCanPlay()
+    await nextTick()
+
+    const player = mockPlayerRef.current!
+    expect(player.play).not.toHaveBeenCalled()
+    expect(player.muted).toBe(true)
+  })
+
+  it("strips ?autoplay=1 from the URL after the attempt (refresh-safe)", async () => {
+    setSearchParams("autoplay=1")
+    // Seed window.location.search so the effect's `new URL(...)` read
+    // sees the param to strip. jsdom keeps useSearchParams (mocked) and
+    // window.location independent, so we set both for the test.
+    window.history.replaceState(null, "", "/jesus/spanish?autoplay=1&t=42")
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState")
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    await fireCanPlay()
+    await nextTick()
+
+    // replaceState should be called with a URL that does NOT contain
+    // autoplay=1. Other params (e.g. ?t=42) survive — we only strip the
+    // one-shot autoplay signal.
+    expect(replaceStateSpy).toHaveBeenCalled()
+    const replacedUrl = replaceStateSpy.mock.calls[0]?.[2] as string
+    expect(replacedUrl).not.toContain("autoplay=1")
+    expect(replacedUrl).toContain("t=42")
+    replaceStateSpy.mockRestore()
+    // Reset jsdom URL state for subsequent tests.
+    window.history.replaceState(null, "", "/")
   })
 })
