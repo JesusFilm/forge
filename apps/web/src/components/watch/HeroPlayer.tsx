@@ -363,9 +363,37 @@ export function HeroPlayer({
   const loop = !chromeRevealed
   const muted = !chromeRevealed
 
+  // Hide the language-switch globe while the player is in fullscreen so it
+  // doesn't sit on top of the playing video chrome. Restores when the user
+  // exits fullscreen. Listen for both the standard event and the webkit
+  // prefix so Safari is covered.
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  useEffect(() => {
+    if (typeof document === "undefined") return
+    function updateFullscreen() {
+      const fsElement =
+        document.fullscreenElement ??
+        (
+          document as Document & {
+            webkitFullscreenElement?: Element | null
+          }
+        ).webkitFullscreenElement ??
+        null
+      setIsFullscreen(fsElement != null)
+    }
+    updateFullscreen()
+    document.addEventListener("fullscreenchange", updateFullscreen)
+    document.addEventListener("webkitfullscreenchange", updateFullscreen)
+    return () => {
+      document.removeEventListener("fullscreenchange", updateFullscreen)
+      document.removeEventListener("webkitfullscreenchange", updateFullscreen)
+    }
+  }, [])
+
   const showLanguageSwitch =
     typeof onLanguageClick === "function" &&
-    (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
+    (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH &&
+    !isFullscreen
 
   return (
     <>
