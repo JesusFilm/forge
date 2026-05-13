@@ -2,11 +2,13 @@ import { ApolloClient, HttpLink, InMemoryCache } from "@apollo/client"
 import { env } from "@/env"
 
 // =============================================================================
-// U5 (feat-104) — admin GraphQL Apollo client
+// U5 (feat-104) / U6 (plan-003 PR-B) — admin GraphQL Apollo client
 //
 // Server-only. Mirrors apps/web/src/lib/client.ts byte-for-byte except:
-// (a) URL from env.ADMIN_GRAPHQL_URL, (b) anonymous (admin's PUBLIC scope
-// is anonymous — no Bearer), (c) shorter 3 s timeout (origin R12).
+// (a) URL from env.ADMIN_GRAPHQL_URL, (b) Authorization: Bearer header
+// derived from env.WEB_ADMIN_API_KEYS (first CSV entry) so admin can
+// bucket SSR traffic as `consumer:<key>` rather than `public:<egress-ip>`,
+// and (c) shorter 3 s timeout (origin R12).
 //
 // IMPORTANT: AbortSignal.timeout(REQUEST_TIMEOUT_MS) is constructed inside
 // the timeoutFetch closure (per-call), NOT at module scope. Module-scope
@@ -15,11 +17,29 @@ import { env } from "@/env"
 // would land on an already-aborted signal. The verbatim safe pattern is
 // `apps/web/src/lib/client.ts:20-21`.
 //
+// Bearer scrubbing (U6 / R11): the bearer is injected via a custom fetch
+// override. Apollo Client v4's network-error surface (`networkError.cause`)
+// can include the original Request — its headers are normally NOT echoed
+// in stringified error output, but defense-in-depth: this module never
+// logs the bearer itself, and the override constructs a fresh Headers
+// instance per call so any caller-supplied Authorization (none today) is
+// replaced rather than merged. Tests force a 500 + assert no log payload
+// contains the bearer string.
+//
 // Retire alongside the rest of U5's scaffolding. See:
 //   apps/web/src/lib/content-api-mode.ts (deletion checklist)
 // =============================================================================
 
 const ADMIN_REQUEST_TIMEOUT_MS = 3_000
+
+// Module-scope: env.WEB_ADMIN_API_KEYS is server-only and does not change
+// across the process lifetime. Reading it once at HttpLink construction
+// avoids per-request env-proxy hits and makes the no-bearer code path
+// (env unset) unambiguously a deploy-time choice — not a race.
+const ADMIN_BEARER: string | undefined =
+  typeof window === "undefined"
+    ? env.WEB_ADMIN_API_KEYS?.split(",")[0]?.trim() || undefined
+    : undefined
 
 const timeoutFetch: typeof fetch = (input, init) => {
   const timeoutSignal = AbortSignal.timeout(ADMIN_REQUEST_TIMEOUT_MS)
@@ -32,7 +52,15 @@ const timeoutFetch: typeof fetch = (input, init) => {
     init?.signal && typeof AbortSignal.any === "function"
       ? AbortSignal.any([init.signal, timeoutSignal])
       : timeoutSignal
-  return fetch(input, { ...init, signal })
+
+  // Build a fresh Headers instance so we control exactly what's sent.
+  // Apollo passes its own content-type/accept headers via init.headers —
+  // copy them, then set Authorization if the bearer is configured.
+  const headers = new Headers(init?.headers)
+  if (ADMIN_BEARER) {
+    headers.set("Authorization", `Bearer ${ADMIN_BEARER}`)
+  }
+  return fetch(input, { ...init, signal, headers })
 }
 
 // `env.ADMIN_GRAPHQL_URL` is server-only AND optional (so default

@@ -1,14 +1,16 @@
-import { adminGraphql } from "@forge/graphql"
+import { adminGraphql, adminWatchExperienceFragment } from "@forge/graphql"
 
 // =============================================================================
 // U5 (feat-104) — admin experienceBySlug operation
 //
 // Built via the adminGraphql() factory (NOT graphql() — that targets
-// Strapi's schema). Selection set covers every field on ExperienceLocale
-// the parity bridge needs: id / slug / locale / title / metaDescription /
-// ogImageUrl / ogTitle / ogDescription / pathSegment / blocks (JSON
-// scalar — block-shape validation happens downstream in normalizeAdmin
-// via @forge/admin/domain/blocks BlocksSchema).
+// Strapi's schema). Selection set composes the shared
+// `adminWatchExperienceFragment` exported from `@forge/graphql` so the
+// admin schema's typed [ExperienceBlock!]! union is unpacked correctly
+// after PR-A's blocks-as-typed-union change. Post-PR-A, selecting
+// `blocks` as an opaque scalar (the U5 launch shape) no longer
+// typechecks — every block kind needs an inline `... on <Block>`
+// spread, supplied by the shared root fragment.
 //
 // Note: admin's schema field is `metaDescription`, not `description`.
 // The parity bridge remaps to `description` before invoking
@@ -18,19 +20,13 @@ import { adminGraphql } from "@forge/graphql"
 //   apps/web/src/lib/content-api-mode.ts (deletion checklist)
 // =============================================================================
 
-export const adminExperienceBySlugOperation = adminGraphql(`
-  query GetAdminExperienceBySlug($locale: String!, $slug: String!) {
-    experienceBySlug(locale: $locale, slug: $slug) {
-      id
-      slug
-      locale
-      title
-      metaDescription
-      ogImageUrl
-      ogTitle
-      ogDescription
-      pathSegment
-      blocks
+export const adminExperienceBySlugOperation = adminGraphql(
+  `
+    query GetAdminExperienceBySlug($locale: String!, $slug: String!) {
+      experienceBySlug(locale: $locale, slug: $slug) {
+        ...AdminWatchExperience
+      }
     }
-  }
-`)
+  `,
+  [adminWatchExperienceFragment],
+)

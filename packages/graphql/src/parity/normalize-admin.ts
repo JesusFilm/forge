@@ -23,7 +23,7 @@
  * because admin exposes it as the generic JSON scalar.
  */
 
-import { BlocksSchema } from "@forge/admin/domain/blocks"
+import { BlocksSchema, type Block } from "@forge/admin/domain/blocks"
 import type { ZodIssue } from "zod"
 
 import { canonicalizeUrl } from "./canonicalize-url"
@@ -57,11 +57,23 @@ export type AdminExperienceLocaleInput = {
   readonly description: string | null | undefined
   readonly ogImageUrl: string | null | undefined
   /**
-   * Admin exposes blocks as the generic `JSON` scalar — typed as
-   * `unknown` here. The normalizer parses via `BlocksSchema` to
-   * recover the discriminated union.
+   * Post PR-A, admin's `ExperienceLocale.blocks` field is the typed
+   * `[ExperienceBlock!]!` union — the GraphQL surface returns a real
+   * discriminated array, not a `JSON` scalar. The lifecycle of this
+   * field is now:
+   *
+   *   1. wire transport: typed by gql.tada via admin's regenerated SDL
+   *   2. normalizer input: `readonly Block[]` (admin's Zod-derived
+   *      domain type)
+   *   3. defensive `BlocksSchema.safeParse(...)` below — belt-and-
+   *      suspenders against runtime drift (rejected blocks, hand-
+   *      edited DB rows, future schema add-without-migration cases).
+   *
+   * The defensive parse is intentionally kept — narrowing the input
+   * type doesn't make the parse unreachable, because parity tests
+   * exercise this branch with adversarial fixtures.
    */
-  readonly blocks: unknown
+  readonly blocks: ReadonlyArray<Block>
 }
 
 export type NormalizeAdminOptions = {
@@ -125,10 +137,12 @@ export function normalizeAdmin(
     )
   }
 
-  // Parse the opaque JSON `blocks` payload via admin's authoritative Zod
-  // schema. Validation failures throw with structured issue context so
-  // the harness reports them as a typed surface, not opaque structural
-  // diff entries.
+  // Defense-in-depth: admin's GraphQL surface returns typed
+  // `[ExperienceBlock!]!` post-PR-A, so `input.blocks` is now Block[]
+  // by construction. The safeParse below remains intentionally — the
+  // parity harness exercises adversarial fixtures (hand-crafted
+  // payloads with drifted `t` literals, extra keys, etc.) that the
+  // wire-type alone can't catch.
   const rawBlocks = input.blocks ?? []
   const parsed = BlocksSchema.safeParse(rawBlocks)
   if (!parsed.success) {

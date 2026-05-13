@@ -259,12 +259,16 @@ describe("Experience type", () => {
 })
 
 describe("ExperienceLocale type", () => {
-  it("exposes blocks as JSON and status as enum", () => {
+  it("exposes blocks as a typed ExperienceBlock list and status as enum", () => {
     const fields = fieldsOf("ExperienceLocale") as Record<
       string,
       { type: { toString(): string } }
     >
-    expect(fields.blocks.type.toString()).toMatch(/JSON/)
+    // The blocks field switched from JSON scalar to a non-null list of the
+    // typed `ExperienceBlock` union (U3 of the admin direct-cutover plan).
+    // Mutations still accept JSON input — see mutations/experience.ts.
+    expect(fields.blocks.type.toString()).toMatch(/ExperienceBlock/)
+    expect(fields.blocks.type.toString()).not.toMatch(/JSON/)
     expect(fields.status.type.toString()).toMatch(/LocaleStatus/)
   })
 

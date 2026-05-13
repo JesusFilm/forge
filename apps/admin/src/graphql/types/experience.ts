@@ -2,8 +2,10 @@
 // Embedding column is intentionally excluded (R20). Per Unit 4 of
 // docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
+import type { Block } from "@/domain/blocks"
 import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
+import { ExperienceBlock } from "@/graphql/types/blocks"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
 
 // PUBLIC field-strip triplet (consumer-migration U2 — 2026-05-11). The
@@ -39,10 +41,16 @@ builder.prismaObject("ExperienceLocale", {
     ogDescription: t.exposeString("ogDescription", { nullable: true }),
     ogImageUrl: t.exposeString("ogImageUrl", { nullable: true }),
     blocks: t.field({
-      type: "JSON",
+      // `t.field` (NOT `t.prismaField`) because the underlying value is a JSON
+      // column projected to a typed union, not a Prisma model relation. The
+      // Zod `BlockSchema` is the write-time contract; the union here is the
+      // read-time contract that mirrors it. Drift between the two is caught
+      // by `src/graphql/types/blocks.drift.test.ts`.
+      type: [ExperienceBlock],
+      nullable: false,
       description:
-        "Array of Experience blocks. Shape enforced at write time by `src/domain/blocks.ts`.",
-      resolve: (row) => row.blocks,
+        "Array of Experience blocks. Shape mirrors `src/domain/blocks.ts` BlockSchema (Zod). Mutations still accept opaque JSON; only the query output is typed.",
+      resolve: (row) => row.blocks as Block[],
     }),
     status: t.expose("status", { type: LocaleStatusEnum }),
     publishedAt: t.string({
@@ -141,6 +149,33 @@ builder.queryFields((t) => ({
       ctx.services.experience.getBySlug({
         locale: args.locale,
         slug: args.slug,
+        user: ctx.user,
+        query,
+      }),
+  }),
+  // PR-C of the consumer-migration — template enumeration for the
+  // pre-cutover batch-verification harness. Gated by
+  // `read:experience-templates`. PARITY_BEARER gets the permission via
+  // explicit allowlist; VIEWER+ gets it via the editorial tier ladder
+  // (templates are editorial artifacts staff translators/reviewers
+  // legitimately need). PUBLIC and CONSUMER_BEARER are blocked so R9's
+  // defense-in-depth stays intact for consumer SSR.
+  experienceTemplates: t.prismaField({
+    type: ["ExperienceLocale"],
+    nullable: false,
+    authScopes: { hasPermission: "read:experience-templates" },
+    description:
+      "INTERNAL — pre-cutover parity verification only; will be removed at R8 cutover. Enumerate published template Experience locales for one locale. PARITY_BEARER (pre-cutover parity harness) or VIEWER+ (editorial staff). PUBLIC and CONSUMER_BEARER are blocked because R9 hides templates from consumer SSR identities.",
+    args: {
+      locale: t.arg.string({ required: true }),
+      limit: t.arg.int({ required: false, defaultValue: 50 }),
+      offset: t.arg.int({ required: false, defaultValue: 0 }),
+    },
+    resolve: (query, _root, args, ctx) =>
+      ctx.services.experience.listTemplateLocales({
+        locale: args.locale,
+        limit: args.limit ?? 50,
+        offset: args.offset ?? 0,
         user: ctx.user,
         query,
       }),

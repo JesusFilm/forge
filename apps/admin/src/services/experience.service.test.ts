@@ -12,6 +12,7 @@ function mockPrisma() {
   const experienceLocale = {
     create: vi.fn(),
     findFirst: vi.fn(),
+    findMany: vi.fn(),
     findUniqueOrThrow: vi.fn(),
     update: vi.fn(),
   }
@@ -43,6 +44,16 @@ const EDITOR_BOB: Principal = { id: "bob", role: "EDITOR" }
 const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
 const SYSTEM: Principal = { id: null, role: "SYSTEM" }
 const PUBLIC_USER: Principal | null = null
+const CONSUMER_BEARER_USER: Principal = {
+  id: null,
+  role: "CONSUMER_BEARER",
+  rateLimitBucketKey: "test-bucket",
+}
+const PARITY_BEARER_USER: Principal = {
+  id: null,
+  role: "PARITY_BEARER",
+  rateLimitBucketKey: "test-bucket",
+}
 
 describe("ExperienceService", () => {
   let prisma: ReturnType<typeof mockPrisma>
@@ -753,10 +764,14 @@ describe("ExperienceService", () => {
       })
 
       const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
-      expect(call.where.experience).toEqual({ archivedAt: null })
+      // R9: PUBLIC gets archivedAt + isTemplate filters together.
+      expect(call.where.experience).toEqual({
+        archivedAt: null,
+        isTemplate: false,
+      })
     })
 
-    it("VIEWER sees published only", async () => {
+    it("VIEWER sees published only — templates remain visible", async () => {
       prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
 
       await service.getBySlug({
@@ -768,7 +783,270 @@ describe("ExperienceService", () => {
 
       const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
       expect(call.where).toHaveProperty("status", "PUBLISHED")
+      // R9 is narrowly scoped: VIEWER (editorial-tier read-only) keeps
+      // template visibility; only PUBLIC + CONSUMER_BEARER lose it.
       expect(call.where.experience).toEqual({ archivedAt: null })
+      expect(call.where.experience).not.toHaveProperty("isTemplate")
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // getBySlug — R9 template-filter (PUBLIC + CONSUMER_BEARER)
+  // ---------------------------------------------------------------------------
+
+  describe("getBySlug — R9 template filter", () => {
+    it("PUBLIC where clause includes isTemplate: false", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: PUBLIC_USER,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where.experience).toMatchObject({ isTemplate: false })
+    })
+
+    it("CONSUMER_BEARER where clause includes isTemplate: false", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: CONSUMER_BEARER_USER,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where).toHaveProperty("status", "PUBLISHED")
+      expect(call.where.experience).toMatchObject({
+        archivedAt: null,
+        isTemplate: false,
+      })
+    })
+
+    it("VIEWER where clause does NOT include isTemplate (templates still visible)", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: VIEWER,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where.experience).not.toHaveProperty("isTemplate")
+    })
+
+    it("EDITOR where clause does NOT include isTemplate (no consumer-tier filters apply)", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: EDITOR_ALICE,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where).not.toHaveProperty("status")
+      expect(call.where).not.toHaveProperty("experience")
+    })
+
+    it("ADMIN where clause does NOT include isTemplate", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: ADMIN,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where).not.toHaveProperty("status")
+      expect(call.where).not.toHaveProperty("experience")
+    })
+
+    // PR-C R9 carve-out — PARITY_BEARER bypasses the isTemplate hide so
+    // the pre-cutover harness can fetch full template content by slug
+    // for Strapi↔admin record comparison. Same auth posture as other
+    // non-editorial roles (PUBLISHED + non-archived) but template
+    // filter is dropped.
+    it("PARITY_BEARER where clause does NOT include isTemplate (R9 carve-out)", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: PARITY_BEARER_USER,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      // PUBLISHED + non-archived still apply (non-editorial role).
+      expect(call.where).toHaveProperty("status", "PUBLISHED")
+      expect(call.where.experience).toMatchObject({ archivedAt: null })
+      // But isTemplate filter is dropped — PARITY can see templates.
+      expect(call.where.experience).not.toHaveProperty("isTemplate")
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // PR-C — listTemplateLocales (experienceTemplates Pothos field)
+  //
+  // ABAC gate: `read:experience-templates` permission key. Granted to
+  // PARITY_BEARER via explicit allowlist, and to VIEWER+ via the tier
+  // ladder. PUBLIC and CONSUMER_BEARER are blocked.
+  // ---------------------------------------------------------------------------
+
+  describe("listTemplateLocales", () => {
+    it("throws ForbiddenError for PUBLIC (no permission)", async () => {
+      await expect(
+        service.listTemplateLocales({
+          locale: "en",
+          user: PUBLIC_USER,
+          query: {},
+        }),
+      ).rejects.toThrow(/Forbidden|forbidden/i)
+      expect(prisma.experienceLocale.findMany).not.toHaveBeenCalled()
+    })
+
+    it("throws ForbiddenError for CONSUMER_BEARER (R9 — empty permission set)", async () => {
+      await expect(
+        service.listTemplateLocales({
+          locale: "en",
+          user: CONSUMER_BEARER_USER,
+          query: {},
+        }),
+      ).rejects.toThrow(/Forbidden|forbidden/i)
+      expect(prisma.experienceLocale.findMany).not.toHaveBeenCalled()
+    })
+
+    it("returns rows for PARITY_BEARER (explicit allowlist grant)", async () => {
+      const rows = [
+        { id: "loc-1", slug: "single-video", locale: "en" },
+        { id: "loc-2", slug: "two-column", locale: "en" },
+      ]
+      prisma.experienceLocale.findMany.mockResolvedValueOnce(rows)
+
+      const result = await service.listTemplateLocales({
+        locale: "en",
+        user: PARITY_BEARER_USER,
+        query: {},
+      })
+
+      expect(result).toEqual(rows)
+      expect(prisma.experienceLocale.findMany).toHaveBeenCalledTimes(1)
+    })
+
+    it("returns rows for VIEWER (tier ladder grant)", async () => {
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      await service.listTemplateLocales({
+        locale: "en",
+        user: VIEWER,
+        query: {},
+      })
+      expect(prisma.experienceLocale.findMany).toHaveBeenCalledTimes(1)
+    })
+
+    it("returns rows for EDITOR + ADMIN (tier ladder)", async () => {
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      await service.listTemplateLocales({
+        locale: "en",
+        user: EDITOR_ALICE,
+        query: {},
+      })
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      await service.listTemplateLocales({
+        locale: "en",
+        user: ADMIN,
+        query: {},
+      })
+      expect(prisma.experienceLocale.findMany).toHaveBeenCalledTimes(2)
+    })
+
+    it("where clause filters on (locale, status=PUBLISHED, isTemplate=true, archivedAt=null)", async () => {
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      await service.listTemplateLocales({
+        locale: "es",
+        user: PARITY_BEARER_USER,
+        query: {},
+      })
+      const call = prisma.experienceLocale.findMany.mock.calls[0][0]
+      expect(call.where).toMatchObject({
+        locale: "es",
+        status: "PUBLISHED",
+        experience: { isTemplate: true, archivedAt: null },
+      })
+    })
+
+    it("orderBy is { slug: 'asc' } (stable enumeration for parity comparison)", async () => {
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      await service.listTemplateLocales({
+        locale: "en",
+        user: PARITY_BEARER_USER,
+        query: {},
+      })
+      const call = prisma.experienceLocale.findMany.mock.calls[0][0]
+      expect(call.orderBy).toEqual({ slug: "asc" })
+    })
+
+    it("threads the Pothos `query` selection through to findMany", async () => {
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      const pothosQuery = { include: { experience: true } }
+      await service.listTemplateLocales({
+        locale: "en",
+        user: PARITY_BEARER_USER,
+        query: pothosQuery,
+      })
+      const call = prisma.experienceLocale.findMany.mock.calls[0][0]
+      expect(call.include).toEqual({ experience: true })
+    })
+
+    // P2-5 — pagination defaults + ceiling. Defaults mirror `experiences`
+    // (limit=50, offset=0). Ceiling caps caller-supplied limit at 200 to
+    // bound the work an authenticated PARITY/VIEWER caller can drive in a
+    // single request.
+    it("applies pagination defaults (take: 50, skip: 0) when args omitted", async () => {
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      await service.listTemplateLocales({
+        locale: "en",
+        user: PARITY_BEARER_USER,
+        query: {},
+      })
+      const call = prisma.experienceLocale.findMany.mock.calls[0][0]
+      expect(call.take).toBe(50)
+      expect(call.skip).toBe(0)
+    })
+
+    it("honors caller-supplied limit + offset", async () => {
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      await service.listTemplateLocales({
+        locale: "en",
+        limit: 25,
+        offset: 100,
+        user: PARITY_BEARER_USER,
+        query: {},
+      })
+      const call = prisma.experienceLocale.findMany.mock.calls[0][0]
+      expect(call.take).toBe(25)
+      expect(call.skip).toBe(100)
+    })
+
+    it("clamps limit to 200 (max ceiling)", async () => {
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      await service.listTemplateLocales({
+        locale: "en",
+        limit: 10_000,
+        user: PARITY_BEARER_USER,
+        query: {},
+      })
+      const call = prisma.experienceLocale.findMany.mock.calls[0][0]
+      expect(call.take).toBe(200)
     })
   })
 })
