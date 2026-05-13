@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import type { MuxPlayerRef } from "@forge/video-player"
 
+import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { ChromeButton, formatTime } from "./ChromeButton"
 import {
   ChromeMutedIcon,
@@ -50,7 +51,11 @@ export function HeroPlayerControls({
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [bufferedPct, setBufferedPct] = useState(0)
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  // Shared with HeroPlayer via the useIsFullscreen hook — same source of
+  // truth prevents the dual-listener desync that could leave the portal
+  // target pointing at overlayAnchor while HeroPlayer thinks we're in
+  // fullscreen.
+  const isFullscreen = useIsFullscreen()
   const [controlsVisible, setControlsVisible] = useState(true)
   const [hoveringControls, setHoveringControls] = useState(false)
   const [volumeOpen, setVolumeOpen] = useState(false)
@@ -189,21 +194,8 @@ export function HeroPlayerControls({
     }
   }, [player])
 
-  useEffect(() => {
-    const handleFsChange = () => {
-      const fsEl =
-        document.fullscreenElement ??
-        (document as Document & { webkitFullscreenElement?: Element | null })
-          .webkitFullscreenElement
-      setIsFullscreen(!!fsEl)
-    }
-    document.addEventListener("fullscreenchange", handleFsChange)
-    document.addEventListener("webkitfullscreenchange", handleFsChange)
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFsChange)
-      document.removeEventListener("webkitfullscreenchange", handleFsChange)
-    }
-  }, [])
+  // Fullscreen state now comes from useIsFullscreen() above — no
+  // component-local listener needed.
 
   // When playing/hovering state changes, reschedule (or cancel) the hide
   // timer. The mousemove listener also calls scheduleHide on every move,

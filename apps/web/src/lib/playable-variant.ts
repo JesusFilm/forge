@@ -1,10 +1,11 @@
 // A "playable" language variant is a published variant with an HLS stream
-// URL and a non-null language slug. Three call sites in the watch tree need
-// this exact predicate:
+// URL and a non-null language slug. Call sites in the watch tree share
+// this predicate:
 //   - WatchSectionRenderer.tsx (computes playableLanguageCount for the hero)
 //   - LanguagePickerModal.tsx (builds the combobox options)
-//   - language-preference-server.ts shouldRedirectForPreference (decides
-//     whether to redirect to the user's preferred language)
+//   - language-preference-server.ts shouldRedirectForPreference (helper
+//     retained for variant-aware callers; not currently wired into the
+//     production path — see that file's header note).
 // Keeping the rule in one place prevents subtle drift (one site forgetting
 // the null-narrow or the slug check) that would let the globe button appear
 // for a video whose modal has zero options, or vice versa.

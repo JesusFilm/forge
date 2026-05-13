@@ -16,6 +16,7 @@ import { Globe } from "lucide-react"
 
 import { env } from "@/env"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
+import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { getViewerId } from "@/lib/viewer-id"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { HeroPlayerControls } from "./HeroPlayerControls"
@@ -257,14 +258,14 @@ export function HeroPlayer({
     if (!player) return
     if (autoplayAttemptedRef.current) return
     if (autoplayParam !== "1") return
-    if (chromeRevealed) return
     autoplayAttemptedRef.current = true
 
-    player.muted = false
-    const result = player.play()
-
-    // Strip ?autoplay=1 from the URL. Use replaceState (not router.replace)
-    // to avoid triggering a Next.js navigation/re-render mid-playback.
+    // Strip ?autoplay=1 from the URL up front. Use replaceState (not
+    // router.replace) to avoid triggering a Next.js navigation/re-render
+    // mid-playback. Stripping before play() settles is intentional: this
+    // is a one-shot signal — no retry on rejection, so leaving the param
+    // in place would only enable a refresh-induced re-trigger (refresh
+    // has no user gesture; the play attempt would be blocked anyway).
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href)
       url.searchParams.delete("autoplay")
@@ -275,22 +276,32 @@ export function HeroPlayer({
       )
     }
 
+    const result = player.play()
     if (result && typeof result.then === "function") {
       result
         .then(() => {
+          // Only commit unmute AFTER play() resolves so the player can't
+          // sit unmuted-but-paused (silent surprise) on a Mux Player shim
+          // that returns a resolved promise without actually playing.
+          player.muted = false
           setChromeRevealed(true)
           setAutoplayBlocked(false)
         })
         .catch(() => {
-          // Browser blocked unmuted play (no MEI grant). Re-mute and let
-          // the existing muted-preview + "Play with Sound" pill flow take
-          // over — the user can still commit playback manually.
-          player.muted = true
+          // Browser blocked unmuted play (no MEI grant). Player is still
+          // muted (we never set it false), so the existing muted-preview
+          // + "Play with Sound" pill flow takes over — the user can still
+          // commit playback manually.
         })
     } else {
+      // Synchronous return (legacy mux-player shim); assume success.
+      player.muted = false
       setChromeRevealed(true)
     }
-  }, [player, videoReady, autoplayParam, chromeRevealed])
+    // Intentionally omits chromeRevealed and setChromeRevealed: the ref
+    // guard above is the idempotency lock; chromeRevealed in deps would
+    // re-run the effect after a successful attempt commits.
+  }, [player, videoReady, autoplayParam])
 
   // iOS user-activation gate: NO `await` between click and play(), or
   // play() will be rejected as not-from-user-gesture.
@@ -358,6 +369,10 @@ export function HeroPlayer({
   if (prevVariantKey !== variant.documentId) {
     setPrevVariantKey(variant.documentId)
     setVideoReady(false)
+    // Variant-scope the autoplay one-shot — without this, a same-component
+    // re-render with a new variant id (e.g. soft variant swap) would carry
+    // the previous true and skip the new variant's autoplay attempt.
+    autoplayAttemptedRef.current = false
   }
 
   const loop = !chromeRevealed
@@ -367,33 +382,20 @@ export function HeroPlayer({
   // doesn't sit on top of the playing video chrome. Restores when the user
   // exits fullscreen. Listen for both the standard event and the webkit
   // prefix so Safari is covered.
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  useEffect(() => {
-    if (typeof document === "undefined") return
-    function updateFullscreen() {
-      const fsElement =
-        document.fullscreenElement ??
-        (
-          document as Document & {
-            webkitFullscreenElement?: Element | null
-          }
-        ).webkitFullscreenElement ??
-        null
-      setIsFullscreen(fsElement != null)
-    }
-    updateFullscreen()
-    document.addEventListener("fullscreenchange", updateFullscreen)
-    document.addEventListener("webkitfullscreenchange", updateFullscreen)
-    return () => {
-      document.removeEventListener("fullscreenchange", updateFullscreen)
-      document.removeEventListener("webkitfullscreenchange", updateFullscreen)
-    }
-  }, [])
+  // Shared hook — same source of truth as HeroPlayerControls, prevents the
+  // dual-listener desync where the late-mounted controls could miss the
+  // initial fullscreenchange event.
+  const isFullscreen = useIsFullscreen()
 
-  const showLanguageSwitch =
+  // Both globe surfaces (top-right floating + in-chrome) share this gate:
+  // a wired callback AND enough variants to warrant a switcher. The
+  // top-right surface adds `!isFullscreen` because it overlaps the
+  // browser's fullscreen chrome; the in-chrome surface intentionally
+  // stays visible in fullscreen so the user can still reach the picker.
+  const hasLanguageSwitcher =
     typeof onLanguageClick === "function" &&
-    (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH &&
-    !isFullscreen
+    (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
+  const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
 
   return (
     <>
@@ -455,14 +457,9 @@ export function HeroPlayer({
             wrapperRef={wrapperRef}
             overlayAnchor={overlayAnchor}
             onLanguageClick={onLanguageClick}
-            // Both globe surfaces share the >= 2 playable variants gate, but
-            // the in-chrome one stays visible in fullscreen (the top-right
-            // one is hidden via isFullscreen in HeroPlayer) so users still
-            // have a path to the picker without exiting fullscreen.
-            showLanguageButton={
-              typeof onLanguageClick === "function" &&
-              (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
-            }
+            // In-chrome globe intentionally stays visible in fullscreen
+            // (the top-right one is hidden by isFullscreen).
+            showLanguageButton={hasLanguageSwitcher}
           />
         ) : (
           <div

@@ -97,4 +97,71 @@ describe("proxy — non-watch routes are unaffected by the cookie", () => {
     // /jesus is not a watch route shape (only 1 segment); cookie ignored.
     expect(response.status).not.toBe(307)
   })
+
+  it("does not redirect demo-search 3-segment paths even with a cookie", () => {
+    // /demo-search/[slug]/[locale] is 3-segment after basePath strip; the
+    // 2-segment watch-route check naturally excludes it.
+    const request = makeRequest("/demo-search/foo/english", {
+      cookies: { forge_watch_lang: "spanish" },
+    })
+    const response = proxy(request)
+    expect(response.status).not.toBe(307)
+  })
+})
+
+describe("proxy — slug-form watch URLs", () => {
+  it("recognises /jesus/english as a watch route (no Accept-Language append)", () => {
+    // Pre-fix this fell through to the Accept-Language redirect and got
+    // /es appended, producing /jesus/english/es 404s.
+    const request = makeRequest("/jesus/english", { acceptLanguage: "es" })
+    const response = proxy(request)
+    expect(response.status).not.toBe(307)
+  })
+
+  it("redirects slug-form to cookie preference (no /es double-append)", () => {
+    const request = makeRequest("/jesus/english", {
+      cookies: { forge_watch_lang: "spanish" },
+      acceptLanguage: "es",
+    })
+    const response = proxy(request)
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toContain("/jesus/spanish")
+    // Must NOT have a third segment appended by the Accept-Language branch
+    expect(response.headers.get("location")).not.toMatch(
+      /\/jesus\/spanish\/es($|\?|#)/,
+    )
+  })
+})
+
+describe("proxy — query string handling on language redirect", () => {
+  it("strips ?autoplay=1 on cross-variant redirect (originating-gesture only)", () => {
+    const request = makeRequest("/jesus/english?autoplay=1", {
+      cookies: { forge_watch_lang: "spanish" },
+    })
+    const response = proxy(request)
+    expect(response.status).toBe(307)
+    const location = response.headers.get("location") ?? ""
+    expect(location).toContain("/jesus/spanish")
+    expect(location).not.toContain("autoplay=1")
+  })
+
+  it("strips ?t=120 on cross-variant redirect (timestamp ties to source variant)", () => {
+    const request = makeRequest("/jesus/english?t=120", {
+      cookies: { forge_watch_lang: "spanish" },
+    })
+    const response = proxy(request)
+    expect(response.status).toBe(307)
+    const location = response.headers.get("location") ?? ""
+    expect(location).toContain("/jesus/spanish")
+    expect(location).not.toMatch(/[?&]t=120/)
+  })
+
+  it("preserves unrelated query params on cross-variant redirect", () => {
+    const request = makeRequest("/jesus/english?source=share", {
+      cookies: { forge_watch_lang: "spanish" },
+    })
+    const response = proxy(request)
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toContain("source=share")
+  })
 })

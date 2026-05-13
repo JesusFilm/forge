@@ -35,6 +35,13 @@ export type LanguagePickerModalProps = {
   onClose: () => void
 }
 
+// Safety cap on the in-flight navigation guard. router.push is fire-and-
+// forget; if the navigation never lands (offline, abort, cookie-driven
+// proxy redirect to a slug that doesn't match draftSlug), the modal-local
+// guard would otherwise stay set and disable Apply for the rest of the
+// session. After this timeout the guard releases so the user can retry.
+const NAVIGATING_TIMEOUT_MS = 5000
+
 export function LanguagePickerModal({
   open,
   variants,
@@ -61,36 +68,57 @@ export function LanguagePickerModal({
 
   const [draftSlug, setDraftSlug] = useState(currentLanguageSlug)
 
-  // Reset the draft only on the open false→true transition. Reading
-  // `currentLanguageSlug` from a ref keeps it out of the effect's deps so
-  // the in-progress selection isn't silently discarded if the parent
-  // re-renders with a new value while the modal is already open.
-  const currentLanguageSlugRef = useRef(currentLanguageSlug)
+  // Reset the draft on the open false→true transition. Read the latest
+  // `currentLanguageSlug` from a render-time ref so we see it directly
+  // even when the parent batches a prop change + open=true in the same
+  // commit (a useEffect-mirrored ref would read stale here).
+  const currentLanguageSlugLatestRef = useRef(currentLanguageSlug)
+  currentLanguageSlugLatestRef.current = currentLanguageSlug
   useEffect(() => {
-    currentLanguageSlugRef.current = currentLanguageSlug
-  }, [currentLanguageSlug])
-  useEffect(() => {
-    if (open) setDraftSlug(currentLanguageSlugRef.current)
+    if (open) {
+      setDraftSlug(currentLanguageSlugLatestRef.current)
+      navigatingRef.current = false
+      setNavigating(false)
+    }
   }, [open])
 
   const isDirty = draftSlug !== currentLanguageSlug
 
-  // Track in-flight navigation so a rapid second Apply (double-click,
-  // accessibility tooling, etc.) doesn't dispatch a second router.push.
-  // router.push is fire-and-forget; without this guard the URL + cookie can
-  // both change twice before the first navigation commits.
+  // Synchronous double-click guard. `navigating` state alone is async
+  // (useState commit is post-render), so two clicks within the same
+  // microtask both see `navigating === false` and dispatch two router.push
+  // calls. The ref is the truth for the gate; the state mirrors it for
+  // the disabled-button visual.
+  const navigatingRef = useRef(false)
   const [navigating, setNavigating] = useState(false)
+  // Safety timeout: when the navigation lands and a re-render swings
+  // currentLanguageSlug to draftSlug, clear the guard. If that never
+  // happens (e.g. cookie-driven proxy redirect lands on a different slug,
+  // or router.push silently fails), the timeout below releases the guard.
   useEffect(() => {
-    // Page navigation lands when currentLanguageSlug catches up to draftSlug.
     if (navigating && currentLanguageSlug === draftSlug) {
+      navigatingRef.current = false
       setNavigating(false)
     }
   }, [navigating, currentLanguageSlug, draftSlug])
+  useEffect(() => {
+    if (!navigating) return
+    const timer = window.setTimeout(() => {
+      navigatingRef.current = false
+      setNavigating(false)
+    }, NAVIGATING_TIMEOUT_MS)
+    return () => window.clearTimeout(timer)
+  }, [navigating])
 
   const handleApply = useCallback(() => {
     if (!isDirty) return
-    if (navigating) return
+    if (navigatingRef.current) return
     if (!videoSlug) return
+    // Flip the ref synchronously so a same-microtask double-click bails
+    // on the second invocation. State update follows for the disabled
+    // attribute on the button (visual feedback).
+    navigatingRef.current = true
+    setNavigating(true)
     // Write cookie BEFORE router.push — order asserted by tests and required
     // so middleware sees the cookie on the next request.
     writePreferredLanguageSlug(draftSlug)
@@ -102,10 +130,9 @@ export function LanguagePickerModal({
     // immediately. HeroPlayer strips the param after the attempt so a
     // page refresh (no gesture) doesn't re-trigger autoplay.
     const href = `/${videoSlug}/${draftSlug}?t=${t}&autoplay=1` as Route
-    setNavigating(true)
     router.push(href)
     onClose()
-  }, [draftSlug, isDirty, navigating, onClose, playerRef, router, videoSlug])
+  }, [draftSlug, isDirty, onClose, playerRef, router, videoSlug])
 
   function handleOpenChange(next: boolean) {
     if (!next) onClose()

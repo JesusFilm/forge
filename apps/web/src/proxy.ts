@@ -3,14 +3,28 @@ import type { NextRequest } from "next/server"
 import { LANGUAGE_PREFERENCE_COOKIE } from "@/lib/language-preference-constants"
 import { DEFAULT_LOCALE, isLocale, parseAcceptLanguage } from "@/lib/locale"
 
-// Matched after Next.js strips `basePath: '/watch'`, so a real
-// request for `/watch/foo/en` is matched here as `/foo/en`.
-// Locale guard mirrors page.tsx's `isLocale(rawLocale)` precondition.
+// Slug shape that the watch picker writes — kebab-case ASCII or bcp47
+// codes. Used by both isWatchRoute (to recognise slug-form watch URLs
+// like /jesus/english) and the cookie-driven redirect (to validate the
+// cookie value is a safe URL segment — defends against open-redirect /
+// path traversal via tampered cookies).
+const PREFERRED_LANG_SLUG = /^[a-z0-9-]+$/
+
+// Matched after Next.js strips `basePath: '/watch'`, so a real request
+// for `/watch/foo/en` is matched here as `/foo/en`. Recognises both
+// bcp47 codes ('en', 'es') and slug-form language identifiers
+// ('english', 'spanish', 'arabic-modern-standard') — the watch picker
+// navigates with slug-form, so the proxy must treat both as valid watch
+// shapes to:
+//   (1) apply CSP headers consistently, and
+//   (2) skip the Accept-Language redirect for slug-form URLs (which
+//       would otherwise produce 3-segment 404s like /jesus/english/es).
 function isWatchRoute(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean)
   if (segments.length !== 2) return false
   const last = segments[1]
-  return last != null && isLocale(last)
+  if (last == null) return false
+  return isLocale(last) || PREFERRED_LANG_SLUG.test(last)
 }
 
 function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
@@ -19,11 +33,13 @@ function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
   return response
 }
 
-// Slug shape that the watch picker writes — kebab-case ASCII or bcp47
-// codes. Used by the cookie-driven redirect to validate the cookie value
-// is a safe URL segment before redirecting (defends against open-redirect
-// or path traversal via tampered cookies).
-const PREFERRED_LANG_SLUG = /^[a-z0-9-]+$/
+// Query params that are deliberate one-shot signals tied to the originating
+// request and must NOT be replayed onto the redirected target slug. `?t=<n>`
+// is the seek timestamp; valid for the variant the user asked for, not for
+// the cookie-preferred one we redirect to. `?autoplay=1` is the gesture-came-
+// from-Apply signal; replaying it for receivers of shared links would
+// attempt unmuted autoplay without their gesture.
+const ONE_SHOT_QUERY_PARAMS = ["autoplay", "t"] as const
 
 // Cookie-driven language preference redirect. Reading the cookie here in
 // middleware — instead of in the page Server Component — keeps the page
@@ -44,6 +60,9 @@ function maybeRedirectToPreferredLanguage(
   request: NextRequest,
   pathname: string,
 ): NextResponse | null {
+  // Only fire for watch routes. Otherwise /demo-search/<slug>/<locale> and
+  // similar 2-segment paths would receive an unintended cookie redirect.
+  if (!isWatchRoute(pathname)) return null
   const rawCookie = request.cookies.get(LANGUAGE_PREFERENCE_COOKIE)?.value
   if (!rawCookie) return null
   let preferredSlug: string
@@ -55,33 +74,34 @@ function maybeRedirectToPreferredLanguage(
   }
   if (!preferredSlug) return null
   if (!PREFERRED_LANG_SLUG.test(preferredSlug)) return null
-  // Watch routes are exactly two segments: /<videoSlug>/<localeOrLangSlug>.
-  // Accept-Language redirect (below) only fires on non-watch paths, so
-  // matching by segment count is enough here.
   const segments = pathname.split("/").filter(Boolean)
-  if (segments.length !== 2) return null
   const [slug, currentLocale] = segments
   if (!slug || !currentLocale) return null
   if (preferredSlug === currentLocale) return null
   const url = request.nextUrl.clone()
   // basePath '/watch' is auto-prepended; pathname here is post-strip.
   url.pathname = `/${slug}/${preferredSlug}`
+  // Drop one-shot signals tied to the originating slug. See
+  // ONE_SHOT_QUERY_PARAMS for the rationale.
+  for (const param of ONE_SHOT_QUERY_PARAMS) {
+    url.searchParams.delete(param)
+  }
   return NextResponse.redirect(url, 307)
 }
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Language-preference redirect runs first so it fires for both bcp47-
-  // form URLs (/jesus/en) and slug-form URLs (/jesus/english). isWatchRoute
-  // below is narrower than the real watch surface (it only recognises
-  // bcp47 codes), so checking the cookie outside that branch ensures slug-
-  // form URLs are covered too.
+  // Language-preference redirect runs first. It is now scoped to watch
+  // routes inside `maybeRedirectToPreferredLanguage`, so non-watch
+  // 2-segment paths (e.g. /demo-search/<slug>/<locale>) are unaffected.
   const preferenceRedirect = maybeRedirectToPreferredLanguage(request, pathname)
   if (preferenceRedirect) return preferenceRedirect
 
-  // Check watch shape so the response carries CSP headers and is not
-  // re-routed by the locale-redirect block below.
+  // Apply CSP/Referrer headers for watch routes — both bcp47-form and
+  // slug-form (isWatchRoute now recognises both, so slug-form watch URLs
+  // also receive the security headers, and they are exempted from the
+  // Accept-Language redirect block below).
   if (isWatchRoute(pathname)) {
     return applyWatchSecurityHeaders(NextResponse.next())
   }
