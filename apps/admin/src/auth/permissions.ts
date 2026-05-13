@@ -147,6 +147,11 @@ function meetsTier(role: Role, min: MinTier): boolean {
   // WORKFLOW_TRIGGER is gated by `WORKFLOW_TRIGGER_PERMISSIONS` in
   // `hasPermission` directly; it never satisfies tier-based checks.
   if (role === "WORKFLOW_TRIGGER") return false
+  // CONSUMER_BEARER is gated by `CONSUMER_BEARER_PERMISSIONS` (empty set)
+  // in `hasPermission` via early-return; it never satisfies tier-based
+  // checks. The bearer's sole purpose is rate-limit bucketing, not
+  // permission granting.
+  if (role === "CONSUMER_BEARER") return false
   return editorialRank(role) >= editorialRank(min)
 }
 
@@ -186,6 +191,26 @@ const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
 ])
 
 /**
+ * Permission keys the request-bound `CONSUMER_BEARER` principal is
+ * allowed to satisfy. **Intentionally empty.** The bearer's sole
+ * purpose is to bucket consumer SSR traffic in admin's rate-limit
+ * identifyFn — it grants NO permissions beyond PUBLIC. Adding any
+ * permission to this set is CI-asserted to fail across two surfaces:
+ *
+ *   1. `permissions.test.ts` enumerates every `PermissionKey` and
+ *      asserts `hasPermission(CONSUMER_BEARER_PRINCIPAL("any"), key)
+ *      === false`.
+ *   2. The same test asserts `CONSUMER_BEARER` is NOT a member of
+ *      `WORKFLOW_TRIGGER_PERMISSIONS`-style sets and that
+ *      `WEB_ADMIN_API_KEYS !== WORKFLOW_API_KEYS`.
+ *
+ * If a future plan needs the bearer to satisfy a real permission, that
+ * is a brand-new role, not a widening of this one. The empty-set
+ * invariant is the load-bearing security boundary.
+ */
+const CONSUMER_BEARER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set()
+
+/**
  * Resolve a permission key to a boolean for the given principal.
  * Tier-only — does not consider entity ownership or state.
  *
@@ -205,6 +230,15 @@ export function hasPermission(
   // ADMIN-only mutation.
   if (role === "WORKFLOW_TRIGGER") {
     return WORKFLOW_TRIGGER_PERMISSIONS.has(key)
+  }
+  // CONSUMER_BEARER's permission set is intentionally empty; this
+  // early-return makes the contract explicit at the call site so a
+  // reader doesn't have to derive "no permission keys granted" from
+  // `meetsTier`'s tier-only ladder. Adding a key to
+  // CONSUMER_BEARER_PERMISSIONS is a CI-fail surface — see the
+  // assertions in `permissions.test.ts`.
+  if (role === "CONSUMER_BEARER") {
+    return CONSUMER_BEARER_PERMISSIONS.has(key)
   }
   const min = permissionMatrix[key]
   return meetsTier(role, min)

@@ -43,6 +43,11 @@ const EDITOR_BOB: Principal = { id: "bob", role: "EDITOR" }
 const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
 const SYSTEM: Principal = { id: null, role: "SYSTEM" }
 const PUBLIC_USER: Principal | null = null
+const CONSUMER_BEARER_USER: Principal = {
+  id: null,
+  role: "CONSUMER_BEARER",
+  rateLimitBucketKey: "test-bucket",
+}
 
 describe("ExperienceService", () => {
   let prisma: ReturnType<typeof mockPrisma>
@@ -753,10 +758,14 @@ describe("ExperienceService", () => {
       })
 
       const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
-      expect(call.where.experience).toEqual({ archivedAt: null })
+      // R9: PUBLIC gets archivedAt + isTemplate filters together.
+      expect(call.where.experience).toEqual({
+        archivedAt: null,
+        isTemplate: false,
+      })
     })
 
-    it("VIEWER sees published only", async () => {
+    it("VIEWER sees published only — templates remain visible", async () => {
       prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
 
       await service.getBySlug({
@@ -768,7 +777,92 @@ describe("ExperienceService", () => {
 
       const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
       expect(call.where).toHaveProperty("status", "PUBLISHED")
+      // R9 is narrowly scoped: VIEWER (editorial-tier read-only) keeps
+      // template visibility; only PUBLIC + CONSUMER_BEARER lose it.
       expect(call.where.experience).toEqual({ archivedAt: null })
+      expect(call.where.experience).not.toHaveProperty("isTemplate")
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // getBySlug — R9 template-filter (PUBLIC + CONSUMER_BEARER)
+  // ---------------------------------------------------------------------------
+
+  describe("getBySlug — R9 template filter", () => {
+    it("PUBLIC where clause includes isTemplate: false", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: PUBLIC_USER,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where.experience).toMatchObject({ isTemplate: false })
+    })
+
+    it("CONSUMER_BEARER where clause includes isTemplate: false", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: CONSUMER_BEARER_USER,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where).toHaveProperty("status", "PUBLISHED")
+      expect(call.where.experience).toMatchObject({
+        archivedAt: null,
+        isTemplate: false,
+      })
+    })
+
+    it("VIEWER where clause does NOT include isTemplate (templates still visible)", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: VIEWER,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where.experience).not.toHaveProperty("isTemplate")
+    })
+
+    it("EDITOR where clause does NOT include isTemplate (no consumer-tier filters apply)", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: EDITOR_ALICE,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where).not.toHaveProperty("status")
+      expect(call.where).not.toHaveProperty("experience")
+    })
+
+    it("ADMIN where clause does NOT include isTemplate", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: ADMIN,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where).not.toHaveProperty("status")
+      expect(call.where).not.toHaveProperty("experience")
     })
   })
 })
