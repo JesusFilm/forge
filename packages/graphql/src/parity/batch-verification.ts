@@ -413,27 +413,50 @@ export async function compareSlug(
   deps: RunSlugDeps,
 ): Promise<SlugReport> {
   // Parallel Strapi+admin halves the per-slug wall-clock vs sequential.
-  const tStrapiStart = Date.now()
-  const tAdminStart = tStrapiStart
-  const [strapiSettled, adminSettled] = await Promise.allSettled([
-    deps.fetchers.fetchStrapi(entry.slug, entry.locale),
-    deps.fetchers.fetchAdmin(entry.slug, entry.locale),
-  ])
-  const tStrapiEnd = Date.now()
-  const tAdminEnd = tStrapiEnd
+  // Timings captured INSIDE each promise (not at the join boundary) so the
+  // report distinguishes per-side latency. Joining-only timings give
+  // strapi === admin === max(both) and hide which side regressed.
+  type StrapiOutcome =
+    | { kind: "ok"; value: StrapiExperienceInput; durationMs: number }
+    | { kind: "err"; error: unknown; durationMs: number }
+  type AdminOutcome =
+    | { kind: "ok"; value: AdminExperienceLocaleInput; durationMs: number }
+    | { kind: "err"; error: unknown; durationMs: number }
+
+  const strapiP: Promise<StrapiOutcome> = (async () => {
+    const start = Date.now()
+    try {
+      const value = await deps.fetchers.fetchStrapi(entry.slug, entry.locale)
+      return { kind: "ok", value, durationMs: Date.now() - start }
+    } catch (error) {
+      return { kind: "err", error, durationMs: Date.now() - start }
+    }
+  })()
+  const adminP: Promise<AdminOutcome> = (async () => {
+    const start = Date.now()
+    try {
+      const value = await deps.fetchers.fetchAdmin(entry.slug, entry.locale)
+      return { kind: "ok", value, durationMs: Date.now() - start }
+    } catch (error) {
+      return { kind: "err", error, durationMs: Date.now() - start }
+    }
+  })()
+  const [strapiResult, adminResult] = await Promise.all([strapiP, adminP])
 
   const strapiInput: StrapiExperienceInput | null =
-    strapiSettled.status === "fulfilled" ? strapiSettled.value : null
+    strapiResult.kind === "ok" ? strapiResult.value : null
   const strapiErr: string | null =
-    strapiSettled.status === "rejected"
-      ? sanitizeError(strapiSettled.reason, deps.bearer)
+    strapiResult.kind === "err"
+      ? sanitizeError(strapiResult.error, deps.bearer)
       : null
   const adminInput: AdminExperienceLocaleInput | null =
-    adminSettled.status === "fulfilled" ? adminSettled.value : null
+    adminResult.kind === "ok" ? adminResult.value : null
   const adminErr: string | null =
-    adminSettled.status === "rejected"
-      ? sanitizeError(adminSettled.reason, deps.bearer)
+    adminResult.kind === "err"
+      ? sanitizeError(adminResult.error, deps.bearer)
       : null
+  const strapiDurationMs = strapiResult.durationMs
+  const adminDurationMs = adminResult.durationMs
 
   // Both failed — record "both" so the operator sees the join-failure case.
   if (strapiErr && adminErr) {
@@ -442,23 +465,23 @@ export async function compareSlug(
       "both",
       `strapi: ${strapiErr} | admin: ${adminErr}`,
       {
-        strapi: tStrapiEnd - tStrapiStart,
-        admin: tAdminEnd - tAdminStart,
+        strapi: strapiDurationMs,
+        admin: adminDurationMs,
         compare: 0,
       },
     )
   }
   if (strapiErr) {
     return errorReport(entry, "strapi", strapiErr, {
-      strapi: tStrapiEnd - tStrapiStart,
-      admin: tAdminEnd - tAdminStart,
+      strapi: strapiDurationMs,
+      admin: adminDurationMs,
       compare: 0,
     })
   }
   if (adminErr) {
     return errorReport(entry, "admin", adminErr, {
-      strapi: tStrapiEnd - tStrapiStart,
-      admin: tAdminEnd - tAdminStart,
+      strapi: strapiDurationMs,
+      admin: adminDurationMs,
       compare: 0,
     })
   }
@@ -482,8 +505,8 @@ export async function compareSlug(
   } catch (err) {
     const tCompareEnd = Date.now()
     return errorReport(entry, "compare", sanitizeError(err, deps.bearer), {
-      strapi: tStrapiEnd - tStrapiStart,
-      admin: tAdminEnd - tAdminStart,
+      strapi: strapiDurationMs,
+      admin: adminDurationMs,
       compare: tCompareEnd - tCompareStart,
     })
   }
@@ -498,8 +521,8 @@ export async function compareSlug(
     semantic: channelSummary(diff.semantic.map((d) => d.path)),
     allowListed: channelSummary(diff.meta.appliedAllowList.map((d) => d.path)),
     timingMs: {
-      strapi: tStrapiEnd - tStrapiStart,
-      admin: tAdminEnd - tAdminStart,
+      strapi: strapiDurationMs,
+      admin: adminDurationMs,
       compare: tCompareEnd - tCompareStart,
     },
   }

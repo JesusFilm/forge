@@ -99,16 +99,476 @@ const STRAPI_EXPERIENCE_QUERY = /* GraphQL */ `
   }
 `
 
+// Per-kind block selections — every field admin's Pothos type exposes.
+// Required because normalize-admin runs BlocksSchema.safeParse(), which
+// rejects unknown fields AND missing required fields. Using the per-kind
+// renderer fragments would NOT work: they alias names to Strapi vocab
+// (e.g., `mediaDescription: description`) for the renderer's prop shape,
+// which Zod would reject. Native admin field names only.
+const BLOCK_LEAF_FRAGMENTS = /* GraphQL */ `
+  fragment LeafAdventCountdown on AdventCountdownBlock {
+    __typename
+    t
+    sectionKey
+    backgroundColor
+    imageUrl
+    imageAssetId
+    locale
+    title
+    scripture
+    scriptureReference
+  }
+  fragment LeafBibleQuotesCarousel on BibleQuotesCarouselBlock {
+    __typename
+    t
+    sectionKey
+    backgroundColor
+    imageUrl
+    imageAssetId
+    heading
+    quotes {
+      reference
+      text
+      backgroundImageUrl
+      backgroundImageAssetId
+      ctaEnabled
+      ctaLabel
+      ctaLink
+      attribution
+      imageUrl
+      imageAssetId
+      backgroundColor
+    }
+  }
+  fragment LeafCard on CardBlock {
+    __typename
+    t
+    sectionKey
+    backgroundColor
+    title
+    description
+    mediaUrl
+    mediaAssetId
+    link
+    variant
+  }
+  fragment LeafContainerSlot on ContainerSlotBlock {
+    __typename
+    t
+    backgroundColor
+    backgroundImageUrl
+    backgroundImageAssetId
+    gridSpan
+    spans {
+      xs
+      sm
+      md
+      lg
+      xl
+    }
+  }
+  fragment LeafCta on CtaBlock {
+    __typename
+    t
+    sectionKey
+    backgroundColor
+    imageUrl
+    imageAssetId
+    heading
+    body
+    buttonLabel
+    buttonLink
+    variant
+  }
+  fragment LeafEasterDates on EasterDatesBlock {
+    __typename
+    t
+    sectionKey
+    backgroundColor
+    imageUrl
+    imageAssetId
+    locale
+    easterDatesTitle
+    orthodoxEasterEnabled
+    orthodoxEasterLabel
+    passoverEnabled
+    passoverLabel
+    westernEasterEnabled
+    westernEasterLabel
+  }
+  fragment LeafInfoBlocks on InfoBlocksBlock {
+    __typename
+    t
+    sectionKey
+    backgroundColor
+    imageUrl
+    imageAssetId
+    heading
+    intro
+    description
+    widthPercent
+    blocks {
+      title
+      body
+      icon
+    }
+  }
+  fragment LeafMediaCollection on MediaCollectionBlock {
+    __typename
+    t
+    sectionKey
+    backgroundColor
+    imageUrl
+    imageAssetId
+    categoryLabel
+    variant
+    itemsSource
+    title
+    subtitle
+    description
+    ctaLink
+    ctaLabel
+    showItemNumbers
+    footerText
+    items {
+      videoId
+      imageOverrideUrl
+      imageOverrideAssetId
+      titleOverride
+      subtitleOverride
+      labelOverride
+      collectionSize
+      imageUrl
+      imageAssetId
+      linkToSectionKey
+    }
+  }
+  fragment LeafNavigationCarousel on NavigationCarouselBlock {
+    __typename
+    t
+    sectionKey
+    backgroundColor
+    imageUrl
+    imageAssetId
+    items {
+      title
+      category
+      contentId
+      imageUrl
+      imageAssetId
+      backgroundColor
+    }
+  }
+  fragment LeafPromoBanner on PromoBannerBlock {
+    __typename
+    t
+    sectionKey
+    backgroundColor
+    imageUrl
+    imageAssetId
+    heading
+    intro
+    description
+    ctaEnabled
+    ctaLabel
+    ctaLink
+    widthPercent
+  }
+  fragment LeafQuizButton on QuizButtonBlock {
+    __typename
+    t
+    sectionKey
+    buttonText
+    iframeSrc
+  }
+  fragment LeafRelatedQuestions on RelatedQuestionsBlock {
+    __typename
+    t
+    sectionKey
+    backgroundColor
+    imageUrl
+    imageAssetId
+    heading
+    ctaEnabled
+    ctaLabel
+    ctaLink
+    questions {
+      question
+      answer
+    }
+  }
+  fragment LeafText on TextBlock {
+    __typename
+    t
+    sectionKey
+    backgroundColor
+    imageUrl
+    imageAssetId
+    heading
+    headingLevel
+    subtitle
+    variant
+    contentParagraphs
+  }
+  fragment LeafVideo on VideoBlock {
+    __typename
+    t
+    sectionKey
+    title
+    titleSource
+    subtitle
+    subtitleSource
+    mediaUrl
+    mediaAssetId
+    streamingUrl
+    videoId
+    useRouteVideo
+    autoplay
+    loop
+    muted
+    showControls
+    clipStartSeconds
+    clipEndSeconds
+  }
+  fragment LeafVideoCarousel on VideoCarouselBlock {
+    __typename
+    t
+    sectionKey
+    backgroundColor
+    imageUrl
+    imageAssetId
+    itemsSource
+    title
+    subtitle
+    description
+    items {
+      videoId
+      imageUrl
+      imageAssetId
+      imageOverrideUrl
+      imageOverrideAssetId
+      streamingUrl
+      backgroundColor
+    }
+  }
+  fragment LeafVideoHero on VideoHeroBlock {
+    __typename
+    t
+    sectionKey
+    heading
+    headingSource
+    subheading
+    subheadingSource
+    ctaEnabled
+    ctaLabel
+    ctaLink
+    streamingUrl
+    videoId
+    useRouteVideo
+    autoplay
+    loop
+    muted
+    showControls
+    clipStartSeconds
+    clipEndSeconds
+  }
+  fragment LeafVideoRecommendations on VideoRecommendationsBlock {
+    __typename
+    t
+    sectionKey
+    backgroundColor
+    imageUrl
+    title
+    description
+    sourceVideoId
+    sourceSceneIndex
+    limit
+  }
+`
+
+// Container.content unfolds into a narrower union (no SectionBlock /
+// ContainerBlock — admin's schema forbids those at the container slot).
+const CONTAINER_CONTENT_FRAGMENT = /* GraphQL */ `
+  fragment AdminContainerContent on ContainerContentBlock {
+    __typename
+    ... on AdventCountdownBlock {
+      ...LeafAdventCountdown
+    }
+    ... on BibleQuotesCarouselBlock {
+      ...LeafBibleQuotesCarousel
+    }
+    ... on CardBlock {
+      ...LeafCard
+    }
+    ... on ContainerSlotBlock {
+      ...LeafContainerSlot
+    }
+    ... on CtaBlock {
+      ...LeafCta
+    }
+    ... on EasterDatesBlock {
+      ...LeafEasterDates
+    }
+    ... on MediaCollectionBlock {
+      ...LeafMediaCollection
+    }
+    ... on RelatedQuestionsBlock {
+      ...LeafRelatedQuestions
+    }
+    ... on TextBlock {
+      ...LeafText
+    }
+    ... on VideoBlock {
+      ...LeafVideo
+    }
+  }
+`
+
+// Section.content allows containers (and therefore nested ContainerContent).
+const SECTION_CONTENT_FRAGMENT = /* GraphQL */ `
+  fragment AdminSectionContent on SectionContentBlock {
+    __typename
+    ... on BibleQuotesCarouselBlock {
+      ...LeafBibleQuotesCarousel
+    }
+    ... on CardBlock {
+      ...LeafCard
+    }
+    ... on ContainerBlock {
+      __typename
+      t
+      sectionKey
+      backgroundColor
+      backgroundImageUrl
+      backgroundImageAssetId
+      content {
+        ...AdminContainerContent
+      }
+    }
+    ... on CtaBlock {
+      ...LeafCta
+    }
+    ... on InfoBlocksBlock {
+      ...LeafInfoBlocks
+    }
+    ... on MediaCollectionBlock {
+      ...LeafMediaCollection
+    }
+    ... on NavigationCarouselBlock {
+      ...LeafNavigationCarousel
+    }
+    ... on PromoBannerBlock {
+      ...LeafPromoBanner
+    }
+    ... on QuizButtonBlock {
+      ...LeafQuizButton
+    }
+    ... on RelatedQuestionsBlock {
+      ...LeafRelatedQuestions
+    }
+    ... on TextBlock {
+      ...LeafText
+    }
+    ... on VideoBlock {
+      ...LeafVideo
+    }
+    ... on VideoCarouselBlock {
+      ...LeafVideoCarousel
+    }
+  }
+`
+
+// Top-level ExperienceBlock union — every kind plus the two nested
+// section/container content shapes.
 const ADMIN_EXPERIENCE_QUERY = /* GraphQL */ `
+  ${BLOCK_LEAF_FRAGMENTS}
+  ${CONTAINER_CONTENT_FRAGMENT}
+  ${SECTION_CONTENT_FRAGMENT}
   query ParityAdminExperienceBySlug($slug: String!, $locale: String!) {
     experienceBySlug(slug: $slug, locale: $locale) {
       id
       slug
       locale
       title
-      description
+      # F1: admin's field is metaDescription; alias to "description" so the
+      # response shape matches AdminExperienceLocaleInput's Strapi-vocab
+      # "description" key (the normalizer's adapted input type).
+      description: metaDescription
       ogImageUrl
-      blocks
+      blocks {
+        __typename
+        ... on AdventCountdownBlock {
+          ...LeafAdventCountdown
+        }
+        ... on BibleQuotesCarouselBlock {
+          ...LeafBibleQuotesCarousel
+        }
+        ... on CardBlock {
+          ...LeafCard
+        }
+        ... on ContainerBlock {
+          __typename
+          t
+          sectionKey
+          backgroundColor
+          backgroundImageUrl
+          backgroundImageAssetId
+          content {
+            ...AdminContainerContent
+          }
+        }
+        ... on CtaBlock {
+          ...LeafCta
+        }
+        ... on EasterDatesBlock {
+          ...LeafEasterDates
+        }
+        ... on InfoBlocksBlock {
+          ...LeafInfoBlocks
+        }
+        ... on MediaCollectionBlock {
+          ...LeafMediaCollection
+        }
+        ... on NavigationCarouselBlock {
+          ...LeafNavigationCarousel
+        }
+        ... on PromoBannerBlock {
+          ...LeafPromoBanner
+        }
+        ... on RelatedQuestionsBlock {
+          ...LeafRelatedQuestions
+        }
+        ... on SectionBlock {
+          __typename
+          t
+          sectionKey
+          backgroundColor
+          backgroundImageUrl
+          backgroundImageAssetId
+          blurHash
+          backgroundOpacity
+          dynamicBackgroundImage
+          staticOverlay
+          content {
+            ...AdminSectionContent
+          }
+        }
+        ... on TextBlock {
+          ...LeafText
+        }
+        ... on VideoBlock {
+          ...LeafVideo
+        }
+        ... on VideoCarouselBlock {
+          ...LeafVideoCarousel
+        }
+        ... on VideoHeroBlock {
+          ...LeafVideoHero
+        }
+        ... on VideoRecommendationsBlock {
+          ...LeafVideoRecommendations
+        }
+      }
     }
   }
 `
