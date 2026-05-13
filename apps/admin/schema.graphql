@@ -763,6 +763,10 @@ type Query {
   Find an Experience locale by (locale, slug). PUBLIC sees published only; EDITOR/ADMIN see all.
   """
   experienceBySlug(locale: String!, slug: String!): ExperienceLocale
+  """
+  Enumerate published template Experience locales for one locale. PARITY_BEARER (pre-cutover parity harness) and EDITOR+ only. PUBLIC and CONSUMER_BEARER are blocked because R9 hides templates from consumer SSR identities.
+  """
+  experienceTemplates(locale: String!): [ExperienceLocale!]
   """List Experiences. ABAC-filtered."""
   experiences(includeArchived: Boolean = false, limit: Int = 50, offset: Int = 0): [Experience!]
   """List active (non-soft-deleted) keywords."""

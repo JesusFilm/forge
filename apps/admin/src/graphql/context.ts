@@ -33,9 +33,11 @@ import { prisma } from "@/db/client"
 import { resolvePrincipalFromRequest } from "@/auth/session"
 import {
   CONSUMER_BEARER_PRINCIPAL,
+  PARITY_BEARER_PRINCIPAL,
   WORKFLOW_TRIGGER_PRINCIPAL,
 } from "@/auth/principal"
 import { isValidConsumerBearer } from "@/auth/consumer-bearer"
+import { isValidParityBearer } from "@/auth/parity-bearer"
 import { isValidWorkflowBearer } from "@/auth/workflow-bearer"
 import type { ContextShape } from "@/graphql/builder"
 import { createLoaders } from "@/graphql/loaders"
@@ -49,21 +51,32 @@ export async function createContext({
   const sessionUser = await resolvePrincipalFromRequest(request)
   // Session wins. A user with an admin session who happens to also send
   // a (valid or stray) bearer header is treated as that session, not
-  // demoted to the narrower workflow-trigger / consumer-bearer
-  // principal. Otherwise the chain is workflow → consumer → PUBLIC.
+  // demoted to a narrower bearer principal. Otherwise the chain is
+  // workflow → parity → consumer → PUBLIC. The three bearer CSVs
+  // (`WORKFLOW_API_KEYS`, `PARITY_API_KEYS`, `WEB_ADMIN_API_KEYS`) are
+  // contractually disjoint per `permissions.test.ts`; precedence here
+  // is the safety net if that invariant ever drifts (workflow's narrow
+  // allowlist wins, then parity's even narrower one, then consumer).
   let user = sessionUser
   if (user == null) {
     const authHeader = request.headers.get("authorization")
     if (isValidWorkflowBearer(authHeader)) {
       user = WORKFLOW_TRIGGER_PRINCIPAL
     } else {
-      const consumer = isValidConsumerBearer(authHeader)
-      if (consumer.valid) {
-        user = CONSUMER_BEARER_PRINCIPAL({
-          rateLimitBucketKey: consumer.bucketKey,
+      const parity = isValidParityBearer(authHeader)
+      if (parity.valid) {
+        user = PARITY_BEARER_PRINCIPAL({
+          rateLimitBucketKey: parity.bucketKey,
         })
       } else {
-        user = null
+        const consumer = isValidConsumerBearer(authHeader)
+        if (consumer.valid) {
+          user = CONSUMER_BEARER_PRINCIPAL({
+            rateLimitBucketKey: consumer.bucketKey,
+          })
+        } else {
+          user = null
+        }
       }
     }
   }

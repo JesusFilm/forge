@@ -44,6 +44,12 @@ export type PermissionKey =
   | "read:videos"
   | "read:media-assets"
   | "read:reference"
+  // R9 carve-out: lets the parity-verification harness enumerate and
+  // fetch template Experiences that CONSUMER_BEARER cannot see. Granted
+  // ONLY to the PARITY_BEARER principal (via PARITY_BEARER_PERMISSIONS)
+  // and to EDITOR+ via the tier ladder. PUBLIC and CONSUMER_BEARER stay
+  // locked out so R9's defense-in-depth holds for web/mobile/TV SSR.
+  | "read:experience-templates"
   // Write scopes (admin-write on Core-sourced is intentionally restricted)
   | "write:experiences"
   | "write:videos"
@@ -81,6 +87,10 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "read:media-assets": "EDITOR",
   // Reference data is public-shape; PUBLIC may read.
   "read:reference": "PUBLIC",
+  // Template Experiences carry the same VIEWER tier as regular ones for
+  // editorial roles; the bearer carve-out is what makes this key load-
+  // bearing (CONSUMER_BEARER is excluded, PARITY_BEARER is granted).
+  "read:experience-templates": "VIEWER",
   // Editor writes
   "write:experiences": "EDITOR",
   // Core-sourced; only ADMIN may override (also flips source='manager').
@@ -152,6 +162,11 @@ function meetsTier(role: Role, min: MinTier): boolean {
   // checks. The bearer's sole purpose is rate-limit bucketing, not
   // permission granting.
   if (role === "CONSUMER_BEARER") return false
+  // PARITY_BEARER is gated by `PARITY_BEARER_PERMISSIONS` in
+  // `hasPermission` via early-return; it never satisfies tier-based
+  // checks. The bearer's purpose is template-parity verification, not
+  // editorial inheritance.
+  if (role === "PARITY_BEARER") return false
   return editorialRank(role) >= editorialRank(min)
 }
 
@@ -211,6 +226,30 @@ const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
 const CONSUMER_BEARER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set()
 
 /**
+ * Permission keys the request-bound `PARITY_BEARER` principal is
+ * allowed to satisfy. Used ONLY by the batch-verification harness for
+ * pre-cutover Strapi↔admin template parity checks.
+ *
+ * **Why a separate role + set from CONSUMER_BEARER:** R9 hides template
+ * Experiences from CONSUMER_BEARER at the service layer so web/mobile/TV
+ * SSR can never render a template as a real page. The parity harness
+ * must see templates to verify them; widening CONSUMER_BEARER would
+ * defeat R9 for the entire consumer surface. A separate principal with
+ * a single narrow grant keeps R9 intact.
+ *
+ * **Adding a key here widens the parity bearer's blast radius.** The
+ * bearer is provisioned via `PARITY_API_KEYS` on forge-admin Doppler,
+ * separate from `WEB_ADMIN_API_KEYS` (CONSUMER_BEARER) and
+ * `WORKFLOW_API_KEYS` (WORKFLOW_TRIGGER). The three CSVs must stay
+ * disjoint — a key in two CSVs at once would create ambiguous role
+ * minting; the context chain resolves in fixed precedence (workflow →
+ * parity → consumer) but disjoint sets are the contract.
+ */
+const PARITY_BEARER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "read:experience-templates",
+])
+
+/**
  * Resolve a permission key to a boolean for the given principal.
  * Tier-only — does not consider entity ownership or state.
  *
@@ -239,6 +278,12 @@ export function hasPermission(
   // assertions in `permissions.test.ts`.
   if (role === "CONSUMER_BEARER") {
     return CONSUMER_BEARER_PERMISSIONS.has(key)
+  }
+  // PARITY_BEARER's permission set is the narrow R9 carve-out for the
+  // batch-verification harness. Adding a key here is a CI-fail surface
+  // — see assertions in `permissions.test.ts`.
+  if (role === "PARITY_BEARER") {
+    return PARITY_BEARER_PERMISSIONS.has(key)
   }
   const min = permissionMatrix[key]
   return meetsTier(role, min)

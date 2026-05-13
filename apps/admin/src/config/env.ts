@@ -93,6 +93,19 @@ export const env = createEnv({
     // widen the other; the `WEB_ADMIN_API_KEYS !== WORKFLOW_API_KEYS`
     // invariant is asserted at unit-test time.
     WEB_ADMIN_API_KEYS: z.string().optional(),
+    // PR-C of the consumer-migration — batch-verification harness bearer.
+    // CSV-parsed, matched against `Authorization: Bearer <key>` by
+    // `parity-bearer.ts`. A matched key mints a PARITY_BEARER principal
+    // (permissions = `read:experience-templates` only) whose purpose is to
+    // let the pre-cutover Strapi↔admin parity harness enumerate template
+    // Experiences that R9 hides from CONSUMER_BEARER. `.optional()`
+    // because environments without parity verification (preview, prod
+    // post-cutover) don't need it; required-without-default would brick
+    // Railway deploys per the runtime-errors learning. **Disjoint from
+    // `WEB_ADMIN_API_KEYS` and `WORKFLOW_API_KEYS`** so a key collision
+    // doesn't silently up-/down-grade permissions — invariant asserted
+    // in `permissions.test.ts`.
+    PARITY_API_KEYS: z.string().optional(),
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
     WORKFLOW_TARGET_WORLD: z
       .enum(["local", "@workflow/world-postgres"])
@@ -250,6 +263,7 @@ export const env = createEnv({
     OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
     WORKFLOW_API_KEYS: emptyToUndefined(process.env.WORKFLOW_API_KEYS),
     WEB_ADMIN_API_KEYS: emptyToUndefined(process.env.WEB_ADMIN_API_KEYS),
+    PARITY_API_KEYS: emptyToUndefined(process.env.PARITY_API_KEYS),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
     WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
     WORKFLOW_POSTGRES_URL: emptyToUndefined(process.env.WORKFLOW_POSTGRES_URL),

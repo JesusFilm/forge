@@ -35,6 +35,7 @@ export type Role =
   | "SYSTEM"
   | "WORKFLOW_TRIGGER"
   | "CONSUMER_BEARER"
+  | "PARITY_BEARER"
 
 export type Principal = {
   id: string | null
@@ -96,9 +97,35 @@ export function CONSUMER_BEARER_PRINCIPAL({
 }
 
 /**
+ * Factory for the request-bound parity-bearer principal. Used ONLY by
+ * the batch-verification harness for pre-cutover Strapi↔admin parity
+ * checks. Carries the matched bearer key for rate-limit bucketing
+ * (same `consumer:<key>` namespace as CONSUMER_BEARER — parity traffic
+ * is consumer-shaped, not editorial).
+ *
+ * `PARITY_BEARER` grants ONE narrow permission: `read:experience-templates`.
+ * Distinct from CONSUMER_BEARER because R9 hides templates from
+ * CONSUMER_BEARER (web/mobile/TV SSR identities) so they can't render
+ * a template as a real page; the parity harness MUST see templates to
+ * verify them, but should NOT inherit any other consumer permission
+ * surface. See `PARITY_BEARER_PERMISSIONS` in `permissions.ts`.
+ */
+export function PARITY_BEARER_PRINCIPAL({
+  rateLimitBucketKey,
+}: {
+  rateLimitBucketKey: string
+}): Principal {
+  return {
+    id: null,
+    role: "PARITY_BEARER",
+    rateLimitBucketKey,
+  }
+}
+
+/**
  * Editorial-tier predicate: true only for EDITOR/ADMIN. PUBLIC, VIEWER,
- * SYSTEM, WORKFLOW_TRIGGER, CONSUMER_BEARER all return false — none
- * should see drafts via consumer-facing relation paths
+ * SYSTEM, WORKFLOW_TRIGGER, CONSUMER_BEARER, PARITY_BEARER all return
+ * false — none should see drafts via consumer-facing relation paths
  * (Experience.locales, Video.locales).
  */
 export function isEditorOrAdmin(user: Principal | null): boolean {
