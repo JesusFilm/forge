@@ -293,3 +293,64 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect($('[data-testid="watch-language-picker-apply"]')).toBeNull()
   })
 })
+
+describe("LanguagePickerModal — in-flight navigation guard", () => {
+  it("fires router.push exactly once on synchronous double-click", () => {
+    renderModal({ open: true, variants: baseVariants })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+    // Synchronous double-click — both clicks land in the same microtask.
+    // The ref-backed guard must catch the second before it dispatches.
+    act(() => {
+      $('[data-testid="watch-language-picker-apply"]')?.click()
+      $('[data-testid="watch-language-picker-apply"]')?.click()
+    })
+    expect(routerPushMock).toHaveBeenCalledTimes(1)
+    expect(writePreferredLanguageSlugMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("releases the navigation guard after the safety timeout (~5s)", () => {
+    vi.useFakeTimers()
+    try {
+      renderModal({ open: true, variants: baseVariants })
+      act(() => {
+        $('[data-testid="language-combobox-trigger"]')?.click()
+      })
+      const spanish = $$('[data-testid="language-combobox-option"]').find(
+        (el) => el.getAttribute("data-language-slug") === "spanish",
+      )!
+      act(() => {
+        spanish.click()
+      })
+      act(() => {
+        $('[data-testid="watch-language-picker-apply"]')?.click()
+      })
+      // Right after Apply, the button is in the navigating-disabled state
+      // even though isDirty is still true.
+      let apply = $(
+        '[data-testid="watch-language-picker-apply"]',
+      ) as HTMLButtonElement
+      expect(apply.disabled).toBe(true)
+
+      // Advance past the 5s safety timeout. With currentLanguageSlug
+      // never updating (no parent rerender simulates the cookie/redirect
+      // stuck-navigating scenario), the guard otherwise stays set.
+      act(() => {
+        vi.advanceTimersByTime(5001)
+      })
+      apply = $(
+        '[data-testid="watch-language-picker-apply"]',
+      ) as HTMLButtonElement
+      expect(apply.disabled).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})

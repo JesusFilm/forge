@@ -1442,6 +1442,49 @@ describe("HeroPlayer — language switch button", () => {
     })
     expect(onLanguageClick).toHaveBeenCalledTimes(1)
   })
+
+  it("hides the top-right language button when fullscreen is active", async () => {
+    const onLanguageClick = vi.fn()
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          onLanguageClick={onLanguageClick}
+          playableLanguageCount={2}
+        />,
+      )
+    })
+    // Initially visible (no fullscreen)
+    expect(
+      container.querySelector('[data-testid="hero-player-language-button"]'),
+    ).not.toBeNull()
+
+    // Enter fullscreen
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    Object.defineProperty(document, "fullscreenElement", {
+      configurable: true,
+      get() {
+        return wrapper
+      },
+    })
+    await act(async () => {
+      document.dispatchEvent(new Event("fullscreenchange"))
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-player-language-button"]'),
+    ).toBeNull()
+
+    // Reset jsdom state for subsequent tests
+    Object.defineProperty(document, "fullscreenElement", {
+      configurable: true,
+      get() {
+        return null
+      },
+    })
+  })
 })
 
 describe("HeroPlayer — autoplay on ?autoplay=1", () => {

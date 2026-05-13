@@ -70,6 +70,84 @@ function setFullscreenElement(el: Element | null) {
   document.dispatchEvent(new Event("fullscreenchange"))
 }
 
+describe("HeroPlayerControls — in-chrome language button render gate", () => {
+  function renderWith(props: {
+    showLanguageButton?: boolean
+    onLanguageClick?: () => void
+  }) {
+    const wrapperEl = document.createElement("div")
+    const overlayAnchor = document.createElement("div")
+    document.body.appendChild(wrapperEl)
+    document.body.appendChild(overlayAnchor)
+    const wrapperRef = createRef<HTMLDivElement>()
+    Object.defineProperty(wrapperRef, "current", {
+      writable: true,
+      value: wrapperEl,
+    })
+    const playerRef = createRef<MuxPlayerRef | null>()
+    Object.defineProperty(playerRef, "current", {
+      writable: true,
+      value: makePlayer(),
+    })
+    act(() => {
+      root.render(
+        <HeroPlayerControls
+          player={playerRef.current}
+          playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
+          wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
+          overlayAnchor={overlayAnchor}
+          showLanguageButton={props.showLanguageButton}
+          onLanguageClick={props.onLanguageClick}
+        />,
+      )
+    })
+    return overlayAnchor
+  }
+
+  it("renders the in-chrome globe when showLanguageButton + onLanguageClick are both provided", () => {
+    const overlayAnchor = renderWith({
+      showLanguageButton: true,
+      onLanguageClick: () => {},
+    })
+    expect(
+      overlayAnchor.querySelector('[data-testid="hero-chrome-language"]'),
+    ).not.toBeNull()
+  })
+
+  it("does not render the in-chrome globe when showLanguageButton is false", () => {
+    const overlayAnchor = renderWith({
+      showLanguageButton: false,
+      onLanguageClick: () => {},
+    })
+    expect(
+      overlayAnchor.querySelector('[data-testid="hero-chrome-language"]'),
+    ).toBeNull()
+  })
+
+  it("does not render the in-chrome globe when onLanguageClick is undefined", () => {
+    const overlayAnchor = renderWith({ showLanguageButton: true })
+    expect(
+      overlayAnchor.querySelector('[data-testid="hero-chrome-language"]'),
+    ).toBeNull()
+  })
+
+  it("fires onLanguageClick exactly once when the in-chrome globe is clicked", async () => {
+    const onLanguageClick = vi.fn()
+    const overlayAnchor = renderWith({
+      showLanguageButton: true,
+      onLanguageClick,
+    })
+    const btn = overlayAnchor.querySelector(
+      '[data-testid="hero-chrome-language"]',
+    ) as HTMLButtonElement
+    expect(btn).not.toBeNull()
+    await act(async () => {
+      btn.click()
+    })
+    expect(onLanguageClick).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe("HeroPlayerControls — portal target swap on fullscreen", () => {
   it("portals chrome into overlayAnchor outside fullscreen", () => {
     const wrapperEl = document.createElement("div")
