@@ -56,6 +56,14 @@ export function HeroPlayerControls({
   // target pointing at overlayAnchor while HeroPlayer thinks we're in
   // fullscreen.
   const isFullscreen = useIsFullscreen()
+  // Mirror wrapperRef.current in state so the portal-target swap below can
+  // read it without touching a ref during render (React Compiler rejects
+  // that). wrapperRef attaches in the parent on mount, so the effect runs
+  // once and the value stays stable for the component's lifetime.
+  const [wrapperEl, setWrapperEl] = useState<HTMLDivElement | null>(null)
+  useEffect(() => {
+    setWrapperEl(wrapperRef.current)
+  }, [wrapperRef])
   const [controlsVisible, setControlsVisible] = useState(true)
   const [hoveringControls, setHoveringControls] = useState(false)
   const [volumeOpen, setVolumeOpen] = useState(false)
@@ -819,7 +827,7 @@ export function HeroPlayerControls({
           bottom edge via `absolute bottom-0`, so the visual position is
           identical in either mode. */}
       {(() => {
-        const target = isFullscreen ? wrapperRef.current : overlayAnchor
+        const target = isFullscreen ? wrapperEl : overlayAnchor
         if (target == null) return null
         return createPortal(
           <>

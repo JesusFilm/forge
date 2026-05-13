@@ -61,16 +61,30 @@ export function LanguageCombobox({
     activeIndexRef.current = activeIndex
   }, [activeIndex])
 
-  // Also keep a ref for filtered so keydown can read it without stale closure
+  // Also keep a ref for filtered so keydown can read it without stale closure.
+  // Sync via useEffect — React Compiler rejects render-phase ref writes; the
+  // effect runs before the next keypress can fire, so the ref stays current
+  // for any keydown handler invocation.
   const filteredRef = useRef(filtered)
-  filteredRef.current = filtered
-
   useEffect(() => {
-    if (!open) return
-    searchRef.current?.focus()
-    setActiveIndex(0)
-    activeIndexRef.current = 0
-    setQuery("")
+    filteredRef.current = filtered
+  }, [filtered])
+
+  // Reset query/active-index on the closed→open transition. Use the
+  // render-phase snapshot pattern so the reset queues with the same
+  // commit that opens the popover — avoids React Compiler's cascading-
+  // setState-in-effect warning while preserving the same UX (search
+  // input shows up cleared and at index 0 on every open).
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (prevOpen !== open) {
+    setPrevOpen(open)
+    if (open) {
+      setActiveIndex(0)
+      setQuery("")
+    }
+  }
+  useEffect(() => {
+    if (open) searchRef.current?.focus()
   }, [open])
 
   // Install the click-outside listener once at mount, gate its body on a

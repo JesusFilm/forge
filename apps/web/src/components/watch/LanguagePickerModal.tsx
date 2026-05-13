@@ -69,57 +69,72 @@ export function LanguagePickerModal({
 
   const [draftSlug, setDraftSlug] = useState(currentLanguageSlug)
 
-  // Reset the draft on the open false→true transition. Read the latest
-  // `currentLanguageSlug` from a render-time ref so we see it directly
-  // even when the parent batches a prop change + open=true in the same
-  // commit (a useEffect-mirrored ref would read stale here).
+  // Track which slug we've dispatched a navigation toward. `navigating`
+  // becomes false NATURALLY once the URL catches up — no setState in
+  // effect required (React Compiler's anti-cascade rule is satisfied by
+  // construction). Set to null to force-release on safety timeout.
+  const [pendingNavTo, setPendingNavTo] = useState<string | null>(null)
+
+  // Synchronous double-click guard. `pendingNavTo` state alone is async
+  // (useState commit is post-render), so two clicks in the same microtask
+  // both see `pendingNavTo === null` and dispatch two router.push calls.
+  // The ref-wrapped object holds the synchronous truth for the gate. We
+  // mutate `.inFlight` on the object rather than reassigning `.current` so
+  // the React Compiler accepts the writes (`.current = X` is rejected
+  // when the ref is also written from a useEffect).
+  const navigatingRef = useRef<{ inFlight: boolean }>({ inFlight: false })
+
+  // Reset the draft on the open false→true transition. Mirror
+  // `currentLanguageSlug` into a ref via a commit-phase effect so the
+  // open-effect (declared AFTER, runs AFTER per React effect ordering)
+  // always reads the latest value even on a same-commit prop change.
   const currentLanguageSlugLatestRef = useRef(currentLanguageSlug)
-  currentLanguageSlugLatestRef.current = currentLanguageSlug
+  useEffect(() => {
+    currentLanguageSlugLatestRef.current = currentLanguageSlug
+  }, [currentLanguageSlug])
   useEffect(() => {
     if (open) {
       setDraftSlug(currentLanguageSlugLatestRef.current)
-      navigatingRef.current = false
-      setNavigating(false)
+      navigatingRef.current.inFlight = false
+      setPendingNavTo(null)
     }
   }, [open])
 
   const isDirty = draftSlug !== currentLanguageSlug
+  // Derived: navigating iff we dispatched and the URL hasn't caught up.
+  // When currentLanguageSlug matches pendingNavTo, navigating flips to
+  // false automatically on the next render — no setter call needed.
+  const navigating =
+    pendingNavTo !== null && currentLanguageSlug !== pendingNavTo
 
-  // Synchronous double-click guard. `navigating` state alone is async
-  // (useState commit is post-render), so two clicks within the same
-  // microtask both see `navigating === false` and dispatch two router.push
-  // calls. The ref is the truth for the gate; the state mirrors it for
-  // the disabled-button visual.
-  const navigatingRef = useRef(false)
-  const [navigating, setNavigating] = useState(false)
-  // Safety timeout: when the navigation lands and a re-render swings
-  // currentLanguageSlug to draftSlug, clear the guard. If that never
-  // happens (e.g. cookie-driven proxy redirect lands on a different slug,
-  // or router.push silently fails), the timeout below releases the guard.
+  // Release the sync guard once the URL catches up. The ref-mirror effect
+  // is the only path that touches `.inFlight = false` outside the open
+  // reset and timeout — fires once per slug change.
   useEffect(() => {
-    if (navigating && currentLanguageSlug === draftSlug) {
-      navigatingRef.current = false
-      setNavigating(false)
-    }
-  }, [navigating, currentLanguageSlug, draftSlug])
+    navigatingRef.current.inFlight = false
+  }, [currentLanguageSlug])
+
+  // Safety timeout: if the navigation never lands (e.g. cookie-driven
+  // proxy redirect to a slug that doesn't match draftSlug, or router.push
+  // silently fails), release the guard and clear pendingNavTo so the user
+  // can retry. Re-armed whenever a new navigation starts.
   useEffect(() => {
-    if (!navigating) return
+    if (pendingNavTo === null) return
     const timer = window.setTimeout(() => {
-      navigatingRef.current = false
-      setNavigating(false)
+      navigatingRef.current.inFlight = false
+      setPendingNavTo(null)
     }, NAVIGATING_TIMEOUT_MS)
     return () => window.clearTimeout(timer)
-  }, [navigating])
+  }, [pendingNavTo])
 
   const handleApply = useCallback(() => {
     if (!isDirty) return
-    if (navigatingRef.current) return
+    if (navigatingRef.current.inFlight) return
     if (!videoSlug) return
-    // Flip the ref synchronously so a same-microtask double-click bails
-    // on the second invocation. State update follows for the disabled
-    // attribute on the button (visual feedback).
-    navigatingRef.current = true
-    setNavigating(true)
+    // Flip the guard synchronously so a same-microtask double-click bails
+    // on the second invocation. State follows for the visual.
+    navigatingRef.current.inFlight = true
+    setPendingNavTo(draftSlug)
     // Write cookie BEFORE router.push — order asserted by tests and required
     // so middleware sees the cookie on the next request.
     writePreferredLanguageSlug(draftSlug)
