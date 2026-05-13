@@ -13,6 +13,7 @@ import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
+import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 
 export type LanguagePickerVariant = {
   documentId: string
@@ -138,6 +139,26 @@ export function LanguagePickerModal({
     if (!next) onClose()
   }
 
+  // When the player is in fullscreen, portal the dialog INTO the
+  // fullscreened element so the modal renders on top of the video.
+  // Without this, base-ui's Dialog portals to <body> which is OUTSIDE
+  // the fullscreen element — the browser hides it, focus lands in a
+  // hidden subtree, and Escape closes the dialog instead of exiting
+  // fullscreen. document.fullscreenElement is the canonical reference;
+  // it stays null outside fullscreen, in which case DialogContent falls
+  // back to its default <body> mount.
+  const isFullscreen = useIsFullscreen()
+  const portalContainer =
+    isFullscreen && typeof document !== "undefined"
+      ? ((document.fullscreenElement ??
+          (
+            document as Document & {
+              webkitFullscreenElement?: Element | null
+            }
+          ).webkitFullscreenElement ??
+          null) as HTMLElement | null)
+      : null
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
@@ -145,6 +166,7 @@ export function LanguagePickerModal({
         className="rounded-2xl border border-stone-700/50 bg-stone-900 p-0 text-stone-100 sm:max-w-xl"
         overlayClassName="bg-black/75"
         showCloseButton={false}
+        portalContainer={portalContainer}
       >
         <DialogTitle className="sr-only">Language</DialogTitle>
 
