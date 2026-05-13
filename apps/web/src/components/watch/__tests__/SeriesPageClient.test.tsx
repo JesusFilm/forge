@@ -14,7 +14,9 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/components/watch/SeriesHero", () => ({
-  SeriesHero: vi.fn(() => <div data-testid="series-hero-mock" />),
+  SeriesHero: vi.fn(({ overlay }: { overlay?: React.ReactNode }) => (
+    <div data-testid="series-hero-mock">{overlay}</div>
+  )),
 }))
 
 vi.mock("@/components/watch/SeriesEpisodesGrid", () => ({

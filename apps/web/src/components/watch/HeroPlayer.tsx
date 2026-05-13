@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ReactNode,
 } from "react"
 import { useSearchParams } from "next/navigation"
 import { MuxPlayer, type MuxPlayerRef } from "@forge/video-player"
@@ -49,9 +50,24 @@ const OBSCURED_PAUSE_THRESHOLD = 0.6
 export function HeroPlayer({
   block,
   onPlayerReady,
+  darkenOverlay = false,
+  overlay,
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
+  // When true, layers a flat black tint over the player so the hero reads
+  // as decorative background rather than a primary playback surface.
+  // Used by the series page where the trailer is aesthetic, not the
+  // page's core action. Default false — the watch page renders unchanged.
+  darkenOverlay?: boolean
+  // Replaces the default pre-reveal overlay (label / title / Play with
+  // Sound pill). When provided, the consumer owns positioning AND chrome
+  // semantics — the player will not reveal its own chrome on click
+  // because the Play with Sound trigger lives inside the default overlay
+  // that this prop displaces. Use for hero variants where the trailer
+  // is decorative (e.g. the series page) and the user shouldn't toggle
+  // into player chrome.
+  overlay?: ReactNode
 }) {
   const { video, variant } = block
   const wrapperRef = useRef<HTMLDivElement | null>(null)
@@ -369,6 +385,13 @@ export function HeroPlayer({
             className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
           />
         )}
+        {darkenOverlay ? (
+          <div
+            aria-hidden="true"
+            data-testid="hero-player-darken-overlay"
+            className="pointer-events-none absolute inset-0 bg-black/50"
+          />
+        ) : null}
       </div>
 
       {/*
@@ -385,51 +408,53 @@ export function HeroPlayer({
         data-testid="hero-player-overlay-anchor"
         className="relative z-10 h-0 w-full"
       >
-        {!chromeRevealed ? (
-          <div
-            data-testid="hero-player-overlay"
-            className="absolute right-6 bottom-0 left-10 flex flex-col items-start gap-4 pb-6 md:right-auto md:left-16 xl:left-24"
-          >
-            {video.label ? (
-              <span
-                data-testid="hero-player-overlay-label"
-                className="text-sm font-semibold tracking-wider text-amber-400 uppercase md:text-base"
+        {!chromeRevealed
+          ? (overlay ?? (
+              <div
+                data-testid="hero-player-overlay"
+                className="absolute right-6 bottom-0 left-10 flex flex-col items-start gap-4 pb-6 md:right-auto md:left-16 xl:left-24"
               >
-                {video.label}
-              </span>
-            ) : null}
-            {video.title ? (
-              <h1
-                data-testid="hero-player-overlay-title"
-                className="text-4xl font-bold text-white drop-shadow-lg whitespace-nowrap md:text-6xl xl:text-7xl"
-              >
-                {video.title}
-              </h1>
-            ) : null}
-            <button
-              type="button"
-              data-testid="hero-player-unmute-pill"
-              data-state={pillState}
-              onClick={handleUnmuteClick}
-              className={
-                pillState === "tap-to-unmute"
-                  ? "inline-flex items-center gap-3 rounded-full bg-amber-500 px-7 py-2.5 text-base font-semibold text-stone-950 shadow-lg ring-2 ring-amber-300/60 transition hover:bg-amber-400 md:px-8 md:py-3 md:text-lg"
-                  : "inline-flex items-center gap-3 rounded-full bg-red-600 px-7 py-2.5 text-base font-semibold text-white shadow-lg transition hover:bg-red-500 md:px-8 md:py-3 md:text-lg"
-              }
-            >
-              {pillState === "tap-to-unmute" ? (
-                <MutedSpeakerIcon />
-              ) : (
-                <UnmutedSpeakerIcon />
-              )}
-              <span>
-                {pillState === "tap-to-unmute"
-                  ? "Tap to Unmute"
-                  : "Play with Sound"}
-              </span>
-            </button>
-          </div>
-        ) : null}
+                {video.label ? (
+                  <span
+                    data-testid="hero-player-overlay-label"
+                    className="text-sm font-semibold tracking-wider text-amber-400 uppercase md:text-base"
+                  >
+                    {video.label}
+                  </span>
+                ) : null}
+                {video.title ? (
+                  <h1
+                    data-testid="hero-player-overlay-title"
+                    className="text-4xl font-bold text-white drop-shadow-lg whitespace-nowrap md:text-6xl xl:text-7xl"
+                  >
+                    {video.title}
+                  </h1>
+                ) : null}
+                <button
+                  type="button"
+                  data-testid="hero-player-unmute-pill"
+                  data-state={pillState}
+                  onClick={handleUnmuteClick}
+                  className={
+                    pillState === "tap-to-unmute"
+                      ? "inline-flex items-center gap-3 rounded-full bg-amber-500 px-7 py-2.5 text-base font-semibold text-stone-950 shadow-lg ring-2 ring-amber-300/60 transition hover:bg-amber-400 md:px-8 md:py-3 md:text-lg"
+                      : "inline-flex items-center gap-3 rounded-full bg-red-600 px-7 py-2.5 text-base font-semibold text-white shadow-lg transition hover:bg-red-500 md:px-8 md:py-3 md:text-lg"
+                  }
+                >
+                  {pillState === "tap-to-unmute" ? (
+                    <MutedSpeakerIcon />
+                  ) : (
+                    <UnmutedSpeakerIcon />
+                  )}
+                  <span>
+                    {pillState === "tap-to-unmute"
+                      ? "Tap to Unmute"
+                      : "Play with Sound"}
+                  </span>
+                </button>
+              </div>
+            ))
+          : null}
       </div>
     </>
   )

@@ -1,6 +1,6 @@
 "use client"
 
-import { useLayoutEffect, useRef, useState } from "react"
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import Image from "next/image"
 
 import type { ResolvedSeriesBySlug } from "@/lib/content"
@@ -10,6 +10,11 @@ import { HeroPlayer } from "./HeroPlayer"
 type SeriesHeroProps = {
   series: ResolvedSeriesBySlug["video"]
   selectedVariant: ResolvedSeriesBySlug["selectedVariant"]
+  // Optional hero-overlay content. When provided, replaces the default
+  // label/title overlay in both trailer and static modes. The series
+  // page uses this to render the episode-count label, title, and share
+  // pill as a single horizontal band — see SeriesPageClient.
+  overlay?: ReactNode
 }
 
 // Mirrors `apps/web/src/components/watch/HeroPlayer.tsx`'s playability
@@ -23,15 +28,24 @@ function hasPlayableTrailer(
   return variant != null && Boolean(variant.hls)
 }
 
-export function SeriesHero({ series, selectedVariant }: SeriesHeroProps) {
+export function SeriesHero({
+  series,
+  selectedVariant,
+  overlay,
+}: SeriesHeroProps) {
   if (hasPlayableTrailer(selectedVariant)) {
+    // darkenOverlay reads the trailer as decorative background rather
+    // than a primary playback surface (the series page is not a video
+    // player page — it's a landing page with a trailer for visual mood).
     return (
       <HeroPlayer
         block={{ kind: "HeroPlayer", video: series, variant: selectedVariant }}
+        darkenOverlay
+        overlay={overlay}
       />
     )
   }
-  return <SeriesHeroStatic series={series} />
+  return <SeriesHeroStatic series={series} overlay={overlay} />
 }
 
 // Static-mode hero: no <MuxPlayer>, no autoplay state, no chrome reveal.
@@ -42,8 +56,10 @@ export function SeriesHero({ series, selectedVariant }: SeriesHeroProps) {
 // rides the body's top edge in lockstep with the video page's behavior.
 function SeriesHeroStatic({
   series,
+  overlay,
 }: {
   series: ResolvedSeriesBySlug["video"]
+  overlay?: ReactNode
 }) {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const [heroHeight, setHeroHeight] = useState<number | null>(null)
@@ -102,13 +118,15 @@ function SeriesHeroStatic({
           />
         ) : null}
 
-        {/* Scrim mirrors HeroPlayer.tsx:369 — keeps the title legible
-            against arbitrary poster artwork (light, saturated, or busy
-            posters would otherwise wash out white text). Reuses
-            tailwind classes already in the codebase, no new gradient. */}
+        {/* Flat-tint darken overlay matches the trailer-mode pass-through
+            (HeroPlayer's `darkenOverlay` prop). The series page treats
+            the hero image as decorative background, not a primary
+            playback surface, so we apply uniform darkening across the
+            whole hero rather than a bottom-only legibility gradient. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+          data-testid="series-hero-darken-overlay"
+          className="pointer-events-none absolute inset-0 bg-black/50"
         />
       </div>
 
@@ -120,27 +138,29 @@ function SeriesHeroStatic({
         data-testid="hero-player-overlay-anchor"
         className="relative z-10 h-0 w-full"
       >
-        <div
-          data-testid="series-hero-overlay"
-          className="absolute right-6 bottom-0 left-10 flex flex-col items-start gap-4 pb-6 md:right-auto md:left-16 xl:left-24"
-        >
-          {series.label ? (
-            <span
-              data-testid="series-hero-overlay-label"
-              className="text-sm font-semibold tracking-wider text-amber-400 uppercase md:text-base"
-            >
-              {series.label}
-            </span>
-          ) : null}
-          {series.title ? (
-            <h1
-              data-testid="series-hero-overlay-title"
-              className="text-4xl font-bold text-white drop-shadow-lg whitespace-nowrap md:text-6xl xl:text-7xl"
-            >
-              {series.title}
-            </h1>
-          ) : null}
-        </div>
+        {overlay ?? (
+          <div
+            data-testid="series-hero-overlay"
+            className="absolute right-6 bottom-0 left-10 flex flex-col items-start gap-4 pb-6 md:right-auto md:left-16 xl:left-24"
+          >
+            {series.label ? (
+              <span
+                data-testid="series-hero-overlay-label"
+                className="text-sm font-semibold tracking-wider text-amber-400 uppercase md:text-base"
+              >
+                {series.label}
+              </span>
+            ) : null}
+            {series.title ? (
+              <h1
+                data-testid="series-hero-overlay-title"
+                className="text-4xl font-bold text-white drop-shadow-lg whitespace-nowrap md:text-6xl xl:text-7xl"
+              >
+                {series.title}
+              </h1>
+            ) : null}
+          </div>
+        )}
       </div>
     </>
   )

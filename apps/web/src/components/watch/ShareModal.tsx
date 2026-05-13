@@ -214,7 +214,7 @@ export function ShareModal({
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 px-6 pb-4">
+        <div className="flex flex-col gap-2 px-6 pb-1">
           <div className="flex gap-3">
             {isShareable ? (
               <a
@@ -272,28 +272,35 @@ export function ShareModal({
           ) : null}
         </div>
 
-        <div className="px-6">
-          <div
-            role="tablist"
-            aria-label="Share format"
-            className="flex border-b border-stone-700/50"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={!isEmbed}
-              data-testid="watch-share-modal-tab-link"
-              onClick={() => selectTab("link")}
-              className={cn(
-                "flex-1 px-4 py-3 text-xs font-semibold tracking-[0.18em] uppercase transition",
-                !isEmbed
-                  ? "border-b-2 border-red-500 text-red-500"
-                  : "border-b-2 border-transparent text-stone-400 hover:text-stone-200",
-              )}
+        {/* Tab row only renders when there's a real choice to make
+            (i.e., an embed snippet is available alongside the link).
+            For series pages and any other share context with no
+            playbackId, the link is the only mode — surfacing a single
+            "Share Link" tab header alone reads as a meaningless
+            non-choice, so we hide the whole tablist and let the link
+            input flow directly under the social-share row. */}
+        {embedSnippet ? (
+          <div className="px-6">
+            <div
+              role="tablist"
+              aria-label="Share format"
+              className="flex border-b border-stone-700/50"
             >
-              Share Link
-            </button>
-            {embedSnippet ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!isEmbed}
+                data-testid="watch-share-modal-tab-link"
+                onClick={() => selectTab("link")}
+                className={cn(
+                  "flex-1 px-4 py-3 text-xs font-semibold tracking-[0.18em] uppercase transition",
+                  !isEmbed
+                    ? "border-b-2 border-red-500 text-red-500"
+                    : "border-b-2 border-transparent text-stone-400 hover:text-stone-200",
+                )}
+              >
+                Share Link
+              </button>
               <button
                 type="button"
                 role="tab"
@@ -309,11 +316,11 @@ export function ShareModal({
               >
                 Embed Code
               </button>
-            ) : null}
+            </div>
           </div>
-        </div>
+        ) : null}
 
-        <div className="px-6 pt-4">
+        <div className="px-6 pt-1">
           {copyStatus === "failed" ? (
             <p
               data-testid="watch-share-modal-link-fallback"
@@ -349,7 +356,7 @@ export function ShareModal({
           )}
         </div>
 
-        <div className="flex justify-end px-6 pt-4 pb-6">
+        <div className="flex justify-end px-6 pt-1 pb-4">
           <Button
             variant="pill"
             data-testid={
