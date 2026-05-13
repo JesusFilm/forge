@@ -411,12 +411,16 @@ async function fetchSlugExperience(
     outcome.error instanceof Error
       ? outcome.error
       : new Error(String(outcome.error))
-  // SECURITY: scrub the bearer before logging. Apollo's error formatter can
-  // include downstream response body text in `message`; a hostile admin
-  // echoing the Authorization header in a 500 would otherwise leak the bearer.
-  const sanitizedMessage = bearerFirstEntry
-    ? causeError.message.split(bearerFirstEntry).join("<redacted>")
-    : causeError.message
+  // SECURITY (F13): redact EVERY CSV entry, not just the first. Mid-rotation
+  // both keys are live and either can show up in an echoed error body.
+  const bearerEntries =
+    env.WEB_ADMIN_API_KEYS?.split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0) ?? []
+  const sanitizedMessage = bearerEntries.reduce(
+    (msg, entry) => msg.split(entry).join("<redacted>"),
+    causeError.message,
+  )
   logAdminEvent(
     "forge.parity.admin_fetch_error",
     slug,

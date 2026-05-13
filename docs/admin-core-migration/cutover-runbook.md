@@ -1,9 +1,9 @@
 # Web → Admin Cutover Runbook
 
-> **Status:** `draft until measured`
-> The mean-time-to-rollback (MTTR) section contains a `TODO` placeholder. This runbook moves from `draft` to `live` only after the operator records observed P50 and worst-case timings/impact numbers from two real flip tests. Until then, do NOT execute the cutover from this document alone — a fresh on-call engineer must be paired with the plan author.
+> **Status:** `live`
+> Staging is decommissioned — dev + prod only. The first prod flip doubles as the measurement flip: capture observed timings into the [Mean-time-to-rollback](#mean-time-to-rollback) table as you go, and update this doc in the same session. Subsequent operators rely on those numbers.
 >
-> **Date stamp:** 2026-05-12 (U9 of PR-B)
+> **Date stamp:** 2026-05-13 (F18 update — MTTR gate removed)
 > **Plan reference:** [`docs/plans/2026-05-11-003-feat-web-admin-direct-cutover-plan.md`](../plans/2026-05-11-003-feat-web-admin-direct-cutover-plan.md)
 > **Scope:** apps/web's `[slug]` watch route only. Homepage (`watchSetting`) and watch-video (`getVideoBySlug`, `getWatchVideoOperation`) stay on Strapi during this cutover window and route through Strapi's own incident response, not this runbook.
 
@@ -54,25 +54,23 @@ Implications:
 
 ---
 
-## Mean-time-to-rollback measurement
+## Mean-time-to-rollback
 
-> **TODO(MTTR):** operator action required before this runbook publishes. Numbers below are placeholders.
+Staging is decommissioned, so the first prod flip is also the measurement flip. Flip during an off-peak hour, watch the Railway and admin dashboards in two tabs, and write observed timings into the table below as you go. Future operators rely on these numbers to size the blast window for subsequent flips.
 
-Before flipping `FORGE_CONTENT_API` to `admin` in prod, run **two test flips** between `strapi` and `feature-flag-maintenance` (i.e., `FORGE_DISABLE_WATCH_ROUTES` set to a canary slug) on forge-web. Measure for each flip:
+| Metric                             | Definition                                                                 | P50      | Worst-case |
+| ---------------------------------- | -------------------------------------------------------------------------- | -------- | ---------- |
+| End-to-end deploy time             | env save → deploy trigger → container build → health-check → traffic shift | _record_ | _record_   |
+| Request 5xx-rate during flip       | Railway response codes during the build/redeploy window                    | _record_ | _record_   |
+| Cache thrash duration              | seconds of mode-mixed serves before ISR converges                          | _record_ | _record_   |
+| Maintenance-fallback response time | TTFB when `FORGE_DISABLE_WATCH_ROUTES` engages                             | _record_ | _record_   |
 
-| Metric                             | Definition                                                                 | P50    | Worst-case |
-| ---------------------------------- | -------------------------------------------------------------------------- | ------ | ---------- |
-| End-to-end deploy time             | env save → deploy trigger → container build → health-check → traffic shift | `TODO` | `TODO`     |
-| Request 5xx-rate during flip       | Vercel/Railway response codes during the build/redeploy window             | `TODO` | `TODO`     |
-| Cache thrash duration              | seconds of mode-mixed serves before ISR converges                          | `TODO` | `TODO`     |
-| Maintenance-fallback response time | TTFB when `FORGE_DISABLE_WATCH_ROUTES` engages                             | `TODO` | `TODO`     |
+**Escalation thresholds (rules of thumb until measured):**
 
-**Escalation thresholds:**
+- If worst-case deploy time exceeds **10 minutes**, the fast-rollback story (layer 1) is degraded — pause the flip and investigate Railway throughput before continuing.
+- If user-impact 5xx-rate exceeds **5%** during the flip, pull the rip cord (layer 2) immediately and post in #ops before debugging.
 
-- If worst-case deploy time exceeds **10 minutes**, escalate before cutover. The fast-rollback story (layer 1) depends on a sub-10-minute redeploy budget.
-- If user-impact 5xx-rate exceeds **5%** during the flip, escalate before cutover. Operators care about user impact, not just deploy seconds.
-
-The operator who runs these measurements is responsible for replacing `TODO` with observed values **before** opening the runbook to a fresh on-call engineer.
+After your first flip, replace `_record_` with observed values and commit this file in the same session.
 
 ---
 
@@ -313,6 +311,8 @@ Distinct from this plan's UB7 (`apps/web/src/app/[slug]/error.tsx` boundary), wh
 
 ## Document history
 
-| Date       | Author             | Change                                                                        |
-| ---------- | ------------------ | ----------------------------------------------------------------------------- |
-| 2026-05-12 | U9 (plan-003 PR-B) | Initial draft — pre-cutover, pre-measurement. Status: `draft until measured`. |
+| Date       | Author               | Change                                                                                                                                                                                                                                                                |
+| ---------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-12 | U9 (plan-003 PR-B)   | Initial draft — pre-cutover, pre-measurement. Status: `draft until measured`.                                                                                                                                                                                         |
+| 2026-05-13 | F18 (ce-code-review) | MTTR gate removed. Staging is decommissioned; first prod flip doubles as measurement flip. Layer 1 wording corrected (Railway redeploy, not "seconds, fastest"). Status: `live`.                                                                                      |
+| 2026-05-13 | F13 (ce-code-review) | Bearer scrub now redacts every CSV entry, not just the first. Test extended to cover both keys in the same error message + post-rotation (single remaining key) case. No runbook change — Emergency revocation section already covered the operator-facing procedure. |

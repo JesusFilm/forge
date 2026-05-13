@@ -423,16 +423,17 @@ describe("fetchSlugExperience (U6 admin cutover)", () => {
     }
   })
 
-  // F15 (ce-code-review): hostile-admin scenario — error message echoes the
-  // bearer (Apollo can carry downstream response body text in `.message`).
-  // The scrub MUST redact every occurrence of the bearer's first CSV entry
-  // before the message lands in a structured log.
-  it("admin mode + Apollo error containing bearer string → log payload has <redacted>, not the bearer", async () => {
+  // F13 + F15 (ce-code-review): hostile-admin scenario. Error message
+  // echoes BOTH live CSV entries (admin could echo the active key or the
+  // rotation-in-progress key). The scrub must redact every CSV entry.
+  it("admin mode + Apollo error echoing both CSV keys → log payload redacts BOTH", async () => {
     modeRef.current = "admin"
     envRef.WEB_ADMIN_API_KEYS = "secret-bearer-aaa,secret-bearer-bbb"
     const apolloError = Object.assign(
       new Error(
-        "Response not successful: Authorization: Bearer secret-bearer-aaa (admin echoed the header in a 500 body) — second occurrence: secret-bearer-aaa",
+        "Response not successful: Authorization: Bearer secret-bearer-aaa " +
+          "(echoed primary), and rotation-key seen: secret-bearer-bbb " +
+          "(echoed secondary); primary again: secret-bearer-aaa",
       ),
       {
         name: "ApolloError",
@@ -461,11 +462,38 @@ describe("fetchSlugExperience (U6 admin cutover)", () => {
       expect(fetchErrCall).toBeDefined()
       const payload = JSON.parse(fetchErrCall?.[0] as string)
       expect(payload.errorMessage).not.toContain("secret-bearer-aaa")
-      expect(payload.errorMessage).toContain("<redacted>")
-      // Second occurrence redacted too (split/join replaces all).
-      expect(
-        (payload.errorMessage.match(/<redacted>/g) ?? []).length,
-      ).toBeGreaterThanOrEqual(2)
+      expect(payload.errorMessage).not.toContain("secret-bearer-bbb")
+      // 2× aaa + 1× bbb = 3 redactions total.
+      expect((payload.errorMessage.match(/<redacted>/g) ?? []).length).toBe(3)
+    } finally {
+      logSpy.mockRestore()
+    }
+  })
+
+  // A3 (ce-code-review): post-rotation state. Operator revoked the first
+  // (leaked) CSV entry by removing it from WEB_ADMIN_API_KEYS, leaving only
+  // the second key. The admin path must still authenticate normally — no
+  // consumer_bearer_missing fallback, no errors.
+  it("admin mode + WEB_ADMIN_API_KEYS rotated to single remaining entry → admin path works normally", async () => {
+    modeRef.current = "admin"
+    envRef.WEB_ADMIN_API_KEYS = "secret-bearer-bbb"
+    adminQueryMock.mockResolvedValueOnce(adminHit("admin-rotation"))
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
+
+    try {
+      const { resolveWatchPage } = await import("./content")
+      const result = await resolveWatchPage("en", "christmas")
+
+      expect(result.error).toBeNull()
+      expect(adminQueryMock).toHaveBeenCalledTimes(1)
+      const bearerMissing = logSpy.mock.calls.find((call) => {
+        const arg = call[0]
+        return (
+          typeof arg === "string" &&
+          arg.includes("forge.parity.consumer_bearer_missing")
+        )
+      })
+      expect(bearerMissing).toBeUndefined()
     } finally {
       logSpy.mockRestore()
     }
