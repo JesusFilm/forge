@@ -817,16 +817,26 @@ export function HeroPlayerControls({
           keyboard interactions reach the controls — the wrapper-level reveal
           listeners then bring it back to opacity-100 on the next interaction.
           Backdrop + chrome bar share one portal so the gradient travels
-          with the controls as the body section slides up. */}
-      {overlayAnchor != null
-        ? createPortal(
-            <>
-              {chromeBackdrop}
-              {chromeBar}
-            </>,
-            overlayAnchor,
-          )
-        : null}
+          with the controls as the body section slides up.
+
+          In fullscreen the portal target swaps to the hero wrapper itself
+          (the element the browser puts in fullscreen). The default target
+          — overlayAnchor — sits OUTSIDE the wrapper and is hidden by the
+          browser's fullscreen render, which is why the chrome disappeared
+          on entering fullscreen. Both targets render the chromeBar at the
+          bottom edge via `absolute bottom-0`, so the visual position is
+          identical in either mode. */}
+      {(() => {
+        const target = isFullscreen ? wrapperRef.current : overlayAnchor
+        if (target == null) return null
+        return createPortal(
+          <>
+            {chromeBackdrop}
+            {chromeBar}
+          </>,
+          target,
+        )
+      })()}
     </>
   )
 }
