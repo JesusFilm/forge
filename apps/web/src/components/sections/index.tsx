@@ -66,7 +66,7 @@ async function VideoRecommendationsBlock({
  * `section: Section` param once U6 widens `Section`; the admin
  * typename cases are wired now so the U6 patch stays small.
  */
-const ADMIN_BLOCK_TYPENAMES = new Set<string>([
+const ADMIN_BLOCK_TYPENAMES_LIST = [
   "MediaCollectionBlock",
   "PromoBannerBlock",
   "InfoBlocksBlock",
@@ -84,10 +84,14 @@ const ADMIN_BLOCK_TYPENAMES = new Set<string>([
   "NavigationCarouselBlock",
   "CardBlock",
   "VideoRecommendationsBlock",
-])
+] as const
+type AdminBlockTypename = (typeof ADMIN_BLOCK_TYPENAMES_LIST)[number]
+const ADMIN_BLOCK_TYPENAMES: ReadonlySet<string> = new Set(
+  ADMIN_BLOCK_TYPENAMES_LIST,
+)
 
 type AnyBlock = {
-  readonly __typename?: string | null
+  readonly __typename?: AdminBlockTypename | string | null
 } & Record<string, unknown>
 
 function renderAdminBlock(
@@ -231,8 +235,24 @@ function renderAdminBlock(
       }
       return null
     }
-    default:
+    default: {
+      // F6 (ce-code-review): if this branch fires for a typename in
+      // ADMIN_BLOCK_TYPENAMES_LIST, the dispatch set and the switch have
+      // drifted. Dev-warn loudly. Compile-time exhaustiveness would
+      // require a stricter __typename type — AnyBlock keeps the loose
+      // `string | null` so non-admin payloads (Strapi typenames) still
+      // type-pass at the call site.
+      if (
+        process.env.NODE_ENV === "development" &&
+        typeof block.__typename === "string" &&
+        ADMIN_BLOCK_TYPENAMES.has(block.__typename)
+      ) {
+        console.warn(
+          `[sections] admin typename "${block.__typename}" is in ADMIN_BLOCK_TYPENAMES but not handled by renderAdminBlock — switch/set are out of sync.`,
+        )
+      }
       return null
+    }
   }
 }
 

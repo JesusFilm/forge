@@ -5,7 +5,7 @@ import { graphql, type ResultOf } from "@forge/graphql"
 import { env } from "@/env"
 import client from "@/lib/client"
 import adminClient from "@/lib/admin-client"
-import { getContentApiMode } from "@/lib/content-api-mode"
+import { getContentApiMode, type ContentApiMode } from "@/lib/content-api-mode"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
 import {
@@ -164,14 +164,27 @@ export function experienceToMetadata(
     ogTitle,
     ogDescription,
     pathSegment: exp.pathSegment ?? null,
-    ogImage: exp.ogImage
-      ? {
+    // F12 (ce-code-review): admin's fragment exposes `ogImageUrl: String`,
+    // Strapi's exposes `ogImage: { url, width, height, alternativeText }`.
+    // Without this branch, admin-mode pages fall through to DEFAULT_OG_IMAGE
+    // — a real SEO regression that the strapi-only regression snapshot
+    // didn't catch. Width/height aren't available on admin's flat string;
+    // omit them so Next's metadata layer skips the dimensions tag.
+    ogImage: ((): ExperienceMetadata["ogImage"] => {
+      if (exp.ogImage) {
+        return {
           url: exp.ogImage.url,
           width: exp.ogImage.width ?? null,
           height: exp.ogImage.height ?? null,
           alt: exp.ogImage.alternativeText ?? "",
         }
-      : null,
+      }
+      const adminOgImageUrl = (exp as { ogImageUrl?: string | null }).ogImageUrl
+      if (adminOgImageUrl) {
+        return { url: adminOgImageUrl, width: null, height: null, alt: "" }
+      }
+      return null
+    })(),
   }
 }
 
@@ -567,10 +580,15 @@ async function resolveSlugPage(
   }
 }
 
+// F2 (ce-code-review): include mode in the cache key so strapi-shape
+// entries don't get served to admin-mode requests during the ~60s ISR
+// thrash window after a Doppler flip. unstable_cache's key derivation
+// uses keyParts + JSON.stringify(args), so a `mode` arg lands in the key.
 const fetchResolvedWatchPage = unstable_cache(
   async (
     locale: string,
     slugOrNull: string | null,
+    _mode: ContentApiMode,
   ): Promise<WatchPageResult> => {
     try {
       const resolved =
@@ -604,7 +622,7 @@ const fetchResolvedWatchPage = unstable_cache(
 /** Shared watch-page resolver for page rendering and metadata generation. */
 export const resolveWatchPage = cache(
   async (locale: string, slug?: string): Promise<WatchPageResult> => {
-    return fetchResolvedWatchPage(locale, slug ?? null)
+    return fetchResolvedWatchPage(locale, slug ?? null, getContentApiMode())
   },
 )
 

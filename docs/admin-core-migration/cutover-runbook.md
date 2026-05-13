@@ -98,9 +98,11 @@ Five-step sequential. Do not skip steps; do not parallelize.
 
 Listed in escalation order. **Use the lowest-numbered layer that resolves the regression.** Higher layers are progressively more invasive.
 
-### Layer 1 — `FORGE_DISABLE_WATCH_ROUTES` (seconds, fastest)
+### Layer 1 — `FORGE_DISABLE_WATCH_ROUTES` (surgical, Railway redeploy)
 
 CSV of route paths to disable. Matched against the requested slug at `apps/web/src/app/[slug]/page.tsx` module scope; matching slugs render `<MaintenanceFallback>` instead of fetching from admin or Strapi.
+
+> **TTR reality check:** "fastest" was misleading — module-scope reads mean any change to this var requires a Railway redeploy (same as Layer 2). Layer 1's advantage is **surgical scope** (specific slugs only, leaving the rest of the route healthy), not raw speed. P50/worst-case timings live in the MTTR section above once the operator records them. Choose Layer 1 over Layer 2 when only a known set of slugs misbehaves; choose Layer 2 when the regression is global to admin-mode.
 
 ```sh
 # Disable specific slugs while admin debugs:

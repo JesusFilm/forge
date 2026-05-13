@@ -4,13 +4,27 @@ import { useEffect } from "react"
 
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
-import { WatchPageAdminError } from "@/lib/content"
 
 /**
  * Slug-page error boundary, additive for admin-mode WatchPageAdminError
  * throws. `error.message` MUST NEVER render (info disclosure). Non-typed
  * errors re-throw to Next's segment-default. See plan-003 UB7.
+ *
+ * F7 (ce-code-review): duck-type the error rather than `instanceof`
+ * WatchPageAdminError. Next.js serializes thrown errors across the
+ * SSR→client boundary into plain shapes — class identity is unreliable.
+ * The tests construct the error directly in jsdom, masking the gap.
+ * Checking `name` + `code` shape is unconditionally safer.
  */
+function isWatchPageAdminError(
+  error: unknown,
+): error is { name: "WatchPageAdminError"; code: "NOT_FOUND" | "UNAVAILABLE" } {
+  if (error == null || typeof error !== "object") return false
+  const e = error as { name?: unknown; code?: unknown }
+  if (e.name !== "WatchPageAdminError") return false
+  return e.code === "NOT_FOUND" || e.code === "UNAVAILABLE"
+}
+
 export default function SlugPageError({
   error,
   reset,
@@ -24,7 +38,7 @@ export default function SlugPageError({
     }
   }, [error])
 
-  if (error instanceof WatchPageAdminError) {
+  if (isWatchPageAdminError(error)) {
     if (error.code === "NOT_FOUND") {
       return <ExperienceEmpty />
     }

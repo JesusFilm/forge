@@ -423,6 +423,54 @@ describe("fetchSlugExperience (U6 admin cutover)", () => {
     }
   })
 
+  // F15 (ce-code-review): hostile-admin scenario — error message echoes the
+  // bearer (Apollo can carry downstream response body text in `.message`).
+  // The scrub MUST redact every occurrence of the bearer's first CSV entry
+  // before the message lands in a structured log.
+  it("admin mode + Apollo error containing bearer string → log payload has <redacted>, not the bearer", async () => {
+    modeRef.current = "admin"
+    envRef.WEB_ADMIN_API_KEYS = "secret-bearer-aaa,secret-bearer-bbb"
+    const apolloError = Object.assign(
+      new Error(
+        "Response not successful: Authorization: Bearer secret-bearer-aaa (admin echoed the header in a 500 body) — second occurrence: secret-bearer-aaa",
+      ),
+      {
+        name: "ApolloError",
+        networkError: new Error("500"),
+        graphQLErrors: [],
+      },
+    )
+    adminQueryMock.mockRejectedValueOnce(apolloError)
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
+
+    try {
+      const { resolveWatchPage } = await import("./content")
+      try {
+        await resolveWatchPage("en", "christmas")
+      } catch {
+        /* expected throw */
+      }
+
+      const fetchErrCall = logSpy.mock.calls.find((call) => {
+        const arg = call[0]
+        return (
+          typeof arg === "string" &&
+          arg.includes("forge.parity.admin_fetch_error")
+        )
+      })
+      expect(fetchErrCall).toBeDefined()
+      const payload = JSON.parse(fetchErrCall?.[0] as string)
+      expect(payload.errorMessage).not.toContain("secret-bearer-aaa")
+      expect(payload.errorMessage).toContain("<redacted>")
+      // Second occurrence redacted too (split/join replaces all).
+      expect(
+        (payload.errorMessage.match(/<redacted>/g) ?? []).length,
+      ).toBeGreaterThanOrEqual(2)
+    } finally {
+      logSpy.mockRestore()
+    }
+  })
+
   it("admin mode + AbortError → throws WatchPageAdminError('UNAVAILABLE') (timeout)", async () => {
     modeRef.current = "admin"
     const abortError = Object.assign(new Error("aborted"), {
