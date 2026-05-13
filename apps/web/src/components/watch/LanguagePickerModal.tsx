@@ -3,7 +3,7 @@
 import type { Route } from "next"
 import { useRouter } from "next/navigation"
 import type { RefObject } from "react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
+import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 
 export type LanguagePickerVariant = {
   documentId: string
@@ -52,30 +53,36 @@ export function LanguagePickerModal({
   const options = useMemo(
     () =>
       variants
-        .filter(
-          (v) =>
-            v.published === true && v.hls != null && v.language?.slug != null,
-        )
-        .map((v) => deriveLanguageDisplay(v.language!.slug!, v.language!.name))
+        .filter(isPlayableLanguageVariant)
+        .map((v) => deriveLanguageDisplay(v.language.slug, v.language.name))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [variants],
   )
 
   const [draftSlug, setDraftSlug] = useState(currentLanguageSlug)
 
-  // Reset the draft each time the modal opens.
+  // Reset the draft only on the open false→true transition. Reading
+  // `currentLanguageSlug` from a ref keeps it out of the effect's deps so
+  // the in-progress selection isn't silently discarded if the parent
+  // re-renders with a new value while the modal is already open.
+  const currentLanguageSlugRef = useRef(currentLanguageSlug)
   useEffect(() => {
-    if (open) setDraftSlug(currentLanguageSlug)
-  }, [open, currentLanguageSlug])
+    currentLanguageSlugRef.current = currentLanguageSlug
+  }, [currentLanguageSlug])
+  useEffect(() => {
+    if (open) setDraftSlug(currentLanguageSlugRef.current)
+  }, [open])
 
   const isDirty = draftSlug !== currentLanguageSlug
 
   const handleApply = useCallback(() => {
     if (!isDirty) return
+    if (!videoSlug) return
     // Write cookie BEFORE router.push — order asserted by tests and required
     // so middleware sees the cookie on the next request.
     writePreferredLanguageSlug(draftSlug)
-    const t = playerRef.current?.currentTime ?? 0
+    const rawT = playerRef.current?.currentTime
+    const t = Number.isFinite(rawT) ? rawT : 0
     // basePath '/watch' auto-prepended at runtime — do NOT include here.
     const href = `/${videoSlug}/${draftSlug}?t=${t}` as Route
     router.push(href)

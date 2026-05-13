@@ -17,10 +17,35 @@ import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 
+// NOTE: this route reads a request cookie below (forge_watch_lang via
+// readPreferredLanguageSlug). Calling cookies() in a Server Component opts
+// the route into dynamic rendering, so this `revalidate = 60` declaration
+// is currently inert — every GET is a fresh server render. Tracked as a
+// follow-up to move the redirect logic to apps/web/src/proxy.ts so the
+// page can stay ISR-cached. See docs/solutions/web/nextjs-headers-defeats-route-cache.md.
 export const revalidate = 60
+
+function serializeSearchParams(
+  searchParams: Record<string, string | string[] | undefined>,
+): string {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (value == null) continue
+    if (Array.isArray(value)) {
+      for (const v of value) params.append(key, v)
+    } else {
+      params.set(key, value)
+    }
+  }
+  const serialized = params.toString()
+  return serialized ? `?${serialized}` : ""
+}
 
 type PageProps = {
   params: Promise<{ slug: string; locale: string }>
+  searchParams: Promise<{
+    [key: string]: string | string[] | undefined
+  }>
 }
 
 export async function generateMetadata({
@@ -36,7 +61,10 @@ export async function generateMetadata({
   })
 }
 
-export default async function SlugLocalePage({ params }: PageProps) {
+export default async function SlugLocalePage({
+  params,
+  searchParams,
+}: PageProps) {
   const { slug, locale: rawLocale } = await params
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
 
@@ -52,7 +80,11 @@ export default async function SlugLocalePage({ params }: PageProps) {
   })
   if (redirectSlug) {
     // basePath '/watch' is auto-prepended at runtime; do NOT include here.
-    redirect(`/${slug}/${redirectSlug}`)
+    // Forward the incoming searchParams so deep links like ?t=120 survive
+    // the cookie-driven redirect — the client Apply handler preserves ?t=
+    // for the same reason.
+    const queryString = serializeSearchParams(await searchParams)
+    redirect(`/${slug}/${redirectSlug}${queryString}`)
   }
 
   if (watchVideo) {

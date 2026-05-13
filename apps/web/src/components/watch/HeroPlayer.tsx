@@ -48,6 +48,10 @@ const CHROME_HIDE_STYLE: MuxCSSProperties = {
 // this point the player is no longer the main element on screen.
 const OBSCURED_PAUSE_THRESHOLD = 0.6
 
+// Minimum number of playable language variants before the language-switch
+// globe button appears. With only one variant there's nothing to switch to.
+const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
+
 export function HeroPlayer({
   block,
   onPlayerReady,
@@ -310,7 +314,8 @@ export function HeroPlayer({
   const muted = !chromeRevealed
 
   const showLanguageSwitch =
-    typeof onLanguageClick === "function" && (playableLanguageCount ?? 0) >= 2
+    typeof onLanguageClick === "function" &&
+    (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
 
   return (
     <>

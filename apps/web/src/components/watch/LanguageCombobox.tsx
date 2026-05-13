@@ -38,7 +38,13 @@ export function LanguageCombobox({
   const popoverRef = useRef<HTMLDivElement | null>(null)
   const searchRef = useRef<HTMLInputElement | null>(null)
 
-  const selected = options.find((o) => o.slug === value) ?? null
+  // Memoised: options is up to ~2000 items and re-renders fire on every
+  // setActiveIndex (hover, keyboard nav). The find call shouldn't run on
+  // each frame when nothing relevant changed.
+  const selected = useMemo(
+    () => options.find((o) => o.slug === value) ?? null,
+    [options, value],
+  )
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -67,9 +73,17 @@ export function LanguageCombobox({
     setQuery("")
   }, [open])
 
+  // Install the click-outside listener once at mount, gate its body on a
+  // ref read so it remains a no-op while the popover is closed. Re-binding
+  // on every open/close transition leaves a one-tick gap (between React
+  // commit and effect flush) where outside clicks go unhandled.
+  const openRef = useRef(open)
   useEffect(() => {
-    if (!open) return
+    openRef.current = open
+  }, [open])
+  useEffect(() => {
     function onDocMouseDown(event: MouseEvent) {
+      if (!openRef.current) return
       const target = event.target as Node
       if (
         triggerRef.current?.contains(target) ||
@@ -81,7 +95,7 @@ export function LanguageCombobox({
     }
     document.addEventListener("mousedown", onDocMouseDown)
     return () => document.removeEventListener("mousedown", onDocMouseDown)
-  }, [open])
+  }, [])
 
   // Reset query and active index together so the list is always in sync with
   // the search input — avoids the off-by-one that a post-render clamp useEffect produces.

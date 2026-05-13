@@ -1,11 +1,21 @@
 import "server-only"
 import { cookies } from "next/headers"
 
-export const LANGUAGE_PREFERENCE_COOKIE = "forge_watch_lang"
+import { LANGUAGE_PREFERENCE_COOKIE } from "./language-preference-constants"
+import { isPlayableLanguageVariant } from "./playable-variant"
+
+export { LANGUAGE_PREFERENCE_COOKIE }
 
 export async function readPreferredLanguageSlug(): Promise<string | null> {
-  const store = await cookies()
-  return store.get(LANGUAGE_PREFERENCE_COOKIE)?.value ?? null
+  // cookies() throws when called outside a request context (e.g. during
+  // static prerender at build time). Treat any throw as "no preference" so
+  // the page falls through to its normal render path instead of 500ing.
+  try {
+    const store = await cookies()
+    return store.get(LANGUAGE_PREFERENCE_COOKIE)?.value ?? null
+  } catch {
+    return null
+  }
 }
 
 type ShouldRedirectInput = {
@@ -30,10 +40,7 @@ export function shouldRedirectForPreference({
   if (!preferredSlug) return null
   if (preferredSlug === rawLocale) return null
   const hasPlayable = variants.some(
-    (v) =>
-      v?.language?.slug === preferredSlug &&
-      v?.published === true &&
-      v?.hls != null,
+    (v) => isPlayableLanguageVariant(v) && v.language.slug === preferredSlug,
   )
   return hasPlayable ? preferredSlug : null
 }
