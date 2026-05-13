@@ -26,16 +26,6 @@ export const AUTH_SCOPES = [
     description: "Allow sign-in to the Jesus Film Admin application.",
   },
   {
-    key: "admin:content:read",
-    label: "Read Admin content",
-    description: "Allow Admin to read editorial content on your behalf.",
-  },
-  {
-    key: "admin:content:write",
-    label: "Write Admin content",
-    description: "Allow Admin to change editorial content on your behalf.",
-  },
-  {
     key: "tokens:manage",
     label: "Manage tokens",
     description: "Create, inspect, and revoke scoped Auth tokens.",

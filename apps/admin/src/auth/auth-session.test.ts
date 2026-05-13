@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest"
 import { SignJWT } from "jose"
 
 import {
+  createAdminOAuthAccessRequestCookie,
   createAdminOAuthSessionCookie,
+  readAdminOAuthAccessRequestCookie,
   readAdminOAuthSessionCookie,
 } from "./auth-session"
 
@@ -10,12 +12,26 @@ describe("admin OAuth session cookie", () => {
   it("round-trips a signed principal", async () => {
     const cookie = await createAdminOAuthSessionCookie(
       { id: "user_123", role: "EDITOR" },
-      ["admin:access", "admin:content:write"],
+      ["admin:access"],
     )
 
     await expect(readAdminOAuthSessionCookie(cookie)).resolves.toEqual({
       id: "user_123",
       role: "EDITOR",
+    })
+  })
+
+  it("round-trips a signed access request", async () => {
+    const cookie = await createAdminOAuthAccessRequestCookie({
+      subject: "subject_123",
+      email: "user@example.com",
+      name: "Test User",
+    })
+
+    await expect(readAdminOAuthAccessRequestCookie(cookie)).resolves.toEqual({
+      subject: "subject_123",
+      email: "user@example.com",
+      name: "Test User",
     })
   })
 

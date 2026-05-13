@@ -2,11 +2,14 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 import {
+  ADMIN_OAUTH_ACCESS_REQUEST_COOKIE,
   ADMIN_OAUTH_CALLBACK_COOKIE,
   ADMIN_OAUTH_SESSION_COOKIE,
   ADMIN_OAUTH_STATE_COOKIE,
   ADMIN_OAUTH_VERIFIER_COOKIE,
+  adminOAuthAccessRequestCookieOptions,
   adminOAuthCookieOptions,
+  createAdminOAuthAccessRequestCookie,
   createAdminOAuthSessionCookie,
 } from "@/auth/auth-session"
 import {
@@ -66,8 +69,15 @@ export async function GET(request: Request) {
       subject: verifiedToken.subject,
       email: verifiedToken.email,
       name: verifiedToken.name,
-      role: roleFromScopes(verifiedToken.scopes),
     })
+
+    if (!user || user.role === "VIEWER") {
+      return await redirectToForbiddenLogin(config, {
+        subject: verifiedToken.subject,
+        email: verifiedToken.email,
+        name: verifiedToken.name,
+      })
+    }
 
     const response = NextResponse.redirect(new URL(callbackUrl, request.url))
     response.cookies.set(
@@ -86,30 +96,38 @@ export async function GET(request: Request) {
       message: error instanceof Error ? error.message : "unknown",
     })
 
-    return redirectToForbiddenLogin(config)
+    return await redirectToForbiddenLogin(config)
   }
 }
 
-function redirectToForbiddenLogin(
+async function redirectToForbiddenLogin(
   config: NonNullable<ReturnType<typeof getAdminOAuthConfig>>,
+  accessRequest?: { subject: string; email?: string; name?: string },
 ) {
-  return NextResponse.redirect(
-    new URL("/login?error=forbidden", config.adminBaseUrl),
-  )
+  const url = new URL("/login", config.adminBaseUrl)
+  url.searchParams.set("error", "forbidden")
+  if (accessRequest) {
+    url.searchParams.set("request", "available")
+  }
+  const response = NextResponse.redirect(url)
+  if (accessRequest) {
+    response.cookies.set(
+      ADMIN_OAUTH_ACCESS_REQUEST_COOKIE,
+      await createAdminOAuthAccessRequestCookie(accessRequest),
+      adminOAuthAccessRequestCookieOptions(),
+    )
+  }
+  return response
 }
-
-type AdminUserRole = "ADMIN" | "EDITOR" | "VIEWER"
 
 async function resolveAdminUser({
   subject,
   email,
   name,
-  role,
 }: {
   subject: string
   email?: string
   name?: string
-  role: AdminUserRole
 }) {
   const resolvedEmail = email ?? `${subject}@auth.local`
   const resolvedName = name ?? email ?? "Auth user"
@@ -126,42 +144,28 @@ async function resolveAdminUser({
         data: {
           name: resolvedName,
           emailVerified: true,
-          role: highestRole(existingUser.role, role),
         },
         select: { id: true, role: true },
       })
     }
   }
 
-  return prisma.user.upsert({
+  const existingUser = await prisma.user.findUnique({
     where: { id: subject },
-    update: {
-      email: resolvedEmail,
-      name: resolvedName,
-      role,
-    },
-    create: {
-      id: subject,
-      email: resolvedEmail,
-      name: resolvedName,
-      emailVerified: true,
-      role,
-    },
     select: { id: true, role: true },
   })
-}
 
-function roleFromScopes(scopes: string[]): AdminUserRole {
-  if (scopes.includes("admin:content:write")) return "EDITOR"
-  return "VIEWER"
-}
-
-function highestRole(current: AdminUserRole, incoming: AdminUserRole) {
-  const rank: Record<AdminUserRole, number> = {
-    VIEWER: 1,
-    EDITOR: 2,
-    ADMIN: 3,
+  if (existingUser) {
+    return prisma.user.update({
+      where: { id: existingUser.id },
+      data: {
+        email: resolvedEmail,
+        name: resolvedName,
+        emailVerified: Boolean(email),
+      },
+      select: { id: true, role: true },
+    })
   }
 
-  return rank[current] >= rank[incoming] ? current : incoming
+  return null
 }
