@@ -11,6 +11,7 @@
     "start": "next start",
     "postinstall": "prisma generate",
     "restore:video-db": "tsx src/scripts/restore-video-db.ts",
+    "restore:video-db:latest": "tsx src/scripts/restore-latest-video-db.ts",
     "fetch-secrets": "../../scripts/fetch-secrets.sh forge-admin .env",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
