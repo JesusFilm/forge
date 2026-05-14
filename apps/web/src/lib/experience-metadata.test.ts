@@ -22,7 +22,6 @@ describe("getWatchPageMetadata", () => {
         template: {
           documentId: "exp-template-1",
           slug: "single-video",
-          isTemplate: true,
         },
         routeVideo: {
           documentId: "video-1",

@@ -139,10 +139,6 @@ export type WatchPageResult =
   | { data: null; error: ErrorLike | Error }
 
 const NO_EXPERIENCE_FOUND_MESSAGE = "No experience found"
-const INVALID_HOMEPAGE_EXPERIENCE_MESSAGE =
-  "Homepage experience must not be marked as template."
-const INVALID_DEFAULT_TEMPLATE_MESSAGE =
-  "Default template experience must be marked as template."
 
 /** Maps a WatchExperience to metadata shape. Returns null if no usable title/description. */
 export function experienceToMetadata(
@@ -215,20 +211,6 @@ function graphqlError(result: {
       : ""
 
   return message ? result.error : new Error("An unexpected error occurred.")
-}
-
-function asNonTemplateExperience(
-  experience: WatchExperience | null | undefined,
-): NonNullable<WatchExperience> | null {
-  if (!experience || experience.isTemplate === true) return null
-  return experience as NonNullable<WatchExperience>
-}
-
-function asTemplateExperience(
-  experience: WatchExperience | null | undefined,
-): NonNullable<WatchExperience> | null {
-  if (!experience || experience.isTemplate !== true) return null
-  return experience as NonNullable<WatchExperience>
 }
 
 async function getExperienceByFilters(
@@ -346,52 +328,38 @@ async function resolveHomepage(
   locale: string,
 ): Promise<ResolvedWatchPage | null> {
   const settings = await getWatchSettings(locale)
-  if (settings?.homepageExperience?.isTemplate === true) {
-    throw new Error(INVALID_HOMEPAGE_EXPERIENCE_MESSAGE)
+  const homepageExperience = settings?.homepageExperience ?? null
+  if (!homepageExperience) return null
+  return {
+    kind: "experience",
+    experience: homepageExperience as NonNullable<WatchExperience>,
   }
-
-  const homepageExperience = asNonTemplateExperience(
-    settings?.homepageExperience ?? null,
-  )
-  if (homepageExperience) {
-    return { kind: "experience", experience: homepageExperience }
-  }
-
-  const legacyHomepage = asNonTemplateExperience(
-    await getExperienceByFilters(locale, {
-      isHomepage: { eq: true },
-    }),
-  )
-  if (!legacyHomepage) return null
-
-  return { kind: "experience", experience: legacyHomepage }
 }
 
 async function resolveSlugPage(
   locale: string,
   slug: string,
 ): Promise<ResolvedWatchPage | null> {
-  const explicitExperience = asNonTemplateExperience(
-    await getExperienceByFilters(locale, { slug: { eq: slug } }),
-  )
-  if (explicitExperience) {
-    return { kind: "experience", experience: explicitExperience }
+  const settings = await getWatchSettings(locale)
+  const templateSlug = settings?.defaultTemplateExperience?.slug ?? null
+
+  // watchSetting.defaultTemplateExperience is the single source of truth for
+  // "this slug is the video-template route". Any other slug resolves first
+  // as a regular Experience and falls through to a template-rendered video
+  // when no Experience matches.
+  if (slug !== templateSlug) {
+    const experience = await getExperienceByFilters(locale, {
+      slug: { eq: slug },
+    })
+    if (experience) {
+      return { kind: "experience", experience }
+    }
   }
 
   const routeVideoRecord = await getVideoBySlug(locale, slug)
   if (!routeVideoRecord) return null
 
-  const settings = await getWatchSettings(locale)
-  if (
-    settings?.defaultTemplateExperience &&
-    settings.defaultTemplateExperience.isTemplate !== true
-  ) {
-    throw new Error(INVALID_DEFAULT_TEMPLATE_MESSAGE)
-  }
-
-  const templateExperience = asTemplateExperience(
-    settings?.defaultTemplateExperience ?? null,
-  )
+  const templateExperience = settings?.defaultTemplateExperience ?? null
   if (!templateExperience) return null
 
   const routeVideo = normalizeRouteVideo(routeVideoRecord)
@@ -399,7 +367,7 @@ async function resolveSlugPage(
 
   return {
     kind: "video-template",
-    template: templateExperience,
+    template: templateExperience as NonNullable<WatchExperience>,
     routeVideo,
   }
 }

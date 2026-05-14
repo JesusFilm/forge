@@ -30,37 +30,111 @@ describe("resolveWatchPage", () => {
     vi.resetModules()
   })
 
-  it("prefers an explicit experience when the slug matches one", async () => {
+  it("returns the homepage Experience from watchSetting", async () => {
     queryMock.mockResolvedValueOnce({
       data: {
-        experiences: [
-          {
-            documentId: "exp-1",
-            slug: "christmas",
-            isTemplate: false,
-            title: "Christmas",
+        watchSetting: {
+          documentId: "watch-settings-1",
+          homepageExperience: {
+            documentId: "exp-home-1",
+            slug: "home",
+            title: "Home",
           },
-        ],
+          defaultTemplateExperience: null,
+        },
       },
     })
 
     const { resolveWatchPage } = await import("./content")
 
-    const result = await resolveWatchPage("en", "christmas")
+    const result = await resolveWatchPage("en")
 
     expect(queryMock).toHaveBeenCalledTimes(1)
     expect(result.error).toBeNull()
     expect(result.data).toMatchObject({
       kind: "experience",
       experience: {
+        slug: "home",
+      },
+    })
+  })
+
+  it("returns a missing-experience error when watchSetting has no homepageExperience", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        watchSetting: {
+          documentId: "watch-settings-1",
+          homepageExperience: null,
+          defaultTemplateExperience: null,
+        },
+      },
+    })
+
+    const { resolveWatchPage } = await import("./content")
+
+    const result = await resolveWatchPage("en")
+
+    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(result.data).toBeNull()
+    expect(result.error?.message).toBe("No experience found")
+  })
+
+  it("prefers an explicit experience when the slug doesn't match the template slug", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          watchSetting: {
+            documentId: "watch-settings-1",
+            homepageExperience: null,
+            defaultTemplateExperience: {
+              documentId: "exp-template-1",
+              slug: "single-video",
+              title: "Single Video Template",
+            },
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          experiences: [
+            {
+              documentId: "exp-1",
+              slug: "christmas",
+              title: "Christmas",
+            },
+          ],
+        },
+      })
+
+    const { resolveWatchPage } = await import("./content")
+
+    const result = await resolveWatchPage("en", "christmas")
+
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(result.error).toBeNull()
+    expect(result.data).toMatchObject({
+      kind: "experience",
+      experience: {
         slug: "christmas",
-        isTemplate: false,
       },
     })
   })
 
   it("falls back to the default template for plain video slugs", async () => {
     queryMock
+      .mockResolvedValueOnce({
+        data: {
+          watchSetting: {
+            documentId: "watch-settings-1",
+            homepageExperience: null,
+            defaultTemplateExperience: {
+              documentId: "exp-template-1",
+              slug: "single-video",
+              title: "Single Video Template",
+            },
+          },
+        },
+      })
       .mockResolvedValueOnce({
         data: {
           experiences: [],
@@ -107,25 +181,12 @@ describe("resolveWatchPage", () => {
           ],
         },
       })
-      .mockResolvedValueOnce({
-        data: {
-          watchSetting: {
-            documentId: "watch-settings-1",
-            defaultTemplateExperience: {
-              documentId: "exp-template-1",
-              slug: "single-video",
-              isTemplate: true,
-              title: "Single Video Template",
-            },
-          },
-        },
-      })
 
     const { resolveWatchPage } = await import("./content")
 
     const result = await resolveWatchPage("en", "jesus")
 
-    expect(print(queryMock.mock.calls[1][0].query)).toMatch(
+    expect(print(queryMock.mock.calls[2][0].query)).toMatch(
       /children\(pagination:\s*\{limit:\s*24\}\)/,
     )
     // GET_ROUTE_VIDEO must paginate variants with `limit: -1` for the same
@@ -133,7 +194,7 @@ describe("resolveWatchPage", () => {
     // 10-row return would silently drop the playable variant for any video
     // whose first 10 variants don't include the primary language, sending
     // the watch page to the wrong locale.
-    expect(print(queryMock.mock.calls[1][0].query)).toMatch(
+    expect(print(queryMock.mock.calls[2][0].query)).toMatch(
       /variants\(pagination:\s*\{\s*limit:\s*-1\s*\}\)/,
     )
 
@@ -142,7 +203,6 @@ describe("resolveWatchPage", () => {
       kind: "video-template",
       template: {
         slug: "single-video",
-        isTemplate: true,
       },
       routeVideo: {
         slug: "jesus",
@@ -159,11 +219,19 @@ describe("resolveWatchPage", () => {
     })
   })
 
-  it("returns a configuration error when the default template is not marked as template", async () => {
+  it("treats the template Experience's slug as the video-template route (skips Experience lookup)", async () => {
     queryMock
       .mockResolvedValueOnce({
         data: {
-          experiences: [],
+          watchSetting: {
+            documentId: "watch-settings-1",
+            homepageExperience: null,
+            defaultTemplateExperience: {
+              documentId: "exp-template-1",
+              slug: "single-video",
+              title: "Single Video Template",
+            },
+          },
         },
       })
       .mockResolvedValueOnce({
@@ -171,7 +239,7 @@ describe("resolveWatchPage", () => {
           videos: [
             {
               documentId: "video-1",
-              slug: "jesus",
+              slug: "single-video",
               title: "Jesus",
               snippet: null,
               description: null,
@@ -192,27 +260,23 @@ describe("resolveWatchPage", () => {
           ],
         },
       })
-      .mockResolvedValueOnce({
-        data: {
-          watchSetting: {
-            documentId: "watch-settings-1",
-            defaultTemplateExperience: {
-              documentId: "exp-template-1",
-              slug: "single-video",
-              isTemplate: false,
-            },
-          },
-        },
-      })
 
     const { resolveWatchPage } = await import("./content")
 
-    const result = await resolveWatchPage("en", "jesus")
+    const result = await resolveWatchPage("en", "single-video")
 
-    expect(result.data).toBeNull()
-    expect(result.error).toBeInstanceOf(Error)
-    expect(result.error?.message).toBe(
-      "Default template experience must be marked as template.",
-    )
+    // Only watchSetting + video — no Experience lookup, because the slug
+    // matches the template's slug.
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(result.error).toBeNull()
+    expect(result.data).toMatchObject({
+      kind: "video-template",
+      template: {
+        slug: "single-video",
+      },
+      routeVideo: {
+        slug: "single-video",
+      },
+    })
   })
 })
