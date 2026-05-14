@@ -4,10 +4,10 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 
 ## Core model
 
-- Canonical content lives in Strapi.
-- `apps/cms` GraphQL schema drives contracts.
-- `packages/graphql` is the typed client layer.
-- `apps/web` and `apps/mobile` consume `packages/graphql`.
+- Web reads from admin; mobile and TV still read from Strapi.
+- `apps/admin` GraphQL schema drives contracts for `apps/web` via `packages/admin-graphql`.
+- `apps/cms` GraphQL schema drives contracts for `apps/mobile` + `apps/tv` via `packages/graphql`.
+- Both typed-client packages emit gql.tada introspection; never hand-edit `*-env.d.ts` outputs.
 - Deploy on Railway with Cloudflare edge controls.
 
 ## Execution checklist
@@ -38,7 +38,8 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - One PR should stay within one scope unless explicitly broadened.
 - No cross-imports between app contexts.
 - Never hand-edit generated GraphQL env/types outputs.
-- If the CMS schema changes, regenerate GraphQL types in the same PR.
+- If the CMS schema changes, regenerate `packages/graphql` types in the same PR.
+- If the admin Pothos schema changes, regenerate `apps/admin/schema.graphql` AND `packages/admin-graphql` types in the same PR.
 
 ## Package guidance
 
@@ -47,5 +48,7 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - `apps/manager/AGENTS.md` + `apps/manager/CLAUDE.md`
 - `apps/admin/AGENTS.md` + `apps/admin/CLAUDE.md`
 - `apps/mobile/CLAUDE.md`
+- `apps/tv/CLAUDE.md`
 - `apps/roadmap/CLAUDE.md`
+- `packages/admin-graphql/CLAUDE.md`
 - `packages/graphql/AGENTS.md` + `packages/graphql/CLAUDE.md`

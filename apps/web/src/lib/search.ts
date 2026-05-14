@@ -75,6 +75,15 @@ function normalizeResultType(raw: string): SearchContentType {
   return raw === "EXPERIENCE" ? "experience" : "video"
 }
 
+// Admin returns `HybridSearchMode` as UPPER (`HYBRID` | `KEYWORD_ONLY`);
+// the watch-page banner consumer checks lower-case kebab (`hybrid` |
+// `keyword-only`). Normalize at the boundary so the embedding-down
+// advisory in SearchModeBanner.tsx fires correctly.
+function normalizeSearchMode(raw: string | null | undefined): string {
+  if (raw === "KEYWORD_ONLY") return "keyword-only"
+  return "hybrid"
+}
+
 export async function searchVideos(
   query: string,
   limit = 20,
@@ -155,7 +164,7 @@ export async function searchVideos(
     results,
     hasMore: data?.hasMore ?? false,
     query: data?.query ?? truncatedQuery,
-    searchMode: data?.searchMode ?? "HYBRID",
+    searchMode: normalizeSearchMode(data?.searchMode),
     latencyMs,
   }
 }

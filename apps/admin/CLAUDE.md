@@ -185,6 +185,39 @@ also refused). Fixture data lives at
 `apps/admin/src/scripts/web-fixtures.json` — edit there to add content,
 not in the script.
 
+### Web ISR revalidation webhook (U21)
+
+`apps/admin/src/services/revalidate-webhook.ts` emits ISR refresh hints
+to web on Experience publish / update / archive. Best-effort:
+`emitRevalidateWebhook` catches every failure mode (config missing, 5xx,
+network, timeout) and is called via `void` so admin's publish UX never
+blocks on web. Wired into `ExperienceService.publishLocale`,
+`updateLocale` (only when `status === "PUBLISHED"`), and `archive`.
+
+Env vars on the `forge-admin` Doppler project (both `.optional()` so
+admin still boots in environments without web wired up):
+
+- `WEB_REVALIDATE_URL` — e.g. `https://web.jesusfilm.org/api/revalidate`
+- `WEB_REVALIDATE_TOKEN` — must hold the SAME value web sets in
+  `REVALIDATION_SECRET`
+
+Deploy ordering (receiver-first, per
+`docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md`):
+
+1. Confirm `REVALIDATION_SECRET` is set on web (likely already, from
+   the Strapi era).
+2. Set `WEB_REVALIDATE_URL` + `WEB_REVALIDATE_TOKEN` on admin to match.
+   Until both are set, `emitRevalidateWebhook` silently no-ops with a
+   structured log per attempt (`event=web_revalidate.skipped
+reason=config_missing`).
+3. Verify end-to-end: publish an Experience, fetch the matching
+   `/[slug]/[locale]` on web within 30 s, confirm refresh. Tail admin
+   logs for `event=web_revalidate.sent httpStatus=200`.
+
+Reversing the order produces a dead minute where admin's first call 401s
+against an unconfigured web. The webhook itself swallows the 401, so the
+symptom is "web pages don't update after publish" with no error surface.
+
 ### Video database backup and clone
 
 Production backup is automated only. Do not add or use an operator

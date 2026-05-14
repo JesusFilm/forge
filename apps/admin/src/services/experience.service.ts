@@ -286,12 +286,13 @@ export class ExperienceService {
       })
     })
 
-    // Best-effort: refresh web's ISR cache for any update that touches
-    // a PUBLISHED locale. Draft-only edits never affected public
-    // pages so they don't need revalidation. `emitRevalidateWebhook`
-    // never throws.
+    // Fire-and-forget: refresh web's ISR cache for any update that
+    // touches a PUBLISHED locale. Draft-only edits never affected
+    // public pages so they don't need revalidation. `emitRevalidateWebhook`
+    // never throws and is intentionally not awaited so a sick web
+    // instance can't add the 5s timeout budget to admin's publish UX.
     if (updated.status === "PUBLISHED") {
-      await emitRevalidateWebhook({
+      void emitRevalidateWebhook({
         model: "experience",
         slug: updated.slug,
         locale: updated.locale,
@@ -299,7 +300,7 @@ export class ExperienceService {
       if (updated.isHomepage || typeof isTemplate === "boolean") {
         // Homepage / template flag changes ripple through the watch
         // settings derived view — refresh that too.
-        await emitRevalidateWebhook({
+        void emitRevalidateWebhook({
           model: "watch-setting",
           slug: null,
           locale: updated.locale,
@@ -367,15 +368,16 @@ export class ExperienceService {
       })
     })
 
-    // Best-effort: a fresh publish always changes the public surface.
-    // `emitRevalidateWebhook` never throws.
-    await emitRevalidateWebhook({
+    // Fire-and-forget: a fresh publish always changes the public surface.
+    // `emitRevalidateWebhook` never throws and is intentionally not awaited
+    // — admin's publish UX must not block on web's ISR refresh.
+    void emitRevalidateWebhook({
       model: "experience",
       slug: published.slug,
       locale: published.locale,
     })
     if (published.isHomepage) {
-      await emitRevalidateWebhook({
+      void emitRevalidateWebhook({
         model: "watch-setting",
         slug: null,
         locale: published.locale,
@@ -525,13 +527,12 @@ export class ExperienceService {
       data: { archivedAt: new Date() },
     })
 
-    // Best-effort: archiving pulls every locale of this experience out
-    // of the public surface. Web's `watch-setting` handler invalidates
+    // Fire-and-forget: archiving pulls every locale of this experience
+    // out of the public surface. Web's `watch-setting` handler invalidates
     // the root layout + every homepage path, which is a broader
-    // invalidation than strictly needed but safe. Enumerating
-    // per-locale slugs would be more precise but would require an
-    // extra query in a hot path that already happens after success.
-    await emitRevalidateWebhook({
+    // invalidation than strictly needed but safe. Not awaited so a sick
+    // web instance can't block admin's archive UX.
+    void emitRevalidateWebhook({
       model: "watch-setting",
       slug: null,
       locale: null,

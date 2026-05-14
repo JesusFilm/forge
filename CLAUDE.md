@@ -11,12 +11,20 @@ JesusFilm (JFP) is a ministry organization. This monorepo contains our web, mobi
 ## Architecture
 
 ```
+apps/admin (Next.js + Pothos + Prisma) -> exposes GraphQL API
+      ->
+packages/admin-graphql (gql.tada) -> typed client generated from admin SDL
+      ->
+apps/web (Next.js)
+
 apps/cms (Strapi v5) -> exposes GraphQL API
       ->
 packages/graphql (gql.tada) -> typed client generated from Strapi schema
       ->
-apps/web (Next.js)  +  apps/mobile (Expo)
+apps/mobile (Expo)  +  apps/tv (React Native TV)
 ```
+
+The web → admin data layer flipped in `feat/web-admin-data-layer-flip` (U9–U22; PR #939 shipped U1–U8 foundation). Mobile and TV remain on `packages/graphql` (Strapi) pending their own migrations.
 
 All apps deploy to Railway. Cloudflare sits in front for DNS, WAF, and Authenticated Origin Pulls.
 
@@ -24,19 +32,25 @@ All apps deploy to Railway. Cloudflare sits in front for DNS, WAF, and Authentic
 
 This is a pnpm + Turborepo monorepo.
 
-- `apps/web/` — Next.js 16+ App Router application (`next@^16.1.6`)
-- `apps/mobile/` — React Native / Expo app (active development, EAS for builds)
-- `apps/cms/` — Strapi v5 headless CMS with GraphQL plugin
+- `apps/web/` — Next.js 16+ App Router application (`next@^16.1.6`); reads from admin via `packages/admin-graphql`
+- `apps/admin/` — Next.js + Pothos + Prisma + pgvector; web's data source post-U22
+- `apps/mobile/` — React Native / Expo app (active development, EAS for builds); reads from Strapi via `packages/graphql`
+- `apps/tv/` — React Native TV app; reads from Strapi via `packages/graphql`
+- `apps/cms/` — Strapi v5 headless CMS with GraphQL plugin; serves mobile + TV
 - `apps/roadmap/` — Next.js roadmap dashboard (reads from `docs/roadmap/`)
-- `packages/graphql/` — gql.tada typed GraphQL client (generated from Strapi's GraphQL schema)
+- `packages/admin-graphql/` — gql.tada typed GraphQL client (generated from admin's `schema.graphql`); consumed by web
+- `packages/graphql/` — gql.tada typed GraphQL client (generated from Strapi's GraphQL schema); consumed by mobile + TV
 
 ## Package-Specific Instructions
 
 When working in a specific package, also read that package's `CLAUDE.md`:
 
 - Working in `apps/web/`? Also read `apps/web/CLAUDE.md`
+- Working in `apps/admin/`? Also read `apps/admin/CLAUDE.md`
 - Working in `apps/cms/`? Also read `apps/cms/CLAUDE.md`
 - Working in `apps/mobile/`? Also read `apps/mobile/CLAUDE.md`
+- Working in `apps/tv/`? Also read `apps/tv/CLAUDE.md`
+- Working in `packages/admin-graphql/`? Also read `packages/admin-graphql/CLAUDE.md`
 - Working in `packages/graphql/`? Also read `packages/graphql/CLAUDE.md`
 - Working in `apps/roadmap/`? Also read `apps/roadmap/CLAUDE.md`
 
@@ -57,11 +71,14 @@ Cursor does not load this file automatically. Keep `.cursor/rules/project-contex
 - Prefer `type` over `interface` unless declaration merging is needed.
 - Use `satisfies` for type-safe object literals.
 
-### GraphQL (packages/graphql)
+### GraphQL — two typed clients
 
-- This package provides the typed `graphql()` function and introspection types generated from the Strapi GraphQL schema using gql.tada.
-- After any Strapi content type change: run codegen to regenerate types.
-- Operations (queries, mutations, fragments) are defined in consuming apps (e.g., `apps/web/src/lib/content.ts`, `apps/manager/src/cms/`) using the `graphql()` function exported by this package.
+Web consumes `@forge/admin-graphql` (admin's GraphQL surface). Mobile + TV consume `@forge/graphql` (Strapi). Each package owns its own gql.tada introspection and codegen artifact.
+
+- `packages/admin-graphql` exposes `adminGraphql()` + `AdminFragmentOf`/`AdminResultOf`/`AdminVariablesOf` type aliases + `readFragment`. SDL-only consumption — never imports from `apps/admin/src/domain/*` at runtime (sidesteps the tsx-ESM trap).
+- `packages/graphql` exposes `graphql()` + bare `FragmentOf`/`ResultOf`/`VariablesOf`. Strapi-only consumers.
+- Operations (queries, mutations, fragments) are defined in the consuming apps, never in the client packages. Web's operations live in `apps/web/src/lib/content.ts`, `search.ts`, `recommendations.ts`, `demo-search.ts`, and the fragment files in `apps/web/src/lib/fragments/`. The shared `WatchExperience` root composition is re-exported from `@forge/admin-graphql/fragments`.
+- After any schema change on EITHER side: run that package's codegen to regenerate the introspection `.d.ts`. CI has separate drift jobs (`graphql-generate`, `admin-graphql-generate`, `admin-schema-drift`) that fail if you forget.
 
 ### Next.js (apps/web)
 
@@ -209,24 +226,31 @@ This repo uses the compound engineering workflow. After completing work:
 
 ### The GraphQL Change Flow
 
-`packages/graphql` is currently Strapi-only and emits the `graphql()` factory. Admin-side typed GraphQL will live in `packages/admin-graphql` — landing in U9 of the `feat/adapt-web-data-layer-to-admin` plan. The branch is mid-rebuild: U9–U10 complete the new package and re-add CI's admin codegen verification.
+Two parallel flows since web migrated to admin. Both follow the same pattern: schema artifact emits → codegen regenerates introspection → consuming code updates → all committed together.
 
-**Strapi-side change flow:**
+**Admin-side change flow (web's data source):**
+
+1. Add or modify Pothos types in `apps/admin/src/graphql/types/` or related modules
+2. Run `pnpm --filter @forge/admin schema:print` to regenerate `apps/admin/schema.graphql`
+3. Run `pnpm --filter @forge/admin-graphql generate` to regenerate `packages/admin-graphql/src/admin-graphql-env.d.ts`
+4. Update or add queries/mutations/fragments using `adminGraphql()` from `@forge/admin-graphql` in `apps/web/src/lib/`
+5. Update consuming code in `apps/web/`
+6. Commit all three generated artifacts (Pothos source + `schema.graphql` + `admin-graphql-env.d.ts`) alongside source changes
+
+CI's `admin-schema-drift` catches step 2, `admin-graphql-generate` catches step 3.
+
+**Strapi-side change flow (mobile + TV's data source):**
 
 1. Add or modify content type in `apps/cms/` (Strapi admin or code)
 2. Run Strapi locally so the GraphQL schema is available; `apps/cms/schema.graphql` auto-emits
 3. Run `pnpm --filter @forge/graphql generate` to regenerate `packages/graphql/src/graphql-env.d.ts`
 4. Update or add queries/mutations/fragments using the `graphql()` factory in consuming apps
-5. Update consuming code in `apps/web/`, `apps/mobile/`, `apps/tv/`
+5. Update consuming code in `apps/mobile/`, `apps/tv/`
 6. Commit generated files alongside source changes
 
-**Admin-side change flow (current — until U9):**
+CI's `graphql-generate` catches step 3.
 
-1. Add or modify Pothos types in `apps/admin/src/graphql/types/` or related modules
-2. Run `pnpm --filter @forge/admin schema:print` to regenerate `apps/admin/schema.graphql`
-3. Commit both (Pothos source change + `schema.graphql`) in the same PR
-
-No admin codegen consumer exists on this branch. Once U9 ships `packages/admin-graphql`, this section adds the codegen + consuming-code steps mirroring the Strapi flow. CI's `admin-schema-drift` job catches step 2 today; CI's admin-codegen verify returns in U10.
+**Cross-app ISR refresh:** admin emits ISR revalidation webhooks to web on Experience publish / update / archive via `apps/admin/src/services/revalidate-webhook.ts`. Best-effort; never blocks admin's editor UX. See `apps/admin/CLAUDE.md` "Web ISR revalidation webhook (U21)" for deploy ordering.
 
 ### Known Patterns (add to this list as you compound)
 
