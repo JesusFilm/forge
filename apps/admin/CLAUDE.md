@@ -57,7 +57,7 @@ src/
 - [x] Unit 6: Permission system + per-request DataLoaders + scope-auth wiring + classification enforcement
 - [x] Unit 7: Service layer + Experience CRUD with ABAC
 - [x] Unit 8: Video read service + pgvector experience search
-- [x] Unit 9: GraphQL security hardening (Armor + rate limit + introspection gate + CORS)
+- [x] Unit 9: GraphQL security hardening (Armor + rate limit + introspection gate + CORS) — Armor's `costLimitPlugin` is deliberately omitted because it false-positives on typed-client fragment composition; see `docs/solutions/tooling-decisions/graphql-armor-cost-limit-incompatible-with-typed-clients-20260514.md`
 - [x] Unit 10: Core API sync orchestrator + 5 phases
 - [x] Unit 11: useworkflow plugin + workflow endpoint auth + storage service
 - [x] Unit 12: Admin dashboard operationalized for v1 (no stub routes; live ops surfaces)
