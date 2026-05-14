@@ -99,22 +99,12 @@ export function getMastra(): Mastra {
   return cached
 }
 
-/**
- * Eager-loaded singleton convenience export.
- *
- * Most call sites should prefer `getMastra()` (lazy), but some
- * downstream Mastra APIs (e.g. `handleChatStream({ mastra, agentId, params })`)
- * expect a Mastra-typed value to be available synchronously at the
- * import boundary. This export accommodates that without forcing
- * each call site to wrap `getMastra()` themselves.
- *
- * NOTE: this triggers `buildMastraInstance()` at module load. In the
- * U2 foundation-only config that's effectively a no-op — no connections
- * open, no agents instantiate beyond their constructors. Once U6+
- * registers agents, evaluate whether the eager export still pays its
- * weight, and consider moving to `getMastra()` everywhere.
- */
-export const mastra: Mastra = getMastra()
+// Eager `mastra` export removed — it triggered agent construction
+// (and the env read chain that backs Memory + providers) at module
+// load. In build-phase contexts where env is skipValidation-deferred,
+// that surfaced as a load-time failure. Call sites that need a
+// Mastra-typed value synchronously call `getMastra()` themselves;
+// the lazy cache makes that a one-time cost.
 
 // ---------------------------------------------------------------------------
 // Test-only hooks

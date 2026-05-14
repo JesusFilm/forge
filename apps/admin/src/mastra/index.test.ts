@@ -55,15 +55,15 @@ describe("apps/admin/src/mastra (singleton)", () => {
     })
   })
 
-  describe("eager `mastra` export", () => {
-    it("exists at module-load time as a Mastra instance", async () => {
-      const { mastra } = await import("./index")
-      expect(mastra).toBeDefined()
-      // The eager export is the FIRST cached instance built at module
-      // load. After a test reset, getMastra() builds a fresh cached
-      // instance distinct from the eager export — that's expected, the
-      // eager export is a snapshot at first import, not a live alias
-      // for the cache.
+  describe("module surface", () => {
+    it("does not eagerly construct a Mastra instance at module load", async () => {
+      // The eager `mastra` export was removed in U2's self-review pass —
+      // it triggered Agent + Memory construction at module load, which
+      // failed in build-phase contexts where env was not fully populated.
+      // Call sites that need a synchronous Mastra value call getMastra()
+      // themselves.
+      const indexModule = await import("./index")
+      expect("mastra" in indexModule).toBe(false)
     })
   })
 
