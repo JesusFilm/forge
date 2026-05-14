@@ -352,6 +352,21 @@ function normalizeImages(
     .filter((i): i is WatchImage => i != null)
 }
 
+// Stable-order dedup by documentId. Keeps the first occurrence so the
+// editor-curated ordering survives. Used to scrub the parents/children
+// lists in `normalizeAdminVideo` against admin's duplicate VideoRelation
+// rows.
+function dedupeByDocumentId<T extends { documentId: string }>(items: T[]): T[] {
+  const seen = new Set<string>()
+  const result: T[] = []
+  for (const item of items) {
+    if (seen.has(item.documentId)) continue
+    seen.add(item.documentId)
+    result.push(item)
+  }
+  return result
+}
+
 // Admin's `Language.name` and `BibleBook.name` are typed `JSON` — a
 // locale-keyed object like `{ "en": "Afrikaans", "af": "Afrikaans" }`
 // (or, for some Core-synced rows, a plain string). Prefer the English
@@ -497,12 +512,26 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
           bcp47: raw.primaryLanguage.bcp47 ?? null,
         }
       : null,
-    parents: (raw.parents ?? [])
-      .map(normalizeParent)
-      .filter((p): p is WatchParent => p != null),
-    children: (raw.children ?? [])
-      .map(normalizeChild)
-      .filter((c): c is WatchChild => c != null),
+    // Belt-and-braces against admin data-quality issues: filter out
+    // self-references (a VideoRelation row pointing the video at itself
+    // — seen in the wild for `1-jesus-our-loving-pursuer` with 3 such
+    // rows) and dedupe by documentId so a duplicated relation never
+    // surfaces as repeated sibling-carousel tiles or React duplicate-key
+    // warnings.
+    parents: dedupeByDocumentId(
+      (raw.parents ?? [])
+        .map(normalizeParent)
+        .filter(
+          (p): p is WatchParent => p != null && p.documentId !== raw.documentId,
+        ),
+    ),
+    children: dedupeByDocumentId(
+      (raw.children ?? [])
+        .map(normalizeChild)
+        .filter(
+          (c): c is WatchChild => c != null && c.documentId !== raw.documentId,
+        ),
+    ),
     variants: (raw.variants ?? [])
       .map(normalizeVariant)
       .filter((v): v is WatchVariant => v != null),
