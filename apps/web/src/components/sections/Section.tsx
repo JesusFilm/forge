@@ -18,11 +18,18 @@ import { NavigationCarousel } from "./NavigationCarousel"
 import { QuizButton } from "./QuizButton"
 import { RelatedQuestions } from "./RelatedQuestions"
 import { Video } from "./Video"
-import { ADMIN_BLOCK_TYPENAMES, renderAdminBlock } from "./index"
+import { AdventCountdown } from "./AdventCountdown"
+import { CTASection } from "./CTASection"
+import { EasterDates } from "./EasterDates"
+import { Text } from "./Text"
 
-type AnyBlock = {
-  readonly __typename?: string | null
-} & Record<string, unknown>
+// Admin GraphQL typenames for blocks that can appear nested inside a
+// SectionBlock's `content[]`. The Strapi switch above only knows
+// `ComponentSections*` typenames; admin's payloads carry these instead.
+// We inline the dispatch (rather than reusing `renderAdminBlock` from
+// `./index`) to avoid an import cycle — `index.tsx` already imports
+// `Section.tsx`, so the reverse import resolves undefined at module
+// load and the component silently no-ops.
 
 export { sectionFragment }
 
@@ -191,7 +198,9 @@ function SectionContentRenderer({
 }) {
   if (!item || item.__typename === "Error") return null
   const typename = item.__typename as string
-  switch (typename) {
+  // Cast to broader string so the admin typename cases below (which
+  // are not in the Strapi-derived discriminated union) type-check.
+  switch (typename as string) {
     case "ComponentSectionsContainer":
       return (
         <Container
@@ -253,18 +262,82 @@ function SectionContentRenderer({
           }
         />
       )
+    // Admin GraphQL typenames inlined here. See module-level comment for
+    // why we don't bounce through `renderAdminBlock` in `./index`.
+    case "ContainerBlock":
+      return (
+        <Container
+          data={item as unknown as FragmentOf<typeof containerFragment>}
+          routeVideo={routeVideo}
+        />
+      )
+    case "VideoBlock":
+      return (
+        <Video
+          data={item as unknown as FragmentOf<typeof videoSectionFragment>}
+          routeVideo={routeVideo}
+        />
+      )
+    case "TextBlock":
+      return (
+        <Text data={item as unknown as Parameters<typeof Text>[0]["data"]} />
+      )
+    case "CtaBlock":
+      return (
+        <CTASection
+          data={item as unknown as Parameters<typeof CTASection>[0]["data"]}
+        />
+      )
+    case "EasterDatesBlock":
+      return (
+        <EasterDates
+          data={item as unknown as Parameters<typeof EasterDates>[0]["data"]}
+        />
+      )
+    case "AdventCountdownBlock":
+      return (
+        <AdventCountdown
+          data={
+            item as unknown as Parameters<typeof AdventCountdown>[0]["data"]
+          }
+        />
+      )
+    case "BibleQuotesCarouselBlock":
+      return (
+        <BibleQuotesCarousel
+          data={
+            item as unknown as FragmentOf<typeof bibleQuotesCarouselFragment>
+          }
+        />
+      )
+    case "MediaCollectionBlock":
+      return (
+        <MediaCollection
+          data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
+          routeVideo={routeVideo}
+        />
+      )
+    case "NavigationCarouselBlock":
+      return (
+        <NavigationCarousel
+          data={
+            item as unknown as FragmentOf<typeof navigationCarouselFragment>
+          }
+        />
+      )
+    case "RelatedQuestionsBlock":
+      return (
+        <RelatedQuestions
+          data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
+        />
+      )
+    case "VideoCarouselBlock":
+      return (
+        <CarouselVideo
+          data={item as unknown as FragmentOf<typeof videoCarouselFragment>}
+        />
+      )
     default: {
-      // Admin typenames (NavigationCarouselBlock, ContainerBlock, etc.)
-      // arrive here when a Section's nested content composes admin-shape
-      // blocks. The Strapi-era cases above only know `ComponentSections*`
-      // typenames; fall back to the top-level admin dispatch so nested
-      // admin blocks render correctly. See packages/admin-graphql/
-      // src/fragments/blocks/section.ts where `content` is aliased to
-      // `sectionContent` — the alias preserves field name; per-item
-      // __typename still carries admin's `*Block` shape.
-      if (ADMIN_BLOCK_TYPENAMES.has(typename)) {
-        return renderAdminBlock(item as unknown as AnyBlock, routeVideo)
-      }
       if (process.env.NODE_ENV === "development") {
         console.warn("[Section] Unhandled content type:", typename)
       }

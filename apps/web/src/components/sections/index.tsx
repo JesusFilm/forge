@@ -62,7 +62,7 @@ const ADMIN_BLOCK_TYPENAMES_LIST = [
   "VideoRecommendationsBlock",
 ] as const
 type AdminBlockTypename = (typeof ADMIN_BLOCK_TYPENAMES_LIST)[number]
-export const ADMIN_BLOCK_TYPENAMES: ReadonlySet<string> = new Set(
+const ADMIN_BLOCK_TYPENAMES: ReadonlySet<string> = new Set(
   ADMIN_BLOCK_TYPENAMES_LIST,
 )
 
@@ -70,7 +70,7 @@ type AnyBlock = {
   readonly __typename?: AdminBlockTypename | string | null
 } & Record<string, unknown>
 
-export function renderAdminBlock(
+function renderAdminBlock(
   block: AnyBlock,
   routeVideo: RouteVideo | null | undefined,
 ): ReactNode {
