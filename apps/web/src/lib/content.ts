@@ -11,7 +11,6 @@ import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
 import {
   getWatchVideoBySlugOperation,
-  getWatchVideoOperation,
   watchExperienceFragment,
   watchVideoFragment,
 } from "@/lib/fragments"
@@ -56,7 +55,7 @@ const GET_WATCH_SETTINGS = adminGraphql(
 )
 
 type WatchSettingsData = AdminResultOf<typeof GET_WATCH_SETTINGS>
-type GetWatchVideoData = AdminResultOf<typeof getWatchVideoOperation>
+type GetWatchVideoData = AdminResultOf<typeof getWatchVideoBySlugOperation>
 type AdminVideoRaw = NonNullable<GetWatchVideoData["videoBySlug"]>
 
 // Anchor WatchExperience to the fragment itself so all three queries
@@ -320,9 +319,9 @@ async function getWatchSettings(locale: string): Promise<WatchSetting | null> {
 }
 
 // Admin-shape → flat-shape transform. Single normalisation surface
-// consumed by both query paths so the resolver-visible `WatchVideoRecord`
-// shape stays stable across `getWatchVideoOperation` and
-// `getWatchVideoBySlugOperation` results.
+// consumed by both watch routes (3-segment and 2-segment) since they
+// share `getWatchVideoBySlugOperation`; keeps the resolver-visible
+// `WatchVideoRecord` shape stable across both call sites.
 //
 // Admin's `id: ID` is nominally `string | null` at the SDL layer but is
 // always non-null in practice (every Prisma row has a generated id). The
@@ -865,7 +864,7 @@ async function fetchWatchVideoRecord(
   videoSlug: string,
 ): Promise<WatchVideoRecord | null> {
   const result = await client.query({
-    query: getWatchVideoOperation,
+    query: getWatchVideoBySlugOperation,
     variables: {
       locale: WATCH_VIDEO_LOCALE,
       videoSlug,
@@ -1331,10 +1330,10 @@ export type WatchBlock =
   | WatchShareBlock
 
 /** Experience-typed block coming from a WatchExperience override (admin shape). */
-export type StrapiWatchBlock = Section
+export type ExperienceBlock = Section
 
 /** Discriminator for entries in the merged watch-block array. */
-export type MergedWatchBlock = WatchBlock | StrapiWatchBlock
+export type MergedWatchBlock = WatchBlock | ExperienceBlock
 
 /**
  * Admin `__typename` values that mount their own player and would steal
@@ -1560,10 +1559,10 @@ export function mergeWatchExperience({
   experience,
 }: MergeWatchExperienceArgs): MergedWatchBlock[] {
   const overrides = new Map<WatchSlotKey, MergedWatchBlock>()
-  const passthrough: StrapiWatchBlock[] = []
+  const passthrough: ExperienceBlock[] = []
 
   const experienceBlocks = (experience?.blocks ?? []).filter(
-    (b): b is StrapiWatchBlock => b != null,
+    (b): b is ExperienceBlock => b != null,
   )
 
   for (const block of experienceBlocks) {

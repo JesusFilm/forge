@@ -173,21 +173,11 @@ export const watchVideoFragment = adminGraphql(`
 // `VideoRelation.parent.locales`, etc. — admin's U6 widening accepts the arg
 // per relation, so the projection only ships the active locale's row in
 // each `locales[]` array. Admin's `videoBySlug` resolves the video record
-// by slug only; the resolver verifies the collection-slug match by walking
-// `video.parents` client-side.
-export const getWatchVideoOperation = adminGraphql(
-  `
-    query GetWatchVideo($locale: String!, $videoSlug: String!) {
-      videoBySlug(slug: $videoSlug) {
-        ...WatchVideo
-      }
-    }
-  `,
-  [watchVideoFragment],
-)
-
-// 2-segment watch route. Resolver picks parents[0] as canonical (or null
-// when the video has no parent).
+// by slug only; both watch routes (3-segment collection-scoped and
+// 2-segment slug-only) share this single operation — the resolver verifies
+// the collection-slug match by walking `video.parents` client-side when
+// the URL carries a collection segment, otherwise picks `parents[0]` as
+// canonical.
 export const getWatchVideoBySlugOperation = adminGraphql(
   `
     query GetWatchVideoBySlug($locale: String!, $videoSlug: String!) {

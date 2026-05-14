@@ -346,3 +346,84 @@ describe("resolveWatchPage", () => {
     })
   })
 })
+
+// Locale-text fallback (content.ts:1059-1074). When admin's
+// `videoBySlug(...)` returns a record with `locales: []` for a non-`en`
+// request — common when the URL uses a language slug ("afrikaans") or
+// when no VideoLocale row exists in the requested language — the
+// resolver re-fetches with `locale: "en"` and merges the English title
+// onto the original record. Without this fallback, watch pages on
+// non-en locales render with an empty `<h1>`.
+describe("resolveWatchVideoBySlug — locale fallback", () => {
+  afterEach(() => {
+    queryMock.mockReset()
+    vi.resetModules()
+  })
+
+  it("re-fetches with locale='en' when the primary fetch returns empty locales for a non-en request", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({ locales: [] }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            locales: [
+              {
+                documentId: "loc-en",
+                title: "Jesus (English fallback)",
+                description: "English description",
+                snippet: "English snippet",
+                imageAlt: "Jesus still",
+              },
+            ],
+          }),
+        },
+      })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug("jesus", "fr")
+
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    const fallbackCall = queryMock.mock.calls[1][0] as {
+      variables: { locale: string; videoSlug: string }
+    }
+    expect(fallbackCall.variables).toEqual({
+      locale: "en",
+      videoSlug: "jesus",
+    })
+    expect(result?.video.title).toBe("Jesus (English fallback)")
+  })
+
+  it("does not re-fetch when the primary fetch already returns a locale row", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        videoBySlug: makeAdminVideo(),
+      },
+    })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug("jesus", "fr")
+
+    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(result?.video.title).toBe("Jesus")
+  })
+
+  it("does not re-fetch when the request is already for locale='en'", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        videoBySlug: makeAdminVideo({ locales: [] }),
+      },
+    })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    await resolveWatchVideoBySlug("jesus", "en")
+
+    expect(queryMock).toHaveBeenCalledTimes(1)
+  })
+})

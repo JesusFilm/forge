@@ -3,14 +3,13 @@ import { describe, expect, it } from "vitest"
 
 import {
   getWatchVideoBySlugOperation,
-  getWatchVideoOperation,
   watchVideoFragment,
 } from "@/lib/fragments/watch-video"
 
 /**
- * Guards the WatchVideo fragment + GetWatchVideo / GetWatchVideoBySlug
- * operations against (a) accidental field removal at the GraphQL boundary
- * and (b) silent drops of required variable definitions (the
+ * Guards the WatchVideo fragment + GetWatchVideoBySlug operation against
+ * (a) accidental field removal at the GraphQL boundary and (b) silent
+ * drops of required variable definitions (the
  * `codegen-strips-optional-graphql-variables` failure mode).
  *
  * The fragment is admin-shape: `documentId: id` alias on every node,
@@ -95,19 +94,22 @@ describe("WatchVideoFragment", () => {
   })
 })
 
-describe("GetWatchVideo operation", () => {
+describe("GetWatchVideoBySlug operation", () => {
   it("declares every variable as required (avoids codegen-strips-optional-graphql-variables)", () => {
-    const printed = print(getWatchVideoOperation)
+    const printed = print(getWatchVideoBySlugOperation)
 
-    expect(printed).toMatch(/query GetWatchVideo\([\s\S]*?\$locale:\s*String!/)
+    expect(printed).toMatch(
+      /query GetWatchVideoBySlug\([\s\S]*?\$locale:\s*String!/,
+    )
     expect(printed).toMatch(/\$videoSlug:\s*String!/)
     // No optional variables — every var has the trailing `!`.
-    const variableSection = printed.match(/GetWatchVideo\(([^)]*)\)/)?.[1] ?? ""
+    const variableSection =
+      printed.match(/GetWatchVideoBySlug\(([^)]*)\)/)?.[1] ?? ""
     expect(variableSection).not.toMatch(/:\s*[A-Za-z]+\s*[,)\s]/)
   })
 
   it("invokes videoBySlug with the slug var and threads $locale into the fragment", () => {
-    const printed = print(getWatchVideoOperation)
+    const printed = print(getWatchVideoBySlugOperation)
 
     expect(printed).toMatch(/videoBySlug\(/)
     expect(printed).toMatch(/slug:\s*\$videoSlug/)
@@ -116,21 +118,8 @@ describe("GetWatchVideo operation", () => {
   })
 
   it("inlines the WatchVideoFragment selection set (gql.tada @_unmask)", () => {
-    const printed = print(getWatchVideoOperation)
+    const printed = print(getWatchVideoBySlugOperation)
     expect(printed).toMatch(/\.\.\.WatchVideo\b/)
     expect(printed).toMatch(/fragment WatchVideo on Video/)
-  })
-})
-
-describe("GetWatchVideoBySlug operation", () => {
-  it("invokes videoBySlug with slug + locale args", () => {
-    const printed = print(getWatchVideoBySlugOperation)
-
-    expect(printed).toMatch(
-      /query GetWatchVideoBySlug\([\s\S]*?\$locale:\s*String!/,
-    )
-    expect(printed).toMatch(/\$videoSlug:\s*String!/)
-    expect(printed).toMatch(/videoBySlug\(/)
-    expect(printed).toMatch(/slug:\s*\$videoSlug/)
   })
 })
