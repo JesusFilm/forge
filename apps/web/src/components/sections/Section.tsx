@@ -21,6 +21,8 @@ import { Video } from "./Video"
 import { AdventCountdown } from "./AdventCountdown"
 import { CTASection } from "./CTASection"
 import { EasterDates } from "./EasterDates"
+import { InfoBlocks } from "./InfoBlocks"
+import { PromoBanner } from "./PromoBanner"
 import { Text } from "./Text"
 
 // Admin GraphQL typenames for blocks that can appear nested inside a
@@ -347,6 +349,18 @@ function SectionContentRenderer({
       return (
         <CarouselVideo
           data={item as unknown as FragmentOf<typeof videoCarouselFragment>}
+        />
+      )
+    case "PromoBannerBlock":
+      return (
+        <PromoBanner
+          data={item as unknown as Parameters<typeof PromoBanner>[0]["data"]}
+        />
+      )
+    case "InfoBlocksBlock":
+      return (
+        <InfoBlocks
+          data={item as unknown as Parameters<typeof InfoBlocks>[0]["data"]}
         />
       )
     default: {

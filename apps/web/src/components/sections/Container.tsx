@@ -11,11 +11,14 @@ import type { videoSectionFragment } from "@/lib/fragments/video-section"
 import type { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
 import { Text } from "./Text"
 import { AdventCountdown } from "./AdventCountdown"
+import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
 import { EasterDates } from "./EasterDates"
 import { MediaCollection } from "./MediaCollection"
 import { CTASection } from "./CTASection"
 import { Video } from "./Video"
 import { RelatedQuestions } from "./RelatedQuestions"
+
+import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 
 export { containerFragment }
 
@@ -166,6 +169,14 @@ function SlotContentRenderer({
           data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
         />
       )
+    case "BibleQuotesCarouselBlock":
+      return (
+        <BibleQuotesCarousel
+          data={
+            item as unknown as FragmentOf<typeof bibleQuotesCarouselFragment>
+          }
+        />
+      )
     default:
       return null
   }
@@ -183,6 +194,7 @@ function groupAdminContentBySlot(
 ): { gridSpan: number; spans: unknown; items: Record<string, unknown>[] }[] {
   const groups: ReturnType<typeof groupAdminContentBySlot> = []
   let current: (typeof groups)[number] | null = null
+  let droppedOrphans = 0
   for (const item of content) {
     if (!item) continue
     const typename = (item as { __typename?: string | null }).__typename
@@ -197,9 +209,24 @@ function groupAdminContentBySlot(
       groups.push(current)
       continue
     }
-    if (current) current.items.push(item)
+    if (current) {
+      current.items.push(item)
+    } else {
+      droppedOrphans += 1
+    }
+  }
+  if (droppedOrphans > 0 && process.env.NODE_ENV === "development") {
+    console.warn(
+      `[Container] groupAdminContentBySlot dropped ${droppedOrphans} item(s) appearing before the first ContainerSlotBlock marker — admin content[] should start with a slot marker. The Zod schema does not enforce this; check admin's transform.`,
+    )
   }
   return groups
+}
+
+type SlotGroup = {
+  gridSpan: number
+  spans: unknown
+  items: unknown[]
 }
 
 export function Container({ data, routeVideo }: ContainerProps) {
@@ -209,29 +236,35 @@ export function Container({ data, routeVideo }: ContainerProps) {
 
   // Strapi-era data has `slots[].content[]`; admin's flat shape is
   // `content[]` with `ContainerSlotBlock` markers. Normalize both into a
-  // common groups array so the rendering path is single.
-  const groups: { gridSpan: number; spans: unknown; items: unknown[] }[] =
-    legacySlots && legacySlots.length > 0
-      ? (legacySlots
-          .filter((s): s is NonNullable<typeof s> => s != null)
-          .map((s) => {
-            const slot = s as {
-              gridSpan?: unknown
-              spans?: unknown
-              content?: readonly unknown[]
-              id?: string
-            }
-            return {
-              gridSpan: clampSpan(slot.gridSpan),
-              spans: slot.spans,
-              items: (slot.content ?? []).filter(Boolean) as unknown[],
-            }
-          }) as never)
-      : adminContent
-        ? groupAdminContentBySlot(
-            adminContent as readonly (Record<string, unknown> | null)[],
-          )
-        : []
+  // common `SlotGroup[]` so the rendering path is single.
+  let groups: SlotGroup[]
+  if (legacySlots && legacySlots.length > 0) {
+    groups = legacySlots
+      .filter((s): s is NonNullable<typeof s> => s != null)
+      .map((s) => {
+        const slot = s as {
+          gridSpan?: unknown
+          spans?: unknown
+          content?: readonly unknown[]
+          id?: string
+        }
+        return {
+          gridSpan: clampSpan(slot.gridSpan),
+          spans: slot.spans,
+          items: (slot.content ?? []).filter(Boolean) as unknown[],
+        }
+      })
+  } else if (adminContent) {
+    groups = groupAdminContentBySlot(
+      adminContent as readonly (Record<string, unknown> | null)[],
+    )
+  } else {
+    groups = []
+  }
+  // Skip slot groups that have no items — two adjacent ContainerSlotBlock
+  // markers in admin's content[] would otherwise render an empty grid cell
+  // with `aspect-ratio` styling and confuse the layout.
+  groups = groups.filter((g) => g.items.length > 0)
   if (!groups.length) return null
 
   return (
