@@ -99,7 +99,7 @@
     },
     {
       "coreId": "fixt-easter-explained",
-      "slug": "easter-explained",
+      "slug": "fixt-easter-explained",
       "label": "SHORT_FILM",
       "publishedAt": "2026-01-04T00:00:00.000Z",
       "locales": [
@@ -117,7 +117,7 @@
     },
     {
       "coreId": "fixt-my-last-day",
-      "slug": "my-last-day",
+      "slug": "fixt-my-last-day",
       "label": "SHORT_FILM",
       "publishedAt": "2026-01-05T00:00:00.000Z",
       "locales": [

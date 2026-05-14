@@ -12,6 +12,6 @@ export const adminCardFragment = adminGraphql(`
     mediaAssetId
     backgroundColor
     link
-    variant
+    cardVariant: variant
   }
 `)

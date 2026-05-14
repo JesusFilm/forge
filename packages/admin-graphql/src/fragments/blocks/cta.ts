@@ -12,6 +12,6 @@ export const adminCtaFragment = adminGraphql(`
     imageUrl
     imageAssetId
     backgroundColor
-    variant
+    ctaVariant: variant
   }
 `)
