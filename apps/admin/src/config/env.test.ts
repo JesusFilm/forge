@@ -40,13 +40,12 @@ describe("env", () => {
     })
   })
 
-  // PR-C P1-2 — bearer-CSV disjointness invariant. Three CSVs
-  // (WORKFLOW_API_KEYS, PARITY_API_KEYS, WEB_ADMIN_API_KEYS) MUST NOT
-  // share any value; the auth chain in context.ts is workflow → parity
-  // → consumer → public, so a duplicated key silently widens
-  // permissions to the higher-tier role.
+  // Bearer-CSV disjointness invariant. The two CSVs
+  // (WORKFLOW_API_KEYS, WEB_ADMIN_API_KEYS) MUST NOT share any value;
+  // the auth chain in context.ts is workflow → consumer → public, so a
+  // duplicated key silently widens permissions to the higher-tier role.
   describe("assertBearerCsvsDisjoint", () => {
-    it("passes when all three CSVs are undefined", () => {
+    it("passes when both CSVs are undefined", () => {
       expect(() => assertBearerCsvsDisjoint({})).not.toThrow()
     })
 
@@ -55,39 +54,17 @@ describe("env", () => {
         assertBearerCsvsDisjoint({ WEB_ADMIN_API_KEYS: "key-a,key-b" }),
       ).not.toThrow()
       expect(() =>
-        assertBearerCsvsDisjoint({ PARITY_API_KEYS: "parity-a" }),
-      ).not.toThrow()
-      expect(() =>
         assertBearerCsvsDisjoint({ WORKFLOW_API_KEYS: "wf-a" }),
       ).not.toThrow()
     })
 
-    it("passes when all three CSVs are disjoint", () => {
+    it("passes when both CSVs are disjoint", () => {
       expect(() =>
         assertBearerCsvsDisjoint({
           WORKFLOW_API_KEYS: "wf-a,wf-b",
-          PARITY_API_KEYS: "parity-a,parity-b",
           WEB_ADMIN_API_KEYS: "web-a,web-b",
         }),
       ).not.toThrow()
-    })
-
-    it("throws when PARITY and WEB_ADMIN share a value", () => {
-      expect(() =>
-        assertBearerCsvsDisjoint({
-          PARITY_API_KEYS: "shared-key,parity-only",
-          WEB_ADMIN_API_KEYS: "web-only,shared-key",
-        }),
-      ).toThrow(/PARITY_API_KEYS and WEB_ADMIN_API_KEYS/)
-    })
-
-    it("throws when PARITY and WORKFLOW share a value", () => {
-      expect(() =>
-        assertBearerCsvsDisjoint({
-          WORKFLOW_API_KEYS: "shared-key",
-          PARITY_API_KEYS: "shared-key",
-        }),
-      ).toThrow(/WORKFLOW_API_KEYS and PARITY_API_KEYS/)
     })
 
     it("throws when WORKFLOW and WEB_ADMIN share a value", () => {
@@ -102,7 +79,7 @@ describe("env", () => {
     it("error message does NOT contain the offending key value", () => {
       try {
         assertBearerCsvsDisjoint({
-          PARITY_API_KEYS: "the-leaked-key-aaa",
+          WORKFLOW_API_KEYS: "the-leaked-key-aaa",
           WEB_ADMIN_API_KEYS: "the-leaked-key-aaa",
         })
         throw new Error("expected throw")
@@ -115,7 +92,7 @@ describe("env", () => {
       // `"   "` and `""` both parse to empty Set; no false-positive collision.
       expect(() =>
         assertBearerCsvsDisjoint({
-          PARITY_API_KEYS: "  parity-a  ,  ",
+          WORKFLOW_API_KEYS: "  wf-a  ,  ",
           WEB_ADMIN_API_KEYS: "  ,  web-a  ",
         }),
       ).not.toThrow()

@@ -50,17 +50,12 @@ function getClientIp(request: Request): string {
  *   1. Authenticated user (`ctx.user.id`) — keyed by user id.
  *   2. Consumer-app bearer (`role === "CONSUMER_BEARER"`) — keyed by
  *      the bearer's `rateLimitBucketKey` as `consumer:<key>`.
- *   3. Parity-verification bearer (`role === "PARITY_BEARER"`) — keyed
- *      as `parity:<key>`. **Distinct namespace from consumer** so a
- *      pre-cutover gate run can't chew through web's SSR quota and
- *      vice versa (independent quotas, also forensically separable in
- *      the rate-limit store).
- *   4. Anonymous IP fallback — `public:<cf-connecting-ip>`.
+ *   3. Anonymous IP fallback — `public:<cf-connecting-ip>`.
  *
- * Without a dedicated branch for bearer roles, the principal would
- * fall through to `public:<ip>` and the harness would self-DoS against
- * its own egress IP — the exact scenario `BearerMissingError` exists
- * to prevent.
+ * Without a dedicated branch for the consumer bearer, CONSUMER_BEARER
+ * principals would fall through to `public:<ip>` and web SSR would
+ * self-DoS on its egress IP under CGNAT — the exact scenario the
+ * bearer-bucket identity exists to prevent.
  */
 export function identifyForRateLimit(ctx: ContextShape): string {
   if (ctx.user?.id) return ctx.user.id
@@ -69,12 +64,6 @@ export function identifyForRateLimit(ctx: ContextShape): string {
     ctx.user.rateLimitBucketKey != null
   ) {
     return `consumer:${ctx.user.rateLimitBucketKey}`
-  }
-  if (
-    ctx.user?.role === "PARITY_BEARER" &&
-    ctx.user.rateLimitBucketKey != null
-  ) {
-    return `parity:${ctx.user.rateLimitBucketKey}`
   }
   return `public:${getClientIp(ctx.request)}`
 }

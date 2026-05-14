@@ -93,19 +93,6 @@ export const env = createEnv({
     // widen the other; the `WEB_ADMIN_API_KEYS !== WORKFLOW_API_KEYS`
     // invariant is asserted at unit-test time.
     WEB_ADMIN_API_KEYS: z.string().optional(),
-    // PR-C of the consumer-migration — batch-verification harness bearer.
-    // CSV-parsed, matched against `Authorization: Bearer <key>` by
-    // `parity-bearer.ts`. A matched key mints a PARITY_BEARER principal
-    // (permissions = `read:experience-templates` only) whose purpose is to
-    // let the pre-cutover Strapi↔admin parity harness enumerate template
-    // Experiences that R9 hides from CONSUMER_BEARER. `.optional()`
-    // because environments without parity verification (preview, prod
-    // post-cutover) don't need it; required-without-default would brick
-    // Railway deploys per the runtime-errors learning. **Disjoint from
-    // `WEB_ADMIN_API_KEYS` and `WORKFLOW_API_KEYS`** so a key collision
-    // doesn't silently up-/down-grade permissions — invariant asserted
-    // in `permissions.test.ts`.
-    PARITY_API_KEYS: z.string().optional(),
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
     WORKFLOW_TARGET_WORLD: z
       .enum(["local", "@workflow/world-postgres"])
@@ -263,7 +250,6 @@ export const env = createEnv({
     OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
     WORKFLOW_API_KEYS: emptyToUndefined(process.env.WORKFLOW_API_KEYS),
     WEB_ADMIN_API_KEYS: emptyToUndefined(process.env.WEB_ADMIN_API_KEYS),
-    PARITY_API_KEYS: emptyToUndefined(process.env.PARITY_API_KEYS),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
     WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
     WORKFLOW_POSTGRES_URL: emptyToUndefined(process.env.WORKFLOW_POSTGRES_URL),
@@ -333,20 +319,19 @@ export const env = createEnv({
 })
 
 // ---------------------------------------------------------------------------
-// PR-C P1-2 — runtime bearer-CSV disjointness invariant.
+// Runtime bearer-CSV disjointness invariant.
 //
 // `permissions.test.ts` source-greps each bearer module to assert each
-// reads only its own env var (PARITY != CONSUMER != WORKFLOW), but
-// nothing prevents an operator from pasting the same KEY VALUE into
-// two different CSVs during rotation. The auth chain in `context.ts`
-// is `workflow → parity → consumer → public`, so a duplicated key
-// silently mints the higher-tier principal — permission widening
-// without an audit trail.
+// reads only its own env var (CONSUMER != WORKFLOW), but nothing prevents
+// an operator from pasting the same KEY VALUE into both CSVs during
+// rotation. The auth chain in `context.ts` is `workflow → consumer →
+// public`, so a duplicated key silently mints the higher-tier principal
+// — permission widening without an audit trail.
 //
-// `assertBearerCsvsDisjoint` parses the three CSVs into Sets and
-// throws if any pair intersects. Called at module load below so any
-// boot path that imports `env` enforces the invariant. The error
-// message MUST NOT include the offending key value.
+// `assertBearerCsvsDisjoint` parses the two CSVs into Sets and throws
+// if they intersect. Called at module load below so any boot path that
+// imports `env` enforces the invariant. The error message MUST NOT
+// include the offending key value.
 // ---------------------------------------------------------------------------
 
 function parseBearerCsvSet(csv: string | undefined): ReadonlySet<string> {
@@ -362,34 +347,22 @@ function parseBearerCsvSet(csv: string | undefined): ReadonlySet<string> {
 export type BearerCsvSnapshot = {
   readonly WORKFLOW_API_KEYS?: string
   readonly WEB_ADMIN_API_KEYS?: string
-  readonly PARITY_API_KEYS?: string
 }
 
 export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
   const workflow = parseBearerCsvSet(snapshot.WORKFLOW_API_KEYS)
   const consumer = parseBearerCsvSet(snapshot.WEB_ADMIN_API_KEYS)
-  const parity = parseBearerCsvSet(snapshot.PARITY_API_KEYS)
 
-  const pairs: ReadonlyArray<
-    readonly [string, ReadonlySet<string>, string, ReadonlySet<string>]
-  > = [
-    ["WORKFLOW_API_KEYS", workflow, "PARITY_API_KEYS", parity],
-    ["WORKFLOW_API_KEYS", workflow, "WEB_ADMIN_API_KEYS", consumer],
-    ["PARITY_API_KEYS", parity, "WEB_ADMIN_API_KEYS", consumer],
-  ]
-
-  for (const [aName, aSet, bName, bSet] of pairs) {
-    for (const key of aSet) {
-      if (bSet.has(key)) {
-        // NEVER include the key value — error stays grep-friendly for
-        // logs but doesn't echo the leaked credential.
-        throw new Error(
-          `Bearer API key value appears in multiple CSVs: ${aName} and ${bName} ` +
-            `must be disjoint (admin auth chain is workflow → parity → ` +
-            `consumer → public; a shared value silently widens permissions). ` +
-            `Check the offending Doppler entries — key value redacted.`,
-        )
-      }
+  for (const key of workflow) {
+    if (consumer.has(key)) {
+      // NEVER include the key value — error stays grep-friendly for
+      // logs but doesn't echo the leaked credential.
+      throw new Error(
+        `Bearer API key value appears in multiple CSVs: WORKFLOW_API_KEYS and ` +
+          `WEB_ADMIN_API_KEYS must be disjoint (admin auth chain is workflow → ` +
+          `consumer → public; a shared value silently widens permissions). ` +
+          `Check the offending Doppler entries — key value redacted.`,
+      )
     }
   }
 }
@@ -401,5 +374,4 @@ export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
 assertBearerCsvsDisjoint({
   WORKFLOW_API_KEYS: env.WORKFLOW_API_KEYS,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
-  PARITY_API_KEYS: env.PARITY_API_KEYS,
 })
