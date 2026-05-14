@@ -2,14 +2,10 @@ import type { ErrorLike } from "@apollo/client"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import { graphql, type ResultOf } from "@forge/graphql"
-import { env } from "@/env"
 import client from "@/lib/client"
-import adminClient from "@/lib/admin-client"
-import { getContentApiMode, type ContentApiMode } from "@/lib/content-api-mode"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
 import {
-  adminExperienceBySlugOperation,
   getWatchVideoBySlugOperation,
   getWatchVideoOperation,
   watchExperienceFragment,
@@ -164,27 +160,14 @@ export function experienceToMetadata(
     ogTitle,
     ogDescription,
     pathSegment: exp.pathSegment ?? null,
-    // F12 (ce-code-review): admin's fragment exposes `ogImageUrl: String`,
-    // Strapi's exposes `ogImage: { url, width, height, alternativeText }`.
-    // Without this branch, admin-mode pages fall through to DEFAULT_OG_IMAGE
-    // — a real SEO regression that the strapi-only regression snapshot
-    // didn't catch. Width/height aren't available on admin's flat string;
-    // omit them so Next's metadata layer skips the dimensions tag.
-    ogImage: ((): ExperienceMetadata["ogImage"] => {
-      if (exp.ogImage) {
-        return {
+    ogImage: exp.ogImage
+      ? {
           url: exp.ogImage.url,
           width: exp.ogImage.width ?? null,
           height: exp.ogImage.height ?? null,
           alt: exp.ogImage.alternativeText ?? "",
         }
-      }
-      const adminOgImageUrl = (exp as { ogImageUrl?: string | null }).ogImageUrl
-      if (adminOgImageUrl) {
-        return { url: adminOgImageUrl, width: null, height: null, alt: "" }
-      }
-      return null
-    })(),
+      : null,
   }
 }
 
@@ -265,169 +248,6 @@ async function getExperienceByFilters(
 
   return (result.data?.experiences?.[0] ??
     null) as NonNullable<WatchExperience> | null
-}
-
-// `fetchSlugExperience` reads from Strapi or admin per FORGE_CONTENT_API.
-// admin mode: throws WatchPageAdminError("NOT_FOUND") on null,
-// WatchPageAdminError("UNAVAILABLE") on Apollo/timeout/error.
-// Retire alongside content-api-mode.ts scaffolding when Strapi is gone.
-
-// Timeout vs error classified by error.name (AWS-SDK-v3 NoSuchKey discipline).
-// See docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md.
-type AdminFetchOutcome =
-  | {
-      readonly ok: true
-      readonly response: unknown
-      readonly durationMs: number
-    }
-  | {
-      readonly ok: "error"
-      readonly error: unknown
-      readonly durationMs: number
-    }
-  | { readonly ok: "timeout"; readonly durationMs: number }
-
-// Dispatch on error.name only — a GraphQL error message mentioning "timeout"
-// would otherwise be misclassified as a real timeout and pollute the gating signal.
-function isAbortTimeoutError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false
-  if (hasTimeoutOrAbortName(error)) return true
-  const cause = (error as { cause?: unknown }).cause
-  if (cause instanceof Error && hasTimeoutOrAbortName(cause)) return true
-  // Apollo Client v4 wraps transport errors via `error.networkError`.
-  const networkError = (error as { networkError?: unknown }).networkError
-  if (networkError instanceof Error) {
-    if (hasTimeoutOrAbortName(networkError)) return true
-    const networkCause = (networkError as { cause?: unknown }).cause
-    if (networkCause instanceof Error && hasTimeoutOrAbortName(networkCause)) {
-      return true
-    }
-  }
-  return false
-}
-
-function hasTimeoutOrAbortName(error: Error): boolean {
-  return error.name === "TimeoutError" || error.name === "AbortError"
-}
-
-async function fetchAdminSlugExperience(
-  locale: string,
-  slug: string,
-): Promise<AdminFetchOutcome> {
-  const start = performance.now()
-  const elapsed = () => Math.round(performance.now() - start)
-  try {
-    const result = await adminClient.query({
-      query: adminExperienceBySlugOperation,
-      variables: { locale, slug },
-      fetchPolicy: "no-cache",
-    })
-    if (result.error) {
-      if (isAbortTimeoutError(result.error)) {
-        return { ok: "timeout", durationMs: elapsed() }
-      }
-      return { ok: "error", error: result.error, durationMs: elapsed() }
-    }
-    return {
-      ok: true,
-      response: result.data?.experienceBySlug ?? undefined,
-      durationMs: elapsed(),
-    }
-  } catch (error) {
-    if (isAbortTimeoutError(error)) {
-      return { ok: "timeout", durationMs: elapsed() }
-    }
-    return { ok: "error", error, durationMs: elapsed() }
-  }
-}
-
-// Admin-mode failure signals — distinct from parity-bridge dual-read canary
-// signals. Emitted before throwing WatchPageAdminError so operators see
-// which of admin_null / admin_timeout / admin_fetch_error triggered.
-type AdminFailureLogEvent =
-  | "forge.parity.admin_null"
-  | "forge.parity.admin_timeout"
-  | "forge.parity.admin_fetch_error"
-  | "forge.parity.consumer_bearer_missing"
-
-function logAdminEvent(
-  event: AdminFailureLogEvent,
-  slug: string,
-  locale: string,
-  errorMessage?: string,
-): void {
-  if (typeof console === "undefined") return
-  console.log(
-    JSON.stringify({
-      event,
-      route: "[slug]",
-      slug,
-      locale,
-      ...(errorMessage ? { errorMessage } : {}),
-    }),
-  )
-}
-
-async function fetchSlugExperience(
-  locale: string,
-  slug: string,
-): Promise<NonNullable<WatchExperience> | null> {
-  const mode = getContentApiMode()
-  if (mode === "strapi") {
-    return getExperienceByFilters(locale, { slug: { eq: slug } })
-  }
-
-  // mode === "admin"
-  //
-  // Bearer-missing safety net: during cutover, serve strapi semantics so a
-  // deploy-order mistake doesn't 500 every page. Presence check mirrors
-  // admin-client.ts (whitespace/empty-first-CSV counts as unset).
-  //
-  // TODO(post-strapi-removal): throw WatchPageAdminError("UNAVAILABLE") instead.
-  const bearerFirstEntry = env.WEB_ADMIN_API_KEYS?.split(",")[0]?.trim()
-  if (!bearerFirstEntry) {
-    logAdminEvent("forge.parity.consumer_bearer_missing", slug, locale)
-    return getExperienceByFilters(locale, { slug: { eq: slug } })
-  }
-
-  const outcome = await fetchAdminSlugExperience(locale, slug)
-
-  if (outcome.ok === true) {
-    if (outcome.response == null) {
-      logAdminEvent("forge.parity.admin_null", slug, locale)
-      throw new WatchPageAdminError("NOT_FOUND")
-    }
-    // Structural cast — renderer dispatch handles both Strapi and admin typenames.
-    return outcome.response as unknown as NonNullable<WatchExperience>
-  }
-
-  if (outcome.ok === "timeout") {
-    logAdminEvent("forge.parity.admin_timeout", slug, locale)
-    throw new WatchPageAdminError("UNAVAILABLE")
-  }
-
-  // outcome.ok === "error" — Apollo/network/server error
-  const causeError =
-    outcome.error instanceof Error
-      ? outcome.error
-      : new Error(String(outcome.error))
-  // SECURITY (F13): redact EVERY CSV entry, not just the first. Mid-rotation
-  // both keys are live and either can show up in an echoed error body.
-  const bearerEntries =
-    env.WEB_ADMIN_API_KEYS?.split(",")
-      .map((entry) => entry.trim())
-      .filter((entry) => entry.length > 0) ?? []
-  const sanitizedMessage = bearerEntries.reduce(
-    (msg, entry) => msg.split(entry).join("<redacted>"),
-    causeError.message,
-  )
-  logAdminEvent(
-    "forge.parity.admin_fetch_error",
-    slug,
-    locale,
-    sanitizedMessage,
-  )
-  throw new WatchPageAdminError("UNAVAILABLE", { cause: causeError })
 }
 
 async function getWatchSettings(locale: string): Promise<WatchSetting | null> {
@@ -552,7 +372,7 @@ async function resolveSlugPage(
   slug: string,
 ): Promise<ResolvedWatchPage | null> {
   const explicitExperience = asNonTemplateExperience(
-    await fetchSlugExperience(locale, slug),
+    await getExperienceByFilters(locale, { slug: { eq: slug } }),
   )
   if (explicitExperience) {
     return { kind: "experience", experience: explicitExperience }
@@ -584,15 +404,10 @@ async function resolveSlugPage(
   }
 }
 
-// F2 (ce-code-review): include mode in the cache key so strapi-shape
-// entries don't get served to admin-mode requests during the ~60s ISR
-// thrash window after a Doppler flip. unstable_cache's key derivation
-// uses keyParts + JSON.stringify(args), so a `mode` arg lands in the key.
 const fetchResolvedWatchPage = unstable_cache(
   async (
     locale: string,
     slugOrNull: string | null,
-    _mode: ContentApiMode,
   ): Promise<WatchPageResult> => {
     try {
       const resolved =
@@ -609,10 +424,6 @@ const fetchResolvedWatchPage = unstable_cache(
         error: null,
       }
     } catch (error) {
-      // WatchPageAdminError must propagate to the segment error boundary,
-      // not get swallowed into the sentinel path. unstable_cache re-throws
-      // (does not cache failures), so re-throwing here reaches the caller.
-      if (error instanceof WatchPageAdminError) throw error
       return {
         data: null,
         error: error instanceof Error ? error : new Error(String(error)),
@@ -626,7 +437,7 @@ const fetchResolvedWatchPage = unstable_cache(
 /** Shared watch-page resolver for page rendering and metadata generation. */
 export const resolveWatchPage = cache(
   async (locale: string, slug?: string): Promise<WatchPageResult> => {
-    return fetchResolvedWatchPage(locale, slug ?? null, getContentApiMode())
+    return fetchResolvedWatchPage(locale, slug ?? null)
   },
 )
 
@@ -658,26 +469,6 @@ export type WatchVideoErrorCode =
  * have request-scope fields, so collectionSlug/videoSlug/languageSlug are
  * optional and default to empty strings when omitted.
  */
-export type WatchPageAdminErrorCode = "NOT_FOUND" | "UNAVAILABLE"
-
-/**
- * Admin-mode failure thrown by `fetchSlugExperience` so the segment error
- * boundary at `apps/web/src/app/[slug]/error.tsx` can dispatch on `code`.
- * Strapi-mode errors continue through the `{ data, error }` sentinel path.
- */
-export class WatchPageAdminError extends Error {
-  readonly code: WatchPageAdminErrorCode
-
-  constructor(
-    code: WatchPageAdminErrorCode,
-    { cause }: { cause?: Error } = {},
-  ) {
-    super(`watch-page-admin:${code}`, cause ? { cause } : undefined)
-    this.name = "WatchPageAdminError"
-    this.code = code
-  }
-}
-
 export class WatchVideoError extends Error {
   readonly code: WatchVideoErrorCode
   readonly collectionSlug: string

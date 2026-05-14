@@ -1,17 +1,6 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
-// =============================================================================
-// U5 (feat-104 consumer migration) — FORGE_CONTENT_API + ADMIN_GRAPHQL_URL
-//
-// Both vars are server-only. They power the dual-read parity canary that
-// fans out to admin's experienceBySlug GraphQL query in parallel with
-// Strapi. Retire alongside the rest of U5's scaffolding when admin
-// becomes the sole consumer source. See:
-//   apps/web/src/lib/content-api-mode.ts (deletion checklist)
-//   docs/plans/2026-05-08-001-feat-consumer-migration-web-canary-unit-5-plan.md
-// =============================================================================
-
 /**
  * Build a warn-only host-allowlist `.refine()` callback. Always returns
  * true so misconfigured hosts don't brick boot — emits a console.warn so
@@ -59,7 +48,6 @@ const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS = [
 // Explicit hard-reject set. These hosts pass the soft allowlist
 // (.jesusfilm.org suffix) but are NOT the admin GraphQL surface and
 // will always 404 — the auth host (PR #909) is the canonical case.
-// Mirrors packages/graphql/src/parity/live-config.ts:24 REJECTED_HOSTS.
 const ADMIN_GRAPHQL_URL_HOST_REJECT_SET = new Set<string>([
   "auth.jesusfilm.org",
 ])
@@ -74,61 +62,10 @@ export const env = createEnv({
     // Absent in most preview environments; the server action surfaces a
     // graceful "not configured" state when unset.
     OPENROUTER_API_KEY: z.string().optional(),
-    // U5 — dual-read parity canary mode. U5 wires `strapi` (default,
-    // byte-identical to current behavior) and `dual-read` (canary). The
-    // schema accepts all four origin-R7 values so an operator pre-setting
-    // a U5b value (`admin-with-fallback`, `admin`) does NOT brick boot;
-    // the runtime narrowing in apps/web/src/lib/content-api-mode.ts coerces
-    // unknown-to-U5 values to `"strapi"` with a console.warn until U5b
-    // implements admin-mode rendering.
-    //
-    // The `z.preprocess` step trims whitespace and lowercases the value
-    // before the enum match so `"DUAL-READ"` or `"dual-read "` (trailing
-    // newline from a copy-paste) don't brick boot — common operator-
-    // typo failure modes that the runtime narrower can't recover from
-    // because the schema rejects first.
-    // U4 (plan-003) collapses the ACTIVE ContentApiMode set to two values
-    // ("strapi" | "admin") in `content-api-mode.ts`. The env-level enum
-    // intentionally remains permissive over the four historical strings
-    // so operators who still have `dual-read` or `admin-with-fallback`
-    // set in Doppler don't brick boot — the runtime narrower coerces
-    // legacy values to "strapi" with a warn (soft-removal, not hard
-    // schema rejection). Once Strapi removes (R3), the U5 deletion PR
-    // collapses both this enum and the narrower to a single value.
-    FORGE_CONTENT_API: z
-      .preprocess(
-        (val) => (typeof val === "string" ? val.trim().toLowerCase() : val),
-        z.enum(["strapi", "dual-read", "admin-with-fallback", "admin"]),
-      )
-      .default("strapi"),
-    // U5 — opt-in dev flag that includes raw ValueDiff/SemanticDiff field
-    // values in the parity log payload (diffSamples, first 3). Production
-    // strips raw values unconditionally per R13 — the bridge ALSO gates
-    // on NODE_ENV !== "production" as defense-in-depth (apps/web/src/lib/
-    // parity-bridge.ts), so accidentally setting this in production is a
-    // no-op. Schema-registered here to give boot-time visibility and
-    // typo protection. Optional: absence is the production default.
-    FORGE_PARITY_DEBUG: z.enum(["0", "1"]).default("0"),
-    // U5 — admin GraphQL URL for the dual-read shadow fetch. OPTIONAL so
-    // the default `FORGE_CONTENT_API=strapi` mode (byte-identical to main)
-    // doesn't require any new env var to be set in Railway. The admin
-    // Apollo client only fires when an operator flips FORGE_CONTENT_API
-    // to `dual-read`; if the URL is unset at that point, the fetch fails
-    // and the bridge emits forge.parity.harness_error subkind
-    // `admin_fetch_error` — visible in logs, operator notices and sets
-    // the URL. Refines still run when a value IS provided.
-    //
-    // Host allowlist is warn-only — emits a visible boot warning on
-    // misconfigured hosts but does NOT brick boot, so legitimate-but-
-    // unknown deployment topologies (custom domains, branch URLs) can
-    // still stand up. Mirrors NEXT_PUBLIC_CANONICAL_ORIGIN's shape.
+    // Admin GraphQL URL. Optional today; flipped to required when the web
+    // data layer fully reads from admin (see plan U13).
     ADMIN_GRAPHQL_URL: z
       .url()
-      // Hard-reject known non-GraphQL hosts (auth.jesusfilm.org, etc.) —
-      // these pass the soft allowlist's suffix match but always 404 on
-      // /api/graphql due to admin's auth-host proxy gating (PR #909).
-      // Throwing at boot is preferable to a silent run-time canary that
-      // emits forge.parity.harness_error events on every request.
       .refine(
         (value) => {
           try {
@@ -145,7 +82,6 @@ export const env = createEnv({
             "ADMIN_GRAPHQL_URL points at a known non-GraphQL host (e.g. auth.jesusfilm.org). Admin GraphQL lives at admin.jesusfilm.org/api/graphql, not the auth host (PR #909).",
         },
       )
-      // Warn-only soft allowlist for everything else.
       .refine(
         softHostAllowlistRefine(
           "ADMIN_GRAPHQL_URL",
@@ -155,44 +91,14 @@ export const env = createEnv({
         { message: "unreachable" },
       )
       .optional(),
-    // U4 (plan-003) — bearer key web's SSR sends in `Authorization: Bearer`
-    // to admin so traffic buckets as `consumer:<key>` rather than
-    // `public:<railway-egress-ip>`. Without this, web's SSR fanout collides
-    // on Railway's shared egress IP and self-DoSes admin's per-IP rate limit.
-    //
-    // The key carries NO permissions — admin's `CONSUMER_BEARER` principal
-    // sees exactly what PUBLIC sees. The bearer is an identity LABEL for
-    // rate-limiting, not an authorization credential.
-    //
-    // OPTIONAL: when unset, web omits the header and admin treats the
-    // request as anonymous. Default `FORGE_CONTENT_API=strapi` doesn't need
-    // this set. Required-without-default would brick Railway deploys for
-    // environments that haven't provisioned the value yet (per
-    // `docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md`).
+    // Bearer key web's SSR sends to admin so traffic buckets as
+    // `consumer:<key>` rather than `public:<railway-egress-ip>`. Optional
+    // today; flipped to required in U13.
     //
     // Format: single string OR comma-separated CSV mirroring admin's
     // `WEB_ADMIN_API_KEYS` Doppler value. Web reads the first entry as its
-    // outbound bearer; admin recognizes any entry as a valid
-    // CONSUMER_BEARER. Symmetric name on both sides eliminates the
-    // KEY-vs-KEYS copy-paste error class.
+    // outbound bearer; admin recognizes any entry as a valid CONSUMER_BEARER.
     WEB_ADMIN_API_KEYS: z.string().optional(),
-    // U9 (plan-003 PR-B) — emergency-only route disable.
-    //
-    // CSV of route paths to disable; matching slugs serve
-    // <MaintenanceFallback> instead of normal rendering. Read at module
-    // scope. Primary fast rollback layer (seconds) per cutover runbook:
-    //   docs/admin-core-migration/cutover-runbook.md — "Layer 1".
-    //
-    // Format: comma-separated route paths (e.g. "/some-slug,/another-slug").
-    // Whitespace around each entry is trimmed. Empty entries are skipped.
-    // Unknown / typo'd entries warn-and-fall-through to normal rendering —
-    // a typo'd disable entry does NOT brick the route.
-    //
-    // EMERGENCY ONLY. This is NOT a general traffic-shaping mechanism. Do
-    // not leave a slug in this list longer than a debug session; longer
-    // disables route through the canonical-plan U7 no-redeploy mechanism
-    // (TODO(U7) per runbook).
-    FORGE_DISABLE_WATCH_ROUTES: z.string().optional(),
   },
   client: {
     NEXT_PUBLIC_GRAPHQL_URL: z.url(),
@@ -241,11 +147,8 @@ export const env = createEnv({
     STRAPI_PREVIEW_SECRET: process.env.STRAPI_PREVIEW_SECRET,
     REVALIDATION_SECRET: process.env.REVALIDATION_SECRET,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
-    FORGE_CONTENT_API: process.env.FORGE_CONTENT_API,
-    FORGE_PARITY_DEBUG: process.env.FORGE_PARITY_DEBUG,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
-    FORGE_DISABLE_WATCH_ROUTES: process.env.FORGE_DISABLE_WATCH_ROUTES,
     NEXT_PUBLIC_GRAPHQL_URL: process.env.NEXT_PUBLIC_GRAPHQL_URL,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,

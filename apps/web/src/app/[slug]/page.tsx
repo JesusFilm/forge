@@ -5,31 +5,8 @@ import { getWatchPageMetadata } from "@/lib/experience-metadata"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
-import { MaintenanceFallback } from "@/components/MaintenanceFallback"
-import { env } from "@/env"
 
 export const revalidate = 60
-
-// Parsed once at module scope — per-request reads via headers()/cookies()
-// would disable Next's Full Route Cache.
-// See docs/solutions/web/nextjs-headers-defeats-route-cache.md.
-const DISABLED_ROUTES: ReadonlySet<string> = (() => {
-  const raw = env.FORGE_DISABLE_WATCH_ROUTES
-  if (raw == null || raw === "") return new Set()
-  const entries = raw
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0)
-  // Warn on entries missing the leading `/` so operators see the typo in
-  // deploy logs rather than shipping a silently-non-matching flag.
-  const malformed = entries.filter((s) => !s.startsWith("/"))
-  if (malformed.length > 0 && typeof console !== "undefined") {
-    console.warn(
-      `[slug-page] FORGE_DISABLE_WATCH_ROUTES entries do not start with "/" (${malformed.join(", ")}); these will not match any slug. Expected format: "/some-slug,/another-slug".`,
-    )
-  }
-  return new Set(entries)
-})()
 
 type PageProps = {
   params: Promise<{ slug: string }>
@@ -48,11 +25,6 @@ export async function generateMetadata({
 
 export default async function SlugPage({ params }: PageProps) {
   const { slug } = await params
-
-  // Emergency rollback — short-circuit before any data fetch.
-  if (DISABLED_ROUTES.has(`/${slug}`)) {
-    return <MaintenanceFallback />
-  }
 
   const locale = isLocale(slug) ? slug : DEFAULT_LOCALE
 

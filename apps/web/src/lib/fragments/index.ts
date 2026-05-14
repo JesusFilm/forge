@@ -19,4 +19,3 @@ export {
   getWatchVideoOperation,
   watchVideoFragment,
 } from "./watch-video"
-export { adminExperienceBySlugOperation } from "./admin-experience"
