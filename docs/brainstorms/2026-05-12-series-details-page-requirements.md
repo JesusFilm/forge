@@ -37,31 +37,37 @@ The core/apps/watch reference app has a series page for exactly this case (`Stor
 ## Requirements
 
 **Page structure & routing**
+
 - R1. The page lives at the existing `/[slug]/[locale]` route and is selected by branching inside `resolveWatchPage` (or the page handler) when the resolved record is a series. No new URL path is introduced.
 - R2. Series detection should be derived from existing admin data — verified during planning (likely the `COLLECTION` value of the admin `VideoLabel` enum, or an equivalent signal exposed by the WatchVideo fragment). No new content type or schema field is required by this brainstorm.
 - R3. When the slug does not resolve to any record, the page falls back to the same empty / error states the video page already uses (`ExperienceEmpty` / `ExperienceError`).
 
 **Header (above the hero)**
+
 - R4. The header includes the same floating search bar and the JFP logo that appear on the video details page. The search overlay (including the six category rectangles with icons) is inherited unchanged.
 
 **Hero**
+
 - R5. If the series record has at least one variant whose `muxVideo.playbackId` is populated, the hero plays that variant as a muted-loop preview using the existing `HeroPlayer` primitive — same `Play with Sound` pill, same scroll-pause/resume behavior, same portaled chrome bar with backdrop gradient.
 - R6. If no trailer video is available on the series record, the hero renders a static `<Image>` of the series thumbnail (`series.images[0]` via the existing `resolvePosterUrl` chain). No video element is mounted in this mode.
 - R7. The series title overlay sits at the bottom of the hero in both modes — anchored to the same overlay anchor used by the video page (`hero-player-overlay-anchor`), so the title rides with the body section on scroll exactly as the video-page title does today.
 
 **Above-the-fold metadata (below hero)**
+
 - R8. The page displays the series label in the form `SERIES · N EPISODES` (uppercase, same styling as the existing video-page label) where N is the count of episodes attached to the series.
 - R9. The page displays the series title (same H1 styling as the video page).
 - R10. The page displays a Share button using the same pill component and same `ShareModal` already used by the video page. Clicking opens the share modal scoped to the series (title, description, poster, URL).
 - R11. The page displays the series description text using the same paragraph styling as the video page's `WatchBody` description.
 
 **Episodes grid**
+
 - R12. Below the metadata, the page renders a grid of every episode attached to the series (every child record of the series).
 - R13. The grid uses the same column template as the search results grid in `SearchOverlay`: `grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`.
 - R14. Each episode card is the existing forge `VideoCard` component, used as-is. No new card component, no duration overlay, no extra metadata layered onto the card by this brainstorm.
 - R15. Each episode card links to `/{episode-slug}/{locale}` — the existing video details page for that episode. The locale is the same locale the user is viewing the series in.
 
 **Reuse contract**
+
 - R16. The page introduces no new visual primitives, no new icons, no new gradient definitions, no new modal types. Every visible element is composed from components already shipping in `apps/web`.
 - R17. The page reuses the same `generateMetadata` pattern as the video page so OG title / description / image populate from the series record.
 
@@ -124,7 +130,7 @@ The core/apps/watch reference app has a series page for exactly this case (`Stor
 
 ### Resolve Before Planning
 
-- *(none — the open implementation questions below are all answerable during planning by reading the admin schema and the existing content.ts resolver)*
+- _(none — the open implementation questions below are all answerable during planning by reading the admin schema and the existing content.ts resolver)_
 
 ### Deferred to Planning
 
