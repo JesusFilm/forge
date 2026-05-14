@@ -352,6 +352,26 @@ function normalizeImages(
     .filter((i): i is WatchImage => i != null)
 }
 
+// Admin's `Language.name` and `BibleBook.name` are typed `JSON` — a
+// locale-keyed object like `{ "en": "Afrikaans", "af": "Afrikaans" }`
+// (or, for some Core-synced rows, a plain string). Prefer the English
+// label so the language pill on the download dialog + language picker
+// always shows a readable string; fall back to any other locale value
+// if `en` is absent. Returns null only when the input is missing or
+// has no usable string entries.
+function pickLocalizedName(value: unknown): string | null {
+  if (typeof value === "string") return value.length > 0 ? value : null
+  if (value && typeof value === "object") {
+    const map = value as Record<string, unknown>
+    const en = map.en
+    if (typeof en === "string" && en.length > 0) return en
+    for (const v of Object.values(map)) {
+      if (typeof v === "string" && v.length > 0) return v
+    }
+  }
+  return null
+}
+
 function normalizeChildVariant(
   dub: NonNullable<
     NonNullable<NonNullable<AdminVideoRaw["children"]>[number]["child"]>["dubs"]
@@ -366,8 +386,7 @@ function normalizeChildVariant(
     language: dub.language
       ? {
           slug: dub.language.slug ?? null,
-          name:
-            typeof dub.language.name === "string" ? dub.language.name : null,
+          name: pickLocalizedName(dub.language.name),
           bcp47: dub.language.bcp47 ?? null,
         }
       : null,
@@ -441,7 +460,7 @@ function normalizeVariant(
           coreId: v.language.coreId ?? null,
           bcp47: v.language.bcp47 ?? null,
           slug: v.language.slug ?? null,
-          name: typeof v.language.name === "string" ? v.language.name : null,
+          name: pickLocalizedName(v.language.name),
         }
       : null,
     downloads: (v.downloads ?? [])
@@ -512,15 +531,12 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
             c.bibleBook && c.bibleBook.documentId
               ? {
                   documentId: c.bibleBook.documentId,
-                  // Admin's `BibleBook.name` is JSON (legacy compatibility
-                  // mirror of Core's localised display name). Coerce to
-                  // string here so consumers can render it directly; admin
-                  // emits plain strings for the English book names in
-                  // practice.
-                  name:
-                    typeof c.bibleBook.name === "string"
-                      ? c.bibleBook.name
-                      : null,
+                  // Admin's `BibleBook.name` is JSON keyed by locale (Core
+                  // mirror). `pickLocalizedName` prefers the English entry
+                  // so the citation card renders something readable; for
+                  // rows admin still emits as a plain string the helper
+                  // returns it verbatim.
+                  name: pickLocalizedName(c.bibleBook.name),
                 }
               : null,
         }
