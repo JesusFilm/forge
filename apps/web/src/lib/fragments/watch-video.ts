@@ -58,6 +58,26 @@ export const watchVideoFragment = graphql(`
         mobileCinematicHigh
         mobileCinematicLow
       }
+      # Minimal variant projection — series-page language aggregator
+      # in apps/web/src/components/watch/SeriesPageClient.tsx unions
+      # variants across episodes since series records don't carry
+      # variants themselves. Kept to the smallest set of fields
+      # isPlayableLanguageVariant + deriveLanguageDisplay need:
+      # published gate, hls playability, language slug + name. The
+      # SiblingCarousel rendering of children doesn't read variants.
+      # duration is also projected so SeriesEpisodeCard can render the
+      # runtime pill (e.g. 2:09) in the top-right of each card.
+      variants(pagination: { limit: -1 }) {
+        documentId
+        published
+        hls
+        duration
+        language {
+          slug
+          name
+          bcp47
+        }
+      }
     }
     variants(pagination: { limit: -1 }) {
       documentId
