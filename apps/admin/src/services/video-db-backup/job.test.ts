@@ -76,6 +76,40 @@ describe("video DB backup workflow job", () => {
     expect(start).not.toHaveBeenCalled()
   })
 
+  it("replaces a stale scheduler ledger row when the runtime run already failed", async () => {
+    queryRaw
+      .mockResolvedValueOnce([{ locked: true }])
+      .mockResolvedValueOnce([
+        { status: "failed", error: "Workflow was not registered." },
+      ])
+      .mockResolvedValueOnce([{ unlocked: true }])
+    workflowRun.findFirst.mockResolvedValueOnce({
+      id: "stale-ledger-run",
+      runtimeRunId: "failed-runtime-run",
+    })
+    start.mockResolvedValueOnce({
+      runId: "scheduler-runtime-run-2",
+      returnValue: Promise.resolve(undefined),
+    })
+    const { ensureVideoDbBackupSchedulerStarted } = await import("./job")
+
+    await expect(ensureVideoDbBackupSchedulerStarted()).resolves.toEqual({
+      started: true,
+      runId: "scheduler-runtime-run-2",
+      ledgerRunId: "ledger-run-1",
+    })
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "stale-ledger-run" },
+      data: expect.objectContaining({
+        status: "FAILED",
+        summary: "Video DB backup scheduler runtime failed.",
+        error: "Workflow was not registered.",
+        finishedAt: expect.any(Date),
+      }),
+    })
+    expect(start).toHaveBeenCalledOnce()
+  })
+
   it("dispatches the scheduled backup through useworkflow", async () => {
     const dispatch = wrapStartSpy(start)
     start.mockResolvedValueOnce({
