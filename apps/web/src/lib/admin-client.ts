@@ -2,11 +2,16 @@ import { ApolloClient, HttpLink, InMemoryCache } from "@apollo/client"
 
 import { env } from "@/env"
 
-// 3 s end-to-end budget. Admin is internal-network from Railway, so a
-// healthy SSR call returns in <500 ms; the budget exists to fail fast when
-// the upstream is sick rather than pinning Next.js workers on stuck calls.
+// 15 s end-to-end budget. Healthy SSR calls return in <500 ms over Railway's
+// internal network, but admin's `videoBySlug` resolver currently takes ~6 s
+// for COLLECTION rows because of the `parents.parent.children.child` 2-deep
+// fan-out in the WatchVideo fragment (observed 6.2 s on `easter` post-flip,
+// 2026-05-14). The budget exists to fail fast when the upstream is sick
+// rather than pinning Next.js workers on stuck calls; the size is sized to
+// admin's worst-observed resolver latency plus headroom. Drop back toward
+// 3 s once admin's resolver fan-out is trimmed.
 // Pattern: docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md
-const REQUEST_TIMEOUT_MS = 3_000
+const REQUEST_TIMEOUT_MS = 15_000
 
 const timeoutFetch: typeof fetch = (input, init) =>
   fetch(input, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
