@@ -1,0 +1,242 @@
+{
+  "languages": [
+    {
+      "coreId": "529",
+      "bcp47": "en",
+      "iso3": "eng",
+      "slug": "english",
+      "name": { "en": "English", "es": "Inglés", "fr": "Anglais" }
+    },
+    {
+      "coreId": "496",
+      "bcp47": "es",
+      "iso3": "spa",
+      "slug": "spanish",
+      "name": { "en": "Spanish", "es": "Español", "fr": "Espagnol" }
+    },
+    {
+      "coreId": "21028",
+      "bcp47": "fr",
+      "iso3": "fra",
+      "slug": "french",
+      "name": { "en": "French", "es": "Francés", "fr": "Français" }
+    }
+  ],
+  "countries": [
+    {
+      "coreId": "US",
+      "name": {
+        "en": "United States",
+        "es": "Estados Unidos",
+        "fr": "États-Unis"
+      }
+    },
+    {
+      "coreId": "MX",
+      "name": { "en": "Mexico", "es": "México", "fr": "Mexique" }
+    },
+    {
+      "coreId": "FR",
+      "name": { "en": "France", "es": "Francia", "fr": "France" }
+    }
+  ],
+  "keywords": [
+    { "coreId": "kw-jesus", "value": "jesus" },
+    { "coreId": "kw-easter", "value": "easter" },
+    { "coreId": "kw-bible", "value": "bible" }
+  ],
+  "videos": [
+    {
+      "coreId": "fixt-jesus-collection",
+      "slug": "jesus-collection",
+      "label": "collection",
+      "publishedAt": "2026-01-01T00:00:00.000Z",
+      "locales": [
+        {
+          "locale": "en",
+          "title": "The Jesus Collection",
+          "description": "An overview of the life of Jesus."
+        },
+        {
+          "locale": "es",
+          "title": "La Colección de Jesús",
+          "description": "Una visión general de la vida de Jesús."
+        }
+      ]
+    },
+    {
+      "coreId": "fixt-jesus-feature",
+      "slug": "jesus-feature-film",
+      "label": "featureFilm",
+      "publishedAt": "2026-01-02T00:00:00.000Z",
+      "locales": [
+        {
+          "locale": "en",
+          "title": "Jesus Feature Film",
+          "description": "The feature-length film about the life of Jesus."
+        },
+        {
+          "locale": "es",
+          "title": "Película Jesús",
+          "description": "La película sobre la vida de Jesús."
+        }
+      ],
+      "parents": ["fixt-jesus-collection"]
+    },
+    {
+      "coreId": "fixt-jesus-trailer",
+      "slug": "jesus-trailer",
+      "label": "shortClip",
+      "publishedAt": "2026-01-03T00:00:00.000Z",
+      "locales": [
+        {
+          "locale": "en",
+          "title": "Jesus Trailer",
+          "description": "Trailer for the Jesus feature film."
+        }
+      ],
+      "parents": ["fixt-jesus-feature"]
+    },
+    {
+      "coreId": "fixt-easter-explained",
+      "slug": "easter-explained",
+      "label": "shortClip",
+      "publishedAt": "2026-01-04T00:00:00.000Z",
+      "locales": [
+        {
+          "locale": "en",
+          "title": "Easter Explained",
+          "description": "What Easter really means."
+        },
+        {
+          "locale": "fr",
+          "title": "Pâques Expliqué",
+          "description": "Ce que Pâques signifie vraiment."
+        }
+      ]
+    },
+    {
+      "coreId": "fixt-my-last-day",
+      "slug": "my-last-day",
+      "label": "shortClip",
+      "publishedAt": "2026-01-05T00:00:00.000Z",
+      "locales": [
+        {
+          "locale": "en",
+          "title": "My Last Day",
+          "description": "The final hours of Jesus' life from a criminal's point of view."
+        }
+      ]
+    }
+  ],
+  "experiences": [
+    {
+      "fixtureId": "fixt-homepage",
+      "isTemplate": false,
+      "isHomepage": true,
+      "locales": [
+        {
+          "locale": "en",
+          "slug": "homepage",
+          "title": "Watch — Jesus Film",
+          "metaDescription": "Find videos that introduce people to the Bible.",
+          "blocks": [
+            {
+              "t": "videoHero",
+              "useRouteVideo": false,
+              "streamingUrl": "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8",
+              "heading": "Watch",
+              "subheading": "Films that bring the Gospels to life.",
+              "ctaLabel": "Start watching"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "fixtureId": "fixt-easter",
+      "isTemplate": false,
+      "isHomepage": false,
+      "locales": [
+        {
+          "locale": "en",
+          "slug": "easter",
+          "title": "Easter",
+          "metaDescription": "Easter videos and resources about Lent, Holy Week, and Resurrection.",
+          "blocks": [
+            {
+              "t": "videoHero",
+              "useRouteVideo": false,
+              "streamingUrl": "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8",
+              "heading": "Easter",
+              "subheading": "Videos and resources for the Easter season.",
+              "ctaLabel": "Watch now"
+            }
+          ]
+        },
+        {
+          "locale": "fr",
+          "slug": "paques",
+          "title": "Pâques",
+          "metaDescription": "Vidéos et ressources de Pâques pour le Carême, la Semaine Sainte et la Résurrection.",
+          "blocks": [
+            {
+              "t": "videoHero",
+              "useRouteVideo": false,
+              "streamingUrl": "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8",
+              "heading": "Pâques",
+              "subheading": "Vidéos et ressources pour la saison de Pâques.",
+              "ctaLabel": "Regarder maintenant"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "fixtureId": "fixt-jesus-experience",
+      "isTemplate": false,
+      "isHomepage": false,
+      "locales": [
+        {
+          "locale": "en",
+          "slug": "jesus",
+          "title": "Jesus",
+          "metaDescription": "Discover Jesus through film.",
+          "blocks": [
+            {
+              "t": "videoHero",
+              "useRouteVideo": false,
+              "streamingUrl": "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8",
+              "heading": "Jesus",
+              "subheading": "Films that introduce Jesus.",
+              "ctaLabel": "Watch"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "fixtureId": "fixt-default-template",
+      "isTemplate": true,
+      "isHomepage": false,
+      "locales": [
+        {
+          "locale": "en",
+          "slug": "default-template",
+          "title": "Default Watch Template",
+          "metaDescription": "Default template applied when a specific watch experience is missing for a locale.",
+          "blocks": [
+            {
+              "t": "videoHero",
+              "useRouteVideo": false,
+              "streamingUrl": "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8",
+              "heading": "Watch",
+              "subheading": "Default fallback template.",
+              "ctaLabel": "Start"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

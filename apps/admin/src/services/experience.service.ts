@@ -15,6 +15,7 @@ import {
 import { start } from "workflow/api"
 import { ForbiddenError, NotFoundError } from "./errors"
 import { runExperienceEmbedding } from "@/workflows/experienceEmbedding"
+import { emitRevalidateWebhook } from "./revalidate-webhook"
 import {
   CreateExperienceInput,
   CreateExperienceLocaleInput,
@@ -259,7 +260,7 @@ export class ExperienceService {
     }
 
     const { id, isTemplate, ...data } = input
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       await tx.contentRevision.create({
         data: {
           entityType: "ExperienceLocale",
@@ -284,6 +285,28 @@ export class ExperienceService {
         data,
       })
     })
+
+    // Best-effort: refresh web's ISR cache for any update that touches
+    // a PUBLISHED locale. Draft-only edits never affected public
+    // pages so they don't need revalidation. `emitRevalidateWebhook`
+    // never throws.
+    if (updated.status === "PUBLISHED") {
+      await emitRevalidateWebhook({
+        model: "experience",
+        slug: updated.slug,
+        locale: updated.locale,
+      })
+      if (updated.isHomepage || typeof isTemplate === "boolean") {
+        // Homepage / template flag changes ripple through the watch
+        // settings derived view — refresh that too.
+        await emitRevalidateWebhook({
+          model: "watch-setting",
+          slug: null,
+          locale: updated.locale,
+        })
+      }
+    }
+    return updated
   }
 
   async publishLocale({
@@ -322,7 +345,7 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const published = await this.prisma.$transaction(async (tx) => {
       await tx.contentRevision.create({
         data: {
           entityType: "ExperienceLocale",
@@ -343,6 +366,22 @@ export class ExperienceService {
         },
       })
     })
+
+    // Best-effort: a fresh publish always changes the public surface.
+    // `emitRevalidateWebhook` never throws.
+    await emitRevalidateWebhook({
+      model: "experience",
+      slug: published.slug,
+      locale: published.locale,
+    })
+    if (published.isHomepage) {
+      await emitRevalidateWebhook({
+        model: "watch-setting",
+        slug: null,
+        locale: published.locale,
+      })
+    }
+    return published
   }
 
   async restoreLocaleRevision({
@@ -481,10 +520,23 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    return this.prisma.experience.update({
+    const archived = await this.prisma.experience.update({
       where: { id: input.id },
       data: { archivedAt: new Date() },
     })
+
+    // Best-effort: archiving pulls every locale of this experience out
+    // of the public surface. Web's `watch-setting` handler invalidates
+    // the root layout + every homepage path, which is a broader
+    // invalidation than strictly needed but safe. Enumerating
+    // per-locale slugs would be more precise but would require an
+    // extra query in a hot path that already happens after success.
+    await emitRevalidateWebhook({
+      model: "watch-setting",
+      slug: null,
+      locale: null,
+    })
+    return archived
   }
 
   async triggerEmbedding({

@@ -14,7 +14,7 @@ describe("POST /api/revalidate", () => {
     vi.resetModules()
   })
 
-  it("revalidates the full watch app when watch settings change", async () => {
+  it("revalidates the full watch app when watch settings change (Bearer)", async () => {
     const { POST } = await import("./route")
 
     const response = await POST(
@@ -22,7 +22,7 @@ describe("POST /api/revalidate", () => {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "x-revalidation-secret": "test-revalidation-secret",
+          Authorization: "Bearer test-revalidation-secret",
         },
         body: JSON.stringify({
           model: "watch-setting",
@@ -43,7 +43,7 @@ describe("POST /api/revalidate", () => {
     expect(revalidatePathMock).toHaveBeenCalledWith("/en")
   })
 
-  it("revalidates slug and localized variants for experience updates", async () => {
+  it("revalidates slug and localized variants for experience updates (Bearer)", async () => {
     const { POST } = await import("./route")
 
     const response = await POST(
@@ -51,7 +51,7 @@ describe("POST /api/revalidate", () => {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "x-revalidation-secret": "test-revalidation-secret",
+          Authorization: "Bearer test-revalidation-secret",
         },
         body: JSON.stringify({
           model: "experience",
@@ -81,5 +81,101 @@ describe("POST /api/revalidate", () => {
     expect(revalidatePathMock).toHaveBeenCalledWith("/jesus/en")
     expect(revalidatePathMock).toHaveBeenCalledWith("/jesus")
     expect(revalidatePathMock).toHaveBeenCalledWith("/", "layout")
+  })
+
+  it("still accepts the legacy x-revalidation-secret header (fallback)", async () => {
+    const { POST } = await import("./route")
+
+    const response = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-revalidation-secret": "test-revalidation-secret",
+        },
+        body: JSON.stringify({
+          model: "experience",
+          entry: { slug: "jesus", locale: "en" },
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+  })
+
+  it("rejects requests with no auth header", async () => {
+    const { POST } = await import("./route")
+
+    const response = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          model: "experience",
+          entry: { slug: "jesus", locale: "en" },
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(401)
+    expect(revalidatePathMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects requests with a wrong Bearer token", async () => {
+    const { POST } = await import("./route")
+
+    const response = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: "Bearer wrong-token",
+        },
+        body: JSON.stringify({
+          model: "experience",
+          entry: { slug: "jesus", locale: "en" },
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(401)
+    expect(revalidatePathMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects malformed JSON with 400", async () => {
+    const { POST } = await import("./route")
+
+    const response = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: "Bearer test-revalidation-secret",
+        },
+        body: "{ not json",
+      }),
+    )
+
+    expect(response.status).toBe(400)
+  })
+
+  it("rejects malformed slug with 400", async () => {
+    const { POST } = await import("./route")
+
+    const response = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: "Bearer test-revalidation-secret",
+        },
+        body: JSON.stringify({
+          model: "experience",
+          entry: { slug: "../etc/passwd", locale: "en" },
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(400)
   })
 })

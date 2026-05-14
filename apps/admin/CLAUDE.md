@@ -168,6 +168,23 @@ pnpm --filter @forge/admin lint
 pnpm --filter @forge/admin typecheck
 ```
 
+### Seeding fixtures for local web dev
+
+Use this when you need an admin DB with enough content for apps/web to
+render every page locally.
+
+```bash
+DATABASE_URL='postgresql://forge:forge@localhost:5433/forge_admin' \
+pnpm --filter @forge/admin seed-web-fixtures
+```
+
+Idempotent — running twice produces no duplicates. The script refuses
+to run when `DATABASE_URL` points at any Railway prod host or any
+`*.jesusfilm.org` host; the guard is fail-closed (unparseable URLs are
+also refused). Fixture data lives at
+`apps/admin/src/scripts/web-fixtures.json` — edit there to add content,
+not in the script.
+
 ### Video database backup and clone
 
 Production backup is automated only. Do not add or use an operator
