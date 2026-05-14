@@ -70,6 +70,12 @@ function maybeRedirectToPreferredLanguage(
   // Only fire for watch routes. Otherwise /demo-search/<slug>/<locale> and
   // similar 2-segment paths would receive an unintended cookie redirect.
   if (!isWatchRoute(pathname)) return null
+  // `?_lr=1` is the page's signal that it has already resolved the URL
+  // locale to match the actually-rendered variant (see the watchVideo
+  // branch in apps/web/src/app/[slug]/[locale]/page.tsx). Without this
+  // bypass the cookie redirect bounces the user back to a locale with
+  // no playable variant; the page would loop redirecting forever.
+  if (request.nextUrl.searchParams.has("_lr")) return null
   const rawCookie = request.cookies.get(LANGUAGE_PREFERENCE_COOKIE)?.value
   if (!rawCookie) return null
   let preferredSlug: string

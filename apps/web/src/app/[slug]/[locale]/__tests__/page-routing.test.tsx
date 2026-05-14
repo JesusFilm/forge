@@ -96,7 +96,14 @@ afterEach(() => {
   container.remove()
 })
 
-function makeWatchVideoResult(label: string) {
+function makeWatchVideoResult(
+  label: string,
+  variantLang: { slug: string; bcp47: string; name: string } = {
+    slug: "english",
+    bcp47: "en",
+    name: "English",
+  },
+) {
   return {
     video: {
       documentId: "v1",
@@ -112,7 +119,7 @@ function makeWatchVideoResult(label: string) {
       documentId: "var1",
       hls: "https://cdn.example/storyclubs.m3u8",
       muxVideo: { playbackId: "pb1" },
-      language: { slug: "english", name: "English" },
+      language: variantLang,
       published: true,
       duration: 30,
       downloads: [],
@@ -236,8 +243,14 @@ describe("SlugLocalePage routing — passes correct props to SeriesPageClient", 
     // returns false, so the bcp47-normalised value would collapse to
     // DEFAULT_LOCALE ("en") and the combobox/globe modal would render
     // English instead of the user's actual selection. The page must
-    // forward rawLocale into SeriesPageClient.
-    const watchVideo = makeWatchVideoResult("collection")
+    // forward rawLocale into SeriesPageClient. Variant carries the
+    // matching slug-form language so the URL-↔-variant sync redirect
+    // does not fire and rewrite the URL to "english".
+    const watchVideo = makeWatchVideoResult("collection", {
+      slug: "spanish-castilian",
+      bcp47: "es",
+      name: "Spanish, Castilian",
+    })
     resolveWatchVideoBySlugMock.mockResolvedValue(watchVideo)
     await renderPage("storyclubs", "spanish-castilian")
     const args = seriesPageClientMock.mock.calls[0]?.[0]

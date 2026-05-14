@@ -1,4 +1,5 @@
-import type { Metadata } from "next"
+import type { Metadata, Route } from "next"
+import { redirect } from "next/navigation"
 import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
 import {
   isSeriesRecord,
@@ -98,6 +99,18 @@ export default async function SlugLocalePage({ params }: PageProps) {
   // non-bcp47-locale URL — exactly what the language switcher writes.
   const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
   if (watchVideo) {
+    // URL ↔ rendered-variant sync: the resolver's variant chain falls back
+    // to primary/first-playable when no dub matches `rawLocale`. Without
+    // this redirect the URL says e.g. /afrikaans while the page renders
+    // English. The `_lr` sentinel breaks the proxy's cookie redirect loop
+    // (see apps/web/src/proxy.ts — `?_lr=1` skips the language-preference
+    // override); `WatchPageClient` strips the param post-hydration so the
+    // user-visible URL stays clean.
+    const actualSlug = watchVideo.selectedVariant.language?.slug ?? null
+    const actualBcp47 = watchVideo.selectedVariant.language?.bcp47 ?? null
+    if (actualSlug && rawLocale !== actualSlug && rawLocale !== actualBcp47) {
+      redirect(`/${slug}/${actualSlug}?_lr=1` as Route)
+    }
     if (isSeriesRecord(watchVideo.video)) {
       // Series with a playable trailer: render the series page using the
       // record + the trailer variant. SeriesPageClient's hero will mount

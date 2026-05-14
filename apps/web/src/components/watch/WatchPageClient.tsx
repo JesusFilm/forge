@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
@@ -53,6 +53,19 @@ export function WatchPageClient({
   const playerRef = useRef<MuxPlayerRef | null>(null)
   const handlePlayerReady = useCallback((player: MuxPlayerRef | null) => {
     playerRef.current = player
+  }, [])
+
+  // `?_lr=1` is the server's URL-resolved sentinel (see the watchVideo
+  // branch in `[slug]/[locale]/page.tsx` + the matching bypass in
+  // proxy.ts). Strip it post-hydration via history.replaceState so the
+  // user-visible URL stays clean without triggering a router navigation
+  // that would re-enter the middleware.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has("_lr")) return
+    url.searchParams.delete("_lr")
+    window.history.replaceState(window.history.state, "", url.toString())
   }, [])
 
   const currentLanguageSlug = languageSlug ?? variant.language?.slug ?? ""
