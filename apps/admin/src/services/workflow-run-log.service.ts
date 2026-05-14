@@ -9,12 +9,13 @@ import type { SyncResult } from "@/services/core-sync/orchestrator"
 import type { CoreSyncTrigger } from "@/services/core-sync/job"
 
 type WorkflowRunClient = Pick<PrismaClient, "workflowRun" | "coreSyncRun">
+export type WorkflowRunLogTrigger = CoreSyncTrigger | "system"
 
 export type WorkflowRunLogInput = {
   workflowKey: string
   workflowName?: string
   runtimeRunId?: string
-  trigger: CoreSyncTrigger
+  trigger: WorkflowRunLogTrigger
   actorId?: string
   subjectType?: string
   subjectId?: string
@@ -22,10 +23,11 @@ export type WorkflowRunLogInput = {
   details?: Prisma.InputJsonValue
 }
 
-const TRIGGER_MAP: Record<CoreSyncTrigger, WorkflowRunTrigger> = {
+const TRIGGER_MAP: Record<WorkflowRunLogTrigger, WorkflowRunTrigger> = {
   manual: WorkflowRunTrigger.MANUAL,
   scheduled: WorkflowRunTrigger.SCHEDULED,
   graphql: WorkflowRunTrigger.GRAPHQL,
+  system: WorkflowRunTrigger.SYSTEM,
 }
 
 function asErrorMessage(error: unknown): string {

@@ -1,0 +1,605 @@
+/**
+ * Back up and restore the reviewed admin Postgres video data slice.
+ *
+ * Restore:
+ *   TARGET_DATABASE_URL=postgresql://... \
+ *   pnpm --filter @forge/admin restore:video-db -- \
+ *     --target-env=development \
+ *     --in=apps/admin/.tmp/db-backups/video-db-video-core-2026-05-13.dump
+ *
+ * Restore intentionally reads DATABASE_URL directly from process.env rather
+ * than importing @/config/env. Operators should be able to run the focused
+ * restore tool without satisfying the whole Next.js/admin runtime env matrix.
+ *
+ * Backup is not exposed as an operator CLI. It is invoked only by the
+ * useworkflow job in src/workflows/videoDbBackup.ts.
+ */
+
+import { spawn } from "node:child_process"
+import { createReadStream } from "node:fs"
+import { mkdir } from "node:fs/promises"
+import { basename, dirname, resolve as resolvePath } from "node:path"
+
+export const VIDEO_DB_BACKUP_PROFILES = {
+  "video-core": [
+    "language",
+    "language_locale",
+    "continent",
+    "continent_locale",
+    "country",
+    "country_locale",
+    "country_language",
+    "keyword",
+    "video_origin",
+    "video_edition",
+    "mux_video",
+    "bible_book",
+    "video",
+    "video_locale",
+    "video_relation",
+    "video_keyword",
+    "video_dub",
+    "video_dub_download",
+    "video_subtitle",
+    "video_study_question",
+    "video_image",
+    "bible_citation",
+  ],
+  "video-search": [
+    "language",
+    "language_locale",
+    "continent",
+    "continent_locale",
+    "country",
+    "country_locale",
+    "country_language",
+    "keyword",
+    "video_origin",
+    "video_edition",
+    "mux_video",
+    "bible_book",
+    "video",
+    "video_locale",
+    "video_relation",
+    "video_keyword",
+    "video_dub",
+    "video_dub_download",
+    "video_subtitle",
+    "video_study_question",
+    "video_image",
+    "bible_citation",
+    "video_scene",
+    "video_scene_locale",
+    "video_transcript",
+    "video_transcript_chunk",
+  ],
+  "video-full": [
+    "language",
+    "language_locale",
+    "continent",
+    "continent_locale",
+    "country",
+    "country_locale",
+    "country_language",
+    "keyword",
+    "video_origin",
+    "video_edition",
+    "mux_video",
+    "bible_book",
+    "video",
+    "video_locale",
+    "video_relation",
+    "video_keyword",
+    "video_dub",
+    "video_dub_download",
+    "video_subtitle",
+    "video_study_question",
+    "video_image",
+    "bible_citation",
+    "video_scene",
+    "video_scene_locale",
+    "video_transcript",
+    "video_transcript_chunk",
+  ],
+} as const
+
+export type VideoDbBackupProfile = keyof typeof VIDEO_DB_BACKUP_PROFILES
+export type TargetEnvironment = "development" | "staging" | "production"
+
+type ParsedArgs = {
+  command: "backup" | "restore"
+  profile: VideoDbBackupProfile
+  outPath?: string
+  inPath?: string
+  s3Key?: string
+  targetEnv: TargetEnvironment
+  allowProductionTarget: boolean
+  dryRun: boolean
+}
+
+type CommandPlan = {
+  command: string
+  args: string[]
+  env?: Record<string, string>
+}
+
+type DatabaseUrlEnv = {
+  SOURCE_DATABASE_URL?: string
+  TARGET_DATABASE_URL?: string
+  DATABASE_URL?: string
+}
+
+type BackupStorageEnv = {
+  RAILWAY_S3_BUCKET?: string
+  RAILWAY_S3_ENDPOINT?: string
+  RAILWAY_S3_REGION?: string
+  RAILWAY_S3_ACCESS_KEY_ID?: string
+  RAILWAY_S3_SECRET_ACCESS_KEY?: string
+}
+
+export type BackupUploadPlan = {
+  bucket: string
+  key: string
+  endpoint?: string
+  region: string
+  accessKeyId: string
+  secretAccessKey: string
+}
+
+export type BackupPlan = {
+  mode: "backup"
+  profile: VideoDbBackupProfile
+  source: string
+  outPath: string
+  upload?: BackupUploadPlan
+  tables: string[]
+  commands: CommandPlan[]
+}
+
+export type RestorePlan = {
+  mode: "restore"
+  profile: VideoDbBackupProfile
+  target: string
+  targetEnv: TargetEnvironment
+  inPath: string
+  tables: string[]
+  commands: CommandPlan[]
+}
+
+export type VideoDbBackupJobResult = {
+  event: "video-db.backup.complete" | "video-db.backup.dry-run-complete"
+  profile: VideoDbBackupProfile
+  tables: number
+  path: string
+  upload?: {
+    bucket: string
+    key: string
+  }
+}
+
+export class VideoDbBackupError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "VideoDbBackupError"
+  }
+}
+
+function readFlag(args: readonly string[], name: string): string | undefined {
+  const prefix = `--${name}=`
+  const match = args.find((arg) => arg.startsWith(prefix))
+  return match?.slice(prefix.length)
+}
+
+function hasFlag(args: readonly string[], name: string): boolean {
+  return args.includes(`--${name}`)
+}
+
+function currentDatabaseUrlEnv(): DatabaseUrlEnv {
+  return {
+    SOURCE_DATABASE_URL: process.env.SOURCE_DATABASE_URL,
+    TARGET_DATABASE_URL: process.env.TARGET_DATABASE_URL,
+    DATABASE_URL: process.env.DATABASE_URL,
+  }
+}
+
+export function parseProfile(raw: string | undefined): VideoDbBackupProfile {
+  const profile = raw ?? "video-core"
+  if (profile in VIDEO_DB_BACKUP_PROFILES) {
+    return profile as VideoDbBackupProfile
+  }
+  throw new VideoDbBackupError(
+    `Unknown profile ${JSON.stringify(profile)}. Use one of: ${Object.keys(
+      VIDEO_DB_BACKUP_PROFILES,
+    ).join(", ")}`,
+  )
+}
+
+export function parseTargetEnv(raw: string | undefined): TargetEnvironment {
+  const targetEnv = raw ?? "development"
+  if (
+    targetEnv === "development" ||
+    targetEnv === "staging" ||
+    targetEnv === "production"
+  ) {
+    return targetEnv
+  }
+  throw new VideoDbBackupError(
+    `Unknown target env ${JSON.stringify(targetEnv)}. Use development, staging, or production.`,
+  )
+}
+
+export function parseArgs(
+  command: "backup" | "restore",
+  args: readonly string[],
+): ParsedArgs {
+  const normalizedArgs = args.filter((arg) => arg !== "--")
+  return {
+    command,
+    profile: parseProfile(readFlag(normalizedArgs, "profile")),
+    outPath: readFlag(normalizedArgs, "out"),
+    inPath: readFlag(normalizedArgs, "in"),
+    s3Key: readFlag(normalizedArgs, "s3-key"),
+    targetEnv: parseTargetEnv(readFlag(normalizedArgs, "target-env")),
+    allowProductionTarget: hasFlag(normalizedArgs, "allow-production-target"),
+    dryRun: hasFlag(normalizedArgs, "dry-run"),
+  }
+}
+
+function timestamp(): string {
+  return new Date().toISOString().replace(/[:.]/g, "-")
+}
+
+function defaultOutPath(profile: VideoDbBackupProfile): string {
+  return resolvePath(
+    process.cwd(),
+    ".tmp",
+    "db-backups",
+    `video-db-${profile}-${timestamp()}.dump`,
+  )
+}
+
+function normalizeS3Prefix(prefix: string): string {
+  return prefix.replace(/^\/+|\/+$/g, "")
+}
+
+export function buildBackupObjectKey(
+  profile: VideoDbBackupProfile,
+  outPath: string,
+  keyOverride: string | undefined,
+  _env: BackupStorageEnv,
+): string {
+  if (keyOverride) return keyOverride.replace(/^\/+/, "")
+
+  const prefix = normalizeS3Prefix("admin-video-db-backups")
+  const filename = basename(outPath)
+  return prefix.length > 0 ? `${prefix}/${profile}/${filename}` : filename
+}
+
+function tableArgs(tables: readonly string[]): string[] {
+  return tables.map((table) => `--table=public.${table}`)
+}
+
+function quoteTable(table: string): string {
+  return `"public"."${table.replace(/"/g, '""')}"`
+}
+
+export function buildBackupPlan(
+  parsed: ParsedArgs,
+  env: DatabaseUrlEnv & BackupStorageEnv = {
+    ...currentDatabaseUrlEnv(),
+    RAILWAY_S3_BUCKET: process.env.RAILWAY_S3_BUCKET,
+    RAILWAY_S3_ENDPOINT: process.env.RAILWAY_S3_ENDPOINT,
+    RAILWAY_S3_REGION: process.env.RAILWAY_S3_REGION,
+    RAILWAY_S3_ACCESS_KEY_ID: process.env.RAILWAY_S3_ACCESS_KEY_ID,
+    RAILWAY_S3_SECRET_ACCESS_KEY: process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
+  },
+): BackupPlan {
+  const source = env.SOURCE_DATABASE_URL ?? env.DATABASE_URL
+  if (!source) {
+    throw new VideoDbBackupError(
+      "SOURCE_DATABASE_URL or DATABASE_URL is required for backup",
+    )
+  }
+
+  const outPath = resolvePath(parsed.outPath ?? defaultOutPath(parsed.profile))
+  const tables = [...VIDEO_DB_BACKUP_PROFILES[parsed.profile]]
+  const upload = resolveBackupUploadPlan(parsed, outPath, env)
+
+  return {
+    mode: "backup",
+    profile: parsed.profile,
+    source,
+    outPath,
+    upload,
+    tables,
+    commands: [
+      {
+        command: "pg_dump",
+        args: [
+          "--format=custom",
+          "--data-only",
+          "--no-owner",
+          "--no-acl",
+          "--file",
+          outPath,
+          ...tableArgs(tables),
+        ],
+        env: { PGDATABASE: source },
+      },
+    ],
+  }
+}
+
+export function resolveBackupUploadPlan(
+  parsed: ParsedArgs,
+  outPath: string,
+  env: BackupStorageEnv,
+): BackupUploadPlan | undefined {
+  const bucket = env.RAILWAY_S3_BUCKET
+
+  if (!bucket) {
+    return undefined
+  }
+
+  const accessKeyId = env.RAILWAY_S3_ACCESS_KEY_ID
+  const secretAccessKey = env.RAILWAY_S3_SECRET_ACCESS_KEY
+  if (!accessKeyId || !secretAccessKey) {
+    throw new VideoDbBackupError(
+      "S3 upload requires RAILWAY_S3_ACCESS_KEY_ID and RAILWAY_S3_SECRET_ACCESS_KEY when RAILWAY_S3_BUCKET is set",
+    )
+  }
+
+  return {
+    bucket,
+    key: buildBackupObjectKey(parsed.profile, outPath, parsed.s3Key, env),
+    endpoint: env.RAILWAY_S3_ENDPOINT,
+    region: env.RAILWAY_S3_REGION ?? "auto",
+    accessKeyId,
+    secretAccessKey,
+  }
+}
+
+export function buildRestorePlan(
+  parsed: ParsedArgs,
+  env: DatabaseUrlEnv = currentDatabaseUrlEnv(),
+): RestorePlan {
+  const target = env.TARGET_DATABASE_URL ?? env.DATABASE_URL
+  if (!target) {
+    throw new VideoDbBackupError(
+      "TARGET_DATABASE_URL or DATABASE_URL is required for restore",
+    )
+  }
+  if (!parsed.inPath) {
+    throw new VideoDbBackupError("--in=<dump path> is required for restore")
+  }
+  if (parsed.targetEnv === "production" && !parsed.allowProductionTarget) {
+    throw new VideoDbBackupError(
+      "Refusing production restore without --allow-production-target",
+    )
+  }
+
+  const inPath = resolvePath(parsed.inPath)
+  const tables = [...VIDEO_DB_BACKUP_PROFILES[parsed.profile]]
+  const truncateSql = `TRUNCATE TABLE ${tables
+    .map(quoteTable)
+    .join(", ")} RESTART IDENTITY CASCADE;`
+
+  return {
+    mode: "restore",
+    profile: parsed.profile,
+    target,
+    targetEnv: parsed.targetEnv,
+    inPath,
+    tables,
+    commands: [
+      {
+        command: "psql",
+        args: ["--set=ON_ERROR_STOP=1", "--command", truncateSql],
+        env: { PGDATABASE: target },
+      },
+      {
+        command: "pg_restore",
+        args: [
+          "--data-only",
+          "--no-owner",
+          "--no-acl",
+          "--single-transaction",
+          "--dbname",
+          target,
+          ...tableArgs(tables),
+          inPath,
+        ],
+      },
+    ],
+  }
+}
+
+function redactUrl(value: string): string {
+  try {
+    const url = new URL(value)
+    if (url.password) url.password = "REDACTED"
+    if (url.username) url.username = "REDACTED"
+    return url.toString()
+  } catch {
+    return value.length > 0 ? "[redacted]" : value
+  }
+}
+
+function printablePlan(plan: BackupPlan | RestorePlan): object {
+  const connectionUrl = plan.mode === "backup" ? plan.source : plan.target
+  const commands = plan.commands.map((command) => ({
+    command: command.command,
+    args: command.args.map((arg) =>
+      arg === connectionUrl ? redactUrl(arg) : arg,
+    ),
+    env: command.env
+      ? Object.fromEntries(
+          Object.entries(command.env).map(([key, value]) => [
+            key,
+            redactUrl(value),
+          ]),
+        )
+      : undefined,
+  }))
+
+  if (plan.mode === "backup") {
+    return {
+      event: "video-db.backup.plan",
+      profile: plan.profile,
+      source: redactUrl(plan.source),
+      outPath: plan.outPath,
+      upload: plan.upload
+        ? {
+            bucket: plan.upload.bucket,
+            key: plan.upload.key,
+            endpoint: plan.upload.endpoint,
+            region: plan.upload.region,
+          }
+        : null,
+      tables: plan.tables,
+      commands,
+    }
+  }
+
+  return {
+    event: "video-db.restore.plan",
+    profile: plan.profile,
+    target: redactUrl(plan.target),
+    targetEnv: plan.targetEnv,
+    inPath: plan.inPath,
+    tables: plan.tables,
+    commands,
+  }
+}
+
+async function runCommand(plan: CommandPlan): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(plan.command, plan.args, {
+      stdio: "inherit",
+      env: { ...process.env, ...plan.env },
+    })
+    child.on("error", reject)
+    child.on("exit", (code, signal) => {
+      if (code === 0) return resolve()
+      reject(
+        new Error(
+          `${plan.command} exited with ${signal ? `signal ${signal}` : `code ${code ?? "null"}`}`,
+        ),
+      )
+    })
+  })
+}
+
+async function runPlan(plan: BackupPlan | RestorePlan): Promise<void> {
+  if (plan.mode === "backup") {
+    await mkdir(dirname(plan.outPath), { recursive: true })
+  }
+  for (const command of plan.commands) {
+    await runCommand(command)
+  }
+}
+
+async function uploadBackup(plan: BackupPlan): Promise<void> {
+  if (!plan.upload) return
+
+  const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3")
+
+  const body = createReadStream(plan.outPath)
+  const s3 = new S3Client({
+    endpoint: plan.upload.endpoint,
+    region: plan.upload.region,
+    credentials: {
+      accessKeyId: plan.upload.accessKeyId,
+      secretAccessKey: plan.upload.secretAccessKey,
+    },
+    forcePathStyle: true,
+  })
+
+  try {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: plan.upload.bucket,
+        Key: plan.upload.key,
+        Body: body,
+        ContentType: "application/vnd.postgresql.dump",
+      }),
+    )
+  } finally {
+    s3.destroy()
+  }
+}
+
+async function executeBackupPlan(
+  parsed: ParsedArgs,
+): Promise<VideoDbBackupJobResult> {
+  const plan = buildBackupPlan(parsed)
+  process.stdout.write(`${JSON.stringify(printablePlan(plan))}\n`)
+
+  if (parsed.dryRun) {
+    const result: VideoDbBackupJobResult = {
+      event: "video-db.backup.dry-run-complete",
+      profile: plan.profile,
+      tables: plan.tables.length,
+      path: plan.outPath,
+      upload: plan.upload
+        ? { bucket: plan.upload.bucket, key: plan.upload.key }
+        : undefined,
+    }
+    process.stdout.write(`${JSON.stringify(result)}\n`)
+    return result
+  }
+
+  await runPlan(plan)
+  await uploadBackup(plan)
+
+  const result: VideoDbBackupJobResult = {
+    event: "video-db.backup.complete",
+    profile: plan.profile,
+    tables: plan.tables.length,
+    path: plan.outPath,
+    upload: plan.upload
+      ? { bucket: plan.upload.bucket, key: plan.upload.key }
+      : undefined,
+  }
+  process.stdout.write(`${JSON.stringify(result)}\n`)
+  return result
+}
+
+export async function runScheduledVideoDbBackup(): Promise<VideoDbBackupJobResult> {
+  return executeBackupPlan(parseArgs("backup", []))
+}
+
+export async function main(
+  command: "restore",
+  argv: readonly string[] = process.argv.slice(2),
+): Promise<void> {
+  const parsed = parseArgs(command, argv)
+  const plan = buildRestorePlan(parsed)
+
+  process.stdout.write(`${JSON.stringify(printablePlan(plan))}\n`)
+
+  if (parsed.dryRun) {
+    process.stdout.write(
+      `${JSON.stringify({ event: "video-db.restore.dry-run-complete" })}\n`,
+    )
+    return
+  }
+
+  await runPlan(plan)
+  process.stdout.write(
+    `${JSON.stringify({
+      event: "video-db.restore.complete",
+      profile: plan.profile,
+      tables: plan.tables.length,
+      path: plan.inPath,
+    })}\n`,
+  )
+}
+
+const invokedPath = typeof process.argv[1] === "string" ? process.argv[1] : ""
+if (import.meta.url === `file://${invokedPath}`) {
+  process.stderr.write(
+    "[video-db-backup] Backup is scheduled-only. Use pnpm --filter @forge/admin restore:video-db for restores.\n",
+  )
+  process.exit(1)
+}
