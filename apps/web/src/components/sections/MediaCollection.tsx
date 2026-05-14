@@ -270,8 +270,14 @@ function VideoCard({
                 sizes="(max-width: 768px) 50vw, 200px"
                 className="transition-transform duration-300 group-hover:scale-105"
                 style={{
+                  // `center` keeps the subject in frame regardless of the
+                  // source image's aspect ratio. Portrait poster artwork
+                  // (the original cms data) stays centered; landscape
+                  // `mobileCinematicHigh` variants (post-data-layer-flip,
+                  // when admin only carries banner-aspect rows) show the
+                  // middle of the scene instead of the left edge.
                   objectFit: "cover",
-                  objectPosition: "left top",
+                  objectPosition: "center",
                   color: "transparent",
                   maskImage:
                     "linear-gradient(to top, transparent 0%, rgba(0,0,0,0.4) 30%, black 42%)",

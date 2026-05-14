@@ -37,11 +37,30 @@ function gradientForSlug(slug: string): string {
   return EXPERIENCE_PLACEHOLDER_GRADIENTS[index]
 }
 
+// Admin's hybrid-search response sets `imageUrl: null` until R8 wires
+// real ogImage / VideoImage; `playbackId` is reliably populated for
+// video results (INNER JOIN on dub/mux at the retriever), so the Mux
+// thumbnail endpoint gives us a frame-accurate poster — and when the
+// match is scene-level, `startSeconds` lets us land on the matched scene.
+function muxSearchThumbnail(
+  playbackId: string,
+  startSeconds: number | null,
+): string {
+  const time = startSeconds != null ? `&time=${startSeconds}` : ""
+  return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=448&height=336&fit_mode=smartcrop${time}`
+}
+
 export function VideoCard({
   result,
   index = 0,
   hrefBuilder = defaultHrefBuilder,
 }: VideoCardProps) {
+  const thumbnailSrc =
+    result.imageUrl ??
+    (result.type === "video" && result.playbackId
+      ? muxSearchThumbnail(result.playbackId, result.startSeconds)
+      : null)
+
   return (
     <Link
       href={hrefBuilder(result)}
@@ -50,9 +69,9 @@ export function VideoCard({
     >
       {/* Full-bleed thumbnail */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-stone-800">
-        {result.imageUrl ? (
+        {thumbnailSrc ? (
           <Image
-            src={result.imageUrl}
+            src={thumbnailSrc}
             alt={result.title ?? "Video thumbnail"}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"

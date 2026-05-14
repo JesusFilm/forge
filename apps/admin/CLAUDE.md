@@ -1146,9 +1146,20 @@ description`, same `'simple'` config as cms, locale + status gate.
   (R2-indexed) is deliberately NOT fused. Strict cms parity during the
   R3→R8 window; adding a 5th RRF list for transcripts is a post-cutover
   follow-up that won't change the consumer contract.
-- **Experience imageUrl is null in R4.** cms parity. `ExperienceLocale.ogImageUrl`
-  exists on admin but wiring it is a deliberate post-cutover upgrade
-  so the pre-R8 diff-against-cms invariant holds.
+- **Video imageUrl resolves via LATERAL on `VideoImage`.** Both
+  retrievers (semantic + keyword) emit
+  `COALESCE(mobile_cinematic_high, url)` from the per-video
+  `video_image` row, matching cms's `keyword-search.ts:54` /
+  `semantic-search.ts:62` lookup. Earlier R4 doc claimed "imageUrl
+  is null for video corpus (cms parity)" — that was a regression,
+  not parity. cms's video retrievers DID populate `image_url` from
+  `video_images.mobile_cinematic_high`; only the experience side
+  defers the image join.
+- **Experience imageUrl is null in R4.** cms parity (cms's
+  experience retrievers also return null with comment "og_image
+  join deferred"). `ExperienceLocale.ogImageUrl` exists on admin
+  but wiring it is a deliberate post-cutover upgrade so the pre-R8
+  diff-against-cms invariant holds for the experience corpus.
 - **Degradation signal:** `searchMode: "hybrid" | "keyword-only"`. Set
   to `"keyword-only"` when the embedding provider throws. Structured
   log at error level: `[search] event=query_embedding_failure
@@ -1474,8 +1485,14 @@ shape drift.
   React key, so the cutover is a one-line TypeScript-type update on
   `apps/web/src/lib/recommendations.ts::SceneRecommendation`. Documented
   in plan §Key Technical Decisions #2.
-- **`imageUrl` is null** (cms parity stance inherited from R4). Wiring
-  a real `imageUrl` from `VideoImage` / MuxVideo thumbnail is a
+- **`imageUrl` is null in R5** (was claimed "cms parity inherited
+  from R4" but R4 was itself a regression — see R4's "Video imageUrl"
+  bullet above; cms's scene-recommendations DID populate `image_url`
+  via VideoImage LATERAL). Wiring R5 to match the R4 LATERAL JOIN
+  pattern is a parallel follow-up. Until then, scene-recommendation
+  thumbnails depend on consumer-side fallbacks (Mux thumbnail from
+  `playbackId`, gradient placeholder). Original note: wiring a real
+  `imageUrl` from `VideoImage` / MuxVideo thumbnail is a
   post-cutover upgrade so the pre-R8 diff-against-cms invariant holds.
 - **REST endpoint:** `GET /api/scene-embedding/recommendations`
   (singular) at `src/app/api/scene-embedding/recommendations/route.ts`.

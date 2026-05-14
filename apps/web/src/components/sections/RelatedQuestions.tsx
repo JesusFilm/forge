@@ -120,15 +120,21 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
   const { id, sectionKey, heading, questions } = data
   const ctaLabel = String((data as Record<string, unknown>).ctaLabel ?? "")
   const ctaLink = String((data as Record<string, unknown>).ctaLink ?? "")
-  const [openQuestion, setOpenQuestion] = useState<string | null>(null)
+  // Identify each question by its array index. Admin's
+  // `RelatedQuestionItemSchema` (apps/admin/src/domain/blocks.ts) does
+  // NOT carry an `id` field on individual items — only `question` +
+  // `answer` — so `q.id` is `undefined` for every item. Without an
+  // index-based identifier, `openQuestion === q.id` (both undefined)
+  // matches every row and clicking one expands all of them.
+  const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   const validQuestions =
     questions?.filter((q): q is NonNullable<typeof q> => q != null) ?? []
 
   if (!validQuestions.length) return null
 
-  const handleToggle = (qId: string) => {
-    setOpenQuestion(openQuestion === qId ? null : qId)
+  const handleToggle = (idx: number) => {
+    setOpenIndex(openIndex === idx ? null : idx)
   }
 
   return (
@@ -160,13 +166,13 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
       </div>
 
       <div className="relative">
-        {validQuestions.map((q) => (
+        {validQuestions.map((q, idx) => (
           <QuestionItem
-            key={q.id}
+            key={q.id ?? `q-${idx}`}
             question={q.question ?? ""}
             answer={q.answer ?? ""}
-            isOpen={openQuestion === q.id}
-            onToggle={() => handleToggle(q.id)}
+            isOpen={openIndex === idx}
+            onToggle={() => handleToggle(idx)}
           />
         ))}
       </div>

@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { LANGUAGE_PREFERENCE_COOKIE } from "@/lib/language-preference-constants"
-import { DEFAULT_LOCALE, isLocale, parseAcceptLanguage } from "@/lib/locale"
+import {
+  DEFAULT_LOCALE,
+  LOCALE_RESOLVED_PARAM,
+  isLocale,
+  parseAcceptLanguage,
+} from "@/lib/locale"
 
 // Slug shape that the watch picker writes — kebab-case ASCII or bcp47
 // codes. Used by both isWatchRoute (to recognise slug-form watch URLs
@@ -70,6 +75,12 @@ function maybeRedirectToPreferredLanguage(
   // Only fire for watch routes. Otherwise /demo-search/<slug>/<locale> and
   // similar 2-segment paths would receive an unintended cookie redirect.
   if (!isWatchRoute(pathname)) return null
+  // `LOCALE_RESOLVED_PARAM` is the page's signal that it has already
+  // resolved the URL locale to match the actually-rendered variant
+  // (see the watchVideo branch in [slug]/[locale]/page.tsx). Without
+  // this bypass the cookie redirect bounces the user back to a locale
+  // with no playable variant; the page would loop redirecting forever.
+  if (request.nextUrl.searchParams.has(LOCALE_RESOLVED_PARAM)) return null
   const rawCookie = request.cookies.get(LANGUAGE_PREFERENCE_COOKIE)?.value
   if (!rawCookie) return null
   let preferredSlug: string

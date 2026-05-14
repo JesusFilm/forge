@@ -37,6 +37,7 @@ describe("searchVideoSemantic", () => {
         video_core_id: "1_Jesus",
         video_slug: "jesus",
         video_title: "Jesus",
+        image_url: "https://images.example/jesus.jpg",
         scene_description: "Peter denies Jesus",
         start_seconds: 42.5,
         playback_id: "mux-abc",
@@ -58,7 +59,7 @@ describe("searchVideoSemantic", () => {
       videoCoreId: "1_Jesus",
       videoSlug: "jesus",
       videoTitle: "Jesus",
-      imageUrl: null,
+      imageUrl: "https://images.example/jesus.jpg",
       sceneDescription: "Peter denies Jesus",
       startSeconds: 42.5,
       playbackId: "mux-abc",
@@ -74,6 +75,7 @@ describe("searchVideoSemantic", () => {
         video_core_id: null,
         video_slug: "x",
         video_title: "X",
+        image_url: null,
         scene_description: "d",
         start_seconds: 0,
         playback_id: null,
@@ -90,6 +92,7 @@ describe("searchVideoSemantic", () => {
 
     expect(rows[0]!.playbackId).toBeNull()
     expect(rows[0]!.videoCoreId).toBeNull()
+    expect(rows[0]!.imageUrl).toBeNull()
   })
 
   it("coerces Postgres numeric columns to JS number", async () => {
@@ -100,6 +103,7 @@ describe("searchVideoSemantic", () => {
         video_core_id: null,
         video_slug: "",
         video_title: "",
+        image_url: null,
         scene_description: "",
         start_seconds: "7" as unknown as number,
         playback_id: null,
@@ -143,6 +147,7 @@ describe("searchVideoKeyword", () => {
         video_core_id: "1_Jesus",
         video_slug: "jesus",
         video_title: "Jesus",
+        image_url: "https://images.example/jesus.jpg",
         description: "Film about Jesus",
         rank: 0.0913,
       },
@@ -157,7 +162,7 @@ describe("searchVideoKeyword", () => {
     expect(rows[0]).toMatchObject({
       resultType: "video",
       resultId: "vid-1",
-      imageUrl: null,
+      imageUrl: "https://images.example/jesus.jpg",
       description: "Film about Jesus",
       rank: 0.0913,
     })

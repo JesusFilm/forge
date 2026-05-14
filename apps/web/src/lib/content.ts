@@ -352,6 +352,68 @@ function normalizeImages(
     .filter((i): i is WatchImage => i != null)
 }
 
+// Stable-order dedup by documentId. Keeps the first occurrence so the
+// editor-curated ordering survives. Used to scrub the parents/children
+// lists in `normalizeAdminVideo` against admin's duplicate VideoRelation
+// rows.
+function dedupeByDocumentId<T extends { documentId: string }>(items: T[]): T[] {
+  const seen = new Set<string>()
+  const result: T[] = []
+  for (const item of items) {
+    if (seen.has(item.documentId)) continue
+    seen.add(item.documentId)
+    result.push(item)
+  }
+  return result
+}
+
+// Admin's `Language.name` and `BibleBook.name` are typed `JSON` — a
+// locale-keyed object like `{ "en": "Afrikaans", "af": "Afrikaans" }`
+// (or, for some Core-synced rows, a plain string). Prefer the English
+// label so the language pill on the download dialog + language picker
+// always shows a readable string; fall back to other locale keys
+// in a fixed priority order if `en` is absent. Returns null only when
+// the input is missing or has no usable string entries.
+//
+// The fallback list is pinned (not `Object.values(map)` iteration
+// order) so admin-side jsonb key-ordering changes can't shift the
+// rendered label between deploys. New high-traffic locales should be
+// added here explicitly rather than relying on insertion order.
+const LOCALIZED_NAME_FALLBACK_ORDER = [
+  "en",
+  "es",
+  "fr",
+  "pt",
+  "de",
+  "id",
+  "ja",
+  "ko",
+  "ru",
+  "th",
+  "tr",
+  "zh",
+  "zh-Hans-CN",
+] as const
+
+function pickLocalizedName(value: unknown): string | null {
+  if (typeof value === "string") return value.length > 0 ? value : null
+  if (!value || typeof value !== "object") return null
+  const map = value as Record<string, unknown>
+  for (const key of LOCALIZED_NAME_FALLBACK_ORDER) {
+    const candidate = map[key]
+    if (typeof candidate === "string" && candidate.length > 0) {
+      return candidate
+    }
+  }
+  // Last-ditch: any remaining non-empty string entry. Order is
+  // implementation-defined; this branch should rarely fire because
+  // every locale we support has a key in the fallback list above.
+  for (const v of Object.values(map)) {
+    if (typeof v === "string" && v.length > 0) return v
+  }
+  return null
+}
+
 function normalizeChildVariant(
   dub: NonNullable<
     NonNullable<NonNullable<AdminVideoRaw["children"]>[number]["child"]>["dubs"]
@@ -366,8 +428,7 @@ function normalizeChildVariant(
     language: dub.language
       ? {
           slug: dub.language.slug ?? null,
-          name:
-            typeof dub.language.name === "string" ? dub.language.name : null,
+          name: pickLocalizedName(dub.language.name),
           bcp47: dub.language.bcp47 ?? null,
         }
       : null,
@@ -441,7 +502,7 @@ function normalizeVariant(
           coreId: v.language.coreId ?? null,
           bcp47: v.language.bcp47 ?? null,
           slug: v.language.slug ?? null,
-          name: typeof v.language.name === "string" ? v.language.name : null,
+          name: pickLocalizedName(v.language.name),
         }
       : null,
     downloads: (v.downloads ?? [])
@@ -478,12 +539,26 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
           bcp47: raw.primaryLanguage.bcp47 ?? null,
         }
       : null,
-    parents: (raw.parents ?? [])
-      .map(normalizeParent)
-      .filter((p): p is WatchParent => p != null),
-    children: (raw.children ?? [])
-      .map(normalizeChild)
-      .filter((c): c is WatchChild => c != null),
+    // Belt-and-braces against admin data-quality issues: filter out
+    // self-references (a VideoRelation row pointing the video at itself
+    // — seen in the wild for `1-jesus-our-loving-pursuer` with 3 such
+    // rows) and dedupe by documentId so a duplicated relation never
+    // surfaces as repeated sibling-carousel tiles or React duplicate-key
+    // warnings.
+    parents: dedupeByDocumentId(
+      (raw.parents ?? [])
+        .map(normalizeParent)
+        .filter(
+          (p): p is WatchParent => p != null && p.documentId !== raw.documentId,
+        ),
+    ),
+    children: dedupeByDocumentId(
+      (raw.children ?? [])
+        .map(normalizeChild)
+        .filter(
+          (c): c is WatchChild => c != null && c.documentId !== raw.documentId,
+        ),
+    ),
     variants: (raw.variants ?? [])
       .map(normalizeVariant)
       .filter((v): v is WatchVariant => v != null),
@@ -512,15 +587,12 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
             c.bibleBook && c.bibleBook.documentId
               ? {
                   documentId: c.bibleBook.documentId,
-                  // Admin's `BibleBook.name` is JSON (legacy compatibility
-                  // mirror of Core's localised display name). Coerce to
-                  // string here so consumers can render it directly; admin
-                  // emits plain strings for the English book names in
-                  // practice.
-                  name:
-                    typeof c.bibleBook.name === "string"
-                      ? c.bibleBook.name
-                      : null,
+                  // Admin's `BibleBook.name` is JSON keyed by locale (Core
+                  // mirror). `pickLocalizedName` prefers the English entry
+                  // so the citation card renders something readable; for
+                  // rows admin still emits as a plain string the helper
+                  // returns it verbatim.
+                  name: pickLocalizedName(c.bibleBook.name),
                 }
               : null,
         }
@@ -973,7 +1045,35 @@ const fetchWatchVideoBySlug = cache(
     if (error) throw error
 
     const raw = result.data?.videoBySlug ?? null
-    return raw ? normalizeAdminVideo(raw) : null
+    if (!raw) return null
+
+    // Locale-text fallback: admin's `locales(locale:)` arg filters on
+    // bcp47 strictly, but URLs use the language slug ("afrikaans" not
+    // "af") and many videos don't have a localized VideoLocale row in
+    // every requested language. Either case returns an empty `locales[]`
+    // — which would render an empty <h1> on the watch page. Re-fetch
+    // with "en" when the primary record came back without locale text;
+    // the variant chain already handles audio-language selection so
+    // the user still gets the right dub, just with English title /
+    // description as a graceful fallback.
+    if (!raw.locales?.[0] && locale !== "en") {
+      const fallback = await client.query({
+        query: getWatchVideoBySlugOperation,
+        variables: { locale: "en", videoSlug },
+        fetchPolicy: "no-cache",
+      })
+      const fallbackError = graphqlError(
+        fallback as { error?: ErrorLike; errors?: unknown[] },
+      )
+      if (!fallbackError && fallback.data?.videoBySlug?.locales?.[0]) {
+        return normalizeAdminVideo({
+          ...raw,
+          locales: fallback.data.videoBySlug.locales,
+        })
+      }
+    }
+
+    return normalizeAdminVideo(raw)
   },
 )
 
