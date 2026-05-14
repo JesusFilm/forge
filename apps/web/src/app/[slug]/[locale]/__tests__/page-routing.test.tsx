@@ -68,7 +68,7 @@ vi.mock("@/components/ExperienceError", () => ({
 }))
 
 vi.mock("@/components/sections", () => ({
-  SectionRenderer: vi.fn(() => null),
+  ExperienceSectionRenderer: vi.fn(() => null),
 }))
 
 import SlugLocalePage from "@/app/[slug]/[locale]/page"

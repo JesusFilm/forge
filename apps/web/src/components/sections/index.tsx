@@ -252,14 +252,3 @@ export function ExperienceSectionRenderer({
   }
   return null
 }
-
-/** @deprecated Use ExperienceSectionRenderer */
-export function SectionRenderer({
-  section,
-  routeVideo,
-}: {
-  section: Section
-  routeVideo?: RouteVideo | null
-}) {
-  return <ExperienceSectionRenderer section={section} routeVideo={routeVideo} />
-}

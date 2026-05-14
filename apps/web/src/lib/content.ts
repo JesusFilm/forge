@@ -371,18 +371,45 @@ function dedupeByDocumentId<T extends { documentId: string }>(items: T[]): T[] {
 // locale-keyed object like `{ "en": "Afrikaans", "af": "Afrikaans" }`
 // (or, for some Core-synced rows, a plain string). Prefer the English
 // label so the language pill on the download dialog + language picker
-// always shows a readable string; fall back to any other locale value
-// if `en` is absent. Returns null only when the input is missing or
-// has no usable string entries.
+// always shows a readable string; fall back to other locale keys
+// in a fixed priority order if `en` is absent. Returns null only when
+// the input is missing or has no usable string entries.
+//
+// The fallback list is pinned (not `Object.values(map)` iteration
+// order) so admin-side jsonb key-ordering changes can't shift the
+// rendered label between deploys. New high-traffic locales should be
+// added here explicitly rather than relying on insertion order.
+const LOCALIZED_NAME_FALLBACK_ORDER = [
+  "en",
+  "es",
+  "fr",
+  "pt",
+  "de",
+  "id",
+  "ja",
+  "ko",
+  "ru",
+  "th",
+  "tr",
+  "zh",
+  "zh-Hans-CN",
+] as const
+
 function pickLocalizedName(value: unknown): string | null {
   if (typeof value === "string") return value.length > 0 ? value : null
-  if (value && typeof value === "object") {
-    const map = value as Record<string, unknown>
-    const en = map.en
-    if (typeof en === "string" && en.length > 0) return en
-    for (const v of Object.values(map)) {
-      if (typeof v === "string" && v.length > 0) return v
+  if (!value || typeof value !== "object") return null
+  const map = value as Record<string, unknown>
+  for (const key of LOCALIZED_NAME_FALLBACK_ORDER) {
+    const candidate = map[key]
+    if (typeof candidate === "string" && candidate.length > 0) {
+      return candidate
     }
+  }
+  // Last-ditch: any remaining non-empty string entry. Order is
+  // implementation-defined; this branch should rarely fire because
+  // every locale we support has a key in the fallback list above.
+  for (const v of Object.values(map)) {
+    if (typeof v === "string" && v.length > 0) return v
   }
   return null
 }

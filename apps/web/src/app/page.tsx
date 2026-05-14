@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { DEFAULT_LOCALE } from "@/lib/locale"
 import { isWatchPageMissingError, resolveWatchPage } from "@/lib/content"
 import { getWatchPageMetadata } from "@/lib/experience-metadata"
-import { SectionRenderer, type Section } from "@/components/sections"
+import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 
@@ -40,7 +40,11 @@ export default async function HomePage() {
             ? block.id
             : `block-${i}`
         return (
-          <SectionRenderer key={key} section={block} routeVideo={routeVideo} />
+          <ExperienceSectionRenderer
+            key={key}
+            section={block}
+            routeVideo={routeVideo}
+          />
         )
       })}
     </main>

@@ -13,7 +13,7 @@ import {
   generateSeriesMetadata,
   getWatchPageMetadata,
 } from "@/lib/experience-metadata"
-import { SectionRenderer, type Section } from "@/components/sections"
+import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
@@ -109,7 +109,11 @@ export default async function SlugLocalePage({ params }: PageProps) {
                 ? block.id
                 : `block-${i}`
             return (
-              <SectionRenderer key={key} section={block} routeVideo={null} />
+              <ExperienceSectionRenderer
+                key={key}
+                section={block}
+                routeVideo={null}
+              />
             )
           })}
         </main>
@@ -225,7 +229,11 @@ export default async function SlugLocalePage({ params }: PageProps) {
             ? block.id
             : `block-${i}`
         return (
-          <SectionRenderer key={key} section={block} routeVideo={routeVideo} />
+          <ExperienceSectionRenderer
+            key={key}
+            section={block}
+            routeVideo={routeVideo}
+          />
         )
       })}
     </main>
