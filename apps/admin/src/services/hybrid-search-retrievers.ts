@@ -12,8 +12,12 @@
  * - `resultId` is a cuid string for both corpora (admin-native). For
  *   experience rows it's the `ExperienceLocale.id` (see inline comment
  *   on searchExperienceSemantic for why).
- * - `imageUrl` is `null` for both corpora in R4 (cms parity). Wiring
- *   `ExperienceLocale.ogImageUrl` is a deliberate post-R8 follow-up.
+ * - Video retrievers resolve `imageUrl` via LATERAL on `VideoImage`,
+ *   matching cms's `keyword-search.ts` / `semantic-search.ts` lookup
+ *   over `video_images_video_lnk → video_images.mobile_cinematic_high`.
+ *   Experience retrievers still return `imageUrl: null` (cms parity —
+ *   cms's experience retrievers also defer the og_image join); wiring
+ *   `ExperienceLocale.ogImageUrl` is a post-R8 follow-up.
  * - Semantic-video exposes `embedding_text` so the 3-layer dedup can
  *   recompute cosine similarity across survivors. This field is a
  *   service-internal transport only; the schema.test.ts
@@ -56,7 +60,7 @@ export type VideoSemanticResult = RankedItem & {
   videoCoreId: string | null
   videoSlug: string
   videoTitle: string
-  imageUrl: null
+  imageUrl: string | null
   sceneDescription: string
   startSeconds: number
   playbackId: string | null
@@ -70,7 +74,7 @@ export type VideoKeywordResult = RankedItem & {
   videoCoreId: string | null
   videoSlug: string
   videoTitle: string
-  imageUrl: null
+  imageUrl: string | null
   description: string | null
   rank: number
 }
@@ -104,6 +108,7 @@ type VideoSemanticRow = {
   video_core_id: string | null
   video_slug: string | null
   video_title: string | null
+  image_url: string | null
   scene_description: string
   start_seconds: number
   playback_id: string | null
@@ -116,6 +121,7 @@ type VideoKeywordRow = {
   video_core_id: string | null
   video_slug: string | null
   video_title: string | null
+  image_url: string | null
   description: string | null
   rank: number
 }
@@ -169,6 +175,7 @@ export async function searchVideoSemantic(
         v.core_id                         AS video_core_id,
         v.slug                            AS video_slug,
         vl.title                          AS video_title,
+        COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
         vsl.description                   AS scene_description,
         vs.start_seconds                  AS start_seconds,
         dub_mux.playback_id               AS playback_id,
@@ -194,6 +201,14 @@ export async function searchVideoSemantic(
         ORDER BY vd.published DESC NULLS LAST, vd.updated_at DESC
         LIMIT 1
       ) dub_mux ON true
+      LEFT JOIN LATERAL (
+        SELECT vi2.mobile_cinematic_high, vi2.url
+        FROM video_image vi2
+        WHERE vi2.video_id = v.id
+          AND vi2.deleted_at IS NULL
+        ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
+        LIMIT 1
+      ) vi ON true
       WHERE vsl.embedding IS NOT NULL
         AND vsl.locale = ${locale}
       ORDER BY vs.video_id, vsl.embedding <=> ${queryEmbedding}::vector
@@ -208,7 +223,7 @@ export async function searchVideoSemantic(
     videoCoreId: row.video_core_id,
     videoSlug: row.video_slug ?? "",
     videoTitle: row.video_title ?? "",
-    imageUrl: null,
+    imageUrl: row.image_url ?? null,
     sceneDescription: row.scene_description,
     startSeconds: Number(row.start_seconds),
     playbackId: row.playback_id,
@@ -244,6 +259,7 @@ export async function searchVideoKeyword(
         v.core_id      AS video_core_id,
         v.slug         AS video_slug,
         vl.title       AS video_title,
+        COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
         vl.description AS description,
         ts_rank(
           ${tsvector},
@@ -252,6 +268,14 @@ export async function searchVideoKeyword(
       FROM video_locale vl
       JOIN video v ON v.id = vl.video_id
         AND v.deleted_at IS NULL
+      LEFT JOIN LATERAL (
+        SELECT vi2.mobile_cinematic_high, vi2.url
+        FROM video_image vi2
+        WHERE vi2.video_id = v.id
+          AND vi2.deleted_at IS NULL
+        ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
+        LIMIT 1
+      ) vi ON true
       WHERE ${tsvector} @@ plainto_tsquery('simple', ${trimmed})
         AND vl.locale = ${locale}
         AND vl.status = 'published'
@@ -267,7 +291,7 @@ export async function searchVideoKeyword(
     videoCoreId: row.video_core_id,
     videoSlug: row.video_slug ?? "",
     videoTitle: row.video_title ?? "",
-    imageUrl: null,
+    imageUrl: row.image_url ?? null,
     description: row.description,
     rank: Number(row.rank),
   }))
