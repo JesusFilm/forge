@@ -1,15 +1,21 @@
 import type { Metadata } from "next"
 import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
 import {
+  isSeriesRecord,
   isWatchPageMissingError,
+  resolveSeriesBySlug,
   resolveWatchPage,
   resolveWatchVideoBySlug,
   mergeWatchExperience,
 } from "@/lib/content"
-import { getWatchPageMetadata } from "@/lib/experience-metadata"
+import {
+  generateSeriesMetadata,
+  getWatchPageMetadata,
+} from "@/lib/experience-metadata"
 import { SectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
+import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 
 // ISR: pages cached for 60s. The cookie-driven language redirect lives in
@@ -28,6 +34,47 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { slug, locale: rawLocale } = await params
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
+
+  // Resolve the video first so the series-shaped branch can read title /
+  // description / poster directly from the record. fetchWatchVideoBySlug
+  // is wrapped in React `cache()` so the same call from SlugLocalePage
+  // below reuses the result without a second admin round-trip.
+  //
+  // Wrap the resolver calls in try/catch so that a transient Apollo or
+  // GraphQL error here doesn't drop metadata entirely (Next silently
+  // skips metadata emission when generateMetadata throws). The page
+  // body has its own error boundary; metadata should degrade gracefully
+  // by falling through to the experience helper rather than emitting an
+  // empty <title> and no OG tags for the 60 s revalidate window.
+  try {
+    const watchVideo = await resolveWatchVideoBySlug(slug, locale)
+    if (watchVideo && isSeriesRecord(watchVideo.video)) {
+      return generateSeriesMetadata(locale, {
+        series: watchVideo.video,
+        pathLocale: rawLocale,
+        pathPrefix: "watch",
+      })
+    }
+    // A series without a playable trailer is rejected by the video
+    // resolver (NOT_FOUND on the playableVariants guard). Try the series
+    // resolver as a fallback so its metadata still routes to the series
+    // helper.
+    if (!watchVideo) {
+      const series = await resolveSeriesBySlug(slug, locale)
+      if (series) {
+        return generateSeriesMetadata(locale, {
+          series: series.video,
+          pathLocale: rawLocale,
+          pathPrefix: "watch",
+        })
+      }
+    }
+  } catch {
+    // Fall through to getWatchPageMetadata. Logging the error here is
+    // intentionally omitted — Next's RSC pipeline surfaces the failure
+    // via its own telemetry, and the page body will hit the same error
+    // path with full context if the slug is unrecoverable.
+  }
 
   return getWatchPageMetadata(locale, {
     slug,
@@ -51,6 +98,28 @@ export default async function SlugLocalePage({ params }: PageProps) {
   // non-bcp47-locale URL — exactly what the language switcher writes.
   const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
   if (watchVideo) {
+    if (isSeriesRecord(watchVideo.video)) {
+      // Series with a playable trailer: render the series page using the
+      // record + the trailer variant. SeriesPageClient's hero will mount
+      // HeroPlayer for the trailer-loop preview.
+      //
+      // Pass rawLocale (NOT the bcp47-normalised `locale`) so the
+      // series-page language UI shows the user's actual selection.
+      // When the user picks "spanish-castilian" on a video page, the
+      // language-preference cookie + proxy redirect lands them here on
+      // `/storyclubs/spanish-castilian`. `isLocale("spanish-castilian")`
+      // returns false (it's a slug-form, not a bcp47 code), so without
+      // this rawLocale pass-through `locale` would fall back to "en"
+      // and the combobox + globe-modal would both render "English"
+      // instead of "Spanish, Castilian".
+      return (
+        <SeriesPageClient
+          series={watchVideo.video}
+          selectedVariant={watchVideo.selectedVariant}
+          locale={rawLocale}
+        />
+      )
+    }
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
       variant: watchVideo.selectedVariant,
@@ -63,6 +132,22 @@ export default async function SlugLocalePage({ params }: PageProps) {
         video={watchVideo.video}
         languageSlug={watchVideo.selectedVariant.language?.slug ?? rawLocale}
         locale={locale}
+      />
+    )
+  }
+
+  // No playable variant — could be a series without a trailer (renders
+  // a static-thumbnail hero) or a missing record entirely. Try the
+  // series resolver before falling through to the experience layer.
+  const series = await resolveSeriesBySlug(slug, locale)
+  if (series) {
+    // See the rawLocale rationale above on the trailer-bearing series
+    // branch. Same fix applies here for trailerless series.
+    return (
+      <SeriesPageClient
+        series={series.video}
+        selectedVariant={series.selectedVariant}
+        locale={rawLocale}
       />
     )
   }

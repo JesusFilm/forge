@@ -2,9 +2,11 @@ import type { Metadata } from "next"
 import {
   experienceToMetadata,
   resolveWatchPage,
+  type ResolvedSeriesBySlug,
   type ResolvedWatchPage,
 } from "@/lib/content"
 import { getSocialConfig } from "@/lib/social-config"
+import { resolvePosterUrl } from "@/lib/url"
 
 const SITE_BASE = "https://www.jesusfilm.org"
 const TITLE_SUFFIX = "| Jesus Film Project"
@@ -146,4 +148,68 @@ export async function getWatchPageMetadata(
 ): Promise<Metadata> {
   const result = await resolveWatchPage(locale, options?.slug)
   return toMetadata(locale, result.data, options)
+}
+
+// Series-page metadata helper. Mirrors the shape `getWatchPageMetadata`
+// produces but reads title / description / poster directly from the
+// resolved series record rather than going through `resolveWatchPage`'s
+// experience/template path. Lives next to `getWatchPageMetadata` so the
+// two helpers evolve together — if the OG image format or canonical URL
+// construction changes here, the same change should land there.
+export function generateSeriesMetadata(
+  locale: string,
+  options: {
+    series: ResolvedSeriesBySlug["video"]
+    pathLocale?: string
+    pathPrefix?: string
+  },
+): Metadata {
+  const { series, pathLocale, pathPrefix = "watch" } = options
+  const prefix = pathPrefix ? `/${pathPrefix}` : ""
+  const slug = series.slug ?? ""
+  const pathSuffix = pathLocale ? `/${slug}/${pathLocale}` : `/${slug}`
+  const url = `${SITE_BASE}${prefix}${pathSuffix}`
+
+  const { fbAppId } = getSocialConfig()
+
+  const title =
+    (series.title && `${series.title} ${TITLE_SUFFIX}`) ||
+    `Watch ${TITLE_SUFFIX}`
+  const description = series.description ?? series.snippet ?? ""
+  const posterUrl = resolvePosterUrl(series.images?.[0], null)
+  const ogImage = posterUrl
+    ? {
+        url: posterUrl,
+        width: DEFAULT_OG_IMAGE.width,
+        height: DEFAULT_OG_IMAGE.height,
+        alt: series.imageAlt ?? series.title ?? DEFAULT_OG_IMAGE.alt,
+        type: "image/jpeg" as const,
+      }
+    : DEFAULT_OG_IMAGE
+
+  return {
+    title,
+    description: description || undefined,
+    openGraph: {
+      title,
+      description: description || undefined,
+      url,
+      siteName: "Jesus Film Project",
+      locale: getOgLocale(locale),
+      type: "website" as const,
+      images: [ogImage],
+    },
+    twitter: {
+      card: "summary_large_image" as const,
+      site: "@JesusFilm",
+      creator: "@JesusFilm",
+    },
+    ...(series.noIndex && {
+      robots: { index: false, follow: false },
+    }),
+    ...(fbAppId && { other: { "fb:app_id": fbAppId } }),
+    alternates: {
+      canonical: url,
+    },
+  }
 }

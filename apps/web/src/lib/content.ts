@@ -895,25 +895,34 @@ export type ResolvedWatchVideoBySlug = {
   selectedVariant: WatchVariant
 }
 
-async function fetchWatchVideoBySlug(
-  videoSlug: string,
-): Promise<WatchVideoRecord | null> {
-  const result = await client.query({
-    query: getWatchVideoBySlugOperation,
-    variables: {
-      i18nLocale: WATCH_VIDEO_I18N_LOCALE,
-      videoSlug,
-    },
-    fetchPolicy: "no-cache",
-  })
+// React `cache()`-wrapped so that resolveWatchVideoBySlug and
+// resolveSeriesBySlug, which both delegate to this fetch, dedupe to a
+// single HTTP round-trip within one RSC render pass. Without this
+// wrapper the trailerless-series cold path makes two sequential Strapi
+// calls (each with its own 10 s AbortSignal budget) before falling
+// through to resolveWatchPage. unstable_cache around the outer
+// resolvers does NOT dedupe across them — each resolver has its own
+// cache-key namespace, so the deduplication has to live at the inner
+// fetch instead.
+const fetchWatchVideoBySlug = cache(
+  async (videoSlug: string): Promise<WatchVideoRecord | null> => {
+    const result = await client.query({
+      query: getWatchVideoBySlugOperation,
+      variables: {
+        i18nLocale: WATCH_VIDEO_I18N_LOCALE,
+        videoSlug,
+      },
+      fetchPolicy: "no-cache",
+    })
 
-  const error = graphqlError(
-    result as { error?: ErrorLike; errors?: unknown[] },
-  )
-  if (error) throw error
+    const error = graphqlError(
+      result as { error?: ErrorLike; errors?: unknown[] },
+    )
+    if (error) throw error
 
-  return (result.data?.videos?.[0] ?? null) as WatchVideoRecord | null
-}
+    return (result.data?.videos?.[0] ?? null) as WatchVideoRecord | null
+  },
+)
 
 // Sentinel thrown by the cached inner so unstable_cache never persists a
 // "no playable variant" miss. unstable_cache re-throws on error and does
@@ -992,6 +1001,117 @@ export const resolveWatchVideoBySlug = cache(
       if (
         error instanceof Error &&
         error.message === WATCH_VIDEO_BY_SLUG_NOT_FOUND
+      ) {
+        return null
+      }
+      throw error
+    }
+  },
+)
+
+// Series-shaped resolver (R2, U1) — accepts records that the canonical
+// resolveWatchVideoBySlug rejects (no playable variant). Used by the series
+// details page when a slug points at a parent record (collection / series).
+//
+// The discriminator is intentionally defensive (case-insensitive label match
+// against the known series-shaped enum values, OR null label with children
+// present). The U1 plan called for a one-off admin-data verification before
+// locking a single value, but the existing resolver targets Strapi (whose
+// generated enum is lowercase camelCase: `collection`, `series`) while admin
+// uses uppercase (`COLLECTION`, `SERIES`). The defensive OR survives either
+// shape and degrades gracefully for editor records that pre-date the label
+// taxonomy.
+
+export type ResolvedSeriesBySlug = {
+  video: WatchVideoRecord
+  selectedVariant: WatchVariant | null
+}
+
+// Explicit `Set<string>` annotation so the deliberate widening to string
+// (to accept admin-uppercase labels via the `String(label).toLowerCase()`
+// normalization below) is declared on the container, not buried in the
+// call-site cast. Without this annotation the Set is inferred as
+// `Set<"collection" | "series">` and a future typo in the contents
+// (e.g. `"collectionn"`) would still pass the literal-union check.
+const SERIES_LABEL_VALUES = new Set<string>(["collection", "series"])
+
+// Consumed by `apps/web/src/app/[slug]/[locale]/page.tsx` (routing
+// branch + `generateMetadata`) AND by unit tests that exercise the
+// discriminator without standing up Apollo.
+export function isSeriesRecord(record: WatchVideoRecord): boolean {
+  const label = record.label
+  if (label) return SERIES_LABEL_VALUES.has(String(label).toLowerCase())
+  return (record.children?.length ?? 0) > 0
+}
+
+const SERIES_BY_SLUG_NOT_FOUND = "series-by-slug:NOT_FOUND"
+
+async function tryResolveSeriesBySlug(
+  videoSlug: string,
+  locale: string,
+): Promise<ResolvedSeriesBySlug> {
+  // Reuses the same HTTP fetch the canonical video resolver uses, so a
+  // COLLECTION-without-trailer slug never costs two admin round-trips —
+  // unstable_cache wraps the per-resolver outer, fetchWatchVideoBySlug
+  // is the shared HTTP call site.
+  const record = await fetchWatchVideoBySlug(videoSlug)
+  if (!record) throw new Error(SERIES_BY_SLUG_NOT_FOUND)
+  if (!isSeriesRecord(record)) throw new Error(SERIES_BY_SLUG_NOT_FOUND)
+
+  const variants = (record.variants ?? []).filter(
+    (variant): variant is WatchVariant => variant != null,
+  )
+  // hls is the canonical playability discriminator (see Key Technical
+  // Decisions): a variant with muxVideo.playbackId but no hls is treated
+  // as unplayable because <MuxPlayer> consumes hls for streaming.
+  const playableVariants = variants.filter(
+    (variant) => variant.published === true && Boolean(variant.hls),
+  )
+
+  let selectedVariant: WatchVariant | null = null
+  if (playableVariants.length) {
+    const localeMatch =
+      playableVariants.find((variant) => variant.language?.slug === locale) ??
+      playableVariants.find((variant) => variant.language?.bcp47 === locale)
+    const primaryLanguageId = record.primaryLanguage?.coreId ?? null
+    const primaryMatch = primaryLanguageId
+      ? playableVariants.find(
+          (variant) => variant.language?.coreId === primaryLanguageId,
+        )
+      : null
+    selectedVariant = localeMatch ?? primaryMatch ?? playableVariants[0] ?? null
+  }
+
+  const narrowedRecord = selectedVariant
+    ? stripNonSelectedVariantFields(record, selectedVariant.documentId)
+    : record
+
+  const resolved: ResolvedSeriesBySlug = {
+    video: narrowedRecord,
+    selectedVariant,
+  }
+  return JSON.parse(JSON.stringify(resolved)) as ResolvedSeriesBySlug
+}
+
+const fetchResolvedSeriesBySlug = unstable_cache(
+  tryResolveSeriesBySlug,
+  ["series-by-slug"],
+  { revalidate: 60 },
+)
+
+// Returns null when the slug doesn't match a record OR the record is not
+// series-shaped. Caller falls through to resolveWatchPage / Experience.
+export const resolveSeriesBySlug = cache(
+  async (
+    videoSlug: string,
+    locale: string,
+  ): Promise<ResolvedSeriesBySlug | null> => {
+    try {
+      return await fetchResolvedSeriesBySlug(videoSlug, locale)
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === SERIES_BY_SLUG_NOT_FOUND
       ) {
         return null
       }
