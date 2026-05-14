@@ -97,6 +97,10 @@ export const env = createEnv({
     WORKFLOW_TARGET_WORLD: z
       .enum(["local", "@workflow/world-postgres"])
       .optional(),
+    WORKFLOW_RUNNER_ENABLED: z
+      .enum(["true", "false"])
+      .optional()
+      .default("false"),
     WORKFLOW_POSTGRES_URL: z.string().url().optional(),
     WORKFLOW_POSTGRES_JOB_PREFIX: z.string().min(1).optional(),
     WORKFLOW_POSTGRES_WORKER_CONCURRENCY: z.coerce
@@ -252,6 +256,9 @@ export const env = createEnv({
     WEB_ADMIN_API_KEYS: emptyToUndefined(process.env.WEB_ADMIN_API_KEYS),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
     WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
+    WORKFLOW_RUNNER_ENABLED: emptyToUndefined(
+      process.env.WORKFLOW_RUNNER_ENABLED,
+    ),
     WORKFLOW_POSTGRES_URL: emptyToUndefined(process.env.WORKFLOW_POSTGRES_URL),
     WORKFLOW_POSTGRES_JOB_PREFIX: emptyToUndefined(
       process.env.WORKFLOW_POSTGRES_JOB_PREFIX,
