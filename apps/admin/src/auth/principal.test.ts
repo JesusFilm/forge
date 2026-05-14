@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
+  CONSUMER_BEARER_PRINCIPAL,
+  PARITY_BEARER_PRINCIPAL,
   isEditorOrAdmin,
   SYSTEM_PRINCIPAL,
   WORKFLOW_TRIGGER_PRINCIPAL,
@@ -7,6 +9,12 @@ import {
 } from "./principal"
 
 describe("isEditorOrAdmin", () => {
+  // T-01 (ce-code-review): CONSUMER_BEARER must NOT be treated as
+  // editorial-tier. The predicate guards draft-visibility relation paths
+  // (Experience.locales, Video.locales) — a typo widening it to include
+  // CONSUMER_BEARER would silently leak templates / drafts to anonymous
+  // web SSR traffic. Tests every bearer role explicitly so a regression
+  // surfaces here, not at the rate-limit dashboard.
   const cases: Array<[string, Principal | null, boolean]> = [
     ["null (PUBLIC anonymous)", null, false],
     ["explicit PUBLIC principal", { id: null, role: "PUBLIC" }, false],
@@ -17,6 +25,16 @@ describe("isEditorOrAdmin", () => {
     [
       "WORKFLOW_TRIGGER (bearer-key service account)",
       WORKFLOW_TRIGGER_PRINCIPAL,
+      false,
+    ],
+    [
+      "CONSUMER_BEARER (web SSR rate-limit bucket — must NEVER be editorial)",
+      CONSUMER_BEARER_PRINCIPAL({ rateLimitBucketKey: "test-bucket" }),
+      false,
+    ],
+    [
+      "PARITY_BEARER (pre-cutover harness — must NEVER be editorial)",
+      PARITY_BEARER_PRINCIPAL({ rateLimitBucketKey: "test-bucket" }),
       false,
     ],
   ]

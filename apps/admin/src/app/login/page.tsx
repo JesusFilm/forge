@@ -66,6 +66,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
   )
   const initialError =
     firstParam(params.error) === "forbidden" ? "forbidden" : undefined
+  const accessRequestAvailable =
+    firstParam(params.request) === "available" ? true : undefined
   const oauthConfig = getAdminOAuthConfig()
 
   if (oauthConfig && !initialError) {
@@ -80,6 +82,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
     if (initialError) {
       url.searchParams.set("error", initialError)
     }
+    if (accessRequestAvailable) {
+      url.searchParams.set("request", "available")
+    }
     redirect(url.toString() as Parameters<typeof redirect>[0])
   }
 
@@ -88,6 +93,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
       authBaseURL={authBaseURL}
       callbackURL={callbackURL}
       destinationName={getLoginDestinationName(callbackURL)}
+      accessRequestAvailable={accessRequestAvailable}
       enabledProviders={getEnabledProviders()}
       initialError={initialError}
     />

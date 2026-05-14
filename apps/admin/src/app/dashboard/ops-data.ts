@@ -1454,9 +1454,9 @@ export async function loadUsersData(): Promise<UsersData> {
         footer: "CONTENT_OPERATORS",
       },
       {
-        label: "Viewers",
+        label: "Access Requests",
         value: counts.viewers.toString(),
-        footer: "READ_ONLY",
+        footer: "PENDING_APPROVAL",
       },
     ],
     rows: rows.map((row) => ({
@@ -1466,7 +1466,8 @@ export async function loadUsersData(): Promise<UsersData> {
         row.accounts.map((account) => account.providerId).join(", ") ||
         "email-password",
       statusLabel: row.emailVerified ? row.role : "UNVERIFIED",
-      statusTone: row.emailVerified ? "success" : "warning",
+      statusTone:
+        !row.emailVerified || row.role === "VIEWER" ? "warning" : "success",
       meta: `${row.sessions.length} session(s) / ${formatDateTime(row.updatedAt)}`,
     })),
     insights: [

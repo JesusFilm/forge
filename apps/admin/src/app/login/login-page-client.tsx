@@ -15,12 +15,14 @@ const providerIcons = {
 export type LoginProviderId = keyof typeof providerIcons
 
 export function LoginPageClient({
+  accessRequestAvailable,
   authBaseURL,
   callbackURL,
   destinationName,
   enabledProviders,
   initialError,
 }: {
+  accessRequestAvailable?: boolean
   authBaseURL?: string
   callbackURL?: string
   destinationName?: string
@@ -31,7 +33,9 @@ export function LoginPageClient({
   const [error, setError] = useState(
     initialError === "forbidden" ? messages.login.errors.forbidden : "",
   )
+  const [notice, setNotice] = useState("")
   const [loading, setLoading] = useState(false)
+  const [requestingAccess, setRequestingAccess] = useState(false)
 
   const authApiBase = authBaseURL ? `${authBaseURL}/api/auth` : "/api/auth"
   const resolvedDestinationName =
@@ -93,6 +97,38 @@ export function LoginPageClient({
     }
 
     return undefined
+  }
+
+  async function requestAccess() {
+    setError("")
+    setNotice("")
+    setRequestingAccess(true)
+
+    try {
+      const res = await fetch("/api/auth/request-access", {
+        method: "POST",
+        headers: { accept: "application/json" },
+      })
+
+      if (res.ok) {
+        setNotice(messages.login.access.requested)
+        return
+      }
+    } catch {
+      // Fall through to generic request error.
+    } finally {
+      setRequestingAccess(false)
+    }
+
+    setError(messages.login.errors.requestAccessFailed)
+  }
+
+  function tryDifferentAccount() {
+    const resolvedCallbackURL =
+      callbackURL ?? `${window.location.origin}/dashboard`
+    window.location.assign(
+      `/api/auth/login?callbackURL=${encodeURIComponent(resolvedCallbackURL)}`,
+    )
   }
 
   return (
@@ -158,6 +194,15 @@ export function LoginPageClient({
             </p>
           </header>
 
+          {notice ? (
+            <p
+              role="status"
+              className="mb-5 rounded-sm border border-[var(--color-success-border)] bg-[color-mix(in_oklab,var(--color-success)_10%,var(--color-bg))] px-3 py-2 text-[12px] leading-5 text-[var(--color-success)]"
+            >
+              {notice}
+            </p>
+          ) : null}
+
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div className="space-y-1.5">
               <label
@@ -197,12 +242,32 @@ export function LoginPageClient({
             </div>
 
             {error ? (
-              <p
-                role="alert"
-                className="text-[12px] text-[var(--color-danger)]"
-              >
-                {error}
-              </p>
+              <div role="alert" className="space-y-3">
+                <p className="text-[12px] text-[var(--color-danger)]">
+                  {error}
+                </p>
+                {accessRequestAvailable ? (
+                  <div className="grid gap-2">
+                    <button
+                      type="button"
+                      disabled={requestingAccess}
+                      onClick={requestAccess}
+                      className="flex h-9 w-full items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {requestingAccess
+                        ? messages.login.actions.requestingAccess
+                        : messages.login.actions.requestAccess}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={tryDifferentAccount}
+                      className="flex h-9 w-full items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[12px] font-medium text-[var(--color-text-secondary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]"
+                    >
+                      {messages.login.actions.tryDifferentAccount}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             ) : null}
 
             <button

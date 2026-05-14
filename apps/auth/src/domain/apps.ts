@@ -34,8 +34,6 @@ export const ADMIN_DEFAULT_SCOPES = [
   "email:read",
   "membership:read",
   "admin:access",
-  "admin:content:read",
-  "admin:content:write",
 ] satisfies AuthScopeKey[]
 
 export const ADMIN_APP_SEED: RegisteredAppSeed = {

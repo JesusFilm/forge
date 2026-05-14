@@ -17,6 +17,15 @@
  * else — distinct from `SYSTEM` (workflow-internal, in-process only)
  * and from `ADMIN` (full editorial override). Used by apps/manager to
  * proxy embedding-backfill triggers without minting an admin session.
+ *
+ * `CONSUMER_BEARER` is a request-bound rate-limit-only identity minted
+ * at GraphQL context creation when an incoming request carries a valid
+ * `Authorization: Bearer <key>` matching `WEB_ADMIN_API_KEYS`. It is
+ * granted ZERO permissions beyond PUBLIC — its sole purpose is to
+ * bucket consumer SSR traffic (apps/web) separately from anonymous-IP
+ * traffic in admin's rate-limit identifier. The principal carries the
+ * matched key as `rateLimitBucketKey` so the identifyFn can produce
+ * `consumer:<key>` without re-inspecting headers downstream.
  */
 export type Role =
   | "ADMIN"
@@ -25,10 +34,23 @@ export type Role =
   | "PUBLIC"
   | "SYSTEM"
   | "WORKFLOW_TRIGGER"
+  | "CONSUMER_BEARER"
+  | "PARITY_BEARER"
 
 export type Principal = {
   id: string | null
   role: Role
+  /**
+   * Set on bearer principals that need rate-limit bucketing — the matched
+   * CSV entry from the mint-source env var. Today: `CONSUMER_BEARER`
+   * (from `WEB_ADMIN_API_KEYS`) and `PARITY_BEARER` (from
+   * `PARITY_API_KEYS`). The rate-limit identifyFn reads this without
+   * re-inspecting headers, and namespaces it differently per role
+   * (`consumer:<key>` for CONSUMER_BEARER, `parity:<key>` for
+   * PARITY_BEARER) so the two surfaces have independent quotas. Never
+   * logged.
+   */
+  rateLimitBucketKey?: string
 }
 
 /**
@@ -56,9 +78,60 @@ export const WORKFLOW_TRIGGER_PRINCIPAL = {
 } as const satisfies Principal
 
 /**
+ * Factory for the request-bound consumer-bearer principal. Mints a
+ * Principal carrying the matched bearer key so the rate-limit
+ * identifyFn can bucket as `consumer:<key>` without re-inspecting the
+ * Authorization header downstream. `id: null` matches the
+ * WORKFLOW_TRIGGER convention — bearer principals are non-user
+ * identities, no DB row to point at.
+ *
+ * `CONSUMER_BEARER` grants NO permissions beyond PUBLIC. See
+ * `CONSUMER_BEARER_PERMISSIONS` in `permissions.ts` (empty set,
+ * CI-asserted) and the early-return in `hasPermission`.
+ */
+export function CONSUMER_BEARER_PRINCIPAL({
+  rateLimitBucketKey,
+}: {
+  rateLimitBucketKey: string
+}): Principal {
+  return {
+    id: null,
+    role: "CONSUMER_BEARER",
+    rateLimitBucketKey,
+  }
+}
+
+/**
+ * Factory for the request-bound parity-bearer principal. Used ONLY by
+ * the batch-verification harness for pre-cutover Strapi↔admin parity
+ * checks. Carries the matched bearer key for rate-limit bucketing
+ * (same `consumer:<key>` namespace as CONSUMER_BEARER — parity traffic
+ * is consumer-shaped, not editorial).
+ *
+ * `PARITY_BEARER` grants ONE narrow permission: `read:experience-templates`.
+ * Distinct from CONSUMER_BEARER because R9 hides templates from
+ * CONSUMER_BEARER (web/mobile/TV SSR identities) so they can't render
+ * a template as a real page; the parity harness MUST see templates to
+ * verify them, but should NOT inherit any other consumer permission
+ * surface. See `PARITY_BEARER_PERMISSIONS` in `permissions.ts`.
+ */
+export function PARITY_BEARER_PRINCIPAL({
+  rateLimitBucketKey,
+}: {
+  rateLimitBucketKey: string
+}): Principal {
+  return {
+    id: null,
+    role: "PARITY_BEARER",
+    rateLimitBucketKey,
+  }
+}
+
+/**
  * Editorial-tier predicate: true only for EDITOR/ADMIN. PUBLIC, VIEWER,
- * SYSTEM, WORKFLOW_TRIGGER all return false — none should see drafts via
- * consumer-facing relation paths (Experience.locales, Video.locales).
+ * SYSTEM, WORKFLOW_TRIGGER, CONSUMER_BEARER, PARITY_BEARER all return
+ * false — none should see drafts via consumer-facing relation paths
+ * (Experience.locales, Video.locales).
  */
 export function isEditorOrAdmin(user: Principal | null): boolean {
   return user?.role === "ADMIN" || user?.role === "EDITOR"
