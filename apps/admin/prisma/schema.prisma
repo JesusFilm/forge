@@ -850,8 +850,15 @@ model Video {
   keywords       VideoKeyword[]
   scenes         VideoScene[]
   transcripts    VideoTranscript[]
-  parents        VideoRelation[]      @relation("VideoChildren")
-  children       VideoRelation[]      @relation("VideoParents")
+  // Naming convention: `Video.parents` lists VideoRelation rows where
+  // THIS video is the CHILD (so accessing `.parent` on each row yields
+  // the actual parent video). `Video.children` is the reverse. Pair with
+  // VideoRelation.parent (`@relation("VideoParents")` on parentId) and
+  // VideoRelation.child (`@relation("VideoChildren")` on childId)
+  // respectively — the relation NAME on this side picks the column the
+  // *other* side stores, not the column this side describes.
+  parents        VideoRelation[]      @relation("VideoParents")
+  children       VideoRelation[]      @relation("VideoChildren")
 
   @@index([primaryLanguageId])
   @@index([originId])
