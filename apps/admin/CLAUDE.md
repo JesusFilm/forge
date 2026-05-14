@@ -1828,6 +1828,83 @@ Consider re-baselining.` The warn never blocks the run.
 - `docs/solutions/best-practices/external-client-retry-parity-in-runner-fanout-20260512.md`
   — the load-bearing learning extracted from this PR's review.
 
+## Experience-AI chat (Mastra)
+
+The editor chat surface is built on Mastra (`@mastra/core`). Code under
+`apps/admin/src/mastra/`. See plan
+`docs/plans/2026-05-14-001-feat-admin-chat-mastra-replacement-plan.md`
+and brainstorm
+`docs/brainstorms/2026-05-13-admin-chat-mastra-replacement-requirements.md`.
+
+**Runtime layout**:
+
+- `src/mastra/index.ts` — `Mastra` singleton (`getMastra()`); registers
+  agents (`experience-default-chat`, `draft-experience`, `add-section`,
+  `rewrite-copy`, `auto-enrich`) and the `multi-step-draft` workflow.
+- `src/mastra/memory.ts` — Memory primitive backed by `@mastra/pg` against
+  `MASTRA_STORAGE_URL` (falls back to `DATABASE_URL`).
+- `src/mastra/providers.ts` — `getProvider(id)` env-validated factory for
+  OpenRouter / Ollama / OpenAI (Anthropic reserved). Returns AI SDK
+  LanguageModel instances when the call site needs one; agents themselves
+  pass string model ids and rely on Mastra's ModelRouter to resolve.
+- `src/mastra/prompts/` — per-agent system prompts (draft-experience,
+  add-section, rewrite-copy, auto-enrich). The plan's G3 prompt-registry
+  goal lives here.
+- `src/mastra/tools/` — `searchVideosTool`, `lookupBibleVerseTool`,
+  `fetchVideoImageTool`. Each wraps a service-layer call so ABAC stays at
+  the service boundary, not at the tool. Zod input/output schemas; Mastra
+  v1 `execute(inputData, context)` signature with `context.requestContext`
+  carrying the principal.
+- `src/mastra/agents/` — Agent definitions: default-chat (full catalog),
+  three specialized (draft / add-section / rewrite-copy), one background
+  (auto-enrich, no editor-session caller).
+- `src/mastra/workflows/multi-step-draft-workflow.ts` — fixed 4-step
+  `plan → draft → critique → revise` chain. Step cap is structural (chain
+  length, 4); no recursion possible.
+- `src/mastra/streaming-bridge.ts` — adapter from Mastra's UIMessageStream
+  to the editor-side `ChatStreamEvent` union (`token_delta`,
+  `mutation_applied`, `tool_call_started/completed`, `error`, `done`).
+  The bridge is the load-bearing seam — the canvas controller's
+  `applyDiff` / `revertDiff` interface is unchanged.
+- `src/mastra/budgets.ts` — per-shape token / step / time caps. Time caps
+  applied at invocation via `AbortSignal.timeout(getTimeBudgetMs(shape))`.
+
+**Surviving providers**: OpenRouter (`@ai-sdk/openai` + `baseURL` override),
+Ollama (`ollama-ai-provider-v2`), OpenAI direct, Anthropic (reserved).
+Mastra's ModelRouter resolves slash-prefix model ids (`openai/gpt-5.4`,
+`ollama/gemma4:e4b`) so agent definitions pass strings, not pre-built
+LanguageModel instances. The `@ai-sdk/openai` package returns
+LanguageModelV1 in its union type which `MastraModelConfig` rejects;
+strings sidestep the peer-version mismatch.
+
+**Env vars (all `.optional()` per
+`docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md`):**
+
+- `MASTRA_STORAGE_URL` — Postgres connection string for Mastra-managed
+  memory tables. Falls back to `DATABASE_URL`.
+- `MASTRA_DEFAULT_PROVIDER` — `"openrouter" | "ollama" | "openai" |
+"anthropic"`. Default `"openrouter"`.
+- `OLLAMA_BASE_URL` — Default `http://localhost:11434/api`.
+
+**ABAC posture**: every agent-driven mutation routes through the
+service-layer ABAC check (e.g. `canEditExperienceLocale` in
+`experience.service.ts`). The Mastra tool's `execute` pulls the principal
+from `context.requestContext` and threads it into the service call. Tools
+NEVER call Prisma directly except for pure reference reads (BibleBook).
+
+**Cold cutover (post-rebase)**: when
+`feat/admin-chat-multi-channel-providers` merges to main and this branch
+rebases on top, U10 drops `experienceChatThread` and
+`experienceChatMessage` Prisma tables. Old chat history is NOT preserved
+— editors lose past threads at cutover (user-confirmed decision). New
+threads live in Mastra-managed memory tables created by `@mastra/pg` on
+first access.
+
+**Streaming surface**: the existing `POST /api/experience-chat/stream`
+route handler (on the parallel branch) imports the streaming bridge and
+forwards Mastra stream events through SSE — the panel-side `ChatStreamEvent`
+contract is unchanged, so no panel rewrite is required.
+
 ## Common pitfalls (grows with each unit)
 
 - **`apps/admin/railway.toml` is dead config — Railway only auto-discovers `railway.toml` at the repo root**, not in per-service subdirectories. Editing it does NOT change deploy behavior. The Railway dashboard is authoritative until "Config-as-code Path" is wired up. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.
