@@ -9,6 +9,7 @@ import { LanguagePickerModal } from "@/components/watch/LanguagePickerModal"
 import { ShareModal } from "@/components/watch/ShareModal"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
 import type { MergedWatchBlock, ResolvedWatchVideo } from "@/lib/content"
+import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { resolvePosterUrl } from "@/lib/url"
 
 type WatchVideoRecord = ResolvedWatchVideo["video"]
@@ -55,16 +56,16 @@ export function WatchPageClient({
     playerRef.current = player
   }, [])
 
-  // `?_lr=1` is the server's URL-resolved sentinel (see the watchVideo
-  // branch in `[slug]/[locale]/page.tsx` + the matching bypass in
-  // proxy.ts). Strip it post-hydration via history.replaceState so the
-  // user-visible URL stays clean without triggering a router navigation
-  // that would re-enter the middleware.
+  // LOCALE_RESOLVED_PARAM is the server's URL-resolved sentinel — see
+  // the watchVideo branch in `[slug]/[locale]/page.tsx` + the matching
+  // bypass in proxy.ts. Strip it post-hydration via history.replaceState
+  // so the user-visible URL stays clean without triggering a router
+  // navigation that would re-enter the middleware.
   useEffect(() => {
     if (typeof window === "undefined") return
     const url = new URL(window.location.href)
-    if (!url.searchParams.has("_lr")) return
-    url.searchParams.delete("_lr")
+    if (!url.searchParams.has(LOCALE_RESOLVED_PARAM)) return
+    url.searchParams.delete(LOCALE_RESOLVED_PARAM)
     window.history.replaceState(window.history.state, "", url.toString())
   }, [])
 

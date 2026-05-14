@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Route } from "next"
 import { useRouter } from "next/navigation"
 import { ExternalLink, Globe } from "lucide-react"
@@ -18,6 +18,7 @@ import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
+import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 import { resolvePosterUrl } from "@/lib/url"
@@ -53,6 +54,18 @@ export function SeriesPageClient({
   const openShare = useCallback(() => setModalState("share"), [])
   const openLanguage = useCallback(() => setModalState("language"), [])
   const closeModal = useCallback(() => setModalState("none"), [])
+
+  // Mirror `WatchPageClient`'s `LOCALE_RESOLVED_PARAM` strip — series
+  // pages can also receive the server-side URL-↔-variant sync redirect
+  // (when the requested locale has no matching dub for any of the
+  // series' children), so the sentinel must be cleaned up here too.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has(LOCALE_RESOLVED_PARAM)) return
+    url.searchParams.delete(LOCALE_RESOLVED_PARAM)
+    window.history.replaceState(window.history.state, "", url.toString())
+  }, [])
 
   // LanguagePickerModal expects a MuxPlayerRef to read currentTime for
   // the `?t=` query clamp. The series page has no player, so we hand

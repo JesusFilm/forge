@@ -1,6 +1,6 @@
 import type { Metadata, Route } from "next"
 import { redirect } from "next/navigation"
-import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
+import { DEFAULT_LOCALE, LOCALE_RESOLVED_PARAM, isLocale } from "@/lib/locale"
 import {
   isSeriesRecord,
   isWatchPageMissingError,
@@ -139,7 +139,7 @@ export default async function SlugLocalePage({ params }: PageProps) {
     const actualSlug = watchVideo.selectedVariant.language?.slug ?? null
     const actualBcp47 = watchVideo.selectedVariant.language?.bcp47 ?? null
     if (actualSlug && rawLocale !== actualSlug && rawLocale !== actualBcp47) {
-      redirect(`/${slug}/${actualSlug}?_lr=1` as Route)
+      redirect(`/${slug}/${actualSlug}?${LOCALE_RESOLVED_PARAM}=1` as Route)
     }
     if (isSeriesRecord(watchVideo.video)) {
       // Series with a playable trailer: render the series page using the
