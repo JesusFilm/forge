@@ -21,11 +21,10 @@ function isValidSecret(provided: string | null, expected: string): boolean {
 }
 
 function extractToken(request: Request): string | null {
-  // Admin (U21) emits `Authorization: Bearer <token>`. The legacy
+  // Admin emits `Authorization: Bearer <token>`. The legacy
   // `x-revalidation-secret` header is retained as a fallback so an
-  // accidentally-still-running Strapi emitter cannot 401-loop during
-  // the cutover window — both header forms validate against the
-  // same `REVALIDATION_SECRET` env var.
+  // accidentally-still-running Strapi emitter cannot 401-loop —
+  // both header forms validate against the same `REVALIDATION_SECRET`.
   const auth = request.headers.get("authorization")
   if (auth && auth.startsWith(BEARER_PREFIX)) {
     return auth.slice(BEARER_PREFIX.length)
