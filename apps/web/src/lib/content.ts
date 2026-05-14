@@ -973,7 +973,35 @@ const fetchWatchVideoBySlug = cache(
     if (error) throw error
 
     const raw = result.data?.videoBySlug ?? null
-    return raw ? normalizeAdminVideo(raw) : null
+    if (!raw) return null
+
+    // Locale-text fallback: admin's `locales(locale:)` arg filters on
+    // bcp47 strictly, but URLs use the language slug ("afrikaans" not
+    // "af") and many videos don't have a localized VideoLocale row in
+    // every requested language. Either case returns an empty `locales[]`
+    // — which would render an empty <h1> on the watch page. Re-fetch
+    // with "en" when the primary record came back without locale text;
+    // the variant chain already handles audio-language selection so
+    // the user still gets the right dub, just with English title /
+    // description as a graceful fallback.
+    if (!raw.locales?.[0] && locale !== "en") {
+      const fallback = await client.query({
+        query: getWatchVideoBySlugOperation,
+        variables: { locale: "en", videoSlug },
+        fetchPolicy: "no-cache",
+      })
+      const fallbackError = graphqlError(
+        fallback as { error?: ErrorLike; errors?: unknown[] },
+      )
+      if (!fallbackError && fallback.data?.videoBySlug?.locales?.[0]) {
+        return normalizeAdminVideo({
+          ...raw,
+          locales: fallback.data.videoBySlug.locales,
+        })
+      }
+    }
+
+    return normalizeAdminVideo(raw)
   },
 )
 
