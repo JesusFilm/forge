@@ -29,7 +29,7 @@ const Q = graphql(`query { ... }`)
 type Data = ResultOf<typeof Q>
 ```
 
-Admin-side typed GraphQL lives in the separate `@forge/admin-graphql` package and is consumed by `apps/web`. Mobile and TV will migrate to admin in their own brainstorms; until then, this package stays in place.
+Admin-side typed GraphQL lives in the separate `@forge/admin-graphql` package (future — lands in U9 of the `feat/adapt-web-data-layer-to-admin` plan) and is consumed by `apps/web`. Mobile and TV will migrate to admin in their own brainstorms; until then, this package stays in place.
 
 ## Auth posture
 

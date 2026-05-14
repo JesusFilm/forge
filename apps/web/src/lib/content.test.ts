@@ -39,6 +39,7 @@ describe("resolveWatchPage", () => {
             documentId: "exp-home-1",
             slug: "home",
             title: "Home",
+            isTemplate: false,
           },
           defaultTemplateExperience: null,
         },
@@ -90,6 +91,7 @@ describe("resolveWatchPage", () => {
               documentId: "exp-template-1",
               slug: "single-video",
               title: "Single Video Template",
+              isTemplate: true,
             },
           },
         },
@@ -101,6 +103,7 @@ describe("resolveWatchPage", () => {
               documentId: "exp-1",
               slug: "christmas",
               title: "Christmas",
+              isTemplate: false,
             },
           ],
         },
@@ -131,6 +134,7 @@ describe("resolveWatchPage", () => {
               documentId: "exp-template-1",
               slug: "single-video",
               title: "Single Video Template",
+              isTemplate: true,
             },
           },
         },
@@ -219,6 +223,110 @@ describe("resolveWatchPage", () => {
     })
   })
 
+  it("returns null/error when the video lookup succeeds but watchSetting has no defaultTemplateExperience", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          watchSetting: {
+            documentId: "watch-settings-1",
+            homepageExperience: null,
+            // No template — even when the video exists, the route has nothing
+            // to render against.
+            defaultTemplateExperience: null,
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          experiences: [],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videos: [
+            {
+              documentId: "video-1",
+              slug: "jesus",
+              title: "Jesus",
+              snippet: null,
+              description: null,
+              imageAlt: null,
+              noIndex: false,
+              images: [],
+              primaryLanguage: { coreId: "529" },
+              variants: [
+                {
+                  documentId: "variant-1",
+                  hls: "https://cdn.example/jesus.m3u8",
+                  published: true,
+                  language: { coreId: "529" },
+                },
+              ],
+              children: [],
+            },
+          ],
+        },
+      })
+
+    const { resolveWatchPage } = await import("./content")
+
+    const result = await resolveWatchPage("en", "jesus")
+
+    expect(result.data).toBeNull()
+    expect(result.error?.message).toBe("No experience found")
+  })
+
+  it("returns null/error when the video exists but has no playable variant", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          watchSetting: {
+            documentId: "watch-settings-1",
+            homepageExperience: null,
+            defaultTemplateExperience: {
+              documentId: "exp-template-1",
+              slug: "single-video",
+              title: "Single Video Template",
+              isTemplate: true,
+            },
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          experiences: [],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videos: [
+            {
+              documentId: "video-1",
+              slug: "jesus",
+              title: "Jesus",
+              snippet: null,
+              description: null,
+              imageAlt: null,
+              noIndex: false,
+              images: [],
+              primaryLanguage: { coreId: "529" },
+              // Empty variants — selectPlayableVariant returns null, so
+              // normalizeRouteVideo returns null and the route bails.
+              variants: [],
+              children: [],
+            },
+          ],
+        },
+      })
+
+    const { resolveWatchPage } = await import("./content")
+
+    const result = await resolveWatchPage("en", "jesus")
+
+    expect(result.data).toBeNull()
+    expect(result.error?.message).toBe("No experience found")
+  })
+
   it("treats the template Experience's slug as the video-template route (skips Experience lookup)", async () => {
     queryMock
       .mockResolvedValueOnce({
@@ -230,6 +338,7 @@ describe("resolveWatchPage", () => {
               documentId: "exp-template-1",
               slug: "single-video",
               title: "Single Video Template",
+              isTemplate: true,
             },
           },
         },

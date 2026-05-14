@@ -3,6 +3,8 @@
 // exposed as String to avoid JS Number precision loss. Per Unit 4 of
 // docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
+import type { Prisma } from "@prisma/client"
+
 import type { Principal } from "@/auth/principal"
 import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
@@ -19,17 +21,26 @@ import { LocaleStatusEnum } from "@/graphql/types/reference"
 export function videoLocalesFilter(
   args: { locale?: string | null },
   user: Principal | null,
-) {
-  const localeFilter = args.locale != null ? { locale: args.locale } : {}
+): { where: Prisma.VideoLocaleWhereInput } | Record<string, never> {
+  // Treat empty string the same as missing — caller intent is "no locale
+  // filter," not "narrow to the zero-length locale code" (which would match
+  // zero rows).
+  const locale =
+    typeof args.locale === "string" && args.locale.length > 0
+      ? args.locale
+      : null
+  const localeFilter = locale != null ? { locale } : {}
   if (isEditorOrAdmin(user)) {
-    return args.locale != null ? { where: localeFilter } : {}
+    return locale != null ? { where: localeFilter } : {}
   }
   return {
     where: { status: "PUBLISHED" as const, ...localeFilter },
   }
 }
 
-export function videoParentsFilter(user: Principal | null) {
+export function videoParentsFilter(
+  user: Principal | null,
+): { where: Prisma.VideoRelationWhereInput } | Record<string, never> {
   if (isEditorOrAdmin(user)) return {}
   return {
     where: {
@@ -41,7 +52,9 @@ export function videoParentsFilter(user: Principal | null) {
   }
 }
 
-export function videoChildrenFilter(user: Principal | null) {
+export function videoChildrenFilter(
+  user: Principal | null,
+): { where: Prisma.VideoRelationWhereInput } | Record<string, never> {
   if (isEditorOrAdmin(user)) return {}
   return {
     where: {

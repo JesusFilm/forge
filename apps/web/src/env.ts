@@ -64,6 +64,7 @@ export const env = createEnv({
     OPENROUTER_API_KEY: z.string().optional(),
     // Admin GraphQL URL. Optional today; flipped to required when the web
     // data layer fully reads from admin (see plan U13).
+    // Placeholder — wired in U13 when @forge/admin-graphql client lands
     ADMIN_GRAPHQL_URL: z
       .url()
       .refine(
@@ -98,6 +99,7 @@ export const env = createEnv({
     // Format: single string OR comma-separated CSV mirroring admin's
     // `WEB_ADMIN_API_KEYS` Doppler value. Web reads the first entry as its
     // outbound bearer; admin recognizes any entry as a valid CONSUMER_BEARER.
+    // Placeholder — wired in U13 when @forge/admin-graphql client lands
     WEB_ADMIN_API_KEYS: z.string().optional(),
   },
   client: {

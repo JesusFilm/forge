@@ -61,8 +61,20 @@ describe("videoLocalesFilter", () => {
     })
   })
 
+  it("ADMIN + locale → no status filter but does narrow by locale", () => {
+    expect(videoLocalesFilter({ locale: "fr" }, ADMIN)).toEqual({
+      where: { locale: "fr" },
+    })
+  })
+
   it("anonymous + locale=null → behaves like no locale (PUBLISHED-only across all locales)", () => {
     expect(videoLocalesFilter({ locale: null }, PUBLIC_USER)).toEqual({
+      where: { status: "PUBLISHED" },
+    })
+  })
+
+  it("anonymous + locale='' → behaves like no locale (PUBLISHED-only across all locales)", () => {
+    expect(videoLocalesFilter({ locale: "" }, PUBLIC_USER)).toEqual({
       where: { status: "PUBLISHED" },
     })
   })

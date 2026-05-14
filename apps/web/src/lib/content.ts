@@ -1,7 +1,7 @@
 import type { ErrorLike } from "@apollo/client"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
-import { graphql, type ResultOf } from "@forge/graphql"
+import { graphql, type FragmentOf, type ResultOf } from "@forge/graphql"
 import client from "@/lib/client"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
@@ -91,11 +91,14 @@ const GET_ROUTE_VIDEO = graphql(`
   }
 `)
 
-type WatchData = ResultOf<typeof GET_WATCH_EXPERIENCE>
 type WatchSettingsData = ResultOf<typeof GET_WATCH_SETTINGS>
 type RouteVideoData = ResultOf<typeof GET_ROUTE_VIDEO>
 
-export type WatchExperience = WatchData["experiences"][number]
+// Anchor WatchExperience to the fragment itself so both `GET_WATCH_EXPERIENCE`
+// (experiences[number]) and `GET_WATCH_SETTINGS` (homepageExperience /
+// defaultTemplateExperience) project through the same type. Avoids gql.tada
+// type drift between two query-derived projections of the same fragment.
+export type WatchExperience = FragmentOf<typeof watchExperienceFragment>
 type WatchSetting = WatchSettingsData["watchSetting"]
 type RouteVideoRecord = RouteVideoData["videos"][number]
 
@@ -139,6 +142,10 @@ export type WatchPageResult =
   | { data: null; error: ErrorLike | Error }
 
 const NO_EXPERIENCE_FOUND_MESSAGE = "No experience found"
+const INVALID_HOMEPAGE_EXPERIENCE_MESSAGE =
+  "watchSetting.homepageExperience must not be a template Experience"
+const INVALID_DEFAULT_TEMPLATE_MESSAGE =
+  "watchSetting.defaultTemplateExperience must be a template Experience"
 
 /** Maps a WatchExperience to metadata shape. Returns null if no usable title/description. */
 export function experienceToMetadata(
@@ -330,6 +337,13 @@ async function resolveHomepage(
   const settings = await getWatchSettings(locale)
   const homepageExperience = settings?.homepageExperience ?? null
   if (!homepageExperience) return null
+  // Defense-in-depth: watchSetting.homepageExperience must not point at a
+  // template. The Strapi watchSetting field has no enforcement; an editor
+  // misconfiguration would silently render template-shaped content as the
+  // homepage. Throw so the error boundary surfaces the misconfig.
+  if (homepageExperience.isTemplate === true) {
+    throw new Error(INVALID_HOMEPAGE_EXPERIENCE_MESSAGE)
+  }
   return {
     kind: "experience",
     experience: homepageExperience as NonNullable<WatchExperience>,
@@ -341,14 +355,18 @@ async function resolveSlugPage(
   slug: string,
 ): Promise<ResolvedWatchPage | null> {
   const settings = await getWatchSettings(locale)
-  const templateSlug = settings?.defaultTemplateExperience?.slug ?? null
+  // Lowercase both sides of the template-slug comparison. Editors can save
+  // `defaultTemplateExperience.slug` as `Single-Video` while users hit
+  // `/single-video`; byte-equality would silently mis-route the request.
+  const templateSlug =
+    settings?.defaultTemplateExperience?.slug?.toLowerCase() ?? null
 
   // watchSetting.defaultTemplateExperience is the single source of truth for
   // "this slug is the video-template route". Any other slug resolves first
   // as a regular Experience and falls through to a template-rendered video
   // when no Experience matches.
-  if (slug !== templateSlug) {
-    // Filter templates out at the Strapi query layer: until web reads from
+  if (slug.toLowerCase() !== templateSlug) {
+    // TODO(U14): Filter templates out at the Strapi query layer: until web reads from
     // admin (which strips isTemplate from PUBLIC), Strapi exposes every
     // Experience including templates, and a template hit at this slug would
     // render as a regular page instead of falling through to video routing.
@@ -366,6 +384,12 @@ async function resolveSlugPage(
 
   const templateExperience = settings?.defaultTemplateExperience ?? null
   if (!templateExperience) return null
+  // Defense-in-depth: watchSetting.defaultTemplateExperience must actually be
+  // a template Experience — otherwise the page renders a regular Experience
+  // shape against a video route. Strapi has no enforcement on this field.
+  if (templateExperience.isTemplate !== true) {
+    throw new Error(INVALID_DEFAULT_TEMPLATE_MESSAGE)
+  }
 
   const routeVideo = normalizeRouteVideo(routeVideoRecord)
   if (!routeVideo?.streamingUrl) return null

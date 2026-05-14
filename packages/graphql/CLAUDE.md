@@ -4,7 +4,7 @@
 
 This package provides a gql.tada typed GraphQL factory bound to Strapi's schema (`apps/cms/schema.graphql`). It is consumed by `apps/mobile` and `apps/tv` for all GraphQL operations against the Strapi CMS.
 
-`apps/web` now reads from admin via the separate `@forge/admin-graphql` package; this package stays in place until mobile and TV migrate too, at which point it gets deleted alongside `apps/cms`.
+`apps/web` now reads from admin via the separate `@forge/admin-graphql` package (future — lands in U9 of the `feat/adapt-web-data-layer-to-admin` plan); this package stays in place until mobile and TV migrate too, at which point it gets deleted alongside `apps/cms`.
 
 ## Stack
 
