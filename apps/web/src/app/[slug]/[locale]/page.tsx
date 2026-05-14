@@ -102,11 +102,21 @@ export default async function SlugLocalePage({ params }: PageProps) {
       // Series with a playable trailer: render the series page using the
       // record + the trailer variant. SeriesPageClient's hero will mount
       // HeroPlayer for the trailer-loop preview.
+      //
+      // Pass rawLocale (NOT the bcp47-normalised `locale`) so the
+      // series-page language UI shows the user's actual selection.
+      // When the user picks "spanish-castilian" on a video page, the
+      // language-preference cookie + proxy redirect lands them here on
+      // `/storyclubs/spanish-castilian`. `isLocale("spanish-castilian")`
+      // returns false (it's a slug-form, not a bcp47 code), so without
+      // this rawLocale pass-through `locale` would fall back to "en"
+      // and the combobox + globe-modal would both render "English"
+      // instead of "Spanish, Castilian".
       return (
         <SeriesPageClient
           series={watchVideo.video}
           selectedVariant={watchVideo.selectedVariant}
-          locale={locale}
+          locale={rawLocale}
         />
       )
     }
@@ -131,11 +141,13 @@ export default async function SlugLocalePage({ params }: PageProps) {
   // series resolver before falling through to the experience layer.
   const series = await resolveSeriesBySlug(slug, locale)
   if (series) {
+    // See the rawLocale rationale above on the trailer-bearing series
+    // branch. Same fix applies here for trailerless series.
     return (
       <SeriesPageClient
         series={series.video}
         selectedVariant={series.selectedVariant}
-        locale={locale}
+        locale={rawLocale}
       />
     )
   }

@@ -65,10 +65,13 @@ export const watchVideoFragment = graphql(`
       # isPlayableLanguageVariant + deriveLanguageDisplay need:
       # published gate, hls playability, language slug + name. The
       # SiblingCarousel rendering of children doesn't read variants.
+      # duration is also projected so SeriesEpisodeCard can render the
+      # runtime pill (e.g. 2:09) in the top-right of each card.
       variants(pagination: { limit: -1 }) {
         documentId
         published
         hls
+        duration
         language {
           slug
           name

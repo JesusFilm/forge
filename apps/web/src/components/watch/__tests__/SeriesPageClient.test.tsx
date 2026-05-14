@@ -71,7 +71,7 @@ vi.mock("@/lib/language-preference-client", () => ({
   writePreferredLanguageSlug: vi.fn(),
 }))
 
-const { shareModalMock } = vi.hoisted(() => ({
+const { shareModalMock, languagePickerModalMock } = vi.hoisted(() => ({
   shareModalMock: vi.fn(
     ({
       open,
@@ -90,10 +90,32 @@ const { shareModalMock } = vi.hoisted(() => ({
       />
     ),
   ),
+  languagePickerModalMock: vi.fn(
+    ({
+      open,
+      variants,
+      currentLanguageSlug,
+    }: {
+      open: boolean
+      variants: Array<{ language: { slug: string | null } | null }>
+      currentLanguageSlug: string
+    }) => (
+      <div
+        data-testid="language-picker-modal-mock"
+        data-open={String(open)}
+        data-variant-count={String(variants.length)}
+        data-current-slug={currentLanguageSlug}
+      />
+    ),
+  ),
 }))
 
 vi.mock("@/components/watch/ShareModal", () => ({
   ShareModal: shareModalMock,
+}))
+
+vi.mock("@/components/watch/LanguagePickerModal", () => ({
+  LanguagePickerModal: languagePickerModalMock,
 }))
 
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
@@ -104,6 +126,7 @@ let root: Root
 
 beforeEach(() => {
   shareModalMock.mockClear()
+  languagePickerModalMock.mockClear()
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -147,6 +170,51 @@ function makeChildren(count: number): Series["children"] {
     label: "episode" as const,
     images: [],
     variants: [],
+  })) as Series["children"]
+}
+
+// Helper for tests that need playable variants on the children
+// (language aggregation, globe button visibility, dedup checks).
+type VariantSpec = {
+  documentId?: string
+  languageSlug: string
+  languageName?: string
+  bcp47?: string | null
+  published?: boolean
+  hls?: string | null
+}
+
+function makeVariant({
+  documentId,
+  languageSlug,
+  languageName,
+  bcp47 = null,
+  published = true,
+  hls = "https://stream.mux.com/x.m3u8",
+}: VariantSpec) {
+  return {
+    documentId: documentId ?? `var-${languageSlug}`,
+    published,
+    hls,
+    duration: 120,
+    language: {
+      slug: languageSlug,
+      name: languageName ?? languageSlug,
+      bcp47,
+    },
+  }
+}
+
+function makeChildrenWithVariants(
+  perChildVariants: VariantSpec[][],
+): Series["children"] {
+  return perChildVariants.map((vs, i) => ({
+    documentId: `episode-${i + 1}`,
+    slug: `ep-${i + 1}`,
+    title: `Episode ${i + 1}`,
+    label: "episode" as const,
+    images: [],
+    variants: vs.map(makeVariant),
   })) as Series["children"]
 }
 
@@ -314,5 +382,127 @@ describe("SeriesPageClient — edge cases", () => {
     expect(
       container.querySelector('[data-testid="series-page-description"]'),
     ).toBeNull()
+  })
+})
+
+describe("SeriesPageClient — globe button + language modal", () => {
+  it("omits the globe button when fewer than 2 languages are available across children", () => {
+    const children = makeChildrenWithVariants([
+      [{ languageSlug: "english" }],
+      [{ languageSlug: "english" }],
+    ])
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    expect(
+      container.querySelector('[data-testid="series-page-language-button"]'),
+    ).toBeNull()
+  })
+
+  it("renders the globe button when 2+ languages are available", () => {
+    const children = makeChildrenWithVariants([
+      [{ languageSlug: "english" }, { languageSlug: "spanish" }],
+    ])
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    expect(
+      container.querySelector('[data-testid="series-page-language-button"]'),
+    ).not.toBeNull()
+  })
+
+  it("opens the language modal when the globe button is clicked", () => {
+    const children = makeChildrenWithVariants([
+      [{ languageSlug: "english" }, { languageSlug: "spanish" }],
+    ])
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    const button = container.querySelector(
+      '[data-testid="series-page-language-button"]',
+    ) as HTMLButtonElement
+    act(() => {
+      button.click()
+    })
+    expect(
+      container
+        .querySelector('[data-testid="series-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("language")
+    const allMockOpens = Array.from(
+      container.querySelectorAll('[data-testid="language-picker-modal-mock"]'),
+    )
+    expect(allMockOpens.at(-1)?.getAttribute("data-open")).toBe("true")
+  })
+
+  it("dedupes variants by language slug when projecting to the picker", () => {
+    // Two children both carry English + Spanish variants. The picker
+    // projection should fold the cross-episode duplicates into one
+    // entry per language.
+    const children = makeChildrenWithVariants([
+      [
+        { documentId: "v1a", languageSlug: "english" },
+        { documentId: "v1b", languageSlug: "spanish" },
+      ],
+      [
+        { documentId: "v2a", languageSlug: "english" },
+        { documentId: "v2b", languageSlug: "spanish" },
+      ],
+    ])
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    const modal = container.querySelector(
+      '[data-testid="language-picker-modal-mock"]',
+    )
+    expect(modal?.getAttribute("data-variant-count")).toBe("2")
+  })
+
+  it("excludes unpublished and null-hls variants from the picker projection", () => {
+    const children = makeChildrenWithVariants([
+      [
+        { languageSlug: "english" },
+        { languageSlug: "spanish", published: false },
+        { languageSlug: "french", hls: null },
+      ],
+    ])
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    const modal = container.querySelector(
+      '[data-testid="language-picker-modal-mock"]',
+    )
+    // Only english survives the playable-variant filter.
+    expect(modal?.getAttribute("data-variant-count")).toBe("1")
   })
 })

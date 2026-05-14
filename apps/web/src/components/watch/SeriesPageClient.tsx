@@ -1,12 +1,18 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import type { Route } from "next"
 import { useRouter } from "next/navigation"
-import { ExternalLink } from "lucide-react"
+import { ExternalLink, Globe } from "lucide-react"
+
+import type { MuxPlayerRef } from "@forge/video-player"
 
 import { Button } from "@/components/ui/button"
 import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
+import {
+  LanguagePickerModal,
+  type LanguagePickerVariant,
+} from "@/components/watch/LanguagePickerModal"
 import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
@@ -17,12 +23,12 @@ import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 import { resolvePosterUrl } from "@/lib/url"
 
 // Narrowed from WatchModalState ("none" | "download" | "language" | "share")
-// because the series page only ever opens the share modal — there is no
-// download (R-scope: no series-level downloads). The language picker is
-// inline (LanguageCombobox in the meta section), not modal-based, so the
-// language state is owned by the combobox rather than this modal-state
-// machine.
-type SeriesModalState = "none" | "share"
+// because the series page never offers downloads (R-scope: no series-level
+// downloads). The language picker mirrors the video page's globe-button +
+// modal pattern as a second affordance alongside the inline
+// LanguageCombobox in the meta section — both surfaces dispatch to the
+// same handleLanguageChange path.
+type SeriesModalState = "none" | "share" | "language"
 
 type SeriesPageClientProps = {
   series: ResolvedSeriesBySlug["video"]
@@ -45,7 +51,15 @@ export function SeriesPageClient({
   const router = useRouter()
   const [modalState, setModalState] = useState<SeriesModalState>("none")
   const openShare = useCallback(() => setModalState("share"), [])
+  const openLanguage = useCallback(() => setModalState("language"), [])
   const closeModal = useCallback(() => setModalState("none"), [])
+
+  // LanguagePickerModal expects a MuxPlayerRef to read currentTime for
+  // the `?t=` query clamp. The series page has no player, so we hand
+  // it a permanently-null ref — the modal's optional chain on
+  // playerRef.current?.currentTime resolves to 0, which is exactly
+  // what we want for series-level language switching.
+  const playerRef = useRef<MuxPlayerRef | null>(null)
 
   const episodes = (series.children ?? []).filter(
     (child): child is NonNullable<(typeof series.children)[number]> =>
@@ -55,39 +69,64 @@ export function SeriesPageClient({
   const description = series.description ?? series.snippet ?? null
   const posterUrl = resolvePosterUrl(series.images?.[0], null)
 
-  // Aggregate language options from every child episode's variants
-  // rather than from `series.variants` (series records have no
-  // variants of their own — variants live on each individual episode).
-  // Dedupe by language slug so a language that appears across all
-  // 13 episodes shows up once. Same filter / display / sort the watch
-  // page uses, so "French / Français" formatting + A→Z ordering match.
-  // We also build a bcp47 → slug map alongside the options so the URL
-  // locale can be resolved to a combobox option regardless of which
-  // form the URL uses ("en" vs "english").
-  const { languageOptions, slugByBcp47 } = useMemo(() => {
-    const seenSlugs = new Set<string>()
-    const aggregated: ReturnType<typeof deriveLanguageDisplay>[] = []
-    const bcp47Map = new Map<string, string>()
-    for (const child of series.children ?? []) {
-      if (!child) continue
-      for (const variant of child.variants ?? []) {
-        if (!variant) continue
-        if (!isPlayableLanguageVariant(variant)) continue
-        const slug = variant.language.slug
-        const bcp47 = variant.language.bcp47 ?? null
-        if (bcp47 && !bcp47Map.has(bcp47.toLowerCase())) {
-          bcp47Map.set(bcp47.toLowerCase(), slug)
+  // Single traversal of every child episode's variants, deduped by
+  // language slug. Series records have no variants of their own —
+  // variants live on each individual episode — so a language that
+  // appears across all 13 episodes still surfaces once.
+  //
+  // Three downstream consumers all need a per-language projection of
+  // the same variants, so build them in one pass keyed by slug:
+  //  - languageOptions — the inline LanguageCombobox feed (sorted A→Z
+  //    by English form via deriveLanguageDisplay).
+  //  - slugByBcp47 — URL locale resolution: accept either bcp47 ("en")
+  //    OR slug-form ("english") and map back to the combobox option.
+  //  - variantsForLanguagePicker — the LanguagePickerModal feed, one
+  //    representative variant per language (the modal does its own
+  //    deriveLanguageDisplay sort).
+  const { languageOptions, slugByBcp47, variantsForLanguagePicker } =
+    useMemo(() => {
+      const bySlug = new Map<
+        string,
+        {
+          display: ReturnType<typeof deriveLanguageDisplay>
+          variant: LanguagePickerVariant
         }
-        if (seenSlugs.has(slug)) continue
-        seenSlugs.add(slug)
-        aggregated.push(deriveLanguageDisplay(slug, variant.language.name))
+      >()
+      const bcp47Map = new Map<string, string>()
+      for (const child of series.children ?? []) {
+        if (!child) continue
+        for (const variant of child.variants ?? []) {
+          if (!variant) continue
+          if (!isPlayableLanguageVariant(variant)) continue
+          const slug = variant.language.slug
+          const bcp47 = variant.language.bcp47 ?? null
+          if (bcp47 && !bcp47Map.has(bcp47.toLowerCase())) {
+            bcp47Map.set(bcp47.toLowerCase(), slug)
+          }
+          if (bySlug.has(slug)) continue
+          bySlug.set(slug, {
+            display: deriveLanguageDisplay(slug, variant.language.name),
+            variant: {
+              documentId: variant.documentId,
+              hls: variant.hls,
+              published: variant.published,
+              language: {
+                slug: variant.language.slug,
+                name: variant.language.name,
+              },
+            },
+          })
+        }
       }
-    }
-    return {
-      languageOptions: aggregated.sort((a, b) => a.name.localeCompare(b.name)),
-      slugByBcp47: bcp47Map,
-    }
-  }, [series.children])
+      const entries = Array.from(bySlug.values())
+      return {
+        languageOptions: entries
+          .map((e) => e.display)
+          .sort((a, b) => a.name.localeCompare(b.name)),
+        slugByBcp47: bcp47Map,
+        variantsForLanguagePicker: entries.map((e) => e.variant),
+      }
+    }, [series.children])
 
   // Resolve the current language slug from the URL locale. Accept either
   // form — language-slug form ("english") OR bcp47 ("en") — since the
@@ -122,6 +161,28 @@ export function SeriesPageClient({
       data-modal-state={modalState}
       className="min-h-screen bg-stone-900 text-stone-100"
     >
+      {/* Floating globe button — mirrors HeroPlayer's top-right globe
+          on the video page (same top-10 right-10 offset, same Globe
+          icon, same circular 12×12 hit area). Only renders when there
+          are 2+ playable languages — a single-language series has
+          nothing to switch to. Sits above the hero via z-50 so it
+          remains tappable while the sticky hero is still painted. */}
+      {variantsForLanguagePicker.length >= 2 ? (
+        <button
+          type="button"
+          data-testid="series-page-language-button"
+          onClick={openLanguage}
+          aria-label="Change audio language"
+          title="Change audio language"
+          className="fixed top-10 right-10 z-50 inline-flex h-12 w-12 items-center justify-center rounded-full text-stone-100 transition hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none"
+        >
+          <Globe
+            aria-hidden
+            className="h-6 w-6 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
+          />
+        </button>
+      ) : null}
+
       <SeriesHero
         series={series}
         selectedVariant={selectedVariant}
@@ -178,7 +239,7 @@ export function SeriesPageClient({
       {showMetaSection ? (
         <section
           data-testid="series-page-meta"
-          className="relative z-30 grid w-full grid-cols-1 gap-6 bg-stone-900 px-10 pt-10 pb-16 text-stone-100 md:grid-cols-4 md:gap-10 md:px-16 md:pt-12 md:pb-20 xl:px-24"
+          className="relative z-30 grid w-full grid-cols-1 gap-6 bg-stone-900/80 px-10 pt-10 pb-6 text-stone-100 backdrop-blur-2xl backdrop-saturate-150 md:grid-cols-4 md:gap-10 md:px-16 md:pt-12 md:pb-8 xl:px-24"
         >
           {description ? (
             <div className="md:col-span-3">
@@ -215,19 +276,28 @@ export function SeriesPageClient({
         </section>
       ) : null}
 
-      {/* Episode grid. For zero children the grid wrapper renders empty
+      {/* Episode grid. For zero children the grid renders empty
           (acceptable low-content state per the doc-review deferral —
           editors mid-populating a series still see the hero + metadata
-          so they can confirm they're on the right page). If product
-          decides this should fall through to ExperienceEmpty instead,
-          gate the render here.
-          Wrapper provides the same opaque background + horizontal
-          padding as the meta section so the grid covers the sticky
-          hero (same rationale as above) and aligns with the meta
-          column rail. */}
-      <div className="relative z-20 bg-stone-900 px-10 pb-12 md:px-16 xl:px-24">
-        <SeriesEpisodesGrid episodes={episodes} locale={locale} />
-      </div>
+          so they can confirm they're on the right page).
+          The grid owns its own full-bleed section element (bg + padding
+          + z-20 to cover the sticky hero) and accepts the series poster
+          as a default backdrop. SeriesPageClient no longer wraps it. */}
+      <SeriesEpisodesGrid
+        episodes={episodes}
+        locale={locale}
+        seriesPosterUrl={posterUrl}
+      />
+
+      <LanguagePickerModal
+        open={modalState === "language"}
+        variants={variantsForLanguagePicker}
+        currentLanguageSlug={currentLanguageSlug}
+        videoSlug={series.slug ?? ""}
+        playerRef={playerRef}
+        onClose={closeModal}
+        kind="series"
+      />
 
       <ShareModal
         open={modalState === "share"}

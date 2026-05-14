@@ -34,6 +34,14 @@ export type LanguagePickerModalProps = {
   /** Read `currentTime` for the `?t=` clamp on language switch. */
   playerRef: RefObject<MuxPlayerRef | null>
   onClose: () => void
+  /**
+   * Surface that opened the picker. "video" appends `?t={currentTime}&
+   * autoplay=1` so HeroPlayer resumes mid-stream with sound; "series"
+   * navigates to the bare `/{slug}/{newLang}` because the series page
+   * has no player and `autoplay=1` would mistakenly trigger trailer
+   * autoplay on the destination. Defaults to "video" for back-compat.
+   */
+  kind?: "video" | "series"
 }
 
 // Safety cap on the in-flight navigation guard. router.push is fire-and-
@@ -50,6 +58,7 @@ export function LanguagePickerModal({
   videoSlug,
   playerRef,
   onClose,
+  kind = "video",
 }: LanguagePickerModalProps) {
   const router = useRouter()
 
@@ -138,17 +147,26 @@ export function LanguagePickerModal({
     // Write cookie BEFORE router.push — order asserted by tests and required
     // so middleware sees the cookie on the next request.
     writePreferredLanguageSlug(draftSlug)
-    const rawT = playerRef.current?.currentTime
-    const t = Number.isFinite(rawT) ? rawT : 0
-    // basePath '/watch' auto-prepended at runtime — do NOT include here.
-    // autoplay=1 signals to HeroPlayer that this navigation came from a
-    // deliberate user gesture, so it should attempt unmuted playback
-    // immediately. HeroPlayer strips the param after the attempt so a
-    // page refresh (no gesture) doesn't re-trigger autoplay.
-    const href = `/${videoSlug}/${draftSlug}?t=${t}&autoplay=1` as Route
+    // Series-page surface has no player. Skip the `?t=` clamp + the
+    // `autoplay=1` gesture flag — they only mean something to
+    // HeroPlayer, and an autoplay param on the destination series
+    // page would mistakenly kick the trailer into unmuted playback.
+    let href: Route
+    if (kind === "series") {
+      href = `/${videoSlug}/${draftSlug}` as Route
+    } else {
+      const rawT = playerRef.current?.currentTime
+      const t = Number.isFinite(rawT) ? rawT : 0
+      // basePath '/watch' auto-prepended at runtime — do NOT include here.
+      // autoplay=1 signals to HeroPlayer that this navigation came from a
+      // deliberate user gesture, so it should attempt unmuted playback
+      // immediately. HeroPlayer strips the param after the attempt so a
+      // page refresh (no gesture) doesn't re-trigger autoplay.
+      href = `/${videoSlug}/${draftSlug}?t=${t}&autoplay=1` as Route
+    }
     router.push(href)
     onClose()
-  }, [draftSlug, isDirty, onClose, playerRef, router, videoSlug])
+  }, [draftSlug, isDirty, kind, onClose, playerRef, router, videoSlug])
 
   function handleOpenChange(next: boolean) {
     if (!next) onClose()

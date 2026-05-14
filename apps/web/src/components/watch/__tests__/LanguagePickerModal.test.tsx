@@ -96,6 +96,7 @@ function renderModal({
   videoSlug = "the-call",
   playerRef = makePlayerRef(42),
   onClose = vi.fn(),
+  kind,
 }: {
   open: boolean
   currentLanguageSlug?: string
@@ -103,6 +104,7 @@ function renderModal({
   videoSlug?: string
   playerRef?: ReturnType<typeof makePlayerRef>
   onClose?: () => void
+  kind?: "video" | "series"
 }) {
   act(() => {
     root.render(
@@ -113,6 +115,7 @@ function renderModal({
         videoSlug={videoSlug}
         playerRef={playerRef}
         onClose={onClose}
+        kind={kind}
       />,
     )
   })
@@ -314,6 +317,45 @@ describe("LanguagePickerModal — in-flight navigation guard", () => {
     })
     expect(routerPushMock).toHaveBeenCalledTimes(1)
     expect(writePreferredLanguageSlugMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("kind='video' (default) appends ?t and autoplay=1", () => {
+    renderModal({ open: true, variants: baseVariants })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+    act(() => {
+      $('[data-testid="watch-language-picker-apply"]')?.click()
+    })
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/the-call/spanish?t=42&autoplay=1",
+    )
+  })
+
+  it("kind='series' navigates to bare /{slug}/{newLang} (no ?t, no autoplay)", () => {
+    // The series page has no player. ?t= and autoplay=1 are HeroPlayer
+    // gestures; they would mistakenly trigger trailer autoplay on the
+    // series destination.
+    renderModal({ open: true, variants: baseVariants, kind: "series" })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+    act(() => {
+      $('[data-testid="watch-language-picker-apply"]')?.click()
+    })
+    expect(routerPushMock).toHaveBeenCalledWith("/the-call/spanish")
   })
 
   it("releases the navigation guard after the safety timeout (~5s)", () => {

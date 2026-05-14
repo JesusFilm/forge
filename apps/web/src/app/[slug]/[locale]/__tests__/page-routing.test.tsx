@@ -223,4 +223,26 @@ describe("SlugLocalePage routing — passes correct props to SeriesPageClient", 
     expect(args?.selectedVariant).toBeNull()
     expect(args?.locale).toBe("en")
   })
+
+  it("passes the raw slug-form locale (e.g. 'spanish-castilian') in trailer-mode, NOT the bcp47-normalised value", async () => {
+    // When the language switcher writes a slug-form locale, the URL
+    // path is /{slug}/spanish-castilian. isLocale("spanish-castilian")
+    // returns false, so the bcp47-normalised value would collapse to
+    // DEFAULT_LOCALE ("en") and the combobox/globe modal would render
+    // English instead of the user's actual selection. The page must
+    // forward rawLocale into SeriesPageClient.
+    const watchVideo = makeWatchVideoResult("collection")
+    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideo)
+    await renderPage("storyclubs", "spanish-castilian")
+    const args = seriesPageClientMock.mock.calls[0]?.[0]
+    expect(args?.locale).toBe("spanish-castilian")
+  })
+
+  it("passes the raw slug-form locale in static-mode (trailerless) too", async () => {
+    resolveWatchVideoBySlugMock.mockResolvedValue(null)
+    resolveSeriesBySlugMock.mockResolvedValue(makeSeriesResult())
+    await renderPage("storyclubs-no-trailer", "spanish-castilian")
+    const args = seriesPageClientMock.mock.calls[0]?.[0]
+    expect(args?.locale).toBe("spanish-castilian")
+  })
 })
