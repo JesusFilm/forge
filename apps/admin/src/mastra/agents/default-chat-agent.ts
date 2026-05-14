@@ -16,7 +16,6 @@
 import { Agent } from "@mastra/core/agent"
 
 import { getMastraMemory } from "../memory"
-import { getProvider, DEFAULT_PROVIDER_ID } from "../providers"
 import { DRAFT_EXPERIENCE_PROMPT } from "../prompts"
 import {
   searchVideosTool,
@@ -25,32 +24,36 @@ import {
 } from "../tools"
 
 /**
- * Default model id used when the agent's model isn't dynamically
- * overridden via requestContext. Production deployments may set this
- * via env (MASTRA_DEFAULT_PROVIDER decides the provider; the model
- * name itself is hardcoded here until U11 adds env overrides per
- * agent).
+ * Default model id — passed as a `ModelRouterModelId` string to
+ * Mastra's `Agent.model`. Mastra's built-in ModelRouter resolves
+ * provider + model from the slash-prefix shape (e.g. `openai/gpt-5.4`,
+ * `anthropic/sonnet`, `ollama/gemma4:e4b`).
  *
- * `openai/gpt-5.4` is the OpenRouter-style identifier — the provider
- * resolves it. For the Ollama provider this constant is unused;
- * Ollama agents instantiate with a different model id.
+ * Why string ids over pre-constructed LanguageModel instances:
+ * - Mastra's MastraModelConfig union rejects @ai-sdk's `LanguageModel`
+ *   wrapper type (it predates V3 alignment). String ids are the
+ *   stable, Mastra-native path.
+ * - String ids defer provider construction to call time, so an env
+ *   change at boot doesn't require an agent rebuild.
+ * - The `providers.ts` module retains its place as the testable env-
+ *   validation surface and the override path for cases where a
+ *   pre-built LanguageModel IS needed (none today; kept available).
  */
 const DEFAULT_MODEL_ID = "openai/gpt-5.4"
 
 /**
  * Build the default chat agent. Factory rather than module-level
- * const because the provider construction reads env, which test
- * suites need to swap between cases.
+ * const because the constructor reads memory (which itself reads
+ * env), and tests need to swap env between cases.
  */
 export function buildDefaultChatAgent(): Agent {
-  const provider = getProvider(DEFAULT_PROVIDER_ID)
   return new Agent({
     id: "experience-default-chat",
     name: "Experience Editor Chat",
     description:
       "Default tool-calling agent for the Experience editor. Drafts and edits Experience pages.",
     instructions: DRAFT_EXPERIENCE_PROMPT,
-    model: provider(DEFAULT_MODEL_ID),
+    model: DEFAULT_MODEL_ID,
     tools: {
       searchVideosTool,
       lookupBibleVerseTool,

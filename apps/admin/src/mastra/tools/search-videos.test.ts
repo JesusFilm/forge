@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+// Tool execute() returns the success type or a ValidationError. Tests pass valid
+// inputs, so we narrow to the success shape by excluding the error variant.
+function assertOk<T>(value: T): Exclude<T, { error: unknown }> {
+  if (typeof value === "object" && value !== null && "error" in value) {
+    throw new Error("tool returned a ValidationError instead of a result")
+  }
+  return value as Exclude<T, { error: unknown }>
+}
+
 const searchMock = vi.hoisted(() => vi.fn())
 
 vi.mock("@/services/hybrid-search.service", () => ({
@@ -61,9 +70,11 @@ describe("searchVideosTool", () => {
     })
 
     const { searchVideosTool } = await import("./search-videos")
-    const result = await searchVideosTool.execute!(
-      { q: "jesus", locale: "en", limit: 5 },
-      undefined as never,
+    const result = assertOk(
+      await searchVideosTool.execute!(
+        { q: "jesus", locale: "en", limit: 5 },
+        undefined as never,
+      ),
     )
 
     expect(searchMock).toHaveBeenCalledWith({
@@ -72,7 +83,6 @@ describe("searchVideosTool", () => {
       limit: 5,
       contentTypes: ["video"],
     })
-    // Only `video` rows survive; experience row dropped.
     expect(result.videos).toEqual([
       {
         videoId: "vid-1",
@@ -99,9 +109,11 @@ describe("searchVideosTool", () => {
       searchMode: "hybrid",
     })
     const { searchVideosTool } = await import("./search-videos")
-    const result = await searchVideosTool.execute!(
-      { q: "nothing", locale: "en", limit: 8 },
-      undefined as never,
+    const result = assertOk(
+      await searchVideosTool.execute!(
+        { q: "nothing", locale: "en", limit: 8 },
+        undefined as never,
+      ),
     )
     expect(result.videos).toEqual([])
   })
@@ -118,8 +130,8 @@ describe("searchVideosTool", () => {
   })
 
   it("rejects invalid input via Zod (empty query)", async () => {
-    const { searchVideosTool } = await import("./search-videos")
-    const parseResult = searchVideosTool.inputSchema!.safeParse({
+    const { searchVideosInputSchema } = await import("./search-videos")
+    const parseResult = searchVideosInputSchema.safeParse({
       q: "",
       locale: "en",
     })
@@ -127,11 +139,8 @@ describe("searchVideosTool", () => {
   })
 
   it("defaults limit to 8 when not provided", async () => {
-    const { searchVideosTool } = await import("./search-videos")
-    const parsed = searchVideosTool.inputSchema!.parse({
-      q: "hope",
-      locale: "en",
-    })
+    const { searchVideosInputSchema } = await import("./search-videos")
+    const parsed = searchVideosInputSchema.parse({ q: "hope", locale: "en" })
     expect(parsed.limit).toBe(8)
   })
 })

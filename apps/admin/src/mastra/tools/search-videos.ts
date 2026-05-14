@@ -24,7 +24,8 @@ import { z } from "zod"
 import { prisma } from "@/db/client"
 import { HybridSearchService } from "@/services/hybrid-search.service"
 
-const inputSchema = z.object({
+/** Exported for unit-test access; createTool wraps this in a Standard Schema. */
+export const searchVideosInputSchema = z.object({
   q: z.string().min(1).describe("Editor's free-text search query."),
   locale: z
     .string()
@@ -38,6 +39,8 @@ const inputSchema = z.object({
     .default(8)
     .describe("Max results to return."),
 })
+
+const inputSchema = searchVideosInputSchema
 
 const outputSchema = z.object({
   videos: z.array(

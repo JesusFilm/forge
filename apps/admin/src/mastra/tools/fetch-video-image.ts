@@ -24,12 +24,15 @@ import { z } from "zod"
 
 import { prisma } from "@/db/client"
 
-const inputSchema = z.object({
+/** Exported for unit-test access; createTool wraps this in a Standard Schema. */
+export const fetchVideoImageInputSchema = z.object({
   videoId: z
     .string()
     .min(1)
     .describe("The video's cuid id, as returned by searchVideos."),
 })
+
+const inputSchema = fetchVideoImageInputSchema
 
 const outputSchema = z.object({
   imageUrl: z.string().nullable(),

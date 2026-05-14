@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+function assertOk<T>(value: T): Exclude<T, { error: unknown }> {
+  if (typeof value === "object" && value !== null && "error" in value) {
+    throw new Error("tool returned a ValidationError instead of a result")
+  }
+  return value as Exclude<T, { error: unknown }>
+}
+
 const findManyMock = vi.hoisted(() => vi.fn())
 
 vi.mock("@/db/client", () => ({
@@ -27,9 +34,11 @@ describe("lookupBibleVerseTool", () => {
       },
     ])
     const { lookupBibleVerseTool } = await import("./lookup-bible-verse")
-    const result = await lookupBibleVerseTool.execute!(
-      { query: "Matt", locale: "es", limit: 3 },
-      undefined as never,
+    const result = assertOk(
+      await lookupBibleVerseTool.execute!(
+        { query: "Matt", locale: "es", limit: 3 },
+        undefined as never,
+      ),
     )
     expect(findManyMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -63,9 +72,11 @@ describe("lookupBibleVerseTool", () => {
       },
     ])
     const { lookupBibleVerseTool } = await import("./lookup-bible-verse")
-    const result = await lookupBibleVerseTool.execute!(
-      { query: "Gen", locale: "fr-CA", limit: 1 },
-      undefined as never,
+    const result = assertOk(
+      await lookupBibleVerseTool.execute!(
+        { query: "Gen", locale: "fr-CA", limit: 1 },
+        undefined as never,
+      ),
     )
     expect(result.books[0]?.displayName).toBe("Genèse")
   })
@@ -81,9 +92,11 @@ describe("lookupBibleVerseTool", () => {
       },
     ])
     const { lookupBibleVerseTool } = await import("./lookup-bible-verse")
-    const result = await lookupBibleVerseTool.execute!(
-      { query: "Rev", locale: "ja", limit: 1 },
-      undefined as never,
+    const result = assertOk(
+      await lookupBibleVerseTool.execute!(
+        { query: "Rev", locale: "ja", limit: 1 },
+        undefined as never,
+      ),
     )
     expect(result.books[0]?.displayName).toBe("Revelation")
   })
@@ -91,16 +104,18 @@ describe("lookupBibleVerseTool", () => {
   it("returns an empty array when no books match", async () => {
     findManyMock.mockResolvedValue([])
     const { lookupBibleVerseTool } = await import("./lookup-bible-verse")
-    const result = await lookupBibleVerseTool.execute!(
-      { query: "Tolkien", locale: "en", limit: 3 },
-      undefined as never,
+    const result = assertOk(
+      await lookupBibleVerseTool.execute!(
+        { query: "Tolkien", locale: "en", limit: 3 },
+        undefined as never,
+      ),
     )
     expect(result.books).toEqual([])
   })
 
   it("rejects empty query via Zod", async () => {
-    const { lookupBibleVerseTool } = await import("./lookup-bible-verse")
-    const parse = lookupBibleVerseTool.inputSchema!.safeParse({
+    const { lookupBibleVerseInputSchema } = await import("./lookup-bible-verse")
+    const parse = lookupBibleVerseInputSchema.safeParse({
       query: "",
       locale: "en",
     })

@@ -20,7 +20,8 @@ import { z } from "zod"
 
 import { prisma } from "@/db/client"
 
-const inputSchema = z.object({
+/** Exported for unit-test access; createTool wraps this in a Standard Schema. */
+export const lookupBibleVerseInputSchema = z.object({
   query: z
     .string()
     .min(1)
@@ -40,6 +41,8 @@ const inputSchema = z.object({
     .default(3)
     .describe("Max matching books to return."),
 })
+
+const inputSchema = lookupBibleVerseInputSchema
 
 const outputSchema = z.object({
   books: z.array(
@@ -97,7 +100,7 @@ export const lookupBibleVerseTool = createTool({
       books: books.map((book) => ({
         bookId: book.id,
         osisId: book.osisId,
-        displayName: pickLocalisedName(book.name, inputData.locale, q),
+        displayName: pickLocalisedName(book.name, inputData.locale ?? "en", q),
         testament: book.testament,
         order: book.order,
       })),

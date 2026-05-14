@@ -37,6 +37,10 @@ import { Mastra } from "@mastra/core"
 // import sits in this module so the singleton's lifecycle is colocated
 // with the memory singleton it depends on.
 import { getMastraMemory } from "./memory"
+import { buildDefaultChatAgent } from "./agents/default-chat-agent"
+import { buildSpecializedAgents } from "./agents/specialized-agents"
+import { buildAutoEnrichAgent } from "./agents/auto-enrich-agent"
+import { multiStepDraftWorkflow } from "./workflows/multi-step-draft-workflow"
 void getMastraMemory
 
 // ---------------------------------------------------------------------------
@@ -53,13 +57,29 @@ void getMastraMemory
  * from `./agents/...` and `./workflows/...`.
  */
 export function buildMastraInstance(): Mastra {
-  // `agents`, `tools`, and `workflows` registries stay empty at U2.
-  // The Mastra constructor accepts a foundation-only configuration;
-  // agent registrations are additive in U6+.
+  // Registry populated by U6 / U7 / U8 / U9.
+  //
+  // Agent ids surface to the streaming-bridge dispatch:
+  //   - "experience-default-chat" — the default editor agent.
+  //   - "draft-experience" / "add-section" / "rewrite-copy" — the
+  //     specialized agents picked via the composer agent-picker.
+  //   - "auto-enrich" — the background agent (triggered out-of-band).
+  //
+  // Workflow ids:
+  //   - "multi-step-draft" — the plan→draft→critique→revise chain
+  //     wrapping a tool-calling agent in "thoughtful mode".
+  const specialized = buildSpecializedAgents()
   return new Mastra({
-    // U6+ populates: agents: { defaultChatAgent, addSectionAgent, ... }
-    // U7 populates:  workflows: { multiStepDraftWorkflow }
-    // U9 populates:  agents: { autoEnrichAgent }
+    agents: {
+      "experience-default-chat": buildDefaultChatAgent(),
+      "draft-experience": specialized["draft-experience"],
+      "add-section": specialized["add-section"],
+      "rewrite-copy": specialized["rewrite-copy"],
+      "auto-enrich": buildAutoEnrichAgent(),
+    },
+    workflows: {
+      "multi-step-draft": multiStepDraftWorkflow,
+    },
   })
 }
 

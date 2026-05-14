@@ -19,21 +19,21 @@
 import { Agent } from "@mastra/core/agent"
 
 import { getMastraMemory } from "../memory"
-import { getProvider, DEFAULT_PROVIDER_ID } from "../providers"
 import { AUTO_ENRICH_PROMPT } from "../prompts"
 import { searchVideosTool, fetchVideoImageTool } from "../tools"
 
+// String model id resolved by Mastra's ModelRouter at call time.
+// See default-chat-agent.ts for the rationale.
 const DEFAULT_MODEL_ID = "openai/gpt-5.4"
 
 export function buildAutoEnrichAgent(): Agent {
-  const provider = getProvider(DEFAULT_PROVIDER_ID)
   return new Agent({
     id: "auto-enrich",
     name: "Auto-Enrich Agent",
     description:
       "Background agent that fills missing imageUrl/videoId references on Experience blocks. Output written as a ContentRevision DRAFT.",
     instructions: AUTO_ENRICH_PROMPT,
-    model: provider(DEFAULT_MODEL_ID),
+    model: DEFAULT_MODEL_ID,
     tools: {
       searchVideosTool,
       fetchVideoImageTool,

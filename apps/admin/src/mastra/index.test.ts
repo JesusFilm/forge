@@ -4,7 +4,11 @@ const mockEnv = vi.hoisted(() => ({
   env: {
     DATABASE_URL: "postgresql://forge:forge@db:5432/forge_admin",
     MASTRA_STORAGE_URL: undefined as string | undefined,
-    OPENROUTER_API_KEY: undefined as string | undefined,
+    // OPENROUTER_API_KEY is required for the registry to build the
+    // default-provider-backed agents at construction time. Tests
+    // populate a fake key — provider construction is structural here,
+    // no network is reached.
+    OPENROUTER_API_KEY: "test-key",
     OPENAI_API_KEY: undefined as string | undefined,
     OPENAI_BASE_URL: undefined as string | undefined,
     OLLAMA_BASE_URL: undefined as string | undefined,
@@ -78,18 +82,18 @@ describe("apps/admin/src/mastra (singleton)", () => {
   })
 
   describe("agent registry at U2", () => {
-    it("has no agents registered yet (foundation-only)", async () => {
+    it("registers the U6/U8/U9 agents and U7 workflow", async () => {
       const { getMastra } = await import("./index")
       const mastra = getMastra()
-      // U2 is foundation-only — no agents registered. Mastra's
-      // `getAgentById(id)` throws when an id is unknown, which is the
-      // contract the streaming bridge (U3) will lean on for unknown-
-      // agent validation. Asserting on the throw confirms both that
-      // the registry is empty AND that Mastra exposes the expected
-      // "not found" surface.
-      expect(() => mastra.getAgentById("not-yet-registered-at-u2")).toThrow(
-        /not found/i,
-      )
+      // Every plan-defined agent id must resolve.
+      expect(mastra.getAgentById("experience-default-chat")).toBeDefined()
+      expect(mastra.getAgentById("draft-experience")).toBeDefined()
+      expect(mastra.getAgentById("add-section")).toBeDefined()
+      expect(mastra.getAgentById("rewrite-copy")).toBeDefined()
+      expect(mastra.getAgentById("auto-enrich")).toBeDefined()
+      // Unknown agent ids still throw — the streaming bridge (U3)
+      // relies on this for `agent_not_found` classification.
+      expect(() => mastra.getAgentById("not-registered")).toThrow(/not found/i)
     })
   })
 })

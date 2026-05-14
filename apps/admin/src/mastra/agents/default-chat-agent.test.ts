@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockEnv = vi.hoisted(() => ({
   env: {
-    OPENROUTER_API_KEY: "test-key",
+    OPENROUTER_API_KEY: "test-key" as string | undefined,
     OPENAI_API_KEY: undefined as string | undefined,
     OPENAI_BASE_URL: undefined as string | undefined,
     OLLAMA_BASE_URL: undefined as string | undefined,
@@ -49,13 +49,14 @@ describe("buildDefaultChatAgent (U6)", () => {
     )
   })
 
-  it("throws ProviderNotConfiguredError when OPENROUTER_API_KEY is missing AND default provider is openrouter", async () => {
+  it("constructs even when OPENROUTER_API_KEY is missing — provider resolution is deferred to call time", async () => {
+    // String model ids (Mastra ModelRouter) defer provider resolution
+    // to invocation. The agent constructs fine without env; missing
+    // env surfaces at first .stream() / .generate() call instead.
+    // Provider-level env-validation is covered by providers.test.ts.
     mockEnv.env.OPENROUTER_API_KEY = undefined
     vi.resetModules()
     const { buildDefaultChatAgent } = await import("./default-chat-agent")
-    const { ProviderNotConfiguredError } = await import("../providers")
-    expect(() => buildDefaultChatAgent()).toThrowError(
-      ProviderNotConfiguredError,
-    )
+    expect(() => buildDefaultChatAgent()).not.toThrow()
   })
 })

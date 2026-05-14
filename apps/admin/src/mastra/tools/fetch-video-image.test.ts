@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+function assertOk<T>(value: T): Exclude<T, { error: unknown }> {
+  if (typeof value === "object" && value !== null && "error" in value) {
+    throw new Error("tool returned a ValidationError instead of a result")
+  }
+  return value as Exclude<T, { error: unknown }>
+}
+
 const findManyMock = vi.hoisted(() => vi.fn())
 
 vi.mock("@/db/client", () => ({
@@ -19,9 +26,11 @@ describe("fetchVideoImageTool", () => {
   it("returns null when the video has no images", async () => {
     findManyMock.mockResolvedValue([])
     const { fetchVideoImageTool } = await import("./fetch-video-image")
-    const result = await fetchVideoImageTool.execute!(
-      { videoId: "vid-1" },
-      undefined as never,
+    const result = assertOk(
+      await fetchVideoImageTool.execute!(
+        { videoId: "vid-1" },
+        undefined as never,
+      ),
     )
     expect(result).toEqual({ imageUrl: null, variant: null })
   })
@@ -36,9 +45,11 @@ describe("fetchVideoImageTool", () => {
       },
     ])
     const { fetchVideoImageTool } = await import("./fetch-video-image")
-    const result = await fetchVideoImageTool.execute!(
-      { videoId: "vid-1" },
-      undefined as never,
+    const result = assertOk(
+      await fetchVideoImageTool.execute!(
+        { videoId: "vid-1" },
+        undefined as never,
+      ),
     )
     expect(result).toEqual({
       imageUrl: "https://cdn/mch.jpg",
@@ -56,9 +67,11 @@ describe("fetchVideoImageTool", () => {
       },
     ])
     const { fetchVideoImageTool } = await import("./fetch-video-image")
-    const result = await fetchVideoImageTool.execute!(
-      { videoId: "vid-1" },
-      undefined as never,
+    const result = assertOk(
+      await fetchVideoImageTool.execute!(
+        { videoId: "vid-1" },
+        undefined as never,
+      ),
     )
     expect(result).toEqual({
       imageUrl: "https://cdn/thumb.jpg",
@@ -82,9 +95,11 @@ describe("fetchVideoImageTool", () => {
       },
     ])
     const { fetchVideoImageTool } = await import("./fetch-video-image")
-    const result = await fetchVideoImageTool.execute!(
-      { videoId: "vid-1" },
-      undefined as never,
+    const result = assertOk(
+      await fetchVideoImageTool.execute!(
+        { videoId: "vid-1" },
+        undefined as never,
+      ),
     )
     expect(result).toEqual({
       imageUrl: "https://cdn/mch-from-row-2.jpg",
@@ -102,16 +117,18 @@ describe("fetchVideoImageTool", () => {
       },
     ])
     const { fetchVideoImageTool } = await import("./fetch-video-image")
-    const result = await fetchVideoImageTool.execute!(
-      { videoId: "vid-1" },
-      undefined as never,
+    const result = assertOk(
+      await fetchVideoImageTool.execute!(
+        { videoId: "vid-1" },
+        undefined as never,
+      ),
     )
     expect(result).toEqual({ imageUrl: null, variant: null })
   })
 
   it("rejects empty videoId via Zod", async () => {
-    const { fetchVideoImageTool } = await import("./fetch-video-image")
-    const parse = fetchVideoImageTool.inputSchema!.safeParse({ videoId: "" })
+    const { fetchVideoImageInputSchema } = await import("./fetch-video-image")
+    const parse = fetchVideoImageInputSchema.safeParse({ videoId: "" })
     expect(parse.success).toBe(false)
   })
 })
