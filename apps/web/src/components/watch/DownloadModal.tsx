@@ -70,6 +70,14 @@ type TierOption = {
   download: DownloadModalDownload
 }
 
+// Sort primarily by size (largest first) so the "Highest" tier always
+// surfaces the largest file even when admin's `quality` enum is wrong
+// for the underlying asset. Observed in the wild: the Albanian dub of
+// `1-jesus-our-loving-pursuer` reports a 606 KB `fhd` entry pointing
+// at a 1080p Mux URL, which the old quality-enum-only sort promoted
+// to the "Highest" slot ahead of the real 21 MB `highest` row. Tied or
+// unknown sizes fall back to the original QUALITY_PRIORITY order so
+// the historical behavior holds for clean data.
 function sortByQuality(
   downloads: DownloadModalDownload[],
 ): DownloadModalDownload[] {
@@ -78,6 +86,9 @@ function sortByQuality(
   )
   const tail = QUALITY_PRIORITY.length
   return [...downloads].sort((a, b) => {
+    const aSize = a.size != null && a.size > 0 ? a.size : 0
+    const bSize = b.size != null && b.size > 0 ? b.size : 0
+    if (aSize > 0 && bSize > 0 && aSize !== bSize) return bSize - aSize
     const ai = priority.get(a.quality) ?? tail
     const bi = priority.get(b.quality) ?? tail
     return ai - bi

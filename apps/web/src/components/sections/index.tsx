@@ -15,31 +15,7 @@ import { Section as SectionBlock } from "./Section"
 import { RelatedQuestions } from "./RelatedQuestions"
 import { CarouselVideo } from "./CarouselVideo"
 import { NavigationCarousel } from "./NavigationCarousel"
-import { VideoRecommendations } from "./VideoRecommendations"
-import { getSceneRecommendations } from "@/lib/recommendations"
 export type { Section } from "@/lib/content"
-
-async function VideoRecommendationsBlock({
-  slug,
-  locale,
-  limit,
-  title,
-}: {
-  slug: string
-  locale: string
-  limit: number
-  title?: string
-}) {
-  const recommendations = await getSceneRecommendations(slug, locale, limit)
-  return (
-    <div>
-      {title && (
-        <h2 className="mb-6 text-xl font-semibold text-white">{title}</h2>
-      )}
-      <VideoRecommendations recommendations={recommendations} locale={locale} />
-    </div>
-  )
-}
 
 /**
  * Set of admin block typenames the renderer dispatch handles, derived
@@ -263,88 +239,16 @@ export function ExperienceSectionRenderer({
   section: Section
   routeVideo?: RouteVideo | null
 }) {
-  // Admin-shape dispatch — only reachable post-U6 when content.ts cuts
-  // over. The Strapi `Section` discriminator union doesn't include the
-  // admin typenames, so the check goes through a loose-typed view first
-  // and short-circuits before TS's narrowing kicks in below.
+  // Admin-shape dispatch — content.ts reads from admin now, so every
+  // block reaching this renderer carries an admin `*Block` __typename.
   const typename = (section as { readonly __typename?: string | null })
     .__typename
   if (typename != null && ADMIN_BLOCK_TYPENAMES.has(typename)) {
     return renderAdminBlock(section as unknown as AnyBlock, routeVideo)
   }
 
-  switch (section.__typename) {
-    case "ComponentSectionsMediaCollection":
-      return <MediaCollection data={section} routeVideo={routeVideo} />
-    case "ComponentSectionsPromoBanner":
-      return <PromoBanner data={section} />
-    case "ComponentSectionsInfoBlocks":
-      return <InfoBlocks data={section} />
-    case "ComponentSectionsCta":
-      return <CTASection data={section} />
-    case "ComponentSectionsVideoHero":
-      return <VideoHero data={section} routeVideo={routeVideo} />
-    case "ComponentSectionsVideo":
-      return <Video data={section} routeVideo={routeVideo} />
-    case "ComponentSectionsBibleQuotesCarousel":
-      return <BibleQuotesCarousel data={section} />
-    case "ComponentSectionsText":
-      return <Text data={section} />
-    case "ComponentSectionsAdventCountdown":
-      return <AdventCountdown data={section} />
-    case "ComponentSectionsEasterDates":
-      return <EasterDates data={section} />
-    case "ComponentSectionsContainer":
-      return <Container data={section} routeVideo={routeVideo} />
-    case "ComponentSectionsSection":
-      return <SectionBlock data={section} routeVideo={routeVideo} />
-    case "ComponentSectionsRelatedQuestions":
-      return <RelatedQuestions data={section} />
-    case "ComponentSectionsVideoCarousel":
-      return <CarouselVideo data={section} />
-    case "ComponentSectionsNavigationCarousel":
-      return <NavigationCarousel data={section} />
-    default: {
-      // Forward-looking: handle VideoRecommendations block before codegen
-      // adds it to the Section union type. Once the Strapi component
-      // ComponentBlocksVideoRecommendations exists and codegen runs, move
-      // this to a proper case above.
-      const tn = (section as { __typename?: string }).__typename
-      if (tn === "ComponentBlocksVideoRecommendations") {
-        const block = section as {
-          sourceVideo?: { slug?: string } | null
-          title?: string | null
-          limit?: number | null
-          locale?: string | null
-        }
-        const slug = block.sourceVideo?.slug
-        if (!slug) return null
-        const locale = block.locale ?? "en"
-        const limit = block.limit ?? 10
-        return (
-          <VideoRecommendationsBlock
-            slug={slug}
-            locale={locale}
-            limit={limit}
-            title={block.title ?? undefined}
-          />
-        )
-      }
-      if (process.env.NODE_ENV === "development") {
-        console.warn("[sections] Unhandled block type:", tn ?? "unknown")
-      }
-      return null
-    }
+  if (process.env.NODE_ENV === "development") {
+    console.warn("[sections] Unhandled block type:", typename ?? "unknown")
   }
-}
-
-/** @deprecated Use ExperienceSectionRenderer */
-export function SectionRenderer({
-  section,
-  routeVideo,
-}: {
-  section: Section
-  routeVideo?: RouteVideo | null
-}) {
-  return <ExperienceSectionRenderer section={section} routeVideo={routeVideo} />
+  return null
 }

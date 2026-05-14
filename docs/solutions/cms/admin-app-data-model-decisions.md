@@ -300,6 +300,15 @@ Reasoning: low-cardinality reference data with a single localized field
 locale rows are reserved for content where editors curate translations
 independently and embeddings are per-locale (Experience, Video).
 
+**Consumer-side contract.** Admin's GraphQL exposes these columns as
+`name: JSON`, so every downstream consumer must treat the value as a
+`Record<string, string>` keyed by locale — never `typeof === "string"`
+and never `Object.values(map)[0]` (jsonb does not pin key order across
+updates / replication). See
+[`docs/solutions/integration-issues/admin-jsonb-locale-map-vs-strapi-string-silent-drop-20260515.md`](../integration-issues/admin-jsonb-locale-map-vs-strapi-string-silent-drop-20260515.md)
+for the apps/web incident and the `pickLocalizedName` helper that
+encodes the contract.
+
 ## Decisions captured for future work (deferred but documented)
 
 - **Encoding decoupling**: `hls`, `dash`, `muxVideoId`, `brightcoveId` on

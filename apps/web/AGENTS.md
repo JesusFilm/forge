@@ -9,7 +9,7 @@ Scope: `apps/web`.
 ## Do
 
 - Use Next.js App Router patterns and default to Server Components.
-- Read data via `packages/graphql` operations only.
+- Read data via `@forge/admin-graphql` operations only (admin's GraphQL surface). `packages/graphql` is the Strapi-era client, still consumed by mobile/TV but no longer by web.
 - Add `loading.tsx` for async routes and `error.tsx` at route segments.
 - Keep preview/revalidate endpoints token-gated.
 - Export route metadata where relevant.

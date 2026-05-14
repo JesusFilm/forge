@@ -1,16 +1,24 @@
+// Admin's `MediaCollectionBlock.items[]` is FLAT — every item carries
+// `videoId` + `imageUrl` directly, with no nested `video { ... }` or
+// `imageOverride { url }` join. The renderer
+// (`apps/web/src/components/sections/index.tsx:53-70`) ALREADY tolerates
+// the missing video join via the `titleOverride` + `imageUrl` fallback
+// path, so this helper does NOT hydrate the missing video record. A
+// videoId → slug + title hydrator is a deferred concern.
+//
+// Inputs only require the fields the function actually reads. Extra
+// fields on the passed object (e.g. a legacy `video` join or admin-only
+// `imageOverrideUrl`) are ignored without complaint — keeps the helper
+// compatible with both the runtime admin payload and any in-flight
+// fixtures still carrying the old shape.
+
 type MediaItem = {
-  id: string
+  videoId?: string | null
   titleOverride: string | null
   subtitleOverride: string | null
   labelOverride: string | null
   collectionSize: string | null
   imageUrl: string | null
-  imageOverride?: { url: string | null } | null
-  video: {
-    title: string | null
-    slug: string | null
-    images: ({ url: string | null } | null)[] | null
-  } | null
 }
 
 type RouteRelatedVideo = {
@@ -32,20 +40,21 @@ export type EnrichedMediaItem = {
 }
 
 export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
-  const title = item.titleOverride ?? item.video?.title ?? ""
+  const title = item.titleOverride ?? ""
   const subtitle = item.subtitleOverride ?? ""
   const label = typeof item.labelOverride === "string" ? item.labelOverride : ""
   const collectionSize = item.collectionSize ?? ""
-  const externalImageUrl =
-    typeof item.imageUrl === "string" ? item.imageUrl : null
-  const imageUrl =
-    externalImageUrl ??
-    item.imageOverride?.url ??
-    item.video?.images?.[0]?.url ??
-    null
-  const videoSlug = item.video?.slug ?? ""
+  const imageUrl = typeof item.imageUrl === "string" ? item.imageUrl : null
+  // Admin items carry no slug — the videoId → slug hydration is deferred.
+  // Renderer skips the `<a href>` when videoSlug is empty (see
+  // MediaCollection.tsx `const href = item.videoSlug ? ...`).
+  const videoSlug = ""
+  // Fall back to videoId (or empty string) when no upstream id is present.
+  // React keys against an empty string repeat-collide across items, so the
+  // consumer also keys by array index where this matters.
+  const id = item.videoId ?? ""
   return {
-    id: item.id,
+    id,
     title,
     subtitle,
     label,

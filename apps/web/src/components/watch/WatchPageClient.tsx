@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
@@ -9,6 +9,7 @@ import { LanguagePickerModal } from "@/components/watch/LanguagePickerModal"
 import { ShareModal } from "@/components/watch/ShareModal"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
 import type { MergedWatchBlock, ResolvedWatchVideo } from "@/lib/content"
+import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { resolvePosterUrl } from "@/lib/url"
 
 type WatchVideoRecord = ResolvedWatchVideo["video"]
@@ -55,20 +56,43 @@ export function WatchPageClient({
     playerRef.current = player
   }, [])
 
+  // LOCALE_RESOLVED_PARAM is the server's URL-resolved sentinel — see
+  // the watchVideo branch in `[slug]/[locale]/page.tsx` + the matching
+  // bypass in proxy.ts. Strip it post-hydration via history.replaceState
+  // so the user-visible URL stays clean without triggering a router
+  // navigation that would re-enter the middleware.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has(LOCALE_RESOLVED_PARAM)) return
+    url.searchParams.delete(LOCALE_RESOLVED_PARAM)
+    window.history.replaceState(window.history.state, "", url.toString())
+  }, [])
+
   const currentLanguageSlug = languageSlug ?? variant.language?.slug ?? ""
 
   // Drop entries missing `quality` or `url` — unrenderable / unfollowable.
+  // Admin emits `VideoDubDownload.size` as a `String` (Core's bytes literal,
+  // which may exceed JS number precision for very large files). Parse to
+  // number for the download modal's sort bucket; non-numeric values fall
+  // through as null and the modal hides the size label.
   const downloadsForModal = (variant.downloads ?? [])
     .filter(
       (d): d is NonNullable<typeof d> =>
         d != null && d.quality != null && d.url != null,
     )
-    .map((d) => ({
-      documentId: d.documentId,
-      quality: d.quality as string,
-      size: d.size,
-      url: d.url as string,
-    }))
+    .map((d) => {
+      const sizeNum =
+        typeof d.size === "string" && d.size.length > 0
+          ? Number.parseFloat(d.size)
+          : null
+      return {
+        documentId: d.documentId,
+        quality: d.quality as string,
+        size: sizeNum != null && Number.isFinite(sizeNum) ? sizeNum : null,
+        url: d.url as string,
+      }
+    })
 
   const variantsForLanguagePicker = useMemo(
     () =>

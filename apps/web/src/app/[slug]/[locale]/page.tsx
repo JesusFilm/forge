@@ -1,5 +1,6 @@
-import type { Metadata } from "next"
-import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
+import type { Metadata, Route } from "next"
+import { redirect } from "next/navigation"
+import { DEFAULT_LOCALE, LOCALE_RESOLVED_PARAM, isLocale } from "@/lib/locale"
 import {
   isSeriesRecord,
   isWatchPageMissingError,
@@ -12,7 +13,7 @@ import {
   generateSeriesMetadata,
   getWatchPageMetadata,
 } from "@/lib/experience-metadata"
-import { SectionRenderer, type Section } from "@/components/sections"
+import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
@@ -87,7 +88,41 @@ export default async function SlugLocalePage({ params }: PageProps) {
   const { slug, locale: rawLocale } = await params
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
 
-  // Video-by-slug first — bypasses resolveWatchPage's Watch Settings +
+  // Experience-first precedence: when an editor has curated an Experience
+  // at this slug, that's the intended landing — even when a slug-colliding
+  // Video (e.g., a COLLECTION-labeled `easter` Video alongside an `easter`
+  // Experience) exists. Without this short-circuit the video resolver
+  // below would catch first and render the slug as a series page.
+  // `resolveWatchPage` is React `cache()`-wrapped, so the second call at
+  // the tail of this function for the video-template fallback is free.
+  const watchPage = await resolveWatchPage(locale, slug)
+  if (watchPage.data?.kind === "experience") {
+    const blocks = (watchPage.data.experience.blocks ?? []).filter(
+      (b): b is Section => b !== null,
+    )
+    if (blocks.length) {
+      return (
+        <main className="min-h-screen bg-stone-900">
+          {blocks.map((block, i) => {
+            const key =
+              "id" in block && typeof block.id === "string"
+                ? block.id
+                : `block-${i}`
+            return (
+              <ExperienceSectionRenderer
+                key={key}
+                section={block}
+                routeVideo={null}
+              />
+            )
+          })}
+        </main>
+      )
+    }
+    return <ExperienceEmpty />
+  }
+
+  // Video-by-slug second — bypasses resolveWatchPage's Watch Settings +
   // default template dependency, which isn't always present in dev.
   //
   // Pass rawLocale (not the bcp47-normalised `locale`): the resolver picks
@@ -98,6 +133,18 @@ export default async function SlugLocalePage({ params }: PageProps) {
   // non-bcp47-locale URL — exactly what the language switcher writes.
   const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
   if (watchVideo) {
+    // URL ↔ rendered-variant sync: the resolver's variant chain falls back
+    // to primary/first-playable when no dub matches `rawLocale`. Without
+    // this redirect the URL says e.g. /afrikaans while the page renders
+    // English. The `_lr` sentinel breaks the proxy's cookie redirect loop
+    // (see apps/web/src/proxy.ts — `?_lr=1` skips the language-preference
+    // override); `WatchPageClient` strips the param post-hydration so the
+    // user-visible URL stays clean.
+    const actualSlug = watchVideo.selectedVariant.language?.slug ?? null
+    const actualBcp47 = watchVideo.selectedVariant.language?.bcp47 ?? null
+    if (actualSlug && rawLocale !== actualSlug && rawLocale !== actualBcp47) {
+      redirect(`/${slug}/${actualSlug}?${LOCALE_RESOLVED_PARAM}=1` as Route)
+    }
     if (isSeriesRecord(watchVideo.video)) {
       // Series with a playable trailer: render the series page using the
       // record + the trailer variant. SeriesPageClient's hero will mount
@@ -168,7 +215,7 @@ export default async function SlugLocalePage({ params }: PageProps) {
   // Video, Container) get the video record.
   const routeVideo = page.kind === "video-template" ? page.routeVideo : null
   const blocks = (experienceLike.blocks ?? []).filter(
-    (b): b is Section => b !== null && b.__typename !== "Error",
+    (b): b is Section => b !== null,
   )
   if (!blocks.length) {
     return <ExperienceEmpty />
@@ -182,7 +229,11 @@ export default async function SlugLocalePage({ params }: PageProps) {
             ? block.id
             : `block-${i}`
         return (
-          <SectionRenderer key={key} section={block} routeVideo={routeVideo} />
+          <ExperienceSectionRenderer
+            key={key}
+            section={block}
+            routeVideo={routeVideo}
+          />
         )
       })}
     </main>

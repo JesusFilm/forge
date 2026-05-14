@@ -57,7 +57,7 @@ src/
 - [x] Unit 6: Permission system + per-request DataLoaders + scope-auth wiring + classification enforcement
 - [x] Unit 7: Service layer + Experience CRUD with ABAC
 - [x] Unit 8: Video read service + pgvector experience search
-- [x] Unit 9: GraphQL security hardening (Armor + rate limit + introspection gate + CORS)
+- [x] Unit 9: GraphQL security hardening (Armor + rate limit + introspection gate + CORS) — Armor's `costLimitPlugin` is deliberately omitted because it false-positives on typed-client fragment composition; see `docs/solutions/tooling-decisions/graphql-armor-cost-limit-incompatible-with-typed-clients-20260514.md`
 - [x] Unit 10: Core API sync orchestrator + 5 phases
 - [x] Unit 11: useworkflow plugin + workflow endpoint auth + storage service
 - [x] Unit 12: Admin dashboard operationalized for v1 (no stub routes; live ops surfaces)
@@ -167,6 +167,56 @@ pnpm --filter @forge/admin test
 pnpm --filter @forge/admin lint
 pnpm --filter @forge/admin typecheck
 ```
+
+### Seeding fixtures for local web dev
+
+Use this when you need an admin DB with enough content for apps/web to
+render every page locally.
+
+```bash
+DATABASE_URL='postgresql://forge:forge@localhost:5433/forge_admin' \
+pnpm --filter @forge/admin seed-web-fixtures
+```
+
+Idempotent — running twice produces no duplicates. The script refuses
+to run when `DATABASE_URL` points at any Railway prod host or any
+`*.jesusfilm.org` host; the guard is fail-closed (unparseable URLs are
+also refused). Fixture data lives at
+`apps/admin/src/scripts/web-fixtures.json` — edit there to add content,
+not in the script.
+
+### Web ISR revalidation webhook (U21)
+
+`apps/admin/src/services/revalidate-webhook.ts` emits ISR refresh hints
+to web on Experience publish / update / archive. Best-effort:
+`emitRevalidateWebhook` catches every failure mode (config missing, 5xx,
+network, timeout) and is called via `void` so admin's publish UX never
+blocks on web. Wired into `ExperienceService.publishLocale`,
+`updateLocale` (only when `status === "PUBLISHED"`), and `archive`.
+
+Env vars on the `forge-admin` Doppler project (both `.optional()` so
+admin still boots in environments without web wired up):
+
+- `WEB_REVALIDATE_URL` — e.g. `https://web.jesusfilm.org/api/revalidate`
+- `WEB_REVALIDATE_TOKEN` — must hold the SAME value web sets in
+  `REVALIDATION_SECRET`
+
+Deploy ordering (receiver-first, per
+`docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md`):
+
+1. Confirm `REVALIDATION_SECRET` is set on web (likely already, from
+   the Strapi era).
+2. Set `WEB_REVALIDATE_URL` + `WEB_REVALIDATE_TOKEN` on admin to match.
+   Until both are set, `emitRevalidateWebhook` silently no-ops with a
+   structured log per attempt (`event=web_revalidate.skipped
+reason=config_missing`).
+3. Verify end-to-end: publish an Experience, fetch the matching
+   `/[slug]/[locale]` on web within 30 s, confirm refresh. Tail admin
+   logs for `event=web_revalidate.sent httpStatus=200`.
+
+Reversing the order produces a dead minute where admin's first call 401s
+against an unconfigured web. The webhook itself swallows the 401, so the
+symptom is "web pages don't update after publish" with no error surface.
 
 ### Video database backup and clone
 
@@ -1096,9 +1146,20 @@ description`, same `'simple'` config as cms, locale + status gate.
   (R2-indexed) is deliberately NOT fused. Strict cms parity during the
   R3→R8 window; adding a 5th RRF list for transcripts is a post-cutover
   follow-up that won't change the consumer contract.
-- **Experience imageUrl is null in R4.** cms parity. `ExperienceLocale.ogImageUrl`
-  exists on admin but wiring it is a deliberate post-cutover upgrade
-  so the pre-R8 diff-against-cms invariant holds.
+- **Video imageUrl resolves via LATERAL on `VideoImage`.** Both
+  retrievers (semantic + keyword) emit
+  `COALESCE(mobile_cinematic_high, url)` from the per-video
+  `video_image` row, matching cms's `keyword-search.ts:54` /
+  `semantic-search.ts:62` lookup. Earlier R4 doc claimed "imageUrl
+  is null for video corpus (cms parity)" — that was a regression,
+  not parity. cms's video retrievers DID populate `image_url` from
+  `video_images.mobile_cinematic_high`; only the experience side
+  defers the image join.
+- **Experience imageUrl is null in R4.** cms parity (cms's
+  experience retrievers also return null with comment "og_image
+  join deferred"). `ExperienceLocale.ogImageUrl` exists on admin
+  but wiring it is a deliberate post-cutover upgrade so the pre-R8
+  diff-against-cms invariant holds for the experience corpus.
 - **Degradation signal:** `searchMode: "hybrid" | "keyword-only"`. Set
   to `"keyword-only"` when the embedding provider throws. Structured
   log at error level: `[search] event=query_embedding_failure
@@ -1424,8 +1485,14 @@ shape drift.
   React key, so the cutover is a one-line TypeScript-type update on
   `apps/web/src/lib/recommendations.ts::SceneRecommendation`. Documented
   in plan §Key Technical Decisions #2.
-- **`imageUrl` is null** (cms parity stance inherited from R4). Wiring
-  a real `imageUrl` from `VideoImage` / MuxVideo thumbnail is a
+- **`imageUrl` is null in R5** (was claimed "cms parity inherited
+  from R4" but R4 was itself a regression — see R4's "Video imageUrl"
+  bullet above; cms's scene-recommendations DID populate `image_url`
+  via VideoImage LATERAL). Wiring R5 to match the R4 LATERAL JOIN
+  pattern is a parallel follow-up. Until then, scene-recommendation
+  thumbnails depend on consumer-side fallbacks (Mux thumbnail from
+  `playbackId`, gradient placeholder). Original note: wiring a real
+  `imageUrl` from `VideoImage` / MuxVideo thumbnail is a
   post-cutover upgrade so the pre-R8 diff-against-cms invariant holds.
 - **REST endpoint:** `GET /api/scene-embedding/recommendations`
   (singular) at `src/app/api/scene-embedding/recommendations/route.ts`.

@@ -83,6 +83,7 @@ function makeEpisode(overrides: Partial<Episode> = {}): Episode {
     label: "episode",
     images: [
       {
+        documentId: "img-1",
         url: "https://cdn.example/url.jpg",
         thumbnail: "https://cdn.example/thumb.jpg",
         mobileCinematicHigh: "https://cdn.example/high.jpg",
@@ -256,6 +257,7 @@ describe("SeriesEpisodeCard — resolveThumbnailUrl image priority", () => {
       episode: makeEpisode({
         images: [
           {
+            documentId: "img-a",
             mobileCinematicHigh: "https://cdn.example/high.jpg",
             thumbnail: "https://cdn.example/thumb.jpg",
             mobileCinematicLow: "https://cdn.example/low.jpg",
@@ -273,6 +275,7 @@ describe("SeriesEpisodeCard — resolveThumbnailUrl image priority", () => {
       episode: makeEpisode({
         images: [
           {
+            documentId: "img-b",
             mobileCinematicHigh: null,
             thumbnail: "https://cdn.example/thumb.jpg",
             mobileCinematicLow: "https://cdn.example/low.jpg",
@@ -290,6 +293,7 @@ describe("SeriesEpisodeCard — resolveThumbnailUrl image priority", () => {
       episode: makeEpisode({
         images: [
           {
+            documentId: "img-c",
             mobileCinematicHigh: null,
             thumbnail: null,
             mobileCinematicLow: "https://cdn.example/low.jpg",
@@ -307,6 +311,7 @@ describe("SeriesEpisodeCard — resolveThumbnailUrl image priority", () => {
       episode: makeEpisode({
         images: [
           {
+            documentId: "img-d",
             mobileCinematicHigh: null,
             thumbnail: null,
             mobileCinematicLow: null,

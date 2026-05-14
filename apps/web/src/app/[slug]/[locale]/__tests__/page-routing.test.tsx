@@ -34,6 +34,12 @@ const {
   experienceErrorMock: vi.fn(() => null),
 }))
 
+// Stub the admin Apollo client so the jsdom test environment doesn't trip
+// t3-env's server-only guard on `WEB_ADMIN_API_KEYS` when content.ts loads.
+vi.mock("@/lib/admin-client", () => ({
+  default: { query: vi.fn() },
+}))
+
 vi.mock("@/lib/content", async () => {
   const actual =
     await vi.importActual<typeof import("@/lib/content")>("@/lib/content")
@@ -62,7 +68,7 @@ vi.mock("@/components/ExperienceError", () => ({
 }))
 
 vi.mock("@/components/sections", () => ({
-  SectionRenderer: vi.fn(() => null),
+  ExperienceSectionRenderer: vi.fn(() => null),
 }))
 
 import SlugLocalePage from "@/app/[slug]/[locale]/page"
@@ -74,6 +80,14 @@ beforeEach(() => {
   resolveWatchVideoBySlugMock.mockReset()
   resolveSeriesBySlugMock.mockReset()
   resolveWatchPageMock.mockReset()
+  // Default: no Experience curated for the slug. The page now consults
+  // resolveWatchPage up-front to honor Experience precedence over slug-
+  // colliding videos; tests that want to override this set their own
+  // mockResolvedValue. The error sentinel matches isWatchPageMissingError.
+  resolveWatchPageMock.mockResolvedValue({
+    data: null,
+    error: new Error("No experience found"),
+  })
   seriesPageClientMock.mockClear()
   watchPageClientMock.mockClear()
   experienceEmptyMock.mockClear()
@@ -90,7 +104,14 @@ afterEach(() => {
   container.remove()
 })
 
-function makeWatchVideoResult(label: string) {
+function makeWatchVideoResult(
+  label: string,
+  variantLang: { slug: string; bcp47: string; name: string } = {
+    slug: "english",
+    bcp47: "en",
+    name: "English",
+  },
+) {
   return {
     video: {
       documentId: "v1",
@@ -106,7 +127,7 @@ function makeWatchVideoResult(label: string) {
       documentId: "var1",
       hls: "https://cdn.example/storyclubs.m3u8",
       muxVideo: { playbackId: "pb1" },
-      language: { slug: "english", name: "English" },
+      language: variantLang,
       published: true,
       duration: 30,
       downloads: [],
@@ -178,6 +199,46 @@ describe("SlugLocalePage routing — series branch", () => {
   })
 })
 
+describe("SlugLocalePage routing — Experience precedence", () => {
+  it("renders Experience and skips video resolver when an Experience exists for the slug", async () => {
+    // Slug "easter" exists as BOTH a COLLECTION-labeled Video and a
+    // curated Experience. The Experience is the editor's intended
+    // landing and must win.
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          id: "exp-1",
+          slug: "easter",
+          title: "Easter",
+          blocks: [{ __typename: "TextBlock", id: "blk-1", text: "Hello" }],
+        },
+      },
+      error: null,
+    })
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("collection"),
+    )
+    await renderPage("easter", "en")
+    expect(seriesPageClientMock).not.toHaveBeenCalled()
+    expect(watchPageClientMock).not.toHaveBeenCalled()
+    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+  })
+
+  it("falls through to video resolver when Experience exists but has no blocks", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: { id: "exp-1", slug: "x", title: "X", blocks: [] },
+      },
+      error: null,
+    })
+    await renderPage("x", "en")
+    expect(experienceEmptyMock).toHaveBeenCalledTimes(1)
+    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+  })
+})
+
 describe("SlugLocalePage routing — series-without-trailer fallthrough", () => {
   it("falls through to resolveSeriesBySlug when video resolver returns null and renders SeriesPageClient", async () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(null)
@@ -230,8 +291,14 @@ describe("SlugLocalePage routing — passes correct props to SeriesPageClient", 
     // returns false, so the bcp47-normalised value would collapse to
     // DEFAULT_LOCALE ("en") and the combobox/globe modal would render
     // English instead of the user's actual selection. The page must
-    // forward rawLocale into SeriesPageClient.
-    const watchVideo = makeWatchVideoResult("collection")
+    // forward rawLocale into SeriesPageClient. Variant carries the
+    // matching slug-form language so the URL-↔-variant sync redirect
+    // does not fire and rewrite the URL to "english".
+    const watchVideo = makeWatchVideoResult("collection", {
+      slug: "spanish-castilian",
+      bcp47: "es",
+      name: "Spanish, Castilian",
+    })
     resolveWatchVideoBySlugMock.mockResolvedValue(watchVideo)
     await renderPage("storyclubs", "spanish-castilian")
     const args = seriesPageClientMock.mock.calls[0]?.[0]

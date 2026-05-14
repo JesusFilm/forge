@@ -16,8 +16,8 @@ import Link from "next/link"
 import type { Route } from "next"
 import { usePathname, useRouter } from "next/navigation"
 
-import client from "@/lib/client"
-import { SEMANTIC_SEARCH, type SearchResult } from "@/lib/search"
+import { runSearch } from "@/lib/search-actions"
+import type { SearchResult } from "@/lib/search"
 import { buildSearchUrl } from "@/lib/search-url"
 
 import { FloatingSearchBar } from "./FloatingSearchBar"
@@ -228,25 +228,19 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       }, skeletonThreshold)
 
       try {
-        const result = await client.query({
-          query: SEMANTIC_SEARCH,
-          variables: {
-            query: trimmed.slice(0, 200),
-            locale: "en",
-            limit: 20,
-            offset: 0,
-          },
-          fetchPolicy: "no-cache",
+        const data = await runSearch({
+          query: trimmed.slice(0, 200),
+          limit: 20,
+          offset: 0,
         })
 
         if (requestIdRef.current !== thisRequest) return
 
-        const data = result.data?.semanticSearch
-        const newResults = data?.results ?? []
+        const newResults = data.results
         setResults(newResults)
         setDisplayResults(newResults)
         setResultsKey((k) => k + 1)
-        setHasMore(data?.hasMore ?? false)
+        setHasMore(data.hasMore)
       } catch {
         if (requestIdRef.current === thisRequest) {
           setError("Search failed. Please try again.")
@@ -274,23 +268,15 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     // new search supersedes us mid-fetch.
     const thisRequest = requestIdRef.current
     try {
-      const result = await client.query({
-        query: SEMANTIC_SEARCH,
-        variables: {
-          query: query.trim().slice(0, 200),
-          locale: "en",
-          limit: 20,
-          offset: results.length,
-        },
-        fetchPolicy: "no-cache",
+      const data = await runSearch({
+        query: query.trim().slice(0, 200),
+        limit: 20,
+        offset: results.length,
       })
       if (requestIdRef.current !== thisRequest) return
-      const data = result.data?.semanticSearch
-      if (data) {
-        setResults((prev) => [...prev, ...data.results])
-        setDisplayResults((prev) => [...prev, ...data.results])
-        setHasMore(data.hasMore)
-      }
+      setResults((prev) => [...prev, ...data.results])
+      setDisplayResults((prev) => [...prev, ...data.results])
+      setHasMore(data.hasMore)
     } catch {
       if (requestIdRef.current === thisRequest) {
         setError("Failed to load more results.")

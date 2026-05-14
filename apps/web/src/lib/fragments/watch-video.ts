@@ -1,26 +1,49 @@
-import { graphql } from "@forge/graphql"
+import { adminGraphql } from "@forge/admin-graphql"
 
-// Notes:
-// - BibleBook.name is a plain String, NOT a localized {value, primary} pattern
-//   like other types — projecting it as the latter breaks codegen.
-// - Video.studyQuestions has no `answer` field — see WatchStudyQuestions.
-// - parents.children does NOT accept sort:"order:asc" — Video has no `order`
-//   field. Children come back in editor-curated relation order.
-// - Top-level `children` powers the SiblingCarousel when the current video
-//   is itself a parent/collection (e.g. JESUS with 61 chapter segments).
-//   When the current video is a chapter, the carousel falls back to
-//   `parents[0].children` for siblings — see buildSiblingCarouselBlock.
-export const watchVideoFragment = graphql(`
+/**
+ * WatchVideo fragment over admin's `Video` type plus the two query operations
+ * that consume it.
+ *
+ * Field aliases bridge admin's native field names to the watch-page consumer
+ * vocabulary that pre-dates this rewrite (e.g. `variants`, `documentId`,
+ * `value`):
+ *
+ *   - `documentId: id` on every node (Video, dub, image, study question,
+ *     bible citation, related video). The watch-page client + merge logic
+ *     reads `documentId` everywhere; aliasing avoids a cross-cutting
+ *     rename. Drop the alias if/when consumers migrate to `id`.
+ *   - `variants: dubs` on Video plus aliased fields inside the dub
+ *     selection (`documentId: id`). `VideoDub` is admin's rename of the
+ *     dub-as-playback concept; web's consumer treats it as the playable
+ *     variant and the alias keeps the resolver + UI code stable.
+ *   - `value: text` on `VideoStudyQuestion`. The merge layer + question
+ *     panel both read `q.value`.
+ *
+ * Locale-varying fields (`title`, `description`, `snippet`, `imageAlt`)
+ * live on `VideoLocale` in admin, not on the parent `Video`. The
+ * fragment projects them via `locales(locale: $locale) { ... }`
+ * (single-element array per the U6 locale-narrowed read). The resolver
+ * flattens the locale row onto the record so consumers keep reading
+ * `video.title` etc. directly.
+ *
+ * `VideoRelation` is admin's join shape for `parents` / `children`. The
+ * fragment projects the related Video through `parent { ... }` /
+ * `child { ... }` and the resolver flattens those into the
+ * Strapi-vocabulary `parents: WatchParent[]` / `children: WatchChild[]`
+ * shape the carousel and metadata helpers consume.
+ *
+ * `BibleBook.name` is `JSON` on admin (legacy compatibility mirror of
+ * Core's localised display name). The renderer treats it loosely and the
+ * citation card stringifies it; no client-side type narrowing here.
+ */
+export const watchVideoFragment = adminGraphql(`
   fragment WatchVideo on Video @_unmask {
-    documentId
+    documentId: id
     slug
-    title
-    snippet
-    description
     noIndex
     label
-    imageAlt
     images {
+      documentId: id
       url
       thumbnail
       mobileCinematicHigh
@@ -30,57 +53,81 @@ export const watchVideoFragment = graphql(`
       coreId
       bcp47
     }
-    parents {
-      documentId
-      slug
+    locales(locale: $locale) {
+      documentId: id
       title
-      children(pagination: { limit: -1 }) {
-        documentId
+      description
+      snippet
+      imageAlt
+    }
+    parents {
+      parent {
+        documentId: id
         slug
-        title
+        noIndex
         label
+        locales(locale: $locale) {
+          documentId: id
+          title
+        }
         images {
+          documentId: id
           url
           thumbnail
           mobileCinematicHigh
           mobileCinematicLow
         }
-      }
-    }
-    children(pagination: { limit: -1 }) {
-      documentId
-      slug
-      title
-      label
-      images {
-        url
-        thumbnail
-        mobileCinematicHigh
-        mobileCinematicLow
-      }
-      # Minimal variant projection — series-page language aggregator
-      # in apps/web/src/components/watch/SeriesPageClient.tsx unions
-      # variants across episodes since series records don't carry
-      # variants themselves. Kept to the smallest set of fields
-      # isPlayableLanguageVariant + deriveLanguageDisplay need:
-      # published gate, hls playability, language slug + name. The
-      # SiblingCarousel rendering of children doesn't read variants.
-      # duration is also projected so SeriesEpisodeCard can render the
-      # runtime pill (e.g. 2:09) in the top-right of each card.
-      variants(pagination: { limit: -1 }) {
-        documentId
-        published
-        hls
-        duration
-        language {
-          slug
-          name
-          bcp47
+        children {
+          child {
+            documentId: id
+            slug
+            label
+            locales(locale: $locale) {
+              documentId: id
+              title
+            }
+            images {
+              documentId: id
+              url
+              thumbnail
+              mobileCinematicHigh
+              mobileCinematicLow
+            }
+          }
         }
       }
     }
-    variants(pagination: { limit: -1 }) {
-      documentId
+    children {
+      child {
+        documentId: id
+        slug
+        label
+        locales(locale: $locale) {
+          documentId: id
+          title
+        }
+        images {
+          documentId: id
+          url
+          thumbnail
+          mobileCinematicHigh
+          mobileCinematicLow
+        }
+        dubs {
+          documentId: id
+          published
+          hls
+          duration
+          language {
+            slug
+            name
+            bcp47
+          }
+        }
+      }
+    }
+    variants: dubs {
+      documentId: id
       slug
       published
       hls
@@ -92,7 +139,7 @@ export const watchVideoFragment = graphql(`
         name
       }
       downloads {
-        documentId
+        documentId: id
         quality
         size
         url
@@ -101,13 +148,13 @@ export const watchVideoFragment = graphql(`
         playbackId
       }
     }
-    studyQuestions(sort: ["order:asc"]) {
-      documentId
-      value
+    studyQuestions {
+      documentId: id
+      value: text
       order
     }
-    bibleCitations(sort: ["order:asc"]) {
-      documentId
+    bibleCitations {
+      documentId: id
       chapterStart
       chapterEnd
       verseStart
@@ -115,47 +162,26 @@ export const watchVideoFragment = graphql(`
       order
       osisId
       bibleBook {
-        documentId
+        documentId: id
         name
       }
     }
   }
 `)
 
-// Variant filtering by language is resolver-side, not in the query —
-// Strapi returns every variant; the resolver picks via locale priority.
-// All variables are required to dodge codegen's optional-stripping bug
-// (see docs/solutions/cms/codegen-strips-optional-graphql-variables.md).
-export const getWatchVideoOperation = graphql(
+// Locale narrowing happens via the `$locale` arg passed to `Video.locales`,
+// `VideoRelation.parent.locales`, etc. — admin's U6 widening accepts the arg
+// per relation, so the projection only ships the active locale's row in
+// each `locales[]` array. Admin's `videoBySlug` resolves the video record
+// by slug only; both watch routes (3-segment collection-scoped and
+// 2-segment slug-only) share this single operation — the resolver verifies
+// the collection-slug match by walking `video.parents` client-side when
+// the URL carries a collection segment, otherwise picks `parents[0]` as
+// canonical.
+export const getWatchVideoBySlugOperation = adminGraphql(
   `
-    query GetWatchVideo(
-      $i18nLocale: I18NLocaleCode!
-      $collectionSlug: String!
-      $videoSlug: String!
-    ) {
-      videos(
-        filters: {
-          slug: { eq: $videoSlug }
-          parents: { slug: { eq: $collectionSlug } }
-        }
-        locale: $i18nLocale
-      ) {
-        ...WatchVideo
-      }
-    }
-  `,
-  [watchVideoFragment],
-)
-
-// 2-segment watch route — no collection filter. Resolver picks parents[0]
-// as canonical (or null when the video has no parent).
-export const getWatchVideoBySlugOperation = graphql(
-  `
-    query GetWatchVideoBySlug(
-      $i18nLocale: I18NLocaleCode!
-      $videoSlug: String!
-    ) {
-      videos(filters: { slug: { eq: $videoSlug } }, locale: $i18nLocale) {
+    query GetWatchVideoBySlug($locale: String!, $videoSlug: String!) {
+      videoBySlug(slug: $videoSlug) {
         ...WatchVideo
       }
     }

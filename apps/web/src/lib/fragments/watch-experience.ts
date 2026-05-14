@@ -1,103 +1,13 @@
-import { graphql } from "@forge/graphql"
-import { adventCountdownFragment } from "./advent-countdown"
-import { bibleQuotesCarouselFragment } from "./bible-quotes-carousel"
-import { containerFragment } from "./container"
-import { ctaSectionFragment } from "./cta-section"
-import { easterDatesFragment } from "./easter-dates"
-import { infoBlocksFragment } from "./info-blocks"
-import { mediaCollectionFragment } from "./media-collection"
-import { navigationCarouselFragment } from "./navigation-carousel"
-import { promoBannerFragment } from "./promo-banner"
-import { relatedQuestionsFragment } from "./related-questions"
-import { sectionFragment } from "./section"
-import { textSectionFragment } from "./text-section"
-import { videoCarouselFragment } from "./video-carousel"
-import { videoHeroFragment } from "./video-hero"
-import { videoSectionFragment } from "./video-section"
+// WatchExperience fragment composing admin's per-block fragments.
+//
+// Re-exports the canonical fragment from `@forge/admin-graphql/fragments`
+// under the local name `watchExperienceFragment` so consumers in this app
+// continue to import it from `@/lib/fragments`.
+//
+// The shared package owns the fragment text because the same projection
+// is needed by every web route that renders an ExperienceLocale (homepage,
+// slug page, video-template path). Keeping it in the shared package keeps
+// codegen, type isolation, and CI drift checks in one place.
+import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"
 
-export const watchExperienceFragment = graphql(
-  `
-    fragment WatchExperience on Experience @_unmask {
-      documentId
-      slug
-      locale
-      title
-      isTemplate
-      metaDescription
-      ogTitle
-      ogDescription
-      pathSegment
-      ogImage {
-        url
-        width
-        height
-        alternativeText
-      }
-      blocks {
-        __typename
-        ... on ComponentSectionsMediaCollection {
-          ...MediaCollection
-        }
-        ... on ComponentSectionsPromoBanner {
-          ...PromoBanner
-        }
-        ... on ComponentSectionsInfoBlocks {
-          ...InfoBlocks
-        }
-        ... on ComponentSectionsCta {
-          ...CTASection
-        }
-        ... on ComponentSectionsVideoHero {
-          ...VideoHero
-        }
-        ... on ComponentSectionsBibleQuotesCarousel {
-          ...BibleQuotesCarousel
-        }
-        ... on ComponentSectionsText {
-          ...TextSection
-        }
-        ... on ComponentSectionsEasterDates {
-          ...EasterDates
-        }
-        ... on ComponentSectionsAdventCountdown {
-          ...AdventCountdown
-        }
-        ... on ComponentSectionsContainer {
-          ...Container
-        }
-        ... on ComponentSectionsVideo {
-          ...VideoSection
-        }
-        ... on ComponentSectionsSection {
-          ...Section
-        }
-        ... on ComponentSectionsRelatedQuestions {
-          ...RelatedQuestions
-        }
-        ... on ComponentSectionsVideoCarousel {
-          ...VideoCarousel
-        }
-        ... on ComponentSectionsNavigationCarousel {
-          ...NavigationCarousel
-        }
-      }
-    }
-  `,
-  [
-    mediaCollectionFragment,
-    promoBannerFragment,
-    infoBlocksFragment,
-    ctaSectionFragment,
-    videoHeroFragment,
-    videoSectionFragment,
-    bibleQuotesCarouselFragment,
-    textSectionFragment,
-    easterDatesFragment,
-    adventCountdownFragment,
-    containerFragment,
-    sectionFragment,
-    videoCarouselFragment,
-    relatedQuestionsFragment,
-    navigationCarouselFragment,
-  ],
-)
+export const watchExperienceFragment = adminWatchExperienceFragment

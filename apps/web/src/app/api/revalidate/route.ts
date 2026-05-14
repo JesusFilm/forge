@@ -5,8 +5,9 @@ import { env } from "@/env"
 import { DEFAULT_LOCALE, isLocale, SUPPORTED_LOCALES } from "@/lib/locale"
 
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i
+const BEARER_PREFIX = "Bearer "
 
-interface StrapiWebhookPayload {
+interface RevalidateWebhookPayload {
   model?: string
   entry?: {
     slug?: string
@@ -19,15 +20,27 @@ function isValidSecret(provided: string | null, expected: string): boolean {
   return timingSafeEqual(Buffer.from(provided), Buffer.from(expected))
 }
 
+function extractToken(request: Request): string | null {
+  // Admin emits `Authorization: Bearer <token>`. The legacy
+  // `x-revalidation-secret` header is retained as a fallback so an
+  // accidentally-still-running Strapi emitter cannot 401-loop —
+  // both header forms validate against the same `REVALIDATION_SECRET`.
+  const auth = request.headers.get("authorization")
+  if (auth && auth.startsWith(BEARER_PREFIX)) {
+    return auth.slice(BEARER_PREFIX.length)
+  }
+  return request.headers.get("x-revalidation-secret")
+}
+
 export async function POST(request: Request) {
-  const secret = request.headers.get("x-revalidation-secret")
-  if (!isValidSecret(secret, env.REVALIDATION_SECRET)) {
+  const token = extractToken(request)
+  if (!isValidSecret(token, env.REVALIDATION_SECRET)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 
-  let body: StrapiWebhookPayload
+  let body: RevalidateWebhookPayload
   try {
-    body = (await request.json()) as StrapiWebhookPayload
+    body = (await request.json()) as RevalidateWebhookPayload
   } catch {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 })
   }

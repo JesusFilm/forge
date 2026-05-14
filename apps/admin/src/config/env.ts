@@ -155,6 +155,18 @@ export const env = createEnv({
     // result per requested assetId in that case.
     MANAGER_API_BASE_URL: z.string().url().optional(),
     MANAGER_TRIGGER_API_KEY: z.string().min(1).optional(),
+
+    // U21 — admin → web ISR revalidation webhook. Admin's publish
+    // lifecycle (Experience publish/update) POSTs `{ model, entry: {
+    // slug, locale } }` to web's `/api/revalidate` route with a bearer
+    // matching the value web holds in `REVALIDATION_SECRET`. Both
+    // optional at boot: admin runs in some environments without web
+    // (preview, local dev). `emitRevalidateWebhook` silently no-ops
+    // when either is unset. Required-without-default would brick those
+    // Railway deploys — see
+    // docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md.
+    WEB_REVALIDATE_URL: z.string().url().optional(),
+    WEB_REVALIDATE_TOKEN: z.string().min(1).optional(),
     NEXT_RUNTIME: z.enum(["nodejs", "edge"]).optional(),
     // Algolia (watch-project parity demo column on /watch/demo-keyword-search).
     // Server-side only — the demo route's `searchAlgolia` server action
@@ -304,6 +316,8 @@ export const env = createEnv({
     MANAGER_TRIGGER_API_KEY: emptyToUndefined(
       process.env.MANAGER_TRIGGER_API_KEY,
     ),
+    WEB_REVALIDATE_URL: emptyToUndefined(process.env.WEB_REVALIDATE_URL),
+    WEB_REVALIDATE_TOKEN: emptyToUndefined(process.env.WEB_REVALIDATE_TOKEN),
     NEXT_RUNTIME: emptyToUndefined(process.env.NEXT_RUNTIME),
     ALGOLIA_APP_ID: emptyToUndefined(process.env.ALGOLIA_APP_ID),
     ALGOLIA_SEARCH_API_KEY: emptyToUndefined(
