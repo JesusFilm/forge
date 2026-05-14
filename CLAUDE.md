@@ -1,5 +1,9 @@
 # CLAUDE.md — JesusFilm Forge Monorepo
 
+## Active Freeze
+
+> **`apps/web` UI feature work is paused on `main`** while the `feat/adapt-web-data-layer-to-admin` branch is live. Critical fixes still ship. See `docs/plans/2026-05-14-001-feat-adapt-web-data-layer-to-admin-plan.md` for scope. Rebuild branch rebases from main when critical fixes touch `apps/web/src/lib/`, `apps/web/src/app/`, shared types, or `packages/graphql/**`.
+
 ## Project Overview
 
 JesusFilm (JFP) is a ministry organization. This monorepo contains our web, mobile, and CMS applications with a shared GraphQL client package.
