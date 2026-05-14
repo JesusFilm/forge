@@ -88,7 +88,37 @@ export default async function SlugLocalePage({ params }: PageProps) {
   const { slug, locale: rawLocale } = await params
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
 
-  // Video-by-slug first — bypasses resolveWatchPage's Watch Settings +
+  // Experience-first precedence: when an editor has curated an Experience
+  // at this slug, that's the intended landing — even when a slug-colliding
+  // Video (e.g., a COLLECTION-labeled `easter` Video alongside an `easter`
+  // Experience) exists. Without this short-circuit the video resolver
+  // below would catch first and render the slug as a series page.
+  // `resolveWatchPage` is React `cache()`-wrapped, so the second call at
+  // the tail of this function for the video-template fallback is free.
+  const watchPage = await resolveWatchPage(locale, slug)
+  if (watchPage.data?.kind === "experience") {
+    const blocks = (watchPage.data.experience.blocks ?? []).filter(
+      (b): b is Section => b !== null,
+    )
+    if (blocks.length) {
+      return (
+        <main className="min-h-screen bg-stone-900">
+          {blocks.map((block, i) => {
+            const key =
+              "id" in block && typeof block.id === "string"
+                ? block.id
+                : `block-${i}`
+            return (
+              <SectionRenderer key={key} section={block} routeVideo={null} />
+            )
+          })}
+        </main>
+      )
+    }
+    return <ExperienceEmpty />
+  }
+
+  // Video-by-slug second — bypasses resolveWatchPage's Watch Settings +
   // default template dependency, which isn't always present in dev.
   //
   // Pass rawLocale (not the bcp47-normalised `locale`): the resolver picks

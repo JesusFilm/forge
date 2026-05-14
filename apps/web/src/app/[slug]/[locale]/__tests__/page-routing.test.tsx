@@ -80,6 +80,14 @@ beforeEach(() => {
   resolveWatchVideoBySlugMock.mockReset()
   resolveSeriesBySlugMock.mockReset()
   resolveWatchPageMock.mockReset()
+  // Default: no Experience curated for the slug. The page now consults
+  // resolveWatchPage up-front to honor Experience precedence over slug-
+  // colliding videos; tests that want to override this set their own
+  // mockResolvedValue. The error sentinel matches isWatchPageMissingError.
+  resolveWatchPageMock.mockResolvedValue({
+    data: null,
+    error: new Error("No experience found"),
+  })
   seriesPageClientMock.mockClear()
   watchPageClientMock.mockClear()
   experienceEmptyMock.mockClear()
@@ -188,6 +196,46 @@ describe("SlugLocalePage routing — series branch", () => {
     await renderPage("jesus", "en")
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
     expect(seriesPageClientMock).not.toHaveBeenCalled()
+  })
+})
+
+describe("SlugLocalePage routing — Experience precedence", () => {
+  it("renders Experience and skips video resolver when an Experience exists for the slug", async () => {
+    // Slug "easter" exists as BOTH a COLLECTION-labeled Video and a
+    // curated Experience. The Experience is the editor's intended
+    // landing and must win.
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          id: "exp-1",
+          slug: "easter",
+          title: "Easter",
+          blocks: [{ __typename: "TextBlock", id: "blk-1", text: "Hello" }],
+        },
+      },
+      error: null,
+    })
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("collection"),
+    )
+    await renderPage("easter", "en")
+    expect(seriesPageClientMock).not.toHaveBeenCalled()
+    expect(watchPageClientMock).not.toHaveBeenCalled()
+    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+  })
+
+  it("falls through to video resolver when Experience exists but has no blocks", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: { id: "exp-1", slug: "x", title: "X", blocks: [] },
+      },
+      error: null,
+    })
+    await renderPage("x", "en")
+    expect(experienceEmptyMock).toHaveBeenCalledTimes(1)
+    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
   })
 })
 
