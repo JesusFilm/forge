@@ -202,6 +202,27 @@ export const env = createEnv({
     // Optional; defaults to "unknown" at the call site. Operators set
     // this before running a baseline so the baseline carries provenance.
     EVAL_GIT_SHA: z.string().min(1).optional(),
+    // Mastra-powered Experience-AI chat (U2 of the mastra-replacement
+    // plan). All vars below are `.optional()` per
+    // `docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md`
+    // — opt-in scaffolding must not break Railway deploys for envs
+    // that haven't been provisioned yet.
+    //
+    // MASTRA_STORAGE_URL: Postgres connection string Mastra's memory
+    // adapter writes to. Falls back to DATABASE_URL at the consumer
+    // when unset, so default-deploy environments work without extra
+    // wiring. Set explicitly to point Mastra at a different DB (e.g.
+    // a dedicated Mastra schema or per-environment isolation).
+    MASTRA_STORAGE_URL: z.string().url().optional(),
+    // MASTRA_DEFAULT_PROVIDER: provider key chosen when the editor
+    // doesn't pick one. Default at consumer is "openrouter".
+    MASTRA_DEFAULT_PROVIDER: z
+      .enum(["openrouter", "ollama", "openai", "anthropic"])
+      .optional(),
+    // OLLAMA_BASE_URL: Ollama HTTP endpoint. Default at consumer is
+    // `http://localhost:11434/api`. Set on Railway when Ollama is run
+    // elsewhere; leave unset in local dev for the standard Ollama port.
+    OLLAMA_BASE_URL: z.string().url().optional(),
   },
   client: {
     NEXT_PUBLIC_APP_NAME: z.string().min(1).default("forge-admin"),
@@ -327,6 +348,11 @@ export const env = createEnv({
       process.env.EVAL_SEARCH_CONCURRENCY,
     ),
     EVAL_GIT_SHA: emptyToUndefined(process.env.EVAL_GIT_SHA),
+    MASTRA_STORAGE_URL: emptyToUndefined(process.env.MASTRA_STORAGE_URL),
+    MASTRA_DEFAULT_PROVIDER: emptyToUndefined(
+      process.env.MASTRA_DEFAULT_PROVIDER,
+    ),
+    OLLAMA_BASE_URL: emptyToUndefined(process.env.OLLAMA_BASE_URL),
     NODE_ENV: emptyToUndefined(process.env.NODE_ENV),
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
   },
