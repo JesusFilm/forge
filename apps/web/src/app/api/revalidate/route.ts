@@ -11,7 +11,6 @@ interface StrapiWebhookPayload {
   entry?: {
     slug?: string
     locale?: string
-    isTemplate?: boolean
   }
 }
 

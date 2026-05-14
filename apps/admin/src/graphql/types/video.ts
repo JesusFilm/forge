@@ -3,9 +3,68 @@
 // exposed as String to avoid JS Number precision loss. Per Unit 4 of
 // docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
+import type { Prisma } from "@prisma/client"
+
+import type { Principal } from "@/auth/principal"
 import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
+
+// Principal-aware relation filters — extracted so the per-principal /
+// per-locale shape is unit-testable. EDITOR/ADMIN see everything;
+// anonymous and VIEWER callers see PUBLISHED-only (mirroring
+// `Experience.locales` per
+// `docs/solutions/graphql/pothos-public-widening-multi-layer-coordination-20260511.md`).
+// For `parents`/`children`, "PUBLISHED" means the related Video itself
+// has at least one PUBLISHED locale AND is not soft-deleted.
+
+export function videoLocalesFilter(
+  args: { locale?: string | null },
+  user: Principal | null,
+): { where: Prisma.VideoLocaleWhereInput } | Record<string, never> {
+  // Treat empty string the same as missing — caller intent is "no locale
+  // filter," not "narrow to the zero-length locale code" (which would match
+  // zero rows).
+  const locale =
+    typeof args.locale === "string" && args.locale.length > 0
+      ? args.locale
+      : null
+  const localeFilter = locale != null ? { locale } : {}
+  if (isEditorOrAdmin(user)) {
+    return locale != null ? { where: localeFilter } : {}
+  }
+  return {
+    where: { status: "PUBLISHED" as const, ...localeFilter },
+  }
+}
+
+export function videoParentsFilter(
+  user: Principal | null,
+): { where: Prisma.VideoRelationWhereInput } | Record<string, never> {
+  if (isEditorOrAdmin(user)) return {}
+  return {
+    where: {
+      parent: {
+        deletedAt: null,
+        locales: { some: { status: "PUBLISHED" as const } },
+      },
+    },
+  }
+}
+
+export function videoChildrenFilter(
+  user: Principal | null,
+): { where: Prisma.VideoRelationWhereInput } | Record<string, never> {
+  if (isEditorOrAdmin(user)) return {}
+  return {
+    where: {
+      child: {
+        deletedAt: null,
+        locales: { some: { status: "PUBLISHED" as const } },
+      },
+    },
+  }
+}
 
 const VideoLabelEnum = builder.enumType("VideoLabel", {
   values: {
@@ -227,6 +286,18 @@ builder.prismaObject("VideoStudyQuestion", {
 })
 
 /** @classification public-shape */
+builder.prismaObject("VideoRelation", {
+  description:
+    "Self-referential parent/child join between Videos (e.g. series→episode). Exposes the related parent/child Video plus its ordering position.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    order: t.exposeInt("order", { nullable: true }),
+    parent: t.relation("parent"),
+    child: t.relation("child"),
+  }),
+})
+
+/** @classification public-shape */
 builder.prismaObject("Video", {
   description:
     "A video sourced from JesusFilm Core. Read-only at the GraphQL layer in v1.",
@@ -249,9 +320,12 @@ builder.prismaObject("Video", {
     primaryLanguage: t.relation("primaryLanguage", { nullable: true }),
     origin: t.relation("origin", { nullable: true }),
     locales: t.relation("locales", {
-      description: "PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all.",
-      query: (_args, ctx) =>
-        isEditorOrAdmin(ctx.user) ? {} : { where: { status: "PUBLISHED" } },
+      description:
+        "PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all. Pass `locale` to narrow the result to a single BCP-47 locale (web's WatchVideo fragment uses this to avoid overfetching every locale).",
+      args: {
+        locale: t.arg.string({ required: false }),
+      },
+      query: (args, ctx) => videoLocalesFilter(args, ctx.user),
     }),
     dubs: t.relation("dubs", {
       query: { where: { deletedAt: null } },
@@ -264,6 +338,16 @@ builder.prismaObject("Video", {
     }),
     bibleCitations: t.relation("bibleCitations", {
       query: { where: { deletedAt: null } },
+    }),
+    parents: t.relation("parents", {
+      description:
+        "Parent Video-Video relations (this Video is the child). PUBLIC/VIEWER see only relations whose parent has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.",
+      query: (_args, ctx) => videoParentsFilter(ctx.user),
+    }),
+    children: t.relation("children", {
+      description:
+        "Child Video-Video relations (this Video is the parent). PUBLIC/VIEWER see only relations whose child has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.",
+      query: (_args, ctx) => videoChildrenFilter(ctx.user),
     }),
   }),
 })

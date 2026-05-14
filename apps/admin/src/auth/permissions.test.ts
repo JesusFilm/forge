@@ -11,11 +11,7 @@ import {
   hasPermission,
   type PermissionKey,
 } from "@/auth/permissions"
-import {
-  CONSUMER_BEARER_PRINCIPAL,
-  PARITY_BEARER_PRINCIPAL,
-  type Principal,
-} from "@/auth/principal"
+import { CONSUMER_BEARER_PRINCIPAL, type Principal } from "@/auth/principal"
 
 const PUBLIC_USER: Principal | null = null
 const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
@@ -449,7 +445,6 @@ describe("permission matrix completeness", () => {
       ])
       const allKeys: Record<PermissionKey, true> = {
         "read:experiences": true,
-        "read:experience-templates": true,
         "read:videos": true,
         "read:reference": true,
         "read:media-assets": true,
@@ -494,7 +489,6 @@ describe("permission matrix completeness", () => {
       // Record exhaustiveness check pairs with the runtime walk.
       const allKeys: Record<PermissionKey, true> = {
         "read:experiences": true,
-        "read:experience-templates": true,
         "read:videos": true,
         "read:reference": true,
         "read:media-assets": true,
@@ -568,79 +562,6 @@ describe("permission matrix completeness", () => {
       // …and NOT the other's.
       expect(consumerSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
       expect(workflowSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
-    })
-  })
-
-  // ---------------------------------------------------------------------------
-  // PARITY_BEARER (PR-C, plan 003) — R9 carve-out for the pre-cutover
-  // batch-verification harness. Permission set is exactly
-  // { "read:experience-templates" } — every other key returns false.
-  // ---------------------------------------------------------------------------
-
-  describe("PARITY_BEARER (PR-C — R9 carve-out for parity verification)", () => {
-    it("returns true ONLY for read:experience-templates, false for every other key", () => {
-      const allKeys: Record<PermissionKey, true> = {
-        "read:experiences": true,
-        "read:experience-templates": true,
-        "read:videos": true,
-        "read:reference": true,
-        "read:media-assets": true,
-        "write:experiences": true,
-        "write:videos": true,
-        "write:media-assets": true,
-        "write:scene-embeddings": true,
-        "write:transcript-embeddings": true,
-        "write:experience-content-dump": true,
-        "write:manager-enrichment-trigger": true,
-        "delete:media-assets": true,
-        "publish:experiences": true,
-        "archive:experiences": true,
-        "system:trigger-workflow": true,
-        "system:write-derived": true,
-        "admin:all": true,
-      }
-      const bearer = PARITY_BEARER_PRINCIPAL({ rateLimitBucketKey: "any" })
-      for (const key of Object.keys(allKeys) as PermissionKey[]) {
-        const expected = key === "read:experience-templates"
-        expect(hasPermission(bearer, key)).toBe(expected)
-      }
-    })
-
-    it("never satisfies workflow-trigger or consumer-permission keys", () => {
-      const bearer = PARITY_BEARER_PRINCIPAL({ rateLimitBucketKey: "any" })
-      expect(hasPermission(bearer, "write:scene-embeddings")).toBe(false)
-      expect(hasPermission(bearer, "write:transcript-embeddings")).toBe(false)
-      expect(hasPermission(bearer, "write:manager-enrichment-trigger")).toBe(
-        false,
-      )
-      // Read scopes that look adjacent — explicitly NOT granted.
-      expect(hasPermission(bearer, "read:experiences")).toBe(false)
-      expect(hasPermission(bearer, "read:videos")).toBe(false)
-    })
-
-    it("env-var split: PARITY_API_KEYS is distinct from both WEB_ADMIN_API_KEYS and WORKFLOW_API_KEYS", async () => {
-      const { readFile } = await import("node:fs/promises")
-      const { fileURLToPath } = await import("node:url")
-      const parity = await readFile(
-        fileURLToPath(new URL("./parity-bearer.ts", import.meta.url)),
-        "utf8",
-      )
-      const consumer = await readFile(
-        fileURLToPath(new URL("./consumer-bearer.ts", import.meta.url)),
-        "utf8",
-      )
-      const workflow = await readFile(
-        fileURLToPath(new URL("./workflow-bearer.ts", import.meta.url)),
-        "utf8",
-      )
-      // Parity reads its own var…
-      expect(parity).toMatch(/env\.PARITY_API_KEYS/)
-      // …and never the others.
-      expect(parity).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
-      expect(parity).not.toMatch(/env\.WORKFLOW_API_KEYS/)
-      // Reverse direction — neither neighbor reads PARITY_API_KEYS.
-      expect(consumer).not.toMatch(/env\.PARITY_API_KEYS/)
-      expect(workflow).not.toMatch(/env\.PARITY_API_KEYS/)
     })
   })
 })

@@ -1,5 +1,9 @@
 # CLAUDE.md — JesusFilm Forge Monorepo
 
+## Active Freeze
+
+> **`apps/web` UI feature work is paused on `main`** while the `feat/adapt-web-data-layer-to-admin` branch is live. Critical fixes still ship. See `docs/plans/2026-05-14-001-feat-adapt-web-data-layer-to-admin-plan.md` for scope. Rebuild branch rebases from main when critical fixes touch `apps/web/src/lib/`, `apps/web/src/app/`, shared types, or `packages/graphql/**`.
+
 ## Project Overview
 
 JesusFilm (JFP) is a ministry organization. This monorepo contains our web, mobile, and CMS applications with a shared GraphQL client package.
@@ -205,7 +209,7 @@ This repo uses the compound engineering workflow. After completing work:
 
 ### The GraphQL Change Flow
 
-`packages/graphql` consumes TWO GraphQL schemas during the consumer migration window — Strapi (`apps/cms`) and admin (`apps/admin`) — and emits two typed factories (`graphql()` and `adminGraphql()`). Each schema has its own change flow. Never skip the codegen step in either flow; stale types are the #1 source of runtime GraphQL errors.
+`packages/graphql` is currently Strapi-only and emits the `graphql()` factory. Admin-side typed GraphQL will live in `packages/admin-graphql` — landing in U9 of the `feat/adapt-web-data-layer-to-admin` plan. The branch is mid-rebuild: U9–U10 complete the new package and re-add CI's admin codegen verification.
 
 **Strapi-side change flow:**
 
@@ -216,16 +220,13 @@ This repo uses the compound engineering workflow. After completing work:
 5. Update consuming code in `apps/web/`, `apps/mobile/`, `apps/tv/`
 6. Commit generated files alongside source changes
 
-**Admin-side change flow:**
+**Admin-side change flow (current — until U9):**
 
 1. Add or modify Pothos types in `apps/admin/src/graphql/types/` or related modules
 2. Run `pnpm --filter @forge/admin schema:print` to regenerate `apps/admin/schema.graphql`
-3. Run `pnpm --filter @forge/graphql generate` to regenerate `packages/graphql/src/admin-graphql-env.d.ts`
-4. Update or add queries/mutations/fragments using the `adminGraphql()` factory in consuming apps
-5. Update consuming code (admin-targeted routes only — see `packages/graphql/CLAUDE.md` for which factory to use when)
-6. Commit all three regenerated files alongside source changes
+3. Commit both (Pothos source change + `schema.graphql`) in the same PR
 
-CI's `admin-schema-drift` job catches step 2 if you forget; CI's `graphql-generate` job catches step 3.
+No admin codegen consumer exists on this branch. Once U9 ships `packages/admin-graphql`, this section adds the codegen + consuming-code steps mirroring the Strapi flow. CI's `admin-schema-drift` job catches step 2 today; CI's admin-codegen verify returns in U10.
 
 ### Known Patterns (add to this list as you compound)
 

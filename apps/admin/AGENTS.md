@@ -48,10 +48,11 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 After ANY change to admin's Pothos schema (`src/graphql/types/`, `src/graphql/mutations/`, `src/graphql/queries/`, `src/graphql/builder.ts`):
 
 1. Run `pnpm --filter @forge/admin schema:print` to regenerate `apps/admin/schema.graphql`.
-2. Run `pnpm --filter @forge/graphql generate` to regenerate `packages/graphql/src/admin-graphql-env.d.ts`.
-3. Commit all three (Pothos source change + `schema.graphql` + `admin-graphql-env.d.ts`) in the same PR.
+2. Commit both (Pothos source change + `schema.graphql`) in the same PR.
 
-CI's `admin-schema-drift` job catches step 1 if forgotten. CI's `graphql-generate` job catches step 2. The committed SDL is the contract handoff between admin (producer) and `packages/graphql` (consumer); see `packages/graphql/CLAUDE.md` for the consumer side.
+The committed SDL artifact will be consumed by the future `packages/admin-graphql` package — landing in U9 of the `feat/adapt-web-data-layer-to-admin` plan. Until U9 ships, no `admin-graphql-env.d.ts` regeneration is required: there is no admin codegen consumer yet. `packages/graphql` is Strapi-only.
+
+CI's `admin-schema-drift` job catches step 1 if forgotten. The committed SDL is the contract handoff between admin (producer) and the forthcoming admin codegen consumer.
 
 `schema:print` uses Pothos `printSchema(lexicographicSortSchema(builder.toSchema()))` and strips Pothos plugin directives (`@authScopes` etc.) post-print so gql.tada's parser can consume the output.
 

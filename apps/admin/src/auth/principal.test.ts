@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
   CONSUMER_BEARER_PRINCIPAL,
-  PARITY_BEARER_PRINCIPAL,
   isEditorOrAdmin,
   SYSTEM_PRINCIPAL,
   WORKFLOW_TRIGGER_PRINCIPAL,
@@ -30,11 +29,6 @@ describe("isEditorOrAdmin", () => {
     [
       "CONSUMER_BEARER (web SSR rate-limit bucket — must NEVER be editorial)",
       CONSUMER_BEARER_PRINCIPAL({ rateLimitBucketKey: "test-bucket" }),
-      false,
-    ],
-    [
-      "PARITY_BEARER (pre-cutover harness — must NEVER be editorial)",
-      PARITY_BEARER_PRINCIPAL({ rateLimitBucketKey: "test-bucket" }),
       false,
     ],
   ]

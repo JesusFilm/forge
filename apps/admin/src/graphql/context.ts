@@ -19,9 +19,9 @@
 //   session → workflow-bearer → consumer-bearer → PUBLIC
 // in that order; the first match wins. Workflow-bearer goes before
 // consumer-bearer so a deployment that mistakenly puts the same key in
-// both CSVs doesn't silently downgrade a workflow caller to a
-// permissionless bucket — the workflow path retains its narrow
-// allowlist semantics.
+// both CSVs doesn't silently downgrade a workflow caller to the
+// permissionless consumer bucket — the workflow path retains its
+// narrow allowlist semantics.
 //
 // SECURITY: this module MUST NEVER log raw `Authorization` header
 // values or bearer key strings. Log scrubbing is unit-tested via
@@ -33,11 +33,9 @@ import { prisma } from "@/db/client"
 import { resolvePrincipalFromRequest } from "@/auth/session"
 import {
   CONSUMER_BEARER_PRINCIPAL,
-  PARITY_BEARER_PRINCIPAL,
   WORKFLOW_TRIGGER_PRINCIPAL,
 } from "@/auth/principal"
 import { isValidConsumerBearer } from "@/auth/consumer-bearer"
-import { isValidParityBearer } from "@/auth/parity-bearer"
 import { isValidWorkflowBearer } from "@/auth/workflow-bearer"
 import type { ContextShape } from "@/graphql/builder"
 import { createLoaders } from "@/graphql/loaders"
@@ -52,31 +50,24 @@ export async function createContext({
   // Session wins. A user with an admin session who happens to also send
   // a (valid or stray) bearer header is treated as that session, not
   // demoted to a narrower bearer principal. Otherwise the chain is
-  // workflow → parity → consumer → PUBLIC. The three bearer CSVs
-  // (`WORKFLOW_API_KEYS`, `PARITY_API_KEYS`, `WEB_ADMIN_API_KEYS`) are
-  // contractually disjoint per `permissions.test.ts`; precedence here
-  // is the safety net if that invariant ever drifts (workflow's narrow
-  // allowlist wins, then parity's even narrower one, then consumer).
+  // workflow → consumer → PUBLIC. The two bearer CSVs
+  // (`WORKFLOW_API_KEYS`, `WEB_ADMIN_API_KEYS`) are contractually
+  // disjoint per `permissions.test.ts`; precedence here is the safety
+  // net if that invariant ever drifts (workflow's narrow allowlist wins
+  // over consumer's permissionless bucket).
   let user = sessionUser
   if (user == null) {
     const authHeader = request.headers.get("authorization")
     if (isValidWorkflowBearer(authHeader)) {
       user = WORKFLOW_TRIGGER_PRINCIPAL
     } else {
-      const parity = isValidParityBearer(authHeader)
-      if (parity.valid) {
-        user = PARITY_BEARER_PRINCIPAL({
-          rateLimitBucketKey: parity.bucketKey,
+      const consumer = isValidConsumerBearer(authHeader)
+      if (consumer.valid) {
+        user = CONSUMER_BEARER_PRINCIPAL({
+          rateLimitBucketKey: consumer.bucketKey,
         })
       } else {
-        const consumer = isValidConsumerBearer(authHeader)
-        if (consumer.valid) {
-          user = CONSUMER_BEARER_PRINCIPAL({
-            rateLimitBucketKey: consumer.bucketKey,
-          })
-        } else {
-          user = null
-        }
+        user = null
       }
     }
   }

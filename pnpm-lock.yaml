@@ -879,13 +879,7 @@ importers:
       graphql:
         specifier: 16.13.1
         version: 16.13.1
-      p-limit:
-        specifier: ^7.3.0
-        version: 7.3.0
     devDependencies:
-      '@forge/admin':
-        specifier: workspace:*
-        version: link:../../apps/admin
       '@forge/cms':
         specifier: workspace:*
         version: link:../../apps/cms
@@ -895,9 +889,6 @@ importers:
       vitest:
         specifier: 3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@25.2.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3)
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
 
   packages/video-player:
     dependencies:

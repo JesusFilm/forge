@@ -21,8 +21,8 @@ export const watchExperienceFragment = graphql(
       documentId
       slug
       locale
-      isTemplate
       title
+      isTemplate
       metaDescription
       ogTitle
       ogDescription
