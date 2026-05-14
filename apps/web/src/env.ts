@@ -62,9 +62,7 @@ export const env = createEnv({
     // Absent in most preview environments; the server action surfaces a
     // graceful "not configured" state when unset.
     OPENROUTER_API_KEY: z.string().optional(),
-    // Admin GraphQL URL. Optional today; flipped to required when the web
-    // data layer fully reads from admin (see plan U13).
-    // Placeholder — wired in U13 when @forge/admin-graphql client lands
+    // Admin GraphQL URL. Required — web's data layer reads from admin.
     ADMIN_GRAPHQL_URL: z
       .url()
       .refine(
@@ -90,17 +88,15 @@ export const env = createEnv({
           ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES,
         ),
         { message: "unreachable" },
-      )
-      .optional(),
+      ),
     // Bearer key web's SSR sends to admin so traffic buckets as
-    // `consumer:<key>` rather than `public:<railway-egress-ip>`. Optional
-    // today; flipped to required in U13.
+    // `consumer:<key>` rather than `public:<railway-egress-ip>`.
     //
     // Format: single string OR comma-separated CSV mirroring admin's
     // `WEB_ADMIN_API_KEYS` Doppler value. Web reads the first entry as its
     // outbound bearer; admin recognizes any entry as a valid CONSUMER_BEARER.
-    // Placeholder — wired in U13 when @forge/admin-graphql client lands
-    WEB_ADMIN_API_KEYS: z.string().optional(),
+    // Required — flipped from optional in U13.
+    WEB_ADMIN_API_KEYS: z.string().min(1),
   },
   client: {
     NEXT_PUBLIC_GRAPHQL_URL: z.url(),
