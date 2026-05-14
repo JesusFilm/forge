@@ -49,6 +49,7 @@ function makeEpisode(overrides: Partial<Episode> = {}): Episode {
     label: "episode",
     images: [
       {
+        documentId: "img-1",
         url: "https://cdn.example/episode-one.jpg",
         thumbnail: "https://cdn.example/episode-one.thumb.jpg",
         mobileCinematicHigh: "https://cdn.example/episode-one.high.jpg",
@@ -218,6 +219,7 @@ describe("SeriesEpisodesGrid — crossfade reducer state machine", () => {
         slug: "ep-1",
         images: [
           {
+            documentId: "img-2",
             url: null,
             thumbnail: "https://cdn.example/ep1-thumb.jpg",
             mobileCinematicHigh: "https://cdn.example/ep1-high.jpg",
@@ -261,6 +263,7 @@ describe("SeriesEpisodesGrid — crossfade reducer state machine", () => {
         slug: "ep-1",
         images: [
           {
+            documentId: "img-3",
             url: null,
             thumbnail: null,
             mobileCinematicHigh: "https://cdn.example/same.jpg",
@@ -315,6 +318,7 @@ describe("SeriesEpisodesGrid — edge cases", () => {
     const episodeMissingHigh = makeEpisode({
       images: [
         {
+          documentId: "img-4",
           url: null,
           thumbnail: "https://cdn.example/thumb-only.jpg",
           mobileCinematicHigh: null,

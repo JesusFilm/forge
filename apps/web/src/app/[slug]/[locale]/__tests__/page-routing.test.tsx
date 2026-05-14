@@ -34,6 +34,12 @@ const {
   experienceErrorMock: vi.fn(() => null),
 }))
 
+// Stub the admin Apollo client so the jsdom test environment doesn't trip
+// t3-env's server-only guard on `WEB_ADMIN_API_KEYS` when content.ts loads.
+vi.mock("@/lib/admin-client", () => ({
+  default: { query: vi.fn() },
+}))
+
 vi.mock("@/lib/content", async () => {
   const actual =
     await vi.importActual<typeof import("@/lib/content")>("@/lib/content")

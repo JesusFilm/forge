@@ -15,6 +15,12 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+// Stub the admin Apollo client so the jsdom test environment doesn't trip
+// t3-env's server-only guard on `WEB_ADMIN_API_KEYS` when content.ts loads.
+vi.mock("@/lib/admin-client", () => ({
+  default: { query: vi.fn() },
+}))
+
 const {
   experienceSectionRendererMock,
   heroPlayerMock,

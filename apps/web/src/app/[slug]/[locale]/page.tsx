@@ -168,7 +168,7 @@ export default async function SlugLocalePage({ params }: PageProps) {
   // Video, Container) get the video record.
   const routeVideo = page.kind === "video-template" ? page.routeVideo : null
   const blocks = (experienceLike.blocks ?? []).filter(
-    (b): b is Section => b !== null && b.__typename !== "Error",
+    (b): b is Section => b !== null,
   )
   if (!blocks.length) {
     return <ExperienceEmpty />

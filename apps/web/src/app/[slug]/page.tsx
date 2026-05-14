@@ -45,7 +45,7 @@ export default async function SlugPage({ params }: PageProps) {
     page?.kind === "video-template" ? page.template : (page?.experience ?? null)
   const routeVideo = page?.kind === "video-template" ? page.routeVideo : null
   const blocks = (experience?.blocks ?? []).filter(
-    (b): b is Section => b !== null && b.__typename !== "Error",
+    (b): b is Section => b !== null,
   )
   if (!blocks.length) {
     return <ExperienceEmpty />

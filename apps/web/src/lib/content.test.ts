@@ -1,4 +1,3 @@
-import { print } from "graphql"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const { queryMock } = vi.hoisted(() => ({
@@ -18,11 +17,59 @@ vi.mock("react", async () => {
   }
 })
 
-vi.mock("@/lib/client", () => ({
+vi.mock("@/lib/admin-client", () => ({
   default: {
     query: queryMock,
   },
 }))
+
+// Builders for admin-shape `Video` projections — the resolver normalises
+// these into the flat `WatchVideoRecord` shape before consumers see them,
+// so the mocks recreate admin's `videoBySlug` projection (locales[],
+// dubs, parents/children with relation joins) verbatim.
+function makeAdminVideo(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    documentId: "video-1",
+    slug: "jesus",
+    noIndex: false,
+    label: null,
+    images: [{ documentId: "img-1", url: "https://cdn.example/jesus.jpg" }],
+    primaryLanguage: { coreId: "529", bcp47: "en" },
+    locales: [
+      {
+        documentId: "loc-1",
+        title: "Jesus",
+        description: "A full description",
+        snippet: "The story of Jesus",
+        imageAlt: "Jesus still",
+      },
+    ],
+    parents: [],
+    children: [],
+    variants: [
+      {
+        documentId: "variant-1",
+        slug: "english",
+        hls: "https://cdn.example/jesus.m3u8",
+        published: true,
+        duration: 7674,
+        language: {
+          coreId: "529",
+          bcp47: "en",
+          slug: "english",
+          name: "English",
+        },
+        downloads: [],
+        muxVideo: { playbackId: "pb-1" },
+      },
+    ],
+    studyQuestions: [],
+    bibleCitations: [],
+    ...overrides,
+  }
+}
 
 describe("resolveWatchPage", () => {
   afterEach(() => {
@@ -36,10 +83,10 @@ describe("resolveWatchPage", () => {
         watchSetting: {
           documentId: "watch-settings-1",
           homepageExperience: {
-            documentId: "exp-home-1",
+            __typename: "ExperienceLocale",
+            id: "exp-home-1",
             slug: "home",
             title: "Home",
-            isTemplate: false,
           },
           defaultTemplateExperience: null,
         },
@@ -88,24 +135,22 @@ describe("resolveWatchPage", () => {
             documentId: "watch-settings-1",
             homepageExperience: null,
             defaultTemplateExperience: {
-              documentId: "exp-template-1",
+              __typename: "ExperienceLocale",
+              id: "exp-template-1",
               slug: "single-video",
               title: "Single Video Template",
-              isTemplate: true,
             },
           },
         },
       })
       .mockResolvedValueOnce({
         data: {
-          experiences: [
-            {
-              documentId: "exp-1",
-              slug: "christmas",
-              title: "Christmas",
-              isTemplate: false,
-            },
-          ],
+          experienceBySlug: {
+            __typename: "ExperienceLocale",
+            id: "exp-1",
+            slug: "christmas",
+            title: "Christmas",
+          },
         },
       })
 
@@ -131,58 +176,52 @@ describe("resolveWatchPage", () => {
             documentId: "watch-settings-1",
             homepageExperience: null,
             defaultTemplateExperience: {
-              documentId: "exp-template-1",
+              __typename: "ExperienceLocale",
+              id: "exp-template-1",
               slug: "single-video",
               title: "Single Video Template",
-              isTemplate: true,
             },
           },
         },
       })
       .mockResolvedValueOnce({
         data: {
-          experiences: [],
+          experienceBySlug: null,
         },
       })
       .mockResolvedValueOnce({
         data: {
-          videos: [
-            {
-              documentId: "video-1",
-              slug: "jesus",
-              title: "Jesus",
-              snippet: "The story of Jesus",
-              description: "A full description",
-              imageAlt: "Jesus still",
-              noIndex: false,
-              images: [{ url: "https://cdn.example/jesus.jpg" }],
-              primaryLanguage: { coreId: "529" },
-              variants: [
-                {
-                  documentId: "variant-1",
-                  hls: "https://cdn.example/jesus.m3u8",
-                  published: true,
-                  language: { coreId: "529" },
-                },
-              ],
-              children: [
-                {
+          videoBySlug: makeAdminVideo({
+            children: [
+              {
+                child: {
                   documentId: "child-1",
                   slug: "the-beginning",
-                  title: "The Beginning",
-                  label: "segment",
-                  images: [{ url: "https://cdn.example/child.jpg" }],
+                  label: "SEGMENT",
+                  locales: [{ documentId: "cl-1", title: "The Beginning" }],
+                  images: [
+                    {
+                      documentId: "img-c",
+                      url: "https://cdn.example/child.jpg",
+                    },
+                  ],
+                  dubs: [],
                 },
-                {
+              },
+              {
+                // Self-child filter: skip the entry pointing back at the
+                // current video.
+                child: {
                   documentId: "video-1",
                   slug: "jesus",
-                  title: "Jesus",
-                  label: "self",
-                  images: [{ url: "https://cdn.example/self.jpg" }],
+                  label: null,
+                  locales: [{ documentId: "cl-2", title: "Jesus" }],
+                  images: [],
+                  dubs: [],
                 },
-              ],
-            },
-          ],
+              },
+            ],
+          }),
         },
       })
 
@@ -190,24 +229,10 @@ describe("resolveWatchPage", () => {
 
     const result = await resolveWatchPage("en", "jesus")
 
-    expect(print(queryMock.mock.calls[2][0].query)).toMatch(
-      /children\(pagination:\s*\{limit:\s*24\}\)/,
-    )
-    // GET_ROUTE_VIDEO must paginate variants with `limit: -1` for the same
-    // reason WatchVideoFragment does (see watch-video.test.ts): the default
-    // 10-row return would silently drop the playable variant for any video
-    // whose first 10 variants don't include the primary language, sending
-    // the watch page to the wrong locale.
-    expect(print(queryMock.mock.calls[2][0].query)).toMatch(
-      /variants\(pagination:\s*\{\s*limit:\s*-1\s*\}\)/,
-    )
-
     expect(result.error).toBeNull()
     expect(result.data).toMatchObject({
       kind: "video-template",
-      template: {
-        slug: "single-video",
-      },
+      template: { slug: "single-video" },
       routeVideo: {
         slug: "jesus",
         title: "Jesus",
@@ -215,7 +240,7 @@ describe("resolveWatchPage", () => {
         relatedItems: [
           {
             title: "The Beginning",
-            label: "segment",
+            label: "SEGMENT",
             videoSlug: "the-beginning",
           },
         ],
@@ -230,41 +255,16 @@ describe("resolveWatchPage", () => {
           watchSetting: {
             documentId: "watch-settings-1",
             homepageExperience: null,
-            // No template — even when the video exists, the route has nothing
-            // to render against.
             defaultTemplateExperience: null,
           },
         },
       })
       .mockResolvedValueOnce({
-        data: {
-          experiences: [],
-        },
+        data: { experienceBySlug: null },
       })
       .mockResolvedValueOnce({
         data: {
-          videos: [
-            {
-              documentId: "video-1",
-              slug: "jesus",
-              title: "Jesus",
-              snippet: null,
-              description: null,
-              imageAlt: null,
-              noIndex: false,
-              images: [],
-              primaryLanguage: { coreId: "529" },
-              variants: [
-                {
-                  documentId: "variant-1",
-                  hls: "https://cdn.example/jesus.m3u8",
-                  published: true,
-                  language: { coreId: "529" },
-                },
-              ],
-              children: [],
-            },
-          ],
+          videoBySlug: makeAdminVideo(),
         },
       })
 
@@ -284,38 +284,20 @@ describe("resolveWatchPage", () => {
             documentId: "watch-settings-1",
             homepageExperience: null,
             defaultTemplateExperience: {
-              documentId: "exp-template-1",
+              __typename: "ExperienceLocale",
+              id: "exp-template-1",
               slug: "single-video",
               title: "Single Video Template",
-              isTemplate: true,
             },
           },
         },
       })
+      .mockResolvedValueOnce({ data: { experienceBySlug: null } })
       .mockResolvedValueOnce({
         data: {
-          experiences: [],
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          videos: [
-            {
-              documentId: "video-1",
-              slug: "jesus",
-              title: "Jesus",
-              snippet: null,
-              description: null,
-              imageAlt: null,
-              noIndex: false,
-              images: [],
-              primaryLanguage: { coreId: "529" },
-              // Empty variants — selectPlayableVariant returns null, so
-              // normalizeRouteVideo returns null and the route bails.
-              variants: [],
-              children: [],
-            },
-          ],
+          // Empty variants — selectPlayableVariant returns null, so
+          // normalizeRouteVideo returns null and the route bails.
+          videoBySlug: makeAdminVideo({ variants: [] }),
         },
       })
 
@@ -335,38 +317,17 @@ describe("resolveWatchPage", () => {
             documentId: "watch-settings-1",
             homepageExperience: null,
             defaultTemplateExperience: {
-              documentId: "exp-template-1",
+              __typename: "ExperienceLocale",
+              id: "exp-template-1",
               slug: "single-video",
               title: "Single Video Template",
-              isTemplate: true,
             },
           },
         },
       })
       .mockResolvedValueOnce({
         data: {
-          videos: [
-            {
-              documentId: "video-1",
-              slug: "single-video",
-              title: "Jesus",
-              snippet: null,
-              description: null,
-              imageAlt: null,
-              noIndex: false,
-              images: [],
-              primaryLanguage: { coreId: "529" },
-              variants: [
-                {
-                  documentId: "variant-1",
-                  hls: "https://cdn.example/jesus.m3u8",
-                  published: true,
-                  language: { coreId: "529" },
-                },
-              ],
-              children: [],
-            },
-          ],
+          videoBySlug: makeAdminVideo({ slug: "single-video" }),
         },
       })
 
@@ -380,12 +341,8 @@ describe("resolveWatchPage", () => {
     expect(result.error).toBeNull()
     expect(result.data).toMatchObject({
       kind: "video-template",
-      template: {
-        slug: "single-video",
-      },
-      routeVideo: {
-        slug: "single-video",
-      },
+      template: { slug: "single-video" },
+      routeVideo: { slug: "single-video" },
     })
   })
 })

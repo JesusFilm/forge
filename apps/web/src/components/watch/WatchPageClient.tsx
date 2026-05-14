@@ -58,17 +58,27 @@ export function WatchPageClient({
   const currentLanguageSlug = languageSlug ?? variant.language?.slug ?? ""
 
   // Drop entries missing `quality` or `url` — unrenderable / unfollowable.
+  // Admin emits `VideoDubDownload.size` as a `String` (Core's bytes literal,
+  // which may exceed JS number precision for very large files). Parse to
+  // number for the download modal's sort bucket; non-numeric values fall
+  // through as null and the modal hides the size label.
   const downloadsForModal = (variant.downloads ?? [])
     .filter(
       (d): d is NonNullable<typeof d> =>
         d != null && d.quality != null && d.url != null,
     )
-    .map((d) => ({
-      documentId: d.documentId,
-      quality: d.quality as string,
-      size: d.size,
-      url: d.url as string,
-    }))
+    .map((d) => {
+      const sizeNum =
+        typeof d.size === "string" && d.size.length > 0
+          ? Number.parseFloat(d.size)
+          : null
+      return {
+        documentId: d.documentId,
+        quality: d.quality as string,
+        size: sizeNum != null && Number.isFinite(sizeNum) ? sizeNum : null,
+        url: d.url as string,
+      }
+    })
 
   const variantsForLanguagePicker = useMemo(
     () =>
