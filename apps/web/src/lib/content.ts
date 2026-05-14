@@ -348,8 +348,13 @@ async function resolveSlugPage(
   // as a regular Experience and falls through to a template-rendered video
   // when no Experience matches.
   if (slug !== templateSlug) {
+    // Filter templates out at the Strapi query layer: until web reads from
+    // admin (which strips isTemplate from PUBLIC), Strapi exposes every
+    // Experience including templates, and a template hit at this slug would
+    // render as a regular page instead of falling through to video routing.
     const experience = await getExperienceByFilters(locale, {
       slug: { eq: slug },
+      isTemplate: { eq: false },
     })
     if (experience) {
       return { kind: "experience", experience }

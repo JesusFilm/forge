@@ -207,10 +207,10 @@ export class ExperienceService {
       where.status = "PUBLISHED"
       const experienceFilter: Record<string, unknown> = { archivedAt: null }
       // R9: hide template experiences from PUBLIC + CONSUMER_BEARER (web
-      // SSR's identity) so consumer's asNonTemplateExperience check stays
-      // sound at the server-side seam. VIEWER bypasses this filter
-      // (editorial-tier read; templates are editorial artifacts staff
-      // translators/reviewers need to inspect).
+      // SSR's identity) so the consumer never sees a template via the
+      // public surface. VIEWER bypasses this filter (editorial-tier
+      // read; templates are editorial artifacts staff translators and
+      // reviewers need to inspect).
       if (user === null || user.role === "CONSUMER_BEARER") {
         experienceFilter.isTemplate = false
       }
