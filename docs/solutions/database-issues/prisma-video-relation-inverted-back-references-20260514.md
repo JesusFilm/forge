@@ -86,6 +86,18 @@ The one-line schema swap was applied and reverted in branch `feat/web-admin-poli
 
 The repo's full admin test suite (2266 tests) passes after the swap, but coverage gaps over Experience Builder runtime behavior are a possibility. A clean fix wants its own branch with explicit Experience Builder regression sweep.
 
+## ⚠️ Production cutover risk
+
+This bug is latent on `main` today but does **not** affect prod web, because prod web still reads from Strapi (apps/cms data layer). The inverted back-references only become user-visible once `feat/web-admin-data-layer-flip` (PR #939 U1-U8 + PR #941 U9-U22) ships and prod web starts calling admin's GraphQL.
+
+When that cutover lands without the schema swap, prod will exhibit:
+
+- Series details pages (`/watch/<series-slug>/<locale>`) showing "0 EPISODES" and no episode grid — even for series with 60+ chapters in admin's DB.
+- Watch-page SiblingCarousel staying hidden on every video (the defensive web-side dedupe in commit `d6b1eb7d` suppresses self-refs, so the carousel never renders).
+- admin's own Experience Builder `routeVideoChildren` blocks rendering the route video's _parents_ instead of its children.
+
+The fix is a 2-line edit + `pnpm --filter @forge/admin db:generate`. It should land on its own branch **before** the data-layer-flip reaches prod, to keep cutover risk contained to one diff at a time.
+
 ## Workaround currently in place
 
 `apps/web/src/lib/content.ts` (commit `d6b1eb7d`):
