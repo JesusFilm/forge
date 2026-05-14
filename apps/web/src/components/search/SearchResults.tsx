@@ -2,12 +2,8 @@
 
 import { useState } from "react"
 import type { Route } from "next"
-import client from "@/lib/client"
-import {
-  SEMANTIC_SEARCH,
-  type SearchContentType,
-  type SearchResult,
-} from "@/lib/search"
+import { runSearch } from "@/lib/search-actions"
+import type { SearchContentType, SearchResult } from "@/lib/search"
 import { VideoCard } from "./VideoCard"
 
 type SearchResultsProps = {
@@ -56,32 +52,20 @@ export function SearchResults({
       typeof performance !== "undefined" ? performance.now() : Date.now()
 
     try {
-      const result = await client.query({
-        query: SEMANTIC_SEARCH,
-        variables: {
-          query,
-          locale: "en",
-          limit: 20,
-          offset,
-          type,
-        },
-        fetchPolicy: "no-cache",
+      const data = await runSearch({
+        query,
+        limit: 20,
+        offset,
+        type,
       })
 
       const ended =
         typeof performance !== "undefined" ? performance.now() : Date.now()
       onQueryTimed?.(ended - startedAt)
 
-      if (result.error) {
-        throw new Error(result.error.message || "Failed to load more results")
-      }
-
-      const data = result.data?.semanticSearch
-      if (data) {
-        setResults((prev) => [...prev, ...data.results])
-        setHasMore(data.hasMore)
-        setOffset((prev) => prev + data.results.length)
-      }
+      setResults((prev) => [...prev, ...data.results])
+      setHasMore(data.hasMore)
+      setOffset((prev) => prev + data.results.length)
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load more results",

@@ -1,18 +1,19 @@
 import { unstable_cache } from "next/cache"
-import { graphql, type ResultOf } from "@forge/graphql"
-import client from "@/lib/client"
+import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
+import client from "@/lib/admin-client"
 
 // Minimal fetch for the /demo-search watch page. Intentionally decoupled from
 // lib/content.ts's richer ResolvedWatchPage tree so the demo route does not
-// drag along the template-experience lookup path.
+// drag along the template-experience lookup path. Admin's `videoBySlug`
+// resolves the row by slug only; the locale-narrowed `Video.locales(locale)`
+// projection keeps the response to a single locale row even though admin
+// stores every locale.
 
-const GET_DEMO_VIDEO = graphql(`
-  query GetDemoVideo($slug: String!, $locale: I18NLocaleCode!) {
-    videos(filters: { slug: { eq: $slug } }, locale: $locale) {
-      documentId
+const GET_DEMO_VIDEO = adminGraphql(`
+  query GetDemoVideo($slug: String!, $locale: String!) {
+    videoBySlug(slug: $slug) {
+      documentId: id
       slug
-      title
-      description
       images {
         url
         mobileCinematicHigh
@@ -20,8 +21,12 @@ const GET_DEMO_VIDEO = graphql(`
       primaryLanguage {
         coreId
       }
-      variants {
-        documentId
+      locales(locale: $locale) {
+        title
+        description
+      }
+      variants: dubs {
+        documentId: id
         hls
         published
         language {
@@ -33,8 +38,8 @@ const GET_DEMO_VIDEO = graphql(`
 `)
 
 type DemoVideoRecord = NonNullable<
-  ResultOf<typeof GET_DEMO_VIDEO>["videos"]
->[number]
+  AdminResultOf<typeof GET_DEMO_VIDEO>["videoBySlug"]
+>
 
 export type DemoPlayableVideo = {
   title: string
@@ -44,7 +49,7 @@ export type DemoPlayableVideo = {
   imageUrl: string | null
 }
 
-function selectPlayableVariant(video: NonNullable<DemoVideoRecord>) {
+function selectPlayableVariant(video: DemoVideoRecord) {
   const variants = (video.variants ?? []).filter(
     (variant): variant is NonNullable<typeof variant> => variant != null,
   )
@@ -71,27 +76,26 @@ const fetchDemoVideo = unstable_cache(
         variables: { slug, locale },
         fetchPolicy: "no-cache",
       })
-      const record = result.data?.videos?.[0] as
-        | NonNullable<DemoVideoRecord>
-        | undefined
+      const record = result.data?.videoBySlug ?? null
       if (!record) return null
 
       const variant = selectPlayableVariant(record)
       const image = record.images?.[0]
       const imageUrl =
         (image?.mobileCinematicHigh as string | undefined) ?? image?.url ?? null
+      const localeRow = record.locales?.[0] ?? null
 
       return {
-        title: record.title ?? slug,
-        description: record.description ?? null,
+        title: localeRow?.title ?? slug,
+        description: localeRow?.description ?? null,
         streamingUrl: variant?.hls ?? null,
         posterUrl: imageUrl,
         imageUrl,
       }
     } catch (err) {
-      // Distinguish a genuinely missing video from a transient CMS failure
-      // in the logs so silent degradation is visible to operators. The page
-      // still falls back to the live-site link either way.
+      // Distinguish a genuinely missing video from a transient upstream
+      // failure in the logs so silent degradation is visible to operators.
+      // The page still falls back to the live-site link either way.
       console.error(
         `[demo-search] getDemoPlayableVideo(${slug}/${locale}) failed`,
         err instanceof Error ? err.message : err,
