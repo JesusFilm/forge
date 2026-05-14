@@ -49,7 +49,7 @@
     {
       "coreId": "fixt-jesus-collection",
       "slug": "jesus-collection",
-      "label": "collection",
+      "label": "COLLECTION",
       "publishedAt": "2026-01-01T00:00:00.000Z",
       "locales": [
         {
@@ -67,7 +67,7 @@
     {
       "coreId": "fixt-jesus-feature",
       "slug": "jesus-feature-film",
-      "label": "featureFilm",
+      "label": "FEATURE_FILM",
       "publishedAt": "2026-01-02T00:00:00.000Z",
       "locales": [
         {
@@ -86,7 +86,7 @@
     {
       "coreId": "fixt-jesus-trailer",
       "slug": "jesus-trailer",
-      "label": "shortClip",
+      "label": "TRAILER",
       "publishedAt": "2026-01-03T00:00:00.000Z",
       "locales": [
         {
@@ -100,7 +100,7 @@
     {
       "coreId": "fixt-easter-explained",
       "slug": "easter-explained",
-      "label": "shortClip",
+      "label": "SHORT_FILM",
       "publishedAt": "2026-01-04T00:00:00.000Z",
       "locales": [
         {
@@ -118,7 +118,7 @@
     {
       "coreId": "fixt-my-last-day",
       "slug": "my-last-day",
-      "label": "shortClip",
+      "label": "SHORT_FILM",
       "publishedAt": "2026-01-05T00:00:00.000Z",
       "locales": [
         {
