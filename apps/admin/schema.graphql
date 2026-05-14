@@ -922,16 +922,26 @@ A video sourced from JesusFilm Core. Read-only at the GraphQL layer in v1.
 type Video {
   aiMetadata: Boolean
   bibleCitations: [BibleCitation!]
+  """
+  Child Video-Video relations (this Video is the parent). PUBLIC/VIEWER see only relations whose child has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.
+  """
+  children: [VideoRelation!]
   coreId: String
   dubs: [VideoDub!]
   id: ID
   images: [VideoImage!]
   label: VideoLabel
-  """PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all."""
-  locales: [VideoLocale!]
+  """
+  PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all. Pass `locale` to narrow the result to a single BCP-47 locale (web's WatchVideo fragment uses this to avoid overfetching every locale).
+  """
+  locales(locale: String): [VideoLocale!]
   locked: Boolean
   noIndex: Boolean
   origin: VideoOrigin
+  """
+  Parent Video-Video relations (this Video is the child). PUBLIC/VIEWER see only relations whose parent has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.
+  """
+  parents: [VideoRelation!]
   primaryLanguage: Language
   publishedAt: String
   slug: String
@@ -1123,6 +1133,16 @@ type VideoRecommendationsBlock {
   subtitle: String
   t: String
   title: String
+}
+
+"""
+Self-referential parent/child join between Videos (e.g. series→episode). Exposes the related parent/child Video plus its ordering position.
+"""
+type VideoRelation {
+  child: Video
+  id: ID
+  order: Int
+  parent: Video
 }
 
 """
