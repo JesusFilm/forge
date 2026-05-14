@@ -130,7 +130,7 @@ export function SearchOverlay() {
       aria-modal="true"
       aria-label="Search and browse videos"
       onClick={() => closeAndKeepQuery()}
-      className={`fixed inset-0 flex flex-col ${closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"}`}
+      className={`fixed inset-0 overflow-hidden ${closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"}`}
       style={{
         zIndex: 9999,
         backgroundColor: "rgba(0, 0, 0, 0.75)",
@@ -138,12 +138,16 @@ export function SearchOverlay() {
         WebkitBackdropFilter: "blur(12px)",
       }}
     >
-      {/* Top bar: input is viewport-centered via mx-auto; mobile logo and
-          close button are absolutely positioned so they don't push the input
-          off-center. Outer padding (px-4 sm:px-6) matches the floating
-          searchbar's side margin (w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)])
-          so the input's position and size on open match the bar's exactly. */}
-      <div className="relative shrink-0 px-4 pt-6 sm:px-6 sm:pt-10">
+      {/* Floating top bar: input is viewport-centered via mx-auto; mobile
+          logo and close button are absolutely positioned so they don't push
+          the input off-center. Outer padding (px-4 sm:px-6) matches the
+          floating searchbar's side margin (w-[calc(100%-2rem)]
+          sm:w-[calc(100%-3rem)]) so the input's position and size on open
+          match the bar's exactly. The wrapper is `pointer-events-none` so
+          scroll wheel events over the empty edges pass through to the
+          body; the pill + logo + close button re-enable pointer events
+          on themselves. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-6 sm:px-6 sm:pt-10">
         <Link
           href={"/" as Route}
           aria-label="JesusFilm home"
@@ -154,7 +158,7 @@ export function SearchOverlay() {
             e.stopPropagation()
             void search("")
           }}
-          className="absolute left-4 top-[30px] z-10 flex items-center rounded-full p-1 sm:hidden focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
+          className="pointer-events-auto absolute left-4 top-[30px] z-10 flex items-center rounded-full p-1 sm:hidden focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
         >
           <Image
             src="/watch/images/jesusfilm-sign.svg"
@@ -168,7 +172,7 @@ export function SearchOverlay() {
           role="search"
           aria-label="Search videos"
           onClick={(e) => e.stopPropagation()}
-          className="relative mx-auto w-full max-w-[810px]"
+          className="pointer-events-auto relative mx-auto w-full max-w-[810px]"
         >
           <input
             ref={inputRef}
@@ -210,7 +214,7 @@ export function SearchOverlay() {
             closeAndKeepQuery()
           }}
           aria-label="Close search"
-          className="absolute right-2 top-[18px] z-10 rounded-full p-3 text-stone-400 transition hover:text-white focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 sm:right-4 sm:top-[34px]"
+          className="pointer-events-auto absolute right-2 top-[18px] z-10 rounded-full p-3 text-stone-400 transition hover:text-white focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 sm:right-4 sm:top-[34px]"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -229,9 +233,12 @@ export function SearchOverlay() {
         </button>
       </div>
 
-      {/* Body: category grid when empty, results grid when queried */}
+      {/* Body: category grid when empty, results grid when queried.
+          Fills the entire dialog so the floating bar can sit ABOVE it
+          with backdrop-blur — `pt-24 sm:pt-32` clears the bar's height
+          (input ≈48px + bar pt-6/pt-10 + breathing room). */}
       <div
-        className="search-overlay-scroll min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-6 sm:px-6"
+        className="search-overlay-scroll absolute inset-0 overflow-y-auto px-4 pb-8 pt-24 sm:px-6 sm:pt-32"
         aria-live="polite"
       >
         <div
