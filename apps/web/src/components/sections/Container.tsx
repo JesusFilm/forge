@@ -16,6 +16,11 @@ import { MediaCollection } from "./MediaCollection"
 import { CTASection } from "./CTASection"
 import { Video } from "./Video"
 import { RelatedQuestions } from "./RelatedQuestions"
+import { ADMIN_BLOCK_TYPENAMES, renderAdminBlock } from "./index"
+
+type AnyBlock = {
+  readonly __typename?: string | null
+} & Record<string, unknown>
 
 export { containerFragment }
 
@@ -116,8 +121,18 @@ function SlotContentRenderer({
           data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
         />
       )
-    default:
+    default: {
+      // Admin typenames (TextBlock, EasterDatesBlock, VideoBlock, etc.)
+      // arrive here when a ContainerSlot composes admin-shape blocks.
+      // Strapi-era cases above only know `ComponentSections*` typenames;
+      // fall back to the top-level admin dispatch so nested admin blocks
+      // render correctly inside container slots.
+      const typename = (item as { __typename?: string | null }).__typename
+      if (typename != null && ADMIN_BLOCK_TYPENAMES.has(typename)) {
+        return renderAdminBlock(item as unknown as AnyBlock, routeVideo)
+      }
       return null
+    }
   }
 }
 

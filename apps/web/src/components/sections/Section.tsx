@@ -18,6 +18,11 @@ import { NavigationCarousel } from "./NavigationCarousel"
 import { QuizButton } from "./QuizButton"
 import { RelatedQuestions } from "./RelatedQuestions"
 import { Video } from "./Video"
+import { ADMIN_BLOCK_TYPENAMES, renderAdminBlock } from "./index"
+
+type AnyBlock = {
+  readonly __typename?: string | null
+} & Record<string, unknown>
 
 export { sectionFragment }
 
@@ -249,6 +254,17 @@ function SectionContentRenderer({
         />
       )
     default: {
+      // Admin typenames (NavigationCarouselBlock, ContainerBlock, etc.)
+      // arrive here when a Section's nested content composes admin-shape
+      // blocks. The Strapi-era cases above only know `ComponentSections*`
+      // typenames; fall back to the top-level admin dispatch so nested
+      // admin blocks render correctly. See packages/admin-graphql/
+      // src/fragments/blocks/section.ts where `content` is aliased to
+      // `sectionContent` — the alias preserves field name; per-item
+      // __typename still carries admin's `*Block` shape.
+      if (ADMIN_BLOCK_TYPENAMES.has(typename)) {
+        return renderAdminBlock(item as unknown as AnyBlock, routeVideo)
+      }
       if (process.env.NODE_ENV === "development") {
         console.warn("[Section] Unhandled content type:", typename)
       }
