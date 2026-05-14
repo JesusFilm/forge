@@ -168,6 +168,44 @@ pnpm --filter @forge/admin lint
 pnpm --filter @forge/admin typecheck
 ```
 
+### Video database backup and clone
+
+Production backup is automated only. Do not add or use an operator
+`backup:video-db` script. Run Postgres World from a dedicated admin worker
+Railway service, not from the traffic-serving admin web service. Both services
+can use the same admin build/start command, but only the worker should set
+`WORKFLOW_RUNNER_ENABLED=true`; web should leave it unset or `false` so web
+replicas can scale on traffic without also running jobs. When the worker boots,
+`src/instrumentation.ts` starts Postgres World and ensures one
+`src/workflows/videoDbBackup.ts` scheduler workflow is running. That scheduler
+workflow runs one backup immediately when it is first created, then sleeps until
+the next daily UTC run and repeats on that cadence. The actual `pg_dump` and S3
+upload run inside Postgres World, and each backup gets a `workflow_run` ledger
+row visible in `/dashboard/workflows`. The job backs up the default
+`video-core` profile and uploads to the normal Railway S3 bucket env vars
+already managed through Doppler/Railway:
+`RAILWAY_S3_BUCKET`,
+`RAILWAY_S3_ENDPOINT`, `RAILWAY_S3_REGION`, `RAILWAY_S3_ACCESS_KEY_ID`, and
+`RAILWAY_S3_SECRET_ACCESS_KEY`. Backups upload under the fixed
+`admin-video-db-backups/<profile>/` prefix.
+
+The schedule is fixed in code at daily 09:00 UTC. The admin Railway image gets
+PostgreSQL 18 client tools from the admin service's Railpack variable
+`RAILPACK_PACKAGES=postgres@18.1`; keep that in sync with the managed database
+major version because `pg_dump` cannot dump from a newer server. Railpack's
+Mise Postgres package compiles from source, so the services also need
+`RAILPACK_BUILD_APT_PACKAGES=bison flex`. Because this monorepo has multiple
+Railway services, do not put a root Railpack config in place for this feature
+unless every service should inherit it. Deployment details should be checked
+after merge to confirm the package settings were applied to both admin web and
+worker services.
+
+Use `pnpm --filter @forge/admin restore:video-db -- --target-env=development --in=<dump>`
+to restore into local or staging Postgres. The restore path reads
+`TARGET_DATABASE_URL` first, then `DATABASE_URL`, truncates only the reviewed
+video manifest tables, and refuses `--target-env=production` unless
+`--allow-production-target` is also present.
+
 ### Jesus Film Auth client mode
 
 For local OAuth-mode development, run Auth on `http://localhost:3004`, seed its

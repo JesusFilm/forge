@@ -112,6 +112,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-091](platform/feat-091-admin-dashboard-ui.md)                              | Build Forge admin dashboard UI                          | tataihono | P1       | 2026-04-14 | 2    | 2026-04-15 | complete    |
 | [feat-099](platform/feat-099-devcontainer-codex-install-and-vm-permissions.md)   | Devcontainer Codex Install And VM Permissions           | tataihono | P1       | 2026-04-15 | 1    | 2026-04-15 | complete    |
 | [feat-100](platform/feat-100-admin-video-and-media-editorial-workflows.md)       | Admin Video And Media Editorial Workflows               | tataihono | P1       | 2026-04-15 | 10   | 2026-04-24 | in-progress |
+| [feat-122](platform/feat-122-admin-video-database-backup-and-clone.md)           | Admin video database backup and clone tooling           | tataihono | P1       | 2026-05-13 | 5    | 2026-05-17 | complete    |
 | [feat-101](platform/feat-101-admin-experience-block-editor-parity.md)            | Admin Experience Block Editor Parity                    | tataihono | P1       | 2026-04-15 | 7    | 2026-04-21 | complete    |
 | [feat-102](platform/feat-102-dependabot-security-remediation.md)                 | Dependabot Security Remediation                         | tataihono | P1       | 2026-04-16 | 1    | 2026-04-16 | complete    |
 | [feat-103](platform/feat-103-admin-experience-editor-refinement.md)              | Admin Experience Editor Refinement                      | tataihono | P1       | 2026-04-16 | 5    | 2026-04-20 | complete    |
