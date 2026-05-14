@@ -331,6 +331,18 @@ function SectionContentRenderer({
           data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
         />
       )
+    case "QuizButtonBlock":
+      return (
+        <QuizButton
+          data={
+            item as unknown as {
+              id: string
+              buttonText: string
+              iframeSrc: string
+            }
+          }
+        />
+      )
     case "VideoCarouselBlock":
       return (
         <CarouselVideo
