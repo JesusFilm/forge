@@ -49,6 +49,17 @@ export type VideoDbBackupSchedulerStartResult =
 const SCHEDULER_WORKFLOW_KEY = "video-db-backup-scheduler"
 const SCHEDULER_LOCK_ID = 862_640_122
 const BACKUP_HOUR_UTC = 9
+const TERMINAL_RUNTIME_STATUSES = new Set(["completed", "failed", "cancelled"])
+
+type SchedulerLedgerRun = {
+  id: string
+  runtimeRunId: string | null
+}
+
+type RuntimeRunStatus = {
+  status: string
+  error: string | null
+}
 
 function summarizeBackupResult(result: VideoDbBackupJobResult): string {
   const destination = result.upload
@@ -219,6 +230,54 @@ async function withSchedulerStartLock<T>(
   }
 }
 
+async function loadRuntimeRunStatus(
+  runtimeRunId: string,
+): Promise<RuntimeRunStatus | null> {
+  try {
+    const rows = await prisma.$queryRaw<RuntimeRunStatus[]>`
+      SELECT status, error
+      FROM workflow.workflow_runs
+      WHERE id = ${runtimeRunId}
+      LIMIT 1
+    `
+    return rows[0] ?? null
+  } catch {
+    return null
+  }
+}
+
+async function reconcileStaleSchedulerRun(
+  existing: SchedulerLedgerRun,
+): Promise<boolean> {
+  if (!existing.runtimeRunId) return false
+
+  const runtimeRun = await loadRuntimeRunStatus(existing.runtimeRunId)
+  if (!runtimeRun || !TERMINAL_RUNTIME_STATUSES.has(runtimeRun.status)) {
+    return false
+  }
+
+  const status =
+    runtimeRun.status === "completed"
+      ? WorkflowRunStatus.SUCCEEDED
+      : WorkflowRunStatus.FAILED
+  const summary =
+    runtimeRun.status === "completed"
+      ? "Video DB backup scheduler stopped after runtime completion."
+      : `Video DB backup scheduler runtime ${runtimeRun.status}.`
+
+  await prisma.workflowRun.update({
+    where: { id: existing.id },
+    data: {
+      status,
+      finishedAt: new Date(),
+      summary,
+      error: runtimeRun.error,
+    },
+  })
+
+  return true
+}
+
 export async function ensureVideoDbBackupSchedulerStarted(): Promise<VideoDbBackupSchedulerStartResult> {
   return withSchedulerStartLock(async () => {
     const existing = await prisma.workflowRun.findFirst({
@@ -232,11 +291,14 @@ export async function ensureVideoDbBackupSchedulerStarted(): Promise<VideoDbBack
     })
 
     if (existing) {
-      return {
-        started: false,
-        reason: "already-running",
-        ledgerRunId: existing.id,
-        runtimeRunId: existing.runtimeRunId,
+      const stale = await reconcileStaleSchedulerRun(existing)
+      if (!stale) {
+        return {
+          started: false,
+          reason: "already-running",
+          ledgerRunId: existing.id,
+          runtimeRunId: existing.runtimeRunId,
+        }
       }
     }
 

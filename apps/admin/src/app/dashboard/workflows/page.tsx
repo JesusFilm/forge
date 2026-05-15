@@ -6,6 +6,7 @@ import { requireSession } from "@/auth/session"
 import { getAdminMessages } from "@/i18n/server"
 import { loadWorkflowRuntimeRuns } from "@/services/workflow-runtime.service"
 import { loadWorkflowWorkerStatusRows } from "@/services/workflow-worker-heartbeat.service"
+import { getKnownVideoDbBackupWorkflowIds } from "@/workflows/registry"
 
 type WorkflowsPageProps = {
   searchParams?: Promise<{
@@ -96,6 +97,7 @@ export default async function WorkflowsPage({
   const statusFilter = parseStatusFilter(resolvedSearchParams?.status)
   const limit = parseLimit(resolvedSearchParams?.limit)
   await requireSession()
+  const knownVideoDbBackupWorkflowIds = getKnownVideoDbBackupWorkflowIds()
   const [runs, workers] = await Promise.all([
     loadWorkflowRuntimeRuns(limit),
     loadWorkflowWorkerStatusRows(),
@@ -109,7 +111,10 @@ export default async function WorkflowsPage({
   const nextLimit = Math.min(limit + 25, 100)
 
   return (
-    <div className="flex flex-col gap-6">
+    <div
+      className="flex flex-col gap-6"
+      data-workflow-registry-count={knownVideoDbBackupWorkflowIds.length}
+    >
       <DashboardPageHeader
         eyebrow={page.eyebrow}
         title={page.title}

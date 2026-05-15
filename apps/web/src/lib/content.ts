@@ -1065,10 +1065,15 @@ const fetchWatchVideoBySlug = cache(
         fallback as { error?: ErrorLike; errors?: unknown[] },
       )
       if (!fallbackError && fallback.data?.videoBySlug?.locales?.[0]) {
-        return normalizeAdminVideo({
-          ...raw,
-          locales: fallback.data.videoBySlug.locales,
-        })
+        // Use the entire EN-fetched shape, not just top-level `locales`.
+        // The fragment applies `locales(locale: $locale)` at every nesting
+        // tier (parents, parents.children, etc.); a slug-form locale like
+        // "english" matches no BCP-47 row, so all nested `locales[]` come
+        // back empty too. Returning the fallback shape fills the sibling
+        // carousel + canonical-parent titles in one go. `dubs`, `images`,
+        // `parents`, `children` aren't locale-filtered, so the two shapes
+        // are byte-equivalent outside the `locales[]` arrays we want.
+        return normalizeAdminVideo(fallback.data.videoBySlug)
       }
     }
 
