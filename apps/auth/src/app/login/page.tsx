@@ -30,6 +30,19 @@ function parseLoginError(
     : undefined
 }
 
+function toOAuthQuery(params: Record<string, string | string[] | undefined>) {
+  const oauthQuery = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (key === "error") continue
+    if (Array.isArray(value)) {
+      for (const item of value) oauthQuery.append(key, item)
+    } else if (value) {
+      oauthQuery.set(key, value)
+    }
+  }
+  return oauthQuery.toString()
+}
+
 function getEnabledProviders(): LoginProviderId[] {
   const providers: LoginProviderId[] = []
 
@@ -59,6 +72,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
     <LoginPageClient
       enabledProviders={getEnabledProviders()}
       initialError={parseLoginError(firstParam(params.error))}
+      oauthQuery={toOAuthQuery(params)}
     />
   )
 }

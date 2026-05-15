@@ -57,7 +57,7 @@ input {
 
 .login-copy h1 {
   max-width: 560px;
-  margin: 72px 0 0;
+  margin: 0;
   font-size: clamp(38px, 7vw, 72px);
   line-height: 0.96;
   letter-spacing: 0;
@@ -74,13 +74,8 @@ input {
 }
 
 .login-form h2 {
-  margin: 28px 0 8px;
+  margin: 0 0 8px;
   font-size: 24px;
-}
-
-.login-logo {
-  width: 139px;
-  height: 36px;
 }
 
 .form-field {
@@ -115,6 +110,7 @@ input {
 
 .primary-button,
 .provider-button {
+  position: relative;
   display: inline-flex;
   width: 100%;
   height: 42px;
@@ -145,17 +141,22 @@ input {
 }
 
 .last-used-badge {
+  position: absolute;
+  top: 5px;
+  right: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 18px;
+  min-height: 14px;
   border-radius: 999px;
-  padding: 2px 7px;
-  border: 1px solid rgba(251, 191, 36, 0.34);
-  color: #fbbf24;
-  font-size: 10px;
+  padding: 1px 5px;
+  border: 1px solid rgba(214, 211, 209, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  color: #a8a29e;
+  font-size: 8px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  line-height: 1;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
 }
