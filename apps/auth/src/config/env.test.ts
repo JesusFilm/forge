@@ -25,20 +25,6 @@ describe("auth env", () => {
     expect(getAuthBaseUrl()).toBe("https://auth.jesusfilm.org")
   })
 
-  it("parses comma-separated trusted origins", async () => {
-    vi.stubEnv(
-      "AUTH_TRUSTED_ORIGINS",
-      "https://admin.jesusfilm.org, http://localhost:3003 ,,",
-    )
-
-    const { getTrustedOrigins } = await loadEnv()
-
-    expect(getTrustedOrigins()).toEqual([
-      "https://admin.jesusfilm.org",
-      "http://localhost:3003",
-    ])
-  })
-
   it("fails closed when the production runtime secret is missing", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("NEXT_PHASE", "")

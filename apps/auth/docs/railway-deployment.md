@@ -35,10 +35,8 @@ If the Railway dashboard is canonical, configure:
 ## Initial Env
 
 - `AUTH_BASE_URL=https://auth.jesusfilm.org`
-- `AUTH_OPERATOR_EMAILS=<comma-separated operator emails>`
 - `BETTER_AUTH_SECRET=<runtime secret>`
 - `DATABASE_URL=<auth Postgres database>`
-- `AUTH_TRUSTED_ORIGINS=https://admin.jesusfilm.org`
 - `REDIS_HOST=<optional rate limit Redis host>`
 - `REDIS_PORT=<optional rate limit Redis port>`
 - `REDIS_PASSWORD=<optional rate limit Redis password>`
@@ -46,7 +44,6 @@ If the Railway dashboard is canonical, configure:
 - `FIREBASE_PROJECT_ID=<optional migration fallback>`
 - `FIREBASE_CLIENT_EMAIL=<optional migration fallback>`
 - `FIREBASE_PRIVATE_KEY=<optional migration fallback>`
-- `FIREBASE_MIGRATION_CUTOFF_AT=<optional ISO cutoff>`
 
 Configure upstream identity providers only when enabled:
 
@@ -81,8 +78,8 @@ Before flipping `ADMIN_AUTH_MODE=oauth`:
 - Created dedicated Railway Postgres service currently named `Postgres`.
 - Generated Railway service domain
   `https://forgeauth-production.up.railway.app`.
-- Set Auth runtime vars for `AUTH_BASE_URL`, `AUTH_OPERATOR_EMAILS`,
-  `AUTH_TRUSTED_ORIGINS`, `BETTER_AUTH_SECRET`, and `DATABASE_URL`.
+- Set Auth runtime vars for `AUTH_BASE_URL`, `BETTER_AUTH_SECRET`, and
+  `DATABASE_URL`.
 - Deployed current workspace to production service; latest verified deployment
   uses `AUTH_BASE_URL=https://auth.jesusfilm.org`.
 - Moved the `auth.jesusfilm.org` custom domain from `@forge/admin` to

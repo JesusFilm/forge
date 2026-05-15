@@ -57,8 +57,8 @@ document the dashboard as canonical.
 - No shared `.jesusfilm.org` cookie dependency for admin.
 - No public signup while migration fallback exists.
 - OAuth redirect URLs must be exact-match per app environment.
-- Operator dashboard access requires active membership plus
-  `AUTH_OPERATOR_EMAILS` in production.
+- Operator dashboard access is disabled in production until the developer
+  console becomes an OAuth relying client.
 - Token issuance must be scoped, audience-bound, environment-bound, expiring,
   revocable, and audited.
 - Stdout logs must not include raw credentials, bearer tokens, refresh tokens,

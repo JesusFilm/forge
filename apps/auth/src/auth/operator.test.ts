@@ -14,32 +14,26 @@ describe("Auth operator access", () => {
   it("requires active membership", () => {
     expect(
       canAccessAuthOperator({
-        email: "ops@jesusfilm.org",
         membershipStatus: "SUSPENDED",
-        operatorEmails: ["ops@jesusfilm.org"],
         nodeEnv: "production",
       }),
     ).toBe(false)
   })
 
-  it("requires an explicit allowlist in production", () => {
+  it("is disabled in production until the developer console is an OAuth client", () => {
     expect(
       canAccessAuthOperator({
-        email: "ops@jesusfilm.org",
         membershipStatus: "ACTIVE",
-        operatorEmails: [],
         nodeEnv: "production",
       }),
     ).toBe(false)
   })
 
-  it("matches configured operators case-insensitively", () => {
+  it("allows active users outside production for local development", () => {
     expect(
       canAccessAuthOperator({
-        email: "Ops@JesusFilm.org",
         membershipStatus: "ACTIVE",
-        operatorEmails: ["ops@jesusfilm.org"],
-        nodeEnv: "production",
+        nodeEnv: "development",
       }),
     ).toBe(true)
   })

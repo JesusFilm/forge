@@ -1,5 +1,5 @@
 import { env } from "@/config/env"
-import { resolveAuthCallbackUrl } from "@/auth/origins"
+import { redirect } from "next/navigation"
 import {
   LoginPageClient,
   type LoginErrorCode,
@@ -12,6 +12,14 @@ type LoginPageProps = {
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
+}
+
+export function isOAuthAuthorizeRequest(
+  params: Record<string, string | string[] | undefined>,
+) {
+  return Boolean(
+    firstParam(params.client_id) && firstParam(params.redirect_uri),
+  )
 }
 
 function parseLoginError(
@@ -43,11 +51,12 @@ function getEnabledProviders(): LoginProviderId[] {
 
 export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
   const params = (await searchParams) ?? {}
-  const callbackUrl = resolveAuthCallbackUrl(firstParam(params.callbackURL))
+  if (!isOAuthAuthorizeRequest(params)) {
+    redirect("https://www.jesusfilm.org")
+  }
 
   return (
     <LoginPageClient
-      callbackURL={callbackUrl}
       enabledProviders={getEnabledProviders()}
       initialError={parseLoginError(firstParam(params.error))}
     />

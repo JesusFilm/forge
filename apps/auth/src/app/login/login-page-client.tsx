@@ -31,18 +31,15 @@ const loginErrors = {
 } satisfies Record<LoginErrorCode, { title: string; detail: string }>
 
 export function LoginPageClient({
-  callbackURL,
   enabledProviders,
   initialError,
 }: {
-  callbackURL: string
   enabledProviders: LoginProviderId[]
   initialError?: LoginErrorCode
 }) {
   const [error, setError] = useState<
     LoginErrorCode | "credentials" | "start" | null
   >(initialError ?? null)
-  const [loading, setLoading] = useState(false)
   const [lastLoginMethod, setLastLoginMethod] = useState<LoginMethodId | null>(
     () => readLastLoginMethod(),
   )
@@ -62,36 +59,12 @@ export function LoginPageClient({
           ? loginErrors[error]
           : null
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
-    setLoading(true)
-
-    try {
-      const form = new FormData(e.currentTarget)
-      const res = await fetch("/api/auth/sign-in/email", {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          email: form.get("email"),
-          password: form.get("password"),
-          callbackURL,
-        }),
-      })
-
-      if (res.ok) {
-        rememberLastLoginMethod("email")
-        setLastLoginMethod("email")
-        window.location.assign(callbackURL)
-        return
-      }
-    } catch {
-      // Keep transport details out of the sign-in UI.
-    }
-
-    setLoading(false)
-    setError("credentials")
+    rememberLastLoginMethod("email")
+    setLastLoginMethod("email")
+    e.currentTarget.submit()
   }
 
   async function resolveSocialRedirect(
@@ -141,7 +114,11 @@ export function LoginPageClient({
           <h2>Sign in</h2>
           <p>Use the same method you used when your account was created.</p>
 
-          <form onSubmit={handleSubmit}>
+          <form
+            action="/api/auth/sign-in/email"
+            method="post"
+            onSubmit={handleSubmit}
+          >
             <div className="form-field">
               <label htmlFor="email">Email address</label>
               <input
@@ -171,8 +148,8 @@ export function LoginPageClient({
               </div>
             ) : null}
 
-            <button className="primary-button" type="submit" disabled={loading}>
-              <span>{loading ? "Signing in" : "Continue"}</span>
+            <button className="primary-button" type="submit">
+              <span>Continue</span>
               {lastLoginMethod === "email" ? <LastUsedBadge /> : null}
             </button>
           </form>
@@ -193,7 +170,6 @@ export function LoginPageClient({
                         headers: { "content-type": "application/json" },
                         body: JSON.stringify({
                           provider: providerId,
-                          callbackURL,
                         }),
                       })
                       const redirectUrl = await resolveSocialRedirect(res)

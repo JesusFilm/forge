@@ -3,10 +3,9 @@ import { createHash, randomUUID } from "node:crypto"
 import { auth, authRouteHandlers } from "@/auth/config"
 import { verifyFirebaseIdToken } from "@/auth/firebase-admin"
 import { signInWithFirebasePassword } from "@/auth/firebase-rest"
-import { isTrustedAuthOrigin } from "@/auth/origins"
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
-import { env } from "@/config/env"
 import { prisma } from "@/db/client"
+import { ensureDynamicPreviewRedirectUriRegistered } from "@/services/dynamic-preview-redirect.service"
 
 type RouteContext = {
   params: Promise<{ all?: string[] }>
@@ -29,27 +28,18 @@ function audit(event: string, email?: string): void {
   )
 }
 
-function cutoffReached(): boolean {
-  if (!env.FIREBASE_MIGRATION_CUTOFF_AT) {
-    return false
-  }
-  return Date.now() >= new Date(env.FIREBASE_MIGRATION_CUTOFF_AT).getTime()
-}
-
 async function parseEmailPasswordRequest(
   request: Request,
-): Promise<{ email: string; password: string; callbackURL?: string }> {
+): Promise<{ email: string; password: string }> {
   const contentType = request.headers.get("content-type") ?? ""
   if (contentType.includes("application/json")) {
     const body = (await request.json()) as {
-      callbackURL?: string
       email?: string
       password?: string
     }
     return {
       email: body.email?.trim().toLowerCase() ?? "",
       password: body.password ?? "",
-      callbackURL: body.callbackURL,
     }
   }
 
@@ -59,41 +49,11 @@ async function parseEmailPasswordRequest(
       .trim()
       .toLowerCase(),
     password: String(body.get("password") ?? ""),
-    callbackURL:
-      typeof body.get("callbackURL") === "string"
-        ? String(body.get("callbackURL"))
-        : undefined,
   }
 }
 
 function genericUnauthorized(): Response {
   return Response.json({ error: "Invalid email or password" }, { status: 401 })
-}
-
-function authCorsHeaders(request: Request): Headers {
-  const headers = new Headers()
-  const origin = request.headers.get("origin")
-  if (!origin || !isTrustedAuthOrigin(origin)) {
-    return headers
-  }
-
-  headers.set("access-control-allow-origin", origin)
-  headers.set("access-control-allow-credentials", "true")
-  headers.set("vary", "Origin")
-  return headers
-}
-
-function withAuthCors(request: Request, response: Response): Response {
-  const headers = new Headers(response.headers)
-  for (const [key, value] of authCorsHeaders(request)) {
-    headers.set(key, value)
-  }
-
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  })
 }
 
 function toJsonRequest(original: Request, body: object): Request {
@@ -116,17 +76,16 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
   })
   if (!limit.allowed) {
     audit("auth.firebase.rejected.rate_limited")
-    return withAuthCors(request, genericUnauthorized())
+    return genericUnauthorized()
   }
 
-  const { email, password, callbackURL } =
-    await parseEmailPasswordRequest(request)
+  const { email, password } = await parseEmailPasswordRequest(request)
   if (!email || !password) {
     audit("auth.signin.rejected", email)
-    return withAuthCors(request, genericUnauthorized())
+    return genericUnauthorized()
   }
 
-  const jsonBody = { email, password, ...(callbackURL ? { callbackURL } : {}) }
+  const jsonBody = { email, password }
   const primaryResponse = await authRouteHandlers.POST(
     toJsonRequest(request, jsonBody),
   )
@@ -134,7 +93,7 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
     if (primaryResponse.ok) {
       audit("auth.signin.success")
     }
-    return withAuthCors(request, primaryResponse)
+    return primaryResponse
   }
 
   const existingUser = await prisma.user.findFirst({
@@ -143,24 +102,19 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
   })
   if (existingUser) {
     audit("auth.signin.rejected", email)
-    return withAuthCors(request, primaryResponse)
-  }
-
-  if (cutoffReached()) {
-    audit("auth.firebase.rejected.cutoff", email)
-    return withAuthCors(request, genericUnauthorized())
+    return primaryResponse
   }
 
   const firebaseSignIn = await signInWithFirebasePassword(email, password)
   if (!firebaseSignIn) {
     audit("auth.signin.rejected", email)
-    return withAuthCors(request, genericUnauthorized())
+    return genericUnauthorized()
   }
 
   const verified = await verifyFirebaseIdToken(firebaseSignIn.idToken)
   if (!verified || verified.email.toLowerCase() !== email) {
     audit("auth.firebase.rejected.unverified", email)
-    return withAuthCors(request, genericUnauthorized())
+    return genericUnauthorized()
   }
 
   const signUpResponse = await auth.api.signUpEmail({
@@ -169,14 +123,13 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
     body: {
       email,
       password,
-      callbackURL,
       name: email.split("@")[0] || "user",
     },
   })
 
   if (!signUpResponse.ok) {
     audit("auth.signin.rejected", email)
-    return withAuthCors(request, genericUnauthorized())
+    return genericUnauthorized()
   }
 
   await prisma.$transaction(async (tx) => {
@@ -216,11 +169,23 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
   })
 
   audit("auth.firebase.migrated", email)
-  return withAuthCors(request, signUpResponse)
+  return signUpResponse
 }
 
-export async function GET(request: Request): Promise<Response> {
-  return withAuthCors(request, await authRouteHandlers.GET(request))
+export async function GET(
+  request: Request,
+  context: RouteContext,
+): Promise<Response> {
+  const { all = [] } = await context.params
+  if (all.join("/") === "oauth2/authorize") {
+    const url = new URL(request.url)
+    await ensureDynamicPreviewRedirectUriRegistered({
+      clientId: url.searchParams.get("client_id"),
+      redirectUri: url.searchParams.get("redirect_uri"),
+    })
+  }
+
+  return authRouteHandlers.GET(request)
 }
 
 export async function POST(
@@ -235,16 +200,13 @@ export async function POST(
   }
   if (path === "sign-up/email") {
     audit("auth.signup.rejected.public")
-    return withAuthCors(
-      request,
-      Response.json({ error: "Not found" }, { status: 404 }),
-    )
+    return Response.json({ error: "Not found" }, { status: 404 })
   }
-  return withAuthCors(request, await authRouteHandlers.POST(request))
+  return authRouteHandlers.POST(request)
 }
 
 export async function OPTIONS(request: Request): Promise<Response> {
-  const headers = authCorsHeaders(request)
+  const headers = new Headers()
   headers.set(
     "access-control-allow-methods",
     "GET,POST,PATCH,PUT,DELETE,OPTIONS",
@@ -259,13 +221,13 @@ export async function OPTIONS(request: Request): Promise<Response> {
 }
 
 export async function PATCH(request: Request): Promise<Response> {
-  return withAuthCors(request, await authRouteHandlers.PATCH(request))
+  return authRouteHandlers.PATCH(request)
 }
 
 export async function PUT(request: Request): Promise<Response> {
-  return withAuthCors(request, await authRouteHandlers.PUT(request))
+  return authRouteHandlers.PUT(request)
 }
 
 export async function DELETE(request: Request): Promise<Response> {
-  return withAuthCors(request, await authRouteHandlers.DELETE(request))
+  return authRouteHandlers.DELETE(request)
 }
