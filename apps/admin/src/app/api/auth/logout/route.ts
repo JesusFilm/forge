@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 import {
-  ADMIN_OAUTH_CALLBACK_COOKIE,
+  ADMIN_OAUTH_RETURN_TO_COOKIE,
   ADMIN_OAUTH_SESSION_COOKIE,
   ADMIN_OAUTH_STATE_COOKIE,
   ADMIN_OAUTH_VERIFIER_COOKIE,
@@ -16,12 +16,14 @@ export function GET(request: Request) {
 }
 
 function clearAdminOAuthCookies(request: Request) {
-  const response = NextResponse.redirect(new URL("/login", request.url))
+  const response = NextResponse.redirect(
+    new URL("/api/auth/login", request.url),
+  )
 
   response.cookies.delete(ADMIN_OAUTH_SESSION_COOKIE)
   response.cookies.delete(ADMIN_OAUTH_STATE_COOKIE)
   response.cookies.delete(ADMIN_OAUTH_VERIFIER_COOKIE)
-  response.cookies.delete(ADMIN_OAUTH_CALLBACK_COOKIE)
+  response.cookies.delete(ADMIN_OAUTH_RETURN_TO_COOKIE)
 
   return response
 }

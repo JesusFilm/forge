@@ -1,72 +1,50 @@
 import { env } from "@/config/env"
 
-export const PRODUCTION_AUTH_BASE_URL = "https://auth.jesusfilm.org"
-export const LOCAL_AUTH_BASE_URL = "http://localhost:3003"
-
-export const PRODUCTION_AUTH_TRUSTED_ORIGINS = [
-  "https://admin.jesusfilm.org",
-  "https://web.jesusfilm.org",
-  "https://manager.jesusfilm.org",
-] as const
-
-function parseOrigins(value: string | undefined): string[] {
-  return value
-    ? value
-        .split(",")
-        .map((origin) => origin.trim())
-        .filter(Boolean)
-    : []
-}
+export const PRODUCTION_ADMIN_BASE_URL = "https://admin.jesusfilm.org"
 
 export function getAuthBaseURL(): string {
-  return env.BETTER_AUTH_URL ?? productionDefault(PRODUCTION_AUTH_BASE_URL)
+  return new URL(env.AUTH_ISSUER_URL).origin
 }
 
-export function getAuthTrustedOrigins(): string[] {
-  const configured = parseOrigins(env.AUTH_TRUSTED_ORIGINS)
-  if (configured.length > 0) {
-    return configured
-  }
-
-  return env.NODE_ENV === "production"
-    ? [...PRODUCTION_AUTH_TRUSTED_ORIGINS]
-    : []
+export function getAdminBaseURL(): string {
+  return env.ADMIN_BASE_URL ?? productionDefault(PRODUCTION_ADMIN_BASE_URL)
 }
 
-export function isTrustedAuthOrigin(origin: string | null): boolean {
+export function isTrustedReturnToOrigin(origin: string | null): boolean {
   if (!origin) return false
 
-  return new Set([getAuthBaseURL(), ...getAuthTrustedOrigins()]).has(origin)
+  return new URL(getAdminBaseURL()).origin === origin
 }
 
 export function getDefaultPostLoginURL(): string {
-  const [primaryAppOrigin] = getAuthTrustedOrigins()
-  return `${primaryAppOrigin ?? getAuthBaseURL()}/dashboard`
+  return `${new URL(getAdminBaseURL()).origin}/dashboard`
 }
 
 export function getDefaultLoginDestinationName(): string {
   return "Forge administration panel"
 }
 
-export function resolveAuthCallbackURL(
-  callbackURL: string | undefined,
+export function resolveAdminReturnToURL(
+  returnTo: string | undefined,
   fallbackURL = getDefaultPostLoginURL(),
 ): string {
-  if (!callbackURL) {
+  if (!returnTo) {
     return fallbackURL
   }
 
   try {
-    const parsed = new URL(callbackURL, fallbackURL)
-    return isTrustedAuthOrigin(parsed.origin) ? parsed.toString() : fallbackURL
+    const parsed = new URL(returnTo, fallbackURL)
+    return isTrustedReturnToOrigin(parsed.origin)
+      ? parsed.toString()
+      : fallbackURL
   } catch {
     return fallbackURL
   }
 }
 
-export function getLoginDestinationName(callbackURL: string): string {
+export function getLoginDestinationName(returnTo: string): string {
   try {
-    const url = new URL(callbackURL)
+    const url = new URL(returnTo)
     if (url.hostname === "admin.jesusfilm.org") {
       return "Forge administration panel"
     }
@@ -83,5 +61,7 @@ export function getLoginDestinationName(callbackURL: string): string {
 }
 
 function productionDefault(productionValue: string): string {
-  return env.NODE_ENV === "production" ? productionValue : LOCAL_AUTH_BASE_URL
+  return env.NODE_ENV === "production"
+    ? productionValue
+    : "http://localhost:3003"
 }

@@ -370,15 +370,6 @@ function phaseLabel(phase: string) {
     .join(" ")
 }
 
-function providerCount() {
-  return [
-    env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET,
-    env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,
-    env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET,
-    env.OKTA_CLIENT_ID && env.OKTA_CLIENT_SECRET && env.OKTA_ISSUER,
-  ].filter(Boolean).length
-}
-
 async function getEmbeddingCounts() {
   return withTableFallback(
     async () => {
@@ -639,16 +630,14 @@ async function getRecentActivity(): Promise<TableRow[]> {
 async function getUserRoleCounts() {
   return withTableFallback(
     async () => {
-      const [admins, editors, viewers, sessions, accounts] = await Promise.all([
+      const [admins, editors, viewers] = await Promise.all([
         prisma.user.count({ where: { role: "ADMIN" } }),
         prisma.user.count({ where: { role: "EDITOR" } }),
         prisma.user.count({ where: { role: "VIEWER" } }),
-        prisma.session.count(),
-        prisma.account.count(),
       ])
-      return { admins, editors, viewers, sessions, accounts }
+      return { admins, editors, viewers }
     },
-    { admins: 0, editors: 0, viewers: 0, sessions: 0, accounts: 0 },
+    { admins: 0, editors: 0, viewers: 0 },
   )
 }
 
@@ -773,7 +762,7 @@ export async function loadDashboardOpsData(): Promise<DashboardOpsData> {
       {
         label: "Users",
         value: counts.users.toString(),
-        detail: "Authenticated principals persisted in Better Auth tables.",
+        detail: "Local admin role mappings for Auth SSO principals.",
       },
       {
         label: "Embedding Gap",
@@ -1423,8 +1412,6 @@ export async function loadUsersData(): Promise<UsersData> {
             role: true,
             emailVerified: true,
             updatedAt: true,
-            sessions: { select: { id: true }, take: 1 },
-            accounts: { select: { providerId: true } },
           },
           orderBy: { updatedAt: "desc" },
           take: 8,
@@ -1435,8 +1422,6 @@ export async function loadUsersData(): Promise<UsersData> {
         role: string
         emailVerified: boolean
         updatedAt: Date
-        sessions: Array<{ id: string }>
-        accounts: Array<{ providerId: string }>
       }>,
     ),
   ])
@@ -1462,40 +1447,34 @@ export async function loadUsersData(): Promise<UsersData> {
     rows: rows.map((row) => ({
       key: row.id,
       title: row.email,
-      detail:
-        row.accounts.map((account) => account.providerId).join(", ") ||
-        "email-password",
+      detail: row.id,
       statusLabel: row.emailVerified ? row.role : "UNVERIFIED",
       statusTone:
         !row.emailVerified || row.role === "VIEWER" ? "warning" : "success",
-      meta: `${row.sessions.length} session(s) / ${formatDateTime(row.updatedAt)}`,
+      meta: formatDateTime(row.updatedAt),
     })),
     insights: [
       {
-        label: "Active Sessions",
-        value: counts.sessions.toString(),
-        detail: "Current Better Auth session rows persisted in Postgres.",
+        label: "Role Mappings",
+        value: (counts.admins + counts.editors + counts.viewers).toString(),
+        detail:
+          "Admin-local roles keyed by Auth SSO subject or verified email.",
       },
       {
-        label: "Linked Accounts",
-        value: counts.accounts.toString(),
-        detail: "External auth/account records attached to users.",
+        label: "Access Requests",
+        value: counts.viewers.toString(),
+        detail: "Signed-in users waiting for admin approval.",
       },
       {
-        label: "SSO Providers",
-        value: providerCount().toString(),
-        detail: "Social/OIDC providers currently configured by environment.",
+        label: "Auth Issuer",
+        value: new URL(env.AUTH_ISSUER_URL).host,
+        detail: "Standalone Auth service used for admin OAuth.",
       },
     ],
   }
 }
 
 export async function loadSettingsData(): Promise<SettingsData> {
-  const trustedOrigins = env.AUTH_TRUSTED_ORIGINS
-    ? env.AUTH_TRUSTED_ORIGINS.split(",")
-        .map((item) => item.trim())
-        .filter(Boolean)
-    : []
   const corsOrigins = env.CORS_ALLOWED_ORIGINS
     ? env.CORS_ALLOWED_ORIGINS.split(",")
         .map((item) => item.trim())
@@ -1504,12 +1483,12 @@ export async function loadSettingsData(): Promise<SettingsData> {
 
   const rows: TableRow[] = [
     {
-      key: "better-auth",
-      title: "Better Auth secret",
-      detail: "Session signing secret",
-      statusLabel: env.BETTER_AUTH_SECRET ? "Configured" : "Missing",
-      statusTone: env.BETTER_AUTH_SECRET ? "success" : "danger",
-      meta: env.BETTER_AUTH_URL ?? "default localhost URL",
+      key: "admin-session",
+      title: "Admin session secret",
+      detail: "Local OAuth session signing secret",
+      statusLabel: env.ADMIN_SESSION_SECRET ? "Configured" : "Missing",
+      statusTone: env.ADMIN_SESSION_SECRET ? "success" : "danger",
+      meta: env.AUTH_ISSUER_URL,
     },
     {
       key: "redis",
@@ -1543,14 +1522,14 @@ export async function loadSettingsData(): Promise<SettingsData> {
   return {
     metrics: [
       {
-        label: "Providers",
-        value: providerCount().toString(),
-        footer: "SSO_ENABLED",
+        label: "Auth Client",
+        value: env.AUTH_ADMIN_CLIENT_ID,
+        footer: "OAUTH_CLIENT",
       },
       {
-        label: "Trusted Origins",
-        value: trustedOrigins.length.toString(),
-        footer: "AUTH_TRUSTED",
+        label: "Admin Origin",
+        value: new URL(env.ADMIN_BASE_URL ?? "http://localhost:3003").host,
+        footer: "CALLBACK",
       },
       {
         label: "CORS Origins",

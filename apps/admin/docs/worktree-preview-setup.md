@@ -69,7 +69,7 @@ This creates the `workflow.*` tables used by runtime runs, steps, events, hooks,
 and streams. Admin-owned workflow ledger tables still come from Prisma
 migrations.
 
-## 4. Isolate Better Auth Sessions
+## 4. Isolate Admin OAuth Sessions
 
 Browsers scope cookies by host, not port. All of these share the same
 `localhost` cookie jar:
@@ -79,39 +79,31 @@ Browsers scope cookies by host, not port. All of these share the same
 - `http://localhost:3023`
 
 Without an isolated cookie prefix, signing in on one branch can overwrite the
-session cookie used by another branch. Always set a worktree-specific
-`AUTH_COOKIE_PREFIX` for previews that run alongside other branches.
+admin-local OAuth session cookie used by another branch. Always set a
+worktree-specific `AUTH_COOKIE_PREFIX` for previews that run alongside other
+branches.
 
 Recommended local auth env:
 
 ```bash
 PORT=3013
 FEATURE="core-sync-preview"
-BETTER_AUTH_URL="http://localhost:${PORT}"
-AUTH_TRUSTED_ORIGINS="http://localhost:${PORT},http://127.0.0.1:${PORT}"
+AUTH_ISSUER_URL="https://auth.jesusfilm.org/api/auth"
+AUTH_ADMIN_CLIENT_ID="jfp_admin_local"
+ADMIN_BASE_URL="http://localhost:${PORT}"
 AUTH_COOKIE_PREFIX="forge-admin-${FEATURE}"
-BETTER_AUTH_SECRET="forge-admin-local-dev-secret-change-me-before-production-00"
+ADMIN_SESSION_SECRET="forge-admin-local-dev-secret-change-me-before-production-00"
 ```
 
 Rules of thumb:
 
-- Same `BETTER_AUTH_SECRET` lets branches validate the same cookie signature.
-- Same DB plus same secret lets a session survive across branches.
+- Same `ADMIN_SESSION_SECRET` lets branches validate the same admin-local session
+  signature.
+- Same DB plus same secret lets a local admin session survive across branches.
 - Different DB copies still need separate cookie prefixes, because the session
-  token row created in one DB may not exist in another.
-- Do not set `AUTH_COOKIE_DOMAIN` for localhost previews. It is for production
-  cross-subdomain cookies such as `.jesusfilm.org`.
-
-To verify origin/cookie setup, post a fake sign-in with the preview origin. A
-healthy auth configuration returns `401 Invalid email or password`, not
-`403 Invalid origin`:
-
-```bash
-curl -sS -D - "http://localhost:${PORT}/api/auth/sign-in/email" \
-  -H "Origin: http://localhost:${PORT}" \
-  -H "Content-Type: application/json" \
-  --data '{"email":"nobody@example.com","password":"bad"}'
-```
+  references users and roles in that DB.
+- Add the preview OAuth redirect URI to Auth before using a non-default port, or Auth
+  will reject the OAuth request.
 
 ## 5. Start the Preview Server
 
@@ -138,12 +130,12 @@ WORKFLOW_POSTGRES_URL="postgresql://forge:forge@db:5432/$NEW_DB?connection_limit
 WORKFLOW_POSTGRES_JOB_PREFIX="forge_admin_${FEATURE}" \
 WORKFLOW_POSTGRES_WORKER_CONCURRENCY=2 \
 WORKFLOW_POSTGRES_MAX_POOL_SIZE=4 \
-BETTER_AUTH_URL="http://localhost:${PORT}" \
-AUTH_TRUSTED_ORIGINS="http://localhost:${PORT},http://127.0.0.1:${PORT}" \
+AUTH_ISSUER_URL="https://auth.jesusfilm.org/api/auth" \
+AUTH_ADMIN_CLIENT_ID="jfp_admin_local" \
+ADMIN_BASE_URL="http://localhost:${PORT}" \
 AUTH_COOKIE_PREFIX="forge-admin-${FEATURE}" \
-BETTER_AUTH_SECRET="forge-admin-local-dev-secret-change-me-before-production-00" \
+ADMIN_SESSION_SECRET="forge-admin-local-dev-secret-change-me-before-production-00" \
 CORE_SYNC_CRON_SECRET="local-dev-core-sync-secret" \
-NEXT_PUBLIC_APP_NAME="forge-admin" \
 pnpm exec next dev --hostname 0.0.0.0 --port "$PORT"
 ```
 
@@ -153,10 +145,10 @@ is enough for basic page previews but is not durable across process restarts.
 
 ## 6. Verify the Preview
 
-Check the login page:
+Check the Auth redirect:
 
 ```bash
-curl -I -sS "http://localhost:${PORT}/login" | sed -n '1,20p'
+curl -I -sS "http://localhost:${PORT}/api/auth/login?returnTo=/dashboard" | sed -n '1,20p'
 ```
 
 Protected routes should redirect before sign-in and return `200` after sign-in:

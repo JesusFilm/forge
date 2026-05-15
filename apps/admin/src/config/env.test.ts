@@ -10,7 +10,7 @@ import {
 
 describe("env", () => {
   it("loads with placeholder defaults in CI mode", () => {
-    expect(env.NEXT_PUBLIC_APP_NAME).toBe("forge-admin")
+    expect(env.DATABASE_URL).toContain("forge_admin")
   })
 
   // `createEnv` is bypassed under CI (`skipValidation`), so we test

@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest"
 
 vi.mock("@/config/env", () => ({
   env: {
-    AUTH_TRUSTED_ORIGINS: undefined,
-    BETTER_AUTH_URL: undefined,
+    AUTH_ISSUER_URL: "https://auth.jesusfilm.org/api/auth",
+    ADMIN_BASE_URL: undefined,
     NODE_ENV: "production",
   },
 }))
@@ -15,32 +15,26 @@ describe("auth origins", () => {
     expect(getAuthBaseURL()).toBe("https://auth.jesusfilm.org")
   })
 
-  it("trusts production app origins when no env override is configured", async () => {
+  it("trusts only the configured admin return destination origin", async () => {
     const {
-      getAuthTrustedOrigins,
       getDefaultLoginDestinationName,
       getDefaultPostLoginURL,
       getLoginDestinationName,
-      isTrustedAuthOrigin,
-      resolveAuthCallbackURL,
+      isTrustedReturnToOrigin,
+      resolveAdminReturnToURL,
     } = await import("./origins")
 
-    expect(getAuthTrustedOrigins()).toEqual([
-      "https://admin.jesusfilm.org",
-      "https://web.jesusfilm.org",
-      "https://manager.jesusfilm.org",
-    ])
-    expect(isTrustedAuthOrigin("https://admin.jesusfilm.org")).toBe(true)
-    expect(isTrustedAuthOrigin("https://auth.jesusfilm.org")).toBe(true)
-    expect(isTrustedAuthOrigin("https://evil.example")).toBe(false)
+    expect(isTrustedReturnToOrigin("https://admin.jesusfilm.org")).toBe(true)
+    expect(isTrustedReturnToOrigin("https://auth.jesusfilm.org")).toBe(false)
+    expect(isTrustedReturnToOrigin("https://evil.example")).toBe(false)
     expect(getDefaultPostLoginURL()).toBe(
       "https://admin.jesusfilm.org/dashboard",
     )
     expect(getDefaultLoginDestinationName()).toBe("Forge administration panel")
-    expect(resolveAuthCallbackURL("/dashboard")).toBe(
+    expect(resolveAdminReturnToURL("/dashboard")).toBe(
       "https://admin.jesusfilm.org/dashboard",
     )
-    expect(resolveAuthCallbackURL("https://evil.example/dashboard")).toBe(
+    expect(resolveAdminReturnToURL("https://evil.example/dashboard")).toBe(
       "https://admin.jesusfilm.org/dashboard",
     )
     expect(

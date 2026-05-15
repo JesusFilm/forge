@@ -8,10 +8,8 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
   admin UI only; web/mobile stay on Strapi during the transition.
 - Custom GraphQL API via Yoga + Pothos at `/api/graphql`.
 - Prisma + Postgres + pgvector — sole data access layer.
-- `ADMIN_AUTH_MODE=embedded` keeps the legacy admin-local Better Auth route and
-  Firebase fallback available as rollback.
-- `ADMIN_AUTH_MODE=oauth` treats `apps/auth` as the Jesus Film SSO authority and
-  creates an admin-local session after issuer/audience/scope verification.
+- Admin treats `apps/auth` as the Jesus Film SSO authority and creates an
+  admin-local session after issuer/audience/scope verification.
 - useworkflow for durable background jobs.
 - For worktree previews, follow `apps/admin/docs/worktree-preview-setup.md`
   before starting a server or mutating a shared local database.
@@ -21,7 +19,8 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 - UI never accesses the database directly.
 - Pothos `prismaField` / `t.relation` handles reads with `...query` passthrough.
 - Services own mutations, raw SQL (pgvector), and ABAC enforcement.
-- OAuth mode must not depend on shared `.jesusfilm.org` cookies.
+- Admin auth must not depend on shared `.jesusfilm.org` cookies or
+  admin-local credential handlers.
 - Every Pothos type is classified `abac-gated` or `public-shape` — `abac-gated`
   types cannot be the target of `t.relation`; reach them through services.
 - Core-sourced entities (Video, Language, Country, Keyword) are read-only at

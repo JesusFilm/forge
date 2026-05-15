@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 import {
-  ADMIN_OAUTH_CALLBACK_COOKIE,
+  ADMIN_OAUTH_RETURN_TO_COOKIE,
   ADMIN_OAUTH_STATE_COOKIE,
   ADMIN_OAUTH_VERIFIER_COOKIE,
   adminOAuthCookieOptions,
@@ -11,26 +11,23 @@ import {
   getAdminOAuthConfig,
 } from "@/auth/oauth-client"
 import { createOAuthState } from "@/auth/oauth-state"
-import { resolveAuthCallbackURL } from "@/auth/origins"
+import { resolveAdminReturnToURL } from "@/auth/origins"
 
 export async function GET(request: Request) {
   const config = getAdminOAuthConfig()
-  if (!config) {
-    return NextResponse.redirect(new URL("/login?error=forbidden", request.url))
-  }
-
   const url = new URL(request.url)
-  const callbackURL = resolveAuthCallbackURL(
-    url.searchParams.get("callbackURL") ?? undefined,
+  const returnTo = resolveAdminReturnToURL(
+    url.searchParams.get("returnTo") ?? undefined,
     `${config.adminBaseUrl.replace(/\/$/, "")}/dashboard`,
   )
+  const prompt = parsePrompt(url.searchParams.get("prompt"))
   const state = createOAuthState()
   const response = NextResponse.redirect(
     buildAdminAuthorizeUrl({
       config,
       state: state.state,
       codeChallenge: state.codeChallenge,
-      callbackUrl: callbackURL,
+      prompt,
     }),
   )
   const cookieOptions = adminOAuthCookieOptions()
@@ -43,10 +40,16 @@ export async function GET(request: Request) {
     ...cookieOptions,
     maxAge: 60 * 10,
   })
-  response.cookies.set(ADMIN_OAUTH_CALLBACK_COOKIE, callbackURL, {
+  response.cookies.set(ADMIN_OAUTH_RETURN_TO_COOKIE, returnTo, {
     ...cookieOptions,
     maxAge: 60 * 10,
   })
 
   return response
+}
+
+function parsePrompt(
+  prompt: string | null,
+): "login" | "select_account" | undefined {
+  return prompt === "login" || prompt === "select_account" ? prompt : undefined
 }
