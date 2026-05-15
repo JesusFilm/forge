@@ -23,7 +23,7 @@ describe("admin OAuth login route", () => {
 
     const response = await GET(
       new Request(
-        "http://localhost:3003/api/auth/login?callbackURL=http%3A%2F%2Flocalhost%3A3003%2Fdashboard",
+        "http://localhost:3003/api/auth/login?returnTo=http%3A%2F%2Flocalhost%3A3003%2Fdashboard",
       ),
     )
     const location = new URL(response.headers.get("location") ?? "")
@@ -31,6 +31,7 @@ describe("admin OAuth login route", () => {
     expect(location.origin).toBe("https://auth.jesusfilm.org")
     expect(location.pathname).toBe("/api/auth/oauth2/authorize")
     expect(location.searchParams.get("client_id")).toBe("jfp_admin_local")
+    expect(location.searchParams.has("returnTo")).toBe(false)
     expect(location.searchParams.get("state")).toBe("state_123")
     expect(location.searchParams.get("code_challenge")).toBe("challenge_123")
     expect(response.headers.get("set-cookie")).toContain(
@@ -40,7 +41,20 @@ describe("admin OAuth login route", () => {
       "forge_admin_oauth_verifier=verifier_123",
     )
     expect(response.headers.get("set-cookie")).toContain(
-      "forge_admin_oauth_callback=http%3A%2F%2Flocalhost%3A3003%2Fdashboard",
+      "forge_admin_oauth_return_to=http%3A%2F%2Flocalhost%3A3003%2Fdashboard",
     )
+  })
+
+  it("forwards standard OIDC prompt values to Auth authorize", async () => {
+    const { GET } = await import("./route")
+
+    const response = await GET(
+      new Request(
+        "http://localhost:3003/api/auth/login?prompt=login&returnTo=http%3A%2F%2Flocalhost%3A3003%2Fdashboard",
+      ),
+    )
+    const location = new URL(response.headers.get("location") ?? "")
+
+    expect(location.searchParams.get("prompt")).toBe("login")
   })
 })

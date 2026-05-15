@@ -61,16 +61,15 @@ pnpm --filter @forge/auth seed:first-party-apps
 
 ## Cutover Rule
 
-`auth.jesusfilm.org` was moved from admin to Auth on 2026-05-12. Keep admin in
-embedded mode until the relying-client flow has been smoke tested against the
-real Auth domain.
+`auth.jesusfilm.org` was moved from admin to Auth on 2026-05-12. Admin now uses
+Auth as its only runtime sign-in path.
 
-Before flipping `ADMIN_AUTH_MODE=oauth`:
+Before deploying changes to this flow:
 
 - `apps/auth` healthcheck passes in Railway.
 - Admin has an OAuth client registration in Auth.
 - Admin can complete the OAuth callback flow against `auth.jesusfilm.org`.
-- Rollback is documented through `ADMIN_AUTH_MODE=embedded`.
+- Rollback is a normal application rollback, not an admin-side auth-mode toggle.
 
 ## 2026-05-12 Provisioning Status
 
@@ -91,5 +90,4 @@ Before flipping `ADMIN_AUTH_MODE=oauth`:
 - Copied available upstream SSO provider env values from admin to Auth:
   Facebook, Google, and Okta. Apple was not configured on admin.
 - Added admin production env values for `AUTH_ISSUER_URL`,
-  `AUTH_ADMIN_CLIENT_ID`, and `ADMIN_BASE_URL`, but did not set
-  `ADMIN_AUTH_MODE=oauth`.
+  `AUTH_ADMIN_CLIENT_ID`, and `ADMIN_BASE_URL`.

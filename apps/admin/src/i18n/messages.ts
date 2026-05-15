@@ -120,7 +120,7 @@ export const adminMessages = {
       description:
         "Scaffolding in place. See docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.",
       links: {
-        login: "/login",
+        login: "/api/auth/login",
         dashboard: "/dashboard",
         systemStatus: "/dashboard/system-status",
         health: "/api/health",
@@ -145,11 +145,14 @@ export const adminMessages = {
         password: "••••••••••••",
       },
       actions: {
+        checkAccessStatus: "Check access status",
         continue: "Continue",
         signingIn: "Signing in…",
         continueWith: "Continue with {provider}",
+        continueToAdmin: "Continue to admin",
         requestAccess: "Request access",
         requestingAccess: "Requesting access…",
+        signInAgain: "Sign in again",
         tryDifferentAccount: "Try a different account",
       },
       providers: {
@@ -164,8 +167,20 @@ export const adminMessages = {
         requestAccessFailed: "Access request failed. Try signing in again.",
       },
       access: {
+        accountLabel: "You are signed in as",
+        approved:
+          "Access has been approved. Continue to sign in again and enter the dashboard.",
+        available:
+          "Request access and an administrator will review your account.",
+        description:
+          "This account is authenticated, but it has not been approved for Forge Admin.",
+        pending:
+          "Access has been requested and is waiting for an administrator to approve it.",
         requested:
           "Access requested. An administrator must approve your account before you can enter the dashboard.",
+        title: "Admin access required",
+        unavailable:
+          "No active access request was found. Sign in again to check your access.",
       },
     },
     pages: {
@@ -1114,7 +1129,7 @@ export const adminMessages = {
       description:
         "La base ya esta lista. Consulta docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.",
       links: {
-        login: "/login",
+        login: "/api/auth/login",
         dashboard: "/dashboard",
         systemStatus: "/dashboard/system-status",
         health: "/api/health",
@@ -1139,11 +1154,14 @@ export const adminMessages = {
         password: "••••••••••••",
       },
       actions: {
+        checkAccessStatus: "Comprobar estado de acceso",
         continue: "Continuar",
         signingIn: "Ingresando…",
         continueWith: "Continuar con {provider}",
+        continueToAdmin: "Continuar al admin",
         requestAccess: "Solicitar acceso",
         requestingAccess: "Solicitando acceso…",
+        signInAgain: "Iniciar sesion de nuevo",
         tryDifferentAccount: "Probar otra cuenta",
       },
       providers: {
@@ -1159,8 +1177,19 @@ export const adminMessages = {
           "No se pudo solicitar acceso. Intenta iniciar sesion de nuevo.",
       },
       access: {
+        accountLabel: "Iniciaste sesion como",
+        approved:
+          "El acceso fue aprobado. Continua para iniciar sesion de nuevo y entrar al panel.",
+        available: "Solicita acceso y un administrador revisara tu cuenta.",
+        description:
+          "Esta cuenta esta autenticada, pero aun no tiene aprobacion para Forge Admin.",
+        pending:
+          "El acceso fue solicitado y esta esperando la aprobacion de un administrador.",
         requested:
           "Acceso solicitado. Un administrador debe aprobar tu cuenta antes de que puedas entrar al panel.",
+        title: "Se requiere acceso de administrador",
+        unavailable:
+          "No se encontro una solicitud de acceso activa. Inicia sesion de nuevo para comprobar tu acceso.",
       },
     },
     pages: {} as Record<string, never>,

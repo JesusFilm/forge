@@ -2,7 +2,7 @@
  * Regression test: the refresh CLI must NOT transitively import
  * `@/config/env` or `@/storage/s3`. The CLI deliberately bypasses the
  * admin env validator so operators can run it with only the
- * RAILWAY_S3_* vars populated (not DATABASE_URL, BETTER_AUTH_SECRET,
+ * RAILWAY_S3_* vars populated (not DATABASE_URL, ADMIN_SESSION_SECRET,
  * etc.). A transitive pull would force the operator's terminal to
  * carry admin's full env matrix just to upload a JSON blob.
  *

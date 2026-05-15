@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 
 import {
   ADMIN_OAUTH_ACCESS_REQUEST_COOKIE,
-  ADMIN_OAUTH_CALLBACK_COOKIE,
+  ADMIN_OAUTH_RETURN_TO_COOKIE,
   ADMIN_OAUTH_SESSION_COOKIE,
   ADMIN_OAUTH_STATE_COOKIE,
   ADMIN_OAUTH_VERIFIER_COOKIE,
@@ -21,18 +21,14 @@ import { prisma } from "@/db/client"
 
 export async function GET(request: Request) {
   const config = getAdminOAuthConfig()
-  if (!config) {
-    return NextResponse.redirect(new URL("/login?error=forbidden", request.url))
-  }
-
   const url = new URL(request.url)
   const code = url.searchParams.get("code")
   const state = url.searchParams.get("state")
   const cookieStore = await cookies()
   const expectedState = cookieStore.get(ADMIN_OAUTH_STATE_COOKIE)?.value
   const codeVerifier = cookieStore.get(ADMIN_OAUTH_VERIFIER_COOKIE)?.value
-  const callbackUrl =
-    cookieStore.get(ADMIN_OAUTH_CALLBACK_COOKIE)?.value ?? "/dashboard"
+  const returnTo =
+    cookieStore.get(ADMIN_OAUTH_RETURN_TO_COOKIE)?.value ?? "/dashboard"
 
   if (
     !code ||
@@ -50,7 +46,7 @@ export async function GET(request: Request) {
       hasCodeVerifier: Boolean(codeVerifier),
     })
 
-    return redirectToForbiddenLogin(config)
+    return redirectToAccessRequest(config)
   }
 
   try {
@@ -72,14 +68,14 @@ export async function GET(request: Request) {
     })
 
     if (!user || user.role === "VIEWER") {
-      return await redirectToForbiddenLogin(config, {
+      return await redirectToAccessRequest(config, {
         subject: verifiedToken.subject,
         email: verifiedToken.email,
         name: verifiedToken.name,
       })
     }
 
-    const response = NextResponse.redirect(new URL(callbackUrl, request.url))
+    const response = NextResponse.redirect(new URL(returnTo, request.url))
     response.cookies.set(
       ADMIN_OAUTH_SESSION_COOKIE,
       await createAdminOAuthSessionCookie(user, verifiedToken.scopes),
@@ -87,7 +83,7 @@ export async function GET(request: Request) {
     )
     response.cookies.delete(ADMIN_OAUTH_STATE_COOKIE)
     response.cookies.delete(ADMIN_OAUTH_VERIFIER_COOKIE)
-    response.cookies.delete(ADMIN_OAUTH_CALLBACK_COOKIE)
+    response.cookies.delete(ADMIN_OAUTH_RETURN_TO_COOKIE)
 
     return response
   } catch (error) {
@@ -96,19 +92,16 @@ export async function GET(request: Request) {
       message: error instanceof Error ? error.message : "unknown",
     })
 
-    return await redirectToForbiddenLogin(config)
+    return await redirectToAccessRequest(config)
   }
 }
 
-async function redirectToForbiddenLogin(
-  config: NonNullable<ReturnType<typeof getAdminOAuthConfig>>,
+async function redirectToAccessRequest(
+  config: ReturnType<typeof getAdminOAuthConfig>,
   accessRequest?: { subject: string; email?: string; name?: string },
 ) {
-  const url = new URL("/login", config.adminBaseUrl)
-  url.searchParams.set("error", "forbidden")
-  if (accessRequest) {
-    url.searchParams.set("request", "available")
-  }
+  const url = new URL("/access-request", config.adminBaseUrl)
+  if (!accessRequest) url.searchParams.set("error", "forbidden")
   const response = NextResponse.redirect(url)
   if (accessRequest) {
     response.cookies.set(

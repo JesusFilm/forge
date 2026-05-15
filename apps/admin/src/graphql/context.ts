@@ -1,13 +1,13 @@
 // Per-request GraphQL context builder.
 //
-// Unit 5 resolves the Better Auth session from request cookies, then maps
-// the DB-backed user role into the GraphQL principal. `SYSTEM` remains an
-// in-process-only principal; HTTP requests can never mint it.
+// Unit 5 resolves the admin-local OAuth session from request cookies, then
+// maps the DB-backed user role into the GraphQL principal. `SYSTEM` remains
+// an in-process-only principal; HTTP requests can never mint it.
 //
 // Plan 006 adds a service-to-service `Authorization: Bearer <key>` path
 // that mints the request-bound `WORKFLOW_TRIGGER` principal when the
-// header matches `WORKFLOW_API_KEYS`. The Better Auth session path
-// continues to take precedence — a logged-in admin's session is never
+// header matches `WORKFLOW_API_KEYS`. The admin session path continues to take
+// precedence — a logged-in admin's session is never
 // downgraded by the presence of a bearer header.
 //
 // Plan 003 (U1) adds a second bearer path that mints `CONSUMER_BEARER`

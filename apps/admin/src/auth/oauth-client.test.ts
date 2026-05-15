@@ -33,7 +33,6 @@ describe("admin OAuth client", () => {
       config,
       state: "state_123",
       codeChallenge: "challenge_123",
-      callbackUrl: "https://admin.jesusfilm.org/dashboard",
     })
 
     expect(url.origin).toBe("https://auth.jesusfilm.org")
@@ -47,9 +46,7 @@ describe("admin OAuth client", () => {
     expect(url.searchParams.get("scope")).toContain("admin:access")
     expect(url.searchParams.get("scope")).not.toContain("admin:content:read")
     expect(url.searchParams.get("scope")).not.toContain("admin:content:write")
-    expect(url.searchParams.get("callbackURL")).toBe(
-      "https://admin.jesusfilm.org/dashboard",
-    )
+    expect(url.searchParams.has("returnTo")).toBe(false)
   })
 
   it("exchanges authorization codes with client auth and PKCE verifier", async () => {

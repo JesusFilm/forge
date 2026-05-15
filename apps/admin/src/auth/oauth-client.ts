@@ -17,15 +17,7 @@ export type VerifiedAdminToken = {
   claims: JWTPayload
 }
 
-export function getAdminOAuthConfig(): AdminOAuthConfig | null {
-  if (
-    env.ADMIN_AUTH_MODE !== "oauth" ||
-    !env.AUTH_ISSUER_URL ||
-    !env.AUTH_ADMIN_CLIENT_ID
-  ) {
-    return null
-  }
-
+export function getAdminOAuthConfig(): AdminOAuthConfig {
   return {
     issuerUrl: env.AUTH_ISSUER_URL.replace(/\/$/, ""),
     clientId: env.AUTH_ADMIN_CLIENT_ID,
@@ -42,12 +34,12 @@ export function buildAdminAuthorizeUrl({
   config,
   state,
   codeChallenge,
-  callbackUrl,
+  prompt,
 }: {
   config: AdminOAuthConfig
   state: string
   codeChallenge: string
-  callbackUrl?: string
+  prompt?: "login" | "select_account"
 }) {
   const url = new URL("/api/auth/oauth2/authorize", config.issuerUrl)
   url.searchParams.set("client_id", config.clientId)
@@ -66,8 +58,8 @@ export function buildAdminAuthorizeUrl({
   url.searchParams.set("state", state)
   url.searchParams.set("code_challenge", codeChallenge)
   url.searchParams.set("code_challenge_method", "S256")
-  if (callbackUrl) {
-    url.searchParams.set("callbackURL", callbackUrl)
+  if (prompt) {
+    url.searchParams.set("prompt", prompt)
   }
 
   return url

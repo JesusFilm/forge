@@ -59,10 +59,7 @@ export default async function UsersPage() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)]">
         <div className="flex flex-col gap-6">
-          <PageSection
-            title="User Directory"
-            meta="BETTER_AUTH / ROLES / SESSIONS"
-          >
+          <PageSection title="User Directory" meta="AUTH_SSO / ROLES">
             <DataTable
               columns={["Principal", "Status", "Updated"]}
               rows={data.rows.map((row) => [
@@ -132,9 +129,9 @@ export default async function UsersPage() {
         <OperatorRail
           title={messages.common.operatorNotes}
           meta={messages.common.fieldGuide}
-          notes="This route now reflects persisted Better Auth users, linked providers, and session posture instead of a future-state permissions mockup."
+          notes="This route reflects persisted admin user roles mapped from Auth SSO callbacks instead of a future-state permissions mockup."
           chips={[
-            { label: "Source", value: "BETTER_AUTH_DB" },
+            { label: "Source", value: "ADMIN_DB" },
             { label: "Model", value: "ROLE_PLUS_ABAC" },
             { label: "Surface", value: "ACCESS_CONTROL" },
           ]}

@@ -5,8 +5,8 @@ version of `apps/admin`.
 
 ## What Is Operational
 
-- `/login` uses the Better Auth + Firebase migration path already implemented in
-  the backend and keeps provider visibility tied to validated env config.
+- `/api/auth/login` starts the Auth SSO OAuth flow and stores only an admin-local session
+  after callback verification.
 - `/dashboard` and `/dashboard/system-status` now read live counts, persisted
   sync status, and recent activity from the admin database.
 - `/dashboard/experiences` reads real experience rows and can create a new
@@ -22,8 +22,8 @@ version of `apps/admin`.
   operator trigger the experience-embedding workflow for a locale id.
 - `/dashboard/search` performs a real text-to-vector semantic search when an
   supported embedding provider is configured.
-- `/dashboard/users` reflects persisted Better Auth users, linked accounts, and
-  session posture. This surface is now admin-only.
+- `/dashboard/users` reflects admin-local role mappings for Auth SSO
+  principals. This surface is now admin-only.
 - `/dashboard/settings` shows the runtime configuration posture from validated
   env state. This surface is now admin-only.
 - `/dashboard/languages` and `/dashboard/media` read real reference/media rows
