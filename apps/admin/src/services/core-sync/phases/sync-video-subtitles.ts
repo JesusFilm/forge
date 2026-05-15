@@ -8,7 +8,7 @@ import { CoreVideoSubtitleSchema } from "../schemas/video-subtitle"
 import { emptySyncStats } from "../types"
 import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
 
-const PAGE_SIZE = 10000
+const PAGE_SIZE = 25
 
 const VIDEO_SUBTITLES_QUERY = `
   query VideoSubtitles($offset: Int!, $limit: Int!, $where: VideoSubtitlesFilter) {
