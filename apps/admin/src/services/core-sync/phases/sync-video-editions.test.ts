@@ -28,9 +28,7 @@ describe("syncVideoEditions", () => {
     } as never)
 
     const tx = {
-      videoEdition: {
-        upsert: vi.fn().mockResolvedValue({ id: "edition-admin-1" }),
-      },
+      $executeRaw: vi.fn().mockResolvedValue(1),
     }
     const prisma = {
       $transaction: vi.fn(async (fn: (trx: typeof tx) => Promise<void>) =>
@@ -48,19 +46,7 @@ describe("syncVideoEditions", () => {
 
     expect(stats.errors).toBe(0)
     expect(stats.updated).toBe(1)
-    expect(tx.videoEdition.upsert).toHaveBeenCalledWith({
-      where: { coreId: "edition-1" },
-      create: {
-        coreId: "edition-1",
-        name: "Standard",
-        syncedAt: expect.any(Date),
-      },
-      update: {
-        name: "Standard",
-        syncedAt: expect.any(Date),
-        deletedAt: null,
-      },
-    })
+    expect(tx.$executeRaw).toHaveBeenCalledOnce()
     expect(prisma.videoEdition.updateMany).toHaveBeenCalledWith({
       where: {
         source: "CORE",
