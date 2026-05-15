@@ -8,6 +8,7 @@ import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreLanguageSchema } from "../schemas/language"
 import { emptySyncStats } from "../types"
+import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
 import {
   toLocalizedNames,
   toNameMap,
@@ -119,100 +120,97 @@ export async function syncLanguages({
 
     try {
       let pageUpdated = 0
-      await prisma.$transaction(
-        async (tx) => {
-          for (const lang of languages) {
-            const nameMap = toNameMap(lang.name)
-            const audioPreviewSize = lang.audioPreview?.size
-              ? BigInt(lang.audioPreview.size)
+      await prisma.$transaction(async (tx) => {
+        for (const lang of languages) {
+          const nameMap = toNameMap(lang.name)
+          const audioPreviewSize = lang.audioPreview?.size
+            ? BigInt(lang.audioPreview.size)
+            : null
+          const slugOwner = lang.slug ? slugOwners.get(lang.slug) : undefined
+          const slug =
+            lang.slug && (!slugOwner || slugOwner === lang.id)
+              ? lang.slug
               : null
-            const slugOwner = lang.slug ? slugOwners.get(lang.slug) : undefined
-            const slug =
-              lang.slug && (!slugOwner || slugOwner === lang.id)
-                ? lang.slug
-                : null
-            if (lang.slug && !slug) {
-              console.warn(
-                JSON.stringify({
-                  event: "core-sync.language.duplicate-slug",
-                  languageCoreId: lang.id,
-                  slug: lang.slug,
-                  existingLanguageCoreId: slugOwner,
-                }),
-              )
-            } else if (slug) {
-              slugOwners.set(slug, lang.id)
-            }
+          if (lang.slug && !slug) {
+            console.warn(
+              JSON.stringify({
+                event: "core-sync.language.duplicate-slug",
+                languageCoreId: lang.id,
+                slug: lang.slug,
+                existingLanguageCoreId: slugOwner,
+              }),
+            )
+          } else if (slug) {
+            slugOwners.set(slug, lang.id)
+          }
 
-            const language = await tx.language.upsert({
-              where: { coreId: lang.id },
+          const language = await tx.language.upsert({
+            where: { coreId: lang.id },
+            create: {
+              coreId: lang.id,
+              bcp47: lang.bcp47,
+              iso3: lang.iso3,
+              slug,
+              name: nameMap,
+              audioPreviewValue: lang.audioPreview?.value ?? null,
+              audioPreviewDuration: lang.audioPreview?.duration ?? null,
+              audioPreviewSize,
+              audioPreviewBitrate: lang.audioPreview?.bitrate ?? null,
+              audioPreviewCodec: lang.audioPreview?.codec ?? null,
+              syncedAt: new Date(),
+            },
+            update: {
+              bcp47: lang.bcp47,
+              iso3: lang.iso3,
+              slug,
+              name: nameMap,
+              audioPreviewValue: lang.audioPreview?.value ?? null,
+              audioPreviewDuration: lang.audioPreview?.duration ?? null,
+              audioPreviewSize,
+              audioPreviewBitrate: lang.audioPreview?.bitrate ?? null,
+              audioPreviewCodec: lang.audioPreview?.codec ?? null,
+              syncedAt: new Date(),
+              deletedAt: null,
+            },
+          })
+          const localeRows = toLocalizedNames(lang.name)
+          for (const localeRow of localeRows) {
+            await tx.languageLocale.upsert({
+              where: {
+                languageId_locale: {
+                  languageId: language.id,
+                  locale: localeRow.locale,
+                },
+              },
               create: {
-                coreId: lang.id,
-                bcp47: lang.bcp47,
-                iso3: lang.iso3,
-                slug,
-                name: nameMap,
-                audioPreviewValue: lang.audioPreview?.value ?? null,
-                audioPreviewDuration: lang.audioPreview?.duration ?? null,
-                audioPreviewSize,
-                audioPreviewBitrate: lang.audioPreview?.bitrate ?? null,
-                audioPreviewCodec: lang.audioPreview?.codec ?? null,
+                languageId: language.id,
+                locale: localeRow.locale,
+                value: localeRow.value,
+                primary: localeRow.primary,
+                order: localeRow.order,
                 syncedAt: new Date(),
               },
               update: {
-                bcp47: lang.bcp47,
-                iso3: lang.iso3,
-                slug,
-                name: nameMap,
-                audioPreviewValue: lang.audioPreview?.value ?? null,
-                audioPreviewDuration: lang.audioPreview?.duration ?? null,
-                audioPreviewSize,
-                audioPreviewBitrate: lang.audioPreview?.bitrate ?? null,
-                audioPreviewCodec: lang.audioPreview?.codec ?? null,
+                value: localeRow.value,
+                primary: localeRow.primary,
+                order: localeRow.order,
                 syncedAt: new Date(),
                 deletedAt: null,
               },
             })
-            const localeRows = toLocalizedNames(lang.name)
-            for (const localeRow of localeRows) {
-              await tx.languageLocale.upsert({
-                where: {
-                  languageId_locale: {
-                    languageId: language.id,
-                    locale: localeRow.locale,
-                  },
-                },
-                create: {
-                  languageId: language.id,
-                  locale: localeRow.locale,
-                  value: localeRow.value,
-                  primary: localeRow.primary,
-                  order: localeRow.order,
-                  syncedAt: new Date(),
-                },
-                update: {
-                  value: localeRow.value,
-                  primary: localeRow.primary,
-                  order: localeRow.order,
-                  syncedAt: new Date(),
-                  deletedAt: null,
-                },
-              })
-            }
-            await tx.languageLocale.updateMany({
-              where: {
-                languageId: language.id,
-                source: "CORE",
-                locale: { notIn: localeRows.map((row) => row.locale) },
-                deletedAt: null,
-              },
-              data: { deletedAt: new Date() },
-            })
-            pageUpdated++
           }
-        },
-        { timeout: 60_000, maxWait: 5_000 },
-      )
+          await tx.languageLocale.updateMany({
+            where: {
+              languageId: language.id,
+              source: "CORE",
+              locale: { notIn: localeRows.map((row) => row.locale) },
+              deletedAt: null,
+            },
+            data: { deletedAt: new Date() },
+          })
+          pageUpdated++
+        }
+      }, CORE_SYNC_TRANSACTION_OPTIONS)
       stats.updated += pageUpdated
     } catch (err) {
       stats.errors++

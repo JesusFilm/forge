@@ -6,6 +6,7 @@ import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreKeywordSchema } from "../schemas/keyword"
 import { emptySyncStats } from "../types"
+import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
 
 const KEYWORDS_QUERY = `
   query Keywords($offset: Int!, $limit: Int!, $where: KeywordsFilter) {
@@ -84,33 +85,30 @@ export async function syncKeywords({
 
     try {
       let pageUpdated = 0
-      await prisma.$transaction(
-        async (tx) => {
-          for (const keyword of keywords) {
-            const languageId = keyword.language
-              ? (langMap.get(keyword.language.id) ?? null)
-              : null
+      await prisma.$transaction(async (tx) => {
+        for (const keyword of keywords) {
+          const languageId = keyword.language
+            ? (langMap.get(keyword.language.id) ?? null)
+            : null
 
-            await tx.keyword.upsert({
-              where: { coreId: keyword.id },
-              create: {
-                coreId: keyword.id,
-                value: keyword.value,
-                languageId,
-                syncedAt: new Date(),
-              },
-              update: {
-                value: keyword.value,
-                languageId,
-                syncedAt: new Date(),
-                deletedAt: null,
-              },
-            })
-            pageUpdated++
-          }
-        },
-        { timeout: 60_000, maxWait: 5_000 },
-      )
+          await tx.keyword.upsert({
+            where: { coreId: keyword.id },
+            create: {
+              coreId: keyword.id,
+              value: keyword.value,
+              languageId,
+              syncedAt: new Date(),
+            },
+            update: {
+              value: keyword.value,
+              languageId,
+              syncedAt: new Date(),
+              deletedAt: null,
+            },
+          })
+          pageUpdated++
+        }
+      }, CORE_SYNC_TRANSACTION_OPTIONS)
       stats.updated += pageUpdated
     } catch (err) {
       stats.errors++
