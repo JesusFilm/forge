@@ -286,7 +286,7 @@ export async function syncVideos({
     }
   }
 
-  const PAGE_SIZE = 200
+  const PAGE_SIZE = 25
   let offset = 0
   let firstPageCount = 0
   const seenCoreIds = new Set<string>()
