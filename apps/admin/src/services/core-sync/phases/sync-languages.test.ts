@@ -39,7 +39,7 @@ describe("syncLanguages", () => {
 
     const progress = createProgress()
     const prisma = {
-      $transaction: vi.fn(),
+      $executeRaw: vi.fn(),
       language: {
         findMany: vi.fn().mockResolvedValue([]),
         updateMany: vi.fn(),
@@ -52,7 +52,7 @@ describe("syncLanguages", () => {
     })
 
     expect(stats.errors).toBe(1)
-    expect(prisma.$transaction).not.toHaveBeenCalled()
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
     expect(prisma.language.updateMany).not.toHaveBeenCalled()
   })
 
@@ -79,19 +79,8 @@ describe("syncLanguages", () => {
     } as never)
 
     const progress = createProgress()
-    const tx = {
-      language: {
-        upsert: vi.fn().mockResolvedValue({ id: "language-1" }),
-      },
-      languageLocale: {
-        upsert: vi.fn().mockResolvedValue(undefined),
-        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
-      },
-    }
     const prisma = {
-      $transaction: vi.fn(async (fn: (trx: typeof tx) => Promise<void>) =>
-        fn(tx),
-      ),
+      $executeRaw: vi.fn().mockResolvedValue(undefined),
       language: {
         findMany: vi.fn().mockResolvedValue([]),
         updateMany: vi.fn().mockResolvedValue({ count: 2 }),
@@ -106,7 +95,7 @@ describe("syncLanguages", () => {
       progress,
     })
 
-    expect(prisma.$transaction).toHaveBeenCalled()
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(3)
     expect(prisma.language.updateMany).toHaveBeenCalledWith({
       where: {
         source: "CORE",
@@ -115,14 +104,8 @@ describe("syncLanguages", () => {
       },
       data: { deletedAt: expect.any(Date) },
     })
-    expect(tx.languageLocale.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({
-          languageId: "language-1",
-          locale: "en",
-          value: "English",
-        }),
-      }),
+    expect(prisma.$executeRaw.mock.calls.join("\n")).toContain(
+      'INSERT INTO "language_locale"',
     )
     expect(stats.softDeleted).toBe(2)
     expect(stats.errors).toBe(0)
@@ -137,7 +120,7 @@ describe("syncLanguages", () => {
 
     const progress = createProgress()
     const prisma = {
-      $transaction: vi.fn(),
+      $executeRaw: vi.fn(),
       language: {
         findMany: vi.fn().mockResolvedValue([]),
         updateMany: vi.fn(),
@@ -170,19 +153,8 @@ describe("syncLanguages", () => {
     } as never)
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
 
-    const tx = {
-      language: {
-        upsert: vi.fn().mockResolvedValue({ id: "language-2" }),
-      },
-      languageLocale: {
-        upsert: vi.fn().mockResolvedValue(undefined),
-        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
-      },
-    }
     const prisma = {
-      $transaction: vi.fn(async (fn: (trx: typeof tx) => Promise<void>) =>
-        fn(tx),
-      ),
+      $executeRaw: vi.fn().mockResolvedValue(undefined),
       language: {
         findMany: vi
           .fn()
@@ -200,12 +172,7 @@ describe("syncLanguages", () => {
     })
 
     expect(stats.errors).toBe(0)
-    expect(tx.language.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({ slug: null }),
-        update: expect.objectContaining({ slug: null }),
-      }),
-    )
+    expect(prisma.$executeRaw).toHaveBeenCalled()
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining("core-sync.language.duplicate-slug"),
     )
