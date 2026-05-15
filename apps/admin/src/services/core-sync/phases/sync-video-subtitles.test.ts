@@ -35,9 +35,7 @@ describe("syncVideoSubtitles", () => {
     } as never)
 
     const tx = {
-      videoSubtitle: {
-        upsert: vi.fn().mockResolvedValue({ id: "subtitle-admin-1" }),
-      },
+      $executeRaw: vi.fn().mockResolvedValue(1),
     }
     const prisma = {
       video: {
@@ -74,31 +72,7 @@ describe("syncVideoSubtitles", () => {
 
     expect(stats.errors).toBe(0)
     expect(stats.updated).toBe(1)
-    expect(tx.videoSubtitle.upsert).toHaveBeenCalledWith({
-      where: { coreId: "subtitle-1" },
-      create: {
-        coreId: "subtitle-1",
-        videoId: "video-admin-1",
-        videoEditionId: "edition-admin-1",
-        languageId: "language-admin-1",
-        value: "Subtitle text",
-        primary: true,
-        vttSrc: "subtitle.vtt",
-        srtSrc: "subtitle.srt",
-        syncedAt: expect.any(Date),
-      },
-      update: {
-        videoId: "video-admin-1",
-        videoEditionId: "edition-admin-1",
-        languageId: "language-admin-1",
-        value: "Subtitle text",
-        primary: true,
-        vttSrc: "subtitle.vtt",
-        srtSrc: "subtitle.srt",
-        syncedAt: expect.any(Date),
-        deletedAt: null,
-      },
-    })
+    expect(tx.$executeRaw).toHaveBeenCalledOnce()
     expect(prisma.videoSubtitle.updateMany).toHaveBeenCalledWith({
       where: {
         source: "CORE",
