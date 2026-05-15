@@ -169,8 +169,8 @@ describe("restore command planning", () => {
         "--single-transaction",
         "--dbname",
         "postgresql://user:pass@localhost/dev",
-        "--table=public.video",
-        "--table=public.video_transcript_chunk",
+        "--table=video",
+        "--table=video_transcript_chunk",
         plan.inPath,
       ]),
     )
