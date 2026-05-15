@@ -132,6 +132,7 @@ describe("syncVideos", () => {
       },
     }
     const prisma = {
+      $executeRaw: vi.fn().mockResolvedValue(undefined),
       language: {
         findMany: vi
           .fn()
@@ -158,6 +159,7 @@ describe("syncVideos", () => {
     })
 
     expect(stats.errors).toBe(0)
+    expect(prisma.$executeRaw).toHaveBeenCalled()
     expect(tx.video.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({
