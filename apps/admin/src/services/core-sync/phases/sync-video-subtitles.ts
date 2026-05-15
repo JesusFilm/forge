@@ -6,6 +6,7 @@ import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreVideoSubtitleSchema } from "../schemas/video-subtitle"
 import { emptySyncStats } from "../types"
+import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
 
 const PAGE_SIZE = 10000
 
@@ -103,44 +104,41 @@ export async function syncVideoSubtitles({
 
     try {
       let updated = 0
-      await prisma.$transaction(
-        async (tx) => {
-          for (const subtitle of subtitles) {
-            const videoId = videoMap.get(subtitle.videoId)
-            const languageId = langMap.get(subtitle.languageId)
-            const videoEditionId = editionMap.get(subtitle.videoEdition.id)
-            if (!videoId || !videoEditionId) continue
+      await prisma.$transaction(async (tx) => {
+        for (const subtitle of subtitles) {
+          const videoId = videoMap.get(subtitle.videoId)
+          const languageId = langMap.get(subtitle.languageId)
+          const videoEditionId = editionMap.get(subtitle.videoEdition.id)
+          if (!videoId || !videoEditionId) continue
 
-            await tx.videoSubtitle.upsert({
-              where: { coreId: subtitle.id },
-              create: {
-                coreId: subtitle.id,
-                videoId,
-                videoEditionId,
-                languageId: languageId ?? null,
-                value: subtitle.value,
-                primary: subtitle.primary,
-                vttSrc: subtitle.vttSrc,
-                srtSrc: subtitle.srtSrc,
-                syncedAt: new Date(),
-              },
-              update: {
-                videoId,
-                videoEditionId,
-                languageId: languageId ?? null,
-                value: subtitle.value,
-                primary: subtitle.primary,
-                vttSrc: subtitle.vttSrc,
-                srtSrc: subtitle.srtSrc,
-                syncedAt: new Date(),
-                deletedAt: null,
-              },
-            })
-            updated++
-          }
-        },
-        { timeout: 60_000, maxWait: 5_000 },
-      )
+          await tx.videoSubtitle.upsert({
+            where: { coreId: subtitle.id },
+            create: {
+              coreId: subtitle.id,
+              videoId,
+              videoEditionId,
+              languageId: languageId ?? null,
+              value: subtitle.value,
+              primary: subtitle.primary,
+              vttSrc: subtitle.vttSrc,
+              srtSrc: subtitle.srtSrc,
+              syncedAt: new Date(),
+            },
+            update: {
+              videoId,
+              videoEditionId,
+              languageId: languageId ?? null,
+              value: subtitle.value,
+              primary: subtitle.primary,
+              vttSrc: subtitle.vttSrc,
+              srtSrc: subtitle.srtSrc,
+              syncedAt: new Date(),
+              deletedAt: null,
+            },
+          })
+          updated++
+        }
+      }, CORE_SYNC_TRANSACTION_OPTIONS)
       stats.updated += updated
     } catch (err) {
       stats.errors++
