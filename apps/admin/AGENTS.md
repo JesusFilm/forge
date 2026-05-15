@@ -57,14 +57,15 @@ CI's `admin-schema-drift` job catches step 1 if forgotten. The committed SDL is 
 
 ## Local-dev scripts (not deployed)
 
-| Script                                           | Purpose                                                        | Env requirement                                                    |
-| ------------------------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `pnpm --filter @forge/admin run-sync`            | Run the Core data sync against any DATABASE_URL                | DATABASE_URL + Core API creds                                      |
-| `pnpm --filter @forge/admin run-embeds`          | Run scene/transcript embedding workflows locally               | DATABASE_URL + manager S3 + OpenRouter (R1 only)                   |
-| `pnpm --filter @forge/admin run-experience-dump` | Run R3 experience-content-dump from a workstation              | DATABASE_URL + CMS_DATABASE_URL                                    |
-| `pnpm --filter @forge/admin restore:video-db`    | Restore the reviewed video slice into dev/staging Postgres     | TARGET_DATABASE_URL or DATABASE_URL + `--target-env`               |
-| `pnpm --filter @forge/admin seed-easter`         | Seed Easter experience into local Postgres for UI/E2E fixtures | DATABASE_URL (loaded via `--env-file=.env`); destructive on re-run |
-| `pnpm --filter @forge/admin schema:print`        | Regenerate the committed admin SDL artifact                    | None (uses Pothos schema directly)                                 |
+| Script                                               | Purpose                                                         | Env requirement                                                    |
+| ---------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `pnpm --filter @forge/admin run-sync`                | Run the Core data sync against any DATABASE_URL                 | DATABASE_URL + Core API creds                                      |
+| `pnpm --filter @forge/admin run-embeds`              | Run scene/transcript embedding workflows locally                | DATABASE_URL + manager S3 + OpenRouter (R1 only)                   |
+| `pnpm --filter @forge/admin run-experience-dump`     | Run R3 experience-content-dump from a workstation               | DATABASE_URL + CMS_DATABASE_URL                                    |
+| `pnpm --filter @forge/admin restore:video-db`        | Restore the reviewed video slice into dev/staging Postgres      | TARGET_DATABASE_URL or DATABASE_URL + `--target-env`               |
+| `pnpm --filter @forge/admin restore:video-db:latest` | Download latest via prod presign endpoint, then restore locally | TARGET_DATABASE_URL or DATABASE_URL + BACKUP_DOWNLOAD_API_KEY      |
+| `pnpm --filter @forge/admin seed-easter`             | Seed Easter experience into local Postgres for UI/E2E fixtures  | DATABASE_URL (loaded via `--env-file=.env`); destructive on re-run |
+| `pnpm --filter @forge/admin schema:print`            | Regenerate the committed admin SDL artifact                     | None (uses Pothos schema directly)                                 |
 
 ## Boundaries
 
