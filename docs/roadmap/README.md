@@ -128,6 +128,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-115](platform/feat-115-admin-image-enrichment-workflow.md)                 | Admin Image Enrichment Workflow                         | tataihono | P1       | 2026-05-04 | 7    | 2026-05-10 | complete    |
 | [feat-122](platform/feat-122-admin-video-database-backup-and-clone.md)           | Admin video database backup and clone tooling           | tataihono | P1       | 2026-05-13 | 5    | 2026-05-17 | complete    |
 | [feat-123](platform/feat-123-admin-video-db-presigned-restore.md)                | Admin video database presigned restore access           | tataihono | P1       | 2026-05-15 | 1    | 2026-05-15 | complete    |
+| [feat-124](platform/feat-124-admin-prod-core-sync-restore-fix.md)                | Admin production core sync restore fix                  | tataihono | P1       | 2026-05-15 | 1    | 2026-05-15 | in-progress |
 | [feat-040](platform/feat-040-partner-activation-network.md)                      | Partner Activation Network                              | urim      | P1       | 2026-06-16 | 28   | 2026-07-13 | blocked     |
 | [feat-042](platform/feat-042-video-contests-and-inspiration-feed.md)             | Video Contests and Inspiration Feed                     | urim      | P1       | 2026-06-30 | 28   | 2026-07-27 | blocked     |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                                 | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |

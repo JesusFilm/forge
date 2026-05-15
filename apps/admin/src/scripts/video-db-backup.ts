@@ -332,6 +332,10 @@ function tableArgs(tables: readonly string[]): string[] {
   return tables.map((table) => `--table=public.${table}`)
 }
 
+function restoreTableArgs(tables: readonly string[]): string[] {
+  return tables.map((table) => `--table=${table}`)
+}
+
 function quoteTable(table: string): string {
   return `"public"."${table.replace(/"/g, '""')}"`
 }
@@ -479,7 +483,7 @@ export function buildRestorePlan(
           "--single-transaction",
           "--dbname",
           target,
-          ...tableArgs(tables),
+          ...restoreTableArgs(tables),
           inPath,
         ],
       },
