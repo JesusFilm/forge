@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import { useState, type FormEvent } from "react"
 
 const providerLabels = {
@@ -33,9 +32,11 @@ const loginErrors = {
 export function LoginPageClient({
   enabledProviders,
   initialError,
+  oauthQuery,
 }: {
   enabledProviders: LoginProviderId[]
   initialError?: LoginErrorCode
+  oauthQuery: string
 }) {
   const [error, setError] = useState<
     LoginErrorCode | "credentials" | "start" | null
@@ -90,27 +91,11 @@ export function LoginPageClient({
     <main className="login-shell">
       <section className="login-panel">
         <div className="login-copy">
-          <Image
-            src="/images/jesus-film-logo-full.svg"
-            alt="Jesus Film Project"
-            width={139}
-            height={36}
-            className="login-logo"
-            priority
-          />
           <h1>Sign in to continue.</h1>
           <p>Secure access for approved applications.</p>
         </div>
 
         <div className="login-form">
-          <Image
-            src="/images/jesus-film-logo-full.svg"
-            alt="Jesus Film Project"
-            width={139}
-            height={36}
-            className="login-logo"
-            priority
-          />
           <h2>Sign in</h2>
           <p>Use the same method you used when your account was created.</p>
 
@@ -119,6 +104,7 @@ export function LoginPageClient({
             method="post"
             onSubmit={handleSubmit}
           >
+            <input type="hidden" name="oauth_query" value={oauthQuery} />
             <div className="form-field">
               <label htmlFor="email">Email address</label>
               <input
@@ -169,6 +155,7 @@ export function LoginPageClient({
                         credentials: "include",
                         headers: { "content-type": "application/json" },
                         body: JSON.stringify({
+                          oauth_query: oauthQuery,
                           provider: providerId,
                         }),
                       })

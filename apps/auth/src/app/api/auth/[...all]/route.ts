@@ -30,15 +30,17 @@ function audit(event: string, email?: string): void {
 
 async function parseEmailPasswordRequest(
   request: Request,
-): Promise<{ email: string; password: string }> {
+): Promise<{ email: string; password: string; oauthQuery?: string }> {
   const contentType = request.headers.get("content-type") ?? ""
   if (contentType.includes("application/json")) {
     const body = (await request.json()) as {
       email?: string
+      oauth_query?: string
       password?: string
     }
     return {
       email: body.email?.trim().toLowerCase() ?? "",
+      oauthQuery: body.oauth_query,
       password: body.password ?? "",
     }
   }
@@ -48,6 +50,10 @@ async function parseEmailPasswordRequest(
     email: String(body.get("email") ?? "")
       .trim()
       .toLowerCase(),
+    oauthQuery:
+      typeof body.get("oauth_query") === "string"
+        ? String(body.get("oauth_query"))
+        : undefined,
     password: String(body.get("password") ?? ""),
   }
 }
@@ -79,13 +85,18 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
     return genericUnauthorized()
   }
 
-  const { email, password } = await parseEmailPasswordRequest(request)
+  const { email, oauthQuery, password } =
+    await parseEmailPasswordRequest(request)
   if (!email || !password) {
     audit("auth.signin.rejected", email)
     return genericUnauthorized()
   }
 
-  const jsonBody = { email, password }
+  const jsonBody = {
+    email,
+    password,
+    ...(oauthQuery ? { oauth_query: oauthQuery } : {}),
+  }
   const primaryResponse = await authRouteHandlers.POST(
     toJsonRequest(request, jsonBody),
   )
@@ -123,6 +134,7 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
     body: {
       email,
       password,
+      ...(oauthQuery ? { oauth_query: oauthQuery } : {}),
       name: email.split("@")[0] || "user",
     },
   })

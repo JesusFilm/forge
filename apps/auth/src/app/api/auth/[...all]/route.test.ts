@@ -68,4 +68,29 @@ describe("Auth route wrapper", () => {
     expect(response.status).toBe(200)
     expect(authPost).toHaveBeenCalledOnce()
   })
+
+  it("forwards OAuth continuation query through email sign-in", async () => {
+    authPost.mockResolvedValueOnce(Response.json({ ok: true }))
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/sign-in/email", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: "USER@example.com",
+          oauth_query: "client_id=jfp_admin_local&sig=signed",
+          password: "password",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["sign-in", "email"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwardedRequest.json()).resolves.toMatchObject({
+      email: "user@example.com",
+      oauth_query: "client_id=jfp_admin_local&sig=signed",
+      password: "password",
+    })
+  })
 })
