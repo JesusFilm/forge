@@ -4,12 +4,14 @@
 //
 // source='manager' rows are NEVER overwritten (short-circuit on upsert).
 
+import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
 import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreBibleBookSchema, CoreVideoSchema } from "../schemas/video"
 import { emptySyncStats } from "../types"
 import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
+import { toPgArray } from "@/db/pgvector"
 import {
   mapVideoLabel,
   mapVideoSource,
@@ -138,6 +140,92 @@ type CoreBibleBook = {
   name: Array<{ value: string; language: { bcp47?: string; id?: string } }>
 }
 
+function encodeJsonForPgArray(value: unknown): string {
+  return Buffer.from(JSON.stringify(value), "utf8").toString("base64")
+}
+
+async function bulkUpsertBibleBooks(
+  prisma: PrismaClient,
+  books: ReadonlyArray<{
+    id: string
+    coreId: string
+    nameBase64: string
+    osisId: string | null
+    alternateName: string | null
+    paratextAbbreviation: string | null
+    isNewTestament: boolean | null
+    testament: string | null
+    order: number | null
+  }>,
+) {
+  if (books.length === 0) return
+
+  await prisma.$executeRaw`
+    INSERT INTO "bible_book" (
+      "id",
+      "core_id",
+      "source",
+      "name",
+      "osis_id",
+      "alternate_name",
+      "paratext_abbreviation",
+      "is_new_testament",
+      "testament",
+      "order",
+      "synced_at",
+      "created_at",
+      "updated_at"
+    )
+    SELECT
+      input."id",
+      input."core_id",
+      'core'::"SourceTier",
+      convert_from(decode(input."name_base64", 'base64'), 'UTF8')::jsonb,
+      input."osis_id",
+      input."alternate_name",
+      input."paratext_abbreviation",
+      input."is_new_testament_text"::boolean,
+      input."testament",
+      input."order_text"::int,
+      NOW(),
+      NOW(),
+      NOW()
+    FROM unnest(
+      ${toPgArray(books.map((book) => book.id))}::text[],
+      ${toPgArray(books.map((book) => book.coreId))}::text[],
+      ${toPgArray(books.map((book) => book.nameBase64))}::text[],
+      ${toPgArray(books.map((book) => book.osisId))}::text[],
+      ${toPgArray(books.map((book) => book.alternateName))}::text[],
+      ${toPgArray(books.map((book) => book.paratextAbbreviation))}::text[],
+      ${toPgArray(books.map((book) => (book.isNewTestament == null ? null : String(book.isNewTestament))))}::text[],
+      ${toPgArray(books.map((book) => book.testament))}::text[],
+      ${toPgArray(books.map((book) => book.order?.toString() ?? null))}::text[]
+    ) AS input(
+      "id",
+      "core_id",
+      "name_base64",
+      "osis_id",
+      "alternate_name",
+      "paratext_abbreviation",
+      "is_new_testament_text",
+      "testament",
+      "order_text"
+    )
+    ON CONFLICT ("core_id")
+    DO UPDATE SET
+      "name"                  = EXCLUDED."name",
+      "osis_id"               = EXCLUDED."osis_id",
+      "alternate_name"        = EXCLUDED."alternate_name",
+      "paratext_abbreviation" = EXCLUDED."paratext_abbreviation",
+      "is_new_testament"      = EXCLUDED."is_new_testament",
+      "testament"             = EXCLUDED."testament",
+      "order"                 = EXCLUDED."order",
+      "synced_at"             = EXCLUDED."synced_at",
+      "updated_at"            = EXCLUDED."updated_at",
+      "deleted_at"            = NULL
+  `
+}
+
 export async function syncVideos({
   prisma,
   progress,
@@ -174,45 +262,27 @@ export async function syncVideos({
         }),
       )
     } else if (parsedBooks.data.length > 0) {
-      await prisma.$transaction(async (tx) => {
-        for (const book of parsedBooks.data) {
-          await tx.bibleBook.upsert({
-            where: { coreId: book.id },
-            create: {
-              coreId: book.id,
-              name: toNameMap(book.name, { bcp47ByCoreId }),
-              osisId: book.osisId,
-              alternateName: book.alternateName,
-              paratextAbbreviation: book.paratextAbbreviation,
-              isNewTestament: book.isNewTestament,
-              testament:
-                book.isNewTestament == null
-                  ? null
-                  : book.isNewTestament
-                    ? "NT"
-                    : "OT",
-              order: book.order,
-              syncedAt: new Date(),
-            },
-            update: {
-              name: toNameMap(book.name, { bcp47ByCoreId }),
-              osisId: book.osisId,
-              alternateName: book.alternateName,
-              paratextAbbreviation: book.paratextAbbreviation,
-              isNewTestament: book.isNewTestament,
-              testament:
-                book.isNewTestament == null
-                  ? null
-                  : book.isNewTestament
-                    ? "NT"
-                    : "OT",
-              order: book.order,
-              syncedAt: new Date(),
-              deletedAt: null,
-            },
-          })
-        }
-      })
+      await bulkUpsertBibleBooks(
+        prisma,
+        parsedBooks.data.map((book) => ({
+          id: randomUUID(),
+          coreId: book.id,
+          nameBase64: encodeJsonForPgArray(
+            toNameMap(book.name, { bcp47ByCoreId }),
+          ),
+          osisId: book.osisId,
+          alternateName: book.alternateName,
+          paratextAbbreviation: book.paratextAbbreviation,
+          isNewTestament: book.isNewTestament,
+          testament:
+            book.isNewTestament == null
+              ? null
+              : book.isNewTestament
+                ? "NT"
+                : "OT",
+          order: book.order,
+        })),
+      )
     }
   }
 
