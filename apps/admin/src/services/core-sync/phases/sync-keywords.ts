@@ -1,12 +1,13 @@
 // Sync phase: keywords
 // Depends on: languages (keyword.languageId FK)
 
+import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
 import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreKeywordSchema } from "../schemas/keyword"
 import { emptySyncStats } from "../types"
-import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
+import { toPgArray } from "@/db/pgvector"
 
 const KEYWORDS_QUERY = `
   query Keywords($offset: Int!, $limit: Int!, $where: KeywordsFilter) {
@@ -24,6 +25,53 @@ type CoreKeyword = {
   updatedAt?: string
   value: string
   language: { id: string } | null
+}
+
+async function bulkUpsertKeywords(
+  prisma: PrismaClient,
+  keywords: ReadonlyArray<{
+    id: string
+    coreId: string
+    value: string
+    languageId: string | null
+  }>,
+) {
+  if (keywords.length === 0) return
+
+  await prisma.$executeRaw`
+    INSERT INTO "keyword" (
+      "id",
+      "core_id",
+      "source",
+      "value",
+      "language_id",
+      "synced_at",
+      "created_at",
+      "updated_at"
+    )
+    SELECT
+      input."id",
+      input."core_id",
+      'core'::"SourceTier",
+      input."value",
+      input."language_id",
+      NOW(),
+      NOW(),
+      NOW()
+    FROM unnest(
+      ${toPgArray(keywords.map((keyword) => keyword.id))}::text[],
+      ${toPgArray(keywords.map((keyword) => keyword.coreId))}::text[],
+      ${toPgArray(keywords.map((keyword) => keyword.value))}::text[],
+      ${toPgArray(keywords.map((keyword) => keyword.languageId))}::text[]
+    ) AS input("id", "core_id", "value", "language_id")
+    ON CONFLICT ("core_id")
+    DO UPDATE SET
+      "value"       = EXCLUDED."value",
+      "language_id" = EXCLUDED."language_id",
+      "synced_at"   = EXCLUDED."synced_at",
+      "updated_at"  = EXCLUDED."updated_at",
+      "deleted_at"  = NULL
+  `
 }
 
 export async function syncKeywords({
@@ -84,32 +132,17 @@ export async function syncKeywords({
     progress.setTotal(offset + keywords.length)
 
     try {
-      let pageUpdated = 0
-      await prisma.$transaction(async (tx) => {
-        for (const keyword of keywords) {
-          const languageId = keyword.language
-            ? (langMap.get(keyword.language.id) ?? null)
-            : null
+      const writes = keywords.map((keyword) => ({
+        id: randomUUID(),
+        coreId: keyword.id,
+        value: keyword.value,
+        languageId: keyword.language
+          ? (langMap.get(keyword.language.id) ?? null)
+          : null,
+      }))
 
-          await tx.keyword.upsert({
-            where: { coreId: keyword.id },
-            create: {
-              coreId: keyword.id,
-              value: keyword.value,
-              languageId,
-              syncedAt: new Date(),
-            },
-            update: {
-              value: keyword.value,
-              languageId,
-              syncedAt: new Date(),
-              deletedAt: null,
-            },
-          })
-          pageUpdated++
-        }
-      }, CORE_SYNC_TRANSACTION_OPTIONS)
-      stats.updated += pageUpdated
+      await bulkUpsertKeywords(prisma, writes)
+      stats.updated += writes.length
     } catch (err) {
       stats.errors++
       console.error(
