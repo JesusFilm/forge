@@ -31,6 +31,13 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_D
 - `.devcontainer/post_install.py` — post-create: Claude bypassPermissions, Codex full-access config, tmux, gitignore
 - `.devcontainer/.zshrc` — zsh config with fnm, fzf, history
 
+## System packages
+
+- PostgreSQL client tools come from the official PGDG apt repository and install `postgresql-client-18`. Ubuntu 24.04's default `postgresql-client` package resolves to PostgreSQL 16, which cannot read custom-format dumps with header version 1.16 from newer Railway PostgreSQL backups.
+- The local database sidecar uses `pgvector/pgvector:pg18` to match the Railway PostgreSQL 18 production major version as closely as practical in local development.
+- After rebuilding the devcontainer, verify `pg_restore --version`, `pg_dump --version`, and `psql --version` all report PostgreSQL 18 before restoring production backup artifacts.
+- PostgreSQL major-version upgrades cannot reuse an old data directory. If a local `pgdata` volume was created with PostgreSQL 16, recreate it before starting the PG18 sidecar.
+
 ## Known gaps / watch-outs
 
 - `claude plugin marketplace add` runs during Docker build — requires public plugins or pre-auth
