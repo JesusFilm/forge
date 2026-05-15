@@ -180,7 +180,13 @@ export function LanguageCombobox({
         <div
           ref={popoverRef}
           data-testid="language-combobox-popover"
-          className="absolute left-0 right-0 z-20 mt-2 rounded-2xl border border-stone-700 bg-stone-900 shadow-xl"
+          // `overflow-hidden` is load-bearing — the listbox <ul> below has
+          // its own `overflow-y-auto` for scrolling, but without clipping
+          // at the popover edge the last option's hover/active background
+          // (the filled `<button>`) paints past the `rounded-2xl` corner.
+          // `shadow-xl` is unaffected because box-shadow renders outside
+          // the element's bounding box, not against its overflow rule.
+          className="absolute left-0 right-0 z-20 mt-2 overflow-hidden rounded-2xl border border-stone-700 bg-stone-900 shadow-xl"
         >
           <div className="border-b border-stone-700 px-3 py-2">
             <input
