@@ -251,6 +251,23 @@ to restore into local or staging Postgres. The restore path reads
 video manifest tables, and refuses `--target-env=production` unless
 `--allow-production-target` is also present.
 
+For local/staging self-service, prefer the presigned latest-backup path:
+
+```bash
+TARGET_DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
+BACKUP_DOWNLOAD_API_KEY='<dev-or-stg-token>' \
+pnpm --filter @forge/admin restore:video-db:latest -- --target-env=development
+```
+
+`restore:video-db:latest` calls production admin's
+`POST /api/internal/video-db-backups/presign` endpoint when
+`BACKUP_DOWNLOAD_API_KEY` is present. Production admin validates the bearer
+against `BACKUP_DOWNLOAD_API_KEYS`, finds the latest `.dump` under
+`admin-video-db-backups/<profile>/`, returns a short-lived GET-only signed URL,
+and keeps raw `RAILWAY_S3_*` credentials inside the production runtime. The
+endpoint requires production admin to have the normal `RAILWAY_S3_*` bucket env
+vars configured; dev/staging should not need those S3 credentials.
+
 ### Jesus Film Auth client mode
 
 For local development, admin points at production Auth so engineers do not need

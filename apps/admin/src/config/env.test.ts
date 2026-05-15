@@ -63,6 +63,7 @@ describe("env", () => {
         assertBearerCsvsDisjoint({
           WORKFLOW_API_KEYS: "wf-a,wf-b",
           WEB_ADMIN_API_KEYS: "web-a,web-b",
+          BACKUP_DOWNLOAD_API_KEYS: "backup-a,backup-b",
         }),
       ).not.toThrow()
     })
@@ -76,11 +77,20 @@ describe("env", () => {
       ).toThrow(/WORKFLOW_API_KEYS and WEB_ADMIN_API_KEYS/)
     })
 
+    it("throws when backup download keys overlap another bearer CSV", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WORKFLOW_API_KEYS: "wf-a",
+          BACKUP_DOWNLOAD_API_KEYS: "wf-a",
+        }),
+      ).toThrow(/WORKFLOW_API_KEYS and BACKUP_DOWNLOAD_API_KEYS/)
+    })
+
     it("error message does NOT contain the offending key value", () => {
       try {
         assertBearerCsvsDisjoint({
           WORKFLOW_API_KEYS: "the-leaked-key-aaa",
-          WEB_ADMIN_API_KEYS: "the-leaked-key-aaa",
+          BACKUP_DOWNLOAD_API_KEYS: "the-leaked-key-aaa",
         })
         throw new Error("expected throw")
       } catch (err) {

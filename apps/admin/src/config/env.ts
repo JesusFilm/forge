@@ -70,6 +70,12 @@ export const env = createEnv({
     // widen the other; the `WEB_ADMIN_API_KEYS !== WORKFLOW_API_KEYS`
     // invariant is asserted at unit-test time.
     WEB_ADMIN_API_KEYS: z.string().optional(),
+    // Video DB backup download signer. Production admin uses this CSV
+    // to authorize non-production callers that need a short-lived GET
+    // URL for the latest reviewed video backup. Keep separate from
+    // workflow and consumer bearer sets so backup download access does
+    // not imply GraphQL or workflow access.
+    BACKUP_DOWNLOAD_API_KEYS: z.string().min(1).optional(),
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
     WORKFLOW_TARGET_WORLD: z
       .enum(["local", "@workflow/world-postgres"])
@@ -219,6 +225,9 @@ export const env = createEnv({
     OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
     WORKFLOW_API_KEYS: emptyToUndefined(process.env.WORKFLOW_API_KEYS),
     WEB_ADMIN_API_KEYS: emptyToUndefined(process.env.WEB_ADMIN_API_KEYS),
+    BACKUP_DOWNLOAD_API_KEYS: emptyToUndefined(
+      process.env.BACKUP_DOWNLOAD_API_KEYS,
+    ),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
     WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
     WORKFLOW_RUNNER_ENABLED: emptyToUndefined(
@@ -320,22 +329,35 @@ function parseBearerCsvSet(csv: string | undefined): ReadonlySet<string> {
 export type BearerCsvSnapshot = {
   readonly WORKFLOW_API_KEYS?: string
   readonly WEB_ADMIN_API_KEYS?: string
+  readonly BACKUP_DOWNLOAD_API_KEYS?: string
 }
 
 export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
-  const workflow = parseBearerCsvSet(snapshot.WORKFLOW_API_KEYS)
-  const consumer = parseBearerCsvSet(snapshot.WEB_ADMIN_API_KEYS)
+  const sets = [
+    ["WORKFLOW_API_KEYS", parseBearerCsvSet(snapshot.WORKFLOW_API_KEYS)],
+    ["WEB_ADMIN_API_KEYS", parseBearerCsvSet(snapshot.WEB_ADMIN_API_KEYS)],
+    [
+      "BACKUP_DOWNLOAD_API_KEYS",
+      parseBearerCsvSet(snapshot.BACKUP_DOWNLOAD_API_KEYS),
+    ],
+  ] as const
 
-  for (const key of workflow) {
-    if (consumer.has(key)) {
-      // NEVER include the key value — error stays grep-friendly for
-      // logs but doesn't echo the leaked credential.
-      throw new Error(
-        `Bearer API key value appears in multiple CSVs: WORKFLOW_API_KEYS and ` +
-          `WEB_ADMIN_API_KEYS must be disjoint (admin auth chain is workflow → ` +
-          `consumer → public; a shared value silently widens permissions). ` +
-          `Check the offending Doppler entries — key value redacted.`,
-      )
+  for (let i = 0; i < sets.length; i += 1) {
+    for (let j = i + 1; j < sets.length; j += 1) {
+      const [leftName, left] = sets[i]
+      const [rightName, right] = sets[j]
+      for (const key of left) {
+        if (right.has(key)) {
+          // NEVER include the key value — error stays grep-friendly for
+          // logs but doesn't echo the leaked credential.
+          throw new Error(
+            `Bearer API key value appears in multiple CSVs: ${leftName} and ` +
+              `${rightName} must be disjoint (admin auth chains must not share ` +
+              `bearer credentials). Check the offending Doppler entries — key ` +
+              `value redacted.`,
+          )
+        }
+      }
     }
   }
 }
@@ -347,4 +369,5 @@ export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
 assertBearerCsvsDisjoint({
   WORKFLOW_API_KEYS: env.WORKFLOW_API_KEYS,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
+  BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
 })
