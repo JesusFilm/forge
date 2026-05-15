@@ -35,8 +35,9 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_D
 
 - PostgreSQL client tools come from the official PGDG apt repository and install `postgresql-client-18`. Ubuntu 24.04's default `postgresql-client` package resolves to PostgreSQL 16, which cannot read custom-format dumps with header version 1.16 from newer Railway PostgreSQL backups.
 - The local database sidecar uses `pgvector/pgvector:pg18` to match the Railway PostgreSQL 18 production major version as closely as practical in local development.
+- PostgreSQL 18 Docker images expect the persistent volume at `/var/lib/postgresql`, not `/var/lib/postgresql/data`, so the Compose volume is named `pgdata18` and mounted at `/var/lib/postgresql`.
 - After rebuilding the devcontainer, verify `pg_restore --version`, `pg_dump --version`, and `psql --version` all report PostgreSQL 18 before restoring production backup artifacts.
-- PostgreSQL major-version upgrades cannot reuse an old data directory. If a local `pgdata` volume was created with PostgreSQL 16, recreate it before starting the PG18 sidecar.
+- PostgreSQL major-version upgrades cannot reuse an old data directory. Old `pgdata` volumes created with PostgreSQL 16 are intentionally not reused by the PG18 sidecar.
 
 ## Known gaps / watch-outs
 
