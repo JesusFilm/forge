@@ -220,6 +220,13 @@ a second consumer appears.
 - [`docs/solutions/integration-issues/expo-graphql-schema-drift-and-fragment-validation.md`](../integration-issues/expo-graphql-schema-drift-and-fragment-validation.md)
   — Schema drift prevention. Centralizing enum registration is one of
   the controls that keeps the schema stable across consumer apps.
+- [`docs/solutions/runtime-errors/pothos-turbopack-hmr-duplicate-typename-crash-20260515.md`](../runtime-errors/pothos-turbopack-hmr-duplicate-typename-crash-20260515.md)
+  — Same `ConfigStore` no-deduplication behavior, surfaced via a
+  different trigger: Turbopack HMR re-evaluation. Centralizing a type
+  in `reference.ts` does NOT prevent the HMR variant — the centralized
+  module gets re-evaluated and re-registers. The dev-loop fix is a
+  process restart; the long-term fix is a `globalThis` builder
+  singleton or a register-once guard.
 
 ## Caught By
 
