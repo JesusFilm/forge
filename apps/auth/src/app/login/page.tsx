@@ -2,6 +2,7 @@ import { env } from "@/config/env"
 import { resolveAuthCallbackUrl } from "@/auth/origins"
 import {
   LoginPageClient,
+  type LoginErrorCode,
   type LoginProviderId,
 } from "@/app/login/login-page-client"
 
@@ -11,6 +12,14 @@ type LoginPageProps = {
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
+}
+
+function parseLoginError(
+  value: string | undefined,
+): LoginErrorCode | undefined {
+  return value === "account_not_linked" || value === "forbidden"
+    ? value
+    : undefined
 }
 
 function getEnabledProviders(): LoginProviderId[] {
@@ -35,14 +44,12 @@ function getEnabledProviders(): LoginProviderId[] {
 export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
   const params = (await searchParams) ?? {}
   const callbackUrl = resolveAuthCallbackUrl(firstParam(params.callbackURL))
-  const initialError =
-    firstParam(params.error) === "forbidden" ? "forbidden" : undefined
 
   return (
     <LoginPageClient
       callbackURL={callbackUrl}
       enabledProviders={getEnabledProviders()}
-      initialError={initialError}
+      initialError={parseLoginError(firstParam(params.error))}
     />
   )
 }
