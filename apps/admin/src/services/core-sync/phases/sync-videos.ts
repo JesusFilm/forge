@@ -344,6 +344,13 @@ export async function syncVideos({
           select: { id: true, coreId: true },
         })
         const bibleBookMap = new Map(bibleBooks.map((b) => [b.coreId, b.id]))
+        const touchedVideoIds: string[] = []
+        const videoKeywordRows: Array<{ videoId: string; keywordId: string }> =
+          []
+        const pendingRelations: Array<{
+          parentId: string
+          childCoreId: string
+        }> = []
 
         for (const video of videos) {
           const primaryLanguageId = video.primaryLanguageId
@@ -396,6 +403,7 @@ export async function syncVideos({
               deletedAt: null,
             },
           })
+          touchedVideoIds.push(videoRow.id)
 
           for (const localeRow of toVideoLocales(
             {
@@ -536,32 +544,92 @@ export async function syncVideos({
             data: { deletedAt: new Date() },
           })
 
-          await tx.videoKeyword.deleteMany({
-            where: { videoId: videoRow.id },
-          })
           for (const keyword of video.keywords) {
             const keywordId = keywordMap.get(keyword.id)
             if (!keywordId) continue
-            await tx.videoKeyword.create({
-              data: { videoId: videoRow.id, keywordId },
-            })
+            videoKeywordRows.push({ videoId: videoRow.id, keywordId })
           }
 
-          await tx.videoRelation.deleteMany({
-            where: { parentId: videoRow.id },
-          })
           for (const child of video.children) {
-            const childVideo = await tx.video.findUnique({
-              where: { coreId: child.id },
-              select: { id: true },
-            })
-            if (!childVideo) continue
-            await tx.videoRelation.create({
-              data: { parentId: videoRow.id, childId: childVideo.id },
+            pendingRelations.push({
+              parentId: videoRow.id,
+              childCoreId: child.id,
             })
           }
 
           pageUpdated++
+        }
+
+        if (touchedVideoIds.length > 0) {
+          await tx.videoKeyword.deleteMany({
+            where: { videoId: { in: touchedVideoIds } },
+          })
+          if (videoKeywordRows.length > 0) {
+            await tx.$executeRaw`
+              INSERT INTO "video_keyword" (
+                "video_id",
+                "keyword_id",
+                "created_at"
+              )
+              SELECT
+                input."video_id",
+                input."keyword_id",
+                NOW()
+              FROM unnest(
+                ${toPgArray(videoKeywordRows.map((row) => row.videoId))}::text[],
+                ${toPgArray(videoKeywordRows.map((row) => row.keywordId))}::text[]
+              ) AS input("video_id", "keyword_id")
+              ON CONFLICT ("video_id", "keyword_id") DO NOTHING
+            `
+          }
+
+          await tx.videoRelation.deleteMany({
+            where: { parentId: { in: touchedVideoIds } },
+          })
+
+          const childCoreIds = [
+            ...new Set(
+              pendingRelations.map((relation) => relation.childCoreId),
+            ),
+          ]
+          const childVideos =
+            childCoreIds.length > 0
+              ? await tx.video.findMany({
+                  where: { coreId: { in: childCoreIds } },
+                  select: { id: true, coreId: true },
+                })
+              : []
+          const childIdByCoreId = new Map(
+            childVideos.map((child) => [child.coreId, child.id]),
+          )
+          const videoRelationRows = pendingRelations.flatMap((relation) => {
+            const childId = childIdByCoreId.get(relation.childCoreId)
+            return childId
+              ? [{ id: randomUUID(), parentId: relation.parentId, childId }]
+              : []
+          })
+
+          if (videoRelationRows.length > 0) {
+            await tx.$executeRaw`
+              INSERT INTO "video_relation" (
+                "id",
+                "parent_id",
+                "child_id",
+                "created_at"
+              )
+              SELECT
+                input."id",
+                input."parent_id",
+                input."child_id",
+                NOW()
+              FROM unnest(
+                ${toPgArray(videoRelationRows.map((row) => row.id))}::text[],
+                ${toPgArray(videoRelationRows.map((row) => row.parentId))}::text[],
+                ${toPgArray(videoRelationRows.map((row) => row.childId))}::text[]
+              ) AS input("id", "parent_id", "child_id")
+              ON CONFLICT ("parent_id", "child_id") DO NOTHING
+            `
+          }
         }
       }, CORE_SYNC_TRANSACTION_OPTIONS)
       stats.updated += pageUpdated
