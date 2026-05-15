@@ -10,8 +10,6 @@ const productionDefault = (productionValue: string, localValue: string) =>
 export const env = createEnv({
   server: {
     AUTH_BASE_URL: z.string().url().optional(),
-    AUTH_OPERATOR_EMAILS: z.string().min(1).optional(),
-    AUTH_TRUSTED_ORIGINS: z.string().min(1).optional(),
     BETTER_AUTH_SECRET: z.string().min(1).optional(),
     DATABASE_URL: z.string().url().optional(),
     FACEBOOK_CLIENT_ID: z.string().min(1).optional(),
@@ -27,15 +25,12 @@ export const env = createEnv({
     FIREBASE_PROJECT_ID: z.string().min(1).optional(),
     FIREBASE_CLIENT_EMAIL: z.string().email().optional(),
     FIREBASE_PRIVATE_KEY: z.string().min(1).optional(),
-    FIREBASE_MIGRATION_CUTOFF_AT: z.string().datetime().optional(),
     REDIS_HOST: z.string().min(1).optional(),
     REDIS_PORT: z.coerce.number().int().positive().optional(),
     REDIS_PASSWORD: z.string().min(1).optional(),
   },
   runtimeEnv: {
     AUTH_BASE_URL: emptyToUndefined(process.env.AUTH_BASE_URL),
-    AUTH_OPERATOR_EMAILS: emptyToUndefined(process.env.AUTH_OPERATOR_EMAILS),
-    AUTH_TRUSTED_ORIGINS: emptyToUndefined(process.env.AUTH_TRUSTED_ORIGINS),
     BETTER_AUTH_SECRET: emptyToUndefined(process.env.BETTER_AUTH_SECRET),
     DATABASE_URL: emptyToUndefined(process.env.DATABASE_URL),
     FACEBOOK_CLIENT_ID: emptyToUndefined(process.env.FACEBOOK_CLIENT_ID),
@@ -53,9 +48,6 @@ export const env = createEnv({
     FIREBASE_PROJECT_ID: emptyToUndefined(process.env.FIREBASE_PROJECT_ID),
     FIREBASE_CLIENT_EMAIL: emptyToUndefined(process.env.FIREBASE_CLIENT_EMAIL),
     FIREBASE_PRIVATE_KEY: emptyToUndefined(process.env.FIREBASE_PRIVATE_KEY),
-    FIREBASE_MIGRATION_CUTOFF_AT: emptyToUndefined(
-      process.env.FIREBASE_MIGRATION_CUTOFF_AT,
-    ),
     REDIS_HOST: emptyToUndefined(process.env.REDIS_HOST),
     REDIS_PORT: emptyToUndefined(process.env.REDIS_PORT),
     REDIS_PASSWORD: emptyToUndefined(process.env.REDIS_PASSWORD),
@@ -68,22 +60,6 @@ export function getAuthBaseUrl(): string {
     env.AUTH_BASE_URL ??
     productionDefault("https://auth.jesusfilm.org", "http://localhost:3004")
   )
-}
-
-export function getTrustedOrigins(): string[] {
-  return env.AUTH_TRUSTED_ORIGINS
-    ? env.AUTH_TRUSTED_ORIGINS.split(",")
-        .map((origin) => origin.trim())
-        .filter(Boolean)
-    : []
-}
-
-export function getAuthOperatorEmails(): string[] {
-  return env.AUTH_OPERATOR_EMAILS
-    ? env.AUTH_OPERATOR_EMAILS.split(",")
-        .map((email) => email.trim().toLowerCase())
-        .filter(Boolean)
-    : []
 }
 
 export function assertProductionAuthSecrets(): void {
