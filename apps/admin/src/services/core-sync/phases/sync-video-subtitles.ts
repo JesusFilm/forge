@@ -1,14 +1,16 @@
 // Sync phase: video-subtitles
 // Depends on: videos, languages, video-editions
 
-import type { PrismaClient } from "@prisma/client"
+import type { Prisma, PrismaClient } from "@prisma/client"
+import { randomUUID } from "node:crypto"
 import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreVideoSubtitleSchema } from "../schemas/video-subtitle"
 import { emptySyncStats } from "../types"
 import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
+import { assertParallelArrayLengthsMatch, toPgArray } from "@/db/pgvector"
 
-const PAGE_SIZE = 25
+const PAGE_SIZE = 500
 
 const VIDEO_SUBTITLES_QUERY = `
   query VideoSubtitles($offset: Int!, $limit: Int!, $where: VideoSubtitlesFilter) {
@@ -38,6 +40,128 @@ type CoreVideoSubtitle = {
   srtSrc: string | null
   value: string
   videoEdition: { id: string }
+}
+
+type SubtitleWrite = {
+  id: string
+  coreId: string
+  videoId: string
+  videoEditionId: string
+  languageId: string | null
+  value: string
+  primary: string
+  vttSrc: string | null
+  srtSrc: string | null
+}
+
+class VideoSubtitleSyncBulkWriteError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "VideoSubtitleSyncBulkWriteError"
+  }
+}
+
+function assertSubtitleWriteLengths(subtitles: readonly SubtitleWrite[]) {
+  assertParallelArrayLengthsMatch(
+    subtitles.length,
+    [
+      { name: "ids", length: subtitles.length },
+      { name: "coreIds", length: subtitles.length },
+      { name: "videoIds", length: subtitles.length },
+      { name: "videoEditionIds", length: subtitles.length },
+      { name: "languageIds", length: subtitles.length },
+      { name: "values", length: subtitles.length },
+      { name: "primaryValues", length: subtitles.length },
+      { name: "vttSrcs", length: subtitles.length },
+      { name: "srtSrcs", length: subtitles.length },
+    ],
+    (message) => new VideoSubtitleSyncBulkWriteError(message),
+  )
+}
+
+async function bulkUpsertVideoSubtitles(
+  tx: Pick<Prisma.TransactionClient, "$executeRaw">,
+  subtitles: readonly SubtitleWrite[],
+) {
+  if (subtitles.length === 0) return 0
+
+  assertSubtitleWriteLengths(subtitles)
+
+  return tx.$executeRaw`
+    INSERT INTO "video_subtitle" (
+      "id",
+      "core_id",
+      "source",
+      "video_id",
+      "video_edition_id",
+      "language_id",
+      "value",
+      "primary",
+      "vtt_src",
+      "srt_src",
+      "ai_generated",
+      "synced_at",
+      "created_at",
+      "updated_at"
+    )
+    SELECT
+      input."id",
+      input."core_id",
+      'core'::"SourceTier",
+      input."video_id",
+      input."video_edition_id",
+      input."language_id",
+      input."value",
+      input."primary_text"::boolean,
+      input."vtt_src",
+      input."srt_src",
+      false,
+      NOW(),
+      NOW(),
+      NOW()
+    FROM unnest(
+      ${toPgArray(subtitles.map((subtitle) => subtitle.id))}::text[],
+      ${toPgArray(subtitles.map((subtitle) => subtitle.coreId))}::text[],
+      ${toPgArray(subtitles.map((subtitle) => subtitle.videoId))}::text[],
+      ${toPgArray(subtitles.map((subtitle) => subtitle.videoEditionId))}::text[],
+      ${toPgArray(subtitles.map((subtitle) => subtitle.languageId))}::text[],
+      ${toPgArray(subtitles.map((subtitle) => subtitle.value))}::text[],
+      ${toPgArray(subtitles.map((subtitle) => subtitle.primary))}::text[],
+      ${toPgArray(subtitles.map((subtitle) => subtitle.vttSrc))}::text[],
+      ${toPgArray(subtitles.map((subtitle) => subtitle.srtSrc))}::text[]
+    ) AS input(
+      "id",
+      "core_id",
+      "video_id",
+      "video_edition_id",
+      "language_id",
+      "value",
+      "primary_text",
+      "vtt_src",
+      "srt_src"
+    )
+    ON CONFLICT ("core_id")
+    DO UPDATE SET
+      "video_id"         = EXCLUDED."video_id",
+      "video_edition_id" = EXCLUDED."video_edition_id",
+      "language_id"      = EXCLUDED."language_id",
+      "value"            = EXCLUDED."value",
+      "primary"          = EXCLUDED."primary",
+      "vtt_src"          = EXCLUDED."vtt_src",
+      "srt_src"          = EXCLUDED."srt_src",
+      "synced_at"        = EXCLUDED."synced_at",
+      "updated_at"       = EXCLUDED."updated_at",
+      "deleted_at"       = NULL
+    WHERE
+      "video_subtitle"."deleted_at" IS NOT NULL
+      OR "video_subtitle"."video_id" IS DISTINCT FROM EXCLUDED."video_id"
+      OR "video_subtitle"."video_edition_id" IS DISTINCT FROM EXCLUDED."video_edition_id"
+      OR "video_subtitle"."language_id" IS DISTINCT FROM EXCLUDED."language_id"
+      OR "video_subtitle"."value" IS DISTINCT FROM EXCLUDED."value"
+      OR "video_subtitle"."primary" IS DISTINCT FROM EXCLUDED."primary"
+      OR "video_subtitle"."vtt_src" IS DISTINCT FROM EXCLUDED."vtt_src"
+      OR "video_subtitle"."srt_src" IS DISTINCT FROM EXCLUDED."srt_src"
+  `
 }
 
 export async function syncVideoSubtitles({
@@ -103,43 +227,31 @@ export async function syncVideoSubtitles({
     progress.setTotal(offset + subtitles.length)
 
     try {
-      let updated = 0
-      await prisma.$transaction(async (tx) => {
-        for (const subtitle of subtitles) {
-          const videoId = videoMap.get(subtitle.videoId)
-          const languageId = langMap.get(subtitle.languageId)
-          const videoEditionId = editionMap.get(subtitle.videoEdition.id)
-          if (!videoId || !videoEditionId) continue
+      const writes = subtitles.flatMap((subtitle): SubtitleWrite[] => {
+        const videoId = videoMap.get(subtitle.videoId)
+        const languageId = langMap.get(subtitle.languageId)
+        const videoEditionId = editionMap.get(subtitle.videoEdition.id)
+        if (!videoId || !videoEditionId) return []
 
-          await tx.videoSubtitle.upsert({
-            where: { coreId: subtitle.id },
-            create: {
-              coreId: subtitle.id,
-              videoId,
-              videoEditionId,
-              languageId: languageId ?? null,
-              value: subtitle.value,
-              primary: subtitle.primary,
-              vttSrc: subtitle.vttSrc,
-              srtSrc: subtitle.srtSrc,
-              syncedAt: new Date(),
-            },
-            update: {
-              videoId,
-              videoEditionId,
-              languageId: languageId ?? null,
-              value: subtitle.value,
-              primary: subtitle.primary,
-              vttSrc: subtitle.vttSrc,
-              srtSrc: subtitle.srtSrc,
-              syncedAt: new Date(),
-              deletedAt: null,
-            },
-          })
-          updated++
-        }
+        return [
+          {
+            id: randomUUID(),
+            coreId: subtitle.id,
+            videoId,
+            videoEditionId,
+            languageId: languageId ?? null,
+            value: subtitle.value,
+            primary: String(subtitle.primary),
+            vttSrc: subtitle.vttSrc,
+            srtSrc: subtitle.srtSrc,
+          },
+        ]
+      })
+
+      await prisma.$transaction(async (tx) => {
+        await bulkUpsertVideoSubtitles(tx, writes)
       }, CORE_SYNC_TRANSACTION_OPTIONS)
-      stats.updated += updated
+      stats.updated += writes.length
     } catch (err) {
       stats.errors++
       console.error(
