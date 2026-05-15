@@ -10,6 +10,7 @@ import {
   Play,
 } from "lucide-react"
 
+import { formatDuration as formatDurationShared } from "@/lib/format-duration"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import {
@@ -168,14 +169,16 @@ function SizeLabel({
   return <span className={className}>({label})</span>
 }
 
+// Thin null-tolerant wrapper around the shared formatter. The download
+// modal renders nothing when duration is missing or non-positive
+// (previously returned `null`); preserving that semantic keeps the JSX
+// checks (`durationLabel != null`) unchanged. Note: the shared
+// formatter does NOT zero-pad the leading segment (`1:10`, not
+// `01:10`) — that's a visible label format change for this modal
+// matching the standard media-duration convention used elsewhere.
 function formatDuration(seconds: number | null | undefined): string | null {
   if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return null
-  const total = Math.floor(seconds)
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = total % 60
-  const pad = (n: number) => n.toString().padStart(2, "0")
-  return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
+  return formatDurationShared(seconds)
 }
 
 export function DownloadModal({
