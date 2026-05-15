@@ -16,9 +16,10 @@
  */
 
 import { spawn } from "node:child_process"
-import { createReadStream } from "node:fs"
+import { createReadStream, createWriteStream } from "node:fs"
 import { mkdir } from "node:fs/promises"
 import { basename, dirname, resolve as resolvePath } from "node:path"
+import { pipeline } from "node:stream/promises"
 
 export const VIDEO_DB_BACKUP_PROFILES = {
   "video-core": [
@@ -177,6 +178,16 @@ export type VideoDbBackupJobResult = {
   }
 }
 
+export type VideoDbBackupDownloadResult = {
+  event: "video-db.backup.download.complete"
+  profile: VideoDbBackupProfile
+  bucket: string
+  key: string
+  path: string
+  size?: number
+  lastModified?: string
+}
+
 export class VideoDbBackupError extends Error {
   constructor(message: string) {
     super(message)
@@ -199,6 +210,16 @@ function currentDatabaseUrlEnv(): DatabaseUrlEnv {
     SOURCE_DATABASE_URL: process.env.SOURCE_DATABASE_URL,
     TARGET_DATABASE_URL: process.env.TARGET_DATABASE_URL,
     DATABASE_URL: process.env.DATABASE_URL,
+  }
+}
+
+function currentBackupStorageEnv(): BackupStorageEnv {
+  return {
+    RAILWAY_S3_BUCKET: process.env.RAILWAY_S3_BUCKET,
+    RAILWAY_S3_ENDPOINT: process.env.RAILWAY_S3_ENDPOINT,
+    RAILWAY_S3_REGION: process.env.RAILWAY_S3_REGION,
+    RAILWAY_S3_ACCESS_KEY_ID: process.env.RAILWAY_S3_ACCESS_KEY_ID,
+    RAILWAY_S3_SECRET_ACCESS_KEY: process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
   }
 }
 
@@ -255,6 +276,15 @@ function defaultOutPath(profile: VideoDbBackupProfile): string {
     ".tmp",
     "db-backups",
     `video-db-${profile}-${timestamp()}.dump`,
+  )
+}
+
+function defaultRestoreDownloadPath(profile: VideoDbBackupProfile): string {
+  return resolvePath(
+    process.cwd(),
+    ".tmp",
+    "db-backups",
+    `video-db-${profile}-latest.dump`,
   )
 }
 
@@ -320,11 +350,12 @@ export function buildBackupPlan(
           "--data-only",
           "--no-owner",
           "--no-acl",
+          "--dbname",
+          source,
           "--file",
           outPath,
           ...tableArgs(tables),
         ],
-        env: { PGDATABASE: source },
       },
     ],
   }
@@ -357,6 +388,20 @@ export function resolveBackupUploadPlan(
     accessKeyId,
     secretAccessKey,
   }
+}
+
+function requireBackupStoragePlan(
+  parsed: ParsedArgs,
+  outPath: string,
+  env: BackupStorageEnv = currentBackupStorageEnv(),
+): BackupUploadPlan {
+  const plan = resolveBackupUploadPlan(parsed, outPath, env)
+  if (!plan) {
+    throw new VideoDbBackupError(
+      "RAILWAY_S3_BUCKET is required to download the latest video DB backup",
+    )
+  }
+  return plan
 }
 
 export function buildRestorePlan(
@@ -394,8 +439,13 @@ export function buildRestorePlan(
     commands: [
       {
         command: "psql",
-        args: ["--set=ON_ERROR_STOP=1", "--command", truncateSql],
-        env: { PGDATABASE: target },
+        args: [
+          "--set=ON_ERROR_STOP=1",
+          "--dbname",
+          target,
+          "--command",
+          truncateSql,
+        ],
       },
       {
         command: "pg_restore",
@@ -529,6 +579,115 @@ async function uploadBackup(plan: BackupPlan): Promise<void> {
   }
 }
 
+function backupPrefix(profile: VideoDbBackupProfile): string {
+  return `admin-video-db-backups/${profile}/`
+}
+
+async function findLatestBackupObject(
+  profile: VideoDbBackupProfile,
+  upload: BackupUploadPlan,
+): Promise<{ key: string; size?: number; lastModified?: Date }> {
+  const { ListObjectsV2Command, S3Client } = await import("@aws-sdk/client-s3")
+  const s3 = new S3Client({
+    endpoint: upload.endpoint,
+    region: upload.region,
+    credentials: {
+      accessKeyId: upload.accessKeyId,
+      secretAccessKey: upload.secretAccessKey,
+    },
+    forcePathStyle: true,
+  })
+
+  try {
+    const response = await s3.send(
+      new ListObjectsV2Command({
+        Bucket: upload.bucket,
+        Prefix: backupPrefix(profile),
+      }),
+    )
+    const latest = (response.Contents ?? [])
+      .filter((object) => object.Key?.endsWith(".dump"))
+      .sort(
+        (left, right) =>
+          (right.LastModified?.getTime() ?? 0) -
+          (left.LastModified?.getTime() ?? 0),
+      )[0]
+
+    if (!latest?.Key) {
+      throw new VideoDbBackupError(
+        `No video DB backup objects found under ${backupPrefix(profile)}`,
+      )
+    }
+
+    return {
+      key: latest.Key,
+      size: latest.Size,
+      lastModified: latest.LastModified,
+    }
+  } finally {
+    s3.destroy()
+  }
+}
+
+async function downloadBackupObject(
+  parsed: ParsedArgs,
+): Promise<VideoDbBackupDownloadResult> {
+  const outPath = restoreDownloadPath(parsed)
+  const upload = requireBackupStoragePlan(parsed, outPath)
+  const object = parsed.s3Key
+    ? { key: parsed.s3Key.replace(/^\/+/, "") }
+    : await findLatestBackupObject(parsed.profile, upload)
+
+  const { GetObjectCommand, S3Client } = await import("@aws-sdk/client-s3")
+  const s3 = new S3Client({
+    endpoint: upload.endpoint,
+    region: upload.region,
+    credentials: {
+      accessKeyId: upload.accessKeyId,
+      secretAccessKey: upload.secretAccessKey,
+    },
+    forcePathStyle: true,
+  })
+
+  try {
+    await mkdir(dirname(outPath), { recursive: true })
+    const response = await s3.send(
+      new GetObjectCommand({
+        Bucket: upload.bucket,
+        Key: object.key,
+      }),
+    )
+    if (!response.Body || !("pipe" in response.Body)) {
+      throw new VideoDbBackupError("Downloaded backup body was not readable")
+    }
+
+    await pipeline(
+      response.Body as NodeJS.ReadableStream,
+      createWriteStream(outPath),
+    )
+
+    const result: VideoDbBackupDownloadResult = {
+      event: "video-db.backup.download.complete",
+      profile: parsed.profile,
+      bucket: upload.bucket,
+      key: object.key,
+      path: outPath,
+      size: object.size ?? response.ContentLength,
+      lastModified: object.lastModified?.toISOString(),
+    }
+    process.stdout.write(`${JSON.stringify(result)}\n`)
+    return result
+  } finally {
+    s3.destroy()
+  }
+}
+
+function restoreDownloadPath(parsed: ParsedArgs): string {
+  return resolvePath(
+    parsed.outPath ?? defaultRestoreDownloadPath(parsed.profile),
+  )
+}
+
 async function executeBackupPlan(
   parsed: ParsedArgs,
 ): Promise<VideoDbBackupJobResult> {
@@ -594,6 +753,42 @@ export async function main(
       path: plan.inPath,
     })}\n`,
   )
+}
+
+export async function restoreLatestMain(
+  argv: readonly string[] = process.argv.slice(2),
+): Promise<void> {
+  const parsed = parseArgs("restore", argv)
+  if (parsed.dryRun) {
+    const outPath = restoreDownloadPath(parsed)
+    const upload = requireBackupStoragePlan(parsed, outPath)
+    const object = parsed.s3Key
+      ? { key: parsed.s3Key.replace(/^\/+/, "") }
+      : await findLatestBackupObject(parsed.profile, upload)
+    const restorePlan = buildRestorePlan(
+      parseArgs("restore", [...argv, `--in=${outPath}`]),
+    )
+
+    process.stdout.write(
+      `${JSON.stringify({
+        event: "video-db.restore-latest.plan",
+        profile: parsed.profile,
+        download: {
+          bucket: upload.bucket,
+          key: object.key,
+          path: outPath,
+        },
+        restore: printablePlan(restorePlan),
+      })}\n`,
+    )
+    process.stdout.write(
+      `${JSON.stringify({ event: "video-db.restore-latest.dry-run-complete" })}\n`,
+    )
+    return
+  }
+
+  const download = await downloadBackupObject(parsed)
+  await main("restore", [...argv, `--in=${download.path}`])
 }
 
 const invokedPath = typeof process.argv[1] === "string" ? process.argv[1] : ""

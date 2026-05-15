@@ -9,6 +9,13 @@ ENV TZ="$TZ"
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+# Install PostgreSQL's official apt repository so client tools can track the
+# production dump format instead of Ubuntu 24.04's default PostgreSQL 16 tools.
+RUN install -d /usr/share/postgresql-common/pgdg && \
+  curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
+  . /etc/os-release && \
+  echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+
 # Install additional system packages (base image already includes git, curl, sudo, etc.)
 RUN apt-get update && apt-get install -y --no-install-recommends \
   # Sandboxing support for Claude Code
@@ -21,8 +28,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   zsh \
   # Build tools
   build-essential \
-  # PostgreSQL client (server runs in sidecar container)
-  postgresql-client \
+  # PostgreSQL client tools only; server runs in sidecar/Railway containers
+  postgresql-client-18 \
   # Redis CLI client (server runs in sidecar container)
   redis-tools \
   # Utilities

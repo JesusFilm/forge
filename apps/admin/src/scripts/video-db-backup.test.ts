@@ -8,6 +8,7 @@ import {
   buildRestorePlan,
   parseArgs,
   parseProfile,
+  restoreLatestMain,
 } from "./video-db-backup"
 
 describe("video DB backup profiles", () => {
@@ -49,15 +50,15 @@ describe("backup command planning", () => {
 
     expect(plan.commands).toHaveLength(1)
     expect(plan.commands[0]?.command).toBe("pg_dump")
-    expect(plan.commands[0]?.env).toEqual({
-      PGDATABASE: "postgresql://user:pass@example.com/prod",
-    })
+    expect(plan.commands[0]?.env).toBeUndefined()
     expect(plan.commands[0]?.args).toEqual(
       expect.arrayContaining([
         "--format=custom",
         "--data-only",
         "--no-owner",
         "--no-acl",
+        "--dbname",
+        "postgresql://user:pass@example.com/prod",
         "--file",
         plan.outPath,
         "--table=public.video",
@@ -134,9 +135,13 @@ describe("restore command planning", () => {
 
     expect(plan.commands).toHaveLength(2)
     expect(plan.commands[0]?.command).toBe("psql")
-    expect(plan.commands[0]?.env).toEqual({
-      PGDATABASE: "postgresql://user:pass@localhost/dev",
-    })
+    expect(plan.commands[0]?.env).toBeUndefined()
+    expect(plan.commands[0]?.args).toEqual(
+      expect.arrayContaining([
+        "--dbname",
+        "postgresql://user:pass@localhost/dev",
+      ]),
+    )
     expect(plan.commands[0]?.args.join(" ")).toContain(
       'TRUNCATE TABLE "public"."language"',
     )
@@ -194,5 +199,15 @@ describe("restore command planning", () => {
     )
 
     expect(plan.targetEnv).toBe("production")
+  })
+
+  it("requires the normal Railway bucket for restore-latest", async () => {
+    await expect(
+      restoreLatestMain([
+        "--target-env=development",
+        "--dry-run",
+        "--out=.tmp/video.dump",
+      ]),
+    ).rejects.toThrow("RAILWAY_S3_BUCKET is required")
   })
 })
