@@ -316,11 +316,23 @@ A single hybrid-search hit. Video results may carry scene-level snippet + timeco
 """
 type HybridSearchResult {
   """
+  Number of `video_relation` rows where this video is the parent. 0 for childless videos. Always null for `type=EXPERIENCE`. Drives the `{n} episodes` pill on series/collection cards.
+  """
+  childCount: Int
+  """
   Internal scoring detail. Present only when the caller passed `debug: true` AND the request origin is on the debug allowlist. Origin-gating happens at the resolver boundary; the service trusts the boolean.
   """
   debug: HybridSearchResultDebug
+  """
+  Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g., a SERIES/COLLECTION whose runtime lives on its children). Always null for `type=EXPERIENCE`. Drives the duration pill on singular-video cards.
+  """
+  durationSeconds: Int
   id: String!
   imageUrl: String
+  """
+  Admin VideoLabel for video-type results (`EPISODE`, `SERIES`, `SHORT_FILM`, …). Always null for `type=EXPERIENCE`. Drives the type badge on the search result card.
+  """
+  label: VideoLabel
   playbackId: String
   score: Float!
   slug: String!
@@ -923,7 +935,7 @@ type Video {
   aiMetadata: Boolean
   bibleCitations: [BibleCitation!]
   """
-  Child Video-Video relations (this Video is the parent). PUBLIC/VIEWER see only relations whose child has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.
+  Child Video-Video relations: rows where this Video appears on the PARENT side of the VideoRelation join. Traverse `child { … }` to read the foreign Video. PUBLIC/VIEWER see only relations whose child has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.
   """
   children: [VideoRelation!]
   coreId: String
@@ -939,7 +951,7 @@ type Video {
   noIndex: Boolean
   origin: VideoOrigin
   """
-  Parent Video-Video relations (this Video is the child). PUBLIC/VIEWER see only relations whose parent has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.
+  Parent Video-Video relations: rows where this Video appears on the CHILD side of the VideoRelation join. Traverse `parent { … }` to read the foreign Video. PUBLIC/VIEWER see only relations whose parent has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.
   """
   parents: [VideoRelation!]
   primaryLanguage: Language

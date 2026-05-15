@@ -17,7 +17,7 @@
  * 5. Paginate with hasMore signal (dedup one extra to detect overflow).
  */
 
-import type { PrismaClient } from "@prisma/client"
+import type { PrismaClient, VideoLabel } from "@prisma/client"
 import { generateExperienceEmbedding } from "./embeddings.service"
 import {
   fuseRankedLists,
@@ -187,6 +187,27 @@ export type SearchResult = {
   playbackId: string | null
   score: number
   /**
+   * Card-pill hydration fields. Populated for video results via a single
+   * post-fusion batch query; null for experience results.
+   *
+   * - `label`: admin's VideoLabel enum (`EPISODE`, `SERIES`, `SHORT_FILM`,
+   *   …). Typed as Prisma's generated `VideoLabel` enum so adding a new
+   *   value to schema.prisma surfaces compile-time errors here, in the
+   *   Pothos resolver, and in the gql.tada introspection consumer on web
+   *   — keeping the three layers in lockstep without a hand-mirrored
+   *   string union. null when type=experience.
+   * - `durationSeconds`: primary playable VideoDub duration in seconds.
+   *   null when type=experience or when the video has no playable dub
+   *   (e.g., a SERIES record with episodes-as-children).
+   * - `childCount`: count of `video_relation` rows where parent_id = this
+   *   row's id, filtered to match the consumer-facing ABAC (published
+   *   children only). null when type=experience; 0 when type=video and
+   *   the video has no qualifying children.
+   */
+  label: VideoLabel | null
+  durationSeconds: number | null
+  childCount: number | null
+  /**
    * Internal scoring detail. Present only when the caller passed
    * `debug: true` AND the request origin is on the debug allowlist
    * (origin gating is the boundary's responsibility). Stripped
@@ -258,6 +279,9 @@ function mapToSearchResult(result: FusedResult): SearchResult {
       startSeconds: null,
       playbackId: null,
       score,
+      label: null,
+      durationSeconds: null,
+      childCount: null,
     }
   }
 
@@ -280,7 +304,140 @@ function mapToSearchResult(result: FusedResult): SearchResult {
     startSeconds: typeof startSeconds === "number" ? startSeconds : null,
     playbackId: typeof playbackId === "string" ? playbackId : null,
     score,
+    // Card-pill fields populated by the post-fusion hydration pass.
+    // Defaults here keep the mapper pure (no DB IO) and let the service
+    // overlay real values after one batch query.
+    label: null,
+    durationSeconds: null,
+    childCount: null,
   }
+}
+
+/**
+/** Cap on dubs returned per video by the hydration sub-include. The
+ *  selector picks one row to compute `durationSeconds`; a small N
+ *  (primary-language dub + a handful of regional fallbacks) is sufficient
+ *  and bounds the worst case at 50 videos × 5 dubs = 250 rows per request
+ *  rather than thousands for heavily-dubbed titles (some collections in
+ *  the catalogue carry 200+ published dubs). */
+const HYDRATION_DUBS_PER_VIDEO = 5
+
+/**
+ * Card-pill hydration. Given the final page of video-type results,
+ * batch-load `label`, primary playable dub duration, and child count
+ * in ONE Prisma query and return a new array with those fields filled
+ * in. Experience results pass through untouched (their card surface
+ * doesn't carry a pill in the current design).
+ *
+ * Why a post-mapping pass instead of fetching the data inline in each
+ * retriever: the retrievers project tightly via `$queryRaw` for index
+ * use; adding 3 extra fields per retriever would either duplicate the
+ * LATERALs across 4+ SQL paths or force a UNION shape change. A single
+ * `findMany({ where: { id: { in: [...] } } })` after pagination is
+ * O(page-size) — at most ~50 rows for MAX_LIMIT — and keeps the SQL
+ * read paths unchanged.
+ *
+ * Returns a NEW array (not mutating the input). Soft-deleted-mid-search
+ * rows pass through with null pill fields — they keep title/slug from
+ * the retriever's snapshot but won't surface a count or duration. The
+ * narrow race window (~10ms) and the cost of coupling every test
+ * fixture to per-id hydration stubs argues against dropping; if the
+ * UX of "card-then-404" becomes meaningful, switch to a drop here.
+ */
+async function hydrateCardPillFields(
+  prisma: PrismaClient,
+  results: SearchResult[],
+): Promise<SearchResult[]> {
+  const videoIds = results.filter((r) => r.type === "video").map((r) => r.id)
+  if (videoIds.length === 0) return results
+
+  const rows = await prisma.video.findMany({
+    where: { id: { in: videoIds }, deletedAt: null },
+    select: {
+      id: true,
+      label: true,
+      primaryLanguageId: true,
+      dubs: {
+        // `duration: { gt: 0 }` excludes sync-glitch rows (Core
+        // occasionally returns a published dub with duration=0; the
+        // pill picker then renders nothing for those rows, leaving an
+        // unexplained gap on the card).
+        where: {
+          published: true,
+          hls: { not: null },
+          deletedAt: null,
+          duration: { gt: 0 },
+        },
+        // `take` bounds the per-video dubs scan. Order primary-language
+        // first (so a single LIMIT 1 effectively returns it when
+        // present), then longest-duration as a stable secondary —
+        // duration is the field we actually consume.
+        orderBy: [{ duration: "desc" }],
+        take: HYDRATION_DUBS_PER_VIDEO,
+        select: { languageId: true, duration: true },
+      },
+      // `_count.children` mirrors the consumer-facing ABAC at
+      // videoChildrenFilter (apps/admin/src/graphql/types/video.ts):
+      // only count children that have a PUBLISHED locale and aren't
+      // soft-deleted. Without this filter the search-card "{n} episodes"
+      // pill drifts from what the watch page actually renders. Self-
+      // referential rows (parent_id = child_id) — a data-quality issue
+      // seen for `1-jesus-our-loving-pursuer` — can still inflate the
+      // count; web's normalizeAdminVideo filters those client-side, but
+      // the count is computed before that pass. Acceptable today; if
+      // self-ref inflation becomes a UX issue, switch to a raw SQL
+      // count that adds `WHERE child_id <> parent_id`.
+      _count: {
+        select: {
+          children: {
+            where: {
+              child: {
+                deletedAt: null,
+                locales: { some: { status: "PUBLISHED" } },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+
+  const hydration = new Map<
+    string,
+    {
+      label: VideoLabel | null
+      durationSeconds: number | null
+      childCount: number
+    }
+  >()
+  for (const row of rows) {
+    // Pick the primary-language dub when available; otherwise the
+    // longest-duration playable dub (the orderBy in the sub-include
+    // sorted them). `duration` is already in seconds (Int?); the
+    // millisecond column on VideoDub uses BigInt and isn't needed for
+    // pill display where second precision is the right fidelity.
+    const primaryDub = row.primaryLanguageId
+      ? row.dubs.find((d) => d.languageId === row.primaryLanguageId)
+      : undefined
+    const dub = primaryDub ?? row.dubs[0] ?? null
+    hydration.set(row.id, {
+      label: row.label,
+      durationSeconds: dub?.duration ?? null,
+      childCount: row._count.children,
+    })
+  }
+
+  return results.map((r) => {
+    if (r.type !== "video") return r
+    const h = hydration.get(r.id)
+    if (h == null) return r
+    return {
+      ...r,
+      label: h.label,
+      durationSeconds: h.durationSeconds,
+      childCount: h.childCount,
+    }
+  })
 }
 
 export type HybridSearchServiceDeps = {
@@ -512,7 +669,7 @@ export class HybridSearchService {
     // Step 5: Paginate and map to API contract.
     const page = deduped.slice(offset, offset + limit)
     const hasMore = deduped.length > offset + limit
-    const results = page.map((result) => {
+    const mapped = page.map((result) => {
       const base = mapToSearchResult(result)
       if (params.debug !== true) return base
       const key = `${result.resultType}:${result.resultId}`
@@ -520,6 +677,13 @@ export class HybridSearchService {
       if (trace == null) return base
       return { ...base, debug: trace }
     })
+
+    // Hydrate card-pill fields (label, durationSeconds, childCount) for
+    // video results in one batched query. Experience rows are left as
+    // (null, null, null) by the mapper; this pass only touches videos
+    // and returns a fresh array — soft-deleted-mid-search rows are
+    // filtered out rather than surfaced with stale title + null pill.
+    const results = await hydrateCardPillFields(this.prisma, mapped)
 
     return {
       results,

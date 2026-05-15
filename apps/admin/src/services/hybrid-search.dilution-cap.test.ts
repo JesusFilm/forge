@@ -429,7 +429,7 @@ describe("HybridSearchService skips dilution cap when SEARCH_DILUTION_CAP_ENABLE
 
     const service = new HybridSearchService({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma: {} as any,
+      prisma: { video: { findMany: vi.fn().mockResolvedValue([]) } } as any,
       embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
       logger: { warn: vi.fn(), error: vi.fn() },
     })
@@ -491,7 +491,7 @@ describe("HybridSearchService skips dilution cap when SEARCH_DILUTION_CAP_ENABLE
 
     const service = new HybridSearchService({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma: {} as any,
+      prisma: { video: { findMany: vi.fn().mockResolvedValue([]) } } as any,
       embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
       logger: { warn: vi.fn(), error: vi.fn() },
     })

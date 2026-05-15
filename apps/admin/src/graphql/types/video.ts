@@ -66,7 +66,7 @@ export function videoChildrenFilter(
   }
 }
 
-const VideoLabelEnum = builder.enumType("VideoLabel", {
+export const VideoLabelEnum = builder.enumType("VideoLabel", {
   values: {
     COLLECTION: { value: "COLLECTION" },
     EPISODE: { value: "EPISODE" },
@@ -341,12 +341,12 @@ builder.prismaObject("Video", {
     }),
     parents: t.relation("parents", {
       description:
-        "Parent Video-Video relations (this Video is the child). PUBLIC/VIEWER see only relations whose parent has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.",
+        "Parent Video-Video relations: rows where this Video appears on the CHILD side of the VideoRelation join. Traverse `parent { … }` to read the foreign Video. PUBLIC/VIEWER see only relations whose parent has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.",
       query: (_args, ctx) => videoParentsFilter(ctx.user),
     }),
     children: t.relation("children", {
       description:
-        "Child Video-Video relations (this Video is the parent). PUBLIC/VIEWER see only relations whose child has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.",
+        "Child Video-Video relations: rows where this Video appears on the PARENT side of the VideoRelation join. Traverse `child { … }` to read the foreign Video. PUBLIC/VIEWER see only relations whose child has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.",
       query: (_args, ctx) => videoChildrenFilter(ctx.user),
     }),
   }),

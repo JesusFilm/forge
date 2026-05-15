@@ -31,6 +31,9 @@ function r(id: string, overrides: Partial<SearchResult> = {}): SearchResult {
     startSeconds: 0,
     playbackId: null,
     score: 0.5,
+    label: null,
+    durationSeconds: null,
+    childCount: null,
     ...overrides,
   }
 }
