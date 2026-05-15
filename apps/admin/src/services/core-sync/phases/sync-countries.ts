@@ -78,6 +78,10 @@ function encodeJsonForPgArray(value: unknown): string {
   return Buffer.from(JSON.stringify(value), "utf8").toString("base64")
 }
 
+function uniqueBy<T>(rows: T[], keyFor: (row: T) => string): T[] {
+  return [...new Map(rows.map((row) => [keyFor(row), row])).values()]
+}
+
 async function bulkUpsertContinents(
   prisma: PrismaClient,
   continents: ReadonlyArray<{
@@ -493,85 +497,110 @@ export async function syncCountries({
       order: number | null
     }> = []
 
-    const countryRows = countries.map((country) => {
-      if (country.continent && !continentsByCoreId.has(country.continent.id)) {
-        continentsByCoreId.set(country.continent.id, {
-          id: randomUUID(),
-          coreId: country.continent.id,
-          nameBase64: encodeJsonForPgArray(toNameMap(country.continent.name)),
-        })
-        for (const localeRow of toLocalizedNames(country.continent.name)) {
-          continentLocales.push({
+    const countryRows = uniqueBy(
+      countries.map((country) => {
+        if (
+          country.continent &&
+          !continentsByCoreId.has(country.continent.id)
+        ) {
+          continentsByCoreId.set(country.continent.id, {
             id: randomUUID(),
-            parentCoreId: country.continent.id,
+            coreId: country.continent.id,
+            nameBase64: encodeJsonForPgArray(toNameMap(country.continent.name)),
+          })
+          for (const localeRow of toLocalizedNames(country.continent.name)) {
+            continentLocales.push({
+              id: randomUUID(),
+              parentCoreId: country.continent.id,
+              locale: localeRow.locale,
+              value: localeRow.value,
+              primary: localeRow.primary,
+              order: localeRow.order ?? null,
+            })
+          }
+        }
+
+        for (const localeRow of toLocalizedNames(country.name)) {
+          countryLocales.push({
+            id: randomUUID(),
+            parentCoreId: country.id,
             locale: localeRow.locale,
             value: localeRow.value,
             primary: localeRow.primary,
             order: localeRow.order ?? null,
           })
         }
-      }
 
-      for (const localeRow of toLocalizedNames(country.name)) {
-        countryLocales.push({
-          id: randomUUID(),
-          parentCoreId: country.id,
-          locale: localeRow.locale,
-          value: localeRow.value,
-          primary: localeRow.primary,
-          order: localeRow.order ?? null,
-        })
-      }
+        for (const countryLanguage of country.countryLanguages) {
+          const languageId = langMap.get(countryLanguage.language.id)
+          if (!languageId) {
+            stats.errors++
+            console.warn(
+              JSON.stringify({
+                event: "core-sync.country-language.missing-language",
+                countryCoreId: country.id,
+                countryLanguageCoreId: countryLanguage.id,
+                languageCoreId: countryLanguage.language.id,
+              }),
+            )
+            continue
+          }
 
-      for (const countryLanguage of country.countryLanguages) {
-        const languageId = langMap.get(countryLanguage.language.id)
-        if (!languageId) {
-          stats.errors++
-          console.warn(
-            JSON.stringify({
-              event: "core-sync.country-language.missing-language",
-              countryCoreId: country.id,
-              countryLanguageCoreId: countryLanguage.id,
-              languageCoreId: countryLanguage.language.id,
-            }),
-          )
-          continue
+          seenCountryLanguageCoreIds.add(countryLanguage.id)
+          countryLanguageRows.push({
+            id: randomUUID(),
+            coreId: countryLanguage.id,
+            countryCoreId: country.id,
+            languageId,
+            speakers: countryLanguage.speakers,
+            displaySpeakers: countryLanguage.displaySpeakers,
+            primary: countryLanguage.primary,
+            suggested: countryLanguage.suggested,
+            order: countryLanguage.order,
+          })
         }
 
-        seenCountryLanguageCoreIds.add(countryLanguage.id)
-        countryLanguageRows.push({
+        return {
           id: randomUUID(),
-          coreId: countryLanguage.id,
-          countryCoreId: country.id,
-          languageId,
-          speakers: countryLanguage.speakers,
-          displaySpeakers: countryLanguage.displaySpeakers,
-          primary: countryLanguage.primary,
-          suggested: countryLanguage.suggested,
-          order: countryLanguage.order,
-        })
-      }
-
-      return {
-        id: randomUUID(),
-        coreId: country.id,
-        nameBase64: encodeJsonForPgArray(toNameMap(country.name)),
-        population: country.population,
-        latitude: country.latitude,
-        longitude: country.longitude,
-        flagPngSrc: country.flagPngSrc,
-        flagWebpSrc: country.flagWebpSrc,
-        languageCount: country.languageCount,
-        languageHavingMediaCount: country.languageHavingMediaCount,
-        continentCoreId: country.continent?.id ?? null,
-      }
-    })
+          coreId: country.id,
+          nameBase64: encodeJsonForPgArray(toNameMap(country.name)),
+          population: country.population,
+          latitude: country.latitude,
+          longitude: country.longitude,
+          flagPngSrc: country.flagPngSrc,
+          flagWebpSrc: country.flagWebpSrc,
+          languageCount: country.languageCount,
+          languageHavingMediaCount: country.languageHavingMediaCount,
+          continentCoreId: country.continent?.id ?? null,
+        }
+      }),
+      (country) => country.coreId,
+    )
 
     await bulkUpsertContinents(prisma, [...continentsByCoreId.values()])
-    await bulkUpsertContinentLocales(prisma, continentLocales)
+    await bulkUpsertContinentLocales(
+      prisma,
+      uniqueBy(
+        continentLocales,
+        (locale) => `${locale.parentCoreId}:${locale.locale}`,
+      ),
+    )
     await bulkUpsertCountries(prisma, countryRows)
-    await bulkUpsertCountryLocales(prisma, countryLocales)
-    await bulkUpsertCountryLanguages(prisma, countryLanguageRows)
+    await bulkUpsertCountryLocales(
+      prisma,
+      uniqueBy(
+        countryLocales,
+        (locale) => `${locale.parentCoreId}:${locale.locale}`,
+      ),
+    )
+    await bulkUpsertCountryLanguages(
+      prisma,
+      uniqueBy(
+        countryLanguageRows,
+        (countryLanguage) =>
+          `${countryLanguage.countryCoreId}:${countryLanguage.languageId}`,
+      ),
+    )
 
     stats.updated += countryRows.length
   } catch (err) {
