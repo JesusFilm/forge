@@ -11,6 +11,24 @@ const providerLabels = {
 } as const
 
 export type LoginProviderId = keyof typeof providerLabels
+export type LoginErrorCode = "account_not_linked" | "forbidden"
+
+type LoginMethodId = LoginProviderId | "email"
+
+const lastLoginMethodStorageKey = "forge.auth.lastLoginMethod"
+
+const loginErrors = {
+  account_not_linked: {
+    title: "This sign-in method is not linked yet.",
+    detail:
+      "Sign in with the method you used before, then connect this provider from your account settings.",
+  },
+  forbidden: {
+    title: "Access has not been approved.",
+    detail:
+      "Your account signed in successfully, but it is not approved for this application.",
+  },
+} satisfies Record<LoginErrorCode, { title: string; detail: string }>
 
 export function LoginPageClient({
   callbackURL,
@@ -19,18 +37,34 @@ export function LoginPageClient({
 }: {
   callbackURL: string
   enabledProviders: LoginProviderId[]
-  initialError?: "forbidden"
+  initialError?: LoginErrorCode
 }) {
-  const [error, setError] = useState(
-    initialError === "forbidden"
-      ? "You do not have access to this application."
-      : "",
-  )
+  const [error, setError] = useState<
+    LoginErrorCode | "credentials" | "start" | null
+  >(initialError ?? null)
   const [loading, setLoading] = useState(false)
+  const [lastLoginMethod, setLastLoginMethod] = useState<LoginMethodId | null>(
+    () => readLastLoginMethod(),
+  )
+
+  const alert =
+    error === "credentials"
+      ? {
+          title: "Unable to sign in.",
+          detail: "Check your email and password, then try again.",
+        }
+      : error === "start"
+        ? {
+            title: "Provider sign-in did not start.",
+            detail: "Refresh the page and try again.",
+          }
+        : error
+          ? loginErrors[error]
+          : null
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setError("")
+    setError(null)
     setLoading(true)
 
     try {
@@ -47,6 +81,8 @@ export function LoginPageClient({
       })
 
       if (res.ok) {
+        rememberLastLoginMethod("email")
+        setLastLoginMethod("email")
         window.location.assign(callbackURL)
         return
       }
@@ -55,7 +91,7 @@ export function LoginPageClient({
     }
 
     setLoading(false)
-    setError("Invalid email or password.")
+    setError("credentials")
   }
 
   async function resolveSocialRedirect(
@@ -103,7 +139,7 @@ export function LoginPageClient({
             priority
           />
           <h2>Sign in</h2>
-          <p>Enter your account details.</p>
+          <p>Use the same method you used when your account was created.</p>
 
           <form onSubmit={handleSubmit}>
             <div className="form-field">
@@ -128,14 +164,16 @@ export function LoginPageClient({
               />
             </div>
 
-            {error ? (
-              <p role="alert" className="error">
-                {error}
-              </p>
+            {alert ? (
+              <div role="alert" className="login-alert">
+                <strong>{alert.title}</strong>
+                <p>{alert.detail}</p>
+              </div>
             ) : null}
 
             <button className="primary-button" type="submit" disabled={loading}>
-              {loading ? "Signing in" : "Continue"}
+              <span>{loading ? "Signing in" : "Continue"}</span>
+              {lastLoginMethod === "email" ? <LastUsedBadge /> : null}
             </button>
           </form>
 
@@ -160,14 +198,17 @@ export function LoginPageClient({
                       })
                       const redirectUrl = await resolveSocialRedirect(res)
                       if (redirectUrl) {
+                        rememberLastLoginMethod(providerId)
+                        setLastLoginMethod(providerId)
                         window.location.href = redirectUrl
                       }
                     } catch {
-                      setError("Unable to start provider sign-in.")
+                      setError("start")
                     }
                   }}
                 >
-                  Continue with {providerLabels[providerId]}
+                  <span>Continue with {providerLabels[providerId]}</span>
+                  {lastLoginMethod === providerId ? <LastUsedBadge /> : null}
                 </button>
               ))}
             </>
@@ -175,5 +216,40 @@ export function LoginPageClient({
         </div>
       </section>
     </main>
+  )
+}
+
+function LastUsedBadge() {
+  return <span className="last-used-badge">Last used</span>
+}
+
+function readLastLoginMethod(): LoginMethodId | null {
+  if (typeof window === "undefined") return null
+
+  try {
+    const value = window.localStorage.getItem(lastLoginMethodStorageKey)
+    return isLoginMethod(value) ? value : null
+  } catch {
+    return null
+  }
+}
+
+function rememberLastLoginMethod(method: LoginMethodId) {
+  if (typeof window === "undefined") return
+
+  try {
+    window.localStorage.setItem(lastLoginMethodStorageKey, method)
+  } catch {
+    // Login must still work when localStorage is unavailable.
+  }
+}
+
+function isLoginMethod(value: string | null): value is LoginMethodId {
+  return (
+    value === "email" ||
+    value === "facebook" ||
+    value === "google" ||
+    value === "apple" ||
+    value === "okta"
   )
 }

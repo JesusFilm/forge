@@ -13,6 +13,7 @@ export type AppEnvironmentSeed = {
   kind: "local" | "preview" | "staging" | "production"
   clientId: string
   redirectUris: string[]
+  postLogoutRedirectUris: string[]
   allowedOrigins: string[]
   defaultScopes: AuthScopeKey[]
   autoApprove: boolean
@@ -47,6 +48,7 @@ export const ADMIN_APP_SEED: RegisteredAppSeed = {
       kind: "local",
       clientId: "jfp_admin_local",
       redirectUris: ["http://localhost:3003/api/auth/callback"],
+      postLogoutRedirectUris: ["http://localhost:3003/api/auth/login"],
       allowedOrigins: ["http://localhost:3003"],
       defaultScopes: ADMIN_DEFAULT_SCOPES,
       autoApprove: true,
@@ -56,6 +58,9 @@ export const ADMIN_APP_SEED: RegisteredAppSeed = {
       kind: "preview",
       clientId: "jfp_admin_preview",
       redirectUris: ["https://admin-preview.jesusfilm.org/api/auth/callback"],
+      postLogoutRedirectUris: [
+        "https://admin-preview.jesusfilm.org/api/auth/login",
+      ],
       allowedOrigins: ["https://admin-preview.jesusfilm.org"],
       defaultScopes: ADMIN_DEFAULT_SCOPES,
       autoApprove: true,
@@ -65,6 +70,9 @@ export const ADMIN_APP_SEED: RegisteredAppSeed = {
       kind: "staging",
       clientId: "jfp_admin_staging",
       redirectUris: ["https://admin-stage.jesusfilm.org/api/auth/callback"],
+      postLogoutRedirectUris: [
+        "https://admin-stage.jesusfilm.org/api/auth/login",
+      ],
       allowedOrigins: ["https://admin-stage.jesusfilm.org"],
       defaultScopes: ADMIN_DEFAULT_SCOPES,
       autoApprove: true,
@@ -74,6 +82,7 @@ export const ADMIN_APP_SEED: RegisteredAppSeed = {
       kind: "production",
       clientId: "jfp_admin_production",
       redirectUris: ["https://admin.jesusfilm.org/api/auth/callback"],
+      postLogoutRedirectUris: ["https://admin.jesusfilm.org/api/auth/login"],
       allowedOrigins: ["https://admin.jesusfilm.org"],
       defaultScopes: ADMIN_DEFAULT_SCOPES,
       autoApprove: true,

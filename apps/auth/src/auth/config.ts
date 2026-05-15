@@ -66,6 +66,12 @@ export const auth = betterAuth({
   secret: betterAuthSecret,
   baseURL: getAuthBaseUrl(),
   trustedOrigins: getAuthTrustedOrigins(),
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google", "facebook", "apple", "okta"],
+    },
+  },
   plugins: [
     jwt(),
     oauthProvider({
