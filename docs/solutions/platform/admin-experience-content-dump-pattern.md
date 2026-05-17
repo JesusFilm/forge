@@ -1,6 +1,8 @@
 ---
 title: Admin Experience Content Dump — durable cms → admin migration via direct Postgres + canonical-JSON content hash
 date: 2026-04-23
+last_updated: 2026-05-17
+superseded_by: docs/plans/2026-05-17-001-refactor-decouple-experience-embeds-from-cms-plan.md
 category: platform
 problem_type: integration
 component: workflow_orchestration
@@ -30,6 +32,37 @@ related:
   - "docs/solutions/best-practices/experience-embedding-pipeline-pgvector-strapi-v5-20260414.md"
 date_learned: 2026-04-23
 ---
+
+## Status (2026-05-17)
+
+> **The R3 cms-experience-content-dump workflow described in this doc was
+> retired on 2026-05-17.** Experiences now live in admin natively;
+> `apps/admin/src/workflows/experienceContentDump.ts` and its supporting
+> cms-coupled modules (`cms-pg.ts`, `cms-experience-source.repository.ts`,
+> `cms-block-transforms.ts`, `cms-video-id-resolver.ts`, the
+> `triggerExperienceContentDump` mutation, the `CMS_DATABASE_URL` env)
+> were all deleted in [PR #966](https://github.com/JesusFilm/forge/pull/966).
+> The admin-native replacement is `triggerExperienceEmbeddingBackfill` +
+> `pnpm --filter @forge/admin run-embeds --pipeline=experience`; see
+> `apps/admin/CLAUDE.md` "Triggering experience embeddings".
+>
+> Why preserve this doc anyway: three patterns inside remain reusable for
+> future cross-source migrations — (a) repository abstraction for
+> cross-database reads, (b) canonical-JSON content-hash gating for
+> idempotent reruns, (c) "persist the hash AFTER the side effect" recovery
+> loop. Treat code paths and file references as historical; treat the
+> pattern shapes as still load-bearing.
+>
+> Also note: the "R3 has two dispatches: mutation→workflow and
+> workflow→`runExperienceEmbedding`" reviewer rule below is **no longer
+> accurate** even on the live admin-native backfill. PR #967 extracted
+> the embedding side-effect to a plain async helper
+> (`embedExperienceLocale` in `apps/admin/src/services/embeddings.service.ts`),
+> so the modern shape is "one dispatch: mutation→backfill workflow; the
+> per-locale embedding is a plain helper call from the step body." See
+> [`docs/solutions/best-practices/workflow-step-body-calls-service-not-sibling-workflow-20260517.md`](../best-practices/workflow-step-body-calls-service-not-sibling-workflow-20260517.md)
+> for the canonical "workflow step bodies call services, not nested
+> workflows" rule.
 
 ## Problem
 
