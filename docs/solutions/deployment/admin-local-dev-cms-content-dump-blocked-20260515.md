@@ -1,7 +1,8 @@
 ---
 title: Running `triggerExperienceContentDump` locally is blocked behind a three-layer auth/proxy gauntlet
 date: 2026-05-15
-last_updated: 2026-05-15
+last_updated: 2026-05-17
+superseded_by: docs/plans/2026-05-17-001-refactor-decouple-experience-embeds-from-cms-plan.md
 category: deployment
 module: apps/admin
 problem_type: workflow_issue
@@ -27,6 +28,23 @@ tags:
 ---
 
 ## What this is
+
+> **Superseded 2026-05-17.** The `triggerExperienceContentDump`
+> mutation, its workflow, and every cms-coupled service module were
+> deleted on 2026-05-17 along with the `CMS_DATABASE_URL` env var.
+> Experiences now live in admin natively. The local-dev gauntlet
+> documented below is therefore historical — there is no longer a
+> dump mutation to invoke. The admin-native replacement is
+> `triggerExperienceEmbeddingBackfill` + `pnpm --filter @forge/admin
+run-embeds --pipeline=experience`; see `apps/admin/CLAUDE.md`
+> "Triggering experience embeddings".
+>
+> Why preserve this doc anyway: the three-layer dev-env gauntlet
+> (auth-host proxy, `/dashboard` redirect loop, useworkflow webhook
+> reaching its own server) applies to any future ADMIN-only GraphQL
+> mutation that dispatches a workflow from a local-dev machine.
+> Keep the analysis as institutional context for the next time the
+> shape recurs.
 
 This is the post-mortem of a 2026-05-15 attempt to get prod-equivalent Experience content (Easter, Christmas, etc.) into a local admin DB by running the `triggerExperienceContentDump` GraphQL mutation. The mutation exists, the cms-side data is in local Strapi (13 components for easter), but three stacked dev-environment quirks each block a different path to invoking it.
 

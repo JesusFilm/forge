@@ -120,24 +120,35 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(fields.triggerTranscriptEmbeddingBackfill).toBeDefined()
   })
 
-  it("Mutation root exposes the experience content dump trigger (R3)", () => {
+  it("Mutation root exposes the admin-native experience-embedding backfill trigger", () => {
     const mutation = schema.getMutationType()
     expect(mutation).toBeTruthy()
     const fields = mutation!.getFields()
-    expect(fields.triggerExperienceContentDump).toBeDefined()
+    expect(fields.triggerExperienceEmbeddingBackfill).toBeDefined()
   })
 
-  it("triggerExperienceContentDump declares optional documentIds + locales args", () => {
+  it("triggerExperienceEmbeddingBackfill declares optional experienceIds + bcp47Locales + force args", () => {
     const mutation = schema.getMutationType()!
-    const field = mutation.getFields().triggerExperienceContentDump!
-    const documentIds = field.args.find((a) => a.name === "documentIds")
-    const locales = field.args.find((a) => a.name === "locales")
-    expect(documentIds).toBeDefined()
-    expect(locales).toBeDefined()
-    // Both are nullable lists ([String!]) so clients may omit or pass
-    // null; the workflow itself treats length-0 arrays as omitted.
-    expect(String(documentIds!.type)).toBe("[String!]")
-    expect(String(locales!.type)).toBe("[String!]")
+    const field = mutation.getFields().triggerExperienceEmbeddingBackfill!
+    const experienceIds = field.args.find((a) => a.name === "experienceIds")
+    const bcp47Locales = field.args.find((a) => a.name === "bcp47Locales")
+    const force = field.args.find((a) => a.name === "force")
+    expect(experienceIds).toBeDefined()
+    expect(bcp47Locales).toBeDefined()
+    expect(force).toBeDefined()
+    // experienceIds and bcp47Locales are nullable inclusion-filter lists.
+    expect(String(experienceIds!.type)).toBe("[ID!]")
+    expect(String(bcp47Locales!.type)).toBe("[String!]")
+    // force is nullable Boolean (defaultValue: false on the resolver).
+    expect(String(force!.type)).toBe("Boolean")
+  })
+
+  it("Mutation root does NOT expose the retired experience-content-dump trigger", () => {
+    // Defense-in-depth: the cms-coupled dump mutation was removed in
+    // docs/plans/2026-05-17-001-refactor-decouple-experience-embeds-from-cms-plan.md.
+    // A regression that re-introduces it should fail loudly here.
+    const mutation = schema.getMutationType()!
+    expect(mutation.getFields().triggerExperienceContentDump).toBeUndefined()
   })
 })
 

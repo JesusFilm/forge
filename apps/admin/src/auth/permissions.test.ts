@@ -348,7 +348,7 @@ describe("permission matrix completeness", () => {
       "write:media-assets",
       "write:scene-embeddings",
       "write:transcript-embeddings",
-      "write:experience-content-dump",
+      "write:experience-embeddings",
       "write:manager-enrichment-trigger",
       "delete:media-assets",
       "publish:experiences",
@@ -379,6 +379,24 @@ describe("permission matrix completeness", () => {
     expect(hasPermission(SYSTEM, "write:manager-enrichment-trigger")).toBe(
       false,
     )
+  })
+
+  it("write:experience-embeddings is ADMIN-only", () => {
+    // Admin-native experience-embedding backfill. Mirrors the
+    // write:scene-embeddings / write:transcript-embeddings tier gates
+    // so a regression that widens the key (e.g. flips to EDITOR) fails
+    // loudly here and not just at the mutation boundary.
+    expect(hasPermission(ADMIN, "write:experience-embeddings")).toBe(true)
+    expect(hasPermission(EDITOR_ALICE, "write:experience-embeddings")).toBe(
+      false,
+    )
+    expect(hasPermission(VIEWER, "write:experience-embeddings")).toBe(false)
+    expect(hasPermission(PUBLIC_USER, "write:experience-embeddings")).toBe(
+      false,
+    )
+    // SYSTEM does not satisfy editorial write gates (intentional; the
+    // inner workflow's canWriteDerived is the SYSTEM-reachable path).
+    expect(hasPermission(SYSTEM, "write:experience-embeddings")).toBe(false)
   })
 
   it("write:transcript-embeddings is ADMIN-only", () => {
@@ -431,6 +449,12 @@ describe("permission matrix completeness", () => {
       ).toBe(true)
     })
 
+    it("satisfies write:experience-embeddings (admin-native experience backfill CLI path)", () => {
+      expect(
+        hasPermission(WORKFLOW_TRIGGER, "write:experience-embeddings"),
+      ).toBe(true)
+    })
+
     it("does NOT satisfy any permission key outside the narrow allowlist", () => {
       // Iterate every PermissionKey via TypeScript's exhaustive Record
       // pattern so adding a new key without explicitly deciding
@@ -442,6 +466,7 @@ describe("permission matrix completeness", () => {
         "write:scene-embeddings",
         "write:transcript-embeddings",
         "write:manager-enrichment-trigger",
+        "write:experience-embeddings",
       ])
       const allKeys: Record<PermissionKey, true> = {
         "read:experiences": true,
@@ -453,7 +478,7 @@ describe("permission matrix completeness", () => {
         "write:media-assets": true,
         "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
-        "write:experience-content-dump": true,
+        "write:experience-embeddings": true,
         "write:manager-enrichment-trigger": true,
         "delete:media-assets": true,
         "publish:experiences": true,
@@ -497,7 +522,7 @@ describe("permission matrix completeness", () => {
         "write:media-assets": true,
         "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
-        "write:experience-content-dump": true,
+        "write:experience-embeddings": true,
         "write:manager-enrichment-trigger": true,
         "delete:media-assets": true,
         "publish:experiences": true,

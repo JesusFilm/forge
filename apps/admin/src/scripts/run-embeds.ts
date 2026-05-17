@@ -1,10 +1,11 @@
 #!/usr/bin/env tsx
 /**
- * Run scene and/or transcript embedding backfills from a workstation
- * against any DATABASE_URL.
+ * Run scene, transcript, and/or experience embedding backfills from a
+ * workstation against any DATABASE_URL.
  *
  * Bypasses the GraphQL `triggerSceneEmbeddingBackfill` /
- * `triggerTranscriptEmbeddingBackfill` mutations (which are
+ * `triggerTranscriptEmbeddingBackfill` /
+ * `triggerExperienceEmbeddingBackfill` mutations (which are
  * ADMIN-gated and dispatch via the useworkflow runtime). Calls the
  * workflow functions directly with the in-process Prisma singleton
  * — same pattern apps/admin/src/scripts/run-sync.ts uses for
@@ -17,16 +18,21 @@
  *   MANAGER_ARTIFACTS_S3_BUCKET=... \
  *   MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID=... \
  *   MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY=... \
- *   OPENROUTER_API_KEY=...   # R1 only — R2 reuses vectors from artifact
+ *   OPENROUTER_API_KEY=...   # R1 + experience only — R2 reuses vectors from artifact
  *   pnpm --filter @forge/admin run-embeds --pipeline=transcript
  *
  *   # Filters (all optional, repeatable):
- *   --pipeline=scene|transcript|both         # required
- *   --mapping-key=admin-migrations/core-id-mapping.json   # default
- *   --core-id=<id>                                         # repeatable
- *   --locale=<bcp47>                                       # scene pipeline filter
- *   --language=<bcp47>                                     # transcript pipeline filter
- *   --report-out=<path>                                    # optional; dump final report JSON
+ *   --pipeline=scene|transcript|experience|both         # required
+ *                                                       # `both` = scene + transcript
+ *                                                       # (back-compat; experience runs only via its own pipeline)
+ *   --mapping-key=admin-migrations/core-id-mapping.json # scene/transcript default
+ *   --core-id=<id>                                      # scene/transcript filter (repeatable)
+ *   --locale=<bcp47>                                    # scene + experience pipeline filter (repeatable)
+ *   --language=<bcp47>                                  # transcript pipeline filter (repeatable)
+ *   --experience-id=<cuid>                              # experience pipeline filter (repeatable)
+ *   --force                                             # experience pipeline only — re-embed
+ *                                                       # rows that already have a non-NULL embedding
+ *   --report-out=<path>                                 # optional; dump final report JSON
  *
  * The mapping snapshot must already exist at the configured S3 key
  * (or the local-fallback path when RAILWAY_S3_BUCKET is unset).
@@ -49,6 +55,9 @@
  *     - `run-embeds.transcript.start`      (pipeline=transcript|both)
  *     - `run-embeds.transcript.complete`   (pipeline=transcript|both)
  *     - `run-embeds.transcript.error`      (pipeline=transcript|both, on error)
+ *     - `run-embeds.experience.start`      (pipeline=experience)
+ *     - `run-embeds.experience.complete`   (pipeline=experience)
+ *     - `run-embeds.experience.error`      (pipeline=experience, on error)
  *     - `run-embeds.complete` — final aggregated report (pretty-printed JSON)
  *     - `run-embeds.report_out_written` — when --report-out succeeded
  *
@@ -108,7 +117,7 @@ export async function writeReportToPath(
   }
 }
 
-type Pipeline = "scene" | "transcript" | "both"
+type Pipeline = "scene" | "transcript" | "experience" | "both"
 
 function parseSingle(name: string): string | undefined {
   const flag = `--${name}=`
@@ -124,21 +133,27 @@ function parseRepeated(name: string): string[] {
     .filter((v) => v.length > 0)
 }
 
+function parseFlag(name: string): boolean {
+  return process.argv.includes(`--${name}`)
+}
+
 function isPipeline(v: string): v is Pipeline {
-  return v === "scene" || v === "transcript" || v === "both"
+  return (
+    v === "scene" || v === "transcript" || v === "experience" || v === "both"
+  )
 }
 
 async function main(): Promise<void> {
   const pipelineArg = parseSingle("pipeline")
   if (!pipelineArg) {
     process.stderr.write(
-      "[run-embeds] --pipeline=scene|transcript|both is required\n",
+      "[run-embeds] --pipeline=scene|transcript|experience|both is required\n",
     )
     process.exit(2)
   }
   if (!isPipeline(pipelineArg)) {
     process.stderr.write(
-      `[run-embeds] invalid --pipeline=${pipelineArg}; expected scene|transcript|both\n`,
+      `[run-embeds] invalid --pipeline=${pipelineArg}; expected scene|transcript|experience|both\n`,
     )
     process.exit(2)
   }
@@ -154,6 +169,8 @@ async function main(): Promise<void> {
   const coreIds = parseRepeated("core-id")
   const locales = parseRepeated("locale")
   const languages = parseRepeated("language")
+  const experienceIds = parseRepeated("experience-id")
+  const force = parseFlag("force")
   // feat-119 PR1 — operators piping the report into PR2's
   // `pnpm trigger-enrichment --from-report=<path>` need a stable
   // file format. When unset, behavior is unchanged (stdout only).
@@ -172,6 +189,8 @@ async function main(): Promise<void> {
     runTranscriptEmbeddingBackfill,
     DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY,
   } = await import("@/workflows/transcriptEmbeddingBackfill")
+  const { runExperienceEmbeddingBackfill } =
+    await import("@/workflows/experienceEmbeddingBackfill")
   const { prisma } = await import("@/db/client")
   const { env } = await import("@/config/env")
 
@@ -191,6 +210,8 @@ async function main(): Promise<void> {
       coreIds: coreIds.length > 0 ? coreIds : null,
       locales: locales.length > 0 ? locales : null,
       languages: languages.length > 0 ? languages : null,
+      experienceIds: experienceIds.length > 0 ? experienceIds : null,
+      force,
       sceneConcurrency,
       transcriptConcurrency,
       managerArtifactsBucket:
@@ -286,6 +307,41 @@ async function main(): Promise<void> {
           JSON.stringify({
             event: "run-embeds.transcript.error",
             error: errors.transcript,
+          }) + "\n",
+        )
+      }
+    }
+
+    if (pipelineArg === "experience") {
+      try {
+        process.stdout.write(
+          JSON.stringify({
+            event: "run-embeds.experience.start",
+            experienceIds: experienceIds.length > 0 ? experienceIds : null,
+            locales: locales.length > 0 ? locales : null,
+            force,
+          }) + "\n",
+        )
+        const experienceReport = await runExperienceEmbeddingBackfill({
+          experienceIds: experienceIds.length > 0 ? experienceIds : undefined,
+          bcp47Locales: locales.length > 0 ? locales : undefined,
+          force,
+        })
+        reports.experience = experienceReport
+        process.stdout.write(
+          JSON.stringify({
+            event: "run-embeds.experience.complete",
+            totalTargets: experienceReport.totalTargets,
+            succeeded: experienceReport.succeeded,
+            failed: experienceReport.failed,
+          }) + "\n",
+        )
+      } catch (err) {
+        errors.experience = err instanceof Error ? err.message : String(err)
+        process.stdout.write(
+          JSON.stringify({
+            event: "run-embeds.experience.error",
+            error: errors.experience,
           }) + "\n",
         )
       }
