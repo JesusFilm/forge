@@ -8,9 +8,7 @@
 // here.
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
-
-const { start } = vi.hoisted(() => ({ start: vi.fn() }))
-vi.mock("workflow/api", () => ({ start }))
+import { Prisma } from "@prisma/client"
 
 vi.mock("@/db/client", () => {
   const mock = {
@@ -19,40 +17,44 @@ vi.mock("@/db/client", () => {
   return { prisma: mock, syncPrisma: mock }
 })
 
+vi.mock("@/services/embeddings.service", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/embeddings.service")>()
+  return {
+    ...actual,
+    embedExperienceLocale: vi.fn(async (localeId: string) => ({
+      localeId,
+      dimensions: 1536,
+      model: "text-embedding-3-small",
+    })),
+  }
+})
+
 const { prisma } = await import("@/db/client")
 const { runExperienceEmbeddingBackfill, _internals } =
   await import("./experienceEmbeddingBackfill")
-const { runExperienceEmbedding } = await import("./experienceEmbedding")
+const { embedExperienceLocale } = await import("@/services/embeddings.service")
 
 type PrismaStub = { $queryRaw: ReturnType<typeof vi.fn> }
+type EmbedStub = ReturnType<typeof vi.fn>
 
 function row(id: string, experienceId: string, locale: string) {
   return { id, experience_id: experienceId, locale }
 }
 
-function dispatchSuccess(dimensions = 1536, model = "text-embedding-3-small") {
-  start.mockResolvedValueOnce({
-    runId: `test-run-${Math.random().toString(36).slice(2, 10)}`,
-    returnValue: Promise.resolve({
-      localeId: "ignored-in-this-test",
-      dimensions,
-      model,
-      updated: true,
-    }),
-  })
-}
-
-function dispatchFailure(message: string) {
-  start.mockResolvedValueOnce({
-    runId: `test-run-${Math.random().toString(36).slice(2, 10)}`,
-    returnValue: Promise.reject(new Error(message)),
-  })
+function embedStub() {
+  return embedExperienceLocale as unknown as EmbedStub
 }
 
 describe("runExperienceEmbeddingBackfill", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
+    embedStub().mockImplementation(async (localeId: string) => ({
+      localeId,
+      dimensions: 1536,
+      model: "text-embedding-3-small",
+    }))
   })
 
   it("returns a clean success-shaped report when zero rows are eligible", async () => {
@@ -69,28 +71,20 @@ describe("runExperienceEmbeddingBackfill", () => {
       succeeded: 0,
       failed: 0,
     })
-    expect(start).not.toHaveBeenCalled()
+    expect(embedStub()).not.toHaveBeenCalled()
   })
 
-  it("dispatches runExperienceEmbedding once per eligible target", async () => {
+  it("calls embedExperienceLocale once per eligible target with the locale id", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("locale-a", "exp-1", "en"),
       row("locale-b", "exp-1", "es"),
     ])
-    dispatchSuccess()
-    dispatchSuccess()
 
     const report = await runExperienceEmbeddingBackfill({})
 
-    expect(start).toHaveBeenCalledTimes(2)
-    expect(start.mock.calls[0]).toEqual([
-      runExperienceEmbedding,
-      [{ localeId: "locale-a" }],
-    ])
-    expect(start.mock.calls[1]).toEqual([
-      runExperienceEmbedding,
-      [{ localeId: "locale-b" }],
-    ])
+    expect(embedStub()).toHaveBeenCalledTimes(2)
+    expect(embedStub().mock.calls[0]).toEqual(["locale-a"])
+    expect(embedStub().mock.calls[1]).toEqual(["locale-b"])
     expect(report.totalTargets).toBe(2)
     expect(report.succeeded).toBe(2)
     expect(report.failed).toBe(0)
@@ -105,35 +99,86 @@ describe("runExperienceEmbeddingBackfill", () => {
       dimensions: 1536,
       model: "text-embedding-3-small",
     })
+    expect(report.outcomes[1]).toMatchObject({
+      status: "succeeded",
+      target: { experienceLocaleId: "locale-b", locale: "es" },
+    })
   })
 
-  it("isolates per-target failures and continues the loop", async () => {
+  it("isolates per-target failures and continues the loop (siblings still succeed)", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("locale-a", "exp-1", "en"),
       row("locale-b", "exp-1", "es"),
       row("locale-c", "exp-2", "en"),
     ])
-    dispatchSuccess()
-    dispatchFailure("provider 503")
-    dispatchSuccess()
+    embedStub()
+      .mockImplementationOnce(async () => ({
+        localeId: "locale-a",
+        dimensions: 1536,
+        model: "text-embedding-3-small",
+      }))
+      .mockImplementationOnce(async () => {
+        throw new Error("provider 503")
+      })
+      .mockImplementationOnce(async () => ({
+        localeId: "locale-c",
+        dimensions: 1536,
+        model: "text-embedding-3-small",
+      }))
 
     const report = await runExperienceEmbeddingBackfill({})
 
-    expect(start).toHaveBeenCalledTimes(3)
+    expect(embedStub()).toHaveBeenCalledTimes(3)
     expect(report.succeeded).toBe(2)
     expect(report.failed).toBe(1)
+    expect(report.outcomes[0]).toMatchObject({
+      status: "succeeded",
+      target: { experienceLocaleId: "locale-a" },
+    })
     expect(report.outcomes[1]).toMatchObject({
       status: "failed",
       target: { experienceLocaleId: "locale-b" },
       reason: "provider 503",
     })
+    expect(report.outcomes[2]).toMatchObject({
+      status: "succeeded",
+      target: { experienceLocaleId: "locale-c" },
+    })
+  })
+
+  it("isolates synchronous embedExperienceLocale throws (not just async rejections)", async () => {
+    // Belt-and-suspenders for the per-target try/catch contract — a
+    // helper that throws synchronously before its first `await` must
+    // still classify as a failed outcome, not abort the loop.
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("locale-sync", "exp-sync", "en"),
+      row("locale-async", "exp-sync", "es"),
+    ])
+    embedStub()
+      .mockImplementationOnce(() => {
+        throw new Error("synchronous boom")
+      })
+      .mockImplementationOnce(async () => ({
+        localeId: "locale-async",
+        dimensions: 1536,
+        model: "text-embedding-3-small",
+      }))
+
+    const report = await runExperienceEmbeddingBackfill({})
+
+    expect(report.succeeded).toBe(1)
+    expect(report.failed).toBe(1)
+    expect(report.outcomes[0]).toMatchObject({
+      status: "failed",
+      reason: "synchronous boom",
+    })
+    expect(report.outcomes[1]).toMatchObject({ status: "succeeded" })
   })
 
   it("propagates the experienceIds + bcp47Locales filters into the report", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("locale-a", "exp-1", "en"),
     ])
-    dispatchSuccess()
 
     const report = await runExperienceEmbeddingBackfill({
       experienceIds: ["exp-1", "exp-2"],
@@ -143,21 +188,34 @@ describe("runExperienceEmbeddingBackfill", () => {
     expect(report.experienceIdFilter).toEqual(["exp-1", "exp-2"])
     expect(report.localeFilter).toEqual(["en", "es"])
     expect((prisma as unknown as PrismaStub).$queryRaw).toHaveBeenCalledTimes(1)
-    // The actual SQL composition (Prisma.sql + Prisma.join clauses) is
-    // covered by integration-style verification — a unit-test of the
-    // rendered SQL string would couple to Prisma's internal template
-    // wire format. The report-level assertion above proves the filter
-    // values reached the workflow body; a real-DB smoke is the next
-    // load-bearing check.
   })
 
-  it("records force=true in the report (embedding IS NULL clause is dropped)", async () => {
-    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([])
+  it("composes the SQL clauses: force=false adds `embedding IS NULL`, force=true drops it", async () => {
+    // T2 fix: inspect the Prisma.Sql fragments passed to $queryRaw so a
+    // regression that hardcoded the embedding clause (or dropped it
+    // unconditionally) fails loudly. Each clause is a `Prisma.Sql`
+    // instance whose `.text` exposes the rendered SQL fragment with
+    // `$N` placeholders for bound values.
+    ;(prisma as unknown as PrismaStub).$queryRaw
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
 
-    const report = await runExperienceEmbeddingBackfill({ force: true })
+    await runExperienceEmbeddingBackfill({})
+    await runExperienceEmbeddingBackfill({ force: true })
 
-    expect(report.force).toBe(true)
-    expect(report.totalTargets).toBe(0)
+    const calls = (prisma as unknown as PrismaStub).$queryRaw.mock.calls
+    expect(calls).toHaveLength(2)
+
+    // Tagged-template call shape: calls[i][0] is the strings array,
+    // calls[i][1..N] are the interpolated values. The first three
+    // interpolated values are embeddingClause, experienceIdClause,
+    // localeClause (in that order, per stepEnumerateTargets).
+    const defaultEmbeddingClause = calls[0]![1] as Prisma.Sql
+    const forceEmbeddingClause = calls[1]![1] as Prisma.Sql
+
+    expect(defaultEmbeddingClause.text).toMatch(/embedding IS NULL/)
+    // force: true uses Prisma.empty, which renders as an empty string.
+    expect(forceEmbeddingClause.text).toBe("")
   })
 
   it("treats empty filter arrays as omitted (matches R1/R2 contract)", async () => {

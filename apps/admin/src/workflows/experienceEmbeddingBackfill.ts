@@ -1,6 +1,5 @@
 // Experience embedding backfill — durable useworkflow job that
-// enumerates eligible ExperienceLocale rows and dispatches the
-// per-locale `runExperienceEmbedding` workflow for each.
+// enumerates eligible ExperienceLocale rows and embeds them.
 //
 // Admin-native replacement for the embed-dispatch role the now-deleted
 // R3 experience-content-dump workflow played. Mirrors the R1/R2
@@ -31,19 +30,16 @@
 //   - dispatch test required at the resolver layer (see
 //     experience-embedding-backfill.test.ts in graphql/mutations);
 //     this workflow file is exercised body-only here
-//   - `start(runExperienceEmbedding, [...])` routes through the same
-//     `workflow/api` import the resolver uses; the directive ensures
-//     both paths route through the runtime in production. See
-//     docs/solutions/best-practices/workflow-dispatch-test-mode-divergence-20260421.md.
+//   - the per-target step calls `embedExperienceLocale` (a plain
+//     service function) directly — no nested `start()`. Same shape
+//     R1/R2 use (workflow step → service helper). This keeps the
+//     `pnpm run-embeds --pipeline=experience` CLI path
+//     runtime-independent: every per-target body executes inline,
+//     no implicit workflow-runtime dependency mid-loop.
 
 import { Prisma } from "@prisma/client"
-import { start } from "workflow/api"
 import { prisma } from "@/db/client"
-import {
-  runExperienceEmbedding,
-  type ExperienceEmbeddingInput,
-  type ExperienceEmbeddingOutput,
-} from "@/workflows/experienceEmbedding"
+import { embedExperienceLocale } from "@/services/embeddings.service"
 
 export type ExperienceEmbeddingBackfillInput = {
   /**
@@ -218,12 +214,7 @@ async function stepEmbedTarget(
 
   const startedAt = Date.now()
   try {
-    const run = await start(runExperienceEmbedding, [
-      {
-        localeId: target.experienceLocaleId,
-      } satisfies ExperienceEmbeddingInput,
-    ])
-    const result: ExperienceEmbeddingOutput = await run.returnValue
+    const result = await embedExperienceLocale(target.experienceLocaleId)
     return {
       status: "succeeded",
       target,

@@ -58,6 +58,8 @@
  *     - `run-embeds.experience.start`      (pipeline=experience)
  *     - `run-embeds.experience.complete`   (pipeline=experience)
  *     - `run-embeds.experience.error`      (pipeline=experience, on error)
+ *     - `run-embeds.experience.skipped`    (pipeline=both — both = scene+transcript only;
+ *                                           experience is explicitly omitted)
  *     - `run-embeds.complete` — final aggregated report (pretty-printed JSON)
  *     - `run-embeds.report_out_written` — when --report-out succeeded
  *
@@ -310,6 +312,20 @@ async function main(): Promise<void> {
           }) + "\n",
         )
       }
+    }
+
+    // `pipeline=both` deliberately runs the original R1+R2 pair only.
+    // Emit a structured `experience.skipped` event so agents/operators
+    // parsing the event stream see the omission as an explicit signal
+    // rather than absence-of-event. Pair with `--pipeline=experience`
+    // (or, in the future, `--pipeline=all`) to also run R3.
+    if (pipelineArg === "both") {
+      process.stdout.write(
+        JSON.stringify({
+          event: "run-embeds.experience.skipped",
+          reason: "pipeline_both_excludes_experience",
+        }) + "\n",
+      )
     }
 
     if (pipelineArg === "experience") {
