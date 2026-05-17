@@ -122,12 +122,6 @@ export const env = createEnv({
     MANAGER_ARTIFACTS_S3_BUCKET: z.string().min(1).optional(),
     MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
-    // R3 — read-only Postgres URL for cms (Strapi v5). Optional at boot
-    // so admin still starts in environments without the dump enabled.
-    // The cms-pg singleton (`src/db/cms-pg.ts`) throws a clean
-    // configuration error if a runtime caller invokes it without this
-    // env set. Recommend a dedicated read-only PG role on cms.
-    CMS_DATABASE_URL: z.string().url().optional(),
 
     // feat-119 PR2 — admin → manager outbound enrichment trigger.
     // Admin's `triggerManagerEnrichment` GraphQL mutation POSTs to
@@ -273,7 +267,6 @@ export const env = createEnv({
     MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY: emptyToUndefined(
       process.env.MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY,
     ),
-    CMS_DATABASE_URL: emptyToUndefined(process.env.CMS_DATABASE_URL),
     MANAGER_API_BASE_URL: emptyToUndefined(process.env.MANAGER_API_BASE_URL),
     MANAGER_TRIGGER_API_KEY: emptyToUndefined(
       process.env.MANAGER_TRIGGER_API_KEY,
