@@ -40,12 +40,13 @@ describe("env", () => {
     })
   })
 
-  // Bearer-CSV disjointness invariant. The two CSVs
-  // (WORKFLOW_API_KEYS, WEB_ADMIN_API_KEYS) MUST NOT share any value;
-  // the auth chain in context.ts is workflow → consumer → public, so a
-  // duplicated key silently widens permissions to the higher-tier role.
+  // Bearer-CSV disjointness invariant. The bearer CSVs
+  // (WORKFLOW_API_KEYS, WEB_ADMIN_API_KEYS, BACKUP_DOWNLOAD_API_KEYS,
+  // SEARCH_API_KEYS) MUST NOT share any value; the auth chains
+  // mint distinct principals / passports, so a duplicated key silently
+  // widens permissions or passes a passport it shouldn't.
   describe("assertBearerCsvsDisjoint", () => {
-    it("passes when both CSVs are undefined", () => {
+    it("passes when all CSVs are undefined", () => {
       expect(() => assertBearerCsvsDisjoint({})).not.toThrow()
     })
 
@@ -56,14 +57,18 @@ describe("env", () => {
       expect(() =>
         assertBearerCsvsDisjoint({ WORKFLOW_API_KEYS: "wf-a" }),
       ).not.toThrow()
+      expect(() =>
+        assertBearerCsvsDisjoint({ SEARCH_API_KEYS: "search-a" }),
+      ).not.toThrow()
     })
 
-    it("passes when both CSVs are disjoint", () => {
+    it("passes when all CSVs are disjoint", () => {
       expect(() =>
         assertBearerCsvsDisjoint({
           WORKFLOW_API_KEYS: "wf-a,wf-b",
           WEB_ADMIN_API_KEYS: "web-a,web-b",
           BACKUP_DOWNLOAD_API_KEYS: "backup-a,backup-b",
+          SEARCH_API_KEYS: "search-a,search-b",
         }),
       ).not.toThrow()
     })
@@ -84,6 +89,47 @@ describe("env", () => {
           BACKUP_DOWNLOAD_API_KEYS: "wf-a",
         }),
       ).toThrow(/WORKFLOW_API_KEYS and BACKUP_DOWNLOAD_API_KEYS/)
+    })
+
+    it("throws when WEB_ADMIN_API_KEYS overlaps BACKUP_DOWNLOAD_API_KEYS", () => {
+      // Closes the matrix: the 4-CSV invariant has 6 pairs, this is
+      // the one not covered above. A regression that mis-indexed the
+      // inner-loop start (`j = i + 1` → `j = i + 2`) or swapped the
+      // sets tuple order could break this single pair without any
+      // other test failing.
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WEB_ADMIN_API_KEYS: "shared-key",
+          BACKUP_DOWNLOAD_API_KEYS: "shared-key",
+        }),
+      ).toThrow(/WEB_ADMIN_API_KEYS and BACKUP_DOWNLOAD_API_KEYS/)
+    })
+
+    it("throws when SEARCH_API_KEYS overlaps WORKFLOW_API_KEYS", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WORKFLOW_API_KEYS: "shared-key",
+          SEARCH_API_KEYS: "shared-key",
+        }),
+      ).toThrow(/WORKFLOW_API_KEYS and SEARCH_API_KEYS/)
+    })
+
+    it("throws when SEARCH_API_KEYS overlaps WEB_ADMIN_API_KEYS", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WEB_ADMIN_API_KEYS: "shared-key",
+          SEARCH_API_KEYS: "shared-key",
+        }),
+      ).toThrow(/WEB_ADMIN_API_KEYS and SEARCH_API_KEYS/)
+    })
+
+    it("throws when SEARCH_API_KEYS overlaps BACKUP_DOWNLOAD_API_KEYS", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          BACKUP_DOWNLOAD_API_KEYS: "shared-key",
+          SEARCH_API_KEYS: "shared-key",
+        }),
+      ).toThrow(/BACKUP_DOWNLOAD_API_KEYS and SEARCH_API_KEYS/)
     })
 
     it("error message does NOT contain the offending key value", () => {

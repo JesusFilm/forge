@@ -76,6 +76,28 @@ export const env = createEnv({
     // workflow and consumer bearer sets so backup download access does
     // not imply GraphQL or workflow access.
     BACKUP_DOWNLOAD_API_KEYS: z.string().min(1).optional(),
+    // Plan 002 — search API bearer-key allowlist.
+    // CSV-parsed, matched against `Authorization: Bearer <key>` by
+    // `search-bearer.ts`. A matched key tags the request `auth=bearer`
+    // in the structured log emitted by `/api/search` and `Query.search`;
+    // when `SEARCH_AUTH_REQUIRED === "true"`, requests without a valid
+    // bearer return 401. Distinct from the other bearer CSVs so an
+    // operator pasting the same value into two CSVs hits a fail-fast
+    // boot error (see `assertBearerCsvsDisjoint` below) instead of
+    // silently widening a search passport into workflow-trigger access.
+    // `.optional()` because environments without the rollout active
+    // (preview, local dev) don't need it — required-without-default
+    // would brick those Railway deploys, per
+    // docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md.
+    SEARCH_API_KEYS: z.string().optional(),
+    // Plan 002 — search API required-auth flag. When "true", `/api/search`
+    // and `Query.search` return 401 for missing/invalid bearer; when
+    // "false" (the default), they accept both anonymous and bearer-auth
+    // traffic (dual-accept). Enum-of-strings rather than boolean so a
+    // stray non-empty value can't silently flip the gate (z.coerce.boolean
+    // treats "false" as truthy). Decoded at call sites with
+    // `env.SEARCH_AUTH_REQUIRED === "true"`.
+    SEARCH_AUTH_REQUIRED: z.enum(["true", "false"]).optional().default("false"),
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
     WORKFLOW_TARGET_WORLD: z
       .enum(["local", "@workflow/world-postgres"])
@@ -222,6 +244,8 @@ export const env = createEnv({
     BACKUP_DOWNLOAD_API_KEYS: emptyToUndefined(
       process.env.BACKUP_DOWNLOAD_API_KEYS,
     ),
+    SEARCH_API_KEYS: emptyToUndefined(process.env.SEARCH_API_KEYS),
+    SEARCH_AUTH_REQUIRED: emptyToUndefined(process.env.SEARCH_AUTH_REQUIRED),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
     WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
     WORKFLOW_RUNNER_ENABLED: emptyToUndefined(
@@ -323,6 +347,7 @@ export type BearerCsvSnapshot = {
   readonly WORKFLOW_API_KEYS?: string
   readonly WEB_ADMIN_API_KEYS?: string
   readonly BACKUP_DOWNLOAD_API_KEYS?: string
+  readonly SEARCH_API_KEYS?: string
 }
 
 export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
@@ -333,6 +358,7 @@ export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
       "BACKUP_DOWNLOAD_API_KEYS",
       parseBearerCsvSet(snapshot.BACKUP_DOWNLOAD_API_KEYS),
     ],
+    ["SEARCH_API_KEYS", parseBearerCsvSet(snapshot.SEARCH_API_KEYS)],
   ] as const
 
   for (let i = 0; i < sets.length; i += 1) {
@@ -363,4 +389,5 @@ assertBearerCsvsDisjoint({
   WORKFLOW_API_KEYS: env.WORKFLOW_API_KEYS,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
+  SEARCH_API_KEYS: env.SEARCH_API_KEYS,
 })

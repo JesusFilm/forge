@@ -1945,6 +1945,125 @@ Consider re-baselining.` The warn never blocks the run.
 - `docs/solutions/best-practices/external-client-retry-parity-in-runner-fanout-20260512.md`
   — the load-bearing learning extracted from this PR's review.
 
+## Search API authentication (Plan 002)
+
+Admin's public search surface — `GET /api/search` REST + `Query.search`
+GraphQL twin — is gated by a bearer-key passport. Phase 1 ships in
+**dual-accept** mode (anonymous + bearer-auth both succeed). A
+single env-var flip later moves it to **required-auth** (anonymous
+returns 401).
+
+### Design summary
+
+- **The bearer is a passport, not a budget.** Per-IP rate limiting
+  at 30/min stays for everyone — authed and anonymous alike. Rate-
+  limit fires BEFORE the auth check on the REST surface so junk
+  Authorization headers cannot bypass the bucket.
+- **Search passport accepts any of three known-caller bearer CSVs:**
+  `SEARCH_API_KEYS` (this surface), `WEB_ADMIN_API_KEYS` (consumer-
+  bearer; apps/web SSR + apps/mobile already carry it), or
+  `WORKFLOW_API_KEYS` (workflow-trigger; manager → admin proxies +
+  the eval CLI's bearer mint). `isAnyKnownBearer(authHeader)` in
+  `src/auth/search-bearer.ts` OR-composes the three validators.
+- **The disjointness invariant** (`assertBearerCsvsDisjoint` at
+  boot in `src/config/env.ts`) holds for all 4 CSVs (workflow,
+  web-admin, backup-download, search). Each key VALUE lives in
+  exactly one CSV; an operator who pastes a value into two CSVs
+  hits a fail-fast boot error with the offending value redacted.
+- **`BACKUP_DOWNLOAD_API_KEYS` is excluded** from
+  `isAnyKnownBearer` — it's a narrow file-download surface (the
+  presigned video-DB backup endpoint), not an active-API bearer.
+- **Structured log per request** tags every call with one of
+  three states: `auth=bearer` (presented + matched any known
+  CSV), `auth=invalid_bearer` (presented + no match — the
+  population that 401s after the flip), `auth=anonymous` (no
+  header). Grep these in admin logs before the
+  `SEARCH_AUTH_REQUIRED` flip to confirm every known internal
+  caller is on a known bearer.
+
+### Env vars (`forge-admin` Doppler)
+
+- `SEARCH_API_KEYS` — CSV of opaque random base64url tokens for
+  EXTERNAL partners. Internal apps don't need entries here; they
+  use the bearers they already carry. `.optional()` — admin boots
+  cleanly when unset.
+- `SEARCH_AUTH_REQUIRED` — `"true" | "false"`, defaults to
+  `"false"`. When `"true"`, requests without a known bearer return
+  401 (REST) or throw `Authentication required` (GraphQL).
+  Enum-of-strings (not boolean) so a stray non-empty value can't
+  silently flip the gate.
+
+### Issuance + rotation
+
+Generate a key:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
+Add to the CSV in Doppler. For an external partner: share via
+Slack-DM, partner adds to their own env as `SEARCH_API_KEY`,
+deploys.
+
+**Receiver-first deploy ordering** for any key rotation:
+
+1. Add the new key to `SEARCH_API_KEYS` on admin Doppler. Deploy
+   admin. The new key is now accepted alongside the old.
+2. Update the caller's env to the new value. Deploy the caller.
+   Logs flip from `auth=bearer` (old) to `auth=bearer` (new) — same
+   tag, but a fresh deploy on the caller side.
+3. After observation confirms no callers use the old key, remove
+   the old key from `SEARCH_API_KEYS`. Deploy admin.
+
+Reversing the order produces a dead minute where the caller 401s.
+Per `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`
+§"Railway deploy-ordering invariant".
+
+### Required-auth flip (Phase 4 of plan 002)
+
+Before flipping `SEARCH_AUTH_REQUIRED=true` on prod:
+
+1. Grep admin logs for `auth=anonymous` over the past 72h.
+2. For every remaining anonymous caller, identify by source IP +
+   User-Agent. Confirm it's either (a) an external scraper we
+   intend to reject, or (b) a known-internal caller that missed
+   the migration → fix BEFORE flipping.
+3. Flip the flag on Doppler, deploy admin, monitor 401 rate for
+   the next hour. Spike on anonymous = expected. Spike on
+   known-internal IPs = roll back the flag.
+
+### Audit / keyId upgrade path (deferred)
+
+v1 keys are opaque random tokens; the validator emits no keyId
+in the structured log (only `bearer | invalid_bearer | anonymous`).
+When per-key audit becomes load-bearing, key format upgrades to
+`sk_search_<labeledKeyId>_<random>` and the validator parses the
+prefix to surface keyId per request. Plan inline comment in
+`search-bearer.ts` marks the upgrade point.
+
+### Files
+
+- `src/auth/search-bearer.ts` — `isValidSearchBearer` (narrow,
+  reads only `SEARCH_API_KEYS`) + `isAnyKnownBearer` (OR-composes
+  the three known-caller CSVs).
+- `src/app/api/search/route.ts` — REST handler; rate-limit fires
+  first, then the auth check.
+- `src/graphql/queries/hybrid-search.ts` — GraphQL resolver; same
+  auth check inside the resolver body, `authScopes: { public: true }`
+  stays.
+- `src/config/env.ts` — `SEARCH_API_KEYS` + `SEARCH_AUTH_REQUIRED`
+  - `assertBearerCsvsDisjoint` extended to 4 CSVs.
+
+### Cross-references
+
+- Plan: `docs/plans/2026-05-17-002-feat-search-api-auth-plan.md`
+- Brainstorm:
+  `docs/brainstorms/2026-05-17-search-api-auth-requirements.md`
+- Companion pattern (workflow direction):
+  `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`
+- Companion pattern (consumer-bearer):
+  `docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md`
+
 ## Common pitfalls (grows with each unit)
 
 - **`apps/admin/railway.toml` is dead config — Railway only auto-discovers `railway.toml` at the repo root**, not in per-service subdirectories. Editing it does NOT change deploy behavior. The Railway dashboard is authoritative until "Config-as-code Path" is wired up. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.

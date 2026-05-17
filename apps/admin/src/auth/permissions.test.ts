@@ -563,14 +563,17 @@ describe("permission matrix completeness", () => {
       )
     })
 
-    it("env-var split: WEB_ADMIN_API_KEYS is NOT equal to WORKFLOW_API_KEYS (CSV isolation)", async () => {
-      // Asserts that the two CSV env vars are read from distinct
+    it("env-var split: each bearer module reads only its own CSV (isolation)", async () => {
+      // Asserts that the bearer-CSV env vars are read from distinct
       // sources. A regression that pointed `consumer-bearer.ts` at
       // `WORKFLOW_API_KEYS` (or vice versa) would silently merge the
-      // two principal mints — workflow callers would bucket as
-      // consumer (rate-limit isolation collapse) and consumer callers
-      // would mint WORKFLOW_TRIGGER (permission widening). The
-      // distinct env vars are the load-bearing boundary.
+      // principal mints — workflow callers would bucket as consumer
+      // (rate-limit isolation collapse) and consumer callers would
+      // mint WORKFLOW_TRIGGER (permission widening). The distinct
+      // env vars are the load-bearing boundary. The same rule applies
+      // to `search-bearer.ts` (SEARCH_API_KEYS): a paste-into-the-
+      // wrong-file regression would conflate the search passport with
+      // workflow-trigger access.
       const { readFile } = await import("node:fs/promises")
       const { fileURLToPath } = await import("node:url")
       const consumerSource = await readFile(
@@ -581,12 +584,21 @@ describe("permission matrix completeness", () => {
         fileURLToPath(new URL("./workflow-bearer.ts", import.meta.url)),
         "utf8",
       )
+      const searchSource = await readFile(
+        fileURLToPath(new URL("./search-bearer.ts", import.meta.url)),
+        "utf8",
+      )
       // Each file references its own env var…
       expect(consumerSource).toMatch(/env\.WEB_ADMIN_API_KEYS/)
       expect(workflowSource).toMatch(/env\.WORKFLOW_API_KEYS/)
-      // …and NOT the other's.
+      expect(searchSource).toMatch(/env\.SEARCH_API_KEYS/)
+      // …and NOT the others'.
       expect(consumerSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
+      expect(consumerSource).not.toMatch(/env\.SEARCH_API_KEYS/)
       expect(workflowSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
+      expect(workflowSource).not.toMatch(/env\.SEARCH_API_KEYS/)
+      expect(searchSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
+      expect(searchSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
     })
   })
 })
