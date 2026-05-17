@@ -51,6 +51,7 @@ export type PermissionKey =
   | "write:scene-embeddings"
   | "write:transcript-embeddings"
   | "write:experience-content-dump"
+  | "write:experience-embeddings"
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // Admin's `triggerManagerEnrichment` mutation gates on this key;
   // the mutation forwards the call to apps/manager's
@@ -94,6 +95,14 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // ADMIN-only because it overwrites admin-side ExperienceLocale rows from
   // the cms snapshot — must not be invokable by EDITOR sessions.
   "write:experience-content-dump": "ADMIN",
+  // Experience-embedding backfill (admin-native). Enumerates
+  // ExperienceLocale rows and dispatches `runExperienceEmbedding` per
+  // locale. ADMIN-only at the editorial-tier ladder; bearer-callable
+  // from CLIs via the per-key allowlist below (symmetric with R1/R2
+  // backfill keys so `pnpm run-embeds --pipeline=experience` can mint
+  // a WORKFLOW_TRIGGER principal without standing up admin's full
+  // session-cookie auth flow).
+  "write:experience-embeddings": "ADMIN",
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // ADMIN-only at the editorial-tier ladder; the bearer-mintable
   // `WORKFLOW_TRIGGER` role is also granted via the per-key allowlist
@@ -188,6 +197,14 @@ const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   // manager-side REST proxy forwarding to this mutation, so a
   // Manager-tier identity cannot pivot through this key.
   "write:manager-enrichment-trigger",
+  // Admin-native experience-embedding backfill. Granted to
+  // WORKFLOW_TRIGGER so `pnpm run-embeds --pipeline=experience`
+  // (the local-dev CLI shim) can dispatch via bearer auth without
+  // a session cookie. Symmetric with the scene/transcript embed
+  // backfill keys above. There is no manager-side REST proxy
+  // forwarding to this mutation, so a Manager-tier identity does
+  // NOT gain reach through this key today.
+  "write:experience-embeddings",
 ])
 
 /**
