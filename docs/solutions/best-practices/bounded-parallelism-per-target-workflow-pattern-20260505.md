@@ -295,7 +295,13 @@ beforeEach(() => {
 
 ## When NOT to apply this pattern
 
-`apps/admin/src/workflows/experienceContentDump.ts` (R3) intentionally **stays sequential**. Its per-target work dispatches a downstream `runExperienceEmbedding` workflow plus reads from cms's read-only role — the bottleneck is upstream cms, not admin. Parallelizing R3 would just queue at cms and add concurrent pressure on a fragile read role. See `docs/solutions/platform/admin-experience-content-dump-pattern.md` for the deliberate sequential-`for…of` decision.
+`apps/admin/src/workflows/experienceEmbeddingBackfill.ts` (the admin-native R3 replacement, post-PR-#966 + PR-#967) intentionally **stays sequential**. Its per-target work calls `embedExperienceLocale` (a plain service helper that itself hits OpenRouter / OpenAI) and admin's experience corpus is small enough that sequential `for…of` is fast enough for v1. Parallelizing would shift the bottleneck to the embedding provider's rate limits with no per-target wall-clock win. If the corpus grows or the helper picks up batchable cost, revisit by applying the canonical pattern (`pLimit + Promise.allSettled`) and treating the per-locale embed as the target.
+
+> **Historical note:** earlier revisions of this section pointed at the
+> retired `apps/admin/src/workflows/experienceContentDump.ts` (the cms →
+> admin dump that was deleted in PR #966). That workflow's bottleneck
+> was upstream cms's read-only role, which is no longer a constraint
+> now that experiences live in admin natively.
 
 Not every per-target loop benefits from this pattern. The prerequisites are:
 
@@ -327,7 +333,7 @@ When all three hold, apply the pattern. When they don't, sequential `for…of` i
 - `apps/admin/src/workflows/sceneEmbeddingBackfill.ts` — canonical implementation (R1).
 - `apps/admin/src/workflows/transcriptEmbeddingBackfill.ts` — same shape, different domain (R2).
 - `apps/admin/src/workflows/sceneEmbeddingBackfill.test.ts` — canonical test shape including `vi.spyOn(_internals, ...)`.
-- `apps/admin/src/workflows/experienceContentDump.ts` — counter-example: stays sequential intentionally (R3). Deliberate decision documented in `docs/solutions/platform/admin-experience-content-dump-pattern.md`.
+- `apps/admin/src/workflows/experienceEmbeddingBackfill.ts` — counter-example: stays sequential intentionally (admin-native R3, post-PR-#966 + PR-#967). The per-target step calls `embedExperienceLocale` (plain service helper) — see [`workflow-step-body-calls-service-not-sibling-workflow-20260517.md`](workflow-step-body-calls-service-not-sibling-workflow-20260517.md) for the "step bodies call services, not nested workflows" rule applied here.
 - `apps/admin/src/db/client.ts` — documents the `connection_limit=10` Prisma pool that constrains the concurrency default.
 - `apps/admin/CLAUDE.md` — R1 and R2 sections updated post-PR with the env vars and the `Promise.allSettled` invariant.
 - `docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md` — the prior learning that established "no `Promise.all`"; this doc complements it.
