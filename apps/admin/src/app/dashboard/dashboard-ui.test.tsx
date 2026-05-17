@@ -261,32 +261,36 @@ vi.mock("@/app/dashboard/ops-data", () => ({
       {
         key: "user1",
         title: "admin@example.com",
-        detail: "google",
+        detail: "auth_user_123",
         statusLabel: "ADMIN",
         statusTone: "success",
-        meta: "1 session(s) / 10/24/2023, 14:02",
+        meta: "10/24/2023, 14:02",
       },
     ],
     insights: [
-      { label: "Active Sessions", value: "1", detail: "detail" },
-      { label: "Linked Accounts", value: "1", detail: "detail" },
-      { label: "SSO Providers", value: "1", detail: "detail" },
+      { label: "Role Mappings", value: "1", detail: "detail" },
+      { label: "Access Requests", value: "0", detail: "detail" },
+      { label: "Auth Issuer", value: "auth.local", detail: "detail" },
     ],
   })),
   loadSettingsData: vi.fn(async () => ({
     metrics: [
-      { label: "Providers", value: "1", footer: "SSO_ENABLED" },
-      { label: "Trusted Origins", value: "1", footer: "AUTH_TRUSTED" },
+      {
+        label: "Auth Client",
+        value: "jfp_admin_local",
+        footer: "OAUTH_CLIENT",
+      },
+      { label: "Admin Origin", value: "localhost:3003", footer: "CALLBACK" },
       { label: "CORS Origins", value: "1", footer: "GRAPHQL_ALLOWLIST" },
     ],
     rows: [
       {
-        key: "better-auth",
-        title: "Better Auth secret",
-        detail: "Session signing secret",
+        key: "admin-session",
+        title: "Admin session secret",
+        detail: "Local OAuth session signing secret",
         statusLabel: "Configured",
         statusTone: "success",
-        meta: "http://localhost:3003",
+        meta: "http://localhost:3004/api/auth",
       },
     ],
     insights: [

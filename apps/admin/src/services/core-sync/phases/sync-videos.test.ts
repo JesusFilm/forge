@@ -95,10 +95,10 @@ describe("syncVideos", () => {
         upsert: vi.fn().mockResolvedValue({ id: "origin-1" }),
       },
       video: {
-        findUnique: vi
+        findUnique: vi.fn().mockResolvedValueOnce(null),
+        findMany: vi
           .fn()
-          .mockResolvedValueOnce(null)
-          .mockResolvedValueOnce({ id: "child-1" }),
+          .mockResolvedValue([{ id: "child-1", coreId: "child-core-1" }]),
         upsert: vi.fn().mockResolvedValue({ id: "video-1" }),
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
@@ -117,7 +117,6 @@ describe("syncVideos", () => {
       },
       videoKeyword: {
         deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
-        create: vi.fn().mockResolvedValue(undefined),
       },
       videoEdition: {
         upsert: vi.fn().mockResolvedValue({ id: "edition-1" }),
@@ -128,10 +127,11 @@ describe("syncVideos", () => {
       },
       videoRelation: {
         deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
-        create: vi.fn().mockResolvedValue(undefined),
       },
+      $executeRaw: vi.fn().mockResolvedValue(undefined),
     }
     const prisma = {
+      $executeRaw: vi.fn().mockResolvedValue(undefined),
       language: {
         findMany: vi
           .fn()
@@ -158,6 +158,7 @@ describe("syncVideos", () => {
     })
 
     expect(stats.errors).toBe(0)
+    expect(prisma.$executeRaw).toHaveBeenCalled()
     expect(tx.video.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({
@@ -170,8 +171,12 @@ describe("syncVideos", () => {
     expect(tx.videoStudyQuestion.upsert).toHaveBeenCalled()
     expect(tx.videoImage.upsert).not.toHaveBeenCalled()
     expect(tx.videoSubtitle.upsert).not.toHaveBeenCalled()
-    expect(tx.videoRelation.create).toHaveBeenCalledWith({
-      data: { parentId: "video-1", childId: "child-1" },
+    expect(tx.videoKeyword.deleteMany).toHaveBeenCalledWith({
+      where: { videoId: { in: ["video-1"] } },
     })
+    expect(tx.videoRelation.deleteMany).toHaveBeenCalledWith({
+      where: { parentId: { in: ["video-1"] } },
+    })
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(2)
   })
 })

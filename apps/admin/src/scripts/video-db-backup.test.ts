@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
   VIDEO_DB_BACKUP_PROFILES,
@@ -10,6 +10,14 @@ import {
   parseProfile,
   restoreLatestMain,
 } from "./video-db-backup"
+
+afterEach(() => {
+  delete process.env.BACKUP_DOWNLOAD_API_KEY
+  delete process.env.BACKUP_DOWNLOAD_BASE_URL
+  delete process.env.TARGET_DATABASE_URL
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
 
 describe("video DB backup profiles", () => {
   it("keeps video-core focused on catalog data without embedding tables", () => {
@@ -161,8 +169,8 @@ describe("restore command planning", () => {
         "--single-transaction",
         "--dbname",
         "postgresql://user:pass@localhost/dev",
-        "--table=public.video",
-        "--table=public.video_transcript_chunk",
+        "--table=video",
+        "--table=video_transcript_chunk",
         plan.inPath,
       ]),
     )
@@ -209,5 +217,37 @@ describe("restore command planning", () => {
         "--out=.tmp/video.dump",
       ]),
     ).rejects.toThrow("RAILWAY_S3_BUCKET is required")
+  })
+
+  it("uses the admin signer instead of raw S3 credentials when BACKUP_DOWNLOAD_API_KEY is set", async () => {
+    process.env.BACKUP_DOWNLOAD_API_KEY = "download-token"
+    process.env.BACKUP_DOWNLOAD_BASE_URL = "https://admin.example.com/"
+    process.env.TARGET_DATABASE_URL = "postgresql://localhost/dev"
+
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        url: "https://signed.example.com/video.dump",
+        profile: "video-core",
+        key: "admin-video-db-backups/video-core/video.dump",
+        expiresAt: "2026-05-15T00:10:00.000Z",
+        expiresInSeconds: 600,
+      }),
+    })
+    vi.stubGlobal("fetch", fetch)
+
+    await restoreLatestMain(["--target-env=development", "--dry-run"])
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://admin.example.com/api/internal/video-db-backups/presign",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          authorization: "Bearer download-token",
+          "content-type": "application/json",
+        }),
+        body: JSON.stringify({ profile: "video-core" }),
+      }),
+    )
   })
 })

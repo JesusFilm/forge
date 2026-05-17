@@ -1,8 +1,6 @@
 import { cookies } from "next/headers"
-import { NextResponse } from "next/server"
 import {
   ADMIN_OAUTH_ACCESS_REQUEST_COOKIE,
-  adminOAuthAccessRequestCookieOptions,
   readAdminOAuthAccessRequestCookie,
 } from "@/auth/auth-session"
 import { prisma } from "@/db/client"
@@ -57,10 +55,5 @@ export async function POST(): Promise<Response> {
     })
   }
 
-  const response = NextResponse.json({ ok: true }, { status: 202 })
-  response.cookies.delete({
-    name: ADMIN_OAUTH_ACCESS_REQUEST_COOKIE,
-    ...adminOAuthAccessRequestCookieOptions(),
-  })
-  return response
+  return Response.json({ ok: true }, { status: 202 })
 }

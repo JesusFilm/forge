@@ -73,8 +73,8 @@ enum RevisedByKind {
   SYSTEM @map("system")
 }
 
-/// Editorial role stored on Better Auth users. `SYSTEM` remains an in-process
-/// principal only and is never persisted in the auth tables.
+/// Editorial role stored for Auth SSO principals. `SYSTEM` remains an
+/// in-process principal only and is never persisted.
 enum UserRole {
   ADMIN  @map("ADMIN")
   EDITOR @map("EDITOR")
@@ -174,7 +174,7 @@ enum WorkflowRunTrigger {
 }
 
 // -----------------------------------------------------------------------------
-// Better Auth (Unit 5)
+// Admin access control (Auth SSO relying client)
 // -----------------------------------------------------------------------------
 
 model User {
@@ -187,61 +187,11 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  sessions     Session[]
-  accounts     Account[]
   mediaAssets  MediaAsset[]
   mediaFolders MediaFolder[]
 
   @@unique([email])
   @@map("user")
-}
-
-model Session {
-  id        String   @id
-  expiresAt DateTime @map("expires_at")
-  token     String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  ipAddress String?  @map("ip_address")
-  userAgent String?  @map("user_agent")
-  userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("session")
-}
-
-model Account {
-  id                    String    @id
-  accountId             String    @map("account_id")
-  providerId            String    @map("provider_id")
-  userId                String    @map("user_id")
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessToken           String?   @map("access_token")
-  refreshToken          String?   @map("refresh_token")
-  idToken               String?   @map("id_token")
-  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
-  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
-  scope                 String?
-  password              String?
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
-
-  @@unique([providerId, accountId])
-  @@index([userId])
-  @@map("account")
-}
-
-model Verification {
-  id         String   @id
-  identifier String
-  value      String
-  expiresAt  DateTime @map("expires_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  @@index([identifier])
-  @@map("verification")
 }
 
 // -----------------------------------------------------------------------------
@@ -1195,7 +1145,7 @@ model Experience {
   /// True for template Experiences that are cloned to create real ones.
   /// Per Strapi schema this is the ONLY non-localized Experience attribute.
   isTemplate Boolean   @default(false) @map("is_template")
-  /// Owner principal id (from Better Auth User table — Unit 5).
+  /// Owner principal id (from the admin Auth SSO user mapping).
   /// Nullable for system-imported templates.
   ownerId    String?   @map("owner_id")
   archivedAt DateTime? @map("archived_at")

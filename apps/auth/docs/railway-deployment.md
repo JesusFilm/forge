@@ -35,10 +35,8 @@ If the Railway dashboard is canonical, configure:
 ## Initial Env
 
 - `AUTH_BASE_URL=https://auth.jesusfilm.org`
-- `AUTH_OPERATOR_EMAILS=<comma-separated operator emails>`
 - `BETTER_AUTH_SECRET=<runtime secret>`
 - `DATABASE_URL=<auth Postgres database>`
-- `AUTH_TRUSTED_ORIGINS=https://admin.jesusfilm.org`
 - `REDIS_HOST=<optional rate limit Redis host>`
 - `REDIS_PORT=<optional rate limit Redis port>`
 - `REDIS_PASSWORD=<optional rate limit Redis password>`
@@ -46,7 +44,6 @@ If the Railway dashboard is canonical, configure:
 - `FIREBASE_PROJECT_ID=<optional migration fallback>`
 - `FIREBASE_CLIENT_EMAIL=<optional migration fallback>`
 - `FIREBASE_PRIVATE_KEY=<optional migration fallback>`
-- `FIREBASE_MIGRATION_CUTOFF_AT=<optional ISO cutoff>`
 
 Configure upstream identity providers only when enabled:
 
@@ -64,16 +61,15 @@ pnpm --filter @forge/auth seed:first-party-apps
 
 ## Cutover Rule
 
-`auth.jesusfilm.org` was moved from admin to Auth on 2026-05-12. Keep admin in
-embedded mode until the relying-client flow has been smoke tested against the
-real Auth domain.
+`auth.jesusfilm.org` was moved from admin to Auth on 2026-05-12. Admin now uses
+Auth as its only runtime sign-in path.
 
-Before flipping `ADMIN_AUTH_MODE=oauth`:
+Before deploying changes to this flow:
 
 - `apps/auth` healthcheck passes in Railway.
 - Admin has an OAuth client registration in Auth.
 - Admin can complete the OAuth callback flow against `auth.jesusfilm.org`.
-- Rollback is documented through `ADMIN_AUTH_MODE=embedded`.
+- Rollback is a normal application rollback, not an admin-side auth-mode toggle.
 
 ## 2026-05-12 Provisioning Status
 
@@ -81,8 +77,8 @@ Before flipping `ADMIN_AUTH_MODE=oauth`:
 - Created dedicated Railway Postgres service currently named `Postgres`.
 - Generated Railway service domain
   `https://forgeauth-production.up.railway.app`.
-- Set Auth runtime vars for `AUTH_BASE_URL`, `AUTH_OPERATOR_EMAILS`,
-  `AUTH_TRUSTED_ORIGINS`, `BETTER_AUTH_SECRET`, and `DATABASE_URL`.
+- Set Auth runtime vars for `AUTH_BASE_URL`, `BETTER_AUTH_SECRET`, and
+  `DATABASE_URL`.
 - Deployed current workspace to production service; latest verified deployment
   uses `AUTH_BASE_URL=https://auth.jesusfilm.org`.
 - Moved the `auth.jesusfilm.org` custom domain from `@forge/admin` to
@@ -94,5 +90,4 @@ Before flipping `ADMIN_AUTH_MODE=oauth`:
 - Copied available upstream SSO provider env values from admin to Auth:
   Facebook, Google, and Okta. Apple was not configured on admin.
 - Added admin production env values for `AUTH_ISSUER_URL`,
-  `AUTH_ADMIN_CLIENT_ID`, and `ADMIN_BASE_URL`, but did not set
-  `ADMIN_AUTH_MODE=oauth`.
+  `AUTH_ADMIN_CLIENT_ID`, and `ADMIN_BASE_URL`.

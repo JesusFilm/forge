@@ -5,6 +5,7 @@ import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreVideoOriginSchema } from "../schemas/video-origin"
 import { emptySyncStats } from "../types"
+import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
 
 const PAGE_SIZE = 10000
 
@@ -78,29 +79,26 @@ export async function syncVideoOrigins({
 
     try {
       let updated = 0
-      await prisma.$transaction(
-        async (tx) => {
-          for (const origin of origins) {
-            await tx.videoOrigin.upsert({
-              where: { coreId: origin.id },
-              create: {
-                coreId: origin.id,
-                name: origin.name,
-                description: origin.description,
-                syncedAt: new Date(),
-              },
-              update: {
-                name: origin.name,
-                description: origin.description,
-                syncedAt: new Date(),
-                deletedAt: null,
-              },
-            })
-            updated++
-          }
-        },
-        { timeout: 60_000, maxWait: 5_000 },
-      )
+      await prisma.$transaction(async (tx) => {
+        for (const origin of origins) {
+          await tx.videoOrigin.upsert({
+            where: { coreId: origin.id },
+            create: {
+              coreId: origin.id,
+              name: origin.name,
+              description: origin.description,
+              syncedAt: new Date(),
+            },
+            update: {
+              name: origin.name,
+              description: origin.description,
+              syncedAt: new Date(),
+              deletedAt: null,
+            },
+          })
+          updated++
+        }
+      }, CORE_SYNC_TRANSACTION_OPTIONS)
       stats.updated += updated
     } catch (err) {
       stats.errors++

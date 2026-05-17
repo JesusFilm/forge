@@ -63,7 +63,7 @@ describe("admin OAuth callback route", () => {
     )
 
     expect(response.headers.get("location")).toBe(
-      "http://localhost:3003/login?error=forbidden",
+      "http://localhost:3003/access-request?error=forbidden",
     )
     expect(exchangeAdminAuthorizationCode).not.toHaveBeenCalled()
   })
@@ -77,7 +77,7 @@ describe("admin OAuth callback route", () => {
     )
 
     expect(response.headers.get("location")).toBe(
-      "http://localhost:3003/login?error=forbidden",
+      "http://localhost:3003/access-request?error=forbidden",
     )
   })
 
@@ -86,7 +86,7 @@ describe("admin OAuth callback route", () => {
       const values: Record<string, string> = {
         forge_admin_oauth_state: "state_123",
         forge_admin_oauth_verifier: "verifier_123",
-        forge_admin_oauth_callback: "/dashboard",
+        forge_admin_oauth_return_to: "/dashboard",
       }
 
       return values[name] ? { value: values[name] } : undefined
@@ -112,7 +112,7 @@ describe("admin OAuth callback route", () => {
     )
 
     expect(response.headers.get("location")).toBe(
-      "http://localhost:3003/login?error=forbidden&request=available",
+      "http://localhost:3003/access-request",
     )
     expect(exchangeAdminAuthorizationCode).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -135,7 +135,7 @@ describe("admin OAuth callback route", () => {
       const values: Record<string, string> = {
         forge_admin_oauth_state: "state_123",
         forge_admin_oauth_verifier: "verifier_123",
-        forge_admin_oauth_callback: "/dashboard",
+        forge_admin_oauth_return_to: "/dashboard",
       }
 
       return values[name] ? { value: values[name] } : undefined
@@ -183,7 +183,7 @@ describe("admin OAuth callback route", () => {
       const values: Record<string, string> = {
         forge_admin_oauth_state: "state_123",
         forge_admin_oauth_verifier: "verifier_123",
-        forge_admin_oauth_callback: "/dashboard",
+        forge_admin_oauth_return_to: "/dashboard",
       }
 
       return values[name] ? { value: values[name] } : undefined
@@ -215,7 +215,7 @@ describe("admin OAuth callback route", () => {
     )
 
     expect(response.headers.get("location")).toBe(
-      "http://localhost:3003/login?error=forbidden&request=available",
+      "http://localhost:3003/access-request",
     )
     expect(userUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -238,7 +238,7 @@ describe("admin OAuth callback route", () => {
       const values: Record<string, string> = {
         forge_admin_oauth_state: "state_123",
         forge_admin_oauth_verifier: "verifier_123",
-        forge_admin_oauth_callback: "/dashboard",
+        forge_admin_oauth_return_to: "/dashboard",
       }
 
       return values[name] ? { value: values[name] } : undefined

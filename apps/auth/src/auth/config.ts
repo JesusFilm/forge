@@ -6,7 +6,6 @@ import { genericOAuth, jwt, okta } from "better-auth/plugins"
 
 import { AUTH_SCOPES } from "@/domain/scopes"
 import { assertProductionAuthSecrets, env, getAuthBaseUrl } from "@/config/env"
-import { getAuthTrustedOrigins } from "@/auth/origins"
 import { prisma } from "@/db/client"
 
 assertProductionAuthSecrets()
@@ -65,7 +64,13 @@ export const auth = betterAuth({
   }),
   secret: betterAuthSecret,
   baseURL: getAuthBaseUrl(),
-  trustedOrigins: getAuthTrustedOrigins(),
+  trustedOrigins: [getAuthBaseUrl()],
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google", "facebook", "apple", "okta"],
+    },
+  },
   plugins: [
     jwt(),
     oauthProvider({

@@ -4,11 +4,14 @@
 //
 // source='manager' rows are NEVER overwritten (short-circuit on upsert).
 
+import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
 import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreBibleBookSchema, CoreVideoSchema } from "../schemas/video"
 import { emptySyncStats } from "../types"
+import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
+import { toPgArray } from "@/db/pgvector"
 import {
   mapVideoLabel,
   mapVideoSource,
@@ -137,6 +140,92 @@ type CoreBibleBook = {
   name: Array<{ value: string; language: { bcp47?: string; id?: string } }>
 }
 
+function encodeJsonForPgArray(value: unknown): string {
+  return Buffer.from(JSON.stringify(value), "utf8").toString("base64")
+}
+
+async function bulkUpsertBibleBooks(
+  prisma: PrismaClient,
+  books: ReadonlyArray<{
+    id: string
+    coreId: string
+    nameBase64: string
+    osisId: string | null
+    alternateName: string | null
+    paratextAbbreviation: string | null
+    isNewTestament: boolean | null
+    testament: string | null
+    order: number | null
+  }>,
+) {
+  if (books.length === 0) return
+
+  await prisma.$executeRaw`
+    INSERT INTO "bible_book" (
+      "id",
+      "core_id",
+      "source",
+      "name",
+      "osis_id",
+      "alternate_name",
+      "paratext_abbreviation",
+      "is_new_testament",
+      "testament",
+      "order",
+      "synced_at",
+      "created_at",
+      "updated_at"
+    )
+    SELECT
+      input."id",
+      input."core_id",
+      'core'::"SourceTier",
+      convert_from(decode(input."name_base64", 'base64'), 'UTF8')::jsonb,
+      input."osis_id",
+      input."alternate_name",
+      input."paratext_abbreviation",
+      input."is_new_testament_text"::boolean,
+      input."testament",
+      input."order_text"::int,
+      NOW(),
+      NOW(),
+      NOW()
+    FROM unnest(
+      ${toPgArray(books.map((book) => book.id))}::text[],
+      ${toPgArray(books.map((book) => book.coreId))}::text[],
+      ${toPgArray(books.map((book) => book.nameBase64))}::text[],
+      ${toPgArray(books.map((book) => book.osisId))}::text[],
+      ${toPgArray(books.map((book) => book.alternateName))}::text[],
+      ${toPgArray(books.map((book) => book.paratextAbbreviation))}::text[],
+      ${toPgArray(books.map((book) => (book.isNewTestament == null ? null : String(book.isNewTestament))))}::text[],
+      ${toPgArray(books.map((book) => book.testament))}::text[],
+      ${toPgArray(books.map((book) => book.order?.toString() ?? null))}::text[]
+    ) AS input(
+      "id",
+      "core_id",
+      "name_base64",
+      "osis_id",
+      "alternate_name",
+      "paratext_abbreviation",
+      "is_new_testament_text",
+      "testament",
+      "order_text"
+    )
+    ON CONFLICT ("core_id")
+    DO UPDATE SET
+      "name"                  = EXCLUDED."name",
+      "osis_id"               = EXCLUDED."osis_id",
+      "alternate_name"        = EXCLUDED."alternate_name",
+      "paratext_abbreviation" = EXCLUDED."paratext_abbreviation",
+      "is_new_testament"      = EXCLUDED."is_new_testament",
+      "testament"             = EXCLUDED."testament",
+      "order"                 = EXCLUDED."order",
+      "synced_at"             = EXCLUDED."synced_at",
+      "updated_at"            = EXCLUDED."updated_at",
+      "deleted_at"            = NULL
+  `
+}
+
 export async function syncVideos({
   prisma,
   progress,
@@ -173,49 +262,31 @@ export async function syncVideos({
         }),
       )
     } else if (parsedBooks.data.length > 0) {
-      await prisma.$transaction(async (tx) => {
-        for (const book of parsedBooks.data) {
-          await tx.bibleBook.upsert({
-            where: { coreId: book.id },
-            create: {
-              coreId: book.id,
-              name: toNameMap(book.name, { bcp47ByCoreId }),
-              osisId: book.osisId,
-              alternateName: book.alternateName,
-              paratextAbbreviation: book.paratextAbbreviation,
-              isNewTestament: book.isNewTestament,
-              testament:
-                book.isNewTestament == null
-                  ? null
-                  : book.isNewTestament
-                    ? "NT"
-                    : "OT",
-              order: book.order,
-              syncedAt: new Date(),
-            },
-            update: {
-              name: toNameMap(book.name, { bcp47ByCoreId }),
-              osisId: book.osisId,
-              alternateName: book.alternateName,
-              paratextAbbreviation: book.paratextAbbreviation,
-              isNewTestament: book.isNewTestament,
-              testament:
-                book.isNewTestament == null
-                  ? null
-                  : book.isNewTestament
-                    ? "NT"
-                    : "OT",
-              order: book.order,
-              syncedAt: new Date(),
-              deletedAt: null,
-            },
-          })
-        }
-      })
+      await bulkUpsertBibleBooks(
+        prisma,
+        parsedBooks.data.map((book) => ({
+          id: randomUUID(),
+          coreId: book.id,
+          nameBase64: encodeJsonForPgArray(
+            toNameMap(book.name, { bcp47ByCoreId }),
+          ),
+          osisId: book.osisId,
+          alternateName: book.alternateName,
+          paratextAbbreviation: book.paratextAbbreviation,
+          isNewTestament: book.isNewTestament,
+          testament:
+            book.isNewTestament == null
+              ? null
+              : book.isNewTestament
+                ? "NT"
+                : "OT",
+          order: book.order,
+        })),
+      )
     }
   }
 
-  const PAGE_SIZE = 10000
+  const PAGE_SIZE = 25
   let offset = 0
   let firstPageCount = 0
   const seenCoreIds = new Set<string>()
@@ -264,238 +335,303 @@ export async function syncVideos({
 
     try {
       let pageUpdated = 0
-      await prisma.$transaction(
-        async (tx) => {
-          const keywords = await tx.keyword.findMany({
-            select: { id: true, coreId: true },
+      await prisma.$transaction(async (tx) => {
+        const keywords = await tx.keyword.findMany({
+          select: { id: true, coreId: true },
+        })
+        const keywordMap = new Map(keywords.map((k) => [k.coreId, k.id]))
+        const bibleBooks = await tx.bibleBook.findMany({
+          select: { id: true, coreId: true },
+        })
+        const bibleBookMap = new Map(bibleBooks.map((b) => [b.coreId, b.id]))
+        const touchedVideoIds: string[] = []
+        const videoKeywordRows: Array<{ videoId: string; keywordId: string }> =
+          []
+        const pendingRelations: Array<{
+          parentId: string
+          childCoreId: string
+        }> = []
+
+        for (const video of videos) {
+          const primaryLanguageId = video.primaryLanguageId
+            ? (langMap.get(video.primaryLanguageId) ?? null)
+            : null
+          const originId = video.origin
+            ? (originMap.get(video.origin.id) ?? null)
+            : null
+
+          const existing = await tx.video.findUnique({
+            where: { coreId: video.id },
+            select: { source: true },
           })
-          const keywordMap = new Map(keywords.map((k) => [k.coreId, k.id]))
-          const bibleBooks = await tx.bibleBook.findMany({
-            select: { id: true, coreId: true },
+          if (existing?.source === "MANAGER") {
+            continue
+          }
+
+          const videoRow = await tx.video.upsert({
+            where: { coreId: video.id },
+            create: {
+              coreId: video.id,
+              slug: video.slug,
+              label: mapVideoLabel(video.label),
+              videoSource: mapVideoSource(video.source),
+              publishedAt: video.publishedAt
+                ? new Date(video.publishedAt)
+                : null,
+              locked: video.locked,
+              noIndex: video.noIndex,
+              aiMetadata: false,
+              source: "CORE",
+              primaryLanguageId,
+              originId,
+              updatedAt: new Date(video.updatedAt),
+              syncedAt: new Date(),
+            },
+            update: {
+              slug: video.slug,
+              label: mapVideoLabel(video.label),
+              videoSource: mapVideoSource(video.source),
+              publishedAt: video.publishedAt
+                ? new Date(video.publishedAt)
+                : null,
+              locked: video.locked,
+              noIndex: video.noIndex,
+              primaryLanguageId,
+              originId,
+              updatedAt: new Date(video.updatedAt),
+              syncedAt: new Date(),
+              deletedAt: null,
+            },
           })
-          const bibleBookMap = new Map(bibleBooks.map((b) => [b.coreId, b.id]))
+          touchedVideoIds.push(videoRow.id)
 
-          for (const video of videos) {
-            const primaryLanguageId = video.primaryLanguageId
-              ? (langMap.get(video.primaryLanguageId) ?? null)
-              : null
-            const originId = video.origin
-              ? (originMap.get(video.origin.id) ?? null)
-              : null
-
-            const existing = await tx.video.findUnique({
-              where: { coreId: video.id },
-              select: { source: true },
-            })
-            if (existing?.source === "MANAGER") {
-              continue
-            }
-
-            const videoRow = await tx.video.upsert({
-              where: { coreId: video.id },
+          for (const localeRow of toVideoLocales(
+            {
+              title: video.title,
+              description: video.description,
+              snippet: video.snippet,
+              imageAlt: video.imageAlt,
+            },
+            { bcp47ByCoreId },
+          )) {
+            await tx.videoLocale.upsert({
+              where: {
+                videoId_locale: {
+                  videoId: videoRow.id,
+                  locale: localeRow.locale,
+                },
+              },
               create: {
-                coreId: video.id,
-                slug: video.slug,
-                label: mapVideoLabel(video.label),
-                videoSource: mapVideoSource(video.source),
+                videoId: videoRow.id,
+                locale: localeRow.locale,
+                title: localeRow.title,
+                description: localeRow.description,
+                snippet: localeRow.snippet,
+                imageAlt: localeRow.imageAlt,
+                status: "PUBLISHED",
                 publishedAt: video.publishedAt
                   ? new Date(video.publishedAt)
                   : null,
-                locked: video.locked,
-                noIndex: video.noIndex,
-                aiMetadata: false,
-                source: "CORE",
-                primaryLanguageId,
-                originId,
-                updatedAt: new Date(video.updatedAt),
+              },
+              update: {
+                title: localeRow.title,
+                description: localeRow.description,
+                snippet: localeRow.snippet,
+                imageAlt: localeRow.imageAlt,
+                publishedAt: video.publishedAt
+                  ? new Date(video.publishedAt)
+                  : null,
+              },
+            })
+          }
+
+          const seenStudyQuestionIds = new Set(
+            video.studyQuestions.map((question) => question.id),
+          )
+          for (const question of toStudyQuestions(video.studyQuestions, {
+            bcp47ByCoreId,
+          })) {
+            await tx.videoStudyQuestion.upsert({
+              where: { coreId: question.coreId },
+              create: {
+                coreId: question.coreId,
+                videoId: videoRow.id,
+                locale: question.locale,
+                languageId: question.languageCoreId
+                  ? (langMap.get(question.languageCoreId) ?? null)
+                  : null,
+                text: question.text,
+                primary: question.primary,
+                order: question.order,
                 syncedAt: new Date(),
               },
               update: {
-                slug: video.slug,
-                label: mapVideoLabel(video.label),
-                videoSource: mapVideoSource(video.source),
-                publishedAt: video.publishedAt
-                  ? new Date(video.publishedAt)
+                videoId: videoRow.id,
+                locale: question.locale,
+                languageId: question.languageCoreId
+                  ? (langMap.get(question.languageCoreId) ?? null)
                   : null,
-                locked: video.locked,
-                noIndex: video.noIndex,
-                primaryLanguageId,
-                originId,
-                updatedAt: new Date(video.updatedAt),
+                text: question.text,
+                primary: question.primary,
+                order: question.order,
                 syncedAt: new Date(),
                 deletedAt: null,
               },
             })
-
-            for (const localeRow of toVideoLocales(
-              {
-                title: video.title,
-                description: video.description,
-                snippet: video.snippet,
-                imageAlt: video.imageAlt,
-              },
-              { bcp47ByCoreId },
-            )) {
-              await tx.videoLocale.upsert({
-                where: {
-                  videoId_locale: {
-                    videoId: videoRow.id,
-                    locale: localeRow.locale,
-                  },
-                },
-                create: {
-                  videoId: videoRow.id,
-                  locale: localeRow.locale,
-                  title: localeRow.title,
-                  description: localeRow.description,
-                  snippet: localeRow.snippet,
-                  imageAlt: localeRow.imageAlt,
-                  status: "PUBLISHED",
-                  publishedAt: video.publishedAt
-                    ? new Date(video.publishedAt)
-                    : null,
-                },
-                update: {
-                  title: localeRow.title,
-                  description: localeRow.description,
-                  snippet: localeRow.snippet,
-                  imageAlt: localeRow.imageAlt,
-                  publishedAt: video.publishedAt
-                    ? new Date(video.publishedAt)
-                    : null,
-                },
-              })
-            }
-
-            const seenStudyQuestionIds = new Set(
-              video.studyQuestions.map((question) => question.id),
-            )
-            for (const question of toStudyQuestions(video.studyQuestions, {
-              bcp47ByCoreId,
-            })) {
-              await tx.videoStudyQuestion.upsert({
-                where: { coreId: question.coreId },
-                create: {
-                  coreId: question.coreId,
-                  videoId: videoRow.id,
-                  locale: question.locale,
-                  languageId: question.languageCoreId
-                    ? (langMap.get(question.languageCoreId) ?? null)
-                    : null,
-                  text: question.text,
-                  primary: question.primary,
-                  order: question.order,
-                  syncedAt: new Date(),
-                },
-                update: {
-                  videoId: videoRow.id,
-                  locale: question.locale,
-                  languageId: question.languageCoreId
-                    ? (langMap.get(question.languageCoreId) ?? null)
-                    : null,
-                  text: question.text,
-                  primary: question.primary,
-                  order: question.order,
-                  syncedAt: new Date(),
-                  deletedAt: null,
-                },
-              })
-            }
-            await tx.videoStudyQuestion.updateMany({
-              where: {
-                videoId: videoRow.id,
-                source: "CORE",
-                coreId: { notIn: [...seenStudyQuestionIds] },
-                deletedAt: null,
-              },
-              data: { deletedAt: new Date() },
-            })
-
-            const seenCitationIds = new Set(
-              video.bibleCitations.map((citation) => citation.id),
-            )
-            for (const citation of video.bibleCitations) {
-              const bibleBookId = bibleBookMap.get(citation.bibleBook.id)
-              if (!bibleBookId) {
-                stats.errors++
-                console.warn(
-                  JSON.stringify({
-                    event: "core-sync.video-citation.missing-bible-book",
-                    videoCoreId: video.id,
-                    citationCoreId: citation.id,
-                    bibleBookCoreId: citation.bibleBook.id,
-                  }),
-                )
-                continue
-              }
-              await tx.bibleCitation.upsert({
-                where: { coreId: citation.id },
-                create: {
-                  coreId: citation.id,
-                  videoId: videoRow.id,
-                  bibleBookId,
-                  osisId: citation.osisId,
-                  order: citation.order,
-                  chapterStart: citation.chapterStart,
-                  chapterEnd: citation.chapterEnd,
-                  verseStart: citation.verseStart,
-                  verseEnd: citation.verseEnd,
-                  syncedAt: new Date(),
-                },
-                update: {
-                  videoId: videoRow.id,
-                  bibleBookId,
-                  osisId: citation.osisId,
-                  order: citation.order,
-                  chapterStart: citation.chapterStart,
-                  chapterEnd: citation.chapterEnd,
-                  verseStart: citation.verseStart,
-                  verseEnd: citation.verseEnd,
-                  syncedAt: new Date(),
-                  deletedAt: null,
-                },
-              })
-            }
-            await tx.bibleCitation.updateMany({
-              where: {
-                videoId: videoRow.id,
-                source: "CORE",
-                coreId: { notIn: [...seenCitationIds] },
-                deletedAt: null,
-              },
-              data: { deletedAt: new Date() },
-            })
-
-            await tx.videoKeyword.deleteMany({
-              where: { videoId: videoRow.id },
-            })
-            for (const keyword of video.keywords) {
-              const keywordId = keywordMap.get(keyword.id)
-              if (!keywordId) continue
-              await tx.videoKeyword.create({
-                data: { videoId: videoRow.id, keywordId },
-              })
-            }
-
-            await tx.videoRelation.deleteMany({
-              where: { parentId: videoRow.id },
-            })
-            for (const child of video.children) {
-              const childVideo = await tx.video.findUnique({
-                where: { coreId: child.id },
-                select: { id: true },
-              })
-              if (!childVideo) continue
-              await tx.videoRelation.create({
-                data: { parentId: videoRow.id, childId: childVideo.id },
-              })
-            }
-
-            pageUpdated++
           }
-        },
-        { timeout: 60_000, maxWait: 5_000 },
-      )
+          await tx.videoStudyQuestion.updateMany({
+            where: {
+              videoId: videoRow.id,
+              source: "CORE",
+              coreId: { notIn: [...seenStudyQuestionIds] },
+              deletedAt: null,
+            },
+            data: { deletedAt: new Date() },
+          })
+
+          const seenCitationIds = new Set(
+            video.bibleCitations.map((citation) => citation.id),
+          )
+          for (const citation of video.bibleCitations) {
+            const bibleBookId = bibleBookMap.get(citation.bibleBook.id)
+            if (!bibleBookId) {
+              stats.errors++
+              console.warn(
+                JSON.stringify({
+                  event: "core-sync.video-citation.missing-bible-book",
+                  videoCoreId: video.id,
+                  citationCoreId: citation.id,
+                  bibleBookCoreId: citation.bibleBook.id,
+                }),
+              )
+              continue
+            }
+            await tx.bibleCitation.upsert({
+              where: { coreId: citation.id },
+              create: {
+                coreId: citation.id,
+                videoId: videoRow.id,
+                bibleBookId,
+                osisId: citation.osisId,
+                order: citation.order,
+                chapterStart: citation.chapterStart,
+                chapterEnd: citation.chapterEnd,
+                verseStart: citation.verseStart,
+                verseEnd: citation.verseEnd,
+                syncedAt: new Date(),
+              },
+              update: {
+                videoId: videoRow.id,
+                bibleBookId,
+                osisId: citation.osisId,
+                order: citation.order,
+                chapterStart: citation.chapterStart,
+                chapterEnd: citation.chapterEnd,
+                verseStart: citation.verseStart,
+                verseEnd: citation.verseEnd,
+                syncedAt: new Date(),
+                deletedAt: null,
+              },
+            })
+          }
+          await tx.bibleCitation.updateMany({
+            where: {
+              videoId: videoRow.id,
+              source: "CORE",
+              coreId: { notIn: [...seenCitationIds] },
+              deletedAt: null,
+            },
+            data: { deletedAt: new Date() },
+          })
+
+          for (const keyword of video.keywords) {
+            const keywordId = keywordMap.get(keyword.id)
+            if (!keywordId) continue
+            videoKeywordRows.push({ videoId: videoRow.id, keywordId })
+          }
+
+          for (const child of video.children) {
+            pendingRelations.push({
+              parentId: videoRow.id,
+              childCoreId: child.id,
+            })
+          }
+
+          pageUpdated++
+        }
+
+        if (touchedVideoIds.length > 0) {
+          await tx.videoKeyword.deleteMany({
+            where: { videoId: { in: touchedVideoIds } },
+          })
+          if (videoKeywordRows.length > 0) {
+            await tx.$executeRaw`
+              INSERT INTO "video_keyword" (
+                "video_id",
+                "keyword_id",
+                "created_at"
+              )
+              SELECT
+                input."video_id",
+                input."keyword_id",
+                NOW()
+              FROM unnest(
+                ${toPgArray(videoKeywordRows.map((row) => row.videoId))}::text[],
+                ${toPgArray(videoKeywordRows.map((row) => row.keywordId))}::text[]
+              ) AS input("video_id", "keyword_id")
+              ON CONFLICT ("video_id", "keyword_id") DO NOTHING
+            `
+          }
+
+          await tx.videoRelation.deleteMany({
+            where: { parentId: { in: touchedVideoIds } },
+          })
+
+          const childCoreIds = [
+            ...new Set(
+              pendingRelations.map((relation) => relation.childCoreId),
+            ),
+          ]
+          const childVideos =
+            childCoreIds.length > 0
+              ? await tx.video.findMany({
+                  where: { coreId: { in: childCoreIds } },
+                  select: { id: true, coreId: true },
+                })
+              : []
+          const childIdByCoreId = new Map(
+            childVideos.map((child) => [child.coreId, child.id]),
+          )
+          const videoRelationRows = pendingRelations.flatMap((relation) => {
+            const childId = childIdByCoreId.get(relation.childCoreId)
+            return childId
+              ? [{ id: randomUUID(), parentId: relation.parentId, childId }]
+              : []
+          })
+
+          if (videoRelationRows.length > 0) {
+            await tx.$executeRaw`
+              INSERT INTO "video_relation" (
+                "id",
+                "parent_id",
+                "child_id",
+                "created_at"
+              )
+              SELECT
+                input."id",
+                input."parent_id",
+                input."child_id",
+                NOW()
+              FROM unnest(
+                ${toPgArray(videoRelationRows.map((row) => row.id))}::text[],
+                ${toPgArray(videoRelationRows.map((row) => row.parentId))}::text[],
+                ${toPgArray(videoRelationRows.map((row) => row.childId))}::text[]
+              ) AS input("id", "parent_id", "child_id")
+              ON CONFLICT ("parent_id", "child_id") DO NOTHING
+            `
+          }
+        }
+      }, CORE_SYNC_TRANSACTION_OPTIONS)
       stats.updated += pageUpdated
     } catch (err) {
       stats.errors++

@@ -22,7 +22,7 @@ calls `runSync(syncPrisma, ...)`.
 - `WORKFLOW_API_KEYS` and `WORKFLOW_HMAC_SECRET` - workflow callback signing.
 - `AUTH_COOKIE_PREFIX` - optional local-preview cookie namespace. Set this to
   a unique value when multiple worktrees run on `localhost` so signing in on
-  one branch does not overwrite another branch's Better Auth cookie.
+  one branch does not overwrite another branch's admin session cookie.
 - `CORE_API_URL`, `CORE_API_TOKEN`, `CORE_API_TIMEOUT_MS`,
   `CORE_API_RETRIES` - Core API access.
 - `CORE_SYNC_CRON_SECRET` - bearer token for `/api/core-sync/scheduled`.

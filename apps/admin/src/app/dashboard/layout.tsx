@@ -17,7 +17,7 @@ export default async function DashboardLayout({
   const principal = await requireSession()
 
   if (!canAccessAdminDashboard(principal)) {
-    redirect("/login?error=forbidden")
+    redirect("/access-request?error=forbidden")
   }
 
   const profile = principal.id

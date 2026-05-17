@@ -4,7 +4,7 @@
 
 Custom management platform — the strategic replacement for Strapi and
 eventual home for the manager app. V1 ships the architecture (Next.js +
-GraphQL Yoga + Pothos + Prisma + pgvector + useworkflow + Better Auth)
+GraphQL Yoga + Pothos + Prisma + pgvector + useworkflow + Auth SSO)
 and proves it with real content types (Experiences, Videos) while Strapi
 continues to serve existing consumers.
 
@@ -20,14 +20,9 @@ See the origin docs for full context:
 - Next.js 16+ App Router with TypeScript strict mode
 - GraphQL Yoga + Pothos (with Prisma + scope-auth plugins) — single API at `/api/graphql`
 - Prisma 6.x + PostgreSQL + pgvector (HNSW index) — sole data access layer
-- Auth modes:
-  - `ADMIN_AUTH_MODE=embedded` keeps the legacy admin-local Better Auth route,
-    Firebase email/password fallback, and social provider plugins available as
-    the rollback path.
-  - `ADMIN_AUTH_MODE=oauth` sends admin login through the standalone
-    `apps/auth` OAuth/OIDC provider and creates an admin-local signed session.
-- Admin must not depend on shared `.jesusfilm.org` cookies in OAuth mode.
-  `AUTH_COOKIE_DOMAIN` is legacy embedded-mode config only.
+- Admin login goes through the standalone `apps/auth` OAuth/OIDC provider and
+  creates an admin-local signed session. Admin must not depend on shared
+  `.jesusfilm.org` cookies or host admin-local credential handlers.
 - useworkflow (`workflow` npm package) for durable background jobs
 - Redis (TCP via `ioredis`) for rate limiting
 - Railway deployment (NIXPACKS, standalone output)
@@ -40,7 +35,7 @@ src/
   app/               Next.js App Router pages and API routes
   config/env.ts      Validated env (t3-oss/env-nextjs + zod)
   db/                Prisma client singleton + pgvector helpers         [Unit 2]
-  auth/              Better Auth config + permissions + Firebase bridge [Units 5-6]
+  auth/              Auth SSO client, local session, and permissions    [Units 5-6]
   graphql/           Pothos schema + resolvers                          [Units 3,4,6-9]
   services/          Business logic, raw SQL, ABAC checks               [Units 7-10]
   workflows/         Durable workflow definitions                       [Unit 11]
@@ -53,7 +48,7 @@ src/
 - [x] Unit 2: Prisma + pgvector
 - [x] Unit 3: GraphQL architecture spike — **signed off against a live Postgres 2026-04-13**
 - [x] Unit 4: Experience + Video Prisma models + block Zod union + Pothos types
-- [x] Unit 5: Better Auth + Firebase fallback
+- [x] Unit 5: Auth SSO relying-client session
 - [x] Unit 6: Permission system + per-request DataLoaders + scope-auth wiring + classification enforcement
 - [x] Unit 7: Service layer + Experience CRUD with ABAC
 - [x] Unit 8: Video read service + pgvector experience search
@@ -256,23 +251,38 @@ to restore into local or staging Postgres. The restore path reads
 video manifest tables, and refuses `--target-env=production` unless
 `--allow-production-target` is also present.
 
-### Jesus Film Auth client mode
-
-For local OAuth-mode development, run Auth on `http://localhost:3004`, seed its
-first-party app registrations, then run admin on `http://localhost:3003` with:
+For local/staging self-service, prefer the presigned latest-backup path:
 
 ```bash
-ADMIN_AUTH_MODE=oauth
-AUTH_ISSUER_URL=http://localhost:3004/api/auth
-AUTH_ADMIN_CLIENT_ID=jesus-film-admin-local
+TARGET_DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
+BACKUP_DOWNLOAD_API_KEY='<dev-or-stg-token>' \
+pnpm --filter @forge/admin restore:video-db:latest -- --target-env=development
+```
+
+`restore:video-db:latest` calls production admin's
+`POST /api/internal/video-db-backups/presign` endpoint when
+`BACKUP_DOWNLOAD_API_KEY` is present. Production admin validates the bearer
+against `BACKUP_DOWNLOAD_API_KEYS`, finds the latest `.dump` under
+`admin-video-db-backups/<profile>/`, returns a short-lived GET-only signed URL,
+and keeps raw `RAILWAY_S3_*` credentials inside the production runtime. The
+endpoint requires production admin to have the normal `RAILWAY_S3_*` bucket env
+vars configured; dev/staging should not need those S3 credentials.
+
+### Jesus Film Auth client mode
+
+For local development, admin points at production Auth so engineers do not need
+to run `apps/auth` locally:
+
+```bash
+AUTH_ISSUER_URL=https://auth.jesusfilm.org/api/auth
+AUTH_ADMIN_CLIENT_ID=jfp_admin_local
 ADMIN_BASE_URL=http://localhost:3003
 ```
 
 Admin uses authorization code + PKCE and stores only admin-local session state
 after callback. The callback route verifies issuer, audience, expiry, and the
 `admin:access` scope before mapping Auth scopes onto admin's existing
-VIEWER/EDITOR role ladder. Keep `ADMIN_AUTH_MODE=embedded` as the rollback flag
-until production cutover is observed.
+VIEWER/EDITOR role ladder.
 
 ## Deployment
 

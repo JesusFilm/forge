@@ -1,10 +1,5 @@
-import { getAuthBaseUrl } from "@/config/env"
+import { redirect } from "next/navigation"
 
 export default function AuthHome() {
-  return (
-    <main>
-      <h1>Jesus Film Auth</h1>
-      <p>{getAuthBaseUrl()}</p>
-    </main>
-  )
+  redirect("https://www.jesusfilm.org")
 }

@@ -1,7 +1,8 @@
 import { env } from "@/config/env"
-import { resolveAuthCallbackUrl } from "@/auth/origins"
+import { redirect } from "next/navigation"
 import {
   LoginPageClient,
+  type LoginErrorCode,
   type LoginProviderId,
 } from "@/app/login/login-page-client"
 
@@ -11,6 +12,35 @@ type LoginPageProps = {
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
+}
+
+export function isOAuthAuthorizeRequest(
+  params: Record<string, string | string[] | undefined>,
+) {
+  return Boolean(
+    firstParam(params.client_id) && firstParam(params.redirect_uri),
+  )
+}
+
+function parseLoginError(
+  value: string | undefined,
+): LoginErrorCode | undefined {
+  return value === "account_not_linked" || value === "forbidden"
+    ? value
+    : undefined
+}
+
+function toOAuthQuery(params: Record<string, string | string[] | undefined>) {
+  const oauthQuery = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (key === "error") continue
+    if (Array.isArray(value)) {
+      for (const item of value) oauthQuery.append(key, item)
+    } else if (value) {
+      oauthQuery.set(key, value)
+    }
+  }
+  return oauthQuery.toString()
 }
 
 function getEnabledProviders(): LoginProviderId[] {
@@ -34,15 +64,15 @@ function getEnabledProviders(): LoginProviderId[] {
 
 export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
   const params = (await searchParams) ?? {}
-  const callbackUrl = resolveAuthCallbackUrl(firstParam(params.callbackURL))
-  const initialError =
-    firstParam(params.error) === "forbidden" ? "forbidden" : undefined
+  if (!isOAuthAuthorizeRequest(params)) {
+    redirect("https://www.jesusfilm.org")
+  }
 
   return (
     <LoginPageClient
-      callbackURL={callbackUrl}
       enabledProviders={getEnabledProviders()}
-      initialError={initialError}
+      initialError={parseLoginError(firstParam(params.error))}
+      oauthQuery={toOAuthQuery(params)}
     />
   )
 }

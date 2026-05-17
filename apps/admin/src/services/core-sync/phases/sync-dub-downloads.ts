@@ -7,6 +7,7 @@ import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery, CoreGraphQLError } from "../core-client"
 import { CoreDubDownloadSchema } from "../schemas/dub-download"
 import { emptySyncStats } from "../types"
+import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
 import { assertParallelArrayLengthsMatch, toPgArray } from "@/db/pgvector"
 
 export const PAGE_SIZE = 20000
@@ -270,14 +271,11 @@ export async function syncDubDownloads({
     })
 
     try {
-      await prisma.$transaction(
-        async (tx) => {
-          await bulkUpsertDownloads(tx, writes, {
-            refreshUnchangedRows: !since,
-          })
-        },
-        { timeout: 60_000, maxWait: 5_000 },
-      )
+      await prisma.$transaction(async (tx) => {
+        await bulkUpsertDownloads(tx, writes, {
+          refreshUnchangedRows: !since,
+        })
+      }, CORE_SYNC_TRANSACTION_OPTIONS)
       stats.updated += writes.length
     } catch (err) {
       stats.errors++

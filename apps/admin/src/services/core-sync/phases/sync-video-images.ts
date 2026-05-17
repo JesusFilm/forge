@@ -6,6 +6,7 @@ import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreVideoImageSchema } from "../schemas/video-image"
 import { emptySyncStats } from "../types"
+import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
 
 const PAGE_SIZE = 10000
 
@@ -96,47 +97,44 @@ export async function syncVideoImages({
 
     try {
       let updated = 0
-      await prisma.$transaction(
-        async (tx) => {
-          for (const image of images) {
-            if (!image.videoId) continue
-            const videoId = videoMap.get(image.videoId)
-            if (!videoId) continue
+      await prisma.$transaction(async (tx) => {
+        for (const image of images) {
+          if (!image.videoId) continue
+          const videoId = videoMap.get(image.videoId)
+          if (!videoId) continue
 
-            await tx.videoImage.upsert({
-              where: { coreId: image.id },
-              create: {
-                coreId: image.id,
-                videoId,
-                url: image.url,
-                aspectRatio: image.aspectRatio,
-                mobileCinematicHigh: image.mobileCinematicHigh,
-                mobileCinematicLow: image.mobileCinematicLow,
-                mobileCinematicVeryLow: image.mobileCinematicVeryLow,
-                thumbnail: image.thumbnail,
-                videoStill: image.videoStill,
-                blurhash: image.blurhash,
-                syncedAt: new Date(),
-              },
-              update: {
-                videoId,
-                url: image.url,
-                aspectRatio: image.aspectRatio,
-                mobileCinematicHigh: image.mobileCinematicHigh,
-                mobileCinematicLow: image.mobileCinematicLow,
-                mobileCinematicVeryLow: image.mobileCinematicVeryLow,
-                thumbnail: image.thumbnail,
-                videoStill: image.videoStill,
-                blurhash: image.blurhash,
-                syncedAt: new Date(),
-                deletedAt: null,
-              },
-            })
-            updated++
-          }
-        },
-        { timeout: 60_000, maxWait: 5_000 },
-      )
+          await tx.videoImage.upsert({
+            where: { coreId: image.id },
+            create: {
+              coreId: image.id,
+              videoId,
+              url: image.url,
+              aspectRatio: image.aspectRatio,
+              mobileCinematicHigh: image.mobileCinematicHigh,
+              mobileCinematicLow: image.mobileCinematicLow,
+              mobileCinematicVeryLow: image.mobileCinematicVeryLow,
+              thumbnail: image.thumbnail,
+              videoStill: image.videoStill,
+              blurhash: image.blurhash,
+              syncedAt: new Date(),
+            },
+            update: {
+              videoId,
+              url: image.url,
+              aspectRatio: image.aspectRatio,
+              mobileCinematicHigh: image.mobileCinematicHigh,
+              mobileCinematicLow: image.mobileCinematicLow,
+              mobileCinematicVeryLow: image.mobileCinematicVeryLow,
+              thumbnail: image.thumbnail,
+              videoStill: image.videoStill,
+              blurhash: image.blurhash,
+              syncedAt: new Date(),
+              deletedAt: null,
+            },
+          })
+          updated++
+        }
+      }, CORE_SYNC_TRANSACTION_OPTIONS)
       stats.updated += updated
     } catch (err) {
       stats.errors++

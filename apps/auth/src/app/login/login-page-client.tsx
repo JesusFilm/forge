@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import { useState, type FormEvent } from "react"
 
 const providerLabels = {
@@ -11,51 +10,62 @@ const providerLabels = {
 } as const
 
 export type LoginProviderId = keyof typeof providerLabels
+export type LoginErrorCode = "account_not_linked" | "forbidden"
+
+type LoginMethodId = LoginProviderId | "email"
+
+const lastLoginMethodStorageKey = "forge.auth.lastLoginMethod"
+
+const loginErrors = {
+  account_not_linked: {
+    title: "This sign-in method is not linked yet.",
+    detail:
+      "Sign in with the method you used before, then connect this provider from your account settings.",
+  },
+  forbidden: {
+    title: "Access has not been approved.",
+    detail:
+      "Your account signed in successfully, but it is not approved for this application.",
+  },
+} satisfies Record<LoginErrorCode, { title: string; detail: string }>
 
 export function LoginPageClient({
-  callbackURL,
   enabledProviders,
   initialError,
+  oauthQuery,
 }: {
-  callbackURL: string
   enabledProviders: LoginProviderId[]
-  initialError?: "forbidden"
+  initialError?: LoginErrorCode
+  oauthQuery: string
 }) {
-  const [error, setError] = useState(
-    initialError === "forbidden"
-      ? "You do not have access to this application."
-      : "",
+  const [error, setError] = useState<
+    LoginErrorCode | "credentials" | "start" | null
+  >(initialError ?? null)
+  const [lastLoginMethod, setLastLoginMethod] = useState<LoginMethodId | null>(
+    () => readLastLoginMethod(),
   )
-  const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  const alert =
+    error === "credentials"
+      ? {
+          title: "Unable to sign in.",
+          detail: "Check your email and password, then try again.",
+        }
+      : error === "start"
+        ? {
+            title: "Provider sign-in did not start.",
+            detail: "Refresh the page and try again.",
+          }
+        : error
+          ? loginErrors[error]
+          : null
+
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setError("")
-    setLoading(true)
-
-    try {
-      const form = new FormData(e.currentTarget)
-      const res = await fetch("/api/auth/sign-in/email", {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          email: form.get("email"),
-          password: form.get("password"),
-          callbackURL,
-        }),
-      })
-
-      if (res.ok) {
-        window.location.assign(callbackURL)
-        return
-      }
-    } catch {
-      // Keep transport details out of the sign-in UI.
-    }
-
-    setLoading(false)
-    setError("Invalid email or password.")
+    setError(null)
+    rememberLastLoginMethod("email")
+    setLastLoginMethod("email")
+    e.currentTarget.submit()
   }
 
   async function resolveSocialRedirect(
@@ -81,31 +91,20 @@ export function LoginPageClient({
     <main className="login-shell">
       <section className="login-panel">
         <div className="login-copy">
-          <Image
-            src="/images/jesus-film-logo-full.svg"
-            alt="Jesus Film Project"
-            width={139}
-            height={36}
-            className="login-logo"
-            priority
-          />
           <h1>Sign in to continue.</h1>
           <p>Secure access for approved applications.</p>
         </div>
 
         <div className="login-form">
-          <Image
-            src="/images/jesus-film-logo-full.svg"
-            alt="Jesus Film Project"
-            width={139}
-            height={36}
-            className="login-logo"
-            priority
-          />
           <h2>Sign in</h2>
-          <p>Enter your account details.</p>
+          <p>Use the same method you used when your account was created.</p>
 
-          <form onSubmit={handleSubmit}>
+          <form
+            action="/api/auth/sign-in/email"
+            method="post"
+            onSubmit={handleSubmit}
+          >
+            <input type="hidden" name="oauth_query" value={oauthQuery} />
             <div className="form-field">
               <label htmlFor="email">Email address</label>
               <input
@@ -128,14 +127,16 @@ export function LoginPageClient({
               />
             </div>
 
-            {error ? (
-              <p role="alert" className="error">
-                {error}
-              </p>
+            {alert ? (
+              <div role="alert" className="login-alert">
+                <strong>{alert.title}</strong>
+                <p>{alert.detail}</p>
+              </div>
             ) : null}
 
-            <button className="primary-button" type="submit" disabled={loading}>
-              {loading ? "Signing in" : "Continue"}
+            <button className="primary-button" type="submit">
+              <span>Continue</span>
+              {lastLoginMethod === "email" ? <LastUsedBadge /> : null}
             </button>
           </form>
 
@@ -154,20 +155,23 @@ export function LoginPageClient({
                         credentials: "include",
                         headers: { "content-type": "application/json" },
                         body: JSON.stringify({
+                          oauth_query: oauthQuery,
                           provider: providerId,
-                          callbackURL,
                         }),
                       })
                       const redirectUrl = await resolveSocialRedirect(res)
                       if (redirectUrl) {
+                        rememberLastLoginMethod(providerId)
+                        setLastLoginMethod(providerId)
                         window.location.href = redirectUrl
                       }
                     } catch {
-                      setError("Unable to start provider sign-in.")
+                      setError("start")
                     }
                   }}
                 >
-                  Continue with {providerLabels[providerId]}
+                  <span>Continue with {providerLabels[providerId]}</span>
+                  {lastLoginMethod === providerId ? <LastUsedBadge /> : null}
                 </button>
               ))}
             </>
@@ -175,5 +179,40 @@ export function LoginPageClient({
         </div>
       </section>
     </main>
+  )
+}
+
+function LastUsedBadge() {
+  return <span className="last-used-badge">Last used</span>
+}
+
+function readLastLoginMethod(): LoginMethodId | null {
+  if (typeof window === "undefined") return null
+
+  try {
+    const value = window.localStorage.getItem(lastLoginMethodStorageKey)
+    return isLoginMethod(value) ? value : null
+  } catch {
+    return null
+  }
+}
+
+function rememberLastLoginMethod(method: LoginMethodId) {
+  if (typeof window === "undefined") return
+
+  try {
+    window.localStorage.setItem(lastLoginMethodStorageKey, method)
+  } catch {
+    // Login must still work when localStorage is unavailable.
+  }
+}
+
+function isLoginMethod(value: string | null): value is LoginMethodId {
+  return (
+    value === "email" ||
+    value === "facebook" ||
+    value === "google" ||
+    value === "apple" ||
+    value === "okta"
   )
 }

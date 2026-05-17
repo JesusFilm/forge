@@ -36,18 +36,19 @@ move `auth.jesusfilm.org` to that service.
 
 1. `docs/brainstorms/2026-05-11-jesus-film-auth-platform-requirements.md`
 2. `docs/plans/2026-05-11-001-jesus-film-auth-platform-plan.md`
-3. `apps/admin/src/auth/config.ts`
-4. `apps/admin/src/app/api/auth/[...all]/route.ts`
-5. `apps/admin/src/auth/session.ts`
-6. `apps/admin/src/graphql/context.ts`
-7. `apps/admin/prisma/schema.prisma`
-8. `docs/solutions/auth/better-auth-secret-must-not-fallback-to-hardcoded-value.md`
-9. `docs/solutions/auth/better-auth-firebase-migration-must-block-public-signup.md`
+3. `apps/admin/src/auth/oauth-client.ts`
+4. `apps/admin/src/app/api/auth/login/route.ts`
+5. `apps/admin/src/app/api/auth/callback/route.ts`
+6. `apps/admin/src/auth/session.ts`
+7. `apps/admin/src/graphql/context.ts`
+8. `apps/admin/prisma/schema.prisma`
+9. `docs/solutions/auth/better-auth-secret-must-not-fallback-to-hardcoded-value.md`
+10. `docs/solutions/auth/better-auth-firebase-migration-must-block-public-signup.md`
 
 ## Grep These
 
 - `betterAuth|oauthProvider|genericOAuth|okta|nextCookies` in `apps/admin/src`
-- `AUTH_COOKIE_DOMAIN|BETTER_AUTH_URL|AUTH_TRUSTED_ORIGINS` in `apps/admin`
+- `AUTH_ISSUER_URL|AUTH_ADMIN_CLIENT_ID` in `apps/admin`
 - `resolvePrincipalFromRequest|requireSession|requireAdminSession` in `apps/admin/src`
 - `PermissionKey|hasPermission|WORKFLOW_TRIGGER` in `apps/admin/src/auth`
 - `model User|model Session|model Account|model Verification` in `apps/admin/prisma/schema.prisma`
@@ -112,9 +113,8 @@ Completed locally on 2026-05-11:
   first-party seed script, login UI, Firebase lazy-migration bridge, trusted
   callback handling, public signup block, OAuth provider wrappers, scope/app
   policy services, token/audit models, Railway config, and operator dashboard.
-- `apps/admin` OAuth relying-client mode behind `ADMIN_AUTH_MODE=oauth`, with
-  PKCE/state, token exchange, JWT verification, admin-local signed session,
-  logout clearing, and embedded auth fallback through `ADMIN_AUTH_MODE=embedded`.
+- `apps/admin` OAuth relying-client flow, with PKCE/state, token exchange, JWT
+  verification, admin-local signed session, and logout clearing.
 - Repository-side cutover docs for Auth Railway deployment and admin OAuth envs.
 - Railway production service `@forge/auth` provisioned on 2026-05-12 with a
   dedicated Postgres service, temporary Railway domain
@@ -127,10 +127,8 @@ Completed locally on 2026-05-11:
 
 Remaining outside this local code slice:
 
-- Run local/staging/prod OAuth smoke against real Auth clients, then flip
-  admin production to `ADMIN_AUTH_MODE=oauth` when ready.
+- Run local/staging/prod OAuth smoke against real Auth clients.
 - Decide the final admin scope-to-ADMIN-role policy.
 - Bootstrap required Auth users/operators directly in Auth; current admin user
   rows are not being migrated.
-- Add mutating operator controls for app/environment/user suspension and create
-  the follow-up that removes embedded admin auth after the observation window.
+- Add mutating operator controls for app/environment/user suspension.

@@ -19,6 +19,7 @@ import { spawn } from "node:child_process"
 import { createReadStream, createWriteStream } from "node:fs"
 import { mkdir } from "node:fs/promises"
 import { basename, dirname, resolve as resolvePath } from "node:path"
+import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
 
 export const VIDEO_DB_BACKUP_PROFILES = {
@@ -138,6 +139,11 @@ type BackupStorageEnv = {
   RAILWAY_S3_SECRET_ACCESS_KEY?: string
 }
 
+type BackupDownloadSignerEnv = {
+  BACKUP_DOWNLOAD_API_KEY?: string
+  BACKUP_DOWNLOAD_BASE_URL?: string
+}
+
 export type BackupUploadPlan = {
   bucket: string
   key: string
@@ -181,9 +187,19 @@ export type VideoDbBackupJobResult = {
 export type VideoDbBackupDownloadResult = {
   event: "video-db.backup.download.complete"
   profile: VideoDbBackupProfile
-  bucket: string
+  bucket?: string
   key: string
   path: string
+  size?: number
+  lastModified?: string
+}
+
+type PresignedBackupResponse = {
+  url: string
+  profile: VideoDbBackupProfile
+  key: string
+  expiresAt: string
+  expiresInSeconds: number
   size?: number
   lastModified?: string
 }
@@ -220,6 +236,13 @@ function currentBackupStorageEnv(): BackupStorageEnv {
     RAILWAY_S3_REGION: process.env.RAILWAY_S3_REGION,
     RAILWAY_S3_ACCESS_KEY_ID: process.env.RAILWAY_S3_ACCESS_KEY_ID,
     RAILWAY_S3_SECRET_ACCESS_KEY: process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
+  }
+}
+
+function currentBackupDownloadSignerEnv(): BackupDownloadSignerEnv {
+  return {
+    BACKUP_DOWNLOAD_API_KEY: process.env.BACKUP_DOWNLOAD_API_KEY,
+    BACKUP_DOWNLOAD_BASE_URL: process.env.BACKUP_DOWNLOAD_BASE_URL,
   }
 }
 
@@ -307,6 +330,10 @@ export function buildBackupObjectKey(
 
 function tableArgs(tables: readonly string[]): string[] {
   return tables.map((table) => `--table=public.${table}`)
+}
+
+function restoreTableArgs(tables: readonly string[]): string[] {
+  return tables.map((table) => `--table=${table}`)
 }
 
 function quoteTable(table: string): string {
@@ -456,7 +483,7 @@ export function buildRestorePlan(
           "--single-transaction",
           "--dbname",
           target,
-          ...tableArgs(tables),
+          ...restoreTableArgs(tables),
           inPath,
         ],
       },
@@ -583,7 +610,7 @@ function backupPrefix(profile: VideoDbBackupProfile): string {
   return `admin-video-db-backups/${profile}/`
 }
 
-async function findLatestBackupObject(
+export async function findLatestBackupObject(
   profile: VideoDbBackupProfile,
   upload: BackupUploadPlan,
 ): Promise<{ key: string; size?: number; lastModified?: Date }> {
@@ -629,9 +656,109 @@ async function findLatestBackupObject(
   }
 }
 
+function backupDownloadBaseUrl(env: BackupDownloadSignerEnv): string {
+  return (
+    env.BACKUP_DOWNLOAD_BASE_URL ?? "https://admin.jesusfilm.org"
+  ).replace(/\/+$/g, "")
+}
+
+function shouldUseBackupDownloadSigner(
+  parsed: ParsedArgs,
+  env: BackupDownloadSignerEnv = currentBackupDownloadSignerEnv(),
+): boolean {
+  return Boolean(env.BACKUP_DOWNLOAD_API_KEY && !parsed.s3Key)
+}
+
+async function requestPresignedBackupDownload(
+  parsed: ParsedArgs,
+  env: BackupDownloadSignerEnv = currentBackupDownloadSignerEnv(),
+): Promise<PresignedBackupResponse> {
+  const token = env.BACKUP_DOWNLOAD_API_KEY
+  if (!token) {
+    throw new VideoDbBackupError(
+      "BACKUP_DOWNLOAD_API_KEY is required to request a signed backup download",
+    )
+  }
+
+  const url = `${backupDownloadBaseUrl(env)}/api/internal/video-db-backups/presign`
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ profile: parsed.profile }),
+  })
+
+  if (!response.ok) {
+    let body = ""
+    try {
+      body = await response.text()
+    } catch {
+      body = ""
+    }
+    throw new VideoDbBackupError(
+      `Backup download signer returned ${response.status}${body ? `: ${body}` : ""}`,
+    )
+  }
+
+  const payload = (await response.json()) as Partial<PresignedBackupResponse>
+  if (
+    typeof payload.url !== "string" ||
+    typeof payload.key !== "string" ||
+    typeof payload.expiresAt !== "string" ||
+    typeof payload.expiresInSeconds !== "number" ||
+    payload.profile !== parsed.profile
+  ) {
+    throw new VideoDbBackupError(
+      "Backup download signer returned an invalid response",
+    )
+  }
+
+  return payload as PresignedBackupResponse
+}
+
+async function downloadPresignedBackupObject(
+  parsed: ParsedArgs,
+): Promise<VideoDbBackupDownloadResult> {
+  const outPath = restoreDownloadPath(parsed)
+  const signed = await requestPresignedBackupDownload(parsed)
+  const response = await fetch(signed.url)
+
+  if (!response.ok) {
+    throw new VideoDbBackupError(
+      `Signed backup download returned ${response.status}`,
+    )
+  }
+  if (!response.body) {
+    throw new VideoDbBackupError("Signed backup download body was not readable")
+  }
+
+  await mkdir(dirname(outPath), { recursive: true })
+  await pipeline(
+    Readable.fromWeb(response.body as Parameters<typeof Readable.fromWeb>[0]),
+    createWriteStream(outPath),
+  )
+
+  const result: VideoDbBackupDownloadResult = {
+    event: "video-db.backup.download.complete",
+    profile: parsed.profile,
+    key: signed.key,
+    path: outPath,
+    size: signed.size,
+    lastModified: signed.lastModified,
+  }
+  process.stdout.write(`${JSON.stringify(result)}\n`)
+  return result
+}
+
 async function downloadBackupObject(
   parsed: ParsedArgs,
 ): Promise<VideoDbBackupDownloadResult> {
+  if (shouldUseBackupDownloadSigner(parsed)) {
+    return downloadPresignedBackupObject(parsed)
+  }
+
   const outPath = restoreDownloadPath(parsed)
   const upload = requireBackupStoragePlan(parsed, outPath)
   const object = parsed.s3Key
@@ -761,10 +888,19 @@ export async function restoreLatestMain(
   const parsed = parseArgs("restore", argv)
   if (parsed.dryRun) {
     const outPath = restoreDownloadPath(parsed)
-    const upload = requireBackupStoragePlan(parsed, outPath)
-    const object = parsed.s3Key
-      ? { key: parsed.s3Key.replace(/^\/+/, "") }
-      : await findLatestBackupObject(parsed.profile, upload)
+    const signed = shouldUseBackupDownloadSigner(parsed)
+      ? await requestPresignedBackupDownload(parsed)
+      : null
+    let upload: BackupUploadPlan | null = null
+    let object: { key: string }
+    if (signed) {
+      object = { key: signed.key }
+    } else {
+      upload = requireBackupStoragePlan(parsed, outPath)
+      object = parsed.s3Key
+        ? { key: parsed.s3Key.replace(/^\/+/, "") }
+        : await findLatestBackupObject(parsed.profile, upload)
+    }
     const restorePlan = buildRestorePlan(
       parseArgs("restore", [...argv, `--in=${outPath}`]),
     )
@@ -774,9 +910,11 @@ export async function restoreLatestMain(
         event: "video-db.restore-latest.plan",
         profile: parsed.profile,
         download: {
-          bucket: upload.bucket,
+          via: signed ? "admin-signer" : "s3",
+          bucket: upload?.bucket,
           key: object.key,
           path: outPath,
+          expiresAt: signed?.expiresAt,
         },
         restore: printablePlan(restorePlan),
       })}\n`,

@@ -3,15 +3,16 @@ import { jwtVerify, SignJWT } from "jose"
 import type { Principal } from "@/auth/principal"
 import { env } from "@/config/env"
 
-export const ADMIN_OAUTH_SESSION_COOKIE = "forge_admin_oauth_session"
-export const ADMIN_OAUTH_STATE_COOKIE = "forge_admin_oauth_state"
-export const ADMIN_OAUTH_VERIFIER_COOKIE = "forge_admin_oauth_verifier"
-export const ADMIN_OAUTH_CALLBACK_COOKIE = "forge_admin_oauth_callback"
-export const ADMIN_OAUTH_ACCESS_REQUEST_COOKIE =
-  "forge_admin_oauth_access_request"
+const adminOAuthCookiePrefix = env.AUTH_COOKIE_PREFIX?.trim() || "forge_admin"
+
+export const ADMIN_OAUTH_SESSION_COOKIE = `${adminOAuthCookiePrefix}_oauth_session`
+export const ADMIN_OAUTH_STATE_COOKIE = `${adminOAuthCookiePrefix}_oauth_state`
+export const ADMIN_OAUTH_VERIFIER_COOKIE = `${adminOAuthCookiePrefix}_oauth_verifier`
+export const ADMIN_OAUTH_RETURN_TO_COOKIE = `${adminOAuthCookiePrefix}_oauth_return_to`
+export const ADMIN_OAUTH_ACCESS_REQUEST_COOKIE = `${adminOAuthCookiePrefix}_oauth_access_request`
 
 const maxAgeSeconds = 60 * 60 * 24 * 7
-const accessRequestMaxAgeSeconds = 60 * 10
+const accessRequestMaxAgeSeconds = 60 * 60 * 24
 
 type AdminOAuthSessionPayload = Principal & {
   scopes: string[]
@@ -138,5 +139,5 @@ function isPrincipalRole(role: unknown): role is Principal["role"] {
 }
 
 function getSigningKey() {
-  return new TextEncoder().encode(env.BETTER_AUTH_SECRET ?? "development-only")
+  return new TextEncoder().encode(env.ADMIN_SESSION_SECRET)
 }
