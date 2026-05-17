@@ -12,9 +12,11 @@
  * tables that drive admin's hybrid search:
  *   - `video_scene_locale` (R1, fed by sceneEmbeddingBackfill)
  *   - `video_transcript_chunk` (R2, fed by transcriptEmbeddingBackfill)
- *   - `experience_locale` (R3, fed by experienceContentDump + the
- *      experienceEmbedding workflow; only PUBLISHED rows are search-
- *      visible so we gate on status='published').
+ *   - `experience_locale` (admin-native; fed by the experienceEmbedding
+ *      workflow on publish/update, and by the
+ *      experienceEmbeddingBackfill workflow for bulk reruns. Only
+ *      PUBLISHED rows are search-visible so we gate on
+ *      status='published').
  *
  * All three tables expose an `embedding` column that is NULL until
  * the relevant workflow runs against that row, so we gate every count
