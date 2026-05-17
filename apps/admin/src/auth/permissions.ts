@@ -50,7 +50,6 @@ export type PermissionKey =
   | "write:media-assets"
   | "write:scene-embeddings"
   | "write:transcript-embeddings"
-  | "write:experience-content-dump"
   | "write:experience-embeddings"
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // Admin's `triggerManagerEnrichment` mutation gates on this key;
@@ -91,10 +90,6 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "write:scene-embeddings": "ADMIN",
   // Derived-column trigger (transcript-embedding backfill). ADMIN-only.
   "write:transcript-embeddings": "ADMIN",
-  // Experience content dump from cms (R3 of the admin migration playbook).
-  // ADMIN-only because it overwrites admin-side ExperienceLocale rows from
-  // the cms snapshot — must not be invokable by EDITOR sessions.
-  "write:experience-content-dump": "ADMIN",
   // Experience-embedding backfill (admin-native). Enumerates
   // ExperienceLocale rows and dispatches `runExperienceEmbedding` per
   // locale. ADMIN-only at the editorial-tier ladder; bearer-callable

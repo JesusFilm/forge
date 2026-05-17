@@ -622,19 +622,6 @@ type Mutation {
   """
   registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
   """
-  Enqueue the experience-content-dump workflow. Reads cms's Strapi v5 experiences directly via CMS_DATABASE_URL, transforms each (documentId, locale) into admin's per-locale row + Zod BlockSchema shape, merge-upserts into Experience + ExperienceLocale, and dispatches runExperienceEmbedding for locales whose hashable content changed. ADMIN-only. Reruns are idempotent — repeated invocation against unchanged cms produces zero content writes (only the cms_dumped_at timestamp updates). See docs/plans/2026-04-23-001-feat-admin-r3-experience-migration-plan.md.
-  """
-  triggerExperienceContentDump(
-    """
-    Restrict to these cms Strapi v5 documentIds. Omitted = every cms experience document.
-    """
-    documentIds: [String!]
-    """
-    Restrict to these BCP-47 locales as a pure inclusion filter. Omitted = every locale that exists in cms's experiences corpus, derived at enumeration time. No hardcoded list, no `en` fallback.
-    """
-    locales: [String!]
-  ): JSON
-  """
   Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.
   """
   triggerExperienceEmbedding(localeId: ID!): JSON
