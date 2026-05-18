@@ -1,7 +1,7 @@
 ---
 title: "feat: Partner API Key Store (DB-backed) for `/api/search`"
 type: feat
-status: active
+status: completed
 date: 2026-05-18
 origin: docs/brainstorms/2026-05-18-002-partner-api-key-store-requirements.md
 ---
