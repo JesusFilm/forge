@@ -43,10 +43,6 @@ import type {
   ChatErrorCode,
   ChatStreamEvent,
 } from "@/services/experience-ai/experience-ai-chat.service"
-import type {
-  EditorialBrief,
-  EditorialBriefField,
-} from "@/services/experience-ai/experience-ai-chat-brief"
 import type { QualityDraftReview } from "@/services/experience-ai/experience-ai-quality-draft.schemas"
 import {
   type ChatMessageDTO,
@@ -135,12 +131,6 @@ type StagedDraftPreview = {
   review?: QualityDraftReview
 }
 
-type BriefConfirmationPreview = {
-  messageId: string
-  content: string
-  brief: EditorialBrief
-}
-
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
@@ -164,8 +154,6 @@ export function ExperienceChatPanel({
   const [stagedDraft, setStagedDraft] = useState<StagedDraftPreview | null>(
     null,
   )
-  const [briefConfirmation, setBriefConfirmation] =
-    useState<BriefConfirmationPreview | null>(null)
 
   const messageListRef = useRef<HTMLDivElement | null>(null)
   const stagedDraftRef = useRef<HTMLLIElement | null>(null)
@@ -368,48 +356,6 @@ export function ExperienceChatPanel({
                 message: event.message,
               })
               return
-            case "mutation_proposal":
-              setBriefConfirmation(null)
-              setStagedDraft({
-                messageId: event.messageId,
-                initial: event.draft,
-                title: event.draft.title,
-                metaDescription: event.draft.metaDescription ?? "",
-                blocksJson: JSON.stringify(event.draft.blocks, null, 2),
-                error: null,
-                review: event.review,
-              })
-              break
-            case "brief_update":
-              setMessages((prev) => [
-                ...prev,
-                {
-                  id: event.messageId,
-                  role: "ASSISTANT",
-                  content: event.content,
-                  createdAt: new Date().toISOString(),
-                  snapshotDiff: null,
-                  mutationsApplied: {
-                    kind: "editorial_brief",
-                    status: event.confirmationRequired
-                      ? "confirmation_required"
-                      : "collecting",
-                    brief: event.brief,
-                    missingFields: event.missingFields,
-                    question: event.question,
-                  },
-                },
-              ])
-              setBriefConfirmation(
-                event.confirmationRequired
-                  ? {
-                      messageId: event.messageId,
-                      content: event.content,
-                      brief: event.brief,
-                    }
-                  : null,
-              )
-              break
           }
         }
         // Stream ended without an explicit `done` — finalize defensively.
@@ -501,12 +447,6 @@ export function ExperienceChatPanel({
       last.confirmedAcrossLocales,
       last.confirmedBrief,
     )
-  }, [activeThreadId, beginStream, stream])
-
-  const handleConfirmBrief = useCallback(() => {
-    const threadId = activeThreadId
-    if (!threadId || stream.kind === "streaming") return
-    void beginStream(threadId, "Generate from this brief", false, true)
   }, [activeThreadId, beginStream, stream])
 
   const handleStop = useCallback(() => {
@@ -759,15 +699,6 @@ export function ExperienceChatPanel({
               />
             </li>
           ) : null}
-
-          {briefConfirmation && !stagedDraft ? (
-            <li className="flex justify-start">
-              <BriefConfirmationCard
-                preview={briefConfirmation}
-                onConfirm={handleConfirmBrief}
-              />
-            </li>
-          ) : null}
         </ul>
       </div>
 
@@ -981,62 +912,6 @@ function StagedDraftCard({
             Apply draft
           </button>
         </div>
-      </div>
-    </section>
-  )
-}
-
-const BRIEF_FIELD_LABELS: Record<EditorialBriefField, string> = {
-  topicOrPassage: "Topic or passage",
-  language: "Language",
-  audience: "Audience",
-  desiredOutcome: "Desired outcome",
-  tone: "Tone",
-  pageType: "Page type",
-  scriptureEmphasis: "Scripture emphasis",
-  ctaOrNextStep: "CTA or next step",
-}
-
-const BRIEF_FIELD_ORDER = Object.keys(
-  BRIEF_FIELD_LABELS,
-) as EditorialBriefField[]
-
-function BriefConfirmationCard({
-  preview,
-  onConfirm,
-}: {
-  preview: BriefConfirmationPreview
-  onConfirm: () => void
-}) {
-  return (
-    <section
-      className="w-full rounded-sm border border-[color:color-mix(in_oklab,var(--color-brand)_28%,var(--color-hairline))] bg-[var(--color-surface-inset)] p-3"
-      data-testid="experience-chat-brief-confirmation"
-    >
-      <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-        Editorial brief
-      </div>
-      <dl className="mt-2 space-y-2">
-        {BRIEF_FIELD_ORDER.map((field) => (
-          <div key={field}>
-            <dt className="text-[11px] font-medium text-[var(--color-text-muted)]">
-              {BRIEF_FIELD_LABELS[field]}
-            </dt>
-            <dd className="text-[13px] leading-5 text-[var(--color-text-primary)]">
-              {preview.brief[field] ?? "—"}
-            </dd>
-          </div>
-        ))}
-      </dl>
-      <div className="mt-3 flex justify-end">
-        <button
-          type="button"
-          onClick={onConfirm}
-          data-testid="experience-chat-brief-confirm"
-          className="inline-flex h-8 items-center rounded-sm bg-[var(--color-brand)] px-2.5 text-[12px] font-medium text-white hover:bg-[var(--color-brand-pressed)]"
-        >
-          Generate from brief
-        </button>
       </div>
     </section>
   )

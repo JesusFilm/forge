@@ -33,35 +33,14 @@ import {
 } from "./experience-chat-diff"
 import { loadExperienceAiVideoCandidates } from "./experience-ai.service"
 import {
-  confirmedBriefMetadata,
-  isCompleteBrief,
-  latestBriefMetadata,
-  updateBriefFromTurn,
-  type EditorialBrief,
-  type EditorialBriefField,
-} from "./experience-ai-chat-brief"
-import {
   ChatMutationEnvelopeSchema,
-  buildChatMutationEnvelopeJsonSchema,
   type ChatMutationEnvelope,
 } from "./experience-ai-chat-envelope"
-import {
-  normalizeChatProvider,
-  type ChatProvider,
-} from "./experience-ai-chat-provider"
-import { runClaudeCodeChat } from "./experience-ai-claude-code"
-import { runOllamaChat } from "./experience-ai-ollama"
 import {
   buildChatPrompt,
   type ChatHistoryTurn,
   type EditableLocaleSummary,
 } from "./experience-ai-chat-prompts"
-import { runCodexChat } from "./experience-ai-codex"
-import {
-  generateQualityExperienceDraft,
-  QualityExperienceDraftError,
-} from "./experience-ai-quality-draft"
-import type { QualityDraftReview } from "./experience-ai-quality-draft.schemas"
 
 // -----------------------------------------------------------------------------
 // Public types
@@ -72,22 +51,6 @@ import type { ChatErrorCode } from "./experience-ai-chat-error-codes"
 
 export type ChatStreamEvent =
   | { type: "token_delta"; text: string }
-  | {
-      type: "mutation_proposal"
-      messageId: string
-      diff: ExperienceChatDiff
-      draft: EditableLocaleState
-      review?: QualityDraftReview
-    }
-  | {
-      type: "brief_update"
-      messageId: string
-      content: string
-      brief: EditorialBrief
-      missingFields: EditorialBriefField[]
-      question?: string
-      confirmationRequired: boolean
-    }
   | {
       type: "mutation_applied"
       messageId: string
@@ -101,14 +64,6 @@ export type StreamChatTurnInput = {
   prompt: string
   confirmedAcrossLocales?: boolean
   confirmedBrief?: boolean
-  /**
-   * Selected provider channel. Optional; defaults to `openrouter` so
-   * existing callers behave unchanged. `normalizeChatProvider` accepts
-   * raw input (string | unknown) and coerces to the closed
-   * `ChatProvider` union; the route boundary applies a tighter Zod enum
-   * but the service trusts the normalized value.
-   */
-  provider?: ChatProvider
 }
 
 export type StreamChatTurnDeps = {
@@ -140,12 +95,6 @@ export {
 
 function errorEvent(code: ChatErrorCode, message: string): ChatStreamEvent {
   return { type: "error", code, message }
-}
-
-function providerErrorEvent(
-  error: QualityExperienceDraftError,
-): ChatStreamEvent {
-  return errorEvent(error.code, error.message)
 }
 
 function looksLikeSlugRejection(rawObject: unknown): boolean {
@@ -184,67 +133,24 @@ function toLocaleSummary(
   }
 }
 
-function isEmptyCanvas(state: EditableLocaleState): boolean {
-  return state.blocks.length === 0
-}
-
-/**
- * Route a chat turn through the editor-selected provider channel.
- *
- * - `openrouter` → Codex CLI (legacy default; the OpenRouter HTTP API
- *   doesn't have a peer interactive-shell shape, and the existing
- *   chat-turn path has shipped on Codex since v1).
- * - `ollama`, `codex`, `claude-code` → the matching adapter.
- *
- * Each adapter returns the same discriminated `{kind: "envelope" |
- * "error"}` shape and forwards token deltas via `onToken`.
- */
-type ChatTurnRunResult =
-  | { kind: "envelope"; raw: unknown }
-  | { kind: "error"; code: ChatErrorCode; message: string }
-
-async function runChatTurnForProvider({
-  provider,
-  prompt,
-  schemaJson,
-  abortSignal,
-  onToken,
-}: {
-  provider: ChatProvider
-  prompt: string
-  schemaJson: unknown
-  abortSignal?: AbortSignal
-  onToken: (text: string) => void
-}): Promise<ChatTurnRunResult> {
-  if (provider === "ollama") {
-    return await runOllamaChat({ prompt, abortSignal, onToken })
-  }
-  if (provider === "claude-code") {
-    return await runClaudeCodeChat({
-      prompt,
-      schemaJson,
-      abortSignal,
-      onToken,
-    })
-  }
-  if (provider === "mastra") {
-    return await runMastraChat({ prompt, abortSignal, onToken })
-  }
-  // openrouter (default) + codex both currently spawn Codex CLI for the
-  // chat-turn path. The OpenRouter HTTP API doesn't have an interactive
-  // peer and Codex has shipped this branch since v1.
-  return await runCodexChat({ prompt, abortSignal, onToken })
-}
-
 /**
  * Mastra-routed chat turn — uses the `experience-default-chat` agent
  * from `apps/admin/src/mastra/`. Streams tokens through `onToken`,
  * accumulates the full text, parses it as the new `{ diff }` envelope
  * the Mastra prompt produces, then translates to the legacy
  * `{ mutations }` envelope the chat service's downstream applier
- * expects. The translation is the post-rebase U6 follow-up work
- * happening inline.
+ * expects.
+ *
+ * This is the only chat-turn path post-convergence — there used to
+ * be four (openrouter/ollama/codex/claude-code), all routed via a
+ * provider switch. The plan at
+ * `docs/plans/2026-05-18-001-feat-admin-mastra-only-chat-channel-plan.md`
+ * collapsed them.
  */
+type ChatTurnRunResult =
+  | { kind: "envelope"; raw: unknown }
+  | { kind: "error"; code: ChatErrorCode; message: string }
+
 async function runMastraChat({
   prompt,
   abortSignal,
@@ -503,25 +409,6 @@ function translateMastraEnvelopeToLegacy(parsed: unknown): unknown {
   return parsed
 }
 
-function providerKindForChatTurn(provider: ChatProvider): string {
-  switch (provider) {
-    case "ollama":
-      return "ollama-gemma4"
-    case "codex":
-      return "codex"
-    case "claude-code":
-      return "claude-code"
-    case "openrouter":
-      // Legacy stamp — the chat-turn path on openrouter pick runs Codex.
-      return "codex"
-    case "mastra":
-      return "mastra"
-  }
-}
-
-// `runCodexChat` lives in `experience-ai-codex.ts`. The chat-turn
-// branch of streamChatTurn imports it from there.
-
 /**
  * Streaming chat-turn pipeline. See module docstring for the flow.
  */
@@ -530,7 +417,6 @@ export async function* streamChatTurn(
   deps: StreamChatTurnDeps,
 ): AsyncIterable<ChatStreamEvent> {
   const { prisma, user } = deps
-  const provider: ChatProvider = normalizeChatProvider(input.provider)
 
   // ---- Resolve thread + locale ------------------------------------------
   const thread = await prisma.experienceChatThread.findUnique({
@@ -595,137 +481,6 @@ export async function* streamChatTurn(
     select: { role: true, content: true, mutationsApplied: true },
     take: 200, // hard ceiling; trimHistory will further bound
   })
-  const latestBrief = latestBriefMetadata(
-    history.map((message) => message.mutationsApplied),
-  )
-  const emptyCanvas = isEmptyCanvas(beforeState)
-  // Brief flow is disabled: every prompt routes directly to the
-  // chat-turn provider, which generates a full draft inline on empty
-  // canvas (see the matching prompt update in experience-ai-chat-prompts).
-  // The guided Q&A path is preserved in git history if we ever want to
-  // bring it back as an opt-in.
-  const inBriefMode = false
-  const wantsBriefGeneration = false
-  void latestBrief
-  void emptyCanvas
-
-  if (inBriefMode) {
-    if (
-      wantsBriefGeneration &&
-      latestBrief &&
-      isCompleteBrief(latestBrief.brief)
-    ) {
-      const confirmed = confirmedBriefMetadata(latestBrief)
-      const candidates = await loadExperienceAiVideoCandidates(prisma, {
-        locale: localeRow.locale,
-        prompt: Object.values(confirmed.brief).filter(Boolean).join("\n"),
-        limit: CANDIDATE_LIMIT,
-      })
-
-      let draft
-      try {
-        draft = await generateQualityExperienceDraft({
-          brief: confirmed.brief,
-          locale: localeRow.locale,
-          candidates,
-          provider,
-        })
-      } catch (error) {
-        if (error instanceof QualityExperienceDraftError) {
-          yield providerErrorEvent(error)
-          return
-        }
-        yield errorEvent(
-          "provider_validation_failed",
-          error instanceof Error
-            ? error.message
-            : "Quality draft generation failed",
-        )
-        return
-      }
-
-      const draftState: EditableLocaleState = {
-        title: draft.title,
-        metaDescription: draft.metaDescription,
-        ogImageUrl: beforeState.ogImageUrl,
-        blocks: draft.blocks,
-      }
-      const diff = computeDiff(beforeState, draftState)
-      const persistableDiff = {
-        scalars: diff.scalars,
-        blocks: diff.blocks ?? [],
-        beforeBlocks: beforeState.blocks,
-      }
-      const assistantMessage = await prisma.experienceChatMessage.create({
-        data: {
-          threadId: thread.id,
-          role: "ASSISTANT",
-          content: "Generated a quality-first draft for review.",
-          providerKind: draft.provider.kind,
-          snapshotDiff: persistableDiff as unknown as object,
-          mutationsApplied: {
-            kind: "quality_draft",
-            staged: true,
-            brief: confirmed.brief,
-            review: draft.review,
-            provider: draft.provider,
-            imageDirection: draft.imageDirection,
-            mutations: {
-              title: draftState.title,
-              metaDescription: draftState.metaDescription,
-              blocks: draftState.blocks,
-            },
-          } as unknown as object,
-        },
-      })
-
-      await prisma.experienceChatThread.update({
-        where: { id: thread.id },
-        data: { lastMessageAt: new Date() },
-      })
-
-      yield {
-        type: "mutation_proposal",
-        messageId: assistantMessage.id,
-        diff,
-        draft: draftState,
-        review: draft.review,
-      }
-      yield { type: "done", messageId: assistantMessage.id }
-      return
-    }
-
-    const briefTurn = updateBriefFromTurn({
-      previous: latestBrief,
-      prompt: input.prompt,
-    })
-    const assistantMessage = await prisma.experienceChatMessage.create({
-      data: {
-        threadId: thread.id,
-        role: "ASSISTANT",
-        content: briefTurn.content,
-        providerKind: "brief",
-        mutationsApplied: briefTurn.metadata as unknown as object,
-      },
-    })
-
-    await prisma.experienceChatThread.update({
-      where: { id: thread.id },
-      data: { lastMessageAt: new Date() },
-    })
-
-    yield {
-      type: "brief_update",
-      messageId: assistantMessage.id,
-      content: briefTurn.content,
-      brief: briefTurn.metadata.brief,
-      missingFields: briefTurn.metadata.missingFields,
-      question: briefTurn.metadata.question,
-      confirmationRequired: briefTurn.confirmationRequired,
-    }
-    yield { type: "done", messageId: assistantMessage.id }
-    return
-  }
 
   // ---- Build candidate retrieval (mirrors the one-shot path) ------------
   const candidates = await loadExperienceAiVideoCandidates(prisma, {
@@ -754,10 +509,9 @@ export async function* streamChatTurn(
   // Empty-canvas guard removed alongside brief flow disable above —
   // chat-turn now produces full drafts directly from the user prompt.
 
-  // ---- Run chat turn via the selected provider --------------------------
-  // Each adapter is responsible for its own gate check (CLI providers
-  // surface provider_not_configured / codex_unavailable before spawning).
-  // We collect token chunks in a buffer because the adapter calls onToken
+  // ---- Run chat turn via Mastra -----------------------------------------
+  // Mastra is the only chat-turn channel post-convergence. We collect
+  // token chunks in a buffer because runMastraChat calls onToken
   // synchronously and the surrounding generator can only yield between
   // awaits.
   const tokenBuffer: string[] = []
@@ -765,11 +519,8 @@ export async function* streamChatTurn(
     tokenBuffer.push(text)
   }
 
-  const envelopeSchema = buildChatMutationEnvelopeJsonSchema()
-  const runResult = await runChatTurnForProvider({
-    provider,
+  const runResult = await runMastraChat({
     prompt: promptText,
-    schemaJson: envelopeSchema,
     abortSignal: deps.abortSignal,
     onToken,
   })
@@ -931,7 +682,7 @@ export async function* streamChatTurn(
       threadId: thread.id,
       role: "ASSISTANT",
       content: assistantContent,
-      providerKind: providerKindForChatTurn(provider),
+      providerKind: "mastra",
       snapshotDiff: persistableDiff as unknown as object,
       mutationsApplied: envelope as unknown as object,
     },
