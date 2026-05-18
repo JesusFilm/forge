@@ -42,6 +42,7 @@ export type PermissionKey =
   // Read scopes
   | "read:experiences"
   | "read:videos"
+  | "read:video-metadata"
   | "read:media-assets"
   | "read:reference"
   // Write scopes (admin-write on Core-sourced is intentionally restricted)
@@ -78,6 +79,14 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // narrow to "is the entity actually published?" or "do I own this draft?"
   "read:experiences": "VIEWER",
   "read:videos": "VIEWER",
+  // feat-125 — manager's `/api/admin-trigger/*` endpoints look up
+  // video dispatch fields (muxAssetId, subtitleUrl, label,
+  // primaryLanguage.bcp47) by coreId via admin's `videosByCoreIds`
+  // query, replacing the Strapi GraphQL call. VIEWER-tier at the
+  // editorial ladder mirrors `read:videos`; the load-bearing
+  // gating happens via the `WORKFLOW_TRIGGER_PERMISSIONS` allowlist
+  // below so manager's bearer call is the intended caller.
+  "read:video-metadata": "VIEWER",
   "read:media-assets": "EDITOR",
   // Reference data is public-shape; PUBLIC may read.
   "read:reference": "PUBLIC",
@@ -200,6 +209,14 @@ const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   // forwarding to this mutation, so a Manager-tier identity does
   // NOT gain reach through this key today.
   "write:experience-embeddings",
+  // feat-125 — manager's admin-trigger CMS-replacement lookup
+  // (`/api/admin-trigger/{scene-analysis,transcript}` calls back
+  // to admin's `videosByCoreIds` query to resolve dispatch fields).
+  // Read on already-published video metadata — same shape as
+  // `read:videos` semantically; widening blast radius by a read.
+  // Reuses `ADMIN_EMBED_TRIGGER_API_KEY` as the calling bearer so
+  // no new env coordination is required.
+  "read:video-metadata",
 ])
 
 /**
