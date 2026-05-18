@@ -97,6 +97,12 @@ export type CreateSearchClientOptions = {
   sleep?: (ms: number) => Promise<void>
   /** Optional logger; emits structured retry events. */
   logger?: { warn: (message: string) => void; info: (message: string) => void }
+  /** Caller-side single bearer attached as `Authorization: Bearer <key>`
+   *  to every request. Should be one of admin's own `SEARCH_API_KEYS`
+   *  CSV entries when calling production / staging admin. Omit for
+   *  anonymous (works during dual-accept; will 401 after the
+   *  `SEARCH_AUTH_REQUIRED=true` flip). */
+  bearer?: string
 }
 
 /**
@@ -119,6 +125,12 @@ export function createSearchClient(
   const maxAttempts = options.maxAttempts ?? MAX_RETRY_ATTEMPTS
   const sleep = options.sleep ?? defaultSleep
   const logger = options.logger ?? noopLogger
+  const baseHeaders: Record<string, string> = {
+    accept: "application/json",
+  }
+  if (options.bearer != null && options.bearer.length > 0) {
+    baseHeaders.authorization = `Bearer ${options.bearer}`
+  }
 
   return {
     async search(query, locale, opts = {}) {
@@ -138,7 +150,7 @@ export function createSearchClient(
         try {
           response = await fetchImpl(url, {
             method: "GET",
-            headers: { accept: "application/json" },
+            headers: baseHeaders,
             signal: AbortSignal.timeout(timeoutMs),
           })
         } catch (cause) {

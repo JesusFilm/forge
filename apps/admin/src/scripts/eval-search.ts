@@ -135,7 +135,10 @@ async function runSubcommand(args: {
   const { renderConsoleSummary, writeRunJson } =
     await import("@/services/search-eval/reporter")
 
-  const searchClient = createSearchClient({ baseUrl: args.baseUrl })
+  const searchClient = createSearchClient({
+    baseUrl: args.baseUrl,
+    bearer: env.SEARCH_API_KEY,
+  })
   const judge = createJudge()
 
   const onSignal = createSignalHandler(prisma)
@@ -222,7 +225,10 @@ async function rebaselineSubcommand(args: {
   const { HARNESS_LOCALES } = await import("@/services/search-eval/locales")
   const pLimit = (await import("p-limit")).default
 
-  const searchClient = createSearchClient({ baseUrl: args.baseUrl })
+  const searchClient = createSearchClient({
+    baseUrl: args.baseUrl,
+    bearer: env.SEARCH_API_KEY,
+  })
   const generator = createQueryGenerator()
   const queryLoader = createSyntheticQueryLoader({ generator })
 

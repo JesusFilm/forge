@@ -8,8 +8,12 @@
  * @classification public-shape
  */
 
+import { GraphQLError } from "graphql"
+
 import { builder } from "@/graphql/builder"
 import { prisma } from "@/db/client"
+import { isAnyKnownBearer } from "@/auth/search-bearer"
+import { env } from "@/config/env"
 import {
   HybridSearchService,
   isContentType,
@@ -121,6 +125,55 @@ builder.queryFields((t) => ({
       }),
     },
     resolve: async (_root, args, ctx) => {
+      // Phase-1 dual-accept auth gate. After the SEARCH_AUTH_REQUIRED
+      // flip, anonymous + invalid-bearer traffic throws and surfaces
+      // as `errors[0].message` to the GraphQL client. The check
+      // accepts ANY of three known-caller bearer CSVs (search /
+      // consumer / workflow) — see `isAnyKnownBearer` — so apps/web
+      // SSR + apps/mobile (carrying consumer-bearer for graphql
+      // rate-limit identity) keep working without code changes.
+      // External partners get their own SEARCH_API_KEYS slot.
+      //
+      // The structured log tags every request with one of three
+      // states (bearer / invalid_bearer / anonymous) so operators
+      // can identify un-migrated callers BEFORE flipping the gate.
+      // The check is request-level inside the resolver body (NOT a
+      // scope-auth gate) so the same conditional `SEARCH_AUTH_REQUIRED`
+      // flag governs both REST and GraphQL paths.
+      //
+      // GraphQL rate-limiting happens at the Yoga endpoint layer
+      // (admin's existing /api/graphql limiter), not per-resolver,
+      // so the REST sibling's "rate-limit before auth" ordering
+      // doesn't apply here — every request to /api/graphql is
+      // already rate-bucketed before the resolver runs.
+      const authHeader = ctx.request.headers.get("authorization")
+      const authValid = isAnyKnownBearer(authHeader)
+      const authTag: "bearer" | "invalid_bearer" | "anonymous" = authValid
+        ? "bearer"
+        : authHeader != null
+          ? "invalid_bearer"
+          : "anonymous"
+      console.log(
+        JSON.stringify({
+          event: "search.request",
+          auth: authTag,
+          path: "graphql",
+        }),
+      )
+      if (!authValid && env.SEARCH_AUTH_REQUIRED === "true") {
+        // Typed GraphQLError with extensions.code so the auth signal
+        // survives Yoga's default maskedErrors (which rewrites raw
+        // `new Error(...)` to "Unexpected error." in production).
+        // Clients branch on `errors[0].extensions.code === "UNAUTHENTICATED"`
+        // — stable, schema-aligned, parallel to the REST 401 sibling.
+        throw new GraphQLError("Authentication required", {
+          extensions: {
+            code: "UNAUTHENTICATED",
+            http: { status: 401 },
+          },
+        })
+      }
+
       const query = args.q.trim()
       if (query.length === 0) {
         throw new Error("q (search query) is required")

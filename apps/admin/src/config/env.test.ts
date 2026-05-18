@@ -40,12 +40,13 @@ describe("env", () => {
     })
   })
 
-  // Bearer-CSV disjointness invariant. The two CSVs
-  // (WORKFLOW_API_KEYS, WEB_ADMIN_API_KEYS) MUST NOT share any value;
-  // the auth chain in context.ts is workflow → consumer → public, so a
-  // duplicated key silently widens permissions to the higher-tier role.
+  // Bearer-CSV disjointness invariant. The bearer CSVs
+  // (WORKFLOW_API_KEYS, WEB_ADMIN_API_KEYS, BACKUP_DOWNLOAD_API_KEYS,
+  // SEARCH_API_KEYS) MUST NOT share any value; the auth chains
+  // mint distinct principals / passports, so a duplicated key silently
+  // widens permissions or passes a passport it shouldn't.
   describe("assertBearerCsvsDisjoint", () => {
-    it("passes when both CSVs are undefined", () => {
+    it("passes when all CSVs are undefined", () => {
       expect(() => assertBearerCsvsDisjoint({})).not.toThrow()
     })
 
@@ -56,14 +57,18 @@ describe("env", () => {
       expect(() =>
         assertBearerCsvsDisjoint({ WORKFLOW_API_KEYS: "wf-a" }),
       ).not.toThrow()
+      expect(() =>
+        assertBearerCsvsDisjoint({ SEARCH_API_KEYS: "search-a" }),
+      ).not.toThrow()
     })
 
-    it("passes when both CSVs are disjoint", () => {
+    it("passes when all CSVs are disjoint", () => {
       expect(() =>
         assertBearerCsvsDisjoint({
           WORKFLOW_API_KEYS: "wf-a,wf-b",
           WEB_ADMIN_API_KEYS: "web-a,web-b",
           BACKUP_DOWNLOAD_API_KEYS: "backup-a,backup-b",
+          SEARCH_API_KEYS: "search-a,search-b",
         }),
       ).not.toThrow()
     })
@@ -84,6 +89,103 @@ describe("env", () => {
           BACKUP_DOWNLOAD_API_KEYS: "wf-a",
         }),
       ).toThrow(/WORKFLOW_API_KEYS and BACKUP_DOWNLOAD_API_KEYS/)
+    })
+
+    it("throws when WEB_ADMIN_API_KEYS overlaps BACKUP_DOWNLOAD_API_KEYS", () => {
+      // Closes the matrix: the 4-CSV invariant has 6 pairs, this is
+      // the one not covered above. A regression that mis-indexed the
+      // inner-loop start (`j = i + 1` → `j = i + 2`) or swapped the
+      // sets tuple order could break this single pair without any
+      // other test failing.
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WEB_ADMIN_API_KEYS: "shared-key",
+          BACKUP_DOWNLOAD_API_KEYS: "shared-key",
+        }),
+      ).toThrow(/WEB_ADMIN_API_KEYS and BACKUP_DOWNLOAD_API_KEYS/)
+    })
+
+    it("collects ALL overlapping pairs into a single error (not first-fail)", async () => {
+      // Operator workflow: when a chaotic Doppler rotation produces
+      // multiple overlaps simultaneously, the boot error must surface
+      // every offending pair so the cleanup is one redeploy, not N.
+      let caught: Error | undefined
+      try {
+        assertBearerCsvsDisjoint({
+          WORKFLOW_API_KEYS: "shared-1",
+          WEB_ADMIN_API_KEYS: "shared-1,shared-2",
+          BACKUP_DOWNLOAD_API_KEYS: "shared-2",
+        })
+      } catch (err) {
+        caught = err as Error
+      }
+      expect(caught).toBeDefined()
+      // Both offending pairs surface in the same error.
+      expect(caught!.message).toMatch(
+        /WORKFLOW_API_KEYS and WEB_ADMIN_API_KEYS/,
+      )
+      expect(caught!.message).toMatch(
+        /WEB_ADMIN_API_KEYS and BACKUP_DOWNLOAD_API_KEYS/,
+      )
+      // And the rotation runbook is referenced.
+      expect(caught!.message).toMatch(/Search API authentication/)
+      // Key values stay redacted.
+      expect(caught!.message).not.toContain("shared-1")
+      expect(caught!.message).not.toContain("shared-2")
+    })
+  })
+
+  // Module-load side-effect lock. The disjointness invariant is
+  // exercised by direct calls above, but the module-load auto-invocation
+  // at the bottom of env.ts (`assertBearerCsvsDisjoint({...env vars})`)
+  // has no other regression guard. A refactor deleting or gating that
+  // call would silently disable the boot-time invariant in production.
+  // We source-grep env.ts (parallel to the permissions.test.ts bearer-
+  // isolation grep) to lock the call site in place.
+  describe("env module-load wiring", () => {
+    it("env.ts invokes assertBearerCsvsDisjoint at module load with all 4 CSV env vars", async () => {
+      const { readFile } = await import("node:fs/promises")
+      const { fileURLToPath } = await import("node:url")
+      const source = await readFile(
+        fileURLToPath(new URL("./env.ts", import.meta.url)),
+        "utf8",
+      )
+      // The call site is asserted to exist at the bottom of env.ts.
+      expect(source).toMatch(/assertBearerCsvsDisjoint\s*\(\s*\{/)
+      // And it MUST reference all four CSV env vars from `env`.
+      expect(source).toMatch(/WORKFLOW_API_KEYS:\s*env\.WORKFLOW_API_KEYS/)
+      expect(source).toMatch(/WEB_ADMIN_API_KEYS:\s*env\.WEB_ADMIN_API_KEYS/)
+      expect(source).toMatch(
+        /BACKUP_DOWNLOAD_API_KEYS:\s*env\.BACKUP_DOWNLOAD_API_KEYS/,
+      )
+      expect(source).toMatch(/SEARCH_API_KEYS:\s*env\.SEARCH_API_KEYS/)
+    })
+
+    it("throws when SEARCH_API_KEYS overlaps WORKFLOW_API_KEYS", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WORKFLOW_API_KEYS: "shared-key",
+          SEARCH_API_KEYS: "shared-key",
+        }),
+      ).toThrow(/WORKFLOW_API_KEYS and SEARCH_API_KEYS/)
+    })
+
+    it("throws when SEARCH_API_KEYS overlaps WEB_ADMIN_API_KEYS", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WEB_ADMIN_API_KEYS: "shared-key",
+          SEARCH_API_KEYS: "shared-key",
+        }),
+      ).toThrow(/WEB_ADMIN_API_KEYS and SEARCH_API_KEYS/)
+    })
+
+    it("throws when SEARCH_API_KEYS overlaps BACKUP_DOWNLOAD_API_KEYS", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          BACKUP_DOWNLOAD_API_KEYS: "shared-key",
+          SEARCH_API_KEYS: "shared-key",
+        }),
+      ).toThrow(/BACKUP_DOWNLOAD_API_KEYS and SEARCH_API_KEYS/)
     })
 
     it("error message does NOT contain the offending key value", () => {

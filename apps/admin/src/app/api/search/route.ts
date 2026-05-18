@@ -8,6 +8,8 @@
 
 import { prisma } from "@/db/client"
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
+import { isAnyKnownBearer } from "@/auth/search-bearer"
+import { env } from "@/config/env"
 import {
   HybridSearchService,
   isContentType,
@@ -40,6 +42,29 @@ function tooManyRequests(): Response {
   return Response.json({ error: "Too many requests" }, { status: 429 })
 }
 
+function authenticationRequired(
+  authTag: "invalid_bearer" | "anonymous",
+): Response {
+  // RFC 6750 §3 — the WWW-Authenticate header on a 401 surfaces the
+  // realm + a machine-discriminable error code so debugging partners
+  // can distinguish "I sent a bad key" from "I sent no key at all"
+  // without having to inspect admin's logs. Emitted on every 401:
+  //   invalid_bearer → error="invalid_token"
+  //   anonymous      → no error code (per RFC 6750 §3.1, omit when
+  //                    no credentials were sent)
+  const challenge =
+    authTag === "invalid_bearer"
+      ? 'Bearer realm="search", error="invalid_token"'
+      : 'Bearer realm="search"'
+  return Response.json(
+    { error: "Authentication required" },
+    {
+      status: 401,
+      headers: { "WWW-Authenticate": challenge },
+    },
+  )
+}
+
 function parseNumericParam(raw: string | null): number | undefined {
   if (raw == null || raw.length === 0) return undefined
   const parsed = Number(raw)
@@ -47,6 +72,15 @@ function parseNumericParam(raw: string | null): number | undefined {
 }
 
 export async function GET(request: Request): Promise<Response> {
+  // Rate-limit applies to EVERY request — anonymous, valid bearer,
+  // invalid bearer alike — bucketed per source IP at RATE_LIMIT_MAX/
+  // min. Running rate-limit BEFORE the auth check prevents an
+  // attacker from spamming junk Authorization headers to bypass the
+  // bucket and amplify load on the bearer compare. Trade-off: a
+  // legitimate authed caller whose source IP is shared with an
+  // abuser shares the bucket, but that's already true for any per-
+  // IP scheme — the bearer is a passport (identity), not a budget
+  // (per-key quota).
   const limit = await rateLimitAuthRoute({
     request,
     route: "search",
@@ -54,6 +88,45 @@ export async function GET(request: Request): Promise<Response> {
     windowMs: RATE_LIMIT_WINDOW_MS,
   })
   if (!limit.allowed) return tooManyRequests()
+
+  // Phase-1 dual-accept auth gate. After the SEARCH_AUTH_REQUIRED
+  // flip, anonymous + invalid-bearer traffic 401s.
+  //
+  // The structured log tags every request with one of three states
+  // so operators can identify un-migrated callers BEFORE flipping
+  // the gate (a caller presenting a stale or wrong key shows up as
+  // `invalid_bearer`, distinct from a caller who sent no header at
+  // all — the latter is expected during dual-accept; the former is
+  // the population that will 401 after the flip). The `rl` field
+  // tags whether the rate-limit decision came from Redis or the
+  // in-process fallback — `rl=local` on a high-traffic prod replica
+  // signals Redis degradation.
+  //
+  // The auth check accepts ANY of three known-caller bearer CSVs
+  // (search / consumer / workflow) — see `isAnyKnownBearer` in
+  // `auth/search-bearer.ts`. apps/web SSR + apps/mobile (which
+  // already carry the consumer-bearer for graphql) need no code
+  // change; external partners get their own SEARCH_API_KEYS slot.
+  const authHeader = request.headers.get("authorization")
+  const authValid = isAnyKnownBearer(authHeader)
+  const authTag: "bearer" | "invalid_bearer" | "anonymous" = authValid
+    ? "bearer"
+    : authHeader != null
+      ? "invalid_bearer"
+      : "anonymous"
+  console.log(
+    JSON.stringify({
+      event: "search.request",
+      auth: authTag,
+      path: "rest",
+      rl: limit.source,
+    }),
+  )
+  if (!authValid && env.SEARCH_AUTH_REQUIRED === "true") {
+    // authTag here is "invalid_bearer" or "anonymous" (the `bearer`
+    // case satisfies authValid). TS narrows after the guard.
+    return authenticationRequired(authTag as "invalid_bearer" | "anonymous")
+  }
 
   const { searchParams } = new URL(request.url)
 
