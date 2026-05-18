@@ -4,11 +4,10 @@
 -- - docs/plans/2026-05-18-001-feat-partner-api-key-store-plan.md
 -- - apps/admin/CLAUDE.md §"Partner API key store"
 --
--- Forward-only additive migration. No data backfill — today's `xoSP…` key
--- in `SEARCH_API_KEYS` is migrated post-deploy via:
---   `pnpm --filter @forge/admin partner-keys import-from-env ...`
--- The env-CSV validator branch stays through PR1 so the partner is never
--- without a working auth path during the cutover.
+-- Forward-only additive migration. No data backfill — the legacy
+-- `SEARCH_API_KEYS` env-CSV partner branch was retired in the same PR
+-- (see apps/admin/CLAUDE.md §"Migrating an existing partner from the
+-- legacy SEARCH_API_KEYS env CSV" for the rotate-onto-fresh-token flow).
 
 CREATE TABLE "partner_api_key" (
   "id" TEXT NOT NULL,

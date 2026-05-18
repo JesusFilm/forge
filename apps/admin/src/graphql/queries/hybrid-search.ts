@@ -163,12 +163,14 @@ builder.queryFields((t) => ({
       //
       // `source=` distinguishes the matched bearer source; `keyId=`
       // is appended for PARTNER branches only (env-CSV branches don't
-      // carry a per-key identifier).
+      // carry a per-key identifier). Stable positional fields
+      // (`event`, `auth`, `path`) come first; optional fields appended
+      // at the END so positional log-shipper rules stay stable.
       const sourceField = authResult.valid ? ` source=${authResult.source}` : ""
       const keyIdField =
         authResult.valid && authResult.keyId ? ` keyId=${authResult.keyId}` : ""
       console.error(
-        `[search] event=search.request auth=${authTag}${sourceField}${keyIdField} path=graphql`,
+        `[search] event=search.request auth=${authTag} path=graphql${sourceField}${keyIdField}`,
       )
       if (!authResult.valid && env.SEARCH_AUTH_REQUIRED === "true") {
         // Typed GraphQLError with extensions.code so the auth signal

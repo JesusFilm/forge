@@ -160,9 +160,15 @@ describe("env", () => {
       expect(source).toMatch(
         /BACKUP_DOWNLOAD_API_KEYS:\s*env\.BACKUP_DOWNLOAD_API_KEYS/,
       )
-      // Regression guard: SEARCH_API_KEYS must NOT appear in the boot
-      // invocation (or anywhere else in env.ts).
-      expect(source).not.toMatch(/SEARCH_API_KEYS/)
+      // Regression guard: SEARCH_API_KEYS must NOT appear in the Zod
+      // schema (the receiver-side CSV is retired in Plan 003) and
+      // must NOT appear as an env-var arg to `assertBearerCsvsDisjoint`.
+      // The deprecation warn at module-load IS allowed (and required)
+      // so operators with a stale Doppler value see a log signal.
+      expect(source).not.toMatch(/SEARCH_API_KEYS:\s*z\./)
+      expect(source).not.toMatch(/SEARCH_API_KEYS:\s*env\.SEARCH_API_KEYS/)
+      // Positive control: the deprecation warn exists.
+      expect(source).toMatch(/event=search_api_keys_env_var_retired/)
     })
 
     it("error message does NOT contain the offending key value", () => {

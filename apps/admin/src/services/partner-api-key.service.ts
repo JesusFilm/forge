@@ -303,6 +303,11 @@ export async function verifyPartnerToken(
     return { valid: false }
   }
 
+  // Hoist the verified keyId so BOTH the sync-catch and async-catch
+  // log paths use the same identifier without relying on the closure
+  // capturing a still-narrowed `row`.
+  const matchedKeyId = row.keyId
+
   // Fire-and-forget last-used timestamp update. MUST NOT throw, MUST
   // NOT block. Sync throws inside the body (Prisma client construction,
   // etc.) are caught by the outer try; async rejection caught by
@@ -310,23 +315,23 @@ export async function verifyPartnerToken(
   try {
     void prisma.partnerApiKey
       .update({
-        where: { keyId: row.keyId },
+        where: { keyId: matchedKeyId },
         data: { lastUsedAt: new Date() },
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err)
         console.warn(
-          `[search] event=partner_key.last_used_at_update_failed keyId=${row?.keyId} error=${sanitizeLogValue(message)}`,
+          `[search] event=partner_key.last_used_at_update_failed keyId=${matchedKeyId} error=${sanitizeLogValue(message)}`,
         )
       })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.warn(
-      `[search] event=partner_key.last_used_at_update_failed keyId=${row.keyId} error=${sanitizeLogValue(message)}`,
+      `[search] event=partner_key.last_used_at_update_failed keyId=${matchedKeyId} error=${sanitizeLogValue(message)}`,
     )
   }
 
-  return { valid: true, keyId: row.keyId }
+  return { valid: true, keyId: matchedKeyId }
 }
 
 // ---------------------------------------------------------------------------
@@ -366,10 +371,12 @@ async function raceWithTimeout<T>(
 }
 
 /**
- * Strip CR/LF so a thrown error message can't inject newlines into the
+ * Strip CR/LF/TAB so a thrown error message can't inject newlines into the
  * structured log line. Mirrors the log-injection-sanitizer pattern from
- * the keyword-first mode-normalization helper.
+ * the keyword-first mode-normalization helper. Exported so the
+ * `safeCheck`/`safeCheckAsync` wrappers in `search-bearer.ts` can use the
+ * same sanitizer for consistency.
  */
-function sanitizeLogValue(value: string): string {
+export function sanitizeLogValue(value: string): string {
   return value.replace(/[\r\n\t]/g, " ").slice(0, 200)
 }

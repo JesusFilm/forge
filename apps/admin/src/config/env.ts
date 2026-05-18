@@ -423,3 +423,16 @@ assertBearerCsvsDisjoint({
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
 })
+
+// Plan 003 retired the SEARCH_API_KEYS env-CSV partner branch — external
+// partner credentials now live in admin's `PartnerApiKey` Postgres table
+// and are issued via `pnpm --filter @forge/admin partner-keys create`.
+// If a Doppler env still has the retired value set, code no longer reads
+// it, but operator confusion is real — flag once at boot so the stale
+// value is visible in Railway logs.
+// Plain-string format per `railway-logsv2-silences-nextjs-stdout-runtime-20260518`.
+if (process.env.SEARCH_API_KEYS && process.env.SEARCH_API_KEYS.length > 0) {
+  console.warn(
+    `[search] event=search_api_keys_env_var_retired note=migrate_to_partner_keys`,
+  )
+}

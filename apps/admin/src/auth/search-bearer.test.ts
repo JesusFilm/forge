@@ -14,6 +14,7 @@ vi.mock("@/config/env", () => ({
 // composer routes to it and surfaces `{ source: "partner", keyId }`.
 vi.mock("@/services/partner-api-key.service", () => ({
   verifyPartnerToken: vi.fn(async () => ({ valid: false }) as const),
+  sanitizeLogValue: (s: string) => s.replace(/[\r\n\t]/g, " ").slice(0, 200),
 }))
 
 const { env } = await import("@/config/env")
@@ -199,7 +200,13 @@ describe("isAnyKnownBearer", () => {
     const warnedLines = warnSpy.mock.calls
       .map((args) => String(args[0] ?? ""))
       .filter((line) => line.includes("search_bearer.validator_threw"))
-    expect(warnedLines.some((line) => line.includes('"partner"'))).toBe(true)
+    // Plain-string format: `validator=partner` (NOT JSON's `"partner"`).
+    expect(warnedLines.some((line) => line.includes("validator=partner"))).toBe(
+      true,
+    )
+    // Regression guard: ensure we never JSON-stringify these (Railway
+    // logsV2 silences JSON payloads from runtime route handlers).
+    expect(warnedLines.every((line) => !line.startsWith("{"))).toBe(true)
     warnSpy.mockRestore()
   })
 })

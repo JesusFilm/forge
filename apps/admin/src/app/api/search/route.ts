@@ -129,16 +129,21 @@ export async function GET(request: Request): Promise<Response> {
   // embedding-failure event today.
   //
   // `source=<branch>` distinguishes which bearer source matched
-  // (partner / consumer / workflow / search). `keyId=<id>` is
-  // appended only on PARTNER matches — env-CSV branches don't carry
-  // a per-key identifier so the field is omitted to keep parsing
-  // simple (operators check for `keyId=` presence to scope to
-  // per-partner queries).
+  // (partner / consumer / workflow). `keyId=<id>` is appended only on
+  // PARTNER matches — env-CSV branches don't carry a per-key
+  // identifier so the field is omitted to keep parsing simple
+  // (operators check for `keyId=` presence to scope to per-partner
+  // queries).
+  //
+  // Field ordering: stable positional fields (`event`, `auth`, `path`,
+  // `rl`) come FIRST and never shift; optional fields (`source`,
+  // `keyId`) are appended at the END so any positional log-shipper
+  // rule that targets the stable fields is unaffected.
   const sourceField = authResult.valid ? ` source=${authResult.source}` : ""
   const keyIdField =
     authResult.valid && authResult.keyId ? ` keyId=${authResult.keyId}` : ""
   console.error(
-    `[search] event=search.request auth=${authTag}${sourceField}${keyIdField} path=rest rl=${limit.source}`,
+    `[search] event=search.request auth=${authTag} path=rest rl=${limit.source}${sourceField}${keyIdField}`,
   )
   if (!authResult.valid && env.SEARCH_AUTH_REQUIRED === "true") {
     // authTag here is "invalid_bearer" or "anonymous" (the `bearer`

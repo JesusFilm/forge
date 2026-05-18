@@ -19,7 +19,10 @@
 
 import { isValidConsumerBearer } from "@/auth/consumer-bearer"
 import { isValidWorkflowBearer } from "@/auth/workflow-bearer"
-import { verifyPartnerToken } from "@/services/partner-api-key.service"
+import {
+  sanitizeLogValue,
+  verifyPartnerToken,
+} from "@/services/partner-api-key.service"
 
 /**
  * Branch identifier for the matched bearer source. Threads into the
@@ -103,13 +106,14 @@ function safeCheck(validatorName: string, check: () => boolean): boolean {
   try {
     return check()
   } catch (err) {
+    // Plain-string format per `railway-logsv2-silences-nextjs-stdout-runtime-20260518`:
+    // JSON-stringified payloads from runtime route handlers are silenced
+    // on Railway logsV2. Never log the header value — only the error message,
+    // sanitized to strip CR/LF/TAB so a thrown message can't inject log
+    // structure (`log-injection-sanitizer-user-input-structured-logs-20260429`).
+    const message = err instanceof Error ? err.message : String(err)
     console.warn(
-      JSON.stringify({
-        event: "search_bearer.validator_threw",
-        validator: validatorName,
-        // Never log the header value — only the error message.
-        error: err instanceof Error ? err.message : String(err),
-      }),
+      `[search] event=search_bearer.validator_threw validator=${validatorName} error=${sanitizeLogValue(message)}`,
     )
     return false
   }
@@ -122,12 +126,9 @@ async function safeCheckAsync(
   try {
     return await check()
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
     console.warn(
-      JSON.stringify({
-        event: "search_bearer.validator_threw",
-        validator: validatorName,
-        error: err instanceof Error ? err.message : String(err),
-      }),
+      `[search] event=search_bearer.validator_threw validator=${validatorName} error=${sanitizeLogValue(message)}`,
     )
     return { valid: false }
   }
