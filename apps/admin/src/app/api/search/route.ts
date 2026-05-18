@@ -114,18 +114,27 @@ export async function GET(request: Request): Promise<Response> {
     : authHeader != null
       ? "invalid_bearer"
       : "anonymous"
-  // Emit via console.warn (stderr) rather than console.log (stdout)
-  // because Railway's logsV2 reliably captures stderr from Next.js
-  // App Router runtime requests but silences info-level stdout
-  // output on this Next.js 16 + Node 24 + standalone configuration
-  // (verified 2026-05-18: deployment c62112c2 shows console.error
-  // lines from this same file in Railway logs but no console.log
-  // lines for served requests). The structured payload is unchanged.
-  // Operators rely on grepping `auth=anonymous` / `auth=invalid_bearer`
-  // before the Phase 4 SEARCH_AUTH_REQUIRED flip — that observability
-  // is the whole point of Phase 1, and it only works if the log
-  // lines actually surface.
-  console.warn(
+  // Emit via console.error so the structured payload reaches Railway
+  // logsV2. Empirically, on the current Next.js 16 + Node 24 +
+  // standalone stack, ONLY console.error surfaces from runtime route
+  // handlers — console.log AND console.warn from inside handlers
+  // serving HTTP traffic are both silenced, even though boot-time
+  // console.log surfaces and console.error from the same files
+  // surfaces. PR #970's earlier console.log → console.warn attempt
+  // did not solve this; verified 2026-05-18 against deployment
+  // a8bf6273 (commit 69126099f0): zero search.request lines
+  // appeared even with console.warn. PR #972 switches to
+  // console.error as the empirically-working channel.
+  //
+  // Semantic mismatch: search.request is NOT an error. It's a
+  // per-request operational event the operator greps before the
+  // Phase 4 SEARCH_AUTH_REQUIRED flip. Tagging it as `error`
+  // severity in Railway is operationally incorrect but is the only
+  // channel that reaches the dashboard at all. A structured-logger
+  // migration (Pino → always stderr with severity inside the
+  // payload) is the proper long-term fix; until then this is the
+  // pragmatic floor.
+  console.error(
     JSON.stringify({
       event: "search.request",
       auth: authTag,

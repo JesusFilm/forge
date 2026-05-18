@@ -277,10 +277,12 @@ describe("GET /api/search", () => {
     let logSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
-      // The search.request log uses console.warn (stderr) because
-      // Railway's logsV2 silences info-level stdout from Next.js App
-      // Router runtime requests. See route.ts for the rationale.
-      logSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+      // The search.request log uses console.error because on the
+      // current Next.js 16 + Node 24 + Railway stack, ONLY
+      // console.error surfaces from runtime route handlers.
+      // console.warn (also stderr) is silenced in practice. See
+      // route.ts for the empirical rationale.
+      logSpy = vi.spyOn(console, "error").mockImplementation(() => {})
     })
 
     afterEach(() => {

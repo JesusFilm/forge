@@ -153,11 +153,13 @@ builder.queryFields((t) => ({
         : authHeader != null
           ? "invalid_bearer"
           : "anonymous"
-      // See route.ts for the rationale — Railway's logsV2 silences
-      // info-level stdout from Next.js App Router runtime requests on
-      // the current Next.js 16 + Node 24 + standalone stack. Using
-      // console.warn (stderr) keeps the observability signal alive.
-      console.warn(
+      // See route.ts for the rationale — on the current Next.js 16 +
+      // Node 24 + standalone stack, ONLY console.error surfaces from
+      // runtime route handlers in Railway's logsV2. Both console.log
+      // and console.warn are silenced. console.error is the only
+      // working channel for per-request structured observability,
+      // pending a structured-logger migration.
+      console.error(
         JSON.stringify({
           event: "search.request",
           auth: authTag,
