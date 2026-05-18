@@ -95,6 +95,11 @@ export const env = createEnv({
     EXPERIENCE_AI_CODEX_MODEL: z.string().min(1).optional(),
     EXPERIENCE_AI_CLAUDE_CODE_MODEL: z.string().min(1).optional(),
     OLLAMA_BASE_URL: z.string().url().optional(),
+    // Mastra runtime — opt-in scaffolding, all .optional()
+    MASTRA_STORAGE_URL: z.string().url().optional(),
+    MASTRA_DEFAULT_PROVIDER: z
+      .enum(["openrouter", "ollama", "openai", "anthropic"])
+      .optional(),
     OLLAMA_EMBEDDING_MODEL: z.string().min(1).optional(),
     OLLAMA_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().optional(),
     OLLAMA_CHAT_MODEL: z.string().min(1).optional(),
@@ -253,6 +258,10 @@ export const env = createEnv({
       process.env.EXPERIENCE_AI_CLAUDE_CODE_MODEL,
     ),
     OLLAMA_BASE_URL: emptyToUndefined(process.env.OLLAMA_BASE_URL),
+    MASTRA_STORAGE_URL: emptyToUndefined(process.env.MASTRA_STORAGE_URL),
+    MASTRA_DEFAULT_PROVIDER: emptyToUndefined(
+      process.env.MASTRA_DEFAULT_PROVIDER,
+    ),
     OLLAMA_EMBEDDING_MODEL: emptyToUndefined(
       process.env.OLLAMA_EMBEDDING_MODEL,
     ),
