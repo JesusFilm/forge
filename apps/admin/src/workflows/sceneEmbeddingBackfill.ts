@@ -28,10 +28,15 @@
 // itself remains idempotent (upserts on composite keys), so the
 // workflow is safe to re-run.
 //
-// pLimit boundary moved up one level relative to Stage 1: the cap now
-// constrains concurrent (video, edition) GROUPS, not concurrent flat
-// targets. Inside a group, per-locale work runs sequentially so the
-// loaded artifact stays scoped to one stack frame.
+// Sequential `for…of` over groups (2026-05-17 hotfix). The earlier
+// `pLimit(N) + Promise.allSettled` pattern broke useworkflow's
+// event-log replay: the runtime emits duplicate `step_created` events
+// for the final batch of pLimit-bounded parallel step dispatches,
+// tripping its `Unconsumed event in event log` corruption guard and
+// failing the whole run. Sequential dispatch is the workaround until
+// useworkflow handles parallel step calls under bounded-parallelism
+// patterns. See docs/solutions/runtime-errors/useworkflow-bounded-parallelism-duplicate-step-created-20260517.md
+// and the now-superseded docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md.
 //
 // Locale model: data-derived at enumeration time ("every locale that
 // exists for this video"), not a hardcoded list. An earlier prototype
@@ -41,10 +46,8 @@
 // (omitted means all data-derived locales). Filtering happens BEFORE
 // grouping so a group only spans the locales that survive the filter.
 
-import pLimit from "p-limit"
 import { prisma } from "@/db/client"
 import { SYSTEM_PRINCIPAL } from "@/auth/principal"
-import { env } from "@/config/env"
 import {
   loadCoreIdMapping,
   type CoreIdMapping,
@@ -63,27 +66,6 @@ import {
 // here would trip the Node-module reachability check even though the
 // actual call is inside `"use step"`. See `_steps/load-manager-artifact.ts`.
 import { stepLoadSceneAnalysisArtifact } from "./_steps/load-manager-artifact"
-
-/**
- * Default per-group concurrency for the R1 scene-embedding backfill.
- * Stage 2: the unit changed from per-target to per-(video, edition)
- * GROUP. A group typically holds several locales which run sequentially
- * inside the worker, so 5 concurrent groups can produce >5 concurrent
- * indexer/provider calls only if each group's per-locale loop overlaps
- * — which it doesn't (sequential per-locale). Net concurrent indexer
- * load stays ≤ N (one per active group). Override via
- * `SCENE_EMBEDDING_CONCURRENCY` (env-validated, positive int). Sized
- * below admin's documented `connection_limit=10` Prisma pool to leave
- * headroom for concurrent GraphQL/REST traffic; local dev can crank to
- * 20+ via the env override.
- *
- * Memory budget per active locale: ~250 KB artifact + ~370 KB
- * embeddings array (1536 floats × ~30 scenes × 8 bytes) + ~10 KB
- * sourceTexts ≈ ~630 KB. At default concurrency=5 that's ~3 MB peak
- * resident across in-flight groups; released as soon as the
- * per-locale transaction completes.
- */
-export const DEFAULT_SCENE_EMBEDDING_CONCURRENCY = 5
 
 export type SceneEmbeddingBackfillInput = {
   /** S3 key of the JSON mapping snapshot uploaded via the admin refresh CLI. */
@@ -233,24 +215,20 @@ export async function runSceneEmbeddingBackfill(
   // collapses from per-target to per-group.
   const groups = groupTargetsByVideoEdition(targets)
 
-  // Bounded parallelism over GROUPS (Stage 2 reshape). `pLimit(N) +
-  // Promise.allSettled` is the documented robustness shape — never
-  // bare `Promise.all`. See
-  // docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md
-  // and the canonical HOW in
+  // Sequential `for…of` per-group (NOT `Promise.allSettled + pLimit`).
+  // Bounded parallelism inside a workflow body breaks useworkflow's
+  // event-log replay semantics: the runtime emits duplicate
+  // `step_created` events for the final batch of pLimit-bounded
+  // parallel step dispatches AFTER those steps complete, which trips
+  // its `Unconsumed event in event log` corruption guard and fails
+  // the whole run. Verified empirically against prod on 2026-05-17 —
+  // see docs/solutions/runtime-errors/useworkflow-bounded-parallelism-duplicate-step-created-20260517.md
+  // and the now-superseded
   // docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md.
-  // Stage 2's only divergence: the unit-of-parallelism is a (video,
-  // edition) group rather than a flat (video, edition, locale) target;
-  // per-locale work inside a group runs sequentially with the artifact
-  // in scope.
-  const concurrency =
-    env.SCENE_EMBEDDING_CONCURRENCY ?? DEFAULT_SCENE_EMBEDDING_CONCURRENCY
-  const limit = pLimit(concurrency)
-
-  // Emit a structured start log so the workflow's effective
-  // concurrency is observable from any trigger path (GraphQL mutation
-  // or local CLI). `groupCount` surfaces Stage 2's reshape so an
-  // operator inspecting logs can see the artifact-fetch fan-in.
+  // Per-target error isolation is preserved by `processGroup`'s
+  // internal try/catch; the outer loop catches the rare unexpected
+  // throw to produce a synthetic-failed cascade for the affected
+  // group. R3's experienceEmbeddingBackfill uses the same shape.
   console.log(
     JSON.stringify({
       workflow: "scene-embedding-backfill",
@@ -258,57 +236,37 @@ export async function runSceneEmbeddingBackfill(
       mappingGeneratedAt: mapping.generatedAt,
       totalTargets: targets.length,
       groupCount: groups.length,
-      concurrency,
       localeFilter:
         input.locales && input.locales.length > 0 ? input.locales : null,
     }),
   )
 
-  // One batch wall-clock baseline; reused for synthetic-failed
-  // outcomes so dashboards built on `outcomes[].durationMs` aren't
-  // polluted with `0`s when the defensive branch fires.
-  const batchStartedAt = Date.now()
-
-  const settled = await Promise.allSettled(
-    groups.map((group) =>
-      limit(() =>
-        // Deliberately do NOT catch here. `processGroup` already
-        // returns typed outcomes for every per-target error it can see
-        // (including a group-level artifact-load failure cascaded to
-        // per-locale outcomes); an unexpected throw past that boundary
-        // should propagate as a `rejected` settled result so the
-        // synthetic-failed branch below records it (with real elapsed
-        // time) and the per-target isolation contract is observable to
-        // tests.
-        processGroup(group),
-      ),
-    ),
-  )
-
-  const outcomes: BackfillOutcome[] = settled.flatMap((result, i) => {
-    const group = groups[i]!
-    if (result.status === "fulfilled") return result.value
-    // Synthetic-failed cascade for the WHOLE group — a thrown error
-    // past `processGroup`'s defensive branch is a step-plumbing fault
-    // and should not aggregate as "one of the locales failed"; every
-    // locale in the affected group lost its work.
-    const reason =
-      result.reason instanceof Error
-        ? result.reason.message
-        : String(result.reason)
-    const durationMs = Date.now() - batchStartedAt
-    return group.targets.map((target) => {
-      const synthetic: BackfillOutcome = {
-        status: "failed",
-        target,
-        locale: target.locale,
-        reason,
-        durationMs,
+  const outcomes: BackfillOutcome[] = []
+  for (const group of groups) {
+    const groupStartedAt = Date.now()
+    try {
+      const groupOutcomes = await processGroup(group)
+      outcomes.push(...groupOutcomes)
+    } catch (err) {
+      // Synthetic-failed cascade for the WHOLE group — a thrown error
+      // past `processGroup`'s defensive branch is a step-plumbing
+      // fault and should not aggregate as "one of the locales
+      // failed"; every locale in the affected group lost its work.
+      const reason = err instanceof Error ? err.message : String(err)
+      const durationMs = Date.now() - groupStartedAt
+      for (const target of group.targets) {
+        const synthetic: BackfillOutcome = {
+          status: "failed",
+          target,
+          locale: target.locale,
+          reason,
+          durationMs,
+        }
+        logOutcome(synthetic)
+        outcomes.push(synthetic)
       }
-      logOutcome(synthetic)
-      return synthetic
-    })
-  })
+    }
+  }
 
   return stepReport({
     mappingGeneratedAt: mapping.generatedAt,

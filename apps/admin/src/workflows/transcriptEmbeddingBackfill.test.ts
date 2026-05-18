@@ -744,60 +744,15 @@ describe("runTranscriptEmbeddingBackfill — bounded parallelism", () => {
     }
   })
 
-  it("caps concurrent in-flight (video, edition) groups at TRANSCRIPT_EMBEDDING_CONCURRENCY (and uses parallelism, not sequential)", async () => {
-    // Asserts BOTH the concurrency cap (≤ 2) AND that parallelism is
-    // used (max in-flight === N). A regression to sequential `for…of`
-    // would yield `observedMaxInFlight === 1` and fail the assertion.
+  it("dispatches (video, edition) groups sequentially — never more than one indexer call in-flight", async () => {
+    // Post-2026-05-17 hotfix: the workflow body uses sequential
+    // `for…of` over groups (was `pLimit + Promise.allSettled`).
+    // See R1 sibling test for the full rationale and
+    // docs/solutions/runtime-errors/useworkflow-bounded-parallelism-duplicate-step-created-20260517.md.
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
       row("v-b", "e-b", "core-b", "en"),
       row("v-c", "e-c", "core-a", "es"),
-    ])
-
-    let inFlight = 0
-    let observedMaxInFlight = 0
-
-    vi.mocked(indexEditionTranscript).mockImplementation(
-      async (_prisma, args) => {
-        inFlight += 1
-        observedMaxInFlight = Math.max(observedMaxInFlight, inFlight)
-        await new Promise((resolve) => setTimeout(resolve, 25))
-        inFlight -= 1
-        return {
-          editionId: args.editionId,
-          language: args.language,
-          chunksIndexed: 1,
-          embeddingsWritten: 1,
-          chunksPruned: 0,
-          model: "openai/text-embedding-3-small",
-          dimensions: 1536,
-        }
-      },
-    )
-
-    await runTranscriptEmbeddingBackfill({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-    })
-
-    expect(observedMaxInFlight).toBe(2)
-    expect(indexEditionTranscript).toHaveBeenCalledTimes(3)
-  })
-
-  it("Stage 2: per-language work inside a group runs sequentially — multi-language groups do NOT multiply concurrent indexer calls beyond the cap", async () => {
-    // The cap variant above gives every group exactly ONE language;
-    // observedMaxInFlight only proves the per-GROUP cap. This variant
-    // gives each of the 2 groups THREE languages (6 total targets at
-    // concurrency=2). If processGroup ever fanned out per-language work
-    // in parallel, maxInFlight would jump to 6 (or 4+ if partially
-    // batched). Sequential per-language inside the group keeps it
-    // pinned at TRANSCRIPT_EMBEDDING_CONCURRENCY=2.
-    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      row("v-a", "e-a", "core-a", "en"),
-      row("v-a", "e-a", "core-a", "es"),
-      row("v-a", "e-a", "core-a", "fr"),
-      row("v-b", "e-b", "core-b", "en"),
-      row("v-b", "e-b", "core-b", "es"),
-      row("v-b", "e-b", "core-b", "fr"),
     ])
 
     let inFlight = 0
@@ -825,8 +780,8 @@ describe("runTranscriptEmbeddingBackfill — bounded parallelism", () => {
       mappingS3Key: "admin-migrations/core-id-mapping.json",
     })
 
-    expect(indexEditionTranscript).toHaveBeenCalledTimes(6)
-    expect(observedMaxInFlight).toBe(2)
+    expect(observedMaxInFlight).toBe(1)
+    expect(indexEditionTranscript).toHaveBeenCalledTimes(3)
   })
 })
 
@@ -838,7 +793,7 @@ describe("runTranscriptEmbeddingBackfill — start log", () => {
     vi.mocked(readEmbeddingsArtifact).mockResolvedValue(STUB_ARTIFACT)
   })
 
-  it("emits a structured start log with workflow, event, mappingGeneratedAt, totalTargets, groupCount, concurrency, languageFilter", async () => {
+  it("emits a structured start log with workflow, event, mappingGeneratedAt, totalTargets, groupCount, languageFilter", async () => {
     // Operators rely on log-grep dashboards (per CLAUDE.md operational
     // runbook). Pin the start-log shape so a future refactor can't
     // silently drop a field. `groupCount` is the Stage 2 addition that
@@ -884,7 +839,6 @@ describe("runTranscriptEmbeddingBackfill — start log", () => {
       mappingGeneratedAt: "2026-04-22T00:00:00.000Z",
       totalTargets: 3,
       groupCount: 2,
-      concurrency: 2,
       languageFilter: ["en", "es"],
     })
   })

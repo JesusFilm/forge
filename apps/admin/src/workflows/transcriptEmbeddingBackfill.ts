@@ -35,20 +35,18 @@
 // (transcriptId, chunkIndex) for chunks), so the workflow is safe to
 // re-run.
 //
-// pLimit boundary moved up one level relative to Stage 1: the cap now
-// constrains concurrent (video, edition) GROUPS, not concurrent flat
-// targets. Inside a group, per-language work runs sequentially so the
-// loaded artifact stays scoped to one stack frame.
+// Sequential `for…of` over groups (2026-05-17 hotfix). The earlier
+// `pLimit(N) + Promise.allSettled` pattern broke useworkflow's
+// event-log replay — see the R1 sibling for the full explanation and
+// docs/solutions/runtime-errors/useworkflow-bounded-parallelism-duplicate-step-created-20260517.md.
 //
 // Language model: data-derived at enumeration time, not a hardcoded
 // list. Earlier prototype iterations hardcoded a `DEFAULT_LOCALES =
 // ['en', 'es', 'fr']` constant + an `en` fallback; both dropped once
 // the enumeration became data-derived.
 
-import pLimit from "p-limit"
 import { prisma } from "@/db/client"
 import { SYSTEM_PRINCIPAL } from "@/auth/principal"
-import { env } from "@/config/env"
 import {
   loadCoreIdMapping,
   type CoreIdMapping,
@@ -67,22 +65,6 @@ import {
 // would trip the Node-module reachability check even though the actual
 // call is inside `"use step"`. See `_steps/load-manager-artifact.ts`.
 import { stepLoadEmbeddingsArtifact } from "./_steps/load-manager-artifact"
-
-/**
- * Default per-group concurrency for the R2 transcript-embedding
- * backfill. Stage 2: the unit changed from per-target to per-(video,
- * edition) GROUP. R2 is DB-bound (no provider call); the default is
- * sized below admin's documented `connection_limit=10` Prisma pool to
- * leave headroom for concurrent traffic. Local dev can crank to 20+
- * via the env override.
- *
- * Memory budget per active language: ~250 KB artifact (vectors are
- * reused in-place from the artifact's `chunks[i].embedding`; R2
- * doesn't allocate a parallel embeddings array). At default
- * concurrency=5 that's ~1.25 MB peak resident; released as soon as
- * the per-language transaction completes.
- */
-export const DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY = 5
 
 export type TranscriptEmbeddingBackfillInput = {
   /** S3 key of the JSON mapping snapshot uploaded via the admin refresh CLI. */
@@ -216,20 +198,11 @@ export async function runTranscriptEmbeddingBackfill(
   // collapses from per-target to per-group.
   const groups = groupTargetsByVideoEdition(targets)
 
-  // Bounded parallelism over GROUPS (Stage 2 reshape). Same shape /
-  // same rule as R1 — see the R1 sibling for the full rationale and
-  // docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md
-  // for the canonical HOW. R2's only divergence from R1 stays the same:
-  // no provider call inside the per-language step.
-  const concurrency =
-    env.TRANSCRIPT_EMBEDDING_CONCURRENCY ??
-    DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
-  const limit = pLimit(concurrency)
-
-  // Structured start log so the workflow's effective concurrency is
-  // observable from any trigger path. `groupCount` surfaces Stage 2's
-  // reshape so an operator inspecting logs can see the artifact-fetch
-  // fan-in.
+  // Sequential `for…of` per-group (NOT `Promise.allSettled + pLimit`).
+  // Bounded parallelism inside a workflow body breaks useworkflow's
+  // event-log replay semantics — see the R1 sibling
+  // (`sceneEmbeddingBackfill.ts`) for the full rationale and
+  // docs/solutions/runtime-errors/useworkflow-bounded-parallelism-duplicate-step-created-20260517.md.
   console.log(
     JSON.stringify({
       workflow: "transcript-embedding-backfill",
@@ -237,57 +210,37 @@ export async function runTranscriptEmbeddingBackfill(
       mappingGeneratedAt: mapping.generatedAt,
       totalTargets: targets.length,
       groupCount: groups.length,
-      concurrency,
       languageFilter:
         input.languages && input.languages.length > 0 ? input.languages : null,
     }),
   )
 
-  // One batch wall-clock baseline; reused for synthetic-failed
-  // outcomes so dashboards built on `outcomes[].durationMs` aren't
-  // polluted with `0`s when the defensive branch fires.
-  const batchStartedAt = Date.now()
-
-  const settled = await Promise.allSettled(
-    groups.map((group) =>
-      limit(() =>
-        // Deliberately do NOT catch here. `processGroup` already
-        // returns typed outcomes for every per-target error it can see
-        // (including a group-level artifact-load failure cascaded to
-        // per-language outcomes); an unexpected throw past that
-        // boundary should propagate as a `rejected` settled result so
-        // the synthetic-failed branch below records it (with real
-        // elapsed time) and the per-target isolation contract is
-        // observable to tests.
-        processGroup(group),
-      ),
-    ),
-  )
-
-  const outcomes: BackfillOutcome[] = settled.flatMap((result, i) => {
-    const group = groups[i]!
-    if (result.status === "fulfilled") return result.value
-    // Synthetic-failed cascade for the WHOLE group — a thrown error
-    // past `processGroup`'s defensive branch is a step-plumbing fault
-    // and should not aggregate as "one of the languages failed";
-    // every language in the affected group lost its work.
-    const reason =
-      result.reason instanceof Error
-        ? result.reason.message
-        : String(result.reason)
-    const durationMs = Date.now() - batchStartedAt
-    return group.targets.map((target) => {
-      const synthetic: BackfillOutcome = {
-        status: "failed",
-        target,
-        language: target.language,
-        reason,
-        durationMs,
+  const outcomes: BackfillOutcome[] = []
+  for (const group of groups) {
+    const groupStartedAt = Date.now()
+    try {
+      const groupOutcomes = await processGroup(group)
+      outcomes.push(...groupOutcomes)
+    } catch (err) {
+      // Synthetic-failed cascade for the WHOLE group — a thrown error
+      // past `processGroup`'s defensive branch is a step-plumbing
+      // fault and should not aggregate as "one of the languages
+      // failed"; every language in the affected group lost its work.
+      const reason = err instanceof Error ? err.message : String(err)
+      const durationMs = Date.now() - groupStartedAt
+      for (const target of group.targets) {
+        const synthetic: BackfillOutcome = {
+          status: "failed",
+          target,
+          language: target.language,
+          reason,
+          durationMs,
+        }
+        logOutcome(synthetic)
+        outcomes.push(synthetic)
       }
-      logOutcome(synthetic)
-      return synthetic
-    })
-  })
+    }
+  }
 
   return stepReport({
     mappingGeneratedAt: mapping.generatedAt,

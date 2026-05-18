@@ -293,6 +293,31 @@ beforeEach(() => {
 - **`Promise.allSettled` preserves input order**: `outcomes[i]` aligns positionally with `targets[i]` even though per-target work completes out of order. Downstream `stepReport` aggregation and any operator-side joins on `(target, outcome)` rely on this; documented in the workflow comment so future maintainers don't re-sort defensively.
 - **Length-0 array → "omitted"**: `coreIds: []` and `locales: []` are treated as undefined, not "match nothing." A GraphQL caller who accidentally passes `[]` would otherwise silently run zero work with a success-shaped report. Defensive normalization at the workflow boundary.
 
+## ⚠ Superseded 2026-05-17 — do NOT use this pattern inside a `"use workflow"` body
+
+> useworkflow's runtime emits duplicate `step_created` events for the
+> final batch of `pLimit(N) + Promise.allSettled` parallel step
+> dispatches, tripping its `Unconsumed event in event log` corruption
+> guard and failing the entire run. Verified empirically against
+> `@workflow/world-postgres` v4.1.1 (admin worker) on 2026-05-17 with
+> both `runSceneEmbeddingBackfill` and `runTranscriptEmbeddingBackfill`.
+>
+> **Use sequential `for…of` over the per-target collection instead.**
+> R3's `runExperienceEmbeddingBackfill` is the canonical sequential
+> shape; R1 and R2 were converted to match on the 2026-05-17 hotfix.
+>
+> The lessons inside this doc about `Promise.allSettled` (vs
+> `Promise.all`), per-target error isolation, real-time `logOutcome`
+> streaming, and `_internals` test exposure still apply to
+> _non-workflow_ code (regular async fan-out in services or scripts).
+> Only the **bounded-parallelism inside a `"use workflow"` body**
+> claim is invalid.
+>
+> Canonical incident doc:
+> [`docs/solutions/runtime-errors/useworkflow-bounded-parallelism-duplicate-step-created-20260517.md`](../runtime-errors/useworkflow-bounded-parallelism-duplicate-step-created-20260517.md).
+> Surviving sibling for non-workflow Promise.allSettled rules:
+> [`parallel-workflow-error-robustness-20260420.md`](parallel-workflow-error-robustness-20260420.md).
+
 ## When NOT to apply this pattern
 
 `apps/admin/src/workflows/experienceEmbeddingBackfill.ts` (the admin-native R3 replacement, post-PR-#966 + PR-#967) intentionally **stays sequential**. Its per-target work calls `embedExperienceLocale` (a plain service helper that itself hits OpenRouter / OpenAI) and admin's experience corpus is small enough that sequential `for…of` is fast enough for v1. Parallelizing would shift the bottleneck to the embedding provider's rate limits with no per-target wall-clock win. If the corpus grows or the helper picks up batchable cost, revisit by applying the canonical pattern (`pLimit + Promise.allSettled`) and treating the per-locale embed as the target.

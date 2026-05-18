@@ -755,17 +755,18 @@ describe("runSceneEmbeddingBackfill — bounded parallelism", () => {
     }
   })
 
-  it("caps concurrent in-flight (video, edition) groups at SCENE_EMBEDDING_CONCURRENCY (and uses parallelism, not sequential)", async () => {
-    // Asserts BOTH that the concurrency cap is honored (≤ 2
-    // in-flight) AND that real parallelism is used (max in-flight
-    // === N). A regression to sequential `for…of` would yield
-    // `observedMaxInFlight === 1` and fail the second assertion.
+  it("dispatches (video, edition) groups sequentially — never more than one indexer call in-flight", async () => {
+    // Post-2026-05-17 hotfix: the workflow body uses sequential
+    // `for…of` over groups (was `pLimit + Promise.allSettled`).
+    // Sequential dispatch is required because useworkflow's runtime
+    // emits duplicate `step_created` events for the final batch of
+    // pLimit-bounded parallel step dispatches, tripping the
+    // `Unconsumed event in event log` corruption guard. See
+    // docs/solutions/runtime-errors/useworkflow-bounded-parallelism-duplicate-step-created-20260517.md.
     //
-    // Stage 2: each row is a distinct (video, edition) group, so the
-    // group-level pLimit cap is observable as in-flight indexer
-    // calls — one indexer call active per group at any given moment
-    // (per-locale work inside a group is sequential and there's only
-    // one locale per group in this fixture).
+    // Test asserts `observedMaxInFlight === 1` — a regression to
+    // bounded parallelism (pLimit + Promise.allSettled) would yield
+    // values > 1 and fail this assertion.
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
       row("v-b", "e-b", "core-b", "en"),
@@ -778,56 +779,8 @@ describe("runSceneEmbeddingBackfill — bounded parallelism", () => {
     vi.mocked(indexEditionScenes).mockImplementation(async (_prisma, args) => {
       inFlight += 1
       observedMaxInFlight = Math.max(observedMaxInFlight, inFlight)
-      // Yield to the event loop so concurrent invocations can
-      // observably overlap. 25 ms is plenty for parallel start
-      // detection without leaning on wall-clock comparison
-      // assertions.
-      await new Promise((resolve) => setTimeout(resolve, 25))
-      inFlight -= 1
-      return {
-        editionId: args.editionId,
-        locale: args.locale,
-        scenesIndexed: 1,
-        embeddingsWritten: 1,
-        scenesSkipped: 0,
-        scenesPruned: 0,
-        model: "openai/text-embedding-3-small",
-        dimensions: 1536,
-      }
-    })
-
-    await runSceneEmbeddingBackfill({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-    })
-
-    // Mocked env to SCENE_EMBEDDING_CONCURRENCY=2.
-    expect(observedMaxInFlight).toBe(2)
-    expect(indexEditionScenes).toHaveBeenCalledTimes(3)
-  })
-
-  it("Stage 2: per-locale work inside a group runs sequentially — multi-locale groups do NOT multiply concurrent indexer calls beyond the cap", async () => {
-    // The cap variant above gives every group exactly ONE locale, so
-    // observedMaxInFlight only proves the per-GROUP cap. This variant
-    // gives each of the 2 groups THREE locales (6 total targets at
-    // concurrency=2). If processGroup ever fanned out per-locale work
-    // in parallel (Promise.all over group.targets.map), maxInFlight
-    // would jump to 6 (or 4+ if partially batched). Sequential per-
-    // locale inside the group keeps it pinned at SCENE_EMBEDDING_CONCURRENCY=2.
-    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      row("v-a", "e-a", "core-a", "en"),
-      row("v-a", "e-a", "core-a", "es"),
-      row("v-a", "e-a", "core-a", "fr"),
-      row("v-b", "e-b", "core-b", "en"),
-      row("v-b", "e-b", "core-b", "es"),
-      row("v-b", "e-b", "core-b", "fr"),
-    ])
-
-    let inFlight = 0
-    let observedMaxInFlight = 0
-
-    vi.mocked(indexEditionScenes).mockImplementation(async (_prisma, args) => {
-      inFlight += 1
-      observedMaxInFlight = Math.max(observedMaxInFlight, inFlight)
+      // Yield to the event loop so concurrent invocations (if any
+      // regressed) would observably overlap.
       await new Promise((resolve) => setTimeout(resolve, 15))
       inFlight -= 1
       return {
@@ -846,9 +799,8 @@ describe("runSceneEmbeddingBackfill — bounded parallelism", () => {
       mappingS3Key: "admin-migrations/core-id-mapping.json",
     })
 
-    // 2 groups × 3 locales = 6 total indexer calls; cap stays at 2.
-    expect(indexEditionScenes).toHaveBeenCalledTimes(6)
-    expect(observedMaxInFlight).toBe(2)
+    expect(observedMaxInFlight).toBe(1)
+    expect(indexEditionScenes).toHaveBeenCalledTimes(3)
   })
 })
 
@@ -860,7 +812,7 @@ describe("runSceneEmbeddingBackfill — start log", () => {
     vi.mocked(readSceneAnalysisArtifact).mockResolvedValue(STUB_ARTIFACT)
   })
 
-  it("emits a structured start log with workflow, event, mappingGeneratedAt, totalTargets, groupCount, concurrency, localeFilter", async () => {
+  it("emits a structured start log with workflow, event, mappingGeneratedAt, totalTargets, groupCount, localeFilter", async () => {
     // Operators rely on log-grep dashboards (per CLAUDE.md operational
     // runbook). Pin the start-log shape so a future refactor can't
     // silently drop a field. `groupCount` is the Stage 2 addition that
@@ -907,7 +859,6 @@ describe("runSceneEmbeddingBackfill — start log", () => {
       mappingGeneratedAt: "2026-04-19T00:00:00.000Z",
       totalTargets: 3,
       groupCount: 2,
-      concurrency: 2,
       localeFilter: ["en", "es"],
     })
   })

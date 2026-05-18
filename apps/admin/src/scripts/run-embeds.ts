@@ -185,22 +185,13 @@ async function main(): Promise<void> {
   // a bound prisma reference. Importing the workflows here also pulls
   // in the validated `env` and the workflow defaults — single source
   // of truth for both the CLI's start-event log and the workflow body.
-  const { runSceneEmbeddingBackfill, DEFAULT_SCENE_EMBEDDING_CONCURRENCY } =
+  const { runSceneEmbeddingBackfill } =
     await import("@/workflows/sceneEmbeddingBackfill")
-  const {
-    runTranscriptEmbeddingBackfill,
-    DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY,
-  } = await import("@/workflows/transcriptEmbeddingBackfill")
+  const { runTranscriptEmbeddingBackfill } =
+    await import("@/workflows/transcriptEmbeddingBackfill")
   const { runExperienceEmbeddingBackfill } =
     await import("@/workflows/experienceEmbeddingBackfill")
   const { prisma } = await import("@/db/client")
-  const { env } = await import("@/config/env")
-
-  const sceneConcurrency =
-    env.SCENE_EMBEDDING_CONCURRENCY ?? DEFAULT_SCENE_EMBEDDING_CONCURRENCY
-  const transcriptConcurrency =
-    env.TRANSCRIPT_EMBEDDING_CONCURRENCY ??
-    DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
 
   const redacted = databaseUrl.replace(/:\/\/[^@]+@/, "://***:***@")
   process.stdout.write(
@@ -214,8 +205,6 @@ async function main(): Promise<void> {
       languages: languages.length > 0 ? languages : null,
       experienceIds: experienceIds.length > 0 ? experienceIds : null,
       force,
-      sceneConcurrency,
-      transcriptConcurrency,
       managerArtifactsBucket:
         process.env.MANAGER_ARTIFACTS_S3_BUCKET ?? "(unset)",
     }) + "\n",
