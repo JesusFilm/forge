@@ -10,6 +10,7 @@ import {
 import client from "@/lib/client"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
+import { normalizeImageUrl } from "@/components/sections/block-types"
 
 const EXPERIENCE_FIELDS = `
   id
@@ -710,7 +711,9 @@ function normalizeRouteVideo(
     snippet: video.snippet ?? null,
     description: video.description ?? null,
     noIndex: video.noIndex ?? false,
-    imageUrl: video.images?.[0]?.url ?? null,
+    imageUrl: video.images?.[0]?.url
+      ? normalizeImageUrl(video.images[0].url)
+      : null,
     imageAlt: video.imageAlt ?? null,
     streamingUrl: selectedVariant.hls ?? null,
     relatedItems: normalizeRelatedRouteItems(video),

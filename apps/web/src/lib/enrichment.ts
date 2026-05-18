@@ -1,3 +1,5 @@
+import { normalizeImageUrl } from "@/components/sections/block-types"
+
 type MediaItem = {
   id: string
   titleOverride: string | null
@@ -38,11 +40,12 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
   const collectionSize = item.collectionSize ?? ""
   const externalImageUrl =
     typeof item.imageUrl === "string" ? item.imageUrl : null
-  const imageUrl =
+  const rawImageUrl =
     externalImageUrl ??
     item.imageOverride?.url ??
     item.video?.images?.[0]?.url ??
     null
+  const imageUrl = rawImageUrl ? normalizeImageUrl(rawImageUrl) : null
   const videoSlug = item.video?.slug ?? ""
   return {
     id: item.id,

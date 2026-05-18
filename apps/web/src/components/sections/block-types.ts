@@ -101,6 +101,40 @@ export function videoDescription(video: HydratedBlockVideo | null | undefined) {
   )
 }
 
+/**
+ * Default placeholder when a block has neither an explicit imageUrl nor a
+ * hydrated Video with images. Keeps the preview surface visually intact
+ * rather than rendering broken-image alt text. Matches the Unsplash CDN
+ * that production christmas uses.
+ */
+export const DEFAULT_BLOCK_IMAGE_URL =
+  "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=900&auto=format&fit=crop&q=60"
+
+/**
+ * Cloudflare Images URLs follow the pattern
+ * `https://imagedelivery.net/<account-hash>/<image-id>/<variant>`. Admin
+ * stores the URL WITHOUT a variant suffix, which 400s on the upstream
+ * CDN and surfaces as a broken-image fallback in the browser. Append a
+ * default `public` variant when missing so existing admin-sourced image
+ * URLs render without a separate migration.
+ */
+export function normalizeImageUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    if (parsed.hostname !== "imagedelivery.net") return url
+    // Path shape: /<hash>/<image-id>[/<variant>]
+    const segments = parsed.pathname.split("/").filter(Boolean)
+    if (segments.length === 2) {
+      parsed.pathname = `/${segments[0]}/${segments[1]}/public`
+      return parsed.toString()
+    }
+    return url
+  } catch {
+    return url
+  }
+}
+
 export function videoImageUrl(video: HydratedBlockVideo | null | undefined) {
-  return video?.images?.[0]?.url ?? null
+  const raw = video?.images?.[0]?.url
+  return raw ? normalizeImageUrl(raw) : DEFAULT_BLOCK_IMAGE_URL
 }
