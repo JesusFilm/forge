@@ -28,7 +28,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 const FIXTURE_ROW = {
   id: "v-1",
   coreId: "core-1",
-  label: "feature_film",
+  label: "featureFilm",
   primaryLanguageBcp47: "en",
   muxAssetId: "mux-asset-en",
   subtitleUrl: "https://example.com/en.vtt",

@@ -169,7 +169,7 @@ export function __clearInFlightMapForTests(): void {
 //   - row complete                 → dispatch
 // ---------------------------------------------------------------------------
 
-type AdminLookupClient = (
+export type AdminLookupClient = (
   coreIds: readonly string[],
 ) => Promise<AdminVideoLookupEnvelope>
 
@@ -188,6 +188,11 @@ export type AdminTriggerDispatchInput = {
   languageBcp47: string
 }
 
+// The resolved value isn't inspected by the route handler — only
+// settlement/rejection. Keeping `Promise<unknown>` (rather than
+// `Promise<void>`) lets each dispatcher return its pipeline's
+// typed result object without an extra `async (input) => { await ...; }`
+// wrapper at every call site.
 export type AdminTriggerDispatcher = (
   input: AdminTriggerDispatchInput,
 ) => Promise<unknown>
@@ -248,7 +253,11 @@ export async function processAdminTriggerRequest(
         kind: args.kind,
         reason: envelope.reason,
         messages: envelope.messages,
-        coreIds,
+        // Log only the cardinality, not the full coreIds list —
+        // log-line size is bounded regardless of batch size, and
+        // operational triage rarely needs the exact IDs (request
+        // body is the source of truth).
+        coreIdCount: coreIds.length,
       }),
     )
     const status = envelope.reason === "config_missing" ? 503 : 502
@@ -308,19 +317,26 @@ export async function processAdminTriggerRequest(
     // variant + best-subtitle picker server-side. Manager classifies
     // a row with null mux or subtitle as validation_failed —
     // operator-actionable signal that the upstream catalogue is
-    // missing required dispatch data for this video.
+    // missing required dispatch data for this video. Name the
+    // specific gap(s) so operators don't chase the wrong upstream
+    // signal — primary-language absence cascades into null
+    // mux/subtitle via the picker, so reporting only the symptom
+    // would hide the real data gap.
     if (
       video.muxAssetId == null ||
       video.subtitleUrl == null ||
       video.primaryLanguageBcp47 == null
     ) {
+      const missing: string[] = []
+      if (video.primaryLanguageBcp47 == null) missing.push("primary language")
+      if (video.muxAssetId == null) missing.push("mux variant")
+      if (video.subtitleUrl == null) missing.push("subtitle")
       results.push({
         assetId: item.assetId,
         coreId: item.coreId,
         managerJobId: null,
         status: "validation_failed",
-        message:
-          "admin video missing required dispatch fields (primary-language subtitle or mux variant)",
+        message: `admin video missing required dispatch fields (${missing.join(", ")})`,
       })
       continue
     }

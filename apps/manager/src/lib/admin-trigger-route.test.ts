@@ -50,7 +50,7 @@ function videoFixture(overrides: {
   return {
     id: overrides.id ?? `v-${overrides.coreId}`,
     coreId: overrides.coreId,
-    label: "label" in overrides ? (overrides.label ?? null) : "feature_film",
+    label: "label" in overrides ? (overrides.label ?? null) : "featureFilm",
     primaryLanguageBcp47:
       "primaryLanguageBcp47" in overrides
         ? (overrides.primaryLanguageBcp47 ?? null)

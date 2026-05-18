@@ -1679,9 +1679,15 @@ request carries `Authorization: Bearer <key>` matching one of the
 keys in `WORKFLOW_API_KEYS` (the same env var the workflow callback
 endpoint validates with HMAC). The `WORKFLOW_TRIGGER` role
 satisfies a narrow allowlist defined in `src/auth/permissions.ts`
-(`WORKFLOW_TRIGGER_PERMISSIONS`) — currently
-`write:scene-embeddings` + `write:transcript-embeddings` and
-nothing else. Adding mutations to that allowlist widens the bearer
+(`WORKFLOW_TRIGGER_PERMISSIONS`) — currently:
+
+- `write:scene-embeddings` — `triggerSceneEmbeddingBackfill`
+- `write:transcript-embeddings` — `triggerTranscriptEmbeddingBackfill`
+- `write:experience-embeddings` — `triggerExperienceEmbeddingBackfill`
+- `write:manager-enrichment-trigger` — `triggerManagerEnrichment` (feat-119 PR2)
+- `read:video-metadata` — `videosByCoreIds` query (feat-125; manager's admin-trigger CMS-replacement lookup)
+
+Adding mutations or queries to that allowlist widens the bearer
 caller's blast radius; do so deliberately. See
 `src/auth/workflow-bearer.ts`.
 

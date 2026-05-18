@@ -374,6 +374,10 @@ VideoForEnrichmentRef.implement({
   description:
     "Dispatch-fields projection for manager's admin-trigger enrichment lookup. Each field is nullable; null mux/subtitle signals manager to return validation_failed for that item.",
   fields: (t) => ({
+    // `nullable: false` is required on objectRef-based types —
+    // Pothos cannot infer non-nullability from the TS shape the
+    // way prismaObject can from the Prisma schema. Dropping these
+    // would silently flip the SDL to `String` / `ID` (nullable).
     id: t.exposeID("id", {
       nullable: false,
       description: "Admin's Video.id (cuid).",
@@ -385,7 +389,7 @@ VideoForEnrichmentRef.implement({
     label: t.exposeString("label", {
       nullable: true,
       description:
-        "VideoLabel enum value as a raw string ('feature_film', etc.).",
+        "VideoLabel as the camelCase wire-shape string ('featureFilm', 'shortFilm', 'behindTheScenes', etc.) — normalized from Prisma's TS enum identifier so manager's downstream LLM prompt stays byte-identical to the pre-feat-125 Strapi shape.",
     }),
     primaryLanguageBcp47: t.exposeString("primaryLanguageBcp47", {
       nullable: true,

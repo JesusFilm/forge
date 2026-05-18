@@ -26,7 +26,16 @@
 
 import { env } from "@/config/env"
 
-const ADMIN_FETCH_TIMEOUT_MS = 15_000
+// Strictly less than admin's caller budget (admin's
+// `manager-trigger.service.ts::MANAGER_FETCH_TIMEOUT_MS = 15_000`,
+// the outbound timeout on admin → manager). Per the
+// `outbound-timeout-shorter-than-caller-budget-20260506` learning,
+// inner timeouts must be shorter than the upstream caller's
+// ceiling — otherwise the upstream classifier wins the race and
+// triggers a retry storm while the inner call keeps running. 10s
+// leaves a 5s headroom for manager's own deserialization + response
+// write within admin's 15s budget.
+const ADMIN_FETCH_TIMEOUT_MS = 10_000
 
 /**
  * Dispatch-fields projection mirrored from admin's
@@ -34,6 +43,12 @@ const ADMIN_FETCH_TIMEOUT_MS = 15_000
  * SDL: `id` and `coreId` are non-null; the rest are nullable
  * because admin returns null when the relevant primary-language
  * variant/subtitle does not exist.
+ *
+ * MUST stay structurally in sync with admin's
+ * `VideoForEnrichment` (apps/admin/src/services/video.service.ts +
+ * the SDL emitted by apps/admin/schema.graphql). No compile-time
+ * check links the two; drift only surfaces at runtime via the
+ * `graphql_error` envelope branch.
  */
 export type VideoForEnrichment = {
   id: string
@@ -98,13 +113,10 @@ const VIDEOS_BY_CORE_IDS_QUERY = /* GraphQL */ `
 export async function lookupVideosByCoreIdFromAdmin(
   coreIds: readonly string[],
 ): Promise<AdminVideoLookupEnvelope> {
-  // Short-circuit empty input — manager's caller already validated
-  // the batch is non-empty, but defensive parity with the service
-  // contract keeps the no-network invariant cheap.
-  if (coreIds.length === 0) {
-    return { ok: true, data: new Map() }
-  }
-
+  // Config check FIRST so a misconfigured environment surfaces as
+  // `config_missing` even on degenerate empty input — masking the
+  // misconfig behind a happy-path empty Map would hide a real
+  // operational bug from operators running probes.
   if (!env.ADMIN_GRAPHQL_URL || !env.ADMIN_EMBED_TRIGGER_API_KEY) {
     return {
       ok: false,
@@ -114,6 +126,13 @@ export async function lookupVideosByCoreIdFromAdmin(
       ],
       retryable: false,
     }
+  }
+
+  // Empty input is cheap to short-circuit after the config check —
+  // skip the network round-trip but only once the operator has
+  // confirmed env is wired.
+  if (coreIds.length === 0) {
+    return { ok: true, data: new Map() }
   }
 
   let response: Response

@@ -20,6 +20,13 @@ import { ForbiddenError } from "./errors"
  * per-item when muxAssetId or subtitleUrl is null. Replaces the
  * Strapi `videos(filters: { coreId: { in } })` query manager used to
  * issue against cms.
+ *
+ * Wire-shape note: apps/manager/src/lib/admin-video-lookup.ts
+ * declares a structurally-identical local `VideoForEnrichment` type
+ * (manager consumes the GraphQL projection but isn't yet on
+ * @forge/admin-graphql). The two must stay field-for-field in sync;
+ * a drift surfaces at runtime only via the `graphql_error` envelope
+ * branch on the manager side.
  */
 export type VideoForEnrichment = {
   id: string
@@ -126,7 +133,7 @@ export class VideoService {
     }
 
     const rows = await this.prisma.video.findMany({
-      where: { coreId: { in: coreIds as string[] }, deletedAt: null },
+      where: { coreId: { in: [...coreIds] }, deletedAt: null },
       include: {
         primaryLanguage: { select: { bcp47: true } },
         dubs: {
@@ -159,14 +166,14 @@ export class VideoService {
 
       let subtitleUrl: string | null = null
       if (primaryBcp47 != null) {
-        const candidates = video.subtitles
-          .filter(
-            (s) =>
-              s.language?.bcp47 === primaryBcp47 &&
-              typeof s.vttSrc === "string" &&
-              s.vttSrc.length > 0,
-          )
-          .slice()
+        // `.filter()` already returns a fresh array, so the
+        // subsequent `.sort()` does not mutate Prisma's result row.
+        const candidates = video.subtitles.filter(
+          (s) =>
+            s.language?.bcp47 === primaryBcp47 &&
+            typeof s.vttSrc === "string" &&
+            s.vttSrc.length > 0,
+        )
         candidates.sort((a, b) => {
           const aScore = (a.primary ? 0 : 1) + (a.aiGenerated ? 1 : 0)
           const bScore = (b.primary ? 0 : 1) + (b.aiGenerated ? 1 : 0)
@@ -178,11 +185,31 @@ export class VideoService {
       return {
         id: video.id,
         coreId: video.coreId,
-        label: video.label ?? null,
+        // Normalize to camelCase wire shape (`featureFilm`,
+        // `shortFilm`, …) so manager's downstream scene-analysis
+        // prompt input matches the pre-feat-125 Strapi-shape
+        // exactly. Prisma exposes the enum's TS identifier
+        // (`FEATURE_FILM`) but the DB-stored value (per `@map` in
+        // schema.prisma) is camelCase; manager's existing pipeline
+        // tests pass `videoLabel: "shortFilm"`-style fixtures, so
+        // any drift here changes the LLM prompt content.
+        label: snakeUpperToCamel(video.label),
         primaryLanguageBcp47: primaryBcp47,
         muxAssetId,
         subtitleUrl,
       }
     })
   }
+}
+
+/**
+ * Convert Prisma's TS enum identifier (e.g. `FEATURE_FILM`) into
+ * the camelCase wire shape Strapi previously emitted (e.g.
+ * `featureFilm`). Returns null for null input.
+ */
+function snakeUpperToCamel(value: string | null): string | null {
+  if (value == null) return null
+  return value
+    .toLowerCase()
+    .replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
 }
