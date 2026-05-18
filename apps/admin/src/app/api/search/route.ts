@@ -102,11 +102,12 @@ export async function GET(request: Request): Promise<Response> {
   // in-process fallback — `rl=local` on a high-traffic prod replica
   // signals Redis degradation.
   //
-  // The auth check accepts ANY of three known-caller bearer CSVs
-  // (search / consumer / workflow) — see `isAnyKnownBearer` in
-  // `auth/search-bearer.ts`. apps/web SSR + apps/mobile (which
+  // The auth check accepts ANY of three known-caller bearer sources
+  // (DB-backed partner / consumer / workflow) — see `isAnyKnownBearer`
+  // in `auth/search-bearer.ts`. apps/web SSR + apps/mobile (which
   // already carry the consumer-bearer for graphql) need no code
-  // change; external partners get their own SEARCH_API_KEYS slot.
+  // change; external partners hold a DB-backed key issued via
+  // `pnpm --filter @forge/admin partner-keys create`.
   const authHeader = request.headers.get("authorization")
   const authResult = await isAnyKnownBearer(authHeader)
   const authTag: "bearer" | "invalid_bearer" | "anonymous" = authResult.valid

@@ -128,11 +128,12 @@ builder.queryFields((t) => ({
       // Phase-1 dual-accept auth gate. After the SEARCH_AUTH_REQUIRED
       // flip, anonymous + invalid-bearer traffic throws and surfaces
       // as `errors[0].message` to the GraphQL client. The check
-      // accepts ANY of three known-caller bearer CSVs (search /
-      // consumer / workflow) — see `isAnyKnownBearer` — so apps/web
-      // SSR + apps/mobile (carrying consumer-bearer for graphql
-      // rate-limit identity) keep working without code changes.
-      // External partners get their own SEARCH_API_KEYS slot.
+      // accepts ANY of three known-caller bearer sources (DB-backed
+      // partner / consumer / workflow) — see `isAnyKnownBearer` — so
+      // apps/web SSR + apps/mobile (carrying consumer-bearer for
+      // graphql rate-limit identity) keep working without code
+      // changes. External partners hold a DB-backed key issued via
+      // `pnpm --filter @forge/admin partner-keys create`.
       //
       // The structured log tags every request with one of three
       // states (bearer / invalid_bearer / anonymous) so operators

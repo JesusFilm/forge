@@ -291,7 +291,7 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
     it("valid bearer resolves; log shows auth=bearer path=graphql", async () => {
       vi.mocked(isAnyKnownBearer).mockResolvedValue({
         valid: true,
-        source: "search",
+        source: "consumer",
       })
       const result = await invoke(
         { q: "jesus", locale: "en" },
@@ -323,7 +323,7 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
     it("forwards the Authorization header value verbatim to isValidSearchBearer", async () => {
       vi.mocked(isAnyKnownBearer).mockResolvedValue({
         valid: true,
-        source: "search",
+        source: "consumer",
       })
       await invoke(
         { q: "jesus", locale: "en" },
@@ -359,7 +359,7 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
     })
 
     it("logs source=<branch> for each env-CSV match without leaking keyId", async () => {
-      for (const source of ["search", "consumer", "workflow"] as const) {
+      for (const source of ["consumer", "workflow"] as const) {
         vi.mocked(isAnyKnownBearer).mockResolvedValueOnce({
           valid: true,
           source,
@@ -370,10 +370,9 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
         )
       }
       const lines = parseSearchLogLines()
-      expect(lines).toHaveLength(3)
-      expect(lines[0]).toMatchObject({ source: "search" })
-      expect(lines[1]).toMatchObject({ source: "consumer" })
-      expect(lines[2]).toMatchObject({ source: "workflow" })
+      expect(lines).toHaveLength(2)
+      expect(lines[0]).toMatchObject({ source: "consumer" })
+      expect(lines[1]).toMatchObject({ source: "workflow" })
       for (const line of lines) {
         expect(line).not.toHaveProperty("keyId")
       }
@@ -382,7 +381,7 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
     it("emits exactly one search.request log line per resolver invocation", async () => {
       vi.mocked(isAnyKnownBearer).mockResolvedValue({
         valid: true,
-        source: "search",
+        source: "consumer",
       })
       await invoke(
         { q: "jesus", locale: "en" },
@@ -423,7 +422,7 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
     it("valid bearer resolves normally", async () => {
       vi.mocked(isAnyKnownBearer).mockResolvedValue({
         valid: true,
-        source: "search",
+        source: "consumer",
       })
       const result = await invoke(
         { q: "jesus", locale: "en" },
@@ -499,7 +498,7 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
     it("never logs the bearer header value", async () => {
       vi.mocked(isAnyKnownBearer).mockResolvedValue({
         valid: true,
-        source: "search",
+        source: "consumer",
       })
       await invoke(
         { q: "jesus", locale: "en" },

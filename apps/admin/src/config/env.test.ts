@@ -41,10 +41,12 @@ describe("env", () => {
   })
 
   // Bearer-CSV disjointness invariant. The bearer CSVs
-  // (WORKFLOW_API_KEYS, WEB_ADMIN_API_KEYS, BACKUP_DOWNLOAD_API_KEYS,
-  // SEARCH_API_KEYS) MUST NOT share any value; the auth chains
-  // mint distinct principals / passports, so a duplicated key silently
-  // widens permissions or passes a passport it shouldn't.
+  // (WORKFLOW_API_KEYS, WEB_ADMIN_API_KEYS, BACKUP_DOWNLOAD_API_KEYS)
+  // MUST NOT share any value; the auth chains mint distinct
+  // principals / passports, so a duplicated key silently widens
+  // permissions or passes a passport it shouldn't. The legacy
+  // `SEARCH_API_KEYS` CSV was retired in Plan 003 (partner-key store
+  // PR3); external partner credentials now live in `PartnerApiKey`.
   describe("assertBearerCsvsDisjoint", () => {
     it("passes when all CSVs are undefined", () => {
       expect(() => assertBearerCsvsDisjoint({})).not.toThrow()
@@ -58,7 +60,7 @@ describe("env", () => {
         assertBearerCsvsDisjoint({ WORKFLOW_API_KEYS: "wf-a" }),
       ).not.toThrow()
       expect(() =>
-        assertBearerCsvsDisjoint({ SEARCH_API_KEYS: "search-a" }),
+        assertBearerCsvsDisjoint({ BACKUP_DOWNLOAD_API_KEYS: "backup-a" }),
       ).not.toThrow()
     })
 
@@ -68,7 +70,6 @@ describe("env", () => {
           WORKFLOW_API_KEYS: "wf-a,wf-b",
           WEB_ADMIN_API_KEYS: "web-a,web-b",
           BACKUP_DOWNLOAD_API_KEYS: "backup-a,backup-b",
-          SEARCH_API_KEYS: "search-a,search-b",
         }),
       ).not.toThrow()
     })
@@ -82,7 +83,7 @@ describe("env", () => {
       ).toThrow(/WORKFLOW_API_KEYS and WEB_ADMIN_API_KEYS/)
     })
 
-    it("throws when backup download keys overlap another bearer CSV", () => {
+    it("throws when WORKFLOW and BACKUP_DOWNLOAD share a value", () => {
       expect(() =>
         assertBearerCsvsDisjoint({
           WORKFLOW_API_KEYS: "wf-a",
@@ -92,11 +93,11 @@ describe("env", () => {
     })
 
     it("throws when WEB_ADMIN_API_KEYS overlaps BACKUP_DOWNLOAD_API_KEYS", () => {
-      // Closes the matrix: the 4-CSV invariant has 6 pairs, this is
-      // the one not covered above. A regression that mis-indexed the
-      // inner-loop start (`j = i + 1` → `j = i + 2`) or swapped the
-      // sets tuple order could break this single pair without any
-      // other test failing.
+      // Closes the matrix: the 3-CSV invariant has 3 pairs and this
+      // covers the WEB_ADMIN ↔ BACKUP_DOWNLOAD pair. A regression
+      // that mis-indexed the inner-loop start (`j = i + 1` →
+      // `j = i + 2`) or swapped the sets tuple order could break
+      // this single pair without any other test failing.
       expect(() =>
         assertBearerCsvsDisjoint({
           WEB_ADMIN_API_KEYS: "shared-key",
@@ -143,7 +144,7 @@ describe("env", () => {
   // We source-grep env.ts (parallel to the permissions.test.ts bearer-
   // isolation grep) to lock the call site in place.
   describe("env module-load wiring", () => {
-    it("env.ts invokes assertBearerCsvsDisjoint at module load with all 4 CSV env vars", async () => {
+    it("env.ts invokes assertBearerCsvsDisjoint at module load with the 3 CSV env vars", async () => {
       const { readFile } = await import("node:fs/promises")
       const { fileURLToPath } = await import("node:url")
       const source = await readFile(
@@ -152,40 +153,16 @@ describe("env", () => {
       )
       // The call site is asserted to exist at the bottom of env.ts.
       expect(source).toMatch(/assertBearerCsvsDisjoint\s*\(\s*\{/)
-      // And it MUST reference all four CSV env vars from `env`.
+      // And it MUST reference the three remaining CSV env vars from
+      // `env`. The legacy SEARCH_API_KEYS was retired in Plan 003.
       expect(source).toMatch(/WORKFLOW_API_KEYS:\s*env\.WORKFLOW_API_KEYS/)
       expect(source).toMatch(/WEB_ADMIN_API_KEYS:\s*env\.WEB_ADMIN_API_KEYS/)
       expect(source).toMatch(
         /BACKUP_DOWNLOAD_API_KEYS:\s*env\.BACKUP_DOWNLOAD_API_KEYS/,
       )
-      expect(source).toMatch(/SEARCH_API_KEYS:\s*env\.SEARCH_API_KEYS/)
-    })
-
-    it("throws when SEARCH_API_KEYS overlaps WORKFLOW_API_KEYS", () => {
-      expect(() =>
-        assertBearerCsvsDisjoint({
-          WORKFLOW_API_KEYS: "shared-key",
-          SEARCH_API_KEYS: "shared-key",
-        }),
-      ).toThrow(/WORKFLOW_API_KEYS and SEARCH_API_KEYS/)
-    })
-
-    it("throws when SEARCH_API_KEYS overlaps WEB_ADMIN_API_KEYS", () => {
-      expect(() =>
-        assertBearerCsvsDisjoint({
-          WEB_ADMIN_API_KEYS: "shared-key",
-          SEARCH_API_KEYS: "shared-key",
-        }),
-      ).toThrow(/WEB_ADMIN_API_KEYS and SEARCH_API_KEYS/)
-    })
-
-    it("throws when SEARCH_API_KEYS overlaps BACKUP_DOWNLOAD_API_KEYS", () => {
-      expect(() =>
-        assertBearerCsvsDisjoint({
-          BACKUP_DOWNLOAD_API_KEYS: "shared-key",
-          SEARCH_API_KEYS: "shared-key",
-        }),
-      ).toThrow(/BACKUP_DOWNLOAD_API_KEYS and SEARCH_API_KEYS/)
+      // Regression guard: SEARCH_API_KEYS must NOT appear in the boot
+      // invocation (or anywhere else in env.ts).
+      expect(source).not.toMatch(/SEARCH_API_KEYS/)
     })
 
     it("error message does NOT contain the offending key value", () => {

@@ -1951,13 +1951,16 @@ Consider re-baselining.` The warn never blocks the run.
 - `docs/solutions/best-practices/external-client-retry-parity-in-runner-fanout-20260512.md`
   — the load-bearing learning extracted from this PR's review.
 
-## Search API authentication (Plan 002)
+## Search API authentication (Plan 002 + Plan 003)
 
 Admin's public search surface — `GET /api/search` REST + `Query.search`
-GraphQL twin — is gated by a bearer-key passport. Phase 1 ships in
-**dual-accept** mode (anonymous + bearer-auth both succeed). A
-single env-var flip later moves it to **required-auth** (anonymous
-returns 401).
+GraphQL twin — is gated by a bearer-key passport. Phase 1 (Plan 002)
+shipped in **dual-accept** mode (anonymous + bearer-auth both
+succeed); a single env-var flip moves it to **required-auth**
+(anonymous returns 401). Plan 003 (partner-key store) retired the
+legacy `SEARCH_API_KEYS` env-CSV branch — external-partner
+credentials now live in admin's `PartnerApiKey` Postgres table. See
+§"Partner API key store" for the DB-backed surface.
 
 ### Design summary
 
@@ -1965,61 +1968,72 @@ returns 401).
   at 30/min stays for everyone — authed and anonymous alike. Rate-
   limit fires BEFORE the auth check on the REST surface so junk
   Authorization headers cannot bypass the bucket.
-- **Search passport accepts any of three known-caller bearer CSVs:**
-  `SEARCH_API_KEYS` (this surface), `WEB_ADMIN_API_KEYS` (consumer-
-  bearer; apps/web SSR + apps/mobile already carry it), or
-  `WORKFLOW_API_KEYS` (workflow-trigger; manager → admin proxies +
-  the eval CLI's bearer mint). `isAnyKnownBearer(authHeader)` in
-  `src/auth/search-bearer.ts` OR-composes the three validators.
+- **Search passport accepts any of three known-caller bearer
+  sources:**
+  1. **PARTNER** — DB-backed `PartnerApiKey` row (Plan 003 — see
+     §"Partner API key store" for the token shape, issuance CLI,
+     and dashboard view). Runs FIRST so the structured log emits
+     `source=partner keyId=<id>` for partner traffic.
+  2. **CONSUMER** — `WEB_ADMIN_API_KEYS` env CSV (apps/web SSR +
+     apps/mobile rate-limit identity).
+  3. **WORKFLOW** — `WORKFLOW_API_KEYS` env CSV (workflow-trigger;
+     manager → admin proxies + the eval CLI's bearer mint).
+
+  `isAnyKnownBearer(authHeader)` in `src/auth/search-bearer.ts`
+  OR-composes them and returns `{ valid, source, keyId? }`.
+
 - **The disjointness invariant** (`assertBearerCsvsDisjoint` at
-  boot in `src/config/env.ts`) holds for all 4 CSVs (workflow,
-  web-admin, backup-download, search). Each key VALUE lives in
-  exactly one CSV; an operator who pastes a value into two CSVs
-  hits a fail-fast boot error with the offending value redacted.
+  boot in `src/config/env.ts`) holds for the three remaining env
+  CSVs (workflow, web-admin, backup-download). Each env-CSV key
+  VALUE lives in exactly one CSV; an operator who pastes a value
+  into two CSVs hits a fail-fast boot error with the offending
+  value redacted. `PartnerApiKey.keyHash` is uniqueness-enforced
+  in Postgres separately; a plaintext that ALSO appears in an env
+  CSV tags as `source=partner` (the partner branch runs first).
 - **`BACKUP_DOWNLOAD_API_KEYS` is excluded** from
   `isAnyKnownBearer` — it's a narrow file-download surface (the
   presigned video-DB backup endpoint), not an active-API bearer.
 - **Structured log per request** tags every call with one of
-  three states: `auth=bearer` (presented + matched any known
-  CSV), `auth=invalid_bearer` (presented + no match — the
-  population that 401s after the flip), `auth=anonymous` (no
-  header). Grep these in admin logs before the
-  `SEARCH_AUTH_REQUIRED` flip to confirm every known internal
-  caller is on a known bearer.
+  three states: `auth=bearer source=<branch> [keyId=<id>]` (matched,
+  with `keyId` only on partner branches), `auth=invalid_bearer`
+  (presented + no match — the population that 401s after the
+  flip), or `auth=anonymous` (no header). Grep these in admin
+  logs before the `SEARCH_AUTH_REQUIRED` flip to confirm every
+  known internal caller is on a known bearer.
 
 ### Env vars (`forge-admin` Doppler)
 
-- `SEARCH_API_KEYS` — CSV of opaque random base64url tokens for
-  EXTERNAL partners. Internal apps don't need entries here; they
-  use the bearers they already carry. `.optional()` — admin boots
-  cleanly when unset.
 - `SEARCH_AUTH_REQUIRED` — `"true" | "false"`, defaults to
   `"false"`. When `"true"`, requests without a known bearer return
   401 (REST) or throw `Authentication required` (GraphQL).
   Enum-of-strings (not boolean) so a stray non-empty value can't
   silently flip the gate.
+- `SEARCH_API_KEY` — caller-side single bearer for the local eval
+  CLI (`scripts/eval-search.ts`). Set to a partner key (issued via
+  `pnpm partner-keys create`) or a `WORKFLOW_API_KEYS` /
+  `WEB_ADMIN_API_KEYS` entry. `.optional()`.
+
+The legacy `SEARCH_API_KEYS` receiver-side CSV was retired in
+Plan 003; today's partner credentials are issued via the
+`partner-keys create` CLI and live in `PartnerApiKey`.
 
 ### Issuance + rotation
 
-Generate a key:
+For external partners, see §"Partner API key store" — the
+`pnpm --filter @forge/admin partner-keys create` CLI issues a
+DB-backed token, prints it once to stderr for operator handoff,
+and persists the sha256 hash.
 
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
-```
+For internal callers (apps/web, manager, eval CLI), keys live in
+the respective env CSVs (`WEB_ADMIN_API_KEYS`, `WORKFLOW_API_KEYS`)
+and rotate via Doppler edit + Railway redeploy. **Receiver-first
+deploy ordering** for any internal-bearer rotation:
 
-Add to the CSV in Doppler. For an external partner: share via
-Slack-DM, partner adds to their own env as `SEARCH_API_KEY`,
-deploys.
-
-**Receiver-first deploy ordering** for any key rotation:
-
-1. Add the new key to `SEARCH_API_KEYS` on admin Doppler. Deploy
-   admin. The new key is now accepted alongside the old.
+1. Add the new key to the env CSV on admin Doppler. Deploy admin.
+   The new key is now accepted alongside the old.
 2. Update the caller's env to the new value. Deploy the caller.
-   Logs flip from `auth=bearer` (old) to `auth=bearer` (new) — same
-   tag, but a fresh deploy on the caller side.
 3. After observation confirms no callers use the old key, remove
-   the old key from `SEARCH_API_KEYS`. Deploy admin.
+   the old key from the env CSV. Deploy admin.
 
 Reversing the order produces a dead minute where the caller 401s.
 Per `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`
@@ -2038,27 +2052,23 @@ Before flipping `SEARCH_AUTH_REQUIRED=true` on prod:
    the next hour. Spike on anonymous = expected. Spike on
    known-internal IPs = roll back the flag.
 
-### Audit / keyId upgrade path (deferred)
-
-v1 keys are opaque random tokens; the validator emits no keyId
-in the structured log (only `bearer | invalid_bearer | anonymous`).
-When per-key audit becomes load-bearing, key format upgrades to
-`sk_search_<labeledKeyId>_<random>` and the validator parses the
-prefix to surface keyId per request. Plan inline comment in
-`search-bearer.ts` marks the upgrade point.
-
 ### Files
 
-- `src/auth/search-bearer.ts` — `isValidSearchBearer` (narrow,
-  reads only `SEARCH_API_KEYS`) + `isAnyKnownBearer` (OR-composes
-  the three known-caller CSVs).
+- `src/auth/search-bearer.ts` — `isAnyKnownBearer` composer
+  (async, returns `BearerCheckResult`; OR-composes the three
+  known-caller branches in PARTNER → CONSUMER → WORKFLOW order).
+- `src/auth/partner-token.ts` — pure helpers for the partner token
+  format (`jfp_search_<keyId>_<random>`).
+- `src/services/partner-api-key.service.ts` — DB-backed partner
+  branch (`verifyPartnerToken` with Promise.race 1500ms timeout +
+  fire-and-forget `lastUsedAt` update).
 - `src/app/api/search/route.ts` — REST handler; rate-limit fires
   first, then the auth check.
 - `src/graphql/queries/hybrid-search.ts` — GraphQL resolver; same
   auth check inside the resolver body, `authScopes: { public: true }`
   stays.
-- `src/config/env.ts` — `SEARCH_API_KEYS` + `SEARCH_AUTH_REQUIRED`
-  - `assertBearerCsvsDisjoint` extended to 4 CSVs.
+- `src/config/env.ts` — `SEARCH_AUTH_REQUIRED` enum +
+  `assertBearerCsvsDisjoint` over the 3 remaining env CSVs.
 
 ### Cross-references
 
