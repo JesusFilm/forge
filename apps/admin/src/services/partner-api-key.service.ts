@@ -3,8 +3,7 @@
 // Backed by the `PartnerApiKey` Prisma model. Consumed by:
 //   - `src/auth/search-bearer.ts` (verifyPartnerToken — first branch of
 //     the bearer-as-passport composer)
-//   - `src/scripts/partner-keys.ts` (CLI: create / list / revoke / rotate /
-//     import-from-env)
+//   - `src/scripts/partner-keys.ts` (CLI: create / list / revoke / rotate)
 //   - `src/app/dashboard/partner-keys/page.tsx` (read-only dashboard view)
 //
 // Design notes:
@@ -61,14 +60,6 @@ export type CreatePartnerKeyInput = {
   createdById?: string | null
 }
 
-export type ImportFromEnvInput = {
-  rawToken: string
-  name: string
-  ownerEmail: string
-  note?: string | null
-  createdById?: string | null
-}
-
 /** Issuance result. `rawToken` is shown to the operator EXACTLY ONCE. */
 export type CreatePartnerKeyResult = {
   keyId: string
@@ -88,18 +79,6 @@ export class PartnerKeyNotFoundError extends Error {
     super(`PartnerApiKey not found: keyId=${keyId}`)
     this.name = "PartnerKeyNotFoundError"
     this.keyId = keyId
-  }
-}
-
-/** Thrown when `import-from-env` is asked to seed a token whose hash already exists. */
-export class PartnerKeyAlreadyExistsError extends Error {
-  readonly keyHashPrefix: string
-  constructor(keyHashPrefix: string) {
-    super(
-      `PartnerApiKey already exists for this token (keyHash starts with ${keyHashPrefix}…)`,
-    )
-    this.name = "PartnerKeyAlreadyExistsError"
-    this.keyHashPrefix = keyHashPrefix
   }
 }
 
@@ -147,74 +126,42 @@ export async function createPartnerKey(
 }
 
 /**
- * Seed a partner key row from an existing plaintext token (used by the
- * one-time `partner-keys import-from-env` CLI subcommand to migrate
- * today's `SEARCH_API_KEYS` entries into the DB without changing the
- * token value the partner already holds).
- *
- * The keyId is fabricated — the legacy env-CSV token has no embedded
- * keyId, so we generate a fresh one for log/dashboard surfacing. The
- * `rawToken` parameter is the existing opaque value and stays
- * authoritative; this function never returns the plaintext (operator
- * already has it).
- */
-export async function importPartnerKeyFromPlaintext(
-  input: ImportFromEnvInput,
-  prisma: PrismaLike = defaultPrisma,
-): Promise<PartnerApiKeySummary> {
-  const keyHash = hashRawToken(input.rawToken)
-  const existing = await prisma.partnerApiKey.findUnique({
-    where: { keyHash },
-    select: { keyHash: true },
-  })
-  if (existing) {
-    throw new PartnerKeyAlreadyExistsError(keyHash.slice(0, 8))
-  }
-  // Generate a synthetic keyId since legacy tokens don't carry one.
-  // Use the token-format generator just for the keyId segment.
-  const { keyId } = generatePartnerToken()
-  return prisma.partnerApiKey.create({
-    data: {
-      keyId,
-      keyHash,
-      name: input.name,
-      ownerEmail: input.ownerEmail,
-      note: input.note ?? "Imported from SEARCH_API_KEYS env CSV.",
-      createdById: input.createdById ?? null,
-    },
-    select: SUMMARY_SELECT,
-  })
-}
-
-/**
  * Idempotently mark a key as revoked. Already-revoked keys return the
  * existing row unchanged (no error). Throws `PartnerKeyNotFoundError`
  * for unknown keyIds so the CLI / dashboard can give the operator a
  * clean error message.
+ *
+ * Uses a conditional `updateMany` (WHERE `revoked_at IS NULL`) so two
+ * concurrent operators can't race past a `findUnique → update` and
+ * clobber each other's `revoked_by_id`. The first writer wins; the
+ * second writer sees `count: 0` and falls through to the already-revoked
+ * path, returning the existing row unchanged.
  */
 export async function revokePartnerKey(
   args: { keyId: string; revokedById?: string | null },
   prisma: PrismaLike = defaultPrisma,
 ): Promise<PartnerApiKeySummary> {
-  const existing = await prisma.partnerApiKey.findUnique({
-    where: { keyId: args.keyId },
-    select: { id: true, revokedAt: true },
-  })
-  if (!existing) {
-    throw new PartnerKeyNotFoundError(args.keyId)
-  }
-  if (existing.revokedAt) {
-    return prisma.partnerApiKey.findUniqueOrThrow({
-      where: { keyId: args.keyId },
-      select: SUMMARY_SELECT,
-    })
-  }
-  return prisma.partnerApiKey.update({
-    where: { keyId: args.keyId },
+  const result = await prisma.partnerApiKey.updateMany({
+    where: { keyId: args.keyId, revokedAt: null },
     data: {
       revokedAt: new Date(),
       revokedById: args.revokedById ?? null,
     },
+  })
+  if (result.count === 0) {
+    // Either the keyId doesn't exist, OR it was already revoked. One
+    // additional read disambiguates.
+    const existing = await prisma.partnerApiKey.findUnique({
+      where: { keyId: args.keyId },
+      select: SUMMARY_SELECT,
+    })
+    if (!existing) {
+      throw new PartnerKeyNotFoundError(args.keyId)
+    }
+    return existing
+  }
+  return prisma.partnerApiKey.findUniqueOrThrow({
+    where: { keyId: args.keyId },
     select: SUMMARY_SELECT,
   })
 }
@@ -331,15 +278,19 @@ export async function verifyPartnerToken(
       PARTNER_KEY_LOOKUP_TIMEOUT_MS,
     )
   } catch (err) {
+    // SECURITY: tag the pre-validation keyId as `attemptedKeyId=` (NOT
+    // `keyId=`) so an attacker can't pollute operator log greps for
+    // verified partner traffic by spamming arbitrary `jfp_search_<id>_*`
+    // tokens. Only verified-match log emissions use `keyId=`.
     if (err instanceof PartnerKeyLookupTimeoutError) {
       // Plain-string log per Railway logsV2 silencing learning.
       console.error(
-        `[search] event=partner_key.lookup_timeout keyId=${parsed.keyId} budgetMs=${PARTNER_KEY_LOOKUP_TIMEOUT_MS}`,
+        `[search] event=partner_key.lookup_timeout attemptedKeyId=${parsed.keyId} budgetMs=${PARTNER_KEY_LOOKUP_TIMEOUT_MS}`,
       )
     } else {
       const message = err instanceof Error ? err.message : String(err)
       console.error(
-        `[search] event=partner_key.lookup_error keyId=${parsed.keyId} error=${sanitizeLogValue(message)}`,
+        `[search] event=partner_key.lookup_error attemptedKeyId=${parsed.keyId} error=${sanitizeLogValue(message)}`,
       )
     }
     return { valid: false }

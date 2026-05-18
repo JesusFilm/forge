@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
  * Partner API key CLI — operator surface for issuing, listing, revoking,
- * rotating, and migrating partner search-API bearers.
+ * and rotating partner search-API bearers.
  *
  * Subcommands (kubectl-style; first non-flag arg picks the subcommand):
  *
@@ -21,15 +21,6 @@
  *     Issues a fresh key for the same partner. Old key stays active so
  *     the partner can cutover; operator runs `revoke <oldKeyId>` after
  *     observing the new key's lastUsedAt in logs.
- *
- *   import-from-env  --name=<label> --owner-email=<email> [--note=<text>]
- *     Reads `process.env.SEARCH_API_KEYS`, comma-splits, dedupes
- *     whitespace, hashes each value, inserts a row per value. The
- *     plaintext is the operator's existing value — NEVER printed back
- *     (operator already has it). Duplicate hashes throw
- *     `PartnerKeyAlreadyExistsError` and are surfaced as a per-token
- *     `partner-key.import.skipped` event; the CLI still exits 0 unless
- *     ALL imports failed.
  *
  * Exit codes:
  *   0   — success
@@ -68,12 +59,7 @@ function parsePositional(argv: readonly string[]): string[] {
 // Config shape — exported for tests
 // -----------------------------------------------------------------------------
 
-export type Subcommand =
-  | "create"
-  | "list"
-  | "revoke"
-  | "rotate"
-  | "import-from-env"
+export type Subcommand = "create" | "list" | "revoke" | "rotate"
 
 export type CliConfig =
   | {
@@ -97,13 +83,6 @@ export type CliConfig =
       keyId: string
       operatorEmail: string | null
     }
-  | {
-      subcommand: "import-from-env"
-      name: string
-      ownerEmail: string
-      note: string | null
-      tokens: readonly string[]
-    }
 
 export class CliConfigError extends Error {
   constructor(
@@ -120,7 +99,6 @@ const SUBCOMMANDS: readonly Subcommand[] = [
   "list",
   "revoke",
   "rotate",
-  "import-from-env",
 ]
 
 function isSubcommand(v: string): v is Subcommand {
@@ -128,37 +106,12 @@ function isSubcommand(v: string): v is Subcommand {
 }
 
 /**
- * Split + dedupe a CSV env value. Whitespace inside any entry is
- * trimmed; empty entries are dropped. Order preserved for the first
- * occurrence of each value.
- */
-export function parseEnvCsv(raw: string | undefined): string[] {
-  if (!raw) return []
-  const seen = new Set<string>()
-  const out: string[] = []
-  for (const part of raw.split(",")) {
-    const trimmed = part.trim()
-    if (trimmed.length === 0) continue
-    if (seen.has(trimmed)) continue
-    seen.add(trimmed)
-    out.push(trimmed)
-  }
-  return out
-}
-
-/**
  * Pure argv → config transform. Exported so tests can exercise every
  * subcommand without instantiating Prisma or hitting the service layer.
  * Throws `CliConfigError` on any argv-parsing problem; the caller maps
  * to exit code 2.
- *
- * `envSource` parameter mirrors trigger-enrichment.ts: tests inject a
- * synthetic env so they don't depend on real process.env state.
  */
-export function parseArgvToConfig(
-  argv: readonly string[],
-  envSource: { SEARCH_API_KEYS?: string },
-): CliConfig {
+export function parseArgvToConfig(argv: readonly string[]): CliConfig {
   const positionals = parsePositional(argv)
   const subcommandArg = positionals[0]
   if (!subcommandArg) {
@@ -232,35 +185,6 @@ export function parseArgvToConfig(
         operatorEmail,
       }
     }
-
-    case "import-from-env": {
-      const name = parseSingle(argv, "name")
-      const ownerEmail = parseSingle(argv, "owner-email")
-      if (!name) {
-        throw new CliConfigError(
-          "[partner-keys] import-from-env: --name=<label> is required",
-        )
-      }
-      if (!ownerEmail) {
-        throw new CliConfigError(
-          "[partner-keys] import-from-env: --owner-email=<email> is required",
-        )
-      }
-      const tokens = parseEnvCsv(envSource.SEARCH_API_KEYS)
-      if (tokens.length === 0) {
-        throw new CliConfigError(
-          "[partner-keys] import-from-env: SEARCH_API_KEYS env var is unset or empty",
-        )
-      }
-      const note = parseSingle(argv, "note") ?? null
-      return {
-        subcommand: "import-from-env",
-        name,
-        ownerEmail,
-        note,
-        tokens,
-      }
-    }
   }
 }
 
@@ -327,9 +251,7 @@ export async function resolveOperatorId(
 async function main(): Promise<void> {
   let config: CliConfig
   try {
-    config = parseArgvToConfig(process.argv.slice(2), {
-      SEARCH_API_KEYS: process.env.SEARCH_API_KEYS,
-    })
+    config = parseArgvToConfig(process.argv.slice(2))
   } catch (err) {
     if (err instanceof CliConfigError) {
       process.stderr.write(err.message + "\n")
@@ -344,11 +266,9 @@ async function main(): Promise<void> {
   // style invocations).
   const {
     createPartnerKey,
-    importPartnerKeyFromPlaintext,
     listPartnerKeys,
     revokePartnerKey,
     rotatePartnerKey,
-    PartnerKeyAlreadyExistsError,
     PartnerKeyNotFoundError,
   } = await import("@/services/partner-api-key.service")
   const { prisma } = await import("@/db/client")
@@ -496,74 +416,6 @@ async function main(): Promise<void> {
           } else {
             throw err
           }
-        }
-        break
-      }
-
-      case "import-from-env": {
-        let imported = 0
-        let skipped = 0
-        for (const rawToken of config.tokens) {
-          try {
-            const record = await importPartnerKeyFromPlaintext(
-              {
-                rawToken,
-                name: config.name,
-                ownerEmail: config.ownerEmail,
-                note: config.note,
-              },
-              prisma,
-            )
-            imported += 1
-            process.stdout.write(
-              JSON.stringify({
-                event: "partner-key.imported",
-                keyId: record.keyId,
-                name: record.name,
-                ownerEmail: record.ownerEmail,
-                note: record.note,
-                createdAt: record.createdAt,
-              }) + "\n",
-            )
-          } catch (err) {
-            if (err instanceof PartnerKeyAlreadyExistsError) {
-              skipped += 1
-              process.stderr.write(
-                JSON.stringify({
-                  event: "partner-key.import.skipped",
-                  reason: "already_exists",
-                  keyHashPrefix: err.keyHashPrefix,
-                }) + "\n",
-              )
-            } else {
-              const message = err instanceof Error ? err.message : String(err)
-              process.stderr.write(
-                JSON.stringify({
-                  event: "partner-key.import.failed",
-                  error: message,
-                }) + "\n",
-              )
-              runtimeExitCode = 1
-            }
-          }
-        }
-        process.stdout.write(
-          JSON.stringify({
-            event: "partner-key.import.complete",
-            total: config.tokens.length,
-            imported,
-            skipped,
-          }) + "\n",
-        )
-        if (
-          imported === 0 &&
-          runtimeExitCode === 0 &&
-          skipped < config.tokens.length
-        ) {
-          // Defensive — every token threw a non-typed error. The
-          // per-token branch already flipped runtimeExitCode, but if
-          // somehow it didn't, ensure we exit non-zero.
-          runtimeExitCode = 1
         }
         break
       }

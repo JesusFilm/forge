@@ -2163,19 +2163,18 @@ prisma.partnerApiKey.update(...).catch(...)` — never `await`-ed, never
 - `src/auth/partner-token.ts` — pure helpers (`generatePartnerToken`,
   `parsePartnerToken`, `hashRawToken`, `timingSafeEqualHex`).
 - `src/services/partner-api-key.service.ts` — `createPartnerKey`,
-  `importPartnerKeyFromPlaintext`, `listPartnerKeys`,
-  `revokePartnerKey`, `rotatePartnerKey`, `verifyPartnerToken`
-  (the hot-path validator with `Promise.race` timeout +
-  fire-and-forget `lastUsedAt` update). Exports `PartnerKeyNotFoundError`
-  - `PartnerKeyAlreadyExistsError`.
+  `listPartnerKeys`, `revokePartnerKey` (conditional `updateMany`
+  guards against concurrent-revoke `revokedById` clobber),
+  `rotatePartnerKey`, `verifyPartnerToken` (the hot-path validator
+  with `Promise.race` timeout + fire-and-forget `lastUsedAt`
+  update). Exports `PartnerKeyNotFoundError`.
 - `src/auth/search-bearer.ts` — exports `BearerCheckResult` +
   `BearerSource`. `isAnyKnownBearer` is async, returns the enriched
   result, runs the partner branch FIRST.
 - `src/app/api/search/route.ts` + `src/graphql/queries/hybrid-search.ts`
   — both await the composer and thread `source` / `keyId` into the
   per-request log line.
-- `src/scripts/partner-keys.ts` — CLI: `create | list | revoke |
-rotate | import-from-env`.
+- `src/scripts/partner-keys.ts` — CLI: `create | list | revoke | rotate`.
 - `src/app/dashboard/partner-keys/page.tsx` — read-only dashboard
   view, ADMIN-only via `requireAdminSession`.
 
@@ -2235,25 +2234,22 @@ pnpm --filter @forge/admin partner-keys list --include-revoked
 Or check `/dashboard/partner-keys` — same data, sortable in a browser,
 includes revoked rows by default for the audit trail.
 
-#### Migrate today's `SEARCH_API_KEYS` entries to DB rows
+#### Migrating an existing partner from the legacy `SEARCH_API_KEYS` env CSV
 
-The Plan 002 `xoSP…` key (currently the lone partner credential in
-`SEARCH_API_KEYS`) migrates via:
+The legacy `SEARCH_API_KEYS` receiver-side CSV was retired in Plan 003
+without an in-place migration tool — the opaque legacy token shape
+cannot round-trip through `verifyPartnerToken` (which requires
+`jfp_search_<keyId>_<random>`). Instead, **rotate the partner onto a
+fresh DB-backed key**:
 
-```bash
-pnpm --filter @forge/admin partner-keys import-from-env \
-  --name="Plan 002 legacy partner" \
-  --owner-email="<contact>" \
-  --note="Imported from SEARCH_API_KEYS CSV during PR1 cutover" \
-  --operator-email="<your-email>"
-```
-
-Reads `process.env.SEARCH_API_KEYS`, splits on `,`, hashes each entry,
-and creates one `PartnerApiKey` row per non-empty value. Re-running is
-safe (`PartnerKeyAlreadyExistsError` on duplicate hash → counted as
-`skipped`, not failed). After migration, verify the partner now logs as
-`auth=bearer source=partner keyId=<id>` instead of `source=search`,
-THEN drop the env var (PR3).
+1. `partner-keys create` to issue a new `jfp_search_*` token.
+2. Share the new token with the partner via Slack DM; partner updates
+   their integration and deploys.
+3. Verify in Railway logs that the partner's traffic flips to
+   `auth=bearer source=partner keyId=<id>`.
+4. Remove the partner's old value from `SEARCH_API_KEYS` in Doppler.
+   (Plan 003 already retired the env-CSV branch in code — this step
+   just clears dead config.)
 
 ### Cross-references
 

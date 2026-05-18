@@ -11,33 +11,17 @@ import {
   CliConfigError,
   formatTokenBanner,
   parseArgvToConfig,
-  parseEnvCsv,
   resolveOperatorId,
 } from "./partner-keys"
 
-describe("parseEnvCsv", () => {
-  it("returns [] for undefined / empty", () => {
-    expect(parseEnvCsv(undefined)).toEqual([])
-    expect(parseEnvCsv("")).toEqual([])
-  })
-
-  it("splits + trims + dedupes", () => {
-    expect(parseEnvCsv("a, b , a,  c")).toEqual(["a", "b", "c"])
-  })
-
-  it("drops empty entries", () => {
-    expect(parseEnvCsv(",a,,,b,")).toEqual(["a", "b"])
-  })
-})
-
 describe("parseArgvToConfig — unknown subcommand", () => {
   it("rejects when no subcommand is supplied", () => {
-    expect(() => parseArgvToConfig([], {})).toThrowError(CliConfigError)
-    expect(() => parseArgvToConfig([], {})).toThrowError(/subcommand required/)
+    expect(() => parseArgvToConfig([])).toThrowError(CliConfigError)
+    expect(() => parseArgvToConfig([])).toThrowError(/subcommand required/)
   })
 
   it("rejects an unknown subcommand", () => {
-    expect(() => parseArgvToConfig(["bogus"], {})).toThrowError(
+    expect(() => parseArgvToConfig(["bogus"])).toThrowError(
       /unknown subcommand 'bogus'/,
     )
   })
@@ -46,27 +30,24 @@ describe("parseArgvToConfig — unknown subcommand", () => {
 describe("parseArgvToConfig — create", () => {
   it("requires --name", () => {
     expect(() =>
-      parseArgvToConfig(["create", "--owner-email=p@x.io"], {}),
+      parseArgvToConfig(["create", "--owner-email=p@x.io"]),
     ).toThrowError(/--name=<label> is required/)
   })
 
   it("requires --owner-email", () => {
-    expect(() => parseArgvToConfig(["create", "--name=acme"], {})).toThrowError(
+    expect(() => parseArgvToConfig(["create", "--name=acme"])).toThrowError(
       /--owner-email=<email> is required/,
     )
   })
 
   it("parses the happy path", () => {
-    const config = parseArgvToConfig(
-      [
-        "create",
-        "--name=acme",
-        "--owner-email=p@x.io",
-        "--note=initial",
-        "--operator-email=op@jfp.org",
-      ],
-      {},
-    )
+    const config = parseArgvToConfig([
+      "create",
+      "--name=acme",
+      "--owner-email=p@x.io",
+      "--note=initial",
+      "--operator-email=op@jfp.org",
+    ])
     expect(config).toEqual({
       subcommand: "create",
       name: "acme",
@@ -77,10 +58,11 @@ describe("parseArgvToConfig — create", () => {
   })
 
   it("defaults note + operatorEmail to null when omitted", () => {
-    const config = parseArgvToConfig(
-      ["create", "--name=acme", "--owner-email=p@x.io"],
-      {},
-    )
+    const config = parseArgvToConfig([
+      "create",
+      "--name=acme",
+      "--owner-email=p@x.io",
+    ])
     if (config.subcommand !== "create") throw new Error("wrong subcommand")
     expect(config.note).toBeNull()
     expect(config.operatorEmail).toBeNull()
@@ -89,7 +71,7 @@ describe("parseArgvToConfig — create", () => {
 
 describe("parseArgvToConfig — list", () => {
   it("defaults --include-revoked to false", () => {
-    const config = parseArgvToConfig(["list"], {})
+    const config = parseArgvToConfig(["list"])
     expect(config).toEqual({
       subcommand: "list",
       includeRevoked: false,
@@ -97,7 +79,7 @@ describe("parseArgvToConfig — list", () => {
   })
 
   it("toggles --include-revoked when flag is present", () => {
-    const config = parseArgvToConfig(["list", "--include-revoked"], {})
+    const config = parseArgvToConfig(["list", "--include-revoked"])
     if (config.subcommand !== "list") throw new Error("wrong subcommand")
     expect(config.includeRevoked).toBe(true)
   })
@@ -105,16 +87,17 @@ describe("parseArgvToConfig — list", () => {
 
 describe("parseArgvToConfig — revoke", () => {
   it("requires positional <keyId>", () => {
-    expect(() => parseArgvToConfig(["revoke"], {})).toThrowError(
+    expect(() => parseArgvToConfig(["revoke"])).toThrowError(
       /positional <keyId> is required/,
     )
   })
 
   it("parses keyId + operator-email", () => {
-    const config = parseArgvToConfig(
-      ["revoke", "ABC123abc456", "--operator-email=op@jfp.org"],
-      {},
-    )
+    const config = parseArgvToConfig([
+      "revoke",
+      "ABC123abc456",
+      "--operator-email=op@jfp.org",
+    ])
     expect(config).toEqual({
       subcommand: "revoke",
       keyId: "ABC123abc456",
@@ -125,13 +108,13 @@ describe("parseArgvToConfig — revoke", () => {
 
 describe("parseArgvToConfig — rotate", () => {
   it("requires positional <keyId>", () => {
-    expect(() => parseArgvToConfig(["rotate"], {})).toThrowError(
+    expect(() => parseArgvToConfig(["rotate"])).toThrowError(
       /positional <keyId> is required/,
     )
   })
 
   it("parses keyId without operator-email", () => {
-    const config = parseArgvToConfig(["rotate", "ABC123abc456"], {})
+    const config = parseArgvToConfig(["rotate", "ABC123abc456"])
     expect(config).toEqual({
       subcommand: "rotate",
       keyId: "ABC123abc456",
@@ -140,66 +123,22 @@ describe("parseArgvToConfig — rotate", () => {
   })
 })
 
-describe("parseArgvToConfig — import-from-env", () => {
-  it("rejects when SEARCH_API_KEYS is unset", () => {
+describe("parseArgvToConfig — import-from-env (retired)", () => {
+  it("is no longer a known subcommand", () => {
+    // Regression guard: the `import-from-env` subcommand was retired
+    // because the imported row's `keyHash` could never round-trip
+    // through `verifyPartnerToken` (the verifier requires the
+    // `jfp_search_<keyId>_<random>` token shape; legacy opaque
+    // tokens fail to parse). Operators should issue a fresh
+    // `jfp_search_*` token via `partner-keys create` and rotate
+    // partners onto it instead.
     expect(() =>
-      parseArgvToConfig(
-        ["import-from-env", "--name=legacy", "--owner-email=p@x.io"],
-        {},
-      ),
-    ).toThrowError(/SEARCH_API_KEYS env var is unset or empty/)
-  })
-
-  it("rejects when SEARCH_API_KEYS is empty", () => {
-    expect(() =>
-      parseArgvToConfig(
-        ["import-from-env", "--name=legacy", "--owner-email=p@x.io"],
-        { SEARCH_API_KEYS: "" },
-      ),
-    ).toThrowError(/SEARCH_API_KEYS env var is unset or empty/)
-  })
-
-  it("rejects when SEARCH_API_KEYS contains only whitespace + commas", () => {
-    expect(() =>
-      parseArgvToConfig(
-        ["import-from-env", "--name=legacy", "--owner-email=p@x.io"],
-        { SEARCH_API_KEYS: "  ,  ,  " },
-      ),
-    ).toThrowError(/SEARCH_API_KEYS env var is unset or empty/)
-  })
-
-  it("requires --name", () => {
-    expect(() =>
-      parseArgvToConfig(["import-from-env", "--owner-email=p@x.io"], {
-        SEARCH_API_KEYS: "a,b",
-      }),
-    ).toThrowError(/--name=<label> is required/)
-  })
-
-  it("requires --owner-email", () => {
-    expect(() =>
-      parseArgvToConfig(["import-from-env", "--name=legacy"], {
-        SEARCH_API_KEYS: "a,b",
-      }),
-    ).toThrowError(/--owner-email=<email> is required/)
-  })
-
-  it("splits CSV, dedupes whitespace, and projects tokens in order", () => {
-    const config = parseArgvToConfig(
-      [
+      parseArgvToConfig([
         "import-from-env",
         "--name=legacy",
         "--owner-email=p@x.io",
-        "--note=migration batch",
-      ],
-      { SEARCH_API_KEYS: "tok-a, tok-b , tok-a,  tok-c" },
-    )
-    if (config.subcommand !== "import-from-env")
-      throw new Error("wrong subcommand")
-    expect(config.tokens).toEqual(["tok-a", "tok-b", "tok-c"])
-    expect(config.name).toBe("legacy")
-    expect(config.ownerEmail).toBe("p@x.io")
-    expect(config.note).toBe("migration batch")
+      ]),
+    ).toThrowError(/unknown subcommand 'import-from-env'/)
   })
 })
 

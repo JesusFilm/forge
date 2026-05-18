@@ -1,10 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   PARTNER_KEY_LOOKUP_TIMEOUT_MS,
-  PartnerKeyAlreadyExistsError,
   PartnerKeyNotFoundError,
   createPartnerKey,
-  importPartnerKeyFromPlaintext,
   listPartnerKeys,
   revokePartnerKey,
   rotatePartnerKey,
@@ -54,6 +52,7 @@ function makeMockPrisma() {
       findUniqueOrThrow: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
   } as const
 }
@@ -114,43 +113,10 @@ describe("partner-api-key.service", () => {
     })
   })
 
-  describe("importPartnerKeyFromPlaintext", () => {
-    it("hashes the provided plaintext and creates a row", async () => {
-      mockPrisma.partnerApiKey.findUnique.mockResolvedValueOnce(null)
-      mockPrisma.partnerApiKey.create.mockResolvedValueOnce(buildRow())
-
-      const rawToken = "xoSPdummyTestToken12345_with_some_entropy_chars"
-      await importPartnerKeyFromPlaintext(
-        { rawToken, name: "Legacy Partner", ownerEmail: "legacy@example.com" },
-        mockPrisma as never,
-      )
-
-      const arg = mockPrisma.partnerApiKey.create.mock.calls[0]![0]!
-      expect(arg.data.keyHash).toBe(hashRawToken(rawToken))
-      expect(arg.data.note).toMatch(/Imported from SEARCH_API_KEYS/)
-    })
-
-    it("throws PartnerKeyAlreadyExistsError when hash collides", async () => {
-      mockPrisma.partnerApiKey.findUnique.mockResolvedValueOnce({
-        keyHash: hashRawToken("anything"),
-      })
-      await expect(
-        importPartnerKeyFromPlaintext(
-          { rawToken: "anything", name: "x", ownerEmail: "y@z" },
-          mockPrisma as never,
-        ),
-      ).rejects.toBeInstanceOf(PartnerKeyAlreadyExistsError)
-      expect(mockPrisma.partnerApiKey.create).not.toHaveBeenCalled()
-    })
-  })
-
   describe("revokePartnerKey", () => {
-    it("sets revokedAt + revokedById on an active key", async () => {
-      mockPrisma.partnerApiKey.findUnique.mockResolvedValueOnce({
-        id: "row-1",
-        revokedAt: null,
-      })
-      mockPrisma.partnerApiKey.update.mockResolvedValueOnce(
+    it("sets revokedAt + revokedById on an active key via conditional updateMany", async () => {
+      mockPrisma.partnerApiKey.updateMany.mockResolvedValueOnce({ count: 1 })
+      mockPrisma.partnerApiKey.findUniqueOrThrow.mockResolvedValueOnce(
         buildRow({ revokedAt: new Date(), revokedById: "user-cuid-1" }),
       )
 
@@ -159,19 +125,25 @@ describe("partner-api-key.service", () => {
         mockPrisma as never,
       )
 
-      expect(mockPrisma.partnerApiKey.update).toHaveBeenCalledTimes(1)
-      const arg = mockPrisma.partnerApiKey.update.mock.calls[0]![0]!
-      expect(arg.where).toEqual({ keyId: "ABCDEFGHJKLM" })
+      expect(mockPrisma.partnerApiKey.updateMany).toHaveBeenCalledTimes(1)
+      const arg = mockPrisma.partnerApiKey.updateMany.mock.calls[0]![0]!
+      // Conditional WHERE — only revokes active rows. Locks in the
+      // concurrent-revoke race guard: a second writer's updateMany
+      // returns count:0 and falls through to the already-revoked path
+      // instead of clobbering revokedById.
+      expect(arg.where).toEqual({
+        keyId: "ABCDEFGHJKLM",
+        revokedAt: null,
+      })
       expect(arg.data.revokedAt).toBeInstanceOf(Date)
       expect(arg.data.revokedById).toBe("user-cuid-1")
+      expect(mockPrisma.partnerApiKey.update).not.toHaveBeenCalled()
     })
 
-    it("is idempotent — already-revoked returns the existing row without update", async () => {
-      mockPrisma.partnerApiKey.findUnique.mockResolvedValueOnce({
-        id: "row-1",
-        revokedAt: new Date("2026-05-01"),
-      })
-      mockPrisma.partnerApiKey.findUniqueOrThrow.mockResolvedValueOnce(
+    it("is idempotent — already-revoked returns the existing row unchanged", async () => {
+      // updateMany returns count:0 because revoked_at IS NOT NULL.
+      mockPrisma.partnerApiKey.updateMany.mockResolvedValueOnce({ count: 0 })
+      mockPrisma.partnerApiKey.findUnique.mockResolvedValueOnce(
         buildRow({ revokedAt: new Date("2026-05-01") }),
       )
 
@@ -181,14 +153,37 @@ describe("partner-api-key.service", () => {
       )
 
       expect(result.revokedAt).toEqual(new Date("2026-05-01"))
-      expect(mockPrisma.partnerApiKey.update).not.toHaveBeenCalled()
+      // Never falls into the second-write path.
+      expect(mockPrisma.partnerApiKey.findUniqueOrThrow).not.toHaveBeenCalled()
     })
 
     it("throws PartnerKeyNotFoundError for unknown keyIds", async () => {
+      mockPrisma.partnerApiKey.updateMany.mockResolvedValueOnce({ count: 0 })
       mockPrisma.partnerApiKey.findUnique.mockResolvedValueOnce(null)
       await expect(
         revokePartnerKey({ keyId: "missing-12345" }, mockPrisma as never),
       ).rejects.toBeInstanceOf(PartnerKeyNotFoundError)
+    })
+
+    it("concurrent second-revoke loses the race and does NOT overwrite revokedById", async () => {
+      // First writer already committed: revoked_at set, revoked_by_id = userA.
+      // Second writer's conditional updateMany returns count:0; the
+      // re-read surfaces userA's revoke unchanged.
+      mockPrisma.partnerApiKey.updateMany.mockResolvedValueOnce({ count: 0 })
+      mockPrisma.partnerApiKey.findUnique.mockResolvedValueOnce(
+        buildRow({
+          revokedAt: new Date("2026-05-18T11:00:00Z"),
+          revokedById: "userA",
+        }),
+      )
+
+      const result = await revokePartnerKey(
+        { keyId: "ABCDEFGHJKLM", revokedById: "userB" },
+        mockPrisma as never,
+      )
+
+      // userA's revocation wins; userB's revokedById is NOT written.
+      expect(result.revokedById).toBe("userA")
     })
   })
 
@@ -393,7 +388,7 @@ describe("partner-api-key.service", () => {
     it(
       "returns valid:false on DB timeout and logs partner_key.lookup_timeout",
       async () => {
-        const { rawToken } = generatePartnerToken()
+        const { rawToken, keyId } = generatePartnerToken()
         // findUnique never resolves — Promise.race trips the budget.
         mockPrisma.partnerApiKey.findUnique.mockReturnValueOnce(
           neverResolving<never>() as never,
@@ -408,6 +403,17 @@ describe("partner-api-key.service", () => {
         expect(error).toHaveBeenCalledWith(
           expect.stringContaining("event=partner_key.lookup_timeout"),
         )
+        // SECURITY regression guard: pre-validation keyId is tagged as
+        // `attemptedKeyId=`, NOT `keyId=`. An attacker who probes random
+        // `jfp_search_<garbage>_<garbage>` tokens must not be able to
+        // pollute operator log greps that filter on `keyId=`.
+        expect(error).toHaveBeenCalledWith(
+          expect.stringContaining(`attemptedKeyId=${keyId}`),
+        )
+        const allLogged = error.mock.calls
+          .map((args) => String(args[0] ?? ""))
+          .join("\n")
+        expect(allLogged).not.toMatch(/(?<![a-z])keyId=/i)
         expect(error).toHaveBeenCalledWith(
           expect.stringContaining(`budgetMs=${PARTNER_KEY_LOOKUP_TIMEOUT_MS}`),
         )
@@ -415,8 +421,8 @@ describe("partner-api-key.service", () => {
       PARTNER_KEY_LOOKUP_TIMEOUT_MS + 1000,
     )
 
-    it("returns valid:false on unexpected Prisma error and logs partner_key.lookup_error", async () => {
-      const { rawToken } = generatePartnerToken()
+    it("returns valid:false on unexpected Prisma error and logs partner_key.lookup_error with attemptedKeyId only", async () => {
+      const { rawToken, keyId } = generatePartnerToken()
       mockPrisma.partnerApiKey.findUnique.mockRejectedValueOnce(
         new Error("connection refused"),
       )
@@ -430,6 +436,15 @@ describe("partner-api-key.service", () => {
       expect(error).toHaveBeenCalledWith(
         expect.stringContaining("event=partner_key.lookup_error"),
       )
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining(`attemptedKeyId=${keyId}`),
+      )
+      // SECURITY regression guard: pre-validation keyId MUST NOT appear
+      // as `keyId=` (verified-only) in error-path logs.
+      const allLogged = error.mock.calls
+        .map((args) => String(args[0] ?? ""))
+        .join("\n")
+      expect(allLogged).not.toMatch(/(?<![a-z])keyId=/i)
     })
   })
 })
