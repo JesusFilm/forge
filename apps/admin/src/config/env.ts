@@ -76,6 +76,39 @@ export const env = createEnv({
     // workflow and consumer bearer sets so backup download access does
     // not imply GraphQL or workflow access.
     BACKUP_DOWNLOAD_API_KEYS: z.string().min(1).optional(),
+    // Plan 002 — search API bearer-key allowlist.
+    // CSV-parsed, matched against `Authorization: Bearer <key>` by
+    // `search-bearer.ts`. A matched key tags the request `auth=bearer`
+    // in the structured log emitted by `/api/search` and `Query.search`;
+    // when `SEARCH_AUTH_REQUIRED === "true"`, requests without a valid
+    // bearer return 401. Distinct from the other bearer CSVs so an
+    // operator pasting the same value into two CSVs hits a fail-fast
+    // boot error (see `assertBearerCsvsDisjoint` below) instead of
+    // silently widening a search passport into workflow-trigger access.
+    // `.optional()` because environments without the rollout active
+    // (preview, local dev) don't need it — required-without-default
+    // would brick those Railway deploys, per
+    // docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md.
+    SEARCH_API_KEYS: z.string().optional(),
+    // Plan 002 — search API required-auth flag. When "true", `/api/search`
+    // and `Query.search` return 401 for missing/invalid bearer; when
+    // "false" (the default), they accept both anonymous and bearer-auth
+    // traffic (dual-accept). Enum-of-strings rather than boolean so a
+    // stray non-empty value can't silently flip the gate (z.coerce.boolean
+    // treats "false" as truthy). Decoded at call sites with
+    // `env.SEARCH_AUTH_REQUIRED === "true"`.
+    SEARCH_AUTH_REQUIRED: z.enum(["true", "false"]).optional().default("false"),
+    // Plan 002 — caller-side single key for the local search eval CLI
+    // (`apps/admin/src/scripts/eval-search.ts`). When set, the CLI's
+    // `createSearchClient` attaches `Authorization: Bearer <value>` to
+    // every search request, so the harness keeps working after the
+    // `SEARCH_AUTH_REQUIRED=true` flip. The value MUST match one of
+    // admin's own `SEARCH_API_KEYS` CSV entries (admin calls itself).
+    // `.optional()` because the harness still works without it during
+    // dual-accept — anonymous traffic logs as `auth=anonymous` and
+    // succeeds. Per the caller-single-key / receiver-CSV asymmetry
+    // pattern (cf. `MANAGER_TRIGGER_API_KEY` ↔ `ADMIN_TRIGGER_API_KEYS`).
+    SEARCH_API_KEY: z.string().min(1).optional(),
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
     WORKFLOW_TARGET_WORLD: z
       .enum(["local", "@workflow/world-postgres"])
@@ -122,12 +155,6 @@ export const env = createEnv({
     MANAGER_ARTIFACTS_S3_BUCKET: z.string().min(1).optional(),
     MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
-    // R3 — read-only Postgres URL for cms (Strapi v5). Optional at boot
-    // so admin still starts in environments without the dump enabled.
-    // The cms-pg singleton (`src/db/cms-pg.ts`) throws a clean
-    // configuration error if a runtime caller invokes it without this
-    // env set. Recommend a dedicated read-only PG role on cms.
-    CMS_DATABASE_URL: z.string().url().optional(),
 
     // feat-119 PR2 — admin → manager outbound enrichment trigger.
     // Admin's `triggerManagerEnrichment` GraphQL mutation POSTs to
@@ -228,6 +255,9 @@ export const env = createEnv({
     BACKUP_DOWNLOAD_API_KEYS: emptyToUndefined(
       process.env.BACKUP_DOWNLOAD_API_KEYS,
     ),
+    SEARCH_API_KEYS: emptyToUndefined(process.env.SEARCH_API_KEYS),
+    SEARCH_AUTH_REQUIRED: emptyToUndefined(process.env.SEARCH_AUTH_REQUIRED),
+    SEARCH_API_KEY: emptyToUndefined(process.env.SEARCH_API_KEY),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
     WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
     WORKFLOW_RUNNER_ENABLED: emptyToUndefined(
@@ -273,7 +303,6 @@ export const env = createEnv({
     MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY: emptyToUndefined(
       process.env.MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY,
     ),
-    CMS_DATABASE_URL: emptyToUndefined(process.env.CMS_DATABASE_URL),
     MANAGER_API_BASE_URL: emptyToUndefined(process.env.MANAGER_API_BASE_URL),
     MANAGER_TRIGGER_API_KEY: emptyToUndefined(
       process.env.MANAGER_TRIGGER_API_KEY,
@@ -326,40 +355,76 @@ function parseBearerCsvSet(csv: string | undefined): ReadonlySet<string> {
   )
 }
 
+// `BEARER_CSV_KEYS` drives both the snapshot type AND the
+// `assertBearerCsvsDisjoint` iteration. The `satisfies` clause makes the
+// compiler enforce alignment: adding a new bearer CSV requires updating
+// the constant AND the type in lockstep, or the build breaks.
+const BEARER_CSV_KEYS = [
+  "WORKFLOW_API_KEYS",
+  "WEB_ADMIN_API_KEYS",
+  "BACKUP_DOWNLOAD_API_KEYS",
+  "SEARCH_API_KEYS",
+] as const
+
+type BearerCsvKey = (typeof BEARER_CSV_KEYS)[number]
+
 export type BearerCsvSnapshot = {
-  readonly WORKFLOW_API_KEYS?: string
-  readonly WEB_ADMIN_API_KEYS?: string
-  readonly BACKUP_DOWNLOAD_API_KEYS?: string
+  readonly [K in BearerCsvKey]?: string
 }
 
-export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
-  const sets = [
-    ["WORKFLOW_API_KEYS", parseBearerCsvSet(snapshot.WORKFLOW_API_KEYS)],
-    ["WEB_ADMIN_API_KEYS", parseBearerCsvSet(snapshot.WEB_ADMIN_API_KEYS)],
-    [
-      "BACKUP_DOWNLOAD_API_KEYS",
-      parseBearerCsvSet(snapshot.BACKUP_DOWNLOAD_API_KEYS),
-    ],
-  ] as const
+// Compile-time guard: every key in BearerCsvSnapshot MUST be a member
+// of BEARER_CSV_KEYS (and vice versa via the mapped type). A future
+// addition that names a key in one place but not the other won't
+// compile.
+const _bearerCsvKeysCheck: ReadonlyArray<keyof BearerCsvSnapshot> =
+  BEARER_CSV_KEYS satisfies ReadonlyArray<keyof BearerCsvSnapshot>
+void _bearerCsvKeysCheck
 
+export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
+  const sets = BEARER_CSV_KEYS.map(
+    (name) => [name, parseBearerCsvSet(snapshot[name])] as const,
+  )
+
+  // Collect ALL overlapping pairs into one error rather than throwing
+  // on the first match. An operator hitting this fail-fast at deploy
+  // time gets the complete list of CSV pairs to clean up instead of
+  // N redeploys to discover each overlap one at a time. The key
+  // values themselves are NEVER included in the error — only the
+  // CSV names and the count of overlapping values per pair.
+  const overlaps: Array<{
+    left: BearerCsvKey
+    right: BearerCsvKey
+    count: number
+  }> = []
   for (let i = 0; i < sets.length; i += 1) {
     for (let j = i + 1; j < sets.length; j += 1) {
       const [leftName, left] = sets[i]
       const [rightName, right] = sets[j]
+      let count = 0
       for (const key of left) {
-        if (right.has(key)) {
-          // NEVER include the key value — error stays grep-friendly for
-          // logs but doesn't echo the leaked credential.
-          throw new Error(
-            `Bearer API key value appears in multiple CSVs: ${leftName} and ` +
-              `${rightName} must be disjoint (admin auth chains must not share ` +
-              `bearer credentials). Check the offending Doppler entries — key ` +
-              `value redacted.`,
-          )
-        }
+        if (right.has(key)) count += 1
+      }
+      if (count > 0) {
+        overlaps.push({ left: leftName, right: rightName, count })
       }
     }
   }
+
+  if (overlaps.length === 0) return
+
+  const summary = overlaps
+    .map(
+      ({ left, right, count }) =>
+        `${left} and ${right} (${count} key${count === 1 ? "" : "s"})`,
+    )
+    .join("; ")
+  throw new Error(
+    `Bearer API key values appear in multiple CSVs. Offending pairs: ` +
+      `${summary}. The bearer CSVs must be disjoint (admin auth chains must ` +
+      `not share bearer credentials). Check the offending Doppler entries — ` +
+      `key values redacted. See apps/admin/CLAUDE.md > "Search API ` +
+      `authentication" for the receiver-first rotation procedure.`,
+  )
 }
 
 // Boot-time invariant — fires on every import of `env`. Skipping this
@@ -370,4 +435,5 @@ assertBearerCsvsDisjoint({
   WORKFLOW_API_KEYS: env.WORKFLOW_API_KEYS,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
+  SEARCH_API_KEYS: env.SEARCH_API_KEYS,
 })

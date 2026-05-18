@@ -255,6 +255,19 @@ them.
    direct-invokes will break at runtime. See
    `docs/solutions/best-practices/workflow-dispatch-test-mode-divergence-20260421.md`.
 
+   **Corollary (added 2026-05-17 after PR #967):** AND `"use workflow"`
+   functions must not call `start()` on **sibling** workflows from inside
+   their own `"use step"` bodies. Nested `start()` re-enters
+   `workflow/api` and requires a workflow runtime at the inner boundary
+   — which the CLI shim's direct-invoke path explicitly does not have.
+   If two workflows need to share per-item work, extract a plain async
+   service helper and have each workflow's step body call it directly.
+   The single-trigger workflow becomes a thin shim around the helper;
+   the backfill loop's step body calls the helper inline. See
+   [`docs/solutions/best-practices/workflow-step-body-calls-service-not-sibling-workflow-20260517.md`](../best-practices/workflow-step-body-calls-service-not-sibling-workflow-20260517.md)
+   for the worked instance (`embedExperienceLocale` between
+   `runExperienceEmbedding` and `runExperienceEmbeddingBackfill`).
+
 7. **HTTP status semantics on the proxy.** 503 (not 500) for
    `config_missing` (manager env not set) — operator-fixable
    misconfig is service-unavailable, not unexpected error. 502 for

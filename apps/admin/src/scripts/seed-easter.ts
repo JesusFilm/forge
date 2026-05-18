@@ -5,9 +5,12 @@
  * Mirrors `apps/cms/src/bootstrap/seed-easter.ts` block-for-block,
  * translated to admin's Block schema (`apps/admin/src/domain/blocks.ts`).
  * Used for local-dev parity with Strapi's Easter, and as a fixture for
- * UI/E2E work without depending on Strapi or the R3 dump pipeline.
+ * UI/E2E work without depending on Strapi.
  *
- * Translation notes (see also: `apps/admin/src/services/cms-block-transforms.ts`):
+ * Translation notes (the cms-side block shapes this script transforms
+ * from are documented inline below; the previously-shipped
+ * `cms-block-transforms.ts` was deleted with R3 — see
+ * docs/plans/2026-05-17-001-refactor-decouple-experience-embeds-from-cms-plan.md):
  *   - Strapi `__component: "sections.X"` → admin `t: "camelCaseX"`
  *   - Strapi `container.slots: [{gridSpan, content}]` flattens to admin
  *     `container.content: [{t:"containerSlot", gridSpan}, ...content]`

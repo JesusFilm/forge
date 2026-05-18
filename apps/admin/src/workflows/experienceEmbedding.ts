@@ -1,19 +1,7 @@
-import { prisma } from "@/db/client"
-import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import {
-  buildExperienceEmbeddingText,
-  generateExperienceEmbedding,
-  writeExperienceLocaleEmbedding,
+  embedExperienceLocale,
+  type EmbedExperienceLocaleResult,
 } from "@/services/embeddings.service"
-
-type ExperienceEmbeddingLocaleRecord = {
-  id: string
-  title: string | null
-  metaDescription: string | null
-  ogTitle: string | null
-  ogDescription: string | null
-  blocks: unknown
-}
 
 export type ExperienceEmbeddingInput = {
   localeId: string
@@ -26,58 +14,35 @@ export type ExperienceEmbeddingOutput = {
   updated: boolean
 }
 
+/**
+ * Per-locale experience embedding workflow. Loads the locale, builds
+ * the embedding text, generates a vector, and persists it.
+ *
+ * The whole sequence is wrapped in a single `"use step"` so the
+ * production workflow runtime gets a clean replay boundary; the
+ * underlying work lives in `embedExperienceLocale` (a plain service
+ * function) so the same code path is reachable without the runtime —
+ * which is what `runExperienceEmbeddingBackfill` and
+ * `pnpm run-embeds --pipeline=experience` rely on.
+ */
 export async function runExperienceEmbedding(
   input: ExperienceEmbeddingInput,
 ): Promise<ExperienceEmbeddingOutput> {
   "use workflow"
 
-  const locale = await stepLoadExperienceLocale(input.localeId)
-  const text = buildExperienceEmbeddingText(locale)
-  const embedding = await stepGenerateExperienceEmbedding(text)
-  await stepPersistExperienceEmbedding(input.localeId, embedding.embedding)
+  const result = await stepEmbed(input.localeId)
 
   return {
-    localeId: input.localeId,
-    dimensions: embedding.dimensions,
-    model: embedding.model,
+    localeId: result.localeId,
+    dimensions: result.dimensions,
+    model: result.model,
     updated: true,
   }
 }
 
-async function stepLoadExperienceLocale(
+async function stepEmbed(
   localeId: string,
-): Promise<ExperienceEmbeddingLocaleRecord> {
+): Promise<EmbedExperienceLocaleResult> {
   "use step"
-
-  return prisma.experienceLocale.findUniqueOrThrow({
-    where: { id: localeId },
-    select: {
-      id: true,
-      title: true,
-      metaDescription: true,
-      ogTitle: true,
-      ogDescription: true,
-      blocks: true,
-    },
-  })
-}
-
-async function stepGenerateExperienceEmbedding(text: string) {
-  "use step"
-
-  return generateExperienceEmbedding(text)
-}
-
-async function stepPersistExperienceEmbedding(
-  localeId: string,
-  embedding: readonly number[],
-) {
-  "use step"
-
-  await writeExperienceLocaleEmbedding({
-    prisma,
-    localeId,
-    embedding,
-    user: SYSTEM_PRINCIPAL,
-  })
+  return embedExperienceLocale(localeId)
 }

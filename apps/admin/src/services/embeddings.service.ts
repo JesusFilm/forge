@@ -2,7 +2,9 @@ import type { PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import { canWriteDerived } from "@/auth/permissions"
 import type { Principal } from "@/auth/principal"
+import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import { env } from "@/config/env"
+import { prisma as defaultPrisma } from "@/db/client"
 import { BlockSchema } from "@/domain/blocks"
 import { toPgVector } from "@/db/pgvector"
 
@@ -334,4 +336,60 @@ export async function writeExperienceLocaleEmbedding({
         updated_at = NOW()
     WHERE id = ${localeId}
   `
+}
+
+/**
+ * End-to-end per-locale embedding work as a plain async service
+ * function: load → flatten text → generate vector → persist.
+ *
+ * Shared by:
+ *   - `runExperienceEmbedding` (workflow) — wraps this in a single
+ *     `"use step"` so step-replay semantics apply when dispatched via
+ *     the production workflow runtime.
+ *   - `runExperienceEmbeddingBackfill` (workflow) — calls this from its
+ *     per-target step body so the loop never nests `start()` calls.
+ *     Mirrors the R1/R2 pattern (`indexEditionScenes`,
+ *     `indexEditionTranscript`) where the workflow step body invokes a
+ *     plain service function rather than dispatching a sibling workflow.
+ *
+ * Returns the dimensions + model used so the caller can include them
+ * in operator-facing reports. Throws on any failure (load missing,
+ * provider error, persistence error) — callers wrap with their own
+ * try/catch + typed-outcome shaping.
+ */
+export type EmbedExperienceLocaleResult = {
+  localeId: string
+  dimensions: number
+  model: string
+}
+
+export async function embedExperienceLocale(
+  localeId: string,
+  options?: { prisma?: PrismaClient },
+): Promise<EmbedExperienceLocaleResult> {
+  const client = options?.prisma ?? defaultPrisma
+  const locale = await client.experienceLocale.findUniqueOrThrow({
+    where: { id: localeId },
+    select: {
+      id: true,
+      title: true,
+      metaDescription: true,
+      ogTitle: true,
+      ogDescription: true,
+      blocks: true,
+    },
+  })
+  const text = buildExperienceEmbeddingText(locale)
+  const generated = await generateExperienceEmbedding(text)
+  await writeExperienceLocaleEmbedding({
+    prisma: client,
+    localeId,
+    embedding: generated.embedding,
+    user: SYSTEM_PRINCIPAL,
+  })
+  return {
+    localeId,
+    dimensions: generated.dimensions,
+    model: generated.model,
+  }
 }

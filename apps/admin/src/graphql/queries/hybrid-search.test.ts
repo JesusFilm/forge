@@ -8,7 +8,7 @@
  * + mode plumbing without touching the DB or the embedding provider.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const searchMock = vi.fn()
 vi.mock("@/services/hybrid-search.service", async () => {
@@ -27,8 +27,20 @@ vi.mock("@/services/hybrid-search-debug-allowlist", () => ({
   isDebugAllowedForOrigin: vi.fn(),
 }))
 
+vi.mock("@/auth/search-bearer", () => ({
+  isAnyKnownBearer: vi.fn(),
+}))
+
+vi.mock("@/config/env", () => ({
+  env: {} as { SEARCH_AUTH_REQUIRED?: "true" | "false" },
+}))
+
 import { schema } from "@/graphql/schema"
 import { isDebugAllowedForOrigin } from "@/services/hybrid-search-debug-allowlist"
+import { isAnyKnownBearer } from "@/auth/search-bearer"
+import { env } from "@/config/env"
+
+const envMutable = env as { SEARCH_AUTH_REQUIRED?: "true" | "false" }
 
 type ResolverArgs = {
   q: string
@@ -47,6 +59,10 @@ type ResolverCtx = {
 function ctxWithOrigin(origin: string | undefined): ResolverCtx {
   if (origin == null) return { request: { headers: new Headers() } }
   return { request: { headers: new Headers({ origin }) } }
+}
+
+function ctxWithAuth(authHeader: string): ResolverCtx {
+  return { request: { headers: new Headers({ authorization: authHeader }) } }
 }
 
 type FieldWithResolve = {
@@ -75,12 +91,20 @@ async function invoke(
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(isDebugAllowedForOrigin).mockReturnValue(false)
+  // Default: dual-accept (SEARCH_AUTH_REQUIRED=false), bearer absent.
+  // Individual tests opt into required-auth and/or valid bearer.
+  envMutable.SEARCH_AUTH_REQUIRED = "false"
+  vi.mocked(isAnyKnownBearer).mockReturnValue(false)
   searchMock.mockResolvedValue({
     results: [],
     hasMore: false,
     query: "",
     searchMode: "hybrid",
   })
+})
+
+afterEach(() => {
+  envMutable.SEARCH_AUTH_REQUIRED = "false"
 })
 
 describe("Query.search resolver", () => {
@@ -215,5 +239,217 @@ describe("schema description on Query.search.mode arg", () => {
     const description = modeArg!.description ?? ""
     expect(description).toMatch(/searchMode/)
     expect(description.toLowerCase()).toMatch(/orthogonal/)
+  })
+})
+
+describe("Query.search bearer auth gate (Plan 002)", () => {
+  let logSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    // The search.request log uses console.error because on the
+    // current Next.js 16 + Node 24 + Railway stack, ONLY
+    // console.error surfaces from runtime route handlers.
+    // console.warn (also stderr) is silenced in practice. See
+    // hybrid-search.ts for the empirical rationale.
+    logSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    logSpy.mockRestore()
+  })
+
+  function parseSearchLogLines(): Array<Record<string, unknown>> {
+    return logSpy.mock.calls
+      .map((args) => args[0])
+      .filter((arg): arg is string => typeof arg === "string")
+      .map((line) => {
+        try {
+          return JSON.parse(line) as Record<string, unknown>
+        } catch {
+          return null
+        }
+      })
+      .filter((parsed): parsed is Record<string, unknown> => parsed !== null)
+      .filter((parsed) => parsed.event === "search.request")
+  }
+
+  describe("dual-accept (SEARCH_AUTH_REQUIRED=false)", () => {
+    it("anonymous resolves; log shows auth=anonymous path=graphql", async () => {
+      const result = await invoke({ q: "jesus", locale: "en" })
+      expect(result).toBeDefined()
+      const log = parseSearchLogLines()[0]
+      expect(log).toMatchObject({
+        event: "search.request",
+        auth: "anonymous",
+        path: "graphql",
+      })
+    })
+
+    it("valid bearer resolves; log shows auth=bearer path=graphql", async () => {
+      vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+      const result = await invoke(
+        { q: "jesus", locale: "en" },
+        ctxWithAuth("Bearer valid-key"),
+      )
+      expect(result).toBeDefined()
+      const log = parseSearchLogLines()[0]
+      expect(log).toMatchObject({
+        event: "search.request",
+        auth: "bearer",
+        path: "graphql",
+      })
+    })
+
+    it("invalid bearer resolves; log shows auth=invalid_bearer (distinct from anonymous)", async () => {
+      vi.mocked(isAnyKnownBearer).mockReturnValue(false)
+      const result = await invoke(
+        { q: "jesus", locale: "en" },
+        ctxWithAuth("Bearer not-a-real-key"),
+      )
+      expect(result).toBeDefined()
+      const log = parseSearchLogLines()[0]
+      // `invalid_bearer` tags requests that presented an Authorization
+      // header that didn't match SEARCH_API_KEYS — operationally
+      // distinct from `anonymous` (no header at all).
+      expect(log).toMatchObject({ auth: "invalid_bearer" })
+    })
+
+    it("forwards the Authorization header value verbatim to isValidSearchBearer", async () => {
+      vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+      await invoke(
+        { q: "jesus", locale: "en" },
+        ctxWithAuth("Bearer some-key-value"),
+      )
+      expect(isAnyKnownBearer).toHaveBeenCalledWith("Bearer some-key-value")
+    })
+
+    it("forwards null when no Authorization header present", async () => {
+      await invoke({ q: "jesus", locale: "en" })
+      expect(isAnyKnownBearer).toHaveBeenCalledWith(null)
+    })
+
+    it("emits exactly one search.request log line per resolver invocation", async () => {
+      vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+      await invoke(
+        { q: "jesus", locale: "en" },
+        ctxWithAuth("Bearer valid-key"),
+      )
+      expect(parseSearchLogLines()).toHaveLength(1)
+    })
+
+    it("with SEARCH_AUTH_REQUIRED left undefined (zod default), behaves as dual-accept", async () => {
+      envMutable.SEARCH_AUTH_REQUIRED = undefined
+      const result = await invoke({ q: "jesus", locale: "en" })
+      expect(result).toBeDefined()
+    })
+  })
+
+  describe("required-auth (SEARCH_AUTH_REQUIRED=true)", () => {
+    beforeEach(() => {
+      envMutable.SEARCH_AUTH_REQUIRED = "true"
+    })
+
+    it("anonymous request throws Authentication required", async () => {
+      await expect(invoke({ q: "jesus", locale: "en" })).rejects.toThrow(
+        /Authentication required/,
+      )
+      expect(searchMock).not.toHaveBeenCalled()
+    })
+
+    it("invalid bearer throws Authentication required", async () => {
+      vi.mocked(isAnyKnownBearer).mockReturnValue(false)
+      await expect(
+        invoke(
+          { q: "jesus", locale: "en" },
+          ctxWithAuth("Bearer not-a-real-key"),
+        ),
+      ).rejects.toThrow(/Authentication required/)
+    })
+
+    it("valid bearer resolves normally", async () => {
+      vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+      const result = await invoke(
+        { q: "jesus", locale: "en" },
+        ctxWithAuth("Bearer valid-key"),
+      )
+      expect(result).toBeDefined()
+      expect(searchMock).toHaveBeenCalled()
+    })
+
+    it("auth throw fires BEFORE arg validation (anonymous + bad args still 401s)", async () => {
+      // An anonymous caller with whitespace-only `q` should get the
+      // auth error, not the validation error. Otherwise we'd be
+      // leaking information about which inputs the endpoint cares
+      // about to unauthenticated callers.
+      await expect(invoke({ q: "   ", locale: "en" })).rejects.toThrow(
+        /Authentication required/,
+      )
+    })
+
+    it("logs auth=anonymous even when throw-rejected (operator visibility)", async () => {
+      await expect(invoke({ q: "jesus", locale: "en" })).rejects.toThrow()
+      const log = parseSearchLogLines()[0]
+      expect(log).toMatchObject({ auth: "anonymous", path: "graphql" })
+    })
+
+    it("throws a typed GraphQLError with extensions.code='UNAUTHENTICATED' (survives Yoga maskedErrors)", async () => {
+      // Yoga's default maskedErrors rewrites raw `new Error(...)` to
+      // a generic "Unexpected error." message in production. A typed
+      // GraphQLError with extensions.code is preserved through
+      // masking, so clients can branch on extensions.code stably
+      // instead of regex-matching error.message.
+      try {
+        await invoke({ q: "jesus", locale: "en" })
+        throw new Error("expected resolver to throw")
+      } catch (err) {
+        // Use a structural assertion (rather than instanceof) to
+        // stay compatible across the GraphQLError import shape from
+        // `graphql` — vitest's interop occasionally produces two
+        // distinct constructor identities. The contract that
+        // matters is `extensions.code === "UNAUTHENTICATED"`.
+        const e = err as {
+          message?: string
+          extensions?: Record<string, unknown>
+        }
+        expect(e.message).toBe("Authentication required")
+        expect(e.extensions).toMatchObject({
+          code: "UNAUTHENTICATED",
+          http: { status: 401 },
+        })
+      }
+    })
+  })
+
+  describe("dual-accept observability locks (mirror REST)", () => {
+    it("still emits the search.request log line when the service throws (5xx-equivalent path)", async () => {
+      // Locks log-ordering: the log/auth check fires BEFORE
+      // service.search, so a thrown service stays observable in the
+      // structured-log feed. A future refactor moving the log
+      // emission below service.search would break this without
+      // affecting any other GraphQL test.
+      searchMock.mockRejectedValueOnce(new Error("boom"))
+      await expect(invoke({ q: "jesus", locale: "en" })).rejects.toThrow(/boom/)
+      const log = parseSearchLogLines()[0]
+      expect(log).toMatchObject({
+        event: "search.request",
+        auth: "anonymous",
+        path: "graphql",
+      })
+    })
+  })
+
+  describe("log discipline", () => {
+    it("never logs the bearer header value", async () => {
+      vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+      await invoke(
+        { q: "jesus", locale: "en" },
+        ctxWithAuth("Bearer the-secret-key-value-aaa"),
+      )
+      const allLogged = logSpy.mock.calls
+        .map((args) => String(args[0] ?? ""))
+        .join("\n")
+      expect(allLogged).not.toContain("the-secret-key-value-aaa")
+      expect(allLogged).not.toContain("Bearer the-secret")
+    })
   })
 })

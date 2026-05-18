@@ -30,6 +30,7 @@ describe("embedding exclusion — field name scan", () => {
   const FORBIDDEN = /embed|vector|similarit/i
   const ALLOWED_ACTION_FIELDS = new Set([
     "Mutation.triggerExperienceEmbedding",
+    "Mutation.triggerExperienceEmbeddingBackfill",
     "Mutation.triggerSceneEmbeddingBackfill",
     "Mutation.triggerTranscriptEmbeddingBackfill",
     // R5 scene recommendations: `similarity` is a computed Float exposed

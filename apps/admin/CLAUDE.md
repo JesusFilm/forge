@@ -329,12 +329,25 @@ the chained `startCommand`.
 
 **Forward-only.** `prisma migrate deploy` is the only correct
 invocation against a deployed environment. NEVER run `prisma migrate
-dev` against prod or any deployed env. Rolling back to an earlier
-image leaves the schema ahead of the code; with today's contents
-(0001-0009 are all additive — new tables, new columns, new indexes)
-a code-side rollback is functionally safe. The first migration that
-drops or renames anything will change this rule and require a deeper
-rollback playbook.
+dev` against prod or any deployed env.
+
+Migration `0014_drop_experience_locale_cms_snapshot` (2026-05-17) is
+the first admin migration to drop columns — it removed the retired
+`cms_document_id`, `cms_dumped_at`, `cms_content_hash` columns + the
+partial index on `experience_locale`. Code-side rollback rules:
+
+- Rolling back to the **immediately-prior commit** on the PR that
+  added 0014 is functionally safe: that commit no longer references
+  the dropped columns. Schema and code were co-versioned in the same
+  PR.
+- Rolling back further than that — to a commit that still references
+  the dropped columns — is unsafe. The columns are gone from the DB
+  but the code expects them, so Prisma reads fail at runtime. If you
+  need to roll back past 0014, coordinate a re-add migration first.
+- Every earlier migration (0001–0013) is purely additive — new
+  tables, new columns, new indexes — so the pre-0014 rule that
+  "rolling back to an earlier image is functionally safe" still
+  holds for that stretch of history.
 
 ### Operational runbook — predeploy migration verification
 
@@ -981,134 +994,123 @@ chunk_index) DO UPDATE SET …`. The 12 parallel arrays are: `id`,
 The primary learnings doc is
 `docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`.
 
-## Experience content dump (R3 of admin migration playbook)
+## Triggering experience embeddings (admin-native)
 
-Admin owns the per-locale Experience corpus and re-derives it from
-cms's Strapi v5 `experiences` table on each rerun of the
-`triggerExperienceContentDump` mutation. cms remains the editor
-surface and consumer-facing renderer until R8 cutover; admin's
-corpus is a refreshed mirror with one tolerance — admin-side
-`ContentRevision` rows survive reruns because they live in a
-separate table the dump never touches.
+Experiences are authored, published, and rendered admin-native;
+hybrid search needs `ExperienceLocale.embedding` populated to retrieve
+over them. Three entry points cover the lifecycle.
 
-- **Schema:** three nullable columns on `ExperienceLocale`:
-  `cms_document_id` (Strapi v5's cross-locale + cross-publish-state
-  grouping key), `cms_dumped_at` (last touched by the dump),
-  `cms_content_hash` (SHA-256 hex over the canonical-JSON merge
-  payload — gates both rerun-skip and `runExperienceEmbedding`
-  re-dispatch). Partial index on `cms_document_id WHERE NOT NULL`.
-  None of the three is exposed via GraphQL (defense-in-depth:
-  `schema.test.ts` asserts no `cms_*hash | cms_*document_*id |
-cms_*dumped_*at`-shaped field leaks).
-- **cms connection:** lazy singleton `pg.Pool` in
-  `src/db/cms-pg.ts` against `CMS_DATABASE_URL`. Optional at boot
-  so admin still starts in environments without the dump enabled.
-  When the workflow runs without the env set, `getCmsPgPool()`
-  throws `CmsDatabaseUrlMissingError` AT THE WORKFLOW BOUNDARY
-  (before target enumeration), surfacing as a top-level GraphQL
-  error rather than a per-target outcome. Operators see a clean
-  `ExperienceContentDumpError`-style failure with the env-name in
-  the message — the dispatch never charges any target. Statement
-  timeout is set to 15s at the connection level so a stuck cms
-  query cannot hang the workflow.
-- **Repository:** `src/services/cms-experience-source.repository.ts`
-  reads Strapi v5 schema verbatim (snake_case row shapes mirror cms
-  PG columns). Table names from a hardcoded allowlist so a typo or
-  attacker-influenced `component_type` cannot reference an arbitrary
-  table. An in-memory fake (`cms-experience-source.fake.ts`) is the
-  test surface for service-level tests.
-- **Block transformers:** `src/services/cms-block-transforms.ts` —
-  one transformer per Strapi component UID + recursion through
-  section/container nested zones. Each transformer constructs the
-  admin shape from scratch (no spread of cms attrs), normalises
-  null/empty cms strings to undefined for Zod optionality, and
-  dispatches a `BlockTransformError` (typed code + componentType +
-  cmpId) on required-field violations. Error messages NEVER echo
-  cms row data (cf. `zod-validation-errors-must-not-echo-user-controlled-input-20260420.md`).
-- **Indexer service:** `src/services/experience-content-dump.service.ts`
-  (`dumpExperienceLocale`). Per-locale flow: ABAC gate → load source
-  row preferring published → load components → resolve cms video
-  ids → transform → Zod parse → resolve experience-level ogImage URL
-  → SHA-256 hash → upsert in `$transaction` (locale row + snapshot
-  columns). Hash is NOT persisted by the service — the workflow
-  writes it after embed dispatch succeeds (so a failed dispatch
-  leaves the previous hash in place and the next rerun retries).
-- **Backfill workflow:**
-  `src/workflows/experienceContentDump.ts` — useworkflow job that
-  enumerates one target per `(document_id, locale)` from cms,
-  filters out `locale = NULL` rows, dispatches the dump service
-  per-target, and dispatches `runExperienceEmbedding` for outcomes
-  with `action !== "skipped_unchanged"`. Per-target error
-  isolation; `Promise.allSettled` not used — sequential `for…of`
-  per-target matches R1/R2.
-- **Trigger:** `triggerExperienceContentDump` GraphQL mutation
-  (ADMIN-only; permission key `write:experience-content-dump`).
-  JSON return shape parity with R1/R2: `{ totalTargets,
-documentIdFilter, localeFilter, outcomes, succeeded, skipped,
-failed, embedsDispatched }`. Per-target outcome is a discriminated
-  union: `succeeded { action: "created" | "updated" |
-"skipped_unchanged", embedDispatched, draftPendingNewer,
-videoResolutionMisses, ... }` or `failed { reason: "forbidden" |
-"null_locale" | "slug_collision" | "failed_validation" |
-"embed_dispatch_failed" | "cms_read" | "db_write" | "unknown",
-message, ... }`.
+The previous R3 cms → admin "experience content dump" workflow was
+retired on 2026-05-17 (see
+`docs/plans/2026-05-17-001-refactor-decouple-experience-embeds-from-cms-plan.md`).
+cms is being deleted; no cms-coupled code, env var, or DB column
+remains on the admin side of this surface.
+
+### Per-locale trigger (one ExperienceLocale at a time)
+
+`triggerExperienceEmbedding(localeId: ID!)` at
+`src/graphql/mutations/experience.ts`. Gated by `write:experiences`
+(EDITOR+) — owners can re-embed their own content. Dispatches
+`runExperienceEmbedding` via `start()` from `workflow/api` and
+awaits the per-locale result. Used by the editor surface today.
+
+### Publish-flow auto-dispatch
+
+`ExperienceService.publishLocale` and `updateExperienceLocale` (when
+status=PUBLISHED) dispatch `runExperienceEmbedding` inline at
+`src/services/experience.service.ts:573`. Every successful publish/
+update of a PUBLISHED locale refreshes its embedding automatically.
+No operator action required.
+
+### Bulk backfill (admin-native)
+
+`triggerExperienceEmbeddingBackfill` at
+`src/graphql/mutations/experience-embedding-backfill.ts`. ADMIN-only
+via `write:experience-embeddings`; bearer-callable from CLIs via
+`WORKFLOW_TRIGGER`. The workflow at
+`src/workflows/experienceEmbeddingBackfill.ts` enumerates eligible
+`ExperienceLocale` rows (status='published' AND embedding IS NULL by
+default) and dispatches `runExperienceEmbedding` per locale.
+Sequential `for…of` per-target; per-target error isolation. JSON
+return shape:
+
+```ts
+{
+  totalTargets: number
+  experienceIdFilter: readonly string[] | null
+  localeFilter: readonly string[] | null
+  force: boolean
+  outcomes: Array<
+    | { status: "succeeded"; target; dimensions; model; durationMs }
+    | { status: "failed";    target; reason; durationMs }
+  >
+  succeeded: number
+  failed: number
+}
+```
+
+**Filter args** (all optional inclusion predicates; omitted = "every
+eligible row"):
+
+- `experienceIds: [ID!]` — restrict to specific parent Experiences.
+- `bcp47Locales: [String!]` — restrict to a BCP-47 set, e.g.
+  `["en", "es"]`. Data-derived at enumeration time when omitted; no
+  hardcoded list, no `en` fallback.
+- `force: Boolean = false` — when true, include rows that already
+  have a non-NULL embedding (re-embed them). Use for model upgrades
+  or drift fixes.
 
 **Operational runbook:**
 
-1. **Provision a read-only Postgres role on cms** (out-of-band,
-   platform team owned). Grant `SELECT` on the experience-related
-   tables only:
-   - `experiences`, `experiences_cmps`
-   - all `components_sections_*` tables (17 component row tables +
-     5 nested `_cmps` join tables)
-   - `files`, `files_related_mph`
-   - `videos` (for cms video id → coreId resolution)
-   - The four `_video_lnk` join tables that carry component →
-     video relations
-2. **Set `CMS_DATABASE_URL` on the `forge-admin` Doppler project**
-   (`forge-admin` env). Format: `postgres://forge_admin_readonly:<pw>@<host>:<port>/<db>?sslmode=require`.
-   Until this lands, `triggerExperienceContentDump` invocations
-   throw `CmsDatabaseUrlMissingError` cleanly.
-3. **Invoke the mutation via GraphQL.** Both args are optional:
+1. Ensure `OPENROUTER_API_KEY` (or `OPENAI_API_KEY`) is set on the
+   `forge-admin` Railway service. No other env vars required —
+   `experience_locale` lives in admin's own Postgres.
+2. Invoke via GraphQL with an ADMIN session, or via bearer auth
+   using a `WORKFLOW_API_KEYS` key:
+
    ```graphql
    mutation {
-     triggerExperienceContentDump(documentIds: ["…"], locales: ["en"])
+     triggerExperienceEmbeddingBackfill(
+       experienceIds: ["…"]
+       bcp47Locales: ["en"]
+       force: false
+     )
    }
    ```
-   Omitted args = "every cms experience document" / "every locale
-   that exists in cms's experiences corpus" (data-derived at
-   enumeration time).
-4. **Verify:**
-   - `SELECT COUNT(DISTINCT cms_document_id) FROM experience_locale
-WHERE cms_document_id IS NOT NULL` — number of cms
-     documents now mirrored in admin.
-   - `SELECT COUNT(*) FROM experience_locale WHERE cms_dumped_at IS
-NOT NULL` — number of locale rows the dump touched.
-   - `SELECT COUNT(*) FROM experience_locale WHERE status='PUBLISHED'
-AND embedding IS NOT NULL` — published locales with a vector
-     (downstream of `runExperienceEmbedding` workflow completion).
+
+   Or from a workstation against any `DATABASE_URL` (see
+   "Running embeds locally" below):
+
+   ```bash
+   pnpm --filter @forge/admin run-embeds --pipeline=experience
+   ```
+
+3. Verify:
+   - `SELECT COUNT(*) FROM experience_locale WHERE status='published'
+AND embedding IS NOT NULL` grows as expected.
+   - The `event=run-embeds.experience.complete` log line on stdout
+     (CLI) or the JSON return value (GraphQL) reports
+     `succeeded/failed` counts.
 
 **Common things to remember:**
 
-- cms is canonical for content during the R3→R8 window; admin
-  reruns are merge-aware. Don't try to fix dump-overwrite issues by
-  hand-editing admin rows — the next rerun will revert them. The
-  exception is `ContentRevision` DRAFTs, which the dump explicitly
-  doesn't touch.
-- The workflow body uses sequential `for…of`, NOT `Promise.all`.
-  Cf. `parallel-workflow-error-robustness-20260420.md`.
+- The workflow body uses sequential `for…of`, NOT `Promise.all` —
+  cf. `parallel-workflow-error-robustness-20260420.md`. Admin's
+  experience corpus is small enough that sequential is fast enough;
+  parallelism is a follow-up if needed.
 - Every `start()` call site has a dispatch-level test (cf.
   `workflow-dispatch-test-mode-divergence-20260421.md`). The
   mutation→workflow dispatch lives in
-  `src/graphql/mutations/experience-content-dump.test.ts`; the
-  workflow→`runExperienceEmbedding` dispatch lives in
-  `src/workflows/experienceContentDump.test.ts`.
-- Locale enumeration is data-derived from cms's actual `locale`
-  column; no hardcoded list, no `en` fallback (cf.
+  `src/graphql/mutations/experience-embedding-backfill.test.ts`;
+  the workflow→`runExperienceEmbedding` dispatch lives in
+  `src/workflows/experienceEmbeddingBackfill.test.ts`.
+- Locale enumeration is data-derived from admin's own
+  `experience_locale.locale` column; no hardcoded list, no `en`
+  fallback (cf.
   `prototype-defaults-vs-data-derived-enumeration-20260422.md`).
-
-The primary learnings doc is
-`docs/solutions/platform/admin-experience-content-dump-pattern.md`.
+- `force: true` is for model upgrades / drift fixes — every locale
+  that survives the filter gets re-embedded. Costs ~$0.01 per
+  locale at admin's catalogue size.
 
 ## Hybrid search (R4 of admin migration playbook)
 
@@ -1942,6 +1944,135 @@ Consider re-baselining.` The warn never blocks the run.
   — canonical design history (every decision + the rationale).
 - `docs/solutions/best-practices/external-client-retry-parity-in-runner-fanout-20260512.md`
   — the load-bearing learning extracted from this PR's review.
+
+## Search API authentication (Plan 002)
+
+Admin's public search surface — `GET /api/search` REST + `Query.search`
+GraphQL twin — is gated by a bearer-key passport. Phase 1 ships in
+**dual-accept** mode (anonymous + bearer-auth both succeed). A
+single env-var flip later moves it to **required-auth** (anonymous
+returns 401).
+
+### Design summary
+
+- **The bearer is a passport, not a budget.** Per-IP rate limiting
+  at 30/min stays for everyone — authed and anonymous alike. Rate-
+  limit fires BEFORE the auth check on the REST surface so junk
+  Authorization headers cannot bypass the bucket.
+- **Search passport accepts any of three known-caller bearer CSVs:**
+  `SEARCH_API_KEYS` (this surface), `WEB_ADMIN_API_KEYS` (consumer-
+  bearer; apps/web SSR + apps/mobile already carry it), or
+  `WORKFLOW_API_KEYS` (workflow-trigger; manager → admin proxies +
+  the eval CLI's bearer mint). `isAnyKnownBearer(authHeader)` in
+  `src/auth/search-bearer.ts` OR-composes the three validators.
+- **The disjointness invariant** (`assertBearerCsvsDisjoint` at
+  boot in `src/config/env.ts`) holds for all 4 CSVs (workflow,
+  web-admin, backup-download, search). Each key VALUE lives in
+  exactly one CSV; an operator who pastes a value into two CSVs
+  hits a fail-fast boot error with the offending value redacted.
+- **`BACKUP_DOWNLOAD_API_KEYS` is excluded** from
+  `isAnyKnownBearer` — it's a narrow file-download surface (the
+  presigned video-DB backup endpoint), not an active-API bearer.
+- **Structured log per request** tags every call with one of
+  three states: `auth=bearer` (presented + matched any known
+  CSV), `auth=invalid_bearer` (presented + no match — the
+  population that 401s after the flip), `auth=anonymous` (no
+  header). Grep these in admin logs before the
+  `SEARCH_AUTH_REQUIRED` flip to confirm every known internal
+  caller is on a known bearer.
+
+### Env vars (`forge-admin` Doppler)
+
+- `SEARCH_API_KEYS` — CSV of opaque random base64url tokens for
+  EXTERNAL partners. Internal apps don't need entries here; they
+  use the bearers they already carry. `.optional()` — admin boots
+  cleanly when unset.
+- `SEARCH_AUTH_REQUIRED` — `"true" | "false"`, defaults to
+  `"false"`. When `"true"`, requests without a known bearer return
+  401 (REST) or throw `Authentication required` (GraphQL).
+  Enum-of-strings (not boolean) so a stray non-empty value can't
+  silently flip the gate.
+
+### Issuance + rotation
+
+Generate a key:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
+Add to the CSV in Doppler. For an external partner: share via
+Slack-DM, partner adds to their own env as `SEARCH_API_KEY`,
+deploys.
+
+**Receiver-first deploy ordering** for any key rotation:
+
+1. Add the new key to `SEARCH_API_KEYS` on admin Doppler. Deploy
+   admin. The new key is now accepted alongside the old.
+2. Update the caller's env to the new value. Deploy the caller.
+   Logs flip from `auth=bearer` (old) to `auth=bearer` (new) — same
+   tag, but a fresh deploy on the caller side.
+3. After observation confirms no callers use the old key, remove
+   the old key from `SEARCH_API_KEYS`. Deploy admin.
+
+Reversing the order produces a dead minute where the caller 401s.
+Per `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`
+§"Railway deploy-ordering invariant".
+
+### Required-auth flip (Phase 4 of plan 002)
+
+Before flipping `SEARCH_AUTH_REQUIRED=true` on prod:
+
+1. Grep admin logs for `auth=anonymous` over the past 72h.
+2. For every remaining anonymous caller, identify by source IP +
+   User-Agent. Confirm it's either (a) an external scraper we
+   intend to reject, or (b) a known-internal caller that missed
+   the migration → fix BEFORE flipping.
+3. Flip the flag on Doppler, deploy admin, monitor 401 rate for
+   the next hour. Spike on anonymous = expected. Spike on
+   known-internal IPs = roll back the flag.
+
+### Audit / keyId upgrade path (deferred)
+
+v1 keys are opaque random tokens; the validator emits no keyId
+in the structured log (only `bearer | invalid_bearer | anonymous`).
+When per-key audit becomes load-bearing, key format upgrades to
+`sk_search_<labeledKeyId>_<random>` and the validator parses the
+prefix to surface keyId per request. Plan inline comment in
+`search-bearer.ts` marks the upgrade point.
+
+### Files
+
+- `src/auth/search-bearer.ts` — `isValidSearchBearer` (narrow,
+  reads only `SEARCH_API_KEYS`) + `isAnyKnownBearer` (OR-composes
+  the three known-caller CSVs).
+- `src/app/api/search/route.ts` — REST handler; rate-limit fires
+  first, then the auth check.
+- `src/graphql/queries/hybrid-search.ts` — GraphQL resolver; same
+  auth check inside the resolver body, `authScopes: { public: true }`
+  stays.
+- `src/config/env.ts` — `SEARCH_API_KEYS` + `SEARCH_AUTH_REQUIRED`
+  - `assertBearerCsvsDisjoint` extended to 4 CSVs.
+
+### Cross-references
+
+- **Primary learning doc:**
+  `docs/solutions/architecture-patterns/bearer-as-passport-multi-csv-composition-20260518.md`
+  — the OR-composition pattern + disjointness invariant + rate-limit-
+  before-auth + receiver-first deploy ordering.
+- **Companion learnings:**
+  - `docs/solutions/best-practices/waf-passthrough-verification-via-prior-art-20260518.md`
+    (how WAF passthrough was verified without fresh probes).
+  - `docs/solutions/runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md`
+    (why the structured `search.request` log emits via `console.warn`
+    not `console.log`).
+- Plan: `docs/plans/2026-05-17-002-feat-search-api-auth-plan.md`
+- Brainstorm:
+  `docs/brainstorms/2026-05-17-search-api-auth-requirements.md`
+- Sibling pattern (workflow direction):
+  `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`
+- Sibling pattern (consumer-bearer):
+  `docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md`
 
 ## Common pitfalls (grows with each unit)
 

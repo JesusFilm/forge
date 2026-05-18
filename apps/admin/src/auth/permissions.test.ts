@@ -348,7 +348,7 @@ describe("permission matrix completeness", () => {
       "write:media-assets",
       "write:scene-embeddings",
       "write:transcript-embeddings",
-      "write:experience-content-dump",
+      "write:experience-embeddings",
       "write:manager-enrichment-trigger",
       "delete:media-assets",
       "publish:experiences",
@@ -379,6 +379,24 @@ describe("permission matrix completeness", () => {
     expect(hasPermission(SYSTEM, "write:manager-enrichment-trigger")).toBe(
       false,
     )
+  })
+
+  it("write:experience-embeddings is ADMIN-only", () => {
+    // Admin-native experience-embedding backfill. Mirrors the
+    // write:scene-embeddings / write:transcript-embeddings tier gates
+    // so a regression that widens the key (e.g. flips to EDITOR) fails
+    // loudly here and not just at the mutation boundary.
+    expect(hasPermission(ADMIN, "write:experience-embeddings")).toBe(true)
+    expect(hasPermission(EDITOR_ALICE, "write:experience-embeddings")).toBe(
+      false,
+    )
+    expect(hasPermission(VIEWER, "write:experience-embeddings")).toBe(false)
+    expect(hasPermission(PUBLIC_USER, "write:experience-embeddings")).toBe(
+      false,
+    )
+    // SYSTEM does not satisfy editorial write gates (intentional; the
+    // inner workflow's canWriteDerived is the SYSTEM-reachable path).
+    expect(hasPermission(SYSTEM, "write:experience-embeddings")).toBe(false)
   })
 
   it("write:transcript-embeddings is ADMIN-only", () => {
@@ -431,6 +449,12 @@ describe("permission matrix completeness", () => {
       ).toBe(true)
     })
 
+    it("satisfies write:experience-embeddings (admin-native experience backfill CLI path)", () => {
+      expect(
+        hasPermission(WORKFLOW_TRIGGER, "write:experience-embeddings"),
+      ).toBe(true)
+    })
+
     it("does NOT satisfy any permission key outside the narrow allowlist", () => {
       // Iterate every PermissionKey via TypeScript's exhaustive Record
       // pattern so adding a new key without explicitly deciding
@@ -442,6 +466,7 @@ describe("permission matrix completeness", () => {
         "write:scene-embeddings",
         "write:transcript-embeddings",
         "write:manager-enrichment-trigger",
+        "write:experience-embeddings",
       ])
       const allKeys: Record<PermissionKey, true> = {
         "read:experiences": true,
@@ -453,7 +478,7 @@ describe("permission matrix completeness", () => {
         "write:media-assets": true,
         "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
-        "write:experience-content-dump": true,
+        "write:experience-embeddings": true,
         "write:manager-enrichment-trigger": true,
         "delete:media-assets": true,
         "publish:experiences": true,
@@ -497,7 +522,7 @@ describe("permission matrix completeness", () => {
         "write:media-assets": true,
         "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
-        "write:experience-content-dump": true,
+        "write:experience-embeddings": true,
         "write:manager-enrichment-trigger": true,
         "delete:media-assets": true,
         "publish:experiences": true,
@@ -538,14 +563,17 @@ describe("permission matrix completeness", () => {
       )
     })
 
-    it("env-var split: WEB_ADMIN_API_KEYS is NOT equal to WORKFLOW_API_KEYS (CSV isolation)", async () => {
-      // Asserts that the two CSV env vars are read from distinct
+    it("env-var split: each bearer module reads only its own CSV (isolation)", async () => {
+      // Asserts that the bearer-CSV env vars are read from distinct
       // sources. A regression that pointed `consumer-bearer.ts` at
       // `WORKFLOW_API_KEYS` (or vice versa) would silently merge the
-      // two principal mints — workflow callers would bucket as
-      // consumer (rate-limit isolation collapse) and consumer callers
-      // would mint WORKFLOW_TRIGGER (permission widening). The
-      // distinct env vars are the load-bearing boundary.
+      // principal mints — workflow callers would bucket as consumer
+      // (rate-limit isolation collapse) and consumer callers would
+      // mint WORKFLOW_TRIGGER (permission widening). The distinct
+      // env vars are the load-bearing boundary. The same rule applies
+      // to `search-bearer.ts` (SEARCH_API_KEYS): a paste-into-the-
+      // wrong-file regression would conflate the search passport with
+      // workflow-trigger access.
       const { readFile } = await import("node:fs/promises")
       const { fileURLToPath } = await import("node:url")
       const consumerSource = await readFile(
@@ -556,12 +584,21 @@ describe("permission matrix completeness", () => {
         fileURLToPath(new URL("./workflow-bearer.ts", import.meta.url)),
         "utf8",
       )
+      const searchSource = await readFile(
+        fileURLToPath(new URL("./search-bearer.ts", import.meta.url)),
+        "utf8",
+      )
       // Each file references its own env var…
       expect(consumerSource).toMatch(/env\.WEB_ADMIN_API_KEYS/)
       expect(workflowSource).toMatch(/env\.WORKFLOW_API_KEYS/)
-      // …and NOT the other's.
+      expect(searchSource).toMatch(/env\.SEARCH_API_KEYS/)
+      // …and NOT the others'.
       expect(consumerSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
+      expect(consumerSource).not.toMatch(/env\.SEARCH_API_KEYS/)
       expect(workflowSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
+      expect(workflowSource).not.toMatch(/env\.SEARCH_API_KEYS/)
+      expect(searchSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
+      expect(searchSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
     })
   })
 })
