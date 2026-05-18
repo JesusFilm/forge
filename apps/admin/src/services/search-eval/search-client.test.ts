@@ -84,6 +84,68 @@ describe("createSearchClient", () => {
       )
     })
 
+    it("attaches Authorization: Bearer <key> when bearer option is set", async () => {
+      let capturedHeaders: HeadersInit | undefined
+      const fetchImpl = vi.fn(
+        async (_url: RequestInfo | URL, init?: RequestInit) => {
+          capturedHeaders = init?.headers
+          return buildResponse([])
+        },
+      )
+
+      const client = createSearchClient({
+        baseUrl: "http://localhost:3003",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        bearer: "eval-harness-key-aaa",
+      })
+
+      await client.search("q", "en")
+      expect(capturedHeaders).toEqual({
+        accept: "application/json",
+        authorization: "Bearer eval-harness-key-aaa",
+      })
+    })
+
+    it("sends no Authorization header when bearer is omitted", async () => {
+      let capturedHeaders: HeadersInit | undefined
+      const fetchImpl = vi.fn(
+        async (_url: RequestInfo | URL, init?: RequestInit) => {
+          capturedHeaders = init?.headers
+          return buildResponse([])
+        },
+      )
+
+      const client = createSearchClient({
+        baseUrl: "http://localhost:3003",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      })
+
+      await client.search("q", "en")
+      expect(capturedHeaders).toEqual({ accept: "application/json" })
+    })
+
+    it("sends no Authorization header when bearer is an empty string", async () => {
+      // Doppler delivers empty strings for unset vars; the env layer
+      // coerces "" → undefined, but defense-in-depth: the client must
+      // also skip an empty bearer.
+      let capturedHeaders: HeadersInit | undefined
+      const fetchImpl = vi.fn(
+        async (_url: RequestInfo | URL, init?: RequestInit) => {
+          capturedHeaders = init?.headers
+          return buildResponse([])
+        },
+      )
+
+      const client = createSearchClient({
+        baseUrl: "http://localhost:3003",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        bearer: "",
+      })
+
+      await client.search("q", "en")
+      expect(capturedHeaders).toEqual({ accept: "application/json" })
+    })
+
     it("forwards optional mode + contentType params", async () => {
       let capturedUrl: string | undefined
       const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {

@@ -98,6 +98,17 @@ export const env = createEnv({
     // treats "false" as truthy). Decoded at call sites with
     // `env.SEARCH_AUTH_REQUIRED === "true"`.
     SEARCH_AUTH_REQUIRED: z.enum(["true", "false"]).optional().default("false"),
+    // Plan 002 — caller-side single key for the local search eval CLI
+    // (`apps/admin/src/scripts/eval-search.ts`). When set, the CLI's
+    // `createSearchClient` attaches `Authorization: Bearer <value>` to
+    // every search request, so the harness keeps working after the
+    // `SEARCH_AUTH_REQUIRED=true` flip. The value MUST match one of
+    // admin's own `SEARCH_API_KEYS` CSV entries (admin calls itself).
+    // `.optional()` because the harness still works without it during
+    // dual-accept — anonymous traffic logs as `auth=anonymous` and
+    // succeeds. Per the caller-single-key / receiver-CSV asymmetry
+    // pattern (cf. `MANAGER_TRIGGER_API_KEY` ↔ `ADMIN_TRIGGER_API_KEYS`).
+    SEARCH_API_KEY: z.string().min(1).optional(),
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
     WORKFLOW_TARGET_WORLD: z
       .enum(["local", "@workflow/world-postgres"])
@@ -246,6 +257,7 @@ export const env = createEnv({
     ),
     SEARCH_API_KEYS: emptyToUndefined(process.env.SEARCH_API_KEYS),
     SEARCH_AUTH_REQUIRED: emptyToUndefined(process.env.SEARCH_AUTH_REQUIRED),
+    SEARCH_API_KEY: emptyToUndefined(process.env.SEARCH_API_KEY),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
     WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
     WORKFLOW_RUNNER_ENABLED: emptyToUndefined(
