@@ -293,13 +293,13 @@ application doesn't accidentally route count:0 to a clobbering path.
 ### Review checklist for soft-mutate service functions
 
 - [ ] Does the operation have a "from state X" precondition (`revokedAt
-    IS NULL`, `archivedAt IS NULL`, `status = 'pending'`, etc.)?
+IS NULL`, `archivedAt IS NULL`, `status = 'pending'`, etc.)?
 - [ ] If yes: is the precondition inside the WHERE of an `updateMany`
       (atomic) or inside a TypeScript `if` (TOCTOU)?
 - [ ] If `updateMany`: does the `count === 0` branch disambiguate
       not-found vs. already-transitioned with a follow-up read?
 - [ ] Is there a test asserting the conditional WHERE shape (`where:
-    { id, <state>: <expected-X> }`)?
+{ id, <state>: <expected-X> }`)?
 - [ ] Is there a test asserting the lost-race path returns the FIRST
       writer's audit fields unchanged?
 - [ ] Is `prisma.<Model>.update` NOT called in the happy path (would
