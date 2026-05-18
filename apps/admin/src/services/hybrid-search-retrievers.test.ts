@@ -140,7 +140,7 @@ describe("searchVideoKeyword", () => {
     expect(prisma.$queryRaw).not.toHaveBeenCalled()
   })
 
-  it("returns keyword rows without scene-level fields", async () => {
+  it("returns keyword rows with video-level playbackId but no scene-level fields", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([
       {
         video_id: "vid-1",
@@ -149,6 +149,7 @@ describe("searchVideoKeyword", () => {
         video_title: "Jesus",
         image_url: "https://images.example/jesus.jpg",
         description: "Film about Jesus",
+        playback_id: "mux-jesus-en",
         rank: 0.0913,
       },
     ])
@@ -164,19 +165,41 @@ describe("searchVideoKeyword", () => {
       resultId: "vid-1",
       imageUrl: "https://images.example/jesus.jpg",
       description: "Film about Jesus",
+      // playbackId is video-level (any in-locale dub→mux match), so it
+      // legitimately surfaces on keyword rows. Scene-level fields
+      // (startSeconds, embeddingText) remain semantic-only.
+      playbackId: "mux-jesus-en",
       rank: 0.0913,
     })
-    // Keyword rows must NOT carry scene-level data (fusion's property merge
-    // preserves semantic-list values when both retrievers hit the same video).
     expect(
       (rows[0] as unknown as { startSeconds?: unknown }).startSeconds,
     ).toBeUndefined()
     expect(
-      (rows[0] as unknown as { playbackId?: unknown }).playbackId,
-    ).toBeUndefined()
-    expect(
       (rows[0] as unknown as { embeddingText?: unknown }).embeddingText,
     ).toBeUndefined()
+  })
+
+  it("returns playbackId null when no in-locale dub exists", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([
+      {
+        video_id: "vid-2",
+        video_core_id: "2_NoMux",
+        video_slug: "no-mux",
+        video_title: "No Mux",
+        image_url: null,
+        description: null,
+        playback_id: null,
+        rank: 0.1,
+      },
+    ])
+
+    const rows = await searchVideoKeyword(prisma, {
+      query: "no-mux",
+      locale: "en",
+      limit: 10,
+    })
+
+    expect(rows[0]!.playbackId).toBeNull()
   })
 })
 

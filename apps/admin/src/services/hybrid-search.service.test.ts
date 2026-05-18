@@ -89,6 +89,7 @@ describe("HybridSearchService", () => {
         videoTitle: "Grace",
         imageUrl: null,
         description: "Video about grace",
+        playbackId: null,
         rank: 0.5,
       },
     ])
@@ -145,6 +146,7 @@ describe("HybridSearchService", () => {
         videoTitle: "Grace",
         imageUrl: null,
         description: "Video about grace",
+        playbackId: null,
         rank: 0.5,
       },
     ])

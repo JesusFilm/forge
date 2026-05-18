@@ -76,14 +76,30 @@ export function formatVideoLabel(label: AdminVideoLabel | null): string {
 // resolve. Moving the implementation out collapses what was a duplicate
 // of `DownloadModal`'s private formatter into one source of truth.
 
+// VideoLabels that semantically have children — i.e., the count pill is
+// meaningful. Everything else (EPISODE, FEATURE_FILM, SHORT_FILM, SEGMENT,
+// TRAILER, BEHIND_THE_SCENES) is a singular video and should show duration,
+// not an episode count.
+//
+// Trusting `label` instead of `childCount > 0` shields the pill from the
+// admin Video.parents/children relation inversion: when the inversion is
+// active upstream, EPISODE rows come back with non-zero childCount (it's
+// actually their parent-count). The old heuristic `childCount > 0 ⇒ series`
+// then mislabels every episode as "1 episode". Gating on label removes
+// that coupling entirely.
+const SERIES_SHAPED_LABELS = new Set<AdminVideoLabel>(["SERIES", "COLLECTION"])
+
 // Decide what to render in the top-right pill. Series-shaped rows
-// (childCount > 0) get `{n} episodes`; singular videos get the play-icon
-// duration. Experiences carry null/null and skip the pill. Returns null
-// when there's nothing to show — caller renders nothing on null.
+// (label SERIES / COLLECTION with childCount > 0) get `{n} episodes`;
+// every other video shows duration. Experiences carry null label and are
+// filtered out at the call site. Returns null when there's nothing to
+// show — caller renders nothing on null.
 export function pickCardPill(
   result: SearchResult,
 ): { kind: "count"; text: string } | { kind: "duration"; text: string } | null {
-  if (result.childCount != null && result.childCount > 0) {
+  const isSeriesShaped =
+    result.label != null && SERIES_SHAPED_LABELS.has(result.label)
+  if (isSeriesShaped && result.childCount != null && result.childCount > 0) {
     const noun = result.childCount === 1 ? "episode" : "episodes"
     return { kind: "count", text: `${result.childCount} ${noun}` }
   }

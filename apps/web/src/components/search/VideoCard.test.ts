@@ -62,28 +62,52 @@ describe("formatDuration", () => {
 })
 
 describe("pickCardPill", () => {
-  it("picks episode count when childCount > 0 (singular vs plural)", () => {
+  it("picks episode count for SERIES with childCount > 0 (singular vs plural)", () => {
     expect(
-      pickCardPill(makeResult({ childCount: 13, durationSeconds: 70 })),
-    ).toEqual({
-      kind: "count",
-      text: "13 episodes",
-    })
+      pickCardPill(
+        makeResult({ label: "SERIES", childCount: 13, durationSeconds: 70 }),
+      ),
+    ).toEqual({ kind: "count", text: "13 episodes" })
     expect(
-      pickCardPill(makeResult({ childCount: 1, durationSeconds: 70 })),
-    ).toEqual({
-      kind: "count",
-      text: "1 episode",
-    })
+      pickCardPill(
+        makeResult({ label: "SERIES", childCount: 1, durationSeconds: 70 }),
+      ),
+    ).toEqual({ kind: "count", text: "1 episode" })
   })
 
-  it("falls through to duration when no children", () => {
+  it("picks episode count for COLLECTION with childCount > 0", () => {
     expect(
-      pickCardPill(makeResult({ childCount: 0, durationSeconds: 70 })),
-    ).toEqual({
-      kind: "duration",
-      text: "1:10",
-    })
+      pickCardPill(makeResult({ label: "COLLECTION", childCount: 5 })),
+    ).toEqual({ kind: "count", text: "5 episodes" })
+  })
+
+  it("ignores childCount on singular labels — admin's relation-inversion safety net", () => {
+    // When admin's Video.parents/children labels are inverted, EPISODE
+    // rows can come back with childCount > 0 (it's actually their parent
+    // count). The pill must fall through to duration / null for non
+    // series-shaped labels regardless of what childCount carries.
+    expect(
+      pickCardPill(
+        makeResult({ label: "EPISODE", childCount: 4, durationSeconds: 70 }),
+      ),
+    ).toEqual({ kind: "duration", text: "1:10" })
+    expect(
+      pickCardPill(
+        makeResult({
+          label: "FEATURE_FILM",
+          childCount: 7,
+          durationSeconds: 3600,
+        }),
+      ),
+    ).toEqual({ kind: "duration", text: "1:00:00" })
+  })
+
+  it("falls through to duration for SERIES with childCount == 0", () => {
+    expect(
+      pickCardPill(
+        makeResult({ label: "SERIES", childCount: 0, durationSeconds: 70 }),
+      ),
+    ).toEqual({ kind: "duration", text: "1:10" })
   })
 
   it("returns null when childCount is null AND durationSeconds is null (experiences)", () => {
@@ -105,9 +129,17 @@ describe("pickCardPill", () => {
     ).toBeNull()
   })
 
-  it("prefers childCount over duration when both are set", () => {
+  it("returns null for singular labels with childCount > 0 and no duration", () => {
+    // EPISODE with inverted childCount but no real duration — render
+    // nothing rather than the misleading "N episodes" pill.
     expect(
-      pickCardPill(makeResult({ childCount: 13, durationSeconds: 70 }))!.kind,
-    ).toBe("count")
+      pickCardPill(
+        makeResult({
+          label: "EPISODE",
+          childCount: 4,
+          durationSeconds: null,
+        }),
+      ),
+    ).toBeNull()
   })
 })

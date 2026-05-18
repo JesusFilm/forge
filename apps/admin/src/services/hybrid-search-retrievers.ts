@@ -76,6 +76,15 @@ export type VideoKeywordResult = RankedItem & {
   videoTitle: string
   imageUrl: string | null
   description: string | null
+  // Mux playback_id for any in-locale dub on this video, or null when no
+  // dub-with-mux exists. Surfaces here so consumer cards can build a Mux
+  // thumbnail URL when the match is keyword-only — without this the
+  // semantic-only retriever was the sole source, and on a fresh DB
+  // (no scene embeddings) every result came back without a thumbnail.
+  // Mirrors `VideoSemanticResult.playbackId`; same chain
+  // (video → dub → language → mux_video) but keyed on video_id directly
+  // since the keyword retriever has no scene/edition context.
+  playbackId: string | null
   rank: number
 }
 
@@ -123,6 +132,7 @@ type VideoKeywordRow = {
   video_title: string | null
   image_url: string | null
   description: string | null
+  playback_id: string | null
   rank: number
 }
 
@@ -261,6 +271,7 @@ export async function searchVideoKeyword(
         vl.title       AS video_title,
         COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
         vl.description AS description,
+        dub_mux.playback_id AS playback_id,
         ts_rank(
           ${tsvector},
           plainto_tsquery('simple', ${trimmed})
@@ -276,6 +287,17 @@ export async function searchVideoKeyword(
         ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
         LIMIT 1
       ) vi ON true
+      LEFT JOIN LATERAL (
+        SELECT mv.playback_id
+        FROM video_dub vd
+        JOIN language lg ON lg.id = vd.language_id
+          AND lg.bcp47 = ${locale}
+        LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
+        WHERE vd.video_id = v.id
+          AND vd.deleted_at IS NULL
+        ORDER BY vd.published DESC NULLS LAST, vd.updated_at DESC
+        LIMIT 1
+      ) dub_mux ON true
       WHERE ${tsvector} @@ plainto_tsquery('simple', ${trimmed})
         AND vl.locale = ${locale}
         AND vl.status = 'published'
@@ -293,6 +315,7 @@ export async function searchVideoKeyword(
     videoTitle: row.video_title ?? "",
     imageUrl: row.image_url ?? null,
     description: row.description,
+    playbackId: row.playback_id ?? null,
     rank: Number(row.rank),
   }))
 }

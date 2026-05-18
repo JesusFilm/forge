@@ -76,6 +76,7 @@ beforeEach(() => {
       videoTitle: "X",
       imageUrl: null,
       description: "d",
+      playbackId: null,
       rank: 0.5,
     },
   ])
@@ -158,6 +159,7 @@ describe("HybridSearchService debug payload routing", () => {
         videoTitle: "Shared",
         imageUrl: null,
         description: "d",
+        playbackId: null,
         rank: 0.5,
       },
     ])

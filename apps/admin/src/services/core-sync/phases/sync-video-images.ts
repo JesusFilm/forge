@@ -1,5 +1,12 @@
 // Sync phase: video-images
 // Depends on: videos
+//
+// Data source rationale: this phase walks Core's `videos(...) { images { ... } }`
+// nested field rather than the flat `videoImages(...)` list. The flat list is
+// a sparse subset (~270 records catalogue-wide) — most of Core's image data
+// only surfaces via the per-Video nested field. Using the nested path
+// matches watch-modern's behavior and recovers the marketing posters /
+// stills that admin's earlier flat-list sync missed.
 
 import type { PrismaClient } from "@prisma/client"
 import type { SyncStats, ProgressReporter } from "../types"
@@ -8,38 +15,45 @@ import { CoreVideoImageSchema } from "../schemas/video-image"
 import { emptySyncStats } from "../types"
 import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
 
-const PAGE_SIZE = 10000
+// 100 videos × ~2 images each = ~200 image rows per response. Conservative
+// page size to keep Core's response under its per-call cost ceiling — the
+// `Video.images` join can fan out wider on collection-shaped videos.
+const PAGE_SIZE = 100
 
-const VIDEO_IMAGES_QUERY = `
-  query VideoImages($offset: Int!, $limit: Int!, $where: VideoImagesFilter) {
-    videoImages(offset: $offset, limit: $limit, where: $where) {
+const VIDEOS_WITH_IMAGES_QUERY = `
+  query VideosWithImages($offset: Int!, $limit: Int!, $where: VideosFilter) {
+    videos(offset: $offset, limit: $limit, where: $where) {
       id
-      updatedAt
-      videoId
-      aspectRatio
-      url
-      mobileCinematicHigh
-      mobileCinematicLow
-      mobileCinematicVeryLow
-      thumbnail
-      videoStill
-      blurhash
+      images {
+        id
+        updatedAt
+        aspectRatio
+        url
+        mobileCinematicHigh
+        mobileCinematicLow
+        mobileCinematicVeryLow
+        thumbnail
+        videoStill
+        blurhash
+      }
     }
   }
 `
 
-type CoreVideoImage = {
+type CoreVideoWithImages = {
   id: string
-  updatedAt: string
-  videoId: string | null
-  aspectRatio: string | null
-  url: string | null
-  mobileCinematicHigh: string | null
-  mobileCinematicLow: string | null
-  mobileCinematicVeryLow: string | null
-  thumbnail: string | null
-  videoStill: string | null
-  blurhash: string | null
+  images: Array<{
+    id: string
+    updatedAt: string
+    aspectRatio: string | null
+    url: string | null
+    mobileCinematicHigh: string | null
+    mobileCinematicLow: string | null
+    mobileCinematicVeryLow: string | null
+    thumbnail: string | null
+    videoStill: string | null
+    blurhash: string | null
+  }>
 }
 
 export async function syncVideoImages({
@@ -63,17 +77,32 @@ export async function syncVideoImages({
   let firstPageWasEmpty = false
 
   while (true) {
-    const result = await coreQuery<{ videoImages: CoreVideoImage[] }>(
-      VIDEO_IMAGES_QUERY,
+    const result = await coreQuery<{ videos: CoreVideoWithImages[] }>(
+      VIDEOS_WITH_IMAGES_QUERY,
       {
         offset,
         limit: PAGE_SIZE,
+        // Filter by parent-video updatedAt. Edge: an image touched after
+        // its parent video was last touched won't be picked up by an
+        // incremental sync until the next full sync. Acceptable trade-off
+        // for the coverage win — full sync (no `since`) refreshes
+        // everything regardless.
         where: since ? { updatedAt: { gte: since } } : undefined,
       },
     )
 
-    const rawImages = result.data?.videoImages ?? []
-    if (offset === 0 && rawImages.length === 0) firstPageWasEmpty = true
+    const rawVideos = result.data?.videos ?? []
+    if (offset === 0 && rawVideos.length === 0) firstPageWasEmpty = true
+
+    // Flatten { video.id, video.images[] } → image rows with parent's id
+    // injected as `videoId`. Matches the shape `CoreVideoImageSchema`
+    // expects so existing validation + upsert paths stay byte-equal.
+    const rawImages = rawVideos.flatMap((video) =>
+      video.images.map((image) => ({
+        ...image,
+        videoId: video.id,
+      })),
+    )
 
     const parsedImages = CoreVideoImageSchema.array().safeParse(rawImages)
     if (!parsedImages.success) {
@@ -86,14 +115,14 @@ export async function syncVideoImages({
         }),
       )
       progress.increment(rawImages.length)
-      if (rawImages.length < PAGE_SIZE) break
+      if (rawVideos.length < PAGE_SIZE) break
       offset += PAGE_SIZE
       continue
     }
 
     const images = parsedImages.data
-    if (images.length === 0) break
-    progress.setTotal(offset + images.length)
+    if (rawVideos.length === 0) break
+    progress.setTotal(offset * 2 + images.length)
 
     try {
       let updated = 0
@@ -147,8 +176,8 @@ export async function syncVideoImages({
       )
     }
 
-    progress.increment(images.length)
-    if (rawImages.length < PAGE_SIZE) break
+    progress.increment(rawVideos.length)
+    if (rawVideos.length < PAGE_SIZE) break
     offset += PAGE_SIZE
   }
 

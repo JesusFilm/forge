@@ -102,6 +102,7 @@ function setupRetrieverFixtures() {
       videoTitle: "Keyword Video",
       imageUrl: null,
       description: "Keyword description",
+      playbackId: null,
       rank: 0.42,
     },
   ])
