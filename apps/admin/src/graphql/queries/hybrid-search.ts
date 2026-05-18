@@ -177,17 +177,12 @@ builder.queryFields((t) => ({
           ? "invalid_bearer"
           : "anonymous"
       // See route.ts for the rationale — on the current Next.js 16 +
-      // Node 24 + standalone stack, ONLY console.error surfaces from
-      // runtime route handlers in Railway's logsV2. Both console.log
-      // and console.warn are silenced. console.error is the only
-      // working channel for per-request structured observability,
-      // pending a structured-logger migration.
+      // Node 24 + Railway logsV2 + standalone stack, JSON-stringified
+      // log payloads from runtime route handlers are silenced. Only
+      // the `[label] event=name key=value` string format used by the
+      // existing working logs in this surface reliably surfaces.
       console.error(
-        JSON.stringify({
-          event: "search.request",
-          auth: authTag,
-          path: "graphql",
-        }),
+        `[search] event=search.request auth=${authTag} path=graphql`,
       )
       if (!authValid && env.SEARCH_AUTH_REQUIRED === "true") {
         // Typed GraphQLError with extensions.code so the auth signal
