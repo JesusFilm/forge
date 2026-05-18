@@ -7,18 +7,14 @@ vi.mock("@/config/env", () => ({
   env: {} as { ADMIN_TRIGGER_API_KEYS?: string },
 }))
 
-const { defaultClientMock } = vi.hoisted(() => ({
-  defaultClientMock: vi.fn(),
-}))
-
-vi.mock("@/cms/client", () => ({
-  default: () => ({ query: defaultClientMock }),
-}))
+import type {
+  AdminVideoLookupEnvelope,
+  VideoForEnrichment,
+} from "@/lib/admin-video-lookup"
 
 const { env } = await import("@/config/env")
 const {
   processAdminTriggerRequest,
-  resolveDispatchFields,
   __clearInFlightMapForTests,
   AdminTriggerBodySchema,
 } = await import("@/lib/admin-trigger-route")
@@ -38,52 +34,42 @@ function makeRequest(body: unknown, opts: { bearer?: string | null } = {}) {
   })
 }
 
-type VideoLabel =
-  | "behindTheScenes"
-  | "collection"
-  | "episode"
-  | "featureFilm"
-  | "segment"
-  | "series"
-  | "shortFilm"
-  | "trailer"
-
 function videoFixture(overrides: {
-  documentId: string
+  id?: string
   coreId: string
-  bcp47?: string
-  withMuxVariant?: boolean
-  withSubtitle?: boolean
-  label?: VideoLabel
-}) {
-  const bcp47 = overrides.bcp47 ?? "en"
+  label?: string | null
+  primaryLanguageBcp47?: string | null
+  muxAssetId?: string | null
+  subtitleUrl?: string | null
+}): VideoForEnrichment {
+  // Distinguish "not provided" from "explicitly null" — the route's
+  // validation_failed branch fires on explicit null, so nullish
+  // coalescing (`?? "en"`) would silently flip null → default and
+  // hide the regression. Use the `in` operator to honor a caller-
+  // supplied null.
   return {
-    documentId: overrides.documentId,
+    id: overrides.id ?? `v-${overrides.coreId}`,
     coreId: overrides.coreId,
-    title: "Title",
-    label: (overrides.label ?? "featureFilm") as VideoLabel,
-    primaryLanguage: { coreId: "lang-en", bcp47 },
-    subtitles:
-      overrides.withSubtitle === false
-        ? []
-        : [
-            {
-              primary: true,
-              aiGenerated: false,
-              vttSrc: `https://stream.mux.com/${overrides.documentId}.vtt`,
-              language: { coreId: "lang-en", bcp47 },
-            },
-          ],
-    variants:
-      overrides.withMuxVariant === false
-        ? []
-        : [
-            {
-              muxVideo: { assetId: `mux-${overrides.documentId}` },
-              language: { coreId: "lang-en", bcp47 },
-            },
-          ],
+    label: "label" in overrides ? (overrides.label ?? null) : "feature_film",
+    primaryLanguageBcp47:
+      "primaryLanguageBcp47" in overrides
+        ? (overrides.primaryLanguageBcp47 ?? null)
+        : "en",
+    muxAssetId:
+      "muxAssetId" in overrides
+        ? (overrides.muxAssetId ?? null)
+        : `mux-${overrides.coreId}`,
+    subtitleUrl:
+      "subtitleUrl" in overrides
+        ? (overrides.subtitleUrl ?? null)
+        : `https://stream.mux.com/${overrides.coreId}.vtt`,
   }
+}
+
+function adminLookupOk(rows: VideoForEnrichment[]): AdminVideoLookupEnvelope {
+  const map = new Map<string, VideoForEnrichment>()
+  for (const r of rows) map.set(r.coreId, r)
+  return { ok: true, data: map }
 }
 
 const DISPATCH_OK = vi.fn(async () => ({}))
@@ -91,7 +77,6 @@ const DISPATCH_OK = vi.fn(async () => ({}))
 beforeEach(() => {
   envMutable.ADMIN_TRIGGER_API_KEYS = BEARER_OK
   __clearInFlightMapForTests()
-  defaultClientMock.mockReset()
   DISPATCH_OK.mockReset()
   DISPATCH_OK.mockResolvedValue({})
 })
@@ -135,79 +120,33 @@ describe("AdminTriggerBodySchema", () => {
     const result = AdminTriggerBodySchema.safeParse({ items })
     expect(result.success).toBe(false)
   })
-})
 
-describe("resolveDispatchFields", () => {
-  it("picks the primary-language variant + subtitle", () => {
-    const fields = resolveDispatchFields(
-      videoFixture({ documentId: "d-1", coreId: "c-1" }),
-    )
-    expect(fields).toMatchObject({
-      muxAssetId: "mux-d-1",
-      subtitleUrl: "https://stream.mux.com/d-1.vtt",
-      languageBcp47: "en",
-      videoLabel: "featureFilm",
+  it("tolerates unknown per-item fields (Postel's law receiver)", () => {
+    const parsed = AdminTriggerBodySchema.parse({
+      items: [
+        // future field admin might add later — should NOT 400 against an
+        // older manager. Receiver-first deploy-ordering protects required
+        // keys; optional-key forward-compat needs strict=false.
+        { assetId: 1, coreId: "c-1", priority: "high" },
+      ],
     })
-  })
-
-  it("returns null when no primary-language variant has a mux assetId", () => {
-    const v = videoFixture({
-      documentId: "d-2",
-      coreId: "c-2",
-      withMuxVariant: false,
-    })
-    expect(resolveDispatchFields(v)).toBeNull()
-  })
-
-  it("returns null when no primary-language subtitle exists", () => {
-    const v = videoFixture({
-      documentId: "d-3",
-      coreId: "c-3",
-      withSubtitle: false,
-    })
-    expect(resolveDispatchFields(v)).toBeNull()
-  })
-
-  it("prefers primary + non-AI subtitles when multiple match", () => {
-    const v = videoFixture({ documentId: "d-4", coreId: "c-4" })
-    v.subtitles = [
-      {
-        primary: false,
-        aiGenerated: true,
-        vttSrc: "https://stream.mux.com/d-4-ai.vtt",
-        language: { coreId: "lang-en", bcp47: "en" },
-      },
-      {
-        primary: true,
-        aiGenerated: false,
-        vttSrc: "https://stream.mux.com/d-4-primary.vtt",
-        language: { coreId: "lang-en", bcp47: "en" },
-      },
-    ]
-    expect(resolveDispatchFields(v)?.subtitleUrl).toBe(
-      "https://stream.mux.com/d-4-primary.vtt",
-    )
-  })
-
-  it("falls back to label='unknown' when video.label is missing", () => {
-    const v = videoFixture({ documentId: "d-5", coreId: "c-5" })
-    // @ts-expect-error — exercising the null-label path
-    v.label = null
-    expect(resolveDispatchFields(v)?.videoLabel).toBe("unknown")
+    expect(parsed.items).toEqual([{ assetId: 1, coreId: "c-1" }])
   })
 })
 
 describe("processAdminTriggerRequest — auth", () => {
   it("returns 503 when ADMIN_TRIGGER_API_KEYS is unset", async () => {
     envMutable.ADMIN_TRIGGER_API_KEYS = undefined
+    const adminLookup = vi.fn(async () => adminLookupOk([]))
     const req = makeRequest({ items: [{ assetId: 1, coreId: "c-1" }] })
     const res = await processAdminTriggerRequest({
       request: req,
       kind: "scene-analysis",
       dispatch: DISPATCH_OK,
+      adminLookup,
     })
     expect(res.status).toBe(503)
-    expect(defaultClientMock).not.toHaveBeenCalled()
+    expect(adminLookup).not.toHaveBeenCalled()
     expect(DISPATCH_OK).not.toHaveBeenCalled()
   })
 
@@ -263,16 +202,14 @@ describe("processAdminTriggerRequest — body validation", () => {
 
 describe("processAdminTriggerRequest — happy path", () => {
   it("dispatches per-item and returns started results with a managerJobId", async () => {
-    defaultClientMock.mockResolvedValueOnce({
-      data: {
-        videos: [
-          videoFixture({ documentId: "d-1", coreId: "c-1" }),
-          videoFixture({ documentId: "d-2", coreId: "c-2" }),
-        ],
-      },
-    })
+    const adminLookup = vi.fn(async () =>
+      adminLookupOk([
+        videoFixture({ coreId: "c-1" }),
+        videoFixture({ coreId: "c-2" }),
+      ]),
+    )
 
-    const dispatched: Array<unknown> = []
+    const dispatched: Array<{ assetId: number; muxAssetId: string }> = []
     const req = makeRequest({
       items: [
         { assetId: 1, coreId: "c-1" },
@@ -284,9 +221,13 @@ describe("processAdminTriggerRequest — happy path", () => {
       request: req,
       kind: "scene-analysis",
       dispatch: async (input) => {
-        dispatched.push(input)
+        dispatched.push({
+          assetId: input.assetId,
+          muxAssetId: input.muxAssetId,
+        })
         return {}
       },
+      adminLookup,
       scheduleAfter: (cb) => {
         // Run immediately and synchronously-flush so the test
         // can observe the dispatch call before exit.
@@ -306,10 +247,35 @@ describe("processAdminTriggerRequest — happy path", () => {
     // Allow the synchronous schedule to run.
     await new Promise((r) => setTimeout(r, 0))
     expect(dispatched).toHaveLength(2)
+    expect(dispatched[0].muxAssetId).toBe("mux-c-1")
   })
 
-  it("returns not_found for items whose coreId has no cms video", async () => {
-    defaultClientMock.mockResolvedValueOnce({ data: { videos: [] } })
+  it("does NOT include documentId on the dispatch input (feat-125 — Strapi-only field dropped)", async () => {
+    const adminLookup = vi.fn(async () =>
+      adminLookupOk([videoFixture({ coreId: "c-1" })]),
+    )
+    let captured: Record<string, unknown> | null = null
+
+    await processAdminTriggerRequest({
+      request: makeRequest({ items: [{ assetId: 1, coreId: "c-1" }] }),
+      kind: "scene-analysis",
+      dispatch: async (input) => {
+        captured = input as unknown as Record<string, unknown>
+        return {}
+      },
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb()
+      },
+    })
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(captured).not.toBeNull()
+    expect(captured).not.toHaveProperty("documentId")
+  })
+
+  it("returns not_found for items whose coreId admin did not return", async () => {
+    const adminLookup = vi.fn(async () => adminLookupOk([]))
 
     const req = makeRequest({
       items: [{ assetId: 999, coreId: "c-missing" }],
@@ -319,6 +285,7 @@ describe("processAdminTriggerRequest — happy path", () => {
       request: req,
       kind: "scene-analysis",
       dispatch: DISPATCH_OK,
+      adminLookup,
       scheduleAfter: (cb) => {
         void cb()
       },
@@ -339,27 +306,16 @@ describe("processAdminTriggerRequest — happy path", () => {
     expect(DISPATCH_OK).not.toHaveBeenCalled()
   })
 
-  it("returns validation_failed for cms video missing required relations", async () => {
-    defaultClientMock.mockResolvedValueOnce({
-      data: {
-        videos: [
-          videoFixture({
-            documentId: "d-bad",
-            coreId: "c-bad",
-            withMuxVariant: false,
-          }),
-        ],
-      },
-    })
-
-    const req = makeRequest({
-      items: [{ assetId: 5, coreId: "c-bad" }],
-    })
+  it("returns validation_failed when admin returns null muxAssetId", async () => {
+    const adminLookup = vi.fn(async () =>
+      adminLookupOk([videoFixture({ coreId: "c-bad", muxAssetId: null })]),
+    )
 
     const res = await processAdminTriggerRequest({
-      request: req,
+      request: makeRequest({ items: [{ assetId: 5, coreId: "c-bad" }] }),
       kind: "scene-analysis",
       dispatch: DISPATCH_OK,
+      adminLookup,
       scheduleAfter: (cb) => {
         void cb()
       },
@@ -371,90 +327,192 @@ describe("processAdminTriggerRequest — happy path", () => {
     expect(body.results[0].managerJobId).toBeNull()
     expect(DISPATCH_OK).not.toHaveBeenCalled()
   })
-})
 
-describe("AdminTriggerBodySchema — forward-compat", () => {
-  it("tolerates unknown per-item fields (Postel's law receiver)", () => {
-    const parsed = AdminTriggerBodySchema.parse({
-      items: [
-        // future field admin might add later — should NOT 400 against an
-        // older manager. The deploy-ordering invariant is receiver-first
-        // for required keys; optional-key forward-compat needs strict=false.
-        { assetId: 1, coreId: "c-1", priority: "high" },
-      ],
-    })
-    expect(parsed.items).toEqual([{ assetId: 1, coreId: "c-1" }])
-  })
-})
-
-describe("processAdminTriggerRequest — cms lookup failures", () => {
-  it("times out the cms lookup and returns 502 cms_unreachable when Strapi hangs", async () => {
-    // Apollo never resolves — only the in-route Promise.race timer
-    // fires. Use fake timers so we don't wait the real 10s.
-    vi.useFakeTimers()
-    defaultClientMock.mockReturnValueOnce(
-      new Promise(() => {
-        /* never resolves */
-      }),
+  it("returns validation_failed when admin returns null subtitleUrl", async () => {
+    const adminLookup = vi.fn(async () =>
+      adminLookupOk([videoFixture({ coreId: "c-no-sub", subtitleUrl: null })]),
     )
 
-    const resPromise = processAdminTriggerRequest({
-      request: makeRequest({ items: [{ assetId: 1, coreId: "c-1" }] }),
+    const res = await processAdminTriggerRequest({
+      request: makeRequest({ items: [{ assetId: 6, coreId: "c-no-sub" }] }),
       kind: "scene-analysis",
       dispatch: DISPATCH_OK,
+      adminLookup,
       scheduleAfter: (cb) => {
         void cb()
       },
     })
-    // Advance past the 10s CMS_LOOKUP_TIMEOUT_MS budget.
-    await vi.advanceTimersByTimeAsync(10_500)
-    const res = await resPromise
-    vi.useRealTimers()
-
-    expect(res.status).toBe(502)
-    const body = (await res.json()) as { reason: string; message: string }
-    expect(body.reason).toBe("cms_unreachable")
-    expect(body.message).toMatch(/cms lookup timed out after 10000ms/i)
+    const body = (await res.json()) as {
+      results: Array<{ status: string }>
+    }
+    expect(body.results[0].status).toBe("validation_failed")
     expect(DISPATCH_OK).not.toHaveBeenCalled()
   })
 
-  it("returns 502 with reason=cms_unreachable when Apollo throws (real Error shape)", async () => {
-    // Mocked-vs-real discipline: throw the kind of error Apollo
-    // raises on a network failure (a real Error with `name` set),
-    // not a generic Error — so the route's catch branch matches
-    // production shapes.
-    const apolloErr = Object.assign(new Error("ECONNREFUSED 127.0.0.1:1337"), {
-      name: "ApolloError",
+  it("returns validation_failed when admin returns null primaryLanguageBcp47", async () => {
+    const adminLookup = vi.fn(async () =>
+      adminLookupOk([
+        videoFixture({ coreId: "c-no-lang", primaryLanguageBcp47: null }),
+      ]),
+    )
+
+    const res = await processAdminTriggerRequest({
+      request: makeRequest({ items: [{ assetId: 7, coreId: "c-no-lang" }] }),
+      kind: "scene-analysis",
+      dispatch: DISPATCH_OK,
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb()
+      },
     })
-    defaultClientMock.mockRejectedValueOnce(apolloErr)
+    const body = (await res.json()) as {
+      results: Array<{ status: string }>
+    }
+    expect(body.results[0].status).toBe("validation_failed")
+    expect(DISPATCH_OK).not.toHaveBeenCalled()
+  })
+
+  it("falls back to videoLabel='unknown' when admin returns null label", async () => {
+    const adminLookup = vi.fn(async () =>
+      adminLookupOk([videoFixture({ coreId: "c-no-label", label: null })]),
+    )
+    const dispatched: Array<{ videoLabel: string }> = []
+
+    await processAdminTriggerRequest({
+      request: makeRequest({ items: [{ assetId: 8, coreId: "c-no-label" }] }),
+      kind: "scene-analysis",
+      dispatch: async (input) => {
+        dispatched.push({ videoLabel: input.videoLabel })
+        return {}
+      },
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb()
+      },
+    })
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(dispatched[0]?.videoLabel).toBe("unknown")
+  })
+})
+
+describe("processAdminTriggerRequest — admin lookup failures", () => {
+  it("returns 503 with reason=config_missing when admin envelope is config_missing", async () => {
+    const adminLookup = vi.fn(
+      async (): Promise<AdminVideoLookupEnvelope> => ({
+        ok: false,
+        reason: "config_missing",
+        messages: ["ADMIN_GRAPHQL_URL not set"],
+        retryable: false,
+      }),
+    )
 
     const res = await processAdminTriggerRequest({
       request: makeRequest({ items: [{ assetId: 1, coreId: "c-1" }] }),
       kind: "scene-analysis",
       dispatch: DISPATCH_OK,
-      scheduleAfter: (cb) => {
-        void cb()
-      },
+      adminLookup,
+    })
+    expect(res.status).toBe(503)
+    const body = (await res.json()) as {
+      reason: string
+      upstreamReason: string
+    }
+    expect(body.reason).toBe("config_missing")
+    expect(body.upstreamReason).toBe("config_missing")
+    expect(DISPATCH_OK).not.toHaveBeenCalled()
+  })
+
+  it("returns 502 with reason=admin_unreachable on network_error envelope", async () => {
+    const adminLookup = vi.fn(
+      async (): Promise<AdminVideoLookupEnvelope> => ({
+        ok: false,
+        reason: "network_error",
+        messages: ["admin GraphQL request timed out after 15000ms"],
+        retryable: true,
+      }),
+    )
+
+    const res = await processAdminTriggerRequest({
+      request: makeRequest({ items: [{ assetId: 1, coreId: "c-1" }] }),
+      kind: "scene-analysis",
+      dispatch: DISPATCH_OK,
+      adminLookup,
     })
     expect(res.status).toBe(502)
     const body = (await res.json()) as {
-      error: string
       reason: string
-      message: string
+      upstreamReason: string
+      retryable: boolean
     }
-    expect(body.reason).toBe("cms_unreachable")
-    expect(body.message).toContain("ECONNREFUSED")
+    expect(body.reason).toBe("admin_unreachable")
+    expect(body.upstreamReason).toBe("network_error")
+    expect(body.retryable).toBe(true)
+    expect(DISPATCH_OK).not.toHaveBeenCalled()
+  })
+
+  it("returns 502 with reason=admin_unreachable on graphql_error envelope", async () => {
+    const adminLookup = vi.fn(
+      async (): Promise<AdminVideoLookupEnvelope> => ({
+        ok: false,
+        reason: "graphql_error",
+        messages: ["Not authorized to resolve Query.videosByCoreIds"],
+        retryable: false,
+        httpStatus: 401,
+      }),
+    )
+
+    const res = await processAdminTriggerRequest({
+      request: makeRequest({ items: [{ assetId: 1, coreId: "c-1" }] }),
+      kind: "scene-analysis",
+      dispatch: DISPATCH_OK,
+      adminLookup,
+    })
+    expect(res.status).toBe(502)
+    const body = (await res.json()) as {
+      reason: string
+      upstreamReason: string
+    }
+    expect(body.reason).toBe("admin_unreachable")
+    expect(body.upstreamReason).toBe("graphql_error")
+    expect(DISPATCH_OK).not.toHaveBeenCalled()
+  })
+
+  it("returns 502 with reason=admin_unreachable on parse_error envelope", async () => {
+    const adminLookup = vi.fn(
+      async (): Promise<AdminVideoLookupEnvelope> => ({
+        ok: false,
+        reason: "parse_error",
+        messages: ["admin GraphQL endpoint returned invalid JSON"],
+        retryable: true,
+        httpStatus: 502,
+      }),
+    )
+
+    const res = await processAdminTriggerRequest({
+      request: makeRequest({ items: [{ assetId: 1, coreId: "c-1" }] }),
+      kind: "scene-analysis",
+      dispatch: DISPATCH_OK,
+      adminLookup,
+    })
+    expect(res.status).toBe(502)
+    const body = (await res.json()) as {
+      reason: string
+      upstreamReason: string
+    }
+    expect(body.reason).toBe("admin_unreachable")
+    expect(body.upstreamReason).toBe("parse_error")
     expect(DISPATCH_OK).not.toHaveBeenCalled()
   })
 })
 
 describe("processAdminTriggerRequest — idempotency", () => {
+  function neverResolvesLookup() {
+    return vi.fn(async () => adminLookupOk([videoFixture({ coreId: "c-1" })]))
+  }
+
   it("second call with same kind+assetId returns already_in_flight with the same managerJobId", async () => {
-    defaultClientMock.mockResolvedValue({
-      data: {
-        videos: [videoFixture({ documentId: "d-1", coreId: "c-1" })],
-      },
-    })
+    const adminLookup = neverResolvesLookup()
 
     // The dispatch fn here intentionally NEVER resolves — keeps the
     // first call's slot in the in-flight map across the second call.
@@ -466,6 +524,7 @@ describe("processAdminTriggerRequest — idempotency", () => {
       request: makeRequest({ items: [{ assetId: 7, coreId: "c-1" }] }),
       kind: "scene-analysis",
       dispatch: neverDispatch,
+      adminLookup,
       scheduleAfter: (cb) => {
         void cb()
       },
@@ -480,6 +539,7 @@ describe("processAdminTriggerRequest — idempotency", () => {
       request: makeRequest({ items: [{ assetId: 7, coreId: "c-1" }] }),
       kind: "scene-analysis",
       dispatch: neverDispatch,
+      adminLookup,
       scheduleAfter: (cb) => {
         void cb()
       },
@@ -494,11 +554,7 @@ describe("processAdminTriggerRequest — idempotency", () => {
   })
 
   it("different kinds for same assetId do NOT collide", async () => {
-    defaultClientMock.mockResolvedValue({
-      data: {
-        videos: [videoFixture({ documentId: "d-1", coreId: "c-1" })],
-      },
-    })
+    const adminLookup = neverResolvesLookup()
     const neverDispatch = vi.fn(
       () => new Promise<unknown>(() => {}) as Promise<unknown>,
     )
@@ -507,6 +563,7 @@ describe("processAdminTriggerRequest — idempotency", () => {
       request: makeRequest({ items: [{ assetId: 7, coreId: "c-1" }] }),
       kind: "scene-analysis",
       dispatch: neverDispatch,
+      adminLookup,
       scheduleAfter: (cb) => {
         void cb()
       },
@@ -515,6 +572,7 @@ describe("processAdminTriggerRequest — idempotency", () => {
       request: makeRequest({ items: [{ assetId: 7, coreId: "c-1" }] }),
       kind: "transcript",
       dispatch: neverDispatch,
+      adminLookup,
       scheduleAfter: (cb) => {
         void cb()
       },
@@ -531,11 +589,7 @@ describe("processAdminTriggerRequest — idempotency", () => {
   })
 
   it("releases the slot after the dispatch REJECTS (sad-path slot leak guard)", async () => {
-    defaultClientMock.mockResolvedValue({
-      data: {
-        videos: [videoFixture({ documentId: "d-1", coreId: "c-1" })],
-      },
-    })
+    const adminLookup = neverResolvesLookup()
 
     let rejectFirst: (err: Error) => void = () => {}
     const dispatch = vi.fn(
@@ -549,6 +603,7 @@ describe("processAdminTriggerRequest — idempotency", () => {
       request: makeRequest({ items: [{ assetId: 99, coreId: "c-1" }] }),
       kind: "scene-analysis",
       dispatch,
+      adminLookup,
       scheduleAfter: (cb) => {
         // Run cb inside a try/catch so an unhandled rejection from
         // the inner dispatch (which we're about to reject) doesn't
@@ -566,6 +621,7 @@ describe("processAdminTriggerRequest — idempotency", () => {
       request: makeRequest({ items: [{ assetId: 99, coreId: "c-1" }] }),
       kind: "scene-analysis",
       dispatch: vi.fn(async () => ({})),
+      adminLookup,
       scheduleAfter: (cb) => {
         void cb()
       },
@@ -581,11 +637,7 @@ describe("processAdminTriggerRequest — idempotency", () => {
     // try/finally, not just the await. A dispatcher that throws
     // before returning a Promise must still leave the slot free
     // for a re-trigger.
-    defaultClientMock.mockResolvedValue({
-      data: {
-        videos: [videoFixture({ documentId: "d-1", coreId: "c-1" })],
-      },
-    })
+    const adminLookup = neverResolvesLookup()
     const throwingDispatch = vi.fn((): Promise<unknown> => {
       throw new Error("synchronous dispatch failure")
     })
@@ -594,6 +646,7 @@ describe("processAdminTriggerRequest — idempotency", () => {
       request: makeRequest({ items: [{ assetId: 50, coreId: "c-1" }] }),
       kind: "scene-analysis",
       dispatch: throwingDispatch,
+      adminLookup,
       scheduleAfter: (cb) => {
         void cb().catch(() => {})
       },
@@ -605,6 +658,7 @@ describe("processAdminTriggerRequest — idempotency", () => {
       request: makeRequest({ items: [{ assetId: 50, coreId: "c-1" }] }),
       kind: "scene-analysis",
       dispatch: vi.fn(async () => ({})),
+      adminLookup,
       scheduleAfter: (cb) => {
         void cb()
       },
@@ -616,11 +670,7 @@ describe("processAdminTriggerRequest — idempotency", () => {
   })
 
   it("releases the slot after the dispatch resolves", async () => {
-    defaultClientMock.mockResolvedValue({
-      data: {
-        videos: [videoFixture({ documentId: "d-1", coreId: "c-1" })],
-      },
-    })
+    const adminLookup = neverResolvesLookup()
 
     let resolveFirst: () => void = () => {}
     const dispatch = vi.fn(
@@ -634,6 +684,7 @@ describe("processAdminTriggerRequest — idempotency", () => {
       request: makeRequest({ items: [{ assetId: 8, coreId: "c-1" }] }),
       kind: "scene-analysis",
       dispatch,
+      adminLookup,
       scheduleAfter: (cb) => {
         void cb()
       },
@@ -646,6 +697,7 @@ describe("processAdminTriggerRequest — idempotency", () => {
       request: makeRequest({ items: [{ assetId: 8, coreId: "c-1" }] }),
       kind: "scene-analysis",
       dispatch,
+      adminLookup,
       scheduleAfter: (cb) => {
         void cb()
       },

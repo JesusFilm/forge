@@ -33,12 +33,12 @@ vi.mock("@/workflows/sceneAnalysisPipeline", () => ({
   runSceneAnalysisPipeline: runSceneAnalysisPipelineMock,
 }))
 
-const { defaultClientMock } = vi.hoisted(() => ({
-  defaultClientMock: vi.fn(),
+const { adminLookupMock } = vi.hoisted(() => ({
+  adminLookupMock: vi.fn(),
 }))
 
-vi.mock("@/cms/client", () => ({
-  default: () => ({ query: defaultClientMock }),
+vi.mock("@/lib/admin-video-lookup", () => ({
+  lookupVideosByCoreIdFromAdmin: adminLookupMock,
 }))
 
 const { env } = await import("@/config/env")
@@ -51,7 +51,7 @@ const BEARER = "test-trigger-key-XYZ"
 beforeEach(() => {
   envMutable.ADMIN_TRIGGER_API_KEYS = BEARER
   __clearInFlightMapForTests()
-  defaultClientMock.mockReset()
+  adminLookupMock.mockReset()
   runSceneAnalysisPipelineMock.mockReset()
   runSceneAnalysisPipelineMock.mockResolvedValue({
     videoId: 1,
@@ -68,32 +68,21 @@ afterEach(() => {
 
 describe("POST /api/admin-trigger/scene-analysis", () => {
   it("dispatches runSceneAnalysisPipeline with the resolved fields", async () => {
-    defaultClientMock.mockResolvedValueOnce({
-      data: {
-        videos: [
+    adminLookupMock.mockResolvedValueOnce({
+      ok: true,
+      data: new Map([
+        [
+          "core-A",
           {
-            documentId: "doc-A",
+            id: "v-A",
             coreId: "core-A",
-            title: "T",
             label: "shortFilm",
-            primaryLanguage: { coreId: "lang-en", bcp47: "en" },
-            subtitles: [
-              {
-                primary: true,
-                aiGenerated: false,
-                vttSrc: "https://stream.mux.com/A.vtt",
-                language: { coreId: "lang-en", bcp47: "en" },
-              },
-            ],
-            variants: [
-              {
-                muxVideo: { assetId: "mux-A" },
-                language: { coreId: "lang-en", bcp47: "en" },
-              },
-            ],
+            primaryLanguageBcp47: "en",
+            muxAssetId: "mux-A",
+            subtitleUrl: "https://stream.mux.com/A.vtt",
           },
         ],
-      },
+      ]),
     })
 
     const req = new Request(
@@ -141,6 +130,6 @@ describe("POST /api/admin-trigger/scene-analysis", () => {
     const res = await POST(req)
     expect(res.status).toBe(503)
     expect(runSceneAnalysisPipelineMock).not.toHaveBeenCalled()
-    expect(defaultClientMock).not.toHaveBeenCalled()
+    expect(adminLookupMock).not.toHaveBeenCalled()
   })
 })
