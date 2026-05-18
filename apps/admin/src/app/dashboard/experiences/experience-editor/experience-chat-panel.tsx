@@ -47,10 +47,6 @@ import type {
   EditorialBrief,
   EditorialBriefField,
 } from "@/services/experience-ai/experience-ai-chat-brief"
-import {
-  DEFAULT_CHAT_PROVIDER,
-  type ChatProvider,
-} from "@/services/experience-ai/experience-ai-chat-provider"
 import type { QualityDraftReview } from "@/services/experience-ai/experience-ai-quality-draft.schemas"
 import {
   type ChatMessageDTO,
@@ -162,7 +158,6 @@ export function ExperienceChatPanel({
   const [messages, setMessages] = useState<LocalMessage[]>([])
   const [draft, setDraft] = useState("")
   const [confirmAcrossLocales, setConfirmAcrossLocales] = useState(false)
-  const [provider, setProvider] = useState<ChatProvider>(DEFAULT_CHAT_PROVIDER)
   const [crossLocaleModalOpen, setCrossLocaleModalOpen] = useState(false)
   const [stream, setStream] = useState<StreamStatus>({ kind: "idle" })
   const [bootError, setBootError] = useState<string | null>(null)
@@ -314,7 +309,6 @@ export function ExperienceChatPanel({
             prompt,
             confirmedAcrossLocales,
             confirmedBrief,
-            provider,
           },
           { signal: abort.signal },
         )
@@ -429,7 +423,7 @@ export function ExperienceChatPanel({
         })
       }
     },
-    [canvasController, provider, streamFactory],
+    [canvasController, streamFactory],
   )
 
   const handleSend = useCallback(async () => {
@@ -792,22 +786,6 @@ export function ExperienceChatPanel({
               className="h-3 w-3 rounded-sm border-[var(--color-hairline-strong)]"
             />
             Apply across locales
-          </label>
-          <label className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-            Provider
-            <select
-              value={provider}
-              onChange={(e) => setProvider(e.target.value as ChatProvider)}
-              disabled={stream.kind === "streaming"}
-              data-testid="experience-chat-provider"
-              className="h-6 rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface-inset)] px-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-primary)] outline-none disabled:cursor-not-allowed disabled:text-[var(--color-text-disabled)]"
-            >
-              <option value="mastra">Mastra (new, agent runtime)</option>
-              <option value="openrouter">OpenRouter (free, cloud)</option>
-              <option value="ollama">Ollama (local, free)</option>
-              <option value="codex">Codex (paid, local CLI)</option>
-              <option value="claude-code">Claude Code (paid, local CLI)</option>
-            </select>
           </label>
         </div>
 
