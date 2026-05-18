@@ -2056,12 +2056,22 @@ prefix to surface keyId per request. Plan inline comment in
 
 ### Cross-references
 
+- **Primary learning doc:**
+  `docs/solutions/architecture-patterns/bearer-as-passport-multi-csv-composition-20260518.md`
+  — the OR-composition pattern + disjointness invariant + rate-limit-
+  before-auth + receiver-first deploy ordering.
+- **Companion learnings:**
+  - `docs/solutions/best-practices/waf-passthrough-verification-via-prior-art-20260518.md`
+    (how WAF passthrough was verified without fresh probes).
+  - `docs/solutions/runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md`
+    (why the structured `search.request` log emits via `console.warn`
+    not `console.log`).
 - Plan: `docs/plans/2026-05-17-002-feat-search-api-auth-plan.md`
 - Brainstorm:
   `docs/brainstorms/2026-05-17-search-api-auth-requirements.md`
-- Companion pattern (workflow direction):
+- Sibling pattern (workflow direction):
   `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`
-- Companion pattern (consumer-bearer):
+- Sibling pattern (consumer-bearer):
   `docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md`
 
 ## Common pitfalls (grows with each unit)
