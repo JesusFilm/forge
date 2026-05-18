@@ -43,10 +43,8 @@ const require = createRequire(import.meta.url)
  *
  * Falls back to Ollama if OPENROUTER_API_KEY isn't set.
  */
-// Match the model the existing OpenRouter quality-draft path uses
-// (`experience-ai-openrouter-free.ts` DEFAULT_OPENROUTER_EXPERIENCE_CHAT_MODELS[0]).
-// Free tier + structured-outputs support — proven to handle the
-// multi-block JSON envelope for this surface.
+// Free-tier OpenRouter model with structured-outputs support — proven
+// to handle the multi-block JSON envelope for the Experience chat surface.
 const OPENROUTER_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
 const OLLAMA_MODEL = "gemma4:e4b"
 
