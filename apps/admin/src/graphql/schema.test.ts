@@ -47,6 +47,7 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "video",
         "videoBySlug",
         "videos",
+        "videosByCoreIds",
         // Experience
         "experience",
         "experiences",
@@ -65,6 +66,31 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "defaultTemplateExperience",
       ]),
     )
+  })
+
+  it("VideoForEnrichment type (feat-125) exposes the dispatch-fields projection with the expected nullability", () => {
+    const fields = fieldsOf("VideoForEnrichment")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "id",
+        "coreId",
+        "label",
+        "primaryLanguageBcp47",
+        "muxAssetId",
+        "subtitleUrl",
+      ]),
+    )
+    // id + coreId are non-null per the service contract; the rest
+    // are nullable so manager can classify missing fields as
+    // `validation_failed`.
+    const nonNull = (key: string) =>
+      String((fields[key] as { type: unknown }).type).endsWith("!")
+    expect(nonNull("id")).toBe(true)
+    expect(nonNull("coreId")).toBe(true)
+    expect(nonNull("label")).toBe(false)
+    expect(nonNull("primaryLanguageBcp47")).toBe(false)
+    expect(nonNull("muxAssetId")).toBe(false)
+    expect(nonNull("subtitleUrl")).toBe(false)
   })
 
   it("Query root no longer exposes the Unit 3 Ping spike fields", () => {

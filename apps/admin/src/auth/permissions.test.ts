@@ -341,6 +341,7 @@ describe("permission matrix completeness", () => {
     const allKeys: PermissionKey[] = [
       "read:experiences",
       "read:videos",
+      "read:video-metadata",
       "read:reference",
       "read:media-assets",
       "write:experiences",
@@ -455,6 +456,10 @@ describe("permission matrix completeness", () => {
       ).toBe(true)
     })
 
+    it("satisfies read:video-metadata (feat-125 manager admin-trigger lookup)", () => {
+      expect(hasPermission(WORKFLOW_TRIGGER, "read:video-metadata")).toBe(true)
+    })
+
     it("does NOT satisfy any permission key outside the narrow allowlist", () => {
       // Iterate every PermissionKey via TypeScript's exhaustive Record
       // pattern so adding a new key without explicitly deciding
@@ -467,10 +472,12 @@ describe("permission matrix completeness", () => {
         "write:transcript-embeddings",
         "write:manager-enrichment-trigger",
         "write:experience-embeddings",
+        "read:video-metadata",
       ])
       const allKeys: Record<PermissionKey, true> = {
         "read:experiences": true,
         "read:videos": true,
+        "read:video-metadata": true,
         "read:reference": true,
         "read:media-assets": true,
         "write:experiences": true,
@@ -515,6 +522,7 @@ describe("permission matrix completeness", () => {
       const allKeys: Record<PermissionKey, true> = {
         "read:experiences": true,
         "read:videos": true,
+        "read:video-metadata": true,
         "read:reference": true,
         "read:media-assets": true,
         "write:experiences": true,

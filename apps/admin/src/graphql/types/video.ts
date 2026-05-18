@@ -9,6 +9,7 @@ import type { Principal } from "@/auth/principal"
 import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
+import type { VideoForEnrichment } from "@/services/video.service"
 
 // Principal-aware relation filters — extracted so the per-principal /
 // per-locale shape is unit-testable. EDITOR/ADMIN see everything;
@@ -352,6 +353,62 @@ builder.prismaObject("Video", {
   }),
 })
 
+// VideoForEnrichment — service-mediated projection of dispatch fields
+// (muxAssetId, subtitleUrl, primaryLanguageBcp47, label) consumed by
+// manager's `/api/admin-trigger/{scene-analysis,transcript}` handler.
+// Replaces the Strapi `videos(filters: { coreId: { in } })` lookup
+// manager used to issue before feat-125.
+//
+// @classification public-shape
+//
+// The picker logic ("best primary-language variant + subtitle") lives
+// in `services/video.service.ts::getByCoreIds` so manager does not
+// re-implement it. classification.test.ts walks `prismaObject` +
+// `t.relation` only, so this objectRef is invisible to its walker by
+// construction.
+
+const VideoForEnrichmentRef =
+  builder.objectRef<VideoForEnrichment>("VideoForEnrichment")
+
+VideoForEnrichmentRef.implement({
+  description:
+    "Dispatch-fields projection for manager's admin-trigger enrichment lookup. Each field is nullable; null mux/subtitle signals manager to return validation_failed for that item.",
+  fields: (t) => ({
+    // `nullable: false` is required on objectRef-based types —
+    // Pothos cannot infer non-nullability from the TS shape the
+    // way prismaObject can from the Prisma schema. Dropping these
+    // would silently flip the SDL to `String` / `ID` (nullable).
+    id: t.exposeID("id", {
+      nullable: false,
+      description: "Admin's Video.id (cuid).",
+    }),
+    coreId: t.exposeString("coreId", {
+      nullable: false,
+      description: "Core's stable identifier for the video.",
+    }),
+    label: t.exposeString("label", {
+      nullable: true,
+      description:
+        "VideoLabel as the camelCase wire-shape string ('featureFilm', 'shortFilm', 'behindTheScenes', etc.) — normalized from Prisma's TS enum identifier so manager's downstream LLM prompt stays byte-identical to the pre-feat-125 Strapi shape.",
+    }),
+    primaryLanguageBcp47: t.exposeString("primaryLanguageBcp47", {
+      nullable: true,
+      description:
+        "BCP-47 tag of the video's primary language; null when unattested.",
+    }),
+    muxAssetId: t.exposeString("muxAssetId", {
+      nullable: true,
+      description:
+        "Mux assetId of the primary-language dub; null when no matching variant exists.",
+    }),
+    subtitleUrl: t.exposeString("subtitleUrl", {
+      nullable: true,
+      description:
+        "VTT URL of the best primary-language subtitle (primary + non-AI preferred); null when no candidate exists.",
+    }),
+  }),
+})
+
 // Root queries — PUBLIC since consumer-migration U2 (2026-05-11).
 builder.queryFields((t) => ({
   video: t.prismaField({
@@ -395,5 +452,16 @@ builder.queryFields((t) => ({
         input: { limit: args.limit ?? 50, offset: args.offset ?? 0 },
         query,
       }),
+  }),
+  videosByCoreIds: t.field({
+    type: [VideoForEnrichmentRef],
+    authScopes: { hasPermission: "read:video-metadata" },
+    description:
+      "Batched coreId → dispatch-fields lookup for manager's admin-trigger enrichment endpoints (feat-125). Replaces the Strapi `videos(filters: { coreId: { in } })` call. Gated by `read:video-metadata`; manager's `ADMIN_EMBED_TRIGGER_API_KEY` bearer satisfies it via the WORKFLOW_TRIGGER allowlist. Max 100 coreIds per call (matches manager's receiver-side cap).",
+    args: {
+      coreIds: t.arg.stringList({ required: true }),
+    },
+    resolve: (_root, args, ctx) =>
+      ctx.services.video.getByCoreIds({ coreIds: args.coreIds }),
   }),
 }))
