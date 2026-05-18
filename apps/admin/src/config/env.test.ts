@@ -105,6 +105,62 @@ describe("env", () => {
       ).toThrow(/WEB_ADMIN_API_KEYS and BACKUP_DOWNLOAD_API_KEYS/)
     })
 
+    it("collects ALL overlapping pairs into a single error (not first-fail)", async () => {
+      // Operator workflow: when a chaotic Doppler rotation produces
+      // multiple overlaps simultaneously, the boot error must surface
+      // every offending pair so the cleanup is one redeploy, not N.
+      let caught: Error | undefined
+      try {
+        assertBearerCsvsDisjoint({
+          WORKFLOW_API_KEYS: "shared-1",
+          WEB_ADMIN_API_KEYS: "shared-1,shared-2",
+          BACKUP_DOWNLOAD_API_KEYS: "shared-2",
+        })
+      } catch (err) {
+        caught = err as Error
+      }
+      expect(caught).toBeDefined()
+      // Both offending pairs surface in the same error.
+      expect(caught!.message).toMatch(
+        /WORKFLOW_API_KEYS and WEB_ADMIN_API_KEYS/,
+      )
+      expect(caught!.message).toMatch(
+        /WEB_ADMIN_API_KEYS and BACKUP_DOWNLOAD_API_KEYS/,
+      )
+      // And the rotation runbook is referenced.
+      expect(caught!.message).toMatch(/Search API authentication/)
+      // Key values stay redacted.
+      expect(caught!.message).not.toContain("shared-1")
+      expect(caught!.message).not.toContain("shared-2")
+    })
+  })
+
+  // Module-load side-effect lock. The disjointness invariant is
+  // exercised by direct calls above, but the module-load auto-invocation
+  // at the bottom of env.ts (`assertBearerCsvsDisjoint({...env vars})`)
+  // has no other regression guard. A refactor deleting or gating that
+  // call would silently disable the boot-time invariant in production.
+  // We source-grep env.ts (parallel to the permissions.test.ts bearer-
+  // isolation grep) to lock the call site in place.
+  describe("env module-load wiring", () => {
+    it("env.ts invokes assertBearerCsvsDisjoint at module load with all 4 CSV env vars", async () => {
+      const { readFile } = await import("node:fs/promises")
+      const { fileURLToPath } = await import("node:url")
+      const source = await readFile(
+        fileURLToPath(new URL("./env.ts", import.meta.url)),
+        "utf8",
+      )
+      // The call site is asserted to exist at the bottom of env.ts.
+      expect(source).toMatch(/assertBearerCsvsDisjoint\s*\(\s*\{/)
+      // And it MUST reference all four CSV env vars from `env`.
+      expect(source).toMatch(/WORKFLOW_API_KEYS:\s*env\.WORKFLOW_API_KEYS/)
+      expect(source).toMatch(/WEB_ADMIN_API_KEYS:\s*env\.WEB_ADMIN_API_KEYS/)
+      expect(source).toMatch(
+        /BACKUP_DOWNLOAD_API_KEYS:\s*env\.BACKUP_DOWNLOAD_API_KEYS/,
+      )
+      expect(source).toMatch(/SEARCH_API_KEYS:\s*env\.SEARCH_API_KEYS/)
+    })
+
     it("throws when SEARCH_API_KEYS overlaps WORKFLOW_API_KEYS", () => {
       expect(() =>
         assertBearerCsvsDisjoint({

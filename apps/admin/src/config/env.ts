@@ -355,42 +355,76 @@ function parseBearerCsvSet(csv: string | undefined): ReadonlySet<string> {
   )
 }
 
+// `BEARER_CSV_KEYS` drives both the snapshot type AND the
+// `assertBearerCsvsDisjoint` iteration. The `satisfies` clause makes the
+// compiler enforce alignment: adding a new bearer CSV requires updating
+// the constant AND the type in lockstep, or the build breaks.
+const BEARER_CSV_KEYS = [
+  "WORKFLOW_API_KEYS",
+  "WEB_ADMIN_API_KEYS",
+  "BACKUP_DOWNLOAD_API_KEYS",
+  "SEARCH_API_KEYS",
+] as const
+
+type BearerCsvKey = (typeof BEARER_CSV_KEYS)[number]
+
 export type BearerCsvSnapshot = {
-  readonly WORKFLOW_API_KEYS?: string
-  readonly WEB_ADMIN_API_KEYS?: string
-  readonly BACKUP_DOWNLOAD_API_KEYS?: string
-  readonly SEARCH_API_KEYS?: string
+  readonly [K in BearerCsvKey]?: string
 }
 
-export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
-  const sets = [
-    ["WORKFLOW_API_KEYS", parseBearerCsvSet(snapshot.WORKFLOW_API_KEYS)],
-    ["WEB_ADMIN_API_KEYS", parseBearerCsvSet(snapshot.WEB_ADMIN_API_KEYS)],
-    [
-      "BACKUP_DOWNLOAD_API_KEYS",
-      parseBearerCsvSet(snapshot.BACKUP_DOWNLOAD_API_KEYS),
-    ],
-    ["SEARCH_API_KEYS", parseBearerCsvSet(snapshot.SEARCH_API_KEYS)],
-  ] as const
+// Compile-time guard: every key in BearerCsvSnapshot MUST be a member
+// of BEARER_CSV_KEYS (and vice versa via the mapped type). A future
+// addition that names a key in one place but not the other won't
+// compile.
+const _bearerCsvKeysCheck: ReadonlyArray<keyof BearerCsvSnapshot> =
+  BEARER_CSV_KEYS satisfies ReadonlyArray<keyof BearerCsvSnapshot>
+void _bearerCsvKeysCheck
 
+export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
+  const sets = BEARER_CSV_KEYS.map(
+    (name) => [name, parseBearerCsvSet(snapshot[name])] as const,
+  )
+
+  // Collect ALL overlapping pairs into one error rather than throwing
+  // on the first match. An operator hitting this fail-fast at deploy
+  // time gets the complete list of CSV pairs to clean up instead of
+  // N redeploys to discover each overlap one at a time. The key
+  // values themselves are NEVER included in the error — only the
+  // CSV names and the count of overlapping values per pair.
+  const overlaps: Array<{
+    left: BearerCsvKey
+    right: BearerCsvKey
+    count: number
+  }> = []
   for (let i = 0; i < sets.length; i += 1) {
     for (let j = i + 1; j < sets.length; j += 1) {
       const [leftName, left] = sets[i]
       const [rightName, right] = sets[j]
+      let count = 0
       for (const key of left) {
-        if (right.has(key)) {
-          // NEVER include the key value — error stays grep-friendly for
-          // logs but doesn't echo the leaked credential.
-          throw new Error(
-            `Bearer API key value appears in multiple CSVs: ${leftName} and ` +
-              `${rightName} must be disjoint (admin auth chains must not share ` +
-              `bearer credentials). Check the offending Doppler entries — key ` +
-              `value redacted.`,
-          )
-        }
+        if (right.has(key)) count += 1
+      }
+      if (count > 0) {
+        overlaps.push({ left: leftName, right: rightName, count })
       }
     }
   }
+
+  if (overlaps.length === 0) return
+
+  const summary = overlaps
+    .map(
+      ({ left, right, count }) =>
+        `${left} and ${right} (${count} key${count === 1 ? "" : "s"})`,
+    )
+    .join("; ")
+  throw new Error(
+    `Bearer API key values appear in multiple CSVs. Offending pairs: ` +
+      `${summary}. The bearer CSVs must be disjoint (admin auth chains must ` +
+      `not share bearer credentials). Check the offending Doppler entries — ` +
+      `key values redacted. See apps/admin/CLAUDE.md > "Search API ` +
+      `authentication" for the receiver-first rotation procedure.`,
+  )
 }
 
 // Boot-time invariant — fires on every import of `env`. Skipping this

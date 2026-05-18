@@ -42,8 +42,27 @@ function tooManyRequests(): Response {
   return Response.json({ error: "Too many requests" }, { status: 429 })
 }
 
-function authenticationRequired(): Response {
-  return Response.json({ error: "Authentication required" }, { status: 401 })
+function authenticationRequired(
+  authTag: "invalid_bearer" | "anonymous",
+): Response {
+  // RFC 6750 §3 — the WWW-Authenticate header on a 401 surfaces the
+  // realm + a machine-discriminable error code so debugging partners
+  // can distinguish "I sent a bad key" from "I sent no key at all"
+  // without having to inspect admin's logs. Emitted on every 401:
+  //   invalid_bearer → error="invalid_token"
+  //   anonymous      → no error code (per RFC 6750 §3.1, omit when
+  //                    no credentials were sent)
+  const challenge =
+    authTag === "invalid_bearer"
+      ? 'Bearer realm="search", error="invalid_token"'
+      : 'Bearer realm="search"'
+  return Response.json(
+    { error: "Authentication required" },
+    {
+      status: 401,
+      headers: { "WWW-Authenticate": challenge },
+    },
+  )
 }
 
 function parseNumericParam(raw: string | null): number | undefined {
@@ -78,7 +97,10 @@ export async function GET(request: Request): Promise<Response> {
   // the gate (a caller presenting a stale or wrong key shows up as
   // `invalid_bearer`, distinct from a caller who sent no header at
   // all — the latter is expected during dual-accept; the former is
-  // the population that will 401 after the flip).
+  // the population that will 401 after the flip). The `rl` field
+  // tags whether the rate-limit decision came from Redis or the
+  // in-process fallback — `rl=local` on a high-traffic prod replica
+  // signals Redis degradation.
   //
   // The auth check accepts ANY of three known-caller bearer CSVs
   // (search / consumer / workflow) — see `isAnyKnownBearer` in
@@ -97,10 +119,13 @@ export async function GET(request: Request): Promise<Response> {
       event: "search.request",
       auth: authTag,
       path: "rest",
+      rl: limit.source,
     }),
   )
   if (!authValid && env.SEARCH_AUTH_REQUIRED === "true") {
-    return authenticationRequired()
+    // authTag here is "invalid_bearer" or "anonymous" (the `bearer`
+    // case satisfies authValid). TS narrows after the guard.
+    return authenticationRequired(authTag as "invalid_bearer" | "anonymous")
   }
 
   const { searchParams } = new URL(request.url)

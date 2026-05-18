@@ -8,6 +8,8 @@
  * @classification public-shape
  */
 
+import { GraphQLError } from "graphql"
+
 import { builder } from "@/graphql/builder"
 import { prisma } from "@/db/client"
 import { isAnyKnownBearer } from "@/auth/search-bearer"
@@ -159,7 +161,17 @@ builder.queryFields((t) => ({
         }),
       )
       if (!authValid && env.SEARCH_AUTH_REQUIRED === "true") {
-        throw new Error("Authentication required")
+        // Typed GraphQLError with extensions.code so the auth signal
+        // survives Yoga's default maskedErrors (which rewrites raw
+        // `new Error(...)` to "Unexpected error." in production).
+        // Clients branch on `errors[0].extensions.code === "UNAUTHENTICATED"`
+        // — stable, schema-aligned, parallel to the REST 401 sibling.
+        throw new GraphQLError("Authentication required", {
+          extensions: {
+            code: "UNAUTHENTICATED",
+            http: { status: 401 },
+          },
+        })
       }
 
       const query = args.q.trim()

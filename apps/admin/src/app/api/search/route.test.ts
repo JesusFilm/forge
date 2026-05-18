@@ -268,7 +268,7 @@ describe("GET /api/search", () => {
     searchMock.mockRejectedValueOnce(new Error("boom"))
     const res = await GET(req("/api/search?q=jesus&locale=en"))
     expect(res.status).toBe(503)
-    expect(await res.json()).toEqual({
+    expect(await res.json()).toMatchObject({
       error: "Search is temporarily unavailable",
     })
   })
@@ -361,6 +361,16 @@ describe("GET /api/search", () => {
         expect(parseSearchLogLines()).toHaveLength(1)
       })
 
+      it("tags rate-limit source in the structured log (rl=local|redis) for Redis-degradation visibility", async () => {
+        // Default mock returns source: "local". Verify the log
+        // carries it so an operator grepping `rl=local` on a
+        // high-traffic prod replica can detect Redis fallback
+        // without changing the auth tagging.
+        await GET(req("/api/search?q=jesus&locale=en"))
+        const log = parseSearchLogLines()[0]
+        expect(log).toMatchObject({ rl: "local" })
+      })
+
       it("still emits the search.request log line when the service throws (5xx path)", async () => {
         // Locks in log-ordering: the auth/log line fires BEFORE the
         // try/catch around service.search, so a 503 still carries the
@@ -395,9 +405,30 @@ describe("GET /api/search", () => {
       it("anonymous request → 401 Authentication required", async () => {
         const res = await GET(req("/api/search?q=jesus&locale=en"))
         expect(res.status).toBe(401)
-        expect(await res.json()).toEqual({
+        // Use toMatchObject so future error-envelope additions (e.g.
+        // a typed `code` field) don't fail this test for free.
+        expect(await res.json()).toMatchObject({
           error: "Authentication required",
         })
+      })
+
+      it("anonymous 401 carries WWW-Authenticate: Bearer realm=search (no error code per RFC 6750)", async () => {
+        const res = await GET(req("/api/search?q=jesus&locale=en"))
+        expect(res.status).toBe(401)
+        expect(res.headers.get("WWW-Authenticate")).toBe(
+          'Bearer realm="search"',
+        )
+      })
+
+      it("invalid bearer 401 carries WWW-Authenticate: Bearer error=invalid_token (RFC 6750 §3)", async () => {
+        vi.mocked(isAnyKnownBearer).mockReturnValue(false)
+        const res = await GET(
+          reqWithAuth("/api/search?q=jesus&locale=en", "Bearer not-a-real-key"),
+        )
+        expect(res.status).toBe(401)
+        expect(res.headers.get("WWW-Authenticate")).toBe(
+          'Bearer realm="search", error="invalid_token"',
+        )
       })
 
       it("invalid bearer → 401", async () => {

@@ -5,6 +5,7 @@ vi.mock("@/config/env", () => ({
     SEARCH_API_KEYS?: string
     WEB_ADMIN_API_KEYS?: string
     WORKFLOW_API_KEYS?: string
+    BACKUP_DOWNLOAD_API_KEYS?: string
   },
 }))
 
@@ -16,6 +17,7 @@ const envMutable = env as {
   SEARCH_API_KEYS?: string
   WEB_ADMIN_API_KEYS?: string
   WORKFLOW_API_KEYS?: string
+  BACKUP_DOWNLOAD_API_KEYS?: string
 }
 
 describe("isValidSearchBearer", () => {
@@ -132,6 +134,41 @@ describe("isValidSearchBearer", () => {
     // Both implementations match — this is the positive control.
     expect(isValidSearchBearer("Bearer kéy")).toBe(true)
   })
+
+  it("ASYMMETRIC byte-length test: configured key with extra UTF-8 byte vs presented same UTF-16 length WOULD throw under .length but returns false under Buffer.byteLength", () => {
+    // The PROPER mocked-shape-vs-real-contract test. The previous
+    // UTF-8 cases admitted both implementations behave identically;
+    // this one actually DIVERGES:
+    //
+    // configured 'kéy' = 3 UTF-16 code units, 4 UTF-8 bytes.
+    // presented  'key' = 3 UTF-16 code units, 3 UTF-8 bytes.
+    //
+    // Under `.length` (3 === 3): proceeds to timingSafeEqual with
+    // mismatched byte lengths → throws RangeError → crashes the
+    // request as a 500.
+    //
+    // Under `Buffer.byteLength` (4 !== 3): skips the entry → returns
+    // false cleanly.
+    //
+    // A regression flipping Buffer.byteLength back to .length would
+    // make this `.not.toThrow()` assertion fail loudly. This is the
+    // assertion that actually distinguishes the two implementations.
+    envMutable.SEARCH_API_KEYS = "kéy"
+    expect(() => isValidSearchBearer("Bearer key")).not.toThrow()
+    expect(isValidSearchBearer("Bearer key")).toBe(false)
+  })
+
+  it("rejects an Authorization header exceeding MAX_BEARER_LENGTH (1024) without allocating the per-comparison Buffer", () => {
+    // Defense-in-depth guard. Node's HTTP parser already caps total
+    // header size around 8-16 KB, so this is mostly a contract-shape
+    // assertion: a pathological 64KB Authorization header returns
+    // false at the boundary without dropping into the per-key
+    // Buffer.from allocation loop.
+    envMutable.SEARCH_API_KEYS = "key-aaa"
+    const huge = "Bearer " + "a".repeat(2048)
+    expect(huge.length).toBeGreaterThan(1024)
+    expect(isValidSearchBearer(huge)).toBe(false)
+  })
 })
 
 describe("isAnyKnownBearer", () => {
@@ -190,12 +227,70 @@ describe("isAnyKnownBearer", () => {
     expect(isAnyKnownBearer("Bearer search-key-aaa")).toBe(true)
   })
 
-  it("does NOT short-circuit on first validator (BACKUP_DOWNLOAD-style values stay rejected)", () => {
-    // Regression guard: if the OR composition ever grows to include
-    // BACKUP_DOWNLOAD_API_KEYS, this test would need to flip. Until
-    // then, a backup-download value (which we don't set in env at
-    // all here) must NOT satisfy. We simulate by checking that an
-    // unrelated key string isn't accidentally accepted.
-    expect(isAnyKnownBearer("Bearer backup-download-key-zzz")).toBe(false)
+  it("accepts a consumer key even when SEARCH + WORKFLOW are unset (proves the middle OR clause)", () => {
+    // Locks the second branch of the OR composition. A regression
+    // that dropped or short-circuited the consumer-bearer call
+    // would fail only this test (with other CSVs unset, the search
+    // and workflow branches can't mask the bug).
+    envMutable.SEARCH_API_KEYS = undefined
+    envMutable.WORKFLOW_API_KEYS = undefined
+    expect(isAnyKnownBearer("Bearer consumer-key-bbb")).toBe(true)
+  })
+
+  it("accepts a workflow key even when SEARCH + WEB_ADMIN are unset (proves the third OR clause)", () => {
+    // Locks the third branch of the OR composition. Same rationale.
+    envMutable.SEARCH_API_KEYS = undefined
+    envMutable.WEB_ADMIN_API_KEYS = undefined
+    expect(isAnyKnownBearer("Bearer workflow-key-ccc")).toBe(true)
+  })
+
+  it("BACKUP_DOWNLOAD_API_KEYS values are REJECTED — the exclusion is actively asserted, not implicit", () => {
+    // Active regression guard for the documented exclusion at
+    // search-bearer.ts (the BACKUP_DOWNLOAD_API_KEYS bearer is for
+    // a narrow file-download surface, NOT an active-API passport).
+    // A future maintainer who "helpfully" adds BACKUP to the
+    // isAnyKnownBearer OR-composition would silently widen the
+    // passport. This test populates BACKUP_DOWNLOAD_API_KEYS with a
+    // value distinct from the other three CSVs and asserts that the
+    // same value does NOT satisfy isAnyKnownBearer.
+    envMutable.BACKUP_DOWNLOAD_API_KEYS = "backup-key-zzz"
+    expect(isAnyKnownBearer("Bearer backup-key-zzz")).toBe(false)
+    // Positive control: the three included CSVs still work.
+    expect(isAnyKnownBearer("Bearer search-key-aaa")).toBe(true)
+    expect(isAnyKnownBearer("Bearer consumer-key-bbb")).toBe(true)
+    expect(isAnyKnownBearer("Bearer workflow-key-ccc")).toBe(true)
+  })
+
+  it("returns false when a composed validator throws (defense-in-depth try/catch)", async () => {
+    // Locks the try/catch wrapper around each composed validator.
+    // None of the three validators throw today (length-prechecks
+    // guard against timingSafeEqual RangeError), but a future
+    // refactor introducing any throw path would otherwise convert a
+    // single buggy validator into a 500 on every search request.
+    // Spy on consumer-bearer to force a throw and verify the OR
+    // returns false (not propagates) and the WARN log fires.
+    const consumerModule = await import("@/auth/consumer-bearer")
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const spy = vi
+      .spyOn(consumerModule, "isValidConsumerBearer")
+      .mockImplementation(() => {
+        throw new Error("synthetic-validator-failure")
+      })
+    try {
+      envMutable.SEARCH_API_KEYS = undefined // force flow into consumer
+      expect(isAnyKnownBearer("Bearer anything")).toBe(false)
+      const warnedLines = warnSpy.mock.calls
+        .map((args) => String(args[0] ?? ""))
+        .filter((line) => line.includes("search_bearer.validator_threw"))
+      expect(warnedLines.length).toBeGreaterThan(0)
+      // Header value MUST NOT appear in the warn log.
+      const allLogged = warnSpy.mock.calls
+        .map((args) => String(args[0] ?? ""))
+        .join("\n")
+      expect(allLogged).not.toContain("Bearer anything")
+    } finally {
+      spy.mockRestore()
+      warnSpy.mockRestore()
+    }
   })
 })

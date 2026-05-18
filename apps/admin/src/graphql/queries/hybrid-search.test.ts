@@ -386,6 +386,51 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
       const log = parseSearchLogLines()[0]
       expect(log).toMatchObject({ auth: "anonymous", path: "graphql" })
     })
+
+    it("throws a typed GraphQLError with extensions.code='UNAUTHENTICATED' (survives Yoga maskedErrors)", async () => {
+      // Yoga's default maskedErrors rewrites raw `new Error(...)` to
+      // a generic "Unexpected error." message in production. A typed
+      // GraphQLError with extensions.code is preserved through
+      // masking, so clients can branch on extensions.code stably
+      // instead of regex-matching error.message.
+      try {
+        await invoke({ q: "jesus", locale: "en" })
+        throw new Error("expected resolver to throw")
+      } catch (err) {
+        // Use a structural assertion (rather than instanceof) to
+        // stay compatible across the GraphQLError import shape from
+        // `graphql` — vitest's interop occasionally produces two
+        // distinct constructor identities. The contract that
+        // matters is `extensions.code === "UNAUTHENTICATED"`.
+        const e = err as {
+          message?: string
+          extensions?: Record<string, unknown>
+        }
+        expect(e.message).toBe("Authentication required")
+        expect(e.extensions).toMatchObject({
+          code: "UNAUTHENTICATED",
+          http: { status: 401 },
+        })
+      }
+    })
+  })
+
+  describe("dual-accept observability locks (mirror REST)", () => {
+    it("still emits the search.request log line when the service throws (5xx-equivalent path)", async () => {
+      // Locks log-ordering: the log/auth check fires BEFORE
+      // service.search, so a thrown service stays observable in the
+      // structured-log feed. A future refactor moving the log
+      // emission below service.search would break this without
+      // affecting any other GraphQL test.
+      searchMock.mockRejectedValueOnce(new Error("boom"))
+      await expect(invoke({ q: "jesus", locale: "en" })).rejects.toThrow(/boom/)
+      const log = parseSearchLogLines()[0]
+      expect(log).toMatchObject({
+        event: "search.request",
+        auth: "anonymous",
+        path: "graphql",
+      })
+    })
   })
 
   describe("log discipline", () => {

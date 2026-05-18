@@ -15,13 +15,10 @@
 // sole role is the request-level passport check at two seams.
 //
 // SECURITY: NEVER log the raw `Authorization` header value or matched
-// key. The structured log emits only `auth=bearer|anonymous`.
+// key. The structured log emits only `auth=bearer|invalid_bearer|anonymous`.
 //
-// Upgrade path (deferred follow-up): when per-key audit becomes load-
-// bearing, key format upgrades from opaque random base64url to
-// `sk_search_<labeledKeyId>_<random>` and this validator parses the
-// prefix to surface the keyId for per-request structured logging /
-// per-key revocation. v1 is opaque and emits no keyId.
+// Upgrade path: v1 keys are opaque random base64url; per-key audit +
+// keyId surfacing is a deferred follow-up (no ticket yet).
 
 import { timingSafeEqual } from "node:crypto"
 import { env } from "@/config/env"
@@ -30,6 +27,20 @@ import { isValidWorkflowBearer } from "@/auth/workflow-bearer"
 
 const BEARER_PREFIX = /^Bearer\s+/i
 
+// Defense-in-depth upper bound on the Authorization header value.
+// Node's HTTP parser caps total header size around 8-16 KB, so this
+// is rarely reached in practice — but guards the per-iteration
+// `Buffer.from(presented)` allocation against pathological inputs and
+// surfaces a clean `false` instead of multi-MB allocation on hostile
+// callers. Real opaque-random keys are ~43 chars (32 bytes base64url);
+// 1024 is generous headroom for the eventual prefixed-token format.
+const MAX_BEARER_LENGTH = 1024
+
+// Duplicated by design across the three bearer modules
+// (search-bearer.ts, consumer-bearer.ts, workflow-bearer.ts). The
+// `permissions.test.ts` source-grep asserts each module reads ONLY
+// its own env var — DRYing this into a shared helper would defeat the
+// grep guard and silently widen the cross-CSV isolation boundary.
 function parseAllowlist(): string[] {
   if (!env.SEARCH_API_KEYS) return []
   return env.SEARCH_API_KEYS.split(",")
@@ -58,6 +69,7 @@ function parseAllowlist(): string[] {
  */
 export function isValidSearchBearer(authHeader: string | null): boolean {
   if (!authHeader) return false
+  if (authHeader.length > MAX_BEARER_LENGTH) return false
   if (!BEARER_PREFIX.test(authHeader)) return false
   const presented = authHeader.replace(BEARER_PREFIX, "")
   if (presented.length === 0) return false
@@ -100,11 +112,43 @@ export function isValidSearchBearer(authHeader: string | null): boolean {
  * narrow file-download surface, not active-API requests. If a future
  * caller needs both backup and search access, they should hold a
  * `SEARCH_API_KEYS` entry alongside.
+ *
+ * Timing note: the OR short-circuits on first true, so a request
+ * carrying a SEARCH_API_KEYS value returns sooner than one carrying
+ * a WORKFLOW_API_KEYS value. Threat impact is LOW — an attacker
+ * holding a valid key already knows it's valid; learning which CSV
+ * the key lives in does not enable privilege escalation. If the
+ * threat model ever tightens, switch to forced-evaluation:
+ * `const a = ..., b = ..., c = ...; return a || b || c`.
+ *
+ * Defense-in-depth: each composed validator is wrapped in try/catch.
+ * None of the three are expected to throw (length-pre-checks guard
+ * against `timingSafeEqual` RangeError), but a future logging
+ * side-effect or refactor introducing any throw path would otherwise
+ * convert a single buggy validator into a 500 on EVERY search
+ * request. Auth surface sitting in front of admin's highest-volume
+ * endpoint: cheap defense.
  */
 export function isAnyKnownBearer(authHeader: string | null): boolean {
   return (
-    isValidSearchBearer(authHeader) ||
-    isValidConsumerBearer(authHeader).valid ||
-    isValidWorkflowBearer(authHeader)
+    safeCheck("search", () => isValidSearchBearer(authHeader)) ||
+    safeCheck("consumer", () => isValidConsumerBearer(authHeader).valid) ||
+    safeCheck("workflow", () => isValidWorkflowBearer(authHeader))
   )
+}
+
+function safeCheck(validatorName: string, check: () => boolean): boolean {
+  try {
+    return check()
+  } catch (err) {
+    console.warn(
+      JSON.stringify({
+        event: "search_bearer.validator_threw",
+        validator: validatorName,
+        // Never log the header value — only the error message.
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    )
+    return false
+  }
 }
