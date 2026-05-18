@@ -50,6 +50,15 @@ export function resolveMastraStorageUrl(): string {
 }
 
 /**
+ * Postgres schema that owns Mastra's memory + agent state tables.
+ * Created by `prisma/migrations/0016_mastra_schema/migration.sql`; the
+ * `PostgresStore` then handles its own DDL inside the schema on first
+ * write. Schema isolation keeps Mastra's tables out of Prisma's
+ * migration history — a future reset is `DROP SCHEMA mastra CASCADE`.
+ */
+const MASTRA_SCHEMA_NAME = "mastra"
+
+/**
  * Build the Mastra Memory instance for admin's Experience-AI chat.
  * Pure factory — does not open a connection at construction time.
  * The pool is established on the first storage read/write.
@@ -58,6 +67,7 @@ export function buildMastraMemory(): Memory {
   const storage = new PostgresStore({
     id: "admin-chat-memory",
     connectionString: resolveMastraStorageUrl(),
+    schemaName: MASTRA_SCHEMA_NAME,
   })
   return new Memory({ storage })
 }

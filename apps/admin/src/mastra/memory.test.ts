@@ -9,10 +9,26 @@ const mockEnv = vi.hoisted(() => ({
 
 vi.mock("@/config/env", () => mockEnv)
 
+const postgresStoreSpy = vi.hoisted(() => vi.fn())
+vi.mock("@mastra/pg", async () => {
+  const actual =
+    await vi.importActual<typeof import("@mastra/pg")>("@mastra/pg")
+  class SpyingPostgresStore extends actual.PostgresStore {
+    constructor(
+      options: ConstructorParameters<typeof actual.PostgresStore>[0],
+    ) {
+      postgresStoreSpy(options)
+      super(options)
+    }
+  }
+  return { ...actual, PostgresStore: SpyingPostgresStore }
+})
+
 describe("apps/admin/src/mastra/memory", () => {
   beforeEach(async () => {
     mockEnv.env.MASTRA_STORAGE_URL = undefined
     mockEnv.env.DATABASE_URL = "postgresql://forge:forge@db:5432/forge_admin"
+    postgresStoreSpy.mockClear()
     vi.resetModules()
     // Reset the cached singleton before each test
     const { __resetMastraMemoryForTesting } = await import("./memory")
@@ -45,6 +61,16 @@ describe("apps/admin/src/mastra/memory", () => {
       // Memory primitive is constructed but no DB connection is
       // opened until first read/write — the spec under test is the
       // construction path, not the storage connect.
+    })
+
+    it("passes schemaName: 'mastra' to PostgresStore so memory tables live in the dedicated schema", async () => {
+      const { buildMastraMemory } = await import("./memory")
+      buildMastraMemory()
+      expect(postgresStoreSpy).toHaveBeenCalledTimes(1)
+      const options = postgresStoreSpy.mock.calls[0]?.[0] as {
+        schemaName?: string
+      }
+      expect(options.schemaName).toBe("mastra")
     })
 
     it("does not open a connection at construction time", async () => {
