@@ -80,29 +80,22 @@ export const env = createEnv({
     // immediately instead of waiting for the 60s ISR safety window.
     WATCH_REVALIDATION_URL: z.string().url().optional(),
     WATCH_REVALIDATION_SECRET: z.string().min(1).optional(),
-    // Gates the local-only codex CLI fallback for Experience AI drafting.
-    // Defaults to false so production deployments without OPENROUTER_API_KEY
-    // / OPENAI_API_KEY surface NOT_CONFIGURED instead of silently spawning
-    // a CLI process at request time. Set to true on developer machines to
-    // keep AI drafting available without an API key.
-    // Legacy name retained for one release window after the
-    // multi-channel provider PR ships. New code reads
-    // EXPERIENCE_AI_ALLOW_CODEX via the gate helper; the helper falls
-    // back to this var with a one-shot deprecation log when set.
+    // Legacy codex-CLI gate retained for the (dead-at-call-boundary)
+    // `experience-ai.service.ts` draft-generation flow. The CHAT surface
+    // is Mastra-only and does not read this var. Removal is a follow-up
+    // once the legacy draft service + generate-draft-action are deleted.
     EXPERIENCE_AI_ALLOW_CODEX_FALLBACK: z.coerce.boolean().optional(),
-    EXPERIENCE_AI_ALLOW_CODEX: z.coerce.boolean().optional(),
-    EXPERIENCE_AI_ALLOW_CLAUDE_CODE: z.coerce.boolean().optional(),
-    EXPERIENCE_AI_CODEX_MODEL: z.string().min(1).optional(),
-    EXPERIENCE_AI_CLAUDE_CODE_MODEL: z.string().min(1).optional(),
-    OLLAMA_BASE_URL: z.string().url().optional(),
-    // Mastra runtime — opt-in scaffolding, all .optional()
+    // Mastra runtime — Postgres-backed memory for the Experience AI chat
+    // surface. When unset, memory falls back to admin's DATABASE_URL.
     MASTRA_STORAGE_URL: z.string().url().optional(),
     MASTRA_DEFAULT_PROVIDER: z
       .enum(["openrouter", "ollama", "openai", "anthropic"])
       .optional(),
+    // Ollama embedding pipeline (separate from chat — kept for the
+    // embedding services that still consume them).
+    OLLAMA_BASE_URL: z.string().url().optional(),
     OLLAMA_EMBEDDING_MODEL: z.string().min(1).optional(),
     OLLAMA_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().optional(),
-    OLLAMA_CHAT_MODEL: z.string().min(1).optional(),
     WORKFLOW_API_KEYS: z.string().min(1).optional(),
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
     WORKFLOW_TARGET_WORLD: z
@@ -245,30 +238,17 @@ export const env = createEnv({
     EXPERIENCE_AI_ALLOW_CODEX_FALLBACK: emptyToUndefined(
       process.env.EXPERIENCE_AI_ALLOW_CODEX_FALLBACK,
     ),
-    EXPERIENCE_AI_ALLOW_CODEX: emptyToUndefined(
-      process.env.EXPERIENCE_AI_ALLOW_CODEX,
-    ),
-    EXPERIENCE_AI_ALLOW_CLAUDE_CODE: emptyToUndefined(
-      process.env.EXPERIENCE_AI_ALLOW_CLAUDE_CODE,
-    ),
-    EXPERIENCE_AI_CODEX_MODEL: emptyToUndefined(
-      process.env.EXPERIENCE_AI_CODEX_MODEL,
-    ),
-    EXPERIENCE_AI_CLAUDE_CODE_MODEL: emptyToUndefined(
-      process.env.EXPERIENCE_AI_CLAUDE_CODE_MODEL,
-    ),
-    OLLAMA_BASE_URL: emptyToUndefined(process.env.OLLAMA_BASE_URL),
     MASTRA_STORAGE_URL: emptyToUndefined(process.env.MASTRA_STORAGE_URL),
     MASTRA_DEFAULT_PROVIDER: emptyToUndefined(
       process.env.MASTRA_DEFAULT_PROVIDER,
     ),
+    OLLAMA_BASE_URL: emptyToUndefined(process.env.OLLAMA_BASE_URL),
     OLLAMA_EMBEDDING_MODEL: emptyToUndefined(
       process.env.OLLAMA_EMBEDDING_MODEL,
     ),
     OLLAMA_EMBEDDING_DIMENSIONS: emptyToUndefined(
       process.env.OLLAMA_EMBEDDING_DIMENSIONS,
     ),
-    OLLAMA_CHAT_MODEL: emptyToUndefined(process.env.OLLAMA_CHAT_MODEL),
     WORKFLOW_API_KEYS: emptyToUndefined(process.env.WORKFLOW_API_KEYS),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
     WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
