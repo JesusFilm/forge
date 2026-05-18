@@ -792,7 +792,7 @@ describe("ExperienceChatPanel", () => {
     ).not.toBeNull()
   })
 
-  it("renders the provider dropdown defaulted to openrouter with cost-posture option labels", async () => {
+  it("renders the provider dropdown defaulted to Mastra with cost-posture option labels", async () => {
     const view = mount(
       <ExperienceChatPanel
         experienceLocaleId="locale-1"
@@ -808,11 +808,12 @@ describe("ExperienceChatPanel", () => {
       '[data-testid="experience-chat-provider"]',
     ) as HTMLSelectElement
     expect(select).not.toBeNull()
-    expect(select.value).toBe("openrouter")
+    expect(select.value).toBe("mastra")
 
     const optionText = Array.from(select.querySelectorAll("option"))
       .map((o) => o.textContent ?? "")
       .join("\n")
+    expect(optionText).toContain("Mastra (new, agent runtime)")
     expect(optionText).toContain("OpenRouter (free, cloud)")
     expect(optionText).toContain("Ollama (local, free)")
     expect(optionText).toContain("Codex (paid, local CLI)")

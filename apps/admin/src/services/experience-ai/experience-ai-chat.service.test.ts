@@ -22,6 +22,10 @@ const { runOllamaChatMock, runClaudeCodeChatMock } = vi.hoisted(() => ({
   runClaudeCodeChatMock: vi.fn(),
 }))
 
+const { mastraGenerateMock } = vi.hoisted(() => ({
+  mastraGenerateMock: vi.fn(),
+}))
+
 const { loadCandidatesMock } = vi.hoisted(() => ({
   loadCandidatesMock: vi.fn(),
 }))
@@ -59,6 +63,14 @@ vi.mock("./experience-ai-ollama", () => ({
 
 vi.mock("./experience-ai-claude-code", () => ({
   runClaudeCodeChat: runClaudeCodeChatMock,
+}))
+
+vi.mock("@/mastra", () => ({
+  getMastra: () => ({
+    getAgentById: () => ({
+      generate: mastraGenerateMock,
+    }),
+  }),
 }))
 
 import {
@@ -221,6 +233,13 @@ beforeEach(() => {
   spawnMock.mockReset()
   runOllamaChatMock.mockReset()
   runClaudeCodeChatMock.mockReset()
+  mastraGenerateMock.mockReset()
+  mastraGenerateMock.mockResolvedValue({
+    text: JSON.stringify({
+      mutations: { title: "Default Mastra" },
+      reason: "default mastra",
+    }),
+  })
   loadCandidatesMock.mockReset()
   loadCandidatesMock.mockResolvedValue([
     {
@@ -313,6 +332,7 @@ describe("streamChatTurn — happy path", () => {
         {
           threadId: "thread-1",
           prompt: "Meet Jesus with honest questions about doubt",
+          provider: "codex",
         },
         { prisma, user: EDITOR },
       ),
@@ -441,6 +461,7 @@ describe("streamChatTurn — happy path", () => {
         {
           threadId: "thread-1",
           prompt: "Make the title sharper",
+          provider: "codex",
         },
         { prisma, user: EDITOR },
       ),
@@ -471,7 +492,11 @@ describe("streamChatTurn — happy path", () => {
 
     const events = await collectEvents(
       streamChatTurn(
-        { threadId: "thread-1", prompt: "Make the title pop" },
+        {
+          threadId: "thread-1",
+          prompt: "Make the title pop",
+          provider: "codex",
+        },
         { prisma, user: EDITOR },
       ),
     )
@@ -513,7 +538,7 @@ describe("streamChatTurn — happy path", () => {
 
     await collectEvents(
       streamChatTurn(
-        { threadId: "thread-1", prompt: "rename" },
+        { threadId: "thread-1", prompt: "rename", provider: "codex" },
         { prisma, user: EDITOR },
       ),
     )
@@ -547,7 +572,7 @@ describe("streamChatTurn — failure modes", () => {
 
     const events = await collectEvents(
       streamChatTurn(
-        { threadId: "thread-1", prompt: "hi" },
+        { threadId: "thread-1", prompt: "hi", provider: "codex" },
         { prisma, user: EDITOR },
       ),
     )
@@ -569,7 +594,7 @@ describe("streamChatTurn — failure modes", () => {
 
     const events = await collectEvents(
       streamChatTurn(
-        { threadId: "thread-1", prompt: "hi" },
+        { threadId: "thread-1", prompt: "hi", provider: "codex" },
         { prisma, user: EDITOR },
       ),
     )
@@ -591,7 +616,7 @@ describe("streamChatTurn — failure modes", () => {
 
     const events = await collectEvents(
       streamChatTurn(
-        { threadId: "thread-1", prompt: "hi" },
+        { threadId: "thread-1", prompt: "hi", provider: "codex" },
         { prisma, user: EDITOR },
       ),
     )
@@ -617,7 +642,7 @@ describe("streamChatTurn — failure modes", () => {
 
     const events = await collectEvents(
       streamChatTurn(
-        { threadId: "thread-1", prompt: "hi" },
+        { threadId: "thread-1", prompt: "hi", provider: "codex" },
         { prisma, user: EDITOR },
       ),
     )
@@ -642,7 +667,7 @@ describe("streamChatTurn — failure modes", () => {
 
     const events = await collectEvents(
       streamChatTurn(
-        { threadId: "thread-1", prompt: "hi" },
+        { threadId: "thread-1", prompt: "hi", provider: "codex" },
         { prisma, user: EDITOR },
       ),
     )
@@ -672,6 +697,7 @@ describe("streamChatTurn — failure modes", () => {
           threadId: "thread-1",
           prompt: "hi",
           confirmedAcrossLocales: true,
+          provider: "codex",
         },
         { prisma, user: EDITOR },
       ),
@@ -694,7 +720,7 @@ describe("streamChatTurn — failure modes", () => {
 
     const events = await collectEvents(
       streamChatTurn(
-        { threadId: "thread-1", prompt: "hi" },
+        { threadId: "thread-1", prompt: "hi", provider: "codex" },
         { prisma, user: EDITOR },
       ),
     )
@@ -716,7 +742,7 @@ describe("streamChatTurn — failure modes", () => {
 
     const events = await collectEvents(
       streamChatTurn(
-        { threadId: "thread-1", prompt: "hi" },
+        { threadId: "thread-1", prompt: "hi", provider: "codex" },
         { prisma, user: EDITOR },
       ),
     )
@@ -740,7 +766,7 @@ describe("streamChatTurn — failure modes", () => {
 
     const events = await collectEvents(
       streamChatTurn(
-        { threadId: "thread-1", prompt: "hi" },
+        { threadId: "thread-1", prompt: "hi", provider: "codex" },
         { prisma, user: EDITOR, abortSignal: controller.signal },
       ),
     )
@@ -822,7 +848,7 @@ describe("streamChatTurn — auth + lookup", () => {
 
     const events = await collectEvents(
       streamChatTurn(
-        { threadId: "thread-1", prompt: "hi" },
+        { threadId: "thread-1", prompt: "hi", provider: "codex" },
         { prisma, user: EDITOR },
       ),
     )
@@ -856,7 +882,7 @@ describe("streamChatTurn — auth + lookup", () => {
 
     const events = await collectEvents(
       streamChatTurn(
-        { threadId: "thread-1", prompt: "hi" },
+        { threadId: "thread-1", prompt: "hi", provider: "codex" },
         { prisma, user: EDITOR },
       ),
     )
@@ -972,26 +998,29 @@ describe("streamChatTurn — provider routing", () => {
     )
   })
 
-  it("provider omitted falls back to Codex chat-turn (R8 invariant)", async () => {
+  it("provider omitted defaults to the Mastra chat-turn", async () => {
     const prisma = makeMockPrisma({ blocks: [{ t: "text" }] })
-    const proc = makeProc()
-    spawnMock.mockReturnValue(proc)
 
-    queueMicrotask(() => {
-      emitLines(proc, ['{"mutations":{"title":"Default"}}'])
-      endProc(proc, 0)
-    })
-
-    await collectEvents(
+    const events = await collectEvents(
       streamChatTurn(
         { threadId: "thread-1", prompt: "hi" },
         { prisma, user: EDITOR },
       ),
     )
 
-    expect(spawnMock).toHaveBeenCalledTimes(1)
+    expect(mastraGenerateMock).toHaveBeenCalledTimes(1)
+    expect(spawnMock).not.toHaveBeenCalled()
     expect(runOllamaChatMock).not.toHaveBeenCalled()
     expect(runClaudeCodeChatMock).not.toHaveBeenCalled()
+    expect(events.find((e) => e.type === "mutation_applied")).toBeDefined()
+    expect(prisma.experienceChatMessage.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          role: "ASSISTANT",
+          providerKind: "mastra",
+        }),
+      }),
+    )
   })
 
   it("surfaces adapter errors verbatim without falling back to a sibling channel", async () => {

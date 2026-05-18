@@ -1,18 +1,24 @@
 /**
  * Shared `ChatProvider` discriminator for the Experience AI chat surface.
  *
- * The editor picks a provider channel ("openrouter" or "ollama") from the
+ * The editor picks a provider channel from the
  * chat composer; the choice flows through the SSE route and into
  * `streamChatTurn`, which branches the quality-draft path and the
  * chat-turn path on the same value. Centralizing the type here prevents
  * literal drift across UI, route, service, and provider adapters.
  */
 
-export type ChatProvider = "openrouter" | "ollama" | "codex" | "claude-code"
+export type ChatProvider =
+  | "openrouter"
+  | "ollama"
+  | "codex"
+  | "claude-code"
+  | "mastra"
 
-export const DEFAULT_CHAT_PROVIDER: ChatProvider = "openrouter"
+export const DEFAULT_CHAT_PROVIDER: ChatProvider = "mastra"
 
 const KNOWN_PROVIDERS: readonly ChatProvider[] = [
+  "mastra",
   "openrouter",
   "ollama",
   "codex",

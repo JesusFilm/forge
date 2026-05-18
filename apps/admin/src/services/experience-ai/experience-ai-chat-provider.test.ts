@@ -6,7 +6,12 @@ import {
 } from "./experience-ai-chat-provider"
 
 describe("normalizeChatProvider", () => {
+  it("defaults to Mastra", () => {
+    expect(DEFAULT_CHAT_PROVIDER).toBe("mastra")
+  })
+
   it("returns the matched literal for known values", () => {
+    expect(normalizeChatProvider("mastra")).toBe("mastra")
     expect(normalizeChatProvider("openrouter")).toBe("openrouter")
     expect(normalizeChatProvider("ollama")).toBe("ollama")
     expect(normalizeChatProvider("codex")).toBe("codex")

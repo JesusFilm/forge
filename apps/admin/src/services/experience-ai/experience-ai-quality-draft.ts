@@ -219,7 +219,7 @@ function combinedPromptText(args: {
 
 /**
  * Generate a quality-first Experience draft through the editor-selected
- * provider channel. All four channels return the same uniform result
+ * provider channel. All channels return the same uniform result
  * shape — the only observable differences are `provider.kind` and the
  * shape of the per-attempt log.
  */
@@ -317,7 +317,8 @@ export async function generateQualityExperienceDraft({
       }
     }
 
-    // Default: openrouter
+    // OpenRouter fallback, also used for Mastra quality-draft calls until
+    // the full Mastra draft workflow owns this legacy quality-draft path.
     const result = await generateOpenRouterFreeStructuredOutput({
       fetchImpl,
       messages: [

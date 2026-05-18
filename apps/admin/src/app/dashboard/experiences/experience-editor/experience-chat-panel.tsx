@@ -47,7 +47,10 @@ import type {
   EditorialBrief,
   EditorialBriefField,
 } from "@/services/experience-ai/experience-ai-chat-brief"
-import type { ChatProvider } from "@/services/experience-ai/experience-ai-chat-provider"
+import {
+  DEFAULT_CHAT_PROVIDER,
+  type ChatProvider,
+} from "@/services/experience-ai/experience-ai-chat-provider"
 import type { QualityDraftReview } from "@/services/experience-ai/experience-ai-quality-draft.schemas"
 import {
   type ChatMessageDTO,
@@ -159,7 +162,7 @@ export function ExperienceChatPanel({
   const [messages, setMessages] = useState<LocalMessage[]>([])
   const [draft, setDraft] = useState("")
   const [confirmAcrossLocales, setConfirmAcrossLocales] = useState(false)
-  const [provider, setProvider] = useState<ChatProvider>("openrouter")
+  const [provider, setProvider] = useState<ChatProvider>(DEFAULT_CHAT_PROVIDER)
   const [crossLocaleModalOpen, setCrossLocaleModalOpen] = useState(false)
   const [stream, setStream] = useState<StreamStatus>({ kind: "idle" })
   const [bootError, setBootError] = useState<string | null>(null)
@@ -799,6 +802,7 @@ export function ExperienceChatPanel({
               data-testid="experience-chat-provider"
               className="h-6 rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface-inset)] px-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-primary)] outline-none disabled:cursor-not-allowed disabled:text-[var(--color-text-disabled)]"
             >
+              <option value="mastra">Mastra (new, agent runtime)</option>
               <option value="openrouter">OpenRouter (free, cloud)</option>
               <option value="ollama">Ollama (local, free)</option>
               <option value="codex">Codex (paid, local CLI)</option>

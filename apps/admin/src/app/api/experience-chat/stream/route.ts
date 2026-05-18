@@ -35,7 +35,9 @@ const Body = z.object({
   prompt: z.string().min(1).max(10_000),
   confirmedAcrossLocales: z.boolean().optional(),
   confirmedBrief: z.boolean().optional(),
-  provider: z.enum(["openrouter", "ollama", "codex", "claude-code"]).optional(),
+  provider: z
+    .enum(["openrouter", "ollama", "codex", "claude-code", "mastra"])
+    .optional(),
 })
 
 function jsonError(status: number, body: unknown): Response {

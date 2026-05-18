@@ -227,10 +227,280 @@ async function runChatTurnForProvider({
       onToken,
     })
   }
+  if (provider === "mastra") {
+    return await runMastraChat({ prompt, abortSignal, onToken })
+  }
   // openrouter (default) + codex both currently spawn Codex CLI for the
   // chat-turn path. The OpenRouter HTTP API doesn't have an interactive
   // peer and Codex has shipped this branch since v1.
   return await runCodexChat({ prompt, abortSignal, onToken })
+}
+
+/**
+ * Mastra-routed chat turn — uses the `experience-default-chat` agent
+ * from `apps/admin/src/mastra/`. Streams tokens through `onToken`,
+ * accumulates the full text, parses it as the new `{ diff }` envelope
+ * the Mastra prompt produces, then translates to the legacy
+ * `{ mutations }` envelope the chat service's downstream applier
+ * expects. The translation is the post-rebase U6 follow-up work
+ * happening inline.
+ */
+async function runMastraChat({
+  prompt,
+  abortSignal,
+  onToken,
+}: {
+  prompt: string
+  abortSignal?: AbortSignal
+  onToken: (text: string) => void
+}): Promise<ChatTurnRunResult> {
+  try {
+    const { getMastra } = await import("@/mastra")
+    const mastra = getMastra()
+    const agent = mastra.getAgentById("experience-default-chat")
+    // Use generate() instead of stream() — Mastra's textStream can be
+    // empty when the agent is composing structured output or in a
+    // tool-call cycle. generate() returns the final text synchronously
+    // which is sufficient for the demo; true token streaming requires
+    // wiring the full UIMessageStream (the U3 bridge).
+    const result = await agent.generate(prompt, { abortSignal })
+    const buffer = typeof result.text === "string" ? result.text : ""
+    if (buffer.length > 0) onToken(buffer)
+    console.warn(
+      "[mastra-chat] event=stream_done buffer_length=" + buffer.length,
+    )
+    const extracted = extractJsonObject(buffer)
+    if (extracted === null) {
+      console.warn(
+        "[mastra-chat] event=no_json_object head=" +
+          JSON.stringify(buffer.slice(0, 200)) +
+          " tail=" +
+          JSON.stringify(buffer.slice(-200)),
+      )
+      return {
+        kind: "error",
+        code: "provider_validation_failed",
+        message:
+          "Mastra agent returned text without a JSON object. (See server log.)",
+      }
+    }
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(extracted)
+    } catch (err) {
+      // Small local models (gemma4:e4b) occasionally produce
+      // not-quite-valid JSON — unescaped quotes, trailing commas,
+      // missing braces. Try jsonrepair before giving up.
+      try {
+        const { jsonrepair } = await import("jsonrepair")
+        const repaired = jsonrepair(extracted)
+        parsed = JSON.parse(repaired)
+        console.warn(
+          "[mastra-chat] event=json_repaired original_err=" +
+            (err instanceof Error ? err.message : String(err)),
+        )
+      } catch (repairErr) {
+        console.warn(
+          "[mastra-chat] event=json_parse_failed err=" +
+            (err instanceof Error ? err.message : String(err)) +
+            " repair_err=" +
+            (repairErr instanceof Error
+              ? repairErr.message
+              : String(repairErr)) +
+            " head=" +
+            JSON.stringify(extracted.slice(0, 200)) +
+            " tail=" +
+            JSON.stringify(extracted.slice(-200)),
+        )
+        return {
+          kind: "error",
+          code: "provider_validation_failed",
+          message: "Mastra agent returned malformed JSON. (See server log.)",
+        }
+      }
+    }
+    const translated = translateMastraEnvelopeToLegacy(parsed)
+    normalizeBlockFieldAliases(translated)
+    console.warn(
+      "[mastra-chat] event=envelope_parsed translated_keys=" +
+        Object.keys(translated as object).join(","),
+    )
+    return { kind: "envelope", raw: translated }
+  } catch (error) {
+    if (error instanceof Error && error.name === "ProviderNotConfiguredError") {
+      return {
+        kind: "error",
+        code: "provider_not_configured",
+        message: error.message,
+      }
+    }
+    return {
+      kind: "error",
+      code: "unknown",
+      message: error instanceof Error ? error.message : "Mastra chat failed",
+    }
+  }
+}
+
+/**
+ * Extract the first balanced JSON object from a text blob. Strips
+ * markdown code fences first, then walks brace depth to recover the
+ * outermost object. Returns null if no balanced object is present.
+ *
+ * Tolerant by design — chat models routinely wrap structured output in
+ * prose ("Here's the draft:\n```json\n{...}\n```\nLet me know if…")
+ * even when the prompt says JSON-only.
+ */
+function extractJsonObject(text: string): string | null {
+  const fenceStripped = text
+    .replace(/```(?:json|JSON)?\s*\n?/, "")
+    .replace(/\n?\s*```\s*$/, "")
+  const start = fenceStripped.indexOf("{")
+  if (start === -1) return null
+  // Take from first `{` to LAST `}`. The trailing slice may include
+  // trailing characters (whitespace, prose after the JSON); we let
+  // JSON.parse decide if the substring is parseable.
+  const end = fenceStripped.lastIndexOf("}")
+  if (end <= start) return null
+  return fenceStripped.slice(start, end + 1)
+}
+
+/**
+ * Translate the Mastra-prompt envelope (`{ diff: { scalars, blocks } }`)
+ * to the legacy chat-service envelope (`{ mutations: { title,
+ * metaDescription, ogImageUrl, blocks } }`). If the input already looks
+ * like the legacy shape, pass through.
+ *
+ * This adapter is the post-rebase U6 schema-alignment work; once the
+ * Mastra rewrite owns the full chat pipeline (U10 cutover), one shape
+ * will be canonical and this translator goes away.
+ */
+/**
+ * Free-tier LLMs frequently pick natural-English field names that don't
+ * match our strict block schemas (e.g. `{ quote: "..." }` instead of
+ * `{ text: "..." }` for a bibleQuotesCarousel item). The agent's system
+ * prompt names every field, but adherence is imperfect. This pass walks
+ * the envelope mutations.blocks tree and rewrites known aliases in
+ * place. Mutates `envelope` for simplicity — the caller has the only
+ * reference.
+ */
+function normalizeBlockFieldAliases(envelope: unknown): void {
+  if (envelope === null || typeof envelope !== "object") return
+  const mutations = (envelope as { mutations?: unknown }).mutations
+  if (
+    mutations === null ||
+    typeof mutations !== "object" ||
+    !Array.isArray((mutations as { blocks?: unknown }).blocks)
+  ) {
+    return
+  }
+  const blocks = (mutations as { blocks: unknown[] }).blocks
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      node.forEach(walk)
+      return
+    }
+    if (node === null || typeof node !== "object") return
+    const obj = node as Record<string, unknown>
+    // bibleQuotesCarousel items: `quote` → `text`. Add more aliases here
+    // as failure modes emerge.
+    if (typeof obj.quote === "string" && typeof obj.text !== "string") {
+      obj.text = obj.quote
+      delete obj.quote
+    }
+    for (const value of Object.values(obj)) {
+      walk(value)
+    }
+  }
+  walk(blocks)
+}
+
+function translateMastraEnvelopeToLegacy(parsed: unknown): unknown {
+  if (parsed === null || typeof parsed !== "object") return parsed
+  // Some models (and some jsonrepair recoveries) wrap the envelope in a
+  // top-level array — e.g. `[{ mutations: ... }]` or two concatenated
+  // objects coerced into `[obj1, obj2]`. Pick the first array element
+  // that looks like an envelope (has `mutations` or `diff`), otherwise
+  // fall back to element 0.
+  if (Array.isArray(parsed)) {
+    const candidate =
+      parsed.find(
+        (el) =>
+          el !== null &&
+          typeof el === "object" &&
+          ("mutations" in (el as object) || "diff" in (el as object)),
+      ) ?? parsed[0]
+    if (candidate === undefined || candidate === null) return parsed
+    return translateMastraEnvelopeToLegacy(candidate)
+  }
+  const obj = parsed as Record<string, unknown>
+  if ("mutations" in obj) {
+    // Already legacy-shape — but free LLMs often nest the envelope-level
+    // `localesAffected` / `reason` siblings INSIDE `mutations`, and
+    // mirror-image, sometimes hoist `blocks` OUT of `mutations` up to
+    // the envelope level. The strict envelope schema rejects both. Pull
+    // them where they belong before validation.
+    if (typeof obj.mutations === "object" && obj.mutations !== null) {
+      const m = obj.mutations as Record<string, unknown>
+      const lifted: Record<string, unknown> = { ...obj }
+      const cleaned: Record<string, unknown> = { ...m }
+      if ("localesAffected" in cleaned) {
+        if (!("localesAffected" in lifted)) {
+          lifted.localesAffected = cleaned.localesAffected
+        }
+        delete cleaned.localesAffected
+      }
+      if ("reason" in cleaned) {
+        if (!("reason" in lifted)) {
+          lifted.reason = cleaned.reason
+        }
+        delete cleaned.reason
+      }
+      // Sink envelope-level `blocks` into mutations when mutations
+      // doesn't already declare its own block list.
+      if ("blocks" in lifted && !("blocks" in cleaned)) {
+        cleaned.blocks = lifted.blocks
+        delete lifted.blocks
+      }
+      lifted.mutations = cleaned
+      return lifted
+    }
+    return obj
+  }
+  if ("diff" in obj && typeof obj.diff === "object" && obj.diff !== null) {
+    const diff = obj.diff as Record<string, unknown>
+    const scalars = (diff.scalars ?? {}) as Record<string, unknown>
+    const mutations: Record<string, unknown> = {}
+    if (
+      typeof scalars.title === "object" &&
+      scalars.title !== null &&
+      "after" in (scalars.title as Record<string, unknown>)
+    ) {
+      mutations.title = (scalars.title as { after: string }).after
+    } else if (typeof scalars.title === "string") {
+      mutations.title = scalars.title
+    }
+    if (
+      typeof scalars.metaDescription === "object" &&
+      scalars.metaDescription !== null &&
+      "after" in (scalars.metaDescription as Record<string, unknown>)
+    ) {
+      mutations.metaDescription = (
+        scalars.metaDescription as { after: string | null }
+      ).after
+    } else if (
+      typeof scalars.metaDescription === "string" ||
+      scalars.metaDescription === null
+    ) {
+      mutations.metaDescription = scalars.metaDescription
+    }
+    if (Array.isArray(diff.blocks)) {
+      mutations.blocks = diff.blocks
+    }
+    return { mutations }
+  }
+  // Unknown shape — pass through; the downstream Zod check will reject.
+  return parsed
 }
 
 function providerKindForChatTurn(provider: ChatProvider): string {
@@ -244,6 +514,8 @@ function providerKindForChatTurn(provider: ChatProvider): string {
     case "openrouter":
       // Legacy stamp — the chat-turn path on openrouter pick runs Codex.
       return "codex"
+    case "mastra":
+      return "mastra"
   }
 }
 
@@ -527,6 +799,24 @@ export async function* streamChatTurn(
 
   const parsed = ChatMutationEnvelopeSchema.safeParse(rawEnvelope)
   if (!parsed.success) {
+    console.warn(
+      "[mastra-chat] event=schema_violation issues=" +
+        JSON.stringify(parsed.error.issues) +
+        " envelope_keys=" +
+        Object.keys((rawEnvelope as object) ?? {}).join(",") +
+        " mutations_keys=" +
+        Object.keys(
+          ((rawEnvelope as { mutations?: object }).mutations as object) ?? {},
+        ).join(",") +
+        " block_count=" +
+        (Array.isArray(
+          (rawEnvelope as { mutations?: { blocks?: unknown } }).mutations
+            ?.blocks,
+        )
+          ? (rawEnvelope as { mutations: { blocks: unknown[] } }).mutations
+              .blocks.length
+          : "n/a"),
+    )
     yield errorEvent(
       "schema_violation",
       `Envelope failed schema validation: ${parsed.error.issues
@@ -544,6 +834,14 @@ export async function* streamChatTurn(
       (loc) => loc !== localeRow.locale,
     )
     if (otherLocales.length > 0 && input.confirmedAcrossLocales !== true) {
+      console.warn(
+        "[mastra-chat] event=cross_locale_blocked current=" +
+          localeRow.locale +
+          " affected=" +
+          envelope.localesAffected.join(",") +
+          " confirmed=" +
+          String(input.confirmedAcrossLocales),
+      )
       yield errorEvent(
         "cross_locale_unconfirmed",
         `Mutation affects locales [${envelope.localesAffected.join(", ")}] — operator must confirm cross-locale write`,
@@ -579,6 +877,18 @@ export async function* streamChatTurn(
     // Service-layer rejection (Zod validation, ABAC second pass, DB).
     // The most likely cause is BlocksSchema rejection, which we surface
     // as schema_violation so the UI bucket matches the upstream cause.
+    const errMsg = error instanceof Error ? error.message : String(error)
+    const errName = error instanceof Error ? error.name : "non-error"
+    console.warn(
+      "[mastra-chat] event=apply_failed name=" +
+        errName +
+        " msg=" +
+        JSON.stringify(errMsg.slice(0, 800)) +
+        " block_count=" +
+        (Array.isArray(envelope.mutations.blocks)
+          ? envelope.mutations.blocks.length
+          : "n/a"),
+    )
     if (
       error instanceof Error &&
       (error.name === "ZodError" || error.message.includes("BlocksSchema"))

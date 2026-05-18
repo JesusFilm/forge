@@ -143,20 +143,20 @@ is redundant and loses the plugin's column-pruning.
 
 ## Experience AI Chat providers
 
-The chat surface routes through one of four channels selected by the
+The chat surface routes through one of five channels selected by the
 editor in the composer dropdown. The selected channel drives BOTH the
 quality-draft generation and chat-turn mutation envelope flows.
 
 | Channel       | Quality-draft path                          | Chat-turn path                               | Cost / posture               |
 | ------------- | ------------------------------------------- | -------------------------------------------- | ---------------------------- |
+| `mastra`      | Mastra agent runtime                        | Mastra default chat agent                    | Free via OpenRouter model    |
 | `openrouter`  | OpenRouter free models (HTTP)               | Codex CLI (legacy)                           | Free, cloud                  |
 | `ollama`      | Ollama HTTP `/api/chat` (`format: "json"`)  | Ollama NDJSON stream                         | Local, free                  |
 | `codex`       | `codex exec --output-schema <tmp> -o <out>` | `codex exec` (stdin/stdout)                  | Paid subscription, local CLI |
 | `claude-code` | `claude --print --json-schema <inline>`     | `claude --print --output-format stream-json` | Paid subscription, local CLI |
 
-Defaults to `openrouter` when omitted; the chat-turn half of the
-`openrouter` pick still spawns Codex CLI (legacy default, gated by
-`EXPERIENCE_AI_ALLOW_CODEX`).
+Defaults to `mastra` when omitted. The `openrouter` pick still spawns
+Codex CLI for chat-turns (legacy path, gated by `EXPERIENCE_AI_ALLOW_CODEX`).
 
 **Env gates** — CLI providers refuse to spawn unless their gate is on,
 returning `provider_not_configured` (Claude Code) or `codex_unavailable`
