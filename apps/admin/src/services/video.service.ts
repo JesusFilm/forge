@@ -206,9 +206,19 @@ export class VideoService {
  * Convert Prisma's TS enum identifier (e.g. `FEATURE_FILM`) into
  * the camelCase wire shape Strapi previously emitted (e.g.
  * `featureFilm`). Returns null for null input.
+ *
+ * Defensive shape: input that is NOT UPPER_SNAKE_CASE passes
+ * through unchanged. Prisma's TS enum identifier is guaranteed
+ * UPPER_SNAKE today, but a future Prisma config change (e.g.,
+ * disabling enum-identifier mapping so the DB-stored camelCase
+ * value surfaces directly) would otherwise be silently lowercased
+ * by the unconditional `.toLowerCase()` — `featureFilm` →
+ * `featurefilm` is a real wire-shape regression that the regex
+ * step alone cannot fix.
  */
 function snakeUpperToCamel(value: string | null): string | null {
   if (value == null) return null
+  if (!/^[A-Z][A-Z_]*$/.test(value)) return value
   return value
     .toLowerCase()
     .replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())

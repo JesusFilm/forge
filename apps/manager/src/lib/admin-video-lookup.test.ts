@@ -140,6 +140,24 @@ describe("admin-video-lookup", () => {
       })
       expect(fetchSpy).not.toHaveBeenCalled()
     })
+
+    it("envelope when coreIds is empty AND env is unset — config_missing wins over empty-input short-circuit", async () => {
+      // Regression guard for the Round 1 fix that ordered the
+      // config check ahead of the empty-input short-circuit so a
+      // misconfigured environment isn't masked by a happy-path
+      // empty Map on degenerate input. Flipping the two branches
+      // back would silently fail this test.
+      envMutable.ADMIN_GRAPHQL_URL = undefined
+
+      const result = await lookupVideosByCoreIdFromAdmin([])
+
+      expect(result).toMatchObject({
+        ok: false,
+        reason: "config_missing",
+        retryable: false,
+      })
+      expect(fetchSpy).not.toHaveBeenCalled()
+    })
   })
 
   describe("network_error", () => {

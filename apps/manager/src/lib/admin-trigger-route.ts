@@ -169,6 +169,12 @@ export function __clearInFlightMapForTests(): void {
 //   - row complete                 → dispatch
 // ---------------------------------------------------------------------------
 
+/**
+ * @public Exported so test seams + future custom-client injections
+ * can type-check against the lookup contract. The only production
+ * caller passes `lookupVideosByCoreIdFromAdmin`; tests pass
+ * inline mocks via `ProcessAdminTriggerArgs.adminLookup`.
+ */
 export type AdminLookupClient = (
   coreIds: readonly string[],
 ) => Promise<AdminVideoLookupEnvelope>

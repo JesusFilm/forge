@@ -372,6 +372,62 @@ describe("processAdminTriggerRequest — happy path", () => {
     expect(DISPATCH_OK).not.toHaveBeenCalled()
   })
 
+  it("validation_failed message lists ONLY the missing fields (mux only) when other dispatch fields are present", async () => {
+    // Guard the dynamic gap-naming behavior: if a future refactor
+    // collapsed the message back to a static string, operator
+    // triage signal regresses without any other test failing.
+    const adminLookup = vi.fn(async () =>
+      adminLookupOk([videoFixture({ coreId: "c-only-mux", muxAssetId: null })]),
+    )
+
+    const res = await processAdminTriggerRequest({
+      request: makeRequest({ items: [{ assetId: 10, coreId: "c-only-mux" }] }),
+      kind: "scene-analysis",
+      dispatch: DISPATCH_OK,
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb()
+      },
+    })
+    const body = (await res.json()) as {
+      results: Array<{ status: string; message?: string }>
+    }
+    expect(body.results[0].status).toBe("validation_failed")
+    expect(body.results[0].message).toContain("mux variant")
+    expect(body.results[0].message).not.toContain("primary language")
+    expect(body.results[0].message).not.toContain("subtitle")
+  })
+
+  it("validation_failed message lists the cascade (primary language + mux + subtitle) when primary language is missing", async () => {
+    const adminLookup = vi.fn(async () =>
+      adminLookupOk([
+        videoFixture({
+          coreId: "c-cascade",
+          primaryLanguageBcp47: null,
+          muxAssetId: null,
+          subtitleUrl: null,
+        }),
+      ]),
+    )
+
+    const res = await processAdminTriggerRequest({
+      request: makeRequest({ items: [{ assetId: 11, coreId: "c-cascade" }] }),
+      kind: "scene-analysis",
+      dispatch: DISPATCH_OK,
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb()
+      },
+    })
+    const body = (await res.json()) as {
+      results: Array<{ status: string; message?: string }>
+    }
+    expect(body.results[0].status).toBe("validation_failed")
+    expect(body.results[0].message).toContain("primary language")
+    expect(body.results[0].message).toContain("mux variant")
+    expect(body.results[0].message).toContain("subtitle")
+  })
+
   it("falls back to videoLabel='unknown' when admin returns null label", async () => {
     const adminLookup = vi.fn(async () =>
       adminLookupOk([videoFixture({ coreId: "c-no-label", label: null })]),

@@ -431,5 +431,19 @@ describe("VideoService", () => {
       expect(result[0]?.label).toBe("featureFilm")
       expect(result[1]?.label).toBe("behindTheScenes")
     })
+
+    it("passes already-camelCase label through unchanged (defensive — guards future Prisma config drift)", async () => {
+      // If a future Prisma config change ever surfaces the
+      // DB-stored camelCase value directly, the normalizer must
+      // NOT silently lowercase it (`featureFilm` -> `featurefilm`
+      // would corrupt the wire shape).
+      prisma.video.findMany.mockResolvedValueOnce([
+        { ...rowFixture(), label: "featureFilm" },
+      ])
+
+      const [row] = await service.getByCoreIds({ coreIds: ["core-1"] })
+
+      expect(row.label).toBe("featureFilm")
+    })
   })
 })
