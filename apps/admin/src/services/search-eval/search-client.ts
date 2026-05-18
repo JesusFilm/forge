@@ -98,8 +98,9 @@ export type CreateSearchClientOptions = {
   /** Optional logger; emits structured retry events. */
   logger?: { warn: (message: string) => void; info: (message: string) => void }
   /** Caller-side single bearer attached as `Authorization: Bearer <key>`
-   *  to every request. Should be one of admin's own `SEARCH_API_KEYS`
-   *  CSV entries when calling production / staging admin. Omit for
+   *  to every request. Should be a partner key issued via
+   *  `pnpm partner-keys create`, or a `WORKFLOW_API_KEYS` /
+   *  `WEB_ADMIN_API_KEYS` entry for internal-caller usage. Omit for
    *  anonymous (works during dual-accept; will 401 after the
    *  `SEARCH_AUTH_REQUIRED=true` flip). */
   bearer?: string

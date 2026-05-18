@@ -142,10 +142,11 @@ has reviewed PR1's `missingArtifacts` projection).
 
 **Body shape:** `{ items: [{ assetId: number, coreId: string }, ...] }`.
 Capped at 100 items per call. Manager dedupes by `assetId` at the
-boundary. `coreId` is the lookup key into Strapi v5 (`videos(filters:
-{ coreId: { in: ... } })` — Strapi v5 GraphQL exposes no numeric `id`
-filter on `Video`); `assetId` is the operator-facing identifier and
-the storage-key prefix.
+boundary. `coreId` is the lookup key into admin's `videosByCoreIds`
+GraphQL query (feat-125 — replaced the prior Strapi `videos(filters:
+{ coreId: { in: ... } })` call); `assetId` is the operator-facing
+identifier and the storage-key prefix manager uses when writing
+artifacts.
 
 **Auth:** `Authorization: Bearer <key>` against the
 `ADMIN_TRIGGER_API_KEYS` CSV allowlist. Mirrors admin's
@@ -166,12 +167,21 @@ for the deviation rationale.
 
 **Per-item outcome:** discriminated by `status`:
 
-| status              | Meaning                                                                                        |
-| ------------------- | ---------------------------------------------------------------------------------------------- |
-| `started`           | New `managerJobId` minted; pipeline dispatched in background via `after()`                     |
-| `already_in_flight` | Existing `managerJobId` returned (in-flight slot held by a recent call)                        |
-| `not_found`         | No cms video for the supplied `coreId`                                                         |
-| `validation_failed` | cms video found but missing required dispatch fields (primary-language subtitle / mux variant) |
+| status              | Meaning                                                                                                                                 |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `started`           | New `managerJobId` minted; pipeline dispatched in background via `after()`                                                              |
+| `already_in_flight` | Existing `managerJobId` returned (in-flight slot held by a recent call)                                                                 |
+| `not_found`         | No admin video for the supplied `coreId`                                                                                                |
+| `validation_failed` | admin video found but missing required dispatch fields — `message` names the specific gap(s): primary language / mux variant / subtitle |
+
+**Non-2xx envelope (feat-125):** when admin's `videosByCoreIds`
+lookup fails, the route surfaces a typed body instead of a bare
+error string:
+
+| HTTP | Body shape                                                                                                                         | When                                                                             |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| 502  | `{ error, reason: "admin_unreachable", upstreamReason: "graphql_error" \| "network_error" \| "parse_error", messages, retryable }` | admin GraphQL / network / parse failure on the `videosByCoreIds` call            |
+| 503  | `{ error, reason: "config_missing", upstreamReason: "config_missing", messages, retryable: false }`                                | manager env is unconfigured to call admin (`ADMIN_GRAPHQL_URL` / bearer not set) |
 
 **Env on `forge-manager` Doppler:**
 

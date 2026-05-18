@@ -151,11 +151,12 @@ builder.queryFields((t) => ({
       // Phase-1 dual-accept auth gate. After the SEARCH_AUTH_REQUIRED
       // flip, anonymous + invalid-bearer traffic throws and surfaces
       // as `errors[0].message` to the GraphQL client. The check
-      // accepts ANY of three known-caller bearer CSVs (search /
-      // consumer / workflow) — see `isAnyKnownBearer` — so apps/web
-      // SSR + apps/mobile (carrying consumer-bearer for graphql
-      // rate-limit identity) keep working without code changes.
-      // External partners get their own SEARCH_API_KEYS slot.
+      // accepts ANY of three known-caller bearer sources (DB-backed
+      // partner / consumer / workflow) — see `isAnyKnownBearer` — so
+      // apps/web SSR + apps/mobile (carrying consumer-bearer for
+      // graphql rate-limit identity) keep working without code
+      // changes. External partners hold a DB-backed key issued via
+      // `pnpm --filter @forge/admin partner-keys create`.
       //
       // The structured log tags every request with one of three
       // states (bearer / invalid_bearer / anonymous) so operators
@@ -170,21 +171,31 @@ builder.queryFields((t) => ({
       // doesn't apply here — every request to /api/graphql is
       // already rate-bucketed before the resolver runs.
       const authHeader = ctx.request.headers.get("authorization")
-      const authValid = isAnyKnownBearer(authHeader)
-      const authTag: "bearer" | "invalid_bearer" | "anonymous" = authValid
-        ? "bearer"
-        : authHeader != null
-          ? "invalid_bearer"
-          : "anonymous"
+      const authResult = await isAnyKnownBearer(authHeader)
+      const authTag: "bearer" | "invalid_bearer" | "anonymous" =
+        authResult.valid
+          ? "bearer"
+          : authHeader != null
+            ? "invalid_bearer"
+            : "anonymous"
       // See route.ts for the rationale — on the current Next.js 16 +
       // Node 24 + Railway logsV2 + standalone stack, JSON-stringified
       // log payloads from runtime route handlers are silenced. Only
       // the `[label] event=name key=value` string format used by the
       // existing working logs in this surface reliably surfaces.
+      //
+      // `source=` distinguishes the matched bearer source; `keyId=`
+      // is appended for PARTNER branches only (env-CSV branches don't
+      // carry a per-key identifier). Stable positional fields
+      // (`event`, `auth`, `path`) come first; optional fields appended
+      // at the END so positional log-shipper rules stay stable.
+      const sourceField = authResult.valid ? ` source=${authResult.source}` : ""
+      const keyIdField =
+        authResult.valid && authResult.keyId ? ` keyId=${authResult.keyId}` : ""
       console.error(
-        `[search] event=search.request auth=${authTag} path=graphql`,
+        `[search] event=search.request auth=${authTag} path=graphql${sourceField}${keyIdField}`,
       )
-      if (!authValid && env.SEARCH_AUTH_REQUIRED === "true") {
+      if (!authResult.valid && env.SEARCH_AUTH_REQUIRED === "true") {
         // Typed GraphQLError with extensions.code so the auth signal
         // survives Yoga's default maskedErrors (which rewrites raw
         // `new Error(...)` to "Unexpected error." in production).

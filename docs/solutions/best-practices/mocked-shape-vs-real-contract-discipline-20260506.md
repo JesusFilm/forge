@@ -1,6 +1,7 @@
 ---
 title: "Mocked-shape-vs-real-contract testing discipline — mocks prove BRANCH SHAPE; real fixtures prove PRODUCTION CONTRACT"
 date: 2026-05-06
+last_updated: 2026-05-18
 problem_type: best_practice
 component: testing_framework
 root_cause: inadequate_documentation
@@ -15,11 +16,13 @@ tags:
   - integration-testing
   - meta-pattern
   - best-practice
+  - structural-impedance
 related:
   - "docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md"
   - "docs/solutions/best-practices/verify-infra-writes-via-independent-read-path-20260420.md"
   - "docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md"
   - "docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md"
+  - "docs/solutions/architecture-patterns/bearer-as-passport-multi-csv-composition-20260518.md"
 ---
 
 # Mocked-shape-vs-real-contract testing discipline
@@ -103,16 +106,17 @@ expect(error.code).toBe("artifact_missing")
 
 The same trap, six different surfaces:
 
-| Surface                                             | Doc                                                                                                                             | Trap                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **AWS SDK error shape**                             | [aws-s3-nosuchkey-classification-pattern-20260506.md](../runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md)    | Mock throws `new Error("NoSuchKey: ...")`. Regex matches. Typed-name branch never tested. SDK reword breaks prod, no test catches it. (PR1 of feat-119 hit this exact case during /ce:review and added the regex-incompatible-message cases.)                                                                                                                                                                                                                                                     |
-| **PG function resolution**                          | [pgvector-bulk-insert-on-conflict-pattern-20260505.md](../database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md) | Mocked SQL-shape test asserts `WHERE` clause structure. PG's actual function-resolution rules (jsonb vs json overload set, enum case sensitivity, NULL-pad behavior of multi-arg `unnest`) only fail at runtime against real Postgres. (feat-117 captured this lesson after the bulk-insert path passed mocked tests but errored on real PG.)                                                                                                                                                     |
-| **In-house typed errors with literal-union `code`** | [parallel-workflow-error-robustness-20260420.md](parallel-workflow-error-robustness-20260420.md)                                | Mock rejects with generic `new Error("artifact_missing: ...")`. The workflow's `instanceof TypedError && error.code === "..."` branching never fires (the regex-message check above it does). A real `TypedError` thrown from production has a different code path than the test exercises.                                                                                                                                                                                                       |
-| **Infrastructure writes (Railway MCP staging)**     | [verify-infra-writes-via-independent-read-path-20260420.md](verify-infra-writes-via-independent-read-path-20260420.md)          | The MCP `updateServiceTool` returns "applied" even when the change is staged-but-not-deployed. Verifying via the same MCP's `getServiceConfigTool` returns the same masked value either way. Only an independent read path (curl the runtime endpoint, check the deployed service's actual environment) proves the contract.                                                                                                                                                                      |
-| **Cross-PR file-format contract literals**          | [producer-consumer-report-file-contract-pattern-20260506.md](producer-consumer-report-file-contract-pattern-20260506.md)        | feat-119 PR2's CLI filtered for `kind: "scene"` while PR1 emitted `kind: "scene-analysis"`. Test fixture used the WRONG literal (matching the buggy filter), making the test self-confirming. The discriminator branch was never tested against a real producer literal — green tests, broken operator workflow.                                                                                                                                                                                  |
-| **Verification-command coverage of dual-form DSLs** | [graphql-callsite-inventory-dual-pattern-sweep-20260507.md](graphql-callsite-inventory-dual-pattern-sweep-20260507.md)          | Single-pattern `rg "graphql\("` "verifies" the GraphQL callsite inventory for the typed-helper form (gql.tada) but silently drops the raw Apollo `` gql`...` `` form authored alongside it. Same shape as the regex-backstop trap: one verification path satisfies the inventory; the real production callsite in the other form is invisible. (Caught during /ce-doc-review on the Unit 1 plan; would have cascaded into Unit 2 building the wrong PUBLIC field set for `sceneRecommendations`.) |
+| Surface                                               | Doc                                                                                                                                                                        | Trap                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AWS SDK error shape**                               | [aws-s3-nosuchkey-classification-pattern-20260506.md](../runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md)                                               | Mock throws `new Error("NoSuchKey: ...")`. Regex matches. Typed-name branch never tested. SDK reword breaks prod, no test catches it. (PR1 of feat-119 hit this exact case during /ce:review and added the regex-incompatible-message cases.)                                                                                                                                                                                                                                                                                                                                                              |
+| **PG function resolution**                            | [pgvector-bulk-insert-on-conflict-pattern-20260505.md](../database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md)                                            | Mocked SQL-shape test asserts `WHERE` clause structure. PG's actual function-resolution rules (jsonb vs json overload set, enum case sensitivity, NULL-pad behavior of multi-arg `unnest`) only fail at runtime against real Postgres. (feat-117 captured this lesson after the bulk-insert path passed mocked tests but errored on real PG.)                                                                                                                                                                                                                                                              |
+| **In-house typed errors with literal-union `code`**   | [parallel-workflow-error-robustness-20260420.md](parallel-workflow-error-robustness-20260420.md)                                                                           | Mock rejects with generic `new Error("artifact_missing: ...")`. The workflow's `instanceof TypedError && error.code === "..."` branching never fires (the regex-message check above it does). A real `TypedError` thrown from production has a different code path than the test exercises.                                                                                                                                                                                                                                                                                                                |
+| **Infrastructure writes (Railway MCP staging)**       | [verify-infra-writes-via-independent-read-path-20260420.md](verify-infra-writes-via-independent-read-path-20260420.md)                                                     | The MCP `updateServiceTool` returns "applied" even when the change is staged-but-not-deployed. Verifying via the same MCP's `getServiceConfigTool` returns the same masked value either way. Only an independent read path (curl the runtime endpoint, check the deployed service's actual environment) proves the contract.                                                                                                                                                                                                                                                                               |
+| **Cross-PR file-format contract literals**            | [producer-consumer-report-file-contract-pattern-20260506.md](producer-consumer-report-file-contract-pattern-20260506.md)                                                   | feat-119 PR2's CLI filtered for `kind: "scene"` while PR1 emitted `kind: "scene-analysis"`. Test fixture used the WRONG literal (matching the buggy filter), making the test self-confirming. The discriminator branch was never tested against a real producer literal — green tests, broken operator workflow.                                                                                                                                                                                                                                                                                           |
+| **Verification-command coverage of dual-form DSLs**   | [graphql-callsite-inventory-dual-pattern-sweep-20260507.md](graphql-callsite-inventory-dual-pattern-sweep-20260507.md)                                                     | Single-pattern `rg "graphql\("` "verifies" the GraphQL callsite inventory for the typed-helper form (gql.tada) but silently drops the raw Apollo `` gql`...` `` form authored alongside it. Same shape as the regex-backstop trap: one verification path satisfies the inventory; the real production callsite in the other form is invisible. (Caught during /ce-doc-review on the Unit 1 plan; would have cascaded into Unit 2 building the wrong PUBLIC field set for `sceneRecommendations`.)                                                                                                          |
+| **Producer-consumer round-trip with no real fixture** | [bearer-as-passport-multi-csv-composition-20260518.md](../architecture-patterns/bearer-as-passport-multi-csv-composition-20260518.md) (PR #976 `import-from-env` deletion) | `importPartnerKeyFromPlaintext` (now deleted) wrote `sha256(opaqueLegacyToken)` into `PartnerApiKey.keyHash`. Mocked DB-write tests asserted the INSERT shape and passed. NO test exercised the verify-after-import round-trip — because `verifyPartnerToken` requires the `jfp_search_<keyId>_<random>` shape and legacy opaque tokens cannot parse. The two sides' contracts were STRUCTURALLY incompatible; only a real round-trip test (import-then-verify) would have surfaced it. Recovery: delete the broken migration path entirely — see "Recovery when contracts are structurally broken" below. |
 
-These six are the same rule six times. If you find a seventh
+These seven are the same rule seven times. If you find an eighth
 instance, add it here — that's the META home.
 
 ## Why the rule keeps recurring
@@ -162,6 +166,47 @@ them is the canonical home. Adding a fifth instance forces a fifth
 set of bidirectional cross-references. This META doc is the apex —
 new instances cite this doc, and this doc adds them to the table
 above.
+
+## Recovery when contracts are structurally broken
+
+The seven worked instances above all describe traps where the
+contract IS satisfiable — the test was just shaped wrong. There's a
+distinct failure mode: **the producer and consumer have a structural
+impedance mismatch and no real fixture can succeed**. The signature
+is "you can write the migration path test green, but the integrate-
+forward path test cannot exist."
+
+Example (PR #976): `importPartnerKeyFromPlaintext` stored
+`sha256(opaqueToken)` against a fabricated `keyId`. The verifier
+required the token to MATCH `^jfp_search_<keyId>_<random>$`. There
+was no `rawToken` value that could satisfy both the import path
+(arbitrary legacy plaintext, no prefix structure) AND the verify
+path (must parse to extract `keyId` for the DB lookup).
+
+When mocked tests prove BRANCH SHAPE and the real-contract round-
+trip is **impossible by construction**, the right move is NOT to
+patch with a back-compat tagging column ("if `keyId === null`, do
+full-table hash scan instead"). The right move is to **delete the
+broken path entirely** and force operators onto a flow that respects
+the verifier's contract (in this case: re-issue a fresh `jfp_search_*`
+token via `partner-keys create` and have the partner rotate onto it).
+
+### Recovery checklist when a mocked-shape test passes for an unreachable production path
+
+1. **Write the integration test that would prove the round-trip
+   works.** If you can't — because the producer's output and the
+   consumer's input shapes are structurally incompatible — stop.
+2. **Don't patch with a tag column / fallback branch / discriminator
+   field.** Each of those compounds the test surface and adds prod
+   code that exists only to serve a path that should not exist.
+3. **Delete the broken path and the tests that mock it.** The mocked
+   tests were proving a branch shape that maps to nothing real.
+4. **Document the deletion in the same PR.** Update the runbook to
+   describe the supported flow (in this case: rotate-onto-fresh-key).
+   Add a regression-guard test that the deleted path is no longer
+   reachable (e.g., `parseArgvToConfig(["import-from-env"])` throws
+   "unknown subcommand"). The PR #976 commit `c1aa1e48` is the
+   canonical example.
 
 ## Refresh trigger
 

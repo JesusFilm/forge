@@ -5,24 +5,26 @@
 // Body shape:
 //   { items: [{ assetId: number, coreId: string }, ...] }
 //
-// `assetId` is the integer cms videos.id (Strapi numeric PK), used
-// here only as the operator-facing identifier and the storage-key
-// prefix manager uses when writing artifacts. The Strapi v5 GraphQL
-// surface does NOT expose a numeric `id` filter on `Video`
-// (`VideoFiltersInput` only has `documentId` + `coreId`), so the
-// CMS lookup uses `coreId`. Admin already has both fields in PR1's
-// `missingArtifacts: [{ assetId, coreId, kind }]` projection — the
-// wire payload mirrors that shape so the wiring is straight-through.
+// `assetId` is the operator-facing identifier + storage-key prefix
+// manager uses when writing artifacts (`{assetId}/scene-analysis.json`,
+// `{assetId}/embeddings.json`). `coreId` is admin's stable identifier
+// for the same video.
 //
 // Per-id flow:
-//   1. CMS lookup by coreId → derive { documentId, muxAssetId,
-//      subtitleUrl, label, languageBcp47 }. Missing → status
-//      "not_found".
+//   1. Admin lookup by coreId via `videosByCoreIds` GraphQL query →
+//      derive { muxAssetId, subtitleUrl, label, primaryLanguageBcp47 }
+//      (feat-125). Missing row → status "not_found". Missing mux or
+//      subtitle → status "validation_failed".
 //   2. Idempotency check against the in-memory map (5-minute TTL,
 //      keyed by `${kind}:${assetId}`). Hit → return existing
 //      managerJobId with status "already_in_flight".
 //   3. Generate a new managerJobId, store in the map, dispatch via
 //      `after()` background-task semantics. Status "started".
+//
+// Pre-feat-125 the lookup hit Strapi GraphQL via Apollo; admin owns
+// the video catalogue now (R6 of the migration playbook), so the
+// lookup moved to admin's `videosByCoreIds`. Manager keeps no
+// Strapi coupling on this code path.
 //
 // The in-memory map is a deliberate deviation from plan D7 (which
 // suggested querying EnrichmentJob). Rationale captured in the
@@ -31,8 +33,11 @@
 import { after, NextResponse } from "next/server"
 import { randomUUID } from "node:crypto"
 import { z } from "zod"
-import getClient from "@/cms/client"
-import { graphql, type ResultOf } from "@forge/graphql"
+import {
+  lookupVideosByCoreIdFromAdmin,
+  type AdminVideoLookupEnvelope,
+  type VideoForEnrichment,
+} from "@/lib/admin-video-lookup"
 import { validateAdminTriggerBearer } from "@/lib/admin-trigger-auth"
 
 // ---------------------------------------------------------------------------
@@ -149,161 +154,30 @@ export function __clearInFlightMapForTests(): void {
 }
 
 // ---------------------------------------------------------------------------
-// CMS lookup — batched by coreId
+// Admin lookup — batched by coreId (feat-125)
+//
+// The lookup helper lives in `admin-video-lookup.ts` and mirrors the
+// shape of `admin-embed-trigger.ts` (the inverse direction). It hits
+// admin's `videosByCoreIds` GraphQL query, which does the primary-
+// language variant + subtitle picker server-side and returns a
+// flat `VideoForEnrichment` row per coreId.
+//
+// Per coreId, manager classifies:
+//   - row missing entirely         → status "not_found"
+//   - row present, but muxAssetId
+//     or subtitleUrl is null       → status "validation_failed"
+//   - row complete                 → dispatch
 // ---------------------------------------------------------------------------
 
 /**
- * Strapi v5 videos lookup keyed by coreId. Returns the fields
- * needed to dispatch the scene-analysis or transcript pipeline.
- * Variants and subtitles are returned with relations populated so
- * the dispatcher can pick a primary-language variant + subtitle.
+ * @public Exported so test seams + future custom-client injections
+ * can type-check against the lookup contract. The only production
+ * caller passes `lookupVideosByCoreIdFromAdmin`; tests pass
+ * inline mocks via `ProcessAdminTriggerArgs.adminLookup`.
  */
-const GET_VIDEOS_FOR_ENRICHMENT = graphql(`
-  query GetVideosForAdminTrigger($coreIds: [String]) {
-    videos(filters: { coreId: { in: $coreIds } }, pagination: { limit: 100 }) {
-      documentId
-      coreId
-      title
-      label
-      primaryLanguage {
-        coreId
-        bcp47
-      }
-      subtitles(pagination: { limit: -1 }) {
-        primary
-        aiGenerated
-        vttSrc
-        language {
-          coreId
-          bcp47
-        }
-      }
-      variants(pagination: { limit: -1 }) {
-        muxVideo {
-          assetId
-        }
-        language {
-          coreId
-          bcp47
-        }
-      }
-    }
-  }
-`)
-
-export type CmsVideoForEnrichment = NonNullable<
-  ResultOf<typeof GET_VIDEOS_FOR_ENRICHMENT>["videos"][number]
->
-
-/**
- * Resolve the dispatch input fields from a CMS video. Returns
- * `null` when the video is missing the required relations
- * (subtitles in the primary language, primary-language variant
- * with a Mux asset id) — the per-id outcome will be
- * `not_found` in that case.
- *
- * Picks the primary-language variant + subtitle. Prefers
- * `primary === true` and non-aiGenerated subtitles when multiple
- * candidates exist for the same language.
- */
-export function resolveDispatchFields(video: CmsVideoForEnrichment): {
-  muxAssetId: string
-  subtitleUrl: string
-  videoLabel: string
-  languageBcp47: string
-} | null {
-  const primaryBcp47 = video.primaryLanguage?.bcp47
-  if (!primaryBcp47) return null
-
-  const variantWithMux = (video.variants ?? []).find(
-    (v) =>
-      v != null &&
-      v.language?.bcp47 === primaryBcp47 &&
-      typeof v.muxVideo?.assetId === "string" &&
-      v.muxVideo.assetId.length > 0,
-  )
-  const muxAssetId = variantWithMux?.muxVideo?.assetId
-  if (!muxAssetId) return null
-
-  const subtitleCandidates = (video.subtitles ?? []).filter(
-    (
-      s,
-    ): s is NonNullable<typeof s> & {
-      vttSrc: string
-      language: { bcp47: string }
-    } =>
-      s != null &&
-      typeof s.vttSrc === "string" &&
-      s.vttSrc.length > 0 &&
-      s.language?.bcp47 === primaryBcp47,
-  )
-  // Prefer primary + non-AI; fall back to any candidate in the
-  // primary language. Stable order so test assertions are
-  // deterministic.
-  subtitleCandidates.sort((a, b) => {
-    const aScore = (a.primary ? 0 : 1) + (a.aiGenerated ? 1 : 0)
-    const bScore = (b.primary ? 0 : 1) + (b.aiGenerated ? 1 : 0)
-    return aScore - bScore
-  })
-  const subtitle = subtitleCandidates[0]
-  if (!subtitle) return null
-
-  return {
-    muxAssetId,
-    subtitleUrl: subtitle.vttSrc,
-    videoLabel: video.label ?? "unknown",
-    languageBcp47: primaryBcp47,
-  }
-}
-
-type LookupClient = {
-  query: (vars: {
-    query: typeof GET_VIDEOS_FOR_ENRICHMENT
-    variables: { coreIds: string[] }
-    fetchPolicy: "no-cache"
-  }) => Promise<{ data?: ResultOf<typeof GET_VIDEOS_FOR_ENRICHMENT> }>
-}
-
-// Bound the cms lookup so a hung Strapi can't pin manager request
-// workers indefinitely. Admin's outbound client uses a 15s ceiling
-// (apps/admin/src/services/manager-trigger.service.ts), so the cms
-// lookup must finish in well under that to leave room for the
-// trigger response itself. 10s is generous for a 100-row coreId
-// filter against Strapi v5's flat videos query.
-const CMS_LOOKUP_TIMEOUT_MS = 10_000
-
-async function lookupVideosByCoreId(
-  coreIds: string[],
-  client?: LookupClient,
-): Promise<Map<string, CmsVideoForEnrichment>> {
-  const apollo = client ?? (getClient() as unknown as LookupClient)
-  const queryPromise = apollo.query({
-    query: GET_VIDEOS_FOR_ENRICHMENT,
-    variables: { coreIds },
-    fetchPolicy: "no-cache",
-  })
-  const result = await Promise.race([
-    queryPromise,
-    new Promise<never>((_, reject) => {
-      const timer = setTimeout(() => {
-        reject(
-          Object.assign(
-            new Error(`cms lookup timed out after ${CMS_LOOKUP_TIMEOUT_MS}ms`),
-            { name: "TimeoutError" },
-          ),
-        )
-      }, CMS_LOOKUP_TIMEOUT_MS)
-      // Don't keep the event loop alive on this timer if the query
-      // resolves first (Promise.race ignores the loser).
-      timer.unref?.()
-    }),
-  ])
-  const out = new Map<string, CmsVideoForEnrichment>()
-  for (const video of result.data?.videos ?? []) {
-    if (video?.coreId) out.set(video.coreId, video)
-  }
-  return out
-}
+export type AdminLookupClient = (
+  coreIds: readonly string[],
+) => Promise<AdminVideoLookupEnvelope>
 
 // ---------------------------------------------------------------------------
 // Dispatch input (the manager-side invocation contract).
@@ -314,13 +188,17 @@ async function lookupVideosByCoreId(
 export type AdminTriggerDispatchInput = {
   assetId: number
   coreId: string
-  documentId: string
   muxAssetId: string
   subtitleUrl: string
   videoLabel: string
   languageBcp47: string
 }
 
+// The resolved value isn't inspected by the route handler — only
+// settlement/rejection. Keeping `Promise<unknown>` (rather than
+// `Promise<void>`) lets each dispatcher return its pipeline's
+// typed result object without an extra `async (input) => { await ...; }`
+// wrapper at every call site.
 export type AdminTriggerDispatcher = (
   input: AdminTriggerDispatchInput,
 ) => Promise<unknown>
@@ -333,8 +211,10 @@ export type ProcessAdminTriggerArgs = {
   request: Request
   kind: TriggerKind
   dispatch: AdminTriggerDispatcher
-  // Test seam — defaults to the live Apollo client + Next's after().
-  cmsClient?: LookupClient
+  // Test seam — defaults to the live `lookupVideosByCoreIdFromAdmin`
+  // helper (fetch + bearer + AbortSignal.timeout). Override in tests
+  // to inject a deterministic envelope.
+  adminLookup?: AdminLookupClient
   scheduleAfter?: (cb: () => Promise<void>) => void
 }
 
@@ -363,32 +243,45 @@ export async function processAdminTriggerRequest(
 
   const { items } = parsed.data
   const coreIds = items.map((i) => i.coreId)
-  let videos: Map<string, CmsVideoForEnrichment>
-  try {
-    videos = await lookupVideosByCoreId(coreIds, args.cmsClient)
-  } catch (error) {
-    // Apollo / network failure during the cms lookup. Surface a
-    // 502 with a clear reason so the admin-side outbound client
-    // maps it to `DISPATCH_FAILED { reason: "remote_5xx" }` rather
-    // than crashing on an empty-body 500.
-    const message = error instanceof Error ? error.message : String(error)
+  const adminLookup = args.adminLookup ?? lookupVideosByCoreIdFromAdmin
+  const envelope = await adminLookup(coreIds)
+  if (!envelope.ok) {
+    // Surface admin's lookup failure with a clear reason so admin's
+    // outbound classifier maps it to `DISPATCH_FAILED { reason:
+    // "remote_5xx" }` rather than crashing on an empty-body 500.
+    // `config_missing` is operator-fixable misconfig → 503; every
+    // other reason is upstream-side and surfaces as 502 (matches
+    // the `admin-embed-route.ts` envelope shape on the inverse
+    // direction).
     console.error(
       JSON.stringify({
-        event: "admin-trigger.cms-lookup.error",
+        event: "admin-trigger.admin-lookup.error",
         kind: args.kind,
-        coreIds,
-        error: message,
+        reason: envelope.reason,
+        messages: envelope.messages,
+        // Log only the cardinality, not the full coreIds list —
+        // log-line size is bounded regardless of batch size, and
+        // operational triage rarely needs the exact IDs (request
+        // body is the source of truth).
+        coreIdCount: coreIds.length,
       }),
     )
+    const status = envelope.reason === "config_missing" ? 503 : 502
     return NextResponse.json(
       {
-        error: "cms lookup failed",
-        reason: "cms_unreachable",
-        message,
+        error: "admin lookup failed",
+        reason:
+          envelope.reason === "config_missing"
+            ? "config_missing"
+            : "admin_unreachable",
+        upstreamReason: envelope.reason,
+        messages: envelope.messages,
+        retryable: envelope.retryable,
       },
-      { status: 502 },
+      { status },
     )
   }
+  const videos: Map<string, VideoForEnrichment> = envelope.data
 
   const now = Date.now()
   pruneExpired(now)
@@ -421,20 +314,35 @@ export async function processAdminTriggerRequest(
         coreId: item.coreId,
         managerJobId: null,
         status: "not_found",
-        message: "cms video not found for coreId",
+        message: "admin returned no video for coreId",
       })
       continue
     }
 
-    const fields = resolveDispatchFields(video)
-    if (!fields) {
+    // Admin's `videosByCoreIds` resolver does the primary-language
+    // variant + best-subtitle picker server-side. Manager classifies
+    // a row with null mux or subtitle as validation_failed —
+    // operator-actionable signal that the upstream catalogue is
+    // missing required dispatch data for this video. Name the
+    // specific gap(s) so operators don't chase the wrong upstream
+    // signal — primary-language absence cascades into null
+    // mux/subtitle via the picker, so reporting only the symptom
+    // would hide the real data gap.
+    if (
+      video.muxAssetId == null ||
+      video.subtitleUrl == null ||
+      video.primaryLanguageBcp47 == null
+    ) {
+      const missing: string[] = []
+      if (video.primaryLanguageBcp47 == null) missing.push("primary language")
+      if (video.muxAssetId == null) missing.push("mux variant")
+      if (video.subtitleUrl == null) missing.push("subtitle")
       results.push({
         assetId: item.assetId,
         coreId: item.coreId,
         managerJobId: null,
         status: "validation_failed",
-        message:
-          "cms video missing required dispatch fields (primary-language subtitle or mux variant)",
+        message: `admin video missing required dispatch fields (${missing.join(", ")})`,
       })
       continue
     }
@@ -460,11 +368,10 @@ export async function processAdminTriggerRequest(
     const dispatchInput: AdminTriggerDispatchInput = {
       assetId: item.assetId,
       coreId: item.coreId,
-      documentId: video.documentId,
-      muxAssetId: fields.muxAssetId,
-      subtitleUrl: fields.subtitleUrl,
-      videoLabel: fields.videoLabel,
-      languageBcp47: fields.languageBcp47,
+      muxAssetId: video.muxAssetId,
+      subtitleUrl: video.subtitleUrl,
+      videoLabel: video.label ?? "unknown",
+      languageBcp47: video.primaryLanguageBcp47,
     }
 
     schedule(async () => {
@@ -477,7 +384,11 @@ export async function processAdminTriggerRequest(
       // earlier in the cb would leak the slot until TTL prune,
       // blocking re-triggers for up to 5 minutes.
       try {
-        console.log(
+        // Use console.warn (stderr) for structured runtime events —
+        // Railway logsV2 silences console.log (stdout) from Next.js
+        // App Router runtime handlers. See
+        // docs/solutions/runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md.
+        console.warn(
           JSON.stringify({
             event: "admin-trigger.dispatch",
             kind: args.kind,

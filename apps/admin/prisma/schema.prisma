@@ -187,11 +187,68 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  mediaAssets  MediaAsset[]
-  mediaFolders MediaFolder[]
+  mediaAssets           MediaAsset[]
+  mediaFolders          MediaFolder[]
+  partnerApiKeysCreated PartnerApiKey[] @relation("PartnerApiKeyCreatedBy")
+  partnerApiKeysRevoked PartnerApiKey[] @relation("PartnerApiKeyRevokedBy")
 
   @@unique([email])
   @@map("user")
+}
+
+// -----------------------------------------------------------------------------
+// Partner API key store
+// -----------------------------------------------------------------------------
+
+/// External partner credentials for admin's public search surface
+/// (`GET /api/search` + `Query.search`). One row per issued partner key.
+/// The bearer-as-passport composer (`src/auth/search-bearer.ts`) validates
+/// presented tokens against this table BEFORE falling through to the legacy
+/// `SEARCH_API_KEYS` env-CSV branch. See:
+///
+/// - Plan: `docs/plans/2026-05-18-001-feat-partner-api-key-store-plan.md`
+/// - apps/admin/CLAUDE.md §"Partner API key store"
+///
+/// Token shape: `jfp_search_<keyId>_<random>`. `keyId` is the operator-visible
+/// short identifier surfaced in the per-request structured log
+/// (`auth=bearer source=partner keyId=…`). `keyHash` is `sha256(rawToken)`
+/// stored as 64-char hex; comparison uses `timingSafeEqual` on decoded
+/// buffers. Plaintext is shown to the operator exactly once at issuance
+/// and never persisted.
+///
+/// Revocation is soft (`revokedAt` set, row preserved) — preserves the audit
+/// trail of which key was revoked, when, and by whom.
+model PartnerApiKey {
+  id         String    @id @default(cuid())
+  /// Operator-visible short identifier embedded in the token prefix.
+  /// 12 chars, URL-safe (no `_` because that's the token-format delimiter).
+  keyId      String    @unique @map("key_id")
+  /// `sha256(rawToken)` as 64-char hex. Constant-time compared on auth.
+  keyHash    String    @unique @map("key_hash")
+  /// Human-readable display name shown on the dashboard (the partner org).
+  name       String
+  /// Primary contact for the partner; used for offboarding handoffs.
+  ownerEmail String    @map("owner_email")
+  /// Free-form operator note (issuance context, rotation reminders, etc.).
+  note       String?
+  /// Updated fire-and-forget on every successful partner-bearer auth.
+  /// Drives the dashboard's "has this partner integrated yet?" column.
+  lastUsedAt DateTime? @map("last_used_at")
+  /// Set on revoke; row preserved for audit. `revokedAt IS NULL` means active.
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  createdById String? @map("created_by_id")
+  createdBy   User?   @relation("PartnerApiKeyCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  revokedById String? @map("revoked_by_id")
+  revokedBy   User?   @relation("PartnerApiKeyRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
+
+  @@index([revokedAt])
+  @@index([lastUsedAt])
+  @@index([createdById])
+  @@index([revokedById])
+  @@map("partner_api_key")
 }
 
 // -----------------------------------------------------------------------------
@@ -369,39 +426,39 @@ model ContentRevision {
 /// `VideoImage` remains separate: it represents Core/video-derived poster and
 /// still metadata. `MediaAsset` is for editorial uploads and reusable files.
 model MediaAsset {
-  id               String               @id @default(cuid())
-  kind             MediaAssetKind
-  backend          MediaAssetBackend
-  status           MediaAssetStatus     @default(PENDING)
-  visibility       MediaAssetVisibility @default(PRIVATE)
-  mimeType         String               @map("mime_type")
-  byteSize         BigInt?              @map("byte_size")
-  width            Int?
-  height           Int?
-  durationMs       BigInt?              @map("duration_ms")
-  blurDataUrl      String?              @map("blur_data_url")
-  dominantColor    String?              @map("dominant_color")
-  imageEnrichmentStatus MediaImageEnrichmentStatus @default(WAITING) @map("image_enrichment_status")
-  imageEnrichmentErrorCode String?       @map("image_enrichment_error_code")
-  imageEnrichmentErrorMessage String?    @map("image_enrichment_error_message")
-  imageEnrichmentStartedAt DateTime?     @map("image_enrichment_started_at")
-  imageEnrichmentCompletedAt DateTime?   @map("image_enrichment_completed_at")
-  originalFilename String?              @map("original_filename")
-  checksumSha256   String?              @map("checksum_sha256")
-  objectKey        String?              @map("object_key")
-  previewObjectKey String?              @map("preview_object_key")
-  muxAssetId       String?              @map("mux_asset_id")
-  muxUploadId      String?              @map("mux_upload_id")
-  muxPlaybackId    String?              @map("mux_playback_id")
-  errorCode        String?              @map("error_code")
-  errorMessage     String?              @map("error_message")
-  folderId         String?              @map("folder_id")
-  folder           MediaFolder?         @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  createdById      String?              @map("created_by_id")
-  createdBy        User?                @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  locales          MediaAssetLocale[]
-  createdAt        DateTime             @default(now()) @map("created_at")
-  updatedAt        DateTime             @updatedAt @map("updated_at")
+  id                          String                     @id @default(cuid())
+  kind                        MediaAssetKind
+  backend                     MediaAssetBackend
+  status                      MediaAssetStatus           @default(PENDING)
+  visibility                  MediaAssetVisibility       @default(PRIVATE)
+  mimeType                    String                     @map("mime_type")
+  byteSize                    BigInt?                    @map("byte_size")
+  width                       Int?
+  height                      Int?
+  durationMs                  BigInt?                    @map("duration_ms")
+  blurDataUrl                 String?                    @map("blur_data_url")
+  dominantColor               String?                    @map("dominant_color")
+  imageEnrichmentStatus       MediaImageEnrichmentStatus @default(WAITING) @map("image_enrichment_status")
+  imageEnrichmentErrorCode    String?                    @map("image_enrichment_error_code")
+  imageEnrichmentErrorMessage String?                    @map("image_enrichment_error_message")
+  imageEnrichmentStartedAt    DateTime?                  @map("image_enrichment_started_at")
+  imageEnrichmentCompletedAt  DateTime?                  @map("image_enrichment_completed_at")
+  originalFilename            String?                    @map("original_filename")
+  checksumSha256              String?                    @map("checksum_sha256")
+  objectKey                   String?                    @map("object_key")
+  previewObjectKey            String?                    @map("preview_object_key")
+  muxAssetId                  String?                    @map("mux_asset_id")
+  muxUploadId                 String?                    @map("mux_upload_id")
+  muxPlaybackId               String?                    @map("mux_playback_id")
+  errorCode                   String?                    @map("error_code")
+  errorMessage                String?                    @map("error_message")
+  folderId                    String?                    @map("folder_id")
+  folder                      MediaFolder?               @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  createdById                 String?                    @map("created_by_id")
+  createdBy                   User?                      @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  locales                     MediaAssetLocale[]
+  createdAt                   DateTime                   @default(now()) @map("created_at")
+  updatedAt                   DateTime                   @updatedAt @map("updated_at")
 
   @@index([kind, status, updatedAt])
   @@index([backend, status])
@@ -415,22 +472,22 @@ model MediaAsset {
 /// Localized display name and alt text for an editorial media asset. Blur data
 /// and byte-derived facts stay on MediaAsset; user-facing language varies here.
 model MediaAssetLocale {
-  id            String                 @id @default(cuid())
-  mediaAssetId  String                 @map("media_asset_id")
-  mediaAsset    MediaAsset             @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
-  locale        String
-  displayName   String?                @map("display_name")
-  altText       String?                @map("alt_text")
-  displayNameSource RevisedByKind?     @map("display_name_source")
-  altTextSource RevisedByKind?         @map("alt_text_source")
-  displayNameLocked Boolean            @default(false) @map("display_name_locked")
-  altTextLocked Boolean                @default(false) @map("alt_text_locked")
-  status        MediaAssetLocaleStatus @default(WAITING)
-  errorCode     String?                @map("error_code")
-  errorMessage  String?                @map("error_message")
-  generatedAt   DateTime?              @map("generated_at")
-  createdAt     DateTime               @default(now()) @map("created_at")
-  updatedAt     DateTime               @updatedAt @map("updated_at")
+  id                String                 @id @default(cuid())
+  mediaAssetId      String                 @map("media_asset_id")
+  mediaAsset        MediaAsset             @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+  locale            String
+  displayName       String?                @map("display_name")
+  altText           String?                @map("alt_text")
+  displayNameSource RevisedByKind?         @map("display_name_source")
+  altTextSource     RevisedByKind?         @map("alt_text_source")
+  displayNameLocked Boolean                @default(false) @map("display_name_locked")
+  altTextLocked     Boolean                @default(false) @map("alt_text_locked")
+  status            MediaAssetLocaleStatus @default(WAITING)
+  errorCode         String?                @map("error_code")
+  errorMessage      String?                @map("error_message")
+  generatedAt       DateTime?              @map("generated_at")
+  createdAt         DateTime               @default(now()) @map("created_at")
+  updatedAt         DateTime               @updatedAt @map("updated_at")
 
   @@unique([mediaAssetId, locale])
   @@index([locale])

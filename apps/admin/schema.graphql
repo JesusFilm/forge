@@ -832,6 +832,10 @@ type Query {
   """List active Videos ordered by most recent Core update."""
   videos(limit: Int = 50, offset: Int = 0): [Video!]
   """
+  Batched coreId → dispatch-fields lookup for manager's admin-trigger enrichment endpoints (feat-125). Replaces the Strapi `videos(filters: { coreId: { in } })` call. Gated by `read:video-metadata`; manager's `ADMIN_EMBED_TRIGGER_API_KEY` bearer satisfies it via the WORKFLOW_TRIGGER allowlist. Max 100 coreIds per call (matches manager's receiver-side cap).
+  """
+  videosByCoreIds(coreIds: [String!]!): [VideoForEnrichment!]
+  """
   Per-locale homepage configuration. Replaces Strapi's `watchSetting` (consumer-migration U2, 2026-05-11). Locale-fallback is STRICT NULL.
   """
   watchSetting(locale: String!): WatchSetting
@@ -1056,6 +1060,30 @@ type VideoEdition {
   id: ID
   name: String
   subtitles: [VideoSubtitle!]
+}
+
+"""
+Dispatch-fields projection for manager's admin-trigger enrichment lookup. Each field is nullable; null mux/subtitle signals manager to return validation_failed for that item.
+"""
+type VideoForEnrichment {
+  """Core's stable identifier for the video."""
+  coreId: String!
+  """Admin's Video.id (cuid)."""
+  id: ID!
+  """
+  VideoLabel as the camelCase wire-shape string ('featureFilm', 'shortFilm', 'behindTheScenes', etc.) — normalized from Prisma's TS enum identifier so manager's downstream LLM prompt stays byte-identical to the pre-feat-125 Strapi shape.
+  """
+  label: String
+  """
+  Mux assetId of the primary-language dub; null when no matching variant exists.
+  """
+  muxAssetId: String
+  """BCP-47 tag of the video's primary language; null when unattested."""
+  primaryLanguageBcp47: String
+  """
+  VTT URL of the best primary-language subtitle (primary + non-AI preferred); null when no candidate exists.
+  """
+  subtitleUrl: String
 }
 
 """Full-bleed hero video block with optional CTA overlay."""

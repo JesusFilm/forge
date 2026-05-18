@@ -78,7 +78,7 @@ beforeEach(() => {
   // prod via the zod default). Individual tests opt in to required-auth.
   envMutable.SEARCH_AUTH_REQUIRED = "false"
   // Default: bearer absent / invalid → false. Tests opt into valid.
-  vi.mocked(isAnyKnownBearer).mockReturnValue(false)
+  vi.mocked(isAnyKnownBearer).mockResolvedValue({ valid: false })
   searchMock.mockResolvedValue({
     results: [],
     hasMore: false,
@@ -320,7 +320,10 @@ describe("GET /api/search", () => {
       })
 
       it("valid bearer → 200, log shows auth=bearer path=rest", async () => {
-        vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+        vi.mocked(isAnyKnownBearer).mockResolvedValue({
+          valid: true,
+          source: "consumer",
+        })
         const res = await GET(
           reqWithAuth("/api/search?q=jesus&locale=en", "Bearer valid-key"),
         )
@@ -334,7 +337,7 @@ describe("GET /api/search", () => {
       })
 
       it("invalid bearer → 200, log shows auth=invalid_bearer (distinct from anonymous)", async () => {
-        vi.mocked(isAnyKnownBearer).mockReturnValue(false)
+        vi.mocked(isAnyKnownBearer).mockResolvedValue({ valid: false })
         const res = await GET(
           reqWithAuth("/api/search?q=jesus&locale=en", "Bearer not-a-real-key"),
         )
@@ -349,7 +352,10 @@ describe("GET /api/search", () => {
       })
 
       it("invokes isValidSearchBearer with the Authorization header verbatim", async () => {
-        vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+        vi.mocked(isAnyKnownBearer).mockResolvedValue({
+          valid: true,
+          source: "consumer",
+        })
         await GET(
           reqWithAuth("/api/search?q=jesus&locale=en", "Bearer some-key-value"),
         )
@@ -362,11 +368,91 @@ describe("GET /api/search", () => {
       })
 
       it("emits exactly one search.request log line per request (no double-log regression)", async () => {
-        vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+        vi.mocked(isAnyKnownBearer).mockResolvedValue({
+          valid: true,
+          source: "consumer",
+        })
         await GET(
           reqWithAuth("/api/search?q=jesus&locale=en", "Bearer valid-key"),
         )
         expect(parseSearchLogLines()).toHaveLength(1)
+      })
+
+      it("logs source=consumer for WEB_ADMIN_API_KEYS bearer matches", async () => {
+        vi.mocked(isAnyKnownBearer).mockResolvedValue({
+          valid: true,
+          source: "consumer",
+        })
+        await GET(
+          reqWithAuth("/api/search?q=jesus&locale=en", "Bearer consumer-key"),
+        )
+        const log = parseSearchLogLines()[0]
+        expect(log).toMatchObject({ auth: "bearer", source: "consumer" })
+        expect(log).not.toHaveProperty("keyId")
+      })
+
+      it("logs source=workflow for WORKFLOW_API_KEYS bearer matches", async () => {
+        vi.mocked(isAnyKnownBearer).mockResolvedValue({
+          valid: true,
+          source: "workflow",
+        })
+        await GET(
+          reqWithAuth("/api/search?q=jesus&locale=en", "Bearer workflow-key"),
+        )
+        const log = parseSearchLogLines()[0]
+        expect(log).toMatchObject({ auth: "bearer", source: "workflow" })
+        expect(log).not.toHaveProperty("keyId")
+      })
+
+      it("logs source=partner + keyId for DB-backed partner key matches", async () => {
+        // Operator-actionable signal: grep `keyId=PartnerKey01` to
+        // see one partner's traffic over a time window. SC3 from the
+        // brainstorm: "answer 'which partners called this week' from
+        // logs alone."
+        vi.mocked(isAnyKnownBearer).mockResolvedValue({
+          valid: true,
+          source: "partner",
+          keyId: "PartnerKey01",
+        })
+        await GET(
+          reqWithAuth(
+            "/api/search?q=jesus&locale=en",
+            "Bearer jfp_search_PartnerKey01_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          ),
+        )
+        const log = parseSearchLogLines()[0]
+        expect(log).toMatchObject({
+          auth: "bearer",
+          source: "partner",
+          keyId: "PartnerKey01",
+        })
+      })
+
+      it("omits keyId when bearer is valid but no keyId is surfaced (env-CSV matches)", async () => {
+        // env-CSV branches don't carry a per-key identifier.
+        // Asserting the field is absent (not `keyId=undefined`)
+        // keeps the log line clean for greppers.
+        vi.mocked(isAnyKnownBearer).mockResolvedValue({
+          valid: true,
+          source: "consumer",
+        })
+        await GET(
+          reqWithAuth("/api/search?q=jesus&locale=en", "Bearer search-csv-key"),
+        )
+        const logSpyCalls = logSpy.mock.calls
+          .map((args) => String(args[0] ?? ""))
+          .filter((line) => line.includes("event=search.request"))
+        expect(logSpyCalls[0]).not.toContain("keyId=")
+        expect(logSpyCalls[0]).not.toContain("undefined")
+      })
+
+      it("omits source on invalid_bearer + anonymous (no match to attribute)", async () => {
+        vi.mocked(isAnyKnownBearer).mockResolvedValue({ valid: false })
+        await GET(reqWithAuth("/api/search?q=jesus&locale=en", "Bearer bogus"))
+        const log = parseSearchLogLines()[0]
+        expect(log).toMatchObject({ auth: "invalid_bearer" })
+        expect(log).not.toHaveProperty("source")
+        expect(log).not.toHaveProperty("keyId")
       })
 
       it("tags rate-limit source in the structured log (rl=local|redis) for Redis-degradation visibility", async () => {
@@ -429,7 +515,7 @@ describe("GET /api/search", () => {
       })
 
       it("invalid bearer 401 carries WWW-Authenticate: Bearer error=invalid_token (RFC 6750 §3)", async () => {
-        vi.mocked(isAnyKnownBearer).mockReturnValue(false)
+        vi.mocked(isAnyKnownBearer).mockResolvedValue({ valid: false })
         const res = await GET(
           reqWithAuth("/api/search?q=jesus&locale=en", "Bearer not-a-real-key"),
         )
@@ -440,7 +526,7 @@ describe("GET /api/search", () => {
       })
 
       it("invalid bearer → 401", async () => {
-        vi.mocked(isAnyKnownBearer).mockReturnValue(false)
+        vi.mocked(isAnyKnownBearer).mockResolvedValue({ valid: false })
         const res = await GET(
           reqWithAuth("/api/search?q=jesus&locale=en", "Bearer not-a-real-key"),
         )
@@ -448,7 +534,10 @@ describe("GET /api/search", () => {
       })
 
       it("valid bearer → 200 (existing pipeline unchanged)", async () => {
-        vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+        vi.mocked(isAnyKnownBearer).mockResolvedValue({
+          valid: true,
+          source: "consumer",
+        })
         const res = await GET(
           reqWithAuth("/api/search?q=jesus&locale=en", "Bearer valid-key"),
         )
@@ -483,7 +572,10 @@ describe("GET /api/search", () => {
       })
 
       it("rate-limit still fires for authed callers (429 takes precedence over 200)", async () => {
-        vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+        vi.mocked(isAnyKnownBearer).mockResolvedValue({
+          valid: true,
+          source: "consumer",
+        })
         denyRateLimit()
         const res = await GET(
           reqWithAuth("/api/search?q=jesus&locale=en", "Bearer valid-key"),
@@ -500,7 +592,10 @@ describe("GET /api/search", () => {
 
     describe("log discipline", () => {
       it("never logs the bearer header value", async () => {
-        vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+        vi.mocked(isAnyKnownBearer).mockResolvedValue({
+          valid: true,
+          source: "consumer",
+        })
         await GET(
           reqWithAuth(
             "/api/search?q=jesus&locale=en",

@@ -341,6 +341,7 @@ describe("permission matrix completeness", () => {
     const allKeys: PermissionKey[] = [
       "read:experiences",
       "read:videos",
+      "read:video-metadata",
       "read:reference",
       "read:media-assets",
       "write:experiences",
@@ -455,6 +456,10 @@ describe("permission matrix completeness", () => {
       ).toBe(true)
     })
 
+    it("satisfies read:video-metadata (feat-125 manager admin-trigger lookup)", () => {
+      expect(hasPermission(WORKFLOW_TRIGGER, "read:video-metadata")).toBe(true)
+    })
+
     it("does NOT satisfy any permission key outside the narrow allowlist", () => {
       // Iterate every PermissionKey via TypeScript's exhaustive Record
       // pattern so adding a new key without explicitly deciding
@@ -467,10 +472,12 @@ describe("permission matrix completeness", () => {
         "write:transcript-embeddings",
         "write:manager-enrichment-trigger",
         "write:experience-embeddings",
+        "read:video-metadata",
       ])
       const allKeys: Record<PermissionKey, true> = {
         "read:experiences": true,
         "read:videos": true,
+        "read:video-metadata": true,
         "read:reference": true,
         "read:media-assets": true,
         "write:experiences": true,
@@ -515,6 +522,7 @@ describe("permission matrix completeness", () => {
       const allKeys: Record<PermissionKey, true> = {
         "read:experiences": true,
         "read:videos": true,
+        "read:video-metadata": true,
         "read:reference": true,
         "read:media-assets": true,
         "write:experiences": true,
@@ -570,10 +578,13 @@ describe("permission matrix completeness", () => {
       // principal mints — workflow callers would bucket as consumer
       // (rate-limit isolation collapse) and consumer callers would
       // mint WORKFLOW_TRIGGER (permission widening). The distinct
-      // env vars are the load-bearing boundary. The same rule applies
-      // to `search-bearer.ts` (SEARCH_API_KEYS): a paste-into-the-
-      // wrong-file regression would conflate the search passport with
-      // workflow-trigger access.
+      // env vars are the load-bearing boundary.
+      //
+      // `search-bearer.ts` itself no longer reads any env CSV after
+      // Plan 003 (partner-key store PR3) — it only composes the
+      // partner / consumer / workflow validators. The regression
+      // guard for that file is that it doesn't ACCIDENTALLY reach
+      // back into env vars.
       const { readFile } = await import("node:fs/promises")
       const { fileURLToPath } = await import("node:url")
       const consumerSource = await readFile(
@@ -588,17 +599,19 @@ describe("permission matrix completeness", () => {
         fileURLToPath(new URL("./search-bearer.ts", import.meta.url)),
         "utf8",
       )
-      // Each file references its own env var…
+      // Each narrow file references its own env var…
       expect(consumerSource).toMatch(/env\.WEB_ADMIN_API_KEYS/)
       expect(workflowSource).toMatch(/env\.WORKFLOW_API_KEYS/)
-      expect(searchSource).toMatch(/env\.SEARCH_API_KEYS/)
       // …and NOT the others'.
       expect(consumerSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
-      expect(consumerSource).not.toMatch(/env\.SEARCH_API_KEYS/)
       expect(workflowSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
-      expect(workflowSource).not.toMatch(/env\.SEARCH_API_KEYS/)
+      // The composer reads NO env CSV directly — it only imports the
+      // narrow validators + verifyPartnerToken. Source MUST NOT
+      // reference env CSV names; a regression that re-introduced a
+      // direct env read would slip the cross-CSV isolation boundary.
       expect(searchSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
       expect(searchSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
+      expect(searchSource).not.toMatch(/env\.SEARCH_API_KEYS/)
     })
   })
 })

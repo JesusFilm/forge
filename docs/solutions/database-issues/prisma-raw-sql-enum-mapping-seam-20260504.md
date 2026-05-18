@@ -1,7 +1,7 @@
 ---
-title: Prisma raw SQL bypasses `@map`'d enum value coercion
+title: Prisma `@map`'d enums — raw SQL bypasses Prisma's coercion (write) AND the typed client surfaces the TS identifier to downstream consumers (read)
 date: 2026-05-04
-last_updated: 2026-05-04
+last_updated: 2026-05-18
 category: database-issues
 module: apps/admin
 problem_type: database_issue
@@ -14,6 +14,10 @@ applies_when:
     a Prisma enum with `@map`'d values (e.g., `enum SourceTier { CORE @map("core") … }`).
   - Migrating a `prisma.<Model>.<op>({ where: { <enumField>: "VALUE" }})` call to raw SQL.
   - Reviewing a code-review finding that a raw SQL enum literal might not match the DB.
+  - Migrating a downstream consumer from a raw-SQL reader (Strapi, `pg`, hand-written
+    SQL view) to a Prisma read of the same column — the consumer was seeing the
+    `@map`'d storage value (camelCase) and will silently start receiving the TS
+    enum identifier (UPPER_SNAKE_CASE) once Prisma is the reader.
 tags:
   - postgres
   - prisma
@@ -23,10 +27,15 @@ tags:
   - queryRaw
   - at-map
   - SourceTier
+  - wire-shape
+  - cms-to-admin-migration
+  - llm-prompt-contract
 related:
   - docs/solutions/database-issues/postgres-prepared-statement-bind-variable-limit-32767-20260504.md
   - docs/solutions/platform/core-graphql-unbounded-relation-fan-out-20260504.md
   - docs/solutions/best-practices/prisma-raw-sql-invariant-assertions-20260423.md
+  - docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md
+  - docs/plans/2026-05-18-001-refactor-decouple-manager-admin-trigger-from-strapi-plan.md
 ---
 
 # Prisma raw SQL bypasses `@map`'d enum value coercion
@@ -125,8 +134,90 @@ grep -nE '@map\("[a-z]+"\)' prisma/schema.prisma
 
 Anywhere the TS-side variant (uppercase) appears inside a `$executeRaw` / `$queryRaw` template against an `@map`'d enum column, replace with the DB-side literal (lowercase) or add an explicit `::"EnumType"` cast.
 
+## Consumer-side mirror direction — Prisma typed reads silently flip casing for downstream consumers expecting the `@map`'d value (2026-05-18)
+
+The original write-direction trap above flips when a downstream consumer migrates from a raw-SQL reader to a Prisma reader for the same column. Same `@map` asymmetry, opposite direction: now the **consumer** sees the TS enum identifier (UPPER_SNAKE) where it previously saw the `@map`'d storage value (camelCase).
+
+### Concrete instance — PR #974 (feat-125, cms→admin)
+
+Manager's `/api/admin-trigger/{scene-analysis,transcript}` endpoint historically looked up video dispatch fields from Strapi via `videos(filters: { coreId: { in } })` (Strapi's GraphQL reads raw — exposed the `@map`'d storage value, e.g., `'featureFilm'`). Manager interpolated this string directly into the LLM prompt: `'Video type: ${videoLabel}'`.
+
+PR #974 decoupled that lookup onto admin's new `videosByCoreIds` GraphQL query, which reads via Prisma. The schema declares:
+
+```prisma
+enum VideoLabel {
+  COLLECTION        @map("collection")
+  EPISODE           @map("episode")
+  FEATURE_FILM      @map("featureFilm")
+  SEGMENT           @map("segment")
+  SERIES            @map("series")
+  SHORT_FILM        @map("shortFilm")
+  TRAILER           @map("trailer")
+  BEHIND_THE_SCENES @map("behindTheScenes")
+}
+```
+
+After the refactor, `prisma.video.findFirst().label` returns `'FEATURE_FILM'` (TS identifier). The LLM prompt silently flipped from `Video type: featureFilm` to `Video type: FEATURE_FILM`. No tests failed — fixtures used stand-in lowercase strings (`label: "feature_film"`) that didn't match either reality. ce:review's correctness reviewer surfaced it at confidence 0.55 (sub-threshold for auto-apply because the issue is a runtime-trace concern, not static code).
+
+### The fix — normalize at the service-projection seam, defensively
+
+In `apps/admin/src/services/video.service.ts`:
+
+```ts
+return rows.map(
+  (video): VideoForEnrichment => ({
+    id: video.id,
+    coreId: video.coreId,
+    // Normalize TS UPPER_SNAKE identifier to the camelCase wire
+    // shape Strapi previously emitted. Preserves prompt-content
+    // byte-identity for sceneAnalysis.
+    label: snakeUpperToCamel(video.label),
+    // …
+  }),
+)
+
+function snakeUpperToCamel(value: string | null): string | null {
+  if (value == null) return null
+  // Defensive: only transform UPPER_SNAKE_CASE. Anything else
+  // passes through unchanged so a future Prisma config drift that
+  // surfaces the DB-stored value (camelCase) directly doesn't get
+  // silently lowercased by `.toLowerCase()`.
+  if (!/^[A-Z][A-Z_]*$/.test(value)) return value
+  return value
+    .toLowerCase()
+    .replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
+}
+```
+
+The `^[A-Z][A-Z_]*$` regex guard is load-bearing: `.toLowerCase()` is non-idempotent on already-camelCase input. Without the guard, `featureFilm` → `featurefilm` — corrupts already-conforming input on partial rollback or future Prisma config change.
+
+### Why the projection seam is the right layer
+
+1. It's where admin commits to its GraphQL wire shape. Downstream callers treat admin's GraphQL surface as a contract; admin owns matching the pre-refactor shape.
+2. Doing the transform deeper (a Prisma extension) couples every reader of `Video.label` to the wire shape, including admin-internal callers that may legitimately want the TS identifier.
+3. Doing it shallower (manager's prompt-construction logic) leaks admin's Prisma representation choice into manager — exactly the coupling the refactor was trying to remove.
+
+### Prevention rules specific to the read direction
+
+6. **Read `schema.prisma` `@map` directives BEFORE assuming Prisma's exposed value matches a prior raw-DB-read consumer's shape.** Any cms→admin (or raw-SQL→Prisma) refactor crossing a `@map`'d enum or column must enumerate the affected fields explicitly in the plan and add a wire-shape comparison row to the cutover checklist.
+7. **Use real Prisma enum values in unit-test fixtures.** `label: "FEATURE_FILM"` not `label: "feature_film"`. A fixture that doesn't match what Prisma actually returns is worse than no fixture — it manufactures false confidence. Lint candidate: flag fixture strings for `@map`'d enum columns that don't match `schema.prisma`'s TS identifiers.
+8. **Add a wire-shape parity test for any refactor that swaps the data source upstream of an LLM prompt or external consumer.** Capture a pre-refactor sample of the consumer's input (the actual prompt string, the actual response payload), commit it as a fixture, assert byte-identity on the new path's output.
+9. **Defensive normalizers must regex-guard their input shape before transforming.** Unconditional `.toLowerCase()` (or `.toUpperCase()`, `.replace()`) is non-idempotent. Every normalizer needs both a transform-the-expected-input test AND a passthrough-the-already-normalized-input test.
+10. **Question whether `@map` is doing useful work post-sunset.** `@map` exists to preserve a legacy storage representation chosen by an earlier writer (Strapi, here). Once the original writer is sunset, the `@map` becomes pure cost — adds a TS-vs-DB asymmetry with no remaining benefit. For `VideoLabel`, the `@map` should be removed in the post-Strapi-sunset cleanup, the column migrated to UPPER_SNAKE storage, and the projection-layer normalizer deleted. Track this as a follow-up so the workaround doesn't outlive the constraint that justified it.
+
+### Cross-references for the read-direction instance
+
+- `apps/admin/src/services/video.service.ts` — picker + `snakeUpperToCamel` normalizer
+- `apps/admin/src/services/video.service.test.ts` — camelCase transform + defensive passthrough tests
+- `apps/admin/prisma/schema.prisma` `enum VideoLabel` — the `@map` directives
+- `apps/manager/src/services/sceneAnalysis.ts` — downstream LLM prompt consumer
+- `docs/plans/2026-05-18-001-refactor-decouple-manager-admin-trigger-from-strapi-plan.md` — feat-125 plan (the refactor that surfaced this)
+- `docs/roadmap/platform/feat-125-decouple-manager-admin-trigger-from-strapi.md` — roadmap ticket
+- `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md` — parent learning; this is another worked instance of "mocked tests prove BRANCH SHAPE; real fixtures prove PRODUCTION CONTRACT," now at the Prisma `@map` seam
+
 ## Related learnings
 
 - The bind-variable fix that triggered this discovery: `docs/solutions/database-issues/postgres-prepared-statement-bind-variable-limit-32767-20260504.md`. Both fixes typically land together when a `prisma.<Model>.updateMany({ <enumField>: "VALUE", <relation>: { notIn: [...] }})` call is migrated to raw SQL.
 - The umbrella fan-out doc that surfaced the bind-var fix: `docs/solutions/platform/core-graphql-unbounded-relation-fan-out-20260504.md`.
 - Why mocked tests can't catch this class without a SQL-shape invariant: `docs/solutions/best-practices/prisma-raw-sql-invariant-assertions-20260423.md`.
+- The META mocked-vs-real testing discipline that the read-direction instance is a textbook case of: `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`.
