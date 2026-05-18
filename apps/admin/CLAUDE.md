@@ -1951,13 +1951,16 @@ Consider re-baselining.` The warn never blocks the run.
 - `docs/solutions/best-practices/external-client-retry-parity-in-runner-fanout-20260512.md`
   — the load-bearing learning extracted from this PR's review.
 
-## Search API authentication (Plan 002)
+## Search API authentication (Plan 002 + Plan 003)
 
 Admin's public search surface — `GET /api/search` REST + `Query.search`
-GraphQL twin — is gated by a bearer-key passport. Phase 1 ships in
-**dual-accept** mode (anonymous + bearer-auth both succeed). A
-single env-var flip later moves it to **required-auth** (anonymous
-returns 401).
+GraphQL twin — is gated by a bearer-key passport. Phase 1 (Plan 002)
+shipped in **dual-accept** mode (anonymous + bearer-auth both
+succeed); a single env-var flip moves it to **required-auth**
+(anonymous returns 401). Plan 003 (partner-key store) retired the
+legacy `SEARCH_API_KEYS` env-CSV branch — external-partner
+credentials now live in admin's `PartnerApiKey` Postgres table. See
+§"Partner API key store" for the DB-backed surface.
 
 ### Design summary
 
@@ -1965,61 +1968,72 @@ returns 401).
   at 30/min stays for everyone — authed and anonymous alike. Rate-
   limit fires BEFORE the auth check on the REST surface so junk
   Authorization headers cannot bypass the bucket.
-- **Search passport accepts any of three known-caller bearer CSVs:**
-  `SEARCH_API_KEYS` (this surface), `WEB_ADMIN_API_KEYS` (consumer-
-  bearer; apps/web SSR + apps/mobile already carry it), or
-  `WORKFLOW_API_KEYS` (workflow-trigger; manager → admin proxies +
-  the eval CLI's bearer mint). `isAnyKnownBearer(authHeader)` in
-  `src/auth/search-bearer.ts` OR-composes the three validators.
+- **Search passport accepts any of three known-caller bearer
+  sources:**
+  1. **PARTNER** — DB-backed `PartnerApiKey` row (Plan 003 — see
+     §"Partner API key store" for the token shape, issuance CLI,
+     and dashboard view). Runs FIRST so the structured log emits
+     `source=partner keyId=<id>` for partner traffic.
+  2. **CONSUMER** — `WEB_ADMIN_API_KEYS` env CSV (apps/web SSR +
+     apps/mobile rate-limit identity).
+  3. **WORKFLOW** — `WORKFLOW_API_KEYS` env CSV (workflow-trigger;
+     manager → admin proxies + the eval CLI's bearer mint).
+
+  `isAnyKnownBearer(authHeader)` in `src/auth/search-bearer.ts`
+  OR-composes them and returns `{ valid, source, keyId? }`.
+
 - **The disjointness invariant** (`assertBearerCsvsDisjoint` at
-  boot in `src/config/env.ts`) holds for all 4 CSVs (workflow,
-  web-admin, backup-download, search). Each key VALUE lives in
-  exactly one CSV; an operator who pastes a value into two CSVs
-  hits a fail-fast boot error with the offending value redacted.
+  boot in `src/config/env.ts`) holds for the three remaining env
+  CSVs (workflow, web-admin, backup-download). Each env-CSV key
+  VALUE lives in exactly one CSV; an operator who pastes a value
+  into two CSVs hits a fail-fast boot error with the offending
+  value redacted. `PartnerApiKey.keyHash` is uniqueness-enforced
+  in Postgres separately; a plaintext that ALSO appears in an env
+  CSV tags as `source=partner` (the partner branch runs first).
 - **`BACKUP_DOWNLOAD_API_KEYS` is excluded** from
   `isAnyKnownBearer` — it's a narrow file-download surface (the
   presigned video-DB backup endpoint), not an active-API bearer.
 - **Structured log per request** tags every call with one of
-  three states: `auth=bearer` (presented + matched any known
-  CSV), `auth=invalid_bearer` (presented + no match — the
-  population that 401s after the flip), `auth=anonymous` (no
-  header). Grep these in admin logs before the
-  `SEARCH_AUTH_REQUIRED` flip to confirm every known internal
-  caller is on a known bearer.
+  three states: `auth=bearer source=<branch> [keyId=<id>]` (matched,
+  with `keyId` only on partner branches), `auth=invalid_bearer`
+  (presented + no match — the population that 401s after the
+  flip), or `auth=anonymous` (no header). Grep these in admin
+  logs before the `SEARCH_AUTH_REQUIRED` flip to confirm every
+  known internal caller is on a known bearer.
 
 ### Env vars (`forge-admin` Doppler)
 
-- `SEARCH_API_KEYS` — CSV of opaque random base64url tokens for
-  EXTERNAL partners. Internal apps don't need entries here; they
-  use the bearers they already carry. `.optional()` — admin boots
-  cleanly when unset.
 - `SEARCH_AUTH_REQUIRED` — `"true" | "false"`, defaults to
   `"false"`. When `"true"`, requests without a known bearer return
   401 (REST) or throw `Authentication required` (GraphQL).
   Enum-of-strings (not boolean) so a stray non-empty value can't
   silently flip the gate.
+- `SEARCH_API_KEY` — caller-side single bearer for the local eval
+  CLI (`scripts/eval-search.ts`). Set to a partner key (issued via
+  `pnpm partner-keys create`) or a `WORKFLOW_API_KEYS` /
+  `WEB_ADMIN_API_KEYS` entry. `.optional()`.
+
+The legacy `SEARCH_API_KEYS` receiver-side CSV was retired in
+Plan 003; today's partner credentials are issued via the
+`partner-keys create` CLI and live in `PartnerApiKey`.
 
 ### Issuance + rotation
 
-Generate a key:
+For external partners, see §"Partner API key store" — the
+`pnpm --filter @forge/admin partner-keys create` CLI issues a
+DB-backed token, prints it once to stderr for operator handoff,
+and persists the sha256 hash.
 
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
-```
+For internal callers (apps/web, manager, eval CLI), keys live in
+the respective env CSVs (`WEB_ADMIN_API_KEYS`, `WORKFLOW_API_KEYS`)
+and rotate via Doppler edit + Railway redeploy. **Receiver-first
+deploy ordering** for any internal-bearer rotation:
 
-Add to the CSV in Doppler. For an external partner: share via
-Slack-DM, partner adds to their own env as `SEARCH_API_KEY`,
-deploys.
-
-**Receiver-first deploy ordering** for any key rotation:
-
-1. Add the new key to `SEARCH_API_KEYS` on admin Doppler. Deploy
-   admin. The new key is now accepted alongside the old.
+1. Add the new key to the env CSV on admin Doppler. Deploy admin.
+   The new key is now accepted alongside the old.
 2. Update the caller's env to the new value. Deploy the caller.
-   Logs flip from `auth=bearer` (old) to `auth=bearer` (new) — same
-   tag, but a fresh deploy on the caller side.
 3. After observation confirms no callers use the old key, remove
-   the old key from `SEARCH_API_KEYS`. Deploy admin.
+   the old key from the env CSV. Deploy admin.
 
 Reversing the order produces a dead minute where the caller 401s.
 Per `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`
@@ -2038,27 +2052,23 @@ Before flipping `SEARCH_AUTH_REQUIRED=true` on prod:
    the next hour. Spike on anonymous = expected. Spike on
    known-internal IPs = roll back the flag.
 
-### Audit / keyId upgrade path (deferred)
-
-v1 keys are opaque random tokens; the validator emits no keyId
-in the structured log (only `bearer | invalid_bearer | anonymous`).
-When per-key audit becomes load-bearing, key format upgrades to
-`sk_search_<labeledKeyId>_<random>` and the validator parses the
-prefix to surface keyId per request. Plan inline comment in
-`search-bearer.ts` marks the upgrade point.
-
 ### Files
 
-- `src/auth/search-bearer.ts` — `isValidSearchBearer` (narrow,
-  reads only `SEARCH_API_KEYS`) + `isAnyKnownBearer` (OR-composes
-  the three known-caller CSVs).
+- `src/auth/search-bearer.ts` — `isAnyKnownBearer` composer
+  (async, returns `BearerCheckResult`; OR-composes the three
+  known-caller branches in PARTNER → CONSUMER → WORKFLOW order).
+- `src/auth/partner-token.ts` — pure helpers for the partner token
+  format (`jfp_search_<keyId>_<random>`).
+- `src/services/partner-api-key.service.ts` — DB-backed partner
+  branch (`verifyPartnerToken` with Promise.race 1500ms timeout +
+  fire-and-forget `lastUsedAt` update).
 - `src/app/api/search/route.ts` — REST handler; rate-limit fires
   first, then the auth check.
 - `src/graphql/queries/hybrid-search.ts` — GraphQL resolver; same
   auth check inside the resolver body, `authScopes: { public: true }`
   stays.
-- `src/config/env.ts` — `SEARCH_API_KEYS` + `SEARCH_AUTH_REQUIRED`
-  - `assertBearerCsvsDisjoint` extended to 4 CSVs.
+- `src/config/env.ts` — `SEARCH_AUTH_REQUIRED` enum +
+  `assertBearerCsvsDisjoint` over the 3 remaining env CSVs.
 
 ### Cross-references
 
@@ -2079,6 +2089,195 @@ prefix to surface keyId per request. Plan inline comment in
   `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`
 - Sibling pattern (consumer-bearer):
   `docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md`
+
+## Partner API key store
+
+DB-backed external-partner credentials for `/api/search` + `Query.search`.
+Extends Plan 002's bearer-as-passport composer with a fourth branch
+(`PartnerApiKey` table in admin's Postgres) that validates BEFORE the
+env-CSV `search` fallback fires. Internal callers (apps/web,
+workflow-trigger callers, backup-download) stay on their respective env
+CSVs — partner keys are the only credential class with audit, sub-second
+revocation, and per-key metadata requirements.
+
+See:
+
+- Plan: `docs/plans/2026-05-18-001-feat-partner-api-key-store-plan.md`
+- Brainstorm: `docs/brainstorms/2026-05-18-002-partner-api-key-store-requirements.md`
+
+### Design summary
+
+- **Token format `jfp_search_<keyId>_<random>`.** `keyId` is a 12-char
+  operator-visible identifier (URL-safe alphabet excluding `_` and
+  visually-confusable `0/O/I/l/1`). `random` is `base64url(32 bytes)`
+  = 43 chars of entropy. The stored form is `sha256(rawToken)` as
+  64-char hex; comparison via `timingSafeEqual` on decoded buffers.
+- **Composer ordering** in `isAnyKnownBearer` is PARTNER → CONSUMER →
+  WORKFLOW → SEARCH (legacy env CSV). The partner branch runs FIRST so
+  the structured log emits `source=partner keyId=<id>` for seeded rows
+  even while the env-CSV `search` branch is still active during the
+  cutover window.
+- **Per-request log line** extends the working
+  `[search] event=search.request auth=… path=… rl=…` format with
+  `source=<branch>` (every successful match) and `keyId=<id>` (partner
+  matches only). Plain-string per the Railway logsV2 silencing
+  learning — `JSON.stringify` payloads from this surface are silenced.
+- **Outbound timeout.** The Prisma lookup wraps in `Promise.race`
+  against `PARTNER_KEY_LOOKUP_TIMEOUT_MS = 1500`. On timeout, log
+  `event=partner_key.lookup_timeout` and fall through to the env-CSV
+  branches (graceful degradation while dual-accept is live; fail-closed
+  after PR3 retires the CSV).
+- **Fire-and-forget `lastUsedAt`.** Updates are dispatched via `void
+prisma.partnerApiKey.update(...).catch(...)` — never `await`-ed, never
+  allowed to crash the request. Sync throws on the wrapper are caught
+  separately (see `docs/solutions/best-practices/in-memory-slot-reservation-fire-and-forget-20260506.md`).
+- **Soft revocation.** `revoked_at` set, row preserved. Preserves the
+  audit trail (which key was revoked, when, by whom). Hard delete is
+  out of scope in v1.
+- **No in-process cache in v1.** Per the plan: cache adds slot-leak
+  surface and multi-replica revocation skew for ~10ms savings nobody
+  will notice. Each replica makes its own Prisma round-trip; revocation
+  propagates immediately. Revisit if profiling shows the lookup as a
+  hot path.
+
+### Schema (Prisma)
+
+`PartnerApiKey` model (`prisma/schema.prisma`, migration
+`0015_partner_api_keys`):
+
+| Column        | Type                                     | Notes                                        |
+| ------------- | ---------------------------------------- | -------------------------------------------- |
+| `id`          | `String @id @default(cuid())`            |                                              |
+| `keyId`       | `String @unique @map("key_id")`          | 12 chars, operator-visible, surfaced in logs |
+| `keyHash`     | `String @unique @map("key_hash")`        | `sha256(rawToken)`, 64 hex chars             |
+| `name`        | `String`                                 | partner display name                         |
+| `ownerEmail`  | `String @map("owner_email")`             | offboarding contact                          |
+| `note`        | `String?`                                | free-form operator note                      |
+| `lastUsedAt`  | `DateTime? @map("last_used_at") @@index` | fire-and-forget per-auth update              |
+| `revokedAt`   | `DateTime? @map("revoked_at") @@index`   | soft-revoke; `NULL` = active                 |
+| `createdById` | `String? + relation → User (SetNull)`    | who issued                                   |
+| `revokedById` | `String? + relation → User (SetNull)`    | who revoked                                  |
+
+### Code surfaces
+
+- `src/auth/partner-token.ts` — pure helpers (`generatePartnerToken`,
+  `parsePartnerToken`, `hashRawToken`, `timingSafeEqualHex`).
+- `src/services/partner-api-key.service.ts` — `createPartnerKey`,
+  `listPartnerKeys`, `revokePartnerKey` (conditional `updateMany`
+  guards against concurrent-revoke `revokedById` clobber),
+  `rotatePartnerKey`, `verifyPartnerToken` (the hot-path validator
+  with `Promise.race` timeout + fire-and-forget `lastUsedAt`
+  update). Exports `PartnerKeyNotFoundError`.
+- `src/auth/search-bearer.ts` — exports `BearerCheckResult` +
+  `BearerSource`. `isAnyKnownBearer` is async, returns the enriched
+  result, runs the partner branch FIRST.
+- `src/app/api/search/route.ts` + `src/graphql/queries/hybrid-search.ts`
+  — both await the composer and thread `source` / `keyId` into the
+  per-request log line.
+- `src/scripts/partner-keys.ts` — CLI: `create | list | revoke | rotate`.
+- `src/app/dashboard/partner-keys/page.tsx` — read-only dashboard
+  view, ADMIN-only via `requireAdminSession`.
+
+### Operator runbook
+
+#### Issue a key for a new partner (under 5 operator minutes)
+
+```bash
+pnpm --filter @forge/admin partner-keys create \
+  --name="Acme Partner" \
+  --owner-email="ops@acme.example" \
+  --note="Q3 2026 integration" \
+  --operator-email="<your-email>"
+```
+
+The CLI prints structured JSON events on stdout (one per line, including
+`partner-key.created` with `keyId`) and the plaintext token EXACTLY ONCE
+on stderr inside a banner. **Save the token from stderr** — it is not
+retrievable afterward (only the sha256 hash persists). Share the token
+with the partner via Slack DM. First partner request lands in Railway
+logs as `auth=bearer source=partner keyId=<id>`.
+
+#### Revoke a key (under 30 seconds — SC2)
+
+```bash
+pnpm --filter @forge/admin partner-keys revoke <keyId> \
+  --operator-email="<your-email>"
+```
+
+Sets `revoked_at = NOW()`. The next request from that key returns 401
+(or, in dual-accept mode, falls through to the env-CSV branch — until
+PR3 retires it). No admin redeploy required. Idempotent: re-revoking an
+already-revoked key prints the existing row's revoked_at and exits 0.
+
+#### Rotate a key (with grace window)
+
+```bash
+pnpm --filter @forge/admin partner-keys rotate <oldKeyId> \
+  --operator-email="<your-email>"
+```
+
+Issues a new key for the same partner, leaves the OLD key active.
+Operator shares the new token with the partner, partner cuts over,
+then operator runs `partner-keys revoke <oldKeyId>` once
+`/dashboard/partner-keys` shows non-null `lastUsedAt` on the new keyId.
+
+#### List partner keys
+
+```bash
+# Active keys only (default)
+pnpm --filter @forge/admin partner-keys list
+
+# Including revoked rows
+pnpm --filter @forge/admin partner-keys list --include-revoked
+```
+
+Or check `/dashboard/partner-keys` — same data, sortable in a browser,
+includes revoked rows by default for the audit trail.
+
+#### Migrating an existing partner from the legacy `SEARCH_API_KEYS` env CSV
+
+The legacy `SEARCH_API_KEYS` receiver-side CSV was retired in Plan 003
+without an in-place migration tool — the opaque legacy token shape
+cannot round-trip through `verifyPartnerToken` (which requires
+`jfp_search_<keyId>_<random>`). Instead, **rotate the partner onto a
+fresh DB-backed key**:
+
+1. `partner-keys create` to issue a new `jfp_search_*` token.
+2. Share the new token with the partner via Slack DM; partner updates
+   their integration and deploys.
+3. Verify in Railway logs that the partner's traffic flips to
+   `auth=bearer source=partner keyId=<id>`.
+4. Remove the partner's old value from `SEARCH_API_KEYS` in Doppler.
+   (Plan 003 already retired the env-CSV branch in code — this step
+   just clears dead config.)
+
+### Cross-references
+
+- **Primary learning doc:**
+  `docs/solutions/architecture-patterns/db-backed-vs-env-csv-credential-storage-20260518.md`
+  — the decision matrix for when to use DB-backed credentials vs.
+  env-CSV. Documents the composer-ordering decision, hot-path lookup
+  timeout pattern, fire-and-forget `lastUsedAt` discipline, and CLI
+  plaintext-once UX as a future-reference pattern for any future
+  partner-credential surface.
+- **Companion learnings:**
+  - `docs/solutions/architecture-patterns/bearer-as-passport-multi-csv-composition-20260518.md`
+    (the OR-composition foundation this extends).
+  - `docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md`
+    (Prisma lookup wrap rationale).
+  - `docs/solutions/best-practices/in-memory-slot-reservation-fire-and-forget-20260506.md`
+    (`lastUsedAt` update wrapper discipline).
+  - `docs/solutions/runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md`
+    (why the new `source=` / `keyId=` log fields are appended as
+    plain-string key=value pairs, not JSON).
+  - `docs/solutions/database-issues/db-lock-must-be-atomic-update-not-select-for-update.md`
+    (conditional `updateMany` discipline for the soft-revoke race
+    fix — Worked instance 2 is `revokePartnerKey`).
+  - `docs/solutions/security-issues/pre-verification-log-field-namespace-pollution-20260518.md`
+    (`attemptedKeyId=` vs `keyId=` log-field-namespace discipline).
+  - `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`
+    §"Recovery when contracts are structurally broken" — the
+    `import-from-env` deletion case.
 
 ## Common pitfalls (grows with each unit)
 

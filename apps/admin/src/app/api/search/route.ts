@@ -102,14 +102,15 @@ export async function GET(request: Request): Promise<Response> {
   // in-process fallback — `rl=local` on a high-traffic prod replica
   // signals Redis degradation.
   //
-  // The auth check accepts ANY of three known-caller bearer CSVs
-  // (search / consumer / workflow) — see `isAnyKnownBearer` in
-  // `auth/search-bearer.ts`. apps/web SSR + apps/mobile (which
+  // The auth check accepts ANY of three known-caller bearer sources
+  // (DB-backed partner / consumer / workflow) — see `isAnyKnownBearer`
+  // in `auth/search-bearer.ts`. apps/web SSR + apps/mobile (which
   // already carry the consumer-bearer for graphql) need no code
-  // change; external partners get their own SEARCH_API_KEYS slot.
+  // change; external partners hold a DB-backed key issued via
+  // `pnpm --filter @forge/admin partner-keys create`.
   const authHeader = request.headers.get("authorization")
-  const authValid = isAnyKnownBearer(authHeader)
-  const authTag: "bearer" | "invalid_bearer" | "anonymous" = authValid
+  const authResult = await isAnyKnownBearer(authHeader)
+  const authTag: "bearer" | "invalid_bearer" | "anonymous" = authResult.valid
     ? "bearer"
     : authHeader != null
       ? "invalid_bearer"
@@ -126,12 +127,27 @@ export async function GET(request: Request): Promise<Response> {
   // to the working format. Operators grep for `event=search.request`
   // and parse key=value pairs the same way they do for the
   // embedding-failure event today.
+  //
+  // `source=<branch>` distinguishes which bearer source matched
+  // (partner / consumer / workflow). `keyId=<id>` is appended only on
+  // PARTNER matches — env-CSV branches don't carry a per-key
+  // identifier so the field is omitted to keep parsing simple
+  // (operators check for `keyId=` presence to scope to per-partner
+  // queries).
+  //
+  // Field ordering: stable positional fields (`event`, `auth`, `path`,
+  // `rl`) come FIRST and never shift; optional fields (`source`,
+  // `keyId`) are appended at the END so any positional log-shipper
+  // rule that targets the stable fields is unaffected.
+  const sourceField = authResult.valid ? ` source=${authResult.source}` : ""
+  const keyIdField =
+    authResult.valid && authResult.keyId ? ` keyId=${authResult.keyId}` : ""
   console.error(
-    `[search] event=search.request auth=${authTag} path=rest rl=${limit.source}`,
+    `[search] event=search.request auth=${authTag} path=rest rl=${limit.source}${sourceField}${keyIdField}`,
   )
-  if (!authValid && env.SEARCH_AUTH_REQUIRED === "true") {
+  if (!authResult.valid && env.SEARCH_AUTH_REQUIRED === "true") {
     // authTag here is "invalid_bearer" or "anonymous" (the `bearer`
-    // case satisfies authValid). TS narrows after the guard.
+    // case satisfies authResult.valid). TS narrows after the guard.
     return authenticationRequired(authTag as "invalid_bearer" | "anonymous")
   }
 

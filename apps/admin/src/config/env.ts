@@ -77,19 +77,6 @@ export const env = createEnv({
     // not imply GraphQL or workflow access.
     BACKUP_DOWNLOAD_API_KEYS: z.string().min(1).optional(),
     // Plan 002 — search API bearer-key allowlist.
-    // CSV-parsed, matched against `Authorization: Bearer <key>` by
-    // `search-bearer.ts`. A matched key tags the request `auth=bearer`
-    // in the structured log emitted by `/api/search` and `Query.search`;
-    // when `SEARCH_AUTH_REQUIRED === "true"`, requests without a valid
-    // bearer return 401. Distinct from the other bearer CSVs so an
-    // operator pasting the same value into two CSVs hits a fail-fast
-    // boot error (see `assertBearerCsvsDisjoint` below) instead of
-    // silently widening a search passport into workflow-trigger access.
-    // `.optional()` because environments without the rollout active
-    // (preview, local dev) don't need it — required-without-default
-    // would brick those Railway deploys, per
-    // docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md.
-    SEARCH_API_KEYS: z.string().optional(),
     // Plan 002 — search API required-auth flag. When "true", `/api/search`
     // and `Query.search` return 401 for missing/invalid bearer; when
     // "false" (the default), they accept both anonymous and bearer-auth
@@ -98,16 +85,18 @@ export const env = createEnv({
     // treats "false" as truthy). Decoded at call sites with
     // `env.SEARCH_AUTH_REQUIRED === "true"`.
     SEARCH_AUTH_REQUIRED: z.enum(["true", "false"]).optional().default("false"),
-    // Plan 002 — caller-side single key for the local search eval CLI
-    // (`apps/admin/src/scripts/eval-search.ts`). When set, the CLI's
-    // `createSearchClient` attaches `Authorization: Bearer <value>` to
-    // every search request, so the harness keeps working after the
-    // `SEARCH_AUTH_REQUIRED=true` flip. The value MUST match one of
-    // admin's own `SEARCH_API_KEYS` CSV entries (admin calls itself).
+    // Plan 002 / Plan 003 — caller-side single bearer value for the
+    // local search eval CLI (`apps/admin/src/scripts/eval-search.ts`).
+    // When set, the CLI's `createSearchClient` attaches
+    // `Authorization: Bearer <value>` to every search request so the
+    // harness keeps working after the `SEARCH_AUTH_REQUIRED=true` flip.
+    // Post-Plan 003 (partner-key store retiring the env-CSV partner
+    // branch), the value MUST be either a partner key issued via
+    // `pnpm --filter @forge/admin partner-keys create` OR a
+    // `WORKFLOW_API_KEYS` / `WEB_ADMIN_API_KEYS` entry — the legacy
+    // env-CSV partner receiver branch no longer exists.
     // `.optional()` because the harness still works without it during
-    // dual-accept — anonymous traffic logs as `auth=anonymous` and
-    // succeeds. Per the caller-single-key / receiver-CSV asymmetry
-    // pattern (cf. `MANAGER_TRIGGER_API_KEY` ↔ `ADMIN_TRIGGER_API_KEYS`).
+    // dual-accept — anonymous traffic logs as `auth=anonymous`.
     SEARCH_API_KEY: z.string().min(1).optional(),
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
     WORKFLOW_TARGET_WORLD: z
@@ -255,7 +244,6 @@ export const env = createEnv({
     BACKUP_DOWNLOAD_API_KEYS: emptyToUndefined(
       process.env.BACKUP_DOWNLOAD_API_KEYS,
     ),
-    SEARCH_API_KEYS: emptyToUndefined(process.env.SEARCH_API_KEYS),
     SEARCH_AUTH_REQUIRED: emptyToUndefined(process.env.SEARCH_AUTH_REQUIRED),
     SEARCH_API_KEY: emptyToUndefined(process.env.SEARCH_API_KEY),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
@@ -363,7 +351,6 @@ const BEARER_CSV_KEYS = [
   "WORKFLOW_API_KEYS",
   "WEB_ADMIN_API_KEYS",
   "BACKUP_DOWNLOAD_API_KEYS",
-  "SEARCH_API_KEYS",
 ] as const
 
 type BearerCsvKey = (typeof BEARER_CSV_KEYS)[number]
@@ -435,5 +422,17 @@ assertBearerCsvsDisjoint({
   WORKFLOW_API_KEYS: env.WORKFLOW_API_KEYS,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
-  SEARCH_API_KEYS: env.SEARCH_API_KEYS,
 })
+
+// Plan 003 retired the SEARCH_API_KEYS env-CSV partner branch — external
+// partner credentials now live in admin's `PartnerApiKey` Postgres table
+// and are issued via `pnpm --filter @forge/admin partner-keys create`.
+// If a Doppler env still has the retired value set, code no longer reads
+// it, but operator confusion is real — flag once at boot so the stale
+// value is visible in Railway logs.
+// Plain-string format per `railway-logsv2-silences-nextjs-stdout-runtime-20260518`.
+if (process.env.SEARCH_API_KEYS && process.env.SEARCH_API_KEYS.length > 0) {
+  console.warn(
+    `[search] event=search_api_keys_env_var_retired note=migrate_to_partner_keys`,
+  )
+}
