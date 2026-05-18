@@ -6,8 +6,9 @@
 // module is the simpler bearer-token surface used by known callers
 // (apps/web, apps/mobile, eval harness, external partners) to prove
 // they're a known caller of `/api/search`. A matched key tags the
-// request `auth=bearer` in the structured log; when
-// `SEARCH_AUTH_REQUIRED === "true"`, missing/invalid bearer returns 401.
+// request `auth=bearer source=<branch>` (with `keyId=<id>` for partner
+// matches) in the structured log; when `SEARCH_AUTH_REQUIRED === "true"`,
+// missing/invalid bearer returns 401.
 //
 // CRITICAL: the search bearer carries NO permissions and NO rate-limit
 // identity (per-IP rate limiting at 30/min stays for both authed and
@@ -15,15 +16,23 @@
 // sole role is the request-level passport check at two seams.
 //
 // SECURITY: NEVER log the raw `Authorization` header value or matched
-// key. The structured log emits only `auth=bearer|invalid_bearer|anonymous`.
+// key. The structured log emits only `auth=…` + `source=…` and (for
+// partner matches) `keyId=…` from the token prefix — never plaintext
+// or the stored hash.
 //
-// Upgrade path: v1 keys are opaque random base64url; per-key audit +
-// keyId surfacing is a deferred follow-up (no ticket yet).
+// The OR-composer runs the DB-backed PARTNER branch FIRST so the seeded
+// row matches before the env-CSV `search` fallback fires (today's
+// `xoSP…` key is imported into the DB via `partner-keys import-from-env`
+// before the env CSV is retired in PR3). The `search` branch is the
+// legacy `SEARCH_API_KEYS` env-CSV fallback — removed in PR3 once a
+// deploy cycle of `source=search` log evidence shows no remaining
+// callers depend on it.
 
 import { timingSafeEqual } from "node:crypto"
 import { env } from "@/config/env"
 import { isValidConsumerBearer } from "@/auth/consumer-bearer"
 import { isValidWorkflowBearer } from "@/auth/workflow-bearer"
+import { verifyPartnerToken } from "@/services/partner-api-key.service"
 
 const BEARER_PREFIX = /^Bearer\s+/i
 
@@ -90,10 +99,36 @@ export function isValidSearchBearer(authHeader: string | null): boolean {
 }
 
 /**
- * Returns true if `Authorization: Bearer <key>` matches ANY of the
- * three "known-caller" bearer allowlists: `SEARCH_API_KEYS`,
- * `WEB_ADMIN_API_KEYS` (consumer-bearer), or `WORKFLOW_API_KEYS`
- * (workflow-trigger).
+ * Branch identifier for the matched bearer source. Threads into the
+ * structured per-request log so operators can grep
+ * `auth=bearer source=partner` to see partner traffic, etc.
+ */
+export type BearerSource = "partner" | "search" | "consumer" | "workflow"
+
+/**
+ * Enriched return type from the composer. `keyId` is populated ONLY for
+ * the `partner` branch (the DB-backed store carries an operator-visible
+ * identifier per row). All other branches surface only `source`.
+ */
+export type BearerCheckResult =
+  | { valid: true; source: BearerSource; keyId?: string }
+  | { valid: false }
+
+/**
+ * Returns `{ valid: true, source, keyId? }` if `Authorization: Bearer
+ * <key>` matches ANY of the four "known-caller" bearer sources:
+ *
+ *   1. **PARTNER** — DB-backed `PartnerApiKey` row (sha256 hash, parsed
+ *      from the `jfp_search_<keyId>_<random>` token prefix). Runs FIRST
+ *      so seeded rows match before the env-CSV fallback. Surfaces
+ *      `keyId` for per-partner audit in the structured log.
+ *   2. **CONSUMER** — `WEB_ADMIN_API_KEYS` env CSV (apps/web SSR
+ *      rate-limit identity).
+ *   3. **WORKFLOW** — `WORKFLOW_API_KEYS` env CSV (workflow-trigger;
+ *      manager → admin proxies + the eval CLI's bearer mint).
+ *   4. **SEARCH** — `SEARCH_API_KEYS` env CSV (the legacy partner
+ *      fallback, retired in PR3 once today's `xoSP…` key is migrated
+ *      via `partner-keys import-from-env`).
  *
  * Rationale: the search-passport check answers "are you a known
  * caller?", not "do you have permission to call search?". Anyone
@@ -101,40 +136,52 @@ export function isValidSearchBearer(authHeader: string | null): boolean {
  * privileged trigger mutations) or a consumer-bearer key (apps/web
  * SSR rate-limit identity) already proves they're a known caller —
  * requiring them to ALSO present a SEARCH_API_KEY would be
- * incoherent. External partners get their own `SEARCH_API_KEYS`
- * slot; internal callers reuse the bearer they already carry.
+ * incoherent.
  *
  * The disjointness invariant (`assertBearerCsvsDisjoint` at module
- * load in `env.ts`) is unaffected: each key VALUE still lives in
- * exactly one CSV. This function composes validators, not key sets.
+ * load in `env.ts`) holds across the ENV-var CSVs only. A
+ * partner-key plaintext that ALSO appears in an env CSV would match
+ * both branches; the partner branch runs first so the matched
+ * `source` will report `partner` in that ambiguous case (the
+ * dual-accept window during the `xoSP…` migration is exactly this
+ * shape — same plaintext, two backing stores).
  *
  * `BACKUP_DOWNLOAD_API_KEYS` is excluded — that bearer is for a
- * narrow file-download surface, not active-API requests. If a future
- * caller needs both backup and search access, they should hold a
- * `SEARCH_API_KEYS` entry alongside.
+ * narrow file-download surface, not active-API requests.
  *
- * Timing note: the OR short-circuits on first true, so a request
- * carrying a SEARCH_API_KEYS value returns sooner than one carrying
- * a WORKFLOW_API_KEYS value. Threat impact is LOW — an attacker
- * holding a valid key already knows it's valid; learning which CSV
- * the key lives in does not enable privilege escalation. If the
- * threat model ever tightens, switch to forced-evaluation:
- * `const a = ..., b = ..., c = ...; return a || b || c`.
+ * Defense-in-depth: each composed validator is wrapped in
+ * try/catch via `safeCheck` / `safeCheckAsync`. None of the four
+ * are expected to throw, but a future logging side-effect or
+ * refactor introducing any throw path would otherwise convert a
+ * single buggy validator into a 500 on EVERY search request.
  *
- * Defense-in-depth: each composed validator is wrapped in try/catch.
- * None of the three are expected to throw (length-pre-checks guard
- * against `timingSafeEqual` RangeError), but a future logging
- * side-effect or refactor introducing any throw path would otherwise
- * convert a single buggy validator into a 500 on EVERY search
- * request. Auth surface sitting in front of admin's highest-volume
- * endpoint: cheap defense.
+ * Async because the partner branch makes a Prisma lookup with a
+ * `Promise.race`-wrapped 1500ms timeout — the env-CSV branches
+ * remain synchronous and trivially fast.
  */
-export function isAnyKnownBearer(authHeader: string | null): boolean {
-  return (
-    safeCheck("search", () => isValidSearchBearer(authHeader)) ||
-    safeCheck("consumer", () => isValidConsumerBearer(authHeader).valid) ||
-    safeCheck("workflow", () => isValidWorkflowBearer(authHeader))
+export async function isAnyKnownBearer(
+  authHeader: string | null,
+): Promise<BearerCheckResult> {
+  // PARTNER (DB-backed) first — the prefix parse is cheap and falls
+  // through (no DB call) for tokens that aren't `jfp_search_*`-shaped,
+  // so the hot path for env-CSV tokens stays sub-millisecond.
+  const partner = await safeCheckAsync("partner", () =>
+    verifyPartnerToken(authHeader),
   )
+  if (partner.valid) {
+    return { valid: true, source: "partner", keyId: partner.keyId }
+  }
+
+  if (safeCheck("consumer", () => isValidConsumerBearer(authHeader).valid)) {
+    return { valid: true, source: "consumer" }
+  }
+  if (safeCheck("workflow", () => isValidWorkflowBearer(authHeader))) {
+    return { valid: true, source: "workflow" }
+  }
+  if (safeCheck("search", () => isValidSearchBearer(authHeader))) {
+    return { valid: true, source: "search" }
+  }
+  return { valid: false }
 }
 
 function safeCheck(validatorName: string, check: () => boolean): boolean {
@@ -150,5 +197,23 @@ function safeCheck(validatorName: string, check: () => boolean): boolean {
       }),
     )
     return false
+  }
+}
+
+async function safeCheckAsync(
+  validatorName: string,
+  check: () => Promise<{ valid: true; keyId?: string } | { valid: false }>,
+): Promise<{ valid: true; keyId?: string } | { valid: false }> {
+  try {
+    return await check()
+  } catch (err) {
+    console.warn(
+      JSON.stringify({
+        event: "search_bearer.validator_threw",
+        validator: validatorName,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    )
+    return { valid: false }
   }
 }

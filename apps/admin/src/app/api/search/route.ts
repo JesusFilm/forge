@@ -108,8 +108,8 @@ export async function GET(request: Request): Promise<Response> {
   // already carry the consumer-bearer for graphql) need no code
   // change; external partners get their own SEARCH_API_KEYS slot.
   const authHeader = request.headers.get("authorization")
-  const authValid = isAnyKnownBearer(authHeader)
-  const authTag: "bearer" | "invalid_bearer" | "anonymous" = authValid
+  const authResult = await isAnyKnownBearer(authHeader)
+  const authTag: "bearer" | "invalid_bearer" | "anonymous" = authResult.valid
     ? "bearer"
     : authHeader != null
       ? "invalid_bearer"
@@ -126,12 +126,22 @@ export async function GET(request: Request): Promise<Response> {
   // to the working format. Operators grep for `event=search.request`
   // and parse key=value pairs the same way they do for the
   // embedding-failure event today.
+  //
+  // `source=<branch>` distinguishes which bearer source matched
+  // (partner / consumer / workflow / search). `keyId=<id>` is
+  // appended only on PARTNER matches — env-CSV branches don't carry
+  // a per-key identifier so the field is omitted to keep parsing
+  // simple (operators check for `keyId=` presence to scope to
+  // per-partner queries).
+  const sourceField = authResult.valid ? ` source=${authResult.source}` : ""
+  const keyIdField =
+    authResult.valid && authResult.keyId ? ` keyId=${authResult.keyId}` : ""
   console.error(
-    `[search] event=search.request auth=${authTag} path=rest rl=${limit.source}`,
+    `[search] event=search.request auth=${authTag}${sourceField}${keyIdField} path=rest rl=${limit.source}`,
   )
-  if (!authValid && env.SEARCH_AUTH_REQUIRED === "true") {
+  if (!authResult.valid && env.SEARCH_AUTH_REQUIRED === "true") {
     // authTag here is "invalid_bearer" or "anonymous" (the `bearer`
-    // case satisfies authValid). TS narrows after the guard.
+    // case satisfies authResult.valid). TS narrows after the guard.
     return authenticationRequired(authTag as "invalid_bearer" | "anonymous")
   }
 

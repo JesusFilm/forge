@@ -94,7 +94,7 @@ beforeEach(() => {
   // Default: dual-accept (SEARCH_AUTH_REQUIRED=false), bearer absent.
   // Individual tests opt into required-auth and/or valid bearer.
   envMutable.SEARCH_AUTH_REQUIRED = "false"
-  vi.mocked(isAnyKnownBearer).mockReturnValue(false)
+  vi.mocked(isAnyKnownBearer).mockResolvedValue({ valid: false })
   searchMock.mockResolvedValue({
     results: [],
     hasMore: false,
@@ -289,7 +289,10 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
     })
 
     it("valid bearer resolves; log shows auth=bearer path=graphql", async () => {
-      vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+      vi.mocked(isAnyKnownBearer).mockResolvedValue({
+        valid: true,
+        source: "search",
+      })
       const result = await invoke(
         { q: "jesus", locale: "en" },
         ctxWithAuth("Bearer valid-key"),
@@ -304,7 +307,7 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
     })
 
     it("invalid bearer resolves; log shows auth=invalid_bearer (distinct from anonymous)", async () => {
-      vi.mocked(isAnyKnownBearer).mockReturnValue(false)
+      vi.mocked(isAnyKnownBearer).mockResolvedValue({ valid: false })
       const result = await invoke(
         { q: "jesus", locale: "en" },
         ctxWithAuth("Bearer not-a-real-key"),
@@ -318,7 +321,10 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
     })
 
     it("forwards the Authorization header value verbatim to isValidSearchBearer", async () => {
-      vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+      vi.mocked(isAnyKnownBearer).mockResolvedValue({
+        valid: true,
+        source: "search",
+      })
       await invoke(
         { q: "jesus", locale: "en" },
         ctxWithAuth("Bearer some-key-value"),
@@ -331,8 +337,53 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
       expect(isAnyKnownBearer).toHaveBeenCalledWith(null)
     })
 
+    it("logs source=partner + keyId for DB-backed partner key matches", async () => {
+      vi.mocked(isAnyKnownBearer).mockResolvedValue({
+        valid: true,
+        source: "partner",
+        keyId: "PartnerKey01",
+      })
+      await invoke(
+        { q: "jesus", locale: "en" },
+        ctxWithAuth(
+          "Bearer jfp_search_PartnerKey01_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        ),
+      )
+      const log = parseSearchLogLines()[0]
+      expect(log).toMatchObject({
+        auth: "bearer",
+        source: "partner",
+        keyId: "PartnerKey01",
+        path: "graphql",
+      })
+    })
+
+    it("logs source=<branch> for each env-CSV match without leaking keyId", async () => {
+      for (const source of ["search", "consumer", "workflow"] as const) {
+        vi.mocked(isAnyKnownBearer).mockResolvedValueOnce({
+          valid: true,
+          source,
+        })
+        await invoke(
+          { q: "jesus", locale: "en" },
+          ctxWithAuth(`Bearer ${source}-key`),
+        )
+      }
+      const lines = parseSearchLogLines()
+      expect(lines).toHaveLength(3)
+      expect(lines[0]).toMatchObject({ source: "search" })
+      expect(lines[1]).toMatchObject({ source: "consumer" })
+      expect(lines[2]).toMatchObject({ source: "workflow" })
+      for (const line of lines) {
+        expect(line).not.toHaveProperty("keyId")
+      }
+    })
+
     it("emits exactly one search.request log line per resolver invocation", async () => {
-      vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+      vi.mocked(isAnyKnownBearer).mockResolvedValue({
+        valid: true,
+        source: "search",
+      })
       await invoke(
         { q: "jesus", locale: "en" },
         ctxWithAuth("Bearer valid-key"),
@@ -360,7 +411,7 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
     })
 
     it("invalid bearer throws Authentication required", async () => {
-      vi.mocked(isAnyKnownBearer).mockReturnValue(false)
+      vi.mocked(isAnyKnownBearer).mockResolvedValue({ valid: false })
       await expect(
         invoke(
           { q: "jesus", locale: "en" },
@@ -370,7 +421,10 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
     })
 
     it("valid bearer resolves normally", async () => {
-      vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+      vi.mocked(isAnyKnownBearer).mockResolvedValue({
+        valid: true,
+        source: "search",
+      })
       const result = await invoke(
         { q: "jesus", locale: "en" },
         ctxWithAuth("Bearer valid-key"),
@@ -443,7 +497,10 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
 
   describe("log discipline", () => {
     it("never logs the bearer header value", async () => {
-      vi.mocked(isAnyKnownBearer).mockReturnValue(true)
+      vi.mocked(isAnyKnownBearer).mockResolvedValue({
+        valid: true,
+        source: "search",
+      })
       await invoke(
         { q: "jesus", locale: "en" },
         ctxWithAuth("Bearer the-secret-key-value-aaa"),

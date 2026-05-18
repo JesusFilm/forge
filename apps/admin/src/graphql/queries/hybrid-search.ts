@@ -147,21 +147,29 @@ builder.queryFields((t) => ({
       // doesn't apply here — every request to /api/graphql is
       // already rate-bucketed before the resolver runs.
       const authHeader = ctx.request.headers.get("authorization")
-      const authValid = isAnyKnownBearer(authHeader)
-      const authTag: "bearer" | "invalid_bearer" | "anonymous" = authValid
-        ? "bearer"
-        : authHeader != null
-          ? "invalid_bearer"
-          : "anonymous"
+      const authResult = await isAnyKnownBearer(authHeader)
+      const authTag: "bearer" | "invalid_bearer" | "anonymous" =
+        authResult.valid
+          ? "bearer"
+          : authHeader != null
+            ? "invalid_bearer"
+            : "anonymous"
       // See route.ts for the rationale — on the current Next.js 16 +
       // Node 24 + Railway logsV2 + standalone stack, JSON-stringified
       // log payloads from runtime route handlers are silenced. Only
       // the `[label] event=name key=value` string format used by the
       // existing working logs in this surface reliably surfaces.
+      //
+      // `source=` distinguishes the matched bearer source; `keyId=`
+      // is appended for PARTNER branches only (env-CSV branches don't
+      // carry a per-key identifier).
+      const sourceField = authResult.valid ? ` source=${authResult.source}` : ""
+      const keyIdField =
+        authResult.valid && authResult.keyId ? ` keyId=${authResult.keyId}` : ""
       console.error(
-        `[search] event=search.request auth=${authTag} path=graphql`,
+        `[search] event=search.request auth=${authTag}${sourceField}${keyIdField} path=graphql`,
       )
-      if (!authValid && env.SEARCH_AUTH_REQUIRED === "true") {
+      if (!authResult.valid && env.SEARCH_AUTH_REQUIRED === "true") {
         // Typed GraphQLError with extensions.code so the auth signal
         // survives Yoga's default maskedErrors (which rewrites raw
         // `new Error(...)` to "Unexpected error." in production).
