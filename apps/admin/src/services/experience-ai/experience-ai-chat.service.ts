@@ -25,7 +25,6 @@ import type { PrismaClient } from "@prisma/client"
 
 import { canEditExperienceLocale } from "@/auth/permissions"
 import type { Principal } from "@/auth/principal"
-import { env } from "@/config/env"
 import { ExperienceService } from "@/services/experience.service"
 import {
   computeDiff,
@@ -35,10 +34,7 @@ import {
 import { loadExperienceAiVideoCandidates } from "./experience-ai.service"
 import {
   confirmedBriefMetadata,
-  isBriefConfirmationPrompt,
   isCompleteBrief,
-  isExplicitRebriefPrompt,
-  isFullCreatePrompt,
   latestBriefMetadata,
   updateBriefFromTurn,
   type EditorialBrief,
@@ -46,12 +42,10 @@ import {
 } from "./experience-ai-chat-brief"
 import {
   ChatMutationEnvelopeSchema,
-  ChatMutationsSchema,
   buildChatMutationEnvelopeJsonSchema,
   type ChatMutationEnvelope,
 } from "./experience-ai-chat-envelope"
 import {
-  DEFAULT_CHAT_PROVIDER,
   normalizeChatProvider,
   type ChatProvider,
 } from "./experience-ai-chat-provider"
@@ -333,17 +327,15 @@ export async function* streamChatTurn(
     history.map((message) => message.mutationsApplied),
   )
   const emptyCanvas = isEmptyCanvas(beforeState)
-  const inBriefMode =
-    input.confirmedBrief === true ||
-    latestBrief?.status === "collecting" ||
-    latestBrief?.status === "confirmation_required" ||
-    (emptyCanvas && isFullCreatePrompt(input.prompt)) ||
-    (!emptyCanvas && isExplicitRebriefPrompt(input.prompt))
-  const wantsBriefGeneration =
-    input.confirmedBrief === true ||
-    (latestBrief?.status === "confirmation_required" &&
-      isCompleteBrief(latestBrief.brief) &&
-      isBriefConfirmationPrompt(input.prompt))
+  // Brief flow is disabled: every prompt routes directly to the
+  // chat-turn provider, which generates a full draft inline on empty
+  // canvas (see the matching prompt update in experience-ai-chat-prompts).
+  // The guided Q&A path is preserved in git history if we ever want to
+  // bring it back as an opt-in.
+  const inBriefMode = false
+  const wantsBriefGeneration = false
+  void latestBrief
+  void emptyCanvas
 
   if (inBriefMode) {
     if (
@@ -487,13 +479,8 @@ export async function* streamChatTurn(
     userPrompt: input.prompt,
   })
 
-  if (emptyCanvas && isFullCreatePrompt(input.prompt)) {
-    yield errorEvent(
-      "provider_validation_failed",
-      "Empty-canvas generation requires a confirmed editorial brief",
-    )
-    return
-  }
+  // Empty-canvas guard removed alongside brief flow disable above —
+  // chat-turn now produces full drafts directly from the user prompt.
 
   // ---- Run chat turn via the selected provider --------------------------
   // Each adapter is responsible for its own gate check (CLI providers
@@ -652,4 +639,3 @@ export async function* streamChatTurn(
   }
   yield { type: "done", messageId: assistantMessage.id }
 }
-

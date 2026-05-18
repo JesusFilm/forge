@@ -580,6 +580,13 @@ export default async function ExperienceEditorPage({
     return getChatMessagesCore({ prisma, user }, { threadId })
   }
 
+  async function loadVideosByIdsAction(videoIds: readonly string[]) {
+    "use server"
+    const user = await requireSession()
+    if (videoIds.length === 0) return []
+    return loadVideoRows(user, { includeVideoIds: videoIds })
+  }
+
   return (
     <ExperienceEditorWithChat
       key={`${selectedLocale.id}:${selectedLocale.updatedAt.toISOString()}:${selectedLocale.status}`}
@@ -618,6 +625,7 @@ export default async function ExperienceEditorPage({
       }))}
       revisionEntries={revisionEntries}
       videoLibrary={videoLibrary}
+      loadVideosByIdsAction={loadVideosByIdsAction}
       mediaLibrary={mediaLibrary}
       saveAction={saveLocaleAction}
       publishAction={publishLocaleAction}

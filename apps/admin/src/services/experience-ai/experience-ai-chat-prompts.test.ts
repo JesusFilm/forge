@@ -28,9 +28,11 @@ describe("buildChatPrompt", () => {
       userPrompt: "Create an experience about forgiveness",
     })
 
-    expect(prompt).toContain("guided editorial brief workflow")
-    expect(prompt).toContain("do NOT generate a full draft here")
-    expect(prompt).not.toContain("generate a complete first draft")
+    // Brief flow is disabled — prompt instructs the model to produce a
+    // FULL inline draft on empty canvas instead of deferring elsewhere.
+    expect(prompt).not.toContain("guided editorial brief workflow")
+    expect(prompt).toContain('complete "blocks" array')
+    expect(prompt).toContain("do NOT defer to a brief flow")
   })
 
   it("exposes candidate videoId values for generated block references", () => {

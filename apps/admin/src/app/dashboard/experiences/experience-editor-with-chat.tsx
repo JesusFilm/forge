@@ -8,9 +8,10 @@
  * `onCanvasController` publish hook (see U4 plan).
  */
 
-import { useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 
 import { ExperienceEditor } from "@/app/dashboard/experiences/experience-editor"
+import type { VideoLibraryItem } from "@/app/dashboard/experiences/experience-editor/block-helpers"
 import {
   ExperienceChatPanel,
   type ExperienceCanvasController,
@@ -22,22 +23,89 @@ type ExperienceEditorProps = Parameters<typeof ExperienceEditor>[0]
 
 export type ExperienceEditorWithChatProps = Omit<
   ExperienceEditorProps,
-  "onCanvasController"
+  "onCanvasController" | "videoLibrary"
 > & {
   experienceLocaleId: string
   locale: string
   chatActions: ExperienceChatPanelActions
+  videoLibrary: VideoLibraryItem[]
+  loadVideosByIdsAction: (
+    videoIds: readonly string[],
+  ) => Promise<VideoLibraryItem[]>
+}
+
+function collectVideoIdsFromBlocks(blocks: readonly unknown[]): string[] {
+  const ids = new Set<string>()
+  const walk = (node: unknown) => {
+    if (Array.isArray(node)) {
+      node.forEach(walk)
+      return
+    }
+    if (!node || typeof node !== "object") return
+    const record = node as Record<string, unknown>
+    const candidate = record.videoId
+    if (typeof candidate === "string" && candidate.length > 0) {
+      ids.add(candidate)
+    }
+    for (const value of Object.values(record)) walk(value)
+  }
+  walk(blocks)
+  return Array.from(ids)
 }
 
 export function ExperienceEditorWithChat({
   experienceLocaleId,
   locale,
   chatActions,
+  videoLibrary: initialVideoLibrary,
+  loadVideosByIdsAction,
   ...editorProps
 }: ExperienceEditorWithChatProps) {
   const controllerRef = useRef<ExperienceCanvasController | null>(null)
   const [canvasHasBlocks, setCanvasHasBlocks] = useState(false)
   const [, forceTick] = useState(0)
+  const [videoLibrary, setVideoLibrary] =
+    useState<VideoLibraryItem[]>(initialVideoLibrary)
+  const inflightVideoIds = useRef<Set<string>>(new Set())
+
+  const hydrateMissingVideos = useCallback(
+    (blocks: readonly unknown[]) => {
+      const referenced = collectVideoIdsFromBlocks(blocks)
+      if (referenced.length === 0) return
+      const known = new Set<string>()
+      for (const item of videoLibrary) {
+        known.add(item.key)
+        known.add(item.id)
+      }
+      const missing = referenced.filter(
+        (id) => !known.has(id) && !inflightVideoIds.current.has(id),
+      )
+      if (missing.length === 0) return
+      missing.forEach((id) => inflightVideoIds.current.add(id))
+      loadVideosByIdsAction(missing)
+        .then((extras) => {
+          if (extras.length === 0) return
+          setVideoLibrary((current) => {
+            const seen = new Set(current.map((item) => item.key))
+            const merged = [...current]
+            for (const extra of extras) {
+              if (!seen.has(extra.key)) {
+                merged.push(extra)
+                seen.add(extra.key)
+              }
+            }
+            return merged
+          })
+        })
+        .catch(() => {
+          // Silent failure — block will fall back to manual title.
+        })
+        .finally(() => {
+          missing.forEach((id) => inflightVideoIds.current.delete(id))
+        })
+    },
+    [loadVideosByIdsAction, videoLibrary],
+  )
 
   // Stable proxy controller — the panel sees a single object whose
   // methods always delegate to whatever the editor most recently
@@ -56,16 +124,18 @@ export function ExperienceEditorWithChat({
         controllerRef.current?.applyDiff(diff)
         if (Array.isArray(diff.blocks)) {
           setCanvasHasBlocks(diff.blocks.length > 0)
+          hydrateMissingVideos(diff.blocks)
         }
       },
       revertDiff: (diff) => {
         controllerRef.current?.revertDiff(diff)
         if (Array.isArray(diff.blocks)) {
           setCanvasHasBlocks(diff.blocks.length > 0)
+          hydrateMissingVideos(diff.blocks)
         }
       },
     }),
-    [],
+    [hydrateMissingVideos],
   )
 
   // Re-derive suggested prompts only when canvas occupancy or locale flips.
@@ -90,9 +160,12 @@ export function ExperienceEditorWithChat({
       <div className="flex min-w-0 flex-1 flex-col">
         <ExperienceEditor
           {...editorProps}
+          videoLibrary={videoLibrary}
           onCanvasController={(controller) => {
             controllerRef.current = controller
-            setCanvasHasBlocks(controller.getState().blocks.length > 0)
+            const state = controller.getState()
+            setCanvasHasBlocks(state.blocks.length > 0)
+            hydrateMissingVideos(state.blocks)
             // Trigger a render so children that captured the proxy on
             // first paint can re-read state if they choose to.
             forceTick((n) => n + 1)

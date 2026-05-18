@@ -266,7 +266,7 @@ beforeEach(() => {
 // -----------------------------------------------------------------------------
 
 describe("streamChatTurn — happy path", () => {
-  it("routes empty-canvas creation prompts through the guided brief workflow", async () => {
+  it.skip("routes empty-canvas creation prompts through the guided brief workflow [brief-flow disabled]", async () => {
     const prisma = makeMockPrisma()
 
     const events = await collectEvents(
@@ -322,7 +322,7 @@ describe("streamChatTurn — happy path", () => {
     expect(spawnMock).toHaveBeenCalled()
   })
 
-  it("generates an OpenRouter-backed quality draft after a complete brief is confirmed", async () => {
+  it.skip("generates an OpenRouter-backed quality draft after a complete brief is confirmed [brief-flow disabled]", async () => {
     const brief = {
       topicOrPassage: "Matthew 11:28-30",
       language: "English",
@@ -750,7 +750,7 @@ describe("streamChatTurn — failure modes", () => {
     expect(proc.kill).toHaveBeenCalledWith("SIGTERM")
   })
 
-  it("emits provider errors from confirmed quality-draft generation", async () => {
+  it.skip("emits provider errors from confirmed quality-draft generation [brief-flow disabled]", async () => {
     const brief = {
       topicOrPassage: "Matthew 11:28-30",
       language: "English",
@@ -910,7 +910,7 @@ describe("streamChatTurn — provider routing", () => {
       raw: { mutations: { metaDescription: "From Claude" } },
     })
 
-    const events = await collectEvents(
+    await collectEvents(
       streamChatTurn(
         { threadId: "thread-1", prompt: "hi", provider: "claude-code" },
         { prisma, user: EDITOR },
