@@ -141,52 +141,52 @@ Pothos resolver → Prisma with the Pothos `...query` argument, the Prisma
 plugin already issues a single batched query. Adding a DataLoader on top
 is redundant and loses the plugin's column-pruning.
 
-## Experience AI Chat providers
+## Experience AI Chat (Mastra)
 
-The chat surface routes through one of five channels selected by the
-editor in the composer dropdown. The selected channel drives BOTH the
-quality-draft generation and chat-turn mutation envelope flows.
+The chat surface is a single channel: the Mastra runtime in
+`src/mastra/` calling OpenRouter free models. There is no provider
+dropdown, no per-channel routing, and no CLI fallback. The chat
+service composes one path; both the chat-turn streaming reply and
+any structured-draft generation go through Mastra agents.
 
-| Channel       | Quality-draft path                          | Chat-turn path                               | Cost / posture               |
-| ------------- | ------------------------------------------- | -------------------------------------------- | ---------------------------- |
-| `mastra`      | Mastra agent runtime                        | Mastra default chat agent                    | Free via OpenRouter model    |
-| `openrouter`  | OpenRouter free models (HTTP)               | Codex CLI (legacy)                           | Free, cloud                  |
-| `ollama`      | Ollama HTTP `/api/chat` (`format: "json"`)  | Ollama NDJSON stream                         | Local, free                  |
-| `codex`       | `codex exec --output-schema <tmp> -o <out>` | `codex exec` (stdin/stdout)                  | Paid subscription, local CLI |
-| `claude-code` | `claude --print --json-schema <inline>`     | `claude --print --output-format stream-json` | Paid subscription, local CLI |
+**Entry points:**
 
-Defaults to `mastra` when omitted. The `openrouter` pick still spawns
-Codex CLI for chat-turns (legacy path, gated by `EXPERIENCE_AI_ALLOW_CODEX`).
+- `src/mastra/index.ts` — Mastra singleton with registered agents
+  (`experience-default-chat`, `draft-experience`, `add-section`,
+  `rewrite-copy`, `auto-enrich`) and workflow (`multi-step-draft`).
+- `src/services/experience-ai/experience-ai-chat.service.ts` —
+  `streamChatTurn(input, deps)` dispatches to
+  `getMastra().getAgentById("experience-default-chat").generate(...)`,
+  parses the JSON envelope Mastra emits, validates against
+  `ChatMutationEnvelopeSchema`, and persists the assistant turn with
+  `providerKind: "mastra"`.
+- `src/app/api/experience-chat/stream/route.ts` — SSE endpoint;
+  the `Body` Zod schema accepts `{ threadId, prompt,
+confirmedAcrossLocales?, confirmedBrief? }` (no `provider` field).
 
-**Env gates** — CLI providers refuse to spawn unless their gate is on,
-returning `provider_not_configured` (Claude Code) or `codex_unavailable`
-(Codex) before any subprocess. Production Railway containers do not ship
-the binaries; CLI channels are local-dev primary.
+**Model selection:** Mastra's default-chat agent picks an OpenRouter
+free model at construction (see
+`src/mastra/agents/default-chat-agent.ts`). The
+`OPENROUTER_EXPERIENCE_CHAT_MODELS` env var holds the ladder of
+eligible free models — Mastra's provider config reads it when
+falling back across rate-limited models.
 
-- `EXPERIENCE_AI_ALLOW_CODEX` — opt in Codex (new name).
-  `EXPERIENCE_AI_ALLOW_CODEX_FALLBACK` is the legacy name, still honored
-  with a one-shot deprecation log. Removal target: one release window
-  after this PR merges.
-- `EXPERIENCE_AI_ALLOW_CLAUDE_CODE` — opt in Claude Code.
+**Memory:** Mastra-managed Postgres tables under the dedicated
+`mastra` schema (`prisma/migrations/0016_mastra_schema/`). The
+`@mastra/pg` `PostgresStore` creates and migrates its own tables
+inside that schema on first write; Prisma's migration history is
+untouched. Storage URL falls back to `DATABASE_URL` when
+`MASTRA_STORAGE_URL` is unset (see `src/mastra/memory.ts`).
 
-**Per-channel model overrides** (optional; each channel uses its
-config-file default when unset):
+**Error handling:** when every OpenRouter free model rate-limits or
+fails, the service yields a typed `error` event with a canonical
+`ChatErrorCode` (e.g. `provider_not_configured`,
+`provider_validation_failed`). There is no silent fallback to
+another provider.
 
-- `OLLAMA_CHAT_MODEL` (default `gemma4:e4b`)
-- `EXPERIENCE_AI_CODEX_MODEL` (default `gpt-5.5`)
-- `EXPERIENCE_AI_CLAUDE_CODE_MODEL` (default `sonnet` alias)
-
-**Adapter modules** — peer files in `src/services/experience-ai/`:
-
-- `experience-ai-openrouter-free.ts` — HTTP, multi-model fallback ladder.
-- `experience-ai-ollama.ts` — HTTP, single-shot + NDJSON stream.
-- `experience-ai-codex.ts` — `codex exec` spawn, schema via temp file + `-o`.
-- `experience-ai-claude-code.ts` — `claude --print` spawn, schema inline.
-
-Each adapter exposes a `generate*StructuredOutput` (quality-draft) and a
-`run*Chat` (chat-turn). The chat service composes both via
-`generateQualityExperienceDraft` (quality-draft path) and
-`runChatTurnForProvider` (chat-turn path).
+**Local development:** `pnpm --filter @forge/admin mastra:dev` runs
+Mastra's CLI playground (`src/mastra-playground/`) for iterating on
+agents and prompts outside the Next.js route.
 
 ## Conventions (Unit 1 baseline — expands with each unit)
 

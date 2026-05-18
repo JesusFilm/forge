@@ -1,7 +1,7 @@
 ---
 title: feat: Converge admin AI chat to single Mastra+OpenRouter channel
 type: feat
-status: active
+status: completed
 date: 2026-05-18
 origin: docs/brainstorms/2026-05-18-mastra-orchestrator-chat-convergence-requirements.md
 ---
