@@ -1,6 +1,7 @@
 ---
-title: Railway logsV2 silences info-level stdout from Next.js App Router runtime requests
+title: Railway logsV2 silences console.log AND console.warn from Next.js App Router runtime route handlers — only console.error surfaces
 date: 2026-05-18
+last_updated: 2026-05-18
 problem_type: runtime_error
 category: runtime-errors
 component: tooling
@@ -23,12 +24,13 @@ related:
   - docs/solutions/best-practices/waf-passthrough-verification-via-prior-art-20260518.md
 ---
 
-# Railway logsV2 silences info-level stdout from Next.js App Router runtime requests
+# Railway logsV2 silences console.log AND console.warn from Next.js App Router runtime route handlers — only console.error surfaces
 
 ## Problem
 
-`console.log(JSON.stringify({ event: "...", ... }))` calls from
-inside Next.js App Router route handlers (both REST routes under
+`console.log(JSON.stringify({ event: "...", ... }))` **AND**
+`console.warn(JSON.stringify({ ... }))` calls from inside Next.js App
+Router route handlers (both REST routes under
 `src/app/api/*/route.ts` and GraphQL resolvers under
 `src/graphql/queries/*.ts`) do NOT surface in Railway's
 `deploymentLogs` GraphQL query when invoked during runtime request
@@ -37,11 +39,19 @@ serving, even though:
 - `console.error(...)` from the same files DOES surface.
 - `console.log(...)` from module-load / boot phase (Prisma migration
   output, "Next.js Ready" line) DOES surface.
-- `console.warn(...)` (stderr) DOES surface.
 
-The result: structured-log observability built around `console.log`
-is silently absent in Railway's log dashboard, even though it works
-correctly in local dev (where stdout pipes to the terminal).
+**Initial hypothesis (wrong):** "stdout silenced, stderr surfaces" —
+suggested switching `console.log` → `console.warn` would fix it.
+**Verified empirically wrong 2026-05-18** against admin deployment
+`a8bf6273` on commit `69126099f0` (PR #970 + #971 merged): zero
+`search.request` lines appeared even after the switch to
+`console.warn`. PR #972 corrects this — only `console.error`
+surfaces in practice.
+
+The result: structured-log observability for per-request events
+must use `console.error` on this stack, even when the events are
+not semantically errors. The semantic mismatch (log-as-error) is
+operationally unavoidable until a structured-logger migration lands.
 
 ## Symptoms
 
@@ -78,52 +88,83 @@ correctly in local dev (where stdout pipes to the terminal).
 
 ## Solution
 
-**Emit structured logs via `console.warn` (stderr) instead of
-`console.log` (stdout) on this stack.**
+**Emit structured logs via `console.error` on this stack.**
+`console.warn` is also silenced; `console.error` is the only channel
+that surfaces from runtime route handlers in Railway's logs.
 
 ```ts
-// Before (silently dropped by Railway's runtime log pipeline):
-console.log(
-  JSON.stringify({
-    event: "search.request",
-    auth: authTag,
-    path: "rest",
-    rl: limit.source,
-  }),
-)
+// Silently dropped:
+console.log(JSON.stringify({ event: "search.request", ... }))
 
-// After (surfaces reliably):
-console.warn(
-  JSON.stringify({
-    event: "search.request",
-    auth: authTag,
-    path: "rest",
-    rl: limit.source,
-  }),
-)
+// Also silently dropped (PR #970 — verified wrong 2026-05-18):
+console.warn(JSON.stringify({ event: "search.request", ... }))
+
+// Surfaces reliably (PR #972 — the working channel):
+console.error(JSON.stringify({ event: "search.request", ... }))
 ```
 
-The structured-JSON payload is byte-identical. Only the routing
-channel (stdout → stderr) changes. The log appears as `warn`
-severity in Railway's dashboard, which is a semantic mismatch (the
-search.request event isn't a warning), but operationally surfaces
-the line.
+The structured-JSON payload is byte-identical across all three.
+Only the console method changes.
 
-**Update tests to spy on `console.warn` instead of `console.log`:**
+**Semantic mismatch is real but unavoidable.** `search.request` is
+a per-request operational event, not an error. Tagging it as
+`error` severity in Railway's dashboard misrepresents its
+operational meaning. Operators who filter logs by severity will
+see search.request events alongside genuine errors. The right
+long-term fix is a structured logger (Pino + Next.js
+instrumentation hook) that writes to stderr regardless of semantic
+severity, with the actual severity encoded in the JSON payload.
+Until that lands, `console.error` is the pragmatic floor.
+
+**Update tests to spy on `console.error` instead of `console.log`/`console.warn`:**
 
 ```ts
 beforeEach(() => {
-  logSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+  logSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 })
+```
+
+Note: the spy will also capture genuine error logs from the same
+file (e.g., `[search] Search failed: ...` in the catch branch).
+Filter the captured log lines by event name when asserting:
+
+```ts
+const searchRequestLines = logSpy.mock.calls
+  .map((args) => String(args[0] ?? ""))
+  .filter((line) => {
+    try {
+      const parsed = JSON.parse(line)
+      return parsed.event === "search.request"
+    } catch {
+      return false
+    }
+  })
 ```
 
 ## Why this works
 
-Railway's logsV2 pipeline reliably captures stderr from Next.js App
-Router runtime requests on the current stack. It captures stdout
-from boot/migration phases. It does NOT capture stdout from runtime
-request handlers serving HTTP traffic — verified empirically against
-admin deployment `c62112c2` running:
+Railway's logsV2 pipeline captures `console.error` output from
+runtime route handlers but NOT `console.log` or `console.warn`. In
+Node's standard library, all three of `console.log`, `console.warn`,
+and `console.error` eventually call `process.stdout.write` /
+`process.stderr.write` — so naïvely they should be functionally
+identical at the streams layer. Yet experimentally, only
+`console.error` surfaces on this stack. The most plausible
+explanations (untested):
+
+- Next.js 16 standalone installs a `console` interceptor that
+  special-cases `console.error` (e.g., routes it through a separate
+  flush mechanism, attaches different metadata, or marks it for
+  different sampling).
+- Railway's logsV2 collector pattern-matches stderr output and only
+  forwards lines that look like Node's `console.error` format
+  (which prepends a specific prefix in some configurations).
+- A combination — Next.js writes warn/log to a buffered stream that
+  doesn't flush until process exit, while error writes through to
+  a different stream.
+
+Empirical truth (verified 2026-05-18 against admin deployment
+`a8bf6273` running:
 
 - Next.js 16.2.4
 - Node 24.15.0
@@ -132,35 +173,42 @@ admin deployment `c62112c2` running:
 - standalone build output
 - Railpack-built image
 
-The exact root cause is unclear (could be Next.js standalone's
-stdout buffering, Node 24's stdout-to-pipe handling, Railway's
-log-collector configuration, or some interaction of the three). The
-behavior is consistent and reproducible: switch to stderr and the
-problem disappears.
+The exact root cause is unclear (Next.js standalone behavior, Node
+24 stdio handling, Railway's log-collector configuration, or some
+interaction of the three). The behavior is consistent and
+reproducible: switch to `console.error` and the lines surface.
 
 ## Prevention / How to apply
 
-**Default rule for structured logging in this codebase:** emit via
-`console.warn` (stderr) by default, not `console.log` (stdout). The
-semantic mismatch (log-as-warn) is real but minor; the observability
-gain is load-bearing.
+**Default rule for structured logging in admin's request path:**
+emit via `console.error(JSON.stringify(...))`. Yes, even for events
+that are not semantically errors. The semantic mismatch is the
+price of having ANY observability — `console.log` and `console.warn`
+both silently drop on this stack.
 
 **Specifically affected patterns:**
 
 - `console.log(JSON.stringify({event: ..., ...}))` for structured
-  per-request observability events.
+  per-request observability events — silenced.
+- `console.warn(JSON.stringify({event: ..., ...}))` — also
+  silenced (PR #970 attempted this and verified wrong).
 - Audit logs, operational metrics, structured request tags.
 
 **Patterns that DON'T need this workaround:**
 
-- `console.error(...)` — already stderr, surfaces fine.
-- `console.warn(...)` — already stderr, surfaces fine.
-- Boot-time / module-load `console.log` — stdout, surfaces fine
-  (so the Prisma + Next.js startup logs you see ARE the whole stdout
-  story; they're just from a different phase).
+- Boot-time / module-load `console.log` — surfaces fine (so the
+  Prisma + Next.js startup logs you see ARE the whole stdout story
+  from boot; they're just from a different phase than runtime
+  handlers).
 - `process.stderr.write(...)` — direct stderr, surfaces fine.
+  Skip the console abstraction entirely if you want fully
+  predictable behavior at the cost of losing console formatting.
 - CLI scripts run via `pnpm --filter @forge/admin run-embeds` etc.
-  — these aren't App Router request handlers, so stdout works fine.
+  — these aren't App Router request handlers, so console.log works
+  fine.
+- One-shot operational logs from useworkflow durable jobs — those
+  run in their own process / context, not Next.js App Router
+  runtime, so they're unaffected.
 
 **Verification probe** (run after deploying any new structured-log
 event in admin's request path):
@@ -211,7 +259,10 @@ Known affected (as of 2026-05-18):
 - **The auth surface that exposed this bug:**
   `docs/solutions/architecture-patterns/bearer-as-passport-multi-csv-composition-20260518.md`
 - **PRs:** #968 (introduced `console.log` for `search.request`,
-  exposing the bug); #970 (workaround — `console.log` → `console.warn`).
+  exposing the bug); #970 (FIRST workaround — `console.log` →
+  `console.warn`, **verified wrong** 2026-05-18 against deployment
+  `a8bf6273`); #972 (CORRECT workaround — `console.warn` →
+  `console.error`).
 - **Affected files:**
   - `apps/admin/src/app/api/search/route.ts` (the REST search
     handler — primary instance of the bug)
