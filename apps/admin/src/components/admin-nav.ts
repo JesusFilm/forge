@@ -4,6 +4,7 @@ import {
   Clapperboard,
   Database,
   Image,
+  KeyRound,
   Languages,
   LayoutDashboard,
   Layers3,
@@ -93,6 +94,12 @@ export const adminNavItems: AdminNavItem[] = [
     icon: Shield,
   },
   {
+    id: "partnerKeys",
+    href: "/dashboard/partner-keys",
+    section: "system",
+    icon: KeyRound,
+  },
+  {
     id: "settings",
     href: "/dashboard/settings",
     section: "system",
@@ -109,7 +116,10 @@ export const adminNavSections = Array.from(
 ).map(([label, items]) => ({ label, items }))
 
 export function isNavItemVisible(role: Role, item: AdminNavItem) {
-  if (role !== "ADMIN" && (item.id === "users" || item.id === "settings")) {
+  if (
+    role !== "ADMIN" &&
+    (item.id === "users" || item.id === "settings" || item.id === "partnerKeys")
+  ) {
     return false
   }
 

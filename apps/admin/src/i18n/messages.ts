@@ -109,6 +109,10 @@ export const adminMessages = {
           label: "Users",
           description: "Permissions, invites, and role posture.",
         },
+        partnerKeys: {
+          label: "Partner API keys",
+          description: "Issued partner bearer tokens and revocation status.",
+        },
         settings: {
           label: "Settings",
           description: "Keys, providers, and environment controls.",
@@ -822,6 +826,29 @@ export const adminMessages = {
           },
         ],
       },
+      partnerKeys: {
+        eyebrow: "System / Partner API Keys",
+        title: "Partner API keys",
+        description:
+          "Issued partner bearer tokens, last-used signal, and revocation status.",
+        emptyTitle: "No partner keys issued yet",
+        emptyDescription:
+          "Issue a key via CLI: pnpm --filter @forge/admin partner-keys create --name=[label] --owner-email=[contact]",
+        statusActive: "Active",
+        statusRevoked: "Revoked",
+        unknownUser: "unknown",
+        neverUsed: "never",
+        columns: {
+          keyId: "Key ID",
+          name: "Name",
+          owner: "Owner",
+          status: "Status",
+          lastUsed: "Last used",
+          createdAt: "Created",
+          createdBy: "Created by",
+          revokedBy: "Revoked by",
+        },
+      },
       settings: {
         eyebrow: "System / Settings",
         title: "Settings & API Keys",
@@ -1117,6 +1144,10 @@ export const adminMessages = {
         users: {
           label: "Usuarios",
           description: "Permisos, invitaciones y postura de roles.",
+        },
+        partnerKeys: {
+          label: "Claves API de socios",
+          description: "Tokens portadores emitidos y estado de revocacion.",
         },
         settings: {
           label: "Configuracion",
