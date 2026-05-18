@@ -2253,11 +2253,13 @@ fresh DB-backed key**:
 
 ### Cross-references
 
-- **Primary learning doc (to be written after ship):**
-  `docs/solutions/architecture-patterns/db-backed-partner-key-store-pattern-<date>.md`
-  (capture the composer-ordering decision, hot-path lookup timeout
-  pattern, fire-and-forget `lastUsedAt` discipline, and CLI plaintext-
-  once UX as a future-reference pattern).
+- **Primary learning doc:**
+  `docs/solutions/architecture-patterns/db-backed-vs-env-csv-credential-storage-20260518.md`
+  — the decision matrix for when to use DB-backed credentials vs.
+  env-CSV. Documents the composer-ordering decision, hot-path lookup
+  timeout pattern, fire-and-forget `lastUsedAt` discipline, and CLI
+  plaintext-once UX as a future-reference pattern for any future
+  partner-credential surface.
 - **Companion learnings:**
   - `docs/solutions/architecture-patterns/bearer-as-passport-multi-csv-composition-20260518.md`
     (the OR-composition foundation this extends).
@@ -2268,6 +2270,14 @@ fresh DB-backed key**:
   - `docs/solutions/runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md`
     (why the new `source=` / `keyId=` log fields are appended as
     plain-string key=value pairs, not JSON).
+  - `docs/solutions/database-issues/db-lock-must-be-atomic-update-not-select-for-update.md`
+    (conditional `updateMany` discipline for the soft-revoke race
+    fix — Worked instance 2 is `revokePartnerKey`).
+  - `docs/solutions/security-issues/pre-verification-log-field-namespace-pollution-20260518.md`
+    (`attemptedKeyId=` vs `keyId=` log-field-namespace discipline).
+  - `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`
+    §"Recovery when contracts are structurally broken" — the
+    `import-from-env` deletion case.
 
 ## Common pitfalls (grows with each unit)
 
