@@ -2080,6 +2080,189 @@ prefix to surface keyId per request. Plan inline comment in
 - Sibling pattern (consumer-bearer):
   `docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md`
 
+## Partner API key store
+
+DB-backed external-partner credentials for `/api/search` + `Query.search`.
+Extends Plan 002's bearer-as-passport composer with a fourth branch
+(`PartnerApiKey` table in admin's Postgres) that validates BEFORE the
+env-CSV `search` fallback fires. Internal callers (apps/web,
+workflow-trigger callers, backup-download) stay on their respective env
+CSVs — partner keys are the only credential class with audit, sub-second
+revocation, and per-key metadata requirements.
+
+See:
+
+- Plan: `docs/plans/2026-05-18-001-feat-partner-api-key-store-plan.md`
+- Brainstorm: `docs/brainstorms/2026-05-18-002-partner-api-key-store-requirements.md`
+
+### Design summary
+
+- **Token format `jfp_search_<keyId>_<random>`.** `keyId` is a 12-char
+  operator-visible identifier (URL-safe alphabet excluding `_` and
+  visually-confusable `0/O/I/l/1`). `random` is `base64url(32 bytes)`
+  = 43 chars of entropy. The stored form is `sha256(rawToken)` as
+  64-char hex; comparison via `timingSafeEqual` on decoded buffers.
+- **Composer ordering** in `isAnyKnownBearer` is PARTNER → CONSUMER →
+  WORKFLOW → SEARCH (legacy env CSV). The partner branch runs FIRST so
+  the structured log emits `source=partner keyId=<id>` for seeded rows
+  even while the env-CSV `search` branch is still active during the
+  cutover window.
+- **Per-request log line** extends the working
+  `[search] event=search.request auth=… path=… rl=…` format with
+  `source=<branch>` (every successful match) and `keyId=<id>` (partner
+  matches only). Plain-string per the Railway logsV2 silencing
+  learning — `JSON.stringify` payloads from this surface are silenced.
+- **Outbound timeout.** The Prisma lookup wraps in `Promise.race`
+  against `PARTNER_KEY_LOOKUP_TIMEOUT_MS = 1500`. On timeout, log
+  `event=partner_key.lookup_timeout` and fall through to the env-CSV
+  branches (graceful degradation while dual-accept is live; fail-closed
+  after PR3 retires the CSV).
+- **Fire-and-forget `lastUsedAt`.** Updates are dispatched via `void
+prisma.partnerApiKey.update(...).catch(...)` — never `await`-ed, never
+  allowed to crash the request. Sync throws on the wrapper are caught
+  separately (see `docs/solutions/best-practices/in-memory-slot-reservation-fire-and-forget-20260506.md`).
+- **Soft revocation.** `revoked_at` set, row preserved. Preserves the
+  audit trail (which key was revoked, when, by whom). Hard delete is
+  out of scope in v1.
+- **No in-process cache in v1.** Per the plan: cache adds slot-leak
+  surface and multi-replica revocation skew for ~10ms savings nobody
+  will notice. Each replica makes its own Prisma round-trip; revocation
+  propagates immediately. Revisit if profiling shows the lookup as a
+  hot path.
+
+### Schema (Prisma)
+
+`PartnerApiKey` model (`prisma/schema.prisma`, migration
+`0015_partner_api_keys`):
+
+| Column        | Type                                     | Notes                                        |
+| ------------- | ---------------------------------------- | -------------------------------------------- |
+| `id`          | `String @id @default(cuid())`            |                                              |
+| `keyId`       | `String @unique @map("key_id")`          | 12 chars, operator-visible, surfaced in logs |
+| `keyHash`     | `String @unique @map("key_hash")`        | `sha256(rawToken)`, 64 hex chars             |
+| `name`        | `String`                                 | partner display name                         |
+| `ownerEmail`  | `String @map("owner_email")`             | offboarding contact                          |
+| `note`        | `String?`                                | free-form operator note                      |
+| `lastUsedAt`  | `DateTime? @map("last_used_at") @@index` | fire-and-forget per-auth update              |
+| `revokedAt`   | `DateTime? @map("revoked_at") @@index`   | soft-revoke; `NULL` = active                 |
+| `createdById` | `String? + relation → User (SetNull)`    | who issued                                   |
+| `revokedById` | `String? + relation → User (SetNull)`    | who revoked                                  |
+
+### Code surfaces
+
+- `src/auth/partner-token.ts` — pure helpers (`generatePartnerToken`,
+  `parsePartnerToken`, `hashRawToken`, `timingSafeEqualHex`).
+- `src/services/partner-api-key.service.ts` — `createPartnerKey`,
+  `importPartnerKeyFromPlaintext`, `listPartnerKeys`,
+  `revokePartnerKey`, `rotatePartnerKey`, `verifyPartnerToken`
+  (the hot-path validator with `Promise.race` timeout +
+  fire-and-forget `lastUsedAt` update). Exports `PartnerKeyNotFoundError`
+  - `PartnerKeyAlreadyExistsError`.
+- `src/auth/search-bearer.ts` — exports `BearerCheckResult` +
+  `BearerSource`. `isAnyKnownBearer` is async, returns the enriched
+  result, runs the partner branch FIRST.
+- `src/app/api/search/route.ts` + `src/graphql/queries/hybrid-search.ts`
+  — both await the composer and thread `source` / `keyId` into the
+  per-request log line.
+- `src/scripts/partner-keys.ts` — CLI: `create | list | revoke |
+rotate | import-from-env`.
+- `src/app/dashboard/partner-keys/page.tsx` — read-only dashboard
+  view, ADMIN-only via `requireAdminSession`.
+
+### Operator runbook
+
+#### Issue a key for a new partner (under 5 operator minutes)
+
+```bash
+pnpm --filter @forge/admin partner-keys create \
+  --name="Acme Partner" \
+  --owner-email="ops@acme.example" \
+  --note="Q3 2026 integration" \
+  --operator-email="<your-email>"
+```
+
+The CLI prints structured JSON events on stdout (one per line, including
+`partner-key.created` with `keyId`) and the plaintext token EXACTLY ONCE
+on stderr inside a banner. **Save the token from stderr** — it is not
+retrievable afterward (only the sha256 hash persists). Share the token
+with the partner via Slack DM. First partner request lands in Railway
+logs as `auth=bearer source=partner keyId=<id>`.
+
+#### Revoke a key (under 30 seconds — SC2)
+
+```bash
+pnpm --filter @forge/admin partner-keys revoke <keyId> \
+  --operator-email="<your-email>"
+```
+
+Sets `revoked_at = NOW()`. The next request from that key returns 401
+(or, in dual-accept mode, falls through to the env-CSV branch — until
+PR3 retires it). No admin redeploy required. Idempotent: re-revoking an
+already-revoked key prints the existing row's revoked_at and exits 0.
+
+#### Rotate a key (with grace window)
+
+```bash
+pnpm --filter @forge/admin partner-keys rotate <oldKeyId> \
+  --operator-email="<your-email>"
+```
+
+Issues a new key for the same partner, leaves the OLD key active.
+Operator shares the new token with the partner, partner cuts over,
+then operator runs `partner-keys revoke <oldKeyId>` once
+`/dashboard/partner-keys` shows non-null `lastUsedAt` on the new keyId.
+
+#### List partner keys
+
+```bash
+# Active keys only (default)
+pnpm --filter @forge/admin partner-keys list
+
+# Including revoked rows
+pnpm --filter @forge/admin partner-keys list --include-revoked
+```
+
+Or check `/dashboard/partner-keys` — same data, sortable in a browser,
+includes revoked rows by default for the audit trail.
+
+#### Migrate today's `SEARCH_API_KEYS` entries to DB rows
+
+The Plan 002 `xoSP…` key (currently the lone partner credential in
+`SEARCH_API_KEYS`) migrates via:
+
+```bash
+pnpm --filter @forge/admin partner-keys import-from-env \
+  --name="Plan 002 legacy partner" \
+  --owner-email="<contact>" \
+  --note="Imported from SEARCH_API_KEYS CSV during PR1 cutover" \
+  --operator-email="<your-email>"
+```
+
+Reads `process.env.SEARCH_API_KEYS`, splits on `,`, hashes each entry,
+and creates one `PartnerApiKey` row per non-empty value. Re-running is
+safe (`PartnerKeyAlreadyExistsError` on duplicate hash → counted as
+`skipped`, not failed). After migration, verify the partner now logs as
+`auth=bearer source=partner keyId=<id>` instead of `source=search`,
+THEN drop the env var (PR3).
+
+### Cross-references
+
+- **Primary learning doc (to be written after ship):**
+  `docs/solutions/architecture-patterns/db-backed-partner-key-store-pattern-<date>.md`
+  (capture the composer-ordering decision, hot-path lookup timeout
+  pattern, fire-and-forget `lastUsedAt` discipline, and CLI plaintext-
+  once UX as a future-reference pattern).
+- **Companion learnings:**
+  - `docs/solutions/architecture-patterns/bearer-as-passport-multi-csv-composition-20260518.md`
+    (the OR-composition foundation this extends).
+  - `docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md`
+    (Prisma lookup wrap rationale).
+  - `docs/solutions/best-practices/in-memory-slot-reservation-fire-and-forget-20260506.md`
+    (`lastUsedAt` update wrapper discipline).
+  - `docs/solutions/runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md`
+    (why the new `source=` / `keyId=` log fields are appended as
+    plain-string key=value pairs, not JSON).
+
 ## Common pitfalls (grows with each unit)
 
 - **`apps/admin/railway.toml` is dead config — Railway only auto-discovers `railway.toml` at the repo root**, not in per-service subdirectories. Editing it does NOT change deploy behavior. The Railway dashboard is authoritative until "Config-as-code Path" is wired up. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.
