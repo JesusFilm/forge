@@ -114,7 +114,18 @@ export async function GET(request: Request): Promise<Response> {
     : authHeader != null
       ? "invalid_bearer"
       : "anonymous"
-  console.log(
+  // Emit via console.warn (stderr) rather than console.log (stdout)
+  // because Railway's logsV2 reliably captures stderr from Next.js
+  // App Router runtime requests but silences info-level stdout
+  // output on this Next.js 16 + Node 24 + standalone configuration
+  // (verified 2026-05-18: deployment c62112c2 shows console.error
+  // lines from this same file in Railway logs but no console.log
+  // lines for served requests). The structured payload is unchanged.
+  // Operators rely on grepping `auth=anonymous` / `auth=invalid_bearer`
+  // before the Phase 4 SEARCH_AUTH_REQUIRED flip — that observability
+  // is the whole point of Phase 1, and it only works if the log
+  // lines actually surface.
+  console.warn(
     JSON.stringify({
       event: "search.request",
       auth: authTag,
