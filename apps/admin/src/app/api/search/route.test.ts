@@ -289,19 +289,22 @@ describe("GET /api/search", () => {
       logSpy.mockRestore()
     })
 
-    function parseSearchLogLines(): Array<Record<string, unknown>> {
+    // Parses the `[search] event=search.request key=value key=value`
+    // log format. See route.ts for why we use key=value strings rather
+    // than JSON.stringify (Railway logsV2 silences JSON-shaped log
+    // lines on this stack).
+    function parseSearchLogLines(): Array<Record<string, string>> {
       return logSpy.mock.calls
         .map((args) => args[0])
         .filter((arg): arg is string => typeof arg === "string")
+        .filter((line) => line.includes("event=search.request"))
         .map((line) => {
-          try {
-            return JSON.parse(line) as Record<string, unknown>
-          } catch {
-            return null
+          const obj: Record<string, string> = { event: "search.request" }
+          for (const match of line.matchAll(/(\w+)=(\S+)/g)) {
+            obj[match[1]] = match[2]
           }
+          return obj
         })
-        .filter((parsed): parsed is Record<string, unknown> => parsed !== null)
-        .filter((parsed) => parsed.event === "search.request")
     }
 
     describe("dual-accept mode (SEARCH_AUTH_REQUIRED=false)", () => {

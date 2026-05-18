@@ -114,33 +114,20 @@ export async function GET(request: Request): Promise<Response> {
     : authHeader != null
       ? "invalid_bearer"
       : "anonymous"
-  // Emit via console.error so the structured payload reaches Railway
-  // logsV2. Empirically, on the current Next.js 16 + Node 24 +
-  // standalone stack, ONLY console.error surfaces from runtime route
-  // handlers — console.log AND console.warn from inside handlers
-  // serving HTTP traffic are both silenced, even though boot-time
-  // console.log surfaces and console.error from the same files
-  // surfaces. PR #970's earlier console.log → console.warn attempt
-  // did not solve this; verified 2026-05-18 against deployment
-  // a8bf6273 (commit 69126099f0): zero search.request lines
-  // appeared even with console.warn. PR #972 switches to
-  // console.error as the empirically-working channel.
-  //
-  // Semantic mismatch: search.request is NOT an error. It's a
-  // per-request operational event the operator greps before the
-  // Phase 4 SEARCH_AUTH_REQUIRED flip. Tagging it as `error`
-  // severity in Railway is operationally incorrect but is the only
-  // channel that reaches the dashboard at all. A structured-logger
-  // migration (Pino → always stderr with severity inside the
-  // payload) is the proper long-term fix; until then this is the
-  // pragmatic floor.
+  // Emit in the `[search] event=... key=value` key=value string
+  // format used by the existing working logs in this surface (e.g.,
+  // `event=query_embedding_failure` in hybrid-search.service.ts).
+  // Empirically, on the current Next.js 16 + Node 24 + Railway
+  // logsV2 + standalone stack, JSON-stringified payloads
+  // (`console.error(JSON.stringify({...}))`) are silenced — verified
+  // wrong by PR #970 (console.warn-JSON) and PR #972
+  // (console.error-JSON). Only `[label] event=name key=value` string
+  // lines surface in Railway's deploymentLogs query. PR #973 corrects
+  // to the working format. Operators grep for `event=search.request`
+  // and parse key=value pairs the same way they do for the
+  // embedding-failure event today.
   console.error(
-    JSON.stringify({
-      event: "search.request",
-      auth: authTag,
-      path: "rest",
-      rl: limit.source,
-    }),
+    `[search] event=search.request auth=${authTag} path=rest rl=${limit.source}`,
   )
   if (!authValid && env.SEARCH_AUTH_REQUIRED === "true") {
     // authTag here is "invalid_bearer" or "anonymous" (the `bearer`

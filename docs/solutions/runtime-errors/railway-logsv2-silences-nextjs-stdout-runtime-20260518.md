@@ -1,5 +1,5 @@
 ---
-title: Railway logsV2 silences console.log AND console.warn from Next.js App Router runtime route handlers — only console.error surfaces
+title: Railway logsV2 silences JSON-stringified payloads from Next.js App Router runtime route handlers — use `[label] event=name key=value` string format
 date: 2026-05-18
 last_updated: 2026-05-18
 problem_type: runtime_error
@@ -15,8 +15,8 @@ tags:
   - app-router
   - logging
   - observability
-  - stdout
-  - stderr
+  - format
+  - structured-logs
   - node-24
   - admin
 related:
@@ -24,191 +24,182 @@ related:
   - docs/solutions/best-practices/waf-passthrough-verification-via-prior-art-20260518.md
 ---
 
-# Railway logsV2 silences console.log AND console.warn from Next.js App Router runtime route handlers — only console.error surfaces
+# Railway logsV2 silences JSON-stringified payloads from Next.js App Router runtime route handlers
 
 ## Problem
 
-`console.log(JSON.stringify({ event: "...", ... }))` **AND**
-`console.warn(JSON.stringify({ ... }))` calls from inside Next.js App
-Router route handlers (both REST routes under
-`src/app/api/*/route.ts` and GraphQL resolvers under
-`src/graphql/queries/*.ts`) do NOT surface in Railway's
-`deploymentLogs` GraphQL query when invoked during runtime request
-serving, even though:
+`console.log(JSON.stringify({ event: "...", ... }))`,
+`console.warn(JSON.stringify({...}))`, **AND**
+`console.error(JSON.stringify({...}))` calls from inside Next.js App
+Router route handlers (REST routes under `src/app/api/*/route.ts`
+and GraphQL resolvers under `src/graphql/queries/*.ts`) do NOT
+surface in Railway's `deploymentLogs` GraphQL query when invoked
+during runtime request serving.
 
-- `console.error(...)` from the same files DOES surface.
-- `console.log(...)` from module-load / boot phase (Prisma migration
-  output, "Next.js Ready" line) DOES surface.
+The same files' `console.error("[search] event=... key=value")`
+string-format lines (e.g., `[search] event=query_embedding_failure
+error_class=... message=...`) DO surface reliably.
 
-**Initial hypothesis (wrong):** "stdout silenced, stderr surfaces" —
-suggested switching `console.log` → `console.warn` would fix it.
-**Verified empirically wrong 2026-05-18** against admin deployment
-`a8bf6273` on commit `69126099f0` (PR #970 + #971 merged): zero
-`search.request` lines appeared even after the switch to
-`console.warn`. PR #972 corrects this — only `console.error`
-surfaces in practice.
-
-The result: structured-log observability for per-request events
-must use `console.error` on this stack, even when the events are
-not semantically errors. The semantic mismatch (log-as-error) is
-operationally unavoidable until a structured-logger migration lands.
+**Conclusion:** the silencing isn't about console.log vs warn vs
+error, and it isn't about stdout vs stderr. It's about **payload
+format** — Railway logsV2 collector (or some interceptor in the
+stack) drops or routes JSON-shaped lines starting with `{` somewhere
+the standard `deploymentLogs` query doesn't show.
 
 ## Symptoms
 
-- Operator greps Railway logs for an event-marker string (e.g.,
-  `event=search.request`) and finds zero matches.
-- The same code emits the log correctly in `vitest` test runs (where
-  the spy captures `console.log`).
-- Other log lines from the same file/process — `console.error`,
-  boot-time `console.log` — surface correctly.
+- Operator greps Railway logs for `event=search.request` and finds
+  zero matches.
+- The same code emits the log correctly in `vitest` test runs.
+- `[search] Search failed: <error>` and `[search]
+event=query_embedding_failure ...` (existing console.error string
+  lines from the same file) DO surface.
 - Railway's `httpLogs` confirms the request reached the origin (HTTP
-  200 returned), so the silence isn't because the code didn't
+  200 returned), so the silencing isn't because the code didn't
   execute.
-- Severity breakdown via `deploymentLogs(...) { severity }` shows
-  `info` logs ARE flowing (boot phase) but the count is suspiciously
-  low for a serving production app — only ~20 info-level lines over
-  a multi-minute window where dozens of requests were served.
 
-## What didn't work
+## What didn't work — the path to the corrected diagnosis
 
-- **Adjusting the `deploymentLogs` query filter / limit.** Pulling
-  500-line windows confirmed no `console.log` lines appeared at all
-  for runtime requests. Wasn't a filtering issue.
-- **Trying `httpLogs` instead.** Showed request arrival timestamps
-  but no payload content. And appeared to filter GETs differently
-  from POSTs (GraphQL POST surfaced; REST GET did not).
-- **Verifying the deployed commit hash.** Confirmed via Railway's
-  `deployment.meta.commitHash` that the deployed code DID contain
-  the `console.log` line. Wasn't a stale deployment.
-- **Checking severity classification.** Boot `console.log` → info,
-  `console.error` → error. The deployed-runtime info-severity lines
-  simply weren't appearing — not misclassified, missing entirely.
-- **Polling logs for several minutes after each probe.** Wasn't a
-  buffering delay. The lines never arrived.
+The diagnostic journey through three PRs:
+
+| PR   | Attempted fix                                                                                 | Hypothesis                                                       | Result                                                                                                                                                                                                                                                                |
+| ---- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #968 | Initial: `console.log(JSON.stringify({event: "search.request", ...}))`                        | (no hypothesis — first version)                                  | **Silenced.** No `search.request` lines in Railway logs.                                                                                                                                                                                                              |
+| #970 | Switch to `console.warn(JSON.stringify(...))`                                                 | "stdout silenced, stderr surfaces"                               | **Still silenced.** Verified 2026-05-18 against deployment `a8bf6273` (commit `69126099f0`). Zero `search.request` lines.                                                                                                                                             |
+| #972 | Switch to `console.error(JSON.stringify(...))`                                                | "only console.error surfaces from runtime handlers"              | **Still silenced.** Verified 2026-05-18 against deployment `a5b3bf14` (commit `7bb36221ed`). Zero `search.request` lines, but the `[search] event=query_embedding_failure` lines from the SAME file's hybrid-search.service.ts surfaced fine (3 of 3, one per probe). |
+| #973 | Switch to `console.error(`[search] event=search.request auth=${tag} path=rest rl=${source}`)` | "the silencing is about JSON-payload format, not console method" | TBD. The format matches the proven-working `event=query_embedding_failure` log.                                                                                                                                                                                       |
+
+The key empirical insight that arrived at #973's hypothesis: in the
+same file (`apps/admin/src/services/hybrid-search.service.ts`), the
+existing `console.error("[search] event=query_embedding_failure ...")`
+log surfaces in Railway logs for every probe — but `console.error(JSON.stringify({event: "search.request", ...}))` from the route handler
+right next to it does NOT surface. Both use console.error. Both run
+in the same request-handler context. The only difference is the
+payload format: plain-string vs JSON-stringified object.
 
 ## Solution
 
-**Emit structured logs via `console.error` on this stack.**
-`console.warn` is also silenced; `console.error` is the only channel
-that surfaces from runtime route handlers in Railway's logs.
+**Use the `[label] event=name key=value key=value` plain-string
+format** for structured per-request logs, matching the convention
+used by the existing working logs in admin (`event=search_unknown_mode`,
+`event=query_embedding_failure`, etc.).
 
 ```ts
-// Silently dropped:
-console.log(JSON.stringify({ event: "search.request", ... }))
+// Before — silenced (verified across console.log/warn/error variants):
+console.error(
+  JSON.stringify({
+    event: "search.request",
+    auth: authTag,
+    path: "rest",
+    rl: limit.source,
+  }),
+)
 
-// Also silently dropped (PR #970 — verified wrong 2026-05-18):
-console.warn(JSON.stringify({ event: "search.request", ... }))
-
-// Surfaces reliably (PR #972 — the working channel):
-console.error(JSON.stringify({ event: "search.request", ... }))
+// After — surfaces reliably (matches the convention of
+// `event=query_embedding_failure` in the same surface):
+console.error(
+  `[search] event=search.request auth=${authTag} path=rest rl=${limit.source}`,
+)
 ```
 
-The structured-JSON payload is byte-identical across all three.
-Only the console method changes.
+The structured-data semantics are preserved: operators grep for
+`event=search.request` and parse `key=value` pairs the same way
+they do for `event=query_embedding_failure` today. There's a small
+ergonomic regression vs JSON (no automatic escaping of values that
+contain spaces or `=`), but the values we emit are all
+short, controlled tokens (`bearer | invalid_bearer | anonymous`,
+`rest | graphql`, `redis | local`) — no risk of parse ambiguity.
 
-**Semantic mismatch is real but unavoidable.** `search.request` is
-a per-request operational event, not an error. Tagging it as
-`error` severity in Railway's dashboard misrepresents its
-operational meaning. Operators who filter logs by severity will
-see search.request events alongside genuine errors. The right
-long-term fix is a structured logger (Pino + Next.js
-instrumentation hook) that writes to stderr regardless of semantic
-severity, with the actual severity encoded in the JSON payload.
-Until that lands, `console.error` is the pragmatic floor.
-
-**Update tests to spy on `console.error` instead of `console.log`/`console.warn`:**
+**Test parser shape:**
 
 ```ts
-beforeEach(() => {
-  logSpy = vi.spyOn(console, "error").mockImplementation(() => {})
-})
+function parseSearchLogLines(): Array<Record<string, string>> {
+  return logSpy.mock.calls
+    .map((args) => args[0])
+    .filter((arg): arg is string => typeof arg === "string")
+    .filter((line) => line.includes("event=search.request"))
+    .map((line) => {
+      const obj: Record<string, string> = { event: "search.request" }
+      for (const match of line.matchAll(/(\w+)=(\S+)/g)) {
+        obj[match[1]] = match[2]
+      }
+      return obj
+    })
+}
 ```
 
-Note: the spy will also capture genuine error logs from the same
-file (e.g., `[search] Search failed: ...` in the catch branch).
-Filter the captured log lines by event name when asserting:
+## Why this works (probable cause)
 
-```ts
-const searchRequestLines = logSpy.mock.calls
-  .map((args) => String(args[0] ?? ""))
-  .filter((line) => {
-    try {
-      const parsed = JSON.parse(line)
-      return parsed.event === "search.request"
-    } catch {
-      return false
-    }
-  })
-```
+The silencing of JSON-shaped output is consistent with a log
+collector that either:
 
-## Why this works
+1. **Pattern-matches log lines against a Node `error()` format
+   regex** (e.g., expects `[label] message format`) and drops
+   anything that doesn't match. Plausible for older log-collection
+   tooling that didn't anticipate JSON-structured emission.
+2. **Routes leading-`{` lines to a separate "structured payload"
+   channel** that isn't exposed by the `deploymentLogs` query —
+   maybe surfaced in a different Railway dashboard view, or treated
+   as metadata attached to a different log line.
+3. **Has anti-spam filtering on identically-shaped JSON output**
+   that drops lines matching a hot-path emission pattern.
 
-Railway's logsV2 pipeline captures `console.error` output from
-runtime route handlers but NOT `console.log` or `console.warn`. In
-Node's standard library, all three of `console.log`, `console.warn`,
-and `console.error` eventually call `process.stdout.write` /
-`process.stderr.write` — so naïvely they should be functionally
-identical at the streams layer. Yet experimentally, only
-`console.error` surfaces on this stack. The most plausible
-explanations (untested):
+The exact mechanism remains unconfirmed without Railway's collector
+source code. The behavioral test is reliable: lines matching
+`[label] event=name key=value` surface; lines starting with `{`
+don't.
 
-- Next.js 16 standalone installs a `console` interceptor that
-  special-cases `console.error` (e.g., routes it through a separate
-  flush mechanism, attaches different metadata, or marks it for
-  different sampling).
-- Railway's logsV2 collector pattern-matches stderr output and only
-  forwards lines that look like Node's `console.error` format
-  (which prepends a specific prefix in some configurations).
-- A combination — Next.js writes warn/log to a buffered stream that
-  doesn't flush until process exit, while error writes through to
-  a different stream.
-
-Empirical truth (verified 2026-05-18 against admin deployment
-`a8bf6273` running:
+Verified 2026-05-18 against admin deployment `a5b3bf14` running:
 
 - Next.js 16.2.4
 - Node 24.15.0
 - Railway runtime V2
-- `logsV2: true` (per `deployment.meta.logsV2`)
+- `logsV2: true`
 - standalone build output
 - Railpack-built image
-
-The exact root cause is unclear (Next.js standalone behavior, Node
-24 stdio handling, Railway's log-collector configuration, or some
-interaction of the three). The behavior is consistent and
-reproducible: switch to `console.error` and the lines surface.
 
 ## Prevention / How to apply
 
 **Default rule for structured logging in admin's request path:**
-emit via `console.error(JSON.stringify(...))`. Yes, even for events
-that are not semantically errors. The semantic mismatch is the
-price of having ANY observability — `console.log` and `console.warn`
-both silently drop on this stack.
+emit in the `[label] event=name key=value` plain-string format, NOT
+`JSON.stringify`.
+
+```ts
+// ✅ DO:
+console.error(`[search] event=search.request auth=${authTag} path=rest`)
+console.error(`[publish] event=experience_published id=${id} locale=${locale}`)
+console.error(`[webhook] event=revalidate.skipped reason=${reason}`)
+
+// ❌ DON'T:
+console.error(JSON.stringify({ event: "...", ... }))
+console.warn(JSON.stringify({ event: "...", ... }))
+console.log(JSON.stringify({ event: "...", ... }))
+```
+
+The semantic-mismatch concern (logging operational events at `error`
+severity) is unavoidable on this stack. A structured-logger
+migration (Pino with a custom serializer that produces
+collector-friendly output) is the proper long-term fix; until then,
+the plain-string format with `event=` discriminators is the
+pragmatic floor.
 
 **Specifically affected patterns:**
 
-- `console.log(JSON.stringify({event: ..., ...}))` for structured
-  per-request observability events — silenced.
-- `console.warn(JSON.stringify({event: ..., ...}))` — also
-  silenced (PR #970 attempted this and verified wrong).
-- Audit logs, operational metrics, structured request tags.
+- `console.{log,warn,error}(JSON.stringify({event: ..., ...}))` —
+  silenced.
+- Any per-request observability emitted as a JSON-shaped payload.
 
 **Patterns that DON'T need this workaround:**
 
-- Boot-time / module-load `console.log` — surfaces fine (so the
-  Prisma + Next.js startup logs you see ARE the whole stdout story
-  from boot; they're just from a different phase than runtime
-  handlers).
-- `process.stderr.write(...)` — direct stderr, surfaces fine.
-  Skip the console abstraction entirely if you want fully
-  predictable behavior at the cost of losing console formatting.
+- `console.error("[label] event=... key=value ...")` plain-string —
+  surfaces fine.
+- Boot-time / module-load `console.log` (Prisma migrations,
+  Next.js Ready, etc.) — surfaces fine (different lifecycle phase).
+- `process.stderr.write("...")` — direct stderr, untested but
+  expected to work for plain-string output.
 - CLI scripts run via `pnpm --filter @forge/admin run-embeds` etc.
-  — these aren't App Router request handlers, so console.log works
-  fine.
-- One-shot operational logs from useworkflow durable jobs — those
-  run in their own process / context, not Next.js App Router
-  runtime, so they're unaffected.
+  — these aren't App Router request handlers; stdout works.
+- One-shot operational logs from useworkflow durable jobs.
 
 **Verification probe** (run after deploying any new structured-log
 event in admin's request path):
@@ -218,36 +209,34 @@ event in admin's request path):
 curl -H "Authorization: Bearer fake-not-real" \
   "https://admin.jesusfilm.org/api/search?q=test&locale=en"
 
-# Then check Railway logs for the structured event:
-# Should see the JSON line within 1-2 minutes.
-# If empty: the log emission is in a code path Railway is silencing.
+# Then grep Railway logs for the structured event:
+# Should see the [label] event=name key=value line within 1-2 minutes.
+# If empty: the log payload is JSON-shaped and silenced.
 ```
 
 **Existing call sites in admin that may need migration:**
 
-Grep for `console\.log(JSON\.stringify` under `apps/admin/src/`:
+Grep for `console\.{log,warn,error}(JSON\.stringify` under
+`apps/admin/src/`:
 
 ```bash
-grep -rn "console\.log(JSON\.stringify" apps/admin/src --include="*.ts"
+grep -rn "console\.\(log\|warn\|error\)(JSON\.stringify" apps/admin/src --include="*.ts"
 ```
 
-Known affected (as of 2026-05-18):
+Known affected (as of 2026-05-18, post-PR #973):
 
 - `apps/admin/src/services/revalidate-webhook.ts:126-128` — ISR
-  revalidation webhook emit log. Same pattern, same silencing risk.
-  Not yet migrated (fires only on Experience publish, low volume,
-  hasn't been operator-noticed yet).
+  revalidation webhook emit log. Still uses `console.log(JSON.stringify(...))`.
+  Fires only on Experience publish, low volume, hasn't been
+  operator-noticed yet. Migrate when next touched.
 
 **Longer-term fix to consider** (not yet attempted):
 
-- Introduce a structured logger (Pino, Winston) that always writes
-  to stderr, with severity metadata in the JSON payload. The
-  semantic-mismatch concern disappears because the wire-severity
-  is whatever Railway's logsV2 captures, while the in-payload
-  `level` field encodes the actual semantic intent.
-- Configure Next.js to force-flush stdout per request. Unclear
-  whether this is exposed as a configuration option; would need
-  investigation.
+- Introduce Pino (or a thin custom logger) that emits in the
+  `[label] event=name key=value` convention from a single helper,
+  with severity encoded in the payload (`level=info` etc.). The
+  semantic-mismatch concern disappears because the wire-channel
+  (error) is independent of the operational severity.
 
 ## Cross-references
 
@@ -258,22 +247,32 @@ Known affected (as of 2026-05-18):
   prior-art reasoning.
 - **The auth surface that exposed this bug:**
   `docs/solutions/architecture-patterns/bearer-as-passport-multi-csv-composition-20260518.md`
-- **PRs:** #968 (introduced `console.log` for `search.request`,
-  exposing the bug); #970 (FIRST workaround — `console.log` →
-  `console.warn`, **verified wrong** 2026-05-18 against deployment
-  `a8bf6273`); #972 (CORRECT workaround — `console.warn` →
-  `console.error`).
+- **PRs:**
+  - #968 — introduced `console.log(JSON.stringify(...))` for
+    `search.request`, exposing the silencing.
+  - #970 — first workaround attempt: `console.log` → `console.warn`.
+    **Verified wrong** 2026-05-18 against deployment `a8bf6273` /
+    commit `69126099f0`. Hypothesis "stdout silenced, stderr
+    surfaces" was incomplete.
+  - #972 — second workaround attempt: `console.warn` →
+    `console.error`. **Verified wrong** 2026-05-18 against
+    deployment `a5b3bf14` / commit `7bb36221ed`. Hypothesis "only
+    console.error surfaces from runtime handlers" was wrong — JSON
+    payload was the actual blocker, not the console method.
+  - #973 — third (and correct) workaround:
+    `console.error(JSON.stringify(...))` →
+    `console.error(`[search] event=... key=value`)`. Format matches
+    the proven-working `event=query_embedding_failure` log in the
+    same surface.
 - **Affected files:**
-  - `apps/admin/src/app/api/search/route.ts` (the REST search
-    handler — primary instance of the bug)
-  - `apps/admin/src/graphql/queries/hybrid-search.ts` (the GraphQL
-    twin — same bug, same fix)
-  - `apps/admin/src/services/revalidate-webhook.ts` (likely also
-    affected but not yet migrated)
+  - `apps/admin/src/app/api/search/route.ts` (REST search handler)
+  - `apps/admin/src/graphql/queries/hybrid-search.ts` (GraphQL twin)
+  - `apps/admin/src/services/revalidate-webhook.ts` (also affected,
+    not yet migrated)
 - **Empirical evidence:**
-  - Admin deployment `c62112c2` on commit `a88d269c` (Plan 002
-    Phase 1 merge).
-  - Verified 2026-05-18: structured `search.request` events from
-    runtime request handlers absent from `deploymentLogs(...)` for
-    a 5-probe burst window; same file's `console.error` lines from
-    the same probe burst surfaced normally.
+  - Admin deployment `a5b3bf14` on commit `7bb36221ed`
+    (post-#972 merge). Probe results 2026-05-18 03:39:52 UTC: 3 of
+    3 `event=query_embedding_failure` lines from the same file
+    surfaced; 0 of 3 `event=search.request` JSON-stringified lines
+    surfaced. Same call site, same `console.error`, same request
+    context — only the payload format differed.
