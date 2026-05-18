@@ -153,7 +153,11 @@ builder.queryFields((t) => ({
         : authHeader != null
           ? "invalid_bearer"
           : "anonymous"
-      console.log(
+      // See route.ts for the rationale — Railway's logsV2 silences
+      // info-level stdout from Next.js App Router runtime requests on
+      // the current Next.js 16 + Node 24 + standalone stack. Using
+      // console.warn (stderr) keeps the observability signal alive.
+      console.warn(
         JSON.stringify({
           event: "search.request",
           auth: authTag,
