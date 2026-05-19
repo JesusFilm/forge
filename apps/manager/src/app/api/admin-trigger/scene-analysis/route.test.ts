@@ -114,6 +114,53 @@ describe("POST /api/admin-trigger/scene-analysis", () => {
       muxAssetId: "mux-A",
       subtitleUrl: "https://stream.mux.com/A.vtt",
       videoLabel: "shortFilm",
+      languageCode: "en",
+    })
+  })
+
+  it("dispatches scene-analysis without subtitleUrl so the pipeline can fall back to Mux subtitles", async () => {
+    adminLookupMock.mockResolvedValueOnce({
+      ok: true,
+      data: new Map([
+        [
+          "core-A",
+          {
+            id: "v-A",
+            coreId: "core-A",
+            label: "shortFilm",
+            primaryLanguageBcp47: "en",
+            muxAssetId: "mux-A",
+            subtitleUrl: null,
+          },
+        ],
+      ]),
+    })
+
+    const req = new Request(
+      "http://example.test/api/admin-trigger/scene-analysis",
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${BEARER}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          items: [{ assetId: 42, coreId: "core-A" }],
+        }),
+      },
+    )
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(runSceneAnalysisPipelineMock).toHaveBeenCalledWith({
+      videoId: 42,
+      assetId: "42",
+      muxAssetId: "mux-A",
+      subtitleUrl: "",
+      videoLabel: "shortFilm",
+      languageCode: "en",
     })
   })
 

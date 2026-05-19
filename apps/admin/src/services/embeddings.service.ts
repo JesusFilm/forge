@@ -73,6 +73,7 @@ export class EmbeddingsBatchError extends Error {
       | "dimension_mismatch",
     message: string,
     readonly cause?: unknown,
+    readonly status?: number,
   ) {
     super(message)
     this.name = "EmbeddingsBatchError"
@@ -247,7 +248,11 @@ export async function generateExperienceEmbeddings(
         error,
       )
     }
-    throw error
+    throw new EmbeddingsBatchError(
+      "request_failed",
+      "Embedding request failed before response",
+      error,
+    )
   } finally {
     clearTimeout(timeoutHandle)
   }
@@ -256,6 +261,8 @@ export async function generateExperienceEmbeddings(
     throw new EmbeddingsBatchError(
       "request_failed",
       `Embedding request failed with status ${response.status}`,
+      undefined,
+      response.status,
     )
   }
 

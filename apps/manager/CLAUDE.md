@@ -167,12 +167,12 @@ for the deviation rationale.
 
 **Per-item outcome:** discriminated by `status`:
 
-| status              | Meaning                                                                                                                                 |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `started`           | New `managerJobId` minted; pipeline dispatched in background via `after()`                                                              |
-| `already_in_flight` | Existing `managerJobId` returned (in-flight slot held by a recent call)                                                                 |
-| `not_found`         | No admin video for the supplied `coreId`                                                                                                |
-| `validation_failed` | admin video found but missing required dispatch fields — `message` names the specific gap(s): primary language / mux variant / subtitle |
+| status              | Meaning                                                                                                                                                                                                                      |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `started`           | New `managerJobId` minted; pipeline dispatched in background via `after()`                                                                                                                                                   |
+| `already_in_flight` | Existing `managerJobId` returned (in-flight slot held by a recent call)                                                                                                                                                      |
+| `not_found`         | No admin video for the supplied `coreId`                                                                                                                                                                                     |
+| `validation_failed` | admin video found but missing required dispatch fields — `message` names the specific gap(s): primary language / mux variant. Subtitle URL is used when present; otherwise manager can fall back to Mux-generated subtitles. |
 
 **Non-2xx envelope (feat-125):** when admin's `videosByCoreIds`
 lookup fails, the route surfaces a typed body instead of a bare

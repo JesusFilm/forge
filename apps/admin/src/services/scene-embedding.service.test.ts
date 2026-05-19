@@ -35,7 +35,7 @@ vi.mock("@/services/embeddings.service", async (importOriginal) => {
   }
 })
 
-const { generateExperienceEmbeddings } =
+const { EmbeddingsBatchError, generateExperienceEmbeddings } =
   await import("@/services/embeddings.service")
 const { indexEditionScenes } = await import("./scene-embedding.service")
 
@@ -238,6 +238,7 @@ describe("indexEditionScenes", () => {
         },
       }),
     ).rejects.toMatchObject({ code: "duplicate_scene_index" })
+    expect(generateExperienceEmbeddings).not.toHaveBeenCalled()
   })
 
   it("throws empty_description when a scene has no text", async () => {
@@ -254,6 +255,7 @@ describe("indexEditionScenes", () => {
         },
       }),
     ).rejects.toMatchObject({ code: "empty_description" })
+    expect(generateExperienceEmbeddings).not.toHaveBeenCalled()
   })
 
   it("issues exactly ONE batched provider call per target with scene descriptions in order", async () => {
@@ -567,6 +569,100 @@ describe("indexEditionScenes", () => {
     expect(queryRaw).not.toHaveBeenCalled()
   })
 
+  it("retries transient batched-provider failures before opening a DB transaction", async () => {
+    const transient = new EmbeddingsBatchError(
+      "request_failed",
+      "Embedding request failed with status 503",
+      undefined,
+      503,
+    )
+    vi.mocked(generateExperienceEmbeddings)
+      .mockRejectedValueOnce(transient)
+      .mockResolvedValueOnce({
+        model: "openai/text-embedding-3-small",
+        dimensions: 1536,
+        embeddings: ARTIFACT.scenes.map(() =>
+          Array.from({ length: 1536 }, () => 0.5),
+        ),
+      })
+
+    const { prisma, executeRaw } = buildStubPrisma({
+      executeRawAffected: [2, 2],
+    })
+    const result = await indexEditionScenes(prisma, {
+      editionId: "edition-1",
+      videoId: "video-1",
+      coreId: "core-1",
+      locale: "en",
+      user: SYSTEM,
+      loadedArtifact: ARTIFACT,
+    })
+
+    expect(result.embeddingsWritten).toBe(2)
+    expect(generateExperienceEmbeddings).toHaveBeenCalledTimes(2)
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+    expect(executeRaw).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not retry non-transient provider request failures", async () => {
+    vi.mocked(generateExperienceEmbeddings).mockRejectedValueOnce(
+      new EmbeddingsBatchError(
+        "request_failed",
+        "Embedding request failed with status 401",
+        undefined,
+        401,
+      ),
+    )
+
+    const { prisma, executeRaw, queryRaw } = buildStubPrisma()
+    await expect(
+      indexEditionScenes(prisma, {
+        editionId: "edition-1",
+        videoId: "video-1",
+        coreId: "core-1",
+        locale: "en",
+        user: SYSTEM,
+        loadedArtifact: ARTIFACT,
+      }),
+    ).rejects.toMatchObject({
+      name: "EmbeddingsBatchError",
+      code: "request_failed",
+      status: 401,
+    })
+
+    expect(generateExperienceEmbeddings).toHaveBeenCalledTimes(1)
+    expect(executeRaw).not.toHaveBeenCalled()
+    expect(queryRaw).not.toHaveBeenCalled()
+  })
+
+  it("does not retry non-retryable embedding dimension mismatches", async () => {
+    vi.mocked(generateExperienceEmbeddings).mockRejectedValueOnce(
+      new EmbeddingsBatchError(
+        "dimension_mismatch",
+        "Embedding 0 returned 3 dimensions; expected 1536",
+      ),
+    )
+
+    const { prisma, executeRaw, queryRaw } = buildStubPrisma()
+    await expect(
+      indexEditionScenes(prisma, {
+        editionId: "edition-1",
+        videoId: "video-1",
+        coreId: "core-1",
+        locale: "en",
+        user: SYSTEM,
+        loadedArtifact: ARTIFACT,
+      }),
+    ).rejects.toMatchObject({
+      name: "EmbeddingsBatchError",
+      code: "dimension_mismatch",
+    })
+
+    expect(generateExperienceEmbeddings).toHaveBeenCalledTimes(1)
+    expect(executeRaw).not.toHaveBeenCalled()
+    expect(queryRaw).not.toHaveBeenCalled()
+  })
+
   it("mixed insert + update fixture — half new scenes (no pre-existing), half pre-existing rows recovered via follow-up SELECT", async () => {
     // Mixed fixture: parent INSERT runs with ON CONFLICT DO NOTHING.
     // The follow-up SELECT must surface ids for BOTH the freshly-
@@ -743,6 +839,81 @@ describe("indexEditionScenes", () => {
     expect(txMock).toHaveBeenCalledTimes(1)
     const [, opts] = txMock.mock.calls[0]!
     expect(opts).toMatchObject({ timeout: 30_000 })
+  })
+
+  it("retries retryable Prisma transaction failures and eventually succeeds", async () => {
+    class FakePrismaError extends Error {
+      readonly code = "P2028"
+      constructor(message: string) {
+        super(message)
+        this.name = "PrismaClientKnownRequestError"
+      }
+    }
+
+    const { prisma, tx, videoSceneLocaleDeleteMany, executeRaw, queryRaw } =
+      buildStubPrisma({
+        executeRawAffected: [2, 2, 2, 2],
+      })
+    ;(
+      prisma.$transaction as unknown as ReturnType<typeof vi.fn>
+    ).mockImplementationOnce(
+      async (fn: (tx: StubPrismaTx) => Promise<void>) => {
+        await fn(tx)
+        throw new FakePrismaError("Transaction already closed")
+      },
+    )
+
+    const result = await indexEditionScenes(prisma, {
+      editionId: "edition-1",
+      videoId: "video-1",
+      coreId: "core-1",
+      locale: "en",
+      user: SYSTEM,
+      loadedArtifact: ARTIFACT,
+    })
+
+    expect(result.embeddingsWritten).toBe(2)
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2)
+    expect(videoSceneLocaleDeleteMany).toHaveBeenCalledTimes(2)
+    expect(executeRaw).toHaveBeenCalledTimes(4)
+    expect(queryRaw).toHaveBeenCalledTimes(2)
+  })
+
+  it("retries P1017 transaction failures but preserves sanitized storage_failed after retries exhaust", async () => {
+    class FakePrismaError extends Error {
+      readonly code = "P1017"
+      constructor(message: string) {
+        super(message)
+        this.name = "PrismaClientKnownRequestError"
+      }
+    }
+
+    const { prisma } = buildStubPrisma()
+    ;(
+      prisma.$transaction as unknown as ReturnType<typeof vi.fn>
+    ).mockRejectedValue(new FakePrismaError("Server has closed the connection"))
+
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    try {
+      const thrown = await indexEditionScenes(prisma, {
+        editionId: "edition-1",
+        videoId: "video-1",
+        coreId: "core-1",
+        locale: "en",
+        user: SYSTEM,
+        loadedArtifact: ARTIFACT,
+      }).catch((e) => e)
+
+      expect(prisma.$transaction).toHaveBeenCalledTimes(3)
+      expect((thrown as { name?: string }).name).toBe("SceneIndexError")
+      expect((thrown as { code: string }).code).toBe("storage_failed")
+      expect((thrown as Error).message).toContain("P1017")
+      expect((thrown as Error).message).not.toContain(
+        "Server has closed the connection",
+      )
+    } finally {
+      errorSpy.mockRestore()
+    }
   })
 
   it("remaps Prisma runtime errors to SceneIndexError('storage_failed') without leaking the raw message (Fix 2 — feat-117 review)", async () => {

@@ -99,6 +99,52 @@ describe("POST /api/admin-trigger/transcript", () => {
     expect(runTranscriptOnlyPipelineMock).toHaveBeenCalledWith({
       assetId: "99",
       muxAssetId: "mux-A",
+      subtitleUrl: "https://stream.mux.com/A.vtt",
+      languageCode: "en",
+    })
+  })
+
+  it("does not require subtitleUrl for transcript-only dispatch", async () => {
+    adminLookupMock.mockResolvedValueOnce({
+      ok: true,
+      data: new Map([
+        [
+          "core-A",
+          {
+            id: "v-A",
+            coreId: "core-A",
+            label: "shortFilm",
+            primaryLanguageBcp47: "en",
+            muxAssetId: "mux-A",
+            subtitleUrl: null,
+          },
+        ],
+      ]),
+    })
+
+    const req = new Request(
+      "http://example.test/api/admin-trigger/transcript",
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${BEARER}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ items: [{ assetId: 99, coreId: "core-A" }] }),
+      },
+    )
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toMatchObject({
+      results: [{ assetId: 99, status: "started" }],
+    })
+
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(runTranscriptOnlyPipelineMock).toHaveBeenCalledWith({
+      assetId: "99",
+      muxAssetId: "mux-A",
+      subtitleUrl: undefined,
       languageCode: "en",
     })
   })

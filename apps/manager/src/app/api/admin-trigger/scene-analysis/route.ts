@@ -25,6 +25,7 @@ async function dispatchSceneAnalysis(
     muxAssetId: input.muxAssetId,
     subtitleUrl: input.subtitleUrl,
     videoLabel: input.videoLabel,
+    languageCode: input.languageBcp47,
   })
 }
 

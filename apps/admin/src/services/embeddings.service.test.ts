@@ -233,6 +233,21 @@ describe("generateExperienceEmbeddings (batched)", () => {
     const thrown = await generateExperienceEmbeddings(["a"]).catch((e) => e)
     expect(thrown).toBeInstanceOf(EmbeddingsBatchError)
     expect((thrown as { code: string }).code).toBe("request_failed")
+    expect((thrown as { status: number }).status).toBe(503)
+  })
+
+  it("wraps transport failures as retryable EmbeddingsBatchError(request_failed)", async () => {
+    const cause = new TypeError("fetch failed")
+    const fetchMock = vi.fn().mockRejectedValue(cause)
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbeddings, EmbeddingsBatchError } =
+      await import("./embeddings.service")
+    const thrown = await generateExperienceEmbeddings(["a"]).catch((e) => e)
+    expect(thrown).toBeInstanceOf(EmbeddingsBatchError)
+    expect((thrown as { code: string }).code).toBe("request_failed")
+    expect((thrown as { status?: number }).status).toBeUndefined()
+    expect((thrown as { cause: unknown }).cause).toBe(cause)
   })
 
   it("surfaces missing credentials with EmbeddingsBatchError(missing_credentials)", async () => {

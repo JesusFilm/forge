@@ -45,7 +45,9 @@ vi.mock("@/services/elevenlabs-transcription", () => ({
 
 import {
   buildMuxTextTrackUrl,
+  MuxSubtitleReadinessTimeoutError,
   transcribe,
+  transcribeSubtitleUrl,
   waitForReadySubtitleTrack,
 } from "@/services/transcription"
 
@@ -110,6 +112,98 @@ describe("transcription", () => {
         id: "track-1",
         language_code: "ru",
       },
+    })
+  })
+
+  it("throws a typed timeout while Mux subtitles are still preparing", async () => {
+    const retrieveAsset = vi.fn().mockResolvedValue({
+      duration: 12,
+      playback_ids: [{ id: "playback-1", policy: "public" }],
+      tracks: [
+        {
+          id: "track-1",
+          type: "text",
+          text_type: "subtitles",
+          text_source: "generated_vod",
+          language_code: "ru",
+          status: "preparing",
+        },
+      ],
+    })
+
+    const error = await waitForReadySubtitleTrack("mux-asset-1", "ru", {
+      retrieveAsset,
+      pollIntervalMs: 0,
+      timeoutMs: 0,
+    }).catch((reason) => reason)
+
+    expect(error).toBeInstanceOf(MuxSubtitleReadinessTimeoutError)
+    expect(error).toMatchObject({
+      muxAssetId: "mux-asset-1",
+      language: "ru",
+      timeoutMs: 0,
+      attempts: 1,
+    })
+  })
+
+  it("keeps waiting for the requested language instead of selecting a ready wrong-language track", async () => {
+    const retrieveAsset = vi
+      .fn()
+      .mockResolvedValueOnce({
+        duration: 12,
+        playback_ids: [{ id: "playback-1", policy: "public" }],
+        tracks: [
+          {
+            id: "track-en",
+            type: "text",
+            text_type: "subtitles",
+            text_source: "generated_vod",
+            language_code: "en",
+            status: "ready",
+          },
+          {
+            id: "track-ru",
+            type: "text",
+            text_type: "subtitles",
+            text_source: "generated_vod",
+            language_code: "ru",
+            status: "preparing",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        duration: 12,
+        playback_ids: [{ id: "playback-1", policy: "public" }],
+        tracks: [
+          {
+            id: "track-en",
+            type: "text",
+            text_type: "subtitles",
+            text_source: "generated_vod",
+            language_code: "en",
+            status: "ready",
+          },
+          {
+            id: "track-ru",
+            type: "text",
+            text_type: "subtitles",
+            text_source: "generated_vod",
+            language_code: "ru",
+            status: "ready",
+          },
+        ],
+      })
+
+    const readyTrack = await waitForReadySubtitleTrack("mux-asset-1", "ru", {
+      retrieveAsset,
+      pollIntervalMs: 0,
+      timeoutMs: 100,
+    })
+
+    expect(retrieveAsset).toHaveBeenCalledTimes(2)
+    expect(readyTrack.track).toMatchObject({
+      id: "track-ru",
+      language_code: "ru",
     })
   })
 
@@ -180,6 +274,70 @@ describe("transcription", () => {
       artifactKeys: ["transcript", "subtitles"],
     })
     expect(result.segments).toHaveLength(2)
+  })
+
+  it("transcribes an admin-supplied subtitle URL without polling Mux", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          "WEBVTT\n\n00:00:00.000 --> 00:00:01.500\nAlready here.\n\n00:00:01.500 --> 00:00:03.000\nNo Mux wait.\n",
+          { status: 200 },
+        ),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const result = await transcribeSubtitleUrl(
+      "asset-1",
+      "https://cdn.jesusfilm.org/subtitles.vtt",
+      "en",
+    )
+
+    expect(retrieveAssetMock).not.toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://cdn.jesusfilm.org/subtitles.vtt",
+      expect.objectContaining({
+        signal: expect.any(Object),
+      }),
+    )
+    expect(writeArtifactMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        assetId: "asset-1",
+        artifactType: "transcript",
+        ext: "json",
+      }),
+    )
+    expect(writeArtifactMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        assetId: "asset-1",
+        artifactType: "subtitles",
+        ext: "vtt",
+      }),
+    )
+    expect(result).toMatchObject({
+      language: "en",
+      text: "Already here. No Mux wait.",
+      resolvedProvider: "mux",
+      artifactKeys: ["transcript", "subtitles"],
+    })
+  })
+
+  it("rejects untrusted admin-supplied subtitle URLs before fetch", async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(
+      transcribeSubtitleUrl(
+        "asset-1",
+        "https://cdn.example.com/subtitles.vtt",
+        "en",
+      ),
+    ).rejects.toThrow("Untrusted subtitle URL hostname")
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(writeArtifactMock).not.toHaveBeenCalled()
   })
 
   it("routes automatic supported-language transcription through ElevenLabs", async () => {

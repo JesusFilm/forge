@@ -17,7 +17,8 @@ import { ForbiddenError } from "./errors"
  * Dispatch-fields projection consumed by manager's admin-trigger
  * endpoints (feat-125). Each field is nullable so callers can decide
  * how to classify missing data — manager surfaces `validation_failed`
- * per-item when muxAssetId or subtitleUrl is null. Replaces the
+ * per-item when primary language or muxAssetId is null; subtitleUrl
+ * is an optional fast path. Replaces the
  * Strapi `videos(filters: { coreId: { in } })` query manager used to
  * issue against cms.
  *

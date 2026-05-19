@@ -32,7 +32,11 @@ import {
   generateEmbeddings,
   type EmbeddingsResult,
 } from "@/services/embeddings"
-import { transcribe, type TranscriptionResult } from "@/services/transcription"
+import {
+  transcribe,
+  transcribeSubtitleUrl,
+  type TranscriptionResult,
+} from "@/services/transcription"
 
 export type TranscriptOnlyPipelineInput = {
   /** Operator-facing identifier (cms videos.id stringified). Used
@@ -40,6 +44,8 @@ export type TranscriptOnlyPipelineInput = {
   assetId: string
   /** Mux asset id (from the cms video's primary-language variant). */
   muxAssetId: string
+  /** Optional already-selected subtitle URL from admin's dispatch-field lookup. */
+  subtitleUrl?: string
   /** Optional BCP-47 source language. When omitted manager falls
    *  back to "auto" which lets Mux pick. */
   languageCode?: string
@@ -68,11 +74,9 @@ export async function runTranscriptOnlyPipeline(
     }),
   )
 
-  const transcription: TranscriptionResult = await transcribe(
-    input.assetId,
-    input.muxAssetId,
-    language,
-  )
+  const transcription: TranscriptionResult = input.subtitleUrl
+    ? await transcribeSubtitleUrl(input.assetId, input.subtitleUrl, language)
+    : await transcribe(input.assetId, input.muxAssetId, language)
 
   if (!transcription.text || transcription.text.length < 10) {
     throw new Error(
