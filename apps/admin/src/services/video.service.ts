@@ -8,7 +8,7 @@
 // breaks `video.service.test.ts:52`. `getByCoreId` is service-to-service
 // only (Core sync internals) and keeps its guard.
 
-import type { PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
 import { ForbiddenError } from "./errors"
@@ -51,6 +51,9 @@ export class VideoLookupValidationError extends Error {
  * contract is double-locked.
  */
 export const VIDEOS_BY_CORE_IDS_MAX = 100
+const VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_MS = 8_000
+const VIDEOS_BY_CORE_IDS_TRANSACTION_TIMEOUT_MS = 9_000
+const VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_MS}ms'`
 
 export class VideoService {
   constructor(private prisma: PrismaClient) {}
@@ -133,56 +136,72 @@ export class VideoService {
       )
     }
 
-    const rows = await this.prisma.video.findMany({
-      where: { coreId: { in: [...coreIds] }, deletedAt: null },
-      include: {
-        primaryLanguage: { select: { bcp47: true } },
-        dubs: {
-          where: { deletedAt: null },
-          include: {
-            language: { select: { bcp47: true } },
-            muxVideo: { select: { assetId: true } },
-          },
+    let rows: VideoForEnrichmentRow[]
+    const startedAt = Date.now()
+    try {
+      rows = await this.prisma.$transaction(
+        async (tx) => {
+          await tx.$executeRawUnsafe(VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_SQL)
+
+          return tx.$queryRaw<VideoForEnrichmentRow[]>`
+            SELECT
+              v.id,
+              v.core_id AS "coreId",
+              v.label::text AS label,
+              primary_language.bcp47 AS "primaryLanguageBcp47",
+              primary_mux.asset_id AS "muxAssetId",
+              primary_subtitle.vtt_src AS "subtitleUrl"
+            FROM video v
+            LEFT JOIN language primary_language
+              ON primary_language.id = v.primary_language_id
+              AND primary_language.deleted_at IS NULL
+            LEFT JOIN LATERAL (
+              SELECT mux_video.asset_id
+              FROM video_dub dub
+              JOIN language dub_language
+                ON dub_language.id = dub.language_id
+                AND dub_language.deleted_at IS NULL
+              JOIN mux_video
+                ON mux_video.id = dub.mux_video_id
+                AND mux_video.deleted_at IS NULL
+              WHERE dub.video_id = v.id
+                AND dub.deleted_at IS NULL
+                AND dub_language.bcp47 = primary_language.bcp47
+                AND mux_video.asset_id IS NOT NULL
+                AND mux_video.asset_id <> ''
+              ORDER BY dub.published DESC NULLS LAST, dub.updated_at DESC
+              LIMIT 1
+            ) primary_mux ON TRUE
+            LEFT JOIN LATERAL (
+              SELECT subtitle.vtt_src
+              FROM video_subtitle subtitle
+              JOIN language subtitle_language
+                ON subtitle_language.id = subtitle.language_id
+                AND subtitle_language.deleted_at IS NULL
+              WHERE subtitle.video_id = v.id
+                AND subtitle.deleted_at IS NULL
+                AND subtitle_language.bcp47 = primary_language.bcp47
+                AND subtitle.vtt_src IS NOT NULL
+                AND subtitle.vtt_src <> ''
+              ORDER BY
+                (CASE WHEN subtitle.primary THEN 0 ELSE 1 END) +
+                (CASE WHEN subtitle.ai_generated THEN 1 ELSE 0 END) ASC,
+                subtitle.updated_at DESC
+              LIMIT 1
+            ) primary_subtitle ON TRUE
+            WHERE v.core_id IN (${Prisma.join([...coreIds])})
+              AND v.deleted_at IS NULL
+          `
         },
-        subtitles: {
-          where: { deletedAt: null },
-          include: { language: { select: { bcp47: true } } },
-        },
-      },
-    })
+        { timeout: VIDEOS_BY_CORE_IDS_TRANSACTION_TIMEOUT_MS },
+      )
+    } catch (error) {
+      logVideoLookupFailure(coreIds.length, Date.now() - startedAt, error)
+      throw error
+    }
+    logSlowVideoLookup(coreIds.length, Date.now() - startedAt)
 
     return rows.map((video): VideoForEnrichment => {
-      const primaryBcp47 = video.primaryLanguage?.bcp47 ?? null
-
-      let muxAssetId: string | null = null
-      if (primaryBcp47 != null) {
-        const variantWithMux = video.dubs.find(
-          (d) =>
-            d.language?.bcp47 === primaryBcp47 &&
-            typeof d.muxVideo?.assetId === "string" &&
-            d.muxVideo.assetId.length > 0,
-        )
-        muxAssetId = variantWithMux?.muxVideo?.assetId ?? null
-      }
-
-      let subtitleUrl: string | null = null
-      if (primaryBcp47 != null) {
-        // `.filter()` already returns a fresh array, so the
-        // subsequent `.sort()` does not mutate Prisma's result row.
-        const candidates = video.subtitles.filter(
-          (s) =>
-            s.language?.bcp47 === primaryBcp47 &&
-            typeof s.vttSrc === "string" &&
-            s.vttSrc.length > 0,
-        )
-        candidates.sort((a, b) => {
-          const aScore = (a.primary ? 0 : 1) + (a.aiGenerated ? 1 : 0)
-          const bScore = (b.primary ? 0 : 1) + (b.aiGenerated ? 1 : 0)
-          return aScore - bScore
-        })
-        subtitleUrl = candidates[0]?.vttSrc ?? null
-      }
-
       return {
         id: video.id,
         coreId: video.coreId,
@@ -195,12 +214,39 @@ export class VideoService {
         // tests pass `videoLabel: "shortFilm"`-style fixtures, so
         // any drift here changes the LLM prompt content.
         label: snakeUpperToCamel(video.label),
-        primaryLanguageBcp47: primaryBcp47,
-        muxAssetId,
-        subtitleUrl,
+        primaryLanguageBcp47: video.primaryLanguageBcp47,
+        muxAssetId: video.muxAssetId,
+        subtitleUrl: video.subtitleUrl,
       }
     })
   }
+}
+
+type VideoForEnrichmentRow = VideoForEnrichment
+
+function logSlowVideoLookup(coreIdCount: number, durationMs: number): void {
+  if (durationMs < 500) return
+  console.warn(
+    `[videosByCoreIds] event=lookup.slow coreIdCount=${coreIdCount} durationMs=${durationMs}`,
+  )
+}
+
+function logVideoLookupFailure(
+  coreIdCount: number,
+  durationMs: number,
+  error: unknown,
+): void {
+  console.warn(
+    `[videosByCoreIds] event=lookup.failed coreIdCount=${coreIdCount} durationMs=${durationMs} ${formatLookupError(error)}`,
+  )
+}
+
+function formatLookupError(error: unknown): string {
+  if (!(error instanceof Error)) return "errorName=UnknownError"
+
+  const maybeCode = (error as Error & { code?: unknown }).code
+  const code = typeof maybeCode === "string" ? ` errorCode=${maybeCode}` : ""
+  return `errorName=${error.name}${code}`
 }
 
 /**
