@@ -1,5 +1,5 @@
-// Job state manager backed by Strapi CMS via GraphQL.
-// Uses typed operations from @forge/graphql with gql.tada.
+// Job state access helpers for live and mock manager data modes.
+// Live mode uses typed Strapi GraphQL operations from @forge/graphql.
 
 import { graphql, type ResultOf, type VariablesOf } from "@forge/graphql"
 import getClient from "@/cms/client"
