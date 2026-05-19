@@ -9,6 +9,7 @@ duration: 4
 depends_on: []
 blocks:
   - "feat-120"
+  - "feat-125"
 tags:
   - "admin"
   - "manager"
