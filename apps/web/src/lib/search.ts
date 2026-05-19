@@ -1,4 +1,4 @@
-import { adminGraphql } from "@forge/admin-graphql"
+import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
 import client from "@/lib/admin-client"
 
 // Admin's `search(q, locale, type, limit, offset, mode, debug)` is the
@@ -9,6 +9,15 @@ import client from "@/lib/admin-client"
 // `startSeconds`, `score`) — admin's `type` is the upper-case
 // `EXPERIENCE | VIDEO` enum, normalised to the lower-case discriminator
 // the result-card components expect.
+//
+// DEPLOY ORDERING: this query selects `label`, `durationSeconds`, and
+// `childCount` from `HybridSearchResult`. Those fields land in admin's
+// resolver as part of the same branch as this query — but in a rolling
+// deploy admin must ship FIRST (receiver-first invariant). Web ahead of
+// admin yields `Cannot query field "label" on type "HybridSearchResult"`
+// for every search until admin catches up. Same pattern as the bearer-
+// keyring rotation documented at
+// docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md
 
 const SEARCH_QUERY = adminGraphql(`
   query Search(
@@ -32,12 +41,25 @@ const SEARCH_QUERY = adminGraphql(`
         startSeconds
         score
         type
+        label
+        durationSeconds
+        childCount
       }
     }
   }
 `)
 
 export type SearchContentType = "video" | "experience"
+
+// Derived from the gql.tada introspection of the actual SEARCH_QUERY
+// result. When admin adds a new VideoLabel value and the package
+// regenerates `admin-graphql-env.d.ts`, this union widens automatically
+// — no hand-mirrored string list to drift out of sync with the SDL.
+export type AdminVideoLabel = NonNullable<
+  NonNullable<
+    AdminResultOf<typeof SEARCH_QUERY>["search"]
+  >["results"][number]["label"]
+>
 
 export type SearchResult = {
   type: SearchContentType
@@ -49,6 +71,16 @@ export type SearchResult = {
   startSeconds: number | null
   playbackId: string | null
   score: number
+  /** Admin VideoLabel for video results; null when type === "experience". */
+  label: AdminVideoLabel | null
+  /** Primary playable dub duration in seconds; null for experiences and
+   *  videos without a playable dub (e.g. a series whose runtime lives on
+   *  its child episodes). Drives the duration pill on singular videos. */
+  durationSeconds: number | null
+  /** Count of child videos (parent_id === this video). null for
+   *  experiences; 0 when a video has no children. Drives the
+   *  "{n} episodes" pill on series / collection cards. */
+  childCount: number | null
 }
 
 export type SearchError = {
@@ -158,6 +190,9 @@ export async function searchVideos(
     startSeconds: row.startSeconds ?? null,
     playbackId: row.playbackId ?? null,
     score: row.score,
+    label: row.label ?? null,
+    durationSeconds: row.durationSeconds ?? null,
+    childCount: row.childCount ?? null,
   }))
 
   return {

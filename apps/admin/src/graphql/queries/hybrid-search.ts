@@ -23,6 +23,7 @@ import {
 } from "@/services/hybrid-search.service"
 import { isDebugAllowedForOrigin } from "@/services/hybrid-search-debug-allowlist"
 import { SearchResultDebugRef } from "@/graphql/types/hybrid-search-debug"
+import { VideoLabelEnum } from "@/graphql/types/video"
 
 // -----------------------------------------------------------------------------
 // Types
@@ -69,6 +70,28 @@ SearchResultRef.implement({
       description:
         "Internal scoring detail. Present only when the caller passed `debug: true` AND the request origin is on the debug allowlist. Origin-gating happens at the resolver boundary; the service trusts the boolean.",
       resolve: (r) => r.debug ?? null,
+    }),
+    // `SearchResult.label` is now typed as Prisma's `VideoLabel | null`
+    // (see hybrid-search.service.ts), so `t.expose` reads it directly
+    // without a resolver lambda. Using `t.expose` (rather than
+    // `t.field`) also keeps `public-resolvers.regression.test.ts` from
+    // false-positively flagging this object-type field as a root
+    // resolver — its regex parser greps for `<name>: t.field(`.
+    label: t.expose("label", {
+      type: VideoLabelEnum,
+      nullable: true,
+      description:
+        "Admin VideoLabel for video-type results (`EPISODE`, `SERIES`, `SHORT_FILM`, …). Always null for `type=EXPERIENCE`. Drives the type badge on the search result card.",
+    }),
+    durationSeconds: t.exposeInt("durationSeconds", {
+      nullable: true,
+      description:
+        "Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g., a SERIES/COLLECTION whose runtime lives on its children). Always null for `type=EXPERIENCE`. Drives the duration pill on singular-video cards.",
+    }),
+    childCount: t.exposeInt("childCount", {
+      nullable: true,
+      description:
+        "Number of `video_relation` rows where this video is the parent. 0 for childless videos; null when `type=EXPERIENCE` or when the parent video was soft-deleted between the retriever pass and the hydration pass (rare race). Use `type` as the content-type discriminator — null on this field does NOT imply experience. Drives the `{n} episodes` pill on series/collection cards.",
     }),
   }),
 })

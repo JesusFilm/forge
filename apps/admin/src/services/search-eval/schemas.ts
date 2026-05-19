@@ -11,6 +11,24 @@
 
 import { z } from "zod"
 
+// Mirrors Prisma's `VideoLabel` enum. Hand-mirrored here (not derived
+// from `@prisma/client`) because a Zod runtime schema needs literal
+// strings, not a TS type. Adding a new label requires updating both
+// schema.prisma and this list — that lockstep is on purpose; the
+// harness is a downstream consumer that should fail closed on an
+// unknown label rather than silently accept an unfamiliar value into
+// baseline JSON.
+export const VideoLabelSchema = z.enum([
+  "COLLECTION",
+  "EPISODE",
+  "FEATURE_FILM",
+  "SEGMENT",
+  "SERIES",
+  "SHORT_FILM",
+  "TRAILER",
+  "BEHIND_THE_SCENES",
+])
+
 export const SearchResultSchema = z.object({
   type: z.enum(["video", "experience"]),
   id: z.string(),
@@ -21,6 +39,9 @@ export const SearchResultSchema = z.object({
   startSeconds: z.number().nullable(),
   playbackId: z.string().nullable(),
   score: z.number(),
+  label: VideoLabelSchema.nullable(),
+  durationSeconds: z.number().int().nullable(),
+  childCount: z.number().int().nullable(),
 })
 
 export const SearchResponseSchema = z.object({

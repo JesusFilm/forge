@@ -18,6 +18,9 @@ const sampleVideoResult: SearchResult = {
   startSeconds: 0,
   playbackId: "pb_abc",
   score: 0.488,
+  label: "SHORT_FILM",
+  durationSeconds: 355,
+  childCount: 0,
 }
 
 const sampleExperienceResult: SearchResult = {
@@ -30,6 +33,9 @@ const sampleExperienceResult: SearchResult = {
   startSeconds: null,
   playbackId: null,
   score: 0.412,
+  label: null,
+  durationSeconds: null,
+  childCount: null,
 }
 
 function buildResponse(results: SearchResult[], status = 200): Response {

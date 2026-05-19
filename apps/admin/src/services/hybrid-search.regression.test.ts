@@ -60,8 +60,14 @@ import {
   type SearchParams,
 } from "./hybrid-search.service"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockPrisma = {} as any
+const mockPrisma = {
+  video: {
+    // Default to empty hydration so card-pill enrichment (post-fusion
+    // `prisma.video.findMany`) doesn't crash these regression tests.
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any
 
 const successEmbedder = (): QueryEmbedder =>
   vi.fn().mockResolvedValue([0.1, 0.2, 0.3])
@@ -96,6 +102,7 @@ function setupRetrieverFixtures() {
       videoTitle: "Keyword Video",
       imageUrl: null,
       description: "Keyword description",
+      playbackId: null,
       rank: 0.42,
     },
   ])
@@ -147,6 +154,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   __resetSearchHealthForTest()
   setupRetrieverFixtures()
+  // Restore default hydration stub after clearAllMocks wipes it.
+  mockPrisma.video.findMany.mockResolvedValue([])
 })
 
 describe("HybridSearchService default-mode regression snapshot", () => {
@@ -176,6 +185,7 @@ describe("HybridSearchService default-mode regression snapshot", () => {
     for (const { mode } of DEFAULT_EQUIVALENT_MODES) {
       vi.clearAllMocks()
       setupRetrieverFixtures()
+      mockPrisma.video.findMany.mockResolvedValue([])
       const service = new HybridSearchService({
         prisma: mockPrisma,
         embedder: successEmbedder(),
@@ -193,6 +203,7 @@ describe("HybridSearchService default-mode regression snapshot", () => {
     for (const { mode } of DEFAULT_EQUIVALENT_MODES) {
       vi.clearAllMocks()
       setupRetrieverFixtures()
+      mockPrisma.video.findMany.mockResolvedValue([])
       const service = new HybridSearchService({
         prisma: mockPrisma,
         embedder: successEmbedder(),

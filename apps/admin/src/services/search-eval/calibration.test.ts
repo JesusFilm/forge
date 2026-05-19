@@ -23,6 +23,9 @@ const sampleResult: SearchResult = {
   startSeconds: 0,
   playbackId: null,
   score: 0.5,
+  label: null,
+  durationSeconds: null,
+  childCount: null,
 }
 
 function makeCase(

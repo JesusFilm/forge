@@ -857,8 +857,8 @@ model Video {
   keywords       VideoKeyword[]
   scenes         VideoScene[]
   transcripts    VideoTranscript[]
-  parents        VideoRelation[]      @relation("VideoChildren")
-  children       VideoRelation[]      @relation("VideoParents")
+  parents        VideoRelation[]      @relation("VideoParents")
+  children       VideoRelation[]      @relation("VideoChildren")
 
   @@index([primaryLanguageId])
   @@index([originId])

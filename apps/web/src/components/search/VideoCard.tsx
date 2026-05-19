@@ -1,7 +1,9 @@
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
-import type { SearchResult } from "@/lib/search"
+import { Play } from "lucide-react"
+import { formatDuration } from "@/lib/format-duration"
+import type { AdminVideoLabel, SearchResult } from "@/lib/search"
 
 type VideoCardProps = {
   result: SearchResult
@@ -50,6 +52,58 @@ function muxSearchThumbnail(
   return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=448&height=336&fit_mode=smartcrop${time}`
 }
 
+// Connectives that stay lowercase when not the first word in a multi-word
+// label ("Behind the Scenes", "Wages of Sin", etc.).
+const SHORT_WORDS = new Set(["of", "the", "and", "in", "on", "for"])
+
+// Format admin's VideoLabel enum for human reading. EPISODE → "Episode",
+// SHORT_FILM → "Short Film", BEHIND_THE_SCENES → "Behind the Scenes".
+export function formatVideoLabel(label: AdminVideoLabel | null): string {
+  if (label == null) return "Video"
+  return label
+    .toLowerCase()
+    .split("_")
+    .map((word, i) =>
+      i > 0 && SHORT_WORDS.has(word)
+        ? word
+        : word.charAt(0).toUpperCase() + word.slice(1),
+    )
+    .join(" ")
+}
+
+// VideoLabels that semantically have children — i.e., the count pill is
+// meaningful. Everything else (EPISODE, FEATURE_FILM, SHORT_FILM, SEGMENT,
+// TRAILER, BEHIND_THE_SCENES) is a singular video and should show duration,
+// not an episode count.
+//
+// Trusting `label` instead of `childCount > 0` shields the pill from the
+// admin Video.parents/children relation inversion: when the inversion is
+// active upstream, EPISODE rows come back with non-zero childCount (it's
+// actually their parent-count). The old heuristic `childCount > 0 ⇒ series`
+// then mislabels every episode as "1 episode". Gating on label removes
+// that coupling entirely.
+const SERIES_SHAPED_LABELS = new Set<AdminVideoLabel>(["SERIES", "COLLECTION"])
+
+// Decide what to render in the top-right pill. Series-shaped rows
+// (label SERIES / COLLECTION with childCount > 0) get `{n} episodes`;
+// every other video shows duration. Experiences carry null label and are
+// filtered out at the call site. Returns null when there's nothing to
+// show — caller renders nothing on null.
+export function pickCardPill(
+  result: SearchResult,
+): { kind: "count"; text: string } | { kind: "duration"; text: string } | null {
+  const isSeriesShaped =
+    result.label != null && SERIES_SHAPED_LABELS.has(result.label)
+  if (isSeriesShaped && result.childCount != null && result.childCount > 0) {
+    const noun = result.childCount === 1 ? "episode" : "episodes"
+    return { kind: "count", text: `${result.childCount} ${noun}` }
+  }
+  if (result.durationSeconds != null && result.durationSeconds > 0) {
+    return { kind: "duration", text: formatDuration(result.durationSeconds) }
+  }
+  return null
+}
+
 export function VideoCard({
   result,
   index = 0,
@@ -60,6 +114,15 @@ export function VideoCard({
     (result.type === "video" && result.playbackId
       ? muxSearchThumbnail(result.playbackId, result.startSeconds)
       : null)
+
+  const isExperience = result.type === "experience"
+  // Experience cards reuse the legacy amber chip (now top-right, was
+  // top-left in the pre-pill design). They never carry a count or a
+  // duration, so the regular pill helper isn't consulted — the chip
+  // IS the surface signal. Non-experience cards use the new count /
+  // duration pill at top-right and a type badge bottom-left.
+  const pill = isExperience ? null : pickCardPill(result)
+  const typeBadge = isExperience ? null : formatVideoLabel(result.label)
 
   return (
     <Link
@@ -109,14 +172,44 @@ export function VideoCard({
         {/* Gradient overlay for text legibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
 
-        {result.type === "experience" && (
-          <span className="absolute top-3 left-3 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-stone-950 uppercase shadow">
+        {/* Top-right slot.
+            - Experience: amber pill labeled "Experience" (the only place
+              the type signal appears on this card).
+            - Non-experience with countable children OR a duration: dark
+              translucent pill with the count / runtime.
+            - Otherwise nothing. */}
+        {isExperience ? (
+          <span
+            data-testid="search-card-experience-chip"
+            className="absolute top-3 right-3 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-stone-950 uppercase shadow"
+          >
             Experience
           </span>
-        )}
+        ) : pill ? (
+          <span
+            data-testid="search-card-pill"
+            data-pill-kind={pill.kind}
+            className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm"
+          >
+            {pill.kind === "duration" ? (
+              <Play size={10} fill="currentColor" stroke="none" aria-hidden />
+            ) : null}
+            {pill.text}
+          </span>
+        ) : null}
 
-        {/* Text content positioned over the gradient */}
+        {/* Bottom-left content: type badge (videos only) + title +
+            snippet. Experience cards skip the badge — the amber chip in
+            the top-right is the sole type signal. */}
         <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-4">
+          {typeBadge ? (
+            <span
+              data-testid="search-card-type-badge"
+              className="text-[10px] font-semibold tracking-[0.18em] text-stone-300 uppercase drop-shadow-md"
+            >
+              {typeBadge}
+            </span>
+          ) : null}
           <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-white drop-shadow-md">
             {result.title}
           </h3>

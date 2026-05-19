@@ -1,6 +1,7 @@
 ---
 module: apps/admin core sync
 date: 2026-05-07
+last_updated: 2026-05-19
 problem_type: performance_issue
 component: background_job
 severity: medium
@@ -61,7 +62,9 @@ on full sync, or the cleanup tail can treat present rows as stale.
 
 Split high-volume related data into root-query phases:
 
-- `video-images`
+- `video-images` _(query shape changed flat → nested in PR #950; see the
+  [flat-vs-nested image query learning](../integration-issues/admin-core-sync-flat-vs-nested-image-query-coverage-gap-20260519.md).
+  The phase split itself is unchanged.)_
 - `video-editions`
 - `video-subtitles`
 - `video-dubs`
@@ -144,3 +147,4 @@ When adding another high-volume Core entity:
 - `apps/admin/src/services/core-sync/orchestrator.ts`
 - `docs/solutions/platform/core-graphql-unbounded-relation-fan-out-20260504.md`
 - `docs/solutions/database-issues/postgres-prepared-statement-bind-variable-limit-32767-20260504.md`
+- `docs/solutions/integration-issues/admin-core-sync-flat-vs-nested-image-query-coverage-gap-20260519.md`

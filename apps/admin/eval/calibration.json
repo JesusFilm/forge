@@ -1,5 +1,5 @@
 {
-  "$schema-doc": "Hand-labeled calibration cases for the semantic-search eval harness. Run on every harness invocation to verify the LLM judge still agrees with humans on easy cases. Three case types: (1) obvious-A-wins — list A is clearly more relevant; (2) obvious-tie — both lists are identical or trivially equivalent; (3) both-irrelevant — neither list contains anything useful for the query. Cases are deliberately easy so a failure means judge instability, not legitimately ambiguous content. PASS threshold: ≥80% of cases must match expected verdict.",
+  "$schema-doc": "Hand-labeled calibration cases for the semantic-search eval harness. Run on every harness invocation to verify the LLM judge still agrees with humans on easy cases. Three case types: (1) obvious-A-wins \u2014 list A is clearly more relevant; (2) obvious-tie \u2014 both lists are identical or trivially equivalent; (3) both-irrelevant \u2014 neither list contains anything useful for the query. Cases are deliberately easy so a failure means judge instability, not legitimately ambiguous content. PASS threshold: \u226580% of cases must match expected verdict.",
   "cases": [
     {
       "id": "en-obvious-a-wins-easter",
@@ -17,7 +17,10 @@
           "snippet": "What Easter means and why we celebrate it.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.5
+          "score": 0.5,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         },
         {
           "type": "video",
@@ -28,7 +31,10 @@
           "snippet": "The story of Jesus rising from the dead.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.45
+          "score": 0.45,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ],
       "listB": [
@@ -41,7 +47,10 @@
           "snippet": "Advice for couples struggling with communication.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.4
+          "score": 0.4,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         },
         {
           "type": "video",
@@ -52,7 +61,10 @@
           "snippet": "Biblical principles for money management.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.38
+          "score": 0.38,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ]
     },
@@ -72,7 +84,10 @@
           "snippet": "For God so loved the world that he gave his only begotten Son.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.6
+          "score": 0.6,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ],
       "listB": [
@@ -85,7 +100,10 @@
           "snippet": "Recap of summer youth camp activities.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.3
+          "score": 0.3,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ]
     },
@@ -100,12 +118,15 @@
           "type": "video",
           "id": "v_hope_a",
           "slug": "esperance-souffrance",
-          "title": "L'espérance dans la souffrance",
+          "title": "L'esp\u00e9rance dans la souffrance",
           "imageUrl": null,
           "snippet": "Comment garder l'espoir quand la vie est difficile.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.55
+          "score": 0.55,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ],
       "listB": [
@@ -113,18 +134,21 @@
           "type": "video",
           "id": "v_random_b",
           "slug": "etudes-bibliques",
-          "title": "Études bibliques pour les enfants",
+          "title": "\u00c9tudes bibliques pour les enfants",
           "imageUrl": null,
-          "snippet": "Activités bibliques pour les jeunes enfants en école du dimanche.",
+          "snippet": "Activit\u00e9s bibliques pour les jeunes enfants en \u00e9cole du dimanche.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.2
+          "score": 0.2,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ]
     },
     {
       "id": "es-obvious-a-wins-prayer",
-      "query": "oración",
+      "query": "oraci\u00f3n",
       "locale": "es",
       "expected": "clearly-A-better",
       "rationale": "List A is about prayer; List B is unrelated.",
@@ -133,12 +157,15 @@
           "type": "video",
           "id": "v_prayer_a",
           "slug": "como-orar",
-          "title": "Cómo orar",
+          "title": "C\u00f3mo orar",
           "imageUrl": null,
           "snippet": "Aprende a orar con sinceridad y constancia.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.6
+          "score": 0.6,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ],
       "listB": [
@@ -146,12 +173,15 @@
           "type": "video",
           "id": "v_random_b",
           "slug": "musica-cristiana",
-          "title": "Música cristiana",
+          "title": "M\u00fasica cristiana",
           "imageUrl": null,
-          "snippet": "Recopilación de música cristiana contemporánea.",
+          "snippet": "Recopilaci\u00f3n de m\u00fasica cristiana contempor\u00e1nea.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.25
+          "score": 0.25,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ]
     },
@@ -171,7 +201,10 @@
           "snippet": "An introduction to biblical forgiveness.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.6
+          "score": 0.6,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         },
         {
           "type": "video",
@@ -182,7 +215,10 @@
           "snippet": "Practical steps for extending forgiveness.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.5
+          "score": 0.5,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ],
       "listB": [
@@ -195,7 +231,10 @@
           "snippet": "An introduction to biblical forgiveness.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.6
+          "score": 0.6,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         },
         {
           "type": "video",
@@ -206,7 +245,10 @@
           "snippet": "Practical steps for extending forgiveness.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.5
+          "score": 0.5,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ]
     },
@@ -226,7 +268,10 @@
           "snippet": "Exploring the depth of divine love.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.6
+          "score": 0.6,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         },
         {
           "type": "video",
@@ -237,7 +282,10 @@
           "snippet": "Christ's command to love.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.5
+          "score": 0.5,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ],
       "listB": [
@@ -250,7 +298,10 @@
           "snippet": "Defining biblical love.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.55
+          "score": 0.55,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         },
         {
           "type": "video",
@@ -261,7 +312,10 @@
           "snippet": "The Greek word for unconditional love.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.5
+          "score": 0.5,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ]
     },
@@ -281,7 +335,10 @@
           "snippet": "Advice for couples.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.1
+          "score": 0.1,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ],
       "listB": [
@@ -294,7 +351,10 @@
           "snippet": "Songs for Sunday service.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.1
+          "score": 0.1,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ]
     },
@@ -314,7 +374,10 @@
           "snippet": "Pharaohs and pyramids.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.05
+          "score": 0.05,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ],
       "listB": [
@@ -327,7 +390,10 @@
           "snippet": "Recap of summer outreach in Mexico.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.05
+          "score": 0.05,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ]
     },
@@ -347,7 +413,10 @@
           "snippet": "Jesus's famous parable about a father and his two sons.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.7
+          "score": 0.7,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ],
       "listB": [
@@ -357,10 +426,13 @@
           "slug": "creation-week",
           "title": "The Creation Week",
           "imageUrl": null,
-          "snippet": "Genesis 1 — God creates the world in seven days.",
+          "snippet": "Genesis 1 \u2014 God creates the world in seven days.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.2
+          "score": 0.2,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ]
     },
@@ -380,7 +452,10 @@
           "snippet": "An introduction to the sacrament of baptism.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.6
+          "score": 0.6,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ],
       "listB": [
@@ -393,7 +468,10 @@
           "snippet": "Tips for leading a weekly Bible study.",
           "startSeconds": 0,
           "playbackId": null,
-          "score": 0.25
+          "score": 0.25,
+          "label": null,
+          "durationSeconds": null,
+          "childCount": null
         }
       ]
     }

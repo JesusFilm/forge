@@ -27,8 +27,15 @@ import {
   type QueryEmbedder,
 } from "./hybrid-search.service"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockPrisma = {} as any
+const mockPrisma = {
+  video: {
+    // Default to empty hydration so paginated tests don't need to seed
+    // per-video rows. Tests that need to assert hydration values re-stub
+    // via `mockPrisma.video.findMany.mockResolvedValueOnce(...)`.
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any
 const loggerError = vi.fn()
 const loggerWarn = vi.fn()
 const logger = { error: loggerError, warn: loggerWarn }
@@ -52,6 +59,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   __resetSearchHealthForTest()
   setupDefaultRetrievers()
+  // Restore default hydration stub after clearAllMocks wipes it.
+  mockPrisma.video.findMany.mockResolvedValue([])
 })
 
 describe("HybridSearchService", () => {
@@ -80,6 +89,7 @@ describe("HybridSearchService", () => {
         videoTitle: "Grace",
         imageUrl: null,
         description: "Video about grace",
+        playbackId: null,
         rank: 0.5,
       },
     ])
@@ -136,6 +146,7 @@ describe("HybridSearchService", () => {
         videoTitle: "Grace",
         imageUrl: null,
         description: "Video about grace",
+        playbackId: null,
         rank: 0.5,
       },
     ])
@@ -387,6 +398,183 @@ describe("HybridSearchService", () => {
       imageUrl: null,
       startSeconds: null,
       playbackId: null,
+    })
+  })
+
+  describe("card-pill hydration", () => {
+    it("populates label, durationSeconds, childCount on video rows from one batched findMany", async () => {
+      vi.mocked(searchVideoSemantic).mockResolvedValue([
+        {
+          resultType: "video",
+          resultId: "vid-series",
+          videoCoreId: "1_series",
+          videoSlug: "storyclubs",
+          videoTitle: "StoryClubs",
+          imageUrl: null,
+          sceneDescription: "",
+          startSeconds: 0,
+          playbackId: null,
+          similarity: 0.9,
+          embeddingText: "[]",
+        },
+        {
+          resultType: "video",
+          resultId: "vid-clip",
+          videoCoreId: "1_clip",
+          videoSlug: "single-clip",
+          videoTitle: "Single Clip",
+          imageUrl: null,
+          sceneDescription: "",
+          startSeconds: 0,
+          playbackId: null,
+          similarity: 0.8,
+          embeddingText: "[]",
+        },
+      ])
+
+      mockPrisma.video.findMany.mockResolvedValueOnce([
+        {
+          id: "vid-series",
+          label: "SERIES",
+          primaryLanguageId: "lang-en",
+          dubs: [],
+          _count: { children: 13 },
+        },
+        {
+          id: "vid-clip",
+          label: "EPISODE",
+          primaryLanguageId: "lang-en",
+          dubs: [{ languageId: "lang-en", duration: 70 }],
+          _count: { children: 0 },
+        },
+      ])
+
+      const service = new HybridSearchService({
+        prisma: mockPrisma,
+        embedder: successEmbedder(),
+        logger,
+      })
+
+      const result = await service.search({ query: "x", locale: "en" })
+      const series = result.results.find((r) => r.id === "vid-series")!
+      const clip = result.results.find((r) => r.id === "vid-clip")!
+
+      expect(series).toMatchObject({
+        label: "SERIES",
+        childCount: 13,
+        durationSeconds: null,
+      })
+      expect(clip).toMatchObject({
+        label: "EPISODE",
+        childCount: 0,
+        durationSeconds: 70,
+      })
+
+      // Exactly one batched findMany — no per-row queries.
+      expect(mockPrisma.video.findMany).toHaveBeenCalledTimes(1)
+      const [args] = mockPrisma.video.findMany.mock.calls[0]
+      expect(args.where).toEqual({
+        id: { in: ["vid-series", "vid-clip"] },
+        deletedAt: null,
+      })
+    })
+
+    it("picks the primary-language dub when one exists, else the first playable dub", async () => {
+      vi.mocked(searchVideoSemantic).mockResolvedValue([
+        {
+          resultType: "video",
+          resultId: "vid-primary",
+          videoCoreId: "1_p",
+          videoSlug: "primary",
+          videoTitle: "Primary",
+          imageUrl: null,
+          sceneDescription: "",
+          startSeconds: 0,
+          playbackId: null,
+          similarity: 0.9,
+          embeddingText: "[]",
+        },
+        {
+          resultType: "video",
+          resultId: "vid-fallback",
+          videoCoreId: "1_f",
+          videoSlug: "fallback",
+          videoTitle: "Fallback",
+          imageUrl: null,
+          sceneDescription: "",
+          startSeconds: 0,
+          playbackId: null,
+          similarity: 0.8,
+          embeddingText: "[]",
+        },
+      ])
+
+      mockPrisma.video.findMany.mockResolvedValueOnce([
+        {
+          id: "vid-primary",
+          label: "EPISODE",
+          primaryLanguageId: "lang-en",
+          dubs: [
+            { languageId: "lang-fr", duration: 999 },
+            { languageId: "lang-en", duration: 120 },
+          ],
+          _count: { children: 0 },
+        },
+        {
+          id: "vid-fallback",
+          label: "EPISODE",
+          primaryLanguageId: null,
+          dubs: [{ languageId: "lang-es", duration: 60 }],
+          _count: { children: 0 },
+        },
+      ])
+
+      const service = new HybridSearchService({
+        prisma: mockPrisma,
+        embedder: successEmbedder(),
+        logger,
+      })
+
+      const result = await service.search({ query: "x", locale: "en" })
+      expect(
+        result.results.find((r) => r.id === "vid-primary")!.durationSeconds,
+      ).toBe(120)
+      expect(
+        result.results.find((r) => r.id === "vid-fallback")!.durationSeconds,
+      ).toBe(60)
+    })
+
+    it("leaves experience rows with null label/duration/childCount and never queries Video", async () => {
+      vi.mocked(searchExperienceSemantic).mockResolvedValue([
+        {
+          resultType: "experience",
+          resultId: "exp-1",
+          experienceSlug: "easter",
+          experienceTitle: "Easter",
+          experienceMetaDescription: "",
+          imageUrl: null,
+          similarity: 0.9,
+        },
+      ])
+
+      const service = new HybridSearchService({
+        prisma: mockPrisma,
+        embedder: successEmbedder(),
+        logger,
+      })
+
+      const result = await service.search({
+        query: "easter",
+        locale: "en",
+        contentTypes: ["experience"],
+      })
+      const exp = result.results.find((r) => r.id === "exp-1")!
+      expect(exp).toMatchObject({
+        label: null,
+        durationSeconds: null,
+        childCount: null,
+      })
+      expect(mockPrisma.video.findMany).not.toHaveBeenCalled()
     })
   })
 })
