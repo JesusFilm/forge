@@ -22,6 +22,7 @@ async function dispatchTranscriptOnly(
   return runTranscriptOnlyPipeline({
     assetId: String(input.assetId),
     muxAssetId: input.muxAssetId,
+    subtitleUrl: input.subtitleUrl || undefined,
     languageCode: input.languageBcp47,
   })
 }

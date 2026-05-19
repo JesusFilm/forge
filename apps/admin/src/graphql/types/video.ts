@@ -372,7 +372,7 @@ const VideoForEnrichmentRef =
 
 VideoForEnrichmentRef.implement({
   description:
-    "Dispatch-fields projection for manager's admin-trigger enrichment lookup. Each field is nullable; null mux/subtitle signals manager to return validation_failed for that item.",
+    "Dispatch-fields projection for manager's admin-trigger enrichment lookup. Fields are nullable so manager can distinguish missing primary language or mux validation blockers from an optional subtitle fast path.",
   fields: (t) => ({
     // `nullable: false` is required on objectRef-based types —
     // Pothos cannot infer non-nullability from the TS shape the

@@ -28,6 +28,7 @@ export async function processVideoForBackfill(
     muxAssetId: video.muxAssetId,
     subtitleUrl: video.subtitleUrl,
     videoLabel: video.label ?? "unknown",
+    languageCode: video.subtitleLanguage,
   })
 
   // Step 2: Read back scene analysis artifact

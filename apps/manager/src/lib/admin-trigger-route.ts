@@ -13,8 +13,8 @@
 // Per-id flow:
 //   1. Admin lookup by coreId via `videosByCoreIds` GraphQL query →
 //      derive { muxAssetId, subtitleUrl, label, primaryLanguageBcp47 }
-//      (feat-125). Missing row → status "not_found". Missing mux or
-//      subtitle → status "validation_failed".
+//      (feat-125). Missing row → status "not_found". Missing required
+//      fields for that trigger kind → status "validation_failed".
 //   2. Idempotency check against the in-memory map (5-minute TTL,
 //      keyed by `${kind}:${assetId}`). Hit → return existing
 //      managerJobId with status "already_in_flight".
@@ -285,8 +285,10 @@ async function runQueuedDispatch(job: QueuedAdminTriggerJob): Promise<void> {
 //
 // Per coreId, manager classifies:
 //   - row missing entirely         → status "not_found"
-//   - row present, but muxAssetId
-//     or subtitleUrl is null       → status "validation_failed"
+//   - row present, but required dispatch fields
+//     are null                     → status "validation_failed"
+//     (scene-analysis and transcript require mux; subtitle is used
+//     directly when present and can otherwise be generated from Mux)
 //   - row complete                 → dispatch
 // ---------------------------------------------------------------------------
 
@@ -443,22 +445,17 @@ export async function processAdminTriggerRequest(
 
     // Admin's `videosByCoreIds` resolver does the primary-language
     // variant + best-subtitle picker server-side. Manager classifies
-    // a row with null mux or subtitle as validation_failed —
+    // a row with null mux or primary language as validation_failed —
     // operator-actionable signal that the upstream catalogue is
     // missing required dispatch data for this video. Name the
     // specific gap(s) so operators don't chase the wrong upstream
     // signal — primary-language absence cascades into null
     // mux/subtitle via the picker, so reporting only the symptom
     // would hide the real data gap.
-    if (
-      video.muxAssetId == null ||
-      video.subtitleUrl == null ||
-      video.primaryLanguageBcp47 == null
-    ) {
+    if (video.muxAssetId == null || video.primaryLanguageBcp47 == null) {
       const missing: string[] = []
       if (video.primaryLanguageBcp47 == null) missing.push("primary language")
       if (video.muxAssetId == null) missing.push("mux variant")
-      if (video.subtitleUrl == null) missing.push("subtitle")
       results.push({
         assetId: item.assetId,
         coreId: item.coreId,
@@ -487,7 +484,7 @@ export async function processAdminTriggerRequest(
       assetId: item.assetId,
       coreId: item.coreId,
       muxAssetId: video.muxAssetId,
-      subtitleUrl: video.subtitleUrl,
+      subtitleUrl: video.subtitleUrl ?? "",
       videoLabel: video.label ?? "unknown",
       languageBcp47: video.primaryLanguageBcp47,
     }

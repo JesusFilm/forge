@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { transcribeMock, generateEmbeddingsMock } = vi.hoisted(() => ({
-  transcribeMock: vi.fn(),
-  generateEmbeddingsMock: vi.fn(),
-}))
+const { transcribeMock, transcribeSubtitleUrlMock, generateEmbeddingsMock } =
+  vi.hoisted(() => ({
+    transcribeMock: vi.fn(),
+    transcribeSubtitleUrlMock: vi.fn(),
+    generateEmbeddingsMock: vi.fn(),
+  }))
 
 vi.mock("@/services/transcription", () => ({
   transcribe: transcribeMock,
+  transcribeSubtitleUrl: transcribeSubtitleUrlMock,
 }))
 
 vi.mock("@/services/embeddings", () => ({
@@ -18,6 +21,7 @@ const { runTranscriptOnlyPipeline } =
 
 beforeEach(() => {
   transcribeMock.mockReset()
+  transcribeSubtitleUrlMock.mockReset()
   generateEmbeddingsMock.mockReset()
 })
 
@@ -75,6 +79,7 @@ describe("runTranscriptOnlyPipeline", () => {
     })
 
     expect(transcribeMock).toHaveBeenCalledWith("42", "mux-A", "en")
+    expect(transcribeSubtitleUrlMock).not.toHaveBeenCalled()
     expect(generateEmbeddingsMock).toHaveBeenCalledWith("42", {
       text: "this is a long enough transcript text fixture",
       segments: expect.any(Array),
@@ -99,6 +104,25 @@ describe("runTranscriptOnlyPipeline", () => {
     })
 
     expect(transcribeMock).toHaveBeenCalledWith("7", "mux-B", "auto")
+  })
+
+  it("uses the supplied subtitle URL instead of polling Mux when available", async () => {
+    transcribeSubtitleUrlMock.mockResolvedValueOnce(transcriptionFixture())
+    generateEmbeddingsMock.mockResolvedValueOnce(embeddingsFixture())
+
+    await runTranscriptOnlyPipeline({
+      assetId: "42",
+      muxAssetId: "mux-A",
+      subtitleUrl: "https://cdn.example.com/subtitles.vtt",
+      languageCode: "en",
+    })
+
+    expect(transcribeSubtitleUrlMock).toHaveBeenCalledWith(
+      "42",
+      "https://cdn.example.com/subtitles.vtt",
+      "en",
+    )
+    expect(transcribeMock).not.toHaveBeenCalled()
   })
 
   it("throws when the transcript is empty", async () => {
