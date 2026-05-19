@@ -49,10 +49,7 @@ import {
   loadCoreIdMapping,
   type CoreIdMapping,
 } from "@/services/core-id-mapping.service"
-import {
-  ManagerArtifactError,
-  type SceneAnalysisResult,
-} from "@/services/manager-artifacts.service"
+import type { SceneAnalysisResult } from "@/services/manager-artifacts.service"
 import {
   indexEditionScenes,
   type IndexEditionScenesResult,
@@ -99,6 +96,7 @@ export type SceneEmbeddingBackfillInput = {
    * derivation.
    */
   locales?: readonly string[]
+  retryTargets?: readonly SceneEmbeddingRetryTarget[]
 }
 
 export type BackfillTarget = {
@@ -115,6 +113,19 @@ export type BackfillTarget = {
    * edition, the edition produces no targets.
    */
   locale: string
+}
+
+export type SceneEmbeddingRetryTarget = {
+  coreId: string
+  videoEditionId: string
+  locale: string
+}
+
+export type RetrySelectionReport = {
+  requested: number
+  matched: number
+  unmatched: number
+  unmatchedRetryTargets: ReadonlyArray<SceneEmbeddingRetryTarget>
 }
 
 /**
@@ -150,6 +161,7 @@ export type BackfillOutcome =
       target: BackfillTarget
       locale: string
       reason: string
+      failureCategory: SceneFailureCategory
       durationMs: number
     }
 
@@ -187,6 +199,27 @@ export type MissingArtifact = {
   readonly kind: "scene-analysis"
 }
 
+export type SceneFailureCategory =
+  | "artifact_read_failed"
+  | "artifact_invalid"
+  | "dns_failed"
+  | "timeout"
+  | "access_denied"
+  | "bucket_not_found"
+  | "prisma_transaction"
+  | "provider_validation"
+  | "other"
+
+export type GroupedSceneFailure = {
+  readonly assetId: number
+  readonly coreId: string
+  readonly videoEditionId: string
+  readonly category: SceneFailureCategory
+  readonly count: number
+  readonly sampleReason: string
+  readonly sampleLocales: readonly string[]
+}
+
 export type SceneEmbeddingBackfillReport = {
   mappingGeneratedAt: string
   totalTargets: number
@@ -206,6 +239,18 @@ export type SceneEmbeddingBackfillReport = {
    * had its scene-analysis artifact present. See `MissingArtifact`.
    */
   missingArtifacts: ReadonlyArray<MissingArtifact>
+  retrySelection: RetrySelectionReport | null
+  groupedFailures: ReadonlyArray<GroupedSceneFailure>
+}
+
+export class SceneRetrySelectionError extends Error {
+  constructor(
+    message: string,
+    readonly retrySelection: RetrySelectionReport,
+  ) {
+    super(message)
+    this.name = "SceneRetrySelectionError"
+  }
 }
 
 export async function runSceneEmbeddingBackfill(
@@ -225,9 +270,19 @@ export async function runSceneEmbeddingBackfill(
     input.locales && input.locales.length > 0 ? new Set(input.locales) : null
 
   const allTargets = await stepEnumerateTargets(coreIdsFilter, mapping)
-  const targets = localeFilter
+  const broadTargets = localeFilter
     ? allTargets.filter((t) => localeFilter.has(t.locale))
     : allTargets
+  const retrySelection = reconcileRetryTargets(broadTargets, input.retryTargets)
+  if (retrySelection && retrySelection.unmatched > 0) {
+    throw new SceneRetrySelectionError(
+      `Scene retry selector mismatch: ${retrySelection.unmatched} of ${retrySelection.requested} requested retry targets no longer match current enumeration`,
+      retrySelection,
+    )
+  }
+  const targets = retrySelection
+    ? applyRetrySelection(broadTargets, input.retryTargets ?? [])
+    : broadTargets
 
   // Group flat targets by (video, edition) so the artifact load
   // collapses from per-target to per-group.
@@ -303,6 +358,7 @@ export async function runSceneEmbeddingBackfill(
         target,
         locale: target.locale,
         reason,
+        failureCategory: classifySceneFailure(result.reason),
         durationMs,
       }
       logOutcome(synthetic)
@@ -315,6 +371,7 @@ export async function runSceneEmbeddingBackfill(
     targets: targets.length,
     localeFilter:
       input.locales && input.locales.length > 0 ? input.locales : null,
+    retrySelection,
     outcomes,
   })
 }
@@ -503,8 +560,7 @@ async function processGroup(group: BackfillGroup): Promise<BackfillOutcome[]> {
     // analysis yet" → skipped. Anything else → failed (including
     // ManagerArtifactError artifact_invalid / artifact_read_failed).
     const durationMs = Date.now() - groupStartedAt
-    const isMissing =
-      error instanceof ManagerArtifactError && error.code === "artifact_missing"
+    const isMissing = getManagerArtifactCode(error) === "artifact_missing"
     const reason = isMissing
       ? "artifact_missing"
       : error instanceof Error
@@ -524,6 +580,7 @@ async function processGroup(group: BackfillGroup): Promise<BackfillOutcome[]> {
             target,
             locale: target.locale,
             reason,
+            failureCategory: classifySceneFailure(error),
             durationMs,
           }
       logOutcome(outcome)
@@ -567,19 +624,16 @@ async function stepIndexEditionLocale(
     return toSucceeded(target, target.locale, result, Date.now() - startedAt)
   } catch (error) {
     const durationMs = Date.now() - startedAt
-    // Branch on the typed error class, not error-message regex. Only a
+    // Branch on the stable error code, not error-message regex. Only a
     // genuinely-missing artifact gets demoted to skipped; every other
-    // error shape (including ManagerArtifactError artifact_invalid,
-    // artifact_read_failed, EmbeddingsBatchError, and Prisma P2025
-    // "Record not found") stays classified as failed so the operator
-    // sees it in the report. With Stage 2's group-level artifact load,
-    // an `artifact_missing` here would only fire if the indexer's
-    // empty-`loadedArtifact` short-circuit somehow bypassed the cache;
-    // keep the classification path intact for safety in depth.
-    if (
-      error instanceof ManagerArtifactError &&
-      error.code === "artifact_missing"
-    ) {
+    // error shape (including artifact_invalid, artifact_read_failed,
+    // EmbeddingsBatchError, and Prisma P2025 "Record not found") stays
+    // classified as failed so the operator sees it in the report. With
+    // Stage 2's group-level artifact load, an `artifact_missing` here
+    // would only fire if the indexer's empty-`loadedArtifact`
+    // short-circuit somehow bypassed the cache; keep the classification
+    // path intact for safety in depth.
+    if (getManagerArtifactCode(error) === "artifact_missing") {
       return {
         status: "skipped",
         target,
@@ -594,9 +648,71 @@ async function stepIndexEditionLocale(
       target,
       locale: target.locale,
       reason,
+      failureCategory: classifySceneFailure(error),
       durationMs,
     }
   }
+}
+
+function retryTargetKey(target: SceneEmbeddingRetryTarget): string {
+  return `${target.coreId}::${target.videoEditionId}::${target.locale}`
+}
+
+function dedupeRetryTargets(
+  retryTargets: readonly SceneEmbeddingRetryTarget[],
+): SceneEmbeddingRetryTarget[] {
+  const byKey = new Map<string, SceneEmbeddingRetryTarget>()
+  for (const target of retryTargets) {
+    const key = retryTargetKey(target)
+    if (!byKey.has(key)) byKey.set(key, target)
+  }
+  return [...byKey.values()].sort((a, b) =>
+    retryTargetKey(a).localeCompare(retryTargetKey(b)),
+  )
+}
+
+function reconcileRetryTargets(
+  targets: readonly BackfillTarget[],
+  retryTargets: readonly SceneEmbeddingRetryTarget[] | undefined,
+): RetrySelectionReport | null {
+  if (retryTargets === undefined) return null
+  const available = new Set(
+    targets.map((target) =>
+      retryTargetKey({
+        coreId: target.coreId,
+        videoEditionId: target.videoEditionId,
+        locale: target.locale,
+      }),
+    ),
+  )
+  const deduped = dedupeRetryTargets(retryTargets)
+  const unmatchedRetryTargets = deduped.filter(
+    (target) => !available.has(retryTargetKey(target)),
+  )
+  return {
+    requested: deduped.length,
+    matched: deduped.length - unmatchedRetryTargets.length,
+    unmatched: unmatchedRetryTargets.length,
+    unmatchedRetryTargets,
+  }
+}
+
+function applyRetrySelection(
+  targets: readonly BackfillTarget[],
+  retryTargets: readonly SceneEmbeddingRetryTarget[],
+): BackfillTarget[] {
+  const requested = new Set(
+    dedupeRetryTargets(retryTargets).map(retryTargetKey),
+  )
+  return targets.filter((target) =>
+    requested.has(
+      retryTargetKey({
+        coreId: target.coreId,
+        videoEditionId: target.videoEditionId,
+        locale: target.locale,
+      }),
+    ),
+  )
 }
 
 /**
@@ -635,10 +751,138 @@ function deriveMissingArtifacts(
   return Array.from(byAssetId.values()).sort((a, b) => a.assetId - b.assetId)
 }
 
+function deriveGroupedFailures(
+  outcomes: readonly BackfillOutcome[],
+): GroupedSceneFailure[] {
+  const byKey = new Map<
+    string,
+    { failure: GroupedSceneFailure; locales: Set<string> }
+  >()
+  for (const outcome of outcomes) {
+    if (outcome.status !== "failed") continue
+    const key = `${outcome.target.cmsVideoId}::${outcome.target.videoEditionId}::${outcome.failureCategory}`
+    let entry = byKey.get(key)
+    if (!entry) {
+      entry = {
+        failure: {
+          assetId: outcome.target.cmsVideoId,
+          coreId: outcome.target.coreId,
+          videoEditionId: outcome.target.videoEditionId,
+          category: outcome.failureCategory,
+          count: 0,
+          sampleReason: outcome.reason,
+          sampleLocales: [],
+        },
+        locales: new Set<string>(),
+      }
+      byKey.set(key, entry)
+    }
+    entry.failure = { ...entry.failure, count: entry.failure.count + 1 }
+    if (entry.locales.size < 5) entry.locales.add(outcome.locale)
+  }
+
+  return [...byKey.values()]
+    .map(({ failure, locales }) => ({
+      ...failure,
+      sampleLocales: [...locales].sort(),
+    }))
+    .sort(
+      (a, b) =>
+        a.assetId - b.assetId ||
+        a.videoEditionId.localeCompare(b.videoEditionId) ||
+        a.category.localeCompare(b.category),
+    )
+}
+
+function classifySceneFailure(error: unknown): SceneFailureCategory {
+  const artifactCode = getManagerArtifactCode(error)
+  if (artifactCode === "artifact_invalid") return "artifact_invalid"
+  if (artifactCode === "artifact_read_failed") {
+    return classifySceneFailure(
+      getUnknownProp(error, "cause") ??
+        (error instanceof Error ? error.message : String(error)),
+    )
+  }
+  const name = getStringProp(error, "name")
+  const code = getStringProp(error, "code") ?? getStringProp(error, "Code")
+  const message = error instanceof Error ? error.message : String(error)
+  const lower = message.toLowerCase()
+
+  if (
+    code === "ENOTFOUND" ||
+    code === "EAI_AGAIN" ||
+    lower.includes("getaddrinfo enotfound")
+  ) {
+    return "dns_failed"
+  }
+  if (
+    name === "TimeoutError" ||
+    name === "AbortError" ||
+    code === "ETIMEDOUT" ||
+    lower.includes("timeout") ||
+    lower.includes("timed out")
+  ) {
+    return "timeout"
+  }
+  if (
+    name === "AccessDenied" ||
+    code === "AccessDenied" ||
+    lower.includes("accessdenied") ||
+    lower.includes("access denied")
+  ) {
+    return "access_denied"
+  }
+  if (
+    name === "NoSuchBucket" ||
+    code === "NoSuchBucket" ||
+    lower.includes("nosuchbucket")
+  ) {
+    return "bucket_not_found"
+  }
+  if (lower.includes("artifact_read_failed")) return "artifact_read_failed"
+  if (lower.includes("artifact_invalid")) return "artifact_invalid"
+  if (lower.includes("p1017") || lower.includes("p2028")) {
+    return "prisma_transaction"
+  }
+  if (
+    lower.includes("embedding response validation failed") ||
+    lower.includes("provider validation")
+  ) {
+    return "provider_validation"
+  }
+  return "other"
+}
+
+function getManagerArtifactCode(
+  error: unknown,
+):
+  | "artifact_missing"
+  | "artifact_invalid"
+  | "artifact_read_failed"
+  | undefined {
+  const code = getStringProp(error, "code")
+  if (code === "artifact_missing") return code
+  if (code === "artifact_invalid") return code
+  if (code === "artifact_read_failed") return code
+  return undefined
+}
+
+function getStringProp(error: unknown, prop: string): string | undefined {
+  if (typeof error !== "object" || error === null) return undefined
+  const value = (error as Record<string, unknown>)[prop]
+  return typeof value === "string" ? value : undefined
+}
+
+function getUnknownProp(error: unknown, prop: string): unknown {
+  if (typeof error !== "object" || error === null) return undefined
+  return (error as Record<string, unknown>)[prop]
+}
+
 function stepReport(args: {
   mappingGeneratedAt: string
   targets: number
   localeFilter: readonly string[] | null
+  retrySelection: RetrySelectionReport | null
   outcomes: BackfillOutcome[]
 }): SceneEmbeddingBackfillReport {
   let succeeded = 0
@@ -675,6 +919,8 @@ function stepReport(args: {
     skipped,
     failed,
     missingArtifacts: deriveMissingArtifacts(args.outcomes),
+    retrySelection: args.retrySelection,
+    groupedFailures: deriveGroupedFailures(args.outcomes),
   }
 }
 
@@ -773,4 +1019,8 @@ export const _internals = {
   toSucceeded,
   logOutcome,
   groupTargetsByVideoEdition,
+  reconcileRetryTargets,
+  applyRetrySelection,
+  classifySceneFailure,
+  deriveGroupedFailures,
 }

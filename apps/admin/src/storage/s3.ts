@@ -313,6 +313,31 @@ export async function readManagerArtifact(
   return new Uint8Array(await response.Body.transformToByteArray())
 }
 
+/**
+ * Cheap reachability probe for manager's artifact bucket. Used by
+ * long-running operator CLIs before they start enumerating/indexing a
+ * large corpus. This intentionally exposes only an ok/error boundary;
+ * callers classify the thrown AWS/transport error for operator output.
+ */
+export async function assertManagerArtifactsReachable(): Promise<void> {
+  assertManagerArtifactsConfiguredForProduction()
+
+  if (!useManagerArtifactsS3) {
+    // Local fallback is reachable if the process can read its cwd; the
+    // real artifact read will report ENOENT for individual files.
+    return
+  }
+
+  const { ListObjectsV2Command } = await import("@aws-sdk/client-s3")
+  const s3 = await getManagerArtifactsS3()
+  await s3.send(
+    new ListObjectsV2Command({
+      Bucket: env.MANAGER_ARTIFACTS_S3_BUCKET,
+      MaxKeys: 1,
+    }),
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Object-key API — reads/writes to an arbitrary S3 key (slash-separated
 // path segments), rather than the `{assetId}/{artifactType}.{ext}` shape.
@@ -377,4 +402,24 @@ export async function readObject(key: string): Promise<Uint8Array> {
 
   if (!response.Body) throw new Error(`Empty body for ${key}`)
   return new Uint8Array(await response.Body.transformToByteArray())
+}
+
+/**
+ * Cheap reachability probe for admin's own object bucket. Kept separate
+ * from readObject so callers can distinguish "bucket/config/transport
+ * broken" from "specific mapping object missing".
+ */
+export async function assertObjectStorageReachable(): Promise<void> {
+  assertStorageConfiguredForProduction()
+
+  if (!useS3) return
+
+  const { ListObjectsV2Command } = await import("@aws-sdk/client-s3")
+  const s3 = await getS3()
+  await s3.send(
+    new ListObjectsV2Command({
+      Bucket: env.RAILWAY_S3_BUCKET,
+      MaxKeys: 1,
+    }),
+  )
 }

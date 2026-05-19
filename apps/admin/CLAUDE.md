@@ -762,9 +762,11 @@ scale.
   surfaces the artifact-fetch fan-in for any trigger path).
 - **Trigger:** `triggerSceneEmbeddingBackfill` GraphQL mutation
   (ADMIN-only; permission key `write:scene-embeddings`). Stage 2's
-  reshape is internal — the GraphQL JSON response shape is byte-
-  identical to Stage 1 (modulo `outcomes[]` ordering, already
-  documented as non-deterministic per `Promise.allSettled`).
+  reshape is internal to execution, but the JSON report shape is
+  additive over Stage 1 (`missingArtifacts`, `retrySelection`,
+  `groupedFailures`, and failed-outcome `failureCategory` may appear).
+  `outcomes[]` ordering remains documented as non-deterministic per
+  `Promise.allSettled`.
 - **NoSuchKey classification + missingArtifacts list (feat-119 PR1):**
   AWS S3 `NoSuchKey` errors classify as `skipped { reason: "artifact_missing" }`
   via the typed-error helper `isArtifactMissing` in
@@ -779,6 +781,17 @@ scale.
   Only `skipped { artifact_missing }` outcomes feed the list — `failed`
   outcomes are real failures, not upstream gaps. See
   `docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md`.
+- **Scene retry recovery from prior reports:** for `pnpm run-embeds`,
+  `--pipeline=scene --from-report=<path>` extracts failed
+  `reports.scene.outcomes[]` from a prior `run-embeds.complete` report,
+  dedupes exact `(coreId, videoEditionId, locale)` selectors, and retries
+  only those targets. The workflow reconciles selectors against current
+  enumeration and fails closed when selectors are stale. The final report
+  includes `retrySelection` counts plus `groupedFailures`, which
+  collapses noisy per-locale failures by asset, edition, and category
+  (`dns_failed`, `timeout`, `prisma_transaction`, `provider_validation`,
+  etc.). Use this for transient infrastructure/provider recovery rather
+  than blindly rerunning the full catalog.
 - **Bulk SQL writes (Stage 3 — feat-117):** the per-target write batch
   collapses from a per-row `videoSceneLocale.upsert()` + per-row
   `$executeRaw … UPDATE … embedding` loop into THREE bulk statements
@@ -1628,6 +1641,31 @@ path and the Cloudflare 524 edge timeout. Per
    singleton, mirroring `pnpm run-sync`. Per-pipeline error
    isolation; structured JSON output. R2 is free (vector reuse from
    manager's `embeddings.json`); R1 hits OpenRouter.
+
+   Scene-including runs perform a preflight before indexing: admin S3
+   reachability, manager artifact S3 reachability, mapping load, and
+   (when `--from-report` provides a sample asset) one sample
+   scene-analysis artifact read. Infrastructure failures such as DNS,
+   timeout, bucket/auth errors, or mapping read failures fail before
+   target enumeration; a sample `artifact_missing` is only a warning
+   because missing artifacts are an enrichment gap, not storage outage.
+
+4. **Retry only failed scene outcomes from a prior report:**
+
+   ```bash
+   DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
+   pnpm --filter @forge/admin run-embeds \
+     --pipeline=scene \
+     --from-report=.tmp/prod-embeds/prod-scene-report.json \
+     --report-out=.tmp/prod-embeds/prod-scene-retry-$(date +%Y%m%d%H%M%S).json
+   ```
+
+   `--from-report` is scene-only and mutually exclusive with broad
+   `--core-id`, `--locale`, and `--language` filters. It retries exact
+   failed `(coreId, videoEditionId, locale)` targets from the report
+   after preflight, preserving the one-artifact-read-per-edition group
+   behavior. If `retrySelection.unmatched > 0`, treat the report as
+   stale and inspect the unmatched selectors before proceeding.
 
 **Local DB is the destination.** `DATABASE_URL` is the only safety
 guard — there is no in-script check that detects a prod URL. Mirrors

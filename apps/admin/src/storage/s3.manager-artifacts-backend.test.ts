@@ -21,10 +21,19 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { s3Send, GetObjectCommand, capturedClientConfigs } = vi.hoisted(() => ({
+const {
+  s3Send,
+  GetObjectCommand,
+  ListObjectsV2Command,
+  capturedClientConfigs,
+} = vi.hoisted(() => ({
   s3Send: vi.fn(),
   GetObjectCommand: vi.fn().mockImplementation((input: unknown) => ({
     __command: "GetObject",
+    input,
+  })),
+  ListObjectsV2Command: vi.fn().mockImplementation((input: unknown) => ({
+    __command: "ListObjectsV2",
     input,
   })),
   capturedClientConfigs: [] as Array<Record<string, unknown>>,
@@ -47,6 +56,7 @@ vi.mock("@aws-sdk/client-s3", () => ({
   S3Client: StubS3Client,
   PutObjectCommand: vi.fn(),
   GetObjectCommand,
+  ListObjectsV2Command,
 }))
 
 vi.mock("@smithy/node-http-handler", () => ({
@@ -69,12 +79,18 @@ process.env.MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID = "MANAGER_AKIA"
 process.env.MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY = "manager-secret"
 
 const storage = await import("./s3")
-const { readManagerArtifact, readArtifact } = storage
+const {
+  readManagerArtifact,
+  readArtifact,
+  assertManagerArtifactsReachable,
+  assertObjectStorageReachable,
+} = storage
 
 describe("storage — readManagerArtifact (S3 backend)", () => {
   beforeEach(() => {
     s3Send.mockReset()
     GetObjectCommand.mockClear()
+    ListObjectsV2Command.mockClear()
     // capturedClientConfigs is intentionally NOT reset between tests —
     // the s3 module memoizes both clients at module scope, so only the
     // first test that triggers each lazy init appends a config. Tests
@@ -172,6 +188,7 @@ describe("storage — readManagerArtifact (S3 backend)", () => {
     // surface here.
     const exports = storage as Record<string, unknown>
     expect("readManagerArtifact" in exports).toBe(true)
+    expect("assertManagerArtifactsReachable" in exports).toBe(true)
     expect("getManagerArtifactsS3" in exports).toBe(false)
     expect("_s3ManagerArtifacts" in exports).toBe(false)
     expect("writeManagerArtifact" in exports).toBe(false)
@@ -201,5 +218,41 @@ describe("storage — readManagerArtifact (S3 backend)", () => {
       process.env.MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY = "manager-secret"
       vi.resetModules()
     }
+  })
+
+  it("probes manager artifact bucket reachability with MANAGER_ARTIFACTS_S3_BUCKET", async () => {
+    s3Send.mockResolvedValueOnce({})
+
+    await assertManagerArtifactsReachable()
+
+    expect(ListObjectsV2Command).toHaveBeenCalledTimes(1)
+    expect(ListObjectsV2Command).toHaveBeenCalledWith({
+      Bucket: "manager-bucket",
+      MaxKeys: 1,
+    })
+    expect(s3Send).toHaveBeenCalledTimes(1)
+  })
+
+  it("probes admin object bucket reachability with RAILWAY_S3_BUCKET", async () => {
+    s3Send.mockResolvedValueOnce({})
+
+    await assertObjectStorageReachable()
+
+    expect(ListObjectsV2Command).toHaveBeenCalledTimes(1)
+    expect(ListObjectsV2Command).toHaveBeenCalledWith({
+      Bucket: "wrong-bucket",
+      MaxKeys: 1,
+    })
+    expect(s3Send).toHaveBeenCalledTimes(1)
+  })
+
+  it("propagates manager artifact bucket reachability failures", async () => {
+    s3Send.mockRejectedValueOnce(new Error("network down"))
+
+    await expect(assertManagerArtifactsReachable()).rejects.toThrow(
+      "network down",
+    )
+    expect(ListObjectsV2Command).toHaveBeenCalledTimes(1)
+    expect(s3Send).toHaveBeenCalledTimes(1)
   })
 })
