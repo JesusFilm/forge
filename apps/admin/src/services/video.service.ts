@@ -50,6 +50,9 @@ export class VideoLookupValidationError extends Error {
  * contract is double-locked.
  */
 export const VIDEOS_BY_CORE_IDS_MAX = 100
+const VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_MS = 8_000
+const VIDEOS_BY_CORE_IDS_TRANSACTION_TIMEOUT_MS = 9_000
+const VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_MS}ms'`
 
 export class VideoService {
   constructor(private prisma: PrismaClient) {}
@@ -132,56 +135,69 @@ export class VideoService {
       )
     }
 
+    let rows: VideoForEnrichmentRow[]
     const startedAt = Date.now()
-    const rows = await this.prisma.$queryRaw<VideoForEnrichmentRow[]>`
-      SELECT
-        v.id,
-        v.core_id AS "coreId",
-        v.label::text AS label,
-        primary_language.bcp47 AS "primaryLanguageBcp47",
-        primary_mux.asset_id AS "muxAssetId",
-        primary_subtitle.vtt_src AS "subtitleUrl"
-      FROM video v
-      LEFT JOIN language primary_language
-        ON primary_language.id = v.primary_language_id
-        AND primary_language.deleted_at IS NULL
-      LEFT JOIN LATERAL (
-        SELECT mux_video.asset_id
-        FROM video_dub dub
-        JOIN language dub_language
-          ON dub_language.id = dub.language_id
-          AND dub_language.deleted_at IS NULL
-        JOIN mux_video
-          ON mux_video.id = dub.mux_video_id
-          AND mux_video.deleted_at IS NULL
-        WHERE dub.video_id = v.id
-          AND dub.deleted_at IS NULL
-          AND dub_language.bcp47 = primary_language.bcp47
-          AND mux_video.asset_id IS NOT NULL
-          AND mux_video.asset_id <> ''
-        ORDER BY dub.published DESC NULLS LAST, dub.updated_at DESC
-        LIMIT 1
-      ) primary_mux ON TRUE
-      LEFT JOIN LATERAL (
-        SELECT subtitle.vtt_src
-        FROM video_subtitle subtitle
-        JOIN language subtitle_language
-          ON subtitle_language.id = subtitle.language_id
-          AND subtitle_language.deleted_at IS NULL
-        WHERE subtitle.video_id = v.id
-          AND subtitle.deleted_at IS NULL
-          AND subtitle_language.bcp47 = primary_language.bcp47
-          AND subtitle.vtt_src IS NOT NULL
-          AND subtitle.vtt_src <> ''
-        ORDER BY
-          (CASE WHEN subtitle.primary THEN 0 ELSE 1 END) +
-          (CASE WHEN subtitle.ai_generated THEN 1 ELSE 0 END) ASC,
-          subtitle.updated_at DESC
-        LIMIT 1
-      ) primary_subtitle ON TRUE
-      WHERE v.core_id IN (${Prisma.join([...coreIds])})
-        AND v.deleted_at IS NULL
-    `
+    try {
+      rows = await this.prisma.$transaction(
+        async (tx) => {
+          await tx.$executeRawUnsafe(VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_SQL)
+
+          return tx.$queryRaw<VideoForEnrichmentRow[]>`
+            SELECT
+              v.id,
+              v.core_id AS "coreId",
+              v.label::text AS label,
+              primary_language.bcp47 AS "primaryLanguageBcp47",
+              primary_mux.asset_id AS "muxAssetId",
+              primary_subtitle.vtt_src AS "subtitleUrl"
+            FROM video v
+            LEFT JOIN language primary_language
+              ON primary_language.id = v.primary_language_id
+              AND primary_language.deleted_at IS NULL
+            LEFT JOIN LATERAL (
+              SELECT mux_video.asset_id
+              FROM video_dub dub
+              JOIN language dub_language
+                ON dub_language.id = dub.language_id
+                AND dub_language.deleted_at IS NULL
+              JOIN mux_video
+                ON mux_video.id = dub.mux_video_id
+                AND mux_video.deleted_at IS NULL
+              WHERE dub.video_id = v.id
+                AND dub.deleted_at IS NULL
+                AND dub_language.bcp47 = primary_language.bcp47
+                AND mux_video.asset_id IS NOT NULL
+                AND mux_video.asset_id <> ''
+              ORDER BY dub.published DESC NULLS LAST, dub.updated_at DESC
+              LIMIT 1
+            ) primary_mux ON TRUE
+            LEFT JOIN LATERAL (
+              SELECT subtitle.vtt_src
+              FROM video_subtitle subtitle
+              JOIN language subtitle_language
+                ON subtitle_language.id = subtitle.language_id
+                AND subtitle_language.deleted_at IS NULL
+              WHERE subtitle.video_id = v.id
+                AND subtitle.deleted_at IS NULL
+                AND subtitle_language.bcp47 = primary_language.bcp47
+                AND subtitle.vtt_src IS NOT NULL
+                AND subtitle.vtt_src <> ''
+              ORDER BY
+                (CASE WHEN subtitle.primary THEN 0 ELSE 1 END) +
+                (CASE WHEN subtitle.ai_generated THEN 1 ELSE 0 END) ASC,
+                subtitle.updated_at DESC
+              LIMIT 1
+            ) primary_subtitle ON TRUE
+            WHERE v.core_id IN (${Prisma.join([...coreIds])})
+              AND v.deleted_at IS NULL
+          `
+        },
+        { timeout: VIDEOS_BY_CORE_IDS_TRANSACTION_TIMEOUT_MS },
+      )
+    } catch (error) {
+      logVideoLookupFailure(coreIds.length, Date.now() - startedAt, error)
+      throw error
+    }
     logSlowVideoLookup(coreIds.length, Date.now() - startedAt)
 
     return rows.map((video): VideoForEnrichment => {
@@ -212,6 +228,24 @@ function logSlowVideoLookup(coreIdCount: number, durationMs: number): void {
   console.warn(
     `[videosByCoreIds] event=lookup.slow coreIdCount=${coreIdCount} durationMs=${durationMs}`,
   )
+}
+
+function logVideoLookupFailure(
+  coreIdCount: number,
+  durationMs: number,
+  error: unknown,
+): void {
+  console.warn(
+    `[videosByCoreIds] event=lookup.failed coreIdCount=${coreIdCount} durationMs=${durationMs} ${formatLookupError(error)}`,
+  )
+}
+
+function formatLookupError(error: unknown): string {
+  if (!(error instanceof Error)) return "errorName=UnknownError"
+
+  const maybeCode = (error as Error & { code?: unknown }).code
+  const code = typeof maybeCode === "string" ? ` errorCode=${maybeCode}` : ""
+  return `errorName=${error.name}${code}`
 }
 
 /**
