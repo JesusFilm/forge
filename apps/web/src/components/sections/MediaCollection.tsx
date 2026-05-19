@@ -17,10 +17,9 @@ import {
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
 import { useDynamicBackground } from "./DynamicBackground"
+import { resolveMediaImageUrl } from "@/lib/media-image-url"
 
 export { mediaCollectionFragment }
-
-const BASE_PATH = "/watch"
 
 type MediaCollectionProps = {
   data: FragmentOf<typeof mediaCollectionFragment>
@@ -361,12 +360,4 @@ function DefaultCard({
 
 function formatLabel(label: string): string {
   return label.replace(/([a-z0-9])([A-Z])/g, "$1 $2").trim()
-}
-
-function resolveMediaImageUrl(url: string | null): string | null {
-  if (!url) return null
-  if (url.startsWith("http://") || url.startsWith("https://")) return url
-  if (url.startsWith(`${BASE_PATH}/`)) return url
-  if (url.startsWith("/images/")) return `${BASE_PATH}${url}`
-  return url
 }
