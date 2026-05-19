@@ -16,6 +16,8 @@ const { env } = await import("@/config/env")
 const {
   processAdminTriggerRequest,
   __clearInFlightMapForTests,
+  __setDispatchConcurrencyForTests,
+  __setMaxPendingDispatchesForTests,
   AdminTriggerBodySchema,
 } = await import("@/lib/admin-trigger-route")
 
@@ -248,6 +250,275 @@ describe("processAdminTriggerRequest — happy path", () => {
     await new Promise((r) => setTimeout(r, 0))
     expect(dispatched).toHaveLength(2)
     expect(dispatched[0].muxAssetId).toBe("mux-c-1")
+  })
+
+  it("queues accepted dispatches behind a bounded process-local concurrency cap", async () => {
+    __setDispatchConcurrencyForTests(1)
+    const adminLookup = vi.fn(async () =>
+      adminLookupOk([
+        videoFixture({ coreId: "c-1" }),
+        videoFixture({ coreId: "c-2" }),
+        videoFixture({ coreId: "c-3" }),
+      ]),
+    )
+    const started: number[] = []
+    const resolvers: Array<() => void> = []
+    const dispatch = vi.fn(
+      (input) =>
+        new Promise<unknown>((resolve) => {
+          started.push(input.assetId)
+          resolvers.push(() => resolve({}))
+        }),
+    )
+
+    const res = await processAdminTriggerRequest({
+      request: makeRequest({
+        items: [
+          { assetId: 1, coreId: "c-1" },
+          { assetId: 2, coreId: "c-2" },
+          { assetId: 3, coreId: "c-3" },
+        ],
+      }),
+      kind: "transcript",
+      dispatch,
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb()
+      },
+    })
+    const body = (await res.json()) as {
+      results: Array<{ status: string }>
+    }
+
+    expect(body.results.map((r) => r.status)).toEqual([
+      "started",
+      "started",
+      "started",
+    ])
+    await new Promise((r) => setTimeout(r, 0))
+    expect(started).toEqual([1])
+    expect(dispatch).toHaveBeenCalledTimes(1)
+
+    resolvers[0]()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(started).toEqual([1, 2])
+    expect(dispatch).toHaveBeenCalledTimes(2)
+
+    resolvers[1]()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(started).toEqual([1, 2, 3])
+    expect(dispatch).toHaveBeenCalledTimes(3)
+
+    resolvers[2]()
+    await new Promise((r) => setTimeout(r, 0))
+  })
+
+  it("shares the concurrency cap across separate requests and trigger kinds", async () => {
+    __setDispatchConcurrencyForTests(1)
+    const adminLookup = vi.fn(async (coreIds: readonly string[]) =>
+      adminLookupOk(coreIds.map((coreId) => videoFixture({ coreId }))),
+    )
+    const started: Array<{ kind: string; assetId: number }> = []
+    const resolvers: Array<() => void> = []
+    const dispatchFor = (kind: string) =>
+      vi.fn(
+        (input) =>
+          new Promise<unknown>((resolve) => {
+            started.push({ kind, assetId: input.assetId })
+            resolvers.push(() => resolve({}))
+          }),
+      )
+    const transcriptDispatch = dispatchFor("transcript")
+    const sceneDispatch = dispatchFor("scene-analysis")
+
+    await processAdminTriggerRequest({
+      request: makeRequest({ items: [{ assetId: 1, coreId: "c-1" }] }),
+      kind: "transcript",
+      dispatch: transcriptDispatch,
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb()
+      },
+    })
+    await processAdminTriggerRequest({
+      request: makeRequest({ items: [{ assetId: 2, coreId: "c-2" }] }),
+      kind: "scene-analysis",
+      dispatch: sceneDispatch,
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb()
+      },
+    })
+
+    await new Promise((r) => setTimeout(r, 0))
+    expect(started).toEqual([{ kind: "transcript", assetId: 1 }])
+    expect(transcriptDispatch).toHaveBeenCalledTimes(1)
+    expect(sceneDispatch).not.toHaveBeenCalled()
+
+    resolvers[0]()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(started).toEqual([
+      { kind: "transcript", assetId: 1 },
+      { kind: "scene-analysis", assetId: 2 },
+    ])
+    expect(sceneDispatch).toHaveBeenCalledTimes(1)
+
+    resolvers[1]()
+    await new Promise((r) => setTimeout(r, 0))
+  })
+
+  it("keeps scheduled after work pending until this request's queued jobs settle", async () => {
+    __setDispatchConcurrencyForTests(1)
+    const adminLookup = vi.fn(async () =>
+      adminLookupOk([
+        videoFixture({ coreId: "c-1" }),
+        videoFixture({ coreId: "c-2" }),
+      ]),
+    )
+    const resolvers: Array<() => void> = []
+    const dispatch = vi.fn(
+      () =>
+        new Promise<unknown>((resolve) => {
+          resolvers.push(() => resolve({}))
+        }),
+    )
+    let scheduleSettled = false
+
+    await processAdminTriggerRequest({
+      request: makeRequest({
+        items: [
+          { assetId: 1, coreId: "c-1" },
+          { assetId: 2, coreId: "c-2" },
+        ],
+      }),
+      kind: "transcript",
+      dispatch,
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb().then(() => {
+          scheduleSettled = true
+        })
+      },
+    })
+
+    await new Promise((r) => setTimeout(r, 0))
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    expect(scheduleSettled).toBe(false)
+
+    resolvers[0]()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(dispatch).toHaveBeenCalledTimes(2)
+    expect(scheduleSettled).toBe(false)
+
+    resolvers[1]()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(scheduleSettled).toBe(true)
+  })
+
+  it("returns a retryable 503 instead of accepting work when the dispatch queue is full", async () => {
+    __setDispatchConcurrencyForTests(1)
+    __setMaxPendingDispatchesForTests(1)
+    const adminLookup = vi.fn(async (coreIds: readonly string[]) =>
+      adminLookupOk(coreIds.map((coreId) => videoFixture({ coreId }))),
+    )
+    const dispatch = vi.fn(
+      () => new Promise<unknown>(() => {}) as Promise<unknown>,
+    )
+
+    const first = await processAdminTriggerRequest({
+      request: makeRequest({ items: [{ assetId: 1, coreId: "c-1" }] }),
+      kind: "transcript",
+      dispatch,
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb()
+      },
+    })
+    expect(first.status).toBe(200)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(dispatch).toHaveBeenCalledTimes(1)
+
+    const second = await processAdminTriggerRequest({
+      request: makeRequest({ items: [{ assetId: 2, coreId: "c-2" }] }),
+      kind: "transcript",
+      dispatch,
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb()
+      },
+    })
+    expect(second.status).toBe(503)
+    const body = (await second.json()) as {
+      error: string
+      retryable: boolean
+      maxPendingDispatches: number
+    }
+    expect(body).toEqual(
+      expect.objectContaining({
+        error: "manager dispatch queue full",
+        retryable: true,
+        maxPendingDispatches: 1,
+      }),
+    )
+    expect(dispatch).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not spend queue capacity on validation_failed, not_found, or already_in_flight rows", async () => {
+    __setDispatchConcurrencyForTests(1)
+    __setMaxPendingDispatchesForTests(1)
+    const dispatch = vi.fn(
+      () => new Promise<unknown>(() => {}) as Promise<unknown>,
+    )
+    const adminLookup = vi.fn(async (coreIds: readonly string[]) =>
+      adminLookupOk(
+        coreIds.flatMap((coreId) => {
+          if (coreId === "c-missing") return []
+          if (coreId === "c-no-sub") {
+            return [videoFixture({ coreId, subtitleUrl: null })]
+          }
+          return [videoFixture({ coreId })]
+        }),
+      ),
+    )
+
+    const first = await processAdminTriggerRequest({
+      request: makeRequest({ items: [{ assetId: 1, coreId: "c-1" }] }),
+      kind: "transcript",
+      dispatch,
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb()
+      },
+    })
+    expect(first.status).toBe(200)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(dispatch).toHaveBeenCalledTimes(1)
+
+    const nonDispatching = await processAdminTriggerRequest({
+      request: makeRequest({
+        items: [
+          { assetId: 1, coreId: "c-1" },
+          { assetId: 2, coreId: "c-no-sub" },
+          { assetId: 3, coreId: "c-missing" },
+        ],
+      }),
+      kind: "transcript",
+      dispatch,
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb()
+      },
+    })
+    expect(nonDispatching.status).toBe(200)
+    const body = (await nonDispatching.json()) as {
+      results: Array<{ assetId: number; status: string }>
+    }
+    expect(body.results).toEqual([
+      expect.objectContaining({ assetId: 1, status: "already_in_flight" }),
+      expect.objectContaining({ assetId: 2, status: "validation_failed" }),
+      expect.objectContaining({ assetId: 3, status: "not_found" }),
+    ])
+    expect(dispatch).toHaveBeenCalledTimes(1)
   })
 
   it("does NOT include documentId on the dispatch input (feat-125 — Strapi-only field dropped)", async () => {
@@ -642,6 +913,117 @@ describe("processAdminTriggerRequest — idempotency", () => {
     expect(sceneBody.results[0].status).toBe("started")
     expect(transcriptBody.results[0].status).toBe("started")
     expect(neverDispatch).toHaveBeenCalledTimes(2)
+  })
+
+  it("keeps queued items in-flight before their dispatch starts", async () => {
+    __setDispatchConcurrencyForTests(1)
+    const adminLookup = vi.fn(async () =>
+      adminLookupOk([
+        videoFixture({ coreId: "c-1" }),
+        videoFixture({ coreId: "c-2" }),
+      ]),
+    )
+    const resolvers: Array<() => void> = []
+    const dispatch = vi.fn(
+      () =>
+        new Promise<unknown>((resolve) => {
+          resolvers.push(() => resolve({}))
+        }),
+    )
+
+    const first = await processAdminTriggerRequest({
+      request: makeRequest({
+        items: [
+          { assetId: 1, coreId: "c-1" },
+          { assetId: 2, coreId: "c-2" },
+        ],
+      }),
+      kind: "scene-analysis",
+      dispatch,
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb()
+      },
+    })
+    const firstBody = (await first.json()) as {
+      results: Array<{ assetId: number; status: string; managerJobId: string }>
+    }
+    await new Promise((r) => setTimeout(r, 0))
+    expect(dispatch).toHaveBeenCalledTimes(1)
+
+    const queuedJobId = firstBody.results.find(
+      (r) => r.assetId === 2,
+    )?.managerJobId
+    const duplicateQueued = await processAdminTriggerRequest({
+      request: makeRequest({ items: [{ assetId: 2, coreId: "c-2" }] }),
+      kind: "scene-analysis",
+      dispatch,
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb()
+      },
+    })
+    const duplicateBody = (await duplicateQueued.json()) as {
+      results: Array<{ status: string; managerJobId: string }>
+    }
+
+    expect(duplicateBody.results[0].status).toBe("already_in_flight")
+    expect(duplicateBody.results[0].managerJobId).toBe(queuedJobId)
+    expect(dispatch).toHaveBeenCalledTimes(1)
+
+    resolvers[0]()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(dispatch).toHaveBeenCalledTimes(2)
+    resolvers[1]()
+    await new Promise((r) => setTimeout(r, 0))
+  })
+
+  it("does not prune queued or running jobs by the old TTL while dispatch is unresolved", async () => {
+    __setDispatchConcurrencyForTests(1)
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(0)
+    const adminLookup = neverResolvesLookup()
+    const dispatch = vi.fn(
+      () => new Promise<unknown>(() => {}) as Promise<unknown>,
+    )
+
+    try {
+      const first = await processAdminTriggerRequest({
+        request: makeRequest({ items: [{ assetId: 77, coreId: "c-1" }] }),
+        kind: "transcript",
+        dispatch,
+        adminLookup,
+        scheduleAfter: (cb) => {
+          void cb()
+        },
+      })
+      const firstBody = (await first.json()) as {
+        results: Array<{ status: string; managerJobId: string }>
+      }
+      expect(firstBody.results[0].status).toBe("started")
+      const managerJobId = firstBody.results[0].managerJobId
+      await new Promise((r) => setTimeout(r, 0))
+      expect(dispatch).toHaveBeenCalledTimes(1)
+
+      nowSpy.mockReturnValue(10 * 60 * 1000)
+      const duplicateAfterOldTtl = await processAdminTriggerRequest({
+        request: makeRequest({ items: [{ assetId: 77, coreId: "c-1" }] }),
+        kind: "transcript",
+        dispatch,
+        adminLookup,
+        scheduleAfter: (cb) => {
+          void cb()
+        },
+      })
+      const duplicateBody = (await duplicateAfterOldTtl.json()) as {
+        results: Array<{ status: string; managerJobId: string }>
+      }
+
+      expect(duplicateBody.results[0].status).toBe("already_in_flight")
+      expect(duplicateBody.results[0].managerJobId).toBe(managerJobId)
+      expect(dispatch).toHaveBeenCalledTimes(1)
+    } finally {
+      nowSpy.mockRestore()
+    }
   })
 
   it("releases the slot after the dispatch REJECTS (sad-path slot leak guard)", async () => {

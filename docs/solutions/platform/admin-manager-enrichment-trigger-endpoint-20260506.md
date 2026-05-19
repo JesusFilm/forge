@@ -1,6 +1,7 @@
 ---
 title: Admin → Manager enrichment-trigger endpoint
 date: 2026-05-06
+last_updated: 2026-05-19
 tags:
   - admin
   - manager
@@ -66,8 +67,9 @@ DISPATCH_FAILED`. NEVER throws; on transport / auth / config
 /api/admin-trigger/{scene-analysis,transcript}`. Body:
    `{ items: [{ assetId: number, coreId: string }, ...] }`. Auth:
    bearer in the `ADMIN_TRIGGER_API_KEYS` CSV allowlist. Per-item
-   flow: CMS lookup by coreId via Strapi GraphQL → idempotency check
-   → background dispatch via `after()` → return per-item outcome.
+   flow: admin lookup by `coreId` → validation/idempotency check
+   → accepted jobs enter a bounded process-local dispatch queue via
+   `after()` → return per-item outcome.
 
 Plus an admin CLI (`pnpm --filter @forge/admin trigger-enrichment`)
 that consumes PR1's `--report-out` JSON via `--from-report=<path>`
@@ -107,12 +109,42 @@ side reconnaissance found three blockers:
    produces two pipeline runs that both write the same S3 key —
    wasteful but not corrupting (S3 PUT is overwrite).
 
-Decision: a process-local `Map<string /* `${kind}:${assetId}` */,
+Original PR2 decision: a process-local `Map<string /* `${kind}:${assetId}` */,
 { managerJobId, expiresAt }>` with a 5-minute TTL inside
 `apps/manager/src/lib/admin-trigger-route.ts`. Pruned lazily on each
-request. Slot is released as soon as the per-id dispatch resolves
+request. Slot released as soon as the per-id dispatch resolved
 (success or failure) so a follow-up trigger after pipeline
-completion doesn't have to wait out the TTL.
+completion did not have to wait out the TTL.
+
+**2026-05-19 hardening:** production transcript triggers showed that
+the original immediate dispatch shape could stampede Mux. Admin
+accepted 288 transcript items as `STARTED`, but manager only produced
+a subset of transcript/embedding artifacts before Railway logs showed
+repeated Mux `429 Too many requests` errors. PR #981 changed the
+receiver from "one `after()` dispatch per accepted item" to a bounded
+process-local queue shared by transcript and scene-analysis triggers:
+
+- accepted jobs log `admin-trigger.dispatch.accepted`, then enter
+  `dispatchQueue`
+- at most `DEFAULT_DISPATCH_CONCURRENCY` jobs run per manager process
+- total active + queued work is capped by
+  `DEFAULT_MAX_PENDING_DISPATCHES`
+- queue-full returns a retryable `503` before accepting new work
+- queued/running in-flight entries use `expiresAt: null`, so the old
+  5-minute TTL cannot prune a long Mux transcript job and admit a
+  duplicate
+- the request's scheduled `after()` work awaits the queued jobs it
+  accepted through settlement instead of enqueueing detached promises
+
+Capacity checks happen **after** lookup, validation, and idempotency
+classification. A full queue must not turn `VALIDATION_FAILED`,
+`NOT_FOUND`, or `ALREADY_IN_FLIGHT` rows into a whole-request 503;
+only genuinely new dispatchable jobs spend queue capacity.
+
+This remains process-local. `started` means "accepted by this manager
+process", not durable acceptance. Until durable manager-owned job
+state exists (roadmap `feat-127`), the only reliable completion signal
+for operators is artifact presence in manager S3.
 
 If concurrency-correctness becomes load-bearing in production,
 swap to a DB-backed mechanism via a follow-up ticket. The shape

@@ -18,7 +18,7 @@
 //   2. Idempotency check against the in-memory map (5-minute TTL,
 //      keyed by `${kind}:${assetId}`). Hit → return existing
 //      managerJobId with status "already_in_flight".
-//   3. Generate a new managerJobId, store in the map, dispatch via
+//   3. Generate a new managerJobId, store in the map, enqueue via
 //      `after()` background-task semantics. Status "started".
 //
 // Pre-feat-125 the lookup hit Strapi GraphQL via Apollo; admin owns
@@ -126,15 +126,33 @@ export type AdminTriggerResult = {
 // `processAdminTriggerRequest` doesn't change.
 // ---------------------------------------------------------------------------
 
-const IN_FLIGHT_TTL_MS = 5 * 60 * 1000
+const DEFAULT_DISPATCH_CONCURRENCY = 3
+const DEFAULT_MAX_PENDING_DISPATCHES = 300
 
-type InFlightEntry = { managerJobId: string; expiresAt: number }
+type InFlightEntry = { managerJobId: string; expiresAt: number | null }
 
 // Module-level so it survives across requests on the same process.
 const inFlightMap = new Map<string, InFlightEntry>()
 
+type QueuedAdminTriggerJob = {
+  kind: TriggerKind
+  item: AdminTriggerItem
+  managerJobId: string
+  key: string
+  dispatchInput: AdminTriggerDispatchInput
+  dispatch: AdminTriggerDispatcher
+  done: Promise<void>
+  resolveDone: () => void
+}
+
+const dispatchQueue: QueuedAdminTriggerJob[] = []
+let activeDispatches = 0
+let dispatchConcurrency = DEFAULT_DISPATCH_CONCURRENCY
+let maxPendingDispatches = DEFAULT_MAX_PENDING_DISPATCHES
+
 function pruneExpired(now: number): void {
   for (const [key, entry] of inFlightMap) {
+    if (entry.expiresAt == null) continue
     if (entry.expiresAt < now) inFlightMap.delete(key)
   }
 }
@@ -151,6 +169,109 @@ function inFlightKey(kind: TriggerKind, assetId: number): string {
  */
 export function __clearInFlightMapForTests(): void {
   inFlightMap.clear()
+  dispatchQueue.splice(0, dispatchQueue.length)
+  activeDispatches = 0
+  dispatchConcurrency = DEFAULT_DISPATCH_CONCURRENCY
+  maxPendingDispatches = DEFAULT_MAX_PENDING_DISPATCHES
+}
+
+/**
+ * Test-only: override queue width so unit tests can prove queuing
+ * behavior without relying on the production cap.
+ */
+export function __setDispatchConcurrencyForTests(concurrency: number): void {
+  dispatchConcurrency = Math.max(1, Math.floor(concurrency))
+  drainDispatchQueue()
+}
+
+/**
+ * Test-only: override the pending queue cap so tests can prove the
+ * backpressure branch without filling hundreds of jobs.
+ */
+export function __setMaxPendingDispatchesForTests(maxPending: number): void {
+  maxPendingDispatches = Math.max(1, Math.floor(maxPending))
+}
+
+function pendingDispatchCount(): number {
+  return activeDispatches + dispatchQueue.length
+}
+
+function enqueueDispatch(job: QueuedAdminTriggerJob): Promise<void> {
+  dispatchQueue.push(job)
+  console.warn(
+    JSON.stringify({
+      event: "admin-trigger.dispatch.queued",
+      kind: job.kind,
+      assetId: job.item.assetId,
+      coreId: job.item.coreId,
+      managerJobId: job.managerJobId,
+      queueDepth: dispatchQueue.length,
+      activeDispatches,
+    }),
+  )
+  drainDispatchQueue()
+  return job.done
+}
+
+function drainDispatchQueue(): void {
+  while (activeDispatches < dispatchConcurrency) {
+    const job = dispatchQueue.shift()
+    if (!job) return
+
+    activeDispatches++
+    void runQueuedDispatch(job)
+  }
+}
+
+async function runQueuedDispatch(job: QueuedAdminTriggerJob): Promise<void> {
+  try {
+    // Use console.warn (stderr) for structured runtime events —
+    // Railway logsV2 silences console.log (stdout) from Next.js
+    // App Router runtime handlers. See
+    // docs/solutions/runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md.
+    console.warn(
+      JSON.stringify({
+        event: "admin-trigger.dispatch.running",
+        kind: job.kind,
+        assetId: job.item.assetId,
+        coreId: job.item.coreId,
+        managerJobId: job.managerJobId,
+        queueDepth: dispatchQueue.length,
+        activeDispatches,
+        dispatchConcurrency,
+      }),
+    )
+    await job.dispatch(job.dispatchInput)
+    console.warn(
+      JSON.stringify({
+        event: "admin-trigger.dispatch.complete",
+        kind: job.kind,
+        assetId: job.item.assetId,
+        coreId: job.item.coreId,
+        managerJobId: job.managerJobId,
+      }),
+    )
+  } catch (err) {
+    console.error(
+      JSON.stringify({
+        event: "admin-trigger.dispatch.error",
+        kind: job.kind,
+        assetId: job.item.assetId,
+        coreId: job.item.coreId,
+        managerJobId: job.managerJobId,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    )
+  } finally {
+    // Release the in-flight slot once the dispatch settles
+    // (success OR failure) so a re-trigger after pipeline finish
+    // (operator decided to re-run) is allowed without waiting out
+    // the TTL.
+    inFlightMap.delete(job.key)
+    activeDispatches--
+    job.resolveDone()
+    drainDispatchQueue()
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -305,6 +426,7 @@ export async function processAdminTriggerRequest(
     })
 
   const results: AdminTriggerResult[] = []
+  const queuedJobs: QueuedAdminTriggerJob[] = []
 
   for (const item of items) {
     const video = videos.get(item.coreId)
@@ -360,10 +482,6 @@ export async function processAdminTriggerRequest(
     }
 
     const managerJobId = randomUUID()
-    inFlightMap.set(key, {
-      managerJobId,
-      expiresAt: now + IN_FLIGHT_TTL_MS,
-    })
 
     const dispatchInput: AdminTriggerDispatchInput = {
       assetId: item.assetId,
@@ -374,37 +492,20 @@ export async function processAdminTriggerRequest(
       languageBcp47: video.primaryLanguageBcp47,
     }
 
-    schedule(async () => {
-      // Wrap the ENTIRE callback body in try/finally so the
-      // in-flight slot is released regardless of where in the cb a
-      // throw originates (the dispatch itself, the structured-log
-      // JSON.stringify above the await, or any future side-effect
-      // added between them). A naive `try { await dispatch } finally
-      // { delete }` only covers the await path — a synchronous throw
-      // earlier in the cb would leak the slot until TTL prune,
-      // blocking re-triggers for up to 5 minutes.
-      try {
-        // Use console.warn (stderr) for structured runtime events —
-        // Railway logsV2 silences console.log (stdout) from Next.js
-        // App Router runtime handlers. See
-        // docs/solutions/runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md.
-        console.warn(
-          JSON.stringify({
-            event: "admin-trigger.dispatch",
-            kind: args.kind,
-            assetId: item.assetId,
-            coreId: item.coreId,
-            managerJobId,
-          }),
-        )
-        await args.dispatch(dispatchInput)
-      } finally {
-        // Release the in-flight slot once the dispatch settles
-        // (success OR failure) so a re-trigger after pipeline
-        // finish (operator decided to re-run) is allowed without
-        // waiting out the TTL.
-        inFlightMap.delete(key)
-      }
+    let resolveDone: () => void = () => {}
+    const done = new Promise<void>((resolve) => {
+      resolveDone = resolve
+    })
+
+    queuedJobs.push({
+      kind: args.kind,
+      item,
+      managerJobId,
+      key,
+      dispatchInput,
+      dispatch: args.dispatch,
+      done,
+      resolveDone,
     })
 
     results.push({
@@ -412,6 +513,52 @@ export async function processAdminTriggerRequest(
       coreId: item.coreId,
       managerJobId,
       status: "started",
+    })
+  }
+
+  const pendingAfterThisRequest = pendingDispatchCount() + queuedJobs.length
+  if (pendingAfterThisRequest > maxPendingDispatches) {
+    console.error(
+      JSON.stringify({
+        event: "admin-trigger.dispatch.queue_full",
+        kind: args.kind,
+        itemCount: queuedJobs.length,
+        queueDepth: dispatchQueue.length,
+        activeDispatches,
+        maxPendingDispatches,
+      }),
+    )
+    return NextResponse.json(
+      {
+        error: "manager dispatch queue full",
+        retryable: true,
+        queueDepth: dispatchQueue.length,
+        activeDispatches,
+        maxPendingDispatches,
+      },
+      { status: 503 },
+    )
+  }
+
+  if (queuedJobs.length > 0) {
+    for (const job of queuedJobs) {
+      inFlightMap.set(job.key, {
+        managerJobId: job.managerJobId,
+        expiresAt: null,
+      })
+      console.warn(
+        JSON.stringify({
+          event: "admin-trigger.dispatch.accepted",
+          kind: job.kind,
+          assetId: job.item.assetId,
+          coreId: job.item.coreId,
+          managerJobId: job.managerJobId,
+        }),
+      )
+    }
+
+    schedule(async () => {
+      await Promise.all(queuedJobs.map((job) => enqueueDispatch(job)))
     })
   }
 
