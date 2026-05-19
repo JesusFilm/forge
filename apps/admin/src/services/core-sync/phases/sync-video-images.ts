@@ -75,23 +75,46 @@ export async function syncVideoImages({
 
   let offset = 0
   let firstPageWasEmpty = false
+  // Track every coreId we successfully saw this run so the post-loop
+  // soft-delete only fires after a non-empty walk completed. Mirrors the
+  // `seenCoreIds.size > 0` guard sibling phases (sync-videos, sync-dubs)
+  // use to defend against a transient mid-pagination empty page tombstoning
+  // the entire catalogue. Per-page try/catch around `coreQuery` also added
+  // below so a single Core hiccup advances `offset` without breaking the loop.
+  const seenCoreIds = new Set<string>()
 
   while (true) {
-    const result = await coreQuery<{ videos: CoreVideoWithImages[] }>(
-      VIDEOS_WITH_IMAGES_QUERY,
-      {
-        offset,
-        limit: PAGE_SIZE,
-        // Filter by parent-video updatedAt. Edge: an image touched after
-        // its parent video was last touched won't be picked up by an
-        // incremental sync until the next full sync. Acceptable trade-off
-        // for the coverage win — full sync (no `since`) refreshes
-        // everything regardless.
-        where: since ? { updatedAt: { gte: since } } : undefined,
-      },
-    )
-
-    const rawVideos = result.data?.videos ?? []
+    let rawVideos: CoreVideoWithImages[] = []
+    try {
+      const result = await coreQuery<{ videos: CoreVideoWithImages[] }>(
+        VIDEOS_WITH_IMAGES_QUERY,
+        {
+          offset,
+          limit: PAGE_SIZE,
+          // Filter by parent-video updatedAt. Edge: an image touched after
+          // its parent video was last touched won't be picked up by an
+          // incremental sync until the next full sync. Acceptable trade-off
+          // for the coverage win — full sync (no `since`) refreshes
+          // everything regardless.
+          where: since ? { updatedAt: { gte: since } } : undefined,
+        },
+      )
+      rawVideos = result.data?.videos ?? []
+    } catch (err) {
+      // Per-page error isolation — record, log, advance offset, continue.
+      // A single transient Core failure must not break pagination and
+      // trigger the full-run soft-delete on an incomplete seenCoreIds set.
+      stats.errors++
+      console.error(
+        JSON.stringify({
+          event: "core-sync.video-image.page.error",
+          offset,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      )
+      offset += PAGE_SIZE
+      continue
+    }
     if (offset === 0 && rawVideos.length === 0) firstPageWasEmpty = true
 
     // Flatten { video.id, video.images[] } → image rows with parent's id
@@ -114,7 +137,7 @@ export async function syncVideoImages({
           issues: parsedImages.error.issues,
         }),
       )
-      progress.increment(rawImages.length)
+      progress.increment(rawVideos.length)
       if (rawVideos.length < PAGE_SIZE) break
       offset += PAGE_SIZE
       continue
@@ -122,7 +145,9 @@ export async function syncVideoImages({
 
     const images = parsedImages.data
     if (rawVideos.length === 0) break
-    progress.setTotal(offset * 2 + images.length)
+    // progress.increment below counts videos; setTotal must use the
+    // same unit so the progress reporter shows a meaningful ratio.
+    progress.setTotal(offset + rawVideos.length)
 
     try {
       let updated = 0
@@ -131,6 +156,7 @@ export async function syncVideoImages({
           if (!image.videoId) continue
           const videoId = videoMap.get(image.videoId)
           if (!videoId) continue
+          seenCoreIds.add(image.id)
 
           await tx.videoImage.upsert({
             where: { coreId: image.id },
@@ -191,7 +217,13 @@ export async function syncVideoImages({
     return stats
   }
 
-  if (!since && stats.errors === 0) {
+  // Soft-delete only when the pagination walk completed cleanly AND we
+  // actually saw rows. A transient mid-pagination empty page (Core hiccup
+  // that doesn't throw) would otherwise tombstone every image whose
+  // `syncedAt < phaseStartedAt` because the loop breaks on `rawVideos.length
+  // < PAGE_SIZE`. Sibling phases (sync-videos, sync-dubs) use the same
+  // `seenCoreIds.size > 0` guard.
+  if (!since && stats.errors === 0 && seenCoreIds.size > 0) {
     const result = await prisma.videoImage.updateMany({
       where: {
         source: "CORE",

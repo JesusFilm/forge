@@ -314,12 +314,13 @@ function mapToSearchResult(result: FusedResult): SearchResult {
 }
 
 /**
-/** Cap on dubs returned per video by the hydration sub-include. The
- *  selector picks one row to compute `durationSeconds`; a small N
- *  (primary-language dub + a handful of regional fallbacks) is sufficient
- *  and bounds the worst case at 50 videos × 5 dubs = 250 rows per request
- *  rather than thousands for heavily-dubbed titles (some collections in
- *  the catalogue carry 200+ published dubs). */
+ * Cap on dubs returned per video by the hydration sub-include. The
+ * selector picks one row to compute `durationSeconds`; a small N
+ * (primary-language dub + a handful of regional fallbacks) is sufficient
+ * and bounds the worst case at 50 videos × 5 dubs = 250 rows per request
+ * rather than thousands for heavily-dubbed titles (some collections in
+ * the catalogue carry 200+ published dubs).
+ */
 const HYDRATION_DUBS_PER_VIDEO = 5
 
 /**
@@ -347,60 +348,79 @@ const HYDRATION_DUBS_PER_VIDEO = 5
 async function hydrateCardPillFields(
   prisma: PrismaClient,
   results: SearchResult[],
+  logger?: { error: (msg: string) => void },
 ): Promise<SearchResult[]> {
   const videoIds = results.filter((r) => r.type === "video").map((r) => r.id)
   if (videoIds.length === 0) return results
 
-  const rows = await prisma.video.findMany({
-    where: { id: { in: videoIds }, deletedAt: null },
-    select: {
-      id: true,
-      label: true,
-      primaryLanguageId: true,
-      dubs: {
-        // `duration: { gt: 0 }` excludes sync-glitch rows (Core
-        // occasionally returns a published dub with duration=0; the
-        // pill picker then renders nothing for those rows, leaving an
-        // unexplained gap on the card).
-        where: {
-          published: true,
-          hls: { not: null },
-          deletedAt: null,
-          duration: { gt: 0 },
+  // Hydration data (label / durationSeconds / childCount) is cosmetic —
+  // a card renders without it. A Prisma error here must NOT take the
+  // search endpoint down. Catch, log, and pass through the pre-hydration
+  // array; consumers see a search response with null pill fields rather
+  // than HTTP 503 for the whole request.
+  let rows
+  try {
+    rows = await prisma.video.findMany({
+      where: { id: { in: videoIds }, deletedAt: null },
+      select: {
+        id: true,
+        label: true,
+        primaryLanguageId: true,
+        dubs: {
+          // `duration: { gt: 0 }` excludes sync-glitch rows (Core
+          // occasionally returns a published dub with duration=0; the
+          // pill picker then renders nothing for those rows, leaving an
+          // unexplained gap on the card).
+          where: {
+            published: true,
+            hls: { not: null },
+            deletedAt: null,
+            duration: { gt: 0 },
+          },
+          // `take` bounds the per-video dubs scan. Order by duration
+          // descending so the longest published in-locale dub anchors
+          // the top of the page; the post-query `find` below prefers the
+          // primary-language dub among these top-N rows, falling back to
+          // `dubs[0]` (longest) when the primary dub isn't in the top-N
+          // by duration. On heavily-dubbed videos (200+ dubs) the primary
+          // may rank below position N — accept the fallback rather than
+          // widen `take` (cost is bounded at 50 × N rows per request).
+          orderBy: [{ duration: "desc" }],
+          take: HYDRATION_DUBS_PER_VIDEO,
+          select: { languageId: true, duration: true },
         },
-        // `take` bounds the per-video dubs scan. Order primary-language
-        // first (so a single LIMIT 1 effectively returns it when
-        // present), then longest-duration as a stable secondary —
-        // duration is the field we actually consume.
-        orderBy: [{ duration: "desc" }],
-        take: HYDRATION_DUBS_PER_VIDEO,
-        select: { languageId: true, duration: true },
-      },
-      // `_count.children` mirrors the consumer-facing ABAC at
-      // videoChildrenFilter (apps/admin/src/graphql/types/video.ts):
-      // only count children that have a PUBLISHED locale and aren't
-      // soft-deleted. Without this filter the search-card "{n} episodes"
-      // pill drifts from what the watch page actually renders. Self-
-      // referential rows (parent_id = child_id) — a data-quality issue
-      // seen for `1-jesus-our-loving-pursuer` — can still inflate the
-      // count; web's normalizeAdminVideo filters those client-side, but
-      // the count is computed before that pass. Acceptable today; if
-      // self-ref inflation becomes a UX issue, switch to a raw SQL
-      // count that adds `WHERE child_id <> parent_id`.
-      _count: {
-        select: {
-          children: {
-            where: {
-              child: {
-                deletedAt: null,
-                locales: { some: { status: "PUBLISHED" } },
+        // `_count.children` mirrors the consumer-facing ABAC at
+        // videoChildrenFilter (apps/admin/src/graphql/types/video.ts):
+        // only count children that have a PUBLISHED locale and aren't
+        // soft-deleted. Without this filter the search-card "{n} episodes"
+        // pill drifts from what the watch page actually renders. Self-
+        // referential rows (parent_id = child_id) — a data-quality issue
+        // seen for `1-jesus-our-loving-pursuer` — can still inflate the
+        // count; web's normalizeAdminVideo filters those client-side, but
+        // the count is computed before that pass. Acceptable today; if
+        // self-ref inflation becomes a UX issue, switch to a raw SQL
+        // count that adds `WHERE child_id <> parent_id`.
+        _count: {
+          select: {
+            children: {
+              where: {
+                child: {
+                  deletedAt: null,
+                  locales: { some: { status: "PUBLISHED" } },
+                },
               },
             },
           },
         },
       },
-    },
-  })
+    })
+  } catch (err) {
+    const log = logger ?? console
+    log.error(
+      `[search] event=hydration_failed message=${err instanceof Error ? err.message : String(err)}`,
+    )
+    return results
+  }
 
   const hydration = new Map<
     string,
@@ -683,7 +703,11 @@ export class HybridSearchService {
     // (null, null, null) by the mapper; this pass only touches videos
     // and returns a fresh array — soft-deleted-mid-search rows are
     // filtered out rather than surfaced with stale title + null pill.
-    const results = await hydrateCardPillFields(this.prisma, mapped)
+    const results = await hydrateCardPillFields(
+      this.prisma,
+      mapped,
+      this.logger,
+    )
 
     return {
       results,

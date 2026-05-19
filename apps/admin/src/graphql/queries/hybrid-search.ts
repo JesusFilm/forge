@@ -91,7 +91,7 @@ SearchResultRef.implement({
     childCount: t.exposeInt("childCount", {
       nullable: true,
       description:
-        "Number of `video_relation` rows where this video is the parent. 0 for childless videos. Always null for `type=EXPERIENCE`. Drives the `{n} episodes` pill on series/collection cards.",
+        "Number of `video_relation` rows where this video is the parent. 0 for childless videos; null when `type=EXPERIENCE` or when the parent video was soft-deleted between the retriever pass and the hydration pass (rare race). Use `type` as the content-type discriminator — null on this field does NOT imply experience. Drives the `{n} episodes` pill on series/collection cards.",
     }),
   }),
 })

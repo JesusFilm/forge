@@ -52,14 +52,14 @@ function muxSearchThumbnail(
   return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=448&height=336&fit_mode=smartcrop${time}`
 }
 
+// Connectives that stay lowercase when not the first word in a multi-word
+// label ("Behind the Scenes", "Wages of Sin", etc.).
+const SHORT_WORDS = new Set(["of", "the", "and", "in", "on", "for"])
+
 // Format admin's VideoLabel enum for human reading. EPISODE → "Episode",
 // SHORT_FILM → "Short Film", BEHIND_THE_SCENES → "Behind the Scenes".
-// Lowercase short connectives ("of", "the", "and") so future labels with
-// those words read naturally; today's enum has none, but the rule is
-// the same one used elsewhere in the watch surface.
 export function formatVideoLabel(label: AdminVideoLabel | null): string {
   if (label == null) return "Video"
-  const SHORT_WORDS = new Set(["of", "the", "and", "in", "on", "for"])
   return label
     .toLowerCase()
     .split("_")
@@ -70,11 +70,6 @@ export function formatVideoLabel(label: AdminVideoLabel | null): string {
     )
     .join(" ")
 }
-
-// `formatDuration` is the shared util at `@/lib/format-duration`,
-// re-exported above so existing test imports from `./VideoCard` still
-// resolve. Moving the implementation out collapses what was a duplicate
-// of `DownloadModal`'s private formatter into one source of truth.
 
 // VideoLabels that semantically have children — i.e., the count pill is
 // meaningful. Everything else (EPISODE, FEATURE_FILM, SHORT_FILM, SEGMENT,

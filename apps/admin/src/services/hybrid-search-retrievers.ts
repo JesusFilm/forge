@@ -288,14 +288,21 @@ export async function searchVideoKeyword(
         LIMIT 1
       ) vi ON true
       LEFT JOIN LATERAL (
+        -- Only published dubs reach the public search response. An
+        -- unpublished dub's playback_id is still a public Mux ID
+        -- (HLS URL component, not a secret), but consumers expect
+        -- search results to point at content they can actually play.
+        -- Returning a draft dub's playback_id surfaces unfinished
+        -- editorial work on the watch page.
         SELECT mv.playback_id
         FROM video_dub vd
         JOIN language lg ON lg.id = vd.language_id
           AND lg.bcp47 = ${locale}
         LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
         WHERE vd.video_id = v.id
+          AND vd.published = true
           AND vd.deleted_at IS NULL
-        ORDER BY vd.published DESC NULLS LAST, vd.updated_at DESC
+        ORDER BY vd.updated_at DESC
         LIMIT 1
       ) dub_mux ON true
       WHERE ${tsvector} @@ plainto_tsquery('simple', ${trimmed})
