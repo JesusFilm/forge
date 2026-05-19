@@ -464,6 +464,79 @@ describe("runSceneEmbeddingBackfill", () => {
     // No groups → no S3 reads.
     expect(readSceneAnalysisArtifact).not.toHaveBeenCalled()
   })
+
+  it("filters exact retry targets after enumeration and preserves group artifact reuse", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-a", "e-b", "core-a", "en"),
+      row("v-b", "e-c", "core-b", "en"),
+    ])
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+      retryTargets: [
+        { coreId: "core-a", videoEditionId: "e-a", locale: "es" },
+        { coreId: "core-b", videoEditionId: "e-c", locale: "en" },
+      ],
+    })
+
+    expect(report.totalTargets).toBe(2)
+    expect(report.retrySelection).toEqual({
+      requested: 2,
+      matched: 2,
+      unmatched: 0,
+      unmatchedRetryTargets: [],
+    })
+    expect(readSceneAnalysisArtifact).toHaveBeenCalledTimes(2)
+    expect(indexEditionScenes).toHaveBeenCalledTimes(2)
+    expect(
+      vi
+        .mocked(indexEditionScenes)
+        .mock.calls.map((call) => ({
+          editionId: call[1].editionId,
+          locale: call[1].locale,
+        }))
+        .sort((a, b) =>
+          `${a.editionId}:${a.locale}`.localeCompare(
+            `${b.editionId}:${b.locale}`,
+          ),
+        ),
+    ).toEqual([
+      { editionId: "e-a", locale: "es" },
+      { editionId: "e-c", locale: "en" },
+    ])
+  })
+
+  it("fails closed when exact retry targets no longer match current enumeration", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+    ])
+
+    await expect(
+      runSceneEmbeddingBackfill({
+        mappingS3Key: "admin-migrations/core-id-mapping.json",
+        retryTargets: [
+          { coreId: "core-a", videoEditionId: "stale-edition", locale: "en" },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      name: "SceneRetrySelectionError",
+      retrySelection: {
+        requested: 1,
+        matched: 0,
+        unmatched: 1,
+        unmatchedRetryTargets: [
+          {
+            coreId: "core-a",
+            videoEditionId: "stale-edition",
+            locale: "en",
+          },
+        ],
+      },
+    })
+    expect(indexEditionScenes).not.toHaveBeenCalled()
+  })
 })
 
 // feat-119 PR1 — `missingArtifacts` is a deduped, sorted projection of
@@ -967,6 +1040,7 @@ describe("_internals.stepReport", () => {
       mappingGeneratedAt: "2026-04-19T00:00:00.000Z",
       targets: 3,
       localeFilter: null,
+      retrySelection: null,
       outcomes: [
         {
           status: "succeeded",
@@ -981,6 +1055,7 @@ describe("_internals.stepReport", () => {
           target,
           locale: "en",
           reason: "boom",
+          failureCategory: "other",
           durationMs: 50,
         },
         {
@@ -995,5 +1070,87 @@ describe("_internals.stepReport", () => {
     expect(report.succeeded).toBe(1)
     expect(report.failed).toBe(1)
     expect(report.skipped).toBe(1)
+  })
+})
+
+describe("runSceneEmbeddingBackfill — groupedFailures projection", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
+    vi.mocked(indexEditionScenes).mockReset()
+    vi.mocked(readSceneAnalysisArtifact).mockReset()
+    vi.mocked(readSceneAnalysisArtifact).mockResolvedValue(STUB_ARTIFACT)
+  })
+
+  it("collapses repeated artifact read failures by asset, edition, and category", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-a", "e-a", "core-a", "es"),
+      row("v-a", "e-a", "core-a", "fr"),
+    ])
+    vi.mocked(readSceneAnalysisArtifact).mockRejectedValueOnce(
+      new ManagerArtifactError(
+        "artifact_read_failed",
+        "failed to read scene-analysis artifact for assetId=1: getaddrinfo ENOTFOUND t3.storageapi.dev",
+        Object.assign(new Error("getaddrinfo ENOTFOUND t3.storageapi.dev"), {
+          code: "ENOTFOUND",
+        }),
+      ),
+    )
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.failed).toBe(3)
+    expect(report.groupedFailures).toEqual([
+      expect.objectContaining({
+        assetId: 1,
+        coreId: "core-a",
+        videoEditionId: "e-a",
+        category: "dns_failed",
+        count: 3,
+        sampleLocales: ["en", "es", "fr"],
+      }),
+    ])
+    expect(report.missingArtifacts).toEqual([])
+  })
+
+  it("classifies Prisma and provider validation failures", () => {
+    expect(
+      _internals.classifySceneFailure(
+        new Error("PrismaClientKnownRequestError(P2028) during write"),
+      ),
+    ).toBe("prisma_transaction")
+    expect(
+      _internals.classifySceneFailure(
+        new Error("Embedding response validation failed"),
+      ),
+    ).toBe("provider_validation")
+  })
+
+  it("classifies storage transport categories distinctly", () => {
+    expect(
+      _internals.classifySceneFailure(
+        Object.assign(new Error("getaddrinfo ENOTFOUND t3.storageapi.dev"), {
+          code: "ENOTFOUND",
+        }),
+      ),
+    ).toBe("dns_failed")
+    expect(
+      _internals.classifySceneFailure(
+        Object.assign(new Error("request timed out"), { name: "TimeoutError" }),
+      ),
+    ).toBe("timeout")
+    expect(
+      _internals.classifySceneFailure(
+        Object.assign(new Error("AccessDenied"), { name: "AccessDenied" }),
+      ),
+    ).toBe("access_denied")
+    expect(
+      _internals.classifySceneFailure(
+        Object.assign(new Error("NoSuchBucket"), { name: "NoSuchBucket" }),
+      ),
+    ).toBe("bucket_not_found")
   })
 })

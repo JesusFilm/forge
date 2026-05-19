@@ -33,6 +33,7 @@
  *   --force                                             # experience pipeline only — re-embed
  *                                                       # rows that already have a non-NULL embedding
  *   --report-out=<path>                                 # optional; dump final report JSON
+ *   --from-report=<path>                                # scene retry only; retry failed targets
  *
  * The mapping snapshot must already exist at the configured S3 key
  * (or the local-fallback path when RAILWAY_S3_BUCKET is unset).
@@ -49,6 +50,7 @@
  *
  *   stdout:
  *     - `run-embeds.start` — one line at startup with resolved config
+ *     - `run-embeds.scene.preflight`       (pipeline=scene|both)
  *     - `run-embeds.scene.start`           (pipeline=scene|both)
  *     - `run-embeds.scene.complete`        (pipeline=scene|both)
  *     - `run-embeds.scene.error`           (pipeline=scene|both, on error)
@@ -73,7 +75,7 @@
  * check beyond the explicit env var (mirrors run-sync.ts).
  */
 
-import { mkdir, writeFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, isAbsolute, resolve } from "node:path"
 import { DEFAULT_CORE_ID_MAPPING_S3_KEY } from "@/services/core-id-mapping.constants"
 
@@ -116,6 +118,269 @@ export async function writeReportToPath(
       ok: false,
       error: err instanceof Error ? err.message : String(err),
     }
+  }
+}
+
+export type SceneRetryTargetFromReport = {
+  coreId: string
+  videoEditionId: string
+  locale: string
+  cmsVideoId: number
+}
+
+export type SceneRetrySelectionDetails = {
+  requested: number
+  matched: number
+  unmatched: number
+  unmatchedRetryTargets: ReadonlyArray<{
+    coreId: string
+    videoEditionId: string
+    locale: string
+  }>
+}
+
+export type PipelineErrorDetails = {
+  retrySelection?: SceneRetrySelectionDetails
+}
+
+export class RunEmbedsConfigError extends Error {
+  constructor(
+    message: string,
+    readonly exitCode: 2 = 2,
+  ) {
+    super(message)
+    this.name = "RunEmbedsConfigError"
+  }
+}
+
+export function resolveReportInPath(
+  arg: string | undefined,
+): string | undefined {
+  if (arg === undefined || arg === "") return undefined
+  return isAbsolute(arg) ? arg : resolve(process.cwd(), arg)
+}
+
+export function extractFailedSceneRetryTargetsFromReport(
+  report: unknown,
+): SceneRetryTargetFromReport[] {
+  if (!report || typeof report !== "object") {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --from-report is not an object",
+    )
+  }
+  const reports = (report as Record<string, unknown>).reports
+  if (!reports || typeof reports !== "object") {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --from-report missing reports object",
+    )
+  }
+  const scene = (reports as Record<string, unknown>).scene
+  if (!scene || typeof scene !== "object") {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --from-report missing reports.scene",
+    )
+  }
+  const outcomes = (scene as Record<string, unknown>).outcomes
+  if (!Array.isArray(outcomes)) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --from-report missing reports.scene.outcomes",
+    )
+  }
+
+  const byKey = new Map<string, SceneRetryTargetFromReport>()
+  outcomes.forEach((outcome, index) => {
+    if (!outcome || typeof outcome !== "object") return
+    const o = outcome as Record<string, unknown>
+    if (o.status !== "failed") return
+    const target = o.target
+    if (!target || typeof target !== "object") {
+      throw new RunEmbedsConfigError(
+        `[run-embeds] failed scene outcome at reports.scene.outcomes[${index}] is missing target`,
+      )
+    }
+    const t = target as Record<string, unknown>
+    const coreId = typeof t.coreId === "string" ? t.coreId : undefined
+    const videoEditionId =
+      typeof t.videoEditionId === "string" ? t.videoEditionId : undefined
+    const locale = typeof o.locale === "string" ? o.locale : undefined
+    const cmsVideoId =
+      typeof t.cmsVideoId === "number" ? t.cmsVideoId : undefined
+    if (!coreId || !videoEditionId || !locale || cmsVideoId === undefined) {
+      throw new RunEmbedsConfigError(
+        `[run-embeds] failed scene outcome at reports.scene.outcomes[${index}] is missing target.coreId, target.videoEditionId, locale, or numeric target.cmsVideoId`,
+      )
+    }
+    const key = `${coreId}::${videoEditionId}::${locale}`
+    if (!byKey.has(key)) {
+      byKey.set(key, { coreId, videoEditionId, locale, cmsVideoId })
+    }
+  })
+  return [...byKey.values()].sort((a, b) => {
+    const ak = `${a.coreId}::${a.videoEditionId}::${a.locale}`
+    const bk = `${b.coreId}::${b.videoEditionId}::${b.locale}`
+    return ak.localeCompare(bk)
+  })
+}
+
+export function pipelineErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+export function pipelineErrorDetails(
+  error: unknown,
+): PipelineErrorDetails | undefined {
+  if (!error || typeof error !== "object") return undefined
+  const retrySelection = (error as Record<string, unknown>).retrySelection
+  if (!isSceneRetrySelectionDetails(retrySelection)) return undefined
+  return { retrySelection }
+}
+
+function isSceneRetrySelectionDetails(
+  value: unknown,
+): value is SceneRetrySelectionDetails {
+  if (!value || typeof value !== "object") return false
+  const record = value as Record<string, unknown>
+  return (
+    typeof record.requested === "number" &&
+    typeof record.matched === "number" &&
+    typeof record.unmatched === "number" &&
+    Array.isArray(record.unmatchedRetryTargets) &&
+    record.unmatchedRetryTargets.every(isSceneRetryTargetSummary)
+  )
+}
+
+function isSceneRetryTargetSummary(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false
+  const record = value as Record<string, unknown>
+  return (
+    typeof record.coreId === "string" &&
+    typeof record.videoEditionId === "string" &&
+    typeof record.locale === "string"
+  )
+}
+
+export async function loadSceneRetryTargetsFromReport(
+  reportPath: string,
+): Promise<SceneRetryTargetFromReport[]> {
+  let raw: string
+  try {
+    raw = await readFile(reportPath, "utf8")
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    throw new RunEmbedsConfigError(
+      `[run-embeds] failed to read --from-report=${reportPath}: ${message}`,
+    )
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw) as unknown
+  } catch {
+    throw new RunEmbedsConfigError(
+      `[run-embeds] --from-report=${reportPath} is not valid JSON`,
+    )
+  }
+  const retryTargets = extractFailedSceneRetryTargetsFromReport(parsed)
+  if (retryTargets.length === 0) {
+    throw new RunEmbedsConfigError(
+      `[run-embeds] no failed scene outcomes found in ${reportPath}`,
+    )
+  }
+  return retryTargets
+}
+
+export type SceneBranchPreflightReport = {
+  ok: boolean
+  checks: ReadonlyArray<{
+    name: string
+    status: string
+    reason: string
+  }>
+}
+
+export type SceneBranchReport = {
+  totalTargets: number
+  succeeded: number
+  skipped: number
+  failed: number
+}
+
+export type SceneBranchResult =
+  | { ok: true; report: SceneBranchReport }
+  | { ok: false; error: string; details?: PipelineErrorDetails }
+
+export async function runSceneBranch(args: {
+  mappingS3Key: string
+  coreIds: readonly string[]
+  locales: readonly string[]
+  sceneRetryTargets: readonly SceneRetryTargetFromReport[] | undefined
+  runManagerArtifactsPreflight: (input: {
+    mappingS3Key: string
+    sampleSceneAssetId?: number
+  }) => Promise<SceneBranchPreflightReport>
+  runSceneEmbeddingBackfill: (input: {
+    mappingS3Key: string
+    coreIds?: readonly string[]
+    locales?: readonly string[]
+    retryTargets?: readonly SceneRetryTargetFromReport[]
+  }) => Promise<SceneBranchReport>
+  writeStdout?: (line: string) => void
+}): Promise<SceneBranchResult> {
+  const writeStdout = args.writeStdout ?? ((line) => process.stdout.write(line))
+
+  try {
+    const preflight = await args.runManagerArtifactsPreflight({
+      mappingS3Key: args.mappingS3Key,
+      sampleSceneAssetId: args.sceneRetryTargets?.[0]?.cmsVideoId,
+    })
+    writeStdout(
+      JSON.stringify({
+        event: "run-embeds.scene.preflight",
+        ok: preflight.ok,
+        checks: preflight.checks,
+      }) + "\n",
+    )
+    if (!preflight.ok) {
+      throw new Error(
+        `scene preflight failed: ${preflight.checks
+          .filter((check) => check.status === "failed")
+          .map((check) => `${check.name}:${check.reason}`)
+          .join(", ")}`,
+      )
+    }
+    writeStdout(
+      JSON.stringify({
+        event: "run-embeds.scene.start",
+        mappingS3Key: args.mappingS3Key,
+        retryTargets: args.sceneRetryTargets?.length ?? null,
+      }) + "\n",
+    )
+    const report = await args.runSceneEmbeddingBackfill({
+      mappingS3Key: args.mappingS3Key,
+      coreIds: args.coreIds.length > 0 ? args.coreIds : undefined,
+      locales: args.locales.length > 0 ? args.locales : undefined,
+      retryTargets: args.sceneRetryTargets,
+    })
+    writeStdout(
+      JSON.stringify({
+        event: "run-embeds.scene.complete",
+        totalTargets: report.totalTargets,
+        succeeded: report.succeeded,
+        skipped: report.skipped,
+        failed: report.failed,
+      }) + "\n",
+    )
+    return { ok: true, report }
+  } catch (err) {
+    const error = pipelineErrorMessage(err)
+    const details = pipelineErrorDetails(err)
+    writeStdout(
+      JSON.stringify({
+        event: "run-embeds.scene.error",
+        error,
+        details,
+      }) + "\n",
+    )
+    return details ? { ok: false, error, details } : { ok: false, error }
   }
 }
 
@@ -177,6 +442,36 @@ async function main(): Promise<void> {
   // `pnpm trigger-enrichment --from-report=<path>` need a stable
   // file format. When unset, behavior is unchanged (stdout only).
   const reportOutPath = resolveReportOutPath(parseSingle("report-out"))
+  const reportInPath = resolveReportInPath(parseSingle("from-report"))
+
+  if (reportInPath !== undefined && pipelineArg !== "scene") {
+    process.stderr.write(
+      "[run-embeds] --from-report is only supported with --pipeline=scene\n",
+    )
+    process.exit(2)
+  }
+  if (
+    reportInPath !== undefined &&
+    (coreIds.length > 0 || locales.length > 0 || languages.length > 0)
+  ) {
+    process.stderr.write(
+      "[run-embeds] --from-report is mutually exclusive with --core-id/--locale/--language filters\n",
+    )
+    process.exit(2)
+  }
+
+  let sceneRetryTargets: SceneRetryTargetFromReport[] | undefined
+  if (reportInPath !== undefined) {
+    try {
+      sceneRetryTargets = await loadSceneRetryTargetsFromReport(reportInPath)
+    } catch (err) {
+      if (err instanceof RunEmbedsConfigError) {
+        process.stderr.write(err.message + "\n")
+        process.exit(err.exitCode)
+      }
+      throw err
+    }
+  }
 
   // Lazy-import the workflow modules AFTER the DATABASE_URL guard
   // above so a missing var produces our friendly stderr line instead
@@ -195,6 +490,8 @@ async function main(): Promise<void> {
     await import("@/workflows/experienceEmbeddingBackfill")
   const { prisma } = await import("@/db/client")
   const { env } = await import("@/config/env")
+  const { runManagerArtifactsPreflight } =
+    await import("@/services/manager-artifacts-preflight.service")
 
   const sceneConcurrency =
     env.SCENE_EMBEDDING_CONCURRENCY ?? DEFAULT_SCENE_EMBEDDING_CONCURRENCY
@@ -218,6 +515,8 @@ async function main(): Promise<void> {
       transcriptConcurrency,
       managerArtifactsBucket:
         process.env.MANAGER_ARTIFACTS_S3_BUCKET ?? "(unset)",
+      fromReport: reportInPath ?? null,
+      sceneRetryTargets: sceneRetryTargets?.length ?? null,
     }) + "\n",
   )
 
@@ -244,39 +543,25 @@ async function main(): Promise<void> {
 
   const reports: Record<string, unknown> = {}
   const errors: Record<string, string> = {}
+  const errorDetails: Record<string, PipelineErrorDetails> = {}
 
   try {
     if (pipelineArg === "scene" || pipelineArg === "both") {
-      try {
-        process.stdout.write(
-          JSON.stringify({
-            event: "run-embeds.scene.start",
-            mappingS3Key,
-          }) + "\n",
-        )
-        const sceneReport = await runSceneEmbeddingBackfill({
-          mappingS3Key,
-          coreIds: coreIds.length > 0 ? coreIds : undefined,
-          locales: locales.length > 0 ? locales : undefined,
-        })
-        reports.scene = sceneReport
-        process.stdout.write(
-          JSON.stringify({
-            event: "run-embeds.scene.complete",
-            totalTargets: sceneReport.totalTargets,
-            succeeded: sceneReport.succeeded,
-            skipped: sceneReport.skipped,
-            failed: sceneReport.failed,
-          }) + "\n",
-        )
-      } catch (err) {
-        errors.scene = err instanceof Error ? err.message : String(err)
-        process.stdout.write(
-          JSON.stringify({
-            event: "run-embeds.scene.error",
-            error: errors.scene,
-          }) + "\n",
-        )
+      const sceneResult = await runSceneBranch({
+        mappingS3Key,
+        coreIds,
+        locales,
+        sceneRetryTargets,
+        runManagerArtifactsPreflight,
+        runSceneEmbeddingBackfill,
+      })
+      if (sceneResult.ok) {
+        reports.scene = sceneResult.report
+      } else {
+        errors.scene = sceneResult.error
+        if (sceneResult.details) {
+          errorDetails.scene = sceneResult.details
+        }
       }
     }
 
@@ -369,6 +654,8 @@ async function main(): Promise<void> {
       wallClockMs: Date.now() - startedAt,
       reports,
       errors: Object.keys(errors).length > 0 ? errors : undefined,
+      errorDetails:
+        Object.keys(errorDetails).length > 0 ? errorDetails : undefined,
     }
 
     process.stdout.write(JSON.stringify(finalReport, null, 2) + "\n")
