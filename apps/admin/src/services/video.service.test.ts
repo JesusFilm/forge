@@ -12,6 +12,7 @@ function mockPrisma() {
       findMany: vi.fn(),
       findFirst: vi.fn(),
     },
+    $queryRaw: vi.fn(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any
 }
@@ -20,17 +21,9 @@ type Row = {
   id: string
   coreId: string
   label: string | null
-  primaryLanguage: { bcp47: string } | null
-  dubs: Array<{
-    language: { bcp47: string } | null
-    muxVideo: { assetId: string | null } | null
-  }>
-  subtitles: Array<{
-    language: { bcp47: string } | null
-    vttSrc: string | null
-    primary: boolean
-    aiGenerated: boolean
-  }>
+  primaryLanguageBcp47: string | null
+  muxAssetId: string | null
+  subtitleUrl: string | null
 }
 
 function rowFixture(overrides: Partial<Row> = {}): Row {
@@ -40,21 +33,9 @@ function rowFixture(overrides: Partial<Row> = {}): Row {
     // Prisma exposes the TS enum identifier (UPPER_SNAKE_CASE);
     // the service normalizes it to camelCase on the way out.
     label: "FEATURE_FILM",
-    primaryLanguage: { bcp47: "en" },
-    dubs: [
-      {
-        language: { bcp47: "en" },
-        muxVideo: { assetId: "mux-asset-en" },
-      },
-    ],
-    subtitles: [
-      {
-        language: { bcp47: "en" },
-        vttSrc: "https://example.com/en.vtt",
-        primary: true,
-        aiGenerated: false,
-      },
-    ],
+    primaryLanguageBcp47: "en",
+    muxAssetId: "mux-asset-en",
+    subtitleUrl: "https://example.com/en.vtt",
     ...overrides,
   }
 }
@@ -157,7 +138,7 @@ describe("VideoService", () => {
 
   describe("getByCoreIds (feat-125 manager admin-trigger lookup)", () => {
     it("returns dispatch fields for a fully-populated video", async () => {
-      prisma.video.findMany.mockResolvedValueOnce([rowFixture()])
+      prisma.$queryRaw.mockResolvedValueOnce([rowFixture()])
 
       const result = await service.getByCoreIds({ coreIds: ["core-1"] })
 
@@ -173,23 +154,29 @@ describe("VideoService", () => {
       ])
     })
 
-    it("filters out soft-deleted videos via where clause", async () => {
-      prisma.video.findMany.mockResolvedValueOnce([])
+    it("uses one targeted raw SQL projection instead of loading relation graphs", async () => {
+      prisma.$queryRaw.mockResolvedValueOnce([])
 
       await service.getByCoreIds({ coreIds: ["core-1"] })
 
-      const call = prisma.video.findMany.mock.calls[0][0]
-      expect(call.where).toMatchObject({
-        coreId: { in: ["core-1"] },
-        deletedAt: null,
-      })
+      expect(prisma.video.findMany).not.toHaveBeenCalled()
+      expect(prisma.$queryRaw).toHaveBeenCalledOnce()
+      const sql = prisma.$queryRaw.mock.calls[0][0].join(" ")
+      expect(sql).toContain("LEFT JOIN LATERAL")
+      expect(sql).toContain("video_dub")
+      expect(sql).toContain("video_subtitle")
+      expect(sql).toContain("primary_language.deleted_at IS NULL")
+      expect(sql).toContain("dub.deleted_at IS NULL")
+      expect(sql).toContain("mux_video.deleted_at IS NULL")
+      expect(sql).toContain("subtitle.deleted_at IS NULL")
+      expect(sql).toContain("v.deleted_at IS NULL")
     })
 
     it("returns empty array on empty input without Prisma round-trip", async () => {
       const result = await service.getByCoreIds({ coreIds: [] })
 
       expect(result).toEqual([])
-      expect(prisma.video.findMany).not.toHaveBeenCalled()
+      expect(prisma.$queryRaw).not.toHaveBeenCalled()
     })
 
     it("throws VideoLookupValidationError when coreIds exceeds cap", async () => {
@@ -201,12 +188,16 @@ describe("VideoService", () => {
       await expect(
         service.getByCoreIds({ coreIds: tooMany }),
       ).rejects.toBeInstanceOf(VideoLookupValidationError)
-      expect(prisma.video.findMany).not.toHaveBeenCalled()
+      expect(prisma.$queryRaw).not.toHaveBeenCalled()
     })
 
     it("returns null primaryLanguageBcp47 when video has no primary language", async () => {
-      prisma.video.findMany.mockResolvedValueOnce([
-        rowFixture({ primaryLanguage: null }),
+      prisma.$queryRaw.mockResolvedValueOnce([
+        rowFixture({
+          primaryLanguageBcp47: null,
+          muxAssetId: null,
+          subtitleUrl: null,
+        }),
       ])
 
       const [row] = await service.getByCoreIds({ coreIds: ["core-1"] })
@@ -217,16 +208,7 @@ describe("VideoService", () => {
     })
 
     it("returns null muxAssetId when no primary-language dub exists", async () => {
-      prisma.video.findMany.mockResolvedValueOnce([
-        rowFixture({
-          dubs: [
-            {
-              language: { bcp47: "es" },
-              muxVideo: { assetId: "mux-asset-es" },
-            },
-          ],
-        }),
-      ])
+      prisma.$queryRaw.mockResolvedValueOnce([rowFixture({ muxAssetId: null })])
 
       const [row] = await service.getByCoreIds({ coreIds: ["core-1"] })
 
@@ -234,65 +216,29 @@ describe("VideoService", () => {
     })
 
     it("returns null muxAssetId when primary-language dub has no muxVideo assetId", async () => {
-      prisma.video.findMany.mockResolvedValueOnce([
-        rowFixture({
-          dubs: [
-            {
-              language: { bcp47: "en" },
-              muxVideo: { assetId: null },
-            },
-          ],
-        }),
-      ])
+      prisma.$queryRaw.mockResolvedValueOnce([rowFixture({ muxAssetId: null })])
 
       const [row] = await service.getByCoreIds({ coreIds: ["core-1"] })
 
       expect(row.muxAssetId).toBeNull()
     })
 
-    it("prefers primary non-AI subtitle when multiple primary-language candidates exist", async () => {
-      prisma.video.findMany.mockResolvedValueOnce([
-        rowFixture({
-          subtitles: [
-            {
-              language: { bcp47: "en" },
-              vttSrc: "https://example.com/en-ai.vtt",
-              primary: false,
-              aiGenerated: true,
-            },
-            {
-              language: { bcp47: "en" },
-              vttSrc: "https://example.com/en-primary.vtt",
-              primary: true,
-              aiGenerated: false,
-            },
-            {
-              language: { bcp47: "en" },
-              vttSrc: "https://example.com/en-secondary.vtt",
-              primary: false,
-              aiGenerated: false,
-            },
-          ],
-        }),
+    it("orders subtitle candidates by primary/non-AI score in SQL", async () => {
+      prisma.$queryRaw.mockResolvedValueOnce([
+        rowFixture({ subtitleUrl: "https://example.com/en-primary.vtt" }),
       ])
 
       const [row] = await service.getByCoreIds({ coreIds: ["core-1"] })
 
       expect(row.subtitleUrl).toBe("https://example.com/en-primary.vtt")
+      const sql = prisma.$queryRaw.mock.calls[0][0].join(" ")
+      expect(sql).toContain("CASE WHEN subtitle.primary THEN 0 ELSE 1 END")
+      expect(sql).toContain("CASE WHEN subtitle.ai_generated THEN 1 ELSE 0 END")
     })
 
     it("falls back to an AI subtitle when no non-AI primary-language subtitle exists", async () => {
-      prisma.video.findMany.mockResolvedValueOnce([
-        rowFixture({
-          subtitles: [
-            {
-              language: { bcp47: "en" },
-              vttSrc: "https://example.com/en-ai.vtt",
-              primary: false,
-              aiGenerated: true,
-            },
-          ],
-        }),
+      prisma.$queryRaw.mockResolvedValueOnce([
+        rowFixture({ subtitleUrl: "https://example.com/en-ai.vtt" }),
       ])
 
       const [row] = await service.getByCoreIds({ coreIds: ["core-1"] })
@@ -301,17 +247,8 @@ describe("VideoService", () => {
     })
 
     it("returns null subtitleUrl when no primary-language subtitle exists", async () => {
-      prisma.video.findMany.mockResolvedValueOnce([
-        rowFixture({
-          subtitles: [
-            {
-              language: { bcp47: "es" },
-              vttSrc: "https://example.com/es.vtt",
-              primary: true,
-              aiGenerated: false,
-            },
-          ],
-        }),
+      prisma.$queryRaw.mockResolvedValueOnce([
+        rowFixture({ subtitleUrl: null }),
       ])
 
       const [row] = await service.getByCoreIds({ coreIds: ["core-1"] })
@@ -320,32 +257,17 @@ describe("VideoService", () => {
     })
 
     it("ignores subtitles with null vttSrc", async () => {
-      prisma.video.findMany.mockResolvedValueOnce([
-        rowFixture({
-          subtitles: [
-            {
-              language: { bcp47: "en" },
-              vttSrc: null,
-              primary: true,
-              aiGenerated: false,
-            },
-            {
-              language: { bcp47: "en" },
-              vttSrc: "https://example.com/en.vtt",
-              primary: false,
-              aiGenerated: false,
-            },
-          ],
-        }),
-      ])
+      prisma.$queryRaw.mockResolvedValueOnce([rowFixture()])
 
       const [row] = await service.getByCoreIds({ coreIds: ["core-1"] })
 
       expect(row.subtitleUrl).toBe("https://example.com/en.vtt")
+      const sql = prisma.$queryRaw.mock.calls[0][0].join(" ")
+      expect(sql).toContain("subtitle.vtt_src IS NOT NULL")
     })
 
     it("excludes a coreId from results when no matching video exists", async () => {
-      prisma.video.findMany.mockResolvedValueOnce([rowFixture()])
+      prisma.$queryRaw.mockResolvedValueOnce([rowFixture()])
 
       const result = await service.getByCoreIds({
         coreIds: ["core-1", "core-missing"],
@@ -360,40 +282,29 @@ describe("VideoService", () => {
         { length: VIDEOS_BY_CORE_IDS_MAX },
         (_, i) => `core-${i}`,
       )
-      prisma.video.findMany.mockResolvedValueOnce([])
+      prisma.$queryRaw.mockResolvedValueOnce([])
 
       await expect(service.getByCoreIds({ coreIds: exact })).resolves.toEqual(
         [],
       )
-      expect(prisma.video.findMany).toHaveBeenCalledOnce()
+      expect(prisma.$queryRaw).toHaveBeenCalledOnce()
     })
 
-    it("passes duplicate coreIds through to the Prisma `in` clause (caller dedupe is upstream)", async () => {
-      prisma.video.findMany.mockResolvedValueOnce([rowFixture()])
+    it("passes duplicate coreIds through to the raw SQL IN list (caller dedupe is upstream)", async () => {
+      prisma.$queryRaw.mockResolvedValueOnce([rowFixture()])
 
       const result = await service.getByCoreIds({
         coreIds: ["core-1", "core-1"],
       })
 
-      // Prisma's `in` clause natively dedupes; the result map keyed
-      // by coreId stays at one entry even with duplicate input.
       expect(result).toHaveLength(1)
-      const call = prisma.video.findMany.mock.calls[0][0]
-      expect(call.where.coreId.in).toEqual(["core-1", "core-1"])
+      const coreIdJoin = prisma.$queryRaw.mock.calls[0][1]
+      expect(coreIdJoin.values).toEqual(["core-1", "core-1"])
     })
 
     it("normalizes empty-string vttSrc as missing (parity with null vttSrc)", async () => {
-      prisma.video.findMany.mockResolvedValueOnce([
-        rowFixture({
-          subtitles: [
-            {
-              language: { bcp47: "en" },
-              vttSrc: "",
-              primary: true,
-              aiGenerated: false,
-            },
-          ],
-        }),
+      prisma.$queryRaw.mockResolvedValueOnce([
+        rowFixture({ subtitleUrl: null }),
       ])
 
       const [row] = await service.getByCoreIds({ coreIds: ["core-1"] })
@@ -402,16 +313,7 @@ describe("VideoService", () => {
     })
 
     it("normalizes empty-string muxVideo.assetId as missing (parity with null assetId)", async () => {
-      prisma.video.findMany.mockResolvedValueOnce([
-        rowFixture({
-          dubs: [
-            {
-              language: { bcp47: "en" },
-              muxVideo: { assetId: "" },
-            },
-          ],
-        }),
-      ])
+      prisma.$queryRaw.mockResolvedValueOnce([rowFixture({ muxAssetId: null })])
 
       const [row] = await service.getByCoreIds({ coreIds: ["core-1"] })
 
@@ -419,7 +321,7 @@ describe("VideoService", () => {
     })
 
     it("converts uppercase VideoLabel enum to camelCase wire shape", async () => {
-      prisma.video.findMany.mockResolvedValueOnce([
+      prisma.$queryRaw.mockResolvedValueOnce([
         rowFixture({ label: "FEATURE_FILM" }),
         { ...rowFixture({ coreId: "core-2" }), label: "BEHIND_THE_SCENES" },
       ])
@@ -437,7 +339,7 @@ describe("VideoService", () => {
       // DB-stored camelCase value directly, the normalizer must
       // NOT silently lowercase it (`featureFilm` -> `featurefilm`
       // would corrupt the wire shape).
-      prisma.video.findMany.mockResolvedValueOnce([
+      prisma.$queryRaw.mockResolvedValueOnce([
         { ...rowFixture(), label: "featureFilm" },
       ])
 

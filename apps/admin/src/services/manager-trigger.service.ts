@@ -195,10 +195,9 @@ function logResults(
 
 /**
  * Dispatch a list of (assetId, coreId) pairs to apps/manager's
- * `/api/admin-trigger/{kind}` endpoint. The manager looks up each
- * cms video via Strapi GraphQL (filtered by coreId) and dispatches
- * the matching pipeline (scene-analysis or transcript-only) in the
- * background.
+ * `/api/admin-trigger/{kind}` endpoint. The manager resolves dispatch
+ * metadata from admin by coreId and schedules the matching pipeline
+ * (scene-analysis or transcript-only) in the background.
  *
  * Returns one result per requested item — the function never
  * partial-fails. On HTTP non-2xx, network error, parse error, or
