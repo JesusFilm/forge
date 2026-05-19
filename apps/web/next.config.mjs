@@ -10,6 +10,7 @@ const additionalImageHosts = (
 
 const nextConfig = {
   basePath: "/watch",
+  allowedDevOrigins: ["127.0.0.1"],
   experimental: {
     typedRoutes: true,
   },
