@@ -49,10 +49,7 @@ import {
   loadCoreIdMapping,
   type CoreIdMapping,
 } from "@/services/core-id-mapping.service"
-import {
-  ManagerArtifactError,
-  type SceneAnalysisResult,
-} from "@/services/manager-artifacts.service"
+import type { SceneAnalysisResult } from "@/services/manager-artifacts.service"
 import {
   indexEditionScenes,
   type IndexEditionScenesResult,
@@ -563,8 +560,7 @@ async function processGroup(group: BackfillGroup): Promise<BackfillOutcome[]> {
     // analysis yet" → skipped. Anything else → failed (including
     // ManagerArtifactError artifact_invalid / artifact_read_failed).
     const durationMs = Date.now() - groupStartedAt
-    const isMissing =
-      error instanceof ManagerArtifactError && error.code === "artifact_missing"
+    const isMissing = getManagerArtifactCode(error) === "artifact_missing"
     const reason = isMissing
       ? "artifact_missing"
       : error instanceof Error
@@ -628,19 +624,16 @@ async function stepIndexEditionLocale(
     return toSucceeded(target, target.locale, result, Date.now() - startedAt)
   } catch (error) {
     const durationMs = Date.now() - startedAt
-    // Branch on the typed error class, not error-message regex. Only a
+    // Branch on the stable error code, not error-message regex. Only a
     // genuinely-missing artifact gets demoted to skipped; every other
-    // error shape (including ManagerArtifactError artifact_invalid,
-    // artifact_read_failed, EmbeddingsBatchError, and Prisma P2025
-    // "Record not found") stays classified as failed so the operator
-    // sees it in the report. With Stage 2's group-level artifact load,
-    // an `artifact_missing` here would only fire if the indexer's
-    // empty-`loadedArtifact` short-circuit somehow bypassed the cache;
-    // keep the classification path intact for safety in depth.
-    if (
-      error instanceof ManagerArtifactError &&
-      error.code === "artifact_missing"
-    ) {
+    // error shape (including artifact_invalid, artifact_read_failed,
+    // EmbeddingsBatchError, and Prisma P2025 "Record not found") stays
+    // classified as failed so the operator sees it in the report. With
+    // Stage 2's group-level artifact load, an `artifact_missing` here
+    // would only fire if the indexer's empty-`loadedArtifact`
+    // short-circuit somehow bypassed the cache; keep the classification
+    // path intact for safety in depth.
+    if (getManagerArtifactCode(error) === "artifact_missing") {
       return {
         status: "skipped",
         target,
@@ -802,11 +795,13 @@ function deriveGroupedFailures(
 }
 
 function classifySceneFailure(error: unknown): SceneFailureCategory {
-  if (error instanceof ManagerArtifactError) {
-    if (error.code === "artifact_invalid") return "artifact_invalid"
-    if (error.code === "artifact_read_failed") {
-      return classifySceneFailure(error.cause ?? error.message)
-    }
+  const artifactCode = getManagerArtifactCode(error)
+  if (artifactCode === "artifact_invalid") return "artifact_invalid"
+  if (artifactCode === "artifact_read_failed") {
+    return classifySceneFailure(
+      getUnknownProp(error, "cause") ??
+        (error instanceof Error ? error.message : String(error)),
+    )
   }
   const name = getStringProp(error, "name")
   const code = getStringProp(error, "code") ?? getStringProp(error, "Code")
@@ -858,10 +853,29 @@ function classifySceneFailure(error: unknown): SceneFailureCategory {
   return "other"
 }
 
+function getManagerArtifactCode(
+  error: unknown,
+):
+  | "artifact_missing"
+  | "artifact_invalid"
+  | "artifact_read_failed"
+  | undefined {
+  const code = getStringProp(error, "code")
+  if (code === "artifact_missing") return code
+  if (code === "artifact_invalid") return code
+  if (code === "artifact_read_failed") return code
+  return undefined
+}
+
 function getStringProp(error: unknown, prop: string): string | undefined {
   if (typeof error !== "object" || error === null) return undefined
   const value = (error as Record<string, unknown>)[prop]
   return typeof value === "string" ? value : undefined
+}
+
+function getUnknownProp(error: unknown, prop: string): unknown {
+  if (typeof error !== "object" || error === null) return undefined
+  return (error as Record<string, unknown>)[prop]
 }
 
 function stepReport(args: {
