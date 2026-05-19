@@ -1,7 +1,7 @@
 ---
 title: Admin Core Sync Entity Coverage
 date: 2026-04-29
-last_updated: 2026-04-29
+last_updated: 2026-05-19
 category: best-practices
 module: apps/admin
 problem_type: best_practice
@@ -31,6 +31,7 @@ related:
   - docs/solutions/graphql/pothos-relation-abac-filter-required-for-nested-types.md
   - docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md
   - docs/solutions/platform/core-graphql-unbounded-relation-fan-out-20260504.md
+  - docs/solutions/integration-issues/admin-core-sync-flat-vs-nested-image-query-coverage-gap-20260519.md
 ---
 
 # Admin Core Sync Entity Coverage
@@ -249,7 +250,9 @@ const checks = [
 ]
 ```
 
-Last verified against the real Core/API sync database on 2026-04-28:
+Last verified against the real Core/API sync database on 2026-04-28
+(Video images row added 2026-05-19 post-PR #950 — see the
+[flat-vs-nested image query learning](../integration-issues/admin-core-sync-flat-vs-nested-image-query-coverage-gap-20260519.md)):
 
 | Entity                     | Active rows |
 | -------------------------- | ----------: |
@@ -260,11 +263,18 @@ Last verified against the real Core/API sync database on 2026-04-28:
 | Country-language relations |       6,039 |
 | Keywords                   |       6,066 |
 | Videos                     |       1,088 |
+| Video images               |       2,168 |
 | Video subtitles            |      10,480 |
 | Video dubs                 |      13,148 |
 | Video dub downloads        |     376,400 |
 | Video editions             |       1,048 |
 | Mux videos                 |      48,028 |
+
+Video images coverage: 1,094 / 1,099 videos (99.5%). The 5 remaining
+uncovered videos are genuinely missing images in Core. Pre-PR #950 the
+`video-images` phase queried Core's sparse flat `videoImages` root and
+plateaued at 270 rows / 12% video coverage — see the counterpart
+learning for the diagnosis + fix.
 
 Validation that passed for PR #851:
 

@@ -1,7 +1,7 @@
 ---
 title: Core GraphQL unbounded relation fan-out crashes deep selections
 date: 2026-05-04
-last_updated: 2026-05-04
+last_updated: 2026-05-19
 category: integration-issues
 module: apps/admin
 problem_type: outage
@@ -35,6 +35,7 @@ related:
   - docs/solutions/performance-issues/strapi-nested-relation-truncation-and-n-plus-one-manager-20260328.md
   - docs/solutions/database-issues/postgres-prepared-statement-bind-variable-limit-32767-20260504.md
   - docs/solutions/database-issues/prisma-raw-sql-enum-mapping-seam-20260504.md
+  - docs/solutions/integration-issues/admin-core-sync-flat-vs-nested-image-query-coverage-gap-20260519.md
 ---
 
 # Core GraphQL unbounded relation fan-out crashes deep selections
@@ -146,6 +147,19 @@ crashes loudly, but the design lesson is identical: never compose
 unbounded nested includes against an upstream you do not control.
 
 ## Client-side mitigation
+
+> **Counterpoint (added 2026-05-19): flat is not a universal rule — probe per
+> relation.** This doc's mitigation is specifically about `Video.variants`
+>
+> - its grandchild `downloads`, which trigger Core's resolver fan-out cliff.
+>   The opposite is true for `Video.images`: Core's flat root `videoImages`
+>   query is a sparse secondary index (~270 rows total catalogue-wide),
+>   while the nested `videos { images { ... } }` field is the canonical
+>   dataset (~2,168 rows, 99.5% video coverage). See the
+>   [counterpart learning](../integration-issues/admin-core-sync-flat-vs-nested-image-query-coverage-gap-20260519.md)
+>   for the empirical probe + the corrected sync phase. When adding a new
+>   Core sync phase, probe BOTH shapes before committing — the answer is
+>   per-relation, not "always flat."
 
 Three changes together unblock dub sync without waiting for Core:
 
