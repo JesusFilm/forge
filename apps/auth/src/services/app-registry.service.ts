@@ -1,4 +1,4 @@
-import { ADMIN_APP_SEED, type RegisteredAppSeed } from "@/domain/apps"
+import { FIRST_PARTY_APP_SEEDS, type RegisteredAppSeed } from "@/domain/apps"
 import { assertKnownScopes } from "@/domain/scopes"
 
 export type AppEnvironmentPolicyInput = {
@@ -40,5 +40,5 @@ export function validateAppEnvironmentPolicy(input: AppEnvironmentPolicyInput) {
 }
 
 export function getFirstPartyAppSeeds(): RegisteredAppSeed[] {
-  return [ADMIN_APP_SEED]
+  return [...FIRST_PARTY_APP_SEEDS]
 }

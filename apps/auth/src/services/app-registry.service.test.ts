@@ -40,20 +40,21 @@ describe("app registry policy", () => {
   it("validates first-party seeds", () => {
     const seeds = getFirstPartyAppSeeds()
 
-    expect(seeds).toHaveLength(1)
-    expect(seeds[0]?.key).toBe("admin")
+    expect(seeds.map((seed) => seed.key)).toEqual(["admin", "manager"])
 
-    for (const environment of seeds[0]?.environments ?? []) {
-      expect(() =>
-        validateAppEnvironmentPolicy({
-          kind: environment.kind,
-          status: "approved",
-          autoApprove: environment.autoApprove,
-          redirectUris: environment.redirectUris,
-          allowedOrigins: environment.allowedOrigins,
-          defaultScopes: environment.defaultScopes,
-        }),
-      ).not.toThrow()
+    for (const seed of seeds) {
+      for (const environment of seed.environments) {
+        expect(() =>
+          validateAppEnvironmentPolicy({
+            kind: environment.kind,
+            status: "approved",
+            autoApprove: environment.autoApprove,
+            redirectUris: environment.redirectUris,
+            allowedOrigins: environment.allowedOrigins,
+            defaultScopes: environment.defaultScopes,
+          }),
+        ).not.toThrow()
+      }
     }
   })
 })

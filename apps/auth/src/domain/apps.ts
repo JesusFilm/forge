@@ -7,6 +7,7 @@ export const FIRST_PARTY_OWNER = {
 } as const
 
 export const ADMIN_APP_KEY = "admin"
+export const MANAGER_APP_KEY = "manager"
 
 export type AppEnvironmentSeed = {
   key: string
@@ -35,6 +36,14 @@ export const ADMIN_DEFAULT_SCOPES = [
   "email:read",
   "membership:read",
   "admin:access",
+] satisfies AuthScopeKey[]
+
+export const MANAGER_DEFAULT_SCOPES = [
+  "openid",
+  "profile:read",
+  "email:read",
+  "membership:read",
+  "manager:access",
 ] satisfies AuthScopeKey[]
 
 export const ADMIN_APP_SEED: RegisteredAppSeed = {
@@ -89,3 +98,57 @@ export const ADMIN_APP_SEED: RegisteredAppSeed = {
     },
   ],
 }
+
+export const MANAGER_APP_SEED: RegisteredAppSeed = {
+  key: MANAGER_APP_KEY,
+  displayName: "Jesus Film Manager",
+  description: "Operator surface for Jesus Film media enrichment pipelines.",
+  ...FIRST_PARTY_OWNER,
+  environments: [
+    {
+      key: "local",
+      kind: "local",
+      clientId: "jfp_manager_local",
+      redirectUris: ["http://localhost:3002/api/auth/callback"],
+      postLogoutRedirectUris: ["http://localhost:3002/login"],
+      allowedOrigins: ["http://localhost:3002"],
+      defaultScopes: MANAGER_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "preview",
+      kind: "preview",
+      clientId: "jfp_manager_preview",
+      redirectUris: ["https://manager-preview.jesusfilm.org/api/auth/callback"],
+      postLogoutRedirectUris: ["https://manager-preview.jesusfilm.org/login"],
+      allowedOrigins: ["https://manager-preview.jesusfilm.org"],
+      defaultScopes: MANAGER_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "staging",
+      kind: "staging",
+      clientId: "jfp_manager_staging",
+      redirectUris: ["https://manager-stage.jesusfilm.org/api/auth/callback"],
+      postLogoutRedirectUris: ["https://manager-stage.jesusfilm.org/login"],
+      allowedOrigins: ["https://manager-stage.jesusfilm.org"],
+      defaultScopes: MANAGER_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "production",
+      kind: "production",
+      clientId: "jfp_manager_production",
+      redirectUris: ["https://manager.jesusfilm.org/api/auth/callback"],
+      postLogoutRedirectUris: ["https://manager.jesusfilm.org/login"],
+      allowedOrigins: ["https://manager.jesusfilm.org"],
+      defaultScopes: MANAGER_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+  ],
+}
+
+export const FIRST_PARTY_APP_SEEDS = [
+  ADMIN_APP_SEED,
+  MANAGER_APP_SEED,
+] satisfies RegisteredAppSeed[]
