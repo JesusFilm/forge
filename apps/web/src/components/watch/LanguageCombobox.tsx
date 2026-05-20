@@ -209,6 +209,12 @@ export function LanguageCombobox({
             />
           </div>
           {/* Non-virtualised: acceptable up to a few thousand items. Revisit if scroll jank appears on lower-end devices. */}
+          {/*
+            Same stone-themed scrollbar class string is also used on
+            DownloadModal.tsx's terms-of-use body. Keep both in sync —
+            or promote to a shared `stone-scrollbar` utility in
+            globals.css, following the `search-overlay-scroll` precedent.
+          */}
           <ul
             role="listbox"
             aria-label="Languages"
