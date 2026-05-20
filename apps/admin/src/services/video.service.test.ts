@@ -400,5 +400,36 @@ describe("VideoService", () => {
 
       warn.mockRestore()
     })
+
+    it("logs slow lookup phase timings without coreIds or secrets", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+      const now = vi
+        .spyOn(Date, "now")
+        .mockReturnValueOnce(0)
+        .mockReturnValueOnce(10)
+        .mockReturnValueOnce(20)
+        .mockReturnValueOnce(820)
+        .mockReturnValueOnce(820)
+        .mockReturnValueOnce(900)
+      prisma.tx.$queryRaw.mockResolvedValueOnce([rowFixture()])
+
+      await service.getByCoreIds({ coreIds: ["core-1"] })
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("event=lookup.slow"),
+      )
+      const message = warn.mock.calls[0][0]
+      expect(message).toContain("coreIdCount=1")
+      expect(message).toContain("rowCount=1")
+      expect(message).toMatch(/durationMs=\d+/)
+      expect(message).toMatch(/transactionDurationMs=\d+/)
+      expect(message).toMatch(/sqlDurationMs=\d+/)
+      expect(message).not.toContain("core-1")
+      expect(message).not.toContain("Bearer ")
+      expect(message).not.toContain("DATABASE_URL")
+
+      now.mockRestore()
+      warn.mockRestore()
+    })
   })
 })
