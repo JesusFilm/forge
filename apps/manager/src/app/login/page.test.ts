@@ -30,6 +30,9 @@ describe("login page", () => {
     expect(element.type).toBe(studioAuthShellMock)
     const suspense = element.props.children
     expect(suspense.props.children.type).toBe(loginFormMock)
-    expect(suspense.props.children.props).toEqual({ expired: true })
+    expect(suspense.props.children.props).toEqual({
+      error: undefined,
+      expired: true,
+    })
   })
 })

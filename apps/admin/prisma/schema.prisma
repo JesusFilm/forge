@@ -81,6 +81,12 @@ enum UserRole {
   VIEWER @map("VIEWER")
 }
 
+/// Manager panel authorization role. Auth owns identity; Admin stores the
+/// Manager-specific product access grant consumed by apps/manager.
+enum ManagerRole {
+  OPERATOR @map("OPERATOR")
+}
+
 /// Video classification (mirrors Core schema enum).
 enum VideoLabel {
   COLLECTION        @map("collection")
@@ -189,11 +195,26 @@ model User {
 
   mediaAssets           MediaAsset[]
   mediaFolders          MediaFolder[]
+  managerMembership     ManagerMembership?
   partnerApiKeysCreated PartnerApiKey[] @relation("PartnerApiKeyCreatedBy")
   partnerApiKeysRevoked PartnerApiKey[] @relation("PartnerApiKeyRevokedBy")
 
   @@unique([email])
   @@map("user")
+}
+
+model ManagerMembership {
+  id        String      @id @default(cuid())
+  userId    String      @unique @map("user_id")
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      ManagerRole @default(OPERATOR)
+  revokedAt DateTime?   @map("revoked_at")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  @@index([role])
+  @@index([revokedAt])
+  @@map("manager_membership")
 }
 
 // -----------------------------------------------------------------------------

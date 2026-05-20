@@ -15,9 +15,19 @@ import { CONSUMER_BEARER_PRINCIPAL, type Principal } from "@/auth/principal"
 
 const PUBLIC_USER: Principal | null = null
 const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
+const MANAGER_OPERATOR_VIEWER: Principal = {
+  id: "manager-1",
+  role: "VIEWER",
+  managerRole: "OPERATOR",
+}
 const EDITOR_ALICE: Principal = { id: "alice", role: "EDITOR" }
 const EDITOR_BOB: Principal = { id: "bob", role: "EDITOR" }
 const ADMIN: Principal = { id: "admin-1", role: "ADMIN" }
+const MANAGER_OPERATOR_ADMIN: Principal = {
+  id: "manager-admin-1",
+  role: "ADMIN",
+  managerRole: "OPERATOR",
+}
 const SYSTEM: Principal = { id: null, role: "SYSTEM" }
 
 const EXPERIENCE_OWNED_BY_ALICE = {
@@ -59,8 +69,11 @@ describe("hasPermission — tier-based gate", () => {
       { key: "read:experiences", role: "PUBLIC", expected: false },
       { key: "read:videos", role: "PUBLIC", expected: false },
       { key: "read:media-assets", role: "PUBLIC", expected: false },
+      { key: "access:manager", role: "PUBLIC", expected: false },
+      { key: "read:manager-read-models", role: "PUBLIC", expected: false },
       { key: "write:experiences", role: "PUBLIC", expected: false },
       { key: "write:media-assets", role: "PUBLIC", expected: false },
+      { key: "write:manager-jobs", role: "PUBLIC", expected: false },
       { key: "admin:all", role: "PUBLIC", expected: false },
 
       // VIEWER reach
@@ -68,8 +81,11 @@ describe("hasPermission — tier-based gate", () => {
       { key: "read:experiences", role: "VIEWER", expected: true },
       { key: "read:videos", role: "VIEWER", expected: true },
       { key: "read:media-assets", role: "VIEWER", expected: false },
+      { key: "access:manager", role: "VIEWER", expected: false },
+      { key: "read:manager-read-models", role: "VIEWER", expected: false },
       { key: "write:experiences", role: "VIEWER", expected: false },
       { key: "write:media-assets", role: "VIEWER", expected: false },
+      { key: "write:manager-jobs", role: "VIEWER", expected: false },
       { key: "publish:experiences", role: "VIEWER", expected: false },
 
       // EDITOR reach
@@ -79,6 +95,9 @@ describe("hasPermission — tier-based gate", () => {
       { key: "archive:experiences", role: "EDITOR", expected: true },
       { key: "read:media-assets", role: "EDITOR", expected: true },
       { key: "write:media-assets", role: "EDITOR", expected: true },
+      { key: "access:manager", role: "EDITOR", expected: false },
+      { key: "read:manager-read-models", role: "EDITOR", expected: false },
+      { key: "write:manager-jobs", role: "EDITOR", expected: false },
       { key: "delete:media-assets", role: "EDITOR", expected: false },
       { key: "write:videos", role: "EDITOR", expected: false },
       { key: "system:trigger-workflow", role: "EDITOR", expected: false },
@@ -90,6 +109,9 @@ describe("hasPermission — tier-based gate", () => {
       { key: "write:videos", role: "ADMIN", expected: true },
       { key: "read:media-assets", role: "ADMIN", expected: true },
       { key: "write:media-assets", role: "ADMIN", expected: true },
+      { key: "access:manager", role: "ADMIN", expected: false },
+      { key: "read:manager-read-models", role: "ADMIN", expected: false },
+      { key: "write:manager-jobs", role: "ADMIN", expected: false },
       { key: "delete:media-assets", role: "ADMIN", expected: true },
       { key: "publish:experiences", role: "ADMIN", expected: true },
       { key: "system:trigger-workflow", role: "ADMIN", expected: true },
@@ -106,6 +128,9 @@ describe("hasPermission — tier-based gate", () => {
       { key: "write:experiences", role: "SYSTEM", expected: false },
       { key: "read:media-assets", role: "SYSTEM", expected: false },
       { key: "write:media-assets", role: "SYSTEM", expected: false },
+      { key: "access:manager", role: "SYSTEM", expected: false },
+      { key: "read:manager-read-models", role: "SYSTEM", expected: false },
+      { key: "write:manager-jobs", role: "SYSTEM", expected: false },
       { key: "system:write-derived", role: "SYSTEM", expected: true },
       { key: "system:trigger-workflow", role: "SYSTEM", expected: false },
     ]
@@ -119,6 +144,25 @@ describe("hasPermission — tier-based gate", () => {
       expect(hasPermission(principal, key)).toBe(expected)
     })
   }
+})
+
+describe("hasPermission — Manager membership gate", () => {
+  it("grants Manager panel and backend human permissions only with ManagerRole.OPERATOR", () => {
+    expect(hasPermission(MANAGER_OPERATOR_VIEWER, "access:manager")).toBe(true)
+    expect(
+      hasPermission(MANAGER_OPERATOR_VIEWER, "read:manager-read-models"),
+    ).toBe(true)
+    expect(hasPermission(MANAGER_OPERATOR_VIEWER, "write:manager-jobs")).toBe(
+      true,
+    )
+  })
+
+  it("does not let Admin ADMIN bypass Manager membership", () => {
+    expect(hasPermission(ADMIN, "access:manager")).toBe(false)
+    expect(hasPermission(ADMIN, "read:manager-read-models")).toBe(false)
+    expect(hasPermission(ADMIN, "write:manager-jobs")).toBe(false)
+    expect(hasPermission(MANAGER_OPERATOR_ADMIN, "access:manager")).toBe(true)
+  })
 })
 
 // -----------------------------------------------------------------------------
@@ -344,6 +388,8 @@ describe("permission matrix completeness", () => {
       "read:video-metadata",
       "read:reference",
       "read:media-assets",
+      "access:manager",
+      "read:manager-read-models",
       "write:experiences",
       "write:videos",
       "write:media-assets",
@@ -351,6 +397,7 @@ describe("permission matrix completeness", () => {
       "write:transcript-embeddings",
       "write:experience-embeddings",
       "write:manager-enrichment-trigger",
+      "write:manager-jobs",
       "delete:media-assets",
       "publish:experiences",
       "archive:experiences",
@@ -480,6 +527,8 @@ describe("permission matrix completeness", () => {
         "read:video-metadata": true,
         "read:reference": true,
         "read:media-assets": true,
+        "access:manager": true,
+        "read:manager-read-models": true,
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
@@ -487,6 +536,7 @@ describe("permission matrix completeness", () => {
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
         "write:manager-enrichment-trigger": true,
+        "write:manager-jobs": true,
         "delete:media-assets": true,
         "publish:experiences": true,
         "archive:experiences": true,
@@ -525,6 +575,8 @@ describe("permission matrix completeness", () => {
         "read:video-metadata": true,
         "read:reference": true,
         "read:media-assets": true,
+        "access:manager": true,
+        "read:manager-read-models": true,
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
@@ -532,6 +584,7 @@ describe("permission matrix completeness", () => {
         "write:transcript-embeddings": true,
         "write:experience-embeddings": true,
         "write:manager-enrichment-trigger": true,
+        "write:manager-jobs": true,
         "delete:media-assets": true,
         "publish:experiences": true,
         "archive:experiences": true,

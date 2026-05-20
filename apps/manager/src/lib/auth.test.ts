@@ -1,30 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-const { verifyManagerSessionMock } = vi.hoisted(() => ({
-  verifyManagerSessionMock: vi.fn(),
-}))
-
-vi.mock("@/cms/gateway", () => ({
-  registerLiveCmsGatewayAuthHandlers: vi.fn(),
-  getCmsGateway: () => ({
-    verifyManagerSession: verifyManagerSessionMock,
-  }),
-}))
+const sessionSecret = "manager-session-secret-change-me-000000"
 
 describe("authenticateManagerOverrideRequest", () => {
   afterEach(() => {
     vi.unstubAllEnvs()
     vi.resetModules()
-    verifyManagerSessionMock.mockReset()
   })
 
   it("accepts the generic manager API key for override approval", async () => {
-    vi.stubEnv("MANAGER_DATA_MODE", "live")
-    vi.stubEnv("STRAPI_URL", "http://localhost:1337")
-    vi.stubEnv("STRAPI_API_TOKEN", "default-token")
-    vi.stubEnv("MUX_TOKEN_ID", "mux-token-id")
-    vi.stubEnv("MUX_TOKEN_SECRET", "mux-token-secret")
-    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+    stubBaseEnv()
     vi.stubEnv("MANAGER_API_KEY", "manager-key")
 
     const { authenticateManagerOverrideRequest } = await import("./auth")
@@ -44,12 +29,7 @@ describe("authenticateManagerOverrideRequest", () => {
   })
 
   it("rejects invalid bearer tokens for override approval", async () => {
-    vi.stubEnv("MANAGER_DATA_MODE", "live")
-    vi.stubEnv("STRAPI_URL", "http://localhost:1337")
-    vi.stubEnv("STRAPI_API_TOKEN", "default-token")
-    vi.stubEnv("MUX_TOKEN_ID", "mux-token-id")
-    vi.stubEnv("MUX_TOKEN_SECRET", "mux-token-secret")
-    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+    stubBaseEnv()
     vi.stubEnv("MANAGER_API_KEY", "manager-key")
 
     const { authenticateManagerOverrideRequest } = await import("./auth")
@@ -69,18 +49,17 @@ describe("authenticateManagerOverrideRequest", () => {
     })
   })
 
-  it("accepts a mock-mode session cookie when the gateway verifies it", async () => {
-    vi.stubEnv("MANAGER_DATA_MODE", "mock")
-    vi.stubEnv("MANAGER_MOCK_SESSION_SECRET", "mock-session-secret")
-    vi.stubEnv("MUX_TOKEN_ID", "mux-token-id")
-    vi.stubEnv("MUX_TOKEN_SECRET", "mux-token-secret")
-    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
-
-    verifyManagerSessionMock.mockResolvedValue({
-      id: 7,
-      username: "manager",
+  it("accepts a Manager-local OAuth session cookie", async () => {
+    stubBaseEnv()
+    const { createManagerSessionCookie, MANAGER_SESSION_COOKIE } =
+      await import("./manager-session-cookie")
+    const token = await createManagerSessionCookie({
+      id: "admin-user-123",
+      subject: "auth-user-123",
       email: "manager@forge.test",
-      role: { name: "Manager", type: "manager" },
+      name: "Manager User",
+      managerRole: "OPERATOR",
+      scopes: ["openid", "manager:access"],
     })
 
     const { authenticateRequest, authenticateManagerOverrideRequest } =
@@ -88,21 +67,29 @@ describe("authenticateManagerOverrideRequest", () => {
 
     const request = new Request("http://example.test", {
       headers: {
-        cookie: "strapi-jwt=mock-session-token",
+        cookie: `${MANAGER_SESSION_COOKIE}=${token}`,
       },
     })
 
     await expect(authenticateRequest(request)).resolves.toBeNull()
     await expect(authenticateManagerOverrideRequest(request)).resolves.toEqual({
       kind: "session",
-      approvedByUserId: "7",
+      approvedByUserId: "admin-user-123",
       user: {
-        id: 7,
-        username: "manager",
+        id: "admin-user-123",
+        username: "Manager User",
         email: "manager@forge.test",
         role: { name: "Manager", type: "manager" },
       },
     })
-    expect(verifyManagerSessionMock).toHaveBeenCalledWith("mock-session-token")
   })
 })
+
+function stubBaseEnv() {
+  vi.stubEnv("MANAGER_DATA_MODE", "mock")
+  vi.stubEnv("MANAGER_MOCK_SESSION_SECRET", "mock-session-secret")
+  vi.stubEnv("MUX_TOKEN_ID", "mux-token-id")
+  vi.stubEnv("MUX_TOKEN_SECRET", "mux-token-secret")
+  vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+  vi.stubEnv("MANAGER_SESSION_SECRET", sessionSecret)
+}

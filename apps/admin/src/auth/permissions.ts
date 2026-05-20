@@ -45,6 +45,8 @@ export type PermissionKey =
   | "read:video-metadata"
   | "read:media-assets"
   | "read:reference"
+  | "access:manager"
+  | "read:manager-read-models"
   // Write scopes (admin-write on Core-sourced is intentionally restricted)
   | "write:experiences"
   | "write:videos"
@@ -57,6 +59,7 @@ export type PermissionKey =
   // the mutation forwards the call to apps/manager's
   // `/api/admin-trigger/{scene-analysis,transcript}` endpoint.
   | "write:manager-enrichment-trigger"
+  | "write:manager-jobs"
   // Lifecycle scopes (publish / archive ExperienceLocale, etc.)
   | "publish:experiences"
   | "archive:experiences"
@@ -90,6 +93,10 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "read:media-assets": "EDITOR",
   // Reference data is public-shape; PUBLIC may read.
   "read:reference": "PUBLIC",
+  // Manager panel and Manager backend human contracts are gated below by
+  // ManagerMembership, not by the editorial role ladder.
+  "access:manager": "PUBLIC",
+  "read:manager-read-models": "PUBLIC",
   // Editor writes
   "write:experiences": "EDITOR",
   // Core-sourced; only ADMIN may override (also flips source='manager').
@@ -114,6 +121,7 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // existing reverse direction without the new key piggybacking on
   // that path.
   "write:manager-enrichment-trigger": "ADMIN",
+  "write:manager-jobs": "PUBLIC",
   // Lifecycle
   "publish:experiences": "EDITOR",
   "archive:experiences": "EDITOR",
@@ -239,6 +247,12 @@ const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
  */
 const CONSUMER_BEARER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set()
 
+const MANAGER_MEMBERSHIP_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "access:manager",
+  "read:manager-read-models",
+  "write:manager-jobs",
+])
+
 /**
  * Resolve a permission key to a boolean for the given principal.
  * Tier-only — does not consider entity ownership or state.
@@ -268,6 +282,9 @@ export function hasPermission(
   // assertions in `permissions.test.ts`.
   if (role === "CONSUMER_BEARER") {
     return CONSUMER_BEARER_PERMISSIONS.has(key)
+  }
+  if (MANAGER_MEMBERSHIP_PERMISSIONS.has(key)) {
+    return user?.managerRole === "OPERATOR"
   }
   const min = permissionMatrix[key]
   return meetsTier(role, min)

@@ -39,6 +39,7 @@ export type Role =
 export type Principal = {
   id: string | null
   role: Role
+  managerRole?: ManagerRole | null
   /**
    * Set on bearer principals that need rate-limit bucketing — the matched
    * CSV entry from the mint-source env var. Today: `CONSUMER_BEARER`
@@ -49,6 +50,8 @@ export type Principal = {
    */
   rateLimitBucketKey?: string
 }
+
+export type ManagerRole = "OPERATOR"
 
 /**
  * The workflow-tier principal. Used by every useworkflow job that

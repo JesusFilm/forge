@@ -46,6 +46,13 @@ export const env = createEnv({
 
     // API authentication — required for production
     MANAGER_API_KEY: z.string().min(1).optional(),
+    MANAGER_BASE_URL: z.string().url().optional(),
+    MANAGER_SESSION_SECRET: z.string().min(32).optional(),
+    AUTH_ISSUER_URL: z.string().url().optional(),
+    AUTH_MANAGER_CLIENT_ID: z.string().min(1).optional(),
+    AUTH_MANAGER_CLIENT_SECRET: z.string().min(1).optional(),
+    ADMIN_MANAGER_API_KEY: z.string().min(1).optional(),
+    ADMIN_MANAGER_SESSION_URL: z.string().url().optional(),
 
     // Admin embed-trigger proxy (plan 006) — manager exposes
     // /api/admin-embeds/{scene,transcript} which forward to admin's
@@ -108,6 +115,13 @@ export const env = createEnv({
       process.env.MANAGER_MOCK_DATA_PATH ?? ".tmp/mock-cms/store.json",
     WORKFLOW_API_KEY: process.env.WORKFLOW_API_KEY,
     MANAGER_API_KEY: process.env.MANAGER_API_KEY,
+    MANAGER_BASE_URL: process.env.MANAGER_BASE_URL,
+    MANAGER_SESSION_SECRET: process.env.MANAGER_SESSION_SECRET,
+    AUTH_ISSUER_URL: process.env.AUTH_ISSUER_URL,
+    AUTH_MANAGER_CLIENT_ID: process.env.AUTH_MANAGER_CLIENT_ID,
+    AUTH_MANAGER_CLIENT_SECRET: process.env.AUTH_MANAGER_CLIENT_SECRET,
+    ADMIN_MANAGER_API_KEY: process.env.ADMIN_MANAGER_API_KEY,
+    ADMIN_MANAGER_SESSION_URL: process.env.ADMIN_MANAGER_SESSION_URL,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     ADMIN_EMBED_TRIGGER_API_KEY: process.env.ADMIN_EMBED_TRIGGER_API_KEY,
     ADMIN_TRIGGER_API_KEYS: process.env.ADMIN_TRIGGER_API_KEYS,

@@ -5,7 +5,7 @@ import { LoginForm } from "@/app/login/login-form"
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ expired?: string }>
+  searchParams: Promise<{ expired?: string; error?: string }>
 }) {
   const params = await searchParams
 
@@ -15,7 +15,7 @@ export default async function LoginPage({
       subtitle="Manage coverage, enrichment jobs, review flows, and automations."
     >
       <Suspense>
-        <LoginForm expired={params.expired === "1"} />
+        <LoginForm expired={params.expired === "1"} error={params.error} />
       </Suspense>
     </StudioAuthShell>
   )

@@ -1,4 +1,4 @@
-import { ADMIN_APP_SEED } from "@/domain/apps"
+import { FIRST_PARTY_APP_SEEDS, type RegisteredAppSeed } from "@/domain/apps"
 import { AUTH_SCOPES } from "@/domain/scopes"
 import { prisma } from "@/db/client"
 
@@ -14,28 +14,47 @@ export async function seedFirstPartyApps() {
     })
   }
 
+  for (const appSeed of FIRST_PARTY_APP_SEEDS) {
+    await seedFirstPartyApp(appSeed)
+  }
+
+  return {
+    apps: FIRST_PARTY_APP_SEEDS.length,
+    environments: FIRST_PARTY_APP_SEEDS.reduce(
+      (total, app) => total + app.environments.length,
+      0,
+    ),
+    oauthClients: FIRST_PARTY_APP_SEEDS.reduce(
+      (total, app) => total + app.environments.length,
+      0,
+    ),
+    scopes: AUTH_SCOPES.length,
+  }
+}
+
+async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
   const app = await prisma.registeredApp.upsert({
-    where: { key: ADMIN_APP_SEED.key },
+    where: { key: appSeed.key },
     update: {
-      displayName: ADMIN_APP_SEED.displayName,
-      description: ADMIN_APP_SEED.description,
+      displayName: appSeed.displayName,
+      description: appSeed.description,
       trustTier: "FIRST_PARTY",
       ownerType: "JESUS_FILM",
-      ownerName: ADMIN_APP_SEED.ownerName,
+      ownerName: appSeed.ownerName,
       status: "ACTIVE",
     },
     create: {
-      key: ADMIN_APP_SEED.key,
-      displayName: ADMIN_APP_SEED.displayName,
-      description: ADMIN_APP_SEED.description,
+      key: appSeed.key,
+      displayName: appSeed.displayName,
+      description: appSeed.description,
       trustTier: "FIRST_PARTY",
       ownerType: "JESUS_FILM",
-      ownerName: ADMIN_APP_SEED.ownerName,
+      ownerName: appSeed.ownerName,
       status: "ACTIVE",
     },
   })
 
-  for (const environment of ADMIN_APP_SEED.environments) {
+  for (const environment of appSeed.environments) {
     await prisma.appEnvironment.upsert({
       where: {
         appId_key: {
@@ -68,7 +87,7 @@ export async function seedFirstPartyApps() {
     await prisma.oauthClient.upsert({
       where: { clientId: environment.clientId },
       update: {
-        name: `${ADMIN_APP_SEED.displayName} (${environment.key})`,
+        name: `${appSeed.displayName} (${environment.key})`,
         redirectUris: environment.redirectUris,
         postLogoutRedirectUris: environment.postLogoutRedirectUris,
         scopes: environment.defaultScopes,
@@ -81,15 +100,15 @@ export async function seedFirstPartyApps() {
         grantTypes: ["authorization_code", "refresh_token"],
         responseTypes: ["code"],
         metadata: {
-          appKey: ADMIN_APP_SEED.key,
+          appKey: appSeed.key,
           environmentKey: environment.key,
           environmentKind: environment.kind,
-          trustTier: ADMIN_APP_SEED.trustTier,
+          trustTier: appSeed.trustTier,
         },
       },
       create: {
         clientId: environment.clientId,
-        name: `${ADMIN_APP_SEED.displayName} (${environment.key})`,
+        name: `${appSeed.displayName} (${environment.key})`,
         redirectUris: environment.redirectUris,
         postLogoutRedirectUris: environment.postLogoutRedirectUris,
         scopes: environment.defaultScopes,
@@ -102,20 +121,13 @@ export async function seedFirstPartyApps() {
         grantTypes: ["authorization_code", "refresh_token"],
         responseTypes: ["code"],
         metadata: {
-          appKey: ADMIN_APP_SEED.key,
+          appKey: appSeed.key,
           environmentKey: environment.key,
           environmentKind: environment.kind,
-          trustTier: ADMIN_APP_SEED.trustTier,
+          trustTier: appSeed.trustTier,
         },
       },
     })
-  }
-
-  return {
-    apps: 1,
-    environments: ADMIN_APP_SEED.environments.length,
-    oauthClients: ADMIN_APP_SEED.environments.length,
-    scopes: AUTH_SCOPES.length,
   }
 }
 
@@ -127,7 +139,7 @@ if (process.argv[1]?.endsWith("seed-first-party-apps.ts")) {
   seedFirstPartyApps()
     .then((result) => {
       console.log(
-        `Seeded ${result.apps} first-party app, ${result.environments} environments, ${result.oauthClients} OAuth clients, and ${result.scopes} scopes.`,
+        `Seeded ${result.apps} first-party apps, ${result.environments} environments, ${result.oauthClients} OAuth clients, and ${result.scopes} scopes.`,
       )
     })
     .finally(async () => {
