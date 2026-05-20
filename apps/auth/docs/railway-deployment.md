@@ -87,6 +87,8 @@ Before deploying changes to this flow:
   the real Auth domain.
 - Startup applied Prisma migration `0001_init` and seeded one first-party admin
   app, four environments, four OAuth clients, and eight scopes.
+- 2026-05-20 redeploy trigger: refresh `@forge/auth` so the Manager OAuth
+  client seed changes from PR #989 run on Railway startup.
 - Copied available upstream SSO provider env values from admin to Auth:
   Facebook, Google, and Okta. Apple was not configured on admin.
 - Added admin production env values for `AUTH_ISSUER_URL`,
