@@ -26,7 +26,7 @@ const apercuPro = localFont({
 
 export default function RootLayout(props: { children: ReactNode }) {
   return (
-    <html lang="en" className={cn("font-sans", apercuPro.variable)}>
+    <html lang="en" dir="ltr" className={cn("font-sans", apercuPro.variable)}>
       <body className="bg-stone-900">
         <FloatingSearchProvider>{props.children}</FloatingSearchProvider>
       </body>

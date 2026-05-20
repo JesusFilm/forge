@@ -565,6 +565,11 @@ export function HeroPlayer({
                   type="button"
                   data-testid="hero-player-unmute-pill"
                   data-state={pillState}
+                  aria-label={
+                    pillState === "tap-to-unmute"
+                      ? "Tap to Unmute"
+                      : "Play with Sound"
+                  }
                   onClick={handleUnmuteClick}
                   className={
                     pillState === "tap-to-unmute"

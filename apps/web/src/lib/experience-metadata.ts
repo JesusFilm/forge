@@ -48,13 +48,20 @@ function toMetadata(
   const { fbAppId } = getSocialConfig()
 
   if (resolvedPage?.kind === "video-template") {
+    // Prefer the longer `description` over the punchier `snippet` for SEO —
+    // Google prefers 120–160 chars in the meta description; snippets are
+    // routinely below that floor (one-line taglines). Keep snippet as the
+    // fallback so videos with no body description still get something.
     const description =
-      resolvedPage.routeVideo.snippet ??
       resolvedPage.routeVideo.description ??
+      resolvedPage.routeVideo.snippet ??
       ""
-    const title =
-      resolvedPage.routeVideo.title ||
-      `${options?.slug ?? "Watch"} ${TITLE_SUFFIX}`
+    const baseTitle = resolvedPage.routeVideo.title || options?.slug || "Watch"
+    // Always append the brand suffix so video pages get the same
+    // "<title> | Jesus Film Project" treatment that experience pages and
+    // series pages already produce (via `experienceToMetadata` and
+    // `generateSeriesMetadata`).
+    const title = `${baseTitle} ${TITLE_SUFFIX}`
     const ogImage = resolvedPage.routeVideo.imageUrl
       ? {
           url: resolvedPage.routeVideo.imageUrl,
@@ -85,9 +92,9 @@ function toMetadata(
         site: "@JesusFilm",
         creator: "@JesusFilm",
       },
-      ...(resolvedPage.routeVideo.noIndex && {
-        robots: { index: false, follow: false },
-      }),
+      robots: resolvedPage.routeVideo.noIndex
+        ? { index: false, follow: false }
+        : { index: true, follow: true },
       ...(fbAppId && { other: { "fb:app_id": fbAppId } }),
       alternates: {
         canonical: url,
@@ -105,7 +112,8 @@ function toMetadata(
     : "Watch | Jesus Film Project"
   const title = cms?.title ?? fallbackTitle
   const description =
-    cms?.description ?? "Watch films and videos about the life of Jesus."
+    cms?.description ??
+    "Watch the Jesus Film Project's library of free films and short videos exploring the life and teachings of Jesus, available in thousands of languages."
   const ogTitle = cms?.ogTitle ?? title
   const ogDescription = cms?.ogDescription ?? description
   const ogImage = cms?.ogImage
@@ -135,6 +143,10 @@ function toMetadata(
       site: "@JesusFilm",
       creator: "@JesusFilm",
     },
+    // Explicit index/follow default. Without this, no <meta name="robots">
+    // is emitted — Google still defaults to index,follow, but explicit is
+    // unambiguous and lets WAF/CDN edge layers reason about expected SEO.
+    robots: { index: true, follow: true },
     ...(fbAppId && { other: { "fb:app_id": fbAppId } }),
     alternates: {
       canonical: url,
@@ -204,9 +216,9 @@ export function generateSeriesMetadata(
       site: "@JesusFilm",
       creator: "@JesusFilm",
     },
-    ...(series.noIndex && {
-      robots: { index: false, follow: false },
-    }),
+    robots: series.noIndex
+      ? { index: false, follow: false }
+      : { index: true, follow: true },
     ...(fbAppId && { other: { "fb:app_id": fbAppId } }),
     alternates: {
       canonical: url,

@@ -61,12 +61,12 @@ export function WatchStudyQuestions({ prompts }: { prompts: string[] }) {
           up with the start of the video description, keeping the two
           columns visually parallel. */}
       <div className="mb-4 flex flex-wrap items-center justify-between">
-        <h4
+        <h2
           id="watch-related-questions-heading"
           className="flex shrink-0 items-center gap-4 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg"
         >
           Related Questions
-        </h4>
+        </h2>
         <Button
           variant="pill"
           nativeButton={false}

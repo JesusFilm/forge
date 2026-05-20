@@ -50,12 +50,16 @@ export function WatchBody({
           data-testid="watch-body-title-row"
           className="flex items-center justify-between gap-4"
         >
-          <h1
+          {/* The HeroPlayer overlay already renders the canonical <h1> for
+              this video. The body title repeats that text for visual
+              hierarchy in the body section, so it ships as <h2> to keep
+              one <h1> per page (WCAG 1.3.1). Visual styling is unchanged. */}
+          <h2
             data-testid="watch-body-title"
             className="min-w-0 text-3xl font-bold text-stone-100 md:text-4xl xl:text-5xl"
           >
             {video.title ?? ""}
-          </h1>
+          </h2>
           {hasDownloads ? (
             <div className="shrink-0">
               <DownloadButton onClick={onDownloadClick} />

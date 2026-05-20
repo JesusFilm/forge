@@ -173,6 +173,7 @@ function FreeResourceCard({ quote }: { quote: QuoteItem }) {
       </h3>
       <Button
         variant="pill"
+        nativeButton={false}
         render={
           quote.ctaLink ? (
             <a href={quote.ctaLink} target="_blank" rel="noopener noreferrer" />

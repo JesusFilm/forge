@@ -603,8 +603,11 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
           </CarouselContent>
           {validItems.length > 3 && (
             <>
-              <CarouselPrevious className="hidden md:flex" />
-              <CarouselNext className="hidden md:flex" />
+              <CarouselPrevious
+                className="hidden md:flex"
+                label="Previous video"
+              />
+              <CarouselNext className="hidden md:flex" label="Next video" />
             </>
           )}
         </Carousel>

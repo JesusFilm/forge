@@ -45,6 +45,20 @@ export function SiblingCarousel({
   const clipIndex = activeIndex >= 0 ? activeIndex + 1 : 1
   const clipTotal = children.length
 
+  // Eager-load the small window of cards around the active item (or the
+  // first two in parent-mode). Hard-coded `index < 5` always targeted DOM
+  // order, which wrongly eagered indices 0-4 whenever activeIndex >= 5 —
+  // the api.scrollTo() snap below moves the visible cards INTO view, but
+  // the eager hint fires before snap so we'd burn high-priority slots on
+  // off-screen thumbnails.
+  const eagerIndices = new Set<number>(
+    isParentMode
+      ? [0, 1]
+      : [activeIndex - 1, activeIndex, activeIndex + 1, activeIndex + 2].filter(
+          (i) => i >= 0 && i < children.length,
+        ),
+  )
+
   const [api, setApi] = useState<CarouselApi | null>(null)
 
   // Snap to the active item whenever it changes (or when `api` first
@@ -151,11 +165,14 @@ export function SiblingCarousel({
                       fill
                       sizes="(max-width: 640px) 70vw, (max-width: 768px) 45vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      // Mark the first 5 cards above-the-fold so Next can
-                      // preload them and avoid CLS / late paints on the
-                      // initial visible strip. Cards beyond the first 5
-                      // are off-screen at most viewport widths.
-                      priority={index < 5}
+                      // Eager-load the cards inside `eagerIndices` (the
+                      // small window around activeIndex). `priority` alone
+                      // wasn't surfacing as `loading="eager"` /
+                      // `fetchpriority="high"` in the DOM under Next 16 +
+                      // fill + sizes, so spell all three out.
+                      priority={eagerIndices.has(index)}
+                      loading={eagerIndices.has(index) ? "eager" : "lazy"}
+                      fetchPriority={eagerIndices.has(index) ? "high" : "auto"}
                     />
                   ) : (
                     <div
@@ -192,9 +209,15 @@ export function SiblingCarousel({
                     <span className="text-[10px] font-semibold tracking-[0.18em] text-stone-300 uppercase drop-shadow-md sm:text-xs">
                       Chapter
                     </span>
-                    <h3 className="line-clamp-2 text-sm font-bold text-white drop-shadow-md sm:text-base">
+                    {/* Card title rendered as <span>, not <h3>: the cards are
+                        sibling-navigation Link items and don't anchor their
+                        own section. Emitting an <h3> with no parent <h2>
+                        skipped the heading order (WCAG 1.3.1) and would
+                        require an artificial sr-only section header. The
+                        Link's accessible name covers the card's title. */}
+                    <span className="line-clamp-2 text-sm font-bold text-white drop-shadow-md sm:text-base">
                       {child.title ?? ""}
-                    </h3>
+                    </span>
                   </div>
 
                   {/* Visually-hidden active marker — preserves the existing
@@ -220,8 +243,14 @@ export function SiblingCarousel({
             page the chevrons inherit white from the parent until hover.
             Force the chevrons to a near-black at all times so the arrow
             stays legible against the light circular background. */}
-        <CarouselPrevious className="hidden text-stone-900 hover:text-stone-900 md:inline-flex" />
-        <CarouselNext className="hidden text-stone-900 hover:text-stone-900 md:inline-flex" />
+        <CarouselPrevious
+          className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
+          label="Previous chapter"
+        />
+        <CarouselNext
+          className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
+          label="Next chapter"
+        />
       </Carousel>
     </section>
   )

@@ -207,6 +207,11 @@ describe("HeroPlayer — initial mount", () => {
     expect(pill).not.toBeNull()
     expect(pill?.getAttribute("data-state")).toBe("play-with-sound")
     expect(pill?.textContent).toContain("Play with Sound")
+    // WCAG 2.5.3 (Label in Name): accessible name must contain the
+    // visible label as a substring. The aria-label must mirror the
+    // visible "Play with Sound" text so voice-control engines that
+    // match on accessible name still resolve "click play with sound".
+    expect(pill?.getAttribute("aria-label")).toBe("Play with Sound")
   })
 })
 
