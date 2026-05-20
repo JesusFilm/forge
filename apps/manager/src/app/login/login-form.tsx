@@ -3,9 +3,11 @@
 export function LoginForm({
   expired,
   error,
+  loginHref,
 }: {
   expired: boolean
   error?: string
+  loginHref: string
 }) {
   const message = expired
     ? "Your session has expired. Please sign in again."
@@ -21,7 +23,7 @@ export function LoginForm({
         </div>
       )}
 
-      <a className="login-button" href="/api/auth/login">
+      <a className="login-button" href={loginHref}>
         Sign in with Jesus Film
       </a>
     </div>

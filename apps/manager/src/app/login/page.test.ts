@@ -19,6 +19,14 @@ vi.mock("@/features/shell/studio-auth-shell", () => ({
   StudioAuthShell: studioAuthShellMock,
 }))
 
+vi.mock("@/lib/oauth-client", () => ({
+  getManagerOAuthConfig: vi.fn(() => ({
+    issuerUrl: "https://auth.jesusfilm.org",
+    clientId: "jfp_manager_local",
+    managerBaseUrl: "http://localhost:3002",
+  })),
+}))
+
 import LoginPage from "./page"
 
 describe("login page", () => {
@@ -33,6 +41,7 @@ describe("login page", () => {
     expect(suspense.props.children.props).toEqual({
       error: undefined,
       expired: true,
+      loginHref: "http://localhost:3002/api/auth/login",
     })
   })
 })
