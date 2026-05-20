@@ -8,11 +8,13 @@ import {
   Download as DownloadIcon,
   Globe2,
   Play,
+  X as XIcon,
 } from "lucide-react"
 
 import { formatDuration as formatDurationShared } from "@/lib/format-duration"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { TERMS_OF_USE_PARAGRAPHS } from "@/lib/terms-of-use"
 import {
   SAFE_DOWNLOAD_EXTENSIONS,
   isAllowedDownloadOrigin,
@@ -36,9 +38,6 @@ export type DownloadModalProps = {
   languageName?: string | null
   onClose: () => void
 }
-
-// Public terms-of-use page; opens in a new tab from the modal's checkbox row.
-const TERMS_OF_USE_URL = "https://www.jesusfilm.org/terms-of-use/"
 
 // Same-origin streaming proxy. Hardcoded against `next.config.mjs`'s
 // `basePath: "/watch"`; if the basePath ever moves, this string moves
@@ -194,6 +193,7 @@ export function DownloadModal({
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [termsOpen, setTermsOpen] = useState(false)
   // Keyed by download URL since the CMS-generated `documentId` is stable
   // per-variant but the URL is what we probe — lookups for the same URL
   // (which happens when the CMS sets fhd === highest) dedupe naturally.
@@ -253,6 +253,7 @@ export function DownloadModal({
         setSelectedTier(null)
         setDropdownOpen(false)
         setError(null)
+        setTermsOpen(false)
         downloadInFlight.current = false
         onClose()
       }
@@ -456,7 +457,7 @@ export function DownloadModal({
         </div>
 
         {/* Body: file size dropdown */}
-        <div className="px-6 pb-4">
+        <div className="px-6">
           {tiers.length === 0 ? (
             <p
               data-testid="watch-download-modal-empty"
@@ -582,15 +583,14 @@ export function DownloadModal({
             </span>
             <span>
               I agree to the{" "}
-              <a
-                href={TERMS_OF_USE_URL}
-                target="_blank"
-                rel="noreferrer noopener"
-                data-testid="watch-download-modal-tos-link"
-                className="font-semibold text-red-500 underline-offset-4 hover:underline"
+              <button
+                type="button"
+                onClick={() => setTermsOpen(true)}
+                data-testid="watch-download-modal-tos-trigger"
+                className="cursor-pointer font-semibold text-red-500 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
               >
                 Terms of Use
-              </a>
+              </button>
             </span>
           </label>
           <Button
@@ -614,6 +614,107 @@ export function DownloadModal({
             {error}
           </p>
         ) : null}
+      </DialogContent>
+
+      {/*
+        TermsOfUseDialog must stay as a sibling of <DialogContent> inside
+        this outer <Dialog> wrapper. Reason: handleOpenChange above runs
+        setTermsOpen(false) on outer-modal close, which only fires while
+        the inner dialog is mounted within the same React subtree. Moving
+        it outside the outer Dialog (a tempting "cleanup") breaks that
+        reset path. Both Dialogs portal to <body> independently, so the
+        sibling placement is layout-neutral.
+      */}
+      <TermsOfUseDialog
+        open={termsOpen}
+        onCancel={() => setTermsOpen(false)}
+        onAccept={() => {
+          setTosAgreed(true)
+          setTermsOpen(false)
+        }}
+      />
+    </Dialog>
+  )
+}
+
+type TermsOfUseDialogProps = {
+  open: boolean
+  onCancel: () => void
+  onAccept: () => void
+}
+
+function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onCancel()
+      }}
+    >
+      <DialogContent
+        data-testid="watch-download-modal-terms-dialog"
+        showCloseButton={false}
+        overlayClassName="bg-black/60 supports-backdrop-filter:backdrop-blur-sm"
+        className="flex max-h-[85vh] flex-col gap-0 rounded-2xl border border-stone-700/60 bg-stone-900 p-0 text-stone-100 sm:max-w-2xl"
+      >
+        <div className="flex items-start justify-between px-8 pt-8 pb-4">
+          <DialogTitle
+            data-testid="watch-download-modal-terms-title"
+            className="text-2xl font-bold text-stone-50 sm:text-3xl"
+          >
+            Terms of Use
+          </DialogTitle>
+          {/*
+            Raw <button> (not <Button variant="...">): the circular
+            stone-700 X-close shape has no matching variant in the
+            project's buttonVariants. Same reasoning applies to Cancel
+            below — its stone-700 pill differs in color from the white
+            "pill" variant Accept uses.
+          */}
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Close Terms of Use"
+            data-testid="watch-download-modal-terms-close"
+            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-stone-700/60 text-stone-200 transition-colors hover:bg-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
+          >
+            <XIcon size={16} />
+          </button>
+        </div>
+
+        {/*
+          The stone-themed scrollbar class string below is duplicated
+          verbatim on LanguageCombobox.tsx:215. If you change the colors
+          / track / thumb shape here, update the other site too — or
+          promote both to a shared `stone-scrollbar` utility in
+          globals.css, following the `search-overlay-scroll` precedent.
+        */}
+        <div
+          data-testid="watch-download-modal-terms-body"
+          className="flex-1 space-y-4 overflow-y-auto pr-6 pb-6 pl-8 text-sm leading-relaxed text-stone-200 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600"
+        >
+          {TERMS_OF_USE_PARAGRAPHS.map((paragraph, i) => (
+            <p key={i}>{paragraph}</p>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-end gap-3 border-t border-stone-700/50 px-8 py-5">
+          <button
+            type="button"
+            onClick={onCancel}
+            data-testid="watch-download-modal-terms-cancel"
+            className="cursor-pointer rounded-full bg-stone-700/60 px-5 py-2.5 text-sm font-medium text-stone-100 transition-colors hover:bg-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400/50"
+          >
+            Cancel
+          </button>
+          <Button
+            variant="pill"
+            onClick={onAccept}
+            data-testid="watch-download-modal-terms-accept"
+          >
+            Accept
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   )
