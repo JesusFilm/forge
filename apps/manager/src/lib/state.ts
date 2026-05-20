@@ -1,7 +1,8 @@
-// Job state access helpers for live and mock manager data modes.
+// Job state access helpers for live, admin, and mock manager data modes.
 // Live mode uses typed Strapi GraphQL operations from @forge/graphql.
 
 import { graphql, type ResultOf, type VariablesOf } from "@forge/graphql"
+import { AdminGraphqlClient } from "@/backend/admin-client"
 import getClient from "@/cms/client"
 import { publishJobEvent } from "@/lib/job-events"
 import {
@@ -10,6 +11,7 @@ import {
   updateMockCmsState,
 } from "@/cms/gateway"
 import { cmsPost } from "@/services/cmsClient"
+import { env } from "@/config/env"
 import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
   JobArtifactEntry,
@@ -24,6 +26,11 @@ import type {
 } from "@/types/job"
 
 export type { JobRecord, JobStatus, WorkflowStepName, StepStatus }
+type JobListOptions = {
+  limit?: number
+  offset?: number
+}
+
 export type JobLookupResult =
   | {
       status: "found"
@@ -36,6 +43,19 @@ export type JobLookupResult =
       status: "error"
       error: unknown
     }
+
+let adminJobClient: AdminGraphqlClient | undefined
+
+function getAdminJobClient(): AdminGraphqlClient {
+  if (!env.ADMIN_GRAPHQL_URL) {
+    throw new Error("ADMIN_GRAPHQL_URL is required for Manager job state")
+  }
+  adminJobClient ??= new AdminGraphqlClient({
+    graphqlUrl: env.ADMIN_GRAPHQL_URL,
+    apiKey: env.ADMIN_MANAGER_API_KEY,
+  })
+  return adminJobClient
+}
 
 // ---------------------------------------------------------------------------
 // GraphQL fragments & operations (typed via gql.tada)
@@ -547,6 +567,23 @@ export async function createJob(
     return job
   }
 
+  if (gateway.mode === "admin") {
+    const initialArtifacts = options?.initialArtifacts ?? {}
+    const job = await getAdminJobClient().createJob({
+      muxAssetId,
+      muxPlaybackId,
+      languages,
+      videoDocumentId: options?.videoDocumentId,
+      options: {},
+      artifacts: initialArtifacts,
+      errors: [],
+      steps,
+      ...deriveMaterializationFields(initialArtifacts),
+    })
+    publishJobEvent(job)
+    return job
+  }
+
   if (options?.videoDocumentId) {
     const response = await cmsPost<{ documentId: string }>(
       "/enrichment-job/internal-create",
@@ -605,7 +642,8 @@ export async function getJob(id: string): Promise<JobRecord | null> {
 }
 
 export async function getJobLookup(id: string): Promise<JobLookupResult> {
-  const mockState = await readMockCmsState(getCmsGateway())
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
   if (mockState) {
     const job = mockState.readModels.jobs.find(
       (candidate) => candidate.id === id,
@@ -619,6 +657,20 @@ export async function getJobLookup(id: string): Promise<JobLookupResult> {
       job,
     }
   }
+
+  if (gateway.mode === "admin") {
+    try {
+      const job = await getAdminJobClient().getJob(id)
+      return job ? { status: "found", job } : { status: "not-found" }
+    } catch (err) {
+      console.warn(`[state] getJob(${id}) failed:`, err)
+      return {
+        status: "error",
+        error: err,
+      }
+    }
+  }
+
   const client = getClient()
 
   try {
@@ -645,10 +697,18 @@ export async function getJobLookup(id: string): Promise<JobLookupResult> {
   }
 }
 
-export async function listJobs(): Promise<JobRecord[]> {
-  const mockState = await readMockCmsState(getCmsGateway())
+export async function listJobs(
+  options: JobListOptions = {},
+): Promise<JobRecord[]> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
   if (mockState) {
-    return mockState.readModels.jobs
+    const { limit = mockState.readModels.jobs.length, offset = 0 } = options
+    return mockState.readModels.jobs.slice(offset, offset + limit)
+  }
+
+  if (gateway.mode === "admin") {
+    return getAdminJobClient().listJobs(options)
   }
 
   const client = getClient()
@@ -658,15 +718,25 @@ export async function listJobs(): Promise<JobRecord[]> {
     fetchPolicy: "no-cache",
   })
 
-  return (result.data?.enrichmentJobs ?? [])
+  const jobs = (result.data?.enrichmentJobs ?? [])
     .filter((node): node is NonNullable<typeof node> => node != null)
     .map((node) => toJobRecord(node))
+  const { limit = jobs.length, offset = 0 } = options
+  return jobs.slice(offset, offset + limit)
 }
 
-export async function listJobSummaries(): Promise<JobRecord[]> {
-  const mockState = await readMockCmsState(getCmsGateway())
+export async function listJobSummaries(
+  options: JobListOptions = {},
+): Promise<JobRecord[]> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
   if (mockState) {
-    return mockState.readModels.jobs
+    const { limit = mockState.readModels.jobs.length, offset = 0 } = options
+    return mockState.readModels.jobs.slice(offset, offset + limit)
+  }
+
+  if (gateway.mode === "admin") {
+    return getAdminJobClient().listJobs(options)
   }
 
   const client = getClient()
@@ -676,15 +746,22 @@ export async function listJobSummaries(): Promise<JobRecord[]> {
     fetchPolicy: "no-cache",
   })
 
-  return (result.data?.enrichmentJobs ?? [])
+  const jobs = (result.data?.enrichmentJobs ?? [])
     .filter((node): node is NonNullable<typeof node> => node != null)
     .map((node) => toJobRecord(node))
+  const { limit = jobs.length, offset = 0 } = options
+  return jobs.slice(offset, offset + limit)
 }
 
 export async function countJobs(): Promise<number> {
-  const mockState = await readMockCmsState(getCmsGateway())
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
   if (mockState) {
     return mockState.readModels.jobs.length
+  }
+
+  if (gateway.mode === "admin") {
+    return getAdminJobClient().countJobs()
   }
 
   const client = getClient()
@@ -740,6 +817,26 @@ export async function updateJob(
     }
 
     return job ?? null
+  }
+
+  if (gateway.mode === "admin") {
+    try {
+      const adminUpdates =
+        updates.artifacts !== undefined
+          ? {
+              ...updates,
+              ...deriveMaterializationFields(updates.artifacts),
+            }
+          : updates
+      const job = await getAdminJobClient().updateJob(id, adminUpdates)
+      if (job) {
+        publishJobEvent(job)
+      }
+      return job
+    } catch (err) {
+      console.warn(`[state] updateJob(${id}) failed:`, err)
+      return null
+    }
   }
 
   const client = getClient()
@@ -916,6 +1013,10 @@ async function doUpdateStepStatus(
     }
 
     return jobRecord
+  }
+
+  if (gateway.mode === "admin") {
+    return updateJob(jobId, { steps, errors })
   }
 
   const client = getClient()

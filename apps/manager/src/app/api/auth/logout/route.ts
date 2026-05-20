@@ -1,8 +1,30 @@
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
-export async function POST() {
-  const cookieStore = await cookies()
-  cookieStore.delete("strapi-jwt")
-  return NextResponse.json({ success: true })
+import {
+  MANAGER_OAUTH_RETURN_TO_COOKIE,
+  MANAGER_OAUTH_STATE_COOKIE,
+  MANAGER_OAUTH_VERIFIER_COOKIE,
+  MANAGER_SESSION_COOKIE,
+} from "@/lib/manager-session-cookie"
+
+export function POST() {
+  const response = NextResponse.json({ success: true })
+  clearManagerSession(response)
+  return response
+}
+
+export function GET(request: Request) {
+  const response = NextResponse.redirect(
+    new URL("/api/auth/login?prompt=login", request.url),
+  )
+  clearManagerSession(response)
+  return response
+}
+
+function clearManagerSession(response: NextResponse) {
+  response.cookies.delete(MANAGER_SESSION_COOKIE)
+  response.cookies.delete(MANAGER_OAUTH_STATE_COOKIE)
+  response.cookies.delete(MANAGER_OAUTH_VERIFIER_COOKIE)
+  response.cookies.delete(MANAGER_OAUTH_RETURN_TO_COOKIE)
+  response.cookies.delete("strapi-jwt")
 }

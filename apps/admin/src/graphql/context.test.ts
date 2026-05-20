@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const resolvePrincipalFromRequest = vi.fn()
 const isValidWorkflowBearer = vi.fn()
+const isValidManagerBearer = vi.fn()
 const isValidConsumerBearer = vi.fn()
 
 vi.mock("@/auth/session", () => ({
@@ -12,6 +13,10 @@ vi.mock("@/auth/workflow-bearer", () => ({
   isValidWorkflowBearer,
 }))
 
+vi.mock("@/auth/manager-bearer", () => ({
+  isValidManagerBearer,
+}))
+
 vi.mock("@/auth/consumer-bearer", () => ({
   isValidConsumerBearer,
 }))
@@ -20,8 +25,10 @@ describe("createContext", () => {
   beforeEach(() => {
     resolvePrincipalFromRequest.mockReset()
     isValidWorkflowBearer.mockReset()
+    isValidManagerBearer.mockReset()
     isValidConsumerBearer.mockReset()
     isValidWorkflowBearer.mockReturnValue(false)
+    isValidManagerBearer.mockReturnValue(false)
     isValidConsumerBearer.mockReturnValue({ valid: false, bucketKey: null })
   })
 
@@ -128,6 +135,23 @@ describe("createContext", () => {
     )
   })
 
+  it("mints MANAGER_BACKEND when no session and manager bearer is valid", async () => {
+    resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+    isValidWorkflowBearer.mockReturnValue(false)
+    isValidManagerBearer.mockReturnValue(true)
+    const { createContext } = await import("@/graphql/context")
+
+    const ctx = await createContext({
+      request: new Request("http://localhost/api/graphql", {
+        headers: { authorization: "Bearer manager-key" },
+      }),
+    })
+
+    expect(ctx.user).toEqual({ id: null, role: "MANAGER_BACKEND" })
+    expect(isValidManagerBearer).toHaveBeenCalledWith("Bearer manager-key")
+    expect(isValidConsumerBearer).not.toHaveBeenCalled()
+  })
+
   it("session principal wins over consumer-bearer (no accidental downgrade)", async () => {
     // Editor with a session cookie who ALSO forwards a consumer-app
     // bearer keeps their editorial role. The bearer is not consulted
@@ -216,6 +240,7 @@ describe("createContext", () => {
       })
       resolvePrincipalFromRequest.mockResolvedValueOnce(null)
       isValidWorkflowBearer.mockReturnValueOnce(false)
+      isValidManagerBearer.mockReturnValueOnce(false)
       isValidConsumerBearer.mockReturnValueOnce({
         valid: true,
         bucketKey: "consumer-secret-bbb",
@@ -227,6 +252,15 @@ describe("createContext", () => {
       })
       resolvePrincipalFromRequest.mockResolvedValueOnce(null)
       isValidWorkflowBearer.mockReturnValueOnce(false)
+      isValidManagerBearer.mockReturnValueOnce(true)
+      await createContext({
+        request: new Request("http://localhost/api/graphql", {
+          headers: { authorization: "Bearer manager-secret-ddd" },
+        }),
+      })
+      resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+      isValidWorkflowBearer.mockReturnValueOnce(false)
+      isValidManagerBearer.mockReturnValueOnce(false)
       isValidConsumerBearer.mockReturnValueOnce({
         valid: false,
         bucketKey: null,
@@ -247,6 +281,7 @@ describe("createContext", () => {
       expect(combined).not.toContain("workflow-secret-aaa")
       expect(combined).not.toContain("consumer-secret-bbb")
       expect(combined).not.toContain("wrong-key-ccc")
+      expect(combined).not.toContain("manager-secret-ddd")
       expect(combined).not.toContain("Bearer ")
     } finally {
       logSpy.mockRestore()

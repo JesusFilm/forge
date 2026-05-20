@@ -40,6 +40,7 @@ export const env = createEnv({
     AUTH_ADMIN_CLIENT_ID: z.string().min(1),
     AUTH_ADMIN_CLIENT_SECRET: z.string().min(1).optional(),
     ADMIN_BASE_URL: z.string().url().optional(),
+    MANAGER_ADMIN_API_KEY: z.string().min(1).optional(),
     REDIS_HOST: z.string().min(1).optional(),
     REDIS_PORT: z.coerce.number().int().positive().optional(),
     REDIS_PASSWORD: z.string().min(1).optional(),
@@ -218,6 +219,7 @@ export const env = createEnv({
       process.env.AUTH_ADMIN_CLIENT_SECRET,
     ),
     ADMIN_BASE_URL: emptyToUndefined(process.env.ADMIN_BASE_URL),
+    MANAGER_ADMIN_API_KEY: emptyToUndefined(process.env.MANAGER_ADMIN_API_KEY),
     REDIS_HOST: emptyToUndefined(process.env.REDIS_HOST),
     REDIS_PORT: emptyToUndefined(process.env.REDIS_PORT),
     REDIS_PASSWORD: emptyToUndefined(process.env.REDIS_PASSWORD),
@@ -349,6 +351,7 @@ function parseBearerCsvSet(csv: string | undefined): ReadonlySet<string> {
 // the constant AND the type in lockstep, or the build breaks.
 const BEARER_CSV_KEYS = [
   "WORKFLOW_API_KEYS",
+  "MANAGER_ADMIN_API_KEY",
   "WEB_ADMIN_API_KEYS",
   "BACKUP_DOWNLOAD_API_KEYS",
 ] as const
@@ -420,6 +423,7 @@ export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
 // satisfies the check.
 assertBearerCsvsDisjoint({
   WORKFLOW_API_KEYS: env.WORKFLOW_API_KEYS,
+  MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
 })

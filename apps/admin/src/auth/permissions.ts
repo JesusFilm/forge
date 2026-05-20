@@ -45,6 +45,8 @@ export type PermissionKey =
   | "read:video-metadata"
   | "read:media-assets"
   | "read:reference"
+  | "access:manager"
+  | "read:manager-read-models"
   // Write scopes (admin-write on Core-sourced is intentionally restricted)
   | "write:experiences"
   | "write:videos"
@@ -57,6 +59,7 @@ export type PermissionKey =
   // the mutation forwards the call to apps/manager's
   // `/api/admin-trigger/{scene-analysis,transcript}` endpoint.
   | "write:manager-enrichment-trigger"
+  | "write:manager-jobs"
   // Lifecycle scopes (publish / archive ExperienceLocale, etc.)
   | "publish:experiences"
   | "archive:experiences"
@@ -90,6 +93,10 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "read:media-assets": "EDITOR",
   // Reference data is public-shape; PUBLIC may read.
   "read:reference": "PUBLIC",
+  // Manager panel and Manager backend contracts are gated below, not by
+  // the editorial role ladder.
+  "access:manager": "PUBLIC",
+  "read:manager-read-models": "PUBLIC",
   // Editor writes
   "write:experiences": "EDITOR",
   // Core-sourced; only ADMIN may override (also flips source='manager').
@@ -114,6 +121,7 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // existing reverse direction without the new key piggybacking on
   // that path.
   "write:manager-enrichment-trigger": "ADMIN",
+  "write:manager-jobs": "PUBLIC",
   // Lifecycle
   "publish:experiences": "EDITOR",
   "archive:experiences": "EDITOR",
@@ -160,6 +168,9 @@ function meetsTier(role: Role, min: MinTier): boolean {
   // WORKFLOW_TRIGGER is gated by `WORKFLOW_TRIGGER_PERMISSIONS` in
   // `hasPermission` directly; it never satisfies tier-based checks.
   if (role === "WORKFLOW_TRIGGER") return false
+  // MANAGER_BACKEND is gated by `MANAGER_BACKEND_PERMISSIONS`; it never
+  // satisfies human panel access or editorial tier checks.
+  if (role === "MANAGER_BACKEND") return false
   // CONSUMER_BEARER is gated by `CONSUMER_BEARER_PERMISSIONS` (empty set)
   // in `hasPermission` via early-return; it never satisfies tier-based
   // checks. The bearer's sole purpose is rate-limit bucketing, not
@@ -239,6 +250,15 @@ const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
  */
 const CONSUMER_BEARER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set()
 
+const MANAGER_BACKEND_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "read:manager-read-models",
+  "write:manager-jobs",
+])
+
+const MANAGER_MEMBERSHIP_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "access:manager",
+])
+
 /**
  * Resolve a permission key to a boolean for the given principal.
  * Tier-only — does not consider entity ownership or state.
@@ -260,6 +280,9 @@ export function hasPermission(
   if (role === "WORKFLOW_TRIGGER") {
     return WORKFLOW_TRIGGER_PERMISSIONS.has(key)
   }
+  if (role === "MANAGER_BACKEND") {
+    return MANAGER_BACKEND_PERMISSIONS.has(key)
+  }
   // CONSUMER_BEARER's permission set is intentionally empty; this
   // early-return makes the contract explicit at the call site so a
   // reader doesn't have to derive "no permission keys granted" from
@@ -268,6 +291,12 @@ export function hasPermission(
   // assertions in `permissions.test.ts`.
   if (role === "CONSUMER_BEARER") {
     return CONSUMER_BEARER_PERMISSIONS.has(key)
+  }
+  if (MANAGER_BACKEND_PERMISSIONS.has(key)) {
+    return false
+  }
+  if (MANAGER_MEMBERSHIP_PERMISSIONS.has(key)) {
+    return user?.managerRole === "OPERATOR"
   }
   const min = permissionMatrix[key]
   return meetsTier(role, min)

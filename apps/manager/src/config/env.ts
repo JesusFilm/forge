@@ -7,7 +7,11 @@ const MOCK_SESSION_SECRET_SENTINEL = "__manager_mock_session_secret_required__"
 
 export const env = createEnv({
   server: {
-    MANAGER_DATA_MODE: z.enum(["live", "mock"]).default("live"),
+    NODE_ENV: z
+      .enum(["development", "test", "production"])
+      .default("development"),
+    MANAGER_DATA_MODE: z.enum(["admin", "live", "mock"]).default("live"),
+    MANAGER_BACKEND_MODE: z.enum(["admin", "live", "mock"]).optional(),
 
     // Mux
     MUX_TOKEN_ID: z.string().min(1),
@@ -46,6 +50,13 @@ export const env = createEnv({
 
     // API authentication — required for production
     MANAGER_API_KEY: z.string().min(1).optional(),
+    MANAGER_BASE_URL: z.string().url().optional(),
+    MANAGER_SESSION_SECRET: z.string().min(32).optional(),
+    AUTH_ISSUER_URL: z.string().url().optional(),
+    AUTH_MANAGER_CLIENT_ID: z.string().min(1).optional(),
+    AUTH_MANAGER_CLIENT_SECRET: z.string().min(1).optional(),
+    ADMIN_MANAGER_API_KEY: z.string().min(1).optional(),
+    ADMIN_MANAGER_SESSION_URL: z.string().url().optional(),
 
     // Admin embed-trigger proxy (plan 006) — manager exposes
     // /api/admin-embeds/{scene,transcript} which forward to admin's
@@ -85,7 +96,9 @@ export const env = createEnv({
   },
   skipValidation: !!process.env.CI,
   runtimeEnv: {
+    NODE_ENV: process.env.NODE_ENV,
     MANAGER_DATA_MODE: process.env.MANAGER_DATA_MODE ?? "live",
+    MANAGER_BACKEND_MODE: process.env.MANAGER_BACKEND_MODE,
     MUX_TOKEN_ID: process.env.MUX_TOKEN_ID,
     MUX_TOKEN_SECRET: process.env.MUX_TOKEN_SECRET,
     MUX_SIGNING_KEY: process.env.MUX_SIGNING_KEY,
@@ -108,6 +121,13 @@ export const env = createEnv({
       process.env.MANAGER_MOCK_DATA_PATH ?? ".tmp/mock-cms/store.json",
     WORKFLOW_API_KEY: process.env.WORKFLOW_API_KEY,
     MANAGER_API_KEY: process.env.MANAGER_API_KEY,
+    MANAGER_BASE_URL: process.env.MANAGER_BASE_URL,
+    MANAGER_SESSION_SECRET: process.env.MANAGER_SESSION_SECRET,
+    AUTH_ISSUER_URL: process.env.AUTH_ISSUER_URL,
+    AUTH_MANAGER_CLIENT_ID: process.env.AUTH_MANAGER_CLIENT_ID,
+    AUTH_MANAGER_CLIENT_SECRET: process.env.AUTH_MANAGER_CLIENT_SECRET,
+    ADMIN_MANAGER_API_KEY: process.env.ADMIN_MANAGER_API_KEY,
+    ADMIN_MANAGER_SESSION_URL: process.env.ADMIN_MANAGER_SESSION_URL,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     ADMIN_EMBED_TRIGGER_API_KEY: process.env.ADMIN_EMBED_TRIGGER_API_KEY,
     ADMIN_TRIGGER_API_KEYS: process.env.ADMIN_TRIGGER_API_KEYS,
@@ -118,7 +138,10 @@ export const env = createEnv({
   },
 })
 
-if (env.MANAGER_DATA_MODE === "live") {
+const resolvedManagerBackendMode =
+  env.MANAGER_BACKEND_MODE ?? env.MANAGER_DATA_MODE
+
+if (resolvedManagerBackendMode === "live") {
   if (!process.env.STRAPI_URL) {
     throw new Error("STRAPI_URL is required when MANAGER_DATA_MODE=live")
   }
@@ -129,10 +152,34 @@ if (env.MANAGER_DATA_MODE === "live") {
 }
 
 if (
-  env.MANAGER_DATA_MODE === "mock" &&
+  resolvedManagerBackendMode === "mock" &&
   env.MANAGER_MOCK_SESSION_SECRET === MOCK_SESSION_SECRET_SENTINEL
 ) {
   throw new Error(
     "MANAGER_MOCK_SESSION_SECRET is required when MANAGER_DATA_MODE=mock",
   )
+}
+
+const managerAuthEnvRequired =
+  resolvedManagerBackendMode === "admin" ||
+  (resolvedManagerBackendMode !== "mock" && env.NODE_ENV === "production")
+const isNextProductionBuild =
+  process.env.NEXT_PHASE === "phase-production-build"
+
+if (managerAuthEnvRequired && !isNextProductionBuild) {
+  const missing = [
+    ["MANAGER_SESSION_SECRET", env.MANAGER_SESSION_SECRET],
+    ["AUTH_ISSUER_URL", env.AUTH_ISSUER_URL],
+    ["AUTH_MANAGER_CLIENT_ID", env.AUTH_MANAGER_CLIENT_ID],
+    ["ADMIN_GRAPHQL_URL", env.ADMIN_GRAPHQL_URL],
+    ["ADMIN_MANAGER_API_KEY", env.ADMIN_MANAGER_API_KEY],
+  ]
+    .filter(([, value]) => !value)
+    .map(([name]) => name)
+
+  if (missing.length > 0) {
+    throw new Error(
+      `${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} required when Manager auth is enabled`,
+    )
+  }
 }

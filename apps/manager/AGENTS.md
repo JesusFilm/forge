@@ -7,18 +7,20 @@ This app orchestrates AI video enrichment pipelines. Agents working here should 
 ## Key files
 
 - `src/config/env.ts` — validated env schema; update here first when adding new variables
-- `src/cms/gateway.ts` — live/mock CMS boundary; new Manager-facing CMS reads and auth should go through here first
+- `src/cms/gateway.ts` — live/mock/admin data boundary; new Manager-facing read-model access should go through here first
+- `src/backend/admin-client.ts` — Admin GraphQL adapter for Manager read models and job state in admin backend mode
 - `src/cms/mock-store.ts` + `src/cms/mock-seed.ts` — demo-only single-process mock CMS state and seeded artifacts
 - `src/workflows/videoEnrichment.ts` — main pipeline; add new steps here
 - `src/services/` — one file per external service
 - `src/services/openrouter.ts` — shared OpenRouter client plus strict structured-output helper for JSON-shaped LLM requests
 - `src/cms/client.ts` — Apollo Client for CMS (same pattern as apps/web); use typed ops from `@forge/graphql`
-- `src/lib/auth.ts` — API route authentication (JWT cookie + Bearer token)
-- `src/lib/state.ts` — local job state (file-backed; replace with durable store in production)
+- `src/lib/auth.ts` — Auth-backed Manager session plus API bearer authentication
+- `src/lib/state.ts` — job state facade; mock mode is local, live mode is CMS, admin mode is Admin GraphQL
 
 ## Cross-package impact
 
 - If this app needs new CMS data: add content type in `apps/cms`, run codegen in `packages/graphql`, then use typed op here.
+- If this app needs Admin-owned Manager data: add the GraphQL contract in `apps/admin`, regenerate `apps/admin/schema.graphql` and `packages/admin-graphql`, then adapt `src/backend/admin-client.ts`.
 - If enrichment results should be stored in Strapi: define a mutation in `packages/graphql`.
 - Mock/demo-only Manager behavior belongs inside `apps/manager`; do not add CMS schema changes or fake Strapi APIs just to support mock mode.
 
