@@ -53,6 +53,7 @@ describe("manager env mode validation", () => {
   })
 
   it("requires Manager auth and Admin validation settings for production non-mock mode", async () => {
+    vi.stubEnv("NEXT_PHASE", "phase-production-server")
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("MANAGER_DATA_MODE", "live")
     vi.stubEnv("MUX_TOKEN_ID", REQUIRED_BASE_ENV.MUX_TOKEN_ID)
@@ -66,7 +67,24 @@ describe("manager env mode validation", () => {
     )
   })
 
+  it("allows Next production builds without runtime Manager auth secrets", async () => {
+    vi.stubEnv("NEXT_PHASE", "phase-production-build")
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("MANAGER_DATA_MODE", "live")
+    vi.stubEnv("MUX_TOKEN_ID", REQUIRED_BASE_ENV.MUX_TOKEN_ID)
+    vi.stubEnv("MUX_TOKEN_SECRET", REQUIRED_BASE_ENV.MUX_TOKEN_SECRET)
+    vi.stubEnv("OPENROUTER_API_KEY", REQUIRED_BASE_ENV.OPENROUTER_API_KEY)
+    vi.stubEnv("STRAPI_URL", "https://cms.example")
+    vi.stubEnv("STRAPI_API_TOKEN", "strapi-api-token")
+
+    const { env } = await import("./env")
+
+    expect(env.NODE_ENV).toBe("production")
+    expect(env.MANAGER_DATA_MODE).toBe("live")
+  })
+
   it("requires the Admin Manager API key in admin backend mode", async () => {
+    vi.stubEnv("NEXT_PHASE", "phase-production-server")
     vi.stubEnv("MANAGER_DATA_MODE", "admin")
     vi.stubEnv("MUX_TOKEN_ID", REQUIRED_BASE_ENV.MUX_TOKEN_ID)
     vi.stubEnv("MUX_TOKEN_SECRET", REQUIRED_BASE_ENV.MUX_TOKEN_SECRET)

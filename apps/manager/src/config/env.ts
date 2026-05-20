@@ -163,8 +163,10 @@ if (
 const managerAuthEnvRequired =
   resolvedManagerBackendMode === "admin" ||
   (resolvedManagerBackendMode !== "mock" && env.NODE_ENV === "production")
+const isNextProductionBuild =
+  process.env.NEXT_PHASE === "phase-production-build"
 
-if (managerAuthEnvRequired) {
+if (managerAuthEnvRequired && !isNextProductionBuild) {
   const missing = [
     ["MANAGER_SESSION_SECRET", env.MANAGER_SESSION_SECRET],
     ["AUTH_ISSUER_URL", env.AUTH_ISSUER_URL],
