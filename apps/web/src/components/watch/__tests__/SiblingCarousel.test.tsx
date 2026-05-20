@@ -211,6 +211,29 @@ describe("SiblingCarousel — happy path", () => {
     // Exactly one child (#2) is missing an image.
     expect(placeholders.length).toBe(1)
   })
+
+  it("renders CarouselPrevious / CarouselNext with carousel-specific aria-labels", () => {
+    // The shadcn Carousel primitive accepts a `label` prop. SiblingCarousel
+    // passes "Previous chapter" / "Next chapter" so screen-reader users on
+    // a page with multiple carousels (chapter + Bible quotes + video) can
+    // tell them apart. Pin the label strings here so a future rename
+    // breaks the test rather than the agent / AT selector.
+    act(() => {
+      root.render(<SiblingCarousel block={makeBlock(5, 0)} />)
+    })
+
+    const prev = container.querySelector(
+      "button[data-slot='carousel-previous']",
+    )
+    const next = container.querySelector("button[data-slot='carousel-next']")
+
+    expect(prev?.getAttribute("aria-label")).toBe("Previous chapter")
+    expect(next?.getAttribute("aria-label")).toBe("Next chapter")
+    // The accessible name lives on aria-label only; the redundant
+    // sr-only span was removed to avoid double-announcement on VoiceOver.
+    expect(prev?.querySelector(".sr-only")).toBeNull()
+    expect(next?.querySelector(".sr-only")).toBeNull()
+  })
 })
 
 describe("SiblingCarousel — edge cases", () => {

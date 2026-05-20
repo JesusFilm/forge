@@ -61,7 +61,6 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
           data-testid="CarouselItemImage"
         />
       ) : item.imageUrl ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={item.imageUrl}
           alt={item.title}
@@ -109,7 +108,7 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
         <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
           {items.map((item, index) => (
             <CarouselItem
-              key={item.id}
+              key={item.contentId}
               className="basis-auto pl-5"
               data-testid={`CarouselSlide-${item.contentId.split("/")[0]}`}
             >

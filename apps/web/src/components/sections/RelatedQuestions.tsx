@@ -154,6 +154,7 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
         {ctaLink && (
           <Button
             variant="pill"
+            nativeButton={false}
             aria-label={ctaLabel || "Ask a question"}
             render={
               <a href={ctaLink} target="_blank" rel="noopener noreferrer" />

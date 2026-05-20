@@ -165,9 +165,9 @@ export function BibleQuotesSection({
         data-testid="watch-bible-quotes-header"
         className="mb-6 flex flex-wrap items-center justify-between gap-3 pb-2"
       >
-        <h3 className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+        <h2 className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
           Bible Quotes
-        </h3>
+        </h2>
         <Button
           variant="pill"
           onClick={onShareClick}
@@ -200,6 +200,17 @@ export function BibleQuotesSection({
                   imageUrl={BIBLE_IMAGES[i % BIBLE_IMAGES.length]!}
                   locale={locale}
                 />
+                {/*
+                  Previously passed `isLcpCandidate={i === 0}` to mark the
+                  first card priority because Next.js's LCP heuristic flagged
+                  it. Removed: the section sits below a sticky 100svh hero,
+                  so on every typical viewport the BibleQuotes card is
+                  off-screen at initial paint and cannot be the true LCP
+                  element. Forcing fetchPriority=high here diverts budget
+                  from whatever IS the LCP (likely the Mux poster). Re-add
+                  the hint only after a Chrome LCP trace confirms a
+                  specific card is the candidate.
+                */}
               </CarouselItem>
             ))}
             <CarouselItem
@@ -262,10 +273,12 @@ export function BibleQuotesSection({
               hidden but reachable by Tab + Enter. */}
           <CarouselPrevious
             className="sr-only"
+            label="Previous Bible quote"
             data-testid="watch-bible-quotes-prev"
           />
           <CarouselNext
             className="sr-only"
+            label="Next Bible quote"
             data-testid="watch-bible-quotes-next"
           />
         </Carousel>
@@ -297,10 +310,16 @@ function BibleCitationCard({
   citation,
   imageUrl,
   locale,
+  eager = false,
 }: {
   citation: WatchBibleCitation
   imageUrl: string
   locale: string
+  // Whether to load the card image eagerly with high fetch priority. Off
+  // by default — the section sits below the fold on the watch page, so
+  // marking a card priority diverts budget without helping LCP. Callers
+  // may opt in after measuring the actual LCP element.
+  eager?: boolean
 }) {
   const [scripture, setScripture] = useState<{ text: string } | null>(null)
   // Destructured to primitive strings so the effect's dependency list
@@ -415,6 +434,9 @@ function BibleCitationCard({
         src={imageUrl}
         alt=""
         aria-hidden="true"
+        priority={eager}
+        loading={eager ? "eager" : "lazy"}
+        fetchPriority={eager ? "high" : "auto"}
         className="absolute top-0 overflow-hidden rounded-lg object-cover [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_20%,transparent_100%)] [mask-size:cover]"
         sizes="(max-width: 640px) 85vw, (max-width: 1024px) 50vw, 25vw"
       />
