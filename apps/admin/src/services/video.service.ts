@@ -137,13 +137,17 @@ export class VideoService {
     }
 
     let rows: VideoForEnrichmentRow[]
+    let transactionDurationMs: number | null = null
+    let sqlDurationMs: number | null = null
     const startedAt = Date.now()
     try {
       rows = await this.prisma.$transaction(
         async (tx) => {
+          const transactionStartedAt = Date.now()
           await tx.$executeRawUnsafe(VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_SQL)
 
-          return tx.$queryRaw<VideoForEnrichmentRow[]>`
+          const sqlStartedAt = Date.now()
+          const result = await tx.$queryRaw<VideoForEnrichmentRow[]>`
             SELECT
               v.id,
               v.core_id AS "coreId",
@@ -192,6 +196,9 @@ export class VideoService {
             WHERE v.core_id IN (${Prisma.join([...coreIds])})
               AND v.deleted_at IS NULL
           `
+          sqlDurationMs = Date.now() - sqlStartedAt
+          transactionDurationMs = Date.now() - transactionStartedAt
+          return result
         },
         { timeout: VIDEOS_BY_CORE_IDS_TRANSACTION_TIMEOUT_MS },
       )
@@ -199,7 +206,11 @@ export class VideoService {
       logVideoLookupFailure(coreIds.length, Date.now() - startedAt, error)
       throw error
     }
-    logSlowVideoLookup(coreIds.length, Date.now() - startedAt)
+    logSlowVideoLookup(coreIds.length, Date.now() - startedAt, {
+      rowCount: rows.length,
+      transactionDurationMs,
+      sqlDurationMs,
+    })
 
     return rows.map((video): VideoForEnrichment => {
       return {
@@ -224,10 +235,18 @@ export class VideoService {
 
 type VideoForEnrichmentRow = VideoForEnrichment
 
-function logSlowVideoLookup(coreIdCount: number, durationMs: number): void {
+function logSlowVideoLookup(
+  coreIdCount: number,
+  durationMs: number,
+  details: {
+    rowCount: number
+    transactionDurationMs: number | null
+    sqlDurationMs: number | null
+  },
+): void {
   if (durationMs < 500) return
   console.warn(
-    `[videosByCoreIds] event=lookup.slow coreIdCount=${coreIdCount} durationMs=${durationMs}`,
+    `[videosByCoreIds] event=lookup.slow coreIdCount=${coreIdCount} rowCount=${details.rowCount} durationMs=${durationMs} transactionDurationMs=${formatMetric(details.transactionDurationMs)} sqlDurationMs=${formatMetric(details.sqlDurationMs)}`,
   )
 }
 
@@ -239,6 +258,10 @@ function logVideoLookupFailure(
   console.warn(
     `[videosByCoreIds] event=lookup.failed coreIdCount=${coreIdCount} durationMs=${durationMs} ${formatLookupError(error)}`,
   )
+}
+
+function formatMetric(value: number | null): string {
+  return value == null ? "unknown" : String(value)
 }
 
 function formatLookupError(error: unknown): string {
