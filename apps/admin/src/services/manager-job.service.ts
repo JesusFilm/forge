@@ -169,13 +169,27 @@ function toPrismaJson(
 export class ManagerJobService {
   constructor(private prisma: PrismaClient) {}
 
-  async list({ user, limit = 50 }: { user: Principal | null; limit?: number }) {
+  async list({
+    user,
+    limit = 50,
+    offset = 0,
+  }: {
+    user: Principal | null
+    limit?: number
+    offset?: number
+  }) {
     assertManagerJobAccess(user)
     const rows = await this.prisma.managerEnrichmentJob.findMany({
       orderBy: { createdAt: "desc" },
-      take: Math.min(limit, 100),
+      take: Math.max(1, limit),
+      skip: Math.max(0, offset),
     })
     return rows.map((row) => toJobRecord(row))
+  }
+
+  async count({ user }: { user: Principal | null }) {
+    assertManagerJobAccess(user)
+    return this.prisma.managerEnrichmentJob.count()
   }
 
   async get({ user, id }: { user: Principal | null; id: string }) {
@@ -246,6 +260,31 @@ export class ManagerJobService {
       data.videoDocumentId = input.videoDocumentId
     }
     if (input.languages !== undefined) data.languages = input.languages
+    if (input.sourceLanguageId !== undefined) {
+      data.sourceLanguageId = input.sourceLanguageId
+    }
+    if (input.sourceLanguageCode !== undefined) {
+      data.sourceLanguageCode = input.sourceLanguageCode
+    }
+    if (input.sourceSelectionReason !== undefined) {
+      data.sourceSelectionReason = input.sourceSelectionReason
+    }
+    if (input.primaryRequestedTargetLanguageCode !== undefined) {
+      data.primaryRequestedTargetLanguageCode =
+        input.primaryRequestedTargetLanguageCode
+    }
+    if (input.resolvedTargetLanguageCodes !== undefined) {
+      data.resolvedTargetLanguageCodes = input.resolvedTargetLanguageCodes
+    }
+    if (input.sourceCollectionTitle !== undefined) {
+      data.sourceCollectionTitle = input.sourceCollectionTitle
+    }
+    if (input.sourceMediaTitle !== undefined) {
+      data.sourceMediaTitle = input.sourceMediaTitle
+    }
+    if (input.requestedLanguageAbbreviations !== undefined) {
+      data.requestedLanguageAbbreviations = input.requestedLanguageAbbreviations
+    }
     if (input.status !== undefined) data.status = input.status
     if (input.currentStep !== undefined) data.currentStep = input.currentStep
     if (input.retries !== undefined) data.retries = input.retries

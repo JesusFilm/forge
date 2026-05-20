@@ -5,6 +5,7 @@ import { ManagerJobService } from "./manager-job.service"
 function mockPrisma() {
   return {
     managerEnrichmentJob: {
+      count: vi.fn(),
       create: vi.fn(),
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -75,7 +76,22 @@ describe("ManagerJobService", () => {
         muxPlaybackId: "playback-1",
         videoDocumentId: "video-1",
         languages: ["fr"],
+        sourceLanguageId: "529",
+        sourceLanguageCode: "en",
+        sourceSelectionReason: "requested",
+        primaryRequestedTargetLanguageCode: "fr",
+        resolvedTargetLanguageCodes: ["fr"],
+        sourceCollectionTitle: "Collection",
+        sourceMediaTitle: "Video",
+        requestedLanguageAbbreviations: ["fra"],
         options: { generateVoiceover: true },
+        artifacts: {
+          materialization: {
+            kind: "metadata",
+            data: { sourceLanguageCode: "en" },
+          },
+        },
+        errors: [{ step: "download_video", message: "retry", at: "now" }],
         steps: [{ name: "download_video", status: "pending", retries: 0 }],
       },
     })
@@ -85,12 +101,45 @@ describe("ManagerJobService", () => {
         data: expect.objectContaining({
           muxAssetId: "asset-1",
           languages: ["fr"],
+          sourceLanguageCode: "en",
+          artifacts: {
+            materialization: {
+              kind: "metadata",
+              data: { sourceLanguageCode: "en" },
+            },
+          },
+          errors: [{ step: "download_video", message: "retry", at: "now" }],
           status: "pending",
         }),
       }),
     )
     expect(result.id).toBe("job-1")
     expect(result.createdAt).toBe("2026-05-06T10:00:00.000Z")
+    expect(result.sourceLanguageCode).toBe("en")
+  })
+
+  it("lists jobs with caller pagination without imposing an Admin-side 100 row cap", async () => {
+    prisma.managerEnrichmentJob.findMany.mockResolvedValueOnce([JOB_ROW])
+
+    await service.list({
+      user: MANAGER_BACKEND_PRINCIPAL,
+      limit: 250,
+      offset: 125,
+    })
+
+    expect(prisma.managerEnrichmentJob.findMany).toHaveBeenCalledWith({
+      orderBy: { createdAt: "desc" },
+      take: 250,
+      skip: 125,
+    })
+  })
+
+  it("counts jobs independently from the page size", async () => {
+    prisma.managerEnrichmentJob.count.mockResolvedValueOnce(347)
+
+    await expect(
+      service.count({ user: MANAGER_BACKEND_PRINCIPAL }),
+    ).resolves.toBe(347)
   })
 
   it("updates status and step state idempotently", async () => {
@@ -105,6 +154,7 @@ describe("ManagerJobService", () => {
       id: "job-1",
       input: {
         status: "running",
+        sourceLanguageCode: "en",
         steps: [{ name: "download_video", status: "completed", retries: 0 }],
       },
     })
@@ -112,7 +162,10 @@ describe("ManagerJobService", () => {
     expect(prisma.managerEnrichmentJob.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "job-1" },
-        data: expect.objectContaining({ status: "running" }),
+        data: expect.objectContaining({
+          status: "running",
+          sourceLanguageCode: "en",
+        }),
       }),
     )
     expect(result.status).toBe("running")

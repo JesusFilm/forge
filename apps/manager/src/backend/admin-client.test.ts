@@ -91,6 +91,7 @@ describe("AdminGraphqlClient", () => {
               muxPlaybackId: "playback-1",
               videoDocumentId: "video-doc-1",
               languages: ["529"],
+              sourceLanguageCode: "en",
               options: {},
               status: "pending",
               retries: 0,
@@ -116,17 +117,197 @@ describe("AdminGraphqlClient", () => {
         muxPlaybackId: "playback-1",
         videoDocumentId: "video-doc-1",
         languages: ["529"],
+        sourceLanguageCode: "en",
+        artifacts: {
+          transcriptionRouting: {
+            kind: "metadata",
+            data: { sourceInputUrl: "https://cdn.example/video.mp4" },
+          },
+        },
+        errors: [],
         steps: [],
       }),
     ).resolves.toMatchObject({
       id: "admin-job-1",
       videoDocumentId: "video-doc-1",
+      sourceLanguageCode: "en",
     })
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
       variables: {
         muxAssetId: "asset-1",
         muxPlaybackId: "playback-1",
         videoDocumentId: "video-doc-1",
+        sourceLanguageCode: "en",
+        artifacts: {
+          transcriptionRouting: {
+            kind: "metadata",
+            data: { sourceInputUrl: "https://cdn.example/video.mp4" },
+          },
+        },
+        errors: [],
+      },
+    })
+  })
+
+  it("returns null when Admin reports a missing Manager job as nullable data", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            managerJob: null,
+          },
+        }),
+      ),
+    )
+
+    const client = new AdminGraphqlClient({
+      graphqlUrl: "https://admin.example/api/graphql",
+      fetchImpl: fetchMock,
+    })
+
+    await expect(client.getJob("missing-job")).resolves.toBeNull()
+  })
+
+  it("lists Manager jobs with Admin pagination and reads the independent total", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              managerJobs: [
+                {
+                  id: "admin-job-2",
+                  muxAssetId: "asset-2",
+                  muxPlaybackId: "playback-2",
+                  languages: ["fr"],
+                  options: {},
+                  status: "running",
+                  retries: 1,
+                  createdAt: "2026-05-06T00:00:00.000Z",
+                  updatedAt: "2026-05-06T00:01:00.000Z",
+                  artifacts: {},
+                  steps: [],
+                  errors: [],
+                },
+              ],
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              managerJobsTotal: 250,
+            },
+          }),
+        ),
+      )
+
+    const client = new AdminGraphqlClient({
+      graphqlUrl: "https://admin.example/api/graphql",
+      fetchImpl: fetchMock,
+    })
+
+    await expect(client.listJobs({ limit: 25, offset: 100 })).resolves.toEqual([
+      expect.objectContaining({ id: "admin-job-2" }),
+    ])
+    await expect(client.countJobs()).resolves.toBe(250)
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      variables: { limit: 25, offset: 100 },
+    })
+  })
+
+  it("rejects invalid Manager job payloads at the Admin boundary", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            managerJob: {
+              id: "admin-job-bad",
+              muxAssetId: "asset-bad",
+              muxPlaybackId: "playback-bad",
+              languages: [],
+              options: {},
+              status: "queued",
+              retries: 0,
+              createdAt: "2026-05-06T00:00:00.000Z",
+              updatedAt: "2026-05-06T00:00:00.000Z",
+              artifacts: {},
+              steps: [],
+              errors: [],
+            },
+          },
+        }),
+      ),
+    )
+
+    const client = new AdminGraphqlClient({
+      graphqlUrl: "https://admin.example/api/graphql",
+      fetchImpl: fetchMock,
+    })
+
+    await expect(client.getJob("admin-job-bad")).rejects.toThrow(
+      "invalid Manager job payload",
+    )
+  })
+
+  it("updates Manager jobs with artifact-derived source fields", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            updateManagerJob: {
+              id: "admin-job-3",
+              muxAssetId: "asset-3",
+              muxPlaybackId: "playback-3",
+              languages: ["es"],
+              sourceLanguageCode: "en",
+              sourceSelectionReason: "fallback-en",
+              options: {},
+              status: "running",
+              retries: 0,
+              createdAt: "2026-05-06T00:00:00.000Z",
+              updatedAt: "2026-05-06T00:02:00.000Z",
+              artifacts: {
+                materialization: {
+                  kind: "metadata",
+                  data: { sourceLanguageCode: "en" },
+                },
+              },
+              steps: [],
+              errors: [],
+            },
+          },
+        }),
+      ),
+    )
+
+    const client = new AdminGraphqlClient({
+      graphqlUrl: "https://admin.example/api/graphql",
+      fetchImpl: fetchMock,
+    })
+
+    await expect(
+      client.updateJob("admin-job-3", {
+        artifacts: {
+          materialization: {
+            kind: "metadata",
+            data: { sourceLanguageCode: "en" },
+          },
+        },
+        sourceLanguageCode: "en",
+        sourceSelectionReason: "fallback-en",
+      }),
+    ).resolves.toMatchObject({
+      id: "admin-job-3",
+      sourceLanguageCode: "en",
+    })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      variables: {
+        id: "admin-job-3",
+        sourceLanguageCode: "en",
+        sourceSelectionReason: "fallback-en",
       },
     })
   })

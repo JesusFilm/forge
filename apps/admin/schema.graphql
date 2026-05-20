@@ -754,7 +754,7 @@ type Mutation {
   archiveExperience(id: ID!): Experience
   """Create a new Experience with an initial locale. Caller becomes owner."""
   createExperience(blocks: JSON, isTemplate: Boolean, locale: String!, slug: String!, title: String): Experience
-  createManagerJob(languages: [String!], muxAssetId: String!, muxPlaybackId: String, options: JSON, steps: [ManagerJobStepInput!], videoDocumentId: String): ManagerJob
+  createManagerJob(artifacts: JSON, errors: JSON, languages: [String!], muxAssetId: String!, muxPlaybackId: String, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, steps: [ManagerJobStepInput!], videoDocumentId: String): ManagerJob
   """Create a media folder at the root or inside another folder."""
   createMediaFolder(name: String!, parentId: ID): MediaFolder
   """
@@ -855,7 +855,7 @@ type Mutation {
   ): JSON
   """Update an ExperienceLocale (slug, title, blocks, etc.)."""
   updateExperienceLocale(blocks: JSON, id: ID!, isHomepage: Boolean, isTemplate: Boolean, metaDescription: String, ogDescription: String, ogImageUrl: String, ogTitle: String, pathSegment: String, slug: String, title: String): ExperienceLocale
-  updateManagerJob(artifacts: JSON, completedAt: String, currentStep: String, errors: JSON, id: ID!, options: JSON, retries: Int, startedAt: String, status: ManagerJobStatus, steps: [ManagerJobStepInput!]): ManagerJob
+  updateManagerJob(artifacts: JSON, completedAt: String, currentStep: String, errors: JSON, id: ID!, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], retries: Int, sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, startedAt: String, status: ManagerJobStatus, steps: [ManagerJobStepInput!]): ManagerJob
   """Update editable media asset metadata and processing state."""
   updateMediaAsset(byteSize: String, checksumSha256: String, durationMs: String, errorCode: String, errorMessage: String, folderId: ID, height: Int, id: ID!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
   """
@@ -928,7 +928,8 @@ type Query {
   languages(limit: Int = 100, offset: Int = 0): [Language!]
   managerCoverageSnapshots(endDate: String, latest: Boolean, startDate: String): [ManagerCoverageSnapshot!]
   managerJob(id: ID!): ManagerJob
-  managerJobs(limit: Int): [ManagerJob!]
+  managerJobs(limit: Int, offset: Int): [ManagerJob!]
+  managerJobsTotal: Int
   managerLanguageGeo: ManagerLanguageGeo
   managerVideoCoverage(languageIds: [String!]): [ManagerVideoCoverage!]
   """

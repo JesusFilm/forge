@@ -3,7 +3,14 @@ import type {
   MockLanguageGeo,
   MockVideoCoverage,
 } from "@/cms/mock-seed"
-import type { JobRecord } from "@/types/job"
+import type {
+  JobRecord,
+  JobStatus,
+  JobStepDetails,
+  StepStatus,
+  WorkflowStepName,
+} from "@/types/job"
+import { z } from "zod"
 
 type FetchLike = typeof fetch
 
@@ -22,6 +29,47 @@ type GraphqlResponse<T> = {
   data?: T
   errors?: Array<{ message?: string }>
 }
+
+type CreateAdminJobInput = {
+  muxAssetId: string
+  muxPlaybackId: string
+  videoDocumentId?: string
+  languages: string[]
+  sourceLanguageId?: string
+  sourceLanguageCode?: string
+  sourceSelectionReason?: string
+  primaryRequestedTargetLanguageCode?: string
+  resolvedTargetLanguageCodes?: string[]
+  sourceCollectionTitle?: string
+  sourceMediaTitle?: string
+  requestedLanguageAbbreviations?: string[]
+  options?: unknown
+  artifacts?: unknown
+  steps?: JobRecord["steps"]
+  errors?: unknown[]
+}
+
+type UpdateAdminJobInput = Partial<
+  Pick<
+    JobRecord,
+    | "status"
+    | "currentStep"
+    | "artifacts"
+    | "errors"
+    | "startedAt"
+    | "completedAt"
+    | "retries"
+    | "steps"
+    | "sourceLanguageId"
+    | "sourceLanguageCode"
+    | "sourceSelectionReason"
+    | "primaryRequestedTargetLanguageCode"
+    | "resolvedTargetLanguageCodes"
+    | "sourceCollectionTitle"
+    | "sourceMediaTitle"
+    | "requestedLanguageAbbreviations"
+  >
+>
 
 const VIDEO_COVERAGE_SELECTION = `
   documentId
@@ -99,6 +147,102 @@ const JOB_SELECTION = `
   }
   errors
 `
+
+const jobStatusSchema = z.enum(["pending", "running", "completed", "failed"])
+const stepStatusSchema = z.enum([
+  "pending",
+  "running",
+  "completed",
+  "failed",
+  "skipped",
+])
+const workflowStepSchema = z.enum([
+  "download_video",
+  "transcription",
+  "structured_transcript",
+  "subtitle_post_process",
+  "chapters",
+  "metadata",
+  "embeddings",
+  "translation",
+  "audio_cleanup",
+  "voiceover",
+  "artifact_upload",
+  "mux_upload",
+  "theology_validation_bible_quotes",
+  "seo_improvements",
+  "cms_notify",
+])
+
+const optionalStringFromNullable = z
+  .string()
+  .nullable()
+  .optional()
+  .transform((value) => value ?? undefined)
+
+const jobRecordSchema: z.ZodType<JobRecord> = z.object({
+  id: z.string(),
+  muxAssetId: z.string(),
+  muxPlaybackId: z.string(),
+  videoDocumentId: optionalStringFromNullable,
+  languages: z.array(z.string()),
+  sourceLanguageId: optionalStringFromNullable,
+  sourceLanguageCode: optionalStringFromNullable,
+  sourceSelectionReason: optionalStringFromNullable,
+  primaryRequestedTargetLanguageCode: optionalStringFromNullable,
+  resolvedTargetLanguageCodes: z.array(z.string()).optional(),
+  sourceCollectionTitle: optionalStringFromNullable,
+  sourceMediaTitle: optionalStringFromNullable,
+  requestedLanguageAbbreviations: z.array(z.string()).optional(),
+  options: z.record(z.string(), z.unknown()) as z.ZodType<JobRecord["options"]>,
+  status: jobStatusSchema as z.ZodType<JobStatus>,
+  currentStep: workflowStepSchema
+    .nullable()
+    .optional()
+    .transform((value) => value ?? undefined) as z.ZodType<
+    WorkflowStepName | undefined
+  >,
+  retries: z.number(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  startedAt: optionalStringFromNullable,
+  completedAt: optionalStringFromNullable,
+  artifacts: z.record(z.string(), z.unknown()) as z.ZodType<
+    JobRecord["artifacts"]
+  >,
+  steps: z.array(
+    z.object({
+      name: workflowStepSchema as z.ZodType<WorkflowStepName>,
+      status: stepStatusSchema as z.ZodType<StepStatus>,
+      retries: z.number(),
+      startedAt: optionalStringFromNullable,
+      finishedAt: optionalStringFromNullable,
+      error: optionalStringFromNullable,
+      details: z.unknown().optional() as z.ZodType<JobStepDetails | undefined>,
+    }),
+  ),
+  errors: z.array(z.unknown()) as z.ZodType<JobRecord["errors"]>,
+})
+
+function parseJobRecord(value: unknown, fieldName: string): JobRecord {
+  const parsed = jobRecordSchema.safeParse(value)
+  if (!parsed.success) {
+    throw new Error(
+      `Admin ${fieldName} returned invalid Manager job payload: ${parsed.error.message}`,
+    )
+  }
+  return parsed.data
+}
+
+function parseJobRecordList(value: unknown, fieldName: string): JobRecord[] {
+  const parsed = z.array(jobRecordSchema).safeParse(value)
+  if (!parsed.success) {
+    throw new Error(
+      `Admin ${fieldName} returned invalid Manager job list payload: ${parsed.error.message}`,
+    )
+  }
+  return parsed.data
+}
 
 function readField<T>(
   data: Record<string, unknown> | undefined,
@@ -220,14 +364,7 @@ export class AdminGraphqlClient {
     )
   }
 
-  async createJob(input: {
-    muxAssetId: string
-    muxPlaybackId: string
-    videoDocumentId?: string
-    languages: string[]
-    options?: unknown
-    steps?: JobRecord["steps"]
-  }): Promise<JobRecord> {
+  async createJob(input: CreateAdminJobInput): Promise<JobRecord> {
     const data = await this.request<Record<string, unknown>>(
       `
         mutation CreateManagerJob(
@@ -235,25 +372,45 @@ export class AdminGraphqlClient {
           $muxPlaybackId: String
           $videoDocumentId: String
           $languages: [String!]
+          $sourceLanguageId: String
+          $sourceLanguageCode: String
+          $sourceSelectionReason: String
+          $primaryRequestedTargetLanguageCode: String
+          $resolvedTargetLanguageCodes: [String!]
+          $sourceCollectionTitle: String
+          $sourceMediaTitle: String
+          $requestedLanguageAbbreviations: [String!]
           $options: JSON
+          $artifacts: JSON
           $steps: [ManagerJobStepInput!]
+          $errors: JSON
         ) {
           createManagerJob(
             muxAssetId: $muxAssetId
             muxPlaybackId: $muxPlaybackId
             videoDocumentId: $videoDocumentId
             languages: $languages
+            sourceLanguageId: $sourceLanguageId
+            sourceLanguageCode: $sourceLanguageCode
+            sourceSelectionReason: $sourceSelectionReason
+            primaryRequestedTargetLanguageCode: $primaryRequestedTargetLanguageCode
+            resolvedTargetLanguageCodes: $resolvedTargetLanguageCodes
+            sourceCollectionTitle: $sourceCollectionTitle
+            sourceMediaTitle: $sourceMediaTitle
+            requestedLanguageAbbreviations: $requestedLanguageAbbreviations
             options: $options
+            artifacts: $artifacts
             steps: $steps
+            errors: $errors
           ) { ${JOB_SELECTION} }
         }
       `,
       input as Record<string, unknown>,
     )
 
-    const job = readField<JobRecord>(data, "createManagerJob")
+    const job = readField<unknown>(data, "createManagerJob")
     if (!job) throw new Error("Admin createManagerJob returned empty data")
-    return job
+    return parseJobRecord(job, "createManagerJob")
   }
 
   async getJob(id: string): Promise<JobRecord | null> {
@@ -266,37 +423,51 @@ export class AdminGraphqlClient {
       { id },
     )
 
-    return readField<JobRecord>(data, "managerJob")
+    const job = readField<unknown>(data, "managerJob")
+    return job ? parseJobRecord(job, "managerJob") : null
   }
 
-  async listJobs(limit = 100): Promise<JobRecord[]> {
+  async listJobs({
+    limit = 100,
+    offset = 0,
+  }: {
+    limit?: number
+    offset?: number
+  } = {}): Promise<JobRecord[]> {
     const data = await this.request<Record<string, unknown>>(
       `
-        query ManagerJobs($limit: Int) {
-          managerJobs(limit: $limit) { ${JOB_SELECTION} }
+        query ManagerJobs($limit: Int, $offset: Int) {
+          managerJobs(limit: $limit, offset: $offset) { ${JOB_SELECTION} }
         }
       `,
-      { limit },
+      { limit, offset },
     )
 
-    return readField<JobRecord[]>(data, "managerJobs") ?? []
+    return parseJobRecordList(
+      readField<unknown[]>(data, "managerJobs") ?? [],
+      "managerJobs",
+    )
+  }
+
+  async countJobs(): Promise<number> {
+    const data = await this.request<Record<string, unknown>>(
+      `
+        query ManagerJobsTotal {
+          managerJobsTotal
+        }
+      `,
+    )
+
+    const total = readField<number>(data, "managerJobsTotal")
+    if (typeof total !== "number") {
+      throw new Error("Admin managerJobsTotal returned invalid data")
+    }
+    return total
   }
 
   async updateJob(
     id: string,
-    updates: Partial<
-      Pick<
-        JobRecord,
-        | "status"
-        | "currentStep"
-        | "artifacts"
-        | "errors"
-        | "startedAt"
-        | "completedAt"
-        | "retries"
-        | "steps"
-      >
-    >,
+    updates: UpdateAdminJobInput,
   ): Promise<JobRecord | null> {
     const data = await this.request<Record<string, unknown>>(
       `
@@ -308,6 +479,14 @@ export class AdminGraphqlClient {
           $startedAt: String
           $completedAt: String
           $artifacts: JSON
+          $sourceLanguageId: String
+          $sourceLanguageCode: String
+          $sourceSelectionReason: String
+          $primaryRequestedTargetLanguageCode: String
+          $resolvedTargetLanguageCodes: [String!]
+          $sourceCollectionTitle: String
+          $sourceMediaTitle: String
+          $requestedLanguageAbbreviations: [String!]
           $steps: [ManagerJobStepInput!]
           $errors: JSON
           $options: JSON
@@ -320,6 +499,14 @@ export class AdminGraphqlClient {
             startedAt: $startedAt
             completedAt: $completedAt
             artifacts: $artifacts
+            sourceLanguageId: $sourceLanguageId
+            sourceLanguageCode: $sourceLanguageCode
+            sourceSelectionReason: $sourceSelectionReason
+            primaryRequestedTargetLanguageCode: $primaryRequestedTargetLanguageCode
+            resolvedTargetLanguageCodes: $resolvedTargetLanguageCodes
+            sourceCollectionTitle: $sourceCollectionTitle
+            sourceMediaTitle: $sourceMediaTitle
+            requestedLanguageAbbreviations: $requestedLanguageAbbreviations
             steps: $steps
             errors: $errors
             options: $options
@@ -332,6 +519,7 @@ export class AdminGraphqlClient {
       } as Record<string, unknown>,
     )
 
-    return readField<JobRecord>(data, "updateManagerJob")
+    const job = readField<unknown>(data, "updateManagerJob")
+    return job ? parseJobRecord(job, "updateManagerJob") : null
   }
 }

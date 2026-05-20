@@ -7,24 +7,24 @@ import {
   MANAGER_SESSION_COOKIE,
 } from "@/lib/manager-session-cookie"
 
-export function POST(request: Request) {
-  return clearManagerSession(request)
+export function POST() {
+  const response = NextResponse.json({ success: true })
+  clearManagerSession(response)
+  return response
 }
 
 export function GET(request: Request) {
-  return clearManagerSession(request)
-}
-
-function clearManagerSession(request: Request) {
   const response = NextResponse.redirect(
     new URL("/api/auth/login?prompt=login", request.url),
   )
+  clearManagerSession(response)
+  return response
+}
 
+function clearManagerSession(response: NextResponse) {
   response.cookies.delete(MANAGER_SESSION_COOKIE)
   response.cookies.delete(MANAGER_OAUTH_STATE_COOKIE)
   response.cookies.delete(MANAGER_OAUTH_VERIFIER_COOKIE)
   response.cookies.delete(MANAGER_OAUTH_RETURN_TO_COOKIE)
   response.cookies.delete("strapi-jwt")
-
-  return response
 }

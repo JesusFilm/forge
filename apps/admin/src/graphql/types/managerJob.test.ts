@@ -14,6 +14,7 @@ describe("Manager job GraphQL contract", () => {
     const query = schema.getQueryType()!.getFields()
     const mutation = schema.getMutationType()!.getFields()
     expect(query.managerJobs).toBeDefined()
+    expect(query.managerJobsTotal).toBeDefined()
     expect(query.managerJob).toBeDefined()
     expect(mutation.createManagerJob).toBeDefined()
     expect(mutation.updateManagerJob).toBeDefined()
@@ -28,6 +29,14 @@ describe("Manager job GraphQL contract", () => {
         "muxPlaybackId",
         "videoDocumentId",
         "languages",
+        "sourceLanguageId",
+        "sourceLanguageCode",
+        "sourceSelectionReason",
+        "primaryRequestedTargetLanguageCode",
+        "resolvedTargetLanguageCodes",
+        "sourceCollectionTitle",
+        "sourceMediaTitle",
+        "requestedLanguageAbbreviations",
         "options",
         "status",
         "currentStep",

@@ -89,6 +89,51 @@ describe("POST /api/manager/session", () => {
     })
   })
 
+  it("preserves existing email verification when Auth omits the email claim", async () => {
+    userFindUnique.mockResolvedValueOnce({
+      id: "auth-user-123",
+      email: "manager@example.com",
+      name: "Manager User",
+      managerMembership: {
+        role: "OPERATOR",
+        revokedAt: null,
+      },
+    })
+    userUpdate.mockResolvedValueOnce({
+      id: "auth-user-123",
+      email: "manager@example.com",
+      name: "Manager User",
+      managerMembership: {
+        role: "OPERATOR",
+        revokedAt: null,
+      },
+    })
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3003/api/manager/session", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer manager-admin-key",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          subject: "auth-user-123",
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(userUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          email: "manager@example.com",
+          name: "Manager User",
+        },
+      }),
+    )
+  })
+
   it("denies Admin users without active Manager membership", async () => {
     userFindUnique.mockResolvedValueOnce({
       id: "auth-user-123",
@@ -118,6 +163,45 @@ describe("POST /api/manager/session", () => {
       }),
     )
 
+    await expect(response.json()).resolves.toEqual({ allowed: false })
+  })
+
+  it("denies Admin users with revoked Manager membership", async () => {
+    userFindUnique.mockResolvedValueOnce({
+      id: "auth-user-123",
+      email: "manager@example.com",
+      name: "Former Manager",
+      managerMembership: {
+        role: "OPERATOR",
+        revokedAt: new Date("2026-05-20T00:00:00.000Z"),
+      },
+    })
+    userUpdate.mockResolvedValueOnce({
+      id: "auth-user-123",
+      email: "manager@example.com",
+      name: "Former Manager",
+      managerMembership: {
+        role: "OPERATOR",
+        revokedAt: new Date("2026-05-20T00:00:00.000Z"),
+      },
+    })
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3003/api/manager/session", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer manager-admin-key",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          subject: "auth-user-123",
+          email: "manager@example.com",
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ allowed: false })
   })
 })

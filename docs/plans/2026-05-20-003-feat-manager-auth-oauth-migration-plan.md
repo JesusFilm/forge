@@ -3,7 +3,7 @@ title: "feat: Migrate Manager auth to Jesus Film Auth"
 type: feat
 status: active
 date: 2026-05-20
-origin: docs/roadmap/platform/feat-120-manager-admin-backend-migration.md
+origin: docs/roadmap/platform/feat-125-manager-auth-oauth-admin-backend-migration.md
 ---
 
 # feat: Migrate Manager auth to Jesus Film Auth
@@ -31,6 +31,8 @@ PR #895 added broad Admin-backed Manager backend contracts, but its interactive 
 - R7. PR #895's Admin-backed Manager read/job contracts are preserved where valid, but any stale Admin Better Auth session/login code is replaced with current Auth/OAuth-compatible code.
 - R8. Conflict resolution keeps current `main` schema assertions for `videosByCoreIds`, `WatchSetting`, and `triggerExperienceEmbeddingBackfill`; retired `triggerExperienceContentDump` remains absent.
 - R9. Auth-sensitive changes are test-first where practical and require a user-facing smoke proof before merge.
+- R10. Admin-backed Manager mode is not enabled for production/stage traffic until coverage snapshots have a live writer/backfill or an explicit legacy fallback for absent Admin rows.
+- R11. Manager job-state cutover must choose and document backfill, dual-read, dual-write, or accepted fresh-start semantics before Admin job tables become authoritative.
 
 ---
 
@@ -42,12 +44,14 @@ PR #895 added broad Admin-backed Manager backend contracts, but its interactive 
 - Out of scope: granular Manager roles beyond `OPERATOR`.
 - Out of scope: full Strapi data retirement beyond the Manager panel auth path and #895's backend contract migration.
 - Out of scope: making Manager share Admin's browser session cookie.
+- Out of scope: enabling empty Admin coverage/job tables as authoritative production Manager data.
 
 ### Deferred to Follow-Up Work
 
 - Add an Admin UI for viewing, granting, and revoking Manager memberships.
 - Define future Manager roles such as `CONTRIBUTOR` and `VIEWER`.
 - Remove temporary backend compatibility paths after stage/prod prove Admin-backed Manager auth and data access.
+- Remove Admin backend rollout guardrails after coverage snapshots have a durable writer/backfill path and job cutover rollback is no longer needed.
 
 ---
 
@@ -86,6 +90,8 @@ PR #895 added broad Admin-backed Manager backend contracts, but its interactive 
 - `ManagerMembership` lives in Admin for this migration because #895 makes Admin the Manager backend authority and because Manager-specific app authorization must be visible/manageable from Admin.
 - Human `access:manager` is never granted to `WORKFLOW_TRIGGER`; backend service contracts get explicit permission keys such as `read:manager-read-models` and `write:manager-jobs`.
 - Current `main` wins over PR #895 wherever Admin Auth/OAuth moved the source of truth; PR #895 wins where it contributes still-valid Manager read/job data contracts.
+- `MANAGER_BACKEND_MODE=admin` is a rollout gate, not a proof of data readiness. Coverage snapshots need a continuous Admin writer, a verified backfill, or a legacy fallback before production/stage Manager traffic can use Admin as authoritative.
+- Manager job tables need explicit migration semantics before cutover: backfill current jobs, dual-write during canary, dual-read legacy fallback, or accept a fresh-start view with documented rollback/operator consequences.
 
 ---
 
@@ -102,6 +108,7 @@ PR #895 added broad Admin-backed Manager backend contracts, but its interactive 
 
 - Exact migration sequence number for `ManagerMembership` depends on the active branch after PR #895 is rebased.
 - Exact smoke target can be local production-mode, stage, or PR preview depending on available env; the smoke must prove an operator can access Manager and a non-member cannot.
+- Exact Manager data rollout mode must be chosen during implementation: coverage snapshots require writer/backfill/fallback, and job state requires backfill/dual-read/dual-write or explicitly accepted fresh-start behavior.
 
 ---
 
@@ -261,6 +268,7 @@ PR #895 added broad Admin-backed Manager backend contracts, but its interactive 
 - Import and expose Manager read/job/session GraphQL modules from #895.
 - Replace `auth.api.getSession` / `signInEmail` assumptions with current OAuth session and membership validation. If Manager authenticates directly with Auth, Admin's Manager session GraphQL should validate Manager membership for a subject/session rather than act as password login.
 - Keep current `main` schema tests for `videosByCoreIds`, `WatchSetting`, and `triggerExperienceEmbeddingBackfill`; keep `triggerExperienceContentDump` absent.
+- Add explicit tests or implementation notes for empty Admin read-model tables. Coverage snapshot queries must either return a deliberate fallback to the legacy source or stay behind the backend-mode gate until writer/backfill readiness is proven.
 
 **Patterns to follow:**
 
@@ -307,6 +315,8 @@ PR #895 added broad Admin-backed Manager backend contracts, but its interactive 
 - Ensure protected routes validate `manager-session` server-side and redirect/401 on invalid, expired, revoked, or non-member sessions.
 - Preserve `MANAGER_API_KEY` bearer behavior for external/service API callers where already intended.
 - Preserve Admin backend mode for read/job state while separating backend data auth from human panel login.
+- Treat Admin backend mode as disabled outside local/dev canary unless coverage snapshot data readiness is satisfied by writer/backfill/fallback.
+- Implement or document the selected job cutover behavior before switching Manager job state to Admin: backfill, dual-read, dual-write, or accepted fresh-start with rollback consequences.
 
 **Execution note:** Add failing tests for legacy `strapi-jwt` denial and non-member denial before implementation.
 
@@ -321,11 +331,14 @@ PR #895 added broad Admin-backed Manager backend contracts, but its interactive 
 - Error path: `strapi-jwt` alone redirects to login or returns 401.
 - Error path: valid Auth identity without Manager membership is denied.
 - Happy path: Admin backend job state operations still use Admin GraphQL in admin mode.
+- Rollout guard: Admin backend mode with empty coverage snapshot rows does not silently present empty authoritative coverage; it must fail closed, use a proven writer/backfill, or deliberately fall back to the legacy source.
+- Rollout guard: job list/detail behavior proves the selected backfill/dual-read/dual-write/fresh-start semantics.
 - Integration: logout clears local session and does not leave middleware accepting stale cookies.
 
 **Verification:**
 
 - Manager auth/gateway/backend tests prove Auth-backed human sessions and Admin-backed data mode work together.
+- Rollout validation names the coverage snapshot data-readiness path and job-state cutover semantics used for the environment being enabled.
 
 ### U6. Resolve PR #895 Conflicts And Generated Artifacts
 
@@ -352,7 +365,7 @@ PR #895 added broad Admin-backed Manager backend contracts, but its interactive 
 
 - Preserve both sides of additive conflicts in permission tests and docs.
 - Keep current `main` `apps/admin/src/auth/session.ts` OAuth-session behavior; do not restore Admin embedded Better Auth.
-- Recompute roadmap counts from current `main` and keep only valid `feat-120` entries.
+- Keep roadmap references pointed at the real platform ticket for this migration and do not reuse the unrelated platform `feat-120`.
 - Regenerate Admin schema artifacts after Pothos changes.
 
 **Patterns to follow:**
@@ -388,6 +401,7 @@ PR #895 added broad Admin-backed Manager backend contracts, but its interactive 
 - Run targeted Auth, Admin, and Manager tests for touched areas.
 - Run lint/typecheck/build for touched apps as practical.
 - Run a user-facing smoke in local production mode, stage, or preview: an operator reaches Manager dashboard; a registered non-member is denied; legacy `strapi-jwt` is denied.
+- Run data-readiness smoke for the selected rollout: coverage snapshots prove writer/backfill/fallback behavior, and job state proves backfill/dual-read/dual-write or the accepted fresh-start contract plus rollback consequences.
 - Run code review and address safe findings.
 
 **Test scenarios:**
@@ -395,6 +409,7 @@ PR #895 added broad Admin-backed Manager backend contracts, but its interactive 
 - Integration: Auth login -> Manager callback -> Manager dashboard succeeds for `OPERATOR`.
 - Integration: Auth login -> Manager callback -> Manager dashboard denies non-member.
 - Regression: service bearer/API auth remains separate from human panel access.
+- Rollout: enabling Admin backend mode cannot turn empty Admin coverage/job tables into silent production truth.
 
 **Verification:**
 
@@ -409,19 +424,21 @@ PR #895 added broad Admin-backed Manager backend contracts, but its interactive 
 - **State lifecycle risks:** Revoked membership must take effect on next validation; Manager must not trust stale role claims embedded in cookies.
 - **API surface parity:** Manager UI routes, API route auth, Admin GraphQL Manager contracts, and service bearers must all preserve distinct auth semantics.
 - **Integration coverage:** Unit tests are not enough; smoke must prove the real browser/session route.
+- **Rollout data readiness:** Empty Admin coverage tables must fail closed, use a proven writer/backfill, or fall back deliberately; empty Admin job tables must use backfill/dual-read/dual-write or a documented fresh-start cutover before Admin backend mode is enabled outside local/dev canary.
 - **Unchanged invariants:** Admin remains an Auth relying client; Auth owns identity; Admin/Manager own app-specific authorization; Strapi panel auth is retired.
 
 ---
 
 ## Risks & Dependencies
 
-| Risk                                                    | Mitigation                                                                                 |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Accidentally restoring Admin embedded Better Auth       | Search for `@/auth/config` and `auth.api` in `apps/admin`; keep current OAuth session path |
-| Manager non-members gain access through editorial roles | Membership-backed permission tests and Manager guard tests                                 |
-| OAuth local smoke is noisy                              | Prefer production-mode local or stage smoke if dev server/proxy loops interfere            |
-| Service bearer permissions widen human access           | Separate `access:manager` from explicit service keys                                       |
-| Generated schema drift                                  | Regenerate Admin SDL and any current codegen artifacts after schema changes                |
+| Risk                                                    | Mitigation                                                                                      |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Accidentally restoring Admin embedded Better Auth       | Search for `@/auth/config` and `auth.api` in `apps/admin`; keep current OAuth session path      |
+| Manager non-members gain access through editorial roles | Membership-backed permission tests and Manager guard tests                                      |
+| OAuth local smoke is noisy                              | Prefer production-mode local or stage smoke if dev server/proxy loops interfere                 |
+| Service bearer permissions widen human access           | Separate `access:manager` from explicit service keys                                            |
+| Generated schema drift                                  | Regenerate Admin SDL and any current codegen artifacts after schema changes                     |
+| Empty Admin coverage/job tables look like real data     | Gate Admin backend mode on coverage writer/backfill/fallback and explicit job cutover semantics |
 
 ---
 

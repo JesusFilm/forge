@@ -7,6 +7,9 @@ const MOCK_SESSION_SECRET_SENTINEL = "__manager_mock_session_secret_required__"
 
 export const env = createEnv({
   server: {
+    NODE_ENV: z
+      .enum(["development", "test", "production"])
+      .default("development"),
     MANAGER_DATA_MODE: z.enum(["admin", "live", "mock"]).default("live"),
     MANAGER_BACKEND_MODE: z.enum(["admin", "live", "mock"]).optional(),
 
@@ -93,6 +96,7 @@ export const env = createEnv({
   },
   skipValidation: !!process.env.CI,
   runtimeEnv: {
+    NODE_ENV: process.env.NODE_ENV,
     MANAGER_DATA_MODE: process.env.MANAGER_DATA_MODE ?? "live",
     MANAGER_BACKEND_MODE: process.env.MANAGER_BACKEND_MODE,
     MUX_TOKEN_ID: process.env.MUX_TOKEN_ID,
@@ -156,8 +160,24 @@ if (
   )
 }
 
-if (resolvedManagerBackendMode === "admin" && !env.ADMIN_GRAPHQL_URL) {
-  throw new Error(
-    "ADMIN_GRAPHQL_URL is required when Manager backend mode=admin",
-  )
+const managerAuthEnvRequired =
+  resolvedManagerBackendMode === "admin" ||
+  (resolvedManagerBackendMode !== "mock" && env.NODE_ENV === "production")
+
+if (managerAuthEnvRequired) {
+  const missing = [
+    ["MANAGER_SESSION_SECRET", env.MANAGER_SESSION_SECRET],
+    ["AUTH_ISSUER_URL", env.AUTH_ISSUER_URL],
+    ["AUTH_MANAGER_CLIENT_ID", env.AUTH_MANAGER_CLIENT_ID],
+    ["ADMIN_GRAPHQL_URL", env.ADMIN_GRAPHQL_URL],
+    ["ADMIN_MANAGER_API_KEY", env.ADMIN_MANAGER_API_KEY],
+  ]
+    .filter(([, value]) => !value)
+    .map(([name]) => name)
+
+  if (missing.length > 0) {
+    throw new Error(
+      `${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} required when Manager auth is enabled`,
+    )
+  }
 }

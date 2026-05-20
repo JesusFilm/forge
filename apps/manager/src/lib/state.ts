@@ -26,6 +26,11 @@ import type {
 } from "@/types/job"
 
 export type { JobRecord, JobStatus, WorkflowStepName, StepStatus }
+type JobListOptions = {
+  limit?: number
+  offset?: number
+}
+
 export type JobLookupResult =
   | {
       status: "found"
@@ -563,13 +568,17 @@ export async function createJob(
   }
 
   if (gateway.mode === "admin") {
+    const initialArtifacts = options?.initialArtifacts ?? {}
     const job = await getAdminJobClient().createJob({
       muxAssetId,
       muxPlaybackId,
       languages,
       videoDocumentId: options?.videoDocumentId,
       options: {},
+      artifacts: initialArtifacts,
+      errors: [],
       steps,
+      ...deriveMaterializationFields(initialArtifacts),
     })
     publishJobEvent(job)
     return job
@@ -688,15 +697,18 @@ export async function getJobLookup(id: string): Promise<JobLookupResult> {
   }
 }
 
-export async function listJobs(): Promise<JobRecord[]> {
+export async function listJobs(
+  options: JobListOptions = {},
+): Promise<JobRecord[]> {
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)
   if (mockState) {
-    return mockState.readModels.jobs
+    const { limit = mockState.readModels.jobs.length, offset = 0 } = options
+    return mockState.readModels.jobs.slice(offset, offset + limit)
   }
 
   if (gateway.mode === "admin") {
-    return getAdminJobClient().listJobs(100)
+    return getAdminJobClient().listJobs(options)
   }
 
   const client = getClient()
@@ -706,20 +718,25 @@ export async function listJobs(): Promise<JobRecord[]> {
     fetchPolicy: "no-cache",
   })
 
-  return (result.data?.enrichmentJobs ?? [])
+  const jobs = (result.data?.enrichmentJobs ?? [])
     .filter((node): node is NonNullable<typeof node> => node != null)
     .map((node) => toJobRecord(node))
+  const { limit = jobs.length, offset = 0 } = options
+  return jobs.slice(offset, offset + limit)
 }
 
-export async function listJobSummaries(): Promise<JobRecord[]> {
+export async function listJobSummaries(
+  options: JobListOptions = {},
+): Promise<JobRecord[]> {
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)
   if (mockState) {
-    return mockState.readModels.jobs
+    const { limit = mockState.readModels.jobs.length, offset = 0 } = options
+    return mockState.readModels.jobs.slice(offset, offset + limit)
   }
 
   if (gateway.mode === "admin") {
-    return getAdminJobClient().listJobs(100)
+    return getAdminJobClient().listJobs(options)
   }
 
   const client = getClient()
@@ -729,9 +746,11 @@ export async function listJobSummaries(): Promise<JobRecord[]> {
     fetchPolicy: "no-cache",
   })
 
-  return (result.data?.enrichmentJobs ?? [])
+  const jobs = (result.data?.enrichmentJobs ?? [])
     .filter((node): node is NonNullable<typeof node> => node != null)
     .map((node) => toJobRecord(node))
+  const { limit = jobs.length, offset = 0 } = options
+  return jobs.slice(offset, offset + limit)
 }
 
 export async function countJobs(): Promise<number> {
@@ -742,7 +761,7 @@ export async function countJobs(): Promise<number> {
   }
 
   if (gateway.mode === "admin") {
-    return (await getAdminJobClient().listJobs(100)).length
+    return getAdminJobClient().countJobs()
   }
 
   const client = getClient()
@@ -802,7 +821,14 @@ export async function updateJob(
 
   if (gateway.mode === "admin") {
     try {
-      const job = await getAdminJobClient().updateJob(id, updates)
+      const adminUpdates =
+        updates.artifacts !== undefined
+          ? {
+              ...updates,
+              ...deriveMaterializationFields(updates.artifacts),
+            }
+          : updates
+      const job = await getAdminJobClient().updateJob(id, adminUpdates)
       if (job) {
         publishJobEvent(job)
       }

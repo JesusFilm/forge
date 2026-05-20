@@ -1,8 +1,7 @@
-import { timingSafeEqual } from "node:crypto"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
-import { env } from "@/config/env"
+import { isValidManagerBearer } from "@/auth/manager-bearer"
 import { prisma } from "@/db/client"
 
 const payloadSchema = z.object({
@@ -50,17 +49,6 @@ export async function POST(request: Request) {
   })
 }
 
-function isValidManagerBearer(authHeader: string | null): boolean {
-  if (!authHeader?.startsWith("Bearer ") || !env.MANAGER_ADMIN_API_KEY) {
-    return false
-  }
-
-  const token = authHeader.slice("Bearer ".length)
-  const a = Buffer.from(token)
-  const b = Buffer.from(env.MANAGER_ADMIN_API_KEY)
-  return a.length === b.length && timingSafeEqual(a, b)
-}
-
 async function resolveManagerUser({
   subject,
   email,
@@ -89,7 +77,7 @@ async function resolveManagerUser({
       data: {
         email: email ?? existingById.email,
         name: name ?? existingById.name,
-        emailVerified: Boolean(email),
+        ...(email ? { emailVerified: true } : {}),
       },
       select,
     })

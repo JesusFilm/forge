@@ -2,6 +2,8 @@ import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose"
 
 import { env } from "@/config/env"
 
+const tokenExchangeTimeoutMs = 10_000
+
 export type ManagerOAuthConfig = {
   issuerUrl: string
   clientId: string
@@ -99,6 +101,7 @@ export async function exchangeManagerAuthorizationCode({
       method: "POST",
       headers,
       body,
+      signal: AbortSignal.timeout(tokenExchangeTimeoutMs),
     },
   )
 

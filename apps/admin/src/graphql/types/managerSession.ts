@@ -35,18 +35,31 @@ builder.queryFields((t) => ({
   managerViewer: t.field({
     type: ManagerViewerRef,
     nullable: true,
-    authScopes: { hasPermission: "access:manager" },
     description:
       "Current Admin session projected into the narrow Manager access contract.",
     resolve: async (_root, _args, ctx) => {
-      if (!ctx.user?.id || ctx.user.managerRole !== "OPERATOR") {
+      if (!ctx.user?.id) {
         return null
       }
       const user = await ctx.prisma.user.findUnique({
         where: { id: ctx.user.id },
-        select: { id: true, email: true, name: true },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          managerMembership: {
+            select: {
+              role: true,
+              revokedAt: true,
+            },
+          },
+        },
       })
-      if (!user) {
+      if (
+        !user?.managerMembership ||
+        user.managerMembership.role !== "OPERATOR" ||
+        user.managerMembership.revokedAt
+      ) {
         return null
       }
       return {

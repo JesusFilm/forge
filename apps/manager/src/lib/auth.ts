@@ -7,6 +7,7 @@
 import { timingSafeEqual } from "node:crypto"
 import { NextResponse } from "next/server"
 import { env } from "@/config/env"
+import { validateAdminManagerSession } from "@/lib/admin-manager-session"
 import {
   MANAGER_SESSION_COOKIE,
   readManagerSessionCookie,
@@ -45,7 +46,7 @@ function isValidManagerApiKey(token: string): boolean {
 export async function verifyManagerSession(
   token: string,
 ): Promise<ManagerAuthenticatedUser | null> {
-  const session = await readManagerSessionCookie(token)
+  const session = await readValidatedManagerSessionCookie(token)
   if (!session) {
     return null
   }
@@ -135,7 +136,50 @@ async function readSessionFromCookieHeader(
   cookieHeader: string | null,
 ): Promise<ManagerSessionPrincipal | null> {
   const token = readCookie(cookieHeader, MANAGER_SESSION_COOKIE)
-  return readManagerSessionCookie(token)
+  return readValidatedManagerSessionCookie(token)
+}
+
+async function readValidatedManagerSessionCookie(
+  token?: string,
+): Promise<ManagerSessionPrincipal | null> {
+  const session = await readManagerSessionCookie(token)
+  if (!session) {
+    return null
+  }
+
+  if (isMockManagerMode()) {
+    return session
+  }
+
+  try {
+    const adminSession = await validateAdminManagerSession({
+      subject: session.subject,
+      email: session.email,
+      name: session.name,
+    })
+
+    if (!adminSession) {
+      return null
+    }
+
+    return {
+      ...session,
+      id: adminSession.user.id,
+      email: adminSession.user.email,
+      name: adminSession.user.name ?? session.name,
+      managerRole: adminSession.managerRole,
+    }
+  } catch (error) {
+    console.warn("manager.auth.session_validation_failed", {
+      message: error instanceof Error ? error.message : "unknown",
+    })
+
+    return null
+  }
+}
+
+function isMockManagerMode() {
+  return env.MANAGER_DATA_MODE === "mock"
 }
 
 function readCookie(cookieHeader: string | null, name: string) {
