@@ -50,12 +50,10 @@ describe("admin-video-lookup", () => {
     it("returns ok:true with Map keyed by coreId", async () => {
       fetchSpy.mockResolvedValueOnce(
         jsonResponse({
-          data: {
-            videosByCoreIds: [
-              FIXTURE_ROW,
-              { ...FIXTURE_ROW, id: "v-2", coreId: "core-2" },
-            ],
-          },
+          videos: [
+            FIXTURE_ROW,
+            { ...FIXTURE_ROW, id: "v-2", coreId: "core-2" },
+          ],
         }),
       )
 
@@ -68,10 +66,8 @@ describe("admin-video-lookup", () => {
       expect(result.data.get("core-2")?.id).toBe("v-2")
     })
 
-    it("sends bearer + GraphQL POST shape", async () => {
-      fetchSpy.mockResolvedValueOnce(
-        jsonResponse({ data: { videosByCoreIds: [] } }),
-      )
+    it("sends bearer + REST POST shape derived from ADMIN_GRAPHQL_URL", async () => {
+      fetchSpy.mockResolvedValueOnce(jsonResponse({ videos: [] }))
 
       await lookupVideosByCoreIdFromAdmin(["core-1"])
 
@@ -80,18 +76,65 @@ describe("admin-video-lookup", () => {
         string,
         { headers: Record<string, string>; body: string; method: string },
       ]
-      expect(url).toBe("https://admin.example/api/graphql")
+      expect(url).toBe("https://admin.example/api/manager/videos-by-core-ids")
       expect(init.method).toBe("POST")
       expect(init.headers).toMatchObject({
         authorization: "Bearer test-key",
         "content-type": "application/json",
       })
       const parsed = JSON.parse(init.body) as {
-        query: string
-        variables: { coreIds: string[] }
+        coreIds: string[]
       }
-      expect(parsed.variables.coreIds).toEqual(["core-1"])
-      expect(parsed.query).toContain("videosByCoreIds")
+      expect(parsed.coreIds).toEqual(["core-1"])
+    })
+
+    it("falls back to GraphQL when the derived REST route is not deployed yet", async () => {
+      fetchSpy
+        .mockResolvedValueOnce(jsonResponse({ error: "Not Found" }, 404))
+        .mockResolvedValueOnce(
+          jsonResponse({
+            data: {
+              videosByCoreIds: [FIXTURE_ROW],
+            },
+          }),
+        )
+
+      const result = await lookupVideosByCoreIdFromAdmin(["core-1"])
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) throw new Error("expected ok envelope")
+      expect(result.data.get("core-1")).toEqual(FIXTURE_ROW)
+      expect(fetchSpy).toHaveBeenCalledTimes(2)
+      expect(fetchSpy.mock.calls[0][0]).toBe(
+        "https://admin.example/api/manager/videos-by-core-ids",
+      )
+      expect(fetchSpy.mock.calls[1][0]).toBe(
+        "https://admin.example/api/graphql",
+      )
+    })
+
+    it("falls back to GraphQL when missing REST route returns non-JSON 404", async () => {
+      fetchSpy
+        .mockResolvedValueOnce(
+          new Response("<!DOCTYPE html><html>not found</html>", {
+            status: 404,
+            headers: { "content-type": "text/html" },
+          }),
+        )
+        .mockResolvedValueOnce(
+          jsonResponse({
+            data: {
+              videosByCoreIds: [FIXTURE_ROW],
+            },
+          }),
+        )
+
+      const result = await lookupVideosByCoreIdFromAdmin(["core-1"])
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) throw new Error("expected ok envelope")
+      expect(result.data.get("core-1")).toEqual(FIXTURE_ROW)
+      expect(fetchSpy).toHaveBeenCalledTimes(2)
     })
 
     it("returns an empty Map without making a fetch call when coreIds is empty", async () => {
@@ -101,10 +144,8 @@ describe("admin-video-lookup", () => {
       expect(fetchSpy).not.toHaveBeenCalled()
     })
 
-    it("returns an empty Map (no fetch) when admin returns no rows", async () => {
-      fetchSpy.mockResolvedValueOnce(
-        jsonResponse({ data: { videosByCoreIds: [] } }),
-      )
+    it("returns an empty Map when admin returns no rows", async () => {
+      fetchSpy.mockResolvedValueOnce(jsonResponse({ videos: [] }))
 
       const result = await lookupVideosByCoreIdFromAdmin(["core-missing"])
 
@@ -229,12 +270,83 @@ describe("admin-video-lookup", () => {
   })
 
   describe("graphql_error", () => {
-    it("envelope when payload.errors is non-empty", async () => {
+    it("envelope when REST payload is missing videos", async () => {
+      fetchSpy.mockResolvedValueOnce(jsonResponse({ data: {} }))
+
+      const result = await lookupVideosByCoreIdFromAdmin(["core-1"])
+
+      expect(result).toMatchObject({
+        ok: false,
+        reason: "graphql_error",
+        retryable: false,
+      })
+    })
+
+    it("envelope when REST videos is null", async () => {
+      fetchSpy.mockResolvedValueOnce(jsonResponse({ videos: null }))
+
+      const result = await lookupVideosByCoreIdFromAdmin(["core-1"])
+
+      expect(result).toMatchObject({
+        ok: false,
+        reason: "graphql_error",
+        retryable: false,
+      })
+    })
+
+    it("envelope when REST videos is not an array", async () => {
+      fetchSpy.mockResolvedValueOnce(jsonResponse({ videos: {} }))
+
+      const result = await lookupVideosByCoreIdFromAdmin(["core-1"])
+
+      expect(result).toMatchObject({
+        ok: false,
+        reason: "graphql_error",
+        retryable: false,
+      })
+      if (result.ok) throw new Error("unreachable")
+      expect(result.messages[0]).toContain("invalid video rows")
+    })
+
+    it("envelope when REST row is missing coreId", async () => {
+      const rowWithoutCoreId = { ...FIXTURE_ROW } as Partial<typeof FIXTURE_ROW>
+      delete rowWithoutCoreId.coreId
       fetchSpy.mockResolvedValueOnce(
-        jsonResponse({
-          errors: [{ message: "Forbidden" }],
-        }),
+        jsonResponse({ videos: [rowWithoutCoreId] }),
       )
+
+      const result = await lookupVideosByCoreIdFromAdmin(["core-1"])
+
+      expect(result).toMatchObject({
+        ok: false,
+        reason: "graphql_error",
+        retryable: false,
+      })
+    })
+
+    it("envelope on non-2xx REST response", async () => {
+      fetchSpy.mockResolvedValueOnce(
+        jsonResponse({ error: "Lookup failed", retryable: true }, 502),
+      )
+
+      const result = await lookupVideosByCoreIdFromAdmin(["core-1"])
+
+      expect(result).toMatchObject({
+        ok: false,
+        reason: "graphql_error",
+        retryable: true,
+        httpStatus: 502,
+      })
+    })
+
+    it("GraphQL fallback envelope when payload.errors is non-empty", async () => {
+      fetchSpy
+        .mockResolvedValueOnce(jsonResponse({ error: "Not Found" }, 404))
+        .mockResolvedValueOnce(
+          jsonResponse({
+            errors: [{ message: "Forbidden" }],
+          }),
+        )
 
       const result = await lookupVideosByCoreIdFromAdmin(["core-1"])
 
@@ -247,8 +359,18 @@ describe("admin-video-lookup", () => {
       expect(result.messages).toContain("Forbidden")
     })
 
-    it("envelope when payload is missing data.videosByCoreIds", async () => {
-      fetchSpy.mockResolvedValueOnce(jsonResponse({ data: {} }))
+    it("GraphQL fallback envelope when returned row is missing coreId", async () => {
+      const rowWithoutCoreId = { ...FIXTURE_ROW } as Partial<typeof FIXTURE_ROW>
+      delete rowWithoutCoreId.coreId
+      fetchSpy
+        .mockResolvedValueOnce(jsonResponse({ error: "Not Found" }, 404))
+        .mockResolvedValueOnce(
+          jsonResponse({
+            data: {
+              videosByCoreIds: [rowWithoutCoreId],
+            },
+          }),
+        )
 
       const result = await lookupVideosByCoreIdFromAdmin(["core-1"])
 
@@ -257,35 +379,8 @@ describe("admin-video-lookup", () => {
         reason: "graphql_error",
         retryable: false,
       })
-    })
-
-    it("envelope when data.videosByCoreIds is null", async () => {
-      fetchSpy.mockResolvedValueOnce(
-        jsonResponse({ data: { videosByCoreIds: null } }),
-      )
-
-      const result = await lookupVideosByCoreIdFromAdmin(["core-1"])
-
-      expect(result).toMatchObject({
-        ok: false,
-        reason: "graphql_error",
-        retryable: false,
-      })
-    })
-
-    it("envelope on non-2xx response (treats body as JSON if parseable but flags non-2xx as graphql_error)", async () => {
-      fetchSpy.mockResolvedValueOnce(
-        jsonResponse({ errors: [{ message: "Internal" }] }, 503),
-      )
-
-      const result = await lookupVideosByCoreIdFromAdmin(["core-1"])
-
-      expect(result).toMatchObject({
-        ok: false,
-        reason: "graphql_error",
-        retryable: false,
-        httpStatus: 503,
-      })
+      if (result.ok) throw new Error("unreachable")
+      expect(result.messages[0]).toContain("invalid video rows")
     })
   })
 })
