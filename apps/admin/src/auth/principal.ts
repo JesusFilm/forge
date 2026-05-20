@@ -26,6 +26,10 @@
  * traffic in admin's rate-limit identifier. The principal carries the
  * matched key as `rateLimitBucketKey` so the identifyFn can produce
  * `consumer:<key>` without re-inspecting headers downstream.
+ *
+ * `MANAGER_BACKEND` is the request-bound service identity used by
+ * apps/manager to call Admin-owned Manager read/job contracts. It never
+ * grants human panel access.
  */
 export type Role =
   | "ADMIN"
@@ -34,6 +38,7 @@ export type Role =
   | "PUBLIC"
   | "SYSTEM"
   | "WORKFLOW_TRIGGER"
+  | "MANAGER_BACKEND"
   | "CONSUMER_BEARER"
 
 export type Principal = {
@@ -77,6 +82,11 @@ export const WORKFLOW_TRIGGER_PRINCIPAL = {
   role: "WORKFLOW_TRIGGER",
 } as const satisfies Principal
 
+export const MANAGER_BACKEND_PRINCIPAL = {
+  id: null,
+  role: "MANAGER_BACKEND",
+} as const satisfies Principal
+
 /**
  * Factory for the request-bound consumer-bearer principal. Mints a
  * Principal carrying the matched bearer key so the rate-limit
@@ -103,7 +113,7 @@ export function CONSUMER_BEARER_PRINCIPAL({
 
 /**
  * Editorial-tier predicate: true only for EDITOR/ADMIN. PUBLIC, VIEWER,
- * SYSTEM, WORKFLOW_TRIGGER, CONSUMER_BEARER all return false — none
+ * SYSTEM, WORKFLOW_TRIGGER, MANAGER_BACKEND, CONSUMER_BEARER all return false — none
  * should see drafts via consumer-facing relation paths
  * (Experience.locales, Video.locales).
  */

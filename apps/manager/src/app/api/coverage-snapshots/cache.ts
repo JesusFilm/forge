@@ -48,11 +48,9 @@ async function fetchLatestSnapshotFromCms() {
 async function fetchLatestSnapshot(): Promise<LatestCoverageSnapshotResult> {
   try {
     const gateway = getCmsGateway()
-    if (gateway.mode === "mock") {
+    if (gateway.mode === "mock" || gateway.mode === "admin") {
       const snapshot =
-        (await gateway.getCoverageSnapshots())
-          .slice()
-          .sort((left, right) => right.date.localeCompare(left.date))[0] ?? null
+        (await gateway.getCoverageSnapshots({ latest: true }))[0] ?? null
       return { snapshot }
     }
 

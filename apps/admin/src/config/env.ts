@@ -351,6 +351,7 @@ function parseBearerCsvSet(csv: string | undefined): ReadonlySet<string> {
 // the constant AND the type in lockstep, or the build breaks.
 const BEARER_CSV_KEYS = [
   "WORKFLOW_API_KEYS",
+  "MANAGER_ADMIN_API_KEY",
   "WEB_ADMIN_API_KEYS",
   "BACKUP_DOWNLOAD_API_KEYS",
 ] as const
@@ -422,6 +423,7 @@ export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
 // satisfies the check.
 assertBearerCsvsDisjoint({
   WORKFLOW_API_KEYS: env.WORKFLOW_API_KEYS,
+  MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
 })

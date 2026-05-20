@@ -38,10 +38,15 @@ describe("GET /api/coverage-snapshots in mock mode", () => {
     const snapshots = cloneMockCmsSeed(
       DEFAULT_MOCK_CMS_SEED.readModels.coverageSnapshots,
     )
+    const latestSnapshot = snapshots.find(
+      (snapshot) => snapshot.documentId === "snapshot-2026-04-22",
+    )
 
     getCmsGatewayMock.mockReturnValue({
       mode: "mock",
-      getCoverageSnapshots: vi.fn(async () => snapshots),
+      getCoverageSnapshots: vi.fn(async (query) =>
+        query?.latest ? [latestSnapshot] : snapshots,
+      ),
     })
 
     const response = await GET(
@@ -60,10 +65,19 @@ describe("GET /api/coverage-snapshots in mock mode", () => {
     const snapshots = cloneMockCmsSeed(
       DEFAULT_MOCK_CMS_SEED.readModels.coverageSnapshots,
     )
+    const rangeSnapshots = snapshots.filter(
+      (snapshot) => snapshot.date === "2026-04-15",
+    )
 
     getCmsGatewayMock.mockReturnValue({
       mode: "mock",
-      getCoverageSnapshots: vi.fn(async () => snapshots),
+      getCoverageSnapshots: vi.fn(async ({ startDate, endDate }) =>
+        snapshots.filter(
+          (snapshot) =>
+            (!startDate || snapshot.date >= startDate) &&
+            (!endDate || snapshot.date <= endDate),
+        ),
+      ),
     })
 
     const response = await GET(
@@ -74,11 +88,7 @@ describe("GET /api/coverage-snapshots in mock mode", () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({
-      snapshots: [
-        expect.objectContaining({
-          documentId: "snapshot-2026-04-15",
-        }),
-      ],
+      snapshots: rangeSnapshots,
     })
   })
 })

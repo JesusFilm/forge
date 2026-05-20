@@ -12,6 +12,9 @@ import "@/graphql/types/mediaFolder"
 import "@/graphql/types/video"
 import "@/graphql/types/videoScene"
 import "@/graphql/types/videoTranscript"
+import "@/graphql/types/managerSession"
+import "@/graphql/types/managerReadModels"
+import "@/graphql/types/managerJob"
 // Block union types must register before experience.ts since
 // ExperienceLocale.blocks consumes the ExperienceBlock union.
 import "@/graphql/types/blocks"

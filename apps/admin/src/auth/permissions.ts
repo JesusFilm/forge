@@ -93,8 +93,8 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "read:media-assets": "EDITOR",
   // Reference data is public-shape; PUBLIC may read.
   "read:reference": "PUBLIC",
-  // Manager panel and Manager backend human contracts are gated below by
-  // ManagerMembership, not by the editorial role ladder.
+  // Manager panel and Manager backend contracts are gated below, not by
+  // the editorial role ladder.
   "access:manager": "PUBLIC",
   "read:manager-read-models": "PUBLIC",
   // Editor writes
@@ -168,6 +168,9 @@ function meetsTier(role: Role, min: MinTier): boolean {
   // WORKFLOW_TRIGGER is gated by `WORKFLOW_TRIGGER_PERMISSIONS` in
   // `hasPermission` directly; it never satisfies tier-based checks.
   if (role === "WORKFLOW_TRIGGER") return false
+  // MANAGER_BACKEND is gated by `MANAGER_BACKEND_PERMISSIONS`; it never
+  // satisfies human panel access or editorial tier checks.
+  if (role === "MANAGER_BACKEND") return false
   // CONSUMER_BEARER is gated by `CONSUMER_BEARER_PERMISSIONS` (empty set)
   // in `hasPermission` via early-return; it never satisfies tier-based
   // checks. The bearer's sole purpose is rate-limit bucketing, not
@@ -247,10 +250,13 @@ const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
  */
 const CONSUMER_BEARER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set()
 
-const MANAGER_MEMBERSHIP_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
-  "access:manager",
+const MANAGER_BACKEND_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "read:manager-read-models",
   "write:manager-jobs",
+])
+
+const MANAGER_MEMBERSHIP_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "access:manager",
 ])
 
 /**
@@ -274,6 +280,9 @@ export function hasPermission(
   if (role === "WORKFLOW_TRIGGER") {
     return WORKFLOW_TRIGGER_PERMISSIONS.has(key)
   }
+  if (role === "MANAGER_BACKEND") {
+    return MANAGER_BACKEND_PERMISSIONS.has(key)
+  }
   // CONSUMER_BEARER's permission set is intentionally empty; this
   // early-return makes the contract explicit at the call site so a
   // reader doesn't have to derive "no permission keys granted" from
@@ -282,6 +291,9 @@ export function hasPermission(
   // assertions in `permissions.test.ts`.
   if (role === "CONSUMER_BEARER") {
     return CONSUMER_BEARER_PERMISSIONS.has(key)
+  }
+  if (MANAGER_BACKEND_PERMISSIONS.has(key)) {
+    return false
   }
   if (MANAGER_MEMBERSHIP_PERMISSIONS.has(key)) {
     return user?.managerRole === "OPERATOR"

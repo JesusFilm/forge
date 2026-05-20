@@ -11,7 +11,11 @@ import {
   hasPermission,
   type PermissionKey,
 } from "@/auth/permissions"
-import { CONSUMER_BEARER_PRINCIPAL, type Principal } from "@/auth/principal"
+import {
+  CONSUMER_BEARER_PRINCIPAL,
+  MANAGER_BACKEND_PRINCIPAL,
+  type Principal,
+} from "@/auth/principal"
 
 const PUBLIC_USER: Principal | null = null
 const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
@@ -147,21 +151,27 @@ describe("hasPermission — tier-based gate", () => {
 })
 
 describe("hasPermission — Manager membership gate", () => {
-  it("grants Manager panel and backend human permissions only with ManagerRole.OPERATOR", () => {
+  it("grants Manager panel access only with ManagerRole.OPERATOR", () => {
     expect(hasPermission(MANAGER_OPERATOR_VIEWER, "access:manager")).toBe(true)
-    expect(
-      hasPermission(MANAGER_OPERATOR_VIEWER, "read:manager-read-models"),
-    ).toBe(true)
-    expect(hasPermission(MANAGER_OPERATOR_VIEWER, "write:manager-jobs")).toBe(
-      true,
-    )
   })
 
   it("does not let Admin ADMIN bypass Manager membership", () => {
     expect(hasPermission(ADMIN, "access:manager")).toBe(false)
-    expect(hasPermission(ADMIN, "read:manager-read-models")).toBe(false)
-    expect(hasPermission(ADMIN, "write:manager-jobs")).toBe(false)
     expect(hasPermission(MANAGER_OPERATOR_ADMIN, "access:manager")).toBe(true)
+  })
+})
+
+describe("hasPermission — Manager backend bearer gate", () => {
+  it("grants backend read/job permissions without granting human panel access", () => {
+    expect(
+      hasPermission(MANAGER_BACKEND_PRINCIPAL, "read:manager-read-models"),
+    ).toBe(true)
+    expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, "write:manager-jobs")).toBe(
+      true,
+    )
+    expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, "access:manager")).toBe(
+      false,
+    )
   })
 })
 
@@ -547,6 +557,42 @@ describe("permission matrix completeness", () => {
       for (const key of Object.keys(allKeys) as PermissionKey[]) {
         const expected = allowedKeys.has(key)
         expect(hasPermission(WORKFLOW_TRIGGER, key)).toBe(expected)
+      }
+    })
+  })
+
+  describe("MANAGER_BACKEND (service-account, Manager read/job contracts)", () => {
+    it("satisfies only Manager backend contract permissions", () => {
+      const allowedKeys: ReadonlySet<PermissionKey> = new Set([
+        "read:manager-read-models",
+        "write:manager-jobs",
+      ])
+      const allKeys: Record<PermissionKey, true> = {
+        "read:experiences": true,
+        "read:videos": true,
+        "read:video-metadata": true,
+        "read:reference": true,
+        "read:media-assets": true,
+        "access:manager": true,
+        "read:manager-read-models": true,
+        "write:experiences": true,
+        "write:videos": true,
+        "write:media-assets": true,
+        "write:scene-embeddings": true,
+        "write:transcript-embeddings": true,
+        "write:experience-embeddings": true,
+        "write:manager-enrichment-trigger": true,
+        "write:manager-jobs": true,
+        "delete:media-assets": true,
+        "publish:experiences": true,
+        "archive:experiences": true,
+        "system:trigger-workflow": true,
+        "system:write-derived": true,
+        "admin:all": true,
+      }
+      for (const key of Object.keys(allKeys) as PermissionKey[]) {
+        const expected = allowedKeys.has(key)
+        expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, key)).toBe(expected)
       }
     })
   })

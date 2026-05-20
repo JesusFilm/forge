@@ -7,7 +7,8 @@ const MOCK_SESSION_SECRET_SENTINEL = "__manager_mock_session_secret_required__"
 
 export const env = createEnv({
   server: {
-    MANAGER_DATA_MODE: z.enum(["live", "mock"]).default("live"),
+    MANAGER_DATA_MODE: z.enum(["admin", "live", "mock"]).default("live"),
+    MANAGER_BACKEND_MODE: z.enum(["admin", "live", "mock"]).optional(),
 
     // Mux
     MUX_TOKEN_ID: z.string().min(1),
@@ -93,6 +94,7 @@ export const env = createEnv({
   skipValidation: !!process.env.CI,
   runtimeEnv: {
     MANAGER_DATA_MODE: process.env.MANAGER_DATA_MODE ?? "live",
+    MANAGER_BACKEND_MODE: process.env.MANAGER_BACKEND_MODE,
     MUX_TOKEN_ID: process.env.MUX_TOKEN_ID,
     MUX_TOKEN_SECRET: process.env.MUX_TOKEN_SECRET,
     MUX_SIGNING_KEY: process.env.MUX_SIGNING_KEY,
@@ -132,7 +134,10 @@ export const env = createEnv({
   },
 })
 
-if (env.MANAGER_DATA_MODE === "live") {
+const resolvedManagerBackendMode =
+  env.MANAGER_BACKEND_MODE ?? env.MANAGER_DATA_MODE
+
+if (resolvedManagerBackendMode === "live") {
   if (!process.env.STRAPI_URL) {
     throw new Error("STRAPI_URL is required when MANAGER_DATA_MODE=live")
   }
@@ -143,10 +148,16 @@ if (env.MANAGER_DATA_MODE === "live") {
 }
 
 if (
-  env.MANAGER_DATA_MODE === "mock" &&
+  resolvedManagerBackendMode === "mock" &&
   env.MANAGER_MOCK_SESSION_SECRET === MOCK_SESSION_SECRET_SENTINEL
 ) {
   throw new Error(
     "MANAGER_MOCK_SESSION_SECRET is required when MANAGER_DATA_MODE=mock",
+  )
+}
+
+if (resolvedManagerBackendMode === "admin" && !env.ADMIN_GRAPHQL_URL) {
+  throw new Error(
+    "ADMIN_GRAPHQL_URL is required when Manager backend mode=admin",
   )
 }

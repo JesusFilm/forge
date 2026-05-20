@@ -51,14 +51,26 @@ pnpm lint / pnpm typecheck
 
 ## Authentication
 
-Dashboard access requires a user with the "Manager" role.
+Dashboard access uses the shared Auth issuer and an explicit Admin
+`ManagerMembership` grant.
 
-- `MANAGER_DATA_MODE=live`: Login page → `POST /api/auth/login` → Strapi `/api/auth/local` → `strapi-jwt` cookie → middleware protects `/dashboard`.
-- `MANAGER_DATA_MODE=mock`: Login page → `POST /api/auth/login` → Manager mock gateway/session signer → `strapi-jwt` cookie → middleware protects `/dashboard`.
+- Login page redirects to Auth (`AUTH_ISSUER_URL`) with the Manager
+  client (`AUTH_MANAGER_CLIENT_ID`).
+- `/api/auth/callback` exchanges the OAuth code, calls Admin's
+  Manager session validation endpoint, and issues a local
+  `manager-session` cookie only for `ManagerRole.OPERATOR` users.
+- Middleware protects `/dashboard` with that local session. A legacy
+  `strapi-jwt` cookie is not sufficient for dashboard access.
+- `MANAGER_DATA_MODE=mock` is demo/test only and signs local mock
+  sessions with `MANAGER_MOCK_SESSION_SECRET`.
 
 API routes also accept Bearer token (`MANAGER_API_KEY`) for external clients.
 
-Local live-mode dev requires a Strapi user with role name exactly `Manager`. Create via Strapi admin at `http://localhost:1337/admin` > Settings > Users & Permissions > Roles.
+Admin-owned read models and job state can be enabled independently with
+`MANAGER_BACKEND_MODE=admin` (or `MANAGER_DATA_MODE=admin`). In that mode
+Manager reads/writes the Admin GraphQL Manager contracts using
+`ADMIN_GRAPHQL_URL` and `ADMIN_MANAGER_API_KEY`; this service bearer is
+separate from human Manager panel access.
 
 Local mock-mode smoke tests can use the seeded credentials:
 
@@ -220,7 +232,8 @@ where admin's first call 401s.
 | RAILWAY_S3_BUCKET            | Railway S3 bucket name (optional — triggers S3 mode)                           |
 | RAILWAY_S3_ACCESS_KEY_ID     | Railway S3 access key (optional)                                               |
 | RAILWAY_S3_SECRET_ACCESS_KEY | Railway S3 secret key (optional)                                               |
-| MANAGER_DATA_MODE            | `live` or `mock` (default `live`)                                              |
+| MANAGER_DATA_MODE            | `live`, `mock`, or `admin` (default `live`)                                    |
+| MANAGER_BACKEND_MODE         | Optional override for data/job backend mode (`live`, `mock`, or `admin`)       |
 | MANAGER_MOCK_SESSION_SECRET  | Required in `mock` mode to sign Manager-issued mock sessions                   |
 | MANAGER_MOCK_DATA_PATH       | Optional mock runtime store path (default `.tmp/mock-cms/store.json`)          |
 | STRAPI_URL                   | URL of apps/cms (required in `live`, ignored in `mock`)                        |
@@ -228,6 +241,12 @@ where admin's first call 401s.
 | STRAPI_INTERNAL_API_TOKEN    | Optional internal CMS token for live-only writer paths                         |
 | WORKFLOW_API_KEY             | workflow API key (optional, for production durability)                         |
 | MANAGER_API_KEY              | API key for external clients (optional in dev)                                 |
+| MANAGER_SESSION_SECRET       | Secret for Auth-backed `manager-session` cookies                               |
+| AUTH_ISSUER_URL              | Shared Auth issuer URL, normally `https://auth.jesusfilm.org`                  |
+| AUTH_MANAGER_CLIENT_ID       | Manager OAuth client ID registered in Auth                                     |
+| AUTH_MANAGER_CLIENT_SECRET   | Manager OAuth client secret                                                    |
+| ADMIN_MANAGER_API_KEY        | Bearer key Manager uses for Admin Manager session/read/job contracts           |
+| ADMIN_MANAGER_SESSION_URL    | Optional override for Admin Manager session validation endpoint                |
 | ADMIN_GRAPHQL_URL            | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)             |
 | ADMIN_EMBED_TRIGGER_API_KEY  | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`                 |
 | ADMIN_TRIGGER_API_KEYS       | CSV of bearer keys admin can use to call `/api/admin-trigger/*` (feat-119 PR2) |

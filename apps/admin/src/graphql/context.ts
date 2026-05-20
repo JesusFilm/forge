@@ -33,9 +33,11 @@ import { prisma } from "@/db/client"
 import { resolvePrincipalFromRequest } from "@/auth/session"
 import {
   CONSUMER_BEARER_PRINCIPAL,
+  MANAGER_BACKEND_PRINCIPAL,
   WORKFLOW_TRIGGER_PRINCIPAL,
 } from "@/auth/principal"
 import { isValidConsumerBearer } from "@/auth/consumer-bearer"
+import { isValidManagerBearer } from "@/auth/manager-bearer"
 import { isValidWorkflowBearer } from "@/auth/workflow-bearer"
 import type { ContextShape } from "@/graphql/builder"
 import { createLoaders } from "@/graphql/loaders"
@@ -60,6 +62,8 @@ export async function createContext({
     const authHeader = request.headers.get("authorization")
     if (isValidWorkflowBearer(authHeader)) {
       user = WORKFLOW_TRIGGER_PRINCIPAL
+    } else if (isValidManagerBearer(authHeader)) {
+      user = MANAGER_BACKEND_PRINCIPAL
     } else {
       const consumer = isValidConsumerBearer(authHeader)
       if (consumer.valid) {
