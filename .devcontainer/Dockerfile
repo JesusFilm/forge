@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   socat \
   # Modern CLI tools
   fd-find \
+  openssh-server \
   ripgrep \
   tmux \
   zsh \
@@ -72,6 +73,15 @@ RUN mkdir -p /commandhistory /workspace /home/vscode/.claude /home/vscode/.codex
   touch /commandhistory/.bash_history && \
   touch /commandhistory/.zsh_history && \
   chown -R vscode:vscode /commandhistory /workspace /home/vscode/.claude /home/vscode/.codex /opt
+
+RUN mkdir -p /run/sshd /etc/ssh/sshd_config.d && \
+  printf '%s\n' \
+    'PasswordAuthentication no' \
+    'KbdInteractiveAuthentication no' \
+    'PermitRootLogin no' \
+    'PubkeyAuthentication yes' \
+    'AllowUsers vscode' \
+    > /etc/ssh/sshd_config.d/forge-devcontainer.conf
 
 # Set environment variables
 ENV DEVCONTAINER=true
