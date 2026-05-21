@@ -13,8 +13,11 @@ services:
       - claude-code-config:/home/vscode/.claude
       - codex-config:/home/vscode/.codex
       - claude-code-gh:/home/vscode/.config/gh
+      - devcontainer-ssh:/home/vscode/.ssh
       - ${HOME}/.gitconfig:/home/vscode/.gitconfig:ro
       - .:/workspace/.devcontainer:ro
+    ports:
+      - "127.0.0.1:2222:22"
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -25,7 +28,11 @@ services:
       redis:
         condition: service_healthy
     # Keep the container alive for VS Code to attach
-    command: sleep infinity
+    command: >
+      bash -lc "sudo ssh-keygen -A &&
+      sudo install -d -m 0755 /run/sshd &&
+      sudo /usr/sbin/sshd &&
+      sleep infinity"
 
   db:
     image: pgvector/pgvector:pg18
@@ -62,3 +69,4 @@ volumes:
   claude-code-config:
   codex-config:
   claude-code-gh:
+  devcontainer-ssh:

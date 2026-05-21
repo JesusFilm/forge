@@ -3,6 +3,7 @@
   "name": "Forge",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
+  "shutdownAction": "none",
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
