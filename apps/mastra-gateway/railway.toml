@@ -7,7 +7,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "apps/mastra-gateway/Dockerfile"
 
 [deploy]
-startCommand = "pnpm --filter @forge/mastra-gateway db:migrate:deploy && HOSTNAME=0.0.0.0 node apps/mastra-gateway/.next/standalone/apps/mastra-gateway/server.js"
+startCommand = "cd apps/mastra-gateway && pnpm exec prisma migrate deploy && HOSTNAME=0.0.0.0 node .next/standalone/apps/mastra-gateway/server.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
