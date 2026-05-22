@@ -5,6 +5,10 @@ ENV PATH="$PNPM_HOME:$PATH"
 
 WORKDIR /app
 
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
+
 RUN corepack enable && corepack prepare pnpm@9.12.3 --activate
 
 FROM base AS pruner
@@ -17,10 +21,9 @@ FROM base AS installer
 
 COPY --from=pruner /app/out/json/ ./
 COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=pruner /app/out/full/ ./
 
 RUN pnpm install --frozen-lockfile
-
-COPY --from=pruner /app/out/full/ ./
 
 RUN pnpm --filter @forge/mastra-gateway build
 
