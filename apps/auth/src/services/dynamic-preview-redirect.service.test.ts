@@ -38,4 +38,24 @@ describe("dynamic preview redirect policy", () => {
       }),
     ).toBe(false)
   })
+
+  it("allows Railway callback URLs for Mastra Studio preview clients", () => {
+    expect(
+      isDynamicRailwayPreviewRedirectUriAllowed({
+        clientId: "jfp_mastra_studio_preview",
+        redirectUri:
+          "https://forge-mastra-studio-pr-123.up.railway.app/api/auth/callback",
+      }),
+    ).toBe(true)
+  })
+
+  it("does not allow Mastra Studio preview clients to use admin preview hosts", () => {
+    expect(
+      isDynamicRailwayPreviewRedirectUriAllowed({
+        clientId: "jfp_mastra_studio_preview",
+        redirectUri:
+          "https://forge-admin-pr-123.up.railway.app/api/auth/callback",
+      }),
+    ).toBe(false)
+  })
 })

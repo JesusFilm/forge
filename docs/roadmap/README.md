@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (May 15, 2026)
+## Status (May 22, 2026)
 
-- **Total tickets:** 145
-- **Complete:** 76
-- **In progress:** 9
-- **Not started:** 20
-- **Blocked:** 40
-- **Overdue and not complete:** 24
+- **Total tickets:** 150
+- **Complete:** 79
+- **In progress:** 10
+- **Not started:** 19
+- **Blocked:** 42
+- **Overdue and not complete:** 29
 
 ## Feature Index
 
@@ -26,10 +26,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-115](content-discovery/feat-115-embed-backfill-bounded-parallelism.md)                                   | Embed Backfill — Stage 1 — Bounded Parallelism on Per-Target Loop                               | nisal     | P0       | 2026-05-04 | 1    | 2026-05-04 | complete    |
 | [feat-116](content-discovery/feat-116-embed-backfill-s3-cache-and-batched-openrouter.md)                       | Embed Backfill — Stage 2 — S3 Artifact Memoization + Batched OpenRouter Calls                   | nisal     | P0       | 2026-05-06 | 2    | 2026-05-07 | complete    |
 | [feat-117](content-discovery/feat-117-embed-backfill-bulk-sql-writes.md)                                       | Embed Backfill — Stage 3 — Bulk DB Writes via INSERT … ON CONFLICT                              | nisal     | P0       | 2026-05-08 | 2    | 2026-05-09 | complete    |
-| [feat-125](content-discovery/feat-125-admin-full-catalog-manager-enrichment-trigger.md)                        | Admin full-catalog manager enrichment trigger for scene analysis and transcripts                | nisal     | P0       | 2026-05-19 | 3    | 2026-05-21 | not-started |
+| [feat-125](content-discovery/feat-125-admin-full-catalog-manager-enrichment-trigger.md)                        | Admin full-catalog manager enrichment trigger for scene analysis and transcripts                | nisal     | P0       | 2026-05-19 | 3    | 2026-05-21 | blocked     |
 | [feat-126](content-discovery/feat-126-manager-admin-trigger-dispatch-queue.md)                                 | Manager admin-trigger dispatch queue for enrichment backfills                                   | nisal     | P0       | 2026-05-19 | 1    | 2026-05-19 | complete    |
 | [feat-127](content-discovery/feat-127-manager-durable-admin-trigger-job-state.md)                              | Manager durable admin-trigger job state for operator enrichment                                 | nisal     | P0       | 2026-05-19 | 2    | 2026-05-20 | not-started |
 | [feat-128](content-discovery/feat-128-enrichment-backfill-failure-resilience.md)                               | Enrichment backfill failure resilience                                                          | nisal     | P0       | 2026-05-19 | 1    | 2026-05-19 | complete    |
+| [feat-126](content-discovery/feat-126-manager-admin-lookup-tail-latency-recovery.md)                           | Recover manager enrichment dispatch from admin lookup tail latency                              | nisal     | P0       | 2026-05-20 | 1    | 2026-05-20 | complete    |
 | [feat-097](content-discovery/feat-097-investigate-prod-query-embedding.md)                                     | Investigate Production Query Embedding Degradation                                              | nisal     | P1       | 2026-04-15 | 2    | 2026-04-16 | complete    |
 | [feat-095](content-discovery/feat-095-experience-embedding-pipeline.md)                                        | Experience Embedding Pipeline                                                                   | nisal     | P1       | 2026-04-16 | 5    | 2026-04-20 | complete    |
 | [feat-037](content-discovery/feat-037-video-content-vectorization.md)                                          | Video Content Vectorization for Recommendations                                                 | nisal     | P1       | 2026-04-21 | 42   | 2026-06-01 | complete    |
@@ -111,6 +112,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-109](platform/feat-109-admin-core-sync-entity-coverage.md)                 | Admin Core Sync Entity Coverage                         | tataihono | P0       | 2026-04-28 | 3    | 2026-04-30 | complete    |
 | [feat-110](platform/feat-110-admin-core-sync-recurring-job.md)                   | Admin Core Sync Recurring Background Job                | tataihono | P0       | 2026-04-29 | 2    | 2026-04-30 | in-progress |
 | [feat-121](platform/feat-121-jesus-film-auth-platform.md)                        | Jesus Film Auth Platform                                | tataihono | P0       | 2026-05-11 | 14   | 2026-05-24 | blocked     |
+| [feat-125](platform/feat-125-manager-auth-oauth-admin-backend-migration.md)      | Manager Auth OAuth and Admin Backend Migration          | vlad      | P0       | 2026-05-20 | 5    | 2026-05-24 | blocked     |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md) | CMS local PostgreSQL I/O concurrency compatibility      | tataihono | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                        | Scaffolding Support for Urim                            | tataihono | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
 | [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)            | Roadmap Operations and Owner Hygiene                    | josh      | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |
@@ -133,6 +135,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-122](platform/feat-122-admin-video-database-backup-and-clone.md)           | Admin video database backup and clone tooling           | tataihono | P1       | 2026-05-13 | 5    | 2026-05-17 | complete    |
 | [feat-123](platform/feat-123-admin-video-db-presigned-restore.md)                | Admin video database presigned restore access           | tataihono | P1       | 2026-05-15 | 1    | 2026-05-15 | complete    |
 | [feat-124](platform/feat-124-admin-prod-core-sync-restore-fix.md)                | Admin production core sync restore fix                  | tataihono | P1       | 2026-05-15 | 1    | 2026-05-15 | in-progress |
+| [feat-129](platform/feat-129-mastra-railway-workflow-runtime.md)                 | Mastra Railway Workflow Runtime                         | vlad      | P1       | 2026-05-22 | 7    | 2026-05-28 | complete    |
 | [feat-040](platform/feat-040-partner-activation-network.md)                      | Partner Activation Network                              | urim      | P1       | 2026-06-16 | 28   | 2026-07-13 | blocked     |
 | [feat-042](platform/feat-042-video-contests-and-inspiration-feed.md)             | Video Contests and Inspiration Feed                     | urim      | P1       | 2026-06-30 | 28   | 2026-07-27 | blocked     |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                                 | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
