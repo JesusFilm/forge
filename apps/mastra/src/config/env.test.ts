@@ -43,7 +43,7 @@ describe("Mastra env", () => {
     )
   })
 
-  it("requires a storage dir in production runtime", async () => {
+  it("accepts production runtime without an explicit storage dir", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv(
       "DATABASE_URL",
@@ -54,9 +54,7 @@ describe("Mastra env", () => {
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
-    expect(() => assertMastraRuntimeEnv()).toThrow(
-      "MASTRA_STORAGE_DIR required for Mastra production",
-    )
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
   })
 
   it("defaults storage to the local gateway database in development", async () => {
@@ -77,5 +75,15 @@ describe("Mastra env", () => {
     const { getMastraStorageDir } = await import("./env")
 
     expect(getMastraStorageDir()).toBe(".mastra/storage")
+  })
+
+  it("uses the Railway volume mount path for storage when present", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("MASTRA_STORAGE_DIR", "")
+    vi.stubEnv("RAILWAY_VOLUME_MOUNT_PATH", "/data/")
+
+    const { getMastraStorageDir } = await import("./env")
+
+    expect(getMastraStorageDir()).toBe("/data/mastra")
   })
 })
