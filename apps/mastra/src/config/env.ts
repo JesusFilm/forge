@@ -15,6 +15,7 @@ const envSchema = z.object({
   MASTRA_SERVICE_API_KEYS: z.string().min(1).optional(),
   MASTRA_STORAGE_DIR: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
+  RAILWAY_VOLUME_MOUNT_PATH: z.string().min(1).optional(),
 })
 
 export const env = envSchema.parse({
@@ -26,6 +27,9 @@ export const env = envSchema.parse({
   ),
   MASTRA_STORAGE_DIR: emptyToUndefined(process.env.MASTRA_STORAGE_DIR),
   OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
+  RAILWAY_VOLUME_MOUNT_PATH: emptyToUndefined(
+    process.env.RAILWAY_VOLUME_MOUNT_PATH,
+  ),
 })
 
 export function assertMastraRuntimeEnv() {
@@ -34,7 +38,6 @@ export function assertMastraRuntimeEnv() {
   const missing = [
     ["DATABASE_URL", env.DATABASE_URL],
     ["MASTRA_SERVICE_API_KEYS", env.MASTRA_SERVICE_API_KEYS],
-    ["MASTRA_STORAGE_DIR", env.MASTRA_STORAGE_DIR],
   ]
     .filter(([, value]) => !value)
     .map(([name]) => name)
@@ -49,5 +52,9 @@ export function getMastraDatabaseUrl() {
 }
 
 export function getMastraStorageDir() {
-  return env.MASTRA_STORAGE_DIR ?? ".mastra/storage"
+  if (env.MASTRA_STORAGE_DIR) return env.MASTRA_STORAGE_DIR
+  if (env.RAILWAY_VOLUME_MOUNT_PATH) {
+    return `${env.RAILWAY_VOLUME_MOUNT_PATH.replace(/\/$/, "")}/mastra`
+  }
+  return ".mastra/storage"
 }

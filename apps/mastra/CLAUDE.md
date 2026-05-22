@@ -41,14 +41,14 @@ pnpm --filter @forge/mastra lint
 
 ## Environment
 
-| Variable                  | Purpose                                                                                |
-| ------------------------- | -------------------------------------------------------------------------------------- |
-| `DATABASE_URL`            | Postgres connection string for Mastra runtime storage. Required in production runtime. |
-| `MASTRA_SERVICE_API_KEYS` | CSV allowlist for service bearer calls. Required in production runtime.                |
-| `MASTRA_STORAGE_DIR`      | Directory for Studio-visible observability/log files. Use `/data/mastra` on Railway.   |
-| `OPENAI_API_KEY`          | Model provider key for smoke agent/model-routed calls when model execution is tested.  |
-| `PORT`                    | Railway-provided runtime port. Mastra defaults to `4111` locally.                      |
-| `MASTRA_STUDIO_PATH`      | Set to `.mastra/output/studio` when starting the built server with Studio assets.      |
+| Variable                  | Purpose                                                                                                                    |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`            | Postgres connection string for Mastra runtime storage. Required in production runtime.                                     |
+| `MASTRA_SERVICE_API_KEYS` | CSV allowlist for service bearer calls. Required in production runtime.                                                    |
+| `MASTRA_STORAGE_DIR`      | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway. |
+| `OPENAI_API_KEY`          | Model provider key for smoke agent/model-routed calls when model execution is tested.                                      |
+| `PORT`                    | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                          |
+| `MASTRA_STUDIO_PATH`      | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                          |
 
 ## Railway Storage
 
@@ -56,6 +56,8 @@ Production `@forge/mastra` uses the existing Mastra Postgres database through
 `DATABASE_URL` as the default runtime store. Studio-visible observability/log
 data uses Mastra's supported DuckDB store under `MASTRA_STORAGE_DIR`, backed by
 the Railway volume mounted at `/data`.
+If `MASTRA_STORAGE_DIR` is not set, the app derives `/data/mastra` from
+Railway's built-in `RAILWAY_VOLUME_MOUNT_PATH=/data`.
 
 Keep `PinoLogger` configured as the app logger so runtime logs continue to flow
 to stdout/stderr for Railway's platform logs.
