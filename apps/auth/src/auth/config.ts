@@ -57,6 +57,23 @@ const upstreamProviderPlugins =
       ]
     : []
 
+function firstPartyUserClaims(user: {
+  email?: string | null
+  emailVerified?: boolean | null
+  name?: string | null
+  image?: string | null
+  membershipStatus?: string | null
+}) {
+  return {
+    email: user.email ?? undefined,
+    email_verified: user.emailVerified ?? undefined,
+    name: user.name ?? undefined,
+    picture: user.image ?? undefined,
+    "https://jesusfilm.org/claims/membership_status":
+      user.membershipStatus ?? "invited",
+  }
+}
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
@@ -110,14 +127,8 @@ export const auth = betterAuth({
       silenceWarnings: {
         oauthAuthServerConfig: true,
       },
-      customIdTokenClaims: ({ user }) => ({
-        "https://jesusfilm.org/claims/membership_status":
-          user.membershipStatus ?? "invited",
-      }),
-      customUserInfoClaims: ({ user }) => ({
-        "https://jesusfilm.org/claims/membership_status":
-          user.membershipStatus ?? "invited",
-      }),
+      customIdTokenClaims: ({ user }) => firstPartyUserClaims(user),
+      customUserInfoClaims: ({ user }) => firstPartyUserClaims(user),
     }),
     nextCookies(),
     ...upstreamProviderPlugins,
