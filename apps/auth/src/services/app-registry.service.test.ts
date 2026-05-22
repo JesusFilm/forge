@@ -40,7 +40,11 @@ describe("app registry policy", () => {
   it("validates first-party seeds", () => {
     const seeds = getFirstPartyAppSeeds()
 
-    expect(seeds.map((seed) => seed.key)).toEqual(["admin", "manager"])
+    expect(seeds.map((seed) => seed.key)).toEqual([
+      "admin",
+      "manager",
+      "mastra-studio",
+    ])
 
     for (const seed of seeds) {
       for (const environment of seed.environments) {
