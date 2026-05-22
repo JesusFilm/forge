@@ -26,10 +26,10 @@ describe("seedFirstPartyApps", () => {
     const { seedFirstPartyApps } = await import("./seed-first-party-apps")
 
     await expect(seedFirstPartyApps()).resolves.toEqual({
-      apps: 2,
-      environments: 8,
-      oauthClients: 8,
-      scopes: 7,
+      apps: 3,
+      environments: 12,
+      oauthClients: 12,
+      scopes: 8,
     })
 
     expect(upsertScope).toHaveBeenCalledWith(
@@ -52,6 +52,18 @@ describe("seedFirstPartyApps", () => {
         create: expect.objectContaining({
           clientId: "jfp_manager_local",
           scopes: expect.arrayContaining(["manager:access"]),
+          public: true,
+          requirePKCE: true,
+          tokenEndpointAuthMethod: "none",
+        }),
+      }),
+    )
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { clientId: "jfp_mastra_studio_local" },
+        create: expect.objectContaining({
+          clientId: "jfp_mastra_studio_local",
+          scopes: expect.arrayContaining(["mastra-studio:access"]),
           public: true,
           requirePKCE: true,
           tokenEndpointAuthMethod: "none",

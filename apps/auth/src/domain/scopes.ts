@@ -31,6 +31,11 @@ export const AUTH_SCOPES = [
     description: "Allow sign-in to the Jesus Film Manager application.",
   },
   {
+    key: "mastra-studio:access",
+    label: "Access Mastra Studio",
+    description: "Allow sign-in to the Mastra Studio gateway.",
+  },
+  {
     key: "tokens:manage",
     label: "Manage tokens",
     description: "Create, inspect, and revoke scoped Auth tokens.",

@@ -8,6 +8,7 @@ export const FIRST_PARTY_OWNER = {
 
 export const ADMIN_APP_KEY = "admin"
 export const MANAGER_APP_KEY = "manager"
+export const MASTRA_STUDIO_APP_KEY = "mastra-studio"
 
 export type AppEnvironmentSeed = {
   key: string
@@ -44,6 +45,13 @@ export const MANAGER_DEFAULT_SCOPES = [
   "email:read",
   "membership:read",
   "manager:access",
+] satisfies AuthScopeKey[]
+
+export const MASTRA_STUDIO_DEFAULT_SCOPES = [
+  "openid",
+  "profile:read",
+  "email:read",
+  "mastra-studio:access",
 ] satisfies AuthScopeKey[]
 
 export const ADMIN_APP_SEED: RegisteredAppSeed = {
@@ -148,7 +156,67 @@ export const MANAGER_APP_SEED: RegisteredAppSeed = {
   ],
 }
 
+export const MASTRA_STUDIO_APP_SEED: RegisteredAppSeed = {
+  key: MASTRA_STUDIO_APP_KEY,
+  displayName: "Jesus Film Mastra Studio",
+  description: "Forge-authenticated gateway for Mastra Studio workflow agents.",
+  ...FIRST_PARTY_OWNER,
+  environments: [
+    {
+      key: "local",
+      kind: "local",
+      clientId: "jfp_mastra_studio_local",
+      redirectUris: ["http://localhost:3005/api/auth/callback"],
+      postLogoutRedirectUris: ["http://localhost:3005/api/auth/login"],
+      allowedOrigins: ["http://localhost:3005"],
+      defaultScopes: MASTRA_STUDIO_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "preview",
+      kind: "preview",
+      clientId: "jfp_mastra_studio_preview",
+      redirectUris: [
+        "https://forgemastra-gateway.up.railway.app/api/auth/callback",
+      ],
+      postLogoutRedirectUris: [
+        "https://forgemastra-gateway.up.railway.app/api/auth/login",
+      ],
+      allowedOrigins: ["https://forgemastra-gateway.up.railway.app"],
+      defaultScopes: MASTRA_STUDIO_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "staging",
+      kind: "staging",
+      clientId: "jfp_mastra_studio_staging",
+      redirectUris: [
+        "https://mastra-studio-stage.jesusfilm.org/api/auth/callback",
+      ],
+      postLogoutRedirectUris: [
+        "https://mastra-studio-stage.jesusfilm.org/api/auth/login",
+      ],
+      allowedOrigins: ["https://mastra-studio-stage.jesusfilm.org"],
+      defaultScopes: MASTRA_STUDIO_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "production",
+      kind: "production",
+      clientId: "jfp_mastra_studio_production",
+      redirectUris: ["https://mastra-studio.jesusfilm.org/api/auth/callback"],
+      postLogoutRedirectUris: [
+        "https://mastra-studio.jesusfilm.org/api/auth/login",
+      ],
+      allowedOrigins: ["https://mastra-studio.jesusfilm.org"],
+      defaultScopes: MASTRA_STUDIO_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+  ],
+}
+
 export const FIRST_PARTY_APP_SEEDS = [
   ADMIN_APP_SEED,
   MANAGER_APP_SEED,
+  MASTRA_STUDIO_APP_SEED,
 ] satisfies RegisteredAppSeed[]
