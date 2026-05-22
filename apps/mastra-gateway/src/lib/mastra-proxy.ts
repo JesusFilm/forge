@@ -17,6 +17,8 @@ const hopByHopHeaders = new Set([
   "upgrade",
 ])
 
+const bodyEncodingHeaders = new Set(["content-encoding", "content-length"])
+
 export async function proxyMastraRequest(
   request: Request,
   upstreamPath: string,
@@ -44,8 +46,10 @@ export async function proxyMastraRequest(
 
   const headers = new Headers(request.headers)
   for (const header of hopByHopHeaders) headers.delete(header)
+  headers.delete("accept-encoding")
   headers.delete("cookie")
   headers.delete("host")
+  headers.set("accept-encoding", "identity")
   headers.set("authorization", `Bearer ${env.MASTRA_INTERNAL_API_KEY}`)
   headers.set("x-forge-user-subject", session.subject)
   if (session.email) headers.set("x-forge-user-email", session.email)
@@ -61,6 +65,7 @@ export async function proxyMastraRequest(
 
   const responseHeaders = new Headers(response.headers)
   for (const header of hopByHopHeaders) responseHeaders.delete(header)
+  for (const header of bodyEncodingHeaders) responseHeaders.delete(header)
 
   return new Response(response.body, {
     status: response.status,
