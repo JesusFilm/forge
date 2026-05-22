@@ -48,11 +48,9 @@ const observabilityStore = new DuckDBStore({
 const redactPromptBodies: SpanOutputProcessor = {
   name: "forge-redact-prompt-bodies",
   process(span: AnySpan) {
-    return {
-      ...span,
-      input: span.input == null ? span.input : "[REDACTED_BY_FORGE]",
-      output: span.output == null ? span.output : "[REDACTED_BY_FORGE]",
-    }
+    span.input = span.input == null ? span.input : "[REDACTED_BY_FORGE]"
+    span.output = span.output == null ? span.output : "[REDACTED_BY_FORGE]"
+    return span
   },
   shutdown: async () => {},
 }
