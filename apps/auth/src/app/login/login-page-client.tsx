@@ -10,7 +10,7 @@ const providerLabels = {
 } as const
 
 export type LoginProviderId = keyof typeof providerLabels
-export type LoginErrorCode = "account_not_linked" | "forbidden"
+export type LoginErrorCode = "account_not_linked" | "credentials" | "forbidden"
 
 type LoginMethodId = LoginProviderId | "email"
 
@@ -27,7 +27,10 @@ const loginErrors = {
     detail:
       "Your account signed in successfully, but it is not approved for this application.",
   },
-} satisfies Record<LoginErrorCode, { title: string; detail: string }>
+} satisfies Record<
+  Exclude<LoginErrorCode, "credentials">,
+  { title: string; detail: string }
+>
 
 export function LoginPageClient({
   enabledProviders,
@@ -48,7 +51,7 @@ export function LoginPageClient({
   const alert =
     error === "credentials"
       ? {
-          title: "Unable to sign in.",
+          title: "Invalid email or password.",
           detail: "Check your email and password, then try again.",
         }
       : error === "start"
