@@ -1,4 +1,4 @@
-FROM node:24.16.0-bookworm-slim
+FROM node:24.16.0-bookworm-slim AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -12,7 +12,17 @@ RUN apt-get update -y \
   && corepack enable \
   && corepack prepare pnpm@9.12.3 --activate
 
+FROM base AS pruner
+
 COPY . .
+
+RUN pnpm dlx turbo@2.8.9 prune @forge/mastra-gateway --docker
+
+FROM base AS runner
+
+COPY --from=pruner /app/out/json/ ./
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=pruner /app/out/full/ ./
 
 RUN pnpm install --frozen-lockfile \
   && pnpm --filter @forge/mastra-gateway build
