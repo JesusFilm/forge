@@ -14,7 +14,7 @@ const DYNAMIC_PREVIEW_CLIENT_IDS = new Set([
 const ADMIN_RAILWAY_PREVIEW_HOSTNAME =
   /^(?:forge-admin|forgeadmin)(?:-[a-z0-9]+)*\.up\.railway\.app$/
 const MASTRA_STUDIO_RAILWAY_PREVIEW_HOSTNAME =
-  /^(?:forge-mastra-studio|forge-mastra-gateway)(?:-[a-z0-9]+)*\.up\.railway\.app$/
+  /^(?:forge-mastra-studio|forge-mastra-gateway|forgemastra-gateway|forgemastra-studio)(?:-[a-z0-9]+)*\.up\.railway\.app$/
 
 export function isDynamicRailwayPreviewRedirectUriAllowed({
   clientId,

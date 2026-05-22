@@ -177,12 +177,12 @@ export const MASTRA_STUDIO_APP_SEED: RegisteredAppSeed = {
       kind: "preview",
       clientId: "jfp_mastra_studio_preview",
       redirectUris: [
-        "https://forge-mastra-studio.up.railway.app/api/auth/callback",
+        "https://forgemastra-gateway.up.railway.app/api/auth/callback",
       ],
       postLogoutRedirectUris: [
-        "https://forge-mastra-studio.up.railway.app/api/auth/login",
+        "https://forgemastra-gateway.up.railway.app/api/auth/login",
       ],
-      allowedOrigins: ["https://forge-mastra-studio.up.railway.app"],
+      allowedOrigins: ["https://forgemastra-gateway.up.railway.app"],
       defaultScopes: MASTRA_STUDIO_DEFAULT_SCOPES,
       autoApprove: true,
     },
