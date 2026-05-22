@@ -16,11 +16,8 @@ describe("Mastra env", () => {
 
   it("requires service keys in production runtime", async () => {
     vi.stubEnv("NODE_ENV", "production")
-    vi.stubEnv(
-      "DATABASE_URL",
-      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
-    )
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "")
+    vi.stubEnv("MASTRA_STORAGE_DIR", "/data/mastra")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
@@ -29,26 +26,24 @@ describe("Mastra env", () => {
     )
   })
 
-  it("requires a database URL in production runtime", async () => {
+  it("requires a storage directory in production runtime", async () => {
     vi.stubEnv("NODE_ENV", "production")
-    vi.stubEnv("DATABASE_URL", "")
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_STORAGE_DIR", "")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
-      "DATABASE_URL required for Mastra production",
+      "MASTRA_STORAGE_DIR required for Mastra production",
     )
   })
 
-  it("defaults storage to the local gateway database in development", async () => {
+  it("defaults storage to a local development directory", async () => {
     vi.stubEnv("NODE_ENV", "development")
-    vi.stubEnv("DATABASE_URL", "")
+    vi.stubEnv("MASTRA_STORAGE_DIR", "")
 
-    const { getMastraDatabaseUrl } = await import("./env")
+    const { getMastraStorageDir } = await import("./env")
 
-    expect(getMastraDatabaseUrl()).toBe(
-      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
-    )
+    expect(getMastraStorageDir()).toBe(".mastra/storage")
   })
 })

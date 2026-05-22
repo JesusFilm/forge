@@ -1,22 +1,21 @@
+import { mkdirSync } from "node:fs"
+import { join } from "node:path"
+
 import { Mastra } from "@mastra/core"
 import type { AnySpan, SpanOutputProcessor } from "@mastra/core/observability"
 import { registerApiRoute } from "@mastra/core/server"
 import { MastraCompositeStore } from "@mastra/core/storage"
+import { DuckDBStore } from "@mastra/duckdb"
+import { LibSQLStore } from "@mastra/libsql"
 import { PinoLogger } from "@mastra/loggers"
 import {
   MastraStorageExporter,
   Observability,
   SamplingStrategyType,
 } from "@mastra/observability"
-import { PostgresStore } from "@mastra/pg"
 
-import {
-  env,
-  assertMastraRuntimeEnv,
-  getMastraDatabaseUrl,
-} from "../config/env"
+import { env, assertMastraRuntimeEnv, getMastraStorageDir } from "../config/env"
 import { smokeAgent, createSmokeResponse } from "./agents/smoke-agent"
-import { PostgresLogObservabilityStore } from "./storage/postgres-log-observability"
 import {
   isValidServiceBearer,
   parseServiceApiKeys,
@@ -26,15 +25,17 @@ import {
 assertMastraRuntimeEnv()
 
 const serviceKeys = parseServiceApiKeys(env.MASTRA_SERVICE_API_KEYS)
-const storageSchemaName = "mastra"
-const storage = new PostgresStore({
-  id: "mastra-postgres-storage",
-  connectionString: getMastraDatabaseUrl(),
-  schemaName: storageSchemaName,
+const storageDir = getMastraStorageDir()
+
+mkdirSync(storageDir, { recursive: true })
+
+const runtimeStore = new LibSQLStore({
+  id: "mastra-runtime-storage",
+  url: `file:${join(storageDir, "mastra-runtime.db")}`,
 })
-const observabilityStorage = new PostgresLogObservabilityStore({
-  pool: storage.pool,
-  schemaName: storageSchemaName,
+const observabilityStore = new DuckDBStore({
+  id: "mastra-observability-storage",
+  path: join(storageDir, "mastra-observability.duckdb"),
 })
 
 const redactPromptBodies: SpanOutputProcessor = {
@@ -69,9 +70,9 @@ export const mastra = new Mastra({
   }),
   storage: new MastraCompositeStore({
     id: "mastra-storage",
-    default: storage,
+    default: runtimeStore,
     domains: {
-      observability: observabilityStorage,
+      observability: observabilityStore.observability,
     },
   }),
   observability: new Observability({
