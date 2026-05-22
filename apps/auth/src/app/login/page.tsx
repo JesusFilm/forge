@@ -25,7 +25,9 @@ export function isOAuthAuthorizeRequest(
 function parseLoginError(
   value: string | undefined,
 ): LoginErrorCode | undefined {
-  return value === "account_not_linked" || value === "forbidden"
+  return value === "account_not_linked" ||
+    value === "credentials" ||
+    value === "forbidden"
     ? value
     : undefined
 }

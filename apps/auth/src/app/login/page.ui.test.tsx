@@ -26,6 +26,19 @@ describe("auth login UI", () => {
     )
   })
 
+  it("shows the generic invalid credentials message", () => {
+    const html = renderToStaticMarkup(
+      <LoginPageClient
+        enabledProviders={[]}
+        initialError="credentials"
+        oauthQuery="client_id=jfp_admin_local&sig=signed"
+      />,
+    )
+
+    expect(html).toContain("Invalid email or password.")
+    expect(html).toContain("Check your email and password, then try again.")
+  })
+
   it("identifies OAuth authorize requests as the only valid login entry", () => {
     expect(
       isOAuthAuthorizeRequest({
