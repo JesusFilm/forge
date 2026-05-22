@@ -78,13 +78,11 @@ describe("first-party app seeds", () => {
         expect.objectContaining({
           key: "production",
           clientId: "jfp_mastra_studio_production",
-          redirectUris: [
-            "https://mastra-studio.jesusfilm.org/api/auth/callback",
-          ],
+          redirectUris: ["https://mastra.jesusfilm.org/api/auth/callback"],
           postLogoutRedirectUris: [
-            "https://mastra-studio.jesusfilm.org/api/auth/login",
+            "https://mastra.jesusfilm.org/api/auth/login",
           ],
-          allowedOrigins: ["https://mastra-studio.jesusfilm.org"],
+          allowedOrigins: ["https://mastra.jesusfilm.org"],
           defaultScopes: expect.arrayContaining(["mastra-studio:access"]),
           autoApprove: true,
         }),
