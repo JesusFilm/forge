@@ -3,8 +3,8 @@
 # the Railway dashboard and treat that dashboard config as canonical.
 
 [build]
-builder = "NIXPACKS"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/mastra-gateway build && cp -r apps/mastra-gateway/.next/static apps/mastra-gateway/.next/standalone/apps/mastra-gateway/.next/static"
+builder = "DOCKERFILE"
+dockerfilePath = "apps/mastra-gateway/Dockerfile"
 
 [deploy]
 startCommand = "pnpm --filter @forge/mastra-gateway db:migrate:deploy && HOSTNAME=0.0.0.0 node apps/mastra-gateway/.next/standalone/apps/mastra-gateway/server.js"
