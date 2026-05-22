@@ -41,17 +41,17 @@ pnpm --filter @forge/mastra lint
 
 ## Environment
 
-| Variable                  | Purpose                                                                                 |
-| ------------------------- | --------------------------------------------------------------------------------------- |
-| `MASTRA_SERVICE_API_KEYS` | CSV allowlist for service bearer calls. Required in production runtime.                 |
-| `MASTRA_STORAGE_DIR`      | Directory for Mastra runtime and observability DB files. Use `/data/mastra` on Railway. |
-| `OPENAI_API_KEY`          | Model provider key for smoke agent/model-routed calls when model execution is tested.   |
-| `PORT`                    | Railway-provided runtime port. Mastra defaults to `4111` locally.                       |
-| `MASTRA_STUDIO_PATH`      | Set to `.mastra/output/studio` when starting the built server with Studio assets.       |
+| Variable                  | Purpose                                                                                                         |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`            | Postgres connection string for Mastra runtime and Studio observability storage. Required in production runtime. |
+| `MASTRA_SERVICE_API_KEYS` | CSV allowlist for service bearer calls. Required in production runtime.                                         |
+| `OPENAI_API_KEY`          | Model provider key for smoke agent/model-routed calls when model execution is tested.                           |
+| `PORT`                    | Railway-provided runtime port. Mastra defaults to `4111` locally.                                               |
+| `MASTRA_STUDIO_PATH`      | Set to `.mastra/output/studio` when starting the built server with Studio assets.                               |
 
 ## Railway Storage
 
-Production `@forge/mastra` uses a Railway volume mounted at `/data`, with
-`MASTRA_STORAGE_DIR=/data/mastra`. LibSQL stores runtime state in
-`mastra-runtime.db`; DuckDB stores Studio logs, traces, and metrics in
-`mastra-observability.duckdb`.
+Production `@forge/mastra` uses the existing Mastra Postgres database through
+`DATABASE_URL`. Mastra tables are created in the `mastra` schema so runtime
+state and Studio logs/traces stay in the database instead of on app-local files
+or a Railway volume.

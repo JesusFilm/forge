@@ -20,9 +20,8 @@ tags:
 
 The self-hosted Mastra runtime can serve Studio, but Studio log and
 observability screens cannot show failed runs without a persistent
-observability store. Railway containers have ephemeral filesystems unless a
-volume is attached, so local runtime traces and logs disappear across restarts
-and may not be queryable by Studio.
+observability store. Runtime traces and logs should live in the existing
+Mastra Postgres database rather than app-local database files.
 
 ## Entry Points - Read These First
 
@@ -37,9 +36,9 @@ and may not be queryable by Studio.
 1. Configure Mastra with a persistent default store and an observability store
    that Studio can query for logs and run traces.
 2. Enable Mastra Observability with the storage exporter and structured logging.
-3. Attach Railway persistent storage to the `@forge/mastra` service and point
-   the runtime at the mounted database files.
-4. Document the required Railway mount and env values.
+3. Point the runtime at Postgres via `DATABASE_URL`, using the existing Mastra
+   gateway database in production.
+4. Document the required database env values.
 
 ## Constraints
 
@@ -56,5 +55,5 @@ and may not be queryable by Studio.
 - `pnpm --filter @forge/mastra typecheck`
 - `pnpm --filter @forge/mastra lint`
 - `pnpm --filter @forge/mastra build`
-- Railway `@forge/mastra` has a persistent volume mounted for Mastra data.
+- Railway `@forge/mastra` has `DATABASE_URL` configured to the Mastra database.
 - Studio logs/observability endpoints return data instead of failing.
