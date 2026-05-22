@@ -1,6 +1,7 @@
 import { Mastra } from "@mastra/core"
 import type { AnySpan, SpanOutputProcessor } from "@mastra/core/observability"
 import { registerApiRoute } from "@mastra/core/server"
+import { MastraCompositeStore } from "@mastra/core/storage"
 import { PinoLogger } from "@mastra/loggers"
 import {
   MastraStorageExporter,
@@ -15,6 +16,7 @@ import {
   getMastraDatabaseUrl,
 } from "../config/env"
 import { smokeAgent, createSmokeResponse } from "./agents/smoke-agent"
+import { PostgresLogObservabilityStore } from "./storage/postgres-log-observability"
 import {
   isValidServiceBearer,
   parseServiceApiKeys,
@@ -24,10 +26,15 @@ import {
 assertMastraRuntimeEnv()
 
 const serviceKeys = parseServiceApiKeys(env.MASTRA_SERVICE_API_KEYS)
+const storageSchemaName = "mastra"
 const storage = new PostgresStore({
   id: "mastra-postgres-storage",
   connectionString: getMastraDatabaseUrl(),
-  schemaName: "mastra",
+  schemaName: storageSchemaName,
+})
+const observabilityStorage = new PostgresLogObservabilityStore({
+  pool: storage.pool,
+  schemaName: storageSchemaName,
 })
 
 const redactPromptBodies: SpanOutputProcessor = {
@@ -60,7 +67,13 @@ export const mastra = new Mastra({
       censor: "[REDACTED]",
     },
   }),
-  storage,
+  storage: new MastraCompositeStore({
+    id: "mastra-storage",
+    default: storage,
+    domains: {
+      observability: observabilityStorage,
+    },
+  }),
   observability: new Observability({
     sensitiveDataFilter: true,
     configs: {
