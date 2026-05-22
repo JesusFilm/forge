@@ -17,8 +17,9 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   `apps/auth`.
 - Do not log bearer tokens, model provider keys, cookies, or raw prompts that
   may contain sensitive data.
-- Runtime and Studio observability storage uses Postgres via `DATABASE_URL`;
-  production should point at the existing Mastra gateway database.
+- Runtime storage uses Postgres via `DATABASE_URL`; Studio-visible logs and
+  observability use DuckDB files under `MASTRA_STORAGE_DIR` on the Railway
+  volume.
 - Keep Manager subtitle workflow migration out of this first runtime slice.
 
 ## Validation

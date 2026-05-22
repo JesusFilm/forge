@@ -1,7 +1,11 @@
+import { mkdirSync } from "node:fs"
+import { join } from "node:path"
+
 import { Mastra } from "@mastra/core"
 import type { AnySpan, SpanOutputProcessor } from "@mastra/core/observability"
 import { registerApiRoute } from "@mastra/core/server"
 import { MastraCompositeStore } from "@mastra/core/storage"
+import { DuckDBStore } from "@mastra/duckdb"
 import { PinoLogger } from "@mastra/loggers"
 import {
   MastraStorageExporter,
@@ -14,9 +18,9 @@ import {
   env,
   assertMastraRuntimeEnv,
   getMastraDatabaseUrl,
+  getMastraStorageDir,
 } from "../config/env"
 import { smokeAgent, createSmokeResponse } from "./agents/smoke-agent"
-import { PostgresLogObservabilityStore } from "./storage/postgres-log-observability"
 import {
   isValidServiceBearer,
   parseServiceApiKeys,
@@ -26,15 +30,19 @@ import {
 assertMastraRuntimeEnv()
 
 const serviceKeys = parseServiceApiKeys(env.MASTRA_SERVICE_API_KEYS)
+const storageDir = getMastraStorageDir()
 const storageSchemaName = "mastra"
+
+mkdirSync(storageDir, { recursive: true })
+
 const storage = new PostgresStore({
   id: "mastra-postgres-storage",
   connectionString: getMastraDatabaseUrl(),
   schemaName: storageSchemaName,
 })
-const observabilityStorage = new PostgresLogObservabilityStore({
-  pool: storage.pool,
-  schemaName: storageSchemaName,
+const observabilityStore = new DuckDBStore({
+  id: "mastra-observability-storage",
+  path: join(storageDir, "mastra-observability.duckdb"),
 })
 
 const redactPromptBodies: SpanOutputProcessor = {
@@ -71,7 +79,7 @@ export const mastra = new Mastra({
     id: "mastra-storage",
     default: storage,
     domains: {
-      observability: observabilityStorage,
+      observability: observabilityStore.observability,
     },
   }),
   observability: new Observability({
