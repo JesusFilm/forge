@@ -9,6 +9,6 @@ dockerfilePath = "apps/mastra-gateway/Dockerfile"
 [deploy]
 startCommand = "cd apps/mastra-gateway && pnpm exec prisma migrate deploy && HOSTNAME=0.0.0.0 pnpm start"
 healthcheckPath = "/api/health"
-healthcheckTimeout = 60
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
