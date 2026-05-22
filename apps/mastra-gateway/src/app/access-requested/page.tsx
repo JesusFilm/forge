@@ -16,9 +16,11 @@ export default function AccessRequestedPage({
         <p className="eyebrow">Mastra Gateway</p>
         <h1>Access Requested</h1>
         <AccessReason searchParams={searchParams} />
-        <a className="button-link" href="/api/auth/login">
-          Try again
-        </a>
+        <form action="/api/auth/login">
+          <button className="button-link" type="submit">
+            Try again
+          </button>
+        </form>
       </section>
     </main>
   )

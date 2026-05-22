@@ -16,6 +16,7 @@ const serviceKeys = parseServiceApiKeys(env.MASTRA_SERVICE_API_KEYS)
 export const mastra = new Mastra({
   agents: { smokeAgent },
   server: {
+    studioBase: "/studio",
     apiRoutes: [
       registerApiRoute("/forge-smoke", {
         method: "POST",
