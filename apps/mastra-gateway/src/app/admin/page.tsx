@@ -21,7 +21,9 @@ export default async function AdminPage() {
         </div>
         <nav className="top-actions" aria-label="Gateway navigation">
           <Link href="/studio">Studio</Link>
-          <a href="/api/auth/logout">Sign out</a>
+          <form action="/api/auth/logout">
+            <button type="submit">Sign out</button>
+          </form>
         </nav>
       </header>
 
