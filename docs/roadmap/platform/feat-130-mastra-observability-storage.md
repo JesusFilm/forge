@@ -3,7 +3,7 @@ id: "feat-130"
 title: "Mastra Observability Storage"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-05-22"
 duration: 1
 depends_on:
