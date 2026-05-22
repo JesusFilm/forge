@@ -6,6 +6,7 @@ import {
   getMastraStudioOAuthConfig,
   verifyMastraStudioIdToken,
 } from "@/lib/oauth-client"
+import { getGatewayBaseUrl } from "@/config/env"
 import {
   createGatewaySessionCookie,
   expiredGatewaySessionCookieOptions,
@@ -35,7 +36,7 @@ export async function GET(request: Request) {
     state !== expectedState ||
     !codeVerifier
   ) {
-    return redirectToAccessRequested(request, "forbidden")
+    return redirectToAccessRequested("forbidden")
   }
 
   try {
@@ -57,10 +58,12 @@ export async function GET(request: Request) {
     })
 
     if (!access.allowed) {
-      return redirectToAccessRequested(request, access.reason)
+      return redirectToAccessRequested(access.reason)
     }
 
-    const response = NextResponse.redirect(new URL(returnTo, request.url))
+    const response = NextResponse.redirect(
+      new URL(returnTo, getGatewayBaseUrl()),
+    )
     response.cookies.set(
       GATEWAY_SESSION_COOKIE,
       await createGatewaySessionCookie({
@@ -79,12 +82,12 @@ export async function GET(request: Request) {
       message: error instanceof Error ? error.message : "unknown",
     })
 
-    return redirectToAccessRequested(request, "forbidden")
+    return redirectToAccessRequested("forbidden")
   }
 }
 
-function redirectToAccessRequested(request: Request, reason: string) {
-  const url = new URL("/access-requested", request.url)
+function redirectToAccessRequested(reason: string) {
+  const url = new URL("/access-requested", getGatewayBaseUrl())
   url.searchParams.set("reason", reason)
   const response = NextResponse.redirect(url)
   clearOAuthCookies(response)

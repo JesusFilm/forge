@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { env } from "@/config/env"
+import { env, getGatewayBaseUrl } from "@/config/env"
 import {
   GATEWAY_SESSION_COOKIE,
   readGatewaySessionCookie,
@@ -26,7 +26,7 @@ export async function proxyMastraRequest(
   )
 
   if (!session) {
-    const loginUrl = new URL("/api/auth/login", request.url)
+    const loginUrl = new URL("/api/auth/login", getGatewayBaseUrl())
     loginUrl.searchParams.set("returnTo", new URL(request.url).pathname)
     return NextResponse.redirect(loginUrl)
   }
