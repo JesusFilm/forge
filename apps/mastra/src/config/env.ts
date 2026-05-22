@@ -9,6 +9,7 @@ const envSchema = z.object({
     .default("development"),
   NEXT_PHASE: z.string().optional(),
   MASTRA_SERVICE_API_KEYS: z.string().min(1).optional(),
+  MASTRA_STORAGE_DIR: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
 })
 
@@ -18,17 +19,25 @@ export const env = envSchema.parse({
   MASTRA_SERVICE_API_KEYS: emptyToUndefined(
     process.env.MASTRA_SERVICE_API_KEYS,
   ),
+  MASTRA_STORAGE_DIR: emptyToUndefined(process.env.MASTRA_STORAGE_DIR),
   OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
 })
 
 export function assertMastraRuntimeEnv() {
   if (env.NODE_ENV !== "production") return
 
-  const missing = [["MASTRA_SERVICE_API_KEYS", env.MASTRA_SERVICE_API_KEYS]]
+  const missing = [
+    ["MASTRA_SERVICE_API_KEYS", env.MASTRA_SERVICE_API_KEYS],
+    ["MASTRA_STORAGE_DIR", env.MASTRA_STORAGE_DIR],
+  ]
     .filter(([, value]) => !value)
     .map(([name]) => name)
 
   if (missing.length > 0) {
     throw new Error(`${missing.join(", ")} required for Mastra production`)
   }
+}
+
+export function getMastraStorageDir() {
+  return env.MASTRA_STORAGE_DIR ?? ".mastra/storage"
 }

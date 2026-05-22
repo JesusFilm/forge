@@ -17,6 +17,8 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   `apps/auth`.
 - Do not log bearer tokens, model provider keys, cookies, or raw prompts that
   may contain sensitive data.
+- Production observability uses `MASTRA_STORAGE_DIR=/data/mastra` on the
+  Railway volume; keep Studio logs/traces on persistent storage.
 - Keep Manager subtitle workflow migration out of this first runtime slice.
 
 ## Validation
