@@ -3,7 +3,7 @@ id: "feat-104"
 title: "Provision apps/admin on Railway"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-04-20"
 duration: 1
 depends_on:
@@ -112,6 +112,22 @@ guidance.
   passes. R2 is its own handoff.
 
 ## Verification
+
+### Completion evidence
+
+Verified 2026-05-19 via Railway GraphQL project token and live production
+endpoints:
+
+- Railway `forge` / `production` has service `@forge/admin`
+  (`bdb15048-1ca9-4217-ae01-ef7cc19ca6f4`).
+- Latest deployment `5e8d4569-bb61-4037-ba86-3a239f6f6a71` is `SUCCESS`.
+- Custom domain `admin.jesusfilm.org` and Railway service domain
+  `forgeadmin-production-f4d1.up.railway.app` are attached.
+- Service start command runs `pnpm --filter @forge/admin db:migrate:deploy`
+  before starting the standalone Next.js server.
+- `https://admin.jesusfilm.org/api/health` returns HTTP 200.
+- `https://admin.jesusfilm.org/api/graphql` responds to `{ __typename }`
+  with `{"data":{"__typename":"Query"}}`.
 
 ### Deploy health
 

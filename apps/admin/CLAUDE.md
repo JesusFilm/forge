@@ -1141,8 +1141,12 @@ cutover with zero response-shape drift.
   `MAX_LIMIT = 50`.
 - **Retrievers:** `src/services/hybrid-search-retrievers.ts` exports
   four functions. Each is a thin `$queryRaw` caller.
-  - `searchVideoSemantic` — pgvector cosine over `VideoSceneLocale.embedding`,
-    `DISTINCT ON (video_scene.video_id)`, locale-filtered. Resolves
+  - `searchVideoSemantic` — pgvector cosine over
+    `VideoSceneLocale.embedding` and `VideoTranscriptChunk.embedding`,
+    locale/language-filtered, mixed inside one `semantic-video`
+    retriever. It performs bounded scene + transcript scans, collapses
+    to one candidate per video before RRF, and lets the winning raw
+    evidence own `snippet`/`startSeconds`/`embeddingText`. Resolves
     `playbackId` via a LATERAL lookup on `video_dub → mux_video` keyed
     by `(video_edition_id, language.bcp47 = locale)`. When no dub
     matches, playbackId is NULL and the row still returns.
@@ -1167,10 +1171,12 @@ description`, same `'simple'` config as cms, locale + status gate.
   `cosineSimilarityFromText`. Line-for-line port of cms's `fusion.ts`
   with `resultId: string` (admin cuids) instead of cms's integer ids.
   Experience rows skip all three dedup layers.
-- **Scene-only for video-semantic in R4.** `VideoTranscriptChunk.embedding`
-  (R2-indexed) is deliberately NOT fused. Strict cms parity during the
-  R3→R8 window; adding a 5th RRF list for transcripts is a post-cutover
-  follow-up that won't change the consumer contract.
+- **Mixed evidence inside `semantic-video`.** Transcript chunks are NOT
+  a fifth RRF list. `VideoTranscriptChunk.embedding` is mixed with
+  scene evidence inside `searchVideoSemantic`, then a single ranked
+  video semantic list flows into the existing RRF pipeline. This avoids
+  double-counting videos that match both scene and transcript evidence
+  while preserving the public REST/GraphQL response shape.
 - **Video imageUrl resolves via LATERAL on `VideoImage`.** Both
   retrievers (semantic + keyword) emit
   `COALESCE(mobile_cinematic_high, url)` from the per-video

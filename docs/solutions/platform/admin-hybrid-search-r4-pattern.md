@@ -24,7 +24,8 @@ shape-equivalent on top of admin's per-locale Prisma schema.
    `keyword-experience`. RRF k = 60, normalization by `lists.length /
 (k + 1)`, descending score sort. Empty lists are filtered out
    before fusion (RRF normalizes by list count — feeding empty ones
-   dilutes scores from lists that did contribute).
+   dilutes scores from lists that did contribute). Transcript evidence
+   belongs inside `semantic-video`, not as a fifth list.
 2. **3-layer video-only dedup.** coreId prefix match, exact title,
    embedding cosine > 0.95. Experience rows bypass all three checks.
    Cosine dedup needs per-row `embeddingText`, which is why the
@@ -87,13 +88,27 @@ silently reverts the query to Seq Scan.
 
 ## What stays unused in R4
 
-- **`VideoTranscriptChunk.embedding`** (R2). Deliberately not fused.
-  Adding a 5th RRF list for transcripts would diverge from cms's
-  4-list ranking during the R3→R8 validation window. Post-cutover
-  follow-up that won't require consumer-contract changes.
 - **`ExperienceLocale.ogImageUrl`.** Populated by R3, but the R4
   response maps `imageUrl: null` for experience results per cms
   parity. Upgrade lands after R8.
+
+## Post-R4 video semantic upgrade
+
+`semantic-video` now mixes two primary evidence sources internally:
+
+- `video_scene_locale.embedding` for localized multimodal scene descriptions.
+- `video_transcript_chunk.embedding` for spoken transcript chunks.
+
+The retriever performs bounded scene and transcript vector scans, collapses to
+the best evidence per source per video, applies a small bounded agreement bonus
+when both sources support the same video, and returns one ranked semantic video
+candidate per video to RRF. The winning raw source owns the public-facing
+snippet/timecode and the service-internal `embeddingText` used by video dedup.
+
+This keeps the four-list RRF invariant intact. Do **not** add
+`semantic-transcript-video` as a separate RRF input unless the product decision
+changes explicitly; doing so double-counts semantic video evidence and changes
+debug/dilution semantics.
 
 ## What R4 establishes as admin-first patterns
 
@@ -129,9 +144,6 @@ tradeoff.
 
 - Wire `ExperienceLocale.ogImageUrl` through `imageUrl` for experience
   results (once cms/admin diff invariant is no longer needed).
-- Add `VideoTranscriptChunk.embedding` as a 5th RRF list (`semantic-
-transcript-video`) with per-chunk dedup to avoid double-counting a
-  video that hits on both scene and transcript matches.
 - Rename `generateExperienceEmbedding` to `embedText`.
 - Add EDITOR/ADMIN widening to the `search` field if the admin
   dashboard grows a search UX that needs to see drafts.
