@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "@forge/cms": "workspace:*",
-    "typescript": "^5",
-    "vitest": "3.2.4"
+    "typescript": "^6",
+    "vitest": "4.1.7"
   }
 }
