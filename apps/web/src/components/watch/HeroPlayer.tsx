@@ -85,33 +85,71 @@ export function HeroPlayer({
   )
 
   useEffect(() => {
-    const muxEl = playerRef.current as HTMLElement | null
-    if (!muxEl || typeof muxEl.querySelector !== "function") return
+    const el = playerRef.current as HTMLMediaElement | null
+    if (!el || !el.textTracks) return
 
-    const video =
-      muxEl.shadowRoot?.querySelector("video") ?? muxEl.querySelector("video")
-    if (!video) return
+    const tracks = el.textTracks
 
-    if (!subtitleVttSrc) {
-      const existing = video.querySelector("track[data-subtitle-track]")
-      if (existing) existing.remove()
-      return
+    const disableBuiltInSubtitles = () => {
+      for (let i = 0; i < tracks.length; i++) {
+        const t = tracks[i]!
+        if (
+          (t.kind === "subtitles" || t.kind === "captions") &&
+          t.label !== "__forge_subtitle__"
+        ) {
+          t.mode = "disabled"
+        }
+      }
     }
 
-    const existing = video.querySelector("track[data-subtitle-track]")
-    if (existing) existing.remove()
+    disableBuiltInSubtitles()
 
-    const trackEl = document.createElement("track")
-    trackEl.kind = "subtitles"
-    trackEl.src = subtitleVttSrc
-    trackEl.default = true
-    trackEl.setAttribute("data-subtitle-track", "true")
-    video.appendChild(trackEl)
-    trackEl.track.mode = "showing"
+    const onAddTrack = () => {
+      disableBuiltInSubtitles()
+      if (subtitleVttSrc && forgeTrack) {
+        forgeTrack.mode = "showing"
+      }
+    }
+    tracks.addEventListener("addtrack", onAddTrack)
+
+    let forgeTrack: TextTrack | null = null
+
+    if (subtitleVttSrc) {
+      const video = (() => {
+        const muxVideo = (
+          el as unknown as HTMLElement
+        ).shadowRoot?.querySelector("mux-video") as HTMLElement | null
+        return (
+          muxVideo?.shadowRoot?.querySelector("video") ??
+          (el as unknown as HTMLElement).shadowRoot?.querySelector("video") ??
+          null
+        )
+      })()
+
+      if (video) {
+        const existing = video.querySelector("track[data-subtitle-track]")
+        if (existing) existing.remove()
+
+        const trackEl = document.createElement("track")
+        trackEl.kind = "subtitles"
+        trackEl.label = "__forge_subtitle__"
+        trackEl.src = subtitleVttSrc
+        trackEl.default = true
+        trackEl.setAttribute("data-subtitle-track", "true")
+        video.appendChild(trackEl)
+        trackEl.track.mode = "showing"
+        forgeTrack = trackEl.track
+
+        return () => {
+          tracks.removeEventListener("addtrack", onAddTrack)
+          trackEl.track.mode = "disabled"
+          trackEl.remove()
+        }
+      }
+    }
 
     return () => {
-      trackEl.track.mode = "disabled"
-      trackEl.remove()
+      tracks.removeEventListener("addtrack", onAddTrack)
     }
   }, [subtitleVttSrc, player])
 
