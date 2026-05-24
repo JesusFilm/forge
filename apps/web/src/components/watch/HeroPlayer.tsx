@@ -54,23 +54,6 @@ const OBSCURED_PAUSE_THRESHOLD = 0.6
 // globe button appears. With only one variant there's nothing to switch to.
 const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
 
-function parseVttTime(timeStr: string): number {
-  const parts = timeStr.split(":")
-  if (parts.length === 3) {
-    const [h, m, s] = parts
-    return (
-      Number.parseInt(h!, 10) * 3600 +
-      Number.parseInt(m!, 10) * 60 +
-      Number.parseFloat(s!)
-    )
-  }
-  if (parts.length === 2) {
-    const [m, s] = parts
-    return Number.parseInt(m!, 10) * 60 + Number.parseFloat(s!)
-  }
-  return 0
-}
-
 export function HeroPlayer({
   block,
   onPlayerReady,
@@ -102,62 +85,33 @@ export function HeroPlayer({
   )
 
   useEffect(() => {
-    const el = playerRef.current as
-      | (HTMLMediaElement & { addTextTrack?: HTMLMediaElement["addTextTrack"] })
-      | null
-    if (!el || !el.textTracks || !el.addTextTrack) return
+    const muxEl = playerRef.current as HTMLElement | null
+    if (!muxEl || typeof muxEl.querySelector !== "function") return
+
+    const video =
+      muxEl.shadowRoot?.querySelector("video") ?? muxEl.querySelector("video")
+    if (!video) return
 
     if (!subtitleVttSrc) {
-      const tracks = el.textTracks
-      for (let i = 0; i < tracks.length; i++) {
-        if (tracks[i]!.mode !== "disabled") tracks[i]!.mode = "disabled"
-      }
+      const existing = video.querySelector("track[data-subtitle-track]")
+      if (existing) existing.remove()
       return
     }
 
-    const track = el.addTextTrack("subtitles", "Subtitles", "")
-    track.mode = "showing"
+    const existing = video.querySelector("track[data-subtitle-track]")
+    if (existing) existing.remove()
 
-    const fetchVtt = async () => {
-      try {
-        const res = await fetch(subtitleVttSrc)
-        const text = await res.text()
-        const lines = text.split("\n")
-        let i = 0
-        while (i < lines.length && !lines[i]!.includes("-->")) i++
-        while (i < lines.length) {
-          const timeLine = lines[i]!
-          if (!timeLine.includes("-->")) {
-            i++
-            continue
-          }
-          const [startStr, endStr] = timeLine.split("-->").map((s) => s.trim())
-          const start = parseVttTime(startStr!)
-          const end = parseVttTime(endStr!)
-          i++
-          const cueLines: string[] = []
-          while (i < lines.length && lines[i]!.trim() !== "") {
-            cueLines.push(lines[i]!)
-            i++
-          }
-          if (
-            cueLines.length > 0 &&
-            Number.isFinite(start) &&
-            Number.isFinite(end)
-          ) {
-            track.addCue(new VTTCue(start, end, cueLines.join("\n")))
-          }
-          i++
-        }
-      } catch {
-        // VTT fetch failed — subtitle track stays empty
-      }
-    }
-
-    fetchVtt()
+    const trackEl = document.createElement("track")
+    trackEl.kind = "subtitles"
+    trackEl.src = subtitleVttSrc
+    trackEl.default = true
+    trackEl.setAttribute("data-subtitle-track", "true")
+    video.appendChild(trackEl)
+    trackEl.track.mode = "showing"
 
     return () => {
-      track.mode = "disabled"
+      trackEl.track.mode = "disabled"
+      trackEl.remove()
     }
   }, [subtitleVttSrc, player])
 
