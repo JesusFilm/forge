@@ -9,6 +9,8 @@
 
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import {
+  calculateVideoSemanticMixedScore,
+  mixVideoSemanticEvidenceRows,
   searchVideoSemantic,
   searchVideoKeyword,
   searchExperienceSemantic,
@@ -21,6 +23,16 @@ function mockPrisma() {
     $queryRaw,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any
+}
+
+function latestRawSql(prisma: ReturnType<typeof mockPrisma>): string {
+  const call = prisma.$queryRaw.mock.calls.at(-1)
+  return (call?.[0] as TemplateStringsArray | undefined)?.join(" ") ?? ""
+}
+
+function latestRawValues(prisma: ReturnType<typeof mockPrisma>): unknown[] {
+  const call = prisma.$queryRaw.mock.calls.at(-1)
+  return call?.slice(1) ?? []
 }
 
 describe("searchVideoSemantic", () => {
@@ -38,9 +50,12 @@ describe("searchVideoSemantic", () => {
         video_slug: "jesus",
         video_title: "Jesus",
         image_url: "https://images.example/jesus.jpg",
+        evidence_id: "scene-1",
+        evidence_source: "scene",
         scene_description: "Peter denies Jesus",
         start_seconds: 42.5,
         playback_id: "mux-abc",
+        source_score: 0.87,
         similarity: 0.87,
         embedding_text: "[0.1,0.2]",
       },
@@ -68,6 +83,42 @@ describe("searchVideoSemantic", () => {
     })
   })
 
+  it("maps transcript evidence rows through the same semantic-video result shape", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([
+      {
+        video_id: "vid-transcript",
+        video_core_id: "core-transcript",
+        video_slug: "spoken-story",
+        video_title: "Spoken Story",
+        image_url: null,
+        evidence_id: "chunk-1",
+        evidence_source: "transcript",
+        scene_description: "The exact spoken phrase from the transcript",
+        start_seconds: 123.25,
+        playback_id: "mux-transcript",
+        source_score: 0.91,
+        similarity: 0.91,
+        embedding_text: "[0.3,0.4]",
+      },
+    ])
+
+    const rows = await searchVideoSemantic(prisma, {
+      queryEmbedding: "[0.3,0.4]",
+      locale: "en",
+      limit: 10,
+    })
+
+    expect(rows[0]).toMatchObject({
+      resultType: "video",
+      resultId: "vid-transcript",
+      sceneDescription: "The exact spoken phrase from the transcript",
+      startSeconds: 123.25,
+      playbackId: "mux-transcript",
+      similarity: 0.91,
+      embeddingText: "[0.3,0.4]",
+    })
+  })
+
   it("tolerates null playback_id (no matching dub for (edition, locale))", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([
       {
@@ -76,9 +127,12 @@ describe("searchVideoSemantic", () => {
         video_slug: "x",
         video_title: "X",
         image_url: null,
+        evidence_id: "scene-2",
+        evidence_source: "scene",
         scene_description: "d",
         start_seconds: 0,
         playback_id: null,
+        source_score: 0.5,
         similarity: 0.5,
         embedding_text: "[]",
       },
@@ -104,9 +158,12 @@ describe("searchVideoSemantic", () => {
         video_slug: "",
         video_title: "",
         image_url: null,
+        evidence_id: "scene-3",
+        evidence_source: "scene",
         scene_description: "",
         start_seconds: "7" as unknown as number,
         playback_id: null,
+        source_score: "0.42" as unknown as number,
         similarity: "0.42" as unknown as number,
         embedding_text: "[]",
       },
@@ -120,6 +177,286 @@ describe("searchVideoSemantic", () => {
 
     expect(rows[0]!.startSeconds).toBe(7)
     expect(rows[0]!.similarity).toBeCloseTo(0.42)
+  })
+
+  it("allows null transcript timecodes to flow through as null", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([
+      {
+        video_id: "vid-no-timecode",
+        video_core_id: null,
+        video_slug: "",
+        video_title: "",
+        image_url: null,
+        evidence_id: "chunk-no-timecode",
+        evidence_source: "transcript",
+        scene_description: "Transcript chunk without segment timing",
+        start_seconds: null,
+        playback_id: null,
+        source_score: 0.7,
+        similarity: 0.7,
+        embedding_text: "[]",
+      },
+    ])
+
+    const rows = await searchVideoSemantic(prisma, {
+      queryEmbedding: "[]",
+      locale: "en",
+      limit: 1,
+    })
+
+    expect(rows[0]!.startSeconds).toBeNull()
+  })
+
+  it("queries both scene and transcript embeddings inside one semantic-video retriever", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+
+    await searchVideoSemantic(prisma, {
+      queryEmbedding: "[0.1,0.2]",
+      locale: "en",
+      limit: 10,
+    })
+
+    const sql = latestRawSql(prisma)
+    expect(sql).toContain("WITH scene_source AS")
+    expect(sql).toContain("transcript_source AS")
+    expect(sql).toContain("FROM video_scene_locale vsl")
+    expect(sql).toContain("FROM video_transcript_chunk vtc")
+    expect(sql).toContain("UNION ALL")
+    expect(sql).not.toContain("semantic-transcript-video")
+  })
+
+  it("keeps locale/language, visibility, and non-null embedding gates in SQL", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+
+    await searchVideoSemantic(prisma, {
+      queryEmbedding: "[0.1,0.2]",
+      locale: "fr",
+      limit: 10,
+    })
+
+    const sql = latestRawSql(prisma)
+    expect((sql.match(/v\.deleted_at IS NULL/g) ?? []).length).toBe(2)
+    expect((sql.match(/vl\.status = 'published'/g) ?? []).length).toBe(2)
+    expect(sql).toContain("vsl.embedding IS NOT NULL")
+    expect(sql).toContain("vsl.locale =")
+    expect(sql).toContain("vtc.embedding IS NOT NULL")
+    expect(sql).toContain("vtc.language =")
+    expect(sql).toContain("vt.language =")
+  })
+
+  it("selects best per-source evidence before bounding source windows", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+
+    await searchVideoSemantic(prisma, {
+      queryEmbedding: "[0.1,0.2]",
+      locale: "en",
+      limit: 5,
+    })
+
+    const sql = latestRawSql(prisma)
+    expect(sql).toContain("SELECT DISTINCT ON (vs.video_id)")
+    expect(sql).toContain("SELECT DISTINCT ON (vt.video_id)")
+    expect(sql).toContain("ORDER BY")
+    expect(sql).toContain("vs.video_id")
+    expect(sql).toContain("vt.video_id")
+    expect(sql).toContain("LIMIT")
+  })
+
+  it("uses bounded per-source candidate windows after per-video collapse", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+
+    await searchVideoSemantic(prisma, {
+      queryEmbedding: "[0.1,0.2]",
+      locale: "en",
+      limit: 7,
+    })
+
+    const values = latestRawValues(prisma)
+    expect(values).toContain(14)
+  })
+})
+
+describe("mixVideoSemanticEvidenceRows", () => {
+  const base = {
+    video_core_id: null,
+    video_slug: "video",
+    video_title: "Video",
+    image_url: null,
+    playback_id: null,
+    embedding_text: "[0]",
+  }
+
+  it("collapses scene+transcript evidence to one candidate per video", () => {
+    const rows = mixVideoSemanticEvidenceRows([
+      {
+        ...base,
+        video_id: "vid-1",
+        evidence_id: "scene-1",
+        evidence_source: "scene",
+        scene_description: "Scene evidence",
+        start_seconds: 20,
+        source_score: 0.86,
+        similarity: 0.86,
+      },
+      {
+        ...base,
+        video_id: "vid-1",
+        evidence_id: "chunk-1",
+        evidence_source: "transcript",
+        scene_description: "Transcript evidence",
+        start_seconds: 10,
+        source_score: 0.84,
+        similarity: 0.84,
+      },
+    ])
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      video_id: "vid-1",
+      scene_description: "Scene evidence",
+      start_seconds: 20,
+      embedding_text: "[0]",
+    })
+    expect(rows[0]!.similarity).toBeGreaterThan(0.86)
+  })
+
+  it("takes snippet, timecode, playback, and embedding text from winning transcript evidence", () => {
+    const rows = mixVideoSemanticEvidenceRows([
+      {
+        ...base,
+        video_id: "vid-1",
+        evidence_id: "scene-1",
+        evidence_source: "scene",
+        scene_description: "Scene evidence",
+        start_seconds: 5,
+        playback_id: "scene-playback",
+        source_score: 0.8,
+        similarity: 0.8,
+        embedding_text: "[scene]",
+      },
+      {
+        ...base,
+        video_id: "vid-1",
+        evidence_id: "chunk-1",
+        evidence_source: "transcript",
+        scene_description: "Transcript evidence",
+        start_seconds: 15,
+        playback_id: "transcript-playback",
+        source_score: 0.9,
+        similarity: 0.9,
+        embedding_text: "[transcript]",
+      },
+    ])
+
+    expect(rows[0]).toMatchObject({
+      scene_description: "Transcript evidence",
+      start_seconds: 15,
+      playback_id: "transcript-playback",
+      embedding_text: "[transcript]",
+    })
+  })
+
+  it("keeps strong single-source videos above weaker mixed videos", () => {
+    const rows = mixVideoSemanticEvidenceRows([
+      {
+        ...base,
+        video_id: "single",
+        evidence_id: "single-scene",
+        evidence_source: "scene",
+        scene_description: "Strong scene",
+        start_seconds: 0,
+        source_score: 0.9,
+        similarity: 0.9,
+      },
+      {
+        ...base,
+        video_id: "mixed",
+        evidence_id: "mixed-scene",
+        evidence_source: "scene",
+        scene_description: "Mixed scene",
+        start_seconds: 0,
+        source_score: 0.85,
+        similarity: 0.85,
+      },
+      {
+        ...base,
+        video_id: "mixed",
+        evidence_id: "mixed-chunk",
+        evidence_source: "transcript",
+        scene_description: "Mixed transcript",
+        start_seconds: 1,
+        source_score: 0.8,
+        similarity: 0.8,
+      },
+    ])
+
+    expect(rows.map((row) => row.video_id)).toEqual(["single", "mixed"])
+  })
+
+  it("uses deterministic tie ordering with scene before transcript and early timecode before id", () => {
+    const rows = mixVideoSemanticEvidenceRows([
+      {
+        ...base,
+        video_id: "b",
+        evidence_id: "chunk-b",
+        evidence_source: "transcript",
+        scene_description: "Transcript B",
+        start_seconds: 3,
+        source_score: 0.8,
+        similarity: 0.8,
+      },
+      {
+        ...base,
+        video_id: "a",
+        evidence_id: "scene-a",
+        evidence_source: "scene",
+        scene_description: "Scene A",
+        start_seconds: 7,
+        source_score: 0.8,
+        similarity: 0.8,
+      },
+      {
+        ...base,
+        video_id: "a",
+        evidence_id: "chunk-a",
+        evidence_source: "transcript",
+        scene_description: "Transcript A",
+        start_seconds: 1,
+        source_score: 0.8,
+        similarity: 0.8,
+      },
+    ])
+
+    expect(rows.map((row) => row.video_id)).toEqual(["a", "b"])
+    expect(rows[0]!.scene_description).toBe("Scene A")
+  })
+})
+
+describe("calculateVideoSemanticMixedScore", () => {
+  it("lets close scene+transcript evidence outrank a nearby single-source result", () => {
+    const mixed = calculateVideoSemanticMixedScore([0.86, 0.84])
+    const single = calculateVideoSemanticMixedScore([0.862])
+
+    expect(mixed).toBeGreaterThan(single)
+  })
+
+  it("keeps strong single-source evidence above weaker mixed evidence", () => {
+    const single = calculateVideoSemanticMixedScore([0.9])
+    const mixed = calculateVideoSemanticMixedScore([0.85, 0.8])
+
+    expect(single).toBeGreaterThan(mixed)
+  })
+
+  it("does not boost weak second-source evidence below the agreement threshold", () => {
+    const mixed = calculateVideoSemanticMixedScore([0.85, 0.7])
+
+    expect(mixed).toBe(0.85)
+  })
+
+  it("caps mixed scores at 1", () => {
+    const mixed = calculateVideoSemanticMixedScore([0.999, 0.99])
+
+    expect(mixed).toBe(1)
   })
 })
 

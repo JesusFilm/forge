@@ -44,6 +44,27 @@ export type SemanticSearchParams = {
   limit: number
 }
 
+export const VIDEO_SEMANTIC_MAX_AGREEMENT_BONUS = 0.01
+export const VIDEO_SEMANTIC_AGREEMENT_THRESHOLD = 0.75
+export const VIDEO_SEMANTIC_AGREEMENT_FACTOR = 0.04
+
+export function calculateVideoSemanticMixedScore(
+  sourceScores: readonly number[],
+): number {
+  if (sourceScores.length === 0) return 0
+  const bestSourceScore = Math.max(...sourceScores)
+  if (sourceScores.length < 2) return bestSourceScore
+
+  const weakestSourceScore = Math.min(...sourceScores)
+  const agreementBonus = Math.min(
+    VIDEO_SEMANTIC_MAX_AGREEMENT_BONUS,
+    Math.max(0, weakestSourceScore - VIDEO_SEMANTIC_AGREEMENT_THRESHOLD) *
+      VIDEO_SEMANTIC_AGREEMENT_FACTOR,
+  )
+
+  return Math.min(1, bestSourceScore + agreementBonus)
+}
+
 export type KeywordSearchParams = {
   query: string
   locale: string
@@ -62,7 +83,7 @@ export type VideoSemanticResult = RankedItem & {
   videoTitle: string
   imageUrl: string | null
   sceneDescription: string
-  startSeconds: number
+  startSeconds: number | null
   playbackId: string | null
   similarity: number
   embeddingText: string
@@ -119,10 +140,116 @@ type VideoSemanticRow = {
   video_title: string | null
   image_url: string | null
   scene_description: string
-  start_seconds: number
+  start_seconds: number | null
   playback_id: string | null
   similarity: number
   embedding_text: string
+}
+
+type VideoSemanticEvidenceRow = VideoSemanticRow & {
+  evidence_id: string
+  evidence_source: "scene" | "transcript"
+  source_score: number
+}
+
+function evidenceSourcePriority(source: "scene" | "transcript"): number {
+  return source === "scene" ? 0 : 1
+}
+
+function compareNullableStartSeconds(
+  a: number | null,
+  b: number | null,
+): number {
+  if (a == null && b == null) return 0
+  if (a == null) return 1
+  if (b == null) return -1
+  return a - b
+}
+
+export function mixVideoSemanticEvidenceRows(
+  rows: readonly VideoSemanticEvidenceRow[],
+): VideoSemanticRow[] {
+  const byVideo = new Map<string, VideoSemanticEvidenceRow[]>()
+  for (const row of rows) {
+    const existing = byVideo.get(row.video_id)
+    if (existing == null) {
+      byVideo.set(row.video_id, [row])
+    } else {
+      existing.push(row)
+    }
+  }
+
+  const mixed: Array<
+    VideoSemanticRow & {
+      best_source_score: number
+      winner_source_priority: number
+    }
+  > = []
+  for (const evidenceRows of byVideo.values()) {
+    evidenceRows.sort((a, b) => {
+      const scoreDelta = Number(b.source_score) - Number(a.source_score)
+      if (scoreDelta !== 0) return scoreDelta
+
+      const sourceDelta =
+        evidenceSourcePriority(a.evidence_source) -
+        evidenceSourcePriority(b.evidence_source)
+      if (sourceDelta !== 0) return sourceDelta
+
+      const timeDelta = compareNullableStartSeconds(
+        a.start_seconds,
+        b.start_seconds,
+      )
+      if (timeDelta !== 0) return timeDelta
+
+      return a.evidence_id.localeCompare(b.evidence_id)
+    })
+
+    const winner = evidenceRows[0]!
+    const sourceScores = evidenceRows.map((row) => Number(row.source_score))
+    const bestSourceScore = Math.max(...sourceScores)
+    mixed.push({
+      video_id: winner.video_id,
+      video_core_id: winner.video_core_id,
+      video_slug: winner.video_slug,
+      video_title: winner.video_title,
+      image_url: winner.image_url,
+      scene_description: winner.scene_description,
+      start_seconds: winner.start_seconds,
+      playback_id: winner.playback_id,
+      similarity: calculateVideoSemanticMixedScore(sourceScores),
+      embedding_text: winner.embedding_text,
+      best_source_score: bestSourceScore,
+      winner_source_priority: evidenceSourcePriority(winner.evidence_source),
+    })
+  }
+
+  mixed.sort((a, b) => {
+    const mixedScoreDelta = Number(b.similarity) - Number(a.similarity)
+    if (mixedScoreDelta !== 0) return mixedScoreDelta
+
+    const sourceScoreDelta =
+      Number(b.best_source_score) - Number(a.best_source_score)
+    if (sourceScoreDelta !== 0) return sourceScoreDelta
+
+    const sourceDelta = a.winner_source_priority - b.winner_source_priority
+    if (sourceDelta !== 0) return sourceDelta
+
+    const timeDelta = compareNullableStartSeconds(
+      a.start_seconds,
+      b.start_seconds,
+    )
+    if (timeDelta !== 0) return timeDelta
+
+    return a.video_id.localeCompare(b.video_id)
+  })
+
+  return mixed.map(
+    ({
+      best_source_score: _bestSourceScore,
+      winner_source_priority: _winnerSourcePriority,
+      ...row
+    }) => row,
+  )
 }
 
 type VideoKeywordRow = {
@@ -157,10 +284,12 @@ type ExperienceKeywordRow = {
 // -----------------------------------------------------------------------------
 
 /**
- * Per-locale semantic search over VideoSceneLocale embeddings.
+ * Per-locale semantic search over video scene + transcript embeddings.
  *
- * One row per video (DISTINCT ON video_id) carrying the best-matching
- * scene for the requested locale. `playbackId` resolves via a LATERAL
+ * One row per video carrying the best mixed evidence for the requested
+ * locale. Scene and transcript candidates are collapsed inside this
+ * retriever so RRF still sees a single `semantic-video` list.
+ * `playbackId` resolves via a LATERAL
  * lookup on `video_dub` → `mux_video`, keyed by
  * `(video_edition_id, language.bcp47 = locale)`. When no dub matches
  * `(edition, locale)`, `playbackId` is NULL and the row still returns —
@@ -177,69 +306,139 @@ export async function searchVideoSemantic(
   params: SemanticSearchParams,
 ): Promise<VideoSemanticResult[]> {
   const { queryEmbedding, locale, limit } = params
+  const candidateLimit = Math.max(limit * 2, limit)
 
-  const rows = await prisma.$queryRaw<VideoSemanticRow[]>`
-    SELECT * FROM (
-      SELECT DISTINCT ON (vs.video_id)
-        vs.video_id                       AS video_id,
-        v.core_id                         AS video_core_id,
-        v.slug                            AS video_slug,
-        vl.title                          AS video_title,
-        COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
-        vsl.description                   AS scene_description,
-        vs.start_seconds                  AS start_seconds,
-        dub_mux.playback_id               AS playback_id,
-        1 - (vsl.embedding <=> ${queryEmbedding}::vector) AS similarity,
-        vsl.embedding::text               AS embedding_text
-      FROM video_scene_locale vsl
-      JOIN video_scene vs ON vs.id = vsl.video_scene_id
-      JOIN video v ON v.id = vs.video_id
-        AND v.deleted_at IS NULL
-      JOIN video_locale vl
-        ON vl.video_id = v.id
-        AND vl.locale = ${locale}
-        AND vl.status = 'published'
-      LEFT JOIN LATERAL (
-        SELECT mv.playback_id
-        FROM video_dub vd
-        JOIN language lg ON lg.id = vd.language_id
-          AND lg.bcp47 = ${locale}
+  const evidenceRows = await prisma.$queryRaw<VideoSemanticEvidenceRow[]>`
+    WITH scene_source AS (
+      SELECT * FROM (
+        SELECT DISTINCT ON (vs.video_id)
+          vs.video_id                       AS video_id,
+          v.core_id                         AS video_core_id,
+          v.slug                            AS video_slug,
+          vl.title                          AS video_title,
+          COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
+          vsl.id                            AS evidence_id,
+          'scene'                           AS evidence_source,
+          vsl.description                   AS scene_description,
+          vs.start_seconds                  AS start_seconds,
+          dub_mux.playback_id               AS playback_id,
+          1 - (vsl.embedding <=> ${queryEmbedding}::vector) AS source_score,
+          vsl.embedding::text               AS embedding_text
+        FROM video_scene_locale vsl
+        JOIN video_scene vs ON vs.id = vsl.video_scene_id
+        JOIN video v ON v.id = vs.video_id
+          AND v.deleted_at IS NULL
+        JOIN video_locale vl
+          ON vl.video_id = v.id
+          AND vl.locale = ${locale}
+          AND vl.status = 'published'
+        LEFT JOIN LATERAL (
+          SELECT mv.playback_id
+          FROM video_dub vd
+          JOIN language lg ON lg.id = vd.language_id
+            AND lg.bcp47 = ${locale}
 
-        LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
-        WHERE vd.video_edition_id = vs.video_edition_id
-          AND vd.deleted_at IS NULL
-        ORDER BY vd.published DESC NULLS LAST, vd.updated_at DESC
-        LIMIT 1
-      ) dub_mux ON true
-      LEFT JOIN LATERAL (
-        SELECT vi2.mobile_cinematic_high, vi2.url
-        FROM video_image vi2
-        WHERE vi2.video_id = v.id
-          AND vi2.deleted_at IS NULL
-        ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
-        LIMIT 1
-      ) vi ON true
-      WHERE vsl.embedding IS NOT NULL
-        AND vsl.locale = ${locale}
-      ORDER BY vs.video_id, vsl.embedding <=> ${queryEmbedding}::vector
-    ) sub
-    ORDER BY sub.similarity DESC
-    LIMIT ${limit}
+          LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
+          WHERE vd.video_edition_id = vs.video_edition_id
+            AND vd.deleted_at IS NULL
+          ORDER BY vd.published DESC NULLS LAST, vd.updated_at DESC
+          LIMIT 1
+        ) dub_mux ON true
+        LEFT JOIN LATERAL (
+          SELECT vi2.mobile_cinematic_high, vi2.url
+          FROM video_image vi2
+          WHERE vi2.video_id = v.id
+            AND vi2.deleted_at IS NULL
+          ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
+          LIMIT 1
+        ) vi ON true
+        WHERE vsl.embedding IS NOT NULL
+          AND vsl.locale = ${locale}
+        ORDER BY
+          vs.video_id,
+          vsl.embedding <=> ${queryEmbedding}::vector,
+          vs.start_seconds ASC,
+          vsl.id ASC
+      ) best_scene_per_video
+      ORDER BY source_score DESC, start_seconds ASC, evidence_id ASC
+      LIMIT ${candidateLimit}
+    ),
+    transcript_source AS (
+      SELECT * FROM (
+        SELECT DISTINCT ON (vt.video_id)
+          vt.video_id                       AS video_id,
+          v.core_id                         AS video_core_id,
+          v.slug                            AS video_slug,
+          vl.title                          AS video_title,
+          COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
+          vtc.id                            AS evidence_id,
+          'transcript'                      AS evidence_source,
+          vtc.text                          AS scene_description,
+          vtc.start_seconds                 AS start_seconds,
+          dub_mux.playback_id               AS playback_id,
+          1 - (vtc.embedding <=> ${queryEmbedding}::vector) AS source_score,
+          vtc.embedding::text               AS embedding_text
+        FROM video_transcript_chunk vtc
+        JOIN video_transcript vt ON vt.id = vtc.transcript_id
+        JOIN video v ON v.id = vt.video_id
+          AND v.deleted_at IS NULL
+        JOIN video_locale vl
+          ON vl.video_id = v.id
+          AND vl.locale = ${locale}
+          AND vl.status = 'published'
+        LEFT JOIN LATERAL (
+          SELECT mv.playback_id
+          FROM video_dub vd
+          JOIN language lg ON lg.id = vd.language_id
+            AND lg.bcp47 = ${locale}
+
+          LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
+          WHERE vd.video_edition_id = vt.video_edition_id
+            AND vd.deleted_at IS NULL
+          ORDER BY vd.published DESC NULLS LAST, vd.updated_at DESC
+          LIMIT 1
+        ) dub_mux ON true
+        LEFT JOIN LATERAL (
+          SELECT vi2.mobile_cinematic_high, vi2.url
+          FROM video_image vi2
+          WHERE vi2.video_id = v.id
+            AND vi2.deleted_at IS NULL
+          ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
+          LIMIT 1
+        ) vi ON true
+        WHERE vtc.embedding IS NOT NULL
+          AND vtc.language = ${locale}
+          AND vt.language = ${locale}
+        ORDER BY
+          vt.video_id,
+          vtc.embedding <=> ${queryEmbedding}::vector,
+          vtc.start_seconds ASC NULLS LAST,
+          vtc.id ASC
+      ) best_transcript_per_video
+      ORDER BY source_score DESC, start_seconds ASC NULLS LAST, evidence_id ASC
+      LIMIT ${candidateLimit}
+    )
+    SELECT * FROM scene_source
+    UNION ALL
+    SELECT * FROM transcript_source
   `
 
-  return rows.map((row) => ({
-    resultType: "video" as const,
-    resultId: row.video_id,
-    videoCoreId: row.video_core_id,
-    videoSlug: row.video_slug ?? "",
-    videoTitle: row.video_title ?? "",
-    imageUrl: row.image_url ?? null,
-    sceneDescription: row.scene_description,
-    startSeconds: Number(row.start_seconds),
-    playbackId: row.playback_id,
-    similarity: Number(row.similarity),
-    embeddingText: row.embedding_text,
-  }))
+  return mixVideoSemanticEvidenceRows(evidenceRows)
+    .slice(0, limit)
+    .map((row) => ({
+      resultType: "video" as const,
+      resultId: row.video_id,
+      videoCoreId: row.video_core_id,
+      videoSlug: row.video_slug ?? "",
+      videoTitle: row.video_title ?? "",
+      imageUrl: row.image_url ?? null,
+      sceneDescription: row.scene_description,
+      startSeconds:
+        row.start_seconds == null ? null : Number(row.start_seconds),
+      playbackId: row.playback_id,
+      similarity: Number(row.similarity),
+      embeddingText: row.embedding_text,
+    }))
 }
 
 /**

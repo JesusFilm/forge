@@ -3,14 +3,13 @@ id: "feat-119"
 title: "Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger"
 owner: "nisal"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-05-06"
 duration: 4
 depends_on: []
 blocks:
   - "feat-120"
   - "feat-125"
-  - "feat-126"
 tags:
   - "admin"
   - "manager"
@@ -329,6 +328,19 @@ The embed workflow has zero knowledge of the enrichment workflow. The trigger en
 - **Idempotency.** Two calls for the same `(assetId, kind)` in flight produce one manager job, not two.
 
 ## Verification
+
+### Completion evidence
+
+Verified 2026-05-19 during the Compound Engineering work loop. The
+implementation already landed on `main` in the expected stacked PRs:
+
+- PR #892 / `87d2b985` — `feat(admin): classify NoSuchKey as artifact_missing + emit missingArtifacts list (feat-119 PR1)`.
+- PR #893 / `e56aceac` — `feat(admin): decoupled enrichment-trigger endpoint + GraphQL mutation + CLI (feat-119 PR2)`.
+
+Focused validation on the current checkout:
+
+- `pnpm --filter @forge/admin test -- manager-artifacts.service.test.ts sceneEmbeddingBackfill.test.ts transcriptEmbeddingBackfill.test.ts graphql/mutations/manager-enrichment.test.ts graphql/mutations/scene-embedding.test.ts graphql/mutations/transcript-embedding.test.ts services/manager-trigger.service.test.ts` — 7 files / 137 tests passed.
+- `pnpm --filter @forge/manager test -- admin-trigger-auth.test.ts admin-trigger-route.test.ts app/api/admin-trigger/scene-analysis/route.test.ts app/api/admin-trigger/transcript/route.test.ts` — 4 files / 42 tests passed.
 
 ### PR1
 

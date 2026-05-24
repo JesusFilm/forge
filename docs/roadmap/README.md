@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (May 22, 2026)
 
-- **Total tickets:** 150
-- **Complete:** 79
+- **Total tickets:** 151
+- **Complete:** 80
 - **In progress:** 10
 - **Not started:** 19
 - **Blocked:** 42
@@ -31,6 +31,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-127](content-discovery/feat-127-manager-durable-admin-trigger-job-state.md)                              | Manager durable admin-trigger job state for operator enrichment                                 | nisal     | P0       | 2026-05-19 | 2    | 2026-05-20 | not-started |
 | [feat-128](content-discovery/feat-128-enrichment-backfill-failure-resilience.md)                               | Enrichment backfill failure resilience                                                          | nisal     | P0       | 2026-05-19 | 1    | 2026-05-19 | complete    |
 | [feat-126](content-discovery/feat-126-manager-admin-lookup-tail-latency-recovery.md)                           | Recover manager enrichment dispatch from admin lookup tail latency                              | nisal     | P0       | 2026-05-20 | 1    | 2026-05-20 | complete    |
+| [feat-131](content-discovery/feat-131-mixed-scene-transcript-video-semantic-search.md)                         | Mixed scene and transcript evidence for admin video semantic search                             | nisal     | P1       | 2026-05-21 | 1    | 2026-05-21 | complete    |
 | [feat-097](content-discovery/feat-097-investigate-prod-query-embedding.md)                                     | Investigate Production Query Embedding Degradation                                              | nisal     | P1       | 2026-04-15 | 2    | 2026-04-16 | complete    |
 | [feat-095](content-discovery/feat-095-experience-embedding-pipeline.md)                                        | Experience Embedding Pipeline                                                                   | nisal     | P1       | 2026-04-16 | 5    | 2026-04-20 | complete    |
 | [feat-037](content-discovery/feat-037-video-content-vectorization.md)                                          | Video Content Vectorization for Recommendations                                                 | nisal     | P1       | 2026-04-21 | 42   | 2026-06-01 | complete    |

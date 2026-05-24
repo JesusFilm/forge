@@ -3,7 +3,7 @@ id: "feat-120"
 title: "Localized Scene Embeddings + Translated Snippets — true per-locale semantic search"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-05-13"
 duration: 7
 depends_on:
