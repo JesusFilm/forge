@@ -54,6 +54,23 @@ const OBSCURED_PAUSE_THRESHOLD = 0.6
 // globe button appears. With only one variant there's nothing to switch to.
 const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
 
+function parseVttTime(timeStr: string): number {
+  const parts = timeStr.split(":")
+  if (parts.length === 3) {
+    const [h, m, s] = parts
+    return (
+      Number.parseInt(h!, 10) * 3600 +
+      Number.parseInt(m!, 10) * 60 +
+      Number.parseFloat(s!)
+    )
+  }
+  if (parts.length === 2) {
+    const [m, s] = parts
+    return Number.parseInt(m!, 10) * 60 + Number.parseFloat(s!)
+  }
+  return 0
+}
+
 export function HeroPlayer({
   block,
   onPlayerReady,
@@ -61,24 +78,15 @@ export function HeroPlayer({
   playableLanguageCount,
   darkenOverlay = false,
   overlay,
+  subtitleVttSrc,
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onLanguageClick?: () => void
   playableLanguageCount?: number
-  // When true, layers a flat black tint over the player so the hero reads
-  // as decorative background rather than a primary playback surface.
-  // Used by the series page where the trailer is aesthetic, not the
-  // page's core action. Default false — the watch page renders unchanged.
   darkenOverlay?: boolean
-  // Replaces the default pre-reveal overlay (label / title / Play with
-  // Sound pill). When provided, the consumer owns positioning AND chrome
-  // semantics — the player will not reveal its own chrome on click
-  // because the Play with Sound trigger lives inside the default overlay
-  // that this prop displaces. Use for hero variants where the trailer
-  // is decorative (e.g. the series page) and the user shouldn't toggle
-  // into player chrome.
   overlay?: ReactNode
+  subtitleVttSrc?: string | null
 }) {
   const { video, variant } = block
   const wrapperRef = useRef<HTMLDivElement | null>(null)
@@ -92,6 +100,66 @@ export function HeroPlayer({
     },
     [onPlayerReady],
   )
+
+  useEffect(() => {
+    const el = playerRef.current as
+      | (HTMLMediaElement & { addTextTrack?: HTMLMediaElement["addTextTrack"] })
+      | null
+    if (!el || !el.textTracks || !el.addTextTrack) return
+
+    if (!subtitleVttSrc) {
+      const tracks = el.textTracks
+      for (let i = 0; i < tracks.length; i++) {
+        if (tracks[i]!.mode !== "disabled") tracks[i]!.mode = "disabled"
+      }
+      return
+    }
+
+    const track = el.addTextTrack("subtitles", "Subtitles", "")
+    track.mode = "showing"
+
+    const fetchVtt = async () => {
+      try {
+        const res = await fetch(subtitleVttSrc)
+        const text = await res.text()
+        const lines = text.split("\n")
+        let i = 0
+        while (i < lines.length && !lines[i]!.includes("-->")) i++
+        while (i < lines.length) {
+          const timeLine = lines[i]!
+          if (!timeLine.includes("-->")) {
+            i++
+            continue
+          }
+          const [startStr, endStr] = timeLine.split("-->").map((s) => s.trim())
+          const start = parseVttTime(startStr!)
+          const end = parseVttTime(endStr!)
+          i++
+          const cueLines: string[] = []
+          while (i < lines.length && lines[i]!.trim() !== "") {
+            cueLines.push(lines[i]!)
+            i++
+          }
+          if (
+            cueLines.length > 0 &&
+            Number.isFinite(start) &&
+            Number.isFinite(end)
+          ) {
+            track.addCue(new VTTCue(start, end, cueLines.join("\n")))
+          }
+          i++
+        }
+      } catch {
+        // VTT fetch failed — subtitle track stays empty
+      }
+    }
+
+    fetchVtt()
+
+    return () => {
+      track.mode = "disabled"
+    }
+  }, [subtitleVttSrc, player])
 
   const [chromeRevealed, setChromeRevealed] = useState(false)
   const [pillState, setPillState] = useState<PillState>("play-with-sound")

@@ -8,9 +8,32 @@ import { DownloadModal } from "@/components/watch/DownloadModal"
 import { LanguagePickerModal } from "@/components/watch/LanguagePickerModal"
 import { ShareModal } from "@/components/watch/ShareModal"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
-import type { MergedWatchBlock, ResolvedWatchVideo } from "@/lib/content"
+import type {
+  MergedWatchBlock,
+  ResolvedWatchVideo,
+  WatchSubtitle,
+} from "@/lib/content"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
+import {
+  readSubtitlePreference,
+  writeSubtitlePreference,
+} from "@/lib/subtitle-preference-client"
 import { resolvePosterUrl } from "@/lib/url"
+
+function resolveSubtitleSlug(
+  preferred: string | null,
+  subtitles: WatchSubtitle[],
+  audioSlug: string,
+): string | null {
+  if (subtitles.length === 0) return null
+  if (preferred && subtitles.some((s) => s.language.slug === preferred))
+    return preferred
+  const audioMatch = subtitles.find((s) => s.language.slug === audioSlug)
+  if (audioMatch) return audioMatch.language.slug
+  const primary = subtitles.find((s) => s.primary)
+  if (primary) return primary.language.slug
+  return subtitles[0]!.language.slug
+}
 
 type WatchVideoRecord = ResolvedWatchVideo["video"]
 type WatchVariant = ResolvedWatchVideo["selectedVariant"]
@@ -70,6 +93,55 @@ export function WatchPageClient({
   }, [])
 
   const currentLanguageSlug = languageSlug ?? variant.language?.slug ?? ""
+
+  const subtitles = video.subtitles ?? []
+
+  const subtitleInitRef = useRef(false)
+  const initialSubtitleState = useMemo(() => {
+    if (subtitles.length === 0)
+      return { enabled: false, slug: null as string | null }
+    const pref = readSubtitlePreference()
+    if (!pref.enabled) return { enabled: false, slug: null as string | null }
+    const slugToUse = resolveSubtitleSlug(
+      pref.languageSlug,
+      subtitles,
+      currentLanguageSlug,
+    )
+    return slugToUse
+      ? { enabled: true, slug: slugToUse }
+      : { enabled: false, slug: null as string | null }
+  }, [subtitles, currentLanguageSlug])
+
+  const [subtitleEnabled, setSubtitleEnabled] = useState(false)
+  const [subtitleSlug, setSubtitleSlug] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (subtitleInitRef.current) return
+    subtitleInitRef.current = true
+    if (initialSubtitleState.enabled) {
+      setSubtitleEnabled(true)
+      setSubtitleSlug(initialSubtitleState.slug)
+    }
+  }, [initialSubtitleState])
+
+  const subtitleVttSrc = useMemo(() => {
+    if (!subtitleEnabled || !subtitleSlug) return null
+    return (
+      subtitles.find((s) => s.language.slug === subtitleSlug)?.vttSrc ?? null
+    )
+  }, [subtitleEnabled, subtitleSlug, subtitles])
+
+  const handleSubtitleChange = useCallback(
+    (enabled: boolean, slug: string | null) => {
+      if (enabled && !slug && subtitles.length > 0) {
+        slug = resolveSubtitleSlug(null, subtitles, currentLanguageSlug)
+      }
+      setSubtitleEnabled(enabled)
+      setSubtitleSlug(slug)
+      writeSubtitlePreference(enabled, slug)
+    },
+    [subtitles, currentLanguageSlug],
+  )
 
   // Drop entries missing `quality` or `url` — unrenderable / unfollowable.
   // Admin emits `VideoDubDownload.size` as a `String` (Core's bytes literal,
@@ -148,6 +220,7 @@ export function WatchPageClient({
         modalCallbacks={modalCallbacks}
         onPlayerReady={handlePlayerReady}
         locale={locale}
+        subtitleVttSrc={subtitleVttSrc}
       />
 
       <DownloadModal
@@ -166,6 +239,10 @@ export function WatchPageClient({
         videoSlug={video.slug ?? ""}
         playerRef={playerRef}
         onClose={closeModal}
+        subtitles={subtitles}
+        currentSubtitleEnabled={subtitleEnabled}
+        currentSubtitleSlug={subtitleSlug}
+        onSubtitleChange={handleSubtitleChange}
       />
       <ShareModal
         open={modalState === "share"}
