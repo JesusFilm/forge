@@ -168,6 +168,14 @@ export type WatchBibleCitation = {
   bibleBook: { documentId: string; name: string | null } | null
 }
 
+export type WatchSubtitle = {
+  documentId: string
+  language: { slug: string; name: string; bcp47: string }
+  vttSrc: string
+  primary: boolean
+  aiGenerated: boolean
+}
+
 export type WatchVideoRecord = {
   documentId: string
   slug: string | null
@@ -182,6 +190,7 @@ export type WatchVideoRecord = {
   parents: WatchParent[]
   children: WatchChild[]
   variants: WatchVariant[]
+  subtitles: WatchSubtitle[]
   studyQuestions: WatchStudyQuestion[]
   bibleCitations: WatchBibleCitation[]
 }
@@ -519,6 +528,36 @@ function normalizeVariant(
   }
 }
 
+function normalizeSubtitles(
+  variants: AdminVideoRaw["variants"],
+): WatchSubtitle[] {
+  const edition = variants?.[0]?.videoEdition
+  if (!edition?.subtitles) return []
+
+  const seen = new Set<string>()
+  return edition.subtitles
+    .filter((s) => {
+      if (!s.documentId || !s.vttSrc || !s.language?.slug) return false
+      if (seen.has(s.language.slug)) return false
+      seen.add(s.language.slug)
+      return true
+    })
+    .map(
+      (s): WatchSubtitle => ({
+        documentId: s.documentId!,
+        language: {
+          slug: s.language!.slug!,
+          name: pickLocalizedName(s.language!.name) ?? s.language!.slug!,
+          bcp47: s.language!.bcp47 ?? s.language!.slug!,
+        },
+        vttSrc: s.vttSrc!,
+        primary: s.primary ?? false,
+        aiGenerated: s.aiGenerated ?? false,
+      }),
+    )
+    .sort((a, b) => a.language.name.localeCompare(b.language.name))
+}
+
 function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
   if (!raw.documentId) return null
   const localeRow = raw.locales?.[0] ?? null
@@ -561,6 +600,7 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
     variants: (raw.variants ?? [])
       .map(normalizeVariant)
       .filter((v): v is WatchVariant => v != null),
+    subtitles: normalizeSubtitles(raw.variants),
     studyQuestions: (raw.studyQuestions ?? [])
       .map((q): WatchStudyQuestion | null => {
         if (!q.documentId) return null

@@ -147,6 +147,19 @@ export const watchVideoFragment = adminGraphql(`
       muxVideo {
         playbackId
       }
+      videoEdition {
+        subtitles {
+          documentId: id
+          language {
+            slug
+            name
+            bcp47
+          }
+          vttSrc
+          primary
+          aiGenerated
+        }
+      }
     }
     studyQuestions {
       documentId: id

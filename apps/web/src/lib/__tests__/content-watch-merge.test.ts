@@ -76,6 +76,7 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
     // tests' assumption that the carousel is fed from sibling content.
     children: [],
     variants: [],
+    subtitles: [],
     studyQuestions: [],
     bibleCitations: [],
     ...overrides,
