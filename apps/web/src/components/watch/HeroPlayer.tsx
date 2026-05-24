@@ -85,6 +85,8 @@ export function HeroPlayer({
   )
 
   useEffect(() => {
+    if (subtitleVttSrc === undefined) return
+
     const el = playerRef.current as HTMLMediaElement | null
     if (!el || !el.textTracks) return
 

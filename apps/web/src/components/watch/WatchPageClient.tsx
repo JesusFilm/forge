@@ -124,7 +124,8 @@ export function WatchPageClient({
     }
   }, [initialSubtitleState])
 
-  const subtitleVttSrc = useMemo(() => {
+  const subtitleVttSrc = useMemo((): string | null | undefined => {
+    if (subtitles.length === 0) return undefined
     if (!subtitleEnabled || !subtitleSlug) return null
     return (
       subtitles.find((s) => s.language.slug === subtitleSlug)?.vttSrc ?? null
