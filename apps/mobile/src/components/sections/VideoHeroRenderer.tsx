@@ -30,6 +30,7 @@ import { validateStreamingUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
 import { deriveMuxThumbnailUrl } from "../../lib/muxThumbnail"
 import type { AdminBlock } from "../../lib/queries"
+import { useVideoThumbnail } from "../../contexts/ExperienceProvider"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -61,8 +62,12 @@ export function VideoHeroRenderer({
   const ctaLink = (s.ctaLink as string | null)?.trim() ?? null
   const streamingUrl = s.streamingUrl as string | null
   const sectionKey = s.sectionKey as string | null
+  const videoId = s.videoId as string | null
 
-  const thumbnailUrl = resolveImageUrl(deriveMuxThumbnailUrl(streamingUrl))
+  const resolvedThumb = useVideoThumbnail(videoId)
+  const thumbnailUrl = resolveImageUrl(
+    resolvedThumb ?? deriveMuxThumbnailUrl(streamingUrl),
+  )
   const hasValidStream = validateStreamingUrl(streamingUrl)
   const hasCta =
     ctaLabel != null && ctaLabel !== "" && ctaLink != null && ctaLink !== ""

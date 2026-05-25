@@ -16,6 +16,7 @@ import { useTypography } from "../../hooks/useTypography"
 import { card, feedback, overlay, text } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
 import { deriveMuxThumbnailUrl } from "../../lib/muxThumbnail"
+import { useVideoThumbnail } from "../../contexts/ExperienceProvider"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -34,10 +35,11 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   const subtitle = s.subtitle as string | null
   const sectionKey = s.sectionKey as string | null
   const streamingUrl = s.streamingUrl as string | null
-  const mediaUrl = s.mediaUrl as string | null
+  const videoId = s.videoId as string | null
 
+  const resolvedThumb = useVideoThumbnail(videoId)
   const thumbnailUrl = resolveImageUrl(
-    deriveMuxThumbnailUrl(streamingUrl) ?? mediaUrl,
+    resolvedThumb ?? deriveMuxThumbnailUrl(streamingUrl),
   )
 
   const handlePress = () => {

@@ -29,6 +29,7 @@ import {
   HORIZONTAL_PADDING,
 } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
+import { useExperienceContext } from "../../contexts/ExperienceProvider"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -64,6 +65,7 @@ export function MediaCollectionRenderer({
   const router = useRouter()
   const typography = useTypography()
   const { width: screenWidth } = useWindowDimensions()
+  const { getVideoThumbnail } = useExperienceContext()
 
   const s = section as Record<string, unknown>
   const mcTitle = s.title as string | null
@@ -76,7 +78,10 @@ export function MediaCollectionRenderer({
   if (items.length === 0) return null
 
   const renderItem = ({ item, index }: { item: MediaItem; index: number }) => {
-    const thumbnailUrl = resolveImageUrl(item.imageUrl ?? item.imageOverrideUrl)
+    const resolvedThumb = item.videoId ? getVideoThumbnail(item.videoId) : null
+    const thumbnailUrl = resolveImageUrl(
+      resolvedThumb ?? item.imageUrl ?? item.imageOverrideUrl,
+    )
     const title = item.titleOverride ?? item.labelOverride ?? ""
     const label = item.labelOverride ?? categoryLabel
 

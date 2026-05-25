@@ -1,11 +1,16 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react"
 import type { WatchExperience, AdminBlock } from "../lib/queries"
+import {
+  useVideoThumbnails,
+  type ThumbnailMap,
+} from "../hooks/useVideoThumbnails"
 
 type ExperienceContextValue = {
   experience: WatchExperience | null
   loading: boolean
   error: string | null
   getSectionByKey: (key: string) => AdminBlock | undefined
+  getVideoThumbnail: (videoId: string) => string | null
   refetch: () => void
 }
 
@@ -14,6 +19,7 @@ const ExperienceContext = createContext<ExperienceContextValue>({
   loading: true,
   error: null,
   getSectionByKey: () => undefined,
+  getVideoThumbnail: () => null,
   refetch: () => {},
 })
 
@@ -30,6 +36,8 @@ export function ExperienceProvider({
   error: string | null
   refetch: () => void
 }) {
+  const thumbnails: ThumbnailMap = useVideoThumbnails(experience)
+
   const sectionMap = useMemo(() => {
     const map = new Map<string, AdminBlock>()
     if (!experience) return map
@@ -77,9 +85,21 @@ export function ExperienceProvider({
     [sectionMap],
   )
 
+  const getVideoThumbnail = useMemo(
+    () => (videoId: string) => thumbnails.get(videoId) ?? null,
+    [thumbnails],
+  )
+
   const contextValue = useMemo(
-    () => ({ experience, loading, error, getSectionByKey, refetch }),
-    [experience, loading, error, getSectionByKey, refetch],
+    () => ({
+      experience,
+      loading,
+      error,
+      getSectionByKey,
+      getVideoThumbnail,
+      refetch,
+    }),
+    [experience, loading, error, getSectionByKey, getVideoThumbnail, refetch],
   )
 
   return (
@@ -96,4 +116,12 @@ export function useExperienceContext() {
 export function useSectionByKey(key: string): AdminBlock | undefined {
   const { getSectionByKey } = useExperienceContext()
   return getSectionByKey(key)
+}
+
+export function useVideoThumbnail(
+  videoId: string | null | undefined,
+): string | null {
+  const { getVideoThumbnail } = useExperienceContext()
+  if (!videoId) return null
+  return getVideoThumbnail(videoId)
 }

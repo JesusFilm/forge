@@ -26,6 +26,7 @@ import {
   HORIZONTAL_PADDING,
 } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
+import { useExperienceContext } from "../../contexts/ExperienceProvider"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,7 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
   const router = useRouter()
   const typography = useTypography()
   const { width: screenWidth } = useWindowDimensions()
+  const { getVideoThumbnail } = useExperienceContext()
 
   const s = section as Record<string, unknown>
   const vcTitle = s.title as string | null
@@ -70,7 +72,8 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
     item: CarouselItem
     index: number
   }) => {
-    const thumbnailUrl = resolveImageUrl(item.imageUrl)
+    const resolvedThumb = item.videoId ? getVideoThumbnail(item.videoId) : null
+    const thumbnailUrl = resolveImageUrl(item.imageUrl ?? resolvedThumb)
     const title = item.titleOverride ?? "Untitled"
     const carouselSectionKey = s.sectionKey as string | undefined
 
