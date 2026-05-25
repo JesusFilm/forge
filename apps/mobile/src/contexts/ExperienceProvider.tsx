@@ -1,12 +1,11 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react"
-import type { NormalizedBlock, NormalizedExperience } from "../lib/normalizer"
+import type { WatchExperience, AdminBlock } from "../lib/queries"
 
 type ExperienceContextValue = {
-  experience: NormalizedExperience | null
+  experience: WatchExperience | null
   loading: boolean
   error: string | null
-  /** O(1) lookup of a section by its sectionKey */
-  getSectionByKey: (key: string) => NormalizedBlock | undefined
+  getSectionByKey: (key: string) => AdminBlock | undefined
   refetch: () => void
 }
 
@@ -26,56 +25,49 @@ export function ExperienceProvider({
   refetch,
 }: {
   children: ReactNode
-  experience: NormalizedExperience | null
+  experience: WatchExperience | null
   loading: boolean
   error: string | null
   refetch: () => void
 }) {
-  // Build a Map keyed by sectionKey for O(1) lookups from the detail screen
   const sectionMap = useMemo(() => {
-    const map = new Map<string, NormalizedBlock>()
+    const map = new Map<string, AdminBlock>()
     if (!experience) return map
 
-    function indexBlock(
-      block: NormalizedBlock,
-      siblingContent?: NormalizedBlock[],
-    ) {
+    function indexBlock(block: AdminBlock, siblingContent?: AdminBlock[]) {
       const key =
-        (block.sectionKey as string | undefined) ??
-        (block.id as string | undefined)
+        "sectionKey" in block
+          ? (block.sectionKey as string | undefined)
+          : undefined
       if (key) {
         map.set(key, siblingContent ? { ...block, siblingContent } : block)
       }
 
-      // Index nested content in sectionWrapper
       if (
-        block.kind === "sectionWrapper" &&
+        block.__typename === "SectionBlock" &&
+        "sectionContent" in block &&
         Array.isArray(block.sectionContent)
       ) {
-        const children = block.sectionContent as NormalizedBlock[]
+        const children = block.sectionContent as AdminBlock[]
         for (const child of children) {
           indexBlock(child, children)
         }
       }
 
-      // Index nested content in container slots.
-      // Containers are structural wrappers — their children see the
-      // enclosing sectionWrapper's content, not the slot's own content.
-      if (block.kind === "container" && Array.isArray(block.slots)) {
-        for (const slot of block.slots as Array<{
-          slotContent?: NormalizedBlock[]
-        }>) {
-          if (Array.isArray(slot.slotContent)) {
-            for (const child of slot.slotContent) {
-              indexBlock(child, siblingContent)
-            }
-          }
+      if (
+        block.__typename === "ContainerBlock" &&
+        "content" in block &&
+        Array.isArray(block.content)
+      ) {
+        for (const item of block.content as AdminBlock[]) {
+          if (item.__typename === "ContainerSlotBlock") continue
+          indexBlock(item, siblingContent)
         }
       }
     }
 
-    for (const section of experience.sections) {
-      indexBlock(section)
+    for (const block of experience.blocks ?? []) {
+      if (block) indexBlock(block as AdminBlock)
     }
     return map
   }, [experience])
@@ -101,7 +93,7 @@ export function useExperienceContext() {
   return useContext(ExperienceContext)
 }
 
-export function useSectionByKey(key: string): NormalizedBlock | undefined {
+export function useSectionByKey(key: string): AdminBlock | undefined {
   const { getSectionByKey } = useExperienceContext()
   return getSectionByKey(key)
 }

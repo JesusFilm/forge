@@ -1,12 +1,5 @@
-import { Platform } from "react-native"
-import { env } from "../env"
+import { env, DEFAULT_ADMIN_GRAPHQL_URL } from "../env"
 
 export function getGraphQLUrl(): string {
-  return Platform.OS === "android"
-    ? env.EXPO_PUBLIC_GRAPHQL_URL_ANDROID
-    : env.EXPO_PUBLIC_GRAPHQL_URL_IOS
-}
-
-export function getApiToken(): string | undefined {
-  return env.EXPO_PUBLIC_STRAPI_TOKEN
+  return env.EXPO_PUBLIC_ADMIN_GRAPHQL_URL ?? DEFAULT_ADMIN_GRAPHQL_URL
 }
