@@ -12,18 +12,17 @@ import {
   TEXT_BODY,
 } from "../../lib/color"
 import { layout, text, button } from "../../styles/shared"
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { AdminBlock } from "../../lib/queries"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type QuestionItem = {
-  id: string
   question: string
   answer: string
 }
 
 export interface RelatedQuestionsRendererProps {
-  section: NormalizedBlock
+  section: AdminBlock
 }
 
 // ── QuestionItem ────────────────────────────────────────────────────────────
@@ -72,16 +71,17 @@ export function RelatedQuestionsRenderer({
   section,
 }: RelatedQuestionsRendererProps) {
   const typography = useTypography()
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
 
-  const heading = section.rqHeading as string | null
-  const ctaLabel = section.ctaLabel as string | null
-  const ctaLink = section.ctaLink as string | null
-  const questions = (section.questions as QuestionItem[] | undefined) ?? []
+  const s = section as Record<string, unknown>
+  const heading = s.heading as string | null
+  const ctaLabel = s.ctaLabel as string | null
+  const ctaLink = s.ctaLink as string | null
+  const questions = (s.questions as QuestionItem[] | undefined) ?? []
 
-  const handleToggle = useCallback((id: string) => {
+  const handleToggle = useCallback((index: number) => {
     animateLayout()
-    setExpandedId((prev) => (prev === id ? null : id))
+    setExpandedIndex((prev) => (prev === index ? null : index))
   }, [])
 
   const handleCtaPress = useCallback(() => {
@@ -120,12 +120,12 @@ export function RelatedQuestionsRenderer({
           </Pressable>
         )}
       </View>
-      {questions.map((item) => (
+      {questions.map((item, index) => (
         <QuestionRow
-          key={`rq-${item.id}`}
+          key={`rq-${index}`}
           item={item}
-          isExpanded={expandedId === item.id}
-          onToggle={() => handleToggle(item.id)}
+          isExpanded={expandedIndex === index}
+          onToggle={() => handleToggle(index)}
         />
       ))}
     </View>

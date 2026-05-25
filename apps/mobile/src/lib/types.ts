@@ -1,23 +1,12 @@
-/** Shape of a single video image entry from the CMS. */
+/** Shape of a single video image entry. */
 export type VideoImage = {
   url?: string | null
   mobileCinematicHigh?: string | null
   videoStill?: string | null
 }
 
-/** Shared shape for a video reference resolved from CMS data. */
-export type VideoRef = {
-  documentId?: string
-  title?: string
-  slug?: string
-  imageAlt?: string
-  images?: VideoImage[]
-}
-
 /**
  * Pick the best thumbnail URL from a video's images.
- * Accepts either an array (runtime shape from GraphQL) or a single object
- * (gql.tada inferred shape), since Strapi returns images as a collection.
  * Prefers mobileCinematicHigh, falls back to videoStill, then url.
  */
 export function pickThumbnailUrl(

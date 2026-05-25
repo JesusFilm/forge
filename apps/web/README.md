@@ -14,6 +14,6 @@ This pulls Doppler project `forge-web`, config `dev`, into `.env`.
 
 ## Boundary
 
-- May import from `packages/graphql`.
+- May import from `packages/admin-graphql`.
 - Must not call model providers directly.
-- Must not import from `apps/cms`.
+- Must not import internals from other apps.

@@ -19,7 +19,6 @@
     "graphql": "16.13.1"
   },
   "devDependencies": {
-    "@forge/graphql": "workspace:*",
     "typescript": "^5",
     "vitest": "3.2.4"
   }

@@ -17,7 +17,6 @@
     "@apollo/client": "^4.1.4",
     "@base-ui/react": "^1.2.0",
     "@forge/admin-graphql": "workspace:*",
-    "@forge/graphql": "workspace:*",
     "@forge/video-player": "workspace:*",
     "@hebcal/hdate": "^0.21.1",
     "@mux/mux-player-react": "^3.12",

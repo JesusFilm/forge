@@ -3,12 +3,13 @@ id: "feat-110"
 title: "Admin Core Sync Recurring Background Job"
 owner: "tataihono"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-04-29"
 duration: 2
 depends_on:
   - "feat-109"
-blocks: []
+blocks:
+  - "feat-132"
 tags:
   - "platform"
   - "admin"
@@ -101,3 +102,24 @@ experience with Core Sync visuals and a durable work log.
   execution.
 - Verification records local full-sync and incremental-sync timings, including
   whether a dev-data snapshot path is required for underpowered machines.
+
+## Completion Evidence
+
+Verified on 2026-05-24:
+
+- Production `@forge/admin` has `WORKFLOW_TARGET_WORLD=@workflow/world-postgres`
+  and `WORKFLOW_RUNNER_ENABLED=false`.
+- Production `@forge/admin/worker` has
+  `WORKFLOW_TARGET_WORLD=@workflow/world-postgres` and
+  `WORKFLOW_RUNNER_ENABLED=true`.
+- Both services are deployed with Railway status `SUCCESS`.
+- Production `workflow_worker_heartbeat` has a current online worker heartbeat.
+- Production `workflow_run` and `core_sync_run` contain scheduled Core Sync
+  rows with runtime run IDs, phase summaries, lock release, and coverage audit
+  data.
+- Latest coverage audit from 2026-05-20 is `pass`; the latest run still
+  reported two row-level phase errors, tracked separately in `feat-132`.
+- Focused local verification passed:
+  `pnpm --filter @forge/admin test src/services/core-sync/job.test.ts src/workflows/coreSync.test.ts src/app/api/core-sync/scheduled/route.test.ts src/app/api/core-sync/manual/route.test.ts src/services/workflow-run-log.service.test.ts src/services/workflow-runtime.service.test.ts src/instrumentation.test.ts`.
+  Also passed: `pnpm --filter @forge/admin typecheck` and
+  `pnpm --filter @forge/admin lint`.

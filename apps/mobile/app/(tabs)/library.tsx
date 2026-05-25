@@ -1,13 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
-import { FlashList } from "@shopify/flash-list"
-import { useQuery } from "@apollo/client/react"
 import { useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { LIST_EXPERIENCES } from "../../src/lib/queries"
+import { useExperienceContext } from "../../src/contexts/ExperienceProvider"
 import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionProvider"
 import { useTypography } from "../../src/hooks/useTypography"
 import {
@@ -18,169 +16,101 @@ import {
   hexToRgba,
 } from "../../src/lib/color"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
-import { layout, button } from "../../src/styles/shared"
+import { layout } from "../../src/styles/shared"
 
-// ── Component ──────────────────────────────────────────────────────────────
+// Admin's `experiences` list query is ABAC-gated (not public).
+// Until it is widened, the library shows only the active experience.
 
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets()
   const typography = useTypography()
   const router = useRouter()
-  const { currentSlug, selectExperience } = useExperienceSelection()
+  const { experience, loading } = useExperienceContext()
+  const { currentSlug } = useExperienceSelection()
 
-  const { data, loading, error, refetch } = useQuery(LIST_EXPERIENCES, {
-    variables: { locale: "en" },
-    fetchPolicy: "cache-and-network",
-  })
-
-  const experiences = (data?.experiences ?? []).filter(
-    (e): e is NonNullable<typeof e> => e !== null,
-  )
-
-  const handleSelect = (slug: string) => {
-    if (slug !== currentSlug) {
-      selectExperience(slug)
-    }
-    router.navigate("/(tabs)/")
-  }
-
-  // ── Loading state ──────────────────────────────────────────────────────
-  if (loading && experiences.length === 0) {
+  if (loading && !experience) {
     return (
       <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
         <Text style={[styles.header, typography.heading]}>Library</Text>
         <View style={styles.center}>
-          <Text style={styles.message}>Loading experiences...</Text>
+          <Text style={styles.message}>Loading...</Text>
         </View>
       </View>
     )
   }
 
-  // ── Error state ────────────────────────────────────────────────────────
-  if (error && experiences.length === 0) {
+  if (!experience) {
     return (
       <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
         <Text style={[styles.header, typography.heading]}>Library</Text>
         <View style={styles.center}>
-          <Text style={styles.message}>Failed to load experiences</Text>
-          <Pressable
-            onPress={() => refetch()}
-            style={[button.accent, styles.retryButtonExtra]}
-            accessibilityRole="button"
-            accessibilityLabel="Retry loading experiences"
-          >
-            <Text style={button.accentText}>Try Again</Text>
-          </Pressable>
+          <Text style={styles.message}>No experience loaded</Text>
         </View>
       </View>
     )
   }
 
-  // ── Empty state ────────────────────────────────────────────────────────
-  if (experiences.length === 0) {
-    return (
-      <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
-        <Text style={[styles.header, typography.heading]}>Library</Text>
-        <View style={styles.center}>
-          <Text style={styles.message}>No experiences available</Text>
-        </View>
-      </View>
-    )
-  }
+  const imageUrl = resolveImageUrl(experience.ogImageUrl ?? null)
+  const isActive = experience.slug === currentSlug
 
-  // ── List ───────────────────────────────────────────────────────────────
   return (
     <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
       <Text style={[styles.header, typography.heading]}>Library</Text>
-      <FlashList
-        data={experiences}
-        keyExtractor={(item) => item.documentId}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <ExperienceCard
-            experience={item}
-            isActive={item.slug === currentSlug}
-            onSelect={handleSelect}
-          />
-        )}
-      />
-    </View>
-  )
-}
-
-// ── Card ─────────────────────────────────────────────────────────────────
-
-function ExperienceCard({
-  experience,
-  isActive,
-  onSelect,
-}: {
-  experience: {
-    documentId: string
-    slug: string
-    title: string | null
-    metaDescription: string | null
-    ogImage: { url: string; alternativeText: string | null } | null
-  }
-  isActive: boolean
-  onSelect: (slug: string) => void
-}) {
-  const typography = useTypography()
-  const imageUrl = resolveImageUrl(experience.ogImage?.url)
-
-  return (
-    <Pressable
-      onPress={() => onSelect(experience.slug)}
-      style={[styles.card, isActive && styles.cardActive]}
-      accessibilityRole="button"
-      accessibilityLabel={`${experience.title ?? "Untitled experience"}${isActive ? ", currently active" : ""}`}
-    >
-      <View style={styles.cardThumbnail}>
-        {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            style={styles.cardImage}
-            contentFit="cover"
-            recyclingKey={`library-${experience.documentId}`}
-            accessibilityLabel={
-              experience.ogImage?.alternativeText ??
-              experience.title ??
-              "Experience thumbnail"
-            }
-          />
-        ) : (
-          <LinearGradient
-            colors={[SURFACE_COLOR, hexToRgba(SURFACE_COLOR, 0.6)]}
-            style={styles.cardImage}
-          >
-            <Ionicons name="albums-outline" size={32} color={TEXT_SECONDARY} />
-          </LinearGradient>
-        )}
-      </View>
-      <View style={styles.cardContent}>
-        <View style={styles.cardTitleRow}>
-          <Text
-            style={[styles.cardTitle, typography.titleSmall]}
-            numberOfLines={2}
-          >
-            {experience.title ?? "Untitled"}
-          </Text>
-          {isActive && (
-            <View style={styles.activeBadge}>
-              <Ionicons name="checkmark-circle" size={20} color={ACCENT} />
+      <View style={styles.listContent}>
+        <Pressable
+          onPress={() => router.navigate("/(tabs)/")}
+          style={[styles.card, isActive && styles.cardActive]}
+          accessibilityRole="button"
+          accessibilityLabel={`${experience.title ?? "Untitled experience"}, currently active`}
+        >
+          <View style={styles.cardThumbnail}>
+            {imageUrl ? (
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.cardImage}
+                contentFit="cover"
+                recyclingKey={`library-${experience.id}`}
+                accessibilityLabel={experience.title ?? "Experience thumbnail"}
+              />
+            ) : (
+              <LinearGradient
+                colors={[SURFACE_COLOR, hexToRgba(SURFACE_COLOR, 0.6)]}
+                style={styles.cardImage}
+              >
+                <Ionicons
+                  name="albums-outline"
+                  size={32}
+                  color={TEXT_SECONDARY}
+                />
+              </LinearGradient>
+            )}
+          </View>
+          <View style={styles.cardContent}>
+            <View style={styles.cardTitleRow}>
+              <Text
+                style={[styles.cardTitle, typography.titleSmall]}
+                numberOfLines={2}
+              >
+                {experience.title ?? "Untitled"}
+              </Text>
+              {isActive && (
+                <View style={styles.activeBadge}>
+                  <Ionicons name="checkmark-circle" size={20} color={ACCENT} />
+                </View>
+              )}
             </View>
-          )}
-        </View>
-        {experience.metaDescription ? (
-          <Text
-            style={[styles.cardDescription, typography.caption]}
-            numberOfLines={2}
-          >
-            {experience.metaDescription}
-          </Text>
-        ) : null}
+            {experience.metaDescription ? (
+              <Text
+                style={[styles.cardDescription, typography.caption]}
+                numberOfLines={2}
+              >
+                {experience.metaDescription}
+              </Text>
+            ) : null}
+          </View>
+        </Pressable>
       </View>
-    </Pressable>
+    </View>
   )
 }
 
@@ -208,9 +138,6 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: 16,
     textAlign: "center",
-  },
-  retryButtonExtra: {
-    marginTop: 16,
   },
   listContent: {
     paddingHorizontal: 16,

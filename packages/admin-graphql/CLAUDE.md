@@ -4,7 +4,7 @@
 
 This package provides a gql.tada typed GraphQL factory bound to admin's schema (`apps/admin/schema.graphql`). It is consumed by `apps/web` for all GraphQL operations against the admin GraphQL API.
 
-`apps/mobile` and `apps/tv` continue to read from Strapi via `@forge/graphql` until their own migrations.
+`apps/web`, `apps/mobile`, and `apps/tv` read from admin via this package.
 
 ## Stack
 

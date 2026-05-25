@@ -1,7 +1,7 @@
 import type { JobStepState, WorkflowStepName } from "@/types/job"
 
-// These steps are persisted at job creation and must stay aligned with the CMS
-// component enum plus the generated GraphQL contract.
+// These steps are persisted at job creation and must stay aligned with the
+// Manager job read/write contracts.
 export const FORGE_WORKFLOW_STEPS: WorkflowStepName[] = [
   "transcription",
   "translation",

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import "video.js/dist/video-js.css"
-import type { FragmentOf } from "@forge/graphql"
+import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { RouteVideo } from "@/lib/content"
 import type Player from "video.js/dist/types/player"
 import { MuxVideo, useVideoPlayerCore } from "@forge/video-player"

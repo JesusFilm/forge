@@ -83,6 +83,72 @@ RUN mkdir -p /run/sshd /etc/ssh/sshd_config.d && \
     'AllowUsers vscode' \
     > /etc/ssh/sshd_config.d/forge-devcontainer.conf
 
+RUN cat > /usr/local/bin/sync-github-authorized-keys <<'EOF' && \
+  chmod 0755 /usr/local/bin/sync-github-authorized-keys
+#!/usr/bin/env bash
+set -euo pipefail
+
+authorized_keys="${HOME}/.ssh/authorized_keys"
+managed_begin="# BEGIN github.com public keys"
+managed_end="# END github.com public keys"
+
+if ! install -d -m 0700 "${HOME}/.ssh" 2>/dev/null; then
+  sudo install -d -o "$(id -u)" -g "$(id -g)" -m 0700 "${HOME}/.ssh"
+fi
+
+if ! touch "$authorized_keys" 2>/dev/null; then
+  sudo touch "$authorized_keys"
+  sudo chown "$(id -u):$(id -g)" "$authorized_keys"
+fi
+
+chmod 0600 "$authorized_keys"
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo "GitHub CLI is not available; skipping automatic SSH authorized_keys setup." >&2
+  exit 0
+fi
+
+github_user="$(
+  gh auth status --hostname github.com 2>&1 |
+    sed -nE 's/.*Logged in to github\.com account ([^ ]+).*/\1/p' |
+    head -n 1
+)"
+
+if [ -z "$github_user" ]; then
+  echo "GitHub CLI is not authenticated; run 'gh auth login' inside the devcontainer to enable automatic SSH access." >&2
+  exit 0
+fi
+
+github_keys="$(
+  curl -fsSL "https://github.com/${github_user}.keys" |
+    grep -E '^(ssh-rsa|ssh-ed25519|ecdsa-sha2-nistp[0-9]+|sk-ssh-ed25519@openssh.com|sk-ecdsa-sha2-nistp256@openssh.com) ' || true
+)"
+
+if [ -z "$github_keys" ]; then
+  echo "No SSH public keys found at https://github.com/${github_user}.keys." >&2
+  echo "Add an SSH key to GitHub, then restart the devcontainer to enable local SSH access." >&2
+  echo "GitHub SSH key settings: https://github.com/settings/keys" >&2
+  exit 0
+fi
+
+tmp="$(mktemp)"
+awk -v begin="$managed_begin" -v end="$managed_end" '
+  $0 == begin { skip = 1; next }
+  $0 == end { skip = 0; next }
+  !skip { print }
+' "$authorized_keys" > "$tmp"
+
+{
+  cat "$tmp"
+  printf '%s\n' "$managed_begin"
+  printf '%s\n' "$github_keys"
+  printf '%s\n' "$managed_end"
+} > "$authorized_keys"
+
+rm -f "$tmp"
+chmod 0600 "$authorized_keys"
+EOF
+
 # Set environment variables
 ENV DEVCONTAINER=true
 ENV SHELL=/bin/zsh

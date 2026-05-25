@@ -85,8 +85,10 @@ Before deploying changes to this flow:
   `@forge/auth`.
 - Verified `/api/health` returns `{ "ok": true, "service": "forge-auth" }` on
   the real Auth domain.
-- Startup applied Prisma migration `0001_init` and seeded one first-party admin
-  app, four environments, four OAuth clients, and eight scopes.
+- Startup applied Prisma migration `0001_init` and seeds first-party Admin and
+  Manager app environments. Manager session-validation service clients remain
+  disabled until their `AUTH_MANAGER_SESSION_SERVICE_CLIENT_SECRET_*` value is
+  configured and the seed is rerun.
 - 2026-05-20 redeploy trigger: refresh `@forge/auth` so the Manager OAuth
   client seed changes from PR #989 run on Railway startup.
 - Copied available upstream SSO provider env values from admin to Auth:
