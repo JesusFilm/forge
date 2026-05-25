@@ -20,15 +20,20 @@ export function SubtitleOverlay({
 }) {
   const [cueText, setCueText] = useState<string | null>(null)
   const [bottomOffset, setBottomOffset] = useState(16)
-  const [chromeRevealed, setChromeRevealed] = useState(false)
+  const [playbackCommitted, setPlaybackCommitted] = useState(false)
+  const [chromeBarVisible, setChromeBarVisible] = useState(false)
   const listenerRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     const wrapper = wrapperRef.current
     if (!wrapper) return
-    setChromeRevealed(wrapper.getAttribute("data-chrome-revealed") === "true")
+    setPlaybackCommitted(
+      wrapper.getAttribute("data-chrome-revealed") === "true",
+    )
     const observer = new MutationObserver(() => {
-      setChromeRevealed(wrapper.getAttribute("data-chrome-revealed") === "true")
+      setPlaybackCommitted(
+        wrapper.getAttribute("data-chrome-revealed") === "true",
+      )
     })
     observer.observe(wrapper, {
       attributes: true,
@@ -36,6 +41,54 @@ export function SubtitleOverlay({
     })
     return () => observer.disconnect()
   }, [wrapperRef])
+
+  useEffect(() => {
+    if (!playbackCommitted) return
+
+    const sync = () => {
+      const bar = document.querySelector(
+        '[data-testid="hero-player-custom-chrome"]',
+      )
+      setChromeBarVisible(bar?.getAttribute("data-visible") === "true")
+    }
+
+    sync()
+
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.type === "attributes" && m.attributeName === "data-visible") {
+          sync()
+          return
+        }
+        if (m.type === "childList") {
+          const bar = document.querySelector(
+            '[data-testid="hero-player-custom-chrome"]',
+          )
+          if (bar) {
+            observer.observe(bar, {
+              attributes: true,
+              attributeFilter: ["data-visible"],
+            })
+            sync()
+          }
+        }
+      }
+    })
+
+    const bar = document.querySelector(
+      '[data-testid="hero-player-custom-chrome"]',
+    )
+    if (bar) {
+      observer.observe(bar, {
+        attributes: true,
+        attributeFilter: ["data-visible"],
+      })
+    } else {
+      observer.observe(document.body, { childList: true, subtree: true })
+    }
+
+    return () => observer.disconnect()
+  }, [playbackCommitted])
 
   useEffect(() => {
     const wrapper = wrapperRef.current
@@ -134,9 +187,9 @@ export function SubtitleOverlay({
     }
   }, [playerRef, player])
 
-  if (!cueText || !chromeRevealed) return null
+  if (!cueText || !playbackCommitted) return null
 
-  const finalBottom = bottomOffset + (chromeRevealed ? CHROME_BAR_HEIGHT : 0)
+  const finalBottom = bottomOffset + (chromeBarVisible ? CHROME_BAR_HEIGHT : 0)
 
   return (
     <div
