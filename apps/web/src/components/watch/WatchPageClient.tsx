@@ -96,28 +96,25 @@ export function WatchPageClient({
 
   const subtitles = video.subtitles ?? []
 
-  const subtitleInitRef = useRef(false)
-  const initialSubtitleState = useMemo(() => {
-    if (subtitles.length === 0)
-      return { enabled: false, slug: null as string | null }
+  const [subtitleEnabled, setSubtitleEnabled] = useState(false)
+  const [subtitleSlug, setSubtitleSlug] = useState<string | null>(null)
+  const [subtitleInit, setSubtitleInit] = useState(false)
+
+  if (!subtitleInit && subtitles.length > 0) {
+    setSubtitleInit(true)
     const pref = readSubtitlePreference()
     const slugToUse = resolveSubtitleSlug(
       pref.languageSlug,
       subtitles,
       currentLanguageSlug,
     )
-    return { enabled: pref.enabled && !!slugToUse, slug: slugToUse }
-  }, [subtitles, currentLanguageSlug])
-
-  const [subtitleEnabled, setSubtitleEnabled] = useState(false)
-  const [subtitleSlug, setSubtitleSlug] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (subtitleInitRef.current) return
-    subtitleInitRef.current = true
-    setSubtitleEnabled(initialSubtitleState.enabled)
-    setSubtitleSlug(initialSubtitleState.slug)
-  }, [initialSubtitleState])
+    if (pref.enabled && slugToUse) {
+      setSubtitleEnabled(true)
+    }
+    if (slugToUse) {
+      setSubtitleSlug(slugToUse)
+    }
+  }
 
   const subtitleVttSrc = useMemo((): string | null | undefined => {
     if (subtitles.length === 0) return undefined

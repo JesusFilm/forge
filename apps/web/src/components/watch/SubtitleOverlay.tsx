@@ -6,7 +6,9 @@ import type { MuxPlayerRef } from "@forge/video-player"
 const CHROME_BAR_HEIGHT = 64
 
 function stripHtmlTags(text: string): string {
-  return text.replace(/<[^>]*>/g, "")
+  if (typeof DOMParser === "undefined") return text.replace(/<[^>]+>/g, "")
+  const doc = new DOMParser().parseFromString(text, "text/html")
+  return doc.body.textContent ?? ""
 }
 
 export function SubtitleOverlay({
