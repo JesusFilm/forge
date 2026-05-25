@@ -189,13 +189,16 @@ export function SubtitleOverlay({
 
   if (!cueText || !playbackCommitted) return null
 
-  const finalBottom = bottomOffset + (chromeBarVisible ? CHROME_BAR_HEIGHT : 0)
-
   return (
     <div
       data-testid="subtitle-overlay"
-      className="pointer-events-none absolute inset-x-0 z-20 flex justify-center"
-      style={{ bottom: `${finalBottom}px` }}
+      className="pointer-events-none absolute inset-x-0 z-20 flex justify-center transition-transform duration-200 ease-out"
+      style={{
+        bottom: `${bottomOffset}px`,
+        transform: chromeBarVisible
+          ? `translateY(-${CHROME_BAR_HEIGHT}px)`
+          : "translateY(0)",
+      }}
     >
       <div className="max-w-[min(80%,700px)] whitespace-pre-line rounded-md bg-black/75 px-5 py-2.5 text-center text-lg font-medium text-white shadow-lg backdrop-blur-sm md:text-xl">
         {cueText}
