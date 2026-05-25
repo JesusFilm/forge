@@ -1256,11 +1256,23 @@ model VideoSceneLocale {
   embedding        Unsupported("vector(1536)")?
   model            String                       @default("text-embedding-3-small")
   dimensions       Int                          @default(1536)
+  /// Compact provenance for Mastra-written scene embeddings. Nullable so
+  /// legacy rows written before the Mastra migration remain searchable.
+  sourceArtifactKey     String?                 @map("source_artifact_key")
+  sourceArtifactVersion String?                 @map("source_artifact_version")
+  sourceContentHash     String?                 @map("source_content_hash")
+  sourceProvider        String?                 @map("source_provider")
+  sourceGeneratedAt     DateTime?               @map("source_generated_at")
+  generationMode        String?                 @map("generation_mode")
+  mastraRunId           String?                 @map("mastra_run_id")
+  generatedAt           DateTime?               @map("generated_at")
   createdAt        DateTime                     @default(now()) @map("created_at")
   updatedAt        DateTime                     @updatedAt @map("updated_at")
 
   @@unique([videoSceneId, locale])
   @@index([locale])
+  @@index([sourceContentHash], map: "video_scene_locale_source_content_hash_idx")
+  @@index([mastraRunId], map: "video_scene_locale_mastra_run_id_idx")
   @@map("video_scene_locale")
 }
 

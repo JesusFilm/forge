@@ -17,9 +17,14 @@ describe("Mastra env", () => {
   it("requires service keys in production runtime", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv(
       "DATABASE_URL",
@@ -39,9 +44,14 @@ describe("Mastra env", () => {
   it("requires a database URL in production runtime", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv("DATABASE_URL", "")
     vi.stubEnv("MASTRA_STORAGE_DIR", "/data/mastra")
@@ -58,9 +68,14 @@ describe("Mastra env", () => {
   it("accepts production runtime without an explicit storage dir", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv(
       "DATABASE_URL",
@@ -105,10 +120,12 @@ describe("Mastra env", () => {
     expect(getMastraStorageDir()).toBe("/data/mastra")
   })
 
-  it("defaults transcript embedding model and provider settings", async () => {
+  it("defaults transcript and scene embedding model and provider settings", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("TRANSCRIPT_EMBEDDING_MODEL", "")
     vi.stubEnv("TRANSCRIPT_EMBEDDING_PROVIDER", "")
+    vi.stubEnv("SCENE_EMBEDDING_MODEL", "")
+    vi.stubEnv("SCENE_EMBEDDING_PROVIDER", "")
     vi.stubEnv("OPENAI_EMBEDDINGS_BASE_URL", "")
     vi.stubEnv("OPENROUTER_EMBEDDINGS_BASE_URL", "")
 
@@ -116,6 +133,8 @@ describe("Mastra env", () => {
 
     expect(env.TRANSCRIPT_EMBEDDING_MODEL).toBe("openai/text-embedding-3-small")
     expect(env.TRANSCRIPT_EMBEDDING_PROVIDER).toBe("openai")
+    expect(env.SCENE_EMBEDDING_MODEL).toBe("openai/text-embedding-3-small")
+    expect(env.SCENE_EMBEDDING_PROVIDER).toBe("openai")
     expect(env.OPENAI_EMBEDDINGS_BASE_URL).toBe("https://api.openai.com/v1")
     expect(env.OPENROUTER_EMBEDDINGS_BASE_URL).toBe(
       "https://openrouter.ai/api/v1",
@@ -125,9 +144,14 @@ describe("Mastra env", () => {
   it("requires either OpenRouter or OpenAI credentials in production runtime", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
     vi.stubEnv(
       "ADMIN_TRANSCRIPT_INGEST_URL",
       "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
     )
     vi.stubEnv(
       "DATABASE_URL",
@@ -144,14 +168,21 @@ describe("Mastra env", () => {
     )
   })
 
-  it("prefers OpenRouter credentials for transcript embedding provider config", async () => {
+  it("prefers OpenRouter credentials for embedding provider config", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("OPENAI_API_KEY", "openai-key")
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
 
-    const { getTranscriptEmbeddingProviderConfig } = await import("./env")
+    const {
+      getSceneEmbeddingProviderConfig,
+      getTranscriptEmbeddingProviderConfig,
+    } = await import("./env")
 
     expect(getTranscriptEmbeddingProviderConfig()).toEqual({
+      apiKey: "openrouter-key",
+      baseUrl: "https://openrouter.ai/api/v1",
+    })
+    expect(getSceneEmbeddingProviderConfig()).toEqual({
       apiKey: "openrouter-key",
       baseUrl: "https://openrouter.ai/api/v1",
     })

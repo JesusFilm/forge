@@ -42,7 +42,8 @@ describe("env", () => {
 
   // Bearer-CSV disjointness invariant. The bearer CSVs
   // (WORKFLOW_API_KEYS, MASTRA_TRANSCRIPT_INGEST_API_KEYS,
-  // WEB_ADMIN_API_KEYS, BACKUP_DOWNLOAD_API_KEYS)
+  // MASTRA_SCENE_INGEST_API_KEYS, WEB_ADMIN_API_KEYS,
+  // BACKUP_DOWNLOAD_API_KEYS)
   // MUST NOT share any value; the auth chains mint distinct
   // principals / passports, so a duplicated key silently widens
   // permissions or passes a passport it shouldn't. The legacy
@@ -66,6 +67,11 @@ describe("env", () => {
         }),
       ).not.toThrow()
       expect(() =>
+        assertBearerCsvsDisjoint({
+          MASTRA_SCENE_INGEST_API_KEYS: "scene-a",
+        }),
+      ).not.toThrow()
+      expect(() =>
         assertBearerCsvsDisjoint({ BACKUP_DOWNLOAD_API_KEYS: "backup-a" }),
       ).not.toThrow()
     })
@@ -75,6 +81,7 @@ describe("env", () => {
         assertBearerCsvsDisjoint({
           WORKFLOW_API_KEYS: "wf-a,wf-b",
           MASTRA_TRANSCRIPT_INGEST_API_KEYS: "mastra-a,mastra-b",
+          MASTRA_SCENE_INGEST_API_KEYS: "scene-a,scene-b",
           WEB_ADMIN_API_KEYS: "web-a,web-b",
           BACKUP_DOWNLOAD_API_KEYS: "backup-a,backup-b",
         }),
@@ -97,6 +104,17 @@ describe("env", () => {
           MASTRA_TRANSCRIPT_INGEST_API_KEYS: "shared-key",
         }),
       ).toThrow(/WORKFLOW_API_KEYS and MASTRA_TRANSCRIPT_INGEST_API_KEYS/)
+    })
+
+    it("throws when transcript and scene Mastra ingest keys share a value", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          MASTRA_TRANSCRIPT_INGEST_API_KEYS: "shared-key",
+          MASTRA_SCENE_INGEST_API_KEYS: "shared-key",
+        }),
+      ).toThrow(
+        /MASTRA_TRANSCRIPT_INGEST_API_KEYS and MASTRA_SCENE_INGEST_API_KEYS/,
+      )
     })
 
     it("throws when WORKFLOW and BACKUP_DOWNLOAD share a value", () => {
@@ -131,6 +149,7 @@ describe("env", () => {
         assertBearerCsvsDisjoint({
           WORKFLOW_API_KEYS: "shared-1",
           MASTRA_TRANSCRIPT_INGEST_API_KEYS: "mastra-a",
+          MASTRA_SCENE_INGEST_API_KEYS: "scene-a",
           WEB_ADMIN_API_KEYS: "shared-1,shared-2",
           BACKUP_DOWNLOAD_API_KEYS: "shared-2",
         })
@@ -175,6 +194,9 @@ describe("env", () => {
       expect(source).toMatch(/WORKFLOW_API_KEYS:\s*env\.WORKFLOW_API_KEYS/)
       expect(source).toMatch(
         /MASTRA_TRANSCRIPT_INGEST_API_KEYS:\s*env\.MASTRA_TRANSCRIPT_INGEST_API_KEYS/,
+      )
+      expect(source).toMatch(
+        /MASTRA_SCENE_INGEST_API_KEYS:\s*env\.MASTRA_SCENE_INGEST_API_KEYS/,
       )
       expect(source).toMatch(/WEB_ADMIN_API_KEYS:\s*env\.WEB_ADMIN_API_KEYS/)
       expect(source).toMatch(

@@ -827,6 +827,10 @@ type Mutation {
     S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`). Defaults to admin-migrations/core-id-mapping.json.
     """
     mappingS3Key: String = "admin-migrations/core-id-mapping.json"
+    """
+    Generation mode for Admin ingest. Defaults to IDEMPOTENT; use REPAIR, FORCE, or MODEL_UPGRADE only when intentionally rewriting existing scene vectors.
+    """
+    mode: SceneBackfillMode
   ): JSON
   """
   Enqueue a Core sync run. ADMIN only. Returns workflow dispatch metadata.
@@ -1022,6 +1026,16 @@ type RelatedQuestionsBlock {
   questions: [RelatedQuestionItem!]!
   sectionKey: String
   t: String
+}
+
+"""
+Overwrite intent for Mastra scene embedding backfills. Idempotent is the default.
+"""
+enum SceneBackfillMode {
+  FORCE
+  IDEMPOTENT
+  MODEL_UPGRADE
+  REPAIR
 }
 
 """

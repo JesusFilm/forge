@@ -25,8 +25,13 @@ Origin documents:
 - `apps/mastra` owns runtime execution only: agents, workflows, service bearer
   validation, and safe health/smoke surfaces.
 - The transcript embedding workflow owns transcript chunk planning and embedding
-  provider calls, then submits vectors to Admin's transcript ingest. Admin
-  remains the owner of pgvector storage, indexes, and public search retrieval.
+  provider calls, then submits vectors to Admin's transcript ingest.
+- The scene embedding workflow owns scene description embedding provider calls,
+  retry/failure visibility, and Studio diagnostics, then submits vectors to
+  Admin's scene-specific ingest. Admin remains the owner of pgvector storage,
+  indexes, target resolution, public search contracts, and search retrieval.
+- Do not import from `apps/admin`, `apps/manager`, or `apps/auth`; workflow
+  contracts are HTTP payloads plus local Zod schemas.
 - Keep service-bearer auth receiver-side. Callers present a bearer; this app
   validates against `MASTRA_SERVICE_API_KEYS`.
 - Keep health checks unauthenticated and non-sensitive.
@@ -55,8 +60,12 @@ pnpm --filter @forge/mastra lint
 | `OPENAI_EMBEDDINGS_BASE_URL`             | Optional OpenAI-compatible embedding provider base URL. Defaults to OpenAI's `/v1` endpoint.                               |
 | `TRANSCRIPT_EMBEDDING_MODEL`             | Model stamp for transcript embeddings. Defaults to `openai/text-embedding-3-small`.                                        |
 | `TRANSCRIPT_EMBEDDING_PROVIDER`          | Provider stamp for transcript embeddings. Defaults to `openai`.                                                            |
+| `SCENE_EMBEDDING_MODEL`                  | Model stamp for scene embeddings. Defaults to `openai/text-embedding-3-small`.                                             |
+| `SCENE_EMBEDDING_PROVIDER`               | Provider stamp for scene embeddings. Defaults to `openai`.                                                                 |
 | `ADMIN_TRANSCRIPT_INGEST_URL`            | Admin internal transcript ingest endpoint. Required in production runtime.                                                 |
 | `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY` | Bearer key Mastra presents to Admin transcript ingest. Required in production runtime.                                     |
+| `ADMIN_SCENE_INGEST_URL`                 | Admin internal scene ingest endpoint. Required in production runtime.                                                      |
+| `ADMIN_MASTRA_SCENE_INGEST_API_KEY`      | Bearer key Mastra presents to Admin scene ingest. Required in production runtime.                                          |
 | `PORT`                                   | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                          |
 | `MASTRA_STUDIO_PATH`                     | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                          |
 

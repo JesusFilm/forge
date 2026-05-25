@@ -685,12 +685,12 @@ stats.errors === 0 && seenCoreIds.size > 0`, the phase soft-deletes
 
 Admin owns scene-level embeddings in its own Postgres. Source data is
 apps/manager's `{assetId}/scene-analysis.json` S3 artifact (the
-multimodal scene-analysis pipeline). Admin re-indexes those artifacts
-into `VideoScene` + `VideoSceneLocale` and regenerates embedding
-vectors using admin's embedding provider. Vectors are NOT copied from
-cms; they're regenerated from the same model (`text-embedding-3-small`,
-1536d). Total regeneration cost is well under $0.01 at current catalog
-scale.
+multimodal scene-analysis pipeline). Mastra owns scene embedding generation,
+provider retries, run diagnostics, and Studio observability. Admin launches
+Mastra for each scene target, then accepts the final scene-specific payload at
+`/api/internal/mastra/scene-embeddings` and stores it in `VideoScene` +
+`VideoSceneLocale`. Admin remains the owner of pgvector storage, partial HNSW
+indexes, target resolution, public search contracts, and search retrieval.
 
 - **Schema:** `VideoScene` attaches to `VideoEdition` (timecodes follow
   the edition's cut, matching `VideoSubtitle`). Per-locale descriptions
@@ -700,11 +700,17 @@ scale.
 - **Partial HNSW indexes** per-locale (`en`, `es`, `fr`) plus a global
   NULL-excluded fallback. Per-locale indexes guard against the pgvector
   "HNSW + WHERE locale = ?" planner bypass.
-- **Indexer service:** `src/services/scene-embedding.service.ts`
-  (`indexEditionScenes`). Idempotent upsert on
+- **Storage writer:** `src/services/scene-embedding.service.ts`
+  (`writeSceneEmbeddingPayload`). Idempotent upsert on
   `(videoEditionId, sceneIndex)` and `(videoSceneId, locale)`. Raw SQL
   `::vector` write inside a Prisma `$transaction`. ABAC-gated via
   `canWriteDerived`.
+- **Mastra ingest endpoint:** `src/app/api/internal/mastra/scene-embeddings`
+  accepts only scene-shaped payloads from `MASTRA_SCENE_INGEST_API_KEYS`;
+  no generic embedding blob endpoint. Payloads carry compact provenance:
+  source artifact/version/content hash, locale, model/dimensions, generation
+  mode, Mastra run id, and generated timestamp. Vectors and raw source text are
+  never exposed through GraphQL or normal route summaries.
 - **Backfill workflow:**
   `src/workflows/sceneEmbeddingBackfill.ts` — useworkflow job that
   enumerates one target per `(video, edition, bcp47)` triple. The
@@ -713,8 +719,9 @@ scale.
   edition-level dub languages. No hardcoded locale list — an earlier
   prototype used `DEFAULT_LOCALES = ["en", "es", "fr"]`; dropped per
   `docs/solutions/best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md`.
-  Per-target error isolation; `artifact_missing` errors skip, provider
-  errors fail but don't halt the run. Safe to re-run.
+  Per-target error isolation; `artifact_missing` errors skip and Mastra/Admin
+  ingest failures fail but don't halt the run. Safe to re-run with
+  `idempotent`, `repair`, `force`, or `model-upgrade` modes.
 - **Bounded parallelism (Stage 2 — feat-116):** the workflow groups
   enumerated `(video, edition, locale)` targets by `(video, edition)`
   and parallelises over GROUPS via
@@ -730,27 +737,17 @@ scale.
 - **Per-(video, edition) artifact memoization (Stage 2 — feat-116):**
   the workflow fetches `scene-analysis.json` ONCE per `(video, edition)`
   group via `readSceneAnalysisArtifact(...)` and passes the loaded JSON
-  down to each per-locale `indexEditionScenes(...)` call via the
-  service's `loadedArtifact` argument. S3 reads collapse from N×L (per
+  down to each per-locale Mastra launch. S3 reads collapse from N×L (per
   locale) to N (per group). Group-level artifact-load failures cascade
   to per-locale outcomes with the right classification
   (`artifact_missing` → skipped; everything else → failed) so the
-  report's succeeded/skipped/failed triple stays meaningful. Memory
-  budget per active locale: ~250 KB artifact + ~370 KB embeddings array
-  (1536 floats × ~30 scenes × 8 bytes) + ~10 KB sourceTexts ≈ ~630 KB.
-  At default concurrency=5 that's ~3 MB peak resident across in-flight
-  groups; released as soon as the per-locale transaction completes.
-- **Batched OpenRouter (Stage 2 — feat-116):** `indexEditionScenes`
-  issues ONE `generateExperienceEmbeddings(scenes.map(s => s.description))`
-  call per `(video, locale)` target instead of one call per scene.
-  Embeddings come back in input-array order (`embeddings[i]` ↔
-  `scenes[i]`) — verified by the position-stable test. Length /
-  dimension mismatches surface as typed `EmbeddingsBatchError` and
-  fail-fast for the whole target rather than partial-write. The
-  `scenesSkipped` field on `IndexEditionScenesResult` is preserved for
-  back-compat but is effectively `0` on the happy path now (Stage 1's
-  per-scene `Promise.allSettled` skip semantics no longer apply since
-  the provider call is batched).
+  report's succeeded/skipped/failed triple stays meaningful.
+- **Mastra workflow (feat-133):** `apps/mastra` workflow id
+  `scene-embedding` accepts scene-analysis source data, validates scene order
+  and provider response shape, batches descriptions through the configured
+  embedding provider, then submits the final vectors to Admin ingest. Workflow
+  failures throw so failed runs are visible in Mastra Studio rather than hidden
+  behind successful `{ ok: false }` step outputs.
 - Tune concurrency via the `SCENE_EMBEDDING_CONCURRENCY` env var on
   `forge-admin` Doppler. Default `5` matches admin's documented Prisma
   `connection_limit=10` so a backfill leaves headroom for concurrent
@@ -843,8 +840,10 @@ locale) DO UPDATE SET …`. The `embedding` cast is per-row at the
      `b1c705c6-5add-48a0-a153-5ef40f876a4f`). Read-only;
      `{assetId}/scene-analysis.json` + `{assetId}/transcript.json`.
 
-   Also ensure `OPENROUTER_API_KEY` or `OPENAI_API_KEY` is set so
-   admin can re-embed scene descriptions.
+   Also ensure `MASTRA_BASE_URL` and `MASTRA_SERVICE_API_KEY` are set
+   so Admin can launch the scene embedding workflow. Mastra owns the
+   scene embedding provider credentials and calls Admin back through
+   the scene-specific ingest endpoint.
 
 3. Invoke `triggerSceneEmbeddingBackfill` via GraphQL. `mappingS3Key`
    defaults to `admin-migrations/core-id-mapping.json`; override for
@@ -1638,9 +1637,9 @@ path and the Cloudflare 524 edge timeout. Per
    Direct-invokes `runSceneEmbeddingBackfill` /
    `runTranscriptEmbeddingBackfill` against the in-process Prisma
    singleton, mirroring `pnpm run-sync`. Per-pipeline error
-   isolation; structured JSON output. Transcript runs launch Mastra,
-   which calls Admin ingest after generating vectors; scene runs still
-   hit OpenRouter from Admin.
+   isolation; structured JSON output. Scene and transcript runs launch
+   Mastra, which generates vectors and calls Admin ingest; Admin keeps
+   vector storage and search retrieval authority.
 
    Scene-including runs perform a preflight before indexing: admin S3
    reachability, manager artifact S3 reachability, mapping load, and
