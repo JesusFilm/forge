@@ -9,7 +9,7 @@ duration: 5
 depends_on:
   - "feat-121"
 blocks:
-  - "feat-132"
+  - "feat-133"
 tags:
   - "manager"
   - "auth"

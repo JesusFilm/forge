@@ -3,7 +3,7 @@ title: "feat: Consolidate Auth surfaces across apps"
 type: feat
 status: active
 date: 2026-05-22
-origin: docs/roadmap/platform/feat-132-auth-consolidation-across-apps.md
+origin: docs/roadmap/platform/feat-133-auth-consolidation-across-apps.md
 ---
 
 # feat: Consolidate Auth surfaces across apps

@@ -1,7 +1,7 @@
 ---
 date: 2026-05-22
 topic: auth-consolidation-surface-inventory
-origin: docs/roadmap/platform/feat-132-auth-consolidation-across-apps.md
+origin: docs/roadmap/platform/feat-133-auth-consolidation-across-apps.md
 ---
 
 # Auth Surface Inventory

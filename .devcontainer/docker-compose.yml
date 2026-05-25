@@ -31,6 +31,8 @@ services:
     command: >
       bash -lc "sudo ssh-keygen -A &&
       sudo install -d -m 0755 /run/sshd &&
+      sudo install -d -o vscode -g vscode -m 0700 /home/vscode/.ssh &&
+      sync-github-authorized-keys &&
       sudo /usr/sbin/sshd &&
       sleep infinity"
 
