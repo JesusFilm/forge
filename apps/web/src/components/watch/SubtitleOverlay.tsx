@@ -94,14 +94,17 @@ export function SubtitleOverlay({
     const wrapper = wrapperRef.current
     if (!wrapper) return
 
+    let bodyZoneRef: HTMLElement | null = null
     let ticking = false
     const update = () => {
+      if (!bodyZoneRef) {
+        bodyZoneRef = document.querySelector(
+          '[data-testid="watch-body-zone"]',
+        ) as HTMLElement | null
+      }
       const heroRect = wrapper.getBoundingClientRect()
       const viewportH = window.innerHeight
-      const bodyZone = document.querySelector(
-        '[data-testid="watch-body-zone"]',
-      ) as HTMLElement | null
-      const bodyTop = bodyZone?.getBoundingClientRect().top ?? viewportH
+      const bodyTop = bodyZoneRef?.getBoundingClientRect().top ?? viewportH
       const visibleBottom = Math.min(heroRect.bottom, viewportH, bodyTop)
       const bottomInHero = heroRect.bottom - visibleBottom
       setBottomOffset(Math.max(16, bottomInHero + 16))
@@ -209,9 +212,7 @@ export function SubtitleOverlay({
       style={{
         bottom: `${bottomOffset}px`,
         transform: `translateY(-${chromeShift}px)`,
-        transition: chromeBarVisible
-          ? "transform 200ms ease-out"
-          : "transform 200ms ease-out",
+        transition: "transform 200ms ease-out",
       }}
     >
       <div className="max-w-[min(80%,700px)] whitespace-pre-line rounded-md bg-black/40 px-5 py-2.5 text-center text-lg font-medium text-white shadow-lg backdrop-blur-sm md:text-xl">
