@@ -2,8 +2,6 @@ import { z } from "zod"
 
 export const CoreVideoSubtitleSchema = z.object({
   id: z.string().min(1),
-  updatedAt: z.string().min(1),
-  videoId: z.string().min(1),
   languageId: z.string().min(1),
   primary: z.boolean(),
   edition: z.string(),
