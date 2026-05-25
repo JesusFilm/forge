@@ -95,18 +95,18 @@ export function SubtitleOverlay({
     }
   }, [playerRef])
 
+  if (!cueText) return null
+
   return (
     <div
       data-testid="subtitle-overlay"
-      className={`flex min-h-[3rem] items-center justify-center px-4 transition-all duration-300 ease-out ${
-        chromeRevealed ? "pb-14" : "pb-2"
+      className={`pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center transition-all duration-300 ease-out ${
+        chromeRevealed ? "bottom-16" : "bottom-4"
       }`}
     >
-      {cueText && (
-        <div className="max-w-[min(80%,700px)] whitespace-pre-line rounded-md bg-black/75 px-5 py-2.5 text-center text-lg font-medium text-white shadow-lg backdrop-blur-sm md:text-xl">
-          {cueText}
-        </div>
-      )}
+      <div className="max-w-[min(80%,700px)] whitespace-pre-line rounded-md bg-black/75 px-5 py-2.5 text-center text-lg font-medium text-white shadow-lg backdrop-blur-sm md:text-xl">
+        {cueText}
+      </div>
     </div>
   )
 }
