@@ -8,9 +8,10 @@ administration. It is intended to deploy at
 `developer.jesusfilm.org`.
 
 The first slice is intentionally read-only: it shows Auth-owned app
-registration data so operators can inspect apps, environments, OAuth client
-ids, redirect URIs, scopes, and approval posture without using Strapi or
-expanding Auth's internal dashboard.
+registration and app grant data so operators can inspect apps, environments,
+OAuth client ids, redirect URIs, scopes, approval posture, and the permission
+systems that need to migrate into Developer without using Strapi or expanding
+Auth's internal dashboard.
 
 ## Architecture rules
 
@@ -24,6 +25,8 @@ expanding Auth's internal dashboard.
 - Direct Auth database reads are a first-slice read-only projection. Before
   adding writes, introduce an Auth-owned management API or shared Auth registry
   data package so validation, audit, and policy stay centralized.
+- Do not remove app-local enforcement in Admin, Manager, or Mastra Gateway
+  until those apps consume Auth-owned app grants during session creation.
 - Never render raw client secrets, bearer tokens, refresh tokens, database
   URLs, or unnecessary PII.
 - Do not change `apps/cms` authentication or make Strapi an Auth relying

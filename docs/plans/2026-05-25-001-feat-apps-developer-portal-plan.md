@@ -45,10 +45,10 @@ without committing to risky credential mutations in the first PR.
 - Developer is the intended unified admin UI for internal app registrations and
   user permission grants across Admin, Manager, Mastra Studio, and Developer,
   while Auth remains the source of truth for grants and policy enforcement.
-- Developer reads Auth-owned app registration data for this first slice through
-  a read-only projection. A follow-up should replace direct DB reads with an
-  Auth-owned management API or shared Auth registry data package when mutations
-  begin.
+- Developer reads Auth-owned app registration and app grant data for this first
+  slice through a read-only projection. A follow-up should replace direct DB
+  reads with an Auth-owned management API or shared Auth registry data package
+  when mutations begin.
 - Developer is itself an Auth relying client. Registry pages require an
   Auth-issued token with `developer:access`, stored in a Developer-local
   session cookie.
@@ -129,8 +129,13 @@ without committing to risky credential mutations in the first PR.
 - Gate registry pages with Auth OAuth and the `developer:access` scope.
 - Render app/environment status, trust tier, client IDs, redirect URIs,
   allowed origins, and default scopes.
+- Render Auth-owned app grants and the known app-local permission management
+  surfaces that need migration: Admin user roles, Admin ManagerMembership, and
+  Mastra Gateway StudioAccess.
 - Never render client secrets or token material.
 - Surface production status and pending approval posture in the UI.
+- Keep Admin, Manager, and Mastra Gateway's current enforcement paths intact
+  until Auth grants are enforced during OAuth/session issuance.
 
 **Test scenarios**
 
@@ -138,6 +143,8 @@ without committing to risky credential mutations in the first PR.
   reviews.
 - View model redacts secret-bearing fields by construction.
 - Unauthenticated registry requests redirect to Auth login.
+- Access page requires Auth login and lists Auth-owned grants plus migration
+  targets for duplicated app-local permission controls.
 - Callback rejects missing/invalid OAuth state.
 - Health route returns `ok`.
 
@@ -148,6 +155,8 @@ without committing to risky credential mutations in the first PR.
 - Add app create/update flows with audit logging and environment review state.
 - Add internal user permission management for Admin, Manager, Mastra Studio,
   and Developer access grants, backed by Auth-owned policy and audit.
+- Wire Admin, Manager, and Mastra Gateway session creation to Auth-owned grants
+  before retiring their local mutation surfaces.
 - Add one-time client secret reveal and regeneration for confidential/service
   clients.
 - Add redirect URI validation policy for local, preview, staging, and

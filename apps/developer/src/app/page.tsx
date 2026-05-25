@@ -2,6 +2,10 @@ import Link from "next/link"
 import type { Route } from "next"
 
 import {
+  listAppAccessGrants,
+  summarizeAccessControl,
+} from "@/data/access-control"
+import {
   formatEnum,
   listRegisteredApps,
   summarizeRegistry,
@@ -12,8 +16,12 @@ export const dynamic = "force-dynamic"
 
 export default async function DeveloperHomePage() {
   const session = await requireDeveloperSession("/")
-  const apps = await listRegisteredApps()
+  const [apps, grants] = await Promise.all([
+    listRegisteredApps(),
+    listAppAccessGrants(),
+  ])
   const summary = summarizeRegistry(apps)
+  const accessSummary = summarizeAccessControl(grants)
 
   return (
     <main className="shell">
@@ -24,6 +32,7 @@ export default async function DeveloperHomePage() {
         </div>
         <nav>
           <Link href="/">Apps</Link>
+          <Link href={"/access" as Route}>Access</Link>
         </nav>
         <div className="sidebar-note">
           <span>Signed in</span>
@@ -59,6 +68,10 @@ export default async function DeveloperHomePage() {
           <div>
             <span>Pending review</span>
             <strong>{summary.pendingReviewCount}</strong>
+          </div>
+          <div>
+            <span>Access grants</span>
+            <strong>{accessSummary.grantCount}</strong>
           </div>
         </section>
 
