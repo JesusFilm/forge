@@ -1,7 +1,10 @@
 "use client"
 
 import Image from "next/image"
-import type { FragmentOf } from "@forge/graphql"
+import type {
+  FragmentOf,
+  LegacyFragmentValue,
+} from "@/lib/legacy-fragment-types"
 import { navigationCarouselFragment } from "@/lib/fragments/navigation-carousel"
 import {
   Carousel,
@@ -90,7 +93,8 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
 
 export function NavigationCarousel({ data }: NavigationCarouselProps) {
   const items = data.items?.filter(
-    (item): item is NonNullable<typeof item> => item != null,
+    (item: LegacyFragmentValue): item is NonNullable<typeof item> =>
+      item != null,
   )
   if (!items?.length) return null
 
@@ -108,7 +112,7 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
         data-testid="NavigationCarouselSwiper"
       >
         <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
-          {items.map((item, index) => (
+          {items.map((item: LegacyFragmentValue, index: number) => (
             <CarouselItem
               key={item.contentId}
               className="basis-auto pl-5"

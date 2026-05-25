@@ -2,11 +2,11 @@
 
 ## Active Freeze
 
-> **`apps/web` UI feature work is paused on `main`** while the `feat/web-admin-data-layer-flip` branch is live (U9–U22 of the rebuild plan; foundation U1–U8 shipped in #939). Critical fixes still ship. See `docs/plans/2026-05-14-001-feat-adapt-web-data-layer-to-admin-plan.md` for scope. Rebuild branch rebases from main when critical fixes touch `apps/web/src/lib/`, `apps/web/src/app/`, shared types, or `packages/graphql/**`.
+> **`apps/web` UI feature work is paused on `main`** while the `feat/web-admin-data-layer-flip` branch is live (U9–U22 of the rebuild plan; foundation U1–U8 shipped in #939). Critical fixes still ship. See `docs/plans/2026-05-14-001-feat-adapt-web-data-layer-to-admin-plan.md` for scope. Rebuild branch rebases from main when critical fixes touch `apps/web/src/lib/`, `apps/web/src/app/`, or shared types.
 
 ## Project Overview
 
-JesusFilm (JFP) is a ministry organization. This monorepo contains our web, mobile, and CMS applications with a shared GraphQL client package.
+JesusFilm (JFP) is a ministry organization. This monorepo contains our web, mobile, TV, admin, and manager applications with a shared admin GraphQL client package.
 
 ## Architecture
 
@@ -15,16 +15,10 @@ apps/admin (Next.js + Pothos + Prisma) -> exposes GraphQL API
       ->
 packages/admin-graphql (gql.tada) -> typed client generated from admin SDL
       ->
-apps/web (Next.js)
-
-apps/cms (Strapi v5) -> exposes GraphQL API
-      ->
-packages/graphql (gql.tada) -> typed client generated from Strapi schema
-      ->
-apps/mobile (Expo)  +  apps/tv (React Native TV)
+apps/web (Next.js) + apps/mobile (Expo) + apps/tv (React Native TV)
 ```
 
-The web → admin data layer flipped in `feat/web-admin-data-layer-flip` (U9–U22; PR #939 shipped U1–U8 foundation). Mobile and TV remain on `packages/graphql` (Strapi) pending their own migrations.
+The public consumer data layer uses admin GraphQL. The old Strapi CMS app and Strapi-bound `packages/graphql` client have been removed.
 
 All apps deploy to Railway. Cloudflare sits in front for DNS, WAF, and Authenticated Origin Pulls.
 
@@ -34,12 +28,10 @@ This is a pnpm + Turborepo monorepo.
 
 - `apps/web/` — Next.js 16+ App Router application (`next@^16.1.6`); reads from admin via `packages/admin-graphql`
 - `apps/admin/` — Next.js + Pothos + Prisma + pgvector; web's data source post-U22
-- `apps/mobile/` — React Native / Expo app (active development, EAS for builds); reads from Strapi via `packages/graphql`
-- `apps/tv/` — React Native TV app; reads from Strapi via `packages/graphql`
-- `apps/cms/` — Strapi v5 headless CMS with GraphQL plugin; serves mobile + TV
+- `apps/mobile/` — React Native / Expo app (active development, EAS for builds); reads from admin via `packages/admin-graphql`
+- `apps/tv/` — React Native TV app; reads from admin via `packages/admin-graphql`
 - `apps/roadmap/` — Next.js roadmap dashboard (reads from `docs/roadmap/`)
 - `packages/admin-graphql/` — gql.tada typed GraphQL client (generated from admin's `schema.graphql`); consumed by web
-- `packages/graphql/` — gql.tada typed GraphQL client (generated from Strapi's GraphQL schema); consumed by mobile + TV
 
 ## Package-Specific Instructions
 
@@ -47,11 +39,9 @@ When working in a specific package, also read that package's `CLAUDE.md`:
 
 - Working in `apps/web/`? Also read `apps/web/CLAUDE.md`
 - Working in `apps/admin/`? Also read `apps/admin/CLAUDE.md`
-- Working in `apps/cms/`? Also read `apps/cms/CLAUDE.md`
 - Working in `apps/mobile/`? Also read `apps/mobile/CLAUDE.md`
 - Working in `apps/tv/`? Also read `apps/tv/CLAUDE.md`
 - Working in `packages/admin-graphql/`? Also read `packages/admin-graphql/CLAUDE.md`
-- Working in `packages/graphql/`? Also read `packages/graphql/CLAUDE.md`
 - Working in `apps/roadmap/`? Also read `apps/roadmap/CLAUDE.md`
 
 Package CLAUDE.md files contain conventions that override or extend global ones.
@@ -71,12 +61,11 @@ Cursor does not load this file automatically. Keep `.cursor/rules/project-contex
 - Prefer `type` over `interface` unless declaration merging is needed.
 - Use `satisfies` for type-safe object literals.
 
-### GraphQL — two typed clients
+### GraphQL — typed client
 
-Web consumes `@forge/admin-graphql` (admin's GraphQL surface). Mobile + TV consume `@forge/graphql` (Strapi). Each package owns its own gql.tada introspection and codegen artifact.
+Consumers use `@forge/admin-graphql` (admin's GraphQL surface). The package owns its gql.tada introspection and codegen artifact.
 
 - `packages/admin-graphql` exposes `adminGraphql()` + `AdminFragmentOf`/`AdminResultOf`/`AdminVariablesOf` type aliases + `readFragment`. SDL-only consumption — never imports from `apps/admin/src/domain/*` at runtime (sidesteps the tsx-ESM trap).
-- `packages/graphql` exposes `graphql()` + bare `FragmentOf`/`ResultOf`/`VariablesOf`. Strapi-only consumers.
 - Operations (queries, mutations, fragments) are defined in the consuming apps, never in the client packages. Web's operations live in `apps/web/src/lib/content.ts`, `search.ts`, `recommendations.ts`, `demo-search.ts`, and the fragment files in `apps/web/src/lib/fragments/`. The shared `WatchExperience` root composition is re-exported from `@forge/admin-graphql/fragments`.
 - After any schema change on EITHER side: run that package's codegen to regenerate the introspection `.d.ts`. CI has separate drift jobs (`graphql-generate`, `admin-graphql-generate`, `admin-schema-drift`) that fail if you forget.
 
@@ -92,13 +81,6 @@ Web consumes `@forge/admin-graphql` (admin's GraphQL surface). Mobile + TV consu
 - Expo managed workflow. Eject only if absolutely necessary.
 - EAS Build for CI/CD. Test builds with `eas build --profile preview`.
 - Follow Expo Router conventions for navigation.
-
-### Strapi (apps/cms)
-
-- Strapi v5 with GraphQL plugin enabled.
-- Content types defined in the admin UI.
-- API tokens seeded via bootstrap lifecycle using HMAC-SHA512 hashing.
-- GraphQL schema is the contract — apps/web and apps/mobile never call Strapi REST.
 
 ### Deployment
 
@@ -219,7 +201,7 @@ This repo uses the compound engineering workflow. After completing work:
 ### Before Starting Work
 
 1. Check `docs/roadmap/` for a relevant feature ticket. If one exists, use Compound Engineering to brainstorm against that ticket before implementation.
-2. Run `ce:plan` with explicit scope: "Add X, affecting `apps/web` and `packages/graphql`"
+2. Run `ce:plan` with explicit scope: "Add X, affecting `apps/web` and `packages/admin-graphql`"
 3. Reference `docs/solutions/` for past patterns relevant to the task.
 4. Check `todos/` for related outstanding findings.
 5. Set the roadmap feature to `status: "in-progress"` if applicable.
@@ -239,29 +221,15 @@ Two parallel flows since web migrated to admin. Both follow the same pattern: sc
 
 CI's `admin-schema-drift` catches step 2, `admin-graphql-generate` catches step 3.
 
-**Strapi-side change flow (mobile + TV's data source):**
-
-1. Add or modify content type in `apps/cms/` (Strapi admin or code)
-2. Run Strapi locally so the GraphQL schema is available; `apps/cms/schema.graphql` auto-emits
-3. Run `pnpm --filter @forge/graphql generate` to regenerate `packages/graphql/src/graphql-env.d.ts`
-4. Update or add queries/mutations/fragments using the `graphql()` factory in consuming apps
-5. Update consuming code in `apps/mobile/`, `apps/tv/`
-6. Commit generated files alongside source changes
-
-CI's `graphql-generate` catches step 3.
-
 **Cross-app ISR refresh:** admin emits ISR revalidation webhooks to web on Experience publish / update / archive via `apps/admin/src/services/revalidate-webhook.ts`. Best-effort; never blocks admin's editor UX. See `apps/admin/CLAUDE.md` "Web ISR revalidation webhook (U21)" for deploy ordering.
 
 ### Known Patterns (add to this list as you compound)
 
 - Cloudflare + Railway: requires Authenticated Origin Pulls + DNSSEC
-- Strapi v5 API token seeding: HMAC-SHA512 in bootstrap lifecycle
 - EAS build profiles: environment variables differ per profile (development, preview, production)
 - Railway deploy hooks: use for post-deploy migrations and health checks
 - Devcontainer + pnpm: use `corepack prepare pnpm@<version> --activate` pinned to match `packageManager` in root `package.json` — see `docs/solutions/platform/devcontainer-setup.md`
 - Manager backfill pattern: claim lock synchronously before `after()`, use output table as progress tracker, constrain SQL DISTINCT ON joins — see `docs/solutions/platform/backfill-worker-pattern-manager-20260407.md`
-- Strapi v5 raw SQL: field names are snake-cased in DB (`bcp47` → `bcp_47`). Always verify with `\d tablename` against prod before writing raw SQL.
-- PostgreSQL 18 (Railway): `?::jsonb::text[]` cast is NOT supported. Use PG array literal format (`{val1,val2}`) with `?::text[]` instead. See `apps/cms/src/api/scene-embedding/services/indexer.ts` `toPgArray()`. Bulk-write pattern with per-row Way A vector + `text[]` casts at the SELECT seam: `docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
 - PostgreSQL `jsonb_array_elements_text(jsonb)` ≠ `json_array_elements_text(json)`. Distinct functions, NOT overloaded across the json/jsonb seam — `json_array_elements_text(jsonb)` does NOT exist (parse error 42883). When using Way A unfold (`u.col_json::jsonb`), call `jsonb_array_elements_text`. Mocked SQL-shape tests catch clause SHAPE but NOT function-resolution; only a real-DB smoke catches this. See `docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
 - Mux data model: `mux_videos.duration` is always 0. Duration lives on `video_variants.duration`.
 - Local embed pipeline + manager-trigger proxy: admin owns the embedding workflows + destination Postgres; manager exposes thin REST proxies at `/api/admin-embeds/{scene,transcript}` that forward to admin's GraphQL trigger mutations via a bearer key matching admin's `WORKFLOW_API_KEYS`. Local-dev path is `pnpm --filter @forge/admin pull:mapping` + `pnpm run-embeds` against any `DATABASE_URL` — see `docs/solutions/platform/local-embed-pipeline-pattern-20260429.md`.

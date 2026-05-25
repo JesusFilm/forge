@@ -8,5 +8,5 @@ export function getGraphQLUrl(): string {
 }
 
 export function getApiToken(): string | undefined {
-  return env.EXPO_PUBLIC_STRAPI_TOKEN
+  return env.EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN
 }

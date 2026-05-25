@@ -75,7 +75,7 @@ type UseSemanticSearchOptions = {
  *    call fires.
  *
  * The 'degraded' state is entered when the CMS response's searchMode
- * is 'keyword-only' — signaling the OpenRouter embedding service is
+ * is 'KEYWORD_ONLY' — signaling the OpenRouter embedding service is
  * unavailable and we should render a distinct "temporarily unavailable"
  * message instead of collapsing silently into "no results".
  */
@@ -233,8 +233,8 @@ export function useSemanticSearch(
         if (requestIdRef.current !== thisRequest) return
         if (!mountedRef.current) return
 
-        if (mode === "keyword-only") {
-          // Backend fell back to keyword-only retrieval (OpenRouter
+        if (mode === "KEYWORD_ONLY") {
+          // Backend fell back to KEYWORD_ONLY retrieval (OpenRouter
           // embedding unavailable). Render the distinct "temporarily
           // unavailable" UX per R24.
           setResults(items)

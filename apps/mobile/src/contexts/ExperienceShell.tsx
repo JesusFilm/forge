@@ -46,13 +46,16 @@ export function ExperienceShell({ children }: { children: ReactNode }) {
       return
     }
     if (resolvedRef.current || !listData?.experiences) return
-    const experiences = listData.experiences.filter(
-      (e): e is NonNullable<typeof e> => e !== null,
+    const experiences = listData.experiences.flatMap(
+      (experience) =>
+        experience?.locales?.filter(
+          (locale) => locale?.slug != null && locale.documentId != null,
+        ) ?? [],
     )
     const homepage = experiences.find((e) => e.isHomepage)
     const fallback = experiences[0]
     const resolved = homepage ?? fallback
-    if (resolved) {
+    if (resolved?.slug) {
       resolvedRef.current = true
       selectExperience(resolved.slug)
     }

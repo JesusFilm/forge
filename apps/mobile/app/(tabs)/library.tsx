@@ -33,8 +33,11 @@ export default function LibraryScreen() {
     fetchPolicy: "cache-and-network",
   })
 
-  const experiences = (data?.experiences ?? []).filter(
-    (e): e is NonNullable<typeof e> => e !== null,
+  const experiences = (data?.experiences ?? []).flatMap(
+    (experience) =>
+      experience?.locales?.filter(
+        (locale) => locale?.slug != null && locale.documentId != null,
+      ) ?? [],
   )
 
   const handleSelect = (slug: string) => {
@@ -94,13 +97,13 @@ export default function LibraryScreen() {
       <Text style={[styles.header, typography.heading]}>Library</Text>
       <FlashList
         data={experiences}
-        keyExtractor={(item) => item.documentId}
+        keyExtractor={(item) => item.documentId ?? item.slug ?? "experience"}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <ExperienceCard
             experience={item}
             isActive={item.slug === currentSlug}
-            onSelect={handleSelect}
+            onSelect={(slug) => handleSelect(slug)}
           />
         )}
       />
@@ -116,21 +119,23 @@ function ExperienceCard({
   onSelect,
 }: {
   experience: {
-    documentId: string
-    slug: string
+    documentId: string | null
+    slug: string | null
     title: string | null
     metaDescription: string | null
-    ogImage: { url: string; alternativeText: string | null } | null
+    ogImageUrl: string | null
   }
   isActive: boolean
   onSelect: (slug: string) => void
 }) {
   const typography = useTypography()
-  const imageUrl = resolveImageUrl(experience.ogImage?.url)
+  const imageUrl = resolveImageUrl(experience.ogImageUrl)
 
   return (
     <Pressable
-      onPress={() => onSelect(experience.slug)}
+      onPress={() => {
+        if (experience.slug) onSelect(experience.slug)
+      }}
       style={[styles.card, isActive && styles.cardActive]}
       accessibilityRole="button"
       accessibilityLabel={`${experience.title ?? "Untitled experience"}${isActive ? ", currently active" : ""}`}
@@ -142,11 +147,7 @@ function ExperienceCard({
             style={styles.cardImage}
             contentFit="cover"
             recyclingKey={`library-${experience.documentId}`}
-            accessibilityLabel={
-              experience.ogImage?.alternativeText ??
-              experience.title ??
-              "Experience thumbnail"
-            }
+            accessibilityLabel={experience.title ?? "Experience thumbnail"}
           />
         ) : (
           <LinearGradient

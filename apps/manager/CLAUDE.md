@@ -2,7 +2,7 @@
 
 ## What this app does
 
-AI video enrichment pipeline dashboard. Ingests video assets via Mux, runs enrichment workflows (transcription, translation, chapters, metadata, embeddings) using OpenRouter-routed AI models, stores artifacts in Railway S3-compatible Object Storage, and optionally syncs results back to Strapi CMS via `@forge/graphql`.
+AI video enrichment pipeline dashboard. Ingests video assets via Mux, runs enrichment workflows (transcription, translation, chapters, metadata, embeddings) using OpenRouter-routed AI models, stores artifacts in Railway S3-compatible Object Storage, and syncs results through Manager/Admin GraphQL contracts.
 
 ## Source
 
@@ -14,9 +14,9 @@ Modelled on [VideoForge](https://github.com/lumberman/videoforge) — adapted to
 - Mux (`@mux/mux-node`) for video asset management and streaming
 - OpenRouter (`openai` SDK with `baseURL: https://openrouter.ai/api/v1`) for AI model access
 - ElevenLabs audio isolation (`fetch` + multipart form upload) for manager-only audio cleanup review artifacts
-- Railway S3-compatible Object Storage (`@aws-sdk/client-s3`) for artifacts — same pattern as `apps/cms` upload provider
+- Railway S3-compatible Object Storage (`@aws-sdk/client-s3`) for artifacts
 - workflow (`npm i workflow` from https://useworkflow.dev/) for durable workflow orchestration — uses `"use workflow"` and `"use step"` directives
-- `@forge/graphql` for typed Strapi CMS queries
+- `@forge/admin-graphql` for typed Admin GraphQL contracts
 - Doppler for environment variable management
 
 ## Folder structure
@@ -27,17 +27,17 @@ src/
   config/env.ts  Validated env vars (t3-oss/env-nextjs + zod)
   workflows/     Durable workflow definitions (useworkflow.dev)
   services/      Service clients: mux, transcription, storage
-  cms/           Strapi GraphQL client (wraps @forge/graphql)
+  cms/           live/mock/admin data gateway and legacy bridge code
 ```
 
 ## Conventions
 
 - All env vars validated at startup via `src/config/env.ts`. Never read `process.env` directly.
 - Env vars managed by **Doppler** (project: `forge-manager`). Use `pnpm fetch-secrets` for local dev.
-- CMS access goes through `src/cms/client.ts` (Apollo Client) with `@forge/graphql` typed operations. Never use Strapi REST.
+- New canonical data access goes through Admin GraphQL contracts. Keep legacy `src/cms/*` code isolated behind `src/cms/gateway.ts` while the Manager backend migration finishes.
 - Workflow steps must be idempotent — they may be retried by useworkflow.dev.
 - Artifact storage uses Railway S3 with `@aws-sdk/client-s3`. Keys: `{assetId}/{artifact-type}.{ext}`.
-- Storage uses the same `RAILWAY_S3_*` env var pattern as `apps/cms`. When `RAILWAY_S3_BUCKET` is not set, artifacts fall back to local `.tmp/artifacts/` — suitable for dev and test environments.
+- Storage uses the `RAILWAY_S3_*` env var pattern. When `RAILWAY_S3_BUCKET` is not set, artifacts fall back to local `.tmp/artifacts/` — suitable for dev and test environments.
 - JSON-shaped LLM outputs should go through `createStructuredOpenrouterOutput(...)` in `src/services/openrouter.ts` with a Zod schema plus strict JSON Schema; use raw chat completions only for plain-text tasks.
 
 ## Development
@@ -218,7 +218,7 @@ where admin's first call 401s.
 - OpenRouter does not expose a Whisper transcription endpoint — use a supported model or switch to Mux's built-in transcription (`input[].generated_subtitles`).
 - Railway S3 requires `forcePathStyle: true` in the S3Client config.
 - Audio cleanup extracts original audio with `ffmpeg` before calling ElevenLabs. The manager Railway service uses the repo-root `nixpacks.toml` to add `ffmpeg` to the NIXPACKS setup phase; the helper still throws a clear error if the binary is missing.
-- Job state is stored in Strapi as `EnrichmentJob` content type (with `enrichment.job-step` repeatable component). The `src/lib/state.ts` module provides the same `createJob`/`getJob`/`listJobs`/`updateJob`/`updateStepStatus` API backed by Strapi GraphQL mutations.
+- Job state is moving to Admin-owned Manager contracts. The `src/lib/state.ts` module preserves the same `createJob`/`getJob`/`listJobs`/`updateJob`/`updateStepStatus` API while routing by backend mode.
 - Manager now enables the workflow SDK build plugin in `next.config.ts`, and enrichment entrypoints dispatch through `src/workflows/launchVideoEnrichment.ts` via `start()` from `workflow/api`. The workflow runtime is no longer inert.
 - Workflow-safe authoring still matters: keep Node-only imports and heavy service modules behind `"use step"` boundaries. A built app will reject workflow files that pull Node-only modules into the top-level workflow body. See https://useworkflow.dev/.
 
@@ -235,13 +235,10 @@ where admin's first call 401s.
 | RAILWAY_S3_BUCKET                  | Railway S3 bucket name (optional — triggers S3 mode)                           |
 | RAILWAY_S3_ACCESS_KEY_ID           | Railway S3 access key (optional)                                               |
 | RAILWAY_S3_SECRET_ACCESS_KEY       | Railway S3 secret key (optional)                                               |
-| MANAGER_DATA_MODE                  | `live`, `mock`, or `admin` (default `live`)                                    |
-| MANAGER_BACKEND_MODE               | Optional override for data/job backend mode (`live`, `mock`, or `admin`)       |
+| MANAGER_DATA_MODE                  | `admin` or `mock` (default `admin`)                                            |
+| MANAGER_BACKEND_MODE               | Optional override for data/job backend mode (`admin` or `mock`)                |
 | MANAGER_MOCK_SESSION_SECRET        | Required in `mock` mode to sign Manager-issued mock sessions                   |
 | MANAGER_MOCK_DATA_PATH             | Optional mock runtime store path (default `.tmp/mock-cms/store.json`)          |
-| STRAPI_URL                         | URL of apps/cms (required in `live`, ignored in `mock`)                        |
-| STRAPI_API_TOKEN                   | Strapi API token (required in `live`, ignored in `mock`)                       |
-| STRAPI_INTERNAL_API_TOKEN          | Optional internal CMS token for live-only writer paths                         |
 | WORKFLOW_API_KEY                   | workflow API key (optional, for production durability)                         |
 | MANAGER_API_KEY                    | API key for external clients (optional in dev)                                 |
 | MANAGER_SESSION_SECRET             | Secret for Auth-backed `manager-session` cookies                               |

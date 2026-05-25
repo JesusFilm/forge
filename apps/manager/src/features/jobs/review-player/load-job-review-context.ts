@@ -1,9 +1,6 @@
 import { TextDecoder } from "node:util"
-import { graphql } from "@forge/graphql"
-import getClient from "@/cms/client"
 import { getCmsGateway, readMockCmsState } from "@/cms/gateway"
 import { buildJobArtifactHref } from "@/lib/job-artifacts"
-import { resolveCmsLanguageCode } from "@/lib/mux-language"
 import { getPlaybackUrl, listMuxSubtitleTracks } from "@/services/mux"
 import { readArtifact } from "@/services/storage"
 import type { JobRecord } from "@/types/job"
@@ -15,33 +12,6 @@ import type {
   ReviewMetadataValue,
   ReviewTextTrack,
 } from "./review-player-types"
-
-const GET_VIDEO_REVIEW_SOURCE = graphql(`
-  query GetVideoReviewSource($documentId: ID!) {
-    video(documentId: $documentId) {
-      documentId
-      title
-      description
-      primaryLanguage {
-        coreId
-        name
-        bcp47
-        iso3
-      }
-      subtitles(pagination: { limit: -1 }) {
-        aiGenerated
-        primary
-        vttSrc
-        language {
-          coreId
-          name
-          bcp47
-          iso3
-        }
-      }
-    }
-  }
-`)
 
 const TRUSTED_SUBTITLE_HOSTS = new Set(["stream.mux.com"])
 const TRUSTED_JESUSFILM_SUBTITLE_HOSTS = ["jesusfilm.org"] as const
@@ -140,52 +110,7 @@ async function defaultLoadVideoReviewSource(
     return mockState.readModels.reviewSources[videoDocumentId] ?? null
   }
 
-  const client = getClient()
-  const result = await client.query({
-    query: GET_VIDEO_REVIEW_SOURCE,
-    variables: { documentId: videoDocumentId },
-    fetchPolicy: "no-cache",
-  })
-
-  const video = result.data?.video
-  if (!video) {
-    return null
-  }
-
-  const fallbackLanguageCode = resolveCmsLanguageCode(video.primaryLanguage)
-  const subtitles = (video.subtitles ?? [])
-    .filter(
-      (subtitle): subtitle is NonNullable<typeof subtitle> => subtitle != null,
-    )
-    .map((subtitle): ReviewTextTrack | null => {
-      const src = trimNonBlank(subtitle.vttSrc)
-      const languageCode =
-        resolveCmsLanguageCode(subtitle.language) ?? fallbackLanguageCode
-
-      if (!src || !languageCode) {
-        return null
-      }
-
-      return {
-        languageCode,
-        label:
-          trimNonBlank(subtitle.language?.name) ?? languageCode.toUpperCase(),
-        src,
-        source: "cms" as const,
-        isGenerated: Boolean(subtitle.aiGenerated),
-      }
-    })
-    .filter((track): track is NonNullable<typeof track> => track != null)
-
-  return {
-    title: trimNonBlank(video.title),
-    description: trimNonBlank(video.description),
-    language:
-      trimNonBlank(video.primaryLanguage?.name) ??
-      resolveCmsLanguageCode(video.primaryLanguage) ??
-      undefined,
-    subtitles,
-  }
+  return null
 }
 
 async function defaultLoadMuxSubtitleTracks(

@@ -2,28 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { DEFAULT_MOCK_CMS_SEED, cloneMockCmsSeed } from "@/cms/mock-seed"
 import type { JobRecord } from "@/types/job"
 
-const {
-  getClientMock,
-  getCmsGatewayMock,
-  liveJobDetailScreenMock,
-  notFoundMock,
-  toJobRecordMock,
-} = vi.hoisted(() => ({
-  getClientMock: vi.fn(),
-  getCmsGatewayMock: vi.fn(),
-  liveJobDetailScreenMock: vi.fn(() => null),
-  notFoundMock: vi.fn(() => {
-    throw new Error("not-found")
-  }),
-  toJobRecordMock: vi.fn(),
-}))
+const { getCmsGatewayMock, liveJobDetailScreenMock, notFoundMock, getJobMock } =
+  vi.hoisted(() => ({
+    getCmsGatewayMock: vi.fn(),
+    liveJobDetailScreenMock: vi.fn(() => null),
+    notFoundMock: vi.fn(() => {
+      throw new Error("not-found")
+    }),
+    getJobMock: vi.fn(),
+  }))
 
 vi.mock("next/navigation", () => ({
   notFound: notFoundMock,
-}))
-
-vi.mock("@/cms/client", () => ({
-  default: getClientMock,
 }))
 
 vi.mock("@/cms/gateway", async () => {
@@ -40,7 +30,7 @@ vi.mock("@/features/jobs/live-job-detail-screen", () => ({
 }))
 
 vi.mock("@/lib/state", () => ({
-  toJobRecord: toJobRecordMock,
+  getJob: getJobMock,
 }))
 
 import JobDetailPage from "./page"
@@ -64,11 +54,10 @@ function makeJobRecord(overrides: Partial<JobRecord> = {}): JobRecord {
 }
 
 beforeEach(() => {
-  getClientMock.mockReset()
   getCmsGatewayMock.mockReset()
   liveJobDetailScreenMock.mockClear()
   notFoundMock.mockClear()
-  toJobRecordMock.mockReset()
+  getJobMock.mockReset()
 })
 
 describe("dashboard job detail page", () => {
@@ -97,7 +86,7 @@ describe("dashboard job detail page", () => {
     })
     const detail = element.props.children
 
-    expect(getClientMock).not.toHaveBeenCalled()
+    expect(getJobMock).not.toHaveBeenCalled()
     expect(element.props.className).toBe("studio-page studio-page--job-detail")
     expect(detail.type).toBe(liveJobDetailScreenMock)
     expect(detail.props).toMatchObject({
@@ -106,39 +95,37 @@ describe("dashboard job detail page", () => {
     })
   })
 
-  it("keeps the live GraphQL loader intact", async () => {
-    const liveJob = makeJobRecord({ id: "job-live" })
+  it("loads the requested job from the admin gateway", async () => {
+    const adminJob = makeJobRecord({ id: "job-admin" })
 
-    getCmsGatewayMock.mockReturnValue({ mode: "live" })
-    getClientMock.mockReturnValue({
-      query: vi
-        .fn()
-        .mockResolvedValueOnce({
-          data: {
-            enrichmentJob: { documentId: "job-live", raw: true },
+    getCmsGatewayMock.mockReturnValue({
+      mode: "admin",
+      getLanguageGeo: vi.fn(async () => ({
+        continents: [],
+        countries: [],
+        languages: [
+          {
+            id: "529",
+            englishLabel: "English",
+            nativeLabel: "English",
+            countryIds: [],
+            continentIds: [],
+            countrySpeakers: {},
           },
-        })
-        .mockResolvedValueOnce({
-          data: {
-            languages: [{ coreId: "529", name: "English" }],
-          },
-        }),
+        ],
+      })),
     })
-    toJobRecordMock.mockReturnValue(liveJob)
+    getJobMock.mockResolvedValue(adminJob)
 
     const element = await JobDetailPage({
-      params: Promise.resolve({ id: "job-live" }),
+      params: Promise.resolve({ id: "job-admin" }),
     })
     const detail = element.props.children
 
-    expect(getClientMock).toHaveBeenCalledTimes(1)
-    expect(toJobRecordMock).toHaveBeenCalledWith({
-      documentId: "job-live",
-      raw: true,
-    })
+    expect(getJobMock).toHaveBeenCalledWith("job-admin")
     expect(element.props.className).toBe("studio-page studio-page--job-detail")
     expect(detail.props).toMatchObject({
-      initialJob: liveJob,
+      initialJob: adminJob,
       languageLabelsById: { 529: "English" },
     })
   })

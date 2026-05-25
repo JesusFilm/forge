@@ -438,7 +438,7 @@ export function getCmsGateway(): CmsGateway {
 export function readModeFromEnv(value: string | undefined): CmsGatewayMode {
   if (value === "mock") return "mock"
   if (value === "admin") return "admin"
-  return "live"
+  return "admin"
 }
 
 export async function readMockCmsState(

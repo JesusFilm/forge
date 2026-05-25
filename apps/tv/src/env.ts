@@ -7,7 +7,7 @@ import { z } from "zod"
 // values are inlined and the error message surfaces them if validation fails.
 const _inlined = {
   url: process.env.EXPO_PUBLIC_GRAPHQL_URL,
-  token: process.env.EXPO_PUBLIC_STRAPI_TOKEN,
+  token: process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN,
 }
 void _inlined
 
@@ -16,11 +16,12 @@ const createAppEnv = () =>
     clientPrefix: "EXPO_PUBLIC_",
     client: {
       EXPO_PUBLIC_GRAPHQL_URL: z.string().url(),
-      EXPO_PUBLIC_STRAPI_TOKEN: z.string().optional(),
+      EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN: z.string().optional(),
     },
     runtimeEnvStrict: {
       EXPO_PUBLIC_GRAPHQL_URL: process.env.EXPO_PUBLIC_GRAPHQL_URL,
-      EXPO_PUBLIC_STRAPI_TOKEN: process.env.EXPO_PUBLIC_STRAPI_TOKEN,
+      EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN:
+        process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN,
     },
     isServer: false,
     emptyStringAsUndefined: true,

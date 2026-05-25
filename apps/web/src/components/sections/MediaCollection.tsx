@@ -1,7 +1,10 @@
 "use client"
 
 import Image from "next/image"
-import type { FragmentOf } from "@forge/graphql"
+import type {
+  FragmentOf,
+  LegacyFragmentValue,
+} from "@/lib/legacy-fragment-types"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichMediaItem } from "@/lib/enrichment"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
@@ -50,7 +53,9 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
     selectedSource === "routeVideoChildren"
       ? (routeVideo?.relatedItems ?? [])
       : (items ?? [])
-          .filter((i): i is NonNullable<typeof i> => i != null)
+          .filter(
+            (i: LegacyFragmentValue): i is NonNullable<typeof i> => i != null,
+          )
           .map(enrichMediaItem)
 
   if (
@@ -101,7 +106,7 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
           </span>
         )}
         <div className={gridClass}>
-          {enrichedItems.map((item, i) => (
+          {enrichedItems.map((item: EnrichedMediaItem, i: number) => (
             <DefaultCard
               key={item.id}
               item={item}
@@ -208,7 +213,7 @@ function CarouselVariant({
           className="w-full"
         >
           <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
-            {items.map((item) => (
+            {items.map((item: EnrichedMediaItem) => (
               <CarouselItem key={item.id} className="max-w-[200px] py-1 pl-5">
                 <VideoCard
                   item={item}

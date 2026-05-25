@@ -1,5 +1,5 @@
 // Storage service — Railway S3-compatible Object Storage with local tmp fallback.
-// Uses the same RAILWAY_S3_* env pattern as apps/cms (Strapi upload provider).
+// Uses Railway's RAILWAY_S3_* env pattern for artifact storage.
 // When RAILWAY_S3_BUCKET is not set, artifacts are written to .tmp/artifacts/ locally.
 
 import { env } from "@/config/env"

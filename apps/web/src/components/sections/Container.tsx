@@ -1,4 +1,4 @@
-import type { FragmentOf } from "@forge/graphql"
+import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { CSSProperties } from "react"
 import type { RouteVideo } from "@/lib/content"
 import { containerFragment } from "@/lib/fragments/container"
