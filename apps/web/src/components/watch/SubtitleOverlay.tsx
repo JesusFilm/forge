@@ -134,7 +134,7 @@ export function SubtitleOverlay({
     }
   }, [playerRef, player])
 
-  if (!cueText) return null
+  if (!cueText || !chromeRevealed) return null
 
   const finalBottom = bottomOffset + (chromeRevealed ? CHROME_BAR_HEIGHT : 0)
 
