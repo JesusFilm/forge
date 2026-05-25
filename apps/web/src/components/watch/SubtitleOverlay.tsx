@@ -12,9 +12,11 @@ function stripHtmlTags(text: string): string {
 export function SubtitleOverlay({
   playerRef,
   wrapperRef,
+  player,
 }: {
   playerRef: React.RefObject<MuxPlayerRef | null>
   wrapperRef: React.RefObject<HTMLDivElement | null>
+  player: MuxPlayerRef | null
 }) {
   const [cueText, setCueText] = useState<string | null>(null)
   const [bottomOffset, setBottomOffset] = useState(16)
@@ -130,12 +132,11 @@ export function SubtitleOverlay({
         listenerRef.current = null
       }
     }
-  }, [playerRef])
+  }, [playerRef, player])
 
   if (!cueText) return null
 
-  const chromeExtra = chromeRevealed ? CHROME_BAR_HEIGHT : 0
-  const finalBottom = Math.max(16 + chromeExtra, bottomOffset)
+  const finalBottom = bottomOffset + (chromeRevealed ? CHROME_BAR_HEIGHT : 0)
 
   return (
     <div

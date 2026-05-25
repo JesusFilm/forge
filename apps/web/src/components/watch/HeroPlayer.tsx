@@ -555,7 +555,11 @@ export function HeroPlayer({
             className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
           />
         )}
-        <SubtitleOverlay playerRef={playerRef} wrapperRef={wrapperRef} />
+        <SubtitleOverlay
+          playerRef={playerRef}
+          wrapperRef={wrapperRef}
+          player={player}
+        />
         {darkenOverlay ? (
           <div
             aria-hidden="true"
