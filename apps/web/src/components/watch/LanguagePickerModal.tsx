@@ -96,10 +96,9 @@ export function LanguagePickerModal({
 
   const subtitleOptions = useMemo(
     () =>
-      subtitles.map((s) => ({
-        slug: s.language.slug,
-        name: s.language.name,
-      })),
+      subtitles
+        .map((s) => deriveLanguageDisplay(s.language.slug, s.language.name))
+        .sort((a, b) => a.name.localeCompare(b.name)),
     [subtitles],
   )
 
