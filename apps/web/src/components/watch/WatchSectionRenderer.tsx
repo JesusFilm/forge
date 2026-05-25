@@ -11,6 +11,7 @@ import {
 import { ExperienceSectionRenderer } from "@/components/sections"
 import { BibleQuotesSection } from "@/components/watch/BibleQuotesSection"
 import { HeroPlayer } from "@/components/watch/HeroPlayer"
+import { SubtitleOverlay } from "@/components/watch/SubtitleOverlay"
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
 import { WatchBody } from "@/components/watch/WatchBody"
 import type { WatchModalCallbacks } from "@/components/watch/WatchPageClient"
@@ -34,12 +35,14 @@ export function WatchSectionRenderer({
   onPlayerReady,
   locale,
   subtitleVttSrc,
+  playerRef,
 }: {
   blocks: MergedWatchBlock[]
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   locale?: string
   subtitleVttSrc?: string | null
+  playerRef?: React.RefObject<MuxPlayerRef | null>
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
   // renders as a hidden marker to avoid double-mounting.
@@ -73,6 +76,7 @@ export function WatchSectionRenderer({
           subtitleVttSrc={subtitleVttSrc}
         />
       ))}
+      {playerRef && <SubtitleOverlay playerRef={playerRef} />}
       {bodyBlocks.length > 0 ? (
         <section
           data-testid="watch-body-zone"
