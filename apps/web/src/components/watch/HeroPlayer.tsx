@@ -525,7 +525,7 @@ export function HeroPlayer({
           onLoadedMetadata={handleLoadedMetadata}
           onCanPlay={handleCanPlay}
           onError={handlePlayerError}
-          className="block h-full w-full hero-hide-native-subtitles"
+          className="block h-full w-full"
         />
 
         {!videoReady ? (

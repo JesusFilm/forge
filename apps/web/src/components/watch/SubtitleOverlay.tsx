@@ -49,8 +49,9 @@ export function SubtitleOverlay({
         const t = el.textTracks[i]!
         if (
           (t.kind === "subtitles" || t.kind === "captions") &&
-          t.mode === "showing"
+          (t.mode === "showing" || t.mode === "hidden")
         ) {
+          t.mode = "hidden"
           return t
         }
       }

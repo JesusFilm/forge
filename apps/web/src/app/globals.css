@@ -264,10 +264,4 @@
   .search-overlay-scroll:hover {
     scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
   }
-
-  .hero-hide-native-subtitles::cue {
-    color: transparent !important;
-    background: transparent !important;
-    opacity: 0 !important;
-  }
 }
