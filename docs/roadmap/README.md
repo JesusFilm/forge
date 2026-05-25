@@ -6,9 +6,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (May 22, 2026)
 
-- **Total tickets:** 151
+- **Total tickets:** 152
 - **Complete:** 80
-- **In progress:** 10
+- **In progress:** 11
 - **Not started:** 19
 - **Blocked:** 42
 - **Overdue and not complete:** 29
@@ -114,6 +114,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-110](platform/feat-110-admin-core-sync-recurring-job.md)                   | Admin Core Sync Recurring Background Job                | tataihono | P0       | 2026-04-29 | 2    | 2026-04-30 | in-progress |
 | [feat-121](platform/feat-121-jesus-film-auth-platform.md)                        | Jesus Film Auth Platform                                | tataihono | P0       | 2026-05-11 | 14   | 2026-05-24 | blocked     |
 | [feat-125](platform/feat-125-manager-auth-oauth-admin-backend-migration.md)      | Manager Auth OAuth and Admin Backend Migration          | vlad      | P0       | 2026-05-20 | 5    | 2026-05-24 | blocked     |
+| [feat-132](platform/feat-132-auth-consolidation-across-apps.md)                  | Auth Consolidation Across Apps                          | tataihono | P0       | 2026-05-22 | 6    | 2026-05-27 | in-progress |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md) | CMS local PostgreSQL I/O concurrency compatibility      | tataihono | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                        | Scaffolding Support for Urim                            | tataihono | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
 | [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)            | Roadmap Operations and Owner Hygiene                    | josh      | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |
