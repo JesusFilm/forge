@@ -28,25 +28,22 @@ import {
   CARD_GAP,
   HORIZONTAL_PADDING,
 } from "../../styles/shared"
-import type { NormalizedBlock } from "../../lib/normalizer"
-import { pickThumbnailUrl } from "../../lib/types"
-import type { VideoRef } from "../../lib/types"
+import type { AdminBlock } from "../../lib/queries"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type MediaItem = {
-  id: string
+  videoId?: string | null
   titleOverride?: string | null
   subtitleOverride?: string | null
   labelOverride?: string | null
   collectionSize?: number | null
   imageUrl?: string | null
   linkToSectionKey?: string | null
-  video?: VideoRef | null
 }
 
 export interface MediaCollectionRendererProps {
-  section: NormalizedBlock
+  section: AdminBlock
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -67,25 +64,23 @@ export function MediaCollectionRenderer({
   const typography = useTypography()
   const { width: screenWidth } = useWindowDimensions()
 
-  const mcTitle = section.mcTitle as string | null
-  const mcSubtitle = section.mcSubtitle as string | null
-  const categoryLabel = section.categoryLabel as string | null
-  const items = (section.items as MediaItem[] | undefined) ?? []
+  const s = section as Record<string, unknown>
+  const mcTitle = s.title as string | null
+  const mcSubtitle = s.subtitle as string | null
+  const categoryLabel = s.categoryLabel as string | null
+  const items = (s.items as MediaItem[] | undefined) ?? []
 
   const cardWidth = Math.round(screenWidth * CARD_WIDTH_RATIO)
 
   if (items.length === 0) return null
 
   const renderItem = ({ item, index }: { item: MediaItem; index: number }) => {
-    const thumbnailUrl = resolveImageUrl(
-      item.imageUrl ?? pickThumbnailUrl(item.video?.images),
-    )
-    const title = item.titleOverride ?? item.video?.title ?? "Untitled"
+    const thumbnailUrl = resolveImageUrl(item.imageUrl)
+    const title = item.titleOverride ?? "Untitled"
     const label = item.labelOverride ?? categoryLabel
-    const alt = item.video?.imageAlt ?? title
 
     const handlePress = () => {
-      const key = item.linkToSectionKey ?? item.video?.slug
+      const key = item.linkToSectionKey
       if (key) {
         router.push(`/video/${encodeURIComponent(key)}`)
       }
@@ -113,8 +108,8 @@ export function MediaCollectionRenderer({
               source={thumbnailUrl}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
-              recyclingKey={`mc-${item.id}-${index}`}
-              accessibilityLabel={alt}
+              recyclingKey={`mc-${index}`}
+              accessibilityLabel={title}
               priority="low"
             />
           )}
@@ -186,7 +181,7 @@ export function MediaCollectionRenderer({
       <FlatList
         data={items}
         renderItem={renderItem}
-        keyExtractor={(item, index) => `mediaCollection-${item.id}-${index}`}
+        keyExtractor={(_item, index) => `mc-${index}`}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={carousel.listContent}
