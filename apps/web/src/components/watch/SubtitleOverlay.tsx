@@ -20,11 +20,15 @@ export function SubtitleOverlay({
 
     let ticking = false
     const update = () => {
-      const rect = wrapper.getBoundingClientRect()
+      const heroRect = wrapper.getBoundingClientRect()
       const viewportH = window.innerHeight
-      const visibleBottom = Math.min(rect.bottom, viewportH)
-      const coveredFromBottom = rect.bottom - visibleBottom
-      setBottomOffset(Math.max(16, coveredFromBottom + 16))
+      const bodyZone = document.querySelector(
+        '[data-testid="watch-body-zone"]',
+      ) as HTMLElement | null
+      const bodyTop = bodyZone?.getBoundingClientRect().top ?? viewportH
+      const visibleBottom = Math.min(heroRect.bottom, viewportH, bodyTop)
+      const bottomInHero = heroRect.bottom - visibleBottom
+      setBottomOffset(Math.max(16, bottomInHero + 16))
       ticking = false
     }
 
