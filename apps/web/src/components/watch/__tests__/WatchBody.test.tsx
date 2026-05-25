@@ -23,6 +23,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { WatchBody } from "@/components/watch/WatchBody"
 import { WatchStudyQuestions } from "@/components/watch/WatchStudyQuestions"
 import { DownloadButton } from "@/components/watch/DownloadButton"
+import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 import type { WatchBodyBlock, WatchStudyQuestionsBlock } from "@/lib/content"
 
 let container: HTMLDivElement
@@ -125,10 +126,11 @@ describe("WatchBody — two-column layout", () => {
     expect(left).not.toBeNull()
     // With a right column present, left column does NOT span the full grid.
     expect(left!.className).not.toContain("md:col-span-12")
-    expect(left!.className).toContain("md:col-span-8")
+    expect(left!.className).toContain("md:col-span-7")
 
     const right = container.querySelector('[data-testid="watch-body-right"]')
     expect(right).not.toBeNull()
+    expect(right!.className).toContain("md:col-span-5")
 
     // Bullet list with 3 items in `order` ASC (matches the input order).
     const items = right!.querySelectorAll(
@@ -146,37 +148,45 @@ describe("WatchBody — two-column layout", () => {
     expect(dl).not.toBeNull()
 
     // Title and Download share the same flex row (alignment contract for the
-    // top-of-watch-page UI -- Download must sit on the same Y axis as the
-    // h1 title; a future move out of this row would break that intent).
+    // top-of-watch-page UI -- Download must sit on the same top axis as Ask
+    // Yours, even when the title wraps to multiple lines).
     const titleRow = container.querySelector(
       '[data-testid="watch-body-title-row"]',
     )
     expect(titleRow).not.toBeNull()
     expect(titleRow!.className).toContain("flex")
-    expect(titleRow!.className).toContain("items-center")
+    expect(titleRow!.className).toContain("items-start")
     expect(titleRow!.className).toContain("justify-between")
     const titleEl = container.querySelector('[data-testid="watch-body-title"]')
     expect(titleEl!.parentElement).toBe(titleRow)
     expect(dl!.closest('[data-testid="watch-body-title-row"]')).toBe(titleRow)
 
-    // Right-column header pt and mb are alignment-critical -- pinning them
-    // so a revert / merge resolution cannot silently clobber the values.
-    // pt-0 mobile (columns stack, no extra gap) -> md:pt-9 (text-4xl h1)
-    // -> xl:pt-11 (text-5xl h1) tracks the h1 size scale across breakpoints.
+    // Right-column header top padding is alignment-critical: the right
+    // header row should start flush with the title / Download row.
     const studySection = container.querySelector(
       '[data-testid="watch-study-questions"]',
     )
     expect(studySection).not.toBeNull()
     expect(studySection!.className).toContain("pt-0")
-    expect(studySection!.className).toContain("md:pt-9")
-    expect(studySection!.className).toContain("xl:pt-11")
+    expect(studySection!.className).not.toContain("md:pt-")
+    expect(studySection!.className).not.toContain("xl:pt-")
     const headerRow = studySection!.querySelector(
       "div.mb-4.flex.flex-wrap.items-center.justify-between",
     )
     expect(headerRow).not.toBeNull()
+    expect(
+      container.querySelector("#watch-related-questions-heading")?.className,
+    ).toContain(WATCH_SECTION_EYEBROW_CLASS)
+
+    // Description starts lower than the title row so its top aligns with
+    // the first question, not the Related Questions heading.
+    const description = container.querySelector(
+      '[data-testid="watch-body-description"]',
+    )
+    expect(description?.className).toContain("md:mt-6")
   })
 
-  it("renders the optional uppercase label tag when present", () => {
+  it("does not render the duplicated body label tag when present", () => {
     const block = makeBlock({ label: "EPISODE", downloadCount: 1 })
 
     act(() => {
@@ -190,11 +200,10 @@ describe("WatchBody — two-column layout", () => {
     })
 
     const tag = container.querySelector('[data-testid="watch-body-label"]')
-    expect(tag?.textContent).toBe("EPISODE")
-    expect(tag?.className).toContain("uppercase")
+    expect(tag).toBeNull()
   })
 
-  it("omits the label tag when Video.label is null", () => {
+  it("omits the body label tag when Video.label is null", () => {
     const block = makeBlock({ label: null, downloadCount: 1 })
 
     act(() => {
@@ -228,7 +237,7 @@ describe("WatchBody — right column always renders (Ask Yours CTA is always rel
     })
 
     const left = container.querySelector('[data-testid="watch-body-left"]')
-    expect(left!.className).toContain("md:col-span-8")
+    expect(left!.className).toContain("md:col-span-7")
 
     const right = container.querySelector('[data-testid="watch-body-right"]')
     expect(right).not.toBeNull()
@@ -272,7 +281,7 @@ describe("WatchBody — right column always renders (Ask Yours CTA is always rel
     })
 
     const left = container.querySelector('[data-testid="watch-body-left"]')
-    expect(left!.className).toContain("md:col-span-8")
+    expect(left!.className).toContain("md:col-span-7")
     expect(
       container.querySelector(
         '[data-testid="watch-study-questions-placeholder"]',
@@ -343,7 +352,7 @@ describe("WatchBody — Download button visibility", () => {
 
     const left = container.querySelector('[data-testid="watch-body-left"]')
     expect(left).not.toBeNull()
-    expect(left!.className).toContain("md:col-span-8")
+    expect(left!.className).toContain("md:col-span-7")
   })
 })
 
@@ -447,6 +456,37 @@ describe("WatchBody — modal trigger integration", () => {
 })
 
 describe("WatchStudyQuestions — accordion expand with no-answer fallback", () => {
+  it("matches production row, question icon, and chevron styling", () => {
+    act(() => {
+      root.render(<WatchStudyQuestions prompts={["How do you look?"]} />)
+    })
+
+    const trigger = container.querySelector(
+      '[data-testid="watch-study-questions-item-trigger"]',
+    ) as HTMLButtonElement
+    expect(trigger).not.toBeNull()
+    expect(trigger.className).toContain("rounded-lg")
+    expect(trigger.className).toContain("px-0")
+    expect(trigger.className).toContain("grid-cols-[minmax(0,1fr)_auto]")
+    expect(trigger.className).toContain("gap-2")
+    expect(trigger.className).toContain("py-4")
+    expect(trigger.className).not.toContain("hover:bg-white/10")
+
+    const icon = trigger.querySelector("svg[viewBox='0 0 24 24']")
+    expect(icon?.getAttribute("class")).toContain("size-6")
+    expect(icon?.getAttribute("class")).toContain("opacity-20")
+
+    const question = trigger.querySelector("h3")
+    expect(question?.className).toContain("font-semibold")
+    expect(question?.className).toContain("md:text-lg")
+    expect(question?.className).toContain("group-hover:text-brand-red")
+    expect(question?.className).not.toContain("sm:pr-4")
+
+    const chevron = trigger.querySelector("span svg")
+    expect(chevron?.getAttribute("class")).toContain("size-4")
+    expect(chevron?.getAttribute("class")).toContain("translate-y-0.5")
+  })
+
   it("each prompt row carries a trigger button with aria-expanded=false by default", () => {
     act(() => {
       root.render(<WatchStudyQuestions prompts={["A?", "B?", "C?"]} />)

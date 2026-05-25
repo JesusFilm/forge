@@ -1,12 +1,13 @@
 "use client"
 
-import { ChevronsUpDown, Languages } from "lucide-react"
+import { Captions, ChevronsUpDown, Languages } from "lucide-react"
 import {
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
 } from "react"
 
@@ -15,18 +16,409 @@ export type LanguageComboboxOption = {
   name: string
   /** Optional native-script name; rendered as a muted subtitle below `name`. */
   nativeName?: string | null
+  /** Best-effort locale tag used to derive a region flag when available. */
+  bcp47?: string | null
+  /** Explicit display flag. Falls back to bcp47/slug-derived region or initials. */
+  flagEmoji?: string | null
 }
 
 export type LanguageComboboxProps = {
   options: LanguageComboboxOption[]
   value: string
   onChange: (slug: string) => void
+  icon?: "language" | "subtitles"
+  disabled?: boolean
+  placeholder?: string
+}
+
+const LANGUAGE_REGION_FALLBACKS: Record<string, string> = {
+  af: "ZA",
+  afrikaans: "ZA",
+  ak: "GH",
+  akan: "GH",
+  albanian: "AL",
+  am: "ET",
+  amharic: "ET",
+  ar: "SA",
+  "arabic-modern-standard": "SA",
+  armenian: "AM",
+  az: "AZ",
+  azerbaijani: "AZ",
+  bangla: "BD",
+  "bengali-indian": "IN",
+  basque: "ES",
+  be: "BY",
+  belarusian: "BY",
+  bg: "BG",
+  bn: "BD",
+  bosnian: "BA",
+  bulgarian: "BG",
+  burmese: "MM",
+  ca: "ES",
+  cantonese: "HK",
+  catalan: "ES",
+  ceb: "PH",
+  cebuano: "PH",
+  chinese: "CN",
+  croatian: "HR",
+  cs: "CZ",
+  cy: "GB",
+  czech: "CZ",
+  da: "DK",
+  danish: "DK",
+  de: "DE",
+  dutch: "NL",
+  el: "GR",
+  en: "US",
+  english: "US",
+  es: "ES",
+  estonian: "EE",
+  et: "EE",
+  eu: "ES",
+  fa: "IR",
+  fi: "FI",
+  filipino: "PH",
+  finnish: "FI",
+  fr: "FR",
+  french: "FR",
+  ga: "IE",
+  georgian: "GE",
+  german: "DE",
+  "german-standard": "DE",
+  gl: "ES",
+  greek: "GR",
+  gu: "IN",
+  gujarati: "IN",
+  ha: "NG",
+  hausa: "NG",
+  haitian: "HT",
+  "haitian-creole": "HT",
+  hawaiian: "US",
+  he: "IL",
+  hebrew: "IL",
+  hi: "IN",
+  hindi: "IN",
+  hr: "HR",
+  hu: "HU",
+  hungarian: "HU",
+  hy: "AM",
+  id: "ID",
+  ig: "NG",
+  indonesian: "ID",
+  "indonesian-yesus": "ID",
+  irish: "IE",
+  is: "IS",
+  it: "IT",
+  italian: "IT",
+  ja: "JP",
+  japanese: "JP",
+  ka: "GE",
+  kannada: "IN",
+  kazakh: "KZ",
+  khmer: "KH",
+  kk: "KZ",
+  km: "KH",
+  kn: "IN",
+  ko: "KR",
+  korean: "KR",
+  ku: "IQ",
+  kurdish: "IQ",
+  ky: "KG",
+  lao: "LA",
+  latvian: "LV",
+  lo: "LA",
+  lt: "LT",
+  lithuanian: "LT",
+  lv: "LV",
+  macedonian: "MK",
+  malay: "MY",
+  malayalam: "IN",
+  maltese: "MT",
+  maori: "NZ",
+  marathi: "IN",
+  mk: "MK",
+  ml: "IN",
+  mn: "MN",
+  mongolian: "MN",
+  mr: "IN",
+  ms: "MY",
+  my: "MM",
+  ny: "MW",
+  ne: "NP",
+  nepali: "NP",
+  nl: "NL",
+  no: "NO",
+  norwegian: "NO",
+  odia: "IN",
+  or: "IN",
+  oriya: "IN",
+  pa: "IN",
+  pashto: "AF",
+  persian: "IR",
+  polish: "PL",
+  portuguese: "PT",
+  "portuguese-brazil": "BR",
+  "portuguese-brazilian": "BR",
+  ps: "AF",
+  pt: "PT",
+  "pt-br": "BR",
+  punjabi: "IN",
+  ro: "RO",
+  romanian: "RO",
+  ru: "RU",
+  russian: "RU",
+  serbian: "RS",
+  si: "LK",
+  sinhala: "LK",
+  sk: "SK",
+  sl: "SI",
+  shona: "ZW",
+  slovak: "SK",
+  slovenian: "SI",
+  so: "SO",
+  somali: "SO",
+  sq: "AL",
+  sr: "RS",
+  spanish: "ES",
+  "spanish-latin-american": "MX",
+  sw: "TZ",
+  swahili: "TZ",
+  ta: "IN",
+  tajik: "TJ",
+  tamil: "IN",
+  te: "IN",
+  telugu: "IN",
+  th: "TH",
+  thai: "TH",
+  tl: "PH",
+  tg: "TJ",
+  tk: "TM",
+  tr: "TR",
+  turkmen: "TM",
+  turkish: "TR",
+  ug: "CN",
+  uk: "UA",
+  ukrainian: "UA",
+  ur: "PK",
+  urdu: "PK",
+  uyghur: "CN",
+  uz: "UZ",
+  uzbek: "UZ",
+  vi: "VN",
+  vietnamese: "VN",
+  welsh: "GB",
+  xh: "ZA",
+  xhosa: "ZA",
+  yo: "NG",
+  yoruba: "NG",
+  zh: "CN",
+  zu: "ZA",
+  zulu: "ZA",
+}
+
+const CIRCLE_FLAGS_BASE_PATH = "/watch/images/flags"
+
+const LANGUAGE_FLAG_FILES = new Set([
+  "ar",
+  "eo",
+  "ia",
+  "ie",
+  "interslavic",
+  "io",
+  "la",
+  "mr",
+  "non",
+  "vo",
+  "yi",
+])
+
+function regionFromFlagEmoji(
+  flagEmoji: string | null | undefined,
+): string | null {
+  if (!flagEmoji) return null
+  const codePoints = Array.from(flagEmoji.trim()).map((char) =>
+    char.codePointAt(0),
+  )
+  if (
+    codePoints.length !== 2 ||
+    codePoints.some(
+      (codePoint) =>
+        codePoint == null || codePoint < 0x1f1e6 || codePoint > 0x1f1ff,
+    )
+  ) {
+    return null
+  }
+  return codePoints
+    .map((codePoint) => String.fromCharCode(codePoint! - 127397))
+    .join("")
+}
+
+function flagPathFromRegion(region: string): string | null {
+  const normalized = region.trim().toUpperCase()
+  if (!/^[A-Z]{2}$/.test(normalized)) return null
+  return `${CIRCLE_FLAGS_BASE_PATH}/${normalized.toLowerCase()}.svg`
+}
+
+function regionFromBcp47(bcp47: string | null | undefined): string | null {
+  if (!bcp47) return null
+  const parts = bcp47.split(/[-_]/).filter(Boolean)
+  return (
+    parts.find((part, index) => index > 0 && /^[A-Za-z]{2}$/.test(part)) ?? null
+  )
+}
+
+function normalizedLanguageKey(
+  value: string | null | undefined,
+): string | null {
+  if (!value) return null
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+  return normalized || null
+}
+
+function fallbackRegionForOption(
+  option: LanguageComboboxOption,
+): string | null {
+  const candidates = [
+    languageCodeFromBcp47(option.bcp47),
+    normalizedLanguageKey(option.slug),
+    normalizedLanguageKey(option.name),
+  ].filter((key): key is string => key != null)
+
+  for (const key of candidates) {
+    const directMatch = LANGUAGE_REGION_FALLBACKS[key]
+    if (directMatch) return directMatch
+
+    // Production language slugs can carry variant suffixes like `bangla-2`.
+    // The suffix is not a region, so use the base language fallback when known.
+    const simplifiedKeys = [
+      key.replace(/-\d+$/g, ""),
+      key.replace(/-(standard|yesus|common|formal|informal)$/g, ""),
+    ]
+    for (const simplifiedKey of simplifiedKeys) {
+      const baseMatch = LANGUAGE_REGION_FALLBACKS[simplifiedKey]
+      if (baseMatch) return baseMatch
+    }
+
+    const likelyRegion = likelyRegionFromLanguageCode(key)
+    if (likelyRegion) return likelyRegion
+  }
+
+  return null
+}
+
+function likelyRegionFromLanguageCode(language: string): string | null {
+  if (!/^[a-z]{2,3}$/.test(language)) return null
+  try {
+    const region = new Intl.Locale(language).maximize().region
+    return region && /^[A-Z]{2}$/.test(region) ? region : null
+  } catch {
+    return null
+  }
+}
+
+function flagPathForOption(option: LanguageComboboxOption): string | null {
+  const region =
+    regionFromFlagEmoji(option.flagEmoji) ?? regionFromBcp47(option.bcp47)
+  if (region) return flagPathFromRegion(region)
+
+  const language = languageCodeFromBcp47(option.bcp47)
+  if (language && LANGUAGE_FLAG_FILES.has(language)) {
+    return `${CIRCLE_FLAGS_BASE_PATH}/language/${language}.svg`
+  }
+
+  const slug = normalizedLanguageKey(option.slug)
+  if (slug && LANGUAGE_FLAG_FILES.has(slug)) {
+    return `${CIRCLE_FLAGS_BASE_PATH}/language/${slug}.svg`
+  }
+
+  const fallbackRegion = fallbackRegionForOption(option)
+  return fallbackRegion ? flagPathFromRegion(fallbackRegion) : null
+}
+
+function languageCodeFromBcp47(
+  bcp47: string | null | undefined,
+): string | null {
+  const language = bcp47?.split(/[-_]/)[0]?.toLowerCase()
+  return language && /^[a-z]{2,3}$/.test(language) ? language : null
+}
+
+function capitalizeNativeName(name: string, language: string): string {
+  const first = Array.from(name)[0]
+  if (!first) return name
+  return `${first.toLocaleUpperCase(language)}${name.slice(first.length)}`
+}
+
+function nativeNameForOption(option: LanguageComboboxOption): string | null {
+  if (option.nativeName) return option.nativeName
+  const language = languageCodeFromBcp47(option.bcp47)
+  if (!language) return null
+  try {
+    const displayName = new Intl.DisplayNames([language], {
+      type: "language",
+    }).of(language)
+    if (!displayName || displayName.toLowerCase() === language) return null
+    if (displayName.toLowerCase() === option.name.toLowerCase()) return null
+    return capitalizeNativeName(displayName, language)
+  } catch {
+    return null
+  }
+}
+
+function initialsForOption(option: LanguageComboboxOption): string {
+  const words = option.name.split(/\s+/).filter(Boolean).slice(0, 2)
+  const initials = words.map((word) => word[0]).join("")
+  return (initials || option.slug.slice(0, 2)).toUpperCase()
+}
+
+function LanguageFlag({
+  option,
+  size = "option",
+}: {
+  option: LanguageComboboxOption
+  size?: "trigger" | "option"
+}) {
+  const flagPath = flagPathForOption(option)
+  const compact = size === "trigger"
+  return (
+    <span
+      aria-hidden
+      data-testid="language-combobox-option-flag"
+      data-flag-src={flagPath ?? undefined}
+      className={`relative grid shrink-0 place-items-center overflow-hidden rounded-full border border-white/15 bg-white/10 shadow-[inset_0_0_18px_rgba(255,255,255,0.08)] ${
+        compact ? "size-8" : "size-10"
+      }`}
+    >
+      {flagPath ? (
+        <span
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${flagPath})` } as CSSProperties}
+        />
+      ) : (
+        <span
+          className={`font-bold tracking-wide text-stone-200 ${
+            compact ? "text-[10px]" : "text-[11px]"
+          }`}
+        >
+          {initialsForOption(option)}
+        </span>
+      )}
+    </span>
+  )
 }
 
 export function LanguageCombobox({
   options,
   value,
   onChange,
+  icon = "language",
+  disabled = false,
+  placeholder = "Select language",
 }: LanguageComboboxProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -45,13 +437,15 @@ export function LanguageCombobox({
     () => options.find((o) => o.slug === value) ?? null,
     [options, value],
   )
+  const Icon = icon === "subtitles" ? Captions : Languages
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return options
     return options.filter((o) => {
+      const nativeName = nativeNameForOption(o)
       if (o.name.toLowerCase().includes(q)) return true
-      if (o.nativeName?.toLowerCase().includes(q)) return true
+      if (nativeName?.toLowerCase().includes(q)) return true
       return false
     })
   }, [options, query])
@@ -158,22 +552,44 @@ export function LanguageCombobox({
     [handleSelect],
   )
 
+  const selectedNativeName = selected ? nativeNameForOption(selected) : null
+
   return (
     <div className="relative">
       <button
         ref={triggerRef}
         type="button"
         data-testid="language-combobox-trigger"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (disabled) return
+          setOpen((v) => !v)
+        }}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="flex w-full items-center justify-between gap-3 rounded-full border border-stone-700 bg-stone-800/60 px-4 py-3 text-left text-base font-medium text-stone-100 transition hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400"
+        disabled={disabled}
+        className="flex min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-left text-base font-semibold text-stone-100 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <span className="flex items-center gap-3">
-          <Languages aria-hidden className="h-5 w-5 text-stone-400" />
-          <span>{selected?.name}</span>
+        <span className="flex min-w-0 items-center gap-3">
+          {selected ? (
+            <LanguageFlag option={selected} size="trigger" />
+          ) : (
+            <Icon aria-hidden className="h-5 w-5 shrink-0 text-stone-400" />
+          )}
+          <span className="min-w-0">
+            <span className="block truncate leading-tight">
+              {selected?.name ?? placeholder}
+            </span>
+            {selectedNativeName ? (
+              <span
+                data-testid="language-combobox-trigger-native"
+                className="mt-0.5 block truncate text-xs leading-tight text-stone-400"
+              >
+                {selectedNativeName}
+              </span>
+            ) : null}
+          </span>
         </span>
-        <ChevronsUpDown aria-hidden className="h-4 w-4 text-stone-400" />
+        <ChevronsUpDown aria-hidden className="h-5 w-5 text-stone-500" />
       </button>
 
       {open ? (
@@ -186,9 +602,9 @@ export function LanguageCombobox({
           // (the filled `<button>`) paints past the `rounded-2xl` corner.
           // `shadow-xl` is unaffected because box-shadow renders outside
           // the element's bounding box, not against its overflow rule.
-          className="absolute left-0 right-0 z-20 mt-2 overflow-hidden rounded-2xl border border-stone-700 bg-stone-900 shadow-xl"
+          className="absolute left-0 right-0 z-20 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-stone-950/95 shadow-2xl backdrop-blur-md"
         >
-          <div className="border-b border-stone-700 px-3 py-2">
+          <div className="border-b border-white/10 px-5 py-4">
             <input
               ref={searchRef}
               data-testid="language-combobox-search"
@@ -205,7 +621,7 @@ export function LanguageCombobox({
                   ? `lcb-opt-${filtered[activeIndex].slug}`
                   : undefined
               }
-              className="w-full bg-transparent text-sm text-stone-100 placeholder:text-stone-500 focus:outline-none"
+              className="w-full bg-transparent text-lg font-normal text-stone-100 placeholder:text-stone-500 focus:outline-none"
             />
           </div>
           {/* Non-virtualised: acceptable up to a few thousand items. Revisit if scroll jank appears on lower-end devices. */}
@@ -230,35 +646,42 @@ export function LanguageCombobox({
             ) : (
               filtered.map((option, index) => {
                 const active = index === activeIndex
+                const selectedOption = option.slug === value
+                const nativeName = nativeNameForOption(option)
                 return (
                   <li key={option.slug}>
                     <button
                       type="button"
                       id={`lcb-opt-${option.slug}`}
                       role="option"
-                      aria-selected={active}
+                      aria-selected={selectedOption}
                       data-testid="language-combobox-option"
                       data-language-slug={option.slug}
                       data-active={active ? "true" : "false"}
                       onMouseEnter={() => setActiveIndex(index)}
                       onClick={() => handleSelect(option.slug)}
-                      className={`block w-full px-4 py-2 text-left transition ${
-                        active
-                          ? "bg-stone-700 text-stone-50"
-                          : "text-stone-200 hover:bg-stone-800"
+                      className={`flex w-full cursor-pointer items-center gap-4 px-5 py-4 text-left text-stone-100 transition ${
+                        selectedOption
+                          ? "bg-white/[0.08] text-white hover:bg-white/[0.12]"
+                          : active
+                            ? "bg-white/10"
+                            : "hover:bg-white/10"
                       }`}
                     >
-                      <span className="block text-sm font-semibold">
-                        {option.name}
-                      </span>
-                      {option.nativeName ? (
-                        <span
-                          data-testid="language-combobox-option-native"
-                          className="block text-xs text-stone-400"
-                        >
-                          {option.nativeName}
+                      <LanguageFlag option={option} />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold">
+                          {option.name}
                         </span>
-                      ) : null}
+                        {nativeName ? (
+                          <span
+                            data-testid="language-combobox-option-native"
+                            className="block truncate text-xs text-stone-400"
+                          >
+                            {nativeName}
+                          </span>
+                        ) : null}
+                      </span>
                     </button>
                   </li>
                 )

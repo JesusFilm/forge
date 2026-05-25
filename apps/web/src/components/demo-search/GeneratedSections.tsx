@@ -135,14 +135,14 @@ function BibleVerse({
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-stone-800 bg-stone-900 p-8 md:p-10">
-      <div className="pointer-events-none absolute top-4 left-6 font-serif text-8xl leading-none text-amber-500/20 select-none">
+      <div className="pointer-events-none absolute top-4 left-6 font-sans text-8xl leading-none text-amber-500/20 select-none">
         &ldquo;
       </div>
       <div className="relative">
         <span className="text-[10px] font-semibold tracking-[0.25em] text-amber-400 uppercase">
           {section.reference}
         </span>
-        <blockquote className="mt-3 font-serif text-2xl leading-relaxed text-stone-50 md:text-3xl">
+        <blockquote className="mt-3 font-sans text-2xl leading-relaxed text-stone-50 md:text-3xl">
           {section.text}
         </blockquote>
         <p className="mt-5 border-t border-stone-800 pt-4 text-sm leading-relaxed text-stone-300">

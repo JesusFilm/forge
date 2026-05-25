@@ -5,6 +5,9 @@ import {
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
   CONTENT_WIDTH_CLASSES,
+  WATCH_PAGE_CONTENT_CLASSES,
+  WATCH_PAGE_LEFT_RAIL_CLASSES,
+  WATCH_PAGE_RAIL_PADDING_CLASSES,
 } from "@/lib/content-width"
 
 // Lockstep invariant: at every breakpoint, the negative bleed margin, the
@@ -88,6 +91,22 @@ describe("content-width.ts — bleed/padding lockstep", () => {
       expect(CAROUSEL_END_SPACER).toContain(
         withPrefix(tuple.prefix, tuple.spacerW),
       )
+    })
+  }
+})
+
+describe("content-width.ts — watch page rail lockstep", () => {
+  const rails = [
+    { padding: "px-10", left: "left-10" },
+    { padding: "md:px-16", left: "md:left-16" },
+    { padding: "xl:px-24", left: "xl:left-24" },
+  ]
+
+  for (const rail of rails) {
+    it(`${rail.padding} aligns with ${rail.left}`, () => {
+      expect(WATCH_PAGE_RAIL_PADDING_CLASSES).toContain(rail.padding)
+      expect(WATCH_PAGE_CONTENT_CLASSES).toContain(rail.padding)
+      expect(WATCH_PAGE_LEFT_RAIL_CLASSES).toContain(rail.left)
     })
   }
 })

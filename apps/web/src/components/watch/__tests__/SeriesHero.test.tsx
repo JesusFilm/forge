@@ -168,6 +168,13 @@ describe("SeriesHero — static mode (AE2, AE3 partial)", () => {
       container.querySelector('[data-testid="series-hero-overlay-title"]')
         ?.textContent,
     ).toBe("StoryClubs")
+    const title = container.querySelector(
+      '[data-testid="series-hero-overlay-title"]',
+    )
+    expect(title?.getAttribute("class")).toContain("text-balance")
+    expect(title?.getAttribute("class")).toContain("break-words")
+    expect(title?.getAttribute("class")).toContain("max-w-[calc(100vw-5rem)]")
+    expect(title?.getAttribute("class")).not.toContain("whitespace-nowrap")
     expect(
       container.querySelector('[data-testid="series-hero-overlay-label"]')
         ?.textContent,

@@ -5,6 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
+  --color-brand-red: #ef3340;
+
   --color-section-default: 41 37 36;
   --color-section-light: 245 245 244;
   --color-section-dark: 28 25 23;
@@ -88,7 +90,8 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-montserrat);
+  --font-serif: var(--font-montserrat);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -135,9 +138,13 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-weight: 500;
+    line-height: 1.75;
+    overflow-x: hidden;
   }
   html {
     @apply font-sans;
+    overflow-x: hidden;
   }
 }
 
@@ -147,6 +154,9 @@
   }
   .animate-mesh-gradient-fast {
     animation: mesh-gradient 2s ease infinite;
+  }
+  .animate-watch-header-icon-cycle {
+    animation: watch-header-icon-cycle 4.8s ease-in-out infinite both;
   }
 }
 
@@ -173,6 +183,30 @@
   }
   100% {
     background-position: 0% 50%;
+  }
+}
+
+@keyframes watch-header-icon-cycle {
+  0%,
+  24%,
+  100% {
+    opacity: 0;
+    transform: translateY(3px) scale(0.82);
+  }
+  5%,
+  19% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-watch-header-icon-cycle {
+    animation: none;
+    opacity: 0;
+  }
+  .animate-watch-header-icon-cycle:first-child {
+    opacity: 1;
   }
 }
 

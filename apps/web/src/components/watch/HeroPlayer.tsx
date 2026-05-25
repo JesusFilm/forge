@@ -7,21 +7,29 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
   type ReactNode,
 } from "react"
 import { useSearchParams } from "next/navigation"
 import { MuxPlayer, type MuxPlayerRef } from "@forge/video-player"
 import type { MuxCSSProperties } from "@mux/mux-player-react"
 
-import { Globe } from "lucide-react"
-
 import { env } from "@/env"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
+import { WATCH_PAGE_LEFT_RAIL_CLASSES } from "@/lib/content-width"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { getViewerId } from "@/lib/viewer-id"
+import {
+  WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+  WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+  type WatchHeaderLanguageSwitcherDetail,
+  type WatchPlayerChromeVisibilityDetail,
+} from "@/lib/watch-player-chrome-events"
+import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { MutedSpeakerIcon, UnmutedSpeakerIcon } from "./chrome-icons"
+import { WATCH_SECTION_EYEBROW_CLASS } from "./watch-section-styles"
 
 type PillState = "play-with-sound" | "tap-to-unmute"
 
@@ -53,6 +61,8 @@ const OBSCURED_PAUSE_THRESHOLD = 0.6
 // Minimum number of playable language variants before the language-switch
 // globe button appears. With only one variant there's nothing to switch to.
 const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
+
+const PRE_REVEAL_HERO_SIZE_CLASSES = "h-[72svh] min-h-[420px] max-h-[900px]"
 
 export function HeroPlayer({
   block,
@@ -94,8 +104,36 @@ export function HeroPlayer({
   )
 
   const [chromeRevealed, setChromeRevealed] = useState(false)
+  const [controlsChromeVisible, setControlsChromeVisible] = useState(true)
   const [pillState, setPillState] = useState<PillState>("play-with-sound")
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
+
+  const publishChromeVisibility = useCallback((visible: boolean) => {
+    if (typeof window === "undefined") return
+    window.dispatchEvent(
+      new CustomEvent<WatchPlayerChromeVisibilityDetail>(
+        WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+        { detail: { visible } },
+      ),
+    )
+  }, [])
+
+  const handleControlsVisibilityChange = useCallback(
+    (visible: boolean) => {
+      setControlsChromeVisible(visible)
+      publishChromeVisibility(visible)
+    },
+    [publishChromeVisibility],
+  )
+
+  useEffect(() => {
+    if (!chromeRevealed) {
+      publishChromeVisibility(true)
+    }
+    return () => {
+      publishChromeVisibility(true)
+    }
+  }, [chromeRevealed, publishChromeVisibility])
 
   // Tracks the first paint where Mux Player has buffered enough to render the
   // muted-loop preview. Without this, the wrapper sits at the player's initial
@@ -345,9 +383,9 @@ export function HeroPlayer({
       return
     }
 
-    // Continue from the current playhead — the muted-loop preview is already
-    // running, so resetting currentTime would force a re-buffer and restart
-    // from frame 0, which the user reads as "the video reloaded."
+    // Initial click commits playback from the beginning, not from wherever the
+    // muted preview loop happened to be when the user clicked.
+    player.currentTime = 0
     player.muted = false
     const result = player.play()
     if (result && typeof result.then === "function") {
@@ -421,6 +459,31 @@ export function HeroPlayer({
     typeof onLanguageClick === "function" &&
     (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
+  const showTopLanguageSwitch =
+    showLanguageSwitch && (!chromeRevealed || controlsChromeVisible)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    window.dispatchEvent(
+      new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
+        WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+        {
+          detail: {
+            visible: showTopLanguageSwitch,
+            onClick: showTopLanguageSwitch ? (onLanguageClick ?? null) : null,
+          },
+        },
+      ),
+    )
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
+          WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+          { detail: { visible: false, onClick: null } },
+        ),
+      )
+    }
+  }, [onLanguageClick, showTopLanguageSwitch])
 
   return (
     <>
@@ -430,7 +493,9 @@ export function HeroPlayer({
         data-testid="hero-player-wrapper"
         data-chrome-revealed={chromeRevealed ? "true" : "false"}
         data-autoplay-blocked={autoplayBlocked ? "true" : "false"}
-        className="sticky aspect-video w-full overflow-hidden bg-black"
+        className={`sticky w-full overflow-hidden bg-black ${
+          chromeRevealed ? "aspect-video" : PRE_REVEAL_HERO_SIZE_CLASSES
+        }`}
         style={{
           // 100svh tracks the *small* viewport on iOS Safari (visible area
           // when the URL bar is showing). Plain 100vh is the *large*
@@ -465,6 +530,20 @@ export function HeroPlayer({
           className="block h-full w-full"
         />
 
+        {!chromeRevealed && overlay == null ? (
+          <button
+            type="button"
+            data-testid="hero-player-pre-reveal-click-surface"
+            aria-label={
+              pillState === "tap-to-unmute"
+                ? "Tap to Unmute"
+                : "Play with Sound"
+            }
+            onClick={handleUnmuteClick}
+            className="absolute inset-0 z-1 cursor-pointer bg-transparent focus:outline-none"
+          />
+        ) : null}
+
         {!videoReady ? (
           <div
             data-testid="hero-player-loading"
@@ -485,11 +564,19 @@ export function HeroPlayer({
             // In-chrome globe intentionally stays visible in fullscreen
             // (the top-right one is hidden by isFullscreen).
             showLanguageButton={hasLanguageSwitcher}
+            onVisibilityChange={handleControlsVisibilityChange}
           />
         ) : (
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+            data-testid="hero-player-muted-backdrop"
+            className="pointer-events-none absolute inset-0 [background:var(--watch-player-muted-backdrop)]"
+            style={
+              {
+                "--watch-player-muted-backdrop":
+                  WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+              } as CSSProperties
+            }
           />
         )}
         {darkenOverlay ? (
@@ -498,30 +585,6 @@ export function HeroPlayer({
             data-testid="hero-player-darken-overlay"
             className="pointer-events-none absolute inset-0 bg-black/50"
           />
-        ) : null}
-
-        {/* Independent full-hero overlay so top/right are relative to the
-            hero itself, not the bottom-anchored pill wrapper.
-            top-10 right-10 mirrors the floating search bar and JFP logo's
-            offset (both fixed at top-10) so the globe aligns horizontally
-            with them at page load. pointer-events-none on the container
-            avoids blocking Mux Player chrome hit-testing. */}
-        {showLanguageSwitch ? (
-          <div className="pointer-events-none absolute inset-0 z-10">
-            <button
-              type="button"
-              data-testid="hero-player-language-button"
-              onClick={onLanguageClick}
-              aria-label="Change audio language"
-              title="Change audio language"
-              className="pointer-events-auto absolute top-10 right-10 inline-flex h-12 w-12 items-center justify-center rounded-full text-stone-100 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
-            >
-              <Globe
-                aria-hidden
-                className="h-6 w-6 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
-              />
-            </button>
-          </div>
         ) : null}
       </div>
 
@@ -543,12 +606,12 @@ export function HeroPlayer({
           ? (overlay ?? (
               <div
                 data-testid="hero-player-overlay"
-                className="absolute right-6 bottom-0 left-10 flex flex-col items-start gap-4 pb-6 md:right-auto md:left-16 xl:left-24"
+                className={`absolute right-6 bottom-0 ${WATCH_PAGE_LEFT_RAIL_CLASSES} flex flex-col items-start gap-4 pb-12 md:right-auto`}
               >
                 {video.label ? (
                   <span
                     data-testid="hero-player-overlay-label"
-                    className="text-sm font-semibold tracking-wider text-amber-400 uppercase md:text-base"
+                    className={WATCH_SECTION_EYEBROW_CLASS}
                   >
                     {video.label}
                   </span>
@@ -556,7 +619,7 @@ export function HeroPlayer({
                 {video.title ? (
                   <h1
                     data-testid="hero-player-overlay-title"
-                    className="text-4xl font-bold text-white drop-shadow-lg whitespace-nowrap md:text-6xl xl:text-7xl"
+                    className="max-w-[calc(100vw-5rem)] text-2xl leading-[1.08] font-bold text-balance break-words text-white drop-shadow-lg sm:text-4xl md:max-w-[18ch] md:text-6xl xl:max-w-[20ch] xl:text-7xl"
                   >
                     {video.title}
                   </h1>
@@ -573,8 +636,8 @@ export function HeroPlayer({
                   onClick={handleUnmuteClick}
                   className={
                     pillState === "tap-to-unmute"
-                      ? "inline-flex items-center gap-3 rounded-full bg-amber-500 px-7 py-2.5 text-base font-semibold text-stone-950 shadow-lg ring-2 ring-amber-300/60 transition hover:bg-amber-400 md:px-8 md:py-3 md:text-lg"
-                      : "inline-flex items-center gap-3 rounded-full bg-red-600 px-7 py-2.5 text-base font-semibold text-white shadow-lg transition hover:bg-red-500 md:px-8 md:py-3 md:text-lg"
+                      ? "inline-flex cursor-pointer items-center gap-3 rounded-full bg-amber-500 px-7 py-2.5 text-base font-medium text-stone-950 shadow-lg ring-2 ring-amber-300/60 transition hover:bg-amber-400 md:px-8 md:py-3 md:text-lg"
+                      : "inline-flex cursor-pointer items-center gap-3 rounded-full bg-brand-red px-7 py-2.5 text-base font-medium text-white shadow-lg transition hover:bg-brand-red md:px-8 md:py-3 md:text-lg"
                   }
                 >
                   {pillState === "tap-to-unmute" ? (

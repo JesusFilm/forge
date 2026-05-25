@@ -1,7 +1,7 @@
 // Inline SVG icons for the HeroPlayer chrome.
 //
 // Two visual families:
-//   - Chrome controls (Play, Pause, Volume, Muted, Fullscreen) use a 20px
+//   - Chrome controls (Play, Pause, Volume, Muted, Fullscreen) use a 24px
 //     fill-based glyph styled by the parent button's text color.
 //   - The pre-reveal Play with Sound / Tap to Unmute pill uses larger 22px
 //     stroke-based speakers that match the pill's lock-up.
@@ -12,8 +12,8 @@ function ChromeGlyph({ path }: GlyphProps) {
   return (
     <svg
       aria-hidden="true"
-      width={20}
-      height={20}
+      width={24}
+      height={24}
       viewBox="0 0 24 24"
       fill="currentColor"
     >

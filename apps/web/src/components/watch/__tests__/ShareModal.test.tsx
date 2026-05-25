@@ -368,6 +368,39 @@ describe("ShareModal — clipboard failure", () => {
 })
 
 describe("ShareModal — lifecycle", () => {
+  it("renders the close button at the viewport top-right", () => {
+    const onClose = vi.fn()
+
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug="v"
+          currentLanguageSlug="english"
+          onClose={onClose}
+        />,
+      )
+    })
+
+    const close = $(
+      '[data-testid="watch-share-modal-close"]',
+    ) as HTMLButtonElement
+    expect(close).not.toBeNull()
+    expect(close.className).toContain("fixed")
+    expect(close.className).toContain("top-12")
+    expect(close.className).toContain("right-10")
+    expect(close.className).toContain("h-[52px]")
+    expect(close.className).toContain("w-12")
+    expect(close.className).toContain("z-[60]")
+    expect(close.querySelector("svg")?.getAttribute("class")).toContain("h-6")
+
+    act(() => {
+      close.click()
+    })
+
+    expect(onClose).toHaveBeenCalled()
+  })
+
   it("does not render any modal contents when open is false", () => {
     act(() => {
       root.render(

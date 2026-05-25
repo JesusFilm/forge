@@ -88,10 +88,10 @@ export function SiblingCarousel({
     <section
       data-block-type="SiblingCarousel"
       data-mode={isParentMode ? "parent" : "chapter"}
-      className="relative w-full px-4 pt-2 pb-2 md:px-8"
+      className="relative left-1/2 w-screen -translate-x-1/2 pt-2 pb-2 md:left-auto md:w-full md:translate-x-0"
       aria-label={ariaLabel}
     >
-      <header className="mb-4">
+      <header className="mb-4 px-10 md:px-0">
         <p className="text-sm font-medium text-stone-300">
           <span className="text-stone-100">
             {canonicalParent.title ?? "Collection"}
@@ -152,10 +152,10 @@ export function SiblingCarousel({
                   // active/inactive is imperceptible because the outer
                   // card geometry (carousel slot) stays the same.
                   className={cn(
-                    "group relative block aspect-video overflow-hidden rounded-lg bg-stone-900 transition",
+                    "group relative block aspect-square cursor-pointer overflow-hidden rounded-lg bg-stone-900 transition after:pointer-events-none after:absolute after:inset-0 after:z-40 after:rounded-[calc(theme(borderRadius.lg)-4px)] after:border-4 after:border-transparent after:shadow-[inset_0_1px_0_rgba(255,255,255,0.32),inset_0_-1px_0_rgba(0,0,0,0.32),inset_0_0_0_1px_rgba(255,255,255,0.12)]",
                     isActive
-                      ? "border-4 border-red-600"
-                      : "opacity-80 hover:opacity-100",
+                      ? "border-4 border-white"
+                      : "border-4 border-transparent opacity-70 hover:border-brand-red hover:opacity-100",
                   )}
                 >
                   {thumb ? (
@@ -183,10 +183,10 @@ export function SiblingCarousel({
                     </div>
                   )}
 
-                  {/* Bottom gradient for caption legibility over the thumbnail. */}
+                  {/* Soften the image into the lower caption zone. */}
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[52%] bg-black/35 backdrop-blur-[14px] [mask-image:linear-gradient(to_top,black_0%,rgba(0,0,0,0.9)_45%,rgba(0,0,0,0.35)_78%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_top,black_0%,rgba(0,0,0,0.9)_45%,rgba(0,0,0,0.35)_78%,transparent_100%)]"
                   />
 
                   {/* Hover-only play overlay on inactive cards. The active
@@ -195,18 +195,23 @@ export function SiblingCarousel({
                   {!isActive ? (
                     <div
                       aria-hidden="true"
-                      className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
+                      data-testid="sibling-carousel-play-overlay"
+                      className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
                     >
-                      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-white shadow-lg ring-1 ring-black/20">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-red text-white shadow-lg ring-1 ring-black/20">
                         <Play size={20} fill="currentColor" stroke="none" />
                       </span>
                     </div>
                   ) : null}
 
-                  {/* Caption block — CHAPTER label + title overlaid on the
-                      thumbnail's lower-left, matching the watch-page mockup. */}
-                  <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-3 sm:p-4">
-                    <span className="text-[10px] font-semibold tracking-[0.18em] text-stone-300 uppercase drop-shadow-md sm:text-xs">
+                  {/* Caption block — a lower frosted panel like the modern
+                      episode rails, leaving the sharp artwork to the top
+                      ~60% of the square tile. */}
+                  <div
+                    data-testid="sibling-carousel-caption"
+                    className="absolute inset-x-0 bottom-0 z-20 flex h-[44%] flex-col justify-end gap-1.5 bg-gradient-to-t from-black/68 via-black/35 to-transparent p-3 sm:p-4"
+                  >
+                    <span className="text-[10px] font-semibold tracking-[0.18em] text-stone-200/90 uppercase drop-shadow-md sm:text-xs">
                       Chapter
                     </span>
                     {/* Card title rendered as <span>, not <h3>: the cards are
@@ -215,7 +220,7 @@ export function SiblingCarousel({
                         skipped the heading order (WCAG 1.3.1) and would
                         require an artificial sr-only section header. The
                         Link's accessible name covers the card's title. */}
-                    <span className="line-clamp-2 text-sm font-bold text-white drop-shadow-md sm:text-base">
+                    <span className="line-clamp-2 text-sm leading-tight font-bold text-white drop-shadow-md sm:text-base">
                       {child.title ?? ""}
                     </span>
                   </div>

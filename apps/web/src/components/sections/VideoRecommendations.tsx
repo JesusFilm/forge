@@ -29,7 +29,7 @@ function SimilarityBadge({ similarity }: { similarity: number }) {
 
 function ThemePill({ theme }: { theme: string }) {
   return (
-    <span className="rounded-full bg-red-900/40 px-2 py-0.5 text-xs text-red-200/80">
+    <span className="rounded-full bg-brand-red/40 px-2 py-0.5 text-xs text-brand-red/80">
       {theme}
     </span>
   )

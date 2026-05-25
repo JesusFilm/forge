@@ -11,6 +11,14 @@ export const CONTENT_WIDTH_ALIGN_CLASSES = `mx-auto w-full ${CONTENT_MAX_WIDTH}`
 export const CONTENT_WIDTH_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12`
 
 /**
+ * Watch-page rail: aligns floating chrome, hero overlay text, carousel, and
+ * body content on the same left edge.
+ */
+export const WATCH_PAGE_RAIL_PADDING_CLASSES = "px-10 md:px-16 xl:px-24"
+export const WATCH_PAGE_LEFT_RAIL_CLASSES = "left-10 md:left-16 xl:left-24"
+export const WATCH_PAGE_CONTENT_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} ${WATCH_PAGE_RAIL_PADDING_CLASSES}`
+
+/**
  * Carousel bleed: lets a carousel inside a Section break out of the content
  * padding so cards can scroll edge-to-edge, while the first card still starts
  * aligned with the padded content area.
