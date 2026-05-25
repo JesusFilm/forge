@@ -101,15 +101,12 @@ export function WatchPageClient({
     if (subtitles.length === 0)
       return { enabled: false, slug: null as string | null }
     const pref = readSubtitlePreference()
-    if (!pref.enabled) return { enabled: false, slug: null as string | null }
     const slugToUse = resolveSubtitleSlug(
       pref.languageSlug,
       subtitles,
       currentLanguageSlug,
     )
-    return slugToUse
-      ? { enabled: true, slug: slugToUse }
-      : { enabled: false, slug: null as string | null }
+    return { enabled: pref.enabled && !!slugToUse, slug: slugToUse }
   }, [subtitles, currentLanguageSlug])
 
   const [subtitleEnabled, setSubtitleEnabled] = useState(false)
@@ -118,10 +115,8 @@ export function WatchPageClient({
   useEffect(() => {
     if (subtitleInitRef.current) return
     subtitleInitRef.current = true
-    if (initialSubtitleState.enabled) {
-      setSubtitleEnabled(true)
-      setSubtitleSlug(initialSubtitleState.slug)
-    }
+    setSubtitleEnabled(initialSubtitleState.enabled)
+    setSubtitleSlug(initialSubtitleState.slug)
   }, [initialSubtitleState])
 
   const subtitleVttSrc = useMemo((): string | null | undefined => {
