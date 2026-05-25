@@ -189,27 +189,29 @@ export function SubtitleOverlay({
 
   if (!cueText || !playbackCommitted) return null
 
-  const chromeActuallyVisible = (() => {
-    if (!chromeBarVisible) return false
+  const chromeShift = (() => {
+    if (!chromeBarVisible) return 0
     const bar = document.querySelector(
       '[data-testid="hero-player-custom-chrome"]',
     )
-    if (!bar) return false
+    if (!bar) return 0
     const rect = bar.getBoundingClientRect()
     const visibleHeight =
       Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0)
-    return visibleHeight >= rect.height * 0.5
+    const ratio = Math.max(0, Math.min(1, visibleHeight / rect.height))
+    return CHROME_BAR_HEIGHT * ratio
   })()
 
   return (
     <div
       data-testid="subtitle-overlay"
-      className="pointer-events-none absolute inset-x-0 z-20 flex justify-center transition-transform duration-200 ease-out"
+      className="pointer-events-none absolute inset-x-0 z-20 flex justify-center"
       style={{
         bottom: `${bottomOffset}px`,
-        transform: chromeActuallyVisible
-          ? `translateY(-${CHROME_BAR_HEIGHT}px)`
-          : "translateY(0)",
+        transform: `translateY(-${chromeShift}px)`,
+        transition: chromeBarVisible
+          ? "transform 200ms ease-out"
+          : "transform 200ms ease-out",
       }}
     >
       <div className="max-w-[min(80%,700px)] whitespace-pre-line rounded-md bg-black/40 px-5 py-2.5 text-center text-lg font-medium text-white shadow-lg backdrop-blur-sm md:text-xl">
