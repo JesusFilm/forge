@@ -3,6 +3,12 @@
 import { useEffect, useRef, useState } from "react"
 import type { MuxPlayerRef } from "@forge/video-player"
 
+const CHROME_BAR_HEIGHT = 64
+
+function stripHtmlTags(text: string): string {
+  return text.replace(/<[^>]*>/g, "")
+}
+
 export function SubtitleOverlay({
   playerRef,
   wrapperRef,
@@ -12,7 +18,22 @@ export function SubtitleOverlay({
 }) {
   const [cueText, setCueText] = useState<string | null>(null)
   const [bottomOffset, setBottomOffset] = useState(16)
+  const [chromeRevealed, setChromeRevealed] = useState(false)
   const listenerRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current
+    if (!wrapper) return
+    setChromeRevealed(wrapper.getAttribute("data-chrome-revealed") === "true")
+    const observer = new MutationObserver(() => {
+      setChromeRevealed(wrapper.getAttribute("data-chrome-revealed") === "true")
+    })
+    observer.observe(wrapper, {
+      attributes: true,
+      attributeFilter: ["data-chrome-revealed"],
+    })
+    return () => observer.disconnect()
+  }, [wrapperRef])
 
   useEffect(() => {
     const wrapper = wrapperRef.current
@@ -74,7 +95,7 @@ export function SubtitleOverlay({
         const texts: string[] = []
         for (let i = 0; i < activeCues.length; i++) {
           const cue = activeCues[i] as VTTCue
-          if (cue.text) texts.push(cue.text)
+          if (cue.text) texts.push(stripHtmlTags(cue.text))
         }
         setCueText(texts.length > 0 ? texts.join("\n") : null)
       }
@@ -113,11 +134,13 @@ export function SubtitleOverlay({
 
   if (!cueText) return null
 
+  const finalBottom = bottomOffset + (chromeRevealed ? CHROME_BAR_HEIGHT : 0)
+
   return (
     <div
       data-testid="subtitle-overlay"
-      className="pointer-events-none absolute inset-x-0 z-20 flex justify-center"
-      style={{ bottom: `${bottomOffset}px` }}
+      className="pointer-events-none absolute inset-x-0 z-20 flex justify-center transition-[bottom] duration-200 ease-out"
+      style={{ bottom: `${finalBottom}px` }}
     >
       <div className="max-w-[min(80%,700px)] whitespace-pre-line rounded-md bg-black/75 px-5 py-2.5 text-center text-lg font-medium text-white shadow-lg backdrop-blur-sm md:text-xl">
         {cueText}
