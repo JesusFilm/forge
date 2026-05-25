@@ -4,7 +4,7 @@ describe("Developer OAuth client", () => {
   beforeEach(() => {
     vi.resetModules()
     vi.stubEnv("AUTH_DATABASE_URL", "postgresql://localhost/forge_auth")
-    vi.stubEnv("AUTH_ISSUER_URL", "http://localhost:3004")
+    vi.stubEnv("AUTH_ISSUER_URL", "http://localhost:3004/api/auth")
     vi.stubEnv("AUTH_DEVELOPER_CLIENT_ID", "jfp_developer_local")
     vi.stubEnv("DEVELOPER_BASE_URL", "http://localhost:3006")
     vi.stubEnv("DEVELOPER_SESSION_SECRET", "x".repeat(32))

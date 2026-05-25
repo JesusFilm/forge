@@ -41,7 +41,7 @@ pnpm --filter @forge/developer lint
 | ------------------------------ | ---------------------------------------------------------------------- |
 | `AUTH_DATABASE_URL`            | Auth-owned Postgres database URL for read-only registry projection.    |
 | `DEVELOPER_BASE_URL`           | Public origin for this app.                                            |
-| `AUTH_ISSUER_URL`              | Auth issuer URL for the future OAuth relying-client flow.              |
+| `AUTH_ISSUER_URL`              | Auth OAuth issuer URL, e.g. `http://localhost:3004/api/auth` locally.  |
 | `AUTH_DEVELOPER_CLIENT_ID`     | Developer portal OAuth client id registered in Auth.                   |
 | `AUTH_DEVELOPER_CLIENT_SECRET` | Optional OAuth client secret if the Auth registration is confidential. |
 | `DEVELOPER_SESSION_SECRET`     | 32+ character secret for Developer-local session cookies.              |
