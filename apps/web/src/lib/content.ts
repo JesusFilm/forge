@@ -131,6 +131,7 @@ export type WatchVariantLanguage = {
   bcp47: string | null
   slug: string | null
   name: string | null
+  nativeName: string | null
 }
 
 export type WatchVariantDownload = {
@@ -170,7 +171,12 @@ export type WatchBibleCitation = {
 
 export type WatchSubtitle = {
   documentId: string
-  language: { slug: string; name: string; bcp47: string }
+  language: {
+    slug: string
+    name: string
+    nativeName: string | null
+    bcp47: string
+  }
   vttSrc: string
   primary: boolean
   aiGenerated: boolean
@@ -403,6 +409,17 @@ const LOCALIZED_NAME_FALLBACK_ORDER = [
   "zh-Hans-CN",
 ] as const
 
+function pickNativeName(value: unknown): string | null {
+  if (typeof value !== "object" || !value) return null
+  const map = value as Record<string, unknown>
+  const english = map.en
+  for (const [key, val] of Object.entries(map)) {
+    if (key === "en") continue
+    if (typeof val === "string" && val.length > 0 && val !== english) return val
+  }
+  return null
+}
+
 function pickLocalizedName(value: unknown): string | null {
   if (typeof value === "string") return value.length > 0 ? value : null
   if (!value || typeof value !== "object") return null
@@ -511,6 +528,7 @@ function normalizeVariant(
           bcp47: v.language.bcp47 ?? null,
           slug: v.language.slug ?? null,
           name: pickLocalizedName(v.language.name),
+          nativeName: pickNativeName(v.language.name),
         }
       : null,
     downloads: (v.downloads ?? [])
@@ -548,6 +566,7 @@ function normalizeSubtitles(
         language: {
           slug: s.language!.slug!,
           name: pickLocalizedName(s.language!.name) ?? s.language!.slug!,
+          nativeName: pickNativeName(s.language!.name),
           bcp47: s.language!.bcp47 ?? s.language!.slug!,
         },
         vttSrc: s.vttSrc!,

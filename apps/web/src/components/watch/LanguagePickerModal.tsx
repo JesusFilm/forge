@@ -26,6 +26,7 @@ export type LanguagePickerVariant = {
     coreId?: string | null
     slug: string | null
     name: string | null
+    nativeName?: string | null
   } | null
 }
 
@@ -82,7 +83,16 @@ export function LanguagePickerModal({
     () =>
       variants
         .filter(isPlayableLanguageVariant)
-        .map((v) => deriveLanguageDisplay(v.language.slug, v.language.name))
+        .map((v) => {
+          const display = deriveLanguageDisplay(
+            v.language.slug,
+            v.language.name,
+          )
+          return {
+            ...display,
+            nativeName: display.nativeName ?? v.language.nativeName ?? null,
+          }
+        })
         .sort((a, b) => a.name.localeCompare(b.name)),
     [variants],
   )
@@ -97,7 +107,11 @@ export function LanguagePickerModal({
   const subtitleOptions = useMemo(
     () =>
       subtitles
-        .map((s) => deriveLanguageDisplay(s.language.slug, s.language.name))
+        .map((s) => ({
+          slug: s.language.slug,
+          name: s.language.name,
+          nativeName: s.language.nativeName,
+        }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [subtitles],
   )

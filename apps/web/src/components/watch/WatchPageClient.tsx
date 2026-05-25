@@ -175,6 +175,7 @@ export function WatchPageClient({
                 coreId: v.language.coreId,
                 slug: v.language.slug,
                 name: v.language.name,
+                nativeName: v.language.nativeName,
               }
             : null,
         })),
