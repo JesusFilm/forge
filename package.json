@@ -66,7 +66,6 @@
       "undici@6": "6.24.0",
       "undici@7": "7.24.0",
       "vitest>vite": "6.4.2",
-      "@strapi/strapi>vite": "6.4.2",
       "vite@5": "6.4.2",
       "vite@6": "6.4.2",
       "webpack": "5.106.2",

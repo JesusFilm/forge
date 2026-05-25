@@ -1,5 +1,4 @@
 import { getCmsGateway } from "@/cms/gateway"
-import { env } from "@/config/env"
 import { createSwrCache } from "@/lib/swr-cache"
 
 export type CmsVideoCoverage = {
@@ -21,31 +20,7 @@ async function fetchVideoCoverage(
   languageIds?: string[],
 ): Promise<CmsVideoCoverage[]> {
   const gateway = getCmsGateway()
-  if (gateway.mode === "mock") {
-    return gateway.getVideoCoverage(languageIds)
-  }
-
-  const params = new URLSearchParams()
-  if (languageIds && languageIds.length > 0) {
-    params.set("languageIds", languageIds.join(","))
-  }
-
-  const qs = params.toString()
-  const url = `${env.STRAPI_URL}/api/video-coverage${qs ? `?${qs}` : ""}`
-
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${env.STRAPI_API_TOKEN}` },
-    signal: AbortSignal.timeout(10_000),
-  })
-
-  if (!response.ok) {
-    throw new Error(
-      `CMS /api/video-coverage returned ${response.status}: ${await response.text()}`,
-    )
-  }
-
-  const data = (await response.json()) as { videos: CmsVideoCoverage[] }
-  return data.videos
+  return gateway.getVideoCoverage(languageIds)
 }
 
 export function normalizeCoverageLanguageIds(languageIds: string[]): string[] {

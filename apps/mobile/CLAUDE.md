@@ -4,7 +4,7 @@
 
 - React Native with Expo (SDK 54, managed workflow)
 - Expo Router for file-based navigation
-- @forge/graphql with gql.tada for typed GraphQL operations
+- @forge/admin-graphql with gql.tada for typed GraphQL operations
 - Apollo Client with cache persistence (apollo3-cache-persist)
 - expo-video for HLS playback
 - expo-image for optimized image loading
@@ -12,16 +12,16 @@
 
 ## Architecture
 
-This is a Server-Driven UI (SDUI) app. The CMS (Strapi v5) controls the content
+This is a Server-Driven UI (SDUI) app. Admin controls the content
 blocks and their order via the Experience content type. The app renders them.
 
 ### SDUI Pipeline
 
 ```
-Strapi GraphQL → gql.tada typed query → thin normalizer (adds `kind`) → dispatcher → renderers
+Admin GraphQL → gql.tada typed query → thin normalizer (adds `kind`) → dispatcher → renderers
 ```
 
-- **Query**: Defined in `src/lib/queries.ts` using `graphql()` from `@forge/graphql`
+- **Query**: Defined in `src/lib/queries.ts` using `graphql()` from `@forge/admin-graphql`
 - **Normalizer**: `src/lib/normalizer.ts` — maps `__typename` → `kind`, ~100 LOC
 - **Dispatcher**: `src/components/sections/SectionDispatcher.tsx` — switch on `kind`
 - **Renderers**: `src/components/sections/*Renderer.tsx` — one per block type
@@ -37,7 +37,7 @@ Strapi GraphQL → gql.tada typed query → thin normalizer (adds `kind`) → di
 ## Conventions
 
 - Follow Expo Router file-based routing conventions.
-- Use `@forge/graphql` for all GraphQL operations — never define queries in `@forge/graphql` package itself.
+- Use `@forge/admin-graphql` for all GraphQL operations — never define queries in `@forge/admin-graphql` package itself.
 - System font (`fontFamily: 'System'`) for platform-native typography (SF Pro iOS, Roboto Android).
 - `hexToRgba(color, 0)` for gradient stops — never `"transparent"`.
 - Validate all CMS-sourced URLs via `validateUrl.ts` before use.
@@ -48,5 +48,5 @@ Strapi GraphQL → gql.tada typed query → thin normalizer (adds `kind`) → di
 - Android VideoView z-order: renders on top of all RN Views. Place video BEHIND scroll content.
 - ScrollView gesture preemption: interactive hero elements need `pointerEvents="box-none"` pass-through.
 - Lazy Apollo Client init: never module-scope. Use `getApolloClient()` getter.
-- `contentParagraphs` is `string[]` (Strapi JSON field) — validate with `Array.isArray()`.
+- `contentParagraphs` is `string[]` (admin JSON field) — validate with `Array.isArray()`.
 - `Math.round()` all scaled font sizes on Android (sub-pixel = blurry).

@@ -12,36 +12,32 @@ import {
 } from "@/lib/state"
 import { getEmbeddingSyncReport } from "@/lib/embedding-sync-report"
 
-const { mutateMock, queryMock, cmsPostMock, publishJobEventMock } = vi.hoisted(
-  () => ({
-    mutateMock: vi.fn(),
-    queryMock: vi.fn(),
-    cmsPostMock: vi.fn(),
-    publishJobEventMock: vi.fn(),
-  }),
-)
-
-vi.mock("@/cms/client", () => ({
-  default: () => ({
-    mutate: mutateMock,
-    query: queryMock,
-  }),
+const {
+  publishJobEventMock,
+  adminGetJobMock,
+  adminListJobsMock,
+  adminUpdateJobMock,
+  adminCountJobsMock,
+} = vi.hoisted(() => ({
+  publishJobEventMock: vi.fn(),
+  adminGetJobMock: vi.fn(),
+  adminListJobsMock: vi.fn(),
+  adminUpdateJobMock: vi.fn(),
+  adminCountJobsMock: vi.fn(),
 }))
 
-vi.mock("@/services/cmsClient", () => ({
-  cmsPost: cmsPostMock,
+vi.mock("@/backend/admin-client", () => ({
+  AdminGraphqlClient: vi.fn().mockImplementation(() => ({
+    getJob: adminGetJobMock,
+    listJobs: adminListJobsMock,
+    updateJob: adminUpdateJobMock,
+    countJobs: adminCountJobsMock,
+  })),
 }))
 
 vi.mock("@/lib/job-events", () => ({
   publishJobEvent: publishJobEventMock,
 }))
-
-type GqlNode = {
-  kind?: string
-  name?: { value?: string }
-  selectionSet?: { selections?: GqlNode[] }
-  definitions?: GqlNode[]
-}
 
 function buildGraphqlJob(documentId: string) {
   return {
@@ -62,61 +58,12 @@ function buildGraphqlJob(documentId: string) {
   }
 }
 
-function getDefinition(
-  document: GqlNode,
-  kind: string,
-  name: string,
-): GqlNode | undefined {
-  return document.definitions?.find(
-    (definition) => definition.kind === kind && definition.name?.value === name,
-  )
-}
-
-function getFieldNames(definition: GqlNode | undefined): string[] {
-  return (
-    definition?.selectionSet?.selections
-      ?.filter((selection): selection is GqlNode => selection.kind === "Field")
-      .map((selection) => selection.name?.value)
-      .filter((value): value is string => Boolean(value)) ?? []
-  )
-}
-
-function hasFragmentSpread(
-  document: GqlNode,
-  operationName: string,
-  fragmentName: string,
-): boolean {
-  const operation = getDefinition(
-    document,
-    "OperationDefinition",
-    operationName,
-  )
-
-  function walk(selections: GqlNode[] | undefined): boolean {
-    for (const selection of selections ?? []) {
-      if (
-        selection.kind === "FragmentSpread" &&
-        selection.name?.value === fragmentName
-      ) {
-        return true
-      }
-
-      if (walk(selection.selectionSet?.selections)) {
-        return true
-      }
-    }
-
-    return false
-  }
-
-  return walk(operation?.selectionSet?.selections)
-}
-
 beforeEach(() => {
-  mutateMock.mockReset()
-  queryMock.mockReset()
-  cmsPostMock.mockReset()
   publishJobEventMock.mockReset()
+  adminGetJobMock.mockReset()
+  adminListJobsMock.mockReset()
+  adminUpdateJobMock.mockReset()
+  adminCountJobsMock.mockReset()
 })
 
 afterEach(() => {
@@ -227,60 +174,46 @@ describe("buildJobUpdateData", () => {
 })
 
 describe("job read models", () => {
-  it("keeps artifacts in summary queries so unresolved routing failures stay visible", async () => {
-    queryMock.mockResolvedValue({
-      data: {
-        enrichmentJobs: [buildGraphqlJob("job-1")],
+  it("keeps artifacts in summary records so unresolved routing failures stay visible", async () => {
+    adminListJobsMock.mockResolvedValue([
+      {
+        ...buildGraphqlJob("job-1"),
+        artifacts: { transcriptionRouting: { kind: "metadata", data: {} } },
+        errors: [{ step: "transcription", message: "No source", at: "now" }],
       },
+    ])
+
+    const summaries = await listJobSummaries()
+
+    expect(summaries[0].artifacts).toMatchObject({
+      transcriptionRouting: { kind: "metadata" },
     })
-
-    await listJobSummaries()
-
-    const document = queryMock.mock.calls[0]?.[0]?.query as GqlNode
-    const summaryFields = getDefinition(
-      document,
-      "FragmentDefinition",
-      "JobSummaryFields",
-    )
-
-    expect(getFieldNames(summaryFields)).toContain("artifacts")
-    expect(getFieldNames(summaryFields)).toContain("errors")
+    expect(summaries[0].errors).toHaveLength(1)
   })
 
   it("includes source fields when polling a job so source titles do not disappear", async () => {
-    queryMock.mockResolvedValue({
-      data: {
-        enrichmentJob: {
-          ...buildGraphqlJob("job-1"),
-          video: {
-            title: "Main feature",
-            parents: [{ title: "Collection A" }],
-          },
-        },
-      },
+    adminGetJobMock.mockResolvedValue({
+      ...buildGraphqlJob("job-1"),
+      sourceMediaTitle: "Main feature",
+      sourceCollectionTitle: "Collection A",
     })
 
-    await getJob("job-1")
-
-    const document = queryMock.mock.calls[0]?.[0]?.query as GqlNode
-
-    expect(
-      hasFragmentSpread(document, "GetEnrichmentJob", "JobSourceFields"),
-    ).toBe(true)
+    await expect(getJob("job-1")).resolves.toMatchObject({
+      sourceMediaTitle: "Main feature",
+      sourceCollectionTitle: "Collection A",
+    })
   })
 })
 
-describe("live job event publishing", () => {
+describe("admin job event publishing", () => {
   it("publishes the normalized job after updateJob succeeds", async () => {
-    mutateMock.mockResolvedValue({
-      data: {
-        updateEnrichmentJob: {
-          ...buildGraphqlJob("job-10"),
-          status: "running",
-          currentStep: "transcription",
-        },
-      },
-    })
+    const updated = {
+      id: "job-10",
+      ...buildGraphqlJob("job-10"),
+      status: "running",
+      currentStep: "transcription",
+    }
+    adminUpdateJobMock.mockResolvedValue(updated)
 
     const updatedJob = await updateJob("job-10", {
       status: "running",
@@ -296,29 +229,23 @@ describe("live job event publishing", () => {
   })
 
   it("publishes the merged job after mergeJobArtifacts succeeds", async () => {
-    queryMock.mockResolvedValueOnce({
-      data: {
-        enrichmentJob: {
-          ...buildGraphqlJob("job-11"),
-          artifacts: {
-            materialization: {
-              sourceLanguageCode: "en",
-            },
-          },
+    adminGetJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-11"),
+      artifacts: {
+        materialization: {
+          kind: "metadata",
+          data: { sourceLanguageCode: "en" },
         },
       },
     })
-    mutateMock.mockResolvedValueOnce({
-      data: {
-        updateEnrichmentJob: {
-          ...buildGraphqlJob("job-11"),
-          artifacts: {
-            materialization: {
-              sourceLanguageCode: "en",
-            },
-            transcript: true,
-          },
+    adminUpdateJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-11"),
+      artifacts: {
+        materialization: {
+          kind: "metadata",
+          data: { sourceLanguageCode: "en" },
         },
+        transcript: { kind: "downloadable" },
       },
     })
 
@@ -333,41 +260,33 @@ describe("live job event publishing", () => {
   })
 
   it("publishes the normalized job after updateStepStatus succeeds", async () => {
-    queryMock.mockResolvedValueOnce({
-      data: {
-        enrichmentJob: {
-          ...buildGraphqlJob("job-12"),
-          steps: [
-            {
-              name: "transcription",
-              status: "pending",
-              retries: 0,
-              startedAt: null,
-              finishedAt: null,
-              error: null,
-              details: null,
-            },
-          ],
+    adminGetJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-12"),
+      steps: [
+        {
+          name: "transcription",
+          status: "pending",
+          retries: 0,
+          startedAt: null,
+          finishedAt: null,
+          error: null,
+          details: null,
         },
-      },
+      ],
     })
-    mutateMock.mockResolvedValueOnce({
-      data: {
-        updateEnrichmentJob: {
-          ...buildGraphqlJob("job-12"),
-          steps: [
-            {
-              name: "transcription",
-              status: "completed",
-              retries: 0,
-              startedAt: "2026-04-11T00:00:10.000Z",
-              finishedAt: "2026-04-11T00:00:20.000Z",
-              error: null,
-              details: null,
-            },
-          ],
+    adminUpdateJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-12"),
+      steps: [
+        {
+          name: "transcription",
+          status: "completed",
+          retries: 0,
+          startedAt: "2026-04-11T00:00:10.000Z",
+          finishedAt: "2026-04-11T00:00:20.000Z",
+          error: null,
+          details: null,
         },
-      },
+      ],
     })
 
     const updatedJob = await updateStepStatus(
@@ -385,88 +304,33 @@ describe("live job event publishing", () => {
 })
 
 describe("toJobRecord", () => {
-  it("keeps source titles when a live job read includes the rich video shape", async () => {
-    queryMock.mockResolvedValue({
-      data: {
-        enrichmentJob: {
-          documentId: "job-3",
-          muxAssetId: "asset-3",
-          muxPlaybackId: "playback-3",
-          languages: ["en"],
-          status: "completed",
-          currentStep: "metadata",
-          retries: 0,
-          createdAt: "2026-04-09T00:00:00.000Z",
-          updatedAt: "2026-04-09T00:01:00.000Z",
-          startedAt: "2026-04-09T00:00:10.000Z",
-          completedAt: "2026-04-09T00:01:00.000Z",
-          artifacts: {},
-          errors: [],
-          steps: [],
-          video: {
-            documentId: "video-doc-1",
-            title: "Live title",
-            parents: [{ title: "Collection A" }, { title: "Collection B" }],
-          },
+  it("keeps source titles when a job read includes the rich video shape", () => {
+    expect(
+      toJobRecord({
+        documentId: "job-3",
+        muxAssetId: "asset-3",
+        muxPlaybackId: "playback-3",
+        languages: ["en"],
+        status: "completed",
+        currentStep: "metadata",
+        retries: 0,
+        createdAt: "2026-04-09T00:00:00.000Z",
+        updatedAt: "2026-04-09T00:01:00.000Z",
+        startedAt: "2026-04-09T00:00:10.000Z",
+        completedAt: "2026-04-09T00:01:00.000Z",
+        artifacts: {},
+        errors: [],
+        steps: [],
+        video: {
+          documentId: "video-doc-1",
+          title: "Live title",
+          parents: [{ title: "Collection A" }, { title: "Collection B" }],
         },
-      },
-    })
-
-    await expect(getJob("job-3")).resolves.toMatchObject({
+      } as unknown as Parameters<typeof toJobRecord>[0]),
+    ).toMatchObject({
       sourceMediaTitle: "Live title",
       sourceCollectionTitle: "Collection A, Collection B",
     })
-
-    const queryDocument = queryMock.mock.calls[0]?.[0]?.query as {
-      definitions?: Array<{
-        kind?: string
-        name?: { value?: string }
-        selectionSet?: { selections?: unknown[] }
-      }>
-    }
-    const jobCoreFragment = queryDocument.definitions?.find(
-      (definition) =>
-        definition.kind === "FragmentDefinition" &&
-        definition.name?.value === "JobCoreFields",
-    )
-
-    const collectFieldNames = (selectionSet: {
-      selections?: unknown[]
-    }): string[] =>
-      (selectionSet.selections ?? []).flatMap((selection) => {
-        if (
-          typeof selection !== "object" ||
-          selection == null ||
-          !("kind" in selection)
-        ) {
-          return []
-        }
-
-        const node = selection as {
-          kind: string
-          name?: { value?: string }
-          selectionSet?: { selections?: unknown[] }
-        }
-
-        if (node.kind !== "Field") {
-          return []
-        }
-
-        const names = [node.name?.value].filter(
-          (value): value is string => typeof value === "string",
-        )
-        if (node.selectionSet) {
-          names.push(...collectFieldNames(node.selectionSet))
-        }
-
-        return names
-      })
-
-    expect(
-      collectFieldNames(jobCoreFragment?.selectionSet ?? { selections: [] }),
-    ).toEqual(
-      expect.arrayContaining(["documentId", "video", "title", "parents"]),
-    )
   })
 
   it("promotes the related CMS video document id when present", () => {

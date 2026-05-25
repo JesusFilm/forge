@@ -5,6 +5,23 @@
  */
 
 const TYPENAME_TO_KIND = {
+  VideoHeroBlock: "videoHero",
+  SectionBlock: "sectionWrapper",
+  VideoBlock: "video",
+  TextBlock: "text",
+  RelatedQuestionsBlock: "relatedQuestions",
+  BibleQuotesCarouselBlock: "bibleQuotesCarousel",
+  ContainerBlock: "container",
+  MediaCollectionBlock: "mediaCollection",
+  NavigationCarouselBlock: "navigationCarousel",
+  VideoCarouselBlock: "videoCarousel",
+  QuizButtonBlock: "quizButton",
+  EasterDatesBlock: "easterDates",
+  AdventCountdownBlock: "adventCountdown",
+  CtaBlock: "cta",
+  CardBlock: "card",
+  PromoBannerBlock: "promoBanner",
+  InfoBlocksBlock: "infoBlocks",
   ComponentSectionsVideoHero: "videoHero",
   ComponentSectionsSection: "sectionWrapper",
   ComponentSectionsVideo: "video",
@@ -69,7 +86,21 @@ function normalizeBlock(
     } as unknown as NormalizedBlock
   }
 
-  // For container, recursively normalize slot content
+  // For container, recursively normalize admin content or legacy slot content.
+  if (kind === "container" && Array.isArray(block.content)) {
+    return {
+      ...block,
+      kind,
+      slots: [
+        {
+          slotContent: normalizeContentArray(
+            block.content as Record<string, unknown>[],
+          ),
+        },
+      ],
+    } as unknown as NormalizedBlock
+  }
+
   if (kind === "container" && Array.isArray(block.slots)) {
     return {
       ...block,

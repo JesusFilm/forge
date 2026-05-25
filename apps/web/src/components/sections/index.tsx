@@ -21,7 +21,7 @@ export type { Section } from "@/lib/content"
  * Set of admin block typenames the renderer dispatch handles, derived
  * from the `ExperienceBlock` union members in apps/admin/schema.graphql.
  * The dispatch routes admin payloads to the same per-kind renderer the
- * Strapi cases use because admin fragments in `@forge/graphql`'s
+ * Strapi cases use because admin fragments in `@forge/admin-graphql`'s
  * `admin/fragments` sub-export adopt field aliases that match the
  * Strapi fragment vocabulary.
  *

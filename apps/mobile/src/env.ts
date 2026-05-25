@@ -8,7 +8,7 @@ import { z } from "zod"
 const _inlined = {
   ios: process.env.EXPO_PUBLIC_GRAPHQL_URL_IOS,
   android: process.env.EXPO_PUBLIC_GRAPHQL_URL_ANDROID,
-  token: process.env.EXPO_PUBLIC_STRAPI_TOKEN,
+  token: process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN,
 }
 void _inlined
 
@@ -18,13 +18,14 @@ const createAppEnv = () =>
     client: {
       EXPO_PUBLIC_GRAPHQL_URL_IOS: z.string().url(),
       EXPO_PUBLIC_GRAPHQL_URL_ANDROID: z.string().url(),
-      EXPO_PUBLIC_STRAPI_TOKEN: z.string().optional(),
+      EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN: z.string().optional(),
     },
     runtimeEnvStrict: {
       EXPO_PUBLIC_GRAPHQL_URL_IOS: process.env.EXPO_PUBLIC_GRAPHQL_URL_IOS,
       EXPO_PUBLIC_GRAPHQL_URL_ANDROID:
         process.env.EXPO_PUBLIC_GRAPHQL_URL_ANDROID,
-      EXPO_PUBLIC_STRAPI_TOKEN: process.env.EXPO_PUBLIC_STRAPI_TOKEN,
+      EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN:
+        process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN,
     },
     isServer: false,
     emptyStringAsUndefined: true,

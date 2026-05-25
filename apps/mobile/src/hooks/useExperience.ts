@@ -28,16 +28,16 @@ export function useExperience({
   } = useQuery(GET_WATCH_EXPERIENCE, {
     variables: {
       locale,
-      filters: { slug: { eq: slug } },
+      slug,
     },
     fetchPolicy: "cache-and-network",
   })
 
   const experience = useMemo<NormalizedExperience | null>(() => {
-    const experiences = data?.experiences
-    if (!experiences || experiences.length === 0) return null
+    const experienceBySlug = data?.experienceBySlug
+    if (!experienceBySlug) return null
     return normalizeExperience(
-      experiences[0] as unknown as Record<string, unknown>,
+      experienceBySlug as unknown as Record<string, unknown>,
     )
   }, [data])
 

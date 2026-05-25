@@ -6,35 +6,26 @@
  *
  * Uses @_unmask to make fragment fields directly accessible on parent results.
  */
-import { graphql, type ResultOf } from "@forge/graphql"
+import {
+  adminGraphql as graphql,
+  type AdminResultOf as ResultOf,
+} from "@forge/admin-graphql"
 
 // ── Leaf fragments ──────────────────────────────────────────────────
 
 export const VideoHeroFragment = graphql(`
-  fragment VideoHeroFields on ComponentSectionsVideoHero @_unmask {
-    id
+  fragment VideoHeroFields on VideoHeroBlock @_unmask {
     sectionKey
     heading
     subheading
     ctaLabel
     ctaLink
     streamingUrl
-    video {
-      documentId
-      title
-      slug
-      images {
-        url
-        mobileCinematicHigh
-        videoStill
-      }
-    }
   }
 `)
 
 export const TextSectionFragment = graphql(`
-  fragment TextSectionFields on ComponentSectionsText @_unmask {
-    id
+  fragment TextSectionFields on TextBlock @_unmask {
     sectionKey
     textHeading: heading
     headingLevel
@@ -45,15 +36,12 @@ export const TextSectionFragment = graphql(`
 `)
 
 export const RelatedQuestionsFragment = graphql(`
-  fragment RelatedQuestionsFields on ComponentSectionsRelatedQuestions
-  @_unmask {
-    id
+  fragment RelatedQuestionsFields on RelatedQuestionsBlock @_unmask {
     sectionKey
     rqHeading: heading
     ctaLabel
     ctaLink
     questions {
-      id
       question
       answer
     }
@@ -61,13 +49,10 @@ export const RelatedQuestionsFragment = graphql(`
 `)
 
 export const BibleQuotesCarouselFragment = graphql(`
-  fragment BibleQuotesCarouselFields on ComponentSectionsBibleQuotesCarousel
-  @_unmask {
-    id
+  fragment BibleQuotesCarouselFields on BibleQuotesCarouselBlock @_unmask {
     sectionKey
     bqcHeading: heading
     quotes {
-      id
       reference
       text
       attribution
@@ -80,8 +65,7 @@ export const BibleQuotesCarouselFragment = graphql(`
 `)
 
 export const EasterDatesFragment = graphql(`
-  fragment EasterDatesFields on ComponentSectionsEasterDates @_unmask {
-    id
+  fragment EasterDatesFields on EasterDatesBlock @_unmask {
     sectionKey
     easterDatesTitle
     westernEasterLabel
@@ -92,8 +76,7 @@ export const EasterDatesFragment = graphql(`
 `)
 
 export const AdventCountdownFragment = graphql(`
-  fragment AdventCountdownFields on ComponentSectionsAdventCountdown @_unmask {
-    id
+  fragment AdventCountdownFields on AdventCountdownBlock @_unmask {
     sectionKey
     adventTitle: title
     scripture
@@ -103,8 +86,7 @@ export const AdventCountdownFragment = graphql(`
 `)
 
 export const CTASectionFragment = graphql(`
-  fragment CTASectionFields on ComponentSectionsCta @_unmask {
-    id
+  fragment CTASectionFields on CtaBlock @_unmask {
     sectionKey
     ctaHeading: heading
     body
@@ -115,36 +97,19 @@ export const CTASectionFragment = graphql(`
 `)
 
 export const VideoSectionFragment = graphql(`
-  fragment VideoSectionFields on ComponentSectionsVideo @_unmask {
-    id
+  fragment VideoSectionFields on VideoBlock @_unmask {
     sectionKey
     streamingUrl
     videoTitle: title
     videoSubtitle: subtitle
-    media {
-      url
-    }
-    videoRef: video {
-      documentId
-      title
-      slug
-      imageAlt
-      images {
-        url
-        mobileCinematicHigh
-        videoStill
-      }
-    }
+    videoId
   }
 `)
 
 export const NavigationCarouselFragment = graphql(`
-  fragment NavigationCarouselFields on ComponentSectionsNavigationCarousel
-  @_unmask {
-    id
+  fragment NavigationCarouselFields on NavigationCarouselBlock @_unmask {
     sectionKey
     items {
-      id
       contentId
       title
       category
@@ -155,8 +120,7 @@ export const NavigationCarouselFragment = graphql(`
 `)
 
 export const MediaCollectionFragment = graphql(`
-  fragment MediaCollectionFields on ComponentSectionsMediaCollection @_unmask {
-    id
+  fragment MediaCollectionFields on MediaCollectionBlock @_unmask {
     sectionKey
     mcTitle: title
     mcSubtitle: subtitle
@@ -168,59 +132,35 @@ export const MediaCollectionFragment = graphql(`
     mcVariant: variant
     footerText
     items {
-      id
       titleOverride
       subtitleOverride
       labelOverride
       collectionSize
       imageUrl
       linkToSectionKey
-      video {
-        documentId
-        title
-        slug
-        imageAlt
-        images {
-          url
-          mobileCinematicHigh
-          videoStill
-        }
-      }
+      videoId
     }
   }
 `)
 
 export const VideoCarouselFragment = graphql(`
-  fragment VideoCarouselFields on ComponentSectionsVideoCarousel @_unmask {
-    id
+  fragment VideoCarouselFields on VideoCarouselBlock @_unmask {
     sectionKey
     vcTitle: title
     vcSubtitle: subtitle
     vcDescription: description
     items {
-      id
       streamingUrl
       imageUrl
       titleOverride
       backgroundColor
-      video {
-        documentId
-        title
-        slug
-        imageAlt
-        images {
-          url
-          mobileCinematicHigh
-          videoStill
-        }
-      }
+      videoId
     }
   }
 `)
 
 export const QuizButtonFragment = graphql(`
-  fragment QuizButtonFields on ComponentSectionsQuizButton @_unmask {
-    id
+  fragment QuizButtonFields on QuizButtonBlock @_unmask {
     buttonText
     iframeSrc
   }
@@ -234,39 +174,33 @@ export const QuizButtonFragment = graphql(`
 // NOTE: Container, NavigationCarousel, VideoCarousel, QuizButton are NOT in this union
 export const ContainerFragment = graphql(
   `
-    fragment ContainerFields on ComponentSectionsContainer @_unmask {
-      id
+    fragment ContainerFields on ContainerBlock @_unmask {
       sectionKey
-      slots {
-        id
-        gridSpan
-        spans
-        slotContent: content {
-          __typename
-          ... on ComponentSectionsText {
-            ...TextSectionFields
-          }
-          ... on ComponentSectionsEasterDates {
-            ...EasterDatesFields
-          }
-          ... on ComponentSectionsAdventCountdown {
-            ...AdventCountdownFields
-          }
-          ... on ComponentSectionsCta {
-            ...CTASectionFields
-          }
-          ... on ComponentSectionsVideo {
-            ...VideoSectionFields
-          }
-          ... on ComponentSectionsRelatedQuestions {
-            ...RelatedQuestionsFields
-          }
-          ... on ComponentSectionsBibleQuotesCarousel {
-            ...BibleQuotesCarouselFields
-          }
-          ... on ComponentSectionsMediaCollection {
-            ...MediaCollectionFields
-          }
+      content {
+        __typename
+        ... on TextBlock {
+          ...TextSectionFields
+        }
+        ... on EasterDatesBlock {
+          ...EasterDatesFields
+        }
+        ... on AdventCountdownBlock {
+          ...AdventCountdownFields
+        }
+        ... on CtaBlock {
+          ...CTASectionFields
+        }
+        ... on VideoBlock {
+          ...VideoSectionFields
+        }
+        ... on RelatedQuestionsBlock {
+          ...RelatedQuestionsFields
+        }
+        ... on BibleQuotesCarouselBlock {
+          ...BibleQuotesCarouselFields
+        }
+        ... on MediaCollectionBlock {
+          ...MediaCollectionFields
         }
       }
     }
@@ -289,8 +223,7 @@ export const ContainerFragment = graphql(
 // NOTE: EasterDates and AdventCountdown are NOT in this union (only in ContainerSlotContentDynamicZone)
 export const SectionFragment = graphql(
   `
-    fragment SectionFields on ComponentSectionsSection @_unmask {
-      id
+    fragment SectionFields on SectionBlock @_unmask {
       sectionKey
       backgroundColor
       backgroundImageUrl
@@ -300,34 +233,34 @@ export const SectionFragment = graphql(
       blurHash
       sectionContent: content {
         __typename
-        ... on ComponentSectionsContainer {
+        ... on ContainerBlock {
           ...ContainerFields
         }
-        ... on ComponentSectionsVideo {
+        ... on VideoBlock {
           ...VideoSectionFields
         }
-        ... on ComponentSectionsRelatedQuestions {
+        ... on RelatedQuestionsBlock {
           ...RelatedQuestionsFields
         }
-        ... on ComponentSectionsBibleQuotesCarousel {
+        ... on BibleQuotesCarouselBlock {
           ...BibleQuotesCarouselFields
         }
-        ... on ComponentSectionsMediaCollection {
+        ... on MediaCollectionBlock {
           ...MediaCollectionFields
         }
-        ... on ComponentSectionsQuizButton {
+        ... on QuizButtonBlock {
           ...QuizButtonFields
         }
-        ... on ComponentSectionsVideoCarousel {
+        ... on VideoCarouselBlock {
           ...VideoCarouselFields
         }
-        ... on ComponentSectionsNavigationCarousel {
+        ... on NavigationCarouselBlock {
           ...NavigationCarouselFields
         }
-        ... on ComponentSectionsText {
+        ... on TextBlock {
           ...TextSectionFields
         }
-        ... on ComponentSectionsCta {
+        ... on CtaBlock {
           ...CTASectionFields
         }
       }
@@ -351,53 +284,50 @@ export const SectionFragment = graphql(
 
 export const GET_WATCH_EXPERIENCE = graphql(
   `
-    query GetWatchExperience(
-      $locale: I18NLocaleCode!
-      $filters: ExperienceFiltersInput!
-    ) {
-      experiences(filters: $filters, locale: $locale) {
-        documentId
+    query GetWatchExperience($locale: String!, $slug: String!) {
+      experienceBySlug(locale: $locale, slug: $slug) {
+        documentId: id
         slug
         title
         blocks {
           __typename
-          ... on ComponentSectionsVideoHero {
+          ... on VideoHeroBlock {
             ...VideoHeroFields
           }
-          ... on ComponentSectionsSection {
+          ... on SectionBlock {
             ...SectionFields
           }
-          ... on ComponentSectionsVideoCarousel {
+          ... on VideoCarouselBlock {
             ...VideoCarouselFields
           }
-          ... on ComponentSectionsMediaCollection {
+          ... on MediaCollectionBlock {
             ...MediaCollectionFields
           }
-          ... on ComponentSectionsNavigationCarousel {
+          ... on NavigationCarouselBlock {
             ...NavigationCarouselFields
           }
-          ... on ComponentSectionsText {
+          ... on TextBlock {
             ...TextSectionFields
           }
-          ... on ComponentSectionsEasterDates {
+          ... on EasterDatesBlock {
             ...EasterDatesFields
           }
-          ... on ComponentSectionsAdventCountdown {
+          ... on AdventCountdownBlock {
             ...AdventCountdownFields
           }
-          ... on ComponentSectionsBibleQuotesCarousel {
+          ... on BibleQuotesCarouselBlock {
             ...BibleQuotesCarouselFields
           }
-          ... on ComponentSectionsCta {
+          ... on CtaBlock {
             ...CTASectionFields
           }
-          ... on ComponentSectionsRelatedQuestions {
+          ... on RelatedQuestionsBlock {
             ...RelatedQuestionsFields
           }
-          ... on ComponentSectionsContainer {
+          ... on ContainerBlock {
             ...ContainerFields
           }
-          ... on ComponentSectionsVideo {
+          ... on VideoBlock {
             ...VideoSectionFields
           }
         }
@@ -424,18 +354,16 @@ export const GET_WATCH_EXPERIENCE = graphql(
 // ── Lightweight listing query (no blocks) ─────────────────────────
 
 export const LIST_EXPERIENCES = graphql(`
-  query ListExperiences($locale: I18NLocaleCode!) {
-    experiences(locale: $locale) {
-      documentId
-      slug
-      title
-      metaDescription
-      isHomepage
-      ogImage {
-        url
-        alternativeText
-        width
-        height
+  query ListExperiences($locale: String!) {
+    experiences {
+      id
+      locales(locale: $locale) {
+        documentId: id
+        slug
+        title
+        metaDescription
+        isHomepage
+        ogImageUrl
       }
     }
   }
@@ -452,8 +380,8 @@ export const SEMANTIC_SEARCH = graphql(`
     $limit: Int
     $offset: Int
   ) {
-    semanticSearch(
-      query: $query
+    semanticSearch: search(
+      q: $query
       locale: $locale
       limit: $limit
       offset: $offset
@@ -475,8 +403,10 @@ export const SEMANTIC_SEARCH = graphql(`
   }
 `)
 
-export type SearchResult = ResultOf<
-  typeof SEMANTIC_SEARCH
->["semanticSearch"]["results"][number]
+export type SearchResult = NonNullable<
+  ResultOf<typeof SEMANTIC_SEARCH>["semanticSearch"]
+>["results"][number]
 
-export type SearchResponse = ResultOf<typeof SEMANTIC_SEARCH>["semanticSearch"]
+export type SearchResponse = NonNullable<
+  ResultOf<typeof SEMANTIC_SEARCH>["semanticSearch"]
+>
