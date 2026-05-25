@@ -135,9 +135,12 @@ String-typed inputs pass through unchanged at line 399, so any rows admin still 
 
 - **Watch for the same trap on other Strapi → admin field-type changes.** Any field whose admin schema type differs from its Strapi schema type (scalar widening to `JSON`, single-value to array, nullable-to-non-null) needs a normalizer pass — the typecheck won't catch it because gql.tada types `JSON` as `unknown`/`any` and consumers are free to over-narrow.
 
+- **Mobile is the second consumer.** As of 2026-05-25 (PR #1011), `apps/mobile/src/lib/pickLocalizedName.ts` implements the same helper with the same fallback order. Both web and mobile now route JSON-locale fields through `pickLocalizedName`. See `docs/solutions/architecture-patterns/mobile-admin-data-layer-cutover-pattern-20260525.md` section 3.
+
 ## Related
 
 - `docs/solutions/database-issues/prisma-video-relation-inverted-back-references-20260514.md` — sibling-session doc covering a different schema-shape mismatch (inverted `@relation` direction on `Video.parents` / `Video.children`) discovered in the same admin↔web port window.
+- `docs/solutions/architecture-patterns/mobile-admin-data-layer-cutover-pattern-20260525.md` — the mobile migration pattern that adopted this helper.
 - `docs/solutions/deployment/admin-local-dev-cms-content-dump-blocked-20260515.md` — same-session sibling on the local-dev auth/proxy gauntlet that blocked rerunning the cms content-dump while diagnosing this.
 - `docs/solutions/cms/admin-app-data-model-decisions.md` — admin schema-design decisions log; this learning is a concrete instance of a gap there (no enumeration of the locale-jsonb consumer contract).
 - `docs/solutions/best-practices/admin-image-enrichment-localized-media-workflow-20260504.md` — different concern (AI enrichment provenance) on the same admin localized-text surface.
