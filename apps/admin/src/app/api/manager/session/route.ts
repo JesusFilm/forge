@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { isValidManagerBearer } from "@/auth/manager-bearer"
+import { isValidManagerServiceToken } from "@/auth/manager-service-token"
 import { prisma } from "@/db/client"
 
 const payloadSchema = z.object({
@@ -11,7 +12,12 @@ const payloadSchema = z.object({
 })
 
 export async function POST(request: Request) {
-  if (!isValidManagerBearer(request.headers.get("authorization"))) {
+  const authorization = request.headers.get("authorization")
+  const isAuthorized =
+    (await isValidManagerServiceToken(authorization, request.url)) ||
+    isValidManagerBearer(authorization)
+
+  if (!isAuthorized) {
     return NextResponse.json(
       { error: "Manager service bearer token required" },
       { status: 403 },

@@ -14,6 +14,8 @@ export type AppEnvironmentSeed = {
   key: string
   kind: "local" | "preview" | "staging" | "production"
   clientId: string
+  managerSessionServiceClientId?: string
+  managerSessionServiceAudience?: string
   redirectUris: string[]
   postLogoutRedirectUris: string[]
   allowedOrigins: string[]
@@ -117,6 +119,9 @@ export const MANAGER_APP_SEED: RegisteredAppSeed = {
       key: "local",
       kind: "local",
       clientId: "jfp_manager_local",
+      managerSessionServiceClientId: "jfp_manager_local_session_service",
+      managerSessionServiceAudience:
+        "http://localhost:3003/api/manager/session",
       redirectUris: ["http://localhost:3002/api/auth/callback"],
       postLogoutRedirectUris: ["http://localhost:3002/login"],
       allowedOrigins: ["http://localhost:3002"],
@@ -127,6 +132,9 @@ export const MANAGER_APP_SEED: RegisteredAppSeed = {
       key: "preview",
       kind: "preview",
       clientId: "jfp_manager_preview",
+      managerSessionServiceClientId: "jfp_manager_preview_session_service",
+      managerSessionServiceAudience:
+        "https://admin-preview.jesusfilm.org/api/manager/session",
       redirectUris: ["https://manager-preview.jesusfilm.org/api/auth/callback"],
       postLogoutRedirectUris: ["https://manager-preview.jesusfilm.org/login"],
       allowedOrigins: ["https://manager-preview.jesusfilm.org"],
@@ -137,6 +145,9 @@ export const MANAGER_APP_SEED: RegisteredAppSeed = {
       key: "staging",
       kind: "staging",
       clientId: "jfp_manager_staging",
+      managerSessionServiceClientId: "jfp_manager_staging_session_service",
+      managerSessionServiceAudience:
+        "https://admin-stage.jesusfilm.org/api/manager/session",
       redirectUris: ["https://manager-stage.jesusfilm.org/api/auth/callback"],
       postLogoutRedirectUris: ["https://manager-stage.jesusfilm.org/login"],
       allowedOrigins: ["https://manager-stage.jesusfilm.org"],
@@ -147,6 +158,9 @@ export const MANAGER_APP_SEED: RegisteredAppSeed = {
       key: "production",
       kind: "production",
       clientId: "jfp_manager_production",
+      managerSessionServiceClientId: "jfp_manager_production_session_service",
+      managerSessionServiceAudience:
+        "https://admin.jesusfilm.org/api/manager/session",
       redirectUris: ["https://manager.jesusfilm.org/api/auth/callback"],
       postLogoutRedirectUris: ["https://manager.jesusfilm.org/login"],
       allowedOrigins: ["https://manager.jesusfilm.org"],

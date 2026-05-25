@@ -1,12 +1,12 @@
-import { Suspense } from "react"
+import { redirect } from "next/navigation"
+
 import { StudioAuthShell } from "@/features/shell/studio-auth-shell"
-import { LoginForm } from "@/app/login/login-form"
 import { getManagerOAuthConfig } from "@/lib/oauth-client"
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ expired?: string; error?: string }>
+  searchParams: Promise<{ error?: string; expired?: string; returnTo?: string }>
 }) {
   const params = await searchParams
   const managerBaseUrl = getManagerOAuthConfig().managerBaseUrl.replace(
@@ -14,18 +14,32 @@ export default async function LoginPage({
     "",
   )
 
+  if (!params.error) {
+    const loginUrl = new URL(`${managerBaseUrl}/api/auth/login`)
+    if (params.returnTo) {
+      loginUrl.searchParams.set("returnTo", params.returnTo)
+    }
+    redirect(loginUrl.toString() as never)
+  }
+
   return (
     <StudioAuthShell
-      title="Sign in"
-      subtitle="Manage coverage, enrichment jobs, review flows, and automations."
+      title="Manager access unavailable"
+      subtitle="Manager access was not granted for this account."
     >
-      <Suspense>
-        <LoginForm
-          expired={params.expired === "1"}
-          error={params.error}
-          loginHref={`${managerBaseUrl}/api/auth/login`}
-        />
-      </Suspense>
+      <div className="login-card">
+        <div className="login-error" role="alert">
+          {formatLoginError(params.error)}
+        </div>
+      </div>
     </StudioAuthShell>
   )
+}
+
+function formatLoginError(error: string | undefined) {
+  if (error === "forbidden") {
+    return "This account is not approved for Manager access."
+  }
+
+  return "We could not complete Manager sign-in."
 }

@@ -55,6 +55,8 @@ export const env = createEnv({
     AUTH_ISSUER_URL: z.string().url().optional(),
     AUTH_MANAGER_CLIENT_ID: z.string().min(1).optional(),
     AUTH_MANAGER_CLIENT_SECRET: z.string().min(1).optional(),
+    AUTH_MANAGER_SERVICE_CLIENT_ID: z.string().min(1).optional(),
+    AUTH_MANAGER_SERVICE_CLIENT_SECRET: z.string().min(1).optional(),
     ADMIN_MANAGER_API_KEY: z.string().min(1).optional(),
     ADMIN_MANAGER_SESSION_URL: z.string().url().optional(),
 
@@ -126,6 +128,9 @@ export const env = createEnv({
     AUTH_ISSUER_URL: process.env.AUTH_ISSUER_URL,
     AUTH_MANAGER_CLIENT_ID: process.env.AUTH_MANAGER_CLIENT_ID,
     AUTH_MANAGER_CLIENT_SECRET: process.env.AUTH_MANAGER_CLIENT_SECRET,
+    AUTH_MANAGER_SERVICE_CLIENT_ID: process.env.AUTH_MANAGER_SERVICE_CLIENT_ID,
+    AUTH_MANAGER_SERVICE_CLIENT_SECRET:
+      process.env.AUTH_MANAGER_SERVICE_CLIENT_SECRET,
     ADMIN_MANAGER_API_KEY: process.env.ADMIN_MANAGER_API_KEY,
     ADMIN_MANAGER_SESSION_URL: process.env.ADMIN_MANAGER_SESSION_URL,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
@@ -172,7 +177,12 @@ if (managerAuthEnvRequired && !isNextProductionBuild) {
     ["AUTH_ISSUER_URL", env.AUTH_ISSUER_URL],
     ["AUTH_MANAGER_CLIENT_ID", env.AUTH_MANAGER_CLIENT_ID],
     ["ADMIN_GRAPHQL_URL", env.ADMIN_GRAPHQL_URL],
-    ["ADMIN_MANAGER_API_KEY", env.ADMIN_MANAGER_API_KEY],
+    [
+      "ADMIN_MANAGER_API_KEY or AUTH_MANAGER_SERVICE_CLIENT_ID/AUTH_MANAGER_SERVICE_CLIENT_SECRET",
+      env.ADMIN_MANAGER_API_KEY ||
+        (env.AUTH_MANAGER_SERVICE_CLIENT_ID &&
+          env.AUTH_MANAGER_SERVICE_CLIENT_SECRET),
+    ],
   ]
     .filter(([, value]) => !value)
     .map(([name]) => name)

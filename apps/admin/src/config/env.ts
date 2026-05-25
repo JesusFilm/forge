@@ -39,6 +39,12 @@ export const env = createEnv({
     AUTH_ISSUER_URL: z.string().url(),
     AUTH_ADMIN_CLIENT_ID: z.string().min(1),
     AUTH_ADMIN_CLIENT_SECRET: z.string().min(1).optional(),
+    AUTH_MANAGER_SERVICE_CLIENT_ID: z.string().min(1).optional(),
+    AUTH_MANAGER_SERVICE_CLIENT_SECRET: z.string().min(1).optional(),
+    AUTH_MANAGER_SERVICE_AUDIENCE: z.string().url().optional(),
+    AUTH_MANAGER_SERVICE_ENVIRONMENT: z
+      .enum(["local", "preview", "staging", "production"])
+      .optional(),
     ADMIN_BASE_URL: z.string().url().optional(),
     MANAGER_ADMIN_API_KEY: z.string().min(1).optional(),
     REDIS_HOST: z.string().min(1).optional(),
@@ -217,6 +223,18 @@ export const env = createEnv({
     AUTH_ADMIN_CLIENT_ID: emptyToUndefined(process.env.AUTH_ADMIN_CLIENT_ID),
     AUTH_ADMIN_CLIENT_SECRET: emptyToUndefined(
       process.env.AUTH_ADMIN_CLIENT_SECRET,
+    ),
+    AUTH_MANAGER_SERVICE_CLIENT_ID: emptyToUndefined(
+      process.env.AUTH_MANAGER_SERVICE_CLIENT_ID,
+    ),
+    AUTH_MANAGER_SERVICE_CLIENT_SECRET: emptyToUndefined(
+      process.env.AUTH_MANAGER_SERVICE_CLIENT_SECRET,
+    ),
+    AUTH_MANAGER_SERVICE_AUDIENCE: emptyToUndefined(
+      process.env.AUTH_MANAGER_SERVICE_AUDIENCE,
+    ),
+    AUTH_MANAGER_SERVICE_ENVIRONMENT: emptyToUndefined(
+      process.env.AUTH_MANAGER_SERVICE_ENVIRONMENT,
     ),
     ADMIN_BASE_URL: emptyToUndefined(process.env.ADMIN_BASE_URL),
     MANAGER_ADMIN_API_KEY: emptyToUndefined(process.env.MANAGER_ADMIN_API_KEY),

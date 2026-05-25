@@ -67,6 +67,17 @@ export async function proxyMastraRequest(
   for (const header of hopByHopHeaders) responseHeaders.delete(header)
   for (const header of bodyEncodingHeaders) responseHeaders.delete(header)
 
+  if (isHtmlResponse(responseHeaders)) {
+    return new Response(
+      rewriteMastraStudioHtml(await response.text(), getGatewayUrl(request)),
+      {
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders,
+      },
+    )
+  }
+
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -87,4 +98,38 @@ function getCookieValue(cookieHeader: string | null, name: string) {
   }
 
   return undefined
+}
+
+function isHtmlResponse(headers: Headers) {
+  return headers.get("content-type")?.includes("text/html") ?? false
+}
+
+function getGatewayUrl(request: Request) {
+  const requestUrl = new URL(request.url)
+  const host =
+    request.headers.get("x-forwarded-host") ?? request.headers.get("host")
+  const protocol =
+    request.headers.get("x-forwarded-proto") ?? requestUrl.protocol.slice(0, -1)
+
+  if (!host) return requestUrl
+  return new URL(`${protocol}://${host}`)
+}
+
+function rewriteMastraStudioHtml(html: string, gatewayUrl: URL) {
+  const gatewayPort =
+    gatewayUrl.port || (gatewayUrl.protocol === "https:" ? "443" : "80")
+
+  return html
+    .replace(
+      /window\.MASTRA_SERVER_HOST = '[^']*';/,
+      `window.MASTRA_SERVER_HOST = '${gatewayUrl.hostname}';`,
+    )
+    .replace(
+      /window\.MASTRA_SERVER_PORT = '[^']*';/,
+      `window.MASTRA_SERVER_PORT = '${gatewayPort}';`,
+    )
+    .replace(
+      /window\.MASTRA_SERVER_PROTOCOL = '[^']*';/,
+      `window.MASTRA_SERVER_PROTOCOL = '${gatewayUrl.protocol.replace(":", "")}';`,
+    )
 }
