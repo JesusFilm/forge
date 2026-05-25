@@ -218,7 +218,6 @@ export function WatchPageClient({
         onPlayerReady={handlePlayerReady}
         locale={locale}
         subtitleVttSrc={subtitleVttSrc}
-        playerRef={playerRef}
       />
 
       <DownloadModal
