@@ -196,7 +196,9 @@ export function SubtitleOverlay({
     )
     if (!bar) return false
     const rect = bar.getBoundingClientRect()
-    return rect.bottom > 0 && rect.top < window.innerHeight
+    const visibleHeight =
+      Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0)
+    return visibleHeight >= rect.height * 0.5
   })()
 
   return (
