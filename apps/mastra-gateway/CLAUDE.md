@@ -3,9 +3,9 @@
 ## What this app does
 
 Public Next.js gateway for self-hosted Mastra Studio. It authenticates humans
-through Forge Auth, stores its own Studio access records, exposes `/admin` for
-gateway admins, and proxies authorized Studio traffic to the internal
-`apps/mastra` service.
+through Forge Auth, performs runtime Studio access checks, and proxies
+authorized Studio traffic to the internal `apps/mastra` service. Permission
+management is being centralized in Developer, not edited inside this gateway.
 
 Origin documents:
 
@@ -22,26 +22,25 @@ Origin documents:
 
 ## Architecture rules
 
-- Auth proves identity. This gateway owns Mastra Studio access levels.
+- Auth proves identity. This gateway enforces Mastra Studio access at runtime.
 - Access levels are `admin` and `editor`.
-- `admin` can access Studio and `/admin`; `editor` can access Studio only.
+- This app must not expose local access-management UI.
 - Keep `apps/admin` out of this access flow.
 - Proxy requests to Mastra with a service bearer and never forward browser
   cookies upstream.
 
 ## Environment
 
-| Variable                                | Purpose                                                   |
-| --------------------------------------- | --------------------------------------------------------- |
-| `DATABASE_URL`                          | Gateway access-record database.                           |
-| `AUTH_ISSUER_URL`                       | Forge Auth issuer, normally `https://auth.jesusfilm.org`. |
-| `AUTH_MASTRA_STUDIO_CLIENT_ID`          | OAuth client id for this gateway.                         |
-| `AUTH_MASTRA_STUDIO_CLIENT_SECRET`      | Optional OAuth client secret.                             |
-| `MASTRA_GATEWAY_BASE_URL`               | Public base URL for callback and redirects.               |
-| `MASTRA_GATEWAY_SESSION_SECRET`         | HS256 signing secret, at least 32 chars.                  |
-| `MASTRA_INTERNAL_BASE_URL`              | Internal URL for the Mastra service.                      |
-| `MASTRA_INTERNAL_API_KEY`               | Bearer sent by the gateway to `apps/mastra`.              |
-| `MASTRA_GATEWAY_BOOTSTRAP_ADMIN_EMAILS` | Optional CSV of first admin emails.                       |
+| Variable                           | Purpose                                                   |
+| ---------------------------------- | --------------------------------------------------------- |
+| `DATABASE_URL`                     | Gateway access-record database.                           |
+| `AUTH_ISSUER_URL`                  | Forge Auth issuer, normally `https://auth.jesusfilm.org`. |
+| `AUTH_MASTRA_STUDIO_CLIENT_ID`     | OAuth client id for this gateway.                         |
+| `AUTH_MASTRA_STUDIO_CLIENT_SECRET` | Optional OAuth client secret.                             |
+| `MASTRA_GATEWAY_BASE_URL`          | Public base URL for callback and redirects.               |
+| `MASTRA_GATEWAY_SESSION_SECRET`    | HS256 signing secret, at least 32 chars.                  |
+| `MASTRA_INTERNAL_BASE_URL`         | Internal URL for the Mastra service.                      |
+| `MASTRA_INTERNAL_API_KEY`          | Bearer sent by the gateway to `apps/mastra`.              |
 
 ## Development
 

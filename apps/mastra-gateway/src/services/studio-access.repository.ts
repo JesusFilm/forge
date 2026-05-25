@@ -24,10 +24,6 @@ function toRecord(row: {
   }
 }
 
-function toPrismaRole(role: StudioAccessRole) {
-  return role.toUpperCase() as "ADMIN" | "EDITOR"
-}
-
 export const studioAccessRepository: StudioAccessRepository = {
   async findBySubjectOrEmail({ subject, email }) {
     const row = await prisma.studioAccess.findFirst({
@@ -36,30 +32,6 @@ export const studioAccessRepository: StudioAccessRepository = {
       },
     })
     return row ? toRecord(row) : null
-  },
-
-  async upsertBootstrapAdmin({ subject, email, name }) {
-    const row = await prisma.studioAccess.upsert({
-      where: { email },
-      update: {
-        subject,
-        name,
-        status: "APPROVED",
-        role: "ADMIN",
-        approvedAt: new Date(),
-        revokedAt: null,
-      },
-      create: {
-        subject,
-        email,
-        name,
-        status: "APPROVED",
-        role: "ADMIN",
-        approvedAt: new Date(),
-        approvedBy: "bootstrap",
-      },
-    })
-    return toRecord(row)
   },
 
   async requestAccess({ subject, email, name }) {
@@ -77,46 +49,6 @@ export const studioAccessRepository: StudioAccessRepository = {
         status: "PENDING",
         role: "EDITOR",
       },
-    })
-    return toRecord(row)
-  },
-
-  async list() {
-    const rows = await prisma.studioAccess.findMany({
-      orderBy: [{ status: "asc" }, { email: "asc" }],
-    })
-    return rows.map(toRecord)
-  },
-
-  async approve({ id, role, approvedBy }) {
-    const row = await prisma.studioAccess.update({
-      where: { id },
-      data: {
-        status: "APPROVED",
-        role: toPrismaRole(role),
-        approvedBy,
-        approvedAt: new Date(),
-        revokedAt: null,
-      },
-    })
-    return toRecord(row)
-  },
-
-  async revoke({ id }) {
-    const row = await prisma.studioAccess.update({
-      where: { id },
-      data: {
-        status: "REVOKED",
-        revokedAt: new Date(),
-      },
-    })
-    return toRecord(row)
-  },
-
-  async updateRole({ id, role }) {
-    const row = await prisma.studioAccess.update({
-      where: { id },
-      data: { role: toPrismaRole(role) },
     })
     return toRecord(row)
   },

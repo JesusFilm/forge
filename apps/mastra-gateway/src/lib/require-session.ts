@@ -14,19 +14,11 @@ export async function getGatewaySession() {
   )
 }
 
-export async function requireGatewaySession({
-  admin = false,
-}: {
-  admin?: boolean
-} = {}): Promise<GatewaySession> {
+export async function requireGatewaySession(): Promise<GatewaySession> {
   const session = await getGatewaySession()
 
   if (!session) {
-    redirect(`/api/auth/login?returnTo=${admin ? "/admin" : "/studio"}`)
-  }
-
-  if (admin && session.role !== "admin") {
-    redirect("/studio")
+    redirect("/api/auth/login?returnTo=/studio")
   }
 
   return session

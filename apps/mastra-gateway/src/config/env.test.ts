@@ -6,17 +6,6 @@ describe("Mastra gateway env", () => {
     vi.resetModules()
   })
 
-  it("parses bootstrap admin emails", async () => {
-    vi.stubEnv(
-      "MASTRA_GATEWAY_BOOTSTRAP_ADMIN_EMAILS",
-      " A@Example.com, b@test ",
-    )
-
-    const { getBootstrapAdminEmails } = await import("./env")
-
-    expect(getBootstrapAdminEmails()).toEqual(["a@example.com", "b@test"])
-  })
-
   it("requires production runtime configuration", async () => {
     vi.stubEnv("NODE_ENV", "production")
 

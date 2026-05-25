@@ -17,7 +17,6 @@ export const env = createEnv({
     MASTRA_GATEWAY_SESSION_SECRET: z.string().min(32).optional(),
     MASTRA_INTERNAL_BASE_URL: z.string().url().optional(),
     MASTRA_INTERNAL_API_KEY: z.string().min(1).optional(),
-    MASTRA_GATEWAY_BOOTSTRAP_ADMIN_EMAILS: z.string().optional(),
   },
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
@@ -41,8 +40,6 @@ export const env = createEnv({
     MASTRA_INTERNAL_API_KEY: emptyToUndefined(
       process.env.MASTRA_INTERNAL_API_KEY,
     ),
-    MASTRA_GATEWAY_BOOTSTRAP_ADMIN_EMAILS:
-      process.env.MASTRA_GATEWAY_BOOTSTRAP_ADMIN_EMAILS,
   },
   skipValidation: !!process.env.CI,
 })
@@ -78,11 +75,4 @@ export function assertGatewayRuntimeEnv() {
       `${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} required for Mastra gateway production`,
     )
   }
-}
-
-export function getBootstrapAdminEmails() {
-  return (env.MASTRA_GATEWAY_BOOTSTRAP_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean)
 }

@@ -21,26 +21,10 @@ export type StudioAccessRepository = {
     subject: string
     email?: string
   }): Promise<StudioAccessRecord | null>
-  upsertBootstrapAdmin(input: {
-    subject: string
-    email: string
-    name?: string
-  }): Promise<StudioAccessRecord>
   requestAccess(input: {
     subject: string
     email: string
     name?: string
-  }): Promise<StudioAccessRecord>
-  list(): Promise<StudioAccessRecord[]>
-  approve(input: {
-    id: string
-    role: StudioAccessRole
-    approvedBy: string
-  }): Promise<StudioAccessRecord>
-  revoke(input: { id: string }): Promise<StudioAccessRecord>
-  updateRole(input: {
-    id: string
-    role: StudioAccessRole
   }): Promise<StudioAccessRecord>
   markAccessed(input: { id: string }): Promise<void>
 }
@@ -55,33 +39,19 @@ export function normalizeEmail(email?: string) {
 
 export function createStudioAccessService({
   repository,
-  bootstrapAdminEmails = [],
 }: {
   repository: StudioAccessRepository
-  bootstrapAdminEmails?: readonly string[]
 }) {
-  const bootstrapSet = new Set(
-    bootstrapAdminEmails.map((email) => email.toLowerCase()),
-  )
-
   async function resolve(
     identity: StudioAccessIdentity,
   ): Promise<StudioAccessDecision> {
     const email = normalizeEmail(identity.email)
     if (!email) return { allowed: false, reason: "missing_email" }
 
-    let record = await repository.findBySubjectOrEmail({
+    const record = await repository.findBySubjectOrEmail({
       subject: identity.subject,
       email,
     })
-
-    if (!record && bootstrapSet.has(email)) {
-      record = await repository.upsertBootstrapAdmin({
-        subject: identity.subject,
-        email,
-        name: identity.name,
-      })
-    }
 
     if (!record) {
       await repository.requestAccess({
@@ -104,17 +74,7 @@ export function createStudioAccessService({
     return { allowed: true, role: record.role, record }
   }
 
-  async function requireAdmin(identity: StudioAccessIdentity) {
-    const decision = await resolve(identity)
-    return decision.allowed && decision.role === "admin"
-  }
-
   return {
     resolve,
-    requireAdmin,
-    list: repository.list,
-    approve: repository.approve,
-    revoke: repository.revoke,
-    updateRole: repository.updateRole,
   }
 }

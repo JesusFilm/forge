@@ -1,5 +1,4 @@
 import { Shield } from "lucide-react"
-import { revalidatePath } from "next/cache"
 import {
   DashboardPageHeader,
   DataTable,
@@ -8,28 +7,8 @@ import {
   PageSection,
 } from "@/components/admin-ui"
 import { requireAdminSession } from "@/auth/session"
-import { prisma } from "@/db/client"
 import { getAdminMessages } from "@/i18n/server"
 import { loadUsersData } from "@/app/dashboard/ops-data"
-
-async function approveUser(formData: FormData) {
-  "use server"
-
-  await requireAdminSession()
-  const id = formData.get("id")
-  const role = formData.get("role")
-
-  if (typeof id !== "string" || (role !== "EDITOR" && role !== "ADMIN")) {
-    return
-  }
-
-  await prisma.user.update({
-    where: { id },
-    data: { role },
-    select: { id: true },
-  })
-  revalidatePath("/dashboard/users")
-}
 
 export default async function UsersPage() {
   await requireAdminSession()
@@ -79,30 +58,6 @@ export default async function UsersPage() {
                   >
                     {row.statusLabel}
                   </span>
-                  {row.statusLabel === "VIEWER" ? (
-                    <>
-                      <form action={approveUser}>
-                        <input type="hidden" name="id" value={row.key} />
-                        <input type="hidden" name="role" value="EDITOR" />
-                        <button
-                          type="submit"
-                          className="status-pill border-[var(--color-success-border)] text-[var(--color-success)]"
-                        >
-                          Approve Editor
-                        </button>
-                      </form>
-                      <form action={approveUser}>
-                        <input type="hidden" name="id" value={row.key} />
-                        <input type="hidden" name="role" value="ADMIN" />
-                        <button
-                          type="submit"
-                          className="status-pill border-[var(--color-warning-border)] text-[var(--color-warning)]"
-                        >
-                          Approve Admin
-                        </button>
-                      </form>
-                    </>
-                  ) : null}
                 </div>,
                 <span
                   key={`${row.key}-meta`}
@@ -129,11 +84,11 @@ export default async function UsersPage() {
         <OperatorRail
           title={messages.common.operatorNotes}
           meta={messages.common.fieldGuide}
-          notes="This route reflects persisted admin user roles mapped from Auth SSO callbacks instead of a future-state permissions mockup."
+          notes="This route is read-only. App access and permission management is moving to Developer instead of being edited inside Admin."
           chips={[
             { label: "Source", value: "ADMIN_DB" },
             { label: "Model", value: "ROLE_PLUS_ABAC" },
-            { label: "Surface", value: "ACCESS_CONTROL" },
+            { label: "Surface", value: "READ_ONLY" },
           ]}
         />
       </div>

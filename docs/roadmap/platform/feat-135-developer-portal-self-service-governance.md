@@ -3,7 +3,7 @@ id: "feat-135"
 title: "Developer Portal Self-Service Governance"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-06-02"
 duration: 10
 depends_on:
@@ -52,6 +52,8 @@ revocation changes.
 
 ## What To Build
 
+0. Keep Admin, Manager, and Mastra Gateway free of local access-management
+   surfaces while Developer becomes the unified place for those controls.
 1. Add Auth-owned management APIs for registry reads and carefully scoped
    mutations.
 2. Add first-party app/environment update flows with audit events.
@@ -76,6 +78,8 @@ revocation changes.
 - Do not store independent permission copies inside Admin, Manager, Mastra
   Studio, or Developer when an Auth-owned app access grant should be the source
   of truth.
+- Do not reintroduce local access-management UI or grant scripts in Admin,
+  Manager, or Mastra Gateway.
 - Do not change Strapi/CMS authentication.
 - Do not make Strapi an Auth relying client.
 

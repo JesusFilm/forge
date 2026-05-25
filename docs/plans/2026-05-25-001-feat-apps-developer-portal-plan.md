@@ -131,6 +131,9 @@ without committing to risky credential mutations in the first PR.
   allowed origins, and default scopes.
 - Never render client secrets or token material.
 - Surface production status and pending approval posture in the UI.
+- Remove local app permission-management surfaces from Admin and Mastra Gateway
+  while keeping runtime checks intact until Auth-backed grant enforcement
+  replaces them.
 
 **Test scenarios**
 
@@ -148,6 +151,8 @@ without committing to risky credential mutations in the first PR.
 - Add app create/update flows with audit logging and environment review state.
 - Add internal user permission management for Admin, Manager, Mastra Studio,
   and Developer access grants, backed by Auth-owned policy and audit.
+- Keep local first-party apps free of duplicated permission-management UI and
+  operator scripts.
 - Add one-time client secret reveal and regeneration for confidential/service
   clients.
 - Add redirect URI validation policy for local, preview, staging, and

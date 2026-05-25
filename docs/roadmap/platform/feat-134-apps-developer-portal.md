@@ -66,12 +66,14 @@ credentials, tokens, grants, revocation, and audit events.
 3. Protect the developer portal with Auth OAuth and a Developer-local session.
 4. Add a read-only registry surface that shows Auth-owned registered apps,
    environments, OAuth client ids, redirect URIs, scopes, and approval status.
-5. Keep this first PR narrow: no self-service production credential creation,
+5. Remove local permission-management controls from Admin and Mastra Gateway
+   so access management is not duplicated across first-party apps.
+6. Keep this first PR narrow: no self-service production credential creation,
    no raw secret exposure, and no mutation-heavy app management.
-6. Document the future posture: third-party self-service plus internal app
+7. Document the future posture: third-party self-service plus internal app
    access administration, backed by audit logging, one-time secret
    reveal/regeneration, redirect URI validation, and production approval gates.
-7. Leave Strapi/CMS authentication untouched.
+8. Leave Strapi/CMS authentication untouched.
 
 ## Constraints
 
@@ -86,6 +88,8 @@ credentials, tokens, grants, revocation, and audit events.
 - User permission management for first-party apps belongs in Developer as the
   unified admin UI, but the grants, policy enforcement, and audit trail remain
   Auth-owned.
+- Local first-party apps may keep runtime authorization checks during migration,
+  but they must not expose their own access-management UI or operator scripts.
 
 ## Verification
 
@@ -95,6 +99,10 @@ credentials, tokens, grants, revocation, and audit events.
 - `pnpm --filter @forge/auth test -- apps scopes seed-first-party-apps`
 - Registry data requires an Auth-backed Developer session with
   `developer:access`.
+- Admin no longer exposes dashboard user role approval controls or the Manager
+  operator grant script.
+- Mastra Gateway no longer exposes `/admin` access management actions or
+  bootstrap-admin env configuration.
 - The developer app renders without secrets and without depending on Strapi.
 - `apps/auth/src/domain/apps.ts` seeds Developer separately from Admin,
   Manager, and Mastra Gateway.
