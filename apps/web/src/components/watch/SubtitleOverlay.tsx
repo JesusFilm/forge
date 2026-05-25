@@ -189,13 +189,23 @@ export function SubtitleOverlay({
 
   if (!cueText || !playbackCommitted) return null
 
+  const chromeActuallyVisible = (() => {
+    if (!chromeBarVisible) return false
+    const bar = document.querySelector(
+      '[data-testid="hero-player-custom-chrome"]',
+    )
+    if (!bar) return false
+    const rect = bar.getBoundingClientRect()
+    return rect.bottom > 0 && rect.top < window.innerHeight
+  })()
+
   return (
     <div
       data-testid="subtitle-overlay"
       className="pointer-events-none absolute inset-x-0 z-20 flex justify-center transition-transform duration-200 ease-out"
       style={{
         bottom: `${bottomOffset}px`,
-        transform: chromeBarVisible
+        transform: chromeActuallyVisible
           ? `translateY(-${CHROME_BAR_HEIGHT}px)`
           : "translateY(0)",
       }}
