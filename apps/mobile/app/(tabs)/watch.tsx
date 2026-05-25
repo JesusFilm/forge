@@ -61,9 +61,13 @@ export default function DiscoverScreen() {
   const { selectExperience } = useExperienceSelection()
 
   const handleSelectResult = useCallback(
-    (slug: string) => {
-      selectExperience(slug)
-      router.navigate("/(tabs)")
+    (slug: string, type: string) => {
+      if (type === "experience") {
+        selectExperience(slug)
+        router.navigate("/(tabs)")
+      } else {
+        router.push(`/watch/${encodeURIComponent(slug)}`)
+      }
     },
     [selectExperience, router],
   )
@@ -242,7 +246,7 @@ export default function DiscoverScreen() {
       <SearchResultCard
         result={item}
         index={index}
-        onSelect={handleSelectResult}
+        onSelect={(slug) => handleSelectResult(slug, item.type)}
       />
     ),
     [handleSelectResult],
