@@ -212,7 +212,7 @@ export function SubtitleOverlay({
           : "translateY(0)",
       }}
     >
-      <div className="max-w-[min(80%,700px)] whitespace-pre-line rounded-md bg-black/50 px-5 py-2.5 text-center text-lg font-medium text-white shadow-lg backdrop-blur-sm md:text-xl">
+      <div className="max-w-[min(80%,700px)] whitespace-pre-line rounded-md bg-black/40 px-5 py-2.5 text-center text-lg font-medium text-white shadow-lg backdrop-blur-sm md:text-xl">
         {cueText}
       </div>
     </div>
