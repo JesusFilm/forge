@@ -29,6 +29,16 @@ import { parseSectionKey } from "../../src/lib/parseSectionKey"
 import { useTypography } from "../../src/hooks/useTypography"
 import type { AdminBlock } from "../../src/lib/queries"
 
+// ── Types ───────────────────────────────────────────────────────────────────
+
+type CollectionItem = {
+  videoId?: string | null
+  streamingUrl?: string | null
+  imageUrl?: string | null
+  titleOverride?: string | null
+  backgroundColor?: string | null
+}
+
 // ── Constants ───────────────────────────────────────────────────────────────
 
 const THUMBNAIL_ASPECT_RATIO = 16 / 9
@@ -94,13 +104,6 @@ function CollectionPlayerContent({
     | string
     | null
     | undefined
-  type CollectionItem = {
-    videoId?: string | null
-    streamingUrl?: string | null
-    imageUrl?: string | null
-    titleOverride?: string | null
-    backgroundColor?: string | null
-  }
   const rawItems = (s.items as CollectionItem[] | undefined) ?? []
 
   const items = rawItems

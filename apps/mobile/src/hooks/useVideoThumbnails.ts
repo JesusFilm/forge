@@ -5,6 +5,9 @@ import type { AdminBlock, WatchExperience } from "../lib/queries"
 
 export type ThumbnailMap = Map<string, string>
 
+const FETCH_TIMEOUT_MS = 15_000
+const SAFE_ID_RE = /^[a-zA-Z0-9_-]+$/
+
 function collectVideoIds(experience: WatchExperience | null): string[] {
   if (!experience?.blocks) return []
   const ids = new Set<string>()
@@ -44,7 +47,8 @@ function collectVideoIds(experience: WatchExperience | null): string[] {
 }
 
 function buildBatchQuery(videoIds: string[]): string {
-  const fields = videoIds
+  const safeIds = videoIds.filter((id) => SAFE_ID_RE.test(id))
+  const fields = safeIds
     .map(
       (id, i) =>
         `v${i}: video(id: "${id}") { id images { mobileCinematicHigh videoStill url } }`,
@@ -65,7 +69,8 @@ export function useVideoThumbnails(
       return
     }
 
-    let cancelled = false
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
     async function fetchThumbnails() {
       try {
@@ -73,11 +78,12 @@ export function useVideoThumbnails(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query: buildBatchQuery(videoIds) }),
+          signal: controller.signal,
         })
 
-        if (cancelled) return
+        if (controller.signal.aborted) return
         const json = await response.json()
-        if (cancelled || !json.data) return
+        if (controller.signal.aborted || !json.data) return
 
         const map = new Map<string, string>()
         for (let i = 0; i < videoIds.length; i++) {
@@ -89,15 +95,18 @@ export function useVideoThumbnails(
           const thumb = pickThumbnailUrl(videoData.images)
           if (thumb && videoData.id) map.set(videoData.id, thumb)
         }
-        if (!cancelled) setThumbnails(map)
+        if (!controller.signal.aborted) setThumbnails(map)
       } catch {
         if (__DEV__) console.warn("[useVideoThumbnails] fetch failed")
+      } finally {
+        clearTimeout(timer)
       }
     }
 
     fetchThumbnails()
     return () => {
-      cancelled = true
+      controller.abort()
+      clearTimeout(timer)
     }
   }, [videoIds])
 
