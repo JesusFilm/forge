@@ -18,7 +18,7 @@
  *   MANAGER_ARTIFACTS_S3_BUCKET=... \
  *   MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID=... \
  *   MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY=... \
- *   OPENROUTER_API_KEY=...   # scene + experience only; transcript uses Mastra
+ *   OPENROUTER_API_KEY=...   # experience only; scene + transcript use Mastra
  *   MASTRA_BASE_URL=...
  *   MASTRA_SERVICE_API_KEY=...
  *   pnpm --filter @forge/admin run-embeds --pipeline=transcript
@@ -31,6 +31,7 @@
  *   --core-id=<id>                                      # scene/transcript filter (repeatable)
  *   --locale=<bcp47>                                    # scene + experience pipeline filter (repeatable)
  *   --language=<bcp47>                                  # transcript pipeline filter (repeatable)
+ *   --scene-mode=idempotent|repair|force|model-upgrade
  *   --transcript-mode=idempotent|repair|force|model-upgrade
  *   --experience-id=<cuid>                              # experience pipeline filter (repeatable)
  *   --force                                             # experience pipeline only — re-embed
@@ -311,10 +312,17 @@ export type SceneBranchResult =
   | { ok: true; report: SceneBranchReport }
   | { ok: false; error: string; details?: PipelineErrorDetails }
 
+export type EmbeddingBackfillMode =
+  | "idempotent"
+  | "repair"
+  | "force"
+  | "model-upgrade"
+
 export async function runSceneBranch(args: {
   mappingS3Key: string
   coreIds: readonly string[]
   locales: readonly string[]
+  sceneMode?: EmbeddingBackfillMode
   sceneRetryTargets: readonly SceneRetryTargetFromReport[] | undefined
   runManagerArtifactsPreflight: (input: {
     mappingS3Key: string
@@ -325,6 +333,7 @@ export async function runSceneBranch(args: {
     coreIds?: readonly string[]
     locales?: readonly string[]
     retryTargets?: readonly SceneRetryTargetFromReport[]
+    mode?: EmbeddingBackfillMode
   }) => Promise<SceneBranchReport>
   writeStdout?: (line: string) => void
 }): Promise<SceneBranchResult> {
@@ -354,6 +363,7 @@ export async function runSceneBranch(args: {
       JSON.stringify({
         event: "run-embeds.scene.start",
         mappingS3Key: args.mappingS3Key,
+        mode: args.sceneMode ?? "idempotent",
         retryTargets: args.sceneRetryTargets?.length ?? null,
       }) + "\n",
     )
@@ -362,6 +372,7 @@ export async function runSceneBranch(args: {
       coreIds: args.coreIds.length > 0 ? args.coreIds : undefined,
       locales: args.locales.length > 0 ? args.locales : undefined,
       retryTargets: args.sceneRetryTargets,
+      mode: args.sceneMode,
     })
     writeStdout(
       JSON.stringify({
@@ -413,6 +424,15 @@ function isPipeline(v: string): v is Pipeline {
   )
 }
 
+function isEmbeddingBackfillMode(v: string): v is EmbeddingBackfillMode {
+  return (
+    v === "idempotent" ||
+    v === "repair" ||
+    v === "force" ||
+    v === "model-upgrade"
+  )
+}
+
 async function main(): Promise<void> {
   const pipelineArg = parseSingle("pipeline")
   if (!pipelineArg) {
@@ -439,6 +459,7 @@ async function main(): Promise<void> {
   const coreIds = parseRepeated("core-id")
   const locales = parseRepeated("locale")
   const languages = parseRepeated("language")
+  const sceneMode = parseSingle("scene-mode")
   const transcriptMode = parseSingle("transcript-mode")
   const experienceIds = parseRepeated("experience-id")
   const force = parseFlag("force")
@@ -454,9 +475,15 @@ async function main(): Promise<void> {
     )
     process.exit(2)
   }
+  if (sceneMode !== undefined && !isEmbeddingBackfillMode(sceneMode)) {
+    process.stderr.write(
+      `[run-embeds] invalid --scene-mode=${sceneMode}; expected idempotent|repair|force|model-upgrade\n`,
+    )
+    process.exit(1)
+  }
   if (
     transcriptMode !== undefined &&
-    !["idempotent", "repair", "force", "model-upgrade"].includes(transcriptMode)
+    !isEmbeddingBackfillMode(transcriptMode)
   ) {
     process.stderr.write(
       `[run-embeds] invalid --transcript-mode=${transcriptMode}; expected idempotent|repair|force|model-upgrade\n`,
@@ -522,6 +549,7 @@ async function main(): Promise<void> {
       coreIds: coreIds.length > 0 ? coreIds : null,
       locales: locales.length > 0 ? locales : null,
       languages: languages.length > 0 ? languages : null,
+      sceneMode: sceneMode ?? null,
       transcriptMode: transcriptMode ?? null,
       experienceIds: experienceIds.length > 0 ? experienceIds : null,
       force,
@@ -565,6 +593,7 @@ async function main(): Promise<void> {
         mappingS3Key,
         coreIds,
         locales,
+        sceneMode,
         sceneRetryTargets,
         runManagerArtifactsPreflight,
         runSceneEmbeddingBackfill,

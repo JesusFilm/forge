@@ -48,8 +48,8 @@ export async function stepLoadSceneAnalysisArtifact(
 
 /**
  * Per-(video, edition) transcript-source artifact load. feat-132 uses
- * `{assetId}/transcript.json` as Mastra input instead of importing
- * manager-generated `{assetId}/embeddings.json` vectors.
+ * `{assetId}/transcript.json` as Mastra input. Manager no longer owns
+ * transcript or scene embedding generation.
  */
 export async function stepLoadTranscriptSourceArtifact(
   cmsVideoId: number,

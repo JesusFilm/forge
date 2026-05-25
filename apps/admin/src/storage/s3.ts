@@ -183,7 +183,7 @@ export async function writeArtifact(
  * future intra-admin artifact use case.
  *
  * **Do NOT use this helper to read manager-produced artifacts** —
- * scene-analysis.json and embeddings.json live in manager's bucket,
+ * scene-analysis.json and transcript.json live in manager's bucket,
  * not admin's. Use {@link readManagerArtifact} for those.
  */
 export async function readArtifact(

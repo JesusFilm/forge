@@ -26,9 +26,12 @@ import {
   transcriptEmbeddingWorkflow,
 } from "./workflows/transcript-embedding"
 import {
+  handleSceneEmbeddingRouteRequest,
+  sceneEmbeddingWorkflow,
+} from "./workflows/scene-embedding"
+import {
   isValidServiceBearer,
   parseServiceApiKeys,
-  unauthorizedJson,
 } from "../server/service-bearer"
 
 assertMastraRuntimeEnv()
@@ -61,7 +64,7 @@ const redactPromptBodies: SpanOutputProcessor = {
 
 export const mastra = new Mastra({
   agents: { smokeAgent },
-  workflows: { transcriptEmbeddingWorkflow },
+  workflows: { transcriptEmbeddingWorkflow, sceneEmbeddingWorkflow },
   logger: new PinoLogger({
     name: "ForgeMastra",
     prettyPrint: env.NODE_ENV !== "production",
@@ -134,22 +137,21 @@ export const mastra = new Mastra({
           })
         },
       }),
-    ],
-    middleware: [
-      {
-        path: "/api/*",
-        handler: async (c, next) => {
-          if (
-            !isValidServiceBearer({
-              authHeader: c.req.header("authorization"),
-              allowlist: serviceKeys,
-            })
-          ) {
-            return unauthorizedJson()
-          }
-          await next()
+      registerApiRoute("/forge-scene-embeddings", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSceneEmbeddingRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
         },
-      },
+      }),
     ],
   },
 })

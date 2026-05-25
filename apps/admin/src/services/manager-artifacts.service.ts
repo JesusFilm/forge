@@ -1,11 +1,10 @@
-// Manager artifact reader — downloads scene-analysis.json,
-// transcript.json, and legacy embeddings.json artifacts from
+// Manager artifact reader — downloads scene-analysis.json and
+// transcript.json artifacts from
 // manager's Railway S3 bucket (MANAGER_ARTIFACTS_S3_*) and
 // Zod-validates against the expected shape before returning.
 //
-// R1 (scene embeddings) reads `{assetId}/scene-analysis.json` and
-// regenerates vectors in admin.
-// R2 legacy transcript embeddings read `{assetId}/embeddings.json`.
+// Scene embeddings read `{assetId}/scene-analysis.json` and launch Mastra;
+// Admin stores Mastra-generated vectors through scene-specific ingest.
 // feat-132 transcript embeddings read `{assetId}/transcript.json` and
 // launch Mastra; Admin no longer imports manager-generated transcript vectors.
 //

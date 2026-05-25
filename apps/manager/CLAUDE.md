@@ -149,12 +149,19 @@ has reviewed PR1's `missingArtifacts` projection).
 **Endpoints:**
 
 - `POST /api/admin-trigger/scene-analysis` — dispatches
-  `runSceneAnalysisPipeline` per item.
+  `runSceneAnalysisPipeline` per item. Manager writes
+  `{assetId}/scene-analysis.json` source data only; Mastra owns scene
+  embedding generation and Admin owns vector storage/search.
 - `POST /api/admin-trigger/transcript` — dispatches the new
   `runTranscriptOnlyPipeline` (composes existing `transcribe()` with
   the Mastra transcript embedding launcher; Manager writes
   `{assetId}/transcript.json` source data and does not produce
   `{assetId}/embeddings.json` for transcripts).
+
+Legacy `/api/backfill/{start,status,cancel}` routes are retired and
+return `410` after authentication. Scene embedding generation now runs
+through Admin-triggered Mastra workflows; Manager remains source-only
+for scene-analysis artifacts.
 
 **Body shape:** `{ items: [{ assetId: number, coreId: string }, ...] }`.
 Capped at 100 items per call. Manager dedupes by `assetId` at the
