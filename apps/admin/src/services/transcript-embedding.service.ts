@@ -1,15 +1,11 @@
-// Transcript embedding indexer — reads manager's embeddings artifacts
-// from S3 and writes VideoTranscript + VideoTranscriptChunk rows into
-// admin's Postgres with vectors copied verbatim from the artifact.
+// Transcript embedding indexer — writes VideoTranscript +
+// VideoTranscriptChunk rows into admin's Postgres with vectors supplied
+// by Mastra's transcript embedding workflow.
 //
-// Source: apps/manager's `{assetId}/embeddings.json`. assetId is the
-// integer cms videos.id as a string; admin resolves Video.coreId →
-// cmsVideoId via the mapping loaded by core-id-mapping.service.ts.
-//
-// R2 DIVERGENCE FROM R1: manager already called the embedding provider
-// during enrichment and stored each chunk's vector in the artifact. R2
-// trusts those vectors — no OpenRouter round-trip, no regeneration.
-// See docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md.
+// Admin owns storage and retrieval; Mastra owns chunk planning and
+// provider calls. The writer remains deliberately storage-focused: it
+// validates dimensions/text, upserts the transcript parent, prunes stale
+// chunks, and bulk-inserts chunk vectors into the existing pgvector table.
 //
 // ABAC: canWriteDerived gates entry. The backfill workflow runs as
 // SYSTEM; ADMIN principals may also invoke for incident response.
@@ -31,7 +27,7 @@
 
 import { randomUUID } from "node:crypto"
 
-import { type PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { canWriteDerived } from "@/auth/permissions"
 import {
@@ -43,10 +39,7 @@ import {
   isPrismaRuntimeError,
   sanitizePrismaErrorMessage,
 } from "@/db/prisma-errors"
-import {
-  readEmbeddingsArtifact,
-  type EmbeddingsResult,
-} from "@/services/manager-artifacts.service"
+import type { EmbeddingsResult } from "@/services/manager-artifacts.service"
 
 /**
  * Admin stores `text-embedding-3-small` vectors at 1536 dimensions
@@ -57,11 +50,11 @@ import {
 export const EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS = 1536
 
 /**
- * Admin's expected embedding model. Manager may report the OpenRouter-
- * prefixed name (`openai/text-embedding-3-small`) or the bare OpenAI
- * name; both are accepted. A mismatch is logged as a warning but does
- * not reject the artifact — R2's whole premise is reusing manager's
- * vectors as-is.
+ * Admin's expected embedding model. Mastra may report the
+ * provider-prefixed name (`openai/text-embedding-3-small`) or the bare
+ * OpenAI name; both are accepted. A mismatch is logged as a warning but
+ * does not reject the payload here; intentional model replacement must
+ * use the ingest service's explicit generation modes.
  */
 const ACCEPTED_MODEL_STAMPS = new Set<string>([
   "openai/text-embedding-3-small",
@@ -88,18 +81,57 @@ export type IndexEditionTranscriptInput = {
   language: string
   user: Principal | null
   /**
-   * Pre-loaded embeddings artifact. When provided, the service skips
-   * the S3 read. Stage 2 of the embed-backfill performance plan: the
-   * workflow fetches once per (video, edition) group and passes the
-   * same artifact into each per-language invocation — collapsing S3
-   * reads from N×L to N. Tests can also use this to inject a fixture
-   * without touching S3.
+   * Pre-loaded transcript chunks and vectors. Mastra ingest provides this
+   * through `writeTranscriptEmbeddingPayload`; tests can also inject a
+   * fixture without touching provider or S3 boundaries.
    */
-  loadedArtifact?: EmbeddingsResult
-  /** Override for tests — use this cmsVideoId instead of the mapping lookup. */
-  cmsVideoIdOverride?: number
-  /** Required when `loadedArtifact` is not set. */
-  cmsVideoId?: number
+  loadedArtifact: EmbeddingsResult
+  provenance?: TranscriptEmbeddingProvenance
+}
+
+export type TranscriptEmbeddingGenerationMode =
+  | "idempotent"
+  | "repair"
+  | "force"
+  | "model-upgrade"
+
+export type TranscriptEmbeddingProvenance = {
+  sourceArtifactKey?: string
+  sourceContentHash?: string
+  sourceProvider?: string
+  sourceGeneratedAt?: string
+  generationMode?: TranscriptEmbeddingGenerationMode
+  mastraRunId?: string
+  chunkingVersion?: string
+}
+
+export type TranscriptEmbeddingPayloadChunk = {
+  chunkIndex: number
+  chunkId: string
+  text: string
+  tokenCount: number
+  startSeconds?: number
+  endSeconds?: number
+  embedding: number[]
+}
+
+export type TranscriptEmbeddingPayloadInput = {
+  editionId: string
+  videoId: string
+  coreId: string
+  language: string
+  user: Principal | null
+  model: string
+  dimensions: number
+  chunks: readonly TranscriptEmbeddingPayloadChunk[]
+  chunking: {
+    type: "segment-aware" | "plain-text"
+    maxChunkTokens: number
+    overlapTokens: number
+  }
+  totalTokens: number
+  generatedAt: string
+  provenance?: TranscriptEmbeddingProvenance
 }
 
 export type IndexEditionTranscriptResult = {
@@ -112,11 +144,12 @@ export type IndexEditionTranscriptResult = {
   dimensions: number
 }
 
+export type WriteTranscriptEmbeddingPayloadResult = IndexEditionTranscriptResult
+
 export class TranscriptIndexError extends Error {
   constructor(
     readonly code:
       | "forbidden"
-      | "missing_cms_video_id"
       | "dimension_mismatch"
       | "empty_chunk_text"
       | "storage_failed"
@@ -171,9 +204,109 @@ function logModelStampDriftIfAny(artifactModel: string): void {
       event: "transcript_model_mismatch",
       artifactModel,
       expected: ACCEPTED_MODEL_STAMPS_LIST,
-      note: "reusing vector regardless; re-embedding is R2 scope-out",
+      note: "storing supplied vector; model upgrades require an explicit ingest mode",
     }),
   )
+}
+
+function assertContiguousChunkIndexes(
+  chunks: readonly TranscriptEmbeddingPayloadChunk[],
+): void {
+  const seen = new Set<number>()
+  for (const chunk of chunks) {
+    if (seen.has(chunk.chunkIndex)) {
+      throw new TranscriptIndexError(
+        "artifact_invalid",
+        `duplicate chunkIndex=${chunk.chunkIndex}; refusing to index`,
+      )
+    }
+    seen.add(chunk.chunkIndex)
+  }
+
+  const sorted = [...chunks].sort((a, b) => a.chunkIndex - b.chunkIndex)
+  for (let i = 0; i < sorted.length; i += 1) {
+    if (sorted[i]!.chunkIndex !== i) {
+      throw new TranscriptIndexError(
+        "artifact_invalid",
+        `chunk indexes must be contiguous from 0; expected ${i}, got ${sorted[i]!.chunkIndex}`,
+      )
+    }
+  }
+}
+
+function toEmbeddingsResult(
+  input: TranscriptEmbeddingPayloadInput,
+): EmbeddingsResult {
+  assertContiguousChunkIndexes(input.chunks)
+  const chunks = [...input.chunks]
+    .sort((a, b) => a.chunkIndex - b.chunkIndex)
+    .map((chunk) => ({
+      chunkId: chunk.chunkId,
+      text: chunk.text,
+      embedding: chunk.embedding,
+      metadata: {
+        tokenCount: chunk.tokenCount,
+        ...(chunk.startSeconds == null
+          ? {}
+          : { startTime: chunk.startSeconds }),
+        ...(chunk.endSeconds == null ? {} : { endTime: chunk.endSeconds }),
+      },
+    }))
+
+  return {
+    model: input.model,
+    dimensions: input.dimensions,
+    chunks,
+    averagedEmbedding: [],
+    metadata: {
+      totalChunks: chunks.length,
+      totalTokens: input.totalTokens,
+      chunkingStrategy: input.chunking,
+      embeddingDimensions: input.dimensions,
+      generatedAt: input.generatedAt,
+    },
+  }
+}
+
+export async function writeTranscriptEmbeddingPayload(
+  prisma: PrismaClient,
+  input: TranscriptEmbeddingPayloadInput,
+): Promise<WriteTranscriptEmbeddingPayloadResult> {
+  return indexEditionTranscript(prisma, {
+    editionId: input.editionId,
+    videoId: input.videoId,
+    coreId: input.coreId,
+    language: input.language,
+    user: input.user,
+    loadedArtifact: toEmbeddingsResult(input),
+    provenance: input.provenance,
+  })
+}
+
+export async function writeTranscriptEmbeddingPayloadInTransaction(
+  tx: Prisma.TransactionClient,
+  input: TranscriptEmbeddingPayloadInput,
+): Promise<WriteTranscriptEmbeddingPayloadResult> {
+  const txBackedClient = new Proxy(tx, {
+    get(target, prop, receiver) {
+      if (prop === "$transaction") {
+        return async <T>(
+          fn: (innerTx: Prisma.TransactionClient) => Promise<T>,
+        ) => fn(tx)
+      }
+      return Reflect.get(target, prop, receiver)
+    },
+  }) as unknown as PrismaClient
+
+  return indexEditionTranscript(txBackedClient, {
+    editionId: input.editionId,
+    videoId: input.videoId,
+    coreId: input.coreId,
+    language: input.language,
+    user: input.user,
+    loadedArtifact: toEmbeddingsResult(input),
+    provenance: input.provenance,
+  })
 }
 
 /**
@@ -193,19 +326,7 @@ export async function indexEditionTranscript(
     )
   }
 
-  let artifact: EmbeddingsResult
-  if (input.loadedArtifact !== undefined) {
-    artifact = input.loadedArtifact
-  } else {
-    const cmsVideoId = input.cmsVideoIdOverride ?? input.cmsVideoId
-    if (cmsVideoId === undefined) {
-      throw new TranscriptIndexError(
-        "missing_cms_video_id",
-        `cmsVideoId is required to fetch the embeddings artifact for coreId=${input.coreId}`,
-      )
-    }
-    artifact = await readEmbeddingsArtifact(String(cmsVideoId))
-  }
+  const artifact = input.loadedArtifact
 
   if (artifact.chunks.length === 0) {
     return {
@@ -255,6 +376,31 @@ export async function indexEditionTranscript(
             totalChunks: artifact.metadata.totalChunks,
             totalTokens: artifact.metadata.totalTokens,
             generatedAt: new Date(artifact.metadata.generatedAt),
+            ...(input.provenance?.sourceArtifactKey
+              ? { sourceArtifactKey: input.provenance.sourceArtifactKey }
+              : {}),
+            ...(input.provenance?.sourceContentHash
+              ? { sourceContentHash: input.provenance.sourceContentHash }
+              : {}),
+            ...(input.provenance?.sourceProvider
+              ? { sourceProvider: input.provenance.sourceProvider }
+              : {}),
+            ...(input.provenance?.sourceGeneratedAt
+              ? {
+                  sourceGeneratedAt: new Date(
+                    input.provenance.sourceGeneratedAt,
+                  ),
+                }
+              : {}),
+            ...(input.provenance?.generationMode
+              ? { generationMode: input.provenance.generationMode }
+              : {}),
+            ...(input.provenance?.mastraRunId
+              ? { mastraRunId: input.provenance.mastraRunId }
+              : {}),
+            ...(input.provenance?.chunkingVersion
+              ? { chunkingVersion: input.provenance.chunkingVersion }
+              : {}),
           },
           update: {
             // Refresh the denormalized `videoId` in case the edition has
@@ -270,6 +416,15 @@ export async function indexEditionTranscript(
             totalChunks: artifact.metadata.totalChunks,
             totalTokens: artifact.metadata.totalTokens,
             generatedAt: new Date(artifact.metadata.generatedAt),
+            sourceArtifactKey: input.provenance?.sourceArtifactKey ?? null,
+            sourceContentHash: input.provenance?.sourceContentHash ?? null,
+            sourceProvider: input.provenance?.sourceProvider ?? null,
+            sourceGeneratedAt: input.provenance?.sourceGeneratedAt
+              ? new Date(input.provenance.sourceGeneratedAt)
+              : null,
+            generationMode: input.provenance?.generationMode ?? null,
+            mastraRunId: input.provenance?.mastraRunId ?? null,
+            chunkingVersion: input.provenance?.chunkingVersion ?? null,
           },
           select: { id: true },
         })

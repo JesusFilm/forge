@@ -2,7 +2,7 @@
 
 ## Role
 
-This app orchestrates AI video enrichment pipelines. Agents working here should understand the full enrichment lifecycle: ingest (Mux) -> transcribe -> translate -> chapters -> metadata -> embeddings -> store (Railway S3) -> sync through Manager/Admin GraphQL contracts.
+This app orchestrates AI video enrichment pipelines. Agents working here should understand the full enrichment lifecycle: ingest (Mux) -> transcribe -> translate -> chapters -> metadata -> source artifacts -> sync/hand off through Manager/Admin GraphQL contracts. Transcript embedding generation belongs to Mastra; Manager only supplies transcript source data and may still run scene embedding helpers until that later migration lands.
 
 ## Key files
 

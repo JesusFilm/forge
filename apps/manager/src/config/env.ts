@@ -62,6 +62,16 @@ export const env = createEnv({
     ADMIN_GRAPHQL_URL: z.string().url().optional(),
     ADMIN_EMBED_TRIGGER_API_KEY: z.string().min(1).optional(),
 
+    // Mastra service launchers. Transcript embedding runs are launched from
+    // manager after transcript.json exists; Mastra owns chunking and vectors.
+    MASTRA_BASE_URL: z.string().url().optional(),
+    MASTRA_SERVICE_API_KEY: z.string().min(1).optional(),
+    MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(120_000),
+
     // feat-119 PR2 — admin → manager outbound enrichment trigger.
     // Manager exposes /api/admin-trigger/{scene-analysis,transcript}
     // which admin's `triggerManagerEnrichment` GraphQL mutation calls
@@ -125,6 +135,10 @@ export const env = createEnv({
     ADMIN_MANAGER_SESSION_URL: process.env.ADMIN_MANAGER_SESSION_URL,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     ADMIN_EMBED_TRIGGER_API_KEY: process.env.ADMIN_EMBED_TRIGGER_API_KEY,
+    MASTRA_BASE_URL: process.env.MASTRA_BASE_URL,
+    MASTRA_SERVICE_API_KEY: process.env.MASTRA_SERVICE_API_KEY,
+    MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS:
+      process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
     ADMIN_TRIGGER_API_KEYS: process.env.ADMIN_TRIGGER_API_KEYS,
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:

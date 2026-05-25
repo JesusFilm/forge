@@ -63,6 +63,10 @@ export const env = createEnv({
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BASE_URL: z.string().url().optional(),
     WORKFLOW_API_KEYS: z.string().min(1).optional(),
+    // Narrow receiver-side CSV for Mastra -> Admin transcript vector ingest.
+    // This is deliberately separate from WORKFLOW_API_KEYS: workflow launchers
+    // must not automatically gain direct vector-write capability.
+    MASTRA_TRANSCRIPT_INGEST_API_KEYS: z.string().min(1).optional(),
     // Plan 003 — consumer-app bearer allowlist (apps/web SSR).
     // CSV-parsed, matched against `Authorization: Bearer <key>` by
     // `consumer-bearer.ts`. A matched key mints a CONSUMER_BEARER
@@ -140,7 +144,7 @@ export const env = createEnv({
     RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
     // Manager artifacts bucket — admin reads {assetId}/scene-analysis.json
-    // and {assetId}/embeddings.json from apps/manager's S3 bucket via
+    // and {assetId}/transcript.json from apps/manager's S3 bucket via
     // readManagerArtifact() in src/storage/s3.ts. Distinct from
     // RAILWAY_S3_*, which is admin's own write bucket (cms-storage,
     // used for admin-migrations/core-id-mapping.json etc.). Read-only
@@ -161,6 +165,17 @@ export const env = createEnv({
     // result per requested assetId in that case.
     MANAGER_API_BASE_URL: z.string().url().optional(),
     MANAGER_TRIGGER_API_KEY: z.string().min(1).optional(),
+
+    // Admin -> Mastra workflow launches. Transcript backfills send
+    // transcript source data to Mastra; Mastra returns product-level
+    // ingest outcomes after writing through Admin's internal ingest.
+    MASTRA_BASE_URL: z.string().url().optional(),
+    MASTRA_SERVICE_API_KEY: z.string().min(1).optional(),
+    MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(120_000),
 
     // U21 — admin → web ISR revalidation webhook. Admin's publish
     // lifecycle (Experience publish/update) POSTs `{ model, entry: {
@@ -260,6 +275,9 @@ export const env = createEnv({
     OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
     OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
     WORKFLOW_API_KEYS: emptyToUndefined(process.env.WORKFLOW_API_KEYS),
+    MASTRA_TRANSCRIPT_INGEST_API_KEYS: emptyToUndefined(
+      process.env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
+    ),
     WEB_ADMIN_API_KEYS: emptyToUndefined(process.env.WEB_ADMIN_API_KEYS),
     BACKUP_DOWNLOAD_API_KEYS: emptyToUndefined(
       process.env.BACKUP_DOWNLOAD_API_KEYS,
@@ -315,6 +333,13 @@ export const env = createEnv({
     MANAGER_TRIGGER_API_KEY: emptyToUndefined(
       process.env.MANAGER_TRIGGER_API_KEY,
     ),
+    MASTRA_BASE_URL: emptyToUndefined(process.env.MASTRA_BASE_URL),
+    MASTRA_SERVICE_API_KEY: emptyToUndefined(
+      process.env.MASTRA_SERVICE_API_KEY,
+    ),
+    MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
+    ),
     WEB_REVALIDATE_URL: emptyToUndefined(process.env.WEB_REVALIDATE_URL),
     WEB_REVALIDATE_TOKEN: emptyToUndefined(process.env.WEB_REVALIDATE_TOKEN),
     NEXT_RUNTIME: emptyToUndefined(process.env.NEXT_RUNTIME),
@@ -369,6 +394,7 @@ function parseBearerCsvSet(csv: string | undefined): ReadonlySet<string> {
 // the constant AND the type in lockstep, or the build breaks.
 const BEARER_CSV_KEYS = [
   "WORKFLOW_API_KEYS",
+  "MASTRA_TRANSCRIPT_INGEST_API_KEYS",
   "MANAGER_ADMIN_API_KEY",
   "WEB_ADMIN_API_KEYS",
   "BACKUP_DOWNLOAD_API_KEYS",
@@ -441,6 +467,7 @@ export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
 // satisfies the check.
 assertBearerCsvsDisjoint({
   WORKFLOW_API_KEYS: env.WORKFLOW_API_KEYS,
+  MASTRA_TRANSCRIPT_INGEST_API_KEYS: env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
   MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,

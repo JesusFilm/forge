@@ -99,6 +99,7 @@ describe("POST /api/admin-trigger/transcript", () => {
     expect(runTranscriptOnlyPipelineMock).toHaveBeenCalledWith({
       assetId: "99",
       muxAssetId: "mux-A",
+      adminVideoId: "v-A",
       subtitleUrl: "https://stream.mux.com/A.vtt",
       languageCode: "en",
     })
@@ -144,6 +145,7 @@ describe("POST /api/admin-trigger/transcript", () => {
     expect(runTranscriptOnlyPipelineMock).toHaveBeenCalledWith({
       assetId: "99",
       muxAssetId: "mux-A",
+      adminVideoId: "v-A",
       subtitleUrl: undefined,
       languageCode: "en",
     })

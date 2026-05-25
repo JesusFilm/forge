@@ -841,7 +841,7 @@ locale) DO UPDATE SET …`. The `embedding` cast is per-row at the
    - `MANAGER_ARTIFACTS_S3_*` → manager's bucket
      (`forgemanagerartifacts-xtgld8`, Railway bucket resource
      `b1c705c6-5add-48a0-a153-5ef40f876a4f`). Read-only;
-     `{assetId}/scene-analysis.json` + `{assetId}/embeddings.json`.
+     `{assetId}/scene-analysis.json` + `{assetId}/transcript.json`.
 
    Also ensure `OPENROUTER_API_KEY` or `OPENAI_API_KEY` is set so
    admin can re-embed scene descriptions.
@@ -859,21 +859,20 @@ locale) DO UPDATE SET …`. The `embedding` cast is per-row at the
 The primary learnings doc is
 `docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md`.
 
-## Transcript embeddings (R2 of admin migration playbook)
+## Transcript embeddings (Mastra-owned generation)
 
-Admin owns chunk-level transcript embeddings in its own Postgres.
-Source data is apps/manager's `{assetId}/embeddings.json` S3 artifact
-(the transcript embeddings pipeline). Admin re-indexes those artifacts
-into `VideoTranscript` + `VideoTranscriptChunk`.
+Admin owns transcript vector storage, pgvector indexes, public search
+contracts, and retrieval. Mastra owns transcript chunk planning and
+embedding provider calls. Manager only produces transcript source data
+(`{assetId}/transcript.json`: transcript text, timed segments, language,
+provider metadata).
 
-**R2 divergence from R1:** manager's `embeddings.json` already contains
-vectors per chunk (`EmbeddingsResult.chunks[].embedding`), so admin
-REUSES the vectors verbatim rather than regenerating. Zero OpenRouter
-spend on R2 backfill. Admin validates `dimensions === 1536` (hard
-reject as `dimension_mismatch`) and logs a warning on model-stamp
-drift (proceeds anyway — the point of vector reuse is to trust
-manager's stamp). See
-`docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`.
+Mastra writes vectors through Admin's narrow internal ingest route:
+`POST /api/internal/mastra/transcript-embeddings`. The route validates
+`MASTRA_TRANSCRIPT_INGEST_API_KEYS`, accepts only transcript payloads,
+guards `dimensions === 1536`, resolves Admin or external targets before
+writing, and is idempotent by default. Explicit modes are `idempotent`,
+`repair`, `force`, and `model-upgrade`.
 
 - **Schema:** `VideoTranscript` attaches to `VideoEdition` (same cut-
   aware attachment as `VideoSubtitle` / `VideoScene`). One row per
@@ -888,12 +887,19 @@ manager's stamp). See
 - **Partial HNSW indexes** per-language (`en`, `es`, `fr`) plus a
   global NULL-excluded fallback. Same rationale as R1.
 - **Indexer service:** `src/services/transcript-embedding.service.ts`
-  (`indexEditionTranscript`). Idempotent upsert on `(editionId, language)`
-  for the parent and `(transcriptId, chunkIndex)` for chunks. Pre-
-  transaction prune removes stale chunks when manager re-chunks with
-  fewer segments. Raw SQL `::vector` write inside a Prisma
-  `$transaction` with explicit 30s timeout. ABAC-gated via
-  `canWriteDerived`.
+  (`writeTranscriptEmbeddingPayload` / `indexEditionTranscript`).
+  Idempotent upsert on `(editionId, language)` for the parent and
+  `(transcriptId, chunkIndex)` for chunks. Pre-transaction prune removes
+  stale chunks when Mastra re-chunks with fewer segments. Raw SQL
+  `::vector` write inside a Prisma `$transaction` with explicit 30s
+  timeout. ABAC-gated via `canWriteDerived`.
+- **Internal ingest service:**
+  `src/services/transcript-embedding-ingest.service.ts`. Validates the
+  Mastra payload, computes and checks a source-content hash, rejects
+  ambiguous Manager-originated targets before writing, stores provenance
+  (`sourceArtifactKey`, `sourceContentHash`, provider, Mastra run id,
+  generation mode, chunking version), and delegates the actual table
+  write to the existing indexer service.
 - **Backfill workflow:**
   `src/workflows/transcriptEmbeddingBackfill.ts` — useworkflow job
   that enumerates one target per `(video, edition, bcp47)` triple.
@@ -904,50 +910,25 @@ manager's stamp). See
   anywhere, it produces no targets (a data-quality signal, not a
   silent default). Per-target error isolation; `artifact_missing`
   → skipped, every other error → failed but the run continues.
-  Safe to re-run.
+  Safe to re-run. The workflow loads the Manager transcript source once
+  per `(video, edition)` group and launches Mastra once per target.
 - **Bounded parallelism (Stage 2 — feat-116):** the workflow groups
   enumerated `(video, edition, language)` targets by
   `(video, edition)` and parallelises over GROUPS via
   `pLimit(env.TRANSCRIPT_EMBEDDING_CONCURRENCY ?? 5) +
 Promise.allSettled` — never bare `Promise.all`. Per-language work
-  inside a group runs sequentially with the artifact in scope. Same
+  inside a group runs sequentially with the source artifact in scope. Same
   shape / same rule as R1.
-- **Per-(video, edition) artifact memoization (Stage 2 — feat-116):**
-  the workflow fetches `embeddings.json` ONCE per `(video, edition)`
-  group via `readEmbeddingsArtifact(...)` and passes the loaded JSON
-  down to each per-language `indexEditionTranscript(...)` call via
-  the service's `loadedArtifact` argument. S3 reads collapse from N×L
-  (per language) to N (per group). Group-level artifact-load failures
-  cascade to per-language outcomes with the right classification
-  (`artifact_missing` → skipped; everything else → failed). Memory
-  budget per active language (Stage 3 — feat-117 update): the
-  steady-state artifact (~250 KB) plus per-chunk vectors already inside
-  the artifact (R2 doesn't generate a parallel embeddings array —
-  vectors are reused from the artifact) is dwarfed by Stage 3's
-  TRANSIENT bulk INSERT footprint. At ~200 chunks per artifact, each
-  `toPgVector(c.embedding)` text serialization is ~15-30 KB, the
-  per-row vector-text array is ~4 MB, and the `toPgArray` envelope
-  copy adds another ~4 MB during string concat — about ~6-12 MB
-  transient at the bulk write site for hundreds-of-chunks artifacts.
-  At default concurrency=5 that's ~30-60 MB transient peak across
-  in-flight groups (vs the steady-state ~1.25 MB before the bulk
-  rewrite); GC reclaims as soon as `$executeRaw` returns. The figure
-  includes the Way A vector-text array AND the toPgArray literal copy.
-- **No batched provider call for R2.** R2 reuses vectors verbatim
-  from the artifact (the whole point of the R2 vs R1 divergence) — so
-  Stage 2's batched OpenRouter change applies to R1 only. R2 only
-  benefits from the S3 cache.
-- Tune via the `TRANSCRIPT_EMBEDDING_CONCURRENCY` env var. R2 is
-  DB-bound (no provider call) so the bottleneck on cranking
-  concurrency is Postgres connection saturation; default `5` leaves
-  headroom on admin's `connection_limit=10` pool. Per-target progress
-  streams via `transcript_index_complete` / `_skipped` / `_failed` log
-  events and a single `event=start` carrying resolved concurrency AND
-  `groupCount` (Stage 2's reshape surfaces the artifact-fetch fan-in).
+- Tune via the `TRANSCRIPT_EMBEDDING_CONCURRENCY` env var. Admin
+  backfill is now network-bound on Mastra plus DB-bound inside the
+  ingest callback; default `5` leaves headroom on admin's
+  `connection_limit=10` pool. Per-target progress streams via
+  `transcript_index_complete` / `_skipped` / `_failed` log events and
+  a single `event=start` carrying resolved concurrency and `groupCount`.
 - **Trigger:** `triggerTranscriptEmbeddingBackfill` GraphQL mutation
-  (ADMIN-only; permission key `write:transcript-embeddings`). Stage 2's
-  reshape is internal — the GraphQL JSON response shape is byte-
-  identical to Stage 1.
+  (ADMIN-only; permission key `write:transcript-embeddings`). Optional
+  `mode` maps to Admin ingest's rewrite modes. Omitted mode defaults to
+  idempotent.
 - **NoSuchKey classification + missingArtifacts list (feat-119 PR1):**
   identical contract to R1 (see above). The R2 report's
   `missingArtifacts` entries stamp `kind: "transcript"` so PR2's
@@ -973,6 +954,8 @@ chunk_index) DO UPDATE SET …`. The 12 parallel arrays are: `id`,
   target — bulk-INSERT shape would not save a round-trip and would
   complicate the Prisma type story). See
   `docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
+  This bulk writer remains the single storage path for Mastra-ingested
+  transcript vectors.
 
 **Operational runbook** (shares the R1 mapping snapshot):
 
@@ -980,31 +963,37 @@ chunk_index) DO UPDATE SET …`. The 12 parallel arrays are: `id`,
    S3 bucket (the one wired to `RAILWAY_S3_*`):
    `pnpm --filter @forge/admin refresh:core-id-mapping`.
    Same CLI R1 uses; same snapshot consumed by both workflows.
-2. No API keys required for R2 backfill (vectors come from the
-   artifact). `RAILWAY_S3_*` (admin's own write bucket — used by the
+2. Configure `RAILWAY_S3_*` (admin's own write bucket, used by the
    refresh CLI for `admin-migrations/core-id-mapping.json`),
-   `MANAGER_ARTIFACTS_S3_*` (manager's bucket — where admin reads
-   `{assetId}/embeddings.json` and `{assetId}/scene-analysis.json`
-   from), and `REDIS_*` must be set on the `forge-admin` Railway
-   service. The two S3 env blocks point at _different_ buckets — see
-   `src/storage/s3.ts` for the split.
+   `MANAGER_ARTIFACTS_S3_*` (manager's bucket, where admin reads
+   `{assetId}/transcript.json` and `{assetId}/scene-analysis.json`),
+   `MASTRA_BASE_URL`, `MASTRA_SERVICE_API_KEY`,
+   `MASTRA_TRANSCRIPT_INGEST_API_KEYS`, and `REDIS_*` on
+   `forge-admin`. Mastra must also have
+   `ADMIN_TRANSCRIPT_INGEST_URL`,
+   `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY`, and its embedding provider
+   key configured.
 3. Invoke `triggerTranscriptEmbeddingBackfill` via GraphQL.
    `mappingS3Key` defaults to `admin-migrations/core-id-mapping.json`.
    Omitted `languages` means "every BCP-47 that exists across the
    corpus" (union of primary / subtitle / dub languages per edition).
    Restrict with `coreIds` (filter by video) or `languages` (strict
-   inclusion list — no silent fallback). Today manager writes one
-   embeddings.json per asset, so multi-language editions produce
-   multiple transcript rows with identical chunk text/vectors under
-   different language stamps; the schema is future-ready for
-   per-language artifacts manager will produce later.
+   inclusion list — no silent fallback). Today Manager writes one
+   transcript source artifact per asset and Mastra embeds it per target,
+   so multi-language editions produce multiple transcript rows from the
+   same source text when the asset has multiple language attestations;
+   the schema remains future-ready for per-language transcript artifacts.
+   Use `mode` / `--transcript-mode` only for intentional repair or
+   rewrite operations.
 4. Verify:
    `SELECT COUNT(*) FROM video_transcript_chunk WHERE embedding IS NOT NULL`
    grows as expected;
    `SELECT DISTINCT video_edition_id FROM video_transcript`
    enumerates the indexed editions.
 
-The primary learnings doc is
+The current learnings doc is
+`docs/solutions/platform/mastra-transcript-embedding-workflow-pattern.md`.
+Historical vector-reuse context remains in
 `docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`.
 
 ## Triggering experience embeddings (admin-native)
@@ -1614,8 +1603,8 @@ path and the Cloudflare 524 edge timeout. Per
    when `RAILWAY_S3_BUCKET` is unset, so the workflow reads it
    transparently at runtime.
 
-2. **Configure manager-bucket creds + (R1 only) an embedding key
-   in `apps/admin/.env`:**
+2. **Configure manager-bucket creds + embedding workflow keys in
+   `apps/admin/.env`:**
 
    ```
    MANAGER_ARTIFACTS_S3_ENDPOINT=...
@@ -1623,7 +1612,10 @@ path and the Cloudflare 524 edge timeout. Per
    MANAGER_ARTIFACTS_S3_BUCKET=...
    MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID=...
    MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY=...
-   # R1 only — R2 reuses vectors from manager's embeddings.json
+   MASTRA_BASE_URL=...
+   MASTRA_SERVICE_API_KEY=...
+   MASTRA_TRANSCRIPT_INGEST_API_KEYS=...
+   # Scene embeddings still use Admin's provider path.
    OPENROUTER_API_KEY=...
    ```
 
@@ -1638,15 +1630,17 @@ path and the Cloudflare 524 edge timeout. Per
    #   --pipeline=scene|transcript|both         (required)
    #   --core-id=<id>          (repeatable; restrict to specific videos)
    #   --locale=<bcp47>        (repeatable; R1 filter)
-   #   --language=<bcp47>      (repeatable; R2 filter)
+   #   --language=<bcp47>      (repeatable; transcript filter)
+   #   --transcript-mode=idempotent|repair|force|model-upgrade
    #   --mapping-key=admin-migrations/core-id-mapping.json   (default)
    ```
 
    Direct-invokes `runSceneEmbeddingBackfill` /
    `runTranscriptEmbeddingBackfill` against the in-process Prisma
    singleton, mirroring `pnpm run-sync`. Per-pipeline error
-   isolation; structured JSON output. R2 is free (vector reuse from
-   manager's `embeddings.json`); R1 hits OpenRouter.
+   isolation; structured JSON output. Transcript runs launch Mastra,
+   which calls Admin ingest after generating vectors; scene runs still
+   hit OpenRouter from Admin.
 
    Scene-including runs perform a preflight before indexing: admin S3
    reachability, manager artifact S3 reachability, mapping load, and

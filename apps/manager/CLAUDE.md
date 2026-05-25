@@ -151,9 +151,10 @@ has reviewed PR1's `missingArtifacts` projection).
 - `POST /api/admin-trigger/scene-analysis` — dispatches
   `runSceneAnalysisPipeline` per item.
 - `POST /api/admin-trigger/transcript` — dispatches the new
-  `runTranscriptOnlyPipeline` (composes existing `transcribe()` +
-  `generateEmbeddings()` services without modifying
-  `videoEnrichment.ts` — see `src/workflows/transcriptOnlyPipeline.ts`).
+  `runTranscriptOnlyPipeline` (composes existing `transcribe()` with
+  the Mastra transcript embedding launcher; Manager writes
+  `{assetId}/transcript.json` source data and does not produce
+  `{assetId}/embeddings.json` for transcripts).
 
 **Body shape:** `{ items: [{ assetId: number, coreId: string }, ...] }`.
 Capped at 100 items per call. Manager dedupes by `assetId` at the
@@ -224,35 +225,38 @@ where admin's first call 401s.
 
 ## Environment variables (Doppler project: forge-manager)
 
-| Variable                           | Description                                                                    |
-| ---------------------------------- | ------------------------------------------------------------------------------ |
-| MUX_TOKEN_ID                       | Mux API token ID                                                               |
-| MUX_TOKEN_SECRET                   | Mux API token secret                                                           |
-| OPENROUTER_API_KEY                 | OpenRouter API key                                                             |
-| ELEVENLABS_API_KEY                 | ElevenLabs API key for audio isolation (optional — enables audio cleanup)      |
-| RAILWAY_S3_ENDPOINT                | Railway Object Storage endpoint (optional — local fallback)                    |
-| RAILWAY_S3_REGION                  | Railway S3 region (default: auto)                                              |
-| RAILWAY_S3_BUCKET                  | Railway S3 bucket name (optional — triggers S3 mode)                           |
-| RAILWAY_S3_ACCESS_KEY_ID           | Railway S3 access key (optional)                                               |
-| RAILWAY_S3_SECRET_ACCESS_KEY       | Railway S3 secret key (optional)                                               |
-| MANAGER_DATA_MODE                  | `admin` or `mock` (default `admin`)                                            |
-| MANAGER_BACKEND_MODE               | Optional override for data/job backend mode (`admin` or `mock`)                |
-| MANAGER_MOCK_SESSION_SECRET        | Required in `mock` mode to sign Manager-issued mock sessions                   |
-| MANAGER_MOCK_DATA_PATH             | Optional mock runtime store path (default `.tmp/mock-cms/store.json`)          |
-| WORKFLOW_API_KEY                   | workflow API key (optional, for production durability)                         |
-| MANAGER_API_KEY                    | API key for external clients (optional in dev)                                 |
-| MANAGER_SESSION_SECRET             | Secret for Auth-backed `manager-session` cookies                               |
-| AUTH_ISSUER_URL                    | Shared Auth issuer URL, normally `https://auth.jesusfilm.org`                  |
-| AUTH_MANAGER_CLIENT_ID             | Manager OAuth client ID registered in Auth                                     |
-| AUTH_MANAGER_CLIENT_SECRET         | Manager OAuth client secret                                                    |
-| AUTH_MANAGER_SERVICE_CLIENT_ID     | Manager service OAuth client ID for Admin session validation                   |
-| AUTH_MANAGER_SERVICE_CLIENT_SECRET | Manager service OAuth client secret for Admin session validation               |
-| ADMIN_MANAGER_API_KEY              | Legacy bearer key Manager uses for Admin Manager session/read/job contracts    |
-| ADMIN_MANAGER_SESSION_URL          | Optional override for Admin Manager session validation endpoint                |
-| ADMIN_GRAPHQL_URL                  | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)             |
-| ADMIN_EMBED_TRIGGER_API_KEY        | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`                 |
-| ADMIN_TRIGGER_API_KEYS             | CSV of bearer keys admin can use to call `/api/admin-trigger/*` (feat-119 PR2) |
-| NEXT_PUBLIC_WATCH_URL              | Public video watch URL (optional)                                              |
+| Variable                               | Description                                                                    |
+| -------------------------------------- | ------------------------------------------------------------------------------ |
+| MUX_TOKEN_ID                           | Mux API token ID                                                               |
+| MUX_TOKEN_SECRET                       | Mux API token secret                                                           |
+| OPENROUTER_API_KEY                     | OpenRouter API key                                                             |
+| ELEVENLABS_API_KEY                     | ElevenLabs API key for audio isolation (optional — enables audio cleanup)      |
+| RAILWAY_S3_ENDPOINT                    | Railway Object Storage endpoint (optional — local fallback)                    |
+| RAILWAY_S3_REGION                      | Railway S3 region (default: auto)                                              |
+| RAILWAY_S3_BUCKET                      | Railway S3 bucket name (optional — triggers S3 mode)                           |
+| RAILWAY_S3_ACCESS_KEY_ID               | Railway S3 access key (optional)                                               |
+| RAILWAY_S3_SECRET_ACCESS_KEY           | Railway S3 secret key (optional)                                               |
+| MANAGER_DATA_MODE                      | `admin` or `mock` (default `admin`)                                            |
+| MANAGER_BACKEND_MODE                   | Optional override for data/job backend mode (`admin` or `mock`)                |
+| MANAGER_MOCK_SESSION_SECRET            | Required in `mock` mode to sign Manager-issued mock sessions                   |
+| MANAGER_MOCK_DATA_PATH                 | Optional mock runtime store path (default `.tmp/mock-cms/store.json`)          |
+| WORKFLOW_API_KEY                       | workflow API key (optional, for production durability)                         |
+| MANAGER_API_KEY                        | API key for external clients (optional in dev)                                 |
+| MANAGER_SESSION_SECRET                 | Secret for Auth-backed `manager-session` cookies                               |
+| AUTH_ISSUER_URL                        | Shared Auth issuer URL, normally `https://auth.jesusfilm.org`                  |
+| AUTH_MANAGER_CLIENT_ID                 | Manager OAuth client ID registered in Auth                                     |
+| AUTH_MANAGER_CLIENT_SECRET             | Manager OAuth client secret                                                    |
+| AUTH_MANAGER_SERVICE_CLIENT_ID         | Manager service OAuth client ID for Admin session validation                   |
+| AUTH_MANAGER_SERVICE_CLIENT_SECRET     | Manager service OAuth client secret for Admin session validation               |
+| ADMIN_MANAGER_API_KEY                  | Legacy bearer key Manager uses for Admin Manager session/read/job contracts    |
+| ADMIN_MANAGER_SESSION_URL              | Optional override for Admin Manager session validation endpoint                |
+| ADMIN_GRAPHQL_URL                      | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)             |
+| ADMIN_EMBED_TRIGGER_API_KEY            | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`                 |
+| ADMIN_TRIGGER_API_KEYS                 | CSV of bearer keys admin can use to call `/api/admin-trigger/*` (feat-119 PR2) |
+| MASTRA_BASE_URL                        | Internal Mastra runtime URL for transcript embedding launches                  |
+| MASTRA_SERVICE_API_KEY                 | Bearer key Manager presents to Mastra service routes                           |
+| MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS | Optional timeout for the Manager to Mastra transcript launch call              |
+| NEXT_PUBLIC_WATCH_URL                  | Public video watch URL (optional)                                              |
 
 ## Standalone smoke
 

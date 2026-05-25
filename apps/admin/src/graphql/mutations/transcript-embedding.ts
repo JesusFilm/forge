@@ -1,14 +1,9 @@
 // Transcript embedding mutations.
 //
 // `triggerTranscriptEmbeddingBackfill` kicks off the useworkflow
-// backfill job that re-indexes apps/manager's embeddings.json artifacts
-// into admin's VideoTranscript + VideoTranscriptChunk tables. ADMIN-only
-// via scope-auth; the indexer itself rejects non-SYSTEM/non-ADMIN
-// principals as defense-in-depth.
-//
-// R2 divergence from R1: vectors are REUSED from the artifact, not
-// regenerated. The workflow body does not call the embedding provider
-// at all — no OpenRouter spend on backfill.
+// backfill job that reads apps/manager's transcript.json source artifacts,
+// launches Mastra for chunk planning + embeddings, and stores vectors through
+// Admin's transcript ingest. ADMIN-only via scope-auth.
 //
 // The resolver dispatches through `start()` from `workflow/api` — not
 // a direct function call. `"use workflow"` functions are transformed
@@ -25,6 +20,17 @@ import {
   type TranscriptEmbeddingBackfillInput,
   type TranscriptEmbeddingBackfillReport,
 } from "@/workflows/transcriptEmbeddingBackfill"
+
+const TranscriptBackfillModeEnum = builder.enumType("TranscriptBackfillMode", {
+  description:
+    "Overwrite intent for Mastra transcript embedding backfills. Idempotent is the default.",
+  values: {
+    IDEMPOTENT: { value: "idempotent" },
+    REPAIR: { value: "repair" },
+    FORCE: { value: "force" },
+    MODEL_UPGRADE: { value: "model-upgrade" },
+  } as const,
+})
 
 /**
  * Dispatch the transcript-embedding backfill workflow via the
@@ -44,7 +50,7 @@ builder.mutationFields((t) => ({
     type: "JSON",
     authScopes: { hasPermission: "write:transcript-embeddings" },
     description:
-      "Enqueue the transcript-embedding backfill workflow. Re-indexes apps/manager's embeddings.json artifacts into VideoTranscript + VideoTranscriptChunk. One target per (video, edition, language) where the language set is data-derived from the video's primary language + subtitle languages + dub languages. Vectors are reused from the artifact (no OpenRouter call). ADMIN-only.",
+      "Enqueue the transcript-embedding backfill workflow. Reads apps/manager's transcript.json source artifact, launches Mastra for chunk planning + embeddings, then writes through Admin ingest. One target per (video, edition, language) where the language set is data-derived from the video's primary language + subtitle languages + dub languages. ADMIN-only.",
     args: {
       mappingS3Key: t.arg.string({
         required: false,
@@ -61,6 +67,12 @@ builder.mutationFields((t) => ({
         description:
           "Restrict to these BCP-47 tags. Omitted = every language that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. NOT an override for the stamped language on the written row; the arg filters which `(video, edition, language)` targets get processed. The arg is named `languages` (not `locales` as in `triggerSceneEmbeddingBackfill`) because the filter axis is source transcription language, not per-locale publish state.",
       }),
+      mode: t.arg({
+        type: TranscriptBackfillModeEnum,
+        required: false,
+        description:
+          "Generation mode for Admin ingest. Defaults to IDEMPOTENT; use REPAIR, FORCE, or MODEL_UPGRADE only when intentionally rewriting existing transcript vectors.",
+      }),
     },
     resolve: async (_root, args) => {
       // JSON scalar accepts any serializable shape; the return type
@@ -69,6 +81,7 @@ builder.mutationFields((t) => ({
         mappingS3Key: args.mappingS3Key ?? DEFAULT_CORE_ID_MAPPING_S3_KEY,
         coreIds: args.coreIds ?? undefined,
         languages: args.languages ?? undefined,
+        mode: args.mode ?? undefined,
       })
     },
   }),

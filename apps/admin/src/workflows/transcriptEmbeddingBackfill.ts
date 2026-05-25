@@ -1,5 +1,5 @@
-// Transcript embedding backfill — durable useworkflow job that
-// indexes manager's embeddings.json artifacts into admin's Postgres.
+// Transcript embedding backfill — durable useworkflow job that launches
+// Mastra from manager's transcript.json source artifacts.
 //
 // Flow (Stage 2 — feat-116):
 //   1. stepLoadMapping              — load coreId → cms video id snapshot
@@ -11,20 +11,19 @@
 //                                     dub languages
 //   3. groupTargetsByVideoEdition   — flat targets → groups keyed by
 //                                     (videoId, videoEditionId). The
-//                                     embeddings artifact is shared
+//                                     transcript source artifact is shared
 //                                     across every language in a group,
 //                                     so fetching it once per group
 //                                     collapses S3 reads from N×L to N.
 //   4. processGroup                 — per-group worker:
-//        4a. Load embeddings artifact ONCE for the group.
-//        4b. For each language in the group, call
-//            stepIndexEditionTranscript with `loadedArtifact` so the
-//            service skips the S3 read.
+//        4a. Load transcript source artifact ONCE for the group.
+//        4b. For each language in the group, call Mastra with Admin
+//            target identifiers so Mastra embeds and Admin ingest stores.
 //   5. stepReport                   — aggregate per-target outcomes.
 //
-// R2 divergence from R1: NO provider call (vector reuse from
-// manager's `embeddings.json`). Stage 2 only adds the S3 cache for R2.
-// See docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md.
+// feat-132 boundary: Admin never imports manager-generated transcript
+// vectors. Admin reads transcript source only; Mastra owns chunking and
+// provider calls; Admin ingest owns vector storage.
 //
 // Per-target errors are caught inside the per-language step so one bad
 // artifact doesn't halt the backfill. A group-level artifact-load
@@ -47,7 +46,6 @@
 
 import pLimit from "p-limit"
 import { prisma } from "@/db/client"
-import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import { env } from "@/config/env"
 import {
   loadCoreIdMapping,
@@ -55,32 +53,31 @@ import {
 } from "@/services/core-id-mapping.service"
 import {
   ManagerArtifactError,
-  type EmbeddingsResult,
+  type TranscriptSourceArtifact,
 } from "@/services/manager-artifacts.service"
 import {
-  indexEditionTranscript,
-  type IndexEditionTranscriptResult,
-} from "@/services/transcript-embedding.service"
+  launchMastraTranscriptEmbedding,
+  type MastraTranscriptEmbeddingLaunchResult,
+  type MastraTranscriptEmbeddingMode,
+} from "@/services/mastra-transcript-embedding-client"
 // The artifact-load step lives in a separate module on purpose — the
 // useworkflow build plugin treats functions imported into a workflow
-// file as workflow scope, so importing `readEmbeddingsArtifact` here
+// file as workflow scope, so importing `readTranscriptSourceArtifact` here
 // would trip the Node-module reachability check even though the actual
 // call is inside `"use step"`. See `_steps/load-manager-artifact.ts`.
-import { stepLoadEmbeddingsArtifact } from "./_steps/load-manager-artifact"
+import { stepLoadTranscriptSourceArtifact } from "./_steps/load-manager-artifact"
 
 /**
- * Default per-group concurrency for the R2 transcript-embedding
+ * Default per-group concurrency for the Mastra transcript-embedding
  * backfill. Stage 2: the unit changed from per-target to per-(video,
- * edition) GROUP. R2 is DB-bound (no provider call); the default is
- * sized below admin's documented `connection_limit=10` Prisma pool to
- * leave headroom for concurrent traffic. Local dev can crank to 20+
- * via the env override.
+ * edition) GROUP. feat-132 makes each target a Mastra launch plus an
+ * Admin ingest callback, so the default stays below admin's documented
+ * `connection_limit=10` Prisma pool while also avoiding a provider-call
+ * burst from local backfills.
  *
- * Memory budget per active language: ~250 KB artifact (vectors are
- * reused in-place from the artifact's `chunks[i].embedding`; R2
- * doesn't allocate a parallel embeddings array). At default
- * concurrency=5 that's ~1.25 MB peak resident; released as soon as
- * the per-language transaction completes.
+ * Memory budget per active group stays small because Admin only keeps
+ * the transcript source artifact in scope before handing chunking and
+ * provider work to Mastra.
  */
 export const DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY = 5
 
@@ -96,6 +93,8 @@ export type TranscriptEmbeddingBackfillInput = {
    * for the derivation.
    */
   languages?: readonly string[]
+  /** Mastra/Admin ingest generation mode. Defaults to idempotent. */
+  mode?: MastraTranscriptEmbeddingMode
 }
 
 export type BackfillTarget = {
@@ -117,10 +116,10 @@ export type BackfillTarget = {
 /**
  * One group per (videoId, videoEditionId). Stage 2 groups flat targets
  * along this axis so the manager-artifacts S3 read happens once and
- * the loaded embeddings artifact is reused across every language in
+ * the loaded transcript source artifact is reused across every language in
  * the group.
  *
- * `targets` order is preserved from enumeration; the indexer fans out
+ * `targets` order is preserved from enumeration; the launcher fans out
  * sequentially across that order inside the group worker.
  */
 export type BackfillGroup = Omit<BackfillTarget, "language"> & {
@@ -184,7 +183,7 @@ export type TranscriptEmbeddingBackfillReport = {
   /**
    * Deduped, sorted-ascending list of upstream gaps the operator can
    * feed into PR2's enrichment trigger. Length 0 when every target
-   * had its embeddings artifact present. See `MissingArtifact`.
+   * had its transcript source artifact present. See `MissingArtifact`.
    */
   missingArtifacts: ReadonlyArray<MissingArtifact>
 }
@@ -219,8 +218,8 @@ export async function runTranscriptEmbeddingBackfill(
   // Bounded parallelism over GROUPS (Stage 2 reshape). Same shape /
   // same rule as R1 — see the R1 sibling for the full rationale and
   // docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md
-  // for the canonical HOW. R2's only divergence from R1 stays the same:
-  // no provider call inside the per-language step.
+  // for the canonical HOW. feat-132's per-language step now launches
+  // Mastra instead of writing Manager-produced vectors directly.
   const concurrency =
     env.TRANSCRIPT_EMBEDDING_CONCURRENCY ??
     DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
@@ -259,7 +258,7 @@ export async function runTranscriptEmbeddingBackfill(
         // the synthetic-failed branch below records it (with real
         // elapsed time) and the per-target isolation contract is
         // observable to tests.
-        processGroup(group),
+        processGroup(group, input.mode ?? "idempotent"),
       ),
     ),
   )
@@ -441,8 +440,8 @@ function groupTargetsByVideoEdition(
 }
 
 /**
- * Per-group worker. Loads the embeddings artifact ONCE, then fans out
- * per-language sequentially with the artifact in scope.
+ * Per-group worker. Loads the transcript source artifact ONCE, then fans out
+ * per-language sequentially with the source in scope.
  *
  * Group-level artifact-load failure is cascaded to per-language
  * outcomes with the same classification the per-language path would
@@ -451,7 +450,10 @@ function groupTargetsByVideoEdition(
  * report's succeeded/skipped/failed triple stays meaningful even when
  * the load fault is shared.
  */
-async function processGroup(group: BackfillGroup): Promise<BackfillOutcome[]> {
+async function processGroup(
+  group: BackfillGroup,
+  mode: MastraTranscriptEmbeddingMode,
+): Promise<BackfillOutcome[]> {
   "use step"
   const groupStartedAt = Date.now()
 
@@ -466,9 +468,9 @@ async function processGroup(group: BackfillGroup): Promise<BackfillOutcome[]> {
   // backfill — operators monitoring useworkflow journal size should be
   // aware.
 
-  let loadedArtifact: EmbeddingsResult
+  let transcriptSource: TranscriptSourceArtifact
   try {
-    loadedArtifact = await stepLoadEmbeddingsArtifact(group.cmsVideoId)
+    transcriptSource = await stepLoadTranscriptSourceArtifact(group.cmsVideoId)
   } catch (error) {
     const durationMs = Date.now() - groupStartedAt
     const isMissing =
@@ -504,9 +506,10 @@ async function processGroup(group: BackfillGroup): Promise<BackfillOutcome[]> {
   // and the per-target step's timing measurement is honest.
   const outcomes: BackfillOutcome[] = []
   for (const target of group.targets) {
-    const outcome = await _internals.stepIndexEditionTranscript(
+    const outcome = await _internals.stepLaunchMastraTranscriptEmbedding(
       target,
-      loadedArtifact,
+      transcriptSource,
+      mode,
     )
     logOutcome(outcome)
     outcomes.push(outcome)
@@ -514,37 +517,47 @@ async function processGroup(group: BackfillGroup): Promise<BackfillOutcome[]> {
   return outcomes
 }
 
-async function stepIndexEditionTranscript(
+async function stepLaunchMastraTranscriptEmbedding(
   target: BackfillTarget,
-  loadedArtifact: EmbeddingsResult,
+  transcriptSource: TranscriptSourceArtifact,
+  mode: MastraTranscriptEmbeddingMode,
 ): Promise<BackfillOutcome> {
   "use step"
 
   const startedAt = Date.now()
 
   try {
-    const result = await indexEditionTranscript(prisma, {
-      editionId: target.videoEditionId,
-      videoId: target.videoId,
-      coreId: target.coreId,
+    const result = await launchMastraTranscriptEmbedding({
+      target: {
+        videoId: target.videoId,
+        videoEditionId: target.videoEditionId,
+        coreId: target.coreId,
+      },
       language: target.language,
       cmsVideoId: target.cmsVideoId,
-      loadedArtifact,
-      user: SYSTEM_PRINCIPAL,
+      transcript: transcriptSource,
+      mode,
     })
+    if (!result.ok) {
+      return {
+        status: "failed",
+        target,
+        language: target.language,
+        reason: result.reason,
+        durationMs: Date.now() - startedAt,
+      }
+    }
     return toSucceeded(target, result, Date.now() - startedAt)
   } catch (error) {
     const durationMs = Date.now() - startedAt
     // Branch on the typed error class, not error-message regex. Only a
     // genuinely-missing artifact gets demoted to skipped; every other
     // error shape (ManagerArtifactError artifact_invalid /
-    // artifact_read_failed, TranscriptIndexError dimension_mismatch /
-    // empty_chunk_text, Prisma P2025, etc.) stays classified as failed
+    // artifact_read_failed, Mastra launch failure, etc.) stays classified as failed
     // so the operator sees it in the report. With Stage 2's group-level
     // artifact load, an `artifact_missing` here would only fire if the
-    // indexer's empty-`loadedArtifact` short-circuit somehow bypassed
-    // the cache; keep the classification path intact for safety in
-    // depth.
+    // launcher somehow bypassed the cached source path; keep the
+    // classification path intact for safety in depth.
     if (
       error instanceof ManagerArtifactError &&
       error.code === "artifact_missing"
@@ -570,7 +583,7 @@ async function stepIndexEditionTranscript(
 
 /**
  * Project the outcome list to the deduped, sorted set of missing
- * embeddings artifacts. See R1's `deriveMissingArtifacts` for the full
+ * transcript source artifacts. See R1's `deriveMissingArtifacts` for the full
  * rationale (dedup-by-assetId, ascending sort, first-seen-coreId
  * tiebreak, `failed`-outcomes excluded). The only difference here is
  * the literal `kind: "transcript"` stamp on each entry. Pure function —
@@ -638,16 +651,16 @@ function stepReport(args: {
 
 function toSucceeded(
   target: BackfillTarget,
-  result: IndexEditionTranscriptResult,
+  result: Extract<MastraTranscriptEmbeddingLaunchResult, { ok: true }>,
   durationMs: number,
 ): BackfillOutcome {
   return {
     status: "succeeded",
     target,
-    language: result.language,
-    chunksIndexed: result.chunksIndexed,
-    embeddingsWritten: result.embeddingsWritten,
-    chunksPruned: result.chunksPruned,
+    language: target.language,
+    chunksIndexed: result.chunks,
+    embeddingsWritten: result.status === "unchanged" ? 0 : result.chunks,
+    chunksPruned: 0,
     durationMs,
   }
 }
@@ -716,15 +729,15 @@ function logOutcome(outcome: BackfillOutcome): void {
 }
 
 // Exported for tests — pure helpers safe to exercise without the
-// useworkflow runtime. `stepIndexEditionTranscript` is referenced
+// useworkflow runtime. `stepLaunchMastraTranscriptEmbedding` is referenced
 // through `_internals` from `processGroup` so tests can
-// `vi.spyOn(_internals, "stepIndexEditionTranscript")` to force a
+// `vi.spyOn(_internals, "stepLaunchMastraTranscriptEmbedding")` to force a
 // `Promise.allSettled` rejection — the only way to exercise the
 // synthetic-failed defensive branch, since the real step body catches
 // everything internally.
 export const _internals = {
   stepReport,
-  stepIndexEditionTranscript,
+  stepLaunchMastraTranscriptEmbedding,
   toSucceeded,
   logOutcome,
   groupTargetsByVideoEdition,

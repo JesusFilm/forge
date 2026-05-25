@@ -521,9 +521,9 @@ describe("processAdminTriggerRequest — happy path", () => {
     expect(dispatch).toHaveBeenCalledTimes(1)
   })
 
-  it("does NOT include documentId on the dispatch input (feat-125 — Strapi-only field dropped)", async () => {
+  it("forwards Admin video id without reintroducing legacy document id targeting", async () => {
     const adminLookup = vi.fn(async () =>
-      adminLookupOk([videoFixture({ coreId: "c-1" })]),
+      adminLookupOk([videoFixture({ id: "admin-video-1", coreId: "c-1" })]),
     )
     let captured: Record<string, unknown> | null = null
 
@@ -543,6 +543,7 @@ describe("processAdminTriggerRequest — happy path", () => {
 
     expect(captured).not.toBeNull()
     expect(captured).not.toHaveProperty("documentId")
+    expect(captured).toHaveProperty("adminVideoId", "admin-video-1")
   })
 
   it("returns not_found for items whose coreId admin did not return", async () => {

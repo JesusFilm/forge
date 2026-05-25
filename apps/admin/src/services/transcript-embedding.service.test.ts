@@ -150,19 +150,6 @@ describe("indexEditionTranscript", () => {
     ).rejects.toMatchObject({ code: "forbidden" })
   })
 
-  it("throws missing_cms_video_id when no artifact or id is provided", async () => {
-    const { prisma } = buildStubPrisma()
-    await expect(
-      indexEditionTranscript(prisma, {
-        editionId: "edition-1",
-        videoId: "video-1",
-        coreId: "core-1",
-        language: "en",
-        user: SYSTEM,
-      }),
-    ).rejects.toMatchObject({ code: "missing_cms_video_id" })
-  })
-
   it("returns zero counts for an empty artifact without touching the DB", async () => {
     const { prisma, videoTranscriptUpsert, executeRaw } = buildStubPrisma()
     // Mirror the symmetry of scene-embedding's empty-artifact test: even
@@ -369,24 +356,6 @@ describe("indexEditionTranscript", () => {
     })
 
     expect(spy).not.toHaveBeenCalled()
-  })
-
-  it("skips the S3 read when loadedArtifact is supplied (Stage 2 per-(video, edition) cache)", async () => {
-    const managerArtifactsModule =
-      await import("@/services/manager-artifacts.service")
-    const s3ReadSpy = vi.spyOn(managerArtifactsModule, "readEmbeddingsArtifact")
-
-    const { prisma } = buildStubPrisma()
-    await indexEditionTranscript(prisma, {
-      editionId: "edition-1",
-      videoId: "video-1",
-      coreId: "core-1",
-      language: "en",
-      user: SYSTEM,
-      loadedArtifact: buildArtifact({ chunkCount: 2 }),
-    })
-
-    expect(s3ReadSpy).not.toHaveBeenCalled()
   })
 
   it("warns on model-stamp drift with a structured payload and still writes the vectors", async () => {

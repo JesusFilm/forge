@@ -6,9 +6,10 @@
 //   { items: [{ assetId: number, coreId: string }, ...] }
 //
 // `assetId` is the operator-facing identifier + storage-key prefix
-// manager uses when writing artifacts (`{assetId}/scene-analysis.json`,
-// `{assetId}/embeddings.json`). `coreId` is admin's stable identifier
-// for the same video.
+// manager uses when writing source artifacts (`{assetId}/scene-analysis.json`,
+// `{assetId}/transcript.json`). Transcript embedding vectors are now produced
+// by Mastra and written through Admin ingest, not by this route. `coreId` is
+// admin's stable identifier for the same video.
 //
 // Per-id flow:
 //   1. Admin lookup by coreId via `videosByCoreIds` GraphQL query →
@@ -21,10 +22,9 @@
 //   3. Generate a new managerJobId, store in the map, enqueue via
 //      `after()` background-task semantics. Status "started".
 //
-// Pre-feat-125 the lookup hit Strapi GraphQL via Apollo; admin owns
-// the video catalogue now (R6 of the migration playbook), so the
-// lookup moved to admin's `videosByCoreIds`. Manager keeps no
-// Strapi coupling on this code path.
+// Admin owns the video catalogue now (R6 of the migration playbook),
+// so this route resolves dispatch fields through Admin's
+// `videosByCoreIds` contract and carries no legacy catalogue lookup path.
 //
 // The in-memory map is a deliberate deviation from plan D7 (which
 // suggested querying EnrichmentJob). Rationale captured in the
@@ -109,9 +109,9 @@ export type AdminTriggerResult = {
 // expiresAt }` with a 5-minute TTL. Pruned lazily on each lookup.
 //
 // Deliberately simpler than EnrichmentJob-backed idempotency because:
-//   1. EnrichmentJob is keyed by Strapi documentId, not integer
-//      assetId. Bridging would require an extra CMS round-trip per
-//      call just to dedupe.
+//   1. EnrichmentJob belongs to the legacy Manager job model, while this
+//      Admin-trigger path is keyed by the source `assetId`. Bridging the two
+//      models would reintroduce deleted catalogue coupling just to dedupe.
 //   2. The existing `/api/scene-analysis` route does NOT create an
 //      EnrichmentJob, so the table doesn't reflect "is a scene-
 //      analysis pipeline currently running for this video?" anyway.
@@ -311,6 +311,7 @@ export type AdminLookupClient = (
 export type AdminTriggerDispatchInput = {
   assetId: number
   coreId: string
+  adminVideoId: string
   muxAssetId: string
   subtitleUrl: string
   videoLabel: string
@@ -483,6 +484,7 @@ export async function processAdminTriggerRequest(
     const dispatchInput: AdminTriggerDispatchInput = {
       assetId: item.assetId,
       coreId: item.coreId,
+      adminVideoId: video.id,
       muxAssetId: video.muxAssetId,
       subtitleUrl: video.subtitleUrl ?? "",
       videoLabel: video.label ?? "unknown",

@@ -6,6 +6,7 @@ const {
   chaptersMock,
   embeddingSyncMock,
   embeddingsMock,
+  mastraTranscriptEmbeddingsMock,
   extractAndStoreSceneBoundariesMock,
   getMuxAssetMock,
   getJobMock,
@@ -25,6 +26,7 @@ const {
   chaptersMock: vi.fn(),
   embeddingSyncMock: vi.fn(),
   embeddingsMock: vi.fn(),
+  mastraTranscriptEmbeddingsMock: vi.fn(),
   extractAndStoreSceneBoundariesMock: vi.fn(),
   getMuxAssetMock: vi.fn(),
   getJobMock: vi.fn(),
@@ -57,16 +59,16 @@ vi.mock("@/services/metadata", () => ({
   extractMetadata: metadataMock,
 }))
 
-vi.mock("@/services/embeddings", () => ({
-  generateEmbeddings: embeddingsMock,
-}))
-
 vi.mock("@/services/subtitleTranslation", () => ({
   translateSubtitles: subtitleTranslationMock,
 }))
 
 vi.mock("@/services/embeddingSync", () => ({
   syncEmbeddingArtifact: embeddingSyncMock,
+}))
+
+vi.mock("@/services/mastra-transcript-embeddings", () => ({
+  launchMastraTranscriptEmbeddings: mastraTranscriptEmbeddingsMock,
 }))
 
 vi.mock("@/services/mux-sync", () => ({
@@ -105,6 +107,7 @@ describe("runVideoEnrichment", () => {
     chaptersMock.mockReset()
     embeddingSyncMock.mockReset()
     embeddingsMock.mockReset()
+    mastraTranscriptEmbeddingsMock.mockReset()
     extractAndStoreSceneBoundariesMock.mockReset()
     getMuxAssetMock.mockReset()
     getJobMock.mockReset()
@@ -129,6 +132,23 @@ describe("runVideoEnrichment", () => {
         chunkCount: 0,
         contentFingerprint: "sha256:generated",
         hasMetadataEmbedding: false,
+      },
+    })
+    mastraTranscriptEmbeddingsMock.mockResolvedValue({
+      ok: true,
+      status: "created",
+      chunks: 1,
+      totalTokens: 7,
+      model: "openai/text-embedding-3-small",
+      provider: "openai",
+      dimensions: 1536,
+      mastraRunId: "run-1",
+      sourceContentHash: "sha256:transcript",
+      chunking: {
+        type: "segment-aware",
+        maxChunkTokens: 500,
+        overlapTokens: 100,
+        version: "manager-transcript-v1",
       },
     })
     extractAndStoreSceneBoundariesMock.mockResolvedValue({
@@ -659,8 +679,8 @@ describe("runVideoEnrichment", () => {
             subtitles: { kind: "downloadable" },
             "subtitles-en": { kind: "downloadable" },
             chapters: { kind: "downloadable" },
+            "chapters-vtt": { kind: "downloadable" },
             metadata: { kind: "downloadable" },
-            embeddings: { kind: "downloadable" },
             muxSync: {
               kind: "metadata",
               data: expect.objectContaining({
@@ -700,24 +720,6 @@ describe("runVideoEnrichment", () => {
         "job-1",
         {
           metadata: { kind: "downloadable" },
-        },
-      ],
-      [
-        "job-1",
-        {
-          embeddings: { kind: "downloadable" },
-        },
-      ],
-      [
-        "job-1",
-        {
-          embeddingSync: {
-            kind: "metadata",
-            data: expect.objectContaining({
-              domain: "embeddings",
-              status: "skipped_existing",
-            }),
-          },
         },
       ],
     ])
@@ -762,25 +764,20 @@ describe("runVideoEnrichment", () => {
         ],
       }),
     )
-    expect(embeddingsMock).toHaveBeenCalledWith(
-      "asset-1",
-      expect.objectContaining({
+    expect(mastraTranscriptEmbeddingsMock).toHaveBeenCalledWith({
+      assetId: "asset-1",
+      muxAssetId: "mux-1",
+      language: "ru",
+      transcript: {
         text: "hello world",
         segments: [
           { start: 0, end: 12, text: "Welcome to the episode." },
           { start: 12, end: 24, text: "We move into the main discussion." },
         ],
-        language: "ru",
-      }),
-      {
-        metadata: expect.objectContaining({
-          title: "Title",
-          description: "Description",
-          tags: ["tag-1"],
-          language: "ru",
-        }),
+        artifactKey: "asset-1/transcript.json",
+        provider: "mux",
       },
-    )
+    })
     expect(chaptersMock).toHaveBeenCalledWith("asset-1", {
       transcriptText: "hello world",
       segments: [
@@ -791,7 +788,7 @@ describe("runVideoEnrichment", () => {
     })
   })
 
-  it("persists unsupported sync state when the shared workflow has no videoDocumentId", async () => {
+  it("launches Mastra transcript embeddings without requiring legacy document id targeting", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",
       segments: [],
@@ -849,22 +846,13 @@ describe("runVideoEnrichment", () => {
       language: "en",
     })
 
-    expect(embeddingSyncMock).toHaveBeenCalledWith({
-      assetId: "asset-1",
-      videoDocumentId: undefined,
-    })
-    expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
-      "job-1",
-      {
-        embeddingSync: {
-          kind: "metadata",
-          data: expect.objectContaining({
-            status: "unsupported",
-            reason: "no_video_document_id",
-          }),
-        },
-      },
-    ])
+    expect(embeddingSyncMock).not.toHaveBeenCalled()
+    expect(mastraTranscriptEmbeddingsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+      }),
+    )
     expect(updateStepStatusMock.mock.calls).toContainEqual([
       "job-1",
       "embeddings",
@@ -872,7 +860,7 @@ describe("runVideoEnrichment", () => {
     ])
   })
 
-  it("keeps the embeddings step successful when CMS sync records a failed report", async () => {
+  it("keeps the embeddings step successful when Mastra ingest succeeds", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",
       segments: [],
@@ -932,18 +920,13 @@ describe("runVideoEnrichment", () => {
       language: "en",
     })
 
-    expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
-      "job-1",
-      {
-        embeddingSync: {
-          kind: "metadata",
-          data: expect.objectContaining({
-            status: "failed",
-            reason: "video_not_found",
-          }),
-        },
-      },
-    ])
+    expect(embeddingSyncMock).not.toHaveBeenCalled()
+    expect(mastraTranscriptEmbeddingsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+      }),
+    )
     expect(updateStepStatusMock.mock.calls).toContainEqual([
       "job-1",
       "embeddings",
@@ -1157,16 +1140,16 @@ describe("runVideoEnrichment", () => {
       }),
     ).rejects.toThrow("Metadata extraction produced no usable fields")
 
-    expect(embeddingsMock).toHaveBeenCalledWith(
-      "asset-1",
+    expect(mastraTranscriptEmbeddingsMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        text: "hello world",
-        segments: [],
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
         language: "en",
+        transcript: expect.objectContaining({
+          text: "hello world",
+          segments: [],
+        }),
       }),
-      {
-        metadata: null,
-      },
     )
     expect(updateStepStatusMock.mock.calls).toContainEqual([
       "job-1",

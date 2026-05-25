@@ -16,6 +16,7 @@ import {
   ManagerArtifactError,
   readEmbeddingsArtifact,
   readSceneAnalysisArtifact,
+  readTranscriptSourceArtifact,
   type EmbeddingsResult,
   type SceneAnalysisResult,
 } from "./manager-artifacts.service"
@@ -127,6 +128,72 @@ describe("readSceneAnalysisArtifact", () => {
       })
     } finally {
       await removeArtifact(assetId)
+    }
+  })
+})
+
+describe("readTranscriptSourceArtifact", () => {
+  let readArtifactSpy: MockInstance<typeof s3.readManagerArtifact>
+
+  beforeEach(() => {
+    readArtifactSpy = vi.spyOn(s3, "readManagerArtifact")
+  })
+
+  afterEach(() => {
+    readArtifactSpy.mockRestore()
+  })
+
+  it("returns transcript text and timed segments from transcript.json", async () => {
+    readArtifactSpy.mockResolvedValueOnce(
+      stubArtifactBytes({
+        text: "hello transcript",
+        segments: [{ start: 0, end: 2, text: "hello transcript" }],
+        language: "en",
+        resolvedProvider: "mux",
+        routingReport: { attempts: [] },
+      }),
+    )
+
+    const result = await readTranscriptSourceArtifact("42")
+
+    expect(result).toMatchObject({
+      text: "hello transcript",
+      language: "en",
+      resolvedProvider: "mux",
+      segments: [{ start: 0, end: 2, text: "hello transcript" }],
+    })
+    expect(readArtifactSpy).toHaveBeenCalledWith("42", "transcript", "json")
+  })
+
+  it("throws artifact_missing when transcript.json is absent", async () => {
+    readArtifactSpy.mockRejectedValueOnce(
+      Object.assign(new Error("The specified key does not exist."), {
+        name: "NoSuchKey",
+      }),
+    )
+
+    await expect(readTranscriptSourceArtifact("42")).rejects.toMatchObject({
+      name: "ManagerArtifactError",
+      code: "artifact_missing",
+    })
+  })
+
+  it("throws artifact_invalid without echoing transcript text for malformed shape", async () => {
+    const secret = "SENSITIVE_TRANSCRIPT_MARKER"
+    readArtifactSpy.mockResolvedValueOnce(
+      stubArtifactBytes({
+        text: secret,
+        segments: [{ start: "bad", end: 2, text: secret }],
+        language: "en",
+      }),
+    )
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    try {
+      const error = await readTranscriptSourceArtifact("42").catch((e) => e)
+      expect((error as Error).message).not.toContain(secret)
+      expect((error as { code: string }).code).toBe("artifact_invalid")
+    } finally {
+      errorSpy.mockRestore()
     }
   })
 })
