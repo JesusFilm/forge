@@ -74,7 +74,7 @@ function QuoteCard({
           source={imageUrl}
           style={[StyleSheet.absoluteFill, styles.cardImage]}
           contentFit="cover"
-          recyclingKey={`bqc-${quote.id}`}
+          recyclingKey={`bqc-${quote.reference}`}
           accessibilityLabel={quote.reference}
         />
       )}

@@ -76,7 +76,13 @@ export type WatchExperience = NonNullable<
   AdminFragmentOf<typeof adminWatchExperienceFragment>
 >
 
-export type AdminBlock = NonNullable<WatchExperience["blocks"]>[number]
+// Blocks appear at multiple nesting levels (top-level, SectionBlock.sectionContent,
+// ContainerBlock.content) with different GraphQL unions at each level. This loose
+// type covers all levels — renderers narrow via __typename + Record<string, unknown>.
+export type AdminBlock = { readonly __typename: string } & Record<
+  string,
+  unknown
+>
 
 export type SearchResult = NonNullable<
   AdminResultOf<typeof SEARCH>["search"]

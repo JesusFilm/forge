@@ -53,8 +53,8 @@ export function CuratedHomeLayout() {
   }, [navigation])
 
   const blocks = (experience?.blocks ?? []).filter(
-    (b): b is AdminBlock => b != null,
-  )
+    (b) => b != null,
+  ) as AdminBlock[]
 
   const heroSection =
     blocks.length > 0 && blocks[0].__typename === "VideoHeroBlock"
