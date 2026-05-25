@@ -94,7 +94,7 @@ export function WatchPageClient({
 
   const currentLanguageSlug = languageSlug ?? variant.language?.slug ?? ""
 
-  const subtitles = video.subtitles ?? []
+  const subtitles = useMemo(() => video.subtitles ?? [], [video.subtitles])
 
   const [subtitleEnabled, setSubtitleEnabled] = useState(false)
   const [subtitleSlug, setSubtitleSlug] = useState<string | null>(null)
