@@ -39,6 +39,7 @@ type MediaItem = {
   labelOverride?: string | null
   collectionSize?: number | null
   imageUrl?: string | null
+  imageOverrideUrl?: string | null
   linkToSectionKey?: string | null
 }
 
@@ -75,8 +76,8 @@ export function MediaCollectionRenderer({
   if (items.length === 0) return null
 
   const renderItem = ({ item, index }: { item: MediaItem; index: number }) => {
-    const thumbnailUrl = resolveImageUrl(item.imageUrl)
-    const title = item.titleOverride ?? "Untitled"
+    const thumbnailUrl = resolveImageUrl(item.imageUrl ?? item.imageOverrideUrl)
+    const title = item.titleOverride ?? item.labelOverride ?? ""
     const label = item.labelOverride ?? categoryLabel
 
     const handlePress = () => {
