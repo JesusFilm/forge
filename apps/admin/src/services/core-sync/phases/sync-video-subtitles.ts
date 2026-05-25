@@ -1,5 +1,10 @@
 // Sync phase: video-subtitles
 // Depends on: videos, languages, video-editions
+//
+// Paginates over `videos(offset, limit)` and reads `subtitles` inline
+// on each video. The old top-level `videoSubtitles(offset, limit)` query
+// does not exist in the Core gateway — it silently returned empty pages
+// and the soft-delete pass wiped every synced subtitle.
 
 import type { Prisma, PrismaClient } from "@prisma/client"
 import { randomUUID } from "node:crypto"
@@ -10,29 +15,28 @@ import { emptySyncStats } from "../types"
 import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
 import { assertParallelArrayLengthsMatch, toPgArray } from "@/db/pgvector"
 
-const PAGE_SIZE = 500
+const PAGE_SIZE = 50
 
 const VIDEO_SUBTITLES_QUERY = `
-  query VideoSubtitles($offset: Int!, $limit: Int!, $where: VideoSubtitlesFilter) {
-    videoSubtitles(offset: $offset, limit: $limit, where: $where) {
+  query VideoSubtitlesViaVideos($offset: Int!, $limit: Int!, $where: VideosFilter) {
+    videos(offset: $offset, limit: $limit, where: $where) {
       id
-      updatedAt
-      videoId
-      languageId
-      primary
-      edition
-      vttSrc
-      srtSrc
-      value
-      videoEdition { id }
+      subtitles {
+        id
+        languageId
+        primary
+        edition
+        vttSrc
+        srtSrc
+        value
+        videoEdition { id }
+      }
     }
   }
 `
 
-type CoreVideoSubtitle = {
+type CoreSubtitleRaw = {
   id: string
-  updatedAt: string
-  videoId: string
   languageId: string
   primary: boolean
   edition: string
@@ -40,6 +44,11 @@ type CoreVideoSubtitle = {
   srtSrc: string | null
   value: string
   videoEdition: { id: string }
+}
+
+type CoreVideoWithSubtitles = {
+  id: string
+  subtitles: CoreSubtitleRaw[]
 }
 
 type SubtitleWrite = {
@@ -191,80 +200,109 @@ export async function syncVideoSubtitles({
 
   let offset = 0
   let firstPageWasEmpty = false
+  let totalSubtitlesSeen = 0
 
   while (true) {
-    const result = await coreQuery<{ videoSubtitles: CoreVideoSubtitle[] }>(
-      VIDEO_SUBTITLES_QUERY,
-      {
-        offset,
-        limit: PAGE_SIZE,
-        where: since ? { updatedAt: { gte: since } } : undefined,
-      },
-    )
-
-    const rawSubtitles = result.data?.videoSubtitles ?? []
-    if (offset === 0 && rawSubtitles.length === 0) firstPageWasEmpty = true
-
-    const parsedSubtitles =
-      CoreVideoSubtitleSchema.array().safeParse(rawSubtitles)
-    if (!parsedSubtitles.success) {
-      stats.errors++
-      console.error(
-        JSON.stringify({
-          event: "core-sync.video-subtitle.parse-error",
-          offset,
-          issues: parsedSubtitles.error.issues,
-        }),
-      )
-      progress.increment(rawSubtitles.length)
-      if (rawSubtitles.length < PAGE_SIZE) break
-      offset += PAGE_SIZE
-      continue
-    }
-
-    const subtitles = parsedSubtitles.data
-    if (subtitles.length === 0) break
-    progress.setTotal(offset + subtitles.length)
+    let rawVideos: CoreVideoWithSubtitles[]
 
     try {
-      const writes = subtitles.flatMap((subtitle): SubtitleWrite[] => {
-        const videoId = videoMap.get(subtitle.videoId)
-        const languageId = langMap.get(subtitle.languageId)
-        const videoEditionId = editionMap.get(subtitle.videoEdition.id)
-        if (!videoId || !videoEditionId) return []
-
-        return [
-          {
-            id: randomUUID(),
-            coreId: subtitle.id,
-            videoId,
-            videoEditionId,
-            languageId: languageId ?? null,
-            value: subtitle.value,
-            primary: String(subtitle.primary),
-            vttSrc: subtitle.vttSrc,
-            srtSrc: subtitle.srtSrc,
-          },
-        ]
-      })
-
-      await prisma.$transaction(async (tx) => {
-        await bulkUpsertVideoSubtitles(tx, writes)
-      }, CORE_SYNC_TRANSACTION_OPTIONS)
-      stats.updated += writes.length
+      const result = await coreQuery<{ videos: CoreVideoWithSubtitles[] }>(
+        VIDEO_SUBTITLES_QUERY,
+        {
+          offset,
+          limit: PAGE_SIZE,
+          where: since ? { updatedAt: { gte: since } } : undefined,
+        },
+      )
+      rawVideos = result.data?.videos ?? []
     } catch (err) {
       stats.errors++
       console.error(
         JSON.stringify({
-          event: "core-sync.video-subtitle.error",
+          event: "core-sync.video-subtitle.page.error",
           offset,
+          pageSize: PAGE_SIZE,
           error: err instanceof Error ? err.message : String(err),
         }),
       )
+      if (offset === 0) firstPageWasEmpty = true
+      offset += PAGE_SIZE
+      continue
     }
 
-    progress.increment(subtitles.length)
-    if (rawSubtitles.length < PAGE_SIZE) break
+    if (offset === 0 && rawVideos.length === 0) firstPageWasEmpty = true
+    if (rawVideos.length === 0) break
+
+    const allSubtitles: Array<CoreSubtitleRaw & { videoId: string }> = []
+    for (const video of rawVideos) {
+      for (const sub of video.subtitles ?? []) {
+        allSubtitles.push({ ...sub, videoId: video.id })
+      }
+    }
+
+    progress.setTotal(totalSubtitlesSeen + allSubtitles.length)
+
+    if (allSubtitles.length > 0) {
+      const parsedSubtitles = CoreVideoSubtitleSchema.array().safeParse(
+        allSubtitles.map(({ videoId: _, ...rest }) => rest),
+      )
+      if (!parsedSubtitles.success) {
+        stats.errors++
+        console.error(
+          JSON.stringify({
+            event: "core-sync.video-subtitle.parse-error",
+            offset,
+            issues: parsedSubtitles.error.issues,
+          }),
+        )
+        progress.increment(allSubtitles.length)
+        totalSubtitlesSeen += allSubtitles.length
+        offset += PAGE_SIZE
+        if (rawVideos.length < PAGE_SIZE) break
+        continue
+      }
+
+      try {
+        const writes = allSubtitles.flatMap((subtitle): SubtitleWrite[] => {
+          const videoId = videoMap.get(subtitle.videoId)
+          const languageId = langMap.get(subtitle.languageId)
+          const videoEditionId = editionMap.get(subtitle.videoEdition.id)
+          if (!videoId || !videoEditionId) return []
+
+          return [
+            {
+              id: randomUUID(),
+              coreId: subtitle.id,
+              videoId,
+              videoEditionId,
+              languageId: languageId ?? null,
+              value: subtitle.value,
+              primary: String(subtitle.primary),
+              vttSrc: subtitle.vttSrc,
+              srtSrc: subtitle.srtSrc,
+            },
+          ]
+        })
+
+        await prisma.$transaction(async (tx) => {
+          await bulkUpsertVideoSubtitles(tx, writes)
+        }, CORE_SYNC_TRANSACTION_OPTIONS)
+        stats.updated += writes.length
+      } catch (err) {
+        stats.errors++
+        console.error(
+          JSON.stringify({
+            event: "core-sync.video-subtitle.error",
+            offset,
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        )
+      }
+    }
+
+    progress.increment(allSubtitles.length)
+    totalSubtitlesSeen += allSubtitles.length
+    if (rawVideos.length < PAGE_SIZE) break
     offset += PAGE_SIZE
   }
 
