@@ -12,7 +12,7 @@ import { useNavigation } from "expo-router"
 import { LinearGradient } from "expo-linear-gradient"
 
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { AdminBlock } from "../../lib/queries"
 import { BG_COLOR, hexToRgba } from "../../lib/color"
 import { layout } from "../../styles/shared"
 import { HomeHeader } from "../ui/HomeHeader"
@@ -23,7 +23,7 @@ import { NavigationCarouselRenderer } from "./NavigationCarouselRenderer"
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type FeedItem = {
-  section: NormalizedBlock
+  section: AdminBlock
   classification: "videoCard" | "standard"
 }
 
@@ -45,7 +45,6 @@ export function CuratedHomeLayout() {
     h: number
   } | null>(null)
 
-  // Re-mute the hero whenever the user navigates away from this screen
   const navigation = useNavigation()
   useEffect(() => {
     return navigation.addListener("blur", () => {
@@ -53,11 +52,14 @@ export function CuratedHomeLayout() {
     })
   }, [navigation])
 
-  const sections = experience?.sections ?? []
+  const blocks = (experience?.blocks ?? []).filter(
+    (b): b is AdminBlock => b != null,
+  )
 
-  // Extract hero if first section is videoHero
   const heroSection =
-    sections.length > 0 && sections[0].kind === "videoHero" ? sections[0] : null
+    blocks.length > 0 && blocks[0].__typename === "VideoHeroBlock"
+      ? blocks[0]
+      : null
 
   const handleMuteToggle = useCallback(() => setMuted((m) => !m), [])
 
@@ -68,20 +70,17 @@ export function CuratedHomeLayout() {
     [],
   )
 
-  const remainingSections = heroSection ? sections.slice(1) : sections
+  const remainingSections = heroSection ? blocks.slice(1) : blocks
 
-  // Find navigationCarousel in remaining sections
   const navCarouselIndex = remainingSections.findIndex(
-    (s) => s.kind === "navigationCarousel",
+    (s) => s.__typename === "NavigationCarouselBlock",
   )
   const navCarousel =
     navCarouselIndex >= 0 ? remainingSections[navCarouselIndex] : null
 
-  // Build feed: navCarousel first (if found), then everything else
   const feedItems = useMemo<FeedItem[]>(() => {
     const items: FeedItem[] = []
 
-    // Navigation carousel always first in feed
     if (navCarousel) {
       items.push({
         section: navCarousel,
@@ -91,7 +90,6 @@ export function CuratedHomeLayout() {
 
     for (let i = 0; i < remainingSections.length; i++) {
       const section = remainingSections[i]
-      // Skip if this is the navCarousel we already added
       if (i === navCarouselIndex) continue
 
       items.push({
@@ -109,7 +107,7 @@ export function CuratedHomeLayout() {
       const isFirst = index === 0
 
       const content =
-        section.kind === "navigationCarousel" ? (
+        section.__typename === "NavigationCarouselBlock" ? (
           <NavigationCarouselRenderer section={section} />
         ) : (
           <SectionDispatcher
@@ -138,8 +136,6 @@ export function CuratedHomeLayout() {
       const scrollY = e.nativeEvent.contentOffset.y
       setHeroPaused(scrollY > heroHeight * 0.7)
       setHeroBlurOpacity(Math.min(1, scrollY / (heroHeight * 0.5)))
-      // Hero heading sits near the bottom (~75 % down). Fade the nav title
-      // in over a short scroll range once the heading is covered.
       const fadeStart = heroHeight * 0.6
       const fadeEnd = heroHeight * 0.75
       setTitleOpacity(
@@ -150,14 +146,12 @@ export function CuratedHomeLayout() {
   )
 
   const keyExtractor = useCallback(
-    (item: FeedItem, index: number) =>
-      `${item.section.kind}-${item.section.id as string}-${index}`,
+    (_item: FeedItem, index: number) => `feed-${index}`,
     [],
   )
 
   return (
     <View style={layout.screenContainer}>
-      {/* Layer 1: VideoHero absolutely positioned behind */}
       {heroSection != null && (
         <View style={[styles.heroLayer, { height: heroHeight }]}>
           <VideoHeroRenderer
@@ -172,14 +166,11 @@ export function CuratedHomeLayout() {
         </View>
       )}
 
-      {/* Floating header — always on top so buttons stay tappable.
-           Title fades in once the hero heading scrolls off screen. */}
       <HomeHeader
         title={experience?.title ?? null}
         titleOpacity={titleOpacity}
       />
 
-      {/* Layer 2: FlashList on top with padding to reveal hero */}
       <FlashList
         data={feedItems}
         renderItem={renderItem}
@@ -193,7 +184,6 @@ export function CuratedHomeLayout() {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Layer 3: invisible touch targets for hero interactive elements */}
       {heroSection != null && (
         <View
           style={[styles.heroInteractiveLayer, { height: heroHeight }]}

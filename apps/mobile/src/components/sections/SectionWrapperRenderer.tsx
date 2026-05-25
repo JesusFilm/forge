@@ -1,13 +1,13 @@
 import { ImageBackground, StyleSheet, View } from "react-native"
 
 import { layout } from "../../styles/shared"
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { AdminBlock } from "../../lib/queries"
 import { ContentDispatcher } from "./ContentDispatcher"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export interface SectionWrapperRendererProps {
-  section: NormalizedBlock
+  section: AdminBlock
 }
 
 const SECTION_BACKGROUND_COLORS: Record<string, string> = {
@@ -32,13 +32,11 @@ function sectionBackgroundColor(value: unknown) {
 export function SectionWrapperRenderer({
   section,
 }: SectionWrapperRendererProps) {
-  const content =
-    (section.sectionContent as NormalizedBlock[] | undefined) ?? []
-  const backgroundColor = sectionBackgroundColor(section.backgroundColor)
+  const s = section as Record<string, unknown>
+  const content = (s.sectionContent as AdminBlock[] | undefined) ?? []
+  const backgroundColor = sectionBackgroundColor(s.backgroundColor)
   const backgroundImageUrl =
-    typeof section.backgroundImageUrl === "string"
-      ? section.backgroundImageUrl
-      : ""
+    typeof s.backgroundImageUrl === "string" ? s.backgroundImageUrl : ""
   const outerStyle = [
     layout.sectionOuter,
     backgroundColor ? { backgroundColor } : null,
