@@ -9,7 +9,8 @@ duration: 6
 depends_on:
   - "feat-121"
   - "feat-125"
-blocks: []
+blocks:
+  - "feat-134"
 tags:
   - "platform"
   - "auth"

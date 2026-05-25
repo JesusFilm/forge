@@ -24,6 +24,8 @@ local.properties
 **/tsconfig.tsbuildinfo
 .tmp/
 **/.tmp/
+**/src/generated/prisma/
+**/.prisma/
 
 # Xcode user state (do not commit)
 **/xcuserdata/
