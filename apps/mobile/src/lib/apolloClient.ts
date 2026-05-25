@@ -1,5 +1,5 @@
 import { ApolloClient, HttpLink, InMemoryCache } from "@apollo/client"
-import { getGraphQLUrl, getApiToken } from "./config"
+import { getGraphQLUrl } from "./config"
 
 const REQUEST_TIMEOUT_MS = 15_000
 
@@ -30,15 +30,8 @@ let _client: ApolloClient | undefined
 export function getApolloClient(): ApolloClient {
   if (_client) return _client
 
-  const headers: Record<string, string> = {}
-  const token = getApiToken()
-  if (token) {
-    headers.Authorization = `Bearer ${token}`
-  }
-
   const link = new HttpLink({
     uri: getGraphQLUrl(),
-    headers,
     fetch: fetchWithTimeout,
   })
 

@@ -3,7 +3,7 @@ id: "feat-124"
 title: "Admin production core sync restore fix"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-05-15"
 duration: 1
 depends_on:
@@ -36,3 +36,8 @@ schema-qualified names, which caused custom archive restores to match no data.
 pnpm --filter @forge/admin test src/app/api/core-sync/scheduled/route.test.ts src/scripts/video-db-backup.test.ts
 pnpm --filter @forge/admin typecheck
 ```
+
+Verified on 2026-05-24:
+
+- Focused test command above passed.
+- Full admin typecheck passed as part of the Core Sync operations closeout.

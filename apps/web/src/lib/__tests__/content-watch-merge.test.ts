@@ -33,7 +33,13 @@ function makeVariant(overrides: Record<string, unknown> = {}) {
     published: true,
     hls: "https://cdn.example/jesus.m3u8",
     duration: 7674,
-    language: { coreId: "529", bcp47: "en", slug: "english", name: "English" },
+    language: {
+      coreId: "529",
+      bcp47: "en",
+      slug: "english",
+      name: "English",
+      nativeName: null,
+    },
     downloads: [],
     muxVideo: { playbackId: "playback-id-123" },
     ...overrides,
@@ -76,6 +82,7 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
     // tests' assumption that the carousel is fed from sibling content.
     children: [],
     variants: [],
+    subtitles: [],
     studyQuestions: [],
     bibleCitations: [],
     ...overrides,

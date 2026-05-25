@@ -33,15 +33,13 @@ export function WatchSectionRenderer({
   modalCallbacks,
   onPlayerReady,
   locale,
+  subtitleVttSrc,
 }: {
   blocks: MergedWatchBlock[]
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
-  /**
-   * Validated ISO locale passed down to locale-aware children
-   * (currently: BibleQuotesSection's verse fetch + Read-more link).
-   */
   locale?: string
+  subtitleVttSrc?: string | null
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
   // renders as a hidden marker to avoid double-mounting.
@@ -72,6 +70,7 @@ export function WatchSectionRenderer({
           modalCallbacks={modalCallbacks}
           onPlayerReady={onPlayerReady}
           locale={locale}
+          subtitleVttSrc={subtitleVttSrc}
         />
       ))}
       {bodyBlocks.length > 0 ? (
@@ -119,6 +118,7 @@ function WatchBlockEntry({
   modalCallbacks,
   onPlayerReady,
   locale,
+  subtitleVttSrc,
 }: {
   block: MergedWatchBlock
   index: number
@@ -126,6 +126,7 @@ function WatchBlockEntry({
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   locale?: string
+  subtitleVttSrc?: string | null
 }) {
   if (isWatchBlock(block)) {
     return (
@@ -135,6 +136,7 @@ function WatchBlockEntry({
         modalCallbacks={modalCallbacks}
         onPlayerReady={onPlayerReady}
         locale={locale}
+        subtitleVttSrc={subtitleVttSrc}
       />
     )
   }
@@ -147,12 +149,14 @@ function SyntheticBlock({
   modalCallbacks,
   onPlayerReady,
   locale,
+  subtitleVttSrc,
 }: {
   block: WatchBlock
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   locale?: string
+  subtitleVttSrc?: string | null
 }) {
   switch (block.kind) {
     case "HeroPlayer": {
@@ -165,6 +169,7 @@ function SyntheticBlock({
           onPlayerReady={onPlayerReady}
           onLanguageClick={modalCallbacks?.openLanguage}
           playableLanguageCount={playableLanguageCount}
+          subtitleVttSrc={subtitleVttSrc}
         />
       )
     }

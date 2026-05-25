@@ -12,7 +12,7 @@ const config = getDefaultConfig(projectRoot)
 // causes spurious Fast Refresh ("Refreshing...") toasts on every unrelated change.
 config.watchFolders = [
   ...(config.watchFolders || []),
-  path.resolve(monorepoRoot, "packages/graphql"),
+  path.resolve(monorepoRoot, "packages/admin-graphql"),
 ]
 
 // Resolve packages from the monorepo root
@@ -25,7 +25,7 @@ config.resolver.nodeModulesPaths = [
 config.resolver.sourceExts.push("cjs")
 
 // In a pnpm monorepo Metro can follow symlinks into .pnpm and resolve a
-// different copy of react (18.x from cms, 19.x from web's react-dom, etc).
+// different copy of react from another workspace package.
 // Force every import of these packages to the single copy this app owns.
 // Note: react-native resolves to react-native-tvos via the npm alias.
 const singletonPkgs = {

@@ -4,7 +4,7 @@
 # Regenerate with:
 #   pnpm --filter @forge/admin schema:print
 #
-# The committed SDL is consumed by packages/graphql's gql.tada codegen
+# The committed SDL is consumed by packages/admin-graphql's gql.tada codegen
 # to produce the typed adminGraphql() factory + introspection types.
 # Consumer apps (web, mobile, tv) never introspect admin's running
 # server — admin disables introspection in production via

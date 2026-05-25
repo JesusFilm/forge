@@ -10,6 +10,14 @@ import { prisma } from "@/db/client"
 
 assertProductionAuthSecrets()
 
+const validAudiences = [
+  getAuthBaseUrl(),
+  ...(env.AUTH_VALID_AUDIENCES ?? "")
+    .split(",")
+    .map((audience) => audience.trim())
+    .filter((audience) => audience.length > 0),
+]
+
 const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
 const betterAuthSecret =
   env.BETTER_AUTH_SECRET ??
@@ -94,6 +102,7 @@ export const auth = betterAuth({
       loginPage: "/login",
       consentPage: "/oauth/consent",
       scopes: AUTH_SCOPES.map((scope) => scope.key),
+      validAudiences,
       advertisedMetadata: {
         scopes_supported: AUTH_SCOPES.map((scope) => scope.key),
         claims_supported: [
@@ -110,6 +119,8 @@ export const auth = betterAuth({
           "name",
           "picture",
           "https://jesusfilm.org/claims/membership_status",
+          "https://jesusfilm.org/claims/environment",
+          "https://jesusfilm.org/claims/app",
         ],
       },
       clientRegistrationDefaultScopes: ["openid", "profile:read", "email:read"],
@@ -129,6 +140,20 @@ export const auth = betterAuth({
       },
       customIdTokenClaims: ({ user }) => firstPartyUserClaims(user),
       customUserInfoClaims: ({ user }) => firstPartyUserClaims(user),
+      customAccessTokenClaims: ({ metadata }) => ({
+        ...(typeof metadata?.serviceAudience === "string"
+          ? { aud: metadata.serviceAudience }
+          : {}),
+        ...(typeof metadata?.environmentKind === "string"
+          ? {
+              "https://jesusfilm.org/claims/environment":
+                metadata.environmentKind,
+            }
+          : {}),
+        ...(typeof metadata?.appKey === "string"
+          ? { "https://jesusfilm.org/claims/app": metadata.appKey }
+          : {}),
+      }),
     }),
     nextCookies(),
     ...upstreamProviderPlugins,

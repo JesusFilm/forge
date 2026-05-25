@@ -2,7 +2,7 @@
 
 ## Role
 
-This app orchestrates AI video enrichment pipelines. Agents working here should understand the full enrichment lifecycle: ingest (Mux) -> transcribe -> translate -> chapters -> metadata -> source artifacts -> sync/hand off. Transcript embedding generation belongs to Mastra; Manager only supplies transcript source data and may still run scene embedding helpers until that later migration lands.
+This app orchestrates AI video enrichment pipelines. Agents working here should understand the full enrichment lifecycle: ingest (Mux) -> transcribe -> translate -> chapters -> metadata -> source artifacts -> sync/hand off through Manager/Admin GraphQL contracts. Transcript embedding generation belongs to Mastra; Manager only supplies transcript source data and may still run scene embedding helpers until that later migration lands.
 
 ## Key files
 
@@ -13,16 +13,15 @@ This app orchestrates AI video enrichment pipelines. Agents working here should 
 - `src/workflows/videoEnrichment.ts` — main pipeline; add new steps here
 - `src/services/` — one file per external service
 - `src/services/openrouter.ts` — shared OpenRouter client plus strict structured-output helper for JSON-shaped LLM requests
-- `src/cms/client.ts` — Apollo Client for CMS (same pattern as apps/web); use typed ops from `@forge/graphql`
+- `src/cms/client.ts` — legacy live-mode Apollo bridge; do not add new operations here
 - `src/lib/auth.ts` — Auth-backed Manager session plus API bearer authentication
 - `src/lib/state.ts` — job state facade; mock mode is local, live mode is CMS, admin mode is Admin GraphQL
 
 ## Cross-package impact
 
-- If this app needs new CMS data: add content type in `apps/cms`, run codegen in `packages/graphql`, then use typed op here.
 - If this app needs Admin-owned Manager data: add the GraphQL contract in `apps/admin`, regenerate `apps/admin/schema.graphql` and `packages/admin-graphql`, then adapt `src/backend/admin-client.ts`.
-- If enrichment results should be stored in Strapi: define a mutation in `packages/graphql`.
-- Mock/demo-only Manager behavior belongs inside `apps/manager`; do not add CMS schema changes or fake Strapi APIs just to support mock mode.
+- If enrichment results need canonical storage, model the write in Admin/Manager GraphQL rather than reintroducing a CMS-specific contract.
+- Mock/demo-only Manager behavior belongs inside `apps/manager`; do not add schema changes or fake remote APIs just to support mock mode.
 
 ## UI styling
 

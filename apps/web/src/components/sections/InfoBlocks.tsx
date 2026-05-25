@@ -1,4 +1,7 @@
-import type { FragmentOf } from "@forge/graphql"
+import type {
+  FragmentOf,
+  LegacyFragmentValue,
+} from "@/lib/legacy-fragment-types"
 import { infoBlocksFragment } from "@/lib/fragments/info-blocks"
 
 export { infoBlocksFragment }
@@ -16,7 +19,7 @@ export function InfoBlocks({ data }: InfoBlocksProps) {
     blocks,
   } = data
   const filteredBlocks = (blocks ?? []).filter(
-    (b): b is NonNullable<typeof b> => b != null,
+    (b: LegacyFragmentValue): b is NonNullable<typeof b> => b != null,
   )
   return (
     <section id={id} className="py-12">
@@ -26,7 +29,7 @@ export function InfoBlocks({ data }: InfoBlocksProps) {
         {description && <p className="mb-6">{description}</p>}
         {filteredBlocks.length > 0 && (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredBlocks.map((block) => (
+            {filteredBlocks.map((block: LegacyFragmentValue) => (
               <article
                 key={block.id}
                 className="rounded-lg border bg-white p-6 shadow-sm"

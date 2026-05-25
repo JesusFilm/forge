@@ -1,5 +1,5 @@
 import { useQuery } from "@apollo/client/react"
-import { type ResultOf } from "@forge/graphql"
+import { type AdminResultOf as ResultOf } from "@forge/admin-graphql"
 import { LinearGradient } from "expo-linear-gradient"
 import { Image } from "expo-image"
 import { useRouter } from "expo-router"
@@ -16,7 +16,11 @@ import { CATEGORIES, type SearchCategory } from "./categories"
 const POPULAR_COUNT = 8
 
 type ListResult = ResultOf<typeof LIST_EXPERIENCES>
-type Experience = NonNullable<NonNullable<ListResult["experiences"]>[number]>
+type Experience = NonNullable<
+  NonNullable<
+    NonNullable<NonNullable<ListResult["experiences"]>[number]>["locales"]
+  >[number]
+>
 
 type Props = {
   recents: string[]
@@ -46,7 +50,12 @@ export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
   const experiences: Experience[] = useMemo(
     () =>
       (data?.experiences ?? [])
-        .filter((e): e is Experience => e != null)
+        .flatMap(
+          (experience) =>
+            experience?.locales?.filter(
+              (locale) => locale?.slug != null && locale.documentId != null,
+            ) ?? [],
+        )
         .slice(0, POPULAR_COUNT),
     [data],
   )
@@ -124,11 +133,16 @@ export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
             contentContainerStyle={styles.popularRowContent}
           >
             {experiences.map((item) => {
-              const imageUrl = resolveImageUrl(item.ogImage?.url ?? null)
+              const imageUrl = resolveImageUrl(item.ogImageUrl)
               return (
-                <View key={item.documentId} style={styles.popularCellWrapper}>
+                <View
+                  key={item.documentId ?? item.slug ?? "experience"}
+                  style={styles.popularCellWrapper}
+                >
                   <FocusableCard
-                    onPress={() => openExperience(item.slug)}
+                    onPress={() => {
+                      if (item.slug) openExperience(item.slug)
+                    }}
                     accessibilityLabel={item.title ?? "Untitled"}
                     accessibilityHint="Opens this experience"
                     style={styles.popularCard}
@@ -138,7 +152,7 @@ export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
                         source={{ uri: imageUrl }}
                         style={styles.popularImage}
                         contentFit="cover"
-                        recyclingKey={`popular-${item.documentId}`}
+                        recyclingKey={`popular-${item.documentId ?? item.slug}`}
                       />
                     ) : (
                       <View

@@ -4,8 +4,8 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 
 ## Core model
 
-- Strapi replacement + eventual home for apps/manager (long-term). V1 serves
-  admin UI only; web/mobile stay on Strapi during the transition.
+- Canonical content/admin service for apps/web, apps/mobile, apps/tv, and
+  apps/manager-owned read models.
 - Custom GraphQL API via Yoga + Pothos at `/api/graphql`.
 - Prisma + Postgres + pgvector — sole data access layer.
 - Admin treats `apps/auth` as the Jesus Film SSO authority and creates an
@@ -52,9 +52,9 @@ After ANY change to admin's Pothos schema (`src/graphql/types/`, `src/graphql/mu
 3. Commit the Pothos source change, `schema.graphql`, and the admin-graphql
    introspection output in the same PR.
 
-The committed SDL artifact is consumed by `packages/admin-graphql`. `packages/graphql` remains Strapi-only.
+The committed SDL artifact is consumed by `packages/admin-graphql`. If SDL changes, regenerate both `apps/admin/schema.graphql` and the admin gql.tada environment in the same PR.
 
-CI's `admin-schema-drift` job catches step 1 if forgotten. The committed SDL is the contract handoff between admin (producer) and the forthcoming admin codegen consumer.
+CI's `admin-schema-drift` job catches step 1 if forgotten. The committed SDL is the contract handoff between admin (producer) and the admin codegen consumer.
 
 `schema:print` uses Pothos `printSchema(lexicographicSortSchema(builder.toSchema()))` and strips Pothos plugin directives (`@authScopes` etc.) post-print so gql.tada's parser can consume the output.
 
@@ -73,6 +73,6 @@ CI's `admin-schema-drift` job catches step 1 if forgotten. The committed SDL is 
 ## Boundaries
 
 - Do not break admin-app internal contracts by importing from `apps/web`,
-  `apps/mobile`, `apps/mobile-v2`, `apps/cms`, or `apps/manager`.
+  `apps/mobile`, `apps/mobile-v2`, or `apps/manager`.
 - Do not hand-edit `.next/`, generated Prisma Client, or Pothos-generated types.
 - Do not introduce new direct `process.env` reads — extend `src/config/env.ts`.

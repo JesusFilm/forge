@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (May 22, 2026)
+## Status (May 25, 2026)
 
-- **Total tickets:** 151
-- **Complete:** 80
-- **In progress:** 10
-- **Not started:** 19
-- **Blocked:** 42
-- **Overdue and not complete:** 29
+- **Total tickets:** 154
+- **Complete:** 85
+- **In progress:** 9
+- **Not started:** 20
+- **Blocked:** 40
+- **Overdue and not complete:** 26
 
 ## Feature Index
 
@@ -31,7 +31,6 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-127](content-discovery/feat-127-manager-durable-admin-trigger-job-state.md)                              | Manager durable admin-trigger job state for operator enrichment                                 | nisal     | P0       | 2026-05-19 | 2    | 2026-05-20 | not-started |
 | [feat-128](content-discovery/feat-128-enrichment-backfill-failure-resilience.md)                               | Enrichment backfill failure resilience                                                          | nisal     | P0       | 2026-05-19 | 1    | 2026-05-19 | complete    |
 | [feat-126](content-discovery/feat-126-manager-admin-lookup-tail-latency-recovery.md)                           | Recover manager enrichment dispatch from admin lookup tail latency                              | nisal     | P0       | 2026-05-20 | 1    | 2026-05-20 | complete    |
-| [feat-131](content-discovery/feat-131-mixed-scene-transcript-video-semantic-search.md)                         | Mixed scene and transcript evidence for admin video semantic search                             | nisal     | P1       | 2026-05-21 | 1    | 2026-05-21 | complete    |
 | [feat-097](content-discovery/feat-097-investigate-prod-query-embedding.md)                                     | Investigate Production Query Embedding Degradation                                              | nisal     | P1       | 2026-04-15 | 2    | 2026-04-16 | complete    |
 | [feat-095](content-discovery/feat-095-experience-embedding-pipeline.md)                                        | Experience Embedding Pipeline                                                                   | nisal     | P1       | 2026-04-16 | 5    | 2026-04-20 | complete    |
 | [feat-037](content-discovery/feat-037-video-content-vectorization.md)                                          | Video Content Vectorization for Recommendations                                                 | nisal     | P1       | 2026-04-21 | 42   | 2026-06-01 | complete    |
@@ -44,8 +43,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-040](content-discovery/feat-040-multimodal-scene-descriptions.md)                                        | Video Vectorization — Multimodal Scene Analysis                                                 | nisal     | P1       | 2026-05-01 | 10   | 2026-05-10 | complete    |
 | [feat-091](content-discovery/feat-091-fpmc-video-page-recommendations.md)                                      | FPMC Video Page Recommendations                                                                 | nisal     | P1       | 2026-05-10 | 14   | 2026-05-23 | not-started |
 | [feat-041](content-discovery/feat-041-scene-embeddings-table.md)                                               | Video Vectorization — Scene Embeddings Table + Indexing                                         | nisal     | P1       | 2026-05-11 | 7    | 2026-05-17 | complete    |
-| [feat-120](content-discovery/feat-120-localized-scene-embeddings-and-snippets.md)                              | Localized Scene Embeddings + Translated Snippets — true per-locale semantic search              | nisal     | P1       | 2026-05-13 | 7    | 2026-05-19 | blocked     |
+| [feat-120](content-discovery/feat-120-localized-scene-embeddings-and-snippets.md)                              | Localized Scene Embeddings + Translated Snippets — true per-locale semantic search              | nisal     | P1       | 2026-05-13 | 7    | 2026-05-19 | in-progress |
 | [feat-042](content-discovery/feat-042-backfill-worker.md)                                                      | Video Vectorization — Phase 1 Backfill Worker (en/es/fr)                                        | nisal     | P1       | 2026-05-18 | 10   | 2026-05-27 | complete    |
+| [feat-131](content-discovery/feat-131-mixed-scene-transcript-video-semantic-search.md)                         | Mixed scene and transcript evidence for admin video semantic search                             | nisal     | P1       | 2026-05-21 | 1    | 2026-05-21 | complete    |
 | [feat-092](content-discovery/feat-092-two-tower-neural-recommendations.md)                                     | Two-Tower Neural Recommendation Model                                                           | nisal     | P1       | 2026-05-24 | 21   | 2026-06-13 | not-started |
 | [feat-044](content-discovery/feat-044-recommendation-query-api.md)                                             | Video Vectorization — Recommendation Query API                                                  | nisal     | P1       | 2026-05-28 | 7    | 2026-06-03 | complete    |
 | [feat-055](content-discovery/feat-055-smart-video-playlists.md)                                                | Smart Video Playlists                                                                           | vlad      | P1       | 2026-05-31 | 31   | 2026-06-30 | not-started |
@@ -53,7 +53,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-046](content-discovery/feat-046-recommendations-demo-experience.md)                                      | Video Vectorization — Recommendations Demo Experience                                           | nisal     | P1       | 2026-06-04 | 7    | 2026-06-10 | complete    |
 | [feat-058](content-discovery/feat-058-deploy-semantic-search-architecture.md)                                  | Deploy Semantic Search Architecture                                                             | tataihono | P1       | 2026-07-01 | 31   | 2026-07-31 | not-started |
 | [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)                                    | Transcript Embedding Table Rename                                                               | nisal     | P2       | 2026-04-10 | 2    | 2026-04-11 | complete    |
-| [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal     | P2       | 2026-05-06 | 4    | 2026-05-09 | in-progress |
+| [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal     | P2       | 2026-05-06 | 4    | 2026-05-09 | complete    |
 | [feat-043](content-discovery/feat-043-visual-shot-detection-fusion.md)                                         | Video Vectorization — Visual Shot Detection Fusion                                              | nisal     | P2       | 2026-06-06 | 10   | 2026-06-15 | blocked     |
 | [feat-093](content-discovery/feat-093-cold-start-context-recommendations.md)                                   | Cold Start Context-Based Recommendations                                                        | nisal     | P2       | 2026-06-14 | 7    | 2026-06-20 | not-started |
 | [feat-071](content-discovery/feat-071-recommendation-content-deduplication.md)                                 | Recommendation Content Deduplication                                                            | nisal     | P2       | 2026-06-15 | 5    | 2026-06-19 | complete    |
@@ -107,13 +107,14 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-093](platform/feat-093-admin-app-sync-hardening-and-rate-limit.md)         | Admin App Sync Hardening and GraphQL Rate Limit         | tataihono | P0       | 2026-04-14 | 3    | 2026-04-16 | complete    |
 | [feat-097](platform/feat-097-admin-v1-pr-hardening.md)                           | Admin App V1 PR Hardening and Operational Surfaces      | tataihono | P0       | 2026-04-14 | 1    | 2026-04-14 | complete    |
 | [feat-098](platform/feat-098-admin-cms-expansion-loop.md)                        | Admin CMS Expansion Loop                                | tataihono | P0       | 2026-04-14 | 14   | 2026-04-27 | complete    |
-| [feat-104](platform/feat-104-admin-railway-provisioning.md)                      | Provision apps/admin on Railway                         | nisal     | P0       | 2026-04-20 | 1    | 2026-04-20 | in-progress |
-| [feat-105](platform/feat-105-admin-sso-firebase-auth-wiring.md)                  | Wire SSO + Firebase fallback auth on @forge/admin       | tataihono | P0       | 2026-04-21 | 3    | 2026-04-23 | blocked     |
+| [feat-104](platform/feat-104-admin-railway-provisioning.md)                      | Provision apps/admin on Railway                         | nisal     | P0       | 2026-04-20 | 1    | 2026-04-20 | complete    |
+| [feat-105](platform/feat-105-admin-sso-firebase-auth-wiring.md)                  | Wire SSO + Firebase fallback auth on @forge/admin       | tataihono | P0       | 2026-04-21 | 3    | 2026-04-23 | in-progress |
 | [feat-104](platform/feat-104-admin-core-consumer-migration-plan.md)              | Admin Core Consumer Migration Plan                      | tataihono | P0       | 2026-04-22 | 2    | 2026-04-23 | in-progress |
 | [feat-109](platform/feat-109-admin-core-sync-entity-coverage.md)                 | Admin Core Sync Entity Coverage                         | tataihono | P0       | 2026-04-28 | 3    | 2026-04-30 | complete    |
-| [feat-110](platform/feat-110-admin-core-sync-recurring-job.md)                   | Admin Core Sync Recurring Background Job                | tataihono | P0       | 2026-04-29 | 2    | 2026-04-30 | in-progress |
+| [feat-110](platform/feat-110-admin-core-sync-recurring-job.md)                   | Admin Core Sync Recurring Background Job                | tataihono | P0       | 2026-04-29 | 2    | 2026-04-30 | complete    |
 | [feat-121](platform/feat-121-jesus-film-auth-platform.md)                        | Jesus Film Auth Platform                                | tataihono | P0       | 2026-05-11 | 14   | 2026-05-24 | blocked     |
 | [feat-125](platform/feat-125-manager-auth-oauth-admin-backend-migration.md)      | Manager Auth OAuth and Admin Backend Migration          | vlad      | P0       | 2026-05-20 | 5    | 2026-05-24 | blocked     |
+| [feat-133](platform/feat-133-auth-consolidation-across-apps.md)                  | Auth Consolidation Across Apps                          | tataihono | P0       | 2026-05-22 | 6    | 2026-05-27 | in-progress |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md) | CMS local PostgreSQL I/O concurrency compatibility      | tataihono | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                        | Scaffolding Support for Urim                            | tataihono | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
 | [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)            | Roadmap Operations and Owner Hygiene                    | josh      | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |
@@ -135,9 +136,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-115](platform/feat-115-admin-image-enrichment-workflow.md)                 | Admin Image Enrichment Workflow                         | tataihono | P1       | 2026-05-04 | 7    | 2026-05-10 | complete    |
 | [feat-122](platform/feat-122-admin-video-database-backup-and-clone.md)           | Admin video database backup and clone tooling           | tataihono | P1       | 2026-05-13 | 5    | 2026-05-17 | complete    |
 | [feat-123](platform/feat-123-admin-video-db-presigned-restore.md)                | Admin video database presigned restore access           | tataihono | P1       | 2026-05-15 | 1    | 2026-05-15 | complete    |
-| [feat-124](platform/feat-124-admin-prod-core-sync-restore-fix.md)                | Admin production core sync restore fix                  | tataihono | P1       | 2026-05-15 | 1    | 2026-05-15 | in-progress |
+| [feat-124](platform/feat-124-admin-prod-core-sync-restore-fix.md)                | Admin production core sync restore fix                  | tataihono | P1       | 2026-05-15 | 1    | 2026-05-15 | complete    |
 | [feat-129](platform/feat-129-mastra-railway-workflow-runtime.md)                 | Mastra Railway Workflow Runtime                         | vlad      | P1       | 2026-05-22 | 7    | 2026-05-28 | complete    |
 | [feat-130](platform/feat-130-mastra-observability-storage.md)                    | Mastra Observability Storage                            | vlad      | P1       | 2026-05-22 | 1    | 2026-05-22 | complete    |
+| [feat-132](platform/feat-132-admin-core-sync-production-error-triage.md)         | Admin Core Sync Production Error Triage                 | tataihono | P1       | 2026-05-24 | 1    | 2026-05-24 | not-started |
 | [feat-040](platform/feat-040-partner-activation-network.md)                      | Partner Activation Network                              | urim      | P1       | 2026-06-16 | 28   | 2026-07-13 | blocked     |
 | [feat-042](platform/feat-042-video-contests-and-inspiration-feed.md)             | Video Contests and Inspiration Feed                     | urim      | P1       | 2026-06-30 | 28   | 2026-07-27 | blocked     |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                                 | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |

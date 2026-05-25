@@ -57,7 +57,7 @@ export const env = createEnv({
     // Retained for the /api/preview Next.js draft-mode handler. The data
     // layer no longer talks to Strapi; preview-flow migration to admin is
     // a separate future unit.
-    STRAPI_PREVIEW_SECRET: z.string(),
+    STRAPI_PREVIEW_SECRET: z.string().optional(),
     REVALIDATION_SECRET: z.string(),
     // Optional: used only by the /demo-search AI experience generator.
     // Absent in most preview environments; the server action surfaces a

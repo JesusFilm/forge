@@ -1,5 +1,5 @@
 import { useQuery } from "@apollo/client/react"
-import { type ResultOf } from "@forge/graphql"
+import { type AdminResultOf as ResultOf } from "@forge/admin-graphql"
 import { Image } from "expo-image"
 import { useFocusEffect, useRouter } from "expo-router"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -20,7 +20,6 @@ import { HomeHero, type HomeHeroData } from "../src/components/HomeHero"
 import { COLORS } from "../src/lib/colors"
 import { resolveImageUrl, getMuxThumbnailUrl } from "../src/lib/resolveImageUrl"
 import { scale } from "../src/lib/scale"
-import { pickThumbnailUrl } from "../src/lib/types"
 import { LIST_EXPERIENCES } from "../src/lib/queries"
 
 const CARD_WIDTH = scale(280)
@@ -34,12 +33,13 @@ const CARD_IMAGE_HEIGHT = scale(158)
 const FOCUS_DEBOUNCE_MS = 300
 
 type ListResult = ResultOf<typeof LIST_EXPERIENCES>
-type Experience = NonNullable<NonNullable<ListResult["experiences"]>[number]>
-type ExperienceBlock = NonNullable<Experience["blocks"]>[number]
-type VideoHeroBlock = Extract<
-  ExperienceBlock,
-  { __typename: "ComponentSectionsVideoHero" }
+type Experience = NonNullable<
+  NonNullable<
+    NonNullable<NonNullable<ListResult["experiences"]>[number]>["locales"]
+  >[number]
 >
+type ExperienceBlock = NonNullable<Experience["blocks"]>[number]
+type VideoHeroBlock = Extract<ExperienceBlock, { __typename: "VideoHeroBlock" }>
 // Compile-time probe: if gql.tada's union for the blocks dynamic zone
 // fails to expose discriminated __typename literals per block, `Extract`
 // silently yields `never` and all property access inside buildHeroData
@@ -64,7 +64,7 @@ void _videoHeroTypeChecks
 function findVideoHeroBlock(experience: Experience): VideoHeroBlock | null {
   const blocks = experience.blocks ?? []
   for (const block of blocks) {
-    if (block?.__typename === "ComponentSectionsVideoHero") {
+    if (block?.__typename === "VideoHeroBlock") {
       return block
     }
   }
@@ -73,29 +73,19 @@ function findVideoHeroBlock(experience: Experience): VideoHeroBlock | null {
 
 /**
  * Build the hero data payload for a given experience. Prefers the
- * experience's first ComponentSectionsVideoHero block's fields
- * (heading/subheading/streamingUrl/video images). Falls back to
- * experience-level title, metaDescription, and ogImage so experiences
+ * experience's first VideoHeroBlock fields. Falls back to
+ * experience-level title, metaDescription, and ogImageUrl so experiences
  * without a hero block still render cleanly.
  */
 function buildHeroData(experience: Experience): HomeHeroData {
   const heroBlock = findVideoHeroBlock(experience)
-  type VideoImage = NonNullable<
-    NonNullable<NonNullable<VideoHeroBlock["video"]>["images"]>[number]
-  >
-  const videoImages = heroBlock?.video?.images?.filter(
-    (img): img is VideoImage => img != null,
-  )
-
   const streamingUrl = heroBlock?.streamingUrl ?? null
 
   const posterUrl =
-    resolveImageUrl(pickThumbnailUrl(videoImages)) ??
-    getMuxThumbnailUrl(streamingUrl) ??
-    resolveImageUrl(experience.ogImage?.url ?? null)
+    getMuxThumbnailUrl(streamingUrl) ?? resolveImageUrl(experience.ogImageUrl)
 
   return {
-    id: experience.documentId,
+    id: experience.documentId ?? experience.slug ?? "",
     title: heroBlock?.heading ?? experience.title ?? "",
     subtitle: heroBlock?.subheading ?? experience.metaDescription ?? null,
     streamingUrl,
@@ -145,7 +135,10 @@ export default function HomeScreen() {
 
   const experiences = useMemo(
     () =>
-      (listData?.experiences ?? []).filter((e): e is Experience => e != null),
+      (listData?.experiences ?? []).flatMap(
+        (experience) =>
+          experience?.locales?.filter((locale) => locale != null) ?? [],
+      ),
     [listData],
   )
 
@@ -164,7 +157,7 @@ export default function HomeScreen() {
   // Seed committedId once homepageExperience is known.
   useEffect(() => {
     if (committedId == null && homepageExperience != null) {
-      setCommittedId(homepageExperience.documentId)
+      setCommittedId(homepageExperience.documentId ?? homepageExperience.slug)
     }
   }, [homepageExperience, committedId])
 
@@ -190,7 +183,7 @@ export default function HomeScreen() {
       clearTimeout(debounceTimer.current)
     }
     debounceTimer.current = setTimeout(() => {
-      setCommittedId(item.documentId)
+      setCommittedId(item.documentId ?? item.slug)
       debounceTimer.current = null
     }, FOCUS_DEBOUNCE_MS)
   }, [])
@@ -200,13 +193,19 @@ export default function HomeScreen() {
   // than waiting for the seeding effect to fire (which would flash a
   // blank hero for ~50-100ms on TV hardware).
   const effectiveCommittedId =
-    committedId ?? homepageExperience?.documentId ?? null
+    committedId ??
+    homepageExperience?.documentId ??
+    homepageExperience?.slug ??
+    null
 
   const committedExperience = useMemo(
     () =>
       effectiveCommittedId
-        ? (experiences.find((e) => e.documentId === effectiveCommittedId) ??
-          null)
+        ? (experiences.find(
+            (e) =>
+              e.documentId === effectiveCommittedId ||
+              e.slug === effectiveCommittedId,
+          ) ?? null)
         : null,
     [effectiveCommittedId, experiences],
   )
@@ -314,13 +313,15 @@ export default function HomeScreen() {
           title="Experiences"
           railId="home-experiences"
           data={experiences}
-          keyExtractor={(item) => item.documentId}
+          keyExtractor={(item) => item.documentId ?? item.slug ?? "experience"}
           onItemFocus={handleItemFocus}
           renderItem={(item, _index, hooks) => {
-            const imageUrl = resolveImageUrl(item.ogImage?.url ?? null)
+            const imageUrl = resolveImageUrl(item.ogImageUrl)
             return (
               <FocusableCard
-                onPress={() => openExperience(item.slug)}
+                onPress={() => {
+                  if (item.slug) openExperience(item.slug)
+                }}
                 onFocus={hooks.onFocus}
                 style={styles.card}
               >
@@ -329,7 +330,7 @@ export default function HomeScreen() {
                     source={{ uri: imageUrl }}
                     style={styles.cardImage}
                     contentFit="cover"
-                    recyclingKey={`card-${item.documentId}`}
+                    recyclingKey={`card-${item.documentId ?? item.slug}`}
                   />
                 ) : (
                   <View style={[styles.cardImage, styles.cardImageFallback]} />

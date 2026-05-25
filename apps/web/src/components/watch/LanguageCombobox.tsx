@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronsUpDown, Languages } from "lucide-react"
+import { ChevronsUpDown, Languages, type LucideIcon } from "lucide-react"
 import {
   useCallback,
   useEffect,
@@ -21,12 +21,14 @@ export type LanguageComboboxProps = {
   options: LanguageComboboxOption[]
   value: string
   onChange: (slug: string) => void
+  icon?: LucideIcon
 }
 
 export function LanguageCombobox({
   options,
   value,
   onChange,
+  icon: Icon = Languages,
 }: LanguageComboboxProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -170,7 +172,7 @@ export function LanguageCombobox({
         className="flex w-full items-center justify-between gap-3 rounded-full border border-stone-700 bg-stone-800/60 px-4 py-3 text-left text-base font-medium text-stone-100 transition hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400"
       >
         <span className="flex items-center gap-3">
-          <Languages aria-hidden className="h-5 w-5 text-stone-400" />
+          <Icon aria-hidden className="h-5 w-5 text-stone-400" />
           <span>{selected?.name}</span>
         </span>
         <ChevronsUpDown aria-hidden className="h-4 w-4 text-stone-400" />

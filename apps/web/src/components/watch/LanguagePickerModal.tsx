@@ -4,12 +4,15 @@ import type { Route } from "next"
 import { useRouter } from "next/navigation"
 import type { RefObject } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Captions } from "lucide-react"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { Switch } from "@/components/ui/switch"
 import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
+import type { WatchSubtitle } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
@@ -23,6 +26,7 @@ export type LanguagePickerVariant = {
     coreId?: string | null
     slug: string | null
     name: string | null
+    nativeName?: string | null
   } | null
 }
 
@@ -42,6 +46,10 @@ export type LanguagePickerModalProps = {
    * autoplay on the destination. Defaults to "video" for back-compat.
    */
   kind?: "video" | "series"
+  subtitles?: WatchSubtitle[]
+  currentSubtitleEnabled?: boolean
+  currentSubtitleSlug?: string | null
+  onSubtitleChange?: (enabled: boolean, languageSlug: string | null) => void
 }
 
 // Safety cap on the in-flight navigation guard. router.push is fire-and-
@@ -59,6 +67,10 @@ export function LanguagePickerModal({
   playerRef,
   onClose,
   kind = "video",
+  subtitles = [],
+  currentSubtitleEnabled = false,
+  currentSubtitleSlug = null,
+  onSubtitleChange,
 }: LanguagePickerModalProps) {
   const router = useRouter()
 
@@ -71,12 +83,38 @@ export function LanguagePickerModal({
     () =>
       variants
         .filter(isPlayableLanguageVariant)
-        .map((v) => deriveLanguageDisplay(v.language.slug, v.language.name))
+        .map((v) => {
+          const display = deriveLanguageDisplay(
+            v.language.slug,
+            v.language.name,
+          )
+          return {
+            ...display,
+            nativeName: display.nativeName ?? v.language.nativeName ?? null,
+          }
+        })
         .sort((a, b) => a.name.localeCompare(b.name)),
     [variants],
   )
 
   const [draftSlug, setDraftSlug] = useState(currentLanguageSlug)
+  const [draftSubtitleEnabled, setDraftSubtitleEnabled] = useState(
+    currentSubtitleEnabled,
+  )
+  const [draftSubtitleSlug, setDraftSubtitleSlug] =
+    useState(currentSubtitleSlug)
+
+  const subtitleOptions = useMemo(
+    () =>
+      subtitles
+        .map((s) => ({
+          slug: s.language.slug,
+          name: s.language.name,
+          nativeName: s.language.nativeName,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [subtitles],
+  )
 
   // Track which slug we've dispatched a navigation toward. `navigating`
   // becomes false NATURALLY once the URL catches up — no setState in
@@ -101,15 +139,27 @@ export function LanguagePickerModal({
   useEffect(() => {
     currentLanguageSlugLatestRef.current = currentLanguageSlug
   }, [currentLanguageSlug])
+  const currentSubtitleEnabledRef = useRef(currentSubtitleEnabled)
+  const currentSubtitleSlugRef = useRef(currentSubtitleSlug)
+  useEffect(() => {
+    currentSubtitleEnabledRef.current = currentSubtitleEnabled
+    currentSubtitleSlugRef.current = currentSubtitleSlug
+  }, [currentSubtitleEnabled, currentSubtitleSlug])
   useEffect(() => {
     if (open) {
       setDraftSlug(currentLanguageSlugLatestRef.current)
+      setDraftSubtitleEnabled(currentSubtitleEnabledRef.current)
+      setDraftSubtitleSlug(currentSubtitleSlugRef.current)
       navigatingRef.current.inFlight = false
       setPendingNavTo(null)
     }
   }, [open])
 
-  const isDirty = draftSlug !== currentLanguageSlug
+  const languageDirty = draftSlug !== currentLanguageSlug
+  const subtitleDirty =
+    draftSubtitleEnabled !== currentSubtitleEnabled ||
+    draftSubtitleSlug !== currentSubtitleSlug
+  const isDirty = languageDirty || subtitleDirty
   // Derived: navigating iff we dispatched and the URL hasn't caught up.
   // When currentLanguageSlug matches pendingNavTo, navigating flips to
   // false automatically on the next render — no setter call needed.
@@ -140,33 +190,41 @@ export function LanguagePickerModal({
     if (!isDirty) return
     if (navigatingRef.current.inFlight) return
     if (!videoSlug) return
-    // Flip the guard synchronously so a same-microtask double-click bails
-    // on the second invocation. State follows for the visual.
-    navigatingRef.current.inFlight = true
-    setPendingNavTo(draftSlug)
-    // Write cookie BEFORE router.push — order asserted by tests and required
-    // so middleware sees the cookie on the next request.
-    writePreferredLanguageSlug(draftSlug)
-    // Series-page surface has no player. Skip the `?t=` clamp + the
-    // `autoplay=1` gesture flag — they only mean something to
-    // HeroPlayer, and an autoplay param on the destination series
-    // page would mistakenly kick the trailer into unmuted playback.
-    let href: Route
-    if (kind === "series") {
-      href = `/${videoSlug}/${draftSlug}` as Route
-    } else {
-      const rawT = playerRef.current?.currentTime
-      const t = Number.isFinite(rawT) ? rawT : 0
-      // basePath '/watch' auto-prepended at runtime — do NOT include here.
-      // autoplay=1 signals to HeroPlayer that this navigation came from a
-      // deliberate user gesture, so it should attempt unmuted playback
-      // immediately. HeroPlayer strips the param after the attempt so a
-      // page refresh (no gesture) doesn't re-trigger autoplay.
-      href = `/${videoSlug}/${draftSlug}?t=${t}&autoplay=1` as Route
+
+    if (subtitleDirty) {
+      onSubtitleChange?.(draftSubtitleEnabled, draftSubtitleSlug)
     }
-    router.push(href)
+
+    if (languageDirty) {
+      navigatingRef.current.inFlight = true
+      setPendingNavTo(draftSlug)
+      writePreferredLanguageSlug(draftSlug)
+      let href: Route
+      if (kind === "series") {
+        href = `/${videoSlug}/${draftSlug}` as Route
+      } else {
+        const rawT = playerRef.current?.currentTime
+        const t = Number.isFinite(rawT) ? rawT : 0
+        href = `/${videoSlug}/${draftSlug}?t=${t}&autoplay=1` as Route
+      }
+      router.push(href)
+    }
+
     onClose()
-  }, [draftSlug, isDirty, kind, onClose, playerRef, router, videoSlug])
+  }, [
+    draftSlug,
+    draftSubtitleEnabled,
+    draftSubtitleSlug,
+    isDirty,
+    kind,
+    languageDirty,
+    onClose,
+    onSubtitleChange,
+    playerRef,
+    router,
+    subtitleDirty,
+    videoSlug,
+  ])
 
   function handleOpenChange(next: boolean) {
     if (!next) onClose()
@@ -201,7 +259,9 @@ export function LanguagePickerModal({
         showCloseButton={false}
         portalContainer={portalContainer}
       >
-        <DialogTitle className="sr-only">Language</DialogTitle>
+        <DialogTitle className="sr-only">
+          Language{subtitles.length > 0 ? " & Subtitles" : ""}
+        </DialogTitle>
 
         <div className="flex items-baseline justify-between gap-3 border-b border-stone-700/50 px-6 py-4">
           <h2 className="text-lg font-semibold text-stone-50">Language</h2>
@@ -220,6 +280,42 @@ export function LanguagePickerModal({
             onChange={setDraftSlug}
           />
         </div>
+
+        {subtitles.length > 0 && (
+          <>
+            <div className="flex items-center justify-between gap-3 border-t border-stone-700/50 px-6 pt-5 pb-3">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-semibold text-stone-50">
+                  Subtitles
+                </h2>
+                <Switch
+                  checked={draftSubtitleEnabled}
+                  onCheckedChange={setDraftSubtitleEnabled}
+                  aria-label="Subtitles"
+                  data-testid="watch-subtitle-toggle"
+                />
+              </div>
+              <span
+                data-testid="watch-subtitle-count"
+                className="text-sm text-stone-400"
+              >
+                {subtitles.length}{" "}
+                {subtitles.length === 1 ? "language" : "languages"}
+              </span>
+            </div>
+
+            <div
+              className={`px-6 pb-6 ${!draftSubtitleEnabled ? "pointer-events-none opacity-50" : ""}`}
+            >
+              <LanguageCombobox
+                options={subtitleOptions}
+                value={draftSubtitleSlug ?? ""}
+                onChange={setDraftSubtitleSlug}
+                icon={Captions}
+              />
+            </div>
+          </>
+        )}
 
         <div className="flex items-center justify-end gap-3 border-t border-stone-700/50 px-6 py-4">
           <Button
