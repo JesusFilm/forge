@@ -21,6 +21,7 @@ import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { getViewerId } from "@/lib/viewer-id"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { HeroPlayerControls } from "./HeroPlayerControls"
+import { SubtitleOverlay } from "./SubtitleOverlay"
 import { MutedSpeakerIcon, UnmutedSpeakerIcon } from "./chrome-icons"
 
 type PillState = "play-with-sound" | "tap-to-unmute"
@@ -524,7 +525,7 @@ export function HeroPlayer({
           onLoadedMetadata={handleLoadedMetadata}
           onCanPlay={handleCanPlay}
           onError={handlePlayerError}
-          className="block h-full w-full"
+          className="block h-full w-full hero-hide-native-subtitles"
         />
 
         {!videoReady ? (
@@ -554,6 +555,7 @@ export function HeroPlayer({
             className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
           />
         )}
+        <SubtitleOverlay playerRef={playerRef} wrapperRef={wrapperRef} />
         {darkenOverlay ? (
           <div
             aria-hidden="true"
