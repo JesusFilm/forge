@@ -16,12 +16,18 @@ describe("Mastra env", () => {
 
   it("requires service keys in production runtime", async () => {
     vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
     vi.stubEnv(
       "DATABASE_URL",
       "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
     )
     vi.stubEnv("MASTRA_STORAGE_DIR", "/data/mastra")
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
@@ -32,9 +38,15 @@ describe("Mastra env", () => {
 
   it("requires a database URL in production runtime", async () => {
     vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
     vi.stubEnv("DATABASE_URL", "")
     vi.stubEnv("MASTRA_STORAGE_DIR", "/data/mastra")
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
@@ -45,12 +57,18 @@ describe("Mastra env", () => {
 
   it("accepts production runtime without an explicit storage dir", async () => {
     vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
     vi.stubEnv(
       "DATABASE_URL",
       "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
     )
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
     vi.stubEnv("MASTRA_STORAGE_DIR", "")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
@@ -85,5 +103,57 @@ describe("Mastra env", () => {
     const { getMastraStorageDir } = await import("./env")
 
     expect(getMastraStorageDir()).toBe("/data/mastra")
+  })
+
+  it("defaults transcript embedding model and provider settings", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("TRANSCRIPT_EMBEDDING_MODEL", "")
+    vi.stubEnv("TRANSCRIPT_EMBEDDING_PROVIDER", "")
+    vi.stubEnv("OPENAI_EMBEDDINGS_BASE_URL", "")
+    vi.stubEnv("OPENROUTER_EMBEDDINGS_BASE_URL", "")
+
+    const { env } = await import("./env")
+
+    expect(env.TRANSCRIPT_EMBEDDING_MODEL).toBe("openai/text-embedding-3-small")
+    expect(env.TRANSCRIPT_EMBEDDING_PROVIDER).toBe("openai")
+    expect(env.OPENAI_EMBEDDINGS_BASE_URL).toBe("https://api.openai.com/v1")
+    expect(env.OPENROUTER_EMBEDDINGS_BASE_URL).toBe(
+      "https://openrouter.ai/api/v1",
+    )
+  })
+
+  it("requires either OpenRouter or OpenAI credentials in production runtime", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("OPENAI_API_KEY", "")
+    vi.stubEnv("OPENROUTER_API_KEY", "")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "OPENROUTER_API_KEY or OPENAI_API_KEY required for Mastra production",
+    )
+  })
+
+  it("prefers OpenRouter credentials for transcript embedding provider config", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("OPENAI_API_KEY", "openai-key")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const { getTranscriptEmbeddingProviderConfig } = await import("./env")
+
+    expect(getTranscriptEmbeddingProviderConfig()).toEqual({
+      apiKey: "openrouter-key",
+      baseUrl: "https://openrouter.ai/api/v1",
+    })
   })
 })

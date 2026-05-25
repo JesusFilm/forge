@@ -1339,19 +1339,14 @@ model ExperienceLocale {
 }
 
 // -----------------------------------------------------------------------------
-// Transcript embeddings (R2 of admin migration playbook)
+// Transcript embeddings
 // -----------------------------------------------------------------------------
 
 /// Per-edition, per-language transcript index. One row per
-/// `(videoEditionId, language)`. Holds artifact-level metadata from
-/// apps/manager's `{assetId}/embeddings.json` pipeline so a future model
-/// upgrade or drift audit can identify the producing run without re-reading
-/// S3. Chunk text + vectors live on `VideoTranscriptChunk`.
-///
-/// R2 divergence from R1: manager already embeds transcript chunks and
-/// stores vectors in the artifact. Admin trusts and copies the vectors
-/// rather than regenerating — see
-/// `docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`.
+/// `(videoEditionId, language)`. Admin owns transcript vector storage and
+/// retrieval; Mastra owns chunk planning + embedding provider calls. Holds
+/// compact provenance so model upgrades and repair runs can be audited without
+/// reading manager transcript source artifacts back from S3.
 model VideoTranscript {
   id             String       @id @default(cuid())
   videoEditionId String       @map("video_edition_id")
@@ -1361,9 +1356,9 @@ model VideoTranscript {
   video          Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 language tag of the source transcript.
   language       String
-  /// Embedding model string as reported by manager's artifact (e.g.
+  /// Embedding model string as reported by the producing workflow (e.g.
   /// `openai/text-embedding-3-small`). Admin logs a warning on drift;
-  /// vectors are reused regardless.
+  /// intentional model replacement must use an explicit ingest mode.
   model          String
   /// Dimension count. Hard-guarded to 1536 at read time.
   dimensions     Int
@@ -1375,6 +1370,15 @@ model VideoTranscript {
   totalTokens    Int          @map("total_tokens")
   /// Artifact's own `generatedAt` timestamp — NOT admin's insert time.
   generatedAt    DateTime     @map("generated_at")
+  /// Compact provenance for Mastra-written transcript embeddings. Nullable so
+  /// legacy rows from the pre-Mastra producer remain readable.
+  sourceArtifactKey String?    @map("source_artifact_key")
+  sourceContentHash String?    @map("source_content_hash")
+  sourceProvider    String?    @map("source_provider")
+  sourceGeneratedAt DateTime?  @map("source_generated_at")
+  generationMode    String?    @map("generation_mode")
+  mastraRunId       String?    @map("mastra_run_id")
+  chunkingVersion   String?    @map("chunking_version")
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
@@ -1383,14 +1387,15 @@ model VideoTranscript {
   @@unique([videoEditionId, language])
   @@index([videoId])
   @@index([language])
+  @@index([sourceContentHash], map: "video_transcript_source_content_hash_idx")
+  @@index([mastraRunId], map: "video_transcript_mastra_run_id_idx")
   @@map("video_transcript")
 }
 
 /// A single chunk of a transcript, including its vector embedding. Vectors
-/// are copied verbatim from apps/manager's `{assetId}/embeddings.json`
-/// artifact — admin does NOT re-embed. `language` is denormalized from
-/// the parent `VideoTranscript` so per-language partial HNSW indexes
-/// filter on the same table (pgvector's planner bypasses HNSW when the
+/// are supplied by Mastra and stored by Admin ingest. `language` is
+/// denormalized from the parent `VideoTranscript` so per-language partial HNSW
+/// indexes filter on the same table (pgvector's planner bypasses HNSW when the
 /// WHERE filter column lives on a joined table).
 ///
 /// `embedding` is NEVER exposed in GraphQL (technical control: Pothos

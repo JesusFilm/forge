@@ -1,17 +1,15 @@
 // Transcript-only pipeline (feat-119 PR2).
 //
-// Composition of two existing services to produce the
-// `{assetId}/embeddings.json` artifact admin's R2 backfill consumes:
+// Composition of transcription with the Mastra-owned transcript embedding
+// workflow. Manager produces transcript source data only:
 //
 //   1. `transcribe(assetId, muxAssetId, languageCode)` — uses Mux's
 //      auto-generated subtitles (or ElevenLabs when configured) to
 //      produce a `TranscriptionResult` and writes
 //      `{assetId}/transcript.json` + `{assetId}/subtitles.vtt`.
-//   2. `generateEmbeddings(assetId, { text, segments, language })`
-//      — chunks + embeds via OpenRouter and writes
-//      `{assetId}/embeddings.json` (including per-chunk vectors,
-//      which is the contract R2 reads back via
-//      `readEmbeddingsArtifact`).
+//   2. `launchMastraTranscriptEmbeddings(...)`
+//      — sends transcript text + timed segments to Mastra. Mastra plans
+//      chunks, embeds, and writes vectors through Admin ingest.
 //
 // Deliberately NOT a "use workflow" boundary — same shape as the
 // existing `runSceneAnalysisPipeline` (called as a regular async
@@ -19,19 +17,10 @@
 // trigger surface symmetric with scene-analysis.
 //
 // Plan §Unit 7 left "extract from videoEnrichment.ts vs new parallel
-// file" as deferred-to-implementation. This is the new parallel file:
-// it composes the two services without modifying `videoEnrichment.ts`,
-// preserving PR2's hard decoupling constraint (no edits to existing
-// pipelines or workflows). The contract is "produce the right
-// embeddings.json artifact at {assetId}/embeddings.json"; everything
-// else (the EnrichmentJob lifecycle, retry context, auth headers
-// passed through enrich workflows) belongs to the enrich path and is
-// out of scope here.
+// file" as deferred-to-implementation. This file now preserves that trigger
+// boundary while moving transcript embedding ownership out of Manager.
 
-import {
-  generateEmbeddings,
-  type EmbeddingsResult,
-} from "@/services/embeddings"
+import { launchMastraTranscriptEmbeddings } from "@/services/mastra-transcript-embeddings"
 import {
   transcribe,
   transcribeSubtitleUrl,
@@ -39,11 +28,13 @@ import {
 } from "@/services/transcription"
 
 export type TranscriptOnlyPipelineInput = {
-  /** Operator-facing identifier (cms videos.id stringified). Used
-   *  as the storage-key prefix for the produced artifacts. */
+  /** Operator-facing source identifier. Used as the storage-key prefix
+   *  for the produced transcript artifacts. */
   assetId: string
-  /** Mux asset id (from the cms video's primary-language variant). */
+  /** Mux asset id for subtitle/transcript retrieval. */
   muxAssetId: string
+  /** Admin video id when Admin originated the run and can provide it. */
+  adminVideoId?: string
   /** Optional already-selected subtitle URL from admin's dispatch-field lookup. */
   subtitleUrl?: string
   /** Optional BCP-47 source language. When omitted manager falls
@@ -57,6 +48,9 @@ export type TranscriptOnlyPipelineOutput = {
   totalChunks: number
   totalTokens: number
   embeddingDimensions: number
+  embeddingStatus: string
+  mastraRunId: string
+  sourceContentHash: string
 }
 
 export async function runTranscriptOnlyPipeline(
@@ -84,11 +78,24 @@ export async function runTranscriptOnlyPipeline(
     )
   }
 
-  const embeddings: EmbeddingsResult = await generateEmbeddings(input.assetId, {
-    text: transcription.text,
-    segments: transcription.segments,
+  const embeddingResult = await launchMastraTranscriptEmbeddings({
+    assetId: input.assetId,
+    muxAssetId: input.muxAssetId,
+    ...(input.adminVideoId ? { adminVideoId: input.adminVideoId } : {}),
     language: transcription.language,
+    transcript: {
+      text: transcription.text,
+      segments: transcription.segments,
+      artifactKey: `${input.assetId}/transcript.json`,
+      provider: transcription.resolvedProvider,
+    },
   })
+
+  if (!embeddingResult.ok) {
+    throw new Error(
+      `Mastra transcript embedding failed for assetId=${input.assetId}: ${embeddingResult.reason}`,
+    )
+  }
 
   console.log(
     JSON.stringify({
@@ -96,17 +103,22 @@ export async function runTranscriptOnlyPipeline(
       assetId: input.assetId,
       durationMs: Date.now() - startedAt,
       language: transcription.language,
-      totalChunks: embeddings.metadata.totalChunks,
-      totalTokens: embeddings.metadata.totalTokens,
-      embeddingDimensions: embeddings.dimensions,
+      embeddingStatus: embeddingResult.status,
+      totalChunks: embeddingResult.chunks,
+      totalTokens: embeddingResult.totalTokens,
+      embeddingDimensions: embeddingResult.dimensions,
+      mastraRunId: embeddingResult.mastraRunId,
     }),
   )
 
   return {
     assetId: input.assetId,
     language: transcription.language,
-    totalChunks: embeddings.metadata.totalChunks,
-    totalTokens: embeddings.metadata.totalTokens,
-    embeddingDimensions: embeddings.dimensions,
+    totalChunks: embeddingResult.chunks,
+    totalTokens: embeddingResult.totalTokens,
+    embeddingDimensions: embeddingResult.dimensions,
+    embeddingStatus: embeddingResult.status,
+    mastraRunId: embeddingResult.mastraRunId,
+    sourceContentHash: embeddingResult.sourceContentHash,
   }
 }

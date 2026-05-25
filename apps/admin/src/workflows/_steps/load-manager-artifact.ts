@@ -6,8 +6,8 @@
 // to Node-only modules — even when the actual call happens inside a
 // `"use step"` function. `s3.ts` imports `node:fs/promises` and
 // `node:path` for its local-fallback path, so importing
-// `readSceneAnalysisArtifact` / `readEmbeddingsArtifact` directly into
-// the workflow file fails the build plugin check.
+// `readSceneAnalysisArtifact` / `readTranscriptSourceArtifact` directly
+// into the workflow file fails the build plugin check.
 //
 // Putting the step wrappers in this separate module side-steps the
 // scope check — the workflow file only imports the step wrappers (whose
@@ -20,10 +20,10 @@
 // error from the underlying reader.
 
 import {
-  readEmbeddingsArtifact,
   readSceneAnalysisArtifact,
-  type EmbeddingsResult,
+  readTranscriptSourceArtifact,
   type SceneAnalysisResult,
+  type TranscriptSourceArtifact,
 } from "@/services/manager-artifacts.service"
 
 /**
@@ -47,13 +47,13 @@ export async function stepLoadSceneAnalysisArtifact(
 }
 
 /**
- * Per-(video, edition) embeddings artifact load. Same shape /
- * rationale as `stepLoadSceneAnalysisArtifact` — see that JSDoc for
- * the build-plugin and journal-size context.
+ * Per-(video, edition) transcript-source artifact load. feat-132 uses
+ * `{assetId}/transcript.json` as Mastra input instead of importing
+ * manager-generated `{assetId}/embeddings.json` vectors.
  */
-export async function stepLoadEmbeddingsArtifact(
+export async function stepLoadTranscriptSourceArtifact(
   cmsVideoId: number,
-): Promise<EmbeddingsResult> {
+): Promise<TranscriptSourceArtifact> {
   "use step"
-  return readEmbeddingsArtifact(String(cmsVideoId))
+  return readTranscriptSourceArtifact(String(cmsVideoId))
 }

@@ -47,9 +47,12 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 After ANY change to admin's Pothos schema (`src/graphql/types/`, `src/graphql/mutations/`, `src/graphql/queries/`, `src/graphql/builder.ts`):
 
 1. Run `pnpm --filter @forge/admin schema:print` to regenerate `apps/admin/schema.graphql`.
-2. Commit both (Pothos source change + `schema.graphql`) in the same PR.
+2. Run `pnpm --filter @forge/admin-graphql generate` to regenerate
+   `packages/admin-graphql/src/admin-graphql-env.d.ts`.
+3. Commit the Pothos source change, `schema.graphql`, and the admin-graphql
+   introspection output in the same PR.
 
-The committed SDL artifact will be consumed by the future `packages/admin-graphql` package — landing in U9 of the `feat/adapt-web-data-layer-to-admin` plan. Until U9 ships, no `admin-graphql-env.d.ts` regeneration is required: there is no admin codegen consumer yet. `packages/graphql` is Strapi-only.
+The committed SDL artifact is consumed by `packages/admin-graphql`. `packages/graphql` remains Strapi-only.
 
 CI's `admin-schema-drift` job catches step 1 if forgotten. The committed SDL is the contract handoff between admin (producer) and the forthcoming admin codegen consumer.
 
@@ -60,12 +63,12 @@ CI's `admin-schema-drift` job catches step 1 if forgotten. The committed SDL is 
 | Script                                               | Purpose                                                         | Env requirement                                                    |
 | ---------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------ |
 | `pnpm --filter @forge/admin run-sync`                | Run the Core data sync against any DATABASE_URL                 | DATABASE_URL + Core API creds                                      |
-| `pnpm --filter @forge/admin run-embeds`              | Run scene/transcript embedding workflows locally                | DATABASE_URL + manager S3 + OpenRouter (R1 only)                   |
+| `pnpm --filter @forge/admin run-embeds`              | Run scene/transcript embedding workflows locally                | DATABASE_URL + manager S3 + Mastra keys; OpenRouter for scene      |
 | `pnpm --filter @forge/admin run-experience-dump`     | Run R3 experience-content-dump from a workstation               | DATABASE_URL + CMS_DATABASE_URL                                    |
 | `pnpm --filter @forge/admin restore:video-db`        | Restore the reviewed video slice into dev/staging Postgres      | TARGET_DATABASE_URL or DATABASE_URL + `--target-env`               |
 | `pnpm --filter @forge/admin restore:video-db:latest` | Download latest via prod presign endpoint, then restore locally | TARGET_DATABASE_URL or DATABASE_URL + BACKUP_DOWNLOAD_API_KEY      |
 | `pnpm --filter @forge/admin seed-easter`             | Seed Easter experience into local Postgres for UI/E2E fixtures  | DATABASE_URL (loaded via `--env-file=.env`); destructive on re-run |
-| `pnpm --filter @forge/admin schema:print`            | Regenerate the committed admin SDL artifact                     | None (uses Pothos schema directly)                                 |
+| `pnpm --filter @forge/admin schema:print`            | Regenerate the committed admin SDL artifact                     | Admin auth env values, dummy local values are OK for generation    |
 
 ## Boundaries
 

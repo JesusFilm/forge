@@ -839,7 +839,7 @@ type Mutation {
     scope: String
   ): JSON
   """
-  Enqueue the transcript-embedding backfill workflow. Re-indexes apps/manager's embeddings.json artifacts into VideoTranscript + VideoTranscriptChunk. One target per (video, edition, language) where the language set is data-derived from the video's primary language + subtitle languages + dub languages. Vectors are reused from the artifact (no OpenRouter call). ADMIN-only.
+  Enqueue the transcript-embedding backfill workflow. Reads apps/manager's transcript.json source artifact, launches Mastra for chunk planning + embeddings, then writes through Admin ingest. One target per (video, edition, language) where the language set is data-derived from the video's primary language + subtitle languages + dub languages. ADMIN-only.
   """
   triggerTranscriptEmbeddingBackfill(
     """Restrict to these coreIds. Omitted = all mapped videos."""
@@ -852,6 +852,10 @@ type Mutation {
     S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`, shared with scene-embedding backfill). Defaults to admin-migrations/core-id-mapping.json.
     """
     mappingS3Key: String = "admin-migrations/core-id-mapping.json"
+    """
+    Generation mode for Admin ingest. Defaults to IDEMPOTENT; use REPAIR, FORCE, or MODEL_UPGRADE only when intentionally rewriting existing transcript vectors.
+    """
+    mode: TranscriptBackfillMode
   ): JSON
   """Update an ExperienceLocale (slug, title, blocks, etc.)."""
   updateExperienceLocale(blocks: JSON, id: ID!, isHomepage: Boolean, isTemplate: Boolean, metaDescription: String, ogDescription: String, ogImageUrl: String, ogTitle: String, pathSegment: String, slug: String, title: String): ExperienceLocale
@@ -1085,6 +1089,16 @@ enum TextVariant {
   default
   lead
   small
+}
+
+"""
+Overwrite intent for Mastra transcript embedding backfills. Idempotent is the default.
+"""
+enum TranscriptBackfillMode {
+  FORCE
+  IDEMPOTENT
+  MODEL_UPGRADE
+  REPAIR
 }
 
 """

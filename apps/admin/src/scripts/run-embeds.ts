@@ -18,7 +18,9 @@
  *   MANAGER_ARTIFACTS_S3_BUCKET=... \
  *   MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID=... \
  *   MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY=... \
- *   OPENROUTER_API_KEY=...   # R1 + experience only — R2 reuses vectors from artifact
+ *   OPENROUTER_API_KEY=...   # scene + experience only; transcript uses Mastra
+ *   MASTRA_BASE_URL=...
+ *   MASTRA_SERVICE_API_KEY=...
  *   pnpm --filter @forge/admin run-embeds --pipeline=transcript
  *
  *   # Filters (all optional, repeatable):
@@ -29,6 +31,7 @@
  *   --core-id=<id>                                      # scene/transcript filter (repeatable)
  *   --locale=<bcp47>                                    # scene + experience pipeline filter (repeatable)
  *   --language=<bcp47>                                  # transcript pipeline filter (repeatable)
+ *   --transcript-mode=idempotent|repair|force|model-upgrade
  *   --experience-id=<cuid>                              # experience pipeline filter (repeatable)
  *   --force                                             # experience pipeline only — re-embed
  *                                                       # rows that already have a non-NULL embedding
@@ -436,6 +439,7 @@ async function main(): Promise<void> {
   const coreIds = parseRepeated("core-id")
   const locales = parseRepeated("locale")
   const languages = parseRepeated("language")
+  const transcriptMode = parseSingle("transcript-mode")
   const experienceIds = parseRepeated("experience-id")
   const force = parseFlag("force")
   // feat-119 PR1 — operators piping the report into PR2's
@@ -449,6 +453,15 @@ async function main(): Promise<void> {
       "[run-embeds] --from-report is only supported with --pipeline=scene\n",
     )
     process.exit(2)
+  }
+  if (
+    transcriptMode !== undefined &&
+    !["idempotent", "repair", "force", "model-upgrade"].includes(transcriptMode)
+  ) {
+    process.stderr.write(
+      `[run-embeds] invalid --transcript-mode=${transcriptMode}; expected idempotent|repair|force|model-upgrade\n`,
+    )
+    process.exit(1)
   }
   if (
     reportInPath !== undefined &&
@@ -509,6 +522,7 @@ async function main(): Promise<void> {
       coreIds: coreIds.length > 0 ? coreIds : null,
       locales: locales.length > 0 ? locales : null,
       languages: languages.length > 0 ? languages : null,
+      transcriptMode: transcriptMode ?? null,
       experienceIds: experienceIds.length > 0 ? experienceIds : null,
       force,
       sceneConcurrency,
@@ -577,6 +591,12 @@ async function main(): Promise<void> {
           mappingS3Key,
           coreIds: coreIds.length > 0 ? coreIds : undefined,
           languages: languages.length > 0 ? languages : undefined,
+          mode: transcriptMode as
+            | "idempotent"
+            | "repair"
+            | "force"
+            | "model-upgrade"
+            | undefined,
         })
         reports.transcript = transcriptReport
         process.stdout.write(

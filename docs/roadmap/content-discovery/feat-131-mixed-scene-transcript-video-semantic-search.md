@@ -10,7 +10,8 @@ depends_on:
   - "feat-010"
   - "feat-041"
   - "feat-080"
-blocks: []
+blocks:
+  - "feat-132"
 tags:
   - "admin"
   - "search"

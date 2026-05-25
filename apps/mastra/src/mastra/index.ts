@@ -22,6 +22,10 @@ import {
 } from "../config/env"
 import { smokeAgent, createSmokeResponse } from "./agents/smoke-agent"
 import {
+  handleTranscriptEmbeddingRouteRequest,
+  transcriptEmbeddingWorkflow,
+} from "./workflows/transcript-embedding"
+import {
   isValidServiceBearer,
   parseServiceApiKeys,
   unauthorizedJson,
@@ -57,6 +61,7 @@ const redactPromptBodies: SpanOutputProcessor = {
 
 export const mastra = new Mastra({
   agents: { smokeAgent },
+  workflows: { transcriptEmbeddingWorkflow },
   logger: new PinoLogger({
     name: "ForgeMastra",
     prettyPrint: env.NODE_ENV !== "production",
@@ -112,6 +117,21 @@ export const mastra = new Mastra({
             input?: unknown
           }
           return c.json(createSmokeResponse(String(body.input ?? "smoke")))
+        },
+      }),
+      registerApiRoute("/forge-transcript-embeddings", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleTranscriptEmbeddingRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
         },
       }),
     ],

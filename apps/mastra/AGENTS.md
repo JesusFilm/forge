@@ -5,6 +5,8 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 ## Core model
 
 - Runs the self-hosted Mastra Server runtime for Forge agents and workflows.
+- Owns transcript embedding chunk planning and provider calls, then submits
+  transcript vectors to Admin ingest.
 - Builds Studio assets with `mastra build --studio` and serves them from the
   same internal Railway service.
 - Human Studio access is handled by `apps/mastra-gateway`; this service should
