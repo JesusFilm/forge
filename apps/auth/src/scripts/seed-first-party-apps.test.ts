@@ -28,8 +28,8 @@ describe("seedFirstPartyApps", () => {
     await expect(seedFirstPartyApps()).resolves.toEqual({
       apps: 3,
       environments: 12,
-      oauthClients: 12,
-      scopes: 8,
+      oauthClients: 16,
+      scopes: 9,
     })
 
     expect(upsertScope).toHaveBeenCalledWith(
@@ -67,6 +67,23 @@ describe("seedFirstPartyApps", () => {
           public: true,
           requirePKCE: true,
           tokenEndpointAuthMethod: "none",
+        }),
+      }),
+    )
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { clientId: "jfp_manager_local_session_service" },
+        create: expect.objectContaining({
+          clientId: "jfp_manager_local_session_service",
+          scopes: ["admin:manager-session:validate"],
+          public: false,
+          requirePKCE: false,
+          tokenEndpointAuthMethod: "client_secret_basic",
+          grantTypes: ["client_credentials"],
+          disabled: true,
+          metadata: expect.objectContaining({
+            serviceAudience: "http://localhost:3003/api/manager/session",
+          }),
         }),
       }),
     )

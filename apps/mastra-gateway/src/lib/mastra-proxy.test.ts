@@ -52,4 +52,90 @@ describe("Mastra proxy", () => {
     expect(response.headers.get("content-length")).toBeNull()
     expect(response.headers.get("content-type")).toBe("application/javascript")
   })
+
+  it("rewrites Studio bootstrap config to call the gateway origin", async () => {
+    vi.stubEnv("MASTRA_GATEWAY_BASE_URL", "https://gateway.example.com")
+    vi.stubEnv(
+      "MASTRA_GATEWAY_SESSION_SECRET",
+      "test-secret-test-secret-test-secret-32",
+    )
+    vi.stubEnv("MASTRA_INTERNAL_BASE_URL", "http://localhost:4111")
+    vi.stubEnv("MASTRA_INTERNAL_API_KEY", "internal-key")
+
+    const { createGatewaySessionCookie, GATEWAY_SESSION_COOKIE } =
+      await import("./gateway-session")
+    const { proxyMastraRequest } = await import("./mastra-proxy")
+
+    const token = await createGatewaySessionCookie({
+      subject: "user-1",
+      email: "user@example.com",
+      role: "admin",
+    })
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        [
+          "window.MASTRA_SERVER_HOST = 'localhost';",
+          "window.MASTRA_SERVER_PORT = '4111';",
+          "window.MASTRA_SERVER_PROTOCOL = 'http';",
+        ].join("\n"),
+        {
+          headers: { "content-type": "text/html" },
+        },
+      ),
+    )
+
+    const response = await proxyMastraRequest(
+      new Request("https://gateway.example.com/studio", {
+        headers: {
+          cookie: `${GATEWAY_SESSION_COOKIE}=${encodeURIComponent(token)}`,
+        },
+      }),
+      "/studio",
+    )
+
+    const body = await response.text()
+    expect(body).toContain("window.MASTRA_SERVER_HOST = 'gateway.example.com';")
+    expect(body).toContain("window.MASTRA_SERVER_PORT = '443';")
+    expect(body).toContain("window.MASTRA_SERVER_PROTOCOL = 'https';")
+    expect(body).not.toContain("window.MASTRA_SERVER_PORT = '4111';")
+  })
+
+  it("uses the browser-facing host header when rewriting Studio config", async () => {
+    vi.stubEnv("MASTRA_GATEWAY_BASE_URL", "http://localhost:3005")
+    vi.stubEnv(
+      "MASTRA_GATEWAY_SESSION_SECRET",
+      "test-secret-test-secret-test-secret-32",
+    )
+    vi.stubEnv("MASTRA_INTERNAL_BASE_URL", "http://localhost:4111")
+    vi.stubEnv("MASTRA_INTERNAL_API_KEY", "internal-key")
+
+    const { createGatewaySessionCookie, GATEWAY_SESSION_COOKIE } =
+      await import("./gateway-session")
+    const { proxyMastraRequest } = await import("./mastra-proxy")
+
+    const token = await createGatewaySessionCookie({
+      subject: "user-1",
+      email: "user@example.com",
+      role: "admin",
+    })
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("window.MASTRA_SERVER_HOST = 'localhost';", {
+        headers: { "content-type": "text/html" },
+      }),
+    )
+
+    const response = await proxyMastraRequest(
+      new Request("http://0.0.0.0:3005/studio", {
+        headers: {
+          host: "localhost:3005",
+          cookie: `${GATEWAY_SESSION_COOKIE}=${encodeURIComponent(token)}`,
+        },
+      }),
+      "/studio",
+    )
+
+    await expect(response.text()).resolves.toContain(
+      "window.MASTRA_SERVER_HOST = 'localhost';",
+    )
+  })
 })

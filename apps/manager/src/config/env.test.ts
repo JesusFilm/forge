@@ -63,7 +63,7 @@ describe("manager env mode validation", () => {
     vi.stubEnv("STRAPI_API_TOKEN", "strapi-api-token")
 
     await expect(import("./env")).rejects.toThrow(
-      "MANAGER_SESSION_SECRET, AUTH_ISSUER_URL, AUTH_MANAGER_CLIENT_ID, ADMIN_GRAPHQL_URL, ADMIN_MANAGER_API_KEY are required when Manager auth is enabled",
+      "MANAGER_SESSION_SECRET, AUTH_ISSUER_URL, AUTH_MANAGER_CLIENT_ID, ADMIN_GRAPHQL_URL, ADMIN_MANAGER_API_KEY or AUTH_MANAGER_SERVICE_CLIENT_ID/AUTH_MANAGER_SERVICE_CLIENT_SECRET are required when Manager auth is enabled",
     )
   })
 
@@ -98,7 +98,7 @@ describe("manager env mode validation", () => {
     vi.stubEnv("ADMIN_GRAPHQL_URL", "https://admin.example/api/graphql")
 
     await expect(import("./env")).rejects.toThrow(
-      "ADMIN_MANAGER_API_KEY is required when Manager auth is enabled",
+      "ADMIN_MANAGER_API_KEY or AUTH_MANAGER_SERVICE_CLIENT_ID/AUTH_MANAGER_SERVICE_CLIENT_SECRET is required when Manager auth is enabled",
     )
   })
 
@@ -120,5 +120,26 @@ describe("manager env mode validation", () => {
 
     expect(env.MANAGER_DATA_MODE).toBe("admin")
     expect(env.ADMIN_MANAGER_API_KEY).toBe("admin-manager-key")
+  })
+
+  it("allows admin backend mode with Manager OAuth service credentials", async () => {
+    vi.stubEnv("MANAGER_DATA_MODE", "admin")
+    vi.stubEnv("MUX_TOKEN_ID", REQUIRED_BASE_ENV.MUX_TOKEN_ID)
+    vi.stubEnv("MUX_TOKEN_SECRET", REQUIRED_BASE_ENV.MUX_TOKEN_SECRET)
+    vi.stubEnv("OPENROUTER_API_KEY", REQUIRED_BASE_ENV.OPENROUTER_API_KEY)
+    vi.stubEnv(
+      "MANAGER_SESSION_SECRET",
+      "manager-session-secret-change-me-000000",
+    )
+    vi.stubEnv("AUTH_ISSUER_URL", "https://auth.jesusfilm.org")
+    vi.stubEnv("AUTH_MANAGER_CLIENT_ID", "jfp_manager_local")
+    vi.stubEnv("AUTH_MANAGER_SERVICE_CLIENT_ID", "jfp_manager_service_local")
+    vi.stubEnv("AUTH_MANAGER_SERVICE_CLIENT_SECRET", "service-secret")
+    vi.stubEnv("ADMIN_GRAPHQL_URL", "https://admin.example/api/graphql")
+
+    const { env } = await import("./env")
+
+    expect(env.MANAGER_DATA_MODE).toBe("admin")
+    expect(env.AUTH_MANAGER_SERVICE_CLIENT_ID).toBe("jfp_manager_service_local")
   })
 })

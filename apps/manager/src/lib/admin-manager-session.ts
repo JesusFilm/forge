@@ -1,5 +1,7 @@
 import { env } from "@/config/env"
 
+const MANAGER_SESSION_SCOPE = "admin:manager-session:validate"
+
 export type AdminManagerSession = {
   user: {
     id: string
@@ -19,17 +21,18 @@ export async function validateAdminManagerSession({
   name?: string
 }): Promise<AdminManagerSession | null> {
   const sessionUrl = getAdminManagerSessionUrl()
-  if (!sessionUrl || !env.ADMIN_MANAGER_API_KEY) {
+  if (!sessionUrl || !hasManagerValidationCredential()) {
     throw new Error(
-      "ADMIN_GRAPHQL_URL and ADMIN_MANAGER_API_KEY are required for Manager access validation",
+      "ADMIN_GRAPHQL_URL and either ADMIN_MANAGER_API_KEY or AUTH_MANAGER_SERVICE_CLIENT_ID/AUTH_MANAGER_SERVICE_CLIENT_SECRET are required for Manager access validation",
     )
   }
+  const bearerToken = await getAdminManagerSessionBearer()
 
   const response = await fetch(sessionUrl, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${env.ADMIN_MANAGER_API_KEY}`,
+      authorization: `Bearer ${bearerToken}`,
     },
     body: JSON.stringify({ subject, email, name }),
     signal: AbortSignal.timeout(5000),
@@ -63,6 +66,63 @@ export async function validateAdminManagerSession({
     },
     managerRole: "OPERATOR",
   }
+}
+
+function hasManagerValidationCredential() {
+  return (
+    !!env.ADMIN_MANAGER_API_KEY ||
+    (!!env.AUTH_ISSUER_URL &&
+      !!env.AUTH_MANAGER_SERVICE_CLIENT_ID &&
+      !!env.AUTH_MANAGER_SERVICE_CLIENT_SECRET)
+  )
+}
+
+async function getAdminManagerSessionBearer() {
+  if (
+    env.AUTH_ISSUER_URL &&
+    env.AUTH_MANAGER_SERVICE_CLIENT_ID &&
+    env.AUTH_MANAGER_SERVICE_CLIENT_SECRET
+  ) {
+    return requestManagerServiceToken()
+  }
+
+  if (!env.ADMIN_MANAGER_API_KEY) {
+    throw new Error("ADMIN_MANAGER_API_KEY is required")
+  }
+
+  return env.ADMIN_MANAGER_API_KEY
+}
+
+async function requestManagerServiceToken() {
+  const response = await fetch(getTokenUrl(), {
+    method: "POST",
+    headers: {
+      authorization: `Basic ${Buffer.from(
+        `${env.AUTH_MANAGER_SERVICE_CLIENT_ID}:${env.AUTH_MANAGER_SERVICE_CLIENT_SECRET}`,
+      ).toString("base64")}`,
+      "content-type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      grant_type: "client_credentials",
+      scope: MANAGER_SESSION_SCOPE,
+    }),
+    signal: AbortSignal.timeout(3000),
+  })
+
+  if (!response.ok) {
+    throw new Error("Manager service token request failed.")
+  }
+
+  const payload = (await response.json()) as { access_token?: unknown }
+  if (typeof payload.access_token !== "string") {
+    throw new Error("Manager service token response did not include a token.")
+  }
+
+  return payload.access_token
+}
+
+function getTokenUrl() {
+  return new URL("/api/auth/oauth2/token", env.AUTH_ISSUER_URL).toString()
 }
 
 function getAdminManagerSessionUrl() {

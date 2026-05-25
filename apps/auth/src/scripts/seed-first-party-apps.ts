@@ -1,6 +1,10 @@
+import { createHash } from "node:crypto"
+
 import { FIRST_PARTY_APP_SEEDS, type RegisteredAppSeed } from "@/domain/apps"
 import { AUTH_SCOPES } from "@/domain/scopes"
 import { prisma } from "@/db/client"
+
+const MANAGER_SESSION_SCOPE = "admin:manager-session:validate"
 
 export async function seedFirstPartyApps() {
   for (const scope of AUTH_SCOPES) {
@@ -25,7 +29,12 @@ export async function seedFirstPartyApps() {
       0,
     ),
     oauthClients: FIRST_PARTY_APP_SEEDS.reduce(
-      (total, app) => total + app.environments.length,
+      (total, app) =>
+        total +
+        app.environments.length +
+        app.environments.filter(
+          (environment) => environment.managerSessionServiceClientId,
+        ).length,
       0,
     ),
     scopes: AUTH_SCOPES.length,
@@ -128,7 +137,79 @@ async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
         },
       },
     })
+
+    if (environment.managerSessionServiceClientId) {
+      const clientSecret = getManagerServiceClientSecret(environment.key)
+      const storedClientSecret = clientSecret
+        ? hashClientSecret(clientSecret)
+        : undefined
+
+      await prisma.oauthClient.upsert({
+        where: { clientId: environment.managerSessionServiceClientId },
+        update: {
+          name: `${appSeed.displayName} (${environment.key} session validation)`,
+          redirectUris: [],
+          postLogoutRedirectUris: [],
+          scopes: [MANAGER_SESSION_SCOPE],
+          skipConsent: true,
+          enableEndSession: false,
+          disabled: !storedClientSecret,
+          public: false,
+          requirePKCE: false,
+          tokenEndpointAuthMethod: "client_secret_basic",
+          grantTypes: ["client_credentials"],
+          responseTypes: [],
+          ...(storedClientSecret ? { clientSecret: storedClientSecret } : {}),
+          metadata: {
+            appKey: appSeed.key,
+            environmentKey: environment.key,
+            environmentKind: environment.kind,
+            serviceAudience: environment.managerSessionServiceAudience,
+            trustTier: appSeed.trustTier,
+          },
+        },
+        create: {
+          clientId: environment.managerSessionServiceClientId,
+          name: `${appSeed.displayName} (${environment.key} session validation)`,
+          redirectUris: [],
+          postLogoutRedirectUris: [],
+          scopes: [MANAGER_SESSION_SCOPE],
+          skipConsent: true,
+          enableEndSession: false,
+          disabled: !storedClientSecret,
+          public: false,
+          requirePKCE: false,
+          tokenEndpointAuthMethod: "client_secret_basic",
+          grantTypes: ["client_credentials"],
+          responseTypes: [],
+          clientSecret: storedClientSecret,
+          metadata: {
+            appKey: appSeed.key,
+            environmentKey: environment.key,
+            environmentKind: environment.kind,
+            serviceAudience: environment.managerSessionServiceAudience,
+            trustTier: appSeed.trustTier,
+          },
+        },
+      })
+    }
   }
+}
+
+function getManagerServiceClientSecret(environmentKey: string) {
+  return (
+    process.env[
+      `AUTH_MANAGER_SESSION_SERVICE_CLIENT_SECRET_${environmentKey.toUpperCase()}`
+    ] ?? process.env.AUTH_MANAGER_SESSION_SERVICE_CLIENT_SECRET
+  )
+}
+
+function hashClientSecret(clientSecret: string) {
+  const normalizedSecret = clientSecret.startsWith("jfp_cs_")
+    ? clientSecret.slice("jfp_cs_".length)
+    : clientSecret
+
+  return createHash("sha256").update(normalizedSecret).digest("base64url")
 }
 
 function toEnvironmentKind(kind: string) {
