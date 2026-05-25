@@ -198,9 +198,7 @@ function VideoDetailContent({
                   source={thumbnailUrl}
                   style={StyleSheet.absoluteFill}
                   contentFit="cover"
-                  accessibilityLabel={
-                    videoRef?.imageAlt ?? title ?? "Video thumbnail"
-                  }
+                  accessibilityLabel={title ?? "Video thumbnail"}
                 />
                 <View style={overlay.playOverlay}>
                   <View style={styles.playCircle}>
@@ -220,9 +218,7 @@ function VideoDetailContent({
             source={thumbnailUrl}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
-            accessibilityLabel={
-              videoRef?.imageAlt ?? title ?? "Video thumbnail"
-            }
+            accessibilityLabel={title ?? "Video thumbnail"}
           />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.fallback]} />

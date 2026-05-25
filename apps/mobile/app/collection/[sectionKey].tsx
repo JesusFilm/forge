@@ -27,9 +27,7 @@ import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { parseSectionKey } from "../../src/lib/parseSectionKey"
 import { useTypography } from "../../src/hooks/useTypography"
-import type { NormalizedBlock } from "../../src/lib/normalizer"
-import { pickThumbnailUrl } from "../../src/lib/types"
-import type { VideoCarouselItem } from "../../src/components/sections/VideoCarouselRenderer"
+import type { AdminBlock } from "../../src/lib/queries"
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -81,7 +79,7 @@ function CollectionPlayerContent({
   initialIndex,
   typography,
 }: {
-  section: NormalizedBlock
+  section: AdminBlock
   initialIndex: number
   typography: ReturnType<typeof useTypography>
 }) {
@@ -89,10 +87,21 @@ function CollectionPlayerContent({
   const { width: screenWidth } = useWindowDimensions()
   const playerHeight = Math.round(screenWidth * (9 / 16))
 
-  const vcTitle = section.vcTitle as string | null | undefined
-  const vcSubtitle = section.vcSubtitle as string | null | undefined
-  const vcDescription = section.vcDescription as string | null | undefined
-  const rawItems = (section.items as VideoCarouselItem[] | undefined) ?? []
+  const s = section as Record<string, unknown>
+  const vcTitle = s.title as string | null | undefined
+  const vcSubtitle = s.subtitle as string | null | undefined
+  const vcDescription = (s.carouselDescription ?? s.description) as
+    | string
+    | null
+    | undefined
+  type CollectionItem = {
+    videoId?: string | null
+    streamingUrl?: string | null
+    imageUrl?: string | null
+    titleOverride?: string | null
+    backgroundColor?: string | null
+  }
+  const rawItems = (s.items as CollectionItem[] | undefined) ?? []
 
   const items = rawItems
 
@@ -129,7 +138,7 @@ function CollectionPlayerContent({
     p.loop = false
   })
 
-  const flatListRef = useRef<FlatList<VideoCarouselItem>>(null)
+  const flatListRef = useRef<FlatList<CollectionItem>>(null)
   const appActiveRef = useRef(true)
   const wasPlayingRef = useRef(false)
 
@@ -232,18 +241,14 @@ function CollectionPlayerContent({
   )
 
   const renderItem = useCallback(
-    ({ item, index: idx }: { item: VideoCarouselItem; index: number }) => {
+    ({ item, index: idx }: { item: CollectionItem; index: number }) => {
       const isActive = idx === currentIndex
       const isPlayable = validateStreamingUrl(item.streamingUrl)
       const title =
         (item.titleOverride != null && item.titleOverride !== ""
           ? item.titleOverride
-          : null) ??
-        item.video?.title ??
-        "Untitled"
-      const thumbnailUrl = resolveImageUrl(
-        item.imageUrl ?? pickThumbnailUrl(item.video?.images),
-      )
+          : null) ?? "Untitled"
+      const thumbnailUrl = resolveImageUrl(item.imageUrl)
 
       return (
         <Pressable
@@ -271,7 +276,7 @@ function CollectionPlayerContent({
                 source={thumbnailUrl}
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
-                recyclingKey={`coll-thumb-${item.id}-${idx}`}
+                recyclingKey={`coll-thumb-${idx}`}
               />
             ) : (
               <View
@@ -362,7 +367,7 @@ function CollectionPlayerContent({
         <FlatList
           data={items}
           renderItem={renderItem}
-          keyExtractor={(item, idx) => `coll-${item.id}-${idx}`}
+          keyExtractor={(_item, idx) => `coll-${idx}`}
           contentContainerStyle={styles.listContent}
         />
       </View>
@@ -418,7 +423,7 @@ function CollectionPlayerContent({
         ref={flatListRef}
         data={items}
         renderItem={renderItem}
-        keyExtractor={(item, idx) => `coll-${item.id}-${idx}`}
+        keyExtractor={(_item, idx) => `coll-${idx}`}
         getItemLayout={(_data, idx) => ({
           length: ROW_HEIGHT,
           offset: ROW_HEIGHT * idx,
