@@ -46,6 +46,7 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_D
 - Have the key-sync helper repair root-owned fresh named volumes with `sudo install`/`chown`; direct helper runs and normal container startup should both work.
 - Use the persisted GitHub CLI config volume to discover the authenticated GitHub username, then sync public keys from `https://github.com/<user>.keys` into a clearly marked managed block in `~/.ssh/authorized_keys`.
 - The sync step must be idempotent: remove the prior managed block before writing the latest GitHub keys so users can rotate keys without accumulating stale entries.
+- For the reusable cross-container recipe, see `docs/solutions/platform/devcontainer-github-ssh-authorized-keys-pattern-20260525.md`.
 
 ## Known gaps / watch-outs
 
