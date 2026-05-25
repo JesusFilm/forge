@@ -10,23 +10,6 @@ export interface SectionWrapperRendererProps {
   section: AdminBlock
 }
 
-const SECTION_BACKGROUND_COLORS: Record<string, string> = {
-  default: "#292524",
-  light: "#f5f5f4",
-  dark: "#1c1917",
-  primary: "#1e3a8a",
-  cosmic: "#1e1b4b",
-  purple: "#581c87",
-}
-
-function sectionBackgroundColor(value: unknown) {
-  if (typeof value !== "string" || value.trim() === "") return undefined
-  const color = value.trim()
-  return /^#[0-9a-fA-F]{6}$/.test(color)
-    ? color
-    : SECTION_BACKGROUND_COLORS[color]
-}
-
 // ── Component ───────────────────────────────────────────────────────────────
 
 export function SectionWrapperRenderer({
@@ -34,12 +17,10 @@ export function SectionWrapperRenderer({
 }: SectionWrapperRendererProps) {
   const s = section as Record<string, unknown>
   const content = (s.sectionContent as AdminBlock[] | undefined) ?? []
-  const backgroundColor = sectionBackgroundColor(s.backgroundColor)
   const backgroundImageUrl =
     typeof s.backgroundImageUrl === "string" ? s.backgroundImageUrl : ""
   const outerStyle = [
     layout.sectionOuter,
-    backgroundColor ? { backgroundColor } : null,
     backgroundImageUrl ? styles.withImage : null,
   ]
 
