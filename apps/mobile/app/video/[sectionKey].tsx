@@ -34,9 +34,8 @@ import { layout, text, overlay, button } from "../../src/styles/shared"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { useTypography } from "../../src/hooks/useTypography"
-import type { NormalizedBlock } from "../../src/lib/normalizer"
-import { pickThumbnailUrl } from "../../src/lib/types"
-import type { VideoRef } from "../../src/lib/types"
+import type { AdminBlock } from "../../src/lib/queries"
+import { deriveMuxThumbnailUrl } from "../../src/lib/muxThumbnail"
 import { parseSectionKey } from "../../src/lib/parseSectionKey"
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -72,35 +71,27 @@ function VideoDetailContent({
   section,
   typography,
 }: {
-  section: NormalizedBlock
+  section: AdminBlock
   typography: ReturnType<typeof useTypography>
 }) {
-  const streamingUrl = section.streamingUrl as string | null
+  const s = section as Record<string, unknown>
+  const streamingUrl = s.streamingUrl as string | null
   const hasValidStream = validateStreamingUrl(streamingUrl)
 
-  const videoRef = section.videoRef as VideoRef | null | undefined
+  const title = (s.title as string | null) ?? "Untitled"
+  const thumbnailUrl = resolveImageUrl(deriveMuxThumbnailUrl(streamingUrl))
 
-  const title =
-    (section.videoTitle as string | null) ??
-    videoRef?.title ??
-    (section.title as string | null)
-  const thumbnailUrl = resolveImageUrl(pickThumbnailUrl(videoRef?.images))
-
-  // Set up share button in the navigation header with actual video context
   const navigation = useNavigation()
-  const slug = videoRef?.slug
   useLayoutEffect(() => {
     const displayTitle = title ?? "this video"
-    const shareUrl =
-      slug != null ? `https://www.jesusfilm.org/watch/${slug}.html` : null
     navigation.setOptions({
       headerTitle: title ?? "",
       headerRight: () => (
         <Pressable
           onPress={() => {
-            const parts = [`Check out "${displayTitle}" on JesusFilm!`]
-            if (shareUrl != null) parts.push(shareUrl)
-            Share.share({ message: parts.join("\n") })
+            Share.share({
+              message: `Check out "${displayTitle}" on JesusFilm!`,
+            })
           }}
           accessibilityRole="button"
           accessibilityLabel="Share"
@@ -110,20 +101,17 @@ function VideoDetailContent({
         </Pressable>
       ),
     })
-  }, [navigation, title, slug])
+  }, [navigation, title])
 
-  // Sibling content from parent sectionWrapper (attached during indexing)
-  const siblings =
-    (section.siblingContent as NormalizedBlock[] | undefined) ?? []
-  // Filter out the current video — keep other siblings (including other videos)
-  const currentKey = section.sectionKey as string | undefined
+  const siblings = (s.siblingContent as AdminBlock[] | undefined) ?? []
+  const currentKey = s.sectionKey as string | undefined
   const nestedContent = siblings.filter(
     (c) =>
-      (c.sectionKey as string | undefined) !== currentKey &&
-      c.kind !== "navigationCarousel",
+      ("sectionKey" in c ? (c.sectionKey as string | undefined) : undefined) !==
+        currentKey && c.__typename !== "NavigationCarouselBlock",
   )
 
-  const rawParagraphs = section.contentParagraphs
+  const rawParagraphs = s.contentParagraphs
   const contentParagraphs = Array.isArray(rawParagraphs)
     ? rawParagraphs.filter((p): p is string => typeof p === "string")
     : []
