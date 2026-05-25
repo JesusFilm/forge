@@ -2,8 +2,9 @@
 
 ## What this app does
 
-`apps/developer` is the Forge developer portal for first-party and future
-third-party app registrations. It is intended to deploy at
+`apps/developer` is the Forge developer portal for third-party app
+registrations, first-party app registrations, and internal app access
+administration. It is intended to deploy at
 `developer.jesusfilm.org`.
 
 The first slice is intentionally read-only: it shows Auth-owned app
@@ -17,6 +18,9 @@ expanding Auth's internal dashboard.
   revocation, audit, and credential lifecycle.
 - Developer is a relying UI, not a second identity authority.
 - Auth OAuth with the `developer:access` scope protects registry views.
+- Developer is the intended unified admin UI for first-party access grants
+  across Admin, Manager, Mastra Studio, and Developer, but Auth owns the grant
+  model, enforcement, and audit trail.
 - Direct Auth database reads are a first-slice read-only projection. Before
   adding writes, introduce an Auth-owned management API or shared Auth registry
   data package so validation, audit, and policy stay centralized.

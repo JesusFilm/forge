@@ -19,13 +19,17 @@ tags:
 ## Problem
 
 `apps/developer` now has a narrow read-only view of Auth-owned app
-registration data. Before it can support first-party mutations or third-party
-self-service, the write path needs Auth-owned policy enforcement instead of
-direct UI writes.
+registration data. It is intended to become the third-party developer portal
+and the unified internal admin surface for first-party app registrations and
+app access grants across Admin, Manager, Mastra Studio, and Developer itself.
+Before it can support first-party mutations, internal permission management, or
+third-party self-service, the write path needs Auth-owned policy enforcement
+instead of direct UI writes.
 
 Build the governance layer for app registration mutations: Developer should be
 an Auth relying client and should call Auth-owned management APIs for app,
-environment, redirect URI, credential, approval, audit, and revocation changes.
+environment, redirect URI, credential, approval, access grant, audit, and
+revocation changes.
 
 ## Entry Points - Read These First
 
@@ -51,13 +55,15 @@ environment, redirect URI, credential, approval, audit, and revocation changes.
 1. Add Auth-owned management APIs for registry reads and carefully scoped
    mutations.
 2. Add first-party app/environment update flows with audit events.
-3. Add third-party app request flow with partner/external ownership metadata.
-4. Add redirect URI validation for local, preview, staging, and production.
-5. Add production approval queue before production credentials can issue
+3. Add internal user permission management for Admin, Manager, Mastra Studio,
+   and Developer access grants without copying those controls into each app.
+4. Add third-party app request flow with partner/external ownership metadata.
+5. Add redirect URI validation for local, preview, staging, and production.
+6. Add production approval queue before production credentials can issue
    tokens.
-6. Add one-time client secret reveal and explicit regeneration flow for
+7. Add one-time client secret reveal and explicit regeneration flow for
    confidential/service clients.
-7. Replace direct Auth database reads in `apps/developer` with Auth management
+8. Replace direct Auth database reads in `apps/developer` with Auth management
    API calls before enabling writes.
 
 ## Constraints
@@ -67,6 +73,9 @@ environment, redirect URI, credential, approval, audit, and revocation changes.
   after generation.
 - Do not permit production token issuance from pending, rejected, or revoked
   environments.
+- Do not store independent permission copies inside Admin, Manager, Mastra
+  Studio, or Developer when an Auth-owned app access grant should be the source
+  of truth.
 - Do not change Strapi/CMS authentication.
 - Do not make Strapi an Auth relying client.
 
@@ -75,6 +84,8 @@ environment, redirect URI, credential, approval, audit, and revocation changes.
 - Developer login requires Auth and `developer:access`.
 - Registry mutations are rejected without an active Developer session.
 - Every mutation creates an Auth audit event.
+- Internal app access changes are represented as Auth-owned grants and are
+  visible from Developer.
 - Production credentials cannot be used until approved.
 - Redirect URI validation rejects wildcard, javascript, data, and unapproved
   production origins.

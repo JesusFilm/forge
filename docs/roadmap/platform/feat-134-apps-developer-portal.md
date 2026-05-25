@@ -22,13 +22,17 @@ tags:
 
 Forge now has a standalone Auth authority in `apps/auth`, and Admin, Manager,
 and Mastra Gateway authenticate through Auth. The next platform gap is an
-operational developer surface for first-party and future third-party app
-registrations without turning Strapi into an auth dependency or duplicating
-OAuth provider behavior outside Auth.
+Apps Developer surface for third-party app registrations, first-party app
+registrations, and internal administration of app access grants without turning
+Strapi into an auth dependency or duplicating OAuth provider behavior outside
+Auth.
 
 Build `developer.jesusfilm.org` as a separate app that manages or presents
-Auth-owned app registration data. Auth remains the identity/OAuth authority and
-the issuer of credentials, tokens, grants, revocation, and audit events.
+Auth-owned app registration data. The product direction is a third-party
+developer portal with an internal admin layer on top for managing first-party
+apps and user permissions across Admin, Manager, Mastra Studio, and Developer
+itself. Auth remains the identity/OAuth authority and the issuer of
+credentials, tokens, grants, revocation, and audit events.
 
 ## Entry Points - Read These First
 
@@ -64,7 +68,8 @@ the issuer of credentials, tokens, grants, revocation, and audit events.
    environments, OAuth client ids, redirect URIs, scopes, and approval status.
 5. Keep this first PR narrow: no self-service production credential creation,
    no raw secret exposure, and no mutation-heavy app management.
-6. Document the future third-party posture: audit logging, one-time secret
+6. Document the future posture: third-party self-service plus internal app
+   access administration, backed by audit logging, one-time secret
    reveal/regeneration, redirect URI validation, and production approval gates.
 7. Leave Strapi/CMS authentication untouched.
 
@@ -78,6 +83,9 @@ the issuer of credentials, tokens, grants, revocation, and audit events.
 - Treat direct Auth database reads as a first-slice read-only projection until
   an Auth-owned management API or shared data package is introduced.
 - Production app credentials require explicit review/approval before use.
+- User permission management for first-party apps belongs in Developer as the
+  unified admin UI, but the grants, policy enforcement, and audit trail remain
+  Auth-owned.
 
 ## Verification
 

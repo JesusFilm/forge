@@ -10,10 +10,11 @@ origin: docs/roadmap/platform/feat-134-apps-developer-portal.md
 
 ## Summary
 
-Create `developer.jesusfilm.org` as a separate Forge app for operational app
-registration visibility first, then future app management. The first slice is a
-read-only developer portal scaffold backed by Auth-owned app registration data,
-plus a first-party Auth registration for the portal itself.
+Create `developer.jesusfilm.org` as a separate Forge app for third-party app
+registration, first-party app registration administration, and unified internal
+management of app access grants. The first slice is a read-only developer
+portal scaffold backed by Auth-owned app registration data, plus a first-party
+Auth registration for the portal itself.
 
 ## Brainstorm Outcome
 
@@ -32,8 +33,8 @@ Three approaches were considered:
 
 The recommended first slice is option 2 with read-only registry views. It
 supports first-party operational needs now, uses Auth as the Developer app's
-authentication authority, and keeps the future third-party self-service path
-visible without committing to risky credential mutations.
+authentication authority, and keeps the third-party self-service path visible
+without committing to risky credential mutations in the first PR.
 
 ## Key Decisions
 
@@ -41,6 +42,9 @@ visible without committing to risky credential mutations.
   of Auth's provider routes.
 - Auth owns identity, OAuth/OIDC provider behavior, scopes, app grants, token
   issuance, revocation, audit, and credential lifecycle.
+- Developer is the intended unified admin UI for internal app registrations and
+  user permission grants across Admin, Manager, Mastra Studio, and Developer,
+  while Auth remains the source of truth for grants and policy enforcement.
 - Developer reads Auth-owned app registration data for this first slice through
   a read-only projection. A follow-up should replace direct DB reads with an
   Auth-owned management API or shared Auth registry data package when mutations
@@ -142,6 +146,8 @@ visible without committing to risky credential mutations.
 - Replace direct DB projection with Auth-owned registry management APIs before
   introducing writes.
 - Add app create/update flows with audit logging and environment review state.
+- Add internal user permission management for Admin, Manager, Mastra Studio,
+  and Developer access grants, backed by Auth-owned policy and audit.
 - Add one-time client secret reveal and regeneration for confidential/service
   clients.
 - Add redirect URI validation policy for local, preview, staging, and
