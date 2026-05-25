@@ -1,6 +1,5 @@
-import { graphql } from "@forge/graphql"
+import { graphql } from "@/lib/untyped-graphql"
 import { getCmsGateway } from "@/cms/gateway"
-import getClient from "@/cms/client"
 import { createSwrCache } from "@/lib/swr-cache"
 
 const GET_COVERAGE_SNAPSHOTS = graphql(`
@@ -28,33 +27,18 @@ const GET_COVERAGE_SNAPSHOTS = graphql(`
 export const coverageSnapshotRangeDateRegex = /^\d{4}-\d{2}-\d{2}$/
 
 type LatestCoverageSnapshotResult = {
-  snapshot: Awaited<ReturnType<typeof fetchLatestSnapshotFromCms>>
-}
-
-async function fetchLatestSnapshotFromCms() {
-  const client = getClient()
-  const result = await client.query({
-    query: GET_COVERAGE_SNAPSHOTS,
-    variables: {
-      sort: ["date:desc"],
-      pagination: { limit: 1 },
-    },
-    fetchPolicy: "no-cache",
-  })
-
-  return result.data?.coverageSnapshots?.[0] ?? null
+  snapshot:
+    | Awaited<
+        ReturnType<ReturnType<typeof getCmsGateway>["getCoverageSnapshots"]>
+      >[number]
+    | null
 }
 
 async function fetchLatestSnapshot(): Promise<LatestCoverageSnapshotResult> {
   try {
     const gateway = getCmsGateway()
-    if (gateway.mode === "mock" || gateway.mode === "admin") {
-      const snapshot =
-        (await gateway.getCoverageSnapshots({ latest: true }))[0] ?? null
-      return { snapshot }
-    }
-
-    const snapshot = await fetchLatestSnapshotFromCms()
+    const snapshot =
+      (await gateway.getCoverageSnapshots({ latest: true }))[0] ?? null
     return { snapshot }
   } catch (error) {
     console.warn(

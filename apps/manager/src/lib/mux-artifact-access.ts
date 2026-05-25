@@ -4,7 +4,10 @@ import { env } from "@/config/env"
 const MUX_ARTIFACT_TOKEN_TTL_MS = 15 * 60 * 1000
 
 function getArtifactAccessSecret(): string {
-  return env.MANAGER_API_KEY ?? env.STRAPI_API_TOKEN
+  if (!env.MANAGER_API_KEY) {
+    throw new Error("MANAGER_API_KEY is required for Mux artifact access")
+  }
+  return env.MANAGER_API_KEY
 }
 
 function trimTrailingSlash(value: string): string {

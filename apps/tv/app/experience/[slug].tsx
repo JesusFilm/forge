@@ -27,12 +27,12 @@ export default function ExperienceDetailScreen() {
   const { data, loading, error, refetch } = useQuery(GET_WATCH_EXPERIENCE, {
     variables: {
       locale: "en",
-      filters: { slug: { eq: decodedSlug } },
+      slug: decodedSlug,
     },
     skip: !decodedSlug,
   })
 
-  const rawExperience = data?.experiences?.[0]
+  const rawExperience = data?.experienceBySlug
 
   const experience = useMemo(() => {
     if (!rawExperience) return null

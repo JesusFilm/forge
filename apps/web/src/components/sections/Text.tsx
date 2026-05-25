@@ -1,4 +1,4 @@
-import type { FragmentOf } from "@forge/graphql"
+import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import { textSectionFragment } from "@/lib/fragments/text-section"
 
 export { textSectionFragment }

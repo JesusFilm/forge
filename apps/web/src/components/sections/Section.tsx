@@ -1,4 +1,7 @@
-import type { FragmentOf } from "@forge/graphql"
+import type {
+  FragmentOf,
+  LegacyFragmentValue,
+} from "@/lib/legacy-fragment-types"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import type { RouteVideo } from "@/lib/content"
 import { sectionFragment } from "@/lib/fragments/section"
@@ -93,10 +96,12 @@ export function Section({ data, routeVideo }: SectionProps) {
   const hasStaticOverlay = raw.staticOverlay === true
 
   const validContent =
-    sectionContent?.filter((c): c is NonNullable<typeof c> => c != null) ?? []
+    sectionContent?.filter(
+      (c: LegacyFragmentValue): c is NonNullable<typeof c> => c != null,
+    ) ?? []
   if (!validContent.length) return null
 
-  const content = validContent.map((item, index) =>
+  const content = validContent.map((item: SectionContentItem, index: number) =>
     item && (item as { __typename?: string }).__typename !== "Error" ? (
       <SectionContentRenderer
         key={`section-${id ?? index}-${index}`}

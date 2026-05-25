@@ -5,7 +5,7 @@ import videojs from "video.js"
 import type Player from "video.js/dist/types/player"
 import "video.js/dist/video-js.css"
 import { MuxVideo } from "@forge/video-player"
-import type { FragmentOf } from "@forge/graphql"
+import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { RouteVideo } from "@/lib/content"
 import {
   CONTENT_WIDTH_ALIGN_CLASSES,

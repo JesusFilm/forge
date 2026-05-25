@@ -6,7 +6,7 @@
 - react-native-tvos (aliased as react-native) for TV platform support
 - @react-native-tvos/config-tv Expo plugin with EXPO_TV=1
 - Expo Router for file-based navigation (stack only, no tabs)
-- @forge/graphql with gql.tada for typed GraphQL operations
+- @forge/admin-graphql with gql.tada for typed GraphQL operations
 - Apollo Client for GraphQL data fetching
 - expo-video for HLS playback
 - expo-image for optimized image loading
@@ -19,7 +19,7 @@ as mobile, different renderers optimized for 10-foot UI and D-pad navigation.
 ### SDUI Pipeline
 
 ```
-Strapi GraphQL → gql.tada typed query → normalizer (adds `kind`) → dispatcher → TV renderers
+Admin GraphQL → gql.tada typed query → normalizer (adds `kind`) → dispatcher → TV renderers
 ```
 
 - **Queries**: Imported from mobile or copied with sync comment

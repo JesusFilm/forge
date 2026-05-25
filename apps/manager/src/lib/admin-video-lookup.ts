@@ -7,11 +7,8 @@
 // was fast. Keep GraphQL as a deploy-order fallback when the REST
 // route is not present yet.
 //
-// Why fetch instead of Apollo: the existing `cms/client.ts` Apollo
-// singleton is bound to Strapi's GraphQL surface + STRAPI_API_TOKEN;
-// reusing it would entangle two upstream targets in one client.
-// `admin-embed-trigger.ts` is the established repo pattern for
-// manager → admin outbound HTTPS.
+// Why fetch instead of Apollo: `admin-embed-trigger.ts` is the established repo
+// pattern for manager → admin outbound HTTPS.
 //
 // Env (validated at module load via @/config/env):
 //   - ADMIN_GRAPHQL_URL          full URL of admin's /api/graphql
