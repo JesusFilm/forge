@@ -16,6 +16,7 @@ expanding Auth's internal dashboard.
 - Auth owns identity, OAuth/OIDC provider behavior, app grants, token issuance,
   revocation, audit, and credential lifecycle.
 - Developer is a relying UI, not a second identity authority.
+- Auth OAuth with the `developer:access` scope protects registry views.
 - Direct Auth database reads are a first-slice read-only projection. Before
   adding writes, introduce an Auth-owned management API or shared Auth registry
   data package so validation, audit, and policy stay centralized.
@@ -36,13 +37,14 @@ pnpm --filter @forge/developer lint
 
 ## Environment
 
-| Variable                   | Purpose                                                                               |
-| -------------------------- | ------------------------------------------------------------------------------------- |
-| `AUTH_DATABASE_URL`        | Auth-owned Postgres database URL for read-only registry projection.                   |
-| `DEVELOPER_BASE_URL`       | Public origin for this app.                                                           |
-| `AUTH_ISSUER_URL`          | Auth issuer URL for the future OAuth relying-client flow.                             |
-| `AUTH_DEVELOPER_CLIENT_ID` | Developer portal OAuth client id registered in Auth.                                  |
-| `DEVELOPER_REGISTRY_MODE`  | `disabled` or `readonly`; keep disabled in public production until OAuth login lands. |
+| Variable                       | Purpose                                                                |
+| ------------------------------ | ---------------------------------------------------------------------- |
+| `AUTH_DATABASE_URL`            | Auth-owned Postgres database URL for read-only registry projection.    |
+| `DEVELOPER_BASE_URL`           | Public origin for this app.                                            |
+| `AUTH_ISSUER_URL`              | Auth issuer URL for the future OAuth relying-client flow.              |
+| `AUTH_DEVELOPER_CLIENT_ID`     | Developer portal OAuth client id registered in Auth.                   |
+| `AUTH_DEVELOPER_CLIENT_SECRET` | Optional OAuth client secret if the Auth registration is confidential. |
+| `DEVELOPER_SESSION_SECRET`     | 32+ character secret for Developer-local session cookies.              |
 
 ## Deployment
 

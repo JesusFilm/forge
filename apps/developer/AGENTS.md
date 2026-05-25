@@ -17,6 +17,7 @@ Full context lives in `apps/developer/CLAUDE.md`. Keep both files aligned.
 - Do not expose raw client secrets, bearer tokens, refresh tokens, or database
   URLs.
 - Do not touch `apps/cms` or Strapi authentication from this app.
+- Require Auth OAuth with `developer:access` before rendering registry data.
 - Keep direct Auth database access read-only until an Auth-owned management API
   or shared registry package exists.
 

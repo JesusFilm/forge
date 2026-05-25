@@ -2,8 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { formatEnum, getRegisteredApp } from "@/data/app-registry"
-import { env } from "@/config/env"
-import { RegistryDisabled } from "../../registry-disabled"
+import { requireDeveloperSession } from "@/lib/session"
 
 export const dynamic = "force-dynamic"
 
@@ -12,11 +11,8 @@ export default async function AppDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  if (env.DEVELOPER_REGISTRY_MODE !== "readonly") {
-    return <RegistryDisabled />
-  }
-
   const { id } = await params
+  const session = await requireDeveloperSession(`/apps/${id}`)
   const app = await getRegisteredApp(id)
 
   if (!app) notFound()
@@ -32,8 +28,8 @@ export default async function AppDetailPage({
           <Link href="/">Apps</Link>
         </nav>
         <div className="sidebar-note">
-          <span>{formatEnum(app.trustTier)}</span>
-          <strong>{formatEnum(app.status)}</strong>
+          <span>Signed in</span>
+          <strong>{session.email ?? session.name ?? "Developer"}</strong>
         </div>
       </aside>
 

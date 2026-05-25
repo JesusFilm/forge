@@ -48,17 +48,16 @@ environment, redirect URI, credential, approval, audit, and revocation changes.
 
 ## What To Build
 
-1. Add the Developer OAuth relying-client login flow and app-local session.
-2. Add Auth-owned management APIs for registry reads and carefully scoped
+1. Add Auth-owned management APIs for registry reads and carefully scoped
    mutations.
-3. Add first-party app/environment update flows with audit events.
-4. Add third-party app request flow with partner/external ownership metadata.
-5. Add redirect URI validation for local, preview, staging, and production.
-6. Add production approval queue before production credentials can issue
+2. Add first-party app/environment update flows with audit events.
+3. Add third-party app request flow with partner/external ownership metadata.
+4. Add redirect URI validation for local, preview, staging, and production.
+5. Add production approval queue before production credentials can issue
    tokens.
-7. Add one-time client secret reveal and explicit regeneration flow for
+6. Add one-time client secret reveal and explicit regeneration flow for
    confidential/service clients.
-8. Replace direct Auth database reads in `apps/developer` with Auth management
+7. Replace direct Auth database reads in `apps/developer` with Auth management
    API calls before enabling writes.
 
 ## Constraints

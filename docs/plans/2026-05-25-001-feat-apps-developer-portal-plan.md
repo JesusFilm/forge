@@ -31,8 +31,9 @@ Three approaches were considered:
      sharper design before exposing writes.
 
 The recommended first slice is option 2 with read-only registry views. It
-supports first-party operational needs now and keeps the future third-party
-self-service path visible without committing to risky credential mutations.
+supports first-party operational needs now, uses Auth as the Developer app's
+authentication authority, and keeps the future third-party self-service path
+visible without committing to risky credential mutations.
 
 ## Key Decisions
 
@@ -44,6 +45,9 @@ self-service path visible without committing to risky credential mutations.
   a read-only projection. A follow-up should replace direct DB reads with an
   Auth-owned management API or shared Auth registry data package when mutations
   begin.
+- Developer is itself an Auth relying client. Registry pages require an
+  Auth-issued token with `developer:access`, stored in a Developer-local
+  session cookie.
 - Production credential creation stays out of scope until approval workflow,
   audit events, redirect URI validation, and one-time secret reveal/regenerate
   patterns are implemented.
@@ -100,6 +104,13 @@ self-service path visible without committing to risky credential mutations.
 - Create: `apps/developer/src/db/client.ts`
 - Create: `apps/developer/src/data/app-registry.ts`
 - Create: `apps/developer/src/data/app-registry.test.ts`
+- Create: `apps/developer/src/lib/oauth-client.ts`
+- Create: `apps/developer/src/lib/oauth-state.ts`
+- Create: `apps/developer/src/lib/session-cookie.ts`
+- Create: `apps/developer/src/lib/session.ts`
+- Create: `apps/developer/src/app/api/auth/login/route.ts`
+- Create: `apps/developer/src/app/api/auth/callback/route.ts`
+- Create: `apps/developer/src/app/api/auth/logout/route.ts`
 - Create: `apps/developer/src/app/layout.tsx`
 - Create: `apps/developer/src/app/page.tsx`
 - Create: `apps/developer/src/app/apps/[id]/page.tsx`
@@ -111,10 +122,9 @@ self-service path visible without committing to risky credential mutations.
 
 - Use a small read-only SQL projection of Auth registry tables:
   `registered_app` and `app_environment`, parsed with Zod before rendering.
+- Gate registry pages with Auth OAuth and the `developer:access` scope.
 - Render app/environment status, trust tier, client IDs, redirect URIs,
   allowed origins, and default scopes.
-- Keep registry data disabled unless `DEVELOPER_REGISTRY_MODE=readonly` so a
-  public deployment cannot expose app metadata before OAuth login lands.
 - Never render client secrets or token material.
 - Surface production status and pending approval posture in the UI.
 
@@ -123,11 +133,12 @@ self-service path visible without committing to risky credential mutations.
 - Registry summary counts apps, environments, production approvals, and pending
   reviews.
 - View model redacts secret-bearing fields by construction.
+- Unauthenticated registry requests redirect to Auth login.
+- Callback rejects missing/invalid OAuth state.
 - Health route returns `ok`.
 
 ## Future Follow-Up
 
-- Add OAuth login for Developer as an Auth relying client.
 - Replace direct DB projection with Auth-owned registry management APIs before
   introducing writes.
 - Add app create/update flows with audit logging and environment review state.

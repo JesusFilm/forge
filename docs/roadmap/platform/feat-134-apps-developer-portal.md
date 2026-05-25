@@ -59,14 +59,13 @@ the issuer of credentials, tokens, grants, revocation, and audit events.
    `developer.jesusfilm.org`.
 2. Register the developer portal as a first-party Auth relying client with a
    dedicated `developer:access` scope.
-3. Add a read-only registry surface that shows Auth-owned registered apps,
+3. Protect the developer portal with Auth OAuth and a Developer-local session.
+4. Add a read-only registry surface that shows Auth-owned registered apps,
    environments, OAuth client ids, redirect URIs, scopes, and approval status.
-4. Keep this first PR narrow: no self-service production credential creation,
+5. Keep this first PR narrow: no self-service production credential creation,
    no raw secret exposure, and no mutation-heavy app management.
-5. Document the future third-party posture: audit logging, one-time secret
+6. Document the future third-party posture: audit logging, one-time secret
    reveal/regeneration, redirect URI validation, and production approval gates.
-6. Keep registry data disabled by default unless the deployment explicitly
-   opts into read-only mode behind the intended access boundary.
 7. Leave Strapi/CMS authentication untouched.
 
 ## Constraints
@@ -86,8 +85,9 @@ the issuer of credentials, tokens, grants, revocation, and audit events.
 - `pnpm --filter @forge/developer typecheck`
 - `pnpm --filter @forge/developer test`
 - `pnpm --filter @forge/auth test -- apps scopes seed-first-party-apps`
+- Registry data requires an Auth-backed Developer session with
+  `developer:access`.
 - The developer app renders without secrets and without depending on Strapi.
-- Registry data does not render unless `DEVELOPER_REGISTRY_MODE=readonly`.
 - `apps/auth/src/domain/apps.ts` seeds Developer separately from Admin,
   Manager, and Mastra Gateway.
 - No `apps/cms` auth files are modified.

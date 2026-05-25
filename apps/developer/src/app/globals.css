@@ -303,27 +303,6 @@ small {
   overflow-x: auto;
 }
 
-.empty-state {
-  display: grid;
-  gap: 10px;
-  max-width: 640px;
-  padding: 32px;
-}
-
-.empty-state h3,
-.empty-state p {
-  margin: 0;
-}
-
-.empty-state h3 {
-  font-size: 24px;
-  letter-spacing: 0;
-}
-
-.empty-state p:last-child {
-  color: var(--muted);
-}
-
 table {
   width: 100%;
   min-width: 1040px;

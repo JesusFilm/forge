@@ -6,16 +6,12 @@ import {
   listRegisteredApps,
   summarizeRegistry,
 } from "@/data/app-registry"
-import { env } from "@/config/env"
-import { RegistryDisabled } from "./registry-disabled"
+import { requireDeveloperSession } from "@/lib/session"
 
 export const dynamic = "force-dynamic"
 
 export default async function DeveloperHomePage() {
-  if (env.DEVELOPER_REGISTRY_MODE !== "readonly") {
-    return <RegistryDisabled />
-  }
-
+  const session = await requireDeveloperSession("/")
   const apps = await listRegisteredApps()
   const summary = summarizeRegistry(apps)
 
@@ -30,8 +26,8 @@ export default async function DeveloperHomePage() {
           <Link href="/">Apps</Link>
         </nav>
         <div className="sidebar-note">
-          <span>Auth owned</span>
-          <strong>Read-only registry</strong>
+          <span>Signed in</span>
+          <strong>{session.email ?? session.name ?? "Developer"}</strong>
         </div>
       </aside>
 
@@ -42,6 +38,9 @@ export default async function DeveloperHomePage() {
             <h2>OAuth registrations</h2>
           </div>
           <div className="header-meta">developer.jesusfilm.org</div>
+          <Link className="secondary-link" href={"/api/auth/logout" as Route}>
+            Sign out
+          </Link>
         </header>
 
         <section className="metrics" aria-label="Registry summary">
