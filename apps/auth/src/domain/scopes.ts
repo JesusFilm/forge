@@ -41,6 +41,12 @@ export const AUTH_SCOPES = [
     description: "Allow sign-in to the Jesus Film Developer portal.",
   },
   {
+    key: "developer:admin",
+    label: "Administer Developer",
+    description:
+      "Manage first-party app access grants from the Jesus Film Developer portal.",
+  },
+  {
     key: "admin:manager-session:validate",
     label: "Validate Manager sessions",
     description:

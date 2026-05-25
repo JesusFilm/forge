@@ -26,6 +26,7 @@ export default async function AppDetailPage({
         </div>
         <nav>
           <Link href="/">Apps</Link>
+          <Link href="/access">Access</Link>
         </nav>
         <div className="sidebar-note">
           <span>Signed in</span>

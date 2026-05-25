@@ -29,7 +29,7 @@ describe("seedFirstPartyApps", () => {
       apps: 4,
       environments: 16,
       oauthClients: 20,
-      scopes: 10,
+      scopes: 11,
     })
 
     expect(upsertScope).toHaveBeenCalledWith(
@@ -82,6 +82,10 @@ describe("seedFirstPartyApps", () => {
         }),
       }),
     )
+    const developerLocalUpsert = upsertOAuthClient.mock.calls.find(
+      ([call]) => call.where.clientId === "jfp_developer_local",
+    )?.[0]
+    expect(developerLocalUpsert.create.scopes).not.toContain("developer:admin")
     expect(upsertOAuthClient).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { clientId: "jfp_manager_local_session_service" },

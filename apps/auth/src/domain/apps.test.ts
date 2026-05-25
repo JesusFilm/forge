@@ -137,5 +137,8 @@ describe("first-party app seeds", () => {
         }),
       ]),
     )
+    expect(
+      DEVELOPER_APP_SEED.environments.flatMap((env) => env.defaultScopes),
+    ).not.toContain("developer:admin")
   })
 })

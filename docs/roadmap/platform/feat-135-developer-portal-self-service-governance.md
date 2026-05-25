@@ -54,19 +54,21 @@ revocation changes.
 
 0. Keep Admin, Manager, and Mastra Gateway free of local access-management
    surfaces while Developer becomes the unified place for those controls.
-1. Add Auth-owned management APIs for registry reads and carefully scoped
+1. Add the first Developer-admin-only internal access grant editor, backed by
+   Auth-owned grants and audit events.
+2. Add Auth-owned management APIs for registry reads and carefully scoped
    mutations.
-2. Add first-party app/environment update flows with audit events.
-3. Add internal user permission management for Admin, Manager, Mastra Studio,
+3. Add first-party app/environment update flows with audit events.
+4. Add internal user permission management for Admin, Manager, Mastra Studio,
    and Developer access grants without copying those controls into each app.
-4. Add third-party app request flow with partner/external ownership metadata.
-5. Add redirect URI validation for local, preview, staging, and production.
-6. Add production approval queue before production credentials can issue
+5. Add third-party app request flow with partner/external ownership metadata.
+6. Add redirect URI validation for local, preview, staging, and production.
+7. Add production approval queue before production credentials can issue
    tokens.
-7. Add one-time client secret reveal and explicit regeneration flow for
+8. Add one-time client secret reveal and explicit regeneration flow for
    confidential/service clients.
-8. Replace direct Auth database reads in `apps/developer` with Auth management
-   API calls before enabling writes.
+9. Replace direct Auth database access in `apps/developer` with Auth
+   management API calls before expanding beyond internal access grants.
 
 ## Constraints
 
@@ -90,6 +92,8 @@ revocation changes.
 - Every mutation creates an Auth audit event.
 - Internal app access changes are represented as Auth-owned grants and are
   visible from Developer.
+- Internal app access writes require an approved Developer app grant with the
+  `developer:admin` scope.
 - Production credentials cannot be used until approved.
 - Redirect URI validation rejects wildcard, javascript, data, and unapproved
   production origins.

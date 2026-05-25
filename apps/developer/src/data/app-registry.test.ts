@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { formatEnum, summarizeRegistry, type RegistryApp } from "./app-registry"
+import { editableScopesForEnvironment } from "./access-grants"
 
 const apps = [
   {
@@ -52,5 +53,25 @@ describe("app registry view model", () => {
   it("formats enum values for operator-facing labels", () => {
     expect(formatEnum("first_party")).toBe("first party")
     expect(formatEnum("production")).toBe("production")
+  })
+
+  it("limits editable grant scopes to app access and Developer admin scopes", () => {
+    expect(
+      editableScopesForEnvironment({
+        appId: "app_developer",
+        appKey: "developer",
+        appName: "Developer",
+        environmentId: "env_developer",
+        environmentKey: "local",
+        kind: "local",
+        clientId: "jfp_developer_local",
+        defaultScopes: [
+          "openid",
+          "email:read",
+          "developer:access",
+          "tokens:manage",
+        ],
+      }),
+    ).toEqual(["developer:access", "developer:admin"])
   })
 })

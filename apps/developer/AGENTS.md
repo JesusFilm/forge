@@ -18,8 +18,11 @@ Full context lives in `apps/developer/CLAUDE.md`. Keep both files aligned.
   URLs.
 - Do not touch `apps/cms` or Strapi authentication from this app.
 - Require Auth OAuth with `developer:access` before rendering registry data.
-- Keep direct Auth database access read-only until an Auth-owned management API
-  or shared registry package exists.
+- Require an approved Auth-owned Developer grant with `developer:admin` before
+  rendering or accepting first-party access-management writes.
+- Keep direct Auth database mutations limited to Auth-owned app grant rows and
+  audit events until an Auth-owned management API or shared registry package
+  replaces this first operational slice.
 
 ## Validation
 

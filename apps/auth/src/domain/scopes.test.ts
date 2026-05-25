@@ -9,6 +9,7 @@ describe("Auth scopes", () => {
     expect(isKnownScope("manager:access")).toBe(true)
     expect(isKnownScope("mastra-studio:access")).toBe(true)
     expect(isKnownScope("developer:access")).toBe(true)
+    expect(isKnownScope("developer:admin")).toBe(true)
     expect(isKnownScope("made:up")).toBe(false)
   })
 

@@ -7,10 +7,11 @@ registrations, first-party app registrations, and internal app access
 administration. It is intended to deploy at
 `developer.jesusfilm.org`.
 
-The first slice is intentionally read-only: it shows Auth-owned app
-registration data so operators can inspect apps, environments, OAuth client
-ids, redirect URIs, scopes, and approval posture without using Strapi or
-expanding Auth's internal dashboard.
+The registry slice shows Auth-owned app registration data so operators can
+inspect apps, environments, OAuth client ids, redirect URIs, scopes, and
+approval posture without using Strapi or expanding Auth's internal dashboard.
+The first access-management slice allows Developer admins to approve and revoke
+Auth-owned first-party app grants with audit events.
 
 ## Architecture rules
 
@@ -18,12 +19,14 @@ expanding Auth's internal dashboard.
   revocation, audit, and credential lifecycle.
 - Developer is a relying UI, not a second identity authority.
 - Auth OAuth with the `developer:access` scope protects registry views.
+- An approved Auth-owned Developer app grant with `developer:admin` protects
+  access-management writes.
 - Developer is the intended unified admin UI for first-party access grants
   across Admin, Manager, Mastra Studio, and Developer, but Auth owns the grant
   model, enforcement, and audit trail.
-- Direct Auth database reads are a first-slice read-only projection. Before
-  adding writes, introduce an Auth-owned management API or shared Auth registry
-  data package so validation, audit, and policy stay centralized.
+- Direct Auth database reads are a first-slice projection. Direct mutations are
+  limited to app grants and audit events until an Auth-owned management API or
+  shared Auth registry data package replaces this operational bridge.
 - Never render raw client secrets, bearer tokens, refresh tokens, database
   URLs, or unnecessary PII.
 - Do not change `apps/cms` authentication or make Strapi an Auth relying

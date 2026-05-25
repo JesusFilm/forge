@@ -157,6 +157,9 @@ small {
 .metrics div,
 .detail-grid div,
 .app-row,
+.approval-grid,
+.empty-panel,
+.grant-form,
 .table-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -290,6 +293,28 @@ small {
   overflow: hidden;
 }
 
+.approval-grid,
+.empty-panel {
+  min-width: 0;
+}
+
+.empty-panel {
+  display: grid;
+  gap: 8px;
+  max-width: 720px;
+  padding: 22px;
+}
+
+.empty-panel h3,
+.empty-panel p {
+  margin: 0;
+}
+
+.empty-panel p,
+.muted-text {
+  color: var(--muted);
+}
+
 .panel-heading {
   padding: 18px 20px;
   border-bottom: 1px solid var(--line);
@@ -297,6 +322,96 @@ small {
 
 .panel-heading h3 {
   font-size: 20px;
+}
+
+.approval-list {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.grant-form {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.grant-form-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.grant-form-title span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.grant-form label,
+.grant-form fieldset {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.grant-form input[type="text"],
+.grant-form select {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 10px;
+  background: #ffffff;
+  color: var(--ink);
+  font: inherit;
+  text-transform: none;
+}
+
+.scope-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scope-grid label {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 10px;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 12px;
+  text-transform: none;
+}
+
+.grant-form button,
+.link-button {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 12px;
+  background: var(--nav);
+  color: var(--paper);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.link-button {
+  background: #ffffff;
+  color: var(--rejected);
 }
 
 .table-scroll {
