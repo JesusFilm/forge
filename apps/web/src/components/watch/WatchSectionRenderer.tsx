@@ -76,7 +76,6 @@ export function WatchSectionRenderer({
           subtitleVttSrc={subtitleVttSrc}
         />
       ))}
-      {playerRef && <SubtitleOverlay playerRef={playerRef} />}
       {bodyBlocks.length > 0 ? (
         <section
           data-testid="watch-body-zone"
@@ -96,6 +95,7 @@ export function WatchSectionRenderer({
             <div
               className={`relative z-2 flex flex-col items-stretch justify-center gap-6 pt-2 pb-16 ${CONTENT_WIDTH_CLASSES}`}
             >
+              {playerRef && <SubtitleOverlay playerRef={playerRef} />}
               {bodyBlocks.map((block, index) => (
                 <WatchBlockEntry
                   key={blockKey(block, index + topBlocks.length)}
