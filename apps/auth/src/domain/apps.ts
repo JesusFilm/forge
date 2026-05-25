@@ -9,6 +9,7 @@ export const FIRST_PARTY_OWNER = {
 export const ADMIN_APP_KEY = "admin"
 export const MANAGER_APP_KEY = "manager"
 export const MASTRA_STUDIO_APP_KEY = "mastra-studio"
+export const DEVELOPER_APP_KEY = "developer"
 
 export type AppEnvironmentSeed = {
   key: string
@@ -54,6 +55,14 @@ export const MASTRA_STUDIO_DEFAULT_SCOPES = [
   "profile:read",
   "email:read",
   "mastra-studio:access",
+] satisfies AuthScopeKey[]
+
+export const DEVELOPER_DEFAULT_SCOPES = [
+  "openid",
+  "profile:read",
+  "email:read",
+  "membership:read",
+  "developer:access",
 ] satisfies AuthScopeKey[]
 
 export const ADMIN_APP_SEED: RegisteredAppSeed = {
@@ -227,8 +236,67 @@ export const MASTRA_STUDIO_APP_SEED: RegisteredAppSeed = {
   ],
 }
 
+export const DEVELOPER_APP_SEED: RegisteredAppSeed = {
+  key: DEVELOPER_APP_KEY,
+  displayName: "Jesus Film Developer",
+  description:
+    "Developer portal for first-party and future third-party app registrations.",
+  ...FIRST_PARTY_OWNER,
+  environments: [
+    {
+      key: "local",
+      kind: "local",
+      clientId: "jfp_developer_local",
+      redirectUris: ["http://localhost:3006/api/auth/callback"],
+      postLogoutRedirectUris: ["http://localhost:3006/api/auth/login"],
+      allowedOrigins: ["http://localhost:3006"],
+      defaultScopes: DEVELOPER_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "preview",
+      kind: "preview",
+      clientId: "jfp_developer_preview",
+      redirectUris: [
+        "https://developer-preview.jesusfilm.org/api/auth/callback",
+      ],
+      postLogoutRedirectUris: [
+        "https://developer-preview.jesusfilm.org/api/auth/login",
+      ],
+      allowedOrigins: ["https://developer-preview.jesusfilm.org"],
+      defaultScopes: DEVELOPER_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "staging",
+      kind: "staging",
+      clientId: "jfp_developer_staging",
+      redirectUris: ["https://developer-stage.jesusfilm.org/api/auth/callback"],
+      postLogoutRedirectUris: [
+        "https://developer-stage.jesusfilm.org/api/auth/login",
+      ],
+      allowedOrigins: ["https://developer-stage.jesusfilm.org"],
+      defaultScopes: DEVELOPER_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "production",
+      kind: "production",
+      clientId: "jfp_developer_production",
+      redirectUris: ["https://developer.jesusfilm.org/api/auth/callback"],
+      postLogoutRedirectUris: [
+        "https://developer.jesusfilm.org/api/auth/login",
+      ],
+      allowedOrigins: ["https://developer.jesusfilm.org"],
+      defaultScopes: DEVELOPER_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+  ],
+}
+
 export const FIRST_PARTY_APP_SEEDS = [
   ADMIN_APP_SEED,
   MANAGER_APP_SEED,
   MASTRA_STUDIO_APP_SEED,
+  DEVELOPER_APP_SEED,
 ] satisfies RegisteredAppSeed[]

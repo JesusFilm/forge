@@ -36,6 +36,11 @@ export const AUTH_SCOPES = [
     description: "Allow sign-in to the Mastra Studio gateway.",
   },
   {
+    key: "developer:access",
+    label: "Access Developer",
+    description: "Allow sign-in to the Jesus Film Developer portal.",
+  },
+  {
     key: "admin:manager-session:validate",
     label: "Validate Manager sessions",
     description:

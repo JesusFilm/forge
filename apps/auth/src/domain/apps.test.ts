@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import {
   ADMIN_APP_SEED,
+  DEVELOPER_APP_KEY,
+  DEVELOPER_APP_SEED,
   FIRST_PARTY_APP_SEEDS,
   MASTRA_STUDIO_APP_KEY,
   MASTRA_STUDIO_APP_SEED,
@@ -15,6 +17,7 @@ describe("first-party app seeds", () => {
       ADMIN_APP_SEED.key,
       MANAGER_APP_KEY,
       MASTRA_STUDIO_APP_KEY,
+      DEVELOPER_APP_KEY,
     ])
     expect(MANAGER_APP_SEED).toEqual(
       expect.objectContaining({
@@ -97,6 +100,39 @@ describe("first-party app seeds", () => {
           ],
           allowedOrigins: ["https://forgemastra-gateway.up.railway.app"],
           defaultScopes: expect.arrayContaining(["mastra-studio:access"]),
+          autoApprove: true,
+        }),
+      ]),
+    )
+  })
+
+  it("registers Developer OAuth clients for the app registry portal", () => {
+    expect(DEVELOPER_APP_SEED.environments.map((env) => env.key)).toEqual([
+      "local",
+      "preview",
+      "staging",
+      "production",
+    ])
+    expect(DEVELOPER_APP_SEED.environments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "local",
+          clientId: "jfp_developer_local",
+          redirectUris: ["http://localhost:3006/api/auth/callback"],
+          postLogoutRedirectUris: ["http://localhost:3006/api/auth/login"],
+          allowedOrigins: ["http://localhost:3006"],
+          defaultScopes: expect.arrayContaining(["developer:access"]),
+          autoApprove: true,
+        }),
+        expect.objectContaining({
+          key: "production",
+          clientId: "jfp_developer_production",
+          redirectUris: ["https://developer.jesusfilm.org/api/auth/callback"],
+          postLogoutRedirectUris: [
+            "https://developer.jesusfilm.org/api/auth/login",
+          ],
+          allowedOrigins: ["https://developer.jesusfilm.org"],
+          defaultScopes: expect.arrayContaining(["developer:access"]),
           autoApprove: true,
         }),
       ]),
