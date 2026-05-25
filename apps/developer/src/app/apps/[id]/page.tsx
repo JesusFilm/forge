@@ -1,8 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import type { Route } from "next"
 
-import { grantSubjectLabel, listAppAccessGrants } from "@/data/access-control"
 import { formatEnum, getRegisteredApp } from "@/data/app-registry"
 import { requireDeveloperSession } from "@/lib/session"
 
@@ -15,10 +13,7 @@ export default async function AppDetailPage({
 }) {
   const { id } = await params
   const session = await requireDeveloperSession(`/apps/${id}`)
-  const [app, grants] = await Promise.all([
-    getRegisteredApp(id),
-    listAppAccessGrants({ appId: id }),
-  ])
+  const app = await getRegisteredApp(id)
 
   if (!app) notFound()
 
@@ -31,7 +26,6 @@ export default async function AppDetailPage({
         </div>
         <nav>
           <Link href="/">Apps</Link>
-          <Link href={"/access" as Route}>Access</Link>
         </nav>
         <div className="sidebar-note">
           <span>Signed in</span>
@@ -108,48 +102,6 @@ export default async function AppDetailPage({
                     <td>{environment.allowedOrigins.join(", ")}</td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="table-panel" aria-label="App access grants">
-          <div className="panel-heading">
-            <h3>Access grants</h3>
-          </div>
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Subject</th>
-                  <th>Environment</th>
-                  <th>Status</th>
-                  <th>Scopes</th>
-                  <th>Created</th>
-                </tr>
-              </thead>
-              <tbody>
-                {grants.map((grant) => (
-                  <tr key={grant.id}>
-                    <td>
-                      <strong>{grantSubjectLabel(grant)}</strong>
-                      <small>{formatEnum(grant.subjectType)}</small>
-                    </td>
-                    <td>{formatEnum(grant.environmentKind)}</td>
-                    <td>
-                      <span className="status-pill" data-state={grant.status}>
-                        {formatEnum(grant.status)}
-                      </span>
-                    </td>
-                    <td>{grant.scopes.join(", ") || "none"}</td>
-                    <td>{grant.createdAt.toISOString()}</td>
-                  </tr>
-                ))}
-                {grants.length === 0 ? (
-                  <tr>
-                    <td colSpan={5}>No Auth-owned grants recorded.</td>
-                  </tr>
-                ) : null}
               </tbody>
             </table>
           </div>

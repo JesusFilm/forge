@@ -3,7 +3,7 @@ id: "feat-135"
 title: "Developer Portal Self-Service Governance"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "not-started"
 start_date: "2026-06-02"
 duration: 10
 depends_on:
@@ -52,8 +52,6 @@ revocation changes.
 
 ## What To Build
 
-0. Start by moving visibility for app access grants into Developer and
-   inventorying the existing duplicated permission-management surfaces.
 1. Add Auth-owned management APIs for registry reads and carefully scoped
    mutations.
 2. Add first-party app/environment update flows with audit events.
@@ -84,8 +82,6 @@ revocation changes.
 ## Verification
 
 - Developer login requires Auth and `developer:access`.
-- Developer shows Auth-owned app grants and the Admin/Manager/Mastra migration
-  targets without exposing secrets.
 - Registry mutations are rejected without an active Developer session.
 - Every mutation creates an Auth audit event.
 - Internal app access changes are represented as Auth-owned grants and are
