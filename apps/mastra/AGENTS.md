@@ -9,6 +9,8 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   transcript vectors to Admin ingest.
 - Owns scene embedding provider calls and workflow diagnostics, then submits
   scene vectors to Admin's scene-specific ingest endpoint.
+- Owns experience embedding provider calls and workflow diagnostics, then
+  submits experience vectors to Admin's experience-specific ingest endpoint.
 - Builds Studio assets with `mastra build --studio` and serves them from the
   same internal Railway service.
 - Human Studio access is handled by `apps/mastra-gateway`; this service should

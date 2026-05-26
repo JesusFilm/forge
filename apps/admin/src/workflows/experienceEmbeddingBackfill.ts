@@ -14,8 +14,8 @@
 //     parallelism is added later, it lands as a follow-up using the
 //     `pLimit + Promise.allSettled` pattern documented in
 //     docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md.
-//   - No `missingArtifacts` projection. The per-locale embed step calls
-//     OpenRouter/OpenAI directly; an artifact-missing concept doesn't
+//   - No `missingArtifacts` projection. The per-locale embed step sends
+//     Admin-owned source data to Mastra; an artifact-missing concept doesn't
 //     apply.
 //
 // Cross-cutting reminders applied:
@@ -30,16 +30,17 @@
 //   - dispatch test required at the resolver layer (see
 //     experience-embedding-backfill.test.ts in graphql/mutations);
 //     this workflow file is exercised body-only here
-//   - the per-target step calls `embedExperienceLocale` (a plain
-//     service function) directly — no nested `start()`. Same shape
-//     R1/R2 use (workflow step → service helper). This keeps the
-//     `pnpm run-embeds --pipeline=experience` CLI path
-//     runtime-independent: every per-target body executes inline,
-//     no implicit workflow-runtime dependency mid-loop.
+//   - the per-target step calls Mastra's service route with source
+//     data resolved from Admin. Admin keeps target enumeration and
+//     storage authority; Mastra owns the provider call and Studio
+//     diagnostics.
 
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/db/client"
-import { embedExperienceLocale } from "@/services/embeddings.service"
+import {
+  launchMastraExperienceEmbeddingForLocale,
+  type MastraExperienceEmbeddingMode,
+} from "@/services/mastra-experience-embedding-client"
 
 export type ExperienceEmbeddingBackfillInput = {
   /**
@@ -61,6 +62,11 @@ export type ExperienceEmbeddingBackfillInput = {
    * are enumerated. Use `force: true` for model upgrades or drift fixes.
    */
   force?: boolean
+  /**
+   * Explicit Admin ingest mode. Omitted mode maps from `force` for backward
+   * compatibility: `force: true` => `force`, otherwise `idempotent`.
+   */
+  mode?: MastraExperienceEmbeddingMode
 }
 
 export type ExperienceEmbeddingBackfillTarget = {
@@ -73,8 +79,6 @@ export type ExperienceEmbeddingBackfillOutcome =
   | {
       status: "succeeded"
       target: ExperienceEmbeddingBackfillTarget
-      dimensions: number
-      model: string
       durationMs: number
     }
   | {
@@ -96,8 +100,9 @@ export type ExperienceEmbeddingBackfillReport = {
    * enumeration spanned every locale.
    */
   localeFilter: readonly string[] | null
-  /** Resolved value of the `force` input flag. */
+  /** Resolved enumeration force after applying explicit mode precedence. */
   force: boolean
+  mode: MastraExperienceEmbeddingMode
   outcomes: ExperienceEmbeddingBackfillOutcome[]
   succeeded: number
   failed: number
@@ -120,7 +125,12 @@ export async function runExperienceEmbeddingBackfill(
     input.bcp47Locales && input.bcp47Locales.length > 0
       ? input.bcp47Locales
       : null
-  const force = input.force === true
+  const requestedForce = input.force === true
+  const mode = input.mode ?? (requestedForce ? "force" : "idempotent")
+  const force =
+    input.mode == null
+      ? requestedForce
+      : mode === "force" || mode === "model-upgrade"
 
   const targets = await stepEnumerateTargets({
     experienceIdFilter,
@@ -136,12 +146,13 @@ export async function runExperienceEmbeddingBackfill(
       experienceIdFilter,
       localeFilter,
       force,
+      mode,
     }),
   )
 
   const outcomes: ExperienceEmbeddingBackfillOutcome[] = []
   for (const target of targets) {
-    const outcome = await stepEmbedTarget(target)
+    const outcome = await stepEmbedTarget(target, mode)
     logOutcome(outcome)
     outcomes.push(outcome)
   }
@@ -151,6 +162,7 @@ export async function runExperienceEmbeddingBackfill(
     experienceIdFilter,
     localeFilter,
     force,
+    mode,
     outcomes,
   })
 }
@@ -166,7 +178,7 @@ async function stepEnumerateTargets(args: {
   // Prisma's typed `where` can't filter on it. Same shape `fingerprint.ts`
   // uses for the search-eval content fingerprint, so the eligibility
   // predicate matches what hybrid-search actually retrieves over
-  // (status='published' + indexed embedding).
+  // (status='published' + archived_at IS NULL + indexed embedding).
   //
   // status='published' is the lowercase DB enum value (admin's
   // `LocaleStatus` Prisma enum maps to lowercase DB values per the
@@ -174,15 +186,15 @@ async function stepEnumerateTargets(args: {
   // so unpublished rows wouldn't earn the embedding cost.
   const experienceIdClause =
     args.experienceIdFilter && args.experienceIdFilter.length > 0
-      ? Prisma.sql`AND experience_id IN (${Prisma.join(args.experienceIdFilter)})`
+      ? Prisma.sql`AND el.experience_id IN (${Prisma.join(args.experienceIdFilter)})`
       : Prisma.empty
   const localeClause =
     args.localeFilter && args.localeFilter.length > 0
-      ? Prisma.sql`AND locale IN (${Prisma.join(args.localeFilter)})`
+      ? Prisma.sql`AND el.locale IN (${Prisma.join(args.localeFilter)})`
       : Prisma.empty
   const embeddingClause = args.force
     ? Prisma.empty
-    : Prisma.sql`AND embedding IS NULL`
+    : Prisma.sql`AND el.embedding IS NULL`
 
   const rows = await prisma.$queryRaw<
     Array<{
@@ -191,13 +203,15 @@ async function stepEnumerateTargets(args: {
       locale: string
     }>
   >`
-    SELECT id, experience_id, locale
-    FROM experience_locale
-    WHERE status = 'published'
+    SELECT el.id, el.experience_id, el.locale
+    FROM experience_locale el
+    JOIN experience e ON e.id = el.experience_id
+    WHERE el.status = 'published'
+    AND e.archived_at IS NULL
     ${embeddingClause}
     ${experienceIdClause}
     ${localeClause}
-    ORDER BY experience_id, locale
+    ORDER BY el.experience_id, el.locale
   `
 
   return rows.map((row) => ({
@@ -209,17 +223,25 @@ async function stepEnumerateTargets(args: {
 
 async function stepEmbedTarget(
   target: ExperienceEmbeddingBackfillTarget,
+  mode: MastraExperienceEmbeddingMode,
 ): Promise<ExperienceEmbeddingBackfillOutcome> {
   "use step"
 
   const startedAt = Date.now()
   try {
-    const result = await embedExperienceLocale(target.experienceLocaleId)
+    const result = await launchMastraExperienceEmbeddingForLocale(
+      target.experienceLocaleId,
+      { mode },
+    )
+    if (!result.ok) {
+      throw new Error(
+        `Mastra experience embedding failed: ${result.reason}` +
+          (result.adminReason ? ` (${result.adminReason})` : ""),
+      )
+    }
     return {
       status: "succeeded",
       target,
-      dimensions: result.dimensions,
-      model: result.model,
       durationMs: Date.now() - startedAt,
     }
   } catch (err) {
@@ -237,6 +259,7 @@ function stepReport(args: {
   experienceIdFilter: readonly string[] | null
   localeFilter: readonly string[] | null
   force: boolean
+  mode: MastraExperienceEmbeddingMode
   outcomes: ExperienceEmbeddingBackfillOutcome[]
 }): ExperienceEmbeddingBackfillReport {
   let succeeded = 0
@@ -262,6 +285,7 @@ function stepReport(args: {
     experienceIdFilter: args.experienceIdFilter,
     localeFilter: args.localeFilter,
     force: args.force,
+    mode: args.mode,
     outcomes: args.outcomes,
     succeeded,
     failed,
@@ -281,8 +305,6 @@ function logOutcome(outcome: ExperienceEmbeddingBackfillOutcome): void {
             experienceId: outcome.target.experienceId,
             experienceLocaleId: outcome.target.experienceLocaleId,
             locale: outcome.target.locale,
-            dimensions: outcome.dimensions,
-            model: outcome.model,
             durationMs: outcome.durationMs,
           }),
         )

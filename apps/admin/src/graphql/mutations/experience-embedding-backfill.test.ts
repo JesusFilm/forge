@@ -28,6 +28,7 @@ const BASE_REPORT: ExperienceEmbeddingBackfillReport = {
   experienceIdFilter: null,
   localeFilter: ["en"],
   force: false,
+  mode: "idempotent",
   outcomes: [],
   succeeded: 1,
   failed: 0,
@@ -63,6 +64,19 @@ describe("dispatchExperienceEmbeddingBackfill", () => {
     await dispatchExperienceEmbeddingBackfill({})
 
     dispatch.expectDispatched(runExperienceEmbeddingBackfill, [{}])
+  })
+
+  it("passes an explicit mode through to the workflow input", async () => {
+    dispatch.mockReturnValue(BASE_REPORT)
+
+    const report = await dispatchExperienceEmbeddingBackfill({
+      mode: "model-upgrade",
+    })
+
+    dispatch.expectDispatched(runExperienceEmbeddingBackfill, [
+      { mode: "model-upgrade" },
+    ])
+    expect(report).toEqual(BASE_REPORT)
   })
 
   it("propagates workflow rejections as thrown errors", async () => {

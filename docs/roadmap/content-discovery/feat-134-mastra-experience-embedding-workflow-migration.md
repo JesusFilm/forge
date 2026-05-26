@@ -3,7 +3,7 @@ id: "feat-134"
 title: "Mastra experience embedding workflow migration"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: "2026-05-25"
 duration: 4
 depends_on:
@@ -54,7 +54,7 @@ provider call, run diagnostics, retries, provenance, and workflow visibility.
 ## Grep These
 
 ```
-rg -n "experienceEmbeddingBackfill|embedExperienceLocale|ExperienceLocale" apps/admin/src apps/admin/prisma
+rg -n "experienceEmbeddingBackfill|launchMastraExperienceEmbeddingForLocale|ExperienceLocale" apps/admin/src apps/admin/prisma
 rg -n "generateExperienceEmbedding|generateExperienceEmbeddings|OPENROUTER_EMBEDDING_MODEL" apps/admin/src
 rg -n "experience-embedding-backfill|triggerExperienceEmbedding" apps/admin/src/graphql
 rg -n "registerApiRoute|createWorkflow|MASTRA_SERVICE_API_KEYS" apps/mastra/src

@@ -8,6 +8,8 @@ const LOCAL_DATABASE_URL =
 const DEFAULT_OPENROUTER_EMBEDDINGS_BASE_URL = "https://openrouter.ai/api/v1"
 
 const envSchema = z.object({
+  ADMIN_EXPERIENCE_INGEST_URL: z.string().url().optional(),
+  ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY: z.string().min(1).optional(),
   ADMIN_MASTRA_SCENE_INGEST_API_KEY: z.string().min(1).optional(),
   ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY: z.string().min(1).optional(),
   ADMIN_SCENE_INGEST_URL: z.string().url().optional(),
@@ -30,6 +32,11 @@ const envSchema = z.object({
     .url()
     .default(DEFAULT_OPENROUTER_EMBEDDINGS_BASE_URL),
   RAILWAY_VOLUME_MOUNT_PATH: z.string().min(1).optional(),
+  EXPERIENCE_EMBEDDING_MODEL: z
+    .string()
+    .min(1)
+    .default("openai/text-embedding-3-small"),
+  EXPERIENCE_EMBEDDING_PROVIDER: z.string().min(1).default("openai"),
   SCENE_EMBEDDING_MODEL: z
     .string()
     .min(1)
@@ -43,6 +50,12 @@ const envSchema = z.object({
 })
 
 export const env = envSchema.parse({
+  ADMIN_EXPERIENCE_INGEST_URL: emptyToUndefined(
+    process.env.ADMIN_EXPERIENCE_INGEST_URL,
+  ),
+  ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY: emptyToUndefined(
+    process.env.ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY,
+  ),
   ADMIN_MASTRA_SCENE_INGEST_API_KEY: emptyToUndefined(
     process.env.ADMIN_MASTRA_SCENE_INGEST_API_KEY,
   ),
@@ -71,6 +84,12 @@ export const env = envSchema.parse({
   RAILWAY_VOLUME_MOUNT_PATH: emptyToUndefined(
     process.env.RAILWAY_VOLUME_MOUNT_PATH,
   ),
+  EXPERIENCE_EMBEDDING_MODEL: emptyToUndefined(
+    process.env.EXPERIENCE_EMBEDDING_MODEL,
+  ),
+  EXPERIENCE_EMBEDDING_PROVIDER: emptyToUndefined(
+    process.env.EXPERIENCE_EMBEDDING_PROVIDER,
+  ),
   SCENE_EMBEDDING_MODEL: emptyToUndefined(process.env.SCENE_EMBEDDING_MODEL),
   SCENE_EMBEDDING_PROVIDER: emptyToUndefined(
     process.env.SCENE_EMBEDDING_PROVIDER,
@@ -88,6 +107,10 @@ export function assertMastraRuntimeEnv() {
 
   const missing = [
     [
+      "ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY",
+      env.ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY,
+    ],
+    [
       "ADMIN_MASTRA_SCENE_INGEST_API_KEY",
       env.ADMIN_MASTRA_SCENE_INGEST_API_KEY,
     ],
@@ -95,6 +118,7 @@ export function assertMastraRuntimeEnv() {
       "ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY",
       env.ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY,
     ],
+    ["ADMIN_EXPERIENCE_INGEST_URL", env.ADMIN_EXPERIENCE_INGEST_URL],
     ["ADMIN_SCENE_INGEST_URL", env.ADMIN_SCENE_INGEST_URL],
     ["ADMIN_TRANSCRIPT_INGEST_URL", env.ADMIN_TRANSCRIPT_INGEST_URL],
     ["DATABASE_URL", env.DATABASE_URL],
@@ -139,6 +163,20 @@ export function getTranscriptEmbeddingProviderConfig() {
 }
 
 export function getSceneEmbeddingProviderConfig() {
+  if (env.OPENROUTER_API_KEY) {
+    return {
+      apiKey: env.OPENROUTER_API_KEY,
+      baseUrl: env.OPENROUTER_EMBEDDINGS_BASE_URL,
+    }
+  }
+
+  return {
+    apiKey: env.OPENAI_API_KEY,
+    baseUrl: env.OPENAI_EMBEDDINGS_BASE_URL,
+  }
+}
+
+export function getExperienceEmbeddingProviderConfig() {
   if (env.OPENROUTER_API_KEY) {
     return {
       apiKey: env.OPENROUTER_API_KEY,

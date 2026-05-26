@@ -62,10 +62,14 @@ pnpm --filter @forge/mastra lint
 | `TRANSCRIPT_EMBEDDING_PROVIDER`          | Provider stamp for transcript embeddings. Defaults to `openai`.                                                            |
 | `SCENE_EMBEDDING_MODEL`                  | Model stamp for scene embeddings. Defaults to `openai/text-embedding-3-small`.                                             |
 | `SCENE_EMBEDDING_PROVIDER`               | Provider stamp for scene embeddings. Defaults to `openai`.                                                                 |
+| `EXPERIENCE_EMBEDDING_MODEL`             | Model stamp for experience embeddings. Defaults to `openai/text-embedding-3-small`.                                        |
+| `EXPERIENCE_EMBEDDING_PROVIDER`          | Provider stamp for experience embeddings. Defaults to `openai`.                                                            |
 | `ADMIN_TRANSCRIPT_INGEST_URL`            | Admin internal transcript ingest endpoint. Required in production runtime.                                                 |
 | `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY` | Bearer key Mastra presents to Admin transcript ingest. Required in production runtime.                                     |
 | `ADMIN_SCENE_INGEST_URL`                 | Admin internal scene ingest endpoint. Required in production runtime.                                                      |
 | `ADMIN_MASTRA_SCENE_INGEST_API_KEY`      | Bearer key Mastra presents to Admin scene ingest. Required in production runtime.                                          |
+| `ADMIN_EXPERIENCE_INGEST_URL`            | Admin internal experience ingest endpoint. Required in production runtime.                                                 |
+| `ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY` | Bearer key Mastra presents to Admin experience ingest. Required in production runtime.                                     |
 | `PORT`                                   | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                          |
 | `MASTRA_STUDIO_PATH`                     | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                          |
 

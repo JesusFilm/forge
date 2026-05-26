@@ -330,18 +330,81 @@ describe("generateExperienceEmbedding (singular) — back-compat error contract"
   })
 })
 
-describe("writeExperienceLocaleEmbedding", () => {
-  it("rejects non-derived callers", async () => {
-    const { writeExperienceLocaleEmbedding } =
+describe("buildExperienceEmbeddingSource", () => {
+  it("returns deterministic text, source hash, and safe summary", async () => {
+    const { buildExperienceEmbeddingSource } =
       await import("./embeddings.service")
 
+    const source = buildExperienceEmbeddingSource({
+      title: "Hope",
+      metaDescription: "A story of hope.",
+      ogTitle: "Hope",
+      ogDescription: null,
+      blocks: [{ t: "paragraph", text: "Jesus brings hope." }],
+    })
+
+    expect(source.text).toContain("Hope")
+    expect(source.text).toContain("Jesus brings hope.")
+    expect(source.contentHash).toMatch(/^sha256:[a-f0-9]{64}$/)
+    expect(source.summary).toContain("chars=")
+    expect(source.summary).toContain("title=present")
+    expect(source.summary).not.toContain("Jesus brings hope")
+  })
+})
+
+describe("writeExperienceEmbeddingPayloadInTransaction", () => {
+  function provenance() {
+    return {
+      sourceContentHash: "sha256:source",
+      sourceSummary: "chars=10;lines=1;title=present;meta=absent;og=absent",
+      model: "openai/text-embedding-3-small",
+      dimensions: 1536,
+      provider: "openai",
+      generationMode: "idempotent" as const,
+      mastraRunId: "run-1",
+      generatedAt: "2026-05-26T00:00:00.000Z",
+    }
+  }
+
+  it("rejects wrong vector dimensions before writing", async () => {
+    const { writeExperienceEmbeddingPayloadInTransaction } =
+      await import("./embeddings.service")
+    const executeRaw = vi.fn()
+
     await expect(
-      writeExperienceLocaleEmbedding({
-        prisma: { $executeRaw: vi.fn() } as never,
+      writeExperienceEmbeddingPayloadInTransaction(
+        { $executeRaw: executeRaw } as never,
+        {
+          localeId: "loc-1",
+          embedding: [0.1],
+          provenance: provenance(),
+          user: { id: "system", role: "SYSTEM" },
+        },
+      ),
+    ).rejects.toThrow(/expected 1536/)
+    expect(executeRaw).not.toHaveBeenCalled()
+  })
+
+  it("writes vector and compact Mastra provenance through raw SQL", async () => {
+    const { writeExperienceEmbeddingPayloadInTransaction } =
+      await import("./embeddings.service")
+    const executeRaw = vi.fn()
+
+    await writeExperienceEmbeddingPayloadInTransaction(
+      { $executeRaw: executeRaw } as never,
+      {
         localeId: "loc-1",
-        embedding: [0.1, 0.2],
-        user: { id: "editor-1", role: "EDITOR" },
-      }),
-    ).rejects.toThrow("Forbidden")
+        embedding: Array.from({ length: 1536 }, (_, index) => index / 1000),
+        provenance: provenance(),
+        user: { id: "system", role: "SYSTEM" },
+      },
+    )
+
+    expect(executeRaw).toHaveBeenCalledTimes(1)
+    const strings = executeRaw.mock.calls[0]![0] as TemplateStringsArray
+    const sql = Array.from(strings).join("?")
+    expect(sql).toContain("embedding = ?::vector")
+    expect(sql).toContain("embedding_source_content_hash")
+    expect(sql).toContain("embedding_mastra_run_id")
   })
 })

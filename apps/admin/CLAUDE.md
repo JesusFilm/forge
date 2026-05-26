@@ -1063,9 +1063,11 @@ eligible row"):
 
 **Operational runbook:**
 
-1. Ensure `OPENROUTER_API_KEY` (or `OPENAI_API_KEY`) is set on the
-   `forge-admin` Railway service. No other env vars required —
-   `experience_locale` lives in admin's own Postgres.
+1. Ensure Admin can launch Mastra and receive the callback:
+   `MASTRA_BASE_URL`, `MASTRA_SERVICE_API_KEY`, and
+   `MASTRA_EXPERIENCE_INGEST_API_KEYS` on `forge-admin`; Mastra needs
+   `ADMIN_EXPERIENCE_INGEST_URL`, `ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY`,
+   and an embedding provider key.
 2. Invoke via GraphQL with an ADMIN session, or via bearer auth
    using a `WORKFLOW_API_KEYS` key:
 
@@ -1614,8 +1616,8 @@ path and the Cloudflare 524 edge timeout. Per
    MASTRA_BASE_URL=...
    MASTRA_SERVICE_API_KEY=...
    MASTRA_TRANSCRIPT_INGEST_API_KEYS=...
-   # Scene embeddings still use Admin's provider path.
-   OPENROUTER_API_KEY=...
+   MASTRA_SCENE_INGEST_API_KEYS=...
+   MASTRA_EXPERIENCE_INGEST_API_KEYS=...
    ```
 
    Pull these from Railway's `forge-admin` service env (read-only —
@@ -1626,20 +1628,23 @@ path and the Cloudflare 524 edge timeout. Per
    ```bash
    DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
    pnpm --filter @forge/admin run-embeds --pipeline=transcript
-   #   --pipeline=scene|transcript|both         (required)
+   #   --pipeline=scene|transcript|experience|both         (required)
    #   --core-id=<id>          (repeatable; restrict to specific videos)
    #   --locale=<bcp47>        (repeatable; R1 filter)
    #   --language=<bcp47>      (repeatable; transcript filter)
    #   --transcript-mode=idempotent|repair|force|model-upgrade
+   #   --experience-mode=idempotent|repair|force|model-upgrade
+   #   --experience-id=<id>    (repeatable; experience filter)
    #   --mapping-key=admin-migrations/core-id-mapping.json   (default)
    ```
 
-   Direct-invokes `runSceneEmbeddingBackfill` /
-   `runTranscriptEmbeddingBackfill` against the in-process Prisma
-   singleton, mirroring `pnpm run-sync`. Per-pipeline error
-   isolation; structured JSON output. Scene and transcript runs launch
-   Mastra, which generates vectors and calls Admin ingest; Admin keeps
-   vector storage and search retrieval authority.
+   Direct-invokes `runSceneEmbeddingBackfill`,
+   `runTranscriptEmbeddingBackfill`, or `runExperienceEmbeddingBackfill`
+   against the in-process Prisma singleton, mirroring `pnpm run-sync`.
+   Per-pipeline error isolation; structured JSON output. Scene,
+   transcript, and experience runs launch Mastra, which generates vectors
+   and calls Admin ingest; Admin keeps vector storage and search retrieval
+   authority.
 
    Scene-including runs perform a preflight before indexing: admin S3
    reachability, manager artifact S3 reachability, mapping load, and
