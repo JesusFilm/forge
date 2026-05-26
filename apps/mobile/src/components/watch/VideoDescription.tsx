@@ -41,12 +41,6 @@ export function VideoDescription({ description }: VideoDescriptionProps) {
   return (
     <View style={[layout.sectionOuter, styles.localContainer]}>
       <Text
-        style={[text.sectionHeading, styles.localHeading, typography.heading]}
-        accessibilityRole="header"
-      >
-        About This Video
-      </Text>
-      <Text
         style={[styles.body, typography.body]}
         numberOfLines={expanded ? undefined : COLLAPSED_LINES}
         onTextLayout={handleTextLayout}
