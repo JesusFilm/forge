@@ -213,11 +213,9 @@ describe("HeroPlayer — initial mount", () => {
     const wrapper = container.querySelector(
       '[data-testid="hero-player-wrapper"]',
     ) as HTMLDivElement
-    expect(wrapper.className).toContain(
-      "h-[clamp(20rem,calc(100svh-15rem),48rem)]",
-    )
-    expect(wrapper.className).toContain("md:aspect-video")
-    expect(wrapper.className).toContain("max-h-svh")
+    expect(wrapper.className).toContain("h-[calc(100svh-300px)]")
+    expect(wrapper.className).toContain("min-h-[400px]")
+    expect(wrapper.className).toContain("overflow-x-clip")
     expect(wrapper.className).not.toContain("md:max-w-[calc(100svh*16/9)]")
 
     const pill = container.querySelector(
@@ -227,11 +225,9 @@ describe("HeroPlayer — initial mount", () => {
       pill.click()
     })
 
-    expect(wrapper.className).toContain(
-      "h-[clamp(20rem,calc(100svh-15rem),48rem)]",
-    )
-    expect(wrapper.className).toContain("md:aspect-video")
-    expect(wrapper.className).toContain("md:max-w-[calc(100svh*16/9)]")
+    expect(wrapper.className).toContain("h-[calc(100svh-300px)]")
+    expect(wrapper.className).toContain("min-h-[400px]")
+    expect(wrapper.className).toContain("overflow-hidden")
   })
 
   it("renders a 'Play with Sound' pill (default state) above the player", () => {

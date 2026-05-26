@@ -77,15 +77,6 @@ const OBSCURED_PAUSE_THRESHOLD = 0.6
 // globe button appears. With only one variant there's nothing to switch to.
 const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
 
-// Match the committed player frame's height before and after reveal. Preview
-// keeps full-width cover rendering, but shares the same mobile-safe frame as
-// the sound-on player so "Play with Sound" does not resize the hero. Mobile
-// reserves enough first-viewport space for the sibling carousel below it, then
-// takes the remaining height with a clamp so very short/tall devices stay sane.
-// Desktop remains a strict 16:9 frame.
-const HERO_FRAME_SIZE_CLASSES =
-  "h-[clamp(20rem,calc(100svh-15rem),48rem)] md:h-auto md:aspect-video w-full max-h-svh"
-
 export function HeroPlayer({
   block,
   onPlayerReady,
@@ -602,11 +593,7 @@ export function HeroPlayer({
         data-testid="hero-player-wrapper"
         data-chrome-revealed={chromeRevealed ? "true" : "false"}
         data-autoplay-blocked={autoplayBlocked ? "true" : "false"}
-        className={`sticky overflow-hidden bg-black ${
-          chromeRevealed
-            ? `mx-auto ${HERO_FRAME_SIZE_CLASSES} md:max-w-[calc(100svh*16/9)]`
-            : HERO_FRAME_SIZE_CLASSES
-        }`}
+        className={`sticky w-full h-[calc(100svh-300px)] min-h-[400px] bg-black ${chromeRevealed ? "overflow-hidden" : "overflow-x-clip"}`}
         style={{
           // 100svh tracks the *small* viewport on iOS Safari (visible area
           // when the URL bar is showing). Plain 100vh is the *large*
@@ -643,7 +630,7 @@ export function HeroPlayer({
           onLoadedMetadata={handleLoadedMetadata}
           onCanPlay={handleCanPlay}
           onError={handlePlayerError}
-          className="block h-full w-full"
+          className={`block h-full w-full origin-top ${chromeRevealed ? "" : "scale-y-110"}`}
         />
 
         {!chromeRevealed && overlay == null ? (

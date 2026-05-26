@@ -14,6 +14,7 @@ import {
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
   EmbeddingProviderError,
   requestEmbeddingVectors,
+  validateEmbeddingProviderResult,
   type EmbeddingProviderResult,
 } from "../../services/embedding-provider"
 import { env, getTranscriptEmbeddingProviderConfig } from "../../config/env"
@@ -820,29 +821,34 @@ export async function embedPlannedTranscript(
   for (let index = 0; index < batches.length; index += 1) {
     const batch = batches[index]!
     const providerConfig = getTranscriptEmbeddingProviderConfig()
-    const result = options.embeddingRequester
-      ? await options.embeddingRequester(
-          batch.map((chunk) => chunk.text),
-          {
-            expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
-            context: `Transcript embedding batch ${index + 1}/${batches.length}`,
-            itemLabel: "chunks",
-          },
-        )
-      : await requestEmbeddingVectors(
-          batch.map((chunk) => chunk.text),
-          {
-            apiKey: options.apiKey ?? providerConfig.apiKey,
-            baseUrl: options.embeddingsBaseUrl ?? providerConfig.baseUrl,
-            model: planned.model.name,
-            provider: planned.model.provider,
-            expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
-            context: `Transcript embedding batch ${index + 1}/${batches.length}`,
-            itemLabel: "chunks",
-            timeoutMs: options.timeoutMs,
-            fetchImpl: options.fetchImpl,
-          },
-        )
+    const batchInput = batch.map((chunk) => chunk.text)
+    const requestContext = `Transcript embedding batch ${index + 1}/${batches.length}`
+    const rawResult = options.embeddingRequester
+      ? await options.embeddingRequester(batchInput, {
+          expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+          context: requestContext,
+          itemLabel: "chunks",
+        })
+      : await requestEmbeddingVectors(batchInput, {
+          apiKey: options.apiKey ?? providerConfig.apiKey,
+          baseUrl: options.embeddingsBaseUrl ?? providerConfig.baseUrl,
+          model: planned.model.name,
+          provider: planned.model.provider,
+          expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+          context: requestContext,
+          itemLabel: "chunks",
+          timeoutMs: options.timeoutMs,
+          fetchImpl: options.fetchImpl,
+        })
+    const result = validateEmbeddingProviderResult(
+      rawResult,
+      batchInput.length,
+      {
+        expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+        context: requestContext,
+        itemLabel: "chunks",
+      },
+    )
 
     tokenCount += result.tokenCount
     chunks.push(

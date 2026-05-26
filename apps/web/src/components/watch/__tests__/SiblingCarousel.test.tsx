@@ -176,14 +176,9 @@ describe("SiblingCarousel — happy path", () => {
     expect(active!.className).toContain("border-white")
     expect(active!.className).toContain("aspect-square")
     expect(active!.className).not.toContain("aspect-[1.58/1]")
-    expect(active!.className).toContain("after:inset-0")
-    expect(active!.className).toContain("after:border-4")
-    expect(active!.className).toContain(
-      "after:rounded-[calc(theme(borderRadius.lg)-4px)]",
-    )
-    expect(active!.className).toContain("after:z-40")
-    expect(active!.className).toContain("inset_0_1px_0_rgba")
-    expect(active!.className).toContain("inset_0_0_0_1px_rgba")
+    expect(active!.className).not.toContain("after:inset-0")
+    expect(active!.className).not.toContain("after:border-4")
+    expect(active!.className).toContain("shadow-[0_2px_6px_rgba")
     // 2-segment route shape: `/{slug}/{locale}` — the parent slug segment
     // was removed when the watch route migrated to flat `[slug]/[locale]`.
     expect(active!.getAttribute("data-href")).toBe("/child-3-slug/english")

@@ -79,14 +79,14 @@ export function WatchSectionRenderer({
           className="relative w-full text-white"
         >
           <div
-            className="relative mx-auto w-full overflow-hidden bg-stone-800 backdrop-blur-2xl md:max-w-[1920px]"
+            className="relative mx-auto w-full overflow-hidden backdrop-blur-2xl md:max-w-[1920px]"
             style={{
-              backgroundColor: "rgb(var(--color-section-default) / 0.65)",
+              backgroundColor: "rgb(var(--color-section-default) / 0.35)",
             }}
           >
             <div
               data-testid="watch-body-texture"
-              className="absolute inset-0 z-1 bg-repeat opacity-70 mix-blend-multiply"
+              className="absolute inset-0 z-1 bg-repeat opacity-30 mix-blend-multiply"
               style={{ backgroundImage: 'url("/watch/images/overlay.svg")' }}
               aria-hidden="true"
             />

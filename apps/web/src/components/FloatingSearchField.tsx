@@ -8,19 +8,20 @@ import {
 } from "react"
 import { Search } from "lucide-react"
 
+import { GLASS_OUTLINE_CLASS } from "@/lib/glass-outline"
+
 function iconClassName(variant: "glass" | "solid") {
   return variant === "solid"
     ? "h-6 w-6 shrink-0 text-stone-950"
-    : "h-6 w-6 shrink-0 text-white/85 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] transition-[color,filter] duration-300 group-hover:text-stone-950 group-hover:drop-shadow-none"
+    : "h-6 w-6 shrink-0 text-white/85 transition-colors duration-300 group-hover:text-stone-950"
 }
 
-const FIELD_BASE_CLASS =
-  "group flex min-w-0 cursor-text items-center gap-3 rounded-[35px] px-6 py-3 text-left shadow-xl outline-1 outline-white/20 transition-[top,opacity,background-color,color,text-shadow] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
+const FIELD_BASE_CLASS = `group flex min-w-0 cursor-text items-center gap-3 rounded-[35px] px-6 py-3 text-left shadow-xl ${GLASS_OUTLINE_CLASS} transition-[top,opacity,background-color,color] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2`
 
 const FIELD_GLASS_CLASS =
-  "bg-white/10 text-white backdrop-blur-[10px] hover:bg-white hover:text-stone-950 hover:[text-shadow:none] [text-shadow:0_1px_3px_rgba(0,0,0,0.5)]"
+  "bg-white/10 text-white backdrop-blur-[10px] hover:bg-white hover:text-stone-950"
 
-const FIELD_SOLID_CLASS = "bg-white text-stone-950 [text-shadow:none]"
+const FIELD_SOLID_CLASS = "bg-white text-stone-950"
 
 export function FloatingSearchFieldButton({
   display,

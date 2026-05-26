@@ -1,8 +1,4 @@
-import type {
-  EmbeddingSyncReport,
-  MuxSyncComparison,
-  SceneEmbeddingSyncReport,
-} from "@/types/job"
+import type { MuxSyncComparison, SceneEmbeddingSyncReport } from "@/types/job"
 
 export type ReviewMode = "after" | "before"
 
@@ -97,7 +93,6 @@ export type JobReviewContext = {
   after: JobReviewSnapshot
   compare: {
     muxSyncComparison?: MuxSyncComparison
-    embeddingSync?: EmbeddingSyncReport
     sceneEmbeddingSync?: SceneEmbeddingSyncReport
   }
 }
