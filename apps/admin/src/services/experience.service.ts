@@ -25,6 +25,13 @@ import {
   ArchiveExperienceInput,
 } from "./experience.schemas"
 
+export class ExperienceEmbeddingEligibilityError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "ExperienceEmbeddingEligibilityError"
+  }
+}
+
 function snapshotEnvelope(
   data: Prisma.InputJsonObject,
 ): Prisma.InputJsonObject {
@@ -565,6 +572,14 @@ export class ExperienceService {
 
     if (!canEditExperienceLocale(user, locale)) {
       throw new ForbiddenError()
+    }
+    if (locale.experience.archivedAt != null) {
+      throw new NotFoundError("ExperienceLocale", localeId)
+    }
+    if (locale.status !== "PUBLISHED") {
+      throw new ExperienceEmbeddingEligibilityError(
+        "ExperienceLocale must be published before embedding",
+      )
     }
 
     // Dispatch via the useworkflow runtime — direct invocation throws in

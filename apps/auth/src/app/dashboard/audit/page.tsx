@@ -1,5 +1,13 @@
 import { prisma } from "@/db/client"
 
+import {
+  DashboardPageShell,
+  DashboardPanel,
+  DashboardTable,
+  DashboardTd,
+  DashboardTh,
+} from "@/app/dashboard/dashboard-components"
+
 export const dynamic = "force-dynamic"
 
 export default async function AuditPage() {
@@ -13,42 +21,46 @@ export default async function AuditPage() {
   })
 
   return (
-    <section className="dashboard-section">
-      <header className="dashboard-header">
+    <DashboardPageShell>
+      <header className="flex items-end justify-between gap-4">
         <div>
-          <p className="dashboard-kicker">Audit</p>
-          <h2>Recent Auth events</h2>
+          <p className="m-0 text-[11px] font-bold uppercase tracking-[0.08em] text-[#ef3340]">
+            Audit
+          </p>
+          <h2 className="mb-0 mt-0.5 text-3xl font-bold">Recent Auth events</h2>
         </div>
       </header>
 
-      <div className="data-panel">
-        <table>
+      <DashboardPanel>
+        <DashboardTable>
           <thead>
             <tr>
-              <th>Event</th>
-              <th>Severity</th>
-              <th>Actor</th>
-              <th>App</th>
-              <th>Metadata</th>
-              <th>Created</th>
+              <DashboardTh>Event</DashboardTh>
+              <DashboardTh>Severity</DashboardTh>
+              <DashboardTh>Actor</DashboardTh>
+              <DashboardTh>App</DashboardTh>
+              <DashboardTh>Metadata</DashboardTh>
+              <DashboardTh>Created</DashboardTh>
             </tr>
           </thead>
           <tbody>
             {events.map((event) => (
               <tr key={event.id}>
-                <td>{event.eventType}</td>
-                <td>{event.severity.toLowerCase()}</td>
-                <td>{event.actorUser?.email ?? "system"}</td>
-                <td>{event.app?.displayName ?? "none"}</td>
-                <td>
-                  <code>{JSON.stringify(event.metadata)}</code>
-                </td>
-                <td>{event.createdAt.toISOString()}</td>
+                <DashboardTd>{event.eventType}</DashboardTd>
+                <DashboardTd>{event.severity.toLowerCase()}</DashboardTd>
+                <DashboardTd>{event.actorUser?.email ?? "system"}</DashboardTd>
+                <DashboardTd>{event.app?.displayName ?? "none"}</DashboardTd>
+                <DashboardTd>
+                  <code className="whitespace-normal break-words">
+                    {JSON.stringify(event.metadata)}
+                  </code>
+                </DashboardTd>
+                <DashboardTd>{event.createdAt.toISOString()}</DashboardTd>
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
-    </section>
+        </DashboardTable>
+      </DashboardPanel>
+    </DashboardPageShell>
   )
 }

@@ -244,6 +244,7 @@ describe("runSceneBranch", () => {
           cmsVideoId: 123,
         },
       ],
+      mode: undefined,
     })
     expect(writes.map((line) => JSON.parse(line).event)).toEqual([
       "run-embeds.scene.preflight",
@@ -318,6 +319,39 @@ describe("runSceneBranch", () => {
       error: "Scene retry selector mismatch",
       details: { retrySelection },
     })
+  })
+
+  it("passes scene overwrite mode through to the scene workflow branch", async () => {
+    const writes: string[] = []
+    const runScene = vi.fn(async () => ({
+      totalTargets: 1,
+      succeeded: 1,
+      skipped: 0,
+      failed: 0,
+    }))
+
+    await runSceneBranch({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+      coreIds: ["core-a"],
+      locales: ["en"],
+      sceneMode: "repair",
+      sceneRetryTargets: undefined,
+      runManagerArtifactsPreflight: vi.fn(async () => ({
+        ok: true,
+        checks: [],
+      })),
+      runSceneEmbeddingBackfill: runScene,
+      writeStdout: (line) => writes.push(line),
+    })
+
+    expect(runScene).toHaveBeenCalledWith({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+      coreIds: ["core-a"],
+      locales: ["en"],
+      retryTargets: undefined,
+      mode: "repair",
+    })
+    expect(JSON.parse(writes[1]!).mode).toBe("repair")
   })
 })
 

@@ -14,6 +14,10 @@ type RouteContext = {
 
 const WINDOW_MS = 60_000
 const MAX_ATTEMPTS = 10
+const LAST_LOGIN_METHOD_COOKIE = "forge_auth_last_login_method"
+const LAST_LOGIN_METHOD_MAX_AGE = 60 * 60 * 24 * 365
+
+type LastLoginMethod = "apple" | "email" | "facebook" | "google" | "okta"
 
 function isFormPostRequest(request: Request): boolean {
   return (
@@ -35,6 +39,67 @@ function audit(event: string, email?: string): void {
       service: "forge-auth",
     }),
   )
+}
+
+function isLastLoginMethod(
+  value: string | undefined,
+): value is LastLoginMethod {
+  return (
+    value === "apple" ||
+    value === "email" ||
+    value === "facebook" ||
+    value === "google" ||
+    value === "okta"
+  )
+}
+
+function lastLoginMethodCookie(method: LastLoginMethod): string {
+  const parts = [
+    `${LAST_LOGIN_METHOD_COOKIE}=${encodeURIComponent(method)}`,
+    "Path=/",
+    `Max-Age=${LAST_LOGIN_METHOD_MAX_AGE}`,
+    "SameSite=Lax",
+  ]
+
+  if (getAuthBaseUrl().startsWith("https://")) {
+    parts.push("Secure")
+  }
+
+  return parts.join("; ")
+}
+
+function withLastLoginMethodCookie(
+  response: Response,
+  method: LastLoginMethod,
+): Response {
+  const headers = new Headers(response.headers)
+  headers.append("set-cookie", lastLoginMethodCookie(method))
+
+  return new Response(response.body, {
+    headers,
+    status: response.status,
+    statusText: response.statusText,
+  })
+}
+
+function hasAuthSessionCookie(response: Response): boolean {
+  return (response.headers.get("set-cookie") ?? "").includes(
+    "better-auth.session",
+  )
+}
+
+function isRedirectSuccess(response: Response): boolean {
+  if (response.status < 300 || response.status >= 400) return false
+  if (!hasAuthSessionCookie(response)) return false
+
+  const location = response.headers.get("location")
+  if (!location) return true
+
+  try {
+    return !new URL(location, getAuthBaseUrl()).searchParams.has("error")
+  } catch {
+    return true
+  }
 }
 
 async function parseEmailPasswordRequest(request: Request): Promise<{
@@ -125,6 +190,36 @@ function buildOAuthContinuationURL(oauthQuery: string | undefined) {
   return url.toString()
 }
 
+async function parseSocialSignInRequest(request: Request): Promise<{
+  body: Record<string, unknown>
+  oauthQuery?: string
+}> {
+  const body = (await request.json()) as {
+    oauth_query?: unknown
+    [key: string]: unknown
+  }
+
+  return {
+    body,
+    oauthQuery:
+      typeof body.oauth_query === "string" ? body.oauth_query : undefined,
+  }
+}
+
+async function handleSocialSignIn(request: Request): Promise<Response> {
+  const { body, oauthQuery } = await parseSocialSignInRequest(request)
+  const callbackURL = buildOAuthContinuationURL(oauthQuery)
+  const betterAuthBody = { ...body }
+  delete betterAuthBody.oauth_query
+
+  return authRouteHandlers.POST(
+    toJsonRequest(request, {
+      ...betterAuthBody,
+      ...(callbackURL ? { callbackURL } : {}),
+    }),
+  )
+}
+
 function redirectFormPostAfterSignIn(
   response: Response,
   callbackURL: string | undefined,
@@ -174,12 +269,15 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
     toJsonRequest(request, jsonBody),
   )
   if (primaryResponse.ok || primaryResponse.status !== 401) {
-    if (primaryResponse.ok) {
-      audit("auth.signin.success")
-    }
+    if (!primaryResponse.ok) return primaryResponse
+
+    audit("auth.signin.success")
     return isFormPost
-      ? redirectFormPostAfterSignIn(primaryResponse, callbackURL)
-      : primaryResponse
+      ? withLastLoginMethodCookie(
+          redirectFormPostAfterSignIn(primaryResponse, callbackURL),
+          "email",
+        )
+      : withLastLoginMethodCookie(primaryResponse, "email")
   }
 
   const existingUser = await prisma.user.findFirst({
@@ -259,8 +357,11 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
 
   audit("auth.firebase.migrated", email)
   return isFormPost
-    ? redirectFormPostAfterSignIn(signUpResponse, callbackURL)
-    : signUpResponse
+    ? withLastLoginMethodCookie(
+        redirectFormPostAfterSignIn(signUpResponse, callbackURL),
+        "email",
+      )
+    : withLastLoginMethodCookie(signUpResponse, "email")
 }
 
 export async function GET(
@@ -276,7 +377,17 @@ export async function GET(
     })
   }
 
-  return authRouteHandlers.GET(request)
+  const response = await authRouteHandlers.GET(request)
+  const providerId = all[1]
+  if (
+    all[0] === "callback" &&
+    isLastLoginMethod(providerId) &&
+    isRedirectSuccess(response)
+  ) {
+    return withLastLoginMethodCookie(response, providerId)
+  }
+
+  return response
 }
 
 export async function POST(
@@ -288,6 +399,9 @@ export async function POST(
 
   if (path === "sign-in/email") {
     return handleEmailSignIn(request)
+  }
+  if (path === "sign-in/social") {
+    return handleSocialSignIn(request)
   }
   if (path === "sign-up/email") {
     audit("auth.signup.rejected.public")

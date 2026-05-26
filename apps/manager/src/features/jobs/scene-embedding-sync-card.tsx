@@ -21,7 +21,9 @@ export function hasSceneEmbeddingSyncIssue(
   report: SceneEmbeddingSyncReport | undefined,
 ): report is SceneEmbeddingSyncReport {
   return Boolean(
-    report && report.status !== "indexed" && report.status !== "skipped_empty",
+    report &&
+    report.status !== "source_ready" &&
+    report.status !== "skipped_empty",
   )
 }
 
@@ -35,23 +37,23 @@ export function getSceneEmbeddingSyncExplanation(
   report: SceneEmbeddingSyncReport,
 ): string {
   switch (report.status) {
-    case "indexed":
-      return "Scene embeddings were indexed into CMS."
+    case "source_ready":
+      return "Scene analysis source data is ready for Admin and Mastra."
     case "skipped_empty":
       return "Scene analysis completed, but no indexable scene descriptions were produced."
     case "unsupported":
-      return "This workflow run does not have a CMS video target for scene embedding sync."
+      return "This workflow run does not have enough scene source context."
     case "failed":
       if (report.reason === "video_not_found") {
-        return "The target CMS video could not be found when scene sync ran."
+        return "The target video could not be found when scene source preparation ran."
       }
       if (report.reason === "unpublished_video") {
-        return "Only published CMS videos are indexed in v1, so draft-only content was not synced."
+        return "Only publishable videos are prepared for scene source handoff."
       }
       if (report.reason === "artifact_missing") {
-        return "The scene analysis artifact could not be read back for scene embedding sync."
+        return "The scene analysis artifact could not be read back for source handoff."
       }
-      return "Scene analysis succeeded, but the scene embedding sync subphase did not."
+      return "Scene analysis succeeded, but the scene source handoff subphase did not."
   }
 }
 
@@ -69,7 +71,7 @@ export function SceneEmbeddingSyncInlineDetails({
     <section className="jobs-embedding-sync-inline">
       <div className="jobs-embedding-sync-inline-header">
         <h4 className="jobs-embedding-sync-inline-title">
-          Scene Embeddings CMS Sync
+          Scene Analysis Source
         </h4>
         <p className="jobs-embedding-sync-inline-summary">
           {getSceneEmbeddingSyncExplanation(checkedReport)}
@@ -97,20 +99,12 @@ export function SceneEmbeddingSyncInlineDetails({
 
         <div className="jobs-embedding-sync-panel">
           <h4 className="jobs-embedding-sync-heading">
-            CMS Scene Vector Index
+            Mastra Scene Embedding Handoff
           </h4>
+          <SummaryRow label="Status" value={checkedReport.status} />
           <SummaryRow
-            label="Resolved video ID"
-            value={String(checkedReport.resolvedVideoId ?? "–")}
-          />
-          <SummaryRow
-            label="Rows indexed"
-            value={String(checkedReport.indexedSceneCount ?? 0)}
-          />
-          <SummaryRow label="Model" value={checkedReport.model ?? "–"} />
-          <SummaryRow
-            label="Embedding tokens"
-            value={String(checkedReport.embeddingTokens ?? 0)}
+            label="Scenes ready"
+            value={String(checkedReport.indexableSceneCount)}
           />
         </div>
       </div>

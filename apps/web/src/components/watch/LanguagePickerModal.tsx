@@ -4,19 +4,18 @@ import type { Route } from "next"
 import { useRouter } from "next/navigation"
 import type { RefObject } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Captions } from "lucide-react"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { Switch } from "@/components/ui/switch"
 import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
 import type { WatchSubtitle } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
+import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
 export type LanguagePickerVariant = {
   documentId: string
@@ -24,9 +23,24 @@ export type LanguagePickerVariant = {
   published: boolean | null
   language: {
     coreId?: string | null
+    bcp47?: string | null
     slug: string | null
     name: string | null
     nativeName?: string | null
+  } | null
+  videoEdition?: {
+    subtitles?:
+      | {
+          vttSrc?: string | null
+          srtSrc?: string | null
+          language?: {
+            coreId?: string | null
+            bcp47?: string | null
+            slug: string | null
+            name: string | null
+          } | null
+        }[]
+      | null
   } | null
 }
 
@@ -91,6 +105,7 @@ export function LanguagePickerModal({
           return {
             ...display,
             nativeName: display.nativeName ?? v.language.nativeName ?? null,
+            bcp47: v.language.bcp47 ?? null,
           }
         })
         .sort((a, b) => a.name.localeCompare(b.name)),
@@ -101,16 +116,18 @@ export function LanguagePickerModal({
   const [draftSubtitleEnabled, setDraftSubtitleEnabled] = useState(
     currentSubtitleEnabled,
   )
-  const [draftSubtitleSlug, setDraftSubtitleSlug] =
-    useState(currentSubtitleSlug)
+  const [draftSubtitleSlug, setDraftSubtitleSlug] = useState<string | null>(
+    currentSubtitleSlug,
+  )
+  const [translationRequestSent, setTranslationRequestSent] = useState(false)
 
   const subtitleOptions = useMemo(
     () =>
       subtitles
         .map((s) => ({
-          slug: s.language.slug,
-          name: s.language.name,
-          nativeName: s.language.nativeName,
+          ...deriveLanguageDisplay(s.language.slug, s.language.name),
+          nativeName: s.language.nativeName ?? null,
+          bcp47: s.language.bcp47 ?? null,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [subtitles],
@@ -150,6 +167,7 @@ export function LanguagePickerModal({
       setDraftSlug(currentLanguageSlugLatestRef.current)
       setDraftSubtitleEnabled(currentSubtitleEnabledRef.current)
       setDraftSubtitleSlug(currentSubtitleSlugRef.current)
+      setTranslationRequestSent(false)
       navigatingRef.current.inFlight = false
       setPendingNavTo(null)
     }
@@ -252,10 +270,16 @@ export function LanguagePickerModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
+      <WatchModalViewportCloseButton
+        open={open}
+        onClose={onClose}
+        testId="watch-language-picker-close"
+        portalContainer={portalContainer}
+      />
       <DialogContent
         data-testid="watch-language-picker-modal"
-        className="rounded-2xl border border-stone-700/50 bg-stone-900 p-0 text-stone-100 sm:max-w-xl"
-        overlayClassName="bg-black/75"
+        className="w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]"
+        overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         showCloseButton={false}
         portalContainer={portalContainer}
       >
@@ -263,77 +287,102 @@ export function LanguagePickerModal({
           Language{subtitles.length > 0 ? " & Subtitles" : ""}
         </DialogTitle>
 
-        <div className="flex items-baseline justify-between gap-3 border-b border-stone-700/50 px-6 py-4">
-          <h2 className="text-lg font-semibold text-stone-50">Language</h2>
-          <span
-            data-testid="watch-language-picker-count"
-            className="text-sm text-stone-400"
-          >
-            {options.length} {options.length === 1 ? "language" : "languages"}
-          </span>
-        </div>
-
-        <div className="px-6 py-6">
-          <LanguageCombobox
-            options={options}
-            value={draftSlug}
-            onChange={setDraftSlug}
-          />
-        </div>
-
-        {subtitles.length > 0 && (
-          <>
-            <div className="flex items-center justify-between gap-3 border-t border-stone-700/50 px-6 pt-5 pb-3">
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-semibold text-stone-50">
-                  Subtitles
-                </h2>
-                <Switch
-                  checked={draftSubtitleEnabled}
-                  onCheckedChange={setDraftSubtitleEnabled}
-                  aria-label="Subtitles"
-                  data-testid="watch-subtitle-toggle"
-                />
-              </div>
+        <div className="flex flex-col gap-14">
+          <div className="flex flex-col gap-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-2xl font-semibold text-stone-100">
+                Language
+              </h2>
               <span
-                data-testid="watch-subtitle-count"
-                className="text-sm text-stone-400"
+                data-testid="watch-language-picker-count"
+                className="text-lg font-normal text-stone-400"
               >
-                {subtitles.length}{" "}
-                {subtitles.length === 1 ? "language" : "languages"}
+                {options.length}{" "}
+                {options.length === 1 ? "language" : "languages"}
               </span>
             </div>
+            <LanguageCombobox
+              options={options}
+              value={draftSlug}
+              onChange={setDraftSlug}
+            />
+          </div>
 
-            <div
-              className={`px-6 pb-6 ${!draftSubtitleEnabled ? "pointer-events-none opacity-50" : ""}`}
-            >
-              <LanguageCombobox
-                options={subtitleOptions}
-                value={draftSubtitleSlug ?? ""}
-                onChange={setDraftSubtitleSlug}
-                icon={Captions}
-              />
+          <div className="flex flex-col gap-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-6">
+                <h2 className="text-2xl font-semibold text-stone-100">
+                  Subtitles
+                </h2>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={draftSubtitleEnabled}
+                  data-testid="watch-language-picker-subtitles-toggle"
+                  disabled={subtitleOptions.length === 0}
+                  onClick={() => setDraftSubtitleEnabled((value) => !value)}
+                  className="flex h-8 w-[58px] cursor-pointer items-center rounded-full bg-white p-1 transition disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <span
+                    className={`size-6 rounded-full bg-stone-950 transition-transform ${
+                      draftSubtitleEnabled ? "translate-x-6" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+              <div className="flex items-center gap-4">
+                {subtitleOptions.length === 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    data-testid="watch-language-picker-request-ai-translation"
+                    disabled={translationRequestSent}
+                    onClick={() => setTranslationRequestSent(true)}
+                    className="cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-4 py-2 text-xs font-bold tracking-wider text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100"
+                  >
+                    {translationRequestSent
+                      ? "Request sent"
+                      : "Translate with AI"}
+                  </Button>
+                ) : null}
+                <span
+                  data-testid="watch-language-picker-subtitle-count"
+                  className="text-lg font-normal text-stone-400"
+                >
+                  {subtitleOptions.length}{" "}
+                  {subtitleOptions.length === 1 ? "language" : "languages"}
+                </span>
+              </div>
             </div>
-          </>
-        )}
+            <LanguageCombobox
+              options={subtitleOptions}
+              value={draftSubtitleSlug ?? ""}
+              onChange={setDraftSubtitleSlug}
+              icon="subtitles"
+              disabled={!draftSubtitleEnabled || subtitleOptions.length === 0}
+              placeholder="No subtitles"
+            />
+          </div>
 
-        <div className="flex items-center justify-end gap-3 border-t border-stone-700/50 px-6 py-4">
-          <Button
-            variant="ghost"
-            data-testid="watch-language-picker-close"
-            onClick={onClose}
-            className="cursor-pointer rounded-full px-5 py-3.5 text-xs font-bold tracking-wider text-stone-300 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
-          >
-            Close
-          </Button>
-          <Button
-            variant="pill"
-            data-testid="watch-language-picker-apply"
-            disabled={!isDirty || navigating}
-            onClick={handleApply}
-          >
-            Apply
-          </Button>
+          <div className="flex items-center justify-end gap-9 pt-6">
+            <Button
+              variant="ghost"
+              data-testid="watch-language-picker-close-action"
+              onClick={onClose}
+              className="cursor-pointer rounded-full px-5 py-3.5 text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
+            >
+              Close
+            </Button>
+            <Button
+              variant="pill"
+              data-testid="watch-language-picker-apply"
+              disabled={!isDirty || navigating}
+              onClick={handleApply}
+              className="bg-stone-300 px-7 py-4 text-sm text-stone-950 hover:bg-white hover:text-stone-950 disabled:bg-stone-300 disabled:text-stone-950"
+            >
+              Apply
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

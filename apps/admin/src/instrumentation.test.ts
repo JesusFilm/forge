@@ -15,6 +15,7 @@ const worldStart = vi.hoisted(() => vi.fn())
 const getWorld = vi.hoisted(() => vi.fn(() => ({ start: worldStart })))
 const startWorkflowWorkerHeartbeat = vi.hoisted(() => vi.fn())
 const ensureVideoDbBackupSchedulerStarted = vi.hoisted(() => vi.fn())
+const ensureSearchTraceRetentionSchedulerStarted = vi.hoisted(() => vi.fn())
 
 vi.mock("@/config/env", () => mockEnv)
 vi.mock("workflow/runtime", () => ({ getWorld }))
@@ -23,6 +24,9 @@ vi.mock("@/services/workflow-worker-heartbeat.service", () => ({
 }))
 vi.mock("@/services/video-db-backup/job", () => ({
   ensureVideoDbBackupSchedulerStarted,
+}))
+vi.mock("@/services/search-trace-retention/job", () => ({
+  ensureSearchTraceRetentionSchedulerStarted,
 }))
 
 describe("workflow instrumentation", () => {
@@ -44,6 +48,7 @@ describe("workflow instrumentation", () => {
     expect(worldStart).not.toHaveBeenCalled()
     expect(startWorkflowWorkerHeartbeat).not.toHaveBeenCalled()
     expect(ensureVideoDbBackupSchedulerStarted).not.toHaveBeenCalled()
+    expect(ensureSearchTraceRetentionSchedulerStarted).not.toHaveBeenCalled()
   })
 
   it("does not start a world on web services that only read workflow data", async () => {
@@ -59,6 +64,7 @@ describe("workflow instrumentation", () => {
     expect(worldStart).not.toHaveBeenCalled()
     expect(startWorkflowWorkerHeartbeat).not.toHaveBeenCalled()
     expect(ensureVideoDbBackupSchedulerStarted).not.toHaveBeenCalled()
+    expect(ensureSearchTraceRetentionSchedulerStarted).not.toHaveBeenCalled()
   })
 
   it("does not start a world in the edge runtime", async () => {
@@ -75,6 +81,7 @@ describe("workflow instrumentation", () => {
     expect(worldStart).not.toHaveBeenCalled()
     expect(startWorkflowWorkerHeartbeat).not.toHaveBeenCalled()
     expect(ensureVideoDbBackupSchedulerStarted).not.toHaveBeenCalled()
+    expect(ensureSearchTraceRetentionSchedulerStarted).not.toHaveBeenCalled()
   })
 
   it("starts Postgres World in the node runtime", async () => {
@@ -90,5 +97,6 @@ describe("workflow instrumentation", () => {
     expect(worldStart).toHaveBeenCalledTimes(1)
     expect(startWorkflowWorkerHeartbeat).toHaveBeenCalledTimes(1)
     expect(ensureVideoDbBackupSchedulerStarted).toHaveBeenCalledTimes(1)
+    expect(ensureSearchTraceRetentionSchedulerStarted).toHaveBeenCalledTimes(1)
   })
 })

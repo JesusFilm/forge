@@ -1,0 +1,439 @@
+import {
+  SearchTraceLatencyBucket as PrismaSearchTraceLatencyBucket,
+  SearchTraceOutcome as PrismaSearchTraceOutcome,
+  SearchTraceRouteSource as PrismaSearchTraceRouteSource,
+  type Prisma,
+  type PrismaClient,
+} from "@prisma/client"
+import { env } from "@/config/env"
+import { prisma as defaultPrisma } from "@/db/client"
+import {
+  getSearchTraceHealthCounters,
+  recordSearchTraceRawCaptureDisabled,
+  recordSearchTraceWriteFailure,
+  recordSearchTraceWriteSuccess,
+  recordSearchTraceWriteTimeout,
+} from "@/services/search-trace-health"
+import { classifySearchTraceQuery } from "@/services/search-trace-privacy"
+import { readSearchTraceRetentionHealth } from "@/services/search-trace-retention.service"
+
+export type SearchTraceRouteSourceLabel = "rest" | "graphql"
+export type SearchTraceOutcomeLabel = "success" | "degraded" | "failed"
+export type SearchTraceLatencyBucketLabel =
+  | "lt_100ms"
+  | "lt_250ms"
+  | "lt_500ms"
+  | "lt_1000ms"
+  | "lt_2500ms"
+  | "gte_2500ms"
+
+export type RecordSearchTraceInput = {
+  query: string
+  locale: string
+  routeSource: SearchTraceRouteSourceLabel
+  requestedMode?: string | null
+  searchMode: string
+  resultCount: number
+  outcome: SearchTraceOutcomeLabel
+  traceClass?: string | null
+  startedAt: Date
+  completedAt: Date
+  now?: Date
+  timeoutMs?: number
+  retentionHealthy?: boolean
+}
+
+export type SearchTraceWriteResult = {
+  aggregateStored: boolean
+  rawStored: boolean
+  rawCaptureDisabled: boolean
+}
+
+export type SearchTraceSafeRecordResult =
+  | (SearchTraceWriteResult & { ok: true; timedOut: false })
+  | { ok: false; timedOut: true }
+  | { ok: false; timedOut: false }
+
+export type SearchTraceSampleFilters = {
+  locale?: string
+  routeSource?: SearchTraceRouteSourceLabel
+  searchMode?: string
+  since?: Date
+  until?: Date
+  limit?: number
+}
+
+export type SearchTraceSample = {
+  id: string
+  queryText: string
+  locale: string
+  routeSource: SearchTraceRouteSourceLabel
+  requestedMode: string | null
+  searchMode: string
+  resultCount: number
+  latencyBucket: SearchTraceLatencyBucketLabel
+  outcome: SearchTraceOutcomeLabel
+  traceClass: string
+  queryQualityLabel: string
+  sensitiveQueryLabel: string
+  abuseLabel: string
+  createdAt: string
+}
+
+const TRACE_RECORD_TIMEOUT_MS = 250
+const DEFAULT_SAMPLE_LIMIT = 50
+const MAX_SAMPLE_LIMIT = 100
+const MAX_SAMPLE_WINDOW_MS = 24 * 60 * 60 * 1000
+
+export function classifyLatencyBucket(
+  latencyMs: number,
+): SearchTraceLatencyBucketLabel {
+  if (latencyMs < 100) return "lt_100ms"
+  if (latencyMs < 250) return "lt_250ms"
+  if (latencyMs < 500) return "lt_500ms"
+  if (latencyMs < 1000) return "lt_1000ms"
+  if (latencyMs < 2500) return "lt_2500ms"
+  return "gte_2500ms"
+}
+
+function toPrismaRouteSource(
+  value: SearchTraceRouteSourceLabel,
+): PrismaSearchTraceRouteSource {
+  return value === "rest"
+    ? PrismaSearchTraceRouteSource.REST
+    : PrismaSearchTraceRouteSource.GRAPHQL
+}
+
+function toPrismaOutcome(
+  value: SearchTraceOutcomeLabel,
+): PrismaSearchTraceOutcome {
+  if (value === "success") return PrismaSearchTraceOutcome.SUCCESS
+  if (value === "degraded") return PrismaSearchTraceOutcome.DEGRADED
+  return PrismaSearchTraceOutcome.FAILED
+}
+
+function toPrismaLatencyBucket(
+  value: SearchTraceLatencyBucketLabel,
+): PrismaSearchTraceLatencyBucket {
+  switch (value) {
+    case "lt_100ms":
+      return PrismaSearchTraceLatencyBucket.LT_100_MS
+    case "lt_250ms":
+      return PrismaSearchTraceLatencyBucket.LT_250_MS
+    case "lt_500ms":
+      return PrismaSearchTraceLatencyBucket.LT_500_MS
+    case "lt_1000ms":
+      return PrismaSearchTraceLatencyBucket.LT_1000_MS
+    case "lt_2500ms":
+      return PrismaSearchTraceLatencyBucket.LT_2500_MS
+    case "gte_2500ms":
+      return PrismaSearchTraceLatencyBucket.GTE_2500_MS
+  }
+}
+
+function fromRouteSource(value: string): SearchTraceRouteSourceLabel {
+  return value === "REST" || value === "rest" ? "rest" : "graphql"
+}
+
+function fromOutcome(value: string): SearchTraceOutcomeLabel {
+  if (value === "SUCCESS" || value === "success") return "success"
+  if (value === "DEGRADED" || value === "degraded") return "degraded"
+  return "failed"
+}
+
+function fromLatencyBucket(value: string): SearchTraceLatencyBucketLabel {
+  switch (value) {
+    case "LT_100_MS":
+    case "lt_100ms":
+      return "lt_100ms"
+    case "LT_250_MS":
+    case "lt_250ms":
+      return "lt_250ms"
+    case "LT_500_MS":
+    case "lt_500ms":
+      return "lt_500ms"
+    case "LT_1000_MS":
+    case "lt_1000ms":
+      return "lt_1000ms"
+    case "LT_2500_MS":
+    case "lt_2500ms":
+      return "lt_2500ms"
+    default:
+      return "gte_2500ms"
+  }
+}
+
+function clampString(value: string | null | undefined, max: number): string {
+  const normalized = (value ?? "").replace(/\s+/g, " ").trim()
+  return normalized.slice(0, max)
+}
+
+function traceClassOrNone(value: string | null | undefined): string {
+  return clampString(value, 64) || "none"
+}
+
+function normalizeMode(value: string | null | undefined): string | null {
+  const normalized = clampString(value, 64)
+  return normalized.length === 0 ? null : normalized
+}
+
+function normalizeLocale(value: string): string {
+  return clampString(value, 32) || "unknown"
+}
+
+function floorToHour(value: Date): Date {
+  const bucket = new Date(value)
+  bucket.setUTCMinutes(0, 0, 0)
+  return bucket
+}
+
+function addRetentionDays(value: Date): Date {
+  return new Date(
+    value.getTime() + env.SEARCH_TRACE_RAW_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+  )
+}
+
+function latencyMs(input: RecordSearchTraceInput): number {
+  return Math.max(0, input.completedAt.getTime() - input.startedAt.getTime())
+}
+
+async function shouldStoreRawTrace(
+  prisma: PrismaClient,
+  input: RecordSearchTraceInput,
+): Promise<boolean> {
+  if (typeof input.retentionHealthy === "boolean") return input.retentionHealthy
+  if (env.NODE_ENV !== "production") return true
+  const health = await readSearchTraceRetentionHealth(prisma)
+  return health.healthy
+}
+
+export async function writeSearchTrace(
+  input: RecordSearchTraceInput,
+  prisma: PrismaClient = defaultPrisma,
+): Promise<SearchTraceWriteResult> {
+  const completedAt = input.completedAt
+  const createdAt = input.now ?? completedAt
+  const routeSource = toPrismaRouteSource(input.routeSource)
+  const outcome = toPrismaOutcome(input.outcome)
+  const latencyBucket = toPrismaLatencyBucket(
+    classifyLatencyBucket(latencyMs(input)),
+  )
+  const locale = normalizeLocale(input.locale)
+  const requestedMode = normalizeMode(input.requestedMode)
+  const searchMode = clampString(input.searchMode, 64) || "unknown"
+  const traceClass = traceClassOrNone(input.traceClass)
+  const privacy = classifySearchTraceQuery(input.query)
+  const aggregateDimensions = {
+    bucketStart: floorToHour(completedAt),
+    routeSource,
+    locale,
+    searchMode,
+    outcome,
+    traceClass,
+    latencyBucket,
+    queryQualityLabel: privacy.queryQualityLabel,
+    sensitiveQueryLabel: privacy.sensitiveQueryLabel,
+    abuseLabel: privacy.abuseLabel,
+  }
+  const aggregatePromise = prisma.searchTraceAggregate.upsert({
+    where: {
+      searchTraceAggregateBucketDims: aggregateDimensions,
+    },
+    create: {
+      ...aggregateDimensions,
+      queryCount: 1,
+      resultCountSum: input.resultCount,
+    },
+    update: {
+      queryCount: { increment: 1 },
+      resultCountSum: { increment: input.resultCount },
+    },
+  })
+
+  const rawEnabled = await shouldStoreRawTrace(prisma, input)
+  const rawPromise = rawEnabled
+    ? prisma.searchTrace.create({
+        data: {
+          queryText: privacy.queryText,
+          locale,
+          routeSource,
+          requestedMode,
+          searchMode,
+          resultCount: input.resultCount,
+          latencyBucket,
+          outcome,
+          traceClass,
+          queryQualityLabel: privacy.queryQualityLabel,
+          sensitiveQueryLabel: privacy.sensitiveQueryLabel,
+          abuseLabel: privacy.abuseLabel,
+          sampleEligible: privacy.sampleEligible,
+          startedAt: input.startedAt,
+          completedAt,
+          rawExpiresAt: addRetentionDays(createdAt),
+          createdAt,
+        },
+      })
+    : Promise.resolve(null)
+
+  const [aggregateResult, rawResult] = await Promise.allSettled([
+    aggregatePromise,
+    rawPromise,
+  ])
+  if (aggregateResult.status === "rejected") throw aggregateResult.reason
+  if (rawResult.status === "rejected") throw rawResult.reason
+
+  if (!rawEnabled) {
+    recordSearchTraceRawCaptureDisabled()
+    console.warn(
+      `[search] event=trace_raw_capture_disabled route=${input.routeSource} outcome=${input.outcome}`,
+    )
+  }
+
+  return {
+    aggregateStored: true,
+    rawStored: rawEnabled,
+    rawCaptureDisabled: !rawEnabled,
+  }
+}
+
+function errorClass(error: unknown): string {
+  return error instanceof Error ? error.constructor.name : "UnknownError"
+}
+
+export async function recordSearchTraceSafely(
+  input: RecordSearchTraceInput,
+  prisma: PrismaClient = defaultPrisma,
+): Promise<SearchTraceSafeRecordResult> {
+  const timeoutMs = input.timeoutMs ?? TRACE_RECORD_TIMEOUT_MS
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  let timedOut = false
+
+  const writePromise = writeSearchTrace(input, prisma)
+    .then((result) => {
+      if (timeout) clearTimeout(timeout)
+      recordSearchTraceWriteSuccess()
+      return { ok: true as const, timedOut: false as const, ...result }
+    })
+    .catch((error) => {
+      if (timeout) clearTimeout(timeout)
+      recordSearchTraceWriteFailure()
+      console.warn(
+        `[search] event=trace_record_failed route=${input.routeSource} outcome=${input.outcome} error_class=${errorClass(error)}`,
+      )
+      return { ok: false as const, timedOut: false as const }
+    })
+
+  const timeoutPromise = new Promise<SearchTraceSafeRecordResult>((resolve) => {
+    timeout = setTimeout(() => {
+      timedOut = true
+      recordSearchTraceWriteTimeout()
+      console.warn(
+        `[search] event=trace_record_timeout route=${input.routeSource} outcome=${input.outcome} timeout_ms=${timeoutMs}`,
+      )
+      resolve({ ok: false, timedOut: true })
+    }, timeoutMs)
+  })
+
+  const result = await Promise.race([writePromise, timeoutPromise])
+  if (!timedOut && timeout) clearTimeout(timeout)
+  return result
+}
+
+function clampLimit(limit: number | undefined): number {
+  if (limit == null || !Number.isFinite(limit)) return DEFAULT_SAMPLE_LIMIT
+  return Math.min(MAX_SAMPLE_LIMIT, Math.max(1, Math.floor(limit)))
+}
+
+function sampleWindow(
+  filters: SearchTraceSampleFilters,
+  now: Date,
+): { since: Date; until: Date } {
+  const until =
+    filters.until && filters.until < now ? filters.until : new Date(now)
+  const requestedSince =
+    filters.since && filters.since < until
+      ? filters.since
+      : new Date(until.getTime() - MAX_SAMPLE_WINDOW_MS)
+  const minimumSince = new Date(until.getTime() - MAX_SAMPLE_WINDOW_MS)
+  return {
+    since: requestedSince < minimumSince ? minimumSince : requestedSince,
+    until,
+  }
+}
+
+type SearchTraceSampleRow = {
+  id: string
+  queryText: string
+  locale: string
+  routeSource: string
+  requestedMode: string | null
+  searchMode: string
+  resultCount: number
+  latencyBucket: string
+  outcome: string
+  traceClass: string
+  queryQualityLabel: string
+  sensitiveQueryLabel: string
+  abuseLabel: string
+  createdAt: Date
+}
+
+export async function sampleSearchTraces(
+  prisma: PrismaClient,
+  filters: SearchTraceSampleFilters = {},
+  now: Date = new Date(),
+): Promise<SearchTraceSample[]> {
+  const { since, until } = sampleWindow(filters, now)
+  const where: Prisma.SearchTraceWhereInput = {
+    sampleEligible: true,
+    rawExpiresAt: { gt: now },
+    createdAt: { gte: since, lte: until },
+  }
+  if (filters.locale) where.locale = normalizeLocale(filters.locale)
+  if (filters.routeSource)
+    where.routeSource = toPrismaRouteSource(filters.routeSource)
+  if (filters.searchMode) where.searchMode = clampString(filters.searchMode, 64)
+
+  const rows = (await prisma.searchTrace.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: clampLimit(filters.limit),
+    select: {
+      id: true,
+      queryText: true,
+      locale: true,
+      routeSource: true,
+      requestedMode: true,
+      searchMode: true,
+      resultCount: true,
+      latencyBucket: true,
+      outcome: true,
+      traceClass: true,
+      queryQualityLabel: true,
+      sensitiveQueryLabel: true,
+      abuseLabel: true,
+      createdAt: true,
+    },
+  })) as unknown as SearchTraceSampleRow[]
+
+  return rows.map((row) => ({
+    id: row.id,
+    queryText: row.queryText,
+    locale: row.locale,
+    routeSource: fromRouteSource(row.routeSource),
+    requestedMode: row.requestedMode,
+    searchMode: row.searchMode,
+    resultCount: row.resultCount,
+    latencyBucket: fromLatencyBucket(row.latencyBucket),
+    outcome: fromOutcome(row.outcome),
+    traceClass: row.traceClass,
+    queryQualityLabel: row.queryQualityLabel,
+    sensitiveQueryLabel: row.sensitiveQueryLabel,
+    abuseLabel: row.abuseLabel,
+    createdAt: row.createdAt.toISOString(),
+  }))
+}
+
+export function getSearchTraceCaptureStats() {
+  return getSearchTraceHealthCounters()
+}

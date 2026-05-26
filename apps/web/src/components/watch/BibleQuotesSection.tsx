@@ -29,6 +29,7 @@ import {
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
+import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 
 type WatchBibleCitation = WatchBibleQuotesBlock["bibleCitations"][number]
 
@@ -63,6 +64,12 @@ const BIBLE_IMAGES = [
   "https://images.unsplash.com/photo-1659260145900-1ac1afc45dcf?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
   "https://images.unsplash.com/photo-1535979863199-3c77338429a0?q=80&w=1660&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
 ] as const
+
+const BIBLE_QUOTE_SLIDE_CLASSES =
+  "basis-[76vw] pl-4 sm:basis-[64vw] md:basis-[48vw] lg:basis-[36rem] xl:basis-[38rem]"
+
+const BIBLE_QUOTE_IMAGE_SIZES =
+  "(max-width: 640px) 76vw, (max-width: 768px) 64vw, (max-width: 1024px) 48vw, 38rem"
 
 // Locale → translation pair, mirroring core/apps/watch's
 // LOCALE_TO_BIBLE_VERSION_MAP. `bibleApi` is the wldeh/bible-api directory
@@ -124,27 +131,13 @@ function bookSlugForApi(rawBookName: string): string | null {
   return BIBLE_BOOK_SLUG_PATTERN.test(slug) ? slug : null
 }
 
-// Disable click-and-drag when the carousel has at most one snap point —
-// dragging a single visible card is a no-op gesture that visibly tugs and
-// snaps back. Exported for direct unit-testing because jsdom collapses
-// layout to zero, making `scrollSnapList()` always return [] in component
-// tests.
-export function shouldEnableDrag(api: {
-  scrollSnapList: () => unknown[]
-}): boolean {
-  return api.scrollSnapList().length > 1
-}
-
 // Stable opts reference. embla-carousel-reactive-utils compares opts via
-// areOptionsEqual, which serializes function values with .toString(). A
-// module-level constant guarantees a stable identity across renders so a
-// future captured prop in watchDrag can't silently trigger reInit
-// mid-scroll, briefly tearing down event listeners.
+// areOptionsEqual. A module-level constant avoids reInit churn mid-scroll,
+// which is especially visible now that these cards are large and draggable.
 const CAROUSEL_OPTS = {
   align: "start",
   dragFree: true,
   containScroll: "trimSnaps",
-  watchDrag: shouldEnableDrag,
 } as const
 
 export function BibleQuotesSection({
@@ -165,9 +158,7 @@ export function BibleQuotesSection({
         data-testid="watch-bible-quotes-header"
         className="mb-6 flex flex-wrap items-center justify-between gap-3 pb-2"
       >
-        <h2 className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
-          Bible Quotes
-        </h2>
+        <h2 className={WATCH_SECTION_EYEBROW_CLASS}>Bible Quotes</h2>
         <Button
           variant="pill"
           onClick={onShareClick}
@@ -193,7 +184,7 @@ export function BibleQuotesSection({
               <CarouselItem
                 key={citation.documentId}
                 data-testid="watch-bible-quotes-item"
-                className="basis-[85vw] pl-4 sm:basis-[50%] lg:basis-1/4"
+                className={BIBLE_QUOTE_SLIDE_CLASSES}
               >
                 <BibleCitationCard
                   citation={citation}
@@ -215,10 +206,10 @@ export function BibleQuotesSection({
             ))}
             <CarouselItem
               data-testid="watch-bible-quotes-promo"
-              className="basis-[85vw] pl-4 sm:basis-[50%] lg:basis-1/4"
+              className={BIBLE_QUOTE_SLIDE_CLASSES}
             >
               <div
-                className="relative flex aspect-square w-full flex-col justify-end overflow-hidden rounded-lg border border-white/10 shadow-2xl shadow-stone-950/70"
+                className="relative flex aspect-[1.08/1] min-h-[21rem] w-full flex-col justify-end overflow-hidden rounded-xl border border-white/10 shadow-2xl shadow-stone-950/70 sm:min-h-[24rem] md:min-h-[28rem]"
                 style={{ backgroundColor: "rgba(0, 0, 0, 0.1)" }}
               >
                 <Image
@@ -231,14 +222,14 @@ export function BibleQuotesSection({
                   // into view with a visible pop-in. Mark it eager only on
                   // that path so the typical N-citations case stays lazy.
                   priority={bibleCitations.length === 0}
-                  className="absolute top-0 overflow-hidden rounded-lg object-cover"
-                  sizes="(max-width: 640px) 85vw, (max-width: 1024px) 50vw, 25vw"
+                  className="absolute top-0 overflow-hidden rounded-xl object-cover"
+                  sizes={BIBLE_QUOTE_IMAGE_SIZES}
                 />
-                <div className="z-1 p-6 pt-0">
-                  <span className="mb-1 block text-xs font-semibold tracking-[0.15em] text-white/80 uppercase">
+                <div className="z-1 p-8 pt-0 md:p-10 md:pt-0">
+                  <span className="mb-3 block text-sm font-bold tracking-normal text-white/80 uppercase">
                     Free Resources
                   </span>
-                  <h3 className="mt-1 mb-4 text-xl font-bold leading-snug text-balance text-white">
+                  <h3 className="mb-6 max-w-[19ch] text-3xl leading-tight font-black text-balance text-white md:text-4xl">
                     Want to grow deep in your understanding of the Bible?
                   </h3>
                   <Button
@@ -268,16 +259,15 @@ export function BibleQuotesSection({
               <div className={CAROUSEL_END_SPACER} />
             </CarouselItem>
           </CarouselContent>
-          {/* Keyboard / assistive-tech / headless-agent step controls. The
-              design surface is drag-and-scroll, so these are visually
-              hidden but reachable by Tab + Enter. */}
+          {/* Match the watch chapter carousel's visible circular step
+              controls so large quote cards are browsable without dragging. */}
           <CarouselPrevious
-            className="sr-only"
+            className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
             label="Previous Bible quote"
             data-testid="watch-bible-quotes-prev"
           />
           <CarouselNext
-            className="sr-only"
+            className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
             label="Next Bible quote"
             data-testid="watch-bible-quotes-next"
           />
@@ -426,7 +416,7 @@ function BibleCitationCard({
 
   return (
     <div
-      className="relative flex aspect-square w-full flex-col justify-end overflow-hidden rounded-lg border border-white/10 shadow-2xl shadow-stone-950/70"
+      className="relative flex aspect-[1.08/1] min-h-[21rem] w-full flex-col justify-end overflow-hidden rounded-xl border border-white/10 shadow-2xl shadow-stone-950/70 sm:min-h-[24rem] md:min-h-[28rem]"
       style={{ backgroundColor: "#1A1815" }}
     >
       <Image
@@ -437,20 +427,20 @@ function BibleCitationCard({
         priority={eager}
         loading={eager ? "eager" : "lazy"}
         fetchPriority={eager ? "high" : "auto"}
-        className="absolute top-0 overflow-hidden rounded-lg object-cover [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_20%,transparent_100%)] [mask-size:cover]"
-        sizes="(max-width: 640px) 85vw, (max-width: 1024px) 50vw, 25vw"
+        className="absolute top-0 overflow-hidden rounded-xl object-cover [mask-image:linear-gradient(to_bottom,rgba(0,0,0,1)_24%,transparent_100%)] [mask-size:cover]"
+        sizes={BIBLE_QUOTE_IMAGE_SIZES}
       />
-      <div className="z-1 p-6 pt-0">
+      <div className="z-1 p-8 pt-0 md:p-10 md:pt-0">
         <span
           data-testid="watch-bible-quotes-reference"
-          className="relative block text-[10px] font-semibold tracking-[0.15em] text-amber-200/60 uppercase"
+          className="relative mb-5 block text-sm leading-none font-black tracking-normal text-amber-200/75 uppercase md:text-base"
         >
           {referenceLabel}
         </span>
         {scripture != null && (
           <p
             data-testid="watch-bible-quotes-verse"
-            className="relative mt-3 text-sm text-white/90"
+            className="relative max-w-[20ch] text-2xl leading-[1.22] font-semibold text-balance text-white/95 drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)] md:text-3xl"
           >
             {formatScripture(scripture.text)}
           </p>
@@ -461,7 +451,7 @@ function BibleCitationCard({
             target="_blank"
             rel="noopener noreferrer"
             data-testid="watch-bible-quotes-read-more"
-            className="relative mt-3 block text-sm text-white/80 underline transition-colors duration-200 hover:text-white"
+            className="relative mt-7 block w-fit cursor-pointer text-xl leading-none font-semibold text-white/85 underline decoration-white/45 decoration-2 underline-offset-4 transition-colors duration-200 hover:text-white hover:decoration-white md:text-2xl"
           >
             Read more...
           </a>

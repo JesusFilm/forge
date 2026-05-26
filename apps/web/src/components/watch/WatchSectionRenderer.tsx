@@ -14,7 +14,7 @@ import { HeroPlayer } from "@/components/watch/HeroPlayer"
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
 import { WatchBody } from "@/components/watch/WatchBody"
 import type { WatchModalCallbacks } from "@/components/watch/WatchPageClient"
-import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 
 // Typo guard: literal-union typing fails the type check on misspellings.
@@ -85,12 +85,13 @@ export function WatchSectionRenderer({
             }}
           >
             <div
-              className="absolute inset-0 z-1 bg-repeat mix-blend-multiply"
+              data-testid="watch-body-texture"
+              className="absolute inset-0 z-1 bg-repeat opacity-70 mix-blend-multiply"
               style={{ backgroundImage: 'url("/watch/images/overlay.svg")' }}
               aria-hidden="true"
             />
             <div
-              className={`relative z-2 flex flex-col items-stretch justify-center gap-6 pt-2 pb-16 ${CONTENT_WIDTH_CLASSES}`}
+              className={`relative z-2 flex flex-col items-stretch justify-center gap-6 pt-2 pb-16 ${WATCH_PAGE_CONTENT_CLASSES}`}
             >
               {bodyBlocks.map((block, index) => (
                 <WatchBlockEntry

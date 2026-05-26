@@ -22,6 +22,7 @@ import {
   type SearchResponse,
 } from "@/services/hybrid-search.service"
 import { isDebugAllowedForOrigin } from "@/services/hybrid-search-debug-allowlist"
+import { recordSearchTraceSafely } from "@/services/search-trace.service"
 import { SearchResultDebugRef } from "@/graphql/types/hybrid-search-debug"
 import { VideoLabelEnum } from "@/graphql/types/video"
 
@@ -251,15 +252,45 @@ builder.queryFields((t) => ({
       const debug = debugRequested && isDebugAllowedForOrigin(origin)
 
       const service = new HybridSearchService({ prisma })
-      return service.search({
-        query,
-        locale: args.locale,
-        limit: args.limit ?? undefined,
-        offset: args.offset ?? undefined,
-        contentTypes,
-        mode,
-        debug,
-      })
+      const startedAt = new Date()
+      try {
+        const { response, trace } = await service.searchWithTrace({
+          query,
+          locale: args.locale,
+          limit: args.limit ?? undefined,
+          offset: args.offset ?? undefined,
+          contentTypes,
+          mode,
+          debug,
+        })
+        await recordSearchTraceSafely({
+          query,
+          locale: args.locale,
+          routeSource: "graphql",
+          requestedMode: mode ?? null,
+          searchMode: trace.searchMode,
+          resultCount: trace.resultCount,
+          outcome: trace.outcome,
+          traceClass: trace.traceClass,
+          startedAt,
+          completedAt: new Date(),
+        }).catch(() => {})
+        return response
+      } catch (error) {
+        await recordSearchTraceSafely({
+          query,
+          locale: args.locale,
+          routeSource: "graphql",
+          requestedMode: mode ?? null,
+          searchMode: "failed",
+          resultCount: 0,
+          outcome: "failed",
+          traceClass: "search_exception",
+          startedAt,
+          completedAt: new Date(),
+        }).catch(() => {})
+        throw error
+      }
     },
   }),
 }))

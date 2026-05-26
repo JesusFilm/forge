@@ -15,17 +15,41 @@ vi.mock("@/config/env", () => ({
 // The route constructs a HybridSearchService with the shared `prisma`
 // import; we mock the class so tests don't touch the DB.
 const searchMock = vi.fn()
+const searchWithTraceMock = vi.fn(async (params) => {
+  const response = await searchMock(params)
+  return {
+    response,
+    trace: {
+      searchMode: response.searchMode,
+      resultCount: response.results.length,
+      outcome: response.searchMode === "keyword-only" ? "degraded" : "success",
+      traceClass:
+        response.searchMode === "keyword-only"
+          ? "query_embedding_failure"
+          : "none",
+      failedRetrievers: [],
+      contributingRetrievers: [],
+    },
+  }
+})
 vi.mock("@/services/hybrid-search.service", async () => {
   const actual = await vi.importActual<
     typeof import("@/services/hybrid-search.service")
   >("@/services/hybrid-search.service")
   return {
     ...actual,
-    HybridSearchService: vi.fn(() => ({ search: searchMock })),
+    HybridSearchService: vi.fn(() => ({
+      search: searchMock,
+      searchWithTrace: searchWithTraceMock,
+    })),
   }
 })
 
 vi.mock("@/db/client", () => ({ prisma: {} }))
+
+vi.mock("@/services/search-trace.service", () => ({
+  recordSearchTraceSafely: vi.fn(async () => ({ ok: true, timedOut: false })),
+}))
 
 vi.mock("@/services/hybrid-search-debug-allowlist", () => ({
   isDebugAllowedForOrigin: vi.fn(),
@@ -35,6 +59,7 @@ import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { isAnyKnownBearer } from "@/auth/search-bearer"
 import { env } from "@/config/env"
 import { isDebugAllowedForOrigin } from "@/services/hybrid-search-debug-allowlist"
+import { recordSearchTraceSafely } from "@/services/search-trace.service"
 import { GET } from "./route"
 
 const envMutable = env as { SEARCH_AUTH_REQUIRED?: "true" | "false" }
@@ -172,6 +197,38 @@ describe("GET /api/search", () => {
     const body = await res.json()
     expect(body.results).toHaveLength(1)
     expect(body.searchMode).toBe("hybrid")
+    expect(recordSearchTraceSafely).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: "jesus",
+        locale: "en",
+        routeSource: "rest",
+        requestedMode: null,
+        searchMode: "hybrid",
+        resultCount: 1,
+        outcome: "success",
+        traceClass: "none",
+        startedAt: expect.any(Date),
+        completedAt: expect.any(Date),
+      }),
+    )
+    expect(body).toEqual({
+      results: [
+        {
+          type: "video",
+          id: "vid-1",
+          slug: "jesus",
+          title: "Jesus",
+          imageUrl: null,
+          snippet: "scene",
+          startSeconds: 0,
+          playbackId: "mux-1",
+          score: 1,
+        },
+      ],
+      hasMore: false,
+      query: "jesus",
+      searchMode: "hybrid",
+    })
   })
 
   it("returns 429 when rate limit exceeded", async () => {
@@ -271,6 +328,44 @@ describe("GET /api/search", () => {
     expect(await res.json()).toMatchObject({
       error: "Search is temporarily unavailable",
     })
+    expect(recordSearchTraceSafely).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: "jesus",
+        locale: "en",
+        routeSource: "rest",
+        searchMode: "failed",
+        resultCount: 0,
+        outcome: "failed",
+        traceClass: "search_exception",
+      }),
+    )
+  })
+
+  it("keeps the search response unchanged when trace recording throws", async () => {
+    vi.mocked(recordSearchTraceSafely).mockRejectedValueOnce(
+      new Error("trace db down"),
+    )
+    searchMock.mockResolvedValueOnce({
+      results: [],
+      hasMore: false,
+      query: "jesus",
+      searchMode: "hybrid",
+    })
+
+    const res = await GET(req("/api/search?q=jesus&locale=en"))
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toEqual({
+      results: [],
+      hasMore: false,
+      query: "jesus",
+      searchMode: "hybrid",
+    })
+  })
+
+  it("does not trace invalid requests rejected before live search", async () => {
+    const res = await GET(req("/api/search?locale=en"))
+    expect(res.status).toBe(400)
+    expect(recordSearchTraceSafely).not.toHaveBeenCalled()
   })
 
   describe("bearer auth gate (Plan 002)", () => {

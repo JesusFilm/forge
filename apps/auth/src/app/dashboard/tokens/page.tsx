@@ -1,6 +1,14 @@
 import { revokeTokenRecord } from "@/app/dashboard/tokens/actions"
 import { prisma } from "@/db/client"
 
+import {
+  DashboardPageShell,
+  DashboardPanel,
+  DashboardTable,
+  DashboardTd,
+  DashboardTh,
+} from "@/app/dashboard/dashboard-components"
+
 export const dynamic = "force-dynamic"
 
 export default async function TokensPage() {
@@ -15,56 +23,65 @@ export default async function TokensPage() {
   })
 
   return (
-    <section className="dashboard-section">
-      <header className="dashboard-header">
+    <DashboardPageShell>
+      <header className="flex items-end justify-between gap-4">
         <div>
-          <p className="dashboard-kicker">Tokens</p>
-          <h2>Issued token records</h2>
+          <p className="m-0 text-[11px] font-bold uppercase tracking-[0.08em] text-[#ef3340]">
+            Tokens
+          </p>
+          <h2 className="mb-0 mt-0.5 text-3xl font-bold">
+            Issued token records
+          </h2>
         </div>
       </header>
 
-      <div className="data-panel">
-        <table>
+      <DashboardPanel>
+        <DashboardTable>
           <thead>
             <tr>
-              <th>App</th>
-              <th>Family</th>
-              <th>Status</th>
-              <th>Audience</th>
-              <th>Scopes</th>
-              <th>Expires</th>
-              <th>Action</th>
+              <DashboardTh>App</DashboardTh>
+              <DashboardTh>Family</DashboardTh>
+              <DashboardTh>Status</DashboardTh>
+              <DashboardTh>Audience</DashboardTh>
+              <DashboardTh>Scopes</DashboardTh>
+              <DashboardTh>Expires</DashboardTh>
+              <DashboardTh>Action</DashboardTh>
             </tr>
           </thead>
           <tbody>
             {tokens.map((token) => (
               <tr key={token.id}>
-                <td>
+                <DashboardTd>
                   <strong>{token.app.displayName}</strong>
-                  <small>{token.environment.kind.toLowerCase()}</small>
-                </td>
-                <td>{token.family.toLowerCase()}</td>
-                <td>{token.status.toLowerCase()}</td>
-                <td>{token.audience}</td>
-                <td>{token.scopes.join(", ")}</td>
-                <td>{token.expiresAt.toISOString()}</td>
-                <td>
+                  <small className="block text-[#78716c]">
+                    {token.environment.kind.toLowerCase()}
+                  </small>
+                </DashboardTd>
+                <DashboardTd>{token.family.toLowerCase()}</DashboardTd>
+                <DashboardTd>{token.status.toLowerCase()}</DashboardTd>
+                <DashboardTd>{token.audience}</DashboardTd>
+                <DashboardTd>{token.scopes.join(", ")}</DashboardTd>
+                <DashboardTd>{token.expiresAt.toISOString()}</DashboardTd>
+                <DashboardTd>
                   {token.status === "ACTIVE" ? (
                     <form action={revokeTokenRecord}>
                       <input type="hidden" name="tokenId" value={token.id} />
-                      <button className="danger-button" type="submit">
+                      <button
+                        className="min-h-8 cursor-pointer rounded border border-red-200 bg-red-50 px-2.5 font-semibold text-red-800 hover:bg-red-100"
+                        type="submit"
+                      >
                         Revoke
                       </button>
                     </form>
                   ) : (
                     "none"
                   )}
-                </td>
+                </DashboardTd>
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
-    </section>
+        </DashboardTable>
+      </DashboardPanel>
+    </DashboardPageShell>
   )
 }

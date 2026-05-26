@@ -2,22 +2,37 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { vi } from "vitest"
 
 vi.mock("@/config/env", () => ({
-  env: {} as { MASTRA_TRANSCRIPT_INGEST_API_KEYS?: string },
+  env: {} as {
+    MASTRA_TRANSCRIPT_INGEST_API_KEYS?: string
+    MASTRA_SCENE_INGEST_API_KEYS?: string
+    MASTRA_EXPERIENCE_INGEST_API_KEYS?: string
+  },
 }))
 
 const { env } = await import("@/config/env")
-const { isValidMastraTranscriptIngestBearer } =
-  await import("@/auth/mastra-ingest-bearer")
+const {
+  isValidMastraExperienceIngestBearer,
+  isValidMastraSceneIngestBearer,
+  isValidMastraTranscriptIngestBearer,
+} = await import("@/auth/mastra-ingest-bearer")
 
-const envMutable = env as { MASTRA_TRANSCRIPT_INGEST_API_KEYS?: string }
+const envMutable = env as {
+  MASTRA_TRANSCRIPT_INGEST_API_KEYS?: string
+  MASTRA_SCENE_INGEST_API_KEYS?: string
+  MASTRA_EXPERIENCE_INGEST_API_KEYS?: string
+}
 
-describe("isValidMastraTranscriptIngestBearer", () => {
+describe("Mastra ingest bearer validation", () => {
   beforeEach(() => {
     envMutable.MASTRA_TRANSCRIPT_INGEST_API_KEYS = "mastra-a,mastra-b"
+    envMutable.MASTRA_SCENE_INGEST_API_KEYS = "scene-a,scene-b"
+    envMutable.MASTRA_EXPERIENCE_INGEST_API_KEYS = "experience-a,experience-b"
   })
 
   afterEach(() => {
     envMutable.MASTRA_TRANSCRIPT_INGEST_API_KEYS = undefined
+    envMutable.MASTRA_SCENE_INGEST_API_KEYS = undefined
+    envMutable.MASTRA_EXPERIENCE_INGEST_API_KEYS = undefined
   })
 
   it("accepts a matching bearer token", () => {
@@ -46,5 +61,16 @@ describe("isValidMastraTranscriptIngestBearer", () => {
       isValidMastraTranscriptIngestBearer("Bearer key"),
     ).not.toThrow()
     expect(isValidMastraTranscriptIngestBearer("Bearer key")).toBe(false)
+  })
+
+  it("keeps transcript, scene, and experience ingest capabilities separated", () => {
+    expect(isValidMastraSceneIngestBearer("Bearer scene-a")).toBe(true)
+    expect(isValidMastraExperienceIngestBearer("Bearer experience-a")).toBe(
+      true,
+    )
+    expect(isValidMastraSceneIngestBearer("Bearer mastra-a")).toBe(false)
+    expect(isValidMastraTranscriptIngestBearer("Bearer scene-a")).toBe(false)
+    expect(isValidMastraExperienceIngestBearer("Bearer scene-a")).toBe(false)
+    expect(isValidMastraSceneIngestBearer("Bearer experience-a")).toBe(false)
   })
 })

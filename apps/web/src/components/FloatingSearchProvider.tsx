@@ -15,13 +15,25 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { usePathname, useRouter } from "next/navigation"
+import { Bot, CircleHelp, Globe, MessageCircle, UserRound } from "lucide-react"
 
 import { runSearch } from "@/lib/search-actions"
 import type { SearchResult } from "@/lib/search"
 import { buildSearchUrl } from "@/lib/search-url"
+import { WATCH_PAGE_LEFT_RAIL_CLASSES } from "@/lib/content-width"
+import {
+  WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+  WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+  WATCH_PLAYER_PLAYBACK_STATE_EVENT,
+  type WatchHeaderLanguageSwitcherDetail,
+  type WatchPlayerChromeVisibilityDetail,
+  type WatchPlayerPlaybackStateDetail,
+} from "@/lib/watch-player-chrome-events"
 
 import { FloatingSearchBar } from "./FloatingSearchBar"
 import { SearchOverlay } from "./SearchOverlay"
+
+const HEADER_HOVER_HEIGHT_PX = 144
 
 export type FloatingSearchContextValue = {
   open: boolean
@@ -46,6 +58,12 @@ export type FloatingSearchContextValue = {
 
 export type FloatingSearchPinnedContextValue = {
   pinned: boolean
+  playerChromeVisible: boolean
+  searchChromeVisible: boolean
+  // True while the search overlay is open OR running its close animation.
+  // Watch-page modal coordinators read this to pause/resume the video
+  // alongside their own (download / language / share) modal state.
+  searchOpen: boolean
 }
 
 const FloatingSearchContext = createContext<FloatingSearchContextValue | null>(
@@ -53,6 +71,11 @@ const FloatingSearchContext = createContext<FloatingSearchContextValue | null>(
 )
 const FloatingSearchPinnedContext =
   createContext<FloatingSearchPinnedContextValue | null>(null)
+
+type HeaderLanguageSwitcherState = {
+  visible: boolean
+  onClick: (() => void) | null
+}
 
 export function useFloatingSearch(): FloatingSearchContextValue {
   const ctx = useContext(FloatingSearchContext)
@@ -90,9 +113,19 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const [open, setOpenState] = useState<boolean>(false)
   const [closing, setClosing] = useState<boolean>(false)
   const [query, setQuery] = useState<string>("")
-  const [pinned, setPinned] = useState<boolean>(() =>
-    typeof window !== "undefined" ? window.scrollY > 80 : false,
-  )
+  const [pinned, setPinned] = useState<boolean>(false)
+  const [playerChromeVisible, setPlayerChromeVisible] = useState(true)
+  const [playerPlaybackState, setPlayerPlaybackState] =
+    useState<WatchPlayerPlaybackStateDetail>({
+      playing: false,
+      muted: true,
+    })
+  const [headerLanguageSwitcher, setHeaderLanguageSwitcher] =
+    useState<HeaderLanguageSwitcherState>({
+      visible: false,
+      onClick: null,
+    })
+  const [headerHovered, setHeaderHovered] = useState(false)
   const closingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Whether the modal was opened via URL hydration (vs user click). Gates a
   // shorter skeleton threshold so the URL-hydrated blank window is less jarring.
@@ -105,19 +138,107 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     if (open) return
     if (typeof window === "undefined") return
     let frame = 0
+    const updatePinned = () => {
+      setPinned(window.scrollY > 80)
+    }
     const onScroll = () => {
       if (frame !== 0) return
       frame = window.requestAnimationFrame(() => {
-        setPinned(window.scrollY > 80)
+        updatePinned()
         frame = 0
       })
     }
+    updatePinned()
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => {
       window.removeEventListener("scroll", onScroll)
       if (frame !== 0) window.cancelAnimationFrame(frame)
     }
   }, [open])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const handleVisibilityChange = (event: Event) => {
+      const detail = (event as CustomEvent<WatchPlayerChromeVisibilityDetail>)
+        .detail
+      if (typeof detail?.visible !== "boolean") return
+      setPlayerChromeVisible(detail.visible)
+    }
+
+    window.addEventListener(
+      WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+      handleVisibilityChange,
+    )
+    return () => {
+      window.removeEventListener(
+        WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+        handleVisibilityChange,
+      )
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const handleLanguageSwitcherChange = (event: Event) => {
+      const detail = (event as CustomEvent<WatchHeaderLanguageSwitcherDetail>)
+        .detail
+      if (typeof detail?.visible !== "boolean") return
+      setHeaderLanguageSwitcher({
+        visible: detail.visible && typeof detail.onClick === "function",
+        onClick: typeof detail.onClick === "function" ? detail.onClick : null,
+      })
+    }
+
+    window.addEventListener(
+      WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+      handleLanguageSwitcherChange,
+    )
+    return () => {
+      window.removeEventListener(
+        WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+        handleLanguageSwitcherChange,
+      )
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const handlePlaybackStateChange = (event: Event) => {
+      const detail = (event as CustomEvent<WatchPlayerPlaybackStateDetail>)
+        .detail
+      if (
+        typeof detail?.playing !== "boolean" ||
+        typeof detail?.muted !== "boolean"
+      ) {
+        return
+      }
+      setPlayerPlaybackState({
+        playing: detail.playing,
+        muted: detail.muted,
+      })
+    }
+
+    window.addEventListener(
+      WATCH_PLAYER_PLAYBACK_STATE_EVENT,
+      handlePlaybackStateChange,
+    )
+    return () => {
+      window.removeEventListener(
+        WATCH_PLAYER_PLAYBACK_STATE_EVENT,
+        handlePlaybackStateChange,
+      )
+    }
+  }, [])
+
+  useEffect(() => {
+    setPlayerChromeVisible(true)
+    setPlayerPlaybackState({ playing: false, muted: true })
+    setHeaderLanguageSwitcher({ visible: false, onClick: null })
+    setHeaderHovered(false)
+  }, [pathname])
 
   const setOpen = useCallback((next: boolean) => {
     if (closingTimerRef.current) {
@@ -350,51 +471,164 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
 
   // Pinned lives on its own context so scroll-rate state updates don't
   // re-render the modal result grid (up to 20 VideoCards).
-  const pinnedValue = useMemo<FloatingSearchPinnedContextValue>(
-    () => ({ pinned }),
-    [pinned],
-  )
+  const modalChromeHidden = open || closing
+  const playerPlayingWithSound =
+    playerPlaybackState.playing && !playerPlaybackState.muted
+  const headerChromeHidden =
+    modalChromeHidden || (!playerChromeVisible && !headerHovered)
+  const searchChromeVisible = !headerChromeHidden
+  const headerBackdropHidden =
+    modalChromeHidden ||
+    ((playerPlayingWithSound || !playerChromeVisible) && !headerHovered)
+  const headerHoverZoneActive =
+    !modalChromeHidden && (playerPlayingWithSound || !playerChromeVisible)
 
-  const chromeHidden = open || closing
+  useEffect(() => {
+    if (!headerHoverZoneActive) {
+      setHeaderHovered(false)
+      return
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      setHeaderHovered(event.clientY <= HEADER_HOVER_HEIGHT_PX)
+    }
+
+    window.addEventListener("pointermove", handlePointerMove)
+    return () => window.removeEventListener("pointermove", handlePointerMove)
+  }, [headerHoverZoneActive])
+
+  const pinnedValue = useMemo<FloatingSearchPinnedContextValue>(
+    () => ({
+      pinned,
+      playerChromeVisible,
+      searchChromeVisible,
+      searchOpen: modalChromeHidden,
+    }),
+    [pinned, playerChromeVisible, searchChromeVisible, modalChromeHidden],
+  )
 
   return (
     <FloatingSearchContext.Provider value={value}>
       <FloatingSearchPinnedContext.Provider value={pinnedValue}>
         <div
-          inert={chromeHidden || undefined}
-          aria-hidden={chromeHidden || undefined}
+          inert={modalChromeHidden || undefined}
+          aria-hidden={modalChromeHidden || undefined}
         >
           {children}
         </div>
+        <div
+          aria-hidden="true"
+          data-testid="floating-header-backdrop"
+          className={`pointer-events-none fixed inset-x-0 top-0 z-40 h-32 bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] backdrop-blur-[10px] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)] transition-opacity duration-300 ease-out ${
+            headerBackdropHidden ? "opacity-0" : "opacity-100"
+          }`}
+        />
+        <div
+          aria-hidden="true"
+          data-testid="floating-header-hover-zone"
+          onPointerEnter={() => setHeaderHovered(true)}
+          className={`fixed inset-x-0 top-0 z-[45] h-36 ${
+            headerHoverZoneActive
+              ? "pointer-events-auto"
+              : "pointer-events-none"
+          }`}
+        />
         <FloatingSearchBar />
+        {headerLanguageSwitcher.visible && headerLanguageSwitcher.onClick ? (
+          <>
+            <WatchHeaderAnimatedIcon
+              hidden={headerChromeHidden}
+              pinned={pinned}
+            />
+            <button
+              type="button"
+              data-testid="floating-header-language-button"
+              onClick={headerLanguageSwitcher.onClick}
+              aria-label="Change audio language"
+              title="Change audio language"
+              inert={headerChromeHidden || undefined}
+              aria-hidden={headerChromeHidden || undefined}
+              className={`fixed right-10 z-50 inline-flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[top,opacity,color] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
+                pinned ? "top-4" : "top-12"
+              } ${
+                headerChromeHidden
+                  ? "opacity-0 pointer-events-none"
+                  : "opacity-100"
+              }`}
+            >
+              <Globe
+                aria-hidden
+                className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
+              />
+            </button>
+          </>
+        ) : null}
         <Link
           href={"/" as Route}
           aria-label="JesusFilm home"
-          inert={chromeHidden || undefined}
-          aria-hidden={chromeHidden || undefined}
+          data-testid="floating-header-logo"
+          inert={headerChromeHidden || undefined}
+          aria-hidden={headerChromeHidden || undefined}
           // Clear the search query (and ?q= URL param + cached results) on
           // click so the home navigation lands on a fresh search bar instead
           // of carrying the previous query across.
           onClick={() => {
             void search("")
           }}
-          className={`fixed left-10 z-50 hidden sm:flex h-12 items-center transition-[top,opacity] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 ${
-            pinned ? "top-3" : "top-10"
-          } ${chromeHidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+          className={`fixed ${WATCH_PAGE_LEFT_RAIL_CLASSES} z-50 flex h-[52px] items-center transition-[top,opacity] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 ${
+            pinned ? "top-4" : "top-12"
+          } ${
+            headerChromeHidden ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
         >
           <Image
             src="/watch/images/jesusfilm-sign.svg"
             alt="JesusFilm"
-            width={32}
-            height={24}
+            width={70}
+            height={70}
             unoptimized
-            className="drop-shadow-md"
+            className="h-auto max-w-[42px] drop-shadow-md sm:max-w-[50px] lg:max-w-[70px]"
           />
         </Link>
-        {portalReady && chromeHidden
+        {portalReady && modalChromeHidden
           ? createPortal(<SearchOverlay />, document.body)
           : null}
       </FloatingSearchPinnedContext.Provider>
     </FloatingSearchContext.Provider>
+  )
+}
+
+function WatchHeaderAnimatedIcon({
+  hidden,
+  pinned,
+}: {
+  hidden: boolean
+  pinned: boolean
+}) {
+  const icons = [
+    { Icon: MessageCircle, label: "Chat" },
+    { Icon: UserRound, label: "Person" },
+    { Icon: Bot, label: "AI" },
+    { Icon: CircleHelp, label: "Question" },
+  ]
+
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="floating-header-animated-icon"
+      inert={hidden || undefined}
+      className={`pointer-events-none fixed right-24 z-50 inline-flex h-[52px] w-12 items-center justify-center rounded-full text-stone-100 transition-[top,opacity] duration-300 ease-out ${
+        pinned ? "top-4" : "top-12"
+      } ${hidden ? "opacity-0" : "opacity-100"}`}
+    >
+      {icons.map(({ Icon, label }, index) => (
+        <Icon
+          key={label}
+          data-testid={`floating-header-animated-icon-${index}`}
+          className="absolute h-6 w-6 animate-watch-header-icon-cycle drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
+          style={{ animationDelay: `${index * 1.2}s` }}
+        />
+      ))}
+    </div>
   )
 }

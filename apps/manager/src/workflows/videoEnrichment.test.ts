@@ -184,15 +184,10 @@ describe("runVideoEnrichment", () => {
     })
     sceneEmbeddingSyncMock.mockResolvedValue({
       domain: "scene_embeddings",
-      status: "indexed",
-      resolvedVideoId: 42,
+      status: "source_ready",
       videoDocumentId: "video-doc-1",
       generatedSceneCount: 1,
       indexableSceneCount: 1,
-      indexedSceneCount: 1,
-      embeddingTokens: 21,
-      model: "text-embedding-3-small",
-      dimensions: 1536,
     })
 
     for (const key of Object.keys(persistedJobArtifacts)) {
@@ -1018,8 +1013,7 @@ describe("runVideoEnrichment", () => {
           kind: "metadata",
           data: expect.objectContaining({
             domain: "scene_embeddings",
-            status: "indexed",
-            resolvedVideoId: 42,
+            status: "source_ready",
           }),
         },
       },

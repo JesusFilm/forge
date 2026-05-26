@@ -19,6 +19,10 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 - UI never accesses the database directly.
 - Pothos `prismaField` / `t.relation` handles reads with `...query` passthrough.
 - Services own mutations, raw SQL (pgvector), and ABAC enforcement.
+- Admin owns live search orchestration, query embedding generation, vector
+  storage, production search traces, raw trace retention, aggregates, and the
+  internal trace sampling contract. Mastra samples later through authenticated
+  Admin HTTP only; it must not import Admin code or read Admin Postgres.
 - Admin auth must not depend on shared `.jesusfilm.org` cookies or
   admin-local credential handlers.
 - Every Pothos type is classified `abac-gated` or `public-shape` — `abac-gated`
@@ -35,6 +39,10 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
   maps are compatibility mirrors only.
 - Embedding vector columns never appear in a GraphQL type (technical control,
   not convention).
+- Raw production search traces may retain query text only after first-pass
+  privacy labeling/redaction and for less than 30 days. Aggregates survive
+  without query text; never store bearer tokens, cookies, IPs, user ids, or
+  caller-supplied key ids in trace tables.
 
 ## Workflow
 
@@ -63,7 +71,7 @@ CI's `admin-schema-drift` job catches step 1 if forgotten. The committed SDL is 
 | Script                                               | Purpose                                                         | Env requirement                                                    |
 | ---------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------ |
 | `pnpm --filter @forge/admin run-sync`                | Run the Core data sync against any DATABASE_URL                 | DATABASE_URL + Core API creds                                      |
-| `pnpm --filter @forge/admin run-embeds`              | Run scene/transcript embedding workflows locally                | DATABASE_URL + manager S3 + Mastra keys; OpenRouter for scene      |
+| `pnpm --filter @forge/admin run-embeds`              | Run scene/transcript/experience embedding workflows locally     | DATABASE_URL + manager S3 + Mastra service keys                    |
 | `pnpm --filter @forge/admin run-experience-dump`     | Run R3 experience-content-dump from a workstation               | DATABASE_URL + CMS_DATABASE_URL                                    |
 | `pnpm --filter @forge/admin restore:video-db`        | Restore the reviewed video slice into dev/staging Postgres      | TARGET_DATABASE_URL or DATABASE_URL + `--target-env`               |
 | `pnpm --filter @forge/admin restore:video-db:latest` | Download latest via prod presign endpoint, then restore locally | TARGET_DATABASE_URL or DATABASE_URL + BACKUP_DOWNLOAD_API_KEY      |

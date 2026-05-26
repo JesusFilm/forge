@@ -1,67 +1,17 @@
-import { env } from "@/config/env"
 import { redirect } from "next/navigation"
+import { LoginPageClient } from "@/app/login/login-page-client"
 import {
-  LoginPageClient,
-  type LoginErrorCode,
-  type LoginProviderId,
-} from "@/app/login/login-page-client"
+  firstParam,
+  getEnabledProviders,
+  isOAuthAuthorizeRequest,
+  parseLoginError,
+  resolveRequestingAppName,
+  toOAuthQuery,
+  type LoginSearchParams,
+} from "@/app/login/login-page-data"
 
 type LoginPageProps = {
-  searchParams?: Promise<Record<string, string | string[] | undefined>>
-}
-
-function firstParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value
-}
-
-export function isOAuthAuthorizeRequest(
-  params: Record<string, string | string[] | undefined>,
-) {
-  return Boolean(
-    firstParam(params.client_id) && firstParam(params.redirect_uri),
-  )
-}
-
-function parseLoginError(
-  value: string | undefined,
-): LoginErrorCode | undefined {
-  return value === "account_not_linked" ||
-    value === "credentials" ||
-    value === "forbidden"
-    ? value
-    : undefined
-}
-
-function toOAuthQuery(params: Record<string, string | string[] | undefined>) {
-  const oauthQuery = new URLSearchParams()
-  for (const [key, value] of Object.entries(params)) {
-    if (key === "error") continue
-    if (Array.isArray(value)) {
-      for (const item of value) oauthQuery.append(key, item)
-    } else if (value) {
-      oauthQuery.set(key, value)
-    }
-  }
-  return oauthQuery.toString()
-}
-
-function getEnabledProviders(): LoginProviderId[] {
-  const providers: LoginProviderId[] = []
-
-  if (env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET) {
-    providers.push("facebook")
-  }
-  if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
-    providers.push("google")
-  }
-  if (env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET) {
-    providers.push("apple")
-  }
-  if (env.OKTA_CLIENT_ID && env.OKTA_CLIENT_SECRET && env.OKTA_ISSUER) {
-    providers.push("okta")
-  }
-
-  return providers
+  searchParams?: Promise<LoginSearchParams>
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
@@ -73,8 +23,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
   return (
     <LoginPageClient
       enabledProviders={getEnabledProviders()}
+      flow="login"
       initialError={parseLoginError(firstParam(params.error))}
       oauthQuery={toOAuthQuery(params)}
+      requestingAppName={await resolveRequestingAppName(
+        firstParam(params.client_id),
+      )}
     />
   )
 }

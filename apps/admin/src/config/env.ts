@@ -20,6 +20,14 @@ export const concurrencyEnvSchema = z.coerce
   .positive()
   .optional()
 
+export const searchTraceRawRetentionDaysEnvSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(29)
+  .optional()
+  .default(29)
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -67,6 +75,12 @@ export const env = createEnv({
     // This is deliberately separate from WORKFLOW_API_KEYS: workflow launchers
     // must not automatically gain direct vector-write capability.
     MASTRA_TRANSCRIPT_INGEST_API_KEYS: z.string().min(1).optional(),
+    // Narrow receiver-side CSV for Mastra -> Admin scene vector ingest.
+    // Kept separate from transcript ingest and workflow launch credentials.
+    MASTRA_SCENE_INGEST_API_KEYS: z.string().min(1).optional(),
+    // Narrow receiver-side CSV for Mastra -> Admin experience vector ingest.
+    // Kept separate from transcript/scene ingest and workflow launch credentials.
+    MASTRA_EXPERIENCE_INGEST_API_KEYS: z.string().min(1).optional(),
     // Plan 003 — consumer-app bearer allowlist (apps/web SSR).
     // CSV-parsed, matched against `Authorization: Bearer <key>` by
     // `consumer-bearer.ts`. A matched key mints a CONSUMER_BEARER
@@ -109,6 +123,14 @@ export const env = createEnv({
     // `.optional()` because the harness still works without it during
     // dual-accept — anonymous traffic logs as `auth=anonymous`.
     SEARCH_API_KEY: z.string().min(1).optional(),
+    // Admin-owned production search trace sampling. Future Mastra eval jobs
+    // call the internal Admin sampling route with a dedicated bearer from
+    // this CSV; it must stay disjoint from public search, workflow launch,
+    // backup download, and vector-ingest credentials.
+    SEARCH_TRACE_SAMPLING_API_KEYS: z.string().min(1).optional(),
+    // Raw search traces expire before the 30-day hard ceiling so the daily
+    // purge has a real safety margin. Aggregates survive without query text.
+    SEARCH_TRACE_RAW_RETENTION_DAYS: searchTraceRawRetentionDaysEnvSchema,
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
     WORKFLOW_TARGET_WORLD: z
       .enum(["local", "@workflow/world-postgres"])
@@ -172,6 +194,16 @@ export const env = createEnv({
     MASTRA_BASE_URL: z.string().url().optional(),
     MASTRA_SERVICE_API_KEY: z.string().min(1).optional(),
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(120_000),
+    MASTRA_SCENE_EMBEDDING_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(120_000),
+    MASTRA_EXPERIENCE_EMBEDDING_TIMEOUT_MS: z.coerce
       .number()
       .int()
       .positive()
@@ -278,12 +310,24 @@ export const env = createEnv({
     MASTRA_TRANSCRIPT_INGEST_API_KEYS: emptyToUndefined(
       process.env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
     ),
+    MASTRA_SCENE_INGEST_API_KEYS: emptyToUndefined(
+      process.env.MASTRA_SCENE_INGEST_API_KEYS,
+    ),
+    MASTRA_EXPERIENCE_INGEST_API_KEYS: emptyToUndefined(
+      process.env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
+    ),
     WEB_ADMIN_API_KEYS: emptyToUndefined(process.env.WEB_ADMIN_API_KEYS),
     BACKUP_DOWNLOAD_API_KEYS: emptyToUndefined(
       process.env.BACKUP_DOWNLOAD_API_KEYS,
     ),
     SEARCH_AUTH_REQUIRED: emptyToUndefined(process.env.SEARCH_AUTH_REQUIRED),
     SEARCH_API_KEY: emptyToUndefined(process.env.SEARCH_API_KEY),
+    SEARCH_TRACE_SAMPLING_API_KEYS: emptyToUndefined(
+      process.env.SEARCH_TRACE_SAMPLING_API_KEYS,
+    ),
+    SEARCH_TRACE_RAW_RETENTION_DAYS: emptyToUndefined(
+      process.env.SEARCH_TRACE_RAW_RETENTION_DAYS,
+    ),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
     WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
     WORKFLOW_RUNNER_ENABLED: emptyToUndefined(
@@ -340,6 +384,12 @@ export const env = createEnv({
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
       process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
     ),
+    MASTRA_SCENE_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_SCENE_EMBEDDING_TIMEOUT_MS,
+    ),
+    MASTRA_EXPERIENCE_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_EXPERIENCE_EMBEDDING_TIMEOUT_MS,
+    ),
     WEB_REVALIDATE_URL: emptyToUndefined(process.env.WEB_REVALIDATE_URL),
     WEB_REVALIDATE_TOKEN: emptyToUndefined(process.env.WEB_REVALIDATE_TOKEN),
     NEXT_RUNTIME: emptyToUndefined(process.env.NEXT_RUNTIME),
@@ -395,9 +445,12 @@ function parseBearerCsvSet(csv: string | undefined): ReadonlySet<string> {
 const BEARER_CSV_KEYS = [
   "WORKFLOW_API_KEYS",
   "MASTRA_TRANSCRIPT_INGEST_API_KEYS",
+  "MASTRA_SCENE_INGEST_API_KEYS",
+  "MASTRA_EXPERIENCE_INGEST_API_KEYS",
   "MANAGER_ADMIN_API_KEY",
   "WEB_ADMIN_API_KEYS",
   "BACKUP_DOWNLOAD_API_KEYS",
+  "SEARCH_TRACE_SAMPLING_API_KEYS",
 ] as const
 
 type BearerCsvKey = (typeof BEARER_CSV_KEYS)[number]
@@ -468,9 +521,12 @@ export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
 assertBearerCsvsDisjoint({
   WORKFLOW_API_KEYS: env.WORKFLOW_API_KEYS,
   MASTRA_TRANSCRIPT_INGEST_API_KEYS: env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
+  MASTRA_SCENE_INGEST_API_KEYS: env.MASTRA_SCENE_INGEST_API_KEYS,
+  MASTRA_EXPERIENCE_INGEST_API_KEYS: env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
   MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
+  SEARCH_TRACE_SAMPLING_API_KEYS: env.SEARCH_TRACE_SAMPLING_API_KEYS,
 })
 
 // Plan 003 retired the SEARCH_API_KEYS env-CSV partner branch — external

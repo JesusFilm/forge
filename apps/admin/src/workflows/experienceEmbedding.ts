@@ -1,7 +1,7 @@
 import {
-  embedExperienceLocale,
-  type EmbedExperienceLocaleResult,
-} from "@/services/embeddings.service"
+  launchMastraExperienceEmbeddingForLocale,
+  type MastraExperienceEmbeddingLaunchResult,
+} from "@/services/mastra-experience-embedding-client"
 
 export type ExperienceEmbeddingInput = {
   localeId: string
@@ -9,21 +9,16 @@ export type ExperienceEmbeddingInput = {
 
 export type ExperienceEmbeddingOutput = {
   localeId: string
-  dimensions: number
-  model: string
   updated: boolean
 }
 
 /**
- * Per-locale experience embedding workflow. Loads the locale, builds
- * the embedding text, generates a vector, and persists it.
+ * Per-locale experience embedding workflow. Admin authorizes and resolves
+ * the locale; Mastra owns provider generation and writes back through
+ * Admin's experience-specific ingest endpoint.
  *
- * The whole sequence is wrapped in a single `"use step"` so the
- * production workflow runtime gets a clean replay boundary; the
- * underlying work lives in `embedExperienceLocale` (a plain service
- * function) so the same code path is reachable without the runtime —
- * which is what `runExperienceEmbeddingBackfill` and
- * `pnpm run-embeds --pipeline=experience` rely on.
+ * The GraphQL-facing return intentionally stays scrubbed: no vector,
+ * provider payload, model, dimensions, source hash, or Mastra run id.
  */
 export async function runExperienceEmbedding(
   input: ExperienceEmbeddingInput,
@@ -31,18 +26,22 @@ export async function runExperienceEmbedding(
   "use workflow"
 
   const result = await stepEmbed(input.localeId)
+  if (!result.ok) {
+    throw new Error(
+      `Mastra experience embedding failed: ${result.reason}` +
+        (result.adminReason ? ` (${result.adminReason})` : ""),
+    )
+  }
 
   return {
-    localeId: result.localeId,
-    dimensions: result.dimensions,
-    model: result.model,
+    localeId: input.localeId,
     updated: true,
   }
 }
 
 async function stepEmbed(
   localeId: string,
-): Promise<EmbedExperienceLocaleResult> {
+): Promise<MastraExperienceEmbeddingLaunchResult> {
   "use step"
-  return embedExperienceLocale(localeId)
+  return launchMastraExperienceEmbeddingForLocale(localeId, { mode: "force" })
 }

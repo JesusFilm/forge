@@ -3,8 +3,9 @@ id: "feat-133"
 title: "Mastra scene embedding workflow migration"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: "2026-05-25"
+completed_date: "2026-05-26"
 duration: 5
 depends_on:
   - "feat-132"

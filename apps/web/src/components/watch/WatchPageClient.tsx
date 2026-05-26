@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
+import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import { DownloadModal } from "@/components/watch/DownloadModal"
 import { LanguagePickerModal } from "@/components/watch/LanguagePickerModal"
 import { ShareModal } from "@/components/watch/ShareModal"
@@ -170,11 +171,13 @@ export function WatchPageClient({
           language: v.language
             ? {
                 coreId: v.language.coreId,
+                bcp47: v.language.bcp47,
                 slug: v.language.slug,
                 name: v.language.name,
                 nativeName: v.language.nativeName,
               }
             : null,
+          videoEdition: v.videoEdition,
         })),
     [video.variants],
   )
@@ -196,6 +199,34 @@ export function WatchPageClient({
   const openShare = useCallback(() => setModalState("share"), [])
   const closeModal = useCallback(() => setModalState("none"), [])
 
+  // Pause the video whenever any modal (search / language / download / share)
+  // opens, and restore the prior playing state on close. Captures the snapshot
+  // at the open-edge so a paused video stays paused after the modal closes.
+  const { searchOpen } = useFloatingSearchPinned()
+  const anyModalOpen = searchOpen || modalState !== "none"
+  const wasPlayingRef = useRef(false)
+  const prevAnyModalOpenRef = useRef(false)
+  useEffect(() => {
+    const player = playerRef.current
+    const wasOpen = prevAnyModalOpenRef.current
+    prevAnyModalOpenRef.current = anyModalOpen
+    if (!player) return
+    if (anyModalOpen && !wasOpen) {
+      wasPlayingRef.current = !player.paused
+      if (wasPlayingRef.current) {
+        player.pause()
+      }
+    } else if (!anyModalOpen && wasOpen) {
+      if (wasPlayingRef.current) {
+        const result = player.play()
+        if (result && typeof (result as Promise<void>).then === "function") {
+          ;(result as Promise<void>).catch(() => {})
+        }
+      }
+      wasPlayingRef.current = false
+    }
+  }, [anyModalOpen])
+
   const modalCallbacks: WatchModalCallbacks = {
     openDownload,
     openLanguage,
@@ -207,7 +238,7 @@ export function WatchPageClient({
     <main
       data-testid="watch-page-client"
       data-modal-state={modalState}
-      className="min-h-screen bg-stone-900 text-stone-100"
+      className="min-h-screen bg-stone-900 font-sans text-stone-100 [&_button]:font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans [&_h5]:font-sans [&_h6]:font-sans [&_p]:font-sans"
     >
       <WatchSectionRenderer
         blocks={mergedBlocks}

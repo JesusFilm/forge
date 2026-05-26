@@ -117,11 +117,11 @@ export function EasterDates({ data }: EasterDatesProps) {
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-lg bg-gradient-to-tr from-blue-400 via-amber-500 to-red-600 bg-blend-multiply shadow-lg"
+      className="relative w-full overflow-hidden rounded-lg bg-gradient-to-tr from-blue-400 via-amber-500 to-brand-red bg-blend-multiply shadow-lg"
       data-testid="EasterDates"
     >
       <div
-        className="absolute inset-0 bg-gradient-to-br from-yellow-400/40 via-amber-500/40 to-red-500/40 blur-xl"
+        className="absolute inset-0 bg-gradient-to-br from-yellow-400/40 via-amber-500/40 to-brand-red/40 blur-xl"
         style={{ mixBlendMode: "overlay" }}
       />
       <div

@@ -154,7 +154,7 @@ function SeriesHeroStatic({
             {series.title ? (
               <h1
                 data-testid="series-hero-overlay-title"
-                className="text-4xl font-bold text-white drop-shadow-lg whitespace-nowrap md:text-6xl xl:text-7xl"
+                className="max-w-[calc(100vw-5rem)] text-2xl leading-[1.08] font-bold text-balance break-words text-white drop-shadow-lg sm:text-4xl md:max-w-[18ch] md:text-6xl xl:max-w-[20ch] xl:text-7xl"
               >
                 {series.title}
               </h1>

@@ -66,7 +66,7 @@ export function SeriesEpisodeCard({
       href={href}
       data-testid="series-episode-card"
       data-backdrop-url={backdropUrl ?? ""}
-      className="group animate-card-enter relative flex aspect-video w-full overflow-hidden rounded-xl ring-1 ring-white/5 transition duration-300 hover:z-10 hover:scale-105 hover:ring-white/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+      className="group animate-card-enter relative flex aspect-video w-full cursor-pointer overflow-hidden rounded-xl ring-1 ring-white/5 transition duration-300 hover:z-10 hover:scale-105 hover:ring-white/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
       style={{ animationDelay: `${index * 40}ms` }}
     >
       {thumbnailUrl ? (

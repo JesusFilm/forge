@@ -201,20 +201,24 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(fields.triggerExperienceEmbeddingBackfill).toBeDefined()
   })
 
-  it("triggerExperienceEmbeddingBackfill declares optional experienceIds + bcp47Locales + force args", () => {
+  it("triggerExperienceEmbeddingBackfill declares optional experienceIds + bcp47Locales + force + mode args", () => {
     const mutation = schema.getMutationType()!
     const field = mutation.getFields().triggerExperienceEmbeddingBackfill!
     const experienceIds = field.args.find((a) => a.name === "experienceIds")
     const bcp47Locales = field.args.find((a) => a.name === "bcp47Locales")
     const force = field.args.find((a) => a.name === "force")
+    const mode = field.args.find((a) => a.name === "mode")
     expect(experienceIds).toBeDefined()
     expect(bcp47Locales).toBeDefined()
     expect(force).toBeDefined()
+    expect(mode).toBeDefined()
     // experienceIds and bcp47Locales are nullable inclusion-filter lists.
     expect(String(experienceIds!.type)).toBe("[ID!]")
     expect(String(bcp47Locales!.type)).toBe("[String!]")
     // force is nullable Boolean (defaultValue: false on the resolver).
     expect(String(force!.type)).toBe("Boolean")
+    // mode is nullable String, parsed by the resolver into the ingest mode.
+    expect(String(mode!.type)).toBe("String")
   })
 
   it("Mutation root does NOT expose the retired experience-content-dump trigger", () => {
