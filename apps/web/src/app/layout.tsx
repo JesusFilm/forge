@@ -54,9 +54,9 @@ export default function RootLayout(props: { children: ReactNode }) {
     <html
       lang="en"
       dir="ltr"
-      className={cn("overflow-x-hidden font-sans", montserrat.variable)}
+      className={cn("overflow-x-clip font-sans", montserrat.variable)}
     >
-      <body className="overflow-x-hidden bg-stone-900">
+      <body className="overflow-x-clip bg-stone-900">
         <FloatingSearchProvider>{props.children}</FloatingSearchProvider>
       </body>
     </html>

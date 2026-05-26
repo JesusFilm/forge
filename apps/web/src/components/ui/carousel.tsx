@@ -164,7 +164,7 @@ function CarouselContent({
   return (
     <div
       ref={carouselRef}
-      className="overflow-hidden"
+      className="overflow-x-clip overflow-y-visible"
       data-slot="carousel-content"
       onWheel={handleWheel}
     >

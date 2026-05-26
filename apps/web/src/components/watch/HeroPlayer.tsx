@@ -75,8 +75,6 @@ const OBSCURED_PAUSE_THRESHOLD = 0.6
 // globe button appears. With only one variant there's nothing to switch to.
 const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
 
-const PRE_REVEAL_HERO_SIZE_CLASSES = "h-[72svh] min-h-[420px] max-h-[900px]"
-
 export function HeroPlayer({
   block,
   onPlayerReady,
@@ -568,11 +566,7 @@ export function HeroPlayer({
         data-testid="hero-player-wrapper"
         data-chrome-revealed={chromeRevealed ? "true" : "false"}
         data-autoplay-blocked={autoplayBlocked ? "true" : "false"}
-        className={`sticky overflow-hidden bg-black ${
-          chromeRevealed
-            ? "mx-auto aspect-video w-full max-h-svh max-w-[calc(100svh*16/9)]"
-            : `w-full ${PRE_REVEAL_HERO_SIZE_CLASSES}`
-        }`}
+        className={`sticky w-full h-[calc(100svh-300px)] min-h-[400px] bg-black ${chromeRevealed ? "overflow-hidden" : "overflow-x-clip"}`}
         style={{
           // 100svh tracks the *small* viewport on iOS Safari (visible area
           // when the URL bar is showing). Plain 100vh is the *large*
@@ -609,7 +603,7 @@ export function HeroPlayer({
           onLoadedMetadata={handleLoadedMetadata}
           onCanPlay={handleCanPlay}
           onError={handlePlayerError}
-          className="block h-full w-full"
+          className={`block h-full w-full origin-top ${chromeRevealed ? "" : "scale-y-110"}`}
         />
 
         {!chromeRevealed && overlay == null ? (
