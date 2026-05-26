@@ -82,8 +82,15 @@ function withLastLoginMethodCookie(
   })
 }
 
+function hasAuthSessionCookie(response: Response): boolean {
+  return (response.headers.get("set-cookie") ?? "").includes(
+    "better-auth.session",
+  )
+}
+
 function isRedirectSuccess(response: Response): boolean {
   if (response.status < 300 || response.status >= 400) return false
+  if (!hasAuthSessionCookie(response)) return false
 
   const location = response.headers.get("location")
   if (!location) return true
@@ -181,6 +188,36 @@ function buildOAuthContinuationURL(oauthQuery: string | undefined) {
   const url = new URL("/api/auth/oauth2/authorize", getAuthBaseUrl())
   url.search = oauthQuery
   return url.toString()
+}
+
+async function parseSocialSignInRequest(request: Request): Promise<{
+  body: Record<string, unknown>
+  oauthQuery?: string
+}> {
+  const body = (await request.json()) as {
+    oauth_query?: unknown
+    [key: string]: unknown
+  }
+
+  return {
+    body,
+    oauthQuery:
+      typeof body.oauth_query === "string" ? body.oauth_query : undefined,
+  }
+}
+
+async function handleSocialSignIn(request: Request): Promise<Response> {
+  const { body, oauthQuery } = await parseSocialSignInRequest(request)
+  const callbackURL = buildOAuthContinuationURL(oauthQuery)
+  const betterAuthBody = { ...body }
+  delete betterAuthBody.oauth_query
+
+  return authRouteHandlers.POST(
+    toJsonRequest(request, {
+      ...betterAuthBody,
+      ...(callbackURL ? { callbackURL } : {}),
+    }),
+  )
 }
 
 function redirectFormPostAfterSignIn(
@@ -362,6 +399,9 @@ export async function POST(
 
   if (path === "sign-in/email") {
     return handleEmailSignIn(request)
+  }
+  if (path === "sign-in/social") {
+    return handleSocialSignIn(request)
   }
   if (path === "sign-up/email") {
     audit("auth.signup.rejected.public")

@@ -1,5 +1,13 @@
 import { prisma } from "@/db/client"
 
+import {
+  DashboardPageShell,
+  DashboardPanel,
+  DashboardTable,
+  DashboardTd,
+  DashboardTh,
+} from "@/app/dashboard/dashboard-components"
+
 export const dynamic = "force-dynamic"
 
 export default async function UsersPage() {
@@ -25,7 +33,7 @@ export default async function UsersPage() {
   })
 
   return (
-    <section className="grid gap-[22px]">
+    <DashboardPageShell>
       <header className="flex items-end justify-between gap-4">
         <div>
           <p className="m-0 text-[11px] font-bold uppercase tracking-[0.08em] text-[#ef3340]">
@@ -37,41 +45,29 @@ export default async function UsersPage() {
         </div>
       </header>
 
-      <div className="overflow-auto rounded-lg border border-[#dedbd2] bg-white">
-        <table className="w-full border-collapse">
+      <DashboardPanel>
+        <DashboardTable>
           <thead>
             <tr>
-              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                User
-              </th>
-              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                Status
-              </th>
-              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                Email
-              </th>
-              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                Grants
-              </th>
-              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                Created
-              </th>
+              <DashboardTh>User</DashboardTh>
+              <DashboardTh>Status</DashboardTh>
+              <DashboardTh>Email</DashboardTh>
+              <DashboardTh>Grants</DashboardTh>
+              <DashboardTh>Created</DashboardTh>
             </tr>
           </thead>
           <tbody>
             {users.map((user) => (
               <tr key={user.id}>
-                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                <DashboardTd>
                   <strong>{user.name}</strong>
                   <small className="block text-[#78716c]">{user.email}</small>
-                </td>
-                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
-                  {user.membershipStatus.toLowerCase()}
-                </td>
-                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                </DashboardTd>
+                <DashboardTd>{user.membershipStatus.toLowerCase()}</DashboardTd>
+                <DashboardTd>
                   {user.emailVerified ? "verified" : "unverified"}
-                </td>
-                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                </DashboardTd>
+                <DashboardTd>
                   {user.grants.length === 0
                     ? "none"
                     : user.grants
@@ -80,15 +76,13 @@ export default async function UsersPage() {
                             `${grant.app.displayName} ${grant.environment.kind.toLowerCase()} ${grant.status.toLowerCase()}`,
                         )
                         .join(", ")}
-                </td>
-                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
-                  {user.createdAt.toISOString()}
-                </td>
+                </DashboardTd>
+                <DashboardTd>{user.createdAt.toISOString()}</DashboardTd>
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
-    </section>
+        </DashboardTable>
+      </DashboardPanel>
+    </DashboardPageShell>
   )
 }

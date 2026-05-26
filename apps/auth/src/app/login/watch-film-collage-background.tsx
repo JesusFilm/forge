@@ -1,6 +1,11 @@
 "use client"
 
-import { useLayoutEffect, useRef, type CSSProperties } from "react"
+import {
+  useLayoutEffect,
+  useRef,
+  useSyncExternalStore,
+  type CSSProperties,
+} from "react"
 import Image from "next/image"
 
 type CollageImage = {
@@ -217,6 +222,11 @@ const ROWS = [
 
 export function WatchFilmCollageBackground() {
   const collageRootRef = useRef<HTMLDivElement>(null)
+  const isMobile = useSyncExternalStore(
+    subscribeToMobileViewport,
+    getIsMobileViewport,
+    getServerIsMobileViewport,
+  )
 
   useLayoutEffect(() => {
     collageRootRef.current?.style.setProperty(
@@ -224,6 +234,8 @@ export function WatchFilmCollageBackground() {
       String(getCollageAnimationDelaySeconds()),
     )
   }, [])
+
+  const artwork = isMobile ? MOBILE_FEATURE_FILMS : WATCH_ARTWORK
 
   return (
     <div
@@ -243,20 +255,10 @@ export function WatchFilmCollageBackground() {
             className={`relative flex gap-4 [animation-delay:calc(var(--film-collage-delay)*-1s)] will-change-transform ${row.offsetClass} ${row.animationClass}`}
           >
             {[
-              ...selectArtwork(row.start, row.count),
-              ...selectArtwork(row.start, row.count),
+              ...selectArtworkFrom(artwork, row.start, row.count),
+              ...selectArtworkFrom(artwork, row.start, row.count),
             ].map((image, index) => (
               <Tile image={image} key={`${image.title}-${index}`} />
-            ))}
-            {[
-              ...selectArtworkFrom(MOBILE_FEATURE_FILMS, row.start, row.count),
-              ...selectArtworkFrom(MOBILE_FEATURE_FILMS, row.start, row.count),
-            ].map((image, index) => (
-              <Tile
-                image={image}
-                key={`mobile-${image.title}-${index}`}
-                variant="mobile"
-              />
             ))}
           </div>
         ))}
@@ -294,8 +296,19 @@ function getCollageAnimationDelaySeconds() {
   }
 }
 
-function selectArtwork(start: number, count: number) {
-  return selectArtworkFrom(WATCH_ARTWORK, start, count)
+function getIsMobileViewport() {
+  return window.matchMedia("(max-width: 820px)").matches
+}
+
+function getServerIsMobileViewport() {
+  return false
+}
+
+function subscribeToMobileViewport(callback: () => void) {
+  const mediaQuery = window.matchMedia("(max-width: 820px)")
+  mediaQuery.addEventListener("change", callback)
+
+  return () => mediaQuery.removeEventListener("change", callback)
 }
 
 function selectArtworkFrom(
@@ -308,20 +321,9 @@ function selectArtworkFrom(
   })
 }
 
-function Tile({
-  image,
-  variant = "desktop",
-}: {
-  image: CollageImage
-  variant?: "desktop" | "mobile"
-}) {
-  const visibilityClass =
-    variant === "mobile" ? "hidden max-[820px]:block" : "max-[820px]:hidden"
-
+function Tile({ image }: { image: CollageImage }) {
   return (
-    <div
-      className={`relative aspect-video w-[clamp(180px,23vw,390px)] flex-none overflow-hidden rounded-md bg-[#14110f] opacity-[0.96] shadow-[0_18px_45px_rgba(0,0,0,0.65)] after:absolute after:inset-0 after:bg-[linear-gradient(to_top,rgba(0,0,0,0.36),transparent_58%,rgba(255,255,255,0.06))] after:content-[''] max-[820px]:w-[56vw] ${visibilityClass}`}
-    >
+    <div className="relative aspect-video w-[clamp(180px,23vw,390px)] flex-none overflow-hidden rounded-md bg-[#14110f] opacity-[0.96] shadow-[0_18px_45px_rgba(0,0,0,0.65)] after:absolute after:inset-0 after:bg-[linear-gradient(to_top,rgba(0,0,0,0.36),transparent_58%,rgba(255,255,255,0.06))] after:content-[''] max-[820px]:w-[56vw]">
       <Image
         alt=""
         aria-hidden="true"

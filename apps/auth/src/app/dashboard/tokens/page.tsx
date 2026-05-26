@@ -1,6 +1,14 @@
 import { revokeTokenRecord } from "@/app/dashboard/tokens/actions"
 import { prisma } from "@/db/client"
 
+import {
+  DashboardPageShell,
+  DashboardPanel,
+  DashboardTable,
+  DashboardTd,
+  DashboardTh,
+} from "@/app/dashboard/dashboard-components"
+
 export const dynamic = "force-dynamic"
 
 export default async function TokensPage() {
@@ -15,7 +23,7 @@ export default async function TokensPage() {
   })
 
   return (
-    <section className="grid gap-[22px]">
+    <DashboardPageShell>
       <header className="flex items-end justify-between gap-4">
         <div>
           <p className="m-0 text-[11px] font-bold uppercase tracking-[0.08em] text-[#ef3340]">
@@ -27,58 +35,34 @@ export default async function TokensPage() {
         </div>
       </header>
 
-      <div className="overflow-auto rounded-lg border border-[#dedbd2] bg-white">
-        <table className="w-full border-collapse">
+      <DashboardPanel>
+        <DashboardTable>
           <thead>
             <tr>
-              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                App
-              </th>
-              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                Family
-              </th>
-              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                Status
-              </th>
-              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                Audience
-              </th>
-              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                Scopes
-              </th>
-              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                Expires
-              </th>
-              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                Action
-              </th>
+              <DashboardTh>App</DashboardTh>
+              <DashboardTh>Family</DashboardTh>
+              <DashboardTh>Status</DashboardTh>
+              <DashboardTh>Audience</DashboardTh>
+              <DashboardTh>Scopes</DashboardTh>
+              <DashboardTh>Expires</DashboardTh>
+              <DashboardTh>Action</DashboardTh>
             </tr>
           </thead>
           <tbody>
             {tokens.map((token) => (
               <tr key={token.id}>
-                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                <DashboardTd>
                   <strong>{token.app.displayName}</strong>
                   <small className="block text-[#78716c]">
                     {token.environment.kind.toLowerCase()}
                   </small>
-                </td>
-                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
-                  {token.family.toLowerCase()}
-                </td>
-                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
-                  {token.status.toLowerCase()}
-                </td>
-                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
-                  {token.audience}
-                </td>
-                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
-                  {token.scopes.join(", ")}
-                </td>
-                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
-                  {token.expiresAt.toISOString()}
-                </td>
-                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                </DashboardTd>
+                <DashboardTd>{token.family.toLowerCase()}</DashboardTd>
+                <DashboardTd>{token.status.toLowerCase()}</DashboardTd>
+                <DashboardTd>{token.audience}</DashboardTd>
+                <DashboardTd>{token.scopes.join(", ")}</DashboardTd>
+                <DashboardTd>{token.expiresAt.toISOString()}</DashboardTd>
+                <DashboardTd>
                   {token.status === "ACTIVE" ? (
                     <form action={revokeTokenRecord}>
                       <input type="hidden" name="tokenId" value={token.id} />
@@ -92,12 +76,12 @@ export default async function TokensPage() {
                   ) : (
                     "none"
                   )}
-                </td>
+                </DashboardTd>
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
-    </section>
+        </DashboardTable>
+      </DashboardPanel>
+    </DashboardPageShell>
   )
 }

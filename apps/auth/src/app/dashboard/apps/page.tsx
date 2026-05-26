@@ -1,6 +1,14 @@
 import Link from "next/link"
 import type { Route } from "next"
 
+import {
+  DashboardPageShell,
+  DashboardPanelHeader,
+  DashboardTable,
+  DashboardTd,
+  DashboardTh,
+} from "@/app/dashboard/dashboard-components"
+
 import { prisma } from "@/db/client"
 
 export const dynamic = "force-dynamic"
@@ -24,7 +32,7 @@ export default async function AppsPage() {
   })
 
   return (
-    <section className="grid gap-[22px]">
+    <DashboardPageShell>
       <header className="flex items-end justify-between gap-4">
         <div>
           <p className="m-0 text-[11px] font-bold uppercase tracking-[0.08em] text-[#ef3340]">
@@ -42,7 +50,7 @@ export default async function AppsPage() {
             className="overflow-auto rounded-lg border border-[#dedbd2] bg-white"
             key={app.id}
           >
-            <div className="flex items-center justify-between gap-4 border-b border-[#ebe8df] p-[18px]">
+            <DashboardPanelHeader>
               <div>
                 <h3 className="m-0 font-bold">{app.displayName}</h3>
                 <p className="font-noto-serif m-0 text-[#78716c]">{app.key}</p>
@@ -53,7 +61,7 @@ export default async function AppsPage() {
               >
                 Open
               </Link>
-            </div>
+            </DashboardPanelHeader>
             <div className="flex flex-wrap gap-2 px-[18px] pb-[18px]">
               <span className="rounded-full bg-[#f1f0ea] px-[9px] py-1 text-xs text-[#57534e]">
                 {app.trustTier.toLowerCase()}
@@ -65,45 +73,33 @@ export default async function AppsPage() {
                 {app.status.toLowerCase()}
               </span>
             </div>
-            <table className="w-full border-collapse">
+            <DashboardTable>
               <thead>
                 <tr>
-                  <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                    Environment
-                  </th>
-                  <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                    Client
-                  </th>
-                  <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                    Status
-                  </th>
-                  <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                    Default scopes
-                  </th>
+                  <DashboardTh>Environment</DashboardTh>
+                  <DashboardTh>Client</DashboardTh>
+                  <DashboardTh>Status</DashboardTh>
+                  <DashboardTh>Default scopes</DashboardTh>
                 </tr>
               </thead>
               <tbody>
                 {app.environments.map((environment) => (
                   <tr key={environment.id}>
-                    <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
-                      {environment.kind.toLowerCase()}
-                    </td>
-                    <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
-                      {environment.clientId}
-                    </td>
-                    <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                    <DashboardTd>{environment.kind.toLowerCase()}</DashboardTd>
+                    <DashboardTd>{environment.clientId}</DashboardTd>
+                    <DashboardTd>
                       {environment.status.toLowerCase()}
-                    </td>
-                    <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                    </DashboardTd>
+                    <DashboardTd>
                       {environment.defaultScopes.join(", ")}
-                    </td>
+                    </DashboardTd>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </DashboardTable>
           </article>
         ))}
       </div>
-    </section>
+    </DashboardPageShell>
   )
 }

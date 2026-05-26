@@ -7,12 +7,12 @@ import "./globals.css"
 const apercu = localFont({
   src: [
     {
-      path: "../../public/fonts/jfp/Apercu Pro Medium.otf",
+      path: "./fonts/Apercu Pro Medium.otf",
       style: "normal",
       weight: "500",
     },
     {
-      path: "../../public/fonts/jfp/Apercu Pro Bold.otf",
+      path: "./fonts/Apercu Pro Bold.otf",
       style: "normal",
       weight: "700",
     },

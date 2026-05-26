@@ -1,6 +1,15 @@
 import Link from "next/link"
 import type { Route } from "next"
 
+import {
+  DashboardPageShell,
+  DashboardPanel,
+  DashboardPanelHeader,
+  DashboardTable,
+  DashboardTd,
+  DashboardTh,
+} from "@/app/dashboard/dashboard-components"
+
 import { prisma } from "@/db/client"
 
 export const dynamic = "force-dynamic"
@@ -30,7 +39,7 @@ export default async function DashboardPage() {
   ])
 
   return (
-    <section className="grid gap-[22px]">
+    <DashboardPageShell>
       <header className="flex items-end justify-between gap-4">
         <div>
           <p className="m-0 text-[11px] font-bold uppercase tracking-[0.08em] text-[#ef3340]">
@@ -73,8 +82,8 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      <div className="overflow-auto rounded-lg border border-[#dedbd2] bg-white">
-        <div className="flex items-center justify-between gap-4 border-b border-[#ebe8df] p-[18px]">
+      <DashboardPanel>
+        <DashboardPanelHeader>
           <h3 className="m-0 font-bold">Recent audit events</h3>
           <Link
             href={"/dashboard/audit" as Route}
@@ -82,38 +91,26 @@ export default async function DashboardPage() {
           >
             View all
           </Link>
-        </div>
-        <table className="w-full border-collapse">
+        </DashboardPanelHeader>
+        <DashboardTable>
           <thead>
             <tr>
-              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                Event
-              </th>
-              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                Severity
-              </th>
-              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
-                Created
-              </th>
+              <DashboardTh>Event</DashboardTh>
+              <DashboardTh>Severity</DashboardTh>
+              <DashboardTh>Created</DashboardTh>
             </tr>
           </thead>
           <tbody>
             {recentAuditEvents.map((event) => (
               <tr key={event.id}>
-                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
-                  {event.eventType}
-                </td>
-                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
-                  {event.severity.toLowerCase()}
-                </td>
-                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
-                  {event.createdAt.toISOString()}
-                </td>
+                <DashboardTd>{event.eventType}</DashboardTd>
+                <DashboardTd>{event.severity.toLowerCase()}</DashboardTd>
+                <DashboardTd>{event.createdAt.toISOString()}</DashboardTd>
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
-    </section>
+        </DashboardTable>
+      </DashboardPanel>
+    </DashboardPageShell>
   )
 }

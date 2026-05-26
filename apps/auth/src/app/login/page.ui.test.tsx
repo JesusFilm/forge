@@ -54,7 +54,7 @@ describe("auth login UI", () => {
     expect(html).toContain("Continue with Google")
     expect(html).toContain("Continue with Apple")
     expect(html).toContain("Continue with Okta")
-    expect(html).toContain("disabled")
+    expect(html.match(/disabled=""/g)).toHaveLength(3)
   })
 
   it("places provider buttons before the email form divider", () => {
@@ -70,7 +70,9 @@ describe("auth login UI", () => {
       html.indexOf("OR"),
     )
     expect(html.indexOf("OR")).toBeLessThan(html.indexOf("Email address"))
-    expect(html).not.toContain('name="password"')
+    expect(html.indexOf("Email address")).toBeLessThan(html.indexOf("Password"))
+    expect(html).toContain('name="password"')
+    expect(html).toContain('autoComplete="current-password"')
   })
 
   it("identifies OAuth authorize requests as the only valid login entry", () => {

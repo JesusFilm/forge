@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useState, type FormEvent } from "react"
+import { useState, useSyncExternalStore, type FormEvent } from "react"
 import { WatchFilmCollageBackground } from "./watch-film-collage-background"
 
 const providerLabels = {
@@ -52,8 +52,10 @@ export function LoginPageClient({
   const [error, setError] = useState<
     LoginErrorCode | "credentials" | "start" | null
   >(initialError ?? null)
-  const [lastLoginMethod] = useState<LoginMethodId | null>(() =>
-    readLastLoginMethod(),
+  const lastLoginMethod = useSyncExternalStore(
+    subscribeToCookieSnapshot,
+    readLastLoginMethod,
+    getServerLastLoginMethod,
   )
 
   const alert =
@@ -159,10 +161,9 @@ export function LoginPageClient({
                   <button
                     key={providerId}
                     className="relative flex h-[46px] w-full cursor-pointer items-center justify-start gap-3 rounded border border-white/10 bg-transparent px-4 text-left font-medium leading-none text-[#f5f5f4] transition-[background-color,border-color,box-shadow] duration-150 hover:border-white/25 hover:bg-white/[0.04] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04)] focus-visible:border-[#ef3340] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(239,51,64,0.18)] disabled:cursor-not-allowed disabled:border-white/5 disabled:text-[#78716c] disabled:opacity-70"
+                    disabled={!enabled}
                     type="button"
                     onClick={async () => {
-                      if (!enabled) return
-
                       try {
                         const res = await fetch("/api/auth/sign-in/social", {
                           method: "POST",
@@ -218,6 +219,23 @@ export function LoginPageClient({
                   name="email"
                   type="email"
                   autoComplete="email"
+                  className="h-[42px] w-full rounded border border-white/10 bg-transparent px-3 text-[#f5f5f4] outline-none focus:border-[#ef3340] focus:shadow-[0_0_0_3px_rgba(239,51,64,0.12)]"
+                  required
+                />
+              </div>
+
+              <div className="mt-4 grid gap-1.5">
+                <label
+                  className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#d6d3d1]"
+                  htmlFor="password"
+                >
+                  Password
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
                   className="h-[42px] w-full rounded border border-white/10 bg-transparent px-3 text-[#f5f5f4] outline-none focus:border-[#ef3340] focus:shadow-[0_0_0_3px_rgba(239,51,64,0.12)]"
                   required
                 />
@@ -368,6 +386,14 @@ function readLastLoginMethod(): LoginMethodId | null {
     .find((item) => item.startsWith(`${lastLoginMethodCookieName}=`))
   const value = cookie ? decodeURIComponent(cookie.split("=")[1] ?? "") : null
   return isLoginMethod(value) ? value : null
+}
+
+function getServerLastLoginMethod() {
+  return null
+}
+
+function subscribeToCookieSnapshot() {
+  return () => {}
 }
 
 function isLoginMethod(value: string | null): value is LoginMethodId {
