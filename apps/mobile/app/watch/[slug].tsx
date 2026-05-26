@@ -24,6 +24,7 @@ import { VideoDescription } from "../../src/components/watch/VideoDescription"
 import { MiniPlayerBar } from "../../src/components/watch/MiniPlayerBar"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
+import { useBibleVerses } from "../../src/hooks/useBibleVerses"
 import { DownloadModal } from "../../src/components/watch/DownloadModal"
 import { LanguageSubtitleModal } from "../../src/components/watch/LanguageSubtitleModal"
 import { ShareModal } from "../../src/components/watch/ShareModal"
@@ -50,6 +51,7 @@ export default function WatchVideoPage() {
 
   const video = useMemo(() => normalizeVideo(data?.videoBySlug ?? null), [data])
   const activeVariant = video?.variants[activeVariantIndex] ?? null
+  const bibleQuotes = useBibleVerses(video?.bibleCitations ?? [])
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -107,20 +109,7 @@ export default function WatchVideoPage() {
       ? {
           __typename: "BibleQuotesCarouselBlock",
           heading: "Scripture References",
-          quotes: video.bibleCitations.map((c) => {
-            const ref = c.bookName
-              ? `${c.bookName} ${c.chapterStart ?? ""}:${c.verseStart ?? ""}`
-              : (c.osisId ?? "")
-            return {
-              reference: ref,
-              text: "",
-              attribution: null,
-              imageUrl: null,
-              backgroundColor: null,
-              ctaLabel: null,
-              ctaLink: null,
-            }
-          }),
+          quotes: bibleQuotes,
         }
       : null
 
