@@ -132,7 +132,7 @@ export default function WatchVideoPage() {
         <VideoMetadata
           label={video.label}
           title={video.title}
-          subtitle={video.snippet}
+          subtitle={null}
         />
 
         <ActionButtonRow
