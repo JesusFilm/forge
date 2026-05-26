@@ -118,7 +118,7 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
   return (
     <View>
       <Text
-        style={[text.sectionHeadingPadded, typography.heading]}
+        style={[text.sectionHeadingPadded, typography.titleLarge]}
         accessibilityRole="header"
       >
         Up Next

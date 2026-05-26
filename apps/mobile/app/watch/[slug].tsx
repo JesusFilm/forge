@@ -1,14 +1,16 @@
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
+  Animated,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native"
-import { useLocalSearchParams } from "expo-router"
+import { useLocalSearchParams, useNavigation } from "expo-router"
 import { useQuery } from "@apollo/client/react"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/queries"
@@ -21,7 +23,8 @@ import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
 import { UpNextCarousel } from "../../src/components/watch/UpNextCarousel"
 import { VideoDescription } from "../../src/components/watch/VideoDescription"
-import { MiniPlayerBar } from "../../src/components/watch/MiniPlayerBar"
+import Ionicons from "@expo/vector-icons/Ionicons"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
 import { useBibleVerses } from "../../src/hooks/useBibleVerses"
@@ -36,8 +39,12 @@ export default function WatchVideoPage() {
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
   const scrollViewRef = useRef<ScrollView>(null)
 
-  const [showMiniPlayer, setShowMiniPlayer] = useState(false)
-  const [isPlaying, setIsPlaying] = useState(false)
+  const navigation = useNavigation()
+  const [showScrollTop, setShowScrollTop] = useState(false)
+  const scrollTopOpacity = useRef(new Animated.Value(0)).current
+  const titleOpacity = useRef(new Animated.Value(0)).current
+  const [showNavTitle, setShowNavTitle] = useState(false)
+  const insets = useSafeAreaInsets()
   const [downloadModalVisible, setDownloadModalVisible] = useState(false)
   const [languageModalVisible, setLanguageModalVisible] = useState(false)
   const [shareModalVisible, setShareModalVisible] = useState(false)
@@ -56,19 +63,45 @@ export default function WatchVideoPage() {
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const scrollY = e.nativeEvent.contentOffset.y
-      const playerThreshold =
-        e.nativeEvent.layoutMeasurement.width * PLAYER_HEIGHT_RATIO
-      setShowMiniPlayer(scrollY > playerThreshold)
+      const screenWidth = e.nativeEvent.layoutMeasurement.width
+      const playerHeight = screenWidth * PLAYER_HEIGHT_RATIO
+      setShowScrollTop(scrollY > playerHeight)
+      setShowNavTitle(scrollY > playerHeight + 60)
     },
     [],
   )
 
-  const handleScrollToPlayer = useCallback(() => {
-    scrollViewRef.current?.scrollTo({ y: 0, animated: true })
-  }, [])
+  useEffect(() => {
+    Animated.timing(scrollTopOpacity, {
+      toValue: showScrollTop ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start()
+  }, [showScrollTop, scrollTopOpacity])
 
-  const handlePlayingChange = useCallback((playing: boolean) => {
-    setIsPlaying(playing)
+  useEffect(() => {
+    Animated.timing(titleOpacity, {
+      toValue: showNavTitle ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start()
+  }, [showNavTitle, titleOpacity])
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerTitle: () => (
+        <Animated.Text
+          style={[styles.navTitle, { opacity: titleOpacity }]}
+          numberOfLines={1}
+        >
+          {video?.title ?? ""}
+        </Animated.Text>
+      ),
+    })
+  }, [navigation, video?.title, titleOpacity])
+
+  const handleScrollToTop = useCallback(() => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true })
   }, [])
 
   if (loading && !video) {
@@ -126,7 +159,7 @@ export default function WatchVideoPage() {
         <VideoPlayer
           streamingUrl={video.streamingUrl}
           posterUrl={video.posterUrl}
-          onPlayingChange={handlePlayingChange}
+          onPlayingChange={undefined}
         />
 
         <VideoMetadata
@@ -145,26 +178,44 @@ export default function WatchVideoPage() {
         <VideoDescription description={video.description} />
 
         {video.siblings.length > 0 && (
-          <UpNextCarousel siblings={video.siblings} currentSlug={video.slug} />
+          <View style={styles.sectionGap}>
+            <UpNextCarousel
+              siblings={video.siblings}
+              currentSlug={video.slug}
+            />
+          </View>
         )}
 
         {studyQuestionsBlock != null && (
-          <RelatedQuestionsRenderer section={studyQuestionsBlock} />
+          <View style={styles.sectionGap}>
+            <RelatedQuestionsRenderer section={studyQuestionsBlock} />
+          </View>
         )}
 
         {bibleCitationsBlock != null && (
-          <BibleQuotesCarouselRenderer section={bibleCitationsBlock} />
+          <View style={styles.sectionGap}>
+            <BibleQuotesCarouselRenderer section={bibleCitationsBlock} />
+          </View>
         )}
       </ScrollView>
 
-      <MiniPlayerBar
-        visible={showMiniPlayer}
-        posterUrl={video.posterUrl}
-        title={video.title}
-        isPlaying={isPlaying}
-        onPlayPause={handleScrollToPlayer}
-        onPress={handleScrollToPlayer}
-      />
+      {showScrollTop && (
+        <Animated.View
+          style={[
+            styles.scrollTopFab,
+            { bottom: insets.bottom + 16, opacity: scrollTopOpacity },
+          ]}
+        >
+          <Pressable
+            onPress={handleScrollToTop}
+            style={styles.scrollTopButton}
+            accessibilityRole="button"
+            accessibilityLabel="Scroll to top"
+          >
+            <Ionicons name="chevron-up" size={22} color="#f5f5f4" />
+          </Pressable>
+        </Animated.View>
+      )}
 
       {downloadModalVisible && (
         <DownloadModal
@@ -216,5 +267,32 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 80,
+  },
+  navTitle: {
+    color: "#f5f5f4",
+    fontSize: 17,
+    fontWeight: "600",
+    fontFamily: "System",
+    textAlign: "center",
+  },
+  sectionGap: {
+    marginTop: 16,
+  },
+  scrollTopFab: {
+    position: "absolute",
+    right: 16,
+  },
+  scrollTopButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(41, 37, 36, 0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
 })

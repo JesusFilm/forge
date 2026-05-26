@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 
+import { animateLayout } from "../ui/AnimatedChevron"
 import { TEXT_BODY } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
 import { layout, text } from "../../styles/shared"
@@ -18,6 +19,7 @@ export function VideoDescription({ description }: VideoDescriptionProps) {
   if (description == null || description.length === 0) return null
 
   const handleToggle = useCallback(() => {
+    animateLayout()
     setExpanded((prev) => !prev)
   }, [])
 

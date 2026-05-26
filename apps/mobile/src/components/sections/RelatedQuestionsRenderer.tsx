@@ -161,7 +161,7 @@ export function RelatedQuestionsRenderer({
             style={[
               text.sectionHeading,
               styles.localHeading,
-              typography.heading,
+              typography.titleLarge,
             ]}
             accessibilityRole="header"
           >
