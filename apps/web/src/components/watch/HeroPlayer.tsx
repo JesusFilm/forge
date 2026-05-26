@@ -54,6 +54,18 @@ const CHROME_HIDE_STYLE: MuxCSSProperties = {
   "--bottom-controls": "none",
 }
 
+// Object-fit modes per playback phase:
+//   pre-reveal (muted preview) → cover: fills the hero box, may crop;
+//   chrome-revealed (sound on) → contain: never crops. The wrapper is
+//   sized so the 16:9 frame fits inside both axes — the inner video
+//   then exactly fills the wrapper.
+const PRE_REVEAL_OBJECT_FIT_STYLE: MuxCSSProperties = {
+  "--media-object-fit": "cover",
+}
+const REVEALED_OBJECT_FIT_STYLE: MuxCSSProperties = {
+  "--media-object-fit": "contain",
+}
+
 // Fraction of the visible video that must be obscured by the body section
 // before the scroll listener pauses the player. 0.6 = 60% obscured — past
 // this point the player is no longer the main element on screen.
@@ -556,8 +568,10 @@ export function HeroPlayer({
         data-testid="hero-player-wrapper"
         data-chrome-revealed={chromeRevealed ? "true" : "false"}
         data-autoplay-blocked={autoplayBlocked ? "true" : "false"}
-        className={`sticky w-full overflow-hidden bg-black ${
-          chromeRevealed ? "aspect-video" : PRE_REVEAL_HERO_SIZE_CLASSES
+        className={`sticky overflow-hidden bg-black ${
+          chromeRevealed
+            ? "mx-auto aspect-video w-full max-h-svh max-w-[calc(100svh*16/9)]"
+            : `w-full ${PRE_REVEAL_HERO_SIZE_CLASSES}`
         }`}
         style={{
           // 100svh tracks the *small* viewport on iOS Safari (visible area
@@ -586,7 +600,12 @@ export function HeroPlayer({
             video_id: video.documentId,
             viewer_user_id: viewerUserId,
           }}
-          style={CHROME_HIDE_STYLE}
+          style={{
+            ...CHROME_HIDE_STYLE,
+            ...(chromeRevealed
+              ? REVEALED_OBJECT_FIT_STYLE
+              : PRE_REVEAL_OBJECT_FIT_STYLE),
+          }}
           onLoadedMetadata={handleLoadedMetadata}
           onCanPlay={handleCanPlay}
           onError={handlePlayerError}
