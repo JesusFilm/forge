@@ -1,20 +1,21 @@
-import { redirect } from "next/navigation"
 import { LoginPageClient } from "@/app/login/login-page-client"
 import {
   firstParam,
   getEnabledProviders,
   isOAuthAuthorizeRequest,
-  parseLoginError,
   resolveRequestingAppName,
   toOAuthQuery,
   type LoginSearchParams,
 } from "@/app/login/login-page-data"
+import { redirect } from "next/navigation"
 
-type LoginPageProps = {
+type SignupPageProps = {
   searchParams?: Promise<LoginSearchParams>
 }
 
-export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
+export default async function SignupPage({
+  searchParams,
+}: SignupPageProps = {}) {
   const params = (await searchParams) ?? {}
   if (!isOAuthAuthorizeRequest(params)) {
     redirect("https://www.jesusfilm.org")
@@ -23,8 +24,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
   return (
     <LoginPageClient
       enabledProviders={getEnabledProviders()}
-      flow="login"
-      initialError={parseLoginError(firstParam(params.error))}
+      flow="signup"
       oauthQuery={toOAuthQuery(params)}
       requestingAppName={await resolveRequestingAppName(
         firstParam(params.client_id),
