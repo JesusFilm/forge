@@ -37,6 +37,22 @@ type CombinedFingerprintRow = {
   experience_max_updated_at: Date | null
 }
 
+type TraceAggregateFingerprintRow = {
+  aggregate_count: bigint | number
+  aggregate_max_updated_at: Date | null
+  query_count_sum: bigint | number | null
+  result_count_sum: bigint | number | null
+}
+
+export type SearchTraceAggregateFingerprint = {
+  aggregateRows: {
+    count: number
+    maxUpdatedAt: string | null
+  }
+  queryCountSum: number
+  resultCountSum: number
+}
+
 function toNumberCount(value: bigint | number): number {
   return typeof value === "bigint" ? Number(value) : value
 }
@@ -93,6 +109,44 @@ export async function readFingerprint(
       count: toNumberCount(row.experience_count),
       maxUpdatedAt: toIsoOrNull(row.experience_max_updated_at),
     },
+  }
+}
+
+/**
+ * Companion fingerprint for Admin-owned search trace aggregates.
+ *
+ * This intentionally does NOT modify the schemaVersion 1 content
+ * `Fingerprint` shape used by existing eval baselines. It gives future
+ * trace-aware tooling an opt-in way to detect aggregate-store drift after
+ * raw traces have been purged, without reading or exposing raw query text.
+ */
+export async function readSearchTraceAggregateFingerprint(
+  prisma: PrismaClient,
+): Promise<SearchTraceAggregateFingerprint> {
+  const [row] = await prisma.$queryRaw<TraceAggregateFingerprintRow[]>`
+    SELECT
+      COUNT(*) AS aggregate_count,
+      MAX(updated_at) AS aggregate_max_updated_at,
+      COALESCE(SUM(query_count), 0) AS query_count_sum,
+      COALESCE(SUM(result_count_sum), 0) AS result_count_sum
+    FROM search_trace_aggregate
+  `
+
+  if (row == null) {
+    return {
+      aggregateRows: { count: 0, maxUpdatedAt: null },
+      queryCountSum: 0,
+      resultCountSum: 0,
+    }
+  }
+
+  return {
+    aggregateRows: {
+      count: toNumberCount(row.aggregate_count),
+      maxUpdatedAt: toIsoOrNull(row.aggregate_max_updated_at),
+    },
+    queryCountSum: toNumberCount(row.query_count_sum ?? 0),
+    resultCountSum: toNumberCount(row.result_count_sum ?? 0),
   }
 }
 

@@ -3,7 +3,7 @@ id: "feat-136"
 title: "Admin production search trace storage and retention"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: "2026-05-25"
 duration: 4
 depends_on:

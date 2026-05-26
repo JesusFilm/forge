@@ -268,6 +268,49 @@ and keeps raw `RAILWAY_S3_*` credentials inside the production runtime. The
 endpoint requires production admin to have the normal `RAILWAY_S3_*` bucket env
 vars configured; dev/staging should not need those S3 credentials.
 
+### Search trace retention and sampling
+
+Admin is the live search authority. REST `/api/search`, GraphQL `Query.search`,
+query embedding generation, pgvector retrieval, production trace storage,
+rollups, and retention all stay inside `apps/admin`. Mastra must not enter the
+live request path and must not import Admin code or read Admin Postgres for eval
+sampling; later eval jobs use Admin's internal HTTP contract only.
+
+Production search tracing writes two records:
+
+- `search_trace`: short-lived raw rows with query text after first-pass
+  privacy classification/redaction, locale, route source, requested mode,
+  response search mode, result count, latency bucket, outcome, trace class,
+  quality/sensitive/abuse labels, sample eligibility, and timestamps. Raw rows
+  expire after `SEARCH_TRACE_RAW_RETENTION_DAYS` (default 29, max 29) so the
+  daily purge deletes them before the hard 30-day ceiling.
+- `search_trace_aggregate`: long-lived rollups by non-query dimensions. This
+  table never stores query text and is the durable analytical trail after raw
+  rows are purged.
+
+Trace writes are bounded best-effort. `recordSearchTraceSafely` is awaited
+behind a short timeout and every write/timeout failure is swallowed from the
+live search caller's perspective. Failures increment safe process-local
+counters and log `[search] event=trace_record_* ...` without raw query text.
+
+The internal sampling route is
+`POST /api/internal/search-traces/sample`. It is rate-limited before auth/body
+parsing, requires a bearer from `SEARCH_TRACE_SAMPLING_API_KEYS`, and returns
+only recent unexpired `sampleEligible` rows. The bearer CSV is optional at boot
+and is part of the env disjointness invariant; it must not share values with
+workflow, web/consumer, backup, manager, or Mastra ingest credentials.
+
+The Admin worker starts `src/workflows/searchTraceRetention.ts` when
+`WORKFLOW_RUNNER_ENABLED=true` and
+`WORKFLOW_TARGET_WORLD=@workflow/world-postgres`. The scheduler runs one purge
+immediately, then daily at 10:00 UTC. `/api/search/health` reports retention
+health and trace capture counters; in production, raw trace capture is disabled
+when the retention scheduler or recent purge heartbeat cannot be confirmed.
+
+Never add bearer tokens, cookies, IP addresses, full user identifiers,
+caller-supplied key ids, vectors, debug scoring payloads, or raw query text to
+aggregate rows or workflow details.
+
 ### Jesus Film Auth client mode
 
 For local development, admin points at production Auth so engineers do not need

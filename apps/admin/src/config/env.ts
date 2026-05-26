@@ -20,6 +20,14 @@ export const concurrencyEnvSchema = z.coerce
   .positive()
   .optional()
 
+export const searchTraceRawRetentionDaysEnvSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(29)
+  .optional()
+  .default(29)
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -115,6 +123,14 @@ export const env = createEnv({
     // `.optional()` because the harness still works without it during
     // dual-accept — anonymous traffic logs as `auth=anonymous`.
     SEARCH_API_KEY: z.string().min(1).optional(),
+    // Admin-owned production search trace sampling. Future Mastra eval jobs
+    // call the internal Admin sampling route with a dedicated bearer from
+    // this CSV; it must stay disjoint from public search, workflow launch,
+    // backup download, and vector-ingest credentials.
+    SEARCH_TRACE_SAMPLING_API_KEYS: z.string().min(1).optional(),
+    // Raw search traces expire before the 30-day hard ceiling so the daily
+    // purge has a real safety margin. Aggregates survive without query text.
+    SEARCH_TRACE_RAW_RETENTION_DAYS: searchTraceRawRetentionDaysEnvSchema,
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
     WORKFLOW_TARGET_WORLD: z
       .enum(["local", "@workflow/world-postgres"])
@@ -306,6 +322,12 @@ export const env = createEnv({
     ),
     SEARCH_AUTH_REQUIRED: emptyToUndefined(process.env.SEARCH_AUTH_REQUIRED),
     SEARCH_API_KEY: emptyToUndefined(process.env.SEARCH_API_KEY),
+    SEARCH_TRACE_SAMPLING_API_KEYS: emptyToUndefined(
+      process.env.SEARCH_TRACE_SAMPLING_API_KEYS,
+    ),
+    SEARCH_TRACE_RAW_RETENTION_DAYS: emptyToUndefined(
+      process.env.SEARCH_TRACE_RAW_RETENTION_DAYS,
+    ),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
     WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
     WORKFLOW_RUNNER_ENABLED: emptyToUndefined(
@@ -428,6 +450,7 @@ const BEARER_CSV_KEYS = [
   "MANAGER_ADMIN_API_KEY",
   "WEB_ADMIN_API_KEYS",
   "BACKUP_DOWNLOAD_API_KEYS",
+  "SEARCH_TRACE_SAMPLING_API_KEYS",
 ] as const
 
 type BearerCsvKey = (typeof BEARER_CSV_KEYS)[number]
@@ -503,6 +526,7 @@ assertBearerCsvsDisjoint({
   MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
+  SEARCH_TRACE_SAMPLING_API_KEYS: env.SEARCH_TRACE_SAMPLING_API_KEYS,
 })
 
 // Plan 003 retired the SEARCH_API_KEYS env-CSV partner branch — external
