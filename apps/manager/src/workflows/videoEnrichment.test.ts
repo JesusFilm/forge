@@ -4,7 +4,6 @@ const {
   audioCleanupMock,
   runAudioCleanupMock,
   chaptersMock,
-  embeddingSyncMock,
   embeddingsMock,
   mastraTranscriptEmbeddingsMock,
   extractAndStoreSceneBoundariesMock,
@@ -24,7 +23,6 @@ const {
   audioCleanupMock: vi.fn(),
   runAudioCleanupMock: vi.fn(),
   chaptersMock: vi.fn(),
-  embeddingSyncMock: vi.fn(),
   embeddingsMock: vi.fn(),
   mastraTranscriptEmbeddingsMock: vi.fn(),
   extractAndStoreSceneBoundariesMock: vi.fn(),
@@ -61,10 +59,6 @@ vi.mock("@/services/metadata", () => ({
 
 vi.mock("@/services/subtitleTranslation", () => ({
   translateSubtitles: subtitleTranslationMock,
-}))
-
-vi.mock("@/services/embeddingSync", () => ({
-  syncEmbeddingArtifact: embeddingSyncMock,
 }))
 
 vi.mock("@/services/mastra-transcript-embeddings", () => ({
@@ -105,7 +99,6 @@ import { runVideoEnrichment } from "@/workflows/videoEnrichment"
 describe("runVideoEnrichment", () => {
   beforeEach(() => {
     chaptersMock.mockReset()
-    embeddingSyncMock.mockReset()
     embeddingsMock.mockReset()
     mastraTranscriptEmbeddingsMock.mockReset()
     extractAndStoreSceneBoundariesMock.mockReset()
@@ -122,18 +115,6 @@ describe("runVideoEnrichment", () => {
     transcribeMock.mockReset()
     updateJobMock.mockReset()
     updateStepStatusMock.mockReset()
-    embeddingSyncMock.mockResolvedValue({
-      domain: "embeddings",
-      status: "skipped_existing",
-      reason: "no_video_document_id",
-      generated: {
-        model: "openai/text-embedding-3-small",
-        dimensions: 3,
-        chunkCount: 0,
-        contentFingerprint: "sha256:generated",
-        hasMetadataEmbedding: false,
-      },
-    })
     mastraTranscriptEmbeddingsMock.mockResolvedValue({
       ok: true,
       status: "created",
@@ -815,18 +796,6 @@ describe("runVideoEnrichment", () => {
       metadata: { generatedAt: "2026-04-10T00:00:00.000Z" },
       artifactKeys: ["embeddings"],
     })
-    embeddingSyncMock.mockResolvedValue({
-      domain: "embeddings",
-      status: "unsupported",
-      reason: "no_video_document_id",
-      generated: {
-        model: "openai/text-embedding-3-small",
-        dimensions: 3,
-        chunkCount: 1,
-        contentFingerprint: "sha256:generated",
-        hasMetadataEmbedding: false,
-      },
-    })
 
     await expect(
       runVideoEnrichment({
@@ -841,7 +810,6 @@ describe("runVideoEnrichment", () => {
       language: "en",
     })
 
-    expect(embeddingSyncMock).not.toHaveBeenCalled()
     expect(mastraTranscriptEmbeddingsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         assetId: "asset-1",
@@ -887,19 +855,6 @@ describe("runVideoEnrichment", () => {
       metadata: { generatedAt: "2026-04-10T00:00:00.000Z" },
       artifactKeys: ["embeddings"],
     })
-    embeddingSyncMock.mockResolvedValue({
-      domain: "embeddings",
-      status: "failed",
-      reason: "video_not_found",
-      videoDocumentId: "video-doc-1",
-      generated: {
-        model: "openai/text-embedding-3-small",
-        dimensions: 3,
-        chunkCount: 1,
-        contentFingerprint: "sha256:generated",
-        hasMetadataEmbedding: false,
-      },
-    })
 
     await expect(
       runVideoEnrichment({
@@ -915,7 +870,6 @@ describe("runVideoEnrichment", () => {
       language: "en",
     })
 
-    expect(embeddingSyncMock).not.toHaveBeenCalled()
     expect(mastraTranscriptEmbeddingsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         assetId: "asset-1",

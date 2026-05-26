@@ -21,6 +21,7 @@ related_features:
   - feat-133
   - feat-132
 related:
+  - "docs/solutions/platform/mastra-embedding-workflow-ownership-pattern.md"
   - "docs/solutions/platform/mastra-scene-embedding-workflow-pattern.md"
   - "docs/solutions/platform/mastra-transcript-embedding-workflow-pattern.md"
   - "docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md"

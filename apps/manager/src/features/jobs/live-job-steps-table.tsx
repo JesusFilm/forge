@@ -13,7 +13,6 @@ import {
   Search,
   type LucideIcon,
 } from "lucide-react"
-import { getEmbeddingSyncReport } from "@/lib/embedding-sync-report"
 import { getSceneEmbeddingSyncReport } from "@/lib/scene-embedding-sync-report"
 import {
   getTranscriptionRoutingReport,
@@ -41,10 +40,6 @@ import {
   type LiveJobsDetailRealtimeController,
 } from "./live-jobs-realtime"
 import { getArtifactsForStep } from "@/lib/job-artifacts"
-import {
-  EmbeddingSyncInlineDetails,
-  shouldExpandEmbeddingSyncByDefault,
-} from "./embedding-sync-card"
 import {
   hasSceneEmbeddingSyncIssue,
   SceneEmbeddingSyncInlineDetails,
@@ -397,10 +392,6 @@ export function LiveJobStepsTable({
     createInitialLiveJobsRealtimeSnapshot(initialJob),
   )
   const job = realtimeSnapshot.state
-  const embeddingSyncReport = useMemo(
-    () => getEmbeddingSyncReport(job.artifacts),
-    [job.artifacts],
-  )
   const sceneEmbeddingSyncReport = useMemo(
     () => getSceneEmbeddingSyncReport(job.artifacts),
     [job.artifacts],
@@ -412,13 +403,9 @@ export function LiveJobStepsTable({
   const [expandedSteps, setExpandedSteps] = useState<
     Partial<Record<WorkflowStepName, boolean>>
   >(() => ({
-    embeddings:
-      shouldExpandEmbeddingSyncByDefault(
-        getEmbeddingSyncReport(initialJob.artifacts),
-      ) ||
-      shouldExpandSceneEmbeddingSyncByDefault(
-        getSceneEmbeddingSyncReport(initialJob.artifacts),
-      ),
+    embeddings: shouldExpandSceneEmbeddingSyncByDefault(
+      getSceneEmbeddingSyncReport(initialJob.artifacts),
+    ),
   }))
   const [overrideArtifactKey, setOverrideArtifactKey] = useState<string | null>(
     null,
@@ -506,21 +493,15 @@ export function LiveJobStepsTable({
   )
 
   useEffect(() => {
-    if (
-      shouldExpandEmbeddingSyncByDefault(embeddingSyncReport) ||
-      shouldExpandSceneEmbeddingSyncByDefault(sceneEmbeddingSyncReport)
-    ) {
+    if (shouldExpandSceneEmbeddingSyncByDefault(sceneEmbeddingSyncReport)) {
       setExpandedSteps((current) => ({ ...current, embeddings: true }))
       return
     }
 
-    if (
-      !embeddingSyncReport &&
-      !hasSceneEmbeddingSyncIssue(sceneEmbeddingSyncReport)
-    ) {
+    if (!hasSceneEmbeddingSyncIssue(sceneEmbeddingSyncReport)) {
       setExpandedSteps((current) => ({ ...current, embeddings: false }))
     }
-  }, [embeddingSyncReport, sceneEmbeddingSyncReport])
+  }, [sceneEmbeddingSyncReport])
 
   const handleToggleStep = useCallback((stepName: WorkflowStepName) => {
     setExpandedSteps((current) => ({
@@ -697,8 +678,7 @@ export function LiveJobStepsTable({
                 sceneEmbeddingSyncReport,
               )
               const hasEmbeddingDetails =
-                step.name === "embeddings" &&
-                (embeddingSyncReport != null || hasSceneEmbeddingDetails)
+                step.name === "embeddings" && hasSceneEmbeddingDetails
               const hasTranslationDetails =
                 step.name === "translation" && translationFailures.length > 0
               const hasTranscriptionDetails =
@@ -731,31 +711,12 @@ export function LiveJobStepsTable({
               let detailRowClassName: string | undefined
 
               if (hasEmbeddingDetails) {
-                const showInlineEmbeddingSummary =
-                  (embeddingSyncReport != null &&
-                    embeddingSyncReport.status === "failed") ||
-                  hasSceneEmbeddingDetails
-
-                inlineSummary = showInlineEmbeddingSummary ? (
+                inlineSummary = hasSceneEmbeddingDetails ? (
                   <span className="jobs-step-inline-summary-text">
-                    {embeddingSyncReport
-                      ? "CMS sync needs attention."
-                      : "Scene sync needs attention."}
+                    Scene sync needs attention.
                   </span>
                 ) : null
-                detailContent = (
-                  <>
-                    {embeddingSyncReport ? (
-                      <EmbeddingSyncInlineDetails
-                        job={job}
-                        onJobUpdate={replaceJobState}
-                      />
-                    ) : null}
-                    {hasSceneEmbeddingDetails ? (
-                      <SceneEmbeddingSyncInlineDetails job={job} />
-                    ) : null}
-                  </>
-                )
+                detailContent = <SceneEmbeddingSyncInlineDetails job={job} />
                 detailRowClassName = "jobs-embedding-sync-detail-row"
               } else if (hasTranslationDetails) {
                 inlineSummary = translationFailureSummary ? (

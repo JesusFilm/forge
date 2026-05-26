@@ -48,6 +48,12 @@ export type RequestEmbeddingVectorsOptions = {
   fetchImpl?: typeof fetch
 }
 
+export type ValidateEmbeddingProviderResultOptions = {
+  expectedDimensions?: number | null
+  context: string
+  itemLabel: string
+}
+
 type EmbeddingResponseItem = {
   index?: unknown
   embedding?: unknown
@@ -80,6 +86,70 @@ function responseUsageTokens(value: unknown): number {
   return typeof totalTokens === "number" && Number.isFinite(totalTokens)
     ? totalTokens
     : 0
+}
+
+export function validateEmbeddingProviderResult(
+  result: EmbeddingProviderResult,
+  expectedCount: number,
+  options: ValidateEmbeddingProviderResultOptions,
+): EmbeddingProviderResult {
+  if (expectedCount <= 0) {
+    throw new EmbeddingProviderError(
+      "invalid_response",
+      `${options.context} requires at least one ${options.itemLabel}`,
+    )
+  }
+  if (result.embeddings.length !== expectedCount) {
+    throw new EmbeddingProviderError(
+      "invalid_response",
+      `${options.context} returned ${result.embeddings.length} embeddings for ${expectedCount} ${options.itemLabel}`,
+      true,
+    )
+  }
+
+  let dimensions: number | null = null
+  for (const embedding of result.embeddings) {
+    if (
+      !Array.isArray(embedding) ||
+      embedding.length === 0 ||
+      embedding.some(
+        (value) => typeof value !== "number" || !Number.isFinite(value),
+      )
+    ) {
+      throw new EmbeddingProviderError(
+        "invalid_response",
+        `${options.context} returned an invalid embedding vector`,
+        true,
+      )
+    }
+
+    if (dimensions === null) {
+      dimensions = embedding.length
+    } else if (dimensions !== embedding.length) {
+      throw new EmbeddingProviderError(
+        "dimension_mismatch",
+        `${options.context} returned inconsistent embedding dimensions`,
+      )
+    }
+  }
+
+  if (dimensions === null || result.dimensions !== dimensions) {
+    throw new EmbeddingProviderError(
+      "dimension_mismatch",
+      `${options.context} returned inconsistent embedding dimensions`,
+    )
+  }
+  if (
+    options.expectedDimensions != null &&
+    options.expectedDimensions !== dimensions
+  ) {
+    throw new EmbeddingProviderError(
+      "dimension_mismatch",
+      `${options.context} changed embedding dimensions from ${options.expectedDimensions} to ${dimensions}`,
+    )
+  }
+
+  return result
 }
 
 export async function requestEmbeddingVectors(
@@ -228,24 +298,32 @@ export async function requestEmbeddingVectors(
     )
   }
 
-  return {
-    dimensions,
-    tokenCount: responseUsageTokens(body),
-    model,
-    provider,
-    requestModel,
-    embeddings: input.map((_, index) => {
-      const embedding = embeddingsByIndex.get(index)
-      if (!embedding) {
-        throw new EmbeddingProviderError(
-          "invalid_response",
-          `${options.context} was missing embedding for input index ${index}`,
-          true,
-        )
-      }
-      return embedding
-    }),
-  }
+  return validateEmbeddingProviderResult(
+    {
+      dimensions,
+      tokenCount: responseUsageTokens(body),
+      model,
+      provider,
+      requestModel,
+      embeddings: input.map((_, index) => {
+        const embedding = embeddingsByIndex.get(index)
+        if (!embedding) {
+          throw new EmbeddingProviderError(
+            "invalid_response",
+            `${options.context} was missing embedding for input index ${index}`,
+            true,
+          )
+        }
+        return embedding
+      }),
+    },
+    input.length,
+    {
+      expectedDimensions: options.expectedDimensions,
+      context: options.context,
+      itemLabel: options.itemLabel,
+    },
+  )
 }
 
 export const _internals = {

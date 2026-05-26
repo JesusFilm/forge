@@ -11,6 +11,12 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   scene vectors to Admin's scene-specific ingest endpoint.
 - Owns experience embedding provider calls and workflow diagnostics, then
   submits experience vectors to Admin's experience-specific ingest endpoint.
+- All embedding workflows share provider-result validation for count alignment,
+  finite vector values, and configured dimensions before calling Admin.
+- All embedding workflows use the shared Admin ingest client behavior but keep
+  separate transcript, scene, and experience endpoints and payload schemas.
+- Generation modes are consistent across embedding workflows: omitted means
+  idempotent; explicit repair, force, and model-upgrade request rewrites.
 - Builds Studio assets with `mastra build --studio` and serves them from the
   same internal Railway service.
 - Human Studio access is handled by `apps/mastra-gateway`; this service should
@@ -28,6 +34,8 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   volume.
 - Do not import from Admin or Manager to share types; use service HTTP
   contracts and local schemas.
+- Keep service-bearer auth scoped to explicit `/forge-*` service routes so
+  Studio's built-in `/api/workflows` calls continue to work.
 
 ## Validation
 
