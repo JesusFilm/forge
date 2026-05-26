@@ -14,7 +14,15 @@ import {
   recordSearchTraceWriteSuccess,
   recordSearchTraceWriteTimeout,
 } from "@/services/search-trace-health"
-import { classifySearchTraceQuery } from "@/services/search-trace-privacy"
+import {
+  classifySearchTraceQuery,
+  isSearchTraceAbuseLabel,
+  isSearchTraceQueryQualityLabel,
+  isSearchTraceSensitiveQueryLabel,
+  type SearchTraceAbuseLabel,
+  type SearchTraceQueryQualityLabel,
+  type SearchTraceSensitiveQueryLabel,
+} from "@/services/search-trace-privacy"
 import { readSearchTraceRetentionHealth } from "@/services/search-trace-retention.service"
 
 export type SearchTraceRouteSourceLabel = "rest" | "graphql"
@@ -58,6 +66,10 @@ export type SearchTraceSampleFilters = {
   locale?: string
   routeSource?: SearchTraceRouteSourceLabel
   searchMode?: string
+  queryQualityLabels?: SearchTraceQueryQualityLabel[]
+  sensitiveQueryLabels?: SearchTraceSensitiveQueryLabel[]
+  abuseLabels?: SearchTraceAbuseLabel[]
+  llmClassification?: "any" | "classified" | "unclassified" | "candidates"
   since?: Date
   until?: Date
   limit?: number
@@ -77,6 +89,15 @@ export type SearchTraceSample = {
   queryQualityLabel: string
   sensitiveQueryLabel: string
   abuseLabel: string
+  queryLabelSource: string
+  queryLabelVersion: string
+  queryLabeledAt: string
+  llmQueryQualityLabel: string | null
+  llmAbuseLabel: string | null
+  llmLabelSource: string | null
+  llmLabelVersion: string | null
+  llmLabelReason: string | null
+  llmLabeledAt: string | null
   createdAt: string
 }
 
@@ -84,6 +105,7 @@ const TRACE_RECORD_TIMEOUT_MS = 250
 const DEFAULT_SAMPLE_LIMIT = 50
 const MAX_SAMPLE_LIMIT = 100
 const MAX_SAMPLE_WINDOW_MS = 24 * 60 * 60 * 1000
+export const SEARCH_TRACE_LLM_HIGH_IMPACT_RESULT_COUNT = 20
 
 export function classifyLatencyBucket(
   latencyMs: number,
@@ -222,7 +244,7 @@ export async function writeSearchTrace(
   const requestedMode = normalizeMode(input.requestedMode)
   const searchMode = clampString(input.searchMode, 64) || "unknown"
   const traceClass = traceClassOrNone(input.traceClass)
-  const privacy = classifySearchTraceQuery(input.query)
+  const privacy = classifySearchTraceQuery(input.query, createdAt)
   const aggregateDimensions = {
     bucketStart: floorToHour(completedAt),
     routeSource,
@@ -234,6 +256,8 @@ export async function writeSearchTrace(
     queryQualityLabel: privacy.queryQualityLabel,
     sensitiveQueryLabel: privacy.sensitiveQueryLabel,
     abuseLabel: privacy.abuseLabel,
+    queryLabelSource: privacy.labelSource,
+    queryLabelVersion: privacy.labelVersion,
   }
   const aggregatePromise = prisma.searchTraceAggregate.upsert({
     where: {
@@ -266,6 +290,9 @@ export async function writeSearchTrace(
           queryQualityLabel: privacy.queryQualityLabel,
           sensitiveQueryLabel: privacy.sensitiveQueryLabel,
           abuseLabel: privacy.abuseLabel,
+          queryLabelSource: privacy.labelSource,
+          queryLabelVersion: privacy.labelVersion,
+          queryLabeledAt: privacy.labeledAt,
           sampleEligible: privacy.sampleEligible,
           startedAt: input.startedAt,
           completedAt,
@@ -361,6 +388,74 @@ function sampleWindow(
   }
 }
 
+const DEFAULT_QUERY_QUALITY_LABELS: SearchTraceQueryQualityLabel[] = [
+  "valid_viewer_intent",
+]
+const DEFAULT_SENSITIVE_QUERY_LABELS: SearchTraceSensitiveQueryLabel[] = [
+  "none",
+]
+const DEFAULT_ABUSE_LABELS: SearchTraceAbuseLabel[] = ["none"]
+
+function uniqueValidLabels<T extends string>(
+  labels: T[] | undefined,
+  isValid: (value: string) => value is T,
+  fallback: T[],
+): T[] {
+  if (labels == null || labels.length === 0) return fallback
+  const valid = labels.filter((label): label is T => isValid(label))
+  return Array.from(new Set(valid.length > 0 ? valid : fallback))
+}
+
+function defaultQueryQualityLabels(
+  filters: SearchTraceSampleFilters,
+): SearchTraceQueryQualityLabel[] {
+  if (filters.llmClassification === "candidates") {
+    return ["valid_viewer_intent", "unknown_ambiguous"]
+  }
+  return DEFAULT_QUERY_QUALITY_LABELS
+}
+
+function isDefaultSamplingContract(
+  queryQualityLabels: SearchTraceQueryQualityLabel[],
+  sensitiveQueryLabels: SearchTraceSensitiveQueryLabel[],
+  abuseLabels: SearchTraceAbuseLabel[],
+): boolean {
+  return (
+    queryQualityLabels.length === 1 &&
+    queryQualityLabels[0] === "valid_viewer_intent" &&
+    sensitiveQueryLabels.length === 1 &&
+    sensitiveQueryLabels[0] === "none" &&
+    abuseLabels.length === 1 &&
+    abuseLabels[0] === "none"
+  )
+}
+
+function applyLlmClassificationFilter(
+  where: Prisma.SearchTraceWhereInput,
+  filter: SearchTraceSampleFilters["llmClassification"],
+): void {
+  if (filter == null || filter === "any") return
+  if (filter === "classified") {
+    where.llmLabelSource = { not: null }
+    return
+  }
+
+  where.llmLabelSource = null
+  if (filter === "candidates") {
+    where.OR = [
+      { queryQualityLabel: "unknown_ambiguous" },
+      { resultCount: { gte: SEARCH_TRACE_LLM_HIGH_IMPACT_RESULT_COUNT } },
+    ]
+  }
+}
+
+function shouldReturnSampleQueryText(row: {
+  sensitiveQueryLabel: string
+  abuseLabel: string
+}): boolean {
+  return row.sensitiveQueryLabel === "none" && row.abuseLabel === "none"
+}
+
 type SearchTraceSampleRow = {
   id: string
   queryText: string
@@ -375,6 +470,15 @@ type SearchTraceSampleRow = {
   queryQualityLabel: string
   sensitiveQueryLabel: string
   abuseLabel: string
+  queryLabelSource: string
+  queryLabelVersion: string
+  queryLabeledAt: Date
+  llmQueryQualityLabel: string | null
+  llmAbuseLabel: string | null
+  llmLabelSource: string | null
+  llmLabelVersion: string | null
+  llmLabelReason: string | null
+  llmLabeledAt: Date | null
   createdAt: Date
 }
 
@@ -384,15 +488,42 @@ export async function sampleSearchTraces(
   now: Date = new Date(),
 ): Promise<SearchTraceSample[]> {
   const { since, until } = sampleWindow(filters, now)
+  const queryQualityLabels = uniqueValidLabels(
+    filters.queryQualityLabels,
+    isSearchTraceQueryQualityLabel,
+    defaultQueryQualityLabels(filters),
+  )
+  const sensitiveQueryLabels = uniqueValidLabels(
+    filters.sensitiveQueryLabels,
+    isSearchTraceSensitiveQueryLabel,
+    DEFAULT_SENSITIVE_QUERY_LABELS,
+  )
+  const abuseLabels = uniqueValidLabels(
+    filters.abuseLabels,
+    isSearchTraceAbuseLabel,
+    DEFAULT_ABUSE_LABELS,
+  )
   const where: Prisma.SearchTraceWhereInput = {
-    sampleEligible: true,
     rawExpiresAt: { gt: now },
     createdAt: { gte: since, lte: until },
+    queryQualityLabel: { in: queryQualityLabels },
+    sensitiveQueryLabel: { in: sensitiveQueryLabels },
+    abuseLabel: { in: abuseLabels },
+  }
+  if (
+    isDefaultSamplingContract(
+      queryQualityLabels,
+      sensitiveQueryLabels,
+      abuseLabels,
+    )
+  ) {
+    where.sampleEligible = true
   }
   if (filters.locale) where.locale = normalizeLocale(filters.locale)
   if (filters.routeSource)
     where.routeSource = toPrismaRouteSource(filters.routeSource)
   if (filters.searchMode) where.searchMode = clampString(filters.searchMode, 64)
+  applyLlmClassificationFilter(where, filters.llmClassification)
 
   const rows = (await prisma.searchTrace.findMany({
     where,
@@ -412,13 +543,24 @@ export async function sampleSearchTraces(
       queryQualityLabel: true,
       sensitiveQueryLabel: true,
       abuseLabel: true,
+      queryLabelSource: true,
+      queryLabelVersion: true,
+      queryLabeledAt: true,
+      llmQueryQualityLabel: true,
+      llmAbuseLabel: true,
+      llmLabelSource: true,
+      llmLabelVersion: true,
+      llmLabelReason: true,
+      llmLabeledAt: true,
       createdAt: true,
     },
   })) as unknown as SearchTraceSampleRow[]
 
   return rows.map((row) => ({
     id: row.id,
-    queryText: row.queryText,
+    queryText: shouldReturnSampleQueryText(row)
+      ? row.queryText
+      : "[redacted-sample-query]",
     locale: row.locale,
     routeSource: fromRouteSource(row.routeSource),
     requestedMode: row.requestedMode,
@@ -430,6 +572,15 @@ export async function sampleSearchTraces(
     queryQualityLabel: row.queryQualityLabel,
     sensitiveQueryLabel: row.sensitiveQueryLabel,
     abuseLabel: row.abuseLabel,
+    queryLabelSource: row.queryLabelSource,
+    queryLabelVersion: row.queryLabelVersion,
+    queryLabeledAt: row.queryLabeledAt.toISOString(),
+    llmQueryQualityLabel: row.llmQueryQualityLabel,
+    llmAbuseLabel: row.llmAbuseLabel,
+    llmLabelSource: row.llmLabelSource,
+    llmLabelVersion: row.llmLabelVersion,
+    llmLabelReason: row.llmLabelReason,
+    llmLabeledAt: row.llmLabeledAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
   }))
 }

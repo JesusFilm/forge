@@ -44,6 +44,10 @@ move the live request path.
 - Store short-lived raw traces in Admin only. `search_trace` may contain query
   text only after deterministic first-pass privacy handling has normalized,
   labeled, and redacted obvious sensitive or abusive input.
+- Keep query usefulness labels separate from privacy labels. Deterministic
+  rules write `queryQualityLabel`, `sensitiveQueryLabel`, `abuseLabel`, rule
+  source/version, and label timestamp. Optional LLM review writes only
+  LLM-specific label/provenance fields and must run outside live search.
 - Expire raw traces before the legal/product ceiling. The default and maximum
   `SEARCH_TRACE_RAW_RETENTION_DAYS` is 29 days, giving the daily purge workflow
   a one-day margin before the 30-day raw-retention limit.
@@ -67,6 +71,10 @@ move the live request path.
   request bodies, strict typed filters, a dedicated sampling bearer allowlist,
   and rejects public `jfp_search_*` partner-token shaped values even if one is
   accidentally pasted into the sampling environment variable.
+- Default sampling to conservative eval candidates: valid viewer intent,
+  non-sensitive, non-abusive, sample-eligible, unexpired rows only. Catalog,
+  ambiguous, sensitive, abusive, or LLM-candidate classes require explicit
+  allowlisted filters.
 
 ## Data Safety Rules
 
@@ -77,6 +85,10 @@ Aggregate rows and workflow ledger details must not store raw query text.
 Sensitive rows are redacted and marked non-sampleable by default. The only data
 that may survive raw deletion is aggregate data or future human-approved,
 sanitized eval queries created by a separate approval workflow.
+
+Query quality labels are not moderation controls in the live path. They do not
+censor, rerank, or alter REST/GraphQL search results; they only explain trace
+sampling and later eval workflows.
 
 ## Implementation Anchors
 
@@ -93,6 +105,10 @@ sanitized eval queries created by a separate approval workflow.
   `apps/admin/src/graphql/queries/hybrid-search.ts`.
 - Internal sampling:
   `apps/admin/src/app/api/internal/search-traces/sample/route.ts`.
+- Deterministic labels:
+  `apps/admin/src/services/search-trace-privacy.ts`.
+- Optional offline classifier:
+  `apps/admin/src/services/search-eval/query-classifier.ts`.
 
 ## Gotchas
 
@@ -104,3 +120,5 @@ sanitized eval queries created by a separate approval workflow.
   `[search] event=... key=value` and safe dimensions only.
 - Do not let a long-lived scheduler ledger mask a dead retention loop. Health
   must use a fresh scheduler heartbeat or a recent successful purge.
+- Do not add LLM classification to REST `/api/search` or GraphQL `Query.search`.
+  The classifier is bounded eval code for sampled traces only.
