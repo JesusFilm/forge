@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
+import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import { DownloadModal } from "@/components/watch/DownloadModal"
 import { LanguagePickerModal } from "@/components/watch/LanguagePickerModal"
 import { ShareModal } from "@/components/watch/ShareModal"
@@ -197,6 +198,34 @@ export function WatchPageClient({
   const openLanguage = useCallback(() => setModalState("language"), [])
   const openShare = useCallback(() => setModalState("share"), [])
   const closeModal = useCallback(() => setModalState("none"), [])
+
+  // Pause the video whenever any modal (search / language / download / share)
+  // opens, and restore the prior playing state on close. Captures the snapshot
+  // at the open-edge so a paused video stays paused after the modal closes.
+  const { searchOpen } = useFloatingSearchPinned()
+  const anyModalOpen = searchOpen || modalState !== "none"
+  const wasPlayingRef = useRef(false)
+  const prevAnyModalOpenRef = useRef(false)
+  useEffect(() => {
+    const player = playerRef.current
+    const wasOpen = prevAnyModalOpenRef.current
+    prevAnyModalOpenRef.current = anyModalOpen
+    if (!player) return
+    if (anyModalOpen && !wasOpen) {
+      wasPlayingRef.current = !player.paused
+      if (wasPlayingRef.current) {
+        player.pause()
+      }
+    } else if (!anyModalOpen && wasOpen) {
+      if (wasPlayingRef.current) {
+        const result = player.play()
+        if (result && typeof (result as Promise<void>).then === "function") {
+          ;(result as Promise<void>).catch(() => {})
+        }
+      }
+      wasPlayingRef.current = false
+    }
+  }, [anyModalOpen])
 
   const modalCallbacks: WatchModalCallbacks = {
     openDownload,
