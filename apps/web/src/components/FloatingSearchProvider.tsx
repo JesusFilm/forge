@@ -556,10 +556,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
                   : "opacity-100"
               }`}
             >
-              <Globe
-                aria-hidden
-                className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
-              />
+              <Globe aria-hidden className="h-6 w-6" />
             </button>
           </>
         ) : null}
@@ -625,7 +622,7 @@ function WatchHeaderAnimatedIcon({
         <Icon
           key={label}
           data-testid={`floating-header-animated-icon-${index}`}
-          className="absolute h-6 w-6 animate-watch-header-icon-cycle drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
+          className="absolute h-6 w-6 animate-watch-header-icon-cycle"
           style={{ animationDelay: `${index * 1.2}s` }}
         />
       ))}

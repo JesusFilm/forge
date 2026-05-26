@@ -152,10 +152,10 @@ export function SiblingCarousel({
                   // active/inactive is imperceptible because the outer
                   // card geometry (carousel slot) stays the same.
                   className={cn(
-                    "group relative block aspect-square cursor-pointer overflow-hidden rounded-lg bg-stone-900 transition after:pointer-events-none after:absolute after:inset-0 after:z-40 after:rounded-[calc(theme(borderRadius.lg)-4px)] after:border-4 after:border-transparent after:shadow-[inset_0_1px_0_rgba(255,255,255,0.32),inset_0_-1px_0_rgba(0,0,0,0.32),inset_0_0_0_1px_rgba(255,255,255,0.12)]",
+                    "group relative block aspect-square cursor-pointer overflow-hidden rounded-lg bg-stone-900 transition outline-1 outline-white/15 outline-offset-[-4px] shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)]",
                     isActive
                       ? "border-4 border-white"
-                      : "border-4 border-transparent opacity-70 hover:border-brand-red hover:opacity-100",
+                      : "border-4 border-transparent opacity-70 hover:border-brand-red hover:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
                   )}
                 >
                   {thumb ? (

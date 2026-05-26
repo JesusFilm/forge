@@ -37,7 +37,7 @@ export function FloatingSearchBar() {
         <Search
           aria-hidden
           data-testid="floating-search-icon"
-          className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
+          className="h-6 w-6"
         />
       </button>
       <FloatingSearchFieldButton
