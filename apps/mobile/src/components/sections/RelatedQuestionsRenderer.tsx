@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     color: "#1c1917",
     fontFamily: "System",
     fontWeight: "700",
-    fontSize: 10,
-    letterSpacing: 0.3,
+    fontSize: 12,
+    letterSpacing: 0.5,
   },
 })
