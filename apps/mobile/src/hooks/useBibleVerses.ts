@@ -7,35 +7,21 @@ const JOIN_BIBLE_STUDY_URL =
 const PROMO_IMAGE_URL =
   "https://images.unsplash.com/photo-1650658720644-e1588bd66de3?w=900&auto=format&fit=crop&q=60"
 
-const BIBLE_CARDS = [
-  {
-    url: "https://images.unsplash.com/photo-1480869799327-03916a613b29?q=80&w=800&auto=format&fit=crop",
-    color: "#2a4a5e",
-  },
-  {
-    url: "https://images.unsplash.com/16/unsplash_526360a842e20_1.JPG?q=80&w=800&auto=format&fit=crop",
-    color: "#3d5a3a",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1497333558196-daaff02b56d0?q=80&w=800&auto=format&fit=crop",
-    color: "#4a6741",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1555892727-55b51e5fceae?q=80&w=800&auto=format&fit=crop",
-    color: "#5b4a6b",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1631125915973-e0d155a14e4e?q=80&w=800&auto=format&fit=crop",
-    color: "#6b5a3a",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1659260145900-1ac1afc45dcf?q=80&w=800&auto=format&fit=crop",
-    color: "#c0784a",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1535979863199-3c77338429a0?q=80&w=800&auto=format&fit=crop",
-    color: "#3a4e6b",
-  },
+// Web app uses a single dark warm background (#1A1815) for all bible
+// citation cards. The image covers the top portion and the LinearGradient
+// fades it into the background color at the bottom where the text sits.
+// Experience pages get per-card colors from admin CMS data; video-level
+// citations don't have CMS color data, so we follow the web pattern.
+const CARD_BG = "#1A1815"
+
+const BIBLE_IMAGES = [
+  "https://images.unsplash.com/photo-1480869799327-03916a613b29?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/16/unsplash_526360a842e20_1.JPG?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1497333558196-daaff02b56d0?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1555892727-55b51e5fceae?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1631125915973-e0d155a14e4e?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1659260145900-1ac1afc45dcf?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1535979863199-3c77338429a0?q=80&w=800&auto=format&fit=crop",
 ] as const
 
 type BibleVersion = { bibleApi: string; bibleGateway: string }
@@ -132,14 +118,12 @@ export function useBibleVerses(
     const ref = c.bookName
       ? `${c.bookName} ${c.chapterStart ?? ""}:${c.verseStart ?? ""}`
       : (c.osisId ?? "")
-    const cardData = BIBLE_CARDS[i % BIBLE_CARDS.length]
-
     return {
       reference: ref,
       text: verses[c.documentId] ?? "",
       attribution: null,
-      imageUrl: cardData?.url ?? null,
-      backgroundColor: cardData?.color ?? null,
+      imageUrl: BIBLE_IMAGES[i % BIBLE_IMAGES.length] ?? null,
+      backgroundColor: CARD_BG,
       ctaLabel: null,
       ctaLink: null,
     }
