@@ -266,8 +266,7 @@ const styles = StyleSheet.create({
   fallbackButtonText: {
     color: "#1c1917",
     fontFamily: "System",
-    fontWeight: "700",
-    fontSize: 12,
-    letterSpacing: 0.5,
+    fontWeight: "600",
+    fontSize: 14,
   },
 })
