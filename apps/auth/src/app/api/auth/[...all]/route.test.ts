@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const authPost = vi.fn()
+const authGet = vi.fn(async (_request: unknown) => Response.json({ ok: true }))
 const rateLimitAuthRoute = vi.fn(async (_input: unknown) => ({
   allowed: true,
   source: "local",
@@ -14,7 +15,7 @@ vi.mock("@/auth/config", () => ({
     },
   },
   authRouteHandlers: {
-    GET: vi.fn(async () => Response.json({ ok: true })),
+    GET: (request: unknown) => authGet(request),
     POST: (...args: unknown[]) => authPost(...args),
     PATCH: vi.fn(async () => Response.json({ ok: true })),
     PUT: vi.fn(async () => Response.json({ ok: true })),
@@ -55,6 +56,8 @@ vi.mock("@/auth/firebase-admin", () => ({
 
 describe("Auth route wrapper", () => {
   beforeEach(() => {
+    authGet.mockReset()
+    authGet.mockResolvedValue(Response.json({ ok: true }))
     authPost.mockReset()
     rateLimitAuthRoute.mockReset()
     rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
@@ -144,6 +147,9 @@ describe("Auth route wrapper", () => {
     expect(response.headers.get("set-cookie")).toContain(
       "better-auth.session=abc",
     )
+    expect(response.headers.get("set-cookie")).toContain(
+      "forge_auth_last_login_method=email",
+    )
   })
 
   it("redirects browser email sign-in forms back to login when credentials fail", async () => {
@@ -168,6 +174,9 @@ describe("Auth route wrapper", () => {
     expect(response.status).toBe(303)
     expect(response.headers.get("location")).toBe(
       "http://localhost:3004/login?client_id=jfp_admin_local&sig=signed&error=credentials",
+    )
+    expect(response.headers.get("set-cookie") ?? "").not.toContain(
+      "forge_auth_last_login_method",
     )
   })
 
@@ -279,6 +288,55 @@ describe("Auth route wrapper", () => {
     expect(response.status).toBe(303)
     expect(response.headers.get("location")).toBe(
       "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_admin_local&sig=signed",
+    )
+    expect(response.headers.get("set-cookie")).toContain(
+      "forge_auth_last_login_method=email",
+    )
+  })
+
+  it("sets last used provider only after a successful social callback", async () => {
+    authGet.mockResolvedValueOnce(
+      new Response(null, {
+        status: 302,
+        headers: {
+          location: "http://localhost:3004/api/auth/oauth2/authorize",
+          "set-cookie": "better-auth.session=abc; Path=/",
+        },
+      }),
+    )
+
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request("http://localhost:3004/api/auth/callback/google"),
+      { params: Promise.resolve({ all: ["callback", "google"] }) },
+    )
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get("set-cookie")).toContain(
+      "better-auth.session=abc",
+    )
+    expect(response.headers.get("set-cookie")).toContain(
+      "forge_auth_last_login_method=google",
+    )
+  })
+
+  it("does not set last used provider after a failed social callback", async () => {
+    authGet.mockResolvedValueOnce(
+      Response.redirect(
+        "http://localhost:3004/login?error=account_not_linked",
+        302,
+      ),
+    )
+
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request("http://localhost:3004/api/auth/callback/google"),
+      { params: Promise.resolve({ all: ["callback", "google"] }) },
+    )
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get("set-cookie") ?? "").not.toContain(
+      "forge_auth_last_login_method",
     )
   })
 })

@@ -1,6 +1,32 @@
 import type { ReactNode } from "react"
+import localFont from "next/font/local"
+import { Noto_Serif } from "next/font/google"
 
 import "./globals.css"
+
+const apercu = localFont({
+  src: [
+    {
+      path: "../../public/fonts/jfp/Apercu Pro Medium.otf",
+      style: "normal",
+      weight: "500",
+    },
+    {
+      path: "../../public/fonts/jfp/Apercu Pro Bold.otf",
+      style: "normal",
+      weight: "700",
+    },
+  ],
+  display: "swap",
+  variable: "--font-apercu",
+})
+
+const notoSerif = Noto_Serif({
+  display: "swap",
+  subsets: ["latin"],
+  variable: "--font-noto-serif",
+  weight: ["400", "500", "600"],
+})
 
 export const metadata = {
   title: "Jesus Film Auth",
@@ -10,7 +36,9 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={`${apercu.variable} ${notoSerif.variable}`}>
+        {children}
+      </body>
     </html>
   )
 }

@@ -29,87 +29,127 @@ export default async function AppDetailPage({
   if (!app) notFound()
 
   return (
-    <section className="dashboard-section">
-      <header className="dashboard-header">
+    <section className="grid gap-[22px]">
+      <header className="flex items-end justify-between gap-4">
         <div>
-          <p className="dashboard-kicker">Application</p>
-          <h2>{app.displayName}</h2>
+          <p className="m-0 text-[11px] font-bold uppercase tracking-[0.08em] text-[#ef3340]">
+            Application
+          </p>
+          <h2 className="mb-0 mt-0.5 text-3xl font-bold">{app.displayName}</h2>
         </div>
       </header>
 
-      <div className="data-panel">
-        <div className="detail-grid">
-          <div>
-            <span>Key</span>
+      <div className="overflow-auto rounded-lg border border-[#dedbd2] bg-white">
+        <div className="grid grid-cols-4 gap-3.5 p-[18px] max-[820px]:grid-cols-1">
+          <div className="grid gap-1">
+            <span className="font-noto-serif text-xs text-[#78716c]">Key</span>
             <strong>{app.key}</strong>
           </div>
-          <div>
-            <span>Trust tier</span>
+          <div className="grid gap-1">
+            <span className="font-noto-serif text-xs text-[#78716c]">
+              Trust tier
+            </span>
             <strong>{app.trustTier.toLowerCase()}</strong>
           </div>
-          <div>
-            <span>Owner</span>
+          <div className="grid gap-1">
+            <span className="font-noto-serif text-xs text-[#78716c]">
+              Owner
+            </span>
             <strong>{app.ownerName ?? app.ownerType.toLowerCase()}</strong>
           </div>
-          <div>
-            <span>Status</span>
+          <div className="grid gap-1">
+            <span className="font-noto-serif text-xs text-[#78716c]">
+              Status
+            </span>
             <strong>{app.status.toLowerCase()}</strong>
           </div>
         </div>
       </div>
 
-      <div className="data-panel">
-        <div className="panel-heading">
-          <h3>Environments</h3>
+      <div className="overflow-auto rounded-lg border border-[#dedbd2] bg-white">
+        <div className="flex items-center justify-between gap-4 border-b border-[#ebe8df] p-[18px]">
+          <h3 className="m-0 font-bold">Environments</h3>
         </div>
-        <table>
+        <table className="w-full border-collapse">
           <thead>
             <tr>
-              <th>Key</th>
-              <th>Kind</th>
-              <th>Client</th>
-              <th>Status</th>
-              <th>Redirect URLs</th>
+              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
+                Key
+              </th>
+              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
+                Kind
+              </th>
+              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
+                Client
+              </th>
+              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
+                Status
+              </th>
+              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
+                Redirect URLs
+              </th>
             </tr>
           </thead>
           <tbody>
             {app.environments.map((environment) => (
               <tr key={environment.id}>
-                <td>{environment.key}</td>
-                <td>{environment.kind.toLowerCase()}</td>
-                <td>{environment.clientId}</td>
-                <td>{environment.status.toLowerCase()}</td>
-                <td>{environment.redirectUris.join(", ")}</td>
+                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                  {environment.key}
+                </td>
+                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                  {environment.kind.toLowerCase()}
+                </td>
+                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                  {environment.clientId}
+                </td>
+                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                  {environment.status.toLowerCase()}
+                </td>
+                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                  {environment.redirectUris.join(", ")}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <div className="data-panel">
-        <div className="panel-heading">
-          <h3>Recent grants</h3>
+      <div className="overflow-auto rounded-lg border border-[#dedbd2] bg-white">
+        <div className="flex items-center justify-between gap-4 border-b border-[#ebe8df] p-[18px]">
+          <h3 className="m-0 font-bold">Recent grants</h3>
         </div>
-        <table>
+        <table className="w-full border-collapse">
           <thead>
             <tr>
-              <th>Subject</th>
-              <th>Environment</th>
-              <th>Status</th>
-              <th>Scopes</th>
+              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
+                Subject
+              </th>
+              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
+                Environment
+              </th>
+              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
+                Status
+              </th>
+              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
+                Scopes
+              </th>
             </tr>
           </thead>
           <tbody>
             {app.grants.map((grant) => (
               <tr key={grant.id}>
-                <td>
+                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
                   {grant.user?.email ??
                     grant.serviceKey ??
                     grant.subjectType.toLowerCase()}
                 </td>
-                <td>{grant.environment.kind.toLowerCase()}</td>
-                <td>{grant.status.toLowerCase()}</td>
-                <td>
+                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                  {grant.environment.kind.toLowerCase()}
+                </td>
+                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                  {grant.status.toLowerCase()}
+                </td>
+                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
                   {grant.scopes
                     .map((grantScope) => grantScope.scope.key)
                     .join(", ")}

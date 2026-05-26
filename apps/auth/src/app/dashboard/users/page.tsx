@@ -25,35 +25,53 @@ export default async function UsersPage() {
   })
 
   return (
-    <section className="dashboard-section">
-      <header className="dashboard-header">
+    <section className="grid gap-[22px]">
+      <header className="flex items-end justify-between gap-4">
         <div>
-          <p className="dashboard-kicker">Membership</p>
-          <h2>Users and app grants</h2>
+          <p className="m-0 text-[11px] font-bold uppercase tracking-[0.08em] text-[#ef3340]">
+            Membership
+          </p>
+          <h2 className="mb-0 mt-0.5 text-3xl font-bold">
+            Users and app grants
+          </h2>
         </div>
       </header>
 
-      <div className="data-panel">
-        <table>
+      <div className="overflow-auto rounded-lg border border-[#dedbd2] bg-white">
+        <table className="w-full border-collapse">
           <thead>
             <tr>
-              <th>User</th>
-              <th>Status</th>
-              <th>Email</th>
-              <th>Grants</th>
-              <th>Created</th>
+              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
+                User
+              </th>
+              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
+                Status
+              </th>
+              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
+                Email
+              </th>
+              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
+                Grants
+              </th>
+              <th className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top text-[11px] uppercase tracking-[0.08em] text-[#57534e]">
+                Created
+              </th>
             </tr>
           </thead>
           <tbody>
             {users.map((user) => (
               <tr key={user.id}>
-                <td>
+                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
                   <strong>{user.name}</strong>
-                  <small>{user.email}</small>
+                  <small className="block text-[#78716c]">{user.email}</small>
                 </td>
-                <td>{user.membershipStatus.toLowerCase()}</td>
-                <td>{user.emailVerified ? "verified" : "unverified"}</td>
-                <td>
+                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                  {user.membershipStatus.toLowerCase()}
+                </td>
+                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                  {user.emailVerified ? "verified" : "unverified"}
+                </td>
+                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
                   {user.grants.length === 0
                     ? "none"
                     : user.grants
@@ -63,7 +81,9 @@ export default async function UsersPage() {
                         )
                         .join(", ")}
                 </td>
-                <td>{user.createdAt.toISOString()}</td>
+                <td className="border-b border-[#ebe8df] px-3.5 py-3 text-left align-top">
+                  {user.createdAt.toISOString()}
+                </td>
               </tr>
             ))}
           </tbody>
