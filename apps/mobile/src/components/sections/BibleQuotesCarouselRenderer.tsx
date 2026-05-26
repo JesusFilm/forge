@@ -226,7 +226,7 @@ export function BibleQuotesCarouselRenderer({
             style={[
               text.sectionHeading,
               styles.localHeading,
-              typography.heading,
+              typography.titleLarge,
             ]}
             accessibilityRole="header"
           >

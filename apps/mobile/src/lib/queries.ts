@@ -89,3 +89,133 @@ export type SearchResult = NonNullable<
 >["results"][number]
 
 export type SearchResponse = NonNullable<AdminResultOf<typeof SEARCH>["search"]>
+
+// ── Video detail query (standalone, not Experience-bound) ──────────
+
+export const watchVideoFragment = adminGraphql(`
+  fragment WatchVideo on Video @_unmask {
+    documentId: id
+    slug
+    label
+    images {
+      documentId: id
+      url
+      thumbnail
+      mobileCinematicHigh
+      mobileCinematicLow
+    }
+    primaryLanguage {
+      coreId
+      bcp47
+    }
+    locales(locale: $locale) {
+      documentId: id
+      title
+      description
+      snippet
+      imageAlt
+    }
+    parents {
+      parent {
+        documentId: id
+        slug
+        label
+        locales(locale: $locale) {
+          documentId: id
+          title
+        }
+        images {
+          documentId: id
+          url
+          thumbnail
+          mobileCinematicHigh
+          mobileCinematicLow
+        }
+        children {
+          child {
+            documentId: id
+            slug
+            label
+            locales(locale: $locale) {
+              documentId: id
+              title
+            }
+            images {
+              documentId: id
+              url
+              thumbnail
+              mobileCinematicHigh
+              mobileCinematicLow
+            }
+          }
+        }
+      }
+    }
+    variants: dubs {
+      documentId: id
+      slug
+      published
+      hls
+      duration
+      language {
+        coreId
+        bcp47
+        slug
+        name
+      }
+      downloads {
+        documentId: id
+        quality
+        size
+        url
+      }
+      muxVideo {
+        playbackId
+      }
+      videoEdition {
+        subtitles {
+          documentId: id
+          language {
+            slug
+            name
+            bcp47
+          }
+          vttSrc
+          primary
+          aiGenerated
+        }
+      }
+    }
+    studyQuestions {
+      documentId: id
+      value: text
+      order
+    }
+    bibleCitations {
+      documentId: id
+      chapterStart
+      chapterEnd
+      verseStart
+      verseEnd
+      order
+      osisId
+      bibleBook {
+        documentId: id
+        name
+      }
+    }
+  }
+`)
+
+export const GET_VIDEO_BY_SLUG = adminGraphql(
+  `
+    query GetVideoBySlug($locale: String!, $slug: String!) {
+      videoBySlug(slug: $slug) {
+        ...WatchVideo
+      }
+    }
+  `,
+  [watchVideoFragment],
+)
+
+export type WatchVideoData = AdminResultOf<typeof GET_VIDEO_BY_SLUG>
