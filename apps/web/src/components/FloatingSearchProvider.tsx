@@ -60,6 +60,10 @@ export type FloatingSearchPinnedContextValue = {
   pinned: boolean
   playerChromeVisible: boolean
   searchChromeVisible: boolean
+  // True while the search overlay is open OR running its close animation.
+  // Watch-page modal coordinators read this to pause/resume the video
+  // alongside their own (download / language / share) modal state.
+  searchOpen: boolean
 }
 
 const FloatingSearchContext = createContext<FloatingSearchContextValue | null>(
@@ -470,10 +474,9 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const modalChromeHidden = open || closing
   const playerPlayingWithSound =
     playerPlaybackState.playing && !playerPlaybackState.muted
-  const searchChromeVisible =
-    !modalChromeHidden && (!playerPlayingWithSound || headerHovered)
   const headerChromeHidden =
     modalChromeHidden || (!playerChromeVisible && !headerHovered)
+  const searchChromeVisible = !headerChromeHidden
   const headerBackdropHidden =
     modalChromeHidden ||
     ((playerPlayingWithSound || !playerChromeVisible) && !headerHovered)
@@ -495,8 +498,13 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   }, [headerHoverZoneActive])
 
   const pinnedValue = useMemo<FloatingSearchPinnedContextValue>(
-    () => ({ pinned, playerChromeVisible, searchChromeVisible }),
-    [pinned, playerChromeVisible, searchChromeVisible],
+    () => ({
+      pinned,
+      playerChromeVisible,
+      searchChromeVisible,
+      searchOpen: modalChromeHidden,
+    }),
+    [pinned, playerChromeVisible, searchChromeVisible, modalChromeHidden],
   )
 
   return (

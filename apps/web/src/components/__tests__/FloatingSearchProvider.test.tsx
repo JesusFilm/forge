@@ -114,7 +114,7 @@ describe("FloatingSearchProvider — header backdrop", () => {
 })
 
 describe("FloatingSearchProvider — watch playback chrome", () => {
-  it("hides the floating search bar while the player is playing with sound", () => {
+  it("hides the floating search bar with the rest of the header chrome", () => {
     act(() => {
       root.render(
         <FloatingSearchProvider>
@@ -160,21 +160,21 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     ).toContain("group-hover:drop-shadow-none")
 
     act(() => {
-      dispatchPlaybackState({ playing: true, muted: false })
+      dispatchChromeVisibility(false)
     })
 
     expect(searchButton?.className).toContain("opacity-0")
     expect(mobileSearchButton?.className).toContain("opacity-0")
 
     act(() => {
-      dispatchPlaybackState({ playing: false, muted: false })
+      dispatchChromeVisibility(true)
     })
 
     expect(searchButton?.className).toContain("opacity-100")
     expect(mobileSearchButton?.className).toContain("opacity-100")
   })
 
-  it("keeps the floating search bar visible for muted playback", () => {
+  it("keeps the floating search bar visible during unmuted playback while the player chrome is up", () => {
     act(() => {
       root.render(
         <FloatingSearchProvider>
@@ -184,16 +184,20 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     })
 
     act(() => {
-      dispatchPlaybackState({ playing: true, muted: true })
+      dispatchPlaybackState({ playing: true, muted: false })
     })
 
     const searchButton = document.querySelector(
       '[data-testid="floating-search-desktop-button"]',
     )
+    const mobileSearchButton = document.querySelector(
+      '[data-testid="floating-search-mobile-button"]',
+    )
     expect(searchButton?.className).toContain("opacity-100")
+    expect(mobileSearchButton?.className).toContain("opacity-100")
   })
 
-  it("reveals the floating search bar while hovering the header during playback", () => {
+  it("reveals the floating search bar while hovering the header after the player chrome hides", () => {
     act(() => {
       root.render(
         <FloatingSearchProvider>
@@ -213,7 +217,7 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     )
 
     act(() => {
-      dispatchPlaybackState({ playing: true, muted: false })
+      dispatchChromeVisibility(false)
     })
 
     expect(searchButton?.className).toContain("opacity-0")
