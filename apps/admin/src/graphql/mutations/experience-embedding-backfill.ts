@@ -1,9 +1,9 @@
 // Experience embedding backfill mutation.
 //
 // `triggerExperienceEmbeddingBackfill` enqueues the useworkflow job
-// that enumerates eligible ExperienceLocale rows (status='published'
-// AND embedding IS NULL by default) and dispatches the per-locale
-// `runExperienceEmbedding` workflow for each.
+// that enumerates eligible ExperienceLocale rows (status='published',
+// parent Experience not archived, and embedding IS NULL by default) and
+// dispatches the per-locale `runExperienceEmbedding` workflow for each.
 //
 // ADMIN-only via Pothos scope-auth on `write:experience-embeddings`.
 // The bearer-callable `WORKFLOW_TRIGGER` role is also granted via the
@@ -27,6 +27,21 @@ import {
   type ExperienceEmbeddingBackfillReport,
 } from "@/workflows/experienceEmbeddingBackfill"
 
+function parseMode(mode: string | null | undefined) {
+  if (mode == null) return undefined
+  if (
+    mode === "idempotent" ||
+    mode === "repair" ||
+    mode === "force" ||
+    mode === "model-upgrade"
+  ) {
+    return mode
+  }
+  throw new Error(
+    'Invalid experience embedding mode. Expected "idempotent", "repair", "force", or "model-upgrade".',
+  )
+}
+
 /**
  * Dispatch the experience-embedding backfill workflow via the
  * useworkflow runtime and await the final report. Exported separately
@@ -45,12 +60,12 @@ builder.mutationFields((t) => ({
     type: "JSON",
     authScopes: { hasPermission: "write:experience-embeddings" },
     description:
-      "Enqueue the experience-embedding backfill workflow. Enumerates ExperienceLocale rows (status='published' AND embedding IS NULL by default) and dispatches `runExperienceEmbedding` per locale. The downstream workflow is admin-native — reads ExperienceLocale text + writes the vector back via raw SQL inside a Prisma transaction. ADMIN-only at the editorial-tier ladder; bearer-callable from CLIs via `WORKFLOW_TRIGGER`. Per-target error isolation: a failing embedding for one locale records `failed` and does not halt the run. Reruns are idempotent — the inner workflow upserts the vector by id.",
+      "Enqueue the experience-embedding backfill workflow. Enumerates ExperienceLocale rows (status='published', parent Experience not archived, and embedding IS NULL by default) and launches Mastra per locale. Mastra generates vectors and writes back through Admin's experience-specific ingest endpoint. ADMIN-only at the editorial-tier ladder; bearer-callable from CLIs via `WORKFLOW_TRIGGER`. Per-target error isolation: a failing embedding for one locale records `failed` and does not halt the run. Reruns are idempotent by default; explicit modes can repair missing vectors, force refreshes, or model-upgrade existing vectors.",
     args: {
       experienceIds: t.arg.idList({
         required: false,
         description:
-          "Restrict to ExperienceLocale rows whose parent Experience.id is in this set. Omitted = every published Experience.",
+          "Restrict to ExperienceLocale rows whose parent Experience.id is in this set. Omitted = every published, unarchived Experience.",
       }),
       bcp47Locales: t.arg.stringList({
         required: false,
@@ -63,6 +78,11 @@ builder.mutationFields((t) => ({
         description:
           "When true, include rows that already have a non-NULL embedding (re-embed them). Default false — only rows with `embedding IS NULL` are enumerated. Use for model upgrades or drift fixes.",
       }),
+      mode: t.arg.string({
+        required: false,
+        description:
+          'Optional Mastra/Admin ingest mode: "idempotent", "repair", "force", or "model-upgrade". Omitted maps from force for backwards compatibility.',
+      }),
     },
     resolve: async (_root, args) => {
       // JSON scalar accepts any serializable shape; the return type
@@ -73,6 +93,7 @@ builder.mutationFields((t) => ({
           : undefined,
         bcp47Locales: args.bcp47Locales ?? undefined,
         force: args.force ?? false,
+        mode: parseMode(args.mode),
       })
     },
   }),

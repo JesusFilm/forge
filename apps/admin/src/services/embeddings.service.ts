@@ -1,10 +1,9 @@
-import type { PrismaClient } from "@prisma/client"
+import { createHash } from "node:crypto"
+import type { Prisma } from "@prisma/client"
 import { z } from "zod"
 import { canWriteDerived } from "@/auth/permissions"
 import type { Principal } from "@/auth/principal"
-import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import { env } from "@/config/env"
-import { prisma as defaultPrisma } from "@/db/client"
 import { BlockSchema } from "@/domain/blocks"
 import { toPgVector } from "@/db/pgvector"
 
@@ -52,6 +51,29 @@ export type GeneratedEmbeddings = {
   dimensions: number
   /** Embeddings in input-array order: `embeddings[i]` corresponds to `inputs[i]`. */
   embeddings: number[][]
+}
+
+export type ExperienceEmbeddingGenerationMode =
+  | "idempotent"
+  | "repair"
+  | "force"
+  | "model-upgrade"
+
+export type ExperienceEmbeddingSource = {
+  text: string
+  contentHash: string
+  summary: string
+}
+
+export type ExperienceEmbeddingProvenance = {
+  sourceContentHash: string
+  sourceSummary: string
+  model: string
+  dimensions: number
+  provider?: string
+  generationMode: ExperienceEmbeddingGenerationMode
+  mastraRunId: string
+  generatedAt: string
 }
 
 /**
@@ -151,6 +173,28 @@ export function buildExperienceEmbeddingText(
   }
 
   return lines.join("\n\n")
+}
+
+function sha256Text(value: string): string {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`
+}
+
+export function buildExperienceEmbeddingSource(
+  locale: ExperienceEmbeddingLocaleInput,
+): ExperienceEmbeddingSource {
+  const text = buildExperienceEmbeddingText(locale)
+  const lines = text.split(/\n+/).filter((line) => line.trim().length > 0)
+  return {
+    text,
+    contentHash: sha256Text(text),
+    summary: [
+      `chars=${text.length}`,
+      `lines=${lines.length}`,
+      `title=${locale.title ? "present" : "absent"}`,
+      `meta=${locale.metaDescription ? "present" : "absent"}`,
+      `og=${locale.ogTitle || locale.ogDescription ? "present" : "absent"}`,
+    ].join(";"),
+  }
 }
 
 type EmbeddingProvider = {
@@ -322,81 +366,46 @@ export async function generateExperienceEmbedding(
   }
 }
 
-export async function writeExperienceLocaleEmbedding({
-  prisma,
-  localeId,
-  embedding,
-  user,
-}: {
-  prisma: Pick<PrismaClient, "$executeRaw">
-  localeId: string
-  embedding: readonly number[]
-  user: Principal | null
-}): Promise<void> {
+export async function writeExperienceEmbeddingPayloadInTransaction(
+  tx: Pick<Prisma.TransactionClient, "$executeRaw">,
+  {
+    localeId,
+    embedding,
+    provenance,
+    user,
+  }: {
+    localeId: string
+    embedding: readonly number[]
+    provenance: ExperienceEmbeddingProvenance
+    user: Principal | null
+  },
+): Promise<void> {
   if (!canWriteDerived(user)) {
     throw new Error("Forbidden: derived writes require SYSTEM or ADMIN")
   }
+  if (embedding.length !== EXPERIENCE_EMBEDDING_DIMENSIONS) {
+    throw new Error(
+      `Embedding has ${embedding.length} dimensions; expected ${EXPERIENCE_EMBEDDING_DIMENSIONS}`,
+    )
+  }
+  if (provenance.dimensions !== EXPERIENCE_EMBEDDING_DIMENSIONS) {
+    throw new Error(
+      `Embedding provenance has ${provenance.dimensions} dimensions; expected ${EXPERIENCE_EMBEDDING_DIMENSIONS}`,
+    )
+  }
 
-  await prisma.$executeRaw`
+  await tx.$executeRaw`
     UPDATE experience_locale
     SET embedding = ${toPgVector(embedding)}::vector,
+        embedding_source_content_hash = ${provenance.sourceContentHash},
+        embedding_source_summary = ${provenance.sourceSummary},
+        embedding_model = ${provenance.model},
+        embedding_dimensions = ${provenance.dimensions},
+        embedding_provider = ${provenance.provider ?? null},
+        embedding_generation_mode = ${provenance.generationMode},
+        embedding_mastra_run_id = ${provenance.mastraRunId},
+        embedding_generated_at = ${new Date(provenance.generatedAt)},
         updated_at = NOW()
     WHERE id = ${localeId}
   `
-}
-
-/**
- * End-to-end per-locale embedding work as a plain async service
- * function: load → flatten text → generate vector → persist.
- *
- * Shared by:
- *   - `runExperienceEmbedding` (workflow) — wraps this in a single
- *     `"use step"` so step-replay semantics apply when dispatched via
- *     the production workflow runtime.
- *   - `runExperienceEmbeddingBackfill` (workflow) — calls this from its
- *     per-target step body so the loop never nests `start()` calls.
- *     Mirrors the R1/R2 pattern (`indexEditionScenes`,
- *     `indexEditionTranscript`) where the workflow step body invokes a
- *     plain service function rather than dispatching a sibling workflow.
- *
- * Returns the dimensions + model used so the caller can include them
- * in operator-facing reports. Throws on any failure (load missing,
- * provider error, persistence error) — callers wrap with their own
- * try/catch + typed-outcome shaping.
- */
-export type EmbedExperienceLocaleResult = {
-  localeId: string
-  dimensions: number
-  model: string
-}
-
-export async function embedExperienceLocale(
-  localeId: string,
-  options?: { prisma?: PrismaClient },
-): Promise<EmbedExperienceLocaleResult> {
-  const client = options?.prisma ?? defaultPrisma
-  const locale = await client.experienceLocale.findUniqueOrThrow({
-    where: { id: localeId },
-    select: {
-      id: true,
-      title: true,
-      metaDescription: true,
-      ogTitle: true,
-      ogDescription: true,
-      blocks: true,
-    },
-  })
-  const text = buildExperienceEmbeddingText(locale)
-  const generated = await generateExperienceEmbedding(text)
-  await writeExperienceLocaleEmbedding({
-    prisma: client,
-    localeId,
-    embedding: generated.embedding,
-    user: SYSTEM_PRINCIPAL,
-  })
-  return {
-    localeId,
-    dimensions: generated.dimensions,
-    model: generated.model,
-  }
 }

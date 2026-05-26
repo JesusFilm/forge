@@ -70,6 +70,9 @@ export const env = createEnv({
     // Narrow receiver-side CSV for Mastra -> Admin scene vector ingest.
     // Kept separate from transcript ingest and workflow launch credentials.
     MASTRA_SCENE_INGEST_API_KEYS: z.string().min(1).optional(),
+    // Narrow receiver-side CSV for Mastra -> Admin experience vector ingest.
+    // Kept separate from transcript/scene ingest and workflow launch credentials.
+    MASTRA_EXPERIENCE_INGEST_API_KEYS: z.string().min(1).optional(),
     // Plan 003 — consumer-app bearer allowlist (apps/web SSR).
     // CSV-parsed, matched against `Authorization: Bearer <key>` by
     // `consumer-bearer.ts`. A matched key mints a CONSUMER_BEARER
@@ -184,6 +187,11 @@ export const env = createEnv({
       .int()
       .positive()
       .default(120_000),
+    MASTRA_EXPERIENCE_EMBEDDING_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(120_000),
 
     // U21 — admin → web ISR revalidation webhook. Admin's publish
     // lifecycle (Experience publish/update) POSTs `{ model, entry: {
@@ -289,6 +297,9 @@ export const env = createEnv({
     MASTRA_SCENE_INGEST_API_KEYS: emptyToUndefined(
       process.env.MASTRA_SCENE_INGEST_API_KEYS,
     ),
+    MASTRA_EXPERIENCE_INGEST_API_KEYS: emptyToUndefined(
+      process.env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
+    ),
     WEB_ADMIN_API_KEYS: emptyToUndefined(process.env.WEB_ADMIN_API_KEYS),
     BACKUP_DOWNLOAD_API_KEYS: emptyToUndefined(
       process.env.BACKUP_DOWNLOAD_API_KEYS,
@@ -354,6 +365,9 @@ export const env = createEnv({
     MASTRA_SCENE_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
       process.env.MASTRA_SCENE_EMBEDDING_TIMEOUT_MS,
     ),
+    MASTRA_EXPERIENCE_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_EXPERIENCE_EMBEDDING_TIMEOUT_MS,
+    ),
     WEB_REVALIDATE_URL: emptyToUndefined(process.env.WEB_REVALIDATE_URL),
     WEB_REVALIDATE_TOKEN: emptyToUndefined(process.env.WEB_REVALIDATE_TOKEN),
     NEXT_RUNTIME: emptyToUndefined(process.env.NEXT_RUNTIME),
@@ -410,6 +424,7 @@ const BEARER_CSV_KEYS = [
   "WORKFLOW_API_KEYS",
   "MASTRA_TRANSCRIPT_INGEST_API_KEYS",
   "MASTRA_SCENE_INGEST_API_KEYS",
+  "MASTRA_EXPERIENCE_INGEST_API_KEYS",
   "MANAGER_ADMIN_API_KEY",
   "WEB_ADMIN_API_KEYS",
   "BACKUP_DOWNLOAD_API_KEYS",
@@ -484,6 +499,7 @@ assertBearerCsvsDisjoint({
   WORKFLOW_API_KEYS: env.WORKFLOW_API_KEYS,
   MASTRA_TRANSCRIPT_INGEST_API_KEYS: env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
   MASTRA_SCENE_INGEST_API_KEYS: env.MASTRA_SCENE_INGEST_API_KEYS,
+  MASTRA_EXPERIENCE_INGEST_API_KEYS: env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
   MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,

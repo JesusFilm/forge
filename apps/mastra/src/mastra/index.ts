@@ -30,6 +30,10 @@ import {
   sceneEmbeddingWorkflow,
 } from "./workflows/scene-embedding"
 import {
+  experienceEmbeddingWorkflow,
+  handleExperienceEmbeddingRouteRequest,
+} from "./workflows/experience-embedding"
+import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
@@ -64,7 +68,11 @@ const redactPromptBodies: SpanOutputProcessor = {
 
 export const mastra = new Mastra({
   agents: { smokeAgent },
-  workflows: { transcriptEmbeddingWorkflow, sceneEmbeddingWorkflow },
+  workflows: {
+    transcriptEmbeddingWorkflow,
+    sceneEmbeddingWorkflow,
+    experienceEmbeddingWorkflow,
+  },
   logger: new PinoLogger({
     name: "ForgeMastra",
     prettyPrint: env.NODE_ENV !== "production",
@@ -141,6 +149,21 @@ export const mastra = new Mastra({
         method: "POST",
         handler: async (c) => {
           const outcome = await handleSceneEmbeddingRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-experience-embeddings", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleExperienceEmbeddingRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),

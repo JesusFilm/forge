@@ -778,7 +778,7 @@ type Mutation {
   """
   triggerExperienceEmbedding(localeId: ID!): JSON
   """
-  Enqueue the experience-embedding backfill workflow. Enumerates ExperienceLocale rows (status='published' AND embedding IS NULL by default) and dispatches `runExperienceEmbedding` per locale. The downstream workflow is admin-native — reads ExperienceLocale text + writes the vector back via raw SQL inside a Prisma transaction. ADMIN-only at the editorial-tier ladder; bearer-callable from CLIs via `WORKFLOW_TRIGGER`. Per-target error isolation: a failing embedding for one locale records `failed` and does not halt the run. Reruns are idempotent — the inner workflow upserts the vector by id.
+  Enqueue the experience-embedding backfill workflow. Enumerates ExperienceLocale rows (status='published', parent Experience not archived, and embedding IS NULL by default) and launches Mastra per locale. Mastra generates vectors and writes back through Admin's experience-specific ingest endpoint. ADMIN-only at the editorial-tier ladder; bearer-callable from CLIs via `WORKFLOW_TRIGGER`. Per-target error isolation: a failing embedding for one locale records `failed` and does not halt the run. Reruns are idempotent by default; explicit modes can repair missing vectors, force refreshes, or model-upgrade existing vectors.
   """
   triggerExperienceEmbeddingBackfill(
     """
@@ -786,13 +786,17 @@ type Mutation {
     """
     bcp47Locales: [String!]
     """
-    Restrict to ExperienceLocale rows whose parent Experience.id is in this set. Omitted = every published Experience.
+    Restrict to ExperienceLocale rows whose parent Experience.id is in this set. Omitted = every published, unarchived Experience.
     """
     experienceIds: [ID!]
     """
     When true, include rows that already have a non-NULL embedding (re-embed them). Default false — only rows with `embedding IS NULL` are enumerated. Use for model upgrades or drift fixes.
     """
     force: Boolean = false
+    """
+    Optional Mastra/Admin ingest mode: "idempotent", "repair", "force", or "model-upgrade". Omitted maps from force for backwards compatibility.
+    """
+    mode: String
   ): JSON
   """
   Dispatch apps/manager's enrichment pipeline (scene-analysis or transcript-only) for a list of cms videos. Forwards to manager's `/api/admin-trigger/{kind}` endpoint and returns one outcome per requested assetId. Operator-driven: typically called after reading the `missingArtifacts` projection emitted by `triggerSceneEmbeddingBackfill` / `triggerTranscriptEmbeddingBackfill` (feat-119 PR1). ADMIN-only.

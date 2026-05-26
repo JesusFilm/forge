@@ -18,7 +18,6 @@
  *   MANAGER_ARTIFACTS_S3_BUCKET=... \
  *   MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID=... \
  *   MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY=... \
- *   OPENROUTER_API_KEY=...   # experience only; scene + transcript use Mastra
  *   MASTRA_BASE_URL=...
  *   MASTRA_SERVICE_API_KEY=...
  *   pnpm --filter @forge/admin run-embeds --pipeline=transcript
@@ -33,6 +32,7 @@
  *   --language=<bcp47>                                  # transcript pipeline filter (repeatable)
  *   --scene-mode=idempotent|repair|force|model-upgrade
  *   --transcript-mode=idempotent|repair|force|model-upgrade
+ *   --experience-mode=idempotent|repair|force|model-upgrade
  *   --experience-id=<cuid>                              # experience pipeline filter (repeatable)
  *   --force                                             # experience pipeline only — re-embed
  *                                                       # rows that already have a non-NULL embedding
@@ -461,6 +461,7 @@ async function main(): Promise<void> {
   const languages = parseRepeated("language")
   const sceneMode = parseSingle("scene-mode")
   const transcriptMode = parseSingle("transcript-mode")
+  const experienceMode = parseSingle("experience-mode")
   const experienceIds = parseRepeated("experience-id")
   const force = parseFlag("force")
   // feat-119 PR1 — operators piping the report into PR2's
@@ -487,6 +488,15 @@ async function main(): Promise<void> {
   ) {
     process.stderr.write(
       `[run-embeds] invalid --transcript-mode=${transcriptMode}; expected idempotent|repair|force|model-upgrade\n`,
+    )
+    process.exit(1)
+  }
+  if (
+    experienceMode !== undefined &&
+    !isEmbeddingBackfillMode(experienceMode)
+  ) {
+    process.stderr.write(
+      `[run-embeds] invalid --experience-mode=${experienceMode}; expected idempotent|repair|force|model-upgrade\n`,
     )
     process.exit(1)
   }
@@ -538,6 +548,12 @@ async function main(): Promise<void> {
   const transcriptConcurrency =
     env.TRANSCRIPT_EMBEDDING_CONCURRENCY ??
     DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
+  const resolvedExperienceMode =
+    experienceMode ?? (force ? "force" : "idempotent")
+  const resolvedExperienceForce =
+    experienceMode === undefined
+      ? force
+      : resolvedExperienceMode !== "idempotent"
 
   const redacted = databaseUrl.replace(/:\/\/[^@]+@/, "://***:***@")
   process.stdout.write(
@@ -551,8 +567,9 @@ async function main(): Promise<void> {
       languages: languages.length > 0 ? languages : null,
       sceneMode: sceneMode ?? null,
       transcriptMode: transcriptMode ?? null,
+      experienceMode: resolvedExperienceMode,
       experienceIds: experienceIds.length > 0 ? experienceIds : null,
-      force,
+      force: resolvedExperienceForce,
       sceneConcurrency,
       transcriptConcurrency,
       managerArtifactsBucket:
@@ -669,13 +686,20 @@ async function main(): Promise<void> {
             event: "run-embeds.experience.start",
             experienceIds: experienceIds.length > 0 ? experienceIds : null,
             locales: locales.length > 0 ? locales : null,
-            force,
+            force: resolvedExperienceForce,
+            mode: resolvedExperienceMode,
           }) + "\n",
         )
         const experienceReport = await runExperienceEmbeddingBackfill({
           experienceIds: experienceIds.length > 0 ? experienceIds : undefined,
           bcp47Locales: locales.length > 0 ? locales : undefined,
-          force,
+          force: resolvedExperienceForce,
+          mode: experienceMode as
+            | "idempotent"
+            | "repair"
+            | "force"
+            | "model-upgrade"
+            | undefined,
         })
         reports.experience = experienceReport
         process.stdout.write(
