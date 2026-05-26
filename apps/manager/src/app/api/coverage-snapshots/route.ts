@@ -2,10 +2,8 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { getCmsGateway } from "@/cms/gateway"
 import { authenticateRequest } from "@/lib/auth"
-import getClient from "@/cms/client"
 import {
   coverageSnapshotRangeDateRegex,
-  GET_COVERAGE_SNAPSHOTS,
   latestCoverageSnapshotCache,
 } from "./cache"
 
@@ -52,25 +50,10 @@ export async function GET(request: Request) {
 
     const { startDate, endDate } = query.data
 
-    if (gateway.mode === "mock") {
-      const snapshots = (await gateway.getCoverageSnapshots()).filter(
-        (snapshot) => snapshot.date >= startDate && snapshot.date <= endDate,
-      )
-      return NextResponse.json({ snapshots })
-    }
-
-    const client = getClient()
-    const result = await client.query({
-      query: GET_COVERAGE_SNAPSHOTS,
-      variables: {
-        filters: { date: { gte: startDate, lte: endDate } },
-        sort: ["date:asc"],
-        pagination: { limit: -1 },
-      },
-      fetchPolicy: "no-cache",
+    const snapshots = await gateway.getCoverageSnapshots({
+      startDate,
+      endDate,
     })
-
-    const snapshots = result.data?.coverageSnapshots ?? []
     return NextResponse.json({ snapshots })
   } catch (error) {
     console.error(

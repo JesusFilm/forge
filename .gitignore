@@ -4,6 +4,7 @@ node_modules/
 .expo/
 .swc/
 .next/
+**/.mastra/
 next-env.d.ts
 dist/
 build/

@@ -2,5 +2,5 @@
 
 Shared contracts and generated clients.
 
-- GraphQL schema lives in `apps/cms/schema.graphql` (Strapi-generated).
+- GraphQL schema lives in `apps/admin/schema.graphql` (generated from Pothos).
 - `graphql/`: generated GraphQL types + codegen tools.

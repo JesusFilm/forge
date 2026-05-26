@@ -10,6 +10,7 @@ import type { MuxPlayerRef } from "@forge/video-player"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
+import type { WatchSubtitle } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
@@ -25,6 +26,7 @@ export type LanguagePickerVariant = {
     bcp47?: string | null
     slug: string | null
     name: string | null
+    nativeName?: string | null
   } | null
   videoEdition?: {
     subtitles?:
@@ -58,6 +60,10 @@ export type LanguagePickerModalProps = {
    * autoplay on the destination. Defaults to "video" for back-compat.
    */
   kind?: "video" | "series"
+  subtitles?: WatchSubtitle[]
+  currentSubtitleEnabled?: boolean
+  currentSubtitleSlug?: string | null
+  onSubtitleChange?: (enabled: boolean, languageSlug: string | null) => void
 }
 
 // Safety cap on the in-flight navigation guard. router.push is fire-and-
@@ -75,6 +81,10 @@ export function LanguagePickerModal({
   playerRef,
   onClose,
   kind = "video",
+  subtitles = [],
+  currentSubtitleEnabled = false,
+  currentSubtitleSlug = null,
+  onSubtitleChange,
 }: LanguagePickerModalProps) {
   const router = useRouter()
 
@@ -87,46 +97,41 @@ export function LanguagePickerModal({
     () =>
       variants
         .filter(isPlayableLanguageVariant)
-        .map((v) => ({
-          ...deriveLanguageDisplay(v.language.slug, v.language.name),
-          bcp47: v.language.bcp47 ?? null,
-        }))
+        .map((v) => {
+          const display = deriveLanguageDisplay(
+            v.language.slug,
+            v.language.name,
+          )
+          return {
+            ...display,
+            nativeName: display.nativeName ?? v.language.nativeName ?? null,
+            bcp47: v.language.bcp47 ?? null,
+          }
+        })
         .sort((a, b) => a.name.localeCompare(b.name)),
     [variants],
   )
 
   const [draftSlug, setDraftSlug] = useState(currentLanguageSlug)
-  const subtitleOptions = useMemo(() => {
-    const currentVariant =
-      variants.find((v) => v.language?.slug === currentLanguageSlug) ??
-      variants[0]
-    const seen = new Set<string>()
-    return (currentVariant?.videoEdition?.subtitles ?? [])
-      .flatMap((subtitle) => {
-        if (subtitle.vttSrc == null && subtitle.srtSrc == null) return []
-        const language = subtitle.language
-        if (language?.slug == null || language.name == null) return []
-        return [
-          {
-            ...deriveLanguageDisplay(language.slug, language.name),
-            bcp47: language.bcp47 ?? null,
-          },
-        ]
-      })
-      .filter((language) => {
-        if (seen.has(language.slug)) return false
-        seen.add(language.slug)
-        return true
-      })
-      .sort((a, b) => a.name.localeCompare(b.name))
-  }, [currentLanguageSlug, variants])
-  const [subtitlesEnabled, setSubtitlesEnabled] = useState(
-    subtitleOptions.length > 0,
+  const [draftSubtitleEnabled, setDraftSubtitleEnabled] = useState(
+    currentSubtitleEnabled,
   )
-  const [draftSubtitleSlug, setDraftSubtitleSlug] = useState(
-    subtitleOptions[0]?.slug ?? "",
+  const [draftSubtitleSlug, setDraftSubtitleSlug] = useState<string | null>(
+    currentSubtitleSlug,
   )
   const [translationRequestSent, setTranslationRequestSent] = useState(false)
+
+  const subtitleOptions = useMemo(
+    () =>
+      subtitles
+        .map((s) => ({
+          ...deriveLanguageDisplay(s.language.slug, s.language.name),
+          nativeName: s.language.nativeName ?? null,
+          bcp47: s.language.bcp47 ?? null,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [subtitles],
+  )
 
   // Track which slug we've dispatched a navigation toward. `navigating`
   // becomes false NATURALLY once the URL catches up — no setState in
@@ -151,18 +156,28 @@ export function LanguagePickerModal({
   useEffect(() => {
     currentLanguageSlugLatestRef.current = currentLanguageSlug
   }, [currentLanguageSlug])
+  const currentSubtitleEnabledRef = useRef(currentSubtitleEnabled)
+  const currentSubtitleSlugRef = useRef(currentSubtitleSlug)
+  useEffect(() => {
+    currentSubtitleEnabledRef.current = currentSubtitleEnabled
+    currentSubtitleSlugRef.current = currentSubtitleSlug
+  }, [currentSubtitleEnabled, currentSubtitleSlug])
   useEffect(() => {
     if (open) {
       setDraftSlug(currentLanguageSlugLatestRef.current)
-      setSubtitlesEnabled(subtitleOptions.length > 0)
-      setDraftSubtitleSlug(subtitleOptions[0]?.slug ?? "")
+      setDraftSubtitleEnabled(currentSubtitleEnabledRef.current)
+      setDraftSubtitleSlug(currentSubtitleSlugRef.current)
       setTranslationRequestSent(false)
       navigatingRef.current.inFlight = false
       setPendingNavTo(null)
     }
-  }, [open, subtitleOptions])
+  }, [open])
 
-  const isDirty = draftSlug !== currentLanguageSlug
+  const languageDirty = draftSlug !== currentLanguageSlug
+  const subtitleDirty =
+    draftSubtitleEnabled !== currentSubtitleEnabled ||
+    draftSubtitleSlug !== currentSubtitleSlug
+  const isDirty = languageDirty || subtitleDirty
   // Derived: navigating iff we dispatched and the URL hasn't caught up.
   // When currentLanguageSlug matches pendingNavTo, navigating flips to
   // false automatically on the next render — no setter call needed.
@@ -193,33 +208,41 @@ export function LanguagePickerModal({
     if (!isDirty) return
     if (navigatingRef.current.inFlight) return
     if (!videoSlug) return
-    // Flip the guard synchronously so a same-microtask double-click bails
-    // on the second invocation. State follows for the visual.
-    navigatingRef.current.inFlight = true
-    setPendingNavTo(draftSlug)
-    // Write cookie BEFORE router.push — order asserted by tests and required
-    // so middleware sees the cookie on the next request.
-    writePreferredLanguageSlug(draftSlug)
-    // Series-page surface has no player. Skip the `?t=` clamp + the
-    // `autoplay=1` gesture flag — they only mean something to
-    // HeroPlayer, and an autoplay param on the destination series
-    // page would mistakenly kick the trailer into unmuted playback.
-    let href: Route
-    if (kind === "series") {
-      href = `/${videoSlug}/${draftSlug}` as Route
-    } else {
-      const rawT = playerRef.current?.currentTime
-      const t = Number.isFinite(rawT) ? rawT : 0
-      // basePath '/watch' auto-prepended at runtime — do NOT include here.
-      // autoplay=1 signals to HeroPlayer that this navigation came from a
-      // deliberate user gesture, so it should attempt unmuted playback
-      // immediately. HeroPlayer strips the param after the attempt so a
-      // page refresh (no gesture) doesn't re-trigger autoplay.
-      href = `/${videoSlug}/${draftSlug}?t=${t}&autoplay=1` as Route
+
+    if (subtitleDirty) {
+      onSubtitleChange?.(draftSubtitleEnabled, draftSubtitleSlug)
     }
-    router.push(href)
+
+    if (languageDirty) {
+      navigatingRef.current.inFlight = true
+      setPendingNavTo(draftSlug)
+      writePreferredLanguageSlug(draftSlug)
+      let href: Route
+      if (kind === "series") {
+        href = `/${videoSlug}/${draftSlug}` as Route
+      } else {
+        const rawT = playerRef.current?.currentTime
+        const t = Number.isFinite(rawT) ? rawT : 0
+        href = `/${videoSlug}/${draftSlug}?t=${t}&autoplay=1` as Route
+      }
+      router.push(href)
+    }
+
     onClose()
-  }, [draftSlug, isDirty, kind, onClose, playerRef, router, videoSlug])
+  }, [
+    draftSlug,
+    draftSubtitleEnabled,
+    draftSubtitleSlug,
+    isDirty,
+    kind,
+    languageDirty,
+    onClose,
+    onSubtitleChange,
+    playerRef,
+    router,
+    subtitleDirty,
+    videoSlug,
+  ])
 
   function handleOpenChange(next: boolean) {
     if (!next) onClose()
@@ -260,7 +283,9 @@ export function LanguagePickerModal({
         showCloseButton={false}
         portalContainer={portalContainer}
       >
-        <DialogTitle className="sr-only">Language</DialogTitle>
+        <DialogTitle className="sr-only">
+          Language{subtitles.length > 0 ? " & Subtitles" : ""}
+        </DialogTitle>
 
         <div className="flex flex-col gap-14">
           <div className="flex flex-col gap-5">
@@ -292,15 +317,15 @@ export function LanguagePickerModal({
                 <button
                   type="button"
                   role="switch"
-                  aria-checked={subtitlesEnabled}
+                  aria-checked={draftSubtitleEnabled}
                   data-testid="watch-language-picker-subtitles-toggle"
                   disabled={subtitleOptions.length === 0}
-                  onClick={() => setSubtitlesEnabled((value) => !value)}
+                  onClick={() => setDraftSubtitleEnabled((value) => !value)}
                   className="flex h-8 w-[58px] cursor-pointer items-center rounded-full bg-white p-1 transition disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span
                     className={`size-6 rounded-full bg-stone-950 transition-transform ${
-                      subtitlesEnabled ? "translate-x-6" : "translate-x-0"
+                      draftSubtitleEnabled ? "translate-x-6" : "translate-x-0"
                     }`}
                   />
                 </button>
@@ -331,10 +356,10 @@ export function LanguagePickerModal({
             </div>
             <LanguageCombobox
               options={subtitleOptions}
-              value={draftSubtitleSlug}
+              value={draftSubtitleSlug ?? ""}
               onChange={setDraftSubtitleSlug}
               icon="subtitles"
-              disabled={!subtitlesEnabled || subtitleOptions.length === 0}
+              disabled={!draftSubtitleEnabled || subtitleOptions.length === 0}
               placeholder="No subtitles"
             />
           </div>

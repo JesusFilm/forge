@@ -4,7 +4,7 @@
 // query. Do not add new operations against it. Migrating section
 // components to AdminFragmentOf is a clean follow-up bundle — see
 // apps/web/CLAUDE.md "Common Pitfalls".
-import { graphql } from "@forge/graphql"
+import { graphql } from "@/lib/legacy-fragment-types"
 
 export const mediaCollectionFragment = graphql(`
   fragment MediaCollection on ComponentSectionsMediaCollection @_unmask {

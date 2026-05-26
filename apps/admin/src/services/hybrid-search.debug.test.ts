@@ -181,6 +181,60 @@ describe("HybridSearchService debug payload routing", () => {
     expect(labels).toEqual(["keyword-video", "semantic-video"])
   })
 
+  it("a mixed semantic-video hit still exposes one debug origin and no public evidence fields", async () => {
+    vi.mocked(searchVideoKeyword).mockResolvedValue([])
+    vi.mocked(searchVideoSemantic).mockResolvedValue([
+      {
+        resultType: "video",
+        resultId: "vid-mixed",
+        videoCoreId: "core-mixed",
+        videoSlug: "mixed",
+        videoTitle: "Mixed Evidence",
+        imageUrl: null,
+        sceneDescription: "Winning transcript or scene snippet",
+        startSeconds: 12,
+        playbackId: "mux-mixed",
+        similarity: 0.91,
+        embeddingText: "[0.1,0.2,0.3]",
+      },
+    ])
+
+    const service = new HybridSearchService({
+      prisma: mockPrisma,
+      embedder: successEmbedder(),
+      logger: { warn: vi.fn(), error: vi.fn() },
+    })
+
+    const result = await service.search({
+      query: "spoken phrase",
+      locale: "en",
+      debug: true,
+      contentTypes: ["video"],
+    })
+
+    expect(result.results).toHaveLength(1)
+    expect(result.results[0]!.debug!.retrieverRanks).toEqual([
+      { label: "semantic-video", rank: 1 },
+    ])
+    expect(Object.keys(result.results[0]!).sort()).toEqual(
+      [
+        "childCount",
+        "debug",
+        "durationSeconds",
+        "id",
+        "imageUrl",
+        "label",
+        "playbackId",
+        "score",
+        "slug",
+        "snippet",
+        "startSeconds",
+        "title",
+        "type",
+      ].sort(),
+    )
+  })
+
   it("dilutionCapApplied reflects the cap's per-result decision in keyword-first mode", async () => {
     // Bring up a keyword-first scenario where the cap fires on a
     // semantic-only row.

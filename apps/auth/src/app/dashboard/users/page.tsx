@@ -1,5 +1,13 @@
 import { prisma } from "@/db/client"
 
+import {
+  DashboardPageShell,
+  DashboardPanel,
+  DashboardTable,
+  DashboardTd,
+  DashboardTh,
+} from "@/app/dashboard/dashboard-components"
+
 export const dynamic = "force-dynamic"
 
 export default async function UsersPage() {
@@ -25,35 +33,41 @@ export default async function UsersPage() {
   })
 
   return (
-    <section className="dashboard-section">
-      <header className="dashboard-header">
+    <DashboardPageShell>
+      <header className="flex items-end justify-between gap-4">
         <div>
-          <p className="dashboard-kicker">Membership</p>
-          <h2>Users and app grants</h2>
+          <p className="m-0 text-[11px] font-bold uppercase tracking-[0.08em] text-[#ef3340]">
+            Membership
+          </p>
+          <h2 className="mb-0 mt-0.5 text-3xl font-bold">
+            Users and app grants
+          </h2>
         </div>
       </header>
 
-      <div className="data-panel">
-        <table>
+      <DashboardPanel>
+        <DashboardTable>
           <thead>
             <tr>
-              <th>User</th>
-              <th>Status</th>
-              <th>Email</th>
-              <th>Grants</th>
-              <th>Created</th>
+              <DashboardTh>User</DashboardTh>
+              <DashboardTh>Status</DashboardTh>
+              <DashboardTh>Email</DashboardTh>
+              <DashboardTh>Grants</DashboardTh>
+              <DashboardTh>Created</DashboardTh>
             </tr>
           </thead>
           <tbody>
             {users.map((user) => (
               <tr key={user.id}>
-                <td>
+                <DashboardTd>
                   <strong>{user.name}</strong>
-                  <small>{user.email}</small>
-                </td>
-                <td>{user.membershipStatus.toLowerCase()}</td>
-                <td>{user.emailVerified ? "verified" : "unverified"}</td>
-                <td>
+                  <small className="block text-[#78716c]">{user.email}</small>
+                </DashboardTd>
+                <DashboardTd>{user.membershipStatus.toLowerCase()}</DashboardTd>
+                <DashboardTd>
+                  {user.emailVerified ? "verified" : "unverified"}
+                </DashboardTd>
+                <DashboardTd>
                   {user.grants.length === 0
                     ? "none"
                     : user.grants
@@ -62,13 +76,13 @@ export default async function UsersPage() {
                             `${grant.app.displayName} ${grant.environment.kind.toLowerCase()} ${grant.status.toLowerCase()}`,
                         )
                         .join(", ")}
-                </td>
-                <td>{user.createdAt.toISOString()}</td>
+                </DashboardTd>
+                <DashboardTd>{user.createdAt.toISOString()}</DashboardTd>
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
-    </section>
+        </DashboardTable>
+      </DashboardPanel>
+    </DashboardPageShell>
   )
 }

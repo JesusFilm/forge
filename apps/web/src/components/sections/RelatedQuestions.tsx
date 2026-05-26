@@ -1,7 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import type { FragmentOf } from "@forge/graphql"
+import type {
+  FragmentOf,
+  LegacyFragmentValue,
+} from "@/lib/legacy-fragment-types"
 import Markdown from "react-markdown"
 import { relatedQuestionsFragment } from "@/lib/fragments/related-questions"
 import { Button } from "@/components/ui/button"
@@ -129,7 +132,9 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   const validQuestions =
-    questions?.filter((q): q is NonNullable<typeof q> => q != null) ?? []
+    questions?.filter(
+      (q: LegacyFragmentValue): q is NonNullable<typeof q> => q != null,
+    ) ?? []
 
   if (!validQuestions.length) return null
 
@@ -167,7 +172,7 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
       </div>
 
       <div className="relative">
-        {validQuestions.map((q, idx) => (
+        {validQuestions.map((q: LegacyFragmentValue, idx: number) => (
           <QuestionItem
             key={q.id ?? `q-${idx}`}
             question={q.question ?? ""}

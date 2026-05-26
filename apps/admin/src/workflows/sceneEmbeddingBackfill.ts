@@ -15,9 +15,9 @@
 //                               collapses S3 reads from N×L to N.
 //   4. processGroup           — per-group worker:
 //        4a. Load scene-analysis artifact ONCE for the group.
-//        4b. For each locale in the group, call stepIndexEditionLocale
-//            with `loadedArtifact` so the service skips the S3 read
-//            and runs ONE batched provider call per locale.
+//        4b. For each locale in the group, launch Mastra with
+//            `loadedArtifact` so Mastra generates vectors and Admin
+//            ingest stores them.
 //   5. stepReport             — aggregate per-target outcomes.
 //
 // Per-target errors are caught inside the per-locale step so one bad
@@ -43,7 +43,6 @@
 
 import pLimit from "p-limit"
 import { prisma } from "@/db/client"
-import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import { env } from "@/config/env"
 import {
   loadCoreIdMapping,
@@ -51,9 +50,10 @@ import {
 } from "@/services/core-id-mapping.service"
 import type { SceneAnalysisResult } from "@/services/manager-artifacts.service"
 import {
-  indexEditionScenes,
-  type IndexEditionScenesResult,
-} from "@/services/scene-embedding.service"
+  launchMastraSceneEmbedding,
+  type MastraSceneEmbeddingLaunchResult,
+  type MastraSceneEmbeddingMode,
+} from "@/services/mastra-scene-embedding-client"
 // The artifact-load step lives in a separate module on purpose — the
 // useworkflow build plugin treats functions imported into a workflow
 // file as workflow scope, so importing `readSceneAnalysisArtifact`
@@ -96,6 +96,8 @@ export type SceneEmbeddingBackfillInput = {
    * derivation.
    */
   locales?: readonly string[]
+  /** Mastra/Admin ingest generation mode. Defaults to idempotent. */
+  mode?: MastraSceneEmbeddingMode
   retryTargets?: readonly SceneEmbeddingRetryTarget[]
 }
 
@@ -335,7 +337,7 @@ export async function runSceneEmbeddingBackfill(
         // synthetic-failed branch below records it (with real elapsed
         // time) and the per-target isolation contract is observable to
         // tests.
-        processGroup(group),
+        processGroup(group, input.mode ?? "idempotent"),
       ),
     ),
   )
@@ -536,7 +538,10 @@ function groupTargetsByVideoEdition(
  * succeeded/skipped/failed triple stays meaningful even when the load
  * fault is shared.
  */
-async function processGroup(group: BackfillGroup): Promise<BackfillOutcome[]> {
+async function processGroup(
+  group: BackfillGroup,
+  mode: MastraSceneEmbeddingMode,
+): Promise<BackfillOutcome[]> {
   "use step"
   const groupStartedAt = Date.now()
 
@@ -593,9 +598,10 @@ async function processGroup(group: BackfillGroup): Promise<BackfillOutcome[]> {
   // and the per-target step's timing measurement is honest.
   const outcomes: BackfillOutcome[] = []
   for (const target of group.targets) {
-    const outcome = await _internals.stepIndexEditionLocale(
+    const outcome = await _internals.stepLaunchMastraSceneEmbedding(
       target,
       loadedArtifact,
+      mode,
     )
     logOutcome(outcome)
     outcomes.push(outcome)
@@ -603,24 +609,37 @@ async function processGroup(group: BackfillGroup): Promise<BackfillOutcome[]> {
   return outcomes
 }
 
-async function stepIndexEditionLocale(
+async function stepLaunchMastraSceneEmbedding(
   target: BackfillTarget,
   loadedArtifact: SceneAnalysisResult,
+  mode: MastraSceneEmbeddingMode,
 ): Promise<BackfillOutcome> {
   "use step"
 
   const startedAt = Date.now()
 
   try {
-    const result = await indexEditionScenes(prisma, {
-      editionId: target.videoEditionId,
-      videoId: target.videoId,
-      coreId: target.coreId,
+    const result = await launchMastraSceneEmbedding({
+      target: {
+        videoId: target.videoId,
+        videoEditionId: target.videoEditionId,
+        coreId: target.coreId,
+      },
       locale: target.locale,
-      cmsVideoId: target.cmsVideoId,
-      loadedArtifact,
-      user: SYSTEM_PRINCIPAL,
+      assetId: target.cmsVideoId,
+      sceneAnalysis: loadedArtifact,
+      mode,
     })
+    if (!result.ok) {
+      return {
+        status: "failed",
+        target,
+        locale: target.locale,
+        reason: result.reason,
+        failureCategory: classifySceneFailure(result.reason),
+        durationMs: Date.now() - startedAt,
+      }
+    }
     return toSucceeded(target, target.locale, result, Date.now() - startedAt)
   } catch (error) {
     const durationMs = Date.now() - startedAt
@@ -927,15 +946,15 @@ function stepReport(args: {
 function toSucceeded(
   target: BackfillTarget,
   locale: string,
-  result: IndexEditionScenesResult,
+  result: Extract<MastraSceneEmbeddingLaunchResult, { ok: true }>,
   durationMs: number,
 ): BackfillOutcome {
   return {
     status: "succeeded",
     target,
     locale,
-    scenesIndexed: result.scenesIndexed,
-    embeddingsWritten: result.embeddingsWritten,
+    scenesIndexed: result.scenes,
+    embeddingsWritten: result.status === "unchanged" ? 0 : result.scenes,
     durationMs,
   }
 }
@@ -1008,14 +1027,14 @@ function logOutcome(outcome: BackfillOutcome): void {
 // Exported for tests — these are the pure functions inside the steps,
 // safe to exercise without the useworkflow runtime.
 //
-// `stepIndexEditionLocale` is referenced through `_internals` from
+// `stepLaunchMastraSceneEmbedding` is referenced through `_internals` from
 // `processGroup` so tests can `vi.spyOn(_internals,
-// "stepIndexEditionLocale")` to force a `Promise.allSettled` rejection
+// "stepLaunchMastraSceneEmbedding")` to force a `Promise.allSettled` rejection
 // — the only way to exercise the synthetic-failed defensive branch,
 // since the real step body catches everything internally.
 export const _internals = {
   stepReport,
-  stepIndexEditionLocale,
+  stepLaunchMastraSceneEmbedding,
   toSucceeded,
   logOutcome,
   groupTargetsByVideoEdition,

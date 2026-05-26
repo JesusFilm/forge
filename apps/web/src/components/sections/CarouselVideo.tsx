@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import "video.js/dist/video-js.css"
-import type { FragmentOf } from "@forge/graphql"
+import type {
+  FragmentOf,
+  LegacyFragmentValue,
+} from "@/lib/legacy-fragment-types"
 import { MuxVideo, useVideoPlayerCore } from "@forge/video-player"
 import { videoCarouselFragment } from "@/lib/fragments/video-carousel"
 import {
@@ -530,7 +533,8 @@ function ThumbnailCard({
 export function CarouselVideo({ data }: CarouselVideoProps) {
   const { title, subtitle, carouselDescription, items } = data
   const validItems = items?.filter(
-    (item): item is NonNullable<typeof item> => item != null,
+    (item: LegacyFragmentValue): item is NonNullable<typeof item> =>
+      item != null,
   )
 
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -585,7 +589,7 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
           className="w-full"
         >
           <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
-            {validItems.map((item, index) => (
+            {validItems.map((item: LegacyFragmentValue, index: number) => (
               <CarouselItem
                 key={item.id ?? index}
                 className="max-w-[200px] pl-5"

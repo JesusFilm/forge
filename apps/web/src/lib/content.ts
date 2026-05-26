@@ -131,6 +131,7 @@ export type WatchVariantLanguage = {
   bcp47: string | null
   slug: string | null
   name: string | null
+  nativeName: string | null
 }
 
 export type WatchVariantDownload = {
@@ -175,6 +176,19 @@ export type WatchBibleCitation = {
   bibleBook: { documentId: string; name: string | null } | null
 }
 
+export type WatchSubtitle = {
+  documentId: string
+  language: {
+    slug: string
+    name: string
+    nativeName: string | null
+    bcp47: string
+  }
+  vttSrc: string
+  primary: boolean
+  aiGenerated: boolean
+}
+
 export type WatchVideoRecord = {
   documentId: string
   slug: string | null
@@ -189,6 +203,7 @@ export type WatchVideoRecord = {
   parents: WatchParent[]
   children: WatchChild[]
   variants: WatchVariant[]
+  subtitles: WatchSubtitle[]
   studyQuestions: WatchStudyQuestion[]
   bibleCitations: WatchBibleCitation[]
 }
@@ -401,6 +416,17 @@ const LOCALIZED_NAME_FALLBACK_ORDER = [
   "zh-Hans-CN",
 ] as const
 
+function pickNativeName(value: unknown): string | null {
+  if (typeof value !== "object" || !value) return null
+  const map = value as Record<string, unknown>
+  const english = map.en
+  for (const [key, val] of Object.entries(map)) {
+    if (key === "en") continue
+    if (typeof val === "string" && val.length > 0 && val !== english) return val
+  }
+  return null
+}
+
 function pickLocalizedName(value: unknown): string | null {
   if (typeof value === "string") return value.length > 0 ? value : null
   if (!value || typeof value !== "object") return null
@@ -509,6 +535,7 @@ function normalizeVariant(
           bcp47: v.language.bcp47 ?? null,
           slug: v.language.slug ?? null,
           name: pickLocalizedName(v.language.name),
+          nativeName: pickNativeName(v.language.name),
         }
       : null,
     downloads: (v.downloads ?? [])
@@ -531,15 +558,47 @@ function normalizeVariant(
             language: subtitle.language
               ? {
                   coreId: subtitle.language.coreId ?? null,
-                  bcp47: null,
+                  bcp47: subtitle.language.bcp47 ?? null,
                   slug: subtitle.language.slug ?? null,
                   name: pickLocalizedName(subtitle.language.name),
+                  nativeName: pickNativeName(subtitle.language.name),
                 }
               : null,
           })),
         }
       : null,
   }
+}
+
+function normalizeSubtitles(
+  variants: AdminVideoRaw["variants"],
+): WatchSubtitle[] {
+  const edition = variants?.[0]?.videoEdition
+  if (!edition?.subtitles) return []
+
+  const seen = new Set<string>()
+  return edition.subtitles
+    .filter((s) => {
+      if (!s.documentId || !s.vttSrc || !s.language?.slug) return false
+      if (seen.has(s.language.slug)) return false
+      seen.add(s.language.slug)
+      return true
+    })
+    .map(
+      (s): WatchSubtitle => ({
+        documentId: s.documentId!,
+        language: {
+          slug: s.language!.slug!,
+          name: pickLocalizedName(s.language!.name) ?? s.language!.slug!,
+          nativeName: pickNativeName(s.language!.name),
+          bcp47: s.language!.bcp47 ?? s.language!.slug!,
+        },
+        vttSrc: s.vttSrc!,
+        primary: s.primary ?? false,
+        aiGenerated: s.aiGenerated ?? false,
+      }),
+    )
+    .sort((a, b) => a.language.name.localeCompare(b.language.name))
 }
 
 function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
@@ -584,6 +643,7 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
     variants: (raw.variants ?? [])
       .map(normalizeVariant)
       .filter((v): v is WatchVariant => v != null),
+    subtitles: normalizeSubtitles(raw.variants),
     studyQuestions: (raw.studyQuestions ?? [])
       .map((q): WatchStudyQuestion | null => {
         if (!q.documentId) return null

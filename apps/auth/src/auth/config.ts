@@ -10,6 +10,14 @@ import { prisma } from "@/db/client"
 
 assertProductionAuthSecrets()
 
+const validAudiences = [
+  getAuthBaseUrl(),
+  ...(env.AUTH_VALID_AUDIENCES ?? "")
+    .split(",")
+    .map((audience) => audience.trim())
+    .filter((audience) => audience.length > 0),
+]
+
 const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
 const betterAuthSecret =
   env.BETTER_AUTH_SECRET ??
@@ -21,6 +29,7 @@ const socialProviders = {
         facebook: {
           clientId: env.FACEBOOK_CLIENT_ID,
           clientSecret: env.FACEBOOK_CLIENT_SECRET,
+          disableSignUp: true,
         },
       }
     : {}),
@@ -29,6 +38,7 @@ const socialProviders = {
         google: {
           clientId: env.GOOGLE_CLIENT_ID,
           clientSecret: env.GOOGLE_CLIENT_SECRET,
+          disableSignUp: true,
         },
       }
     : {}),
@@ -37,6 +47,7 @@ const socialProviders = {
         apple: {
           clientId: env.APPLE_CLIENT_ID,
           clientSecret: env.APPLE_CLIENT_SECRET,
+          disableSignUp: true,
         },
       }
     : {}),
@@ -50,12 +61,30 @@ const upstreamProviderPlugins =
             okta({
               clientId: env.OKTA_CLIENT_ID,
               clientSecret: env.OKTA_CLIENT_SECRET,
+              disableSignUp: true,
               issuer: env.OKTA_ISSUER,
             }),
           ],
         }),
       ]
     : []
+
+function firstPartyUserClaims(user: {
+  email?: string | null
+  emailVerified?: boolean | null
+  name?: string | null
+  image?: string | null
+  membershipStatus?: string | null
+}) {
+  return {
+    email: user.email ?? undefined,
+    email_verified: user.emailVerified ?? undefined,
+    name: user.name ?? undefined,
+    picture: user.image ?? undefined,
+    "https://jesusfilm.org/claims/membership_status":
+      user.membershipStatus ?? "invited",
+  }
+}
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -77,6 +106,7 @@ export const auth = betterAuth({
       loginPage: "/login",
       consentPage: "/oauth/consent",
       scopes: AUTH_SCOPES.map((scope) => scope.key),
+      validAudiences,
       advertisedMetadata: {
         scopes_supported: AUTH_SCOPES.map((scope) => scope.key),
         claims_supported: [
@@ -93,6 +123,8 @@ export const auth = betterAuth({
           "name",
           "picture",
           "https://jesusfilm.org/claims/membership_status",
+          "https://jesusfilm.org/claims/environment",
+          "https://jesusfilm.org/claims/app",
         ],
       },
       clientRegistrationDefaultScopes: ["openid", "profile:read", "email:read"],
@@ -110,13 +142,21 @@ export const auth = betterAuth({
       silenceWarnings: {
         oauthAuthServerConfig: true,
       },
-      customIdTokenClaims: ({ user }) => ({
-        "https://jesusfilm.org/claims/membership_status":
-          user.membershipStatus ?? "invited",
-      }),
-      customUserInfoClaims: ({ user }) => ({
-        "https://jesusfilm.org/claims/membership_status":
-          user.membershipStatus ?? "invited",
+      customIdTokenClaims: ({ user }) => firstPartyUserClaims(user),
+      customUserInfoClaims: ({ user }) => firstPartyUserClaims(user),
+      customAccessTokenClaims: ({ metadata }) => ({
+        ...(typeof metadata?.serviceAudience === "string"
+          ? { aud: metadata.serviceAudience }
+          : {}),
+        ...(typeof metadata?.environmentKind === "string"
+          ? {
+              "https://jesusfilm.org/claims/environment":
+                metadata.environmentKind,
+            }
+          : {}),
+        ...(typeof metadata?.appKey === "string"
+          ? { "https://jesusfilm.org/claims/app": metadata.appKey }
+          : {}),
       }),
     }),
     nextCookies(),

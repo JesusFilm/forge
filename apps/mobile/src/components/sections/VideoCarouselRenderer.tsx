@@ -25,23 +25,21 @@ import {
   CARD_GAP,
   HORIZONTAL_PADDING,
 } from "../../styles/shared"
-import type { NormalizedBlock } from "../../lib/normalizer"
-import { pickThumbnailUrl } from "../../lib/types"
-import type { VideoRef } from "../../lib/types"
+import type { AdminBlock } from "../../lib/queries"
+import { useExperienceContext } from "../../contexts/ExperienceProvider"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-export type VideoCarouselItem = {
-  id: string
+type CarouselItem = {
+  videoId?: string | null
   streamingUrl?: string | null
   imageUrl?: string | null
   titleOverride?: string | null
   backgroundColor?: string | null
-  video?: VideoRef | null
 }
 
 export interface VideoCarouselRendererProps {
-  section: NormalizedBlock
+  section: AdminBlock
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -55,10 +53,12 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
   const router = useRouter()
   const typography = useTypography()
   const { width: screenWidth } = useWindowDimensions()
+  const { getVideoThumbnail } = useExperienceContext()
 
-  const vcTitle = section.vcTitle as string | null
-  const vcSubtitle = section.vcSubtitle as string | null
-  const items = (section.items as VideoCarouselItem[] | undefined) ?? []
+  const s = section as Record<string, unknown>
+  const vcTitle = s.title as string | null
+  const vcSubtitle = s.subtitle as string | null
+  const items = (s.items as CarouselItem[] | undefined) ?? []
 
   const cardWidth = Math.round(screenWidth * CARD_WIDTH_RATIO)
   const cardHeight = Math.round(cardWidth / CARD_ASPECT_RATIO)
@@ -69,14 +69,13 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
     item,
     index,
   }: {
-    item: VideoCarouselItem
+    item: CarouselItem
     index: number
   }) => {
-    const thumbnailUrl = resolveImageUrl(
-      item.imageUrl ?? pickThumbnailUrl(item.video?.images),
-    )
-    const title = item.titleOverride ?? item.video?.title ?? "Untitled"
-    const carouselSectionKey = section.sectionKey as string | undefined
+    const resolvedThumb = item.videoId ? getVideoThumbnail(item.videoId) : null
+    const thumbnailUrl = resolveImageUrl(item.imageUrl ?? resolvedThumb)
+    const title = item.titleOverride ?? "Untitled"
+    const carouselSectionKey = s.sectionKey as string | undefined
 
     const handlePress = () => {
       if (carouselSectionKey) {
@@ -103,8 +102,8 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
             source={thumbnailUrl}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
-            recyclingKey={`vc-${item.id}-${index}`}
-            accessibilityLabel={item.video?.imageAlt ?? title}
+            recyclingKey={`vc-${index}`}
+            accessibilityLabel={title}
             priority="low"
           />
         ) : (
@@ -118,7 +117,6 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
           />
         )}
 
-        {/* Play icon overlay */}
         <View style={overlay.playOverlay} pointerEvents="none">
           <View style={styles.playCircle}>
             <Ionicons
@@ -130,7 +128,6 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
           </View>
         </View>
 
-        {/* Title at bottom */}
         <View style={styles.titleOverlay} pointerEvents="none">
           <Text style={[styles.cardTitle, typography.bodySmall]}>{title}</Text>
         </View>
@@ -162,7 +159,7 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
       <FlatList
         data={items}
         renderItem={renderItem}
-        keyExtractor={(item, index) => `videoCarousel-${item.id}-${index}`}
+        keyExtractor={(_item, index) => `vc-${index}`}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={carousel.listContent}

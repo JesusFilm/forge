@@ -8,6 +8,8 @@
 import type { PrismaClient } from "@prisma/client"
 import { ExperienceService } from "@/services/experience.service"
 import { ExperienceSearchService } from "@/services/experience.search"
+import { ManagerJobService } from "@/services/manager-job.service"
+import { ManagerReadModelService } from "@/services/manager-read-model.service"
 import { MediaAssetService } from "@/services/media-asset.service"
 import { MediaFolderService } from "@/services/media-folder.service"
 import { VideoService } from "@/services/video.service"
@@ -19,6 +21,8 @@ export function createServices(prisma: PrismaClient) {
   return {
     experience: new ExperienceService(prisma),
     experienceSearch: new ExperienceSearchService(prisma),
+    managerJob: new ManagerJobService(prisma),
+    managerReadModel: new ManagerReadModelService(prisma),
     mediaAsset: new MediaAssetService(prisma),
     mediaFolder: new MediaFolderService(prisma),
     video: new VideoService(prisma),

@@ -1,20 +1,17 @@
 // Manager artifact reader — downloads scene-analysis.json and
-// embeddings.json (and future manager-produced artifacts) from
+// transcript.json artifacts from
 // manager's Railway S3 bucket (MANAGER_ARTIFACTS_S3_*) and
 // Zod-validates against the expected shape before returning.
 //
-// R1 (scene embeddings) reads `{assetId}/scene-analysis.json` and
-// regenerates vectors in admin.
-// R2 (transcript embeddings) reads `{assetId}/embeddings.json` and
-// REUSES the precomputed vectors stored inside the artifact — admin
-// does NOT re-embed. See
-// docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md.
+// Scene embeddings read `{assetId}/scene-analysis.json` and launch Mastra;
+// Admin stores Mastra-generated vectors through scene-specific ingest.
+// feat-132 transcript embeddings read `{assetId}/transcript.json` and
+// launch Mastra; Admin no longer imports manager-generated transcript vectors.
 //
 // Source references (shapes mirrored here):
 //   apps/manager/src/services/sceneAnalysis.ts (scene-analysis write)
 //   apps/manager/src/services/sceneEmbeddingSync.ts (scene-analysis read)
-//   apps/manager/src/services/embeddings.ts (embeddings write —
-//     EmbeddingsResult is the canonical shape for readEmbeddingsArtifact).
+//   apps/manager/src/services/transcription.ts (transcript write)
 
 import { z } from "zod"
 import { readManagerArtifact } from "@/storage/s3"
@@ -43,6 +40,28 @@ export const SceneAnalysisResultSchema = z
 
 export type SceneAnalysis = z.infer<typeof SceneAnalysisSchema>
 export type SceneAnalysisResult = z.infer<typeof SceneAnalysisResultSchema>
+
+export const TranscriptSourceSegmentSchema = z
+  .object({
+    start: z.number().finite().nonnegative(),
+    end: z.number().finite().nonnegative(),
+    text: z.string(),
+  })
+  .strict()
+
+export const TranscriptSourceArtifactSchema = z
+  .object({
+    text: z.string(),
+    segments: z.array(TranscriptSourceSegmentSchema),
+    language: z.string().min(1),
+    resolvedProvider: z.enum(["elevenlabs", "mux"]).optional(),
+    routingReport: z.unknown().optional(),
+  })
+  .passthrough()
+
+export type TranscriptSourceArtifact = z.infer<
+  typeof TranscriptSourceArtifactSchema
+>
 
 export class ManagerArtifactError extends Error {
   constructor(
@@ -148,6 +167,58 @@ export async function readSceneAnalysisArtifact(
     throw new ManagerArtifactError(
       "artifact_invalid",
       `scene-analysis artifact for assetId=${assetId} failed schema validation: ${parsed.error.message}`,
+      parsed.error,
+    )
+  }
+
+  return parsed.data
+}
+
+export async function readTranscriptSourceArtifact(
+  assetId: string,
+): Promise<TranscriptSourceArtifact> {
+  let bytes: Uint8Array
+  try {
+    bytes = await readManagerArtifact(assetId, "transcript", "json")
+  } catch (error) {
+    if (isArtifactMissing(error)) {
+      throw new ManagerArtifactError(
+        "artifact_missing",
+        `transcript artifact not found for assetId=${assetId}`,
+        error,
+      )
+    }
+    const message = error instanceof Error ? error.message : String(error)
+    throw new ManagerArtifactError(
+      "artifact_read_failed",
+      `failed to read transcript artifact for assetId=${assetId}: ${message}`,
+      error,
+    )
+  }
+
+  let raw: unknown
+  try {
+    raw = JSON.parse(new TextDecoder().decode(bytes))
+  } catch (error) {
+    throw new ManagerArtifactError(
+      "artifact_invalid",
+      `transcript artifact for assetId=${assetId} is not valid JSON`,
+      error,
+    )
+  }
+
+  const parsed = TranscriptSourceArtifactSchema.safeParse(raw)
+  if (!parsed.success) {
+    console.error(
+      JSON.stringify({
+        event: "transcript_artifact_invalid",
+        assetId,
+        zodMessage: parsed.error.message,
+      }),
+    )
+    throw new ManagerArtifactError(
+      "artifact_invalid",
+      `transcript artifact for assetId=${assetId} failed schema validation`,
       parsed.error,
     )
   }

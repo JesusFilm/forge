@@ -1,4 +1,4 @@
-// POST /api/enrich — Create enrichment jobs for existing CMS videos.
+// POST /api/enrich — Create enrichment jobs for existing videos.
 // Accepts selected video core IDs plus requested target language IDs from the
 // coverage UI. The route derives the source audio language per video from CMS
 // metadata, then normalizes only real language codes into the workflow.
@@ -6,7 +6,6 @@
 import { NextResponse } from "next/server"
 import pLimit from "p-limit"
 import { z } from "zod"
-import { graphql, type ResultOf } from "@forge/graphql"
 import { authenticateRequest } from "@/lib/auth"
 import { getCmsGateway, readMockCmsState } from "@/cms/gateway"
 import type {
@@ -30,7 +29,6 @@ import {
   type MaterializeEnrichmentTargetResult,
 } from "@/services/stageClone"
 import { launchVideoEnrichment } from "@/workflows/launchVideoEnrichment"
-import getClient from "@/cms/client"
 import type { JobArtifactManifest } from "@/types/job"
 
 const enrichSchema = z.object({
@@ -39,53 +37,18 @@ const enrichSchema = z.object({
   languages: z.array(z.string().max(10)).max(10).optional(),
 })
 
-export const GET_VIDEOS_WITH_MUX = graphql(`
-  query GetVideosWithMux($filters: VideoFiltersInput) {
-    videos(filters: $filters, pagination: { pageSize: 100 }) {
-      documentId
-      coreId
-      title
-      primaryLanguage {
-        coreId
-        bcp47
-        iso3
-      }
-      variants(pagination: { limit: -1 }) {
-        aiGenerated
-        language {
-          coreId
-          bcp47
-          iso3
-        }
-        muxVideo {
-          assetId
-          playbackId
-        }
-        downloads(pagination: { limit: -1 }) {
-          url
-        }
-      }
-    }
-  }
-`)
+type VideoNode = {
+  documentId: string
+  coreId?: string | null
+  primaryLanguage?: LanguageNode | null
+  variants?: Parameters<typeof materializeEnrichmentTargetForJob>[0]["variants"]
+}
 
-const GET_LANGUAGES = graphql(`
-  query GetLanguagesForEnrich($filters: LanguageFiltersInput) {
-    languages(filters: $filters, pagination: { pageSize: 10 }) {
-      coreId
-      bcp47
-      iso3
-    }
-  }
-`)
-
-type VideoNode = NonNullable<
-  ResultOf<typeof GET_VIDEOS_WITH_MUX>["videos"][number]
->
-
-type LanguageNode = NonNullable<
-  ResultOf<typeof GET_LANGUAGES>["languages"][number]
->
+type LanguageNode = {
+  coreId?: string | null
+  bcp47?: string | null
+  iso3?: string | null
+}
 
 type ReadyMaterialization = Extract<
   MaterializeEnrichmentTargetResult,
@@ -201,7 +164,8 @@ export async function createEnrichmentJobs(
 ): Promise<CreateEnrichmentJobsResult> {
   const { videoIds } = input
   const targetLanguageIds = input.targetLanguageIds ?? input.languages ?? []
-  const mockState = await readMockCmsState(getCmsGateway())
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
   if (mockState) {
     const jobs: Array<{ videoId: string; jobId: string }> = []
     const errors: Array<{ videoId: string; error: string }> = []
@@ -255,44 +219,16 @@ export async function createEnrichmentJobs(
     }
   }
 
-  const client = getClient()
+  const languageMap = new Map<string, LanguageNode>()
 
-  // Look up videos and their Mux assets
-  let videos: VideoNode[]
-  let languageMap = new Map<string, LanguageNode>()
-  try {
-    const [videosResult, languagesResult] = await Promise.all([
-      client.query({
-        query: GET_VIDEOS_WITH_MUX,
-        variables: {
-          filters: { coreId: { in: videoIds } },
-        },
-        fetchPolicy: "no-cache",
-      }),
-      targetLanguageIds.length > 0
-        ? client.query({
-            query: GET_LANGUAGES,
-            variables: {
-              filters: { coreId: { in: targetLanguageIds } },
-            },
-            fetchPolicy: "no-cache",
-          })
-        : Promise.resolve({ data: { languages: [] } }),
-    ])
-    videos = (videosResult.data?.videos ?? []).filter(
-      (v): v is VideoNode => v != null,
-    )
-    languageMap = new Map(
-      (languagesResult.data?.languages ?? [])
-        .filter((language): language is LanguageNode => language != null)
-        .map((language) => [language.coreId, language]),
-    )
-  } catch (error) {
-    console.error("[api/enrich] Failed to look up videos:", error)
-    throw new EnrichmentJobCreationError(502, {
-      error: "Failed to look up videos",
+  if (gateway.mode !== "mock") {
+    throw new EnrichmentJobCreationError(410, {
+      error:
+        "Direct enrichment creation from the retired CMS video model is no longer available.",
     })
   }
+
+  const videos: VideoNode[] = []
 
   const jobs: Array<{ videoId: string; jobId: string }> = []
   const errors: Array<{ videoId: string; error: string }> = []

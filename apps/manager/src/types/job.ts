@@ -81,24 +81,18 @@ export type EmbeddingSyncReport = {
 }
 
 export type SceneEmbeddingSyncStatus =
-  | "indexed"
+  | "source_ready"
   | "skipped_empty"
   | "failed"
   | "unsupported"
 
 export type SceneEmbeddingSyncReport = {
   domain: "scene_embeddings"
-  videoDocumentId?: string
-  resolvedVideoId?: number
   status: SceneEmbeddingSyncStatus
   reason?: string
-  model?: string
-  dimensions?: number
   generatedSceneCount: number
   indexableSceneCount: number
-  indexedSceneCount?: number
   skippedEmptySceneIndexes?: number[]
-  embeddingTokens?: number
 }
 
 export type MuxSyncStatus =

@@ -4,7 +4,7 @@
 # Regenerate with:
 #   pnpm --filter @forge/admin schema:print
 #
-# The committed SDL is consumed by packages/graphql's gql.tada codegen
+# The committed SDL is consumed by packages/admin-graphql's gql.tada codegen
 # to produce the typed adminGraphql() factory + introspection types.
 # Consumer apps (web, mobile, tv) never introspect admin's running
 # server — admin disables introspection in production via
@@ -444,6 +444,145 @@ enum LocaleStatus {
   PUBLISHED
 }
 
+type ManagerContinent {
+  id: ID
+  name: String
+}
+
+type ManagerCountry {
+  continentId: String
+  id: ID
+  name: String
+}
+
+type ManagerCoverageCounts {
+  ai: Int
+  human: Int
+}
+
+type ManagerCoverageSnapshot {
+  audioAiTotal: Int
+  audioHumanTotal: Int
+  computedAt: String
+  date: String
+  documentId: ID
+  languageCoverage: JSON
+  subtitlesAiTotal: Int
+  subtitlesHumanTotal: Int
+  totalVideos: Int
+  videosWithAiMetadata: Int
+  videosWithHumanMetadata: Int
+}
+
+type ManagerJob {
+  artifacts: JSON
+  completedAt: String
+  createdAt: String
+  currentStep: String
+  errors: JSON
+  id: ID
+  languages: [String!]
+  muxAssetId: String
+  muxPlaybackId: String
+  options: JSON
+  primaryRequestedTargetLanguageCode: String
+  requestedLanguageAbbreviations: [String!]
+  resolvedTargetLanguageCodes: [String!]
+  retries: Int
+  sourceCollectionTitle: String
+  sourceLanguageCode: String
+  sourceLanguageId: String
+  sourceMediaTitle: String
+  sourceSelectionReason: String
+  startedAt: String
+  status: String
+  steps: [ManagerJobStep!]
+  updatedAt: String
+  videoDocumentId: String
+}
+
+enum ManagerJobStatus {
+  completed
+  failed
+  pending
+  running
+}
+
+type ManagerJobStep {
+  details: JSON
+  error: String
+  finishedAt: String
+  name: String
+  retries: Int
+  startedAt: String
+  status: String
+}
+
+input ManagerJobStepInput {
+  details: JSON
+  error: String
+  finishedAt: String
+  name: String!
+  retries: Int
+  startedAt: String
+  status: ManagerJobStepStatus!
+}
+
+enum ManagerJobStepStatus {
+  completed
+  failed
+  pending
+  running
+  skipped
+}
+
+type ManagerLanguage {
+  continentIds: [String!]
+  countryIds: [String!]
+  countrySpeakers: JSON
+  englishLabel: String
+  id: ID
+  nativeLabel: String
+}
+
+type ManagerLanguageGeo {
+  continents: [ManagerContinent!]
+  countries: [ManagerCountry!]
+  languages: [ManagerLanguage!]
+}
+
+enum ManagerRole {
+  OPERATOR
+}
+
+type ManagerVideoCoverage {
+  aiMetadata: Boolean
+  coreId: String
+  coverage: ManagerVideoCoverageBreakdown
+  documentId: ID
+  imageUrl: String
+  label: String
+  parentDocumentIds: [String!]
+  slug: String
+  title: String
+}
+
+type ManagerVideoCoverageBreakdown {
+  audio: ManagerCoverageCounts
+  subtitles: ManagerCoverageCounts
+}
+
+"""
+Manager-scoped interactive user shape backed by explicit Admin ManagerMembership.
+"""
+type ManagerViewer {
+  email: String
+  id: ID
+  managerRole: ManagerRole
+  permission: String
+  username: String
+}
+
 """
 An uploaded image, video, PDF, or file registered in the Apps admin media library.
 """
@@ -615,6 +754,7 @@ type Mutation {
   archiveExperience(id: ID!): Experience
   """Create a new Experience with an initial locale. Caller becomes owner."""
   createExperience(blocks: JSON, isTemplate: Boolean, locale: String!, slug: String!, title: String): Experience
+  createManagerJob(artifacts: JSON, errors: JSON, languages: [String!], muxAssetId: String!, muxPlaybackId: String, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, steps: [ManagerJobStepInput!], videoDocumentId: String): ManagerJob
   """Create a media folder at the root or inside another folder."""
   createMediaFolder(name: String!, parentId: ID): MediaFolder
   """
@@ -638,7 +778,7 @@ type Mutation {
   """
   triggerExperienceEmbedding(localeId: ID!): JSON
   """
-  Enqueue the experience-embedding backfill workflow. Enumerates ExperienceLocale rows (status='published' AND embedding IS NULL by default) and dispatches `runExperienceEmbedding` per locale. The downstream workflow is admin-native — reads ExperienceLocale text + writes the vector back via raw SQL inside a Prisma transaction. ADMIN-only at the editorial-tier ladder; bearer-callable from CLIs via `WORKFLOW_TRIGGER`. Per-target error isolation: a failing embedding for one locale records `failed` and does not halt the run. Reruns are idempotent — the inner workflow upserts the vector by id.
+  Enqueue the experience-embedding backfill workflow. Enumerates ExperienceLocale rows (status='published', parent Experience not archived, and embedding IS NULL by default) and launches Mastra per locale. Mastra generates vectors and writes back through Admin's experience-specific ingest endpoint. ADMIN-only at the editorial-tier ladder; bearer-callable from CLIs via `WORKFLOW_TRIGGER`. Per-target error isolation: a failing embedding for one locale records `failed` and does not halt the run. Reruns are idempotent by default; explicit modes can repair missing vectors, force refreshes, or model-upgrade existing vectors.
   """
   triggerExperienceEmbeddingBackfill(
     """
@@ -646,13 +786,17 @@ type Mutation {
     """
     bcp47Locales: [String!]
     """
-    Restrict to ExperienceLocale rows whose parent Experience.id is in this set. Omitted = every published Experience.
+    Restrict to ExperienceLocale rows whose parent Experience.id is in this set. Omitted = every published, unarchived Experience.
     """
     experienceIds: [ID!]
     """
     When true, include rows that already have a non-NULL embedding (re-embed them). Default false — only rows with `embedding IS NULL` are enumerated. Use for model upgrades or drift fixes.
     """
     force: Boolean = false
+    """
+    Optional Mastra/Admin ingest mode: "idempotent", "repair", "force", or "model-upgrade". Omitted maps from force for backwards compatibility.
+    """
+    mode: String
   ): JSON
   """
   Dispatch apps/manager's enrichment pipeline (scene-analysis or transcript-only) for a list of cms videos. Forwards to manager's `/api/admin-trigger/{kind}` endpoint and returns one outcome per requested assetId. Operator-driven: typically called after reading the `missingArtifacts` projection emitted by `triggerSceneEmbeddingBackfill` / `triggerTranscriptEmbeddingBackfill` (feat-119 PR1). ADMIN-only.
@@ -687,6 +831,10 @@ type Mutation {
     S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`). Defaults to admin-migrations/core-id-mapping.json.
     """
     mappingS3Key: String = "admin-migrations/core-id-mapping.json"
+    """
+    Generation mode for Admin ingest. Defaults to IDEMPOTENT; use REPAIR, FORCE, or MODEL_UPGRADE only when intentionally rewriting existing scene vectors.
+    """
+    mode: SceneBackfillMode
   ): JSON
   """
   Enqueue a Core sync run. ADMIN only. Returns workflow dispatch metadata.
@@ -699,7 +847,7 @@ type Mutation {
     scope: String
   ): JSON
   """
-  Enqueue the transcript-embedding backfill workflow. Re-indexes apps/manager's embeddings.json artifacts into VideoTranscript + VideoTranscriptChunk. One target per (video, edition, language) where the language set is data-derived from the video's primary language + subtitle languages + dub languages. Vectors are reused from the artifact (no OpenRouter call). ADMIN-only.
+  Enqueue the transcript-embedding backfill workflow. Reads apps/manager's transcript.json source artifact, launches Mastra for chunk planning + embeddings, then writes through Admin ingest. One target per (video, edition, language) where the language set is data-derived from the video's primary language + subtitle languages + dub languages. ADMIN-only.
   """
   triggerTranscriptEmbeddingBackfill(
     """Restrict to these coreIds. Omitted = all mapped videos."""
@@ -712,9 +860,14 @@ type Mutation {
     S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`, shared with scene-embedding backfill). Defaults to admin-migrations/core-id-mapping.json.
     """
     mappingS3Key: String = "admin-migrations/core-id-mapping.json"
+    """
+    Generation mode for Admin ingest. Defaults to IDEMPOTENT; use REPAIR, FORCE, or MODEL_UPGRADE only when intentionally rewriting existing transcript vectors.
+    """
+    mode: TranscriptBackfillMode
   ): JSON
   """Update an ExperienceLocale (slug, title, blocks, etc.)."""
   updateExperienceLocale(blocks: JSON, id: ID!, isHomepage: Boolean, isTemplate: Boolean, metaDescription: String, ogDescription: String, ogImageUrl: String, ogTitle: String, pathSegment: String, slug: String, title: String): ExperienceLocale
+  updateManagerJob(artifacts: JSON, completedAt: String, currentStep: String, errors: JSON, id: ID!, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], retries: Int, sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, startedAt: String, status: ManagerJobStatus, steps: [ManagerJobStepInput!]): ManagerJob
   """Update editable media asset metadata and processing state."""
   updateMediaAsset(byteSize: String, checksumSha256: String, durationMs: String, errorCode: String, errorMessage: String, folderId: ID, height: Int, id: ID!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
   """
@@ -785,6 +938,16 @@ type Query {
   keywords(limit: Int = 100, offset: Int = 0): [Keyword!]
   """List active (non-soft-deleted) languages."""
   languages(limit: Int = 100, offset: Int = 0): [Language!]
+  managerCoverageSnapshots(endDate: String, latest: Boolean, startDate: String): [ManagerCoverageSnapshot!]
+  managerJob(id: ID!): ManagerJob
+  managerJobs(limit: Int, offset: Int): [ManagerJob!]
+  managerJobsTotal: Int
+  managerLanguageGeo: ManagerLanguageGeo
+  managerVideoCoverage(languageIds: [String!]): [ManagerVideoCoverage!]
+  """
+  Current Admin session projected into the narrow Manager access contract.
+  """
+  managerViewer: ManagerViewer
   """Fetch a single media asset by id."""
   mediaAsset(id: ID!): MediaAsset
   """
@@ -870,6 +1033,16 @@ type RelatedQuestionsBlock {
 }
 
 """
+Overwrite intent for Mastra scene embedding backfills. Idempotent is the default.
+"""
+enum SceneBackfillMode {
+  FORCE
+  IDEMPOTENT
+  MODEL_UPGRADE
+  REPAIR
+}
+
+"""
 A single scene-similarity recommendation. Matches cms's SceneRecommendation shape modulo the cuid-string videoId.
 """
 type SceneRecommendation {
@@ -934,6 +1107,16 @@ enum TextVariant {
   default
   lead
   small
+}
+
+"""
+Overwrite intent for Mastra transcript embedding backfills. Idempotent is the default.
+"""
+enum TranscriptBackfillMode {
+  FORCE
+  IDEMPOTENT
+  MODEL_UPGRADE
+  REPAIR
 }
 
 """

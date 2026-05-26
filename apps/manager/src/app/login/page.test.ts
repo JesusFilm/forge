@@ -1,35 +1,76 @@
 import type React from "react"
 import { describe, expect, it, vi } from "vitest"
 
-const { loginFormMock } = vi.hoisted(() => ({
-  loginFormMock: vi.fn(() => null),
-}))
-
 const { studioAuthShellMock } = vi.hoisted(() => ({
   studioAuthShellMock: vi.fn(
     ({ children }: { children: React.ReactNode }) => children,
   ),
 }))
 
-vi.mock("./login-form", () => ({
-  LoginForm: loginFormMock,
+const { redirectMock } = vi.hoisted(() => ({
+  redirectMock: vi.fn((url: string) => {
+    throw new Error(`NEXT_REDIRECT:${url}`)
+  }),
+}))
+
+vi.mock("next/navigation", () => ({
+  redirect: redirectMock,
 }))
 
 vi.mock("@/features/shell/studio-auth-shell", () => ({
   StudioAuthShell: studioAuthShellMock,
 }))
 
+vi.mock("@/lib/oauth-client", () => ({
+  getManagerOAuthConfig: vi.fn(() => ({
+    issuerUrl: "https://auth.jesusfilm.org",
+    clientId: "jfp_manager_local",
+    managerBaseUrl: "http://localhost:3002",
+  })),
+}))
+
 import LoginPage from "./page"
 
 describe("login page", () => {
-  it("passes the expired flag from search params into the client form", async () => {
-    const element = await LoginPage({
-      searchParams: Promise.resolve({ expired: "1" }),
-    })
+  it("redirects directly into Manager OAuth login by default", async () => {
+    await expect(
+      LoginPage({
+        searchParams: Promise.resolve({}),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT:http://localhost:3002/api/auth/login")
+    expect(redirectMock).toHaveBeenCalledWith(
+      "http://localhost:3002/api/auth/login",
+    )
+  })
 
+  it("passes returnTo through to the OAuth login route", async () => {
+    await expect(
+      LoginPage({
+        searchParams: Promise.resolve({
+          returnTo: "/dashboard/jobs/job-1?languageId=529",
+        }),
+      }),
+    ).rejects.toThrow(
+      "NEXT_REDIRECT:http://localhost:3002/api/auth/login?returnTo=%2Fdashboard%2Fjobs%2Fjob-1%3FlanguageId%3D529",
+    )
+  })
+
+  it("redirects expired sessions directly into Manager OAuth login", async () => {
+    await expect(
+      LoginPage({
+        searchParams: Promise.resolve({ expired: "1" }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT:http://localhost:3002/api/auth/login")
+  })
+
+  it("renders an error instead of looping when Auth callback fails", async () => {
+    const element = await LoginPage({
+      searchParams: Promise.resolve({ error: "forbidden" }),
+    })
     expect(element.type).toBe(studioAuthShellMock)
-    const suspense = element.props.children
-    expect(suspense.props.children.type).toBe(loginFormMock)
-    expect(suspense.props.children.props).toEqual({ expired: true })
+    expect(element.props.title).toBe("Manager access unavailable")
+    expect(element.props.children.props.children.props.children).toBe(
+      "This account is not approved for Manager access.",
+    )
   })
 })

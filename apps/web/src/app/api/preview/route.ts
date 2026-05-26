@@ -13,7 +13,7 @@ export async function GET(request: Request) {
       : "/"
   const status = url.searchParams.get("status")
 
-  if (secret !== env.STRAPI_PREVIEW_SECRET) {
+  if (!env.STRAPI_PREVIEW_SECRET || secret !== env.STRAPI_PREVIEW_SECRET) {
     return NextResponse.json(
       { error: "invalid_preview_secret" },
       { status: 401 },

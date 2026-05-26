@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useId } from "react"
-import type { FragmentOf } from "@forge/graphql"
+import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import { HDate, months } from "@hebcal/hdate"
 import { easterDatesFragment } from "@/lib/fragments/easter-dates"
 

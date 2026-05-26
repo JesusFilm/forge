@@ -20,12 +20,11 @@ import { layout, text, button, card, carousel } from "../../styles/shared"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { AdminBlock } from "../../lib/queries"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type QuoteItem = {
-  id: string
   reference: string
   text: string
   attribution?: string | null
@@ -36,7 +35,7 @@ type QuoteItem = {
 }
 
 export interface BibleQuotesCarouselRendererProps {
-  section: NormalizedBlock
+  section: AdminBlock
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -75,7 +74,7 @@ function QuoteCard({
           source={imageUrl}
           style={[StyleSheet.absoluteFill, styles.cardImage]}
           contentFit="cover"
-          recyclingKey={`bqc-${quote.id}`}
+          recyclingKey={`bqc-${quote.reference}`}
           accessibilityLabel={quote.reference}
         />
       )}
@@ -161,8 +160,9 @@ export function BibleQuotesCarouselRenderer({
   const flatListRef = useRef<FlatList<QuoteItem>>(null)
   const [activeIndex, setActiveIndex] = useState(0)
 
-  const heading = section.bqcHeading as string | null
-  const quotes = (section.quotes as QuoteItem[] | undefined) ?? []
+  const s = section as Record<string, unknown>
+  const heading = s.heading as string | null
+  const quotes = (s.quotes as QuoteItem[] | undefined) ?? []
 
   const cardWidth = Math.round(screenWidth - HORIZONTAL_PADDING * 2)
 
@@ -180,9 +180,9 @@ export function BibleQuotesCarouselRenderer({
   }, [])
 
   const renderQuoteItem = useCallback(
-    ({ item }: { item: QuoteItem }) => (
+    ({ item, index }: { item: QuoteItem; index: number }) => (
       <QuoteCard
-        key={`bqc-${item.id}`}
+        key={`bqc-${index}`}
         quote={item}
         cardWidth={cardWidth}
         typography={typography}
@@ -191,7 +191,10 @@ export function BibleQuotesCarouselRenderer({
     [cardWidth, typography],
   )
 
-  const keyExtractor = useCallback((item: QuoteItem) => `bqc-${item.id}`, [])
+  const keyExtractor = useCallback(
+    (_item: QuoteItem, index: number) => `bqc-${index}`,
+    [],
+  )
 
   const getItemLayout = useCallback(
     (_data: ArrayLike<QuoteItem> | null | undefined, index: number) => ({

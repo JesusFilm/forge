@@ -1,13 +1,9 @@
 import { useMemo, useCallback } from "react"
 import { useQuery } from "@apollo/client/react"
-import { GET_WATCH_EXPERIENCE } from "../lib/queries"
-import {
-  normalizeExperience,
-  type NormalizedExperience,
-} from "../lib/normalizer"
+import { GET_EXPERIENCE_BY_SLUG, type WatchExperience } from "../lib/queries"
 
 type UseExperienceResult = {
-  experience: NormalizedExperience | null
+  experience: WatchExperience | null
   loading: boolean
   error: string | null
   refetch: () => void
@@ -25,20 +21,13 @@ export function useExperience({
     loading,
     error,
     refetch: apolloRefetch,
-  } = useQuery(GET_WATCH_EXPERIENCE, {
-    variables: {
-      locale,
-      filters: { slug: { eq: slug } },
-    },
+  } = useQuery(GET_EXPERIENCE_BY_SLUG, {
+    variables: { locale, slug },
     fetchPolicy: "cache-and-network",
   })
 
-  const experience = useMemo<NormalizedExperience | null>(() => {
-    const experiences = data?.experiences
-    if (!experiences || experiences.length === 0) return null
-    return normalizeExperience(
-      experiences[0] as unknown as Record<string, unknown>,
-    )
+  const experience = useMemo<WatchExperience | null>(() => {
+    return data?.experienceBySlug ?? null
   }, [data])
 
   const refetch = useCallback(() => {
@@ -47,7 +36,7 @@ export function useExperience({
 
   return {
     experience,
-    loading: loading && experience === null, // Only show loading on first load, not background refetch
+    loading: loading && experience === null,
     error: error?.message ?? null,
     refetch,
   }

@@ -53,6 +53,46 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "experiences",
         "experienceBySlug",
         "watchSetting",
+        // Manager backend contracts
+        "managerViewer",
+        "managerLanguageGeo",
+        "managerVideoCoverage",
+        "managerCoverageSnapshots",
+        "managerJobs",
+        "managerJob",
+      ]),
+    )
+  })
+
+  it("Manager session/read/job contract types expose the expected shape", () => {
+    expect(Object.keys(fieldsOf("ManagerViewer"))).toEqual(
+      expect.arrayContaining([
+        "id",
+        "username",
+        "email",
+        "managerRole",
+        "permission",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("ManagerLanguageGeo"))).toEqual(
+      expect.arrayContaining(["continents", "countries", "languages"]),
+    )
+    expect(Object.keys(fieldsOf("ManagerVideoCoverage"))).toEqual(
+      expect.arrayContaining([
+        "documentId",
+        "coreId",
+        "parentDocumentIds",
+        "coverage",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("ManagerJob"))).toEqual(
+      expect.arrayContaining([
+        "id",
+        "muxAssetId",
+        "languages",
+        "status",
+        "steps",
+        "errors",
       ]),
     )
   })
@@ -106,6 +146,14 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(fields.triggerExperienceEmbedding).toBeDefined()
   })
 
+  it("Mutation root exposes Manager job write contracts", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const fields = mutation!.getFields()
+    expect(fields.createManagerJob).toBeDefined()
+    expect(fields.updateManagerJob).toBeDefined()
+  })
+
   it("Mutation root exposes media asset write entry points", () => {
     const mutation = schema.getMutationType()
     expect(mutation).toBeTruthy()
@@ -153,20 +201,24 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(fields.triggerExperienceEmbeddingBackfill).toBeDefined()
   })
 
-  it("triggerExperienceEmbeddingBackfill declares optional experienceIds + bcp47Locales + force args", () => {
+  it("triggerExperienceEmbeddingBackfill declares optional experienceIds + bcp47Locales + force + mode args", () => {
     const mutation = schema.getMutationType()!
     const field = mutation.getFields().triggerExperienceEmbeddingBackfill!
     const experienceIds = field.args.find((a) => a.name === "experienceIds")
     const bcp47Locales = field.args.find((a) => a.name === "bcp47Locales")
     const force = field.args.find((a) => a.name === "force")
+    const mode = field.args.find((a) => a.name === "mode")
     expect(experienceIds).toBeDefined()
     expect(bcp47Locales).toBeDefined()
     expect(force).toBeDefined()
+    expect(mode).toBeDefined()
     // experienceIds and bcp47Locales are nullable inclusion-filter lists.
     expect(String(experienceIds!.type)).toBe("[ID!]")
     expect(String(bcp47Locales!.type)).toBe("[String!]")
     // force is nullable Boolean (defaultValue: false on the resolver).
     expect(String(force!.type)).toBe("Boolean")
+    // mode is nullable String, parsed by the resolver into the ingest mode.
+    expect(String(mode!.type)).toBe("String")
   })
 
   it("Mutation root does NOT expose the retired experience-content-dump trigger", () => {

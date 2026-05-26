@@ -6,7 +6,7 @@ import { HDate, months } from "@hebcal/hdate"
 import { AnimatedChevron, animateLayout } from "../ui/AnimatedChevron"
 import { useTypography } from "../../hooks/useTypography"
 import { layout } from "../../styles/shared"
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { AdminBlock } from "../../lib/queries"
 
 // ── Date Calculations ───────────────────────────────────────────────────────
 
@@ -51,7 +51,7 @@ export function calculatePassover(year: number): Date {
 // ── Component ───────────────────────────────────────────────────────────────
 
 export interface EasterDatesRendererProps {
-  section: NormalizedBlock
+  section: AdminBlock
 }
 
 const DATE_OPTIONS: Intl.DateTimeFormatOptions = {
@@ -65,11 +65,12 @@ export function EasterDatesRenderer({ section }: EasterDatesRendererProps) {
   const typography = useTypography()
   const [expanded, setExpanded] = useState(false)
 
-  const easterDatesTitle = section.easterDatesTitle as string | null
-  const westernEasterLabel = section.westernEasterLabel as string | null
-  const orthodoxEasterLabel = section.orthodoxEasterLabel as string | null
-  const passoverLabel = section.passoverLabel as string | null
-  const locale = (section.locale as string | null) ?? "en-US"
+  const s = section as Record<string, unknown>
+  const easterDatesTitle = s.easterDatesTitle as string | null
+  const westernEasterLabel = s.westernEasterLabel as string | null
+  const orthodoxEasterLabel = s.orthodoxEasterLabel as string | null
+  const passoverLabel = s.passoverLabel as string | null
+  const locale = (s.locale as string | null) ?? "en-US"
 
   const currentYear = new Date().getFullYear()
   const westernEaster = calculateWesternEaster(currentYear)

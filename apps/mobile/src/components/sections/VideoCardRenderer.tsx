@@ -14,14 +14,14 @@ import {
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useTypography } from "../../hooks/useTypography"
 import { card, feedback, overlay, text } from "../../styles/shared"
-import type { NormalizedBlock } from "../../lib/normalizer"
-import { pickThumbnailUrl } from "../../lib/types"
-import type { VideoRef } from "../../lib/types"
+import type { AdminBlock } from "../../lib/queries"
+import { deriveMuxThumbnailUrl } from "../../lib/muxThumbnail"
+import { useVideoThumbnail } from "../../contexts/ExperienceProvider"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export interface VideoCardRendererProps {
-  section: NormalizedBlock
+  section: AdminBlock
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -30,20 +30,17 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   const router = useRouter()
   const typography = useTypography()
 
-  const title =
-    (section.videoTitle as string | null) ?? (section.title as string | null)
-  const subtitle =
-    (section.videoSubtitle as string | null) ??
-    (section.subtitle as string | null)
-  const sectionKey =
-    (section.sectionKey as string | null) ?? (section.id as string | null)
+  const s = section as Record<string, unknown>
+  const title = (s.title as string | null) ?? "Untitled"
+  const subtitle = s.subtitle as string | null
+  const sectionKey = s.sectionKey as string | null
+  const streamingUrl = s.streamingUrl as string | null
+  const videoId = s.videoId as string | null
 
-  const videoRef = section.videoRef as VideoRef | null | undefined
-
-  const thumbnailUrl = resolveImageUrl(pickThumbnailUrl(videoRef?.images))
-
-  const displayTitle = title ?? videoRef?.title ?? "Untitled"
-  const imageAlt = videoRef?.imageAlt ?? displayTitle
+  const resolvedThumb = useVideoThumbnail(videoId)
+  const thumbnailUrl = resolveImageUrl(
+    resolvedThumb ?? deriveMuxThumbnailUrl(streamingUrl),
+  )
 
   const handlePress = () => {
     if (sectionKey) {
@@ -60,7 +57,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
       android_ripple={{ color: "rgba(255, 255, 255, 0.2)", foreground: true }}
       onPress={handlePress}
       accessibilityRole="button"
-      accessibilityLabel={`Play ${displayTitle}`}
+      accessibilityLabel={`Play ${title}`}
     >
       <View style={[card.surface, styles.localCard]}>
         {thumbnailUrl != null ? (
@@ -68,15 +65,14 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
             source={thumbnailUrl}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
-            recyclingKey={`vcard-${section.id as string}`}
-            accessibilityLabel={imageAlt}
+            recyclingKey={`vcard-${sectionKey ?? "x"}`}
+            accessibilityLabel={title}
             priority="normal"
           />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.placeholder]} />
         )}
 
-        {/* Bottom gradient */}
         <LinearGradient
           colors={[hexToRgba(BLACK, 0), hexToRgba(BLACK, 0.85)]}
           locations={[0.4, 1]}
@@ -84,10 +80,9 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
           pointerEvents="none"
         />
 
-        {/* Text overlay */}
         <View style={styles.textOverlay}>
           <Text style={[text.sectionHeading, typography.titleLarge]}>
-            {displayTitle}
+            {title}
           </Text>
           {subtitle != null && (
             <Text
@@ -103,7 +98,6 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
           )}
         </View>
 
-        {/* Play icon — rendered last so it sits above text in z-layer */}
         <View style={overlay.playOverlay} pointerEvents="none">
           <View style={styles.playCircle}>
             <Ionicons

@@ -81,6 +81,12 @@ enum UserRole {
   VIEWER @map("VIEWER")
 }
 
+/// Manager panel authorization role. Auth owns identity; Admin stores the
+/// Manager-specific product access grant consumed by apps/manager.
+enum ManagerRole {
+  OPERATOR @map("OPERATOR")
+}
+
 /// Video classification (mirrors Core schema enum).
 enum VideoLabel {
   COLLECTION        @map("collection")
@@ -189,11 +195,26 @@ model User {
 
   mediaAssets           MediaAsset[]
   mediaFolders          MediaFolder[]
-  partnerApiKeysCreated PartnerApiKey[] @relation("PartnerApiKeyCreatedBy")
-  partnerApiKeysRevoked PartnerApiKey[] @relation("PartnerApiKeyRevokedBy")
+  managerMembership     ManagerMembership?
+  partnerApiKeysCreated PartnerApiKey[]    @relation("PartnerApiKeyCreatedBy")
+  partnerApiKeysRevoked PartnerApiKey[]    @relation("PartnerApiKeyRevokedBy")
 
   @@unique([email])
   @@map("user")
+}
+
+model ManagerMembership {
+  id        String      @id @default(cuid())
+  userId    String      @unique @map("user_id")
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      ManagerRole @default(OPERATOR)
+  revokedAt DateTime?   @map("revoked_at")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  @@index([role])
+  @@index([revokedAt])
+  @@map("manager_membership")
 }
 
 // -----------------------------------------------------------------------------
@@ -351,6 +372,61 @@ model CoreSyncRun {
   updatedAt     DateTime    @updatedAt @map("updated_at")
 
   @@map("core_sync_run")
+}
+
+/// Manager-facing coverage snapshot history. This preserves the Manager
+/// `/api/coverage-snapshots` shape while Admin becomes the backend authority.
+model ManagerCoverageSnapshot {
+  id                      String   @id @default(cuid())
+  date                    DateTime
+  computedAt              DateTime @default(now()) @map("computed_at")
+  totalVideos             Int      @default(0) @map("total_videos")
+  videosWithAiMetadata    Int      @default(0) @map("videos_with_ai_metadata")
+  videosWithHumanMetadata Int      @default(0) @map("videos_with_human_metadata")
+  subtitlesHumanTotal     Int      @default(0) @map("subtitles_human_total")
+  subtitlesAiTotal        Int      @default(0) @map("subtitles_ai_total")
+  audioHumanTotal         Int      @default(0) @map("audio_human_total")
+  audioAiTotal            Int      @default(0) @map("audio_ai_total")
+  languageCoverage        Json     @default("[]") @map("language_coverage")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@unique([date])
+  @@index([date])
+  @@map("manager_coverage_snapshot")
+}
+
+/// Admin-owned persistence for Manager enrichment jobs. Field names mirror the
+/// existing Manager JobRecord so Manager can move transport without UI churn.
+model ManagerEnrichmentJob {
+  id                                 String    @id @default(cuid())
+  muxAssetId                         String    @map("mux_asset_id")
+  muxPlaybackId                      String?   @map("mux_playback_id")
+  videoDocumentId                    String?   @map("video_document_id")
+  languages                          String[]  @default([])
+  sourceLanguageId                   String?   @map("source_language_id")
+  sourceLanguageCode                 String?   @map("source_language_code")
+  sourceSelectionReason              String?   @map("source_selection_reason")
+  primaryRequestedTargetLanguageCode String?   @map("primary_requested_target_language_code")
+  resolvedTargetLanguageCodes        String[]  @default([]) @map("resolved_target_language_codes")
+  sourceCollectionTitle              String?   @map("source_collection_title")
+  sourceMediaTitle                   String?   @map("source_media_title")
+  requestedLanguageAbbreviations     String[]  @default([]) @map("requested_language_abbreviations")
+  options                            Json      @default("{}")
+  status                             String    @default("pending")
+  currentStep                        String?   @map("current_step")
+  retries                            Int       @default(0)
+  startedAt                          DateTime? @map("started_at")
+  completedAt                        DateTime? @map("completed_at")
+  artifacts                          Json      @default("{}")
+  steps                              Json      @default("[]")
+  errors                             Json      @default("[]")
+  createdAt                          DateTime  @default(now()) @map("created_at")
+  updatedAt                          DateTime  @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([videoDocumentId])
+  @@map("manager_enrichment_job")
 }
 
 // -----------------------------------------------------------------------------
@@ -1180,11 +1256,23 @@ model VideoSceneLocale {
   embedding        Unsupported("vector(1536)")?
   model            String                       @default("text-embedding-3-small")
   dimensions       Int                          @default(1536)
+  /// Compact provenance for Mastra-written scene embeddings. Nullable so
+  /// legacy rows written before the Mastra migration remain searchable.
+  sourceArtifactKey     String?                 @map("source_artifact_key")
+  sourceArtifactVersion String?                 @map("source_artifact_version")
+  sourceContentHash     String?                 @map("source_content_hash")
+  sourceProvider        String?                 @map("source_provider")
+  sourceGeneratedAt     DateTime?               @map("source_generated_at")
+  generationMode        String?                 @map("generation_mode")
+  mastraRunId           String?                 @map("mastra_run_id")
+  generatedAt           DateTime?               @map("generated_at")
   createdAt        DateTime                     @default(now()) @map("created_at")
   updatedAt        DateTime                     @updatedAt @map("updated_at")
 
   @@unique([videoSceneId, locale])
   @@index([locale])
+  @@index([sourceContentHash], map: "video_scene_locale_source_content_hash_idx")
+  @@index([mastraRunId], map: "video_scene_locale_mastra_run_id_idx")
   @@map("video_scene_locale")
 }
 
@@ -1251,6 +1339,16 @@ model ExperienceLocale {
   /// Search uses raw SQL inside services with `<=>` cosine distance + the
   /// partial HNSW index `WHERE embedding IS NOT NULL`.
   embedding       Unsupported("vector(1536)")?
+  /// Compact provenance for vectors generated by Mastra. These fields are
+  /// internal-only and are not exposed via GraphQL.
+  embeddingSourceContentHash String?          @map("embedding_source_content_hash")
+  embeddingSourceSummary     String?          @map("embedding_source_summary")
+  embeddingModel             String?          @map("embedding_model")
+  embeddingDimensions        Int?             @map("embedding_dimensions")
+  embeddingProvider          String?          @map("embedding_provider")
+  embeddingGenerationMode    String?          @map("embedding_generation_mode")
+  embeddingMastraRunId       String?          @map("embedding_mastra_run_id")
+  embeddingGeneratedAt       DateTime?        @map("embedding_generated_at")
   status          LocaleStatus                 @default(DRAFT)
   publishedAt     DateTime?                    @map("published_at")
   createdAt       DateTime                     @default(now()) @map("created_at")
@@ -1259,23 +1357,20 @@ model ExperienceLocale {
   @@unique([experienceId, locale])
   @@index([locale])
   @@index([status])
+  @@index([embeddingSourceContentHash])
+  @@index([embeddingMastraRunId])
   @@map("experience_locale")
 }
 
 // -----------------------------------------------------------------------------
-// Transcript embeddings (R2 of admin migration playbook)
+// Transcript embeddings
 // -----------------------------------------------------------------------------
 
 /// Per-edition, per-language transcript index. One row per
-/// `(videoEditionId, language)`. Holds artifact-level metadata from
-/// apps/manager's `{assetId}/embeddings.json` pipeline so a future model
-/// upgrade or drift audit can identify the producing run without re-reading
-/// S3. Chunk text + vectors live on `VideoTranscriptChunk`.
-///
-/// R2 divergence from R1: manager already embeds transcript chunks and
-/// stores vectors in the artifact. Admin trusts and copies the vectors
-/// rather than regenerating — see
-/// `docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`.
+/// `(videoEditionId, language)`. Admin owns transcript vector storage and
+/// retrieval; Mastra owns chunk planning + embedding provider calls. Holds
+/// compact provenance so model upgrades and repair runs can be audited without
+/// reading manager transcript source artifacts back from S3.
 model VideoTranscript {
   id             String       @id @default(cuid())
   videoEditionId String       @map("video_edition_id")
@@ -1285,9 +1380,9 @@ model VideoTranscript {
   video          Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 language tag of the source transcript.
   language       String
-  /// Embedding model string as reported by manager's artifact (e.g.
+  /// Embedding model string as reported by the producing workflow (e.g.
   /// `openai/text-embedding-3-small`). Admin logs a warning on drift;
-  /// vectors are reused regardless.
+  /// intentional model replacement must use an explicit ingest mode.
   model          String
   /// Dimension count. Hard-guarded to 1536 at read time.
   dimensions     Int
@@ -1299,6 +1394,15 @@ model VideoTranscript {
   totalTokens    Int          @map("total_tokens")
   /// Artifact's own `generatedAt` timestamp — NOT admin's insert time.
   generatedAt    DateTime     @map("generated_at")
+  /// Compact provenance for Mastra-written transcript embeddings. Nullable so
+  /// legacy rows from the pre-Mastra producer remain readable.
+  sourceArtifactKey String?    @map("source_artifact_key")
+  sourceContentHash String?    @map("source_content_hash")
+  sourceProvider    String?    @map("source_provider")
+  sourceGeneratedAt DateTime?  @map("source_generated_at")
+  generationMode    String?    @map("generation_mode")
+  mastraRunId       String?    @map("mastra_run_id")
+  chunkingVersion   String?    @map("chunking_version")
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
@@ -1307,14 +1411,15 @@ model VideoTranscript {
   @@unique([videoEditionId, language])
   @@index([videoId])
   @@index([language])
+  @@index([sourceContentHash], map: "video_transcript_source_content_hash_idx")
+  @@index([mastraRunId], map: "video_transcript_mastra_run_id_idx")
   @@map("video_transcript")
 }
 
 /// A single chunk of a transcript, including its vector embedding. Vectors
-/// are copied verbatim from apps/manager's `{assetId}/embeddings.json`
-/// artifact — admin does NOT re-embed. `language` is denormalized from
-/// the parent `VideoTranscript` so per-language partial HNSW indexes
-/// filter on the same table (pgvector's planner bypasses HNSW when the
+/// are supplied by Mastra and stored by Admin ingest. `language` is
+/// denormalized from the parent `VideoTranscript` so per-language partial HNSW
+/// indexes filter on the same table (pgvector's planner bypasses HNSW when the
 /// WHERE filter column lives on a joined table).
 ///
 /// `embedding` is NEVER exposed in GraphQL (technical control: Pothos

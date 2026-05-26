@@ -36,6 +36,7 @@ import {
   LanguagePickerModal,
   type LanguagePickerVariant,
 } from "@/components/watch/LanguagePickerModal"
+import type { WatchSubtitle } from "@/lib/content"
 
 let container: HTMLDivElement
 let root: Root
@@ -97,6 +98,10 @@ function renderModal({
   playerRef = makePlayerRef(42),
   onClose = vi.fn(),
   kind,
+  subtitles,
+  currentSubtitleEnabled,
+  currentSubtitleSlug,
+  onSubtitleChange,
 }: {
   open: boolean
   currentLanguageSlug?: string
@@ -105,6 +110,10 @@ function renderModal({
   playerRef?: ReturnType<typeof makePlayerRef>
   onClose?: () => void
   kind?: "video" | "series"
+  subtitles?: WatchSubtitle[]
+  currentSubtitleEnabled?: boolean
+  currentSubtitleSlug?: string | null
+  onSubtitleChange?: (enabled: boolean, slug: string | null) => void
 }) {
   act(() => {
     root.render(
@@ -116,6 +125,10 @@ function renderModal({
         playerRef={playerRef}
         onClose={onClose}
         kind={kind}
+        subtitles={subtitles}
+        currentSubtitleEnabled={currentSubtitleEnabled}
+        currentSubtitleSlug={currentSubtitleSlug}
+        onSubtitleChange={onSubtitleChange}
       />,
     )
   })
@@ -297,25 +310,25 @@ describe("LanguagePickerModal — globe overlay", () => {
     renderModal({
       open: true,
       variants: [
-        makeVariant({
-          documentId: "v1",
-          languageSlug: "english",
-          videoEdition: {
-            subtitles: [
-              {
-                vttSrc: "https://cdn.test/russian.vtt",
-                srtSrc: null,
-                language: {
-                  coreId: "rus",
-                  slug: "russian",
-                  name: "Russian",
-                },
-              },
-            ],
-          },
-        }),
+        makeVariant({ documentId: "v1", languageSlug: "english" }),
         makeVariant({ documentId: "v2", languageSlug: "spanish" }),
       ],
+      subtitles: [
+        {
+          documentId: "sub-ru",
+          language: {
+            slug: "russian",
+            name: "Russian",
+            nativeName: null,
+            bcp47: "ru",
+          },
+          vttSrc: "https://cdn.test/russian.vtt",
+          primary: true,
+          aiGenerated: false,
+        },
+      ],
+      currentSubtitleEnabled: true,
+      currentSubtitleSlug: "russian",
     })
 
     const overlay = $('[data-slot="dialog-overlay"]')

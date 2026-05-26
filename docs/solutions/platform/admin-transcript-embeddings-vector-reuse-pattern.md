@@ -1,6 +1,6 @@
 ---
 title: "Admin transcript-embeddings indexer: reuse manager's precomputed vectors from S3, never regenerate"
-last_updated: 2026-04-22
+last_updated: 2026-05-21
 problem_type: best_practice
 component: service_object
 root_cause: cross_service_vector_trust_boundary
@@ -28,6 +28,19 @@ related:
   - "docs/solutions/best-practices/zod-validation-errors-must-not-echo-user-controlled-input-20260420.md"
 date_learned: 2026-04-22
 ---
+
+## Search usage update (feat-131)
+
+Transcript chunk vectors are now live search evidence in admin, but they still
+do not form a separate RRF list. `searchVideoSemantic` mixes
+`video_transcript_chunk.embedding` with `video_scene_locale.embedding` inside
+one `semantic-video` retriever, then emits one candidate per video to the
+existing RRF pipeline.
+
+The performance rule from this doc remains load-bearing: transcript semantic
+search filters on `video_transcript_chunk.language`, not only
+`video_transcript.language`, so the planner can use the same-table partial HNSW
+indexes.
 
 ## Stage 3 (feat-117) update
 

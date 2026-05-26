@@ -28,6 +28,7 @@ import {
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { HeroPlayerControls } from "./HeroPlayerControls"
+import { SubtitleOverlay } from "./SubtitleOverlay"
 import { MutedSpeakerIcon, UnmutedSpeakerIcon } from "./chrome-icons"
 import { WATCH_SECTION_EYEBROW_CLASS } from "./watch-section-styles"
 
@@ -71,24 +72,15 @@ export function HeroPlayer({
   playableLanguageCount,
   darkenOverlay = false,
   overlay,
+  subtitleVttSrc,
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onLanguageClick?: () => void
   playableLanguageCount?: number
-  // When true, layers a flat black tint over the player so the hero reads
-  // as decorative background rather than a primary playback surface.
-  // Used by the series page where the trailer is aesthetic, not the
-  // page's core action. Default false — the watch page renders unchanged.
   darkenOverlay?: boolean
-  // Replaces the default pre-reveal overlay (label / title / Play with
-  // Sound pill). When provided, the consumer owns positioning AND chrome
-  // semantics — the player will not reveal its own chrome on click
-  // because the Play with Sound trigger lives inside the default overlay
-  // that this prop displaces. Use for hero variants where the trailer
-  // is decorative (e.g. the series page) and the user shouldn't toggle
-  // into player chrome.
   overlay?: ReactNode
+  subtitleVttSrc?: string | null
 }) {
   const { video, variant } = block
   const wrapperRef = useRef<HTMLDivElement | null>(null)
@@ -102,6 +94,77 @@ export function HeroPlayer({
     },
     [onPlayerReady],
   )
+
+  useEffect(() => {
+    if (subtitleVttSrc === undefined) return
+
+    const el = playerRef.current as HTMLMediaElement | null
+    if (!el || !el.textTracks) return
+
+    const tracks = el.textTracks
+
+    const disableBuiltInSubtitles = () => {
+      for (let i = 0; i < tracks.length; i++) {
+        const t = tracks[i]!
+        if (
+          (t.kind === "subtitles" || t.kind === "captions") &&
+          t.label !== "__forge_subtitle__"
+        ) {
+          t.mode = "disabled"
+        }
+      }
+    }
+
+    disableBuiltInSubtitles()
+
+    const onAddTrack = () => {
+      disableBuiltInSubtitles()
+      if (subtitleVttSrc && forgeTrack) {
+        forgeTrack.mode = "showing"
+      }
+    }
+    tracks.addEventListener("addtrack", onAddTrack)
+
+    let forgeTrack: TextTrack | null = null
+
+    if (subtitleVttSrc) {
+      const video = (() => {
+        const muxVideo = (
+          el as unknown as HTMLElement
+        ).shadowRoot?.querySelector("mux-video") as HTMLElement | null
+        return (
+          muxVideo?.shadowRoot?.querySelector("video") ??
+          (el as unknown as HTMLElement).shadowRoot?.querySelector("video") ??
+          null
+        )
+      })()
+
+      if (video) {
+        const existing = video.querySelector("track[data-subtitle-track]")
+        if (existing) existing.remove()
+
+        const trackEl = document.createElement("track")
+        trackEl.kind = "subtitles"
+        trackEl.label = "__forge_subtitle__"
+        trackEl.src = subtitleVttSrc
+        trackEl.default = true
+        trackEl.setAttribute("data-subtitle-track", "true")
+        video.appendChild(trackEl)
+        trackEl.track.mode = "showing"
+        forgeTrack = trackEl.track
+
+        return () => {
+          tracks.removeEventListener("addtrack", onAddTrack)
+          trackEl.track.mode = "disabled"
+          trackEl.remove()
+        }
+      }
+    }
+
+    return () => {
+      tracks.removeEventListener("addtrack", onAddTrack)
+    }
+  }, [subtitleVttSrc, player])
 
   const [chromeRevealed, setChromeRevealed] = useState(false)
   const [controlsChromeVisible, setControlsChromeVisible] = useState(true)
@@ -579,6 +642,11 @@ export function HeroPlayer({
             }
           />
         )}
+        <SubtitleOverlay
+          playerRef={playerRef}
+          wrapperRef={wrapperRef}
+          player={player}
+        />
         {darkenOverlay ? (
           <div
             aria-hidden="true"

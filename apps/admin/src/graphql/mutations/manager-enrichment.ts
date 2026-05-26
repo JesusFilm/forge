@@ -2,7 +2,7 @@
 //
 // First admin → manager outbound dispatch in the repo. Until now the
 // boundary was read-only-S3 (admin reads manager's
-// `{assetId}/scene-analysis.json` + `embeddings.json`). This mutation
+// `{assetId}/scene-analysis.json` + transcript source artifacts). This mutation
 // is the deliberate seam where admin asks manager to PRODUCE upstream
 // pipeline output for a list of cms videos, typically after an
 // operator has reviewed PR1's `missingArtifacts` projection.

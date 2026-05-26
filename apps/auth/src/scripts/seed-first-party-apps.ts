@@ -1,6 +1,10 @@
-import { ADMIN_APP_SEED } from "@/domain/apps"
+import { createHash } from "node:crypto"
+
+import { FIRST_PARTY_APP_SEEDS, type RegisteredAppSeed } from "@/domain/apps"
 import { AUTH_SCOPES } from "@/domain/scopes"
 import { prisma } from "@/db/client"
+
+const MANAGER_SESSION_SCOPE = "admin:manager-session:validate"
 
 export async function seedFirstPartyApps() {
   for (const scope of AUTH_SCOPES) {
@@ -14,28 +18,52 @@ export async function seedFirstPartyApps() {
     })
   }
 
+  for (const appSeed of FIRST_PARTY_APP_SEEDS) {
+    await seedFirstPartyApp(appSeed)
+  }
+
+  return {
+    apps: FIRST_PARTY_APP_SEEDS.length,
+    environments: FIRST_PARTY_APP_SEEDS.reduce(
+      (total, app) => total + app.environments.length,
+      0,
+    ),
+    oauthClients: FIRST_PARTY_APP_SEEDS.reduce(
+      (total, app) =>
+        total +
+        app.environments.length +
+        app.environments.filter(
+          (environment) => environment.managerSessionServiceClientId,
+        ).length,
+      0,
+    ),
+    scopes: AUTH_SCOPES.length,
+  }
+}
+
+async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
   const app = await prisma.registeredApp.upsert({
-    where: { key: ADMIN_APP_SEED.key },
+    where: { key: appSeed.key },
     update: {
-      displayName: ADMIN_APP_SEED.displayName,
-      description: ADMIN_APP_SEED.description,
+      displayName: appSeed.displayName,
+      description: appSeed.description,
       trustTier: "FIRST_PARTY",
       ownerType: "JESUS_FILM",
-      ownerName: ADMIN_APP_SEED.ownerName,
+      ownerName: appSeed.ownerName,
       status: "ACTIVE",
     },
     create: {
-      key: ADMIN_APP_SEED.key,
-      displayName: ADMIN_APP_SEED.displayName,
-      description: ADMIN_APP_SEED.description,
+      key: appSeed.key,
+      displayName: appSeed.displayName,
+      description: appSeed.description,
       trustTier: "FIRST_PARTY",
       ownerType: "JESUS_FILM",
-      ownerName: ADMIN_APP_SEED.ownerName,
+      ownerName: appSeed.ownerName,
       status: "ACTIVE",
     },
   })
 
-  for (const environment of ADMIN_APP_SEED.environments) {
+  for (const environment of appSeed.environments) {
     await prisma.appEnvironment.upsert({
       where: {
         appId_key: {
@@ -68,7 +96,7 @@ export async function seedFirstPartyApps() {
     await prisma.oauthClient.upsert({
       where: { clientId: environment.clientId },
       update: {
-        name: `${ADMIN_APP_SEED.displayName} (${environment.key})`,
+        name: `${appSeed.displayName} (${environment.key})`,
         redirectUris: environment.redirectUris,
         postLogoutRedirectUris: environment.postLogoutRedirectUris,
         scopes: environment.defaultScopes,
@@ -81,15 +109,15 @@ export async function seedFirstPartyApps() {
         grantTypes: ["authorization_code", "refresh_token"],
         responseTypes: ["code"],
         metadata: {
-          appKey: ADMIN_APP_SEED.key,
+          appKey: appSeed.key,
           environmentKey: environment.key,
           environmentKind: environment.kind,
-          trustTier: ADMIN_APP_SEED.trustTier,
+          trustTier: appSeed.trustTier,
         },
       },
       create: {
         clientId: environment.clientId,
-        name: `${ADMIN_APP_SEED.displayName} (${environment.key})`,
+        name: `${appSeed.displayName} (${environment.key})`,
         redirectUris: environment.redirectUris,
         postLogoutRedirectUris: environment.postLogoutRedirectUris,
         scopes: environment.defaultScopes,
@@ -102,21 +130,86 @@ export async function seedFirstPartyApps() {
         grantTypes: ["authorization_code", "refresh_token"],
         responseTypes: ["code"],
         metadata: {
-          appKey: ADMIN_APP_SEED.key,
+          appKey: appSeed.key,
           environmentKey: environment.key,
           environmentKind: environment.kind,
-          trustTier: ADMIN_APP_SEED.trustTier,
+          trustTier: appSeed.trustTier,
         },
       },
     })
-  }
 
-  return {
-    apps: 1,
-    environments: ADMIN_APP_SEED.environments.length,
-    oauthClients: ADMIN_APP_SEED.environments.length,
-    scopes: AUTH_SCOPES.length,
+    if (environment.managerSessionServiceClientId) {
+      const clientSecret = getManagerServiceClientSecret(environment.key)
+      const storedClientSecret = clientSecret
+        ? hashClientSecret(clientSecret)
+        : undefined
+
+      await prisma.oauthClient.upsert({
+        where: { clientId: environment.managerSessionServiceClientId },
+        update: {
+          name: `${appSeed.displayName} (${environment.key} session validation)`,
+          redirectUris: [],
+          postLogoutRedirectUris: [],
+          scopes: [MANAGER_SESSION_SCOPE],
+          skipConsent: true,
+          enableEndSession: false,
+          disabled: !storedClientSecret,
+          public: false,
+          requirePKCE: false,
+          tokenEndpointAuthMethod: "client_secret_basic",
+          grantTypes: ["client_credentials"],
+          responseTypes: [],
+          ...(storedClientSecret ? { clientSecret: storedClientSecret } : {}),
+          metadata: {
+            appKey: appSeed.key,
+            environmentKey: environment.key,
+            environmentKind: environment.kind,
+            serviceAudience: environment.managerSessionServiceAudience,
+            trustTier: appSeed.trustTier,
+          },
+        },
+        create: {
+          clientId: environment.managerSessionServiceClientId,
+          name: `${appSeed.displayName} (${environment.key} session validation)`,
+          redirectUris: [],
+          postLogoutRedirectUris: [],
+          scopes: [MANAGER_SESSION_SCOPE],
+          skipConsent: true,
+          enableEndSession: false,
+          disabled: !storedClientSecret,
+          public: false,
+          requirePKCE: false,
+          tokenEndpointAuthMethod: "client_secret_basic",
+          grantTypes: ["client_credentials"],
+          responseTypes: [],
+          clientSecret: storedClientSecret,
+          metadata: {
+            appKey: appSeed.key,
+            environmentKey: environment.key,
+            environmentKind: environment.kind,
+            serviceAudience: environment.managerSessionServiceAudience,
+            trustTier: appSeed.trustTier,
+          },
+        },
+      })
+    }
   }
+}
+
+function getManagerServiceClientSecret(environmentKey: string) {
+  return (
+    process.env[
+      `AUTH_MANAGER_SESSION_SERVICE_CLIENT_SECRET_${environmentKey.toUpperCase()}`
+    ] ?? process.env.AUTH_MANAGER_SESSION_SERVICE_CLIENT_SECRET
+  )
+}
+
+function hashClientSecret(clientSecret: string) {
+  const normalizedSecret = clientSecret.startsWith("jfp_cs_")
+    ? clientSecret.slice("jfp_cs_".length)
+    : clientSecret
+
+  return createHash("sha256").update(normalizedSecret).digest("base64url")
 }
 
 function toEnvironmentKind(kind: string) {
@@ -127,7 +220,7 @@ if (process.argv[1]?.endsWith("seed-first-party-apps.ts")) {
   seedFirstPartyApps()
     .then((result) => {
       console.log(
-        `Seeded ${result.apps} first-party app, ${result.environments} environments, ${result.oauthClients} OAuth clients, and ${result.scopes} scopes.`,
+        `Seeded ${result.apps} first-party apps, ${result.environments} environments, ${result.oauthClients} OAuth clients, and ${result.scopes} scopes.`,
       )
     })
     .finally(async () => {
