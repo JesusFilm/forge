@@ -19,6 +19,10 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 - UI never accesses the database directly.
 - Pothos `prismaField` / `t.relation` handles reads with `...query` passthrough.
 - Services own mutations, raw SQL (pgvector), and ABAC enforcement.
+- Admin owns live search orchestration, query embedding generation, vector
+  storage, production search traces, raw trace retention, aggregates, and the
+  internal trace sampling contract. Mastra samples later through authenticated
+  Admin HTTP only; it must not import Admin code or read Admin Postgres.
 - Admin auth must not depend on shared `.jesusfilm.org` cookies or
   admin-local credential handlers.
 - Every Pothos type is classified `abac-gated` or `public-shape` — `abac-gated`
@@ -35,6 +39,10 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
   maps are compatibility mirrors only.
 - Embedding vector columns never appear in a GraphQL type (technical control,
   not convention).
+- Raw production search traces may retain query text only after first-pass
+  privacy labeling/redaction and for less than 30 days. Aggregates survive
+  without query text; never store bearer tokens, cookies, IPs, user ids, or
+  caller-supplied key ids in trace tables.
 
 ## Workflow
 

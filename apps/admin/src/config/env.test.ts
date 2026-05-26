@@ -6,6 +6,7 @@ import {
   assertBearerCsvsDisjoint,
   concurrencyEnvSchema,
   env,
+  searchTraceRawRetentionDaysEnvSchema,
 } from "@/config/env"
 
 describe("env", () => {
@@ -40,11 +41,29 @@ describe("env", () => {
     })
   })
 
+  describe("searchTraceRawRetentionDaysEnvSchema", () => {
+    it("defaults to 29 days", () => {
+      expect(searchTraceRawRetentionDaysEnvSchema.parse(undefined)).toBe(29)
+    })
+
+    it("accepts integer values from 1 through 29", () => {
+      expect(searchTraceRawRetentionDaysEnvSchema.parse("1")).toBe(1)
+      expect(searchTraceRawRetentionDaysEnvSchema.parse("29")).toBe(29)
+    })
+
+    it("rejects zero, fractional, negative, and 30-day retention values", () => {
+      expect(() => searchTraceRawRetentionDaysEnvSchema.parse("0")).toThrow()
+      expect(() => searchTraceRawRetentionDaysEnvSchema.parse("1.5")).toThrow()
+      expect(() => searchTraceRawRetentionDaysEnvSchema.parse("-1")).toThrow()
+      expect(() => searchTraceRawRetentionDaysEnvSchema.parse("30")).toThrow()
+    })
+  })
+
   // Bearer-CSV disjointness invariant. The bearer CSVs
   // (WORKFLOW_API_KEYS, MASTRA_TRANSCRIPT_INGEST_API_KEYS,
   // MASTRA_SCENE_INGEST_API_KEYS, MASTRA_EXPERIENCE_INGEST_API_KEYS,
   // WEB_ADMIN_API_KEYS,
-  // BACKUP_DOWNLOAD_API_KEYS)
+  // BACKUP_DOWNLOAD_API_KEYS, SEARCH_TRACE_SAMPLING_API_KEYS)
   // MUST NOT share any value; the auth chains mint distinct
   // principals / passports, so a duplicated key silently widens
   // permissions or passes a passport it shouldn't. The legacy
@@ -80,6 +99,11 @@ describe("env", () => {
       expect(() =>
         assertBearerCsvsDisjoint({ BACKUP_DOWNLOAD_API_KEYS: "backup-a" }),
       ).not.toThrow()
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          SEARCH_TRACE_SAMPLING_API_KEYS: "trace-sampling-a",
+        }),
+      ).not.toThrow()
     })
 
     it("passes when all CSVs are disjoint", () => {
@@ -91,6 +115,7 @@ describe("env", () => {
           MASTRA_EXPERIENCE_INGEST_API_KEYS: "experience-a,experience-b",
           WEB_ADMIN_API_KEYS: "web-a,web-b",
           BACKUP_DOWNLOAD_API_KEYS: "backup-a,backup-b",
+          SEARCH_TRACE_SAMPLING_API_KEYS: "trace-sampling-a,trace-sampling-b",
         }),
       ).not.toThrow()
     })
@@ -145,17 +170,23 @@ describe("env", () => {
     })
 
     it("throws when WEB_ADMIN_API_KEYS overlaps BACKUP_DOWNLOAD_API_KEYS", () => {
-      // Closes the matrix: the 3-CSV invariant has 3 pairs and this
-      // covers the WEB_ADMIN ↔ BACKUP_DOWNLOAD pair. A regression
-      // that mis-indexed the inner-loop start (`j = i + 1` →
-      // `j = i + 2`) or swapped the sets tuple order could break
-      // this single pair without any other test failing.
       expect(() =>
         assertBearerCsvsDisjoint({
           WEB_ADMIN_API_KEYS: "shared-key",
           BACKUP_DOWNLOAD_API_KEYS: "shared-key",
         }),
       ).toThrow(/WEB_ADMIN_API_KEYS and BACKUP_DOWNLOAD_API_KEYS/)
+    })
+
+    it("throws when SEARCH_TRACE_SAMPLING overlaps another bearer capability", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          SEARCH_TRACE_SAMPLING_API_KEYS: "shared-key",
+          MASTRA_EXPERIENCE_INGEST_API_KEYS: "shared-key",
+        }),
+      ).toThrow(
+        /MASTRA_EXPERIENCE_INGEST_API_KEYS and SEARCH_TRACE_SAMPLING_API_KEYS/,
+      )
     })
 
     it("collects ALL overlapping pairs into a single error (not first-fail)", async () => {
@@ -171,6 +202,7 @@ describe("env", () => {
           MASTRA_EXPERIENCE_INGEST_API_KEYS: "experience-a",
           WEB_ADMIN_API_KEYS: "shared-1,shared-2",
           BACKUP_DOWNLOAD_API_KEYS: "shared-2",
+          SEARCH_TRACE_SAMPLING_API_KEYS: "shared-1",
         })
       } catch (err) {
         caught = err as Error
@@ -182,6 +214,9 @@ describe("env", () => {
       )
       expect(caught!.message).toMatch(
         /WEB_ADMIN_API_KEYS and BACKUP_DOWNLOAD_API_KEYS/,
+      )
+      expect(caught!.message).toMatch(
+        /WORKFLOW_API_KEYS and SEARCH_TRACE_SAMPLING_API_KEYS/,
       )
       // And the rotation runbook is referenced.
       expect(caught!.message).toMatch(/Search API authentication/)
@@ -223,6 +258,9 @@ describe("env", () => {
       expect(source).toMatch(/WEB_ADMIN_API_KEYS:\s*env\.WEB_ADMIN_API_KEYS/)
       expect(source).toMatch(
         /BACKUP_DOWNLOAD_API_KEYS:\s*env\.BACKUP_DOWNLOAD_API_KEYS/,
+      )
+      expect(source).toMatch(
+        /SEARCH_TRACE_SAMPLING_API_KEYS:\s*env\.SEARCH_TRACE_SAMPLING_API_KEYS/,
       )
       // Regression guard: SEARCH_API_KEYS must NOT appear in the Zod
       // schema (the receiver-side CSV is retired in Plan 003) and

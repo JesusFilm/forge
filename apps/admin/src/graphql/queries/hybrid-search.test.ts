@@ -11,13 +11,33 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const searchMock = vi.fn()
+const searchWithTraceMock = vi.fn(async (params) => {
+  const response = await searchMock(params)
+  return {
+    response,
+    trace: {
+      searchMode: response.searchMode,
+      resultCount: response.results.length,
+      outcome: response.searchMode === "keyword-only" ? "degraded" : "success",
+      traceClass:
+        response.searchMode === "keyword-only"
+          ? "query_embedding_failure"
+          : "none",
+      failedRetrievers: [],
+      contributingRetrievers: [],
+    },
+  }
+})
 vi.mock("@/services/hybrid-search.service", async () => {
   const actual = await vi.importActual<
     typeof import("@/services/hybrid-search.service")
   >("@/services/hybrid-search.service")
   return {
     ...actual,
-    HybridSearchService: vi.fn(() => ({ search: searchMock })),
+    HybridSearchService: vi.fn(() => ({
+      search: searchMock,
+      searchWithTrace: searchWithTraceMock,
+    })),
   }
 })
 
@@ -31,6 +51,10 @@ vi.mock("@/auth/search-bearer", () => ({
   isAnyKnownBearer: vi.fn(),
 }))
 
+vi.mock("@/services/search-trace.service", () => ({
+  recordSearchTraceSafely: vi.fn(async () => ({ ok: true, timedOut: false })),
+}))
+
 vi.mock("@/config/env", () => ({
   env: {} as { SEARCH_AUTH_REQUIRED?: "true" | "false" },
 }))
@@ -39,6 +63,7 @@ import { schema } from "@/graphql/schema"
 import { isDebugAllowedForOrigin } from "@/services/hybrid-search-debug-allowlist"
 import { isAnyKnownBearer } from "@/auth/search-bearer"
 import { env } from "@/config/env"
+import { recordSearchTraceSafely } from "@/services/search-trace.service"
 
 const envMutable = env as { SEARCH_AUTH_REQUIRED?: "true" | "false" }
 
@@ -111,6 +136,7 @@ describe("Query.search resolver", () => {
   it("rejects empty / whitespace-only q", async () => {
     await expect(invoke({ q: "   ", locale: "en" })).rejects.toThrow(/q/)
     expect(searchMock).not.toHaveBeenCalled()
+    expect(recordSearchTraceSafely).not.toHaveBeenCalled()
   })
 
   it("rejects empty locale", async () => {
@@ -183,6 +209,85 @@ describe("Query.search resolver", () => {
         offset: 10,
       }),
     )
+  })
+
+  it("returns the public response unchanged while recording a GraphQL trace", async () => {
+    searchMock.mockResolvedValueOnce({
+      results: [
+        {
+          type: "experience",
+          id: "exp-1",
+          slug: "easter",
+          title: "Easter",
+          imageUrl: null,
+          snippet: "",
+          startSeconds: null,
+          playbackId: null,
+          score: 1,
+          label: null,
+          durationSeconds: null,
+          childCount: null,
+        },
+      ],
+      hasMore: false,
+      query: "easter",
+      searchMode: "hybrid",
+    })
+
+    await expect(invoke({ q: "  easter  ", locale: "en" })).resolves.toEqual({
+      results: [
+        {
+          type: "experience",
+          id: "exp-1",
+          slug: "easter",
+          title: "Easter",
+          imageUrl: null,
+          snippet: "",
+          startSeconds: null,
+          playbackId: null,
+          score: 1,
+          label: null,
+          durationSeconds: null,
+          childCount: null,
+        },
+      ],
+      hasMore: false,
+      query: "easter",
+      searchMode: "hybrid",
+    })
+    expect(recordSearchTraceSafely).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: "easter",
+        locale: "en",
+        routeSource: "graphql",
+        requestedMode: null,
+        searchMode: "hybrid",
+        resultCount: 1,
+        outcome: "success",
+        traceClass: "none",
+        startedAt: expect.any(Date),
+        completedAt: expect.any(Date),
+      }),
+    )
+  })
+
+  it("keeps the GraphQL result unchanged when trace recording throws", async () => {
+    vi.mocked(recordSearchTraceSafely).mockRejectedValueOnce(
+      new Error("trace write failed"),
+    )
+    searchMock.mockResolvedValueOnce({
+      results: [],
+      hasMore: false,
+      query: "jesus",
+      searchMode: "hybrid",
+    })
+
+    await expect(invoke({ q: "jesus", locale: "en" })).resolves.toEqual({
+      results: [],
+      hasMore: false,
+      query: "jesus",
+      searchMode: "hybrid",
+    })
   })
 })
 
@@ -485,6 +590,17 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
       // affecting any other GraphQL test.
       searchMock.mockRejectedValueOnce(new Error("boom"))
       await expect(invoke({ q: "jesus", locale: "en" })).rejects.toThrow(/boom/)
+      expect(recordSearchTraceSafely).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: "jesus",
+          locale: "en",
+          routeSource: "graphql",
+          searchMode: "failed",
+          resultCount: 0,
+          outcome: "failed",
+          traceClass: "search_exception",
+        }),
+      )
       const log = parseSearchLogLines()[0]
       expect(log).toMatchObject({
         event: "search.request",
