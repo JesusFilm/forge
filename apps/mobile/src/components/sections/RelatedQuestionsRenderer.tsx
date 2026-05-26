@@ -1,5 +1,12 @@
 import { useCallback, useState } from "react"
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { AnimatedChevron, animateLayout } from "../ui/AnimatedChevron"
@@ -14,8 +21,6 @@ import {
 import { layout, text, button } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
 
-// ── Types ───────────────────────────────────────────────────────────────────
-
 type QuestionItem = {
   question: string
   answer: string
@@ -25,7 +30,66 @@ export interface RelatedQuestionsRendererProps {
   section: AdminBlock
 }
 
-// ── QuestionItem ────────────────────────────────────────────────────────────
+const CHAT_WITH_PERSON_URL =
+  "https://chataboutjesus.com/chat/?utm_source=jesusfilm-watch"
+const ASK_BIBLE_QUESTION_URL =
+  "https://www.everystudent.com/contact.php?utm_source=jesusfilm-watch"
+const FALLBACK_BODY =
+  "Have a private discussion with someone who is ready to listen."
+
+function AnswerFallback() {
+  const typography = useTypography()
+
+  return (
+    <View style={styles.fallbackContainer}>
+      <Text style={[styles.fallbackBody, typography.bodySmall]}>
+        {FALLBACK_BODY}
+      </Text>
+      <View style={styles.fallbackButtonRow}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.fallbackButton,
+            pressed && Platform.OS === "ios" && styles.fallbackButtonPressed,
+          ]}
+          android_ripple={{ color: "rgba(0, 0, 0, 0.1)" }}
+          onPress={() => Linking.openURL(CHAT_WITH_PERSON_URL)}
+          accessibilityRole="link"
+          accessibilityLabel="Chat with a person"
+        >
+          <Ionicons
+            name="chatbubble-outline"
+            size={16}
+            color="#1c1917"
+            style={styles.fallbackButtonIcon}
+          />
+          <Text style={[styles.fallbackButtonText, typography.caption]}>
+            CHAT WITH A PERSON
+          </Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            styles.fallbackButton,
+            pressed && Platform.OS === "ios" && styles.fallbackButtonPressed,
+          ]}
+          android_ripple={{ color: "rgba(0, 0, 0, 0.1)" }}
+          onPress={() => Linking.openURL(ASK_BIBLE_QUESTION_URL)}
+          accessibilityRole="link"
+          accessibilityLabel="Ask a Bible question"
+        >
+          <Ionicons
+            name="mail-outline"
+            size={16}
+            color="#1c1917"
+            style={styles.fallbackButtonIcon}
+          />
+          <Text style={[styles.fallbackButtonText, typography.caption]}>
+            ASK A BIBLE QUESTION
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  )
+}
 
 function QuestionRow({
   item,
@@ -37,6 +101,7 @@ function QuestionRow({
   onToggle: () => void
 }) {
   const typography = useTypography()
+  const hasAnswer = item.answer != null && item.answer.trim() !== ""
 
   return (
     <View style={styles.item}>
@@ -52,20 +117,21 @@ function QuestionRow({
         </Text>
         <AnimatedChevron
           isExpanded={isExpanded}
-          glyph={"\u203A"}
+          glyph={"›"}
           style={styles.chevron}
         />
       </Pressable>
-      {isExpanded && (
-        <Text style={[styles.answerText, typography.bodySmall]}>
-          {item.answer}
-        </Text>
-      )}
+      {isExpanded &&
+        (hasAnswer ? (
+          <Text style={[styles.answerText, typography.bodySmall]}>
+            {item.answer}
+          </Text>
+        ) : (
+          <AnswerFallback />
+        ))}
     </View>
   )
 }
-
-// ── Main Component ──────────────────────────────────────────────────────────
 
 export function RelatedQuestionsRenderer({
   section,
@@ -132,8 +198,6 @@ export function RelatedQuestionsRenderer({
   )
 }
 
-// ── Styles ──────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   localContainer: {
     paddingHorizontal: 16,
@@ -174,5 +238,39 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     paddingBottom: 16,
     paddingLeft: 0,
+  },
+  fallbackContainer: {
+    paddingBottom: 16,
+  },
+  fallbackBody: {
+    color: TEXT_BODY,
+    fontFamily: "System",
+    marginBottom: 12,
+  },
+  fallbackButtonRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  fallbackButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f4",
+    borderRadius: 9999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    minHeight: 44,
+  },
+  fallbackButtonPressed: {
+    opacity: 0.85,
+  },
+  fallbackButtonIcon: {
+    marginRight: 8,
+  },
+  fallbackButtonText: {
+    color: "#1c1917",
+    fontFamily: "System",
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
 })
