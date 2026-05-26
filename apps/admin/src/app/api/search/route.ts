@@ -16,6 +16,7 @@ import {
   type ContentType,
 } from "@/services/hybrid-search.service"
 import { isDebugAllowedForOrigin } from "@/services/hybrid-search-debug-allowlist"
+import { recordSearchTraceSafely } from "@/services/search-trace.service"
 
 const RATE_LIMIT_MAX = 30
 const RATE_LIMIT_WINDOW_MS = 60_000
@@ -195,10 +196,11 @@ export async function GET(request: Request): Promise<Response> {
   const debugRequested = searchParams.get("debug") === "true"
   const origin = request.headers.get("origin") ?? undefined
   const debug = debugRequested && isDebugAllowedForOrigin(origin)
+  const startedAt = new Date()
 
   try {
     const service = new HybridSearchService({ prisma })
-    const result = await service.search({
+    const { response, trace } = await service.searchWithTrace({
       query: q,
       locale,
       limit: limitParam,
@@ -207,8 +209,32 @@ export async function GET(request: Request): Promise<Response> {
       mode,
       debug,
     })
-    return Response.json(result, { status: 200 })
+    await recordSearchTraceSafely({
+      query: q,
+      locale,
+      routeSource: "rest",
+      requestedMode: mode ?? null,
+      searchMode: trace.searchMode,
+      resultCount: trace.resultCount,
+      outcome: trace.outcome,
+      traceClass: trace.traceClass,
+      startedAt,
+      completedAt: new Date(),
+    }).catch(() => {})
+    return Response.json(response, { status: 200 })
   } catch (error) {
+    await recordSearchTraceSafely({
+      query: q,
+      locale,
+      routeSource: "rest",
+      requestedMode: mode ?? null,
+      searchMode: "failed",
+      resultCount: 0,
+      outcome: "failed",
+      traceClass: "search_exception",
+      startedAt,
+      completedAt: new Date(),
+    }).catch(() => {})
     console.error(
       `[search] Search failed: ${
         error instanceof Error ? error.message : String(error)

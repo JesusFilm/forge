@@ -179,6 +179,111 @@ describe("HybridSearchService", () => {
     )
   })
 
+  it("returns internal trace metadata without changing search() response shape", async () => {
+    vi.mocked(searchVideoSemantic).mockResolvedValue([
+      {
+        resultType: "video",
+        resultId: "vid-1",
+        videoCoreId: "core-1",
+        videoSlug: "jesus",
+        videoTitle: "Jesus",
+        imageUrl: null,
+        sceneDescription: "A scene about Jesus",
+        startSeconds: 12,
+        playbackId: "mux-1",
+        similarity: 0.9,
+        embeddingText: "[0.1,0.2,0.3]",
+      },
+    ])
+    const service = new HybridSearchService({
+      prisma: mockPrisma,
+      embedder: successEmbedder(),
+      logger,
+    })
+
+    const traced = await service.searchWithTrace({
+      query: "jesus",
+      locale: "en",
+    })
+
+    expect(traced.response).toMatchObject({
+      query: "jesus",
+      searchMode: "hybrid",
+      hasMore: false,
+    })
+    expect(traced.trace).toEqual({
+      searchMode: "hybrid",
+      resultCount: 1,
+      outcome: "success",
+      traceClass: "none",
+      failedRetrievers: [],
+      contributingRetrievers: ["semantic-video"],
+    })
+    expect(await service.search({ query: "jesus", locale: "en" })).toEqual(
+      expect.objectContaining({
+        query: "jesus",
+        searchMode: "hybrid",
+      }),
+    )
+  })
+
+  it("classifies embedding failure in trace metadata", async () => {
+    const service = new HybridSearchService({
+      prisma: mockPrisma,
+      embedder: failingEmbedder(),
+      logger,
+    })
+
+    const traced = await service.searchWithTrace({
+      query: "grace",
+      locale: "en",
+    })
+
+    expect(traced.response.searchMode).toBe("keyword-only")
+    expect(traced.trace).toMatchObject({
+      searchMode: "keyword-only",
+      outcome: "degraded",
+      traceClass: "query_embedding_failure",
+    })
+  })
+
+  it("classifies partial retriever failure separately from zero results", async () => {
+    vi.mocked(searchVideoSemantic).mockResolvedValue([
+      {
+        resultType: "video",
+        resultId: "vid-1",
+        videoCoreId: "core-1",
+        videoSlug: "jesus",
+        videoTitle: "Jesus",
+        imageUrl: null,
+        sceneDescription: "A scene about Jesus",
+        startSeconds: 12,
+        playbackId: "mux-1",
+        similarity: 0.9,
+        embeddingText: "[0.1,0.2,0.3]",
+      },
+    ])
+    vi.mocked(searchVideoKeyword).mockRejectedValueOnce(
+      new Error("keyword index unavailable"),
+    )
+    const service = new HybridSearchService({
+      prisma: mockPrisma,
+      embedder: successEmbedder(),
+      logger,
+    })
+
+    const traced = await service.searchWithTrace({
+      query: "jesus",
+      locale: "en",
+    })
+
+    expect(traced.response.results).toHaveLength(1)
+    expect(traced.trace.outcome).toBe("degraded")
+    expect(traced.trace.traceClass).toBe("retrieval_failure")
+    expect(traced.trace.failedRetrievers).toEqual(["keyword-video"])
+    expect(traced.trace.contributingRetrievers).toEqual(["semantic-video"])
+  })
+
   it("restricts to video corpus when contentTypes=['video']", async () => {
     const service = new HybridSearchService({
       prisma: mockPrisma,

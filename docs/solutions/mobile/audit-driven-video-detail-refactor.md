@@ -29,7 +29,7 @@ related_issues: []
 
 ## Problem
 
-The video details page in `apps/mobile-v2/` accumulated 12+ technical quality issues through organic feature growth. A systematic audit using the `impeccable:audit` skill scored the page **12/20** across 5 dimensions (accessibility, performance, theming, responsive design, anti-patterns). Key symptoms: hard-coded hex colors in 6+ files with no token system, dead tap targets on media collection cards, semi-transparent play button with insufficient contrast, ScrollView instead of FlatList, fixed card widths, inconsistent play icons (text character vs icon component), and duplicate `VideoRef` type assertions across 4 renderers.
+The video details page in `apps/mobile/` accumulated 12+ technical quality issues through organic feature growth. A systematic audit using the `impeccable:audit` skill scored the page **12/20** across 5 dimensions (accessibility, performance, theming, responsive design, anti-patterns). Key symptoms: hard-coded hex colors in 6+ files with no token system, dead tap targets on media collection cards, semi-transparent play button with insufficient contrast, ScrollView instead of FlatList, fixed card widths, inconsistent play icons (text character vs icon component), and duplicate `VideoRef` type assertions across 4 renderers.
 
 ## Root Cause
 
@@ -122,7 +122,7 @@ Each audit round explicitly scored dimensions and linked findings to specific fi
 
 ## Prevention
 
-1. **Import tokens, not hex values**: When adding new colors to any renderer in `apps/mobile-v2/`, always check `src/lib/color.ts` first. If the color doesn't exist as a token, add it there before using it.
+1. **Import tokens, not hex values**: When adding new colors to any renderer in `apps/mobile/`, always check `src/lib/color.ts` first. If the color doesn't exist as a token, add it there before using it.
 
 2. **Check shared types before duplicating**: Before writing an inline type assertion for CMS data shapes, check `src/lib/types.ts` for an existing shared type. The SDUI normalizer produces generic `NormalizedBlock` records, so renderers will always need `as` casts — but the target type should be shared.
 
@@ -139,11 +139,11 @@ Each audit round explicitly scored dimensions and linked findings to specific fi
 
 ## Files Changed
 
-- `apps/mobile-v2/src/lib/color.ts` — 8 new semantic tokens
-- `apps/mobile-v2/src/lib/types.ts` — New shared `VideoRef` type
-- `apps/mobile-v2/app/_layout.tsx` — Token adoption + hitSlop increase
-- `apps/mobile-v2/app/video/[sectionKey].tsx` — Tokens, shared type, Ionicons, share URL, touch targets
-- `apps/mobile-v2/src/components/sections/MediaCollectionRenderer.tsx` — Navigation, FlatList, responsive width, tokens
-- `apps/mobile-v2/src/components/sections/VideoCardRenderer.tsx` — Tokens, shared type, Ionicons
-- `apps/mobile-v2/src/components/sections/VideoCarouselRenderer.tsx` — Tokens, shared type, Ionicons, encodeURIComponent
-- `apps/mobile-v2/src/components/sections/TextRenderer.tsx` — Tokens
+- `apps/mobile/src/lib/color.ts` — 8 new semantic tokens
+- `apps/mobile/src/lib/types.ts` — New shared `VideoRef` type
+- `apps/mobile/app/_layout.tsx` — Token adoption + hitSlop increase
+- `apps/mobile/app/video/[sectionKey].tsx` — Tokens, shared type, Ionicons, share URL, touch targets
+- `apps/mobile/src/components/sections/MediaCollectionRenderer.tsx` — Navigation, FlatList, responsive width, tokens
+- `apps/mobile/src/components/sections/VideoCardRenderer.tsx` — Tokens, shared type, Ionicons
+- `apps/mobile/src/components/sections/VideoCarouselRenderer.tsx` — Tokens, shared type, Ionicons, encodeURIComponent
+- `apps/mobile/src/components/sections/TextRenderer.tsx` — Tokens

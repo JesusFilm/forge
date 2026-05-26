@@ -179,6 +179,30 @@ enum WorkflowRunTrigger {
   SYSTEM    @map("system")
 }
 
+/// Public Admin entry point that produced a production search trace.
+enum SearchTraceRouteSource {
+  REST    @map("rest")
+  GRAPHQL @map("graphql")
+}
+
+/// Search execution result from the caller's perspective.
+enum SearchTraceOutcome {
+  SUCCESS  @map("success")
+  DEGRADED @map("degraded")
+  FAILED   @map("failed")
+}
+
+/// Coarse latency buckets keep trace payloads useful without storing exact
+/// per-request timings indefinitely.
+enum SearchTraceLatencyBucket {
+  LT_100_MS   @map("lt_100ms")
+  LT_250_MS   @map("lt_250ms")
+  LT_500_MS   @map("lt_500ms")
+  LT_1000_MS  @map("lt_1000ms")
+  LT_2500_MS  @map("lt_2500ms")
+  GTE_2500_MS @map("gte_2500ms")
+}
+
 // -----------------------------------------------------------------------------
 // Admin access control (Auth SSO relying client)
 // -----------------------------------------------------------------------------
@@ -352,6 +376,79 @@ model WorkflowWorkerHeartbeat {
 
   @@index([lastSeenAt])
   @@map("workflow_worker_heartbeat")
+}
+
+/// Short-lived Admin-owned production search trace. Raw rows are the only place
+/// query text may exist, and they expire before the hard 30-day raw retention
+/// ceiling. The table deliberately has no bearer, cookie, IP, user-id, key-id,
+/// vector, or scoring payload columns.
+model SearchTrace {
+  id                  String                   @id @default(cuid())
+  queryText           String                   @map("query_text") @db.VarChar(1024)
+  locale              String                   @db.VarChar(32)
+  routeSource         SearchTraceRouteSource   @map("route_source")
+  requestedMode       String?                  @map("requested_mode") @db.VarChar(64)
+  searchMode          String                   @map("search_mode") @db.VarChar(64)
+  resultCount         Int                      @map("result_count")
+  latencyBucket       SearchTraceLatencyBucket @map("latency_bucket")
+  outcome             SearchTraceOutcome
+  traceClass          String                   @default("none") @map("trace_class") @db.VarChar(64)
+  queryQualityLabel   String                   @default("unknown_ambiguous") @map("query_quality_label") @db.VarChar(64)
+  sensitiveQueryLabel String                   @default("none") @map("sensitive_query_label") @db.VarChar(64)
+  abuseLabel          String                   @default("none") @map("abuse_label") @db.VarChar(64)
+  queryLabelSource    String                   @default("rules") @map("query_label_source") @db.VarChar(32)
+  queryLabelVersion   String                   @default("search-query-labels/v1") @map("query_label_version") @db.VarChar(64)
+  queryLabeledAt      DateTime                 @default(now()) @map("query_labeled_at")
+  sampleEligible      Boolean                  @default(true) @map("sample_eligible")
+  llmQueryQualityLabel String?                  @map("llm_query_quality_label") @db.VarChar(64)
+  llmAbuseLabel       String?                  @map("llm_abuse_label") @db.VarChar(64)
+  llmLabelSource      String?                  @map("llm_label_source") @db.VarChar(64)
+  llmLabelVersion     String?                  @map("llm_label_version") @db.VarChar(64)
+  llmLabelReason      String?                  @map("llm_label_reason") @db.VarChar(256)
+  llmLabeledAt        DateTime?                @map("llm_labeled_at")
+  startedAt           DateTime                 @map("started_at")
+  completedAt         DateTime                 @map("completed_at")
+  rawExpiresAt        DateTime                 @map("raw_expires_at")
+  createdAt           DateTime                 @default(now()) @map("created_at")
+
+  @@index([rawExpiresAt])
+  @@index([createdAt])
+  @@index([locale, createdAt])
+  @@index([routeSource, createdAt])
+  @@index([outcome, createdAt])
+  @@index([sampleEligible, rawExpiresAt, createdAt])
+  @@index([queryQualityLabel, sensitiveQueryLabel, abuseLabel, rawExpiresAt, createdAt], map: "search_trace_label_filters_raw_expires_created_idx")
+  @@index([llmLabelSource, createdAt], map: "search_trace_llm_label_source_created_at_idx")
+  @@map("search_trace")
+}
+
+/// Long-lived counters for search trace analysis. Aggregates never contain raw
+/// query text, so they may survive raw trace purge.
+model SearchTraceAggregate {
+  id                  String                   @id @default(cuid())
+  bucketStart         DateTime                 @map("bucket_start")
+  locale              String                   @db.VarChar(32)
+  routeSource         SearchTraceRouteSource   @map("route_source")
+  searchMode          String                   @map("search_mode") @db.VarChar(64)
+  outcome             SearchTraceOutcome
+  traceClass          String                   @default("none") @map("trace_class") @db.VarChar(64)
+  latencyBucket       SearchTraceLatencyBucket @map("latency_bucket")
+  queryQualityLabel   String                   @default("unknown_ambiguous") @map("query_quality_label") @db.VarChar(64)
+  sensitiveQueryLabel String                   @default("none") @map("sensitive_query_label") @db.VarChar(64)
+  abuseLabel          String                   @default("none") @map("abuse_label") @db.VarChar(64)
+  queryLabelSource    String                   @default("rules") @map("query_label_source") @db.VarChar(32)
+  queryLabelVersion   String                   @default("search-query-labels/v1") @map("query_label_version") @db.VarChar(64)
+  queryCount          Int                      @default(0) @map("query_count")
+  resultCountSum      Int                      @default(0) @map("result_count_sum")
+  createdAt           DateTime                 @default(now()) @map("created_at")
+  updatedAt           DateTime                 @updatedAt @map("updated_at")
+
+  @@unique([bucketStart, routeSource, locale, searchMode, outcome, traceClass, latencyBucket, queryQualityLabel, sensitiveQueryLabel, abuseLabel], name: "searchTraceAggregateBucketDimsLegacy", map: "search_trace_aggregate_bucket_dims_key")
+  @@unique([bucketStart, routeSource, locale, searchMode, outcome, traceClass, latencyBucket, queryQualityLabel, sensitiveQueryLabel, abuseLabel, queryLabelSource, queryLabelVersion], name: "searchTraceAggregateBucketDims", map: "search_trace_aggregate_bucket_label_dims_key")
+  @@index([bucketStart])
+  @@index([routeSource, bucketStart])
+  @@index([outcome, bucketStart])
+  @@map("search_trace_aggregate")
 }
 
 /// Core Sync-specific detail for the generic workflow ledger. Kept separate so
@@ -1239,35 +1336,35 @@ model VideoScene {
 /// `schema.test.ts` asserts no embed/vector/similarity field leaks). Search
 /// uses raw SQL with `<=>` cosine distance + the partial HNSW index.
 model VideoSceneLocale {
-  id               String                       @id @default(cuid())
-  videoSceneId     String                       @map("video_scene_id")
-  videoScene       VideoScene                   @relation(fields: [videoSceneId], references: [id], onDelete: Cascade)
+  id                    String                       @id @default(cuid())
+  videoSceneId          String                       @map("video_scene_id")
+  videoScene            VideoScene                   @relation(fields: [videoSceneId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 locale code, e.g. "en", "fr", "es-419".
-  locale           String
+  locale                String
   /// The exact text that was embedded. Stored so a future model upgrade can
   /// re-embed without re-reading manager's S3 artifact.
-  sourceText       String                       @map("source_text")
+  sourceText            String                       @map("source_text")
   /// Scene description from manager's multimodal pipeline (per-language).
-  description      String
-  themes           String[]                     @default([])
-  bibleVerses      String[]                     @default([]) @map("bible_verses")
-  demographics     String[]                     @default([])
-  spiritualContext String[]                     @default([]) @map("spiritual_context")
-  embedding        Unsupported("vector(1536)")?
-  model            String                       @default("text-embedding-3-small")
-  dimensions       Int                          @default(1536)
+  description           String
+  themes                String[]                     @default([])
+  bibleVerses           String[]                     @default([]) @map("bible_verses")
+  demographics          String[]                     @default([])
+  spiritualContext      String[]                     @default([]) @map("spiritual_context")
+  embedding             Unsupported("vector(1536)")?
+  model                 String                       @default("text-embedding-3-small")
+  dimensions            Int                          @default(1536)
   /// Compact provenance for Mastra-written scene embeddings. Nullable so
   /// legacy rows written before the Mastra migration remain searchable.
-  sourceArtifactKey     String?                 @map("source_artifact_key")
-  sourceArtifactVersion String?                 @map("source_artifact_version")
-  sourceContentHash     String?                 @map("source_content_hash")
-  sourceProvider        String?                 @map("source_provider")
-  sourceGeneratedAt     DateTime?               @map("source_generated_at")
-  generationMode        String?                 @map("generation_mode")
-  mastraRunId           String?                 @map("mastra_run_id")
-  generatedAt           DateTime?               @map("generated_at")
-  createdAt        DateTime                     @default(now()) @map("created_at")
-  updatedAt        DateTime                     @updatedAt @map("updated_at")
+  sourceArtifactKey     String?                      @map("source_artifact_key")
+  sourceArtifactVersion String?                      @map("source_artifact_version")
+  sourceContentHash     String?                      @map("source_content_hash")
+  sourceProvider        String?                      @map("source_provider")
+  sourceGeneratedAt     DateTime?                    @map("source_generated_at")
+  generationMode        String?                      @map("generation_mode")
+  mastraRunId           String?                      @map("mastra_run_id")
+  generatedAt           DateTime?                    @map("generated_at")
+  createdAt             DateTime                     @default(now()) @map("created_at")
+  updatedAt             DateTime                     @updatedAt @map("updated_at")
 
   @@unique([videoSceneId, locale])
   @@index([locale])
@@ -1311,48 +1408,48 @@ model Experience {
 /// discriminated union in `src/domain/blocks.ts` (Unit 4e). Reads return the
 /// JSONB column directly; mutations validate before write.
 model ExperienceLocale {
-  id              String                       @id @default(cuid())
-  experienceId    String                       @map("experience_id")
-  experience      Experience                   @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  id                         String                       @id @default(cuid())
+  experienceId               String                       @map("experience_id")
+  experience                 Experience                   @relation(fields: [experienceId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 locale code, e.g. "en", "fr", "es-419".
-  locale          String
+  locale                     String
   /// URL slug (UID-style). Unique within (locale, slug) when published — the
   /// partial unique index lives in raw migration SQL since Prisma doesn't
   /// model partial uniques natively.
-  slug            String
+  slug                       String
   /// True when this locale is the homepage for its locale.
-  isHomepage      Boolean                      @default(false) @map("is_homepage")
+  isHomepage                 Boolean                      @default(false) @map("is_homepage")
   /// Optional URL path prefix; combines with `slug` to form the canonical path.
-  pathSegment     String?                      @map("path_segment")
-  title           String?
-  metaDescription String?                      @map("meta_description")
-  ogTitle         String?                      @map("og_title")
-  ogDescription   String?                      @map("og_description")
+  pathSegment                String?                      @map("path_segment")
+  title                      String?
+  metaDescription            String?                      @map("meta_description")
+  ogTitle                    String?                      @map("og_title")
+  ogDescription              String?                      @map("og_description")
   /// External media URL for the OG image. Media uploads land in Unit 11
   /// (storage service); this column may later become an FK to a MediaAsset.
-  ogImageUrl      String?                      @map("og_image_url")
+  ogImageUrl                 String?                      @map("og_image_url")
   /// Block-based content composition. Validated by the Zod union before write.
-  blocks          Json                         @default("[]")
+  blocks                     Json                         @default("[]")
   /// Per-locale embedding vector. NULL until the experienceEmbedding workflow
   /// runs against this locale's text. Excluded from Pothos types (technical
   /// control — schema test asserts no embed/vector/similarity field leaks).
   /// Search uses raw SQL inside services with `<=>` cosine distance + the
   /// partial HNSW index `WHERE embedding IS NOT NULL`.
-  embedding       Unsupported("vector(1536)")?
+  embedding                  Unsupported("vector(1536)")?
   /// Compact provenance for vectors generated by Mastra. These fields are
   /// internal-only and are not exposed via GraphQL.
-  embeddingSourceContentHash String?          @map("embedding_source_content_hash")
-  embeddingSourceSummary     String?          @map("embedding_source_summary")
-  embeddingModel             String?          @map("embedding_model")
-  embeddingDimensions        Int?             @map("embedding_dimensions")
-  embeddingProvider          String?          @map("embedding_provider")
-  embeddingGenerationMode    String?          @map("embedding_generation_mode")
-  embeddingMastraRunId       String?          @map("embedding_mastra_run_id")
-  embeddingGeneratedAt       DateTime?        @map("embedding_generated_at")
-  status          LocaleStatus                 @default(DRAFT)
-  publishedAt     DateTime?                    @map("published_at")
-  createdAt       DateTime                     @default(now()) @map("created_at")
-  updatedAt       DateTime                     @updatedAt @map("updated_at")
+  embeddingSourceContentHash String?                      @map("embedding_source_content_hash")
+  embeddingSourceSummary     String?                      @map("embedding_source_summary")
+  embeddingModel             String?                      @map("embedding_model")
+  embeddingDimensions        Int?                         @map("embedding_dimensions")
+  embeddingProvider          String?                      @map("embedding_provider")
+  embeddingGenerationMode    String?                      @map("embedding_generation_mode")
+  embeddingMastraRunId       String?                      @map("embedding_mastra_run_id")
+  embeddingGeneratedAt       DateTime?                    @map("embedding_generated_at")
+  status                     LocaleStatus                 @default(DRAFT)
+  publishedAt                DateTime?                    @map("published_at")
+  createdAt                  DateTime                     @default(now()) @map("created_at")
+  updatedAt                  DateTime                     @updatedAt @map("updated_at")
 
   @@unique([experienceId, locale])
   @@index([locale])
@@ -1372,39 +1469,39 @@ model ExperienceLocale {
 /// compact provenance so model upgrades and repair runs can be audited without
 /// reading manager transcript source artifacts back from S3.
 model VideoTranscript {
-  id             String       @id @default(cuid())
-  videoEditionId String       @map("video_edition_id")
-  videoEdition   VideoEdition @relation(fields: [videoEditionId], references: [id], onDelete: Cascade)
+  id                String       @id @default(cuid())
+  videoEditionId    String       @map("video_edition_id")
+  videoEdition      VideoEdition @relation(fields: [videoEditionId], references: [id], onDelete: Cascade)
   /// Denormalized from the edition's parent video for convenience joins.
-  videoId        String       @map("video_id")
-  video          Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoId           String       @map("video_id")
+  video             Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 language tag of the source transcript.
-  language       String
+  language          String
   /// Embedding model string as reported by the producing workflow (e.g.
   /// `openai/text-embedding-3-small`). Admin logs a warning on drift;
   /// intentional model replacement must use an explicit ingest mode.
-  model          String
+  model             String
   /// Dimension count. Hard-guarded to 1536 at read time.
-  dimensions     Int
+  dimensions        Int
   /// Chunking strategy metadata from the producing pipeline.
-  chunkingType   String       @map("chunking_type")
-  maxChunkTokens Int          @map("max_chunk_tokens")
-  overlapTokens  Int          @map("overlap_tokens")
-  totalChunks    Int          @map("total_chunks")
-  totalTokens    Int          @map("total_tokens")
+  chunkingType      String       @map("chunking_type")
+  maxChunkTokens    Int          @map("max_chunk_tokens")
+  overlapTokens     Int          @map("overlap_tokens")
+  totalChunks       Int          @map("total_chunks")
+  totalTokens       Int          @map("total_tokens")
   /// Artifact's own `generatedAt` timestamp — NOT admin's insert time.
-  generatedAt    DateTime     @map("generated_at")
+  generatedAt       DateTime     @map("generated_at")
   /// Compact provenance for Mastra-written transcript embeddings. Nullable so
   /// legacy rows from the pre-Mastra producer remain readable.
-  sourceArtifactKey String?    @map("source_artifact_key")
-  sourceContentHash String?    @map("source_content_hash")
-  sourceProvider    String?    @map("source_provider")
-  sourceGeneratedAt DateTime?  @map("source_generated_at")
-  generationMode    String?    @map("generation_mode")
-  mastraRunId       String?    @map("mastra_run_id")
-  chunkingVersion   String?    @map("chunking_version")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
+  sourceArtifactKey String?      @map("source_artifact_key")
+  sourceContentHash String?      @map("source_content_hash")
+  sourceProvider    String?      @map("source_provider")
+  sourceGeneratedAt DateTime?    @map("source_generated_at")
+  generationMode    String?      @map("generation_mode")
+  mastraRunId       String?      @map("mastra_run_id")
+  chunkingVersion   String?      @map("chunking_version")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
 
   chunks VideoTranscriptChunk[]
 

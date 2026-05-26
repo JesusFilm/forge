@@ -8,9 +8,29 @@ vi.mock("@/services/embeddings.service", () => ({
   generateExperienceEmbedding: vi.fn(),
 }))
 
+vi.mock("@/db/client", () => ({ prisma: {} }))
+
+vi.mock("@/services/search-trace.service", () => ({
+  getSearchTraceCaptureStats: vi.fn(() => ({
+    writeSuccesses: 0,
+    writeFailures: 0,
+    writeTimeouts: 0,
+    rawCaptureDisabled: 0,
+    lastWriteSuccessAt: null,
+    lastWriteFailureAt: null,
+    lastWriteTimeoutAt: null,
+    lastRawCaptureDisabledAt: null,
+  })),
+}))
+
+vi.mock("@/services/search-trace-retention.service", () => ({
+  readSearchTraceRetentionHealth: vi.fn(),
+}))
+
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { generateExperienceEmbedding } from "@/services/embeddings.service"
 import { __resetSearchHealthForTest } from "@/services/hybrid-search-health"
+import { readSearchTraceRetentionHealth } from "@/services/search-trace-retention.service"
 import { GET } from "./route"
 
 const allowRateLimit = () =>
@@ -33,6 +53,12 @@ beforeEach(() => {
   vi.clearAllMocks()
   __resetSearchHealthForTest()
   allowRateLimit()
+  vi.mocked(readSearchTraceRetentionHealth).mockResolvedValue({
+    healthy: true,
+    reason: "not-production",
+    latestPurgeAt: null,
+    activeSchedulerRunId: null,
+  })
 })
 
 afterEach(() => {
@@ -54,6 +80,11 @@ describe("GET /api/search/health", () => {
     expect(body.error).toBeNull()
     expect(body.attempts).toBe(1)
     expect(body.failures).toBe(0)
+    expect(body.retention).toMatchObject({ healthy: true })
+    expect(body.traceCapture).toMatchObject({
+      writeSuccesses: 0,
+      writeFailures: 0,
+    })
   })
 
   it("returns 200 + status=degraded when embedding throws", async () => {
@@ -71,6 +102,31 @@ describe("GET /api/search/health", () => {
     expect(body.lastErrorClass).toBe("Error")
     expect(body.lastErrorMessage).toBe("provider down")
     expect(body.lastErrorAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+    expect(body.retention).toMatchObject({ healthy: true })
+  })
+
+  it("returns status=degraded when trace retention is unhealthy", async () => {
+    vi.mocked(generateExperienceEmbedding).mockResolvedValue({
+      model: "text-embedding-3-small",
+      dimensions: 1536,
+      embedding: new Array(1536).fill(0.1),
+    })
+    vi.mocked(readSearchTraceRetentionHealth).mockResolvedValueOnce({
+      healthy: false,
+      reason: "missing",
+      latestPurgeAt: null,
+      activeSchedulerRunId: null,
+    })
+
+    const res = await GET(req())
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.status).toBe("degraded")
+    expect(body.error).toBe("search trace retention unhealthy")
+    expect(body.retention).toMatchObject({
+      healthy: false,
+      reason: "missing",
+    })
   })
 
   // Timeout behavior itself is covered by hybrid-search-health.test.ts;

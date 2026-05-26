@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { compareFingerprints, readFingerprint } from "./fingerprint"
+import {
+  compareFingerprints,
+  readFingerprint,
+  readSearchTraceAggregateFingerprint,
+} from "./fingerprint"
 import type { Fingerprint } from "./types"
 
 function buildPrismaStub(rows: unknown[]) {
@@ -151,6 +155,68 @@ describe("readFingerprint", () => {
     const sqlChunks = queryRaw.$queryRaw.mock.calls[0]?.[0]?.join("") ?? ""
 
     expect(sqlChunks).toContain("status = 'published'")
+  })
+})
+
+describe("readSearchTraceAggregateFingerprint", () => {
+  it("reads aggregate counters without changing the content fingerprint shape", async () => {
+    const prisma = buildPrismaStub([
+      {
+        aggregate_count: 5n,
+        aggregate_max_updated_at: new Date("2026-05-25T00:00:00Z"),
+        query_count_sum: 120n,
+        result_count_sum: 350n,
+      },
+    ])
+
+    await expect(readSearchTraceAggregateFingerprint(prisma)).resolves.toEqual({
+      aggregateRows: {
+        count: 5,
+        maxUpdatedAt: "2026-05-25T00:00:00.000Z",
+      },
+      queryCountSum: 120,
+      resultCountSum: 350,
+    })
+  })
+
+  it("uses search_trace_aggregate only and never reads raw query text", async () => {
+    const prisma = buildPrismaStub([
+      {
+        aggregate_count: 0n,
+        aggregate_max_updated_at: null,
+        query_count_sum: 0n,
+        result_count_sum: 0n,
+      },
+    ])
+    await readSearchTraceAggregateFingerprint(prisma)
+
+    const queryRaw = prisma as unknown as {
+      $queryRaw: { mock: { calls: [TemplateStringsArray, ...unknown[]][] } }
+    }
+    const sql = queryRaw.$queryRaw.mock.calls[0]?.[0]?.join(" ") ?? ""
+
+    expect(sql).toContain("search_trace_aggregate")
+    expect(sql).not.toMatch(/query_text|queryText|search_trace\s/i)
+  })
+
+  it("does not add trace fields to the existing baseline Fingerprint type", async () => {
+    const prisma = buildPrismaStub([
+      {
+        scene_count: 0n,
+        scene_max_updated_at: null,
+        transcript_count: 0n,
+        transcript_max_updated_at: null,
+        experience_count: 0n,
+        experience_max_updated_at: null,
+      },
+    ])
+
+    const fp = await readFingerprint(prisma)
+    expect(Object.keys(fp).sort()).toEqual([
+      "experiences",
+      "sceneEmbeddings",
+      "transcriptEmbeddings",
+    ])
   })
 })
 

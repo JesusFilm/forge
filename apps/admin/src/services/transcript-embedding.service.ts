@@ -39,7 +39,6 @@ import {
   isPrismaRuntimeError,
   sanitizePrismaErrorMessage,
 } from "@/db/prisma-errors"
-import type { EmbeddingsResult } from "@/services/manager-artifacts.service"
 
 /**
  * Admin stores `text-embedding-3-small` vectors at 1536 dimensions
@@ -113,6 +112,35 @@ export type TranscriptEmbeddingPayloadChunk = {
   startSeconds?: number
   endSeconds?: number
   embedding: number[]
+}
+
+export type TranscriptEmbeddingArtifactChunk = {
+  chunkId: string
+  text: string
+  embedding: number[]
+  metadata: {
+    tokenCount: number
+    startTime?: number
+    endTime?: number
+  }
+}
+
+export type EmbeddingsResult = {
+  model: string
+  dimensions: number
+  chunks: TranscriptEmbeddingArtifactChunk[]
+  averagedEmbedding: number[]
+  metadata: {
+    totalChunks: number
+    totalTokens: number
+    chunkingStrategy: {
+      type: "segment-aware" | "plain-text"
+      maxChunkTokens: number
+      overlapTokens: number
+    }
+    embeddingDimensions: number
+    generatedAt: string
+  }
 }
 
 export type TranscriptEmbeddingPayloadInput = {

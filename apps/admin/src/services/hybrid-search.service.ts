@@ -236,6 +236,20 @@ export type SearchResponse = {
   searchMode: SearchMode
 }
 
+export type SearchExecutionSummary = {
+  searchMode: SearchMode
+  resultCount: number
+  outcome: "success" | "degraded"
+  traceClass: string
+  failedRetrievers: string[]
+  contributingRetrievers: string[]
+}
+
+export type SearchWithTraceResult = {
+  response: SearchResponse
+  trace: SearchExecutionSummary
+}
+
 /**
  * Converts a number[] embedding vector to pgvector text format
  * "[0.1,0.2,...]". Kept local rather than importing toPgVector from
@@ -491,6 +505,11 @@ export class HybridSearchService {
   }
 
   async search(params: SearchParams): Promise<SearchResponse> {
+    const { response } = await this.searchWithTrace(params)
+    return response
+  }
+
+  async searchWithTrace(params: SearchParams): Promise<SearchWithTraceResult> {
     const { query, locale } = params
 
     // Decode the opt-in pipeline mode. Unknown values warn-and-fall-back
@@ -520,11 +539,13 @@ export class HybridSearchService {
     // warn let feat-097 hide in production for days) and tracked via
     // process-local counters the health probe exposes.
     let queryEmbeddingText: string | null = null
+    let embeddingFailed = false
     recordAttempt()
     try {
       const vector = await this.embedder(query)
       queryEmbeddingText = toPgvectorText(vector)
     } catch (error) {
+      embeddingFailed = true
       recordFailure(error)
       const errorClass =
         error instanceof Error ? error.constructor.name : "UnknownError"
@@ -626,8 +647,9 @@ export class HybridSearchService {
     }
 
     const outcomes = await Promise.allSettled(retrievals.map((r) => r.promise))
+    const failedRetrievers: string[] = []
     const lists = outcomes.map((outcome, i) =>
-      this.unwrapOutcome(outcome, retrievals[i]!.label),
+      this.unwrapOutcome(outcome, retrievals[i]!.label, failedRetrievers),
     )
 
     // (label, list) pairs for downstream origin tracking. Used by both
@@ -709,22 +731,44 @@ export class HybridSearchService {
       this.logger,
     )
 
-    return {
+    const searchMode = queryEmbeddingText != null ? "hybrid" : "keyword-only"
+    const contributingRetrievers = labeledLists
+      .filter(({ list }) => list.length > 0)
+      .map(({ label }) => label)
+    const traceClasses: string[] = []
+    if (embeddingFailed) traceClasses.push("query_embedding_failure")
+    if (failedRetrievers.length > 0) traceClasses.push("retrieval_failure")
+    const traceClass = traceClasses.length > 0 ? traceClasses.join("+") : "none"
+    const response: SearchResponse = {
       results,
       hasMore,
       query,
       // queryEmbeddingText is non-null iff the embedding call succeeded
       // and both semantic retrievals were dispatched. If null, the
       // response is assembled from keyword retrieval alone.
-      searchMode: queryEmbeddingText != null ? "hybrid" : "keyword-only",
+      searchMode,
+    }
+
+    return {
+      response,
+      trace: {
+        searchMode,
+        resultCount: results.length,
+        outcome: traceClass === "none" ? "success" : "degraded",
+        traceClass,
+        failedRetrievers,
+        contributingRetrievers,
+      },
     }
   }
 
   private unwrapOutcome<T>(
     outcome: PromiseSettledResult<T[]>,
     label: string,
+    failedRetrievers: string[],
   ): T[] {
     if (outcome.status === "fulfilled") return outcome.value
+    failedRetrievers.push(label)
     this.logger.error(
       `[search] ${label} retrieval failed: ${
         outcome.reason instanceof Error

@@ -2,15 +2,16 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import {
+  EmbeddingGenerationModeSchema,
+  EmbeddingTimestampSchema,
+  statusForEmbeddingRewrite,
+} from "@/services/embedding-ingest-shared"
+import {
   buildExperienceEmbeddingSource,
   EXPERIENCE_EMBEDDING_DIMENSIONS,
   writeExperienceEmbeddingPayloadInTransaction,
   type ExperienceEmbeddingGenerationMode,
 } from "@/services/embeddings.service"
-
-const GenerationModeSchema = z
-  .enum(["idempotent", "repair", "force", "model-upgrade"])
-  .default("idempotent")
 
 const TargetSchema = z
   .object({
@@ -20,13 +21,6 @@ const TargetSchema = z
     slug: z.string().min(1).optional(),
   })
   .strict()
-
-const TimestampSchema = z
-  .string()
-  .min(1)
-  .refine((value) => !Number.isNaN(Date.parse(value)), {
-    message: "must be a valid timestamp",
-  })
 
 export const ExperienceEmbeddingIngestPayloadSchema = z
   .object({
@@ -46,8 +40,8 @@ export const ExperienceEmbeddingIngestPayloadSchema = z
       .strict(),
     generation: z
       .object({
-        mode: GenerationModeSchema,
-        generatedAt: TimestampSchema,
+        mode: EmbeddingGenerationModeSchema,
+        generatedAt: EmbeddingTimestampSchema,
         mastraRunId: z.string().min(1),
       })
       .strict(),
@@ -261,16 +255,6 @@ function isFirstExperienceEmbeddingWrite(
   )
 }
 
-function statusForWrite(
-  existing: ExistingExperienceEmbeddingSummary | null,
-  mode: ExperienceEmbeddingGenerationMode,
-): Exclude<ExperienceEmbeddingIngestStatus, "unchanged" | "rejected"> {
-  if (isFirstExperienceEmbeddingWrite(existing)) return "created"
-  if (mode === "repair") return "repaired"
-  if (mode === "model-upgrade") return "model_upgraded"
-  return "forced"
-}
-
 async function lockExperienceLocale(
   tx: Prisma.TransactionClient,
   localeId: string,
@@ -385,10 +369,22 @@ export async function ingestExperienceEmbedding(
         }
       }
 
+      let status: ExperienceEmbeddingIngestStatus = "created"
+      if (!isFirstExperienceEmbeddingWrite(existing)) {
+        if (mode === "idempotent") {
+          return resultForRejected(
+            payload,
+            target,
+            "existing_experience_embedding_differs",
+          )
+        }
+        status = statusForEmbeddingRewrite(mode)
+      }
+
       await writePayload(tx, payload, target)
 
       return {
-        status: statusForWrite(existing, mode),
+        status,
         target,
         model: payload.model.name,
         dimensions: payload.model.dimensions,
@@ -402,5 +398,4 @@ export async function ingestExperienceEmbedding(
 export const _internals = {
   validateEmbedding,
   existingMatches,
-  statusForWrite,
 }

@@ -16,8 +16,11 @@ export async function register(): Promise<void> {
     await import("@/services/workflow-worker-heartbeat.service")
   const { ensureVideoDbBackupSchedulerStarted } =
     await import("@/services/video-db-backup/job")
+  const { ensureSearchTraceRetentionSchedulerStarted } =
+    await import("@/services/search-trace-retention/job")
   const world = getWorld()
   await world.start?.()
   await startWorkflowWorkerHeartbeat()
   await ensureVideoDbBackupSchedulerStarted()
+  await ensureSearchTraceRetentionSchedulerStarted()
 }

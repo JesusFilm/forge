@@ -239,6 +239,27 @@ describe("ingestExperienceEmbedding", () => {
     expect(writeExperiencePayloadMock).not.toHaveBeenCalled()
   })
 
+  it("model-upgrade mode rewrites healthy vectors with model-upgraded status", async () => {
+    const prisma = buildPrisma()
+    vi.mocked(prisma.$queryRaw)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([existing()])
+
+    const result = await ingestExperienceEmbedding(
+      prisma as never,
+      buildPayload({
+        generation: {
+          mode: "model-upgrade",
+          generatedAt: "2026-05-26T00:00:00.000Z",
+          mastraRunId: "run-model-upgrade",
+        },
+      }),
+    )
+
+    expect(result.status).toBe("model_upgraded")
+    expect(writeExperiencePayloadMock).toHaveBeenCalledTimes(1)
+  })
+
   it("repair mode rejects missing vectors when provenance differs", async () => {
     const prisma = buildPrisma()
     vi.mocked(prisma.$queryRaw)
