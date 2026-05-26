@@ -15,7 +15,10 @@ import { useQuery } from "@apollo/client/react"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/queries"
 import type { AdminBlock } from "../../src/lib/queries"
-import { normalizeVideo } from "../../src/lib/normalizeVideo"
+import {
+  normalizeVideo,
+  type WatchBibleCitation,
+} from "../../src/lib/normalizeVideo"
 import { TEXT_PRIMARY } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
 import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
@@ -33,6 +36,7 @@ import { LanguageSubtitleModal } from "../../src/components/watch/LanguageSubtit
 import { ShareModal } from "../../src/components/watch/ShareModal"
 
 const PLAYER_HEIGHT_RATIO = 9 / 16
+const EMPTY_CITATIONS: WatchBibleCitation[] = []
 
 export default function WatchVideoPage() {
   const { slug } = useLocalSearchParams<{ slug: string }>()
@@ -58,7 +62,7 @@ export default function WatchVideoPage() {
 
   const video = useMemo(() => normalizeVideo(data?.videoBySlug ?? null), [data])
   const activeVariant = video?.variants[activeVariantIndex] ?? null
-  const bibleQuotes = useBibleVerses(video?.bibleCitations ?? [])
+  const bibleQuotes = useBibleVerses(video?.bibleCitations ?? EMPTY_CITATIONS)
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -157,7 +161,7 @@ export default function WatchVideoPage() {
         scrollEventThrottle={16}
       >
         <VideoPlayer
-          streamingUrl={video.streamingUrl}
+          streamingUrl={activeVariant?.hls ?? video.streamingUrl}
           posterUrl={video.posterUrl}
           onPlayingChange={undefined}
         />

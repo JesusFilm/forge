@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import type { WatchBibleCitation } from "../lib/normalizeVideo"
 
@@ -107,30 +107,32 @@ export function useBibleVerses(
     }
   }, [citations])
 
-  const quoteCards: BibleQuoteBlock[] = citations.map((c, i) => {
-    const ref = c.bookName
-      ? `${c.bookName} ${c.chapterStart ?? ""}:${c.verseStart ?? ""}`
-      : (c.osisId ?? "")
-    return {
-      reference: ref,
-      text: verses[c.documentId] ?? "",
+  return useMemo(() => {
+    const quoteCards: BibleQuoteBlock[] = citations.map((c, i) => {
+      const ref = c.bookName
+        ? `${c.bookName} ${c.chapterStart ?? ""}:${c.verseStart ?? ""}`
+        : (c.osisId ?? "")
+      return {
+        reference: ref,
+        text: verses[c.documentId] ?? "",
+        attribution: null,
+        imageUrl: BIBLE_IMAGES[i % BIBLE_IMAGES.length] ?? null,
+        backgroundColor: null,
+        ctaLabel: null,
+        ctaLink: null,
+      }
+    })
+
+    quoteCards.push({
+      reference: "FREE RESOURCES",
+      text: "Want to explore life's biggest questions?",
       attribution: null,
-      imageUrl: BIBLE_IMAGES[i % BIBLE_IMAGES.length] ?? null,
+      imageUrl: PROMO_IMAGE_URL,
       backgroundColor: null,
-      ctaLabel: null,
-      ctaLink: null,
-    }
-  })
+      ctaLabel: "Join Our Bible Study",
+      ctaLink: JOIN_BIBLE_STUDY_URL,
+    })
 
-  quoteCards.push({
-    reference: "FREE RESOURCES",
-    text: "Want to explore life's biggest questions?",
-    attribution: null,
-    imageUrl: PROMO_IMAGE_URL,
-    backgroundColor: null,
-    ctaLabel: "Join Our Bible Study",
-    ctaLink: JOIN_BIBLE_STUDY_URL,
-  })
-
-  return quoteCards
+    return quoteCards
+  }, [citations, verses])
 }

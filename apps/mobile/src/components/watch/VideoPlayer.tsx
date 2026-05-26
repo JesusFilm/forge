@@ -27,10 +27,18 @@ export function VideoPlayer({
   const resolvedPoster = resolveImageUrl(posterUrl)
   const playerHeight = Math.round(screenWidth * (9 / 16))
 
-  const player = useVideoPlayer(streamingUrl, (p) => {
+  const initialUrl = useRef(streamingUrl)
+  const player = useVideoPlayer(initialUrl.current, (p) => {
     p.muted = false
     p.loop = false
   })
+
+  useEffect(() => {
+    if (streamingUrl && streamingUrl !== initialUrl.current) {
+      initialUrl.current = streamingUrl
+      player.replace(streamingUrl)
+    }
+  }, [streamingUrl, player])
 
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,

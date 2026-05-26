@@ -1,3 +1,4 @@
+import { useCallback } from "react"
 import {
   FlatList,
   Platform,
@@ -44,76 +45,82 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
   const cardWidth = Math.round(screenWidth * CARD_WIDTH_RATIO)
   const cardHeight = Math.round(cardWidth / CARD_ASPECT_RATIO)
 
-  if (siblings.length === 0) return null
+  const renderItem = useCallback(
+    ({ item }: { item: WatchSibling }) => {
+      const isCurrent = item.slug === currentSlug
+      const title = item.title ?? item.label ?? "Untitled"
 
-  const renderItem = ({ item }: { item: WatchSibling }) => {
-    const isCurrent = item.slug === currentSlug
-    const title = item.title ?? item.label ?? "Untitled"
-
-    const handlePress = () => {
-      if (!isCurrent) {
-        router.replace(`/watch/${encodeURIComponent(item.slug)}`)
-      }
-    }
-
-    return (
-      <Pressable
-        style={({ pressed }) => [
-          card.surface,
-          { width: cardWidth, height: cardHeight },
-          pressed && Platform.OS === "ios" && feedback.pressed,
-        ]}
-        android_ripple={{ color: "rgba(255, 255, 255, 0.2)", foreground: true }}
-        onPress={handlePress}
-        accessibilityRole="button"
-        accessibilityLabel={
-          isCurrent ? `Currently playing ${title}` : `Play ${title}`
+      const handlePress = () => {
+        if (!isCurrent) {
+          router.replace(`/watch/${encodeURIComponent(item.slug)}`)
         }
-      >
-        {item.posterUrl != null ? (
-          <Image
-            source={item.posterUrl}
+      }
+
+      return (
+        <Pressable
+          style={({ pressed }) => [
+            card.surface,
+            { width: cardWidth, height: cardHeight },
+            pressed && Platform.OS === "ios" && feedback.pressed,
+          ]}
+          android_ripple={{
+            color: "rgba(255, 255, 255, 0.2)",
+            foreground: true,
+          }}
+          onPress={handlePress}
+          accessibilityRole="button"
+          accessibilityLabel={
+            isCurrent ? `Currently playing ${title}` : `Play ${title}`
+          }
+        >
+          {item.posterUrl != null ? (
+            <Image
+              source={item.posterUrl}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              recyclingKey={`upnext-${item.documentId}`}
+              accessibilityLabel={title}
+              priority="low"
+            />
+          ) : (
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                { backgroundColor: SURFACE_COLOR },
+              ]}
+            />
+          )}
+
+          <LinearGradient
+            colors={[hexToRgba(BLACK, 0), hexToRgba(BLACK, 0.85)]}
+            locations={[0.4, 1]}
             style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            recyclingKey={`upnext-${item.documentId}`}
-            accessibilityLabel={title}
-            priority="low"
+            pointerEvents="none"
           />
-        ) : (
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              { backgroundColor: SURFACE_COLOR },
-            ]}
-          />
-        )}
 
-        <LinearGradient
-          colors={[hexToRgba(BLACK, 0), hexToRgba(BLACK, 0.85)]}
-          locations={[0.4, 1]}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
+          {isCurrent && (
+            <View style={styles.playingPill} pointerEvents="none">
+              <Text style={[styles.playingPillText, typography.caption]}>
+                Playing
+              </Text>
+            </View>
+          )}
 
-        {isCurrent && (
-          <View style={styles.playingPill} pointerEvents="none">
-            <Text style={[styles.playingPillText, typography.caption]}>
-              Playing
+          <View style={styles.titleOverlay} pointerEvents="none">
+            <Text
+              style={[styles.cardTitle, typography.bodySmall]}
+              numberOfLines={2}
+            >
+              {title}
             </Text>
           </View>
-        )}
+        </Pressable>
+      )
+    },
+    [currentSlug, cardWidth, cardHeight, typography, router],
+  )
 
-        <View style={styles.titleOverlay} pointerEvents="none">
-          <Text
-            style={[styles.cardTitle, typography.bodySmall]}
-            numberOfLines={2}
-          >
-            {title}
-          </Text>
-        </View>
-      </Pressable>
-    )
-  }
+  if (siblings.length === 0) return null
 
   return (
     <View>

@@ -62,9 +62,10 @@ export function PlayerControls({
   }, [isPlaying, player])
 
   const toggleMute = useCallback(() => {
-    player.muted = !player.muted
-    setIsMuted(player.muted)
-  }, [player])
+    const newMuted = !isMuted
+    player.muted = newMuted
+    setIsMuted(newMuted)
+  }, [player, isMuted])
 
   const progress = duration > 0 ? currentTime / duration : 0
 

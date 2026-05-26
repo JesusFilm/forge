@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Animated, Pressable, StyleSheet, Text } from "react-native"
 import { Image } from "expo-image"
 import Ionicons from "@expo/vector-icons/Ionicons"
@@ -33,7 +33,12 @@ export function MiniPlayerBar({
   const opacity = useRef(new Animated.Value(0)).current
   const translateY = useRef(new Animated.Value(60)).current
 
+  const [mounted, setMounted] = useState(false)
+
   useEffect(() => {
+    if (visible) {
+      setMounted(true)
+    }
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: visible ? 1 : 0,
@@ -45,10 +50,14 @@ export function MiniPlayerBar({
         duration: 200,
         useNativeDriver: true,
       }),
-    ]).start()
+    ]).start(({ finished }) => {
+      if (finished && !visible) {
+        setMounted(false)
+      }
+    })
   }, [visible, opacity, translateY])
 
-  if (!visible) return null
+  if (!mounted) return null
 
   return (
     <Animated.View
