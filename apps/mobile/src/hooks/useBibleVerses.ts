@@ -2,6 +2,11 @@ import { useEffect, useState } from "react"
 
 import type { WatchBibleCitation } from "../lib/normalizeVideo"
 
+const JOIN_BIBLE_STUDY_URL =
+  "https://join.bsfinternational.org/?utm_source=jesusfilm-watch"
+const PROMO_IMAGE_URL =
+  "https://images.unsplash.com/photo-1650658720644-e1588bd66de3?w=900&auto=format&fit=crop&q=60"
+
 const BIBLE_IMAGES = [
   "https://images.unsplash.com/photo-1480869799327-03916a613b29?q=80&w=800&auto=format&fit=crop",
   "https://images.unsplash.com/16/unsplash_526360a842e20_1.JPG?q=80&w=800&auto=format&fit=crop",
@@ -102,7 +107,7 @@ export function useBibleVerses(
     }
   }, [citations])
 
-  return citations.map((c, i) => {
+  const quoteCards: BibleQuoteBlock[] = citations.map((c, i) => {
     const ref = c.bookName
       ? `${c.bookName} ${c.chapterStart ?? ""}:${c.verseStart ?? ""}`
       : (c.osisId ?? "")
@@ -117,4 +122,16 @@ export function useBibleVerses(
       ctaLink: null,
     }
   })
+
+  quoteCards.push({
+    reference: "FREE RESOURCES",
+    text: "Want to explore life's biggest questions?",
+    attribution: null,
+    imageUrl: PROMO_IMAGE_URL,
+    backgroundColor: null,
+    ctaLabel: "Join Our Bible Study",
+    ctaLink: JOIN_BIBLE_STUDY_URL,
+  })
+
+  return quoteCards
 }
