@@ -108,7 +108,7 @@ export default function WatchVideoPage() {
     video.bibleCitations.length > 0
       ? {
           __typename: "BibleQuotesCarouselBlock",
-          heading: "Scripture References",
+          heading: "Bible Quotes",
           quotes: bibleQuotes,
         }
       : null
