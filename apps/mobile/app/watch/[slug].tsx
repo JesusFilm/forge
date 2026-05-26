@@ -142,11 +142,11 @@ export default function WatchVideoPage() {
           onShare={() => setShareModalVisible(true)}
         />
 
+        <VideoDescription description={video.description} />
+
         {video.siblings.length > 0 && (
           <UpNextCarousel siblings={video.siblings} currentSlug={video.slug} />
         )}
-
-        <VideoDescription description={video.description} />
 
         {studyQuestionsBlock != null && (
           <RelatedQuestionsRenderer section={studyQuestionsBlock} />
