@@ -4,7 +4,6 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -25,6 +24,9 @@ import { VideoDescription } from "../../src/components/watch/VideoDescription"
 import { MiniPlayerBar } from "../../src/components/watch/MiniPlayerBar"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
+import { DownloadModal } from "../../src/components/watch/DownloadModal"
+import { LanguageSubtitleModal } from "../../src/components/watch/LanguageSubtitleModal"
+import { ShareModal } from "../../src/components/watch/ShareModal"
 
 const PLAYER_HEIGHT_RATIO = 9 / 16
 
@@ -35,6 +37,10 @@ export default function WatchVideoPage() {
 
   const [showMiniPlayer, setShowMiniPlayer] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [downloadModalVisible, setDownloadModalVisible] = useState(false)
+  const [languageModalVisible, setLanguageModalVisible] = useState(false)
+  const [shareModalVisible, setShareModalVisible] = useState(false)
+  const [activeVariantIndex, setActiveVariantIndex] = useState(0)
 
   const { data, loading, error } = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { slug: decodedSlug, locale: "en" },
@@ -43,6 +49,7 @@ export default function WatchVideoPage() {
   })
 
   const video = useMemo(() => normalizeVideo(data?.videoBySlug ?? null), [data])
+  const activeVariant = video?.variants[activeVariantIndex] ?? null
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -57,13 +64,6 @@ export default function WatchVideoPage() {
   const handleScrollToPlayer = useCallback(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true })
   }, [])
-
-  const handleShare = useCallback(() => {
-    if (!video) return
-    Share.share({
-      message: `Check out "${video.title}" on JesusFilm!\nhttps://www.jesusfilm.org/watch/${video.slug}`,
-    })
-  }, [video])
 
   const handlePlayingChange = useCallback((playing: boolean) => {
     setIsPlaying(playing)
@@ -147,16 +147,10 @@ export default function WatchVideoPage() {
         />
 
         <ActionButtonRow
-          onDownload={() => {
-            /* U8: DownloadModal */
-          }}
-          onLanguage={() => {
-            /* U8: LanguageSubtitleModal */
-          }}
-          onSubtitles={() => {
-            /* U8: LanguageSubtitleModal */
-          }}
-          onShare={handleShare}
+          onDownload={() => setDownloadModalVisible(true)}
+          onLanguage={() => setLanguageModalVisible(true)}
+          onSubtitles={() => setLanguageModalVisible(true)}
+          onShare={() => setShareModalVisible(true)}
         />
 
         {video.siblings.length > 0 && (
@@ -179,12 +173,50 @@ export default function WatchVideoPage() {
         posterUrl={video.posterUrl}
         title={video.title}
         isPlaying={isPlaying}
-        onPlayPause={() => {
-          // Player controls handle actual play/pause
-          handleScrollToPlayer()
-        }}
+        onPlayPause={handleScrollToPlayer}
         onPress={handleScrollToPlayer}
       />
+
+      {downloadModalVisible && (
+        <DownloadModal
+          visible={downloadModalVisible}
+          onClose={() => setDownloadModalVisible(false)}
+          videoTitle={video.title}
+          posterUrl={video.posterUrl}
+          duration={video.duration}
+          languageName={activeVariant?.languageName ?? null}
+          downloads={activeVariant?.downloads ?? []}
+        />
+      )}
+
+      {languageModalVisible && (
+        <LanguageSubtitleModal
+          visible={languageModalVisible}
+          onClose={() => setLanguageModalVisible(false)}
+          variants={video.variants}
+          activeVariantSlug={activeVariant?.slug ?? ""}
+          onLanguageChange={(variantSlug) => {
+            const idx = video.variants.findIndex((v) => v.slug === variantSlug)
+            if (idx >= 0) setActiveVariantIndex(idx)
+          }}
+          subtitles={activeVariant?.subtitles ?? []}
+          subtitleEnabled={false}
+          activeSubtitleSlug={null}
+          onSubtitleChange={() => {}}
+        />
+      )}
+
+      {shareModalVisible && (
+        <ShareModal
+          visible={shareModalVisible}
+          onClose={() => setShareModalVisible(false)}
+          videoTitle={video.title}
+          videoDescription={video.description}
+          posterUrl={video.posterUrl}
+          videoSlug={video.slug}
+          languageSlug={activeVariant?.languageSlug ?? null}
+        />
+      )}
     </View>
   )
 }
