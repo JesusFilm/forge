@@ -22,8 +22,10 @@ import { getViewerId } from "@/lib/viewer-id"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+  WATCH_PLAYER_PLAYBACK_STATE_EVENT,
   type WatchHeaderLanguageSwitcherDetail,
   type WatchPlayerChromeVisibilityDetail,
+  type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { SpinnerIcon } from "@/components/ui/spinner"
@@ -75,7 +77,14 @@ const OBSCURED_PAUSE_THRESHOLD = 0.6
 // globe button appears. With only one variant there's nothing to switch to.
 const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
 
-const PRE_REVEAL_HERO_SIZE_CLASSES = "h-[72svh] min-h-[420px] max-h-[900px]"
+// Match the committed player frame's height before and after reveal. Preview
+// keeps full-width cover rendering, but shares the same mobile-safe frame as
+// the sound-on player so "Play with Sound" does not resize the hero. Mobile
+// reserves enough first-viewport space for the sibling carousel below it, then
+// takes the remaining height with a clamp so very short/tall devices stay sane.
+// Desktop remains a strict 16:9 frame.
+const HERO_FRAME_SIZE_CLASSES =
+  "h-[clamp(20rem,calc(100svh-15rem),48rem)] md:h-auto md:aspect-video w-full max-h-svh"
 
 export function HeroPlayer({
   block,
@@ -209,6 +218,31 @@ export function HeroPlayer({
       publishChromeVisibility(true)
     }
   }, [chromeRevealed, publishChromeVisibility])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const currentPlayer = playerRef.current
+    window.dispatchEvent(
+      new CustomEvent<WatchPlayerPlaybackStateDetail>(
+        WATCH_PLAYER_PLAYBACK_STATE_EVENT,
+        {
+          detail: {
+            playing: currentPlayer ? !currentPlayer.paused : false,
+            muted: chromeRevealed ? !!currentPlayer?.muted : true,
+            preview: !chromeRevealed,
+          },
+        },
+      ),
+    )
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent<WatchPlayerPlaybackStateDetail>(
+          WATCH_PLAYER_PLAYBACK_STATE_EVENT,
+          { detail: { playing: false, muted: true, preview: false } },
+        ),
+      )
+    }
+  }, [chromeRevealed])
 
   // Tracks the first paint where Mux Player has buffered enough to render the
   // muted-loop preview. Without this, the wrapper sits at the player's initial
@@ -570,8 +604,8 @@ export function HeroPlayer({
         data-autoplay-blocked={autoplayBlocked ? "true" : "false"}
         className={`sticky overflow-hidden bg-black ${
           chromeRevealed
-            ? "mx-auto aspect-video w-full max-h-svh max-w-[calc(100svh*16/9)]"
-            : `w-full ${PRE_REVEAL_HERO_SIZE_CLASSES}`
+            ? `mx-auto ${HERO_FRAME_SIZE_CLASSES} md:max-w-[calc(100svh*16/9)]`
+            : HERO_FRAME_SIZE_CLASSES
         }`}
         style={{
           // 100svh tracks the *small* viewport on iOS Safari (visible area

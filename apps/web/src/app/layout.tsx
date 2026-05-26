@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import localFont from "next/font/local"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import "./globals.css"
 import { cn } from "@/lib/utils"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
@@ -19,7 +19,18 @@ const montserrat = localFont({
     },
   ],
   variable: "--font-montserrat",
-  fallback: ["ui-sans-serif", "system-ui", "sans-serif"],
+  fallback: [
+    "Avenir Next",
+    "Avenir",
+    "Helvetica Neue",
+    "Helvetica",
+    "Segoe UI",
+    "Roboto",
+    "Noto Sans",
+    "Liberation Sans",
+    "Arial",
+    "sans-serif",
+  ],
   display: "swap",
 })
 
@@ -46,7 +57,16 @@ export const metadata: Metadata = {
   },
   other: {
     "msapplication-TileImage": "/watch/images/favicon-180.png",
+    "apple-mobile-web-app-status-bar-style": "black",
   },
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#000000",
+  colorScheme: "dark",
 }
 
 export default function RootLayout(props: { children: ReactNode }) {
@@ -54,9 +74,12 @@ export default function RootLayout(props: { children: ReactNode }) {
     <html
       lang="en"
       dir="ltr"
-      className={cn("overflow-x-hidden font-sans", montserrat.variable)}
+      className={cn(
+        "overflow-x-hidden bg-black font-sans",
+        montserrat.variable,
+      )}
     >
-      <body className="overflow-x-hidden bg-stone-900">
+      <body className="overflow-x-hidden bg-black">
         <FloatingSearchProvider>{props.children}</FloatingSearchProvider>
       </body>
     </html>

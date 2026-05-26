@@ -24,12 +24,11 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel"
+import { CAROUSEL_END_SPACER } from "@/lib/content-width"
 import {
-  CAROUSEL_BLEED_CLASSES,
-  CAROUSEL_CONTENT_PADDING,
-  CAROUSEL_END_SPACER,
-} from "@/lib/content-width"
-import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
+  WATCH_PILL_BUTTON_CLASS,
+  WATCH_SECTION_EYEBROW_CLASS,
+} from "@/components/watch/watch-section-styles"
 
 type WatchBibleCitation = WatchBibleQuotesBlock["bibleCitations"][number]
 
@@ -161,6 +160,7 @@ export function BibleQuotesSection({
         <h2 className={WATCH_SECTION_EYEBROW_CLASS}>Bible Quotes</h2>
         <Button
           variant="pill"
+          className={WATCH_PILL_BUTTON_CLASS}
           onClick={onShareClick}
           aria-label="Share"
           data-testid="watch-share-button"
@@ -170,7 +170,10 @@ export function BibleQuotesSection({
         </Button>
       </div>
 
-      <div className={CAROUSEL_BLEED_CLASSES}>
+      <div
+        data-testid="watch-bible-quotes-carousel-bleed"
+        className="-mx-10 w-[calc(100%+5rem)] md:mx-0 md:w-full"
+      >
         <Carousel
           aria-label="Bible Quotes"
           opts={CAROUSEL_OPTS}
@@ -178,7 +181,7 @@ export function BibleQuotesSection({
         >
           <CarouselContent
             data-testid="watch-bible-quotes-list"
-            className={`-ml-4 ${CAROUSEL_CONTENT_PADDING}`}
+            className="-ml-4 pl-10 md:pl-0"
           >
             {bibleCitations.map((citation, i) => (
               <CarouselItem
@@ -236,7 +239,7 @@ export function BibleQuotesSection({
                     variant="pill"
                     nativeButton={false}
                     data-testid="watch-bible-quotes-promo-cta"
-                    className="self-start"
+                    className={`${WATCH_PILL_BUTTON_CLASS} self-start`}
                     render={
                       <a
                         href={JOIN_BIBLE_STUDY_URL}

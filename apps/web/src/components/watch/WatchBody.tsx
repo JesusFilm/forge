@@ -27,18 +27,17 @@ export function WatchBody({
     <section
       data-block-type="WatchBody"
       data-testid="watch-body"
-      className="grid w-full grid-cols-12 gap-10 py-8 text-stone-100 md:grid-cols-12 md:gap-12 xl:gap-16 2xl:gap-20"
+      className="grid w-full grid-cols-1 gap-10 py-8 text-stone-100 md:grid-cols-12 md:gap-12 xl:gap-16 2xl:gap-20"
     >
       <div
         data-testid="watch-body-left"
-        className="col-span-12 flex min-w-0 flex-col gap-4 md:col-span-7"
+        className="col-span-1 flex min-w-0 flex-col gap-4 md:col-span-7"
       >
-        {/* Download lives in the title row so its Y axis matches the h1
-            (and, by symmetry, the Related Questions / Ask Yours row in the
-            right column whose pt is tuned to match this same Y). */}
+        {/* Keep Download grouped with the title, but stack it below the title on
+            mobile so the title can use the full content rail. */}
         <div
           data-testid="watch-body-title-row"
-          className="flex items-start justify-between gap-4"
+          className="flex flex-col items-start gap-3 md:flex-row md:justify-between md:gap-4"
         >
           {/* The HeroPlayer overlay already renders the canonical <h1> for
               this video. The body title repeats that text for visual
@@ -68,7 +67,7 @@ export function WatchBody({
 
       <div
         data-testid="watch-body-right"
-        className="col-span-12 flex min-w-0 flex-col gap-4 md:col-span-5"
+        className="col-span-1 flex min-w-0 flex-col gap-4 md:col-span-5"
       >
         <WatchStudyQuestions prompts={prompts} />
       </div>

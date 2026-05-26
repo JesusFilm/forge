@@ -88,7 +88,7 @@ export function SiblingCarousel({
     <section
       data-block-type="SiblingCarousel"
       data-mode={isParentMode ? "parent" : "chapter"}
-      className="relative left-1/2 w-screen -translate-x-1/2 pt-2 pb-2 md:left-auto md:w-full md:translate-x-0"
+      className="relative -mx-10 w-[calc(100%+5rem)] pt-2 pb-2 md:mx-0 md:w-full"
       aria-label={ariaLabel}
     >
       <header className="mb-4 px-10 md:px-0">
@@ -98,9 +98,14 @@ export function SiblingCarousel({
           </span>
           <span className="px-2 text-stone-500">·</span>
           <span data-testid="sibling-carousel-label">
-            {isParentMode
-              ? `${clipTotal} chapters`
-              : `Clip ${clipIndex} of ${clipTotal}`}
+            {isParentMode ? (
+              `${clipTotal} chapters`
+            ) : (
+              <>
+                <span className="md:hidden">{`${clipIndex} of ${clipTotal}`}</span>
+                <span className="hidden md:inline">{`Clip ${clipIndex} of ${clipTotal}`}</span>
+              </>
+            )}
           </span>
         </p>
       </header>
@@ -110,7 +115,7 @@ export function SiblingCarousel({
         setApi={setApi}
         className="w-full"
       >
-        <CarouselContent>
+        <CarouselContent className="pl-10 md:pl-0">
           {children.map((child, index) => {
             const isActive = index === activeIndex
             // `resolvePosterUrl` codifies the editorial-cinematic priority
@@ -134,7 +139,7 @@ export function SiblingCarousel({
             return (
               <CarouselItem
                 key={child.documentId}
-                className="basis-[70%] sm:basis-[45%] md:basis-1/3 lg:basis-1/4 xl:basis-1/5 2xl:basis-1/6"
+                className="basis-[48%] sm:basis-[36%] md:basis-1/3 lg:basis-1/4 xl:basis-1/5 2xl:basis-1/6"
                 aria-current={isActive ? "true" : undefined}
               >
                 <Link
@@ -163,7 +168,7 @@ export function SiblingCarousel({
                       src={thumb}
                       alt={child.title ?? ""}
                       fill
-                      sizes="(max-width: 640px) 70vw, (max-width: 768px) 45vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
+                      sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-105"
                       // Eager-load the cards inside `eagerIndices` (the
                       // small window around activeIndex). `priority` alone

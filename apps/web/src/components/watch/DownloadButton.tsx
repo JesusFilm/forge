@@ -1,11 +1,13 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { WATCH_PILL_BUTTON_CLASS } from "@/components/watch/watch-section-styles"
 
 export function DownloadButton({ onClick }: { onClick: () => void }) {
   return (
     <Button
       variant="pill"
+      className={WATCH_PILL_BUTTON_CLASS}
       aria-label="Download"
       data-testid="watch-download-button"
       onClick={onClick}
