@@ -6,6 +6,14 @@ import {
   type SearchTraceRouteSourceLabel,
   type SearchTraceSampleFilters,
 } from "@/services/search-trace.service"
+import {
+  isSearchTraceAbuseLabel,
+  isSearchTraceQueryQualityLabel,
+  isSearchTraceSensitiveQueryLabel,
+  type SearchTraceAbuseLabel,
+  type SearchTraceQueryQualityLabel,
+  type SearchTraceSensitiveQueryLabel,
+} from "@/services/search-trace-privacy"
 
 const RATE_LIMIT_MAX = 20
 const RATE_LIMIT_WINDOW_MS = 60_000
@@ -62,6 +70,43 @@ function parseString(
   return value
 }
 
+function parseLabelArray<T extends string>(
+  value: unknown,
+  name: string,
+  isValid: (label: string) => label is T,
+): T[] | Response | undefined {
+  if (value == null) return undefined
+  if (!Array.isArray(value)) return badRequest(`${name} must be an array`)
+  if (value.length === 0) return badRequest(`${name} must not be empty`)
+  if (value.length > 16) return badRequest(`${name} must have at most 16 items`)
+
+  const labels: T[] = []
+  for (const item of value) {
+    if (typeof item !== "string" || !isValid(item)) {
+      return badRequest(`${name} contains an unsupported label`)
+    }
+    if (!labels.includes(item)) labels.push(item)
+  }
+  return labels
+}
+
+function parseLlmClassification(
+  value: unknown,
+): SearchTraceSampleFilters["llmClassification"] | Response | undefined {
+  if (value == null) return undefined
+  if (
+    value === "any" ||
+    value === "classified" ||
+    value === "unclassified" ||
+    value === "candidates"
+  ) {
+    return value
+  }
+  return badRequest(
+    "llmClassification must be 'any', 'classified', 'unclassified', or 'candidates'",
+  )
+}
+
 function logValue(value: string | undefined): string {
   if (value == null || value.length === 0) return "all"
   return value.replace(/[\r\n\t\s=]/g, "_").slice(0, 64)
@@ -116,6 +161,26 @@ function parseBody(body: unknown): SearchTraceSampleFilters | Response {
   if (locale instanceof Response) return locale
   const searchMode = parseString(record.searchMode, "searchMode")
   if (searchMode instanceof Response) return searchMode
+  const queryQualityLabels = parseLabelArray<SearchTraceQueryQualityLabel>(
+    record.queryQualityLabels,
+    "queryQualityLabels",
+    isSearchTraceQueryQualityLabel,
+  )
+  if (queryQualityLabels instanceof Response) return queryQualityLabels
+  const sensitiveQueryLabels = parseLabelArray<SearchTraceSensitiveQueryLabel>(
+    record.sensitiveQueryLabels,
+    "sensitiveQueryLabels",
+    isSearchTraceSensitiveQueryLabel,
+  )
+  if (sensitiveQueryLabels instanceof Response) return sensitiveQueryLabels
+  const abuseLabels = parseLabelArray<SearchTraceAbuseLabel>(
+    record.abuseLabels,
+    "abuseLabels",
+    isSearchTraceAbuseLabel,
+  )
+  if (abuseLabels instanceof Response) return abuseLabels
+  const llmClassification = parseLlmClassification(record.llmClassification)
+  if (llmClassification instanceof Response) return llmClassification
   const since = parseDate(record.since, "since")
   if (since instanceof Response) return since
   const until = parseDate(record.until, "until")
@@ -127,6 +192,10 @@ function parseBody(body: unknown): SearchTraceSampleFilters | Response {
     locale,
     routeSource: routeSource as SearchTraceRouteSourceLabel | undefined,
     searchMode,
+    queryQualityLabels,
+    sensitiveQueryLabels,
+    abuseLabels,
+    llmClassification,
     since,
     until,
     limit,

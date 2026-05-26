@@ -56,9 +56,18 @@ describe("POST /api/internal/search-traces/sample", () => {
         latencyBucket: "lt_250ms",
         outcome: "success",
         traceClass: "none",
-        queryQualityLabel: "normal",
+        queryQualityLabel: "valid_viewer_intent",
         sensitiveQueryLabel: "none",
         abuseLabel: "none",
+        queryLabelSource: "rules",
+        queryLabelVersion: "search-query-labels/v1",
+        queryLabeledAt: "2026-05-25T00:00:00.000Z",
+        llmQueryQualityLabel: null,
+        llmAbuseLabel: null,
+        llmLabelSource: null,
+        llmLabelVersion: null,
+        llmLabelReason: null,
+        llmLabeledAt: null,
         createdAt: "2026-05-25T00:00:00.000Z",
       },
     ])
@@ -88,6 +97,7 @@ describe("POST /api/internal/search-traces/sample", () => {
           locale: "en",
           routeSource: "rest",
           searchMode: "hybrid",
+          queryQualityLabel: "valid_viewer_intent",
         }),
       ],
       generatedAt: expect.any(String),
@@ -114,6 +124,46 @@ describe("POST /api/internal/search-traces/sample", () => {
       },
     )
   })
+
+  it("accepts explicit label and LLM candidate filters", async () => {
+    const response = await POST(
+      request(
+        {
+          queryQualityLabels: ["catalog_lookup", "unknown_ambiguous"],
+          sensitiveQueryLabels: ["none"],
+          abuseLabels: ["none"],
+          llmClassification: "candidates",
+        },
+        { authorization: "Bearer trace-key" },
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    expect(sampleSearchTraces).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        queryQualityLabels: ["catalog_lookup", "unknown_ambiguous"],
+        sensitiveQueryLabels: ["none"],
+        abuseLabels: ["none"],
+        llmClassification: "candidates",
+      }),
+    )
+  })
+
+  it.each(["classified", "unclassified", "any"] as const)(
+    "forwards llmClassification=%s",
+    async (llmClassification) => {
+      const response = await POST(
+        request({ llmClassification }, { authorization: "Bearer trace-key" }),
+      )
+
+      expect(response.status).toBe(200)
+      expect(sampleSearchTraces).toHaveBeenCalledWith(
+        {},
+        expect.objectContaining({ llmClassification }),
+      )
+    },
+  )
 
   it("rejects missing or wrong bearer before parsing the body", async () => {
     isValidSearchTraceSamplingBearer.mockReturnValue(false)
@@ -206,6 +256,11 @@ describe("POST /api/internal/search-traces/sample", () => {
     for (const body of [
       { locale: ["en"] },
       { searchMode: 12 },
+      { queryQualityLabels: "valid_viewer_intent" },
+      { queryQualityLabels: ["normal"] },
+      { sensitiveQueryLabels: ["secret"] },
+      { abuseLabels: ["bad"] },
+      { llmClassification: "live" },
       { since: "not-a-date" },
       { until: 12 },
       { limit: "50" },

@@ -3,13 +3,14 @@ id: "feat-137"
 title: "Search query quality and abuse labeling"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: "2026-05-25"
 duration: 3
 depends_on:
   - "feat-136"
 blocks:
   - "feat-138"
+  - "feat-143"
 tags:
   - "admin"
   - "mastra"

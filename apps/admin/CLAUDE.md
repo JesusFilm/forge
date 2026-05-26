@@ -281,12 +281,15 @@ Production search tracing writes two records:
 - `search_trace`: short-lived raw rows with query text after first-pass
   privacy classification/redaction, locale, route source, requested mode,
   response search mode, result count, latency bucket, outcome, trace class,
-  quality/sensitive/abuse labels, sample eligibility, and timestamps. Raw rows
-  expire after `SEARCH_TRACE_RAW_RETENTION_DAYS` (default 29, max 29) so the
-  daily purge deletes them before the hard 30-day ceiling.
+  deterministic quality/sensitive/abuse labels, rule label source/version/time,
+  optional offline LLM labels/provenance, sample eligibility, and timestamps.
+  Raw rows expire after `SEARCH_TRACE_RAW_RETENTION_DAYS` (default 29, max 29)
+  so the daily purge deletes them before the hard 30-day ceiling.
 - `search_trace_aggregate`: long-lived rollups by non-query dimensions. This
-  table never stores query text and is the durable analytical trail after raw
-  rows are purged.
+  table never stores query text or LLM prompts/results and is the durable
+  analytical trail after raw rows are purged. It includes rule label
+  source/version dimensions so future rule changes do not mix incompatible
+  cohorts.
 
 Trace writes are bounded best-effort. `recordSearchTraceSafely` is awaited
 behind a short timeout and every write/timeout failure is swallowed from the
@@ -295,10 +298,26 @@ counters and log `[search] event=trace_record_* ...` without raw query text.
 
 The internal sampling route is
 `POST /api/internal/search-traces/sample`. It is rate-limited before auth/body
-parsing, requires a bearer from `SEARCH_TRACE_SAMPLING_API_KEYS`, and returns
-only recent unexpired `sampleEligible` rows. The bearer CSV is optional at boot
-and is part of the env disjointness invariant; it must not share values with
-workflow, web/consumer, backup, manager, or Mastra ingest credentials.
+parsing, requires a bearer from `SEARCH_TRACE_SAMPLING_API_KEYS`, and defaults
+to recent unexpired valid-viewer-intent rows with no sensitivity or abuse
+labels. Broader sampling must explicitly request allowlisted quality,
+sensitivity, abuse, or LLM-classification filters. The bearer CSV is optional
+at boot and is part of the env disjointness invariant; it must not share values
+with workflow, web/consumer, backup, manager, or Mastra ingest credentials.
+
+Query labeling model:
+
+- `queryQualityLabel`: `valid_viewer_intent`, `empty_too_short`,
+  `navigational`, `catalog_lookup`, `malformed`, or `unknown_ambiguous`.
+- `abuseLabel`: `none`, `repeated_spam`, `abusive`, or
+  `prompt_injection_like`.
+- `sensitiveQueryLabel`: privacy/redaction label (`none`, `email`, `phone`,
+  `credential`, `token`, `cookie`, `ip`, `user_identifier`, or `mixed`).
+
+The optional OpenRouter classifier lives under `src/services/search-eval/` and
+is for ambiguous or high-impact samples only. REST `/api/search` and GraphQL
+`Query.search` must not call it, must not route through Mastra, and must not use
+labels to censor or alter live results.
 
 The Admin worker starts `src/workflows/searchTraceRetention.ts` when
 `WORKFLOW_RUNNER_ENABLED=true` and
