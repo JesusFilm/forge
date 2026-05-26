@@ -14,6 +14,7 @@ import { validateActionUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
 import {
   ACCENT,
+  BG_COLOR,
   TEXT_PRIMARY,
   TEXT_SECONDARY,
   TEXT_BODY,
@@ -59,7 +60,7 @@ function AnswerFallback() {
           <Ionicons
             name="chatbubble-outline"
             size={14}
-            color="#1c1917"
+            color={BG_COLOR}
             style={styles.fallbackButtonIcon}
           />
           <Text style={styles.fallbackButtonText}>Chat</Text>
@@ -77,7 +78,7 @@ function AnswerFallback() {
           <Ionicons
             name="mail-outline"
             size={14}
-            color="#1c1917"
+            color={BG_COLOR}
             style={styles.fallbackButtonIcon}
           />
           <Text style={styles.fallbackButtonText}>Ask Bible Question</Text>
@@ -251,7 +252,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#f5f5f4",
+    backgroundColor: TEXT_PRIMARY,
     borderRadius: 9999,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -264,7 +265,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   fallbackButtonText: {
-    color: "#1c1917",
+    color: BG_COLOR,
     fontFamily: "System",
     fontWeight: "600",
     fontSize: 14,
