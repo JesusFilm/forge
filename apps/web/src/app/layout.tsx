@@ -1,33 +1,62 @@
 import type { ReactNode } from "react"
 import localFont from "next/font/local"
+import type { Metadata } from "next"
 import "./globals.css"
 import { cn } from "@/lib/utils"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 
-const apercuPro = localFont({
+const montserrat = localFont({
   src: [
-    { path: "../../public/fonts/Apercu-Pro-Regular.woff2", weight: "400" },
-    { path: "../../public/fonts/Apercu-Pro-Medium.woff2", weight: "500" },
-    { path: "../../public/fonts/Apercu-Pro-Bold.woff2", weight: "700" },
     {
-      path: "../../public/fonts/Apercu-Pro-MediumItalic.woff2",
-      weight: "500",
-      style: "italic",
+      path: "../../public/fonts/Montserrat-VariableFont_wght.ttf",
+      weight: "100 900",
+      style: "normal",
     },
     {
-      path: "../../public/fonts/Apercu-Pro-BoldItalic.woff2",
-      weight: "700",
+      path: "../../public/fonts/Montserrat-Italic-VariableFont_wght.ttf",
+      weight: "100 900",
       style: "italic",
     },
   ],
-  variable: "--font-sans",
+  variable: "--font-montserrat",
+  fallback: ["ui-sans-serif", "system-ui", "sans-serif"],
   display: "swap",
 })
 
+export const metadata: Metadata = {
+  icons: {
+    icon: [
+      {
+        url: "/watch/images/favicon-32.png",
+        sizes: "32x32",
+        type: "image/png",
+      },
+      {
+        url: "/watch/images/favicon-180.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+    ],
+    apple: [
+      {
+        url: "/watch/images/favicon-180.png",
+        type: "image/png",
+      },
+    ],
+  },
+  other: {
+    "msapplication-TileImage": "/watch/images/favicon-180.png",
+  },
+}
+
 export default function RootLayout(props: { children: ReactNode }) {
   return (
-    <html lang="en" dir="ltr" className={cn("font-sans", apercuPro.variable)}>
-      <body className="bg-stone-900">
+    <html
+      lang="en"
+      dir="ltr"
+      className={cn("overflow-x-hidden font-sans", montserrat.variable)}
+    >
+      <body className="overflow-x-hidden bg-stone-900">
         <FloatingSearchProvider>{props.children}</FloatingSearchProvider>
       </body>
     </html>

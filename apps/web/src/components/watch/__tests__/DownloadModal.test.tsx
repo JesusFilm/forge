@@ -27,6 +27,7 @@ import {
   DownloadModal,
   type DownloadModalDownload,
 } from "@/components/watch/DownloadModal"
+import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 
 // next/image renders an <img> in tests; the modal otherwise tries to load the
 // real image-optimization endpoint, which JSDOM can't serve. Strip the
@@ -120,6 +121,9 @@ describe("DownloadModal — header metadata", () => {
       $('[data-testid="watch-download-modal-duration"]')?.textContent,
     ).toContain("2:07:54")
     expect($('[data-testid="watch-download-modal-poster"]')).not.toBeNull()
+    expect($('[data-testid="watch-download-modal-eyebrow"]')?.className).toBe(
+      WATCH_SECTION_EYEBROW_CLASS,
+    )
   })
 
   it("omits the duration overlay when durationSeconds is null/zero", () => {
@@ -260,6 +264,8 @@ describe("DownloadModal — quality bucketing", () => {
 
     const trigger = $('[data-testid="watch-download-modal-size-trigger"]')
     expect(trigger?.textContent).toContain("Highest")
+    expect(trigger?.parentElement?.parentElement?.className).toContain("-mx-2")
+    expect(trigger?.parentElement?.parentElement?.className).toContain("px-2")
   })
 
   it("formats sizes >= 1 GB as GB and < 1 GB as MB", () => {
@@ -299,6 +305,34 @@ describe("DownloadModal — quality bucketing", () => {
     // 558.17 MB rounds to "558 MB" with 0-decimal formatting for >= 100 MB.
     expect(lowOption?.textContent).toContain("558 MB")
   })
+
+  it("keeps the open file-size list in document flow so the modal can scroll to it", () => {
+    act(() => {
+      root.render(
+        <DownloadModal
+          open
+          downloads={[
+            makeDownload({ documentId: "fhd", quality: "fhd" }),
+            makeDownload({ documentId: "hd", quality: "hd" }),
+            makeDownload({ documentId: "low", quality: "low" }),
+          ]}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    act(() => {
+      ;(
+        $(
+          '[data-testid="watch-download-modal-size-trigger"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    const list = $('[data-testid="watch-download-modal-size-list"]')
+    expect(list?.className).toContain("relative")
+    expect(list?.className).not.toContain("absolute")
+  })
 })
 
 describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
@@ -317,6 +351,32 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
       '[data-testid="watch-download-modal-confirm"]',
     ) as HTMLButtonElement
     expect(confirm.disabled).toBe(true)
+  })
+
+  it("renders the ToS agreement as a regular-label checkbox with a muted underline link", () => {
+    act(() => {
+      root.render(
+        <DownloadModal
+          open
+          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const tos = $(
+      '[data-testid="watch-download-modal-tos"]',
+    ) as HTMLInputElement
+    const label = tos.closest("label")
+    const trigger = $('[data-testid="watch-download-modal-tos-trigger"]')
+    expect(tos.type).toBe("checkbox")
+    expect(tos.className).toContain("rounded-[3px]")
+    expect(tos.className).not.toContain("rounded-full")
+    expect(label?.className).toContain("font-normal")
+    expect(label?.className).not.toContain("font-semibold")
+    expect(trigger?.className).toContain("font-normal")
+    expect(trigger?.className).toContain("underline")
+    expect(trigger?.className).toContain("decoration-brand-red/40")
   })
 
   it("enables Download when ToS is checked (size already defaulted to Highest)", () => {
@@ -716,14 +776,22 @@ describe("DownloadModal — Terms of Use nested dialog", () => {
     expect(
       $('[data-testid="watch-download-modal-terms-dialog"]'),
     ).not.toBeNull()
+    const close = $(
+      '[data-testid="watch-download-modal-close"]',
+    ) as HTMLButtonElement
+    expect(close.className).toContain("fixed")
+    expect(close.className).toContain("top-12")
+    expect(close.className).toContain("right-10")
+    expect(close.className).toContain("h-[52px]")
+    expect(close.className).toContain("w-12")
+    expect(close.className).toContain("z-[60]")
+    expect(close.querySelector("svg")?.getAttribute("class")).toContain("h-6")
 
-    // Click base-ui Dialog's built-in close button. This fires
-    // onOpenChange(false) → handleOpenChange, which is the only path
-    // in production that runs setTermsOpen(false). The inner dialog
-    // uses showCloseButton={false}, so the single dialog-close-button
-    // in the DOM belongs to the outer modal.
+    // Click the fullscreen close button. This mirrors the language
+    // switcher-style chrome and still routes through handleOpenChange(false),
+    // which is the reset path for the nested Terms dialog.
     act(() => {
-      ;($('[data-testid="dialog-close-button"]') as HTMLButtonElement).click()
+      close.click()
     })
 
     // The reset path fired: onClose was invoked AND the inner dialog

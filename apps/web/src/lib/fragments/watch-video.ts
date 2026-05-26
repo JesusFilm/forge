@@ -150,14 +150,16 @@ export const watchVideoFragment = adminGraphql(`
       videoEdition {
         subtitles {
           documentId: id
+          vttSrc
+          srtSrc
+          primary
+          aiGenerated
           language {
+            coreId
             slug
             name
             bcp47
           }
-          vttSrc
-          primary
-          aiGenerated
         }
       }
     }

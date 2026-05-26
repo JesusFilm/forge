@@ -127,7 +127,7 @@ export function VideoCard({
   return (
     <Link
       href={hrefBuilder(result)}
-      className="group animate-card-enter relative flex flex-col overflow-hidden rounded-2xl transition hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/40"
+      className="group animate-card-enter relative flex cursor-pointer flex-col overflow-hidden rounded-2xl transition hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/40"
       style={{ animationDelay: `${index * 50}ms` }}
     >
       {/* Full-bleed thumbnail */}

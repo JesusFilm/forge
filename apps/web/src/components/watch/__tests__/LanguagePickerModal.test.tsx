@@ -36,6 +36,7 @@ import {
   LanguagePickerModal,
   type LanguagePickerVariant,
 } from "@/components/watch/LanguagePickerModal"
+import type { WatchSubtitle } from "@/lib/content"
 
 let container: HTMLDivElement
 let root: Root
@@ -97,6 +98,10 @@ function renderModal({
   playerRef = makePlayerRef(42),
   onClose = vi.fn(),
   kind,
+  subtitles,
+  currentSubtitleEnabled,
+  currentSubtitleSlug,
+  onSubtitleChange,
 }: {
   open: boolean
   currentLanguageSlug?: string
@@ -105,6 +110,10 @@ function renderModal({
   playerRef?: ReturnType<typeof makePlayerRef>
   onClose?: () => void
   kind?: "video" | "series"
+  subtitles?: WatchSubtitle[]
+  currentSubtitleEnabled?: boolean
+  currentSubtitleSlug?: string | null
+  onSubtitleChange?: (enabled: boolean, slug: string | null) => void
 }) {
   act(() => {
     root.render(
@@ -116,6 +125,10 @@ function renderModal({
         playerRef={playerRef}
         onClose={onClose}
         kind={kind}
+        subtitles={subtitles}
+        currentSubtitleEnabled={currentSubtitleEnabled}
+        currentSubtitleSlug={currentSubtitleSlug}
+        onSubtitleChange={onSubtitleChange}
       />,
     )
   })
@@ -289,6 +302,110 @@ describe("LanguagePickerModal — globe overlay", () => {
     })
     const count = $('[data-testid="watch-language-picker-count"]')
     expect(count?.textContent).toBe("3 languages")
+    expect(count?.className).toContain("font-normal")
+    expect(count?.className).not.toContain("font-semibold")
+  })
+
+  it("matches the production overlay shell and renders subtitle selector data", () => {
+    renderModal({
+      open: true,
+      variants: [
+        makeVariant({ documentId: "v1", languageSlug: "english" }),
+        makeVariant({ documentId: "v2", languageSlug: "spanish" }),
+      ],
+      subtitles: [
+        {
+          documentId: "sub-ru",
+          language: {
+            slug: "russian",
+            name: "Russian",
+            nativeName: null,
+            bcp47: "ru",
+          },
+          vttSrc: "https://cdn.test/russian.vtt",
+          primary: true,
+          aiGenerated: false,
+        },
+      ],
+      currentSubtitleEnabled: true,
+      currentSubtitleSlug: "russian",
+    })
+
+    const overlay = $('[data-slot="dialog-overlay"]')
+    expect(overlay?.className).toContain("bg-black/85")
+    expect(overlay?.className).toContain("backdrop-blur-md")
+
+    const modal = $('[data-testid="watch-language-picker-modal"]')
+    expect(modal?.className).toContain("bg-transparent")
+    expect(modal?.className).toContain("sm:max-w-[608px]")
+
+    expect(
+      $('[data-testid="watch-language-picker-subtitle-count"]')?.textContent,
+    ).toBe("1 language")
+    expect(
+      $('[data-testid="watch-language-picker-subtitle-count"]')?.className,
+    ).toContain("font-normal")
+    const toggle = $(
+      '[data-testid="watch-language-picker-subtitles-toggle"]',
+    ) as HTMLButtonElement
+    expect(toggle.disabled).toBe(false)
+    expect(toggle.getAttribute("aria-checked")).toBe("true")
+    expect(toggle.className).toContain("h-8")
+    expect(toggle.className).toContain("w-[58px]")
+    expect(toggle.querySelector("span")?.className).toContain("size-6")
+    expect(toggle.querySelector("span")?.className).toContain("translate-x-6")
+
+    const triggers = $$('[data-testid="language-combobox-trigger"]')
+    expect(triggers.length).toBe(2)
+    expect(triggers[1]?.textContent).toContain("Russian")
+    expect(
+      $('[data-testid="watch-language-picker-request-ai-translation"]'),
+    ).toBeNull()
+  })
+
+  it("shows a dummy AI translation request button when subtitles are unavailable", () => {
+    renderModal({ open: true, variants: baseVariants })
+
+    const button = $(
+      '[data-testid="watch-language-picker-request-ai-translation"]',
+    ) as HTMLButtonElement
+    expect(button).not.toBeNull()
+    expect(button.textContent).toBe("Translate with AI")
+    expect(button.disabled).toBe(false)
+    expect(button.className).toContain("border-stone-400/50")
+    expect(button.className).toContain("px-4")
+    expect(button.className).toContain("py-2")
+    const count = $('[data-testid="watch-language-picker-subtitle-count"]')
+    expect(button.parentElement?.contains(count)).toBe(true)
+
+    act(() => {
+      button.click()
+    })
+
+    expect(button.textContent).toBe("Request sent")
+    expect(button.disabled).toBe(true)
+    expect(routerPushMock).not.toHaveBeenCalled()
+    expect(writePreferredLanguageSlugMock).not.toHaveBeenCalled()
+  })
+
+  it("resets the AI translation request state when the modal reopens", () => {
+    renderModal({ open: true, variants: baseVariants })
+    act(() => {
+      $('[data-testid="watch-language-picker-request-ai-translation"]')?.click()
+    })
+    expect(
+      $('[data-testid="watch-language-picker-request-ai-translation"]')
+        ?.textContent,
+    ).toBe("Request sent")
+
+    renderModal({ open: false, variants: baseVariants })
+    renderModal({ open: true, variants: baseVariants })
+
+    const button = $(
+      '[data-testid="watch-language-picker-request-ai-translation"]',
+    ) as HTMLButtonElement
+    expect(button.textContent).toBe("Translate with AI")
+    expect(button.disabled).toBe(false)
   })
 
   it("does not render when open is false", () => {

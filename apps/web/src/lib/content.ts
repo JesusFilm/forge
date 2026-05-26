@@ -150,6 +150,13 @@ export type WatchVariant = {
   language: WatchVariantLanguage | null
   downloads: WatchVariantDownload[]
   muxVideo: { playbackId: string | null } | null
+  videoEdition?: {
+    subtitles: {
+      vttSrc: string | null
+      srtSrc: string | null
+      language: WatchVariantLanguage | null
+    }[]
+  } | null
 }
 
 export type WatchStudyQuestion = {
@@ -543,6 +550,23 @@ function normalizeVariant(
       })
       .filter((d): d is WatchVariantDownload => d != null),
     muxVideo: v.muxVideo ? { playbackId: v.muxVideo.playbackId ?? null } : null,
+    videoEdition: v.videoEdition
+      ? {
+          subtitles: (v.videoEdition.subtitles ?? []).map((subtitle) => ({
+            vttSrc: subtitle.vttSrc ?? null,
+            srtSrc: subtitle.srtSrc ?? null,
+            language: subtitle.language
+              ? {
+                  coreId: subtitle.language.coreId ?? null,
+                  bcp47: subtitle.language.bcp47 ?? null,
+                  slug: subtitle.language.slug ?? null,
+                  name: pickLocalizedName(subtitle.language.name),
+                  nativeName: pickNativeName(subtitle.language.name),
+                }
+              : null,
+          })),
+        }
+      : null,
   }
 }
 

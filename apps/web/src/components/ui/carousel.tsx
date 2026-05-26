@@ -31,6 +31,7 @@ type CarouselContextProps = {
 } & CarouselProps
 
 const CarouselContext = React.createContext<CarouselContextProps | null>(null)
+const HORIZONTAL_WHEEL_DELTA_THRESHOLD = 8
 
 function useCarousel() {
   const context = React.useContext(CarouselContext)
@@ -133,14 +134,39 @@ function Carousel({
   )
 }
 
-function CarouselContent({ className, ...props }: React.ComponentProps<"div">) {
-  const { carouselRef, orientation } = useCarousel()
+function CarouselContent({
+  className,
+  onWheel,
+  ...props
+}: React.ComponentProps<"div">) {
+  const { carouselRef, orientation, api } = useCarousel()
+
+  function handleWheel(event: React.WheelEvent<HTMLDivElement>) {
+    onWheel?.(event)
+    if (event.defaultPrevented) return
+    if (orientation !== "horizontal" || !api) return
+    if (
+      Math.abs(event.deltaX) <= Math.abs(event.deltaY) ||
+      Math.abs(event.deltaX) < HORIZONTAL_WHEEL_DELTA_THRESHOLD
+    ) {
+      return
+    }
+
+    if (event.deltaX > 0 && api.canScrollNext()) {
+      event.preventDefault()
+      api.scrollNext()
+    } else if (event.deltaX < 0 && api.canScrollPrev()) {
+      event.preventDefault()
+      api.scrollPrev()
+    }
+  }
 
   return (
     <div
       ref={carouselRef}
       className="overflow-hidden"
       data-slot="carousel-content"
+      onWheel={handleWheel}
     >
       <div
         className={cn(

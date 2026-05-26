@@ -170,11 +170,13 @@ export function WatchPageClient({
           language: v.language
             ? {
                 coreId: v.language.coreId,
+                bcp47: v.language.bcp47,
                 slug: v.language.slug,
                 name: v.language.name,
                 nativeName: v.language.nativeName,
               }
             : null,
+          videoEdition: v.videoEdition,
         })),
     [video.variants],
   )
@@ -207,7 +209,7 @@ export function WatchPageClient({
     <main
       data-testid="watch-page-client"
       data-modal-state={modalState}
-      className="min-h-screen bg-stone-900 text-stone-100"
+      className="min-h-screen bg-stone-900 font-sans text-stone-100 [&_button]:font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans [&_h5]:font-sans [&_h6]:font-sans [&_p]:font-sans"
     >
       <WatchSectionRenderer
         blocks={mergedBlocks}

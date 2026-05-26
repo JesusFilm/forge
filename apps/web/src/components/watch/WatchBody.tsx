@@ -31,24 +31,14 @@ export function WatchBody({
     >
       <div
         data-testid="watch-body-left"
-        className="col-span-12 flex min-w-0 flex-col gap-4 md:col-span-8"
+        className="col-span-12 flex min-w-0 flex-col gap-4 md:col-span-7"
       >
-        {video.label ? (
-          <span
-            data-testid="watch-body-label"
-            className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg"
-          >
-            {video.label}
-          </span>
-        ) : null}
         {/* Download lives in the title row so its Y axis matches the h1
             (and, by symmetry, the Related Questions / Ask Yours row in the
-            right column whose pt is tuned to match this same Y). With
-            Download here instead of above the SEGMENT label, increasing pt
-            on a sibling can no longer push Download out of alignment. */}
+            right column whose pt is tuned to match this same Y). */}
         <div
           data-testid="watch-body-title-row"
-          className="flex items-center justify-between gap-4"
+          className="flex items-start justify-between gap-4"
         >
           {/* The HeroPlayer overlay already renders the canonical <h1> for
               this video. The body title repeats that text for visual
@@ -69,7 +59,7 @@ export function WatchBody({
         {video.description ? (
           <p
             data-testid="watch-body-description"
-            className="text-base leading-relaxed text-stone-200/80 md:text-lg"
+            className="text-base leading-relaxed text-stone-200/80 md:mt-6 md:text-lg"
           >
             {video.description}
           </p>
@@ -78,7 +68,7 @@ export function WatchBody({
 
       <div
         data-testid="watch-body-right"
-        className="col-span-12 flex min-w-0 flex-col gap-4 md:col-span-4"
+        className="col-span-12 flex min-w-0 flex-col gap-4 md:col-span-5"
       >
         <WatchStudyQuestions prompts={prompts} />
       </div>

@@ -57,6 +57,92 @@ describe("LanguageCombobox", () => {
     )
   })
 
+  it("uses the production dark rounded trigger styling", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS}
+          value="spanish"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+
+    const trigger = $('[data-testid="language-combobox-trigger"]')
+    expect(trigger?.className).toContain("rounded-2xl")
+    expect(trigger?.className).toContain("bg-white/5")
+    expect(trigger?.className).toContain("px-5")
+    expect(trigger?.className).toContain("py-3")
+    expect(trigger?.className).toContain("text-base")
+    expect(trigger?.className).toContain("min-h-16")
+  })
+
+  it("uses a dark translucent selected option state", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS}
+          value="spanish"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const selectedOption = $$('[data-testid="language-combobox-option"]').find(
+      (option) => option.getAttribute("data-language-slug") === "spanish",
+    )
+    expect(selectedOption?.className).toContain("bg-white/[0.08]")
+    expect(selectedOption?.className).toContain("hover:bg-white/[0.12]")
+    expect(selectedOption?.className).not.toContain("bg-brand-red")
+  })
+
+  it("keeps the search input regular weight", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS}
+          value="spanish"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const search = $('[data-testid="language-combobox-search"]')
+    expect(search?.className).toContain("font-normal")
+    expect(search?.className).not.toContain("font-semibold")
+  })
+
+  it("can render as a disabled subtitles selector with fallback copy", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={[]}
+          value=""
+          onChange={vi.fn()}
+          icon="subtitles"
+          disabled
+          placeholder="No subtitles"
+        />,
+      )
+    })
+
+    const trigger = $(
+      '[data-testid="language-combobox-trigger"]',
+    ) as HTMLButtonElement
+    expect(trigger.disabled).toBe(true)
+    expect(trigger.textContent).toContain("No subtitles")
+    act(() => {
+      trigger.click()
+    })
+    expect($('[data-testid="language-combobox-popover"]')).toBeNull()
+  })
+
   it("opens the popover on trigger click", () => {
     act(() => {
       root.render(
@@ -98,7 +184,8 @@ describe("LanguageCombobox", () => {
     })
 
     const items = $$('[data-testid="language-combobox-option"]')
-    expect(items.map((el) => el.textContent)).toEqual(["Spanish"])
+    expect(items).toHaveLength(1)
+    expect(items[0]?.textContent).toContain("Spanish")
   })
 
   it("calls onChange and closes the popover when an option is clicked", () => {
@@ -263,6 +350,235 @@ describe("LanguageCombobox", () => {
     expect(natives[0]?.textContent).toBe("Français")
   })
 
+  it("renders nativeName below the selected language in the trigger", () => {
+    const OPTIONS_WITH_NATIVE = [
+      { slug: "russian", name: "Russian", nativeName: "Русский" },
+      { slug: "english", name: "English", nativeName: null },
+    ]
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_NATIVE}
+          value="russian"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+
+    const native = $('[data-testid="language-combobox-trigger-native"]')
+    expect(native?.textContent).toBe("Русский")
+  })
+
+  it("derives a native language subtitle from bcp47 when nativeName is missing", () => {
+    const OPTIONS_WITH_LOCALE = [
+      { slug: "russian", name: "Russian", bcp47: "ru-RU" },
+      { slug: "english", name: "English", bcp47: "en-US" },
+    ]
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_LOCALE}
+          value="russian"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+
+    const native = $('[data-testid="language-combobox-trigger-native"]')
+    expect(native?.textContent).toBe("Русский")
+  })
+
+  it("renders a circular flag icon for language options", () => {
+    const OPTIONS_WITH_FLAG = [
+      {
+        slug: "russian",
+        name: "Russian",
+        nativeName: "Русский",
+        bcp47: "ru-RU",
+      },
+      { slug: "english", name: "English", bcp47: "en-US" },
+    ]
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_FLAG}
+          value="russian"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+
+    const triggerFlag = $(
+      '[data-testid="language-combobox-trigger"] [data-testid="language-combobox-option-flag"]',
+    )
+    expect(triggerFlag?.className).toContain("size-8")
+    expect(triggerFlag?.className).not.toContain("size-10")
+
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const flag = $(
+      '[data-testid="language-combobox-option"] [data-testid="language-combobox-option-flag"]',
+    )
+    expect(flag?.getAttribute("data-flag-src")).toBe(
+      "/watch/images/flags/ru.svg",
+    )
+    expect(flag?.className).toContain("rounded-full")
+    expect(flag?.className).toContain("size-10")
+    expect(flag?.querySelector("span")?.getAttribute("style")).toContain(
+      "/watch/images/flags/ru.svg",
+    )
+  })
+
+  it("derives flags from production variant slugs and language names", () => {
+    const OPTIONS_WITH_VARIANTS = [
+      { slug: "bangla-2", name: "Bangla" },
+      { slug: "armenian", name: "Armenian" },
+      { slug: "gujarati", name: "Gujarati" },
+      { slug: "hebrew", name: "Hebrew" },
+      { slug: "indonesian", name: "Indonesian" },
+      { slug: "indonesian-yesus", name: "Indonesian (Yesus)" },
+      { slug: "lithuanian", name: "Lithuanian" },
+      { slug: "malayalam", name: "Malayalam" },
+      { slug: "polish", name: "Polish" },
+      { slug: "portuguese-brazil", name: "Portuguese, Brazil" },
+      { slug: "romanian", name: "Romanian" },
+      { slug: "sinhala", name: "Sinhala" },
+      { slug: "spanish-latin-american", name: "Spanish, Latin American" },
+      { slug: "tamil", name: "Tamil" },
+      { slug: "telugu", name: "Telugu" },
+      { slug: "thai", name: "Thai" },
+      { slug: "ukrainian", name: "Ukrainian" },
+      { slug: "urdu", name: "Urdu" },
+      { slug: "vietnamese", name: "Vietnamese" },
+    ]
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_VARIANTS}
+          value="bangla-2"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const flags = $$(
+      '[data-testid="language-combobox-option"] [data-testid="language-combobox-option-flag"]',
+    ).map((flag) => flag.getAttribute("data-flag-src"))
+    expect(flags).toEqual([
+      "/watch/images/flags/bd.svg",
+      "/watch/images/flags/am.svg",
+      "/watch/images/flags/in.svg",
+      "/watch/images/flags/il.svg",
+      "/watch/images/flags/id.svg",
+      "/watch/images/flags/id.svg",
+      "/watch/images/flags/lt.svg",
+      "/watch/images/flags/in.svg",
+      "/watch/images/flags/pl.svg",
+      "/watch/images/flags/br.svg",
+      "/watch/images/flags/ro.svg",
+      "/watch/images/flags/lk.svg",
+      "/watch/images/flags/mx.svg",
+      "/watch/images/flags/in.svg",
+      "/watch/images/flags/in.svg",
+      "/watch/images/flags/th.svg",
+      "/watch/images/flags/ua.svg",
+      "/watch/images/flags/pk.svg",
+      "/watch/images/flags/vn.svg",
+    ])
+  })
+
+  it("derives region flags from language-only bcp47 codes", () => {
+    const OPTIONS_WITH_LANGUAGE_CODES = [
+      { slug: "code-only-swahili", name: "Swahili", bcp47: "sw" },
+      { slug: "code-only-turkish", name: "Turkish", bcp47: "tr" },
+      { slug: "code-only-welsh", name: "Welsh", bcp47: "cy" },
+      { slug: "code-only-maori", name: "Maori", bcp47: "mi" },
+      { slug: "code-only-bosnian", name: "Bosnian", bcp47: "bs" },
+    ]
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_LANGUAGE_CODES}
+          value="code-only-swahili"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const flags = $$(
+      '[data-testid="language-combobox-option"] [data-testid="language-combobox-option-flag"]',
+    ).map((flag) => flag.getAttribute("data-flag-src"))
+    expect(flags).toEqual([
+      "/watch/images/flags/tz.svg",
+      "/watch/images/flags/tr.svg",
+      "/watch/images/flags/gb.svg",
+      "/watch/images/flags/nz.svg",
+      "/watch/images/flags/ba.svg",
+    ])
+  })
+
+  it("maps standard and branded language variant labels to their base country flags", () => {
+    const OPTIONS_WITH_VARIANT_LABELS = [
+      { slug: "german-standard", name: "German, Standard" },
+      { slug: "indonesian-yesus", name: "Indonesian (Yesus)" },
+    ]
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_VARIANT_LABELS}
+          value="german-standard"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const flags = $$(
+      '[data-testid="language-combobox-option"] [data-testid="language-combobox-option-flag"]',
+    ).map((flag) => flag.getAttribute("data-flag-src"))
+    expect(flags).toEqual([
+      "/watch/images/flags/de.svg",
+      "/watch/images/flags/id.svg",
+    ])
+  })
+
+  it("uses vendored language-specific circle flags when no region is available", () => {
+    const OPTIONS_WITH_LANGUAGE_FLAG = [
+      { slug: "arabic-modern-standard", name: "Arabic", bcp47: "ar" },
+      { slug: "interslavic", name: "Interslavic" },
+    ]
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_LANGUAGE_FLAG}
+          value="arabic-modern-standard"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const flags = $$(
+      '[data-testid="language-combobox-option"] [data-testid="language-combobox-option-flag"]',
+    ).map((flag) => flag.getAttribute("data-flag-src"))
+    expect(flags).toEqual([
+      "/watch/images/flags/language/ar.svg",
+      "/watch/images/flags/language/interslavic.svg",
+    ])
+  })
+
   it("matches the search query against nativeName too", () => {
     const OPTIONS_WITH_NATIVE = [
       { slug: "french", name: "French", nativeName: "Français" },
@@ -292,5 +608,36 @@ describe("LanguageCombobox", () => {
     const items = $$('[data-testid="language-combobox-option"]')
     expect(items.length).toBe(1)
     expect(items[0]?.getAttribute("data-language-slug")).toBe("spanish")
+  })
+
+  it("matches the search query against bcp47-derived native names", () => {
+    const OPTIONS_WITH_LOCALE = [
+      { slug: "russian", name: "Russian", bcp47: "ru-RU" },
+      { slug: "english", name: "English", bcp47: "en-US" },
+    ]
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={OPTIONS_WITH_LOCALE}
+          value="english"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "Русский"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    const items = $$('[data-testid="language-combobox-option"]')
+    expect(items.length).toBe(1)
+    expect(items[0]?.getAttribute("data-language-slug")).toBe("russian")
   })
 })

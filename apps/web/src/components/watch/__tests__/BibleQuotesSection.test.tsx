@@ -18,10 +18,8 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import {
-  BibleQuotesSection,
-  shouldEnableDrag,
-} from "@/components/watch/BibleQuotesSection"
+import { BibleQuotesSection } from "@/components/watch/BibleQuotesSection"
+import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 import type { WatchBibleQuotesBlock } from "@/lib/content"
 
 let container: HTMLDivElement
@@ -150,6 +148,62 @@ describe("BibleQuotesSection — promo CTA", () => {
 })
 
 describe("BibleQuotesSection — citations + promo", () => {
+  it("uses larger slide geometry and stronger verse typography", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ text: "The verse body." }), {
+          status: 200,
+        }),
+      ),
+    )
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[makeCitation({ verseEnd: 25 })]}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const slide = container.querySelector(
+      '[data-testid="watch-bible-quotes-item"]',
+    )
+    expect(slide?.className).toContain("basis-[76vw]")
+    expect(slide?.className).toContain("lg:basis-[36rem]")
+    expect(slide?.className).toContain("xl:basis-[38rem]")
+
+    const card = slide?.firstElementChild
+    expect(card?.className).toContain("aspect-[1.08/1]")
+    expect(card?.className).toContain("min-h-[21rem]")
+    expect(card?.className).toContain("sm:min-h-[24rem]")
+    expect(card?.className).toContain("md:min-h-[28rem]")
+    expect(card?.className).toContain("rounded-xl")
+
+    const reference = container.querySelector(
+      '[data-testid="watch-bible-quotes-reference"]',
+    )
+    expect(reference?.className).toContain("text-sm")
+    expect(reference?.className).toContain("font-black")
+
+    const verse = container.querySelector(
+      '[data-testid="watch-bible-quotes-verse"]',
+    )
+    expect(verse?.className).toContain("text-2xl")
+    expect(verse?.className).toContain("md:text-3xl")
+    expect(verse?.className).toContain("text-balance")
+
+    const readMore = container.querySelector(
+      '[data-testid="watch-bible-quotes-read-more"]',
+    )
+    expect(readMore?.className).toContain("text-xl")
+    expect(readMore?.className).toContain("decoration-2")
+  })
+
   it("happy path: 2 citations renders 3 list items (2 citations + 1 promo)", () => {
     const citations: Citation[] = [
       makeCitation({
@@ -215,6 +269,34 @@ describe("BibleQuotesSection — citations + promo", () => {
     expect(spacer!.getAttribute("tabindex")).toBe("-1")
   })
 
+  it("renders visible chapter-style carousel arrow controls", () => {
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[makeCitation({}), makeCitation({ documentId: "2" })]}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+
+    const prev = container.querySelector(
+      '[data-testid="watch-bible-quotes-prev"]',
+    )
+    const next = container.querySelector(
+      '[data-testid="watch-bible-quotes-next"]',
+    )
+    expect(prev).not.toBeNull()
+    expect(next).not.toBeNull()
+    expect(prev?.className).toContain("md:inline-flex")
+    expect(next?.className).toContain("md:inline-flex")
+    expect(prev?.className).toContain("-left-12")
+    expect(next?.className).toContain("-right-12")
+    expect(prev?.className).toContain("text-stone-900")
+    expect(next?.className).toContain("text-stone-900")
+    expect(prev?.className).not.toContain("sr-only")
+    expect(next?.className).not.toContain("sr-only")
+  })
+
   it("renders the cross-chapter en-dash form via formatCitation()", () => {
     const citation = makeCitation({
       documentId: "bc-cross",
@@ -258,6 +340,9 @@ describe("BibleQuotesSection — Share button", () => {
     const shareBtn = header!.querySelector('[data-testid="watch-share-button"]')
     expect(shareBtn).not.toBeNull()
     expect(shareBtn!.tagName.toLowerCase()).toBe("button")
+    expect(header!.querySelector("h2")?.className).toBe(
+      WATCH_SECTION_EYEBROW_CLASS,
+    )
   })
 
   it("invokes onShareClick when the Share button is clicked", () => {
@@ -744,20 +829,5 @@ describe("BibleQuotesSection — Unsplash image + verse fetch", () => {
     const src1 = imgs[1]?.getAttribute("src") ?? ""
     expect(src8).toBe(src1)
     expect(src8).not.toBe(src0)
-  })
-})
-
-describe("BibleQuotesSection — drag predicate", () => {
-  // jsdom's zero-width layout means scrollSnapList() always returns []
-  // through the rendered carousel, so the drag-enable branch is unreachable
-  // via component tests. Unit-test the predicate directly.
-  it("returns false when zero or one snap point exists", () => {
-    expect(shouldEnableDrag({ scrollSnapList: () => [] })).toBe(false)
-    expect(shouldEnableDrag({ scrollSnapList: () => [0] })).toBe(false)
-  })
-
-  it("returns true when two or more snap points exist", () => {
-    expect(shouldEnableDrag({ scrollSnapList: () => [0, 1] })).toBe(true)
-    expect(shouldEnableDrag({ scrollSnapList: () => [0, 1, 2, 3] })).toBe(true)
   })
 })

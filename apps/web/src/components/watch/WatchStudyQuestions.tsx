@@ -9,13 +9,11 @@
 // fallback. Mirrors core/apps/watch's DiscussionQuestions/Question.tsx.
 
 import { useId, useState } from "react"
-import { Mail as MailIcon } from "lucide-react"
+import { ChevronDown, Mail as MailIcon } from "lucide-react"
 
-import {
-  MessageCircleIcon,
-  QuestionIcon,
-} from "@/components/sections/RelatedQuestions"
+import { MessageCircleIcon } from "@/components/sections/RelatedQuestions"
 import { Button } from "@/components/ui/button"
+import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 
 const PLACEHOLDER_QUESTION =
   "If you could ask the creator of this video a question, what would it be?"
@@ -28,6 +26,23 @@ const CHAT_WITH_PERSON_URL =
 const ASK_BIBLE_QUESTION_URL =
   "https://www.everystudent.com/contact.php?utm_source=jesusfilm-watch"
 const ASK_YOURS_URL = "https://issuesiface.com/talk?utm_source=jesusfilm-watch"
+
+function WatchQuestionIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="mt-1 size-6 shrink-0 text-white opacity-20"
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M6 3.4A2.6 2.6 0 0 0 3.4 6v12A2.6 2.6 0 0 0 6 20.6h12a2.6 2.6 0 0 0 2.6-2.6V6A2.6 2.6 0 0 0 18 3.4H6ZM1.4 6A4.6 4.6 0 0 1 6 1.4h12A4.6 4.6 0 0 1 22.6 6v12a4.6 4.6 0 0 1-4.6 4.6H6A4.6 4.6 0 0 1 1.4 18V6Zm10.601 1.6c-.756 0-1.4.63-1.4 1.446a1 1 0 0 1-2 0c0-1.885 1.505-3.446 3.4-3.446s3.4 1.56 3.4 3.446a3.444 3.444 0 0 1-2.4 3.294l-.001.781a1 1 0 1 1-2 0v-1.153l.001-.478a1 1 0 0 1 1-.999c.756 0 1.4-.63 1.4-1.445 0-.816-.644-1.446-1.4-1.446ZM12 15.8a1 1 0 0 1 1 1v.043a1 1 0 1 1-2 0V16.8a1 1 0 0 1 1-1Z"
+      />
+    </svg>
+  )
+}
 
 export function WatchStudyQuestions({ prompts }: { prompts: string[] }) {
   const hasPrompts = prompts.length > 0
@@ -52,18 +67,14 @@ export function WatchStudyQuestions({ prompts }: { prompts: string[] }) {
     <section
       data-testid="watch-study-questions"
       aria-labelledby="watch-related-questions-heading"
-      className="w-full pt-0 md:pt-9 xl:pt-11"
+      className="w-full pt-0"
     >
-      {/* Section pt is tuned so the header (Related Questions + Ask Yours)
-          lands on the same Y axis as the h1 title in the left column --
-          which now hosts the Download pill in its flex row. The mb below
-          the header is sized so the first prompt / placeholder row lines
-          up with the start of the video description, keeping the two
-          columns visually parallel. */}
+      {/* Keep this header flush with the right column top so Related
+          Questions / Ask Yours align with the title / Download row. */}
       <div className="mb-4 flex flex-wrap items-center justify-between">
         <h2
           id="watch-related-questions-heading"
-          className="flex shrink-0 items-center gap-4 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg"
+          className={`flex shrink-0 items-center gap-4 ${WATCH_SECTION_EYEBROW_CLASS}`}
         >
           Related Questions
         </h2>
@@ -121,30 +132,28 @@ function StudyQuestionRow({
         aria-expanded={isOpen}
         aria-controls={panelId}
         data-testid={`${testId}-trigger`}
-        className="group flex w-full cursor-pointer items-start justify-between rounded-lg px-4 py-3 text-left transition-colors hover:bg-white/5"
+        className="group grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg px-0 py-4 text-left text-sm font-medium transition-all outline-none hover:no-underline focus-visible:ring-[3px] focus-visible:ring-white/40"
       >
-        <p className="flex text-base leading-[1.6] font-semibold text-stone-100 sm:pr-4 md:text-lg md:text-balance">
-          <QuestionIcon />
-          {question}
-        </p>
-        <span className="hidden shrink-0 p-2 text-stone-400 transition-colors group-hover:text-white sm:block">
-          <svg
-            className={`size-6 transform transition-transform ${isOpen ? "rotate-180" : ""}`}
-            viewBox="0 0 24 24"
+        <div className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-6 text-left">
+          <WatchQuestionIcon />
+          <h3 className="text-base leading-[1.6] font-semibold text-stone-100 transition-colors group-hover:text-brand-red md:text-lg md:text-balance">
+            {question}
+          </h3>
+        </div>
+        <span className="hidden shrink-0 text-stone-400 transition-colors group-hover:text-white sm:block">
+          <ChevronDown
             aria-hidden="true"
-          >
-            <path
-              fill="currentColor"
-              d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"
-            />
-          </svg>
+            className={`size-4 translate-y-0.5 transition-transform duration-200 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
         </span>
       </button>
       {isOpen && (
         <div
           id={panelId}
           data-testid={`${testId}-panel`}
-          className="pt-2 pr-2 pb-6 pl-8 sm:pl-10"
+          className="pt-2 pr-2 pb-6 pl-12"
         >
           <p
             data-testid={`${testId}-fallback-body`}

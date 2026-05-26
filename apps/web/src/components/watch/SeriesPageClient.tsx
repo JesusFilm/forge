@@ -8,7 +8,10 @@ import { ExternalLink, Globe } from "lucide-react"
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import { Button } from "@/components/ui/button"
-import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
+import {
+  LanguageCombobox,
+  type LanguageComboboxOption,
+} from "@/components/watch/LanguageCombobox"
 import {
   LanguagePickerModal,
   type LanguagePickerVariant,
@@ -101,7 +104,7 @@ export function SeriesPageClient({
       const bySlug = new Map<
         string,
         {
-          display: ReturnType<typeof deriveLanguageDisplay>
+          display: LanguageComboboxOption
           variant: LanguagePickerVariant
         }
       >()
@@ -118,12 +121,16 @@ export function SeriesPageClient({
           }
           if (bySlug.has(slug)) continue
           bySlug.set(slug, {
-            display: deriveLanguageDisplay(slug, variant.language.name),
+            display: {
+              ...deriveLanguageDisplay(slug, variant.language.name),
+              bcp47,
+            },
             variant: {
               documentId: variant.documentId,
               hls: variant.hls,
               published: variant.published,
               language: {
+                bcp47: variant.language.bcp47,
                 slug: variant.language.slug,
                 name: variant.language.name,
               },
@@ -187,7 +194,7 @@ export function SeriesPageClient({
           onClick={openLanguage}
           aria-label="Change audio language"
           title="Change audio language"
-          className="fixed top-10 right-10 z-50 inline-flex h-12 w-12 items-center justify-center rounded-full text-stone-100 transition hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none"
+          className="fixed top-10 right-10 z-50 inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none"
         >
           <Globe
             aria-hidden

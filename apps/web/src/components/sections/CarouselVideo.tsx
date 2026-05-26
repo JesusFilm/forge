@@ -506,7 +506,7 @@ function ThumbnailCard({
         />
       )}
 
-      <div className="absolute top-1/2 left-1/2 hidden h-24 w-24 -translate-x-1/2 -translate-y-1/2 transform items-center justify-center rounded-full bg-stone-900/60 text-white group-hover:flex hover:bg-red-500">
+      <div className="absolute top-1/2 left-1/2 hidden h-24 w-24 -translate-x-1/2 -translate-y-1/2 transform items-center justify-center rounded-full bg-stone-900/60 text-white group-hover:flex hover:bg-brand-red">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-20 w-20"

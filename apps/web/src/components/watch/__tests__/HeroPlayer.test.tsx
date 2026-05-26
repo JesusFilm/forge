@@ -94,7 +94,15 @@ function setSearchParams(query: string) {
 }
 
 import { HeroPlayer } from "@/components/watch/HeroPlayer"
+import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
+import {
+  WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+  WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+  type WatchHeaderLanguageSwitcherDetail,
+  type WatchPlayerChromeVisibilityDetail,
+} from "@/lib/watch-player-chrome-events"
+import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 
 let container: HTMLDivElement
 let root: Root
@@ -120,6 +128,7 @@ function makeBlock(): WatchHeroPlayerBlock {
     kind: "HeroPlayer",
     video: {
       documentId: "video-1",
+      label: "EPISODE",
       slug: "jesus",
       title: "Jesus",
     } as never,
@@ -196,6 +205,30 @@ describe("HeroPlayer — initial mount", () => {
     expect(typeof metadata?.viewer_user_id).toBe("string")
   })
 
+  it("uses a reduced viewport-relative hero height before sound playback so the carousel is visible on load", async () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    ) as HTMLDivElement
+    expect(wrapper.className).toContain("h-[72svh]")
+    expect(wrapper.className).toContain("min-h-[420px]")
+    expect(wrapper.className).toContain("max-h-[900px]")
+    expect(wrapper.className).not.toContain("aspect-video")
+
+    const pill = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      pill.click()
+    })
+
+    expect(wrapper.className).toContain("aspect-video")
+    expect(wrapper.className).not.toContain("h-[72svh]")
+  })
+
   it("renders a 'Play with Sound' pill (default state) above the player", () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
@@ -204,19 +237,52 @@ describe("HeroPlayer — initial mount", () => {
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
     )
+    const overlay = container.querySelector(
+      '[data-testid="hero-player-overlay"]',
+    )
     expect(pill).not.toBeNull()
+    expect(overlay?.getAttribute("class")).toContain("pb-12")
     expect(pill?.getAttribute("data-state")).toBe("play-with-sound")
     expect(pill?.textContent).toContain("Play with Sound")
+    expect(pill?.getAttribute("class")).toContain("cursor-pointer")
+    expect(pill?.getAttribute("class")).toContain("bg-brand-red")
+    expect(pill?.getAttribute("class")).toContain("font-medium")
+    expect(pill?.getAttribute("class")).not.toContain("font-semibold")
+    const title = container.querySelector(
+      '[data-testid="hero-player-overlay-title"]',
+    )
+    expect(title?.getAttribute("class")).toContain("text-balance")
+    expect(title?.getAttribute("class")).toContain("break-words")
+    expect(title?.getAttribute("class")).toContain("max-w-[calc(100vw-5rem)]")
+    expect(title?.getAttribute("class")).not.toContain("whitespace-nowrap")
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-label"]')
+        ?.className,
+    ).toBe(WATCH_SECTION_EYEBROW_CLASS)
     // WCAG 2.5.3 (Label in Name): accessible name must contain the
     // visible label as a substring. The aria-label must mirror the
     // visible "Play with Sound" text so voice-control engines that
     // match on accessible name still resolve "click play with sound".
     expect(pill?.getAttribute("aria-label")).toBe("Play with Sound")
   })
+
+  it("uses the production muted overlay backdrop before chrome is revealed", () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    const backdrop = container.querySelector(
+      '[data-testid="hero-player-muted-backdrop"]',
+    ) as HTMLDivElement
+    expect(backdrop).not.toBeNull()
+    expect(backdrop.getAttribute("style")).toContain(
+      WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+    )
+  })
 })
 
 describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
-  it("synchronously assigns muted=false then calls play() inside the click task — leaves currentTime alone so the muted-loop preview continues seamlessly", async () => {
+  it("synchronously seeks to 0, unmutes, then calls play() inside the click task", async () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -224,6 +290,7 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     // Snapshot pre-click state.
     expect(mockPlayerRef.current?.muted).toBe(true)
     expect(mockPlayerRef.current?.play).not.toHaveBeenCalled()
+    if (mockPlayerRef.current) mockPlayerRef.current.currentTime = 37
 
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
@@ -267,7 +334,32 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
       pill.click()
     })
 
-    expect(events).toEqual(["muted=false", "play()"])
+    expect(events).toEqual(["currentTime=0", "muted=false", "play()"])
+    expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("pre-reveal video click starts playback from 0 with sound", async () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    expect(mockPlayerRef.current?.muted).toBe(true)
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.currentTime = 24
+      mockPlayerRef.current.play.mockClear()
+    }
+
+    const surface = container.querySelector(
+      '[data-testid="hero-player-pre-reveal-click-surface"]',
+    ) as HTMLButtonElement
+    expect(surface).not.toBeNull()
+
+    await act(async () => {
+      surface.click()
+    })
+
+    expect(mockPlayerRef.current?.currentTime).toBe(0)
+    expect(mockPlayerRef.current?.muted).toBe(false)
     expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
   })
 
@@ -493,6 +585,29 @@ describe("HeroPlayer — chrome button interactions", () => {
     expect(mockPlayerRef.current?.play).toHaveBeenCalled()
   })
 
+  it("click-surface still toggles pause/play after the user mutes committed playback", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.paused = false
+      mockPlayerRef.current.muted = true
+      mockPlayerRef.current.currentTime = 18
+      mockPlayerRef.current.pause.mockClear()
+      mockPlayerRef.current.play.mockClear()
+    }
+
+    const surface = container.querySelector(
+      '[data-testid="hero-player-click-surface"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      surface.click()
+    })
+
+    expect(mockPlayerRef.current?.pause).toHaveBeenCalledTimes(1)
+    expect(mockPlayerRef.current?.play).not.toHaveBeenCalled()
+    expect(mockPlayerRef.current?.muted).toBe(true)
+    expect(mockPlayerRef.current?.currentTime).toBe(18)
+  })
+
   it("mute button toggles player.muted", async () => {
     await revealChrome()
     if (mockPlayerRef.current) mockPlayerRef.current.muted = false
@@ -710,6 +825,143 @@ describe("HeroPlayer — auto-hide timer", () => {
       vi.advanceTimersByTime(3001)
     })
     expect(chrome.getAttribute("data-visible")).toBe("false")
+  })
+
+  it("hides the top language button and publishes header visibility when chrome auto-hides", async () => {
+    const visibilityEvents: boolean[] = []
+    const languageEvents: WatchHeaderLanguageSwitcherDetail[] = []
+    const onVisibility = (event: Event) => {
+      visibilityEvents.push(
+        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail
+          .visible,
+      )
+    }
+    const onLanguageSwitcher = (event: Event) => {
+      languageEvents.push(
+        (event as CustomEvent<WatchHeaderLanguageSwitcherDetail>).detail,
+      )
+    }
+    window.addEventListener(WATCH_PLAYER_CHROME_VISIBILITY_EVENT, onVisibility)
+    window.addEventListener(
+      WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+      onLanguageSwitcher,
+    )
+
+    try {
+      act(() => {
+        root.render(
+          <HeroPlayer
+            block={makeBlock()}
+            onLanguageClick={() => {}}
+            playableLanguageCount={2}
+          />,
+        )
+      })
+      const pill = container.querySelector(
+        '[data-testid="hero-player-unmute-pill"]',
+      ) as HTMLButtonElement
+      await act(async () => {
+        pill.click()
+      })
+
+      expect(languageEvents.at(-1)?.visible).toBe(true)
+
+      await act(async () => {
+        vi.advanceTimersByTime(3001)
+      })
+
+      expect(
+        container
+          .querySelector('[data-testid="hero-player-custom-chrome"]')
+          ?.getAttribute("data-visible"),
+      ).toBe("false")
+      expect(languageEvents.at(-1)?.visible).toBe(false)
+      expect(visibilityEvents).toContain(false)
+    } finally {
+      window.removeEventListener(
+        WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+        onVisibility,
+      )
+      window.removeEventListener(
+        WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+        onLanguageSwitcher,
+      )
+    }
+  })
+
+  it("reveals controls, language button, and header visibility when scrolling back to the very top", async () => {
+    const visibilityEvents: boolean[] = []
+    const languageEvents: WatchHeaderLanguageSwitcherDetail[] = []
+    const onVisibility = (event: Event) => {
+      visibilityEvents.push(
+        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail
+          .visible,
+      )
+    }
+    const onLanguageSwitcher = (event: Event) => {
+      languageEvents.push(
+        (event as CustomEvent<WatchHeaderLanguageSwitcherDetail>).detail,
+      )
+    }
+    window.addEventListener(WATCH_PLAYER_CHROME_VISIBILITY_EVENT, onVisibility)
+    window.addEventListener(
+      WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+      onLanguageSwitcher,
+    )
+
+    try {
+      act(() => {
+        root.render(
+          <HeroPlayer
+            block={makeBlock()}
+            onLanguageClick={() => {}}
+            playableLanguageCount={2}
+          />,
+        )
+      })
+      const pill = container.querySelector(
+        '[data-testid="hero-player-unmute-pill"]',
+      ) as HTMLButtonElement
+      await act(async () => {
+        pill.click()
+      })
+
+      await act(async () => {
+        vi.advanceTimersByTime(3001)
+      })
+
+      const chrome = container.querySelector(
+        '[data-testid="hero-player-custom-chrome"]',
+      )
+      expect(chrome?.getAttribute("data-visible")).toBe("false")
+      expect(languageEvents.at(-1)?.visible).toBe(false)
+
+      Object.defineProperty(window, "scrollY", {
+        configurable: true,
+        value: 0,
+      })
+      await act(async () => {
+        window.dispatchEvent(new Event("scroll"))
+      })
+
+      expect(chrome?.getAttribute("data-visible")).toBe("true")
+      expect(languageEvents.at(-1)?.visible).toBe(true)
+      expect(visibilityEvents).toContain(false)
+      expect(visibilityEvents.at(-1)).toBe(true)
+    } finally {
+      window.removeEventListener(
+        WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+        onVisibility,
+      )
+      window.removeEventListener(
+        WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+        onLanguageSwitcher,
+      )
+      Object.defineProperty(window, "scrollY", {
+        configurable: true,
+        value: 0,
+      })
+    }
   })
 
   it.todo(
@@ -1411,8 +1663,27 @@ describe("HeroPlayer — timeline pointer-driven scrub (fake-timer driven)", () 
 // ---------------------------------------------------------------------------
 
 describe("HeroPlayer — language switch button", () => {
+  function listenForLanguageSwitcher() {
+    const updates: WatchHeaderLanguageSwitcherDetail[] = []
+    const handler = (event: Event) => {
+      updates.push(
+        (event as CustomEvent<WatchHeaderLanguageSwitcherDetail>).detail,
+      )
+    }
+    window.addEventListener(WATCH_HEADER_LANGUAGE_SWITCHER_EVENT, handler)
+    return {
+      updates,
+      cleanup: () =>
+        window.removeEventListener(
+          WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+          handler,
+        ),
+    }
+  }
+
   it("does not render when playableLanguageCount < 2", () => {
     const onLanguageClick = vi.fn()
+    const listener = listenForLanguageSwitcher()
     act(() => {
       root.render(
         <HeroPlayer
@@ -1422,13 +1693,13 @@ describe("HeroPlayer — language switch button", () => {
         />,
       )
     })
-    expect(
-      container.querySelector('[data-testid="hero-player-language-button"]'),
-    ).toBeNull()
+    expect(listener.updates.at(-1)?.visible).toBe(false)
+    listener.cleanup()
   })
 
-  it("renders when playableLanguageCount >= 2 with onLanguageClick, and click invokes the callback exactly once", async () => {
+  it("publishes a header language switcher when playableLanguageCount >= 2 with onLanguageClick", () => {
     const onLanguageClick = vi.fn()
+    const listener = listenForLanguageSwitcher()
     act(() => {
       root.render(
         <HeroPlayer
@@ -1438,18 +1709,17 @@ describe("HeroPlayer — language switch button", () => {
         />,
       )
     })
-    const btn = container.querySelector(
-      '[data-testid="hero-player-language-button"]',
-    ) as HTMLButtonElement | null
-    expect(btn).not.toBeNull()
-    await act(async () => {
-      btn!.click()
-    })
+    const latest = listener.updates.at(-1)
+    expect(latest?.visible).toBe(true)
+    expect(latest?.onClick).toBe(onLanguageClick)
+    latest?.onClick?.()
     expect(onLanguageClick).toHaveBeenCalledTimes(1)
+    listener.cleanup()
   })
 
   it("hides the top-right language button when fullscreen is active", async () => {
     const onLanguageClick = vi.fn()
+    const listener = listenForLanguageSwitcher()
     act(() => {
       root.render(
         <HeroPlayer
@@ -1460,9 +1730,7 @@ describe("HeroPlayer — language switch button", () => {
       )
     })
     // Initially visible (no fullscreen)
-    expect(
-      container.querySelector('[data-testid="hero-player-language-button"]'),
-    ).not.toBeNull()
+    expect(listener.updates.at(-1)?.visible).toBe(true)
 
     // Enter fullscreen
     const wrapper = container.querySelector(
@@ -1478,9 +1746,7 @@ describe("HeroPlayer — language switch button", () => {
       document.dispatchEvent(new Event("fullscreenchange"))
     })
 
-    expect(
-      container.querySelector('[data-testid="hero-player-language-button"]'),
-    ).toBeNull()
+    expect(listener.updates.at(-1)?.visible).toBe(false)
 
     // Reset jsdom state for subsequent tests
     Object.defineProperty(document, "fullscreenElement", {
@@ -1489,6 +1755,7 @@ describe("HeroPlayer — language switch button", () => {
         return null
       },
     })
+    listener.cleanup()
   })
 })
 
