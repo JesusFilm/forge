@@ -5,8 +5,7 @@
 Custom management platform — the strategic replacement for Strapi and
 eventual home for the manager app. V1 ships the architecture (Next.js +
 GraphQL Yoga + Pothos + Prisma + pgvector + useworkflow + Auth SSO)
-and proves it with real content types (Experiences, Videos) while Strapi
-continues to serve existing consumers.
+and proves it with real content types (Experiences, Videos).
 
 See the origin docs for full context:
 
@@ -27,6 +26,19 @@ See the origin docs for full context:
 - Redis (TCP via `ioredis`) for rate limiting
 - Railway deployment (NIXPACKS, standalone output)
 - Doppler for env var management (project: `forge-admin`)
+
+## Embedding ownership
+
+Mastra owns background transcript, scene, and experience embedding generation:
+provider calls, provider-result validation, retries, workflow diagnostics, and
+Studio observability. Admin owns type-specific ingest routes, target
+resolution, vector storage, publication gates, pgvector indexes, public search
+contracts, and retrieval. Keep the transcript, scene, and experience ingest
+contracts separate; do not add a generic embedding blob endpoint.
+
+Live user search stays Admin-owned. Search services may generate live query
+embeddings for retrieval, but live search orchestration does not move to
+Mastra.
 
 ## Folder structure
 

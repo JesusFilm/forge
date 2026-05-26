@@ -14,6 +14,7 @@ import {
   EXPECTED_SCENE_EMBEDDING_DIMENSIONS,
   EmbeddingProviderError,
   requestEmbeddingVectors,
+  validateEmbeddingProviderResult,
   type EmbeddingProviderResult,
 } from "../../services/embedding-provider"
 import { env, getSceneEmbeddingProviderConfig } from "../../config/env"
@@ -534,14 +535,14 @@ export async function embedPlannedScenes(
   const providerConfig = getSceneEmbeddingProviderConfig()
   const input = planned.source.scenes.map((scene) => scene.sourceText)
   const result = await retryOperation(
-    () =>
-      options.embeddingRequester
-        ? options.embeddingRequester(input, {
+    async () => {
+      const rawResult = options.embeddingRequester
+        ? await options.embeddingRequester(input, {
             expectedDimensions: EXPECTED_SCENE_EMBEDDING_DIMENSIONS,
             context: "Scene embedding batch",
             itemLabel: "scene descriptions",
           })
-        : requestEmbeddingVectors(input, {
+        : await requestEmbeddingVectors(input, {
             apiKey: options.apiKey ?? providerConfig.apiKey,
             baseUrl: options.embeddingsBaseUrl ?? providerConfig.baseUrl,
             model: planned.model.name,
@@ -551,7 +552,13 @@ export async function embedPlannedScenes(
             itemLabel: "scene descriptions",
             timeoutMs: options.timeoutMs,
             fetchImpl: options.fetchImpl,
-          }),
+          })
+      return validateEmbeddingProviderResult(rawResult, input.length, {
+        expectedDimensions: EXPECTED_SCENE_EMBEDDING_DIMENSIONS,
+        context: "Scene embedding batch",
+        itemLabel: "scene descriptions",
+      })
+    },
     (_value, error) =>
       error != null &&
       failureFromEmbeddingError(error, planned.generation.mastraRunId)

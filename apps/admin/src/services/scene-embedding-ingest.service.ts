@@ -3,15 +3,16 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import {
+  EmbeddingGenerationModeSchema,
+  EmbeddingTimestampSchema,
+  statusForEmbeddingRewrite,
+} from "@/services/embedding-ingest-shared"
+import {
   EXPECTED_SCENE_EMBEDDING_DIMENSIONS,
   writeSceneEmbeddingPayloadInTransaction,
   type SceneEmbeddingGenerationMode,
   type SceneEmbeddingPayloadScene,
 } from "@/services/scene-embedding.service"
-
-const GenerationModeSchema = z
-  .enum(["idempotent", "repair", "force", "model-upgrade"])
-  .default("idempotent")
 
 const AdminTargetSchema = z
   .object({
@@ -20,13 +21,6 @@ const AdminTargetSchema = z
     coreId: z.string().min(1).optional(),
   })
   .strict()
-
-const TimestampSchema = z
-  .string()
-  .min(1)
-  .refine((value) => !Number.isNaN(Date.parse(value)), {
-    message: "must be a valid timestamp",
-  })
 
 const StringArraySchema = z.array(z.string()).default([])
 
@@ -59,8 +53,8 @@ export const SceneEmbeddingIngestPayloadSchema = z
         artifactKey: z.string().min(1),
         artifactVersion: z.string().min(1),
         provider: z.string().min(1),
-        generatedAt: TimestampSchema.optional(),
-        contentHash: z.string().min(1).optional(),
+        generatedAt: EmbeddingTimestampSchema.optional(),
+        contentHash: z.string().min(1),
       })
       .strict(),
     model: z
@@ -72,8 +66,8 @@ export const SceneEmbeddingIngestPayloadSchema = z
       .strict(),
     generation: z
       .object({
-        mode: GenerationModeSchema,
-        generatedAt: TimestampSchema,
+        mode: EmbeddingGenerationModeSchema,
+        generatedAt: EmbeddingTimestampSchema,
         mastraRunId: z.string().min(1),
       })
       .strict(),
@@ -449,18 +443,33 @@ export async function ingestSceneEmbeddings(
             "repair_requires_matching_provenance",
           )
         }
+        if (
+          mode === "repair" &&
+          existing.healthyCount === payload.scenes.length
+        ) {
+          return {
+            status: "unchanged",
+            target: { ...target, locale: payload.locale },
+            scenes: payload.scenes.length,
+            model: payload.model.name,
+            dimensions: payload.model.dimensions,
+            mastraRunId: payload.generation.mastraRunId,
+          }
+        }
+      }
+
+      let status: SceneEmbeddingIngestStatus = "created"
+      if (existing) {
+        if (mode === "idempotent") {
+          return resultForRejected(payload, target, "existing_scene_differs")
+        }
+        status = statusForEmbeddingRewrite(mode)
       }
 
       await writePayload(tx, payload, target, scenes, hash)
 
       return {
-        status: !existing
-          ? "created"
-          : mode === "repair"
-            ? "repaired"
-            : mode === "model-upgrade"
-              ? "model_upgraded"
-              : "forced",
+        status,
         target: { ...target, locale: payload.locale },
         scenes: payload.scenes.length,
         model: payload.model.name,

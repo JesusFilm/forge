@@ -30,10 +30,22 @@ Origin documents:
   retry/failure visibility, and Studio diagnostics, then submits vectors to
   Admin's scene-specific ingest. Admin remains the owner of pgvector storage,
   indexes, target resolution, public search contracts, and search retrieval.
+- The experience embedding workflow follows the same ownership split: Mastra
+  generates and validates vectors, Admin stores them and serves retrieval.
+- Transcript, scene, and experience workflows share provider-result validation
+  for count alignment, finite vector values, and configured dimensions. Invalid
+  provider output must throw inside the workflow so Studio records a failed run.
+- Transcript, scene, and experience workflows share Admin ingest transport
+  behavior but keep separate Admin endpoints, local schemas, and type-specific
+  payload parsing. Do not replace them with a generic embedding blob route.
+- Generation mode semantics are shared across embedding workflows: omitted means
+  idempotent; explicit `repair`, `force`, and `model-upgrade` request rewrites.
 - Do not import from `apps/admin`, `apps/manager`, or `apps/auth`; workflow
   contracts are HTTP payloads plus local Zod schemas.
 - Keep service-bearer auth receiver-side. Callers present a bearer; this app
-  validates against `MASTRA_SERVICE_API_KEYS`.
+  validates explicit `/forge-*` service routes against
+  `MASTRA_SERVICE_API_KEYS`; Studio's built-in `/api/workflows` routes must
+  remain reachable by the Mastra runtime.
 - Keep health checks unauthenticated and non-sensitive.
 
 ## Development

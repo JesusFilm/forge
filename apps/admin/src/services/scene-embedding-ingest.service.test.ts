@@ -49,7 +49,7 @@ function vector(seed: number): number[] {
 }
 
 function payload(overrides?: Record<string, unknown>) {
-  return {
+  const body = {
     target: {
       admin: {
         videoId: "video-1",
@@ -91,6 +91,9 @@ function payload(overrides?: Record<string, unknown>) {
     ],
     ...overrides,
   }
+  const source = body.source as Record<string, unknown>
+  source.contentHash ??= hashFor(body)
+  return body
 }
 
 function hashFor(body: ReturnType<typeof payload>): string {
@@ -229,6 +232,60 @@ describe("ingestSceneEmbeddings", () => {
     )
 
     expect(result.status).toBe("repaired")
+    expect(writeSceneEmbeddingPayloadMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("repair mode leaves healthy matching scene rows unchanged", async () => {
+    const prisma = buildPrisma()
+    const body = payload()
+    const hash = hashFor(body)
+    vi.mocked(prisma.$queryRaw)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([existingSummary({ source_hashes: [hash] })])
+
+    const result = await ingestSceneEmbeddings(
+      prisma as never,
+      payload({
+        source: {
+          ...(body.source as object),
+          contentHash: hash,
+        },
+        generation: {
+          mode: "repair",
+          generatedAt: "2026-05-25T00:01:00.000Z",
+          mastraRunId: "run-repair-healthy",
+        },
+      }),
+    )
+
+    expect(result.status).toBe("unchanged")
+    expect(writeSceneEmbeddingPayloadMock).not.toHaveBeenCalled()
+  })
+
+  it("model-upgrade mode rewrites healthy scene rows with model-upgraded status", async () => {
+    const prisma = buildPrisma()
+    const body = payload()
+    const hash = hashFor(body)
+    vi.mocked(prisma.$queryRaw)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([existingSummary({ source_hashes: [hash] })])
+
+    const result = await ingestSceneEmbeddings(
+      prisma as never,
+      payload({
+        source: {
+          ...(body.source as object),
+          contentHash: hash,
+        },
+        generation: {
+          mode: "model-upgrade",
+          generatedAt: "2026-05-25T00:01:00.000Z",
+          mastraRunId: "run-model-upgrade",
+        },
+      }),
+    )
+
+    expect(result.status).toBe("model_upgraded")
     expect(writeSceneEmbeddingPayloadMock).toHaveBeenCalledTimes(1)
   })
 

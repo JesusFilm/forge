@@ -56,7 +56,7 @@ function buildPrisma() {
 }
 
 function payload(overrides?: Record<string, unknown>) {
-  return {
+  const body = {
     target: {
       admin: {
         videoId: "video-1",
@@ -101,6 +101,9 @@ function payload(overrides?: Record<string, unknown>) {
     ],
     ...overrides,
   }
+  const source = body.source as Record<string, unknown>
+  source.contentHash ??= hashFor(body)
+  return body
 }
 
 function hashFor(body: ReturnType<typeof payload>): string {
@@ -242,6 +245,44 @@ describe("ingestTranscriptEmbeddings", () => {
     expect(writeTranscriptEmbeddingPayloadMock).toHaveBeenCalledTimes(1)
   })
 
+  it("repair mode leaves healthy matching chunks unchanged", async () => {
+    const prisma = buildPrisma()
+    const base = payload()
+    const hash = hashFor(base)
+    const body = payload({
+      generation: {
+        mode: "repair",
+        generatedAt: "2026-05-25T00:01:00.000Z",
+        mastraRunId: "run-repair-healthy",
+      },
+      source: {
+        ...(payload().source as object),
+        contentHash: hash,
+      },
+    })
+    vi.mocked(prisma.$queryRaw)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "transcript-1",
+          sourceContentHash: hash,
+          model: "openai/text-embedding-3-small",
+          dimensions: 1536,
+          chunkingType: "segment-aware",
+          maxChunkTokens: 500,
+          overlapTokens: 100,
+          totalChunks: 1,
+          totalTokens: 6,
+        },
+      ])
+      .mockResolvedValueOnce([{ count: 1 }])
+
+    const result = await ingestTranscriptEmbeddings(prisma as never, body)
+
+    expect(result.status).toBe("unchanged")
+    expect(writeTranscriptEmbeddingPayloadMock).not.toHaveBeenCalled()
+  })
+
   it("force mode rewrites even when existing provenance and chunks are healthy", async () => {
     const prisma = buildPrisma()
     const base = payload()
@@ -277,6 +318,44 @@ describe("ingestTranscriptEmbeddings", () => {
     const result = await ingestTranscriptEmbeddings(prisma as never, body)
 
     expect(result.status).toBe("forced")
+    expect(writeTranscriptEmbeddingPayloadMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("model-upgrade mode rewrites matching healthy chunks with model-upgraded status", async () => {
+    const prisma = buildPrisma()
+    const base = payload()
+    const hash = hashFor(base)
+    const body = payload({
+      generation: {
+        mode: "model-upgrade",
+        generatedAt: "2026-05-25T00:01:00.000Z",
+        mastraRunId: "run-model-upgrade",
+      },
+      source: {
+        ...(payload().source as object),
+        contentHash: hash,
+      },
+    })
+    vi.mocked(prisma.$queryRaw)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "transcript-1",
+          sourceContentHash: hash,
+          model: "openai/text-embedding-3-small",
+          dimensions: 1536,
+          chunkingType: "segment-aware",
+          maxChunkTokens: 500,
+          overlapTokens: 100,
+          totalChunks: 1,
+          totalTokens: 6,
+        },
+      ])
+      .mockResolvedValueOnce([{ count: 1 }])
+
+    const result = await ingestTranscriptEmbeddings(prisma as never, body)
+
+    expect(result.status).toBe("model_upgraded")
     expect(writeTranscriptEmbeddingPayloadMock).toHaveBeenCalledTimes(1)
   })
 
@@ -339,6 +418,51 @@ describe("ingestTranscriptEmbeddings", () => {
       },
       select: { id: true },
     })
+    expect(writeTranscriptEmbeddingPayloadMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects admin targets whose coreId does not match the resolved video", async () => {
+    const prisma = buildPrisma()
+    prisma.video.findFirst.mockResolvedValueOnce({
+      id: "video-1",
+      coreId: "core-actual",
+    })
+
+    await expect(
+      ingestTranscriptEmbeddings(prisma as never, payload()),
+    ).rejects.toMatchObject({ code: "target_not_found" })
+    expect(writeTranscriptEmbeddingPayloadMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects invalid transcript segment and chunk timing before writing", async () => {
+    const prisma = buildPrisma()
+
+    await expect(
+      ingestTranscriptEmbeddings(
+        prisma as never,
+        payload({
+          source: {
+            ...(payload().source as object),
+            segments: [{ start: 10, end: 2, text: "time drift" }],
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "payload_invalid" })
+
+    await expect(
+      ingestTranscriptEmbeddings(
+        prisma as never,
+        payload({
+          chunks: [
+            {
+              ...(payload().chunks[0] as object),
+              startSeconds: 10,
+              endSeconds: 2,
+            },
+          ],
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "chunk_invalid" })
     expect(writeTranscriptEmbeddingPayloadMock).not.toHaveBeenCalled()
   })
 

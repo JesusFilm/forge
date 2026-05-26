@@ -14,6 +14,7 @@ import {
   EXPECTED_EXPERIENCE_EMBEDDING_DIMENSIONS,
   EmbeddingProviderError,
   requestEmbeddingVectors,
+  validateEmbeddingProviderResult,
   type EmbeddingProviderResult,
 } from "../../services/embedding-provider"
 import { env, getExperienceEmbeddingProviderConfig } from "../../config/env"
@@ -378,14 +379,14 @@ export async function embedPlannedExperience(
 ): Promise<EmbeddedRun> {
   const providerConfig = getExperienceEmbeddingProviderConfig()
   const result = await retryOperation(
-    () =>
-      options.embeddingRequester
-        ? options.embeddingRequester([planned.source.text], {
+    async () => {
+      const rawResult = options.embeddingRequester
+        ? await options.embeddingRequester([planned.source.text], {
             expectedDimensions: EXPECTED_EXPERIENCE_EMBEDDING_DIMENSIONS,
             context: "Experience embedding",
             itemLabel: "experience source",
           })
-        : requestEmbeddingVectors([planned.source.text], {
+        : await requestEmbeddingVectors([planned.source.text], {
             apiKey: options.apiKey ?? providerConfig.apiKey,
             baseUrl: options.embeddingsBaseUrl ?? providerConfig.baseUrl,
             model: planned.model.name,
@@ -395,7 +396,13 @@ export async function embedPlannedExperience(
             itemLabel: "experience source",
             timeoutMs: options.timeoutMs,
             fetchImpl: options.fetchImpl,
-          }),
+          })
+      return validateEmbeddingProviderResult(rawResult, 1, {
+        expectedDimensions: EXPECTED_EXPERIENCE_EMBEDDING_DIMENSIONS,
+        context: "Experience embedding",
+        itemLabel: "experience source",
+      })
+    },
     (_value, error) =>
       error != null && failureFromEmbeddingError(error).retryable,
   )

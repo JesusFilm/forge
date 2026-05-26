@@ -2,7 +2,7 @@
 
 ## What this app does
 
-AI video enrichment pipeline dashboard. Ingests video assets via Mux, runs enrichment workflows (transcription, translation, chapters, metadata, embeddings) using OpenRouter-routed AI models, stores artifacts in Railway S3-compatible Object Storage, and syncs results through Manager/Admin GraphQL contracts.
+AI video enrichment pipeline dashboard. Ingests video assets via Mux, runs enrichment workflows (transcription, translation, chapters, metadata, and source-artifact generation), stores artifacts in Railway S3-compatible Object Storage, and syncs results through Manager/Admin GraphQL contracts. Background transcript, scene, and experience embedding generation belongs to Mastra; Manager only supplies source artifacts.
 
 ## Source
 
@@ -27,14 +27,14 @@ src/
   config/env.ts  Validated env vars (t3-oss/env-nextjs + zod)
   workflows/     Durable workflow definitions (useworkflow.dev)
   services/      Service clients: mux, transcription, storage
-  cms/           live/mock/admin data gateway and legacy bridge code
+  cms/           legacy-named live/mock/admin data gateway and bridge code
 ```
 
 ## Conventions
 
 - All env vars validated at startup via `src/config/env.ts`. Never read `process.env` directly.
 - Env vars managed by **Doppler** (project: `forge-manager`). Use `pnpm fetch-secrets` for local dev.
-- New canonical data access goes through Admin GraphQL contracts. Keep legacy `src/cms/*` code isolated behind `src/cms/gateway.ts` while the Manager backend migration finishes.
+- New canonical data access goes through Admin GraphQL contracts. Keep legacy `src/cms/*` code isolated behind `src/cms/gateway.ts` while the Manager backend migration finishes; do not add new CMS dependencies or CMS-specific embedding sync.
 - Workflow steps must be idempotent — they may be retried by useworkflow.dev.
 - Artifact storage uses Railway S3 with `@aws-sdk/client-s3`. Keys: `{assetId}/{artifact-type}.{ext}`.
 - Storage uses the `RAILWAY_S3_*` env var pattern. When `RAILWAY_S3_BUCKET` is not set, artifacts fall back to local `.tmp/artifacts/` — suitable for dev and test environments.
