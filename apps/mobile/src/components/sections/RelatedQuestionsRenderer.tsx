@@ -58,13 +58,11 @@ function AnswerFallback() {
         >
           <Ionicons
             name="chatbubble-outline"
-            size={16}
+            size={14}
             color="#1c1917"
             style={styles.fallbackButtonIcon}
           />
-          <Text style={[styles.fallbackButtonText, typography.caption]}>
-            CHAT WITH A PERSON
-          </Text>
+          <Text style={styles.fallbackButtonText}>Chat</Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [
@@ -78,13 +76,11 @@ function AnswerFallback() {
         >
           <Ionicons
             name="mail-outline"
-            size={16}
+            size={14}
             color="#1c1917"
             style={styles.fallbackButtonIcon}
           />
-          <Text style={[styles.fallbackButtonText, typography.caption]}>
-            ASK A BIBLE QUESTION
-          </Text>
+          <Text style={styles.fallbackButtonText}>Ask Bible Q</Text>
         </Pressable>
       </View>
     </View>
@@ -249,7 +245,6 @@ const styles = StyleSheet.create({
   },
   fallbackButtonRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: 8,
   },
   fallbackButton: {
