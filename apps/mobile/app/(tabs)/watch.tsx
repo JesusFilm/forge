@@ -62,7 +62,7 @@ export default function DiscoverScreen() {
 
   const handleSelectResult = useCallback(
     (slug: string, type: string) => {
-      if (type === "experience") {
+      if (type === "EXPERIENCE") {
         selectExperience(slug)
         router.navigate("/(tabs)")
       } else {
