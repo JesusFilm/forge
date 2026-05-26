@@ -65,6 +65,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     paddingHorizontal: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(255, 255, 255, 0.1)",
+    marginTop: 4,
+    paddingTop: 8,
   },
   actionButton: {
     alignItems: "center",
