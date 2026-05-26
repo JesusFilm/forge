@@ -80,7 +80,7 @@ function AnswerFallback() {
             color="#1c1917"
             style={styles.fallbackButtonIcon}
           />
-          <Text style={styles.fallbackButtonText}>Ask Bible Q</Text>
+          <Text style={styles.fallbackButtonText}>Ask Bible Question</Text>
         </Pressable>
       </View>
     </View>
