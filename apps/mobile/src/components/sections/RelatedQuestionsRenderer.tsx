@@ -253,24 +253,27 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   fallbackButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#f5f5f4",
     borderRadius: 9999,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    minHeight: 44,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    minHeight: 40,
   },
   fallbackButtonPressed: {
     opacity: 0.85,
   },
   fallbackButtonIcon: {
-    marginRight: 8,
+    marginRight: 4,
   },
   fallbackButtonText: {
     color: "#1c1917",
     fontFamily: "System",
     fontWeight: "700",
-    letterSpacing: 0.5,
+    fontSize: 10,
+    letterSpacing: 0.3,
   },
 })
