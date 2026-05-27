@@ -17,6 +17,16 @@ import { GLASS_OUTLINE_CLASS } from "@/lib/glass-outline"
 
 type Cue = { start: number; end: number; text: string }
 
+// Window after a programmatic scrollTo within which trailing scroll events
+// are treated as smooth-scroll settling rather than user interaction.
+// Smooth scrolls to far cues observed at ~700ms on desktop Chrome; 900ms
+// gives margin without leaving a noticeable lag before the "Follow
+// playback" pill can appear after a real user scroll.
+const AUTO_SCROLL_WINDOW_MS = 900
+// Tolerance in pixels: if scrollTop is still within this band of the last
+// auto target, treat as auto-scroll noise even after the time window.
+const AUTO_SCROLL_TOLERANCE_PX = 8
+
 const TIMING_RE =
   /(?:(\d+):)?(\d+):(\d+)[.,](\d+)\s*-->\s*(?:(\d+):)?(\d+):(\d+)[.,](\d+)/
 
@@ -125,11 +135,25 @@ export function SubtitleTranscript({
     vttSrc: string
     cues: Cue[] | null
   } | null>(null)
-  const [activeIdx, setActiveIdx] = useState(-1)
+  // activeMark carries BOTH the cue-list identity and the highlighted index,
+  // so render-time we only treat the index as valid when it belongs to the
+  // currently-rendered cues array. Switching subtitle language drops the
+  // stale highlight without an extra effect-driven setState.
+  const [activeMark, setActiveMark] = useState<{
+    cues: Cue[] | null
+    idx: number
+  }>({ cues: null, idx: -1 })
   const [userScrolled, setUserScrolled] = useState(false)
   const listRef = useRef<HTMLOListElement | null>(null)
   const userScrolledRef = useRef(false)
+  // Programmatic auto-scrolls set BOTH refs (time + target scrollTop). The
+  // onScroll handler ignores any settling event whose timestamp falls inside
+  // the AUTO_SCROLL_WINDOW_MS budget OR whose scrollTop is within
+  // AUTO_SCROLL_TOLERANCE_PX of the most recent auto target. Either alone
+  // misclassifies: long smooth-scrolls outlast a tight window, and a real
+  // user scroll that briefly crosses the target tripled-touches the band.
   const lastAutoScrollAtRef = useRef(0)
+  const lastAutoScrollTopRef = useRef(0)
   const setUserScrolledBoth = useCallback((v: boolean) => {
     userScrolledRef.current = v
     setUserScrolled(v)
@@ -150,25 +174,27 @@ export function SubtitleTranscript({
           ? "error"
           : "ready"
 
+  const activeIdx = activeMark.cues === cues ? activeMark.idx : -1
+
   useEffect(() => {
     if (!activeVttSrc) return
-    let cancelled = false
-    fetch(activeVttSrc, { credentials: "omit" })
+    const controller = new AbortController()
+    fetch(activeVttSrc, {
+      credentials: "omit",
+      signal: controller.signal,
+    })
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.text()
       })
       .then((text) => {
-        if (cancelled) return
         setLoaded({ vttSrc: activeVttSrc, cues: parseVtt(text) })
       })
-      .catch(() => {
-        if (cancelled) return
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return
         setLoaded({ vttSrc: activeVttSrc, cues: null })
       })
-    return () => {
-      cancelled = true
-    }
+    return () => controller.abort()
   }, [activeVttSrc])
 
   useEffect(() => {
@@ -188,7 +214,7 @@ export function SubtitleTranscript({
       }
       if (idx !== lastIdx) {
         lastIdx = idx
-        setActiveIdx(idx)
+        setActiveMark({ cues, idx })
       }
     }
     update()
@@ -205,7 +231,16 @@ export function SubtitleTranscript({
     if (!list) return
     const onScroll = () => {
       const now = Date.now()
-      if (now - lastAutoScrollAtRef.current < 250) return
+      const sinceAuto = now - lastAutoScrollAtRef.current
+      const delta = Math.abs(list.scrollTop - lastAutoScrollTopRef.current)
+      // Treat as auto-scroll settling if EITHER the time window is open
+      // OR scrollTop still tracks the last auto target within tolerance.
+      // A real user scroll fails both — outside the window AND off-target.
+      if (
+        sinceAuto < AUTO_SCROLL_WINDOW_MS ||
+        delta <= AUTO_SCROLL_TOLERANCE_PX
+      )
+        return
       if (!userScrolledRef.current) {
         userScrolledRef.current = true
         setUserScrolled(true)
@@ -215,6 +250,22 @@ export function SubtitleTranscript({
     return () => list.removeEventListener("scroll", onScroll)
   }, [cues])
 
+  const autoScrollToActive = useCallback(
+    (list: HTMLOListElement, li: HTMLElement) => {
+      const listRect = list.getBoundingClientRect()
+      const liRect = li.getBoundingClientRect()
+      const target =
+        list.scrollTop +
+        (liRect.top - listRect.top) -
+        list.clientHeight / 2 +
+        li.clientHeight / 2
+      lastAutoScrollAtRef.current = Date.now()
+      lastAutoScrollTopRef.current = target
+      list.scrollTo({ top: target, behavior: "smooth" })
+    },
+    [],
+  )
+
   useEffect(() => {
     if (activeIdx < 0) return
     if (userScrolledRef.current) return
@@ -222,16 +273,8 @@ export function SubtitleTranscript({
     if (!list) return
     const li = list.children.item(activeIdx) as HTMLElement | null
     if (!li) return
-    const listRect = list.getBoundingClientRect()
-    const liRect = li.getBoundingClientRect()
-    const target =
-      list.scrollTop +
-      (liRect.top - listRect.top) -
-      list.clientHeight / 2 +
-      li.clientHeight / 2
-    lastAutoScrollAtRef.current = Date.now()
-    list.scrollTo({ top: target, behavior: "smooth" })
-  }, [activeIdx])
+    autoScrollToActive(list, li)
+  }, [activeIdx, autoScrollToActive])
 
   const handleSeek = useCallback(
     (cue: Cue) => {
@@ -253,16 +296,8 @@ export function SubtitleTranscript({
     const list = listRef.current
     const li = list?.children.item(activeIdx) as HTMLElement | null
     if (!list || !li) return
-    const listRect = list.getBoundingClientRect()
-    const liRect = li.getBoundingClientRect()
-    const target =
-      list.scrollTop +
-      (liRect.top - listRect.top) -
-      list.clientHeight / 2 +
-      li.clientHeight / 2
-    lastAutoScrollAtRef.current = Date.now()
-    list.scrollTo({ top: target, behavior: "smooth" })
-  }, [activeIdx, setUserScrolledBoth])
+    autoScrollToActive(list, li)
+  }, [activeIdx, autoScrollToActive, setUserScrolledBoth])
 
   if (subtitles.length === 0) return null
 
@@ -274,15 +309,19 @@ export function SubtitleTranscript({
   return (
     <section
       data-testid="watch-subtitle-transcript"
+      aria-labelledby="watch-transcript-heading"
       className="bg-stone-900 pt-12 pb-20 sm:pt-16 sm:pb-24"
     >
       <div className={WATCH_PAGE_CONTENT_CLASSES}>
         <div
-          className={`rounded-2xl bg-stone-800/40 backdrop-blur-sm ${GLASS_OUTLINE_CLASS}`}
+          className={`rounded-2xl bg-stone-800/40 backdrop-blur-md ${GLASS_OUTLINE_CLASS}`}
         >
           <header className="flex flex-col gap-3 border-b border-white/10 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
             <div>
-              <h2 className="text-2xl font-semibold tracking-tight text-stone-50">
+              <h2
+                id="watch-transcript-heading"
+                className="text-2xl font-semibold tracking-tight text-stone-50"
+              >
                 Transcript
               </h2>
               <p className="mt-1 text-sm text-stone-400">
