@@ -204,6 +204,7 @@ function SyntheticBlock({
           bibleCitations={block.bibleCitations}
           onShareClick={modalCallbacks?.openShare ?? noop}
           locale={locale}
+          youVersionPassages={block.youVersionPassages}
         />
       )
     case "Share":

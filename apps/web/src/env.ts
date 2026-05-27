@@ -52,6 +52,14 @@ const ADMIN_GRAPHQL_URL_HOST_REJECT_SET = new Set<string>([
   "auth.jesusfilm.org",
 ])
 
+function optionalPositiveIntDefault(defaultValue: number) {
+  return z.preprocess((value) => {
+    if (value == null || value === "") return undefined
+    const parsed = Number(value)
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
+  }, z.number().int().positive().default(defaultValue))
+}
+
 export const env = createEnv({
   server: {
     // Retained for the /api/preview Next.js draft-mode handler. The data
@@ -98,6 +106,11 @@ export const env = createEnv({
     // outbound bearer; admin recognizes any entry as a valid CONSUMER_BEARER.
     // Required — flipped from optional in U13.
     WEB_ADMIN_API_KEYS: z.string().min(1),
+    // Optional: server-side YouVersion Platform access for the watch-page
+    // Bible Quotes passage panel. Kept server-only so the app key is never
+    // serialized into browser JS or request headers from the client.
+    YOUVERSION_APP_KEY: z.string().optional(),
+    YOUVERSION_DEFAULT_VERSION_ID: optionalPositiveIntDefault(111),
   },
   client: {
     // U12 — Mux watch-page player migration flag.
@@ -122,14 +135,6 @@ export const env = createEnv({
     // not all environments (preview / local) have Mux Data set up; when
     // unset, the player simply does not emit Mux Data beacons.
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: z.string().optional(),
-    // YouVersion Platform app key for the compact Bible Quotes passage embed.
-    // Optional so local/preview environments without a key hide the embed
-    // instead of failing app boot.
-    NEXT_PUBLIC_YOUVERSION_APP_KEY: z.string().optional(),
-    NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID: z.preprocess(
-      (value) => (value === "" ? undefined : value),
-      z.coerce.number().int().positive().default(111),
-    ),
     // U10 — Canonical absolute origin used by the watch-page Share modal to
     // build sharable Copy Link / Copy Embed Code values that DO include
     // `/watch/` (the Next.js basePath). Defaults to `http://localhost:3000`
@@ -163,14 +168,13 @@ export const env = createEnv({
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
+    YOUVERSION_APP_KEY: process.env.YOUVERSION_APP_KEY,
+    YOUVERSION_DEFAULT_VERSION_ID: process.env.YOUVERSION_DEFAULT_VERSION_ID,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO:
       process.env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO,
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY,
-    NEXT_PUBLIC_YOUVERSION_APP_KEY: process.env.NEXT_PUBLIC_YOUVERSION_APP_KEY,
-    NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID:
-      process.env.NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID,
     NEXT_PUBLIC_CANONICAL_ORIGIN: process.env.NEXT_PUBLIC_CANONICAL_ORIGIN,
   },
 })

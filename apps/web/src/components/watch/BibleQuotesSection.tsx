@@ -13,17 +13,10 @@
 import Image from "next/image"
 import { ExternalLink } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import {
-  BibleTextView,
-  YouVersionProvider,
-} from "@youversion/platform-react-ui"
-import { useVersion } from "@youversion/platform-react-hooks"
 import type { UseEmblaCarouselType } from "embla-carousel-react"
 
-import { env } from "@/env"
 import type { WatchBibleQuotesBlock } from "@/lib/content"
 import { formatCitation } from "@/lib/citation-format"
-import { toYouVersionReference } from "@/lib/youversion-reference"
 import { Button } from "@/components/ui/button"
 import {
   Carousel,
@@ -50,6 +43,11 @@ type BibleQuotesSectionProps = {
    * thread locale here; pass it through when wired.
    */
   locale?: string
+  /**
+   * Server-fetched YouVersion API payloads keyed by citation documentId.
+   * Keeping this as data avoids exposing the YouVersion app key to browser JS.
+   */
+  youVersionPassages?: WatchBibleQuotesBlock["youVersionPassages"]
 }
 
 const JOIN_BIBLE_STUDY_URL =
@@ -152,18 +150,27 @@ export function BibleQuotesSection({
   bibleCitations,
   onShareClick,
   locale = "en",
+  youVersionPassages = [],
 }: BibleQuotesSectionProps) {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
   const [activeSlideIndex, setActiveSlideIndex] = useState(0)
+  const youVersionPassagesByCitationId = useMemo(
+    () =>
+      new Map(
+        youVersionPassages.map((passage) => [
+          passage.citationDocumentId,
+          passage,
+        ]),
+      ),
+    [youVersionPassages],
+  )
   const activeCitation =
     activeSlideIndex < bibleCitations.length
       ? bibleCitations[activeSlideIndex]
       : null
-  const activeYouVersionReference = useMemo(
-    () =>
-      activeCitation != null ? toYouVersionReference(activeCitation) : null,
-    [activeCitation],
-  )
+  const activeYouVersionPassage = activeCitation
+    ? (youVersionPassagesByCitationId.get(activeCitation.documentId) ?? null)
+    : null
   const activeReferenceLabel = activeCitation
     ? formatCitation(activeCitation)
     : null
@@ -329,7 +336,7 @@ export function BibleQuotesSection({
         </Carousel>
       </div>
       <YouVersionPassagePanel
-        reference={activeYouVersionReference}
+        passage={activeYouVersionPassage}
         referenceLabel={activeReferenceLabel}
       />
     </section>
@@ -337,20 +344,23 @@ export function BibleQuotesSection({
 }
 
 function YouVersionPassagePanel({
-  reference,
+  passage,
   referenceLabel,
 }: {
-  reference: string | null
+  passage:
+    | NonNullable<WatchBibleQuotesBlock["youVersionPassages"]>[number]
+    | null
   referenceLabel: string | null
 }) {
-  if (!env.NEXT_PUBLIC_YOUVERSION_APP_KEY || reference == null) {
+  if (passage == null) {
     return null
   }
 
   return (
     <div
       data-testid="watch-bible-quotes-youversion"
-      data-reference={reference}
+      data-reference={passage.reference}
+      data-version-id={passage.versionId}
       className="mt-6 overflow-hidden rounded-xl border border-white/10 bg-stone-950/70 p-4 text-white shadow-xl shadow-black/20 sm:p-5"
     >
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -363,47 +373,35 @@ function YouVersionPassagePanel({
           </span>
         )}
       </div>
-      <YouVersionProvider appKey={env.NEXT_PUBLIC_YOUVERSION_APP_KEY}>
-        <YouVersionPassageText
-          reference={reference}
-          versionId={env.NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID}
-        />
-      </YouVersionProvider>
-    </div>
-  )
-}
-
-function YouVersionPassageText({
-  reference,
-  versionId,
-}: {
-  reference: string
-  versionId: number
-}) {
-  const { version } = useVersion(versionId)
-
-  return (
-    <>
-      <BibleTextView
-        reference={reference}
-        versionId={versionId}
-        theme="dark"
-        showVerseNumbers
-        renderNotes={false}
-        fontSize={18}
-        lineHeight={1.6}
-      />
-      {version?.copyright && (
+      <div className="space-y-2">
+        <p
+          data-testid="watch-bible-quotes-youversion-content"
+          className="whitespace-pre-line text-lg leading-relaxed text-white/90"
+        >
+          {passage.content}
+        </p>
+        {(passage.versionAbbreviation || passage.versionTitle) && (
+          <p
+            data-testid="watch-bible-quotes-youversion-version"
+            className="text-xs font-semibold text-white/60"
+          >
+            {[passage.versionAbbreviation, passage.versionTitle]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        )}
+      </div>
+      {passage.copyright && (
         <footer className="mt-4 border-t border-white/10 pt-3">
           <p
             data-testid="watch-bible-quotes-youversion-copyright"
             className="text-xs leading-relaxed text-white/55"
           >
-            {version.copyright}
+            {passage.copyright}
           </p>
-          {version.publisher_url && (
+          {passage.publisherUrl && (
             <a
-              href={version.publisher_url}
+              href={passage.publisherUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-2 inline-block text-xs font-semibold text-white/70 underline decoration-white/30 underline-offset-4 transition-colors hover:text-white"
@@ -413,7 +411,7 @@ function YouVersionPassageText({
           )}
         </footer>
       )}
-    </>
+    </div>
   )
 }
 

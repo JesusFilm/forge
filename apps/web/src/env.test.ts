@@ -6,11 +6,11 @@ function useBaseEnv() {
   process.env.ADMIN_GRAPHQL_URL = "http://localhost:1437/admin/api/graphql"
   process.env.WEB_ADMIN_API_KEYS = "test-admin-bearer-key"
   process.env.REVALIDATION_SECRET = "test-revalidation-secret"
-  delete process.env.NEXT_PUBLIC_YOUVERSION_APP_KEY
-  delete process.env.NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID
+  delete process.env.YOUVERSION_APP_KEY
+  delete process.env.YOUVERSION_DEFAULT_VERSION_ID
 }
 
-describe("web env — YouVersion public config", () => {
+describe("web env — YouVersion server config", () => {
   beforeEach(() => {
     vi.resetModules()
     process.env = { ...ORIGINAL_ENV }
@@ -24,25 +24,36 @@ describe("web env — YouVersion public config", () => {
   it("imports cleanly without YouVersion config and defaults the Bible version", async () => {
     const { env } = await import("./env")
 
-    expect(env.NEXT_PUBLIC_YOUVERSION_APP_KEY).toBeUndefined()
-    expect(env.NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID).toBe(111)
+    expect(env.YOUVERSION_APP_KEY).toBeUndefined()
+    expect(env.YOUVERSION_DEFAULT_VERSION_ID).toBe(111)
   })
 
   it("treats an empty YouVersion default version as absent", async () => {
-    process.env.NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID = ""
+    process.env.YOUVERSION_DEFAULT_VERSION_ID = ""
 
     const { env } = await import("./env")
 
-    expect(env.NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID).toBe(111)
+    expect(env.YOUVERSION_DEFAULT_VERSION_ID).toBe(111)
   })
 
   it("coerces a configured YouVersion default version id", async () => {
-    process.env.NEXT_PUBLIC_YOUVERSION_APP_KEY = "test-yv-app-key"
-    process.env.NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID = "59"
+    process.env.YOUVERSION_APP_KEY = "test-yv-app-key"
+    process.env.YOUVERSION_DEFAULT_VERSION_ID = "59"
 
     const { env } = await import("./env")
 
-    expect(env.NEXT_PUBLIC_YOUVERSION_APP_KEY).toBe("test-yv-app-key")
-    expect(env.NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID).toBe(59)
+    expect(env.YOUVERSION_APP_KEY).toBe("test-yv-app-key")
+    expect(env.YOUVERSION_DEFAULT_VERSION_ID).toBe(59)
   })
+
+  it.each(["abc", "0"])(
+    "falls back to the default Bible version when configured as %s",
+    async (configuredValue) => {
+      process.env.YOUVERSION_DEFAULT_VERSION_ID = configuredValue
+
+      const { env } = await import("./env")
+
+      expect(env.YOUVERSION_DEFAULT_VERSION_ID).toBe(111)
+    },
+  )
 })

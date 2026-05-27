@@ -22,8 +22,6 @@
     "@mux/mux-player-react": "^3.12",
     "@mux/mux-video-react": "^0.30",
     "@t3-oss/env-nextjs": "^0.13.10",
-    "@youversion/platform-react-hooks": "^1.30.0",
-    "@youversion/platform-react-ui": "^1.30.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "embla-carousel-react": "^8.6.0",

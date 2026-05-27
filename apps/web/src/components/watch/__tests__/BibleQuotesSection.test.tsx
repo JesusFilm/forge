@@ -14,20 +14,11 @@
  *    contract still holds when the section component owns the element.
  */
 
-import { act, type ReactNode } from "react"
+import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const {
-  bibleTextViewMock,
-  emblaApi,
-  emblaHandlers,
-  emblaRefMock,
-  emitEmbla,
-  mockWebEnv,
-  useVersionMock,
-  youVersionProviderMock,
-} = vi.hoisted(() => {
+const { emblaApi, emblaHandlers, emblaRefMock, emitEmbla } = vi.hoisted(() => {
   const handlers: Record<string, Set<(api: unknown) => void>> = {
     reInit: new Set(),
     select: new Set(),
@@ -47,50 +38,14 @@ const {
   }
 
   return {
-    bibleTextViewMock: vi.fn((_props: Record<string, unknown>) => null),
     emblaApi: api,
     emblaHandlers: handlers,
     emblaRefMock: vi.fn(),
     emitEmbla: (event: "reInit" | "select") => {
       for (const handler of handlers[event]) handler(api)
     },
-    mockWebEnv: {
-      NEXT_PUBLIC_YOUVERSION_APP_KEY: undefined as string | undefined,
-      NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID: 111,
-    },
-    useVersionMock: vi.fn((_versionId: number) => ({
-      error: null,
-      loading: false,
-      refetch: vi.fn(),
-      version: {
-        copyright: "Test Bible version copyright.",
-        publisher_url: "https://example.test/bible-version",
-      },
-    })),
-    youVersionProviderMock: vi.fn(
-      (_props: { appKey: string; children: ReactNode }) => null,
-    ),
   }
 })
-
-vi.mock("@/env", () => ({
-  env: mockWebEnv,
-}))
-
-vi.mock("@youversion/platform-react-ui", () => ({
-  YouVersionProvider: (props: { appKey: string; children: ReactNode }) => {
-    youVersionProviderMock(props)
-    return props.children
-  },
-  BibleTextView: (props: Record<string, unknown>) => {
-    bibleTextViewMock(props)
-    return null
-  },
-}))
-
-vi.mock("@youversion/platform-react-hooks", () => ({
-  useVersion: useVersionMock,
-}))
 
 vi.mock("embla-carousel-react", () => ({
   default: () => [emblaRefMock, emblaApi],
@@ -107,20 +62,6 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
-  mockWebEnv.NEXT_PUBLIC_YOUVERSION_APP_KEY = undefined
-  mockWebEnv.NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID = 111
-  bibleTextViewMock.mockClear()
-  useVersionMock.mockClear()
-  useVersionMock.mockReturnValue({
-    error: null,
-    loading: false,
-    refetch: vi.fn(),
-    version: {
-      copyright: "Test Bible version copyright.",
-      publisher_url: "https://example.test/bible-version",
-    },
-  })
-  youVersionProviderMock.mockClear()
   emblaRefMock.mockClear()
   emblaApi.canScrollNext.mockReturnValue(true)
   emblaApi.canScrollPrev.mockReturnValue(false)
@@ -154,6 +95,9 @@ afterEach(() => {
 })
 
 type Citation = WatchBibleQuotesBlock["bibleCitations"][number]
+type YouVersionPassage = NonNullable<
+  WatchBibleQuotesBlock["youVersionPassages"]
+>[number]
 
 function makeCitation(
   overrides: Partial<{
@@ -181,6 +125,25 @@ function makeCitation(
       name: overrides.bookName === undefined ? "Galatians" : overrides.bookName,
     },
   } satisfies Citation
+}
+
+function makeYouVersionPassage(
+  overrides: Partial<YouVersionPassage> = {},
+): YouVersionPassage {
+  return {
+    citationDocumentId: overrides.citationDocumentId ?? "bc-1",
+    content: overrides.content ?? "Server-rendered YouVersion passage text.",
+    copyright:
+      overrides.copyright ??
+      "Test Bible version copyright from the server response.",
+    humanReference: overrides.humanReference ?? "Galatians 2:20",
+    publisherUrl:
+      overrides.publisherUrl ?? "https://example.test/bible-version",
+    reference: overrides.reference ?? "GAL.2.20",
+    versionAbbreviation: overrides.versionAbbreviation ?? "NIV",
+    versionId: overrides.versionId ?? 111,
+    versionTitle: overrides.versionTitle ?? "New International Version",
+  }
 }
 
 describe("BibleQuotesSection — visibility", () => {
@@ -493,7 +456,7 @@ describe("BibleQuotesSection — Share button", () => {
 })
 
 describe("BibleQuotesSection — YouVersion compact embed", () => {
-  it("does not render the YouVersion panel when the public app key is missing", () => {
+  it("does not render the YouVersion panel when no server passage data is supplied", () => {
     act(() => {
       root.render(
         <BibleQuotesSection
@@ -506,16 +469,24 @@ describe("BibleQuotesSection — YouVersion compact embed", () => {
     expect(
       container.querySelector('[data-testid="watch-bible-quotes-youversion"]'),
     ).toBeNull()
-    expect(bibleTextViewMock).not.toHaveBeenCalled()
   })
 
-  it("renders the first citation in the compact YouVersion panel when configured", () => {
-    mockWebEnv.NEXT_PUBLIC_YOUVERSION_APP_KEY = "test-yv-app-key"
+  it("renders the first citation in the compact YouVersion panel from server data", () => {
     act(() => {
       root.render(
         <BibleQuotesSection
-          bibleCitations={[makeCitation({ osisId: "Gal.2.20" })]}
+          bibleCitations={[
+            makeCitation({ documentId: "bc-1", osisId: "Gal.2.20" }),
+          ]}
           onShareClick={vi.fn()}
+          youVersionPassages={[
+            makeYouVersionPassage({
+              citationDocumentId: "bc-1",
+              content: "I have been crucified with Christ.",
+              humanReference: "Galatians 2:20",
+              reference: "GAL.2.20",
+            }),
+          ]}
         />,
       )
     })
@@ -526,30 +497,24 @@ describe("BibleQuotesSection — YouVersion compact embed", () => {
     expect(panel).not.toBeNull()
     expect(panel?.textContent).toContain("Galatians 2:20")
     expect(panel?.getAttribute("data-reference")).toBe("GAL.2.20")
-    expect(youVersionProviderMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        appKey: "test-yv-app-key",
-      }),
+    expect(panel?.textContent).toContain("I have been crucified with Christ.")
+    expect(panel?.textContent).toContain("NIV")
+    expect(panel?.textContent).toContain("New International Version")
+    expect(panel?.textContent).toContain(
+      "Test Bible version copyright from the server response.",
     )
-    expect(bibleTextViewMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        reference: "GAL.2.20",
-        versionId: 111,
-      }),
-    )
-    expect(useVersionMock).toHaveBeenCalledWith(111)
-    expect(panel?.textContent).toContain("Test Bible version copyright.")
     const attribution = container.querySelector(
       '[data-testid="watch-bible-quotes-youversion-copyright"]',
     )
-    expect(attribution?.textContent).toBe("Test Bible version copyright.")
+    expect(attribution?.textContent).toBe(
+      "Test Bible version copyright from the server response.",
+    )
     expect(panel?.querySelector("a")?.getAttribute("href")).toBe(
       "https://example.test/bible-version",
     )
   })
 
   it("updates the compact YouVersion panel when Embla selects another citation", () => {
-    mockWebEnv.NEXT_PUBLIC_YOUVERSION_APP_KEY = "test-yv-app-key"
     act(() => {
       root.render(
         <BibleQuotesSection
@@ -564,6 +529,20 @@ describe("BibleQuotesSection — YouVersion compact embed", () => {
             }),
           ]}
           onShareClick={vi.fn()}
+          youVersionPassages={[
+            makeYouVersionPassage({
+              citationDocumentId: "bc-gal",
+              content: "Galatians passage.",
+              humanReference: "Galatians 2:20",
+              reference: "GAL.2.20",
+            }),
+            makeYouVersionPassage({
+              citationDocumentId: "bc-john",
+              content: "For God so loved the world.",
+              humanReference: "John 3:16",
+              reference: "JHN.3.16",
+            }),
+          ]}
         />,
       )
     })
@@ -580,21 +559,18 @@ describe("BibleQuotesSection — YouVersion compact embed", () => {
     )
     expect(panel?.textContent).toContain("John 3:16")
     expect(panel?.getAttribute("data-reference")).toBe("JHN.3.16")
-    expect(bibleTextViewMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        reference: "JHN.3.16",
-        versionId: 111,
-      }),
-    )
+    expect(panel?.textContent).toContain("For God so loved the world.")
   })
 
   it("hides the YouVersion panel when the active slide is the promo card", () => {
-    mockWebEnv.NEXT_PUBLIC_YOUVERSION_APP_KEY = "test-yv-app-key"
     act(() => {
       root.render(
         <BibleQuotesSection
-          bibleCitations={[makeCitation({ osisId: "Gal.2.20" })]}
+          bibleCitations={[
+            makeCitation({ documentId: "bc-1", osisId: "Gal.2.20" }),
+          ]}
           onShareClick={vi.fn()}
+          youVersionPassages={[makeYouVersionPassage()]}
         />,
       )
     })

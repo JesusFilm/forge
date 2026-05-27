@@ -17,6 +17,7 @@ const {
   resolveWatchVideoBySlugMock,
   resolveSeriesBySlugMock,
   resolveWatchPageMock,
+  fetchYouVersionBibleQuotePassagesMock,
   seriesPageClientMock,
   watchPageClientMock,
   experienceEmptyMock,
@@ -25,6 +26,7 @@ const {
   resolveWatchVideoBySlugMock: vi.fn(),
   resolveSeriesBySlugMock: vi.fn(),
   resolveWatchPageMock: vi.fn(),
+  fetchYouVersionBibleQuotePassagesMock: vi.fn(),
   seriesPageClientMock: vi.fn(
     (_props: { series: unknown; selectedVariant: unknown; locale: string }) =>
       null,
@@ -50,6 +52,10 @@ vi.mock("@/lib/content", async () => {
     resolveWatchPage: resolveWatchPageMock,
   }
 })
+
+vi.mock("@/lib/youversion-passage", () => ({
+  fetchYouVersionBibleQuotePassages: fetchYouVersionBibleQuotePassagesMock,
+}))
 
 vi.mock("@/components/watch/SeriesPageClient", () => ({
   SeriesPageClient: seriesPageClientMock,
@@ -88,6 +94,7 @@ beforeEach(() => {
     data: null,
     error: new Error("No experience found"),
   })
+  fetchYouVersionBibleQuotePassagesMock.mockResolvedValue([])
   seriesPageClientMock.mockClear()
   watchPageClientMock.mockClear()
   experienceEmptyMock.mockClear()
@@ -190,12 +197,57 @@ describe("SlugLocalePage routing — series branch", () => {
   })
 
   it("renders WatchPageClient when label is non-series (regression guard)", async () => {
-    resolveWatchVideoBySlugMock.mockResolvedValue(
-      makeWatchVideoResult("featureFilm"),
-    )
+    fetchYouVersionBibleQuotePassagesMock.mockResolvedValue([
+      {
+        citationDocumentId: "bc-1",
+        content: "Server passage.",
+        copyright: "Copyright.",
+        humanReference: "John 3:16",
+        publisherUrl: null,
+        reference: "JHN.3.16",
+        versionAbbreviation: "NIV",
+        versionId: 111,
+        versionTitle: "New International Version",
+      },
+    ])
+    const watchVideoResult = makeWatchVideoResult("featureFilm")
+    const bibleCitations = [
+      {
+        bibleBook: { documentId: "bb-john", name: "John" },
+        chapterEnd: null,
+        chapterStart: 3,
+        documentId: "bc-1",
+        order: 1,
+        osisId: "John.3.16",
+        verseEnd: null,
+        verseStart: 16,
+      },
+    ]
+    ;(
+      watchVideoResult.video as { bibleCitations?: typeof bibleCitations }
+    ).bibleCitations = bibleCitations
+    resolveWatchVideoBySlugMock.mockResolvedValue(watchVideoResult)
     await renderPage("jesus", "en")
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
     expect(seriesPageClientMock).not.toHaveBeenCalled()
+    expect(fetchYouVersionBibleQuotePassagesMock).toHaveBeenCalledWith(
+      bibleCitations,
+    )
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      mergedBlocks: Array<{
+        kind?: string
+        youVersionPassages?: Array<unknown>
+      }>
+    }
+    expect(
+      props.mergedBlocks.find((block) => block.kind === "BibleQuotes")
+        ?.youVersionPassages,
+    ).toEqual([
+      expect.objectContaining({
+        content: "Server passage.",
+        reference: "JHN.3.16",
+      }),
+    ])
   })
 })
 

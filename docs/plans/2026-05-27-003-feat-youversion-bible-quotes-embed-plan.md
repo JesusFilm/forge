@@ -23,9 +23,9 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 
 - R1. Render a compact official YouVersion passage embed under the watch-page Bible Quotes carousel.
 - R2. The embed must track the active Bible citation card and default to the first citation.
-- R3. The embed must not render when there is no citation, the citation cannot be converted to a YouVersion reference, or YouVersion public config is absent.
+- R3. The embed must not render when there is no citation, the citation cannot be converted to a YouVersion reference, or server-side YouVersion config is absent.
 - R4. Preserve existing Bible Quotes behavior: always-on promo card, Share button, citation card styling, jsDelivr verse preview, BibleGateway "Read more..." links, visible carousel arrows, and accessibility labels.
-- R5. Use YouVersion's official React SDK path for the new embed, not a hand-rolled iframe or unofficial Bible API endpoint.
+- R5. Use YouVersion's official REST Bible API from the server, not a hand-rolled iframe, unofficial Bible API endpoint, or browser-exposed app key.
 - R6. Keep YouVersion integration opt-in and non-blocking for local, preview, and production boot.
 - R7. Execute feature-bearing work with Red/Green TDD: write failing tests first, then implement until they pass.
 - R8. Require a real user-facing smoke test before completion: a watch page with at least two Bible citations must be opened in browser at mobile and desktop widths with a real YouVersion app key configured, the carousel must remain usable, the YouVersion panel must be visible/update correctly, and hydration/console/network failures must be checked.
@@ -56,8 +56,8 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 - `apps/web/src/components/watch/__tests__/BibleQuotesSection.test.tsx` already covers quote-card visibility, promo behavior, share behavior, verse preview fetching, locale mapping, unsafe book names, and external-link handling.
 - `apps/web/src/components/ui/carousel.tsx` exposes `setApi`, `select`, carousel arrows, and Embla API access needed to track the selected slide.
 - `apps/web/src/components/watch/SiblingCarousel.tsx` is the closest local pattern for tracking an active carousel index from Embla state.
-- `apps/web/src/env.ts` uses `@t3-oss/env-nextjs`; new public YouVersion config belongs in the client env block and must be optional/defaulted.
-- `apps/web/CLAUDE.md` warns that server-only admin credentials must not cross into client components; the YouVersion app key is public client config, not `WEB_ADMIN_API_KEYS`.
+- `apps/web/src/env.ts` uses `@t3-oss/env-nextjs`; YouVersion app-key config belongs in the server env block and must be optional/defaulted.
+- `apps/web/CLAUDE.md` warns that server-only credentials must not cross into client components; the YouVersion app key must stay server-side.
 
 ### Institutional Learnings
 
@@ -71,9 +71,8 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 ### External References
 
 - YouVersion Platform overview: `https://developers.youversion.com/`
-- YouVersion React SDK intro: `https://developers.youversion.com/sdks/introduction`
-- YouVersion React SDK quickstart: `https://www.mintlify.com/youversion/platform-sdk-react/quickstart`
-- `BibleTextView` API: `https://youversion-platform-sdk-react.mintlify.app/api/ui/bible-text-view`
+- YouVersion API quick reference: `https://developers.youversion.com/quick-reference`
+- YouVersion REST API reference: `https://developers-dev.youversion.com/api/bibles`
 - YouVersion authentication/app key docs: `https://developers.youversion.com/authentication`
 - YouVersion attribution guidance: `https://developers.youversion.com/sdks/javascript/guides/copyright-and-attribution`
 
@@ -81,13 +80,13 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 
 ## Key Technical Decisions
 
-- Use `@youversion/platform-react-ui` with `YouVersionProvider` and `BibleTextView`: this follows the official SDK and avoids inventing an iframe contract the repo does not already have.
-- Add public optional config as `NEXT_PUBLIC_YOUVERSION_APP_KEY` and `NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID`: the provider runs client-side, so the key is browser-exposed public app configuration; it must not be treated like a server secret.
+- Fetch YouVersion passage and Bible-version metadata from the server with the official REST API and pass only rendered passage data into the client component: this keeps the app key out of browser bundles and request headers.
+- Add optional server config as `YOUVERSION_APP_KEY` and `YOUVERSION_DEFAULT_VERSION_ID`: the key is a server secret and the default version remains configurable without becoming a deploy blocker.
 - Default version ID to `111` only as a configurable starting point: YouVersion examples identify `111` as NIV, but long-term locale/version mapping is deferred until product chooses translations.
-- Keep the provider as low in the tree as practical: wrap only the compact embed subtree, not the whole watch page, unless the SDK requires a broader boundary during implementation.
+- Avoid a same-origin public proxy route for this PR: server-render the active watch-page citation payloads during page resolution so the integration does not add an unauthenticated Bible API surface.
 - Track active citation via Embla API state, not layout measurements: jsdom does not faithfully compute Embla snap layout, so tests should assert controlled state/DOM behavior rather than real scroll geometry.
 - Render the compact panel below the carousel wrapper, not as a carousel slide: this preserves card scroll behavior and keeps the embed visually subordinate to the carousel.
-- Preserve third-party attribution: show or verify YouVersion/Bible version copyright attribution unless `BibleTextView` renders it automatically.
+- Preserve third-party attribution: fetch YouVersion Bible-version metadata and render the copyright/publisher attribution with the passage text.
 
 ---
 
@@ -101,9 +100,8 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 
 ### Deferred to Implementation
 
-- Exact SDK peer dependency behavior with Forge's current React package range: verify during dependency installation/typecheck, because the docs mention React 19.1+ while `apps/web/package.json` currently declares React 19.
-- Exact `BibleTextView` attribution rendering: verify in browser and add local attribution copy if the component does not display required version/copyright text.
-- Exact test mocking shape for `@youversion/platform-react-ui`: decide while writing the first red tests so mocks match the installed package exports.
+- Exact YouVersion REST payload shape: validate in the server helper and fail closed when version metadata or passage payloads are missing.
+- Exact production app-key source: verify with the team's approved secret store before marking release-ready.
 
 ---
 
@@ -111,17 +109,17 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 
 - Spawn a repo-pattern subagent before edits to re-check current `apps/web` conventions if the branch has moved.
 - Spawn one implementation-adjacent lane before Green is claimed: either a worker owning converter/env tests, a worker owning component tests, or a reviewer validating the locally written Red tests before implementation proceeds.
-- Spawn a verification lane after implementation to run browser smoke checks and report screenshots/console findings; this lane must receive the test watch URL, viewport sizes, and whether `NEXT_PUBLIC_YOUVERSION_APP_KEY` is configured.
-- Spawn review lanes before push: correctness/testing review for all changes, plus external API/security review because the change introduces YouVersion public config and third-party scripture rendering.
+- Spawn a verification lane after implementation to run browser smoke checks and report screenshots/console findings; this lane must receive the test watch URL, viewport sizes, and whether `YOUVERSION_APP_KEY` is configured server-side.
+- Spawn review lanes before push: correctness/testing review for all changes, plus external API/security review because the change introduces server-side YouVersion access and third-party scripture rendering.
 - The orchestrator owns final integration, conflict resolution, and the final decision that Red/Green evidence plus browser smoke evidence are sufficient.
 
 ---
 
 ## Implementation Units
 
-### U1. YouVersion Config and Dependency
+### U1. YouVersion Config
 
-**Goal:** Add the official YouVersion React SDK dependency and optional public config without changing default watch-page boot.
+**Goal:** Add optional server-side YouVersion config without changing default watch-page boot.
 
 **Requirements:** R5, R6, R7, R9
 
@@ -129,30 +127,27 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 
 **Files:**
 
-- Modify: `apps/web/package.json`
-- Modify: `pnpm-lock.yaml`
 - Modify: `apps/web/src/env.ts`
 - Modify: `apps/web/.env.example`
-- Test: `apps/web/src/components/watch/__tests__/BibleQuotesSection.test.tsx`
+- Test: `apps/web/src/env.test.ts`
 
 **Approach:**
 
-- Add `@youversion/platform-react-ui` to `apps/web`.
-- Add optional `NEXT_PUBLIC_YOUVERSION_APP_KEY`.
-- Add optional numeric/coerced `NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID`, defaulting to `111`.
-- Ensure missing app key means "no embed", not env validation failure.
-- Check whether React 19.1+ is required in practice and record any dependency adjustment in the PR.
+- Add optional `YOUVERSION_APP_KEY`.
+- Add optional numeric/coerced `YOUVERSION_DEFAULT_VERSION_ID`, defaulting to `111`.
+- Ensure missing app key means "no server passage data", not env validation failure.
+- Remove client React SDK dependencies if no browser SDK path remains.
 
-**Execution note:** Start Red: add a failing test proving the Bible Quotes section renders without a YouVersion app key and does not crash or render the embed.
+**Execution note:** Start Red: add failing env/helper tests proving the server app key is optional and never appears in client-facing passage payloads.
 
 **Patterns to follow:**
 
-- `apps/web/src/env.ts` optional client env handling.
+- `apps/web/src/env.ts` optional server env handling.
 - `apps/web/vitest.setup.ts` existing test env defaults.
 
 **Test scenarios:**
 
-- Happy path: with public app key and default version ID mocked, component can render the YouVersion embed host.
+- Happy path: with server app key and default version ID mocked, the server helper can fetch and return passage payloads.
 - Edge case: missing app key renders no embed and preserves existing promo/card behavior.
 - Edge case: invalid or missing default version ID falls back to the configured default behavior without throwing.
 
@@ -163,7 +158,7 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 
 ### U2. Citation to YouVersion Reference Mapping
 
-**Goal:** Convert Forge `BibleCitation` data into the USFM reference strings required by YouVersion `BibleTextView`.
+**Goal:** Convert Forge `BibleCitation` data into the USFM reference strings required by YouVersion's passage API.
 
 **Requirements:** R1, R2, R3, R7
 
@@ -206,7 +201,7 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 - Converter tests prove all supported reference forms.
 - Existing citation display tests still pass unchanged.
 
-### U3. Compact Embed Rendering Below Carousel
+### U3. Server Passage Fetch and Compact Rendering Below Carousel
 
 **Goal:** Render the compact YouVersion passage panel below the carousel and keep it synchronized with the active citation.
 
@@ -217,6 +212,8 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 **Files:**
 
 - Modify: `apps/web/src/components/watch/BibleQuotesSection.tsx`
+- Create: `apps/web/src/lib/youversion-passage.ts`
+- Test: `apps/web/src/lib/__tests__/youversion-passage.test.ts`
 - Test: `apps/web/src/components/watch/__tests__/BibleQuotesSection.test.tsx`
 
 **Approach:**
@@ -224,12 +221,13 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 - Use `Carousel setApi` to capture the Embla API.
 - Track `activeIndex` from `selectedScrollSnap()` on `select` and `reInit`; initialize to `0`.
 - Derive `activeCitation` only from `bibleCitations`, excluding the promo and end spacer slides.
-- Render a compact panel below the carousel bleed wrapper only when app key and a valid active YouVersion reference exist.
-- Use `YouVersionProvider` and `BibleTextView` with dark styling, compact typography, `renderNotes={false}` unless visual validation shows footnotes are essential, and no auth.
+- Fetch YouVersion passage text and Bible-version metadata on the server for valid watch-page citations.
+- Render a compact panel below the carousel bleed wrapper only when server-fetched passage data exists for the active citation.
+- Render passage text, version title/abbreviation, copyright, and publisher link from the server payload; do not mount a client YouVersion provider.
 - Preserve the current card-level jsDelivr fetch and BibleGateway links; the new panel is additive.
-- Include a visible reference/translation/copyright line if the SDK component does not supply it.
+- Include a visible reference/translation/copyright line from the server payload.
 
-**Execution note:** Start Red: mock `@youversion/platform-react-ui` and add failing component tests for embed placement, default citation, active citation change, and no-render fallbacks before implementation.
+**Execution note:** Start Red: add failing server-helper and component tests for private-key fetch behavior, embed placement, default citation, active citation change, and no-render fallbacks before implementation.
 
 **Patterns to follow:**
 
@@ -240,7 +238,7 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 **Test scenarios:**
 
 - Happy path: first citation renders a compact YouVersion panel below `watch-bible-quotes-carousel-bleed`.
-- Happy path: changing the selected carousel snap updates the mocked `BibleTextView reference`.
+- Happy path: changing the selected carousel snap updates the rendered server passage.
 - Happy path: promo slide selection hides the YouVersion panel because the active slide is not a citation.
 - Edge case: empty `bibleCitations` still renders the promo card but no YouVersion panel.
 - Edge case: invalid citation renders no YouVersion panel and does not crash.
@@ -267,11 +265,12 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 
 **Approach:**
 
-- Prefer keeping `WatchSectionRenderer` unchanged because it already passes `bibleCitations` and `locale`.
+- Pass only the server-fetched passage payload through `WatchSectionRenderer`;
+  do not pass the YouVersion app key or server-only config into the client tree.
 - Do not pass server-only admin config or bearer values into the client tree.
 - Keep Experience override behavior unchanged: if the synthetic `BibleQuotes` block is replaced by `ComponentSectionsBibleQuotesCarousel`, this plan does not add a YouVersion embed there.
 
-**Execution note:** If `WatchSectionRenderer` changes, add Red tests before implementation; otherwise explicitly note no renderer test change is needed in the PR.
+**Execution note:** `WatchSectionRenderer` changes require Red tests before implementation; assert that `youVersionPassages` reaches the `BibleQuotesSection` prop boundary.
 
 **Patterns to follow:**
 
@@ -280,7 +279,7 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 
 **Test scenarios:**
 
-- Happy path: existing renderer test still proves `BibleQuotesSection` receives `bibleCitations` and locale.
+- Happy path: renderer test proves `BibleQuotesSection` receives `bibleCitations`, locale, and `youVersionPassages`.
 - Edge case: Experience override tests remain unchanged and do not accidentally imply a YouVersion embed on CMS-authored quote sections.
 - Error path: missing YouVersion config does not affect watch block rendering.
 
@@ -306,7 +305,7 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 
 - Mark `feat-061` in progress when execution starts and complete when validated, or create a follow-up ticket if only part of the roadmap item is completed.
 - Run focused tests first, then full `@forge/web` test/typecheck/lint validation.
-- Obtain a real YouVersion app key from the YouVersion Platform portal or the team's approved secret store and set it locally as `NEXT_PUBLIC_YOUVERSION_APP_KEY`; if no key is available, stop before marking the feature complete and record the blocker.
+- Obtain a real YouVersion app key from the YouVersion Platform portal or the team's approved secret store and set it locally as `YOUVERSION_APP_KEY`; if no key is available, stop before marking the feature complete and record the blocker.
 - Open a real watch URL in browser with YouVersion config present. The smoke URL must use a video whose `bibleCitations` payload contains at least two citation cards so active-slide update behavior can be proven.
 - Smoke at mobile and desktop widths: carousel scroll/arrows, active quote changes, compact embed placement below the carousel, no text overlap, no hydration failure, no console errors attributable to the integration, and acceptable third-party network behavior.
 - Run subagent review lanes before push: correctness/testing plus external API/security.
@@ -336,25 +335,25 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 
 ## System-Wide Impact
 
-- **Interaction graph:** `WatchSectionRenderer` renders `BibleQuotesSection`; `BibleQuotesSection` owns Embla active state and YouVersion embed rendering; existing card fetches remain client-side.
+- **Interaction graph:** the watch route server-fetches YouVersion passage payloads, `WatchSectionRenderer` passes them into `BibleQuotesSection`, and `BibleQuotesSection` owns Embla active state and compact panel rendering; existing card fetches remain client-side.
 - **Error propagation:** YouVersion config absence and invalid citations degrade by hiding the embed, not by throwing.
 - **State lifecycle risks:** Active carousel index must not drift onto promo/end-spacer slides and produce invalid references.
 - **API surface parity:** CMS-authored `BibleQuotesCarousel` remains unchanged; only synthetic watch Bible Quotes receives the embed.
-- **Integration coverage:** Browser smoke is required because jsdom cannot prove Embla layout, third-party SDK rendering, hydration, or network behavior.
+- **Integration coverage:** Browser smoke is required because jsdom cannot prove Embla layout, server-fetched production content, hydration, or real network behavior.
 - **Unchanged invariants:** Existing quote-card display, Share modal trigger, promo CTA, BibleGateway links, and current verse preview fetch stay intact.
 
 ---
 
 ## Risks & Dependencies
 
-| Risk                                                                                           | Mitigation                                                                                                                        |
-| ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| YouVersion SDK peer dependencies may require React 19.1+ while Forge declares React 19.0 range | Verify during dependency install/typecheck; adjust package versions only if required and keep the change scoped to `apps/web`     |
-| YouVersion app key is exposed in the browser                                                   | Treat it as public app configuration, confirm YouVersion portal restrictions/rate limits, and never use server-only Forge secrets |
-| Missing YouVersion env bricks deploy                                                           | Keep env optional and render no embed when absent                                                                                 |
-| Third-party SDK renders attribution differently than expected                                  | Browser-smoke the rendered panel and add local attribution text if required                                                       |
-| Carousel active state is hard to prove in jsdom                                                | Unit-test state wiring with mocked Embla/API behavior and require browser smoke for real interaction                              |
-| Adding below-fold third-party content hurts page performance                                   | Keep the embed compact, avoid image/player priority hints, and do not load it when no valid citation/config exists                |
+| Risk                                                         | Mitigation                                                                                                             |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Public API-route proxy could drain YouVersion quota          | Server-render watch-page citation payloads instead of adding an unauthenticated same-origin Bible proxy                |
+| YouVersion app key is exposed in the browser                 | Keep it in `env.server`, never pass it to client components, and test returned passage payloads do not include the key |
+| Missing YouVersion env bricks deploy                         | Keep env optional and render no embed when absent                                                                      |
+| Third-party attribution is incomplete                        | Fetch version metadata server-side and render copyright/publisher attribution with the passage panel                   |
+| Carousel active state is hard to prove in jsdom              | Unit-test state wiring with mocked Embla/API behavior and require browser smoke for real interaction                   |
+| Adding below-fold third-party content hurts page performance | Keep the embed compact, avoid image/player priority hints, and do not load it when no valid citation/config exists     |
 
 ---
 
@@ -363,7 +362,7 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 - Add YouVersion env vars to `apps/web/.env.example`.
 - PR notes must name the smoke-test watch URL, confirm it had at least two Bible citation cards, and state whether the app key came from the YouVersion Platform portal or the team's approved secret store.
 - PR notes must include Red/Green TDD evidence and user smoke test evidence.
-- If the YouVersion provider cannot be validated because credentials are unavailable, do not mark the feature fully complete; leave `feat-061` incomplete or create a follow-up ticket.
+- If the YouVersion API cannot be validated because credentials are unavailable, do not mark the feature fully complete; leave `feat-061` incomplete or create a follow-up ticket.
 
 ---
 

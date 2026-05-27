@@ -18,6 +18,7 @@ import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
+import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
 
 // ISR: pages cached for 60s. The cookie-driven language redirect lives in
 // apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
@@ -167,10 +168,14 @@ export default async function SlugLocalePage({ params }: PageProps) {
         />
       )
     }
+    const youVersionPassages = await fetchYouVersionBibleQuotePassages(
+      watchVideo.video.bibleCitations,
+    )
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
       variant: watchVideo.selectedVariant,
       canonicalParent: watchVideo.canonicalParent,
+      youVersionPassages,
     })
     // LCP is the Mux poster image rendered inside <mux-player>'s shadow
     // DOM. Without these hints the request isn't discoverable in the
