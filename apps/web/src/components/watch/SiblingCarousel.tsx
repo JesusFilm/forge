@@ -109,7 +109,14 @@ export function SiblingCarousel({
         setApi={setApi}
         className="w-full"
       >
-        <CarouselContent className="pl-10 md:pl-0">
+        <CarouselContent
+          className={cn(
+            "pl-10 md:pl-0",
+            activeIndex > 0 && activeIndex < children.length - 1
+              ? "translate-x-14 md:translate-x-0"
+              : "",
+          )}
+        >
           {children.map((child, index) => {
             const isActive = index === activeIndex
             // `resolvePosterUrl` codifies the editorial-cinematic priority
@@ -141,20 +148,14 @@ export function SiblingCarousel({
                   data-testid="sibling-carousel-item"
                   data-active={isActive ? "true" : "false"}
                   data-href={href}
-                  // The border is drawn inside the element (not as a ring,
-                  // which extends outside the box and gets clipped by
-                  // CarouselContent's `overflow-hidden` viewport at the
-                  // top/bottom edges). Inactive cards have no border so
-                  // the body-zone's frosted-glass backdrop doesn't read
-                  // as a faint grey halo through a transparent border.
-                  // The 4 px difference in image content area between
-                  // active/inactive is imperceptible because the outer
-                  // card geometry (carousel slot) stays the same.
+                  // Active cards use a real inside border. Inactive cards keep
+                  // no transparent border; the bevel is drawn by a content
+                  // overlay so it stays visible around the whole picture.
                   className={cn(
-                    "group relative block aspect-square cursor-pointer overflow-hidden rounded-lg bg-stone-900 transition outline-1 outline-white/15 outline-offset-[-4px] shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)]",
+                    "group relative block aspect-video cursor-pointer overflow-hidden rounded-lg bg-stone-900 transition shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80",
                     isActive
                       ? "border-4 border-white"
-                      : "border-4 border-transparent opacity-70 hover:border-brand-red hover:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+                      : "opacity-70 hover:outline-4 hover:outline-offset-[-4px] hover:outline-brand-red hover:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
                   )}
                 >
                   {thumb ? (
@@ -184,7 +185,7 @@ export function SiblingCarousel({
                   {/* Soften the image into the lower caption zone. */}
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[52%] bg-black/35 backdrop-blur-[14px] [mask-image:linear-gradient(to_top,black_0%,rgba(0,0,0,0.9)_45%,rgba(0,0,0,0.35)_78%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_top,black_0%,rgba(0,0,0,0.9)_45%,rgba(0,0,0,0.35)_78%,transparent_100%)]"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-full bg-black/35 backdrop-blur-[14px] [mask-image:linear-gradient(to_top,black_0%,rgba(0,0,0,0.9)_35%,rgba(0,0,0,0.35)_62%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_top,black_0%,rgba(0,0,0,0.9)_35%,rgba(0,0,0,0.35)_62%,transparent_100%)]"
                   />
 
                   {/* Hover-only play overlay on inactive cards. The active
@@ -203,11 +204,11 @@ export function SiblingCarousel({
                   ) : null}
 
                   {/* Caption block — a lower frosted panel like the modern
-                      episode rails, leaving the sharp artwork to the top
-                      ~60% of the square tile. */}
+                      episode rails, keeping text readable inside the
+                      landscape tile. */}
                   <div
                     data-testid="sibling-carousel-caption"
-                    className="absolute inset-x-0 bottom-0 z-20 flex h-[44%] flex-col justify-end gap-1.5 bg-gradient-to-t from-black/68 via-black/35 to-transparent p-3 sm:p-4"
+                    className="absolute inset-x-0 bottom-0 z-20 flex h-full flex-col justify-end gap-1.5 bg-gradient-to-t from-black/68 via-black/35 to-transparent p-3 sm:p-4"
                   >
                     <span className="text-[10px] font-semibold tracking-[0.18em] text-stone-200/90 uppercase drop-shadow-md sm:text-xs">
                       Chapter
@@ -222,6 +223,12 @@ export function SiblingCarousel({
                       {child.title ?? ""}
                     </span>
                   </div>
+
+                  <div
+                    aria-hidden="true"
+                    data-testid="sibling-carousel-bevel"
+                    className="pointer-events-none absolute inset-0 z-40 rounded-lg border border-white opacity-40 mix-blend-soft-light"
+                  />
 
                   {/* Visually-hidden active marker — preserves the existing
                       `sibling-carousel-playing-now` testid and gives screen
@@ -239,6 +246,11 @@ export function SiblingCarousel({
               </CarouselItem>
             )
           })}
+          <div
+            aria-hidden="true"
+            data-testid="sibling-carousel-end-spacer"
+            className="min-w-0 shrink-0 grow-0 basis-[52%] sm:basis-[64%] md:basis-[66.666%] lg:basis-[75%] xl:basis-[80%] 2xl:basis-[83.333%]"
+          />
         </CarouselContent>
 
         {/* The shared `outline` Button variant only sets text color on
