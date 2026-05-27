@@ -301,9 +301,9 @@ describe("LanguagePickerModal — globe overlay", () => {
       ],
     })
     const count = $('[data-testid="watch-language-picker-count"]')
-    expect(count?.textContent).toBe("3 languages")
-    expect(count?.className).toContain("font-normal")
-    expect(count?.className).not.toContain("font-semibold")
+    expect(count?.textContent).toBe("3")
+    expect(count?.className).toContain("rounded-full")
+    expect(count?.className).toContain("font-semibold")
   })
 
   it("matches the production overlay shell and renders subtitle selector data", () => {
@@ -341,14 +341,20 @@ describe("LanguagePickerModal — globe overlay", () => {
 
     expect(
       $('[data-testid="watch-language-picker-subtitle-count"]')?.textContent,
-    ).toBe("1 language")
+    ).toBe("1")
     expect(
       $('[data-testid="watch-language-picker-subtitle-count"]')?.className,
-    ).toContain("font-normal")
+    ).toContain("rounded-full")
     const toggle = $(
       '[data-testid="watch-language-picker-subtitles-toggle"]',
     ) as HTMLButtonElement
     expect(toggle.disabled).toBe(false)
+    expect(toggle.parentElement?.className).toContain("ml-auto")
+    expect(
+      toggle.parentElement?.contains(
+        $('[data-testid="watch-language-picker-subtitle-count"]'),
+      ),
+    ).toBe(false)
     expect(toggle.getAttribute("aria-checked")).toBe("true")
     expect(toggle.className).toContain("h-8")
     expect(toggle.className).toContain("w-[58px]")
@@ -376,7 +382,12 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(button.className).toContain("px-4")
     expect(button.className).toContain("py-2")
     const count = $('[data-testid="watch-language-picker-subtitle-count"]')
-    expect(button.parentElement?.contains(count)).toBe(true)
+    const toggle = $(
+      '[data-testid="watch-language-picker-subtitles-toggle"]',
+    ) as HTMLButtonElement
+    expect(count?.textContent).toBe("0")
+    expect(button.parentElement?.contains(count)).toBe(false)
+    expect(button.parentElement?.contains(toggle)).toBe(true)
 
     act(() => {
       button.click()
