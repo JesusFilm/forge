@@ -19,6 +19,7 @@
     "@forge/admin-graphql": "workspace:*",
     "@forge/video-player": "workspace:*",
     "@hebcal/hdate": "^0.21.1",
+    "@launchdarkly/node-server-sdk": "^9.11.1",
     "@mux/mux-player-react": "^3.12",
     "@mux/mux-video-react": "^0.30",
     "@t3-oss/env-nextjs": "^0.13.10",

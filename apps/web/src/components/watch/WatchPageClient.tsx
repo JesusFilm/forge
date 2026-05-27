@@ -31,6 +31,10 @@ const ShareModal = dynamic(
   { ssr: false },
 )
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
+import {
+  checkDownloadSession,
+  redirectToAuth,
+} from "@/components/watch/download-session-client"
 import type {
   MergedWatchBlock,
   ResolvedWatchVideo,
@@ -215,8 +219,26 @@ export function WatchPageClient({
   )
 
   const [modalState, setModalState] = useState<WatchModalState>("none")
+  const [downloadPending, setDownloadPending] = useState(false)
+  const downloadPendingRef = useRef(false)
 
-  const openDownload = useCallback(() => setModalState("download"), [])
+  const openDownload = useCallback(async () => {
+    if (downloadPendingRef.current) return
+    downloadPendingRef.current = true
+    setDownloadPending(true)
+
+    try {
+      const session = await checkDownloadSession()
+      if (!session.gateEnabled || session.authenticated) {
+        setModalState("download")
+        return
+      }
+      redirectToAuth(session.loginUrl)
+    } finally {
+      downloadPendingRef.current = false
+      setDownloadPending(false)
+    }
+  }, [])
   const openLanguage = useCallback(() => setModalState("language"), [])
   const openShare = useCallback(() => setModalState("share"), [])
   const closeModal = useCallback(() => setModalState("none"), [])
@@ -264,6 +286,7 @@ export function WatchPageClient({
     >
       <WatchSectionRenderer
         blocks={mergedBlocks}
+        downloadPending={downloadPending}
         modalCallbacks={modalCallbacks}
         onPlayerReady={handlePlayerReady}
         locale={locale}

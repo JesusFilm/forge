@@ -30,12 +30,14 @@ const TOP_ZONE_KINDS: Set<WatchBlock["kind"]> = new Set(["HeroPlayer"])
 
 export function WatchSectionRenderer({
   blocks,
+  downloadPending,
   modalCallbacks,
   onPlayerReady,
   locale,
   subtitleVttSrc,
 }: {
   blocks: MergedWatchBlock[]
+  downloadPending?: boolean
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   locale?: string
@@ -66,6 +68,7 @@ export function WatchSectionRenderer({
           key={blockKey(block, index)}
           block={block}
           index={index}
+          downloadPending={downloadPending}
           studyQuestionsBlock={studyQuestionsBlock}
           modalCallbacks={modalCallbacks}
           onPlayerReady={onPlayerReady}
@@ -98,6 +101,7 @@ export function WatchSectionRenderer({
                   key={blockKey(block, index + topBlocks.length)}
                   block={block}
                   index={index + topBlocks.length}
+                  downloadPending={downloadPending}
                   studyQuestionsBlock={studyQuestionsBlock}
                   modalCallbacks={modalCallbacks}
                   onPlayerReady={onPlayerReady}
@@ -115,6 +119,7 @@ export function WatchSectionRenderer({
 function WatchBlockEntry({
   block,
   index,
+  downloadPending,
   studyQuestionsBlock,
   modalCallbacks,
   onPlayerReady,
@@ -123,6 +128,7 @@ function WatchBlockEntry({
 }: {
   block: MergedWatchBlock
   index: number
+  downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
@@ -133,6 +139,7 @@ function WatchBlockEntry({
     return (
       <SyntheticBlock
         block={block}
+        downloadPending={downloadPending}
         studyQuestionsBlock={studyQuestionsBlock}
         modalCallbacks={modalCallbacks}
         onPlayerReady={onPlayerReady}
@@ -146,6 +153,7 @@ function WatchBlockEntry({
 
 function SyntheticBlock({
   block,
+  downloadPending,
   studyQuestionsBlock,
   modalCallbacks,
   onPlayerReady,
@@ -153,6 +161,7 @@ function SyntheticBlock({
   subtitleVttSrc,
 }: {
   block: WatchBlock
+  downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
@@ -181,6 +190,7 @@ function SyntheticBlock({
       return (
         <WatchBody
           block={block}
+          downloadPending={downloadPending}
           studyQuestions={studyQuestionsBlock}
           onDownloadClick={modalCallbacks?.openDownload ?? noop}
         />

@@ -179,6 +179,30 @@ describe("auth login UI", () => {
     expect(html).toContain('rel="noopener noreferrer"')
   })
 
+  it("renders the web account creation form for a trusted watch callback", () => {
+    const callbackURL = "http://localhost:3000/watch/jesus/english"
+    const html = renderToStaticMarkup(
+      <LoginPageClient
+        consumerCallbackURL={callbackURL}
+        enabledProviders={[]}
+        flow="signup"
+        oauthQuery=""
+        requestingAppName="Jesus Film"
+      />,
+    )
+
+    expect(html).toContain('action="/api/auth/sign-up/email"')
+    expect(html).toContain('name="callbackURL"')
+    expect(html).toContain(`value="${callbackURL}"`)
+    expect(html).toContain('name="name"')
+    expect(html).toContain('name="password"')
+    expect(html).toContain('autoComplete="new-password"')
+    expect(html).toContain("Create account")
+    expect(html).toContain(
+      'href="/login?callbackURL=http%3A%2F%2Flocalhost%3A3000%2Fwatch%2Fjesus%2Fenglish"',
+    )
+  })
+
   it("falls back when the requesting application is unavailable", () => {
     const html = renderToStaticMarkup(
       <LoginPageClient

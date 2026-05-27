@@ -5,6 +5,8 @@ import {
   getEnabledProviders,
   isOAuthAuthorizeRequest,
   parseLoginError,
+  resolveConsumerCallbackURL,
+  resolveLoginFlow,
   resolveRequestingAppName,
   toOAuthQuery,
   type LoginSearchParams,
@@ -17,7 +19,20 @@ type LoginPageProps = {
 export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
   const params = (await searchParams) ?? {}
   if (!isOAuthAuthorizeRequest(params)) {
-    redirect("https://www.jesusfilm.org")
+    const consumerCallbackURL = resolveConsumerCallbackURL(params)
+    if (!consumerCallbackURL) redirect("https://www.jesusfilm.org")
+
+    return (
+      <LoginPageClient
+        consumerCallbackURL={consumerCallbackURL}
+        enabledProviders={getEnabledProviders()}
+        flow={resolveLoginFlow(params)}
+        initialEmail={firstParam(params.email)}
+        initialError={parseLoginError(firstParam(params.error))}
+        oauthQuery=""
+        requestingAppName="Jesus Film"
+      />
+    )
   }
 
   return (

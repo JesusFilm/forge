@@ -60,6 +60,13 @@ beforeEach(() => {
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({ authenticated: false, gateEnabled: false }),
+    ),
+  )
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {})
 })
 
 afterEach(() => {
@@ -69,6 +76,7 @@ afterEach(() => {
   container.remove()
   // Drop any portal nodes left over from previous renders.
   document.body.innerHTML = ""
+  vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
 
@@ -404,7 +412,7 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
     expect(confirm.disabled).toBe(false)
   })
 
-  it("closes the dialog after a successful download click", () => {
+  it("closes the dialog after a successful download click", async () => {
     const onClose = vi.fn()
     act(() => {
       root.render(
@@ -433,7 +441,7 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
     const confirm = $(
       '[data-testid="watch-download-modal-confirm"]',
     ) as HTMLButtonElement
-    act(() => {
+    await act(async () => {
       confirm.click()
     })
 
@@ -478,7 +486,7 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
     expect($('[data-testid="watch-download-modal-error"]')).not.toBeNull()
   })
 
-  it("download click triggers a programmatic <a> pointing at the same-origin proxy with a filename", () => {
+  it("download click triggers a programmatic <a> pointing at the same-origin proxy with a filename", async () => {
     const url = "https://stream.mux.com/abc.mp4"
     act(() => {
       root.render(
@@ -512,7 +520,7 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
     const confirm = $(
       '[data-testid="watch-download-modal-confirm"]',
     ) as HTMLButtonElement
-    act(() => {
+    await act(async () => {
       confirm.click()
     })
 
@@ -532,6 +540,62 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
     )
 
     appendSpy.mockRestore()
+  })
+
+  it("re-checks auth before final download and blocks the anchor when the session is stale", async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        authenticated: false,
+        gateEnabled: true,
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const created: HTMLAnchorElement[] = []
+    const realAppend = document.body.appendChild.bind(document.body)
+    vi.spyOn(document.body, "appendChild").mockImplementation(((node: Node) => {
+      if (node instanceof HTMLAnchorElement) created.push(node)
+      return realAppend(node)
+    }) as typeof document.body.appendChild)
+
+    act(() => {
+      root.render(
+        <DownloadModal
+          open
+          downloads={[
+            makeDownload({
+              documentId: "dl-1",
+              quality: "fhd",
+              url: "https://stream.mux.com/abc.mp4",
+            }),
+          ]}
+          videoTitle="JESUS"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const tos = $(
+      '[data-testid="watch-download-modal-tos"]',
+    ) as HTMLInputElement
+    act(() => {
+      tos.click()
+    })
+
+    const confirm = $(
+      '[data-testid="watch-download-modal-confirm"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      confirm.click()
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/watch/api/auth/session"),
+      expect.objectContaining({ credentials: "include" }),
+    )
+    expect(created).toHaveLength(0)
+    expect($('[data-testid="watch-download-modal-error"]')?.textContent).toBe(
+      "Your session expired. Sign in again to download.",
+    )
   })
 })
 

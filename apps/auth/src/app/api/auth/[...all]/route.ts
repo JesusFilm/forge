@@ -8,6 +8,7 @@ import {
 import { signInWithFirebasePassword } from "@/auth/firebase-rest"
 import { isLoginProviderId, type LoginProviderId } from "@/auth/login-methods"
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
+import { resolveWebWatchCallbackURL } from "@/auth/web-callback"
 import { getAuthBaseUrl } from "@/config/env"
 import { prisma } from "@/db/client"
 import { ensureDynamicPreviewRedirectUriRegistered } from "@/services/dynamic-preview-redirect.service"
@@ -108,6 +109,7 @@ function isRedirectSuccess(response: Response): boolean {
 }
 
 async function parseEmailPasswordRequest(request: Request): Promise<{
+  callbackURL?: string
   email: string
   isFormPost: boolean
   oauthQuery?: string
@@ -117,10 +119,12 @@ async function parseEmailPasswordRequest(request: Request): Promise<{
   if (contentType.includes("application/json")) {
     const body = (await request.json()) as {
       email?: string
+      callbackURL?: string
       oauth_query?: string
       password?: string
     }
     return {
+      callbackURL: resolveWebWatchCallbackURL(body.callbackURL),
       email: body.email?.trim().toLowerCase() ?? "",
       isFormPost: false,
       oauthQuery: body.oauth_query,
@@ -130,6 +134,11 @@ async function parseEmailPasswordRequest(request: Request): Promise<{
 
   const body = await request.formData()
   return {
+    callbackURL: resolveWebWatchCallbackURL(
+      typeof body.get("callbackURL") === "string"
+        ? String(body.get("callbackURL"))
+        : undefined,
+    ),
     email: String(body.get("email") ?? "")
       .trim()
       .toLowerCase(),
@@ -165,6 +174,47 @@ async function parseLoginMethodRequest(request: Request): Promise<{
   }
 }
 
+async function parseEmailSignUpRequest(request: Request): Promise<{
+  callbackURL?: string
+  email: string
+  name: string
+  password: string
+}> {
+  const contentType = request.headers.get("content-type") ?? ""
+  if (contentType.includes("application/json")) {
+    const body = (await request.json()) as {
+      callbackURL?: string
+      email?: string
+      name?: string
+      password?: string
+    }
+    return {
+      callbackURL: resolveWebWatchCallbackURL(body.callbackURL),
+      email: body.email?.trim().toLowerCase() ?? "",
+      name: body.name?.trim() ?? "",
+      password: body.password ?? "",
+    }
+  }
+
+  if (!contentType.includes("application/x-www-form-urlencoded")) {
+    return { email: "", name: "", password: "" }
+  }
+
+  const body = await request.formData()
+  return {
+    callbackURL: resolveWebWatchCallbackURL(
+      typeof body.get("callbackURL") === "string"
+        ? String(body.get("callbackURL"))
+        : undefined,
+    ),
+    email: String(body.get("email") ?? "")
+      .trim()
+      .toLowerCase(),
+    name: String(body.get("name") ?? "").trim(),
+    password: String(body.get("password") ?? ""),
+  }
+}
+
 function genericUnauthorized(): Response {
   return Response.json({ error: "Invalid email or password" }, { status: 401 })
 }
@@ -192,10 +242,12 @@ function oauthQueryFromLoginReferer(request: Request): string | undefined {
 }
 
 function rejectEmailSignIn({
+  callbackURL,
   email,
   isFormPost,
   oauthQuery,
 }: {
+  callbackURL?: string
   email?: string
   isFormPost: boolean
   oauthQuery?: string
@@ -203,7 +255,11 @@ function rejectEmailSignIn({
   if (!isFormPost) return genericUnauthorized()
 
   const url = new URL("/login", getAuthBaseUrl())
-  if (oauthQuery) url.search = oauthQuery
+  if (callbackURL) {
+    url.searchParams.set("callbackURL", callbackURL)
+  } else if (oauthQuery) {
+    url.search = oauthQuery
+  }
   url.searchParams.set("error", "credentials")
   if (email) url.searchParams.set("email", email)
   return Response.redirect(url, 303)
@@ -339,7 +395,8 @@ async function handleEmailSignUp(request: Request): Promise<Response> {
     return Response.json({ error: "Not found" }, { status: 404 })
   }
 
-  const { email } = await parseLoginMethodRequest(request)
+  const { callbackURL, email, name, password } =
+    await parseEmailSignUpRequest(request)
   if (!email) {
     audit("auth.signup.rejected.public")
     return Response.json({ error: "Not found" }, { status: 404 })
@@ -359,8 +416,23 @@ async function handleEmailSignUp(request: Request): Promise<Response> {
     return existingAccountSignUpResponse()
   }
 
-  audit("auth.signup.rejected.public", email)
-  return Response.json({ error: "Not found" }, { status: 404 })
+  if (!callbackURL || !name || !password) {
+    audit("auth.signup.rejected.public", email)
+    return Response.json({ error: "Not found" }, { status: 404 })
+  }
+
+  const response = await authRouteHandlers.POST(
+    toJsonRequest(request, {
+      callbackURL,
+      email,
+      name,
+      password,
+    }),
+  )
+  if (response.ok) {
+    audit("auth.signup.success.web")
+  }
+  return response
 }
 
 function redirectFormPostAfterSignIn(
@@ -394,14 +466,24 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
     })
   }
 
-  const { email, isFormPost, oauthQuery, password } =
-    await parseEmailPasswordRequest(request)
+  const {
+    callbackURL: webCallbackURL,
+    email,
+    isFormPost,
+    oauthQuery,
+    password,
+  } = await parseEmailPasswordRequest(request)
 
   if (!email || !password) {
     audit("auth.signin.rejected", email)
-    return rejectEmailSignIn({ email, isFormPost, oauthQuery })
+    return rejectEmailSignIn({
+      callbackURL: webCallbackURL,
+      email,
+      isFormPost,
+      oauthQuery,
+    })
   }
-  const callbackURL = buildOAuthContinuationURL(oauthQuery)
+  const callbackURL = webCallbackURL ?? buildOAuthContinuationURL(oauthQuery)
 
   const jsonBody = {
     ...(callbackURL ? { callbackURL } : {}),
@@ -430,20 +512,35 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
   if (existingUser) {
     audit("auth.signin.rejected", email)
     return isFormPost
-      ? rejectEmailSignIn({ email, isFormPost, oauthQuery })
+      ? rejectEmailSignIn({
+          callbackURL: webCallbackURL,
+          email,
+          isFormPost,
+          oauthQuery,
+        })
       : primaryResponse
   }
 
   const firebaseSignIn = await signInWithFirebasePassword(email, password)
   if (!firebaseSignIn) {
     audit("auth.signin.rejected", email)
-    return rejectEmailSignIn({ email, isFormPost, oauthQuery })
+    return rejectEmailSignIn({
+      callbackURL: webCallbackURL,
+      email,
+      isFormPost,
+      oauthQuery,
+    })
   }
 
   const verified = await verifyFirebaseIdToken(firebaseSignIn.idToken)
   if (!verified || verified.email.toLowerCase() !== email) {
     audit("auth.firebase.rejected.unverified", email)
-    return rejectEmailSignIn({ email, isFormPost, oauthQuery })
+    return rejectEmailSignIn({
+      callbackURL: webCallbackURL,
+      email,
+      isFormPost,
+      oauthQuery,
+    })
   }
 
   const signUpResponse = await auth.api.signUpEmail({
@@ -459,7 +556,12 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
 
   if (!signUpResponse.ok) {
     audit("auth.signin.rejected", email)
-    return rejectEmailSignIn({ email, isFormPost, oauthQuery })
+    return rejectEmailSignIn({
+      callbackURL: webCallbackURL,
+      email,
+      isFormPost,
+      oauthQuery,
+    })
   }
 
   await prisma.$transaction(async (tx) => {

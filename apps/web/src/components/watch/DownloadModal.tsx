@@ -21,6 +21,10 @@ import {
 } from "@/lib/download-allowlist"
 import { cn } from "@/lib/utils"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
+import {
+  checkDownloadSession,
+  redirectToAuth,
+} from "@/components/watch/download-session-client"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
 export type DownloadModalDownload = {
@@ -195,6 +199,7 @@ export function DownloadModal({
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [authChecking, setAuthChecking] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
   // Keyed by download URL since the CMS-generated `documentId` is stable
   // per-variant but the URL is what we probe — lookups for the same URL
@@ -245,7 +250,7 @@ export function DownloadModal({
       ? selectedTier
       : defaultTier
   const selected = tiers.find((t) => t.tier === effectiveTier) ?? null
-  const canDownload = tosAgreed && selected != null
+  const canDownload = tosAgreed && selected != null && !authChecking
   const durationLabel = formatDuration(durationSeconds)
 
   const handleOpenChange = useCallback(
@@ -255,6 +260,7 @@ export function DownloadModal({
         setSelectedTier(null)
         setDropdownOpen(false)
         setError(null)
+        setAuthChecking(false)
         setTermsOpen(false)
         downloadInFlight.current = false
         onClose()
@@ -366,7 +372,7 @@ export function DownloadModal({
     return `${slug || "video"}-${tier}.${ext}`
   }
 
-  function handleDownload() {
+  async function handleDownload() {
     if (!selected) return
     if (downloadInFlight.current) return
     const sourceUrl = selected.download.url
@@ -380,6 +386,17 @@ export function DownloadModal({
     }
     setError(null)
     downloadInFlight.current = true
+    setAuthChecking(true)
+
+    const session = await checkDownloadSession()
+    if (session.gateEnabled && !session.authenticated) {
+      downloadInFlight.current = false
+      setAuthChecking(false)
+      setError("Your session expired. Sign in again to download.")
+      redirectToAuth(session.loginUrl)
+      return
+    }
+    setAuthChecking(false)
 
     const filename = buildFilename(sourceUrl, selected.tier)
 
@@ -636,7 +653,7 @@ export function DownloadModal({
               className="px-7 py-4 text-sm"
             >
               <DownloadIcon size={16} />
-              <span>Download</span>
+              <span>{authChecking ? "Checking" : "Download"}</span>
             </Button>
           </div>
         </div>

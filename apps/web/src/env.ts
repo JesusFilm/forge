@@ -52,6 +52,10 @@ const ADMIN_GRAPHQL_URL_HOST_REJECT_SET = new Set<string>([
   "auth.jesusfilm.org",
 ])
 
+const booleanString = z
+  .union([z.boolean(), z.enum(["true", "false", "1", "0"])])
+  .transform((value) => value === true || value === "true" || value === "1")
+
 export const env = createEnv({
   server: {
     // Retained for the /api/preview Next.js draft-mode handler. The data
@@ -98,6 +102,15 @@ export const env = createEnv({
     // outbound bearer; admin recognizes any entry as a valid CONSUMER_BEARER.
     // Required — flipped from optional in U13.
     WEB_ADMIN_API_KEYS: z.string().min(1),
+    // Shared Auth host used by server routes to verify Better Auth sessions
+    // over HTTP. Production/stage callers validate this before forwarding
+    // cookies; local/test default to the standalone auth dev port.
+    WEB_AUTH_BASE_URL: z.url().default("http://localhost:3004"),
+    // Server-side LaunchDarkly key for request-time rollout of the download
+    // account gate. Optional for local/test; fallback below controls behavior
+    // when unset or unavailable.
+    LAUNCHDARKLY_SDK_KEY: z.string().optional(),
+    WEB_DOWNLOAD_ACCOUNT_GATE_FALLBACK: booleanString.default(false),
   },
   client: {
     // U12 — Mux watch-page player migration flag.
@@ -155,6 +168,10 @@ export const env = createEnv({
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
+    WEB_AUTH_BASE_URL: process.env.WEB_AUTH_BASE_URL,
+    LAUNCHDARKLY_SDK_KEY: process.env.LAUNCHDARKLY_SDK_KEY,
+    WEB_DOWNLOAD_ACCOUNT_GATE_FALLBACK:
+      process.env.WEB_DOWNLOAD_ACCOUNT_GATE_FALLBACK,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO:

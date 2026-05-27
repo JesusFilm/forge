@@ -17,6 +17,8 @@ import {
   SAFE_DOWNLOAD_EXTENSIONS,
   isAllowedDownloadOrigin,
 } from "@/lib/download-allowlist"
+import { verifyAuthSession } from "@/lib/auth-session"
+import { evaluateDownloadAccountGate } from "@/lib/download-gate-flag"
 
 // Use the Node runtime so streaming bodies are fully supported across
 // hosts. The Edge runtime would also work, but Node gives us long
@@ -67,6 +69,46 @@ const FILENAME_UNSAFE_RE = /[\\/;,"]/g
 
 function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ error: message }, { status })
+}
+
+function withOptionalSetCookie(
+  response: Response,
+  setCookieHeader: string | undefined,
+): Response {
+  if (!setCookieHeader) return response
+
+  const headers = new Headers(response.headers)
+  headers.append("set-cookie", setCookieHeader)
+  return new Response(response.body, {
+    headers,
+    status: response.status,
+    statusText: response.statusText,
+  })
+}
+
+async function requireDownloadAccountIfEnabled(
+  request: Request,
+): Promise<
+  { ok: true; setCookieHeader?: string } | { ok: false; response: Response }
+> {
+  const gate = await evaluateDownloadAccountGate(request)
+  const ok = gate.setCookieHeader
+    ? ({ ok: true, setCookieHeader: gate.setCookieHeader } as const)
+    : ({ ok: true } as const)
+  if (!gate.enabled) return { ok: true }
+
+  const session = await verifyAuthSession(request.headers)
+  if (session.authenticated) {
+    return ok
+  }
+
+  return {
+    ok: false,
+    response: withOptionalSetCookie(
+      jsonError("Authentication required", 401),
+      gate.setCookieHeader,
+    ),
+  }
 }
 
 // IPv4 ranges to reject for SSRF defense. RFC 1918 private space + loopback +
@@ -242,12 +284,20 @@ function buildUpstreamSignal(
 }
 
 export async function GET(request: Request): Promise<Response> {
+  const authGate = await requireDownloadAccountIfEnabled(request)
+  if (!authGate.ok) return authGate.response
+
   const { searchParams } = new URL(request.url)
   const target = searchParams.get("url")
   const rawFilename = searchParams.get("filename")
 
   const validation = await validateTarget(target)
-  if (!validation.ok) return validation.errorResponse
+  if (!validation.ok) {
+    return withOptionalSetCookie(
+      validation.errorResponse,
+      authGate.setCookieHeader,
+    )
+  }
   const { safeUrl } = validation
 
   const filename = sanitizeFilename(rawFilename ?? "download")
@@ -302,13 +352,19 @@ export async function GET(request: Request): Promise<Response> {
     if (request.signal.aborted) {
       // Client disconnected first — no point logging or returning a body
       // the client will never read.
-      return new NextResponse(null, { status: 499 })
+      return withOptionalSetCookie(
+        new NextResponse(null, { status: 499 }),
+        authGate.setCookieHeader,
+      )
     }
     console.error("[api/download] upstream fetch failed", {
       target: safeLogUrl(safeUrl),
       err: err instanceof Error ? err.message : String(err),
     })
-    return jsonError("Upstream fetch failed", 502)
+    return withOptionalSetCookie(
+      jsonError("Upstream fetch failed", 502),
+      authGate.setCookieHeader,
+    )
   } finally {
     clearUpstreamTimeout()
   }
@@ -322,7 +378,10 @@ export async function GET(request: Request): Promise<Response> {
     console.error("[api/download] upstream attempted redirect", {
       target: safeLogUrl(safeUrl),
     })
-    return jsonError("Upstream redirected; refusing to follow", 502)
+    return withOptionalSetCookie(
+      jsonError("Upstream redirected; refusing to follow", 502),
+      authGate.setCookieHeader,
+    )
   }
 
   if (!upstream.ok && upstream.status !== 206) {
@@ -330,11 +389,17 @@ export async function GET(request: Request): Promise<Response> {
       target: safeLogUrl(safeUrl),
       status: upstream.status,
     })
-    return jsonError(`Upstream ${upstream.status}`, upstream.status)
+    return withOptionalSetCookie(
+      jsonError(`Upstream ${upstream.status}`, upstream.status),
+      authGate.setCookieHeader,
+    )
   }
 
   if (!upstream.body) {
-    return jsonError("Upstream had no body", 502)
+    return withOptionalSetCookie(
+      jsonError("Upstream had no body", 502),
+      authGate.setCookieHeader,
+    )
   }
 
   const headers = new Headers()
@@ -354,10 +419,13 @@ export async function GET(request: Request): Promise<Response> {
   // Don't let the browser/CDN sniff the response and override our content type.
   headers.set("X-Content-Type-Options", "nosniff")
 
-  return new NextResponse(upstream.body, {
-    status: upstream.status,
-    headers,
-  })
+  return withOptionalSetCookie(
+    new NextResponse(upstream.body, {
+      status: upstream.status,
+      headers,
+    }),
+    authGate.setCookieHeader,
+  )
 }
 
 // HEAD probes the upstream for `Content-Length` only — used by the
@@ -365,11 +433,19 @@ export async function GET(request: Request): Promise<Response> {
 // is missing or zero. Reuses the same SSRF defenses as GET (allowlist,
 // DNS pre-flight, manual redirect handling); body is never read.
 export async function HEAD(request: Request): Promise<Response> {
+  const authGate = await requireDownloadAccountIfEnabled(request)
+  if (!authGate.ok) return authGate.response
+
   const { searchParams } = new URL(request.url)
   const target = searchParams.get("url")
 
   const validation = await validateTarget(target)
-  if (!validation.ok) return validation.errorResponse
+  if (!validation.ok) {
+    return withOptionalSetCookie(
+      validation.errorResponse,
+      authGate.setCookieHeader,
+    )
+  }
   const { safeUrl } = validation
 
   // 10s is generous for a metadata-only round trip; longer than that and
@@ -391,13 +467,19 @@ export async function HEAD(request: Request): Promise<Response> {
     })
   } catch (err) {
     if (request.signal.aborted) {
-      return new NextResponse(null, { status: 499 })
+      return withOptionalSetCookie(
+        new NextResponse(null, { status: 499 }),
+        authGate.setCookieHeader,
+      )
     }
     console.error("[api/download] HEAD upstream fetch failed", {
       target: safeLogUrl(safeUrl),
       err: err instanceof Error ? err.message : String(err),
     })
-    return jsonError("Upstream fetch failed", 502)
+    return withOptionalSetCookie(
+      jsonError("Upstream fetch failed", 502),
+      authGate.setCookieHeader,
+    )
   } finally {
     clearUpstreamTimeout()
   }
@@ -409,14 +491,20 @@ export async function HEAD(request: Request): Promise<Response> {
     console.error("[api/download] HEAD upstream attempted redirect", {
       target: safeLogUrl(safeUrl),
     })
-    return jsonError("Upstream redirected; refusing to follow", 502)
+    return withOptionalSetCookie(
+      jsonError("Upstream redirected; refusing to follow", 502),
+      authGate.setCookieHeader,
+    )
   }
 
   // Mirror GET: a 206 Partial Content is a valid metadata response from
   // some CDNs, not an error. Returning 502 here would make legitimate
   // sizes invisible to the client.
   if (!upstream.ok && upstream.status !== 206) {
-    return jsonError(`Upstream ${upstream.status}`, upstream.status)
+    return withOptionalSetCookie(
+      jsonError(`Upstream ${upstream.status}`, upstream.status),
+      authGate.setCookieHeader,
+    )
   }
 
   const headers = new Headers()
@@ -433,5 +521,8 @@ export async function HEAD(request: Request): Promise<Response> {
 
   // Forward upstream's status (200 or 206) so callers see exactly what
   // the CDN reported — mirroring GET's pass-through behavior.
-  return new NextResponse(null, { status: upstream.status, headers })
+  return withOptionalSetCookie(
+    new NextResponse(null, { status: upstream.status, headers }),
+    authGate.setCookieHeader,
+  )
 }
