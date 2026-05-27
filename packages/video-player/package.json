@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./mux-player": "./src/MuxPlayer.tsx",
-    "./mux-video": "./src/MuxVideo.tsx"
+    "./mux-video": "./src/MuxVideo.tsx",
+    "./video-js-core": "./src/useVideoPlayerCore.ts"
   },
   "scripts": {
     "lint": "eslint .",
