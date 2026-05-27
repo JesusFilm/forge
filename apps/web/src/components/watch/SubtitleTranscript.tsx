@@ -34,14 +34,36 @@ function toSeconds(
   )
 }
 
+// Entity map. Single-pass replace so a literal `&amp;lt;` in source
+// decodes to `&lt;` (not `<`). Decoding `&amp;` last in a chained
+// `.replace()` would double-unescape that case — see CodeQL js/double-escaping.
+const HTML_ENTITY_MAP: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&nbsp;": " ",
+}
+const HTML_ENTITY_RE = /&(?:amp|lt|gt|quot|#39|nbsp);/g
+
 function decodeEntities(text: string): string {
-  return text
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
+  return text.replace(HTML_ENTITY_RE, (m) => HTML_ENTITY_MAP[m] ?? m)
+}
+
+// Strip VTT/HTML-ish tags. Iterate until the string stabilises so nested
+// or overlapping payloads (e.g. `<scr<script>ipt>`) can't survive a single
+// pass — see CodeQL js/incomplete-multi-character-sanitization. Output
+// still flows into a React text node, so the regex is defense-in-depth
+// over auto-escaped JSX rather than the primary safety boundary.
+function stripTags(text: string): string {
+  let prev = ""
+  let cur = text
+  while (cur !== prev) {
+    prev = cur
+    cur = cur.replace(/<[^>]*>/g, "")
+  }
+  return cur
 }
 
 /**
@@ -86,12 +108,7 @@ export function parseVtt(raw: string): Cue[] {
     const start = toSeconds(m[1], m[2]!, m[3]!, m[4]!)
     const end = toSeconds(m[5], m[6]!, m[7]!, m[8]!)
     const textLines = lines.slice(timingIdx + 1)
-    const text = decodeEntities(
-      textLines
-        .join(" ")
-        .replace(/<[^>]+>/g, "")
-        .trim(),
-    )
+    const text = decodeEntities(stripTags(textLines.join(" ")).trim())
     if (text) cues.push({ start, end, text })
   }
   return cues

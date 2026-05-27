@@ -94,6 +94,39 @@ Real`
     expect(parseVtt(vtt)).toEqual([{ start: 5, end: 6, text: "Real" }])
   })
 
+  test("does not double-unescape encoded entities (CodeQL js/double-escaping)", () => {
+    // Literal `&amp;lt;` in the source should decode to `&lt;` once, not
+    // collapse to `<`. A chained-replace decoder that handled `&amp;`
+    // first would re-trigger the `&lt;` branch.
+    const vtt = `WEBVTT
+
+00:00:01.000 --> 00:00:02.000
+&amp;lt;encoded&amp;gt;`
+
+    expect(parseVtt(vtt)).toEqual([
+      { start: 1, end: 2, text: "&lt;encoded&gt;" },
+    ])
+  })
+
+  test("strips nested-tag payloads with no reconstructible <tag> residue", () => {
+    // Iterate-until-stable strip prevents a nested-tag payload from
+    // collapsing back into a complete `<script>` tag after one pass.
+    // Defensive only — output flows into a React text node — but the
+    // assertion guards against CodeQL js/incomplete-multi-character-
+    // sanitization regressions. Garbage characters can remain (they
+    // render as literal text), but no `<...>` pattern survives.
+    const cues = parseVtt(`WEBVTT
+
+00:00:01.000 --> 00:00:02.000
+keep <scr<script>ipt>alert(1)</script> me`)
+
+    expect(cues).toHaveLength(1)
+    expect(cues[0]!.text).not.toMatch(/<[^>]*>/)
+    expect(cues[0]!.text).toContain("keep")
+    expect(cues[0]!.text).toContain("alert(1)")
+    expect(cues[0]!.text).toContain("me")
+  })
+
   test("accepts comma decimal separator (SRT-style timing)", () => {
     const vtt = `WEBVTT
 
