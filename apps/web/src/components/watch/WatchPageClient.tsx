@@ -30,6 +30,7 @@ const ShareModal = dynamic(
     })),
   { ssr: false },
 )
+import { SubtitleTranscript } from "@/components/watch/SubtitleTranscript"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
 import type {
   MergedWatchBlock,
@@ -268,6 +269,12 @@ export function WatchPageClient({
         onPlayerReady={handlePlayerReady}
         locale={locale}
         subtitleVttSrc={subtitleVttSrc}
+      />
+
+      <SubtitleTranscript
+        subtitles={subtitles}
+        playerRef={playerRef}
+        audioSlug={currentLanguageSlug}
       />
 
       <DownloadModal
