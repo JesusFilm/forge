@@ -39,12 +39,15 @@ carousel, promo slide, or responsive layout.
 - After selecting the promo slide, the panel was hidden.
 - Mobile viewport smoke used `390x844` and rendered the Bible Quotes header,
   3 quote cards, promo slide, and YouVersion panel.
-- Browser console after smoke contained only React DevTools/HMR development
-  messages.
+- Browser console after smoke contained React DevTools/HMR development
+  messages and an existing Next.js LCP image warning for
+  `/watch/images/jesusfilm-sign.svg`.
 - Network showed requests to:
   `https://api.youversion.com/v1/bibles/111/passages/LUK.8.2...`
   and
   `https://api.youversion.com/v1/bibles/111/passages/LUK.16.9...`
+- Network also showed version metadata requests to:
+  `https://api.youversion.com/v1/bibles/111`
 
 ## Attribution
 
