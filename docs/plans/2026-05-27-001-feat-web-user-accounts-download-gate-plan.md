@@ -168,6 +168,39 @@ Out of scope:
   fallback deliberately; the final enforcement posture should fail closed to
   account-required downloads if LaunchDarkly cannot be reached.
 
+## Execution Workflow Requirements
+
+- Branching and PRs must follow repo rules. Planning-only work may use a
+  `docs/...` branch; implementation work should start from current
+  `origin/main` on a `feat/...` branch such as
+  `feat/web-user-accounts-download-gate`. Do not implement from a detached
+  HEAD, and keep unrelated work out of the PR.
+- Before implementation, re-check `docs/roadmap/`, `docs/solutions/`, and
+  `todos/` for relevant findings, then keep this roadmap ticket
+  `in-progress`. When the implementation is complete, mark the ticket
+  `complete` or create follow-up `feat-NNN` tickets for deferred work.
+- Use Red/Green TDD for each implementation unit that changes behavior. Add or
+  update failing tests first, record the red failure, then make the smallest
+  coherent change to get green. Do not skip pre-commit hooks.
+- Orchestrate non-overlapping work in subagents. Good slices are:
+  auth/authorization boundary, web download gate and LaunchDarkly helper,
+  watch UI/browser flow, and security/test review. Subagents must not revert
+  each other's changes, and their final findings should be summarized in the
+  PR.
+- Run the touched-scope test and typecheck commands before opening or updating
+  the implementation PR. Include any package-local generation or schema drift
+  checks required by `apps/admin/AGENTS.md`, `apps/web/AGENTS.md`, and the root
+  guide.
+- Because this is user-facing, run a user-like browser smoke test after the
+  code is implemented. Capture screenshots or equivalent browser proof for the
+  flag-enabled signed-out redirect, signup/callback return, download modal,
+  and direct `401` path. Attach or link the proof in the PR.
+- If a job, subagent review, or browser smoke surfaces a real issue that cannot
+  be fixed immediately, document it in `todos/` with the failing command,
+  observed error, owner/scope, and relaunch criteria. Then relaunch the
+  relevant work/review loop for those surfaced todos before final handoff,
+  unless the PR explicitly defers them with a follow-up ticket.
+
 ## Implementation Units
 
 ### Unit 1: Shared auth destination and signup UI
@@ -458,6 +491,9 @@ Validation commands:
 - `pnpm --filter @forge/web typecheck`
 - `pnpm --filter @forge/admin test`
 - `pnpm --filter @forge/admin typecheck`
+- Record Red/Green evidence for the tests that define the account gate,
+  LaunchDarkly flag behavior, signup role boundary, callback validation, and
+  direct download `401` path.
 - If Admin auth code changes schema or Prisma models unexpectedly, stop and
   run the package-local generation flow from `apps/admin/AGENTS.md`. A new
   consumer role/field/table is allowed if that is the chosen authorization
@@ -471,13 +507,15 @@ Browser smoke:
   `AUTH_TRUSTED_ORIGINS` including the local web origin.
 - Open a real watch page with downloads.
 - With the LaunchDarkly flag enabled, as signed out: verify playback loads and
-  Download redirects to auth.
+  Download redirects to auth. Capture a screenshot or browser trace.
 - Create a public account through the signup mode.
-- Verify callback returns to the same watch page.
+- Verify callback returns to the same watch page. Capture proof that the
+  upstream media URL never enters the callback URL.
 - Click Download again, accept Terms of Use, and confirm the browser starts a
-  download through `/watch/api/download`.
+  download through `/watch/api/download`. Capture the modal/download proof.
 - With the LaunchDarkly flag enabled, directly request
-  `/watch/api/download?...` without cookies and verify `401`.
+  `/watch/api/download?...` without cookies and verify `401`. Save the
+  response proof.
 - Verify the public account cannot access Admin dashboard, Admin GraphQL read
   or write scopes, Manager, partner, or workflow surfaces.
 - Verify production-like cookies set by auth include `HttpOnly`, `Secure`,
@@ -504,6 +542,9 @@ Rollout:
 - Add a deploy note with the exact stage/prod env values checked, the account
   privilege smoke result, the LaunchDarkly variation tested, and the direct
   `401` smoke result.
+- If CI or rollout verification fails, add a scoped `todos/feat-121-*.md`
+  entry with the failure, evidence, and next relaunch step before retrying or
+  handing off.
 
 ## Risks and Mitigations
 
@@ -550,4 +591,7 @@ Rollout:
   routes.
 - Public signup and credentialed auth CORS have route/method-scoped abuse
   controls.
-- Targeted tests, typechecks, and browser smoke are recorded in the PR.
+- Targeted tests, typechecks, Red/Green evidence, subagent summaries, and
+  browser screenshots or equivalent proof are recorded in the PR.
+- Any failing job or surfaced follow-up is fixed, relaunched, or documented in
+  `todos/` with explicit follow-up ownership.

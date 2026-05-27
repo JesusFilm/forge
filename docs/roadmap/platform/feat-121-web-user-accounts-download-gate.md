@@ -80,19 +80,45 @@ account-required download gate should roll out gradually through LaunchDarkly.
 - Do not treat LaunchDarkly as authorization. It only chooses whether the account gate is enforced for a rollout context; the download API still owns the auth check when the flag is enabled.
 - Do not silently reopen unauthenticated downloads as a rollback path after rollout is complete. During gradual rollout, a deliberate LaunchDarkly rollback to 0% is allowed only as recorded incident response.
 
+## Implementation Workflow
+
+- Planning-only PRs may use a `docs/...` branch. The implementation PR should
+  start from current `origin/main` on a `feat/...` branch such as
+  `feat/web-user-accounts-download-gate`; do not implement from a detached
+  HEAD or mix unrelated work.
+- Use Red/Green TDD for behavior changes. Add failing tests first for the
+  download gate, LaunchDarkly on/off behavior, signup role boundary, callback
+  validation, and direct API `401` path; then implement to green.
+- Orchestrate non-overlapping work in subagents for auth/authorization, web
+  download/LaunchDarkly, watch UI/browser flow, and security/test review.
+- Before opening or updating the implementation PR, run touched-scope tests,
+  typechecks, package-local generation checks, and pre-commit hooks. Do not
+  skip hooks.
+- Because this is user-facing, run a user-like browser smoke test and attach
+  screenshots or equivalent proof for the signed-out auth redirect,
+  signup/callback return, download modal, and direct `401` response.
+- If CI, a subagent, or browser smoke surfaces a real issue that cannot be
+  fixed immediately, document it in `todos/feat-121-*.md` with the failing
+  command, observed error, owner/scope, and relaunch criteria. Relaunch the
+  relevant work/review loop for those todos before final handoff unless the PR
+  explicitly defers them with a follow-up ticket.
+
 ## Verification
 
 - `pnpm --filter @forge/web test`
 - `pnpm --filter @forge/web typecheck`
 - `pnpm --filter @forge/admin test`
 - `pnpm --filter @forge/admin typecheck`
+- Red/Green evidence recorded for the tests that define new behavior.
 - Unit tests cover LaunchDarkly flag on/off behavior for both the session route and direct download API route.
 - Browser smoke: signed-out visitor can watch a video, and with LaunchDarkly enabled, download redirects to auth.
 - Browser smoke: LaunchDarkly flag disabled preserves legacy download behavior for that rollout cohort.
 - Browser smoke: LaunchDarkly flag enabled requires auth before download.
 - Browser smoke: new public user signs up, returns to the same watch page, accepts Terms of Use, and starts a download.
 - Direct smoke: with LaunchDarkly enabled, signed-out `/watch/api/download?...` returns `401` and does not fetch the upstream asset.
+- Browser smoke evidence includes screenshots or equivalent proof for the user-facing paths.
 - Privilege smoke: a public web-created account cannot access Admin dashboard, Admin GraphQL read/write scopes, Manager, partner, or workflow surfaces.
 - Callback smoke: auth rejects callbacks to `/watch/api/download`, `/watch/api/*`, and other API paths.
 - Rollout smoke: configured stage/prod env values include `AUTH_TRUSTED_ORIGINS` for apex, `www`, and `web`, `AUTH_COOKIE_DOMAIN=.jesusfilm.org`, `WEB_AUTH_BASE_URL`/`BETTER_AUTH_URL` pointing at the approved auth host, and LaunchDarkly env for flag `web-download-account-gate`.
 - Rollout plan: prove both variations in stage, then ramp production internal/test contexts -> 1% -> 10% -> 50% -> 100%, monitoring signup errors, auth callback failures, direct download `401` rates, and support reports.
+- Failing jobs or unresolved surfaced issues are fixed, relaunched, or documented in `todos/` with owner and next action.
