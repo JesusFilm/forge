@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useRef, useState } from "react"
 import {
+  ActivityIndicator,
+  Alert,
   FlatList,
-  Linking,
   Modal,
   Platform,
   Pressable,
@@ -12,21 +13,21 @@ import {
   View,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { Image } from "expo-image"
 import Ionicons from "@expo/vector-icons/Ionicons"
+import { BottomSheetScrollView } from "@gorhom/bottom-sheet"
+import { cacheDirectory, downloadAsync } from "expo-file-system/src/legacy"
+import * as Sharing from "expo-sharing"
 
 import { useTypography } from "../../hooks/useTypography"
 import {
   ACCENT,
-  SURFACE_COLOR,
   TEXT_BODY,
   TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "../../lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
 import type { WatchDownload } from "../../lib/normalizeVideo"
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
+import { TERMS_OF_USE_PARAGRAPHS } from "../../lib/terms-of-use"
 
 function formatDuration(seconds: number | null): string {
   if (seconds == null || seconds <= 0) return "0:00"
@@ -51,15 +52,25 @@ type TieredDownload = WatchDownload & { tier: QualityTier }
 
 function tierDownloads(downloads: WatchDownload[]): TieredDownload[] {
   const sorted = [...downloads].sort((a, b) => Number(b.size) - Number(a.size))
-  return sorted.map((d, i) => {
-    let tier: QualityTier = "Low"
-    if (i === 0) tier = "Highest"
-    else if (i < sorted.length - 1) tier = "High"
-    return { ...d, tier }
-  })
+  if (sorted.length === 0) return []
+  const head = sorted[0]
+  if (sorted.length === 1) {
+    return [{ ...head, tier: "Highest" }]
+  }
+  const tail = sorted[sorted.length - 1]
+  if (sorted.length === 2) {
+    return [
+      { ...head, tier: "Highest" },
+      { ...tail, tier: "Low" },
+    ]
+  }
+  const middle = sorted[Math.floor(sorted.length / 2)]
+  return [
+    { ...head, tier: "Highest" },
+    { ...middle, tier: "High" },
+    { ...tail, tier: "Low" },
+  ]
 }
-
-// ── Terms of Use Modal ────────────────────────────────────────────────────────
 
 function TermsModal({
   visible,
@@ -97,15 +108,18 @@ function TermsModal({
             Terms of Use
           </Text>
           <ScrollView style={styles.termsScroll}>
-            <Text style={[styles.termsText, typography.body]}>
-              By downloading this content, you agree to use it solely for
-              personal, non-commercial purposes. You may share this content for
-              ministry and educational purposes. Redistribution for commercial
-              gain, modification of the content, or any use that misrepresents
-              the original message is prohibited. All rights to the content
-              remain with Jesus Film Project. By proceeding with the download,
-              you acknowledge and accept these terms.
-            </Text>
+            {TERMS_OF_USE_PARAGRAPHS.map((paragraph, index) => (
+              <Text
+                key={index}
+                style={[
+                  styles.termsText,
+                  typography.body,
+                  index > 0 && styles.termsParagraphGap,
+                ]}
+              >
+                {paragraph}
+              </Text>
+            ))}
           </ScrollView>
           <View style={styles.termsFooter}>
             <Pressable
@@ -141,27 +155,21 @@ function TermsModal({
   )
 }
 
-// ── DownloadModal ─────────────────────────────────────────────────────────────
-
-export type DownloadModalProps = {
-  visible: boolean
-  onClose: () => void
+export type DownloadSheetProps = {
   videoTitle: string | null
-  posterUrl: string | null
   duration: number | null
   languageName: string | null
   downloads: WatchDownload[]
+  onDownloadComplete?: () => void
 }
 
-export function DownloadModal({
-  visible,
-  onClose,
+export function DownloadSheetContent({
   videoTitle,
-  posterUrl,
   duration,
   languageName,
   downloads,
-}: DownloadModalProps) {
+  onDownloadComplete,
+}: DownloadSheetProps) {
   const insets = useSafeAreaInsets()
   const typography = useTypography()
   const downloadInFlight = useRef(false)
@@ -171,15 +179,41 @@ export function DownloadModal({
   const [touAccepted, setTouAccepted] = useState(false)
   const [termsVisible, setTermsVisible] = useState(false)
 
-  const handleDownload = useCallback(() => {
+  const [downloading, setDownloading] = useState(false)
+
+  const handleDownload = useCallback(async () => {
     if (downloadInFlight.current) return
     if (!touAccepted || tiered.length === 0) return
     const selected = tiered[selectedIndex]
     if (!selected) return
     downloadInFlight.current = true
-    Linking.openURL(selected.url).finally(() => {
+    setDownloading(true)
+
+    try {
+      if (!cacheDirectory) throw new Error("Cache directory unavailable")
+      const rawName =
+        selected.url.split("/").pop()?.split("?")[0] ?? "video.mp4"
+      const filename = `${selected.documentId}-${rawName}`
+      const localUri = `${cacheDirectory}${filename}`
+      const { uri } = await downloadAsync(selected.url, localUri)
+      try {
+        await Sharing.shareAsync(uri, {
+          mimeType: "video/mp4",
+          UTI: "public.mpeg-4",
+        })
+      } catch {
+        // User dismissed the share sheet — not an error
+      }
+      onDownloadComplete?.()
+    } catch {
+      Alert.alert(
+        "Download failed",
+        "Could not download the video. Please try again.",
+      )
+    } finally {
       downloadInFlight.current = false
-    })
+      setDownloading(false)
+    }
   }, [touAccepted, tiered, selectedIndex])
 
   const renderQualityRow = useCallback(
@@ -223,235 +257,161 @@ export function DownloadModal({
 
   if (downloads.length === 0) {
     return (
-      <Modal
-        visible={visible}
-        animationType="slide"
-        transparent
-        statusBarTranslucent
-        onRequestClose={onClose}
-      >
-        <StatusBar barStyle="light-content" />
-        <View style={styles.modalOverlay}>
-          <Pressable
-            style={[
-              styles.closeButton,
-              {
-                top: Platform.OS === "android" ? insets.top : insets.top + 8,
-              },
-            ]}
-            onPress={onClose}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Close"
-          >
-            <Text style={styles.closeIcon}>{"✕"}</Text>
-          </Pressable>
-          <View style={styles.emptyContainer}>
-            <Ionicons
-              name="cloud-download-outline"
-              size={48}
-              color={TEXT_SECONDARY}
-            />
-            <Text style={[styles.emptyText, typography.body]}>
-              No downloads available
-            </Text>
-          </View>
-        </View>
-      </Modal>
+      <View style={styles.emptyContainer}>
+        <Ionicons
+          name="cloud-download-outline"
+          size={48}
+          color={TEXT_SECONDARY}
+        />
+        <Text style={[styles.emptyText, typography.body]}>
+          No downloads available
+        </Text>
+      </View>
     )
   }
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      statusBarTranslucent
-      onRequestClose={onClose}
-    >
-      <StatusBar barStyle="light-content" />
-      <View style={styles.modalOverlay}>
-        <Pressable
-          style={[
-            styles.closeButton,
-            {
-              top: Platform.OS === "android" ? insets.top : insets.top + 8,
-            },
-          ]}
-          onPress={onClose}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-        >
-          <Text style={styles.closeIcon}>{"✕"}</Text>
-        </Pressable>
-
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            {
-              paddingTop:
-                Platform.OS === "android" ? insets.top + 64 : insets.top + 72,
-              paddingBottom: insets.bottom + 24,
-            },
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header: poster + info */}
-          <View style={styles.header}>
-            {posterUrl != null && (
-              <View style={styles.posterContainer}>
-                <Image
-                  source={{ uri: posterUrl }}
-                  style={styles.poster}
-                  contentFit="cover"
-                  recyclingKey={`download-poster-${posterUrl}`}
-                />
-                {duration != null && duration > 0 && (
-                  <View style={styles.durationBadge}>
-                    <Ionicons name="play" size={10} color="#ffffff" />
-                    <Text style={styles.durationText}>
-                      {formatDuration(duration)}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
-            {videoTitle != null && (
-              <Text
-                style={[styles.videoTitle, typography.titleLarge]}
-                numberOfLines={2}
-              >
-                {videoTitle}
-              </Text>
-            )}
+    <>
+      <BottomSheetScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 24 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          {videoTitle != null && (
+            <Text
+              style={[styles.videoTitle, typography.titleLarge]}
+              numberOfLines={2}
+            >
+              {videoTitle}
+            </Text>
+          )}
+          <View style={styles.metaRow}>
             {languageName != null && (
-              <View style={styles.languagePill}>
+              <View style={styles.metaPill}>
                 <Ionicons
                   name="globe-outline"
                   size={14}
                   color={TEXT_SECONDARY}
                 />
-                <Text style={[styles.languagePillText, typography.bodySmall]}>
+                <Text style={[styles.metaPillText, typography.bodySmall]}>
                   {languageName}
                 </Text>
               </View>
             )}
+            {duration != null && duration > 0 && (
+              <View style={styles.metaPill}>
+                <Ionicons
+                  name="time-outline"
+                  size={14}
+                  color={TEXT_SECONDARY}
+                />
+                <Text style={[styles.metaPillText, typography.bodySmall]}>
+                  {formatDuration(duration)}
+                </Text>
+              </View>
+            )}
           </View>
+        </View>
 
-          {/* Quality selector */}
-          <View style={styles.qualitySection}>
-            <Text style={[styles.qualitySectionLabel, typography.bodySmall]}>
-              Select a file size
-            </Text>
-            <FlatList
-              data={tiered}
-              keyExtractor={(item) => item.documentId}
-              renderItem={renderQualityRow}
-              scrollEnabled={false}
-              ItemSeparatorComponent={() => <View style={styles.qualityGap} />}
-            />
-          </View>
+        <View style={styles.qualitySection}>
+          <Text style={[styles.qualitySectionLabel, typography.bodySmall]}>
+            Select a file size
+          </Text>
+          <FlatList
+            data={tiered}
+            keyExtractor={(item) => item.documentId}
+            renderItem={renderQualityRow}
+            scrollEnabled={false}
+            ItemSeparatorComponent={() => <View style={styles.qualityGap} />}
+          />
+        </View>
 
-          {/* Terms of Use checkbox */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.touRow,
-              pressed && feedback.pressed,
-            ]}
-            onPress={() => {
-              if (touAccepted) {
-                setTouAccepted(false)
-              } else {
-                setTermsVisible(true)
-              }
-            }}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: touAccepted }}
-            accessibilityLabel="I agree to the Terms of Use"
-          >
-            <View
-              style={[styles.checkbox, touAccepted && styles.checkboxChecked]}
-            >
-              {touAccepted && (
-                <Ionicons name="checkmark" size={16} color="#ffffff" />
-              )}
-            </View>
-            <Text style={[styles.touText, typography.bodySmall]}>
-              I agree to the{" "}
-            </Text>
-            <Pressable
-              onPress={() => setTermsVisible(true)}
-              hitSlop={4}
-              accessibilityRole="link"
-              accessibilityLabel="Read Terms of Use"
-            >
-              <Text style={[styles.touLink, typography.bodySmall]}>
-                Terms of Use
-              </Text>
-            </Pressable>
-          </Pressable>
-
-          {/* Download button */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.downloadButton,
-              !touAccepted && styles.downloadButtonDisabled,
-              pressed && touAccepted && feedback.pressed,
-            ]}
-            onPress={handleDownload}
-            disabled={!touAccepted}
-            accessibilityRole="button"
-            accessibilityLabel="Download video"
-            accessibilityState={{ disabled: !touAccepted }}
-          >
-            <Ionicons name="download-outline" size={20} color="#ffffff" />
-            <Text style={[styles.downloadButtonText, typography.body]}>
-              Download
-            </Text>
-          </Pressable>
-        </ScrollView>
-
-        <TermsModal
-          visible={termsVisible}
-          onAccept={() => {
-            setTouAccepted(true)
-            setTermsVisible(false)
+        <Pressable
+          style={({ pressed }) => [styles.touRow, pressed && feedback.pressed]}
+          onPress={() => {
+            if (touAccepted) {
+              setTouAccepted(false)
+            } else {
+              setTermsVisible(true)
+            }
           }}
-          onCancel={() => setTermsVisible(false)}
-        />
-      </View>
-    </Modal>
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: touAccepted }}
+          accessibilityLabel="I agree to the Terms of Use"
+        >
+          <View
+            style={[styles.checkbox, touAccepted && styles.checkboxChecked]}
+          >
+            {touAccepted && (
+              <Ionicons name="checkmark" size={16} color="#ffffff" />
+            )}
+          </View>
+          <Text style={[styles.touText, typography.bodySmall]}>
+            I agree to the{" "}
+          </Text>
+          <Pressable
+            onPress={() => setTermsVisible(true)}
+            hitSlop={4}
+            accessibilityRole="link"
+            accessibilityLabel="Read Terms of Use"
+          >
+            <Text style={[styles.touLink, typography.bodySmall]}>
+              Terms of Use
+            </Text>
+          </Pressable>
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.downloadButton,
+            (!touAccepted || downloading) && styles.downloadButtonDisabled,
+            pressed && touAccepted && !downloading && feedback.pressed,
+          ]}
+          onPress={handleDownload}
+          disabled={!touAccepted || downloading}
+          accessibilityRole="button"
+          accessibilityLabel={
+            downloading ? "Downloading video" : "Download video"
+          }
+          accessibilityState={{ disabled: !touAccepted || downloading }}
+        >
+          {downloading ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <Ionicons name="download-outline" size={20} color="#ffffff" />
+          )}
+          <Text style={[styles.downloadButtonText, typography.body]}>
+            {downloading ? "Downloading..." : "Download"}
+          </Text>
+        </Pressable>
+      </BottomSheetScrollView>
+
+      <TermsModal
+        visible={termsVisible}
+        onAccept={() => {
+          setTouAccepted(true)
+          setTermsVisible(false)
+        }}
+        onCancel={() => setTermsVisible(false)}
+      />
+    </>
   )
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+export { type DownloadSheetProps as DownloadSheetContentProps }
+
+export function useDownloadSheetReset() {
+  const [resetKey, setResetKey] = useState(0)
+  const handleSheetChange = useCallback((index: number) => {
+    if (index >= 0) setResetKey((k) => k + 1)
+  }, [])
+  return { resetKey, handleSheetChange }
+}
 
 const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.9)",
-  },
-  closeButton: {
-    position: "absolute",
-    right: 16,
-    zIndex: 10,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  closeIcon: {
-    color: "#ffffff",
-    fontSize: 18,
-    fontFamily: "System",
-  },
-  scrollView: {
-    flex: 1,
-  },
   scrollContent: {
     paddingHorizontal: HORIZONTAL_PADDING,
   },
@@ -460,44 +420,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 12,
+    paddingVertical: 48,
   },
   emptyText: {
     color: TEXT_SECONDARY,
     fontFamily: "System",
     textAlign: "center",
   },
-
-  // Header
   header: {
     marginBottom: 24,
-  },
-  posterContainer: {
-    aspectRatio: 16 / 9,
-    borderRadius: 12,
-    overflow: "hidden",
-    marginBottom: 16,
-  },
-  poster: {
-    width: "100%",
-    height: "100%",
-  },
-  durationBadge: {
-    position: "absolute",
-    bottom: 8,
-    right: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  durationText: {
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: "600",
-    fontFamily: "System",
   },
   videoTitle: {
     color: TEXT_PRIMARY,
@@ -505,22 +436,24 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     marginBottom: 8,
   },
-  languagePill: {
+  metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
+    gap: 8,
+  },
+  metaPill: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
-    backgroundColor: SURFACE_COLOR,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  languagePillText: {
+  metaPillText: {
     color: TEXT_SECONDARY,
     fontFamily: "System",
   },
-
-  // Quality selector
   qualitySection: {
     marginBottom: 24,
   },
@@ -539,7 +472,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   qualityRowDefault: {
-    backgroundColor: SURFACE_COLOR,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
   },
   qualityRowSelected: {
     backgroundColor: ACCENT,
@@ -562,8 +495,6 @@ const styles = StyleSheet.create({
   qualitySizeSelected: {
     color: "#ffffff",
   },
-
-  // Terms of Use
   touRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -574,7 +505,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: SURFACE_COLOR,
+    borderColor: "rgba(255, 255, 255, 0.15)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
@@ -593,8 +524,6 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     textDecorationLine: "underline",
   },
-
-  // Download button
   downloadButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -614,8 +543,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontFamily: "System",
   },
-
-  // Terms modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
+  },
   termsContainer: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.95)",
@@ -633,6 +564,9 @@ const styles = StyleSheet.create({
   termsText: {
     color: TEXT_BODY,
     fontFamily: "System",
+  },
+  termsParagraphGap: {
+    marginTop: 16,
   },
   termsFooter: {
     flexDirection: "row",
