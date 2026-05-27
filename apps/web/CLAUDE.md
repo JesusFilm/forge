@@ -42,4 +42,27 @@ Required env vars (both flipped from `.optional()` in U13):
 - ISR cache: `unstable_cache` wrappers in `src/lib/content.ts` use `revalidate: 60`. `revalidatePath` from `/api/revalidate` does NOT invalidate `unstable_cache` entries — tag-based invalidation is a known follow-up. Today the worst-case staleness is 60 s after a publish.
 - 15 orphaned Strapi block fragment files remain at `src/lib/fragments/*` because section components in `src/components/sections/*.tsx` still derive prop types via `FragmentOf<typeof strapiFragment>`. Runtime data is admin-shape via the renderer's `as unknown as` cast bridge. Migrating section components to admin fragment imports is a clean follow-up bundle.
 
+## Feature flags
+
+Two composable `NEXT_PUBLIC_*` toggles control the watch player surface:
+
+- `NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION` (default `false`) — selects the
+  player backend for the inline section components (`VideoHero`, `Video`,
+  `CarouselVideo`). `false` keeps the video.js path via
+  `useVideoPlayerCore`; `true` renders `<MuxVideo>` from
+  `@forge/video-player`. Sunset gate for the video.js drop (R19).
+- `NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO` (default `false`) — selects the
+  player backend for the watch-page hero (`HeroPlayer`). `false` keeps the
+  existing `<MuxPlayer>` path (full `@mux/mux-player-react` chrome bundle,
+  including `cast_sender.js`); `true` renders `<MuxVideo>` (smaller, no
+  cast, light-DOM poster discoverable as the LCP element). The two
+  backends are dynamic-imported through subpath specifiers
+  (`@forge/video-player/mux-player` vs `/mux-video`) and the inactive
+  branch is build-time DCE'd via `process.env.NEXT_PUBLIC_*` substitution,
+  so exactly one ships per build. See
+  `docs/plans/2026-05-26-005-refactor-watch-hero-muxplayer-to-muxvideo-beta-plan.md`.
+
+Both flags are per-environment / per-build — set via Railway env vars and
+baked at `next build` time. They do NOT support per-request override.
+
 See root `CLAUDE.md` for cross-app patterns and the broader data-layer-flip plan reference.
