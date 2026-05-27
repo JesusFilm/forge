@@ -76,6 +76,15 @@ export default function RootLayout(props: { children: ReactNode }) {
       dir="ltr"
       className={cn("overflow-x-clip bg-black font-sans", montserrat.variable)}
     >
+      <head>
+        {/* Watch pages render <mux-player> as the hero. Establishing the
+            TLS handshake to Mux's image + segment hosts in the document's
+            first byte cuts the LCP element's discovery delay because the
+            preconnect lands before page.tsx finishes its data fetch. */}
+        <link rel="preconnect" href="https://image.mux.com" />
+        <link rel="preconnect" href="https://stream.mux.com" />
+        <link rel="dns-prefetch" href="https://imagedelivery.net" />
+      </head>
       <body className="overflow-x-clip bg-black">
         <FloatingSearchProvider>{props.children}</FloatingSearchProvider>
       </body>

@@ -1,13 +1,35 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import dynamic from "next/dynamic"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
-import { DownloadModal } from "@/components/watch/DownloadModal"
-import { LanguagePickerModal } from "@/components/watch/LanguagePickerModal"
-import { ShareModal } from "@/components/watch/ShareModal"
+// Modals are user-triggered (download / language picker / share). Split
+// them into separate chunks so they don't ship with the hero-critical
+// bundle. `ssr: false` is safe — modals are hidden on first paint.
+const DownloadModal = dynamic(
+  () =>
+    import("@/components/watch/DownloadModal").then((m) => ({
+      default: m.DownloadModal,
+    })),
+  { ssr: false },
+)
+const LanguagePickerModal = dynamic(
+  () =>
+    import("@/components/watch/LanguagePickerModal").then((m) => ({
+      default: m.LanguagePickerModal,
+    })),
+  { ssr: false },
+)
+const ShareModal = dynamic(
+  () =>
+    import("@/components/watch/ShareModal").then((m) => ({
+      default: m.ShareModal,
+    })),
+  { ssr: false },
+)
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
 import type {
   MergedWatchBlock,

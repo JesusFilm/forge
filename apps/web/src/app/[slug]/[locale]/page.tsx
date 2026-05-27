@@ -172,14 +172,31 @@ export default async function SlugLocalePage({ params }: PageProps) {
       variant: watchVideo.selectedVariant,
       canonicalParent: watchVideo.canonicalParent,
     })
+    // LCP is the Mux poster image rendered inside <mux-player>'s shadow
+    // DOM. Without these hints the request isn't discoverable in the
+    // initial HTML (~2.3s delay until mux-player JS executes). Raw
+    // <link> tags get auto-hoisted into <head> by React 19 so the
+    // preload is in the document's initial scan window.
+    const lcpPlaybackId =
+      watchVideo.selectedVariant.muxVideo?.playbackId ?? null
     return (
-      <WatchPageClient
-        mergedBlocks={mergedBlocks}
-        variant={watchVideo.selectedVariant}
-        video={watchVideo.video}
-        languageSlug={watchVideo.selectedVariant.language?.slug ?? rawLocale}
-        locale={locale}
-      />
+      <>
+        {lcpPlaybackId ? (
+          <link
+            rel="preload"
+            as="image"
+            href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280`}
+            fetchPriority="high"
+          />
+        ) : null}
+        <WatchPageClient
+          mergedBlocks={mergedBlocks}
+          variant={watchVideo.selectedVariant}
+          video={watchVideo.video}
+          languageSlug={watchVideo.selectedVariant.language?.slug ?? rawLocale}
+          locale={locale}
+        />
+      </>
     )
   }
 
