@@ -45,19 +45,13 @@ export function SiblingCarousel({
   const clipIndex = activeIndex >= 0 ? activeIndex + 1 : 1
   const clipTotal = children.length
 
-  // Eager-load the small window of cards around the active item (or the
-  // first two in parent-mode). Hard-coded `index < 5` always targeted DOM
-  // order, which wrongly eagered indices 0-4 whenever activeIndex >= 5 —
-  // the api.scrollTo() snap below moves the visible cards INTO view, but
-  // the eager hint fires before snap so we'd burn high-priority slots on
-  // off-screen thumbnails.
-  const eagerIndices = new Set<number>(
-    isParentMode
-      ? [0, 1]
-      : [activeIndex - 1, activeIndex, activeIndex + 1, activeIndex + 2].filter(
-          (i) => i >= 0 && i < children.length,
-        ),
-  )
+  // All carousel thumbnails ship with `loading="lazy"`. Native browser
+  // lazy-loading still fetches above-fold images immediately — it only
+  // defers fetches for images far below the viewport. Cards peeking
+  // through the 300 px gap under the sticky hero load on the same paint
+  // cycle. We don't emit `<link rel="preload">` in head (next/image emits
+  // those for both `priority` and `loading="eager"`) because they
+  // compete with the LCP poster fetch on the critical chain.
 
   const [api, setApi] = useState<CarouselApi | null>(null)
 
@@ -170,14 +164,13 @@ export function SiblingCarousel({
                       fill
                       sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      // Eager-load the cards inside `eagerIndices` (the
-                      // small window around activeIndex). `priority` alone
-                      // wasn't surfacing as `loading="eager"` /
-                      // `fetchpriority="high"` in the DOM under Next 16 +
-                      // fill + sizes, so spell all three out.
-                      priority={eagerIndices.has(index)}
-                      loading={eagerIndices.has(index) ? "eager" : "lazy"}
-                      fetchPriority={eagerIndices.has(index) ? "high" : "auto"}
+                      // Native lazy-loading. Browser still fetches
+                      // above-fold cards immediately (lazy only defers
+                      // far-from-viewport). Avoids the head-preload
+                      // entries next/image emits for `priority` /
+                      // `loading="eager"` that compete with the LCP
+                      // poster fetch.
+                      loading="lazy"
                     />
                   ) : (
                     <div
