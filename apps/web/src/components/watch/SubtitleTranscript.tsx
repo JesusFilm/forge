@@ -362,7 +362,7 @@ export function SubtitleTranscript({
                       onClick={() => handleSeek(cue)}
                       aria-current={isActive ? "true" : undefined}
                       className={[
-                        "group flex w-full items-baseline gap-4 rounded-lg px-4 py-3 text-left transition-colors duration-150",
+                        "group flex w-full cursor-pointer items-baseline gap-4 rounded-lg px-4 py-3 text-left transition-colors duration-150",
                         "focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2",
                         isActive
                           ? "bg-white/10 text-stone-50"
