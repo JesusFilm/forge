@@ -6,16 +6,15 @@ import { cn } from "@/lib/utils"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 
 const montserrat = localFont({
+  // Italic variable-font face was dropped — the only italic usage in
+  // apps/web is the `italic` Tailwind class on a single AdventCountdown
+  // paragraph, which the browser will render via synthetic-italic of the
+  // upright face. Saves ~300 KB of font transfer on every route.
   src: [
     {
       path: "../../public/fonts/Montserrat-VariableFont_wght.ttf",
       weight: "100 900",
       style: "normal",
-    },
-    {
-      path: "../../public/fonts/Montserrat-Italic-VariableFont_wght.ttf",
-      weight: "100 900",
-      style: "italic",
     },
   ],
   variable: "--font-montserrat",

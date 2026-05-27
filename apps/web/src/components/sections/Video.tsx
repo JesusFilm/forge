@@ -1,16 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import "video.js/dist/video-js.css"
+import MuxVideo from "@forge/video-player/mux-video"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { RouteVideo } from "@/lib/content"
-import type Player from "video.js/dist/types/player"
-import { MuxVideo, useVideoPlayerCore } from "@forge/video-player"
 import { videoSectionFragment } from "@/lib/fragments/video-section"
-import { env } from "@/env"
 
 export { videoSectionFragment }
-export { formatTime, VIDEO_JS_OPTIONS } from "@forge/video-player"
 
 type VideoProps = {
   data: FragmentOf<typeof videoSectionFragment>
@@ -148,83 +144,6 @@ function PlayPauseButton({
         </svg>
       )}
     </button>
-  )
-}
-
-function VideojsBackedVideoPlayer({
-  src,
-  poster,
-  onPlayerReady,
-}: {
-  src: string
-  poster?: string
-  onPlayerReady?: (player: Player) => void
-}) {
-  const {
-    containerRef,
-    videoRef,
-    sliderRef,
-    timeRef,
-    isMuted,
-    isPlaying,
-    isFullscreen,
-    handlePlayPause,
-    handleMuteToggle,
-    handleSeek,
-    handleFullscreen,
-  } = useVideoPlayerCore({
-    src,
-    poster,
-    onPlayerReady,
-    autoplayOnViewport: true,
-  })
-
-  return (
-    <div className="relative" ref={containerRef}>
-      <div className="relative block aspect-video overflow-hidden rounded-lg bg-black shadow-2xl shadow-stone-950/70">
-        <div
-          className="absolute inset-0 h-full w-full cursor-pointer"
-          onClick={handlePlayPause}
-        >
-          <video
-            className="video-js vjs-fluid vjs-default-skin absolute inset-0 h-full w-full object-cover"
-            ref={videoRef}
-            playsInline
-          />
-        </div>
-
-        <FullscreenButton
-          isFullscreen={isFullscreen}
-          onClick={handleFullscreen}
-        />
-
-        {isMuted && <CenterUnmute onClick={handleMuteToggle} />}
-        {!isMuted && <CornerMute onClick={handleMuteToggle} />}
-
-        <div className="absolute right-0 bottom-0 left-0 z-30 flex items-center gap-2 px-4 py-2">
-          <PlayPauseButton isPlaying={isPlaying} onClick={handlePlayPause} />
-
-          <input
-            ref={sliderRef}
-            type="range"
-            min={0}
-            max={100}
-            defaultValue={0}
-            step="any"
-            onChange={handleSeek}
-            className="h-1 flex-1 cursor-pointer appearance-none rounded bg-white/30 accent-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
-            aria-label="Video progress"
-          />
-
-          <span
-            ref={timeRef}
-            className="ml-1 min-w-[60px] shrink-0 text-right text-xs text-white"
-          >
-            0:00 / 0:00
-          </span>
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -420,25 +339,8 @@ function MuxBackedVideoPlayer({
   )
 }
 
-export function VideoPlayer({
-  src,
-  poster,
-  onPlayerReady,
-}: {
-  src: string
-  poster?: string
-  onPlayerReady?: (player: Player) => void
-}) {
-  if (env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION) {
-    return <MuxBackedVideoPlayer src={src} poster={poster} />
-  }
-  return (
-    <VideojsBackedVideoPlayer
-      src={src}
-      poster={poster}
-      onPlayerReady={onPlayerReady}
-    />
-  )
+export function VideoPlayer({ src, poster }: { src: string; poster?: string }) {
+  return <MuxBackedVideoPlayer src={src} poster={poster} />
 }
 
 export function Video({ data, routeVideo }: VideoProps) {
