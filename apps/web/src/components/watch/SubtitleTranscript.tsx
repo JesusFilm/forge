@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type RefObject,
 } from "react"
@@ -16,16 +15,6 @@ import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { GLASS_OUTLINE_CLASS } from "@/lib/glass-outline"
 
 type Cue = { start: number; end: number; text: string }
-
-// Window after a programmatic scrollTo within which trailing scroll events
-// are treated as smooth-scroll settling rather than user interaction.
-// Smooth scrolls to far cues observed at ~700ms on desktop Chrome; 900ms
-// gives margin without leaving a noticeable lag before the "Follow
-// playback" pill can appear after a real user scroll.
-const AUTO_SCROLL_WINDOW_MS = 900
-// Tolerance in pixels: if scrollTop is still within this band of the last
-// auto target, treat as auto-scroll noise even after the time window.
-const AUTO_SCROLL_TOLERANCE_PX = 8
 
 const TIMING_RE =
   /(?:(\d+):)?(\d+):(\d+)[.,](\d+)\s*-->\s*(?:(\d+):)?(\d+):(\d+)[.,](\d+)/
@@ -143,21 +132,6 @@ export function SubtitleTranscript({
     cues: Cue[] | null
     idx: number
   }>({ cues: null, idx: -1 })
-  const [userScrolled, setUserScrolled] = useState(false)
-  const listRef = useRef<HTMLOListElement | null>(null)
-  const userScrolledRef = useRef(false)
-  // Programmatic auto-scrolls set BOTH refs (time + target scrollTop). The
-  // onScroll handler ignores any settling event whose timestamp falls inside
-  // the AUTO_SCROLL_WINDOW_MS budget OR whose scrollTop is within
-  // AUTO_SCROLL_TOLERANCE_PX of the most recent auto target. Either alone
-  // misclassifies: long smooth-scrolls outlast a tight window, and a real
-  // user scroll that briefly crosses the target tripled-touches the band.
-  const lastAutoScrollAtRef = useRef(0)
-  const lastAutoScrollTopRef = useRef(0)
-  const setUserScrolledBoth = useCallback((v: boolean) => {
-    userScrolledRef.current = v
-    setUserScrolled(v)
-  }, [])
 
   const activeVttSrc = activeSubtitle?.vttSrc ?? null
   const cues =
@@ -226,78 +200,18 @@ export function SubtitleTranscript({
     }
   }, [cues, playerRef])
 
-  useEffect(() => {
-    const list = listRef.current
-    if (!list) return
-    const onScroll = () => {
-      const now = Date.now()
-      const sinceAuto = now - lastAutoScrollAtRef.current
-      const delta = Math.abs(list.scrollTop - lastAutoScrollTopRef.current)
-      // Treat as auto-scroll settling if EITHER the time window is open
-      // OR scrollTop still tracks the last auto target within tolerance.
-      // A real user scroll fails both — outside the window AND off-target.
-      if (
-        sinceAuto < AUTO_SCROLL_WINDOW_MS ||
-        delta <= AUTO_SCROLL_TOLERANCE_PX
-      )
-        return
-      if (!userScrolledRef.current) {
-        userScrolledRef.current = true
-        setUserScrolled(true)
-      }
-    }
-    list.addEventListener("scroll", onScroll, { passive: true })
-    return () => list.removeEventListener("scroll", onScroll)
-  }, [cues])
-
-  const autoScrollToActive = useCallback(
-    (list: HTMLOListElement, li: HTMLElement) => {
-      const listRect = list.getBoundingClientRect()
-      const liRect = li.getBoundingClientRect()
-      const target =
-        list.scrollTop +
-        (liRect.top - listRect.top) -
-        list.clientHeight / 2 +
-        li.clientHeight / 2
-      lastAutoScrollAtRef.current = Date.now()
-      lastAutoScrollTopRef.current = target
-      list.scrollTo({ top: target, behavior: "smooth" })
-    },
-    [],
-  )
-
-  useEffect(() => {
-    if (activeIdx < 0) return
-    if (userScrolledRef.current) return
-    const list = listRef.current
-    if (!list) return
-    const li = list.children.item(activeIdx) as HTMLElement | null
-    if (!li) return
-    autoScrollToActive(list, li)
-  }, [activeIdx, autoScrollToActive])
-
   const handleSeek = useCallback(
     (cue: Cue) => {
       const el = playerRef.current as HTMLMediaElement | null
       if (!el) return
-      setUserScrolledBoth(false)
       el.currentTime = cue.start
       const result = el.play()
       if (result && typeof (result as Promise<void>).then === "function") {
         ;(result as Promise<void>).catch(() => {})
       }
     },
-    [playerRef, setUserScrolledBoth],
+    [playerRef],
   )
-
-  const handleResumeAutoscroll = useCallback(() => {
-    setUserScrolledBoth(false)
-    if (activeIdx < 0) return
-    const list = listRef.current
-    const li = list?.children.item(activeIdx) as HTMLElement | null
-    if (!list || !li) return
-    autoScrollToActive(list, li)
-  }, [activeIdx, autoScrollToActive, setUserScrolledBoth])
 
   if (subtitles.length === 0) return null
 
@@ -353,73 +267,59 @@ export function SubtitleTranscript({
             </div>
           </header>
 
-          <div className="relative">
-            {status === "loading" ? (
-              <div className="flex items-center justify-center px-8 py-16 text-sm text-stone-400">
-                Loading transcript…
-              </div>
-            ) : status === "error" ? (
-              <div className="px-8 py-16 text-center text-sm text-stone-400">
-                Transcript unavailable for this subtitle track.
-              </div>
-            ) : cues && cues.length > 0 ? (
-              <>
-                <ol
-                  ref={listRef}
-                  data-testid="watch-subtitle-cues"
-                  className="max-h-[60vh] overflow-y-auto px-2 py-3 sm:px-4 sm:py-4"
-                >
-                  {cues.map((cue, idx) => {
-                    const isActive = idx === activeIdx
-                    return (
-                      <li key={`${cue.start}-${idx}`}>
-                        <button
-                          type="button"
-                          onClick={() => handleSeek(cue)}
-                          aria-current={isActive ? "true" : undefined}
-                          className={[
-                            "group flex w-full items-baseline gap-4 rounded-lg px-4 py-3 text-left transition-colors duration-150",
-                            "focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2",
-                            isActive
-                              ? "bg-white/10 text-stone-50"
-                              : "text-stone-300 hover:bg-white/5 hover:text-stone-100",
-                          ].join(" ")}
-                        >
-                          <time
-                            dateTime={`PT${Math.floor(cue.start)}S`}
-                            className={[
-                              "shrink-0 font-mono text-xs tabular-nums tracking-tight transition-colors",
-                              isActive
-                                ? "text-amber-300"
-                                : "text-stone-500 group-hover:text-stone-300",
-                            ].join(" ")}
-                          >
-                            {formatTimestamp(cue.start)}
-                          </time>
-                          <span className="text-base leading-relaxed sm:text-lg">
-                            {cue.text}
-                          </span>
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ol>
-                {userScrolled && activeIdx >= 0 ? (
-                  <button
-                    type="button"
-                    onClick={handleResumeAutoscroll}
-                    className={`absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-stone-900/90 px-4 py-2 text-xs font-medium text-stone-100 shadow-lg ${GLASS_OUTLINE_CLASS} hover:bg-stone-800`}
-                  >
-                    Follow playback
-                  </button>
-                ) : null}
-              </>
-            ) : (
-              <div className="px-8 py-16 text-center text-sm text-stone-400">
-                No transcript lines found.
-              </div>
-            )}
-          </div>
+          {status === "loading" ? (
+            <div className="flex items-center justify-center px-8 py-16 text-sm text-stone-400">
+              Loading transcript…
+            </div>
+          ) : status === "error" ? (
+            <div className="px-8 py-16 text-center text-sm text-stone-400">
+              Transcript unavailable for this subtitle track.
+            </div>
+          ) : cues && cues.length > 0 ? (
+            <ol
+              data-testid="watch-subtitle-cues"
+              className="px-2 py-3 sm:px-4 sm:py-4"
+            >
+              {cues.map((cue, idx) => {
+                const isActive = idx === activeIdx
+                return (
+                  <li key={`${cue.start}-${idx}`}>
+                    <button
+                      type="button"
+                      onClick={() => handleSeek(cue)}
+                      aria-current={isActive ? "true" : undefined}
+                      className={[
+                        "group flex w-full items-baseline gap-4 rounded-lg px-4 py-3 text-left transition-colors duration-150",
+                        "focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2",
+                        isActive
+                          ? "bg-white/10 text-stone-50"
+                          : "text-stone-300 hover:bg-white/5 hover:text-stone-100",
+                      ].join(" ")}
+                    >
+                      <time
+                        dateTime={`PT${Math.floor(cue.start)}S`}
+                        className={[
+                          "shrink-0 font-mono text-xs tabular-nums tracking-tight transition-colors",
+                          isActive
+                            ? "text-amber-300"
+                            : "text-stone-500 group-hover:text-stone-300",
+                        ].join(" ")}
+                      >
+                        {formatTimestamp(cue.start)}
+                      </time>
+                      <span className="text-base leading-relaxed sm:text-lg">
+                        {cue.text}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ol>
+          ) : (
+            <div className="px-8 py-16 text-center text-sm text-stone-400">
+              No transcript lines found.
+            </div>
+          )}
         </div>
       </div>
     </section>
