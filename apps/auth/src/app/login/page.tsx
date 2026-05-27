@@ -24,6 +24,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
     <LoginPageClient
       enabledProviders={getEnabledProviders()}
       flow="login"
+      initialEmail={firstParam(params.email)}
       initialError={parseLoginError(firstParam(params.error))}
       oauthQuery={toOAuthQuery(params)}
       requestingAppName={await resolveRequestingAppName(

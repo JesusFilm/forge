@@ -348,7 +348,7 @@ describe("Auth route wrapper", () => {
 
     expect(response.status).toBe(303)
     expect(response.headers.get("location")).toBe(
-      "http://localhost:3004/login?client_id=jfp_admin_local&sig=signed&error=credentials",
+      "http://localhost:3004/login?client_id=jfp_admin_local&sig=signed&error=credentials&email=user%40example.com",
     )
     expect(response.headers.get("set-cookie") ?? "").not.toContain(
       "forge_auth_last_login_method",

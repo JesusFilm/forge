@@ -37,12 +37,14 @@ const loginErrors = {
 export function LoginPageClient({
   enabledProviders,
   flow = "login",
+  initialEmail,
   initialError,
   oauthQuery,
   requestingAppName,
 }: {
   enabledProviders: LoginProviderId[]
   flow?: "login" | "signup"
+  initialEmail?: string
   initialError?: LoginErrorCode
   oauthQuery: string
   requestingAppName?: string | null
@@ -50,9 +52,13 @@ export function LoginPageClient({
   const [error, setError] = useState<
     LoginErrorCode | "credentials" | "lookup" | "start" | null
   >(initialError ?? null)
-  const [email, setEmail] = useState("")
-  const [step, setStep] = useState<LoginStep>("email")
+  const [email, setEmail] = useState(initialEmail ?? "")
+  const [step, setStep] = useState<LoginStep>(
+    initialEmail && initialError === "credentials" ? "password" : "email",
+  )
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
+  const isRedirectingRef = useRef(false)
   const formRef = useRef<HTMLFormElement>(null)
   const lastLoginMethod = useSyncExternalStore(
     subscribeToCookieSnapshot,
@@ -79,6 +85,7 @@ export function LoginPageClient({
           : error
             ? loginErrors[error]
             : null
+  const isBusy = isSubmitting || isRedirecting
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     if (step === "password") {
@@ -110,7 +117,8 @@ export function LoginPageClient({
         | { method: "provider"; provider: LoginProviderId }
 
       if (data.method === "provider") {
-        await startSocialSignIn(data.provider)
+        const started = await startSocialSignIn(data.provider)
+        if (started) return
         return
       }
 
@@ -121,7 +129,7 @@ export function LoginPageClient({
     } catch {
       setError("lookup")
     } finally {
-      setIsSubmitting(false)
+      if (!isRedirectingRef.current) setIsSubmitting(false)
     }
   }
 
@@ -145,6 +153,7 @@ export function LoginPageClient({
   }
 
   async function startSocialSignIn(providerId: LoginProviderId) {
+    setIsSubmitting(true)
     try {
       const res = await fetch("/api/auth/sign-in/social", {
         method: "POST",
@@ -157,14 +166,20 @@ export function LoginPageClient({
       })
       const redirectUrl = await resolveSocialRedirect(res)
       if (redirectUrl) {
+        isRedirectingRef.current = true
+        setIsRedirecting(true)
         window.location.href = redirectUrl
-        return
+        return true
       }
 
       setError("start")
     } catch {
       setError("start")
     }
+    isRedirectingRef.current = false
+    setIsRedirecting(false)
+    setIsSubmitting(false)
+    return false
   }
 
   return (
@@ -230,7 +245,7 @@ export function LoginPageClient({
                   <button
                     key={providerId}
                     className="relative flex h-[46px] w-full cursor-pointer items-center justify-start gap-3 rounded border border-white/10 bg-transparent px-4 text-left font-medium leading-none text-[#f5f5f4] transition-[background-color,border-color,box-shadow] duration-150 hover:border-white/25 hover:bg-white/[0.04] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04)] focus-visible:border-[#ef3340] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(239,51,64,0.18)] disabled:cursor-not-allowed disabled:border-white/5 disabled:text-[#78716c] disabled:opacity-70"
-                    disabled={!enabled}
+                    disabled={!enabled || isBusy}
                     type="button"
                     onClick={() => void startSocialSignIn(providerId)}
                   >
@@ -316,10 +331,18 @@ export function LoginPageClient({
 
               <button
                 className="relative mt-5 inline-flex h-[42px] w-full cursor-pointer items-center justify-center gap-2.5 rounded border-0 bg-[#ef3340] font-bold text-white transition-[background-color,box-shadow] duration-150 hover:bg-[#d91f2b] hover:shadow-[0_10px_26px_rgba(239,51,64,0.22)] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(239,51,64,0.24)] disabled:cursor-not-allowed disabled:opacity-70"
-                disabled={isSubmitting}
+                disabled={isBusy}
                 type="submit"
               >
-                <span>{step === "password" ? "Log in" : "Continue"}</span>
+                <span className="min-w-0">
+                  {step === "password" ? "Log in" : "Continue"}
+                </span>
+                {isBusy ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute right-4 size-4 animate-spin rounded-full border-2 border-white/35 border-t-white"
+                  />
+                ) : null}
                 {lastLoginMethod === "email" ? <LastUsedBadge /> : null}
               </button>
             </form>

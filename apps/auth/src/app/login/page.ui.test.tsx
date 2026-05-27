@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it, vi } from "vitest"
 
 import { LoginPageClient } from "./login-page-client"
-import { isOAuthAuthorizeRequest } from "./login-page-data"
+import { isOAuthAuthorizeRequest, toOAuthQuery } from "./login-page-data"
 
 vi.mock("@/config/env", () => ({
   env: {},
@@ -41,6 +41,24 @@ describe("auth login UI", () => {
 
     expect(html).toContain("Invalid email or password.")
     expect(html).toContain("Check your email and password, then try again.")
+  })
+
+  it("keeps the email and password fields visible after invalid credentials", () => {
+    const html = renderToStaticMarkup(
+      <LoginPageClient
+        enabledProviders={[]}
+        initialEmail="user@example.com"
+        initialError="credentials"
+        oauthQuery="client_id=jfp_admin_local&sig=signed"
+        requestingAppName="Jesus Film Admin"
+      />,
+    )
+
+    expect(html).toContain('name="email"')
+    expect(html).toContain('value="user@example.com"')
+    expect(html).toContain("Password")
+    expect(html).toContain('name="password"')
+    expect(html).toContain('autoComplete="current-password"')
   })
 
   it("shows disabled provider buttons when provider keys are unavailable", () => {
@@ -85,6 +103,35 @@ describe("auth login UI", () => {
       }),
     ).toBe(true)
     expect(isOAuthAuthorizeRequest({ error: "forbidden" })).toBe(false)
+  })
+
+  it("does not carry login-only parameters into OAuth continuation links", () => {
+    expect(
+      toOAuthQuery({
+        client_id: "jfp_admin_local",
+        email: "user@example.com",
+        error: "credentials",
+        sig: "signed",
+      }),
+    ).toBe("client_id=jfp_admin_local&sig=signed")
+
+    const html = renderToStaticMarkup(
+      <LoginPageClient
+        enabledProviders={[]}
+        initialEmail="user@example.com"
+        initialError="credentials"
+        oauthQuery="client_id=jfp_admin_local&sig=signed"
+        requestingAppName="Jesus Film Admin"
+      />,
+    )
+
+    expect(html).toContain(
+      'name="oauth_query" value="client_id=jfp_admin_local&amp;sig=signed"',
+    )
+    expect(html).toContain(
+      'href="/signup?client_id=jfp_admin_local&amp;sig=signed"',
+    )
+    expect(html).not.toContain("email=user")
   })
 
   it("names Jesus Film One and the requesting application when provided", () => {
