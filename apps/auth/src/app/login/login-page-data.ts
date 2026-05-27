@@ -1,10 +1,8 @@
 import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 
-import type {
-  LoginErrorCode,
-  LoginProviderId,
-} from "@/app/login/login-page-client"
+import type { LoginErrorCode } from "@/app/login/login-page-client"
+import type { LoginProviderId } from "@/auth/login-methods"
 
 export type LoginSearchParams = Record<string, string | string[] | undefined>
 

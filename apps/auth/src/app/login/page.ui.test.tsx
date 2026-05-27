@@ -22,6 +22,8 @@ describe("auth login UI", () => {
     expect(html).toContain("This login method is not linked yet.")
     expect(html).toContain("Log in with the method you used before")
     expect(html).toContain("Continue with Google")
+    expect(html).toContain("Email address")
+    expect(html).not.toContain("Password")
     expect(html).toContain(
       'name="oauth_query" value="client_id=jfp_admin_local&amp;sig=signed"',
     )
@@ -70,9 +72,9 @@ describe("auth login UI", () => {
       html.indexOf("OR"),
     )
     expect(html.indexOf("OR")).toBeLessThan(html.indexOf("Email address"))
-    expect(html.indexOf("Email address")).toBeLessThan(html.indexOf("Password"))
-    expect(html).toContain('name="password"')
-    expect(html).toContain('autoComplete="current-password"')
+    expect(html).not.toContain("Password")
+    expect(html).not.toContain('name="password"')
+    expect(html).not.toContain('autoComplete="current-password"')
   })
 
   it("identifies OAuth authorize requests as the only valid login entry", () => {

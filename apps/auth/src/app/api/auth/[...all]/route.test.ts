@@ -51,6 +51,7 @@ vi.mock("@/auth/firebase-rest", () => ({
 }))
 
 vi.mock("@/auth/firebase-admin", () => ({
+  firebaseUserExistsByEmail: vi.fn(async () => false),
   verifyFirebaseIdToken: vi.fn(async () => null),
 }))
 
@@ -62,6 +63,7 @@ describe("Auth route wrapper", () => {
     rateLimitAuthRoute.mockReset()
     rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
     signUpEmail.mockReset()
+    vi.unstubAllEnvs()
   })
 
   it("blocks public email signup", async () => {
@@ -74,6 +76,76 @@ describe("Auth route wrapper", () => {
     )
 
     expect(response.status).toBe(404)
+    expect(authPost).not.toHaveBeenCalled()
+  })
+
+  it("returns a generic sign-in message when email signup already exists", async () => {
+    const { prisma } = await import("@/db/client")
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce({
+      id: "user_123",
+    } as unknown as Awaited<ReturnType<typeof prisma.user.findFirst>>)
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/sign-up/email", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: "USER@example.com" }),
+      }),
+      { params: Promise.resolve({ all: ["sign-up", "email"] }) },
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      error: "An account already exists for that email. Sign in to continue.",
+    })
+    expect(prisma.user.findFirst).toHaveBeenCalledWith({
+      where: { email: "user@example.com" },
+      select: { id: true },
+    })
+    expect(authPost).not.toHaveBeenCalled()
+  })
+
+  it("returns the same generic sign-in message for legacy Firebase accounts", async () => {
+    const { prisma } = await import("@/db/client")
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
+    const { firebaseUserExistsByEmail } = await import("@/auth/firebase-admin")
+    vi.mocked(firebaseUserExistsByEmail).mockResolvedValueOnce(true)
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/sign-up/email", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: "LEGACY@example.com" }),
+      }),
+      { params: Promise.resolve({ all: ["sign-up", "email"] }) },
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      error: "An account already exists for that email. Sign in to continue.",
+    })
+    expect(firebaseUserExistsByEmail).toHaveBeenCalledWith("legacy@example.com")
+    expect(authPost).not.toHaveBeenCalled()
+  })
+
+  it("keeps public email signup blocked for new emails", async () => {
+    const { prisma } = await import("@/db/client")
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/sign-up/email", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: "new@example.com" }),
+      }),
+      { params: Promise.resolve({ all: ["sign-up", "email"] }) },
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({ error: "Not found" })
     expect(authPost).not.toHaveBeenCalled()
   })
 
@@ -115,6 +187,83 @@ describe("Auth route wrapper", () => {
         "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_admin_local&sig=signed",
       provider: "google",
     })
+  })
+
+  it("returns the configured provider for an existing social account", async () => {
+    vi.stubEnv("GOOGLE_CLIENT_ID", "google-client")
+    vi.stubEnv("GOOGLE_CLIENT_SECRET", "google-secret")
+    const { prisma } = await import("@/db/client")
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce({
+      accounts: [{ providerId: "google" }],
+    } as unknown as Awaited<ReturnType<typeof prisma.user.findFirst>>)
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/login-method", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: "USER@example.com",
+          oauth_query: "client_id=jfp_admin_local&sig=signed",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["login-method"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      method: "provider",
+      provider: "google",
+    })
+    expect(prisma.user.findFirst).toHaveBeenCalledWith({
+      where: { email: "user@example.com" },
+      select: {
+        accounts: {
+          select: { providerId: true },
+        },
+      },
+    })
+  })
+
+  it("falls back to password when the account has no configured social provider", async () => {
+    const { prisma } = await import("@/db/client")
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce({
+      accounts: [{ providerId: "credential" }, { providerId: "firebase" }],
+    } as unknown as Awaited<ReturnType<typeof prisma.user.findFirst>>)
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/login-method", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: "user@example.com" }),
+      }),
+      { params: Promise.resolve({ all: ["login-method"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ method: "password" })
+  })
+
+  it("does not expose provider lookup failures when rate limited", async () => {
+    rateLimitAuthRoute.mockResolvedValueOnce({
+      allowed: false,
+      source: "local",
+    })
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/login-method", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: "user@example.com" }),
+      }),
+      { params: Promise.resolve({ all: ["login-method"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ method: "password" })
+    expect(authPost).not.toHaveBeenCalled()
   })
 
   it("forwards OAuth continuation as callbackURL through email sign-in", async () => {
