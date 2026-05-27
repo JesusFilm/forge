@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { act } from "react"
+import { act, useEffect } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -70,7 +70,36 @@ function dispatchLanguageSwitcher(detail: WatchHeaderLanguageSwitcherDetail) {
   )
 }
 
+function PlaybackStatePublisher({
+  detail,
+}: {
+  detail: WatchPlayerPlaybackStateDetail
+}) {
+  useEffect(() => {
+    dispatchPlaybackState(detail)
+  }, [detail])
+
+  return <main>Page</main>
+}
+
 describe("FloatingSearchProvider — header backdrop", () => {
+  it("catches the initial watch preview state published by a child on mount", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <PlaybackStatePublisher
+            detail={{ playing: true, muted: true, preview: true }}
+          />
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const backdrop = document.querySelector(
+      '[data-testid="floating-header-backdrop"]',
+    )
+    expect(backdrop?.className).toContain("opacity-100")
+  })
+
   it("renders a fixed blurred gradient behind the floating header", () => {
     act(() => {
       root.render(
