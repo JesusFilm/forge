@@ -27,6 +27,27 @@ so consumer apps don't have to install Mux / video.js dependencies directly:
   tests in `apps/web`); pnpm hoists single versions, no duplicate
   custom-element `define` collision (verified in U1 spike).
 
+### Subpath exports (`./mux-player` + `./mux-video`)
+
+In addition to the barrel `import { MuxPlayer, MuxVideo } from "@forge/video-player"`,
+the package exposes two subpath specifiers:
+
+- `@forge/video-player/mux-player` → default export = `MuxPlayer`
+- `@forge/video-player/mux-video` → default export = `MuxVideo`
+
+The barrel is convenient but pulls both backends into the same Webpack
+module group, so `import("@forge/video-player").then(m => m.MuxPlayer)`
+inside a `next/dynamic` factory still ships both Mux packages in the
+resulting chunk. The subpaths resolve to distinct module specifiers,
+which Turbopack splits into separate chunks — exactly one of which
+loads at runtime. The hero player flag at
+`apps/web/src/components/watch/HeroPlayer.tsx` uses the subpaths +
+build-time-folded `process.env.NEXT_PUBLIC_*` to keep the inactive
+backend out of the route bundle entirely.
+
+Prefer the barrel for static (non-dynamic) imports and the subpaths
+only when chunk separation matters.
+
 ## Sunset criterion
 
 When `apps/manager`'s `review-player-card.tsx` migrates off

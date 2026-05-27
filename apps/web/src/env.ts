@@ -108,6 +108,16 @@ export const env = createEnv({
     // R19 trigger: drop `video.js` from apps/web after this has been `true`
     // in production for one stable release.
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION: z.coerce.boolean().default(false),
+    // Watch-hero MuxPlayer → MuxVideo migration flag. Boolean (true|false).
+    // Per-environment value, no per-user targeting. When `true`, the watch
+    // page's HeroPlayer renders `@mux/mux-video-react` instead of
+    // `@mux/mux-player-react`, dropping ~420 KB gzip of player chrome +
+    // cast support that the existing React-rendered HeroPlayerControls
+    // already replaces. Default `false` keeps the existing path live until
+    // rollout. After one stable release at `true` in prod, follow-up PR
+    // removes the flag-off branch from HeroPlayer.tsx.
+    // See docs/plans/2026-05-26-005-refactor-watch-hero-muxplayer-to-muxvideo-beta-plan.md
+    NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO: z.coerce.boolean().default(false),
     // U5 — Mux Data env key for the watch-page Mux Player. Optional because
     // not all environments (preview / local) have Mux Data set up; when
     // unset, the player simply does not emit Mux Data beacons.
@@ -147,6 +157,8 @@ export const env = createEnv({
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
+    NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO:
+      process.env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO,
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY,
     NEXT_PUBLIC_CANONICAL_ORIGIN: process.env.NEXT_PUBLIC_CANONICAL_ORIGIN,
   },
