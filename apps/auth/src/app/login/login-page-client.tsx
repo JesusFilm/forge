@@ -89,6 +89,8 @@ export function LoginPageClient({
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     if (step === "password") {
+      setError(null)
+      setIsSubmitting(true)
       return
     }
 
