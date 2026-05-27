@@ -98,6 +98,7 @@ export type SearchTraceSample = {
   llmLabelVersion: string | null
   llmLabelReason: string | null
   llmLabeledAt: string | null
+  rawExpiresAt: string
   createdAt: string
 }
 
@@ -479,6 +480,7 @@ type SearchTraceSampleRow = {
   llmLabelVersion: string | null
   llmLabelReason: string | null
   llmLabeledAt: Date | null
+  rawExpiresAt: Date
   createdAt: Date
 }
 
@@ -552,6 +554,7 @@ export async function sampleSearchTraces(
       llmLabelVersion: true,
       llmLabelReason: true,
       llmLabeledAt: true,
+      rawExpiresAt: true,
       createdAt: true,
     },
   })) as unknown as SearchTraceSampleRow[]
@@ -581,6 +584,7 @@ export async function sampleSearchTraces(
     llmLabelVersion: row.llmLabelVersion,
     llmLabelReason: row.llmLabelReason,
     llmLabeledAt: row.llmLabeledAt?.toISOString() ?? null,
+    rawExpiresAt: row.rawExpiresAt.toISOString(),
     createdAt: row.createdAt.toISOString(),
   }))
 }

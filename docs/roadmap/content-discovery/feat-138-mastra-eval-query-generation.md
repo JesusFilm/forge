@@ -3,7 +3,7 @@ id: "feat-138"
 title: "Mastra eval query generation"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: "2026-05-25"
 duration: 4
 depends_on:
@@ -73,6 +73,32 @@ rg -n "createWorkflow|createStep|registerApiRoute|MASTRA_SERVICE_API_KEYS" apps/
 6. Keep generated candidates out of permanent regression gates until `feat-140`
    promotes them.
 
+## Implemented Flow
+
+- Mastra workflow id: `eval-query-generation`; protected service route:
+  `POST /forge-eval-query-generation`.
+- Admin read contracts:
+  `POST /api/internal/search-traces/sample` and
+  `POST /api/internal/search-eval/catalog-context`.
+- Admin write contract:
+  `POST /api/internal/search-eval/candidates`.
+- Candidate storage table: `search_eval_candidate`, with source, locale,
+  source anchors, label provenance, generation provider/model, advisory judge
+  summary, Mastra run id, promotion status, dedupe key, and optional trace
+  retention expiry.
+- Trace-derived candidates are stored only while raw trace retention allows it
+  unless a later human promotion changes their status. Generated rows are not
+  loaded by the committed eval harness as durable regression truth.
+
+## Follow-Up Handoff
+
+- `feat-139` should run offline search evals against named prompt sets,
+  including the operator-authored seed baseline set from `feat-140`.
+- `feat-140` should add editable seed baseline prompts and user-generated prompt
+  submissions before durable regression promotion. The seed set exists so the
+  team can establish and manually tune an initial baseline before allowing
+  generated or user-submitted candidates into regression gates.
+
 ## Constraints
 
 - Do not place Mastra in the live search request path.
@@ -100,4 +126,7 @@ rg -n "createWorkflow|createStep|registerApiRoute|MASTRA_SERVICE_API_KEYS" apps/
 pnpm --filter @forge/mastra test
 pnpm --filter @forge/mastra typecheck
 pnpm --filter @forge/admin test -- search-eval/query-generator.test.ts search-eval/locales.test.ts
+pnpm --filter @forge/admin test -- search-eval/candidates.test.ts search-eval/catalog-context.test.ts app/api/internal/search-eval/catalog-context/route.test.ts app/api/internal/search-eval/candidates/route.test.ts app/api/internal/search-traces/sample/route.test.ts search-trace.service.test.ts search-trace-retention.service.test.ts search-trace-retention/job.test.ts workflows/searchTraceRetention.test.ts
+pnpm --filter @forge/admin db:generate
+pnpm --filter @forge/admin exec prisma validate
 ```

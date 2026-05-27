@@ -12,6 +12,10 @@ const envSchema = z.object({
   ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY: z.string().min(1).optional(),
   ADMIN_MASTRA_SCENE_INGEST_API_KEY: z.string().min(1).optional(),
   ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY: z.string().min(1).optional(),
+  ADMIN_SEARCH_EVAL_API_KEY: z.string().min(1).optional(),
+  ADMIN_SEARCH_EVAL_CANDIDATES_URL: z.string().url().optional(),
+  ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL: z.string().url().optional(),
+  ADMIN_SEARCH_TRACE_SAMPLE_URL: z.string().url().optional(),
   ADMIN_SCENE_INGEST_URL: z.string().url().optional(),
   ADMIN_TRANSCRIPT_INGEST_URL: z.string().url().optional(),
   DATABASE_URL: z.string().url().optional(),
@@ -37,6 +41,10 @@ const envSchema = z.object({
     .min(1)
     .default("openai/text-embedding-3-small"),
   EXPERIENCE_EMBEDDING_PROVIDER: z.string().min(1).default("openai"),
+  EVAL_QUERY_GENERATION_MODEL: z
+    .string()
+    .min(1)
+    .default("anthropic/claude-haiku-4-5"),
   SCENE_EMBEDDING_MODEL: z
     .string()
     .min(1)
@@ -61,6 +69,18 @@ export const env = envSchema.parse({
   ),
   ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY: emptyToUndefined(
     process.env.ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY,
+  ),
+  ADMIN_SEARCH_EVAL_API_KEY: emptyToUndefined(
+    process.env.ADMIN_SEARCH_EVAL_API_KEY,
+  ),
+  ADMIN_SEARCH_EVAL_CANDIDATES_URL: emptyToUndefined(
+    process.env.ADMIN_SEARCH_EVAL_CANDIDATES_URL,
+  ),
+  ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL: emptyToUndefined(
+    process.env.ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL,
+  ),
+  ADMIN_SEARCH_TRACE_SAMPLE_URL: emptyToUndefined(
+    process.env.ADMIN_SEARCH_TRACE_SAMPLE_URL,
   ),
   ADMIN_SCENE_INGEST_URL: emptyToUndefined(process.env.ADMIN_SCENE_INGEST_URL),
   ADMIN_TRANSCRIPT_INGEST_URL: emptyToUndefined(
@@ -89,6 +109,9 @@ export const env = envSchema.parse({
   ),
   EXPERIENCE_EMBEDDING_PROVIDER: emptyToUndefined(
     process.env.EXPERIENCE_EMBEDDING_PROVIDER,
+  ),
+  EVAL_QUERY_GENERATION_MODEL: emptyToUndefined(
+    process.env.EVAL_QUERY_GENERATION_MODEL,
   ),
   SCENE_EMBEDDING_MODEL: emptyToUndefined(process.env.SCENE_EMBEDDING_MODEL),
   SCENE_EMBEDDING_PROVIDER: emptyToUndefined(

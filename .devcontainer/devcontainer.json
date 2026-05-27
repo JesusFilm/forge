@@ -47,5 +47,12 @@
   },
   "initializeCommand": "test -f \"$HOME/.gitconfig\" || touch \"$HOME/.gitconfig\"",
   "workspaceFolder": "/workspace",
+  "forwardPorts": [4111],
+  "portsAttributes": {
+    "4111": {
+      "label": "Mastra Studio",
+      "onAutoForward": "notify"
+    }
+  },
   "postCreateCommand": "uv run --no-project /opt/post_install.py"
 }

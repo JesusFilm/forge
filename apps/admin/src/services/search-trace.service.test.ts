@@ -246,6 +246,7 @@ describe("search trace service", () => {
         llmLabelVersion: null,
         llmLabelReason: null,
         llmLabeledAt: null,
+        rawExpiresAt: new Date("2026-06-23T12:00:00.000Z"),
         createdAt: new Date("2026-05-25T12:00:00.000Z"),
       },
     ])
@@ -288,6 +289,7 @@ describe("search trace service", () => {
         llmLabelVersion: null,
         llmLabelReason: null,
         llmLabeledAt: null,
+        rawExpiresAt: "2026-06-23T12:00:00.000Z",
         createdAt: "2026-05-25T12:00:00.000Z",
       },
     ])
@@ -430,6 +432,7 @@ describe("search trace service", () => {
         llmLabelVersion: null,
         llmLabelReason: null,
         llmLabeledAt: null,
+        rawExpiresAt: new Date("2026-06-23T12:00:00.000Z"),
         createdAt: new Date("2026-05-25T12:00:00.000Z"),
       },
     ])
@@ -447,6 +450,7 @@ describe("search trace service", () => {
       expect.objectContaining({
         id: "trace-sensitive",
         queryText: "[redacted-sample-query]",
+        rawExpiresAt: "2026-06-23T12:00:00.000Z",
       }),
     ])
   })

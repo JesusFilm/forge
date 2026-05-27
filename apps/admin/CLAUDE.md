@@ -316,6 +316,24 @@ labels. Broader sampling must explicitly request allowlisted quality,
 sensitivity, abuse, or LLM-classification filters. The bearer CSV is optional
 at boot and is part of the env disjointness invariant; it must not share values
 with workflow, web/consumer, backup, manager, or Mastra ingest credentials.
+Sample responses include `rawExpiresAt` so offline consumers can carry the
+same retention boundary forward without receiving extra raw trace data.
+
+Feat-138 adds two more Admin-owned search-eval contracts for Mastra:
+
+- `POST /api/internal/search-eval/catalog-context` returns compact published
+  video/experience anchors plus harness locale profiles. It deliberately omits
+  embeddings, raw transcripts, auth data, scorer payloads, and edit-only
+  fields.
+- `POST /api/internal/search-eval/candidates` stores generated candidates in
+  `search_eval_candidate` with source, locale, label provenance, generation
+  model/provider, source anchors, expected-result hints, advisory judge
+  summary, Mastra run id, and promotion status. Client-supplied promotion
+  status is rejected.
+
+These routes use the same dedicated search trace/eval bearer allowlist. They
+exist for offline eval generation only; neither route participates in live
+search, live query embedding generation, or public search response shaping.
 
 Query labeling model:
 
@@ -337,6 +355,9 @@ The Admin worker starts `src/workflows/searchTraceRetention.ts` when
 immediately, then daily at 10:00 UTC. `/api/search/health` reports retention
 health and trace capture counters; in production, raw trace capture is disabled
 when the retention scheduler or recent purge heartbeat cannot be confirmed.
+The purge also removes trace-derived generated eval candidates whose
+`retentionExpiresAt` has passed while they remain `generated`, keeping
+unpromoted trace candidates inside the raw trace retention window.
 
 Never add bearer tokens, cookies, IP addresses, full user identifiers,
 caller-supplied key ids, vectors, debug scoring payloads, or raw query text to
@@ -1881,7 +1902,7 @@ gating, no new admin endpoints, read-only against admin's data.
 
 - **Brainstorm:** `docs/brainstorms/2026-05-06-semantic-search-eval-harness-requirements.md`
 - **Plan:** `docs/plans/2026-05-07-001-feat-semantic-search-eval-harness-plan.md`
-- **Code lives at** `apps/admin/src/services/search-eval/` (14 modules)
+- **Code lives at** `apps/admin/src/services/search-eval/`
   - `runner.ts` — orchestrator (fan-out + A/B-swap + aggregation)
   - `search-client.ts` — wraps `GET /api/search` with retry
   - `judge.ts` — OpenRouter chat-completions client (Haiku 4.5)
@@ -1893,6 +1914,8 @@ gating, no new admin endpoints, read-only against admin's data.
   - `reporter.ts` — console summary + per-run JSON file
   - `paths.ts` — `import.meta.url`-anchored paths
   - `openrouter-helpers.ts` — shared OpenRouter response parsing
+  - `catalog-context.ts` — compact Admin catalog anchors for Mastra eval generation
+  - `candidates.ts` — staged generated-candidate storage and dedupe
   - `schemas.ts` — shared Zod schemas
   - `types.ts`, `locales.ts`
 - **CLI entry:** `apps/admin/src/scripts/eval-search.ts`
@@ -1902,6 +1925,9 @@ gating, no new admin endpoints, read-only against admin's data.
   - `regressions.json` — hand-edited adversarial queries
   - `calibration.json` — 10 hand-labeled judge-sanity cases
 - **Per-run output** (gitignored): `apps/admin/.tmp/eval/runs/{runId}.json`
+- **Generated candidate staging** (DB-backed): `search_eval_candidate` rows
+  created by Mastra are not loaded into the committed harness baseline or
+  regression files until a later sanitization and human-promotion flow.
 
 ### Architecture (one paragraph)
 
@@ -2043,6 +2069,10 @@ Consider re-baselining.` The warn never blocks the run.
 - Synthetic queries are **committed** at
   `apps/admin/eval/synthetic-queries/{locale}.json`, not regenerated
   each run. Same queries must hit both sides of the comparison.
+- Mastra-generated candidates are **not committed regression truth**. They
+  carry source anchors, label provenance, and advisory judge summaries in
+  Admin's database, but stay at `promotionStatus=generated` until a human
+  sanitizes/promotes them in a later feature.
 - `regressions.json` is hand-edit only; the BCP-47 regex in
   `query-generator.ts::validateLocale` guards path traversal on the
   `--locale=` flag.

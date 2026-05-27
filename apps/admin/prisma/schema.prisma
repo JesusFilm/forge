@@ -203,6 +203,22 @@ enum SearchTraceLatencyBucket {
   GTE_2500_MS @map("gte_2500ms")
 }
 
+/// Source family for generated search-eval candidates. These are staged
+/// candidate inputs only; generated rows are not durable regression truth until
+/// a later human-promotion workflow explicitly promotes them.
+enum SearchEvalCandidateSource {
+  CATALOG        @map("catalog")
+  LOCALE_QUALITY @map("locale_quality")
+  TRACE          @map("trace")
+}
+
+/// Human-promotion lifecycle for generated search-eval candidates.
+enum SearchEvalCandidatePromotionStatus {
+  GENERATED @map("generated")
+  REJECTED  @map("rejected")
+  PROMOTED  @map("promoted")
+}
+
 // -----------------------------------------------------------------------------
 // Admin access control (Auth SSO relying client)
 // -----------------------------------------------------------------------------
@@ -383,33 +399,33 @@ model WorkflowWorkerHeartbeat {
 /// ceiling. The table deliberately has no bearer, cookie, IP, user-id, key-id,
 /// vector, or scoring payload columns.
 model SearchTrace {
-  id                  String                   @id @default(cuid())
-  queryText           String                   @map("query_text") @db.VarChar(1024)
-  locale              String                   @db.VarChar(32)
-  routeSource         SearchTraceRouteSource   @map("route_source")
-  requestedMode       String?                  @map("requested_mode") @db.VarChar(64)
-  searchMode          String                   @map("search_mode") @db.VarChar(64)
-  resultCount         Int                      @map("result_count")
-  latencyBucket       SearchTraceLatencyBucket @map("latency_bucket")
-  outcome             SearchTraceOutcome
-  traceClass          String                   @default("none") @map("trace_class") @db.VarChar(64)
-  queryQualityLabel   String                   @default("unknown_ambiguous") @map("query_quality_label") @db.VarChar(64)
-  sensitiveQueryLabel String                   @default("none") @map("sensitive_query_label") @db.VarChar(64)
-  abuseLabel          String                   @default("none") @map("abuse_label") @db.VarChar(64)
-  queryLabelSource    String                   @default("rules") @map("query_label_source") @db.VarChar(32)
-  queryLabelVersion   String                   @default("search-query-labels/v1") @map("query_label_version") @db.VarChar(64)
-  queryLabeledAt      DateTime                 @default(now()) @map("query_labeled_at")
-  sampleEligible      Boolean                  @default(true) @map("sample_eligible")
+  id                   String                   @id @default(cuid())
+  queryText            String                   @map("query_text") @db.VarChar(1024)
+  locale               String                   @db.VarChar(32)
+  routeSource          SearchTraceRouteSource   @map("route_source")
+  requestedMode        String?                  @map("requested_mode") @db.VarChar(64)
+  searchMode           String                   @map("search_mode") @db.VarChar(64)
+  resultCount          Int                      @map("result_count")
+  latencyBucket        SearchTraceLatencyBucket @map("latency_bucket")
+  outcome              SearchTraceOutcome
+  traceClass           String                   @default("none") @map("trace_class") @db.VarChar(64)
+  queryQualityLabel    String                   @default("unknown_ambiguous") @map("query_quality_label") @db.VarChar(64)
+  sensitiveQueryLabel  String                   @default("none") @map("sensitive_query_label") @db.VarChar(64)
+  abuseLabel           String                   @default("none") @map("abuse_label") @db.VarChar(64)
+  queryLabelSource     String                   @default("rules") @map("query_label_source") @db.VarChar(32)
+  queryLabelVersion    String                   @default("search-query-labels/v1") @map("query_label_version") @db.VarChar(64)
+  queryLabeledAt       DateTime                 @default(now()) @map("query_labeled_at")
+  sampleEligible       Boolean                  @default(true) @map("sample_eligible")
   llmQueryQualityLabel String?                  @map("llm_query_quality_label") @db.VarChar(64)
-  llmAbuseLabel       String?                  @map("llm_abuse_label") @db.VarChar(64)
-  llmLabelSource      String?                  @map("llm_label_source") @db.VarChar(64)
-  llmLabelVersion     String?                  @map("llm_label_version") @db.VarChar(64)
-  llmLabelReason      String?                  @map("llm_label_reason") @db.VarChar(256)
-  llmLabeledAt        DateTime?                @map("llm_labeled_at")
-  startedAt           DateTime                 @map("started_at")
-  completedAt         DateTime                 @map("completed_at")
-  rawExpiresAt        DateTime                 @map("raw_expires_at")
-  createdAt           DateTime                 @default(now()) @map("created_at")
+  llmAbuseLabel        String?                  @map("llm_abuse_label") @db.VarChar(64)
+  llmLabelSource       String?                  @map("llm_label_source") @db.VarChar(64)
+  llmLabelVersion      String?                  @map("llm_label_version") @db.VarChar(64)
+  llmLabelReason       String?                  @map("llm_label_reason") @db.VarChar(256)
+  llmLabeledAt         DateTime?                @map("llm_labeled_at")
+  startedAt            DateTime                 @map("started_at")
+  completedAt          DateTime                 @map("completed_at")
+  rawExpiresAt         DateTime                 @map("raw_expires_at")
+  createdAt            DateTime                 @default(now()) @map("created_at")
 
   @@index([rawExpiresAt])
   @@index([createdAt])
@@ -449,6 +465,35 @@ model SearchTraceAggregate {
   @@index([routeSource, bucketStart])
   @@index([outcome, bucketStart])
   @@map("search_trace_aggregate")
+}
+
+/// Staged search-eval candidates generated by offline Mastra workflows.
+/// Generated rows do not participate in permanent regression gates until a
+/// future human-promotion workflow sanitizes and promotes them.
+model SearchEvalCandidate {
+  id                  String                             @id @default(cuid())
+  source              SearchEvalCandidateSource
+  locale              String                             @db.VarChar(32)
+  queryText           String                             @map("query_text") @db.VarChar(512)
+  expectedResultHints Json                               @default("[]") @map("expected_result_hints")
+  sourceAnchors       Json                               @default("[]") @map("source_anchors")
+  labelProvenance     Json                               @default("{}") @map("label_provenance")
+  generationModel     String                             @map("generation_model") @db.VarChar(128)
+  generationProvider  String?                            @map("generation_provider") @db.VarChar(64)
+  judgeSummary        Json?                              @map("judge_summary")
+  promotionStatus     SearchEvalCandidatePromotionStatus @default(GENERATED) @map("promotion_status")
+  mastraRunId         String?                            @map("mastra_run_id") @db.VarChar(128)
+  dedupeKey           String                             @unique @map("dedupe_key") @db.VarChar(64)
+  retentionExpiresAt  DateTime?                          @map("retention_expires_at")
+  generatedAt         DateTime                           @default(now()) @map("generated_at")
+  createdAt           DateTime                           @default(now()) @map("created_at")
+  updatedAt           DateTime                           @updatedAt @map("updated_at")
+
+  @@index([source, locale, createdAt])
+  @@index([promotionStatus, createdAt])
+  @@index([retentionExpiresAt])
+  @@index([mastraRunId])
+  @@map("search_eval_candidate")
 }
 
 /// Core Sync-specific detail for the generic workflow ledger. Kept separate so

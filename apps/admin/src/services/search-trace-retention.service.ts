@@ -1,4 +1,8 @@
-import { WorkflowRunStatus, type PrismaClient } from "@prisma/client"
+import {
+  SearchEvalCandidatePromotionStatus,
+  WorkflowRunStatus,
+  type PrismaClient,
+} from "@prisma/client"
 import { env } from "@/config/env"
 
 export const SEARCH_TRACE_RETENTION_WORKFLOW_KEY = "search-trace-retention"
@@ -8,6 +12,8 @@ export const SEARCH_TRACE_RETENTION_HEALTH_WINDOW_MS = 36 * 60 * 60 * 1000
 
 export type SearchTracePurgeResult = {
   purgedCount: number
+  purgedRawTraceCount: number
+  purgedGeneratedCandidateCount: number
   purgedBefore: string
 }
 
@@ -36,16 +42,26 @@ export async function purgeExpiredSearchTraces(
   prisma: PrismaClient,
   now: Date = new Date(),
 ): Promise<SearchTracePurgeResult> {
-  const result = await prisma.searchTrace.deleteMany({
+  const rawTraceResult = await prisma.searchTrace.deleteMany({
     where: {
       rawExpiresAt: {
         lte: now,
       },
     },
   })
+  const generatedCandidateResult = await prisma.searchEvalCandidate.deleteMany({
+    where: {
+      retentionExpiresAt: {
+        lte: now,
+      },
+      promotionStatus: SearchEvalCandidatePromotionStatus.GENERATED,
+    },
+  })
 
   return {
-    purgedCount: result.count,
+    purgedCount: rawTraceResult.count + generatedCandidateResult.count,
+    purgedRawTraceCount: rawTraceResult.count,
+    purgedGeneratedCandidateCount: generatedCandidateResult.count,
     purgedBefore: now.toISOString(),
   }
 }
