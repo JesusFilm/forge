@@ -21,6 +21,9 @@ Use `@forge/feature-flags` for server-side flag evaluation:
   roll forward before LaunchDarkly is provisioned.
 - Never expose the LaunchDarkly server-side SDK key through `NEXT_PUBLIC_*` or
   client components.
+- After a LaunchDarkly initialization timeout, the shared client uses a short
+  per-SDK-key cooldown before retrying so one request does not pay repeated
+  timeout costs for multiple flag reads during an outage.
 
 ## Operational Setup
 

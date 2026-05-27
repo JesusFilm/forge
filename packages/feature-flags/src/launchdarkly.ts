@@ -36,6 +36,7 @@ export type FeatureFlagClientOptions = {
   localEnv?: FeatureFlagEnv
   defaultValues?: Partial<Record<FeatureFlagKey, boolean>>
   timeoutSeconds?: number
+  initializationFailureCooldownMs?: number
   options?: LDOptions
   initClient?: (sdkKey: string, options?: LDOptions) => LaunchDarklyClientLike
   logger?: Pick<Console, "warn">
@@ -49,9 +50,18 @@ export type FeatureFlagClient = {
 }
 
 const DEFAULT_TIMEOUT_SECONDS = 0.25
+const DEFAULT_INITIALIZATION_FAILURE_COOLDOWN_MS = 30_000
 
 const clientCache = new Map<string, LaunchDarklyClientLike>()
 const readyPromises = new Map<string, Promise<void>>()
+const initializationFailureRetryAt = new Map<string, number>()
+const RESERVED_CONTEXT_ATTRIBUTES = new Set([
+  "anonymous",
+  "email",
+  "key",
+  "kind",
+  "name",
+])
 
 function defaultInitClient(
   sdkKey: string,
@@ -85,7 +95,10 @@ async function waitUntilReady(
 
   const readyPromise = client
     .waitForInitialization({ timeout: timeoutSeconds })
-    .then(() => undefined)
+    .then(() => {
+      initializationFailureRetryAt.delete(sdkKey)
+      return undefined
+    })
     .catch((error: unknown) => {
       readyPromises.delete(sdkKey)
       throw error
@@ -109,7 +122,7 @@ function toLaunchDarklyContext(context: FeatureFlagContext): LDContext {
 
   if (context.custom) {
     for (const [key, value] of Object.entries(context.custom)) {
-      if (value !== undefined) {
+      if (value !== undefined && !RESERVED_CONTEXT_ATTRIBUTES.has(key)) {
         ldContext[key] = value
       }
     }
@@ -136,6 +149,9 @@ export function createFeatureFlagClient(
 ): FeatureFlagClient {
   const sdkKey = options.sdkKey?.trim()
   const timeoutSeconds = options.timeoutSeconds ?? DEFAULT_TIMEOUT_SECONDS
+  const initializationFailureCooldownMs =
+    options.initializationFailureCooldownMs ??
+    DEFAULT_INITIALIZATION_FAILURE_COOLDOWN_MS
   const localEnv = options.localEnv ?? {}
   const logger = options.logger
 
@@ -150,10 +166,16 @@ export function createFeatureFlagClient(
       if (!sdkKey) return fallback
 
       const client = getClient(sdkKey, options)
+      const retryAt = initializationFailureRetryAt.get(sdkKey)
+      if (retryAt && Date.now() < retryAt) return fallback
 
       try {
         await waitUntilReady(sdkKey, client, timeoutSeconds)
       } catch (error) {
+        initializationFailureRetryAt.set(
+          sdkKey,
+          Date.now() + initializationFailureCooldownMs,
+        )
         warn(
           logger,
           `[feature-flags] LaunchDarkly initialization failed for ${flag.key}; using fallback.`,
@@ -192,4 +214,5 @@ export async function evaluateFlag(
 export function resetFeatureFlagClientCacheForTests(): void {
   clientCache.clear()
   readyPromises.clear()
+  initializationFailureRetryAt.clear()
 }

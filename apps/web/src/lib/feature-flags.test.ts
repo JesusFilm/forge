@@ -59,6 +59,42 @@ describe("web feature flag helpers", () => {
     await expect(isWatchHeroMuxVideoEnabled()).resolves.toBe(true)
   })
 
+  it("passes the LaunchDarkly SDK key and local fallbacks into the shared client", async () => {
+    process.env.LAUNCHDARKLY_SDK_KEY = "sdk-test"
+    process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION = "false"
+    process.env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO = "true"
+    process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT = "true"
+    const booleanVariation = vi.fn(async () => false)
+    const createFeatureFlagClient = vi.fn(() => ({ booleanVariation }))
+
+    vi.doMock("@forge/feature-flags", async () => {
+      const actual = await vi.importActual<
+        typeof import("@forge/feature-flags")
+      >("@forge/feature-flags")
+      return {
+        ...actual,
+        createFeatureFlagClient,
+      }
+    })
+
+    const { isWatchPlayerMigrationEnabled } = await import("./feature-flags")
+
+    await expect(isWatchPlayerMigrationEnabled()).resolves.toBe(false)
+    expect(createFeatureFlagClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sdkKey: "sdk-test",
+        localEnv: {
+          FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "true",
+          FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT: "true",
+        },
+        defaultValues: {
+          "forge.watch.playerMigration": false,
+          "forge.watch.heroMuxVideo": true,
+        },
+      }),
+    )
+  })
+
   it("creates a stable service context with caller custom attributes", async () => {
     const { createWebFeatureFlagContext } = await import("./feature-flags")
 
