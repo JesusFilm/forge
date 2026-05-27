@@ -310,12 +310,10 @@ export function SubtitleTranscript({
     <section
       data-testid="watch-subtitle-transcript"
       aria-labelledby="watch-transcript-heading"
-      className="bg-stone-900 pt-12 pb-20 sm:pt-16 sm:pb-24"
+      className="bg-stone-900/60 pt-12 pb-20 backdrop-blur-md sm:pt-16 sm:pb-24"
     >
       <div className={WATCH_PAGE_CONTENT_CLASSES}>
-        <div
-          className={`rounded-2xl bg-stone-800/40 backdrop-blur-md ${GLASS_OUTLINE_CLASS}`}
-        >
+        <div className={`rounded-2xl bg-stone-800/40 ${GLASS_OUTLINE_CLASS}`}>
           <header className="flex flex-col gap-3 border-b border-white/10 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
             <div>
               <h2
