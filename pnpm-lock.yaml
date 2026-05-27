@@ -764,6 +764,9 @@ importers:
       '@forge/admin-graphql':
         specifier: workspace:*
         version: link:../../packages/admin-graphql
+      '@forge/feature-flags':
+        specifier: workspace:*
+        version: link:../../packages/feature-flags
       '@forge/video-player':
         specifier: workspace:*
         version: link:../../packages/video-player
@@ -862,6 +865,22 @@ importers:
         specifier: 16.13.1
         version: 16.13.1
     devDependencies:
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@25.2.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3)
+
+  packages/feature-flags:
+    dependencies:
+      '@launchdarkly/node-server-sdk':
+        specifier: ^9.10.14
+        version: 9.11.1
+    devDependencies:
+      eslint:
+        specifier: ^9.0.0
+        version: 9.39.2(jiti@2.6.1)
       typescript:
         specifier: ^5
         version: 5.9.3
@@ -2905,6 +2924,15 @@ packages:
 
   '@js-sdsl/ordered-map@4.4.2':
     resolution: {integrity: sha512-iUKgm52T8HOE/makSxjqoWhe95ZJA1/G1sYsGev2JDKUSS14KAgg1LHb+Ba+IPow0xflbnSkOsZcO08C7w1gYw==}
+
+  '@launchdarkly/js-sdk-common@2.25.0':
+    resolution: {integrity: sha512-x6O/W7Pl5oH1l+CiM1YX+CzfDqJOn3gLJug7N99bzJoFj7v+qfCAWQ77l1jIRHwsyk6E6S/SxwBAGuZ4ug5S/Q==}
+
+  '@launchdarkly/js-server-sdk-common@2.19.0':
+    resolution: {integrity: sha512-ZsX5Eib+51zZYastlT6tUnab3WKR8nIZiXjBx/C30BZmlzahpxasGkiHtjh24L7cFeR8MjQRKUNAwCCtr0bztA==}
+
+  '@launchdarkly/node-server-sdk@9.11.1':
+    resolution: {integrity: sha512-2iBiqXEnHamTjN3wB7yj0kExIvYb74fVs+gFctq6K4DfcGEhhRxyqe3FuyDQ+biFfphTcSmHYxoJAwtMeuQ3DQ==}
 
   '@libsql/client@0.15.15':
     resolution: {integrity: sha512-twC0hQxPNHPKfeOv3sNT6u2pturQjLcI+CnpTM0SjRpocEGgfiZ7DWKXLNnsothjyJmDqEsBQJ5ztq9Wlu470w==}
@@ -8793,6 +8821,10 @@ packages:
     resolution: {integrity: sha512-MbjN408fEndfiQXbFQ1vnd+1NoLDsnQW41410oQBXiyXDMYH5z505juWa4KUE1LqxRC7DgOgZDbKLxHIwm27hA==}
     engines: {node: '>=0.10'}
 
+  launchdarkly-eventsource@2.2.0:
+    resolution: {integrity: sha512-u38fYlLSq/m6oFz0MS1/76Sj2xzlYhTKZ+sf/vju6PA86PMc6fPlY5k8CdU79edLXjNwsvIQTDvDNy3llDqB8A==}
+    engines: {node: '>=0.12.0'}
+
   lazystream@1.0.1:
     resolution: {integrity: sha512-b94GiNHQNy6JNTrt5w6zNyffMrNkXZb3KTkCZJb2V1xaEGCk093vkZ2jk3tpaeP33/OiXC+WvK9AxUebnf5nbw==}
     engines: {node: '>= 0.6.3'}
@@ -10781,6 +10813,11 @@ packages:
 
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
+    hasBin: true
+
+  semver@7.5.4:
+    resolution: {integrity: sha512-1bCSESV6Pv+i21Hvpxp3Dx+pSD8lIPt8uVjRrxAUt/nbswYc+tK6Y2btiULjd4+fnq15PX+nqQDC7Oft7WkwcA==}
+    engines: {node: '>=10'}
     hasBin: true
 
   semver@7.6.3:
@@ -15001,6 +15038,21 @@ snapshots:
 
   '@js-sdsl/ordered-map@4.4.2':
     optional: true
+
+  '@launchdarkly/js-sdk-common@2.25.0': {}
+
+  '@launchdarkly/js-server-sdk-common@2.19.0':
+    dependencies:
+      '@launchdarkly/js-sdk-common': 2.25.0
+      semver: 7.5.4
+
+  '@launchdarkly/node-server-sdk@9.11.1':
+    dependencies:
+      '@launchdarkly/js-server-sdk-common': 2.19.0
+      https-proxy-agent: 7.0.6
+      launchdarkly-eventsource: 2.2.0
+    transitivePeerDependencies:
+      - supports-color
 
   '@libsql/client@0.15.15':
     dependencies:
@@ -22364,6 +22416,8 @@ snapshots:
     dependencies:
       language-subtag-registry: 0.3.23
 
+  launchdarkly-eventsource@2.2.0: {}
+
   lazystream@1.0.1:
     dependencies:
       readable-stream: 2.3.8
@@ -25184,6 +25238,10 @@ snapshots:
       semver: 7.7.4
 
   semver@6.3.1: {}
+
+  semver@7.5.4:
+    dependencies:
+      lru-cache: 6.0.0
 
   semver@7.6.3: {}
 

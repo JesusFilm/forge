@@ -36,6 +36,21 @@ function softHostAllowlistRefine(
   }
 }
 
+function booleanEnv(defaultValue: boolean) {
+  return z
+    .preprocess((value) => {
+      if (typeof value !== "string") return value
+
+      const normalized = value.trim().toLowerCase()
+      if (!normalized) return defaultValue
+      if (["1", "true", "yes", "y", "on"].includes(normalized)) return true
+      if (["0", "false", "no", "n", "off"].includes(normalized)) return false
+
+      return value
+    }, z.boolean())
+    .default(defaultValue)
+}
+
 const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES = [
   ".jesusfilm.org",
   ".railway.app",
@@ -63,6 +78,12 @@ export const env = createEnv({
     // Absent in most preview environments; the server action surfaces a
     // graceful "not configured" state when unset.
     OPENROUTER_API_KEY: z.string().optional(),
+    // Optional LaunchDarkly server-side SDK key. When unset, feature flag
+    // helpers return local defaults so preview/local environments can boot
+    // before LaunchDarkly is provisioned.
+    LAUNCHDARKLY_SDK_KEY: z.string().optional(),
+    FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: z.string().optional(),
+    FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT: z.string().optional(),
     // Admin GraphQL URL. Required — web's data layer reads from admin.
     ADMIN_GRAPHQL_URL: z
       .url()
@@ -107,7 +128,7 @@ export const env = createEnv({
     // `false` keeps the existing video.js path live until rollout.
     // R19 trigger: drop `video.js` from apps/web after this has been `true`
     // in production for one stable release.
-    NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION: z.coerce.boolean().default(false),
+    NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION: booleanEnv(false),
     // Watch-hero MuxPlayer → MuxVideo migration flag. Boolean (true|false).
     // Per-environment value, no per-user targeting. When `true`, the watch
     // page's HeroPlayer renders `@mux/mux-video-react` instead of
@@ -117,7 +138,7 @@ export const env = createEnv({
     // rollout. After one stable release at `true` in prod, follow-up PR
     // removes the flag-off branch from HeroPlayer.tsx.
     // See docs/plans/2026-05-26-005-refactor-watch-hero-muxplayer-to-muxvideo-beta-plan.md
-    NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO: z.coerce.boolean().default(false),
+    NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO: booleanEnv(false),
     // U5 — Mux Data env key for the watch-page Mux Player. Optional because
     // not all environments (preview / local) have Mux Data set up; when
     // unset, the player simply does not emit Mux Data beacons.
@@ -153,6 +174,11 @@ export const env = createEnv({
     STRAPI_PREVIEW_SECRET: process.env.STRAPI_PREVIEW_SECRET,
     REVALIDATION_SECRET: process.env.REVALIDATION_SECRET,
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+    LAUNCHDARKLY_SDK_KEY: process.env.LAUNCHDARKLY_SDK_KEY,
+    FORGE_WATCH_PLAYER_MIGRATION_DEFAULT:
+      process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT,
+    FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT:
+      process.env.FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
