@@ -6,6 +6,7 @@ import {
   type NativeSyntheticEvent,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -31,9 +32,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
 import { useBibleVerses } from "../../src/hooks/useBibleVerses"
-import { DownloadModal } from "../../src/components/watch/DownloadModal"
-import { LanguageSubtitleModal } from "../../src/components/watch/LanguageSubtitleModal"
-import { ShareModal } from "../../src/components/watch/ShareModal"
+import type GorhomBottomSheet from "@gorhom/bottom-sheet"
+import { BottomSheet } from "../../src/components/ui/BottomSheet"
+import { DownloadSheetContent } from "../../src/components/watch/DownloadSheet"
+import { LanguageSheetContent } from "../../src/components/watch/LanguageSheet"
+import { SubtitleSheetContent } from "../../src/components/watch/SubtitleSheet"
+import { Snackbar } from "../../src/components/ui/Snackbar"
 
 const PLAYER_HEIGHT_RATIO = 9 / 16
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
@@ -49,10 +53,18 @@ export default function WatchVideoPage() {
   const titleOpacity = useRef(new Animated.Value(0)).current
   const [showNavTitle, setShowNavTitle] = useState(false)
   const insets = useSafeAreaInsets()
-  const [downloadModalVisible, setDownloadModalVisible] = useState(false)
-  const [languageModalVisible, setLanguageModalVisible] = useState(false)
-  const [shareModalVisible, setShareModalVisible] = useState(false)
+  const downloadSheetRef = useRef<GorhomBottomSheet>(null)
+  const [downloadResetKey, setDownloadResetKey] = useState(0)
+  const languageSheetRef = useRef<GorhomBottomSheet>(null)
+  const [languageResetKey, setLanguageResetKey] = useState(0)
+  const subtitleSheetRef = useRef<GorhomBottomSheet>(null)
+  const [subtitleResetKey, setSubtitleResetKey] = useState(0)
   const [activeVariantIndex, setActiveVariantIndex] = useState(0)
+  const [subtitleEnabled, setSubtitleEnabled] = useState(false)
+  const [snackbarVisible, setSnackbarVisible] = useState(false)
+  const [activeSubtitleSlug, setActiveSubtitleSlug] = useState<string | null>(
+    null,
+  )
 
   const { data, loading, error } = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { slug: decodedSlug, locale: "en" },
@@ -107,6 +119,14 @@ export default function WatchVideoPage() {
   const handleScrollToTop = useCallback(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true })
   }, [])
+
+  const handleShare = useCallback(() => {
+    if (!video) return
+    const langSlug = activeVariant?.languageSlug
+    const base = `https://www.jesusfilm.org/watch/${video.slug}`
+    const shareUrl = langSlug ? `${base}/${langSlug}` : base
+    Share.share({ message: shareUrl, title: video.title ?? undefined })
+  }, [video, activeVariant?.languageSlug])
 
   if (loading && !video) {
     return (
@@ -173,10 +193,10 @@ export default function WatchVideoPage() {
         />
 
         <ActionButtonRow
-          onDownload={() => setDownloadModalVisible(true)}
-          onLanguage={() => setLanguageModalVisible(true)}
-          onSubtitles={() => setLanguageModalVisible(true)}
-          onShare={() => setShareModalVisible(true)}
+          onDownload={() => downloadSheetRef.current?.expand()}
+          onLanguage={() => languageSheetRef.current?.expand()}
+          onSubtitles={() => subtitleSheetRef.current?.expand()}
+          onShare={handleShare}
         />
 
         <VideoDescription description={video.description} />
@@ -221,46 +241,67 @@ export default function WatchVideoPage() {
         </Animated.View>
       )}
 
-      {downloadModalVisible && (
-        <DownloadModal
-          visible={downloadModalVisible}
-          onClose={() => setDownloadModalVisible(false)}
+      <BottomSheet
+        ref={downloadSheetRef}
+        snapPoints={["75%"]}
+        onChange={(index) => {
+          if (index >= 0) setDownloadResetKey((k) => k + 1)
+        }}
+      >
+        <DownloadSheetContent
+          key={downloadResetKey}
           videoTitle={video.title}
-          posterUrl={video.posterUrl}
           duration={video.duration}
           languageName={activeVariant?.languageName ?? null}
           downloads={activeVariant?.downloads ?? []}
+          onDownloadComplete={() => setSnackbarVisible(true)}
         />
-      )}
+      </BottomSheet>
 
-      {languageModalVisible && (
-        <LanguageSubtitleModal
-          visible={languageModalVisible}
-          onClose={() => setLanguageModalVisible(false)}
+      <BottomSheet
+        ref={languageSheetRef}
+        snapPoints={["50%"]}
+        onChange={(index) => {
+          if (index >= 0) setLanguageResetKey((k) => k + 1)
+        }}
+      >
+        <LanguageSheetContent
+          key={languageResetKey}
           variants={video.variants}
           activeVariantSlug={activeVariant?.slug ?? ""}
           onLanguageChange={(variantSlug) => {
             const idx = video.variants.findIndex((v) => v.slug === variantSlug)
             if (idx >= 0) setActiveVariantIndex(idx)
           }}
-          subtitles={activeVariant?.subtitles ?? []}
-          subtitleEnabled={false}
-          activeSubtitleSlug={null}
-          onSubtitleChange={() => {}}
+          onClose={() => languageSheetRef.current?.close()}
         />
-      )}
+      </BottomSheet>
 
-      {shareModalVisible && (
-        <ShareModal
-          visible={shareModalVisible}
-          onClose={() => setShareModalVisible(false)}
-          videoTitle={video.title}
-          videoDescription={video.description}
-          posterUrl={video.posterUrl}
-          videoSlug={video.slug}
-          languageSlug={activeVariant?.languageSlug ?? null}
+      <BottomSheet
+        ref={subtitleSheetRef}
+        snapPoints={["50%"]}
+        onChange={(index) => {
+          if (index >= 0) setSubtitleResetKey((k) => k + 1)
+        }}
+      >
+        <SubtitleSheetContent
+          key={subtitleResetKey}
+          subtitles={activeVariant?.subtitles ?? []}
+          subtitleEnabled={subtitleEnabled}
+          activeSubtitleSlug={activeSubtitleSlug}
+          onSubtitleChange={(enabled, slug) => {
+            setSubtitleEnabled(enabled)
+            setActiveSubtitleSlug(slug)
+          }}
+          onClose={() => subtitleSheetRef.current?.close()}
         />
-      )}
+      </BottomSheet>
+
+      <Snackbar
+        message="Download complete"
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+      />
     </View>
   )
 }

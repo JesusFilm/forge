@@ -15,6 +15,7 @@ let ACCENT: string
 let BG_COLOR: string
 let ExperienceShell: typeof import("../src/contexts/ExperienceShell").ExperienceShell
 let ExperienceSelectionProvider: typeof import("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
+let GestureHandlerRootView: typeof import("react-native-gesture-handler").GestureHandlerRootView
 
 // require() is intentional — static imports cause silent white screens when
 // module-level throws (e.g., env validation) crash the entire module graph.
@@ -35,6 +36,8 @@ try {
   ExperienceShell = require("../src/contexts/ExperienceShell").ExperienceShell
   ExperienceSelectionProvider =
     require("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
+  GestureHandlerRootView =
+    require("react-native-gesture-handler").GestureHandlerRootView
 } catch (e: unknown) {
   const err = e instanceof Error ? e : new Error(String(e))
   moduleError = `${err.message}\n\n${err.stack ?? ""}`
@@ -155,99 +158,101 @@ export default function RootLayout() {
   const clientRef = useRef(getApolloClient())
   const router = useRouter()
   return (
-    <ErrorBoundary>
-      <ApolloProvider client={clientRef.current}>
-        <SafeAreaProvider>
-          <ExperienceSelectionProvider>
-            <ExperienceShell>
-              <StatusBar style="light" />
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: BG_COLOR },
-                }}
-              >
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen
-                  name="video/[sectionKey]"
-                  options={{
-                    headerShown: true,
-                    headerTintColor: ACCENT,
-                    headerTitle: "",
-                    headerStyle: { backgroundColor: BG_COLOR },
-                    headerShadowVisible: false,
-                    headerTitleAlign: "center",
-                    headerLeft: () => (
-                      <Pressable
-                        onPress={() => router.back()}
-                        accessibilityRole="button"
-                        accessibilityLabel="Go back"
-                        hitSlop={12}
-                      >
-                        <Ionicons
-                          name="chevron-back"
-                          size={28}
-                          color={ACCENT}
-                        />
-                      </Pressable>
-                    ),
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ErrorBoundary>
+        <ApolloProvider client={clientRef.current}>
+          <SafeAreaProvider>
+            <ExperienceSelectionProvider>
+              <ExperienceShell>
+                <StatusBar style="light" />
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: BG_COLOR },
                   }}
-                />
-                <Stack.Screen
-                  name="collection/[sectionKey]"
-                  options={{
-                    headerShown: true,
-                    headerTintColor: ACCENT,
-                    headerTitle: "",
-                    headerStyle: { backgroundColor: BG_COLOR },
-                    headerShadowVisible: false,
-                    headerTitleAlign: "center",
-                    headerLeft: () => (
-                      <Pressable
-                        onPress={() => router.back()}
-                        accessibilityRole="button"
-                        accessibilityLabel="Go back"
-                        hitSlop={12}
-                      >
-                        <Ionicons
-                          name="chevron-back"
-                          size={28}
-                          color={ACCENT}
-                        />
-                      </Pressable>
-                    ),
-                  }}
-                />
-                <Stack.Screen
-                  name="watch/[slug]"
-                  options={{
-                    headerShown: true,
-                    headerTintColor: ACCENT,
-                    headerTitle: "",
-                    headerStyle: { backgroundColor: BG_COLOR },
-                    headerShadowVisible: false,
-                    headerTitleAlign: "center",
-                    headerLeft: () => (
-                      <Pressable
-                        onPress={() => router.back()}
-                        accessibilityRole="button"
-                        accessibilityLabel="Go back"
-                        hitSlop={12}
-                      >
-                        <Ionicons
-                          name="chevron-back"
-                          size={28}
-                          color={ACCENT}
-                        />
-                      </Pressable>
-                    ),
-                  }}
-                />
-              </Stack>
-            </ExperienceShell>
-          </ExperienceSelectionProvider>
-        </SafeAreaProvider>
-      </ApolloProvider>
-    </ErrorBoundary>
+                >
+                  <Stack.Screen name="(tabs)" />
+                  <Stack.Screen
+                    name="video/[sectionKey]"
+                    options={{
+                      headerShown: true,
+                      headerTintColor: ACCENT,
+                      headerTitle: "",
+                      headerStyle: { backgroundColor: BG_COLOR },
+                      headerShadowVisible: false,
+                      headerTitleAlign: "center",
+                      headerLeft: () => (
+                        <Pressable
+                          onPress={() => router.back()}
+                          accessibilityRole="button"
+                          accessibilityLabel="Go back"
+                          hitSlop={12}
+                        >
+                          <Ionicons
+                            name="chevron-back"
+                            size={28}
+                            color={ACCENT}
+                          />
+                        </Pressable>
+                      ),
+                    }}
+                  />
+                  <Stack.Screen
+                    name="collection/[sectionKey]"
+                    options={{
+                      headerShown: true,
+                      headerTintColor: ACCENT,
+                      headerTitle: "",
+                      headerStyle: { backgroundColor: BG_COLOR },
+                      headerShadowVisible: false,
+                      headerTitleAlign: "center",
+                      headerLeft: () => (
+                        <Pressable
+                          onPress={() => router.back()}
+                          accessibilityRole="button"
+                          accessibilityLabel="Go back"
+                          hitSlop={12}
+                        >
+                          <Ionicons
+                            name="chevron-back"
+                            size={28}
+                            color={ACCENT}
+                          />
+                        </Pressable>
+                      ),
+                    }}
+                  />
+                  <Stack.Screen
+                    name="watch/[slug]"
+                    options={{
+                      headerShown: true,
+                      headerTintColor: ACCENT,
+                      headerTitle: "",
+                      headerStyle: { backgroundColor: BG_COLOR },
+                      headerShadowVisible: false,
+                      headerTitleAlign: "center",
+                      headerLeft: () => (
+                        <Pressable
+                          onPress={() => router.back()}
+                          accessibilityRole="button"
+                          accessibilityLabel="Go back"
+                          hitSlop={12}
+                        >
+                          <Ionicons
+                            name="chevron-back"
+                            size={28}
+                            color={ACCENT}
+                          />
+                        </Pressable>
+                      ),
+                    }}
+                  />
+                </Stack>
+              </ExperienceShell>
+            </ExperienceSelectionProvider>
+          </SafeAreaProvider>
+        </ApolloProvider>
+      </ErrorBoundary>
+    </GestureHandlerRootView>
   )
 }
