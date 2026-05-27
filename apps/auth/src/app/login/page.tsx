@@ -19,12 +19,12 @@ type LoginPageProps = {
 export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
   const params = (await searchParams) ?? {}
   if (!isOAuthAuthorizeRequest(params)) {
-    const consumerCallbackURL = resolveConsumerCallbackURL(params)
-    if (!consumerCallbackURL) redirect("https://www.jesusfilm.org")
+    const callbackURL = resolveConsumerCallbackURL(params)
+    if (!callbackURL) redirect("https://www.jesusfilm.org")
 
     return (
       <LoginPageClient
-        consumerCallbackURL={consumerCallbackURL}
+        callbackURL={callbackURL}
         enabledProviders={getEnabledProviders()}
         flow={resolveLoginFlow(params)}
         initialEmail={firstParam(params.email)}

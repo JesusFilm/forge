@@ -179,27 +179,33 @@ describe("auth login UI", () => {
     expect(html).toContain('rel="noopener noreferrer"')
   })
 
-  it("renders the web account creation form for a trusted watch callback", () => {
+  it("renders the existing auth form for a trusted watch callback", () => {
     const callbackURL = "http://localhost:3000/watch/jesus/english"
     const html = renderToStaticMarkup(
       <LoginPageClient
-        consumerCallbackURL={callbackURL}
-        enabledProviders={[]}
-        flow="signup"
+        callbackURL={callbackURL}
+        enabledProviders={["google"]}
+        flow="login"
         oauthQuery=""
         requestingAppName="Jesus Film"
       />,
     )
 
-    expect(html).toContain('action="/api/auth/sign-up/email"')
+    expect(html).toContain("Welcome.")
+    expect(html).toContain(
+      "Log in to Jesus Film One to continue to Jesus Film.",
+    )
+    expect(html).toContain("Continue with Google")
+    expect(html).toContain("OR")
+    expect(html).toContain('action="/api/auth/sign-in/email"')
     expect(html).toContain('name="callbackURL"')
     expect(html).toContain(`value="${callbackURL}"`)
-    expect(html).toContain('name="name"')
-    expect(html).toContain('name="password"')
-    expect(html).toContain('autoComplete="new-password"')
-    expect(html).toContain("Create account")
+    expect(html).not.toContain('name="name"')
+    expect(html).not.toContain('name="password"')
+    expect(html).not.toContain('autoComplete="new-password"')
+    expect(html).toContain("Continue")
     expect(html).toContain(
-      'href="/login?callbackURL=http%3A%2F%2Flocalhost%3A3000%2Fwatch%2Fjesus%2Fenglish"',
+      'href="/signup?callbackURL=http%3A%2F%2Flocalhost%3A3000%2Fwatch%2Fjesus%2Fenglish"',
     )
   })
 

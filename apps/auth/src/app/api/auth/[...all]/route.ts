@@ -174,47 +174,6 @@ async function parseLoginMethodRequest(request: Request): Promise<{
   }
 }
 
-async function parseEmailSignUpRequest(request: Request): Promise<{
-  callbackURL?: string
-  email: string
-  name: string
-  password: string
-}> {
-  const contentType = request.headers.get("content-type") ?? ""
-  if (contentType.includes("application/json")) {
-    const body = (await request.json()) as {
-      callbackURL?: string
-      email?: string
-      name?: string
-      password?: string
-    }
-    return {
-      callbackURL: resolveWebWatchCallbackURL(body.callbackURL),
-      email: body.email?.trim().toLowerCase() ?? "",
-      name: body.name?.trim() ?? "",
-      password: body.password ?? "",
-    }
-  }
-
-  if (!contentType.includes("application/x-www-form-urlencoded")) {
-    return { email: "", name: "", password: "" }
-  }
-
-  const body = await request.formData()
-  return {
-    callbackURL: resolveWebWatchCallbackURL(
-      typeof body.get("callbackURL") === "string"
-        ? String(body.get("callbackURL"))
-        : undefined,
-    ),
-    email: String(body.get("email") ?? "")
-      .trim()
-      .toLowerCase(),
-    name: String(body.get("name") ?? "").trim(),
-    password: String(body.get("password") ?? ""),
-  }
-}
-
 function genericUnauthorized(): Response {
   return Response.json({ error: "Invalid email or password" }, { status: 401 })
 }
@@ -286,24 +245,34 @@ function buildOAuthContinuationURL(oauthQuery: string | undefined) {
 
 async function parseSocialSignInRequest(request: Request): Promise<{
   body: Record<string, unknown>
+  callbackURL?: string
   oauthQuery?: string
 }> {
   const body = (await request.json()) as {
+    callbackURL?: unknown
     oauth_query?: unknown
     [key: string]: unknown
   }
 
   return {
     body,
+    callbackURL: resolveWebWatchCallbackURL(
+      typeof body.callbackURL === "string" ? body.callbackURL : undefined,
+    ),
     oauthQuery:
       typeof body.oauth_query === "string" ? body.oauth_query : undefined,
   }
 }
 
 async function handleSocialSignIn(request: Request): Promise<Response> {
-  const { body, oauthQuery } = await parseSocialSignInRequest(request)
-  const callbackURL = buildOAuthContinuationURL(oauthQuery)
+  const {
+    body,
+    callbackURL: webCallbackURL,
+    oauthQuery,
+  } = await parseSocialSignInRequest(request)
+  const callbackURL = webCallbackURL ?? buildOAuthContinuationURL(oauthQuery)
   const betterAuthBody = { ...body }
+  delete betterAuthBody.callbackURL
   delete betterAuthBody.oauth_query
 
   return authRouteHandlers.POST(
@@ -395,8 +364,7 @@ async function handleEmailSignUp(request: Request): Promise<Response> {
     return Response.json({ error: "Not found" }, { status: 404 })
   }
 
-  const { callbackURL, email, name, password } =
-    await parseEmailSignUpRequest(request)
+  const { email } = await parseLoginMethodRequest(request)
   if (!email) {
     audit("auth.signup.rejected.public")
     return Response.json({ error: "Not found" }, { status: 404 })
@@ -416,23 +384,8 @@ async function handleEmailSignUp(request: Request): Promise<Response> {
     return existingAccountSignUpResponse()
   }
 
-  if (!callbackURL || !name || !password) {
-    audit("auth.signup.rejected.public", email)
-    return Response.json({ error: "Not found" }, { status: 404 })
-  }
-
-  const response = await authRouteHandlers.POST(
-    toJsonRequest(request, {
-      callbackURL,
-      email,
-      name,
-      password,
-    }),
-  )
-  if (response.ok) {
-    audit("auth.signup.success.web")
-  }
-  return response
+  audit("auth.signup.rejected.public", email)
+  return Response.json({ error: "Not found" }, { status: 404 })
 }
 
 function redirectFormPostAfterSignIn(

@@ -55,7 +55,7 @@ describe("GET /watch/api/auth/session", () => {
     expect(body.authenticated).toBe(false)
     expect(body.gateEnabled).toBe(true)
     expect(body.loginUrl).toBe(
-      "http://localhost:3004/login?mode=signup&callbackURL=http%3A%2F%2Flocalhost%3A3000%2Fwatch%2Fjesus%2Fenglish",
+      "http://localhost:3004/login?callbackURL=http%3A%2F%2Flocalhost%3A3000%2Fwatch%2Fjesus%2Fenglish",
     )
     expect(body.loginUrl).not.toContain("stream.mux.com")
   })

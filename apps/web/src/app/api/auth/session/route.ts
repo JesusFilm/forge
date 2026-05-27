@@ -44,7 +44,6 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   const loginUrl = new URL("/login", authBase)
-  loginUrl.searchParams.set("mode", "signup")
   loginUrl.searchParams.set("callbackURL", callbackURL)
 
   return withRolloutCookie(

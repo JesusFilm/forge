@@ -35,7 +35,7 @@ const loginErrors = {
 >
 
 export function LoginPageClient({
-  consumerCallbackURL,
+  callbackURL,
   enabledProviders,
   flow = "login",
   initialEmail,
@@ -43,7 +43,7 @@ export function LoginPageClient({
   oauthQuery,
   requestingAppName,
 }: {
-  consumerCallbackURL?: string
+  callbackURL?: string
   enabledProviders: LoginProviderId[]
   flow?: "login" | "signup"
   initialEmail?: string
@@ -52,13 +52,7 @@ export function LoginPageClient({
   requestingAppName?: string | null
 }) {
   const [error, setError] = useState<
-    | LoginErrorCode
-    | "account_exists"
-    | "credentials"
-    | "lookup"
-    | "signup"
-    | "start"
-    | null
+    LoginErrorCode | "credentials" | "lookup" | "start" | null
   >(initialError ?? null)
   const [email, setEmail] = useState(initialEmail ?? "")
   const [step, setStep] = useState<LoginStep>(
@@ -73,9 +67,6 @@ export function LoginPageClient({
     readLastLoginMethod,
     getServerLastLoginMethod,
   )
-  const isConsumerSignup = flow === "signup" && Boolean(consumerCallbackURL)
-  const isConsumerAuth = Boolean(consumerCallbackURL)
-  const showProviderButtons = !isConsumerAuth
 
   const alert =
     error === "credentials"
@@ -88,62 +79,17 @@ export function LoginPageClient({
             title: "Provider login did not start.",
             detail: "Refresh the page and try again.",
           }
-        : error === "signup"
+        : error === "lookup"
           ? {
-              title: "Account creation did not complete.",
-              detail: "Check your details and try again.",
+              title: "We could not check that email.",
+              detail: "Refresh the page and try again.",
             }
-          : error === "account_exists"
-            ? {
-                title: "An account already exists.",
-                detail: "Log in with that email to continue.",
-              }
-            : error === "lookup"
-              ? {
-                  title: "We could not check that email.",
-                  detail: "Refresh the page and try again.",
-                }
-              : error
-                ? loginErrors[error]
-                : null
+          : error
+            ? loginErrors[error]
+            : null
   const isBusy = isSubmitting || isRedirecting
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    if (isConsumerSignup) {
-      e.preventDefault()
-      setError(null)
-      setIsSubmitting(true)
-
-      const form = new FormData(e.currentTarget)
-      try {
-        const res = await fetch("/api/auth/sign-up/email", {
-          method: "POST",
-          credentials: "include",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            callbackURL: consumerCallbackURL,
-            email,
-            name: String(form.get("name") ?? ""),
-            password: String(form.get("password") ?? ""),
-          }),
-        })
-
-        if (res.ok && consumerCallbackURL) {
-          isRedirectingRef.current = true
-          setIsRedirecting(true)
-          window.location.href = consumerCallbackURL
-          return
-        }
-
-        setError(res.status === 409 ? "account_exists" : "signup")
-      } catch {
-        setError("signup")
-      } finally {
-        if (!isRedirectingRef.current) setIsSubmitting(false)
-      }
-      return
-    }
-
     if (step === "password") {
       setError(null)
       setIsSubmitting(true)
@@ -160,6 +106,7 @@ export function LoginPageClient({
         credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          callbackURL,
           email,
           oauth_query: oauthQuery,
         }),
@@ -220,6 +167,7 @@ export function LoginPageClient({
         body: JSON.stringify({
           oauth_query: oauthQuery,
           provider: providerId,
+          ...(callbackURL ? { callbackURL } : {}),
         }),
       })
       const redirectUrl = await resolveSocialRedirect(res)
@@ -295,79 +243,47 @@ export function LoginPageClient({
               </p>
             ) : null}
 
-            {showProviderButtons ? (
-              <>
-                <div className="mt-5 grid gap-3">
-                  {providerIds.map((providerId) => {
-                    const enabled = enabledProviders.includes(providerId)
+            <div className="mt-5 grid gap-3">
+              {providerIds.map((providerId) => {
+                const enabled = enabledProviders.includes(providerId)
 
-                    return (
-                      <button
-                        key={providerId}
-                        className="relative flex h-[46px] w-full cursor-pointer items-center justify-start gap-3 rounded border border-white/10 bg-transparent px-4 text-left font-medium leading-none text-[#f5f5f4] transition-[background-color,border-color,box-shadow] duration-150 hover:border-white/25 hover:bg-white/[0.04] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04)] focus-visible:border-[#ef3340] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(239,51,64,0.18)] disabled:cursor-not-allowed disabled:border-white/5 disabled:text-[#78716c] disabled:opacity-70"
-                        disabled={!enabled || isBusy}
-                        type="button"
-                        onClick={() => void startSocialSignIn(providerId)}
-                      >
-                        <span className="flex size-5 shrink-0 items-center justify-center leading-none">
-                          <ProviderLogo providerId={providerId} />
-                        </span>
-                        <span className="leading-none">
-                          Continue with {providerLabels[providerId]}
-                        </span>
-                        {lastLoginMethod === providerId ? (
-                          <LastUsedBadge />
-                        ) : null}
-                      </button>
-                    )
-                  })}
-                </div>
+                return (
+                  <button
+                    key={providerId}
+                    className="relative flex h-[46px] w-full cursor-pointer items-center justify-start gap-3 rounded border border-white/10 bg-transparent px-4 text-left font-medium leading-none text-[#f5f5f4] transition-[background-color,border-color,box-shadow] duration-150 hover:border-white/25 hover:bg-white/[0.04] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04)] focus-visible:border-[#ef3340] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(239,51,64,0.18)] disabled:cursor-not-allowed disabled:border-white/5 disabled:text-[#78716c] disabled:opacity-70"
+                    disabled={!enabled || isBusy}
+                    type="button"
+                    onClick={() => void startSocialSignIn(providerId)}
+                  >
+                    <span className="flex size-5 shrink-0 items-center justify-center leading-none">
+                      <ProviderLogo providerId={providerId} />
+                    </span>
+                    <span className="leading-none">
+                      Continue with {providerLabels[providerId]}
+                    </span>
+                    {lastLoginMethod === providerId ? <LastUsedBadge /> : null}
+                  </button>
+                )
+              })}
+            </div>
 
-                <div className="my-7 flex items-center gap-4 text-xs font-bold uppercase tracking-[0.08em] text-[#a8a29e]">
-                  <span className="h-px flex-1 bg-white/10" />
-                  <span>OR</span>
-                  <span className="h-px flex-1 bg-white/10" />
-                </div>
-              </>
-            ) : null}
+            <div className="my-7 flex items-center gap-4 text-xs font-bold uppercase tracking-[0.08em] text-[#a8a29e]">
+              <span className="h-px flex-1 bg-white/10" />
+              <span>OR</span>
+              <span className="h-px flex-1 bg-white/10" />
+            </div>
 
             <form
               ref={formRef}
-              action={
-                isConsumerSignup
-                  ? "/api/auth/sign-up/email"
-                  : "/api/auth/sign-in/email"
-              }
+              action="/api/auth/sign-in/email"
               method="post"
               onSubmit={handleSubmit}
             >
-              {consumerCallbackURL ? (
-                <input
-                  type="hidden"
-                  name="callbackURL"
-                  value={consumerCallbackURL}
-                />
+              {callbackURL ? (
+                <input type="hidden" name="callbackURL" value={callbackURL} />
               ) : (
                 <input type="hidden" name="oauth_query" value={oauthQuery} />
               )}
-              {isConsumerSignup ? (
-                <div className="mb-4 grid gap-1.5">
-                  <label
-                    className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#d6d3d1]"
-                    htmlFor="name"
-                  >
-                    Name
-                  </label>
-                  <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    autoComplete="name"
-                    className="h-[42px] w-full rounded border border-white/10 bg-transparent px-3 text-[#f5f5f4] outline-none focus:border-[#ef3340] focus:shadow-[0_0_0_3px_rgba(239,51,64,0.12)]"
-                    required
-                  />
-                </div>
-              ) : null}
               <div className="grid gap-1.5">
                 <label
                   className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#d6d3d1]"
@@ -390,7 +306,7 @@ export function LoginPageClient({
                 />
               </div>
 
-              {step === "password" || isConsumerSignup ? (
+              {step === "password" ? (
                 <div className="mt-4 grid gap-1.5">
                   <label
                     className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#d6d3d1]"
@@ -402,9 +318,7 @@ export function LoginPageClient({
                     id="password"
                     name="password"
                     type="password"
-                    autoComplete={
-                      isConsumerSignup ? "new-password" : "current-password"
-                    }
+                    autoComplete="current-password"
                     className="h-[42px] w-full rounded border border-white/10 bg-transparent px-3 text-[#f5f5f4] outline-none focus:border-[#ef3340] focus:shadow-[0_0_0_3px_rgba(239,51,64,0.12)]"
                     required
                   />
@@ -431,11 +345,7 @@ export function LoginPageClient({
                 type="submit"
               >
                 <span className="min-w-0">
-                  {isConsumerSignup
-                    ? "Create account"
-                    : step === "password"
-                      ? "Log in"
-                      : "Continue"}
+                  {step === "password" ? "Log in" : "Continue"}
                 </span>
                 {isBusy ? (
                   <span
@@ -454,7 +364,7 @@ export function LoginPageClient({
               <Link
                 className="font-apercu font-bold text-[#f5f5f4] underline decoration-white/25 underline-offset-4 transition-colors duration-150 hover:decoration-white"
                 href={buildModeSwitchHref({
-                  consumerCallbackURL,
+                  callbackURL,
                   flow,
                   oauthQuery,
                 })}
@@ -566,18 +476,18 @@ function LastUsedBadge() {
 }
 
 function buildModeSwitchHref({
-  consumerCallbackURL,
+  callbackURL,
   flow,
   oauthQuery,
 }: {
-  consumerCallbackURL?: string
+  callbackURL?: string
   flow: "login" | "signup"
   oauthQuery: string
 }): Route {
-  if (consumerCallbackURL) {
-    const params = new URLSearchParams({ callbackURL: consumerCallbackURL })
-    if (flow === "login") params.set("mode", "signup")
-    return `/login?${params.toString()}` as Route
+  if (callbackURL) {
+    const params = new URLSearchParams({ callbackURL })
+    const path = flow === "signup" ? "/login" : "/signup"
+    return `${path}?${params.toString()}` as Route
   }
 
   const path = flow === "signup" ? "/login" : "/signup"

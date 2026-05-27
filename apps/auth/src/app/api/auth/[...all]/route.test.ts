@@ -149,10 +149,9 @@ describe("Auth route wrapper", () => {
     expect(authPost).not.toHaveBeenCalled()
   })
 
-  it("allows public web signup only for a valid watch-page callback", async () => {
+  it("keeps public web signup blocked for trusted watch callbacks", async () => {
     const { prisma } = await import("@/db/client")
     vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
-    authPost.mockResolvedValueOnce(Response.json({ ok: true }))
 
     const { POST } = await import("./route")
     const response = await POST(
@@ -169,19 +168,12 @@ describe("Auth route wrapper", () => {
       { params: Promise.resolve({ all: ["sign-up", "email"] }) },
     )
 
-    expect(response.status).toBe(200)
-    expect(authPost).toHaveBeenCalledOnce()
-
-    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
-    await expect(forwardedRequest.json()).resolves.toEqual({
-      callbackURL: "http://localhost:3000/watch/jesus/english",
-      email: "new@example.com",
-      name: "New Viewer",
-      password: "correct horse battery staple",
-    })
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({ error: "Not found" })
+    expect(authPost).not.toHaveBeenCalled()
   })
 
-  it("rejects web signup callbacks that target watch API routes", async () => {
+  it("keeps public signup blocked when callback targets watch API routes", async () => {
     const { prisma } = await import("@/db/client")
     vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
 
@@ -241,6 +233,31 @@ describe("Auth route wrapper", () => {
     await expect(forwardedRequest.json()).resolves.toMatchObject({
       callbackURL:
         "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_admin_local&sig=signed",
+      provider: "google",
+    })
+  })
+
+  it("forwards valid web watch callbacks through social sign-in", async () => {
+    authPost.mockResolvedValueOnce(
+      Response.json({ url: "https://google.test" }),
+    )
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/sign-in/social", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          callbackURL: "http://localhost:3000/watch/jesus/english",
+          provider: "google",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["sign-in", "social"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwardedRequest.json()).resolves.toMatchObject({
+      callbackURL: "http://localhost:3000/watch/jesus/english",
       provider: "google",
     })
   })
