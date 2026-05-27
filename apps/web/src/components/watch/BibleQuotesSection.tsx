@@ -12,10 +12,18 @@
 
 import Image from "next/image"
 import { ExternalLink } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import {
+  BibleTextView,
+  YouVersionProvider,
+} from "@youversion/platform-react-ui"
+import { useVersion } from "@youversion/platform-react-hooks"
+import type { UseEmblaCarouselType } from "embla-carousel-react"
 
+import { env } from "@/env"
 import type { WatchBibleQuotesBlock } from "@/lib/content"
 import { formatCitation } from "@/lib/citation-format"
+import { toYouVersionReference } from "@/lib/youversion-reference"
 import { Button } from "@/components/ui/button"
 import {
   Carousel,
@@ -31,6 +39,7 @@ import {
 } from "@/components/watch/watch-section-styles"
 
 type WatchBibleCitation = WatchBibleQuotesBlock["bibleCitations"][number]
+type CarouselApi = UseEmblaCarouselType[1]
 
 type BibleQuotesSectionProps = {
   bibleCitations: WatchBibleQuotesBlock["bibleCitations"]
@@ -144,6 +153,42 @@ export function BibleQuotesSection({
   onShareClick,
   locale = "en",
 }: BibleQuotesSectionProps) {
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>()
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0)
+  const activeCitation =
+    activeSlideIndex < bibleCitations.length
+      ? bibleCitations[activeSlideIndex]
+      : null
+  const activeYouVersionReference = useMemo(
+    () =>
+      activeCitation != null ? toYouVersionReference(activeCitation) : null,
+    [activeCitation],
+  )
+  const activeReferenceLabel = activeCitation
+    ? formatCitation(activeCitation)
+    : null
+
+  const handleCarouselApi = useCallback((api: CarouselApi) => {
+    setCarouselApi(api)
+  }, [])
+
+  useEffect(() => {
+    if (!carouselApi) return
+
+    const syncActiveSlide = () => {
+      setActiveSlideIndex(carouselApi.selectedScrollSnap())
+    }
+
+    syncActiveSlide()
+    carouselApi.on("select", syncActiveSlide)
+    carouselApi.on("reInit", syncActiveSlide)
+
+    return () => {
+      carouselApi.off("select", syncActiveSlide)
+      carouselApi.off("reInit", syncActiveSlide)
+    }
+  }, [carouselApi])
+
   // The carousel always renders, even when the video has no Bible citations —
   // the trailing "Join Our Bible Study" promo card is the always-on CTA, and
   // every video page should surface it.
@@ -177,6 +222,7 @@ export function BibleQuotesSection({
         <Carousel
           aria-label="Bible Quotes"
           opts={CAROUSEL_OPTS}
+          setApi={handleCarouselApi}
           className="w-full"
         >
           <CarouselContent
@@ -188,6 +234,9 @@ export function BibleQuotesSection({
                 key={citation.documentId}
                 data-testid="watch-bible-quotes-item"
                 className={BIBLE_QUOTE_SLIDE_CLASSES}
+                onClick={() => {
+                  setActiveSlideIndex(i)
+                }}
               >
                 <BibleCitationCard
                   citation={citation}
@@ -210,6 +259,9 @@ export function BibleQuotesSection({
             <CarouselItem
               data-testid="watch-bible-quotes-promo"
               className={BIBLE_QUOTE_SLIDE_CLASSES}
+              onClick={() => {
+                setActiveSlideIndex(bibleCitations.length)
+              }}
             >
               <div
                 className="relative flex aspect-[1.08/1] min-h-[21rem] w-full flex-col justify-end overflow-hidden rounded-xl border border-white/10 shadow-2xl shadow-stone-950/70 sm:min-h-[24rem] md:min-h-[28rem]"
@@ -276,7 +328,92 @@ export function BibleQuotesSection({
           />
         </Carousel>
       </div>
+      <YouVersionPassagePanel
+        reference={activeYouVersionReference}
+        referenceLabel={activeReferenceLabel}
+      />
     </section>
+  )
+}
+
+function YouVersionPassagePanel({
+  reference,
+  referenceLabel,
+}: {
+  reference: string | null
+  referenceLabel: string | null
+}) {
+  if (!env.NEXT_PUBLIC_YOUVERSION_APP_KEY || reference == null) {
+    return null
+  }
+
+  return (
+    <div
+      data-testid="watch-bible-quotes-youversion"
+      data-reference={reference}
+      className="mt-6 overflow-hidden rounded-xl border border-white/10 bg-stone-950/70 p-4 text-white shadow-xl shadow-black/20 sm:p-5"
+    >
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <span className="text-xs font-bold tracking-normal text-white/55 uppercase">
+          YouVersion
+        </span>
+        {referenceLabel != null && (
+          <span className="text-sm font-semibold text-white/80">
+            {referenceLabel}
+          </span>
+        )}
+      </div>
+      <YouVersionProvider appKey={env.NEXT_PUBLIC_YOUVERSION_APP_KEY}>
+        <YouVersionPassageText
+          reference={reference}
+          versionId={env.NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID}
+        />
+      </YouVersionProvider>
+    </div>
+  )
+}
+
+function YouVersionPassageText({
+  reference,
+  versionId,
+}: {
+  reference: string
+  versionId: number
+}) {
+  const { version } = useVersion(versionId)
+
+  return (
+    <>
+      <BibleTextView
+        reference={reference}
+        versionId={versionId}
+        theme="dark"
+        showVerseNumbers
+        renderNotes={false}
+        fontSize={18}
+        lineHeight={1.6}
+      />
+      {version?.copyright && (
+        <footer className="mt-4 border-t border-white/10 pt-3">
+          <p
+            data-testid="watch-bible-quotes-youversion-copyright"
+            className="text-xs leading-relaxed text-white/55"
+          >
+            {version.copyright}
+          </p>
+          {version.publisher_url && (
+            <a
+              href={version.publisher_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-block text-xs font-semibold text-white/70 underline decoration-white/30 underline-offset-4 transition-colors hover:text-white"
+            >
+              Learn more
+            </a>
+          )}
+        </footer>
+      )}
+    </>
   )
 }
 

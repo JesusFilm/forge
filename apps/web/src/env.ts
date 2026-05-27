@@ -122,6 +122,14 @@ export const env = createEnv({
     // not all environments (preview / local) have Mux Data set up; when
     // unset, the player simply does not emit Mux Data beacons.
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: z.string().optional(),
+    // YouVersion Platform app key for the compact Bible Quotes passage embed.
+    // Optional so local/preview environments without a key hide the embed
+    // instead of failing app boot.
+    NEXT_PUBLIC_YOUVERSION_APP_KEY: z.string().optional(),
+    NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.coerce.number().int().positive().default(111),
+    ),
     // U10 — Canonical absolute origin used by the watch-page Share modal to
     // build sharable Copy Link / Copy Embed Code values that DO include
     // `/watch/` (the Next.js basePath). Defaults to `http://localhost:3000`
@@ -160,6 +168,9 @@ export const env = createEnv({
     NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO:
       process.env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO,
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY,
+    NEXT_PUBLIC_YOUVERSION_APP_KEY: process.env.NEXT_PUBLIC_YOUVERSION_APP_KEY,
+    NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID:
+      process.env.NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID,
     NEXT_PUBLIC_CANONICAL_ORIGIN: process.env.NEXT_PUBLIC_CANONICAL_ORIGIN,
   },
 })

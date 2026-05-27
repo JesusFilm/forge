@@ -14,9 +14,87 @@
  *    contract still holds when the section component owns the element.
  */
 
-import { act } from "react"
+import { act, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+const {
+  bibleTextViewMock,
+  emblaApi,
+  emblaHandlers,
+  emblaRefMock,
+  emitEmbla,
+  mockWebEnv,
+  useVersionMock,
+  youVersionProviderMock,
+} = vi.hoisted(() => {
+  const handlers: Record<string, Set<(api: unknown) => void>> = {
+    reInit: new Set(),
+    select: new Set(),
+  }
+  const api = {
+    canScrollNext: vi.fn(() => true),
+    canScrollPrev: vi.fn(() => false),
+    off: vi.fn((event: string, handler: (api: unknown) => void) => {
+      handlers[event]?.delete(handler)
+    }),
+    on: vi.fn((event: string, handler: (api: unknown) => void) => {
+      handlers[event]?.add(handler)
+    }),
+    scrollNext: vi.fn(),
+    scrollPrev: vi.fn(),
+    selectedScrollSnap: vi.fn(() => 0),
+  }
+
+  return {
+    bibleTextViewMock: vi.fn((_props: Record<string, unknown>) => null),
+    emblaApi: api,
+    emblaHandlers: handlers,
+    emblaRefMock: vi.fn(),
+    emitEmbla: (event: "reInit" | "select") => {
+      for (const handler of handlers[event]) handler(api)
+    },
+    mockWebEnv: {
+      NEXT_PUBLIC_YOUVERSION_APP_KEY: undefined as string | undefined,
+      NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID: 111,
+    },
+    useVersionMock: vi.fn((_versionId: number) => ({
+      error: null,
+      loading: false,
+      refetch: vi.fn(),
+      version: {
+        copyright: "Test Bible version copyright.",
+        publisher_url: "https://example.test/bible-version",
+      },
+    })),
+    youVersionProviderMock: vi.fn(
+      (_props: { appKey: string; children: ReactNode }) => null,
+    ),
+  }
+})
+
+vi.mock("@/env", () => ({
+  env: mockWebEnv,
+}))
+
+vi.mock("@youversion/platform-react-ui", () => ({
+  YouVersionProvider: (props: { appKey: string; children: ReactNode }) => {
+    youVersionProviderMock(props)
+    return props.children
+  },
+  BibleTextView: (props: Record<string, unknown>) => {
+    bibleTextViewMock(props)
+    return null
+  },
+}))
+
+vi.mock("@youversion/platform-react-hooks", () => ({
+  useVersion: useVersionMock,
+}))
+
+vi.mock("embla-carousel-react", () => ({
+  default: () => [emblaRefMock, emblaApi],
+}))
 
 import { BibleQuotesSection } from "@/components/watch/BibleQuotesSection"
 import {
@@ -29,6 +107,30 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  mockWebEnv.NEXT_PUBLIC_YOUVERSION_APP_KEY = undefined
+  mockWebEnv.NEXT_PUBLIC_YOUVERSION_DEFAULT_VERSION_ID = 111
+  bibleTextViewMock.mockClear()
+  useVersionMock.mockClear()
+  useVersionMock.mockReturnValue({
+    error: null,
+    loading: false,
+    refetch: vi.fn(),
+    version: {
+      copyright: "Test Bible version copyright.",
+      publisher_url: "https://example.test/bible-version",
+    },
+  })
+  youVersionProviderMock.mockClear()
+  emblaRefMock.mockClear()
+  emblaApi.canScrollNext.mockReturnValue(true)
+  emblaApi.canScrollPrev.mockReturnValue(false)
+  emblaApi.off.mockClear()
+  emblaApi.on.mockClear()
+  emblaApi.scrollNext.mockClear()
+  emblaApi.scrollPrev.mockClear()
+  emblaApi.selectedScrollSnap.mockReturnValue(0)
+  emblaHandlers.reInit.clear()
+  emblaHandlers.select.clear()
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -387,6 +489,128 @@ describe("BibleQuotesSection — Share button", () => {
     })
 
     expect(onShareClick).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("BibleQuotesSection — YouVersion compact embed", () => {
+  it("does not render the YouVersion panel when the public app key is missing", () => {
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[makeCitation({})]}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-youversion"]'),
+    ).toBeNull()
+    expect(bibleTextViewMock).not.toHaveBeenCalled()
+  })
+
+  it("renders the first citation in the compact YouVersion panel when configured", () => {
+    mockWebEnv.NEXT_PUBLIC_YOUVERSION_APP_KEY = "test-yv-app-key"
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[makeCitation({ osisId: "Gal.2.20" })]}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+
+    const panel = container.querySelector(
+      '[data-testid="watch-bible-quotes-youversion"]',
+    )
+    expect(panel).not.toBeNull()
+    expect(panel?.textContent).toContain("Galatians 2:20")
+    expect(panel?.getAttribute("data-reference")).toBe("GAL.2.20")
+    expect(youVersionProviderMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appKey: "test-yv-app-key",
+      }),
+    )
+    expect(bibleTextViewMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reference: "GAL.2.20",
+        versionId: 111,
+      }),
+    )
+    expect(useVersionMock).toHaveBeenCalledWith(111)
+    expect(panel?.textContent).toContain("Test Bible version copyright.")
+    const attribution = container.querySelector(
+      '[data-testid="watch-bible-quotes-youversion-copyright"]',
+    )
+    expect(attribution?.textContent).toBe("Test Bible version copyright.")
+    expect(panel?.querySelector("a")?.getAttribute("href")).toBe(
+      "https://example.test/bible-version",
+    )
+  })
+
+  it("updates the compact YouVersion panel when Embla selects another citation", () => {
+    mockWebEnv.NEXT_PUBLIC_YOUVERSION_APP_KEY = "test-yv-app-key"
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[
+            makeCitation({ documentId: "bc-gal", osisId: "Gal.2.20" }),
+            makeCitation({
+              documentId: "bc-john",
+              bookName: "John",
+              osisId: "John.3.16",
+              chapterStart: 3,
+              verseStart: 16,
+            }),
+          ]}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+
+    expect(emblaApi.on).toHaveBeenCalledWith("select", expect.any(Function))
+
+    act(() => {
+      emblaApi.selectedScrollSnap.mockReturnValue(1)
+      emitEmbla("select")
+    })
+
+    const panel = container.querySelector(
+      '[data-testid="watch-bible-quotes-youversion"]',
+    )
+    expect(panel?.textContent).toContain("John 3:16")
+    expect(panel?.getAttribute("data-reference")).toBe("JHN.3.16")
+    expect(bibleTextViewMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        reference: "JHN.3.16",
+        versionId: 111,
+      }),
+    )
+  })
+
+  it("hides the YouVersion panel when the active slide is the promo card", () => {
+    mockWebEnv.NEXT_PUBLIC_YOUVERSION_APP_KEY = "test-yv-app-key"
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[makeCitation({ osisId: "Gal.2.20" })]}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+
+    const promo = container.querySelector(
+      '[data-testid="watch-bible-quotes-promo"]',
+    ) as HTMLElement | null
+    expect(promo).not.toBeNull()
+
+    act(() => {
+      promo!.click()
+    })
+
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-youversion"]'),
+    ).toBeNull()
   })
 })
 
