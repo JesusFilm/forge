@@ -244,6 +244,32 @@ export function SubtitleTranscript({
     (cue: Cue) => {
       const el = playerRef.current as HTMLMediaElement | null
       if (!el) return
+      // Promote the hero out of muted-preview if it has not committed yet.
+      // The pre-reveal click surface owns the unmute + chrome-revealed
+      // state transition inside HeroPlayer; clicking it from this cue-click
+      // handler chains the user gesture so the browser still treats the
+      // synthetic click as user-initiated and grants unmuted playback.
+      // The synthetic click also resets `currentTime` to 0 inside
+      // HeroPlayer, so we apply the seek AFTER the click to land at the
+      // requested cue.
+      if (typeof document !== "undefined") {
+        const wrapper = document.querySelector(
+          '[data-testid="hero-player-wrapper"]',
+        )
+        const revealed =
+          wrapper?.getAttribute("data-chrome-revealed") === "true"
+        if (!revealed) {
+          const surface = document.querySelector(
+            '[data-testid="hero-player-pre-reveal-click-surface"]',
+          ) as HTMLButtonElement | null
+          surface?.click()
+        }
+      }
+      // Belt-and-suspenders unmute for the already-revealed case (the
+      // click surface above is absent post-reveal). Safe to set on every
+      // click — the user explicitly asked for the moment, so silent
+      // playback is never the desired outcome here.
+      el.muted = false
       el.currentTime = cue.start
       const result = el.play()
       if (result && typeof (result as Promise<void>).then === "function") {
