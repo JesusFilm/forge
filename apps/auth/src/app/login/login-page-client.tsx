@@ -2,20 +2,18 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useState, useSyncExternalStore, type FormEvent } from "react"
+import type { Route } from "next"
+import { useRef, useState, useSyncExternalStore, type FormEvent } from "react"
+import {
+  providerLabels,
+  type LoginMethodId,
+  type LoginProviderId,
+} from "@/auth/login-methods"
 import { WatchFilmCollageBackground } from "./watch-film-collage-background"
 
-const providerLabels = {
-  google: "Google",
-  facebook: "Facebook",
-  apple: "Apple",
-  okta: "Okta",
-} as const
-
-export type LoginProviderId = keyof typeof providerLabels
 export type LoginErrorCode = "account_not_linked" | "credentials" | "forbidden"
 
-type LoginMethodId = LoginProviderId | "email"
+type LoginStep = "email" | "password"
 
 const providerIds = Object.keys(providerLabels) as LoginProviderId[]
 const lastLoginMethodCookieName = "forge_auth_last_login_method"
@@ -50,8 +48,12 @@ export function LoginPageClient({
   requestingAppName?: string | null
 }) {
   const [error, setError] = useState<
-    LoginErrorCode | "credentials" | "start" | null
+    LoginErrorCode | "credentials" | "lookup" | "start" | null
   >(initialError ?? null)
+  const [email, setEmail] = useState("")
+  const [step, setStep] = useState<LoginStep>("email")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
   const lastLoginMethod = useSyncExternalStore(
     subscribeToCookieSnapshot,
     readLastLoginMethod,
@@ -69,14 +71,58 @@ export function LoginPageClient({
             title: "Provider login did not start.",
             detail: "Refresh the page and try again.",
           }
-        : error
-          ? loginErrors[error]
-          : null
+        : error === "lookup"
+          ? {
+              title: "We could not check that email.",
+              detail: "Refresh the page and try again.",
+            }
+          : error
+            ? loginErrors[error]
+            : null
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    if (step === "password") {
+      return
+    }
+
     e.preventDefault()
     setError(null)
-    e.currentTarget.submit()
+    setIsSubmitting(true)
+
+    try {
+      const res = await fetch("/api/auth/login-method", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email,
+          oauth_query: oauthQuery,
+        }),
+      })
+
+      if (!res.ok) {
+        setError("lookup")
+        return
+      }
+
+      const data = (await res.json()) as
+        | { method: "password" }
+        | { method: "provider"; provider: LoginProviderId }
+
+      if (data.method === "provider") {
+        await startSocialSignIn(data.provider)
+        return
+      }
+
+      setStep("password")
+      window.requestAnimationFrame(() => {
+        formRef.current?.querySelector<HTMLInputElement>("#password")?.focus()
+      })
+    } catch {
+      setError("lookup")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   async function resolveSocialRedirect(
@@ -96,6 +142,29 @@ export function LoginPageClient({
     }
 
     return res.redirected && res.url ? res.url : undefined
+  }
+
+  async function startSocialSignIn(providerId: LoginProviderId) {
+    try {
+      const res = await fetch("/api/auth/sign-in/social", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          oauth_query: oauthQuery,
+          provider: providerId,
+        }),
+      })
+      const redirectUrl = await resolveSocialRedirect(res)
+      if (redirectUrl) {
+        window.location.href = redirectUrl
+        return
+      }
+
+      setError("start")
+    } catch {
+      setError("start")
+    }
   }
 
   return (
@@ -163,25 +232,7 @@ export function LoginPageClient({
                     className="relative flex h-[46px] w-full cursor-pointer items-center justify-start gap-3 rounded border border-white/10 bg-transparent px-4 text-left font-medium leading-none text-[#f5f5f4] transition-[background-color,border-color,box-shadow] duration-150 hover:border-white/25 hover:bg-white/[0.04] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.04)] focus-visible:border-[#ef3340] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(239,51,64,0.18)] disabled:cursor-not-allowed disabled:border-white/5 disabled:text-[#78716c] disabled:opacity-70"
                     disabled={!enabled}
                     type="button"
-                    onClick={async () => {
-                      try {
-                        const res = await fetch("/api/auth/sign-in/social", {
-                          method: "POST",
-                          credentials: "include",
-                          headers: { "content-type": "application/json" },
-                          body: JSON.stringify({
-                            oauth_query: oauthQuery,
-                            provider: providerId,
-                          }),
-                        })
-                        const redirectUrl = await resolveSocialRedirect(res)
-                        if (redirectUrl) {
-                          window.location.href = redirectUrl
-                        }
-                      } catch {
-                        setError("start")
-                      }
-                    }}
+                    onClick={() => void startSocialSignIn(providerId)}
                   >
                     <span className="flex size-5 shrink-0 items-center justify-center leading-none">
                       <ProviderLogo providerId={providerId} />
@@ -202,6 +253,7 @@ export function LoginPageClient({
             </div>
 
             <form
+              ref={formRef}
               action="/api/auth/sign-in/email"
               method="post"
               onSubmit={handleSubmit}
@@ -219,27 +271,34 @@ export function LoginPageClient({
                   name="email"
                   type="email"
                   autoComplete="email"
+                  value={email}
+                  onChange={(event) => {
+                    setEmail(event.target.value)
+                    if (step === "password") setStep("email")
+                  }}
                   className="h-[42px] w-full rounded border border-white/10 bg-transparent px-3 text-[#f5f5f4] outline-none focus:border-[#ef3340] focus:shadow-[0_0_0_3px_rgba(239,51,64,0.12)]"
                   required
                 />
               </div>
 
-              <div className="mt-4 grid gap-1.5">
-                <label
-                  className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#d6d3d1]"
-                  htmlFor="password"
-                >
-                  Password
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  className="h-[42px] w-full rounded border border-white/10 bg-transparent px-3 text-[#f5f5f4] outline-none focus:border-[#ef3340] focus:shadow-[0_0_0_3px_rgba(239,51,64,0.12)]"
-                  required
-                />
-              </div>
+              {step === "password" ? (
+                <div className="mt-4 grid gap-1.5">
+                  <label
+                    className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#d6d3d1]"
+                    htmlFor="password"
+                  >
+                    Password
+                  </label>
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    className="h-[42px] w-full rounded border border-white/10 bg-transparent px-3 text-[#f5f5f4] outline-none focus:border-[#ef3340] focus:shadow-[0_0_0_3px_rgba(239,51,64,0.12)]"
+                    required
+                  />
+                </div>
+              ) : null}
 
               {alert ? (
                 <div
@@ -257,9 +316,10 @@ export function LoginPageClient({
 
               <button
                 className="relative mt-5 inline-flex h-[42px] w-full cursor-pointer items-center justify-center gap-2.5 rounded border-0 bg-[#ef3340] font-bold text-white transition-[background-color,box-shadow] duration-150 hover:bg-[#d91f2b] hover:shadow-[0_10px_26px_rgba(239,51,64,0.22)] focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(239,51,64,0.24)] disabled:cursor-not-allowed disabled:opacity-70"
+                disabled={isSubmitting}
                 type="submit"
               >
-                <span>Continue</span>
+                <span>{step === "password" ? "Log in" : "Continue"}</span>
                 {lastLoginMethod === "email" ? <LastUsedBadge /> : null}
               </button>
             </form>
@@ -270,7 +330,11 @@ export function LoginPageClient({
                 : "Don't have an account?"}{" "}
               <Link
                 className="font-apercu font-bold text-[#f5f5f4] underline decoration-white/25 underline-offset-4 transition-colors duration-150 hover:decoration-white"
-                href={`${flow === "signup" ? "/login" : "/signup"}?${oauthQuery}`}
+                href={
+                  `${
+                    flow === "signup" ? "/login" : "/signup"
+                  }?${oauthQuery}` as Route
+                }
               >
                 {flow === "signup" ? "Log in" : "Sign up"}
               </Link>
