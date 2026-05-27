@@ -190,11 +190,12 @@ export function DownloadSheetContent({
     setDownloading(true)
 
     try {
-      const filename =
+      if (!cacheDirectory) throw new Error("Cache directory unavailable")
+      const rawName =
         selected.url.split("/").pop()?.split("?")[0] ?? "video.mp4"
+      const filename = `${selected.documentId}-${rawName}`
       const localUri = `${cacheDirectory}${filename}`
       const { uri } = await downloadAsync(selected.url, localUri)
-      setDownloading(false)
       try {
         await Sharing.shareAsync(uri, {
           mimeType: "video/mp4",
@@ -330,7 +331,13 @@ export function DownloadSheetContent({
 
         <Pressable
           style={({ pressed }) => [styles.touRow, pressed && feedback.pressed]}
-          onPress={() => setTouAccepted((v) => !v)}
+          onPress={() => {
+            if (touAccepted) {
+              setTouAccepted(false)
+            } else {
+              setTermsVisible(true)
+            }
+          }}
           accessibilityRole="checkbox"
           accessibilityState={{ checked: touAccepted }}
           accessibilityLabel="I agree to the Terms of Use"

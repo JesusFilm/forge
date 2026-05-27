@@ -157,8 +157,9 @@ export default function RootLayout() {
 
   const clientRef = useRef(getApolloClient())
   const router = useRouter()
+  const RootWrapper = GestureHandlerRootView ?? View
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <RootWrapper style={{ flex: 1 }}>
       <ErrorBoundary>
         <ApolloProvider client={clientRef.current}>
           <SafeAreaProvider>
@@ -253,6 +254,6 @@ export default function RootLayout() {
           </SafeAreaProvider>
         </ApolloProvider>
       </ErrorBoundary>
-    </GestureHandlerRootView>
+    </RootWrapper>
   )
 }

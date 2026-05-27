@@ -55,10 +55,13 @@ export default function WatchVideoPage() {
   const insets = useSafeAreaInsets()
   const downloadSheetRef = useRef<GorhomBottomSheet>(null)
   const [downloadResetKey, setDownloadResetKey] = useState(0)
+  const downloadPrevIndex = useRef(-1)
   const languageSheetRef = useRef<GorhomBottomSheet>(null)
   const [languageResetKey, setLanguageResetKey] = useState(0)
+  const languagePrevIndex = useRef(-1)
   const subtitleSheetRef = useRef<GorhomBottomSheet>(null)
   const [subtitleResetKey, setSubtitleResetKey] = useState(0)
+  const subtitlePrevIndex = useRef(-1)
   const [activeVariantIndex, setActiveVariantIndex] = useState(0)
   const [subtitleEnabled, setSubtitleEnabled] = useState(false)
   const [snackbarVisible, setSnackbarVisible] = useState(false)
@@ -245,7 +248,9 @@ export default function WatchVideoPage() {
         ref={downloadSheetRef}
         snapPoints={["75%"]}
         onChange={(index) => {
-          if (index >= 0) setDownloadResetKey((k) => k + 1)
+          if (downloadPrevIndex.current === -1 && index >= 0)
+            setDownloadResetKey((k) => k + 1)
+          downloadPrevIndex.current = index
         }}
       >
         <DownloadSheetContent
@@ -262,7 +267,9 @@ export default function WatchVideoPage() {
         ref={languageSheetRef}
         snapPoints={["75%", "100%"]}
         onChange={(index) => {
-          if (index >= 0) setLanguageResetKey((k) => k + 1)
+          if (languagePrevIndex.current === -1 && index >= 0)
+            setLanguageResetKey((k) => k + 1)
+          languagePrevIndex.current = index
         }}
       >
         <LanguageSheetContent
@@ -281,7 +288,9 @@ export default function WatchVideoPage() {
         ref={subtitleSheetRef}
         snapPoints={["75%", "100%"]}
         onChange={(index) => {
-          if (index >= 0) setSubtitleResetKey((k) => k + 1)
+          if (subtitlePrevIndex.current === -1 && index >= 0)
+            setSubtitleResetKey((k) => k + 1)
+          subtitlePrevIndex.current = index
         }}
       >
         <SubtitleSheetContent
