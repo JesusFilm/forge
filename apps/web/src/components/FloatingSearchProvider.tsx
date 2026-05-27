@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -157,7 +158,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     }
   }, [open])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (typeof window === "undefined") return
 
     const handleVisibilityChange = (event: Event) => {
@@ -179,7 +180,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (typeof window === "undefined") return
 
     const handleLanguageSwitcherChange = (event: Event) => {
@@ -204,7 +205,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (typeof window === "undefined") return
 
     const handlePlaybackStateChange = (event: Event) => {
@@ -235,7 +236,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setPlayerChromeVisible(true)
     setPlayerPlaybackState({ playing: false, muted: true, preview: false })
     setHeaderLanguageSwitcher({ visible: false, onClick: null })
