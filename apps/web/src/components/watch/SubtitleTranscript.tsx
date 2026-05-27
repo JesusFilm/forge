@@ -209,6 +209,13 @@ export function SubtitleTranscript({
       if (result && typeof (result as Promise<void>).then === "function") {
         ;(result as Promise<void>).catch(() => {})
       }
+      // Bring the player into view so the user sees the moment they
+      // jumped to. The hero wrapper is sticky-positioned, so
+      // scrollIntoView is a no-op (it's always at viewport top); scroll
+      // the window to the document origin instead.
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" })
+      }
     },
     [playerRef],
   )
