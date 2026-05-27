@@ -275,6 +275,7 @@ export function WatchPageClient({
         subtitles={subtitles}
         playerRef={playerRef}
         audioSlug={currentLanguageSlug}
+        durationSeconds={variant.duration ?? null}
       />
 
       <DownloadModal

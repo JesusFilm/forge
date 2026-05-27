@@ -44,6 +44,35 @@ function decodeEntities(text: string): string {
     .replace(/&nbsp;/g, " ")
 }
 
+/**
+ * SMPTE-offset normalization. Broadcast-authored VTT files often start at
+ * 01:00:00 (the first hour reserved for color bars / leader), so cues run
+ * 01:HH:MM:SS instead of 00:HH:MM:SS. The video file itself plays from
+ * 0:00, so the raw cues never line up with `currentTime`. Detect by
+ * comparing the last cue's end against the variant duration with a 60s
+ * grace; shift by the largest whole-hour offset that brings cues back
+ * inside duration. No-op when duration is unknown.
+ */
+export function normalizeCueOffset(
+  cues: Cue[],
+  durationSeconds: number | null | undefined,
+): Cue[] {
+  if (cues.length === 0) return cues
+  if (!durationSeconds || durationSeconds <= 0) return cues
+  const first = cues[0]!.start
+  const last = cues[cues.length - 1]!.end
+  if (last <= durationSeconds + 60) return cues
+  if (first < 3600) return cues
+  const offset = Math.floor(first / 3600) * 3600
+  const candidateLast = last - offset
+  if (candidateLast < 0 || candidateLast > durationSeconds + 60) return cues
+  return cues.map((c) => ({
+    start: c.start - offset,
+    end: c.end - offset,
+    text: c.text,
+  }))
+}
+
 export function parseVtt(raw: string): Cue[] {
   const cues: Cue[] = []
   const normalized = raw.replace(/\r\n?/g, "\n")
@@ -98,12 +127,20 @@ type SubtitleTranscriptProps = {
   subtitles: WatchSubtitle[]
   playerRef: RefObject<MuxPlayerRef | null>
   audioSlug?: string | null
+  /**
+   * Selected variant's duration in seconds. Used to detect and unwind
+   * SMPTE-style 1-hour authoring offsets in the VTT timing (see
+   * `normalizeCueOffset`). Optional — when omitted, cues render as
+   * authored.
+   */
+  durationSeconds?: number | null
 }
 
 export function SubtitleTranscript({
   subtitles,
   playerRef,
   audioSlug,
+  durationSeconds,
 }: SubtitleTranscriptProps) {
   const initialSlug = useMemo(
     () => pickInitialSubtitleSlug(subtitles, audioSlug ?? null),
@@ -162,14 +199,17 @@ export function SubtitleTranscript({
         return r.text()
       })
       .then((text) => {
-        setLoaded({ vttSrc: activeVttSrc, cues: parseVtt(text) })
+        setLoaded({
+          vttSrc: activeVttSrc,
+          cues: normalizeCueOffset(parseVtt(text), durationSeconds),
+        })
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === "AbortError") return
         setLoaded({ vttSrc: activeVttSrc, cues: null })
       })
     return () => controller.abort()
-  }, [activeVttSrc])
+  }, [activeVttSrc, durationSeconds])
 
   useEffect(() => {
     const el = playerRef.current as HTMLMediaElement | null

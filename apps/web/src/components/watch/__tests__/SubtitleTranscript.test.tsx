@@ -10,7 +10,10 @@
 
 import { describe, expect, test } from "vitest"
 
-import { parseVtt } from "@/components/watch/SubtitleTranscript"
+import {
+  normalizeCueOffset,
+  parseVtt,
+} from "@/components/watch/SubtitleTranscript"
 
 describe("parseVtt", () => {
   test("parses a happy-path cue", () => {
@@ -104,5 +107,52 @@ Comma decimals`
 
   test("returns empty array for header-only input", () => {
     expect(parseVtt("WEBVTT\n\n")).toEqual([])
+  })
+})
+
+describe("normalizeCueOffset", () => {
+  test("subtracts one-hour SMPTE offset when cues fall outside duration", () => {
+    // Real-world example from Arclight: the-covenant Amharic VTT has
+    // cues starting at 01:00:25 (3625s) while the variant is 5730s
+    // long. Subtracting 3600s lands the cues at 25s..1521s — inside
+    // the playable range.
+    const cues = [
+      { start: 3625, end: 3630, text: "first" },
+      { start: 9120, end: 9125, text: "last" },
+    ]
+    expect(normalizeCueOffset(cues, 5730)).toEqual([
+      { start: 25, end: 30, text: "first" },
+      { start: 5520, end: 5525, text: "last" },
+    ])
+  })
+
+  test("preserves cues that already fit within duration", () => {
+    const cues = [
+      { start: 5, end: 10, text: "intro" },
+      { start: 5700, end: 5710, text: "outro" },
+    ]
+    expect(normalizeCueOffset(cues, 5730)).toEqual(cues)
+  })
+
+  test("no-ops when duration is unknown", () => {
+    const cues = [{ start: 3625, end: 3630, text: "offset" }]
+    expect(normalizeCueOffset(cues, null)).toEqual(cues)
+    expect(normalizeCueOffset(cues, undefined)).toEqual(cues)
+    expect(normalizeCueOffset(cues, 0)).toEqual(cues)
+  })
+
+  test("no-ops on empty cue list", () => {
+    expect(normalizeCueOffset([], 5730)).toEqual([])
+  })
+
+  test("does not shift when shifted result would underflow zero", () => {
+    // First cue starts at 5s — no whole-hour offset applies even if
+    // the last cue overshoots duration; the safer fallback is to
+    // render cues as authored.
+    const cues = [
+      { start: 5, end: 10, text: "ok" },
+      { start: 7000, end: 7005, text: "way past" },
+    ]
+    expect(normalizeCueOffset(cues, 1000)).toEqual(cues)
   })
 })
