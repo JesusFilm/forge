@@ -58,31 +58,35 @@ events) is on the `MuxMediaProps` interface they share.
 
 ## Guidance
 
-### 1. The dual-mount lives inside a `process.env`-folded ternary
+### 1. The dual-mount uses `next/dynamic` + a runtime `env.X` flag
 
 The hero conditionally renders one backend or the other based on
-`NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO`. Reading it through the t3-oss
-`env` wrapper (`env.X`) keeps the value behind a runtime object access,
-so Webpack can't fold the unused branch out of the bundle. Reading
-`process.env.NEXT_PUBLIC_*` directly lets Next.js substitute the value
-at build time, and the unused branch becomes dead code:
+`env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO` (the t3-oss `env` wrapper).
+Each backend is wrapped in `next/dynamic({ ssr: false })` so only the
+rendered branch's chunk activates over the wire:
 
 ```tsx
-const MUX_VIDEO_FLAG_ON =
-  process.env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO === "true"
+const MuxPlayer = dynamic(
+  () => import("@forge/video-player/mux-player"),
+  { ssr: false },
+) as typeof MuxPlayerType
 
-const MuxPlayer = !MUX_VIDEO_FLAG_ON
-  ? (dynamic(() => import("@forge/video-player/mux-player"), { ssr: false }) as ...)
-  : (null as never)
+const MuxVideo = dynamic(
+  () => import("@forge/video-player/mux-video"),
+  { ssr: false },
+) as typeof MuxVideoType
 
-const MuxVideo = MUX_VIDEO_FLAG_ON
-  ? (dynamic(() => import("@forge/video-player/mux-video"), { ssr: false }) as ...)
-  : (null as never)
+// …in JSX:
+{env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO ? <MuxVideo …/> : <MuxPlayer …/>}
 ```
 
-The boot-time Zod validation in `apps/web/src/env.ts` still runs (so
-operators get a misconfig warning at deploy time) — this branch only
-opts out of the _runtime_ indirection.
+A `process.env`-folded ternary at module top can produce stricter dead-
+code elimination (the inactive chunk never lands on disk), but it
+breaks runtime flag toggling in tests — vitest can't mutate
+`process.env.NEXT_PUBLIC_*` after the module has been substituted. The
+runtime `env.X` check keeps both chunks on disk but the browser only
+fetches the active one, which is what the simulated-mobile waterfall
+measures anyway.
 
 ### 2. Subpath exports are load-bearing
 
@@ -102,9 +106,7 @@ to expose subpath exports on the workspace package:
 
 Dynamic-importing via `@forge/video-player/mux-player` and
 `@forge/video-player/mux-video` resolves to distinct module specifiers,
-so Turbopack emits one chunk per backend. Combined with the
-`MUX_VIDEO_FLAG_ON` guard above, only the active backend's chunk is
-emitted at build time.
+so Turbopack emits one chunk per backend.
 
 ### 3. Autoplay-blocked detection moves to `play()` Promise rejection
 
