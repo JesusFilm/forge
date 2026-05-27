@@ -68,6 +68,7 @@ describe("POST /api/internal/search-traces/sample", () => {
         llmLabelVersion: null,
         llmLabelReason: null,
         llmLabeledAt: null,
+        rawExpiresAt: "2026-06-23T00:00:00.000Z",
         createdAt: "2026-05-25T00:00:00.000Z",
       },
     ])
@@ -98,6 +99,7 @@ describe("POST /api/internal/search-traces/sample", () => {
           routeSource: "rest",
           searchMode: "hybrid",
           queryQualityLabel: "valid_viewer_intent",
+          rawExpiresAt: "2026-06-23T00:00:00.000Z",
         }),
       ],
       generatedAt: expect.any(String),

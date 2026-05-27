@@ -21,11 +21,12 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 - Services own mutations, raw SQL (pgvector), and ABAC enforcement.
 - Admin owns live search orchestration, query embedding generation, vector
   storage, production search traces, raw trace retention, aggregates, and the
-  internal trace sampling contract. Trace labels are deterministic rules-first
-  with privacy/sensitivity redaction kept separate from query usefulness and
-  abuse labels. Optional LLM classification is offline/eval-only and stores
-  separate provenance. Mastra samples later through authenticated Admin HTTP
-  only; it must not import Admin code or read Admin Postgres.
+  internal trace sampling/catalog/candidate contracts. Trace labels are
+  deterministic rules-first with privacy/sensitivity redaction kept separate
+  from query usefulness and abuse labels. Optional LLM classification is
+  offline/eval-only and stores separate provenance. Mastra reads and writes
+  search-eval data through authenticated Admin HTTP only; it must not import
+  Admin code or read Admin Postgres.
 - Admin auth must not depend on shared `.jesusfilm.org` cookies or
   admin-local credential handlers.
 - Every Pothos type is classified `abac-gated` or `public-shape` — `abac-gated`
@@ -51,7 +52,8 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 - Raw production search traces may retain query text only after first-pass
   privacy labeling/redaction and for less than 30 days. Aggregates survive
   without query text; never store bearer tokens, cookies, IPs, user ids, or
-  caller-supplied key ids in trace tables.
+  caller-supplied key ids in trace tables. Trace-derived generated eval
+  candidates inherit the same raw expiry and stay staged until human promotion.
 
 ## Workflow
 

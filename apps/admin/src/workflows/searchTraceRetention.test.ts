@@ -14,6 +14,8 @@ describe("runSearchTraceRetention workflow", () => {
   it("runs raw search trace purge as a workflow step", async () => {
     const result = {
       purgedCount: 5,
+      purgedRawTraceCount: 3,
+      purgedGeneratedCandidateCount: 2,
       purgedBefore: "2026-05-30T00:00:00.000Z",
     }
     job.runSearchTraceRetentionJob.mockResolvedValueOnce(result)

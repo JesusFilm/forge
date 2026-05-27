@@ -32,6 +32,11 @@ Origin documents:
   indexes, target resolution, public search contracts, and search retrieval.
 - The experience embedding workflow follows the same ownership split: Mastra
   generates and validates vectors, Admin stores them and serves retrieval.
+- The eval query generation workflow is offline only. It reads compact Admin
+  trace/catalog context over authenticated HTTP, generates catalog-derived,
+  locale-quality, and trace-sampled candidates, and stores staged candidates
+  back in Admin. It must not enter the live search path or promote candidates
+  into permanent regression gates.
 - Transcript, scene, and experience workflows share provider-result validation
   for count alignment, finite vector values, and configured dimensions. Invalid
   provider output must throw inside the workflow so Studio records a failed run.
@@ -76,14 +81,34 @@ pnpm --filter @forge/mastra lint
 | `SCENE_EMBEDDING_PROVIDER`               | Provider stamp for scene embeddings. Defaults to `openai`.                                                                 |
 | `EXPERIENCE_EMBEDDING_MODEL`             | Model stamp for experience embeddings. Defaults to `openai/text-embedding-3-small`.                                        |
 | `EXPERIENCE_EMBEDDING_PROVIDER`          | Provider stamp for experience embeddings. Defaults to `openai`.                                                            |
+| `EVAL_QUERY_GENERATION_MODEL`            | OpenRouter chat model stamp for locale-quality eval query generation. Defaults to `anthropic/claude-haiku-4-5`.            |
 | `ADMIN_TRANSCRIPT_INGEST_URL`            | Admin internal transcript ingest endpoint. Required in production runtime.                                                 |
 | `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY` | Bearer key Mastra presents to Admin transcript ingest. Required in production runtime.                                     |
 | `ADMIN_SCENE_INGEST_URL`                 | Admin internal scene ingest endpoint. Required in production runtime.                                                      |
 | `ADMIN_MASTRA_SCENE_INGEST_API_KEY`      | Bearer key Mastra presents to Admin scene ingest. Required in production runtime.                                          |
 | `ADMIN_EXPERIENCE_INGEST_URL`            | Admin internal experience ingest endpoint. Required in production runtime.                                                 |
 | `ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY` | Bearer key Mastra presents to Admin experience ingest. Required in production runtime.                                     |
+| `ADMIN_SEARCH_TRACE_SAMPLE_URL`          | Admin internal trace sample endpoint for eval query generation. Required only when running that workflow.                  |
+| `ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL`  | Admin internal compact catalog context endpoint for eval query generation. Required only when running that workflow.       |
+| `ADMIN_SEARCH_EVAL_CANDIDATES_URL`       | Admin internal generated-candidate storage endpoint for eval query generation. Required only when running that workflow.   |
+| `ADMIN_SEARCH_EVAL_API_KEY`              | Bearer key Mastra presents to Admin search-eval routes. Must match Admin's dedicated sampling/eval key allowlist.          |
 | `PORT`                                   | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                          |
 | `MASTRA_STUDIO_PATH`                     | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                          |
+
+## Eval query generation
+
+The service route `POST /forge-eval-query-generation` is protected by
+`MASTRA_SERVICE_API_KEYS` and launches the `eval-query-generation` workflow.
+Input may optionally restrict `sources` to any of `catalog`, `locale_quality`,
+or `trace`, plus `locales`, `traceLimit`, `catalogLimit`, and
+`localeQueryCount`.
+
+Admin remains the data owner. Mastra calls only the configured Admin HTTP
+contracts, validates responses with local Zod schemas, and stores generated
+candidates as staged Admin rows with source, locale, provenance, source
+anchors, advisory judge summary, generation model/provider, Mastra run id, and
+promotion status. Trace-derived candidates keep Admin's raw trace expiry so the
+retention job can remove them before the 30-day ceiling.
 
 ## Railway Storage
 

@@ -58,12 +58,14 @@ rg -n "createWorkflow|createStep|registerApiRoute|observability" apps/mastra/src
 
 ## What To Build
 
-1. Add a Mastra offline search eval workflow that loads candidate/promoted eval
-   cases and calls Admin search APIs as the execution primitive.
+1. Add a Mastra offline search eval workflow that loads seed baseline prompts,
+   candidate/promoted eval cases, and calls Admin search APIs as the execution
+   primitive.
 2. Preserve or port the existing judge calibration behavior so reports do not
    confuse judge drift with search regressions.
 3. Track eval run metadata in Mastra: strategy version, query set version,
-   Admin search endpoint/version, judge model, locale mix, and cost summary.
+   prompt-set source, Admin search endpoint/version, judge model, locale mix,
+   and cost summary.
 4. Produce reports that separate wins, losses, ties, both-irrelevant cases,
    judge disagreements, search failures, and trace-derived candidate behavior.
 5. Support comparing a baseline strategy to a candidate strategy without

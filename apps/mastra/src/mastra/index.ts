@@ -34,6 +34,10 @@ import {
   handleExperienceEmbeddingRouteRequest,
 } from "./workflows/experience-embedding"
 import {
+  evalQueryGenerationWorkflow,
+  handleEvalQueryGenerationRouteRequest,
+} from "./workflows/eval-query-generation"
+import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
@@ -72,6 +76,7 @@ export const mastra = new Mastra({
     transcriptEmbeddingWorkflow,
     sceneEmbeddingWorkflow,
     experienceEmbeddingWorkflow,
+    evalQueryGenerationWorkflow,
   },
   logger: new PinoLogger({
     name: "ForgeMastra",
@@ -164,6 +169,21 @@ export const mastra = new Mastra({
         method: "POST",
         handler: async (c) => {
           const outcome = await handleExperienceEmbeddingRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-eval-query-generation", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleEvalQueryGenerationRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),

@@ -28,6 +28,8 @@ export type SearchTraceRetentionWorkflowInput = {
 
 export type SearchTraceRetentionJobResult = {
   purgedCount: number
+  purgedRawTraceCount: number
+  purgedGeneratedCandidateCount: number
   purgedBefore: string
 }
 
@@ -117,11 +119,13 @@ export async function runSearchTraceRetentionJob(
         where: { id: input.ledgerRunId },
         data: {
           status: WorkflowRunStatus.SUCCEEDED,
-          summary: `Purged ${result.purgedCount} expired raw search trace(s).`,
+          summary: `Purged ${result.purgedCount} expired search trace artifact(s).`,
           finishedAt: new Date(),
           durationMs: Date.now() - startedAt,
           details: {
             purgedCount: result.purgedCount,
+            purgedRawTraceCount: result.purgedRawTraceCount,
+            purgedGeneratedCandidateCount: result.purgedGeneratedCandidateCount,
             purgedBefore: result.purgedBefore,
           } satisfies Prisma.InputJsonValue,
         },
