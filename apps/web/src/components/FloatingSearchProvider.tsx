@@ -15,7 +15,7 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { usePathname, useRouter } from "next/navigation"
-import { Bot, CircleHelp, Globe, MessageCircle, UserRound } from "lucide-react"
+import { Globe } from "lucide-react"
 
 import { runSearch } from "@/lib/search-actions"
 import type { SearchResult } from "@/lib/search"
@@ -119,6 +119,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     useState<WatchPlayerPlaybackStateDetail>({
       playing: false,
       muted: true,
+      preview: false,
     })
   const [headerLanguageSwitcher, setHeaderLanguageSwitcher] =
     useState<HeaderLanguageSwitcherState>({
@@ -218,6 +219,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       setPlayerPlaybackState({
         playing: detail.playing,
         muted: detail.muted,
+        preview: detail.preview === true,
       })
     }
 
@@ -235,7 +237,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setPlayerChromeVisible(true)
-    setPlayerPlaybackState({ playing: false, muted: true })
+    setPlayerPlaybackState({ playing: false, muted: true, preview: false })
     setHeaderLanguageSwitcher({ visible: false, onClick: null })
     setHeaderHovered(false)
   }, [pathname])
@@ -477,9 +479,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const headerChromeHidden =
     modalChromeHidden || (!playerChromeVisible && !headerHovered)
   const searchChromeVisible = !headerChromeHidden
-  const headerBackdropHidden =
-    modalChromeHidden ||
-    ((playerPlayingWithSound || !playerChromeVisible) && !headerHovered)
+  const headerBackdropHidden = modalChromeHidden || !playerPlaybackState.preview
   const headerHoverZoneActive =
     !modalChromeHidden && (playerPlayingWithSound || !playerChromeVisible)
 
@@ -513,13 +513,18 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         <div
           inert={modalChromeHidden || undefined}
           aria-hidden={modalChromeHidden || undefined}
+          className={
+            modalChromeHidden
+              ? "blur-[12px] transition-[filter] duration-200"
+              : "transition-[filter] duration-200"
+          }
         >
           {children}
         </div>
         <div
           aria-hidden="true"
           data-testid="floating-header-backdrop"
-          className={`pointer-events-none fixed inset-x-0 top-0 z-40 h-32 bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] backdrop-blur-[10px] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)] transition-opacity duration-300 ease-out ${
+          className={`pointer-events-none fixed inset-x-0 top-0 z-40 h-[calc(6rem+env(safe-area-inset-top,0px))] bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] backdrop-blur-[10px] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)] transition-opacity duration-300 ease-out md:h-[calc(8rem+env(safe-area-inset-top,0px))] ${
             headerBackdropHidden ? "opacity-0" : "opacity-100"
           }`}
         />
@@ -527,7 +532,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           aria-hidden="true"
           data-testid="floating-header-hover-zone"
           onPointerEnter={() => setHeaderHovered(true)}
-          className={`fixed inset-x-0 top-0 z-[45] h-36 ${
+          className={`fixed inset-x-0 top-0 z-[45] h-[calc(6.75rem+env(safe-area-inset-top,0px))] md:h-[calc(9rem+env(safe-area-inset-top,0px))] ${
             headerHoverZoneActive
               ? "pointer-events-auto"
               : "pointer-events-none"
@@ -535,30 +540,29 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         />
         <FloatingSearchBar />
         {headerLanguageSwitcher.visible && headerLanguageSwitcher.onClick ? (
-          <>
-            <WatchHeaderAnimatedIcon
-              hidden={headerChromeHidden}
-              pinned={pinned}
+          <button
+            type="button"
+            data-testid="floating-header-language-button"
+            onClick={headerLanguageSwitcher.onClick}
+            aria-label="Change audio language"
+            title="Change audio language"
+            inert={headerChromeHidden || undefined}
+            aria-hidden={headerChromeHidden || undefined}
+            className={`fixed right-10 z-50 inline-flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[top,opacity,color] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
+              pinned
+                ? "top-[calc(env(safe-area-inset-top,0px)+1rem)]"
+                : "top-[calc(env(safe-area-inset-top,0px)+2rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
+            } ${
+              headerChromeHidden
+                ? "opacity-0 pointer-events-none"
+                : "opacity-100"
+            }`}
+          >
+            <Globe
+              aria-hidden
+              className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
             />
-            <button
-              type="button"
-              data-testid="floating-header-language-button"
-              onClick={headerLanguageSwitcher.onClick}
-              aria-label="Change audio language"
-              title="Change audio language"
-              inert={headerChromeHidden || undefined}
-              aria-hidden={headerChromeHidden || undefined}
-              className={`fixed right-10 z-50 inline-flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[top,opacity,color] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
-                pinned ? "top-4" : "top-12"
-              } ${
-                headerChromeHidden
-                  ? "opacity-0 pointer-events-none"
-                  : "opacity-100"
-              }`}
-            >
-              <Globe aria-hidden className="h-6 w-6" />
-            </button>
-          </>
+          </button>
         ) : null}
         <Link
           href={"/" as Route}
@@ -573,7 +577,9 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
             void search("")
           }}
           className={`fixed ${WATCH_PAGE_LEFT_RAIL_CLASSES} z-50 flex h-[52px] items-center transition-[top,opacity] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 ${
-            pinned ? "top-4" : "top-12"
+            pinned
+              ? "top-[calc(env(safe-area-inset-top,0px)+1rem)]"
+              : "top-[calc(env(safe-area-inset-top,0px)+2rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
           } ${
             headerChromeHidden ? "opacity-0 pointer-events-none" : "opacity-100"
           }`}
@@ -592,40 +598,5 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           : null}
       </FloatingSearchPinnedContext.Provider>
     </FloatingSearchContext.Provider>
-  )
-}
-
-function WatchHeaderAnimatedIcon({
-  hidden,
-  pinned,
-}: {
-  hidden: boolean
-  pinned: boolean
-}) {
-  const icons = [
-    { Icon: MessageCircle, label: "Chat" },
-    { Icon: UserRound, label: "Person" },
-    { Icon: Bot, label: "AI" },
-    { Icon: CircleHelp, label: "Question" },
-  ]
-
-  return (
-    <div
-      aria-hidden="true"
-      data-testid="floating-header-animated-icon"
-      inert={hidden || undefined}
-      className={`pointer-events-none fixed right-24 z-50 inline-flex h-[52px] w-12 items-center justify-center rounded-full text-stone-100 transition-[top,opacity] duration-300 ease-out ${
-        pinned ? "top-4" : "top-12"
-      } ${hidden ? "opacity-0" : "opacity-100"}`}
-    >
-      {icons.map(({ Icon, label }, index) => (
-        <Icon
-          key={label}
-          data-testid={`floating-header-animated-icon-${index}`}
-          className="absolute h-6 w-6 animate-watch-header-icon-cycle"
-          style={{ animationDelay: `${index * 1.2}s` }}
-        />
-      ))}
-    </div>
   )
 }

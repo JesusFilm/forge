@@ -13,7 +13,10 @@ import { ChevronDown, Mail as MailIcon } from "lucide-react"
 
 import { MessageCircleIcon } from "@/components/sections/RelatedQuestions"
 import { Button } from "@/components/ui/button"
-import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
+import {
+  WATCH_PILL_BUTTON_CLASS,
+  WATCH_SECTION_EYEBROW_CLASS,
+} from "@/components/watch/watch-section-styles"
 
 const PLACEHOLDER_QUESTION =
   "If you could ask the creator of this video a question, what would it be?"
@@ -76,11 +79,13 @@ export function WatchStudyQuestions({ prompts }: { prompts: string[] }) {
           id="watch-related-questions-heading"
           className={`flex shrink-0 items-center gap-4 ${WATCH_SECTION_EYEBROW_CLASS}`}
         >
-          Related Questions
+          <span className="md:hidden">Questions</span>
+          <span className="hidden md:inline">Related Questions</span>
         </h2>
         <Button
           variant="pill"
           nativeButton={false}
+          className={WATCH_PILL_BUTTON_CLASS}
           aria-label="Ask yours"
           data-testid="watch-study-questions-ask-yours"
           render={
@@ -136,7 +141,7 @@ function StudyQuestionRow({
       >
         <div className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-6 text-left">
           <WatchQuestionIcon />
-          <h3 className="text-base leading-[1.6] font-semibold text-stone-100 transition-colors group-hover:text-brand-red md:text-lg md:text-balance">
+          <h3 className="text-base leading-[1.6] font-normal text-stone-100 transition-colors group-hover:text-brand-red md:text-lg md:text-balance">
             {question}
           </h3>
         </div>
@@ -157,7 +162,7 @@ function StudyQuestionRow({
         >
           <p
             data-testid={`${testId}-fallback-body`}
-            className="leading-relaxed text-stone-200/80"
+            className="leading-relaxed font-normal text-stone-200/80"
           >
             {FALLBACK_BODY}
           </p>
@@ -165,6 +170,7 @@ function StudyQuestionRow({
             <Button
               variant="pill"
               nativeButton={false}
+              className={WATCH_PILL_BUTTON_CLASS}
               data-testid="watch-study-questions-chat-cta"
               render={
                 <a
@@ -180,6 +186,7 @@ function StudyQuestionRow({
             <Button
               variant="pill"
               nativeButton={false}
+              className={WATCH_PILL_BUTTON_CLASS}
               data-testid="watch-study-questions-ask-bible-cta"
               render={
                 <a

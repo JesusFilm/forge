@@ -329,7 +329,7 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     const bodyTexture = bodyZone!.querySelector(
       "[data-testid='watch-body-texture']",
     )
-    expect(bodyTexture?.getAttribute("class")).toContain("opacity-70")
+    expect(bodyTexture?.getAttribute("class")).toContain("opacity-30")
   })
 
   it("HeroPlayer placeholder serializes playbackId and hls into data-content", () => {

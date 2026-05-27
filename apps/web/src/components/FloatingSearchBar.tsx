@@ -14,7 +14,9 @@ export function FloatingSearchBar() {
 
   const display = query.trim().length > 0 ? query : "Search or browse topics…"
   const isPlaceholder = query.trim().length === 0
-  const topClass = pinned ? "top-4" : "top-12"
+  const topClass = pinned
+    ? "top-[calc(env(safe-area-inset-top,0px)+1rem)]"
+    : "top-[calc(env(safe-area-inset-top,0px)+2rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
   // Keep the bar fully hidden (and non-interactive) for the entire close
   // animation — not just while `open` is true — so it never appears in the
   // tab order while the overlay is still visible above it.
@@ -32,7 +34,7 @@ export function FloatingSearchBar() {
         onClick={() => setOpen(true)}
         inert={chromeHidden || undefined}
         aria-hidden={chromeHidden || undefined}
-        className={`fixed right-36 z-50 inline-flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[top,opacity,color] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none sm:hidden ${topClass} ${openClass}`}
+        className={`fixed right-24 z-50 inline-flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[top,opacity,color] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none sm:hidden ${topClass} ${openClass}`}
       >
         <Search
           aria-hidden

@@ -22,8 +22,10 @@ import { getViewerId } from "@/lib/viewer-id"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+  WATCH_PLAYER_PLAYBACK_STATE_EVENT,
   type WatchHeaderLanguageSwitcherDetail,
   type WatchPlayerChromeVisibilityDetail,
+  type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { SpinnerIcon } from "@/components/ui/spinner"
@@ -207,6 +209,31 @@ export function HeroPlayer({
       publishChromeVisibility(true)
     }
   }, [chromeRevealed, publishChromeVisibility])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const currentPlayer = playerRef.current
+    window.dispatchEvent(
+      new CustomEvent<WatchPlayerPlaybackStateDetail>(
+        WATCH_PLAYER_PLAYBACK_STATE_EVENT,
+        {
+          detail: {
+            playing: currentPlayer ? !currentPlayer.paused : false,
+            muted: chromeRevealed ? !!currentPlayer?.muted : true,
+            preview: !chromeRevealed,
+          },
+        },
+      ),
+    )
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent<WatchPlayerPlaybackStateDetail>(
+          WATCH_PLAYER_PLAYBACK_STATE_EVENT,
+          { detail: { playing: false, muted: true, preview: false } },
+        ),
+      )
+    }
+  }, [chromeRevealed])
 
   // Tracks the first paint where Mux Player has buffered enough to render the
   // muted-loop preview. Without this, the wrapper sits at the player's initial

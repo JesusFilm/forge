@@ -148,17 +148,25 @@ describe("SiblingCarousel — happy path", () => {
       "[data-testid='sibling-carousel-item']",
     )
     expect(items.length).toBe(10)
+    const firstItemSlot = items[0]?.closest("[data-slot='carousel-item']")
+    expect(firstItemSlot?.className).toContain("basis-[48%]")
+    expect(firstItemSlot?.className).toContain("sm:basis-[36%]")
+    expect(firstItemSlot?.className).toContain("md:basis-1/3")
 
     const rail = container.querySelector("[data-block-type='SiblingCarousel']")
-    expect(rail?.className).toContain("w-screen")
-    expect(rail?.className).toContain("left-1/2")
-    expect(rail?.className).toContain("-translate-x-1/2")
+    expect(rail?.className).toContain("-mx-10")
+    expect(rail?.className).toContain("w-[calc(100%+5rem)]")
+    expect(rail?.className).toContain("md:mx-0")
     expect(rail?.className).toContain("md:w-full")
-    expect(rail?.className).toContain("md:translate-x-0")
 
     const header = rail?.querySelector("header")
     expect(header?.className).toContain("px-10")
     expect(header?.className).toContain("md:px-0")
+    const content = container.querySelector(
+      "[data-slot='carousel-content'] > div",
+    )
+    expect(content?.className).toContain("pl-10")
+    expect(content?.className).toContain("md:pl-0")
 
     // Active item carries data-active="true" and renders the "Playing now" pill.
     const active = container.querySelector(
@@ -168,14 +176,9 @@ describe("SiblingCarousel — happy path", () => {
     expect(active!.className).toContain("border-white")
     expect(active!.className).toContain("aspect-square")
     expect(active!.className).not.toContain("aspect-[1.58/1]")
-    expect(active!.className).toContain("after:inset-0")
-    expect(active!.className).toContain("after:border-4")
-    expect(active!.className).toContain(
-      "after:rounded-[calc(theme(borderRadius.lg)-4px)]",
-    )
-    expect(active!.className).toContain("after:z-40")
-    expect(active!.className).toContain("inset_0_1px_0_rgba")
-    expect(active!.className).toContain("inset_0_0_0_1px_rgba")
+    expect(active!.className).not.toContain("after:inset-0")
+    expect(active!.className).not.toContain("after:border-4")
+    expect(active!.className).toContain("shadow-[0_2px_6px_rgba")
     // 2-segment route shape: `/{slug}/{locale}` — the parent slug segment
     // was removed when the watch route migrated to flat `[slug]/[locale]`.
     expect(active!.getAttribute("data-href")).toBe("/child-3-slug/english")
@@ -210,7 +213,10 @@ describe("SiblingCarousel — happy path", () => {
     const label = container.querySelector(
       "[data-testid='sibling-carousel-label']",
     )
-    expect(label?.textContent).toBe("Clip 3 of 10")
+    const mobileLabel = label?.querySelector(".md\\:hidden")
+    const desktopLabel = label?.querySelector(".hidden.md\\:inline")
+    expect(mobileLabel?.textContent).toBe("3 of 10")
+    expect(desktopLabel?.textContent).toBe("Clip 3 of 10")
   })
 
   it("renders an in-app href without the /watch/ basePath prefix", () => {
@@ -349,7 +355,10 @@ describe("SiblingCarousel — edge cases", () => {
     const label = container.querySelector(
       "[data-testid='sibling-carousel-label']",
     )
-    expect(label?.textContent).toBe("Clip 12 of 15")
+    const mobileLabel = label?.querySelector(".md\\:hidden")
+    const desktopLabel = label?.querySelector(".hidden.md\\:inline")
+    expect(mobileLabel?.textContent).toBe("12 of 15")
+    expect(desktopLabel?.textContent).toBe("Clip 12 of 15")
   })
 
   it("renders an empty currentLocale segment when params lack `locale`", () => {

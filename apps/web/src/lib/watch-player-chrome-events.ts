@@ -11,6 +11,7 @@ export const WATCH_PLAYER_PLAYBACK_STATE_EVENT =
 export type WatchPlayerPlaybackStateDetail = {
   playing: boolean
   muted: boolean
+  preview?: boolean
 }
 
 export const WATCH_HEADER_LANGUAGE_SWITCHER_EVENT =

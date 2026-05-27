@@ -205,7 +205,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(typeof metadata?.viewer_user_id).toBe("string")
   })
 
-  it("uses a reduced viewport-relative hero height before sound playback so the carousel is visible on load", async () => {
+  it("uses the sound-on player height before reveal so Play with Sound does not resize the hero", async () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -213,10 +213,10 @@ describe("HeroPlayer — initial mount", () => {
     const wrapper = container.querySelector(
       '[data-testid="hero-player-wrapper"]',
     ) as HTMLDivElement
-    expect(wrapper.className).toContain("h-[72svh]")
-    expect(wrapper.className).toContain("min-h-[420px]")
-    expect(wrapper.className).toContain("max-h-[900px]")
-    expect(wrapper.className).not.toContain("aspect-video")
+    expect(wrapper.className).toContain("h-[calc(100svh-300px)]")
+    expect(wrapper.className).toContain("min-h-[400px]")
+    expect(wrapper.className).toContain("overflow-x-clip")
+    expect(wrapper.className).not.toContain("md:max-w-[calc(100svh*16/9)]")
 
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
@@ -225,8 +225,9 @@ describe("HeroPlayer — initial mount", () => {
       pill.click()
     })
 
-    expect(wrapper.className).toContain("aspect-video")
-    expect(wrapper.className).not.toContain("h-[72svh]")
+    expect(wrapper.className).toContain("h-[calc(100svh-300px)]")
+    expect(wrapper.className).toContain("min-h-[400px]")
+    expect(wrapper.className).toContain("overflow-hidden")
   })
 
   it("renders a 'Play with Sound' pill (default state) above the player", () => {
@@ -241,6 +242,7 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-overlay"]',
     )
     expect(pill).not.toBeNull()
+    expect(overlay?.getAttribute("class")).toContain("bottom-0")
     expect(overlay?.getAttribute("class")).toContain("pb-12")
     expect(pill?.getAttribute("data-state")).toBe("play-with-sound")
     expect(pill?.textContent).toContain("Play with Sound")

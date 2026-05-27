@@ -138,7 +138,7 @@ export function SearchOverlay() {
       aria-modal="true"
       aria-label="Search and browse videos"
       onClick={() => closeAndKeepQuery()}
-      className={`fixed inset-0 overflow-hidden ${closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"}`}
+      className={`fixed inset-0 h-dvh min-h-dvh overflow-visible ${closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"}`}
       style={{
         zIndex: 9999,
         backgroundColor: "rgba(0, 0, 0, 0.75)",
@@ -146,9 +146,9 @@ export function SearchOverlay() {
         WebkitBackdropFilter: "blur(12px)",
       }}
     >
-      {/* Floating top bar: input is viewport-centered via mx-auto; mobile
-          logo and close button are absolutely positioned so they don't push
-          the input off-center. Outer padding (px-4 sm:px-6) matches the
+      {/* Floating top bar: input is viewport-centered via mx-auto. On mobile
+          the logo is in normal flow above the field so it cannot overlap the
+          input. Outer padding (px-4 sm:px-6) matches the
           floating searchbar's side margin (w-[calc(100%-2rem)]
           sm:w-[calc(100%-3rem)]) so the input's position and size on open
           match the bar's exactly. `pt-12` mirrors the header bar's
@@ -159,7 +159,7 @@ export function SearchOverlay() {
           on themselves. */}
       <div
         data-testid="search-overlay-top-bar"
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-12 sm:px-6"
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-6 sm:px-6 sm:pt-12"
       >
         <Link
           href={"/" as Route}
@@ -171,7 +171,7 @@ export function SearchOverlay() {
             e.stopPropagation()
             void search("")
           }}
-          className="pointer-events-auto absolute left-4 top-[30px] z-10 flex items-center rounded-full p-1 sm:hidden focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
+          className="pointer-events-auto mb-6 flex w-fit items-center rounded-full p-1 sm:hidden focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
         >
           <Image
             src="/watch/images/jesusfilm-sign.svg"
@@ -203,14 +203,21 @@ export function SearchOverlay() {
         onClose={closeAndKeepQuery}
         testId="search-overlay-close"
         portalContainer={closePortalContainer}
+        positionClassName="top-6 right-4 sm:top-12 sm:right-10"
+      />
+
+      <div
+        aria-hidden="true"
+        data-testid="search-overlay-bottom-backdrop"
+        className="pointer-events-none absolute inset-x-0 bottom-[-14rem] z-0 h-[max(28rem,calc(env(safe-area-inset-bottom,0px)+24rem))] bg-black/85 backdrop-blur-[14px]"
       />
 
       {/* Body: category grid when empty, results grid when queried.
           Fills the entire dialog so the floating bar can sit ABOVE it
           with backdrop-blur — `pt-24 sm:pt-32` clears the bar's height
-          (input ≈48px + bar pt-12 + breathing room). */}
+          (mobile logo + gap + input, or desktop input pt-12 + breathing room). */}
       <div
-        className="search-overlay-scroll absolute inset-0 overflow-y-auto px-4 pb-8 pt-24 sm:px-6 sm:pt-32"
+        className="search-overlay-scroll absolute inset-0 z-1 overflow-y-auto px-4 pb-8 pt-44 sm:px-6 sm:pt-32"
         aria-live="polite"
       >
         <div

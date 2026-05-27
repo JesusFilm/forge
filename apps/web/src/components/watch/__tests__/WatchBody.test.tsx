@@ -23,7 +23,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { WatchBody } from "@/components/watch/WatchBody"
 import { WatchStudyQuestions } from "@/components/watch/WatchStudyQuestions"
 import { DownloadButton } from "@/components/watch/DownloadButton"
-import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
+import {
+  WATCH_PILL_BUTTON_CLASS,
+  WATCH_SECTION_EYEBROW_CLASS,
+} from "@/components/watch/watch-section-styles"
 import type { WatchBodyBlock, WatchStudyQuestionsBlock } from "@/lib/content"
 
 let container: HTMLDivElement
@@ -147,16 +150,17 @@ describe("WatchBody — two-column layout", () => {
     const dl = container.querySelector('[data-testid="watch-download-button"]')
     expect(dl).not.toBeNull()
 
-    // Title and Download share the same flex row (alignment contract for the
-    // top-of-watch-page UI -- Download must sit on the same top axis as Ask
-    // Yours, even when the title wraps to multiple lines).
+    // Title and Download are grouped together. On mobile they stack so the
+    // title can use the full rail; md+ restores the side-by-side layout.
     const titleRow = container.querySelector(
       '[data-testid="watch-body-title-row"]',
     )
     expect(titleRow).not.toBeNull()
     expect(titleRow!.className).toContain("flex")
+    expect(titleRow!.className).toContain("flex-col")
     expect(titleRow!.className).toContain("items-start")
-    expect(titleRow!.className).toContain("justify-between")
+    expect(titleRow!.className).toContain("md:flex-row")
+    expect(titleRow!.className).toContain("md:justify-between")
     const titleEl = container.querySelector('[data-testid="watch-body-title"]')
     expect(titleEl!.parentElement).toBe(titleRow)
     expect(dl!.closest('[data-testid="watch-body-title-row"]')).toBe(titleRow)
@@ -177,6 +181,15 @@ describe("WatchBody — two-column layout", () => {
     expect(
       container.querySelector("#watch-related-questions-heading")?.className,
     ).toContain(WATCH_SECTION_EYEBROW_CLASS)
+    const relatedHeading = container.querySelector(
+      "#watch-related-questions-heading",
+    )
+    expect(relatedHeading?.querySelector(".md\\:hidden")?.textContent).toBe(
+      "Questions",
+    )
+    expect(
+      relatedHeading?.querySelector(".hidden.md\\:inline")?.textContent,
+    ).toBe("Related Questions")
 
     // Description starts lower than the title row so its top aligns with
     // the first question, not the Related Questions heading.
@@ -372,8 +385,14 @@ describe("WatchBody — responsive class names", () => {
     })
 
     const wrapper = container.querySelector('[data-testid="watch-body"]')!
-    expect(wrapper.className).toContain("grid-cols-12")
+    expect(wrapper.className).toContain("grid-cols-1")
     expect(wrapper.className).toContain("md:grid-cols-12")
+    const left = container.querySelector('[data-testid="watch-body-left"]')!
+    const right = container.querySelector('[data-testid="watch-body-right"]')!
+    expect(left.className).toContain("col-span-1")
+    expect(right.className).toContain("col-span-1")
+    expect(left.className).toContain("md:col-span-7")
+    expect(right.className).toContain("md:col-span-5")
   })
 
   it("renders left column before right column in source order (mobile stack order)", () => {
@@ -447,6 +466,9 @@ describe("WatchBody — modal trigger integration", () => {
       "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
     )
     expect(ay!.getAttribute("target")).toBe("_blank")
+    for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
+      expect(ay!.className).toContain(token)
+    }
     // noopener prevents window.opener access; noreferrer additionally
     // strips the Referer header on the cross-origin navigation.
     const rel = ay!.getAttribute("rel") ?? ""
@@ -477,7 +499,7 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
     expect(icon?.getAttribute("class")).toContain("opacity-20")
 
     const question = trigger.querySelector("h3")
-    expect(question?.className).toContain("font-semibold")
+    expect(question?.className).toContain("font-normal")
     expect(question?.className).toContain("md:text-lg")
     expect(question?.className).toContain("group-hover:text-brand-red")
     expect(question?.className).not.toContain("sm:pr-4")
@@ -533,6 +555,11 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
     expect(panel!.textContent).toContain(
       "Have a private discussion with someone who is ready to listen.",
     )
+    expect(
+      panel!.querySelector(
+        '[data-testid="watch-study-questions-item-fallback-body"]',
+      )?.className,
+    ).toContain("font-normal")
 
     const chat = container.querySelector(
       '[data-testid="watch-study-questions-chat-cta"]',
@@ -547,6 +574,9 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
     expect(chatRel).toContain("noopener")
     expect(chatRel).toContain("noreferrer")
     expect(chat!.textContent).toContain("Chat with a person")
+    for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
+      expect(chat!.className).toContain(token)
+    }
 
     const ask = container.querySelector(
       '[data-testid="watch-study-questions-ask-bible-cta"]',
@@ -561,6 +591,9 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
     expect(askRel).toContain("noopener")
     expect(askRel).toContain("noreferrer")
     expect(ask!.textContent).toContain("Ask a Bible question")
+    for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
+      expect(ask!.className).toContain(token)
+    }
   })
 
   it("only one row is open at a time — clicking a second row closes the first", () => {
@@ -714,6 +747,9 @@ describe("DownloadButton — isolated render", () => {
     expect(btn).not.toBeNull()
     expect(btn.tagName.toLowerCase()).toBe("button")
     expect(btn.getAttribute("type")).toBe("button")
+    for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
+      expect(btn.className).toContain(token)
+    }
 
     act(() => {
       btn.click()
