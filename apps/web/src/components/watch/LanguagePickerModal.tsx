@@ -289,16 +289,15 @@ export function LanguagePickerModal({
 
         <div className="flex flex-col gap-14">
           <div className="flex flex-col gap-5">
-            <div className="flex items-baseline justify-between gap-3">
+            <div className="flex items-center gap-3">
               <h2 className="text-2xl font-semibold text-stone-100">
                 Language
               </h2>
               <span
                 data-testid="watch-language-picker-count"
-                className="text-lg font-normal text-stone-400"
+                className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-full border border-stone-500/40 bg-white/10 px-2.5 text-sm font-semibold text-stone-100"
               >
-                {options.length}{" "}
-                {options.length === 1 ? "language" : "languages"}
+                {options.length}
               </span>
             </div>
             <LanguageCombobox
@@ -309,28 +308,19 @@ export function LanguagePickerModal({
           </div>
 
           <div className="flex flex-col gap-5">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
                 <h2 className="text-2xl font-semibold text-stone-100">
                   Subtitles
                 </h2>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={draftSubtitleEnabled}
-                  data-testid="watch-language-picker-subtitles-toggle"
-                  disabled={subtitleOptions.length === 0}
-                  onClick={() => setDraftSubtitleEnabled((value) => !value)}
-                  className="flex h-8 w-[58px] cursor-pointer items-center rounded-full bg-white p-1 transition disabled:cursor-not-allowed disabled:opacity-40"
+                <span
+                  data-testid="watch-language-picker-subtitle-count"
+                  className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-full border border-stone-500/40 bg-white/10 px-2.5 text-sm font-semibold text-stone-100"
                 >
-                  <span
-                    className={`size-6 rounded-full bg-stone-950 transition-transform ${
-                      draftSubtitleEnabled ? "translate-x-6" : "translate-x-0"
-                    }`}
-                  />
-                </button>
+                  {subtitleOptions.length}
+                </span>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="ml-auto flex items-center gap-4">
                 {subtitleOptions.length === 0 ? (
                   <Button
                     type="button"
@@ -345,13 +335,22 @@ export function LanguagePickerModal({
                       : "Translate with AI"}
                   </Button>
                 ) : null}
-                <span
-                  data-testid="watch-language-picker-subtitle-count"
-                  className="text-lg font-normal text-stone-400"
+                <button
+                  type="button"
+                  role="switch"
+                  aria-label="Subtitles"
+                  aria-checked={draftSubtitleEnabled}
+                  data-testid="watch-language-picker-subtitles-toggle"
+                  disabled={subtitleOptions.length === 0}
+                  onClick={() => setDraftSubtitleEnabled((value) => !value)}
+                  className="flex h-8 w-[58px] cursor-pointer items-center rounded-full bg-white p-1 transition disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {subtitleOptions.length}{" "}
-                  {subtitleOptions.length === 1 ? "language" : "languages"}
-                </span>
+                  <span
+                    className={`size-6 rounded-full bg-stone-950 transition-transform ${
+                      draftSubtitleEnabled ? "translate-x-6" : "translate-x-0"
+                    }`}
+                  />
+                </button>
               </div>
             </div>
             <LanguageCombobox
