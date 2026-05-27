@@ -1,30 +1,22 @@
 import { useCallback, useMemo, useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import {
-  BottomSheetScrollView,
-  BottomSheetTextInput,
-} from "@gorhom/bottom-sheet"
+import { BottomSheetFlatList, BottomSheetTextInput } from "@gorhom/bottom-sheet"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
-import { pickLocalizedName } from "../../lib/pickLocalizedName"
 import { ACCENT, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
 import type { WatchVariant } from "../../lib/normalizeVideo"
 
-function resolveLanguageName(name: string | null): string {
-  if (name == null) return "Unknown"
-  const parsed = pickLocalizedName(name)
-  return parsed ?? name
+function displayName(v: WatchVariant): string {
+  return v.languageName ?? "Unknown"
 }
 
-function sortedVariants(variants: WatchVariant[]): WatchVariant[] {
-  return [...variants].sort((a, b) => {
-    const nameA = resolveLanguageName(a.languageName).toLowerCase()
-    const nameB = resolveLanguageName(b.languageName).toLowerCase()
-    return nameA.localeCompare(nameB)
-  })
+function sortByName(variants: WatchVariant[]): WatchVariant[] {
+  return [...variants].sort((a, b) =>
+    displayName(a).toLowerCase().localeCompare(displayName(b).toLowerCase()),
+  )
 }
 
 export type LanguageSheetProps = {
@@ -44,14 +36,23 @@ export function LanguageSheetContent({
   const typography = useTypography()
   const [query, setQuery] = useState("")
 
-  const sorted = useMemo(() => sortedVariants(variants), [variants])
+  const sorted = useMemo(() => sortByName(variants), [variants])
+  const activeVariant = useMemo(
+    () => sorted.find((v) => v.slug === activeVariantSlug) ?? null,
+    [sorted, activeVariantSlug],
+  )
   const filtered = useMemo(() => {
-    if (!query.trim()) return sorted
-    const lower = query.toLowerCase()
-    return sorted.filter((v) =>
-      resolveLanguageName(v.languageName).toLowerCase().includes(lower),
-    )
-  }, [sorted, query])
+    let list = sorted
+    if (query.trim()) {
+      const lower = query.toLowerCase()
+      list = sorted.filter(
+        (v) =>
+          displayName(v).toLowerCase().includes(lower) ||
+          (v.languageNameNative?.toLowerCase().includes(lower) ?? false),
+      )
+    }
+    return list.filter((v) => v.slug !== activeVariantSlug)
+  }, [sorted, query, activeVariantSlug])
 
   const handleSelect = useCallback(
     (variant: WatchVariant) => {
@@ -61,6 +62,35 @@ export function LanguageSheetContent({
     },
     [onLanguageChange, onClose],
   )
+
+  const renderItem = useCallback(
+    ({ item }: { item: WatchVariant }) => (
+      <Pressable
+        style={({ pressed }) => [styles.listRow, pressed && feedback.pressed]}
+        onPress={() => handleSelect(item)}
+        accessibilityRole="radio"
+        accessibilityState={{ selected: false }}
+        accessibilityLabel={displayName(item)}
+      >
+        <View style={styles.nameColumn}>
+          <Text style={[styles.listRowText, typography.body]} numberOfLines={1}>
+            {displayName(item)}
+          </Text>
+          {item.languageNameNative && (
+            <Text
+              style={[styles.nativeText, typography.bodySmall]}
+              numberOfLines={1}
+            >
+              {item.languageNameNative}
+            </Text>
+          )}
+        </View>
+      </Pressable>
+    ),
+    [handleSelect, typography],
+  )
+
+  const keyExtractor = useCallback((item: WatchVariant) => item.documentId, [])
 
   return (
     <View style={styles.container}>
@@ -82,48 +112,57 @@ export function LanguageSheetContent({
         )}
       </View>
 
-      <BottomSheetScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.listContainer}>
-          {filtered.map((variant) => {
-            const isActive = variant.slug === activeVariantSlug
-            return (
-              <Pressable
-                key={variant.documentId}
-                style={({ pressed }) => [
-                  styles.listRow,
-                  isActive && styles.listRowActive,
-                  pressed && feedback.pressed,
+      {activeVariant && (
+        <View style={styles.currentSection}>
+          <Text style={[styles.currentLabel, typography.bodySmall]}>
+            Current
+          </Text>
+          <View style={[styles.listRow, styles.listRowActive]}>
+            <Ionicons name="checkmark" size={18} color={ACCENT} />
+            <View style={styles.nameColumn}>
+              <Text
+                style={[
+                  styles.listRowText,
+                  typography.body,
+                  styles.listRowTextActive,
                 ]}
-                onPress={() => handleSelect(variant)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: isActive }}
-                accessibilityLabel={resolveLanguageName(variant.languageName)}
+                numberOfLines={1}
               >
+                {displayName(activeVariant)}
+              </Text>
+              {activeVariant.languageNameNative && (
                 <Text
-                  style={[
-                    styles.listRowText,
-                    typography.body,
-                    isActive && styles.listRowTextActive,
-                  ]}
+                  style={[styles.nativeText, typography.bodySmall]}
                   numberOfLines={1}
                 >
-                  {resolveLanguageName(variant.languageName)}
+                  {activeVariant.languageNameNative}
                 </Text>
-              </Pressable>
-            )
-          })}
-          {filtered.length === 0 && (
-            <View style={styles.emptySearch}>
-              <Text style={[styles.emptySearchText, typography.body]}>
-                No languages found
-              </Text>
+              )}
             </View>
-          )}
+          </View>
         </View>
-      </BottomSheetScrollView>
+      )}
+
+      <BottomSheetFlatList
+        data={filtered}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        contentContainerStyle={{
+          paddingHorizontal: HORIZONTAL_PADDING,
+          paddingBottom: insets.bottom + 16,
+        }}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={15}
+        maxToRenderPerBatch={20}
+        windowSize={5}
+        ListEmptyComponent={
+          <View style={styles.emptySearch}>
+            <Text style={[styles.emptySearchText, typography.body]}>
+              No languages found
+            </Text>
+          </View>
+        }
+      />
     </View>
   )
 }
@@ -149,31 +188,42 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     padding: 0,
   },
-  listContainer: {
+  currentSection: {
     paddingHorizontal: HORIZONTAL_PADDING,
-    gap: 4,
+    marginBottom: 12,
+  },
+  currentLabel: {
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
+    marginBottom: 6,
   },
   listRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 10,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 8,
     minHeight: 48,
-    borderLeftWidth: 3,
-    borderLeftColor: "rgba(0, 0, 0, 0)",
   },
   listRowActive: {
-    borderLeftColor: ACCENT,
     backgroundColor: "rgba(255, 255, 255, 0.06)",
+  },
+  nameColumn: {
+    flex: 1,
+    minWidth: 0,
   },
   listRowText: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    flex: 1,
   },
   listRowTextActive: {
     fontWeight: "600",
+  },
+  nativeText: {
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
+    marginTop: 2,
   },
   emptySearch: {
     alignItems: "center",

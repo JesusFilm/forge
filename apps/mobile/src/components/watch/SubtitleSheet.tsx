@@ -1,10 +1,7 @@
 import { useCallback, useMemo, useState } from "react"
 import { Pressable, StyleSheet, Switch, Text, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import {
-  BottomSheetScrollView,
-  BottomSheetTextInput,
-} from "@gorhom/bottom-sheet"
+import { BottomSheetFlatList, BottomSheetTextInput } from "@gorhom/bottom-sheet"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
@@ -17,12 +14,10 @@ import {
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
 import type { WatchSubtitle } from "../../lib/normalizeVideo"
 
-function sortedSubtitles(subtitles: WatchSubtitle[]): WatchSubtitle[] {
-  return [...subtitles].sort((a, b) => {
-    const nameA = a.languageName.toLowerCase()
-    const nameB = b.languageName.toLowerCase()
-    return nameA.localeCompare(nameB)
-  })
+function sortByName(subtitles: WatchSubtitle[]): WatchSubtitle[] {
+  return [...subtitles].sort((a, b) =>
+    a.languageName.toLowerCase().localeCompare(b.languageName.toLowerCase()),
+  )
 }
 
 export type SubtitleSheetProps = {
@@ -45,12 +40,19 @@ export function SubtitleSheetContent({
   const [query, setQuery] = useState("")
   const [localToggle, setLocalToggle] = useState(subtitleEnabled)
 
-  const sorted = useMemo(() => sortedSubtitles(subtitles), [subtitles])
+  const sorted = useMemo(() => sortByName(subtitles), [subtitles])
+  const activeSubtitle = useMemo(
+    () => sorted.find((s) => s.languageSlug === activeSubtitleSlug) ?? null,
+    [sorted, activeSubtitleSlug],
+  )
   const filtered = useMemo(() => {
-    if (!query.trim()) return sorted
-    const lower = query.toLowerCase()
-    return sorted.filter((s) => s.languageName.toLowerCase().includes(lower))
-  }, [sorted, query])
+    let list = sorted
+    if (query.trim()) {
+      const lower = query.toLowerCase()
+      list = sorted.filter((s) => s.languageName.toLowerCase().includes(lower))
+    }
+    return list.filter((s) => s.languageSlug !== activeSubtitleSlug)
+  }, [sorted, query, activeSubtitleSlug])
 
   const handleToggle = useCallback(
     (value: boolean) => {
@@ -71,6 +73,27 @@ export function SubtitleSheetContent({
     },
     [onSubtitleChange, onClose],
   )
+
+  const renderItem = useCallback(
+    ({ item }: { item: WatchSubtitle }) => (
+      <Pressable
+        style={({ pressed }) => [styles.listRow, pressed && feedback.pressed]}
+        onPress={() => handleSelect(item)}
+        accessibilityRole="radio"
+        accessibilityState={{ selected: false }}
+        accessibilityLabel={item.languageName}
+      >
+        <View style={styles.nameColumn}>
+          <Text style={[styles.listRowText, typography.body]} numberOfLines={1}>
+            {item.languageName}
+          </Text>
+        </View>
+      </Pressable>
+    ),
+    [handleSelect, typography],
+  )
+
+  const keyExtractor = useCallback((item: WatchSubtitle) => item.documentId, [])
 
   if (subtitles.length === 0) {
     return (
@@ -122,51 +145,54 @@ export function SubtitleSheetContent({
         )}
       </View>
 
-      <BottomSheetScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View
-          style={[styles.listContainer, !localToggle && styles.listDisabled]}
-          pointerEvents={localToggle ? "auto" : "none"}
-        >
-          {filtered.map((sub) => {
-            const isActive = sub.languageSlug === activeSubtitleSlug
-            return (
-              <Pressable
-                key={sub.documentId}
-                style={({ pressed }) => [
-                  styles.listRow,
-                  isActive && styles.listRowActive,
-                  pressed && feedback.pressed,
+      {localToggle && activeSubtitle && (
+        <View style={styles.currentSection}>
+          <Text style={[styles.currentLabel, typography.bodySmall]}>
+            Current
+          </Text>
+          <View style={[styles.listRow, styles.listRowActive]}>
+            <Ionicons name="checkmark" size={18} color={ACCENT} />
+            <View style={styles.nameColumn}>
+              <Text
+                style={[
+                  styles.listRowText,
+                  typography.body,
+                  styles.listRowTextActive,
                 ]}
-                onPress={() => handleSelect(sub)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: isActive }}
-                accessibilityLabel={sub.languageName}
+                numberOfLines={1}
               >
-                <Text
-                  style={[
-                    styles.listRowText,
-                    typography.body,
-                    isActive && styles.listRowTextActive,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {sub.languageName}
-                </Text>
-              </Pressable>
-            )
-          })}
-          {filtered.length === 0 && (
+                {activeSubtitle.languageName}
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      <View
+        style={[!localToggle && styles.listDisabled]}
+        pointerEvents={localToggle ? "auto" : "none"}
+      >
+        <BottomSheetFlatList
+          data={filtered}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          contentContainerStyle={{
+            paddingHorizontal: HORIZONTAL_PADDING,
+            paddingBottom: insets.bottom + 16,
+          }}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={15}
+          maxToRenderPerBatch={20}
+          windowSize={5}
+          ListEmptyComponent={
             <View style={styles.emptySearch}>
               <Text style={[styles.emptySearchText, typography.body]}>
                 No subtitles found
               </Text>
             </View>
-          )}
-        </View>
-      </BottomSheetScrollView>
+          }
+        />
+      </View>
     </View>
   )
 }
@@ -216,9 +242,14 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     padding: 0,
   },
-  listContainer: {
+  currentSection: {
     paddingHorizontal: HORIZONTAL_PADDING,
-    gap: 4,
+    marginBottom: 12,
+  },
+  currentLabel: {
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
+    marginBottom: 6,
   },
   listDisabled: {
     opacity: 0.5,
@@ -226,21 +257,22 @@ const styles = StyleSheet.create({
   listRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 10,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 8,
     minHeight: 48,
-    borderLeftWidth: 3,
-    borderLeftColor: "rgba(0, 0, 0, 0)",
   },
   listRowActive: {
-    borderLeftColor: ACCENT,
     backgroundColor: "rgba(255, 255, 255, 0.06)",
+  },
+  nameColumn: {
+    flex: 1,
+    minWidth: 0,
   },
   listRowText: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    flex: 1,
   },
   listRowTextActive: {
     fontWeight: "600",

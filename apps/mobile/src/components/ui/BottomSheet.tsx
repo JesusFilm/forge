@@ -51,6 +51,7 @@ export const BottomSheet = forwardRef<GorhomBottomSheet, BottomSheetProps>(
         index={-1}
         snapPoints={snapPoints}
         enablePanDownToClose
+        enableContentPanningGesture={false}
         enableDynamicSizing={false}
         backgroundStyle={backgroundStyle}
         handleIndicatorStyle={handleIndicatorStyle}

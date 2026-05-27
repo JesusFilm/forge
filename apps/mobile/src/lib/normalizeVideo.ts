@@ -30,6 +30,7 @@ export type WatchVariant = {
   languageBcp47: string | null
   languageSlug: string | null
   languageName: string | null
+  languageNameNative: string | null
   downloads: WatchDownload[]
   muxPlaybackId: string | null
   subtitles: WatchSubtitle[]
@@ -163,6 +164,14 @@ export function normalizeVideo(
       languageName: v.language?.name
         ? (pickLocalizedName(v.language.name) ?? null)
         : null,
+      languageNameNative: (() => {
+        if (!v.language?.name || !v.language?.bcp47) return null
+        const bcp47 = v.language.bcp47.split("-")[0]
+        if (bcp47 === "en") return null
+        const native = pickLocalizedName(v.language.name, bcp47)
+        const english = pickLocalizedName(v.language.name, "en")
+        return native && native !== english ? native : null
+      })(),
       downloads: (v.downloads ?? [])
         .filter(
           (d): d is typeof d & { quality: string; url: string } =>

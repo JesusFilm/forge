@@ -194,8 +194,8 @@ export default function WatchVideoPage() {
 
         <ActionButtonRow
           onDownload={() => downloadSheetRef.current?.expand()}
-          onLanguage={() => languageSheetRef.current?.expand()}
-          onSubtitles={() => subtitleSheetRef.current?.expand()}
+          onLanguage={() => languageSheetRef.current?.snapToIndex(0)}
+          onSubtitles={() => subtitleSheetRef.current?.snapToIndex(0)}
           onShare={handleShare}
         />
 
@@ -260,7 +260,7 @@ export default function WatchVideoPage() {
 
       <BottomSheet
         ref={languageSheetRef}
-        snapPoints={["50%"]}
+        snapPoints={["75%", "100%"]}
         onChange={(index) => {
           if (index >= 0) setLanguageResetKey((k) => k + 1)
         }}
@@ -279,7 +279,7 @@ export default function WatchVideoPage() {
 
       <BottomSheet
         ref={subtitleSheetRef}
-        snapPoints={["50%"]}
+        snapPoints={["75%", "100%"]}
         onChange={(index) => {
           if (index >= 0) setSubtitleResetKey((k) => k + 1)
         }}
