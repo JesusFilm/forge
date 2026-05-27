@@ -3,7 +3,7 @@ title: "feat: web user accounts and video download gate"
 type: feat
 status: active
 date: 2026-05-27
-roadmap: docs/roadmap/platform/feat-121-web-user-accounts-download-gate.md
+roadmap: docs/roadmap/platform/feat-144-web-user-accounts-download-gate.md
 origin: user request - "Add user accounts on web app. Use the same Auth as other projects. User account required to download video."
 ---
 
@@ -542,7 +542,7 @@ Rollout:
 - Add a deploy note with the exact stage/prod env values checked, the account
   privilege smoke result, the LaunchDarkly variation tested, and the direct
   `401` smoke result.
-- If CI or rollout verification fails, add a scoped `todos/feat-121-*.md`
+- If CI or rollout verification fails, add a scoped `todos/feat-144-*.md`
   entry with the failure, evidence, and next relaunch step before retrying or
   handing off.
 

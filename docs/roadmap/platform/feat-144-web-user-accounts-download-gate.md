@@ -1,5 +1,5 @@
 ---
-id: "feat-121"
+id: "feat-144"
 title: "Web User Accounts and Video Download Gate"
 owner: "vlad"
 priority: "P1"
@@ -98,7 +98,7 @@ account-required download gate should roll out gradually through LaunchDarkly.
   screenshots or equivalent proof for the signed-out auth redirect,
   signup/callback return, download modal, and direct `401` response.
 - If CI, a subagent, or browser smoke surfaces a real issue that cannot be
-  fixed immediately, document it in `todos/feat-121-*.md` with the failing
+  fixed immediately, document it in `todos/feat-144-*.md` with the failing
   command, observed error, owner/scope, and relaunch criteria. Relaunch the
   relevant work/review loop for those todos before final handoff unless the PR
   explicitly defers them with a follow-up ticket.
