@@ -192,9 +192,11 @@ function oauthQueryFromLoginReferer(request: Request): string | undefined {
 }
 
 function rejectEmailSignIn({
+  email,
   isFormPost,
   oauthQuery,
 }: {
+  email?: string
   isFormPost: boolean
   oauthQuery?: string
 }): Response {
@@ -203,6 +205,7 @@ function rejectEmailSignIn({
   const url = new URL("/login", getAuthBaseUrl())
   if (oauthQuery) url.search = oauthQuery
   url.searchParams.set("error", "credentials")
+  if (email) url.searchParams.set("email", email)
   return Response.redirect(url, 303)
 }
 
@@ -396,7 +399,7 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
 
   if (!email || !password) {
     audit("auth.signin.rejected", email)
-    return rejectEmailSignIn({ isFormPost, oauthQuery })
+    return rejectEmailSignIn({ email, isFormPost, oauthQuery })
   }
   const callbackURL = buildOAuthContinuationURL(oauthQuery)
 
@@ -427,20 +430,20 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
   if (existingUser) {
     audit("auth.signin.rejected", email)
     return isFormPost
-      ? rejectEmailSignIn({ isFormPost, oauthQuery })
+      ? rejectEmailSignIn({ email, isFormPost, oauthQuery })
       : primaryResponse
   }
 
   const firebaseSignIn = await signInWithFirebasePassword(email, password)
   if (!firebaseSignIn) {
     audit("auth.signin.rejected", email)
-    return rejectEmailSignIn({ isFormPost, oauthQuery })
+    return rejectEmailSignIn({ email, isFormPost, oauthQuery })
   }
 
   const verified = await verifyFirebaseIdToken(firebaseSignIn.idToken)
   if (!verified || verified.email.toLowerCase() !== email) {
     audit("auth.firebase.rejected.unverified", email)
-    return rejectEmailSignIn({ isFormPost, oauthQuery })
+    return rejectEmailSignIn({ email, isFormPost, oauthQuery })
   }
 
   const signUpResponse = await auth.api.signUpEmail({
@@ -456,7 +459,7 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
 
   if (!signUpResponse.ok) {
     audit("auth.signin.rejected", email)
-    return rejectEmailSignIn({ isFormPost, oauthQuery })
+    return rejectEmailSignIn({ email, isFormPost, oauthQuery })
   }
 
   await prisma.$transaction(async (tx) => {
