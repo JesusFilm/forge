@@ -21,8 +21,12 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 - Services own mutations, raw SQL (pgvector), and ABAC enforcement.
 - Admin owns live search orchestration, query embedding generation, vector
   storage, production search traces, raw trace retention, aggregates, and the
-  internal trace sampling contract. Mastra samples later through authenticated
-  Admin HTTP only; it must not import Admin code or read Admin Postgres.
+  internal trace sampling/catalog/candidate contracts. Trace labels are
+  deterministic rules-first with privacy/sensitivity redaction kept separate
+  from query usefulness and abuse labels. Optional LLM classification is
+  offline/eval-only and stores separate provenance. Mastra reads and writes
+  search-eval data through authenticated Admin HTTP only; it must not import
+  Admin code or read Admin Postgres.
 - Admin auth must not depend on shared `.jesusfilm.org` cookies or
   admin-local credential handlers.
 - Every Pothos type is classified `abac-gated` or `public-shape` — `abac-gated`
@@ -33,6 +37,12 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
   country-language relations, keywords, videos, video locales, origins, images,
   subtitles, study questions, Bible citations, keyword links, parent-child
   links, dubs, editions, Mux metadata, and dub downloads.
+- Mastra owns background transcript, scene, and experience embedding
+  generation. Admin owns type-specific ingest validation, vector storage,
+  publication gates, pgvector indexes, target resolution, public search
+  contracts, and search retrieval.
+- Live user search query embedding generation stays in Admin's search services;
+  do not move live search orchestration into Mastra.
 - Localized Core content that is user-facing, retrieval-relevant, or UI-edited
   belongs in per-locale rows (`VideoLocale`, `VideoStudyQuestion`,
   `LanguageLocale`, `CountryLocale`, `ContinentLocale`). Legacy JSON `name`
@@ -42,7 +52,8 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 - Raw production search traces may retain query text only after first-pass
   privacy labeling/redaction and for less than 30 days. Aggregates survive
   without query text; never store bearer tokens, cookies, IPs, user ids, or
-  caller-supplied key ids in trace tables.
+  caller-supplied key ids in trace tables. Trace-derived generated eval
+  candidates inherit the same raw expiry and stay staged until human promotion.
 
 ## Workflow
 
@@ -72,7 +83,6 @@ CI's `admin-schema-drift` job catches step 1 if forgotten. The committed SDL is 
 | ---------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------ |
 | `pnpm --filter @forge/admin run-sync`                | Run the Core data sync against any DATABASE_URL                 | DATABASE_URL + Core API creds                                      |
 | `pnpm --filter @forge/admin run-embeds`              | Run scene/transcript/experience embedding workflows locally     | DATABASE_URL + manager S3 + Mastra service keys                    |
-| `pnpm --filter @forge/admin run-experience-dump`     | Run R3 experience-content-dump from a workstation               | DATABASE_URL + CMS_DATABASE_URL                                    |
 | `pnpm --filter @forge/admin restore:video-db`        | Restore the reviewed video slice into dev/staging Postgres      | TARGET_DATABASE_URL or DATABASE_URL + `--target-env`               |
 | `pnpm --filter @forge/admin restore:video-db:latest` | Download latest via prod presign endpoint, then restore locally | TARGET_DATABASE_URL or DATABASE_URL + BACKUP_DOWNLOAD_API_KEY      |
 | `pnpm --filter @forge/admin seed-easter`             | Seed Easter experience into local Postgres for UI/E2E fixtures  | DATABASE_URL (loaded via `--env-file=.env`); destructive on re-run |

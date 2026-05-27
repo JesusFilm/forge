@@ -16,6 +16,7 @@ tags:
 related_features:
   - feat-132
 related:
+  - "docs/solutions/platform/mastra-embedding-workflow-ownership-pattern.md"
   - "docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md"
   - "docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md"
   - "docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md"

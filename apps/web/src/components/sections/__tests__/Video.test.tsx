@@ -1,63 +1,15 @@
 /**
  * @vitest-environment jsdom
  *
- * U12 — Video section dual-branch tests.
- *
- * - Flag-off: smoke. Component mounts via the videojs hook path.
- * - Flag-on: mounts via `<MuxVideo>`; videojs() never invoked.
+ * Video section — Mux-only path. The flag-off (video.js) branch was
+ * removed once `NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION` graduated.
  */
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { videojsMock } = vi.hoisted(() => ({
-  videojsMock: vi.fn(),
-}))
-vi.mock("video.js", () => ({
-  default: videojsMock,
-}))
-
-vi.mock("@/env", () => ({
-  env: { NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION: false },
-}))
-
-import { env } from "@/env"
-
 import { Video } from "@/components/sections/Video"
-
-type MutableEnv = {
-  NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION: boolean
-}
-function setFlag(value: boolean) {
-  ;(env as unknown as MutableEnv).NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION =
-    value
-}
-
-function createMockPlayer() {
-  let muted = true
-  return {
-    el: () => document.createElement("div"),
-    ready: (cb: () => void) => cb(),
-    on: vi.fn(),
-    off: vi.fn(),
-    src: vi.fn(),
-    poster: vi.fn(),
-    addRemoteTextTrack: vi.fn(),
-    removeRemoteTextTrack: vi.fn(),
-    textTracks: vi.fn(() => []),
-    paused: vi.fn(() => true),
-    play: vi.fn().mockResolvedValue(undefined),
-    pause: vi.fn(),
-    muted: vi.fn((next?: boolean) => {
-      if (typeof next === "boolean") muted = next
-      return muted
-    }),
-    currentTime: vi.fn(() => 0),
-    duration: vi.fn(() => 0),
-    dispose: vi.fn(),
-  }
-}
 
 const baseFragment = {
   id: "v-1",
@@ -82,7 +34,6 @@ beforeEach(() => {
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
-  videojsMock.mockImplementation(() => createMockPlayer())
 })
 
 afterEach(async () => {
@@ -90,15 +41,11 @@ afterEach(async () => {
     root.unmount()
   })
   container.remove()
-  videojsMock.mockReset()
-  setFlag(false)
   vi.restoreAllMocks()
 })
 
-describe("Video — flag-off (videojs branch)", () => {
-  it("mounts via the videojs hook path and exposes the section testid", async () => {
-    setFlag(false)
-
+describe("Video", () => {
+  it("mounts via Mux and exposes the section testid", async () => {
     await act(async () => {
       root.render(<Video data={baseFragment} />)
     })
@@ -106,30 +53,11 @@ describe("Video — flag-off (videojs branch)", () => {
     expect(
       container.querySelector('[data-testid="VideoSection"]'),
     ).not.toBeNull()
-    expect(videojsMock).toHaveBeenCalledTimes(1)
-  })
-})
-
-describe("Video — flag-on (Mux branch)", () => {
-  it("mounts via Mux, no videojs() call", async () => {
-    setFlag(true)
-
-    await act(async () => {
-      root.render(<Video data={baseFragment} />)
-    })
-
-    expect(
-      container.querySelector('[data-testid="VideoSection"]'),
-    ).not.toBeNull()
-    expect(videojsMock).not.toHaveBeenCalled()
-    // @mux/mux-video-react renders a plain <video> element (no custom-element
-    // wrapper, unlike @mux/mux-player-react).
+    // @mux/mux-video-react renders a plain <video> element.
     expect(container.querySelector("video")).not.toBeNull()
   })
 
   it("renders nothing if streamingUrl resolves to null", async () => {
-    setFlag(true)
-
     const emptyFragment = {
       ...baseFragment,
       streamingUrl: null,
@@ -140,6 +68,5 @@ describe("Video — flag-on (Mux branch)", () => {
     })
 
     expect(container.querySelector('[data-testid="VideoSection"]')).toBeNull()
-    expect(videojsMock).not.toHaveBeenCalled()
   })
 })

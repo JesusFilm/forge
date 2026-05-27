@@ -1,10 +1,8 @@
 import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 
-import type {
-  LoginErrorCode,
-  LoginProviderId,
-} from "@/app/login/login-page-client"
+import type { LoginErrorCode } from "@/app/login/login-page-client"
+import type { LoginProviderId } from "@/auth/login-methods"
 
 export type LoginSearchParams = Record<string, string | string[] | undefined>
 
@@ -31,7 +29,7 @@ export function parseLoginError(
 export function toOAuthQuery(params: LoginSearchParams) {
   const oauthQuery = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
-    if (key === "error") continue
+    if (key === "email" || key === "error") continue
     if (Array.isArray(value)) {
       for (const item of value) oauthQuery.append(key, item)
     } else if (value) {

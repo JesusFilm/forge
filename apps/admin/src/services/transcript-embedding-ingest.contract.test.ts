@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { ingestTranscriptEmbeddings } from "@/services/transcript-embedding-ingest.service"
+import {
+  ingestTranscriptEmbeddings,
+  _internals,
+} from "@/services/transcript-embedding-ingest.service"
 import { searchVideoSemantic } from "@/services/hybrid-search-retrievers"
 
 type StoredTranscript = {
@@ -270,7 +273,7 @@ function buildContractPrisma() {
 }
 
 function contractPayload(overrides?: Record<string, unknown>) {
-  return {
+  const body = {
     target: {
       admin: {
         videoId: "video-1",
@@ -315,6 +318,25 @@ function contractPayload(overrides?: Record<string, unknown>) {
     ],
     ...overrides,
   }
+  const source = body.source as Record<string, unknown>
+  source.contentHash ??= _internals.sha256Json({
+    text: (body.source as { text?: string }).text ?? null,
+    segments: (body.source as { segments?: unknown }).segments ?? null,
+    chunks: (
+      body.chunks as Array<{
+        chunkIndex: number
+        text: string
+        startSeconds?: number
+        endSeconds?: number
+      }>
+    ).map((chunk) => ({
+      index: chunk.chunkIndex,
+      text: chunk.text,
+      startSeconds: chunk.startSeconds ?? null,
+      endSeconds: chunk.endSeconds ?? null,
+    })),
+  })
+  return body
 }
 
 describe("Mastra transcript ingest contract", () => {

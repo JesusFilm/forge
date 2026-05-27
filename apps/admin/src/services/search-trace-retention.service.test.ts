@@ -21,6 +21,9 @@ function buildPrisma() {
     searchTrace: {
       deleteMany: vi.fn(async () => ({ count: 0 })),
     },
+    searchEvalCandidate: {
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
     workflowRun: {
       findFirst: vi.fn(),
     },
@@ -35,6 +38,7 @@ describe("search trace retention service", () => {
   it("purges only rows whose raw expiration has passed", async () => {
     const prisma = buildPrisma()
     prisma.searchTrace.deleteMany.mockResolvedValueOnce({ count: 3 })
+    prisma.searchEvalCandidate.deleteMany.mockResolvedValueOnce({ count: 2 })
     const now = new Date("2026-05-30T00:00:00.000Z")
 
     await expect(
@@ -43,7 +47,9 @@ describe("search trace retention service", () => {
         now,
       ),
     ).resolves.toEqual({
-      purgedCount: 3,
+      purgedCount: 5,
+      purgedRawTraceCount: 3,
+      purgedGeneratedCandidateCount: 2,
       purgedBefore: "2026-05-30T00:00:00.000Z",
     })
     expect(prisma.searchTrace.deleteMany).toHaveBeenCalledWith({
@@ -51,6 +57,14 @@ describe("search trace retention service", () => {
         rawExpiresAt: {
           lte: now,
         },
+      },
+    })
+    expect(prisma.searchEvalCandidate.deleteMany).toHaveBeenCalledWith({
+      where: {
+        retentionExpiresAt: {
+          lte: now,
+        },
+        promotionStatus: "GENERATED",
       },
     })
   })

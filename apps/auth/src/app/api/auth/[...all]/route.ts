@@ -1,8 +1,12 @@
 import { createHash, randomUUID } from "node:crypto"
 
 import { auth, authRouteHandlers } from "@/auth/config"
-import { verifyFirebaseIdToken } from "@/auth/firebase-admin"
+import {
+  firebaseUserExistsByEmail,
+  verifyFirebaseIdToken,
+} from "@/auth/firebase-admin"
 import { signInWithFirebasePassword } from "@/auth/firebase-rest"
+import { isLoginProviderId, type LoginProviderId } from "@/auth/login-methods"
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { getAuthBaseUrl } from "@/config/env"
 import { prisma } from "@/db/client"
@@ -18,6 +22,7 @@ const LAST_LOGIN_METHOD_COOKIE = "forge_auth_last_login_method"
 const LAST_LOGIN_METHOD_MAX_AGE = 60 * 60 * 24 * 365
 
 type LastLoginMethod = "apple" | "email" | "facebook" | "google" | "okta"
+const providerPriority = ["google", "facebook", "apple", "okta"] as const
 
 function isFormPostRequest(request: Request): boolean {
   return (
@@ -137,8 +142,38 @@ async function parseEmailPasswordRequest(request: Request): Promise<{
   }
 }
 
+async function parseLoginMethodRequest(request: Request): Promise<{
+  email: string
+}> {
+  const contentType = request.headers.get("content-type") ?? ""
+  if (contentType.includes("application/json")) {
+    const body = (await request.json()) as { email?: string }
+    return {
+      email: body.email?.trim().toLowerCase() ?? "",
+    }
+  }
+
+  if (!contentType.includes("application/x-www-form-urlencoded")) {
+    return { email: "" }
+  }
+
+  const body = await request.formData()
+  return {
+    email: String(body.get("email") ?? "")
+      .trim()
+      .toLowerCase(),
+  }
+}
+
 function genericUnauthorized(): Response {
   return Response.json({ error: "Invalid email or password" }, { status: 401 })
+}
+
+function existingAccountSignUpResponse(): Response {
+  return Response.json(
+    { error: "An account already exists for that email. Sign in to continue." },
+    { status: 409 },
+  )
 }
 
 function oauthQueryFromLoginReferer(request: Request): string | undefined {
@@ -157,9 +192,11 @@ function oauthQueryFromLoginReferer(request: Request): string | undefined {
 }
 
 function rejectEmailSignIn({
+  email,
   isFormPost,
   oauthQuery,
 }: {
+  email?: string
   isFormPost: boolean
   oauthQuery?: string
 }): Response {
@@ -168,6 +205,7 @@ function rejectEmailSignIn({
   const url = new URL("/login", getAuthBaseUrl())
   if (oauthQuery) url.search = oauthQuery
   url.searchParams.set("error", "credentials")
+  if (email) url.searchParams.set("email", email)
   return Response.redirect(url, 303)
 }
 
@@ -220,6 +258,111 @@ async function handleSocialSignIn(request: Request): Promise<Response> {
   )
 }
 
+function enabledProviderIds(): Set<LoginProviderId> {
+  const providers = new Set<LoginProviderId>()
+
+  if (process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET) {
+    providers.add("facebook")
+  }
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    providers.add("google")
+  }
+  if (process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET) {
+    providers.add("apple")
+  }
+  if (
+    process.env.OKTA_CLIENT_ID &&
+    process.env.OKTA_CLIENT_SECRET &&
+    process.env.OKTA_ISSUER
+  ) {
+    providers.add("okta")
+  }
+
+  return providers
+}
+
+async function handleLoginMethod(request: Request): Promise<Response> {
+  const limit = await rateLimitAuthRoute({
+    request,
+    route: "login-method",
+    limit: MAX_ATTEMPTS,
+    windowMs: WINDOW_MS,
+  })
+  if (!limit.allowed) {
+    audit("auth.login_method.rejected.rate_limited")
+    return Response.json({ method: "password" })
+  }
+
+  const { email } = await parseLoginMethodRequest(request)
+  if (!email) {
+    audit("auth.login_method.password")
+    return Response.json({ method: "password" })
+  }
+
+  const enabledProviders = enabledProviderIds()
+  const user = await prisma.user.findFirst({
+    where: { email },
+    select: {
+      accounts: {
+        select: { providerId: true },
+      },
+    },
+  })
+
+  const accountProviders =
+    user?.accounts
+      .map((account) => account.providerId)
+      .filter(isLoginProviderId)
+      .filter((providerId) => enabledProviders.has(providerId)) ?? []
+  const provider = providerPriority.find((providerId) =>
+    accountProviders.includes(providerId),
+  )
+
+  if (provider) {
+    audit("auth.login_method.provider", email)
+    return Response.json({ method: "provider", provider })
+  }
+
+  audit("auth.login_method.password", email)
+  return Response.json({ method: "password" })
+}
+
+async function handleEmailSignUp(request: Request): Promise<Response> {
+  const limit = await rateLimitAuthRoute({
+    request,
+    route: "sign-up/email",
+    limit: MAX_ATTEMPTS,
+    windowMs: WINDOW_MS,
+  })
+  if (!limit.allowed) {
+    audit("auth.signup.rejected.rate_limited")
+    return Response.json({ error: "Not found" }, { status: 404 })
+  }
+
+  const { email } = await parseLoginMethodRequest(request)
+  if (!email) {
+    audit("auth.signup.rejected.public")
+    return Response.json({ error: "Not found" }, { status: 404 })
+  }
+
+  const existingUser = await prisma.user.findFirst({
+    where: { email },
+    select: { id: true },
+  })
+  if (existingUser) {
+    audit("auth.signup.rejected.existing_account", email)
+    return existingAccountSignUpResponse()
+  }
+
+  if (await firebaseUserExistsByEmail(email)) {
+    audit("auth.signup.rejected.legacy_firebase_account", email)
+    return existingAccountSignUpResponse()
+  }
+
+  audit("auth.signup.rejected.public", email)
+  return Response.json({ error: "Not found" }, { status: 404 })
+}
+
 function redirectFormPostAfterSignIn(
   response: Response,
   callbackURL: string | undefined,
@@ -256,7 +399,7 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
 
   if (!email || !password) {
     audit("auth.signin.rejected", email)
-    return rejectEmailSignIn({ isFormPost, oauthQuery })
+    return rejectEmailSignIn({ email, isFormPost, oauthQuery })
   }
   const callbackURL = buildOAuthContinuationURL(oauthQuery)
 
@@ -287,20 +430,20 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
   if (existingUser) {
     audit("auth.signin.rejected", email)
     return isFormPost
-      ? rejectEmailSignIn({ isFormPost, oauthQuery })
+      ? rejectEmailSignIn({ email, isFormPost, oauthQuery })
       : primaryResponse
   }
 
   const firebaseSignIn = await signInWithFirebasePassword(email, password)
   if (!firebaseSignIn) {
     audit("auth.signin.rejected", email)
-    return rejectEmailSignIn({ isFormPost, oauthQuery })
+    return rejectEmailSignIn({ email, isFormPost, oauthQuery })
   }
 
   const verified = await verifyFirebaseIdToken(firebaseSignIn.idToken)
   if (!verified || verified.email.toLowerCase() !== email) {
     audit("auth.firebase.rejected.unverified", email)
-    return rejectEmailSignIn({ isFormPost, oauthQuery })
+    return rejectEmailSignIn({ email, isFormPost, oauthQuery })
   }
 
   const signUpResponse = await auth.api.signUpEmail({
@@ -316,7 +459,7 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
 
   if (!signUpResponse.ok) {
     audit("auth.signin.rejected", email)
-    return rejectEmailSignIn({ isFormPost, oauthQuery })
+    return rejectEmailSignIn({ email, isFormPost, oauthQuery })
   }
 
   await prisma.$transaction(async (tx) => {
@@ -400,12 +543,14 @@ export async function POST(
   if (path === "sign-in/email") {
     return handleEmailSignIn(request)
   }
+  if (path === "login-method") {
+    return handleLoginMethod(request)
+  }
   if (path === "sign-in/social") {
     return handleSocialSignIn(request)
   }
   if (path === "sign-up/email") {
-    audit("auth.signup.rejected.public")
-    return Response.json({ error: "Not found" }, { status: 404 })
+    return handleEmailSignUp(request)
   }
   return authRouteHandlers.POST(request)
 }

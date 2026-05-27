@@ -37,7 +37,6 @@ function pruneArtifactsForTranscriptionRerun(
   delete nextArtifacts.chapters
   delete nextArtifacts.metadata
   delete nextArtifacts.embeddings
-  delete nextArtifacts.embeddingSync
   delete nextArtifacts.sceneEmbeddingSync
   delete nextArtifacts.translations
   delete nextArtifacts.muxSync

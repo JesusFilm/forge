@@ -26,7 +26,7 @@ type MuxPlayerCapturedProps = Record<string, unknown> & {
   onError?: (event: Event & { detail?: { code?: string } }) => void
 }
 
-const { muxPlayerMock, mockPlayerRef } = vi.hoisted(() => {
+const { muxPlayerMock, muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
   type MockPlayer = {
     muted: boolean
     currentTime: number
@@ -71,11 +71,69 @@ const { muxPlayerMock, mockPlayerRef } = vi.hoisted(() => {
     return null
   })
 
-  return { muxPlayerMock, mockPlayerRef }
+  // Parallel mock for the flag-on MuxVideo branch. Shares the singleton
+  // ref proxy so HeroPlayerControls / play() assertions don't care which
+  // backend rendered.
+  const muxVideoMock = vi.fn((props: MuxPlayerCapturedProps) => {
+    const { ref } = props
+    mockPlayerRef.current ??= makePlayer()
+    useImperativeHandle(ref as React.RefObject<unknown>, () => {
+      return mockPlayerRef.current
+    })
+    return null
+  })
+
+  return { muxPlayerMock, muxVideoMock, mockPlayerRef }
 })
 
 vi.mock("@forge/video-player", () => ({
   MuxPlayer: muxPlayerMock,
+  MuxVideo: muxVideoMock,
+}))
+
+// HeroPlayer's runtime branch wraps each backend in `next/dynamic(() =>
+// import("@forge/video-player/mux-{player,video}"), { ssr: false })` so
+// the inactive backend is build-time DCE'd out of the route chunk.
+// Mock both subpath specifiers so jsdom renders the same `muxPlayerMock`
+// / `muxVideoMock` synchronously instead of awaiting a lazy loader.
+vi.mock("@forge/video-player/mux-player", () => ({
+  default: muxPlayerMock,
+}))
+vi.mock("@forge/video-player/mux-video", () => ({
+  default: muxVideoMock,
+}))
+
+// In production `next/dynamic` returns a Suspense-wrapped lazy
+// component; in vitest we want the synchronous mock return. Bypass the
+// async loader and resolve to the mocked default export inline.
+vi.mock("next/dynamic", async () => {
+  const { createElement } = await import("react")
+  return {
+    default: (
+      loader: () => Promise<{ default: React.ComponentType<unknown> }>,
+    ) => {
+      let Resolved: React.ComponentType<unknown> | null = null
+      void loader().then((mod) => {
+        Resolved = mod.default
+      })
+      return function DynamicMock(props: Record<string, unknown>) {
+        // `vi.mock` resolves the inner import synchronously, so by the
+        // time React renders this stub the `.then` continuation has
+        // already populated `Resolved`. The null-guard is defensive only.
+        return Resolved ? createElement(Resolved, props) : null
+      }
+    },
+  }
+})
+
+// Mock the env module so individual tests can flip the migration flag
+// without shadowing the module-scope mock. The default keeps the flag
+// off so the bulk of the suite continues exercising the MuxPlayer path.
+vi.mock("@/env", () => ({
+  env: {
+    NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO: false,
+    NEXT_PUBLIC_MUX_DATA_ENV_KEY: undefined,
+  },
 }))
 
 // Configurable URLSearchParams stand-in so individual tests can drive the
@@ -93,7 +151,19 @@ function setSearchParams(query: string) {
   mockSearchParams.current = new URLSearchParams(query)
 }
 
+import { env } from "@/env"
 import { HeroPlayer } from "@/components/watch/HeroPlayer"
+
+type MutableHeroPlayerEnv = {
+  NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO: boolean
+  NEXT_PUBLIC_MUX_DATA_ENV_KEY: string | undefined
+}
+
+function setHeroMuxVideoFlag(value: boolean) {
+  ;(
+    env as unknown as MutableHeroPlayerEnv
+  ).NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO = value
+}
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
 import {
@@ -109,6 +179,8 @@ let root: Root
 
 beforeEach(() => {
   muxPlayerMock.mockClear()
+  muxVideoMock.mockClear()
+  setHeroMuxVideoFlag(false)
   mockPlayerRef.current = null
   mockSearchParams.current = new URLSearchParams()
   container = document.createElement("div")
@@ -205,7 +277,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(typeof metadata?.viewer_user_id).toBe("string")
   })
 
-  it("uses a reduced viewport-relative hero height before sound playback so the carousel is visible on load", async () => {
+  it("uses the sound-on player height before reveal so Play with Sound does not resize the hero", async () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -213,10 +285,10 @@ describe("HeroPlayer — initial mount", () => {
     const wrapper = container.querySelector(
       '[data-testid="hero-player-wrapper"]',
     ) as HTMLDivElement
-    expect(wrapper.className).toContain("h-[72svh]")
-    expect(wrapper.className).toContain("min-h-[420px]")
-    expect(wrapper.className).toContain("max-h-[900px]")
-    expect(wrapper.className).not.toContain("aspect-video")
+    expect(wrapper.className).toContain("h-[calc(100svh-300px)]")
+    expect(wrapper.className).toContain("min-h-[400px]")
+    expect(wrapper.className).toContain("overflow-x-clip")
+    expect(wrapper.className).not.toContain("md:max-w-[calc(100svh*16/9)]")
 
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
@@ -225,8 +297,9 @@ describe("HeroPlayer — initial mount", () => {
       pill.click()
     })
 
-    expect(wrapper.className).toContain("aspect-video")
-    expect(wrapper.className).not.toContain("h-[72svh]")
+    expect(wrapper.className).toContain("h-[calc(100svh-300px)]")
+    expect(wrapper.className).toContain("min-h-[400px]")
+    expect(wrapper.className).toContain("overflow-hidden")
   })
 
   it("renders a 'Play with Sound' pill (default state) above the player", () => {
@@ -241,6 +314,7 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-overlay"]',
     )
     expect(pill).not.toBeNull()
+    expect(overlay?.getAttribute("class")).toContain("bottom-0")
     expect(overlay?.getAttribute("class")).toContain("pb-12")
     expect(pill?.getAttribute("data-state")).toBe("play-with-sound")
     expect(pill?.textContent).toContain("Play with Sound")
@@ -1869,5 +1943,143 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
     replaceStateSpy.mockRestore()
     // Reset jsdom URL state for subsequent tests.
     window.history.replaceState(null, "", "/")
+  })
+})
+
+// MuxVideo branch — exercises the flag-on path that replaces
+// `<MuxPlayer>` (`@mux/mux-player-react`) with `<MuxVideo>`
+// (`@mux/mux-video-react`). See
+// docs/plans/2026-05-26-005-refactor-watch-hero-muxplayer-to-muxvideo-beta-plan.md.
+function lastMuxVideoProps(): MuxPlayerCapturedProps {
+  const calls = muxVideoMock.mock.calls
+  return calls[calls.length - 1]?.[0] as MuxPlayerCapturedProps
+}
+
+describe("HeroPlayer — flag NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO=true", () => {
+  beforeEach(() => {
+    setHeroMuxVideoFlag(true)
+  })
+
+  it("mounts <MuxVideo> instead of <MuxPlayer> with parity props", () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    expect(muxVideoMock).toHaveBeenCalled()
+    expect(muxPlayerMock).not.toHaveBeenCalled()
+
+    const props = lastMuxVideoProps()
+    // Identity props mirror the MuxPlayer path.
+    expect(props.playbackId).toBe("playback-id-123")
+    expect(props.autoPlay).toBe(true)
+    expect(props.muted).toBe(true)
+    expect(props.loop).toBe(true)
+    expect(props.preload).toBe("metadata")
+    // Light-DOM poster URL must match the <link rel="preload"> in
+    // page.tsx so the preloaded image is reused by <video poster=...>.
+    expect(props.poster).toBe(
+      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280",
+    )
+    // Override of the @forge/video-player wrapper default — hero needs
+    // Mux Data attribution even though other MuxVideo callsites disable it.
+    expect(props.disableTracking).toBe(false)
+    expect(props.disableCookies).toBe(true)
+    // Mux Data metadata payload is forwarded verbatim so the watch
+    // surface continues to attribute beacons under the same player_name.
+    expect(props.metadata).toMatchObject({
+      player_name: "forge-web-watch",
+      video_title: "Jesus",
+      video_id: "video-1",
+    })
+    // HLS buffer cap matches the perf-iteration tuning (≤10s lookahead,
+    // 5 MB cap) so the simulator-mobile waterfall stays bounded.
+    expect(props._hlsConfig).toEqual({
+      maxBufferLength: 10,
+      maxBufferSize: 5_000_000,
+      backBufferLength: 5,
+    })
+    // No CHROME_HIDE_STYLE under MuxVideo — bare <video> has no chrome
+    // shadow DOM to suppress. Object-fit lives on plain `style` instead.
+    expect(props.style).toEqual({ objectFit: "cover" })
+  })
+
+  it("flips videoReady via onCanPlay and unmounts the spinner overlay", async () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).not.toBeNull()
+
+    const handler = lastMuxVideoProps()?.onCanPlay
+    await act(async () => {
+      handler?.(new Event("canplay"))
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+  })
+
+  it("marks autoplayBlocked when play() rejects with NotAllowedError", async () => {
+    // Replace the singleton ref's play() with a Promise rejection
+    // matching what the browser raises when autoplay-muted is blocked.
+    const notAllowed = Object.assign(new Error("NotAllowedError"), {
+      name: "NotAllowedError",
+    })
+
+    // Drive the ?autoplay=1 path which re-invokes play() after canPlay —
+    // this is the same surface the LanguagePickerModal navigation hits.
+    setSearchParams("autoplay=1")
+
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.play = vi.fn(() => Promise.reject(notAllowed))
+    }
+
+    const handler = lastMuxVideoProps()?.onCanPlay
+    await act(async () => {
+      handler?.(new Event("canplay"))
+    })
+    // Allow the play() rejection chain to settle.
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    expect(wrapper?.getAttribute("data-autoplay-blocked")).toBe("true")
+  })
+
+  it("treats a generic onError event as a videoReady fallback (no autoplay-blocked flag)", async () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    // Spinner visible before the error escape fires.
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).not.toBeNull()
+
+    const handler = lastMuxVideoProps()?.onError
+    await act(async () => {
+      handler?.(new Event("error"))
+    })
+
+    // Spinner unmounts (videoReady = true) but autoplayBlocked stays false
+    // because no `detail.code === "autoplay-blocked"` is present and no
+    // play() rejection has fired on this surface.
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    expect(wrapper?.getAttribute("data-autoplay-blocked")).toBe("false")
   })
 })

@@ -143,6 +143,7 @@ describe("Mastra env", () => {
     vi.stubEnv("SCENE_EMBEDDING_PROVIDER", "")
     vi.stubEnv("EXPERIENCE_EMBEDDING_MODEL", "")
     vi.stubEnv("EXPERIENCE_EMBEDDING_PROVIDER", "")
+    vi.stubEnv("EVAL_QUERY_GENERATION_MODEL", "")
     vi.stubEnv("OPENAI_EMBEDDINGS_BASE_URL", "")
     vi.stubEnv("OPENROUTER_EMBEDDINGS_BASE_URL", "")
 
@@ -154,6 +155,7 @@ describe("Mastra env", () => {
     expect(env.SCENE_EMBEDDING_PROVIDER).toBe("openai")
     expect(env.EXPERIENCE_EMBEDDING_MODEL).toBe("openai/text-embedding-3-small")
     expect(env.EXPERIENCE_EMBEDDING_PROVIDER).toBe("openai")
+    expect(env.EVAL_QUERY_GENERATION_MODEL).toBe("anthropic/claude-haiku-4-5")
     expect(env.OPENAI_EMBEDDINGS_BASE_URL).toBe("https://api.openai.com/v1")
     expect(env.OPENROUTER_EMBEDDINGS_BASE_URL).toBe(
       "https://openrouter.ai/api/v1",

@@ -1,10 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import videojs from "video.js"
-import type Player from "video.js/dist/types/player"
-import "video.js/dist/video-js.css"
-import { MuxVideo } from "@forge/video-player"
+import MuxVideo from "@forge/video-player/mux-video"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { RouteVideo } from "@/lib/content"
 import {
@@ -12,129 +9,12 @@ import {
   CONTENT_WIDTH_CLASSES,
 } from "@/lib/content-width"
 import { videoHeroFragment } from "@/lib/fragments/video-hero"
-import { env } from "@/env"
 
 export { videoHeroFragment }
 
 type VideoHeroProps = {
   data: FragmentOf<typeof videoHeroFragment>
   routeVideo?: RouteVideo | null
-}
-
-const VIDEO_JS_OPTIONS = {
-  autoplay: true,
-  controls: false,
-  loop: true,
-  muted: true,
-  fluid: false,
-  fill: true,
-  responsive: false,
-  playsInline: true,
-}
-
-function VideojsBackedVideoHeroPlayer({
-  src,
-  onMutedChange,
-  onPlayerReady,
-}: {
-  src: string
-  onMutedChange: (muted: boolean) => void
-  onPlayerReady: (player: Player) => void
-}) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const playerRef = useRef<Player | null>(null)
-
-  const pauseOnScrollAway = useCallback(() => {
-    const scrollY = window.scrollY
-    if (playerRef.current) {
-      if (scrollY > 100) {
-        playerRef.current.pause()
-      } else if (scrollY < 50) {
-        void playerRef.current.play()
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    window.addEventListener("scroll", pauseOnScrollAway)
-    return () => window.removeEventListener("scroll", pauseOnScrollAway)
-  }, [pauseOnScrollAway])
-
-  // Initialize the player once per mount. Keeping `src` out of this effect's
-  // deps avoids a dispose+reinit cycle on navigation between experiences —
-  // disposing video.js detaches the <video> element from the DOM, but
-  // videoRef still points at the stale element, so the new videojs() call
-  // would warn "element supplied is not included in the DOM" and the hero
-  // would render black. Source updates are handled in a separate effect.
-  useEffect(() => {
-    const videoEl = videoRef.current
-    if (!videoEl) return
-
-    // videojs() wraps the <video> in its own <div class="video-js"> and
-    // moves the element inside; dispose() then removes that whole wrapper
-    // from the DOM. In React Strict Mode the effect fires twice — capture
-    // the original parent/sibling so the cleanup can re-insert the detached
-    // <video> before the next run, otherwise the second videojs() call
-    // runs on a detached element and logs "The element supplied is not
-    // included in the DOM".
-    const videoParent = videoEl.parentNode
-    const videoNextSibling = videoEl.nextSibling
-
-    const player = videojs(videoEl, VIDEO_JS_OPTIONS)
-    playerRef.current = player
-    onPlayerReady(player)
-
-    player.on("volumechange", () => {
-      onMutedChange(player.muted() ?? true)
-    })
-
-    return () => {
-      // Null the ref before dispose() so any scroll event firing during the
-      // synchronous teardown sees null instead of a partially-disposed player.
-      const disposingPlayer = playerRef.current
-      playerRef.current = null
-      disposingPlayer?.dispose()
-      // Only restore when we can restore into the live tree — on true unmount
-      // videoParent is about to be removed itself, and reinserting there is
-      // wasted work + keeps the <video> alive for one extra tick.
-      if (videoParent?.isConnected && !videoEl.isConnected) {
-        if (videoNextSibling?.parentNode === videoParent) {
-          videoParent.insertBefore(videoEl, videoNextSibling)
-        } else {
-          videoParent.appendChild(videoEl)
-        }
-      }
-    }
-  }, [onMutedChange, onPlayerReady])
-
-  // Swap the source in place when the route-driven src changes.
-  useEffect(() => {
-    if (!playerRef.current || !src) return
-    void playerRef.current.src({ type: "application/x-mpegURL", src })
-  }, [src])
-
-  if (!src) return null
-
-  return (
-    <div
-      className={`fixed top-0 right-0 left-0 z-0 h-[85%] bg-stone-950 md:h-[85%] ${CONTENT_WIDTH_ALIGN_CLASSES}`}
-      data-testid="VideoHeroPlayer"
-    >
-      <video
-        ref={videoRef}
-        className="video-js vjs-big-play-centered"
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-        }}
-        playsInline
-      />
-    </div>
-  )
 }
 
 function MuxBackedVideoHeroPlayer({
@@ -248,70 +128,6 @@ function MuteButton({
         </svg>
       )}
     </button>
-  )
-}
-
-function VideojsBackedVideoHero({
-  id,
-  src,
-  resolvedHeading,
-  resolvedSubheading,
-  ctaLabel,
-  ctaLink,
-}: {
-  id: string | null | undefined
-  src: string | null
-  resolvedHeading: string | null
-  resolvedSubheading: string | null
-  ctaLabel: string | null | undefined
-  ctaLink: string | null | undefined
-}) {
-  const [player, setPlayer] = useState<Player | null>(null)
-  const [isMuted, setIsMuted] = useState(true)
-  const [hasUnmutedOnce, setHasUnmutedOnce] = useState(false)
-
-  const handlePlayerReady = useCallback((p: Player) => {
-    setPlayer(p)
-  }, [])
-
-  const handleMutedChange = useCallback((muted: boolean) => {
-    setIsMuted(muted)
-  }, [])
-
-  const handleToggleMute = useCallback(() => {
-    if (player) {
-      const nextMuted = !isMuted
-      player.muted(nextMuted)
-      setIsMuted(nextMuted)
-      if (!nextMuted && !hasUnmutedOnce) {
-        player.currentTime(0)
-        void player.play()
-        setHasUnmutedOnce(true)
-      }
-    }
-  }, [player, isMuted, hasUnmutedOnce])
-
-  return (
-    <section
-      id={id ?? undefined}
-      className="relative flex h-screen w-full items-end bg-stone-900 font-sans md:h-[70vh]"
-      data-testid="VideoHero"
-    >
-      <VideojsBackedVideoHeroPlayer
-        src={src ?? ""}
-        onMutedChange={handleMutedChange}
-        onPlayerReady={handlePlayerReady}
-      />
-
-      <VideoHeroOverlay
-        resolvedHeading={resolvedHeading}
-        resolvedSubheading={resolvedSubheading}
-        ctaLabel={ctaLabel}
-        ctaLink={ctaLink}
-        isMuted={isMuted}
-        onToggleMute={handleToggleMute}
-      />
-    </section>
   )
 }
 
@@ -460,21 +276,8 @@ export function VideoHero({ data, routeVideo }: VideoHeroProps) {
       ? (routeVideo?.snippet ?? routeVideo?.description ?? null)
       : null)
 
-  if (env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION) {
-    return (
-      <MuxBackedVideoHero
-        id={id}
-        src={src}
-        resolvedHeading={resolvedHeading}
-        resolvedSubheading={resolvedSubheading}
-        ctaLabel={ctaLabel}
-        ctaLink={ctaLink}
-      />
-    )
-  }
-
   return (
-    <VideojsBackedVideoHero
+    <MuxBackedVideoHero
       id={id}
       src={src}
       resolvedHeading={resolvedHeading}

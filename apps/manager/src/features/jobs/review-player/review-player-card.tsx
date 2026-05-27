@@ -321,10 +321,6 @@ export function ReviewPlayerCard({
                 </p>
               </div>
               <div>
-                <div className="small">Transcript embeddings</div>
-                <p>{state.compare.embeddingSync?.status ?? "not reported"}</p>
-              </div>
-              <div>
                 <div className="small">Scene embeddings</div>
                 <p>
                   {state.compare.sceneEmbeddingSync?.status ?? "not reported"}

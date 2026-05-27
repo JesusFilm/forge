@@ -23,6 +23,12 @@ apps/admin/eval/
 Per-run output is NOT in this directory — it lands at
 `apps/admin/.tmp/eval/runs/{runId}.json` (gitignored).
 
+Mastra-generated eval candidates are staged in Admin Postgres
+(`search_eval_candidate`), not in this directory. They include source,
+locale, provenance, source anchors, advisory judge summaries, and promotion
+status, but they are not durable regression gates until a later sanitized
+human-promotion flow moves selected cases into committed harness data.
+
 ### `baselines/{name}.json`
 
 Frozen snapshot of `(queries, top-K results, content fingerprint)`
@@ -104,6 +110,7 @@ pnpm eval:search:regenerate-queries -- --locale=fr  # rebuild one locale's synth
 
 - `*.tmp` files (atomic-write artifacts from interrupted rebaselines).
 - Anything under `apps/admin/.tmp/eval/runs/` (already gitignored).
+- Raw exports of `search_eval_candidate` generated rows.
 - Files containing real-user PII. Synthetic and adversarial queries
   should describe search intent, not quote actual user input.
 

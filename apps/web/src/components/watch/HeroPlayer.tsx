@@ -11,8 +11,31 @@ import {
   type ReactNode,
 } from "react"
 import { useSearchParams } from "next/navigation"
-import { MuxPlayer, type MuxPlayerRef } from "@forge/video-player"
+import dynamic from "next/dynamic"
+import type {
+  MuxPlayer as MuxPlayerType,
+  MuxVideo as MuxVideoType,
+  MuxPlayerRef,
+  MuxVideoRef,
+} from "@forge/video-player"
 import type { MuxCSSProperties } from "@mux/mux-player-react"
+
+// Both backends are split into separate chunks via subpath imports
+// (`@forge/video-player/mux-player` vs `/mux-video`) so Turbopack emits
+// one chunk per backend instead of merging them through the package's
+// barrel export. `ssr: false` defers each chunk to client-only — only
+// the actually-rendered branch invokes its dynamic factory at runtime,
+// so the inactive chunk lands in `.next/static/chunks/` but is never
+// fetched by the browser. The flag selection itself is a runtime read
+// of `env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO` (see JSX below); this
+// preserves test-time toggling at the cost of shipping both chunks on
+// disk (Railway env vars still control which one activates per build).
+const MuxPlayer = dynamic(() => import("@forge/video-player/mux-player"), {
+  ssr: false,
+}) as typeof MuxPlayerType
+const MuxVideo = dynamic(() => import("@forge/video-player/mux-video"), {
+  ssr: false,
+}) as typeof MuxVideoType
 
 import { env } from "@/env"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
@@ -22,8 +45,10 @@ import { getViewerId } from "@/lib/viewer-id"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+  WATCH_PLAYER_PLAYBACK_STATE_EVENT,
   type WatchHeaderLanguageSwitcherDetail,
   type WatchPlayerChromeVisibilityDetail,
+  type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { SpinnerIcon } from "@/components/ui/spinner"
@@ -66,16 +91,35 @@ const REVEALED_OBJECT_FIT_STYLE: MuxCSSProperties = {
   "--media-object-fit": "contain",
 }
 
+// `<MuxVideo>` is a bare `<video>` + HLS.js wrapper — no shadow DOM, no
+// media-chrome, no Mux CSS Custom Properties. Object-fit must be set on the
+// element directly. Used by the flag-on branch only.
+const PRE_REVEAL_VIDEO_OBJECT_FIT_STYLE: CSSProperties = {
+  objectFit: "cover",
+}
+const REVEALED_VIDEO_OBJECT_FIT_STYLE: CSSProperties = {
+  objectFit: "contain",
+}
+
 // Fraction of the visible video that must be obscured by the body section
 // before the scroll listener pauses the player. 0.6 = 60% obscured — past
 // this point the player is no longer the main element on screen.
 const OBSCURED_PAUSE_THRESHOLD = 0.6
 
+// `<MuxPlayer>` emits a CustomEvent with `detail.code === "autoplay-blocked"`
+// when the browser refuses autoplay. `<MuxVideo>` (bare `<video>`) emits a
+// generic error and the autoplay refusal surfaces as a Promise rejection
+// from `play()` with `DOMException("NotAllowedError")`. This helper unifies
+// the two signals so the surrounding code stays branch-free.
+function isAutoplayBlockedError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false
+  const named = err as { name?: unknown }
+  return named.name === "NotAllowedError" || named.name === "AutoplayNotAllowed"
+}
+
 // Minimum number of playable language variants before the language-switch
 // globe button appears. With only one variant there's nothing to switch to.
 const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
-
-const PRE_REVEAL_HERO_SIZE_CLASSES = "h-[72svh] min-h-[420px] max-h-[900px]"
 
 export function HeroPlayer({
   block,
@@ -147,7 +191,10 @@ export function HeroPlayer({
         return (
           muxVideo?.shadowRoot?.querySelector("video") ??
           (el as unknown as HTMLElement).shadowRoot?.querySelector("video") ??
-          null
+          // <MuxVideo> path: el IS the underlying <video> element (no
+          // shadow root). Without this fallback the custom-track injection
+          // silently no-ops under the hero MuxVideo flag.
+          (el instanceof HTMLVideoElement ? el : null)
         )
       })()
 
@@ -209,6 +256,31 @@ export function HeroPlayer({
       publishChromeVisibility(true)
     }
   }, [chromeRevealed, publishChromeVisibility])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const currentPlayer = playerRef.current
+    window.dispatchEvent(
+      new CustomEvent<WatchPlayerPlaybackStateDetail>(
+        WATCH_PLAYER_PLAYBACK_STATE_EVENT,
+        {
+          detail: {
+            playing: currentPlayer ? !currentPlayer.paused : false,
+            muted: chromeRevealed ? !!currentPlayer?.muted : true,
+            preview: !chromeRevealed,
+          },
+        },
+      ),
+    )
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent<WatchPlayerPlaybackStateDetail>(
+          WATCH_PLAYER_PLAYBACK_STATE_EVENT,
+          { detail: { playing: false, muted: true, preview: false } },
+        ),
+      )
+    }
+  }, [chromeRevealed])
 
   // Tracks the first paint where Mux Player has buffered enough to render the
   // muted-loop preview. Without this, the wrapper sits at the player's initial
@@ -426,11 +498,19 @@ export function HeroPlayer({
         setChromeRevealed(true)
         setAutoplayBlocked(false)
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         // Browser blocked unmuted play (no MEI grant). Player is still
         // muted (we never set it false), so the existing muted-preview
         // + "Play with Sound" pill flow takes over — the user can still
         // commit playback manually.
+        //
+        // Under MuxVideo (bare <video>) the same condition also catches
+        // initial autoplay-muted rejections — `NotAllowedError` is the
+        // standard signal that replaces MuxPlayer's
+        // `event.detail.code === "autoplay-blocked"`.
+        if (isAutoplayBlockedError(err)) {
+          setAutoplayBlocked(true)
+        }
       })
     // Intentionally omits chromeRevealed and setChromeRevealed: the ref
     // guard above is the idempotency lock; chromeRevealed in deps would
@@ -469,16 +549,26 @@ export function HeroPlayer({
           setChromeRevealed(true)
           setAutoplayBlocked(false)
         })
-        .catch(() => {
+        .catch((err: unknown) => {
           setPillState("tap-to-unmute")
+          if (isAutoplayBlockedError(err)) {
+            setAutoplayBlocked(true)
+          }
         })
     } else {
       setChromeRevealed(true)
     }
   }, [pillState])
 
-  const handlePlayerError = useCallback((event: CustomEvent) => {
-    const code = (event?.detail as { code?: string } | undefined)?.code
+  const handlePlayerError = useCallback((event: Event) => {
+    // MuxPlayer emits a CustomEvent with `detail.code === "autoplay-blocked"`.
+    // MuxVideo emits a plain Event — autoplay rejection arrives via the
+    // play() promise catch handlers above, not here. This branch tolerates
+    // both shapes; the optional chain narrows safely to `undefined` for
+    // bare <video> errors.
+    const code = (
+      (event as CustomEvent)?.detail as { code?: string } | undefined
+    )?.code
     if (code === "autoplay-blocked") {
       setAutoplayBlocked(true)
       return
@@ -486,7 +576,7 @@ export function HeroPlayer({
     // Any non-autoplay-blocked error (network, decode, manifest 404…) means
     // we will never fire onCanPlay, so videoReady would otherwise stay false
     // forever and the spinner would sit on a black box. Reveal the player
-    // element so Mux Player can render its own error UI.
+    // element so the underlying media element can render its native error UI.
     setVideoReady(true)
   }, [])
 
@@ -568,11 +658,7 @@ export function HeroPlayer({
         data-testid="hero-player-wrapper"
         data-chrome-revealed={chromeRevealed ? "true" : "false"}
         data-autoplay-blocked={autoplayBlocked ? "true" : "false"}
-        className={`sticky overflow-hidden bg-black ${
-          chromeRevealed
-            ? "mx-auto aspect-video w-full max-h-svh max-w-[calc(100svh*16/9)]"
-            : `w-full ${PRE_REVEAL_HERO_SIZE_CLASSES}`
-        }`}
+        className={`sticky w-full h-[calc(100svh-300px)] min-h-[400px] bg-black ${chromeRevealed ? "overflow-hidden" : "overflow-x-clip"}`}
         style={{
           // 100svh tracks the *small* viewport on iOS Safari (visible area
           // when the URL bar is showing). Plain 100vh is the *large*
@@ -585,32 +671,86 @@ export function HeroPlayer({
               : "0px",
         }}
       >
-        <MuxPlayer
-          ref={setPlayerRef}
-          playbackId={playbackId}
-          src={playbackId ? undefined : hlsSrc}
-          autoPlay="muted"
-          muted={muted}
-          loop={loop}
-          envKey={env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
-          disableCookies={true}
-          metadata={{
-            player_name: "forge-web-watch",
-            video_title: video.title ?? undefined,
-            video_id: video.documentId,
-            viewer_user_id: viewerUserId,
-          }}
-          style={{
-            ...CHROME_HIDE_STYLE,
-            ...(chromeRevealed
-              ? REVEALED_OBJECT_FIT_STYLE
-              : PRE_REVEAL_OBJECT_FIT_STYLE),
-          }}
-          onLoadedMetadata={handleLoadedMetadata}
-          onCanPlay={handleCanPlay}
-          onError={handlePlayerError}
-          className="block h-full w-full"
-        />
+        {env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO ? (
+          <MuxVideo
+            ref={setPlayerRef as React.Ref<MuxVideoRef>}
+            playbackId={playbackId}
+            src={playbackId ? undefined : hlsSrc}
+            // Native <video> takes boolean `autoPlay` + separate `muted`;
+            // MuxPlayer's `autoPlay="muted"` string literal is a Mux-
+            // specific shorthand the bare element doesn't accept.
+            autoPlay
+            muted={muted}
+            loop={loop}
+            preload="metadata"
+            // Light-DOM poster: the <video poster=...> attribute renders as
+            // a regular IMG before the first frame paints, so the existing
+            // <link rel="preload"> in page.tsx is reused and the LCP element
+            // is discoverable in the initial HTML scan.
+            poster={
+              playbackId
+                ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280`
+                : undefined
+            }
+            envKey={env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
+            disableCookies={true}
+            // Override the wrapper's default — the hero is the one MuxVideo
+            // consumer that *needs* Mux Data attribution (player_name +
+            // video_id), unlike the inline/carousel video sections.
+            disableTracking={false}
+            metadata={{
+              player_name: "forge-web-watch",
+              video_title: video.title ?? undefined,
+              video_id: video.documentId,
+              viewer_user_id: viewerUserId,
+            }}
+            _hlsConfig={{
+              maxBufferLength: 10,
+              maxBufferSize: 5_000_000,
+              backBufferLength: 5,
+            }}
+            style={
+              chromeRevealed
+                ? REVEALED_VIDEO_OBJECT_FIT_STYLE
+                : PRE_REVEAL_VIDEO_OBJECT_FIT_STYLE
+            }
+            onLoadedMetadata={handleLoadedMetadata}
+            onCanPlay={handleCanPlay}
+            // React's SyntheticEvent<HTMLVideoElement> is structurally
+            // narrower than the native Event the MuxPlayer branch passes —
+            // the same handler accepts either at runtime; cast bridges the
+            // type-system difference.
+            onError={(event) => handlePlayerError(event as unknown as Event)}
+            className={`block h-full w-full origin-top ${chromeRevealed ? "" : "scale-y-110"}`}
+          />
+        ) : (
+          <MuxPlayer
+            ref={setPlayerRef}
+            playbackId={playbackId}
+            src={playbackId ? undefined : hlsSrc}
+            autoPlay="muted"
+            muted={muted}
+            loop={loop}
+            envKey={env.NEXT_PUBLIC_MUX_DATA_ENV_KEY}
+            disableCookies={true}
+            metadata={{
+              player_name: "forge-web-watch",
+              video_title: video.title ?? undefined,
+              video_id: video.documentId,
+              viewer_user_id: viewerUserId,
+            }}
+            style={{
+              ...CHROME_HIDE_STYLE,
+              ...(chromeRevealed
+                ? REVEALED_OBJECT_FIT_STYLE
+                : PRE_REVEAL_OBJECT_FIT_STYLE),
+            }}
+            onLoadedMetadata={handleLoadedMetadata}
+            onCanPlay={handleCanPlay}
+            onError={handlePlayerError}
+            className={`block h-full w-full origin-top ${chromeRevealed ? "" : "scale-y-110"}`}
+          />
+        )}
 
         {!chromeRevealed && overlay == null ? (
           <button

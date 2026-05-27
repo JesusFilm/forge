@@ -101,7 +101,7 @@ export function HeroPlayerControls({
     window.dispatchEvent(
       new CustomEvent<WatchPlayerPlaybackStateDetail>(
         WATCH_PLAYER_PLAYBACK_STATE_EVENT,
-        { detail: { playing, muted } },
+        { detail: { playing, muted, preview: false } },
       ),
     )
   }, [playing, muted])
@@ -111,7 +111,7 @@ export function HeroPlayerControls({
       window.dispatchEvent(
         new CustomEvent<WatchPlayerPlaybackStateDetail>(
           WATCH_PLAYER_PLAYBACK_STATE_EVENT,
-          { detail: { playing: false, muted: true } },
+          { detail: { playing: false, muted: true, preview: false } },
         ),
       )
     }

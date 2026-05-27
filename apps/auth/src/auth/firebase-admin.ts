@@ -44,3 +44,19 @@ export async function verifyFirebaseIdToken(
     return null
   }
 }
+
+export async function firebaseUserExistsByEmail(
+  email: string,
+): Promise<boolean> {
+  const auth = getFirebaseAdminAuth()
+  if (!auth) {
+    return false
+  }
+
+  try {
+    await auth.getUserByEmail(email)
+    return true
+  } catch {
+    return false
+  }
+}

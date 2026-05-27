@@ -3,15 +3,16 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import {
+  EmbeddingGenerationModeSchema,
+  EmbeddingTimestampSchema,
+  statusForEmbeddingRewrite,
+} from "@/services/embedding-ingest-shared"
+import {
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
   writeTranscriptEmbeddingPayloadInTransaction,
   type TranscriptEmbeddingGenerationMode,
   type TranscriptEmbeddingPayloadChunk,
 } from "@/services/transcript-embedding.service"
-
-const GenerationModeSchema = z
-  .enum(["idempotent", "repair", "force", "model-upgrade"])
-  .default("idempotent")
 
 const AdminTargetSchema = z
   .object({
@@ -28,13 +29,6 @@ const ExternalTargetSchema = z
     adminVideoId: z.string().min(1).optional(),
   })
   .strict()
-
-const TimestampSchema = z
-  .string()
-  .min(1)
-  .refine((value) => !Number.isNaN(Date.parse(value)), {
-    message: "must be a valid timestamp",
-  })
 
 const TranscriptSourceSegmentSchema = z
   .object({
@@ -71,8 +65,8 @@ export const TranscriptEmbeddingIngestPayloadSchema = z
         segments: z.array(TranscriptSourceSegmentSchema).optional(),
         artifactKey: z.string().min(1).optional(),
         provider: z.string().min(1).optional(),
-        generatedAt: TimestampSchema.optional(),
-        contentHash: z.string().min(1).optional(),
+        generatedAt: EmbeddingTimestampSchema.optional(),
+        contentHash: z.string().min(1),
       })
       .strict(),
     model: z
@@ -92,8 +86,8 @@ export const TranscriptEmbeddingIngestPayloadSchema = z
       .strict(),
     generation: z
       .object({
-        mode: GenerationModeSchema,
-        generatedAt: TimestampSchema,
+        mode: EmbeddingGenerationModeSchema,
+        generatedAt: EmbeddingTimestampSchema,
         mastraRunId: z.string().min(1),
       })
       .strict(),
@@ -122,6 +116,16 @@ export const TranscriptEmbeddingIngestPayloadSchema = z
         path: ["source", "artifactKey"],
         message: "source artifactKey must match target.external.assetId",
       })
+    }
+
+    for (const [index, segment] of payload.source.segments?.entries() ?? []) {
+      if (segment.end < segment.start) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["source", "segments", index, "end"],
+          message: "segment end must be greater than or equal to start",
+        })
+      }
     }
   })
 
@@ -236,6 +240,15 @@ function validateChunks(
         "chunk embedding length does not match payload dimensions",
       )
     }
+    if (
+      chunk.endSeconds != null &&
+      chunk.endSeconds < (chunk.startSeconds ?? 0)
+    ) {
+      throw new TranscriptEmbeddingIngestError(
+        "chunk_invalid",
+        "chunk endSeconds must be greater than or equal to startSeconds",
+      )
+    }
     if (!chunk.text.trim()) {
       throw new TranscriptEmbeddingIngestError(
         "chunk_invalid",
@@ -271,6 +284,15 @@ async function resolveTarget(
         "admin target video was not found",
       )
     }
+    if (
+      payload.target.admin.coreId !== undefined &&
+      payload.target.admin.coreId !== row.coreId
+    ) {
+      throw new TranscriptEmbeddingIngestError(
+        "target_not_found",
+        "admin target coreId does not match resolved video",
+      )
+    }
     const edition = await prisma.videoEdition.findFirst({
       where: {
         id: payload.target.admin.videoEditionId,
@@ -288,7 +310,7 @@ async function resolveTarget(
     return {
       videoId: row.id,
       videoEditionId: edition.id,
-      coreId: payload.target.admin.coreId ?? row.coreId,
+      coreId: row.coreId,
     }
   }
 
@@ -540,18 +562,34 @@ export async function ingestTranscriptEmbeddings(
             "repair_requires_matching_provenance",
           )
         }
+        if (mode === "repair" && healthyChunks === payload.chunks.length) {
+          return {
+            status: "unchanged",
+            target: { ...target, language: payload.language },
+            chunks: payload.chunks.length,
+            model: payload.model.name,
+            dimensions: payload.model.dimensions,
+            mastraRunId: payload.generation.mastraRunId,
+          }
+        }
+      }
+
+      let status: TranscriptEmbeddingIngestStatus = "created"
+      if (existing) {
+        if (mode === "idempotent") {
+          return resultForRejected(
+            payload,
+            target,
+            "existing_transcript_differs",
+          )
+        }
+        status = statusForEmbeddingRewrite(mode)
       }
 
       await writePayload(tx, payload, target, chunks, hash)
 
       return {
-        status: !existing
-          ? "created"
-          : mode === "repair"
-            ? "repaired"
-            : mode === "model-upgrade"
-              ? "model_upgraded"
-              : "forced",
+        status,
         target: { ...target, language: payload.language },
         chunks: payload.chunks.length,
         model: payload.model.name,

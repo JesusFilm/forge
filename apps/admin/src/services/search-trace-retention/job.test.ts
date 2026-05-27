@@ -28,6 +28,8 @@ describe("search trace retention workflow job", () => {
     workflowRun.findFirst.mockResolvedValue(null)
     purgeExpiredSearchTraces.mockResolvedValue({
       purgedCount: 0,
+      purgedRawTraceCount: 0,
+      purgedGeneratedCandidateCount: 0,
       purgedBefore: "2026-05-30T00:00:00.000Z",
     })
   })
@@ -169,6 +171,8 @@ describe("search trace retention workflow job", () => {
   it("marks the ledger succeeded after purge completes with counts only", async () => {
     purgeExpiredSearchTraces.mockResolvedValueOnce({
       purgedCount: 12,
+      purgedRawTraceCount: 9,
+      purgedGeneratedCandidateCount: 3,
       purgedBefore: "2026-05-30T00:00:00.000Z",
     })
     const { runSearchTraceRetentionJob } = await import("./job")
@@ -189,11 +193,13 @@ describe("search trace retention workflow job", () => {
       where: { id: "ledger-run-1" },
       data: expect.objectContaining({
         status: "SUCCEEDED",
-        summary: "Purged 12 expired raw search trace(s).",
+        summary: "Purged 12 expired search trace artifact(s).",
         finishedAt: expect.any(Date),
         durationMs: expect.any(Number),
         details: {
           purgedCount: 12,
+          purgedRawTraceCount: 9,
+          purgedGeneratedCandidateCount: 3,
           purgedBefore: "2026-05-30T00:00:00.000Z",
         },
       }),

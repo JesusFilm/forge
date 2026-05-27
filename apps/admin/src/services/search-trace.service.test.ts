@@ -26,7 +26,7 @@ function buildPrisma() {
   return {
     searchTrace: {
       create: vi.fn(async (args) => ({ id: "trace-1", ...args.data })),
-      findMany: vi.fn(async (): Promise<unknown[]> => []),
+      findMany: vi.fn(async (_args?: unknown): Promise<unknown[]> => []),
     },
     searchTraceAggregate: {
       upsert: vi.fn(async (args) => ({ id: "aggregate-1", ...args.create })),
@@ -38,7 +38,7 @@ function buildPrisma() {
 }
 
 const baseTraceInput: RecordSearchTraceInput = {
-  query: "Jesus film",
+  query: "Jesus film for kids",
   locale: "en",
   routeSource: "rest",
   requestedMode: "hybrid",
@@ -87,7 +87,7 @@ describe("search trace service", () => {
 
     expect(prisma.searchTrace.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        queryText: "Jesus film",
+        queryText: "Jesus film for kids",
         locale: "en",
         routeSource: "REST",
         requestedMode: "hybrid",
@@ -96,9 +96,12 @@ describe("search trace service", () => {
         latencyBucket: "LT_250_MS",
         outcome: "SUCCESS",
         traceClass: "none",
-        queryQualityLabel: "normal",
+        queryQualityLabel: "valid_viewer_intent",
         sensitiveQueryLabel: "none",
         abuseLabel: "none",
+        queryLabelSource: "rules",
+        queryLabelVersion: "search-query-labels/v1",
+        queryLabeledAt: new Date("2026-05-01T00:00:00.180Z"),
         sampleEligible: true,
         rawExpiresAt: new Date("2026-05-30T00:00:00.180Z"),
       }),
@@ -112,6 +115,8 @@ describe("search trace service", () => {
       resultCountSum: 3,
       routeSource: "REST",
       outcome: "SUCCESS",
+      queryLabelSource: "rules",
+      queryLabelVersion: "search-query-labels/v1",
     })
   })
 
@@ -220,7 +225,7 @@ describe("search trace service", () => {
     prisma.searchTrace.findMany.mockResolvedValueOnce([
       {
         id: "trace-1",
-        queryText: "Jesus film",
+        queryText: "Jesus film for kids",
         locale: "en",
         routeSource: "REST",
         requestedMode: "hybrid",
@@ -229,9 +234,19 @@ describe("search trace service", () => {
         latencyBucket: "LT_250_MS",
         outcome: "SUCCESS",
         traceClass: "none",
-        queryQualityLabel: "normal",
+        queryQualityLabel: "valid_viewer_intent",
         sensitiveQueryLabel: "none",
         abuseLabel: "none",
+        queryLabelSource: "rules",
+        queryLabelVersion: "search-query-labels/v1",
+        queryLabeledAt: new Date("2026-05-25T12:00:00.000Z"),
+        llmQueryQualityLabel: null,
+        llmAbuseLabel: null,
+        llmLabelSource: null,
+        llmLabelVersion: null,
+        llmLabelReason: null,
+        llmLabeledAt: null,
+        rawExpiresAt: new Date("2026-06-23T12:00:00.000Z"),
         createdAt: new Date("2026-05-25T12:00:00.000Z"),
       },
     ])
@@ -253,7 +268,7 @@ describe("search trace service", () => {
     ).resolves.toEqual([
       {
         id: "trace-1",
-        queryText: "Jesus film",
+        queryText: "Jesus film for kids",
         locale: "en",
         routeSource: "rest",
         requestedMode: "hybrid",
@@ -262,21 +277,34 @@ describe("search trace service", () => {
         latencyBucket: "lt_250ms",
         outcome: "success",
         traceClass: "none",
-        queryQualityLabel: "normal",
+        queryQualityLabel: "valid_viewer_intent",
         sensitiveQueryLabel: "none",
         abuseLabel: "none",
+        queryLabelSource: "rules",
+        queryLabelVersion: "search-query-labels/v1",
+        queryLabeledAt: "2026-05-25T12:00:00.000Z",
+        llmQueryQualityLabel: null,
+        llmAbuseLabel: null,
+        llmLabelSource: null,
+        llmLabelVersion: null,
+        llmLabelReason: null,
+        llmLabeledAt: null,
+        rawExpiresAt: "2026-06-23T12:00:00.000Z",
         createdAt: "2026-05-25T12:00:00.000Z",
       },
     ])
 
     expect(prisma.searchTrace.findMany).toHaveBeenCalledWith({
       where: {
-        sampleEligible: true,
         rawExpiresAt: { gt: now },
         createdAt: {
           gte: new Date("2026-05-25T12:00:00.000Z"),
           lte: now,
         },
+        queryQualityLabel: { in: ["valid_viewer_intent"] },
+        sensitiveQueryLabel: { in: ["none"] },
+        abuseLabel: { in: ["none"] },
+        sampleEligible: true,
         locale: "en",
         routeSource: "REST",
         searchMode: "hybrid",
@@ -285,6 +313,146 @@ describe("search trace service", () => {
       take: 100,
       select: expect.any(Object),
     })
+  })
+
+  it("uses explicit label filters to broaden sampling without sampleEligible", async () => {
+    const prisma = buildPrisma()
+    const now = new Date("2026-05-26T12:00:00.000Z")
+
+    await sampleSearchTraces(
+      prisma as unknown as Parameters<typeof sampleSearchTraces>[0],
+      {
+        queryQualityLabels: ["catalog_lookup", "unknown_ambiguous"],
+        sensitiveQueryLabels: ["none"],
+        abuseLabels: ["none"],
+        llmClassification: "candidates",
+      },
+      now,
+    )
+
+    expect(prisma.searchTrace.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          queryQualityLabel: {
+            in: ["catalog_lookup", "unknown_ambiguous"],
+          },
+          sensitiveQueryLabel: { in: ["none"] },
+          abuseLabel: { in: ["none"] },
+          llmLabelSource: null,
+          OR: [
+            { queryQualityLabel: "unknown_ambiguous" },
+            { resultCount: { gte: 20 } },
+          ],
+        }),
+      }),
+    )
+    const where = prisma.searchTrace.findMany.mock.calls[0]?.[0] as
+      | { where?: Record<string, unknown> }
+      | undefined
+    expect(where?.where).not.toHaveProperty("sampleEligible")
+  })
+
+  it("includes ambiguous traces by default when sampling LLM candidates", async () => {
+    const prisma = buildPrisma()
+    const now = new Date("2026-05-26T12:00:00.000Z")
+
+    await sampleSearchTraces(
+      prisma as unknown as Parameters<typeof sampleSearchTraces>[0],
+      { llmClassification: "candidates" },
+      now,
+    )
+
+    expect(prisma.searchTrace.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          queryQualityLabel: {
+            in: ["valid_viewer_intent", "unknown_ambiguous"],
+          },
+          llmLabelSource: null,
+          OR: [
+            { queryQualityLabel: "unknown_ambiguous" },
+            { resultCount: { gte: 20 } },
+          ],
+        }),
+      }),
+    )
+  })
+
+  it.each([
+    ["classified", { not: null }],
+    ["unclassified", null],
+    ["any", undefined],
+  ] as const)(
+    "applies llmClassification=%s to the Prisma where clause",
+    async (llmClassification, expectedLabelSource) => {
+      const prisma = buildPrisma()
+      await sampleSearchTraces(
+        prisma as unknown as Parameters<typeof sampleSearchTraces>[0],
+        { llmClassification },
+        new Date("2026-05-26T12:00:00.000Z"),
+      )
+
+      const where = prisma.searchTrace.findMany.mock.calls[0]?.[0] as
+        | { where?: Record<string, unknown> }
+        | undefined
+      if (expectedLabelSource === undefined) {
+        expect(where?.where).not.toHaveProperty("llmLabelSource")
+      } else {
+        expect(where?.where).toHaveProperty(
+          "llmLabelSource",
+          expectedLabelSource,
+        )
+      }
+    },
+  )
+
+  it("redacts query text when broadened sampling returns sensitive or abusive rows", async () => {
+    const prisma = buildPrisma()
+    prisma.searchTrace.findMany.mockResolvedValueOnce([
+      {
+        id: "trace-sensitive",
+        queryText: "viewer@example.com [redacted-token]",
+        locale: "en",
+        routeSource: "REST",
+        requestedMode: "hybrid",
+        searchMode: "hybrid",
+        resultCount: 0,
+        latencyBucket: "LT_250_MS",
+        outcome: "SUCCESS",
+        traceClass: "none",
+        queryQualityLabel: "unknown_ambiguous",
+        sensitiveQueryLabel: "email",
+        abuseLabel: "none",
+        queryLabelSource: "rules",
+        queryLabelVersion: "search-query-labels/v1",
+        queryLabeledAt: new Date("2026-05-25T12:00:00.000Z"),
+        llmQueryQualityLabel: null,
+        llmAbuseLabel: null,
+        llmLabelSource: null,
+        llmLabelVersion: null,
+        llmLabelReason: null,
+        llmLabeledAt: null,
+        rawExpiresAt: new Date("2026-06-23T12:00:00.000Z"),
+        createdAt: new Date("2026-05-25T12:00:00.000Z"),
+      },
+    ])
+
+    await expect(
+      sampleSearchTraces(
+        prisma as unknown as Parameters<typeof sampleSearchTraces>[0],
+        {
+          queryQualityLabels: ["unknown_ambiguous"],
+          sensitiveQueryLabels: ["email"],
+        },
+        new Date("2026-05-26T12:00:00.000Z"),
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: "trace-sensitive",
+        queryText: "[redacted-sample-query]",
+        rawExpiresAt: "2026-06-23T12:00:00.000Z",
+      }),
+    ])
   })
 
   it("schema keeps raw trace privacy fields and aggregate rows query-free", async () => {
@@ -304,10 +472,50 @@ describe("search trace service", () => {
     expect(rawModel).toContain("queryQualityLabel")
     expect(rawModel).toContain("sensitiveQueryLabel")
     expect(rawModel).toContain("abuseLabel")
+    expect(rawModel).toContain("queryLabelSource")
+    expect(rawModel).toContain("queryLabelVersion")
+    expect(rawModel).toContain("queryLabeledAt")
+    expect(rawModel).toContain("llmQueryQualityLabel")
+    expect(rawModel).toContain("llmAbuseLabel")
     expect(rawModel).toContain("sampleEligible")
+    expect(aggregateModel).toContain("queryLabelSource")
+    expect(aggregateModel).toContain("queryLabelVersion")
     expect(rawModel).not.toMatch(
       /bearer|cookie|ipAddress|ip_|userId|keyId|vector|score/i,
     )
     expect(aggregateModel).not.toMatch(/queryText|query_text/i)
+  })
+
+  it("migration preserves rolling compatibility and maps label provenance", async () => {
+    const { readFile } = await import("node:fs/promises")
+    const { fileURLToPath } = await import("node:url")
+    const migrationPath = fileURLToPath(
+      new URL(
+        "../../prisma/migrations/0022_search_trace_query_label_provenance/migration.sql",
+        import.meta.url,
+      ),
+    )
+    const migration = await readFile(migrationPath, "utf8")
+
+    expect(migration).toContain('ADD COLUMN "query_label_source"')
+    expect(migration).toContain('ADD COLUMN "query_label_version"')
+    expect(migration).toContain('ADD COLUMN "query_labeled_at"')
+    expect(migration).toContain("WHEN 'normal' THEN 'valid_viewer_intent'")
+    expect(migration).toContain("WHEN 'long' THEN 'unknown_ambiguous'")
+    expect(migration).toContain(
+      "WHEN 'injection_probe' THEN 'prompt_injection_like'",
+    )
+    expect(migration).not.toContain(
+      'DROP INDEX "search_trace_aggregate_bucket_dims_key"',
+    )
+    expect(migration).toContain(
+      'CREATE UNIQUE INDEX "search_trace_aggregate_bucket_label_dims_key"',
+    )
+    expect(migration).toContain(
+      '"query_label_source",\n    "query_label_version"',
+    )
+    expect(migration).not.toMatch(
+      /bearer|cookie|ipAddress|userId|keyId|vector|score/i,
+    )
   })
 })

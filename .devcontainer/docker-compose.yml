@@ -18,6 +18,8 @@ services:
       - .:/workspace/.devcontainer:ro
     ports:
       - "127.0.0.1:2222:22"
+      # Mastra Studio/runtime for host-browser local development.
+      - "127.0.0.1:${MASTRA_STUDIO_PORT:-4111}:4111"
     cap_add:
       - NET_ADMIN
       - NET_RAW

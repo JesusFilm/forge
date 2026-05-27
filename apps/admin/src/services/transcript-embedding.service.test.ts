@@ -9,9 +9,9 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Principal } from "@/auth/principal"
-import type { EmbeddingsResult } from "@/services/manager-artifacts.service"
 import {
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+  type EmbeddingsResult,
   indexEditionTranscript,
   TranscriptIndexError,
 } from "./transcript-embedding.service"

@@ -19,7 +19,10 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { BibleQuotesSection } from "@/components/watch/BibleQuotesSection"
-import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
+import {
+  WATCH_PILL_BUTTON_CLASS,
+  WATCH_SECTION_EYEBROW_CLASS,
+} from "@/components/watch/watch-section-styles"
 import type { WatchBibleQuotesBlock } from "@/lib/content"
 
 let container: HTMLDivElement
@@ -144,6 +147,9 @@ describe("BibleQuotesSection — promo CTA", () => {
     expect(rel).toContain("noopener")
     expect(rel).toContain("noreferrer")
     expect(cta!.textContent).toContain("Join our Bible study")
+    for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
+      expect(cta!.className).toContain(token)
+    }
   })
 })
 
@@ -235,6 +241,17 @@ describe("BibleQuotesSection — citations + promo", () => {
       '[data-testid="watch-bible-quotes-item"], [data-testid="watch-bible-quotes-promo"]',
     )
     expect(items.length).toBe(3)
+    const bleed = container.querySelector(
+      '[data-testid="watch-bible-quotes-carousel-bleed"]',
+    )
+    expect(bleed?.className).toContain("-mx-10")
+    expect(bleed?.className).toContain("w-[calc(100%+5rem)]")
+    expect(bleed?.className).toContain("md:mx-0")
+    const content = container.querySelector(
+      '[data-testid="watch-bible-quotes-list"]',
+    )
+    expect(content?.className).toContain("pl-10")
+    expect(content?.className).toContain("md:pl-0")
 
     // The two citation items render the formatted reference labels.
     const refs = container.querySelectorAll(
@@ -340,6 +357,9 @@ describe("BibleQuotesSection — Share button", () => {
     const shareBtn = header!.querySelector('[data-testid="watch-share-button"]')
     expect(shareBtn).not.toBeNull()
     expect(shareBtn!.tagName.toLowerCase()).toBe("button")
+    for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
+      expect(shareBtn!.className).toContain(token)
+    }
     expect(header!.querySelector("h2")?.className).toBe(
       WATCH_SECTION_EYEBROW_CLASS,
     )

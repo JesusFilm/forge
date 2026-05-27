@@ -45,19 +45,13 @@ export function SiblingCarousel({
   const clipIndex = activeIndex >= 0 ? activeIndex + 1 : 1
   const clipTotal = children.length
 
-  // Eager-load the small window of cards around the active item (or the
-  // first two in parent-mode). Hard-coded `index < 5` always targeted DOM
-  // order, which wrongly eagered indices 0-4 whenever activeIndex >= 5 —
-  // the api.scrollTo() snap below moves the visible cards INTO view, but
-  // the eager hint fires before snap so we'd burn high-priority slots on
-  // off-screen thumbnails.
-  const eagerIndices = new Set<number>(
-    isParentMode
-      ? [0, 1]
-      : [activeIndex - 1, activeIndex, activeIndex + 1, activeIndex + 2].filter(
-          (i) => i >= 0 && i < children.length,
-        ),
-  )
+  // All carousel thumbnails ship with `loading="lazy"`. Native browser
+  // lazy-loading still fetches above-fold images immediately — it only
+  // defers fetches for images far below the viewport. Cards peeking
+  // through the 300 px gap under the sticky hero load on the same paint
+  // cycle. We don't emit `<link rel="preload">` in head (next/image emits
+  // those for both `priority` and `loading="eager"`) because they
+  // compete with the LCP poster fetch on the critical chain.
 
   const [api, setApi] = useState<CarouselApi | null>(null)
 
@@ -88,7 +82,7 @@ export function SiblingCarousel({
     <section
       data-block-type="SiblingCarousel"
       data-mode={isParentMode ? "parent" : "chapter"}
-      className="relative left-1/2 w-screen -translate-x-1/2 pt-2 pb-2 md:left-auto md:w-full md:translate-x-0"
+      className="relative -mx-10 w-[calc(100%+5rem)] pt-2 pb-2 md:mx-0 md:w-full"
       aria-label={ariaLabel}
     >
       <header className="mb-4 px-10 md:px-0">
@@ -98,9 +92,14 @@ export function SiblingCarousel({
           </span>
           <span className="px-2 text-stone-500">·</span>
           <span data-testid="sibling-carousel-label">
-            {isParentMode
-              ? `${clipTotal} chapters`
-              : `Clip ${clipIndex} of ${clipTotal}`}
+            {isParentMode ? (
+              `${clipTotal} chapters`
+            ) : (
+              <>
+                <span className="md:hidden">{`${clipIndex} of ${clipTotal}`}</span>
+                <span className="hidden md:inline">{`Clip ${clipIndex} of ${clipTotal}`}</span>
+              </>
+            )}
           </span>
         </p>
       </header>
@@ -110,7 +109,7 @@ export function SiblingCarousel({
         setApi={setApi}
         className="w-full"
       >
-        <CarouselContent>
+        <CarouselContent className="pl-10 md:pl-0">
           {children.map((child, index) => {
             const isActive = index === activeIndex
             // `resolvePosterUrl` codifies the editorial-cinematic priority
@@ -134,7 +133,7 @@ export function SiblingCarousel({
             return (
               <CarouselItem
                 key={child.documentId}
-                className="basis-[70%] sm:basis-[45%] md:basis-1/3 lg:basis-1/4 xl:basis-1/5 2xl:basis-1/6"
+                className="basis-[48%] sm:basis-[36%] md:basis-1/3 lg:basis-1/4 xl:basis-1/5 2xl:basis-1/6"
                 aria-current={isActive ? "true" : undefined}
               >
                 <Link
@@ -152,10 +151,10 @@ export function SiblingCarousel({
                   // active/inactive is imperceptible because the outer
                   // card geometry (carousel slot) stays the same.
                   className={cn(
-                    "group relative block aspect-square cursor-pointer overflow-hidden rounded-lg bg-stone-900 transition after:pointer-events-none after:absolute after:inset-0 after:z-40 after:rounded-[calc(theme(borderRadius.lg)-4px)] after:border-4 after:border-transparent after:shadow-[inset_0_1px_0_rgba(255,255,255,0.32),inset_0_-1px_0_rgba(0,0,0,0.32),inset_0_0_0_1px_rgba(255,255,255,0.12)]",
+                    "group relative block aspect-square cursor-pointer overflow-hidden rounded-lg bg-stone-900 transition outline-1 outline-white/15 outline-offset-[-4px] shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)]",
                     isActive
                       ? "border-4 border-white"
-                      : "border-4 border-transparent opacity-70 hover:border-brand-red hover:opacity-100",
+                      : "border-4 border-transparent opacity-70 hover:border-brand-red hover:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
                   )}
                 >
                   {thumb ? (
@@ -163,16 +162,15 @@ export function SiblingCarousel({
                       src={thumb}
                       alt={child.title ?? ""}
                       fill
-                      sizes="(max-width: 640px) 70vw, (max-width: 768px) 45vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
+                      sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      // Eager-load the cards inside `eagerIndices` (the
-                      // small window around activeIndex). `priority` alone
-                      // wasn't surfacing as `loading="eager"` /
-                      // `fetchpriority="high"` in the DOM under Next 16 +
-                      // fill + sizes, so spell all three out.
-                      priority={eagerIndices.has(index)}
-                      loading={eagerIndices.has(index) ? "eager" : "lazy"}
-                      fetchPriority={eagerIndices.has(index) ? "high" : "auto"}
+                      // Native lazy-loading. Browser still fetches
+                      // above-fold cards immediately (lazy only defers
+                      // far-from-viewport). Avoids the head-preload
+                      // entries next/image emits for `priority` /
+                      // `loading="eager"` that compete with the LCP
+                      // poster fetch.
+                      loading="lazy"
                     />
                   ) : (
                     <div

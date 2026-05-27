@@ -42,7 +42,13 @@ export type Verdict =
   | "clearly-B-better"
   | "both-irrelevant"
 
-/** Source attribution for an eval query. */
+/**
+ * Source attribution for committed harness queries.
+ *
+ * Mastra-generated candidates are staged separately in search_eval_candidate
+ * and intentionally do not enter this durable harness union until a sanitized
+ * human-promotion flow lands.
+ */
 export type QuerySource = "synthetic" | "regression"
 
 /** Run-level mode for the harness CLI. */

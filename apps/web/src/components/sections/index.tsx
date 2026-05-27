@@ -1,20 +1,75 @@
 import type { ReactNode } from "react"
+import dynamic from "next/dynamic"
 import type { RouteVideo, Section } from "@/lib/content"
-import { MediaCollection } from "./MediaCollection"
-import { PromoBanner } from "./PromoBanner"
-import { InfoBlocks } from "./InfoBlocks"
-import { CTASection } from "./CTASection"
-import { VideoHero } from "./VideoHero"
-import { Video } from "./Video"
-import { BibleQuotesCarousel } from "./BibleQuotesCarousel"
-import { Text } from "./Text"
-import { AdventCountdown } from "./AdventCountdown"
-import { EasterDates } from "./EasterDates"
-import { Container } from "./Container"
-import { Section as SectionBlock } from "./Section"
-import { RelatedQuestions } from "./RelatedQuestions"
-import { CarouselVideo } from "./CarouselVideo"
-import { NavigationCarousel } from "./NavigationCarousel"
+// Heavy section components are split into separate chunks so unused
+// renderers (every block this page doesn't use) stay out of the main
+// route bundle. Default `ssr: true` keeps SSR markup identical.
+// Type-only imports stay (zero runtime cost) so `Parameters<typeof X>`
+// callsites in the dispatch switch keep their original signatures.
+import type { MediaCollection as MediaCollectionType } from "./MediaCollection"
+import type { PromoBanner as PromoBannerType } from "./PromoBanner"
+import type { InfoBlocks as InfoBlocksType } from "./InfoBlocks"
+import type { CTASection as CTASectionType } from "./CTASection"
+import type { VideoHero as VideoHeroType } from "./VideoHero"
+import type { Video as VideoType } from "./Video"
+import type { BibleQuotesCarousel as BibleQuotesCarouselType } from "./BibleQuotesCarousel"
+import type { Text as TextType } from "./Text"
+import type { AdventCountdown as AdventCountdownType } from "./AdventCountdown"
+import type { EasterDates as EasterDatesType } from "./EasterDates"
+import type { Container as ContainerType } from "./Container"
+import type { Section as SectionBlockType } from "./Section"
+import type { RelatedQuestions as RelatedQuestionsType } from "./RelatedQuestions"
+import type { CarouselVideo as CarouselVideoType } from "./CarouselVideo"
+import type { NavigationCarousel as NavigationCarouselType } from "./NavigationCarousel"
+const MediaCollection = dynamic(() =>
+  import("./MediaCollection").then((m) => ({ default: m.MediaCollection })),
+) as typeof MediaCollectionType
+const PromoBanner = dynamic(() =>
+  import("./PromoBanner").then((m) => ({ default: m.PromoBanner })),
+) as typeof PromoBannerType
+const InfoBlocks = dynamic(() =>
+  import("./InfoBlocks").then((m) => ({ default: m.InfoBlocks })),
+) as typeof InfoBlocksType
+const CTASection = dynamic(() =>
+  import("./CTASection").then((m) => ({ default: m.CTASection })),
+) as typeof CTASectionType
+const VideoHero = dynamic(() =>
+  import("./VideoHero").then((m) => ({ default: m.VideoHero })),
+) as typeof VideoHeroType
+const Video = dynamic(() =>
+  import("./Video").then((m) => ({ default: m.Video })),
+) as typeof VideoType
+const BibleQuotesCarousel = dynamic(() =>
+  import("./BibleQuotesCarousel").then((m) => ({
+    default: m.BibleQuotesCarousel,
+  })),
+) as typeof BibleQuotesCarouselType
+const Text = dynamic(() =>
+  import("./Text").then((m) => ({ default: m.Text })),
+) as typeof TextType
+const AdventCountdown = dynamic(() =>
+  import("./AdventCountdown").then((m) => ({ default: m.AdventCountdown })),
+) as typeof AdventCountdownType
+const EasterDates = dynamic(() =>
+  import("./EasterDates").then((m) => ({ default: m.EasterDates })),
+) as typeof EasterDatesType
+const Container = dynamic(() =>
+  import("./Container").then((m) => ({ default: m.Container })),
+) as typeof ContainerType
+const SectionBlock = dynamic(() =>
+  import("./Section").then((m) => ({ default: m.Section })),
+) as typeof SectionBlockType
+const RelatedQuestions = dynamic(() =>
+  import("./RelatedQuestions").then((m) => ({ default: m.RelatedQuestions })),
+) as typeof RelatedQuestionsType
+const CarouselVideo = dynamic(() =>
+  import("./CarouselVideo").then((m) => ({ default: m.CarouselVideo })),
+) as typeof CarouselVideoType
+const NavigationCarousel = dynamic(() =>
+  import("./NavigationCarousel").then((m) => ({
+    default: m.NavigationCarousel,
+  })),
+) as typeof NavigationCarouselType
 export type { Section } from "@/lib/content"
 
 /**
