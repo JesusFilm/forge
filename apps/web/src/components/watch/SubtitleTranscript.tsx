@@ -7,6 +7,7 @@ import {
   useState,
   type RefObject,
 } from "react"
+import { useTranslations } from "next-intl"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
@@ -159,6 +160,7 @@ export function SubtitleTranscript({
   audioSlug,
   durationSeconds,
 }: SubtitleTranscriptProps) {
+  const t = useTranslations("SubtitleTranscript")
   const initialSlug = useMemo(
     () => pickInitialSubtitleSlug(subtitles, audioSlug ?? null),
     [subtitles, audioSlug],
@@ -324,16 +326,14 @@ export function SubtitleTranscript({
                 id="watch-transcript-heading"
                 className="text-2xl font-semibold tracking-tight text-stone-50"
               >
-                Transcript
+                {t("heading")}
               </h2>
-              <p className="mt-1 text-sm text-stone-400">
-                Tap any line to jump to that moment.
-              </p>
+              <p className="mt-1 text-sm text-stone-400">{t("subheading")}</p>
             </div>
             <div className="flex items-center gap-3">
               {subtitles.length > 1 ? (
                 <label className="flex items-center gap-2 text-sm text-stone-300">
-                  <span className="sr-only">Subtitle language</span>
+                  <span className="sr-only">{t("subtitleLanguage")}</span>
                   <select
                     data-testid="watch-subtitle-language"
                     value={selectedSlug ?? ""}
@@ -343,7 +343,7 @@ export function SubtitleTranscript({
                     {subtitles.map((s) => (
                       <option key={s.documentId} value={s.language.slug}>
                         {languageLabel(s)}
-                        {s.aiGenerated ? " · AI" : ""}
+                        {s.aiGenerated ? t("aiSuffix") : ""}
                       </option>
                     ))}
                   </select>
@@ -351,7 +351,7 @@ export function SubtitleTranscript({
               ) : (
                 <span className="rounded-full bg-stone-900/60 px-3 py-1 text-xs font-medium uppercase tracking-wide text-stone-300">
                   {activeSubtitle ? languageLabel(activeSubtitle) : ""}
-                  {activeSubtitle?.aiGenerated ? " · AI" : ""}
+                  {activeSubtitle?.aiGenerated ? t("aiSuffix") : ""}
                 </span>
               )}
             </div>
@@ -359,11 +359,11 @@ export function SubtitleTranscript({
 
           {status === "loading" ? (
             <div className="flex items-center justify-center px-8 py-16 text-sm text-stone-400">
-              Loading transcript…
+              {t("loading")}
             </div>
           ) : status === "error" ? (
             <div className="px-8 py-16 text-center text-sm text-stone-400">
-              Transcript unavailable for this subtitle track.
+              {t("unavailable")}
             </div>
           ) : cues && cues.length > 0 ? (
             <ol
@@ -407,7 +407,7 @@ export function SubtitleTranscript({
             </ol>
           ) : (
             <div className="px-8 py-16 text-center text-sm text-stone-400">
-              No transcript lines found.
+              {t("empty")}
             </div>
           )}
         </div>

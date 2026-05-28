@@ -12,5 +12,105 @@
   "VideosPage": {
     "title": "Todos os vídeos",
     "placeholder": "A navegação pelo catálogo está chegando. Enquanto isso, use a busca ou uma URL específica do tópico."
+  },
+  "BibleQuotes": {
+    "title": "Citações bíblicas",
+    "share": "Compartilhar",
+    "readMore": "Leia mais...",
+    "freeResources": "Recursos gratuitos",
+    "promoHeading": "Quer aprofundar sua compreensão da Bíblia?",
+    "joinBibleStudy": "Participe do nosso estudo bíblico",
+    "previousQuote": "Citação bíblica anterior",
+    "nextQuote": "Próxima citação bíblica"
+  },
+  "DownloadButton": {
+    "download": "Baixar"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Baixar vídeo",
+    "eyebrow": "Baixar vídeo",
+    "posterAlt": "Miniatura do vídeo",
+    "noDownloads": "Nenhum download disponível para este vídeo.",
+    "errorUnavailableSource": "Download indisponível nesta fonte",
+    "tierHighest": "Máxima",
+    "tierHigh": "Alta",
+    "tierLow": "Baixa"
+  },
+  "HeroPlayerControls": {
+    "play": "Reproduzir",
+    "pause": "Pausar",
+    "seek": "Buscar",
+    "seekValue": "{current} de {total}",
+    "volume": "Volume",
+    "volumeValue": "{percent} por cento",
+    "mute": "Silenciar",
+    "unmute": "Ativar som",
+    "changeAudioLanguage": "Alterar idioma do áudio",
+    "enterFullscreen": "Tela cheia",
+    "exitFullscreen": "Sair da tela cheia"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Selecionar idioma",
+    "searchPlaceholder": "Buscar idiomas…",
+    "languages": "Idiomas",
+    "noMatches": "Nenhuma correspondência"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Idioma",
+    "dialogTitleWithSubtitles": "Idioma e legendas",
+    "languageHeading": "Idioma",
+    "subtitlesHeading": "Legendas",
+    "languageCount": "{count, plural, one {# idioma} other {# idiomas}}",
+    "requestSent": "Solicitação enviada",
+    "translateWithAi": "Traduzir com IA",
+    "noSubtitles": "Sem legendas",
+    "close": "Fechar",
+    "apply": "Aplicar"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPISÓDIO} other {# EPISÓDIOS}}",
+    "seriesLabel": "SÉRIE · {episodes}",
+    "changeAudioLanguage": "Alterar idioma do áudio",
+    "share": "Compartilhar",
+    "languages": "Idiomas"
+  },
+  "WatchModal": {
+    "close": "Fechar"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Se você pudesse fazer uma pergunta ao criador deste vídeo, qual seria?",
+    "fallbackBody": "Tenha uma conversa privada com alguém disposto a ouvir.",
+    "questionsShort": "Perguntas",
+    "questions": "Perguntas relacionadas",
+    "askYours": "Faça a sua",
+    "chatWithPerson": "Conversar com uma pessoa",
+    "askBibleQuestion": "Fazer uma pergunta bíblica"
+  },
+  "ShareModal": {
+    "dialogTitle": "Compartilhar vídeo",
+    "heading": "Compartilhe este vídeo",
+    "posterAlt": "Miniatura do vídeo",
+    "shareOnFacebook": "Compartilhar no Facebook",
+    "shareOnFacebookUnavailable": "Compartilhar no Facebook (indisponível nesta versão)",
+    "shareOnX": "Compartilhar no X",
+    "shareOnXUnavailable": "Compartilhar no X (indisponível nesta versão)",
+    "shareDisabledHint": "Compartilhar requer uma página publicada — funciona quando este vídeo estiver em produção.",
+    "shareFormat": "Formato de compartilhamento",
+    "shareLinkTab": "Link de compartilhamento",
+    "embedCodeTab": "Código de incorporação",
+    "copyFailed": "Não foi possível copiar automaticamente — selecione o texto abaixo e copie manualmente.",
+    "copyLink": "Copiar link",
+    "copyCode": "Copiar código",
+    "copied": "Copiado",
+    "close": "Fechar"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transcrição",
+    "subheading": "Toque em qualquer linha para pular para aquele momento.",
+    "subtitleLanguage": "Idioma das legendas",
+    "aiSuffix": " · IA",
+    "loading": "Carregando transcrição…",
+    "unavailable": "Transcrição indisponível para esta faixa de legendas.",
+    "empty": "Nenhuma linha de transcrição encontrada."
   }
 }
