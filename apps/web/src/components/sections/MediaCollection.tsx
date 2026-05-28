@@ -16,6 +16,12 @@ import {
   tryAsContentSlug,
   watchVideoPath,
 } from "@/lib/routes"
+
+// Collections carry no per-item language today, so card deep links default
+// to the English variant and rely on the watch route to re-resolve locale.
+// See todo: EnrichedMediaItem should carry a defaultLanguage (data-model gap).
+// Hoisted so the throwing constructor runs once at module load, not per card.
+const DEFAULT_COLLECTION_LOCALE = asLocaleSlug("english")
 import {
   Carousel,
   CarouselContent,
@@ -254,11 +260,10 @@ function VideoCard({
 }) {
   // Raw <a href> (not next/link), so the `/watch` basePath must be prefixed
   // manually. EnrichedMediaItem carries no language field, so the locale
-  // segment defaults to `english`.
+  // segment defaults to `english` (see DEFAULT_COLLECTION_LOCALE).
   const slug = item.videoSlug ? tryAsContentSlug(item.videoSlug) : null
-  const lang = asLocaleSlug("english")
   const href = slug
-    ? `${WATCH_BASE_PATH}${watchVideoPath(slug, lang)}`
+    ? `${WATCH_BASE_PATH}${watchVideoPath(slug, DEFAULT_COLLECTION_LOCALE)}`
     : undefined
   const Wrapper = href ? "a" : "div"
   const imageSrc = resolveMediaImageUrl(item.imageUrl)

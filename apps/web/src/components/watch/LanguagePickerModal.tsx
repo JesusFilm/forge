@@ -214,24 +214,24 @@ export function LanguagePickerModal({
     }
 
     if (languageDirty) {
-      navigatingRef.current.inFlight = true
-      setPendingNavTo(draftSlug)
-      writePreferredLanguageSlug(draftSlug)
       // Validate both segments through the route builder's brand
-      // constructors. If either fails the slug regex, skip navigation
-      // entirely rather than emit a malformed URL — the rest of
+      // constructors BEFORE persisting the preference cookie. If either
+      // fails the slug regex, skip the whole branch — no cookie write, no
+      // navigation — rather than poison the cookie then no-op (matches
+      // SeriesPageClient's validate-before-write ordering). The rest of
       // handleApply (incl. onClose) still runs.
       const slug = tryAsContentSlug(videoSlug)
       const lang = tryAsLocaleSlug(draftSlug)
       if (slug && lang) {
+        navigatingRef.current.inFlight = true
+        setPendingNavTo(draftSlug)
+        writePreferredLanguageSlug(draftSlug)
         if (kind === "series") {
-          const href = watchVideoPath(slug, lang)
-          router.push(href)
+          router.push(watchVideoPath(slug, lang))
         } else {
           const rawT = playerRef.current?.currentTime
-          const t = Number.isFinite(rawT) ? rawT : 0
-          const href = watchVideoPath(slug, lang, { t, autoplay: true })
-          router.push(href)
+          const t = typeof rawT === "number" && Number.isFinite(rawT) ? rawT : 0
+          router.push(watchVideoPath(slug, lang, { t, autoplay: true }))
         }
       }
     }

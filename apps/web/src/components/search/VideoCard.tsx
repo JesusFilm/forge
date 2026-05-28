@@ -3,7 +3,12 @@ import Link from "next/link"
 import type { Route } from "next"
 import { Play } from "lucide-react"
 import { formatDuration } from "@/lib/format-duration"
-import { asLocaleSlug, tryAsContentSlug, watchVideoPath } from "@/lib/routes"
+import {
+  asLocaleSlug,
+  searchPath,
+  tryAsContentSlug,
+  watchVideoPath,
+} from "@/lib/routes"
 import type { AdminVideoLabel, SearchResult } from "@/lib/search"
 
 type VideoCardProps = {
@@ -12,13 +17,15 @@ type VideoCardProps = {
   hrefBuilder?: (result: SearchResult) => Route
 }
 
+// English is the default UI locale for search-result deep links. Hoisted to
+// module scope so the throwing constructor runs once at load, not per render.
+const ENGLISH_LOCALE = asLocaleSlug("english")
+
 export const defaultHrefBuilder = (result: SearchResult): Route => {
   const slug = tryAsContentSlug(result.slug)
-  // On a malformed slug, fall back to /search (a safe in-app Route)
+  // On a malformed slug, fall back to the search index (a safe in-app Route)
   // rather than emitting a broken deep link.
-  return slug
-    ? watchVideoPath(slug, asLocaleSlug("english"))
-    : ("/search" as Route)
+  return slug ? watchVideoPath(slug, ENGLISH_LOCALE) : searchPath()
 }
 
 // Full tailwind class strings so JIT can extract them at build time.
