@@ -8,18 +8,23 @@ import "./globals.css"
 import { hasUiLocale } from "@/i18n/locales"
 import { cn } from "@/lib/utils"
 import { DEFAULT_LOCALE, resolveUiLocale } from "@/lib/locale"
+import { WATCH_PATHNAME_HEADER } from "@/lib/proxy-headers"
 import { stripHtmlSuffix } from "@/lib/url-shape"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 
-// Proxy.ts sets x-watch-pathname on every watch request so the layout
-// can derive the UI chrome locale BEFORE the page handler runs.
+// Proxy.ts sets WATCH_PATHNAME_HEADER on every watch request so the
+// layout can derive the UI chrome locale BEFORE the page handler runs.
 // Layouts render before pages in App Router; without this header we'd
 // fall back to DEFAULT_LOCALE for every <html lang> render.
-const PATHNAME_HEADER = "x-watch-pathname"
+//
+// Spoof safety: the proxy.ts producer wipes any inbound client-supplied
+// value (defense-in-depth); the resolveUiLocale + hasUiLocale gate
+// below is the actual safety net — a header that doesn't classify to a
+// runtime-discovered catalog locale falls through to DEFAULT_LOCALE.
 
 async function deriveLocaleFromUrl(): Promise<string> {
   const hdrs = await headers()
-  const pathname = hdrs.get(PATHNAME_HEADER) ?? ""
+  const pathname = hdrs.get(WATCH_PATHNAME_HEADER) ?? ""
   // Last URL segment carries the locale for every shape in the watch
   // URL contract: 1-seg /{lang}.html, 2-seg /{slug}.html/{lang}.html,
   // 3-seg /{series}.html/{episode}/{lang}.html. Stripping .html and

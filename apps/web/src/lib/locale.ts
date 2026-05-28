@@ -6,11 +6,14 @@ export const DEFAULT_LOCALE = "en"
 // subtags of the UI-locale families web supports. Must stay aligned with
 // the filesystem-derived `AVAILABLE_UI_LOCALES` (apps/web/src/i18n/locales.ts):
 // when a new `messages/{locale}.json` lands, widen this tuple in the
-// same PR so `isLocale(locale)` recognizes it. CI test asserts the
-// invariant. Not exported — outside callers use `hasUiLocale` from
+// same PR so `isLocale(locale)` recognizes it.
+//
+// Exported for the locale-parity test only — `apps/web/src/i18n/__tests__/messages-parity.test.ts`
+// asserts UI_LOCALE_FAMILIES ⊆ AVAILABLE_UI_LOCALES so a dropped catalog
+// fails CI. Outside the test, callers use `hasUiLocale` from
 // `@/i18n/locales` for catalog membership, or `isLocale` from this file
 // for bcp47 narrowing.
-const UI_LOCALE_FAMILIES = ["en", "es", "fr", "pt", "de"] as const
+export const UI_LOCALE_FAMILIES = ["en", "es", "fr", "pt", "de"] as const
 
 /**
  * Query-param sentinel that signals "this URL's locale has already been

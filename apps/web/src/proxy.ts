@@ -7,6 +7,7 @@ import {
   isLocale,
   parseAcceptLanguage,
 } from "@/lib/locale"
+import { WATCH_PATHNAME_HEADER } from "@/lib/proxy-headers"
 
 // Slug shape that the watch picker writes — kebab-case ASCII or bcp47
 // codes. Used by both isWatchRoute (to recognise slug-form watch URLs
@@ -45,20 +46,26 @@ function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
   return response
 }
 
-// Per-request pathname header. Layouts render BEFORE pages in App
-// Router; without this, app/layout.tsx has no way to know the URL when
-// it needs to derive UI chrome locale for `<html lang>` + NextIntl-
-// ClientProvider. Pages also call setRequestLocale defensively, but the
-// layout's getLocale() runs first and would otherwise see the default
-// locale every render.
-const PATHNAME_HEADER = "x-watch-pathname"
-
+// Forward the watch URL pathname to the root layout via WATCH_PATHNAME_HEADER.
+// Layouts render BEFORE pages in App Router; without this header, the layout
+// has no way to know the URL when it needs to derive UI chrome locale for
+// `<html lang>` + NextIntlClientProvider. Pages also call setRequestLocale
+// defensively, but the layout's getLocale() runs first and would otherwise
+// see the default locale every render.
+//
+// Defense-in-depth: `headers.delete()` before `set()` strips any inbound
+// client-supplied value. `Headers.set` already overwrites, so this is
+// belt-and-braces — the actual safety net against header spoofing is the
+// `resolveUiLocale` + `hasUiLocale` gate in app/layout.tsx (a spoofed
+// pathname that doesn't classify to a valid locale falls through to
+// DEFAULT_LOCALE). See `apps/web/src/lib/proxy-headers.ts` for the contract.
 function nextWithPathname(
   request: NextRequest,
   pathname: string,
 ): NextResponse {
   const headers = new Headers(request.headers)
-  headers.set(PATHNAME_HEADER, pathname)
+  headers.delete(WATCH_PATHNAME_HEADER)
+  headers.set(WATCH_PATHNAME_HEADER, pathname)
   return NextResponse.next({ request: { headers } })
 }
 
