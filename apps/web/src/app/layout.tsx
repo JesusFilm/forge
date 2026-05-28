@@ -1,9 +1,43 @@
 import type { ReactNode } from "react"
+import { headers } from "next/headers"
 import localFont from "next/font/local"
 import type { Metadata, Viewport } from "next"
+import { NextIntlClientProvider } from "next-intl"
+import { getLocale, setRequestLocale } from "next-intl/server"
 import "./globals.css"
+import { hasUiLocale } from "@/i18n/locales"
 import { cn } from "@/lib/utils"
+import { DEFAULT_LOCALE, resolveUiLocale } from "@/lib/locale"
+import { WATCH_PATHNAME_HEADER } from "@/lib/proxy-headers"
+import { stripHtmlSuffix } from "@/lib/url-shape"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
+
+// Proxy.ts sets WATCH_PATHNAME_HEADER on every watch request so the
+// layout can derive the UI chrome locale BEFORE the page handler runs.
+// Layouts render before pages in App Router; without this header we'd
+// fall back to DEFAULT_LOCALE for every <html lang> render.
+//
+// Spoof safety: the proxy.ts producer wipes any inbound client-supplied
+// value (defense-in-depth); the resolveUiLocale + hasUiLocale gate
+// below is the actual safety net — a header that doesn't classify to a
+// runtime-discovered catalog locale falls through to DEFAULT_LOCALE.
+
+async function deriveLocaleFromUrl(): Promise<string> {
+  const hdrs = await headers()
+  const pathname = hdrs.get(WATCH_PATHNAME_HEADER) ?? ""
+  // Last URL segment carries the locale for every shape in the watch
+  // URL contract: 1-seg /{lang}.html, 2-seg /{slug}.html/{lang}.html,
+  // 3-seg /{series}.html/{episode}/{lang}.html. Stripping .html and
+  // resolving through the bcp47 family fallback collapses each into
+  // its UI chrome locale; non-locale tails (e.g. "jesus.html",
+  // "videos") fall through to DEFAULT_LOCALE.
+  const segments = pathname.split("/").filter(Boolean)
+  const tail = segments[segments.length - 1]
+  if (!tail) return DEFAULT_LOCALE
+  const stripped = stripHtmlSuffix(tail)
+  const resolved = resolveUiLocale(stripped) ?? DEFAULT_LOCALE
+  return hasUiLocale(resolved) ? resolved : DEFAULT_LOCALE
+}
 
 const montserrat = localFont({
   // Italic variable-font face was dropped — the only italic usage in
@@ -72,10 +106,19 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 }
 
-export default function RootLayout(props: { children: ReactNode }) {
+export default async function RootLayout(props: { children: ReactNode }) {
+  // Layout renders BEFORE pages, so we can't rely on the page handler
+  // to have populated the next-intl request store yet. Derive locale
+  // from the proxy-set pathname header, then setRequestLocale so any
+  // server component down the tree (including the page) sees the same
+  // locale. getLocale() returns the set value; pages still call
+  // setRequestLocale defensively, but the source of truth is here.
+  const derived = await deriveLocaleFromUrl()
+  setRequestLocale(derived)
+  const locale = await getLocale()
   return (
     <html
-      lang="en"
+      lang={locale}
       dir="ltr"
       className={cn("overflow-x-clip bg-black font-sans", montserrat.variable)}
     >
@@ -89,7 +132,9 @@ export default function RootLayout(props: { children: ReactNode }) {
         <link rel="dns-prefetch" href="https://imagedelivery.net" />
       </head>
       <body className="overflow-x-clip bg-black">
-        <FloatingSearchProvider>{props.children}</FloatingSearchProvider>
+        <NextIntlClientProvider>
+          <FloatingSearchProvider>{props.children}</FloatingSearchProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   )

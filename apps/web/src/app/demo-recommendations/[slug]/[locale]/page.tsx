@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import type { Route } from "next"
 import Image from "next/image"
 import Link from "next/link"
-import { isLocale, DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/lib/locale"
+import { isLocale, DEFAULT_LOCALE } from "@/lib/locale"
 import { getSceneRecommendations, getVideoBySlug } from "@/lib/recommendations"
 import { VideoRecommendations } from "@/components/sections/VideoRecommendations"
 
@@ -35,9 +35,7 @@ function LocaleToggle({
   slug: string
   currentLocale: string
 }) {
-  const demoLocales = SUPPORTED_LOCALES.filter((l) =>
-    ["en", "es", "fr"].includes(l),
-  )
+  const demoLocales = ["en", "es", "fr"] as const
 
   return (
     <nav className="flex gap-2" aria-label="Language">
