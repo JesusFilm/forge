@@ -21,8 +21,13 @@ const KNOWN_ERROR_KEYS: Record<string, string> = {
 export function ExperienceError({ message }: ExperienceErrorProps) {
   const t = useTranslations("ExperienceError")
   const trimmed = message?.trim() || ""
-  const knownKey = KNOWN_ERROR_KEYS[trimmed]
-  const friendly = knownKey ? t(knownKey) : trimmed || t("unexpected")
+  // Object.hasOwn check so the index access is type-honest under
+  // `noUncheckedIndexedAccess`-off projects too — KNOWN_ERROR_KEYS
+  // returns undefined for unknown inputs and the type system should
+  // reflect that. Mirrors the LANGUAGE_BCP47_MAP pattern in locale.ts.
+  const friendly = Object.hasOwn(KNOWN_ERROR_KEYS, trimmed)
+    ? t(KNOWN_ERROR_KEYS[trimmed])
+    : trimmed || t("unexpected")
   return (
     <main className="flex min-h-[40vh] flex-col items-center justify-center p-8">
       <p className="text-lg text-red-600">
