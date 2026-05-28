@@ -19,7 +19,7 @@ import {
   generateSeriesMetadata,
   getWatchPageMetadata,
 } from "@/lib/experience-metadata"
-import { DEFAULT_LOCALE, isLocale } from "@/lib/locale"
+import { DEFAULT_LOCALE, resolveUiLocale } from "@/lib/locale"
 import {
   tryAsContentSlug,
   tryAsLocaleSlug,
@@ -72,7 +72,12 @@ function classify(rawSlug: string, rest: string[]): Shape {
       kind: "video",
       slug,
       rawLocale,
-      locale: isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE,
+      // Resolve the UI chrome locale via the slug→bcp47 family fallback
+      // (`spanish-castilian` → `es-ES` → primary subtag `es`). Falls back
+      // to DEFAULT_LOCALE only when the slug doesn't map to a SUPPORTED
+      // language family. `rawLocale` stays slug-form so the audio variant
+      // selector + language picker UI keep their dub-grain resolution.
+      locale: resolveUiLocale(rawLocale) ?? DEFAULT_LOCALE,
     }
   }
   if (rest.length === 2) {
@@ -87,7 +92,7 @@ function classify(rawSlug: string, rest: string[]): Shape {
       seriesSlug: slug,
       episodeSlug,
       rawLocale,
-      locale: isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE,
+      locale: resolveUiLocale(rawLocale) ?? DEFAULT_LOCALE,
     }
   }
   return { kind: "unknown" }

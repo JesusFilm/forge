@@ -420,6 +420,70 @@ describe("Catch-all routing — .html shape acceptance (2-seg)", () => {
   })
 })
 
+describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-seg)", () => {
+  it("renders Spanish UI chrome when URL locale is 'spanish-castilian'", async () => {
+    // Non-series record so WatchPageClient receives the locale prop.
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("shortFilm", {
+        slug: "spanish-castilian",
+        bcp47: "es-ES",
+        name: "Spanish, Castilian",
+      }),
+    )
+    await render2Seg("storyclubs.html", "spanish-castilian.html")
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      locale?: string
+      languageSlug?: string
+    }
+    // languageSlug stays slug-form (audio variant + language picker UI).
+    expect(props?.languageSlug).toBe("spanish-castilian")
+    // locale resolves to bcp47 primary `es` (UI chrome shell language).
+    expect(props?.locale).toBe("es")
+  })
+
+  it("renders Portuguese UI chrome for portuguese-brazil + portuguese-mozambique", async () => {
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("shortFilm", {
+        slug: "portuguese-brazil",
+        bcp47: "pt",
+        name: "Portuguese, Brazil",
+      }),
+    )
+    await render2Seg("storyclubs.html", "portuguese-brazil.html")
+    const props = watchPageClientMock.mock.calls[0]?.[0] as { locale?: string }
+    expect(props?.locale).toBe("pt")
+  })
+
+  it("renders French UI chrome for french-african (ISO 639-3 fallback)", async () => {
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("shortFilm", {
+        slug: "french-african",
+        bcp47: "fra",
+        name: "French, African",
+      }),
+    )
+    await render2Seg("storyclubs.html", "french-african.html")
+    const props = watchPageClientMock.mock.calls[0]?.[0] as { locale?: string }
+    // bcp47 'fra' (ISO 639-3) → primary 'fra' → ISO_639_3_TO_UI_LOCALE → 'fr'
+    expect(props?.locale).toBe("fr")
+  })
+
+  it("falls back to DEFAULT_LOCALE='en' when language family isn't in SUPPORTED_LOCALES", async () => {
+    // Mandarin (zh), Russian (ru), Arabic (ar), Japanese (ja), etc. — admin
+    // serves the audio but apps/web UI chrome ships only en/es/fr/pt/de.
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("shortFilm", {
+        slug: "mandarin-china",
+        bcp47: "zh",
+        name: "Mandarin, China",
+      }),
+    )
+    await render2Seg("storyclubs.html", "mandarin-china.html")
+    const props = watchPageClientMock.mock.calls[0]?.[0] as { locale?: string }
+    expect(props?.locale).toBe("en")
+  })
+})
+
 describe("Catch-all routing — 3-seg episode branch", () => {
   it("renders WatchPageClient when episode + series resolve", async () => {
     resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
