@@ -144,6 +144,22 @@ export function canonicalizeWatchPath(
     }
   }
 
+  // Rule 4.5: enforce 3-segment episode-bare contract. In the canonical
+  // /{series}.html/{episode}/{lang}.html shape the middle segment must be
+  // bare. Strip .html from segment 1 if present so the malformed shape
+  // /series.html/ep.html/lang.html redirects to the canonical form.
+  {
+    const segs = path.split("/").filter(Boolean)
+    if (segs.length === 3 && hasHtmlSuffix(segs[1])) {
+      const next = [segs[0], segs[1].replace(/\.html$/i, ""), segs[2]]
+      const candidate = `/${next.join("/")}`
+      if (candidate !== path) {
+        path = candidate
+        onlyTrailingSlashChanged = false
+      }
+    }
+  }
+
   // Rule 5: single-segment-no-.html → duplicate-with-.html.
   // /foo → /foo.html/foo.html. Skip whitelist (videos, search) which are
   // legitimate 1-segment routes.

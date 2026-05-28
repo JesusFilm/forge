@@ -85,7 +85,7 @@ describe("watchVideoPath", () => {
       watchVideoPath(jesus, english, {
         t: 42,
         autoplay: true,
-        reason: "alias-redirect",
+        reason: "locale-resolved",
       }),
     ).toBe("/jesus.html/english.html?t=42&autoplay=1&_lr=1")
   })
@@ -122,6 +122,13 @@ describe("searchPath", () => {
 
   it("URL-encodes special characters in q", () => {
     expect(searchPath("jesus & friends")).toBe("/search?q=jesus+%26+friends")
+  })
+})
+
+describe("WATCH_CANONICAL_ORIGIN integration with env.ts", () => {
+  it("equals env.NEXT_PUBLIC_CANONICAL_ORIGIN (single source of truth)", async () => {
+    const { env } = await import("@/env")
+    expect(WATCH_CANONICAL_ORIGIN).toBe(env.NEXT_PUBLIC_CANONICAL_ORIGIN)
   })
 })
 
@@ -178,10 +185,31 @@ describe("parseWatchPath", () => {
     expect(parseWatchPath("/videos")).toEqual({ kind: "videos" })
   })
 
-  it("parses /search with q", () => {
+  it("parses /search with q from URLSearchParams (proxy.ts caller)", () => {
     expect(parseWatchPath("/search", new URLSearchParams("q=jesus"))).toEqual({
       kind: "search",
       q: "jesus",
+    })
+  })
+
+  it("parses /search with q from plain Record (Next 16 page-route caller)", () => {
+    expect(parseWatchPath("/search", { q: "jesus" })).toEqual({
+      kind: "search",
+      q: "jesus",
+    })
+  })
+
+  it("parses /search with array-valued q from plain Record (takes first)", () => {
+    expect(parseWatchPath("/search", { q: ["jesus", "ignored"] })).toEqual({
+      kind: "search",
+      q: "jesus",
+    })
+  })
+
+  it("parses /search with undefined q from plain Record", () => {
+    expect(parseWatchPath("/search", { q: undefined })).toEqual({
+      kind: "search",
+      q: undefined,
     })
   })
 

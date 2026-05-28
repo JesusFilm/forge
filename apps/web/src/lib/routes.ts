@@ -5,6 +5,8 @@
 
 import type { Route } from "next"
 
+import { env } from "@/env"
+
 import { LOCALE_RESOLVED_PARAM } from "./locale"
 import { appendHtmlSuffix } from "./url-shape"
 
@@ -30,13 +32,16 @@ export function asContentSlug(value: string): ContentSlug {
   return value as ContentSlug
 }
 
-// `reason` documents WHY a resync sentinel is set on the URL. The literal
-// union keeps client-emitted hrefs honest: a click handler can't accidentally
-// pass `reason: "locale-resolved"` (server-side resync only).
+// `reason` documents WHY a resync sentinel is set on the URL. Today the
+// union has one value — the server-side variant-mismatch resync at
+// app/[slug]/[locale]/page.tsx:146. When Phase 3 cookie-pref redirects
+// or Phase 4 alias-redirect emitters land, expand this union AND
+// serialize the value to a `reason=` query param so the wire carries the
+// distinction (a single boolean `_lr=1` can't tell three reasons apart).
 export type BuildOptions = {
   t?: number
   autoplay?: boolean
-  reason?: "locale-resolved" | "alias-redirect" | "cookie-pref"
+  reason?: "locale-resolved"
 }
 
 const ONE_SHOT_TIMESTAMP_PARAM = "t"
@@ -102,6 +107,27 @@ export type ParsedWatchPath =
   | { kind: "reserved"; prefix: string }
   | { kind: "unknown"; raw: string }
 
+// Two callers with two shapes: proxy.ts hands us a URLSearchParams from
+// NextRequest.nextUrl.searchParams; Next 16 page routes hand us a plain
+// Record after awaiting their `searchParams: Promise<...>` prop. Accept both
+// here so callers don't repeat conversion ceremony at every site.
+export type SearchInput =
+  | URLSearchParams
+  | Record<string, string | string[] | undefined>
+
+function readSearchValue(
+  search: SearchInput | undefined,
+  key: string,
+): string | undefined {
+  if (!search) return undefined
+  if (search instanceof URLSearchParams) {
+    return search.get(key) ?? undefined
+  }
+  const value = search[key]
+  if (Array.isArray(value)) return value[0]
+  return value
+}
+
 const RESERVED_PREFIXES = new Set([
   "api",
   "_next",
@@ -117,7 +143,7 @@ function stripSuffix(segment: string): string {
 
 export function parseWatchPath(
   pathname: string,
-  search?: URLSearchParams,
+  search?: SearchInput,
 ): ParsedWatchPath {
   if (pathname === "" || pathname === "/") return { kind: "home" }
 
@@ -132,7 +158,7 @@ export function parseWatchPath(
   if (segments.length === 1) {
     if (first === "videos") return { kind: "videos" }
     if (first === "search") {
-      return { kind: "search", q: search?.get("q") ?? undefined }
+      return { kind: "search", q: readSearchValue(search, "q") }
     }
     return { kind: "localized-home", lang: stripSuffix(first) }
   }
@@ -158,11 +184,11 @@ export function parseWatchPath(
 }
 
 // Consolidates SITE_BASE (lib/experience-metadata.ts) and
-// PUBLIC_SHARE_FALLBACK_ORIGIN (lib/share.ts). NEXT_PUBLIC_CANONICAL_ORIGIN
-// is the production override; fallback matches today's experience-metadata
-// shape so the migration doesn't silently change canonical-URL hostnames.
-export const WATCH_CANONICAL_ORIGIN =
-  process.env.NEXT_PUBLIC_CANONICAL_ORIGIN ?? "https://www.jesusfilm.org"
+// PUBLIC_SHARE_FALLBACK_ORIGIN (lib/share.ts). Single source of truth lives
+// in env.ts (Zod schema + soft host-allowlist + default). Reading the validated
+// env value here keeps the default-of-default consistent across the codebase
+// and preserves the boot-time misconfig warning the schema emits.
+export const WATCH_CANONICAL_ORIGIN = env.NEXT_PUBLIC_CANONICAL_ORIGIN
 
 export const WATCH_BASE_PATH = "/watch"
 

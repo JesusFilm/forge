@@ -229,6 +229,56 @@ describe("Rule 5: single-segment → duplicate-with-.html → 307", () => {
   })
 })
 
+describe("Rule 4.5: 3-segment episode-bare contract → 307", () => {
+  // Production contract: in /{series}.html/{episode}/{lang}.html the episode
+  // segment must be bare. Catch the case where all three arrive .html-suffixed.
+
+  it("strips .html from episode segment when 3-seg shape has it everywhere", () => {
+    expect(
+      canonical({
+        rawPathname:
+          "/lumo-the-gospel-of-john.html/wedding-in-cana.html/english.html",
+      }),
+    ).toEqual({
+      kind: "redirect",
+      pathname: "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      status: 307,
+      cache: "short",
+    })
+  })
+
+  it("strips .html from episode preserving alternate locales", () => {
+    expect(
+      canonical({
+        rawPathname: "/jesus.html/the-beginning.html/spanish-castilian.html",
+      }),
+    ).toEqual({
+      kind: "redirect",
+      pathname: "/jesus.html/the-beginning/spanish-castilian.html",
+      status: 307,
+      cache: "short",
+    })
+  })
+
+  it("property: every 3-seg canonical output has bare episode segment", () => {
+    const inputs = [
+      "/lumo-the-gospel-of-john.html/wedding-in-cana.html/english.html",
+      "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      "/jesus.html/the-beginning/english.html",
+      "/jesus.html/the-beginning.html/russian.html",
+      "/jesus/the-beginning/english",
+    ]
+    for (const raw of inputs) {
+      const result = canonical({ rawPathname: raw })
+      const final = result.kind === "redirect" ? result.pathname : raw
+      const segs = final.split("/").filter(Boolean)
+      if (segs.length === 3) {
+        expect(segs[1].endsWith(".html")).toBe(false)
+      }
+    }
+  })
+})
+
 describe("Rule 6: language-slug alias → 307", () => {
   it("rewrites chinese-mandarin → mandarin-china in locale segment", () => {
     expect(
