@@ -1,0 +1,16 @@
+{
+  "ExperienceError": {
+    "empty": "No experience content available.",
+    "failedToLoad": "Failed to load experience: {message}",
+    "unexpected": "An unexpected error occurred.",
+    "notConfigured": "Content service is not configured.",
+    "noContent": "No content is available.",
+    "homepageMisconfigured": "The watch homepage is misconfigured.",
+    "defaultTemplateMisconfigured": "The default watch template is misconfigured.",
+    "authFailed": "Unable to authenticate with the content service. Please contact support if this persists."
+  },
+  "VideosPage": {
+    "title": "All Videos",
+    "placeholder": "Catalog browsing is coming. In the meantime use search or a topic-specific URL."
+  }
+}

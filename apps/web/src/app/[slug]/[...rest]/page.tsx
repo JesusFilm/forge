@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
+import { setRequestLocale } from "next-intl/server"
 
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
@@ -19,6 +20,7 @@ import {
   generateSeriesMetadata,
   getWatchPageMetadata,
 } from "@/lib/experience-metadata"
+import { hasUiLocale } from "@/i18n/locales"
 import { isWatchCtaTextCopyEnabled } from "@/lib/feature-flags"
 import { DEFAULT_LOCALE, resolveUiLocale } from "@/lib/locale"
 import {
@@ -111,6 +113,9 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { slug: rawSlug, rest } = await params
   const shape = classify(rawSlug, rest)
+  if (shape.kind !== "unknown") {
+    setRequestLocale(hasUiLocale(shape.locale) ? shape.locale : DEFAULT_LOCALE)
+  }
 
   if (shape.kind === "video") {
     const { slug, rawLocale, locale } = shape
@@ -165,6 +170,8 @@ export default async function SlugRestPage({ params }: PageProps) {
   const shape = classify(rawSlug, rest)
 
   if (shape.kind === "unknown") notFound()
+
+  setRequestLocale(hasUiLocale(shape.locale) ? shape.locale : DEFAULT_LOCALE)
 
   if (shape.kind === "episode") {
     return renderEpisode(shape)

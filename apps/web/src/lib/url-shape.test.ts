@@ -4,6 +4,7 @@ import {
   HTML_SUFFIX,
   HTML_SUFFIX_REGEX,
   appendHtmlSuffix,
+  getWatchLocaleSegmentIndex,
   hasHtmlSuffix,
   stripHtmlSuffix,
 } from "./url-shape"
@@ -83,5 +84,38 @@ describe("appendHtmlSuffix", () => {
     for (const x of inputs) {
       expect(appendHtmlSuffix(appendHtmlSuffix(x))).toBe(appendHtmlSuffix(x))
     }
+  })
+})
+
+describe("getWatchLocaleSegmentIndex", () => {
+  it("returns 1 for 2-segment shape /{slug}/{locale}", () => {
+    expect(getWatchLocaleSegmentIndex(["jesus", "english.html"])).toBe(1)
+  })
+
+  it("returns 2 for 3-segment shape /{series}/{episode}/{locale}", () => {
+    expect(
+      getWatchLocaleSegmentIndex([
+        "lumo-the-gospel-of-john.html",
+        "wedding-in-cana",
+        "english.html",
+      ]),
+    ).toBe(2)
+  })
+
+  it("returns -1 for empty segments", () => {
+    expect(getWatchLocaleSegmentIndex([])).toBe(-1)
+  })
+
+  it("returns -1 for 1-segment shape", () => {
+    expect(getWatchLocaleSegmentIndex(["jesus.html"])).toBe(-1)
+  })
+
+  it("returns -1 for 4+ segments", () => {
+    expect(getWatchLocaleSegmentIndex(["a", "b", "c", "d"])).toBe(-1)
+  })
+
+  it("accepts both .html-suffixed and bare segments (shape-only check)", () => {
+    expect(getWatchLocaleSegmentIndex(["jesus", "english"])).toBe(1)
+    expect(getWatchLocaleSegmentIndex(["jesus.html", "english.html"])).toBe(1)
   })
 })
