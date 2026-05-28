@@ -1,32 +1,17 @@
 import { NextResponse } from "next/server"
-import { LANGUAGE_PREFERENCE_COOKIE } from "@/lib/language-preference-constants"
-import {
-  DEFAULT_LOCALE,
-  LOCALE_RESOLVED_PARAM,
-  isLocale,
-  parseAcceptLanguage,
-} from "@/lib/locale"
+import { DEFAULT_LOCALE, isLocale, parseAcceptLanguage } from "@/lib/locale"
 import { WATCH_PATHNAME_HEADER } from "@/lib/proxy-headers"
 import { canonicalizeWatchPath } from "@/lib/url-canonicalize"
 import {
   SAFE_SLUG_PATTERN,
   getWatchLocaleSegmentIndex,
-  isUnsafeRedirectPath,
   stripHtmlSuffix,
 } from "@/lib/url-shape"
 
-// `SAFE_SLUG_PATTERN` (kebab-case ASCII, from url-shape.ts) is the
-// language-slug validator here: it recognises slug-form watch URLs
-// (`/jesus/english`) in isWatchRoute and validates the language-preference
-// cookie value before it lands in a redirect Location (defends against
-// open-redirect / path traversal via a tampered cookie).
-
-// Hard length cap on the cookie value. The longest real Arclight
-// language slug observed in production is ~50 chars
-// ("arabic-modern-standard-egyptian"). 64 leaves margin for new
-// additions without admitting pathological values from a tampered
-// cookie (e.g. a megabyte-sized string passing the regex).
-const PREFERRED_LANG_SLUG_MAX_LEN = 64
+// `SAFE_SLUG_PATTERN` (kebab-case ASCII, from url-shape.ts) recognises
+// slug-form watch URLs (`/jesus/english`) in isWatchRoute so the security
+// headers + WATCH_PATHNAME_HEADER are applied to both bcp47 and slug-form
+// locale segments.
 
 // Structural subset of `NextRequest` that `proxy()` actually consumes.
 // Declaring the precise surface (rather than the full NextRequest type)
@@ -39,10 +24,8 @@ const PREFERRED_LANG_SLUG_MAX_LEN = 64
 export type ProxyRequest = {
   nextUrl: {
     readonly pathname: string
-    readonly searchParams: { has: (name: string) => boolean }
     clone: () => URL
   }
-  cookies: { get: (name: string) => { value: string } | undefined }
   // Real `Headers` (not just `{ get }`) because `nextWithPathname` forwards
   // the inbound headers via `new Headers(request.headers)` for the
   // WATCH_PATHNAME_HEADER contract. Production `NextRequest.headers` is a
@@ -52,8 +35,8 @@ export type ProxyRequest = {
 
 // Cache-Control emitted on every proxy-issued redirect during the cutover
 // window. Prevents Cloudflare / browser caches from pinning a 307/308 to
-// a stale legacy URL — every redirect is per-request user-state-dependent
-// (cookie) or aliased (canonicalize) and must not be reused across users.
+// a stale legacy URL — redirects are alias normalizations (canonicalize) or
+// Accept-Language appends and must not be reused indiscriminately.
 const REDIRECT_CACHE_CONTROL = "private, max-age=0"
 
 // Note: CSP / Referrer headers (applyWatchSecurityHeaders) are intentionally
@@ -116,84 +99,6 @@ function nextWithPathname(
   return NextResponse.next({ request: { headers } })
 }
 
-// Query params that are deliberate one-shot signals tied to the originating
-// request and must NOT be replayed onto the redirected target slug. `?t=<n>`
-// is the seek timestamp; valid for the variant the user asked for, not for
-// the cookie-preferred one we redirect to. `?autoplay=1` is the gesture-came-
-// from-Apply signal; replaying it for receivers of shared links would
-// attempt unmuted autoplay without their gesture.
-const ONE_SHOT_QUERY_PARAMS = ["autoplay", "t"] as const
-
-// Cookie-driven language preference redirect. Reading the cookie here in
-// middleware — instead of in the page Server Component — keeps the page
-// route eligible for ISR caching (cookies() in a page silently opts the
-// route out of ISR; see docs/solutions/web/nextjs-headers-defeats-route-cache.md).
-//
-// Phase 3: operates on canonical `.html`-shape URLs and supports both
-// 2-segment (locale at segments[1]) and 3-segment episode (locale at
-// segments[2]) shapes. The locale segment may be `.html`-suffixed; we
-// strip the suffix before comparing to the cookie value (which is bare).
-//
-// Trade-off (unchanged): the proxy doesn't know whether the preferred
-// language has a playable variant for this specific video. When the
-// cookie language has no variant for a given video, the page falls back
-// to the experience template rather than crashing.
-function maybeRedirectToPreferredLanguage(
-  request: ProxyRequest,
-  pathname: string,
-): NextResponse | null {
-  if (!isWatchRoute(pathname)) return null
-  // `LOCALE_RESOLVED_PARAM` is the page's signal that it has already
-  // resolved the URL locale to match the actually-rendered variant.
-  // Without this bypass the cookie redirect bounces the user back to a
-  // locale with no playable variant; the page would loop redirecting.
-  if (request.nextUrl.searchParams.has(LOCALE_RESOLVED_PARAM)) return null
-  const rawCookie = request.cookies.get(LANGUAGE_PREFERENCE_COOKIE)?.value
-  if (!rawCookie) return null
-  let preferredSlug: string
-  try {
-    preferredSlug = decodeURIComponent(rawCookie)
-  } catch {
-    return null
-  }
-  if (!preferredSlug) return null
-  if (preferredSlug.length > PREFERRED_LANG_SLUG_MAX_LEN) return null
-  if (!SAFE_SLUG_PATTERN.test(preferredSlug)) return null
-  const segments = pathname.split("/").filter(Boolean)
-  const localeIdx = getWatchLocaleSegmentIndex(segments)
-  if (localeIdx < 0) return null
-  const currentLocaleSeg = segments[localeIdx]
-  if (!currentLocaleSeg) return null
-  const currentLocaleBare = stripHtmlSuffix(currentLocaleSeg)
-  if (preferredSlug === currentLocaleBare) return null
-  // The locale segment is always `.html`-suffixed here: proxy() runs
-  // canonicalize (Rule 4 appends `.html` to bare locale segments on 2-seg
-  // and 3-seg watch paths) BEFORE this cookie redirect, so any path that
-  // reaches here in canonical form has a `.html` locale. Build the new
-  // segment with the suffix unconditionally.
-  const newSegments = segments.slice()
-  newSegments[localeIdx] = `${preferredSlug}.html`
-  const url = request.nextUrl.clone()
-  const candidatePathname = `/${newSegments.join("/")}`
-  // Defense-in-depth: the cookie value is regex-clean, but the OTHER
-  // segments (slug, episode) pass through unsanitized from the request
-  // pathname. Run the same output-shape guard canonicalize applies to its
-  // synthesized Location before emitting a redirect.
-  if (isUnsafeRedirectPath(candidatePathname)) return null
-  url.pathname = candidatePathname
-  for (const param of ONE_SHOT_QUERY_PARAMS) {
-    url.searchParams.delete(param)
-  }
-  const response = buildRedirect(url, 307)
-  // This redirect target depends on the language-preference cookie. Without
-  // `Vary: Cookie`, any shared cache that ignores `private`/`max-age=0`
-  // (a mis-set Cloudflare transform rule, a corporate proxy) could serve
-  // one user's locale to another. Canonicalize redirects are NOT
-  // cookie-dependent, so they don't carry this header.
-  response.headers.set("Vary", "Cookie")
-  return response
-}
-
 export function proxy(request: ProxyRequest): NextResponse {
   const { pathname } = request.nextUrl
 
@@ -210,26 +115,28 @@ export function proxy(request: ProxyRequest): NextResponse {
     return buildRedirect(url, canonical.status)
   }
 
-  // Step 2: cookie-driven language preference redirect on canonical
-  // shape (.html-aware, 2-seg + 3-seg).
-  const preferenceRedirect = maybeRedirectToPreferredLanguage(request, pathname)
-  if (preferenceRedirect) return preferenceRedirect
-
-  // Step 3: CSP / Referrer headers for watch routes (both .html and
+  // Step 2: CSP / Referrer headers for watch routes (both .html and
   // legacy bare 2-segment forms; 3-segment episode shape included).
+  //
+  // NOTE: there is deliberately NO cookie-driven language redirect here.
+  // The URL is the sole locale carrier (see apps/web/CLAUDE.md "i18n").
+  // A stale `forge_watch_lang` cookie must NEVER override an explicit
+  // locale already named in the path — doing so hijacked canonical /
+  // shared / SEO links (e.g. `/jesus.html/english.html` → cookie's
+  // language) and was the cause of the production redirect bug.
   if (isWatchRoute(pathname)) {
     return applyWatchSecurityHeaders(nextWithPathname(request, pathname))
   }
 
-  // Step 4: Accept-Language fallback. Post-Phase-3 this serves a NARROW
+  // Step 3: Accept-Language fallback. Post-Phase-3 this serves a NARROW
   // surface: canonicalize (Step 1) already redirects every 1-seg bare slug
   // (Rule 5) and 2-seg bare pair (Rule 4), and canonical `.html` watch
   // shapes exit at Step 3. What survives to here: the root `/`, the
   // 1-segment exempt routes (`/videos`, `/search`), 4+ segment paths, and
   // percent-encoded / non-ASCII paths the canonicalize allowlist rejected.
-  // For those, if the path doesn't already terminate in a bcp47 locale, we
-  // append the Accept-Language-detected locale. (Phase 4 may retire this
-  // once route-level locale detection fully owns non-watch paths.)
+  // (Canonical `.html` watch shapes already exited at Step 2.) For those, if
+  // the path doesn't already terminate in a bcp47 locale, append the
+  // Accept-Language-detected locale.
   const segments = pathname.split("/").filter(Boolean)
   const lastSegment = segments[segments.length - 1]
   if (lastSegment && isLocale(lastSegment)) {
