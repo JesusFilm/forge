@@ -624,6 +624,19 @@ describe("HeroPlayer — custom chrome render", () => {
     ).not.toBeNull()
   })
 
+  it("uses the full-width watch rail layout for the chrome bar", async () => {
+    await revealChrome()
+    const chrome = container.querySelector(
+      '[data-testid="hero-player-custom-chrome"]',
+    ) as HTMLElement
+
+    expect(chrome.className).toContain("inset-x-0")
+    expect(chrome.className).toContain("w-full")
+    expect(chrome.className).toContain("px-10")
+    expect(chrome.className).toContain("md:px-16")
+    expect(chrome.className).toContain("xl:px-24")
+  })
+
   it("removes the unmute pill once chrome is revealed", async () => {
     await revealChrome()
     expect(
