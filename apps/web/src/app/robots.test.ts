@@ -11,9 +11,9 @@ describe("robots", () => {
     expect(rule?.disallow).toEqual(["/api/", "/_next/"])
   })
 
-  it("sets host to the canonical watch origin + basePath", () => {
+  it("emits no host directive (non-standard Yandex-ism)", () => {
     const result = robots()
-    expect(result.host).toBe("http://localhost:3000/watch")
+    expect(result.host).toBeUndefined()
   })
 
   it("emits no sitemap directive yet (sitemap deferred)", () => {

@@ -32,9 +32,14 @@ const TITLE_SUFFIX = "| Jesus Film Project"
  *   (localized home or single-segment collection — same URL shape)
  * - neither → the watch root `/watch`
  *
- * Inputs arrive `.html`-stripped from `classify()`, but we strip again
- * defensively. On a malformed slug the builders can't run, so we fall back
- * to a bare origin+basePath+segment string (never throws in metadata).
+ * Inputs arrive `.html`-stripped from `classify()` but are NOT slug-regex
+ * validated there, so a malformed slug (uppercase, dot) can reach here. On
+ * such input the branded builders can't run, so we fall back to a bare
+ * origin+basePath+segment string. This deliberately diverges from the
+ * Phase 4 nav-emission sites (which OMIT a link on invalid input): a
+ * canonical `<link>` must always be present, and metadata must never throw.
+ * The fallback is injection-safe — Next.js HTML-entity-encodes the canonical
+ * href attribute, so a slug with quotes/brackets can't break out.
  */
 function buildCanonicalUrl(slug?: string, pathLocale?: string): string {
   const root = `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}`
