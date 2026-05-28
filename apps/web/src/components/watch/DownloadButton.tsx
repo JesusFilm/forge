@@ -5,18 +5,29 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { WATCH_PILL_BUTTON_CLASS } from "@/components/watch/watch-section-styles"
 
-export function DownloadButton({ onClick }: { onClick: () => void }) {
+export function DownloadButton({
+  label,
+  onClick,
+}: {
+  // Optional override from the LaunchDarkly `forge.watch.ctaTextCopy`
+  // smoke flag (e.g. "Save Video"). When absent, fall back to the
+  // i18n'd default copy. Mirrors the LanguageCombobox `placeholder ??
+  // t(...)` pattern.
+  label?: string
+  onClick: () => void
+}) {
   const t = useTranslations("DownloadButton")
+  const resolvedLabel = label ?? t("download")
   return (
     <Button
       variant="pill"
       className={WATCH_PILL_BUTTON_CLASS}
-      aria-label={t("download")}
+      aria-label={resolvedLabel}
       data-testid="watch-download-button"
       onClick={onClick}
     >
       <DownloadIcon />
-      <span>{t("download")}</span>
+      <span>{resolvedLabel}</span>
     </Button>
   )
 }

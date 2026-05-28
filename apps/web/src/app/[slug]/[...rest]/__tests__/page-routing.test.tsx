@@ -22,6 +22,7 @@ const {
   watchPageClientMock,
   experienceEmptyMock,
   experienceErrorMock,
+  isWatchCtaTextCopyEnabledMock,
 } = vi.hoisted(() => ({
   resolveWatchVideoBySlugMock: vi.fn(),
   resolveSeriesBySlugMock: vi.fn(),
@@ -40,6 +41,7 @@ const {
   watchPageClientMock: vi.fn((_props: unknown) => null),
   experienceEmptyMock: vi.fn(() => null),
   experienceErrorMock: vi.fn(() => null),
+  isWatchCtaTextCopyEnabledMock: vi.fn(async () => false),
 }))
 
 vi.mock("@/lib/admin-client", () => ({
@@ -83,6 +85,10 @@ vi.mock("@/components/sections", () => ({
   ExperienceSectionRenderer: vi.fn(() => null),
 }))
 
+vi.mock("@/lib/feature-flags", () => ({
+  isWatchCtaTextCopyEnabled: isWatchCtaTextCopyEnabledMock,
+}))
+
 import SlugRestPage from "@/app/[slug]/[...rest]/page"
 
 let container: HTMLDivElement
@@ -104,6 +110,8 @@ beforeEach(() => {
   watchPageClientMock.mockClear()
   experienceEmptyMock.mockClear()
   experienceErrorMock.mockClear()
+  isWatchCtaTextCopyEnabledMock.mockReset()
+  isWatchCtaTextCopyEnabledMock.mockResolvedValue(false)
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -270,6 +278,24 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     await render2Seg("jesus", "en")
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
     expect(seriesPageClientMock).not.toHaveBeenCalled()
+  })
+
+  it("passes the LaunchDarkly CTA copy label to WatchPageClient when enabled", async () => {
+    isWatchCtaTextCopyEnabledMock.mockResolvedValue(true)
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("featureFilm"),
+    )
+
+    await render2Seg("jesus.html", "english.html")
+
+    expect(isWatchCtaTextCopyEnabledMock).toHaveBeenCalledWith({
+      custom: { route: "/watch/jesus.html/english.html" },
+    })
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        downloadButtonLabel: "Save Video",
+      }),
+    )
   })
 })
 
@@ -493,6 +519,29 @@ describe("Catch-all routing — 3-seg episode branch", () => {
       "lumo-the-gospel-of-john",
       "wedding-in-cana",
       "english",
+    )
+  })
+
+  it("passes the LaunchDarkly CTA copy label to WatchPageClient when enabled", async () => {
+    isWatchCtaTextCopyEnabledMock.mockResolvedValue(true)
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+
+    await render3Seg(
+      "lumo-the-gospel-of-john.html",
+      "wedding-in-cana",
+      "english.html",
+    )
+
+    expect(isWatchCtaTextCopyEnabledMock).toHaveBeenCalledWith({
+      custom: {
+        route:
+          "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      },
+    })
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        downloadButtonLabel: "Save Video",
+      }),
     )
   })
 
