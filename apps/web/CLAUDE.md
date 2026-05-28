@@ -76,4 +76,9 @@ LaunchDarkly runtime evaluation does not replace these build-time branches yet
 because the inactive player implementation is intentionally dead-code
 eliminated by `process.env.NEXT_PUBLIC_*` substitution.
 
+`forge.watch.ctaTextCopy` is a temporary LaunchDarkly-backed production smoke
+flag for the watch-page Download CTA copy. `false` keeps `Download`; `true`
+renders `Save Video`. Keep `FORGE_WATCH_CTA_TEXT_COPY_DEFAULT=false` in local
+and Railway envs unless intentionally testing the fallback path.
+
 See root `CLAUDE.md` for cross-app patterns and the broader data-layer-flip plan reference.

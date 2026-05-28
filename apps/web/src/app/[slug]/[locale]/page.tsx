@@ -18,6 +18,7 @@ import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
+import { isWatchCtaTextCopyEnabled } from "@/lib/feature-flags"
 
 // ISR: pages cached for 60s. The cookie-driven language redirect lives in
 // apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
@@ -172,6 +173,9 @@ export default async function SlugLocalePage({ params }: PageProps) {
       variant: watchVideo.selectedVariant,
       canonicalParent: watchVideo.canonicalParent,
     })
+    const useUpdatedCtaCopy = await isWatchCtaTextCopyEnabled({
+      custom: { route: `/watch/${slug}/${rawLocale}` },
+    })
     // LCP is the Mux poster image rendered inside <mux-player>'s shadow
     // DOM. Without these hints the request isn't discoverable in the
     // initial HTML (~2.3s delay until mux-player JS executes). Raw
@@ -190,6 +194,7 @@ export default async function SlugLocalePage({ params }: PageProps) {
           />
         ) : null}
         <WatchPageClient
+          downloadButtonLabel={useUpdatedCtaCopy ? "Save Video" : "Download"}
           mergedBlocks={mergedBlocks}
           variant={watchVideo.selectedVariant}
           video={watchVideo.video}

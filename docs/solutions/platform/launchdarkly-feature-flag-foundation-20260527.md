@@ -31,12 +31,16 @@ Create these LaunchDarkly boolean flags in the desired project/environment:
 
 - `forge.watch.playerMigration`
 - `forge.watch.heroMuxVideo`
+- `forge.watch.ctaTextCopy` -- temporary production smoke flag for the
+  watch-page Download CTA copy. `false` renders `Download`; `true` renders
+  `Save Video`.
 
 Then set Railway service env vars:
 
 - `LAUNCHDARKLY_SDK_KEY=<server-side SDK key>`
 - `FORGE_WATCH_PLAYER_MIGRATION_DEFAULT=false`
 - `FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT=false`
+- `FORGE_WATCH_CTA_TEXT_COPY_DEFAULT=false`
 
 The existing `NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION` and
 `NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO` flags remain build-time inputs for

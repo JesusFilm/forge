@@ -21,10 +21,12 @@ const webFeatureFlagClient = createFeatureFlagClient({
     FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT:
       env.FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT ??
       String(env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO),
+    FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
   },
   defaultValues: {
     "forge.watch.playerMigration": env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     "forge.watch.heroMuxVideo": env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO,
+    "forge.watch.ctaTextCopy": false,
   },
   timeoutSeconds: 0.25,
   logger: console,
@@ -61,6 +63,15 @@ export async function isWatchHeroMuxVideoEnabled(
 ): Promise<boolean> {
   return webFeatureFlagClient.booleanVariation(
     featureFlags.watchHeroMuxVideo,
+    createWebFeatureFlagContext(context),
+  )
+}
+
+export async function isWatchCtaTextCopyEnabled(
+  context: WebFeatureFlagContextInput = {},
+): Promise<boolean> {
+  return webFeatureFlagClient.booleanVariation(
+    featureFlags.watchCtaTextCopy,
     createWebFeatureFlagContext(context),
   )
 }

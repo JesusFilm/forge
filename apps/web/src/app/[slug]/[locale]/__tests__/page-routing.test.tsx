@@ -21,6 +21,7 @@ const {
   watchPageClientMock,
   experienceEmptyMock,
   experienceErrorMock,
+  isWatchCtaTextCopyEnabledMock,
 } = vi.hoisted(() => ({
   resolveWatchVideoBySlugMock: vi.fn(),
   resolveSeriesBySlugMock: vi.fn(),
@@ -32,6 +33,7 @@ const {
   watchPageClientMock: vi.fn((_props: unknown) => null),
   experienceEmptyMock: vi.fn(() => null),
   experienceErrorMock: vi.fn(() => null),
+  isWatchCtaTextCopyEnabledMock: vi.fn(async () => false),
 }))
 
 // Stub the admin Apollo client so the jsdom test environment doesn't trip
@@ -71,6 +73,10 @@ vi.mock("@/components/sections", () => ({
   ExperienceSectionRenderer: vi.fn(() => null),
 }))
 
+vi.mock("@/lib/feature-flags", () => ({
+  isWatchCtaTextCopyEnabled: isWatchCtaTextCopyEnabledMock,
+}))
+
 import SlugLocalePage from "@/app/[slug]/[locale]/page"
 
 let container: HTMLDivElement
@@ -92,6 +98,8 @@ beforeEach(() => {
   watchPageClientMock.mockClear()
   experienceEmptyMock.mockClear()
   experienceErrorMock.mockClear()
+  isWatchCtaTextCopyEnabledMock.mockReset()
+  isWatchCtaTextCopyEnabledMock.mockResolvedValue(false)
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -196,6 +204,24 @@ describe("SlugLocalePage routing — series branch", () => {
     await renderPage("jesus", "en")
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
     expect(seriesPageClientMock).not.toHaveBeenCalled()
+  })
+
+  it("passes the LaunchDarkly CTA copy label to WatchPageClient when enabled", async () => {
+    isWatchCtaTextCopyEnabledMock.mockResolvedValue(true)
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("featureFilm"),
+    )
+
+    await renderPage("jesus", "en")
+
+    expect(isWatchCtaTextCopyEnabledMock).toHaveBeenCalledWith({
+      custom: { route: "/watch/jesus/en" },
+    })
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        downloadButtonLabel: "Save Video",
+      }),
+    )
   })
 })
 

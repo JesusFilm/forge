@@ -13,6 +13,13 @@ export const featureFlags = {
     description:
       "Runtime rollout gate for the web watch hero MuxVideo backend.",
   },
+  watchCtaTextCopy: {
+    key: "forge.watch.ctaTextCopy",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_CTA_TEXT_COPY_DEFAULT",
+    description:
+      "Temporary production smoke flag for the watch-page CTA text copy.",
+  },
 } as const
 
 export type FeatureFlagName = keyof typeof featureFlags

@@ -70,6 +70,10 @@ separate platform ticket.
    - which env vars to set in Railway
    - local fallback behavior
    - rollback procedure when LaunchDarkly is unavailable
+7. Add a temporary production-smoke copy flag for the watch page:
+   - `forge.watch.ctaTextCopy`
+   - `false`: Download CTA renders `Download`
+   - `true`: Download CTA renders `Save Video`
 
 ## Constraints
 

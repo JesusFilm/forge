@@ -10,6 +10,7 @@ function setRequiredWebEnv() {
   delete process.env.LAUNCHDARKLY_SDK_KEY
   delete process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT
   delete process.env.FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT
+  delete process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT
   delete process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION
   delete process.env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO
 }
@@ -59,11 +60,21 @@ describe("web feature flag helpers", () => {
     await expect(isWatchHeroMuxVideoEnabled()).resolves.toBe(true)
   })
 
+  it("evaluates the watch CTA text copy flag from the server-side fallback", async () => {
+    delete process.env.LAUNCHDARKLY_SDK_KEY
+    process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT = "true"
+
+    const { isWatchCtaTextCopyEnabled } = await import("./feature-flags")
+
+    await expect(isWatchCtaTextCopyEnabled()).resolves.toBe(true)
+  })
+
   it("passes the LaunchDarkly SDK key and local fallbacks into the shared client", async () => {
     process.env.LAUNCHDARKLY_SDK_KEY = "sdk-test"
     process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION = "false"
     process.env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO = "true"
     process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT = "true"
+    process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT = "false"
     const booleanVariation = vi.fn(async () => false)
     const createFeatureFlagClient = vi.fn(() => ({ booleanVariation }))
 
@@ -86,10 +97,12 @@ describe("web feature flag helpers", () => {
         localEnv: {
           FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "true",
           FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT: "true",
+          FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: "false",
         },
         defaultValues: {
           "forge.watch.playerMigration": false,
           "forge.watch.heroMuxVideo": true,
+          "forge.watch.ctaTextCopy": false,
         },
       }),
     )

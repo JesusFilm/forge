@@ -757,4 +757,17 @@ describe("DownloadButton — isolated render", () => {
 
     expect(onClick).toHaveBeenCalledTimes(1)
   })
+
+  it("renders an alternate label for the production LaunchDarkly copy smoke", () => {
+    act(() => {
+      root.render(<DownloadButton label="Save Video" onClick={vi.fn()} />)
+    })
+
+    const btn = container.querySelector(
+      '[data-testid="watch-download-button"]',
+    ) as HTMLButtonElement
+    expect(btn).not.toBeNull()
+    expect(btn.textContent).toContain("Save Video")
+    expect(btn.getAttribute("aria-label")).toBe("Save Video")
+  })
 })
