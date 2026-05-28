@@ -63,6 +63,14 @@ vi.mock("next/navigation", () => ({
   redirect: redirectMock,
 }))
 
+// next-intl/server's `setRequestLocale` throws under the react-client
+// build that jsdom-environment vitest pulls in. Page code runs in a
+// real RSC context in prod; for these route-dispatch tests we just need
+// the call to be a no-op.
+vi.mock("next-intl/server", () => ({
+  setRequestLocale: vi.fn(),
+}))
+
 vi.mock("@/components/watch/SeriesPageClient", () => ({
   SeriesPageClient: seriesPageClientMock,
 }))
@@ -468,7 +476,7 @@ describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-se
     expect(props?.locale).toBe("fr")
   })
 
-  it("falls back to DEFAULT_LOCALE='en' when language family isn't in SUPPORTED_LOCALES", async () => {
+  it("falls back to DEFAULT_LOCALE='en' when language family isn't in UI_LOCALE_FAMILIES", async () => {
     // Mandarin (zh), Russian (ru), Arabic (ar), Japanese (ja), etc. — admin
     // serves the audio but apps/web UI chrome ships only en/es/fr/pt/de.
     resolveWatchVideoBySlugMock.mockResolvedValue(

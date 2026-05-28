@@ -113,7 +113,7 @@ describe("slugToBcp47Primary", () => {
   })
 })
 
-describe("resolveUiLocale (family fallback into SUPPORTED_LOCALES)", () => {
+describe("resolveUiLocale (family fallback into UI_LOCALE_FAMILIES)", () => {
   it("resolves spanish-* slugs to the UI locale 'es'", () => {
     expect(resolveUiLocale("spanish-castilian")).toBe("es")
     expect(resolveUiLocale("spanish")).toBe("es")
@@ -142,7 +142,7 @@ describe("resolveUiLocale (family fallback into SUPPORTED_LOCALES)", () => {
     expect(resolveUiLocale("de")).toBe("de")
   })
 
-  it("returns null for languages outside SUPPORTED_LOCALES", () => {
+  it("returns null for languages outside UI_LOCALE_FAMILIES", () => {
     // Mandarin (zh), Russian (ru), Arabic (ar), etc. — admin recognizes them
     // but the apps/web UI chrome only ships in 5 locales today.
     expect(resolveUiLocale("mandarin-china")).toBeNull()

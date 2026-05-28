@@ -1,6 +1,8 @@
 import type { ReactNode } from "react"
 import localFont from "next/font/local"
 import type { Metadata, Viewport } from "next"
+import { NextIntlClientProvider } from "next-intl"
+import { getLocale } from "next-intl/server"
 import "./globals.css"
 import { cn } from "@/lib/utils"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
@@ -72,10 +74,15 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 }
 
-export default function RootLayout(props: { children: ReactNode }) {
+export default async function RootLayout(props: { children: ReactNode }) {
+  // Reads value set by setRequestLocale() in each page handler. next-intl
+  // resolves the request store in the rendering order page → layout, so
+  // getLocale() here sees whatever the page just set. Pages that don't
+  // call setRequestLocale fall through to DEFAULT_LOCALE.
+  const locale = await getLocale()
   return (
     <html
-      lang="en"
+      lang={locale}
       dir="ltr"
       className={cn("overflow-x-clip bg-black font-sans", montserrat.variable)}
     >
@@ -89,7 +96,9 @@ export default function RootLayout(props: { children: ReactNode }) {
         <link rel="dns-prefetch" href="https://imagedelivery.net" />
       </head>
       <body className="overflow-x-clip bg-black">
-        <FloatingSearchProvider>{props.children}</FloatingSearchProvider>
+        <NextIntlClientProvider>
+          <FloatingSearchProvider>{props.children}</FloatingSearchProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   )

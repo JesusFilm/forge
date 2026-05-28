@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
+import { setRequestLocale } from "next-intl/server"
 
+import { DEFAULT_LOCALE } from "@/lib/locale"
 import { WATCH_BASE_PATH, WATCH_CANONICAL_ORIGIN } from "@/lib/routes"
 
 export const revalidate = 60
@@ -18,6 +20,7 @@ export const metadata: Metadata = {
 // the canonicalizer's single-segment-duplicate rule (excluded via
 // ONE_SEGMENT_EXEMPT in apps/web/src/lib/url-canonicalize.ts).
 export default function VideosPage() {
+  setRequestLocale(DEFAULT_LOCALE)
   return (
     <main className="min-h-screen bg-stone-900 px-6 py-24 text-stone-100">
       <h1 className="text-3xl font-semibold">All Videos</h1>

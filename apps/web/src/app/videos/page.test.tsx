@@ -2,7 +2,13 @@
  * @vitest-environment jsdom
  */
 import { renderToString } from "react-dom/server"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+
+// next-intl/server's `setRequestLocale` throws under the react-client
+// build that jsdom-environment vitest pulls in. Stub for route tests.
+vi.mock("next-intl/server", () => ({
+  setRequestLocale: vi.fn(),
+}))
 
 import VideosPage, { metadata } from "@/app/videos/page"
 

@@ -2,7 +2,15 @@ import { LANGUAGE_BCP47_MAP } from "./language-bcp47-map"
 
 export const DEFAULT_LOCALE = "en"
 
-export const SUPPORTED_LOCALES = ["en", "es", "fr", "pt", "de"] as const
+// Internal type-narrowing tuple for `isLocale()`. The bcp47 primary
+// subtags of the UI-locale families web supports. Must stay aligned with
+// the filesystem-derived `AVAILABLE_UI_LOCALES` (apps/web/src/i18n/locales.ts):
+// when a new `messages/{locale}.json` lands, widen this tuple in the
+// same PR so `isLocale(locale)` recognizes it. CI test asserts the
+// invariant. Not exported — outside callers use `hasUiLocale` from
+// `@/i18n/locales` for catalog membership, or `isLocale` from this file
+// for bcp47 narrowing.
+const UI_LOCALE_FAMILIES = ["en", "es", "fr", "pt", "de"] as const
 
 /**
  * Query-param sentinel that signals "this URL's locale has already been
@@ -27,8 +35,8 @@ export const LOCALE_RESOLVED_PARAM = "_lr"
 
 export function isLocale(
   param: string,
-): param is (typeof SUPPORTED_LOCALES)[number] {
-  return (SUPPORTED_LOCALES as readonly string[]).includes(param)
+): param is (typeof UI_LOCALE_FAMILIES)[number] {
+  return (UI_LOCALE_FAMILIES as readonly string[]).includes(param)
 }
 
 /**
@@ -64,7 +72,7 @@ export function isLocaleSlug(param: string): boolean {
 /** Parse the primary locale from an Accept-Language header value. */
 export function parseAcceptLanguage(
   acceptLanguage: string | null,
-): (typeof SUPPORTED_LOCALES)[number] | null {
+): (typeof UI_LOCALE_FAMILIES)[number] | null {
   if (!acceptLanguage) return null
   const primary = acceptLanguage.split(",")[0]?.split("-")[0]?.trim()
   if (primary && isLocale(primary)) return primary
@@ -83,7 +91,7 @@ export function parseAcceptLanguage(
  * Used at the watch route boundary to map a slug-form locale segment
  * (`/watch/jesus.html/spanish-castilian.html`) to a UI chrome locale
  * the rest of the app understands. Caller compares against
- * `SUPPORTED_LOCALES` and falls back to `DEFAULT_LOCALE` when the
+ * `UI_LOCALE_FAMILIES` and falls back to `DEFAULT_LOCALE` when the
  * primary subtag isn't one of the 5 UI template locales.
  *
  * Returns null when the slug isn't a recognized admin Language slug
@@ -111,14 +119,14 @@ export function slugToBcp47Primary(slug: string): string | null {
   return null
 }
 
-// Narrow ISO 639-3 → ISO 639-1 fallback for the 5 SUPPORTED_LOCALES
+// Narrow ISO 639-3 → ISO 639-1 fallback for the 5 UI_LOCALE_FAMILIES
 // families. Admin's Language.bcp47 sometimes carries the 3-letter ISO
 // 639-3 code instead of the 2-letter 639-1 (e.g. `french-african` → `fra`,
 // `english-african` → `eng`). Both encode the same UI-chrome language;
 // without this table, the family fallback would null-out for those slugs.
-// Only the SUPPORTED_LOCALES families need entries.
+// Only the UI_LOCALE_FAMILIES families need entries.
 const ISO_639_3_TO_UI_LOCALE: Readonly<
-  Record<string, (typeof SUPPORTED_LOCALES)[number]>
+  Record<string, (typeof UI_LOCALE_FAMILIES)[number]>
 > = Object.freeze({
   eng: "en",
   spa: "es",
@@ -131,24 +139,24 @@ const ISO_639_3_TO_UI_LOCALE: Readonly<
 /**
  * Normalize a URL locale segment (slug-form OR bcp47) to a UI chrome
  * locale that `isLocale()` accepts. Returns null when the locale can't
- * be mapped to one of the 5 SUPPORTED_LOCALES — caller falls back to
+ * be mapped to one of the 5 UI_LOCALE_FAMILIES — caller falls back to
  * DEFAULT_LOCALE.
  *
  * Examples:
  *   resolveUiLocale("spanish-castilian") → "es"
  *   resolveUiLocale("portuguese-mozambique") → "pt"
- *   resolveUiLocale("mandarin-china") → null  // zh not in SUPPORTED_LOCALES
+ *   resolveUiLocale("mandarin-china") → null  // zh not in UI_LOCALE_FAMILIES
  *   resolveUiLocale("en") → "en"
- *   resolveUiLocale("russian") → null  // ru not in SUPPORTED_LOCALES
+ *   resolveUiLocale("russian") → null  // ru not in UI_LOCALE_FAMILIES
  */
 export function resolveUiLocale(
   localeSegment: string,
-): (typeof SUPPORTED_LOCALES)[number] | null {
+): (typeof UI_LOCALE_FAMILIES)[number] | null {
   if (isLocale(localeSegment)) return localeSegment
   const primary = slugToBcp47Primary(localeSegment)
   if (!primary) return null
   if (isLocale(primary)) return primary
-  // ISO 639-3 → 639-1 fallback for the SUPPORTED_LOCALES families.
+  // ISO 639-3 → 639-1 fallback for the UI_LOCALE_FAMILIES families.
   if (Object.hasOwn(ISO_639_3_TO_UI_LOCALE, primary)) {
     return ISO_639_3_TO_UI_LOCALE[primary]
   }
