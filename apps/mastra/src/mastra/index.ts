@@ -38,6 +38,10 @@ import {
   handleEvalQueryGenerationRouteRequest,
 } from "./workflows/eval-query-generation"
 import {
+  handleOfflineSearchEvalRouteRequest,
+  offlineSearchEvalWorkflow,
+} from "./workflows/offline-search-eval"
+import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
@@ -77,6 +81,7 @@ export const mastra = new Mastra({
     sceneEmbeddingWorkflow,
     experienceEmbeddingWorkflow,
     evalQueryGenerationWorkflow,
+    offlineSearchEvalWorkflow,
   },
   logger: new PinoLogger({
     name: "ForgeMastra",
@@ -187,6 +192,21 @@ export const mastra = new Mastra({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-offline-search-eval", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleOfflineSearchEvalRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            request: c.req.raw,
           })
 
           return new Response(JSON.stringify(outcome.body), {

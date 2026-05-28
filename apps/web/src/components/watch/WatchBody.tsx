@@ -6,11 +6,13 @@ import type { WatchBodyBlock, WatchStudyQuestionsBlock } from "@/lib/content"
 
 export function WatchBody({
   block,
+  downloadButtonLabel,
   downloadPending = false,
   studyQuestions,
   onDownloadClick,
 }: {
   block: WatchBodyBlock
+  downloadButtonLabel?: string
   downloadPending?: boolean
   studyQuestions: WatchStudyQuestionsBlock | null
   onDownloadClick: () => void
@@ -54,6 +56,7 @@ export function WatchBody({
           {hasDownloads ? (
             <div className="shrink-0">
               <DownloadButton
+                label={downloadButtonLabel}
                 onClick={onDownloadClick}
                 pending={downloadPending}
               />

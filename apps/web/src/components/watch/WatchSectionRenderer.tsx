@@ -30,6 +30,7 @@ const TOP_ZONE_KINDS: Set<WatchBlock["kind"]> = new Set(["HeroPlayer"])
 
 export function WatchSectionRenderer({
   blocks,
+  downloadButtonLabel,
   downloadPending,
   modalCallbacks,
   onPlayerReady,
@@ -37,6 +38,7 @@ export function WatchSectionRenderer({
   subtitleVttSrc,
 }: {
   blocks: MergedWatchBlock[]
+  downloadButtonLabel?: string
   downloadPending?: boolean
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
@@ -68,6 +70,7 @@ export function WatchSectionRenderer({
           key={blockKey(block, index)}
           block={block}
           index={index}
+          downloadButtonLabel={downloadButtonLabel}
           downloadPending={downloadPending}
           studyQuestionsBlock={studyQuestionsBlock}
           modalCallbacks={modalCallbacks}
@@ -101,6 +104,7 @@ export function WatchSectionRenderer({
                   key={blockKey(block, index + topBlocks.length)}
                   block={block}
                   index={index + topBlocks.length}
+                  downloadButtonLabel={downloadButtonLabel}
                   downloadPending={downloadPending}
                   studyQuestionsBlock={studyQuestionsBlock}
                   modalCallbacks={modalCallbacks}
@@ -119,6 +123,7 @@ export function WatchSectionRenderer({
 function WatchBlockEntry({
   block,
   index,
+  downloadButtonLabel,
   downloadPending,
   studyQuestionsBlock,
   modalCallbacks,
@@ -128,6 +133,7 @@ function WatchBlockEntry({
 }: {
   block: MergedWatchBlock
   index: number
+  downloadButtonLabel?: string
   downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
@@ -139,6 +145,7 @@ function WatchBlockEntry({
     return (
       <SyntheticBlock
         block={block}
+        downloadButtonLabel={downloadButtonLabel}
         downloadPending={downloadPending}
         studyQuestionsBlock={studyQuestionsBlock}
         modalCallbacks={modalCallbacks}
@@ -153,6 +160,7 @@ function WatchBlockEntry({
 
 function SyntheticBlock({
   block,
+  downloadButtonLabel,
   downloadPending,
   studyQuestionsBlock,
   modalCallbacks,
@@ -161,6 +169,7 @@ function SyntheticBlock({
   subtitleVttSrc,
 }: {
   block: WatchBlock
+  downloadButtonLabel?: string
   downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
@@ -190,6 +199,7 @@ function SyntheticBlock({
       return (
         <WatchBody
           block={block}
+          downloadButtonLabel={downloadButtonLabel}
           downloadPending={downloadPending}
           studyQuestions={studyQuestionsBlock}
           onDownloadClick={modalCallbacks?.openDownload ?? noop}

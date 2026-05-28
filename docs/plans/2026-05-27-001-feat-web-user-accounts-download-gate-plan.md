@@ -14,26 +14,28 @@ origin: user request - "Add user accounts on web app. Use the same Auth as other
 - Reuse standalone `apps/auth` as the Better Auth authority.
 - Keep watch pages public and cacheable; check auth only from client actions
   and route handlers.
-- Use server-side LaunchDarkly flag `web-download-account-gate` with
-  `WEB_DOWNLOAD_ACCOUNT_GATE_FALLBACK` for local/test and explicit outage
-  posture.
+- Use shared server-side LaunchDarkly flag `forge.watch.downloadAccountGate`
+  with `FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT=false` for local/test and
+  explicit outage posture.
 - Use `WEB_AUTH_BASE_URL` for server-to-server session verification from
   `apps/web`.
 - Use `AUTH_COOKIE_DOMAIN=.jesusfilm.org` only where production web hosts need
   the Auth session cookie on sibling/apex watch origins.
 - Validate watch callbacks by origin and path; reject `/watch/api/*`, `/api/*`,
   and callbacks containing upstream media URLs.
-- Treat any valid Better Auth session as sufficient for V1 downloads. Auth
-  public signup creates an Auth user only and grants no app-level Admin,
-  Manager, partner, workflow, or editorial privileges.
+- Treat any valid Better Auth session as sufficient for V1 downloads. The web
+  download flow reuses the existing Auth app provider/email-first UI and does
+  not introduce a special public email/password signup form.
 
 ## Implementation Units
 
-1. Auth callback and public signup wrapper:
+1. Auth callback forwarding:
    - `apps/auth/src/auth/web-callback.ts`
    - `apps/auth/src/app/api/auth/[...all]/route.ts`
    - `apps/auth/src/app/login/*`
 2. Web server-side rollout/session helpers:
+   - `packages/feature-flags/src/registry.ts`
+   - `apps/web/src/lib/feature-flags.ts`
    - `apps/web/src/lib/download-gate-flag.ts`
    - `apps/web/src/lib/auth-session.ts`
    - `apps/web/src/app/api/auth/session/route.ts`
@@ -56,19 +58,19 @@ origin: user request - "Add user accounts on web app. Use the same Auth as other
 - With the flag enabled, signed-out direct download API requests return `401`
   before DNS or upstream fetch.
 - Signed-in users can still download through the existing modal and proxy.
-- Auth signup works for validated watch callbacks only.
+- The existing Auth app login/sign-up UI works with validated watch callbacks.
 - Callback URLs never contain selected upstream media URLs.
-- New public Auth users do not receive app grants or Admin/Manager access.
+- Public email/password signup remains blocked outside existing Auth provider
+  flows.
 
 ## Validation Results
 
-- Focused Red/Green tests covered Auth signup/callback forwarding, web session
-  route, direct download `401`, stale-session modal behavior, and watch UI
-  download state.
+- Focused Red/Green tests covered Auth callback forwarding, shared feature flag
+  defaults, web session route, direct download `401`, stale-session modal
+  behavior, and watch UI download state.
 - Full package validation passed for `@forge/web` and `@forge/auth`: tests,
   typecheck, and lint.
-- Browser smoke relaunched after a callback-origin failure and passed on
-  `http://localhost:3030/watch/the-vine-and-the-branches/english`:
-  signed-out watch page, Auth signup redirect, successful account creation,
-  callback to Web, authenticated session check, enabled download modal, and
-  direct no-cookie `401` validation.
+- Browser smoke confirmed the corrected Auth callback login UI at
+  `http://localhost:3034/login?callbackURL=...`: provider buttons visible,
+  email-first `Continue` flow visible, and no custom name/password signup form
+  on first paint.

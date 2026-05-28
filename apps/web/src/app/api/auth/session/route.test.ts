@@ -15,7 +15,7 @@ function makeRequest(callbackURL: string): Request {
 async function importRouteWithGate(enabled: boolean) {
   vi.resetModules()
   vi.stubEnv("WEB_AUTH_BASE_URL", "http://localhost:3004")
-  vi.stubEnv("WEB_DOWNLOAD_ACCOUNT_GATE_FALLBACK", String(enabled))
+  vi.stubEnv("FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT", String(enabled))
   vi.stubEnv("LAUNCHDARKLY_SDK_KEY", "")
   return import("./route")
 }

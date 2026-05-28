@@ -36,7 +36,7 @@ describe("POST /api/revalidate", () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({
       revalidated: true,
-      paths: ["/ (layout)", "/", "/en", "/es", "/fr", "/pt", "/de"],
+      paths: ["/ (layout)", "/", "/de", "/en", "/es", "/fr", "/pt"],
     })
     expect(revalidatePathMock).toHaveBeenCalledWith("/", "layout")
     expect(revalidatePathMock).toHaveBeenCalledWith("/")
@@ -71,11 +71,11 @@ describe("POST /api/revalidate", () => {
         "/jesus",
         "/ (layout)",
         "/",
+        "/de",
         "/en",
         "/es",
         "/fr",
         "/pt",
-        "/de",
       ],
     })
     expect(revalidatePathMock).toHaveBeenCalledWith("/jesus/en")

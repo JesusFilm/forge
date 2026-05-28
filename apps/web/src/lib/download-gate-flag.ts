@@ -1,18 +1,13 @@
 import { randomUUID } from "node:crypto"
 
-import type { LDClient, LDContext } from "@launchdarkly/node-server-sdk"
+import { isWatchDownloadAccountGateEnabled } from "@/lib/feature-flags"
 
-import { env } from "@/env"
-
-export const DOWNLOAD_ACCOUNT_GATE_FLAG_KEY = "web-download-account-gate"
 export const DOWNLOAD_GATE_ROLLOUT_COOKIE = "forge_download_gate_rollout"
 
 type DownloadGateEvaluation = {
   enabled: boolean
   setCookieHeader?: string
 }
-
-let launchDarklyClientPromise: Promise<LDClient | null> | undefined
 
 function readCookie(cookieHeader: string | null, name: string): string | null {
   if (!cookieHeader) return null
@@ -35,38 +30,11 @@ function serializeRolloutCookie(value: string): string {
   return parts.join("; ")
 }
 
-function fallbackVariation(): boolean {
-  return env.WEB_DOWNLOAD_ACCOUNT_GATE_FALLBACK
-}
-
 function evaluation(
   enabled: boolean,
   setCookieHeader: string | undefined,
 ): DownloadGateEvaluation {
   return setCookieHeader ? { enabled, setCookieHeader } : { enabled }
-}
-
-async function getLaunchDarklyClient(): Promise<LDClient | null> {
-  const sdkKey = env.LAUNCHDARKLY_SDK_KEY?.trim()
-  if (!sdkKey) return null
-
-  launchDarklyClientPromise ??= (async () => {
-    try {
-      const ld = await import("@launchdarkly/node-server-sdk")
-      const client = ld.init(sdkKey, {
-        logger: ld.basicLogger({ level: "warn" }),
-      })
-      await client.waitForInitialization({ timeout: 3 })
-      return client
-    } catch (err) {
-      console.warn("[download-gate] launchdarkly_unavailable", {
-        err: err instanceof Error ? err.message : String(err),
-      })
-      return null
-    }
-  })()
-
-  return launchDarklyClientPromise
 }
 
 export async function evaluateDownloadAccountGate(
@@ -80,30 +48,15 @@ export async function evaluateDownloadAccountGate(
   const setCookieHeader = existingKey
     ? undefined
     : serializeRolloutCookie(rolloutKey)
-  const fallback = fallbackVariation()
-
-  const client = await getLaunchDarklyClient()
-  if (!client) return evaluation(fallback, setCookieHeader)
-
-  const context = {
+  const url = new URL(request.url)
+  const enabled = await isWatchDownloadAccountGateEnabled({
     anonymous: true,
     key: rolloutKey,
     kind: "user",
-  } satisfies LDContext
+    custom: {
+      route: url.pathname,
+    },
+  })
 
-  try {
-    return evaluation(
-      await client.boolVariation(
-        DOWNLOAD_ACCOUNT_GATE_FLAG_KEY,
-        context,
-        fallback,
-      ),
-      setCookieHeader,
-    )
-  } catch (err) {
-    console.warn("[download-gate] launchdarkly_variation_failed", {
-      err: err instanceof Error ? err.message : String(err),
-    })
-    return evaluation(fallback, setCookieHeader)
-  }
+  return evaluation(enabled, setCookieHeader)
 }

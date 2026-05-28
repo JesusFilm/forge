@@ -26,38 +26,43 @@ not own auth state or import another app's internals.
 
 ## Scope
 
-- Add a server-side LaunchDarkly flag helper for `web-download-account-gate`.
+- Add a server-side LaunchDarkly flag helper for
+  `forge.watch.downloadAccountGate`.
 - Add a web session route at `/watch/api/auth/session` that returns only
   download-gate state and a sanitized Auth login URL.
 - Gate `/watch/api/download` before URL allowlisting, DNS, or upstream fetch
   when the flag is enabled.
-- Allow public email signup in `apps/auth` only for validated watch-page
-  callbacks.
-- Preserve existing Firebase-migration public-signup protection for all other
-  signup attempts.
+- Reuse the existing `apps/auth` login/sign-up UI for provider/email-first
+  flows while preserving validated watch-page callbacks.
+- Preserve existing Firebase-migration public-signup protection and keep custom
+  public email/password signup out of scope.
 - Keep Admin, Manager, partner, workflow, and editorial authorization out of
   public web signup.
 
 ## Verification
 
-- Red/Green tests for Auth signup, web callback sign-in, session route, direct
-  download `401`, signed-in download, and stale-session modal behavior.
+- Red/Green tests for Auth callback forwarding, shared LaunchDarkly defaults,
+  web callback sign-in, session route, direct download `401`, signed-in
+  download, and stale-session modal behavior.
 - `pnpm --filter @forge/web test`
 - `pnpm --filter @forge/web typecheck`
 - `pnpm --filter @forge/web lint`
 - `pnpm --filter @forge/auth test`
 - `pnpm --filter @forge/auth typecheck`
 - `pnpm --filter @forge/auth lint`
-- User-like browser smoke with screenshots for signed-out redirect, signup
-  form, download modal, and direct `401`.
+- User-like browser smoke with screenshots for signed-out redirect, existing
+  Auth login UI, download modal, and direct `401`.
 
 ## Completion Notes
 
-- Implemented behind LaunchDarkly flag key `web-download-account-gate` with
-  local/test fallback `WEB_DOWNLOAD_ACCOUNT_GATE_FALLBACK`.
+- Implemented behind shared LaunchDarkly flag key
+  `forge.watch.downloadAccountGate` with local/test fallback
+  `FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT=false`.
 - Smoke surfaced a Better Auth trusted-origin callback rejection for the web
   watch callback. Fixed by adding validated web origins to Auth
   `trustedOrigins` via `getAuthTrustedOrigins()`.
 - Final smoke used `http://localhost:3030/watch/the-vine-and-the-branches/english`
   with Auth on `http://localhost:3034`; screenshots are saved under
   `.tmp/smoke/`.
+- Follow-up smoke corrected the Auth entry to the existing provider/email-first
+  login UI rather than a custom email/password signup form.

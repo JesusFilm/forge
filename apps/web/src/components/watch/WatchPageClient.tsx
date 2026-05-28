@@ -76,6 +76,7 @@ export type WatchModalCallbacks = {
 }
 
 type WatchPageClientProps = {
+  downloadButtonLabel?: string
   mergedBlocks: MergedWatchBlock[]
   variant: WatchVariant
   video: WatchVideoRecord
@@ -94,6 +95,7 @@ type WatchPageClientProps = {
 }
 
 export function WatchPageClient({
+  downloadButtonLabel,
   mergedBlocks,
   variant,
   video,
@@ -287,6 +289,7 @@ export function WatchPageClient({
     >
       <WatchSectionRenderer
         blocks={mergedBlocks}
+        downloadButtonLabel={downloadButtonLabel}
         downloadPending={downloadPending}
         modalCallbacks={modalCallbacks}
         onPlayerReady={handlePlayerReady}

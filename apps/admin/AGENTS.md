@@ -21,7 +21,8 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 - Services own mutations, raw SQL (pgvector), and ABAC enforcement.
 - Admin owns live search orchestration, query embedding generation, vector
   storage, production search traces, raw trace retention, aggregates, and the
-  internal trace sampling/catalog/candidate contracts. Trace labels are
+  internal trace sampling/catalog/candidate/eval-search contracts. The internal
+  eval-search contract must not write production traces. Trace labels are
   deterministic rules-first with privacy/sensitivity redaction kept separate
   from query usefulness and abuse labels. Optional LLM classification is
   offline/eval-only and stores separate provenance. Mastra reads and writes

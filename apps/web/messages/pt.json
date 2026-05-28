@@ -1,0 +1,16 @@
+{
+  "ExperienceError": {
+    "empty": "Nenhum conteúdo de experiência disponível.",
+    "failedToLoad": "Falha ao carregar a experiência: {message}",
+    "unexpected": "Ocorreu um erro inesperado.",
+    "notConfigured": "O serviço de conteúdo não está configurado.",
+    "noContent": "Nenhum conteúdo está disponível.",
+    "homepageMisconfigured": "A página inicial do Watch está mal configurada.",
+    "defaultTemplateMisconfigured": "O modelo padrão do Watch está mal configurado.",
+    "authFailed": "Não foi possível autenticar com o serviço de conteúdo. Entre em contato com o suporte se isso persistir."
+  },
+  "VideosPage": {
+    "title": "Todos os vídeos",
+    "placeholder": "A navegação pelo catálogo está chegando. Enquanto isso, use a busca ou uma URL específica do tópico."
+  }
+}

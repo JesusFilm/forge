@@ -2,7 +2,8 @@ import { timingSafeEqual } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import { NextResponse } from "next/server"
 import { env } from "@/env"
-import { DEFAULT_LOCALE, isLocale, SUPPORTED_LOCALES } from "@/lib/locale"
+import { AVAILABLE_UI_LOCALES } from "@/i18n/locales"
+import { DEFAULT_LOCALE, isLocale } from "@/lib/locale"
 
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i
 const BEARER_PREFIX = "Bearer "
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
     revalidatePath("/")
     revalidated.push("/")
 
-    for (const loc of SUPPORTED_LOCALES) {
+    for (const loc of AVAILABLE_UI_LOCALES) {
       revalidatePath(`/${loc}`)
       revalidated.push(`/${loc}`)
     }
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
     revalidatePath(`/${slug}`)
     revalidated.push(`/${slug}`)
 
-    for (const loc of SUPPORTED_LOCALES) {
+    for (const loc of AVAILABLE_UI_LOCALES) {
       revalidatePath(`/${slug}/${loc}`)
       revalidated.push(`/${slug}/${loc}`)
     }
