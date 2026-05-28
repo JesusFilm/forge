@@ -10,6 +10,7 @@
 
 import { useId, useState } from "react"
 import { ChevronDown, Mail as MailIcon } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import { MessageCircleIcon } from "@/components/sections/RelatedQuestions"
 import { Button } from "@/components/ui/button"
@@ -17,12 +18,6 @@ import {
   WATCH_PILL_BUTTON_CLASS,
   WATCH_SECTION_EYEBROW_CLASS,
 } from "@/components/watch/watch-section-styles"
-
-const PLACEHOLDER_QUESTION =
-  "If you could ask the creator of this video a question, what would it be?"
-
-const FALLBACK_BODY =
-  "Have a private discussion with someone who is ready to listen."
 
 const CHAT_WITH_PERSON_URL =
   "https://chataboutjesus.com/chat/?utm_source=jesusfilm-watch"
@@ -48,8 +43,9 @@ function WatchQuestionIcon() {
 }
 
 export function WatchStudyQuestions({ prompts }: { prompts: string[] }) {
+  const t = useTranslations("WatchStudyQuestions")
   const hasPrompts = prompts.length > 0
-  const items = hasPrompts ? prompts : [PLACEHOLDER_QUESTION]
+  const items = hasPrompts ? prompts : [t("placeholderQuestion")]
   const itemTestId = hasPrompts
     ? "watch-study-questions-item"
     : "watch-study-questions-placeholder"
@@ -79,21 +75,21 @@ export function WatchStudyQuestions({ prompts }: { prompts: string[] }) {
           id="watch-related-questions-heading"
           className={`flex shrink-0 items-center gap-4 ${WATCH_SECTION_EYEBROW_CLASS}`}
         >
-          <span className="md:hidden">Questions</span>
-          <span className="hidden md:inline">Related Questions</span>
+          <span className="md:hidden">{t("questionsShort")}</span>
+          <span className="hidden md:inline">{t("questions")}</span>
         </h2>
         <Button
           variant="pill"
           nativeButton={false}
           className={WATCH_PILL_BUTTON_CLASS}
-          aria-label="Ask yours"
+          aria-label={t("askYours")}
           data-testid="watch-study-questions-ask-yours"
           render={
             <a href={ASK_YOURS_URL} target="_blank" rel="noopener noreferrer" />
           }
         >
           <MessageCircleIcon />
-          <span>Ask yours</span>
+          <span>{t("askYours")}</span>
         </Button>
       </div>
 
@@ -106,6 +102,9 @@ export function WatchStudyQuestions({ prompts }: { prompts: string[] }) {
             key={`${index}-${prompt}`}
             testId={itemTestId}
             question={prompt}
+            fallbackBody={t("fallbackBody")}
+            chatLabel={t("chatWithPerson")}
+            askBibleLabel={t("askBibleQuestion")}
             isOpen={openIndex === index}
             onToggle={() =>
               setOpenIndex((prev) => (prev === index ? null : index))
@@ -120,11 +119,20 @@ export function WatchStudyQuestions({ prompts }: { prompts: string[] }) {
 function StudyQuestionRow({
   testId,
   question,
+  fallbackBody,
+  chatLabel,
+  askBibleLabel,
   isOpen,
   onToggle,
 }: {
   testId: string
   question: string
+  /** Localized "Have a private discussion…" body, threaded from the parent's t(). */
+  fallbackBody: string
+  /** Localized "Chat with a person" CTA label. */
+  chatLabel: string
+  /** Localized "Ask a Bible question" CTA label. */
+  askBibleLabel: string
   isOpen: boolean
   onToggle: () => void
 }) {
@@ -164,7 +172,7 @@ function StudyQuestionRow({
             data-testid={`${testId}-fallback-body`}
             className="leading-relaxed font-normal text-stone-200/80"
           >
-            {FALLBACK_BODY}
+            {fallbackBody}
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button
@@ -181,7 +189,7 @@ function StudyQuestionRow({
               }
             >
               <MessageCircleIcon />
-              <span>Chat with a person</span>
+              <span>{chatLabel}</span>
             </Button>
             <Button
               variant="pill"
@@ -197,7 +205,7 @@ function StudyQuestionRow({
               }
             >
               <MailIcon className="size-4" aria-hidden="true" />
-              <span>Ask a Bible question</span>
+              <span>{askBibleLabel}</span>
             </Button>
           </div>
         </div>

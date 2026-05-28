@@ -194,9 +194,11 @@ describe("SiblingCarousel — happy path", () => {
     expect(active!.className).not.toContain("after:border-4")
     expect(active!.className).toContain("focus-visible:outline-white/80")
     expect(active!.className).toContain("shadow-[0_2px_6px_rgba")
-    // 2-segment route shape: `/{slug}/{locale}` — the parent slug segment
-    // was removed when the watch route migrated to flat `[slug]/[locale]`.
-    expect(active!.getAttribute("data-href")).toBe("/child-3-slug/english")
+    // Canonical 2-segment `.html` shape `/{slug}.html/{locale}.html`,
+    // emitted by the `watchVideoPath` builder.
+    expect(active!.getAttribute("data-href")).toBe(
+      "/child-3-slug.html/english.html",
+    )
     const caption = active!.querySelector(
       "[data-testid='sibling-carousel-caption']",
     )
@@ -246,6 +248,37 @@ describe("SiblingCarousel — happy path", () => {
     expect(desktopLabel?.textContent).toBe("Clip 3 of 10")
   })
 
+  it("routes a child through watchVideoPath to the canonical `.html` 2-segment shape", () => {
+    // Builder contract: slug `magdalena` + locale `english` →
+    // `/magdalena.html/english.html` (no manual encodeURIComponent, no cast).
+    const block: WatchSiblingCarouselBlock = {
+      kind: "SiblingCarousel",
+      canonicalParent: {
+        documentId: "parent-1",
+        slug: "jesus-collection",
+        title: "Jesus Collection",
+        children: [
+          { ...makeChild(1), slug: "magdalena", documentId: "magdalena-doc" },
+          makeChild(2),
+        ],
+      } as never,
+      currentVideoDocumentId: "magdalena-doc",
+    }
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} />)
+    })
+
+    const active = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-active='true']",
+    )
+    expect(active!.tagName).toBe("A")
+    expect(active!.getAttribute("data-href")).toBe(
+      "/magdalena.html/english.html",
+    )
+    expect(active!.getAttribute("href")).toBe("/magdalena.html/english.html")
+  })
+
   it("renders an in-app href without the /watch/ basePath prefix", () => {
     const block = makeBlock(3, 0)
 
@@ -260,9 +293,10 @@ describe("SiblingCarousel — happy path", () => {
       const href = item.getAttribute("data-href") ?? ""
       // basePath auto-prepends; in-app hrefs MUST NOT include /watch/ literal.
       expect(href.startsWith("/watch/")).toBe(false)
-      // 2-segment route — child slug then locale, no parent segment.
-      expect(href).toMatch(/^\/child-\d+-slug\/english$/)
-      expect(href.endsWith("/english")).toBe(true)
+      // Canonical 2-segment `.html` shape — child slug then locale, no
+      // parent segment.
+      expect(href).toMatch(/^\/child-\d+-slug\.html\/english\.html$/)
+      expect(href.endsWith("/english.html")).toBe(true)
     }
   })
 
@@ -378,7 +412,9 @@ describe("SiblingCarousel — edge cases", () => {
       "[data-testid='sibling-carousel-item'][data-active='true']",
     )
     expect(active).not.toBeNull()
-    expect(active!.getAttribute("data-href")).toBe("/child-12-slug/english")
+    expect(active!.getAttribute("data-href")).toBe(
+      "/child-12-slug.html/english.html",
+    )
     const label = container.querySelector(
       "[data-testid='sibling-carousel-label']",
     )
@@ -388,7 +424,7 @@ describe("SiblingCarousel — edge cases", () => {
     expect(desktopLabel?.textContent).toBe("Clip 12 of 15")
   })
 
-  it("renders an empty currentLocale segment when params lack `locale`", () => {
+  it("renders a non-clickable card (no <Link>/href) when params lack `locale`", () => {
     useParamsMock.mockReturnValue({})
     const block = makeBlock(3, 1)
 
@@ -399,9 +435,17 @@ describe("SiblingCarousel — edge cases", () => {
     const item = container.querySelector(
       "[data-testid='sibling-carousel-item'][data-active='true']",
     )
-    // Trailing slash with empty locale segment — caller is responsible for
-    // ensuring `[locale]` is present in the route; we don't fabricate one.
-    expect(item!.getAttribute("data-href")).toBe("/child-2-slug/")
+    expect(item).not.toBeNull()
+    // Empty locale fails the slug regex, so `watchVideoPath` is never built.
+    // The card still renders — as a plain <div>, not an <a> — with no href.
+    expect(item!.tagName).toBe("DIV")
+    expect(item!.getAttribute("href")).toBeNull()
+    expect(item!.getAttribute("data-href")).toBeNull()
+    // Markup is otherwise identical: same className + active marker present.
+    expect(item!.className).toContain("aspect-video")
+    expect(
+      item!.querySelector("[data-testid='sibling-carousel-caption']"),
+    ).not.toBeNull()
   })
 })
 

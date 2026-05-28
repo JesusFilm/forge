@@ -38,14 +38,20 @@ vi.mock("@/components/watch/LanguageCombobox", () => ({
     ({
       options,
       value,
+      onChange,
     }: {
       options: { slug: string; name: string }[]
       value: string
+      onChange: (slug: string) => void
     }) => (
-      <div
+      <button
+        type="button"
         data-testid="language-combobox-mock"
         data-option-count={options.length}
         data-value={value}
+        // Surface onChange so handleLanguageChange can be driven from a
+        // test without standing up the real combobox interaction.
+        onClick={() => onChange(options.find((o) => o.slug !== value)!.slug)}
       />
     ),
   ),
@@ -54,9 +60,16 @@ vi.mock("@/components/watch/LanguageCombobox", () => ({
 // next/navigation's useRouter requires app-router context that
 // createRoot tests don't provide. Stub it to a no-op router so the
 // click → router.push path is observable without app-router setup.
+// The push spy is hoisted so handleLanguageChange navigation can be
+// asserted against the .html-shaped path the @/lib/routes builder emits.
+const { pushMock, writePreferredLanguageSlugMock } = vi.hoisted(() => ({
+  pushMock: vi.fn(),
+  writePreferredLanguageSlugMock: vi.fn(),
+}))
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: pushMock,
     replace: vi.fn(),
     prefetch: vi.fn(),
     back: vi.fn(),
@@ -68,7 +81,7 @@ vi.mock("next/navigation", () => ({
 // language-preference-client writes a document.cookie value. Stub it so
 // tests don't depend on jsdom's cookie store behavior.
 vi.mock("@/lib/language-preference-client", () => ({
-  writePreferredLanguageSlug: vi.fn(),
+  writePreferredLanguageSlug: writePreferredLanguageSlugMock,
 }))
 
 const { shareModalMock, languagePickerModalMock } = vi.hoisted(() => ({
@@ -127,6 +140,8 @@ let root: Root
 beforeEach(() => {
   shareModalMock.mockClear()
   languagePickerModalMock.mockClear()
+  pushMock.mockClear()
+  writePreferredLanguageSlugMock.mockClear()
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -504,5 +519,37 @@ describe("SeriesPageClient — globe button + language modal", () => {
     )
     // Only english survives the playable-variant filter.
     expect(modal?.getAttribute("data-variant-count")).toBe("1")
+  })
+})
+
+describe("SeriesPageClient — handleLanguageChange navigation (Phase 4)", () => {
+  it("pushes the .html-shaped two-segment watch path built by @/lib/routes", () => {
+    const children = makeChildrenWithVariants([
+      [{ languageSlug: "english" }, { languageSlug: "spanish-castilian" }],
+    ])
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ slug: "lumo-the-gospel-of-john", children })}
+          selectedVariant={null}
+          locale="english"
+        />,
+      )
+    })
+    const combobox = container.querySelector(
+      '[data-testid="language-combobox-mock"]',
+    ) as HTMLButtonElement
+    // Current value is "english"; the mock onChange picks the first
+    // differing slug → "spanish-castilian".
+    act(() => {
+      combobox.click()
+    })
+    expect(pushMock).toHaveBeenCalledTimes(1)
+    expect(pushMock).toHaveBeenCalledWith(
+      "/lumo-the-gospel-of-john.html/spanish-castilian.html",
+    )
+    expect(writePreferredLanguageSlugMock).toHaveBeenCalledWith(
+      "spanish-castilian",
+    )
   })
 })

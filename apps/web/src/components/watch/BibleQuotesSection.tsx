@@ -12,6 +12,7 @@
 
 import Image from "next/image"
 import { ExternalLink } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { UseEmblaCarouselType } from "embla-carousel-react"
 
@@ -152,6 +153,7 @@ export function BibleQuotesSection({
   locale = "en",
   youVersionPassages = [],
 }: BibleQuotesSectionProps) {
+  const t = useTranslations("BibleQuotes")
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
   const [activeSlideIndex, setActiveSlideIndex] = useState(0)
   const youVersionPassagesByCitationId = useMemo(
@@ -209,16 +211,16 @@ export function BibleQuotesSection({
         data-testid="watch-bible-quotes-header"
         className="mb-6 flex flex-wrap items-center justify-between gap-3 pb-2"
       >
-        <h2 className={WATCH_SECTION_EYEBROW_CLASS}>Bible Quotes</h2>
+        <h2 className={WATCH_SECTION_EYEBROW_CLASS}>{t("title")}</h2>
         <Button
           variant="pill"
           className={WATCH_PILL_BUTTON_CLASS}
           onClick={onShareClick}
-          aria-label="Share"
+          aria-label={t("share")}
           data-testid="watch-share-button"
         >
           <ExternalLink size={16} />
-          <span>Share</span>
+          <span>{t("share")}</span>
         </Button>
       </div>
 
@@ -227,7 +229,7 @@ export function BibleQuotesSection({
         className="-mx-10 w-[calc(100%+5rem)] md:mx-0 md:w-full"
       >
         <Carousel
-          aria-label="Bible Quotes"
+          aria-label={t("title")}
           opts={CAROUSEL_OPTS}
           setApi={handleCarouselApi}
           className="w-full"
@@ -249,6 +251,7 @@ export function BibleQuotesSection({
                   citation={citation}
                   imageUrl={BIBLE_IMAGES[i % BIBLE_IMAGES.length]!}
                   locale={locale}
+                  readMoreLabel={t("readMore")}
                 />
                 {/*
                   Previously passed `isLcpCandidate={i === 0}` to mark the
@@ -289,10 +292,10 @@ export function BibleQuotesSection({
                 />
                 <div className="z-1 p-8 pt-0 md:p-10 md:pt-0">
                   <span className="mb-3 block text-sm font-bold tracking-normal text-white/80 uppercase">
-                    Free Resources
+                    {t("freeResources")}
                   </span>
                   <h3 className="mb-6 max-w-[19ch] text-3xl leading-tight font-black text-balance text-white md:text-4xl">
-                    Want to grow deep in your understanding of the Bible?
+                    {t("promoHeading")}
                   </h3>
                   <Button
                     variant="pill"
@@ -307,7 +310,7 @@ export function BibleQuotesSection({
                       />
                     }
                   >
-                    Join our Bible study
+                    {t("joinBibleStudy")}
                   </Button>
                 </div>
               </div>
@@ -325,12 +328,12 @@ export function BibleQuotesSection({
               controls so large quote cards are browsable without dragging. */}
           <CarouselPrevious
             className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
-            label="Previous Bible quote"
+            label={t("previousQuote")}
             data-testid="watch-bible-quotes-prev"
           />
           <CarouselNext
             className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
-            label="Next Bible quote"
+            label={t("nextQuote")}
             data-testid="watch-bible-quotes-next"
           />
         </Carousel>
@@ -338,15 +341,18 @@ export function BibleQuotesSection({
       <YouVersionPassagePanel
         passage={activeYouVersionPassage}
         referenceLabel={activeReferenceLabel}
+        learnMoreLabel={t("learnMore")}
       />
     </section>
   )
 }
 
 function YouVersionPassagePanel({
+  learnMoreLabel,
   passage,
   referenceLabel,
 }: {
+  learnMoreLabel: string
   passage:
     | NonNullable<WatchBibleQuotesBlock["youVersionPassages"]>[number]
     | null
@@ -406,7 +412,7 @@ function YouVersionPassagePanel({
               rel="noopener noreferrer"
               className="mt-2 inline-block text-xs font-semibold text-white/70 underline decoration-white/30 underline-offset-4 transition-colors hover:text-white"
             >
-              Learn more
+              {learnMoreLabel}
             </a>
           )}
         </footer>
@@ -438,11 +444,14 @@ function BibleCitationCard({
   citation,
   imageUrl,
   locale,
+  readMoreLabel,
   eager = false,
 }: {
   citation: WatchBibleCitation
   imageUrl: string
   locale: string
+  /** Localized "Read more..." link label, threaded from the parent's t(). */
+  readMoreLabel: string
   // Whether to load the card image eagerly with high fetch priority. Off
   // by default — the section sits below the fold on the watch page, so
   // marking a card priority diverts budget without helping LCP. Callers
@@ -591,7 +600,7 @@ function BibleCitationCard({
             data-testid="watch-bible-quotes-read-more"
             className="relative mt-7 block w-fit cursor-pointer text-xl leading-none font-semibold text-white/85 underline decoration-white/45 decoration-2 underline-offset-4 transition-colors duration-200 hover:text-white hover:decoration-white md:text-2xl"
           >
-            Read more...
+            {readMoreLabel}
           </a>
         )}
       </div>

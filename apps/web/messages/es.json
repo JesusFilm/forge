@@ -12,5 +12,106 @@
   "VideosPage": {
     "title": "Todos los videos",
     "placeholder": "La exploración del catálogo está en camino. Mientras tanto, use la búsqueda o una URL específica del tema."
+  },
+  "BibleQuotes": {
+    "title": "Citas bíblicas",
+    "share": "Compartir",
+    "readMore": "Leer más...",
+    "learnMore": "Más información",
+    "freeResources": "Recursos gratuitos",
+    "promoHeading": "¿Quieres profundizar en tu comprensión de la Biblia?",
+    "joinBibleStudy": "Únete a nuestro estudio bíblico",
+    "previousQuote": "Cita bíblica anterior",
+    "nextQuote": "Cita bíblica siguiente"
+  },
+  "DownloadButton": {
+    "download": "Descargar"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Descargar video",
+    "eyebrow": "Descargar video",
+    "posterAlt": "Miniatura del video",
+    "noDownloads": "No hay descargas disponibles para este video.",
+    "errorUnavailableSource": "Descarga no disponible desde esta fuente",
+    "tierHighest": "Máxima",
+    "tierHigh": "Alta",
+    "tierLow": "Baja"
+  },
+  "HeroPlayerControls": {
+    "play": "Reproducir",
+    "pause": "Pausar",
+    "seek": "Buscar",
+    "seekValue": "{current} de {total}",
+    "volume": "Volumen",
+    "volumeValue": "{percent} por ciento",
+    "mute": "Silenciar",
+    "unmute": "Activar sonido",
+    "changeAudioLanguage": "Cambiar idioma del audio",
+    "enterFullscreen": "Pantalla completa",
+    "exitFullscreen": "Salir de pantalla completa"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Seleccionar idioma",
+    "searchPlaceholder": "Buscar idiomas…",
+    "languages": "Idiomas",
+    "noMatches": "Sin coincidencias"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Idioma",
+    "dialogTitleWithSubtitles": "Idioma y subtítulos",
+    "languageHeading": "Idioma",
+    "subtitlesHeading": "Subtítulos",
+    "languageCount": "{count, plural, one {# idioma} other {# idiomas}}",
+    "requestSent": "Solicitud enviada",
+    "translateWithAi": "Traducir con IA",
+    "noSubtitles": "Sin subtítulos",
+    "close": "Cerrar",
+    "apply": "Aplicar"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPISODIO} other {# EPISODIOS}}",
+    "seriesLabel": "SERIE · {episodes}",
+    "changeAudioLanguage": "Cambiar idioma del audio",
+    "share": "Compartir",
+    "languages": "Idiomas"
+  },
+  "WatchModal": {
+    "close": "Cerrar"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Si pudieras hacerle una pregunta al creador de este video, ¿cuál sería?",
+    "fallbackBody": "Ten una conversación privada con alguien dispuesto a escuchar.",
+    "questionsShort": "Preguntas",
+    "questions": "Preguntas relacionadas",
+    "askYours": "Haz la tuya",
+    "chatWithPerson": "Chatear con una persona",
+    "askBibleQuestion": "Hacer una pregunta bíblica"
+  },
+  "ShareModal": {
+    "dialogTitle": "Compartir video",
+    "heading": "Comparte este video",
+    "posterAlt": "Miniatura del video",
+    "shareOnFacebook": "Compartir en Facebook",
+    "shareOnFacebookUnavailable": "Compartir en Facebook (no disponible en esta versión)",
+    "shareOnX": "Compartir en X",
+    "shareOnXUnavailable": "Compartir en X (no disponible en esta versión)",
+    "shareDisabledHint": "Compartir requiere una página desplegada — funciona cuando este video esté en producción.",
+    "shareFormat": "Formato para compartir",
+    "shareLinkTab": "Enlace para compartir",
+    "embedCodeTab": "Código de inserción",
+    "copyFailed": "No se pudo copiar automáticamente — selecciona el texto a continuación y cópialo manualmente.",
+    "copyLink": "Copiar enlace",
+    "copyCode": "Copiar código",
+    "copied": "Copiado",
+    "close": "Cerrar"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transcripción",
+    "subheading": "Toca cualquier línea para saltar a ese momento.",
+    "subtitleLanguage": "Idioma de los subtítulos",
+    "aiSuffix": " · IA",
+    "loading": "Cargando transcripción…",
+    "unavailable": "Transcripción no disponible para esta pista de subtítulos.",
+    "empty": "No se encontraron líneas de transcripción."
   }
 }

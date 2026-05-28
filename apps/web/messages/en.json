@@ -12,5 +12,106 @@
   "VideosPage": {
     "title": "All Videos",
     "placeholder": "Catalog browsing is coming. In the meantime use search or a topic-specific URL."
+  },
+  "BibleQuotes": {
+    "title": "Bible Quotes",
+    "share": "Share",
+    "readMore": "Read more...",
+    "learnMore": "Learn more",
+    "freeResources": "Free Resources",
+    "promoHeading": "Want to grow deep in your understanding of the Bible?",
+    "joinBibleStudy": "Join our Bible study",
+    "previousQuote": "Previous Bible quote",
+    "nextQuote": "Next Bible quote"
+  },
+  "DownloadButton": {
+    "download": "Download"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Download video",
+    "eyebrow": "Download Video",
+    "posterAlt": "Video poster",
+    "noDownloads": "No downloads are available for this video.",
+    "errorUnavailableSource": "Download unavailable from this source",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low"
+  },
+  "HeroPlayerControls": {
+    "play": "Play",
+    "pause": "Pause",
+    "seek": "Seek",
+    "seekValue": "{current} of {total}",
+    "volume": "Volume",
+    "volumeValue": "{percent} percent",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "changeAudioLanguage": "Change audio language",
+    "enterFullscreen": "Enter fullscreen",
+    "exitFullscreen": "Exit fullscreen"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Select language",
+    "searchPlaceholder": "Search languages…",
+    "languages": "Languages",
+    "noMatches": "No matches"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Language",
+    "dialogTitleWithSubtitles": "Language & Subtitles",
+    "languageHeading": "Language",
+    "subtitlesHeading": "Subtitles",
+    "languageCount": "{count, plural, one {# language} other {# languages}}",
+    "requestSent": "Request sent",
+    "translateWithAi": "Translate with AI",
+    "noSubtitles": "No subtitles",
+    "close": "Close",
+    "apply": "Apply"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
+    "seriesLabel": "SERIES · {episodes}",
+    "changeAudioLanguage": "Change audio language",
+    "share": "Share",
+    "languages": "Languages"
+  },
+  "WatchModal": {
+    "close": "Close"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "If you could ask the creator of this video a question, what would it be?",
+    "fallbackBody": "Have a private discussion with someone who is ready to listen.",
+    "questionsShort": "Questions",
+    "questions": "Related Questions",
+    "askYours": "Ask yours",
+    "chatWithPerson": "Chat with a person",
+    "askBibleQuestion": "Ask a Bible question"
+  },
+  "ShareModal": {
+    "dialogTitle": "Share video",
+    "heading": "Share this video",
+    "posterAlt": "Video poster",
+    "shareOnFacebook": "Share on Facebook",
+    "shareOnFacebookUnavailable": "Share on Facebook (unavailable on this build)",
+    "shareOnX": "Share on X",
+    "shareOnXUnavailable": "Share on X (unavailable on this build)",
+    "shareDisabledHint": "Sharing requires a deployed page — works once this video is in production.",
+    "shareFormat": "Share format",
+    "shareLinkTab": "Share Link",
+    "embedCodeTab": "Embed Code",
+    "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
+    "copyLink": "Copy Link",
+    "copyCode": "Copy Code",
+    "copied": "Copied",
+    "close": "Close"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transcript",
+    "subheading": "Tap any line to jump to that moment.",
+    "subtitleLanguage": "Subtitle language",
+    "aiSuffix": " · AI",
+    "loading": "Loading transcript…",
+    "unavailable": "Transcript unavailable for this subtitle track.",
+    "empty": "No transcript lines found."
   }
 }
