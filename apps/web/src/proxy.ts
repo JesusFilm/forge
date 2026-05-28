@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
 import { LANGUAGE_PREFERENCE_COOKIE } from "@/lib/language-preference-constants"
 import {
   DEFAULT_LOCALE,
@@ -8,7 +7,11 @@ import {
   parseAcceptLanguage,
 } from "@/lib/locale"
 import { canonicalizeWatchPath } from "@/lib/url-canonicalize"
-import { hasHtmlSuffix, stripHtmlSuffix } from "@/lib/url-shape"
+import {
+  getWatchLocaleSegmentIndex,
+  hasHtmlSuffix,
+  stripHtmlSuffix,
+} from "@/lib/url-shape"
 
 // Slug shape that the watch picker writes — kebab-case ASCII or bcp47
 // codes. Used by both isWatchRoute (to recognise slug-form watch URLs
@@ -23,6 +26,24 @@ const PREFERRED_LANG_SLUG = /^[a-z0-9-]+$/
 // additions without admitting pathological values from a tampered
 // cookie (e.g. a megabyte-sized string passing the regex).
 const PREFERRED_LANG_SLUG_MAX_LEN = 64
+
+// Structural subset of `NextRequest` that `proxy()` actually consumes.
+// Declaring the precise surface (rather than the full NextRequest type)
+// (1) documents the contract, (2) lets the test fixture satisfy the
+// signature without a double-cast, and (3) prevents accidental reliance
+// on future NextRequest fields that haven't been mocked.
+//
+// Production `NextRequest` from `next/server` satisfies this shape via
+// structural subtyping — no runtime adapter needed.
+export type ProxyRequest = {
+  nextUrl: {
+    readonly pathname: string
+    readonly searchParams: { has: (name: string) => boolean }
+    clone: () => URL
+  }
+  cookies: { get: (name: string) => { value: string } | undefined }
+  headers: { get: (name: string) => string | null }
+}
 
 // Cache-Control emitted on every proxy-issued redirect during the cutover
 // window. Prevents Cloudflare / browser caches from pinning a 307/308 to
@@ -49,19 +70,12 @@ function buildRedirect(url: URL, status: 307 | 308): NextResponse {
 // consistent across legacy + canonical traffic during cutover.
 function isWatchRoute(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean)
-  if (segments.length === 2) {
-    const last = segments[1]
-    if (last == null) return false
-    const bare = stripHtmlSuffix(last)
-    return isLocale(bare) || PREFERRED_LANG_SLUG.test(bare)
-  }
-  if (segments.length === 3) {
-    const last = segments[2]
-    if (last == null) return false
-    const bare = stripHtmlSuffix(last)
-    return isLocale(bare) || PREFERRED_LANG_SLUG.test(bare)
-  }
-  return false
+  const localeIdx = getWatchLocaleSegmentIndex(segments)
+  if (localeIdx < 0) return false
+  const last = segments[localeIdx]
+  if (last == null) return false
+  const bare = stripHtmlSuffix(last)
+  return isLocale(bare) || PREFERRED_LANG_SLUG.test(bare)
 }
 
 function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
@@ -93,7 +107,7 @@ const ONE_SHOT_QUERY_PARAMS = ["autoplay", "t"] as const
 // cookie language has no variant for a given video, the page falls back
 // to the experience template rather than crashing.
 function maybeRedirectToPreferredLanguage(
-  request: NextRequest,
+  request: ProxyRequest,
   pathname: string,
 ): NextResponse | null {
   if (!isWatchRoute(pathname)) return null
@@ -114,10 +128,7 @@ function maybeRedirectToPreferredLanguage(
   if (preferredSlug.length > PREFERRED_LANG_SLUG_MAX_LEN) return null
   if (!PREFERRED_LANG_SLUG.test(preferredSlug)) return null
   const segments = pathname.split("/").filter(Boolean)
-  // Index of the locale segment depends on shape:
-  //   2-segment: /{slug}/{locale}                → idx 1
-  //   3-segment: /{series}/{episode}/{locale}    → idx 2
-  const localeIdx = segments.length === 2 ? 1 : segments.length === 3 ? 2 : -1
+  const localeIdx = getWatchLocaleSegmentIndex(segments)
   if (localeIdx < 0) return null
   const currentLocaleSeg = segments[localeIdx]
   if (!currentLocaleSeg) return null
@@ -136,7 +147,7 @@ function maybeRedirectToPreferredLanguage(
   return buildRedirect(url, 307)
 }
 
-export function proxy(request: NextRequest) {
+export function proxy(request: ProxyRequest): NextResponse {
   const { pathname } = request.nextUrl
 
   // Step 1: canonicalize legacy /watch shapes into the .html-suffix

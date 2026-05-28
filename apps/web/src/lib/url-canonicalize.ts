@@ -14,6 +14,7 @@ import { tryResolveLanguageAlias } from "./language-aliases"
 import {
   HTML_SUFFIX,
   RESERVED_PREFIXES,
+  getWatchLocaleSegmentIndex,
   hasHtmlSuffix,
   stripHtmlSuffix,
 } from "./url-shape"
@@ -220,7 +221,7 @@ export function canonicalizeWatchPath(
   // 2-segment: alias applies to segments[1]. 3-segment: applies to segments[2].
   {
     const segs = path.split("/").filter(Boolean)
-    const localeIdx = segs.length === 2 ? 1 : segs.length === 3 ? 2 : -1
+    const localeIdx = getWatchLocaleSegmentIndex(segs)
     if (localeIdx >= 0 && hasHtmlSuffix(segs[localeIdx])) {
       const bare = stripHtmlSuffix(segs[localeIdx])
       const canonical = tryResolveLanguageAlias(bare)

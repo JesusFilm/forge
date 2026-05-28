@@ -1,44 +1,34 @@
 import { describe, expect, it } from "vitest"
 
-import { proxy } from "./proxy"
+import { proxy, type ProxyRequest } from "./proxy"
 
 type CookieMap = Record<string, string>
 
 function makeRequest(
   pathname: string,
   options: { cookies?: CookieMap; acceptLanguage?: string } = {},
-) {
-  // Minimal NextRequest stand-in. proxy() only touches:
-  //   - request.nextUrl.pathname
-  //   - request.nextUrl.clone()
-  //   - request.nextUrl.searchParams (for ?_lr=1 + one-shot strip)
-  //   - request.cookies.get()
-  //   - request.headers.get()
+): ProxyRequest {
+  // Test stand-in for the `ProxyRequest` structural subset proxy() reads.
+  // No cast needed — the factory's return type matches the production
+  // contract directly.
   const url = new URL(`https://www.jesusfilm.org${pathname}`)
-  const cookies = {
-    get: (name: string) =>
-      options.cookies?.[name] != null
-        ? { name, value: options.cookies[name] }
-        : undefined,
-  }
-  const headers = {
-    get: (name: string) =>
-      name.toLowerCase() === "accept-language"
-        ? (options.acceptLanguage ?? null)
-        : null,
-  }
   return {
     nextUrl: Object.assign(url, {
-      clone: () => {
-        const cloned = new URL(url.toString())
-        return Object.assign(cloned, {
-          clone: () => new URL(cloned.toString()),
-        })
-      },
+      clone: () => new URL(url.toString()),
     }),
-    cookies,
-    headers,
-  } as unknown as Parameters<typeof proxy>[0]
+    cookies: {
+      get: (name: string) =>
+        options.cookies?.[name] != null
+          ? { value: options.cookies[name] }
+          : undefined,
+    },
+    headers: {
+      get: (name: string) =>
+        name.toLowerCase() === "accept-language"
+          ? (options.acceptLanguage ?? null)
+          : null,
+    },
+  }
 }
 
 // ---------------------------------------------------------------------------
