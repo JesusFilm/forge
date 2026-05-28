@@ -1,7 +1,7 @@
 ---
 title: Migrate apps/web to next-intl for full i18n + retire static SUPPORTED_LOCALES
 type: feat
-status: active
+status: in-progress
 date: 2026-05-28
 ---
 
