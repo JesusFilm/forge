@@ -313,3 +313,48 @@ describe("SlugLocalePage routing — passes correct props to SeriesPageClient", 
     expect(args?.locale).toBe("spanish-castilian")
   })
 })
+
+describe("SlugLocalePage routing — .html shape acceptance", () => {
+  it("strips .html from slug and locale params before dispatch (2-segment canonical shape)", async () => {
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("collection"),
+    )
+    // /watch/storyclubs.html/english.html — production canonical shape.
+    await renderPage("storyclubs.html", "english.html")
+    // Resolver receives stripped values; series page receives stripped locale.
+    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+      "storyclubs",
+      "english",
+    )
+    const args = seriesPageClientMock.mock.calls[0]?.[0]
+    expect(args?.locale).toBe("english")
+  })
+
+  it("handles .html suffix with slug-form locale (spanish-castilian.html)", async () => {
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("collection", {
+        slug: "spanish-castilian",
+        bcp47: "es",
+        name: "Spanish, Castilian",
+      }),
+    )
+    await renderPage("storyclubs.html", "spanish-castilian.html")
+    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+      "storyclubs",
+      "spanish-castilian",
+    )
+    const args = seriesPageClientMock.mock.calls[0]?.[0]
+    expect(args?.locale).toBe("spanish-castilian")
+  })
+
+  it("still accepts bare-shape input (transitional)", async () => {
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("collection"),
+    )
+    await renderPage("storyclubs", "english")
+    expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
+      "storyclubs",
+      "english",
+    )
+  })
+})

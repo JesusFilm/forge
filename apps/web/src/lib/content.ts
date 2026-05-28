@@ -706,11 +706,13 @@ async function getVideoBySlug(
   return raw ? normalizeAdminVideo(raw) : null
 }
 
-// Wraps `getVideoBySlug`'s null-on-missing semantics inside the
-// fetchWatchVideoRecord path so a raw record without a documentId
-// surfaces as "not found" rather than a synthetic crash deep in the
-// variant picker.
-function selectPlayableVariant(video: WatchVideoRecord) {
+// Route-synthesis variant picker: no URL locale to honor, so only Tier 3
+// (primary language by coreId) and Tier 4 (first playable) apply. Used by
+// `normalizeRouteVideo` to synthesize a relatable item from a collection
+// child without a per-request locale. URL-bearing call sites (the two-seg
+// and three-seg watch routes) use `selectPlayableVariant` below, which
+// accepts a locale and applies the full 4-tier chain.
+function selectPlayableVariantForRouteSynth(video: WatchVideoRecord) {
   const playableVariants = video.variants.filter(
     (variant) => variant.published === true && Boolean(variant.hls),
   )
@@ -753,7 +755,7 @@ function normalizeRelatedRouteItems(
 }
 
 function normalizeRouteVideo(video: WatchVideoRecord): RouteVideo | null {
-  const selectedVariant = selectPlayableVariant(video)
+  const selectedVariant = selectPlayableVariantForRouteSynth(video)
   if (!selectedVariant?.hls) return null
 
   return {
@@ -1170,6 +1172,41 @@ const fetchWatchVideoBySlug = cache(
 // null, while real downstream errors propagate as before.
 const WATCH_VIDEO_BY_SLUG_NOT_FOUND = "watch-video-by-slug:NOT_FOUND"
 
+/**
+ * Pick the best playable variant for a (locale, primaryLanguageId) pair.
+ * Caller pre-filters `playableVariants` to (published + hls). Priority chain:
+ *
+ *   Tier 1: variant.language.slug === locale (e.g. "spanish-castilian")
+ *   Tier 2: variant.language.bcp47 === locale (e.g. "en", "pt-BR")
+ *   Tier 3: variant.language.coreId === primaryLanguageId (video's primary)
+ *   Tier 4: first playable variant
+ *
+ * Returns null only when `playableVariants` is empty.
+ *
+ * Shared by `tryResolveWatchVideoBySlug` (two-segment URL), the legacy
+ * series-trailer fallback in `tryResolveSeriesBySlug`, and Phase 2's new
+ * three-segment `resolveSeriesEpisodeBySlug` so the four-tier priority
+ * stays in one place. See docs/solutions/logic-errors/strapi-graphql-
+ * pagination-cap-wrong-language-watch-page-20260504.md for the bug
+ * class this contract prevents.
+ */
+export function selectPlayableVariant(
+  playableVariants: WatchVariant[],
+  locale: string,
+  primaryLanguageId: string | null,
+): WatchVariant | null {
+  if (!playableVariants.length) return null
+  const localeMatch =
+    playableVariants.find((variant) => variant.language?.slug === locale) ??
+    playableVariants.find((variant) => variant.language?.bcp47 === locale)
+  const primaryMatch = primaryLanguageId
+    ? playableVariants.find(
+        (variant) => variant.language?.coreId === primaryLanguageId,
+      )
+    : null
+  return localeMatch ?? primaryMatch ?? playableVariants[0] ?? null
+}
+
 async function tryResolveWatchVideoBySlug(
   videoSlug: string,
   locale: string,
@@ -1184,18 +1221,11 @@ async function tryResolveWatchVideoBySlug(
   )
   if (!playableVariants.length) throw new Error(WATCH_VIDEO_BY_SLUG_NOT_FOUND)
 
-  // Priority: URL locale (slug → bcp47), then primary, then first playable.
-  const localeMatch =
-    playableVariants.find((variant) => variant.language?.slug === locale) ??
-    playableVariants.find((variant) => variant.language?.bcp47 === locale)
-  const primaryLanguageId = record.primaryLanguage?.coreId ?? null
-  const primaryMatch = primaryLanguageId
-    ? playableVariants.find(
-        (variant) => variant.language?.coreId === primaryLanguageId,
-      )
-    : null
-  const selectedVariant =
-    localeMatch ?? primaryMatch ?? playableVariants[0] ?? null
+  const selectedVariant = selectPlayableVariant(
+    playableVariants,
+    locale,
+    record.primaryLanguage?.coreId ?? null,
+  )
   if (!selectedVariant) throw new Error(WATCH_VIDEO_BY_SLUG_NOT_FOUND)
 
   const narrowedRecord = stripNonSelectedVariantFields(
@@ -1240,6 +1270,55 @@ export const resolveWatchVideoBySlug = cache(
       }
       throw error
     }
+  },
+)
+
+/**
+ * Find the parent of an episode video whose slug matches `seriesSlug`.
+ * Returns null when no parent has that slug — caller treats null as
+ * "the requested series isn't this episode's parent" and `notFound()`s.
+ * Case-sensitive on the slug per production contract (uppercase slugs 404).
+ * Consumed by `resolveSeriesEpisodeBySlug` for the three-segment URL shape.
+ */
+export function findSeriesParent(
+  video: WatchVideoRecord,
+  seriesSlug: string,
+): WatchParent | null {
+  return video.parents.find((parent) => parent.slug === seriesSlug) ?? null
+}
+
+/** Result of resolving a three-segment series-episode URL. */
+export type ResolvedSeriesEpisodeBySlug = ResolvedWatchVideoBySlug & {
+  series: WatchParent
+}
+
+/**
+ * Resolve a three-segment series-episode URL `/{series}.html/{episode}/{lang}.html`
+ * to the playable episode video plus the verified series parent.
+ *
+ * The episode is fetched via the canonical `resolveWatchVideoBySlug` so the
+ * 4-tier locale priority chain and the unstable_cache hit path are shared
+ * with the two-segment route. The series segment acts as a context guard:
+ * if the requested series slug doesn't appear in the episode's `parents`
+ * list, return null and let the route handler `notFound()`. This prevents
+ * an inbound URL like `/lumo.html/the-beginning/english.html` from
+ * resolving the Jesus-film episode "the-beginning" — different series,
+ * different episode by happenstance of shared slug.
+ *
+ * Returns null when the episode doesn't exist, has no playable variant,
+ * or doesn't belong to the requested series.
+ */
+export const resolveSeriesEpisodeBySlug = cache(
+  async (
+    seriesSlug: string,
+    episodeSlug: string,
+    locale: string,
+  ): Promise<ResolvedSeriesEpisodeBySlug | null> => {
+    const resolved = await resolveWatchVideoBySlug(episodeSlug, locale)
+    if (!resolved) return null
+    const series = findSeriesParent(resolved.video, seriesSlug)
+    if (!series) return null
+    return { ...resolved, series }
   },
 )
 
@@ -1297,19 +1376,11 @@ async function tryResolveSeriesBySlug(
     (variant) => variant.published === true && Boolean(variant.hls),
   )
 
-  let selectedVariant: WatchVariant | null = null
-  if (playableVariants.length) {
-    const localeMatch =
-      playableVariants.find((variant) => variant.language?.slug === locale) ??
-      playableVariants.find((variant) => variant.language?.bcp47 === locale)
-    const primaryLanguageId = record.primaryLanguage?.coreId ?? null
-    const primaryMatch = primaryLanguageId
-      ? playableVariants.find(
-          (variant) => variant.language?.coreId === primaryLanguageId,
-        )
-      : null
-    selectedVariant = localeMatch ?? primaryMatch ?? playableVariants[0] ?? null
-  }
+  const selectedVariant = selectPlayableVariant(
+    playableVariants,
+    locale,
+    record.primaryLanguage?.coreId ?? null,
+  )
 
   const narrowedRecord = selectedVariant
     ? stripNonSelectedVariantFields(record, selectedVariant.documentId)

@@ -1,6 +1,6 @@
-import type { Metadata, Route } from "next"
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
-import { DEFAULT_LOCALE, LOCALE_RESOLVED_PARAM, isLocale } from "@/lib/locale"
+import { DEFAULT_LOCALE, isLocale } from "@/lib/locale"
 import {
   isSeriesRecord,
   isWatchPageMissingError,
@@ -13,6 +13,8 @@ import {
   generateSeriesMetadata,
   getWatchPageMetadata,
 } from "@/lib/experience-metadata"
+import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
+import { stripHtmlSuffix } from "@/lib/url-shape"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
@@ -33,7 +35,13 @@ type PageProps = {
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
-  const { slug, locale: rawLocale } = await params
+  const { slug: rawSlug, locale: rawLocaleParam } = await params
+  // Accept both legacy bare shape (`/jesus/english`) AND production
+  // `.html` shape (`/jesus.html/english.html`). Routing operates on the
+  // stripped values; absolute URLs emitted by Phase 4 builders carry
+  // the `.html` suffix back.
+  const slug = stripHtmlSuffix(rawSlug)
+  const rawLocale = stripHtmlSuffix(rawLocaleParam)
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
 
   // Resolve the video first so the series-shaped branch can read title /
@@ -85,7 +93,9 @@ export async function generateMetadata({
 }
 
 export default async function SlugLocalePage({ params }: PageProps) {
-  const { slug, locale: rawLocale } = await params
+  const { slug: rawSlug, locale: rawLocaleParam } = await params
+  const slug = stripHtmlSuffix(rawSlug)
+  const rawLocale = stripHtmlSuffix(rawLocaleParam)
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE
 
   // Experience-first precedence: when an editor has curated an Experience
@@ -143,7 +153,19 @@ export default async function SlugLocalePage({ params }: PageProps) {
     const actualSlug = watchVideo.selectedVariant.language?.slug ?? null
     const actualBcp47 = watchVideo.selectedVariant.language?.bcp47 ?? null
     if (actualSlug && rawLocale !== actualSlug && rawLocale !== actualBcp47) {
-      redirect(`/${slug}/${actualSlug}?${LOCALE_RESOLVED_PARAM}=1` as Route)
+      // Emit canonical .html shape via the central builder so the redirect
+      // doesn't ping-pong through the proxy's per-segment .html append.
+      // tryAs* siblings return null on invalid input; in that case fall
+      // back to the bare-shape route (proxy will normalize).
+      const contentSlug = tryAsContentSlug(slug)
+      const localeSlug = tryAsLocaleSlug(actualSlug)
+      if (contentSlug && localeSlug) {
+        redirect(
+          watchVideoPath(contentSlug, localeSlug, {
+            reason: "locale-resolved",
+          }),
+        )
+      }
     }
     if (isSeriesRecord(watchVideo.video)) {
       // Series with a playable trailer: render the series page using the
