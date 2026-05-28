@@ -21,6 +21,7 @@ import {
   getWatchPageMetadata,
 } from "@/lib/experience-metadata"
 import { hasUiLocale } from "@/i18n/locales"
+import { isWatchCtaTextCopyEnabled } from "@/lib/feature-flags"
 import { DEFAULT_LOCALE, resolveUiLocale } from "@/lib/locale"
 import {
   tryAsContentSlug,
@@ -98,6 +99,13 @@ function classify(rawSlug: string, rest: string[]): Shape {
     }
   }
   return { kind: "unknown" }
+}
+
+async function getDownloadButtonLabel(route: string): Promise<string> {
+  const useUpdatedCtaCopy = await isWatchCtaTextCopyEnabled({
+    custom: { route },
+  })
+  return useUpdatedCtaCopy ? "Save Video" : "Download"
 }
 
 export async function generateMetadata({
@@ -214,6 +222,9 @@ async function renderEpisode(shape: {
   })
   if (!mergedBlocks.length) return <ExperienceEmpty />
 
+  const downloadButtonLabel = await getDownloadButtonLabel(
+    `/watch/${seriesSlug}.html/${episodeSlug}/${rawLocale}.html`,
+  )
   const lcpPlaybackId = resolved.selectedVariant.muxVideo?.playbackId ?? null
 
   return (
@@ -227,6 +238,7 @@ async function renderEpisode(shape: {
         />
       ) : null}
       <WatchPageClient
+        downloadButtonLabel={downloadButtonLabel}
         mergedBlocks={mergedBlocks}
         variant={resolved.selectedVariant}
         video={resolved.video}
@@ -310,6 +322,9 @@ async function renderVideo(shape: {
       variant: watchVideo.selectedVariant,
       canonicalParent: watchVideo.canonicalParent,
     })
+    const downloadButtonLabel = await getDownloadButtonLabel(
+      `/watch/${slug}.html/${rawLocale}.html`,
+    )
     const lcpPlaybackId =
       watchVideo.selectedVariant.muxVideo?.playbackId ?? null
     return (
@@ -323,6 +338,7 @@ async function renderVideo(shape: {
           />
         ) : null}
         <WatchPageClient
+          downloadButtonLabel={downloadButtonLabel}
           mergedBlocks={mergedBlocks}
           variant={watchVideo.selectedVariant}
           video={watchVideo.video}

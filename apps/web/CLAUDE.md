@@ -55,6 +55,14 @@ See `docs/plans/2026-05-28-001-feat-i18n-migration-next-intl-plan.md`.
 
 ## Feature flags
 
+LaunchDarkly server-side feature flag evaluation is available through
+`src/lib/feature-flags.ts`, backed by the shared `@forge/feature-flags`
+package. `LAUNCHDARKLY_SDK_KEY` is optional; when it is absent, helpers fall
+back to `FORGE_*_DEFAULT` env vars and then to the existing local defaults.
+Never expose the LaunchDarkly server-side SDK key to client components or
+`NEXT_PUBLIC_*` env vars. Add new LaunchDarkly flag keys to
+`packages/feature-flags/src/registry.ts` before using them in an app.
+
 Two composable `NEXT_PUBLIC_*` toggles control the watch player surface:
 
 - `NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION` (default `false`) — selects the
@@ -75,5 +83,13 @@ Two composable `NEXT_PUBLIC_*` toggles control the watch player surface:
 
 Both flags are per-environment / per-build — set via Railway env vars and
 baked at `next build` time. They do NOT support per-request override.
+LaunchDarkly runtime evaluation does not replace these build-time branches yet
+because the inactive player implementation is intentionally dead-code
+eliminated by `process.env.NEXT_PUBLIC_*` substitution.
+
+`forge.watch.ctaTextCopy` is a temporary LaunchDarkly-backed production smoke
+flag for the watch-page Download CTA copy. `false` keeps `Download`; `true`
+renders `Save Video`. Keep `FORGE_WATCH_CTA_TEXT_COPY_DEFAULT=false` in local
+and Railway envs unless intentionally testing the fallback path.
 
 See root `CLAUDE.md` for cross-app patterns and the broader data-layer-flip plan reference.

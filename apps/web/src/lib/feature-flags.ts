@@ -1,0 +1,77 @@
+import "server-only"
+
+import {
+  createFeatureFlagClient,
+  featureFlags,
+  type FeatureFlagContext,
+} from "@forge/feature-flags"
+
+import { env } from "@/env"
+
+export type WebFeatureFlagContextInput = Partial<FeatureFlagContext> & {
+  custom?: FeatureFlagContext["custom"]
+}
+
+const webFeatureFlagClient = createFeatureFlagClient({
+  sdkKey: env.LAUNCHDARKLY_SDK_KEY,
+  localEnv: {
+    FORGE_WATCH_PLAYER_MIGRATION_DEFAULT:
+      env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT ??
+      String(env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION),
+    FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT:
+      env.FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT ??
+      String(env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO),
+    FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
+  },
+  defaultValues: {
+    "forge.watch.playerMigration": env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
+    "forge.watch.heroMuxVideo": env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO,
+    "forge.watch.ctaTextCopy": false,
+  },
+  timeoutSeconds: 0.25,
+  logger: console,
+})
+
+export function createWebFeatureFlagContext(
+  input: WebFeatureFlagContextInput = {},
+): FeatureFlagContext {
+  return {
+    kind: input.kind ?? "service",
+    key: input.key ?? "forge-web",
+    name: input.name ?? "Forge Web",
+    email: input.email,
+    anonymous: input.anonymous,
+    custom: {
+      app: "web",
+      canonicalOrigin: env.NEXT_PUBLIC_CANONICAL_ORIGIN,
+      ...input.custom,
+    },
+  }
+}
+
+export async function isWatchPlayerMigrationEnabled(
+  context: WebFeatureFlagContextInput = {},
+): Promise<boolean> {
+  return webFeatureFlagClient.booleanVariation(
+    featureFlags.watchPlayerMigration,
+    createWebFeatureFlagContext(context),
+  )
+}
+
+export async function isWatchHeroMuxVideoEnabled(
+  context: WebFeatureFlagContextInput = {},
+): Promise<boolean> {
+  return webFeatureFlagClient.booleanVariation(
+    featureFlags.watchHeroMuxVideo,
+    createWebFeatureFlagContext(context),
+  )
+}
+
+export async function isWatchCtaTextCopyEnabled(
+  context: WebFeatureFlagContextInput = {},
+): Promise<boolean> {
+  return webFeatureFlagClient.booleanVariation(
+    featureFlags.watchCtaTextCopy,
+    createWebFeatureFlagContext(context),
+  )
+}
