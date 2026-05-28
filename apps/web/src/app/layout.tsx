@@ -1,11 +1,38 @@
 import type { ReactNode } from "react"
+import { headers } from "next/headers"
 import localFont from "next/font/local"
 import type { Metadata, Viewport } from "next"
 import { NextIntlClientProvider } from "next-intl"
-import { getLocale } from "next-intl/server"
+import { getLocale, setRequestLocale } from "next-intl/server"
 import "./globals.css"
+import { hasUiLocale } from "@/i18n/locales"
 import { cn } from "@/lib/utils"
+import { DEFAULT_LOCALE, resolveUiLocale } from "@/lib/locale"
+import { stripHtmlSuffix } from "@/lib/url-shape"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
+
+// Proxy.ts sets x-watch-pathname on every watch request so the layout
+// can derive the UI chrome locale BEFORE the page handler runs.
+// Layouts render before pages in App Router; without this header we'd
+// fall back to DEFAULT_LOCALE for every <html lang> render.
+const PATHNAME_HEADER = "x-watch-pathname"
+
+async function deriveLocaleFromUrl(): Promise<string> {
+  const hdrs = await headers()
+  const pathname = hdrs.get(PATHNAME_HEADER) ?? ""
+  // Last URL segment carries the locale for every shape in the watch
+  // URL contract: 1-seg /{lang}.html, 2-seg /{slug}.html/{lang}.html,
+  // 3-seg /{series}.html/{episode}/{lang}.html. Stripping .html and
+  // resolving through the bcp47 family fallback collapses each into
+  // its UI chrome locale; non-locale tails (e.g. "jesus.html",
+  // "videos") fall through to DEFAULT_LOCALE.
+  const segments = pathname.split("/").filter(Boolean)
+  const tail = segments[segments.length - 1]
+  if (!tail) return DEFAULT_LOCALE
+  const stripped = stripHtmlSuffix(tail)
+  const resolved = resolveUiLocale(stripped) ?? DEFAULT_LOCALE
+  return hasUiLocale(resolved) ? resolved : DEFAULT_LOCALE
+}
 
 const montserrat = localFont({
   // Italic variable-font face was dropped — the only italic usage in
@@ -75,10 +102,14 @@ export const viewport: Viewport = {
 }
 
 export default async function RootLayout(props: { children: ReactNode }) {
-  // Reads value set by setRequestLocale() in each page handler. next-intl
-  // resolves the request store in the rendering order page → layout, so
-  // getLocale() here sees whatever the page just set. Pages that don't
-  // call setRequestLocale fall through to DEFAULT_LOCALE.
+  // Layout renders BEFORE pages, so we can't rely on the page handler
+  // to have populated the next-intl request store yet. Derive locale
+  // from the proxy-set pathname header, then setRequestLocale so any
+  // server component down the tree (including the page) sees the same
+  // locale. getLocale() returns the set value; pages still call
+  // setRequestLocale defensively, but the source of truth is here.
+  const derived = await deriveLocaleFromUrl()
+  setRequestLocale(derived)
   const locale = await getLocale()
   return (
     <html

@@ -45,6 +45,23 @@ function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
   return response
 }
 
+// Per-request pathname header. Layouts render BEFORE pages in App
+// Router; without this, app/layout.tsx has no way to know the URL when
+// it needs to derive UI chrome locale for `<html lang>` + NextIntl-
+// ClientProvider. Pages also call setRequestLocale defensively, but the
+// layout's getLocale() runs first and would otherwise see the default
+// locale every render.
+const PATHNAME_HEADER = "x-watch-pathname"
+
+function nextWithPathname(
+  request: NextRequest,
+  pathname: string,
+): NextResponse {
+  const headers = new Headers(request.headers)
+  headers.set(PATHNAME_HEADER, pathname)
+  return NextResponse.next({ request: { headers } })
+}
+
 // Query params that are deliberate one-shot signals tied to the originating
 // request and must NOT be replayed onto the redirected target slug. `?t=<n>`
 // is the seek timestamp; valid for the variant the user asked for, not for
@@ -122,18 +139,18 @@ export function proxy(request: NextRequest) {
   // also receive the security headers, and they are exempted from the
   // Accept-Language redirect block below).
   if (isWatchRoute(pathname)) {
-    return applyWatchSecurityHeaders(NextResponse.next())
+    return applyWatchSecurityHeaders(nextWithPathname(request, pathname))
   }
 
   const segments = pathname.split("/").filter(Boolean)
   const lastSegment = segments[segments.length - 1]
   if (lastSegment && isLocale(lastSegment)) {
-    return NextResponse.next()
+    return nextWithPathname(request, pathname)
   }
 
   const detected = parseAcceptLanguage(request.headers.get("accept-language"))
   if (!detected || detected === DEFAULT_LOCALE) {
-    return NextResponse.next()
+    return nextWithPathname(request, pathname)
   }
 
   const url = request.nextUrl.clone()
