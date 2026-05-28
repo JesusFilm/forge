@@ -1,6 +1,7 @@
 "use client"
 
 import { Globe } from "lucide-react"
+import { useTranslations } from "next-intl"
 import {
   useCallback,
   useEffect,
@@ -61,6 +62,7 @@ export function HeroPlayerControls({
   showLanguageButton?: boolean
   onVisibilityChange?: (visible: boolean) => void
 }) {
+  const t = useTranslations("HeroPlayerControls")
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
   const [volume, setVolume] = useState(1)
@@ -726,7 +728,7 @@ export function HeroPlayerControls({
     >
       <ChromeButton
         onClick={togglePlay}
-        ariaLabel={playing ? "Pause" : "Play"}
+        ariaLabel={playing ? t("pause") : t("play")}
         testId="hero-chrome-play"
       >
         {playing ? <PauseIcon /> : <PlayIcon />}
@@ -736,11 +738,14 @@ export function HeroPlayerControls({
         ref={timelineRef}
         role="slider"
         tabIndex={0}
-        aria-label="Seek"
+        aria-label={t("seek")}
         aria-valuemin={0}
         aria-valuemax={Math.max(0, Math.floor(duration))}
         aria-valuenow={Math.floor(displayTime)}
-        aria-valuetext={`${formatTime(displayTime)} of ${formatTime(duration)}`}
+        aria-valuetext={t("seekValue", {
+          current: formatTime(displayTime),
+          total: formatTime(duration),
+        })}
         data-testid="hero-chrome-timeline"
         data-dragging={timelineDragging ? "true" : "false"}
         onPointerDown={handleTimelinePointerDown}
@@ -798,12 +803,14 @@ export function HeroPlayerControls({
             ref={volumeTrackRef}
             role="slider"
             tabIndex={0}
-            aria-label="Volume"
+            aria-label={t("volume")}
             data-testid="hero-chrome-volume-slider"
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round((muted ? 0 : volume) * 100)}
-            aria-valuetext={`${Math.round((muted ? 0 : volume) * 100)} percent`}
+            aria-valuetext={t("volumeValue", {
+              percent: Math.round((muted ? 0 : volume) * 100),
+            })}
             onPointerDown={handleVolumePointerDown}
             onPointerMove={handleVolumePointerMove}
             onPointerUp={handleVolumePointerUp}
@@ -828,7 +835,7 @@ export function HeroPlayerControls({
         </div>
         <ChromeButton
           onClick={toggleMute}
-          ariaLabel={muted || volume === 0 ? "Unmute" : "Mute"}
+          ariaLabel={muted || volume === 0 ? t("unmute") : t("mute")}
           testId="hero-chrome-mute"
         >
           {muted || volume === 0 ? <ChromeMutedIcon /> : <ChromeVolumeIcon />}
@@ -838,7 +845,7 @@ export function HeroPlayerControls({
       {showLanguageButton && onLanguageClick ? (
         <ChromeButton
           onClick={onLanguageClick}
-          ariaLabel="Change audio language"
+          ariaLabel={t("changeAudioLanguage")}
           testId="hero-chrome-language"
         >
           <Globe aria-hidden className="h-6 w-6" />
@@ -847,7 +854,7 @@ export function HeroPlayerControls({
 
       <ChromeButton
         onClick={toggleFullscreen}
-        ariaLabel={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        ariaLabel={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
         testId="hero-chrome-fullscreen"
       >
         {isFullscreen ? <ExitFullscreenIcon /> : <EnterFullscreenIcon />}

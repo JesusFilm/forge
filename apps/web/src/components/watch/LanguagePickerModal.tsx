@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import type { RefObject } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
@@ -86,6 +87,7 @@ export function LanguagePickerModal({
   currentSubtitleSlug = null,
   onSubtitleChange,
 }: LanguagePickerModalProps) {
+  const t = useTranslations("LanguagePickerModal")
   const router = useRouter()
 
   // Per row, deriveLanguageDisplay decides whether Strapi's `name` is a
@@ -292,21 +294,22 @@ export function LanguagePickerModal({
         portalContainer={portalContainer}
       >
         <DialogTitle className="sr-only">
-          Language{subtitles.length > 0 ? " & Subtitles" : ""}
+          {subtitles.length > 0
+            ? t("dialogTitleWithSubtitles")
+            : t("dialogTitle")}
         </DialogTitle>
 
         <div className="flex flex-col gap-14">
           <div className="flex flex-col gap-5">
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="text-2xl font-semibold text-stone-100">
-                Language
+                {t("languageHeading")}
               </h2>
               <span
                 data-testid="watch-language-picker-count"
                 className="text-lg font-normal text-stone-400"
               >
-                {options.length}{" "}
-                {options.length === 1 ? "language" : "languages"}
+                {t("languageCount", { count: options.length })}
               </span>
             </div>
             <LanguageCombobox
@@ -320,7 +323,7 @@ export function LanguagePickerModal({
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-6">
                 <h2 className="text-2xl font-semibold text-stone-100">
-                  Subtitles
+                  {t("subtitlesHeading")}
                 </h2>
                 <button
                   type="button"
@@ -349,16 +352,15 @@ export function LanguagePickerModal({
                     className="cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-4 py-2 text-xs font-bold tracking-wider text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100"
                   >
                     {translationRequestSent
-                      ? "Request sent"
-                      : "Translate with AI"}
+                      ? t("requestSent")
+                      : t("translateWithAi")}
                   </Button>
                 ) : null}
                 <span
                   data-testid="watch-language-picker-subtitle-count"
                   className="text-lg font-normal text-stone-400"
                 >
-                  {subtitleOptions.length}{" "}
-                  {subtitleOptions.length === 1 ? "language" : "languages"}
+                  {t("languageCount", { count: subtitleOptions.length })}
                 </span>
               </div>
             </div>
@@ -368,7 +370,7 @@ export function LanguagePickerModal({
               onChange={setDraftSubtitleSlug}
               icon="subtitles"
               disabled={!draftSubtitleEnabled || subtitleOptions.length === 0}
-              placeholder="No subtitles"
+              placeholder={t("noSubtitles")}
             />
           </div>
 
@@ -379,7 +381,7 @@ export function LanguagePickerModal({
               onClick={onClose}
               className="cursor-pointer rounded-full px-5 py-3.5 text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
             >
-              Close
+              {t("close")}
             </Button>
             <Button
               variant="pill"
@@ -388,7 +390,7 @@ export function LanguagePickerModal({
               onClick={handleApply}
               className="bg-stone-300 px-7 py-4 text-sm text-stone-950 hover:bg-white hover:text-stone-950 disabled:bg-stone-300 disabled:text-stone-950"
             >
-              Apply
+              {t("apply")}
             </Button>
           </div>
         </div>

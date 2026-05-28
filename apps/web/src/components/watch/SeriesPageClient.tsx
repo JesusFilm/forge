@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ExternalLink, Globe } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
@@ -40,18 +41,12 @@ type SeriesPageClientProps = {
   locale: string
 }
 
-// R8 pluralization rule: N === 1 → "1 EPISODE"; N === 0 or N >= 2 →
-// "{N} EPISODES". Plural form covers the empty case ("0 EPISODES") because
-// English plural matches the empty count.
-function formatEpisodeCount(count: number): string {
-  return count === 1 ? "1 EPISODE" : `${count} EPISODES`
-}
-
 export function SeriesPageClient({
   series,
   selectedVariant,
   locale,
 }: SeriesPageClientProps) {
+  const t = useTranslations("SeriesPage")
   const router = useRouter()
   const [modalState, setModalState] = useState<SeriesModalState>("none")
   const openShare = useCallback(() => setModalState("share"), [])
@@ -81,7 +76,9 @@ export function SeriesPageClient({
     (child): child is NonNullable<(typeof series.children)[number]> =>
       child != null,
   )
-  const episodeLabel = formatEpisodeCount(episodes.length)
+  // R8 pluralization: ICU plural covers N === 0 / 1 / 2+. The "SERIES · …"
+  // composite is built from the localized episode-count string.
+  const episodeLabel = t("episodeCount", { count: episodes.length })
   const description = series.description ?? series.snippet ?? null
   const posterUrl = resolvePosterUrl(series.images?.[0], null)
 
@@ -197,8 +194,8 @@ export function SeriesPageClient({
           type="button"
           data-testid="series-page-language-button"
           onClick={openLanguage}
-          aria-label="Change audio language"
-          title="Change audio language"
+          aria-label={t("changeAudioLanguage")}
+          title={t("changeAudioLanguage")}
           className="fixed top-10 right-10 z-50 inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none"
         >
           <Globe
@@ -226,7 +223,7 @@ export function SeriesPageClient({
               data-testid="series-page-label"
               className="text-sm font-semibold tracking-wider text-amber-400 uppercase md:text-base"
             >
-              {`SERIES · ${episodeLabel}`}
+              {t("seriesLabel", { episodes: episodeLabel })}
             </span>
             <div className="flex items-baseline justify-between gap-4">
               <h1
@@ -239,11 +236,11 @@ export function SeriesPageClient({
                 <Button
                   variant="pill"
                   onClick={openShare}
-                  aria-label="Share"
+                  aria-label={t("share")}
                   data-testid="series-page-share-button"
                 >
                   <ExternalLink size={16} />
-                  <span>Share</span>
+                  <span>{t("share")}</span>
                 </Button>
               </div>
             </div>
@@ -289,7 +286,7 @@ export function SeriesPageClient({
                 data-testid="series-page-languages-label"
                 className="text-xs font-semibold tracking-[0.18em] text-stone-400 uppercase"
               >
-                Languages
+                {t("languages")}
               </span>
               <LanguageCombobox
                 options={languageOptions}

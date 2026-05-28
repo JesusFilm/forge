@@ -12,5 +12,105 @@
   "VideosPage": {
     "title": "Toutes les vidéos",
     "placeholder": "La navigation dans le catalogue arrive. En attendant, utilisez la recherche ou une URL spécifique au sujet."
+  },
+  "BibleQuotes": {
+    "title": "Citations bibliques",
+    "share": "Partager",
+    "readMore": "Lire la suite...",
+    "freeResources": "Ressources gratuites",
+    "promoHeading": "Vous voulez approfondir votre compréhension de la Bible ?",
+    "joinBibleStudy": "Rejoignez notre étude biblique",
+    "previousQuote": "Citation biblique précédente",
+    "nextQuote": "Citation biblique suivante"
+  },
+  "DownloadButton": {
+    "download": "Télécharger"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Télécharger la vidéo",
+    "eyebrow": "Télécharger la vidéo",
+    "posterAlt": "Miniature de la vidéo",
+    "noDownloads": "Aucun téléchargement n'est disponible pour cette vidéo.",
+    "errorUnavailableSource": "Téléchargement indisponible depuis cette source",
+    "tierHighest": "Maximale",
+    "tierHigh": "Élevée",
+    "tierLow": "Basse"
+  },
+  "HeroPlayerControls": {
+    "play": "Lire",
+    "pause": "Pause",
+    "seek": "Rechercher",
+    "seekValue": "{current} sur {total}",
+    "volume": "Volume",
+    "volumeValue": "{percent} pour cent",
+    "mute": "Couper le son",
+    "unmute": "Activer le son",
+    "changeAudioLanguage": "Changer la langue audio",
+    "enterFullscreen": "Plein écran",
+    "exitFullscreen": "Quitter le plein écran"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Sélectionner la langue",
+    "searchPlaceholder": "Rechercher des langues…",
+    "languages": "Langues",
+    "noMatches": "Aucune correspondance"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Langue",
+    "dialogTitleWithSubtitles": "Langue et sous-titres",
+    "languageHeading": "Langue",
+    "subtitlesHeading": "Sous-titres",
+    "languageCount": "{count, plural, one {# langue} other {# langues}}",
+    "requestSent": "Demande envoyée",
+    "translateWithAi": "Traduire avec l'IA",
+    "noSubtitles": "Aucun sous-titre",
+    "close": "Fermer",
+    "apply": "Appliquer"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 ÉPISODE} other {# ÉPISODES}}",
+    "seriesLabel": "SÉRIE · {episodes}",
+    "changeAudioLanguage": "Changer la langue audio",
+    "share": "Partager",
+    "languages": "Langues"
+  },
+  "WatchModal": {
+    "close": "Fermer"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Si vous pouviez poser une question au créateur de cette vidéo, quelle serait-elle ?",
+    "fallbackBody": "Ayez une discussion privée avec quelqu'un prêt à écouter.",
+    "questionsShort": "Questions",
+    "questions": "Questions connexes",
+    "askYours": "Posez la vôtre",
+    "chatWithPerson": "Discuter avec une personne",
+    "askBibleQuestion": "Poser une question biblique"
+  },
+  "ShareModal": {
+    "dialogTitle": "Partager la vidéo",
+    "heading": "Partagez cette vidéo",
+    "posterAlt": "Miniature de la vidéo",
+    "shareOnFacebook": "Partager sur Facebook",
+    "shareOnFacebookUnavailable": "Partager sur Facebook (indisponible sur cette version)",
+    "shareOnX": "Partager sur X",
+    "shareOnXUnavailable": "Partager sur X (indisponible sur cette version)",
+    "shareDisabledHint": "Le partage nécessite une page déployée — fonctionne une fois cette vidéo en production.",
+    "shareFormat": "Format de partage",
+    "shareLinkTab": "Lien de partage",
+    "embedCodeTab": "Code d'intégration",
+    "copyFailed": "Impossible de copier automatiquement — sélectionnez le texte ci-dessous et copiez-le manuellement.",
+    "copyLink": "Copier le lien",
+    "copyCode": "Copier le code",
+    "copied": "Copié",
+    "close": "Fermer"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transcription",
+    "subheading": "Touchez une ligne pour accéder à ce moment.",
+    "subtitleLanguage": "Langue des sous-titres",
+    "aiSuffix": " · IA",
+    "loading": "Chargement de la transcription…",
+    "unavailable": "Transcription indisponible pour cette piste de sous-titres.",
+    "empty": "Aucune ligne de transcription trouvée."
   }
 }

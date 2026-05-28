@@ -10,6 +10,7 @@ import {
   Play,
   X as XIcon,
 } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import { formatDuration as formatDurationShared } from "@/lib/format-duration"
 import { Button } from "@/components/ui/button"
@@ -191,6 +192,16 @@ export function DownloadModal({
   languageName,
   onClose,
 }: DownloadModalProps) {
+  const t = useTranslations("DownloadModal")
+  // Localized label for a quality tier. `bucketDownloads` carries an English
+  // `label` for back-compat, but the rendered text is resolved here so it
+  // translates.
+  const tierLabel = (tier: Tier): string =>
+    tier === "highest"
+      ? t("tierHighest")
+      : tier === "high"
+        ? t("tierHigh")
+        : t("tierLow")
   const [tosAgreed, setTosAgreed] = useState(false)
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -375,7 +386,7 @@ export function DownloadModal({
         "[DownloadModal] Refusing to download from non-allowlisted origin",
         { url: sourceUrl },
       )
-      setError("Download unavailable from this source")
+      setError(t("errorUnavailableSource"))
       return
     }
     setError(null)
@@ -415,7 +426,7 @@ export function DownloadModal({
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         showCloseButton={false}
       >
-        <DialogTitle className="sr-only">Download video</DialogTitle>
+        <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
         <div className="flex max-h-[82vh] flex-col gap-7 overflow-y-auto pr-2 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
           {/* Header: thumbnail + metadata */}
@@ -427,7 +438,7 @@ export function DownloadModal({
               {posterUrl ? (
                 <Image
                   src={posterUrl}
-                  alt={videoTitle ?? "Video poster"}
+                  alt={videoTitle ?? t("posterAlt")}
                   fill
                   sizes="(min-width: 640px) 224px, 100vw"
                   className="object-cover"
@@ -449,7 +460,7 @@ export function DownloadModal({
                 data-testid="watch-download-modal-eyebrow"
                 className={WATCH_SECTION_EYEBROW_CLASS}
               >
-                Download Video
+                {t("eyebrow")}
               </span>
               <h2
                 data-testid="watch-download-modal-title"
@@ -476,7 +487,7 @@ export function DownloadModal({
                 data-testid="watch-download-modal-empty"
                 className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-stone-400"
               >
-                No downloads are available for this video.
+                {t("noDownloads")}
               </p>
             ) : (
               <div className="-mx-2 flex flex-col gap-3 px-2">
@@ -503,7 +514,7 @@ export function DownloadModal({
                       {selected ? (
                         <>
                           <span className="font-semibold">
-                            {selected.label}
+                            {tierLabel(selected.tier)}
                           </span>
                           <SizeLabel
                             bytes={resolveSize(selected.download)}
@@ -559,7 +570,9 @@ export function DownloadModal({
                                   isSelected ? "opacity-100" : "opacity-0"
                                 }
                               />
-                              <span className="font-semibold">{t.label}</span>
+                              <span className="font-semibold">
+                                {tierLabel(t.tier)}
+                              </span>
                               <SizeLabel
                                 bytes={resolveSize(t.download)}
                                 className={cn(
