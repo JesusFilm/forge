@@ -38,6 +38,7 @@ import { DownloadSheetContent } from "../../src/components/watch/DownloadSheet"
 import { LanguageSheetContent } from "../../src/components/watch/LanguageSheet"
 import { SubtitleSheetContent } from "../../src/components/watch/SubtitleSheet"
 import { Snackbar } from "../../src/components/ui/Snackbar"
+import { resolveDefaultSlug } from "../../src/lib/resolveDefaultLanguage"
 
 const PLAYER_HEIGHT_RATIO = 9 / 16
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
@@ -78,6 +79,32 @@ export default function WatchVideoPage() {
   const video = useMemo(() => normalizeVideo(data?.videoBySlug ?? null), [data])
   const activeVariant = video?.variants[activeVariantIndex] ?? null
   const bibleQuotes = useBibleVerses(video?.bibleCitations ?? EMPTY_CITATIONS)
+
+  useEffect(() => {
+    if (!video || video.variants.length === 0) return
+    const options = video.variants.map((v) => ({
+      slug: v.slug,
+      bcp47: v.languageBcp47,
+    }))
+    const best = resolveDefaultSlug(options, video.primaryLanguageBcp47)
+    if (best) {
+      const idx = video.variants.findIndex((v) => v.slug === best)
+      if (idx >= 0) setActiveVariantIndex(idx)
+    }
+  }, [video?.documentId])
+
+  useEffect(() => {
+    if (!activeVariant || activeVariant.subtitles.length === 0) return
+    const options = activeVariant.subtitles.map((s) => ({
+      slug: s.languageSlug,
+      bcp47: s.languageBcp47,
+    }))
+    const best = resolveDefaultSlug(
+      options,
+      video?.primaryLanguageBcp47 ?? null,
+    )
+    if (best) setActiveSubtitleSlug(best)
+  }, [activeVariant?.documentId])
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {

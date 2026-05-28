@@ -1,5 +1,11 @@
 import { useCallback, useMemo, useState } from "react"
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BottomSheetFlatList, BottomSheetTextInput } from "@gorhom/bottom-sheet"
 import Ionicons from "@expo/vector-icons/Ionicons"
@@ -33,6 +39,7 @@ export function LanguageSheetContent({
   onClose,
 }: LanguageSheetProps) {
   const insets = useSafeAreaInsets()
+  const { height: windowHeight } = useWindowDimensions()
   const typography = useTypography()
   const [query, setQuery] = useState("")
 
@@ -149,7 +156,7 @@ export function LanguageSheetContent({
         renderItem={renderItem}
         contentContainerStyle={{
           paddingHorizontal: HORIZONTAL_PADDING,
-          paddingBottom: insets.bottom + 16,
+          paddingBottom: insets.bottom + windowHeight * 0.25,
         }}
         showsVerticalScrollIndicator={false}
         initialNumToRender={15}

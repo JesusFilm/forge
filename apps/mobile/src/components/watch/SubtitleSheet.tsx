@@ -1,5 +1,12 @@
 import { useCallback, useMemo, useState } from "react"
-import { Pressable, StyleSheet, Switch, Text, View } from "react-native"
+import {
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BottomSheetFlatList, BottomSheetTextInput } from "@gorhom/bottom-sheet"
 import Ionicons from "@expo/vector-icons/Ionicons"
@@ -36,6 +43,7 @@ export function SubtitleSheetContent({
   onClose,
 }: SubtitleSheetProps) {
   const insets = useSafeAreaInsets()
+  const { height: windowHeight } = useWindowDimensions()
   const typography = useTypography()
   const [query, setQuery] = useState("")
   const [localToggle, setLocalToggle] = useState(subtitleEnabled)
@@ -56,22 +64,23 @@ export function SubtitleSheetContent({
 
   const handleToggle = useCallback(
     (value: boolean) => {
-      if (!value) {
-        onSubtitleChange(false, null)
-        onClose()
-      } else {
-        setLocalToggle(true)
-      }
+      setLocalToggle(value)
+      onSubtitleChange(value, activeSubtitleSlug)
     },
-    [onSubtitleChange, onClose],
+    [onSubtitleChange, activeSubtitleSlug],
   )
 
   const handleSelect = useCallback(
     (sub: WatchSubtitle) => {
       onSubtitleChange(true, sub.languageSlug)
-      onClose()
+      if (!localToggle) {
+        setLocalToggle(true)
+        setTimeout(onClose, 300)
+      } else {
+        onClose()
+      }
     },
-    [onSubtitleChange, onClose],
+    [onSubtitleChange, onClose, localToggle],
   )
 
   const renderItem = useCallback(
@@ -136,7 +145,6 @@ export function SubtitleSheetContent({
           onChangeText={setQuery}
           autoCapitalize="none"
           autoCorrect={false}
-          editable={localToggle}
         />
         {query.length > 0 && (
           <Pressable onPress={() => setQuery("")} hitSlop={8}>
@@ -145,7 +153,7 @@ export function SubtitleSheetContent({
         )}
       </View>
 
-      {localToggle && activeSubtitle && (
+      {activeSubtitle && (
         <View style={styles.currentSection}>
           <Text style={[styles.currentLabel, typography.bodySmall]}>
             Current
@@ -168,31 +176,26 @@ export function SubtitleSheetContent({
         </View>
       )}
 
-      <View
-        style={[!localToggle && styles.listDisabled]}
-        pointerEvents={localToggle ? "auto" : "none"}
-      >
-        <BottomSheetFlatList
-          data={filtered}
-          keyExtractor={keyExtractor}
-          renderItem={renderItem}
-          contentContainerStyle={{
-            paddingHorizontal: HORIZONTAL_PADDING,
-            paddingBottom: insets.bottom + 16,
-          }}
-          showsVerticalScrollIndicator={false}
-          initialNumToRender={15}
-          maxToRenderPerBatch={20}
-          windowSize={5}
-          ListEmptyComponent={
-            <View style={styles.emptySearch}>
-              <Text style={[styles.emptySearchText, typography.body]}>
-                No subtitles found
-              </Text>
-            </View>
-          }
-        />
-      </View>
+      <BottomSheetFlatList
+        data={filtered}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        contentContainerStyle={{
+          paddingHorizontal: HORIZONTAL_PADDING,
+          paddingBottom: insets.bottom + windowHeight * 0.25,
+        }}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={15}
+        maxToRenderPerBatch={20}
+        windowSize={5}
+        ListEmptyComponent={
+          <View style={styles.emptySearch}>
+            <Text style={[styles.emptySearchText, typography.body]}>
+              No subtitles found
+            </Text>
+          </View>
+        }
+      />
     </View>
   )
 }
@@ -250,9 +253,6 @@ const styles = StyleSheet.create({
     color: TEXT_SECONDARY,
     fontFamily: "System",
     marginBottom: 6,
-  },
-  listDisabled: {
-    opacity: 0.5,
   },
   listRow: {
     flexDirection: "row",
