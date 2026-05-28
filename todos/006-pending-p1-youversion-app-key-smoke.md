@@ -14,8 +14,9 @@ created_at: 2026-05-27
 # Problem
 
 The watch-page Bible Quotes YouVersion embed now fetches passage data
-server-side using `YOUVERSION_APP_KEY`. Local live-key smoke passed after the
-key was added to `apps/web/.env`, but release readiness still needs a
+server-side using `YOUVERSION_APP_KEY` only when LaunchDarkly flag
+`forge.watch.youVersionBibleQuotes` is enabled. Local live-key smoke passed
+after the key was added to `apps/web/.env`, but release readiness still needs a
 prod-like environment smoke because Railway production/PR preview access was
 not available from the current CLI token/session.
 
@@ -47,7 +48,10 @@ secret/config shape and does not depend on local-only overrides.
 2. Ensure deployed web environments either use the code default
    `YOUVERSION_DEFAULT_VERSION_ID=3034` or explicitly set an authorized
    version ID.
-3. Re-run the watch-page browser smoke in a prod-like environment and verify:
+3. Keep `forge.watch.youVersionBibleQuotes` targeting off until the prod-like
+   smoke window; use non-production targeting or
+   `FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT=true` for validation.
+4. Re-run the watch-page browser smoke in a prod-like environment and verify:
    - first Bible quote renders live YouVersion passage content
    - selecting another citation updates the YouVersion reference
    - selecting the promo slide hides the panel
@@ -58,5 +62,8 @@ secret/config shape and does not depend on local-only overrides.
 # Acceptance Criteria
 
 - A prod-like web environment has a real YouVersion Platform app key.
-- The watch page renders live YouVersion passage text below Bible Quotes.
+- The LaunchDarkly flag is enabled only for the smoke target and remains off by
+  default.
+- The watch page renders live YouVersion passage text below Bible Quotes when
+  enabled, and skips the YouVersion panel/API calls when disabled.
 - PR/release notes mention only the secret source/environment, not the key.

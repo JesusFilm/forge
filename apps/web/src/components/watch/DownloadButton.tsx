@@ -3,17 +3,23 @@
 import { Button } from "@/components/ui/button"
 import { WATCH_PILL_BUTTON_CLASS } from "@/components/watch/watch-section-styles"
 
-export function DownloadButton({ onClick }: { onClick: () => void }) {
+export function DownloadButton({
+  label = "Download",
+  onClick,
+}: {
+  label?: string
+  onClick: () => void
+}) {
   return (
     <Button
       variant="pill"
       className={WATCH_PILL_BUTTON_CLASS}
-      aria-label="Download"
+      aria-label={label}
       data-testid="watch-download-button"
       onClick={onClick}
     >
       <DownloadIcon />
-      <span>Download</span>
+      <span>{label}</span>
     </Button>
   )
 }

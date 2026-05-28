@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { setRequestLocale } from "next-intl/server"
 import { DEFAULT_LOCALE } from "@/lib/locale"
 import { isWatchPageMissingError, resolveWatchPage } from "@/lib/content"
 import { getWatchPageMetadata } from "@/lib/experience-metadata"
@@ -14,6 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function HomePage() {
   const locale = DEFAULT_LOCALE
+  setRequestLocale(locale)
   const result = await resolveWatchPage(locale)
 
   if (result.error) {

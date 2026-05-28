@@ -9,7 +9,7 @@ date: 2026-05-27
 
 ## Summary
 
-Add a compact official YouVersion passage embed below the watch-page Bible Quotes carousel. The embed follows the active citation card, stays absent when no citation or YouVersion config is available, and preserves the existing carousel, promo card, Share button, jsDelivr verse preview, and BibleGateway "Read more..." behavior.
+Add a compact official YouVersion passage embed below the watch-page Bible Quotes carousel. The embed follows the active citation card, stays absent when no citation, YouVersion config, or enabled LaunchDarkly flag is available, and preserves the existing carousel, promo card, Share button, jsDelivr verse preview, and BibleGateway "Read more..." behavior.
 
 ---
 
@@ -30,6 +30,7 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 - R7. Execute feature-bearing work with Red/Green TDD: write failing tests first, then implement until they pass.
 - R8. Require a real user-facing smoke test before completion: a watch page with at least two Bible citations must be opened in browser at mobile and desktop widths with a real YouVersion app key configured, the carousel must remain usable, the YouVersion panel must be visible/update correctly, and hydration/console/network failures must be checked.
 - R9. Orchestrate implementation with mandatory subagent lanes for bounded research, at least one implementation or test-authoring lane, browser verification, and review; when write sets cannot be safely split, keep code edits local but assign a subagent to write the Red test plan or review the implementation before Green is claimed.
+- R10. Gate the YouVersion passage panel and server fetch behind LaunchDarkly flag `forge.watch.youVersionBibleQuotes`, with targeting off and local fallback `FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT=false` by default.
 
 ---
 
@@ -81,6 +82,7 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 ## Key Technical Decisions
 
 - Fetch YouVersion passage and Bible-version metadata from the server with the official REST API and pass only rendered passage data into the client component: this keeps the app key out of browser bundles and request headers.
+- Gate that server fetch and compact panel behind LaunchDarkly flag `forge.watch.youVersionBibleQuotes`. The flag is temporary, default-off, and has local fallback env `FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT`.
 - Add optional server config as `YOUVERSION_APP_KEY` and `YOUVERSION_DEFAULT_VERSION_ID`: the key is a server secret and the default version remains configurable without becoming a deploy blocker.
 - Default version ID to `3034` (BSB) as the configurable starting point: live API smoke showed this app key can read `3034` passages, while `111` version metadata is readable but passage requests return `403 "Access denied for 111"`.
 - Avoid a same-origin public proxy route for this PR: server-render the active watch-page citation payloads during page resolution so the integration does not add an unauthenticated Bible API surface.
@@ -135,7 +137,9 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 
 - Add optional `YOUVERSION_APP_KEY`.
 - Add optional numeric/coerced `YOUVERSION_DEFAULT_VERSION_ID`, defaulting to `3034`.
+- Add optional LaunchDarkly local fallback `FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT`, defaulting off when unset.
 - Ensure missing app key means "no server passage data", not env validation failure.
+- Ensure the LaunchDarkly flag's off state skips the YouVersion fetch entirely.
 - Remove client React SDK dependencies if no browser SDK path remains.
 
 **Execution note:** Start Red: add failing env/helper tests proving the server app key is optional and never appears in client-facing passage payloads.
@@ -306,7 +310,7 @@ The watch page already presents Bible quote cards with visual polish, but the sc
 - Mark `feat-061` in progress when execution starts and complete when validated, or create a follow-up ticket if only part of the roadmap item is completed.
 - Run focused tests first, then full `@forge/web` test/typecheck/lint validation.
 - Obtain a real YouVersion app key from the YouVersion Platform portal or the team's approved secret store and set it locally as `YOUVERSION_APP_KEY`; if no key is available, stop before marking the feature complete and record the blocker.
-- Open a real watch URL in browser with YouVersion config present. The smoke URL must use a video whose `bibleCitations` payload contains at least two citation cards so active-slide update behavior can be proven.
+- Open a real watch URL in browser with YouVersion config present and `FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT=true` or LaunchDarkly targeting enabled in a non-production environment. The smoke URL must use a video whose `bibleCitations` payload contains at least two citation cards so active-slide update behavior can be proven.
 - Smoke at mobile and desktop widths: carousel scroll/arrows, active quote changes, compact embed placement below the carousel, no text overlap, no hydration failure, no console errors attributable to the integration, and acceptable third-party network behavior.
 - Run subagent review lanes before push: correctness/testing plus external API/security.
 

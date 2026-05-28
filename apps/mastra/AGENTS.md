@@ -14,6 +14,9 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Owns offline eval query generation for catalog-derived, locale-quality, and
   Admin-trace-sampled candidates, then stores staged candidates back through
   Admin's authenticated HTTP contracts.
+- Owns the offline search eval system: seed prompt sets, baseline/report
+  artifacts, comparison workflows, judge orchestration, and developer/operator
+  eval routes that call Admin search through authenticated HTTP.
 - All embedding workflows share provider-result validation for count alignment,
   finite vector values, and configured dimensions before calling Admin.
 - All embedding workflows use the shared Admin ingest client behavior but keep
@@ -40,6 +43,13 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Eval query generation is offline only. It must not enter Admin's live search
   path, generate live query embeddings, or make generated candidates permanent
   regression truth before Admin human promotion.
+- Offline search eval is also outside the live request path. Baselines are
+  seed-prompt artifacts owned by Mastra. Keep the Studio-facing workflow
+  seed-only until a later human promotion flow decides how staged generated
+  candidates should become reviewable.
+- Studio-facing workflows need structured Zod object input schemas on both the
+  workflow and first step. Avoid `z.unknown()` for operator-run workflows, and
+  prefer defaults/optional fields that render usable Studio forms.
 - Keep service-bearer auth scoped to explicit `/forge-*` service routes so
   Studio's built-in `/api/workflows` calls continue to work.
 

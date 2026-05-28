@@ -10,6 +10,7 @@ depends_on:
   - "feat-139"
 blocks:
   - "feat-141"
+  - "feat-142"
 tags:
   - "admin"
   - "mastra"
@@ -41,11 +42,14 @@ stereotypes as expected-result truth.
 This completes the hybrid truth model: source-anchored for scale,
 judge-scored for nuance, and human-promoted for regression gates.
 
-The human promotion surface should live with the eval operator workflow in
-Mastra, not as a hidden Admin-only table edit. Admin remains the durable owner
-of search-eval storage, sanitization policy, reviewer audit fields, and
-regression loading; Mastra owns the operator-facing review experience and must
-call authenticated Admin HTTP contracts for candidate reads and state changes.
+The human promotion surface should feed Mastra's native Evaluation model where
+feasible. Promoted seed/generated/user-submitted prompts should become durable
+eval truth that can populate or synchronize to native Mastra Evaluation
+Datasets, with registered Scorers and Experiments consuming those datasets in
+feat-142. Admin remains the durable owner of search-eval storage,
+sanitization policy, reviewer audit fields, and regression loading; Mastra
+owns the operator-facing eval experience and must call authenticated Admin HTTP
+contracts for candidate reads and state changes.
 
 ## Entry Points - Read These First
 
@@ -69,6 +73,10 @@ call authenticated Admin HTTP contracts for candidate reads and state changes.
    - Mastra workflow/route registration and service-bearer route patterns.
 10. `apps/mastra/src/mastra/workflows/eval-query-generation.ts`
     - generated candidate provenance and Mastra run metadata.
+11. `apps/mastra/node_modules/@mastra/core/dist/datasets/index.d.ts`
+    - native Dataset and Experiment APIs to feed after promotion.
+12. `apps/mastra/node_modules/@mastra/core/dist/evals/base.d.ts`
+    - native Scorer API for later search-specific scoring.
 
 ## Grep These
 
@@ -76,6 +84,7 @@ call authenticated Admin HTTP contracts for candidate reads and state changes.
 rg -n "regressions.json|loadRegressions|Regression|calibration" apps/admin/eval apps/admin/src/services/search-eval
 rg -n "candidate|promotion|approved|sanitized|human" apps/admin/src apps/mastra/src docs/roadmap
 rg -n "dashboard/search|workflow reports|eval reports|registerApiRoute|studio|workflow" apps/admin/src/app apps/mastra/src
+rg -n "Dataset|Experiment|createScorer|startExperiment|scorerIds|targetType" apps/mastra/node_modules/@mastra/core/dist
 ```
 
 ## What To Build
@@ -90,9 +99,10 @@ rg -n "dashboard/search|workflow reports|eval reports|registerApiRoute|studio|wo
    User-generated prompts must enter the same pending-review flow as generated
    candidates before they can become regression gates.
 3. Add a Mastra-owned operator review surface for generated, seed baseline, and
-   user-generated eval candidates. Prefer placing it in Mastra's evaluation or
-   workflow operator experience if the platform supports that cleanly; otherwise
-   add a Mastra-hosted route/page/tool surface dedicated to candidate review.
+   user-generated eval candidates. Prefer native Mastra Evaluation Datasets or
+   Experiment result review states if the platform supports that cleanly;
+   otherwise use a narrow Mastra workflow/tool surface as a temporary review
+   mechanism and keep the native Dataset mapping explicit.
    The surface must show candidate query text, source, locale, label
    provenance, source anchors, expected-result hints, judge summary, search
    preview/report links, promotion status, and review history.
@@ -106,7 +116,8 @@ rg -n "dashboard/search|workflow reports|eval reports|registerApiRoute|studio|wo
 6. Ensure promoted evals can survive beyond the 30-day raw trace retention
    window without retaining unsafe raw trace data.
 7. Add regression-gate loading so promoted evals can be used by Mastra offline
-   eval runs and CI-sensitive search checks.
+   eval runs, CI-sensitive search checks, and native Mastra Evaluation
+   Datasets/Experiments.
 8. Preserve or migrate the existing hand-edited `apps/admin/eval/regressions.json`
    flow so current regression cases are not lost.
 9. Add clear rejection/archive states for low-quality, ambiguous, abusive, or
@@ -115,6 +126,10 @@ rg -n "dashboard/search|workflow reports|eval reports|registerApiRoute|studio|wo
     prompts, source-anchored candidates, judge-scored candidates, and
     human-promoted cases, including how demographic/audience-intent cases should
     be reviewed without relying on stereotypes.
+11. Define the native Dataset item shape for promoted search eval truth:
+    query, locale, source, sanitized provenance, expected-result hints or
+    anchors, and safe metadata. Trace-derived source details must remain
+    redacted.
 
 ## Constraints
 
@@ -134,6 +149,8 @@ rg -n "dashboard/search|workflow reports|eval reports|registerApiRoute|studio|wo
   authenticated Admin HTTP contracts.
 - Do not expose raw sensitive trace text, provider secrets, vectors, or
   unsanitized source payloads in the Mastra review surface.
+- Do not treat Admin-only regression storage as the final operator UX if native
+  Mastra Datasets can represent the promoted truth.
 
 ## Verification
 
@@ -144,6 +161,8 @@ rg -n "dashboard/search|workflow reports|eval reports|registerApiRoute|studio|wo
   contracts; Mastra has no Admin database connection and no Admin app imports.
 - A generated candidate can be reviewed, sanitized, promoted, and loaded as a
   durable regression case.
+- A promoted candidate has a documented native Dataset representation, even if
+  the actual native Dataset synchronization lands in feat-142.
 - Operators can define and edit a small seed prompt set, capture a baseline from
   it, and then use that baseline for before/after search-quality comparison.
 - The seed prompt set covers audience/demographic intent, including at least

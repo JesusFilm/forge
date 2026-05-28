@@ -8,6 +8,7 @@ function useBaseEnv() {
   process.env.REVALIDATION_SECRET = "test-revalidation-secret"
   delete process.env.YOUVERSION_APP_KEY
   delete process.env.YOUVERSION_DEFAULT_VERSION_ID
+  delete process.env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT
 }
 
 describe("web env — YouVersion server config", () => {
@@ -26,6 +27,15 @@ describe("web env — YouVersion server config", () => {
 
     expect(env.YOUVERSION_APP_KEY).toBeUndefined()
     expect(env.YOUVERSION_DEFAULT_VERSION_ID).toBe(3034)
+    expect(env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT).toBeUndefined()
+  })
+
+  it("reads the optional YouVersion Bible Quotes LaunchDarkly fallback", async () => {
+    process.env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT = "true"
+
+    const { env } = await import("./env")
+
+    expect(env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT).toBe("true")
   })
 
   it("treats an empty YouVersion default version as absent", async () => {

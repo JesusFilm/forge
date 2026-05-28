@@ -23,6 +23,10 @@ carousel, promo slide, or responsive layout.
   `WEB_ADMIN_API_KEYS` server secret.
 - YouVersion key source: local `apps/web/.env` server secret.
 - YouVersion version: code default `YOUVERSION_DEFAULT_VERSION_ID=3034` (BSB).
+- LaunchDarkly rollout note: after the flag follow-up, this panel is gated by
+  `forge.watch.youVersionBibleQuotes` and local smoke must set
+  `FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT=true`; the default/off state
+  skips YouVersion API calls and renders the existing carousel-only behavior.
 - Local diagnostic: version `111` returned metadata but passage reads failed
   with `403 "Access denied for 111"` for this app key, so the PR default was
   changed to `3034`, which the key can read.

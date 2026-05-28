@@ -137,10 +137,17 @@ describe("POST /api/internal/search-eval/catalog-context", () => {
 
     const response = await POST({
       headers: new Headers({ authorization: "Bearer trace-key" }),
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode("{}"))
+          controller.close()
+        },
+      }),
       text,
     } as unknown as Request)
 
     expect(response.status).toBe(429)
+    expect(response.headers.get("retry-after")).toBe("60")
     expect(isValidSearchTraceSamplingBearer).not.toHaveBeenCalled()
     expect(text).not.toHaveBeenCalled()
   })
@@ -171,6 +178,24 @@ describe("POST /api/internal/search-eval/catalog-context", () => {
     expect(readSearchEvalCatalogContext).not.toHaveBeenCalled()
   })
 
+  it("rejects chunked bodies after the byte cap without fully parsing", async () => {
+    const response = await POST({
+      headers: new Headers({
+        authorization: "Bearer trace-key",
+        "content-type": "application/json",
+      }),
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array(4097))
+          controller.close()
+        },
+      }),
+    } as unknown as Request)
+
+    expect(response.status).toBe(413)
+    expect(readSearchEvalCatalogContext).not.toHaveBeenCalled()
+  })
+
   it("rejects malformed filters before reading catalog rows", async () => {
     for (const body of [
       null,
@@ -196,8 +221,21 @@ describe("POST /api/internal/search-eval/catalog-context", () => {
     )
   })
 
+  it("maps catalog read outages to a sanitized 503", async () => {
+    readSearchEvalCatalogContext.mockRejectedValueOnce(
+      new Error("postgres://secret"),
+    )
+
+    const response = await POST(request({ locales: ["en"] }))
+
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toEqual({
+      error: "Catalog context is temporarily unavailable",
+    })
+  })
+
   it("sanitizes caller-controlled filter values in audit logs", async () => {
-    const logSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    const logSpy = vi.spyOn(console, "info").mockImplementation(() => {})
 
     const response = await POST(request({ locales: ["en\nx=true"] }))
 

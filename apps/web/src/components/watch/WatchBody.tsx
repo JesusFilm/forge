@@ -6,10 +6,12 @@ import type { WatchBodyBlock, WatchStudyQuestionsBlock } from "@/lib/content"
 
 export function WatchBody({
   block,
+  downloadButtonLabel,
   studyQuestions,
   onDownloadClick,
 }: {
   block: WatchBodyBlock
+  downloadButtonLabel?: string
   studyQuestions: WatchStudyQuestionsBlock | null
   onDownloadClick: () => void
 }) {
@@ -51,7 +53,10 @@ export function WatchBody({
           </h2>
           {hasDownloads ? (
             <div className="shrink-0">
-              <DownloadButton onClick={onDownloadClick} />
+              <DownloadButton
+                label={downloadButtonLabel}
+                onClick={onDownloadClick}
+              />
             </div>
           ) : null}
         </div>
