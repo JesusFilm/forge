@@ -162,11 +162,22 @@ describe("SiblingCarousel — happy path", () => {
     const header = rail?.querySelector("header")
     expect(header?.className).toContain("px-10")
     expect(header?.className).toContain("md:px-0")
+    const carousel = container.querySelector("[data-slot='carousel']")
+    expect(carousel?.className).not.toContain("translate-x-10")
+    expect(carousel?.className).not.toContain("md:translate-x-0")
     const content = container.querySelector(
       "[data-slot='carousel-content'] > div",
     )
     expect(content?.className).toContain("pl-10")
     expect(content?.className).toContain("md:pl-0")
+    expect(content?.className).toContain("translate-x-14")
+    expect(content?.className).toContain("md:translate-x-0")
+    const endSpacer = container.querySelector(
+      "[data-testid='sibling-carousel-end-spacer']",
+    )
+    expect(endSpacer).not.toBeNull()
+    expect(endSpacer?.className).toContain("basis-[52%]")
+    expect(endSpacer?.className).toContain("md:basis-[66.666%]")
 
     // Active item carries data-active="true" and renders the "Playing now" pill.
     const active = container.querySelector(
@@ -174,10 +185,14 @@ describe("SiblingCarousel — happy path", () => {
     )
     expect(active).not.toBeNull()
     expect(active!.className).toContain("border-white")
-    expect(active!.className).toContain("aspect-square")
-    expect(active!.className).not.toContain("aspect-[1.58/1]")
+    expect(active!.className).toContain("aspect-video")
+    expect(active!.className).not.toContain("translate-x-10")
+    expect(active!.className).not.toContain("md:translate-x-0")
+    expect(active!.className).not.toContain("-translate-x-4")
+    expect(active!.className).not.toContain("aspect-square")
     expect(active!.className).not.toContain("after:inset-0")
     expect(active!.className).not.toContain("after:border-4")
+    expect(active!.className).toContain("focus-visible:outline-white/80")
     expect(active!.className).toContain("shadow-[0_2px_6px_rgba")
     // 2-segment route shape: `/{slug}/{locale}` — the parent slug segment
     // was removed when the watch route migrated to flat `[slug]/[locale]`.
@@ -186,16 +201,28 @@ describe("SiblingCarousel — happy path", () => {
       "[data-testid='sibling-carousel-caption']",
     )
     expect(caption).not.toBeNull()
-    expect(caption?.className).toContain("h-[44%]")
+    expect(caption?.className).toContain("h-full")
     expect(caption?.className).toContain("bg-gradient-to-t")
     expect(caption?.className).toContain("via-black/35")
     expect(caption?.className).toContain("z-20")
 
     const blurMask = active!.querySelector("[aria-hidden='true']")
-    expect(blurMask?.className).toContain("h-[52%]")
+    expect(blurMask?.className).toContain("h-full")
     expect(blurMask?.className).toContain("bg-black/35")
     expect(blurMask?.className).toContain("backdrop-blur-[14px]")
-    expect(blurMask?.className).toContain("rgba(0,0,0,0.35)_78%")
+    expect(blurMask?.className).toContain("rgba(0,0,0,0.35)_62%")
+
+    const bevel = active!.querySelector(
+      "[data-testid='sibling-carousel-bevel']",
+    )
+    expect(bevel).not.toBeNull()
+    expect(bevel?.className).toContain("absolute")
+    expect(bevel?.className).toContain("inset-0")
+    expect(bevel?.className).toContain("z-40")
+    expect(bevel?.className).toContain("border")
+    expect(bevel?.className).toContain("border-white")
+    expect(bevel?.className).toContain("opacity-40")
+    expect(bevel?.className).toContain("mix-blend-soft-light")
 
     const playingNow = container.querySelector(
       "[data-testid='sibling-carousel-playing-now']",
@@ -205,9 +232,9 @@ describe("SiblingCarousel — happy path", () => {
     const inactive = container.querySelector(
       "[data-testid='sibling-carousel-item'][data-active='false']",
     )
-    expect(inactive?.className).toContain("border-transparent")
+    expect(inactive?.className).not.toContain("border-transparent")
     expect(inactive?.className).toContain("opacity-70")
-    expect(inactive?.className).toContain("hover:border-brand-red")
+    expect(inactive?.className).toContain("hover:outline-brand-red")
     expect(inactive?.className).toContain("hover:opacity-100")
 
     const label = container.querySelector(

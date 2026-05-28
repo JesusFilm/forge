@@ -20,7 +20,10 @@ const RATE_LIMIT_WINDOW_MS = 60_000
 const MAX_SAMPLE_BODY_BYTES = 4096
 
 function tooManyRequests(): Response {
-  return Response.json({ error: "Too many requests" }, { status: 429 })
+  return Response.json(
+    { error: "Too many requests" },
+    { status: 429, headers: { "retry-after": "60" } },
+  )
 }
 
 function unauthorized(): Response {
@@ -40,6 +43,13 @@ function unsupportedMediaType(): Response {
 
 function payloadTooLarge(): Response {
   return Response.json({ error: "JSON body is too large" }, { status: 413 })
+}
+
+function serviceUnavailable(): Response {
+  return Response.json(
+    { error: "Trace sampling is temporarily unavailable" },
+    { status: 503 },
+  )
 }
 
 function parseDate(value: unknown, name: string): Date | Response | undefined {
@@ -127,15 +137,33 @@ async function readJsonBody(request: Request): Promise<unknown | Response> {
     if (declaredBytes > MAX_SAMPLE_BODY_BYTES) return payloadTooLarge()
   }
 
-  let text: string
+  const body = request.body
+  if (body == null) return badRequest("Invalid JSON body")
+
+  const reader = body.getReader()
+  const chunks: Uint8Array[] = []
+  let totalBytes = 0
   try {
-    text = await request.text()
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      totalBytes += value.byteLength
+      if (totalBytes > MAX_SAMPLE_BODY_BYTES) {
+        await reader.cancel().catch(() => undefined)
+        return payloadTooLarge()
+      }
+      chunks.push(value)
+    }
   } catch {
     return badRequest("Invalid JSON body")
   }
-  if (new TextEncoder().encode(text).byteLength > MAX_SAMPLE_BODY_BYTES) {
-    return payloadTooLarge()
+  const bytes = new Uint8Array(totalBytes)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
   }
+  const text = new TextDecoder().decode(bytes)
 
   try {
     return JSON.parse(text)
@@ -224,17 +252,24 @@ export async function POST(request: Request): Promise<Response> {
   const filters = parseBody(body)
   if (filters instanceof Response) return filters
 
-  const traces = await sampleSearchTraces(prisma, filters)
-  console.error(
-    `[search] event=trace_sample auth=bearer route=internal rl=${limit.source} locale=${logValue(filters.locale)} route_source=${logValue(filters.routeSource)} search_mode=${logValue(filters.searchMode)} result_count=${traces.length}`,
-  )
-  return Response.json(
-    {
-      traces,
-      generatedAt: new Date().toISOString(),
-    },
-    { status: 200 },
-  )
+  try {
+    const traces = await sampleSearchTraces(prisma, filters)
+    console.info(
+      `[search] event=trace_sample auth=bearer route=internal rl=${limit.source} locale=${logValue(filters.locale)} route_source=${logValue(filters.routeSource)} search_mode=${logValue(filters.searchMode)} result_count=${traces.length}`,
+    )
+    return Response.json(
+      {
+        traces,
+        generatedAt: new Date().toISOString(),
+      },
+      { status: 200 },
+    )
+  } catch (error) {
+    console.error(
+      `[search] event=trace_sample_failed route=internal error_class=${logValue(error instanceof Error ? error.name : typeof error)}`,
+    )
+    return serviceUnavailable()
+  }
 }
 
 export async function GET(): Promise<Response> {

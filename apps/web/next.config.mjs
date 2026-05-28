@@ -1,3 +1,5 @@
+import { WATCH_BASE_PATH } from "./watch-base-path.mjs"
+
 /** @type {import('next').NextConfig} */
 
 const additionalImageHosts = (
@@ -9,15 +11,16 @@ const additionalImageHosts = (
   .map((hostname) => ({ protocol: "https", hostname }))
 
 const nextConfig = {
-  basePath: "/watch",
+  basePath: WATCH_BASE_PATH,
   allowedDevOrigins: ["127.0.0.1"],
   // Self-hosted prod (Railway) doesn't always sit behind a compressing
   // proxy. Without this the JS chunks ship at their raw ~1.8 MB size,
   // dominating the simulated-mobile LCP budget. compress:true wires
   // Next's built-in gzip middleware on every text/* response.
   compress: true,
+  // typedRoutes moved to top-level in Next 16 (stable).
+  typedRoutes: true,
   experimental: {
-    typedRoutes: true,
     optimizePackageImports: [
       "lucide-react",
       "@mux/mux-player-react",
