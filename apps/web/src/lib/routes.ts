@@ -8,16 +8,24 @@ import type { Route } from "next"
 import { env } from "@/env"
 
 import { LOCALE_RESOLVED_PARAM } from "./locale"
-import { appendHtmlSuffix } from "./url-shape"
+import {
+  RESERVED_PREFIXES,
+  appendHtmlSuffix,
+  stripHtmlSuffix,
+} from "./url-shape"
 
 declare const localeSlugBrand: unique symbol
 declare const contentSlugBrand: unique symbol
 
+/** English-name kebab-case language identifier (e.g. `english`, `russian`, `portuguese-brazil`). NOT a bcp47 code. */
 export type LocaleSlug = string & { readonly [localeSlugBrand]: true }
+
+/** Watch-content URL segment (e.g. `jesus`, `lumo-the-gospel-of-john`). Lowercase ASCII slug shape. */
 export type ContentSlug = string & { readonly [contentSlugBrand]: true }
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/
 
+/** Throw-on-invalid `LocaleSlug` constructor. Use for pre-validated inputs (env vars, configured constants). Prefer `tryAsLocaleSlug` at user-input boundaries. */
 export function asLocaleSlug(value: string): LocaleSlug {
   if (!SLUG_PATTERN.test(value)) {
     throw new Error(`invalid LocaleSlug: ${value}`)
@@ -25,11 +33,22 @@ export function asLocaleSlug(value: string): LocaleSlug {
   return value as LocaleSlug
 }
 
+/** Throw-on-invalid `ContentSlug` constructor. Use for pre-validated inputs. Prefer `tryAsContentSlug` at user-input boundaries. */
 export function asContentSlug(value: string): ContentSlug {
   if (!SLUG_PATTERN.test(value)) {
     throw new Error(`invalid ContentSlug: ${value}`)
   }
   return value as ContentSlug
+}
+
+/** Result-shape `LocaleSlug` constructor. Returns `null` if the input fails the slug regex — for use at page routes / agent boundaries where invalid input should `notFound()` instead of crash. */
+export function tryAsLocaleSlug(value: string): LocaleSlug | null {
+  return SLUG_PATTERN.test(value) ? (value as LocaleSlug) : null
+}
+
+/** Result-shape `ContentSlug` constructor. Returns `null` on invalid input. */
+export function tryAsContentSlug(value: string): ContentSlug | null {
+  return SLUG_PATTERN.test(value) ? (value as ContentSlug) : null
 }
 
 // `reason` documents WHY a resync sentinel is set on the URL. Today the
@@ -47,56 +66,82 @@ export type BuildOptions = {
 const ONE_SHOT_TIMESTAMP_PARAM = "t"
 const ONE_SHOT_AUTOPLAY_PARAM = "autoplay"
 
-const toRoute = (path: string): Route => path as Route
+/**
+ * Per-builder template-literal Route shapes. typedRoutes validates `<Link href>`
+ * against the file tree, which can't capture our `.html`-in-segment literals;
+ * these narrower types give each builder a structural shape so the cast at
+ * the builder boundary is type-narrowing instead of type-laundering.
+ */
+type LocalizedHomeRoute = `/${string}.html${"" | `?${string}`}`
+type WatchVideoRoute = `/${string}.html/${string}.html${"" | `?${string}`}`
+type WatchEpisodeRoute =
+  `/${string}.html/${string}/${string}.html${"" | `?${string}`}`
+type VideosIndexRoute = "/videos"
+type SearchRoute = `/search${"" | `?${string}`}`
 
-function withQuery(path: string, opts?: BuildOptions): Route {
-  if (!opts) return toRoute(path)
+function appendQueryString(path: string, opts?: BuildOptions): string {
+  if (!opts) return path
   const params = new URLSearchParams()
   if (opts.t != null) params.set(ONE_SHOT_TIMESTAMP_PARAM, String(opts.t))
   if (opts.autoplay) params.set(ONE_SHOT_AUTOPLAY_PARAM, "1")
   if (opts.reason != null) params.set(LOCALE_RESOLVED_PARAM, "1")
   const qs = params.toString()
-  return toRoute(qs ? `${path}?${qs}` : path)
+  return qs ? `${path}?${qs}` : path
 }
 
-export function localizedHomePath(lang: LocaleSlug): Route {
-  return withQuery(`/${appendHtmlSuffix(lang)}`)
+/** Build the localized home path `/{lang}.html` (e.g. `/russian.html`). */
+export function localizedHomePath(
+  lang: LocaleSlug,
+): LocalizedHomeRoute & Route {
+  const path = `/${appendHtmlSuffix(lang)}`
+  return appendQueryString(path) as LocalizedHomeRoute & Route
 }
 
+/** Build the canonical two-segment watch path `/{slug}.html/{lang}.html`. */
 export function watchVideoPath(
   slug: ContentSlug,
   lang: LocaleSlug,
   opts?: BuildOptions,
-): Route {
-  return withQuery(`/${appendHtmlSuffix(slug)}/${appendHtmlSuffix(lang)}`, opts)
+): WatchVideoRoute & Route {
+  const path = `/${appendHtmlSuffix(slug)}/${appendHtmlSuffix(lang)}`
+  return appendQueryString(path, opts) as WatchVideoRoute & Route
 }
 
+/** Build the three-segment series-episode path `/{series}.html/{episode}/{lang}.html` (episode segment is bare by production contract). */
 export function watchEpisodePath(
   series: ContentSlug,
   episode: ContentSlug,
   lang: LocaleSlug,
   opts?: BuildOptions,
-): Route {
-  return withQuery(
-    `/${appendHtmlSuffix(series)}/${episode}/${appendHtmlSuffix(lang)}`,
-    opts,
-  )
+): WatchEpisodeRoute & Route {
+  const path = `/${appendHtmlSuffix(series)}/${episode}/${appendHtmlSuffix(lang)}`
+  return appendQueryString(path, opts) as WatchEpisodeRoute & Route
 }
 
-export function videosIndexPath(): Route {
-  return toRoute("/videos")
+/** Build the all-videos index path `/videos` (no `.html` suffix). */
+export function videosIndexPath(): VideosIndexRoute & Route {
+  return "/videos" as VideosIndexRoute & Route
 }
 
-export function searchPath(q?: string): Route {
-  if (!q) return toRoute("/search")
+/** Build the public search path `/search` with optional `?q=` query. */
+export function searchPath(q?: string): SearchRoute & Route {
+  if (!q) return "/search" as SearchRoute & Route
   const params = new URLSearchParams({ q })
-  return toRoute(`/search?${params.toString()}`)
+  return `/search?${params.toString()}` as SearchRoute & Route
 }
 
-// Inverse of the builders. Pages (Phase 2) AND the canonicalizer (Phase 4)
-// call this. Single source of truth for URL → params classification so the
-// two halves can never silently diverge. `pathname` arrives with the
-// basePath already stripped (Next 16 proxy.ts semantics).
+/**
+ * Discriminated union returned by `parseWatchPath`. Eight kinds:
+ *
+ * - `home` — `/` (English default home)
+ * - `localized-home` — `/{lang}.html` (one segment)
+ * - `video` — `/{slug}.html/{lang}.html` (two segments)
+ * - `episode` — `/{series}.html/{episode}/{lang}.html` (three segments)
+ * - `videos` — `/videos`
+ * - `search` — `/search?q=...`
+ * - `reserved` — first segment is in `RESERVED_PREFIXES` (api, _next, assets, etc.)
+ * - `unknown` — none of the above (four-or-more segments, malformed)
+ */
 export type ParsedWatchPath =
   | { kind: "home" }
   | { kind: "localized-home"; lang: string }
@@ -128,19 +173,16 @@ function readSearchValue(
   return value
 }
 
-const RESERVED_PREFIXES = new Set([
-  "api",
-  "_next",
-  "assets",
-  "favicon.ico",
-  "robots.txt",
-  "sitemap.xml",
-])
-
-function stripSuffix(segment: string): string {
-  return segment.replace(/\.html$/i, "")
-}
-
+/**
+ * Classify a watch pathname (basePath-stripped) into a `ParsedWatchPath`.
+ * Single source of truth — both page routes (Phase 2) and the canonicalizer
+ * read this so the two halves can never silently drift.
+ *
+ * Accepts `search` in either Next 16 page-route shape (`Promise<Record>` after
+ * await) or proxy.ts middleware shape (`URLSearchParams`). Returns plain JSON-
+ * serializable objects so agent callers can branch on `kind` without type
+ * narrowing helpers.
+ */
 export function parseWatchPath(
   pathname: string,
   search?: SearchInput,
@@ -160,23 +202,23 @@ export function parseWatchPath(
     if (first === "search") {
       return { kind: "search", q: readSearchValue(search, "q") }
     }
-    return { kind: "localized-home", lang: stripSuffix(first) }
+    return { kind: "localized-home", lang: stripHtmlSuffix(first) }
   }
 
   if (segments.length === 2) {
     return {
       kind: "video",
-      slug: stripSuffix(segments[0]),
-      lang: stripSuffix(segments[1]),
+      slug: stripHtmlSuffix(segments[0]),
+      lang: stripHtmlSuffix(segments[1]),
     }
   }
 
   if (segments.length === 3) {
     return {
       kind: "episode",
-      series: stripSuffix(segments[0]),
+      series: stripHtmlSuffix(segments[0]),
       episode: segments[1],
-      lang: stripSuffix(segments[2]),
+      lang: stripHtmlSuffix(segments[2]),
     }
   }
 
@@ -190,8 +232,13 @@ export function parseWatchPath(
 // and preserves the boot-time misconfig warning the schema emits.
 export const WATCH_CANONICAL_ORIGIN = env.NEXT_PUBLIC_CANONICAL_ORIGIN
 
-export const WATCH_BASE_PATH = "/watch"
+// Re-exported from the shared watch-base-path.mjs module that
+// next.config.mjs also imports. Single source of truth so a basePath
+// change in next.config can't desync from the URL builders here.
+import { WATCH_BASE_PATH } from "../../watch-base-path.mjs"
+export { WATCH_BASE_PATH }
 
+/** Build the absolute canonical URL for a watch video (origin + basePath + 2-segment path). For share / OG / canonical metadata. */
 export function watchVideoAbsolute(
   slug: ContentSlug,
   lang: LocaleSlug,
@@ -199,6 +246,7 @@ export function watchVideoAbsolute(
   return `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}${watchVideoPath(slug, lang)}`
 }
 
+/** Build the absolute canonical URL for a series episode (origin + basePath + 3-segment path). */
 export function watchEpisodeAbsolute(
   series: ContentSlug,
   episode: ContentSlug,
@@ -207,6 +255,7 @@ export function watchEpisodeAbsolute(
   return `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}${watchEpisodePath(series, episode, lang)}`
 }
 
+/** Build the absolute canonical URL for a localized home (origin + basePath + 1-segment path). */
 export function localizedHomeAbsolute(lang: LocaleSlug): string {
   return `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}${localizedHomePath(lang)}`
 }

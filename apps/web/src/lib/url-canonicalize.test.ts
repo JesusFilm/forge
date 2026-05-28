@@ -83,6 +83,42 @@ describe("canonicalizeWatchPath: short-circuit guards", () => {
       kind: "canonical",
     })
   })
+
+  it("rejects percent-encoded backslash", () => {
+    expect(canonical({ rawPathname: "/foo%5Cbar" })).toEqual({
+      kind: "canonical",
+    })
+  })
+
+  it("rejects null byte", () => {
+    expect(canonical({ rawPathname: "/foo%00bar" })).toEqual({
+      kind: "canonical",
+    })
+  })
+
+  it("rejects percent-encoded traversal", () => {
+    expect(canonical({ rawPathname: "/foo%2E%2E/english" })).toEqual({
+      kind: "canonical",
+    })
+  })
+
+  it("rejects javascript: scheme", () => {
+    expect(canonical({ rawPathname: "/javascript:alert(1)" })).toEqual({
+      kind: "canonical",
+    })
+  })
+
+  it("rejects host-shaped single-segment input (Rule 5 SLUG_PATTERN guard)", () => {
+    expect(canonical({ rawPathname: "/evil.com" })).toEqual({
+      kind: "canonical",
+    })
+  })
+
+  it("preserves .well-known subtree (passes through unmodified)", () => {
+    expect(canonical({ rawPathname: "/.well-known/security.txt" })).toEqual({
+      kind: "canonical",
+    })
+  })
 })
 
 describe("Rule 1: trailing-slash strip → 308 with long cache", () => {

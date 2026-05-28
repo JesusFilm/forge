@@ -5,7 +5,7 @@ import nextVitals from "eslint-config-next/core-web-vitals"
 export default defineConfig([
   ...commonConfig,
   ...nextVitals,
-  globalIgnores([".next/**", "out/**", "next-env.d.ts"]),
+  globalIgnores([".next/**", "out/**", "next-env.d.ts", "**/*.d.mts"]),
   {
     // U12 — guardrail against re-introducing video.js into apps/web source.
     // Migrated VideoHero/Video/CarouselVideo still import `video.js` for the

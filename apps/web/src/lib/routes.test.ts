@@ -9,6 +9,8 @@ import {
   localizedHomePath,
   parseWatchPath,
   searchPath,
+  tryAsContentSlug,
+  tryAsLocaleSlug,
   videosIndexPath,
   watchEpisodeAbsolute,
   watchEpisodePath,
@@ -22,6 +24,34 @@ const wedding = asContentSlug("wedding-in-cana")
 const english = asLocaleSlug("english")
 const russian = asLocaleSlug("russian")
 const portugueseBrazil = asLocaleSlug("portuguese-brazil")
+
+describe("tryAsContentSlug / tryAsLocaleSlug (Result-shape)", () => {
+  it("returns branded slug on valid input", () => {
+    expect(tryAsContentSlug("jesus")).toBe("jesus")
+    expect(tryAsLocaleSlug("portuguese-brazil")).toBe("portuguese-brazil")
+  })
+
+  it("returns null on uppercase", () => {
+    expect(tryAsContentSlug("Jesus")).toBeNull()
+    expect(tryAsLocaleSlug("English")).toBeNull()
+  })
+
+  it("returns null on dot", () => {
+    expect(tryAsContentSlug("jesus.html")).toBeNull()
+  })
+
+  it("returns null on slash", () => {
+    expect(tryAsContentSlug("foo/bar")).toBeNull()
+  })
+
+  it("returns null on empty", () => {
+    expect(tryAsLocaleSlug("")).toBeNull()
+  })
+
+  it("does not throw on bad input (unlike asContentSlug)", () => {
+    expect(() => tryAsContentSlug("BAD")).not.toThrow()
+  })
+})
 
 describe("asContentSlug / asLocaleSlug guards", () => {
   it("accepts safe slug shape", () => {
