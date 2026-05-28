@@ -11,6 +11,12 @@ import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import type { RouteVideo } from "@/lib/content"
 import { mediaCollectionFragment } from "@/lib/fragments/media-collection"
 import {
+  WATCH_BASE_PATH,
+  asLocaleSlug,
+  tryAsContentSlug,
+  watchVideoPath,
+} from "@/lib/routes"
+import {
   Carousel,
   CarouselContent,
   CarouselItem,
@@ -246,7 +252,14 @@ function VideoCard({
   item: EnrichedMediaItem
   onHover?: () => void
 }) {
-  const href = item.videoSlug ? `/watch/${item.videoSlug}` : undefined
+  // Raw <a href> (not next/link), so the `/watch` basePath must be prefixed
+  // manually. EnrichedMediaItem carries no language field, so the locale
+  // segment defaults to `english`.
+  const slug = item.videoSlug ? tryAsContentSlug(item.videoSlug) : null
+  const lang = asLocaleSlug("english")
+  const href = slug
+    ? `${WATCH_BASE_PATH}${watchVideoPath(slug, lang)}`
+    : undefined
   const Wrapper = href ? "a" : "div"
   const imageSrc = resolveMediaImageUrl(item.imageUrl)
 

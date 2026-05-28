@@ -1,6 +1,5 @@
 "use client"
 
-import type { Route } from "next"
 import { useRouter } from "next/navigation"
 import type { RefObject } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -14,6 +13,7 @@ import type { WatchSubtitle } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
+import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
@@ -217,15 +217,23 @@ export function LanguagePickerModal({
       navigatingRef.current.inFlight = true
       setPendingNavTo(draftSlug)
       writePreferredLanguageSlug(draftSlug)
-      let href: Route
-      if (kind === "series") {
-        href = `/${videoSlug}/${draftSlug}` as Route
-      } else {
-        const rawT = playerRef.current?.currentTime
-        const t = Number.isFinite(rawT) ? rawT : 0
-        href = `/${videoSlug}/${draftSlug}?t=${t}&autoplay=1` as Route
+      // Validate both segments through the route builder's brand
+      // constructors. If either fails the slug regex, skip navigation
+      // entirely rather than emit a malformed URL — the rest of
+      // handleApply (incl. onClose) still runs.
+      const slug = tryAsContentSlug(videoSlug)
+      const lang = tryAsLocaleSlug(draftSlug)
+      if (slug && lang) {
+        if (kind === "series") {
+          const href = watchVideoPath(slug, lang)
+          router.push(href)
+        } else {
+          const rawT = playerRef.current?.currentTime
+          const t = Number.isFinite(rawT) ? rawT : 0
+          const href = watchVideoPath(slug, lang, { t, autoplay: true })
+          router.push(href)
+        }
       }
-      router.push(href)
     }
 
     onClose()
