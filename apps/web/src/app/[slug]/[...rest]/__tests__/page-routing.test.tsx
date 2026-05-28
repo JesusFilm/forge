@@ -63,14 +63,6 @@ vi.mock("next/navigation", () => ({
   redirect: redirectMock,
 }))
 
-// next-intl/server's `setRequestLocale` throws under the react-client
-// build that jsdom-environment vitest pulls in. Page code runs in a
-// real RSC context in prod; for these route-dispatch tests we just need
-// the call to be a no-op.
-vi.mock("next-intl/server", () => ({
-  setRequestLocale: vi.fn(),
-}))
-
 vi.mock("@/components/watch/SeriesPageClient", () => ({
   SeriesPageClient: seriesPageClientMock,
 }))

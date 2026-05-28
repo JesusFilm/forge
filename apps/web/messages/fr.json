@@ -1,1 +1,16 @@
-{}
+{
+  "ExperienceError": {
+    "empty": "Aucun contenu d'expérience disponible.",
+    "failedToLoad": "Échec du chargement de l'expérience : {message}",
+    "unexpected": "Une erreur inattendue s'est produite.",
+    "notConfigured": "Le service de contenu n'est pas configuré.",
+    "noContent": "Aucun contenu n'est disponible.",
+    "homepageMisconfigured": "La page d'accueil Watch est mal configurée.",
+    "defaultTemplateMisconfigured": "Le modèle Watch par défaut est mal configuré.",
+    "authFailed": "Impossible de s'authentifier auprès du service de contenu. Veuillez contacter le support si cela persiste."
+  },
+  "VideosPage": {
+    "title": "Toutes les vidéos",
+    "placeholder": "La navigation dans le catalogue arrive. En attendant, utilisez la recherche ou une URL spécifique au sujet."
+  }
+}

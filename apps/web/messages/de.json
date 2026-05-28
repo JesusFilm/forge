@@ -1,1 +1,16 @@
-{}
+{
+  "ExperienceError": {
+    "empty": "Kein Erlebnisinhalt verfügbar.",
+    "failedToLoad": "Erlebnis konnte nicht geladen werden: {message}",
+    "unexpected": "Ein unerwarteter Fehler ist aufgetreten.",
+    "notConfigured": "Der Inhaltsdienst ist nicht konfiguriert.",
+    "noContent": "Kein Inhalt verfügbar.",
+    "homepageMisconfigured": "Die Watch-Startseite ist falsch konfiguriert.",
+    "defaultTemplateMisconfigured": "Die Standard-Watch-Vorlage ist falsch konfiguriert.",
+    "authFailed": "Authentifizierung beim Inhaltsdienst fehlgeschlagen. Bitte wenden Sie sich an den Support, wenn dies bestehen bleibt."
+  },
+  "VideosPage": {
+    "title": "Alle Videos",
+    "placeholder": "Das Durchsuchen des Katalogs kommt bald. In der Zwischenzeit nutzen Sie die Suche oder eine themenspezifische URL."
+  }
+}

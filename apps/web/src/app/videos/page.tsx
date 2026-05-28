@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { useTranslations } from "next-intl"
 import { setRequestLocale } from "next-intl/server"
 
 import { DEFAULT_LOCALE } from "@/lib/locale"
@@ -21,13 +22,11 @@ export const metadata: Metadata = {
 // ONE_SEGMENT_EXEMPT in apps/web/src/lib/url-canonicalize.ts).
 export default function VideosPage() {
   setRequestLocale(DEFAULT_LOCALE)
+  const t = useTranslations("VideosPage")
   return (
     <main className="min-h-screen bg-stone-900 px-6 py-24 text-stone-100">
-      <h1 className="text-3xl font-semibold">All Videos</h1>
-      <p className="mt-4 max-w-prose text-stone-300">
-        Catalog browsing is coming. In the meantime use search or a
-        topic-specific URL.
-      </p>
+      <h1 className="text-3xl font-semibold">{t("title")}</h1>
+      <p className="mt-4 max-w-prose text-stone-300">{t("placeholder")}</p>
     </main>
   )
 }
