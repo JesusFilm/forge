@@ -39,6 +39,30 @@ function rawRequest(body: string, headers: HeadersInit = {}) {
   })
 }
 
+function streamingRequest(chunks: string[], headers: HeadersInit = {}) {
+  const encodedChunks = chunks.map((chunk) => new TextEncoder().encode(chunk))
+  const cancel = vi.fn(async () => undefined)
+  let index = 0
+  const reader = {
+    cancel,
+    read: vi.fn(async () => {
+      const value = encodedChunks[index]
+      index += 1
+      return value == null
+        ? { done: true as const, value: undefined }
+        : { done: false as const, value }
+    }),
+  }
+
+  return {
+    cancel,
+    request: {
+      headers: new Headers(headers),
+      body: { getReader: () => reader },
+    } as unknown as Request,
+  }
+}
+
 describe("POST /api/internal/search-traces/sample", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -197,6 +221,7 @@ describe("POST /api/internal/search-traces/sample", () => {
     } as unknown as Request)
 
     expect(response.status).toBe(429)
+    expect(response.headers.get("retry-after")).toBe("60")
     expect(isValidSearchTraceSamplingBearer).not.toHaveBeenCalled()
     expect(text).not.toHaveBeenCalled()
     expect(sampleSearchTraces).not.toHaveBeenCalled()
@@ -227,6 +252,22 @@ describe("POST /api/internal/search-traces/sample", () => {
 
     expect(response.status).toBe(413)
     expect(text).not.toHaveBeenCalled()
+    expect(sampleSearchTraces).not.toHaveBeenCalled()
+  })
+
+  it("rejects oversized chunked bodies while streaming", async () => {
+    const { cancel, request: streamedRequest } = streamingRequest(
+      ["x".repeat(4097)],
+      {
+        authorization: "Bearer trace-key",
+        "content-type": "application/json",
+      },
+    )
+
+    const response = await POST(streamedRequest)
+
+    expect(response.status).toBe(413)
+    expect(cancel).toHaveBeenCalled()
     expect(sampleSearchTraces).not.toHaveBeenCalled()
   })
 
@@ -286,8 +327,21 @@ describe("POST /api/internal/search-traces/sample", () => {
     expect(serialized).not.toMatch(/cookie|ipAddress|userId|vector|score/i)
   })
 
+  it("maps trace read outages to a sanitized 503", async () => {
+    sampleSearchTraces.mockRejectedValueOnce(new Error("postgres://secret"))
+
+    const response = await POST(
+      request({ locale: "en" }, { authorization: "Bearer trace-key" }),
+    )
+
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toEqual({
+      error: "Trace sampling is temporarily unavailable",
+    })
+  })
+
   it("sanitizes caller-controlled filter values in audit logs", async () => {
-    const logSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    const logSpy = vi.spyOn(console, "info").mockImplementation(() => {})
 
     const response = await POST(
       request(

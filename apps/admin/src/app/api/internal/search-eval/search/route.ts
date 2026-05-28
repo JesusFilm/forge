@@ -2,14 +2,17 @@ import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { isValidSearchTraceSamplingBearer } from "@/auth/search-trace-bearer"
 import { prisma } from "@/db/client"
 import {
-  SearchEvalCatalogContextError,
-  readSearchEvalCatalogContext,
-  type SearchEvalCatalogContextFilters,
-} from "@/services/search-eval/catalog-context"
+  HybridSearchService,
+  isContentType,
+  type ContentType,
+} from "@/services/hybrid-search.service"
 
-const RATE_LIMIT_MAX = 20
+const RATE_LIMIT_MAX = 60
 const RATE_LIMIT_WINDOW_MS = 60_000
 const MAX_BODY_BYTES = 4096
+const MAX_QUERY_LENGTH = 1024
+const MAX_LOCALE_LENGTH = 32
+const BCP47_REGEX = /^[a-zA-Z]{2,3}(-[A-Za-z0-9]{2,8})*$/
 
 function tooManyRequests(): Response {
   return Response.json(
@@ -35,13 +38,6 @@ function unsupportedMediaType(): Response {
 
 function payloadTooLarge(): Response {
   return Response.json({ error: "JSON body is too large" }, { status: 413 })
-}
-
-function serviceUnavailable(): Response {
-  return Response.json(
-    { error: "Catalog context is temporarily unavailable" },
-    { status: 503 },
-  )
 }
 
 async function readJsonBody(request: Request): Promise<unknown | Response> {
@@ -94,51 +90,94 @@ async function readJsonBody(request: Request): Promise<unknown | Response> {
   }
 }
 
-function parseLimit(value: unknown): number | Response | undefined {
+function parseInteger(
+  value: unknown,
+  name: string,
+): number | Response | undefined {
   if (value == null) return undefined
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return badRequest("limit must be a finite number")
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    return badRequest(`${name} must be an integer`)
   }
   return value
 }
 
-function parseLocales(value: unknown): string[] | Response | undefined {
+function parseString(
+  value: unknown,
+  name: string,
+): string | Response | undefined {
   if (value == null) return undefined
-  if (!Array.isArray(value)) return badRequest("locales must be an array")
-  if (value.length === 0) return badRequest("locales must not be empty")
-  if (value.length > 30) return badRequest("locales must have at most 30 items")
-
-  const locales: string[] = []
-  for (const item of value) {
-    if (typeof item !== "string") {
-      return badRequest("locales must contain strings")
-    }
-    if (!locales.includes(item)) locales.push(item)
-  }
-  return locales
+  if (typeof value !== "string") return badRequest(`${name} must be a string`)
+  const normalized = value.trim()
+  return normalized.length === 0
+    ? badRequest(`${name} must not be empty`)
+    : normalized
 }
 
-function parseBody(body: unknown): SearchEvalCatalogContextFilters | Response {
+function parseBody(body: unknown):
+  | {
+      query: string
+      locale: string
+      limit?: number
+      offset?: number
+      mode?: string
+      contentTypes?: ContentType[]
+    }
+  | Response {
   if (body == null || typeof body !== "object" || Array.isArray(body)) {
     return badRequest("JSON body must be an object")
   }
   const record = body as Record<string, unknown>
-  const locales = parseLocales(record.locales)
-  if (locales instanceof Response) return locales
-  const limit = parseLimit(record.limit)
+  const query = parseString(record.query, "query")
+  if (query instanceof Response) return query
+  if (query == null || query.length > MAX_QUERY_LENGTH) {
+    return badRequest(`query must be at most ${MAX_QUERY_LENGTH} characters`)
+  }
+  const locale = parseString(record.locale, "locale")
+  if (locale instanceof Response) return locale
+  if (locale == null) return badRequest("locale is required")
+  if (locale.length > MAX_LOCALE_LENGTH || !BCP47_REGEX.test(locale)) {
+    return badRequest("locale must be a safe BCP-47 tag")
+  }
+
+  const limit = parseInteger(record.limit, "limit")
   if (limit instanceof Response) return limit
-  return { locales, limit }
+  if (limit != null && (limit <= 0 || limit > 50)) {
+    return badRequest("limit must be between 1 and 50")
+  }
+  const offset = parseInteger(record.offset, "offset")
+  if (offset instanceof Response) return offset
+  if (offset != null && offset < 0) {
+    return badRequest("offset must be at least 0")
+  }
+
+  const mode = parseString(record.mode, "mode")
+  if (mode instanceof Response) return mode
+
+  const contentType = parseString(record.contentType, "contentType")
+  if (contentType instanceof Response) return contentType
+  if (contentType != null && !isContentType(contentType)) {
+    return badRequest("contentType must be 'video' or 'experience'")
+  }
+
+  return {
+    query,
+    locale,
+    limit,
+    offset,
+    mode,
+    contentTypes: contentType ? [contentType] : undefined,
+  }
 }
 
 function logValue(value: string | undefined): string {
-  if (value == null || value.length === 0) return "all"
+  if (value == null || value.length === 0) return "none"
   return value.replace(/[\r\n\t\s=]/g, "_").slice(0, 64)
 }
 
 export async function POST(request: Request): Promise<Response> {
   const limit = await rateLimitAuthRoute({
     request,
-    route: "search-eval-catalog-context",
+    route: "search-eval-search",
     limit: RATE_LIMIT_MAX,
     windowMs: RATE_LIMIT_WINDOW_MS,
   })
@@ -146,7 +185,7 @@ export async function POST(request: Request): Promise<Response> {
 
   if (!isValidSearchTraceSamplingBearer(request.headers.get("authorization"))) {
     console.warn(
-      `[search] event=eval_catalog_context_auth_denied route=internal rl=${limit.source}`,
+      `[search] event=eval_search_auth_denied route=internal rl=${limit.source}`,
     )
     return unauthorized()
   }
@@ -154,29 +193,24 @@ export async function POST(request: Request): Promise<Response> {
   const body = await readJsonBody(request)
   if (body instanceof Response) return body
 
-  const filters = parseBody(body)
-  if (filters instanceof Response) return filters
+  const params = parseBody(body)
+  if (params instanceof Response) return params
 
   try {
-    const context = await readSearchEvalCatalogContext(prisma, filters)
+    const service = new HybridSearchService({ prisma })
+    const response = await service.search(params)
     console.info(
-      `[search] event=eval_catalog_context auth=bearer route=internal rl=${limit.source} locales=${logValue(filters.locales?.join(","))} anchor_count=${context.anchors.length}`,
+      `[search] event=eval_search auth=bearer route=internal rl=${limit.source} locale=${logValue(params.locale)} mode=${logValue(params.mode)} result_count=${response.results.length}`,
+    )
+    return Response.json(response, { status: 200 })
+  } catch (error) {
+    console.error(
+      `[search] event=eval_search_failed route=internal error_class=${logValue(error instanceof Error ? error.name : typeof error)}`,
     )
     return Response.json(
-      {
-        ...context,
-        generatedAt: new Date().toISOString(),
-      },
-      { status: 200 },
+      { error: "Search is temporarily unavailable" },
+      { status: 503 },
     )
-  } catch (error) {
-    if (error instanceof SearchEvalCatalogContextError) {
-      return badRequest(error.message)
-    }
-    console.error(
-      `[search] event=eval_catalog_context_failed route=internal error_class=${logValue(error instanceof Error ? error.name : typeof error)}`,
-    )
-    return serviceUnavailable()
   }
 }
 

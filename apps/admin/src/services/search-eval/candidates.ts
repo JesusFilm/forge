@@ -52,6 +52,36 @@ export type StoreSearchEvalCandidatesResult = {
   }>
 }
 
+export type ListSearchEvalCandidatesFilters = {
+  sources?: SearchEvalCandidateSourceLabel[]
+  locales?: string[]
+  mastraRunId?: string | null
+  limit?: number
+  now?: Date
+}
+
+export type ListedSearchEvalCandidate = {
+  id: string
+  source: SearchEvalCandidateSourceLabel
+  locale: string
+  queryText: string | null
+  expectedResultHints: unknown
+  sourceAnchors: unknown
+  labelProvenance: unknown
+  generationModel: string
+  generationProvider: string | null
+  judgeSummary: unknown | null
+  mastraRunId: string | null
+  retentionExpiresAt: string | null
+  generatedAt: string
+  createdAt: string
+}
+
+const REDACTED_TRACE_LABEL_PROVENANCE = {
+  source: "trace",
+  redacted: true,
+} as const
+
 export class SearchEvalCandidateStoreError extends Error {
   constructor(
     readonly code: "validation",
@@ -171,6 +201,67 @@ function toPrismaSource(
   validation("candidate source is unsupported")
 }
 
+function hasTraceMarker(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasTraceMarker)
+  if (value == null || typeof value !== "object") return false
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (
+      (key === "type" || key === "source") &&
+      typeof entry === "string" &&
+      /^(trace|trace-sample|admin_trace_labels)$/i.test(entry)
+    ) {
+      return true
+    }
+    if (
+      key === "queryLabelSource" ||
+      key === "queryQualityLabel" ||
+      key === "sensitiveQueryLabel" ||
+      key === "abuseLabel" ||
+      key === "queryLabeledAt" ||
+      key === "llmLabelSource" ||
+      key === "llmLabelVersion" ||
+      key === "llmLabeledAt"
+    ) {
+      return true
+    }
+    if (hasTraceMarker(entry)) return true
+  }
+  return false
+}
+
+function isTraceDerivedCandidate(
+  input: StoreSearchEvalCandidateInput,
+): boolean {
+  return (
+    input.source === "trace" ||
+    /(^|[-_:])trace($|[-_:])|admin[-_:]trace/i.test(input.generationModel) ||
+    hasTraceMarker(input.sourceAnchors) ||
+    hasTraceMarker(input.labelProvenance)
+  )
+}
+
+function fromPrismaSource(
+  source: PrismaCandidateSource,
+): SearchEvalCandidateSourceLabel {
+  if (source === PrismaCandidateSource.CATALOG) return "catalog"
+  if (source === PrismaCandidateSource.LOCALE_QUALITY) return "locale_quality"
+  return "trace"
+}
+
+function shouldRedactCandidateRow(row: {
+  source: PrismaCandidateSource
+  generationModel: string
+  sourceAnchors: unknown
+  labelProvenance: unknown
+}): boolean {
+  return (
+    row.source === PrismaCandidateSource.TRACE ||
+    /(^|[-_:])trace($|[-_:])|admin[-_:]trace/i.test(row.generationModel) ||
+    hasTraceMarker(row.sourceAnchors) ||
+    hasTraceMarker(row.labelProvenance)
+  )
+}
+
 function stableJson(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map((entry) => stableJson(entry)).join(",")}]`
@@ -260,6 +351,13 @@ function prepareCandidate(
     }
   }
 
+  if (
+    source !== PrismaCandidateSource.TRACE &&
+    isTraceDerivedCandidate(input)
+  ) {
+    validation("trace-derived candidates must use source trace")
+  }
+
   if (source !== PrismaCandidateSource.TRACE && retentionExpiresAt != null) {
     validation("only trace candidates may set retentionExpiresAt")
   }
@@ -291,7 +389,7 @@ function prepareCandidate(
 
 function updateDataFor(
   data: Prisma.SearchEvalCandidateCreateInput,
-): Prisma.SearchEvalCandidateUpdateInput {
+): Prisma.SearchEvalCandidateUpdateManyMutationInput {
   return {
     expectedResultHints: data.expectedResultHints,
     sourceAnchors: data.sourceAnchors,
@@ -338,16 +436,37 @@ export async function storeSearchEvalCandidates(
       continue
     }
 
-    const row = await prisma.searchEvalCandidate.upsert({
-      where: { dedupeKey: data.dedupeKey },
-      create: data,
-      update: updateDataFor(data),
+    if (existing) {
+      const updated = await prisma.searchEvalCandidate.updateMany({
+        where: {
+          id: existing.id,
+          promotionStatus: PrismaPromotionStatus.GENERATED,
+        },
+        data: updateDataFor(data),
+      })
+      if (updated.count === 0) {
+        skipped.push({
+          dedupeKey: data.dedupeKey,
+          reason: "already_promoted_or_rejected",
+        })
+        continue
+      }
+      stored.push({
+        id: existing.id,
+        dedupeKey: data.dedupeKey,
+        status: "updated",
+      })
+      continue
+    }
+
+    const row = await prisma.searchEvalCandidate.create({
+      data,
       select: { id: true, dedupeKey: true },
     })
     stored.push({
       id: row.id,
       dedupeKey: row.dedupeKey,
-      status: existing ? "updated" : "created",
+      status: "created",
     })
   }
 
@@ -359,8 +478,105 @@ export async function storeSearchEvalCandidates(
   }
 }
 
+export async function listSearchEvalCandidates(
+  prisma: PrismaClient,
+  filters: ListSearchEvalCandidatesFilters = {},
+): Promise<ListedSearchEvalCandidate[]> {
+  const limit = filters.limit ?? 50
+  if (!Number.isInteger(limit) || limit <= 0 || limit > 100) {
+    validation("candidate list limit must be between 1 and 100")
+  }
+
+  const sources =
+    filters.sources == null
+      ? undefined
+      : filters.sources.map((source) => toPrismaSource(source))
+  const locales = filters.locales?.map((locale) => normalizeLocale(locale))
+  const mastraRunId = normalizeBoundedString(
+    filters.mastraRunId,
+    MAX_MASTRA_RUN_ID_LENGTH,
+    "mastraRunId",
+  )
+  const now = filters.now ?? new Date()
+
+  const rows = await prisma.searchEvalCandidate.findMany({
+    where: {
+      promotionStatus: PrismaPromotionStatus.GENERATED,
+      ...(sources ? { source: { in: sources } } : {}),
+      ...(locales ? { locale: { in: locales } } : {}),
+      ...(mastraRunId ? { mastraRunId } : {}),
+      OR: [
+        { source: { not: PrismaCandidateSource.TRACE } },
+        { retentionExpiresAt: { gt: now } },
+      ],
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    take: limit,
+    select: {
+      id: true,
+      source: true,
+      locale: true,
+      expectedResultHints: true,
+      sourceAnchors: true,
+      labelProvenance: true,
+      generationModel: true,
+      generationProvider: true,
+      judgeSummary: true,
+      mastraRunId: true,
+      retentionExpiresAt: true,
+      generatedAt: true,
+      createdAt: true,
+    },
+  })
+
+  const redactedIds = new Set(
+    rows.filter(shouldRedactCandidateRow).map((row) => row.id),
+  )
+  const nonTraceIds = rows
+    .filter((row) => !redactedIds.has(row.id))
+    .map((row) => row.id)
+  const queryRows =
+    nonTraceIds.length === 0
+      ? []
+      : await prisma.searchEvalCandidate.findMany({
+          where: {
+            id: { in: nonTraceIds },
+            source: { not: PrismaCandidateSource.TRACE },
+          },
+          select: { id: true, queryText: true },
+        })
+  const queryTextById = new Map(
+    queryRows.map((row) => [row.id, row.queryText] as const),
+  )
+
+  return rows.map((row) => ({
+    id: row.id,
+    source: redactedIds.has(row.id) ? "trace" : fromPrismaSource(row.source),
+    locale: row.locale,
+    queryText: redactedIds.has(row.id)
+      ? null
+      : (queryTextById.get(row.id) ?? ""),
+    expectedResultHints: redactedIds.has(row.id) ? [] : row.expectedResultHints,
+    sourceAnchors: redactedIds.has(row.id) ? [] : row.sourceAnchors,
+    labelProvenance: redactedIds.has(row.id)
+      ? REDACTED_TRACE_LABEL_PROVENANCE
+      : row.labelProvenance,
+    generationModel: redactedIds.has(row.id)
+      ? "trace:redacted"
+      : row.generationModel,
+    generationProvider: redactedIds.has(row.id) ? null : row.generationProvider,
+    judgeSummary: redactedIds.has(row.id) ? null : row.judgeSummary,
+    mastraRunId: redactedIds.has(row.id) ? null : row.mastraRunId,
+    retentionExpiresAt: row.retentionExpiresAt?.toISOString() ?? null,
+    generatedAt: row.generatedAt.toISOString(),
+    createdAt: row.createdAt.toISOString(),
+  }))
+}
+
 export const _internal = {
   dedupeKeyFor,
+  fromPrismaSource,
+  hasTraceMarker,
   normalizeLocale,
   normalizeQuery,
   prepareCandidate,

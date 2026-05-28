@@ -15,6 +15,7 @@ const envSchema = z.object({
   ADMIN_SEARCH_EVAL_API_KEY: z.string().min(1).optional(),
   ADMIN_SEARCH_EVAL_CANDIDATES_URL: z.string().url().optional(),
   ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL: z.string().url().optional(),
+  ADMIN_SEARCH_EVAL_SEARCH_URL: z.string().url().optional(),
   ADMIN_SEARCH_TRACE_SAMPLE_URL: z.string().url().optional(),
   ADMIN_SCENE_INGEST_URL: z.string().url().optional(),
   ADMIN_TRANSCRIPT_INGEST_URL: z.string().url().optional(),
@@ -24,6 +25,7 @@ const envSchema = z.object({
     .default("development"),
   NEXT_PHASE: z.string().optional(),
   MASTRA_SERVICE_API_KEYS: z.string().min(1).optional(),
+  MASTRA_SEARCH_EVAL_ARTIFACT_DIR: z.string().min(1).optional(),
   MASTRA_STORAGE_DIR: z.string().min(1).optional(),
   OPENAI_EMBEDDINGS_BASE_URL: z
     .string()
@@ -42,6 +44,10 @@ const envSchema = z.object({
     .default("openai/text-embedding-3-small"),
   EXPERIENCE_EMBEDDING_PROVIDER: z.string().min(1).default("openai"),
   EVAL_QUERY_GENERATION_MODEL: z
+    .string()
+    .min(1)
+    .default("anthropic/claude-haiku-4-5"),
+  SEARCH_EVAL_JUDGE_MODEL: z
     .string()
     .min(1)
     .default("anthropic/claude-haiku-4-5"),
@@ -79,6 +85,9 @@ export const env = envSchema.parse({
   ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL: emptyToUndefined(
     process.env.ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL,
   ),
+  ADMIN_SEARCH_EVAL_SEARCH_URL: emptyToUndefined(
+    process.env.ADMIN_SEARCH_EVAL_SEARCH_URL,
+  ),
   ADMIN_SEARCH_TRACE_SAMPLE_URL: emptyToUndefined(
     process.env.ADMIN_SEARCH_TRACE_SAMPLE_URL,
   ),
@@ -91,6 +100,9 @@ export const env = envSchema.parse({
   NEXT_PHASE: process.env.NEXT_PHASE,
   MASTRA_SERVICE_API_KEYS: emptyToUndefined(
     process.env.MASTRA_SERVICE_API_KEYS,
+  ),
+  MASTRA_SEARCH_EVAL_ARTIFACT_DIR: emptyToUndefined(
+    process.env.MASTRA_SEARCH_EVAL_ARTIFACT_DIR,
   ),
   MASTRA_STORAGE_DIR: emptyToUndefined(process.env.MASTRA_STORAGE_DIR),
   OPENAI_EMBEDDINGS_BASE_URL: emptyToUndefined(
@@ -112,6 +124,9 @@ export const env = envSchema.parse({
   ),
   EVAL_QUERY_GENERATION_MODEL: emptyToUndefined(
     process.env.EVAL_QUERY_GENERATION_MODEL,
+  ),
+  SEARCH_EVAL_JUDGE_MODEL: emptyToUndefined(
+    process.env.SEARCH_EVAL_JUDGE_MODEL,
   ),
   SCENE_EMBEDDING_MODEL: emptyToUndefined(process.env.SCENE_EMBEDDING_MODEL),
   SCENE_EMBEDDING_PROVIDER: emptyToUndefined(
