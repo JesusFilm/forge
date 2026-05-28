@@ -106,6 +106,14 @@ export default function WatchVideoPage() {
     if (best) setActiveSubtitleSlug(best)
   }, [activeVariant?.documentId])
 
+  const subtitleVttSrc = useMemo(() => {
+    if (!subtitleEnabled || !activeSubtitleSlug || !activeVariant) return null
+    return (
+      activeVariant.subtitles.find((s) => s.languageSlug === activeSubtitleSlug)
+        ?.vttSrc ?? null
+    )
+  }, [subtitleEnabled, activeSubtitleSlug, activeVariant])
+
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const scrollY = e.nativeEvent.contentOffset.y
@@ -213,6 +221,7 @@ export default function WatchVideoPage() {
         <VideoPlayer
           streamingUrl={activeVariant?.hls ?? video.streamingUrl}
           posterUrl={video.posterUrl}
+          subtitleVttSrc={subtitleVttSrc}
           onPlayingChange={undefined}
         />
 

@@ -7,16 +7,19 @@ import { useNavigation } from "expo-router"
 import { BLACK } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { PlayerControls } from "./PlayerControls"
+import { SubtitleOverlay } from "./SubtitleOverlay"
 
 type VideoPlayerProps = {
   streamingUrl: string | null
   posterUrl: string | null
+  subtitleVttSrc?: string | null
   onPlayingChange?: (isPlaying: boolean) => void
 }
 
 export function VideoPlayer({
   streamingUrl,
   posterUrl,
+  subtitleVttSrc = null,
   onPlayingChange,
 }: VideoPlayerProps) {
   const { width: screenWidth } = useWindowDimensions()
@@ -39,6 +42,28 @@ export function VideoPlayer({
       player.replace(streamingUrl)
     }
   }, [streamingUrl, player])
+
+  // Disable Mux's auto-generated subtitle tracks from the HLS manifest.
+  // Admin CMS VTT subtitles are rendered by SubtitleOverlay instead.
+  // AVPlayer can auto-select a track at any of: source load, tracks-available,
+  // or device-locale match — force it back to null on every signal.
+  useEffect(() => {
+    const disable = () => {
+      try {
+        if (player.subtitleTrack != null) player.subtitleTrack = null
+      } catch {
+        // Player already released
+      }
+    }
+    const subs = [
+      player.addListener("availableSubtitleTracksChange", disable),
+      player.addListener("subtitleTrackChange", disable),
+      player.addListener("sourceLoad", disable),
+      player.addListener("statusChange", disable),
+    ]
+    disable()
+    return () => subs.forEach((s) => s.remove())
+  }, [player])
 
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
@@ -114,6 +139,8 @@ export function VideoPlayer({
           accessibilityLabel="Video thumbnail"
         />
       )}
+
+      <SubtitleOverlay player={player} vttSrc={subtitleVttSrc} />
 
       <PlayerControls player={player} onFullscreen={handleFullscreen} />
     </View>
