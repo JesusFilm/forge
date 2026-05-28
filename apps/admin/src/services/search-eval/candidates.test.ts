@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import {
   SearchEvalCandidateStoreError,
+  listSearchEvalCandidates,
   storeSearchEvalCandidates,
 } from "./candidates"
 
@@ -13,11 +14,13 @@ type StoredCandidateStub = {
 function buildPrisma() {
   return {
     searchEvalCandidate: {
-      findUnique: vi.fn(async (): Promise<StoredCandidateStub | null> => null),
-      upsert: vi.fn(async (args) => ({
+      create: vi.fn(async (args) => ({
         id: "candidate-1",
-        dedupeKey: args.create.dedupeKey,
+        dedupeKey: args.data.dedupeKey,
       })),
+      findMany: vi.fn(async (): Promise<unknown[]> => []),
+      findUnique: vi.fn(async (): Promise<StoredCandidateStub | null> => null),
+      updateMany: vi.fn(async () => ({ count: 1 })),
     },
   }
 }
@@ -71,9 +74,9 @@ describe("storeSearchEvalCandidates", () => {
       ],
     })
 
-    expect(prisma.searchEvalCandidate.upsert).toHaveBeenCalledWith(
+    expect(prisma.searchEvalCandidate.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        create: expect.objectContaining({
+        data: expect.objectContaining({
           source: "CATALOG",
           locale: "en",
           queryText: "Jesus film for kids",
@@ -127,7 +130,37 @@ describe("storeSearchEvalCandidates", () => {
     )
 
     expect(result.candidates[0]?.status).toBe("updated")
-    expect(prisma.searchEvalCandidate.upsert).toHaveBeenCalledOnce()
+    expect(prisma.searchEvalCandidate.updateMany).toHaveBeenCalledOnce()
+    expect(prisma.searchEvalCandidate.create).not.toHaveBeenCalled()
+  })
+
+  it("does not overwrite a candidate promoted after the initial generated-status read", async () => {
+    const prisma = buildPrisma()
+    prisma.searchEvalCandidate.findUnique.mockResolvedValueOnce({
+      id: "race",
+      promotionStatus: "GENERATED",
+    })
+    prisma.searchEvalCandidate.updateMany.mockResolvedValueOnce({ count: 0 })
+
+    const result = await storeSearchEvalCandidates(
+      prisma as unknown as Parameters<typeof storeSearchEvalCandidates>[0],
+      [
+        {
+          source: "catalog",
+          locale: "en",
+          queryText: "hope",
+          generationModel: "openrouter:test-model",
+        },
+      ],
+      new Date("2026-05-26T00:00:00.000Z"),
+    )
+
+    expect(result).toMatchObject({
+      storedCount: 0,
+      skippedCount: 1,
+      skipped: [{ reason: "already_promoted_or_rejected" }],
+    })
+    expect(prisma.searchEvalCandidate.create).not.toHaveBeenCalled()
   })
 
   it("does not overwrite candidates that have already left generated status", async () => {
@@ -159,7 +192,8 @@ describe("storeSearchEvalCandidates", () => {
         },
       ],
     })
-    expect(prisma.searchEvalCandidate.upsert).not.toHaveBeenCalled()
+    expect(prisma.searchEvalCandidate.create).not.toHaveBeenCalled()
+    expect(prisma.searchEvalCandidate.updateMany).not.toHaveBeenCalled()
   })
 
   it("requires future retention expiry for trace-sourced candidates", async () => {
@@ -221,6 +255,35 @@ describe("storeSearchEvalCandidates", () => {
     ).rejects.toMatchObject({
       code: "validation",
     })
+  })
+
+  it("rejects trace-derived provenance when the submitted source is non-trace", async () => {
+    const prisma = buildPrisma()
+    const now = new Date("2026-05-26T00:00:00.000Z")
+
+    await expect(
+      storeSearchEvalCandidates(
+        prisma as unknown as Parameters<typeof storeSearchEvalCandidates>[0],
+        [
+          {
+            source: "catalog",
+            locale: "en",
+            queryText: "raw sampled trace query",
+            sourceAnchors: [{ type: "trace", id: "trace-1" }],
+            labelProvenance: {
+              queryQualityLabel: "valid_viewer_intent",
+              queryLabelSource: "rules",
+            },
+            generationModel: "admin-trace-sample:v1",
+          },
+        ],
+        now,
+      ),
+    ).rejects.toMatchObject({
+      code: "validation",
+      message: "trace-derived candidates must use source trace",
+    })
+    expect(prisma.searchEvalCandidate.create).not.toHaveBeenCalled()
   })
 
   it("rejects unsafe locales, oversized batches, and non-array anchors", async () => {
@@ -291,5 +354,248 @@ describe("storeSearchEvalCandidates", () => {
     expect(model).not.toMatch(
       /bearer|cookie|ipAddress|ip_|userId|keyId|vector/i,
     )
+  })
+})
+
+describe("listSearchEvalCandidates", () => {
+  it("lists generated candidates with bounded filters and normalized response shape", async () => {
+    const prisma = buildPrisma()
+    const now = new Date("2026-05-26T00:00:00.000Z")
+    prisma.searchEvalCandidate.findMany.mockResolvedValueOnce([
+      {
+        id: "candidate-1",
+        source: "CATALOG",
+        locale: "en",
+        expectedResultHints: [],
+        sourceAnchors: [{ type: "seed" }],
+        labelProvenance: { source: "seed" },
+        generationModel: "seed:v1",
+        generationProvider: "mastra",
+        judgeSummary: null,
+        mastraRunId: "run-1",
+        retentionExpiresAt: null,
+        generatedAt: new Date("2026-05-26T00:00:00.000Z"),
+        createdAt: new Date("2026-05-26T00:00:01.000Z"),
+      },
+    ])
+    prisma.searchEvalCandidate.findMany.mockResolvedValueOnce([
+      { id: "candidate-1", queryText: "Jesus" },
+    ])
+
+    await expect(
+      listSearchEvalCandidates(
+        prisma as unknown as Parameters<typeof listSearchEvalCandidates>[0],
+        {
+          sources: ["catalog"],
+          locales: ["en"],
+          mastraRunId: "run-1",
+          limit: 10,
+          now,
+        },
+      ),
+    ).resolves.toEqual([
+      {
+        id: "candidate-1",
+        source: "catalog",
+        locale: "en",
+        queryText: "Jesus",
+        expectedResultHints: [],
+        sourceAnchors: [{ type: "seed" }],
+        labelProvenance: { source: "seed" },
+        generationModel: "seed:v1",
+        generationProvider: "mastra",
+        judgeSummary: null,
+        mastraRunId: "run-1",
+        retentionExpiresAt: null,
+        generatedAt: "2026-05-26T00:00:00.000Z",
+        createdAt: "2026-05-26T00:00:01.000Z",
+      },
+    ])
+
+    expect(prisma.searchEvalCandidate.findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          promotionStatus: "GENERATED",
+          source: { in: ["CATALOG"] },
+          locale: { in: ["en"] },
+          mastraRunId: "run-1",
+          OR: [
+            { source: { not: "TRACE" } },
+            { retentionExpiresAt: { gt: now } },
+          ],
+        }),
+        take: 10,
+        select: expect.not.objectContaining({ queryText: true }),
+      }),
+    )
+    expect(prisma.searchEvalCandidate.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: {
+          id: { in: ["candidate-1"] },
+          source: { not: "TRACE" },
+        },
+        select: { id: true, queryText: true },
+      }),
+    )
+  })
+
+  it("excludes expired trace candidates at read time before purge runs and never reads trace query text", async () => {
+    const prisma = buildPrisma()
+    const now = new Date("2026-05-26T00:00:00.000Z")
+    prisma.searchEvalCandidate.findMany.mockResolvedValueOnce([
+      {
+        id: "candidate-trace",
+        source: "TRACE",
+        locale: "en",
+        expectedResultHints: ["raw trace query Jesus movie"],
+        sourceAnchors: [
+          {
+            queryHash:
+              "b54c7a2c2d7f75f6f139d885e9202f9ec5db932e8a2d17e0efba2a9f0c3d4e5f",
+            text: "raw trace query Jesus movie",
+          },
+        ],
+        labelProvenance: {
+          rawQueryText: "raw trace query Jesus movie",
+          publicQueryHash:
+            "b54c7a2c2d7f75f6f139d885e9202f9ec5db932e8a2d17e0efba2a9f0c3d4e5f",
+        },
+        generationModel: "raw trace query Jesus movie",
+        generationProvider: "raw trace query Jesus movie",
+        judgeSummary: { rationale: "raw trace query Jesus movie" },
+        mastraRunId: "raw trace query Jesus movie",
+        retentionExpiresAt: new Date("2026-05-27T00:00:00.000Z"),
+        generatedAt: new Date("2026-05-26T00:00:00.000Z"),
+        createdAt: new Date("2026-05-26T00:00:01.000Z"),
+      },
+    ])
+
+    const candidates = await listSearchEvalCandidates(
+      prisma as unknown as Parameters<typeof listSearchEvalCandidates>[0],
+      { sources: ["trace"], now },
+    )
+
+    expect(candidates).toEqual([
+      expect.objectContaining({
+        id: "candidate-trace",
+        source: "trace",
+        queryText: null,
+        expectedResultHints: [],
+        sourceAnchors: [],
+        labelProvenance: { source: "trace", redacted: true },
+        generationModel: "trace:redacted",
+        generationProvider: null,
+        judgeSummary: null,
+        mastraRunId: null,
+      }),
+    ])
+    expect(JSON.stringify(candidates)).not.toContain("raw trace query")
+    expect(JSON.stringify(candidates)).not.toContain(
+      "b54c7a2c2d7f75f6f139d885e9202f9ec5db932e8a2d17e0efba2a9f0c3d4e5f",
+    )
+
+    expect(prisma.searchEvalCandidate.findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          source: { in: ["TRACE"] },
+          OR: [
+            { source: { not: "TRACE" } },
+            { retentionExpiresAt: { gt: now } },
+          ],
+        }),
+        select: expect.not.objectContaining({ queryText: true }),
+      }),
+    )
+    expect(prisma.searchEvalCandidate.findMany).toHaveBeenCalledTimes(1)
+  })
+
+  it("redacts legacy non-trace rows with trace provenance markers before reading query text", async () => {
+    const prisma = buildPrisma()
+    const now = new Date("2026-05-26T00:00:00.000Z")
+    prisma.searchEvalCandidate.findMany.mockResolvedValueOnce([
+      {
+        id: "legacy-candidate",
+        source: "CATALOG",
+        locale: "en",
+        expectedResultHints: ["raw trace query Jesus movie"],
+        sourceAnchors: [{ type: "trace", id: "trace-1" }],
+        labelProvenance: {
+          queryQualityLabel: "valid_viewer_intent",
+          rawQueryText: "raw trace query Jesus movie",
+        },
+        generationModel: "admin-trace-sample:v1",
+        generationProvider: "raw trace query Jesus movie",
+        judgeSummary: { rationale: "raw trace query Jesus movie" },
+        mastraRunId: "raw trace query Jesus movie",
+        retentionExpiresAt: null,
+        generatedAt: new Date("2026-05-26T00:00:00.000Z"),
+        createdAt: new Date("2026-05-26T00:00:01.000Z"),
+      },
+    ])
+
+    const candidates = await listSearchEvalCandidates(
+      prisma as unknown as Parameters<typeof listSearchEvalCandidates>[0],
+      { sources: ["catalog"], now },
+    )
+
+    expect(candidates).toEqual([
+      expect.objectContaining({
+        id: "legacy-candidate",
+        source: "trace",
+        queryText: null,
+        expectedResultHints: [],
+        sourceAnchors: [],
+        labelProvenance: { source: "trace", redacted: true },
+        generationModel: "trace:redacted",
+        generationProvider: null,
+        judgeSummary: null,
+        mastraRunId: null,
+      }),
+    ])
+    expect(JSON.stringify(candidates)).not.toContain("raw trace query")
+    expect(prisma.searchEvalCandidate.findMany).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps expired trace candidates out of the list query before purge runs", async () => {
+    const prisma = buildPrisma()
+    const now = new Date("2026-05-26T00:00:00.000Z")
+
+    await listSearchEvalCandidates(
+      prisma as unknown as Parameters<typeof listSearchEvalCandidates>[0],
+      { sources: ["trace"], now },
+    )
+
+    expect(prisma.searchEvalCandidate.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          source: { in: ["TRACE"] },
+          OR: [
+            { source: { not: "TRACE" } },
+            { retentionExpiresAt: { gt: now } },
+          ],
+        }),
+      }),
+    )
+  })
+
+  it("rejects invalid list filters", async () => {
+    const prisma = buildPrisma()
+
+    await expect(
+      listSearchEvalCandidates(
+        prisma as unknown as Parameters<typeof listSearchEvalCandidates>[0],
+        { limit: 101 },
+      ),
+    ).rejects.toMatchObject({ code: "validation" })
+
+    await expect(
+      listSearchEvalCandidates(
+        prisma as unknown as Parameters<typeof listSearchEvalCandidates>[0],
+        { locales: ["../en"] },
+      ),
+    ).rejects.toMatchObject({ code: "validation" })
   })
 })

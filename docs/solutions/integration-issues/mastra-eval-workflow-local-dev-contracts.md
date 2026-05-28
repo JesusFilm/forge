@@ -1,6 +1,7 @@
 ---
 title: "Mastra eval workflow local dev requires Admin contracts and browser-reachable Studio"
 date: "2026-05-27"
+last_updated: "2026-05-27"
 category: "integration-issues"
 module: "apps/mastra, apps/admin, .devcontainer"
 problem_type: "integration_issue"
@@ -10,6 +11,8 @@ symptoms:
   - "The host browser could not reach localhost:4111 or a container-private 172.x address"
   - "The Mastra Evaluation sidebar stayed empty even though the workflow existed"
   - "Studio Form input treated JSON as a string and returned invalid_input"
+  - "Studio rendered a single generic input instead of usable workflow fields"
+  - "A workflow run showed a green Studio card even though the result body was ok:false"
 root_cause: "incomplete_setup"
 resolution_type: "environment_setup"
 severity: "medium"
@@ -57,12 +60,19 @@ reachability, and Studio workflow input shape.
   }
   ```
 
-- The Mastra **Evaluation** nav did not show anything because feat-138 is a
-  workflow that stages generated candidates in Admin, not a Mastra scorer,
-  dataset, or experiment yet.
+- The Mastra **Evaluation** nav did not show anything because feat-138/139
+  workflows do not create native Mastra scorers, datasets, or experiments yet.
+  Feat-138 stages generated candidates in Admin, and feat-139 writes
+  artifact-backed offline reports.
 - The Studio **Form** tab accepted a JSON-looking string, but sent it as a
   string payload. The workflow then completed as a Studio run with
   `invalid_input` instead of generating candidates.
+- The `offline-search-eval` workflow initially exposed `z.unknown()` as its
+  workflow and step input schema. Studio had no field-level contract to render,
+  so it fell back to a single generic input.
+- The workflow returned `{ ok: false, reason: "invalid_input" }` as a normal
+  output value. Mastra Studio correctly treated the step as completed because
+  no exception was thrown.
 
 ## What Didn't Work
 
@@ -72,11 +82,20 @@ reachability, and Studio workflow input shape.
 - Using the container IP from inside Chrome on the host was the wrong network
   boundary. The host browser needs a published/forwarded host port, not the
   container's internal Docker address.
-- Looking in Mastra's **Evaluation** section was a false lead. Generated eval
+- Looking in Mastra's **Evaluation** section was premature for feat-138/139
+  validation. The native Evaluation area is the long-term search-eval operator
+  destination, but these workflow runs do not appear there until native
+  Dataset, Scorer, and Experiment records are created. Generated eval
   candidates remain in Admin with `promotion_status = generated` until later
   human-promotion/regression-gate work.
 - Sending JSON through Studio's **Form** textbox made the payload a string. The
   workflow input schema expects an object.
+- Exposing `z.unknown()` for a Studio-facing workflow preserved runtime
+  flexibility but destroyed operator usability. Studio needs concrete Zod
+  object fields, defaults, and descriptions to render a useful form.
+- Returning a failure-shaped object from a workflow step is not the same thing
+  as failing the run. Studio marks the step green unless the step throws or
+  Mastra rejects the input schema.
 - Running the default empty input locally can pull in `locale_quality` generation.
   Without `OPENROUTER_API_KEY`, that path may fail with generation configuration
   errors. Use explicit `catalog` and `trace` sources for local smoke unless the
@@ -110,7 +129,12 @@ MASTRA_SERVICE_API_KEYS=local-mastra-service-key
 ADMIN_SEARCH_TRACE_SAMPLE_URL=http://127.0.0.1:3003/api/internal/search-traces/sample
 ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL=http://127.0.0.1:3003/api/internal/search-eval/catalog-context
 ADMIN_SEARCH_EVAL_CANDIDATES_URL=http://127.0.0.1:3003/api/internal/search-eval/candidates
+ADMIN_SEARCH_EVAL_SEARCH_URL=http://127.0.0.1:3003/api/internal/search-eval/search
 ADMIN_SEARCH_EVAL_API_KEY=local-search-eval-key
+MASTRA_SEARCH_EVAL_ARTIFACT_DIR=.mastra/storage/search-eval
+# Required for offline compare mode; capture-baseline can run without it.
+OPENROUTER_API_KEY=
+SEARCH_EVAL_JUDGE_MODEL=anthropic/claude-haiku-4-5
 pnpm --filter @forge/mastra dev
 ```
 
@@ -179,6 +203,31 @@ The generated rows should stay staged with `promotion_status = generated`. They
 are not permanent regression benchmarks until sanitized and human-promoted in
 the later evaluation-gate flow.
 
+For the feat-139 `offline-search-eval` workflow, use the **Form** tab. The
+workflow exposes a structured schema with operator-safe defaults, so a local
+seed capture can run without hand-written JSON:
+
+```text
+mode: capture-baseline
+baselineName: seed-baseline
+locales: en, es, fr
+searchLimit: 20
+searchMode: hybrid
+contentType: all
+```
+
+Use `contentType=all` for the default both-corpora eval, or narrow to `video`
+or `experience` when intentionally testing one corpus. `searchMode=hybrid` is
+Admin's normal search pipeline; `keyword-first` exercises the lexical-first
+candidate strategy. Avoid nullable defaults for Studio form fields; Mastra
+renders nullable unions as awkward required `OR` controls.
+
+Compare mode loads the named baseline and calls the judge, so it also needs
+`OPENROUTER_API_KEY`. If current seed search or judge calls fail, the workflow
+marks the Studio run red after writing a report artifact path into the typed
+failure result. That is intentional: a failure report is useful evidence, but a
+green workflow card would be a false signal for operators.
+
 ## Why This Works
 
 Mastra does not read Admin's database directly. The eval workflow needs Admin's
@@ -198,22 +247,41 @@ The JSON editor sends the object shape the workflow schema expects. The Form
 textbox can serialize the same text as a string, which produces an
 `invalid_input` result even though the Studio run itself is marked complete.
 
+For operator-facing workflows, the schema is part of the UI contract. A concrete
+Zod object schema lets Studio render select boxes, arrays, booleans, numeric
+fields, descriptions, and defaults. `z.unknown()` hides all of that information
+from Studio. If workflow code catches an error and returns `{ ok: false }`,
+Studio still sees a successful step output; throw a typed workflow error when a
+run should be red in Studio, and keep service routes responsible for mapping the
+same failure into clean HTTP JSON.
+
 ## Prevention
 
 - Treat Mastra eval workflow smoke as a three-part check: Admin contract env,
   host-reachable Studio URL, and object-shaped workflow input.
+- Treat Studio workflow schemas as operator UX. Use concrete Zod object schemas
+  with defaults for common local smoke paths; reserve `z.unknown()` for
+  non-Studio internal glue.
+- For Studio select fields that need a no-filter state, model that as an
+  explicit enum value such as `all` instead of `nullable().default(null)`.
+- Throw inside workflow steps for failure-shaped results that should mark the
+  Studio run failed. Service routes can catch and translate those errors back
+  into stable JSON responses.
 - Keep the local Admin and Mastra bearer keys paired in runbooks:
   `SEARCH_TRACE_SAMPLING_API_KEYS` on Admin and `ADMIN_SEARCH_EVAL_API_KEY` on
   Mastra.
 - Use explicit `sources: ["catalog", "trace"]` for local smoke unless
   `OPENROUTER_API_KEY` is intentionally present for `locale_quality`.
+- For `offline-search-eval`, smoke capture first with `{}` or the default Form
+  values, then run compare only after a named baseline exists and
+  `OPENROUTER_API_KEY` is configured.
 - Confirm `/api/workflows/eval-query-generation/runs` and
   `search_eval_candidate` rows after a Studio run. Seeing a Studio "success" row
   alone is not enough because `{ ok: false }` is still a completed workflow
   result.
 - Keep generated candidates separate from promoted truth. A successful local
-  run should create staged candidates only; it should not affect permanent
-  regression gates.
+  offline-search-eval run should use seed prompts only; staged generated
+  candidates remain out of the operator workflow until a later promotion flow.
 - Do not interpret production `/api/search/health` embedding-provider failures
   as trace-labeling or eval-generation failures without checking the component
   health details. A prior production smoke found an embedding-provider `403`

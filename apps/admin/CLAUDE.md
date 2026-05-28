@@ -319,7 +319,7 @@ with workflow, web/consumer, backup, manager, or Mastra ingest credentials.
 Sample responses include `rawExpiresAt` so offline consumers can carry the
 same retention boundary forward without receiving extra raw trace data.
 
-Feat-138 adds two more Admin-owned search-eval contracts for Mastra:
+Admin exposes narrow Admin-owned search-eval contracts for Mastra:
 
 - `POST /api/internal/search-eval/catalog-context` returns compact published
   video/experience anchors plus harness locale profiles. It deliberately omits
@@ -330,10 +330,17 @@ Feat-138 adds two more Admin-owned search-eval contracts for Mastra:
   model/provider, source anchors, expected-result hints, advisory judge
   summary, Mastra run id, and promotion status. Client-supplied promotion
   status is rejected.
+- `GET /api/internal/search-eval/candidates` returns bounded staged candidate
+  rows for offline eval reports. Trace-derived candidates are excluded at read
+  time after their raw retention expiry.
+- `POST /api/internal/search-eval/search` calls Admin's live search service for
+  offline eval execution without writing production search traces. It keeps the
+  public search response shape but remains an internal authenticated contract.
 
 These routes use the same dedicated search trace/eval bearer allowlist. They
 exist for offline eval generation only; neither route participates in live
-search, live query embedding generation, or public search response shaping.
+request handling, live query embedding ownership changes, or public search
+response shape changes.
 
 Query labeling model:
 
