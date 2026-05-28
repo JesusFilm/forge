@@ -14,8 +14,11 @@ import { tryResolveLanguageAlias } from "./language-aliases"
 import {
   HTML_SUFFIX,
   RESERVED_PREFIXES,
+  SAFE_SLUG_PATTERN,
+  UNSAFE_PATH_PATTERN,
   getWatchLocaleSegmentIndex,
   hasHtmlSuffix,
+  isUnsafeRedirectPath,
   stripHtmlSuffix,
 } from "./url-shape"
 
@@ -54,20 +57,16 @@ const MAX_PATH_LEN = 2048
 // other 1-segment slug is treated as legacy and duplicate-expanded.
 const ONE_SEGMENT_EXEMPT = new Set(["videos", "search"])
 
-// Origin-invariance + injection guards. Any input that fails MUST short-circuit
+// Origin-invariance + injection guard. Any input that fails MUST short-circuit
 // to `{kind: "canonical"}` (let the route handler 404 it). NEVER emit a
 // Location derived from a path that could escape origin (// at start, \, CRLF,
-// percent-encoded CRLF) or carry traversal (.. segments).
-const UNSAFE_INPUT = /(^\/\/)|[\\\r\n]|(%0[ad])/i
+// percent-encoded CRLF) or carry traversal (.. segments). Shared with proxy.ts
+// via `UNSAFE_PATH_PATTERN` in url-shape.ts.
 
 // Positive allowlist applied after the negative guards. Rejects any path
 // containing percent-encoding, colons, query/fragment markers, or non-ASCII.
 // Only ASCII URL-safe path characters survive into the rule chain.
 const SAFE_PATH = /^\/[A-Za-z0-9._\-/]+$/
-
-// SLUG_PATTERN constrains Rule 5 (single-segment-duplicate) so host-shaped
-// inputs like /evil.com don't get amplified into /evil.com.html/evil.com.html.
-const SLUG_PATTERN_SAFE = /^[a-z0-9-]+$/
 
 const HTML_SUFFIX_LOWER = HTML_SUFFIX // ".html"
 const HTML_SUFFIX_REGEX_GI = /\.html(?=\/|$)/gi
@@ -104,7 +103,7 @@ export function canonicalizeWatchPath(
   }
 
   // 0c: injection guard — origin invariance + CRLF + traversal
-  if (UNSAFE_INPUT.test(raw)) return { kind: "canonical" }
+  if (UNSAFE_PATH_PATTERN.test(raw)) return { kind: "canonical" }
   if (raw.split("/").some((seg) => seg === "..")) {
     return { kind: "canonical" }
   }
@@ -210,7 +209,7 @@ export function canonicalizeWatchPath(
       segs.length === 1 &&
       !hasHtmlSuffix(segs[0]) &&
       !ONE_SEGMENT_EXEMPT.has(segs[0]) &&
-      SLUG_PATTERN_SAFE.test(segs[0])
+      SAFE_SLUG_PATTERN.test(segs[0])
     ) {
       path = `/${segs[0]}${HTML_SUFFIX_LOWER}/${segs[0]}${HTML_SUFFIX_LOWER}`
       onlyTrailingSlashChanged = false
@@ -236,11 +235,9 @@ export function canonicalizeWatchPath(
   if (path === raw) return { kind: "canonical" }
 
   // Defense-in-depth: re-check origin-invariance on the output. Any rule
-  // composition that synthesized an unsafe Location MUST be rejected.
-  if (UNSAFE_INPUT.test(path)) return { kind: "canonical" }
-  if (!path.startsWith("/") || path.startsWith("//")) {
-    return { kind: "canonical" }
-  }
+  // composition that synthesized an unsafe Location MUST be rejected. Same
+  // guard proxy.ts applies to its cookie-redirect output.
+  if (isUnsafeRedirectPath(path)) return { kind: "canonical" }
 
   return {
     kind: "redirect",

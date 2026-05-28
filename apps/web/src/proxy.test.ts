@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { proxy, type ProxyRequest } from "./proxy"
+import { canonicalizeWatchPath } from "./lib/url-canonicalize"
 
 type CookieMap = Record<string, string>
 
@@ -305,5 +306,74 @@ describe("proxy — resilience on malformed inputs", () => {
     )
     expect(response.status).not.toBe(307)
     expect(response.status).not.toBe(308)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Vary: Cookie — only cookie-dependent redirects carry it (todo 009).
+// ---------------------------------------------------------------------------
+
+describe("proxy — Vary: Cookie on cookie-dependent redirects only", () => {
+  it("sets Vary: Cookie on the cookie-preference redirect", () => {
+    const response = proxy(
+      makeRequest("/jesus.html/english.html", {
+        cookies: { forge_watch_lang: "spanish" },
+      }),
+    )
+    expect(response.status).toBe(307)
+    expect(response.headers.get("vary")).toBe("Cookie")
+  })
+
+  it("does NOT set Vary: Cookie on a canonicalize redirect (not cookie-dependent)", () => {
+    const response = proxy(makeRequest("/jesus/english"))
+    expect(response.status).toBe(307)
+    expect(response.headers.get("vary")).toBeNull()
+  })
+})
+
+// Note: the cookie-path output revalidation (todo 010) is unit-tested at the
+// `isUnsafeRedirectPath` boundary in `lib/url-shape.test.ts` — the WHATWG URL
+// parser in the proxy test fixture normalizes `\`/`//` before they reach the
+// guard, so the guard itself is exercised directly instead.
+
+// ---------------------------------------------------------------------------
+// Cross-module idempotence: the cookie redirect's output must already be
+// canonical, so the next request converges in one hop (todo 011).
+// ---------------------------------------------------------------------------
+
+describe("proxy — cookie redirect output is canonical (single-hop convergence)", () => {
+  for (const input of [
+    "/jesus.html/english.html",
+    "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+  ]) {
+    it(`canonicalize(cookieRedirect("${input}")) is canonical`, () => {
+      const r1 = proxy(
+        makeRequest(input, { cookies: { forge_watch_lang: "spanish" } }),
+      )
+      expect(r1.status).toBe(307)
+      const next = new URL(r1.headers.get("location") ?? "").pathname
+      const r2 = canonicalizeWatchPath({ rawPathname: next })
+      expect(r2.kind).toBe("canonical")
+    })
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Slug-form cookie values (e.g. spanish-castilian) round-trip into the
+// redirected locale segment (todo 014). Downstream page-level resolution is
+// slug-aware (resolveUiLocale), so the family-fallback locale renders.
+// ---------------------------------------------------------------------------
+
+describe("proxy — slug-form cookie language preference", () => {
+  it("redirects to a multi-segment slug-form locale (spanish-castilian)", () => {
+    const response = proxy(
+      makeRequest("/jesus.html/english.html", {
+        cookies: { forge_watch_lang: "spanish-castilian" },
+      }),
+    )
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toContain(
+      "/jesus.html/spanish-castilian.html",
+    )
   })
 })

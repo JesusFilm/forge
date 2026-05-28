@@ -3,9 +3,12 @@ import { describe, expect, it } from "vitest"
 import {
   HTML_SUFFIX,
   HTML_SUFFIX_REGEX,
+  SAFE_SLUG_PATTERN,
+  UNSAFE_PATH_PATTERN,
   appendHtmlSuffix,
   getWatchLocaleSegmentIndex,
   hasHtmlSuffix,
+  isUnsafeRedirectPath,
   stripHtmlSuffix,
 } from "./url-shape"
 
@@ -117,5 +120,51 @@ describe("getWatchLocaleSegmentIndex", () => {
   it("accepts both .html-suffixed and bare segments (shape-only check)", () => {
     expect(getWatchLocaleSegmentIndex(["jesus", "english"])).toBe(1)
     expect(getWatchLocaleSegmentIndex(["jesus.html", "english.html"])).toBe(1)
+  })
+})
+
+describe("SAFE_SLUG_PATTERN", () => {
+  it("accepts kebab-case ASCII slugs", () => {
+    expect(SAFE_SLUG_PATTERN.test("english")).toBe(true)
+    expect(SAFE_SLUG_PATTERN.test("spanish-castilian")).toBe(true)
+    expect(SAFE_SLUG_PATTERN.test("arabic-modern-standard")).toBe(true)
+    expect(SAFE_SLUG_PATTERN.test("magdalena-2")).toBe(true)
+  })
+
+  it("rejects uppercase, dots, slashes, and host shapes", () => {
+    expect(SAFE_SLUG_PATTERN.test("English")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("jesus.html")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("a/b")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("evil.com")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("")).toBe(false)
+  })
+})
+
+describe("UNSAFE_PATH_PATTERN / isUnsafeRedirectPath", () => {
+  it("flags protocol-relative and escape vectors", () => {
+    expect(isUnsafeRedirectPath("//evil.com")).toBe(true)
+    expect(isUnsafeRedirectPath("/foo\\bar")).toBe(true)
+    expect(isUnsafeRedirectPath("/foo\r\nSet-Cookie: x")).toBe(true)
+    expect(isUnsafeRedirectPath("/foo%0d%0abar")).toBe(true)
+    expect(isUnsafeRedirectPath("/foo%0Abar")).toBe(true)
+  })
+
+  it("flags non-absolute paths", () => {
+    expect(isUnsafeRedirectPath("foo/bar")).toBe(true)
+    expect(isUnsafeRedirectPath("")).toBe(true)
+  })
+
+  it("accepts well-formed canonical watch paths", () => {
+    expect(isUnsafeRedirectPath("/jesus.html/english.html")).toBe(false)
+    expect(
+      isUnsafeRedirectPath(
+        "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      ),
+    ).toBe(false)
+  })
+
+  it("UNSAFE_PATH_PATTERN matches the raw escape classes", () => {
+    expect(UNSAFE_PATH_PATTERN.test("//x")).toBe(true)
+    expect(UNSAFE_PATH_PATTERN.test("/ok/path")).toBe(false)
   })
 })
