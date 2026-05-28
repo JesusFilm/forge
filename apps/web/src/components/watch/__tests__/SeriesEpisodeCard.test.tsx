@@ -347,22 +347,48 @@ describe("SeriesEpisodeCard — Episode N label", () => {
 })
 
 describe("SeriesEpisodeCard — href", () => {
-  it("routes to /{slug}/{locale}", () => {
+  it("routes to the canonical /{slug}.html/{locale}.html shape", () => {
     renderCard({
-      episode: makeEpisode({ slug: "the-birth-of-jesus" }),
-      locale: "en",
+      episode: makeEpisode({ slug: "wedding-in-cana" }),
+      locale: "english",
     })
     const anchor = container.querySelector("a")
-    expect(anchor?.getAttribute("href")).toBe("/the-birth-of-jesus/en")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/wedding-in-cana.html/english.html",
+    )
   })
 
-  it("preserves a non-en locale", () => {
+  it("preserves a non-english locale", () => {
     renderCard({
-      episode: makeEpisode({ slug: "ep-1" }),
+      episode: makeEpisode({ slug: "the-birth-of-jesus" }),
       locale: "spanish-castilian",
     })
     const anchor = container.querySelector("a")
-    expect(anchor?.getAttribute("href")).toBe("/ep-1/spanish-castilian")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/the-birth-of-jesus.html/spanish-castilian.html",
+    )
+  })
+
+  it("renders a plain div (no <a>) when the slug is malformed", () => {
+    renderCard({
+      episode: makeEpisode({ slug: "Bad Slug!" }),
+      locale: "english",
+    })
+    expect(container.querySelector("a")).toBeNull()
+    const card = container.querySelector('[data-testid="series-episode-card"]')
+    expect(card).not.toBeNull()
+    expect(card?.tagName).toBe("DIV")
+    expect(card?.hasAttribute("href")).toBe(false)
+  })
+
+  it("renders a plain div (no <a>) when the locale is malformed", () => {
+    renderCard({
+      episode: makeEpisode({ slug: "wedding-in-cana" }),
+      locale: "Bad Locale!",
+    })
+    expect(container.querySelector("a")).toBeNull()
+    const card = container.querySelector('[data-testid="series-episode-card"]')
+    expect(card?.tagName).toBe("DIV")
   })
 })
 

@@ -1,6 +1,5 @@
 "use client"
 
-import type { Route } from "next"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import type { RefObject } from "react"
@@ -15,6 +14,7 @@ import type { WatchSubtitle } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
+import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
@@ -216,18 +216,26 @@ export function LanguagePickerModal({
     }
 
     if (languageDirty) {
-      navigatingRef.current.inFlight = true
-      setPendingNavTo(draftSlug)
-      writePreferredLanguageSlug(draftSlug)
-      let href: Route
-      if (kind === "series") {
-        href = `/${videoSlug}/${draftSlug}` as Route
-      } else {
-        const rawT = playerRef.current?.currentTime
-        const t = Number.isFinite(rawT) ? rawT : 0
-        href = `/${videoSlug}/${draftSlug}?t=${t}&autoplay=1` as Route
+      // Validate both segments through the route builder's brand
+      // constructors BEFORE persisting the preference cookie. If either
+      // fails the slug regex, skip the whole branch — no cookie write, no
+      // navigation — rather than poison the cookie then no-op (matches
+      // SeriesPageClient's validate-before-write ordering). The rest of
+      // handleApply (incl. onClose) still runs.
+      const slug = tryAsContentSlug(videoSlug)
+      const lang = tryAsLocaleSlug(draftSlug)
+      if (slug && lang) {
+        navigatingRef.current.inFlight = true
+        setPendingNavTo(draftSlug)
+        writePreferredLanguageSlug(draftSlug)
+        if (kind === "series") {
+          router.push(watchVideoPath(slug, lang))
+        } else {
+          const rawT = playerRef.current?.currentTime
+          const t = typeof rawT === "number" && Number.isFinite(rawT) ? rawT : 0
+          router.push(watchVideoPath(slug, lang, { t, autoplay: true }))
+        }
       }
-      router.push(href)
     }
 
     onClose()

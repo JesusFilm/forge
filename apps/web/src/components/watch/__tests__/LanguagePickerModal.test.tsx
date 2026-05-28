@@ -5,7 +5,7 @@
  *
  * Covers:
  *  - Apply disabled until selection differs from current
- *  - Apply navigates with `/{videoSlug}/{newSlug}?t={currentTime}` (no /watch/)
+ *  - Apply navigates via watchVideoPath: `/{videoSlug}.html/{newSlug}.html?t={currentTime}&autoplay=1`
  *  - Apply writes the language-preference cookie BEFORE router.push
  *  - Close does nothing besides onClose
  *  - Draft resets when the modal reopens
@@ -186,7 +186,7 @@ describe("LanguagePickerModal — globe overlay", () => {
 
     expect(writePreferredLanguageSlugMock).toHaveBeenCalledWith("spanish")
     expect(routerPushMock).toHaveBeenCalledWith(
-      "/the-call/spanish?t=42&autoplay=1",
+      "/the-call.html/spanish.html?t=42&autoplay=1",
     )
     const writeOrder =
       writePreferredLanguageSlugMock.mock.invocationCallOrder[0]!
@@ -215,7 +215,7 @@ describe("LanguagePickerModal — globe overlay", () => {
     })
 
     expect(routerPushMock).toHaveBeenCalledWith(
-      "/the-call/spanish?t=0&autoplay=1",
+      "/the-call.html/spanish.html?t=0&autoplay=1",
     )
   })
 
@@ -451,11 +451,11 @@ describe("LanguagePickerModal — in-flight navigation guard", () => {
       $('[data-testid="watch-language-picker-apply"]')?.click()
     })
     expect(routerPushMock).toHaveBeenCalledWith(
-      "/the-call/spanish?t=42&autoplay=1",
+      "/the-call.html/spanish.html?t=42&autoplay=1",
     )
   })
 
-  it("kind='series' navigates to bare /{slug}/{newLang} (no ?t, no autoplay)", () => {
+  it("kind='series' navigates to bare /{slug}.html/{newLang}.html (no ?t, no autoplay)", () => {
     // The series page has no player. ?t= and autoplay=1 are HeroPlayer
     // gestures; they would mistakenly trigger trailer autoplay on the
     // series destination.
@@ -472,7 +472,7 @@ describe("LanguagePickerModal — in-flight navigation guard", () => {
     act(() => {
       $('[data-testid="watch-language-picker-apply"]')?.click()
     })
-    expect(routerPushMock).toHaveBeenCalledWith("/the-call/spanish")
+    expect(routerPushMock).toHaveBeenCalledWith("/the-call.html/spanish.html")
   })
 
   it("releases the navigation guard after the safety timeout (~5s)", () => {

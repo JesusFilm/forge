@@ -87,7 +87,9 @@ describe("SeriesEpisodesGrid — happy path", () => {
       root.render(<SeriesEpisodesGrid episodes={episodes} locale="en" />)
     })
     const anchor = container.querySelector("a")
-    expect(anchor?.getAttribute("href")).toBe("/storyclubs-birth-of-jesus/en")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/storyclubs-birth-of-jesus.html/en.html",
+    )
   })
 
   it("preserves the locale from the series URL in every episode href", () => {
@@ -99,8 +101,8 @@ describe("SeriesEpisodesGrid — happy path", () => {
       root.render(<SeriesEpisodesGrid episodes={episodes} locale="es" />)
     })
     const anchors = container.querySelectorAll("a")
-    expect(anchors[0]?.getAttribute("href")).toBe("/ep-1/es")
-    expect(anchors[1]?.getAttribute("href")).toBe("/ep-2/es")
+    expect(anchors[0]?.getAttribute("href")).toBe("/ep-1.html/es.html")
+    expect(anchors[1]?.getAttribute("href")).toBe("/ep-2.html/es.html")
   })
 })
 

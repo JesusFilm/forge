@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { Route } from "next"
 import { useRouter } from "next/navigation"
 import { ExternalLink, Globe } from "lucide-react"
 import { useTranslations } from "next-intl"
@@ -25,6 +24,7 @@ import { deriveLanguageDisplay } from "@/lib/language-display"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
+import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import { resolvePosterUrl } from "@/lib/url"
 
 // Narrowed from WatchModalState ("none" | "download" | "language" | "share")
@@ -162,10 +162,15 @@ export function SeriesPageClient({
     (nextSlug: string) => {
       const seriesSlug = series.slug
       if (!nextSlug || !seriesSlug || nextSlug === currentLanguageSlug) return
+      // Validate both segments BEFORE writing the cookie or navigating —
+      // an invalid slug must neither persist a preference nor push a URL.
+      const slug = tryAsContentSlug(seriesSlug)
+      const lang = tryAsLocaleSlug(nextSlug)
+      if (!slug || !lang) return
       // Persist preference cookie so subsequent visits respect the choice
       // — matches the watch page's behavior via proxy.ts canonical redirect.
       writePreferredLanguageSlug(nextSlug)
-      router.push(`/${seriesSlug}/${nextSlug}` as Route)
+      router.push(watchVideoPath(slug, lang))
     },
     [router, series.slug, currentLanguageSlug],
   )

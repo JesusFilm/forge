@@ -29,6 +29,12 @@ import { env } from "@/env"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import {
+  WATCH_BASE_PATH,
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchVideoPath,
+} from "@/lib/routes"
+import {
   PUBLIC_SHARE_FALLBACK_ORIGIN,
   isPublicShareableOrigin,
 } from "@/lib/url"
@@ -75,7 +81,17 @@ export function ShareModal({
   const embedRef = useRef<HTMLTextAreaElement | null>(null)
 
   const origin = env.NEXT_PUBLIC_CANONICAL_ORIGIN
-  const canonicalUrl = `${origin}/watch/${videoSlug}/${currentLanguageSlug}`
+  // Build the watch PATH via the @/lib/routes builder, then prefix each origin
+  // manually: canonical + share-fallback are TWO different origins, so the
+  // canonical-origin-baked `watchVideoAbsolute` builder doesn't fit. Invalid
+  // slugs (which can't happen for a published video) fall back to the bare
+  // origin rather than emitting a malformed path.
+  const slug = tryAsContentSlug(videoSlug)
+  const lang = tryAsLocaleSlug(currentLanguageSlug)
+  const watchPath = slug && lang ? watchVideoPath(slug, lang) : null
+  const canonicalUrl = watchPath
+    ? `${origin}${WATCH_BASE_PATH}${watchPath}`
+    : origin
   // When the configured origin can't be reached by the FB / X scrapers
   // (localhost, private hosts, etc.) we keep the share buttons VISIBLE but
   // render them as disabled. Sharing a localhost URL via the public fallback
@@ -88,7 +104,9 @@ export function ShareModal({
   // the configured origin so devs can copy a localhost URL when that's what
   // they want.
   const shareOrigin = isShareable ? origin : PUBLIC_SHARE_FALLBACK_ORIGIN
-  const shareableUrl = `${shareOrigin}/watch/${videoSlug}/${currentLanguageSlug}`
+  const shareableUrl = watchPath
+    ? `${shareOrigin}${WATCH_BASE_PATH}${watchPath}`
+    : shareOrigin
   // buildEmbedSnippet validates playbackId against PLAYBACK_ID_PATTERN before
   // interpolating into the iframe `src` and returns "" on null/invalid; the
   // Embed Code tab is also gated on `playbackId ?` below, so an invalid id
