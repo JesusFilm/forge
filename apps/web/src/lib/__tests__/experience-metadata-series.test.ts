@@ -66,13 +66,13 @@ describe("generateSeriesMetadata", () => {
     expect(meta.description).toBeUndefined()
   })
 
-  it("constructs the canonical URL with the /watch prefix and pathLocale", () => {
+  it("constructs the canonical URL in the .html shape via the route builder", () => {
     const meta = generateSeriesMetadata("en", {
       series: makeSeries(),
       pathLocale: "en",
     })
     expect(meta.alternates?.canonical).toBe(
-      "https://www.jesusfilm.org/watch/storyclubs/en",
+      "http://localhost:3000/watch/storyclubs.html/en.html",
     )
   })
 

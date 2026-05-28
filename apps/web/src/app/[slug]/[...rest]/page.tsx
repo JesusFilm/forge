@@ -128,7 +128,6 @@ export async function generateMetadata({
         return generateSeriesMetadata(locale, {
           series: watchVideo.video,
           pathLocale: rawLocale,
-          pathPrefix: "watch",
         })
       }
       if (!watchVideo) {
@@ -137,7 +136,6 @@ export async function generateMetadata({
           return generateSeriesMetadata(locale, {
             series: series.video,
             pathLocale: rawLocale,
-            pathPrefix: "watch",
           })
         }
       }
@@ -147,7 +145,6 @@ export async function generateMetadata({
     return getWatchPageMetadata(locale, {
       slug,
       pathLocale: rawLocale,
-      pathPrefix: "watch",
     })
   }
 
@@ -158,7 +155,6 @@ export async function generateMetadata({
     return getWatchPageMetadata(locale, {
       slug: episodeSlug,
       pathLocale: rawLocale,
-      pathPrefix: "watch",
     })
   }
 

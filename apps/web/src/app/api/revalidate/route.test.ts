@@ -36,10 +36,24 @@ describe("POST /api/revalidate", () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({
       revalidated: true,
-      paths: ["/ (layout)", "/", "/de", "/en", "/es", "/fr", "/pt"],
+      paths: [
+        "/ (layout)",
+        "/",
+        "/de.html",
+        "/de",
+        "/en.html",
+        "/en",
+        "/es.html",
+        "/es",
+        "/fr.html",
+        "/fr",
+        "/pt.html",
+        "/pt",
+      ],
     })
     expect(revalidatePathMock).toHaveBeenCalledWith("/", "layout")
     expect(revalidatePathMock).toHaveBeenCalledWith("/")
+    expect(revalidatePathMock).toHaveBeenCalledWith("/en.html")
     expect(revalidatePathMock).toHaveBeenCalledWith("/en")
   })
 
@@ -67,18 +81,27 @@ describe("POST /api/revalidate", () => {
     await expect(response.json()).resolves.toEqual({
       revalidated: true,
       paths: [
+        "/jesus.html/en.html",
         "/jesus/en",
+        "/jesus.html",
         "/jesus",
         "/ (layout)",
         "/",
+        "/de.html",
         "/de",
+        "/en.html",
         "/en",
+        "/es.html",
         "/es",
+        "/fr.html",
         "/fr",
+        "/pt.html",
         "/pt",
       ],
     })
+    expect(revalidatePathMock).toHaveBeenCalledWith("/jesus.html/en.html")
     expect(revalidatePathMock).toHaveBeenCalledWith("/jesus/en")
+    expect(revalidatePathMock).toHaveBeenCalledWith("/jesus.html")
     expect(revalidatePathMock).toHaveBeenCalledWith("/jesus")
     expect(revalidatePathMock).toHaveBeenCalledWith("/", "layout")
   })

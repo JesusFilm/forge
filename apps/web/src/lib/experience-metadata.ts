@@ -5,11 +5,62 @@ import {
   type ResolvedSeriesBySlug,
   type ResolvedWatchPage,
 } from "@/lib/content"
+import {
+  WATCH_BASE_PATH,
+  WATCH_CANONICAL_ORIGIN,
+  localizedHomeAbsolute,
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchVideoAbsolute,
+} from "@/lib/routes"
 import { getSocialConfig } from "@/lib/social-config"
 import { resolvePosterUrl } from "@/lib/url"
+import { stripHtmlSuffix } from "@/lib/url-shape"
 
-const SITE_BASE = "https://www.jesusfilm.org"
 const TITLE_SUFFIX = "| Jesus Film Project"
+
+/**
+ * Build the canonical absolute URL for a watch page in the `.html` shape,
+ * keyed off the (slug, pathLocale) the route resolved. Routes through the
+ * `lib/routes.ts` absolute builders so the canonical `<link>` matches the
+ * production URL contract exactly (origin from `WATCH_CANONICAL_ORIGIN`,
+ * `.html` per segment).
+ *
+ * Shapes:
+ * - slug + pathLocale → 2-segment `/{slug}.html/{locale}.html`
+ * - one segment (slug-only OR pathLocale-only) → 1-segment `/{seg}.html`
+ *   (localized home or single-segment collection — same URL shape)
+ * - neither → the watch root `/watch`
+ *
+ * Inputs arrive `.html`-stripped from `classify()`, but we strip again
+ * defensively. On a malformed slug the builders can't run, so we fall back
+ * to a bare origin+basePath+segment string (never throws in metadata).
+ */
+function buildCanonicalUrl(slug?: string, pathLocale?: string): string {
+  const root = `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}`
+  const s = slug ? stripHtmlSuffix(slug) : undefined
+  const l = pathLocale ? stripHtmlSuffix(pathLocale) : undefined
+
+  if (s && l) {
+    const cs = tryAsContentSlug(s)
+    const ls = tryAsLocaleSlug(l)
+    if (cs && ls) return watchVideoAbsolute(cs, ls)
+    return `${root}/${s}/${l}`
+  }
+
+  const single = s ?? l
+  if (single) {
+    const ls = tryAsLocaleSlug(single)
+    // localizedHomeAbsolute emits `${origin}/watch/{seg}.html` — the correct
+    // 1-segment canonical for both a localized home (seg is a language) and a
+    // single-segment collection landing (seg is content); the URL shape is
+    // identical, so the nominal LocaleSlug brand is fine here.
+    if (ls) return localizedHomeAbsolute(ls)
+    return `${root}/${single}`
+  }
+
+  return root
+}
 
 const OG_LOCALE_OVERRIDES: Record<string, string> = {
   en: "en_US",
@@ -33,17 +84,9 @@ const DEFAULT_OG_IMAGE = {
 function toMetadata(
   locale: string,
   resolvedPage: ResolvedWatchPage | null,
-  options?: { slug?: string; pathLocale?: string; pathPrefix?: string },
+  options?: { slug?: string; pathLocale?: string },
 ): Metadata {
-  const prefix = options?.pathPrefix ? `/${options.pathPrefix}` : ""
-  const pathSuffix = options?.slug
-    ? options?.pathLocale
-      ? `/${options.slug}/${options.pathLocale}`
-      : `/${options.slug}`
-    : options?.pathLocale
-      ? `/${options.pathLocale}`
-      : ""
-  const url = `${SITE_BASE}${prefix}${pathSuffix}`
+  const url = buildCanonicalUrl(options?.slug, options?.pathLocale)
 
   const { fbAppId } = getSocialConfig()
 
@@ -156,7 +199,7 @@ function toMetadata(
 
 export async function getWatchPageMetadata(
   locale: string,
-  options?: { slug?: string; pathLocale?: string; pathPrefix?: string },
+  options?: { slug?: string; pathLocale?: string },
 ): Promise<Metadata> {
   const result = await resolveWatchPage(locale, options?.slug)
   return toMetadata(locale, result.data, options)
@@ -173,14 +216,11 @@ export function generateSeriesMetadata(
   options: {
     series: ResolvedSeriesBySlug["video"]
     pathLocale?: string
-    pathPrefix?: string
   },
 ): Metadata {
-  const { series, pathLocale, pathPrefix = "watch" } = options
-  const prefix = pathPrefix ? `/${pathPrefix}` : ""
+  const { series, pathLocale } = options
   const slug = series.slug ?? ""
-  const pathSuffix = pathLocale ? `/${slug}/${pathLocale}` : `/${slug}`
-  const url = `${SITE_BASE}${prefix}${pathSuffix}`
+  const url = buildCanonicalUrl(slug, pathLocale)
 
   const { fbAppId } = getSocialConfig()
 

@@ -10,7 +10,7 @@ import { ExperienceError } from "@/components/ExperienceError"
 export const revalidate = 60
 
 export async function generateMetadata(): Promise<Metadata> {
-  return getWatchPageMetadata(DEFAULT_LOCALE, { pathPrefix: "watch" })
+  return getWatchPageMetadata(DEFAULT_LOCALE)
 }
 
 export default async function HomePage() {
