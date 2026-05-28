@@ -5,7 +5,7 @@ verified_at: 2026-05-27
 branch: feat/web-youversion-bible-quotes-embed
 target_url: http://127.0.0.1:3000/watch/the-vine-and-the-branches/english
 runtime: Next.js App Router, dev mode
-status: partial
+status: pass-local-live-key
 ---
 
 # YouVersion Bible Quotes Embed — Smoke Report
@@ -19,42 +19,35 @@ carousel, promo slide, or responsive layout.
 ## Environment
 
 - Web server: `http://127.0.0.1:3000`
-- Admin GraphQL: local admin dev server on `127.0.0.1:3013`
-- YouVersion key source: **not available** in local `.env` or Forge web Doppler
-  dev config at the time of testing.
-- YouVersion smoke key: `local-smoke-app-key`, intentionally fake and supplied
-  only to the local server process.
-- Server-fetch shim: `/private/tmp/mock-youversion-fetch.mjs` intercepted
-  `https://api.youversion.com/v1/*` inside the Node dev server and returned
-  deterministic version/passage JSON. This proves the browser receives
-  server-rendered passage data without exposing the app key, but it is not a
-  real YouVersion API credential validation.
+- Admin GraphQL: `https://admin.jesusfilm.org/api/graphql` via the local
+  `WEB_ADMIN_API_KEYS` server secret.
+- YouVersion key source: local `apps/web/.env` server secret.
+- YouVersion version: code default `YOUVERSION_DEFAULT_VERSION_ID=3034` (BSB).
+- Local diagnostic: version `111` returned metadata but passage reads failed
+  with `403 "Access denied for 111"` for this app key, so the PR default was
+  changed to `3034`, which the key can read.
 
 ## Evidence
 
 - Desktop screenshot:
-  `output/playwright/youversion-bible-quotes-server-desktop.png`
+  `output/playwright/youversion-local-3034-desktop.png`
 - Mobile screenshot:
-  `output/playwright/youversion-bible-quotes-server-mobile.png`
+  `output/playwright/youversion-local-3034-mobile.png`
 - URL rendered 2 Bible quote cards and the always-on promo slide.
 - Initial panel reference:
   `JHN.15.13`
+- Initial panel version:
+  `data-version-id="3034"`
 - Initial panel content:
-  `Mock YouVersion passage content for JHN.15.13.`
-- After selecting the second quote, panel reference:
-  `JHN.15.5`
-- After selecting the second quote, panel content:
-  `Mock YouVersion passage content for JHN.15.5.`
-- After advancing to the promo slide with the carousel Next button, the panel
-  was hidden.
+  `Greater love has no one than this, that he lay down his life for his friends.`
 - Mobile viewport smoke used `390x844` and rendered the Bible Quotes header,
   2 quote cards, promo slide, and YouVersion panel.
-- Browser console after smoke contained React DevTools/HMR development
-  messages, existing Next.js LCP image warnings, and an existing Mux Media
-  Chrome stylesheet warning.
-- Browser network inspection for `youversion` showed no captured requests,
-  confirming YouVersion calls are server-side rather than browser-side.
-- DOM resource inspection also returned `clientYouVersionResources: []`.
+- Browser console after smoke contained HMR development messages, existing
+  Next.js image warnings, an existing Mux Media Chrome stylesheet warning, and
+  one resource `ERR_CONNECTION_REFUSED` unrelated to `api.youversion.com`.
+- Browser request inspection captured no `api.youversion.com` requests and no
+  `X-YVP-App-Key` headers, confirming YouVersion calls are server-side rather
+  than browser-side.
 
 ## Attribution
 
@@ -64,25 +57,24 @@ Bible Version copyright attribution:
 
 The implementation fetches version metadata server-side, fails closed when the
 copyright field is missing, and renders the copyright plus publisher link below
-the passage panel. The local server-fetch shim returned:
+the passage panel. The live local smoke rendered:
 
-- `NIV · New International Version`
-- `Mock NIV copyright attribution for local server-side smoke.`
+- `BSB · Berean Standard Bible`
+- `Public Domain`
 
 ## Result
 
-Partial pass.
+Local live-key pass.
 
-The UI path, optional config guard, active-citation sync, promo-hide behavior,
-mobile layout, server-rendered passage panel, attribution rendering, and
-absence of browser-side YouVersion requests were verified. Live YouVersion API
-content and live copyright attribution were not verified because no real
-`YOUVERSION_APP_KEY` was available.
+The UI path, optional config guard, mobile layout, server-rendered passage
+panel, live YouVersion passage text, attribution rendering, and absence of
+browser-side YouVersion requests were verified locally with a real
+`YOUVERSION_APP_KEY`.
 
 ## Release Blocker
 
-Before marking this ready for release, configure a real YouVersion Platform app
-key in a prod-like web environment and repeat the desktop/mobile smoke to prove
-live passage text and live copyright attribution render successfully.
+Before marking this ready for release, repeat the desktop/mobile smoke in a
+prod-like web environment to prove the deployed `@forge/web` service has the
+same app-key and version configuration.
 
 Tracked follow-up: `todos/006-pending-p1-youversion-app-key-smoke.md`.
