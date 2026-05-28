@@ -1,28 +1,20 @@
 import { describe, expect, it } from "vitest"
 
 import { proxy, type ProxyRequest } from "./proxy"
-import { canonicalizeWatchPath } from "./lib/url-canonicalize"
-
-type CookieMap = Record<string, string>
 
 function makeRequest(
   pathname: string,
-  options: { cookies?: CookieMap; acceptLanguage?: string } = {},
+  options: { acceptLanguage?: string } = {},
 ): ProxyRequest {
   // Test stand-in for the `ProxyRequest` structural subset proxy() reads.
   // No cast needed — the factory's return type matches the production
-  // contract directly.
+  // contract directly. NOTE: proxy() no longer reads cookies — the URL is
+  // the sole locale carrier, so there is no cookie field to mock.
   const url = new URL(`https://www.jesusfilm.org${pathname}`)
   return {
     nextUrl: Object.assign(url, {
       clone: () => new URL(url.toString()),
     }),
-    cookies: {
-      get: (name: string) =>
-        options.cookies?.[name] != null
-          ? { value: options.cookies[name] }
-          : undefined,
-    },
     headers: new Headers(
       options.acceptLanguage
         ? { "accept-language": options.acceptLanguage }
@@ -155,126 +147,38 @@ describe("proxy — reserved-subtree pass-through", () => {
 })
 
 // ---------------------------------------------------------------------------
-// Cookie-driven language preference on .html shape (2-segment + 3-segment).
+// No cookie override: the URL is the sole locale carrier. An explicit locale
+// already named in a canonical watch URL must NEVER be redirected to some
+// other language — this is the regression guard for the production bug where
+// a stale `forge_watch_lang` cookie hijacked `/jesus.html/english.html` to
+// `/jesus.html/bangla-2.html`. proxy() no longer reads cookies at all.
 // ---------------------------------------------------------------------------
 
-describe("proxy — cookie language preference on canonical .html shape", () => {
-  it("redirects 2-segment /jesus.html/english.html to /jesus.html/<pref>.html when cookie disagrees", () => {
-    const response = proxy(
-      makeRequest("/jesus.html/english.html", {
-        cookies: { forge_watch_lang: "spanish" },
-      }),
-    )
-    expect(response.status).toBe(307)
-    expect(response.headers.get("location")).toContain(
-      "/jesus.html/spanish.html",
-    )
+describe("proxy — explicit locale URLs are never language-redirected", () => {
+  it("does not redirect a canonical 2-segment watch URL", () => {
+    const response = proxy(makeRequest("/jesus.html/english.html"))
+    expect(response.status).not.toBe(307)
+    expect(response.status).not.toBe(308)
   })
 
-  it("does not redirect when 2-seg cookie matches URL locale (.html-aware compare)", () => {
+  it("does not redirect a canonical 3-segment episode URL", () => {
     const response = proxy(
-      makeRequest("/jesus.html/spanish.html", {
-        cookies: { forge_watch_lang: "spanish" },
-      }),
+      makeRequest("/lumo-the-gospel-of-john.html/wedding-in-cana/english.html"),
     )
     expect(response.status).not.toBe(307)
+    expect(response.status).not.toBe(308)
   })
 
-  it("redirects 3-segment /series.html/episode/english.html to /series.html/episode/<pref>.html", () => {
-    const response = proxy(
-      makeRequest(
-        "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
-        {
-          cookies: { forge_watch_lang: "spanish" },
-        },
-      ),
-    )
-    expect(response.status).toBe(307)
-    expect(response.headers.get("location")).toContain(
-      "/lumo-the-gospel-of-john.html/wedding-in-cana/spanish.html",
+  it("applies watch security headers (CSP) to the canonical 2-segment URL", () => {
+    const response = proxy(makeRequest("/jesus.html/english.html"))
+    expect(response.headers.get("content-security-policy")).toBe(
+      "frame-ancestors 'self'",
     )
   })
 
-  it("emits Cache-Control: private, max-age=0 on cookie redirect", () => {
-    const response = proxy(
-      makeRequest("/jesus.html/english.html", {
-        cookies: { forge_watch_lang: "spanish" },
-      }),
-    )
-    expect(response.headers.get("cache-control")).toBe("private, max-age=0")
-  })
-
-  it("bypasses cookie redirect when ?_lr=1 is present", () => {
-    const response = proxy(
-      makeRequest("/jesus.html/english.html?_lr=1", {
-        cookies: { forge_watch_lang: "spanish" },
-      }),
-    )
-    expect(response.status).not.toBe(307)
-  })
-
-  it("strips ?autoplay=1 on cross-variant redirect", () => {
-    const response = proxy(
-      makeRequest("/jesus.html/english.html?autoplay=1", {
-        cookies: { forge_watch_lang: "spanish" },
-      }),
-    )
-    expect(response.status).toBe(307)
-    const location = response.headers.get("location") ?? ""
-    expect(location).toContain("/jesus.html/spanish.html")
-    expect(location).not.toContain("autoplay=1")
-  })
-
-  it("strips ?t=120 on cross-variant redirect", () => {
-    const response = proxy(
-      makeRequest("/jesus.html/english.html?t=120", {
-        cookies: { forge_watch_lang: "spanish" },
-      }),
-    )
-    expect(response.status).toBe(307)
-    expect(response.headers.get("location") ?? "").not.toMatch(/[?&]t=120/)
-  })
-
-  it("preserves unrelated query params on cookie redirect", () => {
-    const response = proxy(
-      makeRequest("/jesus.html/english.html?source=share", {
-        cookies: { forge_watch_lang: "spanish" },
-      }),
-    )
-    expect(response.status).toBe(307)
-    expect(response.headers.get("location")).toContain("source=share")
-  })
-
-  it("ignores malformed cookie value (truncated percent-escape)", () => {
-    const response = proxy(
-      makeRequest("/jesus.html/english.html", {
-        cookies: { forge_watch_lang: "%E0%A4%A" },
-      }),
-    )
-    expect(response.status).not.toBe(307)
-  })
-
-  it("ignores cookie value longer than 64-char cap", () => {
-    const response = proxy(
-      makeRequest("/jesus.html/english.html", {
-        cookies: { forge_watch_lang: "a".repeat(100) },
-      }),
-    )
-    expect(response.status).not.toBe(307)
-  })
-
-  it("URL-decodes cookie value before comparing", () => {
-    const response = proxy(
-      makeRequest("/jesus.html/english.html", {
-        cookies: {
-          forge_watch_lang: encodeURIComponent("chinese-simplified"),
-        },
-      }),
-    )
-    expect(response.status).toBe(307)
-    expect(response.headers.get("location")).toContain(
-      "/jesus.html/chinese-simplified.html",
-    )
+  it("does not emit a Vary: Cookie header (no cookie-dependent redirects)", () => {
+    const response = proxy(makeRequest("/jesus.html/english.html"))
+    expect(response.headers.get("vary") ?? "").not.toContain("Cookie")
   })
 })
 
@@ -306,74 +210,5 @@ describe("proxy — resilience on malformed inputs", () => {
     )
     expect(response.status).not.toBe(307)
     expect(response.status).not.toBe(308)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Vary: Cookie — only cookie-dependent redirects carry it (todo 009).
-// ---------------------------------------------------------------------------
-
-describe("proxy — Vary: Cookie on cookie-dependent redirects only", () => {
-  it("sets Vary: Cookie on the cookie-preference redirect", () => {
-    const response = proxy(
-      makeRequest("/jesus.html/english.html", {
-        cookies: { forge_watch_lang: "spanish" },
-      }),
-    )
-    expect(response.status).toBe(307)
-    expect(response.headers.get("vary")).toBe("Cookie")
-  })
-
-  it("does NOT set Vary: Cookie on a canonicalize redirect (not cookie-dependent)", () => {
-    const response = proxy(makeRequest("/jesus/english"))
-    expect(response.status).toBe(307)
-    expect(response.headers.get("vary")).toBeNull()
-  })
-})
-
-// Note: the cookie-path output revalidation (todo 010) is unit-tested at the
-// `isUnsafeRedirectPath` boundary in `lib/url-shape.test.ts` — the WHATWG URL
-// parser in the proxy test fixture normalizes `\`/`//` before they reach the
-// guard, so the guard itself is exercised directly instead.
-
-// ---------------------------------------------------------------------------
-// Cross-module idempotence: the cookie redirect's output must already be
-// canonical, so the next request converges in one hop (todo 011).
-// ---------------------------------------------------------------------------
-
-describe("proxy — cookie redirect output is canonical (single-hop convergence)", () => {
-  for (const input of [
-    "/jesus.html/english.html",
-    "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
-  ]) {
-    it(`canonicalize(cookieRedirect("${input}")) is canonical`, () => {
-      const r1 = proxy(
-        makeRequest(input, { cookies: { forge_watch_lang: "spanish" } }),
-      )
-      expect(r1.status).toBe(307)
-      const next = new URL(r1.headers.get("location") ?? "").pathname
-      const r2 = canonicalizeWatchPath({ rawPathname: next })
-      expect(r2.kind).toBe("canonical")
-    })
-  }
-})
-
-// ---------------------------------------------------------------------------
-// Slug-form cookie values (e.g. spanish-castilian) round-trip into the
-// redirected locale segment (todo 014). Downstream page-level resolution is
-// slug-aware (resolveUiLocale), so the family-fallback locale renders.
-// ---------------------------------------------------------------------------
-
-describe("proxy — slug-form cookie language preference", () => {
-  it("redirects to a multi-segment slug-form locale (spanish-castilian)", () => {
-    const response = proxy(
-      makeRequest("/jesus.html/english.html", {
-        cookies: { forge_watch_lang: "spanish-castilian" },
-      }),
-    )
-    expect(response.status).toBe(307)
-    expect(response.headers.get("location")).toContain(
-      "/jesus.html/spanish-castilian.html",
-    )
   })
 })

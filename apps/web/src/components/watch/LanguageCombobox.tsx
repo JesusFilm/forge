@@ -1,6 +1,7 @@
 "use client"
 
 import { Captions, ChevronsUpDown, Languages } from "lucide-react"
+import { useTranslations } from "next-intl"
 import {
   useCallback,
   useEffect,
@@ -418,8 +419,12 @@ export function LanguageCombobox({
   onChange,
   icon = "language",
   disabled = false,
-  placeholder = "Select language",
+  placeholder,
 }: LanguageComboboxProps) {
+  const t = useTranslations("LanguageCombobox")
+  // Fall back to the localized default only when the caller did not pass an
+  // explicit placeholder (e.g. LanguagePickerModal passes "No subtitles").
+  const resolvedPlaceholder = placeholder ?? t("selectLanguage")
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [activeIndex, setActiveIndex] = useState(0)
@@ -577,7 +582,7 @@ export function LanguageCombobox({
           )}
           <span className="min-w-0">
             <span className="block truncate leading-tight">
-              {selected?.name ?? placeholder}
+              {selected?.name ?? resolvedPlaceholder}
             </span>
             {selectedNativeName ? (
               <span
@@ -615,7 +620,7 @@ export function LanguageCombobox({
               // In production both fire on every keystroke; React batches identical setQuery values, so no double-render.
               onInput={(e) => resetQuery((e.target as HTMLInputElement).value)}
               onKeyDown={handleSearchKeyDown}
-              placeholder="Search languages…"
+              placeholder={t("searchPlaceholder")}
               aria-activedescendant={
                 filtered[activeIndex]
                   ? `lcb-opt-${filtered[activeIndex].slug}`
@@ -633,7 +638,7 @@ export function LanguageCombobox({
           */}
           <ul
             role="listbox"
-            aria-label="Languages"
+            aria-label={t("languages")}
             className="max-h-72 overflow-y-auto py-1 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 hover:[&::-webkit-scrollbar-thumb]:bg-stone-600 [&::-webkit-scrollbar-track]:bg-transparent"
           >
             {filtered.length === 0 ? (
@@ -641,7 +646,7 @@ export function LanguageCombobox({
                 data-testid="language-combobox-empty"
                 className="px-4 py-3 text-sm text-stone-500"
               >
-                No matches
+                {t("noMatches")}
               </li>
             ) : (
               filtered.map((option, index) => {

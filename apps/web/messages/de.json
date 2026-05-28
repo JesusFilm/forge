@@ -12,5 +12,106 @@
   "VideosPage": {
     "title": "Alle Videos",
     "placeholder": "Das Durchsuchen des Katalogs kommt bald. In der Zwischenzeit nutzen Sie die Suche oder eine themenspezifische URL."
+  },
+  "BibleQuotes": {
+    "title": "Bibelzitate",
+    "share": "Teilen",
+    "readMore": "Mehr lesen...",
+    "freeResources": "Kostenlose Ressourcen",
+    "promoHeading": "Möchten Sie Ihr Verständnis der Bibel vertiefen?",
+    "joinBibleStudy": "Nehmen Sie an unserem Bibelstudium teil",
+    "previousQuote": "Vorheriges Bibelzitat",
+    "nextQuote": "Nächstes Bibelzitat"
+  },
+  "DownloadButton": {
+    "checking": "Wird geprüft",
+    "download": "Herunterladen"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Video herunterladen",
+    "eyebrow": "Video herunterladen",
+    "posterAlt": "Video-Vorschaubild",
+    "noDownloads": "Für dieses Video sind keine Downloads verfügbar.",
+    "errorUnavailableSource": "Download von dieser Quelle nicht verfügbar",
+    "tierHighest": "Höchste",
+    "tierHigh": "Hoch",
+    "tierLow": "Niedrig"
+  },
+  "HeroPlayerControls": {
+    "play": "Abspielen",
+    "pause": "Pause",
+    "seek": "Suchen",
+    "seekValue": "{current} von {total}",
+    "volume": "Lautstärke",
+    "volumeValue": "{percent} Prozent",
+    "mute": "Stummschalten",
+    "unmute": "Stummschaltung aufheben",
+    "changeAudioLanguage": "Audiosprache ändern",
+    "enterFullscreen": "Vollbild",
+    "exitFullscreen": "Vollbild beenden"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Sprache auswählen",
+    "searchPlaceholder": "Sprachen suchen…",
+    "languages": "Sprachen",
+    "noMatches": "Keine Treffer"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Sprache",
+    "dialogTitleWithSubtitles": "Sprache & Untertitel",
+    "languageHeading": "Sprache",
+    "subtitlesHeading": "Untertitel",
+    "languageCount": "{count, plural, one {# Sprache} other {# Sprachen}}",
+    "requestSent": "Anfrage gesendet",
+    "translateWithAi": "Mit KI übersetzen",
+    "noSubtitles": "Keine Untertitel",
+    "close": "Schließen",
+    "apply": "Anwenden"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 FOLGE} other {# FOLGEN}}",
+    "seriesLabel": "SERIE · {episodes}",
+    "changeAudioLanguage": "Audiosprache ändern",
+    "share": "Teilen",
+    "languages": "Sprachen"
+  },
+  "WatchModal": {
+    "close": "Schließen"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Wenn Sie dem Ersteller dieses Videos eine Frage stellen könnten, welche wäre das?",
+    "fallbackBody": "Führen Sie ein privates Gespräch mit jemandem, der bereit ist zuzuhören.",
+    "questionsShort": "Fragen",
+    "questions": "Verwandte Fragen",
+    "askYours": "Stellen Sie Ihre",
+    "chatWithPerson": "Mit einer Person chatten",
+    "askBibleQuestion": "Eine Bibelfrage stellen"
+  },
+  "ShareModal": {
+    "dialogTitle": "Video teilen",
+    "heading": "Dieses Video teilen",
+    "posterAlt": "Video-Vorschaubild",
+    "shareOnFacebook": "Auf Facebook teilen",
+    "shareOnFacebookUnavailable": "Auf Facebook teilen (in dieser Version nicht verfügbar)",
+    "shareOnX": "Auf X teilen",
+    "shareOnXUnavailable": "Auf X teilen (in dieser Version nicht verfügbar)",
+    "shareDisabledHint": "Zum Teilen ist eine veröffentlichte Seite erforderlich — funktioniert, sobald dieses Video in Produktion ist.",
+    "shareFormat": "Freigabeformat",
+    "shareLinkTab": "Link teilen",
+    "embedCodeTab": "Einbettungscode",
+    "copyFailed": "Automatisches Kopieren fehlgeschlagen — markieren Sie den Text unten und kopieren Sie ihn manuell.",
+    "copyLink": "Link kopieren",
+    "copyCode": "Code kopieren",
+    "copied": "Kopiert",
+    "close": "Schließen"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transkript",
+    "subheading": "Tippen Sie auf eine Zeile, um zu diesem Moment zu springen.",
+    "subtitleLanguage": "Untertitelsprache",
+    "aiSuffix": " · KI",
+    "loading": "Transkript wird geladen…",
+    "unavailable": "Transkript für diese Untertitelspur nicht verfügbar.",
+    "empty": "Keine Transkriptzeilen gefunden."
   }
 }

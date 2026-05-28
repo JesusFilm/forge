@@ -2,11 +2,11 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import type { Route } from "next"
 import { Play } from "lucide-react"
 
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { resolveEpisodeImageUrl } from "@/lib/episode-image"
+import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 
 type Episodes = NonNullable<ResolvedSeriesBySlug["video"]["children"]>
 type Episode = NonNullable<Episodes[number]>
@@ -57,18 +57,22 @@ export function SeriesEpisodeCard({
   locale,
   backdropUrl,
 }: SeriesEpisodeCardProps) {
-  const href = `/${episode.slug}/${locale}` as Route
+  const slug = episode.slug ? tryAsContentSlug(episode.slug) : null
+  const lang = tryAsLocaleSlug(locale)
+  // Episodes link as standalone videos: canonical two-segment shape.
+  const href = slug && lang ? watchVideoPath(slug, lang) : undefined
   const thumbnailUrl = resolveEpisodeImageUrl(episode)
   const runtimeLabel = formatRuntime(pickRuntimeSeconds(episode))
 
-  return (
-    <Link
-      href={href}
-      data-testid="series-episode-card"
-      data-backdrop-url={backdropUrl ?? ""}
-      className="group animate-card-enter relative flex aspect-video w-full cursor-pointer overflow-hidden rounded-xl ring-1 ring-white/5 transition duration-300 hover:z-10 hover:scale-105 hover:ring-white/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-      style={{ animationDelay: `${index * 40}ms` }}
-    >
+  // Shared card surface. When the slug/locale is malformed (rare data bug)
+  // the href is undefined, so we render a plain <div> with identical attrs
+  // rather than a dead <Link>.
+  const cardClassName =
+    "group animate-card-enter relative flex aspect-video w-full cursor-pointer overflow-hidden rounded-xl ring-1 ring-white/5 transition duration-300 hover:z-10 hover:scale-105 hover:ring-white/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+  const cardStyle = { animationDelay: `${index * 40}ms` }
+
+  const cardContent = (
+    <>
       {thumbnailUrl ? (
         <Image
           src={thumbnailUrl}
@@ -105,6 +109,31 @@ export function SeriesEpisodeCard({
           {episode.title ?? ""}
         </h3>
       </div>
+    </>
+  )
+
+  if (!href) {
+    return (
+      <div
+        data-testid="series-episode-card"
+        data-backdrop-url={backdropUrl ?? ""}
+        className={cardClassName}
+        style={cardStyle}
+      >
+        {cardContent}
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      href={href}
+      data-testid="series-episode-card"
+      data-backdrop-url={backdropUrl ?? ""}
+      className={cardClassName}
+      style={cardStyle}
+    >
+      {cardContent}
     </Link>
   )
 }
