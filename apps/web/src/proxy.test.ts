@@ -22,12 +22,11 @@ function makeRequest(
           ? { value: options.cookies[name] }
           : undefined,
     },
-    headers: {
-      get: (name: string) =>
-        name.toLowerCase() === "accept-language"
-          ? (options.acceptLanguage ?? null)
-          : null,
-    },
+    headers: new Headers(
+      options.acceptLanguage
+        ? { "accept-language": options.acceptLanguage }
+        : {},
+    ),
   }
 }
 

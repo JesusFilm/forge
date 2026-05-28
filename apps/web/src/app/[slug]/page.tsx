@@ -1,4 +1,6 @@
 import type { Metadata } from "next"
+import { setRequestLocale } from "next-intl/server"
+import { hasUiLocale } from "@/i18n/locales"
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale"
 import { isWatchPageMissingError, resolveWatchPage } from "@/lib/content"
 import { getWatchPageMetadata } from "@/lib/experience-metadata"
@@ -34,6 +36,7 @@ export default async function SlugPage({ params }: PageProps) {
   const slug = stripHtmlSuffix(rawSlug)
 
   const locale = isLocale(slug) ? slug : DEFAULT_LOCALE
+  setRequestLocale(hasUiLocale(locale) ? locale : DEFAULT_LOCALE)
 
   const result = await resolveWatchPage(
     locale,

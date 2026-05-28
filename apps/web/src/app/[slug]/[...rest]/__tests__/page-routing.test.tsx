@@ -468,7 +468,7 @@ describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-se
     expect(props?.locale).toBe("fr")
   })
 
-  it("falls back to DEFAULT_LOCALE='en' when language family isn't in SUPPORTED_LOCALES", async () => {
+  it("falls back to DEFAULT_LOCALE='en' when language family isn't in UI_LOCALE_FAMILIES", async () => {
     // Mandarin (zh), Russian (ru), Arabic (ar), Japanese (ja), etc. — admin
     // serves the audio but apps/web UI chrome ships only en/es/fr/pt/de.
     resolveWatchVideoBySlugMock.mockResolvedValue(

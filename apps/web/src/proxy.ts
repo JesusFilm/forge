@@ -6,6 +6,7 @@ import {
   isLocale,
   parseAcceptLanguage,
 } from "@/lib/locale"
+import { WATCH_PATHNAME_HEADER } from "@/lib/proxy-headers"
 import { canonicalizeWatchPath } from "@/lib/url-canonicalize"
 import {
   getWatchLocaleSegmentIndex,
@@ -42,7 +43,11 @@ export type ProxyRequest = {
     clone: () => URL
   }
   cookies: { get: (name: string) => { value: string } | undefined }
-  headers: { get: (name: string) => string | null }
+  // Real `Headers` (not just `{ get }`) because `nextWithPathname` forwards
+  // the inbound headers via `new Headers(request.headers)` for the
+  // WATCH_PATHNAME_HEADER contract. Production `NextRequest.headers` is a
+  // `Headers`; the test fixture builds a real `Headers` too.
+  headers: Headers
 }
 
 // Cache-Control emitted on every proxy-issued redirect during the cutover
@@ -82,6 +87,29 @@ function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set("Content-Security-Policy", "frame-ancestors 'self'")
   response.headers.set("Referrer-Policy", "strict-origin")
   return response
+}
+
+// Forward the watch URL pathname to the root layout via WATCH_PATHNAME_HEADER.
+// Layouts render BEFORE pages in App Router; without this header, the layout
+// has no way to know the URL when it needs to derive UI chrome locale for
+// `<html lang>` + NextIntlClientProvider. Pages also call setRequestLocale
+// defensively, but the layout's getLocale() runs first and would otherwise
+// see the default locale every render.
+//
+// Defense-in-depth: `headers.delete()` before `set()` strips any inbound
+// client-supplied value. `Headers.set` already overwrites, so this is
+// belt-and-braces — the actual safety net against header spoofing is the
+// `resolveUiLocale` + `hasUiLocale` gate in app/layout.tsx (a spoofed
+// pathname that doesn't classify to a valid locale falls through to
+// DEFAULT_LOCALE). See `apps/web/src/lib/proxy-headers.ts` for the contract.
+function nextWithPathname(
+  request: ProxyRequest,
+  pathname: string,
+): NextResponse {
+  const headers = new Headers(request.headers)
+  headers.delete(WATCH_PATHNAME_HEADER)
+  headers.set(WATCH_PATHNAME_HEADER, pathname)
+  return NextResponse.next({ request: { headers } })
 }
 
 // Query params that are deliberate one-shot signals tied to the originating
@@ -171,7 +199,7 @@ export function proxy(request: ProxyRequest): NextResponse {
   // Step 3: CSP / Referrer headers for watch routes (both .html and
   // legacy bare 2-segment forms; 3-segment episode shape included).
   if (isWatchRoute(pathname)) {
-    return applyWatchSecurityHeaders(NextResponse.next())
+    return applyWatchSecurityHeaders(nextWithPathname(request, pathname))
   }
 
   // Step 4: Accept-Language fallback for non-watch shapes. Preserved
@@ -180,12 +208,12 @@ export function proxy(request: ProxyRequest): NextResponse {
   const segments = pathname.split("/").filter(Boolean)
   const lastSegment = segments[segments.length - 1]
   if (lastSegment && isLocale(lastSegment)) {
-    return NextResponse.next()
+    return nextWithPathname(request, pathname)
   }
 
   const detected = parseAcceptLanguage(request.headers.get("accept-language"))
   if (!detected || detected === DEFAULT_LOCALE) {
-    return NextResponse.next()
+    return nextWithPathname(request, pathname)
   }
 
   const url = request.nextUrl.clone()

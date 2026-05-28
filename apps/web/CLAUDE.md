@@ -41,6 +41,17 @@ Required env vars (both flipped from `.optional()` in U13):
 - For browser-initiated data calls, write a `"use server"` action that wraps the resolver — see `src/lib/search-actions.ts`. The browser hits the action; the action hits admin with the bearer.
 - ISR cache: `unstable_cache` wrappers in `src/lib/content.ts` use `revalidate: 60`. `revalidatePath` from `/api/revalidate` does NOT invalidate `unstable_cache` entries — tag-based invalidation is a known follow-up. Today the worst-case staleness is 60 s after a publish.
 - 15 orphaned Strapi block fragment files remain at `src/lib/fragments/*` because section components in `src/components/sections/*.tsx` still derive prop types via `FragmentOf<typeof strapiFragment>`. Runtime data is admin-shape via the renderer's `as unknown as` cast bridge. Migrating section components to admin fragment imports is a clean follow-up bundle.
+- **Dynamic root layout via `headers()`**: `src/app/layout.tsx` reads the proxy-set `WATCH_PATHNAME_HEADER` via `headers()` so it can derive the UI chrome locale for `<html lang>` + `setRequestLocale` BEFORE pages render. Per Next.js semantics, any `headers()` call in the root layout flips every descendant route to dynamic at build time. `/videos` + `/_not-found` are no longer statically rendered (small surface; placeholders today). The watch routes were already dynamic. Any new route that needs ISR + must live under root layout cannot be static while this pattern holds — see `docs/solutions/web/nextjs-headers-defeats-route-cache.md`.
+
+## i18n
+
+Locale propagation flow: URL (`/watch/{slug}.html/{lang}.html`) → `src/proxy.ts` writes `WATCH_PATHNAME_HEADER` → `src/app/layout.tsx` reads via `headers()`, strips `.html` off the last segment, runs `resolveUiLocale` → `setRequestLocale(derived)` BEFORE any next-intl call → pages defensively re-set. The URL is the sole locale carrier — no cookie, no `[locale]` segment, no `next-intl/middleware` composition.
+
+Adding a UI locale: drop `messages/{locale}.json` AND widen `UI_LOCALE_FAMILIES` in `src/lib/locale.ts`. The drift gate in `src/i18n/__tests__/messages-parity.test.ts` fails CI if you forget either. The structural-parity test also enforces every namespace key exists in every catalog.
+
+Critical: `src/i18n/locales.ts` uses `readdirSync` at module load to discover catalogs. This pattern is INTENTIONAL for i18n only — do NOT copy it into request-path modules (filesystem I/O in the request path is a regression). The shared header constant lives in `src/lib/proxy-headers.ts`; both producer (`proxy.ts`) and consumer (`layout.tsx`) import from there so a rename can't drift.
+
+See `docs/plans/2026-05-28-001-feat-i18n-migration-next-intl-plan.md`.
 
 ## Feature flags
 
