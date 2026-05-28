@@ -18,8 +18,9 @@ const nextConfig = {
   // dominating the simulated-mobile LCP budget. compress:true wires
   // Next's built-in gzip middleware on every text/* response.
   compress: true,
+  // typedRoutes moved to top-level in Next 16 (stable).
+  typedRoutes: true,
   experimental: {
-    typedRoutes: true,
     optimizePackageImports: [
       "lucide-react",
       "@mux/mux-player-react",

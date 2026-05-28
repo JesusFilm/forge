@@ -1,12 +1,10 @@
 /**
  * @vitest-environment jsdom
  *
- * U5 — /[slug]/[locale] route branching.
- *
- * The page is a server component returning JSX. We mock the resolvers
- * AND the leaf components, then render the returned JSX through
- * createRoot so the mocked components actually get called. Each
- * scenario exercises a single branch of the routing logic.
+ * Catch-all route /watch/[slug]/[...rest] — segment-count dispatch for
+ * two-segment (video / series / experience) and three-segment (series
+ * episode) URL shapes. Merged from the two prior parallel route handlers
+ * (Phase 2 refactor).
  */
 
 import { act } from "react"
@@ -16,7 +14,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const {
   resolveWatchVideoBySlugMock,
   resolveSeriesBySlugMock,
+  resolveSeriesEpisodeBySlugMock,
   resolveWatchPageMock,
+  notFoundMock,
+  redirectMock,
   seriesPageClientMock,
   watchPageClientMock,
   experienceEmptyMock,
@@ -24,7 +25,14 @@ const {
 } = vi.hoisted(() => ({
   resolveWatchVideoBySlugMock: vi.fn(),
   resolveSeriesBySlugMock: vi.fn(),
+  resolveSeriesEpisodeBySlugMock: vi.fn(),
   resolveWatchPageMock: vi.fn(),
+  notFoundMock: vi.fn(() => {
+    throw new Error("NEXT_NOT_FOUND")
+  }),
+  redirectMock: vi.fn((destination: string) => {
+    throw new Error(`NEXT_REDIRECT:${destination}`)
+  }),
   seriesPageClientMock: vi.fn(
     (_props: { series: unknown; selectedVariant: unknown; locale: string }) =>
       null,
@@ -34,8 +42,6 @@ const {
   experienceErrorMock: vi.fn(() => null),
 }))
 
-// Stub the admin Apollo client so the jsdom test environment doesn't trip
-// t3-env's server-only guard on `WEB_ADMIN_API_KEYS` when content.ts loads.
 vi.mock("@/lib/admin-client", () => ({
   default: { query: vi.fn() },
 }))
@@ -47,9 +53,15 @@ vi.mock("@/lib/content", async () => {
     ...actual,
     resolveWatchVideoBySlug: resolveWatchVideoBySlugMock,
     resolveSeriesBySlug: resolveSeriesBySlugMock,
+    resolveSeriesEpisodeBySlug: resolveSeriesEpisodeBySlugMock,
     resolveWatchPage: resolveWatchPageMock,
   }
 })
+
+vi.mock("next/navigation", () => ({
+  notFound: notFoundMock,
+  redirect: redirectMock,
+}))
 
 vi.mock("@/components/watch/SeriesPageClient", () => ({
   SeriesPageClient: seriesPageClientMock,
@@ -71,7 +83,7 @@ vi.mock("@/components/sections", () => ({
   ExperienceSectionRenderer: vi.fn(() => null),
 }))
 
-import SlugLocalePage from "@/app/[slug]/[locale]/page"
+import SlugRestPage from "@/app/[slug]/[...rest]/page"
 
 let container: HTMLDivElement
 let root: Root
@@ -79,11 +91,11 @@ let root: Root
 beforeEach(() => {
   resolveWatchVideoBySlugMock.mockReset()
   resolveSeriesBySlugMock.mockReset()
+  resolveSeriesEpisodeBySlugMock.mockReset()
   resolveWatchPageMock.mockReset()
-  // Default: no Experience curated for the slug. The page now consults
-  // resolveWatchPage up-front to honor Experience precedence over slug-
-  // colliding videos; tests that want to override this set their own
-  // mockResolvedValue. The error sentinel matches isWatchPageMissingError.
+  notFoundMock.mockClear()
+  redirectMock.mockClear()
+  // Default: no Experience curated for the slug.
   resolveWatchPageMock.mockResolvedValue({
     data: null,
     error: new Error("No experience found"),
@@ -158,25 +170,87 @@ function makeSeriesResult() {
   }
 }
 
-async function renderPage(slug: string, locale: string) {
-  const element = await SlugLocalePage({
-    params: Promise.resolve({ slug, locale }),
+function makeEpisodeResult(
+  variantLang: { slug: string; bcp47: string; name: string } = {
+    slug: "english",
+    bcp47: "en",
+    name: "English",
+  },
+) {
+  return {
+    video: {
+      documentId: "ep-1",
+      slug: "wedding-in-cana",
+      title: "Wedding in Cana",
+      label: "episode",
+      images: [],
+      children: [],
+      variants: [],
+      parents: [
+        {
+          documentId: "series-1",
+          slug: "lumo-the-gospel-of-john",
+          title: "Lumo Gospel of John",
+          label: "series",
+          images: [],
+          children: [],
+        },
+      ],
+    },
+    canonicalParent: {
+      documentId: "series-1",
+      slug: "lumo-the-gospel-of-john",
+      title: "Lumo Gospel of John",
+      label: "series",
+      images: [],
+      children: [],
+    },
+    series: {
+      documentId: "series-1",
+      slug: "lumo-the-gospel-of-john",
+      title: "Lumo Gospel of John",
+      label: "series",
+      images: [],
+      children: [],
+    },
+    selectedVariant: {
+      documentId: "var-1",
+      hls: "https://cdn.example/ep.m3u8",
+      muxVideo: { playbackId: "pb-1" },
+      language: variantLang,
+      published: true,
+      duration: 30,
+      downloads: [],
+    },
+  }
+}
+
+async function render2Seg(slug: string, locale: string) {
+  const element = await SlugRestPage({
+    params: Promise.resolve({ slug, rest: [locale] }),
   })
   act(() => {
     root.render(element)
   })
 }
 
-describe("SlugLocalePage routing — series branch", () => {
+async function render3Seg(slug: string, episode: string, locale: string) {
+  const element = await SlugRestPage({
+    params: Promise.resolve({ slug, rest: [episode, locale] }),
+  })
+  act(() => {
+    root.render(element)
+  })
+}
+
+describe("Catch-all routing — series branch (2-seg)", () => {
   it("renders SeriesPageClient when video resolver returns a COLLECTION-labeled record", async () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(
       makeWatchVideoResult("collection"),
     )
-    await renderPage("storyclubs", "en")
+    await render2Seg("storyclubs", "en")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
-    // Single round-trip: the series resolver should NOT be hit when the
-    // video resolver already returned a series-shaped record.
     expect(resolveSeriesBySlugMock).not.toHaveBeenCalled()
   })
 
@@ -184,7 +258,7 @@ describe("SlugLocalePage routing — series branch", () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(
       makeWatchVideoResult("series"),
     )
-    await renderPage("any-series", "en")
+    await render2Seg("any-series", "en")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
   })
@@ -193,17 +267,14 @@ describe("SlugLocalePage routing — series branch", () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(
       makeWatchVideoResult("featureFilm"),
     )
-    await renderPage("jesus", "en")
+    await render2Seg("jesus", "en")
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
     expect(seriesPageClientMock).not.toHaveBeenCalled()
   })
 })
 
-describe("SlugLocalePage routing — Experience precedence", () => {
-  it("renders Experience and skips video resolver when an Experience exists for the slug", async () => {
-    // Slug "easter" exists as BOTH a COLLECTION-labeled Video and a
-    // curated Experience. The Experience is the editor's intended
-    // landing and must win.
+describe("Catch-all routing — Experience precedence (2-seg)", () => {
+  it("renders Experience and skips video resolver when Experience exists for the slug", async () => {
     resolveWatchPageMock.mockResolvedValue({
       data: {
         kind: "experience",
@@ -219,13 +290,13 @@ describe("SlugLocalePage routing — Experience precedence", () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(
       makeWatchVideoResult("collection"),
     )
-    await renderPage("easter", "en")
+    await render2Seg("easter", "en")
     expect(seriesPageClientMock).not.toHaveBeenCalled()
     expect(watchPageClientMock).not.toHaveBeenCalled()
     expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
   })
 
-  it("falls through to video resolver when Experience exists but has no blocks", async () => {
+  it("falls through to ExperienceEmpty when Experience has no blocks", async () => {
     resolveWatchPageMock.mockResolvedValue({
       data: {
         kind: "experience",
@@ -233,17 +304,17 @@ describe("SlugLocalePage routing — Experience precedence", () => {
       },
       error: null,
     })
-    await renderPage("x", "en")
+    await render2Seg("x", "en")
     expect(experienceEmptyMock).toHaveBeenCalledTimes(1)
     expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
   })
 })
 
-describe("SlugLocalePage routing — series-without-trailer fallthrough", () => {
-  it("falls through to resolveSeriesBySlug when video resolver returns null and renders SeriesPageClient", async () => {
+describe("Catch-all routing — series-without-trailer fallthrough (2-seg)", () => {
+  it("falls through to resolveSeriesBySlug when video resolver returns null", async () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(null)
     resolveSeriesBySlugMock.mockResolvedValue(makeSeriesResult())
-    await renderPage("storyclubs-no-trailer", "en")
+    await render2Seg("storyclubs-no-trailer", "en")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(resolveSeriesBySlugMock).toHaveBeenCalledWith(
       "storyclubs-no-trailer",
@@ -252,25 +323,25 @@ describe("SlugLocalePage routing — series-without-trailer fallthrough", () => 
     expect(watchPageClientMock).not.toHaveBeenCalled()
   })
 
-  it("falls through to ExperienceEmpty when both resolvers return null and resolveWatchPage reports missing", async () => {
+  it("renders ExperienceEmpty when both resolvers return null and watchPage reports missing", async () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(null)
     resolveSeriesBySlugMock.mockResolvedValue(null)
     resolveWatchPageMock.mockResolvedValue({
       data: null,
       error: { message: "No experience found" },
     })
-    await renderPage("missing-slug", "en")
+    await render2Seg("missing-slug", "en")
     expect(experienceEmptyMock).toHaveBeenCalledTimes(1)
     expect(seriesPageClientMock).not.toHaveBeenCalled()
     expect(watchPageClientMock).not.toHaveBeenCalled()
   })
 })
 
-describe("SlugLocalePage routing — passes correct props to SeriesPageClient", () => {
-  it("passes selectedVariant from the video resolver in trailer-mode series rendering", async () => {
+describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () => {
+  it("passes selectedVariant in trailer-mode series rendering", async () => {
     const watchVideo = makeWatchVideoResult("collection")
     resolveWatchVideoBySlugMock.mockResolvedValue(watchVideo)
-    await renderPage("storyclubs", "en")
+    await render2Seg("storyclubs", "en")
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.selectedVariant).toBe(watchVideo.selectedVariant)
     expect(args?.locale).toBe("en")
@@ -279,49 +350,39 @@ describe("SlugLocalePage routing — passes correct props to SeriesPageClient", 
   it("passes selectedVariant=null in static-mode (trailerless) series rendering", async () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(null)
     resolveSeriesBySlugMock.mockResolvedValue(makeSeriesResult())
-    await renderPage("storyclubs-no-trailer", "en")
+    await render2Seg("storyclubs-no-trailer", "en")
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.selectedVariant).toBeNull()
     expect(args?.locale).toBe("en")
   })
 
-  it("passes the raw slug-form locale (e.g. 'spanish-castilian') in trailer-mode, NOT the bcp47-normalised value", async () => {
-    // When the language switcher writes a slug-form locale, the URL
-    // path is /{slug}/spanish-castilian. isLocale("spanish-castilian")
-    // returns false, so the bcp47-normalised value would collapse to
-    // DEFAULT_LOCALE ("en") and the combobox/globe modal would render
-    // English instead of the user's actual selection. The page must
-    // forward rawLocale into SeriesPageClient. Variant carries the
-    // matching slug-form language so the URL-↔-variant sync redirect
-    // does not fire and rewrite the URL to "english".
+  it("passes raw slug-form locale (spanish-castilian) in trailer-mode, NOT bcp47-normalised", async () => {
     const watchVideo = makeWatchVideoResult("collection", {
       slug: "spanish-castilian",
       bcp47: "es",
       name: "Spanish, Castilian",
     })
     resolveWatchVideoBySlugMock.mockResolvedValue(watchVideo)
-    await renderPage("storyclubs", "spanish-castilian")
+    await render2Seg("storyclubs", "spanish-castilian")
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.locale).toBe("spanish-castilian")
   })
 
-  it("passes the raw slug-form locale in static-mode (trailerless) too", async () => {
+  it("passes raw slug-form locale in static-mode (trailerless) too", async () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(null)
     resolveSeriesBySlugMock.mockResolvedValue(makeSeriesResult())
-    await renderPage("storyclubs-no-trailer", "spanish-castilian")
+    await render2Seg("storyclubs-no-trailer", "spanish-castilian")
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.locale).toBe("spanish-castilian")
   })
 })
 
-describe("SlugLocalePage routing — .html shape acceptance", () => {
-  it("strips .html from slug and locale params before dispatch (2-segment canonical shape)", async () => {
+describe("Catch-all routing — .html shape acceptance (2-seg)", () => {
+  it("strips .html from slug and locale params before dispatch (canonical shape)", async () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(
       makeWatchVideoResult("collection"),
     )
-    // /watch/storyclubs.html/english.html — production canonical shape.
-    await renderPage("storyclubs.html", "english.html")
-    // Resolver receives stripped values; series page receives stripped locale.
+    await render2Seg("storyclubs.html", "english.html")
     expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
       "storyclubs",
       "english",
@@ -338,7 +399,7 @@ describe("SlugLocalePage routing — .html shape acceptance", () => {
         name: "Spanish, Castilian",
       }),
     )
-    await renderPage("storyclubs.html", "spanish-castilian.html")
+    await render2Seg("storyclubs.html", "spanish-castilian.html")
     expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
       "storyclubs",
       "spanish-castilian",
@@ -351,10 +412,100 @@ describe("SlugLocalePage routing — .html shape acceptance", () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(
       makeWatchVideoResult("collection"),
     )
-    await renderPage("storyclubs", "english")
+    await render2Seg("storyclubs", "english")
     expect(resolveWatchVideoBySlugMock).toHaveBeenCalledWith(
       "storyclubs",
       "english",
     )
+  })
+})
+
+describe("Catch-all routing — 3-seg episode branch", () => {
+  it("renders WatchPageClient when episode + series resolve", async () => {
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+    await render3Seg("lumo-the-gospel-of-john", "wedding-in-cana", "english")
+    expect(watchPageClientMock).toHaveBeenCalledTimes(1)
+    expect(resolveSeriesEpisodeBySlugMock).toHaveBeenCalledWith(
+      "lumo-the-gospel-of-john",
+      "wedding-in-cana",
+      "english",
+    )
+  })
+
+  it("strips .html from segments 0 and 2 (canonical 3-seg shape)", async () => {
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+    await render3Seg(
+      "lumo-the-gospel-of-john.html",
+      "wedding-in-cana",
+      "english.html",
+    )
+    expect(resolveSeriesEpisodeBySlugMock).toHaveBeenCalledWith(
+      "lumo-the-gospel-of-john",
+      "wedding-in-cana",
+      "english",
+    )
+  })
+
+  it("defensively strips .html from episode segment if present", async () => {
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+    await render3Seg("lumo.html", "wedding-in-cana.html", "english.html")
+    expect(resolveSeriesEpisodeBySlugMock).toHaveBeenCalledWith(
+      "lumo",
+      "wedding-in-cana",
+      "english",
+    )
+  })
+
+  it("calls notFound() when resolver returns null", async () => {
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(null)
+    await expect(
+      render3Seg("lumo", "missing-episode", "english"),
+    ).rejects.toThrow("NEXT_NOT_FOUND")
+    expect(notFoundMock).toHaveBeenCalledTimes(1)
+    expect(watchPageClientMock).not.toHaveBeenCalled()
+  })
+
+  it("redirects to canonical .html shape when URL locale doesn't match selected variant", async () => {
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+    await expect(
+      render3Seg("lumo-the-gospel-of-john", "wedding-in-cana", "german"),
+    ).rejects.toThrow(
+      /NEXT_REDIRECT:\/lumo-the-gospel-of-john\.html\/wedding-in-cana\/english\.html\?_lr=1/,
+    )
+  })
+
+  it("does NOT redirect when URL locale matches selected variant", async () => {
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+    await render3Seg("lumo-the-gospel-of-john", "wedding-in-cana", "english")
+    expect(redirectMock).not.toHaveBeenCalled()
+    expect(watchPageClientMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("forwards rawLocale (slug-form) into WatchPageClient", async () => {
+    const result = makeEpisodeResult({
+      slug: "spanish-castilian",
+      bcp47: "es",
+      name: "Spanish, Castilian",
+    })
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(result)
+    await render3Seg(
+      "lumo-the-gospel-of-john",
+      "wedding-in-cana",
+      "spanish-castilian",
+    )
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      languageSlug?: string
+    }
+    expect(props?.languageSlug).toBe("spanish-castilian")
+  })
+})
+
+describe("Catch-all routing — unknown shape", () => {
+  it("calls notFound() for 4+ segments (rest.length >= 3)", async () => {
+    const element = SlugRestPage({
+      params: Promise.resolve({ slug: "lumo", rest: ["a", "b", "c"] }),
+    })
+    await expect(element).rejects.toThrow("NEXT_NOT_FOUND")
+    expect(notFoundMock).toHaveBeenCalledTimes(1)
   })
 })
