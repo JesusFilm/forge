@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const rateLimitAuthRoute = vi.fn()
 const isValidSearchTraceSamplingBearer = vi.fn()
+const listSearchEvalCandidates = vi.fn()
 const storeSearchEvalCandidates = vi.fn()
 
 vi.mock("@/auth/rate-limit", () => ({ rateLimitAuthRoute }))
@@ -14,6 +15,7 @@ vi.mock("@/services/search-eval/candidates", async (original) => {
     await original<typeof import("@/services/search-eval/candidates")>()
   return {
     ...actual,
+    listSearchEvalCandidates,
     storeSearchEvalCandidates,
   }
 })
@@ -32,6 +34,15 @@ function request(body: unknown, headers: HeadersInit = {}) {
   })
 }
 
+function getRequest(path = "/api/internal/search-eval/candidates") {
+  return new Request(`http://admin.test${path}`, {
+    method: "GET",
+    headers: {
+      authorization: "Bearer trace-key",
+    },
+  })
+}
+
 function rawRequest(body: string, headers: HeadersInit = {}) {
   return new Request("http://admin.test/api/internal/search-eval/candidates", {
     method: "POST",
@@ -45,6 +56,24 @@ describe("POST /api/internal/search-eval/candidates", () => {
     vi.clearAllMocks()
     rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
     isValidSearchTraceSamplingBearer.mockReturnValue(true)
+    listSearchEvalCandidates.mockResolvedValue([
+      {
+        id: "candidate-1",
+        source: "catalog",
+        locale: "en",
+        queryText: "Jesus",
+        expectedResultHints: [],
+        sourceAnchors: [],
+        labelProvenance: {},
+        generationModel: "seed:v1",
+        generationProvider: "mastra",
+        judgeSummary: null,
+        mastraRunId: "run-1",
+        retentionExpiresAt: null,
+        generatedAt: "2026-05-26T00:00:00.000Z",
+        createdAt: "2026-05-26T00:00:00.000Z",
+      },
+    ])
     storeSearchEvalCandidates.mockResolvedValue({
       storedCount: 1,
       skippedCount: 0,
@@ -117,10 +146,17 @@ describe("POST /api/internal/search-eval/candidates", () => {
 
     const response = await POST({
       headers: new Headers({ authorization: "Bearer trace-key" }),
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode("{}"))
+          controller.close()
+        },
+      }),
       text,
     } as unknown as Request)
 
     expect(response.status).toBe(429)
+    expect(response.headers.get("retry-after")).toBe("60")
     expect(isValidSearchTraceSamplingBearer).not.toHaveBeenCalled()
     expect(text).not.toHaveBeenCalled()
   })
@@ -147,6 +183,24 @@ describe("POST /api/internal/search-eval/candidates", () => {
       }),
       text: vi.fn(async () => "{}"),
     } as unknown as Request)
+    expect(response.status).toBe(413)
+    expect(storeSearchEvalCandidates).not.toHaveBeenCalled()
+  })
+
+  it("rejects chunked bodies after the byte cap without fully parsing", async () => {
+    const response = await POST({
+      headers: new Headers({
+        authorization: "Bearer trace-key",
+        "content-type": "application/json",
+      }),
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array(64 * 1024 + 1))
+          controller.close()
+        },
+      }),
+    } as unknown as Request)
+
     expect(response.status).toBe(413)
     expect(storeSearchEvalCandidates).not.toHaveBeenCalled()
   })
@@ -227,7 +281,7 @@ describe("POST /api/internal/search-eval/candidates", () => {
   })
 
   it("sanitizes caller-controlled run id in audit logs", async () => {
-    const logSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    const logSpy = vi.spyOn(console, "info").mockImplementation(() => {})
 
     const response = await POST(
       request({
@@ -252,9 +306,159 @@ describe("POST /api/internal/search-eval/candidates", () => {
 })
 
 describe("GET /api/internal/search-eval/candidates", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
+    isValidSearchTraceSamplingBearer.mockReturnValue(true)
+    listSearchEvalCandidates.mockResolvedValue([
+      {
+        id: "candidate-1",
+        source: "catalog",
+        locale: "en",
+        queryText: "Jesus",
+        expectedResultHints: [],
+        sourceAnchors: [],
+        labelProvenance: {},
+        generationModel: "seed:v1",
+        generationProvider: "mastra",
+        judgeSummary: null,
+        mastraRunId: "run-1",
+        retentionExpiresAt: null,
+        generatedAt: "2026-05-26T00:00:00.000Z",
+        createdAt: "2026-05-26T00:00:00.000Z",
+      },
+    ])
+  })
+
   it("does not expose candidate storage without bearer auth", async () => {
-    const response = await GET()
+    isValidSearchTraceSamplingBearer.mockReturnValue(false)
+    const response = await GET(getRequest())
 
     expect(response.status).toBe(401)
+    expect(listSearchEvalCandidates).not.toHaveBeenCalled()
+  })
+
+  it("lists bounded generated candidates for a valid bearer", async () => {
+    const response = await GET(
+      getRequest(
+        "/api/internal/search-eval/candidates?source=catalog,trace&locale=en&mastraRunId=run-1&limit=10",
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      candidates: [
+        {
+          id: "candidate-1",
+          source: "catalog",
+          locale: "en",
+          queryText: "Jesus",
+          expectedResultHints: [],
+          sourceAnchors: [],
+          labelProvenance: {},
+          generationModel: "seed:v1",
+          generationProvider: "mastra",
+          judgeSummary: null,
+          mastraRunId: "run-1",
+          retentionExpiresAt: null,
+          generatedAt: "2026-05-26T00:00:00.000Z",
+          createdAt: "2026-05-26T00:00:00.000Z",
+        },
+      ],
+      generatedAt: expect.any(String),
+    })
+    expect(listSearchEvalCandidates).toHaveBeenCalledWith(
+      {},
+      {
+        sources: ["catalog", "trace"],
+        locales: ["en"],
+        mastraRunId: "run-1",
+        limit: 10,
+      },
+    )
+  })
+
+  it("returns trace-derived candidates without raw query text", async () => {
+    listSearchEvalCandidates.mockResolvedValueOnce([
+      {
+        id: "candidate-trace",
+        source: "trace",
+        locale: "en",
+        queryText: "raw trace query",
+        expectedResultHints: ["raw trace query"],
+        sourceAnchors: [
+          {
+            queryHash:
+              "b54c7a2c2d7f75f6f139d885e9202f9ec5db932e8a2d17e0efba2a9f0c3d4e5f",
+            text: "raw trace query",
+          },
+        ],
+        labelProvenance: {
+          rawQueryText: "raw trace query",
+          publicQueryHash:
+            "b54c7a2c2d7f75f6f139d885e9202f9ec5db932e8a2d17e0efba2a9f0c3d4e5f",
+        },
+        generationModel: "raw trace query",
+        generationProvider: "raw trace query",
+        judgeSummary: { rationale: "raw trace query" },
+        mastraRunId: "raw trace query",
+        retentionExpiresAt: "2026-06-01T00:00:00.000Z",
+        generatedAt: "2026-05-26T00:00:00.000Z",
+        createdAt: "2026-05-26T00:00:00.000Z",
+      },
+    ])
+
+    const response = await GET(
+      getRequest("/api/internal/search-eval/candidates?source=trace"),
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.candidates[0]).toMatchObject({
+      id: "candidate-trace",
+      source: "trace",
+      queryText: null,
+      expectedResultHints: [],
+      sourceAnchors: [],
+      labelProvenance: { source: "trace", redacted: true },
+      generationModel: "trace:redacted",
+      generationProvider: null,
+      judgeSummary: null,
+      mastraRunId: null,
+    })
+    expect(JSON.stringify(body)).not.toContain("raw trace")
+    expect(JSON.stringify(body)).not.toContain(
+      "b54c7a2c2d7f75f6f139d885e9202f9ec5db932e8a2d17e0efba2a9f0c3d4e5f",
+    )
+  })
+
+  it("rejects invalid read filters", async () => {
+    for (const path of [
+      "/api/internal/search-eval/candidates?source=bad",
+      "/api/internal/search-eval/candidates?limit=0",
+      "/api/internal/search-eval/candidates?limit=101",
+    ]) {
+      const response = await GET(getRequest(path))
+      expect(response.status).toBe(400)
+    }
+    expect(listSearchEvalCandidates).not.toHaveBeenCalled()
+  })
+
+  it("maps candidate read outages to a sanitized 503", async () => {
+    const logSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    listSearchEvalCandidates.mockRejectedValueOnce(
+      new Error("db password leak"),
+    )
+
+    const response = await GET(getRequest())
+
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toEqual({
+      error: "Candidate storage is temporarily unavailable",
+    })
+    const serializedLogs = JSON.stringify(logSpy.mock.calls)
+    expect(serializedLogs).toContain("error_class=Error")
+    expect(serializedLogs).not.toContain("db password leak")
+    logSpy.mockRestore()
   })
 })

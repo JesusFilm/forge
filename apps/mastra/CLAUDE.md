@@ -71,7 +71,7 @@ pnpm --filter @forge/mastra lint
 | `DATABASE_URL`                           | Postgres connection string for Mastra runtime storage. Required in production runtime.                                     |
 | `MASTRA_SERVICE_API_KEYS`                | CSV allowlist for service bearer calls. Required in production runtime.                                                    |
 | `MASTRA_STORAGE_DIR`                     | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway. |
-| `OPENROUTER_API_KEY`                     | Preferred transcript embedding provider key; matches the repo's existing OpenRouter embedding convention.                  |
+| `OPENROUTER_API_KEY`                     | OpenRouter key for locale-quality eval query generation and offline compare judging. Required for compare mode.            |
 | `OPENROUTER_EMBEDDINGS_BASE_URL`         | Optional OpenRouter-compatible embedding base URL. Defaults to OpenRouter's `/api/v1` endpoint.                            |
 | `OPENAI_API_KEY`                         | Fallback model provider key for smoke agent/model-routed calls and transcript embeddings when OpenRouter is unavailable.   |
 | `OPENAI_EMBEDDINGS_BASE_URL`             | Optional OpenAI-compatible embedding provider base URL. Defaults to OpenAI's `/v1` endpoint.                               |
@@ -91,7 +91,10 @@ pnpm --filter @forge/mastra lint
 | `ADMIN_SEARCH_TRACE_SAMPLE_URL`          | Admin internal trace sample endpoint for eval query generation. Required only when running that workflow.                  |
 | `ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL`  | Admin internal compact catalog context endpoint for eval query generation. Required only when running that workflow.       |
 | `ADMIN_SEARCH_EVAL_CANDIDATES_URL`       | Admin internal generated-candidate storage endpoint for eval query generation. Required only when running that workflow.   |
+| `ADMIN_SEARCH_EVAL_SEARCH_URL`           | Admin internal no-trace search endpoint for offline search eval. Required only when running the offline eval workflow.     |
 | `ADMIN_SEARCH_EVAL_API_KEY`              | Bearer key Mastra presents to Admin search-eval routes. Must match Admin's dedicated sampling/eval key allowlist.          |
+| `MASTRA_SEARCH_EVAL_ARTIFACT_DIR`        | Optional directory for Mastra-owned offline search eval baseline and report JSON artifacts. Defaults under Mastra storage. |
+| `SEARCH_EVAL_JUDGE_MODEL`                | OpenRouter chat model stamp for offline search eval judging. Defaults to `anthropic/claude-haiku-4-5`.                     |
 | `PORT`                                   | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                          |
 | `MASTRA_STUDIO_PATH`                     | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                          |
 
@@ -109,6 +112,32 @@ candidates as staged Admin rows with source, locale, provenance, source
 anchors, advisory judge summary, generation model/provider, Mastra run id, and
 promotion status. Trace-derived candidates keep Admin's raw trace expiry so the
 retention job can remove them before the 30-day ceiling.
+
+## Offline search eval
+
+The service route `POST /forge-offline-search-eval` is protected by
+`MASTRA_SERVICE_API_KEYS` and launches the `offline-search-eval` workflow.
+Supported modes are `capture-baseline` and `compare`. Baseline capture runs the
+Mastra-owned seed prompt set against Admin's internal no-trace search endpoint,
+then stores a named baseline artifact under the Mastra eval artifact directory.
+Comparison runs load a named baseline, call Admin search again, judge
+baseline-vs-current results with A/B swap calibration, and write a report
+artifact.
+
+Keep this workflow Studio-friendly: the workflow and first step must expose a
+strict structured input schema, not `z.unknown()`. Defaults should let an
+operator run the seed baseline from Studio without hand-written JSON:
+`mode=capture-baseline`, `baselineName=seed-baseline`, all seeded locales,
+`searchLimit=20`, `searchMode=hybrid`, and `contentType=all`. Use explicit
+`all` options for filter enums when Studio should run both corpora; avoid
+nullable defaults because Studio renders them as awkward `OR` controls.
+
+Admin remains the live search authority. Mastra never queries Admin Postgres,
+never imports Admin code, never generates live query embeddings, and never
+enters the public search request path. The Studio-facing offline eval workflow
+is seed-only for now. Generated candidates from the feat-138 staging table are
+not exposed as operator inputs, are not stored in baselines, and do not become
+regression gates.
 
 ## Railway Storage
 
