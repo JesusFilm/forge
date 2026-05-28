@@ -55,3 +55,31 @@ export function getWatchLocaleSegmentIndex(
   if (segments.length === 3) return 2
   return -1
 }
+
+// Origin-invariance + header-injection guard. Matches any path that could
+// escape origin (leading `//`, backslash) or carry CRLF / percent-encoded
+// CRLF for header injection. Single source of truth: both
+// url-canonicalize.ts (input + output revalidation) and proxy.ts (cookie
+// redirect output revalidation) test every synthesized Location against it.
+export const UNSAFE_PATH_PATTERN = /(^\/\/)|[\\\r\n]|(%0[ad])/i
+
+/**
+ * True if a synthesized redirect path could escape origin or inject
+ * headers. Combines the `UNSAFE_PATH_PATTERN` scan with the absolute-path
+ * + no-protocol-relative invariants. Every redirect Location built from
+ * partly-untrusted input MUST pass `!isUnsafeRedirectPath(path)` before
+ * being emitted.
+ */
+export function isUnsafeRedirectPath(path: string): boolean {
+  return (
+    UNSAFE_PATH_PATTERN.test(path) ||
+    !path.startsWith("/") ||
+    path.startsWith("//")
+  )
+}
+
+// Kebab-case ASCII slug: lowercase alphanumerics + hyphen. The canonical
+// URL-segment vocabulary. Single source of truth shared by proxy.ts (the
+// language-preference cookie validator) and url-canonicalize.ts (the Rule 5
+// single-segment-duplicate guard that rejects host-shaped segments).
+export const SAFE_SLUG_PATTERN = /^[a-z0-9-]+$/
