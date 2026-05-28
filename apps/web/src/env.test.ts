@@ -25,7 +25,7 @@ describe("web env — YouVersion server config", () => {
     const { env } = await import("./env")
 
     expect(env.YOUVERSION_APP_KEY).toBeUndefined()
-    expect(env.YOUVERSION_DEFAULT_VERSION_ID).toBe(111)
+    expect(env.YOUVERSION_DEFAULT_VERSION_ID).toBe(3034)
   })
 
   it("treats an empty YouVersion default version as absent", async () => {
@@ -33,7 +33,7 @@ describe("web env — YouVersion server config", () => {
 
     const { env } = await import("./env")
 
-    expect(env.YOUVERSION_DEFAULT_VERSION_ID).toBe(111)
+    expect(env.YOUVERSION_DEFAULT_VERSION_ID).toBe(3034)
   })
 
   it("coerces a configured YouVersion default version id", async () => {
@@ -53,7 +53,7 @@ describe("web env — YouVersion server config", () => {
 
       const { env } = await import("./env")
 
-      expect(env.YOUVERSION_DEFAULT_VERSION_ID).toBe(111)
+      expect(env.YOUVERSION_DEFAULT_VERSION_ID).toBe(3034)
     },
   )
 })

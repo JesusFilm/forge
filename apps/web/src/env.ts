@@ -110,7 +110,7 @@ export const env = createEnv({
     // Bible Quotes passage panel. Kept server-only so the app key is never
     // serialized into browser JS or request headers from the client.
     YOUVERSION_APP_KEY: z.string().optional(),
-    YOUVERSION_DEFAULT_VERSION_ID: optionalPositiveIntDefault(111),
+    YOUVERSION_DEFAULT_VERSION_ID: optionalPositiveIntDefault(3034),
   },
   client: {
     // U12 — Mux watch-page player migration flag.
