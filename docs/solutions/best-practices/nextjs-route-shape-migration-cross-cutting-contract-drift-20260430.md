@@ -1,7 +1,7 @@
 ---
 title: "Migrating Next.js App Router route shapes: avoiding silent contract drift across URL builders, tests, and middleware"
 date: 2026-04-30
-last_refreshed: 2026-05-14
+last_refreshed: 2026-05-28
 category: docs/solutions/best-practices/
 module: apps/web
 problem_type: best_practice
@@ -126,6 +126,7 @@ This learning extends — and is concretely demonstrated by — the methodologic
 - When a discriminated-union narrowing is refactored in a SectionRenderer-style dispatcher and downstream consumers depend on a particular `kind` being threaded with its associated payload (e.g., the `routeVideo` regression on the video-template fallback)
 - When a resolver's argument list grows to include `locale` (or any URL-derived parameter) — verify it actually drives selection, not just the cache key
 - Before every PR that includes both a route-handler file rename/delete _and_ a same-PR commit titled like "U-N: refit modals" — that combination is the canonical fan-out refactor and warrants a `/ce-code-review` pass before merge
+- **When a URL canonicalizer / normalizer is guarded by an idempotence property test** (`f(f(x)) === f(x)`) — that property holds VACUOUSLY for malformed inputs that no rule's precondition matches (they're their own fixed point). Add an output-shape contract property test that inspects both `kind: "redirect"` AND `kind: "canonical"` outputs against each downstream invariant. See [idempotence-property-test-vacuous-on-malformed-fixed-point-20260528.md](idempotence-property-test-vacuous-on-malformed-fixed-point-20260528.md) for the worked instance (forge#1049 Rule 4 episode-bare contract miss caught during `/ce:review`).
 
 ## Examples
 
