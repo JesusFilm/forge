@@ -22,11 +22,13 @@ const webFeatureFlagClient = createFeatureFlagClient({
       env.FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT ??
       String(env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
+    FORGE_WATCH_QUESTION_PANEL_DEFAULT: env.FORGE_WATCH_QUESTION_PANEL_DEFAULT,
   },
   defaultValues: {
     "forge.watch.playerMigration": env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     "forge.watch.heroMuxVideo": env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO,
     "forge.watch.ctaTextCopy": false,
+    "forge.watch.questionPanel": false,
   },
   timeoutSeconds: 0.25,
   logger: console,
@@ -72,6 +74,15 @@ export async function isWatchCtaTextCopyEnabled(
 ): Promise<boolean> {
   return webFeatureFlagClient.booleanVariation(
     featureFlags.watchCtaTextCopy,
+    createWebFeatureFlagContext(context),
+  )
+}
+
+export async function isWatchQuestionPanelEnabled(
+  context: WebFeatureFlagContextInput = {},
+): Promise<boolean> {
+  return webFeatureFlagClient.booleanVariation(
+    featureFlags.watchQuestionPanel,
     createWebFeatureFlagContext(context),
   )
 }

@@ -92,4 +92,10 @@ flag for the watch-page Download CTA copy. `false` keeps `Download`; `true`
 renders `Save Video`. Keep `FORGE_WATCH_CTA_TEXT_COPY_DEFAULT=false` in local
 and Railway envs unless intentionally testing the fallback path.
 
+`forge.watch.questionPanel` is a temporary LaunchDarkly-backed release flag
+for the watch-page floating question panel. `false` hides the panel;
+`true` renders the floating input and message-type selector. Keep
+`FORGE_WATCH_QUESTION_PANEL_DEFAULT=false` in local and Railway envs unless
+intentionally testing the panel.
+
 See root `CLAUDE.md` for cross-app patterns and the broader data-layer-flip plan reference.

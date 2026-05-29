@@ -142,6 +142,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-130](platform/feat-130-mastra-observability-storage.md)                    | Mastra Observability Storage                            | vlad      | P1       | 2026-05-22 | 1    | 2026-05-22 | complete    |
 | [feat-132](platform/feat-132-admin-core-sync-production-error-triage.md)         | Admin Core Sync Production Error Triage                 | tataihono | P1       | 2026-05-24 | 1    | 2026-05-24 | not-started |
 | [feat-144](platform/feat-144-launchdarkly-feature-flag-foundation.md)            | LaunchDarkly Feature Flag Foundation                    | vlad      | P1       | 2026-05-27 | 2    | 2026-05-28 | complete    |
+| [feat-145](platform/feat-145-watch-question-panel-flag.md)                       | Watch Question Panel LaunchDarkly Gate                  | vlad      | P2       | 2026-05-28 | 1    | 2026-05-28 | complete    |
 | [feat-040](platform/feat-040-partner-activation-network.md)                      | Partner Activation Network                              | urim      | P1       | 2026-06-16 | 28   | 2026-07-13 | blocked     |
 | [feat-042](platform/feat-042-video-contests-and-inspiration-feed.md)             | Video Contests and Inspiration Feed                     | urim      | P1       | 2026-06-30 | 28   | 2026-07-27 | blocked     |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                                 | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |

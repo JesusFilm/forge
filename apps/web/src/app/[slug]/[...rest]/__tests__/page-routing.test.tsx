@@ -20,9 +20,11 @@ const {
   redirectMock,
   seriesPageClientMock,
   watchPageClientMock,
+  watchQuestionPanelMock,
   experienceEmptyMock,
   experienceErrorMock,
   isWatchCtaTextCopyEnabledMock,
+  isWatchQuestionPanelEnabledMock,
 } = vi.hoisted(() => ({
   resolveWatchVideoBySlugMock: vi.fn(),
   resolveSeriesBySlugMock: vi.fn(),
@@ -39,9 +41,11 @@ const {
       null,
   ),
   watchPageClientMock: vi.fn((_props: unknown) => null),
+  watchQuestionPanelMock: vi.fn((_props: unknown) => null),
   experienceEmptyMock: vi.fn(() => null),
   experienceErrorMock: vi.fn(() => null),
   isWatchCtaTextCopyEnabledMock: vi.fn(async () => false),
+  isWatchQuestionPanelEnabledMock: vi.fn(async () => false),
 }))
 
 vi.mock("@/lib/admin-client", () => ({
@@ -73,6 +77,10 @@ vi.mock("@/components/watch/WatchPageClient", () => ({
   WatchPageClient: watchPageClientMock,
 }))
 
+vi.mock("@/components/watch/WatchQuestionPanel", () => ({
+  WatchQuestionPanel: watchQuestionPanelMock,
+}))
+
 vi.mock("@/components/ExperienceEmpty", () => ({
   ExperienceEmpty: experienceEmptyMock,
 }))
@@ -87,6 +95,7 @@ vi.mock("@/components/sections", () => ({
 
 vi.mock("@/lib/feature-flags", () => ({
   isWatchCtaTextCopyEnabled: isWatchCtaTextCopyEnabledMock,
+  isWatchQuestionPanelEnabled: isWatchQuestionPanelEnabledMock,
 }))
 
 import SlugRestPage from "@/app/[slug]/[...rest]/page"
@@ -108,10 +117,13 @@ beforeEach(() => {
   })
   seriesPageClientMock.mockClear()
   watchPageClientMock.mockClear()
+  watchQuestionPanelMock.mockClear()
   experienceEmptyMock.mockClear()
   experienceErrorMock.mockClear()
   isWatchCtaTextCopyEnabledMock.mockReset()
   isWatchCtaTextCopyEnabledMock.mockResolvedValue(false)
+  isWatchQuestionPanelEnabledMock.mockReset()
+  isWatchQuestionPanelEnabledMock.mockResolvedValue(false)
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -277,6 +289,11 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     )
     await render2Seg("jesus", "en")
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        questionPanelEnabled: false,
+      }),
+    )
     expect(seriesPageClientMock).not.toHaveBeenCalled()
   })
 
@@ -294,6 +311,24 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
         downloadButtonLabel: "Save Video",
+      }),
+    )
+  })
+
+  it("passes the LaunchDarkly question panel flag to WatchPageClient when enabled", async () => {
+    isWatchQuestionPanelEnabledMock.mockResolvedValue(true)
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("featureFilm"),
+    )
+
+    await render2Seg("jesus.html", "english.html")
+
+    expect(isWatchQuestionPanelEnabledMock).toHaveBeenCalledWith({
+      custom: { route: "/watch/jesus.html/english.html" },
+    })
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        questionPanelEnabled: true,
       }),
     )
   })
@@ -318,6 +353,37 @@ describe("Catch-all routing — Experience precedence (2-seg)", () => {
     )
     await render2Seg("easter", "en")
     expect(seriesPageClientMock).not.toHaveBeenCalled()
+    expect(watchPageClientMock).not.toHaveBeenCalled()
+    expect(watchQuestionPanelMock).not.toHaveBeenCalled()
+    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+  })
+
+  it("renders the gated question panel for curated watch experiences when enabled", async () => {
+    isWatchQuestionPanelEnabledMock.mockResolvedValue(true)
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          id: "exp-1",
+          slug: "easter",
+          title: "Easter",
+          blocks: [{ __typename: "TextBlock", id: "blk-1", text: "Hello" }],
+        },
+      },
+      error: null,
+    })
+
+    await render2Seg("easter.html", "english.html")
+
+    expect(isWatchQuestionPanelEnabledMock).toHaveBeenCalledWith({
+      custom: { route: "/watch/easter.html/english.html" },
+    })
+    expect(watchQuestionPanelMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+      }),
+      undefined,
+    )
     expect(watchPageClientMock).not.toHaveBeenCalled()
     expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
   })
@@ -541,6 +607,29 @@ describe("Catch-all routing — 3-seg episode branch", () => {
     expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
         downloadButtonLabel: "Save Video",
+      }),
+    )
+  })
+
+  it("passes the LaunchDarkly question panel flag to WatchPageClient when enabled", async () => {
+    isWatchQuestionPanelEnabledMock.mockResolvedValue(true)
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+
+    await render3Seg(
+      "lumo-the-gospel-of-john.html",
+      "wedding-in-cana",
+      "english.html",
+    )
+
+    expect(isWatchQuestionPanelEnabledMock).toHaveBeenCalledWith({
+      custom: {
+        route:
+          "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      },
+    })
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        questionPanelEnabled: true,
       }),
     )
   })

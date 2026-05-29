@@ -7,6 +7,7 @@ import { ExperienceError } from "@/components/ExperienceError"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
+import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import {
   isSeriesRecord,
   isWatchPageMissingError,
@@ -21,7 +22,10 @@ import {
   getWatchPageMetadata,
 } from "@/lib/experience-metadata"
 import { hasUiLocale } from "@/i18n/locales"
-import { isWatchCtaTextCopyEnabled } from "@/lib/feature-flags"
+import {
+  isWatchCtaTextCopyEnabled,
+  isWatchQuestionPanelEnabled,
+} from "@/lib/feature-flags"
 import { DEFAULT_LOCALE, resolveUiLocale } from "@/lib/locale"
 import {
   tryAsContentSlug,
@@ -106,6 +110,12 @@ async function getDownloadButtonLabel(route: string): Promise<string> {
     custom: { route },
   })
   return useUpdatedCtaCopy ? "Save Video" : "Download"
+}
+
+async function getQuestionPanelEnabled(route: string): Promise<boolean> {
+  return isWatchQuestionPanelEnabled({
+    custom: { route },
+  })
 }
 
 export async function generateMetadata({
@@ -222,9 +232,11 @@ async function renderEpisode(shape: {
   })
   if (!mergedBlocks.length) return <ExperienceEmpty />
 
-  const downloadButtonLabel = await getDownloadButtonLabel(
-    `/watch/${seriesSlug}.html/${episodeSlug}/${rawLocale}.html`,
-  )
+  const route = `/watch/${seriesSlug}.html/${episodeSlug}/${rawLocale}.html`
+  const [downloadButtonLabel, questionPanelEnabled] = await Promise.all([
+    getDownloadButtonLabel(route),
+    getQuestionPanelEnabled(route),
+  ])
   const lcpPlaybackId = resolved.selectedVariant.muxVideo?.playbackId ?? null
 
   return (
@@ -244,6 +256,7 @@ async function renderEpisode(shape: {
         video={resolved.video}
         languageSlug={resolved.selectedVariant.language?.slug ?? rawLocale}
         locale={locale}
+        questionPanelEnabled={questionPanelEnabled}
       />
     </>
   )
@@ -256,6 +269,7 @@ async function renderVideo(shape: {
   locale: string
 }) {
   const { slug, rawLocale, locale } = shape
+  const route = `/watch/${slug}.html/${rawLocale}.html`
 
   // Experience-first precedence: when an editor curated an Experience at
   // this slug, that's the intended landing — even when a slug-colliding
@@ -268,8 +282,15 @@ async function renderVideo(shape: {
       (b): b is Section => b !== null,
     )
     if (blocks.length) {
+      const questionPanelEnabled = await getQuestionPanelEnabled(route)
       return (
-        <main className="min-h-screen bg-stone-900">
+        <main
+          className={`min-h-screen bg-stone-900 ${
+            questionPanelEnabled
+              ? "pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:pb-0"
+              : ""
+          }`}
+        >
           {blocks.map((block, i) => {
             const key =
               "id" in block && typeof block.id === "string"
@@ -283,6 +304,9 @@ async function renderVideo(shape: {
               />
             )
           })}
+          {questionPanelEnabled ? (
+            <WatchQuestionPanel enabled={questionPanelEnabled} />
+          ) : null}
         </main>
       )
     }
@@ -322,9 +346,10 @@ async function renderVideo(shape: {
       variant: watchVideo.selectedVariant,
       canonicalParent: watchVideo.canonicalParent,
     })
-    const downloadButtonLabel = await getDownloadButtonLabel(
-      `/watch/${slug}.html/${rawLocale}.html`,
-    )
+    const [downloadButtonLabel, questionPanelEnabled] = await Promise.all([
+      getDownloadButtonLabel(route),
+      getQuestionPanelEnabled(route),
+    ])
     const lcpPlaybackId =
       watchVideo.selectedVariant.muxVideo?.playbackId ?? null
     return (
@@ -344,6 +369,7 @@ async function renderVideo(shape: {
           video={watchVideo.video}
           languageSlug={watchVideo.selectedVariant.language?.slug ?? rawLocale}
           locale={locale}
+          questionPanelEnabled={questionPanelEnabled}
         />
       </>
     )
@@ -378,9 +404,16 @@ async function renderVideo(shape: {
   if (!blocks.length) {
     return <ExperienceEmpty />
   }
+  const questionPanelEnabled = await getQuestionPanelEnabled(route)
 
   return (
-    <main className="min-h-screen bg-stone-900">
+    <main
+      className={`min-h-screen bg-stone-900 ${
+        questionPanelEnabled
+          ? "pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:pb-0"
+          : ""
+      }`}
+    >
       {blocks.map((block, i) => {
         const key =
           "id" in block && typeof block.id === "string"
@@ -394,6 +427,9 @@ async function renderVideo(shape: {
           />
         )
       })}
+      {questionPanelEnabled ? (
+        <WatchQuestionPanel enabled={questionPanelEnabled} />
+      ) : null}
     </main>
   )
 }
