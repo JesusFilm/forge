@@ -83,6 +83,52 @@ describe("search eval artifact store", () => {
     await expect(store.writeReport(report())).resolves.toMatchObject({
       path: expect.stringContaining("reports/run-1.json"),
     })
+    await expect(store.readReport("run-1")).resolves.toEqual(report())
+  })
+
+  it("accepts reports after real native Evaluation records are synced", async () => {
+    const store = createSearchEvalArtifactStore(rootDir)
+    const syncedReport: SearchEvalReport = {
+      ...report(),
+      mastraEvaluation: {
+        integrationStatus: "native_synced",
+        dataset: {
+          name: "search-eval:local:default",
+          datasetId: "dataset-1",
+          source: "seed_prompt_set",
+          version: "seed/v1",
+          itemCount: 0,
+          targetType: "workflow",
+          targetId: "offline-search-eval",
+          environmentLabel: "local",
+          nativeKey: "search-eval:local:default:seed/v1",
+          status: "created",
+        },
+        scorers: [
+          {
+            id: "search-result-pairwise-judge",
+            scorerId: "search-result-pairwise-judge",
+            status: "registered",
+            kind: "pairwise_search_results",
+          },
+        ],
+        experiment: {
+          name: "search-eval-compare:local:default:run-1",
+          experimentId: "experiment-1",
+          status: "created",
+          mode: "comparison",
+          reportId: "run-1",
+          baselineName: "default",
+          environmentLabel: "local",
+          nativeKey: "search-eval:local:default:seed/v1:report:run-1",
+        },
+      },
+    }
+
+    await expect(store.writeReport(syncedReport)).resolves.toMatchObject({
+      path: expect.stringContaining("reports/run-1.json"),
+    })
+    await expect(store.readReport("run-1")).resolves.toEqual(syncedReport)
   })
 
   it("rejects unsafe artifact names", () => {

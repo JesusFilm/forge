@@ -70,7 +70,9 @@ pnpm --filter @forge/mastra lint
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`                           | Postgres connection string for Mastra runtime storage. Required in production runtime.                                     |
 | `MASTRA_SERVICE_API_KEYS`                | CSV allowlist for service bearer calls. Required in production runtime.                                                    |
+| `MASTRA_NATIVE_EVAL_ENVIRONMENT`         | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                        |
 | `MASTRA_STORAGE_DIR`                     | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway. |
+| `MASTRA_STORAGE_BACKEND`                 | Mastra runtime storage backend. Use `postgres` normally; `memory` is local/test-only and rejected in production.           |
 | `OPENROUTER_API_KEY`                     | OpenRouter key for locale-quality eval query generation and offline compare judging. Required for compare mode.            |
 | `OPENROUTER_EMBEDDINGS_BASE_URL`         | Optional OpenRouter-compatible embedding base URL. Defaults to OpenRouter's `/api/v1` endpoint.                            |
 | `OPENAI_API_KEY`                         | Fallback model provider key for smoke agent/model-routed calls and transcript embeddings when OpenRouter is unavailable.   |
@@ -138,6 +140,43 @@ enters the public search request path. The Studio-facing offline eval workflow
 is seed-only for now. Generated candidates from the feat-138 staging table are
 not exposed as operator inputs, are not stored in baselines, and do not become
 regression gates.
+
+## Native search eval suite
+
+The service route `POST /forge-search-eval-native-suite` is protected by
+`MASTRA_SERVICE_API_KEYS` and launches the `search-eval-native-suite` workflow.
+The workflow projects safe search-eval reports and promoted Admin candidates
+into native Mastra Evaluation records:
+
+- `create-sample-report` writes a realistic local sample comparison report,
+  syncs it into a native Dataset, registers the pairwise search scorer, starts
+  a native Experiment, and writes the synced native ids back into the report
+  artifact. This action is local/development only.
+- `sync-report` loads an existing report artifact by `reportId`, syncs it into
+  native Evaluation, and updates the report's `mastraEvaluation` projection.
+- `sync-promoted` reads promoted candidates through Admin HTTP, then only syncs
+  rows that are both `promotionStatus=promoted` and
+  `sanitizationStatus=sanitized`.
+
+Native record names include the environment label, for example
+`search-eval:local:seed-baseline`, and native metadata carries stable keys for
+idempotent reruns. Re-running a report sync should update Dataset items by
+source key and reuse the existing report Experiment instead of duplicating
+records.
+
+For local Studio smoke without Postgres or Admin data, run Mastra with:
+
+```bash
+MASTRA_STORAGE_BACKEND=memory \
+MASTRA_NATIVE_EVAL_ENVIRONMENT=local \
+MASTRA_SERVICE_API_KEYS=local-mastra-service-key \
+MASTRA_SEARCH_EVAL_ARTIFACT_DIR=.mastra/storage/search-eval \
+pnpm --filter @forge/mastra dev
+```
+
+Open `http://localhost:4111/studio/workflows/search-eval-native-suite`, run the
+default `create-sample-report` action, then inspect Studio's native Evaluation
+Datasets, Scorers, and Experiments.
 
 ## Railway Storage
 

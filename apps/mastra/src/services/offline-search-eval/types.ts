@@ -149,7 +149,7 @@ export type ReportTotals = {
   netWinRate: number
 }
 
-export type MastraEvaluationProjection = {
+export type ArtifactOnlyMastraEvaluationProjection = {
   integrationStatus: "custom_artifact_only"
   dataset: {
     name: string
@@ -175,6 +175,42 @@ export type MastraEvaluationProjection = {
     baselineName: string
   }
 }
+
+export type NativeSyncedMastraEvaluationProjection = {
+  integrationStatus: "native_synced"
+  dataset: {
+    name: string
+    datasetId: string
+    source: "seed_prompt_set"
+    version: string
+    itemCount: number
+    targetType: "workflow"
+    targetId: "offline-search-eval"
+    environmentLabel: string
+    nativeKey: string
+    status: "created" | "updated" | "reused"
+  }
+  scorers: Array<{
+    id: "search-result-pairwise-judge"
+    scorerId: string
+    status: "registered" | "reused"
+    kind: "pairwise_search_results"
+  }>
+  experiment: {
+    name: string
+    experimentId: string
+    status: "created" | "reused"
+    mode: "baseline_capture" | "comparison"
+    reportId: string
+    baselineName: string
+    environmentLabel: string
+    nativeKey: string
+  }
+}
+
+export type MastraEvaluationProjection =
+  | ArtifactOnlyMastraEvaluationProjection
+  | NativeSyncedMastraEvaluationProjection
 
 export type SearchEvalReport = {
   schemaVersion: typeof SEARCH_EVAL_ARTIFACT_SCHEMA_VERSION

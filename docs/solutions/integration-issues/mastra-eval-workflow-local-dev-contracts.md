@@ -1,7 +1,7 @@
 ---
 title: "Mastra eval workflow local dev requires Admin contracts and browser-reachable Studio"
 date: "2026-05-27"
-last_updated: "2026-05-27"
+last_updated: "2026-05-28"
 category: "integration-issues"
 module: "apps/mastra, apps/admin, .devcontainer"
 problem_type: "integration_issue"
@@ -125,6 +125,8 @@ Minimum Mastra-side local contract:
 
 ```bash
 DATABASE_URL=postgresql://forge:forge@db:5432/forge
+MASTRA_STORAGE_BACKEND=postgres
+MASTRA_NATIVE_EVAL_ENVIRONMENT=local
 MASTRA_SERVICE_API_KEYS=local-mastra-service-key
 ADMIN_SEARCH_TRACE_SAMPLE_URL=http://127.0.0.1:3003/api/internal/search-traces/sample
 ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL=http://127.0.0.1:3003/api/internal/search-eval/catalog-context
@@ -137,6 +139,21 @@ OPENROUTER_API_KEY=
 SEARCH_EVAL_JUDGE_MODEL=anthropic/claude-haiku-4-5
 pnpm --filter @forge/mastra dev
 ```
+
+When local Postgres is unavailable and the goal is only to smoke the native
+Evaluation projection, use local-only in-memory storage instead:
+
+```bash
+MASTRA_STORAGE_BACKEND=memory
+MASTRA_NATIVE_EVAL_ENVIRONMENT=local
+MASTRA_SERVICE_API_KEYS=local-mastra-service-key
+MASTRA_SEARCH_EVAL_ARTIFACT_DIR=.mastra/storage/search-eval
+pnpm --filter @forge/mastra dev
+```
+
+`MASTRA_STORAGE_BACKEND=memory` is rejected in production and loses records on
+process exit. It is only for proving that a report artifact can become native
+Dataset, Scorer, and Experiment records in Studio.
 
 For browser reachability, prefer a real devcontainer port mapping for `4111`.
 When the running devcontainer has not been rebuilt with that mapping, a
@@ -228,6 +245,32 @@ marks the Studio run red after writing a report artifact path into the typed
 failure result. That is intentional: a failure report is useful evidence, but a
 green workflow card would be a false signal for operators.
 
+For the feat-142 native Evaluation smoke, open **Workflows**, select
+`search-eval-native-suite`, and run the default Form values:
+
+```text
+action: create-sample-report
+baselineName: local-smoke
+environmentLabel: local
+promotedLimit: 100
+```
+
+That action writes a realistic sample comparison report artifact, syncs the
+report into native Datasets, Scorers, and Experiments, then writes the native ids
+back into the report's `mastraEvaluation` projection. After the run, open the
+native **Evaluation** area and verify records named like:
+
+```text
+Dataset: search-eval:local:local-smoke
+Scorer: Search result pairwise judge
+Experiment: search-eval-compare:local:local-smoke:<run id>
+```
+
+Run the same workflow a second time with the same report id through
+`action=sync-report` if you want to prove idempotency for a fixed artifact. The
+Dataset should stay singular, items should update by source key, and the report
+Experiment should be reused instead of duplicated.
+
 ## Why This Works
 
 Mastra does not read Admin's database directly. The eval workflow needs Admin's
@@ -275,6 +318,9 @@ same failure into clean HTTP JSON.
 - For `offline-search-eval`, smoke capture first with `{}` or the default Form
   values, then run compare only after a named baseline exists and
   `OPENROUTER_API_KEY` is configured.
+- For `search-eval-native-suite`, use `create-sample-report` with
+  `MASTRA_STORAGE_BACKEND=memory` when local Postgres or Admin data is
+  unavailable. Use `sync-promoted` only when Admin candidate env is configured.
 - Confirm `/api/workflows/eval-query-generation/runs` and
   `search_eval_candidate` rows after a Studio run. Seeing a Studio "success" row
   alone is not enough because `{ ok: false }` is still a completed workflow
