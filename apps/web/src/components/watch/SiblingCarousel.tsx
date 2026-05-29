@@ -55,6 +55,7 @@ export function SiblingCarousel({
   // compete with the LCP poster fetch on the critical chain.
 
   const [api, setApi] = useState<CarouselApi | null>(null)
+  const initialCarouselIndex = activeIndex >= 0 ? activeIndex : 0
 
   // Snap to the active item whenever it changes (or when `api` first
   // becomes available). Re-keying on `activeIndex` covers variant-switch
@@ -106,18 +107,15 @@ export function SiblingCarousel({
       </header>
 
       <Carousel
-        opts={{ align: "start", containScroll: "trimSnaps" }}
+        opts={{
+          align: "start",
+          containScroll: "trimSnaps",
+          startIndex: initialCarouselIndex,
+        }}
         setApi={setApi}
         className="w-full"
       >
-        <CarouselContent
-          className={cn(
-            "pl-10 md:pl-0",
-            activeIndex > 0 && activeIndex < children.length - 1
-              ? "translate-x-14 md:translate-x-0"
-              : "",
-          )}
-        >
+        <CarouselContent className="pl-10 md:pl-0">
           {children.map((child, index) => {
             const isActive = index === activeIndex
             // `resolvePosterUrl` codifies the editorial-cinematic priority
