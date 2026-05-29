@@ -72,7 +72,7 @@ pnpm --filter @forge/mastra lint
 | `MASTRA_SERVICE_API_KEYS`                | CSV allowlist for service bearer calls. Required in production runtime.                                                    |
 | `MASTRA_NATIVE_EVAL_ENVIRONMENT`         | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                        |
 | `MASTRA_STORAGE_DIR`                     | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway. |
-| `MASTRA_STORAGE_BACKEND`                 | Mastra runtime storage backend. Use `postgres` normally; `memory` is local/test-only and rejected in production.            |
+| `MASTRA_STORAGE_BACKEND`                 | Mastra runtime storage backend. Use `postgres` normally; `memory` is local/test-only and rejected in production.           |
 | `OPENROUTER_API_KEY`                     | OpenRouter key for locale-quality eval query generation and offline compare judging. Required for compare mode.            |
 | `OPENROUTER_EMBEDDINGS_BASE_URL`         | Optional OpenRouter-compatible embedding base URL. Defaults to OpenRouter's `/api/v1` endpoint.                            |
 | `OPENAI_API_KEY`                         | Fallback model provider key for smoke agent/model-routed calls and transcript embeddings when OpenRouter is unavailable.   |

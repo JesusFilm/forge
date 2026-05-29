@@ -103,9 +103,9 @@ rg -n "Mastra search eval|native Evaluation|Datasets|Scorers|Experiments|Overvie
      can model it.
    - Experiments for offline search eval runs.
    - Overview for roll-up experiment and scoring signal where supported.
-   Create as many native Datasets, Scorers, and Experiments as the search eval
-   domain actually needs. Do not collapse distinct concepts into a single
-   record just to make the Evaluation sidebar non-empty.
+     Create as many native Datasets, Scorers, and Experiments as the search eval
+     domain actually needs. Do not collapse distinct concepts into a single
+     record just to make the Evaluation sidebar non-empty.
 2. Keep `eval-query-generation` and `offline-search-eval` as separate leaf
    workflows unless implementation evidence proves a single workflow is clearer
    and equally safe.
