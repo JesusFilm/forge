@@ -1,7 +1,7 @@
 ---
 title: "refactor: Migrate watch-page sheets to native formSheet, drop @gorhom/reanimated/worklets/gesture-handler"
 type: refactor
-status: active
+status: completed
 date: 2026-05-29
 plan_depth: standard
 ---
