@@ -122,6 +122,32 @@ export function slugToBcp47Primary(slug: string): string | null {
   return null
 }
 
+/**
+ * True iff `slug` is a real admin audio-language slug — an English-name
+ * kebab key in `LANGUAGE_BCP47_MAP` (`english`, `spanish-castilian`,
+ * `mandarin-china`). This is the §5.6 locale-segment gate at the watch URL
+ * boundary: a 2-/3-segment watch URL whose locale segment is NOT a known
+ * language slug must `notFound()` rather than fall through to the
+ * locale-agnostic content resolvers (which would render a 200 fallback).
+ *
+ * Deliberately STRICT — it rejects, by design:
+ *   - bcp47 codes: `en`, `pt-br`, `es-ES` (only English-NAME slugs are valid
+ *     URL locale segments per the production contract; the resolver's
+ *     slug-OR-bcp47 match is what currently leaks these to a 200).
+ *   - non-ASCII / unknown tokens: `français`, `non-existent`.
+ *   - prototype keys: `__proto__`, `constructor` (Object.hasOwn is safe).
+ *
+ * Known limitation: 39 admin languages that lack a bcp47 tag are absent from
+ * `LANGUAGE_BCP47_MAP` and therefore return false here. They are obscure and
+ * none appear in the §5 probe matrix; expanding to the complete
+ * `Language.slug` set is a tracked follow-up. See
+ * `src/lib/language-bcp47-map.ts` header + plan
+ * `docs/plans/2026-05-28-003-fix-watch-section-5-6-404-hardening-plan.md`.
+ */
+export function isKnownLanguageSlug(slug: string): boolean {
+  return Object.hasOwn(LANGUAGE_BCP47_MAP, slug)
+}
+
 // Narrow ISO 639-3 → ISO 639-1 fallback for the 5 UI_LOCALE_FAMILIES
 // families. Admin's Language.bcp47 sometimes carries the 3-letter ISO
 // 639-3 code instead of the 2-letter 639-1 (e.g. `french-african` → `fra`,
