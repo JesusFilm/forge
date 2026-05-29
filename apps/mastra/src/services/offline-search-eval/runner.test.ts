@@ -5,7 +5,11 @@ import {
   SearchEvalArtifactError,
   type SearchEvalArtifactStore,
 } from "./artifacts"
-import type { BaselineArtifact, SearchEvalResult } from "./types"
+import type {
+  BaselineArtifact,
+  SearchEvalReport,
+  SearchEvalResult,
+} from "./types"
 
 const resultA: SearchEvalResult = {
   type: "video",
@@ -85,6 +89,22 @@ function memoryStore(baseline?: BaselineArtifact): SearchEvalArtifactStore & {
     async writeReport(report) {
       reports.push(report)
       return { path: `/tmp/search-eval/reports/${report.reportId}.json` }
+    },
+    async readReport(reportId) {
+      const found = reports.find(
+        (entry): entry is SearchEvalReport =>
+          typeof entry === "object" &&
+          entry !== null &&
+          "reportId" in entry &&
+          (entry as { reportId?: unknown }).reportId === reportId,
+      )
+      if (!found) {
+        throw new SearchEvalArtifactError(
+          "not_found",
+          `report '${reportId}' was not found`,
+        )
+      }
+      return found
     },
   }
 }

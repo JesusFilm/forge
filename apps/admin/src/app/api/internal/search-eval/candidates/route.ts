@@ -6,6 +6,7 @@ import {
   listSearchEvalCandidates,
   storeSearchEvalCandidates,
   type ListSearchEvalCandidatesFilters,
+  type SearchEvalCandidatePromotionStatusLabel,
   type SearchEvalCandidateSourceLabel,
   type StoreSearchEvalCandidateInput,
 } from "@/services/search-eval/candidates"
@@ -164,13 +165,39 @@ function parseSources(
     if (
       source !== "catalog" &&
       source !== "locale_quality" &&
-      source !== "trace"
+      source !== "trace" &&
+      source !== "seed" &&
+      source !== "user_submitted"
     ) {
-      return badRequest("source must be catalog, locale_quality, or trace")
+      return badRequest(
+        "source must be catalog, locale_quality, trace, seed, or user_submitted",
+      )
     }
     if (!sources.includes(source)) sources.push(source)
   }
   return sources
+}
+
+function parseStatuses(
+  value: string | null,
+): SearchEvalCandidatePromotionStatusLabel[] | Response | undefined {
+  const values = parseCsv(value)
+  if (values == null) return undefined
+  const statuses: SearchEvalCandidatePromotionStatusLabel[] = []
+  for (const status of values) {
+    if (
+      status !== "generated" &&
+      status !== "rejected" &&
+      status !== "promoted" &&
+      status !== "archived"
+    ) {
+      return badRequest(
+        "status must be generated, rejected, promoted, or archived",
+      )
+    }
+    if (!statuses.includes(status)) statuses.push(status)
+  }
+  return statuses
 }
 
 function parseListFilters(
@@ -184,6 +211,8 @@ function parseListFilters(
   }
   const sources = parseSources(searchParams.get("source"))
   if (sources instanceof Response) return sources
+  const statuses = parseStatuses(searchParams.get("status"))
+  if (statuses instanceof Response) return statuses
   const locales = parseCsv(searchParams.get("locale"))
   if (locales != null && locales.length > 30) {
     return badRequest("locale must contain at most 30 values")
@@ -193,6 +222,7 @@ function parseListFilters(
   return {
     limit,
     sources,
+    statuses,
     locales,
     mastraRunId,
   }
@@ -205,7 +235,8 @@ type ListedCandidateResponse = Awaited<
 function sanitizeCandidateForResponse(
   candidate: ListedCandidateResponse,
 ): ListedCandidateResponse {
-  if (candidate.source !== "trace") return candidate
+  if (candidate.source !== "trace" || candidate.promotionStatus === "promoted")
+    return candidate
   return {
     ...candidate,
     queryText: null,

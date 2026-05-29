@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { RegressionLoadError, loadRegressions } from "./regressions"
 
@@ -129,5 +129,61 @@ describe("loadRegressions", () => {
       query: "esperanza",
       source: "regression",
     })
+  })
+
+  it("appends promoted sanitized candidates when prisma is provided", async () => {
+    await writeFile(
+      filePath,
+      JSON.stringify({
+        entries: [{ locale: "en", query: "hand edited", notes: "manual" }],
+      }),
+    )
+    const prisma = {
+      searchEvalCandidate: {
+        findMany: vi.fn(async () => [
+          {
+            id: "candidate-1",
+            locale: "en",
+            sanitizedQueryText: "Who is Jesus?",
+            sanitizedExpectedResultNotes: "Should surface Jesus overview",
+            sanitizedSourceAnchors: [{ type: "video", id: "video-1" }],
+            reviewerIdentity: "nisal",
+            promotedAt: new Date("2026-05-28T00:00:00.000Z"),
+          },
+        ]),
+      },
+    }
+
+    const out = await loadRegressions({
+      filePath,
+      prisma: prisma as never,
+    })
+
+    expect(out).toEqual([
+      {
+        locale: "en",
+        query: "hand edited",
+        source: "regression",
+        notes: "manual",
+      },
+      {
+        locale: "en",
+        query: "Who is Jesus?",
+        source: "promoted",
+        notes: "Should surface Jesus overview",
+        promotedCandidateId: "candidate-1",
+        sourceAnchors: [{ type: "video", id: "video-1" }],
+        reviewerIdentity: "nisal",
+        promotedAt: "2026-05-28T00:00:00.000Z",
+      },
+    ])
+    expect(prisma.searchEvalCandidate.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          promotionStatus: "PROMOTED",
+          sanitizationStatus: "SANITIZED",
+        }),
+      }),
+    )
   })
 })

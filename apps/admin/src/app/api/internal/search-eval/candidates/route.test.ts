@@ -4,6 +4,11 @@ const rateLimitAuthRoute = vi.fn()
 const isValidSearchTraceSamplingBearer = vi.fn()
 const listSearchEvalCandidates = vi.fn()
 const storeSearchEvalCandidates = vi.fn()
+const getSearchEvalCandidateForReview = vi.fn()
+const updateSearchEvalCandidateReviewFields = vi.fn()
+const promoteSearchEvalCandidate = vi.fn()
+const rejectSearchEvalCandidate = vi.fn()
+const archiveSearchEvalCandidate = vi.fn()
 
 vi.mock("@/auth/rate-limit", () => ({ rateLimitAuthRoute }))
 vi.mock("@/auth/search-trace-bearer", () => ({
@@ -15,12 +20,21 @@ vi.mock("@/services/search-eval/candidates", async (original) => {
     await original<typeof import("@/services/search-eval/candidates")>()
   return {
     ...actual,
+    archiveSearchEvalCandidate,
+    getSearchEvalCandidateForReview,
     listSearchEvalCandidates,
+    promoteSearchEvalCandidate,
+    rejectSearchEvalCandidate,
     storeSearchEvalCandidates,
+    updateSearchEvalCandidateReviewFields,
   }
 })
 
 const { POST, GET } = await import("./route")
+const { GET: GET_DETAIL, PATCH: PATCH_DETAIL } = await import("./[id]/route")
+const { POST: POST_PROMOTE } = await import("./[id]/promote/route")
+const { POST: POST_REJECT } = await import("./[id]/reject/route")
+const { POST: POST_ARCHIVE } = await import("./[id]/archive/route")
 
 function request(body: unknown, headers: HeadersInit = {}) {
   return new Request("http://admin.test/api/internal/search-eval/candidates", {
@@ -50,6 +64,23 @@ function rawRequest(body: string, headers: HeadersInit = {}) {
     body,
   })
 }
+
+function candidateActionRequest(body: unknown, headers: HeadersInit = {}) {
+  return new Request(
+    "http://admin.test/api/internal/search-eval/candidates/1",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer trace-key",
+        ...headers,
+      },
+      body: JSON.stringify(body),
+    },
+  )
+}
+
+const params = { params: Promise.resolve({ id: "candidate-1" }) }
 
 describe("POST /api/internal/search-eval/candidates", () => {
   beforeEach(() => {
@@ -460,5 +491,192 @@ describe("GET /api/internal/search-eval/candidates", () => {
     expect(serializedLogs).toContain("error_class=Error")
     expect(serializedLogs).not.toContain("db password leak")
     logSpy.mockRestore()
+  })
+})
+
+describe("candidate review action routes", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
+    isValidSearchTraceSamplingBearer.mockReturnValue(true)
+    const candidate = {
+      id: "candidate-1",
+      source: "catalog",
+      promotionStatus: "generated",
+      locale: "en",
+      queryText: "Jesus",
+      expectedResultHints: [],
+      sourceAnchors: [],
+      labelProvenance: {},
+      generationModel: "seed:v1",
+      generationProvider: "mastra",
+      judgeSummary: null,
+      sanitizedQueryText: null,
+      sanitizedExpectedResultNotes: null,
+      sanitizedSourceAnchors: [],
+      sanitizationStatus: "pending",
+      reviewerIdentity: null,
+      reviewedAt: null,
+      reviewNotes: null,
+      promotedAt: null,
+      promotionRunContext: {},
+      mastraRunId: "run-1",
+      retentionExpiresAt: null,
+      generatedAt: "2026-05-26T00:00:00.000Z",
+      createdAt: "2026-05-26T00:00:00.000Z",
+    }
+    getSearchEvalCandidateForReview.mockResolvedValue(candidate)
+    updateSearchEvalCandidateReviewFields.mockResolvedValue({
+      ...candidate,
+      sanitizedQueryText: "Who is Jesus?",
+      sanitizationStatus: "sanitized",
+    })
+    promoteSearchEvalCandidate.mockResolvedValue({
+      ...candidate,
+      promotionStatus: "promoted",
+      queryText: "Who is Jesus?",
+      sanitizedQueryText: "Who is Jesus?",
+      sanitizationStatus: "sanitized",
+      reviewerIdentity: "nisal",
+      reviewedAt: "2026-05-28T00:00:00.000Z",
+      promotedAt: "2026-05-28T00:00:00.000Z",
+    })
+    rejectSearchEvalCandidate.mockResolvedValue({
+      ...candidate,
+      promotionStatus: "rejected",
+      reviewerIdentity: "nisal",
+    })
+    archiveSearchEvalCandidate.mockResolvedValue({
+      ...candidate,
+      promotionStatus: "archived",
+      reviewerIdentity: "nisal",
+    })
+  })
+
+  it("returns review-safe candidate detail through bearer auth", async () => {
+    const response = await GET_DETAIL(getRequest(), params)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      candidate: { id: "candidate-1", queryText: "Jesus" },
+    })
+    expect(getSearchEvalCandidateForReview).toHaveBeenCalledWith(
+      {},
+      "candidate-1",
+    )
+  })
+
+  it("edits sanitized fields without accepting server-owned status", async () => {
+    const response = await PATCH_DETAIL(
+      candidateActionRequest({
+        reviewerIdentity: "nisal",
+        sanitizedQueryText: "Who is Jesus?",
+        sanitizedExpectedResultNotes: "Should surface Jesus overview content",
+        sanitizedSourceAnchors: [{ type: "video", id: "video-1" }],
+        sanitizationStatus: "sanitized",
+        promotionRunContext: { mastraRunId: "run-review" },
+      }),
+      params,
+    )
+
+    expect(response.status).toBe(200)
+    expect(updateSearchEvalCandidateReviewFields).toHaveBeenCalledWith(
+      {},
+      "candidate-1",
+      expect.objectContaining({
+        reviewerIdentity: "nisal",
+        sanitizedQueryText: "Who is Jesus?",
+        sanitizationStatus: "sanitized",
+      }),
+    )
+  })
+
+  it("rejects malformed sanitized edit fields", async () => {
+    const response = await PATCH_DETAIL(
+      candidateActionRequest({
+        sanitizedQueryText: 123,
+      }),
+      params,
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: "sanitizedQueryText must be a string",
+    })
+    expect(updateSearchEvalCandidateReviewFields).not.toHaveBeenCalled()
+  })
+
+  it("promotes sanitized candidates with reviewer and run context", async () => {
+    const response = await POST_PROMOTE(
+      candidateActionRequest({
+        reviewerIdentity: "nisal",
+        sanitizedQueryText: "Who is Jesus?",
+        sanitizedExpectedResultNotes: "Should surface Jesus overview content",
+        sanitizedSourceAnchors: [{ type: "video", id: "video-1" }],
+        sanitizationStatus: "sanitized",
+        promotionRunContext: { mastraRunId: "run-review" },
+      }),
+      params,
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      candidate: {
+        id: "candidate-1",
+        promotionStatus: "promoted",
+        reviewerIdentity: "nisal",
+      },
+    })
+    expect(promoteSearchEvalCandidate).toHaveBeenCalledWith(
+      {},
+      "candidate-1",
+      expect.objectContaining({
+        reviewerIdentity: "nisal",
+        sanitizedQueryText: "Who is Jesus?",
+        sanitizationStatus: "sanitized",
+      }),
+    )
+  })
+
+  it("rejects and archives pending candidates without promotion", async () => {
+    const rejectResponse = await POST_REJECT(
+      candidateActionRequest({
+        reviewerIdentity: "nisal",
+        reviewNotes: "Ambiguous intent",
+      }),
+      params,
+    )
+    const archiveResponse = await POST_ARCHIVE(
+      candidateActionRequest({
+        reviewerIdentity: "nisal",
+        reviewNotes: "Duplicate candidate",
+      }),
+      params,
+    )
+
+    expect(rejectResponse.status).toBe(200)
+    expect(archiveResponse.status).toBe(200)
+    expect(rejectSearchEvalCandidate).toHaveBeenCalledWith(
+      {},
+      "candidate-1",
+      expect.objectContaining({ reviewerIdentity: "nisal" }),
+    )
+    expect(archiveSearchEvalCandidate).toHaveBeenCalledWith(
+      {},
+      "candidate-1",
+      expect.objectContaining({ reviewerIdentity: "nisal" }),
+    )
+  })
+
+  it("requires bearer auth before review actions", async () => {
+    isValidSearchTraceSamplingBearer.mockReturnValue(false)
+
+    const response = await POST_PROMOTE(
+      candidateActionRequest({ reviewerIdentity: "nisal" }),
+      params,
+    )
+
+    expect(response.status).toBe(401)
+    expect(promoteSearchEvalCandidate).not.toHaveBeenCalled()
   })
 })

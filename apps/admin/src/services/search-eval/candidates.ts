@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 
 import {
+  SearchEvalCandidateSanitizationStatus as PrismaSanitizationStatus,
   SearchEvalCandidatePromotionStatus as PrismaPromotionStatus,
   SearchEvalCandidateSource as PrismaCandidateSource,
   type Prisma,
@@ -12,6 +13,8 @@ const MAX_LOCALE_LENGTH = 32
 const MAX_GENERATION_MODEL_LENGTH = 128
 const MAX_GENERATION_PROVIDER_LENGTH = 64
 const MAX_MASTRA_RUN_ID_LENGTH = 128
+const MAX_REVIEWER_IDENTITY_LENGTH = 256
+const MAX_REVIEW_NOTES_LENGTH = 2048
 const MAX_JSON_BYTES = 16 * 1024
 const MAX_TRACE_RETENTION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
 const BCP47_REGEX = /^[a-zA-Z]{2,3}(-[A-Za-z0-9]{2,8})*$/
@@ -20,6 +23,19 @@ export type SearchEvalCandidateSourceLabel =
   | "catalog"
   | "locale_quality"
   | "trace"
+  | "seed"
+  | "user_submitted"
+
+export type SearchEvalCandidatePromotionStatusLabel =
+  | "generated"
+  | "rejected"
+  | "promoted"
+  | "archived"
+
+export type SearchEvalCandidateSanitizationStatusLabel =
+  | "pending"
+  | "sanitized"
+  | "unsafe"
 
 export type StoreSearchEvalCandidateInput = {
   source: SearchEvalCandidateSourceLabel
@@ -54,6 +70,7 @@ export type StoreSearchEvalCandidatesResult = {
 
 export type ListSearchEvalCandidatesFilters = {
   sources?: SearchEvalCandidateSourceLabel[]
+  statuses?: SearchEvalCandidatePromotionStatusLabel[]
   locales?: string[]
   mastraRunId?: string | null
   limit?: number
@@ -63,6 +80,7 @@ export type ListSearchEvalCandidatesFilters = {
 export type ListedSearchEvalCandidate = {
   id: string
   source: SearchEvalCandidateSourceLabel
+  promotionStatus: SearchEvalCandidatePromotionStatusLabel
   locale: string
   queryText: string | null
   expectedResultHints: unknown
@@ -71,11 +89,44 @@ export type ListedSearchEvalCandidate = {
   generationModel: string
   generationProvider: string | null
   judgeSummary: unknown | null
+  sanitizedQueryText: string | null
+  sanitizedExpectedResultNotes: string | null
+  sanitizedSourceAnchors: unknown
+  sanitizationStatus: SearchEvalCandidateSanitizationStatusLabel
+  reviewerIdentity: string | null
+  reviewedAt: string | null
+  reviewNotes: string | null
+  promotedAt: string | null
+  promotionRunContext: unknown
   mastraRunId: string | null
   retentionExpiresAt: string | null
   generatedAt: string
   createdAt: string
 }
+
+export type UpdateSearchEvalCandidateReviewInput = {
+  reviewerIdentity?: string | null
+  sanitizedQueryText?: string | null
+  sanitizedExpectedResultNotes?: string | null
+  sanitizedSourceAnchors?: unknown
+  sanitizationStatus?: SearchEvalCandidateSanitizationStatusLabel
+  reviewNotes?: string | null
+  promotionRunContext?: unknown
+}
+
+export type SearchEvalCandidateDecisionInput = {
+  reviewerIdentity: string
+  reviewNotes?: string | null
+  promotionRunContext?: unknown
+}
+
+export type PromoteSearchEvalCandidateInput =
+  SearchEvalCandidateDecisionInput & {
+    sanitizedQueryText?: string | null
+    sanitizedExpectedResultNotes?: string | null
+    sanitizedSourceAnchors?: unknown
+    sanitizationStatus?: SearchEvalCandidateSanitizationStatusLabel
+  }
 
 const REDACTED_TRACE_LABEL_PROVENANCE = {
   source: "trace",
@@ -84,7 +135,7 @@ const REDACTED_TRACE_LABEL_PROVENANCE = {
 
 export class SearchEvalCandidateStoreError extends Error {
   constructor(
-    readonly code: "validation",
+    readonly code: "validation" | "not_found" | "invalid_state",
     message: string,
     readonly cause?: unknown,
   ) {
@@ -95,6 +146,17 @@ export class SearchEvalCandidateStoreError extends Error {
 
 function validation(message: string, cause?: unknown): never {
   throw new SearchEvalCandidateStoreError("validation", message, cause)
+}
+
+function notFound(id: string): never {
+  throw new SearchEvalCandidateStoreError(
+    "not_found",
+    `search eval candidate ${id} was not found`,
+  )
+}
+
+function invalidState(message: string): never {
+  throw new SearchEvalCandidateStoreError("invalid_state", message)
 }
 
 function normalizeQuery(value: string): string {
@@ -129,6 +191,17 @@ function normalizeBoundedString(
   if (normalized.length > max)
     validation(`${name} must be at most ${max} chars`)
   return normalized
+}
+
+function normalizeRequiredBoundedString(
+  value: string | null | undefined,
+  max: number,
+  name: string,
+): string {
+  return (
+    normalizeBoundedString(value, max, name) ??
+    validation(`${name} is required`)
+  )
 }
 
 function parseDate(
@@ -198,7 +271,28 @@ function toPrismaSource(
     return PrismaCandidateSource.LOCALE_QUALITY
   }
   if (source === "trace") return PrismaCandidateSource.TRACE
+  if (source === "seed") return PrismaCandidateSource.SEED
+  if (source === "user_submitted") return PrismaCandidateSource.USER_SUBMITTED
   validation("candidate source is unsupported")
+}
+
+function toPrismaStatus(
+  status: SearchEvalCandidatePromotionStatusLabel,
+): PrismaPromotionStatus {
+  if (status === "generated") return PrismaPromotionStatus.GENERATED
+  if (status === "rejected") return PrismaPromotionStatus.REJECTED
+  if (status === "promoted") return PrismaPromotionStatus.PROMOTED
+  if (status === "archived") return PrismaPromotionStatus.ARCHIVED
+  validation("candidate status is unsupported")
+}
+
+function toPrismaSanitizationStatus(
+  status: SearchEvalCandidateSanitizationStatusLabel,
+): PrismaSanitizationStatus {
+  if (status === "pending") return PrismaSanitizationStatus.PENDING
+  if (status === "sanitized") return PrismaSanitizationStatus.SANITIZED
+  if (status === "unsafe") return PrismaSanitizationStatus.UNSAFE
+  validation("candidate sanitizationStatus is unsupported")
 }
 
 function hasTraceMarker(value: unknown): boolean {
@@ -245,7 +339,26 @@ function fromPrismaSource(
 ): SearchEvalCandidateSourceLabel {
   if (source === PrismaCandidateSource.CATALOG) return "catalog"
   if (source === PrismaCandidateSource.LOCALE_QUALITY) return "locale_quality"
-  return "trace"
+  if (source === PrismaCandidateSource.TRACE) return "trace"
+  if (source === PrismaCandidateSource.SEED) return "seed"
+  return "user_submitted"
+}
+
+function fromPrismaStatus(
+  status: PrismaPromotionStatus,
+): SearchEvalCandidatePromotionStatusLabel {
+  if (status === PrismaPromotionStatus.GENERATED) return "generated"
+  if (status === PrismaPromotionStatus.REJECTED) return "rejected"
+  if (status === PrismaPromotionStatus.PROMOTED) return "promoted"
+  return "archived"
+}
+
+function fromPrismaSanitizationStatus(
+  status: PrismaSanitizationStatus,
+): SearchEvalCandidateSanitizationStatusLabel {
+  if (status === PrismaSanitizationStatus.SANITIZED) return "sanitized"
+  if (status === PrismaSanitizationStatus.UNSAFE) return "unsafe"
+  return "pending"
 }
 
 function shouldRedactCandidateRow(row: {
@@ -491,6 +604,10 @@ export async function listSearchEvalCandidates(
     filters.sources == null
       ? undefined
       : filters.sources.map((source) => toPrismaSource(source))
+  const statuses =
+    filters.statuses == null
+      ? [PrismaPromotionStatus.GENERATED]
+      : filters.statuses.map((status) => toPrismaStatus(status))
   const locales = filters.locales?.map((locale) => normalizeLocale(locale))
   const mastraRunId = normalizeBoundedString(
     filters.mastraRunId,
@@ -501,46 +618,88 @@ export async function listSearchEvalCandidates(
 
   const rows = await prisma.searchEvalCandidate.findMany({
     where: {
-      promotionStatus: PrismaPromotionStatus.GENERATED,
+      promotionStatus: { in: statuses },
       ...(sources ? { source: { in: sources } } : {}),
       ...(locales ? { locale: { in: locales } } : {}),
       ...(mastraRunId ? { mastraRunId } : {}),
-      OR: [
-        { source: { not: PrismaCandidateSource.TRACE } },
-        { retentionExpiresAt: { gt: now } },
-      ],
+      OR: reviewVisibleCandidateWhere(now),
     },
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
     take: limit,
-    select: {
-      id: true,
-      source: true,
-      locale: true,
-      expectedResultHints: true,
-      sourceAnchors: true,
-      labelProvenance: true,
-      generationModel: true,
-      generationProvider: true,
-      judgeSummary: true,
-      mastraRunId: true,
-      retentionExpiresAt: true,
-      generatedAt: true,
-      createdAt: true,
-    },
+    select: CANDIDATE_REVIEW_SELECT,
   })
 
-  const redactedIds = new Set(
-    rows.filter(shouldRedactCandidateRow).map((row) => row.id),
+  return serializeReviewCandidateRows(prisma, rows)
+}
+
+const CANDIDATE_REVIEW_SELECT = {
+  id: true,
+  source: true,
+  promotionStatus: true,
+  locale: true,
+  expectedResultHints: true,
+  sourceAnchors: true,
+  labelProvenance: true,
+  generationModel: true,
+  generationProvider: true,
+  judgeSummary: true,
+  sanitizedQueryText: true,
+  sanitizedExpectedResultNotes: true,
+  sanitizedSourceAnchors: true,
+  sanitizationStatus: true,
+  reviewerIdentity: true,
+  reviewedAt: true,
+  reviewNotes: true,
+  promotedAt: true,
+  promotionRunContext: true,
+  mastraRunId: true,
+  retentionExpiresAt: true,
+  generatedAt: true,
+  createdAt: true,
+} satisfies Prisma.SearchEvalCandidateSelect
+
+type ReviewCandidateRow = Prisma.SearchEvalCandidateGetPayload<{
+  select: typeof CANDIDATE_REVIEW_SELECT
+}>
+
+function reviewVisibleCandidateWhere(
+  now: Date,
+): Prisma.SearchEvalCandidateWhereInput[] {
+  return [
+    { promotionStatus: PrismaPromotionStatus.PROMOTED },
+    { source: { not: PrismaCandidateSource.TRACE } },
+    { retentionExpiresAt: { gt: now } },
+  ]
+}
+
+function shouldRedactReviewRow(row: ReviewCandidateRow): boolean {
+  return (
+    row.promotionStatus !== PrismaPromotionStatus.PROMOTED &&
+    shouldRedactCandidateRow(row)
   )
-  const nonTraceIds = rows
-    .filter((row) => !redactedIds.has(row.id))
+}
+
+async function serializeReviewCandidateRows(
+  prisma: PrismaClient,
+  rows: ReviewCandidateRow[],
+): Promise<ListedSearchEvalCandidate[]> {
+  const redactedIds = new Set(
+    rows.filter(shouldRedactReviewRow).map((row) => row.id),
+  )
+  const pendingReadableIds = rows
+    .filter(
+      (row) =>
+        row.promotionStatus !== PrismaPromotionStatus.PROMOTED &&
+        !redactedIds.has(row.id),
+    )
     .map((row) => row.id)
+
   const queryRows =
-    nonTraceIds.length === 0
+    pendingReadableIds.length === 0
       ? []
       : await prisma.searchEvalCandidate.findMany({
           where: {
-            id: { in: nonTraceIds },
+            id: { in: pendingReadableIds },
             source: { not: PrismaCandidateSource.TRACE },
           },
           select: { id: true, queryText: true },
@@ -549,33 +708,330 @@ export async function listSearchEvalCandidates(
     queryRows.map((row) => [row.id, row.queryText] as const),
   )
 
-  return rows.map((row) => ({
-    id: row.id,
-    source: redactedIds.has(row.id) ? "trace" : fromPrismaSource(row.source),
-    locale: row.locale,
-    queryText: redactedIds.has(row.id)
-      ? null
-      : (queryTextById.get(row.id) ?? ""),
-    expectedResultHints: redactedIds.has(row.id) ? [] : row.expectedResultHints,
-    sourceAnchors: redactedIds.has(row.id) ? [] : row.sourceAnchors,
-    labelProvenance: redactedIds.has(row.id)
-      ? REDACTED_TRACE_LABEL_PROVENANCE
-      : row.labelProvenance,
-    generationModel: redactedIds.has(row.id)
-      ? "trace:redacted"
-      : row.generationModel,
-    generationProvider: redactedIds.has(row.id) ? null : row.generationProvider,
-    judgeSummary: redactedIds.has(row.id) ? null : row.judgeSummary,
-    mastraRunId: redactedIds.has(row.id) ? null : row.mastraRunId,
-    retentionExpiresAt: row.retentionExpiresAt?.toISOString() ?? null,
-    generatedAt: row.generatedAt.toISOString(),
-    createdAt: row.createdAt.toISOString(),
-  }))
+  return rows.map((row) => {
+    const promotionStatus =
+      row.promotionStatus ?? PrismaPromotionStatus.GENERATED
+    const sanitizationStatus =
+      row.sanitizationStatus ?? PrismaSanitizationStatus.PENDING
+    const redactsOperationalFields =
+      redactedIds.has(row.id) ||
+      (promotionStatus === PrismaPromotionStatus.PROMOTED &&
+        shouldRedactCandidateRow(row))
+    return {
+      id: row.id,
+      source: redactedIds.has(row.id) ? "trace" : fromPrismaSource(row.source),
+      promotionStatus: fromPrismaStatus(promotionStatus),
+      locale: row.locale,
+      queryText:
+        promotionStatus === PrismaPromotionStatus.PROMOTED
+          ? row.sanitizedQueryText
+          : redactedIds.has(row.id)
+            ? null
+            : (queryTextById.get(row.id) ?? ""),
+      expectedResultHints:
+        promotionStatus === PrismaPromotionStatus.PROMOTED ||
+        redactedIds.has(row.id)
+          ? []
+          : row.expectedResultHints,
+      sourceAnchors:
+        promotionStatus === PrismaPromotionStatus.PROMOTED
+          ? row.sanitizedSourceAnchors
+          : redactedIds.has(row.id)
+            ? []
+            : row.sourceAnchors,
+      labelProvenance:
+        promotionStatus === PrismaPromotionStatus.PROMOTED
+          ? {
+              source: fromPrismaSource(row.source),
+              promoted: true,
+              sanitized: true,
+            }
+          : redactedIds.has(row.id)
+            ? REDACTED_TRACE_LABEL_PROVENANCE
+            : row.labelProvenance,
+      generationModel: redactsOperationalFields
+        ? "trace:redacted"
+        : row.generationModel,
+      generationProvider: redactsOperationalFields
+        ? null
+        : row.generationProvider,
+      judgeSummary:
+        redactsOperationalFields ||
+        promotionStatus === PrismaPromotionStatus.PROMOTED
+          ? null
+          : row.judgeSummary,
+      sanitizedQueryText: row.sanitizedQueryText ?? null,
+      sanitizedExpectedResultNotes: row.sanitizedExpectedResultNotes ?? null,
+      sanitizedSourceAnchors: row.sanitizedSourceAnchors ?? [],
+      sanitizationStatus: fromPrismaSanitizationStatus(sanitizationStatus),
+      reviewerIdentity: row.reviewerIdentity ?? null,
+      reviewedAt: row.reviewedAt?.toISOString() ?? null,
+      reviewNotes: row.reviewNotes ?? null,
+      promotedAt: row.promotedAt?.toISOString() ?? null,
+      promotionRunContext: row.promotionRunContext ?? {},
+      mastraRunId: redactsOperationalFields ? null : row.mastraRunId,
+      retentionExpiresAt: row.retentionExpiresAt?.toISOString() ?? null,
+      generatedAt: row.generatedAt.toISOString(),
+      createdAt: row.createdAt.toISOString(),
+    }
+  })
+}
+
+export async function getSearchEvalCandidateForReview(
+  prisma: PrismaClient,
+  id: string,
+  now: Date = new Date(),
+): Promise<ListedSearchEvalCandidate> {
+  const rows = await prisma.searchEvalCandidate.findMany({
+    where: {
+      id,
+      OR: reviewVisibleCandidateWhere(now),
+    },
+    take: 1,
+    select: CANDIDATE_REVIEW_SELECT,
+  })
+  if (rows.length === 0) notFound(id)
+  return (await serializeReviewCandidateRows(prisma, rows))[0] ?? notFound(id)
+}
+
+function reviewUpdateDataFor(
+  input: UpdateSearchEvalCandidateReviewInput,
+  now: Date,
+): Prisma.SearchEvalCandidateUpdateManyMutationInput {
+  const data: Prisma.SearchEvalCandidateUpdateManyMutationInput = {}
+
+  if ("sanitizedQueryText" in input) {
+    data.sanitizedQueryText =
+      input.sanitizedQueryText == null
+        ? null
+        : normalizeQuery(input.sanitizedQueryText)
+  }
+  if ("sanitizedExpectedResultNotes" in input) {
+    data.sanitizedExpectedResultNotes = normalizeBoundedString(
+      input.sanitizedExpectedResultNotes,
+      MAX_REVIEW_NOTES_LENGTH,
+      "sanitizedExpectedResultNotes",
+    )
+  }
+  if ("sanitizedSourceAnchors" in input) {
+    data.sanitizedSourceAnchors = toJsonArray(
+      input.sanitizedSourceAnchors,
+      [],
+      "sanitizedSourceAnchors",
+    )
+  }
+  if (input.sanitizationStatus != null) {
+    data.sanitizationStatus = toPrismaSanitizationStatus(
+      input.sanitizationStatus,
+    )
+  }
+  if ("reviewNotes" in input) {
+    data.reviewNotes = normalizeBoundedString(
+      input.reviewNotes,
+      MAX_REVIEW_NOTES_LENGTH,
+      "reviewNotes",
+    )
+  }
+  if ("promotionRunContext" in input) {
+    data.promotionRunContext = toJsonObject(
+      input.promotionRunContext,
+      {},
+      "promotionRunContext",
+    )
+  }
+  if ("reviewerIdentity" in input) {
+    data.reviewerIdentity = normalizeBoundedString(
+      input.reviewerIdentity,
+      MAX_REVIEWER_IDENTITY_LENGTH,
+      "reviewerIdentity",
+    )
+    if (data.reviewerIdentity != null) data.reviewedAt = now
+  }
+
+  return data
+}
+
+export async function updateSearchEvalCandidateReviewFields(
+  prisma: PrismaClient,
+  id: string,
+  input: UpdateSearchEvalCandidateReviewInput,
+  now: Date = new Date(),
+): Promise<ListedSearchEvalCandidate> {
+  const updated = await prisma.searchEvalCandidate.updateMany({
+    where: {
+      id,
+      promotionStatus: PrismaPromotionStatus.GENERATED,
+      OR: reviewVisibleCandidateWhere(now),
+    },
+    data: reviewUpdateDataFor(input, now),
+  })
+  if (updated.count === 0) {
+    await getSearchEvalCandidateForReview(prisma, id, now).catch(() =>
+      notFound(id),
+    )
+    invalidState("only pending candidates can be edited")
+  }
+  return getSearchEvalCandidateForReview(prisma, id, now)
+}
+
+async function transitionSearchEvalCandidate(
+  prisma: PrismaClient,
+  id: string,
+  status: (typeof PrismaPromotionStatus)[keyof typeof PrismaPromotionStatus],
+  input: SearchEvalCandidateDecisionInput,
+  now: Date,
+): Promise<ListedSearchEvalCandidate> {
+  const reviewerIdentity = normalizeRequiredBoundedString(
+    input.reviewerIdentity,
+    MAX_REVIEWER_IDENTITY_LENGTH,
+    "reviewerIdentity",
+  )
+  const updated = await prisma.searchEvalCandidate.updateMany({
+    where: {
+      id,
+      promotionStatus: PrismaPromotionStatus.GENERATED,
+      OR: reviewVisibleCandidateWhere(now),
+    },
+    data: {
+      promotionStatus: status,
+      sanitizationStatus: PrismaSanitizationStatus.UNSAFE,
+      reviewerIdentity,
+      reviewedAt: now,
+      reviewNotes: normalizeBoundedString(
+        input.reviewNotes,
+        MAX_REVIEW_NOTES_LENGTH,
+        "reviewNotes",
+      ),
+      promotionRunContext: toJsonObject(
+        input.promotionRunContext,
+        {},
+        "promotionRunContext",
+      ),
+    },
+  })
+  if (updated.count === 0) {
+    await getSearchEvalCandidateForReview(prisma, id, now).catch(() =>
+      notFound(id),
+    )
+    invalidState("only pending candidates can change review state")
+  }
+  return getSearchEvalCandidateForReview(prisma, id, now)
+}
+
+export function rejectSearchEvalCandidate(
+  prisma: PrismaClient,
+  id: string,
+  input: SearchEvalCandidateDecisionInput,
+  now: Date = new Date(),
+): Promise<ListedSearchEvalCandidate> {
+  return transitionSearchEvalCandidate(
+    prisma,
+    id,
+    PrismaPromotionStatus.REJECTED,
+    input,
+    now,
+  )
+}
+
+export function archiveSearchEvalCandidate(
+  prisma: PrismaClient,
+  id: string,
+  input: SearchEvalCandidateDecisionInput,
+  now: Date = new Date(),
+): Promise<ListedSearchEvalCandidate> {
+  return transitionSearchEvalCandidate(
+    prisma,
+    id,
+    PrismaPromotionStatus.ARCHIVED,
+    input,
+    now,
+  )
+}
+
+export async function promoteSearchEvalCandidate(
+  prisma: PrismaClient,
+  id: string,
+  input: PromoteSearchEvalCandidateInput,
+  now: Date = new Date(),
+): Promise<ListedSearchEvalCandidate> {
+  const existing = await getSearchEvalCandidateForReview(prisma, id, now)
+  if (existing.promotionStatus !== "generated") {
+    invalidState("only pending candidates can be promoted")
+  }
+
+  const reviewerIdentity = normalizeRequiredBoundedString(
+    input.reviewerIdentity,
+    MAX_REVIEWER_IDENTITY_LENGTH,
+    "reviewerIdentity",
+  )
+  const sanitizedQueryText =
+    normalizeBoundedString(
+      input.sanitizedQueryText,
+      MAX_QUERY_LENGTH,
+      "sanitizedQueryText",
+    ) ??
+    existing.sanitizedQueryText ??
+    validation("sanitizedQueryText is required for promotion")
+  const sanitizedExpectedResultNotes =
+    "sanitizedExpectedResultNotes" in input
+      ? normalizeBoundedString(
+          input.sanitizedExpectedResultNotes,
+          MAX_REVIEW_NOTES_LENGTH,
+          "sanitizedExpectedResultNotes",
+        )
+      : existing.sanitizedExpectedResultNotes
+  const sanitizedSourceAnchors =
+    "sanitizedSourceAnchors" in input
+      ? toJsonArray(input.sanitizedSourceAnchors, [], "sanitizedSourceAnchors")
+      : toJsonArray(
+          existing.sanitizedSourceAnchors,
+          [],
+          "sanitizedSourceAnchors",
+        )
+
+  if (
+    input.sanitizationStatus != null &&
+    input.sanitizationStatus !== "sanitized"
+  ) {
+    validation("promotion requires sanitizationStatus sanitized")
+  }
+
+  const updated = await prisma.searchEvalCandidate.updateMany({
+    where: {
+      id,
+      promotionStatus: PrismaPromotionStatus.GENERATED,
+      OR: reviewVisibleCandidateWhere(now),
+    },
+    data: {
+      promotionStatus: PrismaPromotionStatus.PROMOTED,
+      queryText: sanitizedQueryText,
+      sanitizedQueryText,
+      sanitizedExpectedResultNotes,
+      sanitizedSourceAnchors,
+      sanitizationStatus: PrismaSanitizationStatus.SANITIZED,
+      reviewerIdentity,
+      reviewedAt: now,
+      promotedAt: now,
+      reviewNotes: normalizeBoundedString(
+        input.reviewNotes,
+        MAX_REVIEW_NOTES_LENGTH,
+        "reviewNotes",
+      ),
+      promotionRunContext: toJsonObject(
+        input.promotionRunContext,
+        {},
+        "promotionRunContext",
+      ),
+    },
+  })
+  if (updated.count === 0) invalidState("candidate promotion state changed")
+  return getSearchEvalCandidateForReview(prisma, id, now)
 }
 
 export const _internal = {
   dedupeKeyFor,
   fromPrismaSource,
+  fromPrismaStatus,
   hasTraceMarker,
   normalizeLocale,
   normalizeQuery,

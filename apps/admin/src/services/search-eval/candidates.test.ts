@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest"
 
 import {
   SearchEvalCandidateStoreError,
+  archiveSearchEvalCandidate,
   listSearchEvalCandidates,
+  promoteSearchEvalCandidate,
+  rejectSearchEvalCandidate,
   storeSearchEvalCandidates,
 } from "./candidates"
 
@@ -372,6 +375,16 @@ describe("listSearchEvalCandidates", () => {
         generationModel: "seed:v1",
         generationProvider: "mastra",
         judgeSummary: null,
+        promotionStatus: "GENERATED",
+        sanitizedQueryText: null,
+        sanitizedExpectedResultNotes: null,
+        sanitizedSourceAnchors: [],
+        sanitizationStatus: "PENDING",
+        reviewerIdentity: null,
+        reviewedAt: null,
+        reviewNotes: null,
+        promotedAt: null,
+        promotionRunContext: {},
         mastraRunId: "run-1",
         retentionExpiresAt: null,
         generatedAt: new Date("2026-05-26T00:00:00.000Z"),
@@ -405,6 +418,16 @@ describe("listSearchEvalCandidates", () => {
         generationModel: "seed:v1",
         generationProvider: "mastra",
         judgeSummary: null,
+        promotionStatus: "generated",
+        sanitizedQueryText: null,
+        sanitizedExpectedResultNotes: null,
+        sanitizedSourceAnchors: [],
+        sanitizationStatus: "pending",
+        reviewerIdentity: null,
+        reviewedAt: null,
+        reviewNotes: null,
+        promotedAt: null,
+        promotionRunContext: {},
         mastraRunId: "run-1",
         retentionExpiresAt: null,
         generatedAt: "2026-05-26T00:00:00.000Z",
@@ -416,11 +439,12 @@ describe("listSearchEvalCandidates", () => {
       1,
       expect.objectContaining({
         where: expect.objectContaining({
-          promotionStatus: "GENERATED",
+          promotionStatus: { in: ["GENERATED"] },
           source: { in: ["CATALOG"] },
           locale: { in: ["en"] },
           mastraRunId: "run-1",
           OR: [
+            { promotionStatus: "PROMOTED" },
             { source: { not: "TRACE" } },
             { retentionExpiresAt: { gt: now } },
           ],
@@ -448,6 +472,7 @@ describe("listSearchEvalCandidates", () => {
       {
         id: "candidate-trace",
         source: "TRACE",
+        promotionStatus: "GENERATED",
         locale: "en",
         expectedResultHints: ["raw trace query Jesus movie"],
         sourceAnchors: [
@@ -467,6 +492,15 @@ describe("listSearchEvalCandidates", () => {
         judgeSummary: { rationale: "raw trace query Jesus movie" },
         mastraRunId: "raw trace query Jesus movie",
         retentionExpiresAt: new Date("2026-05-27T00:00:00.000Z"),
+        sanitizedQueryText: null,
+        sanitizedExpectedResultNotes: null,
+        sanitizedSourceAnchors: [],
+        sanitizationStatus: "PENDING",
+        reviewerIdentity: null,
+        reviewedAt: null,
+        reviewNotes: null,
+        promotedAt: null,
+        promotionRunContext: {},
         generatedAt: new Date("2026-05-26T00:00:00.000Z"),
         createdAt: new Date("2026-05-26T00:00:01.000Z"),
       },
@@ -502,6 +536,7 @@ describe("listSearchEvalCandidates", () => {
         where: expect.objectContaining({
           source: { in: ["TRACE"] },
           OR: [
+            { promotionStatus: "PROMOTED" },
             { source: { not: "TRACE" } },
             { retentionExpiresAt: { gt: now } },
           ],
@@ -519,6 +554,7 @@ describe("listSearchEvalCandidates", () => {
       {
         id: "legacy-candidate",
         source: "CATALOG",
+        promotionStatus: "GENERATED",
         locale: "en",
         expectedResultHints: ["raw trace query Jesus movie"],
         sourceAnchors: [{ type: "trace", id: "trace-1" }],
@@ -531,6 +567,15 @@ describe("listSearchEvalCandidates", () => {
         judgeSummary: { rationale: "raw trace query Jesus movie" },
         mastraRunId: "raw trace query Jesus movie",
         retentionExpiresAt: null,
+        sanitizedQueryText: null,
+        sanitizedExpectedResultNotes: null,
+        sanitizedSourceAnchors: [],
+        sanitizationStatus: "PENDING",
+        reviewerIdentity: null,
+        reviewedAt: null,
+        reviewNotes: null,
+        promotedAt: null,
+        promotionRunContext: {},
         generatedAt: new Date("2026-05-26T00:00:00.000Z"),
         createdAt: new Date("2026-05-26T00:00:01.000Z"),
       },
@@ -573,6 +618,7 @@ describe("listSearchEvalCandidates", () => {
         where: expect.objectContaining({
           source: { in: ["TRACE"] },
           OR: [
+            { promotionStatus: "PROMOTED" },
             { source: { not: "TRACE" } },
             { retentionExpiresAt: { gt: now } },
           ],
@@ -597,5 +643,165 @@ describe("listSearchEvalCandidates", () => {
         { locales: ["../en"] },
       ),
     ).rejects.toMatchObject({ code: "validation" })
+  })
+})
+
+describe("review state transitions", () => {
+  it("promotes a pending candidate with sanitized truth and overwrites raw query text", async () => {
+    const prisma = buildPrisma()
+    const now = new Date("2026-05-28T00:00:00.000Z")
+    prisma.searchEvalCandidate.findMany
+      .mockResolvedValueOnce([
+        {
+          id: "candidate-1",
+          source: "TRACE",
+          promotionStatus: "GENERATED",
+          locale: "en",
+          expectedResultHints: ["raw trace query"],
+          sourceAnchors: [{ type: "trace", text: "raw trace query" }],
+          labelProvenance: { rawQueryText: "raw trace query" },
+          generationModel: "admin-trace-sample:v1",
+          generationProvider: "mastra",
+          judgeSummary: { rationale: "raw trace query" },
+          sanitizedQueryText: "Who is Jesus?",
+          sanitizedExpectedResultNotes: "Should surface Jesus overview content",
+          sanitizedSourceAnchors: [{ type: "video", id: "video-1" }],
+          sanitizationStatus: "SANITIZED",
+          reviewerIdentity: "nisal",
+          reviewedAt: now,
+          reviewNotes: "safe",
+          promotedAt: null,
+          promotionRunContext: { reportId: "report-1" },
+          mastraRunId: "run-1",
+          retentionExpiresAt: new Date("2026-06-01T00:00:00.000Z"),
+          generatedAt: new Date("2026-05-26T00:00:00.000Z"),
+          createdAt: new Date("2026-05-26T00:00:00.000Z"),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "candidate-1",
+          source: "TRACE",
+          promotionStatus: "PROMOTED",
+          locale: "en",
+          expectedResultHints: ["raw trace query"],
+          sourceAnchors: [{ type: "trace", text: "raw trace query" }],
+          labelProvenance: { rawQueryText: "raw trace query" },
+          generationModel: "admin-trace-sample:v1",
+          generationProvider: "mastra",
+          judgeSummary: { rationale: "raw trace query" },
+          sanitizedQueryText: "Who is Jesus?",
+          sanitizedExpectedResultNotes: "Should surface Jesus overview content",
+          sanitizedSourceAnchors: [{ type: "video", id: "video-1" }],
+          sanitizationStatus: "SANITIZED",
+          reviewerIdentity: "nisal",
+          reviewedAt: now,
+          reviewNotes: "safe",
+          promotedAt: now,
+          promotionRunContext: { reportId: "report-1" },
+          mastraRunId: "run-1",
+          retentionExpiresAt: new Date("2026-06-01T00:00:00.000Z"),
+          generatedAt: new Date("2026-05-26T00:00:00.000Z"),
+          createdAt: new Date("2026-05-26T00:00:00.000Z"),
+        },
+      ])
+
+    const promoted = await promoteSearchEvalCandidate(
+      prisma as unknown as Parameters<typeof promoteSearchEvalCandidate>[0],
+      "candidate-1",
+      {
+        reviewerIdentity: "nisal",
+        sanitizedQueryText: "Who is Jesus?",
+        sanitizedExpectedResultNotes: "Should surface Jesus overview content",
+        sanitizedSourceAnchors: [{ type: "video", id: "video-1" }],
+        promotionRunContext: { reportId: "report-1" },
+      },
+      now,
+    )
+
+    expect(prisma.searchEvalCandidate.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          promotionStatus: "PROMOTED",
+          queryText: "Who is Jesus?",
+          sanitizedQueryText: "Who is Jesus?",
+          sanitizationStatus: "SANITIZED",
+          reviewerIdentity: "nisal",
+          reviewedAt: now,
+          promotedAt: now,
+        }),
+      }),
+    )
+    expect(promoted).toMatchObject({
+      id: "candidate-1",
+      promotionStatus: "promoted",
+      queryText: "Who is Jesus?",
+      sourceAnchors: [{ type: "video", id: "video-1" }],
+    })
+    expect(JSON.stringify(promoted)).not.toContain("raw trace query")
+  })
+
+  it("rejects and archives only pending candidates with reviewer identity", async () => {
+    const prisma = buildPrisma()
+    const now = new Date("2026-05-28T00:00:00.000Z")
+    prisma.searchEvalCandidate.findMany.mockResolvedValue([
+      {
+        id: "candidate-1",
+        source: "CATALOG",
+        promotionStatus: "REJECTED",
+        locale: "en",
+        expectedResultHints: [],
+        sourceAnchors: [],
+        labelProvenance: {},
+        generationModel: "seed:v1",
+        generationProvider: "mastra",
+        judgeSummary: null,
+        sanitizedQueryText: null,
+        sanitizedExpectedResultNotes: null,
+        sanitizedSourceAnchors: [],
+        sanitizationStatus: "UNSAFE",
+        reviewerIdentity: "nisal",
+        reviewedAt: now,
+        reviewNotes: "ambiguous",
+        promotedAt: null,
+        promotionRunContext: {},
+        mastraRunId: "run-1",
+        retentionExpiresAt: null,
+        generatedAt: now,
+        createdAt: now,
+      },
+    ])
+
+    await rejectSearchEvalCandidate(
+      prisma as unknown as Parameters<typeof rejectSearchEvalCandidate>[0],
+      "candidate-1",
+      { reviewerIdentity: "nisal", reviewNotes: "ambiguous" },
+      now,
+    )
+    await archiveSearchEvalCandidate(
+      prisma as unknown as Parameters<typeof archiveSearchEvalCandidate>[0],
+      "candidate-1",
+      { reviewerIdentity: "nisal", reviewNotes: "duplicate" },
+      now,
+    )
+
+    expect(prisma.searchEvalCandidate.updateMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({ promotionStatus: "GENERATED" }),
+        data: expect.objectContaining({
+          promotionStatus: "REJECTED",
+          sanitizationStatus: "UNSAFE",
+          reviewerIdentity: "nisal",
+          reviewedAt: now,
+        }),
+      }),
+    )
+    expect(prisma.searchEvalCandidate.updateMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({ promotionStatus: "ARCHIVED" }),
+      }),
+    )
   })
 })

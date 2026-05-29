@@ -29,6 +29,15 @@ locale, provenance, source anchors, advisory judge summaries, and promotion
 status, but they are not durable regression gates until a later sanitized
 human-promotion flow moves selected cases into committed harness data.
 
+Promoted candidates now remain in Admin Postgres as durable sanitized
+regression truth. The local Admin harness still reads this hand-edited
+`regressions.json` file first, then appends promoted `search_eval_candidate`
+rows when the CLI has a Prisma client. Promoted rows must use
+`sanitized_query_text`, `sanitized_expected_result_notes`,
+`sanitized_source_anchors`, reviewer identity, timestamps, and safe run
+context. Raw trace text, bearer tokens, provider secrets, vectors, and
+unsanitized source payloads must never be copied into the sanitized columns.
+
 ### `baselines/{name}.json`
 
 Frozen snapshot of `(queries, top-K results, content fingerprint)`
@@ -76,6 +85,73 @@ Schema:
 `locale` and `query` are required; `notes`, `addedAt`, `addedBy` are
 optional but please fill them in — it's the only context a future
 operator has when this regression starts failing.
+
+Promoted Admin candidates join the same durable regression set without editing
+this file. Use the Mastra `search-eval-candidate-review` workflow, backed by
+Admin's authenticated `/api/internal/search-eval/candidates` contracts, to:
+
+- list pending seed, generated, trace-derived, and user-submitted candidates;
+- inspect review-safe candidate detail;
+- edit sanitized query text, expected-result notes, and source anchors;
+- reject or archive low-quality, ambiguous, abusive, sensitive, or unsafe rows;
+- promote approved rows into regression truth.
+
+Review standards:
+
+- Seed prompts are operator-authored coverage and should stay broad, editable,
+  and ministry-representative. Audience-intent prompts may cover life stage,
+  family role, ministry role, and locale, but must not encode stereotypes as
+  expected-result truth.
+- Generated catalog and locale-quality prompts need clear viewer intent plus
+  safe Admin/Core source anchors or expected-result notes before promotion.
+- Trace-derived candidates require a human-written sanitized query. Promotion
+  overwrites the raw candidate query with the sanitized query so the promoted
+  row can outlive raw trace retention.
+- User-submitted prompts enter the same pending queue and cannot become gates
+  until a reviewer records sanitization status, reviewer identity, notes, and
+  safe anchors or expected-result context. Free-form submission notes and
+  source claims are not copied into candidate provenance; add sanitized anchors
+  during review instead.
+- LLM judge summaries are advisory only. They can help review, but durable
+  truth must come from human notes and source anchors.
+
+Feat-142 native Dataset item bridge:
+
+```json
+{
+  "input": {
+    "query": "sanitized promoted query",
+    "locale": "en",
+    "source": "seed | generated_catalog | generated_locale_quality | generated_trace | user_submitted",
+    "searchOptions": {
+      "mode": "hybrid",
+      "contentType": "all"
+    }
+  },
+  "groundTruth": {
+    "expectedResultNotes": "human-reviewed safe notes",
+    "sourceAnchors": [
+      {
+        "type": "video | experience | seed_prompt_set",
+        "id": "Admin/Core owned id",
+        "locale": "en"
+      }
+    ]
+  },
+  "metadata": {
+    "candidateId": "search_eval_candidate id",
+    "sanitizationStatus": "sanitized",
+    "reviewerIdentity": "operator identity",
+    "reviewedAt": "ISO timestamp",
+    "promotedAt": "ISO timestamp",
+    "mastraRunId": "safe Mastra run id when present",
+    "promotionRunContext": "safe JSON only"
+  }
+}
+```
+
+This is only a bridge shape. Native Mastra Dataset, Scorer, and Experiment
+records are not populated until feat-142 creates real native records.
 
 ### `calibration.json`
 

@@ -121,7 +121,7 @@ export type AdminCatalogContextResponse = z.infer<
 >
 
 export type AdminSearchEvalCandidatePayload = {
-  source: "catalog" | "locale_quality" | "trace"
+  source: "catalog" | "locale_quality" | "trace" | "seed" | "user_submitted"
   locale: string
   queryText: string
   expectedResultHints?: unknown[]
@@ -175,7 +175,16 @@ const CandidateListResponseSchema = z
       z
         .object({
           id: z.string(),
-          source: z.enum(["catalog", "locale_quality", "trace"]),
+          source: z.enum([
+            "catalog",
+            "locale_quality",
+            "trace",
+            "seed",
+            "user_submitted",
+          ]),
+          promotionStatus: z
+            .enum(["generated", "rejected", "promoted", "archived"])
+            .optional(),
           locale: z.string(),
           queryText: z.string().nullable(),
           expectedResultHints: z.unknown(),
@@ -184,6 +193,17 @@ const CandidateListResponseSchema = z
           generationModel: z.string(),
           generationProvider: z.string().nullable(),
           judgeSummary: z.unknown().nullable(),
+          sanitizedQueryText: z.string().nullable().optional(),
+          sanitizedExpectedResultNotes: z.string().nullable().optional(),
+          sanitizedSourceAnchors: z.unknown().optional(),
+          sanitizationStatus: z
+            .enum(["pending", "sanitized", "unsafe"])
+            .optional(),
+          reviewerIdentity: z.string().nullable().optional(),
+          reviewedAt: z.string().nullable().optional(),
+          reviewNotes: z.string().nullable().optional(),
+          promotedAt: z.string().nullable().optional(),
+          promotionRunContext: z.unknown().optional(),
           mastraRunId: z.string().nullable(),
           retentionExpiresAt: z.string().nullable(),
           generatedAt: z.string(),
@@ -198,6 +218,39 @@ const CandidateListResponseSchema = z
 export type AdminCandidateListResponse = z.infer<
   typeof CandidateListResponseSchema
 >
+
+const CandidateDetailResponseSchema = z
+  .object({
+    candidate: CandidateListResponseSchema.shape.candidates.element,
+  })
+  .strict()
+
+export type AdminCandidateDetailResponse = z.infer<
+  typeof CandidateDetailResponseSchema
+>
+
+export type AdminCandidateReviewPatchPayload = {
+  reviewerIdentity?: string | null
+  sanitizedQueryText?: string | null
+  sanitizedExpectedResultNotes?: string | null
+  sanitizedSourceAnchors?: unknown
+  sanitizationStatus?: "pending" | "sanitized" | "unsafe"
+  reviewNotes?: string | null
+  promotionRunContext?: unknown
+}
+
+export type AdminCandidateDecisionPayload = {
+  reviewerIdentity: string
+  reviewNotes?: string | null
+  promotionRunContext?: unknown
+}
+
+export type AdminCandidatePromotePayload = AdminCandidateDecisionPayload & {
+  sanitizedQueryText?: string | null
+  sanitizedExpectedResultNotes?: string | null
+  sanitizedSourceAnchors?: unknown
+  sanitizationStatus?: "sanitized"
+}
 
 const CandidateStoreResponseSchema = z
   .object({
@@ -313,6 +366,74 @@ async function postJson<TResult>({
         "content-type": "application/json",
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+  } catch {
+    return { ok: false, reason: "network_error", retryable: true }
+  }
+
+  const body = await response.json().catch(() => undefined)
+  if (!response.ok) {
+    const adminReason =
+      body &&
+      typeof body === "object" &&
+      !Array.isArray(body) &&
+      typeof (body as { error?: unknown }).error === "string"
+        ? (body as { error: string }).error
+        : undefined
+    return failureForStatus(response.status, adminReason)
+  }
+
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) {
+    return {
+      ok: false,
+      reason: "parse_error",
+      retryable: true,
+      status: response.status,
+    }
+  }
+
+  return { ok: true, result: parsed.data }
+}
+
+type JsonRequestInput<TResult> = {
+  url?: string
+  bearer?: string
+  method: "GET" | "PATCH" | "POST"
+  payload?: unknown
+  schema: z.ZodType<TResult>
+  timeoutMs?: number
+  fetchImpl?: typeof fetch
+}
+
+async function requestJson<TResult>({
+  url,
+  bearer,
+  method,
+  payload,
+  schema,
+  timeoutMs = 30_000,
+  fetchImpl = fetch,
+}: JsonRequestInput<TResult>): Promise<AdminSearchEvalClientResult<TResult>> {
+  if (!url || !bearer) {
+    return { ok: false, reason: "config_missing", retryable: false }
+  }
+
+  let response: Response
+  try {
+    response = await fetchImpl(new URL(url), {
+      method,
+      headers: {
+        authorization: `Bearer ${bearer}`,
+        ...(method === "GET"
+          ? { accept: "application/json" }
+          : {
+              accept: "application/json",
+              "content-type": "application/json",
+            }),
+      },
+      body: method === "GET" ? undefined : JSON.stringify(payload ?? {}),
       signal: AbortSignal.timeout(timeoutMs),
     })
   } catch {
@@ -460,7 +581,10 @@ export async function callAdminCandidateList(input: {
   url?: string
   bearer?: string
   filters?: {
-    sources?: Array<"catalog" | "locale_quality" | "trace">
+    sources?: Array<
+      "catalog" | "locale_quality" | "trace" | "seed" | "user_submitted"
+    >
+    statuses?: Array<"generated" | "rejected" | "promoted" | "archived">
     locales?: string[]
     mastraRunId?: string
     limit?: number
@@ -486,6 +610,9 @@ export async function callAdminCandidateList(input: {
   const requestUrl = new URL(url)
   if (filters?.sources && filters.sources.length > 0) {
     requestUrl.searchParams.set("source", filters.sources.join(","))
+  }
+  if (filters?.statuses && filters.statuses.length > 0) {
+    requestUrl.searchParams.set("status", filters.statuses.join(","))
   }
   if (filters?.locales && filters.locales.length > 0) {
     requestUrl.searchParams.set("locale", filters.locales.join(","))
@@ -585,5 +712,97 @@ export function callAdminCandidateStore(input: {
   return postJson({
     ...input,
     schema: CandidateStoreResponseSchema,
+  })
+}
+
+function candidateActionUrl(
+  baseUrl: string | undefined,
+  candidateId: string,
+  action?: "promote" | "reject" | "archive",
+): string | undefined {
+  if (!baseUrl) return undefined
+  const root = new URL(baseUrl)
+  const pathname = `${root.pathname.replace(/\/$/, "")}/${encodeURIComponent(candidateId)}${action ? `/${action}` : ""}`
+  root.pathname = pathname
+  root.search = ""
+  return root.toString()
+}
+
+export function callAdminCandidateDetail(input: {
+  url?: string
+  bearer?: string
+  candidateId: string
+  timeoutMs?: number
+  fetchImpl?: typeof fetch
+}): Promise<AdminSearchEvalClientResult<AdminCandidateDetailResponse>> {
+  return requestJson({
+    ...input,
+    method: "GET",
+    url: candidateActionUrl(input.url, input.candidateId),
+    schema: CandidateDetailResponseSchema,
+  })
+}
+
+export function callAdminCandidateReviewPatch(input: {
+  url?: string
+  bearer?: string
+  candidateId: string
+  payload: AdminCandidateReviewPatchPayload
+  timeoutMs?: number
+  fetchImpl?: typeof fetch
+}): Promise<AdminSearchEvalClientResult<AdminCandidateDetailResponse>> {
+  return requestJson({
+    ...input,
+    method: "PATCH",
+    url: candidateActionUrl(input.url, input.candidateId),
+    schema: CandidateDetailResponseSchema,
+  })
+}
+
+export function callAdminCandidateReject(input: {
+  url?: string
+  bearer?: string
+  candidateId: string
+  payload: AdminCandidateDecisionPayload
+  timeoutMs?: number
+  fetchImpl?: typeof fetch
+}): Promise<AdminSearchEvalClientResult<AdminCandidateDetailResponse>> {
+  return requestJson({
+    ...input,
+    method: "POST",
+    url: candidateActionUrl(input.url, input.candidateId, "reject"),
+    schema: CandidateDetailResponseSchema,
+  })
+}
+
+export function callAdminCandidateArchive(input: {
+  url?: string
+  bearer?: string
+  candidateId: string
+  payload: AdminCandidateDecisionPayload
+  timeoutMs?: number
+  fetchImpl?: typeof fetch
+}): Promise<AdminSearchEvalClientResult<AdminCandidateDetailResponse>> {
+  return requestJson({
+    ...input,
+    method: "POST",
+    url: candidateActionUrl(input.url, input.candidateId, "archive"),
+    schema: CandidateDetailResponseSchema,
+  })
+}
+
+export function callAdminCandidatePromote(input: {
+  url?: string
+  bearer?: string
+  candidateId: string
+  payload: AdminCandidatePromotePayload
+  timeoutMs?: number
+  fetchImpl?: typeof fetch
+}): Promise<AdminSearchEvalClientResult<AdminCandidateDetailResponse>> {
+  return requestJson({
+    ...input,
+    method: "POST",
+    url: candidateActionUrl(input.url, input.candidateId, "promote"),
+    schema: CandidateDetailResponseSchema,
   })
 }

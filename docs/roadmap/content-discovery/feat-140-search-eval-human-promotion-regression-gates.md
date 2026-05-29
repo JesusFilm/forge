@@ -3,7 +3,7 @@ id: "feat-140"
 title: "Search eval human promotion and regression gates"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: "2026-05-25"
 duration: 3
 depends_on:

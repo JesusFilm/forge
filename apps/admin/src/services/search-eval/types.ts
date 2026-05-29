@@ -49,7 +49,7 @@ export type Verdict =
  * and intentionally do not enter this durable harness union until a sanitized
  * human-promotion flow lands.
  */
-export type QuerySource = "synthetic" | "regression"
+export type QuerySource = "synthetic" | "regression" | "promoted"
 
 /** Run-level mode for the harness CLI. */
 export type RunMode = "quick" | "full" | "locale"
