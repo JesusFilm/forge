@@ -348,6 +348,9 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
       "[data-testid='watch-body-texture']",
     )
     expect(bodyTexture?.getAttribute("class")).toContain("opacity-30")
+    expect(bodyTexture?.getAttribute("style")).toContain(
+      "/watch/images/overlay.svg",
+    )
     const bibleQuotesEl = container.querySelector(
       '[data-block-type="BibleQuotes"]',
     )

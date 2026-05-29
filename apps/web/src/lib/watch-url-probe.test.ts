@@ -114,6 +114,40 @@ describe("classifyProbe", () => {
     )
     expect(outcome).toBe("error")
   })
+
+  it("hard-regression: passthrough fixture redirects even if both sides match", () => {
+    const fixture = {
+      path: "/watch/images/jesusfilm-sign.svg",
+      expect: "passthrough" as const,
+    }
+    const broken = result({
+      status: 200,
+      finalPath: "/watch/images.html/jesusfilm-sign.svg.html",
+      redirectHops: 1,
+    })
+
+    const { outcome, note } = classifyProbe(broken, broken, fixture)
+
+    expect(outcome).toBe("hard-regression")
+    expect(note).toMatch(/PASSTHROUGH CONTRACT BROKEN/)
+    expect(note).toMatch(/production redirected 1 hop/)
+  })
+
+  it("hard-regression: passthrough fixture final path changes without a hop", () => {
+    const fixture = {
+      path: "/watch/images/jesusfilm-sign.svg",
+      expect: "passthrough" as const,
+    }
+
+    const { outcome, note } = classifyProbe(
+      result({ finalPath: "/watch/images.html/jesusfilm-sign.svg.html" }),
+      result({ finalPath: "/watch/images/jesusfilm-sign.svg" }),
+      fixture,
+    )
+
+    expect(outcome).toBe("hard-regression")
+    expect(note).toMatch(/final path changed/)
+  })
 })
 
 describe("WATCH_URL_FIXTURES integrity", () => {
@@ -144,6 +178,21 @@ describe("WATCH_URL_FIXTURES integrity", () => {
       WATCH_URL_FIXTURES.some(
         (f) => f.path === "/watch/jesus.html/english.html",
       ),
+    ).toBe(true)
+  })
+
+  it("covers representative public asset passthrough paths", () => {
+    const passthrough = new Set(
+      WATCH_URL_FIXTURES.filter((f) => f.expect === "passthrough").map(
+        (f) => f.path,
+      ),
+    )
+
+    expect(passthrough.has("/watch/images/jesusfilm-sign.svg")).toBe(true)
+    expect(passthrough.has("/watch/images/flags/ru.svg")).toBe(true)
+    expect(passthrough.has("/watch/assets/overlay.svg")).toBe(true)
+    expect(
+      passthrough.has("/watch/fonts/Montserrat-VariableFont_wght.woff2"),
     ).toBe(true)
   })
 

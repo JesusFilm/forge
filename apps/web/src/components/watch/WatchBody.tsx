@@ -7,11 +7,15 @@ import type { WatchBodyBlock, WatchStudyQuestionsBlock } from "@/lib/content"
 export function WatchBody({
   block,
   downloadButtonLabel,
+  downloadError,
+  downloadPending = false,
   studyQuestions,
   onDownloadClick,
 }: {
   block: WatchBodyBlock
   downloadButtonLabel?: string
+  downloadError?: string | null
+  downloadPending?: boolean
   studyQuestions: WatchStudyQuestionsBlock | null
   onDownloadClick: () => void
 }) {
@@ -52,11 +56,21 @@ export function WatchBody({
             {video.title ?? ""}
           </h2>
           {hasDownloads ? (
-            <div className="shrink-0">
+            <div className="flex shrink-0 flex-col items-start gap-2 md:items-end">
               <DownloadButton
                 label={downloadButtonLabel}
                 onClick={onDownloadClick}
+                pending={downloadPending}
               />
+              {downloadError ? (
+                <p
+                  className="max-w-64 text-sm leading-snug font-semibold text-red-200"
+                  data-testid="watch-download-error"
+                  role="alert"
+                >
+                  {downloadError}
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>

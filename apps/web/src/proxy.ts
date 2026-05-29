@@ -105,9 +105,10 @@ export function proxy(request: ProxyRequest): NextResponse {
   // Step 1: canonicalize legacy /watch shapes into the .html-suffix
   // canonical. Single deterministic pass — six rules with a termination
   // guarantee (canonicalize ∘ canonicalize === canonicalize). Reserved
-  // subtrees (api, _next, assets, favicon, robots, sitemap, .well-known)
-  // are excluded at the canonicalize level so framework asset URLs are
-  // never amplified by Rule 5's single-segment-duplicate rule.
+  // subtrees (api, _next, public asset folders, favicon, robots, sitemap,
+  // .well-known) are excluded at the canonicalize level so framework and
+  // public asset URLs are never amplified by Rule 5's single-segment-
+  // duplicate rule.
   const canonical = canonicalizeWatchPath({ rawPathname: pathname })
   if (canonical.kind === "redirect") {
     const url = request.nextUrl.clone()
@@ -160,6 +161,6 @@ export const config = {
     // amplify e.g. /assets into /assets.html/assets.html). The matcher
     // is the first line of defense; canonicalize's RESERVED_PREFIXES is
     // the second. Both must agree.
-    "/((?!api|_next/static|_next/image|_next/data|_next/webpack-hmr|assets|favicon\\.ico|robots\\.txt|sitemap|\\.well-known).*)",
+    "/((?!(?:api|assets|images|fonts|\\.well-known)(?:/|$)|_next/(?:static|image|data|webpack-hmr)(?:/|$)|favicon\\.ico$|robots\\.txt$|sitemap(?:\\.xml)?$).*)",
   ],
 }

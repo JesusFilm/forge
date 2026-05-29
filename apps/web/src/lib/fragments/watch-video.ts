@@ -113,10 +113,11 @@ export const watchVideoFragment = adminGraphql(`
           mobileCinematicHigh
           mobileCinematicLow
         }
-        # One Int per chapter — the primary playable dub's runtime — instead
-        # of projecting every child's full dub list. A collection like the
-        # Jesus film (61 chapters × ~2,200 dubs) would otherwise resolve a
-        # ~45 MB payload that exceeds Next's unstable_cache 2 MB ceiling.
+        # child.dubs is deliberately NOT projected — a 61-chapter ×
+        # ~2,200-language fan-out (~45 MB) blows past Next's unstable_cache
+        # 2 MB ceiling. Restore the per-chapter duration pill via this cheap
+        # server-side scalar (admin's Video.durationSeconds, like
+        # HybridSearchResult.durationSeconds), NOT a full dub fetch.
         durationSeconds
       }
     }
@@ -136,7 +137,6 @@ export const watchVideoFragment = adminGraphql(`
         documentId: id
         quality
         size
-        url
       }
       muxVideo {
         playbackId

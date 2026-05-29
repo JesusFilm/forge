@@ -10,10 +10,61 @@
 
 import { describe, expect, test } from "vitest"
 
+import type { WatchSubtitle } from "@/lib/content"
 import {
+  filterTranscriptSubtitlesForAudio,
   normalizeCueOffset,
   parseVtt,
 } from "@/components/watch/SubtitleTranscript"
+
+const englishSubtitle: WatchSubtitle = {
+  documentId: "subtitle-en",
+  language: {
+    slug: "english",
+    name: "English",
+    nativeName: null,
+    bcp47: "en",
+  },
+  vttSrc: "https://example.com/en.vtt",
+  primary: true,
+  aiGenerated: false,
+}
+
+const amharicSubtitle: WatchSubtitle = {
+  documentId: "subtitle-am",
+  language: {
+    slug: "amharic",
+    name: "Amharic",
+    nativeName: null,
+    bcp47: "am",
+  },
+  vttSrc: "https://example.com/am.vtt",
+  primary: false,
+  aiGenerated: true,
+}
+
+describe("filterTranscriptSubtitlesForAudio", () => {
+  test("keeps only subtitles that match the selected audio language", () => {
+    expect(
+      filterTranscriptSubtitlesForAudio(
+        [englishSubtitle, amharicSubtitle],
+        "english",
+      ),
+    ).toEqual([englishSubtitle])
+  })
+
+  test("returns no subtitles when the selected audio language has no matching subtitle track", () => {
+    expect(
+      filterTranscriptSubtitlesForAudio([amharicSubtitle], "english"),
+    ).toEqual([])
+  })
+
+  test("preserves existing subtitle fallback behavior when no audio language is known", () => {
+    const subtitles = [englishSubtitle, amharicSubtitle]
+
+    expect(filterTranscriptSubtitlesForAudio(subtitles, null)).toBe(subtitles)
+  })
+})
 
 describe("parseVtt", () => {
   test("parses a happy-path cue", () => {

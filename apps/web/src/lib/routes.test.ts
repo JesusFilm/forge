@@ -205,6 +205,16 @@ describe("parseWatchPath", () => {
       kind: "reserved",
       prefix: "assets",
     })
+    expect(parseWatchPath("/images/jesusfilm-sign.svg")).toEqual({
+      kind: "reserved",
+      prefix: "images",
+    })
+    expect(parseWatchPath("/fonts/Montserrat-VariableFont_wght.woff2")).toEqual(
+      {
+        kind: "reserved",
+        prefix: "fonts",
+      },
+    )
     expect(parseWatchPath("/favicon.ico")).toEqual({
       kind: "reserved",
       prefix: "favicon.ico",

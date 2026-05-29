@@ -37,6 +37,23 @@ describe("canonicalizeWatchPath: short-circuit guards", () => {
     })
   })
 
+  it("returns canonical for reserved subtree: images", () => {
+    expect(canonical({ rawPathname: "/images/jesusfilm-sign.svg" })).toEqual({
+      kind: "canonical",
+    })
+    expect(canonical({ rawPathname: "/images/flags/ru.svg" })).toEqual({
+      kind: "canonical",
+    })
+  })
+
+  it("returns canonical for reserved subtree: fonts", () => {
+    expect(
+      canonical({ rawPathname: "/fonts/Montserrat-VariableFont_wght.woff2" }),
+    ).toEqual({
+      kind: "canonical",
+    })
+  })
+
   it("returns canonical for reserved literals: favicon, robots, sitemap", () => {
     expect(canonical({ rawPathname: "/favicon.ico" })).toEqual({
       kind: "canonical",

@@ -11,6 +11,8 @@ export const env = createEnv({
   server: {
     AUTH_BASE_URL: z.string().url().optional(),
     BETTER_AUTH_SECRET: z.string().min(1).optional(),
+    AUTH_COOKIE_DOMAIN: z.string().min(1).optional(),
+    AUTH_WEB_TRUSTED_ORIGINS: z.string().min(1).optional(),
     DATABASE_URL: z.string().url().optional(),
     FACEBOOK_CLIENT_ID: z.string().min(1).optional(),
     FACEBOOK_CLIENT_SECRET: z.string().min(1).optional(),
@@ -33,6 +35,10 @@ export const env = createEnv({
   runtimeEnv: {
     AUTH_BASE_URL: emptyToUndefined(process.env.AUTH_BASE_URL),
     BETTER_AUTH_SECRET: emptyToUndefined(process.env.BETTER_AUTH_SECRET),
+    AUTH_COOKIE_DOMAIN: emptyToUndefined(process.env.AUTH_COOKIE_DOMAIN),
+    AUTH_WEB_TRUSTED_ORIGINS: emptyToUndefined(
+      process.env.AUTH_WEB_TRUSTED_ORIGINS,
+    ),
     DATABASE_URL: emptyToUndefined(process.env.DATABASE_URL),
     FACEBOOK_CLIENT_ID: emptyToUndefined(process.env.FACEBOOK_CLIENT_ID),
     FACEBOOK_CLIENT_SECRET: emptyToUndefined(
@@ -61,6 +67,46 @@ export function getAuthBaseUrl(): string {
   return (
     env.AUTH_BASE_URL ??
     productionDefault("https://auth.jesusfilm.org", "http://localhost:3004")
+  )
+}
+
+function parseOriginList(value: string | undefined): string[] {
+  if (!value) return []
+
+  return value
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0)
+    .map((origin) => new URL(origin).origin)
+}
+
+export function getAuthTrustedOrigins(): string[] {
+  const productionWebOrigins = [
+    "https://jesusfilm.org",
+    "https://www.jesusfilm.org",
+    "https://web.jesusfilm.org",
+  ]
+  const localWebOrigins =
+    process.env.NODE_ENV === "production"
+      ? []
+      : [
+          "http://localhost:3000",
+          "http://127.0.0.1:3000",
+          "http://localhost:3020",
+          "http://127.0.0.1:3020",
+          "http://localhost:3030",
+          "http://127.0.0.1:3030",
+          "http://localhost:3102",
+          "http://127.0.0.1:3102",
+        ]
+
+  return Array.from(
+    new Set([
+      getAuthBaseUrl(),
+      ...productionWebOrigins,
+      ...localWebOrigins,
+      ...parseOriginList(env.AUTH_WEB_TRUSTED_ORIGINS),
+    ]),
   )
 }
 

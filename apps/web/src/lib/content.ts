@@ -152,7 +152,6 @@ export type WatchVariantDownload = {
   documentId: string
   quality: string | null
   size: string | null
-  url: string | null
 }
 
 export type WatchVariant = {
@@ -559,7 +558,6 @@ function normalizeVariant(
           documentId: d.documentId,
           quality: d.quality ?? null,
           size: d.size ?? null,
-          url: d.url ?? null,
         }
       })
       .filter((d): d is WatchVariantDownload => d != null),
@@ -993,15 +991,21 @@ async function fetchWatchVideoRecord(
   return normalized
 }
 
-// Strip the heavy fields (`downloads`, `muxVideo`) from every variant in
-// `record.variants` *except* the one matching `selectedDocumentId`.
+// Strip the heavy fields (`downloads`, `muxVideo`, `videoEdition`) from every
+// variant in `record.variants` *except* the one matching `selectedDocumentId`.
 // Each non-selected variant retains documentId, slug, published, hls, and
 // language only — enough to power the language picker and the URL/locale
-// guards without shipping per-quality download metadata × 240+ variants.
+// guards without shipping per-quality download metadata OR per-variant
+// subtitle lists × 2,200+ variants. The page-level subtitle list is sourced
+// separately (`normalizeSubtitles` reads variant[0]) and the language picker
+// reads the top-level `subtitles` prop, so dropping per-variant `videoEdition`
+// on non-selected variants is invisible to consumers. Leaving subtitles on
+// every variant inflated JESUS's resolved payload by ~10MB — over Next's
+// unstable_cache 2MB limit.
 //
 // Runtime-only narrowing: the `WatchVideoRecord` type still claims those
 // fields are present on every variant, so the stripped objects keep the
-// same shape with empty `downloads: []` and `muxVideo: null`.
+// same shape with empty `downloads: []`, `muxVideo: null`, `videoEdition: null`.
 function stripNonSelectedVariantFields(
   record: WatchVideoRecord,
   selectedDocumentId: string | null,
@@ -1013,6 +1017,7 @@ function stripNonSelectedVariantFields(
       ...variant,
       downloads: [] as WatchVariantDownload[],
       muxVideo: null,
+      videoEdition: null,
     }
   })
   return { ...record, variants }

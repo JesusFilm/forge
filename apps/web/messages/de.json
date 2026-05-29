@@ -25,13 +25,17 @@
     "nextQuote": "Nächstes Bibelzitat"
   },
   "DownloadButton": {
-    "download": "Herunterladen"
+    "checking": "Wird geprüft",
+    "download": "Herunterladen",
+    "sessionError": "Sitzung konnte nicht geprüft werden. Bitte versuche es erneut."
   },
   "DownloadModal": {
     "dialogTitle": "Video herunterladen",
     "eyebrow": "Video herunterladen",
     "posterAlt": "Video-Vorschaubild",
     "noDownloads": "Für dieses Video sind keine Downloads verfügbar.",
+    "errorSessionExpired": "Deine Sitzung ist abgelaufen. Melde dich erneut an, um herunterzuladen.",
+    "errorSessionUnavailable": "Sitzung konnte nicht geprüft werden. Bitte versuche es erneut.",
     "errorUnavailableSource": "Download von dieser Quelle nicht verfügbar",
     "tierHighest": "Höchste",
     "tierHigh": "Hoch",
@@ -65,6 +69,8 @@
     "requestSent": "Anfrage gesendet",
     "translateWithAi": "Mit KI übersetzen",
     "noSubtitles": "Keine Untertitel",
+    "toggleOn": "Ein",
+    "toggleOff": "Aus",
     "close": "Schließen",
     "apply": "Anwenden"
   },

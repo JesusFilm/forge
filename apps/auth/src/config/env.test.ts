@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 async function loadEnv() {
   vi.resetModules()
@@ -6,6 +6,10 @@ async function loadEnv() {
 }
 
 describe("auth env", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   it("defaults auth base URL to localhost outside production", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("AUTH_BASE_URL", "")
@@ -23,6 +27,45 @@ describe("auth env", () => {
     const { getAuthBaseUrl } = await loadEnv()
 
     expect(getAuthBaseUrl()).toBe("https://auth.jesusfilm.org")
+  })
+
+  it("trusts common local web watch origins outside production", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AUTH_BASE_URL", "http://localhost:3034")
+    vi.stubEnv("AUTH_WEB_TRUSTED_ORIGINS", "")
+
+    const { getAuthTrustedOrigins } = await loadEnv()
+
+    expect(getAuthTrustedOrigins()).toEqual(
+      expect.arrayContaining([
+        "http://localhost:3034",
+        "http://localhost:3000",
+        "http://127.0.0.1:3030",
+      ]),
+    )
+  })
+
+  it("adds configured web trusted origins", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("AUTH_BASE_URL", "https://auth.jesusfilm.org")
+    vi.stubEnv(
+      "AUTH_WEB_TRUSTED_ORIGINS",
+      "https://preview.jesusfilm.org/path, https://branch.example.test",
+    )
+    vi.stubEnv("BETTER_AUTH_SECRET", "test-secret")
+
+    const { getAuthTrustedOrigins } = await loadEnv()
+
+    expect(getAuthTrustedOrigins()).toEqual(
+      expect.arrayContaining([
+        "https://auth.jesusfilm.org",
+        "https://jesusfilm.org",
+        "https://www.jesusfilm.org",
+        "https://web.jesusfilm.org",
+        "https://preview.jesusfilm.org",
+        "https://branch.example.test",
+      ]),
+    )
   })
 
   it("fails closed when the production runtime secret is missing", async () => {
