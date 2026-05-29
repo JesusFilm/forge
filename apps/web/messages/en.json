@@ -69,6 +69,8 @@
     "requestSent": "Request sent",
     "translateWithAi": "Translate with AI",
     "noSubtitles": "No subtitles",
+    "toggleOn": "On",
+    "toggleOff": "Off",
     "close": "Close",
     "apply": "Apply"
   },

@@ -69,6 +69,8 @@
     "requestSent": "Anfrage gesendet",
     "translateWithAi": "Mit KI übersetzen",
     "noSubtitles": "Keine Untertitel",
+    "toggleOn": "Ein",
+    "toggleOff": "Aus",
     "close": "Schließen",
     "apply": "Anwenden"
   },
