@@ -138,11 +138,13 @@ export function slugToBcp47Primary(slug: string): string | null {
  *   - prototype keys: `__proto__`, `constructor` (Object.hasOwn is safe).
  *
  * Known limitation: 39 admin languages that lack a bcp47 tag are absent from
- * `LANGUAGE_BCP47_MAP` and therefore return false here. They are obscure and
- * none appear in the §5 probe matrix; expanding to the complete
- * `Language.slug` set is a tracked follow-up. See
- * `src/lib/language-bcp47-map.ts` header + plan
- * `docs/plans/2026-05-28-003-fix-watch-section-5-6-404-hardening-plan.md`.
+ * `LANGUAGE_BCP47_MAP` and therefore return false here (so those dub URLs
+ * 404). They are obscure and none appear in the §5 probe matrix. Expanding to
+ * the complete `Language.slug` set is tracked in todo 032
+ * (`todos/032-pending-p2-known-language-slugs-full-set.md`) — a conscious
+ * implementation-time deviation from the plan's full-set predicate (no codegen
+ * script / admin DB in the worktree). See `src/lib/language-bcp47-map.ts`
+ * header.
  */
 export function isKnownLanguageSlug(slug: string): boolean {
   return Object.hasOwn(LANGUAGE_BCP47_MAP, slug)

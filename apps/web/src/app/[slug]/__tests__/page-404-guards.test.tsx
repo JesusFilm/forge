@@ -3,10 +3,14 @@
  *
  * §5.6 404 hardening for the single-segment /watch/[slug] route.
  *
- * Verifies guard B (uppercase/empty content slug → 404) and guard C (a single
- * VIDEO resolved at the 1-segment shape → 404, because the canonical video URL
- * requires a locale) WITHOUT over-404ing the must-200 cases: 1-segment
- * collections (kind "experience") and localized homes still render.
+ * Verifies guard B (uppercase/empty content slug → 404) WITHOUT over-404ing
+ * the must-200 cases: 1-segment collections (kind "experience") and localized
+ * homes still render.
+ *
+ * NOTE: guard C (single-video-at-1-segment → 404) was DEFERRED — it needs
+ * real-data verification that collections resolve as kind:"experience" before
+ * it can ship without over-404ing them. Tracked in todo 031. The must-200
+ * cases below also pin that guard B does not over-reach.
  */
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
@@ -64,19 +68,6 @@ async function render1Seg(slug: string) {
 }
 
 describe("/watch/[slug] — §5.6 404 hardening", () => {
-  it("guard C: 404s a single VIDEO at the 1-segment shape (missing locale)", async () => {
-    resolveWatchPageMock.mockResolvedValue({
-      data: {
-        kind: "video-template",
-        template: { blocks: [] },
-        routeVideo: { slug: "jesus" },
-      },
-      error: null,
-    })
-    await expect(render1Seg("jesus")).rejects.toThrow("NEXT_NOT_FOUND")
-    expect(notFoundMock).toHaveBeenCalled()
-  })
-
   it("guard B: 404s an uppercase content slug before resolving", async () => {
     await expect(render1Seg("JESUS")).rejects.toThrow("NEXT_NOT_FOUND")
     expect(notFoundMock).toHaveBeenCalled()

@@ -57,16 +57,14 @@ export default async function SlugPage({ params }: PageProps) {
   }
 
   const page = result.data
-  // Guard C — a single VIDEO resolved at the 1-segment shape must 404: the
-  // canonical video URL requires a locale (`/watch/jesus.html/english.html`),
-  // so `/watch/jesus.html` (single-video, missing locale) is a §5.6 404.
-  // Collections/experiences resolve as `kind: "experience"` and localized
-  // homes take the `isLocale(slug)` branch (slug undefined) — both unaffected.
-  if (page?.kind === "video-template") notFound()
-  // Past guard C the only remaining kind is "experience" (collections +
-  // localized homes). Single-video routeVideo never renders at 1-segment.
-  const experience = page?.kind === "experience" ? page.experience : null
-  const routeVideo = null
+  // NOTE: guard C (single-video-at-1-segment → notFound, §5.6) was DEFERRED —
+  // it requires verifying that 1-seg collections (easter) resolve as
+  // kind:"experience" and not "video-template" against REAL admin data, else
+  // it over-404s a must-200 collection. Tracked in todo 031. This branch
+  // therefore still renders a 1-seg video-template (the pre-fix behavior).
+  const experience =
+    page?.kind === "video-template" ? page.template : (page?.experience ?? null)
+  const routeVideo = page?.kind === "video-template" ? page.routeVideo : null
   const blocks = (experience?.blocks ?? []).filter(
     (b): b is Section => b !== null,
   )
