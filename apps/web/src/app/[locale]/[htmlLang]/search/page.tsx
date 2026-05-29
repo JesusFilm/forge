@@ -16,6 +16,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
+export const dynamic = "force-dynamic"
+
 type PageProps = {
   searchParams: Promise<{ q?: string }>
 }

@@ -52,11 +52,11 @@ export function tryAsContentSlug(value: string): ContentSlug | null {
 }
 
 // `reason` documents WHY a resync sentinel is set on the URL. Today the
-// union has one value — the server-side variant-mismatch resync at
-// app/[slug]/[locale]/page.tsx:146. When Phase 3 cookie-pref redirects
-// or Phase 4 alias-redirect emitters land, expand this union AND
-// serialize the value to a `reason=` query param so the wire carries the
-// distinction (a single boolean `_lr=1` can't tell three reasons apart).
+// union has one value — the server-side variant-mismatch resync in
+// app/[locale]/[htmlLang]/[...rest]/page.tsx. When future redirect emitters
+// land, expand this union AND serialize the value to a `reason=` query param
+// so the wire carries the distinction (a single boolean `_lr=1` can't tell
+// three reasons apart).
 export type BuildOptions = {
   t?: number
   autoplay?: boolean

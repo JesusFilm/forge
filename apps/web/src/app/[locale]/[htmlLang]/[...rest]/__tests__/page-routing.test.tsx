@@ -1,10 +1,9 @@
 /**
  * @vitest-environment jsdom
  *
- * Catch-all route /watch/[slug]/[...rest] — segment-count dispatch for
- * two-segment (video / series / experience) and three-segment (series
- * episode) URL shapes. Merged from the two prior parallel route handlers
- * (Phase 2 refactor).
+ * Catch-all route /watch/[locale]/[htmlLang]/[...rest] — segment-count
+ * dispatch for public one-, two-, and three-segment watch URL shapes after
+ * the proxy prepends static locale layout params.
  */
 
 import { act } from "react"
@@ -107,7 +106,9 @@ vi.mock("@/lib/youversion-passage", () => ({
   fetchYouVersionBibleQuotePassages: fetchYouVersionBibleQuotePassagesMock,
 }))
 
-import SlugRestPage from "@/app/[slug]/[...rest]/page"
+import SlugRestPage from "@/app/[locale]/[htmlLang]/[...rest]/page"
+import { resolveWatchLocaleIdentity } from "@/lib/locale"
+import { stripHtmlSuffix } from "@/lib/url-shape"
 
 let container: HTMLDivElement
 let root: Root
@@ -273,9 +274,29 @@ function makeEpisodeResult(
   }
 }
 
-async function render2Seg(slug: string, locale: string) {
+function internalLocaleParams(rawLocale?: string) {
+  return resolveWatchLocaleIdentity(
+    rawLocale ? stripHtmlSuffix(rawLocale) : null,
+  )
+}
+
+async function render1Seg(segment: string) {
+  const stripped = stripHtmlSuffix(segment)
+  const identity = internalLocaleParams(
+    /^(en|es|fr|pt|de)$/.test(stripped) ? stripped : undefined,
+  )
   const element = await SlugRestPage({
-    params: Promise.resolve({ slug, rest: [locale] }),
+    params: Promise.resolve({ ...identity, rest: [segment] }),
+  })
+  act(() => {
+    root.render(element)
+  })
+}
+
+async function render2Seg(slug: string, locale: string) {
+  const identity = internalLocaleParams(locale)
+  const element = await SlugRestPage({
+    params: Promise.resolve({ ...identity, rest: [slug, locale] }),
   })
   act(() => {
     root.render(element)
@@ -283,13 +304,57 @@ async function render2Seg(slug: string, locale: string) {
 }
 
 async function render3Seg(slug: string, episode: string, locale: string) {
+  const identity = internalLocaleParams(locale)
   const element = await SlugRestPage({
-    params: Promise.resolve({ slug, rest: [episode, locale] }),
+    params: Promise.resolve({ ...identity, rest: [slug, episode, locale] }),
   })
   act(() => {
     root.render(element)
   })
 }
+
+describe("Catch-all routing — one-segment collection/home branch", () => {
+  it("keeps best-effort collection slugs such as /easter.html out of localized-home dispatch", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          id: "exp-easter",
+          slug: "easter",
+          title: "Easter",
+          blocks: [{ __typename: "TextBlock", id: "blk-1", text: "Hello" }],
+        },
+      },
+      error: null,
+    })
+
+    await render1Seg("easter.html")
+
+    expect(resolveWatchPageMock).toHaveBeenCalledWith("en", "easter")
+    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(experienceEmptyMock).not.toHaveBeenCalled()
+  })
+
+  it("preserves the old isLocale(slug) ? localized-home split for one segment", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          id: "exp-es",
+          slug: "home",
+          title: "Spanish Home",
+          blocks: [{ __typename: "TextBlock", id: "blk-1", text: "Hola" }],
+        },
+      },
+      error: null,
+    })
+
+    await render1Seg("es.html")
+
+    expect(resolveWatchPageMock).toHaveBeenCalledWith("es", undefined)
+    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+  })
+})
 
 describe("Catch-all routing — series branch (2-seg)", () => {
   it("renders SeriesPageClient when video resolver returns a COLLECTION-labeled record", async () => {
@@ -893,9 +958,26 @@ describe("Catch-all routing — 3-seg episode branch", () => {
 describe("Catch-all routing — unknown shape", () => {
   it("calls notFound() for 4+ segments (rest.length >= 3)", async () => {
     const element = SlugRestPage({
-      params: Promise.resolve({ slug: "lumo", rest: ["a", "b", "c"] }),
+      params: Promise.resolve({
+        locale: "en",
+        htmlLang: "en",
+        rest: ["lumo", "a", "b", "c"],
+      }),
     })
     await expect(element).rejects.toThrow("NEXT_NOT_FOUND")
     expect(notFoundMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("rejects malformed segments before resolver calls", async () => {
+    const element = SlugRestPage({
+      params: Promise.resolve({
+        locale: "en",
+        htmlLang: "en",
+        rest: ["bad%2Fslug.html", "english.html"],
+      }),
+    })
+    await expect(element).rejects.toThrow("NEXT_NOT_FOUND")
+    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    expect(resolveWatchPageMock).not.toHaveBeenCalled()
   })
 })

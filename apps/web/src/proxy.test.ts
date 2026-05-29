@@ -23,6 +23,11 @@ function makeRequest(
   }
 }
 
+function rewritePath(response: Response): string | null {
+  const target = response.headers.get("x-middleware-rewrite")
+  return target ? new URL(target).pathname : null
+}
+
 // ---------------------------------------------------------------------------
 // Phase 3 canonicalize integration — every row from research §5.4 must
 // produce the exact (status, Location) tuple, AND every redirect must
@@ -112,6 +117,7 @@ describe("proxy — canonicalize integration (§5.4)", () => {
     const second = proxy(makeRequest("/jesus.html/jesus.html"))
     expect(second.status).not.toBe(307)
     expect(second.status).not.toBe(308)
+    expect(rewritePath(second)).toBe("/en/en/jesus.html/jesus.html")
   })
 })
 
@@ -150,6 +156,16 @@ describe("proxy — reserved-subtree pass-through", () => {
     const response = proxy(makeRequest("/api/preview"))
     expect(response.status).not.toBe(307)
     expect(response.status).not.toBe(308)
+    expect(rewritePath(response)).toBeNull()
+  })
+
+  it("does not rewrite demo route-group surfaces", () => {
+    for (const path of ["/demo-search", "/demo-recommendations/jesus/en"]) {
+      const response = proxy(makeRequest(path))
+      expect(response.status).not.toBe(307)
+      expect(response.status).not.toBe(308)
+      expect(rewritePath(response)).toBeNull()
+    }
   })
 
   it("does not rewrite /_next/data/...", () => {
@@ -176,6 +192,8 @@ describe("proxy config matcher — reserved first-segment exclusions", () => {
       false,
     )
     expect(matcherRegex.test("/api/preview")).toBe(false)
+    expect(matcherRegex.test("/demo-search")).toBe(false)
+    expect(matcherRegex.test("/demo-recommendations/jesus/en")).toBe(false)
     expect(matcherRegex.test("/_next/data/build/x.json")).toBe(false)
     expect(matcherRegex.test("/.well-known/security.txt")).toBe(false)
   })
@@ -199,6 +217,7 @@ describe("proxy — explicit locale URLs are never language-redirected", () => {
     const response = proxy(makeRequest("/jesus.html/english.html"))
     expect(response.status).not.toBe(307)
     expect(response.status).not.toBe(308)
+    expect(rewritePath(response)).toBe("/en/en/jesus.html/english.html")
   })
 
   it("does not redirect a canonical 3-segment episode URL", () => {
@@ -207,6 +226,9 @@ describe("proxy — explicit locale URLs are never language-redirected", () => {
     )
     expect(response.status).not.toBe(307)
     expect(response.status).not.toBe(308)
+    expect(rewritePath(response)).toBe(
+      "/en/en/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+    )
   })
 
   it("applies watch security headers (CSP) to the canonical 2-segment URL", () => {
@@ -219,6 +241,76 @@ describe("proxy — explicit locale URLs are never language-redirected", () => {
   it("does not emit a Vary: Cookie header (no cookie-dependent redirects)", () => {
     const response = proxy(makeRequest("/jesus.html/english.html"))
     expect(response.headers.get("vary") ?? "").not.toContain("Cookie")
+  })
+})
+
+describe("proxy — internal locale/htmlLang rewrites", () => {
+  it("keeps root, videos, and search public while internally defaulting to /en/en", () => {
+    for (const [publicPath, internalPath] of [
+      ["/", "/en/en"],
+      ["/videos", "/en/en/videos"],
+      ["/search", "/en/en/search"],
+    ] as const) {
+      const response = proxy(
+        makeRequest(publicPath, { acceptLanguage: "es-ES,es;q=0.9" }),
+      )
+      expect(response.status).not.toBe(307)
+      expect(response.status).not.toBe(308)
+      expect(rewritePath(response)).toBe(internalPath)
+    }
+  })
+
+  it("preserves one-segment collection pages as default-locale collections", () => {
+    const response = proxy(makeRequest("/easter.html"))
+    expect(rewritePath(response)).toBe("/en/en/easter.html")
+  })
+
+  it("rewrites one-segment UI locale homes with locale/htmlLang matching the slug", () => {
+    const response = proxy(makeRequest("/es.html"))
+    expect(rewritePath(response)).toBe("/es/es/es.html")
+  })
+
+  it("keeps the raw audio slug in rest while using message locale + regional htmlLang", () => {
+    const response = proxy(
+      makeRequest("/jesus.html/spanish-latin-american.html"),
+    )
+    expect(rewritePath(response)).toBe(
+      "/es/es-419/jesus.html/spanish-latin-american.html",
+    )
+  })
+
+  it("falls back chrome identity for unsupported audio-language families", () => {
+    const response = proxy(makeRequest("/jesus.html/mandarin-china.html"))
+    expect(rewritePath(response)).toBe("/en/en/jesus.html/mandarin-china.html")
+  })
+})
+
+describe("proxy — visible internal-prefix policy", () => {
+  it("308 redirects visible internal root and route prefixes to canonical public URLs", () => {
+    for (const [visible, canonical] of [
+      ["/en", "/"],
+      ["/en/en", "/"],
+      ["/en/en/videos", "/videos"],
+      [
+        "/es/es-419/jesus.html/spanish-latin-american.html",
+        "/jesus.html/spanish-latin-american.html",
+      ],
+    ] as const) {
+      const response = proxy(makeRequest(visible))
+      expect(response.status).toBe(308)
+      expect(response.headers.get("location")).toContain(canonical)
+    }
+  })
+
+  it("does not misclassify slug-form public URLs as internal prefixes", () => {
+    const response = proxy(makeRequest("/en/english"))
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toContain("/en.html/english.html")
+  })
+
+  it("404s invalid visible internal prefix pairs instead of serving duplicates", () => {
+    const response = proxy(makeRequest("/en/es-419/jesus.html/english.html"))
+    expect(response.status).toBe(404)
   })
 })
 
@@ -242,6 +334,7 @@ describe("proxy — resilience on malformed inputs", () => {
     const response = proxy(makeRequest("/jesus%20test/english"))
     expect(response.status).not.toBe(307)
     expect(response.status).not.toBe(308)
+    expect(response.status).toBe(404)
   })
 
   it("does not rewrite cyrillic slugs (positive allowlist rejects non-ASCII)", () => {
@@ -250,5 +343,11 @@ describe("proxy — resilience on malformed inputs", () => {
     )
     expect(response.status).not.toBe(307)
     expect(response.status).not.toBe(308)
+    expect(response.status).toBe(404)
+  })
+
+  it("404s four-segment paths in proxy before they can mint route cache entries", () => {
+    const response = proxy(makeRequest("/a.html/b/c.html/d.html"))
+    expect(response.status).toBe(404)
   })
 })

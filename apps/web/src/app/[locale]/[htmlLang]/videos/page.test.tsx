@@ -4,11 +4,14 @@
 import { renderToString } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
-import VideosPage, { metadata } from "@/app/videos/page"
+import VideosPage, { metadata } from "@/app/[locale]/[htmlLang]/videos/page"
 
 describe("/videos route", () => {
-  it("renders 200 with All Videos heading", () => {
-    const html = renderToString(<VideosPage />)
+  it("renders 200 with All Videos heading", async () => {
+    const page = await VideosPage({
+      params: Promise.resolve({ locale: "en", htmlLang: "en" }),
+    })
+    const html = renderToString(page)
     expect(html).toContain("All Videos")
   })
 

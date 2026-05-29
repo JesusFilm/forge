@@ -1409,9 +1409,9 @@ export type ResolvedSeriesBySlug = {
 // (e.g. `"collectionn"`) would still pass the literal-union check.
 const SERIES_LABEL_VALUES = new Set<string>(["collection", "series"])
 
-// Consumed by `apps/web/src/app/[slug]/[locale]/page.tsx` (routing
-// branch + `generateMetadata`) AND by unit tests that exercise the
-// discriminator without standing up Apollo.
+// Consumed by `apps/web/src/app/[locale]/[htmlLang]/[...rest]/page.tsx`
+// (routing branch + `generateMetadata`) AND by unit tests that exercise
+// the discriminator without standing up Apollo.
 export function isSeriesRecord(record: {
   label?: string | null
   children?: { documentId: string }[] | null

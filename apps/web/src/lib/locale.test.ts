@@ -4,6 +4,8 @@ import {
   isLocale,
   isLocaleSlug,
   resolveUiLocale,
+  resolveWatchLocaleIdentity,
+  slugToBcp47Tag,
   slugToBcp47Primary,
 } from "./locale"
 
@@ -100,6 +102,11 @@ describe("slugToBcp47Primary", () => {
     expect(slugToBcp47Primary("zh")).toBe("zh")
   })
 
+  it("accepts regional bcp47 input directly", () => {
+    expect(slugToBcp47Primary("es-419")).toBe("es")
+    expect(slugToBcp47Primary("pt-BR")).toBe("pt")
+  })
+
   it("returns null on unknown slugs", () => {
     expect(slugToBcp47Primary("not-a-language")).toBeNull()
     expect(slugToBcp47Primary("jesus")).toBeNull()
@@ -110,6 +117,18 @@ describe("slugToBcp47Primary", () => {
     expect(slugToBcp47Primary("__proto__")).toBeNull()
     expect(slugToBcp47Primary("constructor")).toBeNull()
     expect(slugToBcp47Primary("hasOwnProperty")).toBeNull()
+  })
+})
+
+describe("slugToBcp47Tag", () => {
+  it("preserves finer regional tags for known raw audio slugs", () => {
+    expect(slugToBcp47Tag("spanish-castilian")).toBe("es-ES")
+    expect(slugToBcp47Tag("spanish-latin-american")).toBe("es-419")
+  })
+
+  it("normalizes direct bcp47 tag input", () => {
+    expect(slugToBcp47Tag("pt-br")).toBe("pt-BR")
+    expect(slugToBcp47Tag("es-419")).toBe("es-419")
   })
 })
 
@@ -137,6 +156,7 @@ describe("resolveUiLocale (family fallback into UI_LOCALE_FAMILIES)", () => {
   it("passes bcp47 UI locales through unchanged", () => {
     expect(resolveUiLocale("en")).toBe("en")
     expect(resolveUiLocale("es")).toBe("es")
+    expect(resolveUiLocale("es-419")).toBe("es")
     expect(resolveUiLocale("fr")).toBe("fr")
     expect(resolveUiLocale("pt")).toBe("pt")
     expect(resolveUiLocale("de")).toBe("de")
@@ -156,5 +176,28 @@ describe("resolveUiLocale (family fallback into UI_LOCALE_FAMILIES)", () => {
     expect(resolveUiLocale("not-a-language")).toBeNull()
     expect(resolveUiLocale("jesus")).toBeNull()
     expect(resolveUiLocale("")).toBeNull()
+  })
+})
+
+describe("resolveWatchLocaleIdentity", () => {
+  it("splits raw audio slug, message catalog key, and static html lang", () => {
+    expect(resolveWatchLocaleIdentity("spanish-latin-american")).toEqual({
+      locale: "es",
+      htmlLang: "es-419",
+    })
+  })
+
+  it("keeps unsupported audio families in the URL while falling chrome back to English", () => {
+    expect(resolveWatchLocaleIdentity("mandarin-china")).toEqual({
+      locale: "en",
+      htmlLang: "en",
+    })
+  })
+
+  it("defaults locale-less surfaces to English", () => {
+    expect(resolveWatchLocaleIdentity(null)).toEqual({
+      locale: "en",
+      htmlLang: "en",
+    })
   })
 })
