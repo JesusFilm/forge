@@ -20,6 +20,13 @@ export const featureFlags = {
     description:
       "Temporary production smoke flag for the watch-page CTA text copy.",
   },
+  watchYouVersionBibleQuotes: {
+    key: "forge.watch.youVersionBibleQuotes",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT",
+    description:
+      "Runtime rollout gate for the watch-page YouVersion Bible Quotes panel.",
+  },
   watchQuestionPanel: {
     key: "forge.watch.questionPanel",
     defaultValue: false,

@@ -25,6 +25,7 @@ import { hasUiLocale } from "@/i18n/locales"
 import {
   isWatchCtaTextCopyEnabled,
   isWatchQuestionPanelEnabled,
+  isWatchYouVersionBibleQuotesEnabled,
 } from "@/lib/feature-flags"
 import { DEFAULT_LOCALE, resolveUiLocale } from "@/lib/locale"
 import {
@@ -34,6 +35,7 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import { stripHtmlSuffix } from "@/lib/url-shape"
+import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
 
 // ISR: pages cached for 60s. Cookie-driven language redirect lives in
 // apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
@@ -110,6 +112,17 @@ async function getDownloadButtonLabel(route: string): Promise<string> {
     custom: { route },
   })
   return useUpdatedCtaCopy ? "Save Video" : "Download"
+}
+
+async function getYouVersionBibleQuotePassages(
+  route: string,
+  bibleCitations: Parameters<typeof fetchYouVersionBibleQuotePassages>[0],
+) {
+  const enabled = await isWatchYouVersionBibleQuotesEnabled({
+    custom: { route },
+  })
+  if (!enabled) return []
+  return fetchYouVersionBibleQuotePassages(bibleCitations)
 }
 
 async function getQuestionPanelEnabled(route: string): Promise<boolean> {
@@ -221,18 +234,20 @@ async function renderEpisode(shape: {
     }
   }
 
+  const route = `/watch/${seriesSlug}.html/${episodeSlug}/${rawLocale}.html`
+  const [downloadButtonLabel, questionPanelEnabled, youVersionPassages] =
+    await Promise.all([
+      getDownloadButtonLabel(route),
+      getQuestionPanelEnabled(route),
+      getYouVersionBibleQuotePassages(route, resolved.video.bibleCitations),
+    ])
   const mergedBlocks = mergeWatchExperience({
     video: resolved.video,
     variant: resolved.selectedVariant,
     canonicalParent: resolved.series,
+    youVersionPassages,
   })
   if (!mergedBlocks.length) return <ExperienceEmpty />
-
-  const route = `/watch/${seriesSlug}.html/${episodeSlug}/${rawLocale}.html`
-  const [downloadButtonLabel, questionPanelEnabled] = await Promise.all([
-    getDownloadButtonLabel(route),
-    getQuestionPanelEnabled(route),
-  ])
   const lcpPlaybackId = resolved.selectedVariant.muxVideo?.playbackId ?? null
 
   return (
@@ -337,15 +352,18 @@ async function renderVideo(shape: {
         />
       )
     }
+    const [downloadButtonLabel, questionPanelEnabled, youVersionPassages] =
+      await Promise.all([
+        getDownloadButtonLabel(route),
+        getQuestionPanelEnabled(route),
+        getYouVersionBibleQuotePassages(route, watchVideo.video.bibleCitations),
+      ])
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
       variant: watchVideo.selectedVariant,
       canonicalParent: watchVideo.canonicalParent,
+      youVersionPassages,
     })
-    const [downloadButtonLabel, questionPanelEnabled] = await Promise.all([
-      getDownloadButtonLabel(route),
-      getQuestionPanelEnabled(route),
-    ])
     const lcpPlaybackId =
       watchVideo.selectedVariant.muxVideo?.playbackId ?? null
     return (
