@@ -210,6 +210,8 @@ enum SearchEvalCandidateSource {
   CATALOG        @map("catalog")
   LOCALE_QUALITY @map("locale_quality")
   TRACE          @map("trace")
+  SEED           @map("seed")
+  USER_SUBMITTED @map("user_submitted")
 }
 
 /// Human-promotion lifecycle for generated search-eval candidates.
@@ -217,6 +219,14 @@ enum SearchEvalCandidatePromotionStatus {
   GENERATED @map("generated")
   REJECTED  @map("rejected")
   PROMOTED  @map("promoted")
+  ARCHIVED  @map("archived")
+}
+
+/// Sanitization state for a reviewed search-eval candidate.
+enum SearchEvalCandidateSanitizationStatus {
+  PENDING   @map("pending")
+  SANITIZED @map("sanitized")
+  UNSAFE    @map("unsafe")
 }
 
 // -----------------------------------------------------------------------------
@@ -471,26 +481,37 @@ model SearchTraceAggregate {
 /// Generated rows do not participate in permanent regression gates until a
 /// future human-promotion workflow sanitizes and promotes them.
 model SearchEvalCandidate {
-  id                  String                             @id @default(cuid())
-  source              SearchEvalCandidateSource
-  locale              String                             @db.VarChar(32)
-  queryText           String                             @map("query_text") @db.VarChar(512)
-  expectedResultHints Json                               @default("[]") @map("expected_result_hints")
-  sourceAnchors       Json                               @default("[]") @map("source_anchors")
-  labelProvenance     Json                               @default("{}") @map("label_provenance")
-  generationModel     String                             @map("generation_model") @db.VarChar(128)
-  generationProvider  String?                            @map("generation_provider") @db.VarChar(64)
-  judgeSummary        Json?                              @map("judge_summary")
-  promotionStatus     SearchEvalCandidatePromotionStatus @default(GENERATED) @map("promotion_status")
-  mastraRunId         String?                            @map("mastra_run_id") @db.VarChar(128)
-  dedupeKey           String                             @unique @map("dedupe_key") @db.VarChar(64)
-  retentionExpiresAt  DateTime?                          @map("retention_expires_at")
-  generatedAt         DateTime                           @default(now()) @map("generated_at")
-  createdAt           DateTime                           @default(now()) @map("created_at")
-  updatedAt           DateTime                           @updatedAt @map("updated_at")
+  id                           String                                @id @default(cuid())
+  source                       SearchEvalCandidateSource
+  locale                       String                                @db.VarChar(32)
+  queryText                    String                                @map("query_text") @db.VarChar(512)
+  expectedResultHints          Json                                  @default("[]") @map("expected_result_hints")
+  sourceAnchors                Json                                  @default("[]") @map("source_anchors")
+  labelProvenance              Json                                  @default("{}") @map("label_provenance")
+  generationModel              String                                @map("generation_model") @db.VarChar(128)
+  generationProvider           String?                               @map("generation_provider") @db.VarChar(64)
+  judgeSummary                 Json?                                 @map("judge_summary")
+  promotionStatus              SearchEvalCandidatePromotionStatus    @default(GENERATED) @map("promotion_status")
+  sanitizedQueryText           String?                               @map("sanitized_query_text") @db.VarChar(512)
+  sanitizedExpectedResultNotes String?                               @map("sanitized_expected_result_notes") @db.VarChar(2048)
+  sanitizedSourceAnchors       Json                                  @default("[]") @map("sanitized_source_anchors")
+  sanitizationStatus           SearchEvalCandidateSanitizationStatus @default(PENDING) @map("sanitization_status")
+  reviewerIdentity             String?                               @map("reviewer_identity") @db.VarChar(256)
+  reviewedAt                   DateTime?                             @map("reviewed_at")
+  reviewNotes                  String?                               @map("review_notes") @db.VarChar(2048)
+  promotedAt                   DateTime?                             @map("promoted_at")
+  promotionRunContext          Json                                  @default("{}") @map("promotion_run_context")
+  mastraRunId                  String?                               @map("mastra_run_id") @db.VarChar(128)
+  dedupeKey                    String                                @unique @map("dedupe_key") @db.VarChar(64)
+  retentionExpiresAt           DateTime?                             @map("retention_expires_at")
+  generatedAt                  DateTime                              @default(now()) @map("generated_at")
+  createdAt                    DateTime                              @default(now()) @map("created_at")
+  updatedAt                    DateTime                              @updatedAt @map("updated_at")
 
   @@index([source, locale, createdAt])
   @@index([promotionStatus, createdAt])
+  @@index([promotionStatus, reviewedAt])
+  @@index([promotedAt])
   @@index([retentionExpiresAt])
   @@index([mastraRunId])
   @@map("search_eval_candidate")

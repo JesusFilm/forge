@@ -25,7 +25,9 @@ const envSchema = z.object({
     .default("development"),
   NEXT_PHASE: z.string().optional(),
   MASTRA_SERVICE_API_KEYS: z.string().min(1).optional(),
+  MASTRA_NATIVE_EVAL_ENVIRONMENT: z.string().min(1).optional(),
   MASTRA_SEARCH_EVAL_ARTIFACT_DIR: z.string().min(1).optional(),
+  MASTRA_STORAGE_BACKEND: z.enum(["postgres", "memory"]).default("postgres"),
   MASTRA_STORAGE_DIR: z.string().min(1).optional(),
   OPENAI_EMBEDDINGS_BASE_URL: z
     .string()
@@ -101,9 +103,13 @@ export const env = envSchema.parse({
   MASTRA_SERVICE_API_KEYS: emptyToUndefined(
     process.env.MASTRA_SERVICE_API_KEYS,
   ),
+  MASTRA_NATIVE_EVAL_ENVIRONMENT: emptyToUndefined(
+    process.env.MASTRA_NATIVE_EVAL_ENVIRONMENT,
+  ),
   MASTRA_SEARCH_EVAL_ARTIFACT_DIR: emptyToUndefined(
     process.env.MASTRA_SEARCH_EVAL_ARTIFACT_DIR,
   ),
+  MASTRA_STORAGE_BACKEND: emptyToUndefined(process.env.MASTRA_STORAGE_BACKEND),
   MASTRA_STORAGE_DIR: emptyToUndefined(process.env.MASTRA_STORAGE_DIR),
   OPENAI_EMBEDDINGS_BASE_URL: emptyToUndefined(
     process.env.OPENAI_EMBEDDINGS_BASE_URL,
@@ -141,6 +147,15 @@ export const env = envSchema.parse({
 })
 
 export function assertMastraRuntimeEnv() {
+  if (
+    env.NODE_ENV === "production" &&
+    env.MASTRA_STORAGE_BACKEND === "memory"
+  ) {
+    throw new Error(
+      "MASTRA_STORAGE_BACKEND=memory is not allowed in production",
+    )
+  }
+
   if (env.NODE_ENV !== "production") return
 
   const missing = [

@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from "vitest"
 
 import {
+  callAdminCandidateArchive,
+  callAdminCandidateDetail,
   callAdminCandidateStore,
   callAdminCandidateList,
+  callAdminCandidatePromote,
+  callAdminCandidateReject,
+  callAdminCandidateReviewPatch,
   callAdminCatalogContext,
   callAdminEvalSearch,
   callAdminTraceSample,
@@ -94,6 +99,7 @@ const candidateListResponse = {
     {
       id: "candidate-1",
       source: "catalog",
+      promotionStatus: "generated",
       locale: "en",
       queryText: "Jesus",
       expectedResultHints: [],
@@ -102,6 +108,15 @@ const candidateListResponse = {
       generationModel: "seed:v1",
       generationProvider: "mastra",
       judgeSummary: null,
+      sanitizedQueryText: null,
+      sanitizedExpectedResultNotes: null,
+      sanitizedSourceAnchors: [],
+      sanitizationStatus: "pending",
+      reviewerIdentity: null,
+      reviewedAt: null,
+      reviewNotes: null,
+      promotedAt: null,
+      promotionRunContext: {},
       mastraRunId: "run-1",
       retentionExpiresAt: null,
       generatedAt: "2026-05-26T00:00:00.000Z",
@@ -384,6 +399,91 @@ describe("Admin search eval client", () => {
         fetchImpl: vi.fn(async () => Response.json(response)),
       }),
     ).resolves.toEqual({ ok: true, result: response })
+  })
+
+  it("calls candidate detail and review action endpoints", async () => {
+    const detailResponse = { candidate: candidateListResponse.candidates[0] }
+    const fetchImpl = vi.fn(async () => Response.json(detailResponse))
+
+    await expect(
+      callAdminCandidateDetail({
+        url: "https://admin.internal/api/internal/search-eval/candidates",
+        bearer: "eval-key",
+        candidateId: "candidate-1",
+        fetchImpl,
+      }),
+    ).resolves.toEqual({ ok: true, result: detailResponse })
+    const firstCall = fetchImpl.mock.calls[0] as unknown as [URL, RequestInit]
+    expect(String(firstCall[0])).toBe(
+      "https://admin.internal/api/internal/search-eval/candidates/candidate-1",
+    )
+    expect(firstCall[1]).toMatchObject({ method: "GET" })
+
+    await callAdminCandidateReviewPatch({
+      url: "https://admin.internal/api/internal/search-eval/candidates",
+      bearer: "eval-key",
+      candidateId: "candidate-1",
+      payload: {
+        reviewerIdentity: "nisal",
+        sanitizedQueryText: "Who is Jesus?",
+        sanitizationStatus: "sanitized",
+      },
+      fetchImpl,
+    })
+    await callAdminCandidatePromote({
+      url: "https://admin.internal/api/internal/search-eval/candidates",
+      bearer: "eval-key",
+      candidateId: "candidate-1",
+      payload: {
+        reviewerIdentity: "nisal",
+        sanitizedQueryText: "Who is Jesus?",
+        sanitizationStatus: "sanitized",
+      },
+      fetchImpl,
+    })
+    await callAdminCandidateReject({
+      url: "https://admin.internal/api/internal/search-eval/candidates",
+      bearer: "eval-key",
+      candidateId: "candidate-1",
+      payload: { reviewerIdentity: "nisal" },
+      fetchImpl,
+    })
+    await callAdminCandidateArchive({
+      url: "https://admin.internal/api/internal/search-eval/candidates",
+      bearer: "eval-key",
+      candidateId: "candidate-1",
+      payload: { reviewerIdentity: "nisal" },
+      fetchImpl,
+    })
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      2,
+      new URL(
+        "https://admin.internal/api/internal/search-eval/candidates/candidate-1",
+      ),
+      expect.objectContaining({ method: "PATCH" }),
+    )
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      3,
+      new URL(
+        "https://admin.internal/api/internal/search-eval/candidates/candidate-1/promote",
+      ),
+      expect.objectContaining({ method: "POST" }),
+    )
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      4,
+      new URL(
+        "https://admin.internal/api/internal/search-eval/candidates/candidate-1/reject",
+      ),
+      expect.objectContaining({ method: "POST" }),
+    )
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      5,
+      new URL(
+        "https://admin.internal/api/internal/search-eval/candidates/candidate-1/archive",
+      ),
+      expect.objectContaining({ method: "POST" }),
+    )
   })
 
   it("retries generated candidate reads on rate limits and transient failures", async () => {

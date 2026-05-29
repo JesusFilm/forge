@@ -109,7 +109,7 @@ const BaselineArtifactSchema = z
   })
   .strict()
 
-const MastraEvaluationProjectionSchema = z
+const ArtifactOnlyMastraEvaluationProjectionSchema = z
   .object({
     integrationStatus: z.literal("custom_artifact_only"),
     dataset: z
@@ -148,6 +148,59 @@ const MastraEvaluationProjectionSchema = z
       .strict(),
   })
   .strict()
+
+const NativeSyncedMastraEvaluationProjectionSchema = z
+  .object({
+    integrationStatus: z.literal("native_synced"),
+    dataset: z
+      .object({
+        name: z.string().max(256),
+        datasetId: z.string().min(1).max(256),
+        source: z.literal("seed_prompt_set"),
+        version: z.string().max(128),
+        itemCount: z.number().int().nonnegative().max(MAX_BASELINE_CASES),
+        targetType: z.literal("workflow"),
+        targetId: z.literal("offline-search-eval"),
+        environmentLabel: z.string().min(1).max(64),
+        nativeKey: z.string().min(1).max(512),
+        status: z.enum(["created", "updated", "reused"]),
+      })
+      .strict(),
+    scorers: z
+      .array(
+        z
+          .object({
+            id: z.literal("search-result-pairwise-judge"),
+            scorerId: z.string().min(1).max(256),
+            status: z.enum(["registered", "reused"]),
+            kind: z.literal("pairwise_search_results"),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(10),
+    experiment: z
+      .object({
+        name: z.string().max(256),
+        experimentId: z.string().min(1).max(256),
+        status: z.enum(["created", "reused"]),
+        mode: z.enum(["baseline_capture", "comparison"]),
+        reportId: z.string().max(128),
+        baselineName: z.string().max(128),
+        environmentLabel: z.string().min(1).max(64),
+        nativeKey: z.string().min(1).max(512),
+      })
+      .strict(),
+  })
+  .strict()
+
+const MastraEvaluationProjectionSchema = z.discriminatedUnion(
+  "integrationStatus",
+  [
+    ArtifactOnlyMastraEvaluationProjectionSchema,
+    NativeSyncedMastraEvaluationProjectionSchema,
+  ],
+)
 
 const ComparisonOutcomeSchema = z
   .object({
@@ -261,8 +314,18 @@ export const SearchEvalReportSchema = z
       report.kind === "baseline-report" ? "baseline_capture" : "comparison"
     const expectedExperimentVerb =
       report.kind === "baseline-report" ? "baseline" : "compare"
-    const expectedDatasetName = `search-eval:${report.metadata.baselineName}`
-    const expectedExperimentName = `search-eval-${expectedExperimentVerb}:${report.metadata.baselineName}:${report.reportId}`
+    const environmentLabel =
+      report.mastraEvaluation.integrationStatus === "native_synced"
+        ? report.mastraEvaluation.dataset.environmentLabel
+        : null
+    const expectedDatasetName =
+      environmentLabel == null
+        ? `search-eval:${report.metadata.baselineName}`
+        : `search-eval:${environmentLabel}:${report.metadata.baselineName}`
+    const expectedExperimentName =
+      environmentLabel == null
+        ? `search-eval-${expectedExperimentVerb}:${report.metadata.baselineName}:${report.reportId}`
+        : `search-eval-${expectedExperimentVerb}:${environmentLabel}:${report.metadata.baselineName}:${report.reportId}`
 
     if (report.mastraEvaluation.dataset.name !== expectedDatasetName) {
       context.addIssue({
@@ -319,6 +382,16 @@ export const SearchEvalReportSchema = z
         message: "experiment baseline name must match report metadata",
       })
     }
+    if (
+      report.mastraEvaluation.integrationStatus === "native_synced" &&
+      report.mastraEvaluation.experiment.environmentLabel !== environmentLabel
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["mastraEvaluation", "experiment", "environmentLabel"],
+        message: "experiment environment must match dataset environment",
+      })
+    }
 
     report.exploratoryGenerated.forEach((outcome, index) => {
       if (!outcome.traceDerived) return
@@ -367,6 +440,7 @@ export type SearchEvalArtifactStore = {
   writeBaseline: (baseline: BaselineArtifact) => Promise<{ path: string }>
   readBaseline: (name: string) => Promise<BaselineArtifact>
   writeReport: (report: SearchEvalReport) => Promise<{ path: string }>
+  readReport: (reportId: string) => Promise<SearchEvalReport>
 }
 
 export function searchEvalArtifactRoot() {
@@ -499,6 +573,46 @@ export function createSearchEvalArtifactStore(
       const filePath = reportPath(rootDir, report.reportId)
       await writeJson(filePath, parsed.data)
       return { path: filePath }
+    },
+    async readReport(reportId) {
+      const filePath = reportPath(rootDir, reportId)
+      let text: string
+      try {
+        text = await readFile(filePath, "utf8")
+      } catch (cause) {
+        if (!isNodeErrorCode(cause, "ENOENT")) {
+          throw new SearchEvalArtifactError(
+            "read_failed",
+            `report '${reportId}' could not be read`,
+            cause,
+          )
+        }
+        throw new SearchEvalArtifactError(
+          "not_found",
+          `report '${reportId}' was not found`,
+          cause,
+        )
+      }
+
+      let payload: unknown
+      try {
+        payload = JSON.parse(text)
+      } catch (cause) {
+        throw new SearchEvalArtifactError(
+          "invalid_artifact",
+          `report '${reportId}' is not valid JSON`,
+          cause,
+        )
+      }
+      const parsed = SearchEvalReportSchema.safeParse(payload)
+      if (!parsed.success) {
+        throw new SearchEvalArtifactError(
+          "invalid_artifact",
+          `report '${reportId}' failed artifact validation`,
+          parsed.error,
+        )
+      }
+      return parsed.data
     },
   }
 }

@@ -52,6 +52,7 @@ const sampleBaseline: Baseline = {
     },
     { locale: "fr", query: "espoir", source: "synthetic", results: [] },
     { locale: "fr", query: "test reg", source: "regression", results: [] },
+    { locale: "en", query: "promoted query", source: "promoted", results: [] },
   ],
 }
 

@@ -1,7 +1,7 @@
 ---
 title: "Mastra offline search eval orchestration boundary pattern"
 date: "2026-05-27"
-last_updated: "2026-05-27"
+last_updated: "2026-05-28"
 category: "architecture-patterns"
 module: "apps/mastra, apps/admin"
 problem_type: "architecture_pattern"
@@ -11,6 +11,7 @@ applies_when:
   - "Mastra needs to evaluate Admin search quality without entering the live request path"
   - "A first baseline must be captured before promoted regression truth exists"
   - "Generated or trace-derived eval candidates may inform reports but must remain exploratory"
+  - "Human-reviewed search eval candidates need sanitized durable regression truth"
   - "Offline reports need durable comparison artifacts without exposing raw trace text or secrets"
 related_components:
   - "apps/mastra"
@@ -53,6 +54,12 @@ Admin baseline. The older Admin eval harness is useful as reference material
 for judge calibration, pairwise comparison, search-client retry behavior, and
 report categories, but it should not define durable regression truth.
 
+Feat-140 adds the human-promotion step that turns seed, generated, trace, and
+user-submitted candidates into durable regression truth. The ownership split
+does not change: Admin owns storage, sanitization policy, retention, review
+metadata, and regression loading; Mastra owns the operator-facing workflow and
+must call Admin through authenticated HTTP only.
+
 Mastra's native Evaluation area is the intended operator destination for this
 domain. The installed Mastra packages expose Dataset, Scorer, and Experiment
 APIs and storage tables, but feat-139 artifacts remain a backing layer until a
@@ -76,12 +83,27 @@ intent prompts. Refuse to write the named baseline if any seed search has a
 transient or failed Admin search result. A partial baseline looks convenient,
 but it poisons every future comparison.
 
-Treat generated candidates as future exploratory material, not as part of the
-operator workflow yet. Feat-138 staged candidates can remain readable through
-Admin contracts for later report experiments, but the Studio-facing offline
-eval workflow should stay seed-only until feat-140 designs human review and
-promotion. They must not be written into named baselines, comparison
-denominators, or regression gates.
+Treat generated, trace-derived, seed, and user-submitted candidates as pending
+material until a human promotes them. Pending rows can be listed, inspected,
+edited with sanitized fields, rejected, or archived through Admin contracts,
+but they must not enter named baselines, comparison denominators, regression
+gates, or native Mastra Datasets before promotion.
+
+Make promotion an Admin-owned state transition, not a Mastra-side file write.
+The promoted row should carry sanitized query text, expected-result notes,
+sanitized source anchors, reviewer identity, review/promoted timestamps,
+sanitization status, and safe run context. Admin's regression loader should
+continue reading the hand-edited `apps/admin/eval/regressions.json` first, then
+append promoted DB rows as `source: "promoted"` when a Prisma client is
+available. Baseline schemas and rebaseline code must accept that promoted
+source, or the first promoted rebaseline will write a file that cannot load.
+
+Keep user-submitted source payloads out of exposed candidate provenance.
+Submitting a prompt can store the prompt text as pending review input, but
+free-form submission notes, source claims, vectors, tokens, or provider payloads
+should not be copied into `labelProvenance`, `sourceAnchors`, or any field that
+the review surface returns. Reviewers add safe anchors and expected-result
+context through the sanitized edit contract.
 
 Trace-derived generated candidates need an even stricter rule: they may
 contribute retained counts and redacted source-mix metadata, but they should
@@ -99,9 +121,15 @@ bounded Admin routes when Mastra needs new read behavior:
 
 - `POST /api/internal/search-eval/search` runs Admin search without recording a
   production trace and without changing public `/api/search` or GraphQL shapes.
-- `GET /api/internal/search-eval/candidates` returns bounded staged generated
-  candidates for future exploratory report input; do not expose this as a
-  Studio toggle until human promotion semantics are clear.
+- `GET /api/internal/search-eval/candidates` returns bounded staged candidates
+  through a review-safe projection.
+- `GET /api/internal/search-eval/candidates/:id` returns review-safe detail.
+- `PATCH /api/internal/search-eval/candidates/:id` edits sanitized review
+  fields only; server-owned status must use action routes.
+- `POST /api/internal/search-eval/candidates/:id/promote` promotes sanitized
+  truth.
+- `POST /api/internal/search-eval/candidates/:id/reject` and
+  `/archive` move bad or duplicate rows to terminal non-gate states.
 - Existing trace and catalog context contracts remain Admin-owned and
   bearer-gated.
 
@@ -120,6 +148,14 @@ Scorer, and Experiment, but keep native IDs as `null` and mark the status as
 `custom_artifact_only` until code has actually created Mastra Evaluation
 records. This gives feat-142 a stable bridge without creating a misleading
 operator experience in Studio.
+
+For promoted truth, document the future Dataset item shape but keep native
+writes deferred until feat-142 creates real records. A promoted item should map
+to workflow input (`query`, `locale`, source, search options), ground truth
+(`expectedResultNotes`, `sourceAnchors`), and safe metadata (`candidateId`,
+sanitization status, reviewer identity, reviewed/promoted timestamps, and safe
+run context). Native Dataset, Scorer, and Experiment IDs stay `null` until the
+sync job actually populates them.
 
 Validate both sides of the report contract at runtime. The workflow output
 schema should expose the report shape, and artifact writes should reject
@@ -213,6 +249,30 @@ if (candidate.source === "trace") {
 }
 ```
 
+Promotion should overwrite the raw candidate query with sanitized truth so a
+promoted trace-derived row can outlive raw-trace retention:
+
+```ts
+await prisma.searchEvalCandidate.updateMany({
+  where: {
+    id,
+    promotionStatus: "GENERATED",
+  },
+  data: {
+    promotionStatus: "PROMOTED",
+    queryText: sanitizedQueryText,
+    sanitizedQueryText,
+    sanitizedExpectedResultNotes,
+    sanitizedSourceAnchors,
+    sanitizationStatus: "SANITIZED",
+    reviewerIdentity,
+    reviewedAt: now,
+    promotedAt: now,
+    promotionRunContext: safeRunContext,
+  },
+})
+```
+
 Route body caps should protect chunked requests too. Checking only
 `Content-Length` is insufficient because chunked bodies may omit it:
 
@@ -236,6 +296,8 @@ while (true) {
 - Mastra workflow route:
   `apps/mastra/src/mastra/workflows/offline-search-eval.ts` and
   `apps/mastra/src/mastra/index.ts`.
+- Mastra candidate review workflow:
+  `apps/mastra/src/mastra/workflows/search-eval-candidate-review.ts`.
 - Mastra eval domain:
   `apps/mastra/src/services/offline-search-eval/runner.ts`,
   `artifacts.ts`, `judge.ts`, `report.ts`, `seed-prompt-set.ts`, and
@@ -250,7 +312,13 @@ while (true) {
   `apps/admin/src/app/api/internal/search-eval/search/route.ts`.
 - Admin candidate read/write contract:
   `apps/admin/src/app/api/internal/search-eval/candidates/route.ts` and
+  `apps/admin/src/app/api/internal/search-eval/candidates/[id]/route.ts`,
+  action routes under `candidates/[id]/`, and
   `apps/admin/src/services/search-eval/candidates.ts`.
+- Admin regression truth loading:
+  `apps/admin/src/services/search-eval/regressions.ts`,
+  `apps/admin/src/services/search-eval/baseline.ts`, and
+  `apps/admin/src/scripts/eval-search.ts`.
 - Trace sampling contract:
   `apps/admin/src/app/api/internal/search-traces/sample/route.ts`.
 

@@ -13,6 +13,11 @@
 
 import { readFile } from "node:fs/promises"
 
+import {
+  SearchEvalCandidatePromotionStatus,
+  SearchEvalCandidateSanitizationStatus,
+  type PrismaClient,
+} from "@prisma/client"
 import { z } from "zod"
 
 import { regressionsPath } from "./paths"
@@ -37,6 +42,10 @@ export type LoadedRegressionQuery = {
   query: string
   source: QuerySource
   notes?: string
+  promotedCandidateId?: string
+  sourceAnchors?: unknown
+  reviewerIdentity?: string
+  promotedAt?: string
 }
 
 export class RegressionLoadError extends Error {
@@ -53,10 +62,51 @@ export class RegressionLoadError extends Error {
 export type LoadRegressionsOptions = {
   /** Override path for tests. Defaults to `apps/admin/eval/regressions.json`. */
   filePath?: string
+  /** Optional Admin DB client. When supplied, promoted sanitized candidates
+   *  are appended after hand-edited regressions. */
+  prisma?: PrismaClient
   /** Treat ENOENT as `entries: []` rather than throwing. Default `true`
    *  because the file is optional — operators may not have authored
    *  any regressions yet. */
   allowMissing?: boolean
+}
+
+export async function loadPromotedRegressions(
+  prisma: PrismaClient,
+): Promise<LoadedRegressionQuery[]> {
+  const rows = await prisma.searchEvalCandidate.findMany({
+    where: {
+      promotionStatus: SearchEvalCandidatePromotionStatus.PROMOTED,
+      sanitizationStatus: SearchEvalCandidateSanitizationStatus.SANITIZED,
+      sanitizedQueryText: { not: null },
+    },
+    orderBy: [{ promotedAt: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      locale: true,
+      sanitizedQueryText: true,
+      sanitizedExpectedResultNotes: true,
+      sanitizedSourceAnchors: true,
+      reviewerIdentity: true,
+      promotedAt: true,
+    },
+  })
+
+  return rows.flatMap((row) => {
+    if (!row.sanitizedQueryText) return []
+    return [
+      {
+        locale: row.locale,
+        query: row.sanitizedQueryText,
+        source: "promoted" as const,
+        notes: row.sanitizedExpectedResultNotes ?? undefined,
+        promotedCandidateId: row.id,
+        sourceAnchors: row.sanitizedSourceAnchors,
+        reviewerIdentity: row.reviewerIdentity ?? undefined,
+        promotedAt: row.promotedAt?.toISOString(),
+      },
+    ]
+  })
 }
 
 export async function loadRegressions(
@@ -75,7 +125,7 @@ export async function loadRegressions(
       "code" in cause &&
       (cause as NodeJS.ErrnoException).code === "ENOENT"
     ) {
-      return []
+      return options.prisma ? loadPromotedRegressions(options.prisma) : []
     }
     throw new RegressionLoadError(
       "not_found",
@@ -103,10 +153,15 @@ export async function loadRegressions(
     )
   }
 
-  return validated.data.entries.map<LoadedRegressionQuery>((entry) => ({
-    locale: entry.locale,
-    query: entry.query,
-    source: "regression",
-    notes: entry.notes,
-  }))
+  const fileEntries = validated.data.entries.map<LoadedRegressionQuery>(
+    (entry) => ({
+      locale: entry.locale,
+      query: entry.query,
+      source: "regression",
+      notes: entry.notes,
+    }),
+  )
+  if (!options.prisma) return fileEntries
+
+  return [...fileEntries, ...(await loadPromotedRegressions(options.prisma))]
 }
