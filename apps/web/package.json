@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify:categories": "tsx scripts/verify-categories.ts"
+    "verify:categories": "tsx scripts/verify-categories.ts",
+    "probe:watch-urls": "tsx scripts/probe-watch-urls.ts"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
