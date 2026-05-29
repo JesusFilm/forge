@@ -1,15 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   buildJobUpdateData,
+  createJob,
   getJob,
   listJobSummaries,
   mergeArtifactEntries,
   mergeJobArtifacts,
   normalizeJobArtifacts,
+  restampEngine,
   toJobRecord,
   updateJob,
   updateStepStatus,
 } from "@/lib/state"
+import { readEngineStamp } from "@/lib/engine-stamp"
 
 const {
   publishJobEventMock,
@@ -17,12 +20,14 @@ const {
   adminListJobsMock,
   adminUpdateJobMock,
   adminCountJobsMock,
+  adminCreateJobMock,
 } = vi.hoisted(() => ({
   publishJobEventMock: vi.fn(),
   adminGetJobMock: vi.fn(),
   adminListJobsMock: vi.fn(),
   adminUpdateJobMock: vi.fn(),
   adminCountJobsMock: vi.fn(),
+  adminCreateJobMock: vi.fn(),
 }))
 
 vi.mock("@/backend/admin-client", () => ({
@@ -31,6 +36,7 @@ vi.mock("@/backend/admin-client", () => ({
     listJobs: adminListJobsMock,
     updateJob: adminUpdateJobMock,
     countJobs: adminCountJobsMock,
+    createJob: adminCreateJobMock,
   })),
 }))
 
@@ -63,6 +69,7 @@ beforeEach(() => {
   adminListJobsMock.mockReset()
   adminUpdateJobMock.mockReset()
   adminCountJobsMock.mockReset()
+  adminCreateJobMock.mockReset()
 })
 
 afterEach(() => {
@@ -399,6 +406,99 @@ describe("toJobRecord", () => {
       sourceLanguageId: "529",
       sourceLanguageCode: "en",
       sourceSelectionReason: "requested",
+    })
+  })
+})
+
+describe("engine stamp (P0-A)", () => {
+  it("toJobRecord surfaces a persisted engine stamp", () => {
+    const job = toJobRecord({
+      documentId: "job-eng-1",
+      muxAssetId: "asset-1",
+      muxPlaybackId: "playback-1",
+      languages: ["en"],
+      status: "running",
+      currentStep: "translation",
+      retries: 0,
+      createdAt: "2026-05-29T00:00:00.000Z",
+      updatedAt: "2026-05-29T00:00:00.000Z",
+      startedAt: null,
+      completedAt: null,
+      options: { engine: "mastra", uploadMux: true },
+      artifacts: {},
+      errors: [],
+      steps: [],
+    } as unknown as Parameters<typeof toJobRecord>[0])
+
+    expect(job.options).toEqual({ engine: "mastra", uploadMux: true })
+    expect(readEngineStamp(job.options)).toBe("mastra")
+  })
+
+  it("toJobRecord defaults an unstamped (pre-migration) job to the workflow engine", () => {
+    const job = toJobRecord(
+      buildGraphqlJob("job-eng-legacy") as unknown as Parameters<
+        typeof toJobRecord
+      >[0],
+    )
+
+    expect(job.options).toEqual({})
+    expect(readEngineStamp(job.options)).toBe("workflow")
+  })
+
+  it("createJob persists the engine stamp through the admin write path", async () => {
+    adminCreateJobMock.mockImplementation(
+      async (input: { options?: unknown }) => ({
+        ...buildGraphqlJob("job-eng-create"),
+        options: input.options,
+      }),
+    )
+
+    const job = await createJob("asset-1", "playback-1", ["en"], {
+      engine: "mastra",
+    })
+
+    expect(adminCreateJobMock).toHaveBeenCalledWith(
+      expect.objectContaining({ options: { engine: "mastra" } }),
+    )
+    expect(readEngineStamp(job.options)).toBe("mastra")
+  })
+
+  it("createJob omits the stamp when no engine is supplied (legacy default)", async () => {
+    adminCreateJobMock.mockImplementation(
+      async (input: { options?: unknown }) => ({
+        ...buildGraphqlJob("job-eng-nostamp"),
+        options: input.options,
+      }),
+    )
+
+    await createJob("asset-1", "playback-1", ["en"])
+
+    expect(adminCreateJobMock).toHaveBeenCalledWith(
+      expect.objectContaining({ options: {} }),
+    )
+  })
+
+  it("restampEngine merges the engine without clobbering sibling options", async () => {
+    adminGetJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-eng-restamp"),
+      options: { generateVoiceover: true, uploadMux: true },
+    })
+    adminUpdateJobMock.mockImplementation(
+      async (_id: string, updates: { options?: unknown }) => ({
+        ...buildGraphqlJob("job-eng-restamp"),
+        options: updates.options,
+      }),
+    )
+
+    const job = await restampEngine("job-eng-restamp", "mastra")
+
+    expect(adminUpdateJobMock).toHaveBeenCalledWith("job-eng-restamp", {
+      options: { generateVoiceover: true, uploadMux: true, engine: "mastra" },
+    })
+    expect(readEngineStamp(job?.options)).toBe("mastra")
+    expect(job?.options).toMatchObject({
+      generateVoiceover: true,
+      uploadMux: true,
     })
   })
 })

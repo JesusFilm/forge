@@ -10,8 +10,10 @@ import {
 import { env } from "@/config/env"
 import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
+  EnrichmentEngine,
   JobArtifactEntry,
   JobArtifactManifest,
+  JobOptions,
   JobRecord,
   JobStatus,
   JobStepDetails,
@@ -70,6 +72,7 @@ type EnrichmentJobNode = {
   updatedAt?: string | null
   startedAt?: string | null
   completedAt?: string | null
+  options?: unknown
   artifacts?: unknown
   steps?: EnrichmentJobStepNode[] | null
   errors?: JobRecord["errors"] | null
@@ -160,6 +163,28 @@ function readNonBlankStringArray(value: unknown): string[] | undefined {
     .filter((entry): entry is string => entry != null)
 
   return strings.length > 0 ? strings : undefined
+}
+
+/** Parse a raw `options` JSON blob into a typed JobOptions, dropping unknowns. */
+function normalizeJobOptions(raw: unknown): JobOptions {
+  if (typeof raw !== "object" || raw == null || Array.isArray(raw)) {
+    return {}
+  }
+  const candidate = raw as Record<string, unknown>
+  const options: JobOptions = {}
+  if (typeof candidate.generateVoiceover === "boolean") {
+    options.generateVoiceover = candidate.generateVoiceover
+  }
+  if (typeof candidate.uploadMux === "boolean") {
+    options.uploadMux = candidate.uploadMux
+  }
+  if (typeof candidate.notifyCms === "boolean") {
+    options.notifyCms = candidate.notifyCms
+  }
+  if (candidate.engine === "workflow" || candidate.engine === "mastra") {
+    options.engine = candidate.engine
+  }
+  return options
 }
 
 function deriveMaterializationFields(
@@ -260,7 +285,7 @@ export function toJobRecord(node: EnrichmentJobNode): JobRecord {
     sourceCollectionTitle:
       parentTitles.length > 0 ? parentTitles.join(", ") : undefined,
     sourceMediaTitle: videoTitle?.trim() || undefined,
-    options: {},
+    options: normalizeJobOptions(node.options),
     status: node.status as JobStatus,
     currentStep: node.currentStep as WorkflowStepName | undefined,
     retries: node.retries ?? 0,
@@ -377,6 +402,7 @@ export async function createJob(
   options?: {
     videoDocumentId?: string
     initialArtifacts?: JobArtifactManifest
+    engine?: EnrichmentEngine
   },
 ): Promise<JobRecord> {
   const steps = buildInitialSteps()
@@ -413,7 +439,7 @@ export async function createJob(
       resolvedTargetLanguageCodes: languages,
       sourceCollectionTitle: sourceCollection?.title ?? undefined,
       sourceMediaTitle: sourceVideo?.title ?? undefined,
-      options: {},
+      options: options?.engine ? { engine: options.engine } : {},
       status: "pending",
       retries: 0,
       createdAt: now,
@@ -442,7 +468,7 @@ export async function createJob(
       muxPlaybackId,
       languages,
       videoDocumentId: options?.videoDocumentId,
-      options: {},
+      options: options?.engine ? { engine: options.engine } : {},
       artifacts: initialArtifacts,
       errors: [],
       steps,
@@ -602,6 +628,66 @@ export async function updateJob(
       return job
     } catch (err) {
       console.warn(`[state] updateJob(${id}) failed:`, err)
+      return null
+    }
+  }
+
+  return null
+}
+
+/**
+ * Merge-aware engine re-stamp for the transcription-rerun path. A rerun
+ * re-stamps the job to the engine selected at rerun time WITHOUT clobbering
+ * sibling JobOptions (generateVoiceover / uploadMux / notifyCms). Always merges
+ * onto the existing options object — never writes a bare `{ engine }`, because
+ * the Admin `updateManagerJob` mutation replaces the whole `options` column.
+ */
+export async function restampEngine(
+  id: string,
+  engine: EnrichmentEngine,
+): Promise<JobRecord | null> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    const nextState = await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        jobs: current.readModels.jobs.map((job) =>
+          job.id === id
+            ? {
+                ...job,
+                options: { ...job.options, engine },
+                updatedAt: new Date().toISOString(),
+              }
+            : job,
+        ),
+      },
+    }))
+    const job = nextState?.readModels.jobs.find(
+      (candidate) => candidate.id === id,
+    )
+    if (job) {
+      publishJobEvent(job)
+    }
+    return job ?? null
+  }
+
+  if (gateway.mode === "admin") {
+    try {
+      const current = await getAdminJobClient().getJob(id)
+      if (!current) {
+        return null
+      }
+      const job = await getAdminJobClient().updateJob(id, {
+        options: { ...current.options, engine },
+      })
+      if (job) {
+        publishJobEvent(job)
+      }
+      return job
+    } catch (err) {
+      console.warn(`[state] restampEngine(${id}) failed:`, err)
       return null
     }
   }
