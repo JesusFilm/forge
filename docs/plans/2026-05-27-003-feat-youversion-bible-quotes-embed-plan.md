@@ -1,7 +1,7 @@
 ---
 title: "feat: Add YouVersion Bible Quotes Embed"
 type: feat
-status: active
+status: completed
 date: 2026-05-27
 ---
 
