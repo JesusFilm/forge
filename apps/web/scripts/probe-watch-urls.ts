@@ -82,7 +82,11 @@ async function main() {
       probeUrl(production, fixture.path),
       probeUrl(preview, fixture.path),
     ])
-    const { outcome, note } = classifyProbe(prodResult, previewResult)
+    const { outcome, note } = classifyProbe(
+      prodResult,
+      previewResult,
+      fixture.expect,
+    )
     comparisons.push({
       path: fixture.path,
       group: fixture.group,

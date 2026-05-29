@@ -81,21 +81,57 @@ describe("classifyProbe", () => {
     expect(outcome).toBe("match")
   })
 
-  it("hard-regression: expected 404 now resolves 200 (§5.6 contract break)", () => {
+  it("hard-regression: notfound fixture now resolves 200 (§5.6 contract break)", () => {
     const { outcome, note } = classifyProbe(
       result({ status: 404 }),
       result({ status: 200 }),
+      "notfound",
     )
     expect(outcome).toBe("hard-regression")
     expect(note).toMatch(/EXPECTED-404/)
   })
 
-  it("hard-regression: expected 404 now 301 (§5.6: must not become 301)", () => {
+  it("hard-regression: notfound fixture now 301 (§5.6: must not become 301)", () => {
     const { outcome } = classifyProbe(
       result({ status: 404 }),
       result({ status: 301 }),
+      "notfound",
     )
     expect(outcome).toBe("hard-regression")
+  })
+
+  it("defaults expect to notfound (strict §5.6) when omitted", () => {
+    const { outcome } = classifyProbe(
+      result({ status: 404 }),
+      result({ status: 200 }),
+    )
+    expect(outcome).toBe("hard-regression")
+  })
+
+  it("acceptable: prod 404 → preview 200 on an `ok` fixture (legacy baseline gap)", () => {
+    const { outcome, note } = classifyProbe(
+      result({ status: 404 }),
+      result({ status: 200 }),
+      "ok",
+    )
+    expect(outcome).toBe("acceptable")
+    expect(note).toMatch(/legacy baseline gap/)
+  })
+
+  it("acceptable: prod 404 → preview 308 on a `redirect` fixture (preview adds the redirect)", () => {
+    const { outcome } = classifyProbe(
+      result({ status: 404 }),
+      result({ status: 308 }),
+      "redirect",
+    )
+    expect(outcome).toBe("acceptable")
+  })
+
+  it("match: prod 404 → preview 404 regardless of expect", () => {
+    expect(
+      classifyProbe(result({ status: 404 }), result({ status: 404 }), "ok")
+        .outcome,
+    ).toBe("match")
   })
 
   it("error: transport error on either side", () => {
