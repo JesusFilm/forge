@@ -23,7 +23,7 @@ type SeriesEpisodeCardProps = {
 }
 
 // Production-style duration label: "M:SS" or "H:MM:SS". Returns null when
-// the variant doesn't carry a usable duration so the pill collapses to
+// the chapter doesn't carry a usable duration so the pill collapses to
 // the play icon alone (still affordant) rather than rendering "0:00".
 function formatRuntime(seconds: number | null | undefined): string | null {
   if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return null
@@ -33,22 +33,6 @@ function formatRuntime(seconds: number | null | undefined): string | null {
   const s = total % 60
   const pad2 = (n: number) => n.toString().padStart(2, "0")
   return h > 0 ? `${h}:${pad2(m)}:${pad2(s)}` : `${m}:${pad2(s)}`
-}
-
-// Pick the first playable variant's duration. Across languages a video's
-// runtime is functionally identical, so locale-matching here would buy
-// nothing but more conditionals. Skip unpublished or HLS-less variants
-// so the pill never reflects an editor-orphaned record.
-function pickRuntimeSeconds(episode: Episode): number | null {
-  for (const variant of episode.variants ?? []) {
-    if (!variant) continue
-    if (variant.published !== true) continue
-    if (!variant.hls) continue
-    if (typeof variant.duration === "number" && variant.duration > 0) {
-      return variant.duration
-    }
-  }
-  return null
 }
 
 export function SeriesEpisodeCard({
@@ -62,7 +46,10 @@ export function SeriesEpisodeCard({
   // Episodes link as standalone videos: canonical two-segment shape.
   const href = slug && lang ? watchVideoPath(slug, lang) : undefined
   const thumbnailUrl = resolveEpisodeImageUrl(episode)
-  const runtimeLabel = formatRuntime(pickRuntimeSeconds(episode))
+  // Per-chapter runtime now arrives precomputed as a single Int
+  // (admin's Video.durationSeconds — the primary playable dub's runtime)
+  // rather than being derived from a per-child dub list.
+  const runtimeLabel = formatRuntime(episode.durationSeconds)
 
   // Shared card surface. When the slug/locale is malformed (rare data bug)
   // the href is undefined, so we render a plain <div> with identical attrs

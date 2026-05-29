@@ -32,6 +32,7 @@ function record(parents: WatchParent[]): WatchVideoRecord {
     primaryLanguage: null,
     parents,
     children: [],
+    childDubLanguages: [],
     variants: [],
     subtitles: [],
     studyQuestions: [],

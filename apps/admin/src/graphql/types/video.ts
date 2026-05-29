@@ -9,7 +9,10 @@ import type { Principal } from "@/auth/principal"
 import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
-import type { VideoForEnrichment } from "@/services/video.service"
+import type {
+  ChildDubLanguageRow,
+  VideoForEnrichment,
+} from "@/services/video.service"
 
 // Principal-aware relation filters — extracted so the per-principal /
 // per-locale shape is unit-testable. EDITOR/ADMIN see everything;
@@ -298,6 +301,33 @@ builder.prismaObject("VideoRelation", {
   }),
 })
 
+// ChildDubLanguage — a computed projection (not a prismaObject), so it's
+// invisible to classification.test.ts's prismaObject/t.relation walker by
+// construction (same posture as VideoForEnrichment below). It carries no
+// abac-gated data: only the public language display fields the /series-page
+// picker needs. Deliberately minimal — the picker navigates by slug, so a
+// dub's id/hls/duration are not projected (kept the per-language payload
+// small enough that aggregating ~2,200 languages stays well under budget).
+
+const ChildDubLanguageRef =
+  builder.objectRef<ChildDubLanguageRow>("ChildDubLanguage")
+
+ChildDubLanguageRef.implement({
+  description:
+    "One distinct playable dub language available across a parent video's children. Drives the /series-page language picker. Every entry is guaranteed playable (published + streamable) — consumers need no further filtering.",
+  fields: (t) => ({
+    slug: t.exposeString("slug", { nullable: true }),
+    name: t.field({
+      type: "JSON",
+      nullable: true,
+      description:
+        "Compatibility JSON map of locale code → name (mirrors Language.name).",
+      resolve: (row) => row.name,
+    }),
+    bcp47: t.exposeString("bcp47", { nullable: true }),
+  }),
+})
+
 /** @classification public-shape */
 builder.prismaObject("Video", {
   description:
@@ -320,6 +350,24 @@ builder.prismaObject("Video", {
     aiMetadata: t.exposeBoolean("aiMetadata"),
     primaryLanguage: t.relation("primaryLanguage", { nullable: true }),
     origin: t.relation("origin", { nullable: true }),
+    durationSeconds: t.int({
+      nullable: true,
+      description:
+        "Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g. a SERIES/COLLECTION whose runtime lives on its children). Mirrors HybridSearchResult.durationSeconds — picks the primary-language playable dub, else the longest. Lets watch/series carousels render a per-chapter runtime pill via `children { child { durationSeconds } }` without projecting every child's full dub list. Batched per request through a DataLoader.",
+      resolve: (video, _args, ctx) =>
+        ctx.loaders.videoPrimaryDubDurationById.load(video.id),
+    }),
+    childDubLanguages: t.field({
+      type: [ChildDubLanguageRef],
+      nullable: false,
+      description:
+        "Distinct playable dub languages aggregated across this video's children (one representative dub per language). Empty for videos without children. Powers the /series-page language picker without projecting every child's full dub list — the ~45 MB / 137k-record payload that exceeds Next's unstable_cache 2 MB ceiling on the Jesus film (61 chapters × ~2,200 dubs). Respects the same child-visibility rules as `children`.",
+      resolve: (video, _args, ctx) =>
+        ctx.services.video.getChildDubLanguages({
+          videoId: video.id,
+          user: ctx.user,
+        }),
+    }),
     locales: t.relation("locales", {
       description:
         "PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all. Pass `locale` to narrow the result to a single BCP-47 locale (web's WatchVideo fragment uses this to avoid overfetching every locale).",
