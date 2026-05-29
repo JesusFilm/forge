@@ -4,6 +4,7 @@ import { NextResponse } from "next/server"
 import { env } from "@/env"
 import { AVAILABLE_UI_LOCALES } from "@/i18n/locales"
 import { DEFAULT_LOCALE, isLocale } from "@/lib/locale"
+import { appendHtmlSuffix } from "@/lib/url-shape"
 
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i
 const BEARER_PREFIX = "Bearer "
@@ -69,41 +70,51 @@ export async function POST(request: Request) {
 
   const revalidated: string[] = []
 
+  const push = (path: string) => {
+    revalidatePath(path)
+    revalidated.push(path)
+  }
+
+  // Emit BOTH the canonical `.html` shape (post-Phase-2 rendered route) AND
+  // the legacy bare shape. The bare shape is kept for a 30-day overlap so an
+  // inflight webhook from an older admin deploy — or a still-cached bare route
+  // — still gets busted. `.html` is appended per segment via appendHtmlSuffix
+  // (idempotent). Over-revalidating a non-existent variant is harmless.
+  const pushOneSeg = (seg: string) => {
+    push(`/${appendHtmlSuffix(seg)}`) // canonical `/{seg}.html`
+    push(`/${seg}`) // legacy bare (overlap)
+  }
+  const pushTwoSeg = (a: string, b: string) => {
+    push(`/${appendHtmlSuffix(a)}/${appendHtmlSuffix(b)}`) // `/{a}.html/{b}.html`
+    push(`/${a}/${b}`) // legacy bare (overlap)
+  }
+
   const revalidateAllWatchPages = () => {
     revalidatePath("/", "layout")
     revalidated.push("/ (layout)")
   }
 
   const revalidateHomepagePaths = () => {
-    revalidatePath("/")
-    revalidated.push("/")
-
+    push("/")
     for (const loc of AVAILABLE_UI_LOCALES) {
-      revalidatePath(`/${loc}`)
-      revalidated.push(`/${loc}`)
+      pushOneSeg(loc)
     }
   }
 
   const revalidateSlugPaths = () => {
     if (slug && locale) {
-      revalidatePath(`/${slug}/${locale}`)
-      revalidated.push(`/${slug}/${locale}`)
-
+      pushTwoSeg(slug, locale)
       if (locale === DEFAULT_LOCALE) {
-        revalidatePath(`/${slug}`)
-        revalidated.push(`/${slug}`)
+        pushOneSeg(slug)
       }
       return
     }
 
     if (!slug) return
 
-    revalidatePath(`/${slug}`)
-    revalidated.push(`/${slug}`)
-
+    pushOneSeg(slug)
     for (const loc of AVAILABLE_UI_LOCALES) {
-      revalidatePath(`/${slug}/${loc}`)
-      revalidated.push(`/${slug}/${loc}`)
+      pushTwoSeg(slug, loc)
     }
   }
 

@@ -43,7 +43,6 @@ describe("getWatchPageMetadata", () => {
 
     const metadata = await getWatchPageMetadata("en", {
       slug: "jesus",
-      pathPrefix: "watch",
     })
 
     // Title always appends the brand suffix on the video-template branch
@@ -53,7 +52,7 @@ describe("getWatchPageMetadata", () => {
     // `snippet` for SEO (Google likes 120–160 chars). Snippet is the fallback.
     expect(metadata.description).toBe("Longer description")
     expect(metadata.alternates?.canonical).toBe(
-      "https://www.jesusfilm.org/watch/jesus",
+      "http://localhost:3000/watch/jesus.html",
     )
     expect(metadata.openGraph).toMatchObject({
       title: "Jesus | Jesus Film Project",
@@ -93,7 +92,6 @@ describe("getWatchPageMetadata", () => {
     const { getWatchPageMetadata } = await import("./experience-metadata")
     const metadata = await getWatchPageMetadata("en", {
       slug: "snippet-only",
-      pathPrefix: "watch",
     })
 
     expect(metadata.description).toBe("Just a snippet")

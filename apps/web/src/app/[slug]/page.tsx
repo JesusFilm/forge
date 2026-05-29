@@ -28,7 +28,7 @@ export async function generateMetadata({
   // homepage handle metadata.
   if (isLocale(slug)) return {}
 
-  return getWatchPageMetadata(DEFAULT_LOCALE, { slug, pathPrefix: "watch" })
+  return getWatchPageMetadata(DEFAULT_LOCALE, { slug })
 }
 
 export default async function SlugPage({ params }: PageProps) {
