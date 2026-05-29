@@ -69,6 +69,8 @@
     "requestSent": "Demande envoyée",
     "translateWithAi": "Traduire avec l'IA",
     "noSubtitles": "Aucun sous-titre",
+    "toggleOn": "Oui",
+    "toggleOff": "Non",
     "close": "Fermer",
     "apply": "Appliquer"
   },

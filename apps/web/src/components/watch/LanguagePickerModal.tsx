@@ -301,7 +301,7 @@ export function LanguagePickerModal({
 
         <div className="flex flex-col gap-14">
           <div className="flex flex-col gap-5">
-            <div className="flex items-baseline justify-between gap-3">
+            <div className="flex items-baseline gap-4">
               <h2 className="text-2xl font-semibold text-stone-100">
                 {t("languageHeading")}
               </h2>
@@ -321,25 +321,16 @@ export function LanguagePickerModal({
 
           <div className="flex flex-col gap-5">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-6">
+              <div className="flex items-baseline gap-4">
                 <h2 className="text-2xl font-semibold text-stone-100">
                   {t("subtitlesHeading")}
                 </h2>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={draftSubtitleEnabled}
-                  data-testid="watch-language-picker-subtitles-toggle"
-                  disabled={subtitleOptions.length === 0}
-                  onClick={() => setDraftSubtitleEnabled((value) => !value)}
-                  className="flex h-8 w-[58px] cursor-pointer items-center rounded-full bg-white p-1 transition disabled:cursor-not-allowed disabled:opacity-40"
+                <span
+                  data-testid="watch-language-picker-subtitle-count"
+                  className="text-lg font-normal text-stone-400"
                 >
-                  <span
-                    className={`size-6 rounded-full bg-stone-950 transition-transform ${
-                      draftSubtitleEnabled ? "translate-x-6" : "translate-x-0"
-                    }`}
-                  />
-                </button>
+                  {t("languageCount", { count: subtitleOptions.length })}
+                </span>
               </div>
               <div className="flex items-center gap-4">
                 {subtitleOptions.length === 0 ? (
@@ -356,22 +347,51 @@ export function LanguagePickerModal({
                       : t("translateWithAi")}
                   </Button>
                 ) : null}
-                <span
-                  data-testid="watch-language-picker-subtitle-count"
-                  className="text-lg font-normal text-stone-400"
+                <button
+                  type="button"
+                  role="switch"
+                  aria-label={`${t("subtitlesHeading")} ${
+                    draftSubtitleEnabled ? t("toggleOn") : t("toggleOff")
+                  }`}
+                  aria-checked={draftSubtitleEnabled}
+                  data-state={draftSubtitleEnabled ? "on" : "off"}
+                  data-testid="watch-language-picker-subtitles-toggle"
+                  disabled={subtitleOptions.length === 0}
+                  onClick={() => setDraftSubtitleEnabled((value) => !value)}
+                  className={`relative flex h-10 w-[88px] shrink-0 cursor-pointer items-center overflow-hidden rounded-full p-1 text-[11px] font-bold uppercase transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-100 disabled:cursor-not-allowed disabled:opacity-45 ${
+                    draftSubtitleEnabled
+                      ? "bg-stone-100 text-stone-950"
+                      : "border border-stone-500/80 bg-stone-950/70 text-stone-300"
+                  }`}
                 >
-                  {t("languageCount", { count: subtitleOptions.length })}
-                </span>
+                  <span
+                    data-testid="watch-language-picker-subtitles-toggle-state"
+                    className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${
+                      draftSubtitleEnabled ? "left-3" : "right-3"
+                    }`}
+                  >
+                    {draftSubtitleEnabled ? t("toggleOn") : t("toggleOff")}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={`relative z-10 size-8 rounded-full shadow-sm transition-transform duration-200 ${
+                      draftSubtitleEnabled
+                        ? "translate-x-12 bg-stone-950"
+                        : "translate-x-0 bg-stone-100"
+                    }`}
+                  />
+                </button>
               </div>
             </div>
-            <LanguageCombobox
-              options={subtitleOptions}
-              value={draftSubtitleSlug ?? ""}
-              onChange={setDraftSubtitleSlug}
-              icon="subtitles"
-              disabled={!draftSubtitleEnabled || subtitleOptions.length === 0}
-              placeholder={t("noSubtitles")}
-            />
+            {draftSubtitleEnabled && subtitleOptions.length > 0 ? (
+              <LanguageCombobox
+                options={subtitleOptions}
+                value={draftSubtitleSlug ?? ""}
+                onChange={setDraftSubtitleSlug}
+                icon="subtitles"
+                placeholder={t("noSubtitles")}
+              />
+            ) : null}
           </div>
 
           <div className="flex items-center justify-end gap-9 pt-6">
