@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (May 25, 2026)
 
-- **Total tickets:** 154
-- **Complete:** 85
+- **Total tickets:** 155
+- **Complete:** 86
 - **In progress:** 9
 - **Not started:** 20
 - **Blocked:** 40
@@ -83,6 +83,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-037](media-generation/feat-037-playback-qa-feedback-loop.md)                        | Playback QA and Feedback Loop                             | vlad  | P1       | 2026-05-19 | 21   | 2026-06-08 | blocked     |
 | [feat-041](media-generation/feat-041-alternative-report-sections.md)                      | Alternative Report Sections                               | vlad  | P1       | 2026-05-26 | 14   | 2026-06-08 | blocked     |
 | [feat-145](media-generation/feat-145-watch-mobile-player-controls-width.md)               | Watch Mobile Player Controls Width                        | vlad  | P1       | 2026-05-28 | 1    | 2026-05-28 | complete    |
+| [feat-146](media-generation/feat-146-watch-transcript-audio-language-match.md)            | Watch Transcript Audio Language Match                     | vlad  | P1       | 2026-05-29 | 1    | 2026-05-29 | complete    |
 | [feat-056](media-generation/feat-056-ai-video-template-system.md)                         | AI Video Template System                                  | vlad  | P1       | 2026-07-01 | 31   | 2026-07-31 | not-started |
 | [feat-057](media-generation/feat-057-automated-video-rendering-engine.md)                 | Automated Video Rendering Engine                          | vlad  | P1       | 2026-08-01 | 31   | 2026-08-31 | blocked     |
 | [feat-060](media-generation/feat-060-on-demand-personalized-video-generation.md)          | On-Demand Personalized Video Generation                   | vlad  | P1       | 2026-09-01 | 30   | 2026-09-30 | blocked     |
