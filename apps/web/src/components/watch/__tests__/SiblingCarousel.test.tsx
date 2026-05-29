@@ -170,8 +170,8 @@ describe("SiblingCarousel — happy path", () => {
     )
     expect(content?.className).toContain("pl-10")
     expect(content?.className).toContain("md:pl-0")
-    expect(content?.className).toContain("translate-x-14")
-    expect(content?.className).toContain("md:translate-x-0")
+    expect(content?.className).not.toContain("translate-x-14")
+    expect(content?.className).not.toContain("md:translate-x-0")
     const endSpacer = container.querySelector(
       "[data-testid='sibling-carousel-end-spacer']",
     )
