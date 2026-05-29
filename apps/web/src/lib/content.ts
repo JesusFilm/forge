@@ -11,6 +11,7 @@ import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
 import type { YouVersionBibleQuotePassage } from "@/lib/youversion-passage"
 import {
+  getVideoChildDubLanguagesBySlugOperation,
   getWatchVideoBySlugOperation,
   watchExperienceFragment,
   watchVideoFragment,
@@ -59,6 +60,13 @@ type WatchSettingsData = AdminResultOf<typeof GET_WATCH_SETTINGS>
 type GetWatchVideoData = AdminResultOf<typeof getWatchVideoBySlugOperation>
 type AdminVideoRaw = NonNullable<GetWatchVideoData["videoBySlug"]>
 
+type GetChildDubLanguagesData = AdminResultOf<
+  typeof getVideoChildDubLanguagesBySlugOperation
+>
+type AdminChildDubLanguageRaw = NonNullable<
+  NonNullable<GetChildDubLanguagesData["videoBySlug"]>["childDubLanguages"]
+>[number]
+
 // Anchor WatchExperience to the fragment itself so all three queries
 // (GET_WATCH_EXPERIENCE.experienceBySlug, GET_WATCH_SETTINGS.homepageExperience,
 // GET_WATCH_SETTINGS.defaultTemplateExperience) project through one type.
@@ -96,16 +104,15 @@ export type WatchImage = {
   mobileCinematicLow: string | null
 }
 
-export type WatchChildVariant = {
-  documentId: string
-  published: boolean | null
-  hls: string | null
-  duration: number | null
-  language: {
-    slug: string | null
-    name: string | null
-    bcp47: string | null
-  } | null
+// One distinct playable dub language available across a series' children,
+// projected for the /series-page language picker. Server-guaranteed playable
+// and deduped by language, so it carries only the display fields the picker
+// needs — it navigates by slug and never touches a dub's id/hls/duration.
+// See getVideoChildDubLanguagesBySlugOperation.
+export type WatchChildLanguage = {
+  slug: string | null
+  name: string | null
+  bcp47: string | null
 }
 
 export type WatchChild = {
@@ -114,7 +121,13 @@ export type WatchChild = {
   title: string | null
   label: string | null
   images: WatchImage[]
-  variants: WatchChildVariant[]
+  // Primary playable dub runtime in seconds (admin's Video.durationSeconds),
+  // or null when the chapter has no playable dub. Replaces the former
+  // per-child `variants` list — the carousel/grid only ever read a single
+  // runtime off each child, and the full dub list was the ~45 MB payload
+  // that broke unstable_cache. Cross-episode language data now lives on the
+  // parent's `childDubLanguages` (see WatchVideoRecord).
+  durationSeconds: number | null
 }
 
 export type WatchParent = {
@@ -202,6 +215,12 @@ export type WatchVideoRecord = {
   primaryLanguage: { coreId: string | null; bcp47: string | null } | null
   parents: WatchParent[]
   children: WatchChild[]
+  // Distinct playable dub languages across this record's children,
+  // aggregated server-side. Populated for series/collection records (via
+  // resolveSeriesBySlug's dedicated fetch); empty for leaf videos and on the
+  // watch path. The /series-page language picker reads this instead of
+  // walking `children[].variants`.
+  childDubLanguages: WatchChildLanguage[]
   variants: WatchVariant[]
   subtitles: WatchSubtitle[]
   studyQuestions: WatchStudyQuestion[]
@@ -446,6 +465,22 @@ function pickLocalizedName(value: unknown): string | null {
   return null
 }
 
+// Maps one server-aggregated distinct dub language into the minimal display
+// shape the /series-page picker consumes. Fed by the dedicated
+// `getVideoChildDubLanguagesBySlugOperation` — fetched only for series pages,
+// never the watch page (which doesn't read it). Drops slug-less rows so the
+// picker never renders an unaddressable language.
+function normalizeChildDubLanguage(
+  raw: AdminChildDubLanguageRaw,
+): WatchChildLanguage | null {
+  if (!raw.slug) return null
+  return {
+    slug: raw.slug,
+    name: pickLocalizedName(raw.name),
+    bcp47: raw.bcp47 ?? null,
+  }
+}
+
 function normalizeChild(
   rel: NonNullable<AdminVideoRaw["children"]>[number],
 ): WatchChild | null {
@@ -458,12 +493,7 @@ function normalizeChild(
     title: localeRow?.title ?? null,
     label: child.label ?? null,
     images: normalizeImages(child.images),
-    // `child.dubs` is no longer fetched (see watch-video.ts fragment note):
-    // a 61-chapter × 2,200-language fan-out blew the resolved payload past
-    // Next's 2MB unstable_cache limit. The only consumer was the chapter
-    // duration pill, which is now omitted. Empty until a cheap server-side
-    // duration scalar exists.
-    variants: [],
+    durationSeconds: child.durationSeconds ?? null,
   }
 }
 
@@ -491,10 +521,11 @@ function normalizeParent(
           title: cLocale?.title ?? null,
           label: c.label ?? null,
           images: normalizeImages(c.images),
-          // Nested children inside `parent.children` don't project variants
-          // in the fragment (we only need them on top-level `children` for
-          // the SiblingCarousel's language aggregator). Surface as empty.
-          variants: [],
+          // Nested children inside `parent.children` feed only the
+          // SiblingCarousel (thumbnails + titles), which never reads a
+          // runtime. The fragment doesn't project durationSeconds here, so
+          // surface null.
+          durationSeconds: null,
         }
       })
       .filter((c): c is WatchChild => c != null),
@@ -621,6 +652,11 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
           (c): c is WatchChild => c != null && c.documentId !== raw.documentId,
         ),
     ),
+    // Populated only on the series path via resolveSeriesBySlug's dedicated
+    // childDubLanguages fetch — the watch fragment deliberately omits it so
+    // watch-page renders (which never read it) stay lean. See
+    // getVideoChildDubLanguagesBySlugOperation.
+    childDubLanguages: [],
     variants: (raw.variants ?? [])
       .map(normalizeVariant)
       .filter((v): v is WatchVariant => v != null),
@@ -1154,6 +1190,45 @@ const fetchWatchVideoBySlug = cache(
   },
 )
 
+// How long the series-page language union is cached (seconds). The set of
+// languages a series is dubbed into changes only when a new dub is published
+// — far rarer than the title/episode edits the 60 s series-content cache
+// targets — so it gets its own longer-lived cache. Caps the per-language
+// DISTINCT-ON scan on heavy collections (Jesus film: ~137k dub rows) to once
+// an hour instead of once a minute.
+const CHILD_DUB_LANGUAGES_REVALIDATE_SECONDS = 60 * 60
+
+// Series-only fetch for the cross-episode language picker. Kept separate from
+// fetchWatchVideoBySlug (and out of the WatchVideo fragment) so the watch page
+// never pays for it: admin aggregates the distinct playable dub languages
+// across children via DISTINCT ON, bounded by the language union (~2,200 for
+// the Jesus film), not children × dubs (~137k). Each entry is server-
+// guaranteed playable and carries only display fields.
+//
+// `unstable_cache` (not React `cache()`) so the result is cached cross-request
+// at its own long TTL — invoked from resolveSeriesBySlug as a SIBLING of the
+// 60 s series-content cache, never nested inside it.
+const fetchVideoChildDubLanguages = unstable_cache(
+  async (videoSlug: string): Promise<WatchChildLanguage[]> => {
+    const result = await client.query({
+      query: getVideoChildDubLanguagesBySlugOperation,
+      variables: { videoSlug },
+      fetchPolicy: "no-cache",
+    })
+
+    const error = graphqlError(
+      result as { error?: ErrorLike; errors?: unknown[] },
+    )
+    if (error) throw error
+
+    return (result.data?.videoBySlug?.childDubLanguages ?? [])
+      .map(normalizeChildDubLanguage)
+      .filter((v): v is WatchChildLanguage => v != null)
+  },
+  ["video-child-dub-languages"],
+  { revalidate: CHILD_DUB_LANGUAGES_REVALIDATE_SECONDS },
+)
+
 // Sentinel thrown by the cached inner so unstable_cache never persists a
 // "no playable variant" miss. unstable_cache re-throws on error and does
 // NOT cache failures — the outer wrapper catches this sentinel and returns
@@ -1374,6 +1449,9 @@ async function tryResolveSeriesBySlug(
     ? stripNonSelectedVariantFields(record, selectedVariant.documentId)
     : record
 
+  // `childDubLanguages` is merged on in resolveSeriesBySlug (a sibling fetch
+  // with its own longer-lived cache), not here — keeps the language union out
+  // of this 60 s series-content cache and avoids nesting two unstable_caches.
   const resolved: ResolvedSeriesBySlug = {
     video: narrowedRecord,
     selectedVariant,
@@ -1394,8 +1472,9 @@ export const resolveSeriesBySlug = cache(
     videoSlug: string,
     locale: string,
   ): Promise<ResolvedSeriesBySlug | null> => {
+    let resolved: ResolvedSeriesBySlug
     try {
-      return await fetchResolvedSeriesBySlug(videoSlug, locale)
+      resolved = await fetchResolvedSeriesBySlug(videoSlug, locale)
     } catch (error) {
       if (
         error instanceof Error &&
@@ -1404,6 +1483,17 @@ export const resolveSeriesBySlug = cache(
         return null
       }
       throw error
+    }
+
+    // Confirmed series → fetch the cross-episode language union and merge it
+    // on. This is a SIBLING of `fetchResolvedSeriesBySlug` (both top-level
+    // unstable_caches, no nesting) so the language set keeps its own longer
+    // TTL while series content stays on the 60 s cache. Fetched only after
+    // the series-shape check, so non-series slugs never pay for it.
+    const childDubLanguages = await fetchVideoChildDubLanguages(videoSlug)
+    return {
+      ...resolved,
+      video: { ...resolved.video, childDubLanguages },
     }
   },
 )

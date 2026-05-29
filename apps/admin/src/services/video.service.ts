@@ -10,6 +10,7 @@
 
 import { Prisma, type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
+import { isEditorOrAdmin } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
 import { ForbiddenError } from "./errors"
 
@@ -43,6 +44,22 @@ export class VideoLookupValidationError extends Error {
     super(message)
     this.name = "VideoLookupValidationError"
   }
+}
+
+/**
+ * One distinct playable dub language available across a parent video's
+ * children. Powers the `/series` page language picker via
+ * `Video.childDubLanguages` without shipping every child's full dub list
+ * (the ~45 MB / 137k-record trap that exceeds Next's `unstable_cache` 2 MB
+ * ceiling on a 61-chapter × ~2,200-dub collection). Only the language
+ * display fields are projected — the picker navigates by slug and never
+ * touches a dub's id/hls/duration, so those are deliberately omitted to
+ * keep the per-language payload minimal.
+ */
+export type ChildDubLanguageRow = {
+  slug: string | null
+  name: Prisma.JsonValue | null
+  bcp47: string | null
 }
 
 /**
@@ -230,6 +247,68 @@ export class VideoService {
         subtitleUrl: video.subtitleUrl,
       }
     })
+  }
+
+  /**
+   * Distinct playable dub languages available across this video's children.
+   * Empty for videos without children.
+   *
+   * Postgres `DISTINCT ON (language_id)` (Prisma `distinct` + a leading
+   * `languageId` orderBy) collapses the per-language fan-out at the DB so
+   * the payload is bounded by the language count (~thousands), not
+   * children × dubs (~137k for the Jesus film). Playable = published + has
+   * HLS + not soft-deleted, in a non-deleted language with a slug — so the
+   * returned set needs no client-side playability re-filter. Only the
+   * language display fields are selected; the picker navigates by slug.
+   *
+   * Child visibility mirrors `videoChildrenFilter`
+   * (`graphql/types/video.ts`): EDITOR/ADMIN see every non-deleted child;
+   * everyone else sees only children with a PUBLISHED locale. Keeps the
+   * picker's language set aligned with the chapters the carousel renders.
+   *
+   * Auth is enforced at the resolver (`Video` is PUBLIC since U2); this
+   * method is service-internal and does not re-check.
+   */
+  async getChildDubLanguages({
+    videoId,
+    user,
+  }: {
+    videoId: string
+    user: Principal | null
+  }): Promise<ChildDubLanguageRow[]> {
+    const childVisibility: Prisma.VideoWhereInput = isEditorOrAdmin(user)
+      ? { deletedAt: null }
+      : { deletedAt: null, locales: { some: { status: "PUBLISHED" } } }
+
+    const dubs = await this.prisma.videoDub.findMany({
+      where: {
+        deletedAt: null,
+        published: true,
+        hls: { not: null },
+        languageId: { not: null },
+        language: { slug: { not: null }, deletedAt: null },
+        video: {
+          ...childVisibility,
+          // Children of `videoId`: this dub's video sits on the CHILD side
+          // of a VideoRelation whose parent is `videoId`.
+          parents: { some: { parentId: videoId } },
+        },
+      },
+      distinct: ["languageId"],
+      // Leading `languageId` makes Prisma emit SQL `DISTINCT ON (language_id)` —
+      // one row per language. Which dub wins is irrelevant: only the (shared)
+      // language fields are projected.
+      orderBy: [{ languageId: "asc" }],
+      select: {
+        language: { select: { slug: true, name: true, bcp47: true } },
+      },
+    })
+
+    return dubs.map((dub) => ({
+      slug: dub.language?.slug ?? null,
+      name: dub.language?.name ?? null,
+      bcp47: dub.language?.bcp47 ?? null,
+    }))
   }
 }
 

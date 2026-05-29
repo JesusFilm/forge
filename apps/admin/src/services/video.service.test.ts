@@ -17,6 +17,9 @@ function mockPrisma() {
       findMany: vi.fn(),
       findFirst: vi.fn(),
     },
+    videoDub: {
+      findMany: vi.fn(),
+    },
     $queryRaw: vi.fn(),
     $executeRaw: vi.fn(),
     $executeRawUnsafe: vi.fn(),
@@ -50,6 +53,7 @@ function rowFixture(overrides: Partial<Row> = {}): Row {
 }
 
 const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
+const EDITOR: Principal = { id: "editor-1", role: "EDITOR" }
 const PUBLIC_USER: Principal | null = null
 
 describe("VideoService", () => {
@@ -430,6 +434,105 @@ describe("VideoService", () => {
 
       now.mockRestore()
       warn.mockRestore()
+    })
+  })
+
+  describe("getChildDubLanguages", () => {
+    it("queries playable dubs of the video's children, deduped by language for DISTINCT ON", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([])
+
+      await service.getChildDubLanguages({ videoId: "series-1", user: VIEWER })
+
+      const call = prisma.videoDub.findMany.mock.calls[0][0]
+      // Playable predicate — must match apps/web's isPlayableLanguageVariant.
+      expect(call.where).toMatchObject({
+        deletedAt: null,
+        published: true,
+        hls: { not: null },
+        languageId: { not: null },
+        language: { slug: { not: null }, deletedAt: null },
+      })
+      // Children of `videoId`: this dub's video sits on the child side of a
+      // VideoRelation whose parent is the requested video.
+      expect(call.where.video.parents).toEqual({
+        some: { parentId: "series-1" },
+      })
+      // DISTINCT ON (language_id) — one row per language; which dub wins is
+      // irrelevant since only the (shared) language fields are projected.
+      expect(call.distinct).toEqual(["languageId"])
+      expect(call.orderBy).toEqual([{ languageId: "asc" }])
+      // Only the language display fields are selected — no dub id/hls/duration.
+      expect(call.select).toEqual({
+        language: { select: { slug: true, name: true, bcp47: true } },
+      })
+    })
+
+    it("restricts children to PUBLISHED-locale rows for a consumer/anonymous caller", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([])
+
+      await service.getChildDubLanguages({
+        videoId: "series-1",
+        user: PUBLIC_USER,
+      })
+
+      const call = prisma.videoDub.findMany.mock.calls[0][0]
+      expect(call.where.video).toMatchObject({
+        deletedAt: null,
+        locales: { some: { status: "PUBLISHED" } },
+      })
+    })
+
+    it("does NOT gate children on a published locale for an EDITOR/ADMIN caller", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([])
+
+      await service.getChildDubLanguages({ videoId: "series-1", user: EDITOR })
+
+      const call = prisma.videoDub.findMany.mock.calls[0][0]
+      expect(call.where.video.deletedAt).toBeNull()
+      expect(call.where.video.locales).toBeUndefined()
+    })
+
+    it("flattens each distinct dub's language into the minimal picker shape", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([
+        {
+          language: { slug: "english", name: { en: "English" }, bcp47: "en" },
+        },
+        {
+          language: { slug: "spanish", name: { en: "Spanish" }, bcp47: "es" },
+        },
+      ])
+
+      const result = await service.getChildDubLanguages({
+        videoId: "series-1",
+        user: VIEWER,
+      })
+
+      expect(result).toEqual([
+        { slug: "english", name: { en: "English" }, bcp47: "en" },
+        { slug: "spanish", name: { en: "Spanish" }, bcp47: "es" },
+      ])
+    })
+
+    it("surfaces null fields rather than throwing when a row's language is absent", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([{ language: null }])
+
+      const [row] = await service.getChildDubLanguages({
+        videoId: "series-1",
+        user: VIEWER,
+      })
+
+      expect(row).toEqual({ slug: null, name: null, bcp47: null })
+    })
+
+    it("returns an empty array when the video has no playable child dubs", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([])
+
+      const result = await service.getChildDubLanguages({
+        videoId: "leaf-video",
+        user: VIEWER,
+      })
+
+      expect(result).toEqual([])
     })
   })
 })

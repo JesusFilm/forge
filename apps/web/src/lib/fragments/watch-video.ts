@@ -113,15 +113,12 @@ export const watchVideoFragment = adminGraphql(`
           mobileCinematicHigh
           mobileCinematicLow
         }
-        # NOTE: child.dubs is deliberately NOT projected. A parent/collection
-        # video (e.g. JESUS) has 61 chapters, each dubbed in ~2,200 languages —
-        # fetching every chapter's full dub list inflated the resolved payload
-        # to ~45MB, which Next's unstable_cache rejects (over its 2MB limit),
-        # throwing an unhandled rejection that broke the whole watch page. The
-        # only consumer was the per-chapter duration pill in SeriesEpisodeCard;
-        # that pill is now omitted. Restoring it needs a cheap server-side
-        # duration scalar on Video (like HybridSearchResult.durationSeconds),
-        # NOT a full dub fetch. See content.ts normalizeChild.
+        # child.dubs is deliberately NOT projected — a 61-chapter ×
+        # ~2,200-language fan-out (~45 MB) blows past Next's unstable_cache
+        # 2 MB ceiling. Restore the per-chapter duration pill via this cheap
+        # server-side scalar (admin's Video.durationSeconds, like
+        # HybridSearchResult.durationSeconds), NOT a full dub fetch.
+        durationSeconds
       }
     }
     variants: dubs {
@@ -200,3 +197,26 @@ export const getWatchVideoBySlugOperation = adminGraphql(
   `,
   [watchVideoFragment],
 )
+
+// Distinct playable dub languages aggregated across a video's children, one
+// representative dub per language. Deliberately NOT part of the WatchVideo
+// fragment: only the /series page (SeriesPageClient) consumes it, and on a
+// COLLECTION like the Jesus film the union is ~2,200 entries. Folding it into
+// the shared fragment would tax every watch-page render — which never reads
+// it (the SiblingCarousel shows thumbnails + titles only) — and push the
+// unstable_cache value back toward the 2 MB ceiling. resolveSeriesBySlug
+// fetches this separately and merges it onto the series record. Admin's
+// resolver already collapses the per-child dub fan-out via DISTINCT ON, so
+// this stays bounded by the language count, not children × dubs.
+export const getVideoChildDubLanguagesBySlugOperation = adminGraphql(`
+  query GetVideoChildDubLanguages($videoSlug: String!) {
+    videoBySlug(slug: $videoSlug) {
+      documentId: id
+      childDubLanguages {
+        slug
+        name
+        bcp47
+      }
+    }
+  }
+`)

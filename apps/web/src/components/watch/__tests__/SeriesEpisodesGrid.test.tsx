@@ -56,7 +56,7 @@ function makeEpisode(overrides: Partial<Episode> = {}): Episode {
         mobileCinematicLow: null,
       },
     ],
-    variants: [],
+    durationSeconds: null,
   }
   return { ...base, ...overrides }
 }
