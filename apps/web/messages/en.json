@@ -25,13 +25,16 @@
   },
   "DownloadButton": {
     "checking": "Checking",
-    "download": "Download"
+    "download": "Download",
+    "sessionError": "Unable to check your session. Please try again."
   },
   "DownloadModal": {
     "dialogTitle": "Download video",
     "eyebrow": "Download Video",
     "posterAlt": "Video poster",
     "noDownloads": "No downloads are available for this video.",
+    "errorSessionExpired": "Your session expired. Sign in again to download.",
+    "errorSessionUnavailable": "Unable to check your session. Please try again.",
     "errorUnavailableSource": "Download unavailable from this source",
     "tierHighest": "Highest",
     "tierHigh": "High",

@@ -3,7 +3,7 @@ title: "feat: web user accounts and video download gate"
 type: feat
 status: completed
 date: 2026-05-27
-roadmap: docs/roadmap/platform/feat-144-web-user-accounts-download-gate.md
+roadmap: docs/roadmap/platform/feat-146-web-user-accounts-download-gate.md
 origin: user request - "Add user accounts on web app. Use the same Auth as other projects. User account required to download video."
 ---
 
@@ -68,9 +68,20 @@ origin: user request - "Add user accounts on web app. Use the same Auth as other
 - Focused Red/Green tests covered Auth callback forwarding, shared feature flag
   defaults, web session route, direct download `401`, stale-session modal
   behavior, and watch UI download state.
-- Full package validation passed for `@forge/web` and `@forge/auth`: tests,
-  typecheck, and lint.
-- Browser smoke confirmed the corrected Auth callback login UI at
-  `http://localhost:3034/login?callbackURL=...`: provider buttons visible,
-  email-first `Continue` flow visible, and no custom name/password signup form
-  on first paint.
+- Full package validation passed for `@forge/web`, `@forge/auth`,
+  `@forge/feature-flags`, and `@forge/watch-url-policy`: tests, typecheck, and
+  lint for touched scopes.
+- Browser smoke confirmed the corrected signed-out download flow at
+  `http://localhost:3031/watch/jesus.html/english.html`: the watch page rendered
+  the Download CTA without exposing the raw `smoke-download-high.mp4` URL,
+  clicking Download redirected to the shared Auth app at
+  `http://localhost:3004/login?callbackURL=...`, provider buttons and the
+  email-first `Continue` flow were visible, no callback signup link appeared,
+  and direct download API navigation returned
+  `{"error":"Authentication required"}`. Screenshots:
+  `output/playwright/web-download-watch.png` and
+  `output/playwright/web-download-auth-login.png`.
+- Follow-up review fixes added Red/Green coverage for server-side opaque
+  download target resolution, no raw CDN URL in the watch fragment,
+  production-safe Auth base defaults, callback origin config, malformed rollout
+  cookies, and visible session-check failures.

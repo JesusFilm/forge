@@ -204,9 +204,8 @@ describe("auth login UI", () => {
     expect(html).not.toContain('name="password"')
     expect(html).not.toContain('autoComplete="new-password"')
     expect(html).toContain("Continue")
-    expect(html).toContain(
-      'href="/signup?callbackURL=http%3A%2F%2Flocalhost%3A3000%2Fwatch%2Fjesus%2Fenglish"',
-    )
+    expect(html).not.toContain("/signup?callbackURL=")
+    expect(html).not.toContain("Don't have an account?")
   })
 
   it("falls back when the requesting application is unavailable", () => {

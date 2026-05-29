@@ -57,7 +57,6 @@ function makeBlock(
     documentId: `dl-${i + 1}`,
     quality: "high",
     size: 12345,
-    url: `https://cdn.test/clip-${i + 1}.mp4`,
   }))
   return {
     kind: "WatchBody",

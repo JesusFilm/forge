@@ -15,6 +15,15 @@ describe("resolveWatchCallbackURL", () => {
     ).toBe("http://localhost:3030/watch/jesus/english")
   })
 
+  it("allows exact configured watch callback origins", () => {
+    expect(
+      resolveWatchCallbackURL(
+        "https://preview.example.test/watch/jesus/english",
+        ["https://preview.example.test"],
+      ),
+    ).toBe("https://preview.example.test/watch/jesus/english")
+  })
+
   it("rejects non-http localhost protocols", () => {
     expect(
       resolveWatchCallbackURL("ftp://localhost/watch/jesus/english"),
@@ -25,6 +34,14 @@ describe("resolveWatchCallbackURL", () => {
     expect(
       resolveWatchCallbackURL(
         "http://localhost:3030/watch/api/download?url=https%3A%2F%2Fstream.mux.com%2Fabc.mp4",
+      ),
+    ).toBeUndefined()
+  })
+
+  it("rejects callback params that contain any allowlisted media URL", () => {
+    expect(
+      resolveWatchCallbackURL(
+        "http://localhost:3030/watch/jesus/english?next=https%3A%2F%2Fapi-media-core.jesusfilm.org%2Fabc.mp4",
       ),
     ).toBeUndefined()
   })

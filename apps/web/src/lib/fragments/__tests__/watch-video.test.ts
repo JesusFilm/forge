@@ -65,7 +65,10 @@ describe("WatchVideoFragment", () => {
       /variants\s*:\s*dubs\s*\{[\s\S]*?\bmuxVideo\s*\{[\s\S]*?playbackId/,
     )
     expect(printed).toMatch(
-      /variants\s*:\s*dubs\s*\{[\s\S]*?downloads\s*\{[\s\S]*?\bquality\b[\s\S]*?\bsize\b[\s\S]*?\burl\b/,
+      /variants\s*:\s*dubs\s*\{[\s\S]*?downloads\s*\{[\s\S]*?\bquality\b[\s\S]*?\bsize\b/,
+    )
+    expect(printed).not.toMatch(
+      /variants\s*:\s*dubs\s*\{[\s\S]*?downloads\s*\{[\s\S]*?\burl\b/,
     )
     expect(printed).toMatch(
       /variants\s*:\s*dubs\s*\{[\s\S]*?language\s*\{[\s\S]*?coreId[\s\S]*?bcp47[\s\S]*?\bslug\b[\s\S]*?\bname\b/,

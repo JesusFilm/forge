@@ -28,13 +28,9 @@ export function resolveAuthBaseURL(): URL | null {
 
   const hostname = url.hostname.toLowerCase()
   if (!AUTH_BASE_ALLOWED_HOSTS.has(hostname)) return null
-  if (
-    process.env.NODE_ENV === "production" &&
-    hostname !== "localhost" &&
-    hostname !== "127.0.0.1" &&
-    url.protocol !== "https:"
-  ) {
-    return null
+  if (process.env.NODE_ENV === "production") {
+    if (hostname === "localhost" || hostname === "127.0.0.1") return null
+    if (url.protocol !== "https:") return null
   }
 
   return url

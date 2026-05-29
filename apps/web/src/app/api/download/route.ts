@@ -17,6 +17,7 @@ import {
   SAFE_DOWNLOAD_EXTENSIONS,
   isAllowedDownloadOrigin,
 } from "@/lib/download-allowlist"
+import { resolveWatchDownloadTarget } from "@/lib/download-target"
 import { verifyAuthSession } from "@/lib/auth-session"
 import { evaluateDownloadAccountGate } from "@/lib/download-gate-flag"
 
@@ -95,7 +96,7 @@ async function requireDownloadAccountIfEnabled(
   const ok = gate.setCookieHeader
     ? ({ ok: true, setCookieHeader: gate.setCookieHeader } as const)
     : ({ ok: true } as const)
-  if (!gate.enabled) return { ok: true }
+  if (!gate.enabled) return ok
 
   const session = await verifyAuthSession(request.headers)
   if (session.authenticated) {
@@ -219,6 +220,44 @@ type ValidateTargetResult =
   | { ok: true; safeUrl: string }
   | { ok: false; errorResponse: NextResponse }
 
+type ResolveTargetResult =
+  | { ok: true; target: string }
+  | { ok: false; errorResponse: NextResponse }
+
+async function resolveRequestedTarget(
+  searchParams: URLSearchParams,
+): Promise<ResolveTargetResult> {
+  const legacyTarget = searchParams.get("url")
+  if (legacyTarget) return { ok: true, target: legacyTarget }
+
+  const resolved = await resolveWatchDownloadTarget({
+    downloadId: searchParams.get("downloadId"),
+    variantId: searchParams.get("variantId"),
+    videoSlug: searchParams.get("videoSlug"),
+  })
+
+  if (resolved.ok) return { ok: true, target: resolved.url }
+  if (resolved.reason === "missing-params") {
+    return {
+      ok: false,
+      errorResponse: jsonError(
+        "Missing required `url` or download identifiers",
+        400,
+      ),
+    }
+  }
+  if (resolved.reason === "unavailable") {
+    return {
+      ok: false,
+      errorResponse: jsonError("Download lookup unavailable", 503),
+    }
+  }
+  return {
+    ok: false,
+    errorResponse: jsonError("Download unavailable", 404),
+  }
+}
+
 // Validates the `?url=` target against the allowlist + DNS pre-flight and
 // returns a sanitized URL string ready to fetch. Shared by GET (stream) and
 // HEAD (size probe) so both methods enforce the same SSRF defenses.
@@ -288,10 +327,17 @@ export async function GET(request: Request): Promise<Response> {
   if (!authGate.ok) return authGate.response
 
   const { searchParams } = new URL(request.url)
-  const target = searchParams.get("url")
   const rawFilename = searchParams.get("filename")
 
-  const validation = await validateTarget(target)
+  const resolvedTarget = await resolveRequestedTarget(searchParams)
+  if (!resolvedTarget.ok) {
+    return withOptionalSetCookie(
+      resolvedTarget.errorResponse,
+      authGate.setCookieHeader,
+    )
+  }
+
+  const validation = await validateTarget(resolvedTarget.target)
   if (!validation.ok) {
     return withOptionalSetCookie(
       validation.errorResponse,
@@ -437,9 +483,16 @@ export async function HEAD(request: Request): Promise<Response> {
   if (!authGate.ok) return authGate.response
 
   const { searchParams } = new URL(request.url)
-  const target = searchParams.get("url")
 
-  const validation = await validateTarget(target)
+  const resolvedTarget = await resolveRequestedTarget(searchParams)
+  if (!resolvedTarget.ok) {
+    return withOptionalSetCookie(
+      resolvedTarget.errorResponse,
+      authGate.setCookieHeader,
+    )
+  }
+
+  const validation = await validateTarget(resolvedTarget.target)
   if (!validation.ok) {
     return withOptionalSetCookie(
       validation.errorResponse,

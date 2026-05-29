@@ -33,8 +33,11 @@ export async function GET(request: Request): Promise<NextResponse> {
     )
   }
 
-  const { searchParams } = new URL(request.url)
-  const callbackURL = resolveWatchCallbackURL(searchParams.get("callbackURL"))
+  const requestURL = new URL(request.url)
+  const { searchParams } = requestURL
+  const callbackURL = resolveWatchCallbackURL(searchParams.get("callbackURL"), [
+    requestURL.origin,
+  ])
   const authBase = resolveAuthBaseURL()
   if (!callbackURL || !authBase) {
     return withRolloutCookie(

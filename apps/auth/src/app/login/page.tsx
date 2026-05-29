@@ -6,7 +6,6 @@ import {
   isOAuthAuthorizeRequest,
   parseLoginError,
   resolveConsumerCallbackURL,
-  resolveLoginFlow,
   resolveRequestingAppName,
   toOAuthQuery,
   type LoginSearchParams,
@@ -26,7 +25,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
       <LoginPageClient
         callbackURL={callbackURL}
         enabledProviders={getEnabledProviders()}
-        flow={resolveLoginFlow(params)}
+        flow="login"
         initialEmail={firstParam(params.email)}
         initialError={parseLoginError(firstParam(params.error))}
         oauthQuery=""

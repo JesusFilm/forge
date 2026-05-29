@@ -16,23 +16,16 @@ import { formatDuration as formatDurationShared } from "@/lib/format-duration"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { TERMS_OF_USE_PARAGRAPHS } from "@/lib/terms-of-use"
-import {
-  SAFE_DOWNLOAD_EXTENSIONS,
-  isAllowedDownloadOrigin,
-} from "@/lib/download-allowlist"
 import { cn } from "@/lib/utils"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
-import {
-  checkDownloadSession,
-  redirectToAuth,
-} from "@/components/watch/download-session-client"
+import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
+import { redirectToAuth } from "@/components/watch/download-session-client"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
 export type DownloadModalDownload = {
   documentId: string
   quality: string
   size: number | null
-  url: string
 }
 
 export type DownloadModalProps = {
@@ -43,6 +36,8 @@ export type DownloadModalProps = {
   /** Variant duration in seconds (used for the runtime overlay on the thumbnail). */
   durationSeconds?: number | null
   languageName?: string | null
+  variantId: string
+  videoSlug: string
   onClose: () => void
 }
 
@@ -142,14 +137,14 @@ function formatSize(bytes: number | null | undefined): string {
 // CMS-provided `size` is missing or zero. Returns null on any failure so
 // the UI can fall back to rendering just the tier label.
 async function fetchSizeFromProxy(
-  url: string,
+  params: DownloadProxyParams,
   signal: AbortSignal,
 ): Promise<number | null> {
   try {
-    const res = await fetch(
-      `${DOWNLOAD_PROXY_PATH}?url=${encodeURIComponent(url)}`,
-      { method: "HEAD", signal },
-    )
+    const res = await fetch(buildDownloadProxyUrl(params), {
+      method: "HEAD",
+      signal,
+    })
     if (!res.ok) return null
     const len = res.headers.get("content-length")
     if (!len) return null
@@ -158,6 +153,28 @@ async function fetchSizeFromProxy(
   } catch {
     return null
   }
+}
+
+type DownloadProxyParams = {
+  downloadId: string
+  filename?: string
+  variantId: string
+  videoSlug: string
+}
+
+function buildDownloadProxyUrl({
+  downloadId,
+  filename,
+  variantId,
+  videoSlug,
+}: DownloadProxyParams): string {
+  const params = new URLSearchParams({
+    downloadId,
+    variantId,
+    videoSlug,
+  })
+  if (filename) params.set("filename", filename)
+  return `${DOWNLOAD_PROXY_PATH}?${params.toString()}`
 }
 
 // Renders `({formatted})` when the size is known, nothing otherwise.
@@ -194,6 +211,8 @@ export function DownloadModal({
   posterUrl,
   durationSeconds,
   languageName,
+  variantId,
+  videoSlug,
   onClose,
 }: DownloadModalProps) {
   const t = useTranslations("DownloadModal")
@@ -212,9 +231,7 @@ export function DownloadModal({
   const [error, setError] = useState<string | null>(null)
   const [authChecking, setAuthChecking] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
-  // Keyed by download URL since the CMS-generated `documentId` is stable
-  // per-variant but the URL is what we probe — lookups for the same URL
-  // (which happens when the CMS sets fhd === highest) dedupe naturally.
+  // Keyed by download id so raw CDN URLs never need to enter the client bundle.
   const [probedSizes, setProbedSizes] = useState<Record<string, number | null>>(
     {},
   )
@@ -222,8 +239,8 @@ export function DownloadModal({
   // decoupled from result state — using `probedSizes` for both would put
   // it in the probe effect's deps and cause an extra no-op effect run per
   // batch. Survives modal close/reopen so a rapid open-close-open cycle
-  // doesn't re-issue HEAD requests for URLs we already tried.
-  const attemptedUrlsRef = useRef<Set<string>>(new Set())
+  // doesn't re-issue HEAD requests for downloads we already tried.
+  const attemptedDownloadIdsRef = useRef<Set<string>>(new Set())
   const dropdownId = useId()
   const dropdownListId = `${dropdownId}-list`
   const triggerRef = useRef<HTMLButtonElement | null>(null)
@@ -232,6 +249,7 @@ export function DownloadModal({
   // queueing a second proxy request before the modal-close re-render
   // hides the button.
   const downloadInFlight = useRef<boolean>(false)
+  const requestVersionRef = useRef(0)
 
   const tiers = useMemo(() => bucketDownloads(downloads), [downloads])
 
@@ -241,7 +259,7 @@ export function DownloadModal({
     (download: DownloadModalDownload): number | null => {
       const cms = download.size
       if (cms != null && cms > 0) return cms
-      const probed = probedSizes[download.url]
+      const probed = probedSizes[download.documentId]
       return probed ?? null
     },
     [probedSizes],
@@ -274,6 +292,7 @@ export function DownloadModal({
         setAuthChecking(false)
         setTermsOpen(false)
         downloadInFlight.current = false
+        requestVersionRef.current += 1
         onClose()
       }
     },
@@ -289,25 +308,32 @@ export function DownloadModal({
   // per page-load lifetime.
   useEffect(() => {
     if (!open) return
-    const attempted = attemptedUrlsRef.current
-    const missingUrls = Array.from(
-      new Set(
-        tiers
-          .map((t) => t.download)
-          .filter((d) => !(d.size != null && d.size > 0))
-          .map((d) => d.url)
-          .filter((url) => !attempted.has(url)),
-      ),
+    const attempted = attemptedDownloadIdsRef.current
+    const missingDownloads = tiers
+      .map((t) => t.download)
+      .filter((d) => !(d.size != null && d.size > 0))
+      .filter((download) => !attempted.has(download.documentId))
+    if (missingDownloads.length === 0) return
+    const uniqueDownloads = Array.from(
+      new Map(
+        missingDownloads.map((download) => [download.documentId, download]),
+      ).values(),
     )
-    if (missingUrls.length === 0) return
     // Reserve slots synchronously so a re-open during the in-flight
     // batch doesn't trigger duplicate HEADs.
-    for (const url of missingUrls) attempted.add(url)
+    for (const download of uniqueDownloads) attempted.add(download.documentId)
     const controller = new AbortController()
     void Promise.all(
-      missingUrls.map(async (url) => {
-        const size = await fetchSizeFromProxy(url, controller.signal)
-        return [url, size] as const
+      uniqueDownloads.map(async (download) => {
+        const size = await fetchSizeFromProxy(
+          {
+            downloadId: download.documentId,
+            variantId,
+            videoSlug,
+          },
+          controller.signal,
+        )
+        return [download.documentId, size] as const
       }),
     )
       .then((results) => {
@@ -325,7 +351,7 @@ export function DownloadModal({
         console.error("[DownloadModal] size probe pipeline failed", err)
       })
     return () => controller.abort()
-  }, [open, tiers])
+  }, [open, tiers, variantId, videoSlug])
 
   // Click-outside / Escape-first close for the custom dropdown. Without
   // this, clicking elsewhere in the modal leaves the listbox open
@@ -361,61 +387,51 @@ export function DownloadModal({
     }
   }, [dropdownOpen])
 
-  function buildFilename(sourceUrl: string, tier: Tier): string {
-    // Strip query string before extracting the extension so a `?token=...`
-    // CDN URL doesn't end up with `mp4?token=abc` as the ext.
-    const path = sourceUrl.split("?")[0] ?? ""
-    const lastDot = path.lastIndexOf(".")
-    const lastSlash = path.lastIndexOf("/")
-    // Only treat the last segment's `.ext` as an extension; otherwise a
-    // URL like `https://stream.mux.com/abc` would emit `com/abc` as the
-    // extension and embed a slash in the filename.
-    const candidate =
-      lastDot > lastSlash && lastDot < path.length - 1
-        ? path.slice(lastDot + 1).toLowerCase()
-        : ""
-    const ext = SAFE_DOWNLOAD_EXTENSIONS.has(candidate) ? candidate : "mp4"
-
+  function buildFilename(tier: Tier): string {
     const slug = (videoTitle ?? "video")
       .replace(/[^a-z0-9]+/gi, "-")
       .replace(/^-|-$/g, "")
       .toLowerCase()
-    return `${slug || "video"}-${tier}.${ext}`
+    return `${slug || "video"}-${tier}.mp4`
   }
 
   async function handleDownload() {
     if (!selected) return
     if (downloadInFlight.current) return
-    const sourceUrl = selected.download.url
-    if (!isAllowedDownloadOrigin(sourceUrl)) {
-      console.error(
-        "[DownloadModal] Refusing to download from non-allowlisted origin",
-        { url: sourceUrl },
-      )
-      setError(t("errorUnavailableSource"))
-      return
-    }
+    const requestVersion = ++requestVersionRef.current
     setError(null)
     downloadInFlight.current = true
     setAuthChecking(true)
 
-    const session = await checkDownloadSession()
-    if (session.gateEnabled && !session.authenticated) {
+    const session = await resolveDownloadSessionAccess()
+    if (requestVersionRef.current !== requestVersion) return
+    if (!session.ok && session.reason === "session-unavailable") {
       downloadInFlight.current = false
       setAuthChecking(false)
-      setError("Your session expired. Sign in again to download.")
+      setError(t("errorSessionUnavailable"))
+      return
+    }
+    if (!session.ok) {
+      downloadInFlight.current = false
+      setAuthChecking(false)
+      setError(t("errorSessionExpired"))
       redirectToAuth(session.loginUrl)
       return
     }
     setAuthChecking(false)
 
-    const filename = buildFilename(sourceUrl, selected.tier)
+    const filename = buildFilename(selected.tier)
 
     // Route through our same-origin streaming proxy so the browser honors
     // the `download` attribute and `Content-Disposition: attachment`. A
     // direct cross-origin link gets navigated by the browser instead of
     // handed to the download manager.
-    const proxy = `${DOWNLOAD_PROXY_PATH}?url=${encodeURIComponent(sourceUrl)}&filename=${encodeURIComponent(filename)}`
+    const proxy = buildDownloadProxyUrl({
+      downloadId: selected.download.documentId,
+      filename,
+      variantId,
+      videoSlug,
+    })
 
     const a = document.createElement("a")
     a.href = proxy

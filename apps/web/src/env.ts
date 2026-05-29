@@ -51,6 +51,17 @@ function booleanEnv(defaultValue: boolean) {
     .default(defaultValue)
 }
 
+function emptyToUndefined(value: string | undefined): string | undefined {
+  return value === "" ? undefined : value
+}
+
+function productionDefault(
+  productionValue: string,
+  localValue: string,
+): string {
+  return process.env.NODE_ENV === "production" ? productionValue : localValue
+}
+
 const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES = [
   ".jesusfilm.org",
   ".railway.app",
@@ -124,7 +135,14 @@ export const env = createEnv({
     // Shared Auth host used by server routes to verify Better Auth sessions
     // over HTTP. Production/stage callers validate this before forwarding
     // cookies; local/test default to the standalone auth dev port.
-    WEB_AUTH_BASE_URL: z.url().default("http://localhost:3004"),
+    WEB_AUTH_BASE_URL: z
+      .url()
+      .default(
+        productionDefault(
+          "https://auth.jesusfilm.org",
+          "http://localhost:3004",
+        ),
+      ),
   },
   client: {
     // U12 — Mux watch-page player migration flag.
@@ -191,7 +209,7 @@ export const env = createEnv({
       process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
-    WEB_AUTH_BASE_URL: process.env.WEB_AUTH_BASE_URL,
+    WEB_AUTH_BASE_URL: emptyToUndefined(process.env.WEB_AUTH_BASE_URL),
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO:

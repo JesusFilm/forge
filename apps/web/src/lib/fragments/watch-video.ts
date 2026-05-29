@@ -142,7 +142,6 @@ export const watchVideoFragment = adminGraphql(`
         documentId: id
         quality
         size
-        url
       }
       muxVideo {
         playbackId

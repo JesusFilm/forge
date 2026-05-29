@@ -4,10 +4,11 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-const ROUTE_URL = "https://example.test/watch/api/auth/session"
-
-function makeRequest(callbackURL: string): Request {
-  const url = new URL(ROUTE_URL)
+function makeRequest(
+  callbackURL: string,
+  routeURL = "https://example.test/watch/api/auth/session",
+): Request {
+  const url = new URL(routeURL)
   url.searchParams.set("callbackURL", callbackURL)
   return new Request(url)
 }
@@ -58,6 +59,22 @@ describe("GET /watch/api/auth/session", () => {
       "http://localhost:3004/login?callbackURL=http%3A%2F%2Flocalhost%3A3000%2Fwatch%2Fjesus%2Fenglish",
     )
     expect(body.loginUrl).not.toContain("stream.mux.com")
+  })
+
+  it("allows the current request origin as a watch callback origin for preview deployments", async () => {
+    const { GET } = await importRouteWithGate(true)
+    const response = await GET(
+      makeRequest(
+        "https://preview.example.test/watch/jesus/english",
+        "https://preview.example.test/watch/api/auth/session",
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as { loginUrl: string }
+    expect(body.loginUrl).toBe(
+      "http://localhost:3004/login?callbackURL=https%3A%2F%2Fpreview.example.test%2Fwatch%2Fjesus%2Fenglish",
+    )
   })
 
   it("rejects callbacks that point at the download API", async () => {

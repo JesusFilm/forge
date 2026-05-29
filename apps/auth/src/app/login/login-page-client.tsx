@@ -357,21 +357,23 @@ export function LoginPageClient({
               </button>
             </form>
 
-            <p className="font-noto-serif mb-0 mt-6 text-center text-[13px] leading-5 text-[#a8a29e]">
-              {flow === "signup"
-                ? "Already have an account?"
-                : "Don't have an account?"}{" "}
-              <Link
-                className="font-apercu font-bold text-[#f5f5f4] underline decoration-white/25 underline-offset-4 transition-colors duration-150 hover:decoration-white"
-                href={buildModeSwitchHref({
-                  callbackURL,
-                  flow,
-                  oauthQuery,
-                })}
-              >
-                {flow === "signup" ? "Log in" : "Sign up"}
-              </Link>
-            </p>
+            {callbackURL && flow === "login" ? null : (
+              <p className="font-noto-serif mb-0 mt-6 text-center text-[13px] leading-5 text-[#a8a29e]">
+                {flow === "signup"
+                  ? "Already have an account?"
+                  : "Don't have an account?"}{" "}
+                <Link
+                  className="font-apercu font-bold text-[#f5f5f4] underline decoration-white/25 underline-offset-4 transition-colors duration-150 hover:decoration-white"
+                  href={buildModeSwitchHref({
+                    callbackURL,
+                    flow,
+                    oauthQuery,
+                  })}
+                >
+                  {flow === "signup" ? "Log in" : "Sign up"}
+                </Link>
+              </p>
+            )}
           </div>
         </section>
 

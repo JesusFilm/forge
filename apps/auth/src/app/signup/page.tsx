@@ -3,7 +3,6 @@ import {
   firstParam,
   getEnabledProviders,
   isOAuthAuthorizeRequest,
-  resolveConsumerCallbackURL,
   resolveRequestingAppName,
   toOAuthQuery,
   type LoginSearchParams,
@@ -19,18 +18,7 @@ export default async function SignupPage({
 }: SignupPageProps = {}) {
   const params = (await searchParams) ?? {}
   if (!isOAuthAuthorizeRequest(params)) {
-    const callbackURL = resolveConsumerCallbackURL(params)
-    if (!callbackURL) redirect("https://www.jesusfilm.org")
-
-    return (
-      <LoginPageClient
-        callbackURL={callbackURL}
-        enabledProviders={getEnabledProviders()}
-        flow="signup"
-        oauthQuery=""
-        requestingAppName="Jesus Film"
-      />
-    )
+    redirect("https://www.jesusfilm.org")
   }
 
   return (
