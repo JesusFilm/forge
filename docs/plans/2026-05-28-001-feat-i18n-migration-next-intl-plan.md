@@ -7,6 +7,8 @@ date: 2026-05-28
 
 # Migrate apps/web to next-intl for full i18n
 
+> **Amended 2026-05-29** by [2026-05-29-001-perf-restore-watch-static-render-locale-rewrite-plan.md](2026-05-29-001-perf-restore-watch-static-render-locale-rewrite-plan.md). That plan revisits **decision #5** ("`<html lang>` becomes dynamic" — reversed: it becomes static) and relaxes **decision #1**'s file-tree rule for an _internal-only_ `[locale]` segment introduced via middleware rewrite. The **public** URL contract here is unchanged — decision #1's user-facing guarantee still holds; only the "render dynamically" consequence of decision #5 is reversed. **Decision #4** ("no middleware") is amended to add one rewrite hop.
+
 ## Overview
 
 Apps/web ships English-only today. UI strings are hardcoded inline literals across ~100 sites; there is no translation runtime. The static `SUPPORTED_LOCALES = ["en","es","fr","pt","de"]` array in `lib/locale.ts` is a bcp47 allowlist for URL discrimination, NOT a translation gate — widening it changes nothing user-visible because no translated copy exists.
