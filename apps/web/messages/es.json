@@ -25,13 +25,17 @@
     "nextQuote": "Cita bíblica siguiente"
   },
   "DownloadButton": {
-    "download": "Descargar"
+    "checking": "Comprobando",
+    "download": "Descargar",
+    "sessionError": "No se pudo comprobar tu sesión. Inténtalo de nuevo."
   },
   "DownloadModal": {
     "dialogTitle": "Descargar video",
     "eyebrow": "Descargar video",
     "posterAlt": "Miniatura del video",
     "noDownloads": "No hay descargas disponibles para este video.",
+    "errorSessionExpired": "Tu sesión caducó. Inicia sesión de nuevo para descargar.",
+    "errorSessionUnavailable": "No se pudo comprobar tu sesión. Inténtalo de nuevo.",
     "errorUnavailableSource": "Descarga no disponible desde esta fuente",
     "tierHighest": "Máxima",
     "tierHigh": "Alta",

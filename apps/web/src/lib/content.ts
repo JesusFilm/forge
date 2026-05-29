@@ -139,7 +139,6 @@ export type WatchVariantDownload = {
   documentId: string
   quality: string | null
   size: string | null
-  url: string | null
 }
 
 export type WatchVariant = {
@@ -528,7 +527,6 @@ function normalizeVariant(
           documentId: d.documentId,
           quality: d.quality ?? null,
           size: d.size ?? null,
-          url: d.url ?? null,
         }
       })
       .filter((d): d is WatchVariantDownload => d != null),

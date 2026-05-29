@@ -31,6 +31,8 @@ const TOP_ZONE_KINDS: Set<WatchBlock["kind"]> = new Set(["HeroPlayer"])
 export function WatchSectionRenderer({
   blocks,
   downloadButtonLabel,
+  downloadError,
+  downloadPending,
   modalCallbacks,
   onPlayerReady,
   locale,
@@ -38,6 +40,8 @@ export function WatchSectionRenderer({
 }: {
   blocks: MergedWatchBlock[]
   downloadButtonLabel?: string
+  downloadError?: string | null
+  downloadPending?: boolean
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   locale?: string
@@ -69,6 +73,8 @@ export function WatchSectionRenderer({
           block={block}
           index={index}
           downloadButtonLabel={downloadButtonLabel}
+          downloadError={downloadError}
+          downloadPending={downloadPending}
           studyQuestionsBlock={studyQuestionsBlock}
           modalCallbacks={modalCallbacks}
           onPlayerReady={onPlayerReady}
@@ -102,6 +108,8 @@ export function WatchSectionRenderer({
                   block={block}
                   index={index + topBlocks.length}
                   downloadButtonLabel={downloadButtonLabel}
+                  downloadError={downloadError}
+                  downloadPending={downloadPending}
                   studyQuestionsBlock={studyQuestionsBlock}
                   modalCallbacks={modalCallbacks}
                   onPlayerReady={onPlayerReady}
@@ -120,6 +128,8 @@ function WatchBlockEntry({
   block,
   index,
   downloadButtonLabel,
+  downloadError,
+  downloadPending,
   studyQuestionsBlock,
   modalCallbacks,
   onPlayerReady,
@@ -129,6 +139,8 @@ function WatchBlockEntry({
   block: MergedWatchBlock
   index: number
   downloadButtonLabel?: string
+  downloadError?: string | null
+  downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
@@ -140,6 +152,8 @@ function WatchBlockEntry({
       <SyntheticBlock
         block={block}
         downloadButtonLabel={downloadButtonLabel}
+        downloadError={downloadError}
+        downloadPending={downloadPending}
         studyQuestionsBlock={studyQuestionsBlock}
         modalCallbacks={modalCallbacks}
         onPlayerReady={onPlayerReady}
@@ -154,6 +168,8 @@ function WatchBlockEntry({
 function SyntheticBlock({
   block,
   downloadButtonLabel,
+  downloadError,
+  downloadPending,
   studyQuestionsBlock,
   modalCallbacks,
   onPlayerReady,
@@ -162,6 +178,8 @@ function SyntheticBlock({
 }: {
   block: WatchBlock
   downloadButtonLabel?: string
+  downloadError?: string | null
+  downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
@@ -191,6 +209,8 @@ function SyntheticBlock({
         <WatchBody
           block={block}
           downloadButtonLabel={downloadButtonLabel}
+          downloadError={downloadError}
+          downloadPending={downloadPending}
           studyQuestions={studyQuestionsBlock}
           onDownloadClick={modalCallbacks?.openDownload ?? noop}
         />

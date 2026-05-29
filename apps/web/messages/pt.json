@@ -25,13 +25,17 @@
     "nextQuote": "Próxima citação bíblica"
   },
   "DownloadButton": {
-    "download": "Baixar"
+    "checking": "Verificando",
+    "download": "Baixar",
+    "sessionError": "Não foi possível verificar sua sessão. Tente novamente."
   },
   "DownloadModal": {
     "dialogTitle": "Baixar vídeo",
     "eyebrow": "Baixar vídeo",
     "posterAlt": "Miniatura do vídeo",
     "noDownloads": "Nenhum download disponível para este vídeo.",
+    "errorSessionExpired": "Sua sessão expirou. Entre novamente para baixar.",
+    "errorSessionUnavailable": "Não foi possível verificar sua sessão. Tente novamente.",
     "errorUnavailableSource": "Download indisponível nesta fonte",
     "tierHighest": "Máxima",
     "tierHigh": "Alta",

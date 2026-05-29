@@ -5,7 +5,12 @@ import { toNextJsHandler, nextCookies } from "better-auth/next-js"
 import { genericOAuth, jwt, okta } from "better-auth/plugins"
 
 import { AUTH_SCOPES } from "@/domain/scopes"
-import { assertProductionAuthSecrets, env, getAuthBaseUrl } from "@/config/env"
+import {
+  assertProductionAuthSecrets,
+  env,
+  getAuthBaseUrl,
+  getAuthTrustedOrigins,
+} from "@/config/env"
 import { prisma } from "@/db/client"
 
 assertProductionAuthSecrets()
@@ -93,7 +98,7 @@ export const auth = betterAuth({
   }),
   secret: betterAuthSecret,
   baseURL: getAuthBaseUrl(),
-  trustedOrigins: [getAuthBaseUrl()],
+  trustedOrigins: getAuthTrustedOrigins(),
   account: {
     accountLinking: {
       enabled: true,
@@ -176,6 +181,7 @@ export const auth = betterAuth({
   cookies: {
     sessionToken: {
       attributes: {
+        ...(env.AUTH_COOKIE_DOMAIN ? { domain: env.AUTH_COOKIE_DOMAIN } : {}),
         httpOnly: true,
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
