@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   HTML_SUFFIX,
   HTML_SUFFIX_REGEX,
+  RESERVED_PREFIXES,
   SAFE_SLUG_PATTERN,
   UNSAFE_PATH_PATTERN,
   appendHtmlSuffix,
@@ -137,6 +138,22 @@ describe("SAFE_SLUG_PATTERN", () => {
     expect(SAFE_SLUG_PATTERN.test("a/b")).toBe(false)
     expect(SAFE_SLUG_PATTERN.test("evil.com")).toBe(false)
     expect(SAFE_SLUG_PATTERN.test("")).toBe(false)
+  })
+})
+
+describe("RESERVED_PREFIXES", () => {
+  it("covers every current first-level public asset directory", () => {
+    expect(RESERVED_PREFIXES.has("assets")).toBe(true)
+    expect(RESERVED_PREFIXES.has("images")).toBe(true)
+    expect(RESERVED_PREFIXES.has("fonts")).toBe(true)
+  })
+
+  it("preserves framework and metadata exclusions", () => {
+    expect(RESERVED_PREFIXES.has("api")).toBe(true)
+    expect(RESERVED_PREFIXES.has("_next")).toBe(true)
+    expect(RESERVED_PREFIXES.has(".well-known")).toBe(true)
+    expect(RESERVED_PREFIXES.has("robots.txt")).toBe(true)
+    expect(RESERVED_PREFIXES.has("sitemap.xml")).toBe(true)
   })
 })
 

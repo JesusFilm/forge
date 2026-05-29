@@ -153,9 +153,12 @@ const EXPECTED_404S: readonly string[] = [
 
 // §5.7 — asset / framework subtrees must resolve normally (NO wildcard catch).
 const PASSTHROUGH: readonly string[] = [
-  "/watch/assets/favicon-180.png",
-  "/watch/assets/favicon-32.png",
-  "/watch/assets/footer/facebook.svg",
+  "/watch/assets/overlay.svg",
+  "/watch/images/jesusfilm-sign.svg",
+  "/watch/images/favicon-32.png",
+  "/watch/images/flags/ru.svg",
+  "/watch/images/overlay.svg",
+  "/watch/fonts/Montserrat-VariableFont_wght.woff2",
   "/watch/api/preview",
   "/watch/api/revalidate",
 ]
@@ -209,6 +212,28 @@ export type ProbeComparison = {
 
 const statusClass = (status: number): number => Math.floor(status / 100)
 
+type ClassifyFixture = {
+  path: string
+  expect: ProbeExpect
+}
+
+function passthroughViolation(
+  side: "production" | "preview",
+  result: ProbeResult,
+  expectedPath: string,
+): string | null {
+  if (statusClass(result.status) === 3) {
+    return `${side} returned redirect status ${result.status}`
+  }
+  if (result.redirectHops > 0) {
+    return `${side} redirected ${result.redirectHops} hop(s) before ${result.finalPath}`
+  }
+  if (result.finalPath !== expectedPath) {
+    return `${side} final path changed: expected ${expectedPath}, got ${result.finalPath}`
+  }
+  return null
+}
+
 /**
  * Diff a production baseline against a rewrite-preview result for ONE URL.
  * Pure — the heart of the cutover gate. Compares status CLASS + final path.
@@ -229,6 +254,7 @@ const statusClass = (status: number): number => Math.floor(status / 100)
 export function classifyProbe(
   production: ProbeResult,
   preview: ProbeResult,
+  fixture?: ClassifyFixture,
 ): { outcome: ProbeOutcome; note: string } {
   if (production.error || preview.error) {
     return {
@@ -236,6 +262,30 @@ export function classifyProbe(
       note: production.error
         ? `production transport error: ${production.error}`
         : `preview transport error: ${preview.error}`,
+    }
+  }
+
+  if (fixture?.expect === "passthrough") {
+    const productionViolation = passthroughViolation(
+      "production",
+      production,
+      fixture.path,
+    )
+    const previewViolation = passthroughViolation(
+      "preview",
+      preview,
+      fixture.path,
+    )
+    if (productionViolation || previewViolation) {
+      return {
+        outcome: "hard-regression",
+        note: `PASSTHROUGH CONTRACT BROKEN: ${[
+          productionViolation,
+          previewViolation,
+        ]
+          .filter(Boolean)
+          .join("; ")}`,
+      }
     }
   }
 
