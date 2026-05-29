@@ -1,11 +1,40 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  isKnownLanguageSlug,
   isLocale,
   isLocaleSlug,
   resolveUiLocale,
   slugToBcp47Primary,
 } from "./locale"
+
+describe("isKnownLanguageSlug (§5.6 locale-segment gate)", () => {
+  it("accepts real English-name admin language slugs", () => {
+    expect(isKnownLanguageSlug("english")).toBe(true)
+    expect(isKnownLanguageSlug("spanish-castilian")).toBe(true)
+    expect(isKnownLanguageSlug("mandarin-china")).toBe(true)
+    expect(isKnownLanguageSlug("russian")).toBe(true)
+    expect(isKnownLanguageSlug("zulu")).toBe(true)
+  })
+
+  it("REJECTS bcp47 codes — only English-name slugs are valid URL locales", () => {
+    expect(isKnownLanguageSlug("en")).toBe(false)
+    expect(isKnownLanguageSlug("pt-br")).toBe(false)
+    expect(isKnownLanguageSlug("es-ES")).toBe(false)
+  })
+
+  it("rejects non-ASCII, unknown, and empty tokens", () => {
+    expect(isKnownLanguageSlug("français")).toBe(false)
+    expect(isKnownLanguageSlug("non-existent")).toBe(false)
+    expect(isKnownLanguageSlug("")).toBe(false)
+  })
+
+  it("rejects prototype-pollution keys (Object.hasOwn is safe)", () => {
+    expect(isKnownLanguageSlug("__proto__")).toBe(false)
+    expect(isKnownLanguageSlug("constructor")).toBe(false)
+    expect(isKnownLanguageSlug("hasOwnProperty")).toBe(false)
+  })
+})
 
 describe("isLocale (bcp47 only)", () => {
   it("accepts known UI template locales", () => {

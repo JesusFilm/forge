@@ -296,7 +296,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(
       makeWatchVideoResult("collection"),
     )
-    await render2Seg("storyclubs", "en")
+    await render2Seg("storyclubs", "english")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
     expect(resolveSeriesBySlugMock).not.toHaveBeenCalled()
@@ -306,7 +306,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(
       makeWatchVideoResult("series"),
     )
-    await render2Seg("any-series", "en")
+    await render2Seg("any-series", "english")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
   })
@@ -315,7 +315,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(
       makeWatchVideoResult("featureFilm"),
     )
-    await render2Seg("jesus", "en")
+    await render2Seg("jesus", "english")
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
@@ -452,7 +452,7 @@ describe("Catch-all routing — Experience precedence (2-seg)", () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(
       makeWatchVideoResult("collection"),
     )
-    await render2Seg("easter", "en")
+    await render2Seg("easter", "english")
     expect(seriesPageClientMock).not.toHaveBeenCalled()
     expect(watchPageClientMock).not.toHaveBeenCalled()
     expect(watchQuestionPanelMock).not.toHaveBeenCalled()
@@ -497,7 +497,7 @@ describe("Catch-all routing — Experience precedence (2-seg)", () => {
       },
       error: null,
     })
-    await render2Seg("x", "en")
+    await render2Seg("x", "english")
     expect(experienceEmptyMock).toHaveBeenCalledTimes(1)
     expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
   })
@@ -507,7 +507,7 @@ describe("Catch-all routing — series-without-trailer fallthrough (2-seg)", () 
   it("falls through to resolveSeriesBySlug when video resolver returns null", async () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(null)
     resolveSeriesBySlugMock.mockResolvedValue(makeSeriesResult())
-    await render2Seg("storyclubs-no-trailer", "en")
+    await render2Seg("storyclubs-no-trailer", "english")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(resolveSeriesBySlugMock).toHaveBeenCalledWith(
       "storyclubs-no-trailer",
@@ -523,7 +523,7 @@ describe("Catch-all routing — series-without-trailer fallthrough (2-seg)", () 
       data: null,
       error: { message: "No experience found" },
     })
-    await render2Seg("missing-slug", "en")
+    await render2Seg("missing-slug", "english")
     expect(experienceEmptyMock).toHaveBeenCalledTimes(1)
     expect(seriesPageClientMock).not.toHaveBeenCalled()
     expect(watchPageClientMock).not.toHaveBeenCalled()
@@ -534,19 +534,19 @@ describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () =>
   it("passes selectedVariant in trailer-mode series rendering", async () => {
     const watchVideo = makeWatchVideoResult("collection")
     resolveWatchVideoBySlugMock.mockResolvedValue(watchVideo)
-    await render2Seg("storyclubs", "en")
+    await render2Seg("storyclubs", "english")
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.selectedVariant).toBe(watchVideo.selectedVariant)
-    expect(args?.locale).toBe("en")
+    expect(args?.locale).toBe("english")
   })
 
   it("passes selectedVariant=null in static-mode (trailerless) series rendering", async () => {
     resolveWatchVideoBySlugMock.mockResolvedValue(null)
     resolveSeriesBySlugMock.mockResolvedValue(makeSeriesResult())
-    await render2Seg("storyclubs-no-trailer", "en")
+    await render2Seg("storyclubs-no-trailer", "english")
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.selectedVariant).toBeNull()
-    expect(args?.locale).toBe("en")
+    expect(args?.locale).toBe("english")
   })
 
   it("passes raw slug-form locale (spanish-castilian) in trailer-mode, NOT bcp47-normalised", async () => {
@@ -858,7 +858,11 @@ describe("Catch-all routing — 3-seg episode branch", () => {
   it("redirects to canonical .html shape when URL locale doesn't match selected variant", async () => {
     resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
     await expect(
-      render3Seg("lumo-the-gospel-of-john", "wedding-in-cana", "german"),
+      render3Seg(
+        "lumo-the-gospel-of-john",
+        "wedding-in-cana",
+        "spanish-castilian",
+      ),
     ).rejects.toThrow(
       /NEXT_REDIRECT:\/lumo-the-gospel-of-john\.html\/wedding-in-cana\/english\.html\?_lr=1/,
     )
@@ -897,5 +901,70 @@ describe("Catch-all routing — unknown shape", () => {
     })
     await expect(element).rejects.toThrow("NEXT_NOT_FOUND")
     expect(notFoundMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("Catch-all routing — §5.6 404 hardening", () => {
+  // Resolver set to a valid video so the guards prove they 404 BEFORE
+  // resolution (these shapes returned a fallback 200 pre-fix).
+  beforeEach(() => {
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("featureFilm"),
+    )
+  })
+
+  it.each(["en", "pt-br", "français", "non-existent"])(
+    "guard A: 404s a 2-segment URL with non-language locale %j",
+    async (locale) => {
+      await expect(render2Seg("jesus", locale)).rejects.toThrow(
+        "NEXT_NOT_FOUND",
+      )
+      expect(notFoundMock).toHaveBeenCalled()
+      expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it("guard A: 404s a bad locale on an existing collection (easter/non-existent)", async () => {
+    await expect(render2Seg("easter", "non-existent")).rejects.toThrow(
+      "NEXT_NOT_FOUND",
+    )
+    expect(notFoundMock).toHaveBeenCalled()
+  })
+
+  it("guard A: 404s a 3-segment episode URL with non-language locale", async () => {
+    await expect(
+      render3Seg("lumo-the-gospel-of-john", "wedding-in-cana", "en"),
+    ).rejects.toThrow("NEXT_NOT_FOUND")
+    expect(notFoundMock).toHaveBeenCalled()
+  })
+
+  it("guard B: 404s an uppercase slug (case-sensitive contract)", async () => {
+    await expect(render2Seg("JESUS", "english")).rejects.toThrow(
+      "NEXT_NOT_FOUND",
+    )
+    expect(notFoundMock).toHaveBeenCalled()
+    expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+  })
+
+  it("guard B: 404s an uppercase episode slug on the 3-segment shape", async () => {
+    await expect(
+      render3Seg("lumo-the-gospel-of-john", "WEDDING", "english"),
+    ).rejects.toThrow("NEXT_NOT_FOUND")
+    expect(notFoundMock).toHaveBeenCalled()
+  })
+
+  it("does NOT 404 a valid slug-form locale (regression guard)", async () => {
+    // Match the selected variant's slug so the resync-redirect doesn't fire —
+    // we're asserting guard A admits a known language slug, not redirect logic.
+    resolveWatchVideoBySlugMock.mockResolvedValue(
+      makeWatchVideoResult("featureFilm", {
+        slug: "spanish-castilian",
+        bcp47: "es",
+        name: "Spanish (Castilian)",
+      }),
+    )
+    await render2Seg("jesus", "spanish-castilian")
+    expect(notFoundMock).not.toHaveBeenCalled()
+    expect(resolveWatchVideoBySlugMock).toHaveBeenCalled()
   })
 })

@@ -27,14 +27,18 @@ import {
   isWatchQuestionPanelEnabled,
   isWatchYouVersionBibleQuotesEnabled,
 } from "@/lib/feature-flags"
-import { DEFAULT_LOCALE, resolveUiLocale } from "@/lib/locale"
+import {
+  DEFAULT_LOCALE,
+  isKnownLanguageSlug,
+  resolveUiLocale,
+} from "@/lib/locale"
 import {
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
-import { stripHtmlSuffix } from "@/lib/url-shape"
+import { SAFE_SLUG_PATTERN, stripHtmlSuffix } from "@/lib/url-shape"
 import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
 
 // ISR: pages cached for 60s. Cookie-driven language redirect lives in
@@ -75,8 +79,17 @@ type Shape =
 
 function classify(rawSlug: string, rest: string[]): Shape {
   const slug = stripHtmlSuffix(rawSlug)
+  // Guard B — slug must be a lowercase-ASCII kebab slug. Rejects uppercase
+  // (`JESUS`, case-sensitive contract §3) and empty (`/watch/.html`) so they
+  // 404 instead of falling through to the locale-agnostic content resolvers.
+  if (!slug || !SAFE_SLUG_PATTERN.test(slug)) return { kind: "unknown" }
   if (rest.length === 1) {
     const rawLocale = stripHtmlSuffix(rest[0])
+    // Guard A — the locale segment must be a known English-name audio-language
+    // slug. Rejects bcp47 codes (`en`, `pt-br`), non-ASCII (`français`), and
+    // unknown tokens (`non-existent`) per §5.6 — otherwise the resolver's
+    // slug-OR-bcp47 match + slug-only fallback render a 200 for invalid dubs.
+    if (!isKnownLanguageSlug(rawLocale)) return { kind: "unknown" }
     return {
       kind: "video",
       slug,
@@ -96,6 +109,11 @@ function classify(rawSlug: string, rest: string[]): Shape {
     // but routing must tolerate either shape).
     const episodeSlug = stripHtmlSuffix(rest[0])
     const rawLocale = stripHtmlSuffix(rest[1])
+    // Guards B + A on the episode shape (mirror the 2-segment branch).
+    if (!episodeSlug || !SAFE_SLUG_PATTERN.test(episodeSlug)) {
+      return { kind: "unknown" }
+    }
+    if (!isKnownLanguageSlug(rawLocale)) return { kind: "unknown" }
     return {
       kind: "episode",
       seriesSlug: slug,
