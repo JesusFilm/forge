@@ -220,15 +220,27 @@ const statusClass = (status: number): number => Math.floor(status / 100)
  *                        404 that now resolves/redirects (prod 4xx → preview
  *                        non-4xx — §5.6 contract violation).
  * - `acceptable`       — prod 3xx → preview 2xx (preview skips a redundant
- *                        redirect and serves directly).
+ *                        redirect and serves directly), OR prod 4xx →
+ *                        preview resolves/redirects on a fixture that is NOT
+ *                        `expect: "notfound"` (the production baseline simply
+ *                        lacked content the rewrite now serves — a superset,
+ *                        not a regression).
  * - `soft-regression`  — same status class but a DIFFERENT final path (canonical
  *                        / SEO drift; needs stakeholder review), or prod 2xx →
  *                        preview 3xx.
  * - `match`            — same status class + same final path.
+ *
+ * `expect` is the fixture's nominal §5 outcome. It ONLY modulates the prod-4xx
+ * case: a `notfound` fixture (§5.6) MUST stay 404 on preview, so prod-4xx →
+ * preview-non-4xx is a hard regression; for any other fixture a prod-4xx
+ * baseline just means production didn't serve it, so the preview serving it is
+ * an acceptable superset. Default `"notfound"` keeps the strict §5.6 reading
+ * when a caller omits it.
  */
 export function classifyProbe(
   production: ProbeResult,
   preview: ProbeResult,
+  expect: ProbeExpect = "notfound",
 ): { outcome: ProbeOutcome; note: string } {
   if (production.error || preview.error) {
     return {
@@ -292,13 +304,22 @@ export function classifyProbe(
     }
   }
 
-  // pc === 4 — production 404 (or other 4xx). §5.6: must STAY 404.
+  // pc === 4 — production 4xx.
   if (vc === 4) {
     return { outcome: "match", note: `404 preserved (${preview.status})` }
   }
+  // Preview resolves/redirects where prod 404'd. Only a §5.6 "must-stay-404"
+  // fixture treats this as a hard contract break; otherwise the production
+  // baseline simply lacked content the rewrite now serves (a superset).
+  if (expect === "notfound") {
+    return {
+      outcome: "hard-regression",
+      note: `EXPECTED-404 CONTRACT BROKEN: prod ${production.status} → preview ${preview.status} (must not resolve or redirect)`,
+    }
+  }
   return {
-    outcome: "hard-regression",
-    note: `EXPECTED-404 CONTRACT BROKEN: prod ${production.status} → preview ${preview.status} (must not resolve or redirect)`,
+    outcome: "acceptable",
+    note: `preview serves content prod ${production.status}'d (legacy baseline gap, not a regression): preview ${preview.status} → ${preview.finalPath}`,
   }
 }
 
