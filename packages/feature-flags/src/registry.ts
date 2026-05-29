@@ -27,6 +27,13 @@ export const featureFlags = {
     description:
       "Runtime rollout gate for the watch-page YouVersion Bible Quotes panel.",
   },
+  watchQuestionPanel: {
+    key: "forge.watch.questionPanel",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_QUESTION_PANEL_DEFAULT",
+    description:
+      "Runtime rollout gate for the watch-page floating question panel.",
+  },
 } as const
 
 export type FeatureFlagName = keyof typeof featureFlags

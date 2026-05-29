@@ -223,6 +223,50 @@ describe("fetchYouVersionBibleQuotePassages", () => {
     ).resolves.toEqual([expect.objectContaining({ publisherUrl: null })])
   })
 
+  it("drops whitespace-only passage content", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(makeVersion()))
+      .mockResolvedValueOnce(jsonResponse(makePassage({ content: " \n\t " })))
+
+    const { fetchYouVersionBibleQuotePassages } =
+      await import("@/lib/youversion-passage")
+
+    await expect(
+      fetchYouVersionBibleQuotePassages([makeCitation()]),
+    ).resolves.toEqual([])
+  })
+
+  it("fails closed when the aggregate YouVersion budget expires", async () => {
+    vi.useFakeTimers()
+    fetchMock.mockImplementation((_url, init: RequestInit | undefined) => {
+      const signal = init?.signal
+      return new Promise((_resolve, reject) => {
+        signal?.addEventListener("abort", () => {
+          reject(new DOMException("aborted", "AbortError"))
+        })
+      })
+    })
+
+    try {
+      const { fetchYouVersionBibleQuotePassages } =
+        await import("@/lib/youversion-passage")
+
+      const promise = fetchYouVersionBibleQuotePassages([makeCitation()], {
+        timeoutMs: 10,
+      })
+      await vi.advanceTimersByTimeAsync(10)
+
+      await expect(promise).resolves.toEqual([])
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(
+        (fetchMock.mock.calls[0]?.[1] as RequestInit | undefined)?.signal
+          ?.aborted,
+      ).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("omits only the citation whose passage request fails", async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse(makeVersion()))

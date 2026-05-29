@@ -12,6 +12,7 @@ function setRequiredWebEnv() {
   delete process.env.FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT
   delete process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT
   delete process.env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT
+  delete process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT
   delete process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION
   delete process.env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO
 }
@@ -87,6 +88,23 @@ describe("web feature flag helpers", () => {
     await expect(enabledWithFallback()).resolves.toBe(true)
   })
 
+  it("keeps the watch question panel disabled by default", async () => {
+    delete process.env.LAUNCHDARKLY_SDK_KEY
+
+    const { isWatchQuestionPanelEnabled } = await import("./feature-flags")
+
+    await expect(isWatchQuestionPanelEnabled()).resolves.toBe(false)
+  })
+
+  it("evaluates the watch question panel flag from the server-side fallback", async () => {
+    delete process.env.LAUNCHDARKLY_SDK_KEY
+    process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT = "true"
+
+    const { isWatchQuestionPanelEnabled } = await import("./feature-flags")
+
+    await expect(isWatchQuestionPanelEnabled()).resolves.toBe(true)
+  })
+
   it("passes the LaunchDarkly SDK key and local fallbacks into the shared client", async () => {
     process.env.LAUNCHDARKLY_SDK_KEY = "sdk-test"
     process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION = "false"
@@ -94,6 +112,7 @@ describe("web feature flag helpers", () => {
     process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT = "true"
     process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT = "false"
     process.env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT = "true"
+    process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT = "true"
     const booleanVariation = vi.fn(async () => false)
     const createFeatureFlagClient = vi.fn(() => ({ booleanVariation }))
 
@@ -118,12 +137,14 @@ describe("web feature flag helpers", () => {
           FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT: "true",
           FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: "false",
           FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT: "true",
+          FORGE_WATCH_QUESTION_PANEL_DEFAULT: "true",
         },
         defaultValues: {
           "forge.watch.playerMigration": false,
           "forge.watch.heroMuxVideo": true,
           "forge.watch.ctaTextCopy": false,
           "forge.watch.youVersionBibleQuotes": false,
+          "forge.watch.questionPanel": false,
         },
       }),
     )

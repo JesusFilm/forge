@@ -87,6 +87,29 @@
     "chatWithPerson": "Chat with a person",
     "askBibleQuestion": "Ask a Bible question"
   },
+  "WatchQuestionPanel": {
+    "messageType": "Message type",
+    "fieldLabel": "Ask a question about this video",
+    "send": "Send question",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Ask a Bible question",
+        "description": "Instant answers from the Bible using AI search"
+      },
+      "prayerRequest": {
+        "label": "Request a prayer",
+        "description": "Share what you want prayer for"
+      },
+      "comment": {
+        "label": "Leave a comment",
+        "description": "Send thoughts about this video"
+      },
+      "personChat": {
+        "label": "Chat with a person",
+        "description": "Talk with someone now"
+      }
+    }
+  },
   "ShareModal": {
     "dialogTitle": "Share video",
     "heading": "Share this video",

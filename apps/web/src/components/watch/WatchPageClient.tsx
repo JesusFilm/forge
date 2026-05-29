@@ -31,6 +31,7 @@ const ShareModal = dynamic(
   { ssr: false },
 )
 import { SubtitleTranscript } from "@/components/watch/SubtitleTranscript"
+import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
 import type {
   MergedWatchBlock,
@@ -88,6 +89,7 @@ type WatchPageClientProps = {
    * BibleGateway "Read more..." link pick the right translation.
    */
   locale?: string
+  questionPanelEnabled?: boolean
 }
 
 export function WatchPageClient({
@@ -97,6 +99,7 @@ export function WatchPageClient({
   video,
   languageSlug,
   locale,
+  questionPanelEnabled = false,
 }: WatchPageClientProps) {
   // Lifted so LanguagePickerModal can read `currentTime` for the `?t=` clamp
   // on language switches.
@@ -263,7 +266,11 @@ export function WatchPageClient({
     <main
       data-testid="watch-page-client"
       data-modal-state={modalState}
-      className="min-h-screen bg-stone-900 font-sans text-stone-100 [&_button]:font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans [&_h5]:font-sans [&_h6]:font-sans [&_p]:font-sans"
+      className={`min-h-screen bg-stone-900 font-sans text-stone-100 [&_button]:font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans [&_h5]:font-sans [&_h6]:font-sans [&_p]:font-sans ${
+        questionPanelEnabled
+          ? "pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:pb-0"
+          : ""
+      }`}
     >
       <WatchSectionRenderer
         blocks={mergedBlocks}
@@ -312,6 +319,12 @@ export function WatchPageClient({
         playbackId={variant.muxVideo?.playbackId ?? null}
         onClose={closeModal}
       />
+      {questionPanelEnabled ? (
+        <WatchQuestionPanel
+          enabled={questionPanelEnabled}
+          modalSuppressed={modalState !== "none"}
+        />
+      ) : null}
     </main>
   )
 }

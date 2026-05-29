@@ -494,7 +494,15 @@ describe("BibleQuotesSection — YouVersion compact embed", () => {
     const panel = container.querySelector(
       '[data-testid="watch-bible-quotes-youversion"]',
     )
+    const carouselBleed = container.querySelector(
+      '[data-testid="watch-bible-quotes-carousel-bleed"]',
+    )
     expect(panel).not.toBeNull()
+    expect(carouselBleed).not.toBeNull()
+    expect(
+      carouselBleed!.compareDocumentPosition(panel!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
     expect(panel?.textContent).toContain("Galatians 2:20")
     expect(panel?.getAttribute("data-reference")).toBe("GAL.2.20")
     expect(panel?.textContent).toContain("I have been crucified with Christ.")
@@ -512,6 +520,40 @@ describe("BibleQuotesSection — YouVersion compact embed", () => {
     expect(panel?.querySelector("a")?.getAttribute("href")).toBe(
       "https://example.test/bible-version",
     )
+  })
+
+  it("labels narrowed cross-chapter passages with the fetched YouVersion reference", () => {
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[
+            makeCitation({
+              documentId: "bc-cross-chapter",
+              osisId: "Gal.2.20-Gal.3.5",
+              chapterStart: 2,
+              chapterEnd: 3,
+              verseStart: 20,
+              verseEnd: 5,
+            }),
+          ]}
+          onShareClick={vi.fn()}
+          youVersionPassages={[
+            makeYouVersionPassage({
+              citationDocumentId: "bc-cross-chapter",
+              content: "I have been crucified with Christ.",
+              humanReference: "Galatians 2:20",
+              reference: "GAL.2.20",
+            }),
+          ]}
+        />,
+      )
+    })
+
+    const panel = container.querySelector(
+      '[data-testid="watch-bible-quotes-youversion"]',
+    )
+    expect(panel?.textContent).toContain("Galatians 2:20")
+    expect(panel?.textContent).not.toContain("Galatians 2:20–3:5")
   })
 
   it("updates the compact YouVersion panel when Embla selects another citation", () => {

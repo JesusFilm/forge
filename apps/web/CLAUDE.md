@@ -100,4 +100,10 @@ and skips YouVersion API calls; `true` enables the server fetch when
 `FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT=false` unless intentionally
 smoke-testing the panel locally.
 
+`forge.watch.questionPanel` is a temporary LaunchDarkly-backed release flag
+for the watch-page floating question panel. `false` hides the panel;
+`true` renders the floating input and message-type selector. Keep
+`FORGE_WATCH_QUESTION_PANEL_DEFAULT=false` in local and Railway envs unless
+intentionally testing the panel.
+
 See root `CLAUDE.md` for cross-app patterns and the broader data-layer-flip plan reference.

@@ -94,6 +94,7 @@ export const env = createEnv({
     FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT: z.string().optional(),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: z.string().optional(),
     FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT: z.string().optional(),
+    FORGE_WATCH_QUESTION_PANEL_DEFAULT: z.string().optional(),
     // Admin GraphQL URL. Required — web's data layer reads from admin.
     ADMIN_GRAPHQL_URL: z
       .url()
@@ -198,6 +199,8 @@ export const env = createEnv({
       process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
     FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT:
       process.env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT,
+    FORGE_WATCH_QUESTION_PANEL_DEFAULT:
+      process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
     YOUVERSION_APP_KEY: process.env.YOUVERSION_APP_KEY,

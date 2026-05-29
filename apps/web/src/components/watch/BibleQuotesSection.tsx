@@ -173,9 +173,6 @@ export function BibleQuotesSection({
   const activeYouVersionPassage = activeCitation
     ? (youVersionPassagesByCitationId.get(activeCitation.documentId) ?? null)
     : null
-  const activeReferenceLabel = activeCitation
-    ? formatCitation(activeCitation)
-    : null
 
   const handleCarouselApi = useCallback((api: CarouselApi) => {
     setCarouselApi(api)
@@ -340,7 +337,6 @@ export function BibleQuotesSection({
       </div>
       <YouVersionPassagePanel
         passage={activeYouVersionPassage}
-        referenceLabel={activeReferenceLabel}
         learnMoreLabel={t("learnMore")}
       />
     </section>
@@ -350,13 +346,11 @@ export function BibleQuotesSection({
 function YouVersionPassagePanel({
   learnMoreLabel,
   passage,
-  referenceLabel,
 }: {
   learnMoreLabel: string
   passage:
     | NonNullable<WatchBibleQuotesBlock["youVersionPassages"]>[number]
     | null
-  referenceLabel: string | null
 }) {
   if (passage == null) {
     return null
@@ -373,11 +367,9 @@ function YouVersionPassagePanel({
         <span className="text-xs font-bold tracking-normal text-white/55 uppercase">
           YouVersion
         </span>
-        {referenceLabel != null && (
-          <span className="text-sm font-semibold text-white/80">
-            {referenceLabel}
-          </span>
-        )}
+        <span className="text-sm font-semibold text-white/80">
+          {passage.humanReference}
+        </span>
       </div>
       <div className="space-y-2">
         <p

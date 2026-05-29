@@ -10,7 +10,7 @@ import {
 
 const YOUVERSION_API_BASE_URL = "https://api.youversion.com/v1"
 const YOUVERSION_FETCH_REVALIDATE_SECONDS = 60 * 60 * 24
-const YOUVERSION_FETCH_TIMEOUT_MS = 8000
+const YOUVERSION_ENRICHMENT_TIMEOUT_MS = 2000
 const YOUVERSION_MAX_PASSAGES_PER_PAGE = 6
 
 const YouVersionVersionSchema = z
@@ -29,7 +29,7 @@ const YouVersionVersionSchema = z
 
 const YouVersionPassageSchema = z
   .object({
-    content: z.string().min(1),
+    content: z.string().trim().min(1),
     id: z.string().optional().nullable(),
     reference: z.string().optional().nullable(),
   })
@@ -50,12 +50,28 @@ export type YouVersionBibleQuotePassage = {
   versionTitle: string | null
 }
 
-type CitationWithDocumentId = Exclude<YouVersionCitationLike, null> & {
+export type YouVersionBibleQuoteCitation = Exclude<
+  YouVersionCitationLike,
+  null
+> & {
   documentId?: string | null
 }
 
+type FetchYouVersionBibleQuotePassagesOptions = {
+  timeoutMs?: number
+}
+
+type RequestedPassage = {
+  citationDocumentId: string
+  reference: string
+}
+
 export async function fetchYouVersionBibleQuotePassages(
-  citations: readonly YouVersionCitationLike[] | null | undefined,
+  citations:
+    | readonly (YouVersionBibleQuoteCitation | null)[]
+    | null
+    | undefined,
+  options: FetchYouVersionBibleQuotePassagesOptions = {},
 ): Promise<YouVersionBibleQuotePassage[]> {
   const appKey = env.YOUVERSION_APP_KEY?.trim()
   if (!appKey) return []
@@ -64,8 +80,7 @@ export async function fetchYouVersionBibleQuotePassages(
     .map((citation) => {
       if (citation == null) return null
       const reference = toYouVersionReference(citation)
-      const citationDocumentId =
-        (citation as CitationWithDocumentId).documentId ?? null
+      const citationDocumentId = citation.documentId ?? null
       if (reference == null || !citationDocumentId) return null
       return { citationDocumentId, reference }
     })
@@ -81,8 +96,35 @@ export async function fetchYouVersionBibleQuotePassages(
 
   if (requestedPassages.length === 0) return []
 
-  const versionId = env.YOUVERSION_DEFAULT_VERSION_ID
-  const version = await fetchYouVersionVersion(appKey, versionId)
+  const timeoutMs = Math.max(
+    1,
+    options.timeoutMs ?? YOUVERSION_ENRICHMENT_TIMEOUT_MS,
+  )
+  return runWithTimeout(
+    (signal) =>
+      fetchYouVersionBibleQuotePassagesWithinBudget({
+        appKey,
+        requestedPassages,
+        signal,
+        versionId: env.YOUVERSION_DEFAULT_VERSION_ID,
+      }),
+    timeoutMs,
+    [],
+  )
+}
+
+async function fetchYouVersionBibleQuotePassagesWithinBudget({
+  appKey,
+  requestedPassages,
+  signal,
+  versionId,
+}: {
+  appKey: string
+  requestedPassages: RequestedPassage[]
+  signal: AbortSignal
+  versionId: number
+}) {
+  const version = await fetchYouVersionVersion(appKey, versionId, signal)
   if (version == null) return []
 
   const copyright = getVersionCopyright(version)
@@ -98,7 +140,12 @@ export async function fetchYouVersionBibleQuotePassages(
   )
   const passageResults = await Promise.allSettled(
     uniqueReferences.map(async (reference) => {
-      const passage = await fetchYouVersionPassage(appKey, versionId, reference)
+      const passage = await fetchYouVersionPassage(
+        appKey,
+        versionId,
+        reference,
+        signal,
+      )
       return [reference, passage] as const
     }),
   )
@@ -131,11 +178,13 @@ export async function fetchYouVersionBibleQuotePassages(
 async function fetchYouVersionVersion(
   appKey: string,
   versionId: number,
+  signal: AbortSignal,
 ): Promise<YouVersionVersion | null> {
   return fetchYouVersionJson(
     `${YOUVERSION_API_BASE_URL}/bibles/${versionId}`,
     appKey,
     YouVersionVersionSchema,
+    signal,
   )
 }
 
@@ -143,6 +192,7 @@ async function fetchYouVersionPassage(
   appKey: string,
   versionId: number,
   reference: string,
+  signal: AbortSignal,
 ): Promise<YouVersionPassageResponse | null> {
   const url = new URL(
     `${YOUVERSION_API_BASE_URL}/bibles/${versionId}/passages/${encodeURIComponent(reference)}`,
@@ -151,13 +201,19 @@ async function fetchYouVersionPassage(
   url.searchParams.set("include_headings", "false")
   url.searchParams.set("include_notes", "false")
 
-  return fetchYouVersionJson(url.toString(), appKey, YouVersionPassageSchema)
+  return fetchYouVersionJson(
+    url.toString(),
+    appKey,
+    YouVersionPassageSchema,
+    signal,
+  )
 }
 
 async function fetchYouVersionJson<T>(
   url: string,
   appKey: string,
   schema: z.ZodType<T>,
+  signal: AbortSignal,
 ): Promise<T | null> {
   let response: Response
   try {
@@ -167,9 +223,10 @@ async function fetchYouVersionJson<T>(
         "X-YVP-App-Key": appKey,
       },
       next: { revalidate: YOUVERSION_FETCH_REVALIDATE_SECONDS },
-      signal: AbortSignal.timeout(YOUVERSION_FETCH_TIMEOUT_MS),
+      signal,
     })
   } catch (error) {
+    if (isAbortError(error)) return null
     console.warn("[youversion] request failed", { error, url })
     return null
   }
@@ -257,4 +314,35 @@ function normalizeHttpUrl(value: string | null | undefined) {
   } catch {
     return null
   }
+}
+
+async function runWithTimeout<T>(
+  run: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number,
+  fallback: T,
+): Promise<T> {
+  const abortController = new AbortController()
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+  const timeout = new Promise<T>((resolve) => {
+    timeoutId = setTimeout(() => {
+      abortController.abort()
+      resolve(fallback)
+    }, timeoutMs)
+  })
+
+  try {
+    return await Promise.race([run(abortController.signal), timeout])
+  } finally {
+    if (timeoutId != null) clearTimeout(timeoutId)
+  }
+}
+
+function isAbortError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    (error as { name?: unknown }).name === "AbortError"
+  )
 }
