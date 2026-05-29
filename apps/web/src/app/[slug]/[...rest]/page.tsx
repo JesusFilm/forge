@@ -7,6 +7,7 @@ import { ExperienceError } from "@/components/ExperienceError"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
+import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import {
   isSeriesRecord,
   isWatchPageMissingError,
@@ -21,7 +22,11 @@ import {
   getWatchPageMetadata,
 } from "@/lib/experience-metadata"
 import { hasUiLocale } from "@/i18n/locales"
-import { isWatchCtaTextCopyEnabled } from "@/lib/feature-flags"
+import {
+  isWatchCtaTextCopyEnabled,
+  isWatchQuestionPanelEnabled,
+  isWatchYouVersionBibleQuotesEnabled,
+} from "@/lib/feature-flags"
 import { DEFAULT_LOCALE, resolveUiLocale } from "@/lib/locale"
 import {
   tryAsContentSlug,
@@ -30,6 +35,7 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import { stripHtmlSuffix } from "@/lib/url-shape"
+import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
 
 // ISR: pages cached for 60s. Cookie-driven language redirect lives in
 // apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
@@ -108,6 +114,23 @@ async function getDownloadButtonLabel(route: string): Promise<string> {
   return useUpdatedCtaCopy ? "Save Video" : "Download"
 }
 
+async function getYouVersionBibleQuotePassages(
+  route: string,
+  bibleCitations: Parameters<typeof fetchYouVersionBibleQuotePassages>[0],
+) {
+  const enabled = await isWatchYouVersionBibleQuotesEnabled({
+    custom: { route },
+  })
+  if (!enabled) return []
+  return fetchYouVersionBibleQuotePassages(bibleCitations)
+}
+
+async function getQuestionPanelEnabled(route: string): Promise<boolean> {
+  return isWatchQuestionPanelEnabled({
+    custom: { route },
+  })
+}
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
@@ -128,7 +151,6 @@ export async function generateMetadata({
         return generateSeriesMetadata(locale, {
           series: watchVideo.video,
           pathLocale: rawLocale,
-          pathPrefix: "watch",
         })
       }
       if (!watchVideo) {
@@ -137,7 +159,6 @@ export async function generateMetadata({
           return generateSeriesMetadata(locale, {
             series: series.video,
             pathLocale: rawLocale,
-            pathPrefix: "watch",
           })
         }
       }
@@ -147,7 +168,6 @@ export async function generateMetadata({
     return getWatchPageMetadata(locale, {
       slug,
       pathLocale: rawLocale,
-      pathPrefix: "watch",
     })
   }
 
@@ -158,7 +178,6 @@ export async function generateMetadata({
     return getWatchPageMetadata(locale, {
       slug: episodeSlug,
       pathLocale: rawLocale,
-      pathPrefix: "watch",
     })
   }
 
@@ -215,16 +234,20 @@ async function renderEpisode(shape: {
     }
   }
 
+  const route = `/watch/${seriesSlug}.html/${episodeSlug}/${rawLocale}.html`
+  const [downloadButtonLabel, questionPanelEnabled, youVersionPassages] =
+    await Promise.all([
+      getDownloadButtonLabel(route),
+      getQuestionPanelEnabled(route),
+      getYouVersionBibleQuotePassages(route, resolved.video.bibleCitations),
+    ])
   const mergedBlocks = mergeWatchExperience({
     video: resolved.video,
     variant: resolved.selectedVariant,
     canonicalParent: resolved.series,
+    youVersionPassages,
   })
   if (!mergedBlocks.length) return <ExperienceEmpty />
-
-  const downloadButtonLabel = await getDownloadButtonLabel(
-    `/watch/${seriesSlug}.html/${episodeSlug}/${rawLocale}.html`,
-  )
   const lcpPlaybackId = resolved.selectedVariant.muxVideo?.playbackId ?? null
 
   return (
@@ -244,6 +267,7 @@ async function renderEpisode(shape: {
         video={resolved.video}
         languageSlug={resolved.selectedVariant.language?.slug ?? rawLocale}
         locale={locale}
+        questionPanelEnabled={questionPanelEnabled}
       />
     </>
   )
@@ -256,6 +280,7 @@ async function renderVideo(shape: {
   locale: string
 }) {
   const { slug, rawLocale, locale } = shape
+  const route = `/watch/${slug}.html/${rawLocale}.html`
 
   // Experience-first precedence: when an editor curated an Experience at
   // this slug, that's the intended landing — even when a slug-colliding
@@ -268,8 +293,15 @@ async function renderVideo(shape: {
       (b): b is Section => b !== null,
     )
     if (blocks.length) {
+      const questionPanelEnabled = await getQuestionPanelEnabled(route)
       return (
-        <main className="min-h-screen bg-stone-900">
+        <main
+          className={`min-h-screen bg-stone-900 ${
+            questionPanelEnabled
+              ? "pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:pb-0"
+              : ""
+          }`}
+        >
           {blocks.map((block, i) => {
             const key =
               "id" in block && typeof block.id === "string"
@@ -283,6 +315,9 @@ async function renderVideo(shape: {
               />
             )
           })}
+          {questionPanelEnabled ? (
+            <WatchQuestionPanel enabled={questionPanelEnabled} />
+          ) : null}
         </main>
       )
     }
@@ -317,14 +352,18 @@ async function renderVideo(shape: {
         />
       )
     }
+    const [downloadButtonLabel, questionPanelEnabled, youVersionPassages] =
+      await Promise.all([
+        getDownloadButtonLabel(route),
+        getQuestionPanelEnabled(route),
+        getYouVersionBibleQuotePassages(route, watchVideo.video.bibleCitations),
+      ])
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
       variant: watchVideo.selectedVariant,
       canonicalParent: watchVideo.canonicalParent,
+      youVersionPassages,
     })
-    const downloadButtonLabel = await getDownloadButtonLabel(
-      `/watch/${slug}.html/${rawLocale}.html`,
-    )
     const lcpPlaybackId =
       watchVideo.selectedVariant.muxVideo?.playbackId ?? null
     return (
@@ -344,6 +383,7 @@ async function renderVideo(shape: {
           video={watchVideo.video}
           languageSlug={watchVideo.selectedVariant.language?.slug ?? rawLocale}
           locale={locale}
+          questionPanelEnabled={questionPanelEnabled}
         />
       </>
     )
@@ -378,9 +418,16 @@ async function renderVideo(shape: {
   if (!blocks.length) {
     return <ExperienceEmpty />
   }
+  const questionPanelEnabled = await getQuestionPanelEnabled(route)
 
   return (
-    <main className="min-h-screen bg-stone-900">
+    <main
+      className={`min-h-screen bg-stone-900 ${
+        questionPanelEnabled
+          ? "pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:pb-0"
+          : ""
+      }`}
+    >
       {blocks.map((block, i) => {
         const key =
           "id" in block && typeof block.id === "string"
@@ -394,6 +441,9 @@ async function renderVideo(shape: {
           />
         )
       })}
+      {questionPanelEnabled ? (
+        <WatchQuestionPanel enabled={questionPanelEnabled} />
+      ) : null}
     </main>
   )
 }

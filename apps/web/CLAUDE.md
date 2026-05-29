@@ -92,4 +92,18 @@ flag for the watch-page Download CTA copy. `false` keeps `Download`; `true`
 renders `Save Video`. Keep `FORGE_WATCH_CTA_TEXT_COPY_DEFAULT=false` in local
 and Railway envs unless intentionally testing the fallback path.
 
+`forge.watch.youVersionBibleQuotes` is a temporary LaunchDarkly-backed rollout
+flag for the server-rendered YouVersion passage panel below the watch-page
+Bible Quotes carousel. `false` preserves the existing carousel-only behavior
+and skips YouVersion API calls; `true` enables the server fetch when
+`YOUVERSION_APP_KEY` is configured. Keep
+`FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT=false` unless intentionally
+smoke-testing the panel locally.
+
+`forge.watch.questionPanel` is a temporary LaunchDarkly-backed release flag
+for the watch-page floating question panel. `false` hides the panel;
+`true` renders the floating input and message-type selector. Keep
+`FORGE_WATCH_QUESTION_PANEL_DEFAULT=false` in local and Railway envs unless
+intentionally testing the panel.
+
 See root `CLAUDE.md` for cross-app patterns and the broader data-layer-flip plan reference.

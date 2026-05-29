@@ -18,6 +18,39 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+const { emblaApi, emblaHandlers, emblaRefMock, emitEmbla } = vi.hoisted(() => {
+  const handlers: Record<string, Set<(api: unknown) => void>> = {
+    reInit: new Set(),
+    select: new Set(),
+  }
+  const api = {
+    canScrollNext: vi.fn(() => true),
+    canScrollPrev: vi.fn(() => false),
+    off: vi.fn((event: string, handler: (api: unknown) => void) => {
+      handlers[event]?.delete(handler)
+    }),
+    on: vi.fn((event: string, handler: (api: unknown) => void) => {
+      handlers[event]?.add(handler)
+    }),
+    scrollNext: vi.fn(),
+    scrollPrev: vi.fn(),
+    selectedScrollSnap: vi.fn(() => 0),
+  }
+
+  return {
+    emblaApi: api,
+    emblaHandlers: handlers,
+    emblaRefMock: vi.fn(),
+    emitEmbla: (event: "reInit" | "select") => {
+      for (const handler of handlers[event]) handler(api)
+    },
+  }
+})
+
+vi.mock("embla-carousel-react", () => ({
+  default: () => [emblaRefMock, emblaApi],
+}))
+
 import { BibleQuotesSection } from "@/components/watch/BibleQuotesSection"
 import {
   WATCH_PILL_BUTTON_CLASS,
@@ -29,6 +62,16 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  emblaRefMock.mockClear()
+  emblaApi.canScrollNext.mockReturnValue(true)
+  emblaApi.canScrollPrev.mockReturnValue(false)
+  emblaApi.off.mockClear()
+  emblaApi.on.mockClear()
+  emblaApi.scrollNext.mockClear()
+  emblaApi.scrollPrev.mockClear()
+  emblaApi.selectedScrollSnap.mockReturnValue(0)
+  emblaHandlers.reInit.clear()
+  emblaHandlers.select.clear()
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -52,6 +95,9 @@ afterEach(() => {
 })
 
 type Citation = WatchBibleQuotesBlock["bibleCitations"][number]
+type YouVersionPassage = NonNullable<
+  WatchBibleQuotesBlock["youVersionPassages"]
+>[number]
 
 function makeCitation(
   overrides: Partial<{
@@ -79,6 +125,25 @@ function makeCitation(
       name: overrides.bookName === undefined ? "Galatians" : overrides.bookName,
     },
   } satisfies Citation
+}
+
+function makeYouVersionPassage(
+  overrides: Partial<YouVersionPassage> = {},
+): YouVersionPassage {
+  return {
+    citationDocumentId: overrides.citationDocumentId ?? "bc-1",
+    content: overrides.content ?? "Server-rendered YouVersion passage text.",
+    copyright:
+      overrides.copyright ??
+      "Test Bible version copyright from the server response.",
+    humanReference: overrides.humanReference ?? "Galatians 2:20",
+    publisherUrl:
+      overrides.publisherUrl ?? "https://example.test/bible-version",
+    reference: overrides.reference ?? "GAL.2.20",
+    versionAbbreviation: overrides.versionAbbreviation ?? "NIV",
+    versionId: overrides.versionId ?? 111,
+    versionTitle: overrides.versionTitle ?? "New International Version",
+  }
 }
 
 describe("BibleQuotesSection — visibility", () => {
@@ -387,6 +452,183 @@ describe("BibleQuotesSection — Share button", () => {
     })
 
     expect(onShareClick).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("BibleQuotesSection — YouVersion compact embed", () => {
+  it("does not render the YouVersion panel when no server passage data is supplied", () => {
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[makeCitation({})]}
+          onShareClick={vi.fn()}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-youversion"]'),
+    ).toBeNull()
+  })
+
+  it("renders the first citation in the compact YouVersion panel from server data", () => {
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[
+            makeCitation({ documentId: "bc-1", osisId: "Gal.2.20" }),
+          ]}
+          onShareClick={vi.fn()}
+          youVersionPassages={[
+            makeYouVersionPassage({
+              citationDocumentId: "bc-1",
+              content: "I have been crucified with Christ.",
+              humanReference: "Galatians 2:20",
+              reference: "GAL.2.20",
+            }),
+          ]}
+        />,
+      )
+    })
+
+    const panel = container.querySelector(
+      '[data-testid="watch-bible-quotes-youversion"]',
+    )
+    const carouselBleed = container.querySelector(
+      '[data-testid="watch-bible-quotes-carousel-bleed"]',
+    )
+    expect(panel).not.toBeNull()
+    expect(carouselBleed).not.toBeNull()
+    expect(
+      carouselBleed!.compareDocumentPosition(panel!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(panel?.textContent).toContain("Galatians 2:20")
+    expect(panel?.getAttribute("data-reference")).toBe("GAL.2.20")
+    expect(panel?.textContent).toContain("I have been crucified with Christ.")
+    expect(panel?.textContent).toContain("NIV")
+    expect(panel?.textContent).toContain("New International Version")
+    expect(panel?.textContent).toContain(
+      "Test Bible version copyright from the server response.",
+    )
+    const attribution = container.querySelector(
+      '[data-testid="watch-bible-quotes-youversion-copyright"]',
+    )
+    expect(attribution?.textContent).toBe(
+      "Test Bible version copyright from the server response.",
+    )
+    expect(panel?.querySelector("a")?.getAttribute("href")).toBe(
+      "https://example.test/bible-version",
+    )
+  })
+
+  it("labels narrowed cross-chapter passages with the fetched YouVersion reference", () => {
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[
+            makeCitation({
+              documentId: "bc-cross-chapter",
+              osisId: "Gal.2.20-Gal.3.5",
+              chapterStart: 2,
+              chapterEnd: 3,
+              verseStart: 20,
+              verseEnd: 5,
+            }),
+          ]}
+          onShareClick={vi.fn()}
+          youVersionPassages={[
+            makeYouVersionPassage({
+              citationDocumentId: "bc-cross-chapter",
+              content: "I have been crucified with Christ.",
+              humanReference: "Galatians 2:20",
+              reference: "GAL.2.20",
+            }),
+          ]}
+        />,
+      )
+    })
+
+    const panel = container.querySelector(
+      '[data-testid="watch-bible-quotes-youversion"]',
+    )
+    expect(panel?.textContent).toContain("Galatians 2:20")
+    expect(panel?.textContent).not.toContain("Galatians 2:20–3:5")
+  })
+
+  it("updates the compact YouVersion panel when Embla selects another citation", () => {
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[
+            makeCitation({ documentId: "bc-gal", osisId: "Gal.2.20" }),
+            makeCitation({
+              documentId: "bc-john",
+              bookName: "John",
+              osisId: "John.3.16",
+              chapterStart: 3,
+              verseStart: 16,
+            }),
+          ]}
+          onShareClick={vi.fn()}
+          youVersionPassages={[
+            makeYouVersionPassage({
+              citationDocumentId: "bc-gal",
+              content: "Galatians passage.",
+              humanReference: "Galatians 2:20",
+              reference: "GAL.2.20",
+            }),
+            makeYouVersionPassage({
+              citationDocumentId: "bc-john",
+              content: "For God so loved the world.",
+              humanReference: "John 3:16",
+              reference: "JHN.3.16",
+            }),
+          ]}
+        />,
+      )
+    })
+
+    expect(emblaApi.on).toHaveBeenCalledWith("select", expect.any(Function))
+
+    act(() => {
+      emblaApi.selectedScrollSnap.mockReturnValue(1)
+      emitEmbla("select")
+    })
+
+    const panel = container.querySelector(
+      '[data-testid="watch-bible-quotes-youversion"]',
+    )
+    expect(panel?.textContent).toContain("John 3:16")
+    expect(panel?.getAttribute("data-reference")).toBe("JHN.3.16")
+    expect(panel?.textContent).toContain("For God so loved the world.")
+  })
+
+  it("hides the YouVersion panel when the active slide is the promo card", () => {
+    act(() => {
+      root.render(
+        <BibleQuotesSection
+          bibleCitations={[
+            makeCitation({ documentId: "bc-1", osisId: "Gal.2.20" }),
+          ]}
+          onShareClick={vi.fn()}
+          youVersionPassages={[makeYouVersionPassage()]}
+        />,
+      )
+    })
+
+    const promo = container.querySelector(
+      '[data-testid="watch-bible-quotes-promo"]',
+    ) as HTMLElement | null
+    expect(promo).not.toBeNull()
+
+    act(() => {
+      promo!.click()
+    })
+
+    expect(
+      container.querySelector('[data-testid="watch-bible-quotes-youversion"]'),
+    ).toBeNull()
   })
 })
 

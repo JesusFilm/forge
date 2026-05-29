@@ -275,7 +275,7 @@ async function rebaselineSubcommand(args: {
       return []
     })
 
-    const regressions = await loadRegressions()
+    const regressions = await loadRegressions({ prisma })
 
     const allQueries = [...syntheticAll, ...regressions]
 

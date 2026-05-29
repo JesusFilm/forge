@@ -1,7 +1,7 @@
 ---
 title: "Mastra native Evaluation requires real Dataset Scorer and Experiment records"
 date: "2026-05-27"
-last_updated: "2026-05-27"
+last_updated: "2026-05-28"
 category: "architecture-patterns"
 module: "apps/mastra"
 problem_type: "architecture_pattern"
@@ -58,6 +58,11 @@ checks returned empty datasets, experiments, and scorers even while workflows
 were available. That means artifacts can be a backing layer, but they are not
 the native Evaluation UI.
 
+Feat-142 implements the bridge as real native sync code. The
+`search-eval-native-suite` workflow and `/forge-search-eval-native-suite`
+service route can now create a local sample report, sync an existing report by
+id, or sync human-promoted Admin candidates into native Evaluation records.
+
 ## Guidance
 
 Make the native Evaluation surface the explicit destination whenever designing
@@ -88,6 +93,28 @@ operator UI. Feat-139 reports use a `mastraEvaluation` projection with:
 
 That gives feat-142 a stable mapping without misleading operators or creating a
 custom artifact viewer as the default UX.
+
+When the native bridge is implemented, keep the same artifact projection but
+replace it with `integrationStatus: "native_synced"` only after the system has
+created or reused real native records. The synced projection should include
+environment-labeled Dataset and Experiment names, stable native keys, real
+Dataset/Scorer/Experiment ids, and per-record sync statuses.
+
+Use stable `forgeSearchEval.nativeKey` metadata for idempotency:
+
+- Dataset key: environment + baseline + prompt-set version.
+- Dataset item key: prompt-set version + case id for report seed prompts, or
+  Admin candidate id for promoted regression prompts.
+- Experiment key: Dataset key + report id.
+
+Search by those native keys across all relevant native list pages, not just the
+first page. Long-lived Studio instances can accumulate enough Datasets or
+Experiments that first-page-only idempotency creates duplicate native records.
+
+Attach the scorer through the Dataset's `scorerIds` and then rely on the
+Dataset during `startExperiment`. Do not also pass the scorer object in
+`startExperiment({ scorers: [...] })` for the same scorer id; in local smoke
+that produced duplicate score rows for each Dataset item.
 
 ## Why This Matters
 
@@ -152,25 +179,37 @@ Feat-142 can replace the null IDs only after creating real native records:
 
 ```ts
 const dataset = await mastra.datasets.create({
-  name: `search-eval:${baselineName}`,
+  name: `search-eval:${environmentLabel}:${baselineName}`,
   targetType: "workflow",
   targetIds: ["offline-search-eval"],
   scorerIds: ["search-result-pairwise-judge"],
+  metadata: {
+    forgeSearchEval: {
+      nativeKey: `search-eval:${environmentLabel}:${baselineName}:${promptSetVersion}`,
+    },
+  },
 })
 
 await dataset.addItems(seedPromptItems)
 
 const experiment = await dataset.startExperiment({
-  name: `search-eval-compare:${baselineName}:${runId}`,
+  name: `search-eval-compare:${environmentLabel}:${baselineName}:${reportId}`,
   task: runOfflineSearchEvalTask,
-  scorers: [searchResultPairwiseJudge],
   metadata: {
+    forgeSearchEval: {
+      nativeKey: `search-eval:${environmentLabel}:${baselineName}:${promptSetVersion}:report:${reportId}`,
+    },
     baselineName,
     reportId,
     reportArtifactPath,
   },
 })
 ```
+
+For local smoke, `create-sample-report` should produce multiple outcome
+classes, not a happy-path-only run. The verified sample creates a win, a tie,
+and a both-irrelevant case, resulting in three native score rows with reasons
+that preserve the search-specific categories.
 
 Before claiming Studio visibility, validate native state, not just workflow
 state:

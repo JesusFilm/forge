@@ -237,7 +237,9 @@ async function readCatalogContext(
 }
 
 function sourceCounts(
-  candidates: readonly { source: "catalog" | "locale_quality" | "trace" }[],
+  candidates: readonly {
+    source: "catalog" | "locale_quality" | "trace" | "seed" | "user_submitted"
+  }[],
 ) {
   return {
     catalog: candidates.filter((candidate) => candidate.source === "catalog")

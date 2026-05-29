@@ -34,7 +34,7 @@ const BaselineSchema = z.object({
     z.object({
       locale: z.string().min(1),
       query: z.string().min(1),
-      source: z.enum(["synthetic", "regression"]),
+      source: z.enum(["synthetic", "regression", "promoted"]),
       results: z.array(SearchResultSchema),
     }),
   ),

@@ -24,12 +24,17 @@ const webFeatureFlagClient = createFeatureFlagClient({
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT:
       env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT,
+    FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT:
+      env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT,
+    FORGE_WATCH_QUESTION_PANEL_DEFAULT: env.FORGE_WATCH_QUESTION_PANEL_DEFAULT,
   },
   defaultValues: {
     "forge.watch.playerMigration": env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     "forge.watch.heroMuxVideo": env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO,
     "forge.watch.ctaTextCopy": false,
     "forge.watch.downloadAccountGate": false,
+    "forge.watch.youVersionBibleQuotes": false,
+    "forge.watch.questionPanel": false,
   },
   timeoutSeconds: 0.25,
   logger: console,
@@ -84,6 +89,24 @@ export async function isWatchDownloadAccountGateEnabled(
 ): Promise<boolean> {
   return webFeatureFlagClient.booleanVariation(
     featureFlags.watchDownloadAccountGate,
+    createWebFeatureFlagContext(context),
+  )
+}
+
+export async function isWatchYouVersionBibleQuotesEnabled(
+  context: WebFeatureFlagContextInput = {},
+): Promise<boolean> {
+  return webFeatureFlagClient.booleanVariation(
+    featureFlags.watchYouVersionBibleQuotes,
+    createWebFeatureFlagContext(context),
+  )
+}
+
+export async function isWatchQuestionPanelEnabled(
+  context: WebFeatureFlagContextInput = {},
+): Promise<boolean> {
+  return webFeatureFlagClient.booleanVariation(
+    featureFlags.watchQuestionPanel,
     createWebFeatureFlagContext(context),
   )
 }

@@ -27,6 +27,20 @@ export const featureFlags = {
     description:
       "Gradual rollout gate requiring a Jesus Film One account before watch-page video downloads.",
   },
+  watchYouVersionBibleQuotes: {
+    key: "forge.watch.youVersionBibleQuotes",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT",
+    description:
+      "Runtime rollout gate for the watch-page YouVersion Bible Quotes panel.",
+  },
+  watchQuestionPanel: {
+    key: "forge.watch.questionPanel",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_QUESTION_PANEL_DEFAULT",
+    description:
+      "Runtime rollout gate for the watch-page floating question panel.",
+  },
 } as const
 
 export type FeatureFlagName = keyof typeof featureFlags

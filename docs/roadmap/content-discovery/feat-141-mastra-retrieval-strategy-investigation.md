@@ -4,10 +4,11 @@ title: "Mastra retrieval strategy ownership investigation"
 owner: "nisal"
 priority: "P0"
 status: "not-started"
-start_date: "2026-05-25"
+start_date: "2026-05-29"
 duration: 2
 depends_on:
   - "feat-140"
+  - "feat-142"
 blocks: []
 tags:
   - "admin"
@@ -29,10 +30,11 @@ risky for latency, reliability, and public search contracts.
 This ticket is an investigation and design proof only. It should not move live
 user search orchestration into Mastra.
 
-The evidence source should be native Mastra Evaluation where available:
-promoted Datasets from feat-140 and Experiment results from feat-142. Custom
-JSON artifacts can remain supporting evidence, but they should not be the only
-operator-quality source once native Experiments are populated.
+This ticket should run after feat-142, not before it. The evidence source must
+be native Mastra Evaluation: promoted Datasets, Scorers, and Experiment results
+from feat-142. Custom JSON artifacts can remain supporting evidence, but they
+should not be the only operator-quality source once native Experiments are
+populated.
 
 ## Entry Points - Read These First
 
@@ -94,9 +96,10 @@ rg -n "Dataset|Experiment|compareExperiments|startExperiment|search-eval" apps/m
   primitives only for any offline prototype.
 - CMS/Strapi is being deleted. Do not add, preserve, or depend on CMS support in
   this ticket. Any primitive contract must be Admin/Core-owned.
-- Do not proceed without eval evidence from promoted regression gates.
-- Do not proceed using only raw artifact reports if native Dataset/Experiment
-  records are available.
+- Do not proceed before feat-142 has created native Dataset/Scorer/Experiment
+  records for search evals.
+- Do not proceed using only raw artifact reports once native
+  Dataset/Experiment records are available.
 
 ## Verification
 

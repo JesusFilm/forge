@@ -17,6 +17,7 @@
     "title": "Citações bíblicas",
     "share": "Compartilhar",
     "readMore": "Leia mais...",
+    "learnMore": "Saiba mais",
     "freeResources": "Recursos gratuitos",
     "promoHeading": "Quer aprofundar sua compreensão da Bíblia?",
     "joinBibleStudy": "Participe do nosso estudo bíblico",
@@ -89,6 +90,29 @@
     "askYours": "Faça a sua",
     "chatWithPerson": "Conversar com uma pessoa",
     "askBibleQuestion": "Fazer uma pergunta bíblica"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Tipo de mensagem",
+    "fieldLabel": "Faça uma pergunta sobre este vídeo",
+    "send": "Enviar pergunta",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Fazer uma pergunta bíblica",
+        "description": "Respostas instantâneas da Bíblia com busca por IA"
+      },
+      "prayerRequest": {
+        "label": "Pedir oração",
+        "description": "Compartilhe pelo que você quer oração"
+      },
+      "comment": {
+        "label": "Deixar um comentário",
+        "description": "Envie pensamentos sobre este vídeo"
+      },
+      "personChat": {
+        "label": "Conversar com uma pessoa",
+        "description": "Fale com alguém agora"
+      }
+    }
   },
   "ShareModal": {
     "dialogTitle": "Compartilhar vídeo",

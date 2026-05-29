@@ -17,6 +17,7 @@
     "title": "Bibelzitate",
     "share": "Teilen",
     "readMore": "Mehr lesen...",
+    "learnMore": "Mehr erfahren",
     "freeResources": "Kostenlose Ressourcen",
     "promoHeading": "Möchten Sie Ihr Verständnis der Bibel vertiefen?",
     "joinBibleStudy": "Nehmen Sie an unserem Bibelstudium teil",
@@ -89,6 +90,29 @@
     "askYours": "Stellen Sie Ihre",
     "chatWithPerson": "Mit einer Person chatten",
     "askBibleQuestion": "Eine Bibelfrage stellen"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Nachrichtentyp",
+    "fieldLabel": "Eine Frage zu diesem Video stellen",
+    "send": "Frage senden",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Eine Bibelfrage stellen",
+        "description": "Sofortige Antworten aus der Bibel mit KI-Suche"
+      },
+      "prayerRequest": {
+        "label": "Gebet anfragen",
+        "description": "Teilen Sie mit, wofür Sie Gebet möchten"
+      },
+      "comment": {
+        "label": "Kommentar hinterlassen",
+        "description": "Gedanken zu diesem Video senden"
+      },
+      "personChat": {
+        "label": "Mit einer Person chatten",
+        "description": "Sprechen Sie jetzt mit jemandem"
+      }
+    }
   },
   "ShareModal": {
     "dialogTitle": "Video teilen",
