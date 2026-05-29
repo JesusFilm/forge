@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { proxy, type ProxyRequest } from "./proxy"
+import { config, proxy, type ProxyRequest } from "./proxy"
 
 function makeRequest(
   pathname: string,
@@ -127,6 +127,25 @@ describe("proxy — reserved-subtree pass-through", () => {
     expect(response.status).not.toBe(308)
   })
 
+  it("does not rewrite /images logo or favicon assets", () => {
+    for (const path of [
+      "/images/jesusfilm-sign.svg",
+      "/images/favicon-32.png",
+    ]) {
+      const response = proxy(makeRequest(path))
+      expect(response.status).not.toBe(307)
+      expect(response.status).not.toBe(308)
+    }
+  })
+
+  it("does not rewrite /fonts/* public assets", () => {
+    const response = proxy(
+      makeRequest("/fonts/Montserrat-VariableFont_wght.woff2"),
+    )
+    expect(response.status).not.toBe(307)
+    expect(response.status).not.toBe(308)
+  })
+
   it("does not rewrite /api/preview", () => {
     const response = proxy(makeRequest("/api/preview"))
     expect(response.status).not.toBe(307)
@@ -143,6 +162,27 @@ describe("proxy — reserved-subtree pass-through", () => {
     const response = proxy(makeRequest("/.well-known/security.txt"))
     expect(response.status).not.toBe(307)
     expect(response.status).not.toBe(308)
+  })
+})
+
+describe("proxy config matcher — reserved first-segment exclusions", () => {
+  const [matcher] = config.matcher
+  const matcherRegex = new RegExp(`^${matcher}$`)
+
+  it("excludes reserved public asset and framework subtrees before proxy runs", () => {
+    expect(matcherRegex.test("/assets/overlay.svg")).toBe(false)
+    expect(matcherRegex.test("/images/jesusfilm-sign.svg")).toBe(false)
+    expect(matcherRegex.test("/fonts/Montserrat-VariableFont_wght.woff2")).toBe(
+      false,
+    )
+    expect(matcherRegex.test("/api/preview")).toBe(false)
+    expect(matcherRegex.test("/_next/data/build/x.json")).toBe(false)
+    expect(matcherRegex.test("/.well-known/security.txt")).toBe(false)
+  })
+
+  it("does not exclude content routes that only start with a reserved word", () => {
+    expect(matcherRegex.test("/images-of-jesus.html/english.html")).toBe(true)
+    expect(matcherRegex.test("/fonts-of-worship.html/english.html")).toBe(true)
   })
 })
 

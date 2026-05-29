@@ -4,10 +4,10 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (May 25, 2026)
+## Status (May 29, 2026)
 
-- **Total tickets:** 154
-- **Complete:** 85
+- **Total tickets:** 155
+- **Complete:** 86
 - **In progress:** 9
 - **Not started:** 20
 - **Blocked:** 40
@@ -144,6 +144,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-144](platform/feat-144-launchdarkly-feature-flag-foundation.md)            | LaunchDarkly Feature Flag Foundation                    | vlad      | P1       | 2026-05-27 | 2    | 2026-05-28 | complete    |
 | [feat-146](platform/feat-146-web-user-accounts-download-gate.md)                 | Web User Accounts and Video Download Gate               | vlad      | P1       | 2026-05-27 | 7    | 2026-06-02 | complete    |
 | [feat-145](platform/feat-145-watch-question-panel-flag.md)                       | Watch Question Panel LaunchDarkly Gate                  | vlad      | P2       | 2026-05-28 | 1    | 2026-05-28 | complete    |
+| [feat-147](platform/feat-147-watch-public-asset-passthrough.md)                  | Watch Public Asset Passthrough                          | vlad      | P1       | 2026-05-29 | 1    | 2026-05-29 | complete    |
 | [feat-040](platform/feat-040-partner-activation-network.md)                      | Partner Activation Network                              | urim      | P1       | 2026-06-16 | 28   | 2026-07-13 | blocked     |
 | [feat-042](platform/feat-042-video-contests-and-inspiration-feed.md)             | Video Contests and Inspiration Feed                     | urim      | P1       | 2026-06-30 | 28   | 2026-07-27 | blocked     |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                                 | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
