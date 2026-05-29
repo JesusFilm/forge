@@ -14,7 +14,6 @@ import {
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
-import { BottomSheetScrollView } from "@gorhom/bottom-sheet"
 import { cacheDirectory, downloadAsync } from "expo-file-system/src/legacy"
 import * as Sharing from "expo-sharing"
 
@@ -272,7 +271,7 @@ export function DownloadSheetContent({
 
   return (
     <>
-      <BottomSheetScrollView
+      <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: insets.bottom + 24 },
@@ -387,7 +386,7 @@ export function DownloadSheetContent({
             {downloading ? "Downloading..." : "Download"}
           </Text>
         </Pressable>
-      </BottomSheetScrollView>
+      </ScrollView>
 
       <TermsModal
         visible={termsVisible}
@@ -402,14 +401,6 @@ export function DownloadSheetContent({
 }
 
 export { type DownloadSheetProps as DownloadSheetContentProps }
-
-export function useDownloadSheetReset() {
-  const [resetKey, setResetKey] = useState(0)
-  const handleSheetChange = useCallback((index: number) => {
-    if (index >= 0) setResetKey((k) => k + 1)
-  }, [])
-  return { resetKey, handleSheetChange }
-}
 
 const styles = StyleSheet.create({
   scrollContent: {

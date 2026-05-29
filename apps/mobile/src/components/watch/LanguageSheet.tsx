@@ -1,13 +1,14 @@
 import { useCallback, useMemo, useState } from "react"
 import {
+  FlatList,
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   useWindowDimensions,
   View,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { BottomSheetFlatList, BottomSheetTextInput } from "@gorhom/bottom-sheet"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
@@ -99,11 +100,14 @@ export function LanguageSheetContent({
 
   const keyExtractor = useCallback((item: WatchVariant) => item.documentId, [])
 
-  return (
-    <View style={styles.container}>
+  // Search + current selection live in the list header so they share the
+  // single scroll container — avoids sibling-overlap when the formSheet host
+  // doesn't give a plain flex column a bounded height.
+  const header = (
+    <View style={styles.header}>
       <View style={styles.searchContainer}>
         <Ionicons name="search-outline" size={18} color={TEXT_SECONDARY} />
-        <BottomSheetTextInput
+        <TextInput
           style={[styles.searchInput, typography.body]}
           placeholder="Search languages..."
           placeholderTextColor={TEXT_SECONDARY}
@@ -149,28 +153,33 @@ export function LanguageSheetContent({
           </View>
         </View>
       )}
-
-      <BottomSheetFlatList
-        data={filtered}
-        keyExtractor={keyExtractor}
-        renderItem={renderItem}
-        contentContainerStyle={{
-          paddingHorizontal: HORIZONTAL_PADDING,
-          paddingBottom: insets.bottom + windowHeight * 0.25,
-        }}
-        showsVerticalScrollIndicator={false}
-        initialNumToRender={15}
-        maxToRenderPerBatch={20}
-        windowSize={5}
-        ListEmptyComponent={
-          <View style={styles.emptySearch}>
-            <Text style={[styles.emptySearchText, typography.body]}>
-              No languages found
-            </Text>
-          </View>
-        }
-      />
     </View>
+  )
+
+  return (
+    <FlatList
+      style={styles.container}
+      data={filtered}
+      keyExtractor={keyExtractor}
+      renderItem={renderItem}
+      keyboardShouldPersistTaps="handled"
+      ListHeaderComponent={header}
+      contentContainerStyle={{
+        paddingHorizontal: HORIZONTAL_PADDING,
+        paddingBottom: insets.bottom + windowHeight * 0.25,
+      }}
+      showsVerticalScrollIndicator={false}
+      initialNumToRender={15}
+      maxToRenderPerBatch={20}
+      windowSize={5}
+      ListEmptyComponent={
+        <View style={styles.emptySearch}>
+          <Text style={[styles.emptySearchText, typography.body]}>
+            No languages found
+          </Text>
+        </View>
+      }
+    />
   )
 }
 
@@ -178,11 +187,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    paddingTop: 8,
+  },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginHorizontal: HORIZONTAL_PADDING,
     marginBottom: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -196,7 +207,6 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   currentSection: {
-    paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 12,
   },
   currentLabel: {
