@@ -113,17 +113,15 @@ export const watchVideoFragment = adminGraphql(`
           mobileCinematicHigh
           mobileCinematicLow
         }
-        dubs {
-          documentId: id
-          published
-          hls
-          duration
-          language {
-            slug
-            name
-            bcp47
-          }
-        }
+        # NOTE: child.dubs is deliberately NOT projected. A parent/collection
+        # video (e.g. JESUS) has 61 chapters, each dubbed in ~2,200 languages —
+        # fetching every chapter's full dub list inflated the resolved payload
+        # to ~45MB, which Next's unstable_cache rejects (over its 2MB limit),
+        # throwing an unhandled rejection that broke the whole watch page. The
+        # only consumer was the per-chapter duration pill in SeriesEpisodeCard;
+        # that pill is now omitted. Restoring it needs a cheap server-side
+        # duration scalar on Video (like HybridSearchResult.durationSeconds),
+        # NOT a full dub fetch. See content.ts normalizeChild.
       }
     }
     variants: dubs {

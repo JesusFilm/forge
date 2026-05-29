@@ -48,13 +48,16 @@ describe("WatchVideoFragment", () => {
 
     // parents / children come through VideoRelation in admin — the
     // fragment projects `parent { ... }` / `child { ... }`. Assert both
-    // joins are present and surface their nested locales/images/dubs.
+    // joins are present and surface their nested locales/images.
     expect(printed).toMatch(/parents\s*\{[\s\S]*?parent\s*\{/)
     expect(printed).toMatch(/children\s*\{[\s\S]*?child\s*\{/)
     expect(printed).toMatch(/child\s*\{[\s\S]*?locales\(locale:\s*\$locale\)/)
-    expect(printed).toMatch(
-      /child\s*\{[\s\S]*?dubs\s*\{[\s\S]*?published[\s\S]*?\bhls\b/,
-    )
+    // `child.dubs` is intentionally NOT projected — a 61-chapter ×
+    // 2,200-language fan-out blew the resolved payload past Next's 2MB
+    // unstable_cache limit and broke the watch page. The only `dubs {`
+    // selection that remains is the top-level `variants: dubs` alias, so
+    // exactly one occurrence must be present. Guards the regression.
+    expect(printed.match(/\bdubs\s*\{/g) ?? []).toHaveLength(1)
 
     // variants: dubs alias on Video; nested fields keep the consumer
     // vocabulary intact.
