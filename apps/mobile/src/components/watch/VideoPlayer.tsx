@@ -37,9 +37,27 @@ export function VideoPlayer({
   })
 
   useEffect(() => {
-    if (streamingUrl && streamingUrl !== initialUrl.current) {
-      initialUrl.current = streamingUrl
-      player.replace(streamingUrl)
+    if (!streamingUrl || streamingUrl === initialUrl.current) return
+    initialUrl.current = streamingUrl
+    const resumeTime = player.currentTime
+    const wasPlaying = player.playing
+    let cancelled = false
+    player
+      .replaceAsync(streamingUrl)
+      .then(() => {
+        if (cancelled) return
+        try {
+          player.currentTime = resumeTime
+          if (wasPlaying) player.play()
+        } catch {
+          // Player released between scheduling and resume
+        }
+      })
+      .catch(() => {
+        // Source failed to load — leave player in whatever state replaceAsync left it
+      })
+    return () => {
+      cancelled = true
     }
   }, [streamingUrl, player])
 
