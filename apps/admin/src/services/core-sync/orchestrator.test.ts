@@ -1,10 +1,16 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { resolveScope } from "./orchestrator"
 
+const refreshAfterCoreSyncMock = vi.hoisted(() => vi.fn())
+
 vi.mock("./lock", () => ({
   acquireSyncLock: vi.fn(),
   refreshSyncLock: vi.fn(),
   releaseSyncLock: vi.fn(),
+}))
+
+vi.mock("../watch-route-manifest-refresh.service", () => ({
+  refreshWatchRouteManifestAfterCoreSync: refreshAfterCoreSyncMock,
 }))
 
 vi.mock("./watermark", () => ({
@@ -115,6 +121,7 @@ describe("resolveScope", () => {
 describe("runSync", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    refreshAfterCoreSyncMock.mockResolvedValue({ status: "skipped" })
   })
 
   it("returns skipped when lock is held", async () => {
@@ -159,6 +166,16 @@ describe("runSync", () => {
       mockPrisma,
       expect.stringMatching(/^sync-\d+$/),
     )
+    expect(refreshAfterCoreSyncMock).toHaveBeenCalledWith({
+      prisma: mockPrisma,
+      phases: [
+        expect.objectContaining({
+          phase: "languages",
+          created: 5,
+          errors: 0,
+        }),
+      ],
+    })
   })
 
   it("does NOT advance watermark when phase has errors", async () => {
