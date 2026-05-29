@@ -14,7 +14,7 @@ type Episode = NonNullable<Episodes[number]>
 type SeriesEpisodeCardProps = {
   episode: Episode
   index: number
-  locale: string
+  languageSlug: string
   // Backdrop URL surfaced via data-backdrop-url so the parent grid can
   // delegate pointer/focus events at the container level instead of
   // attaching per-card handlers (avoids 20+ rerenders during keyboard
@@ -38,11 +38,11 @@ function formatRuntime(seconds: number | null | undefined): string | null {
 export function SeriesEpisodeCard({
   episode,
   index,
-  locale,
+  languageSlug,
   backdropUrl,
 }: SeriesEpisodeCardProps) {
   const slug = episode.slug ? tryAsContentSlug(episode.slug) : null
-  const lang = tryAsLocaleSlug(locale)
+  const lang = tryAsLocaleSlug(languageSlug)
   // Episodes link as standalone videos: canonical two-segment shape.
   const href = slug && lang ? watchVideoPath(slug, lang) : undefined
   const thumbnailUrl = resolveEpisodeImageUrl(episode)

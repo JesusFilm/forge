@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest"
 import {
   isLocale,
   isLocaleSlug,
+  isPublicWatchHomeLanguageSlug,
+  isPublicWatchLanguageSlug,
   resolveUiLocale,
   resolveWatchLocaleIdentity,
   slugToBcp47Tag,
@@ -71,6 +73,33 @@ describe("isLocaleSlug (bcp47 OR English-name kebab heuristic)", () => {
   it("rejects slugs starting with digit or hyphen", () => {
     expect(isLocaleSlug("-portuguese-brazil")).toBe(false)
     expect(isLocaleSlug("1-foo")).toBe(false)
+  })
+})
+
+describe("public watch language slug guards", () => {
+  it("accepts English-name audio slugs used in public /watch URLs", () => {
+    expect(isPublicWatchLanguageSlug("english")).toBe(true)
+    expect(isPublicWatchLanguageSlug("spanish-castilian")).toBe(true)
+    expect(isPublicWatchLanguageSlug("spanish-latin-american")).toBe(true)
+    expect(isPublicWatchLanguageSlug("portuguese-brazil")).toBe(true)
+    expect(isPublicWatchLanguageSlug("swahili")).toBe(true)
+  })
+
+  it("rejects BCP-47 catalog keys in public /watch URL language slots", () => {
+    expect(isPublicWatchLanguageSlug("en")).toBe(false)
+    expect(isPublicWatchLanguageSlug("pt-br")).toBe(false)
+    expect(isPublicWatchLanguageSlug("es-419")).toBe(false)
+  })
+
+  it("keeps known home-only legacy slugs out of content language slots", () => {
+    expect(isPublicWatchLanguageSlug("german")).toBe(false)
+    expect(isPublicWatchHomeLanguageSlug("german")).toBe(true)
+  })
+
+  it("rejects unknown and unsafe language segments", () => {
+    expect(isPublicWatchLanguageSlug("non-existent")).toBe(false)
+    expect(isPublicWatchLanguageSlug("français")).toBe(false)
+    expect(isPublicWatchLanguageSlug("")).toBe(false)
   })
 })
 

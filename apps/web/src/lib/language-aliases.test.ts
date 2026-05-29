@@ -10,6 +10,11 @@ describe("tryResolveLanguageAlias", () => {
     expect(tryResolveLanguageAlias("chinese-mandarin")).toBe("mandarin-china")
   })
 
+  it("does not resolve bcp47 catalog keys as public aliases", () => {
+    expect(tryResolveLanguageAlias("en")).toBeNull()
+    expect(tryResolveLanguageAlias("pt-br")).toBeNull()
+  })
+
   it("returns null for an unknown slug", () => {
     expect(tryResolveLanguageAlias("russian")).toBeNull()
     expect(tryResolveLanguageAlias("not-a-language")).toBeNull()

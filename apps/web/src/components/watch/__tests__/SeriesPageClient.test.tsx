@@ -20,11 +20,11 @@ vi.mock("@/components/watch/SeriesHero", () => ({
 }))
 
 vi.mock("@/components/watch/SeriesEpisodesGrid", () => ({
-  SeriesEpisodesGrid: vi.fn(({ episodes, locale }) => (
+  SeriesEpisodesGrid: vi.fn(({ episodes, languageSlug }) => (
     <div
       data-testid="series-episodes-grid-mock"
       data-episode-count={episodes.length}
-      data-locale={locale}
+      data-language-slug={languageSlug}
     />
   )),
 }))
@@ -326,20 +326,28 @@ describe("SeriesPageClient — share modal state machine", () => {
 })
 
 describe("SeriesPageClient — passthrough to children", () => {
-  it("passes the series locale into the episodes grid", () => {
+  it("passes the resolved audio language slug into the episodes grid", () => {
+    const childDubLanguages = makeChildDubLanguages([
+      [{ languageSlug: "english", bcp47: "en" }],
+    ])
     act(() => {
       root.render(
         <SeriesPageClient
-          series={makeSeries({ children: makeChildren(2) }) as Series}
+          series={
+            makeSeries({
+              children: makeChildren(2),
+              childDubLanguages,
+            }) as Series
+          }
           selectedVariant={null}
-          locale="es"
+          locale="en"
         />,
       )
     })
     const grid = container.querySelector(
       '[data-testid="series-episodes-grid-mock"]',
     )
-    expect(grid?.getAttribute("data-locale")).toBe("es")
+    expect(grid?.getAttribute("data-language-slug")).toBe("english")
     expect(grid?.getAttribute("data-episode-count")).toBe("2")
   })
 

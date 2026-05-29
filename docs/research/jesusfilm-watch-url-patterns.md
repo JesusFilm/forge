@@ -10,18 +10,18 @@ This document catalogs every URL shape served under `/watch/` on the current pro
 
 ## TL;DR — Public URL Shapes That Must Resolve Post-Migration
 
-| Public URL pattern                                         | Example                                                                                                                      | Notes                                                                                                                                         |
-| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/watch`                                                   | `/watch`                                                                                                                     | Default English home. 308 from `/watch/`.                                                                                                     |
-| `/watch/{language}.html`                                   | `/watch/russian.html`, `/watch/english.html`                                                                                 | Localized watch home. Language is a full slug (kebab-case English name), never a bcp47 code.                                                  |
-| `/watch/{slug}.html`                                       | `/watch/easter.html`                                                                                                         | One-segment collection landing for _some_ slugs (collections/Experiences with no language requirement). Single-video slugs 404 on this shape. |
-| `/watch/{slug}.html/{language}.html`                       | `/watch/jesus.html/english.html`, `/watch/women-resources.html/russian.html`                                                 | **Canonical watch URL.** Works for single videos, series (with playable trailer), and curated collections.                                    |
-| `/watch/{series-slug}.html/{episode-slug}/{language}.html` | `/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html`, `/watch/jesus.html/the-beginning/spanish-castilian.html` | Series episode landing. Note: only the first segment carries `.html`; episode slug is bare.                                                   |
-| `/watch/videos`                                            | `/watch/videos`                                                                                                              | All-videos index. No `.html` suffix.                                                                                                          |
-| `/watch/search` (redirects)                                | `/watch/search` → `/watch/search.html/search.html`                                                                           | Search page. The public-facing canonical is `/watch/search` but the server 307s to the `.html` shape; both must resolve in the rewrite.       |
-| `/watch/assets/...`                                        | `/watch/assets/favicon-180.png`, `/watch/assets/footer/facebook.svg`                                                         | Static assets served from the watch sub-app.                                                                                                  |
-| `/watch/_next/...`                                         | `/watch/_next/static/...`                                                                                                    | Next.js framework assets.                                                                                                                     |
-| `/watch/api/...`                                           | `/watch/api/preview`, `/watch/api/revalidate`, `/watch/api/download`                                                         | Server API routes.                                                                                                                            |
+| Public URL pattern                                         | Example                                                                                                                                 | Notes                                                                                                                                         |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/watch`                                                   | `/watch`                                                                                                                                | Default English home. 308 from `/watch/`.                                                                                                     |
+| `/watch/{language}.html`                                   | `/watch/russian.html`, `/watch/english.html`                                                                                            | Localized watch home. Language is a full slug (kebab-case English name), never a bcp47 code.                                                  |
+| `/watch/{slug}.html`                                       | `/watch/easter.html`                                                                                                                    | One-segment collection landing for _some_ slugs (collections/Experiences with no language requirement). Single-video slugs 404 on this shape. |
+| `/watch/{slug}.html/{language}.html`                       | `/watch/jesus.html/english.html`, `/watch/women-resources.html/russian.html`                                                            | **Canonical watch URL.** Works for single videos, series (with playable trailer), and curated collections.                                    |
+| `/watch/{series-slug}.html/{episode-slug}/{language}.html` | `/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html`, `/watch/jesus.html/the-beginning/spanish-castilian.html`            | Series episode landing. Note: only the first segment carries `.html`; episode slug is bare.                                                   |
+| `/watch/videos`                                            | `/watch/videos`                                                                                                                         | All-videos index. No `.html` suffix.                                                                                                          |
+| `/watch/search` (deprecated)                               | Historical production: `/watch/search` → `/watch/search.html/search.html`; rewrite target: `/watch/search` → `/watch` or `/watch?q=...` | Search is now the global modal on every page. Do not preserve or emit the synthetic `.html` search page.                                      |
+| `/watch/assets/...`                                        | `/watch/assets/favicon-180.png`, `/watch/assets/footer/facebook.svg`                                                                    | Static assets served from the watch sub-app.                                                                                                  |
+| `/watch/_next/...`                                         | `/watch/_next/static/...`                                                                                                               | Next.js framework assets.                                                                                                                     |
+| `/watch/api/...`                                           | `/watch/api/preview`, `/watch/api/revalidate`, `/watch/api/download`                                                                    | Server API routes.                                                                                                                            |
 
 ---
 
@@ -92,7 +92,7 @@ Verified:
 ### 1.6 Listing & Search
 
 - `GET /watch/videos` → 200 (full video index, no `.html`)
-- `GET /watch/search` → 307 → `/watch/search.html/search.html` → 200 (search uses the canonical two-segment shape with a synthetic `search` token in both positions)
+- Historical production: `GET /watch/search` → 307 → `/watch/search.html/search.html` → 200. New rewrite behavior should redirect `/watch/search` to the modal-capable watch root (preserving `?q=`) and must not preserve the synthetic `search.html/search.html` page.
 
 ---
 
@@ -176,7 +176,7 @@ These shapes exist as 307-targets of the normalization rules but should not be l
 
 - `/watch/{slug}/` (missing `.html`) — only exists as a redirect input.
 - `/watch/{slug}/{lang}` (both missing `.html`) — same.
-- `/watch/search.html/search.html` — internal canonical of `/watch/search`. External links should target `/watch/search`.
+- `/watch/search.html/search.html` — historical synthetic search page. New code should 404 this shape; external links should not target search routes because search lives in the global modal.
 - `/watch/{slug}/{episode}.html/{lang}.html` (legacy episode shape) — 307s into the three-segment canonical. New code should emit the canonical form.
 
 ---
@@ -191,7 +191,7 @@ Run an automated probe against the rewrite, comparing HTTP status against produc
 /watch
 /watch/
 /watch/videos
-/watch/search
+/watch/search   # deprecated redirect to /watch (or /watch?q=...), not a page
 /watch/english.html
 /watch/russian.html
 /watch/portuguese-brazil.html

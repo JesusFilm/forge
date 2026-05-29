@@ -317,7 +317,7 @@ export function SeriesPageClient({
           as a default backdrop. SeriesPageClient no longer wraps it. */}
       <SeriesEpisodesGrid
         episodes={episodes}
-        locale={locale}
+        languageSlug={currentLanguageSlug}
         seriesPosterUrl={posterUrl}
       />
 

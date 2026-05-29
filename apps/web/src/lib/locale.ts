@@ -89,7 +89,20 @@ const HTML_LANG_OVERRIDES: Readonly<Record<string, string>> = Object.freeze({
   "spanish-latin-american": "es-419",
 })
 
+const PUBLIC_LANGUAGE_SLUG_OVERRIDES = new Set([
+  // Valid production URL slug whose admin language row currently has no
+  // generated bcp47 mapping, so it is absent from LANGUAGE_BCP47_MAP.
+  "swahili",
+])
+
+const PUBLIC_HOME_ONLY_LANGUAGE_SLUGS = new Set([
+  // Production serves /watch/german.html as a localized-home entry, while
+  // content URLs use the canonical audio slug german-standard.
+  "german",
+])
+
 const BCP47_TAG_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i
+const PUBLIC_LANGUAGE_SLUG_PATTERN = /^[a-z0-9-]+$/
 
 export function normalizeBcp47Tag(tag: string): string {
   return tag
@@ -148,6 +161,28 @@ export function slugToBcp47Tag(slug: string): string | null {
 export function slugToBcp47Primary(slug: string): string | null {
   const bcp47 = slugToBcp47Tag(slug)
   return bcp47?.split("-")[0]?.toLowerCase() ?? null
+}
+
+/**
+ * Public watch content URLs accept English-name audio slugs only
+ * (`english`, `spanish-castilian`, `swahili`), never BCP-47 route/catalog
+ * keys (`en`, `pt-br`). This is deliberately narrower than
+ * `slugToBcp47Tag`, which still accepts BCP-47 for the internal [htmlLang]
+ * segment.
+ */
+export function isPublicWatchLanguageSlug(slug: string): boolean {
+  if (!PUBLIC_LANGUAGE_SLUG_PATTERN.test(slug)) return false
+  return (
+    Object.hasOwn(LANGUAGE_BCP47_MAP, slug) ||
+    Object.hasOwn(HTML_LANG_OVERRIDES, slug) ||
+    PUBLIC_LANGUAGE_SLUG_OVERRIDES.has(slug)
+  )
+}
+
+export function isPublicWatchHomeLanguageSlug(slug: string): boolean {
+  return (
+    isPublicWatchLanguageSlug(slug) || PUBLIC_HOME_ONLY_LANGUAGE_SLUGS.has(slug)
+  )
 }
 
 // Narrow ISO 639-3 → ISO 639-1 fallback for the 5 UI_LOCALE_FAMILIES

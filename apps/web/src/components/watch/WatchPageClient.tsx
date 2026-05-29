@@ -306,6 +306,7 @@ export function WatchPageClient({
         modalCallbacks={modalCallbacks}
         onPlayerReady={handlePlayerReady}
         locale={locale}
+        languageSlug={currentLanguageSlug}
         subtitleVttSrc={subtitleVttSrc}
       />
 

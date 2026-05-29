@@ -95,6 +95,16 @@ describe("proxy — canonicalize integration (§5.4)", () => {
     )
   })
 
+  it("404s bcp47 catalog keys in public audio slots", () => {
+    const response = proxy(makeRequest("/jesus.html/en.html"))
+    expect(response.status).toBe(404)
+  })
+
+  it("404s bcp47 regional tags in public audio slots", () => {
+    const response = proxy(makeRequest("/jesus.html/pt-br.html"))
+    expect(response.status).toBe(404)
+  })
+
   it("rewrites legacy 4-segment episode shape into canonical 3-segment → 307", () => {
     const response = proxy(
       makeRequest("/lumo-the-gospel-of-john/wedding-in-cana.html/english.html"),
@@ -113,11 +123,11 @@ describe("proxy — canonicalize integration (§5.4)", () => {
 
   it("reaches a terminal canonical in one hop (idempotence)", () => {
     // /jesus → /jesus.html/jesus.html (first hop). Re-feeding the output
-    // through proxy should NOT produce another redirect.
+    // through proxy should NOT produce another redirect; the app boundary can
+    // reject the duplicated non-language audio slot as a terminal 404.
     const second = proxy(makeRequest("/jesus.html/jesus.html"))
-    expect(second.status).not.toBe(307)
-    expect(second.status).not.toBe(308)
-    expect(rewritePath(second)).toBe("/en/en/jesus.html/jesus.html")
+    expect(second.status).toBe(404)
+    expect(rewritePath(second)).toBeNull()
   })
 })
 
@@ -245,11 +255,10 @@ describe("proxy — explicit locale URLs are never language-redirected", () => {
 })
 
 describe("proxy — internal locale/htmlLang rewrites", () => {
-  it("keeps root, videos, and search public while internally defaulting to /en/en", () => {
+  it("keeps root and videos public while internally defaulting to /en/en", () => {
     for (const [publicPath, internalPath] of [
       ["/", "/en/en"],
       ["/videos", "/en/en/videos"],
-      ["/search", "/en/en/search"],
     ] as const) {
       const response = proxy(
         makeRequest(publicPath, { acceptLanguage: "es-ES,es;q=0.9" }),
@@ -260,14 +269,40 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     }
   })
 
+  it("redirects deprecated /search into the root search modal without synthetic .html", () => {
+    const response = proxy(makeRequest("/search?q=forgiveness"))
+    expect(response.status).toBe(307)
+    const location = new URL(response.headers.get("location") ?? "")
+    expect(location.pathname).toBe("/")
+    expect(location.search).toBe("?q=forgiveness")
+    expect(rewritePath(response)).toBeNull()
+  })
+
+  it("404s the stale synthetic search shape", () => {
+    const response = proxy(makeRequest("/search.html/search.html"))
+    expect(response.status).toBe(404)
+    expect(rewritePath(response)).toBeNull()
+  })
+
   it("preserves one-segment collection pages as default-locale collections", () => {
     const response = proxy(makeRequest("/easter.html"))
     expect(rewritePath(response)).toBe("/en/en/easter.html")
   })
 
-  it("rewrites one-segment UI locale homes with locale/htmlLang matching the slug", () => {
-    const response = proxy(makeRequest("/es.html"))
-    expect(rewritePath(response)).toBe("/es/es/es.html")
+  it("404s one-segment slugs outside the production collection allowlist", () => {
+    const response = proxy(makeRequest("/jesus.html"))
+    expect(response.status).toBe(404)
+    expect(rewritePath(response)).toBeNull()
+  })
+
+  it("rewrites one-segment public language homes with locale/htmlLang matching the slug", () => {
+    const response = proxy(makeRequest("/spanish-castilian.html"))
+    expect(rewritePath(response)).toBe("/es/es-ES/spanish-castilian.html")
+  })
+
+  it("404s bcp47 catalog keys as one-segment public homes", () => {
+    const response = proxy(makeRequest("/en.html"))
+    expect(response.status).toBe(404)
   })
 
   it("keeps the raw audio slug in rest while using message locale + regional htmlLang", () => {
@@ -282,6 +317,12 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
   it("falls back chrome identity for unsupported audio-language families", () => {
     const response = proxy(makeRequest("/jesus.html/mandarin-china.html"))
     expect(rewritePath(response)).toBe("/en/en/jesus.html/mandarin-china.html")
+  })
+
+  it("404s unknown public audio slugs before they reach the app route", () => {
+    const response = proxy(makeRequest("/easter.html/non-existent.html"))
+    expect(response.status).toBe(404)
+    expect(rewritePath(response)).toBeNull()
   })
 })
 

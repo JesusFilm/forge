@@ -14,6 +14,7 @@ import {
   mergeWatchExperience,
   resolveSeriesBySlug,
   resolveSeriesEpisodeBySlug,
+  resolveWatchExperiencePage,
   resolveWatchPage,
   resolveWatchVideoBySlug,
 } from "@/lib/content"
@@ -28,6 +29,8 @@ import {
 } from "@/lib/feature-flags"
 import {
   isLocale,
+  isPublicWatchHomeLanguageSlug,
+  isPublicWatchLanguageSlug,
   resolveWatchLocaleIdentity,
   type UiLocale,
 } from "@/lib/locale"
@@ -37,7 +40,11 @@ import {
   watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
-import { SAFE_SLUG_PATTERN, stripHtmlSuffix } from "@/lib/url-shape"
+import {
+  isOneSegmentCollectionSlug,
+  SAFE_SLUG_PATTERN,
+  stripHtmlSuffix,
+} from "@/lib/url-shape"
 import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
 
 // ISR: pages cached for 60s. Cookie-driven language redirect lives in
@@ -71,7 +78,12 @@ type PageProps = {
 }
 
 type Shape =
-  | { kind: "one-segment"; slug: string; locale: UiLocale }
+  | {
+      kind: "one-segment"
+      slug: string
+      locale: UiLocale
+      isLanguageHome: boolean
+    }
   | { kind: "video"; slug: string; rawLocale: string; locale: UiLocale }
   | {
       kind: "episode"
@@ -91,16 +103,25 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
   if (rest.length === 1) {
     const slug = stripSafeSegment(rest[0])
     if (!slug) return { kind: "unknown" }
+    if (isLocale(slug)) return { kind: "unknown" }
+    const isLanguageHome = isPublicWatchHomeLanguageSlug(slug)
+    if (!isLanguageHome && !isOneSegmentCollectionSlug(slug)) {
+      return { kind: "unknown" }
+    }
     return {
       kind: "one-segment",
       slug,
-      locale: isLocale(slug) ? slug : internalLocale,
+      locale: isLanguageHome
+        ? resolveWatchLocaleIdentity(slug).locale
+        : internalLocale,
+      isLanguageHome,
     }
   }
   if (rest.length === 2) {
     const slug = stripSafeSegment(rest[0])
     const rawLocale = stripSafeSegment(rest[1])
     if (!slug || !rawLocale) return { kind: "unknown" }
+    if (!isPublicWatchLanguageSlug(rawLocale)) return { kind: "unknown" }
     return {
       kind: "video",
       slug,
@@ -121,6 +142,7 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     if (!seriesSlug || !episodeSlug || !rawLocale) {
       return { kind: "unknown" }
     }
+    if (!isPublicWatchLanguageSlug(rawLocale)) return { kind: "unknown" }
     return {
       kind: "episode",
       seriesSlug,
@@ -168,8 +190,9 @@ export async function generateMetadata({
   }
 
   if (shape.kind === "one-segment") {
-    if (isLocale(shape.slug)) return {}
-    return getWatchPageMetadata(shape.locale, { slug: shape.slug })
+    return shape.isLanguageHome
+      ? getWatchPageMetadata(shape.locale)
+      : getWatchPageMetadata(shape.locale, { slug: shape.slug })
   }
 
   if (shape.kind === "video") {
@@ -241,16 +264,17 @@ async function renderOneSegment(shape: {
   kind: "one-segment"
   slug: string
   locale: UiLocale
+  isLanguageHome: boolean
 }) {
-  const { slug, locale } = shape
-  const result = await resolveWatchPage(
-    locale,
-    isLocale(slug) ? undefined : slug,
-  )
+  const { slug, locale, isLanguageHome } = shape
+  const result = isLanguageHome
+    ? await resolveWatchPage(locale)
+    : await resolveWatchExperiencePage(locale, slug)
 
   if (result.error) {
     if (isWatchPageMissingError(result.error)) {
-      return <ExperienceEmpty />
+      if (isLanguageHome) return <ExperienceEmpty />
+      notFound()
     }
     return <ExperienceError message={result.error.message} />
   }
@@ -306,8 +330,7 @@ async function renderEpisode(shape: {
   // rawLocale; emit the canonical .html shape so the proxy doesn't
   // re-normalize through per-segment .html append.
   const actualSlug = resolved.selectedVariant.language?.slug ?? null
-  const actualBcp47 = resolved.selectedVariant.language?.bcp47 ?? null
-  if (actualSlug && rawLocale !== actualSlug && rawLocale !== actualBcp47) {
+  if (actualSlug && rawLocale !== actualSlug) {
     const seriesContentSlug = tryAsContentSlug(seriesSlug)
     const episodeContentSlug = tryAsContentSlug(episodeSlug)
     const localeSlug = tryAsLocaleSlug(actualSlug)
@@ -417,8 +440,7 @@ async function renderVideo(shape: {
   const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
   if (watchVideo) {
     const actualSlug = watchVideo.selectedVariant.language?.slug ?? null
-    const actualBcp47 = watchVideo.selectedVariant.language?.bcp47 ?? null
-    if (actualSlug && rawLocale !== actualSlug && rawLocale !== actualBcp47) {
+    if (actualSlug && rawLocale !== actualSlug) {
       const contentSlug = tryAsContentSlug(slug)
       const localeSlug = tryAsLocaleSlug(actualSlug)
       if (contentSlug && localeSlug) {
@@ -477,6 +499,18 @@ async function renderVideo(shape: {
 
   const series = await resolveSeriesBySlug(slug, locale)
   if (series) {
+    const actualSlug = series.selectedVariant?.language?.slug ?? null
+    if (actualSlug && rawLocale !== actualSlug) {
+      const contentSlug = tryAsContentSlug(slug)
+      const localeSlug = tryAsLocaleSlug(actualSlug)
+      if (contentSlug && localeSlug) {
+        redirect(
+          watchVideoPath(contentSlug, localeSlug, {
+            reason: "locale-resolved",
+          }),
+        )
+      }
+    }
     return (
       <SeriesPageClient
         series={series.video}
@@ -489,7 +523,7 @@ async function renderVideo(shape: {
   const result = await resolveWatchPage(locale, slug)
   if (result.error) {
     if (isWatchPageMissingError(result.error)) {
-      return <ExperienceEmpty />
+      notFound()
     }
     return <ExperienceError message={result.error.message} />
   }

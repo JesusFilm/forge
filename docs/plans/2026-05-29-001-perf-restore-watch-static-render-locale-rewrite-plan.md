@@ -67,7 +67,7 @@ app/[locale]/[htmlLang]/layout.tsx            ← locale-aware root layout
                                                  export const dynamicParams = true
 app/[locale]/[htmlLang]/page.tsx              ← watch home
 app/[locale]/[htmlLang]/videos/page.tsx       ← videos index
-app/[locale]/[htmlLang]/search/page.tsx       ← search redirect/query surface
+no app search page                             ← proxy redirects deprecated /search into root modal
 app/[locale]/[htmlLang]/[...rest]/page.tsx    ← watch dispatcher for localized-home,
                                                  one-segment collection, video, episode,
                                                  unknown
@@ -90,7 +90,7 @@ app/api/**                                    ← unaffected (API routes need no
 | `/spanish.html` (localized-home)                                                    | `/es/es/spanish.html`                                                                         | `es`            | `es`              | `["spanish.html"]`                     |
 | `/` (home)                                                                          | `/en/en`                                                                                      | `en`            | `en`              | `[]`                                   |
 | `/videos`                                                                           | `/en/en/videos`                                                                               | `en`            | `en`              | `["videos"]`                           |
-| `/search`                                                                           | `/en/en/search`                                                                               | `en`            | `en`              | `["search"]`                           |
+| `/search`                                                                           | redirect to `/` / `/?q=...` before internal rewrite                                           | n/a             | n/a               | search lives in the global modal       |
 
 ### `generateStaticParams` / ISR guidance
 
@@ -112,11 +112,11 @@ The UI-locale set is **all catalogs on the translation platform** (5 today, pote
 ### Architecture decisions
 
 1. **`[locale]` = message-catalog key, `[htmlLang]` = static HTML language tag, both internal only.** Public `.html` URL untouched; raw audio slug remains in `rest`.
-2. **One required catch-all only for watch content shapes.** Do not blindly delegate 1-segment URLs to `parseWatchPath`; the current `app/[slug]/page.tsx` behavior is `isLocale(slug) ? localized-home : resolveWatchPage(slug)`, and live best-effort one-segment collection URLs such as `/easter.html` must keep resolving as collection slugs. Home, `/videos`, and `/search` stay as sibling pages under `app/[locale]/[htmlLang]/`.
+2. **One required catch-all only for watch content shapes.** Do not blindly delegate 1-segment URLs to `parseWatchPath`; the current `app/[slug]/page.tsx` behavior is `isLocale(slug) ? localized-home : resolveWatchPage(slug)`, and live best-effort one-segment collection URLs such as `/easter.html` must keep resolving as collection slugs. Home and `/videos` stay as sibling pages under `app/[locale]/[htmlLang]/`; `/search` is only a proxy-level deprecated redirect into the global modal.
 3. **Explicit root-layout map.** Delete `app/layout.tsx`. Locale-aware public watch surfaces move under `app/[locale]/[htmlLang]/**`; demo-only surfaces move under `app/(demo)/**` with their own default-chrome root layout and are bypassed by the locale rewrite. API routes are unaffected (no root layout needed).
 4. **Middleware order: direct internal-prefix policy → canonicalize → locale rewrite.** Public requests that visibly start with internal locale segments (e.g. `/en`, `/en/en/videos`, `/es/es-419/jesus.html/spanish-latin-american.html`) are duplicates and must 308 to the de-prefixed canonical public URL or 404; choose 308 unless a path cannot be safely de-prefixed. Canonicalize (legacy → `.html`, may 307/308) then runs before the terminal internal rewrite.
 5. **`generateStaticParams` bounded; `dynamicParams = true`.** Never enumerate the catalog.
-6. **Locale-less shapes get the default family** (home/videos/search) so they fit under `[locale]`.
+6. **Locale-less shapes get the default family** (home/videos) so they fit under `[locale]`; `/search` redirects before it enters the internal locale tree.
 7. **Preserve the full original path in `rest`** so the audio-dub slug survives. Query strings are passed separately via `searchParams` and must be preserved by cloning `request.nextUrl` for rewrites.
 
 ### Implementation phases
@@ -140,7 +140,7 @@ Validate on a throwaway branch, before touching real routes:
 - Move the route files explicitly:
   - `app/page.tsx` → `app/[locale]/[htmlLang]/page.tsx`.
   - `app/videos/page.tsx` + loading/error/tests → `app/[locale]/[htmlLang]/videos/page.tsx`.
-  - `app/search/page.tsx` + loading/error/tests → `app/[locale]/[htmlLang]/search/page.tsx`.
+  - Delete the old `app/search/**` page surface; proxy-level `/search` redirects to the root modal URL instead.
   - `app/[slug]/page.tsx` + `app/[slug]/[...rest]/page.tsx` → `app/[locale]/[htmlLang]/[...rest]/page.tsx`.
   - `app/demo-search/**` → `app/(demo)/demo-search/**`.
   - `app/demo-recommendations/**` → `app/(demo)/demo-recommendations/**`.
@@ -154,7 +154,7 @@ Validate on a throwaway branch, before touching real routes:
 #### Phase 2 — Middleware rewrite
 
 - Before canonicalization, handle visible internal-prefix requests (`/{locale}`, `/{locale}/{htmlLang}`, or `/{locale}/{htmlLang}/...`) with the chosen direct-prefix policy so they cannot become duplicate public URLs.
-- Replace the current visible Accept-Language append for locale-less shapes with the default-family internal rewrite. `/`, `/videos`, and `/search` keep their public URLs even with `accept-language: es`; test that no 307/308 is emitted for those cases.
+- Replace the current visible Accept-Language append for locale-less shapes with the default-family internal rewrite. `/` and `/videos` keep their public URLs even with `accept-language: es`; `/search` must redirect to the root modal URL and must never canonicalize to `/search.html/search.html`.
 - After the existing `canonicalizeWatchPath` pass, derive the message catalog key via `resolveUiLocale` (reuse, do not reimplement), derive `htmlLang` from the raw audio slug's BCP-47 when it maps to the same available catalog family, and **prepend** both; keep the full path as the remainder. Default both params for locale-less shapes.
 - Reuse `parseWatchPath` / `getWatchLocaleSegmentIndex` to find the locale segment per shape.
 
@@ -213,7 +213,7 @@ Validate on a throwaway branch, before touching real routes:
 ## Acceptance criteria
 
 - Watch + collection routes render **static/ISR** (build manifest shows non-dynamic); repeat visits within the revalidate window are served from cache with no admin round-trip, while the first request after expiry may regenerate.
-- **Public URLs byte-identical** across every research-doc §5 shape, including `.html` watch/collection shapes and locale-less `/`, `/videos`, `/search`; legacy normalization still 307/308; expected 404s stay 404.
+- **Public URLs byte-identical** across every active research-doc §5 shape, including `.html` watch/collection shapes and locale-less `/` and `/videos`; `/search` intentionally diverges from historical production by redirecting into the global modal, and `/search.html/search.html` must 404. Legacy normalization still 307/308; expected 404s stay 404.
 - Direct visible internal-locale URLs (`/en`, `/en/en/videos`, `/es/es-419/jesus.html/spanish-latin-american.html`) do not 200 as duplicate content; they 308 to canonical public URLs or 404 by policy.
 - `<html lang>` correct per locale in **prerendered** HTML; message catalog key and raw audio slug remain independently testable.
 - `generateStaticParams` does not enumerate the full catalog; build time bounded.

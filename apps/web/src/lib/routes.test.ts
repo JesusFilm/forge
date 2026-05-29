@@ -142,16 +142,16 @@ describe("videosIndexPath", () => {
 })
 
 describe("searchPath", () => {
-  it("returns /search when no q", () => {
-    expect(searchPath()).toBe("/search")
+  it("returns / when no q", () => {
+    expect(searchPath()).toBe("/")
   })
 
-  it("returns /search?q=... when q is provided", () => {
-    expect(searchPath("jesus")).toBe("/search?q=jesus")
+  it("returns /?q=... when q is provided", () => {
+    expect(searchPath("jesus")).toBe("/?q=jesus")
   })
 
   it("URL-encodes special characters in q", () => {
-    expect(searchPath("jesus & friends")).toBe("/search?q=jesus+%26+friends")
+    expect(searchPath("jesus & friends")).toBe("/?q=jesus+%26+friends")
   })
 })
 

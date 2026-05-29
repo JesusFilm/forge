@@ -47,6 +47,8 @@ Required env vars (both flipped from `.optional()` in U13):
 
 Locale propagation flow: public URL (`/watch/{slug}.html/{raw-audio-slug}.html`) → `src/proxy.ts` canonicalizes, derives `resolveWatchLocaleIdentity(raw-audio-slug)`, and internally rewrites to `/{messageLocale}/{htmlLang}/{original-public-path}` → `src/app/[locale]/[htmlLang]/layout.tsx` calls `setRequestLocale(params.locale)` and renders `<html lang={params.htmlLang}>`. The raw audio slug stays in `params.rest` for dub selection. The URL is the sole public locale carrier — no cookie and no visible `/[locale]` URL prefix.
 
+Public watch links must always use the raw audio language slug, never the message-catalog key. Any button, card, carousel, modal, or component that emits a `/watch` href should pass `variant.language.slug`, `languageSlug`, or `currentLanguageSlug` into the route builders in `src/lib/routes.ts`. For English, the public URL is `/watch/{slug}.html/english.html`; `/watch/{slug}.html/en.html` is an internal-locale leak and should be treated as a bug.
+
 Adding a UI locale: drop `messages/{locale}.json` AND widen `UI_LOCALE_FAMILIES` in `src/lib/locale.ts`. The drift gate in `src/i18n/__tests__/messages-parity.test.ts` fails CI if you forget either. The structural-parity test also enforces every namespace key exists in every catalog.
 
 Critical: `src/i18n/locales.ts` uses `readdirSync` at module load to discover catalogs. This pattern is INTENTIONAL for i18n only — do NOT copy it into request-path modules (filesystem I/O in the request path is a regression). Keep the internal `[locale]` segment bounded to the catalog families in `src/lib/locale.ts`; use `[htmlLang]` only for the static HTML language tag.

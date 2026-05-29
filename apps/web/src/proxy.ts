@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import {
   DEFAULT_LOCALE,
   isLocale,
+  isPublicWatchHomeLanguageSlug,
+  isPublicWatchLanguageSlug,
   resolveUiLocale,
   resolveWatchLocaleIdentity,
 } from "@/lib/locale"
@@ -11,6 +13,7 @@ import {
   SAFE_SLUG_PATTERN,
   UNSAFE_PATH_PATTERN,
   hasHtmlSuffix,
+  isOneSegmentCollectionSlug,
   isUnsafeRedirectPath,
   stripHtmlSuffix,
 } from "@/lib/url-shape"
@@ -53,6 +56,12 @@ function buildRedirect(url: URL, status: 307 | 308): NextResponse {
 
 function buildNotFound(): NextResponse {
   return new NextResponse(null, { status: 404 })
+}
+
+function redirectDeprecatedSearch(request: ProxyRequest): NextResponse {
+  const url = request.nextUrl.clone()
+  url.pathname = "/"
+  return buildRedirect(url, 307)
 }
 
 function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
@@ -127,7 +136,7 @@ function classifyRewrite(pathname: string): RewriteDecision {
   const segments = splitPath(pathname)
   if (segments.length === 1) {
     const [segment] = segments
-    if (segment === "videos" || segment === "search") {
+    if (segment === "videos") {
       return {
         kind: "rewrite",
         locale: DEFAULT_LOCALE,
@@ -138,9 +147,16 @@ function classifyRewrite(pathname: string): RewriteDecision {
     if (!hasHtmlSuffix(segment)) return { kind: "not-found" }
     const slug = stripSafeSlug(segment)
     if (!slug) return { kind: "not-found" }
-    const identity = isLocale(slug)
+    if (isLocale(slug)) return { kind: "not-found" }
+    const identity = isPublicWatchHomeLanguageSlug(slug)
       ? resolveWatchLocaleIdentity(slug)
       : { locale: DEFAULT_LOCALE, htmlLang: DEFAULT_LOCALE }
+    if (
+      !isPublicWatchHomeLanguageSlug(slug) &&
+      !isOneSegmentCollectionSlug(slug)
+    ) {
+      return { kind: "not-found" }
+    }
     return { kind: "rewrite", ...identity, pathname }
   }
 
@@ -149,9 +165,11 @@ function classifyRewrite(pathname: string): RewriteDecision {
     if (!hasHtmlSuffix(slugSegment) || !hasHtmlSuffix(localeSegment)) {
       return { kind: "not-found" }
     }
-    if (!stripSafeSlug(slugSegment)) return { kind: "not-found" }
+    const slug = stripSafeSlug(slugSegment)
+    if (!slug) return { kind: "not-found" }
     const rawAudioSlug = stripSafeSlug(localeSegment)
     if (!rawAudioSlug) return { kind: "not-found" }
+    if (!isPublicWatchLanguageSlug(rawAudioSlug)) return { kind: "not-found" }
     const identity = resolveWatchLocaleIdentity(rawAudioSlug)
     return { kind: "rewrite", ...identity, pathname }
   }
@@ -168,7 +186,9 @@ function classifyRewrite(pathname: string): RewriteDecision {
     ) {
       return { kind: "not-found" }
     }
-    const identity = resolveWatchLocaleIdentity(stripHtmlSuffix(localeSegment))
+    const rawAudioSlug = stripHtmlSuffix(localeSegment)
+    if (!isPublicWatchLanguageSlug(rawAudioSlug)) return { kind: "not-found" }
+    const identity = resolveWatchLocaleIdentity(rawAudioSlug)
     return { kind: "rewrite", ...identity, pathname }
   }
 
@@ -204,6 +224,8 @@ export function proxy(request: ProxyRequest): NextResponse {
     url.pathname = canonical.pathname
     return buildRedirect(url, canonical.status)
   }
+
+  if (pathname === "/search") return redirectDeprecatedSearch(request)
 
   const rewrite = classifyRewrite(pathname)
   if (rewrite.kind === "pass") return NextResponse.next()

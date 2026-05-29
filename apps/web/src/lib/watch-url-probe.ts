@@ -26,7 +26,6 @@ const ROOTS: readonly string[] = [
   // NOTE: `/watch/` (trailing slash) lives in REDIRECTS — it 308s to `/watch`
   // per §5.4, so it is probed as a redirect, not a root 200.
   "/watch/videos",
-  "/watch/search",
   "/watch/english.html",
   "/watch/russian.html",
   "/watch/portuguese-brazil.html",
@@ -123,6 +122,7 @@ const EPISODES: readonly string[] = [
 
 // §5.3 legacy 4-segment + §5.4 normalization — must REDIRECT (3xx), not 404.
 const REDIRECTS: readonly string[] = [
+  "/watch/search",
   "/watch/lumo-the-gospel-of-john/wedding-in-cana.html/english.html",
   "/watch/jesus/the-beginning.html/english.html",
   "/watch/",
@@ -142,6 +142,7 @@ const QUERY_PARAMS: readonly string[] = [
 
 // §5.6 — must STAY 404 (must NOT become 200 or 301).
 const EXPECTED_404S: readonly string[] = [
+  "/watch/search.html/search.html",
   "/watch/jesus.html",
   "/watch/JESUS.html/english.html",
   "/watch/jesus.html/fran%C3%A7ais.html",

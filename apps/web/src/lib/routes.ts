@@ -77,7 +77,7 @@ type WatchVideoRoute = `/${string}.html/${string}.html${"" | `?${string}`}`
 type WatchEpisodeRoute =
   `/${string}.html/${string}/${string}.html${"" | `?${string}`}`
 type VideosIndexRoute = "/videos"
-type SearchRoute = `/search${"" | `?${string}`}`
+type SearchRoute = `/${"" | `?${string}`}`
 
 function appendQueryString(path: string, opts?: BuildOptions): string {
   if (!opts) return path
@@ -123,11 +123,11 @@ export function videosIndexPath(): VideosIndexRoute & Route {
   return "/videos" as VideosIndexRoute & Route
 }
 
-/** Build the public search path `/search` with optional `?q=` query. */
+/** Build the global search-modal path `/` with optional `?q=` query. */
 export function searchPath(q?: string): SearchRoute & Route {
-  if (!q) return "/search" as SearchRoute & Route
+  if (!q) return "/" as SearchRoute & Route
   const params = new URLSearchParams({ q })
-  return `/search?${params.toString()}` as SearchRoute & Route
+  return `/?${params.toString()}` as SearchRoute & Route
 }
 
 /**
@@ -138,7 +138,7 @@ export function searchPath(q?: string): SearchRoute & Route {
  * - `video` — `/{slug}.html/{lang}.html` (two segments)
  * - `episode` — `/{series}.html/{episode}/{lang}.html` (three segments)
  * - `videos` — `/videos`
- * - `search` — `/search?q=...`
+ * - `search` — deprecated inbound `/search?q=...` redirect shim
  * - `reserved` — first segment is in `RESERVED_PREFIXES` (api, _next, assets, etc.)
  * - `unknown` — none of the above (four-or-more segments, malformed)
  */
