@@ -14,6 +14,12 @@ export const FORGE_WORKFLOW_STEPS: WorkflowStepName[] = [
   "seo_improvements",
 ]
 
+export const SUBTITLE_ONLY_WORKFLOW_STEPS: WorkflowStepName[] = [
+  "transcription",
+  "translation",
+  "mux_upload",
+]
+
 const SKIPPED_PLACEHOLDER_STEPS: WorkflowStepName[] = [
   "theology_validation_bible_quotes",
   "seo_improvements",
@@ -23,6 +29,14 @@ export function buildInitialSteps(): JobStepState[] {
   return FORGE_WORKFLOW_STEPS.map((name) => ({
     name,
     status: SKIPPED_PLACEHOLDER_STEPS.includes(name) ? "skipped" : "pending",
+    retries: 0,
+  }))
+}
+
+export function buildSubtitleOnlyInitialSteps(): JobStepState[] {
+  return SUBTITLE_ONLY_WORKFLOW_STEPS.map((name) => ({
+    name,
+    status: "pending",
     retries: 0,
   }))
 }

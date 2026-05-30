@@ -33,6 +33,7 @@ export interface JobOptions {
   generateVoiceover?: boolean
   uploadMux?: boolean
   notifyCms?: boolean
+  workflowKind?: "full_enrichment" | "subtitle_only"
 }
 
 export type TranslationLanguageResult = {

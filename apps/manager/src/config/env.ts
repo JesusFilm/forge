@@ -3,6 +3,17 @@ import { z } from "zod"
 
 const MOCK_SESSION_SECRET_SENTINEL = "__manager_mock_session_secret_required__"
 
+function assertDistinctConfiguredSecrets(
+  leftName: string,
+  leftValue: string | undefined,
+  rightName: string,
+  rightValue: string | undefined,
+) {
+  if (leftValue && rightValue && leftValue === rightValue) {
+    throw new Error(`${leftName} and ${rightName} must be different`)
+  }
+}
+
 export const env = createEnv({
   server: {
     NODE_ENV: z
@@ -64,13 +75,24 @@ export const env = createEnv({
 
     // Mastra service launchers. Transcript embedding runs are launched from
     // manager after transcript.json exists; Mastra owns chunking and vectors.
+    // Subtitle enrichment runs are feature-flagged while execution moves from
+    // Manager's local workflow into the shared Mastra runtime.
     MASTRA_BASE_URL: z.string().url().optional(),
     MASTRA_SERVICE_API_KEY: z.string().min(1).optional(),
+    MANAGER_MASTRA_API_KEY: z.string().min(1).optional(),
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: z.coerce
       .number()
       .int()
       .positive()
       .default(120_000),
+    MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(15_000),
+    MASTRA_SUBTITLE_ENRICHMENT_ENABLED: z
+      .enum(["true", "false"])
+      .default("false"),
 
     // feat-119 PR2 — admin → manager outbound enrichment trigger.
     // Manager exposes /api/admin-trigger/{scene-analysis,transcript}
@@ -137,8 +159,13 @@ export const env = createEnv({
     ADMIN_EMBED_TRIGGER_API_KEY: process.env.ADMIN_EMBED_TRIGGER_API_KEY,
     MASTRA_BASE_URL: process.env.MASTRA_BASE_URL,
     MASTRA_SERVICE_API_KEY: process.env.MASTRA_SERVICE_API_KEY,
+    MANAGER_MASTRA_API_KEY: process.env.MANAGER_MASTRA_API_KEY,
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS:
       process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
+    MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS:
+      process.env.MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS,
+    MASTRA_SUBTITLE_ENRICHMENT_ENABLED:
+      process.env.MASTRA_SUBTITLE_ENRICHMENT_ENABLED ?? "false",
     ADMIN_TRIGGER_API_KEYS: process.env.ADMIN_TRIGGER_API_KEYS,
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:
@@ -158,6 +185,19 @@ if (
     "MANAGER_MOCK_SESSION_SECRET is required when MANAGER_DATA_MODE=mock",
   )
 }
+
+assertDistinctConfiguredSecrets(
+  "MANAGER_MASTRA_API_KEY",
+  env.MANAGER_MASTRA_API_KEY,
+  "MANAGER_API_KEY",
+  env.MANAGER_API_KEY,
+)
+assertDistinctConfiguredSecrets(
+  "MANAGER_MASTRA_API_KEY",
+  env.MANAGER_MASTRA_API_KEY,
+  "MASTRA_SERVICE_API_KEY",
+  env.MASTRA_SERVICE_API_KEY,
+)
 
 const managerAuthEnvRequired =
   resolvedManagerBackendMode === "admin" ||

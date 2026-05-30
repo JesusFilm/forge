@@ -20,10 +20,17 @@ const envSchema = z.object({
   ADMIN_SCENE_INGEST_URL: z.string().url().optional(),
   ADMIN_TRANSCRIPT_INGEST_URL: z.string().url().optional(),
   DATABASE_URL: z.string().url().optional(),
+  MANAGER_BASE_URL: z.string().url().optional(),
+  MANAGER_MASTRA_API_KEY: z.string().min(1).optional(),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
   NEXT_PHASE: z.string().optional(),
+  MASTRA_SUBTITLE_CALLBACK_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60_000),
   MASTRA_SERVICE_API_KEYS: z.string().min(1).optional(),
   MASTRA_NATIVE_EVAL_ENVIRONMENT: z.string().min(1).optional(),
   MASTRA_SEARCH_EVAL_ARTIFACT_DIR: z.string().min(1).optional(),
@@ -98,8 +105,13 @@ export const env = envSchema.parse({
     process.env.ADMIN_TRANSCRIPT_INGEST_URL,
   ),
   DATABASE_URL: emptyToUndefined(process.env.DATABASE_URL),
+  MANAGER_BASE_URL: emptyToUndefined(process.env.MANAGER_BASE_URL),
+  MANAGER_MASTRA_API_KEY: emptyToUndefined(process.env.MANAGER_MASTRA_API_KEY),
   NODE_ENV: process.env.NODE_ENV,
   NEXT_PHASE: process.env.NEXT_PHASE,
+  MASTRA_SUBTITLE_CALLBACK_TIMEOUT_MS: emptyToUndefined(
+    process.env.MASTRA_SUBTITLE_CALLBACK_TIMEOUT_MS,
+  ),
   MASTRA_SERVICE_API_KEYS: emptyToUndefined(
     process.env.MASTRA_SERVICE_API_KEYS,
   ),

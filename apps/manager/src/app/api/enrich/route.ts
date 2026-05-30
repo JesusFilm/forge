@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server"
 import pLimit from "p-limit"
 import { z } from "zod"
+import { env } from "@/config/env"
 import { authenticateRequest } from "@/lib/auth"
 import { getCmsGateway, readMockCmsState } from "@/cms/gateway"
 import type {
@@ -28,6 +29,7 @@ import {
   materializeEnrichmentTargetForJob,
   type MaterializeEnrichmentTargetResult,
 } from "@/services/stageClone"
+import { triggerMastraSubtitleEnrichment } from "@/services/mastra-subtitle-enrichment"
 import { launchVideoEnrichment } from "@/workflows/launchVideoEnrichment"
 import type { JobArtifactManifest } from "@/types/job"
 
@@ -164,6 +166,14 @@ export async function createEnrichmentJobs(
 ): Promise<CreateEnrichmentJobsResult> {
   const { videoIds } = input
   const targetLanguageIds = input.targetLanguageIds ?? input.languages ?? []
+  const useMastraSubtitleEnrichment =
+    env.MASTRA_SUBTITLE_ENRICHMENT_ENABLED === "true"
+  if (useMastraSubtitleEnrichment && targetLanguageIds.length !== 1) {
+    throw new EnrichmentJobCreationError(400, {
+      error: "Mastra subtitle enrichment requires exactly one target language.",
+    })
+  }
+
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)
   if (mockState) {
@@ -186,6 +196,9 @@ export async function createEnrichmentJobs(
         targetLanguageIds,
         {
           videoDocumentId: video.documentId,
+          workflowKind: useMastraSubtitleEnrichment
+            ? "subtitle_only"
+            : "full_enrichment",
           initialArtifacts: {
             transcriptionRouting: {
               kind: "metadata",
@@ -207,6 +220,36 @@ export async function createEnrichmentJobs(
           },
         },
       )
+
+      if (useMastraSubtitleEnrichment) {
+        const [targetLanguage] = targetLanguageIds
+        const mastraResult = await triggerMastraSubtitleEnrichment({
+          jobId: job.id,
+          assetId: `mock-${video.coreId ?? video.documentId}-asset`,
+          muxAssetId: `mock-${video.coreId ?? video.documentId}-asset`,
+          muxPlaybackId: `mock-${video.coreId ?? video.documentId}-playback`,
+          sourceLanguage: "en",
+          targetLanguage: targetLanguage ?? "",
+          materialization: {
+            mode: "direct_mux_asset_reuse",
+            targetEnvironment: "mux-production",
+          },
+          requestedTranscriptionProvider: "automatic",
+          initialArtifacts: job.artifacts,
+          videoDocumentId: video.documentId,
+          requestedBy: { kind: "service", id: "manager" },
+          idempotencyKey: `manager:subtitle-enrichment:${job.id}`,
+        })
+
+        if (!mastraResult.ok) {
+          await updateJob(job.id, { status: "failed" }).catch(console.error)
+          errors.push({
+            videoId,
+            error: "Failed to launch Mastra subtitle enrichment workflow.",
+          })
+          continue
+        }
+      }
 
       jobs.push({ videoId, jobId: job.id })
     }
@@ -340,6 +383,9 @@ export async function createEnrichmentJobs(
           normalizedTargets.targetLanguageCodes,
           {
             videoDocumentId: video.documentId,
+            workflowKind: useMastraSubtitleEnrichment
+              ? "subtitle_only"
+              : "full_enrichment",
             initialArtifacts: {
               transcriptionRouting: {
                 kind: "metadata",
@@ -371,25 +417,60 @@ export async function createEnrichmentJobs(
         })
 
         try {
-          await launchVideoEnrichment({
-            jobId: job.id,
-            assetId: job.muxAssetId,
-            muxAssetId: materialization.targetMuxAssetId,
-            playbackId: materialization.targetMuxPlaybackId,
-            language: materialization.sourceLanguageCode,
-            translateTo: normalizedTargets.targetLanguageCodes,
-            runAudioCleanup: isAudioCleanupConfigured(),
-            initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
-            videoDocumentId: video.documentId,
-            requestedTranscriptionProvider: "automatic",
-          })
+          if (useMastraSubtitleEnrichment) {
+            const [targetLanguage] = normalizedTargets.targetLanguageCodes
+            if (!targetLanguage) {
+              throw new Error("Missing target language for Mastra enrichment")
+            }
+
+            const mastraResult = await triggerMastraSubtitleEnrichment({
+              jobId: job.id,
+              assetId: job.muxAssetId,
+              muxAssetId: materialization.targetMuxAssetId,
+              muxPlaybackId: materialization.targetMuxPlaybackId,
+              sourceLanguage: materialization.sourceLanguageCode,
+              targetLanguage,
+              materialization: {
+                mode: materialization.materializationMode,
+                targetEnvironment:
+                  materialization.materializationMode ===
+                  "snapshot_to_stage_clone"
+                    ? "mux-stage"
+                    : "mux-production",
+              },
+              requestedTranscriptionProvider: "automatic",
+              initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
+              videoDocumentId: video.documentId,
+              requestedBy: { kind: "service", id: "manager" },
+              idempotencyKey: `manager:subtitle-enrichment:${job.id}`,
+            })
+
+            if (!mastraResult.ok) {
+              throw new Error(mastraResult.messages.join("; "))
+            }
+          } else {
+            await launchVideoEnrichment({
+              jobId: job.id,
+              assetId: job.muxAssetId,
+              muxAssetId: materialization.targetMuxAssetId,
+              playbackId: materialization.targetMuxPlaybackId,
+              language: materialization.sourceLanguageCode,
+              translateTo: normalizedTargets.targetLanguageCodes,
+              runAudioCleanup: isAudioCleanupConfigured(),
+              initialArtifacts: updatedJob?.artifacts ?? job.artifacts,
+              videoDocumentId: video.documentId,
+              requestedTranscriptionProvider: "automatic",
+            })
+          }
         } catch (err: unknown) {
           console.error(`Enrichment failed for job ${job.id}:`, err)
           await updateJob(job.id, { status: "failed" }).catch(console.error)
 
           return {
             videoId: coreId,
-            error: "Failed to launch enrichment workflow.",
+            error: useMastraSubtitleEnrichment
+              ? "Failed to launch Mastra subtitle enrichment workflow."
+              : "Failed to launch enrichment workflow.",
           }
         }
 

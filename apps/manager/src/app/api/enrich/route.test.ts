@@ -5,22 +5,28 @@ const {
   authenticateRequestMock,
   clientQueryMock,
   createJobMock,
+  envMock,
   ensureGeneratedSubtitlesForAssetMock,
   isAudioCleanupConfiguredMock,
   materializeEnrichmentTargetForJobMock,
   runVideoEnrichmentMock,
   startMock,
+  triggerMastraSubtitleEnrichmentMock,
   updateJobMock,
 } = vi.hoisted(() => ({
   afterMock: vi.fn(),
   authenticateRequestMock: vi.fn(),
   clientQueryMock: vi.fn(),
   createJobMock: vi.fn(),
+  envMock: {
+    MASTRA_SUBTITLE_ENRICHMENT_ENABLED: "false",
+  },
   ensureGeneratedSubtitlesForAssetMock: vi.fn(),
   isAudioCleanupConfiguredMock: vi.fn(),
   materializeEnrichmentTargetForJobMock: vi.fn(),
   runVideoEnrichmentMock: vi.fn(),
   startMock: vi.fn(),
+  triggerMastraSubtitleEnrichmentMock: vi.fn(),
   updateJobMock: vi.fn(),
 }))
 
@@ -42,10 +48,18 @@ vi.mock("@/lib/auth", () => ({
   authenticateRequest: authenticateRequestMock,
 }))
 
+vi.mock("@/config/env", () => ({
+  env: envMock,
+}))
+
 vi.mock("@/cms/client", () => ({
   default: () => ({
     query: clientQueryMock,
   }),
+}))
+
+vi.mock("@/services/mastra-subtitle-enrichment", () => ({
+  triggerMastraSubtitleEnrichment: triggerMastraSubtitleEnrichmentMock,
 }))
 
 vi.mock("@/lib/state", () => ({
@@ -282,6 +296,14 @@ describe("createEnrichmentJobs", () => {
       chapters: [],
       tags: [],
     })
+    envMock.MASTRA_SUBTITLE_ENRICHMENT_ENABLED = "false"
+    triggerMastraSubtitleEnrichmentMock.mockResolvedValue({
+      ok: true,
+      mastraRunId: "mastra-run-1",
+      managerJobId: "job-1",
+      status: "queued",
+      summary: "Mastra subtitle enrichment queued.",
+    })
   })
 
   it("rejects direct enrichment creation after the CMS video model is retired", async () => {
@@ -309,6 +331,25 @@ describe("createEnrichmentJobs", () => {
 
     expect(dispatch.spy).not.toHaveBeenCalled()
     expect(runVideoEnrichment).not.toHaveBeenCalled()
+  })
+
+  it("rejects Mastra subtitle dispatch with multiple target languages", async () => {
+    envMock.MASTRA_SUBTITLE_ENRICHMENT_ENABLED = "true"
+
+    await expect(
+      createEnrichmentJobs({
+        videoIds: ["video-1"],
+        targetLanguageIds: ["6414", "529"],
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      responseBody: {
+        error:
+          "Mastra subtitle enrichment requires exactly one target language.",
+      },
+    })
+
+    expect(triggerMastraSubtitleEnrichmentMock).not.toHaveBeenCalled()
   })
 })
 

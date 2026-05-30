@@ -14,5 +14,7 @@ apps/mastra-gateway/src/generated
 apps/manager/src/app/.well-known/workflow/v1
 apps/cms/.strapi
 apps/cms/.strapi-updater.json
+apps/mastra/.mastra
+apps/manager/.tmp
 output/
 .cursor

@@ -8,7 +8,10 @@ import {
   updateMockCmsState,
 } from "@/cms/gateway"
 import { env } from "@/config/env"
-import { buildInitialSteps } from "@/lib/workflow-steps"
+import {
+  buildInitialSteps,
+  buildSubtitleOnlyInitialSteps,
+} from "@/lib/workflow-steps"
 import type {
   JobArtifactEntry,
   JobArtifactManifest,
@@ -377,9 +380,14 @@ export async function createJob(
   options?: {
     videoDocumentId?: string
     initialArtifacts?: JobArtifactManifest
+    workflowKind?: "full_enrichment" | "subtitle_only"
   },
 ): Promise<JobRecord> {
-  const steps = buildInitialSteps()
+  const workflowKind = options?.workflowKind ?? "full_enrichment"
+  const steps =
+    workflowKind === "subtitle_only"
+      ? buildSubtitleOnlyInitialSteps()
+      : buildInitialSteps()
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)
 
@@ -413,7 +421,7 @@ export async function createJob(
       resolvedTargetLanguageCodes: languages,
       sourceCollectionTitle: sourceCollection?.title ?? undefined,
       sourceMediaTitle: sourceVideo?.title ?? undefined,
-      options: {},
+      options: { workflowKind },
       status: "pending",
       retries: 0,
       createdAt: now,
