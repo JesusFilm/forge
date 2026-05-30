@@ -374,12 +374,12 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
       params: Promise.resolve({
         locale: "de",
         htmlLang: "de",
-        rest: ["german.html"],
+        rest: ["german-standard.html"],
       }),
     })
 
     expect(metadata.alternates?.canonical).toBe(
-      "http://localhost:3000/watch/german.html",
+      "http://localhost:3000/watch/german-standard.html",
     )
     expect(resolveWatchPageMock).toHaveBeenCalledWith("de", undefined)
   })
