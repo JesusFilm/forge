@@ -73,26 +73,26 @@ export const env = createEnv({
     ADMIN_GRAPHQL_URL: z.string().url().optional(),
     ADMIN_EMBED_TRIGGER_API_KEY: z.string().min(1).optional(),
 
-    // Mastra agentic runtime — optional at boot so Manager can run
-    // without the agent runtime, but routes/clients fail closed when
-    // invoked before these service-to-service settings are configured.
-    AGENTIC_BASE_URL: z.string().url().optional(),
-    AGENTIC_SERVICE_API_KEY: z.string().min(1).optional(),
-    MANAGER_AGENTIC_API_KEY: z.string().min(1).optional(),
-    AGENTIC_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
-    AGENTIC_SUBTITLE_ENRICHMENT_ENABLED: z
-      .enum(["true", "false"])
-      .default("false"),
-
     // Mastra service launchers. Transcript embedding runs are launched from
     // manager after transcript.json exists; Mastra owns chunking and vectors.
+    // Subtitle enrichment runs are feature-flagged while execution moves from
+    // Manager's local workflow into the shared Mastra runtime.
     MASTRA_BASE_URL: z.string().url().optional(),
     MASTRA_SERVICE_API_KEY: z.string().min(1).optional(),
+    MANAGER_MASTRA_API_KEY: z.string().min(1).optional(),
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: z.coerce
       .number()
       .int()
       .positive()
       .default(120_000),
+    MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(15_000),
+    MASTRA_SUBTITLE_ENRICHMENT_ENABLED: z
+      .enum(["true", "false"])
+      .default("false"),
 
     // feat-119 PR2 — admin → manager outbound enrichment trigger.
     // Manager exposes /api/admin-trigger/{scene-analysis,transcript}
@@ -157,16 +157,15 @@ export const env = createEnv({
     ADMIN_MANAGER_SESSION_URL: process.env.ADMIN_MANAGER_SESSION_URL,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     ADMIN_EMBED_TRIGGER_API_KEY: process.env.ADMIN_EMBED_TRIGGER_API_KEY,
-    AGENTIC_BASE_URL: process.env.AGENTIC_BASE_URL,
-    AGENTIC_SERVICE_API_KEY: process.env.AGENTIC_SERVICE_API_KEY,
-    MANAGER_AGENTIC_API_KEY: process.env.MANAGER_AGENTIC_API_KEY,
-    AGENTIC_REQUEST_TIMEOUT_MS: process.env.AGENTIC_REQUEST_TIMEOUT_MS,
-    AGENTIC_SUBTITLE_ENRICHMENT_ENABLED:
-      process.env.AGENTIC_SUBTITLE_ENRICHMENT_ENABLED ?? "false",
     MASTRA_BASE_URL: process.env.MASTRA_BASE_URL,
     MASTRA_SERVICE_API_KEY: process.env.MASTRA_SERVICE_API_KEY,
+    MANAGER_MASTRA_API_KEY: process.env.MANAGER_MASTRA_API_KEY,
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS:
       process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
+    MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS:
+      process.env.MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS,
+    MASTRA_SUBTITLE_ENRICHMENT_ENABLED:
+      process.env.MASTRA_SUBTITLE_ENRICHMENT_ENABLED ?? "false",
     ADMIN_TRIGGER_API_KEYS: process.env.ADMIN_TRIGGER_API_KEYS,
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:
@@ -188,16 +187,16 @@ if (
 }
 
 assertDistinctConfiguredSecrets(
-  "MANAGER_AGENTIC_API_KEY",
-  env.MANAGER_AGENTIC_API_KEY,
+  "MANAGER_MASTRA_API_KEY",
+  env.MANAGER_MASTRA_API_KEY,
   "MANAGER_API_KEY",
   env.MANAGER_API_KEY,
 )
 assertDistinctConfiguredSecrets(
-  "MANAGER_AGENTIC_API_KEY",
-  env.MANAGER_AGENTIC_API_KEY,
-  "AGENTIC_SERVICE_API_KEY",
-  env.AGENTIC_SERVICE_API_KEY,
+  "MANAGER_MASTRA_API_KEY",
+  env.MANAGER_MASTRA_API_KEY,
+  "MASTRA_SERVICE_API_KEY",
+  env.MASTRA_SERVICE_API_KEY,
 )
 
 const managerAuthEnvRequired =

@@ -2,11 +2,11 @@
 status: complete
 priority: p1
 issue_id: "017"
-tags: [code-review, mergeability, agentic, lockfile, roadmap]
+tags: [code-review, mergeability, mastra, lockfile, roadmap]
 dependencies: []
 ---
 
-# Resolve Agentic Subtitle Merge Conflicts
+# Resolve Mastra Subtitle Merge Conflicts
 
 ## Problem Statement
 
@@ -105,10 +105,10 @@ Affected files:
 **Actions:**
 - Merged current `origin/main` into `feat/116-agentic-subtitle-enrichment-workflow`.
 - Resolved roadmap conflicts by preserving both feat-106 mainline updates and
-  feat-116 Agentic subtitle updates.
+  feat-116 Mastra subtitle updates.
 - Refreshed `pnpm-lock.yaml` with `pnpm install --lockfile-only`.
-- Reran Agentic and Manager tests, lint, typecheck, root format check, and local
-  Agentic API smoke.
+- Reran Mastra and Manager tests, lint, typecheck, root format check, and local
+  Mastra API smoke.
 
 **Learnings:**
 - The lockfile conflict resolved cleanly by taking current main and regenerating

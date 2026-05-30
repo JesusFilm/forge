@@ -46,6 +46,10 @@ import {
   searchEvalCandidateReviewWorkflow,
 } from "./workflows/search-eval-candidate-review"
 import {
+  handleSubtitleEnrichmentRouteRequest,
+  subtitleEnrichmentWorkflow,
+} from "./workflows/subtitle-enrichment"
+import {
   configureSearchEvalNativeSuiteRuntime,
   handleSearchEvalNativeSuiteRouteRequest,
   searchEvalNativeSuiteWorkflow,
@@ -96,6 +100,7 @@ export const mastra = new Mastra({
     offlineSearchEvalWorkflow,
     searchEvalCandidateReviewWorkflow,
     searchEvalNativeSuiteWorkflow,
+    subtitleEnrichmentWorkflow,
   },
   logger: new PinoLogger({
     name: "ForgeMastra",
@@ -251,6 +256,21 @@ export const mastra = new Mastra({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             request: c.req.raw,
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-subtitle-enrichment-runs", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSubtitleEnrichmentRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
           })
 
           return new Response(JSON.stringify(outcome.body), {

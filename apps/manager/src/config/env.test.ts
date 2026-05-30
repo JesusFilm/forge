@@ -50,23 +50,23 @@ describe("manager env mode validation", () => {
     expect(env.MANAGER_MOCK_DATA_PATH).toBe(".tmp/mock-cms/store.json")
   })
 
-  it("rejects reused Manager API and Agentic callback tokens", async () => {
+  it("rejects reused Manager API and Mastra callback tokens", async () => {
     stubMockModeEnv()
     vi.stubEnv("MANAGER_API_KEY", "shared-manager-token")
-    vi.stubEnv("MANAGER_AGENTIC_API_KEY", "shared-manager-token")
+    vi.stubEnv("MANAGER_MASTRA_API_KEY", "shared-manager-token")
 
     await expect(import("./env")).rejects.toThrow(
-      "MANAGER_AGENTIC_API_KEY and MANAGER_API_KEY must be different",
+      "MANAGER_MASTRA_API_KEY and MANAGER_API_KEY must be different",
     )
   })
 
-  it("rejects reused Manager callback and Agentic service tokens", async () => {
+  it("rejects reused Manager callback and Mastra service tokens", async () => {
     stubMockModeEnv()
-    vi.stubEnv("MANAGER_AGENTIC_API_KEY", "shared-agentic-token")
-    vi.stubEnv("AGENTIC_SERVICE_API_KEY", "shared-agentic-token")
+    vi.stubEnv("MANAGER_MASTRA_API_KEY", "shared-mastra-token")
+    vi.stubEnv("MASTRA_SERVICE_API_KEY", "shared-mastra-token")
 
     await expect(import("./env")).rejects.toThrow(
-      "MANAGER_AGENTIC_API_KEY and AGENTIC_SERVICE_API_KEY must be different",
+      "MANAGER_MASTRA_API_KEY and MASTRA_SERVICE_API_KEY must be different",
     )
   })
 

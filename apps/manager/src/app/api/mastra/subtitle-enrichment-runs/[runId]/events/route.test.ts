@@ -8,7 +8,7 @@ const {
   updateStepStatusMock,
 } = vi.hoisted(() => ({
   envMock: {
-    MANAGER_AGENTIC_API_KEY: "manager-agentic-key",
+    MANAGER_MASTRA_API_KEY: "manager-mastra-key",
   },
   getJobMock: vi.fn(),
   mergeJobArtifactsMock: vi.fn(),
@@ -38,9 +38,9 @@ vi.mock("@/lib/state", () => {
 
 import { POST } from "./route"
 
-function buildRequest(body: unknown, token = "manager-agentic-key") {
+function buildRequest(body: unknown, token = "manager-mastra-key") {
   return new Request(
-    "http://example.test/api/agentic/subtitle-enrichment-runs/run-1/events",
+    "http://example.test/api/mastra/subtitle-enrichment-runs/run-1/events",
     {
       method: "POST",
       headers: {
@@ -56,7 +56,7 @@ const baseEvent = {
   eventId: "event-1",
   runId: "run-1",
   jobId: "job-1",
-  idempotencyKey: "agentic:event-1",
+  idempotencyKey: "mastra:event-1",
   sequence: 1,
 }
 
@@ -78,9 +78,9 @@ function mockJob(overrides: Record<string, unknown> = {}) {
   }
 }
 
-describe("POST /api/agentic/subtitle-enrichment-runs/[runId]/events", () => {
+describe("POST /api/mastra/subtitle-enrichment-runs/[runId]/events", () => {
   beforeEach(() => {
-    envMock.MANAGER_AGENTIC_API_KEY = "manager-agentic-key"
+    envMock.MANAGER_MASTRA_API_KEY = "manager-mastra-key"
     mergeJobArtifactsMock.mockReset()
     updateJobMock.mockReset()
     updateStepStatusMock.mockReset()
@@ -91,7 +91,7 @@ describe("POST /api/agentic/subtitle-enrichment-runs/[runId]/events", () => {
     updateStepStatusMock.mockResolvedValue({})
   })
 
-  it("rejects requests without the Manager Agentic bearer key", async () => {
+  it("rejects requests without the Manager Mastra bearer key", async () => {
     const response = await POST(
       buildRequest({ ...baseEvent, type: "workflow_started" }, "wrong"),
       {
@@ -135,7 +135,7 @@ describe("POST /api/agentic/subtitle-enrichment-runs/[runId]/events", () => {
       buildRequest({
         ...baseEvent,
         eventId: "event-step-completed",
-        idempotencyKey: "agentic:event-step-completed",
+        idempotencyKey: "mastra:event-step-completed",
         type: "step_completed",
         sequence: 2,
         step: "translation",
@@ -169,7 +169,7 @@ describe("POST /api/agentic/subtitle-enrichment-runs/[runId]/events", () => {
       buildRequest({
         ...baseEvent,
         eventId: "event-step-failed",
-        idempotencyKey: "agentic:event-step-failed",
+        idempotencyKey: "mastra:event-step-failed",
         type: "step_failed",
         sequence: 3,
         step: "translation",
@@ -193,7 +193,7 @@ describe("POST /api/agentic/subtitle-enrichment-runs/[runId]/events", () => {
     getJobMock.mockResolvedValue(
       mockJob({
         artifacts: {
-          agenticSubtitleCallbackState: {
+          mastraSubtitleCallbackState: {
             kind: "metadata",
             data: {
               runId: "persisted-run",
@@ -213,7 +213,7 @@ describe("POST /api/agentic/subtitle-enrichment-runs/[runId]/events", () => {
         ...baseEvent,
         eventId: "persisted-event",
         runId: "persisted-run",
-        idempotencyKey: "agentic:persisted-event",
+        idempotencyKey: "mastra:persisted-event",
         type: "step_completed",
         sequence: 7,
         step: "translation",
@@ -246,7 +246,7 @@ describe("POST /api/agentic/subtitle-enrichment-runs/[runId]/events", () => {
         ...baseEvent,
         eventId: "terminal-stale-event",
         runId: "terminal-run",
-        idempotencyKey: "agentic:terminal-stale-event",
+        idempotencyKey: "mastra:terminal-stale-event",
         type: "step_started",
         sequence: 50,
         step: "translation",
@@ -279,7 +279,7 @@ describe("POST /api/agentic/subtitle-enrichment-runs/[runId]/events", () => {
         ...baseEvent,
         eventId: "workflow-failed-event",
         runId: "workflow-failed-run",
-        idempotencyKey: "agentic:workflow-failed-event",
+        idempotencyKey: "mastra:workflow-failed-event",
         type: "workflow_failed",
         sequence: 20,
         occurredAt: "2026-05-05T10:20:00.000Z",
@@ -304,7 +304,7 @@ describe("POST /api/agentic/subtitle-enrichment-runs/[runId]/events", () => {
             step: "translation",
             message: "Translator rejected request",
             at: "2026-05-05T10:20:00.000Z",
-            code: "agentic_workflow_failed",
+            code: "mastra_workflow_failed",
           },
         ],
       }),
@@ -320,7 +320,7 @@ describe("POST /api/agentic/subtitle-enrichment-runs/[runId]/events", () => {
         ...baseEvent,
         eventId: "persist-state-event",
         runId: "persist-state-run",
-        idempotencyKey: "agentic:persist-state-event",
+        idempotencyKey: "mastra:persist-state-event",
         type: "workflow_started",
         sequence: 10,
         occurredAt: "2026-05-05T10:10:00.000Z",
@@ -334,7 +334,7 @@ describe("POST /api/agentic/subtitle-enrichment-runs/[runId]/events", () => {
     expect(mergeJobArtifactsMock).toHaveBeenCalledWith(
       "job-1",
       expect.objectContaining({
-        agenticSubtitleCallbackState: expect.objectContaining({
+        mastraSubtitleCallbackState: expect.objectContaining({
           kind: "metadata",
           data: expect.objectContaining({
             runId: "persist-state-run",
@@ -350,7 +350,7 @@ describe("POST /api/agentic/subtitle-enrichment-runs/[runId]/events", () => {
     const event = {
       ...baseEvent,
       eventId: "event-dedupe",
-      idempotencyKey: "agentic:event-dedupe",
+      idempotencyKey: "mastra:event-dedupe",
       type: "workflow_completed",
       sequence: 4,
       occurredAt: "2026-05-05T10:05:00.000Z",

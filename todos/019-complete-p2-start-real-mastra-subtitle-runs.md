@@ -2,7 +2,7 @@
 status: complete
 priority: p2
 issue_id: "019"
-tags: [code-review, agentic, mastra, architecture]
+tags: [code-review, mastra, architecture]
 dependencies: ["016"]
 ---
 
@@ -10,19 +10,19 @@ dependencies: ["016"]
 
 ## Problem Statement
 
-`POST /forge/subtitle-enrichment-runs` currently calls
+`POST /forge-subtitle-enrichment-runs` currently calls
 `launchSubtitleEnrichmentWorkflow(...)` directly instead of creating a real
 Mastra workflow run through the registered workflow runtime. As a result, the
-custom route returns a synthetic `agenticRunId`, emits prototype callbacks
+custom route returns a synthetic `mastraRunId`, emits prototype callbacks
 synchronously, and does not prove that the run exists in Mastra Studio.
 
 ## Findings
 
-- `apps/agentic/src/mastra/index.ts` wires the service route to
+- `apps/mastra/src/mastra/index.ts` wires the service route to
   `launchSubtitleEnrichmentWorkflow(...)` directly.
-- `apps/agentic/src/mastra/workflows/subtitle-enrichment-workflow.ts:19`
+- `apps/mastra/src/mastra/workflows/subtitle-enrichment.ts:19`
   exposes a plain function that emits callbacks and returns a synthetic run id.
-- `apps/agentic/src/mastra/workflows/subtitle-enrichment-workflow.ts:57`
+- `apps/mastra/src/mastra/workflows/subtitle-enrichment.ts:57`
   registers a Mastra step, but the service route does not start that registered
   workflow.
 - The PR body and plan already mark Studio run visibility as unproven.
@@ -74,10 +74,9 @@ run id and Studio should show the matching run.
 
 Affected files:
 
-- `apps/agentic/src/api/subtitle-enrichment-run.ts`
-- `apps/agentic/src/mastra/index.ts`
-- `apps/agentic/src/mastra/workflows/subtitle-enrichment-workflow.ts`
-- `apps/agentic/src/mastra/workflows/subtitle-enrichment-workflow.test.ts`
+- `apps/mastra/src/mastra/index.ts`
+- `apps/mastra/src/mastra/workflows/subtitle-enrichment.ts`
+- `apps/mastra/src/mastra/workflows/subtitle-enrichment.test.ts`
 
 ## Resources
 
@@ -99,11 +98,11 @@ Affected files:
 **By:** Codex
 
 **Actions:**
-- Reviewed Agentic route and workflow wiring.
+- Reviewed Mastra route and workflow wiring.
 - Confirmed the service route bypasses the registered workflow runtime.
 
 **Learnings:**
-- Workflow registration alone is not enough to prove Agentic owns runtime
+- Workflow registration alone is not enough to prove Mastra owns runtime
   execution.
 
 ### 2026-05-05 - Runtime Launch Fix
@@ -119,7 +118,7 @@ Affected files:
 - Added a Mastra registry test proving the route calls
   `getWorkflow("subtitleEnrichmentWorkflow")`, `createRun(...)`, and
   `startAsync(...)`.
-- Smoke tested a running local Agentic server; the subtitle route returned 202
+- Smoke tested a running local Mastra server; the subtitle route returned 202
   with `subtitle-enrichment:smoke:job-1:subtitle:fr`.
 
 **Learnings:**

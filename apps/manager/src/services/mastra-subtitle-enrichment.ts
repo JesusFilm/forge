@@ -17,7 +17,7 @@ import type {
 } from "@/types/job"
 import { z } from "zod"
 
-const DEFAULT_AGENTIC_FETCH_TIMEOUT_MS = 15_000
+const DEFAULT_MASTRA_FETCH_TIMEOUT_MS = 15_000
 
 const workflowStepNameSchema = z.enum([
   "download_video",
@@ -51,25 +51,25 @@ const artifactManifestSchema = z.record(
   z.union([downloadableArtifactEntrySchema, metadataArtifactEntrySchema]),
 )
 
-const agenticSubtitleRunSuccessSchema = z.object({
+const mastraSubtitleRunSuccessSchema = z.object({
   ok: z.literal(true),
-  agenticRunId: z.string().min(1),
+  mastraRunId: z.string().min(1),
   managerJobId: z.string().min(1),
   status: z.enum(["queued", "running", "completed", "failed"]),
   summary: z.string().min(1).optional(),
   reportUrl: z.string().optional(),
 })
 
-const agenticSubtitleRunFailureSchema = z.object({
+const mastraSubtitleRunFailureSchema = z.object({
   ok: z.literal(false),
-  code: z.string().min(1).default("agentic_error"),
+  code: z.string().min(1).default("mastra_error"),
   message: z.string().min(1).optional(),
   messages: z.array(z.string().min(1)).optional(),
 })
 
-const agenticSubtitleRunEnvelopeSchema = z.union([
-  agenticSubtitleRunSuccessSchema,
-  agenticSubtitleRunFailureSchema,
+const mastraSubtitleRunEnvelopeSchema = z.union([
+  mastraSubtitleRunSuccessSchema,
+  mastraSubtitleRunFailureSchema,
 ])
 
 const subtitleEventBaseSchema = z.object({
@@ -98,15 +98,15 @@ const subtitleEventSchema = z.union([
   subtitleStepEventSchema,
 ])
 
-export type AgenticSubtitleEnrichmentInput = {
+export type MastraSubtitleEnrichmentInput = {
   jobId: string
   assetId: string
   muxAssetId: string
   muxPlaybackId: string
   sourceLanguage: string
   targetLanguage: string
-  materialization?: {
-    mode: string
+  materialization: {
+    mode: "direct_mux_asset_reuse" | "snapshot_to_stage_clone"
     targetEnvironment: "mux-stage" | "mux-production"
   }
   requestedTranscriptionProvider: "automatic" | "elevenlabs" | "mux"
@@ -119,8 +119,8 @@ export type AgenticSubtitleEnrichmentInput = {
   idempotencyKey: string
 }
 
-export type AgenticSubtitleEnrichmentResult =
-  | z.infer<typeof agenticSubtitleRunSuccessSchema>
+export type MastraSubtitleEnrichmentResult =
+  | z.infer<typeof mastraSubtitleRunSuccessSchema>
   | {
       ok: false
       reason: "config_missing"
@@ -156,16 +156,28 @@ export type AgenticSubtitleEnrichmentResult =
       retryable: false
     }
 
-export type AgenticSubtitleEvent = z.infer<typeof subtitleEventSchema>
+export type MastraSubtitleEvent = z.infer<typeof subtitleEventSchema>
 
-export type AgenticSubtitleEventResult = {
+export type MastraSubtitleEventResult = {
   ok: true
   deduped: boolean
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return null
+  }
+  return value as Record<string, unknown>
+}
+
+function parseMastraSubtitleRunEnvelope(input: unknown) {
+  const record = asRecord(input)
+  return mastraSubtitleRunEnvelopeSchema.safeParse(record?.result)
+}
+
 const acceptedEventKeys = new Set<string>()
 const lastSequenceByRunId = new Map<string, number>()
-const CALLBACK_STATE_ARTIFACT_KEY = "agenticSubtitleCallbackState"
+const CALLBACK_STATE_ARTIFACT_KEY = "mastraSubtitleCallbackState"
 const MAX_PERSISTED_EVENT_IDS = 50
 
 type PersistedCallbackState = {
@@ -173,7 +185,7 @@ type PersistedCallbackState = {
   lastAcceptedSequence: number
   acceptedEventIds: string[]
   lastEventId: string
-  lastEventType: AgenticSubtitleEvent["type"]
+  lastEventType: MastraSubtitleEvent["type"]
   updatedAt: string
   terminal?: {
     type: "workflow_completed" | "workflow_failed"
@@ -181,7 +193,7 @@ type PersistedCallbackState = {
   }
 }
 
-function eventDedupKey(event: Pick<AgenticSubtitleEvent, "eventId">) {
+function eventDedupKey(event: Pick<MastraSubtitleEvent, "eventId">) {
   return event.eventId
 }
 
@@ -200,15 +212,15 @@ function getErrorMessage(error: unknown): string {
     return (error as { message: string }).message.trim()
   }
 
-  return "Agentic subtitle enrichment failed."
+  return "Mastra subtitle enrichment failed."
 }
 
-function getTerminalTimestamp(event: AgenticSubtitleEvent): string {
+function getTerminalTimestamp(event: MastraSubtitleEvent): string {
   return event.occurredAt ?? new Date().toISOString()
 }
 
-export function isValidAgenticServiceRequest(request: Request): boolean {
-  const apiKey = env.MANAGER_AGENTIC_API_KEY
+export function isValidMastraServiceRequest(request: Request): boolean {
+  const apiKey = env.MANAGER_MASTRA_API_KEY
   const authHeader = request.headers.get("authorization")
   if (!apiKey || !authHeader?.startsWith("Bearer ")) {
     return false
@@ -220,7 +232,7 @@ export function isValidAgenticServiceRequest(request: Request): boolean {
   return a.length === b.length && timingSafeEqual(a, b)
 }
 
-export function parseAgenticSubtitleEvent(input: unknown) {
+export function parseMastraSubtitleEvent(input: unknown) {
   return subtitleEventSchema.safeParse(input)
 }
 
@@ -273,7 +285,7 @@ function readPersistedCallbackState(
       (eventId): eventId is string => typeof eventId === "string",
     ),
     lastEventId: data.lastEventId,
-    lastEventType: data.lastEventType as AgenticSubtitleEvent["type"],
+    lastEventType: data.lastEventType as MastraSubtitleEvent["type"],
     updatedAt: data.updatedAt,
     ...(terminal ? { terminal } : {}),
   }
@@ -299,7 +311,7 @@ function readPersistedTerminalState(
 }
 
 function buildCallbackStateArtifacts(
-  event: AgenticSubtitleEvent,
+  event: MastraSubtitleEvent,
   previousState: PersistedCallbackState | null,
 ): JobArtifactManifest {
   const acceptedEventIds = [
@@ -329,7 +341,7 @@ function buildCallbackStateArtifacts(
 
 function hasPersistedEvent(
   state: PersistedCallbackState | null,
-  event: AgenticSubtitleEvent,
+  event: MastraSubtitleEvent,
 ): boolean {
   return Boolean(
     state?.runId === event.runId &&
@@ -342,12 +354,12 @@ function isTerminalJobStatus(status: JobStatus): boolean {
   return status === "completed" || status === "failed"
 }
 
-function isTerminalWorkflowEvent(event: AgenticSubtitleEvent): boolean {
+function isTerminalWorkflowEvent(event: MastraSubtitleEvent): boolean {
   return event.type === "workflow_completed" || event.type === "workflow_failed"
 }
 
 function workflowFailureError(
-  event: AgenticSubtitleEvent,
+  event: MastraSubtitleEvent,
   job: JobRecord,
 ): JobError {
   const error = "error" in event ? event.error : undefined
@@ -355,12 +367,12 @@ function workflowFailureError(
     step: job.currentStep ?? "translation",
     message: getErrorMessage(error),
     at: getTerminalTimestamp(event),
-    code: "agentic_workflow_failed",
+    code: "mastra_workflow_failed",
   }
 }
 
 async function mapWorkflowEvent(
-  event: AgenticSubtitleEvent,
+  event: MastraSubtitleEvent,
   job: JobRecord,
   callbackStateArtifacts: JobArtifactManifest,
 ) {
@@ -403,7 +415,7 @@ async function mapWorkflowEvent(
 }
 
 function stepStatusForEvent(
-  type: AgenticSubtitleEvent["type"],
+  type: MastraSubtitleEvent["type"],
 ): StepStatus | null {
   if (type === "step_started") return "running"
   if (type === "step_completed") return "completed"
@@ -412,7 +424,7 @@ function stepStatusForEvent(
 }
 
 async function mapStepEvent(
-  event: Extract<AgenticSubtitleEvent, { step: WorkflowStepName }>,
+  event: Extract<MastraSubtitleEvent, { step: WorkflowStepName }>,
   callbackStateArtifacts: JobArtifactManifest,
 ) {
   const status = stepStatusForEvent(event.type)
@@ -441,9 +453,9 @@ async function mapStepEvent(
   )
 }
 
-export async function ingestAgenticSubtitleEvent(
-  event: AgenticSubtitleEvent,
-): Promise<AgenticSubtitleEventResult> {
+export async function ingestMastraSubtitleEvent(
+  event: MastraSubtitleEvent,
+): Promise<MastraSubtitleEventResult> {
   const dedupKey = eventDedupKey(event)
   if (acceptedEventKeys.has(dedupKey)) {
     return { ok: true, deduped: true }
@@ -484,31 +496,31 @@ export async function ingestAgenticSubtitleEvent(
   return { ok: true, deduped: false }
 }
 
-export async function triggerAgenticSubtitleEnrichment(
-  input: AgenticSubtitleEnrichmentInput,
-): Promise<AgenticSubtitleEnrichmentResult> {
-  if (!env.AGENTIC_BASE_URL || !env.AGENTIC_SERVICE_API_KEY) {
+export async function triggerMastraSubtitleEnrichment(
+  input: MastraSubtitleEnrichmentInput,
+): Promise<MastraSubtitleEnrichmentResult> {
+  if (!env.MASTRA_BASE_URL || !env.MASTRA_SERVICE_API_KEY) {
     return {
       ok: false,
       reason: "config_missing",
       messages: [
-        "AGENTIC_BASE_URL and AGENTIC_SERVICE_API_KEY must be set on apps/manager to call the Agentic runtime",
+        "MASTRA_BASE_URL and MASTRA_SERVICE_API_KEY must be set on apps/manager to call the Mastra runtime",
       ],
       retryable: false,
     }
   }
 
   const timeoutMs =
-    env.AGENTIC_REQUEST_TIMEOUT_MS ?? DEFAULT_AGENTIC_FETCH_TIMEOUT_MS
-  const agenticUrl = `${env.AGENTIC_BASE_URL.replace(/\/+$/, "")}/forge/subtitle-enrichment-runs`
+    env.MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS ?? DEFAULT_MASTRA_FETCH_TIMEOUT_MS
+  const mastraUrl = `${env.MASTRA_BASE_URL.replace(/\/+$/, "")}/forge-subtitle-enrichment-runs`
 
   let response: Response
   try {
-    response = await fetch(agenticUrl, {
+    response = await fetch(mastraUrl, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        authorization: `Bearer ${env.AGENTIC_SERVICE_API_KEY}`,
+        authorization: `Bearer ${env.MASTRA_SERVICE_API_KEY}`,
       },
       body: JSON.stringify(input),
       signal: AbortSignal.timeout(timeoutMs),
@@ -523,10 +535,21 @@ export async function triggerAgenticSubtitleEnrichment(
       reason: "network_error",
       messages: [
         isTimeout
-          ? `Agentic subtitle enrichment request timed out after ${timeoutMs}ms`
+          ? `Mastra subtitle enrichment request timed out after ${timeoutMs}ms`
           : message,
       ],
       retryable: true,
+    }
+  }
+
+  if (response.status === 401) {
+    return {
+      ok: false,
+      reason: "upstream_error",
+      code: "unauthorized",
+      messages: ["Mastra service bearer token was rejected."],
+      httpStatus: response.status,
+      retryable: false,
     }
   }
 
@@ -537,19 +560,19 @@ export async function triggerAgenticSubtitleEnrichment(
     return {
       ok: false,
       reason: "parse_error",
-      messages: ["Agentic returned invalid JSON"],
+      messages: ["Mastra returned invalid JSON"],
       httpStatus: response.status,
       retryable: true,
     }
   }
 
-  const parsed = agenticSubtitleRunEnvelopeSchema.safeParse(payload)
+  const parsed = parseMastraSubtitleRunEnvelope(payload)
   if (!parsed.success) {
     return {
       ok: false,
       reason: "contract_error",
       messages: [
-        "Agentic subtitle enrichment response did not match the expected contract",
+        "Mastra subtitle enrichment response did not match the expected contract",
       ],
       httpStatus: response.status,
       retryable: false,
@@ -568,7 +591,7 @@ export async function triggerAgenticSubtitleEnrichment(
       parsed.data.messages ??
       (parsed.data.message
         ? [parsed.data.message]
-        : ["Agentic subtitle enrichment failed"]),
+        : ["Mastra subtitle enrichment failed"]),
     httpStatus: response.status,
     retryable: false,
   }

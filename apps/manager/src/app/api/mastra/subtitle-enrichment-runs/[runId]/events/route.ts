@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
 import {
-  ingestAgenticSubtitleEvent,
-  isValidAgenticServiceRequest,
-  parseAgenticSubtitleEvent,
-} from "@/lib/agentic-subtitle-enrichment"
+  ingestMastraSubtitleEvent,
+  isValidMastraServiceRequest,
+  parseMastraSubtitleEvent,
+} from "@/services/mastra-subtitle-enrichment"
 
 function jsonError(
   code: string,
@@ -17,10 +17,10 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ runId: string }> },
 ) {
-  if (!isValidAgenticServiceRequest(request)) {
+  if (!isValidMastraServiceRequest(request)) {
     return jsonError(
       "service_bearer_required",
-      "Agentic service bearer token required",
+      "Mastra service bearer token required",
       403,
     )
   }
@@ -32,11 +32,11 @@ export async function POST(
     return jsonError("invalid_event", "Request body must be valid JSON.", 400)
   }
 
-  const parsed = parseAgenticSubtitleEvent(body)
+  const parsed = parseMastraSubtitleEvent(body)
   if (!parsed.success) {
     return jsonError(
       "invalid_event",
-      "Agentic subtitle enrichment event is invalid.",
+      "Mastra subtitle enrichment event is invalid.",
       400,
     )
   }
@@ -45,22 +45,22 @@ export async function POST(
   if (parsed.data.runId !== runId) {
     return jsonError(
       "invalid_event",
-      "Agentic subtitle enrichment event runId does not match the route.",
+      "Mastra subtitle enrichment event runId does not match the route.",
       400,
     )
   }
 
   try {
-    const result = await ingestAgenticSubtitleEvent(parsed.data)
+    const result = await ingestMastraSubtitleEvent(parsed.data)
     return NextResponse.json(result, { status: 202 })
   } catch (error) {
     console.error(
-      "[api/agentic/subtitle-enrichment/events] Failed to ingest event:",
+      "[api/mastra/subtitle-enrichment/events] Failed to ingest event:",
       error,
     )
     return jsonError(
       "event_ingest_failed",
-      "Failed to ingest Agentic subtitle enrichment event.",
+      "Failed to ingest Mastra subtitle enrichment event.",
       502,
     )
   }

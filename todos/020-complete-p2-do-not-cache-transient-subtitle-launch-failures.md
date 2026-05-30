@@ -2,7 +2,7 @@
 status: complete
 priority: p2
 issue_id: "020"
-tags: [code-review, reliability, idempotency, agentic]
+tags: [code-review, reliability, idempotency, mastra]
 dependencies: []
 ---
 
@@ -10,19 +10,19 @@ dependencies: []
 
 ## Problem Statement
 
-The Agentic subtitle run route stores every launch result in its idempotency
+The Mastra subtitle run route stores every launch result in its idempotency
 map, including transient failures such as `manager_unavailable` and
 `mastra_runtime_error`. A retry with the same idempotency key then receives the
 cached failure without attempting to start the workflow again.
 
 ## Findings
 
-- `apps/agentic/src/api/subtitle-enrichment-run.ts:97` converts thrown workflow
+- `apps/mastra/src/mastra/workflows/subtitle-enrichment.ts` converts thrown workflow
   launch errors into a `mastra_runtime_error` response.
-- `apps/agentic/src/api/subtitle-enrichment-run.ts:102` stores the result for
+- `apps/mastra/src/mastra/workflows/subtitle-enrichment.ts` stores the result for
   the idempotency key regardless of whether `result.ok` is true.
 - `apps/manager/src/app/api/enrich/route.ts:530` marks the Manager job failed
-  when the Agentic launch result is not ok.
+  when the Mastra launch result is not ok.
 
 ## Proposed Solutions
 
@@ -32,7 +32,7 @@ cached failure without attempting to start the workflow again.
 memoize transient startup failures.
 
 **Pros:**
-- Retries can recover from temporary Manager/Agentic outages.
+- Retries can recover from temporary Manager/Mastra outages.
 - Keeps idempotency useful for accepted runs.
 
 **Cons:**
@@ -67,9 +67,9 @@ same idempotency key to retry after transient launch failures.
 
 Affected files:
 
-- `apps/agentic/src/api/subtitle-enrichment-run.ts`
-- `apps/agentic/src/api/subtitle-enrichment-run.test.ts`
-- `apps/manager/src/lib/agentic-subtitle-enrichment.ts`
+- `apps/mastra/src/mastra/workflows/subtitle-enrichment.ts`
+- `apps/mastra/src/mastra/workflows/subtitle-enrichment.test.ts`
+- `apps/manager/src/services/mastra-subtitle-enrichment.ts`
 
 ## Resources
 
@@ -90,7 +90,7 @@ Affected files:
 **By:** Codex
 
 **Actions:**
-- Reviewed Agentic idempotency handling.
+- Reviewed Mastra idempotency handling.
 - Identified that transient failures are stored as stable results.
 
 **Learnings:**
@@ -102,7 +102,7 @@ Affected files:
 **By:** Codex
 
 **Actions:**
-- Updated the Agentic subtitle run handler to cache idempotency records only for
+- Updated the Mastra subtitle run handler to cache idempotency records only for
   successful accepted launches.
 - Added a red/green test where the same idempotency key receives a transient
   `manager_unavailable` response and then succeeds on retry.

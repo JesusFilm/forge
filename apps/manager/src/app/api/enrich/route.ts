@@ -29,7 +29,7 @@ import {
   materializeEnrichmentTargetForJob,
   type MaterializeEnrichmentTargetResult,
 } from "@/services/stageClone"
-import { triggerAgenticSubtitleEnrichment } from "@/lib/agentic-subtitle-enrichment"
+import { triggerMastraSubtitleEnrichment } from "@/services/mastra-subtitle-enrichment"
 import { launchVideoEnrichment } from "@/workflows/launchVideoEnrichment"
 import type { JobArtifactManifest } from "@/types/job"
 
@@ -166,12 +166,11 @@ export async function createEnrichmentJobs(
 ): Promise<CreateEnrichmentJobsResult> {
   const { videoIds } = input
   const targetLanguageIds = input.targetLanguageIds ?? input.languages ?? []
-  const useAgenticSubtitleEnrichment =
-    env.AGENTIC_SUBTITLE_ENRICHMENT_ENABLED === "true"
-  if (useAgenticSubtitleEnrichment && targetLanguageIds.length !== 1) {
+  const useMastraSubtitleEnrichment =
+    env.MASTRA_SUBTITLE_ENRICHMENT_ENABLED === "true"
+  if (useMastraSubtitleEnrichment && targetLanguageIds.length !== 1) {
     throw new EnrichmentJobCreationError(400, {
-      error:
-        "Agentic subtitle enrichment requires exactly one target language.",
+      error: "Mastra subtitle enrichment requires exactly one target language.",
     })
   }
 
@@ -197,7 +196,7 @@ export async function createEnrichmentJobs(
         targetLanguageIds,
         {
           videoDocumentId: video.documentId,
-          workflowKind: useAgenticSubtitleEnrichment
+          workflowKind: useMastraSubtitleEnrichment
             ? "subtitle_only"
             : "full_enrichment",
           initialArtifacts: {
@@ -222,9 +221,9 @@ export async function createEnrichmentJobs(
         },
       )
 
-      if (useAgenticSubtitleEnrichment) {
+      if (useMastraSubtitleEnrichment) {
         const [targetLanguage] = targetLanguageIds
-        const agenticResult = await triggerAgenticSubtitleEnrichment({
+        const mastraResult = await triggerMastraSubtitleEnrichment({
           jobId: job.id,
           assetId: `mock-${video.coreId ?? video.documentId}-asset`,
           muxAssetId: `mock-${video.coreId ?? video.documentId}-asset`,
@@ -242,11 +241,11 @@ export async function createEnrichmentJobs(
           idempotencyKey: `manager:subtitle-enrichment:${job.id}`,
         })
 
-        if (!agenticResult.ok) {
+        if (!mastraResult.ok) {
           await updateJob(job.id, { status: "failed" }).catch(console.error)
           errors.push({
             videoId,
-            error: "Failed to launch Agentic subtitle enrichment workflow.",
+            error: "Failed to launch Mastra subtitle enrichment workflow.",
           })
           continue
         }
@@ -384,7 +383,7 @@ export async function createEnrichmentJobs(
           normalizedTargets.targetLanguageCodes,
           {
             videoDocumentId: video.documentId,
-            workflowKind: useAgenticSubtitleEnrichment
+            workflowKind: useMastraSubtitleEnrichment
               ? "subtitle_only"
               : "full_enrichment",
             initialArtifacts: {
@@ -418,13 +417,13 @@ export async function createEnrichmentJobs(
         })
 
         try {
-          if (useAgenticSubtitleEnrichment) {
+          if (useMastraSubtitleEnrichment) {
             const [targetLanguage] = normalizedTargets.targetLanguageCodes
             if (!targetLanguage) {
-              throw new Error("Missing target language for Agentic enrichment")
+              throw new Error("Missing target language for Mastra enrichment")
             }
 
-            const agenticResult = await triggerAgenticSubtitleEnrichment({
+            const mastraResult = await triggerMastraSubtitleEnrichment({
               jobId: job.id,
               assetId: job.muxAssetId,
               muxAssetId: materialization.targetMuxAssetId,
@@ -446,8 +445,8 @@ export async function createEnrichmentJobs(
               idempotencyKey: `manager:subtitle-enrichment:${job.id}`,
             })
 
-            if (!agenticResult.ok) {
-              throw new Error(agenticResult.messages.join("; "))
+            if (!mastraResult.ok) {
+              throw new Error(mastraResult.messages.join("; "))
             }
           } else {
             await launchVideoEnrichment({
@@ -469,8 +468,8 @@ export async function createEnrichmentJobs(
 
           return {
             videoId: coreId,
-            error: useAgenticSubtitleEnrichment
-              ? "Failed to launch Agentic subtitle enrichment workflow."
+            error: useMastraSubtitleEnrichment
+              ? "Failed to launch Mastra subtitle enrichment workflow."
               : "Failed to launch enrichment workflow.",
           }
         }

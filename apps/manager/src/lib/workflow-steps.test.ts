@@ -58,7 +58,7 @@ describe("buildInitialSteps", () => {
 })
 
 describe("buildSubtitleOnlyInitialSteps", () => {
-  it("uses only subtitle workflow steps for Agentic subtitle-only jobs", () => {
+  it("uses only subtitle workflow steps for Mastra subtitle-only jobs", () => {
     expect(SUBTITLE_ONLY_WORKFLOW_STEPS).toEqual([
       "transcription",
       "translation",

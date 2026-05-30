@@ -6,11 +6,11 @@ tags: [code-review, reliability, manager, callbacks]
 dependencies: []
 ---
 
-# Persist Agentic Event Idempotency And Terminal State
+# Persist Mastra Event Idempotency And Terminal State
 
 ## Problem Statement
 
-Manager callback ingestion deduplicates Agentic subtitle events using in-memory
+Manager callback ingestion deduplicates Mastra subtitle events using in-memory
 sets and per-run sequence maps. That state disappears on process restart and is
 not shared across instances, so duplicate or stale callbacks can be applied
 again. The route also does not check the persisted job terminal state before
@@ -18,15 +18,15 @@ applying later step events.
 
 ## Findings
 
-- `apps/manager/src/lib/agentic-subtitle-enrichment.ts:157` stores accepted
+- `apps/manager/src/services/mastra-subtitle-enrichment.ts:157` stores accepted
   event ids in a module-level `Set`.
-- `apps/manager/src/lib/agentic-subtitle-enrichment.ts:158` stores the last
+- `apps/manager/src/services/mastra-subtitle-enrichment.ts:158` stores the last
   sequence per run in a module-level `Map`.
-- `apps/manager/src/lib/agentic-subtitle-enrichment.ts:280` ignores stale
+- `apps/manager/src/services/mastra-subtitle-enrichment.ts:280` ignores stale
   sequence numbers only while the process-local map is populated.
-- `apps/manager/src/lib/agentic-subtitle-enrichment.ts:285` applies step events
+- `apps/manager/src/services/mastra-subtitle-enrichment.ts:285` applies step events
   without checking whether the job is already terminal in persisted state.
-- `apps/manager/src/lib/agentic-subtitle-enrichment.ts:233` marks
+- `apps/manager/src/services/mastra-subtitle-enrichment.ts:233` marks
   `workflow_failed` jobs failed but does not persist the workflow-level error
   message.
 
@@ -77,9 +77,9 @@ messages.
 
 Affected files:
 
-- `apps/manager/src/lib/agentic-subtitle-enrichment.ts`
-- `apps/manager/src/app/api/agentic/subtitle-enrichment-runs/[runId]/events/route.ts`
-- `apps/manager/src/app/api/agentic/subtitle-enrichment-runs/[runId]/events/route.test.ts`
+- `apps/manager/src/services/mastra-subtitle-enrichment.ts`
+- `apps/manager/src/app/api/mastra/subtitle-enrichment-runs/[runId]/events/route.ts`
+- `apps/manager/src/app/api/mastra/subtitle-enrichment-runs/[runId]/events/route.test.ts`
 
 ## Resources
 
@@ -114,7 +114,7 @@ Affected files:
 **Actions:**
 - Persisted accepted event ids, last accepted sequence, last event metadata, and
   terminal callback state in the existing job artifact manifest under
-  `agenticSubtitleCallbackState`.
+  `mastraSubtitleCallbackState`.
 - Re-read the Manager job before applying callback events, dedupe from persisted
   callback state, and ignore stale non-terminal events after terminal jobs.
 - Persisted sanitized `workflow_failed` errors into the job errors array.

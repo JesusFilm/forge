@@ -1,5 +1,5 @@
 ---
-title: "fix: Agentic Subtitle Review Findings"
+title: "fix: Mastra Subtitle Review Findings"
 type: fix
 status: active
 date: 2026-05-05
@@ -7,11 +7,11 @@ origin: https://github.com/JesusFilm/forge/pull/886
 branch: feat/116-agentic-subtitle-enrichment-workflow
 ---
 
-# fix: Agentic Subtitle Review Findings
+# fix: Mastra Subtitle Review Findings
 
 ## Overview
 
-Resolve the review findings from PR #886 before the Agentic subtitle enrichment
+Resolve the review findings from PR #886 before the Mastra subtitle enrichment
 workflow bridge is marked ready. The current branch passes unit/build checks,
 but it is not mergeable against current `origin/main`, and review found several
 runtime reliability gaps that should be fixed or explicitly deferred before
@@ -19,11 +19,11 @@ promotion.
 
 ## Source Findings
 
-- `todos/017-pending-p1-resolve-agentic-subtitle-merge-conflicts.md`
+- `todos/017-pending-p1-resolve-mastra-subtitle-merge-conflicts.md`
 - `todos/018-pending-p2-ignore-manager-test-artifacts-in-format-check.md`
 - `todos/019-pending-p2-start-real-mastra-subtitle-runs.md`
 - `todos/020-pending-p2-do-not-cache-transient-subtitle-launch-failures.md`
-- `todos/021-pending-p2-persist-agentic-event-idempotency-and-terminal-state.md`
+- `todos/021-pending-p2-persist-mastra-event-idempotency-and-terminal-state.md`
 
 ## Current Review Evidence
 
@@ -31,19 +31,19 @@ promotion.
   - `docs/roadmap/README.md`
   - `docs/roadmap/media-generation/feat-031-ai-video-enrichment-pipeline.md`
   - `pnpm-lock.yaml`
-- `pnpm --filter @forge/agentic test` passed.
+- `pnpm --filter @forge/mastra test` passed.
 - `pnpm --filter @forge/manager test` passed.
-- `pnpm --filter @forge/agentic lint && pnpm --filter @forge/agentic typecheck && pnpm --filter @forge/agentic build` passed.
+- `pnpm --filter @forge/mastra lint && pnpm --filter @forge/mastra typecheck && pnpm --filter @forge/mastra build` passed.
 - `pnpm --filter @forge/manager lint && pnpm --filter @forge/manager typecheck` passed.
 - `pnpm run format:check` failed after Manager tests generated ignored
   `.tmp` JSON artifacts, then passed after deleting those generated files.
-- Browser/API smoke proved Agentic `/health` returns 200 and anonymous/service
+- Browser/API smoke proved Mastra `/health` returns 200 and anonymous/service
   token access to built-in `/api/agents` remains 401.
 
 ## Proposed Solution
 
 Keep this as a review-fix pass on the same PR branch. Resolve the merge blocker
-first, then fix repeatable validation, then harden the Agentic/Manager runtime
+first, then fix repeatable validation, then harden the Mastra/Manager runtime
 semantics.
 
 ## Implementation Plan
@@ -93,8 +93,8 @@ semantics.
 
 ### Phase 6: Smoke And PR Update
 
-- Run Agentic and Manager locally as needed.
-- Prove Agentic `/health` and auth behavior with browser screenshots.
+- Run Mastra and Manager locally as needed.
+- Prove Mastra `/health` and auth behavior with browser screenshots.
 - If Phase 3 is completed, prove the run appears through Mastra Studio/operator
   API.
 - Update PR #886 with the final validation notes and screenshots.
@@ -103,12 +103,12 @@ semantics.
 
 Add or update failing tests before fixes:
 
-- `apps/agentic/src/api/subtitle-enrichment-run.test.ts`
+- `apps/mastra/src/mastra/workflows/subtitle-enrichment.test.ts`
   - transient launch failure is not cached
   - retry with same idempotency key can later succeed
-- `apps/agentic/src/mastra/index.test.ts`
+- `apps/mastra/src/mastra/index.ts`
   - service route starts the registered subtitle workflow runtime
-- `apps/manager/src/app/api/agentic/subtitle-enrichment-runs/[runId]/events/route.test.ts`
+- `apps/manager/src/app/api/mastra/subtitle-enrichment-runs/[runId]/events/route.test.ts`
   - duplicate/stale events remain harmless after process-local state is reset
   - stale non-terminal events after terminal job state are ignored
   - workflow-level failure error is persisted
@@ -121,9 +121,9 @@ Add or update failing tests before fixes:
 
 - [ ] PR #886 merges cleanly into current `origin/main`.
 - [ ] Format validation is repeatable after Manager tests.
-- [ ] Agentic subtitle service route starts a real registered Mastra workflow
+- [ ] Mastra subtitle service route starts a real registered Mastra workflow
       run.
-- [ ] Transient Agentic startup failures can be retried with the same
+- [ ] Transient Mastra startup failures can be retried with the same
       idempotency key.
 - [ ] Manager callback handling remains safe across retries, stale events, and
       process restarts.
@@ -133,10 +133,10 @@ Add or update failing tests before fixes:
 
 - [ ] Red tests fail before implementation.
 - [ ] New/updated green tests pass after implementation.
-- [ ] `pnpm --filter @forge/agentic lint`
-- [ ] `pnpm --filter @forge/agentic typecheck`
-- [ ] `pnpm --filter @forge/agentic test`
-- [ ] `pnpm --filter @forge/agentic build`
+- [ ] `pnpm --filter @forge/mastra lint`
+- [ ] `pnpm --filter @forge/mastra typecheck`
+- [ ] `pnpm --filter @forge/mastra test`
+- [ ] `pnpm --filter @forge/mastra build`
 - [ ] `pnpm --filter @forge/manager lint`
 - [ ] `pnpm --filter @forge/manager typecheck`
 - [ ] `pnpm --filter @forge/manager test`
@@ -146,7 +146,7 @@ Add or update failing tests before fixes:
 
 ### User Smoke
 
-- [ ] Browser screenshot proves Agentic `/health` is live.
+- [ ] Browser screenshot proves Mastra `/health` is live.
 - [ ] Browser screenshot or HTTP proof shows anonymous built-in API access is
       rejected.
 - [ ] Service token remains blocked from built-in `/api/*`.
@@ -165,6 +165,6 @@ Add or update failing tests before fixes:
 ## References
 
 - PR #886: https://github.com/JesusFilm/forge/pull/886
-- Agentic app boundary: `apps/agentic/AGENTS.md`
+- Mastra app boundary: `apps/mastra/AGENTS.md`
 - Manager app boundary: `apps/manager/AGENTS.md`
 - Review todos: `todos/017` through `todos/021`
