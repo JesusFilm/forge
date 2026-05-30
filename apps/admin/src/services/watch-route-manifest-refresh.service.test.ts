@@ -33,6 +33,8 @@ const manifest = {
   oneSegmentSlugs: [],
   episodePairsByParent: {},
   audioLanguageSlugs: ["english"],
+  audioLanguageIndexesByContent: { jesus: [0] },
+  audioLanguageIndexesByEpisode: {},
 }
 
 describe("watch route manifest refresh", () => {
@@ -67,6 +69,8 @@ describe("watch route manifest refresh", () => {
       counts: {
         contentSlugs: 1,
         audioLanguageSlugs: 1,
+        contentAudioLanguagePairs: 1,
+        episodeAudioLanguagePairs: 0,
       },
     })
     expect(emitWebhook).toHaveBeenCalledWith({

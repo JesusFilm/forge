@@ -7,6 +7,7 @@ import {
   resolveUiLocale,
   resolveWatchLocaleIdentity,
 } from "@/lib/locale"
+import { resolveLegacyWatchEpisodeAlias } from "@/lib/watch-route-aliases"
 import { canonicalizeWatchPath } from "@/lib/url-canonicalize"
 import {
   RESERVED_PREFIXES,
@@ -52,6 +53,7 @@ type RewriteDecision =
       locale: string
       htmlLang: string
       pathname: string
+      internalPathname?: string
       manifestRoute?: WatchRouteManifestRoute
     }
   | { kind: "pass" }
@@ -210,14 +212,21 @@ function classifyRewrite(pathname: string): RewriteDecision {
     }
     if (!isPublicWatchLanguageSlug(rawAudioSlug)) return { kind: "not-found" }
     const identity = resolveWatchLocaleIdentity(rawAudioSlug)
+    const internalEpisodeSlug =
+      resolveLegacyWatchEpisodeAlias(seriesSlug, episodeSlug) ?? episodeSlug
     return {
       kind: "rewrite",
       ...identity,
       pathname,
+      ...(internalEpisodeSlug !== episodeSlug
+        ? {
+            internalPathname: `/${seriesSegment}/${internalEpisodeSlug}/${localeSegment}`,
+          }
+        : {}),
       manifestRoute: {
         kind: "episode",
         parentSlug: seriesSlug,
-        childSlug: episodeSlug,
+        childSlug: internalEpisodeSlug,
         audioLanguageSlug: rawAudioSlug,
       },
     }
@@ -231,7 +240,8 @@ function rewriteToInternal(
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
 ): NextResponse {
   const url = request.nextUrl.clone()
-  const suffix = decision.pathname === "/" ? "" : decision.pathname
+  const pathname = decision.internalPathname ?? decision.pathname
+  const suffix = pathname === "/" ? "" : pathname
   url.pathname = `/${decision.locale}/${decision.htmlLang}${suffix}`
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set(

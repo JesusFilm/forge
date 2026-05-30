@@ -13,6 +13,10 @@ const manifest = {
   oneSegmentSlugs: ["easter"],
   episodePairsByParent: { series: ["episode-1", "episode-2"] },
   audioLanguageSlugs: ["english"],
+  audioLanguageIndexesByContent: { jesus: [0] },
+  audioLanguageIndexesByEpisode: {
+    series: { "episode-1": [0], "episode-2": [0] },
+  },
 }
 
 function makeSnapshot() {
@@ -101,6 +105,8 @@ describe("runGenerateWatchRouteManifest", () => {
         parentSlugs: 1,
         parentChildPairs: 2,
         audioLanguageSlugs: 1,
+        contentAudioLanguagePairs: 1,
+        episodeAudioLanguagePairs: 2,
       },
       durationMs: 42,
     })
@@ -133,6 +139,8 @@ describe("runGenerateWatchRouteManifest", () => {
         parentSlugs: 1,
         parentChildPairs: 2,
         audioLanguageSlugs: 1,
+        contentAudioLanguagePairs: 1,
+        episodeAudioLanguagePairs: 2,
       },
       durationMs: 42,
     })
@@ -152,6 +160,8 @@ describe("runGenerateWatchRouteManifest", () => {
         parentSlugs: 1,
         parentChildPairs: 2,
         audioLanguageSlugs: 1,
+        contentAudioLanguagePairs: 1,
+        episodeAudioLanguagePairs: 2,
       },
       durationMs: 42,
     })

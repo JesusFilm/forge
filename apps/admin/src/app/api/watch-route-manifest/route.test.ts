@@ -26,6 +26,8 @@ const manifest = {
   oneSegmentSlugs: ["easter"],
   episodePairsByParent: { series: ["episode"] },
   audioLanguageSlugs: ["english"],
+  audioLanguageIndexesByContent: { jesus: [0] },
+  audioLanguageIndexesByEpisode: { series: { episode: [0] } },
 }
 
 function request(headers: HeadersInit = {}) {

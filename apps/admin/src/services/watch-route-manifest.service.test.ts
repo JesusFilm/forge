@@ -27,6 +27,22 @@ describe("WatchRouteManifestService.generate", () => {
         { parentSlug: "book-of-acts", childSlug: "saul" },
       ])
       .mockResolvedValueOnce([{ slug: "english" }, { slug: "spanish" }])
+      .mockResolvedValueOnce([
+        { contentSlug: "jesus", audioLanguageSlug: "english" },
+        { contentSlug: "jesus", audioLanguageSlug: "spanish" },
+      ])
+      .mockResolvedValueOnce([
+        {
+          parentSlug: "book-of-acts",
+          childSlug: "pentecost",
+          audioLanguageSlug: "english",
+        },
+        {
+          parentSlug: "book-of-acts",
+          childSlug: "saul",
+          audioLanguageSlug: "spanish",
+        },
+      ])
 
     const service = new WatchRouteManifestService(prisma, {
       now: () => new Date("2026-05-29T12:00:00.000Z"),
@@ -43,6 +59,22 @@ describe("WatchRouteManifestService.generate", () => {
         { parentSlug: "book-of-acts", childSlug: "saul" },
       ])
       .mockResolvedValueOnce([{ slug: "english" }, { slug: "spanish" }])
+      .mockResolvedValueOnce([
+        { contentSlug: "jesus", audioLanguageSlug: "english" },
+        { contentSlug: "jesus", audioLanguageSlug: "spanish" },
+      ])
+      .mockResolvedValueOnce([
+        {
+          parentSlug: "book-of-acts",
+          childSlug: "pentecost",
+          audioLanguageSlug: "english",
+        },
+        {
+          parentSlug: "book-of-acts",
+          childSlug: "saul",
+          audioLanguageSlug: "spanish",
+        },
+      ])
 
     const second = await service.generate()
 
@@ -55,6 +87,15 @@ describe("WatchRouteManifestService.generate", () => {
         "book-of-acts": ["pentecost", "saul"],
       },
       audioLanguageSlugs: ["english", "spanish"],
+      audioLanguageIndexesByContent: {
+        jesus: [0, 1],
+      },
+      audioLanguageIndexesByEpisode: {
+        "book-of-acts": {
+          pentecost: [0],
+          saul: [1],
+        },
+      },
     })
     expect(first.version).toMatch(/^[a-f0-9]{64}$/)
   })
@@ -73,6 +114,27 @@ describe("WatchRouteManifestService.generate", () => {
         { slug: "spanish" },
         { slug: "french" },
       ])
+      .mockResolvedValueOnce([
+        { contentSlug: "book-of-acts", audioLanguageSlug: "english" },
+        { contentSlug: "book-of-acts", audioLanguageSlug: "spanish" },
+      ])
+      .mockResolvedValueOnce([
+        {
+          parentSlug: "book-of-acts",
+          childSlug: "episode-1",
+          audioLanguageSlug: "english",
+        },
+        {
+          parentSlug: "book-of-acts",
+          childSlug: "episode-1",
+          audioLanguageSlug: "spanish",
+        },
+        {
+          parentSlug: "book-of-acts",
+          childSlug: "episode-2",
+          audioLanguageSlug: "french",
+        },
+      ])
 
     const service = new WatchRouteManifestService(prisma)
     const manifest = await service.generate()
@@ -83,6 +145,8 @@ describe("WatchRouteManifestService.generate", () => {
       parentSlugs: 1,
       parentChildPairs: 2,
       audioLanguageSlugs: 3,
+      contentAudioLanguagePairs: 2,
+      episodeAudioLanguagePairs: 3,
     })
     expect(JSON.stringify(manifest)).not.toContain("episode-1/english")
     expect(JSON.stringify(manifest)).not.toContain("episode-2/spanish")
@@ -91,6 +155,8 @@ describe("WatchRouteManifestService.generate", () => {
   it("encodes public-route visibility filters in the aggregate SQL", async () => {
     const prisma = mockPrisma()
     prisma.$queryRaw
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
@@ -104,6 +170,7 @@ describe("WatchRouteManifestService.generate", () => {
     expect(allSql).toContain('"deleted_at" IS NULL')
     expect(allSql).toContain("published = TRUE")
     expect(allSql).toContain("hls IS NOT NULL")
+    expect(allSql).toContain("published_parent_slugs")
     expect(allSql).toContain('"is_template" = FALSE')
     expect(allSql).toContain('"is_homepage" = FALSE')
     expect(allSql).toContain('"path_segment" IS NULL')
@@ -113,6 +180,8 @@ describe("WatchRouteManifestService.generate", () => {
     const prisma = mockPrisma()
     prisma.$queryRaw
       .mockResolvedValueOnce([{ slug: "" }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])

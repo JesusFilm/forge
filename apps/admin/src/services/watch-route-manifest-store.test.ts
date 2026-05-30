@@ -20,6 +20,8 @@ const manifest: WatchRouteManifest = {
   oneSegmentSlugs: ["easter"],
   episodePairsByParent: { series: ["episode-1"] },
   audioLanguageSlugs: ["english"],
+  audioLanguageIndexesByContent: { jesus: [0] },
+  audioLanguageIndexesByEpisode: { series: { "episode-1": [0] } },
 }
 
 describe("WatchRouteManifestStore", () => {

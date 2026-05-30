@@ -12,9 +12,18 @@ const manifest: WatchRouteManifest = {
   contentSlugs: ["easter", "jesus"],
   oneSegmentSlugs: ["easter"],
   episodePairsByParent: {
-    jesus: ["the-beginning"],
+    jesus: ["the-beginning", "missing-language"],
   },
   audioLanguageSlugs: ["english", "spanish-latin-american"],
+  audioLanguageIndexesByContent: {
+    jesus: [0],
+  },
+  audioLanguageIndexesByEpisode: {
+    jesus: {
+      "the-beginning": [1],
+      "missing-language": [0],
+    },
+  },
 }
 
 describe("parseWatchRouteManifest", () => {
@@ -33,6 +42,18 @@ describe("parseWatchRouteManifest", () => {
       parseWatchRouteManifest({
         ...manifest,
         audioLanguageSlugs: [null],
+      }),
+    ).toBeNull()
+    expect(
+      parseWatchRouteManifest({
+        ...manifest,
+        audioLanguageIndexesByContent: { jesus: [null] },
+      }),
+    ).toBeNull()
+    expect(
+      parseWatchRouteManifest({
+        ...manifest,
+        audioLanguageIndexesByEpisode: { jesus: { "the-beginning": [null] } },
       }),
     ).toBeNull()
   })
@@ -63,7 +84,7 @@ describe("isWatchRouteAdmittedByManifest", () => {
     ).toBe(true)
   })
 
-  it("rejects unknown slugs without multiplying by language route pairs", () => {
+  it("rejects unknown slugs and content/audio combinations outside the exact route-audio index", () => {
     expect(
       isWatchRouteAdmittedByManifest(manifest, {
         kind: "video",
@@ -84,6 +105,21 @@ describe("isWatchRouteAdmittedByManifest", () => {
         kind: "video",
         contentSlug: "jesus",
         audioLanguageSlug: "en",
+      }),
+    ).toBe(false)
+    expect(
+      isWatchRouteAdmittedByManifest(manifest, {
+        kind: "video",
+        contentSlug: "jesus",
+        audioLanguageSlug: "spanish-latin-american",
+      }),
+    ).toBe(false)
+    expect(
+      isWatchRouteAdmittedByManifest(manifest, {
+        kind: "episode",
+        parentSlug: "jesus",
+        childSlug: "the-beginning",
+        audioLanguageSlug: "english",
       }),
     ).toBe(false)
   })

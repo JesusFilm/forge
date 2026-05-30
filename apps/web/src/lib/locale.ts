@@ -89,23 +89,6 @@ const HTML_LANG_OVERRIDES: Readonly<Record<string, string>> = Object.freeze({
   "spanish-latin-american": "es-419",
 })
 
-const PUBLIC_LANGUAGE_SLUG_OVERRIDES = new Set([
-  // Valid production URL slug whose admin language row currently has no
-  // generated bcp47 mapping, so it is absent from LANGUAGE_BCP47_MAP.
-  "swahili",
-])
-
-const PUBLIC_HOME_ONLY_LANGUAGE_SLUGS = new Set([
-  // Production serves /watch/german.html as a localized-home entry, while
-  // content URLs use the canonical audio slug german-standard.
-  "german",
-])
-
-const PUBLIC_HOME_ONLY_LANGUAGE_BCP47: Readonly<Record<string, string>> =
-  Object.freeze({
-    german: "de",
-  })
-
 const PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE: Readonly<
   Record<UiLocale, string>
 > = Object.freeze({
@@ -114,13 +97,6 @@ const PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE: Readonly<
   fr: "french",
   pt: "portuguese-brazil",
   de: "german-standard",
-})
-
-const PUBLIC_WATCH_HOME_LANGUAGE_SLUG_BY_UI_LOCALE: Readonly<
-  Record<UiLocale, string>
-> = Object.freeze({
-  ...PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE,
-  de: "german",
 })
 
 const BCP47_TAG_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i
@@ -152,11 +128,6 @@ export function slugToBcp47Tag(slug: string): string | null {
   // [htmlLang] segment and locale-family verification.
   if (BCP47_TAG_PATTERN.test(slug)) return normalizeBcp47Tag(slug)
   return null
-}
-
-function homeOnlySlugToBcp47Tag(slug: string): string | null {
-  if (!Object.hasOwn(PUBLIC_HOME_ONLY_LANGUAGE_BCP47, slug)) return null
-  return normalizeBcp47Tag(PUBLIC_HOME_ONLY_LANGUAGE_BCP47[slug])
 }
 
 /**
@@ -201,15 +172,12 @@ export function isPublicWatchLanguageSlug(slug: string): boolean {
   if (!PUBLIC_LANGUAGE_SLUG_PATTERN.test(slug)) return false
   return (
     Object.hasOwn(LANGUAGE_BCP47_MAP, slug) ||
-    Object.hasOwn(HTML_LANG_OVERRIDES, slug) ||
-    PUBLIC_LANGUAGE_SLUG_OVERRIDES.has(slug)
+    Object.hasOwn(HTML_LANG_OVERRIDES, slug)
   )
 }
 
 export function isPublicWatchHomeLanguageSlug(slug: string): boolean {
-  return (
-    isPublicWatchLanguageSlug(slug) || PUBLIC_HOME_ONLY_LANGUAGE_SLUGS.has(slug)
-  )
+  return isPublicWatchLanguageSlug(slug)
 }
 
 export function publicWatchAudioLanguageSlugForLocale(
@@ -219,7 +187,7 @@ export function publicWatchAudioLanguageSlugForLocale(
 }
 
 export function publicWatchHomeLanguageSlugForLocale(locale: UiLocale): string {
-  return PUBLIC_WATCH_HOME_LANGUAGE_SLUG_BY_UI_LOCALE[locale]
+  return publicWatchAudioLanguageSlugForLocale(locale)
 }
 
 // Narrow ISO 639-3 → ISO 639-1 fallback for the 5 UI_LOCALE_FAMILIES
@@ -254,10 +222,7 @@ const ISO_639_3_TO_UI_LOCALE: Readonly<
  */
 export function resolveUiLocale(localeSegment: string): UiLocale | null {
   if (isLocale(localeSegment)) return localeSegment
-  const primary =
-    slugToBcp47Primary(localeSegment) ??
-    homeOnlySlugToBcp47Tag(localeSegment)?.split("-")[0]?.toLowerCase() ??
-    null
+  const primary = slugToBcp47Primary(localeSegment) ?? null
   if (!primary) return null
   if (isLocale(primary)) return primary
   // ISO 639-3 → 639-1 fallback for the UI_LOCALE_FAMILIES families.

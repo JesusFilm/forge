@@ -17,7 +17,7 @@ const TEST_MANIFEST: WatchRouteManifest = {
   contentSlugs: ["easter", "jesus", "lumo-the-gospel-of-john"],
   oneSegmentSlugs: ["easter", "new-collection"],
   episodePairsByParent: {
-    "lumo-the-gospel-of-john": ["wedding-in-cana"],
+    "lumo-the-gospel-of-john": ["lumo-john-1-35-2-22", "wedding-in-cana"],
   },
   audioLanguageSlugs: [
     "english",
@@ -290,7 +290,7 @@ describe("proxy — explicit locale URLs are never language-redirected", () => {
     expect(response.status).not.toBe(307)
     expect(response.status).not.toBe(308)
     expect(rewritePath(response)).toBe(
-      "/en/en/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      "/en/en/lumo-the-gospel-of-john.html/lumo-john-1-35-2-22/english.html",
     )
   })
 
@@ -363,6 +363,14 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(response.status).toBe(404)
   })
 
+  it("404s stale language-home aliases that current production no longer serves", async () => {
+    for (const path of ["/german.html", "/swahili.html"]) {
+      const response = await proxy(makeRequest(path))
+      expect(response.status).toBe(404)
+      expect(rewritePath(response)).toBeNull()
+    }
+  })
+
   it("keeps the raw audio slug in rest while using message locale + regional htmlLang", async () => {
     const response = await proxy(
       makeRequest("/jesus.html/spanish-latin-american.html"),
@@ -383,6 +391,12 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(rewritePath(response)).toBeNull()
   })
 
+  it("404s stale public audio aliases that current production no longer serves", async () => {
+    const response = await proxy(makeRequest("/jesus.html/swahili.html"))
+    expect(response.status).toBe(404)
+    expect(rewritePath(response)).toBeNull()
+  })
+
   it("404s safe-looking unknown content slugs before catch-all page resolution", async () => {
     const response = await proxy(makeRequest("/anything.html/english.html"))
     expect(response.status).toBe(404)
@@ -395,6 +409,57 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     )
     expect(response.status).toBe(404)
     expect(rewritePath(response)).toBeNull()
+  })
+
+  it("internally rewrites legacy public episode aliases to current admin episode slugs", async () => {
+    const response = await proxy(
+      makeRequest("/lumo-the-gospel-of-john.html/wedding-in-cana/english.html"),
+    )
+    expect(response.status).not.toBe(307)
+    expect(response.status).not.toBe(308)
+    expect(rewritePath(response)).toBe(
+      "/en/en/lumo-the-gospel-of-john.html/lumo-john-1-35-2-22/english.html",
+    )
+  })
+
+  it("uses exact manifest episode/audio pairs when the route-audio index is present", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      contentSlugs: ["lumo-the-gospel-of-luke", "lumo-the-gospel-of-mark"],
+      episodePairsByParent: {
+        "lumo-the-gospel-of-luke": ["lumo-luke-1-57-2-40"],
+        "lumo-the-gospel-of-mark": ["jesus-baptism"],
+      },
+      audioLanguageSlugs: ["english", "spanish-castilian"],
+      audioLanguageIndexesByEpisode: {
+        "lumo-the-gospel-of-luke": {
+          "lumo-luke-1-57-2-40": [0],
+        },
+        "lumo-the-gospel-of-mark": {
+          "jesus-baptism": [1],
+        },
+      },
+    }))
+
+    const valid = await proxy(
+      makeRequest("/lumo-the-gospel-of-luke.html/birth-of-jesus/english.html"),
+    )
+    expect(rewritePath(valid)).toBe(
+      "/en/en/lumo-the-gospel-of-luke.html/lumo-luke-1-57-2-40/english.html",
+    )
+
+    const missingDub = await proxy(
+      makeRequest(
+        "/lumo-the-gospel-of-luke.html/birth-of-jesus/spanish-castilian.html",
+      ),
+    )
+    expect(missingDub.status).toBe(404)
+
+    const otherMissingDub = await proxy(
+      makeRequest("/lumo-the-gospel-of-mark.html/jesus-baptism/english.html"),
+    )
+    expect(otherMissingDub.status).toBe(404)
   })
 })
 

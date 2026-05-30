@@ -84,7 +84,6 @@ describe("public watch language slug guards", () => {
     expect(isPublicWatchLanguageSlug("spanish-castilian")).toBe(true)
     expect(isPublicWatchLanguageSlug("spanish-latin-american")).toBe(true)
     expect(isPublicWatchLanguageSlug("portuguese-brazil")).toBe(true)
-    expect(isPublicWatchLanguageSlug("swahili")).toBe(true)
   })
 
   it("rejects BCP-47 catalog keys in public /watch URL language slots", () => {
@@ -93,9 +92,11 @@ describe("public watch language slug guards", () => {
     expect(isPublicWatchLanguageSlug("es-419")).toBe(false)
   })
 
-  it("keeps known home-only legacy slugs out of content language slots", () => {
+  it("rejects stale legacy aliases that current production no longer serves", () => {
     expect(isPublicWatchLanguageSlug("german")).toBe(false)
-    expect(isPublicWatchHomeLanguageSlug("german")).toBe(true)
+    expect(isPublicWatchHomeLanguageSlug("german")).toBe(false)
+    expect(isPublicWatchLanguageSlug("swahili")).toBe(false)
+    expect(isPublicWatchHomeLanguageSlug("swahili")).toBe(false)
   })
 
   it("maps UI locales to valid public audio and home language slugs", () => {
@@ -104,7 +105,7 @@ describe("public watch language slug guards", () => {
       "spanish-castilian",
     )
     expect(publicWatchAudioLanguageSlugForLocale("de")).toBe("german-standard")
-    expect(publicWatchHomeLanguageSlugForLocale("de")).toBe("german")
+    expect(publicWatchHomeLanguageSlugForLocale("de")).toBe("german-standard")
   })
 
   it("rejects unknown and unsafe language segments", () => {
@@ -191,7 +192,7 @@ describe("resolveUiLocale (family fallback into UI_LOCALE_FAMILIES)", () => {
 
   it("resolves german-* slugs to the UI locale 'de'", () => {
     expect(resolveUiLocale("german-standard")).toBe("de")
-    expect(resolveUiLocale("german")).toBe("de")
+    expect(resolveUiLocale("german")).toBeNull()
   })
 
   it("passes bcp47 UI locales through unchanged", () => {
@@ -235,12 +236,13 @@ describe("resolveWatchLocaleIdentity", () => {
     })
   })
 
-  it("resolves the home-only German language slug without allowing it in audio slots", () => {
+  it("does not preserve the stale home-only German language alias", () => {
     expect(resolveWatchLocaleIdentity("german")).toEqual({
-      locale: "de",
-      htmlLang: "de",
+      locale: "en",
+      htmlLang: "en",
     })
     expect(isPublicWatchLanguageSlug("german")).toBe(false)
+    expect(isPublicWatchHomeLanguageSlug("german")).toBe(false)
   })
 
   it("defaults locale-less surfaces to English", () => {
