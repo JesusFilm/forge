@@ -51,6 +51,10 @@ import {
   searchEvalNativeSuiteWorkflow,
 } from "./workflows/search-eval-native-suite"
 import {
+  handleSearchEvalOrchestratorRouteRequest,
+  searchEvalOrchestratorWorkflow,
+} from "./workflows/search-eval-orchestrator"
+import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
@@ -96,6 +100,7 @@ export const mastra = new Mastra({
     offlineSearchEvalWorkflow,
     searchEvalCandidateReviewWorkflow,
     searchEvalNativeSuiteWorkflow,
+    searchEvalOrchestratorWorkflow,
   },
   logger: new PinoLogger({
     name: "ForgeMastra",
@@ -248,6 +253,21 @@ export const mastra = new Mastra({
         method: "POST",
         handler: async (c) => {
           const outcome = await handleSearchEvalNativeSuiteRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            request: c.req.raw,
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-search-eval-orchestrator", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSearchEvalOrchestratorRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             request: c.req.raw,
