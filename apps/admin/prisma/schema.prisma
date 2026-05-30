@@ -559,6 +559,22 @@ model ManagerCoverageSnapshot {
   @@map("manager_coverage_snapshot")
 }
 
+/// Latest admin-owned watch route-admission manifest. This singleton snapshot
+/// lets apps/web fetch compact public route sets without asking admin to
+/// recompute large aggregate queries per request.
+model WatchRouteManifestSnapshot {
+  key              String   @id
+  version          String
+  generatedAt      DateTime @map("generated_at")
+  payload          Json
+  payloadSizeBytes Int      @map("payload_size_bytes")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([generatedAt])
+  @@map("watch_route_manifest_snapshot")
+}
+
 /// Admin-owned persistence for Manager enrichment jobs. Field names mirror the
 /// existing Manager JobRecord so Manager can move transport without UI churn.
 model ManagerEnrichmentJob {

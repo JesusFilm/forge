@@ -16,6 +16,7 @@ import { start } from "workflow/api"
 import { ForbiddenError, NotFoundError } from "./errors"
 import { runExperienceEmbedding } from "@/workflows/experienceEmbedding"
 import { emitRevalidateWebhook } from "./revalidate-webhook"
+import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
 import {
   CreateExperienceInput,
   CreateExperienceLocaleInput,
@@ -313,6 +314,10 @@ export class ExperienceService {
           locale: updated.locale,
         })
       }
+      void refreshWatchRouteManifest({
+        prisma: this.prisma,
+        reason: "experience.update",
+      })
     }
     return updated
   }
@@ -390,6 +395,10 @@ export class ExperienceService {
         locale: published.locale,
       })
     }
+    void refreshWatchRouteManifest({
+      prisma: this.prisma,
+      reason: "experience.publish",
+    })
     return published
   }
 
@@ -543,6 +552,10 @@ export class ExperienceService {
       model: "watch-setting",
       slug: null,
       locale: null,
+    })
+    void refreshWatchRouteManifest({
+      prisma: this.prisma,
+      reason: "experience.archive",
     })
     return archived
   }
