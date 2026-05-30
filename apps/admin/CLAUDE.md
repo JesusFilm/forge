@@ -225,6 +225,45 @@ Reversing the order produces a dead minute where admin's first call 401s
 against an unconfigured web. The webhook itself swallows the 401, so the
 symptom is "web pages don't update after publish" with no error surface.
 
+### Watch route manifest snapshot
+
+Admin owns the public watch-route admission manifest at
+`GET /api/watch-route-manifest`. The route requires the normal consumer
+bearer and returns the latest persisted snapshot with `ETag` support; if no
+snapshot exists, it returns a controlled 503 instead of generating on demand.
+
+Snapshot fields the web branch can rely on:
+
+- `contentSlugs` — all public two-segment content slugs: playable videos,
+  parent videos with playable children, and published one-segment
+  experiences.
+- `oneSegmentSlugs` — published non-template, non-homepage experiences whose
+  public route is exactly one segment.
+- `episodePairsByParent` — compact parent slug to playable child slugs map for
+  three-segment episode routes.
+- `audioLanguageSlugs` — language slugs that have at least one published HLS
+  dub on a non-deleted video.
+- `version` and `generatedAt` — stable cache/revalidation metadata.
+
+Refresh triggers:
+
+- Core sync phases `languages`, `videos`, and `video-dubs`.
+- Experience locale publish/update/archive flows that can change public route
+  visibility.
+- Operator refresh script:
+
+```bash
+DATABASE_URL='postgresql://forge:forge@localhost:5433/forge_admin' \
+pnpm --filter @forge/admin watch-route-manifest:generate
+```
+
+The script prints summary-only JSON by default: version, generated timestamp,
+payload size, counts, and duration. Use `--print` only for local debugging when
+the full manifest payload is intentionally needed. Like `seed-web-fixtures`, it
+refuses production-like `DATABASE_URL` hosts (`*.railway.app`,
+`*.jesusfilm.org`, and unparseable URLs) so operators do not accidentally mutate
+production snapshots from a workstation.
+
 ### Video database backup and clone
 
 Production backup is automated only. Do not add or use an operator

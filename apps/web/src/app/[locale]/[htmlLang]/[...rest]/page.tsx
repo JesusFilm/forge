@@ -14,6 +14,7 @@ import {
   mergeWatchExperience,
   resolveSeriesBySlug,
   resolveSeriesEpisodeBySlug,
+  resolveWatchExperiencePage,
   resolveWatchPage,
   resolveWatchVideoBySlug,
 } from "@/lib/content"
@@ -21,20 +22,29 @@ import {
   generateSeriesMetadata,
   getWatchPageMetadata,
 } from "@/lib/experience-metadata"
-import { hasUiLocale } from "@/i18n/locales"
 import {
   isWatchCtaTextCopyEnabled,
   isWatchQuestionPanelEnabled,
   isWatchYouVersionBibleQuotesEnabled,
 } from "@/lib/feature-flags"
-import { DEFAULT_LOCALE, resolveUiLocale } from "@/lib/locale"
+import {
+  isLocale,
+  isPublicWatchHomeLanguageSlug,
+  isPublicWatchLanguageSlug,
+  resolveWatchLocaleIdentity,
+  type UiLocale,
+} from "@/lib/locale"
 import {
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
-import { stripHtmlSuffix } from "@/lib/url-shape"
+import {
+  isOneSegmentCollectionSlug,
+  SAFE_SLUG_PATTERN,
+  stripHtmlSuffix,
+} from "@/lib/url-shape"
 import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
 
 // ISR: pages cached for 60s. Cookie-driven language redirect lives in
@@ -42,66 +52,103 @@ import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
 // route preserves ISR for the majority of traffic without the preference
 // cookie. See docs/solutions/web/nextjs-headers-defeats-route-cache.md.
 export const revalidate = 60
+export const dynamic = "force-static"
+export const dynamicParams = true
 
-// Catch-all dispatcher for the two- and three-segment watch URL shapes.
-// Phase 2 of the URL i18n restructure: this single handler replaces the
-// prior parallel [slug]/[locale] + [slug]/[episode]/[locale] routes that
-// Next.js refused to co-locate ("different slug names for the same
-// dynamic path"). Segment-count dispatch keeps both shapes in one file:
+export function generateStaticParams(): Array<{
+  locale: string
+  htmlLang: string
+  rest: string[]
+}> {
+  return []
+}
+
+// Catch-all dispatcher for the one-, two-, and three-segment watch URL shapes.
+// The proxy prepends internal /[locale]/[htmlLang] segments for static layout
+// params, but params.rest preserves the original public path verbatim:
 //
-//   rest.length === 1 → /{slug}.html/{lang}.html       — two-segment
-//   rest.length === 2 → /{series}.html/{episode}/{lang}.html — three-segment
+//   rest.length === 1 → /{lang-or-collection}.html
+//   rest.length === 2 → /{slug}.html/{lang}.html
+//   rest.length === 3 → /{series}.html/{episode}/{lang}.html
 //
-// Any other length 404s. This file is the only place segment-count
-// classification lives at the page-route layer; the same classification
-// also lives in `parseWatchPath` inside `lib/routes.ts` (used by the
-// canonicalizer + future Phase-4 emit sites). If a new shape arrives in
-// the URL contract (e.g. four-segment), add a branch here and a new kind
-// to ParsedWatchPath.
+// Any other length 404s before resolver calls so malformed paths don't mint
+// arbitrary ISR entries or force admin lookups.
 type PageProps = {
-  params: Promise<{ slug: string; rest: string[] }>
+  params: Promise<{ locale: string; htmlLang: string; rest: string[] }>
 }
 
 type Shape =
-  | { kind: "video"; slug: string; rawLocale: string; locale: string }
+  | {
+      kind: "one-segment"
+      slug: string
+      locale: UiLocale
+      isLanguageHome: boolean
+    }
+  | { kind: "video"; slug: string; rawLocale: string; locale: UiLocale }
   | {
       kind: "episode"
       seriesSlug: string
       episodeSlug: string
       rawLocale: string
-      locale: string
+      locale: UiLocale
     }
   | { kind: "unknown" }
 
-function classify(rawSlug: string, rest: string[]): Shape {
-  const slug = stripHtmlSuffix(rawSlug)
+function stripSafeSegment(segment: string): string | null {
+  const stripped = stripHtmlSuffix(segment)
+  return SAFE_SLUG_PATTERN.test(stripped) ? stripped : null
+}
+
+function classify(rest: string[], internalLocale: UiLocale): Shape {
   if (rest.length === 1) {
-    const rawLocale = stripHtmlSuffix(rest[0])
+    const slug = stripSafeSegment(rest[0])
+    if (!slug) return { kind: "unknown" }
+    if (isLocale(slug)) return { kind: "unknown" }
+    const isLanguageHome = isPublicWatchHomeLanguageSlug(slug)
+    if (!isLanguageHome && !isOneSegmentCollectionSlug(slug)) {
+      return { kind: "unknown" }
+    }
+    return {
+      kind: "one-segment",
+      slug,
+      locale: isLanguageHome
+        ? resolveWatchLocaleIdentity(slug).locale
+        : internalLocale,
+      isLanguageHome,
+    }
+  }
+  if (rest.length === 2) {
+    const slug = stripSafeSegment(rest[0])
+    const rawLocale = stripSafeSegment(rest[1])
+    if (!slug || !rawLocale) return { kind: "unknown" }
+    if (!isPublicWatchLanguageSlug(rawLocale)) return { kind: "unknown" }
     return {
       kind: "video",
       slug,
       rawLocale,
-      // Resolve the UI chrome locale via the slug→bcp47 family fallback
-      // (`spanish-castilian` → `es-ES` → primary subtag `es`). Falls back
-      // to DEFAULT_LOCALE only when the slug doesn't map to a SUPPORTED
-      // language family. `rawLocale` stays slug-form so the audio variant
-      // selector + language picker UI keep their dub-grain resolution.
-      locale: resolveUiLocale(rawLocale) ?? DEFAULT_LOCALE,
+      // The message-catalog key is the prepended internal locale. The raw
+      // audio slug stays in params.rest for variant selection and URLs.
+      locale: internalLocale,
     }
   }
-  if (rest.length === 2) {
+  if (rest.length === 3) {
     // 3-segment: middle segment is the bare episode slug per production
     // contract. Defensive .html strip in case a partner link shipped with
     // a stale suffix on the episode (the proxy normalizes this in Phase 3,
     // but routing must tolerate either shape).
-    const episodeSlug = stripHtmlSuffix(rest[0])
-    const rawLocale = stripHtmlSuffix(rest[1])
+    const seriesSlug = stripSafeSegment(rest[0])
+    const episodeSlug = stripSafeSegment(rest[1])
+    const rawLocale = stripSafeSegment(rest[2])
+    if (!seriesSlug || !episodeSlug || !rawLocale) {
+      return { kind: "unknown" }
+    }
+    if (!isPublicWatchLanguageSlug(rawLocale)) return { kind: "unknown" }
     return {
       kind: "episode",
-      seriesSlug: slug,
+      seriesSlug,
       episodeSlug,
       rawLocale,
-      locale: resolveUiLocale(rawLocale) ?? DEFAULT_LOCALE,
+      locale: internalLocale,
     }
   }
   return { kind: "unknown" }
@@ -134,10 +181,18 @@ async function getQuestionPanelEnabled(route: string): Promise<boolean> {
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
-  const { slug: rawSlug, rest } = await params
-  const shape = classify(rawSlug, rest)
+  const { locale: rawInternalLocale, rest } = await params
+  const { locale: internalLocale } =
+    resolveWatchLocaleIdentity(rawInternalLocale)
+  const shape = classify(rest, internalLocale)
   if (shape.kind !== "unknown") {
-    setRequestLocale(hasUiLocale(shape.locale) ? shape.locale : DEFAULT_LOCALE)
+    setRequestLocale(shape.locale)
+  }
+
+  if (shape.kind === "one-segment") {
+    return shape.isLanguageHome
+      ? getWatchPageMetadata(shape.locale, { pathLocale: shape.slug })
+      : getWatchPageMetadata(shape.locale, { slug: shape.slug })
   }
 
   if (shape.kind === "video") {
@@ -185,18 +240,73 @@ export async function generateMetadata({
 }
 
 export default async function SlugRestPage({ params }: PageProps) {
-  const { slug: rawSlug, rest } = await params
-  const shape = classify(rawSlug, rest)
+  const { locale: rawInternalLocale, rest } = await params
+  const { locale: internalLocale } =
+    resolveWatchLocaleIdentity(rawInternalLocale)
+  const shape = classify(rest, internalLocale)
 
   if (shape.kind === "unknown") notFound()
 
-  setRequestLocale(hasUiLocale(shape.locale) ? shape.locale : DEFAULT_LOCALE)
+  setRequestLocale(shape.locale)
+
+  if (shape.kind === "one-segment") {
+    return renderOneSegment(shape)
+  }
 
   if (shape.kind === "episode") {
     return renderEpisode(shape)
   }
 
   return renderVideo(shape)
+}
+
+async function renderOneSegment(shape: {
+  kind: "one-segment"
+  slug: string
+  locale: UiLocale
+  isLanguageHome: boolean
+}) {
+  const { slug, locale, isLanguageHome } = shape
+  const result = isLanguageHome
+    ? await resolveWatchPage(locale)
+    : await resolveWatchExperiencePage(locale, slug)
+
+  if (result.error) {
+    if (isWatchPageMissingError(result.error)) {
+      if (isLanguageHome) return <ExperienceEmpty />
+      notFound()
+    }
+    return <ExperienceError message={result.error.message} />
+  }
+
+  const page = result.data
+  const experience =
+    page?.kind === "video-template" ? page.template : (page?.experience ?? null)
+  const routeVideo = page?.kind === "video-template" ? page.routeVideo : null
+  const blocks = (experience?.blocks ?? []).filter(
+    (b): b is Section => b !== null,
+  )
+  if (!blocks.length) {
+    return <ExperienceEmpty />
+  }
+
+  return (
+    <main className="min-h-screen bg-stone-900">
+      {blocks.map((block, i) => {
+        const key =
+          "id" in block && typeof block.id === "string"
+            ? block.id
+            : `block-${i}`
+        return (
+          <ExperienceSectionRenderer
+            key={key}
+            section={block}
+            routeVideo={routeVideo}
+          />
+        )
+      })}
+    </main>
+  )
 }
 
 async function renderEpisode(shape: {
@@ -220,8 +330,7 @@ async function renderEpisode(shape: {
   // rawLocale; emit the canonical .html shape so the proxy doesn't
   // re-normalize through per-segment .html append.
   const actualSlug = resolved.selectedVariant.language?.slug ?? null
-  const actualBcp47 = resolved.selectedVariant.language?.bcp47 ?? null
-  if (actualSlug && rawLocale !== actualSlug && rawLocale !== actualBcp47) {
+  if (actualSlug && rawLocale !== actualSlug) {
     const seriesContentSlug = tryAsContentSlug(seriesSlug)
     const episodeContentSlug = tryAsContentSlug(episodeSlug)
     const localeSlug = tryAsLocaleSlug(actualSlug)
@@ -331,8 +440,7 @@ async function renderVideo(shape: {
   const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
   if (watchVideo) {
     const actualSlug = watchVideo.selectedVariant.language?.slug ?? null
-    const actualBcp47 = watchVideo.selectedVariant.language?.bcp47 ?? null
-    if (actualSlug && rawLocale !== actualSlug && rawLocale !== actualBcp47) {
+    if (actualSlug && rawLocale !== actualSlug) {
       const contentSlug = tryAsContentSlug(slug)
       const localeSlug = tryAsLocaleSlug(actualSlug)
       if (contentSlug && localeSlug) {
@@ -391,6 +499,18 @@ async function renderVideo(shape: {
 
   const series = await resolveSeriesBySlug(slug, locale)
   if (series) {
+    const actualSlug = series.selectedVariant?.language?.slug ?? null
+    if (actualSlug && rawLocale !== actualSlug) {
+      const contentSlug = tryAsContentSlug(slug)
+      const localeSlug = tryAsLocaleSlug(actualSlug)
+      if (contentSlug && localeSlug) {
+        redirect(
+          watchVideoPath(contentSlug, localeSlug, {
+            reason: "locale-resolved",
+          }),
+        )
+      }
+    }
     return (
       <SeriesPageClient
         series={series.video}
@@ -403,7 +523,7 @@ async function renderVideo(shape: {
   const result = await resolveWatchPage(locale, slug)
   if (result.error) {
     if (isWatchPageMissingError(result.error)) {
-      return <ExperienceEmpty />
+      notFound()
     }
     return <ExperienceError message={result.error.message} />
   }

@@ -30,6 +30,7 @@
     "schema:print": "tsx src/scripts/print-schema.ts",
     "seed-easter": "tsx --env-file=.env src/scripts/seed-easter.ts",
     "seed-web-fixtures": "tsx --env-file=.env src/scripts/seed-web-fixtures.ts",
+    "watch-route-manifest:generate": "tsx --env-file=.env src/scripts/generate-watch-route-manifest.ts",
     "manager:grant-operator": "tsx --env-file=.env src/scripts/grant-manager-operator.ts",
     "trigger-enrichment": "tsx src/scripts/trigger-enrichment.ts",
     "eval:search": "tsx src/scripts/eval-search.ts run",

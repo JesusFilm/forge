@@ -881,6 +881,42 @@ export const resolveWatchPage = cache(
   },
 )
 
+const fetchResolvedWatchExperiencePage = unstable_cache(
+  async (locale: string, slug: string): Promise<WatchPageResult> => {
+    try {
+      const experience = await getExperienceBySlug(locale, slug)
+      if (!experience) {
+        return { data: null, error: new Error(NO_EXPERIENCE_FOUND_MESSAGE) }
+      }
+
+      return {
+        data: JSON.parse(
+          JSON.stringify({ kind: "experience", experience }),
+        ) as ResolvedWatchPage,
+        error: null,
+      }
+    } catch (error) {
+      return {
+        data: null,
+        error: error instanceof Error ? error : new Error(String(error)),
+      }
+    }
+  },
+  ["watch-experience-page"],
+  { revalidate: 60 },
+)
+
+/**
+ * One-segment collection landings must not fall through to the default video
+ * template. Production serves only explicitly curated Experiences at this
+ * shape, while single-video slugs such as /watch/jesus.html 404.
+ */
+export const resolveWatchExperiencePage = cache(
+  async (locale: string, slug: string): Promise<WatchPageResult> => {
+    return fetchResolvedWatchExperiencePage(locale, slug)
+  },
+)
+
 // Dedicated watch route resolver
 
 export type WatchVideoErrorCode =
@@ -1409,9 +1445,9 @@ export type ResolvedSeriesBySlug = {
 // (e.g. `"collectionn"`) would still pass the literal-union check.
 const SERIES_LABEL_VALUES = new Set<string>(["collection", "series"])
 
-// Consumed by `apps/web/src/app/[slug]/[locale]/page.tsx` (routing
-// branch + `generateMetadata`) AND by unit tests that exercise the
-// discriminator without standing up Apollo.
+// Consumed by `apps/web/src/app/[locale]/[htmlLang]/[...rest]/page.tsx`
+// (routing branch + `generateMetadata`) AND by unit tests that exercise
+// the discriminator without standing up Apollo.
 export function isSeriesRecord(record: {
   label?: string | null
   children?: { documentId: string }[] | null

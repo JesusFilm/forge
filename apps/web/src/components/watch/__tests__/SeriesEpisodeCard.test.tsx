@@ -88,14 +88,14 @@ function makeEpisode(overrides: Partial<Episode> = {}): Episode {
 function renderCard(props: {
   episode: Episode
   index?: number
-  locale?: string
+  languageSlug?: string
 }) {
   act(() => {
     root.render(
       <SeriesEpisodeCard
         episode={props.episode}
         index={props.index ?? 0}
-        locale={props.locale ?? "en"}
+        languageSlug={props.languageSlug ?? "english"}
       />,
     )
   })
@@ -269,7 +269,7 @@ describe("SeriesEpisodeCard — href", () => {
   it("routes to the canonical /{slug}.html/{locale}.html shape", () => {
     renderCard({
       episode: makeEpisode({ slug: "wedding-in-cana" }),
-      locale: "english",
+      languageSlug: "english",
     })
     const anchor = container.querySelector("a")
     expect(anchor?.getAttribute("href")).toBe(
@@ -277,10 +277,10 @@ describe("SeriesEpisodeCard — href", () => {
     )
   })
 
-  it("preserves a non-english locale", () => {
+  it("preserves a non-English audio language slug", () => {
     renderCard({
       episode: makeEpisode({ slug: "the-birth-of-jesus" }),
-      locale: "spanish-castilian",
+      languageSlug: "spanish-castilian",
     })
     const anchor = container.querySelector("a")
     expect(anchor?.getAttribute("href")).toBe(
@@ -291,7 +291,7 @@ describe("SeriesEpisodeCard — href", () => {
   it("renders a plain div (no <a>) when the slug is malformed", () => {
     renderCard({
       episode: makeEpisode({ slug: "Bad Slug!" }),
-      locale: "english",
+      languageSlug: "english",
     })
     expect(container.querySelector("a")).toBeNull()
     const card = container.querySelector('[data-testid="series-episode-card"]')
@@ -300,10 +300,10 @@ describe("SeriesEpisodeCard — href", () => {
     expect(card?.hasAttribute("href")).toBe(false)
   })
 
-  it("renders a plain div (no <a>) when the locale is malformed", () => {
+  it("renders a plain div (no <a>) when the audio language slug is malformed", () => {
     renderCard({
       episode: makeEpisode({ slug: "wedding-in-cana" }),
-      locale: "Bad Locale!",
+      languageSlug: "Bad Locale!",
     })
     expect(container.querySelector("a")).toBeNull()
     const card = container.querySelector('[data-testid="series-episode-card"]')

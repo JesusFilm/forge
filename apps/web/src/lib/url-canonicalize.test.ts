@@ -269,7 +269,7 @@ describe("Rule 5: single-segment → duplicate-with-.html → 307", () => {
     })
   })
 
-  it("does NOT fire for /search (exempt)", () => {
+  it("does NOT fire for deprecated /search", () => {
     expect(canonical({ rawPathname: "/search" })).toEqual({
       kind: "canonical",
     })
@@ -344,6 +344,12 @@ describe("Rule 6: language-slug alias → 307", () => {
     })
   })
 
+  it("does not rewrite bcp47 catalog keys in the public locale segment", () => {
+    expect(canonical({ rawPathname: "/jesus.html/en.html" })).toEqual({
+      kind: "canonical",
+    })
+  })
+
   it("applies alias on 3-segment shape (locale at index 2)", () => {
     expect(
       canonical({
@@ -412,7 +418,6 @@ describe("canonical (no-op) cases — production §5.2/§5.3 shapes", () => {
     "/russian.html",
     "/portuguese-brazil.html",
     "/videos",
-    "/search",
   ]
 
   for (const url of canonicalUrls) {

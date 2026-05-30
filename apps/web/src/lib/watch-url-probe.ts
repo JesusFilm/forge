@@ -26,7 +26,6 @@ const ROOTS: readonly string[] = [
   // NOTE: `/watch/` (trailing slash) lives in REDIRECTS — it 308s to `/watch`
   // per §5.4, so it is probed as a redirect, not a root 200.
   "/watch/videos",
-  "/watch/search",
   "/watch/english.html",
   "/watch/russian.html",
   "/watch/portuguese-brazil.html",
@@ -123,6 +122,7 @@ const EPISODES: readonly string[] = [
 
 // §5.3 legacy 4-segment + §5.4 normalization — must REDIRECT (3xx), not 404.
 const REDIRECTS: readonly string[] = [
+  "/watch/search",
   "/watch/lumo-the-gospel-of-john/wedding-in-cana.html/english.html",
   "/watch/jesus/the-beginning.html/english.html",
   "/watch/",
@@ -142,6 +142,7 @@ const QUERY_PARAMS: readonly string[] = [
 
 // §5.6 — must STAY 404 (must NOT become 200 or 301).
 const EXPECTED_404S: readonly string[] = [
+  "/watch/search.html/search.html",
   "/watch/jesus.html",
   "/watch/JESUS.html/english.html",
   "/watch/jesus.html/fran%C3%A7ais.html",
@@ -218,7 +219,7 @@ type ClassifyFixture = {
 }
 
 function passthroughViolation(
-  side: "production" | "preview",
+  side: "preview",
   result: ProbeResult,
   expectedPath: string,
 ): string | null {
@@ -232,6 +233,18 @@ function passthroughViolation(
     return `${side} final path changed: expected ${expectedPath}, got ${result.finalPath}`
   }
   return null
+}
+
+function isDeprecatedSearchFallback(
+  preview: ProbeResult,
+  fixture: ClassifyFixture,
+): boolean {
+  return (
+    fixture.path === "/watch/search" &&
+    fixture.expect === "redirect" &&
+    statusClass(preview.status) === 2 &&
+    preview.finalPath === "/watch"
+  )
 }
 
 /**
@@ -266,32 +279,40 @@ export function classifyProbe(
   }
 
   if (fixture?.expect === "passthrough") {
-    const productionViolation = passthroughViolation(
-      "production",
-      production,
-      fixture.path,
-    )
     const previewViolation = passthroughViolation(
       "preview",
       preview,
       fixture.path,
     )
-    if (productionViolation || previewViolation) {
+    if (previewViolation) {
       return {
         outcome: "hard-regression",
-        note: `PASSTHROUGH CONTRACT BROKEN: ${[
-          productionViolation,
-          previewViolation,
-        ]
-          .filter(Boolean)
-          .join("; ")}`,
+        note: `PASSTHROUGH CONTRACT BROKEN: ${previewViolation}`,
       }
+    }
+    return {
+      outcome: "match",
+      note: "passthrough preview preserved requested path",
+    }
+  }
+
+  if (fixture && isDeprecatedSearchFallback(preview, fixture)) {
+    return {
+      outcome: "acceptable",
+      note: "deprecated search routed to the root search-modal surface",
     }
   }
 
   const pc = statusClass(production.status)
   const vc = statusClass(preview.status)
   const samePath = production.finalPath === preview.finalPath
+
+  if (vc === 3 && preview.redirectHops >= MAX_REDIRECT_HOPS) {
+    return {
+      outcome: "hard-regression",
+      note: `REDIRECT LOOP: preview returned ${preview.status} after ${preview.redirectHops} hop(s) ending at ${preview.finalPath}`,
+    }
+  }
 
   if (pc === 5) {
     return {

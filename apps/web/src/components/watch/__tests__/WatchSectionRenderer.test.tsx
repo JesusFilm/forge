@@ -71,6 +71,7 @@ const {
   siblingCarouselMock: vi.fn(
     ({
       block,
+      languageSlug,
     }: {
       block: {
         canonicalParent: {
@@ -79,11 +80,13 @@ const {
         }
         currentVideoDocumentId: string
       }
+      languageSlug?: string
     }) => {
       const content = JSON.stringify({
         parentSlug: block.canonicalParent.slug,
         currentVideoDocumentId: block.currentVideoDocumentId,
         childCount: (block.canonicalParent.children ?? []).length,
+        languageSlug: languageSlug ?? null,
       })
       return (
         <div data-block-type="SiblingCarousel" data-content={content}>
@@ -306,7 +309,9 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     ]
 
     act(() => {
-      root.render(<WatchSectionRenderer blocks={blocks} />)
+      root.render(
+        <WatchSectionRenderer blocks={blocks} languageSlug="english" />,
+      )
     })
 
     const rendered = Array.from(
@@ -351,6 +356,13 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     expect(bodyTexture?.getAttribute("style")).toContain(
       "/watch/images/overlay.svg",
     )
+    const siblingEl = container.querySelector(
+      '[data-block-type="SiblingCarousel"]',
+    )
+    const siblingContent = JSON.parse(
+      siblingEl?.getAttribute("data-content") ?? "{}",
+    )
+    expect(siblingContent.languageSlug).toBe("english")
     const bibleQuotesEl = container.querySelector(
       '[data-block-type="BibleQuotes"]',
     )

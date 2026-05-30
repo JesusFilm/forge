@@ -50,13 +50,18 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
   WatchSectionRenderer: ({
     downloadError,
     downloadPending,
+    languageSlug,
     modalCallbacks,
   }: {
     downloadError?: string | null
     downloadPending?: boolean
+    languageSlug?: string
     modalCallbacks: { openDownload: () => void }
   }) => (
-    <div>
+    <div
+      data-testid="watch-section-renderer"
+      data-language-slug={languageSlug ?? ""}
+    >
       <button
         data-testid="watch-download-button"
         disabled={downloadPending}
@@ -157,6 +162,11 @@ describe("WatchPageClient download boundary", () => {
       },
     ])
     expect(latestProps.downloads[0]).not.toHaveProperty("url")
+    expect(
+      document
+        .querySelector('[data-testid="watch-section-renderer"]')
+        ?.getAttribute("data-language-slug"),
+    ).toBe("english")
   })
 
   it("shows an inline error when the first session check cannot complete", async () => {

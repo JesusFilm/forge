@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { setRequestLocale } from "next-intl/server"
-import { DEFAULT_LOCALE } from "@/lib/locale"
+import { resolveWatchLocaleIdentity } from "@/lib/locale"
 import { isWatchPageMissingError, resolveWatchPage } from "@/lib/content"
 import { getWatchPageMetadata } from "@/lib/experience-metadata"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
@@ -8,13 +8,32 @@ import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 
 export const revalidate = 60
+export const dynamic = "force-static"
+export const dynamicParams = true
 
-export async function generateMetadata(): Promise<Metadata> {
-  return getWatchPageMetadata(DEFAULT_LOCALE)
+export function generateStaticParams(): Array<{
+  locale: string
+  htmlLang: string
+}> {
+  return []
 }
 
-export default async function HomePage() {
-  const locale = DEFAULT_LOCALE
+type PageProps = {
+  params: Promise<{ locale: string; htmlLang: string }>
+}
+
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { locale: rawLocale } = await params
+  const { locale } = resolveWatchLocaleIdentity(rawLocale)
+  setRequestLocale(locale)
+  return getWatchPageMetadata(locale)
+}
+
+export default async function HomePage({ params }: PageProps) {
+  const { locale: rawLocale } = await params
+  const { locale } = resolveWatchLocaleIdentity(rawLocale)
   setRequestLocale(locale)
   const result = await resolveWatchPage(locale)
 

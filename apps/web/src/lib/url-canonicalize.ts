@@ -52,9 +52,9 @@ export type CanonicalizeInput = {
 
 const MAX_PATH_LEN = 2048
 
-// Literals that MUST NOT trigger Rule 5 (single-segment-duplicate). These are
-// served as 1-segment routes directly (videos index, search results). Every
-// other 1-segment slug is treated as legacy and duplicate-expanded.
+// Literals that MUST NOT trigger Rule 5 (single-segment-duplicate). `videos`
+// is a 1-segment index; `search` is a deprecated inbound redirect into the
+// global search modal. Neither should become a synthetic `.html` watch URL.
 const ONE_SEGMENT_EXEMPT = new Set(["videos", "search"])
 
 // Origin-invariance + injection guard. Any input that fails MUST short-circuit
@@ -200,9 +200,10 @@ export function canonicalizeWatchPath(
   }
 
   // Rule 5: single-segment-no-.html → duplicate-with-.html.
-  // /foo → /foo.html/foo.html. Skip whitelist (videos, search) which are
-  // legitimate 1-segment routes. SLUG_PATTERN_SAFE rejects host-shaped
-  // segments (e.g. /evil.com) that the positive allowlist let through.
+  // /foo → /foo.html/foo.html. Skip whitelist entries (`videos`, deprecated
+  // inbound `search`) which are legitimate 1-segment app routes.
+  // SLUG_PATTERN_SAFE rejects host-shaped segments (e.g. /evil.com) that the
+  // positive allowlist let through.
   {
     const segs = path.split("/").filter(Boolean)
     if (

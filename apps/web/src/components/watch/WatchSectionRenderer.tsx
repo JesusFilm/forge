@@ -36,6 +36,7 @@ export function WatchSectionRenderer({
   modalCallbacks,
   onPlayerReady,
   locale,
+  languageSlug,
   subtitleVttSrc,
 }: {
   blocks: MergedWatchBlock[]
@@ -45,6 +46,7 @@ export function WatchSectionRenderer({
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   locale?: string
+  languageSlug?: string
   subtitleVttSrc?: string | null
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
@@ -79,6 +81,7 @@ export function WatchSectionRenderer({
           modalCallbacks={modalCallbacks}
           onPlayerReady={onPlayerReady}
           locale={locale}
+          languageSlug={languageSlug}
           subtitleVttSrc={subtitleVttSrc}
         />
       ))}
@@ -114,6 +117,7 @@ export function WatchSectionRenderer({
                   modalCallbacks={modalCallbacks}
                   onPlayerReady={onPlayerReady}
                   locale={locale}
+                  languageSlug={languageSlug}
                 />
               ))}
             </div>
@@ -134,6 +138,7 @@ function WatchBlockEntry({
   modalCallbacks,
   onPlayerReady,
   locale,
+  languageSlug,
   subtitleVttSrc,
 }: {
   block: MergedWatchBlock
@@ -145,6 +150,7 @@ function WatchBlockEntry({
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   locale?: string
+  languageSlug?: string
   subtitleVttSrc?: string | null
 }) {
   if (isWatchBlock(block)) {
@@ -158,6 +164,7 @@ function WatchBlockEntry({
         modalCallbacks={modalCallbacks}
         onPlayerReady={onPlayerReady}
         locale={locale}
+        languageSlug={languageSlug}
         subtitleVttSrc={subtitleVttSrc}
       />
     )
@@ -174,6 +181,7 @@ function SyntheticBlock({
   modalCallbacks,
   onPlayerReady,
   locale,
+  languageSlug,
   subtitleVttSrc,
 }: {
   block: WatchBlock
@@ -184,6 +192,7 @@ function SyntheticBlock({
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   locale?: string
+  languageSlug?: string
   subtitleVttSrc?: string | null
 }) {
   switch (block.kind) {
@@ -202,7 +211,7 @@ function SyntheticBlock({
       )
     }
     case "SiblingCarousel":
-      return <SiblingCarousel block={block} />
+      return <SiblingCarousel block={block} languageSlug={languageSlug ?? ""} />
 
     case "WatchBody":
       return (

@@ -14,19 +14,18 @@ export const DEFAULT_LOCALE = "en"
 // `@/i18n/locales` for catalog membership, or `isLocale` from this file
 // for bcp47 narrowing.
 export const UI_LOCALE_FAMILIES = ["en", "es", "fr", "pt", "de"] as const
+export type UiLocale = (typeof UI_LOCALE_FAMILIES)[number]
 
 /**
  * Query-param sentinel that signals "this URL's locale has already been
  * resolved server-side; do not re-apply the cookie-driven language
  * redirect for this request." Used as the contract between three sites:
  *
- *   1. `apps/web/src/app/[slug]/[locale]/page.tsx` — sets it on the
- *      server redirect when the requested locale has no matching dub
- *      and the resolver falls back to a different variant.
- *   2. `apps/web/src/proxy.ts` — short-circuits
- *      `maybeRedirectToPreferredLanguage` when the param is present,
- *      breaking the redirect loop where the cookie would otherwise
- *      bounce the user back to the unmatched locale.
+ *   1. `apps/web/src/app/[locale]/[htmlLang]/[...rest]/page.tsx` — sets it
+ *      on the server redirect when the requested audio slug has no matching
+ *      dub and the resolver falls back to a different variant.
+ *   2. `apps/web/src/proxy.ts` — preserves it while canonicalizing and
+ *      rewriting public URLs into the internal locale tree.
  *   3. `apps/web/src/components/watch/{WatchPageClient,SeriesPageClient}.tsx`
  *      — strips the param via `history.replaceState` after hydration
  *      so the user-visible URL stays clean.
@@ -75,10 +74,59 @@ export function isLocaleSlug(param: string): boolean {
 /** Parse the primary locale from an Accept-Language header value. */
 export function parseAcceptLanguage(
   acceptLanguage: string | null,
-): (typeof UI_LOCALE_FAMILIES)[number] | null {
+): UiLocale | null {
   if (!acceptLanguage) return null
   const primary = acceptLanguage.split(",")[0]?.split("-")[0]?.trim()
   if (primary && isLocale(primary)) return primary
+  return null
+}
+
+const HTML_LANG_OVERRIDES: Readonly<Record<string, string>> = Object.freeze({
+  // Admin's generated Language.bcp47 corpus does not currently include this
+  // public audio slug, but the URL contract does. Keep the raw dub slug in
+  // the path while allowing the static root layout to emit the regional SEO
+  // tag instead of collapsing <html lang> to plain "es".
+  "spanish-latin-american": "es-419",
+})
+
+const PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE: Readonly<
+  Record<UiLocale, string>
+> = Object.freeze({
+  en: "english",
+  es: "spanish-castilian",
+  fr: "french",
+  pt: "portuguese-brazil",
+  de: "german-standard",
+})
+
+const BCP47_TAG_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i
+const PUBLIC_LANGUAGE_SLUG_PATTERN = /^[a-z0-9-]+$/
+
+export function normalizeBcp47Tag(tag: string): string {
+  return tag
+    .split("-")
+    .map((part, index) => {
+      if (index === 0) return part.toLowerCase()
+      if (/^[a-z]{4}$/i.test(part)) {
+        return part[0]?.toUpperCase() + part.slice(1).toLowerCase()
+      }
+      if (/^[a-z]{2}$/i.test(part)) return part.toUpperCase()
+      return part.toLowerCase()
+    })
+    .join("-")
+}
+
+export function slugToBcp47Tag(slug: string): string | null {
+  if (Object.hasOwn(HTML_LANG_OVERRIDES, slug)) {
+    return normalizeBcp47Tag(HTML_LANG_OVERRIDES[slug])
+  }
+  if (Object.hasOwn(LANGUAGE_BCP47_MAP, slug)) {
+    return normalizeBcp47Tag(LANGUAGE_BCP47_MAP[slug])
+  }
+  // Accept bcp47 input directly (e.g. URL contains "es-419" not an
+  // English-name language slug). This is used only for the internal
+  // [htmlLang] segment and locale-family verification.
+  if (BCP47_TAG_PATTERN.test(slug)) return normalizeBcp47Tag(slug)
   return null
 }
 
@@ -109,17 +157,37 @@ export function parseAcceptLanguage(
  *   slugToBcp47Primary("not-a-language")    → null
  */
 export function slugToBcp47Primary(slug: string): string | null {
-  if (Object.hasOwn(LANGUAGE_BCP47_MAP, slug)) {
-    const bcp47 = LANGUAGE_BCP47_MAP[slug]
-    return bcp47.split("-")[0] ?? null
-  }
-  // Accept bcp47 input directly (e.g. URL contains "en" not "english").
-  // The slug map is keyed by English-name kebab slugs; bcp47 values like
-  // "en", "es", "fr" don't appear as keys but ARE the desired output.
-  // Detect by shape: lowercase 2-3 char primary subtag with no embedded
-  // segment separators.
-  if (/^[a-z]{2,3}$/.test(slug)) return slug
-  return null
+  const bcp47 = slugToBcp47Tag(slug)
+  return bcp47?.split("-")[0]?.toLowerCase() ?? null
+}
+
+/**
+ * Public watch content URLs accept English-name audio slugs only
+ * (`english`, `spanish-castilian`, `swahili`), never BCP-47 route/catalog
+ * keys (`en`, `pt-br`). This is deliberately narrower than
+ * `slugToBcp47Tag`, which still accepts BCP-47 for the internal [htmlLang]
+ * segment.
+ */
+export function isPublicWatchLanguageSlug(slug: string): boolean {
+  if (!PUBLIC_LANGUAGE_SLUG_PATTERN.test(slug)) return false
+  return (
+    Object.hasOwn(LANGUAGE_BCP47_MAP, slug) ||
+    Object.hasOwn(HTML_LANG_OVERRIDES, slug)
+  )
+}
+
+export function isPublicWatchHomeLanguageSlug(slug: string): boolean {
+  return isPublicWatchLanguageSlug(slug)
+}
+
+export function publicWatchAudioLanguageSlugForLocale(
+  locale: UiLocale,
+): string {
+  return PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE[locale]
+}
+
+export function publicWatchHomeLanguageSlugForLocale(locale: UiLocale): string {
+  return publicWatchAudioLanguageSlugForLocale(locale)
 }
 
 // Narrow ISO 639-3 → ISO 639-1 fallback for the 5 UI_LOCALE_FAMILIES
@@ -152,11 +220,9 @@ const ISO_639_3_TO_UI_LOCALE: Readonly<
  *   resolveUiLocale("en") → "en"
  *   resolveUiLocale("russian") → null  // ru not in UI_LOCALE_FAMILIES
  */
-export function resolveUiLocale(
-  localeSegment: string,
-): (typeof UI_LOCALE_FAMILIES)[number] | null {
+export function resolveUiLocale(localeSegment: string): UiLocale | null {
   if (isLocale(localeSegment)) return localeSegment
-  const primary = slugToBcp47Primary(localeSegment)
+  const primary = slugToBcp47Primary(localeSegment) ?? null
   if (!primary) return null
   if (isLocale(primary)) return primary
   // ISO 639-3 → 639-1 fallback for the UI_LOCALE_FAMILIES families.
@@ -164,4 +230,23 @@ export function resolveUiLocale(
     return ISO_639_3_TO_UI_LOCALE[primary]
   }
   return null
+}
+
+export type WatchLocaleIdentity = {
+  /** Internal [locale] segment and next-intl message catalog key. */
+  locale: UiLocale
+  /** Internal [htmlLang] segment used by the root layout's static <html lang>. */
+  htmlLang: string
+}
+
+export function resolveWatchLocaleIdentity(
+  localeSegment: string | null | undefined,
+): WatchLocaleIdentity {
+  if (!localeSegment) {
+    return { locale: DEFAULT_LOCALE, htmlLang: DEFAULT_LOCALE }
+  }
+  const locale = resolveUiLocale(localeSegment) ?? DEFAULT_LOCALE
+  const tag = slugToBcp47Tag(localeSegment)
+  const htmlLang = tag && resolveUiLocale(tag) === locale ? tag : locale
+  return { locale, htmlLang }
 }

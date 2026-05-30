@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { useParams } from "next/navigation"
 import { Play } from "lucide-react"
 
 import {
@@ -21,19 +20,18 @@ import { resolvePosterUrl } from "@/lib/url"
 
 export function SiblingCarousel({
   block,
+  languageSlug,
 }: {
   block: WatchSiblingCarouselBlock
+  languageSlug: string
 }) {
   const { canonicalParent, currentVideoDocumentId } = block
 
-  const params = useParams<{ locale?: string }>()
-  const currentLocale = params?.locale ?? ""
-
   // Drop nulls AND items missing a slug — without a slug we can't build a
   // routable href, and rendering an unclickable card is worse than
-  // omitting it entirely. Slug/locale validity is re-checked per child via
-  // the route builders below (a malformed slug still renders, just not as a
-  // <Link>).
+  // omitting it entirely. Content-slug and public language-slug validity are
+  // re-checked per child via the route builders below (a malformed slug still
+  // renders, just not as a <Link>).
   const children = (canonicalParent.children ?? []).filter(
     (child): child is NonNullable<typeof child> & { slug: string } =>
       child != null && typeof child.slug === "string" && child.slug.length > 0,
@@ -126,9 +124,9 @@ export function SiblingCarousel({
             // ever produces broken images.
             const thumb = resolvePosterUrl(child.images?.[0])
             // The builder emits the canonical 2-segment `.html` shape
-            // (`/{slug}.html/{locale}.html`).
+            // (`/{slug}.html/{languageSlug}.html`).
             const slug = tryAsContentSlug(child.slug)
-            const lang = tryAsLocaleSlug(currentLocale)
+            const lang = tryAsLocaleSlug(languageSlug)
             const href = slug && lang ? watchVideoPath(slug, lang) : undefined
 
             const cardClassName = cn(
