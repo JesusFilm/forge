@@ -5,7 +5,7 @@
 // Resolvers delegate here; they never call Prisma directly for mutations.
 
 import { Prisma, type PrismaClient } from "@prisma/client"
-import type { Principal } from "@/auth/principal"
+import { isEditorOrAdmin, type Principal } from "@/auth/principal"
 import {
   hasPermission,
   canEditExperienceLocale,
@@ -15,6 +15,8 @@ import {
 import { start } from "workflow/api"
 import { ForbiddenError, NotFoundError } from "./errors"
 import { runExperienceEmbedding } from "@/workflows/experienceEmbedding"
+import { emitRevalidateWebhook } from "./revalidate-webhook"
+import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
 import {
   CreateExperienceInput,
   CreateExperienceLocaleInput,
@@ -23,6 +25,13 @@ import {
   RestoreExperienceLocaleRevisionInput,
   ArchiveExperienceInput,
 } from "./experience.schemas"
+
+export class ExperienceEmbeddingEligibilityError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "ExperienceEmbeddingEligibilityError"
+  }
+}
 
 function snapshotEnvelope(
   data: Prisma.InputJsonObject,
@@ -66,10 +75,6 @@ function snapshotExperienceLocale(locale: {
     createdAt: locale.createdAt?.toISOString() ?? null,
     updatedAt: locale.updatedAt?.toISOString() ?? null,
   })
-}
-
-function isPrivileged(user: Principal | null): boolean {
-  return user?.role === "ADMIN" || user?.role === "EDITOR"
 }
 
 function asSnapshotRecord(value: unknown): Record<string, unknown> | null {
@@ -159,7 +164,7 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    const includeArchived = raw.includeArchived && isPrivileged(user)
+    const includeArchived = raw.includeArchived && isEditorOrAdmin(user)
 
     return this.prisma.experience.findMany({
       ...query,
@@ -185,7 +190,7 @@ export class ExperienceService {
     }
 
     const where: Record<string, unknown> = { id }
-    if (!isPrivileged(user)) {
+    if (!isEditorOrAdmin(user)) {
       where.archivedAt = null
     }
 
@@ -207,9 +212,18 @@ export class ExperienceService {
 
     // PUBLIC and VIEWER see published only + exclude archived parents.
     // EDITOR and ADMIN see all statuses including drafts.
-    if (!isPrivileged(user)) {
+    if (!isEditorOrAdmin(user)) {
       where.status = "PUBLISHED"
-      where.experience = { archivedAt: null }
+      const experienceFilter: Record<string, unknown> = { archivedAt: null }
+      // R9: hide template experiences from PUBLIC + CONSUMER_BEARER (web
+      // SSR's identity) so the consumer never sees a template via the
+      // public surface. VIEWER bypasses this filter (editorial-tier
+      // read; templates are editorial artifacts staff translators and
+      // reviewers need to inspect).
+      if (user === null || user.role === "CONSUMER_BEARER") {
+        experienceFilter.isTemplate = false
+      }
+      where.experience = experienceFilter
     }
 
     return this.prisma.experienceLocale.findFirst({ ...query, where })
@@ -254,7 +268,7 @@ export class ExperienceService {
     }
 
     const { id, isTemplate, ...data } = input
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       await tx.contentRevision.create({
         data: {
           entityType: "ExperienceLocale",
@@ -279,6 +293,33 @@ export class ExperienceService {
         data,
       })
     })
+
+    // Fire-and-forget: refresh web's ISR cache for any update that
+    // touches a PUBLISHED locale. Draft-only edits never affected
+    // public pages so they don't need revalidation. `emitRevalidateWebhook`
+    // never throws and is intentionally not awaited so a sick web
+    // instance can't add the 5s timeout budget to admin's publish UX.
+    if (updated.status === "PUBLISHED") {
+      void emitRevalidateWebhook({
+        model: "experience",
+        slug: updated.slug,
+        locale: updated.locale,
+      })
+      if (updated.isHomepage || typeof isTemplate === "boolean") {
+        // Homepage / template flag changes ripple through the watch
+        // settings derived view — refresh that too.
+        void emitRevalidateWebhook({
+          model: "watch-setting",
+          slug: null,
+          locale: updated.locale,
+        })
+      }
+      void refreshWatchRouteManifest({
+        prisma: this.prisma,
+        reason: "experience.update",
+      })
+    }
+    return updated
   }
 
   async publishLocale({
@@ -317,7 +358,7 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const published = await this.prisma.$transaction(async (tx) => {
       await tx.contentRevision.create({
         data: {
           entityType: "ExperienceLocale",
@@ -338,6 +379,27 @@ export class ExperienceService {
         },
       })
     })
+
+    // Fire-and-forget: a fresh publish always changes the public surface.
+    // `emitRevalidateWebhook` never throws and is intentionally not awaited
+    // — admin's publish UX must not block on web's ISR refresh.
+    void emitRevalidateWebhook({
+      model: "experience",
+      slug: published.slug,
+      locale: published.locale,
+    })
+    if (published.isHomepage) {
+      void emitRevalidateWebhook({
+        model: "watch-setting",
+        slug: null,
+        locale: published.locale,
+      })
+    }
+    void refreshWatchRouteManifest({
+      prisma: this.prisma,
+      reason: "experience.publish",
+    })
+    return published
   }
 
   async restoreLocaleRevision({
@@ -476,10 +538,26 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    return this.prisma.experience.update({
+    const archived = await this.prisma.experience.update({
       where: { id: input.id },
       data: { archivedAt: new Date() },
     })
+
+    // Fire-and-forget: archiving pulls every locale of this experience
+    // out of the public surface. Web's `watch-setting` handler invalidates
+    // the root layout + every homepage path, which is a broader
+    // invalidation than strictly needed but safe. Not awaited so a sick
+    // web instance can't block admin's archive UX.
+    void emitRevalidateWebhook({
+      model: "watch-setting",
+      slug: null,
+      locale: null,
+    })
+    void refreshWatchRouteManifest({
+      prisma: this.prisma,
+      reason: "experience.archive",
+    })
+    return archived
   }
 
   async triggerEmbedding({
@@ -507,6 +585,14 @@ export class ExperienceService {
 
     if (!canEditExperienceLocale(user, locale)) {
       throw new ForbiddenError()
+    }
+    if (locale.experience.archivedAt != null) {
+      throw new NotFoundError("ExperienceLocale", localeId)
+    }
+    if (locale.status !== "PUBLISHED") {
+      throw new ExperienceEmbeddingEligibilityError(
+        "ExperienceLocale must be published before embedding",
+      )
     }
 
     // Dispatch via the useworkflow runtime — direct invocation throws in

@@ -79,7 +79,9 @@ describe("ShareModal — Copy Link", () => {
     const input = $(
       '[data-testid="watch-share-modal-link-input"]',
     ) as HTMLInputElement
-    expect(input.value).toBe("https://share.example/watch/the-call/english")
+    expect(input.value).toBe(
+      "https://share.example/watch/the-call.html/english.html",
+    )
     expect(input.readOnly).toBe(true)
   })
 
@@ -108,7 +110,7 @@ describe("ShareModal — Copy Link", () => {
     })
 
     expect(writeText).toHaveBeenCalledWith(
-      "https://share.example/watch/the-call/english",
+      "https://share.example/watch/the-call.html/english.html",
     )
     expect(copyBtn.textContent).toBe("Copied")
   })
@@ -150,7 +152,7 @@ describe("ShareModal — Facebook + X share intents", () => {
       '[data-testid="watch-share-modal-facebook"]',
     ) as HTMLAnchorElement
     expect(fb.href).toBe(
-      "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call%2Fenglish",
+      "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call.html%2Fenglish.html",
     )
   })
 
@@ -168,7 +170,7 @@ describe("ShareModal — Facebook + X share intents", () => {
     })
     const x = $('[data-testid="watch-share-modal-x"]') as HTMLAnchorElement
     expect(x.href).toBe(
-      "https://x.com/intent/tweet?url=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call%2Fenglish&text=The%20Call",
+      "https://x.com/intent/tweet?url=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call.html%2Fenglish.html&text=The%20Call",
     )
   })
 })
@@ -368,6 +370,39 @@ describe("ShareModal — clipboard failure", () => {
 })
 
 describe("ShareModal — lifecycle", () => {
+  it("renders the close button at the viewport top-right", () => {
+    const onClose = vi.fn()
+
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug="v"
+          currentLanguageSlug="english"
+          onClose={onClose}
+        />,
+      )
+    })
+
+    const close = $(
+      '[data-testid="watch-share-modal-close"]',
+    ) as HTMLButtonElement
+    expect(close).not.toBeNull()
+    expect(close.className).toContain("fixed")
+    expect(close.className).toContain("top-12")
+    expect(close.className).toContain("right-10")
+    expect(close.className).toContain("h-[52px]")
+    expect(close.className).toContain("w-12")
+    expect(close.className).toContain("z-[60]")
+    expect(close.querySelector("svg")?.getAttribute("class")).toContain("h-6")
+
+    act(() => {
+      close.click()
+    })
+
+    expect(onClose).toHaveBeenCalled()
+  })
+
   it("does not render any modal contents when open is false", () => {
     act(() => {
       root.render(

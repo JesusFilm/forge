@@ -4,7 +4,10 @@
   "version": "0.0.1",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./mux-player": "./src/MuxPlayer.tsx",
+    "./mux-video": "./src/MuxVideo.tsx",
+    "./video-js-core": "./src/useVideoPlayerCore.ts"
   },
   "scripts": {
     "lint": "eslint .",

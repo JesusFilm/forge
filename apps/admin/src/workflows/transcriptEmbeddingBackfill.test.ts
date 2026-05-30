@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-// Concurrency must be set BEFORE the workflow is imported below so the
-// p-limit instance reads the override. vi.mock hoists ahead of the
-// dynamic imports.
 vi.mock("@/config/env", () => ({
   env: {
     TRANSCRIPT_EMBEDDING_CONCURRENCY: 2,
@@ -22,34 +19,49 @@ vi.mock("@/services/core-id-mapping.service", () => ({
     byCoreId: new Map<string, number>([
       ["core-a", 1],
       ["core-b", 2],
+      ["core-c", 3],
     ]),
   })),
 }))
 
-vi.mock("@/services/transcript-embedding.service", async (importOriginal) => {
+const STUB_TRANSCRIPT = {
+  text: "stub transcript source",
+  segments: [{ start: 0, end: 2, text: "stub transcript source" }],
+  language: "en",
+  resolvedProvider: "mux" as const,
+  routingReport: { attempts: [] },
+}
+
+vi.mock("@/services/manager-artifacts.service", async (importOriginal) => {
   const actual =
     await importOriginal<
-      typeof import("@/services/transcript-embedding.service")
+      typeof import("@/services/manager-artifacts.service")
     >()
   return {
-    ...actual, // keep the real TranscriptIndexError class reachable
-    indexEditionTranscript: vi.fn(async () => ({
-      editionId: "edition-stub",
-      language: "en",
-      chunksIndexed: 3,
-      embeddingsWritten: 3,
-      chunksPruned: 0,
-      model: "openai/text-embedding-3-small",
-      dimensions: 1536,
-    })),
+    ...actual,
+    readTranscriptSourceArtifact: vi.fn(async () => STUB_TRANSCRIPT),
   }
 })
 
+vi.mock("@/services/mastra-transcript-embedding-client", () => ({
+  launchMastraTranscriptEmbedding: vi.fn(async () => ({
+    ok: true,
+    status: "created",
+    chunks: 1,
+    totalTokens: 4,
+    model: "openai/text-embedding-3-small",
+    provider: "openai",
+    dimensions: 1536,
+    mastraRunId: "run-1",
+    sourceContentHash: "sha256:test",
+  })),
+}))
+
 const { prisma } = await import("@/db/client")
-const { indexEditionTranscript, TranscriptIndexError } =
-  await import("@/services/transcript-embedding.service")
-const { ManagerArtifactError } =
+const { ManagerArtifactError, readTranscriptSourceArtifact } =
   await import("@/services/manager-artifacts.service")
+const { launchMastraTranscriptEmbedding } =
+  await import("@/services/mastra-transcript-embedding-client")
 const { runTranscriptEmbeddingBackfill, _internals } =
   await import("./transcriptEmbeddingBackfill")
 
@@ -72,10 +84,23 @@ function row(
 describe("runTranscriptEmbeddingBackfill", () => {
   beforeEach(() => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
-    vi.mocked(indexEditionTranscript).mockClear()
+    vi.mocked(readTranscriptSourceArtifact).mockReset()
+    vi.mocked(readTranscriptSourceArtifact).mockResolvedValue(STUB_TRANSCRIPT)
+    vi.mocked(launchMastraTranscriptEmbedding).mockReset()
+    vi.mocked(launchMastraTranscriptEmbedding).mockResolvedValue({
+      ok: true,
+      status: "created",
+      chunks: 1,
+      totalTokens: 4,
+      model: "openai/text-embedding-3-small",
+      provider: "openai",
+      dimensions: 1536,
+      mastraRunId: "run-1",
+      sourceContentHash: "sha256:test",
+    })
   })
 
-  it("enumerates (video, edition) pairs and indexes one transcript per target", async () => {
+  it("enumerates targets and launches Mastra with Admin identifiers", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
       row("v-b", "e-b", "core-b", "es"),
@@ -87,36 +112,22 @@ describe("runTranscriptEmbeddingBackfill", () => {
 
     expect(report.totalTargets).toBe(2)
     expect(report.succeeded).toBe(2)
-    expect(report.skipped).toBe(0)
     expect(report.failed).toBe(0)
-    expect(indexEditionTranscript).toHaveBeenCalledTimes(2)
-    expect(indexEditionTranscript).toHaveBeenCalledWith(
-      prisma,
-      expect.objectContaining({
-        editionId: "e-a",
+    expect(readTranscriptSourceArtifact).toHaveBeenCalledTimes(2)
+    expect(launchMastraTranscriptEmbedding).toHaveBeenCalledWith({
+      target: {
         videoId: "v-a",
+        videoEditionId: "e-a",
         coreId: "core-a",
-        cmsVideoId: 1,
-        language: "en",
-      }),
-    )
-    expect(indexEditionTranscript).toHaveBeenCalledWith(
-      prisma,
-      expect.objectContaining({
-        editionId: "e-b",
-        videoId: "v-b",
-        coreId: "core-b",
-        cmsVideoId: 2,
-        language: "es",
-      }),
-    )
+      },
+      language: "en",
+      cmsVideoId: 1,
+      transcript: STUB_TRANSCRIPT,
+      mode: "idempotent",
+    })
   })
 
-  it("produces one target per (edition, language) pair for multi-language editions", async () => {
-    // A single edition exposed in three languages (one primary, one
-    // dubbed, one subtitled) should produce three distinct targets,
-    // not one. The SQL enumeration returns one row per triple; the
-    // workflow indexes each.
+  it("loads transcript source once per (video, edition) group across languages", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
       row("v-a", "e-a", "core-a", "es"),
@@ -128,100 +139,44 @@ describe("runTranscriptEmbeddingBackfill", () => {
     })
 
     expect(report.totalTargets).toBe(3)
-    expect(indexEditionTranscript).toHaveBeenCalledTimes(3)
-    const languagesCalled = vi
-      .mocked(indexEditionTranscript)
-      .mock.calls.map((c) => (c[1] as { language: string }).language)
-      .sort()
-    expect(languagesCalled).toEqual(["en", "es", "fr"])
+    expect(report.succeeded).toBe(3)
+    expect(readTranscriptSourceArtifact).toHaveBeenCalledTimes(1)
+    expect(readTranscriptSourceArtifact).toHaveBeenCalledWith("1")
+    expect(launchMastraTranscriptEmbedding).toHaveBeenCalledTimes(3)
   })
 
-  it("applies the coreIds filter", async () => {
-    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      row("v-a", "e-a", "core-a", "en"),
-      row("v-b", "e-b", "core-b", "en"),
-    ])
-
-    const report = await runTranscriptEmbeddingBackfill({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-      coreIds: ["core-b"],
-    })
-
-    expect(report.totalTargets).toBe(1)
-    expect(indexEditionTranscript).toHaveBeenCalledTimes(1)
-    expect(indexEditionTranscript).toHaveBeenCalledWith(
-      prisma,
-      expect.objectContaining({ coreId: "core-b" }),
-    )
-  })
-
-  it("languages filter is a strict inclusion list — no hardcoded fallback defaults apply", async () => {
-    // Confirm the data-derived enumeration: if the SQL returns a row
-    // for (core-a, es) but the caller's filter is ["en"], the target
-    // is dropped. No "primary language unset → default to en" rescue.
-    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      row("v-a", "e-a", "core-a", "es"),
-      row("v-b", "e-b", "core-b", "en"),
-    ])
-
-    const report = await runTranscriptEmbeddingBackfill({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-      languages: ["en"],
-    })
-
-    expect(report.totalTargets).toBe(1)
-    expect(indexEditionTranscript).toHaveBeenCalledTimes(1)
-    expect(indexEditionTranscript).toHaveBeenCalledWith(
-      prisma,
-      expect.objectContaining({ coreId: "core-b", language: "en" }),
-    )
-  })
-
-  it("applies the languages filter to narrow which targets get indexed", async () => {
+  it("applies coreId, language, and mode filters", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
       row("v-b", "e-b", "core-b", "es"),
-      row("v-c", "e-c", "core-a", "fr"), // same coreId as v-a
+      row("v-c", "e-c", "core-c", "en"),
     ])
 
-    // Mapping only knows core-a and core-b; v-c survives because
-    // core-a is mapped. After the language filter, only en + es stay.
     const report = await runTranscriptEmbeddingBackfill({
       mappingS3Key: "admin-migrations/core-id-mapping.json",
-      languages: ["en", "es"],
+      coreIds: ["core-a", "core-c"],
+      languages: ["en"],
+      mode: "force",
     })
 
     expect(report.totalTargets).toBe(2)
-    expect(report.languageFilter).toEqual(["en", "es"])
-    expect(indexEditionTranscript).toHaveBeenCalledTimes(2)
-    const calls = vi
-      .mocked(indexEditionTranscript)
-      .mock.calls.map((c) => (c[1] as { language: string }).language)
-    expect(calls.sort()).toEqual(["en", "es"])
+    expect(report.languageFilter).toEqual(["en"])
+    expect(launchMastraTranscriptEmbedding).toHaveBeenCalledTimes(2)
+    for (const call of vi.mocked(launchMastraTranscriptEmbedding).mock.calls) {
+      expect(call[0].mode).toBe("force")
+      expect(call[0].language).toBe("en")
+    }
   })
 
-  it("skips targets whose coreId is absent from the mapping", async () => {
+  it("skips every language in a group when transcript source is missing and emits missingArtifacts once", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
-      row("v-z", "e-z", "unmapped-core-z", "en"),
+      row("v-a", "e-a", "core-a", "es"),
     ])
-
-    const report = await runTranscriptEmbeddingBackfill({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-    })
-
-    expect(report.totalTargets).toBe(1)
-    expect(indexEditionTranscript).toHaveBeenCalledTimes(1)
-  })
-
-  it("converts artifact_missing errors to skipped outcomes", async () => {
-    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      row("v-a", "e-a", "core-a", "en"),
-    ])
-    vi.mocked(indexEditionTranscript).mockRejectedValueOnce(
+    vi.mocked(readTranscriptSourceArtifact).mockRejectedValueOnce(
       new ManagerArtifactError(
         "artifact_missing",
-        "embeddings artifact not found for assetId=1",
+        "transcript artifact not found for assetId=1",
       ),
     )
 
@@ -230,68 +185,69 @@ describe("runTranscriptEmbeddingBackfill", () => {
     })
 
     expect(report.succeeded).toBe(0)
-    expect(report.skipped).toBe(1)
+    expect(report.skipped).toBe(2)
     expect(report.failed).toBe(0)
-    expect(report.outcomes[0]?.status).toBe("skipped")
-  })
-
-  it("does not demote unrelated errors mentioning 'not found' to skipped", async () => {
-    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      row("v-a", "e-a", "core-a", "en"),
+    expect(launchMastraTranscriptEmbedding).not.toHaveBeenCalled()
+    expect(report.missingArtifacts).toEqual([
+      { assetId: 1, coreId: "core-a", kind: "transcript" },
     ])
-    vi.mocked(indexEditionTranscript).mockRejectedValueOnce(
-      new Error("Record to update not found."),
-    )
-
-    const report = await runTranscriptEmbeddingBackfill({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-    })
-
-    expect(report.failed).toBe(1)
-    expect(report.skipped).toBe(0)
   })
 
-  it("classifies TranscriptIndexError dimension_mismatch as failed", async () => {
-    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      row("v-a", "e-a", "core-a", "en"),
-    ])
-    // Use the real TranscriptIndexError so a future refactor that
-    // switches the workflow to branch by `instanceof` stays covered.
-    vi.mocked(indexEditionTranscript).mockRejectedValueOnce(
-      new TranscriptIndexError(
-        "dimension_mismatch",
-        "artifact reports dimensions=768",
-      ),
-    )
-
-    const report = await runTranscriptEmbeddingBackfill({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-    })
-
-    expect(report.failed).toBe(1)
-    expect(report.skipped).toBe(0)
-    const outcome = report.outcomes[0]
-    expect(outcome?.status).toBe("failed")
-    if (outcome?.status === "failed") {
-      expect(outcome.reason).toContain("dimensions=768")
-    }
-  })
-
-  it("records failed outcomes but keeps processing other targets", async () => {
+  it("classifies invalid transcript source and Mastra product failures as failed outcomes", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
       row("v-b", "e-b", "core-b", "en"),
     ])
-    vi.mocked(indexEditionTranscript)
-      .mockRejectedValueOnce(new Error("boom"))
+    vi.mocked(readTranscriptSourceArtifact).mockImplementation(
+      async (assetId: string) => {
+        if (assetId === "1") {
+          throw new ManagerArtifactError(
+            "artifact_invalid",
+            "transcript artifact failed schema validation",
+          )
+        }
+        return STUB_TRANSCRIPT
+      },
+    )
+    vi.mocked(launchMastraTranscriptEmbedding).mockResolvedValueOnce({
+      ok: false,
+      reason: "admin_ingest_rejected",
+      retryable: false,
+      mastraRunId: "run-2",
+      adminStatus: "rejected",
+      adminReason: "existing_transcript_differs",
+    })
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.failed).toBe(2)
+    expect(report.skipped).toBe(0)
+    expect(report.missingArtifacts).toEqual([])
+  })
+
+  it("keeps processing sibling targets when one Mastra launch fails", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
+      row("v-a", "e-a", "core-a", "en"),
+      row("v-b", "e-b", "core-b", "en"),
+    ])
+    vi.mocked(launchMastraTranscriptEmbedding)
       .mockResolvedValueOnce({
-        editionId: "e-b",
-        language: "en",
-        chunksIndexed: 2,
-        embeddingsWritten: 2,
-        chunksPruned: 0,
+        ok: false,
+        reason: "network_error",
+        retryable: true,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: "unchanged",
+        chunks: 1,
+        totalTokens: 4,
         model: "openai/text-embedding-3-small",
+        provider: "openai",
         dimensions: 1536,
+        mastraRunId: "run-3",
+        sourceContentHash: "sha256:test",
       })
 
     const report = await runTranscriptEmbeddingBackfill({
@@ -300,220 +256,95 @@ describe("runTranscriptEmbeddingBackfill", () => {
 
     expect(report.succeeded).toBe(1)
     expect(report.failed).toBe(1)
-    expect(report.skipped).toBe(0)
-  })
-
-  it("treats coreIds: [] as omitted (runs all mapped targets)", async () => {
-    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      row("v-a", "e-a", "core-a", "en"),
-      row("v-b", "e-b", "core-b", "en"),
-    ])
-
-    const report = await runTranscriptEmbeddingBackfill({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-      coreIds: [],
-    })
-
-    expect(report.totalTargets).toBe(2)
-  })
-
-  it("treats languages: [] as omitted (no filter applied)", async () => {
-    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      row("v-a", "e-a", "core-a", "fr"),
-    ])
-
-    const report = await runTranscriptEmbeddingBackfill({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-      languages: [],
-    })
-
-    expect(report.totalTargets).toBe(1)
-    expect(report.languageFilter).toBeNull()
-  })
-
-  it("returns an empty report when the DB has no editions", async () => {
-    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([])
-    const report = await runTranscriptEmbeddingBackfill({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-    })
-    expect(report.totalTargets).toBe(0)
-    expect(report.outcomes).toEqual([])
-    expect(indexEditionTranscript).not.toHaveBeenCalled()
-  })
-})
-
-describe("runTranscriptEmbeddingBackfill — bounded parallelism", () => {
-  beforeEach(() => {
-    // Restore any `vi.spyOn(_internals, ...)` from a prior test so
-    // the next test sees the real `stepIndexEditionTranscript`.
-    vi.restoreAllMocks()
-    ;(prisma as unknown as PrismaStub).$queryRaw.mockReset()
-    vi.mocked(indexEditionTranscript).mockReset()
-  })
-
-  it("isolates a per-target indexer error: errors caught inside stepIndexEditionTranscript → outcome stays `failed`, siblings continue", async () => {
-    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      row("v-a", "e-a", "core-a", "en"),
-      row("v-b", "e-b", "core-b", "en"),
-      row("v-c", "e-c", "core-a", "es"),
-    ])
-
-    const ok = (lang: string) => ({
-      editionId: `e-${lang}`,
-      language: lang,
-      chunksIndexed: 1,
-      embeddingsWritten: 1,
-      chunksPruned: 0,
-      model: "openai/text-embedding-3-small",
-      dimensions: 1536,
-    })
-
-    vi.mocked(indexEditionTranscript)
-      .mockResolvedValueOnce(ok("en"))
-      .mockRejectedValueOnce(new Error("kaboom"))
-      .mockResolvedValueOnce(ok("es"))
-
-    const report = await runTranscriptEmbeddingBackfill({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-    })
-
-    expect(report.totalTargets).toBe(3)
-    expect(report.succeeded).toBe(2)
-    expect(report.failed).toBe(1)
-    expect(report.skipped).toBe(0)
-    expect(indexEditionTranscript).toHaveBeenCalledTimes(3)
-  })
-
-  it("uses Promise.allSettled (not Promise.all) — a step-level rejection is recorded as a synthetic failed outcome instead of aborting the batch", async () => {
-    // Spy on `_internals.stepIndexEditionTranscript` so the rejection
-    // bypasses the step's internal try/catch and reaches the
-    // workflow's `Promise.allSettled` boundary directly. Under
-    // `Promise.all`, the workflow body's `await` would throw and
-    // `stepReport` would never run.
-    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
-      row("v-a", "e-a", "core-a", "en"),
-      row("v-b", "e-b", "core-b", "en"),
-      row("v-c", "e-c", "core-a", "es"),
-    ])
-
-    const okOutcome = (target: { videoEditionId: string; language: string }) =>
-      ({
-        status: "succeeded" as const,
-        target: target as never,
-        language: target.language,
-        chunksIndexed: 1,
-        embeddingsWritten: 1,
-        chunksPruned: 0,
-        durationMs: 5,
-      }) as never
-
-    vi.spyOn(_internals, "stepIndexEditionTranscript").mockImplementation(
-      async (target) => {
-        if (target.coreId === "core-b") {
-          throw new Error("step plumbing fault")
-        }
-        return okOutcome(target)
-      },
+    const success = report.outcomes.find(
+      (outcome) => outcome.status === "succeeded",
     )
-
-    const report = await runTranscriptEmbeddingBackfill({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    expect(success).toMatchObject({
+      status: "succeeded",
+      chunksIndexed: 1,
+      embeddingsWritten: 0,
     })
-
-    expect(report.totalTargets).toBe(3)
-    expect(report.succeeded).toBe(2)
-    expect(report.failed).toBe(1)
-    expect(report.skipped).toBe(0)
-    const failedOutcome = report.outcomes.find((o) => o.status === "failed")
-    expect(failedOutcome).toBeDefined()
-    if (failedOutcome?.status === "failed") {
-      expect(failedOutcome.target.coreId).toBe("core-b")
-      expect(failedOutcome.reason).toBe("step plumbing fault")
-      expect(failedOutcome.durationMs).toBeGreaterThanOrEqual(0)
-    }
   })
 
-  it("caps concurrent in-flight indexer calls at TRANSCRIPT_EMBEDDING_CONCURRENCY (and uses parallelism, not sequential)", async () => {
-    // Asserts BOTH the concurrency cap (≤ 2) AND that parallelism is
-    // used (max in-flight > 1). A regression to sequential `for…of`
-    // would yield `observedMaxInFlight === 1` and fail the assertion.
+  it("caps concurrent in-flight groups at TRANSCRIPT_EMBEDDING_CONCURRENCY", async () => {
     ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([
       row("v-a", "e-a", "core-a", "en"),
       row("v-b", "e-b", "core-b", "en"),
-      row("v-c", "e-c", "core-a", "es"),
+      row("v-c", "e-c", "core-c", "en"),
     ])
 
     let inFlight = 0
     let observedMaxInFlight = 0
-
-    vi.mocked(indexEditionTranscript).mockImplementation(
-      async (_prisma, args) => {
-        inFlight += 1
-        observedMaxInFlight = Math.max(observedMaxInFlight, inFlight)
-        await new Promise((resolve) => setTimeout(resolve, 25))
-        inFlight -= 1
-        return {
-          editionId: args.editionId,
-          language: args.language,
-          chunksIndexed: 1,
-          embeddingsWritten: 1,
-          chunksPruned: 0,
-          model: "openai/text-embedding-3-small",
-          dimensions: 1536,
-        }
-      },
-    )
+    vi.mocked(launchMastraTranscriptEmbedding).mockImplementation(async () => {
+      inFlight += 1
+      observedMaxInFlight = Math.max(observedMaxInFlight, inFlight)
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      inFlight -= 1
+      return {
+        ok: true,
+        status: "created",
+        chunks: 1,
+        totalTokens: 4,
+        model: "openai/text-embedding-3-small",
+        provider: "openai",
+        dimensions: 1536,
+        mastraRunId: "run-1",
+        sourceContentHash: "sha256:test",
+      }
+    })
 
     await runTranscriptEmbeddingBackfill({
       mappingS3Key: "admin-migrations/core-id-mapping.json",
     })
 
     expect(observedMaxInFlight).toBe(2)
-    expect(indexEditionTranscript).toHaveBeenCalledTimes(3)
+  })
+
+  it("returns an empty report when the DB has no editions", async () => {
+    ;(prisma as unknown as PrismaStub).$queryRaw.mockResolvedValueOnce([])
+
+    const report = await runTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+    })
+
+    expect(report.totalTargets).toBe(0)
+    expect(report.outcomes).toEqual([])
+    expect(readTranscriptSourceArtifact).not.toHaveBeenCalled()
+    expect(launchMastraTranscriptEmbedding).not.toHaveBeenCalled()
   })
 })
 
-describe("_internals.stepReport", () => {
-  it("aggregates mixed outcomes correctly", () => {
-    const target = {
-      videoId: "v",
-      videoEditionId: "e",
-      coreId: "core",
-      cmsVideoId: 1,
-      language: "en",
-    }
-    const report = _internals.stepReport({
-      mappingGeneratedAt: "2026-04-22T00:00:00.000Z",
-      targets: 3,
-      languageFilter: null,
-      outcomes: [
-        {
-          status: "succeeded",
-          target,
-          language: "en",
-          chunksIndexed: 3,
-          embeddingsWritten: 3,
-          chunksPruned: 0,
-          durationMs: 100,
-        },
-        {
-          status: "failed",
-          target,
-          language: "en",
-          reason: "boom",
-          durationMs: 50,
-        },
-        {
-          status: "skipped",
-          target,
-          language: "en",
-          reason: "artifact_missing",
-          durationMs: 5,
-        },
-      ],
-    })
-    expect(report.succeeded).toBe(1)
-    expect(report.failed).toBe(1)
-    expect(report.skipped).toBe(1)
+describe("groupTargetsByVideoEdition", () => {
+  it("groups targets by (video, edition) preserving language order", () => {
+    const groups = _internals.groupTargetsByVideoEdition([
+      {
+        videoId: "v-a",
+        videoEditionId: "e-a",
+        coreId: "core-a",
+        cmsVideoId: 1,
+        language: "en",
+      },
+      {
+        videoId: "v-a",
+        videoEditionId: "e-a",
+        coreId: "core-a",
+        cmsVideoId: 1,
+        language: "es",
+      },
+      {
+        videoId: "v-b",
+        videoEditionId: "e-b",
+        coreId: "core-b",
+        cmsVideoId: 2,
+        language: "en",
+      },
+    ])
+
+    expect(groups).toHaveLength(2)
+    expect(groups[0]?.targets.map((target) => target.language)).toEqual([
+      "en",
+      "es",
+    ])
+    expect(groups[1]?.targets.map((target) => target.language)).toEqual(["en"])
   })
 })

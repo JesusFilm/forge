@@ -3,77 +3,21 @@
  *
  * U6 — SiblingCarousel tests.
  *
- * jsdom has no `matchMedia` and embla calls it during init, so we polyfill
- * before importing the component. We also mock `next/navigation`'s
- * `useParams` to feed a stable `currentLocale` and `next/image` to a plain
- * `<img>` so we don't need a Next.js runtime.
+ * Embla browser-API polyfills are in vitest.setup.ts. We mock `next/image`
+ * to a plain `<img>` so we don't need a Next.js runtime.
  *
- * Embla itself is not mocked — we let it run inside jsdom (with the
- * matchMedia shim) so we can spy on the real `scrollTo` it installs on the
- * captured `setApi` instance, verifying U6's auto-scroll-on-mount behavior.
+ * Embla itself is not mocked — we let it run inside jsdom so we can spy on
+ * the real `scrollTo` it installs on the captured `setApi` instance,
+ * verifying U6's auto-scroll-on-mount behavior.
  */
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-// Polyfill the browser APIs embla touches during init. jsdom omits all
-// three; without these the carousel throws synchronously inside the first
-// useEffect.
-if (typeof window !== "undefined" && !window.matchMedia) {
-  // Minimal stub matching the shape embla reads.
-  window.matchMedia = (query: string) =>
-    ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: () => {},
-      removeListener: () => {},
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      dispatchEvent: () => false,
-    }) as unknown as MediaQueryList
-}
-
-if (typeof globalThis !== "undefined" && !globalThis.IntersectionObserver) {
-  // Embla uses IntersectionObserver to track which slides are in view; jsdom
-  // doesn't ship one. The no-op stub is enough for unit tests — visibility
-  // tracking is out of scope here.
-  class MockIntersectionObserver {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-    takeRecords(): IntersectionObserverEntry[] {
-      return []
-    }
-  }
-  ;(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver =
-    MockIntersectionObserver as unknown as typeof IntersectionObserver
-}
-
-if (typeof globalThis !== "undefined" && !globalThis.ResizeObserver) {
-  class MockResizeObserver {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  }
-  ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver =
-    MockResizeObserver as unknown as typeof ResizeObserver
-}
-
-const { useParamsMock } = vi.hoisted(() => ({
-  // The component reads `params?.locale`, so a loose return type matches the
-  // shape `next/navigation`'s `useParams` actually exposes (a record with
-  // optional segment values). Concrete returns happen via mockReturnValue in
-  // each test.
-  useParamsMock: vi.fn<() => Record<string, string | undefined>>(() => ({
-    locale: "english",
-  })),
-}))
-
-vi.mock("next/navigation", () => ({
-  useParams: useParamsMock,
-}))
+// Embla browser-API polyfills (matchMedia / IntersectionObserver /
+// ResizeObserver) live in vitest.setup.ts so every Embla-backed test inherits
+// them automatically.
 
 // `next/image` requires the Next.js runtime image-optimization layer; for a
 // dispatch-and-DOM test a plain <img> is sufficient and lets us assert on
@@ -112,8 +56,6 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
-  useParamsMock.mockReset()
-  useParamsMock.mockReturnValue({ locale: "english" })
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -182,39 +124,149 @@ describe("SiblingCarousel — happy path", () => {
     const block = makeBlock(10, 2)
 
     act(() => {
-      root.render(<SiblingCarousel block={block} />)
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
     })
 
     const items = container.querySelectorAll(
       "[data-testid='sibling-carousel-item']",
     )
     expect(items.length).toBe(10)
+    const firstItemSlot = items[0]?.closest("[data-slot='carousel-item']")
+    expect(firstItemSlot?.className).toContain("basis-[48%]")
+    expect(firstItemSlot?.className).toContain("sm:basis-[36%]")
+    expect(firstItemSlot?.className).toContain("md:basis-1/3")
+
+    const rail = container.querySelector("[data-block-type='SiblingCarousel']")
+    expect(rail?.className).toContain("-mx-10")
+    expect(rail?.className).toContain("w-[calc(100%+5rem)]")
+    expect(rail?.className).toContain("md:mx-0")
+    expect(rail?.className).toContain("md:w-full")
+
+    const header = rail?.querySelector("header")
+    expect(header?.className).toContain("px-10")
+    expect(header?.className).toContain("md:px-0")
+    const carousel = container.querySelector("[data-slot='carousel']")
+    expect(carousel?.className).not.toContain("translate-x-10")
+    expect(carousel?.className).not.toContain("md:translate-x-0")
+    const content = container.querySelector(
+      "[data-slot='carousel-content'] > div",
+    )
+    expect(content?.className).toContain("pl-10")
+    expect(content?.className).toContain("md:pl-0")
+    expect(content?.className).not.toContain("translate-x-14")
+    expect(content?.className).not.toContain("md:translate-x-0")
+    const endSpacer = container.querySelector(
+      "[data-testid='sibling-carousel-end-spacer']",
+    )
+    expect(endSpacer).not.toBeNull()
+    expect(endSpacer?.className).toContain("basis-[52%]")
+    expect(endSpacer?.className).toContain("md:basis-[66.666%]")
 
     // Active item carries data-active="true" and renders the "Playing now" pill.
     const active = container.querySelector(
       "[data-testid='sibling-carousel-item'][data-active='true']",
     )
     expect(active).not.toBeNull()
-    // 2-segment route shape: `/{slug}/{locale}` — the parent slug segment
-    // was removed when the watch route migrated to flat `[slug]/[locale]`.
-    expect(active!.getAttribute("data-href")).toBe("/child-3-slug/english")
+    expect(active!.className).toContain("border-white")
+    expect(active!.className).toContain("aspect-video")
+    expect(active!.className).not.toContain("translate-x-10")
+    expect(active!.className).not.toContain("md:translate-x-0")
+    expect(active!.className).not.toContain("-translate-x-4")
+    expect(active!.className).not.toContain("aspect-square")
+    expect(active!.className).not.toContain("after:inset-0")
+    expect(active!.className).not.toContain("after:border-4")
+    expect(active!.className).toContain("focus-visible:outline-white/80")
+    expect(active!.className).toContain("shadow-[0_2px_6px_rgba")
+    // Canonical 2-segment `.html` shape `/{slug}.html/{locale}.html`,
+    // emitted by the `watchVideoPath` builder.
+    expect(active!.getAttribute("data-href")).toBe(
+      "/child-3-slug.html/english.html",
+    )
+    const caption = active!.querySelector(
+      "[data-testid='sibling-carousel-caption']",
+    )
+    expect(caption).not.toBeNull()
+    expect(caption?.className).toContain("h-full")
+    expect(caption?.className).toContain("bg-gradient-to-t")
+    expect(caption?.className).toContain("via-black/35")
+    expect(caption?.className).toContain("z-20")
+
+    const blurMask = active!.querySelector("[aria-hidden='true']")
+    expect(blurMask?.className).toContain("h-full")
+    expect(blurMask?.className).toContain("bg-black/35")
+    expect(blurMask?.className).toContain("backdrop-blur-[14px]")
+    expect(blurMask?.className).toContain("rgba(0,0,0,0.35)_62%")
+
+    const bevel = active!.querySelector(
+      "[data-testid='sibling-carousel-bevel']",
+    )
+    expect(bevel).not.toBeNull()
+    expect(bevel?.className).toContain("absolute")
+    expect(bevel?.className).toContain("inset-0")
+    expect(bevel?.className).toContain("z-40")
+    expect(bevel?.className).toContain("border")
+    expect(bevel?.className).toContain("border-white")
+    expect(bevel?.className).toContain("opacity-40")
+    expect(bevel?.className).toContain("mix-blend-soft-light")
 
     const playingNow = container.querySelector(
       "[data-testid='sibling-carousel-playing-now']",
     )
     expect(playingNow).not.toBeNull()
 
+    const inactive = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-active='false']",
+    )
+    expect(inactive?.className).not.toContain("border-transparent")
+    expect(inactive?.className).toContain("opacity-70")
+    expect(inactive?.className).toContain("hover:outline-brand-red")
+    expect(inactive?.className).toContain("hover:opacity-100")
+
     const label = container.querySelector(
       "[data-testid='sibling-carousel-label']",
     )
-    expect(label?.textContent).toBe("Clip 3 of 10")
+    const mobileLabel = label?.querySelector(".md\\:hidden")
+    const desktopLabel = label?.querySelector(".hidden.md\\:inline")
+    expect(mobileLabel?.textContent).toBe("3 of 10")
+    expect(desktopLabel?.textContent).toBe("Clip 3 of 10")
+  })
+
+  it("routes a child through watchVideoPath to the canonical `.html` 2-segment shape", () => {
+    // Builder contract: slug `magdalena` + locale `english` →
+    // `/magdalena.html/english.html` (no manual encodeURIComponent, no cast).
+    const block: WatchSiblingCarouselBlock = {
+      kind: "SiblingCarousel",
+      canonicalParent: {
+        documentId: "parent-1",
+        slug: "jesus-collection",
+        title: "Jesus Collection",
+        children: [
+          { ...makeChild(1), slug: "magdalena", documentId: "magdalena-doc" },
+          makeChild(2),
+        ],
+      } as never,
+      currentVideoDocumentId: "magdalena-doc",
+    }
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const active = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-active='true']",
+    )
+    expect(active!.tagName).toBe("A")
+    expect(active!.getAttribute("data-href")).toBe(
+      "/magdalena.html/english.html",
+    )
+    expect(active!.getAttribute("href")).toBe("/magdalena.html/english.html")
   })
 
   it("renders an in-app href without the /watch/ basePath prefix", () => {
     const block = makeBlock(3, 0)
 
     act(() => {
-      root.render(<SiblingCarousel block={block} />)
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
     })
 
     const items = Array.from(
@@ -224,9 +276,10 @@ describe("SiblingCarousel — happy path", () => {
       const href = item.getAttribute("data-href") ?? ""
       // basePath auto-prepends; in-app hrefs MUST NOT include /watch/ literal.
       expect(href.startsWith("/watch/")).toBe(false)
-      // 2-segment route — child slug then locale, no parent segment.
-      expect(href).toMatch(/^\/child-\d+-slug\/english$/)
-      expect(href.endsWith("/english")).toBe(true)
+      // Canonical 2-segment `.html` shape — child slug then locale, no
+      // parent segment.
+      expect(href).toMatch(/^\/child-\d+-slug\.html\/english\.html$/)
+      expect(href.endsWith("/english.html")).toBe(true)
     }
   })
 
@@ -243,7 +296,7 @@ describe("SiblingCarousel — happy path", () => {
     }
 
     act(() => {
-      root.render(<SiblingCarousel block={block} />)
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
     })
 
     const placeholders = container.querySelectorAll(
@@ -251,6 +304,49 @@ describe("SiblingCarousel — happy path", () => {
     )
     // Exactly one child (#2) is missing an image.
     expect(placeholders.length).toBe(1)
+  })
+
+  it("renders CarouselPrevious / CarouselNext with carousel-specific aria-labels", () => {
+    // The shadcn Carousel primitive accepts a `label` prop. SiblingCarousel
+    // passes "Previous chapter" / "Next chapter" so screen-reader users on
+    // a page with multiple carousels (chapter + Bible quotes + video) can
+    // tell them apart. Pin the label strings here so a future rename
+    // breaks the test rather than the agent / AT selector.
+    act(() => {
+      root.render(
+        <SiblingCarousel block={makeBlock(5, 0)} languageSlug="english" />,
+      )
+    })
+
+    const prev = container.querySelector(
+      "button[data-slot='carousel-previous']",
+    )
+    const next = container.querySelector("button[data-slot='carousel-next']")
+
+    expect(prev?.getAttribute("aria-label")).toBe("Previous chapter")
+    expect(next?.getAttribute("aria-label")).toBe("Next chapter")
+    // The accessible name lives on aria-label only; the redundant
+    // sr-only span was removed to avoid double-announcement on VoiceOver.
+    expect(prev?.querySelector(".sr-only")).toBeNull()
+    expect(next?.querySelector(".sr-only")).toBeNull()
+  })
+
+  it("stacks the hover play overlay above the caption blur and text", () => {
+    act(() => {
+      root.render(
+        <SiblingCarousel block={makeBlock(5, 0)} languageSlug="english" />,
+      )
+    })
+
+    const inactive = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-active='false']",
+    )
+    const playOverlay = inactive?.querySelector(
+      "[data-testid='sibling-carousel-play-overlay']",
+    )
+
+    expect(playOverlay).not.toBeNull()
+    expect(playOverlay?.className).toContain("z-30")
   })
 })
 
@@ -268,7 +364,7 @@ describe("SiblingCarousel — edge cases", () => {
     }
 
     act(() => {
-      root.render(<SiblingCarousel block={block} />)
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
     })
 
     expect(
@@ -291,7 +387,7 @@ describe("SiblingCarousel — edge cases", () => {
     const block = makeBlock(15, 11)
 
     act(() => {
-      root.render(<SiblingCarousel block={block} />)
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
     })
 
     // Flush passive effects (the setApi callback installs in a useEffect).
@@ -303,27 +399,39 @@ describe("SiblingCarousel — edge cases", () => {
       "[data-testid='sibling-carousel-item'][data-active='true']",
     )
     expect(active).not.toBeNull()
-    expect(active!.getAttribute("data-href")).toBe("/child-12-slug/english")
+    expect(active!.getAttribute("data-href")).toBe(
+      "/child-12-slug.html/english.html",
+    )
     const label = container.querySelector(
       "[data-testid='sibling-carousel-label']",
     )
-    expect(label?.textContent).toBe("Clip 12 of 15")
+    const mobileLabel = label?.querySelector(".md\\:hidden")
+    const desktopLabel = label?.querySelector(".hidden.md\\:inline")
+    expect(mobileLabel?.textContent).toBe("12 of 15")
+    expect(desktopLabel?.textContent).toBe("Clip 12 of 15")
   })
 
-  it("renders an empty currentLocale segment when params lack `locale`", () => {
-    useParamsMock.mockReturnValue({})
+  it("renders a non-clickable card (no <Link>/href) when languageSlug is empty", () => {
     const block = makeBlock(3, 1)
 
     act(() => {
-      root.render(<SiblingCarousel block={block} />)
+      root.render(<SiblingCarousel block={block} languageSlug="" />)
     })
 
     const item = container.querySelector(
       "[data-testid='sibling-carousel-item'][data-active='true']",
     )
-    // Trailing slash with empty locale segment — caller is responsible for
-    // ensuring `[locale]` is present in the route; we don't fabricate one.
-    expect(item!.getAttribute("data-href")).toBe("/child-2-slug/")
+    expect(item).not.toBeNull()
+    // Empty languageSlug fails the slug regex, so `watchVideoPath` is never built.
+    // The card still renders — as a plain <div>, not an <a> — with no href.
+    expect(item!.tagName).toBe("DIV")
+    expect(item!.getAttribute("href")).toBeNull()
+    expect(item!.getAttribute("data-href")).toBeNull()
+    // Markup is otherwise identical: same className + active marker present.
+    expect(item!.className).toContain("aspect-video")
+    expect(
+      item!.querySelector("[data-testid='sibling-carousel-caption']"),
+    ).not.toBeNull()
   })
 })
 
@@ -367,6 +475,7 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
     act(() => {
       root.render(
         <SiblingCarousel
+          languageSlug="english"
           block={singleChildBlock({
             mobileCinematicHigh: "https://cdn.test/high.jpg",
             mobileCinematicLow: "https://cdn.test/low.jpg",
@@ -385,6 +494,7 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
     act(() => {
       root.render(
         <SiblingCarousel
+          languageSlug="english"
           block={singleChildBlock({
             mobileCinematicLow: "https://cdn.test/low.jpg",
             thumbnail: "https://cdn.test/thumb.jpg",
@@ -402,6 +512,7 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
     act(() => {
       root.render(
         <SiblingCarousel
+          languageSlug="english"
           block={singleChildBlock({
             thumbnail: "https://cdn.test/thumb.jpg",
             url: "https://cdn.test/url.jpg",
@@ -418,6 +529,7 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
     act(() => {
       root.render(
         <SiblingCarousel
+          languageSlug="english"
           block={singleChildBlock({
             url: "https://cdn.test/url.jpg",
           })}

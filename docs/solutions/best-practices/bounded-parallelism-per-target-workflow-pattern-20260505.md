@@ -40,6 +40,7 @@ related:
   - "docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md"
   - "docs/solutions/platform/admin-experience-content-dump-pattern.md"
   - "docs/solutions/platform/backfill-worker-pattern-manager-20260407.md"
+  - "docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md"
 related_prs:
   - "JesusFilm/forge#882"
 related_features:
@@ -294,7 +295,13 @@ beforeEach(() => {
 
 ## When NOT to apply this pattern
 
-`apps/admin/src/workflows/experienceContentDump.ts` (R3) intentionally **stays sequential**. Its per-target work dispatches a downstream `runExperienceEmbedding` workflow plus reads from cms's read-only role — the bottleneck is upstream cms, not admin. Parallelizing R3 would just queue at cms and add concurrent pressure on a fragile read role. See `docs/solutions/platform/admin-experience-content-dump-pattern.md` for the deliberate sequential-`for…of` decision.
+`apps/admin/src/workflows/experienceEmbeddingBackfill.ts` (the admin-native R3 replacement, post-PR-#966 + PR-#967) intentionally **stays sequential**. Its per-target work calls `embedExperienceLocale` (a plain service helper that itself hits OpenRouter / OpenAI) and admin's experience corpus is small enough that sequential `for…of` is fast enough for v1. Parallelizing would shift the bottleneck to the embedding provider's rate limits with no per-target wall-clock win. If the corpus grows or the helper picks up batchable cost, revisit by applying the canonical pattern (`pLimit + Promise.allSettled`) and treating the per-locale embed as the target.
+
+> **Historical note:** earlier revisions of this section pointed at the
+> retired `apps/admin/src/workflows/experienceContentDump.ts` (the cms →
+> admin dump that was deleted in PR #966). That workflow's bottleneck
+> was upstream cms's read-only role, which is no longer a constraint
+> now that experiences live in admin natively.
 
 Not every per-target loop benefits from this pattern. The prerequisites are:
 
@@ -326,7 +333,7 @@ When all three hold, apply the pattern. When they don't, sequential `for…of` i
 - `apps/admin/src/workflows/sceneEmbeddingBackfill.ts` — canonical implementation (R1).
 - `apps/admin/src/workflows/transcriptEmbeddingBackfill.ts` — same shape, different domain (R2).
 - `apps/admin/src/workflows/sceneEmbeddingBackfill.test.ts` — canonical test shape including `vi.spyOn(_internals, ...)`.
-- `apps/admin/src/workflows/experienceContentDump.ts` — counter-example: stays sequential intentionally (R3). Deliberate decision documented in `docs/solutions/platform/admin-experience-content-dump-pattern.md`.
+- `apps/admin/src/workflows/experienceEmbeddingBackfill.ts` — counter-example: stays sequential intentionally (admin-native R3, post-PR-#966 + PR-#967). The per-target step calls `embedExperienceLocale` (plain service helper) — see [`workflow-step-body-calls-service-not-sibling-workflow-20260517.md`](workflow-step-body-calls-service-not-sibling-workflow-20260517.md) for the "step bodies call services, not nested workflows" rule applied here.
 - `apps/admin/src/db/client.ts` — documents the `connection_limit=10` Prisma pool that constrains the concurrency default.
 - `apps/admin/CLAUDE.md` — R1 and R2 sections updated post-PR with the env vars and the `Promise.allSettled` invariant.
 - `docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md` — the prior learning that established "no `Promise.all`"; this doc complements it.
@@ -337,4 +344,11 @@ When all three hold, apply the pattern. When they don't, sequential `for…of` i
 - `docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md` — R1 indexer pattern that this parallelizes.
 - `docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md` — R2 indexer pattern that this parallelizes.
 - `docs/solutions/platform/backfill-worker-pattern-manager-20260407.md` — earlier (manager-side) backfill pattern; durability layer this sits on top of.
+- `docs/solutions/best-practices/per-parent-child-memoization-loadedartifact-pattern-20260505.md` — Stage 2 evolution. Lifts the pLimit boundary from per-target to per-`(video, edition)` GROUP, fetches the manager-artifacts S3 read once per group, threads the loaded artifact down via a service `loadedArtifact` parameter. The 11-item prevention checklist in the present doc still applies — re-validate against the new shape (concurrent groups instead of concurrent targets) when adopting.
+- `docs/solutions/best-practices/batched-provider-input-position-stable-contract-20260505.md` — Stage 2 sibling pattern for the per-`(video, locale)` batched OpenRouter call.
 - PR #882 — originating PR (`feat-115`, Stage 1 of embed-backfill performance plan).
+- Stage 2 PR (`feat-116`) — applies the boundary lift.
+
+## See Also
+
+- `docs/solutions/best-practices/external-client-retry-parity-in-runner-fanout-20260512.md` — failure mode of this pattern: when ≥2 external clients share the same `pLimit()` fan-out but have asymmetric retry policies, the runner's per-item try/catch silently corrupts the persisted data.

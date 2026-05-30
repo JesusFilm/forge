@@ -3,10 +3,9 @@
 Runtime services.
 
 - `web`: Next.js frontend.
-- `cms`: Strapi canonical content system.
 - `manager`: internal operator app for video operations, agents, and
   automations.
-- `admin`: internal admin tooling.
+- `admin`: canonical content and management system.
 - `mobile`: React Native + Expo mobile app.
 - `roadmap`: roadmap viewer.
 - `tv`: TV app surface.

@@ -20,24 +20,21 @@ describe("manager env mode validation", () => {
     vi.resetModules()
   })
 
-  it("requires Strapi settings in live mode", async () => {
-    vi.stubEnv("MANAGER_DATA_MODE", "live")
-    vi.stubEnv("MUX_TOKEN_ID", REQUIRED_BASE_ENV.MUX_TOKEN_ID)
-    vi.stubEnv("MUX_TOKEN_SECRET", REQUIRED_BASE_ENV.MUX_TOKEN_SECRET)
-    vi.stubEnv("OPENROUTER_API_KEY", REQUIRED_BASE_ENV.OPENROUTER_API_KEY)
-    delete process.env.STRAPI_URL
-    delete process.env.STRAPI_API_TOKEN
-
-    await expect(import("./env")).rejects.toThrow(
-      "STRAPI_URL is required when MANAGER_DATA_MODE=live",
-    )
-  })
-
   it("requires a mock session secret in mock mode", async () => {
     vi.stubEnv("MANAGER_DATA_MODE", "mock")
     vi.stubEnv("MUX_TOKEN_ID", REQUIRED_BASE_ENV.MUX_TOKEN_ID)
     vi.stubEnv("MUX_TOKEN_SECRET", REQUIRED_BASE_ENV.MUX_TOKEN_SECRET)
     vi.stubEnv("OPENROUTER_API_KEY", REQUIRED_BASE_ENV.OPENROUTER_API_KEY)
+    vi.stubEnv("MANAGER_SESSION_SECRET", "")
+    vi.stubEnv("AUTH_ISSUER_URL", "")
+    vi.stubEnv("AUTH_MANAGER_CLIENT_ID", "")
+    vi.stubEnv("ADMIN_GRAPHQL_URL", "")
+    vi.stubEnv("ADMIN_MANAGER_API_KEY", "")
+    delete process.env.MANAGER_SESSION_SECRET
+    delete process.env.AUTH_ISSUER_URL
+    delete process.env.AUTH_MANAGER_CLIENT_ID
+    delete process.env.ADMIN_GRAPHQL_URL
+    delete process.env.ADMIN_MANAGER_API_KEY
     delete process.env.MANAGER_MOCK_SESSION_SECRET
 
     await expect(import("./env")).rejects.toThrow(
@@ -45,11 +42,8 @@ describe("manager env mode validation", () => {
     )
   })
 
-  it("allows mock mode without Strapi settings", async () => {
+  it("allows mock mode without retired CMS settings", async () => {
     stubMockModeEnv()
-    delete process.env.STRAPI_URL
-    delete process.env.STRAPI_API_TOKEN
-
     const { env } = await import("./env")
 
     expect(env.MANAGER_DATA_MODE).toBe("mock")
@@ -74,5 +68,82 @@ describe("manager env mode validation", () => {
     await expect(import("./env")).rejects.toThrow(
       "MANAGER_AGENTIC_API_KEY and AGENTIC_SERVICE_API_KEY must be different",
     )
+  })
+
+  it("allows Next production builds without runtime Manager auth secrets", async () => {
+    vi.stubEnv("NEXT_PHASE", "phase-production-build")
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("MANAGER_DATA_MODE", "admin")
+    vi.stubEnv("MUX_TOKEN_ID", REQUIRED_BASE_ENV.MUX_TOKEN_ID)
+    vi.stubEnv("MUX_TOKEN_SECRET", REQUIRED_BASE_ENV.MUX_TOKEN_SECRET)
+    vi.stubEnv("OPENROUTER_API_KEY", REQUIRED_BASE_ENV.OPENROUTER_API_KEY)
+
+    const { env } = await import("./env")
+
+    expect(env.NODE_ENV).toBe("production")
+    expect(env.MANAGER_DATA_MODE).toBe("admin")
+  })
+
+  it("requires the Admin Manager API key in admin backend mode", async () => {
+    vi.stubEnv("NEXT_PHASE", "phase-production-server")
+    vi.stubEnv("MANAGER_DATA_MODE", "admin")
+    vi.stubEnv("MUX_TOKEN_ID", REQUIRED_BASE_ENV.MUX_TOKEN_ID)
+    vi.stubEnv("MUX_TOKEN_SECRET", REQUIRED_BASE_ENV.MUX_TOKEN_SECRET)
+    vi.stubEnv("OPENROUTER_API_KEY", REQUIRED_BASE_ENV.OPENROUTER_API_KEY)
+    vi.stubEnv(
+      "MANAGER_SESSION_SECRET",
+      "manager-session-secret-change-me-000000",
+    )
+    vi.stubEnv("AUTH_ISSUER_URL", "https://auth.jesusfilm.org")
+    vi.stubEnv("AUTH_MANAGER_CLIENT_ID", "jfp_manager_local")
+    vi.stubEnv("ADMIN_GRAPHQL_URL", "https://admin.example/api/graphql")
+    vi.stubEnv("ADMIN_MANAGER_API_KEY", "")
+    vi.stubEnv("AUTH_MANAGER_SERVICE_CLIENT_ID", "")
+    vi.stubEnv("AUTH_MANAGER_SERVICE_CLIENT_SECRET", "")
+
+    await expect(import("./env")).rejects.toThrow(
+      "ADMIN_MANAGER_API_KEY or AUTH_MANAGER_SERVICE_CLIENT_ID/AUTH_MANAGER_SERVICE_CLIENT_SECRET is required when Manager auth is enabled",
+    )
+  })
+
+  it("allows admin backend mode with Manager auth and Admin validation settings", async () => {
+    vi.stubEnv("MANAGER_DATA_MODE", "admin")
+    vi.stubEnv("MUX_TOKEN_ID", REQUIRED_BASE_ENV.MUX_TOKEN_ID)
+    vi.stubEnv("MUX_TOKEN_SECRET", REQUIRED_BASE_ENV.MUX_TOKEN_SECRET)
+    vi.stubEnv("OPENROUTER_API_KEY", REQUIRED_BASE_ENV.OPENROUTER_API_KEY)
+    vi.stubEnv(
+      "MANAGER_SESSION_SECRET",
+      "manager-session-secret-change-me-000000",
+    )
+    vi.stubEnv("AUTH_ISSUER_URL", "https://auth.jesusfilm.org")
+    vi.stubEnv("AUTH_MANAGER_CLIENT_ID", "jfp_manager_local")
+    vi.stubEnv("ADMIN_GRAPHQL_URL", "https://admin.example/api/graphql")
+    vi.stubEnv("ADMIN_MANAGER_API_KEY", "admin-manager-key")
+
+    const { env } = await import("./env")
+
+    expect(env.MANAGER_DATA_MODE).toBe("admin")
+    expect(env.ADMIN_MANAGER_API_KEY).toBe("admin-manager-key")
+  })
+
+  it("allows admin backend mode with Manager OAuth service credentials", async () => {
+    vi.stubEnv("MANAGER_DATA_MODE", "admin")
+    vi.stubEnv("MUX_TOKEN_ID", REQUIRED_BASE_ENV.MUX_TOKEN_ID)
+    vi.stubEnv("MUX_TOKEN_SECRET", REQUIRED_BASE_ENV.MUX_TOKEN_SECRET)
+    vi.stubEnv("OPENROUTER_API_KEY", REQUIRED_BASE_ENV.OPENROUTER_API_KEY)
+    vi.stubEnv(
+      "MANAGER_SESSION_SECRET",
+      "manager-session-secret-change-me-000000",
+    )
+    vi.stubEnv("AUTH_ISSUER_URL", "https://auth.jesusfilm.org")
+    vi.stubEnv("AUTH_MANAGER_CLIENT_ID", "jfp_manager_local")
+    vi.stubEnv("AUTH_MANAGER_SERVICE_CLIENT_ID", "jfp_manager_service_local")
+    vi.stubEnv("AUTH_MANAGER_SERVICE_CLIENT_SECRET", "service-secret")
+    vi.stubEnv("ADMIN_GRAPHQL_URL", "https://admin.example/api/graphql")
+
+    const { env } = await import("./env")
+
+    expect(env.MANAGER_DATA_MODE).toBe("admin")
+    expect(env.AUTH_MANAGER_SERVICE_CLIENT_ID).toBe("jfp_manager_service_local")
   })
 })

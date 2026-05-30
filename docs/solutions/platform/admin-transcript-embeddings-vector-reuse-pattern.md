@@ -1,6 +1,6 @@
 ---
 title: "Admin transcript-embeddings indexer: reuse manager's precomputed vectors from S3, never regenerate"
-last_updated: 2026-04-22
+last_updated: 2026-05-21
 problem_type: best_practice
 component: service_object
 root_cause: cross_service_vector_trust_boundary
@@ -28,6 +28,37 @@ related:
   - "docs/solutions/best-practices/zod-validation-errors-must-not-echo-user-controlled-input-20260420.md"
 date_learned: 2026-04-22
 ---
+
+## Search usage update (feat-131)
+
+Transcript chunk vectors are now live search evidence in admin, but they still
+do not form a separate RRF list. `searchVideoSemantic` mixes
+`video_transcript_chunk.embedding` with `video_scene_locale.embedding` inside
+one `semantic-video` retriever, then emits one candidate per video to the
+existing RRF pipeline.
+
+The performance rule from this doc remains load-bearing: transcript semantic
+search filters on `video_transcript_chunk.language`, not only
+`video_transcript.language`, so the planner can use the same-table partial HNSW
+indexes.
+
+## Stage 3 (feat-117) update
+
+The per-chunk `videoTranscriptChunk.upsert(...)` + per-row `$executeRaw …
+UPDATE … embedding` write loop has been collapsed into ONE bulk
+`INSERT INTO video_transcript_chunk … SELECT * FROM unnest(12 parallel
+arrays) ON CONFLICT (transcript_id, chunk_index) DO UPDATE` per
+`(video, edition, language)` target. Per-row Way A vector cast at the
+SELECT seam (`u.embedding_text::vector(1536)`, NOT `::vector(1536)[]`
+on the parameter — the array-input parser is less-trodden code), with
+length-equality preflight asserting all 12 parallel arrays match
+`artifact.chunks.length` BEFORE `$executeRaw` (PG18 silently NULL-pads
+unequal-length unnest args). Round-trip count drops from `O(chunks)` to
+`O(1)` per target. The parent `videoTranscript.upsert(...)` stays as a
+Prisma call. The full bulk-write recipe + invariant tests + bind-count
+regression guard live in
+`docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
+Mirrors the bullet that landed in `apps/admin/CLAUDE.md`.
 
 ## Problem
 
@@ -191,3 +222,13 @@ WHERE language = 'en' LIMIT 10` should hit
   — implementation plan.
 - `docs/brainstorms/2026-04-19-admin-migration-playbook-requirements.md`
   — R2 origin.
+- `docs/solutions/best-practices/per-parent-child-memoization-loadedartifact-pattern-20260505.md`
+  — Stage 2 (feat-116) widens this indexer's input with a first-class
+  `loadedArtifact?: EmbeddingsResult` parameter (renamed from the
+  test-only `artifactOverride?`). The workflow now fetches the
+  embeddings artifact ONCE per `(video, edition)` group and passes
+  it to each per-language `indexEditionTranscript(...)` call so the
+  service short-circuits the S3 read. NOTE: Stage 2's batched-
+  provider sibling pattern does NOT apply to R2 — R2 reuses vectors
+  verbatim from the artifact and never calls the provider, which is
+  the whole point of the R2 vs R1 divergence documented above.

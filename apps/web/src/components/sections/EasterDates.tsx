@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useId } from "react"
-import type { FragmentOf } from "@forge/graphql"
+import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import { HDate, months } from "@hebcal/hdate"
 import { easterDatesFragment } from "@/lib/fragments/easter-dates"
 
@@ -46,6 +46,13 @@ type EasterDatesProps = {
   data: FragmentOf<typeof easterDatesFragment>
 }
 
+type ComputedDates = {
+  currentYear: number
+  westernEaster: Date
+  orthodoxEaster: Date
+  passover: Date
+}
+
 const DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   weekday: "long",
   year: "numeric",
@@ -66,10 +73,27 @@ export function EasterDates({ data }: EasterDatesProps) {
   const headerId = `easter-dates-header-${instanceId}`
   const contentId = `easter-dates-content-${instanceId}`
 
-  const currentYear = new Date().getFullYear()
-  const westernEaster = calculateWesternEaster(currentYear)
-  const orthodoxEaster = calculateOrthodoxEaster(currentYear)
-  const passover = calculatePassover(currentYear)
+  // Defer to useEffect so the first paint is deterministic: `new Date()` and
+  // `toLocaleDateString` resolve differently across server (Node ICU, UTC) and
+  // browser (locale ICU, user tz), and any divergence aborts hydration for the
+  // whole page tree.
+  const [dates, setDates] = useState<ComputedDates | null>(null)
+  useEffect(() => {
+    // Wrapped in a helper so the setState is one stack frame deep,
+    // matching the matchMedia effect below and keeping
+    // react-hooks/set-state-in-effect quiet. The rule's render-loop
+    // concern doesn't apply — `[]` deps + one-shot init.
+    const computeDates = () => {
+      const currentYear = new Date().getFullYear()
+      setDates({
+        currentYear,
+        westernEaster: calculateWesternEaster(currentYear),
+        orthodoxEaster: calculateOrthodoxEaster(currentYear),
+        passover: calculatePassover(currentYear),
+      })
+    }
+    computeDates()
+  }, [])
 
   const formatDate = (date: Date) =>
     date.toLocaleDateString(locale ?? "en-US", DATE_OPTIONS)
@@ -83,15 +107,21 @@ export function EasterDates({ data }: EasterDatesProps) {
     return () => mq.removeEventListener("change", handler)
   }, [])
 
-  const title = (easterDatesTitle ?? "").replace("{year}", String(currentYear))
+  // Text-node values aren't subject to React hydration mismatch (only
+  // element structure and attribute types are), so substituting the
+  // current year directly into the title here is safe and avoids the
+  // first-paint flash of "Easter celebrated in ?". The date computations
+  // that DO mismatch (toLocaleDateString output) stay in useEffect.
+  const titleYear = dates?.currentYear ?? new Date().getFullYear()
+  const title = (easterDatesTitle ?? "").replace("{year}", String(titleYear))
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-lg bg-gradient-to-tr from-blue-400 via-amber-500 to-red-600 bg-blend-multiply shadow-lg"
+      className="relative w-full overflow-hidden rounded-lg bg-gradient-to-tr from-blue-400 via-amber-500 to-brand-red bg-blend-multiply shadow-lg"
       data-testid="EasterDates"
     >
       <div
-        className="absolute inset-0 bg-gradient-to-br from-yellow-400/40 via-amber-500/40 to-red-500/40 blur-xl"
+        className="absolute inset-0 bg-gradient-to-br from-yellow-400/40 via-amber-500/40 to-brand-red/40 blur-xl"
         style={{ mixBlendMode: "overlay" }}
       />
       <div
@@ -104,7 +134,12 @@ export function EasterDates({ data }: EasterDatesProps) {
         <div className="p-6">
           <button
             type="button"
-            onClick={() => setExpanded((e) => !e)}
+            // Gate the toggle on dates having resolved: the two useEffects
+            // (matchMedia for expanded, date computation) flush
+            // independently, and clicking during the dates=null window
+            // would leave the panel collapsed even after dates populate.
+            onClick={() => dates && setExpanded((e) => !e)}
+            disabled={!dates}
             className="flex w-full items-center justify-between gap-2 text-left"
             aria-expanded={expanded}
             aria-controls={contentId}
@@ -136,14 +171,14 @@ export function EasterDates({ data }: EasterDatesProps) {
             </span>
           </button>
           <div id={contentId}>
-            {expanded && (
+            {expanded && dates && (
               <div className="space-y-4 pt-4">
                 <div>
                   <h3 className="text-lg font-medium text-black/50 mix-blend-multiply">
                     {westernEasterLabel}
                   </h3>
                   <p className="text-5xl font-extrabold tracking-tighter text-black/85 mix-blend-multiply">
-                    {formatDate(westernEaster)}
+                    {formatDate(dates.westernEaster)}
                   </p>
                 </div>
                 <div>
@@ -151,7 +186,7 @@ export function EasterDates({ data }: EasterDatesProps) {
                     {orthodoxEasterLabel}
                   </h3>
                   <p className="text-xl font-extrabold text-black/75 mix-blend-multiply">
-                    {formatDate(orthodoxEaster)}
+                    {formatDate(dates.orthodoxEaster)}
                   </p>
                 </div>
                 <div>
@@ -159,7 +194,7 @@ export function EasterDates({ data }: EasterDatesProps) {
                     {passoverLabel}
                   </h3>
                   <p className="text-xl font-extrabold text-black/75 mix-blend-multiply">
-                    {formatDate(passover)}
+                    {formatDate(dates.passover)}
                   </p>
                 </div>
               </div>

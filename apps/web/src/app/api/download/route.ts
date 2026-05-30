@@ -13,7 +13,13 @@ import { isIP } from "node:net"
 import type { ServerRuntime } from "next"
 import { NextResponse } from "next/server"
 
-import { isAllowedDownloadOrigin } from "@/lib/download-allowlist"
+import {
+  SAFE_DOWNLOAD_EXTENSIONS,
+  isAllowedDownloadOrigin,
+} from "@/lib/download-allowlist"
+import { resolveWatchDownloadTarget } from "@/lib/download-target"
+import { verifyAuthSession } from "@/lib/auth-session"
+import { evaluateDownloadAccountGate } from "@/lib/download-gate-flag"
 
 // Use the Node runtime so streaming bodies are fully supported across
 // hosts. The Edge runtime would also work, but Node gives us long
@@ -62,21 +68,48 @@ const BIDI_CONTROL_RE = /[‪-‮⁦-⁩]/g
 // `Content-Disposition: filename` value.
 const FILENAME_UNSAFE_RE = /[\\/;,"]/g
 
-const SAFE_EXTENSIONS = new Set([
-  "mp4",
-  "m4v",
-  "mov",
-  "webm",
-  "mkv",
-  "mp3",
-  "m4a",
-  "aac",
-  "wav",
-  "ogg",
-])
-
 function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ error: message }, { status })
+}
+
+function withOptionalSetCookie(
+  response: Response,
+  setCookieHeader: string | undefined,
+): Response {
+  if (!setCookieHeader) return response
+
+  const headers = new Headers(response.headers)
+  headers.append("set-cookie", setCookieHeader)
+  return new Response(response.body, {
+    headers,
+    status: response.status,
+    statusText: response.statusText,
+  })
+}
+
+async function requireDownloadAccountIfEnabled(
+  request: Request,
+): Promise<
+  { ok: true; setCookieHeader?: string } | { ok: false; response: Response }
+> {
+  const gate = await evaluateDownloadAccountGate(request)
+  const ok = gate.setCookieHeader
+    ? ({ ok: true, setCookieHeader: gate.setCookieHeader } as const)
+    : ({ ok: true } as const)
+  if (!gate.enabled) return ok
+
+  const session = await verifyAuthSession(request.headers)
+  if (session.authenticated) {
+    return ok
+  }
+
+  return {
+    ok: false,
+    response: withOptionalSetCookie(
+      jsonError("Authentication required", 401),
+      gate.setCookieHeader,
+    ),
+  }
 }
 
 // IPv4 ranges to reject for SSRF defense. RFC 1918 private space + loopback +
@@ -161,7 +194,7 @@ function sanitizeFilename(raw: string): string {
   const lastDot = clamped.lastIndexOf(".")
   if (lastDot > 0 && lastDot < clamped.length - 1) {
     const ext = clamped.slice(lastDot + 1).toLowerCase()
-    if (!SAFE_EXTENSIONS.has(ext)) {
+    if (!SAFE_DOWNLOAD_EXTENSIONS.has(ext)) {
       return `${clamped.slice(0, lastDot)}.mp4`
     }
   }
@@ -179,13 +212,63 @@ function safeLogUrl(target: string): string {
   }
 }
 
-export async function GET(request: Request): Promise<Response> {
-  const { searchParams } = new URL(request.url)
-  const target = searchParams.get("url")
-  const rawFilename = searchParams.get("filename")
+// Discriminated union — callers branch on `ok` (a literal tag) rather
+// than `in`-narrowing on a structural field name. A future caller that
+// misspells the variant field will produce a type error instead of
+// silently reading `undefined`.
+type ValidateTargetResult =
+  | { ok: true; safeUrl: string }
+  | { ok: false; errorResponse: NextResponse }
 
+type ResolveTargetResult =
+  | { ok: true; target: string }
+  | { ok: false; errorResponse: NextResponse }
+
+async function resolveRequestedTarget(
+  searchParams: URLSearchParams,
+): Promise<ResolveTargetResult> {
+  const legacyTarget = searchParams.get("url")
+  if (legacyTarget) return { ok: true, target: legacyTarget }
+
+  const resolved = await resolveWatchDownloadTarget({
+    downloadId: searchParams.get("downloadId"),
+    variantId: searchParams.get("variantId"),
+    videoSlug: searchParams.get("videoSlug"),
+  })
+
+  if (resolved.ok) return { ok: true, target: resolved.url }
+  if (resolved.reason === "missing-params") {
+    return {
+      ok: false,
+      errorResponse: jsonError(
+        "Missing required `url` or download identifiers",
+        400,
+      ),
+    }
+  }
+  if (resolved.reason === "unavailable") {
+    return {
+      ok: false,
+      errorResponse: jsonError("Download lookup unavailable", 503),
+    }
+  }
+  return {
+    ok: false,
+    errorResponse: jsonError("Download unavailable", 404),
+  }
+}
+
+// Validates the `?url=` target against the allowlist + DNS pre-flight and
+// returns a sanitized URL string ready to fetch. Shared by GET (stream) and
+// HEAD (size probe) so both methods enforce the same SSRF defenses.
+async function validateTarget(
+  target: string | null,
+): Promise<ValidateTargetResult> {
   if (!target) {
-    return jsonError("Missing required `url` parameter", 400)
+    return {
+      ok: false,
+      errorResponse: jsonError("Missing required `url` parameter", 400),
+    }
   }
   if (!isAllowedDownloadOrigin(target)) {
     console.error("[api/download] rejected non-allowlisted target", {
@@ -197,8 +280,71 @@ export async function GET(request: Request): Promise<Response> {
         }
       })(),
     })
-    return jsonError("Forbidden", 403)
+    return { ok: false, errorResponse: jsonError("Forbidden", 403) }
   }
+  const parsed = new URL(target)
+  try {
+    if (!(await resolvesToPublicIp(parsed.hostname))) {
+      console.error("[api/download] rejected non-public IP resolution", {
+        host: parsed.hostname,
+      })
+      return { ok: false, errorResponse: jsonError("Forbidden", 403) }
+    }
+  } catch (err) {
+    console.error("[api/download] DNS pre-flight failed", {
+      host: parsed.hostname,
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return { ok: false, errorResponse: jsonError("Forbidden", 403) }
+  }
+  // Reconstruct from validated components only. Drops userinfo
+  // (`https://user:pass@host/`) and fragment that survived the hostname
+  // allowlist check.
+  return { ok: true, safeUrl: parsed.origin + parsed.pathname + parsed.search }
+}
+
+// Builds an abort signal that combines the client's request signal with a
+// connect-phase timeout, so a stalled CDN can't pin a Node worker forever.
+// Returned `clear()` MUST be called in a `finally` to release the timer.
+// Choose `timeoutMs` strictly less than the route's `maxDuration`; if the
+// platform ceiling fires first, the signal never aborts and the upstream
+// classifier may declare a stalled connection a network error.
+function buildUpstreamSignal(
+  request: Request,
+  timeoutMs: number,
+): { signal: AbortSignal; clear: () => void } {
+  const timeoutController = new AbortController()
+  const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs)
+  const signal =
+    typeof AbortSignal.any === "function"
+      ? AbortSignal.any([request.signal, timeoutController.signal])
+      : timeoutController.signal
+  return { signal, clear: () => clearTimeout(timeoutId) }
+}
+
+export async function GET(request: Request): Promise<Response> {
+  const authGate = await requireDownloadAccountIfEnabled(request)
+  if (!authGate.ok) return authGate.response
+
+  const { searchParams } = new URL(request.url)
+  const rawFilename = searchParams.get("filename")
+
+  const resolvedTarget = await resolveRequestedTarget(searchParams)
+  if (!resolvedTarget.ok) {
+    return withOptionalSetCookie(
+      resolvedTarget.errorResponse,
+      authGate.setCookieHeader,
+    )
+  }
+
+  const validation = await validateTarget(resolvedTarget.target)
+  if (!validation.ok) {
+    return withOptionalSetCookie(
+      validation.errorResponse,
+      authGate.setCookieHeader,
+    )
+  }
+  const { safeUrl } = validation
 
   const filename = sanitizeFilename(rawFilename ?? "download")
 
@@ -213,43 +359,13 @@ export async function GET(request: Request): Promise<Response> {
     if (value) upstreamHeaders[name] = value
   }
 
-  // Combine the client's abort signal with our own connect-phase timeout
-  // so a stalled CDN can't pin a Node worker forever. AbortSignal.any is
-  // available on Node 20.5+ and supported by Vercel/Railway runtimes.
-  const timeoutController = new AbortController()
-  const timeoutId = setTimeout(() => timeoutController.abort(), 30_000)
-  const signal =
-    typeof AbortSignal.any === "function"
-      ? AbortSignal.any([request.signal, timeoutController.signal])
-      : timeoutController.signal
-
-  // Re-parse and reconstruct from validated components only. Drops any
-  // userinfo (`https://user:pass@host/`) and fragment that survived
-  // `isAllowedDownloadOrigin`'s hostname-only check, so credentials
-  // can't leak into the upstream request.
-  const parsed = new URL(target)
-  const safeUrl = parsed.origin + parsed.pathname + parsed.search
-
-  // SSRF defense-in-depth: even though the hostname is allowlisted,
-  // resolve DNS now and reject if any answer lands in private / loopback
-  // / link-local space. Closes DNS-rebinding via subdomain takeover —
-  // an attacker who claims a dangling `*.jesusfilm.org` CNAME could
-  // otherwise repoint it at 127.0.0.1 or 169.254.169.254 (cloud
-  // metadata). See OWASP SSRF Prevention Cheat Sheet.
-  try {
-    if (!(await resolvesToPublicIp(parsed.hostname))) {
-      console.error("[api/download] rejected non-public IP resolution", {
-        host: parsed.hostname,
-      })
-      return jsonError("Forbidden", 403)
-    }
-  } catch (err) {
-    console.error("[api/download] DNS pre-flight failed", {
-      host: parsed.hostname,
-      err: err instanceof Error ? err.message : String(err),
-    })
-    return jsonError("Forbidden", 403)
-  }
+  // 30s connect-phase timeout — generous because the GET path streams
+  // multi-GB feature-film downloads. Must remain strictly less than the
+  // route's `maxDuration` (600s).
+  const { signal, clear: clearUpstreamTimeout } = buildUpstreamSignal(
+    request,
+    30_000,
+  )
 
   let upstream: Response
   try {
@@ -282,15 +398,21 @@ export async function GET(request: Request): Promise<Response> {
     if (request.signal.aborted) {
       // Client disconnected first — no point logging or returning a body
       // the client will never read.
-      return new NextResponse(null, { status: 499 })
+      return withOptionalSetCookie(
+        new NextResponse(null, { status: 499 }),
+        authGate.setCookieHeader,
+      )
     }
     console.error("[api/download] upstream fetch failed", {
-      target: safeLogUrl(target),
+      target: safeLogUrl(safeUrl),
       err: err instanceof Error ? err.message : String(err),
     })
-    return jsonError("Upstream fetch failed", 502)
+    return withOptionalSetCookie(
+      jsonError("Upstream fetch failed", 502),
+      authGate.setCookieHeader,
+    )
   } finally {
-    clearTimeout(timeoutId)
+    clearUpstreamTimeout()
   }
 
   // `redirect: "manual"` surfaces 3xx as `type === "opaqueredirect"` with
@@ -300,21 +422,30 @@ export async function GET(request: Request): Promise<Response> {
     (upstream.status >= 300 && upstream.status < 400)
   ) {
     console.error("[api/download] upstream attempted redirect", {
-      target: safeLogUrl(target),
+      target: safeLogUrl(safeUrl),
     })
-    return jsonError("Upstream redirected; refusing to follow", 502)
+    return withOptionalSetCookie(
+      jsonError("Upstream redirected; refusing to follow", 502),
+      authGate.setCookieHeader,
+    )
   }
 
   if (!upstream.ok && upstream.status !== 206) {
     console.error("[api/download] upstream non-OK", {
-      target: safeLogUrl(target),
+      target: safeLogUrl(safeUrl),
       status: upstream.status,
     })
-    return jsonError(`Upstream ${upstream.status}`, upstream.status)
+    return withOptionalSetCookie(
+      jsonError(`Upstream ${upstream.status}`, upstream.status),
+      authGate.setCookieHeader,
+    )
   }
 
   if (!upstream.body) {
-    return jsonError("Upstream had no body", 502)
+    return withOptionalSetCookie(
+      jsonError("Upstream had no body", 502),
+      authGate.setCookieHeader,
+    )
   }
 
   const headers = new Headers()
@@ -334,8 +465,117 @@ export async function GET(request: Request): Promise<Response> {
   // Don't let the browser/CDN sniff the response and override our content type.
   headers.set("X-Content-Type-Options", "nosniff")
 
-  return new NextResponse(upstream.body, {
-    status: upstream.status,
-    headers,
-  })
+  return withOptionalSetCookie(
+    new NextResponse(upstream.body, {
+      status: upstream.status,
+      headers,
+    }),
+    authGate.setCookieHeader,
+  )
+}
+
+// HEAD probes the upstream for `Content-Length` only — used by the
+// download modal to fill in real file sizes when the CMS `size` field
+// is missing or zero. Reuses the same SSRF defenses as GET (allowlist,
+// DNS pre-flight, manual redirect handling); body is never read.
+export async function HEAD(request: Request): Promise<Response> {
+  const authGate = await requireDownloadAccountIfEnabled(request)
+  if (!authGate.ok) return authGate.response
+
+  const { searchParams } = new URL(request.url)
+
+  const resolvedTarget = await resolveRequestedTarget(searchParams)
+  if (!resolvedTarget.ok) {
+    return withOptionalSetCookie(
+      resolvedTarget.errorResponse,
+      authGate.setCookieHeader,
+    )
+  }
+
+  const validation = await validateTarget(resolvedTarget.target)
+  if (!validation.ok) {
+    return withOptionalSetCookie(
+      validation.errorResponse,
+      authGate.setCookieHeader,
+    )
+  }
+  const { safeUrl } = validation
+
+  // 10s is generous for a metadata-only round trip; longer than that and
+  // the CDN has effectively timed out. Tighter than GET's 30s because a
+  // HEAD probe should never need to wait that long, and the client (the
+  // download modal) is willing to fall back to no size display.
+  const { signal, clear: clearUpstreamTimeout } = buildUpstreamSignal(
+    request,
+    10_000,
+  )
+
+  let upstream: Response
+  try {
+    // codeql[js/request-forgery]
+    upstream = await fetch(safeUrl, {
+      method: "HEAD",
+      redirect: "manual",
+      signal,
+    })
+  } catch (err) {
+    if (request.signal.aborted) {
+      return withOptionalSetCookie(
+        new NextResponse(null, { status: 499 }),
+        authGate.setCookieHeader,
+      )
+    }
+    console.error("[api/download] HEAD upstream fetch failed", {
+      target: safeLogUrl(safeUrl),
+      err: err instanceof Error ? err.message : String(err),
+    })
+    return withOptionalSetCookie(
+      jsonError("Upstream fetch failed", 502),
+      authGate.setCookieHeader,
+    )
+  } finally {
+    clearUpstreamTimeout()
+  }
+
+  if (
+    upstream.type === "opaqueredirect" ||
+    (upstream.status >= 300 && upstream.status < 400)
+  ) {
+    console.error("[api/download] HEAD upstream attempted redirect", {
+      target: safeLogUrl(safeUrl),
+    })
+    return withOptionalSetCookie(
+      jsonError("Upstream redirected; refusing to follow", 502),
+      authGate.setCookieHeader,
+    )
+  }
+
+  // Mirror GET: a 206 Partial Content is a valid metadata response from
+  // some CDNs, not an error. Returning 502 here would make legitimate
+  // sizes invisible to the client.
+  if (!upstream.ok && upstream.status !== 206) {
+    return withOptionalSetCookie(
+      jsonError(`Upstream ${upstream.status}`, upstream.status),
+      authGate.setCookieHeader,
+    )
+  }
+
+  const headers = new Headers()
+  // Only forward the metadata fields the modal needs; specifically not
+  // Set-Cookie or any tracking headers that may ride on a HEAD response.
+  for (const name of ["content-length", "content-type"] as const) {
+    const value = upstream.headers.get(name)
+    if (value) headers.set(name, value)
+  }
+  // Browsers cache HEAD responses keyed with GET, so we'd rather they
+  // not — the CMS may correct sizes between modal opens.
+  headers.set("Cache-Control", "private, no-cache, no-store, must-revalidate")
+  headers.set("X-Content-Type-Options", "nosniff")
+
+  // Forward upstream's status (200 or 206) so callers see exactly what
+  // the CDN reported — mirroring GET's pass-through behavior.
+  return withOptionalSetCookie(
+    new NextResponse(null, { status: upstream.status, headers }),
+    authGate.setCookieHeader,
+  )
 }

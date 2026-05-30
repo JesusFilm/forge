@@ -1,15 +1,16 @@
 {
   "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json",
-  "name": "Claude Code Sandbox",
+  "name": "Forge",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
+  "shutdownAction": "none",
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "updateRemoteUserUID": true,
   "customizations": {
     "vscode": {
-      "extensions": ["anthropic.claude-code"],
+      "extensions": ["anthropic.claude-code", "openai.chatgpt"],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",
         "terminal.integrated.profiles.linux": {
@@ -46,5 +47,12 @@
   },
   "initializeCommand": "test -f \"$HOME/.gitconfig\" || touch \"$HOME/.gitconfig\"",
   "workspaceFolder": "/workspace",
+  "forwardPorts": [4111],
+  "portsAttributes": {
+    "4111": {
+      "label": "Mastra Studio",
+      "onAutoForward": "notify"
+    }
+  },
   "postCreateCommand": "uv run --no-project /opt/post_install.py"
 }

@@ -128,9 +128,7 @@ function mapVideoModel(video: {
 
 ### 1. Migrate Mobile Queries to Shared Package (Root Cause Fix)
 
-The mobile app defines queries locally, bypassing gql.tada codegen. This is the root cause of schema drift. Migrating to `@forge/graphql` would make field renames cause compile-time errors instead of runtime crashes.
-
-The `CLAUDE.md` convention already states: _"Operations (queries, mutations, fragments) are co-located in [packages/graphql] so both apps share them."_ The mobile deviation should be treated as tracked technical debt.
+The mobile app previously defined queries locally, bypassing gql.tada codegen. This was the root cause of schema drift. As of 2026-05-25, the mobile data layer cutover (PR #1011) completed this migration — mobile now consumes `@forge/admin-graphql` with typed fragments, making field renames a compile-time error. See `docs/solutions/architecture-patterns/mobile-admin-data-layer-cutover-pattern-20260525.md` for the full migration pattern.
 
 ### 2. Validate Dynamic Zone Fragments Against Schema
 

@@ -1,9 +1,16 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { resolveScope } from "./orchestrator"
 
+const refreshAfterCoreSyncMock = vi.hoisted(() => vi.fn())
+
 vi.mock("./lock", () => ({
   acquireSyncLock: vi.fn(),
+  refreshSyncLock: vi.fn(),
   releaseSyncLock: vi.fn(),
+}))
+
+vi.mock("../watch-route-manifest-refresh.service", () => ({
+  refreshWatchRouteManifestAfterCoreSync: refreshAfterCoreSyncMock,
 }))
 
 vi.mock("./watermark", () => ({
@@ -22,11 +29,26 @@ vi.mock("./phases/sync-countries", () => ({
 vi.mock("./phases/sync-keywords", () => ({
   syncKeywords: vi.fn(),
 }))
+vi.mock("./phases/sync-video-origins", () => ({
+  syncVideoOrigins: vi.fn(),
+}))
 vi.mock("./phases/sync-videos", () => ({
   syncVideos: vi.fn(),
 }))
+vi.mock("./phases/sync-video-images", () => ({
+  syncVideoImages: vi.fn(),
+}))
+vi.mock("./phases/sync-video-editions", () => ({
+  syncVideoEditions: vi.fn(),
+}))
+vi.mock("./phases/sync-video-subtitles", () => ({
+  syncVideoSubtitles: vi.fn(),
+}))
 vi.mock("./phases/sync-dubs", () => ({
   syncDubs: vi.fn(),
+}))
+vi.mock("./phases/sync-dub-downloads", () => ({
+  syncDubDownloads: vi.fn(),
 }))
 
 describe("resolveScope", () => {
@@ -35,8 +57,13 @@ describe("resolveScope", () => {
       "languages",
       "countries",
       "keywords",
+      "video-origins",
       "videos",
+      "video-images",
+      "video-editions",
+      "video-subtitles",
       "video-dubs",
+      "video-dub-downloads",
     ])
   })
 
@@ -45,8 +72,13 @@ describe("resolveScope", () => {
       "languages",
       "countries",
       "keywords",
+      "video-origins",
       "videos",
+      "video-images",
+      "video-editions",
+      "video-subtitles",
       "video-dubs",
+      "video-dub-downloads",
     ])
   })
 
@@ -55,8 +87,13 @@ describe("resolveScope", () => {
       "languages",
       "countries",
       "keywords",
+      "video-origins",
       "videos",
+      "video-images",
+      "video-editions",
+      "video-subtitles",
       "video-dubs",
+      "video-dub-downloads",
     ])
   })
 
@@ -84,6 +121,7 @@ describe("resolveScope", () => {
 describe("runSync", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    refreshAfterCoreSyncMock.mockResolvedValue({ status: "skipped" })
   })
 
   it("returns skipped when lock is held", async () => {
@@ -98,11 +136,13 @@ describe("runSync", () => {
   })
 
   it("advances watermark when phase has zero errors", async () => {
-    const { acquireSyncLock, releaseSyncLock } = await import("./lock")
+    const { acquireSyncLock, refreshSyncLock, releaseSyncLock } =
+      await import("./lock")
     const { advanceWatermark, getWatermark } = await import("./watermark")
     const { syncLanguages } = await import("./phases/sync-languages")
 
     ;(acquireSyncLock as ReturnType<typeof vi.fn>).mockResolvedValueOnce(true)
+    ;(refreshSyncLock as ReturnType<typeof vi.fn>).mockResolvedValueOnce(true)
     ;(releaseSyncLock as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       undefined,
     )
@@ -122,15 +162,31 @@ describe("runSync", () => {
     await runSync(mockPrisma, { scope: "languages" })
 
     expect(advanceWatermark).toHaveBeenCalled()
+    expect(releaseSyncLock).toHaveBeenCalledWith(
+      mockPrisma,
+      expect.stringMatching(/^sync-\d+$/),
+    )
+    expect(refreshAfterCoreSyncMock).toHaveBeenCalledWith({
+      prisma: mockPrisma,
+      phases: [
+        expect.objectContaining({
+          phase: "languages",
+          created: 5,
+          errors: 0,
+        }),
+      ],
+    })
   })
 
   it("does NOT advance watermark when phase has errors", async () => {
-    const { acquireSyncLock, releaseSyncLock } = await import("./lock")
+    const { acquireSyncLock, refreshSyncLock, releaseSyncLock } =
+      await import("./lock")
     const { advanceWatermark, updateStatsOnly, getWatermark } =
       await import("./watermark")
     const { syncLanguages } = await import("./phases/sync-languages")
 
     ;(acquireSyncLock as ReturnType<typeof vi.fn>).mockResolvedValueOnce(true)
+    ;(refreshSyncLock as ReturnType<typeof vi.fn>).mockResolvedValueOnce(true)
     ;(releaseSyncLock as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       undefined,
     )
@@ -154,11 +210,13 @@ describe("runSync", () => {
   })
 
   it("releases lock even when phase throws", async () => {
-    const { acquireSyncLock, releaseSyncLock } = await import("./lock")
+    const { acquireSyncLock, refreshSyncLock, releaseSyncLock } =
+      await import("./lock")
     const { getWatermark } = await import("./watermark")
     const { syncLanguages } = await import("./phases/sync-languages")
 
     ;(acquireSyncLock as ReturnType<typeof vi.fn>).mockResolvedValueOnce(true)
+    ;(refreshSyncLock as ReturnType<typeof vi.fn>).mockResolvedValueOnce(true)
     ;(releaseSyncLock as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       undefined,
     )
@@ -174,7 +232,10 @@ describe("runSync", () => {
     const { runSync } = await import("./orchestrator")
     const result = await runSync(mockPrisma, { scope: "languages" })
 
-    expect(releaseSyncLock).toHaveBeenCalled()
+    expect(releaseSyncLock).toHaveBeenCalledWith(
+      mockPrisma,
+      expect.stringMatching(/^sync-\d+$/),
+    )
     expect(result.phases[0].errors).toBe(1)
   })
 })

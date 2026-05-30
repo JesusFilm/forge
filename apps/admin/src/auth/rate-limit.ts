@@ -63,7 +63,21 @@ export async function rateLimitAuthRoute({
       windowMs,
     )) as number
     return { allowed: count <= limit, source: "redis" }
-  } catch {
+  } catch (err) {
+    // Redis-degraded: each admin replica falls back to its own
+    // in-process bucket. Effective limit becomes (limit × replica
+    // count). Emit a WARN-level structured log so operators can
+    // detect the degradation in dashboards instead of guessing
+    // whether a traffic spike is real or rate-limit fallback.
+    // The route handler additionally emits `source: "local"` in its
+    // per-request log so the fallback shows up at the request level.
+    console.warn(
+      JSON.stringify({
+        event: "rate_limit.redis_unavailable",
+        route,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    )
     return localLimit(key, limit, windowMs)
   }
 }

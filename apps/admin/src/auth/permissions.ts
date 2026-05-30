@@ -42,15 +42,24 @@ export type PermissionKey =
   // Read scopes
   | "read:experiences"
   | "read:videos"
+  | "read:video-metadata"
   | "read:media-assets"
   | "read:reference"
+  | "access:manager"
+  | "read:manager-read-models"
   // Write scopes (admin-write on Core-sourced is intentionally restricted)
   | "write:experiences"
   | "write:videos"
   | "write:media-assets"
   | "write:scene-embeddings"
   | "write:transcript-embeddings"
-  | "write:experience-content-dump"
+  | "write:experience-embeddings"
+  // feat-119 PR2 — admin → manager outbound enrichment trigger.
+  // Admin's `triggerManagerEnrichment` mutation gates on this key;
+  // the mutation forwards the call to apps/manager's
+  // `/api/admin-trigger/{scene-analysis,transcript}` endpoint.
+  | "write:manager-enrichment-trigger"
+  | "write:manager-jobs"
   // Lifecycle scopes (publish / archive ExperienceLocale, etc.)
   | "publish:experiences"
   | "archive:experiences"
@@ -73,9 +82,21 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // narrow to "is the entity actually published?" or "do I own this draft?"
   "read:experiences": "VIEWER",
   "read:videos": "VIEWER",
+  // feat-125 — manager's `/api/admin-trigger/*` endpoints look up
+  // video dispatch fields (muxAssetId, subtitleUrl, label,
+  // primaryLanguage.bcp47) by coreId via admin's `videosByCoreIds`
+  // query, replacing the Strapi GraphQL call. VIEWER-tier at the
+  // editorial ladder mirrors `read:videos`; the load-bearing
+  // gating happens via the `WORKFLOW_TRIGGER_PERMISSIONS` allowlist
+  // below so manager's bearer call is the intended caller.
+  "read:video-metadata": "VIEWER",
   "read:media-assets": "EDITOR",
   // Reference data is public-shape; PUBLIC may read.
   "read:reference": "PUBLIC",
+  // Manager panel and Manager backend contracts are gated below, not by
+  // the editorial role ladder.
+  "access:manager": "PUBLIC",
+  "read:manager-read-models": "PUBLIC",
   // Editor writes
   "write:experiences": "EDITOR",
   // Core-sourced; only ADMIN may override (also flips source='manager').
@@ -85,10 +106,22 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "write:scene-embeddings": "ADMIN",
   // Derived-column trigger (transcript-embedding backfill). ADMIN-only.
   "write:transcript-embeddings": "ADMIN",
-  // Experience content dump from cms (R3 of the admin migration playbook).
-  // ADMIN-only because it overwrites admin-side ExperienceLocale rows from
-  // the cms snapshot — must not be invokable by EDITOR sessions.
-  "write:experience-content-dump": "ADMIN",
+  // Experience-embedding backfill (admin-native). Enumerates
+  // ExperienceLocale rows and dispatches `runExperienceEmbedding` per
+  // locale. ADMIN-only at the editorial-tier ladder; bearer-callable
+  // from CLIs via the per-key allowlist below (symmetric with R1/R2
+  // backfill keys so `pnpm run-embeds --pipeline=experience` can mint
+  // a WORKFLOW_TRIGGER principal without standing up admin's full
+  // session-cookie auth flow).
+  "write:experience-embeddings": "ADMIN",
+  // feat-119 PR2 — admin → manager outbound enrichment trigger.
+  // ADMIN-only at the editorial-tier ladder; the bearer-mintable
+  // `WORKFLOW_TRIGGER` role is also granted via the per-key allowlist
+  // below so apps/manager can in turn call BACK to admin in the
+  // existing reverse direction without the new key piggybacking on
+  // that path.
+  "write:manager-enrichment-trigger": "ADMIN",
+  "write:manager-jobs": "PUBLIC",
   // Lifecycle
   "publish:experiences": "EDITOR",
   "archive:experiences": "EDITOR",
@@ -135,6 +168,14 @@ function meetsTier(role: Role, min: MinTier): boolean {
   // WORKFLOW_TRIGGER is gated by `WORKFLOW_TRIGGER_PERMISSIONS` in
   // `hasPermission` directly; it never satisfies tier-based checks.
   if (role === "WORKFLOW_TRIGGER") return false
+  // MANAGER_BACKEND is gated by `MANAGER_BACKEND_PERMISSIONS`; it never
+  // satisfies human panel access or editorial tier checks.
+  if (role === "MANAGER_BACKEND") return false
+  // CONSUMER_BEARER is gated by `CONSUMER_BEARER_PERMISSIONS` (empty set)
+  // in `hasPermission` via early-return; it never satisfies tier-based
+  // checks. The bearer's sole purpose is rate-limit bucketing, not
+  // permission granting.
+  if (role === "CONSUMER_BEARER") return false
   return editorialRank(role) >= editorialRank(min)
 }
 
@@ -162,6 +203,60 @@ function meetsTier(role: Role, min: MinTier): boolean {
 const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "write:scene-embeddings",
   "write:transcript-embeddings",
+  // feat-119 PR2: the `pnpm trigger-enrichment` CLI authenticates
+  // with `WORKFLOW_API_KEYS` (mints `WORKFLOW_TRIGGER`) when an
+  // operator pipes PR1's `missingArtifacts` projection into the
+  // outbound trigger. Granting it here keeps the CLI path symmetric
+  // with the embed-backfill triggers above. The opposite direction
+  // (manager → admin) does NOT acquire any new reach: there is no
+  // manager-side REST proxy forwarding to this mutation, so a
+  // Manager-tier identity cannot pivot through this key.
+  "write:manager-enrichment-trigger",
+  // Admin-native experience-embedding backfill. Granted to
+  // WORKFLOW_TRIGGER so `pnpm run-embeds --pipeline=experience`
+  // (the local-dev CLI shim) can dispatch via bearer auth without
+  // a session cookie. Symmetric with the scene/transcript embed
+  // backfill keys above. There is no manager-side REST proxy
+  // forwarding to this mutation, so a Manager-tier identity does
+  // NOT gain reach through this key today.
+  "write:experience-embeddings",
+  // feat-125 — manager's admin-trigger CMS-replacement lookup
+  // (`/api/admin-trigger/{scene-analysis,transcript}` calls back
+  // to admin's `videosByCoreIds` query to resolve dispatch fields).
+  // Read on already-published video metadata — same shape as
+  // `read:videos` semantically; widening blast radius by a read.
+  // Reuses `ADMIN_EMBED_TRIGGER_API_KEY` as the calling bearer so
+  // no new env coordination is required.
+  "read:video-metadata",
+])
+
+/**
+ * Permission keys the request-bound `CONSUMER_BEARER` principal is
+ * allowed to satisfy. **Intentionally empty.** The bearer's sole
+ * purpose is to bucket consumer SSR traffic in admin's rate-limit
+ * identifyFn — it grants NO permissions beyond PUBLIC. Adding any
+ * permission to this set is CI-asserted to fail across two surfaces:
+ *
+ *   1. `permissions.test.ts` enumerates every `PermissionKey` and
+ *      asserts `hasPermission(CONSUMER_BEARER_PRINCIPAL("any"), key)
+ *      === false`.
+ *   2. The same test asserts `CONSUMER_BEARER` is NOT a member of
+ *      `WORKFLOW_TRIGGER_PERMISSIONS`-style sets and that
+ *      `WEB_ADMIN_API_KEYS !== WORKFLOW_API_KEYS`.
+ *
+ * If a future plan needs the bearer to satisfy a real permission, that
+ * is a brand-new role, not a widening of this one. The empty-set
+ * invariant is the load-bearing security boundary.
+ */
+const CONSUMER_BEARER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set()
+
+const MANAGER_BACKEND_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "read:manager-read-models",
+  "write:manager-jobs",
+])
+
+const MANAGER_MEMBERSHIP_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "access:manager",
 ])
 
 /**
@@ -184,6 +279,24 @@ export function hasPermission(
   // ADMIN-only mutation.
   if (role === "WORKFLOW_TRIGGER") {
     return WORKFLOW_TRIGGER_PERMISSIONS.has(key)
+  }
+  if (role === "MANAGER_BACKEND") {
+    return MANAGER_BACKEND_PERMISSIONS.has(key)
+  }
+  // CONSUMER_BEARER's permission set is intentionally empty; this
+  // early-return makes the contract explicit at the call site so a
+  // reader doesn't have to derive "no permission keys granted" from
+  // `meetsTier`'s tier-only ladder. Adding a key to
+  // CONSUMER_BEARER_PERMISSIONS is a CI-fail surface — see the
+  // assertions in `permissions.test.ts`.
+  if (role === "CONSUMER_BEARER") {
+    return CONSUMER_BEARER_PERMISSIONS.has(key)
+  }
+  if (MANAGER_BACKEND_PERMISSIONS.has(key)) {
+    return false
+  }
+  if (MANAGER_MEMBERSHIP_PERMISSIONS.has(key)) {
+    return user?.managerRole === "OPERATOR"
   }
   const min = permissionMatrix[key]
   return meetsTier(role, min)

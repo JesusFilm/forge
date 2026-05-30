@@ -1,4 +1,5 @@
 import { Shield } from "lucide-react"
+import { revalidatePath } from "next/cache"
 import {
   DashboardPageHeader,
   DataTable,
@@ -7,8 +8,28 @@ import {
   PageSection,
 } from "@/components/admin-ui"
 import { requireAdminSession } from "@/auth/session"
+import { prisma } from "@/db/client"
 import { getAdminMessages } from "@/i18n/server"
 import { loadUsersData } from "@/app/dashboard/ops-data"
+
+async function approveUser(formData: FormData) {
+  "use server"
+
+  await requireAdminSession()
+  const id = formData.get("id")
+  const role = formData.get("role")
+
+  if (typeof id !== "string" || (role !== "EDITOR" && role !== "ADMIN")) {
+    return
+  }
+
+  await prisma.user.update({
+    where: { id },
+    data: { role },
+    select: { id: true },
+  })
+  revalidatePath("/dashboard/users")
+}
 
 export default async function UsersPage() {
   await requireAdminSession()
@@ -38,10 +59,7 @@ export default async function UsersPage() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)]">
         <div className="flex flex-col gap-6">
-          <PageSection
-            title="User Directory"
-            meta="BETTER_AUTH / ROLES / SESSIONS"
-          >
+          <PageSection title="User Directory" meta="AUTH_SSO / ROLES">
             <DataTable
               columns={["Principal", "Status", "Updated"]}
               rows={data.rows.map((row) => [
@@ -51,16 +69,41 @@ export default async function UsersPage() {
                     {row.detail}
                   </div>
                 </div>,
-                <span
-                  key={`${row.key}-status`}
-                  className={`status-pill ${
-                    row.statusTone === "success"
-                      ? "text-[var(--color-success)] border-[var(--color-success-border)]"
-                      : "text-[var(--color-warning)] border-[var(--color-warning-border)]"
-                  }`}
-                >
-                  {row.statusLabel}
-                </span>,
+                <div key={`${row.key}-status`} className="flex flex-wrap gap-2">
+                  <span
+                    className={`status-pill ${
+                      row.statusTone === "success"
+                        ? "text-[var(--color-success)] border-[var(--color-success-border)]"
+                        : "text-[var(--color-warning)] border-[var(--color-warning-border)]"
+                    }`}
+                  >
+                    {row.statusLabel}
+                  </span>
+                  {row.statusLabel === "VIEWER" ? (
+                    <>
+                      <form action={approveUser}>
+                        <input type="hidden" name="id" value={row.key} />
+                        <input type="hidden" name="role" value="EDITOR" />
+                        <button
+                          type="submit"
+                          className="status-pill border-[var(--color-success-border)] text-[var(--color-success)]"
+                        >
+                          Approve Editor
+                        </button>
+                      </form>
+                      <form action={approveUser}>
+                        <input type="hidden" name="id" value={row.key} />
+                        <input type="hidden" name="role" value="ADMIN" />
+                        <button
+                          type="submit"
+                          className="status-pill border-[var(--color-warning-border)] text-[var(--color-warning)]"
+                        >
+                          Approve Admin
+                        </button>
+                      </form>
+                    </>
+                  ) : null}
+                </div>,
                 <span
                   key={`${row.key}-meta`}
                   className="mono-meta text-[var(--color-text-muted)]"
@@ -86,9 +129,9 @@ export default async function UsersPage() {
         <OperatorRail
           title={messages.common.operatorNotes}
           meta={messages.common.fieldGuide}
-          notes="This route now reflects persisted Better Auth users, linked providers, and session posture instead of a future-state permissions mockup."
+          notes="This route reflects persisted admin user roles mapped from Auth SSO callbacks instead of a future-state permissions mockup."
           chips={[
-            { label: "Source", value: "BETTER_AUTH_DB" },
+            { label: "Source", value: "ADMIN_DB" },
             { label: "Model", value: "ROLE_PLUS_ABAC" },
             { label: "Surface", value: "ACCESS_CONTROL" },
           ]}

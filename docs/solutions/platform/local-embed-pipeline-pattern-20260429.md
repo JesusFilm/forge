@@ -1,7 +1,7 @@
 ---
 title: "Local embed pipeline + manager-trigger parity pattern"
 date: 2026-04-29
-last_updated: 2026-04-30
+last_updated: 2026-05-06
 problem_type: developer_experience
 category: platform
 component: admin
@@ -255,6 +255,19 @@ them.
    direct-invokes will break at runtime. See
    `docs/solutions/best-practices/workflow-dispatch-test-mode-divergence-20260421.md`.
 
+   **Corollary (added 2026-05-17 after PR #967):** AND `"use workflow"`
+   functions must not call `start()` on **sibling** workflows from inside
+   their own `"use step"` bodies. Nested `start()` re-enters
+   `workflow/api` and requires a workflow runtime at the inner boundary
+   — which the CLI shim's direct-invoke path explicitly does not have.
+   If two workflows need to share per-item work, extract a plain async
+   service helper and have each workflow's step body call it directly.
+   The single-trigger workflow becomes a thin shim around the helper;
+   the backfill loop's step body calls the helper inline. See
+   [`docs/solutions/best-practices/workflow-step-body-calls-service-not-sibling-workflow-20260517.md`](../best-practices/workflow-step-body-calls-service-not-sibling-workflow-20260517.md)
+   for the worked instance (`embedExperienceLocale` between
+   `runExperienceEmbedding` and `runExperienceEmbeddingBackfill`).
+
 7. **HTTP status semantics on the proxy.** 503 (not 500) for
    `config_missing` (manager env not set) — operator-fixable
    misconfig is service-unavailable, not unexpected error. 502 for
@@ -298,3 +311,14 @@ as a future plan; the infrastructure for it now exists.
   Plan 006 reintroduces it for admin local-dev only because
   admin-side concurrency is irrelevant locally; the rejection
   reasoning still applies for manager-side production backfills.
+- `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`
+  — feat-119 PR2 added the **inverse direction**: admin → manager
+  outbound dispatch (`triggerManagerEnrichment` mutation →
+  `/api/admin-trigger/{scene-analysis,transcript}` endpoints). The
+  Railway deploy-ordering invariant documented there ("receiver
+  deploys keyring entry FIRST, then caller") applies symmetrically
+  to BOTH directions: this document's manager-side proxy needs
+  admin's `WORKFLOW_API_KEYS` keyring entry deployed first too,
+  before manager's `ADMIN_EMBED_TRIGGER_API_KEY`. Curl-verify the
+  503 → 401 transition on either direction's receiver to confirm
+  the keyring loaded before deploying the caller's bearer var.

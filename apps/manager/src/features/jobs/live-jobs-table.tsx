@@ -1,8 +1,8 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { formatStepName } from "@/lib/workflow-steps"
 import type { JobRecord } from "@/types/job"
 import { apiFetch } from "@/lib/api-fetch"
@@ -24,6 +24,7 @@ import {
   FOREGROUND_POLL_DELAY_MS,
   getNextPollDelayMs,
 } from "./live-jobs-polling"
+import { buildJobDetailHref } from "./job-detail-href"
 import {
   createInitialLiveJobsRealtimeSnapshot,
   createLiveJobsListEventSourceOpener,
@@ -54,6 +55,7 @@ export function LiveJobsTable({
   initialJobs,
   languageLabelsById,
 }: LiveJobsTableProps) {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [realtimeSnapshot, setRealtimeSnapshot] = useState(() =>
     createInitialLiveJobsRealtimeSnapshot(initialJobs),
@@ -81,6 +83,25 @@ export function LiveJobsTable({
     }
     return `?languageId=${encodeURIComponent(normalizedLanguageIds.join(","))}`
   }, [searchParams])
+
+  const buildJobHref = useCallback(
+    (jobId: string) => buildJobDetailHref(jobId, jobsDetailQuerySuffix),
+    [jobsDetailQuerySuffix],
+  )
+
+  const prefetchJobHref = useCallback(
+    (jobId: string) => {
+      router.prefetch(buildJobHref(jobId))
+    },
+    [buildJobHref, router],
+  )
+
+  const navigateToJobHref = useCallback(
+    (jobId: string) => {
+      router.push(buildJobHref(jobId))
+    },
+    [buildJobHref, router],
+  )
 
   useEffect(() => {
     const controller = createLiveJobsListRealtimeController({
@@ -194,6 +215,8 @@ export function LiveJobsTable({
                         <React.Fragment key={job.id}>
                           <tr
                             className={`jobs-clickable-row${latestError ? " jobs-row-with-issue" : ""}`}
+                            onMouseEnter={() => prefetchJobHref(job.id)}
+                            onFocus={() => prefetchJobHref(job.id)}
                             onClick={(event) => {
                               if (
                                 shouldIgnoreRowNavigation(
@@ -202,9 +225,7 @@ export function LiveJobsTable({
                                 )
                               )
                                 return
-                              window.location.assign(
-                                `/dashboard/jobs/${job.id}${jobsDetailQuerySuffix}`,
-                              )
+                              navigateToJobHref(job.id)
                             }}
                             onKeyDown={(event) => {
                               if (
@@ -217,9 +238,7 @@ export function LiveJobsTable({
                               if (event.key !== "Enter" && event.key !== " ")
                                 return
                               event.preventDefault()
-                              window.location.assign(
-                                `/dashboard/jobs/${job.id}${jobsDetailQuerySuffix}`,
-                              )
+                              navigateToJobHref(job.id)
                             }}
                             tabIndex={0}
                             role="link"
@@ -282,7 +301,7 @@ export function LiveJobsTable({
                                   {getProgressSummary(job)}
                                 </p>
                                 <Link
-                                  href={`/dashboard/jobs/${job.id}${jobsDetailQuerySuffix}`}
+                                  href={buildJobHref(job.id)}
                                   className="jobs-open-link"
                                 >
                                   Open

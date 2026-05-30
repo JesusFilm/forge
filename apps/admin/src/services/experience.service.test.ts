@@ -1,6 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import type { Principal } from "@/auth/principal"
 import { ExperienceService } from "./experience.service"
+import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
+
+vi.mock("./watch-route-manifest-refresh.service", () => ({
+  refreshWatchRouteManifest: vi.fn().mockResolvedValue({ status: "refreshed" }),
+}))
 
 // Mock Prisma client with chained methods
 function mockPrisma() {
@@ -12,6 +17,7 @@ function mockPrisma() {
   const experienceLocale = {
     create: vi.fn(),
     findFirst: vi.fn(),
+    findMany: vi.fn(),
     findUniqueOrThrow: vi.fn(),
     update: vi.fn(),
   }
@@ -43,6 +49,11 @@ const EDITOR_BOB: Principal = { id: "bob", role: "EDITOR" }
 const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
 const SYSTEM: Principal = { id: null, role: "SYSTEM" }
 const PUBLIC_USER: Principal | null = null
+const CONSUMER_BEARER_USER: Principal = {
+  id: null,
+  role: "CONSUMER_BEARER",
+  rateLimitBucketKey: "test-bucket",
+}
 
 describe("ExperienceService", () => {
   let prisma: ReturnType<typeof mockPrisma>
@@ -51,6 +62,7 @@ describe("ExperienceService", () => {
   beforeEach(() => {
     prisma = mockPrisma()
     service = new ExperienceService(prisma)
+    vi.mocked(refreshWatchRouteManifest).mockClear()
   })
 
   // ---------------------------------------------------------------------------
@@ -436,6 +448,39 @@ describe("ExperienceService", () => {
       expect(prisma.experience.update).not.toHaveBeenCalled()
     })
 
+    it("requests manifest refresh after updating a published locale", async () => {
+      const publishedLocale = { ...localeRow, status: "PUBLISHED" }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        publishedLocale,
+      )
+      prisma.experienceLocale.update.mockResolvedValueOnce({
+        ...publishedLocale,
+        title: "Published update",
+      })
+
+      await service.updateLocale({
+        input: { id: "loc-1", title: "Published update" },
+        user: EDITOR_ALICE,
+      })
+
+      expect(refreshWatchRouteManifest).toHaveBeenCalledWith({
+        prisma,
+        reason: "experience.update",
+      })
+    })
+
+    it("does not request manifest refresh for draft-only locale updates", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.experienceLocale.update.mockResolvedValueOnce(localeRow)
+
+      await service.updateLocale({
+        input: { id: "loc-1", title: "Draft update" },
+        user: EDITOR_ALICE,
+      })
+
+      expect(refreshWatchRouteManifest).not.toHaveBeenCalled()
+    })
+
     it("SYSTEM cannot update locale (editorial isolation)", async () => {
       prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
 
@@ -511,6 +556,10 @@ describe("ExperienceService", () => {
           }),
         }),
       )
+      expect(refreshWatchRouteManifest).toHaveBeenCalledWith({
+        prisma,
+        reason: "experience.publish",
+      })
     })
 
     it("VIEWER cannot publish", async () => {
@@ -692,6 +741,10 @@ describe("ExperienceService", () => {
       })
 
       expect(result.archivedAt).not.toBeNull()
+      expect(refreshWatchRouteManifest).toHaveBeenCalledWith({
+        prisma,
+        reason: "experience.archive",
+      })
     })
 
     it("EDITOR cannot archive another editor's experience", async () => {
@@ -753,10 +806,14 @@ describe("ExperienceService", () => {
       })
 
       const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
-      expect(call.where.experience).toEqual({ archivedAt: null })
+      // R9: PUBLIC gets archivedAt + isTemplate filters together.
+      expect(call.where.experience).toEqual({
+        archivedAt: null,
+        isTemplate: false,
+      })
     })
 
-    it("VIEWER sees published only", async () => {
+    it("VIEWER sees published only — templates remain visible", async () => {
       prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
 
       await service.getBySlug({
@@ -768,7 +825,92 @@ describe("ExperienceService", () => {
 
       const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
       expect(call.where).toHaveProperty("status", "PUBLISHED")
+      // R9 is narrowly scoped: VIEWER (editorial-tier read-only) keeps
+      // template visibility; only PUBLIC + CONSUMER_BEARER lose it.
       expect(call.where.experience).toEqual({ archivedAt: null })
+      expect(call.where.experience).not.toHaveProperty("isTemplate")
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // getBySlug — R9 template-filter (PUBLIC + CONSUMER_BEARER)
+  // ---------------------------------------------------------------------------
+
+  describe("getBySlug — R9 template filter", () => {
+    it("PUBLIC where clause includes isTemplate: false", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: PUBLIC_USER,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where.experience).toMatchObject({ isTemplate: false })
+    })
+
+    it("CONSUMER_BEARER where clause includes isTemplate: false", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: CONSUMER_BEARER_USER,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where).toHaveProperty("status", "PUBLISHED")
+      expect(call.where.experience).toMatchObject({
+        archivedAt: null,
+        isTemplate: false,
+      })
+    })
+
+    it("VIEWER where clause does NOT include isTemplate (templates still visible)", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: VIEWER,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where.experience).not.toHaveProperty("isTemplate")
+    })
+
+    it("EDITOR where clause does NOT include isTemplate (no consumer-tier filters apply)", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: EDITOR_ALICE,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where).not.toHaveProperty("status")
+      expect(call.where).not.toHaveProperty("experience")
+    })
+
+    it("ADMIN where clause does NOT include isTemplate", async () => {
+      prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({
+        locale: "en",
+        slug: "any",
+        user: ADMIN,
+        query: {},
+      })
+
+      const call = prisma.experienceLocale.findFirst.mock.calls[0][0]
+      expect(call.where).not.toHaveProperty("status")
+      expect(call.where).not.toHaveProperty("experience")
     })
   })
 })

@@ -31,6 +31,23 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_D
 - `.devcontainer/post_install.py` — post-create: Claude bypassPermissions, Codex full-access config, tmux, gitignore
 - `.devcontainer/.zshrc` — zsh config with fnm, fzf, history
 
+## System packages
+
+- PostgreSQL client tools come from the official PGDG apt repository and install `postgresql-client-18`. Ubuntu 24.04's default `postgresql-client` package resolves to PostgreSQL 16, which cannot read custom-format dumps with header version 1.16 from newer Railway PostgreSQL backups.
+- The local database sidecar uses `pgvector/pgvector:pg18` to match the Railway PostgreSQL 18 production major version as closely as practical in local development.
+- PostgreSQL 18 Docker images expect the persistent volume at `/var/lib/postgresql`, not `/var/lib/postgresql/data`, so the Compose volume is named `pgdata18` and mounted at `/var/lib/postgresql`.
+- After rebuilding the devcontainer, verify `pg_restore --version`, `pg_dump --version`, and `psql --version` all report PostgreSQL 18 before restoring production backup artifacts.
+- PostgreSQL major-version upgrades cannot reuse an old data directory. Old `pgdata` volumes created with PostgreSQL 16 are intentionally not reused by the PG18 sidecar.
+
+## Local SSH access
+
+- The devcontainer exposes SSH on host port `127.0.0.1:2222` and disables password authentication.
+- Keep `/home/vscode/.ssh` on a named Compose volume so `authorized_keys` survives rebuilds and restarts.
+- Have the key-sync helper repair root-owned fresh named volumes with `sudo install`/`chown`; direct helper runs and normal container startup should both work.
+- Use the persisted GitHub CLI config volume to discover the authenticated GitHub username, then sync public keys from `https://github.com/<user>.keys` into a clearly marked managed block in `~/.ssh/authorized_keys`.
+- The sync step must be idempotent: remove the prior managed block before writing the latest GitHub keys so users can rotate keys without accumulating stale entries.
+- For the reusable cross-container recipe, see `docs/solutions/platform/devcontainer-github-ssh-authorized-keys-pattern-20260525.md`.
+
 ## Known gaps / watch-outs
 
 - `claude plugin marketplace add` runs during Docker build — requires public plugins or pre-auth

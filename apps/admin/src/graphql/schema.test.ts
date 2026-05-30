@@ -47,12 +47,90 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "video",
         "videoBySlug",
         "videos",
+        "videosByCoreIds",
         // Experience
         "experience",
         "experiences",
         "experienceBySlug",
+        "watchSetting",
+        // Manager backend contracts
+        "managerViewer",
+        "managerLanguageGeo",
+        "managerVideoCoverage",
+        "managerCoverageSnapshots",
+        "managerJobs",
+        "managerJob",
       ]),
     )
+  })
+
+  it("Manager session/read/job contract types expose the expected shape", () => {
+    expect(Object.keys(fieldsOf("ManagerViewer"))).toEqual(
+      expect.arrayContaining([
+        "id",
+        "username",
+        "email",
+        "managerRole",
+        "permission",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("ManagerLanguageGeo"))).toEqual(
+      expect.arrayContaining(["continents", "countries", "languages"]),
+    )
+    expect(Object.keys(fieldsOf("ManagerVideoCoverage"))).toEqual(
+      expect.arrayContaining([
+        "documentId",
+        "coreId",
+        "parentDocumentIds",
+        "coverage",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("ManagerJob"))).toEqual(
+      expect.arrayContaining([
+        "id",
+        "muxAssetId",
+        "languages",
+        "status",
+        "steps",
+        "errors",
+      ]),
+    )
+  })
+
+  it("WatchSetting type exposes the consumer-shape fields (documentId, homepageExperience, defaultTemplateExperience)", () => {
+    const fields = fieldsOf("WatchSetting")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "documentId",
+        "homepageExperience",
+        "defaultTemplateExperience",
+      ]),
+    )
+  })
+
+  it("VideoForEnrichment type (feat-125) exposes the dispatch-fields projection with the expected nullability", () => {
+    const fields = fieldsOf("VideoForEnrichment")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "id",
+        "coreId",
+        "label",
+        "primaryLanguageBcp47",
+        "muxAssetId",
+        "subtitleUrl",
+      ]),
+    )
+    // id + coreId are non-null per the service contract; the rest
+    // are nullable so manager can classify missing fields as
+    // `validation_failed`.
+    const nonNull = (key: string) =>
+      String((fields[key] as { type: unknown }).type).endsWith("!")
+    expect(nonNull("id")).toBe(true)
+    expect(nonNull("coreId")).toBe(true)
+    expect(nonNull("label")).toBe(false)
+    expect(nonNull("primaryLanguageBcp47")).toBe(false)
+    expect(nonNull("muxAssetId")).toBe(false)
+    expect(nonNull("subtitleUrl")).toBe(false)
   })
 
   it("Query root no longer exposes the Unit 3 Ping spike fields", () => {
@@ -66,6 +144,14 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(mutation).toBeTruthy()
     const fields = mutation!.getFields()
     expect(fields.triggerExperienceEmbedding).toBeDefined()
+  })
+
+  it("Mutation root exposes Manager job write contracts", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const fields = mutation!.getFields()
+    expect(fields.createManagerJob).toBeDefined()
+    expect(fields.updateManagerJob).toBeDefined()
   })
 
   it("Mutation root exposes media asset write entry points", () => {
@@ -108,24 +194,39 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(fields.triggerTranscriptEmbeddingBackfill).toBeDefined()
   })
 
-  it("Mutation root exposes the experience content dump trigger (R3)", () => {
+  it("Mutation root exposes the admin-native experience-embedding backfill trigger", () => {
     const mutation = schema.getMutationType()
     expect(mutation).toBeTruthy()
     const fields = mutation!.getFields()
-    expect(fields.triggerExperienceContentDump).toBeDefined()
+    expect(fields.triggerExperienceEmbeddingBackfill).toBeDefined()
   })
 
-  it("triggerExperienceContentDump declares optional documentIds + locales args", () => {
+  it("triggerExperienceEmbeddingBackfill declares optional experienceIds + bcp47Locales + force + mode args", () => {
     const mutation = schema.getMutationType()!
-    const field = mutation.getFields().triggerExperienceContentDump!
-    const documentIds = field.args.find((a) => a.name === "documentIds")
-    const locales = field.args.find((a) => a.name === "locales")
-    expect(documentIds).toBeDefined()
-    expect(locales).toBeDefined()
-    // Both are nullable lists ([String!]) so clients may omit or pass
-    // null; the workflow itself treats length-0 arrays as omitted.
-    expect(String(documentIds!.type)).toBe("[String!]")
-    expect(String(locales!.type)).toBe("[String!]")
+    const field = mutation.getFields().triggerExperienceEmbeddingBackfill!
+    const experienceIds = field.args.find((a) => a.name === "experienceIds")
+    const bcp47Locales = field.args.find((a) => a.name === "bcp47Locales")
+    const force = field.args.find((a) => a.name === "force")
+    const mode = field.args.find((a) => a.name === "mode")
+    expect(experienceIds).toBeDefined()
+    expect(bcp47Locales).toBeDefined()
+    expect(force).toBeDefined()
+    expect(mode).toBeDefined()
+    // experienceIds and bcp47Locales are nullable inclusion-filter lists.
+    expect(String(experienceIds!.type)).toBe("[ID!]")
+    expect(String(bcp47Locales!.type)).toBe("[String!]")
+    // force is nullable Boolean (defaultValue: false on the resolver).
+    expect(String(force!.type)).toBe("Boolean")
+    // mode is nullable String, parsed by the resolver into the ingest mode.
+    expect(String(mode!.type)).toBe("String")
+  })
+
+  it("Mutation root does NOT expose the retired experience-content-dump trigger", () => {
+    // Defense-in-depth: the cms-coupled dump mutation was removed in
+    // docs/plans/2026-05-17-001-refactor-decouple-experience-embeds-from-cms-plan.md.
+    // A regression that re-introduces it should fail loudly here.
+    const mutation = schema.getMutationType()!
+    expect(mutation.getFields().triggerExperienceContentDump).toBeUndefined()
   })
 })
 
@@ -247,12 +348,16 @@ describe("Experience type", () => {
 })
 
 describe("ExperienceLocale type", () => {
-  it("exposes blocks as JSON and status as enum", () => {
+  it("exposes blocks as a typed ExperienceBlock list and status as enum", () => {
     const fields = fieldsOf("ExperienceLocale") as Record<
       string,
       { type: { toString(): string } }
     >
-    expect(fields.blocks.type.toString()).toMatch(/JSON/)
+    // The blocks field switched from JSON scalar to a non-null list of the
+    // typed `ExperienceBlock` union (U3 of the admin direct-cutover plan).
+    // Mutations still accept JSON input — see mutations/experience.ts.
+    expect(fields.blocks.type.toString()).toMatch(/ExperienceBlock/)
+    expect(fields.blocks.type.toString()).not.toMatch(/JSON/)
     expect(fields.status.type.toString()).toMatch(/LocaleStatus/)
   })
 

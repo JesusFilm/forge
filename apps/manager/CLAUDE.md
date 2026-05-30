@@ -2,7 +2,7 @@
 
 ## What this app does
 
-AI video enrichment pipeline dashboard. Ingests video assets via Mux, runs enrichment workflows (transcription, translation, chapters, metadata, embeddings) using OpenRouter-routed AI models, stores artifacts in Railway S3-compatible Object Storage, and optionally syncs results back to Strapi CMS via `@forge/graphql`.
+AI video enrichment pipeline dashboard. Ingests video assets via Mux, runs enrichment workflows (transcription, translation, chapters, metadata, and source-artifact generation), stores artifacts in Railway S3-compatible Object Storage, and syncs results through Manager/Admin GraphQL contracts. Background transcript, scene, and experience embedding generation belongs to Mastra; Manager only supplies source artifacts.
 
 ## Source
 
@@ -14,9 +14,9 @@ Modelled on [VideoForge](https://github.com/lumberman/videoforge) — adapted to
 - Mux (`@mux/mux-node`) for video asset management and streaming
 - OpenRouter (`openai` SDK with `baseURL: https://openrouter.ai/api/v1`) for AI model access
 - ElevenLabs audio isolation (`fetch` + multipart form upload) for manager-only audio cleanup review artifacts
-- Railway S3-compatible Object Storage (`@aws-sdk/client-s3`) for artifacts — same pattern as `apps/cms` upload provider
+- Railway S3-compatible Object Storage (`@aws-sdk/client-s3`) for artifacts
 - workflow (`npm i workflow` from https://useworkflow.dev/) for durable workflow orchestration — uses `"use workflow"` and `"use step"` directives
-- `@forge/graphql` for typed Strapi CMS queries
+- `@forge/admin-graphql` for typed Admin GraphQL contracts
 - Doppler for environment variable management
 
 ## Folder structure
@@ -27,17 +27,17 @@ src/
   config/env.ts  Validated env vars (t3-oss/env-nextjs + zod)
   workflows/     Durable workflow definitions (useworkflow.dev)
   services/      Service clients: mux, transcription, storage
-  cms/           Strapi GraphQL client (wraps @forge/graphql)
+  cms/           legacy-named live/mock/admin data gateway and bridge code
 ```
 
 ## Conventions
 
 - All env vars validated at startup via `src/config/env.ts`. Never read `process.env` directly.
 - Env vars managed by **Doppler** (project: `forge-manager`). Use `pnpm fetch-secrets` for local dev.
-- CMS access goes through `src/cms/client.ts` (Apollo Client) with `@forge/graphql` typed operations. Never use Strapi REST.
+- New canonical data access goes through Admin GraphQL contracts. Keep legacy `src/cms/*` code isolated behind `src/cms/gateway.ts` while the Manager backend migration finishes; do not add new CMS dependencies or CMS-specific embedding sync.
 - Workflow steps must be idempotent — they may be retried by useworkflow.dev.
 - Artifact storage uses Railway S3 with `@aws-sdk/client-s3`. Keys: `{assetId}/{artifact-type}.{ext}`.
-- Storage uses the same `RAILWAY_S3_*` env var pattern as `apps/cms`. When `RAILWAY_S3_BUCKET` is not set, artifacts fall back to local `.tmp/artifacts/` — suitable for dev and test environments.
+- Storage uses the `RAILWAY_S3_*` env var pattern. When `RAILWAY_S3_BUCKET` is not set, artifacts fall back to local `.tmp/artifacts/` — suitable for dev and test environments.
 - JSON-shaped LLM outputs should go through `createStructuredOpenrouterOutput(...)` in `src/services/openrouter.ts` with a Zod schema plus strict JSON Schema; use raw chat completions only for plain-text tasks.
 
 ## Development
@@ -51,14 +51,29 @@ pnpm lint / pnpm typecheck
 
 ## Authentication
 
-Dashboard access requires a user with the "Manager" role.
+Dashboard access uses the shared Auth issuer and an explicit Admin
+`ManagerMembership` grant.
 
-- `MANAGER_DATA_MODE=live`: Login page → `POST /api/auth/login` → Strapi `/api/auth/local` → `strapi-jwt` cookie → middleware protects `/dashboard`.
-- `MANAGER_DATA_MODE=mock`: Login page → `POST /api/auth/login` → Manager mock gateway/session signer → `strapi-jwt` cookie → middleware protects `/dashboard`.
+- Login page redirects to Auth (`AUTH_ISSUER_URL`) with the Manager
+  client (`AUTH_MANAGER_CLIENT_ID`).
+- `/api/auth/callback` exchanges the OAuth code, calls Admin's
+  Manager session validation endpoint, and issues a local
+  `manager-session` cookie only for `ManagerRole.OPERATOR` users.
+- Middleware protects `/dashboard` with that local session. A legacy
+  `strapi-jwt` cookie is not sufficient for dashboard access.
+- `MANAGER_DATA_MODE=mock` is demo/test only and signs local mock
+  sessions with `MANAGER_MOCK_SESSION_SECRET`.
 
 API routes also accept Bearer token (`MANAGER_API_KEY`) for external clients.
 
-Local live-mode dev requires a Strapi user with role name exactly `Manager`. Create via Strapi admin at `http://localhost:1337/admin` > Settings > Users & Permissions > Roles.
+Admin-owned read models and job state can be enabled independently with
+`MANAGER_BACKEND_MODE=admin` (or `MANAGER_DATA_MODE=admin`). In that mode
+Manager reads/writes the Admin GraphQL Manager contracts using
+`ADMIN_GRAPHQL_URL`. Session validation should use the Auth-issued
+`AUTH_MANAGER_SERVICE_CLIENT_ID` / `AUTH_MANAGER_SERVICE_CLIENT_SECRET`
+service credential when configured, falling back to `ADMIN_MANAGER_API_KEY`
+during the dual-accept migration. These service credentials are separate from
+human Manager panel access.
 
 Local mock-mode smoke tests can use the seeded credentials:
 
@@ -123,40 +138,132 @@ misconfig (config_missing). A 502 with `retryable: true` is a safe candidate
 for a single bounded retry; the underlying admin workflow upserts on
 composite keys, so retries are idempotent.
 
+## Receiving admin-trigger requests (feat-119 PR2)
+
+Inverse direction of "Triggering admin embedding backfills" above.
+Admin's new `triggerManagerEnrichment` GraphQL mutation calls
+`/api/admin-trigger/{scene-analysis,transcript}` to ask manager to
+PRODUCE a missing upstream artifact (typically after an operator
+has reviewed PR1's `missingArtifacts` projection).
+
+**Endpoints:**
+
+- `POST /api/admin-trigger/scene-analysis` — dispatches
+  `runSceneAnalysisPipeline` per item. Manager writes
+  `{assetId}/scene-analysis.json` source data only; Mastra owns scene
+  embedding generation and Admin owns vector storage/search.
+- `POST /api/admin-trigger/transcript` — dispatches the new
+  `runTranscriptOnlyPipeline` (composes existing `transcribe()` with
+  the Mastra transcript embedding launcher; Manager writes
+  `{assetId}/transcript.json` source data and does not produce
+  `{assetId}/embeddings.json` for transcripts).
+
+Legacy `/api/backfill/{start,status,cancel}` routes are retired and
+return `410` after authentication. Scene embedding generation now runs
+through Admin-triggered Mastra workflows; Manager remains source-only
+for scene-analysis artifacts.
+
+**Body shape:** `{ items: [{ assetId: number, coreId: string }, ...] }`.
+Capped at 100 items per call. Manager dedupes by `assetId` at the
+boundary. `coreId` is the lookup key into admin's `videosByCoreIds`
+GraphQL query (feat-125 — replaced the prior Strapi `videos(filters:
+{ coreId: { in: ... } })` call); `assetId` is the operator-facing
+identifier and the storage-key prefix manager uses when writing
+artifacts.
+
+**Auth:** `Authorization: Bearer <key>` against the
+`ADMIN_TRIGGER_API_KEYS` CSV allowlist. Mirrors admin's
+`WORKFLOW_API_KEYS` shape — receiver-side CSV, caller-side single
+key. Validator: `src/lib/admin-trigger-auth.ts`. Returns 503
+`config_missing` when `ADMIN_TRIGGER_API_KEYS` is unset (so the
+admin-side client distinguishes "manager not configured" from
+"your bearer is wrong"); 401 on missing/wrong bearer.
+
+**Per-item idempotency:** in-memory `Map<\`${kind}:${assetId}\`,
+{ managerJobId, expiresAt }>`with a 5-minute TTL. Slot released
+as soon as the per-item dispatch resolves. Deliberately simpler
+than EnrichmentJob-backed idempotency because EnrichmentJob is
+keyed by Strapi documentId, not numeric assetId, and the existing`/api/scene-analysis`route does not create EnrichmentJob rows
+anyway. The realistic threat is operator double-click within
+seconds, not multi-instance concurrency. See`docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`
+for the deviation rationale.
+
+**Per-item outcome:** discriminated by `status`:
+
+| status              | Meaning                                                                                                                                                                                                                      |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `started`           | New `managerJobId` minted; pipeline dispatched in background via `after()`                                                                                                                                                   |
+| `already_in_flight` | Existing `managerJobId` returned (in-flight slot held by a recent call)                                                                                                                                                      |
+| `not_found`         | No admin video for the supplied `coreId`                                                                                                                                                                                     |
+| `validation_failed` | admin video found but missing required dispatch fields — `message` names the specific gap(s): primary language / mux variant. Subtitle URL is used when present; otherwise manager can fall back to Mux-generated subtitles. |
+
+**Non-2xx envelope (feat-125):** when admin's `videosByCoreIds`
+lookup fails, the route surfaces a typed body instead of a bare
+error string:
+
+| HTTP | Body shape                                                                                                                         | When                                                                             |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| 502  | `{ error, reason: "admin_unreachable", upstreamReason: "graphql_error" \| "network_error" \| "parse_error", messages, retryable }` | admin GraphQL / network / parse failure on the `videosByCoreIds` call            |
+| 503  | `{ error, reason: "config_missing", upstreamReason: "config_missing", messages, retryable: false }`                                | manager env is unconfigured to call admin (`ADMIN_GRAPHQL_URL` / bearer not set) |
+
+**Env on `forge-manager` Doppler:**
+
+- `ADMIN_TRIGGER_API_KEYS` — CSV of bearer keys admin can use.
+  Rotation: stage the new key alongside the old, deploy admin's
+  `MANAGER_TRIGGER_API_KEY` to one of the entries, drop the old
+  entry on the next rotation cycle.
+
+**Deploy-ordering invariant:** receiver FIRST. Set
+`ADMIN_TRIGGER_API_KEYS` on manager, accept-deploy, verify with
+`curl -H "Authorization: Bearer wrong"` returning 401 (not 503),
+THEN set `MANAGER_API_BASE_URL` + `MANAGER_TRIGGER_API_KEY` on
+admin and accept-deploy. Reverse order produces a dead minute
+where admin's first call 401s.
+
 ## Common pitfalls
 
 - The workflow SDK package is `workflow` (not `@workflowdev/sdk`). See https://useworkflow.dev/.
 - OpenRouter does not expose a Whisper transcription endpoint — use a supported model or switch to Mux's built-in transcription (`input[].generated_subtitles`).
 - Railway S3 requires `forcePathStyle: true` in the S3Client config.
 - Audio cleanup extracts original audio with `ffmpeg` before calling ElevenLabs. The manager Railway service uses the repo-root `nixpacks.toml` to add `ffmpeg` to the NIXPACKS setup phase; the helper still throws a clear error if the binary is missing.
-- Job state is stored in Strapi as `EnrichmentJob` content type (with `enrichment.job-step` repeatable component). The `src/lib/state.ts` module provides the same `createJob`/`getJob`/`listJobs`/`updateJob`/`updateStepStatus` API backed by Strapi GraphQL mutations.
+- Job state is moving to Admin-owned Manager contracts. The `src/lib/state.ts` module preserves the same `createJob`/`getJob`/`listJobs`/`updateJob`/`updateStepStatus` API while routing by backend mode.
 - Manager now enables the workflow SDK build plugin in `next.config.ts`, and enrichment entrypoints dispatch through `src/workflows/launchVideoEnrichment.ts` via `start()` from `workflow/api`. The workflow runtime is no longer inert.
 - Workflow-safe authoring still matters: keep Node-only imports and heavy service modules behind `"use step"` boundaries. A built app will reject workflow files that pull Node-only modules into the top-level workflow body. See https://useworkflow.dev/.
 
 ## Environment variables (Doppler project: forge-manager)
 
-| Variable                     | Description                                                               |
-| ---------------------------- | ------------------------------------------------------------------------- |
-| MUX_TOKEN_ID                 | Mux API token ID                                                          |
-| MUX_TOKEN_SECRET             | Mux API token secret                                                      |
-| OPENROUTER_API_KEY           | OpenRouter API key                                                        |
-| ELEVENLABS_API_KEY           | ElevenLabs API key for audio isolation (optional — enables audio cleanup) |
-| RAILWAY_S3_ENDPOINT          | Railway Object Storage endpoint (optional — local fallback)               |
-| RAILWAY_S3_REGION            | Railway S3 region (default: auto)                                         |
-| RAILWAY_S3_BUCKET            | Railway S3 bucket name (optional — triggers S3 mode)                      |
-| RAILWAY_S3_ACCESS_KEY_ID     | Railway S3 access key (optional)                                          |
-| RAILWAY_S3_SECRET_ACCESS_KEY | Railway S3 secret key (optional)                                          |
-| MANAGER_DATA_MODE            | `live` or `mock` (default `live`)                                         |
-| MANAGER_MOCK_SESSION_SECRET  | Required in `mock` mode to sign Manager-issued mock sessions              |
-| MANAGER_MOCK_DATA_PATH       | Optional mock runtime store path (default `.tmp/mock-cms/store.json`)     |
-| STRAPI_URL                   | URL of apps/cms (required in `live`, ignored in `mock`)                   |
-| STRAPI_API_TOKEN             | Strapi API token (required in `live`, ignored in `mock`)                  |
-| STRAPI_INTERNAL_API_TOKEN    | Optional internal CMS token for live-only writer paths                    |
-| WORKFLOW_API_KEY             | workflow API key (optional, for production durability)                    |
-| MANAGER_API_KEY              | API key for external clients (optional in dev)                            |
-| ADMIN_GRAPHQL_URL            | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)        |
-| ADMIN_EMBED_TRIGGER_API_KEY  | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`            |
-| NEXT_PUBLIC_WATCH_URL        | Public video watch URL (optional)                                         |
+| Variable                               | Description                                                                    |
+| -------------------------------------- | ------------------------------------------------------------------------------ |
+| MUX_TOKEN_ID                           | Mux API token ID                                                               |
+| MUX_TOKEN_SECRET                       | Mux API token secret                                                           |
+| OPENROUTER_API_KEY                     | OpenRouter API key                                                             |
+| ELEVENLABS_API_KEY                     | ElevenLabs API key for audio isolation (optional — enables audio cleanup)      |
+| RAILWAY_S3_ENDPOINT                    | Railway Object Storage endpoint (optional — local fallback)                    |
+| RAILWAY_S3_REGION                      | Railway S3 region (default: auto)                                              |
+| RAILWAY_S3_BUCKET                      | Railway S3 bucket name (optional — triggers S3 mode)                           |
+| RAILWAY_S3_ACCESS_KEY_ID               | Railway S3 access key (optional)                                               |
+| RAILWAY_S3_SECRET_ACCESS_KEY           | Railway S3 secret key (optional)                                               |
+| MANAGER_DATA_MODE                      | `admin` or `mock` (default `admin`)                                            |
+| MANAGER_BACKEND_MODE                   | Optional override for data/job backend mode (`admin` or `mock`)                |
+| MANAGER_MOCK_SESSION_SECRET            | Required in `mock` mode to sign Manager-issued mock sessions                   |
+| MANAGER_MOCK_DATA_PATH                 | Optional mock runtime store path (default `.tmp/mock-cms/store.json`)          |
+| WORKFLOW_API_KEY                       | workflow API key (optional, for production durability)                         |
+| MANAGER_API_KEY                        | API key for external clients (optional in dev)                                 |
+| MANAGER_SESSION_SECRET                 | Secret for Auth-backed `manager-session` cookies                               |
+| AUTH_ISSUER_URL                        | Shared Auth issuer URL, normally `https://auth.jesusfilm.org`                  |
+| AUTH_MANAGER_CLIENT_ID                 | Manager OAuth client ID registered in Auth                                     |
+| AUTH_MANAGER_CLIENT_SECRET             | Manager OAuth client secret                                                    |
+| AUTH_MANAGER_SERVICE_CLIENT_ID         | Manager service OAuth client ID for Admin session validation                   |
+| AUTH_MANAGER_SERVICE_CLIENT_SECRET     | Manager service OAuth client secret for Admin session validation               |
+| ADMIN_MANAGER_API_KEY                  | Legacy bearer key Manager uses for Admin Manager session/read/job contracts    |
+| ADMIN_MANAGER_SESSION_URL              | Optional override for Admin Manager session validation endpoint                |
+| ADMIN_GRAPHQL_URL                      | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)             |
+| ADMIN_EMBED_TRIGGER_API_KEY            | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`                 |
+| ADMIN_TRIGGER_API_KEYS                 | CSV of bearer keys admin can use to call `/api/admin-trigger/*` (feat-119 PR2) |
+| MASTRA_BASE_URL                        | Internal Mastra runtime URL for transcript embedding launches                  |
+| MASTRA_SERVICE_API_KEY                 | Bearer key Manager presents to Mastra service routes                           |
+| MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS | Optional timeout for the Manager to Mastra transcript launch call              |
+| NEXT_PUBLIC_WATCH_URL                  | Public video watch URL (optional)                                              |
 
 ## Standalone smoke
 

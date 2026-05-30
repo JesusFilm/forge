@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
   buildInitialSteps,
@@ -39,47 +37,6 @@ describe("buildInitialSteps", () => {
 
   it("includes the SEO placeholder as the final persisted job step", () => {
     expect(buildInitialSteps().at(-1)?.name).toBe("seo_improvements")
-  })
-
-  it("keeps the CMS job-step enum aligned with persisted manager steps", () => {
-    const cmsJobStepSchema = JSON.parse(
-      readFileSync(
-        join(
-          process.cwd(),
-          "..",
-          "cms",
-          "src",
-          "components",
-          "enrichment",
-          "job-step.json",
-        ),
-        "utf8",
-      ),
-    ) as {
-      attributes?: { name?: { enum?: string[] } }
-    }
-    const cmsStepNames = cmsJobStepSchema.attributes?.name?.enum ?? []
-
-    expect(cmsStepNames).toEqual(FORGE_WORKFLOW_STEPS)
-  })
-
-  it("keeps the generated GraphQL contract aligned with persisted manager steps", () => {
-    const graphqlEnv = readFileSync(
-      join(
-        process.cwd(),
-        "..",
-        "..",
-        "packages",
-        "graphql",
-        "src",
-        "graphql-env.d.ts",
-      ),
-      "utf8",
-    )
-
-    for (const stepName of FORGE_WORKFLOW_STEPS) {
-      expect(graphqlEnv).toContain(`'${stepName}'`)
-    }
   })
 
   it("appends skipped placeholders after audio cleanup with SEO last", () => {

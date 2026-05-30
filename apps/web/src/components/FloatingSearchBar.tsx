@@ -1,37 +1,57 @@
 "use client"
 
+import { Search } from "lucide-react"
+
 import {
   useFloatingSearch,
   useFloatingSearchPinned,
 } from "./FloatingSearchProvider"
+import { FloatingSearchFieldButton } from "./FloatingSearchField"
 
 export function FloatingSearchBar() {
   const { open, closing, query, setOpen } = useFloatingSearch()
-  const { pinned } = useFloatingSearchPinned()
+  const { pinned, searchChromeVisible } = useFloatingSearchPinned()
 
   const display = query.trim().length > 0 ? query : "Search or browse topics…"
   const isPlaceholder = query.trim().length === 0
-  const topClass = pinned ? "top-3" : "top-10"
+  const topClass = pinned
+    ? "top-[calc(env(safe-area-inset-top,0px)+1rem)]"
+    : "top-[calc(env(safe-area-inset-top,0px)+2rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
   // Keep the bar fully hidden (and non-interactive) for the entire close
   // animation — not just while `open` is true — so it never appears in the
   // tab order while the overlay is still visible above it.
-  const chromeHidden = open || closing
+  const chromeHidden = open || closing || !searchChromeVisible
   const openClass = chromeHidden
     ? "opacity-0 pointer-events-none"
     : "opacity-100 pointer-events-auto"
 
   return (
-    <button
-      type="button"
-      aria-label="Search videos"
-      onClick={() => setOpen(true)}
-      inert={chromeHidden || undefined}
-      aria-hidden={chromeHidden || undefined}
-      className={`fixed left-[calc(50%+8px)] z-50 -translate-x-1/2 rounded-[35px] bg-white/10 px-6 py-3 text-left text-white shadow-xl outline-1 outline-white/20 backdrop-blur-[10px] transition-[top,opacity] duration-300 ease-out w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] max-w-[810px] [text-shadow:0_1px_3px_rgba(0,0,0,0.5)] focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 ${topClass} ${openClass}`}
-    >
-      <span className={isPlaceholder ? "text-white/90" : "text-white"}>
-        {display}
-      </span>
-    </button>
+    <>
+      <button
+        type="button"
+        aria-label="Search videos"
+        data-testid="floating-search-mobile-button"
+        onClick={() => setOpen(true)}
+        inert={chromeHidden || undefined}
+        aria-hidden={chromeHidden || undefined}
+        className={`fixed right-24 z-50 inline-flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[top,opacity,color] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none sm:hidden ${topClass} ${openClass}`}
+      >
+        <Search
+          aria-hidden
+          data-testid="floating-search-icon"
+          className="h-6 w-6"
+        />
+      </button>
+      <FloatingSearchFieldButton
+        aria-label="Search videos"
+        data-testid="floating-search-desktop-button"
+        onClick={() => setOpen(true)}
+        inert={chromeHidden || undefined}
+        aria-hidden={chromeHidden || undefined}
+        display={display}
+        isPlaceholder={isPlaceholder}
+        className={`fixed right-44 left-4 z-50 hidden sm:left-36 sm:flex md:left-48 md:right-52 xl:left-60 xl:right-60 ${topClass} ${openClass}`}
+      />
+    </>
   )
 }

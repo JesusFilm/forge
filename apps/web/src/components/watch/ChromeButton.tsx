@@ -1,5 +1,7 @@
-// Round 44px chrome button used by HeroPlayerControls for play, mute,
-// fullscreen. Black/30 background, white icon, slight darken on hover.
+// Round 48px chrome button used by HeroPlayerControls for play, mute,
+// language, fullscreen. Transparent background, white icon, full-size tap
+// target. Hover/focus feedback lives here so every player icon behaves
+// consistently without reintroducing the removed dark button fill.
 
 export function ChromeButton({
   children,
@@ -18,7 +20,7 @@ export function ChromeButton({
       onClick={onClick}
       aria-label={ariaLabel}
       data-testid={testId}
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/55"
+      className="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-full bg-transparent text-white/90 transition-[color,filter,transform] duration-150 hover:scale-110 hover:text-white focus-visible:scale-110 focus-visible:text-brand-red focus-visible:ring-2 focus-visible:ring-brand-red/70 focus-visible:outline-none"
     >
       {children}
     </button>

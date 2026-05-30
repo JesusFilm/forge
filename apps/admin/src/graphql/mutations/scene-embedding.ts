@@ -22,6 +22,17 @@ import {
   type SceneEmbeddingBackfillReport,
 } from "@/workflows/sceneEmbeddingBackfill"
 
+const SceneBackfillModeEnum = builder.enumType("SceneBackfillMode", {
+  description:
+    "Overwrite intent for Mastra scene embedding backfills. Idempotent is the default.",
+  values: {
+    IDEMPOTENT: { value: "idempotent" },
+    REPAIR: { value: "repair" },
+    FORCE: { value: "force" },
+    MODEL_UPGRADE: { value: "model-upgrade" },
+  } as const,
+})
+
 /**
  * Dispatch the scene-embedding backfill workflow via the useworkflow
  * runtime and await the final report. Exported separately from the
@@ -57,6 +68,12 @@ builder.mutationFields((t) => ({
         description:
           "Restrict to these BCP-47 tags. Omitted = every locale that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. Filters on the `VideoSceneLocale.locale` storage row — i.e. which language-specific scene description + embedding to (re)write. Contrast with `triggerTranscriptEmbeddingBackfill(languages)`, which filters on the Video's source transcription language (a different semantic axis despite the similar arg name).",
       }),
+      mode: t.arg({
+        type: SceneBackfillModeEnum,
+        required: false,
+        description:
+          "Generation mode for Admin ingest. Defaults to IDEMPOTENT; use REPAIR, FORCE, or MODEL_UPGRADE only when intentionally rewriting existing scene vectors.",
+      }),
     },
     resolve: async (_root, args) => {
       // JSON scalar accepts any serializable shape; the return type
@@ -65,6 +82,7 @@ builder.mutationFields((t) => ({
         mappingS3Key: args.mappingS3Key ?? DEFAULT_CORE_ID_MAPPING_S3_KEY,
         coreIds: args.coreIds ?? undefined,
         locales: args.locales ?? undefined,
+        mode: args.mode ?? undefined,
       })
     },
   }),

@@ -1,60 +1,84 @@
-// Scene embedding indexer — reads manager's scene-analysis artifacts
-// from S3, regenerates embeddings in admin's embedding provider, and
-// persists VideoScene + VideoSceneLocale rows.
-//
-// Source data: apps/manager's {assetId}/scene-analysis.json artifacts.
-// assetId is the integer cms videos.id as a string. Admin resolves
-// Video.coreId → cmsVideoId via the mapping loaded by
-// core-id-mapping.service.ts.
-//
-// ABAC: canWriteDerived gates entry. The backfill workflow runs as
-// SYSTEM; ADMIN principals may also invoke for incident response.
-//
-// Indexing is idempotent. Re-running for the same (editionId, locale)
-// upserts both VideoScene and VideoSceneLocale rows; existing
-// embeddings are overwritten. The Prisma client-extension guard in
-// `src/db/client.ts` strips `embedding` from default result sets across
-// all models, so scene locales behave the same as experience locales.
+// Scene embedding storage writer. Mastra owns scene embedding generation and
+// provider calls; Admin owns validation-adjacent storage, pgvector writes, and
+// search retrieval.
 
-import { type PrismaClient } from "@prisma/client"
+import { randomUUID } from "node:crypto"
+
+import { Prisma, type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { canWriteDerived } from "@/auth/permissions"
-import { toPgVector } from "@/db/pgvector"
-import { generateExperienceEmbedding } from "@/services/embeddings.service"
 import {
-  readSceneAnalysisArtifact,
-  type SceneAnalysis,
-  type SceneAnalysisResult,
-} from "@/services/manager-artifacts.service"
+  assertParallelArrayLengthsMatch,
+  toPgArray,
+  toPgVector,
+} from "@/db/pgvector"
+import {
+  isPrismaRuntimeError,
+  sanitizePrismaErrorMessage,
+} from "@/db/prisma-errors"
 
 /**
- * Prisma's default interactive-transaction timeout is 5s. A single
- * indexer call can write ~30 per-scene round-trips; 5s is too tight
- * for a feature-length video's scene count at Railway Postgres
- * latencies. 30s keeps the ceiling comfortable while still bounded.
+ * Admin stores `text-embedding-3-small` vectors at 1536 dimensions across
+ * experiences, scenes, and transcripts. Scene ingest rejects any drift before
+ * this writer touches Postgres.
+ */
+export const EXPECTED_SCENE_EMBEDDING_DIMENSIONS = 1536
+
+/**
+ * Prisma's default interactive-transaction timeout is 5s. The scene bulk write
+ * is constant-round-trip, but the 30s ceiling is preserved for safety against
+ * one-off pgvector planner regressions on large fixture sets.
  */
 const TRANSACTION_TIMEOUT_MS = 30_000
 
-export type IndexEditionScenesInput = {
+export type SceneEmbeddingGenerationMode =
+  | "idempotent"
+  | "repair"
+  | "force"
+  | "model-upgrade"
+
+export type SceneEmbeddingProvenance = {
+  sourceArtifactKey?: string
+  sourceArtifactVersion?: string
+  sourceContentHash?: string
+  sourceProvider?: string
+  sourceGeneratedAt?: string
+  generationMode?: SceneEmbeddingGenerationMode
+  mastraRunId?: string
+  generatedAt?: string
+}
+
+export type SceneEmbeddingPayloadScene = {
+  sceneIndex: number
+  startSeconds: number
+  endSeconds?: number
+  chapterTitle?: string
+  sourceText: string
+  description: string
+  themes?: readonly string[]
+  bibleVerses?: readonly string[]
+  demographics?: readonly string[]
+  spiritualContext?: readonly string[]
+  embedding: readonly number[]
+}
+
+export type SceneEmbeddingPayloadInput = {
   editionId: string
   videoId: string
   coreId: string
   locale: string
   user: Principal | null
-  /** Override for tests — injects a pre-loaded artifact instead of S3 read. */
-  artifactOverride?: SceneAnalysisResult
-  /** Override for tests — use this cmsVideoId instead of the mapping lookup. */
-  cmsVideoIdOverride?: number
-  /** Required when artifactOverride is not set. */
-  cmsVideoId?: number
+  model: string
+  dimensions: number
+  scenes: readonly SceneEmbeddingPayloadScene[]
+  provenance?: SceneEmbeddingProvenance
 }
 
-export type IndexEditionScenesResult = {
+export type WriteSceneEmbeddingPayloadResult = {
   editionId: string
   locale: string
   scenesIndexed: number
   embeddingsWritten: number
-  scenesSkipped: number
   scenesPruned: number
   model: string
   dimensions: number
@@ -64,11 +88,11 @@ export class SceneIndexError extends Error {
   constructor(
     readonly code:
       | "forbidden"
-      | "missing_cms_video_id"
-      | "artifact_missing"
-      | "artifact_invalid"
+      | "dimension_mismatch"
       | "duplicate_scene_index"
-      | "empty_description",
+      | "empty_description"
+      | "artifact_invalid"
+      | "storage_failed",
     message: string,
     readonly cause?: unknown,
   ) {
@@ -77,28 +101,105 @@ export class SceneIndexError extends Error {
   }
 }
 
-function assertNoDuplicateSceneIndexes(scenes: readonly SceneAnalysis[]): void {
+function assertNoDuplicateSceneIndexes(
+  scenes: readonly SceneEmbeddingPayloadScene[],
+): void {
   const seen = new Set<number>()
   for (const scene of scenes) {
     if (seen.has(scene.sceneIndex)) {
       throw new SceneIndexError(
         "duplicate_scene_index",
-        `scene_index ${scene.sceneIndex} appears more than once in the artifact`,
+        `scene_index ${scene.sceneIndex} appears more than once in the payload`,
       )
     }
     seen.add(scene.sceneIndex)
   }
 }
 
+function assertDimensions(input: SceneEmbeddingPayloadInput): void {
+  if (input.dimensions !== EXPECTED_SCENE_EMBEDDING_DIMENSIONS) {
+    throw new SceneIndexError(
+      "dimension_mismatch",
+      `payload reports dimensions=${input.dimensions}; expected ${EXPECTED_SCENE_EMBEDDING_DIMENSIONS}`,
+    )
+  }
+
+  for (const scene of input.scenes) {
+    if (scene.embedding.length !== EXPECTED_SCENE_EMBEDDING_DIMENSIONS) {
+      throw new SceneIndexError(
+        "dimension_mismatch",
+        `scene ${scene.sceneIndex} has embedding length ${scene.embedding.length}; expected ${EXPECTED_SCENE_EMBEDDING_DIMENSIONS}`,
+      )
+    }
+  }
+}
+
+function assertSceneContent(input: SceneEmbeddingPayloadInput): void {
+  for (const scene of input.scenes) {
+    if (!scene.sourceText.trim() || !scene.description.trim()) {
+      throw new SceneIndexError(
+        "empty_description",
+        `scene ${scene.sceneIndex} has empty source text or description; refusing to index`,
+      )
+    }
+    if (scene.endSeconds != null && scene.endSeconds < scene.startSeconds) {
+      throw new SceneIndexError(
+        "artifact_invalid",
+        `scene ${scene.sceneIndex} has endSeconds before startSeconds`,
+      )
+    }
+  }
+}
+
 /**
- * Re-index scenes for (editionId, locale) from manager's scene-analysis
- * artifact. Writes VideoScene + VideoSceneLocale rows and populates the
- * embedding vector for each locale row.
+ * Map each prepared scene to its parent `video_scene.id` via the
+ * `scene_index -> id` map produced by the post-INSERT recovery SELECT.
  */
-export async function indexEditionScenes(
+function resolveVideoSceneIds(
+  prepared: readonly { scene: SceneEmbeddingPayloadScene }[],
+  sceneIndexToId: ReadonlyMap<number, string>,
+): string[] {
+  return prepared.map((p) => {
+    const id = sceneIndexToId.get(p.scene.sceneIndex)
+    if (id === undefined) {
+      throw new SceneIndexError(
+        "artifact_invalid",
+        `parent video_scene id not found for scene_index=${p.scene.sceneIndex} after bulk INSERT`,
+      )
+    }
+    return id
+  })
+}
+
+export async function writeSceneEmbeddingPayload(
   prisma: PrismaClient,
-  input: IndexEditionScenesInput,
-): Promise<IndexEditionScenesResult> {
+  input: SceneEmbeddingPayloadInput,
+): Promise<WriteSceneEmbeddingPayloadResult> {
+  return writeSceneEmbeddingPayloadWithClient(prisma, input)
+}
+
+export async function writeSceneEmbeddingPayloadInTransaction(
+  tx: Prisma.TransactionClient,
+  input: SceneEmbeddingPayloadInput,
+): Promise<WriteSceneEmbeddingPayloadResult> {
+  const txBackedClient = new Proxy(tx, {
+    get(target, prop, receiver) {
+      if (prop === "$transaction") {
+        return async <T>(
+          fn: (innerTx: Prisma.TransactionClient) => Promise<T>,
+        ) => fn(tx)
+      }
+      return Reflect.get(target, prop, receiver)
+    },
+  }) as unknown as PrismaClient
+
+  return writeSceneEmbeddingPayloadWithClient(txBackedClient, input)
+}
+
+async function writeSceneEmbeddingPayloadWithClient(
+  prisma: PrismaClient,
+  input: SceneEmbeddingPayloadInput,
+): Promise<WriteSceneEmbeddingPayloadResult> {
   if (!canWriteDerived(input.user)) {
     throw new SceneIndexError(
       "forbidden",
@@ -106,201 +207,327 @@ export async function indexEditionScenes(
     )
   }
 
-  let artifact: SceneAnalysisResult
-  if (input.artifactOverride !== undefined) {
-    artifact = input.artifactOverride
-  } else {
-    const cmsVideoId = input.cmsVideoIdOverride ?? input.cmsVideoId
-    if (cmsVideoId === undefined) {
-      throw new SceneIndexError(
-        "missing_cms_video_id",
-        `cmsVideoId is required to fetch the scene-analysis artifact for coreId=${input.coreId}`,
-      )
-    }
-    artifact = await readSceneAnalysisArtifact(String(cmsVideoId))
-  }
-
-  if (artifact.scenes.length === 0) {
+  if (input.scenes.length === 0) {
     return {
       editionId: input.editionId,
       locale: input.locale,
       scenesIndexed: 0,
       embeddingsWritten: 0,
-      scenesSkipped: 0,
       scenesPruned: 0,
-      model: "text-embedding-3-small",
-      dimensions: 1536,
+      model: input.model,
+      dimensions: input.dimensions,
     }
   }
 
-  assertNoDuplicateSceneIndexes(artifact.scenes)
+  assertDimensions(input)
+  assertNoDuplicateSceneIndexes(input.scenes)
+  assertSceneContent(input)
 
-  // Pre-validate descriptions synchronously BEFORE any provider calls.
-  // Keeps the duplicate/empty-check errors coherent (same input, same
-  // complaint) and avoids paying for embeddings on an artifact we'll
-  // reject anyway.
-  for (const scene of artifact.scenes) {
-    if (!scene.description.trim()) {
-      throw new SceneIndexError(
-        "empty_description",
-        `scene ${scene.sceneIndex} has an empty description; cannot embed`,
-      )
-    }
-  }
-
-  // Generate embeddings outside the transaction with allSettled so one
-  // provider failure doesn't abort the whole target — partial success is
-  // the intended semantic. Scenes whose embedding failed are skipped
-  // with a structured log; the remaining scenes land in the DB.
-  const embeddingResults = await Promise.allSettled(
-    artifact.scenes.map(async (scene) => {
-      const sourceText = scene.description.trim()
-      const generated = await generateExperienceEmbedding(sourceText)
-      return { scene, sourceText, generated }
-    }),
-  )
-
-  const prepared: Array<{
-    scene: SceneAnalysis
-    sourceText: string
-    generated: Awaited<ReturnType<typeof generateExperienceEmbedding>>
-  }> = []
-  let scenesSkipped = 0
-  for (let i = 0; i < embeddingResults.length; i += 1) {
-    const result = embeddingResults[i]!
-    if (result.status === "fulfilled") {
-      prepared.push(result.value)
-    } else {
-      scenesSkipped += 1
-      const scene = artifact.scenes[i]!
-      console.error(
-        JSON.stringify({
-          event: "scene_embed_failed",
-          editionId: input.editionId,
-          locale: input.locale,
-          sceneIndex: scene.sceneIndex,
-          reason:
-            result.reason instanceof Error
-              ? result.reason.message
-              : String(result.reason),
-        }),
-      )
-    }
-  }
-
-  if (prepared.length === 0) {
-    return {
-      editionId: input.editionId,
-      locale: input.locale,
-      scenesIndexed: 0,
-      embeddingsWritten: 0,
-      scenesSkipped,
-      scenesPruned: 0,
-      model: "text-embedding-3-small",
-      dimensions: 1536,
-    }
-  }
+  const prepared = input.scenes.map((scene) => ({
+    scene,
+    sourceText: scene.sourceText.trim(),
+    description: scene.description.trim(),
+  }))
+  const incomingIndexes = prepared.map((p) => p.scene.sceneIndex)
 
   let embeddingsWritten = 0
   let scenesPruned = 0
-  const [firstPrepared] = prepared
-  const modelStamp = firstPrepared!.generated.model
-  const dimensions = firstPrepared!.generated.dimensions
-  const incomingIndexes = artifact.scenes.map((s) => s.sceneIndex)
 
-  await prisma.$transaction(
-    async (tx) => {
-      // Prune locale rows whose scene_index is no longer in the artifact —
-      // covers the case where manager re-analyzes and produces fewer
-      // scenes. Bounded to the current (editionId, locale) so other
-      // locales' rows are untouched. Runs before upserts so the
-      // idempotent-rerun path stays the same.
-      const pruneResult = await tx.videoSceneLocale.deleteMany({
-        where: {
-          locale: input.locale,
-          videoScene: {
-            videoEditionId: input.editionId,
-            sceneIndex: { notIn: incomingIndexes },
-          },
-        },
-      })
-      scenesPruned = pruneResult.count
-
-      for (const { scene, sourceText, generated } of prepared) {
-        // Upsert the language-agnostic scene. First-locale-wins on
-        // chapterTitle / timecodes if multiple locales drift.
-        const videoScene = await tx.videoScene.upsert({
+  try {
+    await prisma.$transaction(
+      async (tx) => {
+        const pruneResult = await tx.videoSceneLocale.deleteMany({
           where: {
-            videoEditionId_sceneIndex: {
-              videoEditionId: input.editionId,
-              sceneIndex: scene.sceneIndex,
-            },
-          },
-          create: {
-            videoEditionId: input.editionId,
-            videoId: input.videoId,
-            sceneIndex: scene.sceneIndex,
-            startSeconds: scene.startSeconds,
-            endSeconds: scene.endSeconds ?? null,
-            chapterTitle: scene.chapterTitle ?? null,
-          },
-          // Do not overwrite fields that should stay stable across re-indexes.
-          update: {},
-          select: { id: true },
-        })
-
-        const videoSceneLocale = await tx.videoSceneLocale.upsert({
-          where: {
-            videoSceneId_locale: {
-              videoSceneId: videoScene.id,
-              locale: input.locale,
-            },
-          },
-          create: {
-            videoSceneId: videoScene.id,
             locale: input.locale,
-            sourceText,
-            description: scene.description,
-            themes: scene.themes,
-            bibleVerses: scene.bibleVerses,
-            demographics: scene.demographics,
-            spiritualContext: scene.spiritualContext,
-            model: generated.model,
-            dimensions: generated.dimensions,
+            videoScene: {
+              videoEditionId: input.editionId,
+              sceneIndex: { notIn: incomingIndexes },
+            },
           },
-          update: {
-            sourceText,
-            description: scene.description,
-            themes: scene.themes,
-            bibleVerses: scene.bibleVerses,
-            demographics: scene.demographics,
-            spiritualContext: scene.spiritualContext,
-            model: generated.model,
-            dimensions: generated.dimensions,
-          },
-          select: { id: true },
         })
+        scenesPruned = pruneResult.count
+
+        const parentIds = prepared.map(() => randomUUID())
+        const sceneIndexes = prepared.map((p) => p.scene.sceneIndex)
+        const parentVideoEditionIds = prepared.map(() => input.editionId)
+        const parentVideoIds = prepared.map(() => input.videoId)
+        const parentStartSeconds = prepared.map((p) =>
+          String(p.scene.startSeconds),
+        )
+        const parentEndSeconds = prepared.map((p) =>
+          p.scene.endSeconds == null ? null : String(p.scene.endSeconds),
+        )
+        const parentChapterTitles = prepared.map(
+          (p) => p.scene.chapterTitle ?? null,
+        )
+
+        assertParallelArrayLengthsMatch(
+          prepared.length,
+          [
+            { name: "parentIds", length: parentIds.length },
+            { name: "sceneIndexes", length: sceneIndexes.length },
+            {
+              name: "parentVideoEditionIds",
+              length: parentVideoEditionIds.length,
+            },
+            { name: "parentVideoIds", length: parentVideoIds.length },
+            { name: "parentStartSeconds", length: parentStartSeconds.length },
+            { name: "parentEndSeconds", length: parentEndSeconds.length },
+            { name: "parentChapterTitles", length: parentChapterTitles.length },
+          ],
+          (msg) =>
+            new SceneIndexError(
+              "artifact_invalid",
+              `internal: ${msg} (scene parent INSERT)`,
+            ),
+        )
 
         await tx.$executeRaw`
-          UPDATE video_scene_locale
-          SET embedding = ${toPgVector(generated.embedding)}::vector,
-              updated_at = NOW()
-          WHERE id = ${videoSceneLocale.id}
+          INSERT INTO video_scene (
+            id, video_edition_id, video_id, scene_index,
+            start_seconds, end_seconds, chapter_title,
+            created_at, updated_at
+          )
+          SELECT
+            u.id,
+            u.video_edition_id,
+            u.video_id,
+            u.scene_index::int,
+            u.start_seconds::double precision,
+            u.end_seconds::double precision,
+            u.chapter_title,
+            NOW(),
+            NOW()
+          FROM unnest(
+            ${toPgArray(parentIds)}::text[],
+            ${toPgArray(parentVideoEditionIds)}::text[],
+            ${toPgArray(parentVideoIds)}::text[],
+            ${toPgArray(sceneIndexes.map((n) => String(n)))}::text[],
+            ${toPgArray(parentStartSeconds)}::text[],
+            ${toPgArray(parentEndSeconds)}::text[],
+            ${toPgArray(parentChapterTitles)}::text[]
+          ) AS u(
+            id, video_edition_id, video_id, scene_index,
+            start_seconds, end_seconds, chapter_title
+          )
+          ON CONFLICT (video_edition_id, scene_index) DO NOTHING
         `
-        embeddingsWritten += 1
-      }
-    },
-    { timeout: TRANSACTION_TIMEOUT_MS },
-  )
+
+        const sceneIndexLiteral = toPgArray(sceneIndexes.map((n) => String(n)))
+        const parentRows = await tx.$queryRaw<
+          ReadonlyArray<{ id: string; scene_index: number }>
+        >`
+          SELECT id, scene_index
+          FROM video_scene
+          WHERE video_edition_id = ${input.editionId}
+            AND scene_index = ANY(
+              SELECT s::int FROM unnest(${sceneIndexLiteral}::text[]) AS s
+            )
+        `
+
+        const sceneIndexToId = new Map<number, string>()
+        for (const row of parentRows) {
+          sceneIndexToId.set(row.scene_index, row.id)
+        }
+
+        const localeIds = prepared.map(() => randomUUID())
+        const videoSceneIds = resolveVideoSceneIds(prepared, sceneIndexToId)
+        const locales = prepared.map(() => input.locale)
+        const sourceTexts = prepared.map((p) => p.sourceText)
+        const descriptions = prepared.map((p) => p.description)
+        const themesJson = prepared.map((p) =>
+          JSON.stringify(p.scene.themes ?? []),
+        )
+        const bibleVersesJson = prepared.map((p) =>
+          JSON.stringify(p.scene.bibleVerses ?? []),
+        )
+        const demographicsJson = prepared.map((p) =>
+          JSON.stringify(p.scene.demographics ?? []),
+        )
+        const spiritualContextJson = prepared.map((p) =>
+          JSON.stringify(p.scene.spiritualContext ?? []),
+        )
+        const models = prepared.map(() => input.model)
+        const dimensions = prepared.map(() => String(input.dimensions))
+        const sourceArtifactKeys = prepared.map(
+          () => input.provenance?.sourceArtifactKey ?? null,
+        )
+        const sourceArtifactVersions = prepared.map(
+          () => input.provenance?.sourceArtifactVersion ?? null,
+        )
+        const sourceContentHashes = prepared.map(
+          () => input.provenance?.sourceContentHash ?? null,
+        )
+        const sourceProviders = prepared.map(
+          () => input.provenance?.sourceProvider ?? null,
+        )
+        const sourceGeneratedAts = prepared.map(
+          () => input.provenance?.sourceGeneratedAt ?? null,
+        )
+        const generationModes = prepared.map(
+          () => input.provenance?.generationMode ?? null,
+        )
+        const mastraRunIds = prepared.map(
+          () => input.provenance?.mastraRunId ?? null,
+        )
+        const generatedAts = prepared.map(
+          () => input.provenance?.generatedAt ?? null,
+        )
+        const vectorTexts = prepared.map((p) => toPgVector(p.scene.embedding))
+
+        assertParallelArrayLengthsMatch(
+          prepared.length,
+          [
+            { name: "localeIds", length: localeIds.length },
+            { name: "videoSceneIds", length: videoSceneIds.length },
+            { name: "locales", length: locales.length },
+            { name: "sourceTexts", length: sourceTexts.length },
+            { name: "descriptions", length: descriptions.length },
+            { name: "themesJson", length: themesJson.length },
+            { name: "bibleVersesJson", length: bibleVersesJson.length },
+            { name: "demographicsJson", length: demographicsJson.length },
+            {
+              name: "spiritualContextJson",
+              length: spiritualContextJson.length,
+            },
+            { name: "models", length: models.length },
+            { name: "dimensions", length: dimensions.length },
+            { name: "sourceArtifactKeys", length: sourceArtifactKeys.length },
+            {
+              name: "sourceArtifactVersions",
+              length: sourceArtifactVersions.length,
+            },
+            { name: "sourceContentHashes", length: sourceContentHashes.length },
+            { name: "sourceProviders", length: sourceProviders.length },
+            { name: "sourceGeneratedAts", length: sourceGeneratedAts.length },
+            { name: "generationModes", length: generationModes.length },
+            { name: "mastraRunIds", length: mastraRunIds.length },
+            { name: "generatedAts", length: generatedAts.length },
+            { name: "vectorTexts", length: vectorTexts.length },
+          ],
+          (msg) =>
+            new SceneIndexError(
+              "artifact_invalid",
+              `internal: ${msg} (scene locale INSERT)`,
+            ),
+        )
+
+        const writeAffected = await tx.$executeRaw`
+          INSERT INTO video_scene_locale (
+            id, video_scene_id, locale, source_text, description,
+            themes, bible_verses, demographics, spiritual_context,
+            model, dimensions,
+            source_artifact_key, source_artifact_version, source_content_hash,
+            source_provider, source_generated_at, generation_mode,
+            mastra_run_id, generated_at, embedding,
+            created_at, updated_at
+          )
+          SELECT
+            u.id,
+            u.video_scene_id,
+            u.locale,
+            u.source_text,
+            u.description,
+            ARRAY(SELECT jsonb_array_elements_text(u.themes_json::jsonb)),
+            ARRAY(SELECT jsonb_array_elements_text(u.bible_verses_json::jsonb)),
+            ARRAY(SELECT jsonb_array_elements_text(u.demographics_json::jsonb)),
+            ARRAY(SELECT jsonb_array_elements_text(u.spiritual_context_json::jsonb)),
+            u.model,
+            u.dimensions::int,
+            u.source_artifact_key,
+            u.source_artifact_version,
+            u.source_content_hash,
+            u.source_provider,
+            u.source_generated_at::timestamp(3),
+            u.generation_mode,
+            u.mastra_run_id,
+            u.generated_at::timestamp(3),
+            u.embedding_text::vector(1536),
+            NOW(),
+            NOW()
+          FROM unnest(
+            ${toPgArray(localeIds)}::text[],
+            ${toPgArray(videoSceneIds)}::text[],
+            ${toPgArray(locales)}::text[],
+            ${toPgArray(sourceTexts)}::text[],
+            ${toPgArray(descriptions)}::text[],
+            ${toPgArray(themesJson)}::text[],
+            ${toPgArray(bibleVersesJson)}::text[],
+            ${toPgArray(demographicsJson)}::text[],
+            ${toPgArray(spiritualContextJson)}::text[],
+            ${toPgArray(models)}::text[],
+            ${toPgArray(dimensions)}::text[],
+            ${toPgArray(sourceArtifactKeys)}::text[],
+            ${toPgArray(sourceArtifactVersions)}::text[],
+            ${toPgArray(sourceContentHashes)}::text[],
+            ${toPgArray(sourceProviders)}::text[],
+            ${toPgArray(sourceGeneratedAts)}::text[],
+            ${toPgArray(generationModes)}::text[],
+            ${toPgArray(mastraRunIds)}::text[],
+            ${toPgArray(generatedAts)}::text[],
+            ${toPgArray(vectorTexts)}::text[]
+          ) AS u(
+            id, video_scene_id, locale, source_text, description,
+            themes_json, bible_verses_json, demographics_json, spiritual_context_json,
+            model, dimensions,
+            source_artifact_key, source_artifact_version, source_content_hash,
+            source_provider, source_generated_at, generation_mode,
+            mastra_run_id, generated_at, embedding_text
+          )
+          ON CONFLICT (video_scene_id, locale)
+          DO UPDATE SET
+            source_text             = EXCLUDED.source_text,
+            description             = EXCLUDED.description,
+            themes                  = EXCLUDED.themes,
+            bible_verses            = EXCLUDED.bible_verses,
+            demographics            = EXCLUDED.demographics,
+            spiritual_context       = EXCLUDED.spiritual_context,
+            model                   = EXCLUDED.model,
+            dimensions              = EXCLUDED.dimensions,
+            source_artifact_key     = EXCLUDED.source_artifact_key,
+            source_artifact_version = EXCLUDED.source_artifact_version,
+            source_content_hash     = EXCLUDED.source_content_hash,
+            source_provider         = EXCLUDED.source_provider,
+            source_generated_at     = EXCLUDED.source_generated_at,
+            generation_mode         = EXCLUDED.generation_mode,
+            mastra_run_id           = EXCLUDED.mastra_run_id,
+            generated_at            = EXCLUDED.generated_at,
+            embedding               = EXCLUDED.embedding,
+            updated_at              = NOW()
+        `
+        embeddingsWritten = Number(writeAffected)
+      },
+      { timeout: TRANSACTION_TIMEOUT_MS },
+    )
+  } catch (error) {
+    if (isPrismaRuntimeError(error)) {
+      console.error(
+        JSON.stringify({
+          event: "scene_index_storage_error",
+          editionId: input.editionId,
+          locale: input.locale,
+          name: (error as { name?: unknown }).name,
+          code: (error as { code?: unknown }).code,
+          messagePreview:
+            error instanceof Error ? error.message.slice(0, 200) : undefined,
+        }),
+      )
+      throw new SceneIndexError(
+        "storage_failed",
+        sanitizePrismaErrorMessage(error, "scene-embedding write"),
+        error,
+      )
+    }
+    throw error
+  }
 
   return {
     editionId: input.editionId,
     locale: input.locale,
     scenesIndexed: prepared.length,
     embeddingsWritten,
-    scenesSkipped,
     scenesPruned,
-    model: modelStamp,
-    dimensions,
+    model: input.model,
+    dimensions: input.dimensions,
   }
 }

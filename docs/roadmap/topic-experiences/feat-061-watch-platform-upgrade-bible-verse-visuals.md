@@ -3,7 +3,7 @@ id: "feat-061"
 title: "Watch Platform Upgrade (Bible Verse Visuals)"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-15"
 duration: 48
 depends_on:

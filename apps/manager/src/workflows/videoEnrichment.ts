@@ -6,19 +6,17 @@
 // See: https://useworkflow.dev/
 //
 // Video enrichment workflow — orchestrates the full pipeline for a single video asset.
-// Steps: transcribe -> translate -> chapters -> metadata -> embeddings
+// Steps: transcribe -> translate -> chapters -> metadata -> Mastra transcript embeddings
 //
 // Uses the `workflow` package ("use workflow" / "use step" directives)
 // for durable execution. Each step is idempotent.
 
 import { buildDownloadableArtifactManifest } from "@/lib/job-artifacts"
-import { buildEmbeddingSyncArtifact } from "@/lib/embedding-sync-report"
 import { buildSceneEmbeddingSyncArtifact } from "@/lib/scene-embedding-sync-report"
 import { getMuxSyncReport, setMuxSyncReport } from "@/lib/mux-sync-report"
 import { setTranscriptionRoutingReport } from "@/lib/transcription-routing-report"
 import type { WorkflowStepName } from "@/types/job"
 import type {
-  EmbeddingSyncReport,
   JobArtifactManifest,
   JobStepDetails,
   MuxSyncReport,
@@ -26,9 +24,7 @@ import type {
   TranscriptionRoutingReport,
   TranslationLanguageResult,
 } from "@/types/job"
-import type { EmbeddingTranscriptInput } from "@/services/embeddings"
 import type { Chapter, GenerateChaptersInput } from "@/services/chapters"
-import type { VideoMetadata } from "@/services/metadata"
 import type { LanguageResult } from "@/services/subtitleTranslation/types"
 import {
   stepGetJob,
@@ -252,8 +248,8 @@ export async function runVideoEnrichment(
 
     // Steps 2-5: Translation, chapters, metadata, embeddings
     // Translation and chapters still depend only on transcription.
-    // Embeddings can now include metadata context when available, but must
-    // still fall back to transcript-only output if metadata fails.
+    // Transcript embeddings now launch Mastra from transcript source data only;
+    // Mastra owns chunking and vectors while Admin owns storage.
     const targets = input.translateTo ?? []
     const parallelSteps: WorkflowStepName[] = [
       "translation",
@@ -377,56 +373,16 @@ export async function runVideoEnrichment(
       (result) => buildDownloadableArtifactManifest(result.artifactKeys),
     )
 
-    const embeddingsPromise = (async () => {
-      try {
-        const metadata = await metadataPromise
-          .then(({ result }) => ({
-            title: result.title,
-            description: result.description,
-            topics: result.topics,
-            speakers: result.speakers,
-            tags: result.tags,
-            language: result.language,
-          }))
-          .catch(() => null)
-
-        const result = await stepEmbeddings(
-          input.assetId,
-          transcription,
-          metadata,
-        )
-        await persistMergedArtifacts(
-          input.jobId,
-          buildDownloadableArtifactManifest(result.artifactKeys),
-        )
-
-        const syncReport = await stepEmbeddingSync({
-          assetId: input.assetId,
-          videoDocumentId: input.videoDocumentId,
-          generated: {
-            model: result.model,
-            dimensions: result.dimensions,
-            chunks: result.chunks,
-            metadataGeneratedAt:
-              typeof result.metadata?.generatedAt === "string"
-                ? result.metadata.generatedAt
-                : undefined,
-            hasMetadataEmbedding: result.metadataEmbedding != null,
-          },
-        })
-
-        await persistMergedArtifacts(
-          input.jobId,
-          buildEmbeddingSyncArtifact(syncReport),
-        )
-        await markStepComplete(input.jobId, "embeddings")
-        return { result, syncReport }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Unknown error"
-        await markStepFailed(input.jobId, "embeddings", msg)
-        throw err
-      }
-    })()
+    const embeddingsPromise = runParallelStep("embeddings", () =>
+      stepMastraTranscriptEmbeddings({
+        assetId: input.assetId,
+        muxAssetId: input.muxAssetId,
+        language: transcription.language,
+        transcript: transcription.text,
+        segments: transcription.segments,
+        provider: transcription.resolvedProvider,
+      }),
+    )
 
     const [
       translationResult,
@@ -644,14 +600,36 @@ async function stepMetadata(
   return extractMetadata(assetId, transcript, language)
 }
 
-async function stepEmbeddings(
-  assetId: string,
-  transcript: EmbeddingTranscriptInput,
-  metadata: VideoMetadata | null,
-) {
+async function stepMastraTranscriptEmbeddings(input: {
+  assetId: string
+  muxAssetId: string
+  language: string
+  transcript: string
+  segments: Array<{ start: number; end: number; text: string }>
+  provider?: string
+}) {
   "use step"
-  const { generateEmbeddings } = await import("@/services/embeddings")
-  return generateEmbeddings(assetId, transcript, { metadata })
+  const { launchMastraTranscriptEmbeddings } =
+    await import("@/services/mastra-transcript-embeddings")
+  const result = await launchMastraTranscriptEmbeddings({
+    assetId: input.assetId,
+    muxAssetId: input.muxAssetId,
+    language: input.language,
+    transcript: {
+      text: input.transcript,
+      segments: input.segments,
+      artifactKey: `${input.assetId}/transcript.json`,
+      provider: input.provider,
+    },
+  })
+
+  if (!result.ok) {
+    throw new Error(
+      `Mastra transcript embedding failed for assetId=${input.assetId}: ${result.reason}`,
+    )
+  }
+
+  return result
 }
 
 async function stepMuxUpload(input: {
@@ -681,59 +659,6 @@ async function stepAudioCleanup(input: {
     assetId: input.assetId,
     sourceVideoUrl: getPlaybackUrl(playbackId),
   })
-}
-
-async function stepEmbeddingSync(input: {
-  assetId: string
-  videoDocumentId?: string
-  generated: {
-    model: string
-    dimensions: number
-    chunks: Array<{ text: string }>
-    metadataGeneratedAt?: string
-    hasMetadataEmbedding: boolean
-  }
-}): Promise<EmbeddingSyncReport> {
-  "use step"
-
-  try {
-    const { syncEmbeddingArtifact } = await import("@/services/embeddingSync")
-    return await syncEmbeddingArtifact({
-      assetId: input.assetId,
-      videoDocumentId: input.videoDocumentId,
-    })
-  } catch (error) {
-    const { createHash } = await import("node:crypto")
-
-    return {
-      domain: "embeddings",
-      status: "failed",
-      ...(input.videoDocumentId
-        ? { videoDocumentId: input.videoDocumentId }
-        : {}),
-      reason: error instanceof Error ? error.message : "embedding_sync_failed",
-      generated: {
-        model: input.generated.model,
-        dimensions: input.generated.dimensions,
-        chunkCount: input.generated.chunks.length,
-        contentFingerprint: `sha256:${createHash("sha256")
-          .update(
-            JSON.stringify({
-              model: input.generated.model,
-              chunks: input.generated.chunks.map((chunk, index) => ({
-                index,
-                text: chunk.text,
-              })),
-            }),
-          )
-          .digest("hex")}`,
-        hasMetadataEmbedding: input.generated.hasMetadataEmbedding,
-        ...(input.generated.metadataGeneratedAt
-          ? { generatedAt: input.generated.metadataGeneratedAt }
-          : {}),
-      },
-    }
-  }
 }
 
 async function stepSceneAnalysisAndSync(input: {

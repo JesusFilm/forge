@@ -45,14 +45,22 @@ import {
   type QueryEmbedder,
 } from "./hybrid-search.service"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockPrisma = {} as any
+const mockPrisma = {
+  video: {
+    // Default to empty hydration so card-pill enrichment (post-fusion
+    // `prisma.video.findMany`) doesn't crash these tests.
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any
 const successEmbedder = (): QueryEmbedder =>
   vi.fn().mockResolvedValue([0.1, 0.2, 0.3])
 
 beforeEach(() => {
   vi.clearAllMocks()
   __resetSearchHealthForTest()
+  // Restore default hydration stub after clearAllMocks wipes it.
+  mockPrisma.video.findMany.mockResolvedValue([])
   vi.mocked(searchVideoSemantic).mockResolvedValue([])
   vi.mocked(searchExperienceSemantic).mockResolvedValue([])
   vi.mocked(searchExperienceKeyword).mockResolvedValue([])
@@ -68,6 +76,7 @@ beforeEach(() => {
       videoTitle: "X",
       imageUrl: null,
       description: "d",
+      playbackId: null,
       rank: 0.5,
     },
   ])
@@ -150,6 +159,7 @@ describe("HybridSearchService debug payload routing", () => {
         videoTitle: "Shared",
         imageUrl: null,
         description: "d",
+        playbackId: null,
         rank: 0.5,
       },
     ])
@@ -169,6 +179,60 @@ describe("HybridSearchService debug payload routing", () => {
     const debug = result.results[0]!.debug!
     const labels = debug.retrieverRanks.map((r) => r.label).sort()
     expect(labels).toEqual(["keyword-video", "semantic-video"])
+  })
+
+  it("a mixed semantic-video hit still exposes one debug origin and no public evidence fields", async () => {
+    vi.mocked(searchVideoKeyword).mockResolvedValue([])
+    vi.mocked(searchVideoSemantic).mockResolvedValue([
+      {
+        resultType: "video",
+        resultId: "vid-mixed",
+        videoCoreId: "core-mixed",
+        videoSlug: "mixed",
+        videoTitle: "Mixed Evidence",
+        imageUrl: null,
+        sceneDescription: "Winning transcript or scene snippet",
+        startSeconds: 12,
+        playbackId: "mux-mixed",
+        similarity: 0.91,
+        embeddingText: "[0.1,0.2,0.3]",
+      },
+    ])
+
+    const service = new HybridSearchService({
+      prisma: mockPrisma,
+      embedder: successEmbedder(),
+      logger: { warn: vi.fn(), error: vi.fn() },
+    })
+
+    const result = await service.search({
+      query: "spoken phrase",
+      locale: "en",
+      debug: true,
+      contentTypes: ["video"],
+    })
+
+    expect(result.results).toHaveLength(1)
+    expect(result.results[0]!.debug!.retrieverRanks).toEqual([
+      { label: "semantic-video", rank: 1 },
+    ])
+    expect(Object.keys(result.results[0]!).sort()).toEqual(
+      [
+        "childCount",
+        "debug",
+        "durationSeconds",
+        "id",
+        "imageUrl",
+        "label",
+        "playbackId",
+        "score",
+        "slug",
+        "snippet",
+        "startSeconds",
+        "title",
+        "type",
+      ].sort(),
+    )
   })
 
   it("dilutionCapApplied reflects the cap's per-result decision in keyword-first mode", async () => {

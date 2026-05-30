@@ -4,9 +4,8 @@
 
 Custom management platform — the strategic replacement for Strapi and
 eventual home for the manager app. V1 ships the architecture (Next.js +
-GraphQL Yoga + Pothos + Prisma + pgvector + useworkflow + Better Auth)
-and proves it with real content types (Experiences, Videos) while Strapi
-continues to serve existing consumers.
+GraphQL Yoga + Pothos + Prisma + pgvector + useworkflow + Auth SSO)
+and proves it with real content types (Experiences, Videos).
 
 See the origin docs for full context:
 
@@ -20,13 +19,26 @@ See the origin docs for full context:
 - Next.js 16+ App Router with TypeScript strict mode
 - GraphQL Yoga + Pothos (with Prisma + scope-auth plugins) — single API at `/api/graphql`
 - Prisma 6.x + PostgreSQL + pgvector (HNSW index) — sole data access layer
-- Better Auth (DB-backed sessions, cross-subdomain cookies) + server-side Firebase email/password fallback for transparent migration
-- SSO via Better Auth adapters/plugins: Facebook, Google, Apple, Okta
-- Auth is subdomain-scoped: cookie domain set via `AUTH_COOKIE_DOMAIN` (`.jesusfilm.org` in prod) so all apps on `*.jesusfilm.org` share the session
+- Admin login goes through the standalone `apps/auth` OAuth/OIDC provider and
+  creates an admin-local signed session. Admin must not depend on shared
+  `.jesusfilm.org` cookies or host admin-local credential handlers.
 - useworkflow (`workflow` npm package) for durable background jobs
 - Redis (TCP via `ioredis`) for rate limiting
 - Railway deployment (NIXPACKS, standalone output)
 - Doppler for env var management (project: `forge-admin`)
+
+## Embedding ownership
+
+Mastra owns background transcript, scene, and experience embedding generation:
+provider calls, provider-result validation, retries, workflow diagnostics, and
+Studio observability. Admin owns type-specific ingest routes, target
+resolution, vector storage, publication gates, pgvector indexes, public search
+contracts, and retrieval. Keep the transcript, scene, and experience ingest
+contracts separate; do not add a generic embedding blob endpoint.
+
+Live user search stays Admin-owned. Search services may generate live query
+embeddings for retrieval, but live search orchestration does not move to
+Mastra.
 
 ## Folder structure
 
@@ -35,7 +47,7 @@ src/
   app/               Next.js App Router pages and API routes
   config/env.ts      Validated env (t3-oss/env-nextjs + zod)
   db/                Prisma client singleton + pgvector helpers         [Unit 2]
-  auth/              Better Auth config + permissions + Firebase bridge [Units 5-6]
+  auth/              Auth SSO client, local session, and permissions    [Units 5-6]
   graphql/           Pothos schema + resolvers                          [Units 3,4,6-9]
   services/          Business logic, raw SQL, ABAC checks               [Units 7-10]
   workflows/         Durable workflow definitions                       [Unit 11]
@@ -48,11 +60,11 @@ src/
 - [x] Unit 2: Prisma + pgvector
 - [x] Unit 3: GraphQL architecture spike — **signed off against a live Postgres 2026-04-13**
 - [x] Unit 4: Experience + Video Prisma models + block Zod union + Pothos types
-- [x] Unit 5: Better Auth + Firebase fallback
+- [x] Unit 5: Auth SSO relying-client session
 - [x] Unit 6: Permission system + per-request DataLoaders + scope-auth wiring + classification enforcement
 - [x] Unit 7: Service layer + Experience CRUD with ABAC
 - [x] Unit 8: Video read service + pgvector experience search
-- [x] Unit 9: GraphQL security hardening (Armor + rate limit + introspection gate + CORS)
+- [x] Unit 9: GraphQL security hardening (Armor + rate limit + introspection gate + CORS) — Armor's `costLimitPlugin` is deliberately omitted because it false-positives on typed-client fragment composition; see `docs/solutions/tooling-decisions/graphql-armor-cost-limit-incompatible-with-typed-clients-20260514.md`
 - [x] Unit 10: Core API sync orchestrator + 5 phases
 - [x] Unit 11: useworkflow plugin + workflow endpoint auth + storage service
 - [x] Unit 12: Admin dashboard operationalized for v1 (no stub routes; live ops surfaces)
@@ -163,6 +175,256 @@ pnpm --filter @forge/admin lint
 pnpm --filter @forge/admin typecheck
 ```
 
+### Seeding fixtures for local web dev
+
+Use this when you need an admin DB with enough content for apps/web to
+render every page locally.
+
+```bash
+DATABASE_URL='postgresql://forge:forge@localhost:5433/forge_admin' \
+pnpm --filter @forge/admin seed-web-fixtures
+```
+
+Idempotent — running twice produces no duplicates. The script refuses
+to run when `DATABASE_URL` points at any Railway prod host or any
+`*.jesusfilm.org` host; the guard is fail-closed (unparseable URLs are
+also refused). Fixture data lives at
+`apps/admin/src/scripts/web-fixtures.json` — edit there to add content,
+not in the script.
+
+### Web ISR revalidation webhook (U21)
+
+`apps/admin/src/services/revalidate-webhook.ts` emits ISR refresh hints
+to web on Experience publish / update / archive. Best-effort:
+`emitRevalidateWebhook` catches every failure mode (config missing, 5xx,
+network, timeout) and is called via `void` so admin's publish UX never
+blocks on web. Wired into `ExperienceService.publishLocale`,
+`updateLocale` (only when `status === "PUBLISHED"`), and `archive`.
+
+Env vars on the `forge-admin` Doppler project (both `.optional()` so
+admin still boots in environments without web wired up):
+
+- `WEB_REVALIDATE_URL` — e.g. `https://web.jesusfilm.org/api/revalidate`
+- `WEB_REVALIDATE_TOKEN` — must hold the SAME value web sets in
+  `REVALIDATION_SECRET`
+
+Deploy ordering (receiver-first, per
+`docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md`):
+
+1. Confirm `REVALIDATION_SECRET` is set on web (likely already, from
+   the Strapi era).
+2. Set `WEB_REVALIDATE_URL` + `WEB_REVALIDATE_TOKEN` on admin to match.
+   Until both are set, `emitRevalidateWebhook` silently no-ops with a
+   structured log per attempt (`event=web_revalidate.skipped
+reason=config_missing`).
+3. Verify end-to-end: publish an Experience, fetch the matching
+   `/[slug]/[locale]` on web within 30 s, confirm refresh. Tail admin
+   logs for `event=web_revalidate.sent httpStatus=200`.
+
+Reversing the order produces a dead minute where admin's first call 401s
+against an unconfigured web. The webhook itself swallows the 401, so the
+symptom is "web pages don't update after publish" with no error surface.
+
+### Watch route manifest snapshot
+
+Admin owns the public watch-route admission manifest at
+`GET /api/watch-route-manifest`. The route requires the normal consumer
+bearer and returns the latest persisted snapshot with `ETag` support; if no
+snapshot exists, it returns a controlled 503 instead of generating on demand.
+
+Snapshot fields the web branch can rely on:
+
+- `contentSlugs` — all public two-segment content slugs: playable videos,
+  parent videos with playable children, and published one-segment
+  experiences.
+- `oneSegmentSlugs` — published non-template, non-homepage experiences whose
+  public route is exactly one segment.
+- `episodePairsByParent` — compact parent slug to playable child slugs map for
+  three-segment episode routes.
+- `audioLanguageSlugs` — language slugs that have at least one published HLS
+  dub on a non-deleted video.
+- `version` and `generatedAt` — stable cache/revalidation metadata.
+
+Refresh triggers:
+
+- Core sync phases `languages`, `videos`, and `video-dubs`.
+- Experience locale publish/update/archive flows that can change public route
+  visibility.
+- Operator refresh script:
+
+```bash
+DATABASE_URL='postgresql://forge:forge@localhost:5433/forge_admin' \
+pnpm --filter @forge/admin watch-route-manifest:generate
+```
+
+The script prints summary-only JSON by default: version, generated timestamp,
+payload size, counts, and duration. Use `--print` only for local debugging when
+the full manifest payload is intentionally needed. Like `seed-web-fixtures`, it
+refuses production-like `DATABASE_URL` hosts (`*.railway.app`,
+`*.jesusfilm.org`, and unparseable URLs) so operators do not accidentally mutate
+production snapshots from a workstation.
+
+### Video database backup and clone
+
+Production backup is automated only. Do not add or use an operator
+`backup:video-db` script. Run Postgres World from a dedicated admin worker
+Railway service, not from the traffic-serving admin web service. Both services
+can use the same admin build/start command, but only the worker should set
+`WORKFLOW_RUNNER_ENABLED=true`; web should leave it unset or `false` so web
+replicas can scale on traffic without also running jobs. When the worker boots,
+`src/instrumentation.ts` starts Postgres World and ensures one
+`src/workflows/videoDbBackup.ts` scheduler workflow is running. That scheduler
+workflow runs one backup immediately when it is first created, then sleeps until
+the next daily UTC run and repeats on that cadence. The actual `pg_dump` and S3
+upload run inside Postgres World, and each backup gets a `workflow_run` ledger
+row visible in `/dashboard/workflows`. The job backs up the default
+`video-core` profile and uploads to the normal Railway S3 bucket env vars
+already managed through Doppler/Railway:
+`RAILWAY_S3_BUCKET`,
+`RAILWAY_S3_ENDPOINT`, `RAILWAY_S3_REGION`, `RAILWAY_S3_ACCESS_KEY_ID`, and
+`RAILWAY_S3_SECRET_ACCESS_KEY`. Backups upload under the fixed
+`admin-video-db-backups/<profile>/` prefix.
+
+The schedule is fixed in code at daily 09:00 UTC. The admin Railway image gets
+PostgreSQL 18 client tools from the admin service's Railpack variable
+`RAILPACK_PACKAGES=postgres@18.1`; keep that in sync with the managed database
+major version because `pg_dump` cannot dump from a newer server. Railpack's
+Mise Postgres package compiles from source, so the services also need
+`RAILPACK_BUILD_APT_PACKAGES=bison flex`. Because this monorepo has multiple
+Railway services, do not put a root Railpack config in place for this feature
+unless every service should inherit it. Deployment details should be checked
+after merge to confirm the package settings were applied to both admin web and
+worker services.
+
+Use `pnpm --filter @forge/admin restore:video-db -- --target-env=development --in=<dump>`
+to restore into local or staging Postgres. The restore path reads
+`TARGET_DATABASE_URL` first, then `DATABASE_URL`, truncates only the reviewed
+video manifest tables, and refuses `--target-env=production` unless
+`--allow-production-target` is also present.
+
+For local/staging self-service, prefer the presigned latest-backup path:
+
+```bash
+TARGET_DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
+BACKUP_DOWNLOAD_API_KEY='<dev-or-stg-token>' \
+pnpm --filter @forge/admin restore:video-db:latest -- --target-env=development
+```
+
+`restore:video-db:latest` calls production admin's
+`POST /api/internal/video-db-backups/presign` endpoint when
+`BACKUP_DOWNLOAD_API_KEY` is present. Production admin validates the bearer
+against `BACKUP_DOWNLOAD_API_KEYS`, finds the latest `.dump` under
+`admin-video-db-backups/<profile>/`, returns a short-lived GET-only signed URL,
+and keeps raw `RAILWAY_S3_*` credentials inside the production runtime. The
+endpoint requires production admin to have the normal `RAILWAY_S3_*` bucket env
+vars configured; dev/staging should not need those S3 credentials.
+
+### Search trace retention and sampling
+
+Admin is the live search authority. REST `/api/search`, GraphQL `Query.search`,
+query embedding generation, pgvector retrieval, production trace storage,
+rollups, and retention all stay inside `apps/admin`. Mastra must not enter the
+live request path and must not import Admin code or read Admin Postgres for eval
+sampling; later eval jobs use Admin's internal HTTP contract only.
+
+Production search tracing writes two records:
+
+- `search_trace`: short-lived raw rows with query text after first-pass
+  privacy classification/redaction, locale, route source, requested mode,
+  response search mode, result count, latency bucket, outcome, trace class,
+  deterministic quality/sensitive/abuse labels, rule label source/version/time,
+  optional offline LLM labels/provenance, sample eligibility, and timestamps.
+  Raw rows expire after `SEARCH_TRACE_RAW_RETENTION_DAYS` (default 29, max 29)
+  so the daily purge deletes them before the hard 30-day ceiling.
+- `search_trace_aggregate`: long-lived rollups by non-query dimensions. This
+  table never stores query text or LLM prompts/results and is the durable
+  analytical trail after raw rows are purged. It includes rule label
+  source/version dimensions so future rule changes do not mix incompatible
+  cohorts.
+
+Trace writes are bounded best-effort. `recordSearchTraceSafely` is awaited
+behind a short timeout and every write/timeout failure is swallowed from the
+live search caller's perspective. Failures increment safe process-local
+counters and log `[search] event=trace_record_* ...` without raw query text.
+
+The internal sampling route is
+`POST /api/internal/search-traces/sample`. It is rate-limited before auth/body
+parsing, requires a bearer from `SEARCH_TRACE_SAMPLING_API_KEYS`, and defaults
+to recent unexpired valid-viewer-intent rows with no sensitivity or abuse
+labels. Broader sampling must explicitly request allowlisted quality,
+sensitivity, abuse, or LLM-classification filters. The bearer CSV is optional
+at boot and is part of the env disjointness invariant; it must not share values
+with workflow, web/consumer, backup, manager, or Mastra ingest credentials.
+Sample responses include `rawExpiresAt` so offline consumers can carry the
+same retention boundary forward without receiving extra raw trace data.
+
+Admin exposes narrow Admin-owned search-eval contracts for Mastra:
+
+- `POST /api/internal/search-eval/catalog-context` returns compact published
+  video/experience anchors plus harness locale profiles. It deliberately omits
+  embeddings, raw transcripts, auth data, scorer payloads, and edit-only
+  fields.
+- `POST /api/internal/search-eval/candidates` stores generated candidates in
+  `search_eval_candidate` with source, locale, label provenance, generation
+  model/provider, source anchors, expected-result hints, advisory judge
+  summary, Mastra run id, and promotion status. Client-supplied promotion
+  status is rejected.
+- `GET /api/internal/search-eval/candidates` returns bounded staged candidate
+  rows for offline eval reports. Trace-derived candidates are excluded at read
+  time after their raw retention expiry.
+- `POST /api/internal/search-eval/search` calls Admin's live search service for
+  offline eval execution without writing production search traces. It keeps the
+  public search response shape but remains an internal authenticated contract.
+
+These routes use the same dedicated search trace/eval bearer allowlist. They
+exist for offline eval generation only; neither route participates in live
+request handling, live query embedding ownership changes, or public search
+response shape changes.
+
+Query labeling model:
+
+- `queryQualityLabel`: `valid_viewer_intent`, `empty_too_short`,
+  `navigational`, `catalog_lookup`, `malformed`, or `unknown_ambiguous`.
+- `abuseLabel`: `none`, `repeated_spam`, `abusive`, or
+  `prompt_injection_like`.
+- `sensitiveQueryLabel`: privacy/redaction label (`none`, `email`, `phone`,
+  `credential`, `token`, `cookie`, `ip`, `user_identifier`, or `mixed`).
+
+The optional OpenRouter classifier lives under `src/services/search-eval/` and
+is for ambiguous or high-impact samples only. REST `/api/search` and GraphQL
+`Query.search` must not call it, must not route through Mastra, and must not use
+labels to censor or alter live results.
+
+The Admin worker starts `src/workflows/searchTraceRetention.ts` when
+`WORKFLOW_RUNNER_ENABLED=true` and
+`WORKFLOW_TARGET_WORLD=@workflow/world-postgres`. The scheduler runs one purge
+immediately, then daily at 10:00 UTC. `/api/search/health` reports retention
+health and trace capture counters; in production, raw trace capture is disabled
+when the retention scheduler or recent purge heartbeat cannot be confirmed.
+The purge also removes trace-derived generated eval candidates whose
+`retentionExpiresAt` has passed while they remain `generated`, keeping
+unpromoted trace candidates inside the raw trace retention window.
+
+Never add bearer tokens, cookies, IP addresses, full user identifiers,
+caller-supplied key ids, vectors, debug scoring payloads, or raw query text to
+aggregate rows or workflow details.
+
+### Jesus Film Auth client mode
+
+For local development, admin points at production Auth so engineers do not need
+to run `apps/auth` locally:
+
+```bash
+AUTH_ISSUER_URL=https://auth.jesusfilm.org/api/auth
+AUTH_ADMIN_CLIENT_ID=jfp_admin_local
+ADMIN_BASE_URL=http://localhost:3003
+```
+
+Admin uses authorization code + PKCE and stores only admin-local session state
+after callback. The callback route verifies issuer, audience, expiry, and the
+`admin:access` scope before mapping Auth scopes onto admin's existing
+VIEWER/EDITOR role ladder.
+
 ## Deployment
 
 Railway service `@forge/admin` in project `forge` (Doppler project
@@ -208,12 +470,25 @@ the chained `startCommand`.
 
 **Forward-only.** `prisma migrate deploy` is the only correct
 invocation against a deployed environment. NEVER run `prisma migrate
-dev` against prod or any deployed env. Rolling back to an earlier
-image leaves the schema ahead of the code; with today's contents
-(0001-0009 are all additive — new tables, new columns, new indexes)
-a code-side rollback is functionally safe. The first migration that
-drops or renames anything will change this rule and require a deeper
-rollback playbook.
+dev` against prod or any deployed env.
+
+Migration `0014_drop_experience_locale_cms_snapshot` (2026-05-17) is
+the first admin migration to drop columns — it removed the retired
+`cms_document_id`, `cms_dumped_at`, `cms_content_hash` columns + the
+partial index on `experience_locale`. Code-side rollback rules:
+
+- Rolling back to the **immediately-prior commit** on the PR that
+  added 0014 is functionally safe: that commit no longer references
+  the dropped columns. Schema and code were co-versioned in the same
+  PR.
+- Rolling back further than that — to a commit that still references
+  the dropped columns — is unsafe. The columns are gone from the DB
+  but the code expects them, so Prisma reads fail at runtime. If you
+  need to roll back past 0014, coordinate a re-add migration first.
+- Every earlier migration (0001–0013) is purely additive — new
+  tables, new columns, new indexes — so the pre-0014 rule that
+  "rolling back to an earlier image is functionally safe" still
+  holds for that stretch of history.
 
 ### Operational runbook — predeploy migration verification
 
@@ -551,12 +826,12 @@ stats.errors === 0 && seenCoreIds.size > 0`, the phase soft-deletes
 
 Admin owns scene-level embeddings in its own Postgres. Source data is
 apps/manager's `{assetId}/scene-analysis.json` S3 artifact (the
-multimodal scene-analysis pipeline). Admin re-indexes those artifacts
-into `VideoScene` + `VideoSceneLocale` and regenerates embedding
-vectors using admin's embedding provider. Vectors are NOT copied from
-cms; they're regenerated from the same model (`text-embedding-3-small`,
-1536d). Total regeneration cost is well under $0.01 at current catalog
-scale.
+multimodal scene-analysis pipeline). Mastra owns scene embedding generation,
+provider retries, run diagnostics, and Studio observability. Admin launches
+Mastra for each scene target, then accepts the final scene-specific payload at
+`/api/internal/mastra/scene-embeddings` and stores it in `VideoScene` +
+`VideoSceneLocale`. Admin remains the owner of pgvector storage, partial HNSW
+indexes, target resolution, public search contracts, and search retrieval.
 
 - **Schema:** `VideoScene` attaches to `VideoEdition` (timecodes follow
   the edition's cut, matching `VideoSubtitle`). Per-locale descriptions
@@ -566,11 +841,17 @@ scale.
 - **Partial HNSW indexes** per-locale (`en`, `es`, `fr`) plus a global
   NULL-excluded fallback. Per-locale indexes guard against the pgvector
   "HNSW + WHERE locale = ?" planner bypass.
-- **Indexer service:** `src/services/scene-embedding.service.ts`
-  (`indexEditionScenes`). Idempotent upsert on
+- **Storage writer:** `src/services/scene-embedding.service.ts`
+  (`writeSceneEmbeddingPayload`). Idempotent upsert on
   `(videoEditionId, sceneIndex)` and `(videoSceneId, locale)`. Raw SQL
   `::vector` write inside a Prisma `$transaction`. ABAC-gated via
   `canWriteDerived`.
+- **Mastra ingest endpoint:** `src/app/api/internal/mastra/scene-embeddings`
+  accepts only scene-shaped payloads from `MASTRA_SCENE_INGEST_API_KEYS`;
+  no generic embedding blob endpoint. Payloads carry compact provenance:
+  source artifact/version/content hash, locale, model/dimensions, generation
+  mode, Mastra run id, and generated timestamp. Vectors and raw source text are
+  never exposed through GraphQL or normal route summaries.
 - **Backfill workflow:**
   `src/workflows/sceneEmbeddingBackfill.ts` — useworkflow job that
   enumerates one target per `(video, edition, bcp47)` triple. The
@@ -579,26 +860,106 @@ scale.
   edition-level dub languages. No hardcoded locale list — an earlier
   prototype used `DEFAULT_LOCALES = ["en", "es", "fr"]`; dropped per
   `docs/solutions/best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md`.
-  Per-target error isolation; `artifact_missing` errors skip, provider
-  errors fail but don't halt the run. Safe to re-run.
-- **Bounded parallelism:** the per-target loop uses
-  `pLimit(env.SCENE_EMBEDDING_CONCURRENCY ?? 5) +
-Promise.allSettled` — never bare `Promise.all` (one rejection
-  would abort the batch). See
-  `docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md`.
-  `Promise.allSettled` preserves input order so `outcomes[i]` is
-  index-aligned to `targets[i]`; per-target work completes
-  out-of-order during the run, but the final array shape is stable.
-  Tune via the `SCENE_EMBEDDING_CONCURRENCY` env var on `forge-admin`
-  Doppler. Default `5` matches admin's documented Prisma
+  Per-target error isolation; `artifact_missing` errors skip and Mastra/Admin
+  ingest failures fail but don't halt the run. Safe to re-run with
+  `idempotent`, `repair`, `force`, or `model-upgrade` modes.
+- **Bounded parallelism (Stage 2 — feat-116):** the workflow groups
+  enumerated `(video, edition, locale)` targets by `(video, edition)`
+  and parallelises over GROUPS via
+  `pLimit(env.SCENE_EMBEDDING_CONCURRENCY ?? 5) + Promise.allSettled`
+  — never bare `Promise.all`. Per-locale work inside a group runs
+  sequentially with the artifact in scope. See
+  `docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md`
+  (the WHY) and
+  `docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md`
+  (the canonical HOW). The concurrency-cap test still asserts
+  `observedMaxInFlight === N` — a regression to sequential `for…of`
+  yields `1` and trips the assertion.
+- **Per-(video, edition) artifact memoization (Stage 2 — feat-116):**
+  the workflow fetches `scene-analysis.json` ONCE per `(video, edition)`
+  group via `readSceneAnalysisArtifact(...)` and passes the loaded JSON
+  down to each per-locale Mastra launch. S3 reads collapse from N×L (per
+  locale) to N (per group). Group-level artifact-load failures cascade
+  to per-locale outcomes with the right classification
+  (`artifact_missing` → skipped; everything else → failed) so the
+  report's succeeded/skipped/failed triple stays meaningful.
+- **Mastra workflow (feat-133):** `apps/mastra` workflow id
+  `scene-embedding` accepts scene-analysis source data, validates scene order
+  and provider response shape, batches descriptions through the configured
+  embedding provider, then submits the final vectors to Admin ingest. Workflow
+  failures throw so failed runs are visible in Mastra Studio rather than hidden
+  behind successful `{ ok: false }` step outputs.
+- Tune concurrency via the `SCENE_EMBEDDING_CONCURRENCY` env var on
+  `forge-admin` Doppler. Default `5` matches admin's documented Prisma
   `connection_limit=10` so a backfill leaves headroom for concurrent
   GraphQL/REST traffic; local dev can crank to `20+` via the env
   override. Per-target progress streams as `scene_index_complete` /
   `scene_index_skipped` / `scene_index_failed` JSON log events; the
   workflow also emits a single `event=start` log at dispatch carrying
-  the resolved concurrency for any trigger path.
+  the resolved concurrency AND `groupCount` (Stage 2's reshape
+  surfaces the artifact-fetch fan-in for any trigger path).
 - **Trigger:** `triggerSceneEmbeddingBackfill` GraphQL mutation
-  (ADMIN-only; permission key `write:scene-embeddings`).
+  (ADMIN-only; permission key `write:scene-embeddings`). Stage 2's
+  reshape is internal to execution, but the JSON report shape is
+  additive over Stage 1 (`missingArtifacts`, `retrySelection`,
+  `groupedFailures`, and failed-outcome `failureCategory` may appear).
+  `outcomes[]` ordering remains documented as non-deterministic per
+  `Promise.allSettled`.
+- **NoSuchKey classification + missingArtifacts list (feat-119 PR1):**
+  AWS S3 `NoSuchKey` errors classify as `skipped { reason: "artifact_missing" }`
+  via the typed-error helper `isArtifactMissing` in
+  `manager-artifacts.service.ts` (typed `error.name` first, legacy
+  `error.Code` second, tightened regex backstop third). Re-running
+  the embed workflow does NOT produce the artifact — the operator
+  must explicitly trigger enrichment via PR2's
+  `triggerManagerEnrichment` mutation. The workflow report carries a
+  `missingArtifacts: ReadonlyArray<{ assetId, coreId, kind }>` field
+  (deduped by `assetId`, sorted ascending) so an operator can pipe
+  it into `pnpm trigger-enrichment --from-report=<path>` (PR2).
+  Only `skipped { artifact_missing }` outcomes feed the list — `failed`
+  outcomes are real failures, not upstream gaps. See
+  `docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md`.
+- **Scene retry recovery from prior reports:** for `pnpm run-embeds`,
+  `--pipeline=scene --from-report=<path>` extracts failed
+  `reports.scene.outcomes[]` from a prior `run-embeds.complete` report,
+  dedupes exact `(coreId, videoEditionId, locale)` selectors, and retries
+  only those targets. The workflow reconciles selectors against current
+  enumeration and fails closed when selectors are stale. The final report
+  includes `retrySelection` counts plus `groupedFailures`, which
+  collapses noisy per-locale failures by asset, edition, and category
+  (`dns_failed`, `timeout`, `prisma_transaction`, `provider_validation`,
+  etc.). Use this for transient infrastructure/provider recovery rather
+  than blindly rerunning the full catalog.
+- **Bulk SQL writes (Stage 3 — feat-117):** the per-target write batch
+  collapses from a per-row `videoSceneLocale.upsert()` + per-row
+  `$executeRaw … UPDATE … embedding` loop into THREE bulk statements
+  inside the same per-target `prisma.$transaction`:
+  1. Bulk parent INSERT with client-generated ids:
+     `INSERT INTO video_scene … SELECT * FROM unnest(...) ON CONFLICT
+(video_edition_id, scene_index) DO NOTHING`. Ids are bound as a
+     `text[]` literal via `toPgArray` (extended Stage 3 to emit the
+     unquoted `NULL` token for nullish elements). `randomUUID()` from
+     `node:crypto` is the id source — `VideoScene.id` is `String @id`
+     in Prisma (`@default(cuid())` is the schema default; nothing in
+     the DB enforces cuid shape). Avoids adding a runtime cuid dep.
+  2. ONE follow-up SELECT recovers the full `scene_index → id` map for
+     ALL incoming sceneIndexes (both freshly-inserted AND pre-existing
+     parents). `RETURNING id` alone is insufficient because
+     `ON CONFLICT DO NOTHING` doesn't return rows for existing matches,
+     and the rerun path needs ids for those too.
+  3. Bulk locale `INSERT … unnest(...) ON CONFLICT (video_scene_id,
+locale) DO UPDATE SET …`. The `embedding` cast is per-row at the
+     SELECT seam (`u.embedding_text::vector(1536)`) — Way A discipline,
+     NOT `::vector(1536)[]` on the parameter. The `text[]` columns
+     (`themes`, `bible_verses`, `demographics`, `spiritual_context`,
+     all `String[]` in `schema.prisma` — NOT jsonb) are bound as
+     `JSON.stringify`'d strings inside a `text[]` literal and unfolded
+     per-row via `ARRAY(SELECT jsonb_array_elements_text(u.<col>_json::jsonb))`.
+     Length-equality preflight asserts ALL parallel arrays match
+     `prepared.length` BEFORE invoking `$executeRaw`. PG18's
+     `unnest(arr1, arr2, ...)` silently NULL-pads unequal-length arrays —
+     the preflight is the regression guard. See
+     `docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
 
 **Operational runbook:**
 
@@ -618,10 +979,12 @@ Promise.allSettled` — never bare `Promise.all` (one rejection
    - `MANAGER_ARTIFACTS_S3_*` → manager's bucket
      (`forgemanagerartifacts-xtgld8`, Railway bucket resource
      `b1c705c6-5add-48a0-a153-5ef40f876a4f`). Read-only;
-     `{assetId}/scene-analysis.json` + `{assetId}/embeddings.json`.
+     `{assetId}/scene-analysis.json` + `{assetId}/transcript.json`.
 
-   Also ensure `OPENROUTER_API_KEY` or `OPENAI_API_KEY` is set so
-   admin can re-embed scene descriptions.
+   Also ensure `MASTRA_BASE_URL` and `MASTRA_SERVICE_API_KEY` are set
+   so Admin can launch the scene embedding workflow. Mastra owns the
+   scene embedding provider credentials and calls Admin back through
+   the scene-specific ingest endpoint.
 
 3. Invoke `triggerSceneEmbeddingBackfill` via GraphQL. `mappingS3Key`
    defaults to `admin-migrations/core-id-mapping.json`; override for
@@ -636,21 +999,20 @@ Promise.allSettled` — never bare `Promise.all` (one rejection
 The primary learnings doc is
 `docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md`.
 
-## Transcript embeddings (R2 of admin migration playbook)
+## Transcript embeddings (Mastra-owned generation)
 
-Admin owns chunk-level transcript embeddings in its own Postgres.
-Source data is apps/manager's `{assetId}/embeddings.json` S3 artifact
-(the transcript embeddings pipeline). Admin re-indexes those artifacts
-into `VideoTranscript` + `VideoTranscriptChunk`.
+Admin owns transcript vector storage, pgvector indexes, public search
+contracts, and retrieval. Mastra owns transcript chunk planning and
+embedding provider calls. Manager only produces transcript source data
+(`{assetId}/transcript.json`: transcript text, timed segments, language,
+provider metadata).
 
-**R2 divergence from R1:** manager's `embeddings.json` already contains
-vectors per chunk (`EmbeddingsResult.chunks[].embedding`), so admin
-REUSES the vectors verbatim rather than regenerating. Zero OpenRouter
-spend on R2 backfill. Admin validates `dimensions === 1536` (hard
-reject as `dimension_mismatch`) and logs a warning on model-stamp
-drift (proceeds anyway — the point of vector reuse is to trust
-manager's stamp). See
-`docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`.
+Mastra writes vectors through Admin's narrow internal ingest route:
+`POST /api/internal/mastra/transcript-embeddings`. The route validates
+`MASTRA_TRANSCRIPT_INGEST_API_KEYS`, accepts only transcript payloads,
+guards `dimensions === 1536`, resolves Admin or external targets before
+writing, and is idempotent by default. Explicit modes are `idempotent`,
+`repair`, `force`, and `model-upgrade`.
 
 - **Schema:** `VideoTranscript` attaches to `VideoEdition` (same cut-
   aware attachment as `VideoSubtitle` / `VideoScene`). One row per
@@ -665,12 +1027,19 @@ manager's stamp). See
 - **Partial HNSW indexes** per-language (`en`, `es`, `fr`) plus a
   global NULL-excluded fallback. Same rationale as R1.
 - **Indexer service:** `src/services/transcript-embedding.service.ts`
-  (`indexEditionTranscript`). Idempotent upsert on `(editionId, language)`
-  for the parent and `(transcriptId, chunkIndex)` for chunks. Pre-
-  transaction prune removes stale chunks when manager re-chunks with
-  fewer segments. Raw SQL `::vector` write inside a Prisma
-  `$transaction` with explicit 30s timeout. ABAC-gated via
-  `canWriteDerived`.
+  (`writeTranscriptEmbeddingPayload` / `indexEditionTranscript`).
+  Idempotent upsert on `(editionId, language)` for the parent and
+  `(transcriptId, chunkIndex)` for chunks. Pre-transaction prune removes
+  stale chunks when Mastra re-chunks with fewer segments. Raw SQL
+  `::vector` write inside a Prisma `$transaction` with explicit 30s
+  timeout. ABAC-gated via `canWriteDerived`.
+- **Internal ingest service:**
+  `src/services/transcript-embedding-ingest.service.ts`. Validates the
+  Mastra payload, computes and checks a source-content hash, rejects
+  ambiguous Manager-originated targets before writing, stores provenance
+  (`sourceArtifactKey`, `sourceContentHash`, provider, Mastra run id,
+  generation mode, chunking version), and delegates the actual table
+  write to the existing indexer service.
 - **Backfill workflow:**
   `src/workflows/transcriptEmbeddingBackfill.ts` — useworkflow job
   that enumerates one target per `(video, edition, bcp47)` triple.
@@ -681,20 +1050,52 @@ manager's stamp). See
   anywhere, it produces no targets (a data-quality signal, not a
   silent default). Per-target error isolation; `artifact_missing`
   → skipped, every other error → failed but the run continues.
-  Safe to re-run.
-- **Bounded parallelism:** the per-target loop uses
+  Safe to re-run. The workflow loads the Manager transcript source once
+  per `(video, edition)` group and launches Mastra once per target.
+- **Bounded parallelism (Stage 2 — feat-116):** the workflow groups
+  enumerated `(video, edition, language)` targets by
+  `(video, edition)` and parallelises over GROUPS via
   `pLimit(env.TRANSCRIPT_EMBEDDING_CONCURRENCY ?? 5) +
-Promise.allSettled` — never bare `Promise.all`. Same shape /
-  same rule as R1; index-aligned `outcomes[i]` per `Promise.allSettled`
-  input-order semantics; per-target progress streams via
-  `transcript_index_complete` / `_skipped` / `_failed` log events
-  and a single `event=start` carrying resolved concurrency. Tune via
-  the `TRANSCRIPT_EMBEDDING_CONCURRENCY` env var. R2 is DB-bound (no
-  provider call) so the bottleneck on cranking concurrency is
-  Postgres connection saturation; default `5` leaves headroom on
-  admin's `connection_limit=10` pool.
+Promise.allSettled` — never bare `Promise.all`. Per-language work
+  inside a group runs sequentially with the source artifact in scope. Same
+  shape / same rule as R1.
+- Tune via the `TRANSCRIPT_EMBEDDING_CONCURRENCY` env var. Admin
+  backfill is now network-bound on Mastra plus DB-bound inside the
+  ingest callback; default `5` leaves headroom on admin's
+  `connection_limit=10` pool. Per-target progress streams via
+  `transcript_index_complete` / `_skipped` / `_failed` log events and
+  a single `event=start` carrying resolved concurrency and `groupCount`.
 - **Trigger:** `triggerTranscriptEmbeddingBackfill` GraphQL mutation
-  (ADMIN-only; permission key `write:transcript-embeddings`).
+  (ADMIN-only; permission key `write:transcript-embeddings`). Optional
+  `mode` maps to Admin ingest's rewrite modes. Omitted mode defaults to
+  idempotent.
+- **NoSuchKey classification + missingArtifacts list (feat-119 PR1):**
+  identical contract to R1 (see above). The R2 report's
+  `missingArtifacts` entries stamp `kind: "transcript"` so PR2's
+  `triggerManagerEnrichment` dispatches the transcript pipeline (vs
+  scene-analysis). See
+  `docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md`.
+- **Bulk SQL writes (Stage 3 — feat-117):** the per-chunk
+  `videoTranscriptChunk.upsert()` + per-row `$executeRaw … UPDATE …
+embedding` loop collapses to ONE `INSERT INTO video_transcript_chunk
+… SELECT * FROM unnest(12 parallel arrays) ON CONFLICT (transcript_id,
+chunk_index) DO UPDATE SET …`. The 12 parallel arrays are: `id`,
+  `transcript_id`, `language`, `chunk_index`, `chunk_id`, `text`,
+  `token_count`, `start_seconds` (nullable), `end_seconds` (nullable),
+  `model`, `dimensions`, `embedding_text`. Each is bound as a single
+  `text[]` literal via `toPgArray`; per-row casts at the SELECT seam
+  recover the int / double precision / vector(1536) types. Way A vector
+  cast is `u.embedding_text::vector(1536)` — NOT `::vector(1536)[]` on
+  the parameter (the array-input parser is less-trodden code). Length-
+  equality preflight asserts ALL parallel arrays match
+  `artifact.chunks.length` BEFORE invoking `$executeRaw` (PG18 silently
+  NULL-pads unequal-length unnest args). The parent
+  `videoTranscript.upsert(...)` stays as a Prisma call (one row per
+  target — bulk-INSERT shape would not save a round-trip and would
+  complicate the Prisma type story). See
+  `docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
+  This bulk writer remains the single storage path for Mastra-ingested
+  transcript vectors.
 
 **Operational runbook** (shares the R1 mapping snapshot):
 
@@ -702,161 +1103,158 @@ Promise.allSettled` — never bare `Promise.all`. Same shape /
    S3 bucket (the one wired to `RAILWAY_S3_*`):
    `pnpm --filter @forge/admin refresh:core-id-mapping`.
    Same CLI R1 uses; same snapshot consumed by both workflows.
-2. No API keys required for R2 backfill (vectors come from the
-   artifact). `RAILWAY_S3_*` (admin's own write bucket — used by the
+2. Configure `RAILWAY_S3_*` (admin's own write bucket, used by the
    refresh CLI for `admin-migrations/core-id-mapping.json`),
-   `MANAGER_ARTIFACTS_S3_*` (manager's bucket — where admin reads
-   `{assetId}/embeddings.json` and `{assetId}/scene-analysis.json`
-   from), and `REDIS_*` must be set on the `forge-admin` Railway
-   service. The two S3 env blocks point at _different_ buckets — see
-   `src/storage/s3.ts` for the split.
+   `MANAGER_ARTIFACTS_S3_*` (manager's bucket, where admin reads
+   `{assetId}/transcript.json` and `{assetId}/scene-analysis.json`),
+   `MASTRA_BASE_URL`, `MASTRA_SERVICE_API_KEY`,
+   `MASTRA_TRANSCRIPT_INGEST_API_KEYS`, and `REDIS_*` on
+   `forge-admin`. Mastra must also have
+   `ADMIN_TRANSCRIPT_INGEST_URL`,
+   `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY`, and its embedding provider
+   key configured.
 3. Invoke `triggerTranscriptEmbeddingBackfill` via GraphQL.
    `mappingS3Key` defaults to `admin-migrations/core-id-mapping.json`.
    Omitted `languages` means "every BCP-47 that exists across the
    corpus" (union of primary / subtitle / dub languages per edition).
    Restrict with `coreIds` (filter by video) or `languages` (strict
-   inclusion list — no silent fallback). Today manager writes one
-   embeddings.json per asset, so multi-language editions produce
-   multiple transcript rows with identical chunk text/vectors under
-   different language stamps; the schema is future-ready for
-   per-language artifacts manager will produce later.
+   inclusion list — no silent fallback). Today Manager writes one
+   transcript source artifact per asset and Mastra embeds it per target,
+   so multi-language editions produce multiple transcript rows from the
+   same source text when the asset has multiple language attestations;
+   the schema remains future-ready for per-language transcript artifacts.
+   Use `mode` / `--transcript-mode` only for intentional repair or
+   rewrite operations.
 4. Verify:
    `SELECT COUNT(*) FROM video_transcript_chunk WHERE embedding IS NOT NULL`
    grows as expected;
    `SELECT DISTINCT video_edition_id FROM video_transcript`
    enumerates the indexed editions.
 
-The primary learnings doc is
+The current learnings doc is
+`docs/solutions/platform/mastra-transcript-embedding-workflow-pattern.md`.
+Historical vector-reuse context remains in
 `docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md`.
 
-## Experience content dump (R3 of admin migration playbook)
+## Triggering experience embeddings (admin-native)
 
-Admin owns the per-locale Experience corpus and re-derives it from
-cms's Strapi v5 `experiences` table on each rerun of the
-`triggerExperienceContentDump` mutation. cms remains the editor
-surface and consumer-facing renderer until R8 cutover; admin's
-corpus is a refreshed mirror with one tolerance — admin-side
-`ContentRevision` rows survive reruns because they live in a
-separate table the dump never touches.
+Experiences are authored, published, and rendered admin-native;
+hybrid search needs `ExperienceLocale.embedding` populated to retrieve
+over them. Three entry points cover the lifecycle.
 
-- **Schema:** three nullable columns on `ExperienceLocale`:
-  `cms_document_id` (Strapi v5's cross-locale + cross-publish-state
-  grouping key), `cms_dumped_at` (last touched by the dump),
-  `cms_content_hash` (SHA-256 hex over the canonical-JSON merge
-  payload — gates both rerun-skip and `runExperienceEmbedding`
-  re-dispatch). Partial index on `cms_document_id WHERE NOT NULL`.
-  None of the three is exposed via GraphQL (defense-in-depth:
-  `schema.test.ts` asserts no `cms_*hash | cms_*document_*id |
-cms_*dumped_*at`-shaped field leaks).
-- **cms connection:** lazy singleton `pg.Pool` in
-  `src/db/cms-pg.ts` against `CMS_DATABASE_URL`. Optional at boot
-  so admin still starts in environments without the dump enabled.
-  When the workflow runs without the env set, `getCmsPgPool()`
-  throws `CmsDatabaseUrlMissingError` AT THE WORKFLOW BOUNDARY
-  (before target enumeration), surfacing as a top-level GraphQL
-  error rather than a per-target outcome. Operators see a clean
-  `ExperienceContentDumpError`-style failure with the env-name in
-  the message — the dispatch never charges any target. Statement
-  timeout is set to 15s at the connection level so a stuck cms
-  query cannot hang the workflow.
-- **Repository:** `src/services/cms-experience-source.repository.ts`
-  reads Strapi v5 schema verbatim (snake_case row shapes mirror cms
-  PG columns). Table names from a hardcoded allowlist so a typo or
-  attacker-influenced `component_type` cannot reference an arbitrary
-  table. An in-memory fake (`cms-experience-source.fake.ts`) is the
-  test surface for service-level tests.
-- **Block transformers:** `src/services/cms-block-transforms.ts` —
-  one transformer per Strapi component UID + recursion through
-  section/container nested zones. Each transformer constructs the
-  admin shape from scratch (no spread of cms attrs), normalises
-  null/empty cms strings to undefined for Zod optionality, and
-  dispatches a `BlockTransformError` (typed code + componentType +
-  cmpId) on required-field violations. Error messages NEVER echo
-  cms row data (cf. `zod-validation-errors-must-not-echo-user-controlled-input-20260420.md`).
-- **Indexer service:** `src/services/experience-content-dump.service.ts`
-  (`dumpExperienceLocale`). Per-locale flow: ABAC gate → load source
-  row preferring published → load components → resolve cms video
-  ids → transform → Zod parse → resolve experience-level ogImage URL
-  → SHA-256 hash → upsert in `$transaction` (locale row + snapshot
-  columns). Hash is NOT persisted by the service — the workflow
-  writes it after embed dispatch succeeds (so a failed dispatch
-  leaves the previous hash in place and the next rerun retries).
-- **Backfill workflow:**
-  `src/workflows/experienceContentDump.ts` — useworkflow job that
-  enumerates one target per `(document_id, locale)` from cms,
-  filters out `locale = NULL` rows, dispatches the dump service
-  per-target, and dispatches `runExperienceEmbedding` for outcomes
-  with `action !== "skipped_unchanged"`. Per-target error
-  isolation; `Promise.allSettled` not used — sequential `for…of`
-  per-target matches R1/R2.
-- **Trigger:** `triggerExperienceContentDump` GraphQL mutation
-  (ADMIN-only; permission key `write:experience-content-dump`).
-  JSON return shape parity with R1/R2: `{ totalTargets,
-documentIdFilter, localeFilter, outcomes, succeeded, skipped,
-failed, embedsDispatched }`. Per-target outcome is a discriminated
-  union: `succeeded { action: "created" | "updated" |
-"skipped_unchanged", embedDispatched, draftPendingNewer,
-videoResolutionMisses, ... }` or `failed { reason: "forbidden" |
-"null_locale" | "slug_collision" | "failed_validation" |
-"embed_dispatch_failed" | "cms_read" | "db_write" | "unknown",
-message, ... }`.
+The previous R3 cms → admin "experience content dump" workflow was
+retired on 2026-05-17 (see
+`docs/plans/2026-05-17-001-refactor-decouple-experience-embeds-from-cms-plan.md`).
+cms is being deleted; no cms-coupled code, env var, or DB column
+remains on the admin side of this surface.
+
+### Per-locale trigger (one ExperienceLocale at a time)
+
+`triggerExperienceEmbedding(localeId: ID!)` at
+`src/graphql/mutations/experience.ts`. Gated by `write:experiences`
+(EDITOR+) — owners can re-embed their own content. Dispatches
+`runExperienceEmbedding` via `start()` from `workflow/api` and
+awaits the per-locale result. Used by the editor surface today.
+
+### Publish-flow auto-dispatch
+
+`ExperienceService.publishLocale` and `updateExperienceLocale` (when
+status=PUBLISHED) dispatch `runExperienceEmbedding` inline at
+`src/services/experience.service.ts:573`. Every successful publish/
+update of a PUBLISHED locale refreshes its embedding automatically.
+No operator action required.
+
+### Bulk backfill (admin-native)
+
+`triggerExperienceEmbeddingBackfill` at
+`src/graphql/mutations/experience-embedding-backfill.ts`. ADMIN-only
+via `write:experience-embeddings`; bearer-callable from CLIs via
+`WORKFLOW_TRIGGER`. The workflow at
+`src/workflows/experienceEmbeddingBackfill.ts` enumerates eligible
+`ExperienceLocale` rows (status='published' AND embedding IS NULL by
+default) and dispatches `runExperienceEmbedding` per locale.
+Sequential `for…of` per-target; per-target error isolation. JSON
+return shape:
+
+```ts
+{
+  totalTargets: number
+  experienceIdFilter: readonly string[] | null
+  localeFilter: readonly string[] | null
+  force: boolean
+  outcomes: Array<
+    | { status: "succeeded"; target; dimensions; model; durationMs }
+    | { status: "failed";    target; reason; durationMs }
+  >
+  succeeded: number
+  failed: number
+}
+```
+
+**Filter args** (all optional inclusion predicates; omitted = "every
+eligible row"):
+
+- `experienceIds: [ID!]` — restrict to specific parent Experiences.
+- `bcp47Locales: [String!]` — restrict to a BCP-47 set, e.g.
+  `["en", "es"]`. Data-derived at enumeration time when omitted; no
+  hardcoded list, no `en` fallback.
+- `force: Boolean = false` — when true, include rows that already
+  have a non-NULL embedding (re-embed them). Use for model upgrades
+  or drift fixes.
 
 **Operational runbook:**
 
-1. **Provision a read-only Postgres role on cms** (out-of-band,
-   platform team owned). Grant `SELECT` on the experience-related
-   tables only:
-   - `experiences`, `experiences_cmps`
-   - all `components_sections_*` tables (17 component row tables +
-     5 nested `_cmps` join tables)
-   - `files`, `files_related_mph`
-   - `videos` (for cms video id → coreId resolution)
-   - The four `_video_lnk` join tables that carry component →
-     video relations
-2. **Set `CMS_DATABASE_URL` on the `forge-admin` Doppler project**
-   (`forge-admin` env). Format: `postgres://forge_admin_readonly:<pw>@<host>:<port>/<db>?sslmode=require`.
-   Until this lands, `triggerExperienceContentDump` invocations
-   throw `CmsDatabaseUrlMissingError` cleanly.
-3. **Invoke the mutation via GraphQL.** Both args are optional:
+1. Ensure Admin can launch Mastra and receive the callback:
+   `MASTRA_BASE_URL`, `MASTRA_SERVICE_API_KEY`, and
+   `MASTRA_EXPERIENCE_INGEST_API_KEYS` on `forge-admin`; Mastra needs
+   `ADMIN_EXPERIENCE_INGEST_URL`, `ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY`,
+   and an embedding provider key.
+2. Invoke via GraphQL with an ADMIN session, or via bearer auth
+   using a `WORKFLOW_API_KEYS` key:
+
    ```graphql
    mutation {
-     triggerExperienceContentDump(documentIds: ["…"], locales: ["en"])
+     triggerExperienceEmbeddingBackfill(
+       experienceIds: ["…"]
+       bcp47Locales: ["en"]
+       force: false
+     )
    }
    ```
-   Omitted args = "every cms experience document" / "every locale
-   that exists in cms's experiences corpus" (data-derived at
-   enumeration time).
-4. **Verify:**
-   - `SELECT COUNT(DISTINCT cms_document_id) FROM experience_locale
-WHERE cms_document_id IS NOT NULL` — number of cms
-     documents now mirrored in admin.
-   - `SELECT COUNT(*) FROM experience_locale WHERE cms_dumped_at IS
-NOT NULL` — number of locale rows the dump touched.
-   - `SELECT COUNT(*) FROM experience_locale WHERE status='PUBLISHED'
-AND embedding IS NOT NULL` — published locales with a vector
-     (downstream of `runExperienceEmbedding` workflow completion).
+
+   Or from a workstation against any `DATABASE_URL` (see
+   "Running embeds locally" below):
+
+   ```bash
+   pnpm --filter @forge/admin run-embeds --pipeline=experience
+   ```
+
+3. Verify:
+   - `SELECT COUNT(*) FROM experience_locale WHERE status='published'
+AND embedding IS NOT NULL` grows as expected.
+   - The `event=run-embeds.experience.complete` log line on stdout
+     (CLI) or the JSON return value (GraphQL) reports
+     `succeeded/failed` counts.
 
 **Common things to remember:**
 
-- cms is canonical for content during the R3→R8 window; admin
-  reruns are merge-aware. Don't try to fix dump-overwrite issues by
-  hand-editing admin rows — the next rerun will revert them. The
-  exception is `ContentRevision` DRAFTs, which the dump explicitly
-  doesn't touch.
-- The workflow body uses sequential `for…of`, NOT `Promise.all`.
-  Cf. `parallel-workflow-error-robustness-20260420.md`.
+- The workflow body uses sequential `for…of`, NOT `Promise.all` —
+  cf. `parallel-workflow-error-robustness-20260420.md`. Admin's
+  experience corpus is small enough that sequential is fast enough;
+  parallelism is a follow-up if needed.
 - Every `start()` call site has a dispatch-level test (cf.
   `workflow-dispatch-test-mode-divergence-20260421.md`). The
   mutation→workflow dispatch lives in
-  `src/graphql/mutations/experience-content-dump.test.ts`; the
-  workflow→`runExperienceEmbedding` dispatch lives in
-  `src/workflows/experienceContentDump.test.ts`.
-- Locale enumeration is data-derived from cms's actual `locale`
-  column; no hardcoded list, no `en` fallback (cf.
+  `src/graphql/mutations/experience-embedding-backfill.test.ts`;
+  the workflow→`runExperienceEmbedding` dispatch lives in
+  `src/workflows/experienceEmbeddingBackfill.test.ts`.
+- Locale enumeration is data-derived from admin's own
+  `experience_locale.locale` column; no hardcoded list, no `en`
+  fallback (cf.
   `prototype-defaults-vs-data-derived-enumeration-20260422.md`).
-
-The primary learnings doc is
-`docs/solutions/platform/admin-experience-content-dump-pattern.md`.
+- `force: true` is for model upgrades / drift fixes — every locale
+  that survives the filter gets re-embedded. Costs ~$0.01 per
+  locale at admin's catalogue size.
 
 ## Hybrid search (R4 of admin migration playbook)
 
@@ -874,8 +1272,12 @@ cutover with zero response-shape drift.
   `MAX_LIMIT = 50`.
 - **Retrievers:** `src/services/hybrid-search-retrievers.ts` exports
   four functions. Each is a thin `$queryRaw` caller.
-  - `searchVideoSemantic` — pgvector cosine over `VideoSceneLocale.embedding`,
-    `DISTINCT ON (video_scene.video_id)`, locale-filtered. Resolves
+  - `searchVideoSemantic` — pgvector cosine over
+    `VideoSceneLocale.embedding` and `VideoTranscriptChunk.embedding`,
+    locale/language-filtered, mixed inside one `semantic-video`
+    retriever. It performs bounded scene + transcript scans, collapses
+    to one candidate per video before RRF, and lets the winning raw
+    evidence own `snippet`/`startSeconds`/`embeddingText`. Resolves
     `playbackId` via a LATERAL lookup on `video_dub → mux_video` keyed
     by `(video_edition_id, language.bcp47 = locale)`. When no dub
     matches, playbackId is NULL and the row still returns.
@@ -900,13 +1302,26 @@ description`, same `'simple'` config as cms, locale + status gate.
   `cosineSimilarityFromText`. Line-for-line port of cms's `fusion.ts`
   with `resultId: string` (admin cuids) instead of cms's integer ids.
   Experience rows skip all three dedup layers.
-- **Scene-only for video-semantic in R4.** `VideoTranscriptChunk.embedding`
-  (R2-indexed) is deliberately NOT fused. Strict cms parity during the
-  R3→R8 window; adding a 5th RRF list for transcripts is a post-cutover
-  follow-up that won't change the consumer contract.
-- **Experience imageUrl is null in R4.** cms parity. `ExperienceLocale.ogImageUrl`
-  exists on admin but wiring it is a deliberate post-cutover upgrade
-  so the pre-R8 diff-against-cms invariant holds.
+- **Mixed evidence inside `semantic-video`.** Transcript chunks are NOT
+  a fifth RRF list. `VideoTranscriptChunk.embedding` is mixed with
+  scene evidence inside `searchVideoSemantic`, then a single ranked
+  video semantic list flows into the existing RRF pipeline. This avoids
+  double-counting videos that match both scene and transcript evidence
+  while preserving the public REST/GraphQL response shape.
+- **Video imageUrl resolves via LATERAL on `VideoImage`.** Both
+  retrievers (semantic + keyword) emit
+  `COALESCE(mobile_cinematic_high, url)` from the per-video
+  `video_image` row, matching cms's `keyword-search.ts:54` /
+  `semantic-search.ts:62` lookup. Earlier R4 doc claimed "imageUrl
+  is null for video corpus (cms parity)" — that was a regression,
+  not parity. cms's video retrievers DID populate `image_url` from
+  `video_images.mobile_cinematic_high`; only the experience side
+  defers the image join.
+- **Experience imageUrl is null in R4.** cms parity (cms's
+  experience retrievers also return null with comment "og_image
+  join deferred"). `ExperienceLocale.ogImageUrl` exists on admin
+  but wiring it is a deliberate post-cutover upgrade so the pre-R8
+  diff-against-cms invariant holds for the experience corpus.
 - **Degradation signal:** `searchMode: "hybrid" | "keyword-only"`. Set
   to `"keyword-only"` when the embedding provider throws. Structured
   log at error level: `[search] event=query_embedding_failure
@@ -1232,8 +1647,14 @@ shape drift.
   React key, so the cutover is a one-line TypeScript-type update on
   `apps/web/src/lib/recommendations.ts::SceneRecommendation`. Documented
   in plan §Key Technical Decisions #2.
-- **`imageUrl` is null** (cms parity stance inherited from R4). Wiring
-  a real `imageUrl` from `VideoImage` / MuxVideo thumbnail is a
+- **`imageUrl` is null in R5** (was claimed "cms parity inherited
+  from R4" but R4 was itself a regression — see R4's "Video imageUrl"
+  bullet above; cms's scene-recommendations DID populate `image_url`
+  via VideoImage LATERAL). Wiring R5 to match the R4 LATERAL JOIN
+  pattern is a parallel follow-up. Until then, scene-recommendation
+  thumbnails depend on consumer-side fallbacks (Mux thumbnail from
+  `playbackId`, gradient placeholder). Original note: wiring a real
+  `imageUrl` from `VideoImage` / MuxVideo thumbnail is a
   post-cutover upgrade so the pre-R8 diff-against-cms invariant holds.
 - **REST endpoint:** `GET /api/scene-embedding/recommendations`
   (singular) at `src/app/api/scene-embedding/recommendations/route.ts`.
@@ -1324,8 +1745,8 @@ path and the Cloudflare 524 edge timeout. Per
    when `RAILWAY_S3_BUCKET` is unset, so the workflow reads it
    transparently at runtime.
 
-2. **Configure manager-bucket creds + (R1 only) an embedding key
-   in `apps/admin/.env`:**
+2. **Configure manager-bucket creds + embedding workflow keys in
+   `apps/admin/.env`:**
 
    ```
    MANAGER_ARTIFACTS_S3_ENDPOINT=...
@@ -1333,8 +1754,11 @@ path and the Cloudflare 524 edge timeout. Per
    MANAGER_ARTIFACTS_S3_BUCKET=...
    MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID=...
    MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY=...
-   # R1 only — R2 reuses vectors from manager's embeddings.json
-   OPENROUTER_API_KEY=...
+   MASTRA_BASE_URL=...
+   MASTRA_SERVICE_API_KEY=...
+   MASTRA_TRANSCRIPT_INGEST_API_KEYS=...
+   MASTRA_SCENE_INGEST_API_KEYS=...
+   MASTRA_EXPERIENCE_INGEST_API_KEYS=...
    ```
 
    Pull these from Railway's `forge-admin` service env (read-only —
@@ -1345,18 +1769,48 @@ path and the Cloudflare 524 edge timeout. Per
    ```bash
    DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
    pnpm --filter @forge/admin run-embeds --pipeline=transcript
-   #   --pipeline=scene|transcript|both         (required)
+   #   --pipeline=scene|transcript|experience|both         (required)
    #   --core-id=<id>          (repeatable; restrict to specific videos)
    #   --locale=<bcp47>        (repeatable; R1 filter)
-   #   --language=<bcp47>      (repeatable; R2 filter)
+   #   --language=<bcp47>      (repeatable; transcript filter)
+   #   --transcript-mode=idempotent|repair|force|model-upgrade
+   #   --experience-mode=idempotent|repair|force|model-upgrade
+   #   --experience-id=<id>    (repeatable; experience filter)
    #   --mapping-key=admin-migrations/core-id-mapping.json   (default)
    ```
 
-   Direct-invokes `runSceneEmbeddingBackfill` /
-   `runTranscriptEmbeddingBackfill` against the in-process Prisma
-   singleton, mirroring `pnpm run-sync`. Per-pipeline error
-   isolation; structured JSON output. R2 is free (vector reuse from
-   manager's `embeddings.json`); R1 hits OpenRouter.
+   Direct-invokes `runSceneEmbeddingBackfill`,
+   `runTranscriptEmbeddingBackfill`, or `runExperienceEmbeddingBackfill`
+   against the in-process Prisma singleton, mirroring `pnpm run-sync`.
+   Per-pipeline error isolation; structured JSON output. Scene,
+   transcript, and experience runs launch Mastra, which generates vectors
+   and calls Admin ingest; Admin keeps vector storage and search retrieval
+   authority.
+
+   Scene-including runs perform a preflight before indexing: admin S3
+   reachability, manager artifact S3 reachability, mapping load, and
+   (when `--from-report` provides a sample asset) one sample
+   scene-analysis artifact read. Infrastructure failures such as DNS,
+   timeout, bucket/auth errors, or mapping read failures fail before
+   target enumeration; a sample `artifact_missing` is only a warning
+   because missing artifacts are an enrichment gap, not storage outage.
+
+4. **Retry only failed scene outcomes from a prior report:**
+
+   ```bash
+   DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
+   pnpm --filter @forge/admin run-embeds \
+     --pipeline=scene \
+     --from-report=.tmp/prod-embeds/prod-scene-report.json \
+     --report-out=.tmp/prod-embeds/prod-scene-retry-$(date +%Y%m%d%H%M%S).json
+   ```
+
+   `--from-report` is scene-only and mutually exclusive with broad
+   `--core-id`, `--locale`, and `--language` filters. It retries exact
+   failed `(coreId, videoEditionId, locale)` targets from the report
+   after preflight, preserving the one-artifact-read-per-edition group
+   behavior. If `retrySelection.unmatched > 0`, treat the report as
+   stale and inspect the unmatched selectors before proceeding.
 
 **Local DB is the destination.** `DATABASE_URL` is the only safety
 guard — there is no in-script check that detects a prod URL. Mirrors
@@ -1408,15 +1862,614 @@ request carries `Authorization: Bearer <key>` matching one of the
 keys in `WORKFLOW_API_KEYS` (the same env var the workflow callback
 endpoint validates with HMAC). The `WORKFLOW_TRIGGER` role
 satisfies a narrow allowlist defined in `src/auth/permissions.ts`
-(`WORKFLOW_TRIGGER_PERMISSIONS`) — currently
-`write:scene-embeddings` + `write:transcript-embeddings` and
-nothing else. Adding mutations to that allowlist widens the bearer
+(`WORKFLOW_TRIGGER_PERMISSIONS`) — currently:
+
+- `write:scene-embeddings` — `triggerSceneEmbeddingBackfill`
+- `write:transcript-embeddings` — `triggerTranscriptEmbeddingBackfill`
+- `write:experience-embeddings` — `triggerExperienceEmbeddingBackfill`
+- `write:manager-enrichment-trigger` — `triggerManagerEnrichment` (feat-119 PR2)
+- `read:video-metadata` — `videosByCoreIds` query (feat-125; manager's admin-trigger CMS-replacement lookup)
+
+Adding mutations or queries to that allowlist widens the bearer
 caller's blast radius; do so deliberately. See
 `src/auth/workflow-bearer.ts`.
 
 **Env (manager):** `ADMIN_GRAPHQL_URL` +
 `ADMIN_EMBED_TRIGGER_API_KEY` on `forge-manager` Doppler. The key
 must match an entry in admin's `WORKFLOW_API_KEYS` CSV.
+
+## Triggering manager enrichment from admin (feat-119 PR2)
+
+Inverse direction of "Triggering embeds from manager" above. The
+operator runs PR1's `pnpm run-embeds --report-out=<path>`, reads
+the resulting `missingArtifacts: [{ assetId, coreId, kind }]` list,
+and either accepts the gap or asks manager to PRODUCE the missing
+upstream artifacts via the new outbound dispatch.
+
+**GraphQL mutation:** `triggerManagerEnrichment(assetIds: [Int!]!,
+coreIds: [String!]!, kind: String!): JSON!`. Gated by the new
+permission key `write:manager-enrichment-trigger` (ADMIN-only at
+the editorial-tier ladder; also on the WORKFLOW_TRIGGER allowlist
+so the CLI's bearer mint can invoke it).
+
+**Outbound HTTPS client:** `src/services/manager-trigger.service.ts`.
+POSTs to `${MANAGER_API_BASE_URL}/api/admin-trigger/${kind}` with
+`Authorization: Bearer ${MANAGER_TRIGGER_API_KEY}`. Returns a
+discriminated `ManagerEnrichmentDispatchResult[]` envelope:
+`STARTED | ALREADY_IN_FLIGHT | NOT_FOUND | VALIDATION_FAILED |
+DISPATCH_FAILED`. Never throws — synthesises a `DISPATCH_FAILED`
+entry per requested assetId on transport / auth / config failure.
+`AbortSignal.timeout(15_000)` ceiling.
+
+**CLI:** `pnpm --filter @forge/admin trigger-enrichment`. Two
+modes:
+
+- `--from-report=<path> --kind=scene-analysis|transcript`
+  (operator-pipeline mode — reads PR1's `missingArtifacts`
+  projection, filters by kind, dedupes by assetId).
+- `--asset-id=<n> --core-id=<id> --kind=...` (manual paired flags,
+  repeatable for multi-id triggers).
+
+The CLI prints one JSON line per outcome plus a summary line.
+Exits non-zero if any outcome is `NOT_FOUND | VALIDATION_FAILED |
+DISPATCH_FAILED`.
+
+**Env on `forge-admin` Doppler:**
+
+- `MANAGER_API_BASE_URL` — manager's base URL (e.g.
+  `https://manager.jesusfilm.org` in prod, `http://localhost:3002`
+  locally).
+- `MANAGER_TRIGGER_API_KEY` — must match an entry in manager's
+  `ADMIN_TRIGGER_API_KEYS` CSV. Rotation is symmetric to the
+  reverse direction (stage on receiver first, then deploy caller).
+
+**Wire format note:** the mutation accepts parallel `assetIds` /
+`coreIds` arrays paired positionally (rather than an input-object
+list). Both come from PR1's `missingArtifacts` projection, so the
+CLI populates them trivially. Strapi v5 GraphQL exposes no numeric
+`id` filter on `Video`, so manager looks up the cms record by
+`coreId`; `assetId` is the operator-facing identifier and the
+storage-key prefix manager uses when writing artifacts.
+
+See `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`
+for the full architecture, deviation rationale (in-memory
+idempotency vs EnrichmentJob; new transcript-only pipeline vs
+videoEnrichment.ts extraction), and Railway deploy-ordering
+invariant.
+
+## Semantic search eval harness
+
+Local CLI tool that compares admin's hybrid-search results against a
+saved baseline using pairwise LLM-as-judge. Built so that iteration
+on `hybrid-search.service.ts`, `hybrid-search-retrievers.ts`, RRF
+fusion, or any indexing change has a quantitative "is this better or
+worse?" signal instead of vibes. **Strictly local-only**: no CI
+gating, no new admin endpoints, read-only against admin's data.
+
+- **Brainstorm:** `docs/brainstorms/2026-05-06-semantic-search-eval-harness-requirements.md`
+- **Plan:** `docs/plans/2026-05-07-001-feat-semantic-search-eval-harness-plan.md`
+- **Code lives at** `apps/admin/src/services/search-eval/`
+  - `runner.ts` — orchestrator (fan-out + A/B-swap + aggregation)
+  - `search-client.ts` — wraps `GET /api/search` with retry
+  - `judge.ts` — OpenRouter chat-completions client (Haiku 4.5)
+  - `query-generator.ts` — synthetic-query LLM generator
+  - `regressions.ts` — loader for the hand-edited regressions file
+  - `baseline.ts` — load/save committed baseline JSON
+  - `calibration.ts` — 10 hand-labeled cases run on every invocation
+  - `fingerprint.ts` — `prisma.$queryRaw` for content-drift detection
+  - `reporter.ts` — console summary + per-run JSON file
+  - `paths.ts` — `import.meta.url`-anchored paths
+  - `openrouter-helpers.ts` — shared OpenRouter response parsing
+  - `catalog-context.ts` — compact Admin catalog anchors for Mastra eval generation
+  - `candidates.ts` — staged generated-candidate storage and dedupe
+  - `schemas.ts` — shared Zod schemas
+  - `types.ts`, `locales.ts`
+- **CLI entry:** `apps/admin/src/scripts/eval-search.ts`
+- **Operator data files** (committed): `apps/admin/eval/`
+  - `baselines/{name}.json` — frozen snapshot of (queries, results, content fingerprint)
+  - `synthetic-queries/{locale}.json` — committed per-locale query lists
+  - `regressions.json` — hand-edited adversarial queries
+  - `calibration.json` — 10 hand-labeled judge-sanity cases
+- **Per-run output** (gitignored): `apps/admin/.tmp/eval/runs/{runId}.json`
+- **Generated candidate staging** (DB-backed): `search_eval_candidate` rows
+  created by Mastra are not loaded into the committed harness baseline or
+  regression files until a later sanitization and human-promotion flow.
+
+### Architecture (one paragraph)
+
+The runner loads a committed baseline (frozen `(query, top-K results)`
+pairs for a known-good state), then for each query in scope: calls
+`GET /api/search` against current admin to get current top-K, judges
+`(baseline, current)` and `(current, baseline)` pairs with Haiku 4.5
+via OpenRouter, collapses the A/B-swapped verdicts into one outcome
+(win / loss / tie / both-irrelevant / judge-disagreement), and
+aggregates into a `RunReport` with net-win-rate, per-locale
+breakdown, top-10 regressions, calibration result, and drift warning.
+Search + judge calls run under `pLimit()` for bounded parallelism.
+Net-win-rate is `(wins − losses) / (total − bothIrrelevant)`,
+range `[-1, +1]`. A six-verdict ladder + A/B-swap collapse rule
+removes position bias from the LLM judge; content-fingerprint drift
+warns when admin's indexed data changed between baseline-capture and
+run-time so operators don't read "the code changed" into "admin
+reindexed."
+
+### Hard-coded locale set
+
+`HARNESS_LOCALES` (30 entries) is committed in `locales.ts`, picked
+by Core's `Language.labeledVideoCounts` on 2026-05-06. Only ~30
+locales have ≥40 labeled videos; everything else has 1–2.
+Re-running the eval against a stable HARNESS_LOCALES is what makes
+baselines comparable across runs — do NOT data-derive the list at
+run-time. Refresh command (with the exact curl + jq) is in the
+file's doc-comment.
+
+### Operational runbook
+
+Prerequisites:
+
+1. `pnpm install` + `pnpm --filter @forge/admin db:generate`.
+2. Admin running locally: `pnpm --filter @forge/admin dev` (port 3003).
+3. `OPENROUTER_API_KEY` and `DATABASE_URL` set (Doppler / `.env`).
+
+Day-zero — first ever run:
+
+```bash
+cd apps/admin
+
+# 1. Sanity-check the judge against 10 easy cases. ~30s, ~$0.01.
+pnpm eval:search:calibrate
+
+# 2. Capture the first baseline. Generates synthetic queries per
+#    locale, runs admin search for all of them, writes
+#    apps/admin/eval/baselines/default.json + per-locale query files.
+#    Both should be committed.
+pnpm eval:search:rebaseline -- --yes
+# ~10-15 min, ~$3-5 (synthetic generation + ~1500 searches).
+```
+
+Day-N — iteration loop:
+
+```bash
+# Make a code change to hybrid-search or its retrievers, then:
+pnpm eval:search:quick       # 6 high-resource locales, ~2 min, < $1
+# OR for full coverage before merging:
+pnpm eval:search             # all 30 locales, ~15 min, ~$5-15
+# OR drill into one locale:
+pnpm eval:search --locale=fr
+
+# Console prints: net win rate, per-locale breakdown, top-10
+# regressions with judge confidence + 1-line rationale.
+# Full per-query detail lands at apps/admin/.tmp/eval/runs/{runId}.json.
+```
+
+Adding regressions / regenerating synthetic queries:
+
+```bash
+# Spotted a bad search result in the wild?
+# Hand-edit apps/admin/eval/regressions.json — append an entry
+# { locale, query, notes, addedAt, addedBy }. Next eval run includes
+# it automatically.
+
+# Synthetic queries for one locale look broken?
+pnpm eval:search:regenerate-queries -- --locale=fr
+```
+
+Accepting a change as the new baseline:
+
+```bash
+# Once you've confirmed an improvement is real, re-baseline so it
+# becomes the new bar. Overwrites apps/admin/eval/baselines/default.json
+# — commit it.
+pnpm eval:search:rebaseline -- --yes
+```
+
+CLI exit codes (matters for shell scripting):
+
+- `0` — run completed (regardless of net-win-rate sign)
+- `1` — fatal (e.g. baseline missing, OpenRouter unreachable)
+- `2` — argument validation (missing `--yes`, bad `--locale`, etc.)
+- `3` — calibration failed (the run still wrote its JSON; treat results as suspect)
+- `130` — SIGINT/SIGTERM (clean exit; prisma disconnected)
+
+### Env vars (all optional, registered in `src/config/env.ts`)
+
+- `OPENROUTER_JUDGE_MODEL` — override default `anthropic/claude-haiku-4-5`
+- `EVAL_JUDGE_CONCURRENCY` (default 8) / `EVAL_SEARCH_CONCURRENCY` (default 4)
+- `ADMIN_BASE_URL` (default `http://localhost:3003`) — point at staging/prod admin
+- `EVAL_GIT_SHA` — stamped into the run JSON metadata header
+
+### Calibration set + judge-instability
+
+10 hand-labeled cases at `apps/admin/eval/calibration.json` run on
+every invocation. PASS = ≥80% match expected verdict. Failure does
+NOT abort the run (operator decides whether to trust it) but emits
+`event=judge_calibration_failure` log line + CLI exit 3. Cases cover
+three types: obvious-A-wins (judge must pick A), obvious-tie
+(identical lists), both-irrelevant (gibberish query against unrelated
+content). If calibration consistently fails, the judge model is
+unstable — switch `OPENROUTER_JUDGE_MODEL` to Sonnet or pause iteration.
+
+### Content fingerprint drift
+
+`fingerprint.ts` runs one combined `prisma.$queryRaw` against
+`video_scene_locale`, `video_transcript_chunk`, `experience_locale`
+filtered by `embedding IS NOT NULL` (and `status='published'` for
+experiences). When the count or `max(updated_at)` differs from
+baseline, the console warns `⚠ INDEXED CONTENT DRIFTED since
+baseline (Δrows: scene+512, transcript+1024; latest update 3d after
+baseline). Net-win-rate may reflect content changes, not code.
+Consider re-baselining.` The warn never blocks the run.
+
+### Common things to remember
+
+- The harness is **read-only** against admin's data. It never calls
+  `/api/admin-embeds/*` proxies or any mutation; only `GET /api/search`
+  and three read-only count queries.
+- `OPENROUTER_API_KEY` is shared across multiple services in the
+  monorepo (`cms`, `manager`, admin's own embedding + experience-
+  enrichment workflows). The harness is another consumer — a key
+  rotation affects all of them.
+- `HARNESS_LOCALES` is a deliberate hard-code (not data-derived) —
+  baselines must be comparable across runs. Updating it requires
+  re-baselining.
+- Synthetic queries are **committed** at
+  `apps/admin/eval/synthetic-queries/{locale}.json`, not regenerated
+  each run. Same queries must hit both sides of the comparison.
+- Mastra-generated candidates are **not committed regression truth**. They
+  carry source anchors, label provenance, and advisory judge summaries in
+  Admin's database, but stay at `promotionStatus=generated` until a human
+  sanitizes/promotes them in a later feature.
+- `regressions.json` is hand-edit only; the BCP-47 regex in
+  `query-generator.ts::validateLocale` guards path traversal on the
+  `--locale=` flag.
+- Search-client and judge MUST share retry semantics (both retry
+  on 5xx/429/transport, max 3 attempts, Retry-After honored capped
+  30s). The runner's per-item try/catch is a safety net, not a
+  retry policy — if one peer is missing retry, the runner silently
+  persists corrupted data with exit 0. See
+  `docs/solutions/best-practices/external-client-retry-parity-in-runner-fanout-20260512.md`.
+- Cost math: 1500 queries × 2 (A/B-swap) × Haiku 4.5 at top-20 ≈
+  $5-15 per full run. Pricing constants in `runner.ts:54-58` are
+  stamped 2026-05-07 — re-verify quarterly against the OpenRouter
+  model page.
+
+**Pointers:**
+
+- `apps/admin/eval/README.md` — quick reference for the operator data
+  files committed under `apps/admin/eval/`.
+- `docs/brainstorms/2026-05-06-semantic-search-eval-harness-requirements.md`
+  and `docs/plans/2026-05-07-001-feat-semantic-search-eval-harness-plan.md`
+  — canonical design history (every decision + the rationale).
+- `docs/solutions/best-practices/external-client-retry-parity-in-runner-fanout-20260512.md`
+  — the load-bearing learning extracted from this PR's review.
+
+## Search API authentication (Plan 002 + Plan 003)
+
+Admin's public search surface — `GET /api/search` REST + `Query.search`
+GraphQL twin — is gated by a bearer-key passport. Phase 1 (Plan 002)
+shipped in **dual-accept** mode (anonymous + bearer-auth both
+succeed); a single env-var flip moves it to **required-auth**
+(anonymous returns 401). Plan 003 (partner-key store) retired the
+legacy `SEARCH_API_KEYS` env-CSV branch — external-partner
+credentials now live in admin's `PartnerApiKey` Postgres table. See
+§"Partner API key store" for the DB-backed surface.
+
+### Design summary
+
+- **The bearer is a passport, not a budget.** Per-IP rate limiting
+  at 30/min stays for everyone — authed and anonymous alike. Rate-
+  limit fires BEFORE the auth check on the REST surface so junk
+  Authorization headers cannot bypass the bucket.
+- **Search passport accepts any of three known-caller bearer
+  sources:**
+  1. **PARTNER** — DB-backed `PartnerApiKey` row (Plan 003 — see
+     §"Partner API key store" for the token shape, issuance CLI,
+     and dashboard view). Runs FIRST so the structured log emits
+     `source=partner keyId=<id>` for partner traffic.
+  2. **CONSUMER** — `WEB_ADMIN_API_KEYS` env CSV (apps/web SSR +
+     apps/mobile rate-limit identity).
+  3. **WORKFLOW** — `WORKFLOW_API_KEYS` env CSV (workflow-trigger;
+     manager → admin proxies + the eval CLI's bearer mint).
+
+  `isAnyKnownBearer(authHeader)` in `src/auth/search-bearer.ts`
+  OR-composes them and returns `{ valid, source, keyId? }`.
+
+- **The disjointness invariant** (`assertBearerCsvsDisjoint` at
+  boot in `src/config/env.ts`) holds for the three remaining env
+  CSVs (workflow, web-admin, backup-download). Each env-CSV key
+  VALUE lives in exactly one CSV; an operator who pastes a value
+  into two CSVs hits a fail-fast boot error with the offending
+  value redacted. `PartnerApiKey.keyHash` is uniqueness-enforced
+  in Postgres separately; a plaintext that ALSO appears in an env
+  CSV tags as `source=partner` (the partner branch runs first).
+- **`BACKUP_DOWNLOAD_API_KEYS` is excluded** from
+  `isAnyKnownBearer` — it's a narrow file-download surface (the
+  presigned video-DB backup endpoint), not an active-API bearer.
+- **Structured log per request** tags every call with one of
+  three states: `auth=bearer source=<branch> [keyId=<id>]` (matched,
+  with `keyId` only on partner branches), `auth=invalid_bearer`
+  (presented + no match — the population that 401s after the
+  flip), or `auth=anonymous` (no header). Grep these in admin
+  logs before the `SEARCH_AUTH_REQUIRED` flip to confirm every
+  known internal caller is on a known bearer.
+
+### Env vars (`forge-admin` Doppler)
+
+- `SEARCH_AUTH_REQUIRED` — `"true" | "false"`, defaults to
+  `"false"`. When `"true"`, requests without a known bearer return
+  401 (REST) or throw `Authentication required` (GraphQL).
+  Enum-of-strings (not boolean) so a stray non-empty value can't
+  silently flip the gate.
+- `SEARCH_API_KEY` — caller-side single bearer for the local eval
+  CLI (`scripts/eval-search.ts`). Set to a partner key (issued via
+  `pnpm partner-keys create`) or a `WORKFLOW_API_KEYS` /
+  `WEB_ADMIN_API_KEYS` entry. `.optional()`.
+
+The legacy `SEARCH_API_KEYS` receiver-side CSV was retired in
+Plan 003; today's partner credentials are issued via the
+`partner-keys create` CLI and live in `PartnerApiKey`.
+
+### Issuance + rotation
+
+For external partners, see §"Partner API key store" — the
+`pnpm --filter @forge/admin partner-keys create` CLI issues a
+DB-backed token, prints it once to stderr for operator handoff,
+and persists the sha256 hash.
+
+For internal callers (apps/web, manager, eval CLI), keys live in
+the respective env CSVs (`WEB_ADMIN_API_KEYS`, `WORKFLOW_API_KEYS`)
+and rotate via Doppler edit + Railway redeploy. **Receiver-first
+deploy ordering** for any internal-bearer rotation:
+
+1. Add the new key to the env CSV on admin Doppler. Deploy admin.
+   The new key is now accepted alongside the old.
+2. Update the caller's env to the new value. Deploy the caller.
+3. After observation confirms no callers use the old key, remove
+   the old key from the env CSV. Deploy admin.
+
+Reversing the order produces a dead minute where the caller 401s.
+Per `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`
+§"Railway deploy-ordering invariant".
+
+### Required-auth flip (Phase 4 of plan 002)
+
+Before flipping `SEARCH_AUTH_REQUIRED=true` on prod:
+
+1. Grep admin logs for `auth=anonymous` over the past 72h.
+2. For every remaining anonymous caller, identify by source IP +
+   User-Agent. Confirm it's either (a) an external scraper we
+   intend to reject, or (b) a known-internal caller that missed
+   the migration → fix BEFORE flipping.
+3. Flip the flag on Doppler, deploy admin, monitor 401 rate for
+   the next hour. Spike on anonymous = expected. Spike on
+   known-internal IPs = roll back the flag.
+
+### Files
+
+- `src/auth/search-bearer.ts` — `isAnyKnownBearer` composer
+  (async, returns `BearerCheckResult`; OR-composes the three
+  known-caller branches in PARTNER → CONSUMER → WORKFLOW order).
+- `src/auth/partner-token.ts` — pure helpers for the partner token
+  format (`jfp_search_<keyId>_<random>`).
+- `src/services/partner-api-key.service.ts` — DB-backed partner
+  branch (`verifyPartnerToken` with Promise.race 1500ms timeout +
+  fire-and-forget `lastUsedAt` update).
+- `src/app/api/search/route.ts` — REST handler; rate-limit fires
+  first, then the auth check.
+- `src/graphql/queries/hybrid-search.ts` — GraphQL resolver; same
+  auth check inside the resolver body, `authScopes: { public: true }`
+  stays.
+- `src/config/env.ts` — `SEARCH_AUTH_REQUIRED` enum +
+  `assertBearerCsvsDisjoint` over the 3 remaining env CSVs.
+
+### Cross-references
+
+- **Primary learning doc:**
+  `docs/solutions/architecture-patterns/bearer-as-passport-multi-csv-composition-20260518.md`
+  — the OR-composition pattern + disjointness invariant + rate-limit-
+  before-auth + receiver-first deploy ordering.
+- **Companion learnings:**
+  - `docs/solutions/best-practices/waf-passthrough-verification-via-prior-art-20260518.md`
+    (how WAF passthrough was verified without fresh probes).
+  - `docs/solutions/runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md`
+    (why the structured `search.request` log emits via `console.warn`
+    not `console.log`).
+- Plan: `docs/plans/2026-05-17-002-feat-search-api-auth-plan.md`
+- Brainstorm:
+  `docs/brainstorms/2026-05-17-search-api-auth-requirements.md`
+- Sibling pattern (workflow direction):
+  `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`
+- Sibling pattern (consumer-bearer):
+  `docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md`
+
+## Partner API key store
+
+DB-backed external-partner credentials for `/api/search` + `Query.search`.
+Extends Plan 002's bearer-as-passport composer with a fourth branch
+(`PartnerApiKey` table in admin's Postgres) that validates BEFORE the
+env-CSV `search` fallback fires. Internal callers (apps/web,
+workflow-trigger callers, backup-download) stay on their respective env
+CSVs — partner keys are the only credential class with audit, sub-second
+revocation, and per-key metadata requirements.
+
+See:
+
+- Plan: `docs/plans/2026-05-18-001-feat-partner-api-key-store-plan.md`
+- Brainstorm: `docs/brainstorms/2026-05-18-002-partner-api-key-store-requirements.md`
+
+### Design summary
+
+- **Token format `jfp_search_<keyId>_<random>`.** `keyId` is a 12-char
+  operator-visible identifier (URL-safe alphabet excluding `_` and
+  visually-confusable `0/O/I/l/1`). `random` is `base64url(32 bytes)`
+  = 43 chars of entropy. The stored form is `sha256(rawToken)` as
+  64-char hex; comparison via `timingSafeEqual` on decoded buffers.
+- **Composer ordering** in `isAnyKnownBearer` is PARTNER → CONSUMER →
+  WORKFLOW → SEARCH (legacy env CSV). The partner branch runs FIRST so
+  the structured log emits `source=partner keyId=<id>` for seeded rows
+  even while the env-CSV `search` branch is still active during the
+  cutover window.
+- **Per-request log line** extends the working
+  `[search] event=search.request auth=… path=… rl=…` format with
+  `source=<branch>` (every successful match) and `keyId=<id>` (partner
+  matches only). Plain-string per the Railway logsV2 silencing
+  learning — `JSON.stringify` payloads from this surface are silenced.
+- **Outbound timeout.** The Prisma lookup wraps in `Promise.race`
+  against `PARTNER_KEY_LOOKUP_TIMEOUT_MS = 1500`. On timeout, log
+  `event=partner_key.lookup_timeout` and fall through to the env-CSV
+  branches (graceful degradation while dual-accept is live; fail-closed
+  after PR3 retires the CSV).
+- **Fire-and-forget `lastUsedAt`.** Updates are dispatched via `void
+prisma.partnerApiKey.update(...).catch(...)` — never `await`-ed, never
+  allowed to crash the request. Sync throws on the wrapper are caught
+  separately (see `docs/solutions/best-practices/in-memory-slot-reservation-fire-and-forget-20260506.md`).
+- **Soft revocation.** `revoked_at` set, row preserved. Preserves the
+  audit trail (which key was revoked, when, by whom). Hard delete is
+  out of scope in v1.
+- **No in-process cache in v1.** Per the plan: cache adds slot-leak
+  surface and multi-replica revocation skew for ~10ms savings nobody
+  will notice. Each replica makes its own Prisma round-trip; revocation
+  propagates immediately. Revisit if profiling shows the lookup as a
+  hot path.
+
+### Schema (Prisma)
+
+`PartnerApiKey` model (`prisma/schema.prisma`, migration
+`0015_partner_api_keys`):
+
+| Column        | Type                                     | Notes                                        |
+| ------------- | ---------------------------------------- | -------------------------------------------- |
+| `id`          | `String @id @default(cuid())`            |                                              |
+| `keyId`       | `String @unique @map("key_id")`          | 12 chars, operator-visible, surfaced in logs |
+| `keyHash`     | `String @unique @map("key_hash")`        | `sha256(rawToken)`, 64 hex chars             |
+| `name`        | `String`                                 | partner display name                         |
+| `ownerEmail`  | `String @map("owner_email")`             | offboarding contact                          |
+| `note`        | `String?`                                | free-form operator note                      |
+| `lastUsedAt`  | `DateTime? @map("last_used_at") @@index` | fire-and-forget per-auth update              |
+| `revokedAt`   | `DateTime? @map("revoked_at") @@index`   | soft-revoke; `NULL` = active                 |
+| `createdById` | `String? + relation → User (SetNull)`    | who issued                                   |
+| `revokedById` | `String? + relation → User (SetNull)`    | who revoked                                  |
+
+### Code surfaces
+
+- `src/auth/partner-token.ts` — pure helpers (`generatePartnerToken`,
+  `parsePartnerToken`, `hashRawToken`, `timingSafeEqualHex`).
+- `src/services/partner-api-key.service.ts` — `createPartnerKey`,
+  `listPartnerKeys`, `revokePartnerKey` (conditional `updateMany`
+  guards against concurrent-revoke `revokedById` clobber),
+  `rotatePartnerKey`, `verifyPartnerToken` (the hot-path validator
+  with `Promise.race` timeout + fire-and-forget `lastUsedAt`
+  update). Exports `PartnerKeyNotFoundError`.
+- `src/auth/search-bearer.ts` — exports `BearerCheckResult` +
+  `BearerSource`. `isAnyKnownBearer` is async, returns the enriched
+  result, runs the partner branch FIRST.
+- `src/app/api/search/route.ts` + `src/graphql/queries/hybrid-search.ts`
+  — both await the composer and thread `source` / `keyId` into the
+  per-request log line.
+- `src/scripts/partner-keys.ts` — CLI: `create | list | revoke | rotate`.
+- `src/app/dashboard/partner-keys/page.tsx` — read-only dashboard
+  view, ADMIN-only via `requireAdminSession`.
+
+### Operator runbook
+
+#### Issue a key for a new partner (under 5 operator minutes)
+
+```bash
+pnpm --filter @forge/admin partner-keys create \
+  --name="Acme Partner" \
+  --owner-email="ops@acme.example" \
+  --note="Q3 2026 integration" \
+  --operator-email="<your-email>"
+```
+
+The CLI prints structured JSON events on stdout (one per line, including
+`partner-key.created` with `keyId`) and the plaintext token EXACTLY ONCE
+on stderr inside a banner. **Save the token from stderr** — it is not
+retrievable afterward (only the sha256 hash persists). Share the token
+with the partner via Slack DM. First partner request lands in Railway
+logs as `auth=bearer source=partner keyId=<id>`.
+
+#### Revoke a key (under 30 seconds — SC2)
+
+```bash
+pnpm --filter @forge/admin partner-keys revoke <keyId> \
+  --operator-email="<your-email>"
+```
+
+Sets `revoked_at = NOW()`. The next request from that key returns 401
+(or, in dual-accept mode, falls through to the env-CSV branch — until
+PR3 retires it). No admin redeploy required. Idempotent: re-revoking an
+already-revoked key prints the existing row's revoked_at and exits 0.
+
+#### Rotate a key (with grace window)
+
+```bash
+pnpm --filter @forge/admin partner-keys rotate <oldKeyId> \
+  --operator-email="<your-email>"
+```
+
+Issues a new key for the same partner, leaves the OLD key active.
+Operator shares the new token with the partner, partner cuts over,
+then operator runs `partner-keys revoke <oldKeyId>` once
+`/dashboard/partner-keys` shows non-null `lastUsedAt` on the new keyId.
+
+#### List partner keys
+
+```bash
+# Active keys only (default)
+pnpm --filter @forge/admin partner-keys list
+
+# Including revoked rows
+pnpm --filter @forge/admin partner-keys list --include-revoked
+```
+
+Or check `/dashboard/partner-keys` — same data, sortable in a browser,
+includes revoked rows by default for the audit trail.
+
+#### Migrating an existing partner from the legacy `SEARCH_API_KEYS` env CSV
+
+The legacy `SEARCH_API_KEYS` receiver-side CSV was retired in Plan 003
+without an in-place migration tool — the opaque legacy token shape
+cannot round-trip through `verifyPartnerToken` (which requires
+`jfp_search_<keyId>_<random>`). Instead, **rotate the partner onto a
+fresh DB-backed key**:
+
+1. `partner-keys create` to issue a new `jfp_search_*` token.
+2. Share the new token with the partner via Slack DM; partner updates
+   their integration and deploys.
+3. Verify in Railway logs that the partner's traffic flips to
+   `auth=bearer source=partner keyId=<id>`.
+4. Remove the partner's old value from `SEARCH_API_KEYS` in Doppler.
+   (Plan 003 already retired the env-CSV branch in code — this step
+   just clears dead config.)
+
+### Cross-references
+
+- **Primary learning doc:**
+  `docs/solutions/architecture-patterns/db-backed-vs-env-csv-credential-storage-20260518.md`
+  — the decision matrix for when to use DB-backed credentials vs.
+  env-CSV. Documents the composer-ordering decision, hot-path lookup
+  timeout pattern, fire-and-forget `lastUsedAt` discipline, and CLI
+  plaintext-once UX as a future-reference pattern for any future
+  partner-credential surface.
+- **Companion learnings:**
+  - `docs/solutions/architecture-patterns/bearer-as-passport-multi-csv-composition-20260518.md`
+    (the OR-composition foundation this extends).
+  - `docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md`
+    (Prisma lookup wrap rationale).
+  - `docs/solutions/best-practices/in-memory-slot-reservation-fire-and-forget-20260506.md`
+    (`lastUsedAt` update wrapper discipline).
+  - `docs/solutions/runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md`
+    (why the new `source=` / `keyId=` log fields are appended as
+    plain-string key=value pairs, not JSON).
+  - `docs/solutions/database-issues/db-lock-must-be-atomic-update-not-select-for-update.md`
+    (conditional `updateMany` discipline for the soft-revoke race
+    fix — Worked instance 2 is `revokePartnerKey`).
+  - `docs/solutions/security-issues/pre-verification-log-field-namespace-pollution-20260518.md`
+    (`attemptedKeyId=` vs `keyId=` log-field-namespace discipline).
+  - `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`
+    §"Recovery when contracts are structurally broken" — the
+    `import-from-env` deletion case.
 
 ## Common pitfalls (grows with each unit)
 

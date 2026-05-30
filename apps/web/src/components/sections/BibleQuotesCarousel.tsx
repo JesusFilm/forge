@@ -2,7 +2,10 @@
 
 import Image from "next/image"
 import type { ReactNode } from "react"
-import type { FragmentOf } from "@forge/graphql"
+import type {
+  FragmentOf,
+  LegacyFragmentValue,
+} from "@/lib/legacy-fragment-types"
 import { BookOpen, ExternalLink } from "lucide-react"
 import { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 import { Button } from "@/components/ui/button"
@@ -30,7 +33,9 @@ type QuoteItem = NonNullable<
 export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
   const { heading, quotes } = data
   const validQuotes =
-    quotes?.filter((q): q is NonNullable<typeof q> => q != null) ?? []
+    quotes?.filter(
+      (q: LegacyFragmentValue): q is NonNullable<typeof q> => q != null,
+    ) ?? []
 
   if (validQuotes.length === 0) return null
 
@@ -48,7 +53,7 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
           className="w-full"
         >
           <CarouselContent className={`-ml-4 ${CAROUSEL_CONTENT_PADDING}`}>
-            {validQuotes.map((quote) => (
+            {validQuotes.map((quote: QuoteItem) => (
               <CarouselItem
                 key={quote.id}
                 className="basis-[85vw] pl-4 sm:basis-[50%] lg:basis-1/4"
@@ -60,7 +65,11 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
                 )}
               </CarouselItem>
             ))}
-            <CarouselItem className="basis-auto pl-0" aria-hidden="true">
+            <CarouselItem
+              className="basis-auto pl-0"
+              aria-hidden="true"
+              tabIndex={-1}
+            >
               <div className={CAROUSEL_END_SPACER} />
             </CarouselItem>
           </CarouselContent>
@@ -169,6 +178,7 @@ function FreeResourceCard({ quote }: { quote: QuoteItem }) {
       </h3>
       <Button
         variant="pill"
+        nativeButton={false}
         render={
           quote.ctaLink ? (
             <a href={quote.ctaLink} target="_blank" rel="noopener noreferrer" />

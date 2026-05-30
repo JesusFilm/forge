@@ -11,13 +11,27 @@ import {
   hasPermission,
   type PermissionKey,
 } from "@/auth/permissions"
-import type { Principal } from "@/auth/principal"
+import {
+  CONSUMER_BEARER_PRINCIPAL,
+  MANAGER_BACKEND_PRINCIPAL,
+  type Principal,
+} from "@/auth/principal"
 
 const PUBLIC_USER: Principal | null = null
 const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
+const MANAGER_OPERATOR_VIEWER: Principal = {
+  id: "manager-1",
+  role: "VIEWER",
+  managerRole: "OPERATOR",
+}
 const EDITOR_ALICE: Principal = { id: "alice", role: "EDITOR" }
 const EDITOR_BOB: Principal = { id: "bob", role: "EDITOR" }
 const ADMIN: Principal = { id: "admin-1", role: "ADMIN" }
+const MANAGER_OPERATOR_ADMIN: Principal = {
+  id: "manager-admin-1",
+  role: "ADMIN",
+  managerRole: "OPERATOR",
+}
 const SYSTEM: Principal = { id: null, role: "SYSTEM" }
 
 const EXPERIENCE_OWNED_BY_ALICE = {
@@ -59,8 +73,11 @@ describe("hasPermission — tier-based gate", () => {
       { key: "read:experiences", role: "PUBLIC", expected: false },
       { key: "read:videos", role: "PUBLIC", expected: false },
       { key: "read:media-assets", role: "PUBLIC", expected: false },
+      { key: "access:manager", role: "PUBLIC", expected: false },
+      { key: "read:manager-read-models", role: "PUBLIC", expected: false },
       { key: "write:experiences", role: "PUBLIC", expected: false },
       { key: "write:media-assets", role: "PUBLIC", expected: false },
+      { key: "write:manager-jobs", role: "PUBLIC", expected: false },
       { key: "admin:all", role: "PUBLIC", expected: false },
 
       // VIEWER reach
@@ -68,8 +85,11 @@ describe("hasPermission — tier-based gate", () => {
       { key: "read:experiences", role: "VIEWER", expected: true },
       { key: "read:videos", role: "VIEWER", expected: true },
       { key: "read:media-assets", role: "VIEWER", expected: false },
+      { key: "access:manager", role: "VIEWER", expected: false },
+      { key: "read:manager-read-models", role: "VIEWER", expected: false },
       { key: "write:experiences", role: "VIEWER", expected: false },
       { key: "write:media-assets", role: "VIEWER", expected: false },
+      { key: "write:manager-jobs", role: "VIEWER", expected: false },
       { key: "publish:experiences", role: "VIEWER", expected: false },
 
       // EDITOR reach
@@ -79,6 +99,9 @@ describe("hasPermission — tier-based gate", () => {
       { key: "archive:experiences", role: "EDITOR", expected: true },
       { key: "read:media-assets", role: "EDITOR", expected: true },
       { key: "write:media-assets", role: "EDITOR", expected: true },
+      { key: "access:manager", role: "EDITOR", expected: false },
+      { key: "read:manager-read-models", role: "EDITOR", expected: false },
+      { key: "write:manager-jobs", role: "EDITOR", expected: false },
       { key: "delete:media-assets", role: "EDITOR", expected: false },
       { key: "write:videos", role: "EDITOR", expected: false },
       { key: "system:trigger-workflow", role: "EDITOR", expected: false },
@@ -90,6 +113,9 @@ describe("hasPermission — tier-based gate", () => {
       { key: "write:videos", role: "ADMIN", expected: true },
       { key: "read:media-assets", role: "ADMIN", expected: true },
       { key: "write:media-assets", role: "ADMIN", expected: true },
+      { key: "access:manager", role: "ADMIN", expected: false },
+      { key: "read:manager-read-models", role: "ADMIN", expected: false },
+      { key: "write:manager-jobs", role: "ADMIN", expected: false },
       { key: "delete:media-assets", role: "ADMIN", expected: true },
       { key: "publish:experiences", role: "ADMIN", expected: true },
       { key: "system:trigger-workflow", role: "ADMIN", expected: true },
@@ -106,6 +132,9 @@ describe("hasPermission — tier-based gate", () => {
       { key: "write:experiences", role: "SYSTEM", expected: false },
       { key: "read:media-assets", role: "SYSTEM", expected: false },
       { key: "write:media-assets", role: "SYSTEM", expected: false },
+      { key: "access:manager", role: "SYSTEM", expected: false },
+      { key: "read:manager-read-models", role: "SYSTEM", expected: false },
+      { key: "write:manager-jobs", role: "SYSTEM", expected: false },
       { key: "system:write-derived", role: "SYSTEM", expected: true },
       { key: "system:trigger-workflow", role: "SYSTEM", expected: false },
     ]
@@ -119,6 +148,31 @@ describe("hasPermission — tier-based gate", () => {
       expect(hasPermission(principal, key)).toBe(expected)
     })
   }
+})
+
+describe("hasPermission — Manager membership gate", () => {
+  it("grants Manager panel access only with ManagerRole.OPERATOR", () => {
+    expect(hasPermission(MANAGER_OPERATOR_VIEWER, "access:manager")).toBe(true)
+  })
+
+  it("does not let Admin ADMIN bypass Manager membership", () => {
+    expect(hasPermission(ADMIN, "access:manager")).toBe(false)
+    expect(hasPermission(MANAGER_OPERATOR_ADMIN, "access:manager")).toBe(true)
+  })
+})
+
+describe("hasPermission — Manager backend bearer gate", () => {
+  it("grants backend read/job permissions without granting human panel access", () => {
+    expect(
+      hasPermission(MANAGER_BACKEND_PRINCIPAL, "read:manager-read-models"),
+    ).toBe(true)
+    expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, "write:manager-jobs")).toBe(
+      true,
+    )
+    expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, "access:manager")).toBe(
+      false,
+    )
+  })
 })
 
 // -----------------------------------------------------------------------------
@@ -341,14 +395,19 @@ describe("permission matrix completeness", () => {
     const allKeys: PermissionKey[] = [
       "read:experiences",
       "read:videos",
+      "read:video-metadata",
       "read:reference",
       "read:media-assets",
+      "access:manager",
+      "read:manager-read-models",
       "write:experiences",
       "write:videos",
       "write:media-assets",
       "write:scene-embeddings",
       "write:transcript-embeddings",
-      "write:experience-content-dump",
+      "write:experience-embeddings",
+      "write:manager-enrichment-trigger",
+      "write:manager-jobs",
       "delete:media-assets",
       "publish:experiences",
       "archive:experiences",
@@ -362,6 +421,40 @@ describe("permission matrix completeness", () => {
         expect(() => hasPermission(p, key)).not.toThrow()
       }
     }
+  })
+
+  it("write:manager-enrichment-trigger is ADMIN-only at the editorial-tier ladder", () => {
+    expect(hasPermission(ADMIN, "write:manager-enrichment-trigger")).toBe(true)
+    expect(
+      hasPermission(EDITOR_ALICE, "write:manager-enrichment-trigger"),
+    ).toBe(false)
+    expect(hasPermission(VIEWER, "write:manager-enrichment-trigger")).toBe(
+      false,
+    )
+    expect(hasPermission(PUBLIC_USER, "write:manager-enrichment-trigger")).toBe(
+      false,
+    )
+    expect(hasPermission(SYSTEM, "write:manager-enrichment-trigger")).toBe(
+      false,
+    )
+  })
+
+  it("write:experience-embeddings is ADMIN-only", () => {
+    // Admin-native experience-embedding backfill. Mirrors the
+    // write:scene-embeddings / write:transcript-embeddings tier gates
+    // so a regression that widens the key (e.g. flips to EDITOR) fails
+    // loudly here and not just at the mutation boundary.
+    expect(hasPermission(ADMIN, "write:experience-embeddings")).toBe(true)
+    expect(hasPermission(EDITOR_ALICE, "write:experience-embeddings")).toBe(
+      false,
+    )
+    expect(hasPermission(VIEWER, "write:experience-embeddings")).toBe(false)
+    expect(hasPermission(PUBLIC_USER, "write:experience-embeddings")).toBe(
+      false,
+    )
+    // SYSTEM does not satisfy editorial write gates (intentional; the
+    // inner workflow's canWriteDerived is the SYSTEM-reachable path).
+    expect(hasPermission(SYSTEM, "write:experience-embeddings")).toBe(false)
   })
 
   it("write:transcript-embeddings is ADMIN-only", () => {
@@ -408,6 +501,22 @@ describe("permission matrix completeness", () => {
       ).toBe(true)
     })
 
+    it("satisfies write:manager-enrichment-trigger (feat-119 PR2 CLI path)", () => {
+      expect(
+        hasPermission(WORKFLOW_TRIGGER, "write:manager-enrichment-trigger"),
+      ).toBe(true)
+    })
+
+    it("satisfies write:experience-embeddings (admin-native experience backfill CLI path)", () => {
+      expect(
+        hasPermission(WORKFLOW_TRIGGER, "write:experience-embeddings"),
+      ).toBe(true)
+    })
+
+    it("satisfies read:video-metadata (feat-125 manager admin-trigger lookup)", () => {
+      expect(hasPermission(WORKFLOW_TRIGGER, "read:video-metadata")).toBe(true)
+    })
+
     it("does NOT satisfy any permission key outside the narrow allowlist", () => {
       // Iterate every PermissionKey via TypeScript's exhaustive Record
       // pattern so adding a new key without explicitly deciding
@@ -418,18 +527,26 @@ describe("permission matrix completeness", () => {
       const allowedKeys: ReadonlySet<PermissionKey> = new Set([
         "write:scene-embeddings",
         "write:transcript-embeddings",
+        "write:manager-enrichment-trigger",
+        "write:experience-embeddings",
+        "read:video-metadata",
       ])
       const allKeys: Record<PermissionKey, true> = {
         "read:experiences": true,
         "read:videos": true,
+        "read:video-metadata": true,
         "read:reference": true,
         "read:media-assets": true,
+        "access:manager": true,
+        "read:manager-read-models": true,
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
         "write:scene-embeddings": true,
         "write:transcript-embeddings": true,
-        "write:experience-content-dump": true,
+        "write:experience-embeddings": true,
+        "write:manager-enrichment-trigger": true,
+        "write:manager-jobs": true,
         "delete:media-assets": true,
         "publish:experiences": true,
         "archive:experiences": true,
@@ -441,6 +558,159 @@ describe("permission matrix completeness", () => {
         const expected = allowedKeys.has(key)
         expect(hasPermission(WORKFLOW_TRIGGER, key)).toBe(expected)
       }
+    })
+  })
+
+  describe("MANAGER_BACKEND (service-account, Manager read/job contracts)", () => {
+    it("satisfies only Manager backend contract permissions", () => {
+      const allowedKeys: ReadonlySet<PermissionKey> = new Set([
+        "read:manager-read-models",
+        "write:manager-jobs",
+      ])
+      const allKeys: Record<PermissionKey, true> = {
+        "read:experiences": true,
+        "read:videos": true,
+        "read:video-metadata": true,
+        "read:reference": true,
+        "read:media-assets": true,
+        "access:manager": true,
+        "read:manager-read-models": true,
+        "write:experiences": true,
+        "write:videos": true,
+        "write:media-assets": true,
+        "write:scene-embeddings": true,
+        "write:transcript-embeddings": true,
+        "write:experience-embeddings": true,
+        "write:manager-enrichment-trigger": true,
+        "write:manager-jobs": true,
+        "delete:media-assets": true,
+        "publish:experiences": true,
+        "archive:experiences": true,
+        "system:trigger-workflow": true,
+        "system:write-derived": true,
+        "admin:all": true,
+      }
+      for (const key of Object.keys(allKeys) as PermissionKey[]) {
+        const expected = allowedKeys.has(key)
+        expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, key)).toBe(expected)
+      }
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // CONSUMER_BEARER (plan 003) — rate-limit-only identity; ZERO permissions.
+  //
+  // Two CI surfaces enforce the empty-set invariant:
+  //  1. Every PermissionKey returns false from hasPermission for any
+  //     CONSUMER_BEARER principal — regardless of the bearer's
+  //     `rateLimitBucketKey`.
+  //  2. CONSUMER_BEARER role is never a member of any workflow-trigger
+  //     allowlist, AND the env-var split (WEB_ADMIN_API_KEYS vs
+  //     WORKFLOW_API_KEYS) is preserved so widening one set cannot
+  //     accidentally widen the other.
+  // ---------------------------------------------------------------------------
+
+  describe("CONSUMER_BEARER (plan 003 — rate-limit-only identity)", () => {
+    it("returns false for every PermissionKey, regardless of bucket key", () => {
+      // Adding a new PermissionKey forces a compile error here AND a
+      // test failure unless explicitly added to the registry. The
+      // Record exhaustiveness check pairs with the runtime walk.
+      const allKeys: Record<PermissionKey, true> = {
+        "read:experiences": true,
+        "read:videos": true,
+        "read:video-metadata": true,
+        "read:reference": true,
+        "read:media-assets": true,
+        "access:manager": true,
+        "read:manager-read-models": true,
+        "write:experiences": true,
+        "write:videos": true,
+        "write:media-assets": true,
+        "write:scene-embeddings": true,
+        "write:transcript-embeddings": true,
+        "write:experience-embeddings": true,
+        "write:manager-enrichment-trigger": true,
+        "write:manager-jobs": true,
+        "delete:media-assets": true,
+        "publish:experiences": true,
+        "archive:experiences": true,
+        "system:trigger-workflow": true,
+        "system:write-derived": true,
+        "admin:all": true,
+      }
+      const bearer = CONSUMER_BEARER_PRINCIPAL({ rateLimitBucketKey: "any" })
+      for (const key of Object.keys(allKeys) as PermissionKey[]) {
+        expect(hasPermission(bearer, key)).toBe(false)
+      }
+    })
+
+    it("returns false across a range of bucket keys (bucket key never grants permission)", () => {
+      const someKey: PermissionKey = "read:reference"
+      for (const bucketKey of ["a", "key-aaa", "very-long-bearer-key", "1"]) {
+        const bearer = CONSUMER_BEARER_PRINCIPAL({
+          rateLimitBucketKey: bucketKey,
+        })
+        expect(hasPermission(bearer, someKey)).toBe(false)
+      }
+    })
+
+    it("never appears in WORKFLOW_TRIGGER_PERMISSIONS-style enumerations (role isolation)", () => {
+      // Role-isolation invariant: CONSUMER_BEARER must not be promoted
+      // to the workflow-trigger allowlist via the WORKFLOW_TRIGGER
+      // role string aliasing. Construct a CONSUMER_BEARER principal
+      // and assert that the workflow-trigger permission keys are NOT
+      // satisfied (because the bearer's role is CONSUMER_BEARER, not
+      // WORKFLOW_TRIGGER — the two principal types share the bearer
+      // surface but not the permission surface).
+      const bearer = CONSUMER_BEARER_PRINCIPAL({ rateLimitBucketKey: "any" })
+      expect(hasPermission(bearer, "write:scene-embeddings")).toBe(false)
+      expect(hasPermission(bearer, "write:transcript-embeddings")).toBe(false)
+      expect(hasPermission(bearer, "write:manager-enrichment-trigger")).toBe(
+        false,
+      )
+    })
+
+    it("env-var split: each bearer module reads only its own CSV (isolation)", async () => {
+      // Asserts that the bearer-CSV env vars are read from distinct
+      // sources. A regression that pointed `consumer-bearer.ts` at
+      // `WORKFLOW_API_KEYS` (or vice versa) would silently merge the
+      // principal mints — workflow callers would bucket as consumer
+      // (rate-limit isolation collapse) and consumer callers would
+      // mint WORKFLOW_TRIGGER (permission widening). The distinct
+      // env vars are the load-bearing boundary.
+      //
+      // `search-bearer.ts` itself no longer reads any env CSV after
+      // Plan 003 (partner-key store PR3) — it only composes the
+      // partner / consumer / workflow validators. The regression
+      // guard for that file is that it doesn't ACCIDENTALLY reach
+      // back into env vars.
+      const { readFile } = await import("node:fs/promises")
+      const { fileURLToPath } = await import("node:url")
+      const consumerSource = await readFile(
+        fileURLToPath(new URL("./consumer-bearer.ts", import.meta.url)),
+        "utf8",
+      )
+      const workflowSource = await readFile(
+        fileURLToPath(new URL("./workflow-bearer.ts", import.meta.url)),
+        "utf8",
+      )
+      const searchSource = await readFile(
+        fileURLToPath(new URL("./search-bearer.ts", import.meta.url)),
+        "utf8",
+      )
+      // Each narrow file references its own env var…
+      expect(consumerSource).toMatch(/env\.WEB_ADMIN_API_KEYS/)
+      expect(workflowSource).toMatch(/env\.WORKFLOW_API_KEYS/)
+      // …and NOT the others'.
+      expect(consumerSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
+      expect(workflowSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
+      // The composer reads NO env CSV directly — it only imports the
+      // narrow validators + verifyPartnerToken. Source MUST NOT
+      // reference env CSV names; a regression that re-introduced a
+      // direct env read would slip the cross-CSV isolation boundary.
+      expect(searchSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
+      expect(searchSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
+      expect(searchSource).not.toMatch(/env\.SEARCH_API_KEYS/)
     })
   })
 })

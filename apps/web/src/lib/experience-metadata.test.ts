@@ -22,7 +22,6 @@ describe("getWatchPageMetadata", () => {
         template: {
           documentId: "exp-template-1",
           slug: "single-video",
-          isTemplate: true,
         },
         routeVideo: {
           documentId: "video-1",
@@ -44,17 +43,20 @@ describe("getWatchPageMetadata", () => {
 
     const metadata = await getWatchPageMetadata("en", {
       slug: "jesus",
-      pathPrefix: "watch",
     })
 
-    expect(metadata.title).toBe("Jesus")
-    expect(metadata.description).toBe("The story of Jesus")
+    // Title always appends the brand suffix on the video-template branch
+    // (previously the suffix only fired when routeVideo.title was empty).
+    expect(metadata.title).toBe("Jesus | Jesus Film Project")
+    // Description prefers the longer `description` field over the punchier
+    // `snippet` for SEO (Google likes 120–160 chars). Snippet is the fallback.
+    expect(metadata.description).toBe("Longer description")
     expect(metadata.alternates?.canonical).toBe(
-      "https://www.jesusfilm.org/watch/jesus",
+      "http://localhost:3000/watch/jesus.html",
     )
     expect(metadata.openGraph).toMatchObject({
-      title: "Jesus",
-      description: "The story of Jesus",
+      title: "Jesus | Jesus Film Project",
+      description: "Longer description",
       locale: "en_US",
       images: [
         {
@@ -64,5 +66,37 @@ describe("getWatchPageMetadata", () => {
       ],
     })
     expect(metadata.robots).toEqual({ index: false, follow: false })
+  })
+
+  it("falls back to snippet when description is null", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "video-template",
+        template: { documentId: "exp-template-2", slug: "snippet-only" },
+        routeVideo: {
+          documentId: "video-2",
+          slug: "snippet-only",
+          title: "Snippet Only",
+          snippet: "Just a snippet",
+          description: null,
+          noIndex: false,
+          imageUrl: null,
+          imageAlt: null,
+          streamingUrl: null,
+          relatedItems: [],
+        },
+      },
+      error: null,
+    })
+
+    const { getWatchPageMetadata } = await import("./experience-metadata")
+    const metadata = await getWatchPageMetadata("en", {
+      slug: "snippet-only",
+    })
+
+    expect(metadata.description).toBe("Just a snippet")
+    // robots default is explicit index/follow when noIndex is false (new
+    // behaviour from this diff — was previously absent when noIndex=false).
+    expect(metadata.robots).toEqual({ index: true, follow: true })
   })
 })

@@ -11,7 +11,7 @@ import {
 import { useRouter } from "expo-router"
 
 import { getApolloClient } from "../../src/lib/apolloClient"
-import { SEMANTIC_SEARCH, type SearchResult } from "../../src/lib/queries"
+import { SEARCH, type SearchResult } from "../../src/lib/queries"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
 import { SearchResultSkeleton } from "../../src/components/search/SearchResultSkeleton"
 import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionProvider"
@@ -61,9 +61,13 @@ export default function DiscoverScreen() {
   const { selectExperience } = useExperienceSelection()
 
   const handleSelectResult = useCallback(
-    (slug: string) => {
-      selectExperience(slug)
-      router.navigate("/(tabs)")
+    (slug: string, type: string) => {
+      if (type === "EXPERIENCE") {
+        selectExperience(slug)
+        router.navigate("/(tabs)")
+      } else {
+        router.push(`/watch/${encodeURIComponent(slug)}`)
+      }
     },
     [selectExperience, router],
   )
@@ -148,9 +152,9 @@ export default function DiscoverScreen() {
 
       try {
         const result = await getApolloClient().query({
-          query: SEMANTIC_SEARCH,
+          query: SEARCH,
           variables: {
-            query: trimmed,
+            q: trimmed,
             locale: "en",
             limit: PAGE_SIZE,
             offset: 0,
@@ -160,7 +164,7 @@ export default function DiscoverScreen() {
 
         if (requestIdRef.current !== thisRequest) return
 
-        const data = result.data?.semanticSearch
+        const data = result.data?.search
         const newResults = [...(data?.results ?? [])]
         setResults(newResults)
         setHasMore(data?.hasMore ?? false)
@@ -210,9 +214,9 @@ export default function DiscoverScreen() {
 
     try {
       const result = await getApolloClient().query({
-        query: SEMANTIC_SEARCH,
+        query: SEARCH,
         variables: {
-          query: query.trim().slice(0, MAX_QUERY_LENGTH),
+          q: query.trim().slice(0, MAX_QUERY_LENGTH),
           locale: "en",
           limit: PAGE_SIZE,
           offset: results.length,
@@ -222,7 +226,7 @@ export default function DiscoverScreen() {
 
       if (requestIdRef.current !== thisRequest) return
 
-      const data = result.data?.semanticSearch
+      const data = result.data?.search
       if (data) {
         setResults((prev) => [...prev, ...[...data.results]])
         setHasMore(data.hasMore)
@@ -242,7 +246,7 @@ export default function DiscoverScreen() {
       <SearchResultCard
         result={item}
         index={index}
-        onSelect={handleSelectResult}
+        onSelect={(slug) => handleSelectResult(slug, item.type)}
       />
     ),
     [handleSelectResult],

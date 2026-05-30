@@ -183,7 +183,7 @@ export async function writeArtifact(
  * future intra-admin artifact use case.
  *
  * **Do NOT use this helper to read manager-produced artifacts** —
- * scene-analysis.json and embeddings.json live in manager's bucket,
+ * scene-analysis.json and transcript.json live in manager's bucket,
  * not admin's. Use {@link readManagerArtifact} for those.
  */
 export async function readArtifact(
@@ -211,9 +211,9 @@ export async function readArtifact(
 // ---------------------------------------------------------------------------
 // Manager artifacts S3 backend — read-only by design.
 //
-// Admin's R1 (scene embeddings) and R2 (transcript embeddings) backfills
-// re-index `{assetId}/scene-analysis.json` and `{assetId}/embeddings.json`
-// produced by apps/manager. Those artifacts live in manager's own
+// Admin's scene and transcript backfills read `{assetId}/scene-analysis.json`
+// and `{assetId}/transcript.json` produced by apps/manager. Those artifacts
+// live in manager's own
 // Railway bucket, NOT admin's RAILWAY_S3_* (cms-storage) bucket — admin's
 // reads must be routed there.
 //
@@ -313,6 +313,31 @@ export async function readManagerArtifact(
   return new Uint8Array(await response.Body.transformToByteArray())
 }
 
+/**
+ * Cheap reachability probe for manager's artifact bucket. Used by
+ * long-running operator CLIs before they start enumerating/indexing a
+ * large corpus. This intentionally exposes only an ok/error boundary;
+ * callers classify the thrown AWS/transport error for operator output.
+ */
+export async function assertManagerArtifactsReachable(): Promise<void> {
+  assertManagerArtifactsConfiguredForProduction()
+
+  if (!useManagerArtifactsS3) {
+    // Local fallback is reachable if the process can read its cwd; the
+    // real artifact read will report ENOENT for individual files.
+    return
+  }
+
+  const { ListObjectsV2Command } = await import("@aws-sdk/client-s3")
+  const s3 = await getManagerArtifactsS3()
+  await s3.send(
+    new ListObjectsV2Command({
+      Bucket: env.MANAGER_ARTIFACTS_S3_BUCKET,
+      MaxKeys: 1,
+    }),
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Object-key API — reads/writes to an arbitrary S3 key (slash-separated
 // path segments), rather than the `{assetId}/{artifactType}.{ext}` shape.
@@ -377,4 +402,24 @@ export async function readObject(key: string): Promise<Uint8Array> {
 
   if (!response.Body) throw new Error(`Empty body for ${key}`)
   return new Uint8Array(await response.Body.transformToByteArray())
+}
+
+/**
+ * Cheap reachability probe for admin's own object bucket. Kept separate
+ * from readObject so callers can distinguish "bucket/config/transport
+ * broken" from "specific mapping object missing".
+ */
+export async function assertObjectStorageReachable(): Promise<void> {
+  assertStorageConfiguredForProduction()
+
+  if (!useS3) return
+
+  const { ListObjectsV2Command } = await import("@aws-sdk/client-s3")
+  const s3 = await getS3()
+  await s3.send(
+    new ListObjectsV2Command({
+      Bucket: env.RAILWAY_S3_BUCKET,
+      MaxKeys: 1,
+    }),
+  )
 }

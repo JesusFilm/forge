@@ -50,34 +50,13 @@ describe("syncCountries", () => {
       },
     } as never)
 
-    const tx = {
+    const prisma = {
+      $executeRaw: vi.fn().mockResolvedValue(undefined),
       language: {
         findMany: vi
           .fn()
           .mockResolvedValue([{ id: "language-1", coreId: "lang-en" }]),
       },
-      continent: {
-        upsert: vi.fn().mockResolvedValue({ id: "continent-1" }),
-      },
-      continentLocale: {
-        upsert: vi.fn().mockResolvedValue(undefined),
-        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
-      },
-      country: {
-        upsert: vi.fn().mockResolvedValue({ id: "country-1" }),
-      },
-      countryLocale: {
-        upsert: vi.fn().mockResolvedValue(undefined),
-        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
-      },
-      countryLanguage: {
-        upsert: vi.fn().mockResolvedValue(undefined),
-      },
-    }
-    const prisma = {
-      $transaction: vi.fn(async (fn: (trx: typeof tx) => Promise<void>) =>
-        fn(tx),
-      ),
       country: {
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
@@ -96,43 +75,13 @@ describe("syncCountries", () => {
     })
 
     expect(stats.errors).toBe(0)
-    expect(tx.country.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({
-          languageCount: 2,
-          languageHavingMediaCount: 1,
-        }),
-      }),
+    expect(stats.updated).toBe(1)
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(5)
+    expect(prisma.$executeRaw.mock.calls.join("\n")).toContain(
+      'INSERT INTO "country"',
     )
-    expect(tx.countryLanguage.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({
-          coreId: "cl-1",
-          countryId: "country-1",
-          languageId: "language-1",
-          displaySpeakers: "50",
-          primary: true,
-          order: 1,
-        }),
-      }),
-    )
-    expect(tx.continentLocale.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({
-          continentId: "continent-1",
-          locale: "en",
-          value: "North America",
-        }),
-      }),
-    )
-    expect(tx.countryLocale.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({
-          countryId: "country-1",
-          locale: "en",
-          value: "United States",
-        }),
-      }),
+    expect(prisma.$executeRaw.mock.calls.join("\n")).toContain(
+      'INSERT INTO "country_language"',
     )
     expect(prisma.country.updateMany).toHaveBeenCalled()
   })

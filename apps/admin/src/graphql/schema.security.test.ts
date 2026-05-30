@@ -30,6 +30,7 @@ describe("embedding exclusion — field name scan", () => {
   const FORBIDDEN = /embed|vector|similarit/i
   const ALLOWED_ACTION_FIELDS = new Set([
     "Mutation.triggerExperienceEmbedding",
+    "Mutation.triggerExperienceEmbeddingBackfill",
     "Mutation.triggerSceneEmbeddingBackfill",
     "Mutation.triggerTranscriptEmbeddingBackfill",
     // R5 scene recommendations: `similarity` is a computed Float exposed
@@ -91,5 +92,29 @@ describe("schema security surface", () => {
     const field = mutationType.getFields().triggerExperienceEmbedding
     expect(field).toBeDefined()
     expect(field.type.toString()).toBe("JSON")
+  })
+
+  it("does not expose Mastra embedding provenance internals", () => {
+    const fieldNames = allFields(schema).map(
+      ({ typeName, fieldName }) => `${typeName}.${fieldName}`,
+    )
+    const forbiddenFragments = [
+      "sourceContentHash",
+      "sourceSummary",
+      "embeddingModel",
+      "embeddingProvider",
+      "embeddingDimensions",
+      "embeddingGeneratedAt",
+      "embeddingMastraRunId",
+      "mastraRunId",
+      "generationMode",
+      "providerPayload",
+    ]
+
+    expect(
+      fieldNames.filter((name) =>
+        forbiddenFragments.some((fragment) => name.includes(fragment)),
+      ),
+    ).toEqual([])
   })
 })

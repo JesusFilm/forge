@@ -32,6 +32,7 @@ const BASE_REPORT: TranscriptEmbeddingBackfillReport = {
   succeeded: 1,
   skipped: 0,
   failed: 0,
+  missingArtifacts: [],
 }
 
 describe("dispatchTranscriptEmbeddingBackfill", () => {
@@ -46,6 +47,7 @@ describe("dispatchTranscriptEmbeddingBackfill", () => {
       mappingS3Key: "admin-migrations/core-id-mapping.json",
       coreIds: ["core-1"],
       languages: ["en"],
+      mode: "force",
     })
 
     dispatch.expectDispatched(runTranscriptEmbeddingBackfill, [
@@ -53,6 +55,7 @@ describe("dispatchTranscriptEmbeddingBackfill", () => {
         mappingS3Key: "admin-migrations/core-id-mapping.json",
         coreIds: ["core-1"],
         languages: ["en"],
+        mode: "force",
       },
     ])
     expect(report).toEqual(BASE_REPORT)

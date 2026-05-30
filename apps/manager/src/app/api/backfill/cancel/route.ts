@@ -1,23 +1,17 @@
-// POST /api/backfill/cancel — Request cancellation of the running backfill.
+// POST /api/backfill/cancel — Retired legacy scene-vector backfill cancel.
 
 import { NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth"
-import { cancelBackfill, getBackfillStatus } from "@/services/backfill"
 
 export async function POST(request: Request) {
   const authError = await authenticateRequest(request)
   if (authError) return authError
 
-  const cancelled = cancelBackfill()
-  if (!cancelled) {
-    return NextResponse.json(
-      { error: "No backfill is currently running" },
-      { status: 409 },
-    )
-  }
-
-  return NextResponse.json({
-    message: "Backfill cancellation requested",
-    status: getBackfillStatus(),
-  })
+  return NextResponse.json(
+    {
+      error: "Legacy Manager scene embedding backfill has been retired",
+      reason: "scene_embeddings_migrated_to_mastra",
+    },
+    { status: 410 },
+  )
 }

@@ -1,0 +1,25 @@
+{
+  "name": "@forge/admin-graphql",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fragments": "./src/fragments/index.ts"
+  },
+  "scripts": {
+    "generate": "gql-tada generate output",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "gql.tada": "^1.9.0",
+    "graphql": "16.13.1"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "vitest": "3.2.4"
+  }
+}

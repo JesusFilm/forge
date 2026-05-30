@@ -1,0 +1,30 @@
+{
+  "name": "@forge/mastra",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "mastra dev",
+    "build": "mastra build --studio",
+    "start": "MASTRA_STUDIO_PATH=.mastra/output/studio node .mastra/output/index.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@mastra/core": "1.36.0",
+    "@mastra/duckdb": "1.4.0",
+    "@mastra/loggers": "1.1.1",
+    "@mastra/observability": "1.13.0",
+    "@mastra/pg": "1.11.1",
+    "mastra": "1.10.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "eslint": "^9.0.0",
+    "typescript": "^5",
+    "vitest": "3.2.4"
+  }
+}

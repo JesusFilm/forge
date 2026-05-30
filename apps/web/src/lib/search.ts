@@ -1,44 +1,87 @@
-import { graphql, type ResultOf } from "@forge/graphql"
-import client from "@/lib/client"
+import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
+import client from "@/lib/admin-client"
 
-export const SEMANTIC_SEARCH = graphql(`
-  query SemanticSearch(
-    $query: String!
+// Admin's `search(q, locale, type, limit, offset, mode, debug)` is the
+// hybrid (semantic + keyword) PUBLIC-tier search surface. Response shape
+// keeps `hasMore`, `query`, `searchMode`, and a `results[]` array. Each
+// `HybridSearchResult` carries the fields the web consumers already read
+// (`id`, `title`, `snippet`, `imageUrl`, `slug`, `type`, `playbackId`,
+// `startSeconds`, `score`) — admin's `type` is the upper-case
+// `EXPERIENCE | VIDEO` enum, normalised to the lower-case discriminator
+// the result-card components expect.
+//
+// DEPLOY ORDERING: this query selects `label`, `durationSeconds`, and
+// `childCount` from `HybridSearchResult`. Those fields land in admin's
+// resolver as part of the same branch as this query — but in a rolling
+// deploy admin must ship FIRST (receiver-first invariant). Web ahead of
+// admin yields `Cannot query field "label" on type "HybridSearchResult"`
+// for every search until admin catches up. Same pattern as the bearer-
+// keyring rotation documented at
+// docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md
+
+const SEARCH_QUERY = adminGraphql(`
+  query Search(
+    $q: String!
     $locale: String!
     $limit: Int
     $offset: Int
-    $type: String
+    $type: HybridSearchContentType
   ) {
-    semanticSearch(
-      query: $query
-      locale: $locale
-      limit: $limit
-      offset: $offset
-      type: $type
-    ) {
-      query
+    search(q: $q, locale: $locale, limit: $limit, offset: $offset, type: $type) {
       hasMore
+      query
       searchMode
       results {
-        type
         id
         slug
         title
-        imageUrl
         snippet
-        startSeconds
+        imageUrl
         playbackId
+        startSeconds
         score
+        type
+        label
+        durationSeconds
+        childCount
       }
     }
   }
 `)
 
-export type SearchResult = ResultOf<
-  typeof SEMANTIC_SEARCH
->["semanticSearch"]["results"][number]
+export type SearchContentType = "video" | "experience"
 
-type SearchResponse = ResultOf<typeof SEMANTIC_SEARCH>["semanticSearch"]
+// Derived from the gql.tada introspection of the actual SEARCH_QUERY
+// result. When admin adds a new VideoLabel value and the package
+// regenerates `admin-graphql-env.d.ts`, this union widens automatically
+// — no hand-mirrored string list to drift out of sync with the SDL.
+export type AdminVideoLabel = NonNullable<
+  NonNullable<
+    AdminResultOf<typeof SEARCH_QUERY>["search"]
+  >["results"][number]["label"]
+>
+
+export type SearchResult = {
+  type: SearchContentType
+  id: string
+  slug: string
+  title: string
+  imageUrl: string | null
+  snippet: string
+  startSeconds: number | null
+  playbackId: string | null
+  score: number
+  /** Admin VideoLabel for video results; null when type === "experience". */
+  label: AdminVideoLabel | null
+  /** Primary playable dub duration in seconds; null for experiences and
+   *  videos without a playable dub (e.g. a series whose runtime lives on
+   *  its child episodes). Drives the duration pill on singular videos. */
+  durationSeconds: number | null
+  /** Count of child videos (parent_id === this video). null for
+   *  experiences; 0 when a video has no children. Drives the
+   *  "{n} episodes" pill on series / collection cards. */
+  childCount: number | null
+}
 
 export type SearchError = {
   code: string
@@ -48,7 +91,30 @@ export type SearchError = {
 
 const MAX_QUERY_LENGTH = 200
 
-export type SearchContentType = "video" | "experience"
+// Admin's `HybridSearchContentType` is the SDL-side enum and is encoded
+// upper-case on the wire. The web consumer vocabulary is lower-case
+// ("video", "experience"); convert both directions at the boundary so
+// downstream React + URL handling never sees the upper-case form.
+function toAdminContentType(
+  type?: SearchContentType,
+): "VIDEO" | "EXPERIENCE" | undefined {
+  if (type === "video") return "VIDEO"
+  if (type === "experience") return "EXPERIENCE"
+  return undefined
+}
+
+function normalizeResultType(raw: string): SearchContentType {
+  return raw === "EXPERIENCE" ? "experience" : "video"
+}
+
+// Admin returns `HybridSearchMode` as UPPER (`HYBRID` | `KEYWORD_ONLY`);
+// the watch-page banner consumer checks lower-case kebab (`hybrid` |
+// `keyword-only`). Normalize at the boundary so the embedding-down
+// advisory in SearchModeBanner.tsx fires correctly.
+function normalizeSearchMode(raw: string | null | undefined): string {
+  if (raw === "KEYWORD_ONLY") return "keyword-only"
+  return "hybrid"
+}
 
 export async function searchVideos(
   query: string,
@@ -66,13 +132,13 @@ export async function searchVideos(
 
   const startedAt = performance.now()
   const result = await client.query({
-    query: SEMANTIC_SEARCH,
+    query: SEARCH_QUERY,
     variables: {
-      query: truncatedQuery,
+      q: truncatedQuery,
       locale: "en",
       limit,
       offset,
-      type,
+      type: toAdminContentType(type),
     },
     fetchPolicy: "no-cache",
   })
@@ -112,13 +178,28 @@ export async function searchVideos(
     } satisfies SearchError
   }
 
-  const data = result.data?.semanticSearch as SearchResponse | undefined
+  const data = result.data?.search
+  const rawResults = data?.results ?? []
+  const results: SearchResult[] = rawResults.map((row) => ({
+    type: normalizeResultType(row.type),
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    snippet: row.snippet,
+    imageUrl: row.imageUrl ?? null,
+    startSeconds: row.startSeconds ?? null,
+    playbackId: row.playbackId ?? null,
+    score: row.score,
+    label: row.label ?? null,
+    durationSeconds: row.durationSeconds ?? null,
+    childCount: row.childCount ?? null,
+  }))
 
   return {
-    results: data?.results ?? [],
+    results,
     hasMore: data?.hasMore ?? false,
     query: data?.query ?? truncatedQuery,
-    searchMode: data?.searchMode ?? "hybrid",
+    searchMode: normalizeSearchMode(data?.searchMode),
     latencyMs,
   }
 }

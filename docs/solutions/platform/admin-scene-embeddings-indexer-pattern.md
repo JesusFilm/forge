@@ -28,6 +28,37 @@ related:
 date_learned: 2026-04-19
 ---
 
+## Superseded by feat-133
+
+The storage and search guidance below still explains Admin's
+`video_scene` / `video_scene_locale` ownership model, but the provider-call
+boundary changed in feat-133. Admin no longer regenerates scene vectors
+directly from `scene-analysis.json`; Admin launches the Mastra scene embedding
+workflow and accepts vectors only through the scene-specific internal ingest.
+Use
+`docs/solutions/platform/mastra-scene-embedding-workflow-pattern.md`
+for current workflow ownership, provenance, retry, and Studio observability
+rules.
+
+## Stage 3 (feat-117) update
+
+The per-target write loop has been collapsed into bulk SQL: ONE parent
+INSERT (`INSERT INTO video_scene … unnest(...) ON CONFLICT (video_edition_id,
+scene_index) DO NOTHING`) plus ONE follow-up SELECT to recover the
+`scene_index → id` map for both freshly-inserted and pre-existing rows,
+plus ONE locale INSERT (`INSERT INTO video_scene_locale … unnest(...) ON
+CONFLICT (video_scene_id, locale) DO UPDATE`) per `(video, edition,
+locale)` target. Per-row Way A casts at the SELECT seam apply both to
+the vector column (`u.embedding_text::vector(1536)`) and to the
+`text[]` columns (`themes`, `bible_verses`, `demographics`,
+`spiritual_context`, all unfolded via
+`jsonb_array_elements_text(u.<col>_json::jsonb)`). Round-trip count
+drops from `O(scenes × locales)` to `O(1)` per `(video, edition, locale)`.
+The full bulk-write recipe + invariant tests + bind-count regression
+guard live in
+`docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
+Mirrors the bullet that landed in `apps/admin/CLAUDE.md`.
+
 ## Problem
 
 `apps/admin` needs the same scene-embedding search capability as
@@ -136,3 +167,16 @@ locale = ?` predicate is present — well-documented in the
   — R1 origin doc.
 - `docs/plans/2026-04-19-001-feat-admin-scene-embeddings-infra-plan.md`
   — implementation plan.
+- `docs/solutions/best-practices/per-parent-child-memoization-loadedartifact-pattern-20260505.md`
+  — Stage 2 (feat-116) widens this indexer's input with a first-class
+  `loadedArtifact?: SceneAnalysisResult` parameter (renamed from the
+  test-only `artifactOverride?`). The workflow now fetches the
+  scene-analysis artifact ONCE per `(video, edition)` group and passes
+  it to each per-locale `indexEditionScenes(...)` call so the service
+  short-circuits the S3 read.
+- `docs/solutions/best-practices/batched-provider-input-position-stable-contract-20260505.md`
+  — Stage 2 sibling: this indexer now issues ONE batched
+  `generateExperienceEmbeddings(scenes.map(s => s.description))` call
+  per `(video, locale)` target instead of one per scene. Length /
+  dimension mismatches surface as typed `EmbeddingsBatchError` and
+  fail-fast for the whole target rather than partial-write.

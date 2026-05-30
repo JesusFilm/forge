@@ -1,3 +1,8 @@
+import createNextIntlPlugin from "next-intl/plugin"
+import { WATCH_BASE_PATH } from "./watch-base-path.mjs"
+
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts")
+
 /** @type {import('next').NextConfig} */
 
 const additionalImageHosts = (
@@ -9,9 +14,32 @@ const additionalImageHosts = (
   .map((hostname) => ({ protocol: "https", hostname }))
 
 const nextConfig = {
-  basePath: "/watch",
+  basePath: WATCH_BASE_PATH,
+  allowedDevOrigins: ["127.0.0.1"],
+  // Self-hosted prod (Railway) doesn't always sit behind a compressing
+  // proxy. Without this the JS chunks ship at their raw ~1.8 MB size,
+  // dominating the simulated-mobile LCP budget. compress:true wires
+  // Next's built-in gzip middleware on every text/* response.
+  compress: true,
+  // typedRoutes moved to top-level in Next 16 (stable).
+  typedRoutes: true,
+  async rewrites() {
+    return {
+      beforeFiles: [
+        // Next does not run proxy() for the exact basePath root in dev/prod
+        // routing, so /watch needs a config-level internal rewrite to reach
+        // the static locale tree. Visible /watch/en/en is still guarded by
+        // proxy.ts's direct-prefix policy.
+        { source: "/", destination: "/en/en" },
+      ],
+    }
+  },
   experimental: {
-    typedRoutes: true,
+    optimizePackageImports: [
+      "lucide-react",
+      "@mux/mux-player-react",
+      "@mux/mux-video-react",
+    ],
   },
   images: {
     remotePatterns: [
@@ -34,4 +62,4 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+export default withNextIntl(nextConfig)

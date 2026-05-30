@@ -8,8 +8,12 @@
  * @classification public-shape
  */
 
+import { GraphQLError } from "graphql"
+
 import { builder } from "@/graphql/builder"
 import { prisma } from "@/db/client"
+import { isAnyKnownBearer } from "@/auth/search-bearer"
+import { env } from "@/config/env"
 import {
   HybridSearchService,
   isContentType,
@@ -18,7 +22,9 @@ import {
   type SearchResponse,
 } from "@/services/hybrid-search.service"
 import { isDebugAllowedForOrigin } from "@/services/hybrid-search-debug-allowlist"
+import { recordSearchTraceSafely } from "@/services/search-trace.service"
 import { SearchResultDebugRef } from "@/graphql/types/hybrid-search-debug"
+import { VideoLabelEnum } from "@/graphql/types/video"
 
 // -----------------------------------------------------------------------------
 // Types
@@ -65,6 +71,28 @@ SearchResultRef.implement({
       description:
         "Internal scoring detail. Present only when the caller passed `debug: true` AND the request origin is on the debug allowlist. Origin-gating happens at the resolver boundary; the service trusts the boolean.",
       resolve: (r) => r.debug ?? null,
+    }),
+    // `SearchResult.label` is now typed as Prisma's `VideoLabel | null`
+    // (see hybrid-search.service.ts), so `t.expose` reads it directly
+    // without a resolver lambda. Using `t.expose` (rather than
+    // `t.field`) also keeps `public-resolvers.regression.test.ts` from
+    // false-positively flagging this object-type field as a root
+    // resolver — its regex parser greps for `<name>: t.field(`.
+    label: t.expose("label", {
+      type: VideoLabelEnum,
+      nullable: true,
+      description:
+        "Admin VideoLabel for video-type results (`EPISODE`, `SERIES`, `SHORT_FILM`, …). Always null for `type=EXPERIENCE`. Drives the type badge on the search result card.",
+    }),
+    durationSeconds: t.exposeInt("durationSeconds", {
+      nullable: true,
+      description:
+        "Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g., a SERIES/COLLECTION whose runtime lives on its children). Always null for `type=EXPERIENCE`. Drives the duration pill on singular-video cards.",
+    }),
+    childCount: t.exposeInt("childCount", {
+      nullable: true,
+      description:
+        "Number of `video_relation` rows where this video is the parent. 0 for childless videos; null when `type=EXPERIENCE` or when the parent video was soft-deleted between the retriever pass and the hydration pass (rare race). Use `type` as the content-type discriminator — null on this field does NOT imply experience. Drives the `{n} episodes` pill on series/collection cards.",
     }),
   }),
 })
@@ -121,6 +149,67 @@ builder.queryFields((t) => ({
       }),
     },
     resolve: async (_root, args, ctx) => {
+      // Phase-1 dual-accept auth gate. After the SEARCH_AUTH_REQUIRED
+      // flip, anonymous + invalid-bearer traffic throws and surfaces
+      // as `errors[0].message` to the GraphQL client. The check
+      // accepts ANY of three known-caller bearer sources (DB-backed
+      // partner / consumer / workflow) — see `isAnyKnownBearer` — so
+      // apps/web SSR + apps/mobile (carrying consumer-bearer for
+      // graphql rate-limit identity) keep working without code
+      // changes. External partners hold a DB-backed key issued via
+      // `pnpm --filter @forge/admin partner-keys create`.
+      //
+      // The structured log tags every request with one of three
+      // states (bearer / invalid_bearer / anonymous) so operators
+      // can identify un-migrated callers BEFORE flipping the gate.
+      // The check is request-level inside the resolver body (NOT a
+      // scope-auth gate) so the same conditional `SEARCH_AUTH_REQUIRED`
+      // flag governs both REST and GraphQL paths.
+      //
+      // GraphQL rate-limiting happens at the Yoga endpoint layer
+      // (admin's existing /api/graphql limiter), not per-resolver,
+      // so the REST sibling's "rate-limit before auth" ordering
+      // doesn't apply here — every request to /api/graphql is
+      // already rate-bucketed before the resolver runs.
+      const authHeader = ctx.request.headers.get("authorization")
+      const authResult = await isAnyKnownBearer(authHeader)
+      const authTag: "bearer" | "invalid_bearer" | "anonymous" =
+        authResult.valid
+          ? "bearer"
+          : authHeader != null
+            ? "invalid_bearer"
+            : "anonymous"
+      // See route.ts for the rationale — on the current Next.js 16 +
+      // Node 24 + Railway logsV2 + standalone stack, JSON-stringified
+      // log payloads from runtime route handlers are silenced. Only
+      // the `[label] event=name key=value` string format used by the
+      // existing working logs in this surface reliably surfaces.
+      //
+      // `source=` distinguishes the matched bearer source; `keyId=`
+      // is appended for PARTNER branches only (env-CSV branches don't
+      // carry a per-key identifier). Stable positional fields
+      // (`event`, `auth`, `path`) come first; optional fields appended
+      // at the END so positional log-shipper rules stay stable.
+      const sourceField = authResult.valid ? ` source=${authResult.source}` : ""
+      const keyIdField =
+        authResult.valid && authResult.keyId ? ` keyId=${authResult.keyId}` : ""
+      console.error(
+        `[search] event=search.request auth=${authTag} path=graphql${sourceField}${keyIdField}`,
+      )
+      if (!authResult.valid && env.SEARCH_AUTH_REQUIRED === "true") {
+        // Typed GraphQLError with extensions.code so the auth signal
+        // survives Yoga's default maskedErrors (which rewrites raw
+        // `new Error(...)` to "Unexpected error." in production).
+        // Clients branch on `errors[0].extensions.code === "UNAUTHENTICATED"`
+        // — stable, schema-aligned, parallel to the REST 401 sibling.
+        throw new GraphQLError("Authentication required", {
+          extensions: {
+            code: "UNAUTHENTICATED",
+            http: { status: 401 },
+          },
+        })
+      }
+
       const query = args.q.trim()
       if (query.length === 0) {
         throw new Error("q (search query) is required")
@@ -163,15 +252,45 @@ builder.queryFields((t) => ({
       const debug = debugRequested && isDebugAllowedForOrigin(origin)
 
       const service = new HybridSearchService({ prisma })
-      return service.search({
-        query,
-        locale: args.locale,
-        limit: args.limit ?? undefined,
-        offset: args.offset ?? undefined,
-        contentTypes,
-        mode,
-        debug,
-      })
+      const startedAt = new Date()
+      try {
+        const { response, trace } = await service.searchWithTrace({
+          query,
+          locale: args.locale,
+          limit: args.limit ?? undefined,
+          offset: args.offset ?? undefined,
+          contentTypes,
+          mode,
+          debug,
+        })
+        await recordSearchTraceSafely({
+          query,
+          locale: args.locale,
+          routeSource: "graphql",
+          requestedMode: mode ?? null,
+          searchMode: trace.searchMode,
+          resultCount: trace.resultCount,
+          outcome: trace.outcome,
+          traceClass: trace.traceClass,
+          startedAt,
+          completedAt: new Date(),
+        }).catch(() => {})
+        return response
+      } catch (error) {
+        await recordSearchTraceSafely({
+          query,
+          locale: args.locale,
+          routeSource: "graphql",
+          requestedMode: mode ?? null,
+          searchMode: "failed",
+          resultCount: 0,
+          outcome: "failed",
+          traceClass: "search_exception",
+          startedAt,
+          completedAt: new Date(),
+        }).catch(() => {})
+        throw error
+      }
     },
   }),
 }))

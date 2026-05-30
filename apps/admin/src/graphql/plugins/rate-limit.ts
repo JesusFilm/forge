@@ -4,7 +4,23 @@
 // unauthenticated. Each anonymous IP gets its own bucket so one
 // attacker cannot exhaust the limit for all public users.
 //
+// Plan 003 (U1) adds a third bucket class for consumer-app SSR: when
+// the request mints a `CONSUMER_BEARER` principal (apps/web), the
+// bucket key is `consumer:<rateLimitBucketKey>`. CGNAT and mobile-
+// carrier NAT collapse many real users onto one IP, so the
+// anonymous-IP bucket is too coarse for a consumer-app SSR fanout —
+// admin's read traffic from web SSR was previously hitting Strapi and
+// will materially increase after R8 cutover.
+//
 // Defaults: 60 queries/min authenticated, 30 mutations/min.
+//
+// SECURITY: this module MUST NEVER log the raw `Authorization` header
+// or any bearer key string. The `rateLimitBucketKey` field on the
+// principal IS the key (already validated by `consumer-bearer.ts`)
+// but identity formation here treats it as an opaque bucket label
+// only — emitted only into the rate-limiter's internal store, never
+// into application logs. Log scrubbing is unit-tested in
+// `rate-limit.test.ts`.
 
 import {
   useRateLimiter,
@@ -25,12 +41,35 @@ function getClientIp(request: Request): string {
   )
 }
 
+/**
+ * Identity formation for the rate-limit bucket. Exported for direct
+ * unit testing so the bucket-key logic doesn't have to be exercised
+ * through the full envelop plugin lifecycle.
+ *
+ * Buckets, in priority order:
+ *   1. Authenticated user (`ctx.user.id`) — keyed by user id.
+ *   2. Consumer-app bearer (`role === "CONSUMER_BEARER"`) — keyed by
+ *      the bearer's `rateLimitBucketKey` as `consumer:<key>`.
+ *   3. Anonymous IP fallback — `public:<cf-connecting-ip>`.
+ *
+ * Without a dedicated branch for the consumer bearer, CONSUMER_BEARER
+ * principals would fall through to `public:<ip>` and web SSR would
+ * self-DoS on its egress IP under CGNAT — the exact scenario the
+ * bearer-bucket identity exists to prevent.
+ */
+export function identifyForRateLimit(ctx: ContextShape): string {
+  if (ctx.user?.id) return ctx.user.id
+  if (
+    ctx.user?.role === "CONSUMER_BEARER" &&
+    ctx.user.rateLimitBucketKey != null
+  ) {
+    return `consumer:${ctx.user.rateLimitBucketKey}`
+  }
+  return `public:${getClientIp(ctx.request)}`
+}
+
 export const rateLimitPlugin = useRateLimiter({
-  identifyFn: (context) => {
-    const ctx = context as ContextShape
-    if (ctx.user?.id) return ctx.user.id
-    return `public:${getClientIp(ctx.request)}`
-  },
+  identifyFn: (context) => identifyForRateLimit(context as ContextShape),
   store: createRateLimitStore(),
   configByField: [
     { type: "Query", field: "*", max: 60, window: "1m" },

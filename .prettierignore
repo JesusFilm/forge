@@ -5,7 +5,13 @@ build
 .turbo
 pnpm-lock.yaml
 packages/graphql/src/graphql-env.d.ts
+packages/admin-graphql/src/admin-graphql-env.d.ts
 apps/cms/schema.graphql
+apps/admin/schema.graphql
+apps/admin/src/app/.well-known/workflow/v1
+apps/auth/src/generated
+apps/mastra-gateway/src/generated
+apps/manager/src/app/.well-known/workflow/v1
 apps/cms/.strapi
 apps/cms/.strapi-updater.json
 apps/agentic/.mastra

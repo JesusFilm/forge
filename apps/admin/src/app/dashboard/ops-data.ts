@@ -10,6 +10,7 @@ import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { createServices } from "@/services"
 import { generateExperienceEmbedding } from "@/services/embeddings.service"
+import { DEFAULT_SYNC_LOCK_STALE_AFTER_MS } from "@/services/core-sync/lock"
 import { getAllWatermarks } from "@/services/core-sync/watermark"
 import {
   mediaAssetDownloadUrl,
@@ -209,6 +210,12 @@ type WorkflowRunRow = {
   skippedLock: boolean | null
 }
 
+type CoreSyncLockView = {
+  heldBy: string | null
+  acquiredAt: Date | null
+  updatedAt: Date
+}
+
 function isMissingTableError(error: unknown) {
   return (
     typeof error === "object" &&
@@ -239,6 +246,13 @@ function formatDateTime(value: Date) {
     hour12: false,
     timeZone: "UTC",
   }).format(value)
+}
+
+function isCoreSyncLockActive(lock: CoreSyncLockView | null) {
+  if (!lock?.heldBy) return false
+  return (
+    Date.now() - lock.updatedAt.getTime() <= DEFAULT_SYNC_LOCK_STALE_AFTER_MS
+  )
 }
 
 function formatLag(value: Date | string | null | undefined) {
@@ -354,15 +368,6 @@ function phaseLabel(phase: string) {
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ")
-}
-
-function providerCount() {
-  return [
-    env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET,
-    env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,
-    env.APPLE_CLIENT_ID && env.APPLE_CLIENT_SECRET,
-    env.OKTA_CLIENT_ID && env.OKTA_CLIENT_SECRET && env.OKTA_ISSUER,
-  ].filter(Boolean).length
 }
 
 async function getEmbeddingCounts() {
@@ -625,16 +630,14 @@ async function getRecentActivity(): Promise<TableRow[]> {
 async function getUserRoleCounts() {
   return withTableFallback(
     async () => {
-      const [admins, editors, viewers, sessions, accounts] = await Promise.all([
+      const [admins, editors, viewers] = await Promise.all([
         prisma.user.count({ where: { role: "ADMIN" } }),
         prisma.user.count({ where: { role: "EDITOR" } }),
         prisma.user.count({ where: { role: "VIEWER" } }),
-        prisma.session.count(),
-        prisma.account.count(),
       ])
-      return { admins, editors, viewers, sessions, accounts }
+      return { admins, editors, viewers }
     },
-    { admins: 0, editors: 0, viewers: 0, sessions: 0, accounts: 0 },
+    { admins: 0, editors: 0, viewers: 0 },
   )
 }
 
@@ -759,7 +762,7 @@ export async function loadDashboardOpsData(): Promise<DashboardOpsData> {
       {
         label: "Users",
         value: counts.users.toString(),
-        detail: "Authenticated principals persisted in Better Auth tables.",
+        detail: "Local admin role mappings for Auth SSO principals.",
       },
       {
         label: "Embedding Gap",
@@ -787,6 +790,7 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
     ),
     getWorkflowRunRows(3),
   ])
+  const lockActive = isCoreSyncLockActive(lock)
 
   const matrix = syncRows.map((row) => {
     const stats = parseSyncStats(row.stats)
@@ -833,7 +837,7 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
       : [
           {
             title: "No active sync incidents",
-            meta: lock?.heldBy ? `lock held by ${lock.heldBy}` : "lock clear",
+            meta: lockActive ? `lock held by ${lock?.heldBy}` : "lock clear",
             detail: "No synced data sets are reporting issues.",
             statusLabel: "Healthy",
             statusTone: "success" as const,
@@ -859,7 +863,7 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
       },
       {
         label: "Lock State",
-        value: lock?.heldBy ? "HELD" : "CLEAR",
+        value: lockActive ? "HELD" : "CLEAR",
         footer: "CORE_SYNC_LOCK",
       },
       {
@@ -888,10 +892,12 @@ export async function loadSystemStatusData(): Promise<SystemStatusData> {
     telemetry: [
       {
         label: "Lock Holder",
-        value: lock?.heldBy ? "ACTIVE" : "IDLE",
-        detail: lock?.heldBy
+        value: lockActive ? "ACTIVE" : "IDLE",
+        detail: lockActive
           ? "A sync run is currently holding the DB-backed lock."
-          : "No process currently holds the sync lock.",
+          : lock?.heldBy
+            ? "The previous sync lock is stale and can be reclaimed by the next run."
+            : "No process currently holds the sync lock.",
       },
       {
         label: "Data Sets With Errors",
@@ -923,6 +929,7 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
       loadWorkflowRuntimeRuns(10),
       loadWorkflowWorkerStatusRows(),
     ])
+  const lockActive = isCoreSyncLockActive(lock)
   const ledgerByRuntimeRunId = new Map(
     workflowRows
       .filter((row) => row.runtimeRunId)
@@ -959,7 +966,7 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
       statusLabel: row.status,
       statusTone: statusToneForWorkflowStatus(row.status),
     })),
-    ...(lock?.heldBy
+    ...(lockActive && lock?.heldBy
       ? [
           {
             title: "core-sync lock holder",
@@ -980,7 +987,7 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
   const dataSetErrorCount = syncRows.filter(
     (row) => parseSyncStats(row.stats).errors > 0,
   ).length
-  const activeCount = statusCounts.active + (lock?.heldBy ? 1 : 0)
+  const activeCount = statusCounts.active + (lockActive ? 1 : 0)
   const failedCount = statusCounts.failed + dataSetErrorCount
 
   return {
@@ -1055,7 +1062,7 @@ export async function loadWorkflowsData(): Promise<WorkflowsData> {
         detail: "Request signing for workflow endpoints.",
       },
     ],
-    syncLockHeld: Boolean(lock?.heldBy),
+    syncLockHeld: lockActive,
   }
 }
 
@@ -1405,8 +1412,6 @@ export async function loadUsersData(): Promise<UsersData> {
             role: true,
             emailVerified: true,
             updatedAt: true,
-            sessions: { select: { id: true }, take: 1 },
-            accounts: { select: { providerId: true } },
           },
           orderBy: { updatedAt: "desc" },
           take: 8,
@@ -1417,8 +1422,6 @@ export async function loadUsersData(): Promise<UsersData> {
         role: string
         emailVerified: boolean
         updatedAt: Date
-        sessions: Array<{ id: string }>
-        accounts: Array<{ providerId: string }>
       }>,
     ),
   ])
@@ -1436,47 +1439,42 @@ export async function loadUsersData(): Promise<UsersData> {
         footer: "CONTENT_OPERATORS",
       },
       {
-        label: "Viewers",
+        label: "Access Requests",
         value: counts.viewers.toString(),
-        footer: "READ_ONLY",
+        footer: "PENDING_APPROVAL",
       },
     ],
     rows: rows.map((row) => ({
       key: row.id,
       title: row.email,
-      detail:
-        row.accounts.map((account) => account.providerId).join(", ") ||
-        "email-password",
+      detail: row.id,
       statusLabel: row.emailVerified ? row.role : "UNVERIFIED",
-      statusTone: row.emailVerified ? "success" : "warning",
-      meta: `${row.sessions.length} session(s) / ${formatDateTime(row.updatedAt)}`,
+      statusTone:
+        !row.emailVerified || row.role === "VIEWER" ? "warning" : "success",
+      meta: formatDateTime(row.updatedAt),
     })),
     insights: [
       {
-        label: "Active Sessions",
-        value: counts.sessions.toString(),
-        detail: "Current Better Auth session rows persisted in Postgres.",
+        label: "Role Mappings",
+        value: (counts.admins + counts.editors + counts.viewers).toString(),
+        detail:
+          "Admin-local roles keyed by Auth SSO subject or verified email.",
       },
       {
-        label: "Linked Accounts",
-        value: counts.accounts.toString(),
-        detail: "External auth/account records attached to users.",
+        label: "Access Requests",
+        value: counts.viewers.toString(),
+        detail: "Signed-in users waiting for admin approval.",
       },
       {
-        label: "SSO Providers",
-        value: providerCount().toString(),
-        detail: "Social/OIDC providers currently configured by environment.",
+        label: "Auth Issuer",
+        value: new URL(env.AUTH_ISSUER_URL).host,
+        detail: "Standalone Auth service used for admin OAuth.",
       },
     ],
   }
 }
 
 export async function loadSettingsData(): Promise<SettingsData> {
-  const trustedOrigins = env.AUTH_TRUSTED_ORIGINS
-    ? env.AUTH_TRUSTED_ORIGINS.split(",")
-        .map((item) => item.trim())
-        .filter(Boolean)
-    : []
   const corsOrigins = env.CORS_ALLOWED_ORIGINS
     ? env.CORS_ALLOWED_ORIGINS.split(",")
         .map((item) => item.trim())
@@ -1485,12 +1483,12 @@ export async function loadSettingsData(): Promise<SettingsData> {
 
   const rows: TableRow[] = [
     {
-      key: "better-auth",
-      title: "Better Auth secret",
-      detail: "Session signing secret",
-      statusLabel: env.BETTER_AUTH_SECRET ? "Configured" : "Missing",
-      statusTone: env.BETTER_AUTH_SECRET ? "success" : "danger",
-      meta: env.BETTER_AUTH_URL ?? "default localhost URL",
+      key: "admin-session",
+      title: "Admin session secret",
+      detail: "Local OAuth session signing secret",
+      statusLabel: env.ADMIN_SESSION_SECRET ? "Configured" : "Missing",
+      statusTone: env.ADMIN_SESSION_SECRET ? "success" : "danger",
+      meta: env.AUTH_ISSUER_URL,
     },
     {
       key: "redis",
@@ -1524,14 +1522,14 @@ export async function loadSettingsData(): Promise<SettingsData> {
   return {
     metrics: [
       {
-        label: "Providers",
-        value: providerCount().toString(),
-        footer: "SSO_ENABLED",
+        label: "Auth Client",
+        value: env.AUTH_ADMIN_CLIENT_ID,
+        footer: "OAUTH_CLIENT",
       },
       {
-        label: "Trusted Origins",
-        value: trustedOrigins.length.toString(),
-        footer: "AUTH_TRUSTED",
+        label: "Admin Origin",
+        value: new URL(env.ADMIN_BASE_URL ?? "http://localhost:3003").host,
+        footer: "CALLBACK",
       },
       {
         label: "CORS Origins",

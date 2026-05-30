@@ -87,87 +87,11 @@ import {
   buildMaterializationMetadata,
   createEnrichmentJobs,
   ENRICH_CREATE_CONCURRENCY,
-  GET_VIDEOS_WITH_MUX,
+  EnrichmentJobCreationError,
   mapWithConcurrencyLimit,
 } from "@/app/api/enrich/route"
 import { wrapStartSpy } from "@/test-helpers/workflow-dispatch"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
-
-type QueryNode = {
-  kind?: string
-  name?: { value?: string }
-  arguments?: Array<{
-    name?: { value?: string }
-    value?: {
-      kind?: string
-      fields?: Array<{
-        name?: { value?: string }
-        value?: { kind?: string; value?: string }
-      }>
-    }
-  }>
-  selectionSet?: { selections?: QueryNode[] }
-}
-
-function findField(
-  selections: QueryNode[] | undefined,
-  fieldName: string,
-): QueryNode | undefined {
-  for (const selection of selections ?? []) {
-    if (selection.kind !== "Field") continue
-    if (selection.name?.value === fieldName) return selection
-
-    const nestedMatch = findField(selection.selectionSet?.selections, fieldName)
-    if (nestedMatch) return nestedMatch
-  }
-
-  return undefined
-}
-
-function getLimitArgumentValue(field: QueryNode | undefined): string | null {
-  const pagination = field?.arguments?.find(
-    (argument) => argument.name?.value === "pagination",
-  )
-  if (!pagination?.value || pagination.value.kind !== "ObjectValue") {
-    return null
-  }
-
-  const limit = pagination.value.fields?.find(
-    (entry) => entry.name?.value === "limit",
-  )
-  if (!limit) {
-    return null
-  }
-
-  return limit.value?.kind === "IntValue" ? (limit.value.value ?? null) : null
-}
-
-describe("GET_VIDEOS_WITH_MUX", () => {
-  it("requests all nested variants explicitly", () => {
-    const document = GET_VIDEOS_WITH_MUX as QueryNode & {
-      definitions?: QueryNode[]
-    }
-    const operation = document.definitions?.[0]
-
-    expect(operation?.kind).toBe("OperationDefinition")
-    if (operation?.kind !== "OperationDefinition" || !operation.selectionSet) {
-      return
-    }
-
-    const videosField = findField(operation.selectionSet.selections, "videos")
-    const variantsField = findField(
-      videosField?.selectionSet?.selections,
-      "variants",
-    )
-    const downloadsField = findField(
-      variantsField?.selectionSet?.selections,
-      "downloads",
-    )
-
-    expect(getLimitArgumentValue(variantsField)).toBe("-1")
-    expect(getLimitArgumentValue(downloadsField)).toBe("-1")
-  })
-})
 
 describe("mapWithConcurrencyLimit", () => {
   it("caps concurrent work while preserving result order", async () => {
@@ -382,148 +306,42 @@ describe("createEnrichmentJobs", () => {
     })
   })
 
-  it("dispatches enrichment jobs through workflow start()", async () => {
-    const result = await createEnrichmentJobs({
-      videoIds: ["video-1"],
-      targetLanguageIds: ["6414"],
-    })
-
-    expect(result).toMatchObject({
-      created: 1,
-      failed: 0,
-      jobs: [{ videoId: "video-1", jobId: "job-1" }],
-    })
-    dispatch.expectDispatched(runVideoEnrichment, [
-      expect.objectContaining({
-        jobId: "job-1",
-        assetId: "mux-target-1",
-        muxAssetId: "mux-target-1",
-        playbackId: "mux-target-playback-1",
-        language: "en",
-        translateTo: ["fr"],
-        runAudioCleanup: true,
-        videoDocumentId: "video-doc-1",
-        requestedTranscriptionProvider: "automatic",
-      }),
-    ])
-    expect(dispatch.spy).toHaveBeenCalledTimes(1)
-    expect(runVideoEnrichment).not.toHaveBeenCalled()
-  })
-
-  it("dispatches subtitle-only enrichment jobs through Agentic behind the feature flag", async () => {
-    envMock.AGENTIC_SUBTITLE_ENRICHMENT_ENABLED = "true"
-
-    const result = await createEnrichmentJobs({
-      videoIds: ["video-1"],
-      targetLanguageIds: ["6414"],
-    })
-
-    expect(result).toMatchObject({
-      created: 1,
-      failed: 0,
-      jobs: [{ videoId: "video-1", jobId: "job-1" }],
-    })
-    expect(triggerAgenticSubtitleEnrichmentMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        jobId: "job-1",
-        assetId: "mux-target-1",
-        muxAssetId: "mux-target-1",
-        muxPlaybackId: "mux-target-playback-1",
-        sourceLanguage: "en",
-        targetLanguage: "fr",
-        requestedTranscriptionProvider: "automatic",
-        idempotencyKey: "manager:subtitle-enrichment:job-1",
-      }),
-    )
-    dispatch.expectNotDispatched()
-    expect(runVideoEnrichment).not.toHaveBeenCalled()
-  })
-
-  it("rejects Agentic subtitle-only dispatch with more than one target language", async () => {
-    envMock.AGENTIC_SUBTITLE_ENRICHMENT_ENABLED = "true"
-    clientQueryMock.mockReset()
-    clientQueryMock
-      .mockResolvedValueOnce({
-        data: {
-          videos: [
-            {
-              documentId: "video-doc-1",
-              coreId: "video-1",
-              title: "Video 1",
-              primaryLanguage: {
-                coreId: "529",
-                bcp47: "en",
-                iso3: "eng",
-              },
-              variants: [],
-            },
-          ],
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          languages: [
-            { coreId: "6414", bcp47: "fr", iso3: "fra" },
-            { coreId: "496", bcp47: "es", iso3: "spa" },
-          ],
-        },
-      })
-
+  it("rejects direct enrichment creation after the CMS video model is retired", async () => {
     await expect(
       createEnrichmentJobs({
         videoIds: ["video-1"],
-        targetLanguageIds: ["6414", "496"],
+        targetLanguageIds: ["6414"],
       }),
     ).rejects.toMatchObject({
-      status: 400,
+      status: 410,
       responseBody: {
         error:
-          "Agentic subtitle enrichment requires exactly one target language.",
+          "Direct enrichment creation from the retired CMS video model is no longer available.",
       },
     })
-
-    expect(createJobMock).not.toHaveBeenCalled()
-    expect(triggerAgenticSubtitleEnrichmentMock).not.toHaveBeenCalled()
-    dispatch.expectNotDispatched()
   })
 
-  it("reports per-video launch failures as batch errors", async () => {
-    startMock.mockReset()
-    startMock.mockRejectedValueOnce(new Error("workflow offline"))
+  it("does not dispatch workflows for retired direct enrichment creation", async () => {
+    await expect(
+      createEnrichmentJobs({
+        videoIds: ["video-1"],
+        targetLanguageIds: ["6414"],
+      }),
+    ).rejects.toBeInstanceOf(EnrichmentJobCreationError)
 
-    const result = await createEnrichmentJobs({
-      videoIds: ["video-1"],
-      targetLanguageIds: ["6414"],
-    })
-
-    expect(result).toMatchObject({
-      created: 0,
-      failed: 1,
-      jobs: [],
-      errors: [
-        {
-          videoId: "video-1",
-          error: "Failed to launch enrichment workflow.",
-        },
-      ],
-    })
-    expect(updateJobMock).toHaveBeenCalledWith("job-1", { status: "failed" })
-    expect(startMock).toHaveBeenCalledTimes(1)
+    expect(dispatch.spy).not.toHaveBeenCalled()
     expect(runVideoEnrichment).not.toHaveBeenCalled()
   })
 })
 
 describe("POST /api/enrich", () => {
-  const dispatch = wrapStartSpy(startMock)
-
   beforeEach(() => {
-    vi.clearAllMocks()
     authenticateRequestMock.mockResolvedValue(null)
   })
 
   it("rejects unauthorized requests before dispatch", async () => {
     authenticateRequestMock.mockResolvedValueOnce(
-      Response.json({ error: "Unauthorized" }, { status: 401 }),
+      new Response("Unauthorized", { status: 401 }),
     )
 
     const response = await POST(
@@ -535,7 +353,6 @@ describe("POST /api/enrich", () => {
     )
 
     expect(response.status).toBe(401)
-    dispatch.expectNotDispatched()
     expect(createJobMock).not.toHaveBeenCalled()
   })
 
@@ -549,97 +366,10 @@ describe("POST /api/enrich", () => {
     )
 
     expect(response.status).toBe(400)
-    dispatch.expectNotDispatched()
     expect(createJobMock).not.toHaveBeenCalled()
   })
 
-  it("keeps a batch 201 response while surfacing per-video launch failures", async () => {
-    clientQueryMock
-      .mockResolvedValueOnce({
-        data: {
-          videos: [
-            {
-              documentId: "video-doc-1",
-              coreId: "video-1",
-              title: "Video 1",
-              primaryLanguage: {
-                coreId: "529",
-                bcp47: "en",
-                iso3: "eng",
-              },
-              variants: [],
-            },
-          ],
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          languages: [
-            {
-              coreId: "6414",
-              bcp47: "fr",
-              iso3: "fra",
-            },
-          ],
-        },
-      })
-    materializeEnrichmentTargetForJobMock.mockResolvedValueOnce({
-      status: "ready",
-      materializationMode: "direct_mux_asset_reuse",
-      sourceVideoCoreId: "video-1",
-      sourceLanguage: { coreId: "529", bcp47: "en", iso3: "eng" },
-      sourceLanguageCode: "en",
-      sourceMuxAssetId: "mux-source-1",
-      sourceMuxPlaybackId: "mux-source-playback-1",
-      sourceInputType: "mux_asset",
-      sourceSelectionReason: "fallback-en",
-      sourceSelectionAttemptedCodes: ["fr", "en"],
-      targetMuxAssetId: "mux-target-1",
-      targetMuxPlaybackId: "mux-target-playback-1",
-    })
-    ensureGeneratedSubtitlesForAssetMock.mockResolvedValueOnce(undefined)
-    isAudioCleanupConfiguredMock.mockReturnValueOnce(true)
-    createJobMock.mockResolvedValueOnce({
-      id: "job-1",
-      muxAssetId: "mux-target-1",
-      muxPlaybackId: "mux-target-playback-1",
-      languages: ["fr"],
-      options: {},
-      status: "pending",
-      retries: 0,
-      createdAt: "",
-      updatedAt: "",
-      artifacts: {
-        transcriptionRouting: {
-          kind: "metadata",
-          data: { attempts: [] },
-        },
-      },
-      steps: [],
-      errors: [],
-    })
-    updateJobMock.mockImplementation(async (_id, updates) => ({
-      id: "job-1",
-      muxAssetId: "mux-target-1",
-      muxPlaybackId: "mux-target-playback-1",
-      languages: ["fr"],
-      options: {},
-      status: updates.status ?? "pending",
-      retries: 0,
-      createdAt: "",
-      updatedAt: "",
-      artifacts: {
-        transcriptionRouting: {
-          kind: "metadata",
-          data: { attempts: [] },
-        },
-        ...(updates.artifacts ?? {}),
-      },
-      steps: [],
-      errors: [],
-    }))
-    startMock.mockRejectedValueOnce(new Error("workflow offline"))
-
+  it("returns 410 for retired direct enrichment creation", async () => {
     const response = await POST(
       new Request("https://manager.test/api/enrich", {
         method: "POST",
@@ -651,19 +381,10 @@ describe("POST /api/enrich", () => {
       }),
     )
 
-    expect(response.status).toBe(201)
+    expect(response.status).toBe(410)
     await expect(response.json()).resolves.toMatchObject({
-      created: 0,
-      failed: 1,
-      jobs: [],
-      errors: [
-        {
-          videoId: "video-1",
-          error: "Failed to launch enrichment workflow.",
-        },
-      ],
+      error:
+        "Direct enrichment creation from the retired CMS video model is no longer available.",
     })
-    expect(updateJobMock).toHaveBeenCalledWith("job-1", { status: "failed" })
-    expect(startMock).toHaveBeenCalledTimes(1)
   })
 })

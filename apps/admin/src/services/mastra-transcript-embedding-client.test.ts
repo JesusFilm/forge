@@ -1,0 +1,227 @@
+import { describe, expect, it, vi } from "vitest"
+
+import { launchMastraTranscriptEmbedding } from "@/services/mastra-transcript-embedding-client"
+
+const successResult = {
+  ok: true,
+  status: "created",
+  chunks: 1,
+  totalTokens: 4,
+  model: "openai/text-embedding-3-small",
+  provider: "openai",
+  dimensions: 1536,
+  mastraRunId: "run-1",
+  sourceContentHash: "sha256:test",
+}
+
+describe("launchMastraTranscriptEmbedding", () => {
+  it("returns config_missing without Mastra URL or bearer", async () => {
+    await expect(
+      launchMastraTranscriptEmbedding({
+        target: { videoId: "v-1", videoEditionId: "e-1", coreId: "core-1" },
+        language: "en",
+        cmsVideoId: 42,
+        transcript: {
+          text: "hello transcript",
+          segments: [{ start: 0, end: 1, text: "hello transcript" }],
+          resolvedProvider: "mux",
+        },
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "config_missing",
+      retryable: false,
+    })
+  })
+
+  it("posts Admin target identifiers and transcript source to Mastra", async () => {
+    const fetchImpl = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        Response.json({ result: successResult }),
+    )
+
+    await expect(
+      launchMastraTranscriptEmbedding(
+        {
+          target: {
+            videoId: "v-1",
+            videoEditionId: "e-1",
+            coreId: "core-1",
+          },
+          language: "en",
+          cmsVideoId: 42,
+          transcript: {
+            text: "hello transcript",
+            segments: [{ start: 0, end: 1, text: "hello transcript" }],
+            resolvedProvider: "mux",
+          },
+          mode: "repair",
+        },
+        {
+          baseUrl: "https://mastra.internal",
+          bearer: "secret",
+          fetchImpl,
+        },
+      ),
+    ).resolves.toEqual(successResult)
+
+    const body = JSON.parse(
+      String(fetchImpl.mock.calls[0]?.[1]?.body),
+    ) as Record<string, unknown>
+    expect(fetchImpl).toHaveBeenCalledWith(
+      new URL("https://mastra.internal/forge-transcript-embeddings"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          authorization: "Bearer secret",
+        }),
+      }),
+    )
+    expect(body).toMatchObject({
+      target: {
+        admin: {
+          videoId: "v-1",
+          videoEditionId: "e-1",
+          coreId: "core-1",
+        },
+      },
+      language: "en",
+      transcript: {
+        text: "hello transcript",
+        artifactKey: "42/transcript.json",
+        provider: "mux",
+      },
+      mode: "repair",
+    })
+    expect(JSON.stringify(body)).not.toContain("embedding")
+  })
+
+  it("returns Mastra failures and upstream auth failures safely", async () => {
+    const productFailure = {
+      ok: false,
+      reason: "admin_ingest_rejected",
+      retryable: false,
+      mastraRunId: "run-2",
+      adminStatus: "rejected",
+      adminReason: "existing_transcript_differs",
+    }
+    const rejected = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        Response.json({ result: productFailure }, { status: 409 }),
+    )
+
+    await expect(
+      launchMastraTranscriptEmbedding(
+        {
+          target: { videoId: "v-1", videoEditionId: "e-1" },
+          language: "en",
+          cmsVideoId: 42,
+          transcript: {
+            text: "hello transcript",
+            segments: [{ start: 0, end: 1, text: "hello transcript" }],
+          },
+        },
+        {
+          baseUrl: "https://mastra.internal",
+          bearer: "secret",
+          fetchImpl: rejected,
+        },
+      ),
+    ).resolves.toEqual(productFailure)
+
+    const authFailure = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response("no", { status: 401 }),
+    )
+    await expect(
+      launchMastraTranscriptEmbedding(
+        {
+          target: { videoId: "v-1", videoEditionId: "e-1" },
+          language: "en",
+          cmsVideoId: 42,
+          transcript: {
+            text: "hello transcript",
+            segments: [{ start: 0, end: 1, text: "hello transcript" }],
+          },
+        },
+        {
+          baseUrl: "https://mastra.internal",
+          bearer: "bad",
+          fetchImpl: authFailure,
+        },
+      ),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "auth_failed",
+      retryable: false,
+    })
+  })
+
+  it("treats unknown workflow enum values as parse errors", async () => {
+    const malformedStatus = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        Response.json({
+          result: {
+            ...successResult,
+            status: "surprising-status",
+          },
+        }),
+    )
+
+    await expect(
+      launchMastraTranscriptEmbedding(
+        {
+          target: { videoId: "v-1", videoEditionId: "e-1" },
+          language: "en",
+          cmsVideoId: 42,
+          transcript: {
+            text: "hello transcript",
+            segments: [{ start: 0, end: 1, text: "hello transcript" }],
+          },
+        },
+        {
+          baseUrl: "https://mastra.internal",
+          bearer: "secret",
+          fetchImpl: malformedStatus,
+        },
+      ),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "parse_error",
+      retryable: true,
+    })
+
+    const malformedReason = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        Response.json({
+          result: {
+            ok: false,
+            reason: "surprising-reason",
+            retryable: false,
+          },
+        }),
+    )
+
+    await expect(
+      launchMastraTranscriptEmbedding(
+        {
+          target: { videoId: "v-1", videoEditionId: "e-1" },
+          language: "en",
+          cmsVideoId: 42,
+          transcript: {
+            text: "hello transcript",
+            segments: [{ start: 0, end: 1, text: "hello transcript" }],
+          },
+        },
+        {
+          baseUrl: "https://mastra.internal",
+          bearer: "secret",
+          fetchImpl: malformedReason,
+        },
+      ),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "parse_error",
+      retryable: true,
+    })
+  })
+})

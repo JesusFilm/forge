@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useId } from "react"
-import type { FragmentOf } from "@forge/graphql"
+import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import { adventCountdownFragment } from "@/lib/fragments/advent-countdown"
 
 export { adventCountdownFragment }
@@ -58,11 +58,11 @@ export function AdventCountdown({ data }: AdventCountdownProps) {
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-lg bg-gradient-to-tr from-green-800 via-red-800 to-amber-600 bg-blend-multiply shadow-lg"
+      className="relative w-full overflow-hidden rounded-lg bg-gradient-to-tr from-green-800 via-brand-red to-amber-600 bg-blend-multiply shadow-lg"
       data-testid="AdventCountdown"
     >
       <div
-        className="absolute inset-0 bg-gradient-to-br from-green-600/40 via-red-600/40 to-amber-500/40 blur-xl"
+        className="absolute inset-0 bg-gradient-to-br from-green-600/40 via-brand-red/40 to-amber-500/40 blur-xl"
         style={{ mixBlendMode: "overlay" }}
       />
       <div

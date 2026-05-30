@@ -51,8 +51,14 @@ import {
   type QueryEmbedder,
 } from "./hybrid-search.service"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockPrisma = {} as any
+const mockPrisma = {
+  video: {
+    // Default to empty hydration so card-pill enrichment (post-fusion
+    // `prisma.video.findMany`) doesn't crash these tests.
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any
 const successEmbedder = (): QueryEmbedder =>
   vi.fn().mockResolvedValue([0.1, 0.2, 0.3])
 
@@ -229,6 +235,8 @@ beforeEach(() => {
   __resetSearchHealthForTest()
   vi.mocked(searchExperienceSemantic).mockResolvedValue([])
   vi.mocked(searchExperienceKeyword).mockResolvedValue([])
+  // Restore default hydration stub after clearAllMocks wipes it.
+  mockPrisma.video.findMany.mockResolvedValue([])
 })
 
 describe("Bible Project headline (keyword-first mode)", () => {

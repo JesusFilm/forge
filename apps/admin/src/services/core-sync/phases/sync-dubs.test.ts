@@ -28,6 +28,7 @@ const mockedCoreQuery = vi.mocked(coreQuery)
 type TxFake = {
   videoDub: {
     findUnique: ReturnType<typeof vi.fn>
+    findMany: ReturnType<typeof vi.fn>
     upsert: ReturnType<typeof vi.fn>
   }
   videoEdition: { upsert: ReturnType<typeof vi.fn> }
@@ -36,12 +37,15 @@ type TxFake = {
     upsert: ReturnType<typeof vi.fn>
     updateMany: ReturnType<typeof vi.fn>
   }
+  $executeRaw: ReturnType<typeof vi.fn>
+  $queryRaw: ReturnType<typeof vi.fn>
 }
 
 function makeTxFake(): TxFake {
   return {
     videoDub: {
       findUnique: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
       upsert: vi.fn().mockResolvedValue({ id: "dub-1" }),
     },
     videoEdition: {
@@ -54,17 +58,23 @@ function makeTxFake(): TxFake {
       upsert: vi.fn().mockResolvedValue(undefined),
       updateMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
+    $executeRaw: vi.fn().mockResolvedValue(0),
+    $queryRaw: vi
+      .fn()
+      .mockResolvedValue([{ coreId: "mux-1", id: "mux-admin-1" }]),
   }
 }
 
 function makePrismaFake({
   videos = [{ id: "video-1", coreId: "video-core-1" }],
   languages = [{ id: "language-1", coreId: "lang-en" }],
+  videoEditions = [{ id: "edition-admin-1", coreId: "edition-1" }],
   tx,
   executeRawResult = 0,
 }: {
   videos?: Array<{ id: string; coreId: string }>
   languages?: Array<{ id: string; coreId: string }>
+  videoEditions?: Array<{ id: string; coreId: string }>
   tx: TxFake
   executeRawResult?: number
 }) {
@@ -75,11 +85,12 @@ function makePrismaFake({
     language: {
       findMany: vi.fn().mockResolvedValue(languages),
     },
+    videoEdition: {
+      findMany: vi.fn().mockResolvedValue(videoEditions),
+    },
     $transaction: vi.fn(async (fn: (trx: TxFake) => Promise<void>) => fn(tx)),
     videoDub: {
-      // Kept on the fake so tests can assert it is NOT called after the
-      // soft-delete bind-var fix (Unit 2 of the dub-sync cleanup plan).
-      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      updateMany: vi.fn().mockResolvedValue({ count: executeRawResult }),
     },
     $executeRaw: vi.fn().mockResolvedValue(executeRawResult),
   }
@@ -90,7 +101,7 @@ describe("syncDubs", () => {
     vi.clearAllMocks()
   })
 
-  it("writes edition, mux metadata, and download rows for a Core variant", async () => {
+  it("writes dub rows with pre-synced edition ids and page-level mux metadata", async () => {
     mockedCoreQuery.mockResolvedValueOnce({
       data: {
         videoVariants: [
@@ -138,24 +149,27 @@ describe("syncDubs", () => {
     })
 
     expect(stats.errors).toBe(0)
-    expect(tx.videoDub.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({
-          brightcoveId: "brightcove-1",
-          videoEditionId: "edition-admin-1",
-          muxVideoId: "mux-admin-1",
-        }),
-      }),
-    )
-    expect(tx.videoDubDownload.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({
-          coreId: "download-1",
-          videoDubId: "dub-1",
-          bitrate: 1200,
-        }),
-      }),
-    )
+    expect(tx.videoEdition.upsert).not.toHaveBeenCalled()
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(1)
+    expect(tx.videoDub.upsert).not.toHaveBeenCalled()
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1)
+    const [strings, ...values] = tx.$executeRaw.mock.calls[0] as [
+      ReadonlyArray<string>,
+      ...unknown[],
+    ]
+    const sql = strings.join("?")
+    expect(sql).toMatch(/INSERT\s+INTO\s+"?video_dub"?/i)
+    expect(sql).toContain('ON CONFLICT ("core_id")')
+    expect(sql).toContain("IS DISTINCT FROM")
+    expect(values).toHaveLength(17)
+    expect(values[1]).toContain("variant-1")
+    expect(values[2]).toContain("video-1")
+    expect(values[11]).toContain("brightcove-1")
+    expect(values[13]).toContain("edition-admin-1")
+    expect(values[14]).toContain("mux-admin-1")
+    expect(values[16]).toBe(true)
+    expect(tx.videoDubDownload.upsert).not.toHaveBeenCalled()
+    expect(tx.videoDubDownload.updateMany).not.toHaveBeenCalled()
   })
 
   it("skips Core variants whose parent video is outside the admin video scope", async () => {
@@ -212,12 +226,21 @@ describe("syncDubs", () => {
 
     expect(stats.errors).toBe(0)
     expect(stats.updated).toBe(1)
-    expect(tx.videoDub.upsert).toHaveBeenCalledTimes(1)
-    expect(tx.videoDub.upsert).toHaveBeenCalledWith(
+    expect(tx.videoDub.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { coreId: "variant-1" },
+        where: { coreId: { in: ["variant-missing-video", "variant-1"] } },
       }),
     )
+    expect(tx.videoDub.findUnique).not.toHaveBeenCalled()
+    expect(tx.videoDub.upsert).not.toHaveBeenCalled()
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1)
+    const [, ...values] = tx.$executeRaw.mock.calls[0] as [
+      ReadonlyArray<string>,
+      ...unknown[],
+    ]
+    expect(values[1]).toContain("variant-1")
+    expect(values[1]).not.toContain("variant-missing-video")
+    expect(values[16]).toBe(false)
     expect(warn).toHaveBeenCalledTimes(1)
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining("core-sync.video-dub.skipped-missing-videos"),
@@ -252,12 +275,12 @@ describe("syncDubs", () => {
     mockedCoreQuery.mockResolvedValueOnce({
       data: { videoVariants: fullPage },
     } as never)
-    // Page 2 (offset=100): Core throws. The loop must catch, log
-    // page.error, advance offset, continue to the next page.
+    // Page 2: Core throws. The loop must catch, log page.error, and
+    // continue to the next page.
     mockedCoreQuery.mockRejectedValueOnce(
       new Error("Core API returned GraphQL errors: Unexpected error."),
     )
-    // Page 3 (offset=200): empty page, loop breaks.
+    // Page 3: empty page, loop breaks.
     mockedCoreQuery.mockResolvedValueOnce({
       data: { videoVariants: [] },
     } as never)
@@ -277,7 +300,6 @@ describe("syncDubs", () => {
     })
 
     expect(stats.errors).toBe(1)
-    // Three Core fetches: page0 ok, page1 error, page2 empty.
     expect(mockedCoreQuery).toHaveBeenCalledTimes(3)
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining("core-sync.video-dub.page.error"),
@@ -290,13 +312,7 @@ describe("syncDubs", () => {
     warnSpy.mockRestore()
   })
 
-  it("soft-deletes via $executeRaw with an array-bound coreId set, not Prisma updateMany.notIn", async () => {
-    // Single page populates seenCoreIds with a non-empty set so the
-    // soft-delete tail runs. We are not stress-testing the 32,767
-    // bind-var limit here (mocked $executeRaw cannot fail that way);
-    // we are locking in the call shape so a future refactor that
-    // reverts to `updateMany({ where: { coreId: { notIn: [...] } } })`
-    // is caught by this test before it reaches a real Postgres.
+  it("soft-deletes stale full-sync rows via syncedAt instead of a huge coreId exclusion", async () => {
     mockedCoreQuery.mockResolvedValueOnce({
       data: {
         videoVariants: [
@@ -330,34 +346,15 @@ describe("syncDubs", () => {
     })
 
     expect(stats.errors).toBe(0)
-    // Regression guard: the legacy notIn-based updateMany must NOT be
-    // used. It blew the 32,767 prepared-statement parameter limit on a
-    // 209k-row catalogue.
-    expect(prisma.videoDub.updateMany).not.toHaveBeenCalled()
-    // The soft-delete must use $executeRaw, taking the seen-id set as
-    // a single bound array param.
-    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1)
-    const call = prisma.$executeRaw.mock.calls[0] as [
-      ReadonlyArray<string>,
-      ...unknown[],
-    ]
-    const [strings, ...values] = call
-    const sql = strings.join("?")
-    // Load-bearing SQL clauses (per
-    // docs/solutions/best-practices/prisma-raw-sql-invariant-assertions-20260423.md):
-    expect(sql).toMatch(/UPDATE\s+"?video_dub"?/i)
-    expect(sql).toContain("deleted_at")
-    expect(sql).toMatch(/NOT\s*\(/i)
-    expect(sql).toContain("= ANY")
-    expect(sql).toContain("text[]")
-    // The bound value MUST be a single parameter (one bind variable),
-    // not N separate IDs. Admin uses the PG-array-literal-as-text
-    // pattern (`toPgArray()` from `src/db/pgvector.ts`) per the PG18
-    // cast constraint documented in root CLAUDE.md, so the value is a
-    // string like `{"variant-1"}` cast inline by the SQL.
-    expect(values).toHaveLength(1)
-    expect(typeof values[0]).toBe("string")
-    expect(values[0]).toContain("variant-1")
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
+    expect(prisma.videoDub.updateMany).toHaveBeenCalledWith({
+      where: {
+        source: "CORE",
+        deletedAt: null,
+        OR: [{ syncedAt: null }, { syncedAt: { lt: expect.any(Date) } }],
+      },
+      data: { deletedAt: expect.any(Date) },
+    })
     expect(stats.softDeleted).toBe(7)
   })
 

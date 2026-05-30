@@ -5,7 +5,7 @@
 // without pulling in @/storage/s3 → @/config/env. The CLI deliberately
 // bypasses the admin env validator so it can run with only the
 // RAILWAY_S3_* vars populated — not the full server env matrix
-// (DATABASE_URL, BETTER_AUTH_SECRET, etc.). A transitive import of
+// (DATABASE_URL, ADMIN_SESSION_SECRET, etc.). A transitive import of
 // env.ts from the service file broke that contract.
 
 /**

@@ -26,7 +26,7 @@ type MuxPlayerCapturedProps = Record<string, unknown> & {
   onError?: (event: Event & { detail?: { code?: string } }) => void
 }
 
-const { muxPlayerMock, mockPlayerRef } = vi.hoisted(() => {
+const { muxPlayerMock, muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
   type MockPlayer = {
     muted: boolean
     currentTime: number
@@ -71,26 +71,118 @@ const { muxPlayerMock, mockPlayerRef } = vi.hoisted(() => {
     return null
   })
 
-  return { muxPlayerMock, mockPlayerRef }
+  // Parallel mock for the flag-on MuxVideo branch. Shares the singleton
+  // ref proxy so HeroPlayerControls / play() assertions don't care which
+  // backend rendered.
+  const muxVideoMock = vi.fn((props: MuxPlayerCapturedProps) => {
+    const { ref } = props
+    mockPlayerRef.current ??= makePlayer()
+    useImperativeHandle(ref as React.RefObject<unknown>, () => {
+      return mockPlayerRef.current
+    })
+    return null
+  })
+
+  return { muxPlayerMock, muxVideoMock, mockPlayerRef }
 })
 
 vi.mock("@forge/video-player", () => ({
   MuxPlayer: muxPlayerMock,
+  MuxVideo: muxVideoMock,
+}))
+
+// HeroPlayer's runtime branch wraps each backend in `next/dynamic(() =>
+// import("@forge/video-player/mux-{player,video}"), { ssr: false })` so
+// the inactive backend is build-time DCE'd out of the route chunk.
+// Mock both subpath specifiers so jsdom renders the same `muxPlayerMock`
+// / `muxVideoMock` synchronously instead of awaiting a lazy loader.
+vi.mock("@forge/video-player/mux-player", () => ({
+  default: muxPlayerMock,
+}))
+vi.mock("@forge/video-player/mux-video", () => ({
+  default: muxVideoMock,
+}))
+
+// In production `next/dynamic` returns a Suspense-wrapped lazy
+// component; in vitest we want the synchronous mock return. Bypass the
+// async loader and resolve to the mocked default export inline.
+vi.mock("next/dynamic", async () => {
+  const { createElement } = await import("react")
+  return {
+    default: (
+      loader: () => Promise<{ default: React.ComponentType<unknown> }>,
+    ) => {
+      let Resolved: React.ComponentType<unknown> | null = null
+      void loader().then((mod) => {
+        Resolved = mod.default
+      })
+      return function DynamicMock(props: Record<string, unknown>) {
+        // `vi.mock` resolves the inner import synchronously, so by the
+        // time React renders this stub the `.then` continuation has
+        // already populated `Resolved`. The null-guard is defensive only.
+        return Resolved ? createElement(Resolved, props) : null
+      }
+    },
+  }
+})
+
+// Mock the env module so individual tests can flip the migration flag
+// without shadowing the module-scope mock. The default keeps the flag
+// off so the bulk of the suite continues exercising the MuxPlayer path.
+vi.mock("@/env", () => ({
+  env: {
+    NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO: false,
+    NEXT_PUBLIC_MUX_DATA_ENV_KEY: undefined,
+  },
+}))
+
+// Configurable URLSearchParams stand-in so individual tests can drive the
+// useSearchParams hook to specific values (e.g. ?autoplay=1) without
+// shadowing the module-scope mock.
+const { mockSearchParams } = vi.hoisted(() => ({
+  mockSearchParams: { current: new URLSearchParams() },
 }))
 
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParams.current,
 }))
 
+function setSearchParams(query: string) {
+  mockSearchParams.current = new URLSearchParams(query)
+}
+
+import { env } from "@/env"
 import { HeroPlayer } from "@/components/watch/HeroPlayer"
+
+type MutableHeroPlayerEnv = {
+  NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO: boolean
+  NEXT_PUBLIC_MUX_DATA_ENV_KEY: string | undefined
+}
+
+function setHeroMuxVideoFlag(value: boolean) {
+  ;(
+    env as unknown as MutableHeroPlayerEnv
+  ).NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO = value
+}
+import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
+import {
+  WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+  WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+  type WatchHeaderLanguageSwitcherDetail,
+  type WatchPlayerChromeVisibilityDetail,
+} from "@/lib/watch-player-chrome-events"
+import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 
 let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
   muxPlayerMock.mockClear()
+  muxVideoMock.mockClear()
+  setHeroMuxVideoFlag(false)
   mockPlayerRef.current = null
+  mockSearchParams.current = new URLSearchParams()
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -108,6 +200,7 @@ function makeBlock(): WatchHeroPlayerBlock {
     kind: "HeroPlayer",
     video: {
       documentId: "video-1",
+      label: "EPISODE",
       slug: "jesus",
       title: "Jesus",
     } as never,
@@ -184,6 +277,31 @@ describe("HeroPlayer — initial mount", () => {
     expect(typeof metadata?.viewer_user_id).toBe("string")
   })
 
+  it("uses the sound-on player height before reveal so Play with Sound does not resize the hero", async () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    ) as HTMLDivElement
+    expect(wrapper.className).toContain("h-[calc(100svh-300px)]")
+    expect(wrapper.className).toContain("min-h-[400px]")
+    expect(wrapper.className).toContain("overflow-x-clip")
+    expect(wrapper.className).not.toContain("md:max-w-[calc(100svh*16/9)]")
+
+    const pill = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      pill.click()
+    })
+
+    expect(wrapper.className).toContain("h-[calc(100svh-300px)]")
+    expect(wrapper.className).toContain("min-h-[400px]")
+    expect(wrapper.className).toContain("overflow-hidden")
+  })
+
   it("renders a 'Play with Sound' pill (default state) above the player", () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
@@ -192,14 +310,53 @@ describe("HeroPlayer — initial mount", () => {
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
     )
+    const overlay = container.querySelector(
+      '[data-testid="hero-player-overlay"]',
+    )
     expect(pill).not.toBeNull()
+    expect(overlay?.getAttribute("class")).toContain("bottom-0")
+    expect(overlay?.getAttribute("class")).toContain("pb-12")
     expect(pill?.getAttribute("data-state")).toBe("play-with-sound")
     expect(pill?.textContent).toContain("Play with Sound")
+    expect(pill?.getAttribute("class")).toContain("cursor-pointer")
+    expect(pill?.getAttribute("class")).toContain("bg-brand-red")
+    expect(pill?.getAttribute("class")).toContain("font-medium")
+    expect(pill?.getAttribute("class")).not.toContain("font-semibold")
+    const title = container.querySelector(
+      '[data-testid="hero-player-overlay-title"]',
+    )
+    expect(title?.getAttribute("class")).toContain("text-balance")
+    expect(title?.getAttribute("class")).toContain("break-words")
+    expect(title?.getAttribute("class")).toContain("max-w-[calc(100vw-5rem)]")
+    expect(title?.getAttribute("class")).not.toContain("whitespace-nowrap")
+    expect(
+      container.querySelector('[data-testid="hero-player-overlay-label"]')
+        ?.className,
+    ).toBe(WATCH_SECTION_EYEBROW_CLASS)
+    // WCAG 2.5.3 (Label in Name): accessible name must contain the
+    // visible label as a substring. The aria-label must mirror the
+    // visible "Play with Sound" text so voice-control engines that
+    // match on accessible name still resolve "click play with sound".
+    expect(pill?.getAttribute("aria-label")).toBe("Play with Sound")
+  })
+
+  it("uses the production muted overlay backdrop before chrome is revealed", () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    const backdrop = container.querySelector(
+      '[data-testid="hero-player-muted-backdrop"]',
+    ) as HTMLDivElement
+    expect(backdrop).not.toBeNull()
+    expect(backdrop.getAttribute("style")).toContain(
+      WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND,
+    )
   })
 })
 
 describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
-  it("synchronously assigns muted=false then calls play() inside the click task — leaves currentTime alone so the muted-loop preview continues seamlessly", async () => {
+  it("synchronously seeks to 0, unmutes, then calls play() inside the click task", async () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -207,6 +364,7 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     // Snapshot pre-click state.
     expect(mockPlayerRef.current?.muted).toBe(true)
     expect(mockPlayerRef.current?.play).not.toHaveBeenCalled()
+    if (mockPlayerRef.current) mockPlayerRef.current.currentTime = 37
 
     const pill = container.querySelector(
       '[data-testid="hero-player-unmute-pill"]',
@@ -250,7 +408,32 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
       pill.click()
     })
 
-    expect(events).toEqual(["muted=false", "play()"])
+    expect(events).toEqual(["currentTime=0", "muted=false", "play()"])
+    expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("pre-reveal video click starts playback from 0 with sound", async () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    expect(mockPlayerRef.current?.muted).toBe(true)
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.currentTime = 24
+      mockPlayerRef.current.play.mockClear()
+    }
+
+    const surface = container.querySelector(
+      '[data-testid="hero-player-pre-reveal-click-surface"]',
+    ) as HTMLButtonElement
+    expect(surface).not.toBeNull()
+
+    await act(async () => {
+      surface.click()
+    })
+
+    expect(mockPlayerRef.current?.currentTime).toBe(0)
+    expect(mockPlayerRef.current?.muted).toBe(false)
     expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
   })
 
@@ -441,6 +624,19 @@ describe("HeroPlayer — custom chrome render", () => {
     ).not.toBeNull()
   })
 
+  it("uses the full-width watch rail layout for the chrome bar", async () => {
+    await revealChrome()
+    const chrome = container.querySelector(
+      '[data-testid="hero-player-custom-chrome"]',
+    ) as HTMLElement
+
+    expect(chrome.className).toContain("inset-x-0")
+    expect(chrome.className).toContain("w-full")
+    expect(chrome.className).toContain("px-10")
+    expect(chrome.className).toContain("md:px-16")
+    expect(chrome.className).toContain("xl:px-24")
+  })
+
   it("removes the unmute pill once chrome is revealed", async () => {
     await revealChrome()
     expect(
@@ -474,6 +670,29 @@ describe("HeroPlayer — chrome button interactions", () => {
       surface.click()
     })
     expect(mockPlayerRef.current?.play).toHaveBeenCalled()
+  })
+
+  it("click-surface still toggles pause/play after the user mutes committed playback", async () => {
+    await revealChrome()
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.paused = false
+      mockPlayerRef.current.muted = true
+      mockPlayerRef.current.currentTime = 18
+      mockPlayerRef.current.pause.mockClear()
+      mockPlayerRef.current.play.mockClear()
+    }
+
+    const surface = container.querySelector(
+      '[data-testid="hero-player-click-surface"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      surface.click()
+    })
+
+    expect(mockPlayerRef.current?.pause).toHaveBeenCalledTimes(1)
+    expect(mockPlayerRef.current?.play).not.toHaveBeenCalled()
+    expect(mockPlayerRef.current?.muted).toBe(true)
+    expect(mockPlayerRef.current?.currentTime).toBe(18)
   })
 
   it("mute button toggles player.muted", async () => {
@@ -695,6 +914,143 @@ describe("HeroPlayer — auto-hide timer", () => {
     expect(chrome.getAttribute("data-visible")).toBe("false")
   })
 
+  it("hides the top language button and publishes header visibility when chrome auto-hides", async () => {
+    const visibilityEvents: boolean[] = []
+    const languageEvents: WatchHeaderLanguageSwitcherDetail[] = []
+    const onVisibility = (event: Event) => {
+      visibilityEvents.push(
+        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail
+          .visible,
+      )
+    }
+    const onLanguageSwitcher = (event: Event) => {
+      languageEvents.push(
+        (event as CustomEvent<WatchHeaderLanguageSwitcherDetail>).detail,
+      )
+    }
+    window.addEventListener(WATCH_PLAYER_CHROME_VISIBILITY_EVENT, onVisibility)
+    window.addEventListener(
+      WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+      onLanguageSwitcher,
+    )
+
+    try {
+      act(() => {
+        root.render(
+          <HeroPlayer
+            block={makeBlock()}
+            onLanguageClick={() => {}}
+            playableLanguageCount={2}
+          />,
+        )
+      })
+      const pill = container.querySelector(
+        '[data-testid="hero-player-unmute-pill"]',
+      ) as HTMLButtonElement
+      await act(async () => {
+        pill.click()
+      })
+
+      expect(languageEvents.at(-1)?.visible).toBe(true)
+
+      await act(async () => {
+        vi.advanceTimersByTime(3001)
+      })
+
+      expect(
+        container
+          .querySelector('[data-testid="hero-player-custom-chrome"]')
+          ?.getAttribute("data-visible"),
+      ).toBe("false")
+      expect(languageEvents.at(-1)?.visible).toBe(false)
+      expect(visibilityEvents).toContain(false)
+    } finally {
+      window.removeEventListener(
+        WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+        onVisibility,
+      )
+      window.removeEventListener(
+        WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+        onLanguageSwitcher,
+      )
+    }
+  })
+
+  it("reveals controls, language button, and header visibility when scrolling back to the very top", async () => {
+    const visibilityEvents: boolean[] = []
+    const languageEvents: WatchHeaderLanguageSwitcherDetail[] = []
+    const onVisibility = (event: Event) => {
+      visibilityEvents.push(
+        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail
+          .visible,
+      )
+    }
+    const onLanguageSwitcher = (event: Event) => {
+      languageEvents.push(
+        (event as CustomEvent<WatchHeaderLanguageSwitcherDetail>).detail,
+      )
+    }
+    window.addEventListener(WATCH_PLAYER_CHROME_VISIBILITY_EVENT, onVisibility)
+    window.addEventListener(
+      WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+      onLanguageSwitcher,
+    )
+
+    try {
+      act(() => {
+        root.render(
+          <HeroPlayer
+            block={makeBlock()}
+            onLanguageClick={() => {}}
+            playableLanguageCount={2}
+          />,
+        )
+      })
+      const pill = container.querySelector(
+        '[data-testid="hero-player-unmute-pill"]',
+      ) as HTMLButtonElement
+      await act(async () => {
+        pill.click()
+      })
+
+      await act(async () => {
+        vi.advanceTimersByTime(3001)
+      })
+
+      const chrome = container.querySelector(
+        '[data-testid="hero-player-custom-chrome"]',
+      )
+      expect(chrome?.getAttribute("data-visible")).toBe("false")
+      expect(languageEvents.at(-1)?.visible).toBe(false)
+
+      Object.defineProperty(window, "scrollY", {
+        configurable: true,
+        value: 0,
+      })
+      await act(async () => {
+        window.dispatchEvent(new Event("scroll"))
+      })
+
+      expect(chrome?.getAttribute("data-visible")).toBe("true")
+      expect(languageEvents.at(-1)?.visible).toBe(true)
+      expect(visibilityEvents).toContain(false)
+      expect(visibilityEvents.at(-1)).toBe(true)
+    } finally {
+      window.removeEventListener(
+        WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+        onVisibility,
+      )
+      window.removeEventListener(
+        WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+        onLanguageSwitcher,
+      )
+      Object.defineProperty(window, "scrollY", {
+        configurable: true,
+        value: 0,
+      })
+    }
+  })
+
   it.todo(
     "does not auto-hide while paused — needs mock listener-invocation upgrade so React state syncs to mock changes",
   )
@@ -708,11 +1064,282 @@ describe("HeroPlayer — auto-hide timer", () => {
 // inline style is computed from the measured wrapper height.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Pause-on-scroll-past-hero. The hero wrapper is sticky and its bounding
+// rect never actually leaves the viewport (the body content slides over
+// it). So we pause based on scroll position vs. measured hero height
+// rather than IntersectionObserver. Applies to BOTH states (pre-reveal
+// muted loop AND post-reveal committed playback); on scroll-back we
+// auto-resume only the muted preview.
+// ---------------------------------------------------------------------------
+
+// Install a ResizeObserver stub that lets us drive heroHeight from tests
+// (jsdom has no RO; the component falls back to getBoundingClientRect
+// which returns 0 in jsdom, leaving heroHeight=null and the scroll
+// effect inert). Returns a "set" helper that fires the RO callback with
+// the supplied height.
+function installResizeObserverStub(): {
+  setHeight: (h: number) => Promise<void>
+  restore: () => void
+} {
+  const callbacks: ResizeObserverCallback[] = []
+  class MockResizeObserver {
+    callback: ResizeObserverCallback
+    constructor(callback: ResizeObserverCallback) {
+      this.callback = callback
+      callbacks.push(callback)
+    }
+    observe() {}
+    disconnect() {}
+    unobserve() {}
+  }
+  const slot = globalThis as { ResizeObserver?: typeof ResizeObserver }
+  const original = slot.ResizeObserver
+  slot.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver
+  return {
+    setHeight: async (h: number) => {
+      const cb = callbacks[callbacks.length - 1]
+      if (!cb) return
+      await act(async () => {
+        cb(
+          [{ contentRect: { height: h } } as ResizeObserverEntry],
+          {} as ResizeObserver,
+        )
+      })
+    },
+    restore: () => {
+      if (original) {
+        slot.ResizeObserver = original
+      } else {
+        delete slot.ResizeObserver
+      }
+    },
+  }
+}
+
+// Drive scroll: set window.scrollY, dispatch the event, then flush the
+// rAF tick the component throttles on. We use fake timers because the
+// component's rAF (polyfilled as setTimeout(0) by vitest.setup.ts) needs
+// to be drained deterministically — without fake timers + runAllTimers,
+// the scroll handler enqueues a task but the test's microtask awaits
+// don't always pump it through before assertions.
+async function scrollTo(y: number): Promise<void> {
+  Object.defineProperty(window, "scrollY", {
+    value: y,
+    configurable: true,
+    writable: true,
+  })
+  await act(async () => {
+    window.dispatchEvent(new Event("scroll"))
+    await vi.runAllTimersAsync()
+  })
+}
+
+describe("HeroPlayer — pause when scrolled past the hero", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("pauses the muted-loop preview when scrollY exceeds the measured hero height", async () => {
+    const ro = installResizeObserverStub()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+      await ro.setHeight(1072)
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = false
+        mockPlayerRef.current.pause.mockClear()
+      }
+      await scrollTo(1500)
+      expect(mockPlayerRef.current?.pause).toHaveBeenCalledTimes(1)
+    } finally {
+      ro.restore()
+    }
+  })
+
+  it("auto-resumes the muted preview when scrolling back to the top (pre-reveal only)", async () => {
+    const ro = installResizeObserverStub()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+      await ro.setHeight(1072)
+      // Simulate a prior scroll-past pause.
+      await scrollTo(1500)
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = true
+        mockPlayerRef.current.play.mockClear()
+      }
+      await scrollTo(0)
+      expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+    } finally {
+      ro.restore()
+    }
+  })
+
+  it("pauses post-reveal playback when scrolled past the hero", async () => {
+    const ro = installResizeObserverStub()
+    try {
+      await revealChrome()
+      await ro.setHeight(1072)
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = false
+        mockPlayerRef.current.pause.mockClear()
+      }
+      await scrollTo(1500)
+      expect(mockPlayerRef.current?.pause).toHaveBeenCalledTimes(1)
+    } finally {
+      ro.restore()
+    }
+  })
+
+  it("auto-resumes post-reveal playback when scrolling back to the hero", async () => {
+    const ro = installResizeObserverStub()
+    try {
+      await revealChrome()
+      await ro.setHeight(1072)
+      await scrollTo(1500)
+      if (mockPlayerRef.current) {
+        // Simulate the pause having taken effect.
+        mockPlayerRef.current.paused = true
+        mockPlayerRef.current.play.mockClear()
+      }
+      await scrollTo(0)
+      // Symmetric resume — when the hero is the main element on screen
+      // again, playback should pick up where it left off in both states.
+      expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+    } finally {
+      ro.restore()
+    }
+  })
+
+  it("does NOT auto-resume on scroll-back when the user manually paused before scrolling away", async () => {
+    const ro = installResizeObserverStub()
+    try {
+      await revealChrome()
+      await ro.setHeight(1072)
+      // Simulate a user-initiated pause (chrome button / keyboard) BEFORE
+      // any scroll happens. The scroll listener must not claim this pause
+      // and must not auto-resume on scroll-back.
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = true
+        mockPlayerRef.current.pause.mockClear()
+        mockPlayerRef.current.play.mockClear()
+      }
+      await scrollTo(1500)
+      // We did not call pause — player was already paused.
+      expect(mockPlayerRef.current?.pause).not.toHaveBeenCalled()
+      await scrollTo(0)
+      // And we must NOT auto-resume because we never claimed the pause.
+      expect(mockPlayerRef.current?.play).not.toHaveBeenCalled()
+    } finally {
+      ro.restore()
+    }
+  })
+
+  it("does not pause when the scroll is still within the hero (covered transition not reached)", async () => {
+    const ro = installResizeObserverStub()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+      await ro.setHeight(1072)
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = false
+        mockPlayerRef.current.pause.mockClear()
+      }
+      // scrollY < heroHeight — body has only started to enter the viewport.
+      await scrollTo(500)
+      expect(mockPlayerRef.current?.pause).not.toHaveBeenCalled()
+    } finally {
+      ro.restore()
+    }
+  })
+
+  it("pauses at the 60% obscured threshold, not at 100%", async () => {
+    // Pin viewport to a known size so the threshold math is deterministic.
+    // With heroHeight=1000 and viewport=800, visibleVideoHeight=800; the
+    // 60% threshold means body must cover >=480px of the 800px visible
+    // video, i.e. scrollY >= 1000 - (0.4 * 800) = 680.
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", {
+      value: 800,
+      configurable: true,
+    })
+    const ro = installResizeObserverStub()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+      await ro.setHeight(1000)
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = false
+        mockPlayerRef.current.pause.mockClear()
+      }
+      // 50% obscured (scrollY=600 → unobscured=400, fraction=0.5).
+      // Should NOT pause.
+      await scrollTo(600)
+      expect(mockPlayerRef.current?.pause).not.toHaveBeenCalled()
+      // 70% obscured (scrollY=760 → unobscured=240, fraction=0.7).
+      // Should pause.
+      await scrollTo(760)
+      expect(mockPlayerRef.current?.pause).toHaveBeenCalledTimes(1)
+    } finally {
+      ro.restore()
+      Object.defineProperty(window, "innerHeight", {
+        value: originalInnerHeight,
+        configurable: true,
+      })
+    }
+  })
+
+  it("pins the exact 60% boundary: scrollY=680 pauses, scrollY=679 does not", async () => {
+    // Boundary value pins the >= comparison and the OBSCURED_PAUSE_THRESHOLD
+    // constant at 0.6. With heroHeight=1000, viewport=800, the exact threshold
+    // scrollY is 680. One pixel below must NOT pause; the threshold itself must.
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", {
+      value: 800,
+      configurable: true,
+    })
+    const ro = installResizeObserverStub()
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+      await ro.setHeight(1000)
+      if (mockPlayerRef.current) {
+        mockPlayerRef.current.paused = false
+        mockPlayerRef.current.pause.mockClear()
+      }
+      // Just below the threshold — must NOT pause.
+      await scrollTo(679)
+      expect(mockPlayerRef.current?.pause).not.toHaveBeenCalled()
+      // At the threshold (>=) — must pause.
+      await scrollTo(680)
+      expect(mockPlayerRef.current?.pause).toHaveBeenCalledTimes(1)
+    } finally {
+      ro.restore()
+      Object.defineProperty(window, "innerHeight", {
+        value: originalInnerHeight,
+        configurable: true,
+      })
+    }
+  })
+})
+
 describe("HeroPlayer — sticky-hero / portal layout", () => {
-  it("portals the chrome bar into the overlay anchor, not the sticky hero wrapper", async () => {
+  it("portals the chrome bar AND the backdrop into the overlay anchor, not the sticky hero wrapper", async () => {
     await revealChrome()
     const chrome = container.querySelector(
       '[data-testid="hero-player-custom-chrome"]',
+    )
+    const backdrop = container.querySelector(
+      '[data-testid="hero-player-chrome-backdrop"]',
     )
     const anchor = container.querySelector(
       '[data-testid="hero-player-overlay-anchor"]',
@@ -721,12 +1348,17 @@ describe("HeroPlayer — sticky-hero / portal layout", () => {
       '[data-testid="hero-player-wrapper"]',
     )
     expect(chrome).not.toBeNull()
+    expect(backdrop).not.toBeNull()
     expect(anchor).not.toBeNull()
     expect(wrapper).not.toBeNull()
-    // Portal target — chrome bar lives under the zero-height anchor that
-    // scrolls with the body section, not under the sticky hero wrapper.
+    // Portal target — chrome bar AND its backing gradient live under the
+    // zero-height anchor that scrolls with the body section, not under
+    // the sticky hero wrapper. Backdrop must travel with the chrome so
+    // the controls stay legible at every scroll position.
     expect(anchor!.contains(chrome!)).toBe(true)
     expect(wrapper!.contains(chrome!)).toBe(false)
+    expect(anchor!.contains(backdrop!)).toBe(true)
+    expect(wrapper!.contains(backdrop!)).toBe(false)
   })
 
   it("tap-to-unmute branch calls play() without resetting currentTime", async () => {
@@ -1107,5 +1739,360 @@ describe("HeroPlayer — timeline pointer-driven scrub (fake-timer driven)", () 
       await vi.runAllTimersAsync()
     })
     expect(writes).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Language switch button (Task 4 — globe overlay).
+// Render-shape only: the button is conditional on a valid `onLanguageClick`
+// callback AND `playableLanguageCount >= 2`. Wiring into WatchSectionRenderer
+// is Task 5 and out of scope here.
+// ---------------------------------------------------------------------------
+
+describe("HeroPlayer — language switch button", () => {
+  function listenForLanguageSwitcher() {
+    const updates: WatchHeaderLanguageSwitcherDetail[] = []
+    const handler = (event: Event) => {
+      updates.push(
+        (event as CustomEvent<WatchHeaderLanguageSwitcherDetail>).detail,
+      )
+    }
+    window.addEventListener(WATCH_HEADER_LANGUAGE_SWITCHER_EVENT, handler)
+    return {
+      updates,
+      cleanup: () =>
+        window.removeEventListener(
+          WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+          handler,
+        ),
+    }
+  }
+
+  it("does not render when playableLanguageCount < 2", () => {
+    const onLanguageClick = vi.fn()
+    const listener = listenForLanguageSwitcher()
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          onLanguageClick={onLanguageClick}
+          playableLanguageCount={1}
+        />,
+      )
+    })
+    expect(listener.updates.at(-1)?.visible).toBe(false)
+    listener.cleanup()
+  })
+
+  it("publishes a header language switcher when playableLanguageCount >= 2 with onLanguageClick", () => {
+    const onLanguageClick = vi.fn()
+    const listener = listenForLanguageSwitcher()
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          onLanguageClick={onLanguageClick}
+          playableLanguageCount={2}
+        />,
+      )
+    })
+    const latest = listener.updates.at(-1)
+    expect(latest?.visible).toBe(true)
+    expect(latest?.onClick).toBe(onLanguageClick)
+    latest?.onClick?.()
+    expect(onLanguageClick).toHaveBeenCalledTimes(1)
+    listener.cleanup()
+  })
+
+  it("hides the top-right language button when fullscreen is active", async () => {
+    const onLanguageClick = vi.fn()
+    const listener = listenForLanguageSwitcher()
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          onLanguageClick={onLanguageClick}
+          playableLanguageCount={2}
+        />,
+      )
+    })
+    // Initially visible (no fullscreen)
+    expect(listener.updates.at(-1)?.visible).toBe(true)
+
+    // Enter fullscreen
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    Object.defineProperty(document, "fullscreenElement", {
+      configurable: true,
+      get() {
+        return wrapper
+      },
+    })
+    await act(async () => {
+      document.dispatchEvent(new Event("fullscreenchange"))
+    })
+
+    expect(listener.updates.at(-1)?.visible).toBe(false)
+
+    // Reset jsdom state for subsequent tests
+    Object.defineProperty(document, "fullscreenElement", {
+      configurable: true,
+      get() {
+        return null
+      },
+    })
+    listener.cleanup()
+  })
+})
+
+describe("HeroPlayer — autoplay on ?autoplay=1", () => {
+  // The effect signals language-switch arrivals: fired by LanguagePickerModal
+  // Apply, consumed here as a one-shot unmuted play attempt. Each test sets
+  // the URL params before render, fires onCanPlay to satisfy videoReady,
+  // and waits a tick so the post-then setState commits.
+
+  async function nextTick() {
+    await act(async () => {
+      await Promise.resolve()
+    })
+  }
+
+  it("attempts unmuted play and reveals chrome when ?autoplay=1 is set and play resolves", async () => {
+    setSearchParams("autoplay=1")
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    await fireCanPlay()
+    // play() default mock returns Promise.resolve() — wait for the .then
+    // microtask so setChromeRevealed commits.
+    await nextTick()
+    await nextTick()
+
+    const player = mockPlayerRef.current!
+    expect(player.play).toHaveBeenCalled()
+    expect(player.muted).toBe(false)
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    expect(wrapper?.getAttribute("data-chrome-revealed")).toBe("true")
+  })
+
+  it("leaves the player muted when play() rejects (no MEI grant)", async () => {
+    setSearchParams("autoplay=1")
+    // Re-prime the player factory: install a play() that rejects on the
+    // FIRST call only (the autoplay attempt). Subsequent calls (e.g. the
+    // unmute pill click) resolve normally.
+    muxPlayerMock.mockImplementationOnce((props) => {
+      const { ref } = props
+      const player = {
+        muted: true,
+        currentTime: 0,
+        paused: false,
+        duration: 60,
+        volume: 1,
+        loop: true,
+        buffered: null,
+        play: vi.fn(() => Promise.reject(new Error("NotAllowedError"))),
+        pause: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }
+      mockPlayerRef.current = player as unknown as typeof mockPlayerRef.current
+      useImperativeHandle(ref as React.RefObject<unknown>, () => player)
+      return null
+    })
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    await fireCanPlay()
+    await nextTick()
+    await nextTick()
+
+    const player = mockPlayerRef.current!
+    expect(player.play).toHaveBeenCalled()
+    // muted stays true because we set muted=false only inside .then() so
+    // the rejection path leaves the player in the safe muted state.
+    expect(player.muted).toBe(true)
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    expect(wrapper?.getAttribute("data-chrome-revealed")).toBe("false")
+  })
+
+  it("is a no-op when ?autoplay=1 is absent (no play attempt, player stays muted)", async () => {
+    // mockSearchParams default = empty
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    await fireCanPlay()
+    await nextTick()
+
+    const player = mockPlayerRef.current!
+    expect(player.play).not.toHaveBeenCalled()
+    expect(player.muted).toBe(true)
+  })
+
+  it("strips ?autoplay=1 from the URL after the attempt (refresh-safe)", async () => {
+    setSearchParams("autoplay=1")
+    // Seed window.location.search so the effect's `new URL(...)` read
+    // sees the param to strip. jsdom keeps useSearchParams (mocked) and
+    // window.location independent, so we set both for the test.
+    window.history.replaceState(null, "", "/jesus/spanish?autoplay=1&t=42")
+    const replaceStateSpy = vi.spyOn(window.history, "replaceState")
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    await fireCanPlay()
+    await nextTick()
+
+    // replaceState should be called with a URL that does NOT contain
+    // autoplay=1. Other params (e.g. ?t=42) survive — we only strip the
+    // one-shot autoplay signal.
+    expect(replaceStateSpy).toHaveBeenCalled()
+    const replacedUrl = replaceStateSpy.mock.calls[0]?.[2] as string
+    expect(replacedUrl).not.toContain("autoplay=1")
+    expect(replacedUrl).toContain("t=42")
+    replaceStateSpy.mockRestore()
+    // Reset jsdom URL state for subsequent tests.
+    window.history.replaceState(null, "", "/")
+  })
+})
+
+// MuxVideo branch — exercises the flag-on path that replaces
+// `<MuxPlayer>` (`@mux/mux-player-react`) with `<MuxVideo>`
+// (`@mux/mux-video-react`). See
+// docs/plans/2026-05-26-005-refactor-watch-hero-muxplayer-to-muxvideo-beta-plan.md.
+function lastMuxVideoProps(): MuxPlayerCapturedProps {
+  const calls = muxVideoMock.mock.calls
+  return calls[calls.length - 1]?.[0] as MuxPlayerCapturedProps
+}
+
+describe("HeroPlayer — flag NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO=true", () => {
+  beforeEach(() => {
+    setHeroMuxVideoFlag(true)
+  })
+
+  it("mounts <MuxVideo> instead of <MuxPlayer> with parity props", () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    expect(muxVideoMock).toHaveBeenCalled()
+    expect(muxPlayerMock).not.toHaveBeenCalled()
+
+    const props = lastMuxVideoProps()
+    // Identity props mirror the MuxPlayer path.
+    expect(props.playbackId).toBe("playback-id-123")
+    expect(props.autoPlay).toBe(true)
+    expect(props.muted).toBe(true)
+    expect(props.loop).toBe(true)
+    expect(props.preload).toBe("metadata")
+    // Light-DOM poster URL must match the <link rel="preload"> in
+    // page.tsx so the preloaded image is reused by <video poster=...>.
+    expect(props.poster).toBe(
+      "https://image.mux.com/playback-id-123/thumbnail.webp?width=1280",
+    )
+    // Override of the @forge/video-player wrapper default — hero needs
+    // Mux Data attribution even though other MuxVideo callsites disable it.
+    expect(props.disableTracking).toBe(false)
+    expect(props.disableCookies).toBe(true)
+    // Mux Data metadata payload is forwarded verbatim so the watch
+    // surface continues to attribute beacons under the same player_name.
+    expect(props.metadata).toMatchObject({
+      player_name: "forge-web-watch",
+      video_title: "Jesus",
+      video_id: "video-1",
+    })
+    // HLS buffer cap matches the perf-iteration tuning (≤10s lookahead,
+    // 5 MB cap) so the simulator-mobile waterfall stays bounded.
+    expect(props._hlsConfig).toEqual({
+      maxBufferLength: 10,
+      maxBufferSize: 5_000_000,
+      backBufferLength: 5,
+    })
+    // No CHROME_HIDE_STYLE under MuxVideo — bare <video> has no chrome
+    // shadow DOM to suppress. Object-fit lives on plain `style` instead.
+    expect(props.style).toEqual({ objectFit: "cover" })
+  })
+
+  it("flips videoReady via onCanPlay and unmounts the spinner overlay", async () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).not.toBeNull()
+
+    const handler = lastMuxVideoProps()?.onCanPlay
+    await act(async () => {
+      handler?.(new Event("canplay"))
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+  })
+
+  it("marks autoplayBlocked when play() rejects with NotAllowedError", async () => {
+    // Replace the singleton ref's play() with a Promise rejection
+    // matching what the browser raises when autoplay-muted is blocked.
+    const notAllowed = Object.assign(new Error("NotAllowedError"), {
+      name: "NotAllowedError",
+    })
+
+    // Drive the ?autoplay=1 path which re-invokes play() after canPlay —
+    // this is the same surface the LanguagePickerModal navigation hits.
+    setSearchParams("autoplay=1")
+
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    if (mockPlayerRef.current) {
+      mockPlayerRef.current.play = vi.fn(() => Promise.reject(notAllowed))
+    }
+
+    const handler = lastMuxVideoProps()?.onCanPlay
+    await act(async () => {
+      handler?.(new Event("canplay"))
+    })
+    // Allow the play() rejection chain to settle.
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    expect(wrapper?.getAttribute("data-autoplay-blocked")).toBe("true")
+  })
+
+  it("treats a generic onError event as a videoReady fallback (no autoplay-blocked flag)", async () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    // Spinner visible before the error escape fires.
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).not.toBeNull()
+
+    const handler = lastMuxVideoProps()?.onError
+    await act(async () => {
+      handler?.(new Event("error"))
+    })
+
+    // Spinner unmounts (videoReady = true) but autoplayBlocked stays false
+    // because no `detail.code === "autoplay-blocked"` is present and no
+    // play() rejection has fired on this surface.
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    expect(wrapper?.getAttribute("data-autoplay-blocked")).toBe("false")
   })
 })

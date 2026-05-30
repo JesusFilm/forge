@@ -23,6 +23,7 @@ function makeChild(documentId: string, slug: string, title: string) {
     title,
     label: null,
     images: [{ url: `https://cdn.example/${slug}.jpg` }],
+    durationSeconds: null,
   }
 }
 
@@ -33,7 +34,13 @@ function makeVariant(overrides: Record<string, unknown> = {}) {
     published: true,
     hls: "https://cdn.example/jesus.m3u8",
     duration: 7674,
-    language: { coreId: "529", bcp47: "en", slug: "english", name: "English" },
+    language: {
+      coreId: "529",
+      bcp47: "en",
+      slug: "english",
+      name: "English",
+      nativeName: null,
+    },
     downloads: [],
     muxVideo: { playbackId: "playback-id-123" },
     ...overrides,
@@ -75,7 +82,9 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
     // builder falls back to canonicalParent.children — matching the existing
     // tests' assumption that the carousel is fed from sibling content.
     children: [],
+    childDubLanguages: [],
     variants: [],
+    subtitles: [],
     studyQuestions: [],
     bibleCitations: [],
     ...overrides,

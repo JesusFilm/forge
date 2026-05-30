@@ -1,0 +1,15 @@
+# Railway only reads this file if the service's Config-as-code Path is set to
+# apps/mastra-gateway/railway.toml. Otherwise configure the same commands in
+# the Railway dashboard and treat that dashboard config as canonical.
+
+[build]
+builder = "RAILPACK"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/mastra-gateway build && cp -r apps/mastra-gateway/.next/static apps/mastra-gateway/.next/standalone/apps/mastra-gateway/.next/static"
+watchPatterns = ["/apps/mastra-gateway/**", "/apps/auth/**"]
+
+[deploy]
+startCommand = "cd apps/mastra-gateway && pnpm exec prisma migrate deploy && HOSTNAME=0.0.0.0 node .next/standalone/apps/mastra-gateway/server.js"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

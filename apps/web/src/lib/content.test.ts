@@ -1,4 +1,3 @@
-import { print } from "graphql"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const { queryMock } = vi.hoisted(() => ({
@@ -18,11 +17,59 @@ vi.mock("react", async () => {
   }
 })
 
-vi.mock("@/lib/client", () => ({
+vi.mock("@/lib/admin-client", () => ({
   default: {
     query: queryMock,
   },
 }))
+
+// Builders for admin-shape `Video` projections — the resolver normalises
+// these into the flat `WatchVideoRecord` shape before consumers see them,
+// so the mocks recreate admin's `videoBySlug` projection (locales[],
+// dubs, parents/children with relation joins) verbatim.
+function makeAdminVideo(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    documentId: "video-1",
+    slug: "jesus",
+    noIndex: false,
+    label: null,
+    images: [{ documentId: "img-1", url: "https://cdn.example/jesus.jpg" }],
+    primaryLanguage: { coreId: "529", bcp47: "en" },
+    locales: [
+      {
+        documentId: "loc-1",
+        title: "Jesus",
+        description: "A full description",
+        snippet: "The story of Jesus",
+        imageAlt: "Jesus still",
+      },
+    ],
+    parents: [],
+    children: [],
+    variants: [
+      {
+        documentId: "variant-1",
+        slug: "english",
+        hls: "https://cdn.example/jesus.m3u8",
+        published: true,
+        duration: 7674,
+        language: {
+          coreId: "529",
+          bcp47: "en",
+          slug: "english",
+          name: "English",
+        },
+        downloads: [],
+        muxVideo: { playbackId: "pb-1" },
+      },
+    ],
+    studyQuestions: [],
+    bibleCitations: [],
+    ...overrides,
+  }
+}
 
 describe("resolveWatchPage", () => {
   afterEach(() => {
@@ -30,31 +77,93 @@ describe("resolveWatchPage", () => {
     vi.resetModules()
   })
 
-  it("prefers an explicit experience when the slug matches one", async () => {
+  it("returns the homepage Experience from watchSetting", async () => {
     queryMock.mockResolvedValueOnce({
       data: {
-        experiences: [
-          {
-            documentId: "exp-1",
-            slug: "christmas",
-            isTemplate: false,
-            title: "Christmas",
+        watchSetting: {
+          documentId: "watch-settings-1",
+          homepageExperience: {
+            __typename: "ExperienceLocale",
+            id: "exp-home-1",
+            slug: "home",
+            title: "Home",
           },
-        ],
+          defaultTemplateExperience: null,
+        },
       },
     })
 
     const { resolveWatchPage } = await import("./content")
 
-    const result = await resolveWatchPage("en", "christmas")
+    const result = await resolveWatchPage("en")
 
     expect(queryMock).toHaveBeenCalledTimes(1)
     expect(result.error).toBeNull()
     expect(result.data).toMatchObject({
       kind: "experience",
       experience: {
+        slug: "home",
+      },
+    })
+  })
+
+  it("returns a missing-experience error when watchSetting has no homepageExperience", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        watchSetting: {
+          documentId: "watch-settings-1",
+          homepageExperience: null,
+          defaultTemplateExperience: null,
+        },
+      },
+    })
+
+    const { resolveWatchPage } = await import("./content")
+
+    const result = await resolveWatchPage("en")
+
+    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(result.data).toBeNull()
+    expect(result.error?.message).toBe("No experience found")
+  })
+
+  it("prefers an explicit experience when the slug doesn't match the template slug", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          watchSetting: {
+            documentId: "watch-settings-1",
+            homepageExperience: null,
+            defaultTemplateExperience: {
+              __typename: "ExperienceLocale",
+              id: "exp-template-1",
+              slug: "single-video",
+              title: "Single Video Template",
+            },
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          experienceBySlug: {
+            __typename: "ExperienceLocale",
+            id: "exp-1",
+            slug: "christmas",
+            title: "Christmas",
+          },
+        },
+      })
+
+    const { resolveWatchPage } = await import("./content")
+
+    const result = await resolveWatchPage("en", "christmas")
+
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(result.error).toBeNull()
+    expect(result.data).toMatchObject({
+      kind: "experience",
+      experience: {
         slug: "christmas",
-        isTemplate: false,
       },
     })
   })
@@ -63,61 +172,56 @@ describe("resolveWatchPage", () => {
     queryMock
       .mockResolvedValueOnce({
         data: {
-          experiences: [],
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          videos: [
-            {
-              documentId: "video-1",
-              slug: "jesus",
-              title: "Jesus",
-              snippet: "The story of Jesus",
-              description: "A full description",
-              imageAlt: "Jesus still",
-              noIndex: false,
-              images: [{ url: "https://cdn.example/jesus.jpg" }],
-              primaryLanguage: { coreId: "529" },
-              variants: [
-                {
-                  documentId: "variant-1",
-                  hls: "https://cdn.example/jesus.m3u8",
-                  published: true,
-                  language: { coreId: "529" },
-                },
-              ],
-              children: [
-                {
-                  documentId: "child-1",
-                  slug: "the-beginning",
-                  title: "The Beginning",
-                  label: "segment",
-                  images: [{ url: "https://cdn.example/child.jpg" }],
-                },
-                {
-                  documentId: "video-1",
-                  slug: "jesus",
-                  title: "Jesus",
-                  label: "self",
-                  images: [{ url: "https://cdn.example/self.jpg" }],
-                },
-              ],
-            },
-          ],
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
           watchSetting: {
             documentId: "watch-settings-1",
+            homepageExperience: null,
             defaultTemplateExperience: {
-              documentId: "exp-template-1",
+              __typename: "ExperienceLocale",
+              id: "exp-template-1",
               slug: "single-video",
-              isTemplate: true,
               title: "Single Video Template",
             },
           },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          experienceBySlug: null,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            children: [
+              {
+                child: {
+                  documentId: "child-1",
+                  slug: "the-beginning",
+                  label: "SEGMENT",
+                  locales: [{ documentId: "cl-1", title: "The Beginning" }],
+                  images: [
+                    {
+                      documentId: "img-c",
+                      url: "https://cdn.example/child.jpg",
+                    },
+                  ],
+                  dubs: [],
+                },
+              },
+              {
+                // Self-child filter: skip the entry pointing back at the
+                // current video.
+                child: {
+                  documentId: "video-1",
+                  slug: "jesus",
+                  label: null,
+                  locales: [{ documentId: "cl-2", title: "Jesus" }],
+                  images: [],
+                  dubs: [],
+                },
+              },
+            ],
+          }),
         },
       })
 
@@ -125,25 +229,10 @@ describe("resolveWatchPage", () => {
 
     const result = await resolveWatchPage("en", "jesus")
 
-    expect(print(queryMock.mock.calls[1][0].query)).toMatch(
-      /children\(pagination:\s*\{limit:\s*24\}\)/,
-    )
-    // GET_ROUTE_VIDEO must paginate variants with `limit: -1` for the same
-    // reason WatchVideoFragment does (see watch-video.test.ts): the default
-    // 10-row return would silently drop the playable variant for any video
-    // whose first 10 variants don't include the primary language, sending
-    // the watch page to the wrong locale.
-    expect(print(queryMock.mock.calls[1][0].query)).toMatch(
-      /variants\(pagination:\s*\{\s*limit:\s*-1\s*\}\)/,
-    )
-
     expect(result.error).toBeNull()
     expect(result.data).toMatchObject({
       kind: "video-template",
-      template: {
-        slug: "single-video",
-        isTemplate: true,
-      },
+      template: { slug: "single-video" },
       routeVideo: {
         slug: "jesus",
         title: "Jesus",
@@ -151,7 +240,7 @@ describe("resolveWatchPage", () => {
         relatedItems: [
           {
             title: "The Beginning",
-            label: "segment",
+            label: "SEGMENT",
             videoSlug: "the-beginning",
           },
         ],
@@ -159,49 +248,23 @@ describe("resolveWatchPage", () => {
     })
   })
 
-  it("returns a configuration error when the default template is not marked as template", async () => {
+  it("returns null/error when the video lookup succeeds but watchSetting has no defaultTemplateExperience", async () => {
     queryMock
-      .mockResolvedValueOnce({
-        data: {
-          experiences: [],
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          videos: [
-            {
-              documentId: "video-1",
-              slug: "jesus",
-              title: "Jesus",
-              snippet: null,
-              description: null,
-              imageAlt: null,
-              noIndex: false,
-              images: [],
-              primaryLanguage: { coreId: "529" },
-              variants: [
-                {
-                  documentId: "variant-1",
-                  hls: "https://cdn.example/jesus.m3u8",
-                  published: true,
-                  language: { coreId: "529" },
-                },
-              ],
-              children: [],
-            },
-          ],
-        },
-      })
       .mockResolvedValueOnce({
         data: {
           watchSetting: {
             documentId: "watch-settings-1",
-            defaultTemplateExperience: {
-              documentId: "exp-template-1",
-              slug: "single-video",
-              isTemplate: false,
-            },
+            homepageExperience: null,
+            defaultTemplateExperience: null,
           },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { experienceBySlug: null },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo(),
         },
       })
 
@@ -210,9 +273,157 @@ describe("resolveWatchPage", () => {
     const result = await resolveWatchPage("en", "jesus")
 
     expect(result.data).toBeNull()
-    expect(result.error).toBeInstanceOf(Error)
-    expect(result.error?.message).toBe(
-      "Default template experience must be marked as template.",
-    )
+    expect(result.error?.message).toBe("No experience found")
+  })
+
+  it("returns null/error when the video exists but has no playable variant", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          watchSetting: {
+            documentId: "watch-settings-1",
+            homepageExperience: null,
+            defaultTemplateExperience: {
+              __typename: "ExperienceLocale",
+              id: "exp-template-1",
+              slug: "single-video",
+              title: "Single Video Template",
+            },
+          },
+        },
+      })
+      .mockResolvedValueOnce({ data: { experienceBySlug: null } })
+      .mockResolvedValueOnce({
+        data: {
+          // Empty variants — selectPlayableVariant returns null, so
+          // normalizeRouteVideo returns null and the route bails.
+          videoBySlug: makeAdminVideo({ variants: [] }),
+        },
+      })
+
+    const { resolveWatchPage } = await import("./content")
+
+    const result = await resolveWatchPage("en", "jesus")
+
+    expect(result.data).toBeNull()
+    expect(result.error?.message).toBe("No experience found")
+  })
+
+  it("treats the template Experience's slug as the video-template route (skips Experience lookup)", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          watchSetting: {
+            documentId: "watch-settings-1",
+            homepageExperience: null,
+            defaultTemplateExperience: {
+              __typename: "ExperienceLocale",
+              id: "exp-template-1",
+              slug: "single-video",
+              title: "Single Video Template",
+            },
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({ slug: "single-video" }),
+        },
+      })
+
+    const { resolveWatchPage } = await import("./content")
+
+    const result = await resolveWatchPage("en", "single-video")
+
+    // Only watchSetting + video — no Experience lookup, because the slug
+    // matches the template's slug.
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(result.error).toBeNull()
+    expect(result.data).toMatchObject({
+      kind: "video-template",
+      template: { slug: "single-video" },
+      routeVideo: { slug: "single-video" },
+    })
+  })
+})
+
+// Locale-text fallback (content.ts:1059-1074). When admin's
+// `videoBySlug(...)` returns a record with `locales: []` for a non-`en`
+// request — common when the URL uses a language slug ("afrikaans") or
+// when no VideoLocale row exists in the requested language — the
+// resolver re-fetches with `locale: "en"` and merges the English title
+// onto the original record. Without this fallback, watch pages on
+// non-en locales render with an empty `<h1>`.
+describe("resolveWatchVideoBySlug — locale fallback", () => {
+  afterEach(() => {
+    queryMock.mockReset()
+    vi.resetModules()
+  })
+
+  it("re-fetches with locale='en' when the primary fetch returns empty locales for a non-en request", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({ locales: [] }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            locales: [
+              {
+                documentId: "loc-en",
+                title: "Jesus (English fallback)",
+                description: "English description",
+                snippet: "English snippet",
+                imageAlt: "Jesus still",
+              },
+            ],
+          }),
+        },
+      })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug("jesus", "fr")
+
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    const fallbackCall = queryMock.mock.calls[1][0] as {
+      variables: { locale: string; videoSlug: string }
+    }
+    expect(fallbackCall.variables).toEqual({
+      locale: "en",
+      videoSlug: "jesus",
+    })
+    expect(result?.video.title).toBe("Jesus (English fallback)")
+  })
+
+  it("does not re-fetch when the primary fetch already returns a locale row", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        videoBySlug: makeAdminVideo(),
+      },
+    })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug("jesus", "fr")
+
+    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(result?.video.title).toBe("Jesus")
+  })
+
+  it("does not re-fetch when the request is already for locale='en'", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        videoBySlug: makeAdminVideo({ locales: [] }),
+      },
+    })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    await resolveWatchVideoBySlug("jesus", "en")
+
+    expect(queryMock).toHaveBeenCalledTimes(1)
   })
 })

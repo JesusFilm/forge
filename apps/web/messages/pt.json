@@ -1,0 +1,146 @@
+{
+  "ExperienceError": {
+    "empty": "Nenhum conteúdo de experiência disponível.",
+    "failedToLoad": "Falha ao carregar a experiência: {message}",
+    "unexpected": "Ocorreu um erro inesperado.",
+    "notConfigured": "O serviço de conteúdo não está configurado.",
+    "noContent": "Nenhum conteúdo está disponível.",
+    "homepageMisconfigured": "A página inicial do Watch está mal configurada.",
+    "defaultTemplateMisconfigured": "O modelo padrão do Watch está mal configurado.",
+    "authFailed": "Não foi possível autenticar com o serviço de conteúdo. Entre em contato com o suporte se isso persistir."
+  },
+  "VideosPage": {
+    "title": "Todos os vídeos",
+    "placeholder": "A navegação pelo catálogo está chegando. Enquanto isso, use a busca ou uma URL específica do tópico."
+  },
+  "BibleQuotes": {
+    "title": "Citações bíblicas",
+    "share": "Compartilhar",
+    "readMore": "Leia mais...",
+    "learnMore": "Saiba mais",
+    "freeResources": "Recursos gratuitos",
+    "promoHeading": "Quer aprofundar sua compreensão da Bíblia?",
+    "joinBibleStudy": "Participe do nosso estudo bíblico",
+    "previousQuote": "Citação bíblica anterior",
+    "nextQuote": "Próxima citação bíblica"
+  },
+  "DownloadButton": {
+    "checking": "Verificando",
+    "download": "Baixar",
+    "sessionError": "Não foi possível verificar sua sessão. Tente novamente."
+  },
+  "DownloadModal": {
+    "dialogTitle": "Baixar vídeo",
+    "eyebrow": "Baixar vídeo",
+    "posterAlt": "Miniatura do vídeo",
+    "noDownloads": "Nenhum download disponível para este vídeo.",
+    "errorSessionExpired": "Sua sessão expirou. Entre novamente para baixar.",
+    "errorSessionUnavailable": "Não foi possível verificar sua sessão. Tente novamente.",
+    "errorUnavailableSource": "Download indisponível nesta fonte",
+    "tierHighest": "Máxima",
+    "tierHigh": "Alta",
+    "tierLow": "Baixa"
+  },
+  "HeroPlayerControls": {
+    "play": "Reproduzir",
+    "pause": "Pausar",
+    "seek": "Buscar",
+    "seekValue": "{current} de {total}",
+    "volume": "Volume",
+    "volumeValue": "{percent} por cento",
+    "mute": "Silenciar",
+    "unmute": "Ativar som",
+    "changeAudioLanguage": "Alterar idioma do áudio",
+    "enterFullscreen": "Tela cheia",
+    "exitFullscreen": "Sair da tela cheia"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Selecionar idioma",
+    "searchPlaceholder": "Buscar idiomas…",
+    "languages": "Idiomas",
+    "noMatches": "Nenhuma correspondência"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Idioma",
+    "dialogTitleWithSubtitles": "Idioma e legendas",
+    "languageHeading": "Idioma",
+    "subtitlesHeading": "Legendas",
+    "languageCount": "{count, plural, one {# idioma} other {# idiomas}}",
+    "requestSent": "Solicitação enviada",
+    "translateWithAi": "Traduzir com IA",
+    "noSubtitles": "Sem legendas",
+    "toggleOn": "Sim",
+    "toggleOff": "Não",
+    "close": "Fechar",
+    "apply": "Aplicar"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPISÓDIO} other {# EPISÓDIOS}}",
+    "seriesLabel": "SÉRIE · {episodes}",
+    "changeAudioLanguage": "Alterar idioma do áudio",
+    "share": "Compartilhar",
+    "languages": "Idiomas"
+  },
+  "WatchModal": {
+    "close": "Fechar"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Se você pudesse fazer uma pergunta ao criador deste vídeo, qual seria?",
+    "fallbackBody": "Tenha uma conversa privada com alguém disposto a ouvir.",
+    "questionsShort": "Perguntas",
+    "questions": "Perguntas relacionadas",
+    "askYours": "Faça a sua",
+    "chatWithPerson": "Conversar com uma pessoa",
+    "askBibleQuestion": "Fazer uma pergunta bíblica"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Tipo de mensagem",
+    "fieldLabel": "Faça uma pergunta sobre este vídeo",
+    "send": "Enviar pergunta",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Fazer uma pergunta bíblica",
+        "description": "Respostas instantâneas da Bíblia com busca por IA"
+      },
+      "prayerRequest": {
+        "label": "Pedir oração",
+        "description": "Compartilhe pelo que você quer oração"
+      },
+      "comment": {
+        "label": "Deixar um comentário",
+        "description": "Envie pensamentos sobre este vídeo"
+      },
+      "personChat": {
+        "label": "Conversar com uma pessoa",
+        "description": "Fale com alguém agora"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Compartilhar vídeo",
+    "heading": "Compartilhe este vídeo",
+    "posterAlt": "Miniatura do vídeo",
+    "shareOnFacebook": "Compartilhar no Facebook",
+    "shareOnFacebookUnavailable": "Compartilhar no Facebook (indisponível nesta versão)",
+    "shareOnX": "Compartilhar no X",
+    "shareOnXUnavailable": "Compartilhar no X (indisponível nesta versão)",
+    "shareDisabledHint": "Compartilhar requer uma página publicada — funciona quando este vídeo estiver em produção.",
+    "shareFormat": "Formato de compartilhamento",
+    "shareLinkTab": "Link de compartilhamento",
+    "embedCodeTab": "Código de incorporação",
+    "copyFailed": "Não foi possível copiar automaticamente — selecione o texto abaixo e copie manualmente.",
+    "copyLink": "Copiar link",
+    "copyCode": "Copiar código",
+    "copied": "Copiado",
+    "close": "Fechar"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transcrição",
+    "subheading": "Toque em qualquer linha para pular para aquele momento.",
+    "subtitleLanguage": "Idioma das legendas",
+    "aiSuffix": " · IA",
+    "loading": "Carregando transcrição…",
+    "unavailable": "Transcrição indisponível para esta faixa de legendas.",
+    "empty": "Nenhuma linha de transcrição encontrada."
+  }
+}

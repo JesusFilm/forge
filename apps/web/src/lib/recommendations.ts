@@ -1,30 +1,13 @@
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
-import { gql } from "@apollo/client"
-import { graphql, type ResultOf } from "@forge/graphql"
-import client from "@/lib/client"
+import { adminGraphql } from "@forge/admin-graphql"
+import client from "@/lib/admin-client"
 
-// --- SceneRecommendation types (custom extension, not in gql.tada introspection) ---
+// Admin's `sceneRecommendations` returns SceneRecommendation rows directly.
+// `videoId` is admin's cuid string (ID); web's previous Strapi-backed shape
+// carried it as an integer and is updated in this rebuild to match.
 
-export type SceneRecommendation = {
-  videoId: number
-  videoSlug: string
-  videoTitle: string
-  imageUrl: string | null
-  sceneIndex: number
-  description: string
-  startSeconds: number
-  endSeconds: number | null
-  similarity: number
-  themes: string[]
-  demographics: string[]
-  spiritualContext: string[]
-  playbackId: string
-}
-
-// Use raw gql tag — sceneRecommendations is a custom GraphQL extension type
-// not present in Strapi's auto-generated introspection schema.
-const SCENE_RECOMMENDATIONS = gql`
+const SCENE_RECOMMENDATIONS = adminGraphql(`
   query SceneRecommendations($slug: String!, $locale: String!, $limit: Int) {
     sceneRecommendations(slug: $slug, locale: $locale, limit: $limit) {
       videoId
@@ -42,35 +25,62 @@ const SCENE_RECOMMENDATIONS = gql`
       playbackId
     }
   }
-`
+`)
 
-type SceneRecommendationsResult = {
-  sceneRecommendations: SceneRecommendation[]
+export type SceneRecommendation = {
+  videoId: string
+  videoSlug: string
+  videoTitle: string
+  imageUrl: string | null
+  sceneIndex: number
+  description: string
+  startSeconds: number
+  endSeconds: number | null
+  similarity: number
+  themes: string[]
+  demographics: string[]
+  spiritualContext: string[]
+  playbackId: string
 }
 
-// --- Video lookup (uses gql.tada typed query) ---
-
-const GET_VIDEO_BY_SLUG = graphql(`
-  query GetVideoBySlug($slug: String!, $locale: I18NLocaleCode!) {
-    videos(filters: { slug: { eq: $slug } }, locale: $locale) {
-      documentId
-      title
+// Demo-recommendations page video lookup. Admin's `videoBySlug` keeps
+// locale-varying fields on `VideoLocale`; the locale-narrowed
+// `locales(locale: $locale)` arg keeps the projection to one row per
+// request. The shape mirrors content.ts's normalizeAdminVideo convention
+// of hoisting the active locale's title/description onto a flat record.
+const GET_VIDEO_BY_SLUG = adminGraphql(`
+  query GetVideoBySlug($slug: String!, $locale: String!) {
+    videoBySlug(slug: $slug) {
+      documentId: id
       slug
-      description
       images {
         url
         thumbnail
         mobileCinematicHigh
       }
+      primaryLanguage {
+        coreId
+      }
+      locales(locale: $locale) {
+        title
+        description
+      }
     }
   }
 `)
 
-export type VideoBySlug = NonNullable<
-  ResultOf<typeof GET_VIDEO_BY_SLUG>["videos"]
->[number]
-
-// --- Data fetching functions ---
+export type VideoBySlug = {
+  documentId: string
+  slug: string | null
+  title: string | null
+  description: string | null
+  images: {
+    url: string | null
+    thumbnail: string | null
+    mobileCinematicHigh: string | null
+  }[]
+  primaryLanguage: { coreId: string | null } | null
+}
 
 const fetchRecommendations = unstable_cache(
   async (
@@ -79,7 +89,7 @@ const fetchRecommendations = unstable_cache(
     limit: number,
   ): Promise<SceneRecommendation[]> => {
     try {
-      const result = await client.query<SceneRecommendationsResult>({
+      const result = await client.query({
         query: SCENE_RECOMMENDATIONS,
         variables: { slug, locale, limit },
         fetchPolicy: "no-cache",
@@ -111,7 +121,23 @@ const fetchVideoBySlug = unstable_cache(
         variables: { slug, locale },
         fetchPolicy: "no-cache",
       })
-      return result.data?.videos?.[0] ?? null
+      const raw = result.data?.videoBySlug
+      if (!raw || !raw.documentId) return null
+      const localeRow = raw.locales?.[0] ?? null
+      return {
+        documentId: raw.documentId,
+        slug: raw.slug ?? null,
+        title: localeRow?.title ?? null,
+        description: localeRow?.description ?? null,
+        images: (raw.images ?? []).map((img) => ({
+          url: img.url ?? null,
+          thumbnail: img.thumbnail ?? null,
+          mobileCinematicHigh: img.mobileCinematicHigh ?? null,
+        })),
+        primaryLanguage: raw.primaryLanguage
+          ? { coreId: raw.primaryLanguage.coreId ?? null }
+          : null,
+      }
     } catch {
       return null
     }

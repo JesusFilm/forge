@@ -6,12 +6,11 @@ import { hexToRgba, TEXT_ON_OVERLAY } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useTypography } from "../../hooks/useTypography"
 import { card, carousel, feedback, layout, text } from "../../styles/shared"
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { AdminBlock } from "../../lib/queries"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type NavItem = {
-  id: string
   contentId: string
   title: string
   category?: string | null
@@ -20,7 +19,7 @@ type NavItem = {
 }
 
 export interface NavigationCarouselRendererProps {
-  section: NormalizedBlock
+  section: AdminBlock
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -34,8 +33,9 @@ export function NavigationCarouselRenderer({
   section,
 }: NavigationCarouselRendererProps) {
   const typography = useTypography()
-  const heading = (section.navHeading as string | null) ?? "Stories"
-  const items = (section.items as NavItem[] | undefined) ?? []
+  const s = section as Record<string, unknown>
+  const heading = "Stories"
+  const items = (s.items as NavItem[] | undefined) ?? []
 
   if (items.length === 0) return null
 
@@ -61,7 +61,7 @@ export function NavigationCarouselRenderer({
 
           return (
             <Pressable
-              key={`navCarousel-${item.id}-${index}`}
+              key={`nav-${item.contentId}-${index}`}
               style={({ pressed }) => [
                 card.base,
                 styles.localCard,
@@ -85,7 +85,7 @@ export function NavigationCarouselRenderer({
                   style={[StyleSheet.absoluteFill, styles.cardImage]}
                   contentFit="cover"
                   priority="low"
-                  recyclingKey={`nav-${item.id}`}
+                  recyclingKey={`nav-${item.contentId}`}
                 />
               )}
               <LinearGradient

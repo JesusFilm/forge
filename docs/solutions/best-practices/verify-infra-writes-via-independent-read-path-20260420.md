@@ -237,6 +237,7 @@ The same retrospective prompts in §Prevention apply.
 
 - [`platform/railway-mcp-staged-config-never-commits-20260420.md`](../platform/railway-mcp-staged-config-never-commits-20260420.md) — the Railway-specific fix.
 - [`deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`](../deployment/railway-dashboard-override-shadows-railway-toml-20260429.md) — second worked instance of the meta-pattern; `configFile: null` as the canonical consumer-owned read.
+- [`mocked-shape-vs-real-contract-discipline-20260506.md`](mocked-shape-vs-real-contract-discipline-20260506.md) — META doc that names the rule and tracks all instances. This doc is the infrastructure-write surface of the same meta-pattern: mocked-success ≠ real success; the consumer-owned read path proves the contract.
 - `docs/plans/2026-04-29-004-fix-admin-prod-migration-recovery-plan.md` — recovery plan that exercised the meta-pattern in practice.
 - PR #804 — feat-104 admin Railway provisioning (where this surfaced).
 - PR #807 — feat-105 SSO ticket + the Railway-specific solution doc.

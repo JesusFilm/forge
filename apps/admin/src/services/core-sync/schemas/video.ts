@@ -11,8 +11,6 @@ export const CoreVideoSchema = z.object({
   origin: z
     .object({
       id: z.string().min(1),
-      name: z.string(),
-      description: z.string().nullable(),
     })
     .nullable(),
   title: z.array(CoreLocalizedValueSchema),
@@ -38,35 +36,6 @@ export const CoreVideoSchema = z.object({
     }),
   ),
   keywords: z.array(z.object({ id: z.string().min(1) })),
-  images: z.array(
-    z.object({
-      id: z.string().min(1),
-      aspectRatio: z.string().nullable(),
-      mobileCinematicHigh: z.string().nullable(),
-      mobileCinematicLow: z.string().nullable(),
-      mobileCinematicVeryLow: z.string().nullable(),
-      thumbnail: z.string().nullable(),
-      videoStill: z.string().nullable(),
-      blurhash: z.string().nullable(),
-      url: z.string().nullable(),
-    }),
-  ),
-  subtitles: z.array(
-    z.object({
-      id: z.string().min(1),
-      primary: z.boolean().nullable(),
-      vttSrc: z.string().nullable(),
-      srtSrc: z.string().nullable(),
-      value: z.string().nullable(),
-      language: z.object({ id: z.string().min(1) }).nullable(),
-      videoEdition: z
-        .object({
-          id: z.string().min(1),
-          name: z.string().nullable(),
-        })
-        .nullable(),
-    }),
-  ),
   children: z.array(z.object({ id: z.string().min(1) })),
   locked: z.boolean(),
   noIndex: z.boolean(),

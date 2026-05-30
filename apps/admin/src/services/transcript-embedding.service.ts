@@ -1,15 +1,11 @@
-// Transcript embedding indexer — reads manager's embeddings artifacts
-// from S3 and writes VideoTranscript + VideoTranscriptChunk rows into
-// admin's Postgres with vectors copied verbatim from the artifact.
+// Transcript embedding indexer — writes VideoTranscript +
+// VideoTranscriptChunk rows into admin's Postgres with vectors supplied
+// by Mastra's transcript embedding workflow.
 //
-// Source: apps/manager's `{assetId}/embeddings.json`. assetId is the
-// integer cms videos.id as a string; admin resolves Video.coreId →
-// cmsVideoId via the mapping loaded by core-id-mapping.service.ts.
-//
-// R2 DIVERGENCE FROM R1: manager already called the embedding provider
-// during enrichment and stored each chunk's vector in the artifact. R2
-// trusts those vectors — no OpenRouter round-trip, no regeneration.
-// See docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md.
+// Admin owns storage and retrieval; Mastra owns chunk planning and
+// provider calls. The writer remains deliberately storage-focused: it
+// validates dimensions/text, upserts the transcript parent, prunes stale
+// chunks, and bulk-inserts chunk vectors into the existing pgvector table.
 //
 // ABAC: canWriteDerived gates entry. The backfill workflow runs as
 // SYSTEM; ADMIN principals may also invoke for incident response.
@@ -18,15 +14,31 @@
 // `VideoTranscript` and overwrites child chunks. A pre-transaction
 // prune removes chunks whose chunkIndex is outside the incoming range
 // so re-chunking with fewer segments doesn't leave orphans.
+//
+// Stage 3 of the embed-backfill performance plan (feat-117) collapses
+// the per-chunk write loop into ONE bulk SQL statement per
+// `(video, edition, language)` target — `INSERT INTO
+// video_transcript_chunk … SELECT * FROM unnest(9 parallel arrays)
+// ON CONFLICT (transcript_id, chunk_index) DO UPDATE`. Per-row Way A
+// `::vector(1536)` cast at the SELECT seam (NOT a `::vector(1536)[]`
+// parameter cast — that array-input parser is less-trodden code; Way A
+// keeps the cast at one site per row). See
+// docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md.
 
-import { type PrismaClient } from "@prisma/client"
+import { randomUUID } from "node:crypto"
+
+import { Prisma, type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { canWriteDerived } from "@/auth/permissions"
-import { toPgVector } from "@/db/pgvector"
 import {
-  readEmbeddingsArtifact,
-  type EmbeddingsResult,
-} from "@/services/manager-artifacts.service"
+  assertParallelArrayLengthsMatch,
+  toPgArray,
+  toPgVector,
+} from "@/db/pgvector"
+import {
+  isPrismaRuntimeError,
+  sanitizePrismaErrorMessage,
+} from "@/db/prisma-errors"
 
 /**
  * Admin stores `text-embedding-3-small` vectors at 1536 dimensions
@@ -37,11 +49,11 @@ import {
 export const EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS = 1536
 
 /**
- * Admin's expected embedding model. Manager may report the OpenRouter-
- * prefixed name (`openai/text-embedding-3-small`) or the bare OpenAI
- * name; both are accepted. A mismatch is logged as a warning but does
- * not reject the artifact — R2's whole premise is reusing manager's
- * vectors as-is.
+ * Admin's expected embedding model. Mastra may report the
+ * provider-prefixed name (`openai/text-embedding-3-small`) or the bare
+ * OpenAI name; both are accepted. A mismatch is logged as a warning but
+ * does not reject the payload here; intentional model replacement must
+ * use the ingest service's explicit generation modes.
  */
 const ACCEPTED_MODEL_STAMPS = new Set<string>([
   "openai/text-embedding-3-small",
@@ -53,10 +65,10 @@ const ACCEPTED_MODEL_STAMPS = new Set<string>([
 const ACCEPTED_MODEL_STAMPS_LIST = Array.from(ACCEPTED_MODEL_STAMPS)
 
 /**
- * Prisma's default interactive-transaction timeout is 5s. Long
- * transcripts chunk into 30+ segments; 5s is too tight once chunk
- * upserts + per-row `::vector` writes are accounted for. 30s matches
- * R1's scene indexer.
+ * Prisma's default interactive-transaction timeout is 5s. Stage 3
+ * collapses chunk upserts to a single bulk INSERT, but the 30s ceiling
+ * is preserved for safety against one-off pgvector planner regressions
+ * on large fixture sets. Matches R1's scene indexer.
  */
 const TRANSACTION_TIMEOUT_MS = 30_000
 
@@ -67,12 +79,87 @@ export type IndexEditionTranscriptInput = {
   /** BCP-47 tag stamped on the new `VideoTranscript` row. */
   language: string
   user: Principal | null
-  /** Override for tests — injects a pre-loaded artifact instead of S3 read. */
-  artifactOverride?: EmbeddingsResult
-  /** Override for tests — use this cmsVideoId instead of the mapping lookup. */
-  cmsVideoIdOverride?: number
-  /** Required when artifactOverride is not set. */
-  cmsVideoId?: number
+  /**
+   * Pre-loaded transcript chunks and vectors. Mastra ingest provides this
+   * through `writeTranscriptEmbeddingPayload`; tests can also inject a
+   * fixture without touching provider or S3 boundaries.
+   */
+  loadedArtifact: EmbeddingsResult
+  provenance?: TranscriptEmbeddingProvenance
+}
+
+export type TranscriptEmbeddingGenerationMode =
+  | "idempotent"
+  | "repair"
+  | "force"
+  | "model-upgrade"
+
+export type TranscriptEmbeddingProvenance = {
+  sourceArtifactKey?: string
+  sourceContentHash?: string
+  sourceProvider?: string
+  sourceGeneratedAt?: string
+  generationMode?: TranscriptEmbeddingGenerationMode
+  mastraRunId?: string
+  chunkingVersion?: string
+}
+
+export type TranscriptEmbeddingPayloadChunk = {
+  chunkIndex: number
+  chunkId: string
+  text: string
+  tokenCount: number
+  startSeconds?: number
+  endSeconds?: number
+  embedding: number[]
+}
+
+export type TranscriptEmbeddingArtifactChunk = {
+  chunkId: string
+  text: string
+  embedding: number[]
+  metadata: {
+    tokenCount: number
+    startTime?: number
+    endTime?: number
+  }
+}
+
+export type EmbeddingsResult = {
+  model: string
+  dimensions: number
+  chunks: TranscriptEmbeddingArtifactChunk[]
+  averagedEmbedding: number[]
+  metadata: {
+    totalChunks: number
+    totalTokens: number
+    chunkingStrategy: {
+      type: "segment-aware" | "plain-text"
+      maxChunkTokens: number
+      overlapTokens: number
+    }
+    embeddingDimensions: number
+    generatedAt: string
+  }
+}
+
+export type TranscriptEmbeddingPayloadInput = {
+  editionId: string
+  videoId: string
+  coreId: string
+  language: string
+  user: Principal | null
+  model: string
+  dimensions: number
+  chunks: readonly TranscriptEmbeddingPayloadChunk[]
+  chunking: {
+    type: "segment-aware" | "plain-text"
+    maxChunkTokens: number
+    overlapTokens: number
+  }
+  totalTokens: number
+  generatedAt: string
+  provenance?: TranscriptEmbeddingProvenance
 }
 
 export type IndexEditionTranscriptResult = {
@@ -85,64 +172,22 @@ export type IndexEditionTranscriptResult = {
   dimensions: number
 }
 
+export type WriteTranscriptEmbeddingPayloadResult = IndexEditionTranscriptResult
+
 export class TranscriptIndexError extends Error {
   constructor(
     readonly code:
       | "forbidden"
-      | "missing_cms_video_id"
       | "dimension_mismatch"
       | "empty_chunk_text"
-      | "storage_failed",
+      | "storage_failed"
+      | "artifact_invalid",
     message: string,
     readonly cause?: unknown,
   ) {
     super(message)
     this.name = "TranscriptIndexError"
   }
-}
-
-/**
- * Prisma raw SQL errors (especially `$executeRaw` failures on vector
- * writes) can surface the full statement text and parameter values in
- * `error.message`. Our vector literal is a 1536-element float string;
- * letting it round-trip through `outcome.reason` in the workflow and
- * out the GraphQL mutation response would leak the vector into the
- * caller's payload. Mirrors the zod-echo hardening already applied to
- * `readEmbeddingsArtifact` —
- * see docs/solutions/best-practices/zod-validation-errors-must-not-echo-user-controlled-input-20260420.md.
- *
- * Detection is shape-based rather than `instanceof`-based because the
- * Prisma error class tree differs across runtime/dev and we don't
- * want to import @prisma/client at the service boundary just to
- * `instanceof` a specific subclass. `code` / `meta` presence is
- * stable across Prisma 6.x.
- */
-function isPrismaRuntimeError(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false
-  const err = error as { name?: unknown; code?: unknown }
-  if (typeof err.name === "string" && err.name.startsWith("PrismaClient")) {
-    return true
-  }
-  // Prisma P-codes (P2002, P2025, etc.) are the engine's stable
-  // error code surface. Any P-prefixed string is a Prisma error.
-  if (typeof err.code === "string" && /^P\d{4}$/.test(err.code)) {
-    return true
-  }
-  return false
-}
-
-function sanitizePrismaErrorMessage(error: unknown): string {
-  const name =
-    typeof (error as { name?: unknown }).name === "string"
-      ? (error as { name: string }).name
-      : "PrismaError"
-  const code =
-    typeof (error as { code?: unknown }).code === "string"
-      ? (error as { code: string }).code
-      : "unknown"
-  // Explicitly do NOT include error.message — it can carry the raw
-  // SQL statement with a bound vector literal.
-  return `${name}(${code}) during transcript-embedding write`
 }
 
 // Chunk index uniqueness is not asserted: the indexer derives chunkIndex
@@ -187,9 +232,109 @@ function logModelStampDriftIfAny(artifactModel: string): void {
       event: "transcript_model_mismatch",
       artifactModel,
       expected: ACCEPTED_MODEL_STAMPS_LIST,
-      note: "reusing vector regardless; re-embedding is R2 scope-out",
+      note: "storing supplied vector; model upgrades require an explicit ingest mode",
     }),
   )
+}
+
+function assertContiguousChunkIndexes(
+  chunks: readonly TranscriptEmbeddingPayloadChunk[],
+): void {
+  const seen = new Set<number>()
+  for (const chunk of chunks) {
+    if (seen.has(chunk.chunkIndex)) {
+      throw new TranscriptIndexError(
+        "artifact_invalid",
+        `duplicate chunkIndex=${chunk.chunkIndex}; refusing to index`,
+      )
+    }
+    seen.add(chunk.chunkIndex)
+  }
+
+  const sorted = [...chunks].sort((a, b) => a.chunkIndex - b.chunkIndex)
+  for (let i = 0; i < sorted.length; i += 1) {
+    if (sorted[i]!.chunkIndex !== i) {
+      throw new TranscriptIndexError(
+        "artifact_invalid",
+        `chunk indexes must be contiguous from 0; expected ${i}, got ${sorted[i]!.chunkIndex}`,
+      )
+    }
+  }
+}
+
+function toEmbeddingsResult(
+  input: TranscriptEmbeddingPayloadInput,
+): EmbeddingsResult {
+  assertContiguousChunkIndexes(input.chunks)
+  const chunks = [...input.chunks]
+    .sort((a, b) => a.chunkIndex - b.chunkIndex)
+    .map((chunk) => ({
+      chunkId: chunk.chunkId,
+      text: chunk.text,
+      embedding: chunk.embedding,
+      metadata: {
+        tokenCount: chunk.tokenCount,
+        ...(chunk.startSeconds == null
+          ? {}
+          : { startTime: chunk.startSeconds }),
+        ...(chunk.endSeconds == null ? {} : { endTime: chunk.endSeconds }),
+      },
+    }))
+
+  return {
+    model: input.model,
+    dimensions: input.dimensions,
+    chunks,
+    averagedEmbedding: [],
+    metadata: {
+      totalChunks: chunks.length,
+      totalTokens: input.totalTokens,
+      chunkingStrategy: input.chunking,
+      embeddingDimensions: input.dimensions,
+      generatedAt: input.generatedAt,
+    },
+  }
+}
+
+export async function writeTranscriptEmbeddingPayload(
+  prisma: PrismaClient,
+  input: TranscriptEmbeddingPayloadInput,
+): Promise<WriteTranscriptEmbeddingPayloadResult> {
+  return indexEditionTranscript(prisma, {
+    editionId: input.editionId,
+    videoId: input.videoId,
+    coreId: input.coreId,
+    language: input.language,
+    user: input.user,
+    loadedArtifact: toEmbeddingsResult(input),
+    provenance: input.provenance,
+  })
+}
+
+export async function writeTranscriptEmbeddingPayloadInTransaction(
+  tx: Prisma.TransactionClient,
+  input: TranscriptEmbeddingPayloadInput,
+): Promise<WriteTranscriptEmbeddingPayloadResult> {
+  const txBackedClient = new Proxy(tx, {
+    get(target, prop, receiver) {
+      if (prop === "$transaction") {
+        return async <T>(
+          fn: (innerTx: Prisma.TransactionClient) => Promise<T>,
+        ) => fn(tx)
+      }
+      return Reflect.get(target, prop, receiver)
+    },
+  }) as unknown as PrismaClient
+
+  return indexEditionTranscript(txBackedClient, {
+    editionId: input.editionId,
+    videoId: input.videoId,
+    coreId: input.coreId,
+    language: input.language,
+    user: input.user,
+    loadedArtifact: toEmbeddingsResult(input),
+    provenance: input.provenance,
+  })
 }
 
 /**
@@ -209,19 +354,7 @@ export async function indexEditionTranscript(
     )
   }
 
-  let artifact: EmbeddingsResult
-  if (input.artifactOverride !== undefined) {
-    artifact = input.artifactOverride
-  } else {
-    const cmsVideoId = input.cmsVideoIdOverride ?? input.cmsVideoId
-    if (cmsVideoId === undefined) {
-      throw new TranscriptIndexError(
-        "missing_cms_video_id",
-        `cmsVideoId is required to fetch the embeddings artifact for coreId=${input.coreId}`,
-      )
-    }
-    artifact = await readEmbeddingsArtifact(String(cmsVideoId))
-  }
+  const artifact = input.loadedArtifact
 
   if (artifact.chunks.length === 0) {
     return {
@@ -271,6 +404,31 @@ export async function indexEditionTranscript(
             totalChunks: artifact.metadata.totalChunks,
             totalTokens: artifact.metadata.totalTokens,
             generatedAt: new Date(artifact.metadata.generatedAt),
+            ...(input.provenance?.sourceArtifactKey
+              ? { sourceArtifactKey: input.provenance.sourceArtifactKey }
+              : {}),
+            ...(input.provenance?.sourceContentHash
+              ? { sourceContentHash: input.provenance.sourceContentHash }
+              : {}),
+            ...(input.provenance?.sourceProvider
+              ? { sourceProvider: input.provenance.sourceProvider }
+              : {}),
+            ...(input.provenance?.sourceGeneratedAt
+              ? {
+                  sourceGeneratedAt: new Date(
+                    input.provenance.sourceGeneratedAt,
+                  ),
+                }
+              : {}),
+            ...(input.provenance?.generationMode
+              ? { generationMode: input.provenance.generationMode }
+              : {}),
+            ...(input.provenance?.mastraRunId
+              ? { mastraRunId: input.provenance.mastraRunId }
+              : {}),
+            ...(input.provenance?.chunkingVersion
+              ? { chunkingVersion: input.provenance.chunkingVersion }
+              : {}),
           },
           update: {
             // Refresh the denormalized `videoId` in case the edition has
@@ -286,6 +444,15 @@ export async function indexEditionTranscript(
             totalChunks: artifact.metadata.totalChunks,
             totalTokens: artifact.metadata.totalTokens,
             generatedAt: new Date(artifact.metadata.generatedAt),
+            sourceArtifactKey: input.provenance?.sourceArtifactKey ?? null,
+            sourceContentHash: input.provenance?.sourceContentHash ?? null,
+            sourceProvider: input.provenance?.sourceProvider ?? null,
+            sourceGeneratedAt: input.provenance?.sourceGeneratedAt
+              ? new Date(input.provenance.sourceGeneratedAt)
+              : null,
+            generationMode: input.provenance?.generationMode ?? null,
+            mastraRunId: input.provenance?.mastraRunId ?? null,
+            chunkingVersion: input.provenance?.chunkingVersion ?? null,
           },
           select: { id: true },
         })
@@ -302,48 +469,111 @@ export async function indexEditionTranscript(
         })
         chunksPruned = pruneResult.count
 
-        for (let i = 0; i < artifact.chunks.length; i += 1) {
-          const chunk = artifact.chunks[i]!
-          const row = await tx.videoTranscriptChunk.upsert({
-            where: {
-              transcriptId_chunkIndex: {
-                transcriptId: transcript.id,
-                chunkIndex: i,
-              },
-            },
-            create: {
-              transcriptId: transcript.id,
-              language: input.language,
-              chunkIndex: i,
-              chunkId: chunk.chunkId,
-              text: chunk.text,
-              tokenCount: chunk.metadata.tokenCount,
-              startSeconds: chunk.metadata.startTime ?? null,
-              endSeconds: chunk.metadata.endTime ?? null,
-              model: artifact.model,
-              dimensions: artifact.dimensions,
-            },
-            update: {
-              language: input.language,
-              chunkId: chunk.chunkId,
-              text: chunk.text,
-              tokenCount: chunk.metadata.tokenCount,
-              startSeconds: chunk.metadata.startTime ?? null,
-              endSeconds: chunk.metadata.endTime ?? null,
-              model: artifact.model,
-              dimensions: artifact.dimensions,
-            },
-            select: { id: true },
-          })
+        // ─── Stage 3 (feat-117) — Bulk chunk INSERT … ON CONFLICT … DO UPDATE ─
+        // Build 12 parallel arrays. text[] params unfold via
+        // `u.<col>::<type>` per-row casts at the SELECT seam (Way A
+        // discipline). The vector cast lives on the SELECT seam too —
+        // `u.embedding_text::vector(1536)` — NOT `::vector(1536)[]` on
+        // the parameter (the array-input parser is less-trodden code;
+        // single-row casts are documented and well-exercised).
+        const ids = artifact.chunks.map(() => randomUUID())
+        const transcriptIds = artifact.chunks.map(() => transcript.id)
+        const languages = artifact.chunks.map(() => input.language)
+        const chunkIndexes = artifact.chunks.map((_, i) => String(i))
+        const chunkIds = artifact.chunks.map((c) => c.chunkId)
+        const texts = artifact.chunks.map((c) => c.text)
+        const tokenCounts = artifact.chunks.map((c) =>
+          String(c.metadata.tokenCount),
+        )
+        const startSeconds = artifact.chunks.map((c) =>
+          c.metadata.startTime == null ? null : String(c.metadata.startTime),
+        )
+        const endSeconds = artifact.chunks.map((c) =>
+          c.metadata.endTime == null ? null : String(c.metadata.endTime),
+        )
+        const models = artifact.chunks.map(() => artifact.model)
+        const dimensionsArr = artifact.chunks.map(() =>
+          String(artifact.dimensions),
+        )
+        const vectorTexts = artifact.chunks.map((c) => toPgVector(c.embedding))
 
-          await tx.$executeRaw`
-          UPDATE video_transcript_chunk
-          SET embedding = ${toPgVector(chunk.embedding)}::vector,
-              updated_at = NOW()
-          WHERE id = ${row.id}
+        assertParallelArrayLengthsMatch(
+          artifact.chunks.length,
+          [
+            { name: "ids", length: ids.length },
+            { name: "transcriptIds", length: transcriptIds.length },
+            { name: "languages", length: languages.length },
+            { name: "chunkIndexes", length: chunkIndexes.length },
+            { name: "chunkIds", length: chunkIds.length },
+            { name: "texts", length: texts.length },
+            { name: "tokenCounts", length: tokenCounts.length },
+            { name: "startSeconds", length: startSeconds.length },
+            { name: "endSeconds", length: endSeconds.length },
+            { name: "models", length: models.length },
+            { name: "dimensionsArr", length: dimensionsArr.length },
+            { name: "vectorTexts", length: vectorTexts.length },
+          ],
+          (msg) =>
+            new TranscriptIndexError(
+              "artifact_invalid",
+              `internal: ${msg} (transcript chunk INSERT)`,
+            ),
+        )
+
+        const writeAffected = await tx.$executeRaw`
+          INSERT INTO video_transcript_chunk (
+            id, transcript_id, language, chunk_index, chunk_id,
+            text, token_count, start_seconds, end_seconds,
+            model, dimensions, embedding,
+            created_at, updated_at
+          )
+          SELECT
+            u.id,
+            u.transcript_id,
+            u.language,
+            u.chunk_index::int,
+            u.chunk_id,
+            u.text,
+            u.token_count::int,
+            u.start_seconds::double precision,
+            u.end_seconds::double precision,
+            u.model,
+            u.dimensions::int,
+            u.embedding_text::vector(1536),
+            NOW(),
+            NOW()
+          FROM unnest(
+            ${toPgArray(ids)}::text[],
+            ${toPgArray(transcriptIds)}::text[],
+            ${toPgArray(languages)}::text[],
+            ${toPgArray(chunkIndexes)}::text[],
+            ${toPgArray(chunkIds)}::text[],
+            ${toPgArray(texts)}::text[],
+            ${toPgArray(tokenCounts)}::text[],
+            ${toPgArray(startSeconds)}::text[],
+            ${toPgArray(endSeconds)}::text[],
+            ${toPgArray(models)}::text[],
+            ${toPgArray(dimensionsArr)}::text[],
+            ${toPgArray(vectorTexts)}::text[]
+          ) AS u(
+            id, transcript_id, language, chunk_index, chunk_id,
+            text, token_count, start_seconds, end_seconds,
+            model, dimensions, embedding_text
+          )
+          ON CONFLICT (transcript_id, chunk_index)
+          DO UPDATE SET
+            language      = EXCLUDED.language,
+            chunk_id      = EXCLUDED.chunk_id,
+            text          = EXCLUDED.text,
+            token_count   = EXCLUDED.token_count,
+            start_seconds = EXCLUDED.start_seconds,
+            end_seconds   = EXCLUDED.end_seconds,
+            model         = EXCLUDED.model,
+            dimensions    = EXCLUDED.dimensions,
+            embedding     = EXCLUDED.embedding,
+            updated_at    = NOW()
         `
-          embeddingsWritten += 1
-        }
+        embeddingsWritten = Number(writeAffected)
       },
       { timeout: TRANSACTION_TIMEOUT_MS },
     )
@@ -370,7 +600,7 @@ export async function indexEditionTranscript(
       )
       throw new TranscriptIndexError(
         "storage_failed",
-        sanitizePrismaErrorMessage(error),
+        sanitizePrismaErrorMessage(error, "transcript-embedding write"),
         error,
       )
     }

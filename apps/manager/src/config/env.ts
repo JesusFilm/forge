@@ -1,8 +1,6 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
-const MOCK_STRAPI_URL = "http://mock-cms.invalid"
-const MOCK_STRAPI_API_TOKEN = "mock-api-token"
 const MOCK_SESSION_SECRET_SENTINEL = "__manager_mock_session_secret_required__"
 
 function assertDistinctConfiguredSecrets(
@@ -18,7 +16,11 @@ function assertDistinctConfiguredSecrets(
 
 export const env = createEnv({
   server: {
-    MANAGER_DATA_MODE: z.enum(["live", "mock"]).default("live"),
+    NODE_ENV: z
+      .enum(["development", "test", "production"])
+      .default("development"),
+    MANAGER_DATA_MODE: z.enum(["admin", "mock"]).default("admin"),
+    MANAGER_BACKEND_MODE: z.enum(["admin", "mock"]).optional(),
 
     // Mux
     MUX_TOKEN_ID: z.string().min(1),
@@ -37,11 +39,6 @@ export const env = createEnv({
     RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
 
-    // Strapi CMS
-    STRAPI_URL: z.string().url().default(MOCK_STRAPI_URL),
-    STRAPI_API_TOKEN: z.string().min(1).default(MOCK_STRAPI_API_TOKEN),
-    STRAPI_INTERNAL_API_TOKEN: z.string().min(1).optional(),
-
     // Mock CMS mode
     MANAGER_MOCK_SESSION_SECRET: z
       .string()
@@ -57,6 +54,15 @@ export const env = createEnv({
 
     // API authentication — required for production
     MANAGER_API_KEY: z.string().min(1).optional(),
+    MANAGER_BASE_URL: z.string().url().optional(),
+    MANAGER_SESSION_SECRET: z.string().min(32).optional(),
+    AUTH_ISSUER_URL: z.string().url().optional(),
+    AUTH_MANAGER_CLIENT_ID: z.string().min(1).optional(),
+    AUTH_MANAGER_CLIENT_SECRET: z.string().min(1).optional(),
+    AUTH_MANAGER_SERVICE_CLIENT_ID: z.string().min(1).optional(),
+    AUTH_MANAGER_SERVICE_CLIENT_SECRET: z.string().min(1).optional(),
+    ADMIN_MANAGER_API_KEY: z.string().min(1).optional(),
+    ADMIN_MANAGER_SESSION_URL: z.string().url().optional(),
 
     // Admin embed-trigger proxy (plan 006) — manager exposes
     // /api/admin-embeds/{scene,transcript} which forward to admin's
@@ -78,6 +84,28 @@ export const env = createEnv({
       .enum(["true", "false"])
       .default("false"),
 
+    // Mastra service launchers. Transcript embedding runs are launched from
+    // manager after transcript.json exists; Mastra owns chunking and vectors.
+    MASTRA_BASE_URL: z.string().url().optional(),
+    MASTRA_SERVICE_API_KEY: z.string().min(1).optional(),
+    MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(120_000),
+
+    // feat-119 PR2 — admin → manager outbound enrichment trigger.
+    // Manager exposes /api/admin-trigger/{scene-analysis,transcript}
+    // which admin's `triggerManagerEnrichment` GraphQL mutation calls
+    // when an operator has decided (after reading PR1's
+    // `missingArtifacts` list) to backfill upstream pipeline output.
+    // CSV of accepted bearer keys; mirrors admin's WORKFLOW_API_KEYS
+    // shape so the receiver-side rotation pattern is symmetric.
+    // Optional at boot so manager keeps starting in environments that
+    // don't have the trigger endpoint configured; the route handlers
+    // return 503 if invoked without this set.
+    ADMIN_TRIGGER_API_KEYS: z.string().min(1).optional(),
+
     // ElevenLabs transcription (optional unless ElevenLabs routing is used)
     ELEVENLABS_REQUEST_TIMEOUT_MS: z.coerce
       .number()
@@ -95,7 +123,9 @@ export const env = createEnv({
   },
   skipValidation: !!process.env.CI,
   runtimeEnv: {
-    MANAGER_DATA_MODE: process.env.MANAGER_DATA_MODE ?? "live",
+    NODE_ENV: process.env.NODE_ENV,
+    MANAGER_DATA_MODE: process.env.MANAGER_DATA_MODE ?? "admin",
+    MANAGER_BACKEND_MODE: process.env.MANAGER_BACKEND_MODE,
     MUX_TOKEN_ID: process.env.MUX_TOKEN_ID,
     MUX_TOKEN_SECRET: process.env.MUX_TOKEN_SECRET,
     MUX_SIGNING_KEY: process.env.MUX_SIGNING_KEY,
@@ -109,15 +139,22 @@ export const env = createEnv({
     RAILWAY_S3_BUCKET: process.env.RAILWAY_S3_BUCKET,
     RAILWAY_S3_ACCESS_KEY_ID: process.env.RAILWAY_S3_ACCESS_KEY_ID,
     RAILWAY_S3_SECRET_ACCESS_KEY: process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
-    STRAPI_URL: process.env.STRAPI_URL ?? MOCK_STRAPI_URL,
-    STRAPI_API_TOKEN: process.env.STRAPI_API_TOKEN ?? MOCK_STRAPI_API_TOKEN,
-    STRAPI_INTERNAL_API_TOKEN: process.env.STRAPI_INTERNAL_API_TOKEN,
     MANAGER_MOCK_SESSION_SECRET:
       process.env.MANAGER_MOCK_SESSION_SECRET ?? MOCK_SESSION_SECRET_SENTINEL,
     MANAGER_MOCK_DATA_PATH:
       process.env.MANAGER_MOCK_DATA_PATH ?? ".tmp/mock-cms/store.json",
     WORKFLOW_API_KEY: process.env.WORKFLOW_API_KEY,
     MANAGER_API_KEY: process.env.MANAGER_API_KEY,
+    MANAGER_BASE_URL: process.env.MANAGER_BASE_URL,
+    MANAGER_SESSION_SECRET: process.env.MANAGER_SESSION_SECRET,
+    AUTH_ISSUER_URL: process.env.AUTH_ISSUER_URL,
+    AUTH_MANAGER_CLIENT_ID: process.env.AUTH_MANAGER_CLIENT_ID,
+    AUTH_MANAGER_CLIENT_SECRET: process.env.AUTH_MANAGER_CLIENT_SECRET,
+    AUTH_MANAGER_SERVICE_CLIENT_ID: process.env.AUTH_MANAGER_SERVICE_CLIENT_ID,
+    AUTH_MANAGER_SERVICE_CLIENT_SECRET:
+      process.env.AUTH_MANAGER_SERVICE_CLIENT_SECRET,
+    ADMIN_MANAGER_API_KEY: process.env.ADMIN_MANAGER_API_KEY,
+    ADMIN_MANAGER_SESSION_URL: process.env.ADMIN_MANAGER_SESSION_URL,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     ADMIN_EMBED_TRIGGER_API_KEY: process.env.ADMIN_EMBED_TRIGGER_API_KEY,
     AGENTIC_BASE_URL: process.env.AGENTIC_BASE_URL,
@@ -126,6 +163,11 @@ export const env = createEnv({
     AGENTIC_REQUEST_TIMEOUT_MS: process.env.AGENTIC_REQUEST_TIMEOUT_MS,
     AGENTIC_SUBTITLE_ENRICHMENT_ENABLED:
       process.env.AGENTIC_SUBTITLE_ENRICHMENT_ENABLED ?? "false",
+    MASTRA_BASE_URL: process.env.MASTRA_BASE_URL,
+    MASTRA_SERVICE_API_KEY: process.env.MASTRA_SERVICE_API_KEY,
+    MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS:
+      process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
+    ADMIN_TRIGGER_API_KEYS: process.env.ADMIN_TRIGGER_API_KEYS,
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:
       process.env.ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS,
@@ -133,18 +175,11 @@ export const env = createEnv({
   },
 })
 
-if (env.MANAGER_DATA_MODE === "live") {
-  if (!process.env.STRAPI_URL) {
-    throw new Error("STRAPI_URL is required when MANAGER_DATA_MODE=live")
-  }
-
-  if (!process.env.STRAPI_API_TOKEN) {
-    throw new Error("STRAPI_API_TOKEN is required when MANAGER_DATA_MODE=live")
-  }
-}
+const resolvedManagerBackendMode =
+  env.MANAGER_BACKEND_MODE ?? env.MANAGER_DATA_MODE
 
 if (
-  env.MANAGER_DATA_MODE === "mock" &&
+  resolvedManagerBackendMode === "mock" &&
   env.MANAGER_MOCK_SESSION_SECRET === MOCK_SESSION_SECRET_SENTINEL
 ) {
   throw new Error(
@@ -164,3 +199,32 @@ assertDistinctConfiguredSecrets(
   "AGENTIC_SERVICE_API_KEY",
   env.AGENTIC_SERVICE_API_KEY,
 )
+
+const managerAuthEnvRequired =
+  resolvedManagerBackendMode === "admin" ||
+  (resolvedManagerBackendMode !== "mock" && env.NODE_ENV === "production")
+const isNextProductionBuild =
+  process.env.NEXT_PHASE === "phase-production-build"
+
+if (managerAuthEnvRequired && !isNextProductionBuild) {
+  const missing = [
+    ["MANAGER_SESSION_SECRET", env.MANAGER_SESSION_SECRET],
+    ["AUTH_ISSUER_URL", env.AUTH_ISSUER_URL],
+    ["AUTH_MANAGER_CLIENT_ID", env.AUTH_MANAGER_CLIENT_ID],
+    ["ADMIN_GRAPHQL_URL", env.ADMIN_GRAPHQL_URL],
+    [
+      "ADMIN_MANAGER_API_KEY or AUTH_MANAGER_SERVICE_CLIENT_ID/AUTH_MANAGER_SERVICE_CLIENT_SECRET",
+      env.ADMIN_MANAGER_API_KEY ||
+        (env.AUTH_MANAGER_SERVICE_CLIENT_ID &&
+          env.AUTH_MANAGER_SERVICE_CLIENT_SECRET),
+    ],
+  ]
+    .filter(([, value]) => !value)
+    .map(([name]) => name)
+
+  if (missing.length > 0) {
+    throw new Error(
+      `${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} required when Manager auth is enabled`,
+    )
+  }
+}

@@ -16,7 +16,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useTypography } from "../../hooks/useTypography"
 import { QUIZ_GRADIENT } from "../../lib/color"
 import { layout, feedback } from "../../styles/shared"
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { AdminBlock } from "../../lib/queries"
 
 // ── URL Validation ──────────────────────────────────────────────────────────
 
@@ -111,15 +111,16 @@ function QuizModal({ url, onClose }: { url: string; onClose: () => void }) {
 // ── QuizButtonRenderer ──────────────────────────────────────────────────────
 
 export interface QuizButtonRendererProps {
-  section: NormalizedBlock
+  section: AdminBlock
 }
 
 export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
   const typography = useTypography()
   const [modalVisible, setModalVisible] = useState(false)
 
-  const buttonText = section.buttonText as string | null
-  const iframeSrc = section.iframeSrc as string | null
+  const s = section as Record<string, unknown>
+  const buttonText = s.buttonText as string | null
+  const iframeSrc = s.iframeSrc as string | null
 
   // Silent drop if URL is invalid or missing
   if (!iframeSrc || !isAllowedQuizUrl(iframeSrc)) return null

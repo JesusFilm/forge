@@ -1,21 +1,15 @@
 /**
  * @vitest-environment jsdom
  *
- * U10 — LanguagePickerModal tests.
+ * LanguagePickerModal tests — globe-driven overlay rewrite.
  *
  * Covers:
- *  - AE3 navigation: select a non-active language → router.push fires with
- *    `/{parent}/{video}/{newLang}?t={currentTime}` (no `/watch/` prefix —
- *    Next.js basePath is auto-prepended at runtime, NOT in tests).
- *  - Active row renders a visible checkmark and is marked `aria-current`.
- *  - Picking the active row closes the modal without navigating.
- *  - Defensive filter: unpublished + missing-hls variants are not rendered.
- *
- * The Mux Player ref is stubbed with a plain object exposing `currentTime`,
- * which is the only field LanguagePickerModal touches.
- *
- * Note: `@base-ui/react` Dialog renders into a portal, so DOM queries use
- * `document` (not the local container) for elements inside the modal.
+ *  - Apply disabled until selection differs from current
+ *  - Apply navigates via watchVideoPath: `/{videoSlug}.html/{newSlug}.html?t={currentTime}&autoplay=1`
+ *  - Apply writes the language-preference cookie BEFORE router.push
+ *  - Close does nothing besides onClose
+ *  - Draft resets when the modal reopens
+ *  - Selecting the current language and clicking Apply is a no-op nav
  */
 
 import { act } from "react"
@@ -24,24 +18,32 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
-const { routerPushMock } = vi.hoisted(() => ({
+const { routerPushMock, writePreferredLanguageSlugMock } = vi.hoisted(() => ({
   routerPushMock: vi.fn(),
+  writePreferredLanguageSlugMock: vi.fn(),
 }))
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: routerPushMock }),
 }))
 
+vi.mock("@/lib/language-preference-client", () => ({
+  LANGUAGE_PREFERENCE_COOKIE: "forge_watch_lang",
+  writePreferredLanguageSlug: writePreferredLanguageSlugMock,
+}))
+
 import {
   LanguagePickerModal,
   type LanguagePickerVariant,
 } from "@/components/watch/LanguagePickerModal"
+import type { WatchSubtitle } from "@/lib/content"
 
 let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
   routerPushMock.mockReset()
+  writePreferredLanguageSlugMock.mockReset()
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -83,224 +85,513 @@ function makeVariant(
   return { ...base, ...rest }
 }
 
+function makeSubtitle(
+  documentId: string,
+  languageSlug: string,
+  name: string,
+): WatchSubtitle {
+  return {
+    documentId,
+    language: {
+      slug: languageSlug,
+      name,
+      nativeName: null,
+      bcp47: languageSlug,
+    },
+    vttSrc: `https://cdn.test/${languageSlug}.vtt`,
+    primary: false,
+    aiGenerated: false,
+  }
+}
+
 function makePlayerRef(currentTime: number) {
-  // Only `currentTime` is touched by LanguagePickerModal; other fields are
-  // typed via the cast so TS doesn't require the full HTMLMediaElement
-  // surface for tests.
   const player = { currentTime } as unknown as MuxPlayerRef
   return { current: player }
 }
 
-describe("LanguagePickerModal — AE3 navigation", () => {
-  it("renders one option per playable variant", () => {
-    const variants: LanguagePickerVariant[] = [
-      makeVariant({ documentId: "v1", languageSlug: "english" }),
-      makeVariant({ documentId: "v2", languageSlug: "spanish" }),
-      makeVariant({ documentId: "v3", languageSlug: "french" }),
-    ]
-    act(() => {
-      root.render(
-        <LanguagePickerModal
-          open
-          variants={variants}
-          currentLanguageSlug="english"
-          videoSlug="the-call"
-          playerRef={makePlayerRef(0)}
-          onClose={vi.fn()}
-        />,
-      )
-    })
+function renderModal({
+  open,
+  currentLanguageSlug = "english",
+  variants,
+  videoSlug = "the-call",
+  playerRef = makePlayerRef(42),
+  onClose = vi.fn(),
+  kind,
+  subtitles,
+  currentSubtitleEnabled,
+  currentSubtitleSlug,
+  onSubtitleChange,
+}: {
+  open: boolean
+  currentLanguageSlug?: string
+  variants: LanguagePickerVariant[]
+  videoSlug?: string
+  playerRef?: ReturnType<typeof makePlayerRef>
+  onClose?: () => void
+  kind?: "video" | "series"
+  subtitles?: WatchSubtitle[]
+  currentSubtitleEnabled?: boolean
+  currentSubtitleSlug?: string | null
+  onSubtitleChange?: (enabled: boolean, slug: string | null) => void
+}) {
+  act(() => {
+    root.render(
+      <LanguagePickerModal
+        open={open}
+        variants={variants}
+        currentLanguageSlug={currentLanguageSlug}
+        videoSlug={videoSlug}
+        playerRef={playerRef}
+        onClose={onClose}
+        kind={kind}
+        subtitles={subtitles}
+        currentSubtitleEnabled={currentSubtitleEnabled}
+        currentSubtitleSlug={currentSubtitleSlug}
+        onSubtitleChange={onSubtitleChange}
+      />,
+    )
+  })
+  return { onClose }
+}
 
-    const options = $$('[data-testid="watch-language-picker-option"]')
-    expect(options.length).toBe(3)
-    expect(options.map((o) => o.getAttribute("data-language-slug"))).toEqual([
-      "english",
-      "spanish",
-      "french",
-    ])
+const baseVariants = [
+  makeVariant({ documentId: "v1", languageSlug: "english" }),
+  makeVariant({ documentId: "v2", languageSlug: "spanish" }),
+  makeVariant({ documentId: "v3", languageSlug: "french" }),
+]
+
+describe("LanguagePickerModal — globe overlay", () => {
+  it("Apply is disabled when the modal first opens", () => {
+    renderModal({ open: true, variants: baseVariants })
+    const apply = $(
+      '[data-testid="watch-language-picker-apply"]',
+    ) as HTMLButtonElement
+    expect(apply.disabled).toBe(true)
   })
 
-  it("clicking a non-active language pushes /{video}/{newLang}?t={currentTime} (no /watch/ prefix; 2-segment route)", () => {
-    const onClose = vi.fn()
-    const variants: LanguagePickerVariant[] = [
-      makeVariant({ documentId: "v1", languageSlug: "english" }),
-      makeVariant({ documentId: "v2", languageSlug: "spanish" }),
-    ]
+  it("Apply enables once the user picks a different language", () => {
+    renderModal({ open: true, variants: baseVariants })
     act(() => {
-      root.render(
-        <LanguagePickerModal
-          open
-          variants={variants}
-          currentLanguageSlug="english"
-          videoSlug="the-call"
-          playerRef={makePlayerRef(42.5)}
-          onClose={onClose}
-        />,
-      )
+      $('[data-testid="language-combobox-trigger"]')?.click()
     })
-
-    const spanish = $$('[data-testid="watch-language-picker-option"]').find(
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
       (el) => el.getAttribute("data-language-slug") === "spanish",
-    )
-    expect(spanish).not.toBeUndefined()
+    )!
     act(() => {
-      spanish!.click()
+      spanish.click()
     })
-
-    expect(routerPushMock).toHaveBeenCalledTimes(1)
-    expect(routerPushMock).toHaveBeenCalledWith("/the-call/spanish?t=42.5")
-    expect(onClose).toHaveBeenCalledTimes(1)
+    const apply = $(
+      '[data-testid="watch-language-picker-apply"]',
+    ) as HTMLButtonElement
+    expect(apply.disabled).toBe(false)
   })
 
-  it("uses currentTime=0 when the player ref is null", () => {
-    const variants: LanguagePickerVariant[] = [
-      makeVariant({ documentId: "v1", languageSlug: "english" }),
-      makeVariant({ documentId: "v2", languageSlug: "spanish" }),
-    ]
-    const playerRef: { current: MuxPlayerRef | null } = { current: null }
-    act(() => {
-      root.render(
-        <LanguagePickerModal
-          open
-          variants={variants}
-          currentLanguageSlug="english"
-          videoSlug="video"
-          playerRef={playerRef}
-          onClose={vi.fn()}
-        />,
-      )
-    })
-
-    const spanish = $$('[data-testid="watch-language-picker-option"]').find(
-      (el) => el.getAttribute("data-language-slug") === "spanish",
-    )
-    act(() => {
-      spanish!.click()
-    })
-
-    expect(routerPushMock).toHaveBeenCalledWith("/video/spanish?t=0")
-  })
-})
-
-describe("LanguagePickerModal — active row + checkmark", () => {
-  it("renders a visible checkmark on the active row only", () => {
-    const variants: LanguagePickerVariant[] = [
-      makeVariant({ documentId: "v1", languageSlug: "english" }),
-      makeVariant({ documentId: "v2", languageSlug: "spanish" }),
-    ]
-    act(() => {
-      root.render(
-        <LanguagePickerModal
-          open
-          variants={variants}
-          currentLanguageSlug="english"
-          videoSlug="v"
-          playerRef={makePlayerRef(0)}
-          onClose={vi.fn()}
-        />,
-      )
-    })
-
-    const checks = $$('[data-testid="watch-language-picker-checkmark"]')
-    expect(checks.length).toBe(1)
-    const active = $$('[data-testid="watch-language-picker-option"]').find(
-      (el) => el.getAttribute("data-active") === "true",
-    )
-    expect(active?.getAttribute("data-language-slug")).toBe("english")
-    expect(active?.getAttribute("aria-current")).toBe("true")
-  })
-
-  it("clicking the active row closes the modal but does not navigate", () => {
+  it("Apply writes the cookie BEFORE calling router.push, then closes", () => {
     const onClose = vi.fn()
-    const variants: LanguagePickerVariant[] = [
-      makeVariant({ documentId: "v1", languageSlug: "english" }),
-    ]
+    renderModal({ open: true, variants: baseVariants, onClose })
+
     act(() => {
-      root.render(
-        <LanguagePickerModal
-          open
-          variants={variants}
-          currentLanguageSlug="english"
-          videoSlug="v"
-          playerRef={makePlayerRef(10)}
-          onClose={onClose}
-        />,
-      )
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+    act(() => {
+      $('[data-testid="watch-language-picker-apply"]')?.click()
     })
 
-    const english = $('[data-testid="watch-language-picker-option"]')
+    expect(writePreferredLanguageSlugMock).toHaveBeenCalledWith("spanish")
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/the-call.html/spanish.html?t=42&autoplay=1",
+    )
+    const writeOrder =
+      writePreferredLanguageSlugMock.mock.invocationCallOrder[0]!
+    const pushOrder = routerPushMock.mock.invocationCallOrder[0]!
+    expect(writeOrder).toBeLessThan(pushOrder)
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it("uses t=0 when the player ref is null", () => {
+    const playerRef = { current: null } as unknown as ReturnType<
+      typeof makePlayerRef
+    >
+    renderModal({ open: true, variants: baseVariants, playerRef })
+
     act(() => {
-      english!.click()
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+    act(() => {
+      $('[data-testid="watch-language-picker-apply"]')?.click()
     })
 
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/the-call.html/spanish.html?t=0&autoplay=1",
+    )
+  })
+
+  it("Close does not write the cookie and does not navigate", () => {
+    const onClose = vi.fn()
+    renderModal({ open: true, variants: baseVariants, onClose })
+
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+    act(() => {
+      $('[data-testid="watch-language-picker-close"]')?.click()
+    })
+
+    expect(writePreferredLanguageSlugMock).not.toHaveBeenCalled()
     expect(routerPushMock).not.toHaveBeenCalled()
-    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it("re-opening after a cancelled change resets the draft to the current language", () => {
+    renderModal({ open: true, variants: baseVariants })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+    // Close without applying
+    act(() => {
+      $('[data-testid="watch-language-picker-close"]')?.click()
+    })
+
+    // Re-render with open=false then open=true
+    renderModal({ open: false, variants: baseVariants })
+    renderModal({ open: true, variants: baseVariants })
+
+    const apply = $(
+      '[data-testid="watch-language-picker-apply"]',
+    ) as HTMLButtonElement
+    expect(apply.disabled).toBe(true)
+    expect($('[data-testid="language-combobox-trigger"]')?.textContent).toMatch(
+      /english/i,
+    )
+  })
+
+  it("selecting the current language and clicking Apply is a no-op nav", () => {
+    renderModal({ open: true, variants: baseVariants })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const english = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "english",
+    )!
+    act(() => {
+      english.click()
+    })
+    const apply = $(
+      '[data-testid="watch-language-picker-apply"]',
+    ) as HTMLButtonElement
+    expect(apply.disabled).toBe(true)
+  })
+
+  it("renders the count of playable variants in the header", () => {
+    renderModal({
+      open: true,
+      variants: [
+        ...baseVariants,
+        makeVariant({
+          documentId: "v4",
+          languageSlug: "german",
+          published: false,
+        }),
+        makeVariant({ documentId: "v5", languageSlug: "italian", hls: null }),
+      ],
+    })
+    const count = $('[data-testid="watch-language-picker-count"]')
+    expect(count?.textContent).toBe("3 languages")
+    expect(count?.className).toContain("font-normal")
+    expect(count?.className).not.toContain("font-semibold")
+    expect(count?.parentElement?.textContent).toContain("Language")
+    expect(count?.parentElement?.className).toContain("items-baseline")
+    expect(count?.parentElement?.className).not.toContain("justify-between")
+  })
+
+  it("matches the production overlay shell and renders subtitle selector data", () => {
+    renderModal({
+      open: true,
+      variants: [
+        makeVariant({ documentId: "v1", languageSlug: "english" }),
+        makeVariant({ documentId: "v2", languageSlug: "spanish" }),
+      ],
+      subtitles: [
+        {
+          documentId: "sub-ru",
+          language: {
+            slug: "russian",
+            name: "Russian",
+            nativeName: null,
+            bcp47: "ru",
+          },
+          vttSrc: "https://cdn.test/russian.vtt",
+          primary: true,
+          aiGenerated: false,
+        },
+      ],
+      currentSubtitleEnabled: true,
+      currentSubtitleSlug: "russian",
+    })
+
+    const overlay = $('[data-slot="dialog-overlay"]')
+    expect(overlay?.className).toContain("bg-black/85")
+    expect(overlay?.className).toContain("backdrop-blur-md")
+
+    const modal = $('[data-testid="watch-language-picker-modal"]')
+    expect(modal?.className).toContain("bg-transparent")
+    expect(modal?.className).toContain("sm:max-w-[608px]")
+
+    expect(
+      $('[data-testid="watch-language-picker-subtitle-count"]')?.textContent,
+    ).toBe("1 language")
+    const subtitleCount = $(
+      '[data-testid="watch-language-picker-subtitle-count"]',
+    )
+    expect(subtitleCount?.className).toContain("font-normal")
+    expect(subtitleCount?.parentElement?.textContent).toContain("Subtitles")
+    expect(subtitleCount?.parentElement?.className).toContain("items-baseline")
+    const toggle = $(
+      '[data-testid="watch-language-picker-subtitles-toggle"]',
+    ) as HTMLButtonElement
+    expect(toggle.disabled).toBe(false)
+    expect(toggle.getAttribute("aria-checked")).toBe("true")
+    expect(toggle.getAttribute("aria-label")).toBe("Subtitles On")
+    expect(toggle.getAttribute("data-state")).toBe("on")
+    expect(toggle.className).toContain("h-10")
+    expect(toggle.className).toContain("w-[88px]")
+    expect(toggle.className).toContain("bg-stone-100")
+    expect(
+      $('[data-testid="watch-language-picker-subtitles-toggle-state"]')
+        ?.textContent,
+    ).toBe("On")
+    expect(toggle.parentElement?.contains(subtitleCount)).toBe(false)
+    expect(toggle.parentElement?.className).toContain("items-center")
+    const thumb = toggle.querySelector('span[aria-hidden="true"]')
+    expect(thumb?.className).toContain("size-8")
+    expect(thumb?.className).toContain("translate-x-12")
+
+    const triggers = $$('[data-testid="language-combobox-trigger"]')
+    expect(triggers.length).toBe(2)
+    expect(triggers[1]?.textContent).toContain("Russian")
+    expect(
+      $('[data-testid="watch-language-picker-request-ai-translation"]'),
+    ).toBeNull()
+  })
+
+  it("makes the subtitle switch state explicit and hides the selector when off", () => {
+    renderModal({
+      open: true,
+      variants: baseVariants,
+      subtitles: [makeSubtitle("sub-ru", "russian", "Russian")],
+      currentSubtitleEnabled: false,
+      currentSubtitleSlug: "russian",
+    })
+
+    const toggle = $(
+      '[data-testid="watch-language-picker-subtitles-toggle"]',
+    ) as HTMLButtonElement
+    expect(toggle.disabled).toBe(false)
+    expect(toggle.getAttribute("aria-checked")).toBe("false")
+    expect(toggle.getAttribute("aria-label")).toBe("Subtitles Off")
+    expect(toggle.getAttribute("data-state")).toBe("off")
+    expect(toggle.className).toContain("border-stone-500/80")
+    expect(
+      $('[data-testid="watch-language-picker-subtitles-toggle-state"]')
+        ?.textContent,
+    ).toBe("Off")
+    expect($$('[data-testid="language-combobox-trigger"]').length).toBe(1)
+
+    act(() => {
+      toggle.click()
+    })
+
+    expect(toggle.getAttribute("aria-checked")).toBe("true")
+    expect(toggle.getAttribute("aria-label")).toBe("Subtitles On")
+    expect(toggle.getAttribute("data-state")).toBe("on")
+    expect(
+      $('[data-testid="watch-language-picker-subtitles-toggle-state"]')
+        ?.textContent,
+    ).toBe("On")
+    const triggers = $$('[data-testid="language-combobox-trigger"]')
+    expect(triggers.length).toBe(2)
+    expect(triggers[1]?.textContent).toContain("Russian")
+  })
+
+  it("shows a dummy AI translation request button when subtitles are unavailable", () => {
+    renderModal({ open: true, variants: baseVariants })
+
+    const button = $(
+      '[data-testid="watch-language-picker-request-ai-translation"]',
+    ) as HTMLButtonElement
+    expect(button).not.toBeNull()
+    expect(button.textContent).toBe("Translate with AI")
+    expect(button.disabled).toBe(false)
+    expect(button.className).toContain("border-stone-400/50")
+    expect(button.className).toContain("px-4")
+    expect(button.className).toContain("py-2")
+    const count = $('[data-testid="watch-language-picker-subtitle-count"]')
+    expect(count?.parentElement?.textContent).toContain("Subtitles")
+    expect(button.parentElement?.contains(count)).toBe(false)
+    const toggle = $(
+      '[data-testid="watch-language-picker-subtitles-toggle"]',
+    ) as HTMLButtonElement
+    expect(toggle.disabled).toBe(true)
+    expect(toggle.getAttribute("data-state")).toBe("off")
+    expect(button.parentElement?.contains(toggle)).toBe(true)
+    expect($$('[data-testid="language-combobox-trigger"]').length).toBe(1)
+
+    act(() => {
+      button.click()
+    })
+
+    expect(button.textContent).toBe("Request sent")
+    expect(button.disabled).toBe(true)
+    expect(routerPushMock).not.toHaveBeenCalled()
+    expect(writePreferredLanguageSlugMock).not.toHaveBeenCalled()
+  })
+
+  it("resets the AI translation request state when the modal reopens", () => {
+    renderModal({ open: true, variants: baseVariants })
+    act(() => {
+      $('[data-testid="watch-language-picker-request-ai-translation"]')?.click()
+    })
+    expect(
+      $('[data-testid="watch-language-picker-request-ai-translation"]')
+        ?.textContent,
+    ).toBe("Request sent")
+
+    renderModal({ open: false, variants: baseVariants })
+    renderModal({ open: true, variants: baseVariants })
+
+    const button = $(
+      '[data-testid="watch-language-picker-request-ai-translation"]',
+    ) as HTMLButtonElement
+    expect(button.textContent).toBe("Translate with AI")
+    expect(button.disabled).toBe(false)
+  })
+
+  it("does not render when open is false", () => {
+    renderModal({ open: false, variants: baseVariants })
+    expect($('[data-testid="watch-language-picker-apply"]')).toBeNull()
   })
 })
 
-describe("LanguagePickerModal — defensive filter + lifecycle", () => {
-  it("drops unpublished variants and variants missing hls", () => {
-    const variants: LanguagePickerVariant[] = [
-      makeVariant({ documentId: "v1", languageSlug: "english" }),
-      makeVariant({
-        documentId: "v2",
-        languageSlug: "spanish",
-        published: false,
-      }),
-      makeVariant({ documentId: "v3", languageSlug: "french", hls: null }),
-    ]
+describe("LanguagePickerModal — in-flight navigation guard", () => {
+  it("fires router.push exactly once on synchronous double-click", () => {
+    renderModal({ open: true, variants: baseVariants })
     act(() => {
-      root.render(
-        <LanguagePickerModal
-          open
-          variants={variants}
-          currentLanguageSlug="english"
-          videoSlug="v"
-          playerRef={makePlayerRef(0)}
-          onClose={vi.fn()}
-        />,
-      )
+      $('[data-testid="language-combobox-trigger"]')?.click()
     })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+    // Synchronous double-click — both clicks land in the same microtask.
+    // The ref-backed guard must catch the second before it dispatches.
+    act(() => {
+      $('[data-testid="watch-language-picker-apply"]')?.click()
+      $('[data-testid="watch-language-picker-apply"]')?.click()
+    })
+    expect(routerPushMock).toHaveBeenCalledTimes(1)
+    expect(writePreferredLanguageSlugMock).toHaveBeenCalledTimes(1)
+  })
 
-    const slugs = $$('[data-testid="watch-language-picker-option"]').map((el) =>
-      el.getAttribute("data-language-slug"),
+  it("kind='video' (default) appends ?t and autoplay=1", () => {
+    renderModal({ open: true, variants: baseVariants })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+    act(() => {
+      $('[data-testid="watch-language-picker-apply"]')?.click()
+    })
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/the-call.html/spanish.html?t=42&autoplay=1",
     )
-    expect(slugs).toEqual(["english"])
   })
 
-  it("renders the empty-state when no playable variants remain", () => {
+  it("kind='series' navigates to bare /{slug}.html/{newLang}.html (no ?t, no autoplay)", () => {
+    // The series page has no player. ?t= and autoplay=1 are HeroPlayer
+    // gestures; they would mistakenly trigger trailer autoplay on the
+    // series destination.
+    renderModal({ open: true, variants: baseVariants, kind: "series" })
     act(() => {
-      root.render(
-        <LanguagePickerModal
-          open
-          variants={[]}
-          currentLanguageSlug="english"
-          videoSlug="v"
-          playerRef={makePlayerRef(0)}
-          onClose={vi.fn()}
-        />,
-      )
+      $('[data-testid="language-combobox-trigger"]')?.click()
     })
-
-    expect($('[data-testid="watch-language-picker-empty"]')).not.toBeNull()
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+    act(() => {
+      $('[data-testid="watch-language-picker-apply"]')?.click()
+    })
+    expect(routerPushMock).toHaveBeenCalledWith("/the-call.html/spanish.html")
   })
 
-  it("does not render any modal contents when open is false", () => {
-    act(() => {
-      root.render(
-        <LanguagePickerModal
-          open={false}
-          variants={[
-            makeVariant({ documentId: "v1", languageSlug: "english" }),
-          ]}
-          currentLanguageSlug="english"
-          videoSlug="v"
-          playerRef={makePlayerRef(0)}
-          onClose={vi.fn()}
-        />,
-      )
-    })
+  it("releases the navigation guard after the safety timeout (~5s)", () => {
+    vi.useFakeTimers()
+    try {
+      renderModal({ open: true, variants: baseVariants })
+      act(() => {
+        $('[data-testid="language-combobox-trigger"]')?.click()
+      })
+      const spanish = $$('[data-testid="language-combobox-option"]').find(
+        (el) => el.getAttribute("data-language-slug") === "spanish",
+      )!
+      act(() => {
+        spanish.click()
+      })
+      act(() => {
+        $('[data-testid="watch-language-picker-apply"]')?.click()
+      })
+      // Right after Apply, the button is in the navigating-disabled state
+      // even though isDirty is still true.
+      let apply = $(
+        '[data-testid="watch-language-picker-apply"]',
+      ) as HTMLButtonElement
+      expect(apply.disabled).toBe(true)
 
-    expect($('[data-testid="watch-language-picker-modal"]')).toBeNull()
+      // Advance past the 5s safety timeout. With currentLanguageSlug
+      // never updating (no parent rerender simulates the cookie/redirect
+      // stuck-navigating scenario), the guard otherwise stays set.
+      act(() => {
+        vi.advanceTimersByTime(5001)
+      })
+      apply = $(
+        '[data-testid="watch-language-picker-apply"]',
+      ) as HTMLButtonElement
+      expect(apply.disabled).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

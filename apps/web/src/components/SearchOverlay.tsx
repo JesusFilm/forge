@@ -1,13 +1,16 @@
 "use client"
 
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 
 import { useFloatingSearch } from "./FloatingSearchProvider"
+import { FloatingSearchFieldInput } from "./FloatingSearchField"
+import { CATEGORY_ICON_BY_SEARCH_TERM } from "./SearchCategoryIcons"
 import { VideoCard } from "./search/VideoCard"
 import { SpinnerIcon } from "@/components/ui/spinner"
+import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { CATEGORIES } from "@/lib/search-categories"
 
 export function SearchOverlay() {
@@ -31,8 +34,15 @@ export function SearchOverlay() {
   } = useFloatingSearch()
 
   const overlayRef = useRef<HTMLDivElement>(null)
+  const [closePortalContainer, setClosePortalContainer] =
+    useState<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const setOverlayElement = useCallback((node: HTMLDivElement | null) => {
+    overlayRef.current = node
+    setClosePortalContainer(node)
+  }, [])
 
   // Autofocus the input shortly after mount. Covers both user-open and
   // URL-hydration paths.
@@ -120,16 +130,15 @@ export function SearchOverlay() {
   }, [search])
 
   const showCategoryGrid = query.trim().length === 0 && !loading && !searched
-  const hasQuery = query.trim().length > 0
 
   return (
     <div
-      ref={overlayRef}
+      ref={setOverlayElement}
       role="dialog"
       aria-modal="true"
       aria-label="Search and browse videos"
       onClick={() => closeAndKeepQuery()}
-      className={`fixed inset-0 flex flex-col ${closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"}`}
+      className={`fixed inset-0 h-dvh min-h-dvh overflow-visible ${closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"}`}
       style={{
         zIndex: 9999,
         backgroundColor: "rgba(0, 0, 0, 0.75)",
@@ -137,12 +146,21 @@ export function SearchOverlay() {
         WebkitBackdropFilter: "blur(12px)",
       }}
     >
-      {/* Top bar: input is viewport-centered via mx-auto; mobile logo and
-          close button are absolutely positioned so they don't push the input
-          off-center. Outer padding (px-4 sm:px-6) matches the floating
-          searchbar's side margin (w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)])
-          so the input's position and size on open match the bar's exactly. */}
-      <div className="relative shrink-0 px-4 pt-6 sm:px-6 sm:pt-10">
+      {/* Floating top bar: input is viewport-centered via mx-auto. On mobile
+          the logo is in normal flow above the field so it cannot overlap the
+          input. Outer padding (px-4 sm:px-6) matches the
+          floating searchbar's side margin (w-[calc(100%-2rem)]
+          sm:w-[calc(100%-3rem)]) so the input's position and size on open
+          match the bar's exactly. `pt-12` mirrors the header bar's
+          unpinned `top-12` position so the modal input does not jump
+          vertically when opened. The wrapper is `pointer-events-none` so
+          scroll wheel events over the empty edges pass through to the
+          body; the pill + logo + close button re-enable pointer events
+          on themselves. */}
+      <div
+        data-testid="search-overlay-top-bar"
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-6 sm:px-6 sm:pt-12"
+      >
         <Link
           href={"/" as Route}
           aria-label="JesusFilm home"
@@ -153,84 +171,53 @@ export function SearchOverlay() {
             e.stopPropagation()
             void search("")
           }}
-          className="absolute left-4 top-[30px] z-10 flex items-center rounded-full p-1 sm:hidden focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
+          className="pointer-events-auto mb-6 flex w-fit items-center rounded-full p-1 sm:hidden focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
         >
           <Image
             src="/watch/images/jesusfilm-sign.svg"
             alt="JesusFilm"
-            width={24}
-            height={18}
+            width={70}
+            height={70}
             unoptimized
+            className="h-auto max-w-[50px]"
           />
         </Link>
         <div
-          role="search"
-          aria-label="Search videos"
           onClick={(e) => e.stopPropagation()}
-          className="relative mx-auto w-full max-w-[810px]"
+          className="pointer-events-auto mx-auto w-full max-w-[810px]"
         >
-          <input
+          <FloatingSearchFieldInput
             ref={inputRef}
-            type="text"
             value={query}
             onChange={handleInputChange}
+            onClear={handleClearInput}
             placeholder="Search or browse topics…"
             aria-label="Search videos by keyword"
-            className="w-full rounded-[35px] bg-white/10 py-3 pl-6 pr-12 text-base text-white shadow-xl outline-1 outline-white/20 backdrop-blur-[10px] placeholder:text-white/90 [text-shadow:0_1px_3px_rgba(0,0,0,0.5)] focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
+            iconTestId="search-overlay-input-icon"
+            wrapperClassName="w-full"
           />
-          {hasQuery && (
-            <button
-              type="button"
-              onClick={handleClearInput}
-              aria-label="Clear search"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2 text-white/70 transition hover:text-white focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-4 w-4"
-                aria-hidden="true"
-              >
-                <line x1={18} y1={6} x2={6} y2={18} />
-                <line x1={6} y1={6} x2={18} y2={18} />
-              </svg>
-            </button>
-          )}
         </div>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            closeAndKeepQuery()
-          }}
-          aria-label="Close search"
-          className="absolute right-2 top-[18px] z-10 rounded-full p-3 text-stone-400 transition hover:text-white focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 sm:right-4 sm:top-[34px]"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-5 w-5"
-            aria-hidden="true"
-          >
-            <line x1={18} y1={6} x2={6} y2={18} />
-            <line x1={6} y1={6} x2={18} y2={18} />
-          </svg>
-        </button>
       </div>
+      <WatchModalViewportCloseButton
+        open={open || closing}
+        onClose={closeAndKeepQuery}
+        testId="search-overlay-close"
+        portalContainer={closePortalContainer}
+        positionClassName="top-6 right-4 sm:top-12 sm:right-10"
+      />
 
-      {/* Body: category grid when empty, results grid when queried */}
       <div
-        className="search-overlay-scroll min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-6 sm:px-6"
+        aria-hidden="true"
+        data-testid="search-overlay-bottom-backdrop"
+        className="pointer-events-none absolute inset-x-0 bottom-[-14rem] z-0 h-[max(28rem,calc(env(safe-area-inset-bottom,0px)+24rem))] bg-black/85 backdrop-blur-[14px]"
+      />
+
+      {/* Body: category grid when empty, results grid when queried.
+          Fills the entire dialog so the floating bar can sit ABOVE it
+          with backdrop-blur — `pt-24 sm:pt-32` clears the bar's height
+          (mobile logo + gap + input, or desktop input pt-12 + breathing room). */}
+      <div
+        className="search-overlay-scroll absolute inset-0 z-1 overflow-y-auto px-4 pb-8 pt-44 sm:px-6 sm:pt-32"
         aria-live="polite"
       >
         <div
@@ -239,22 +226,39 @@ export function SearchOverlay() {
         >
           {showCategoryGrid && (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.searchTerm}
-                  type="button"
-                  onClick={() => handleCategoryClick(cat.searchTerm)}
-                  className="relative aspect-video w-full overflow-hidden rounded-lg p-3 text-white transition-transform duration-200 active:scale-95 [@media(hover:hover)]:hover:scale-105 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2 sm:p-6"
-                  style={{ background: cat.gradient }}
-                >
-                  <span
-                    className="absolute bottom-3 left-3 text-base font-semibold leading-tight sm:text-lg md:text-xl"
-                    style={{ textShadow: "0 1px 3px rgba(0,0,0,0.4)" }}
+              {CATEGORIES.map((cat) => {
+                const Icon = CATEGORY_ICON_BY_SEARCH_TERM[cat.searchTerm]
+                return (
+                  <button
+                    key={cat.searchTerm}
+                    type="button"
+                    onClick={() => handleCategoryClick(cat.searchTerm)}
+                    aria-label={cat.title}
+                    data-testid={`search-overlay-category-${cat.searchTerm.replace(/\s+/g, "-")}`}
+                    className="relative aspect-video w-full cursor-pointer overflow-hidden rounded-lg p-3 text-white transition-transform duration-200 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 [@media(hover:hover)]:hover:scale-105 sm:p-6"
+                    style={{ background: cat.gradient }}
                   >
-                    {cat.title}
-                  </span>
-                </button>
-              ))}
+                    {Icon ? (
+                      // Decorative top-right icon. Sized at roughly a
+                      // quarter of the rectangle's width so it reads as
+                      // a prominent corner badge (matching the reference
+                      // from core/apps/watch's CategoryGrid). `pointer-
+                      // events-none` keeps clicks falling through to
+                      // the button.
+                      <Icon
+                        aria-hidden="true"
+                        className="pointer-events-none absolute right-1 top-1 h-16 w-16 opacity-30 drop-shadow-lg sm:right-2 sm:top-2 sm:h-24 sm:w-24"
+                      />
+                    ) : null}
+                    <span
+                      className="absolute bottom-3 left-3 text-base font-semibold leading-tight sm:text-lg md:text-xl"
+                      style={{ textShadow: "0 1px 3px rgba(0,0,0,0.4)" }}
+                    >
+                      {cat.title}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           )}
 
@@ -286,7 +290,7 @@ export function SearchOverlay() {
               <button
                 type="button"
                 onClick={() => void search(query)}
-                className="mt-4 rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
+                className="mt-4 cursor-pointer rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
               >
                 Retry search
               </button>
@@ -322,12 +326,12 @@ export function SearchOverlay() {
 
               {error && (
                 <div className="mt-6 text-center">
-                  <p className="text-sm text-red-400">{error}</p>
+                  <p className="text-sm text-brand-red">{error}</p>
                   <button
                     type="button"
                     onClick={() => void loadMore()}
                     disabled={loadingMore}
-                    className="mt-2 rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 disabled:opacity-50"
+                    className="mt-2 cursor-pointer rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Retry
                   </button>
@@ -340,7 +344,7 @@ export function SearchOverlay() {
                     type="button"
                     onClick={() => void loadMore()}
                     disabled={loadingMore}
-                    className="flex items-center gap-2 rounded-lg bg-white/10 px-6 py-3 text-sm font-medium text-stone-300 transition hover:bg-white/15 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
+                    className="flex cursor-pointer items-center gap-2 rounded-lg bg-white/10 px-6 py-3 text-sm font-medium text-stone-300 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
                   >
                     {loadingMore && (
                       <SpinnerIcon className="h-4 w-4 animate-spin" />

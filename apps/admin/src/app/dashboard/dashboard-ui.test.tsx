@@ -261,32 +261,36 @@ vi.mock("@/app/dashboard/ops-data", () => ({
       {
         key: "user1",
         title: "admin@example.com",
-        detail: "google",
+        detail: "auth_user_123",
         statusLabel: "ADMIN",
         statusTone: "success",
-        meta: "1 session(s) / 10/24/2023, 14:02",
+        meta: "10/24/2023, 14:02",
       },
     ],
     insights: [
-      { label: "Active Sessions", value: "1", detail: "detail" },
-      { label: "Linked Accounts", value: "1", detail: "detail" },
-      { label: "SSO Providers", value: "1", detail: "detail" },
+      { label: "Role Mappings", value: "1", detail: "detail" },
+      { label: "Access Requests", value: "0", detail: "detail" },
+      { label: "Auth Issuer", value: "auth.local", detail: "detail" },
     ],
   })),
   loadSettingsData: vi.fn(async () => ({
     metrics: [
-      { label: "Providers", value: "1", footer: "SSO_ENABLED" },
-      { label: "Trusted Origins", value: "1", footer: "AUTH_TRUSTED" },
+      {
+        label: "Auth Client",
+        value: "jfp_admin_local",
+        footer: "OAUTH_CLIENT",
+      },
+      { label: "Admin Origin", value: "localhost:3003", footer: "CALLBACK" },
       { label: "CORS Origins", value: "1", footer: "GRAPHQL_ALLOWLIST" },
     ],
     rows: [
       {
-        key: "better-auth",
-        title: "Better Auth secret",
-        detail: "Session signing secret",
+        key: "admin-session",
+        title: "Admin session secret",
+        detail: "Local OAuth session signing secret",
         statusLabel: "Configured",
         statusTone: "success",
-        meta: "http://localhost:3003",
+        meta: "http://localhost:3004/api/auth",
       },
     ],
     insights: [
@@ -359,6 +363,34 @@ vi.mock("@/app/dashboard/ops-data", () => ({
     totalCount: 2,
     unfiledCount: 1,
   })),
+}))
+
+vi.mock("@/services/workflow-runtime.service", () => ({
+  loadWorkflowRuntimeRuns: vi.fn(async () => [
+    {
+      runId: "wrun_123",
+      workflowName: "workflow//./src/workflows/coreSync//runCoreSync",
+      displayName: "runCoreSync",
+      status: "completed",
+      createdAt: new Date("2023-10-24T14:02:00.000Z"),
+      startedAt: new Date("2023-10-24T14:02:01.000Z"),
+      completedAt: new Date("2023-10-24T14:02:05.000Z"),
+      stepCount: 2,
+      eventCount: 5,
+    },
+  ]),
+}))
+
+vi.mock("@/services/workflow-worker-heartbeat.service", () => ({
+  loadWorkflowWorkerStatusRows: vi.fn(async () => [
+    {
+      id: "admin:test:123",
+      meta: "admin / started 1m ago",
+      detail: "Heartbeat 2s ago.",
+      statusLabel: "Online",
+      statusTone: "success",
+    },
+  ]),
 }))
 
 import DashboardPage from "./page"
@@ -451,7 +483,9 @@ describe("dashboard UI routes", () => {
       expect(page.html).toContain(page.title.replaceAll("&", "&amp;"))
     }
 
-    expect(pages[0].html).toContain("Recent Workflow Runs")
+    expect(pages[0].html).toContain("Workflow Runs")
+    expect(pages[0].html).toContain("/dashboard/workflows/wrun_123")
+    expect(pages[0].html).not.toContain("Recent Workflow Runs")
     expect(pages[6].html).toContain("Media Library")
     expect(pages[6].html).toContain("Library")
     expect(pages[6].html).toContain("Campaigns")

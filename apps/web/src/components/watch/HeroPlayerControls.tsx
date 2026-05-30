@@ -1,9 +1,24 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { Globe } from "lucide-react"
+import { useTranslations } from "next-intl"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react"
 import { createPortal } from "react-dom"
 import type { MuxPlayerRef } from "@forge/video-player"
 
+import { WATCH_PAGE_RAIL_PADDING_CLASSES } from "@/lib/content-width"
+import { useIsFullscreen } from "@/lib/use-is-fullscreen"
+import { WATCH_PLAYER_CONTROLS_SOFT_BACKDROP_BACKGROUND } from "@/lib/watch-production-overlays"
+import {
+  WATCH_PLAYER_PLAYBACK_STATE_EVENT,
+  type WatchPlayerPlaybackStateDetail,
+} from "@/lib/watch-player-chrome-events"
 import { ChromeButton, formatTime } from "./ChromeButton"
 import {
   ChromeMutedIcon,
@@ -14,11 +29,16 @@ import {
   PlayIcon,
 } from "./chrome-icons"
 
+const TOP_SCROLL_CHROME_REVEAL_THRESHOLD_PX = 8
+
 export function HeroPlayerControls({
   player,
   playerRef,
   wrapperRef,
   overlayAnchor,
+  onLanguageClick,
+  showLanguageButton,
+  onVisibilityChange,
 }: {
   player: MuxPlayerRef | null
   playerRef: React.RefObject<MuxPlayerRef | null>
@@ -32,14 +52,36 @@ export function HeroPlayerControls({
    * so this is null for one render at most before the ref callback fires.
    */
   overlayAnchor: HTMLDivElement | null
+  /** Click handler for the in-chrome globe (mirrors the top-right globe). */
+  onLanguageClick?: () => void
+  /**
+   * Whether to render the in-chrome globe button. The parent applies the
+   * same gate it uses for the top-right globe (>= 2 playable variants AND
+   * a callback is provided), so both surfaces appear together.
+   */
+  showLanguageButton?: boolean
+  onVisibilityChange?: (visible: boolean) => void
 }) {
+  const t = useTranslations("HeroPlayerControls")
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
   const [volume, setVolume] = useState(1)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [bufferedPct, setBufferedPct] = useState(0)
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  // Shared with HeroPlayer via the useIsFullscreen hook — same source of
+  // truth prevents the dual-listener desync that could leave the portal
+  // target pointing at overlayAnchor while HeroPlayer thinks we're in
+  // fullscreen.
+  const isFullscreen = useIsFullscreen()
+  // Mirror wrapperRef.current in state so the portal-target swap below can
+  // read it without touching a ref during render (React Compiler rejects
+  // that). wrapperRef attaches in the parent on mount, so the effect runs
+  // once and the value stays stable for the component's lifetime.
+  const [wrapperEl, setWrapperEl] = useState<HTMLDivElement | null>(null)
+  useEffect(() => {
+    setWrapperEl(wrapperRef.current)
+  }, [wrapperRef])
   const [controlsVisible, setControlsVisible] = useState(true)
   const [hoveringControls, setHoveringControls] = useState(false)
   const [volumeOpen, setVolumeOpen] = useState(false)
@@ -52,6 +94,30 @@ export function HeroPlayerControls({
   const timelineRef = useRef<HTMLDivElement | null>(null)
   const volumeTrackRef = useRef<HTMLDivElement | null>(null)
   const hideTimerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    onVisibilityChange?.(controlsVisible)
+  }, [controlsVisible, onVisibilityChange])
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent<WatchPlayerPlaybackStateDetail>(
+        WATCH_PLAYER_PLAYBACK_STATE_EVENT,
+        { detail: { playing, muted, preview: false } },
+      ),
+    )
+  }, [playing, muted])
+
+  useEffect(() => {
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent<WatchPlayerPlaybackStateDetail>(
+          WATCH_PLAYER_PLAYBACK_STATE_EVENT,
+          { detail: { playing: false, muted: true, preview: false } },
+        ),
+      )
+    }
+  }, [])
 
   // Refs let scheduleHide read the latest playing/hovering state without
   // resubscribing the wrapper-level mousemove listener on every render.
@@ -178,21 +244,8 @@ export function HeroPlayerControls({
     }
   }, [player])
 
-  useEffect(() => {
-    const handleFsChange = () => {
-      const fsEl =
-        document.fullscreenElement ??
-        (document as Document & { webkitFullscreenElement?: Element | null })
-          .webkitFullscreenElement
-      setIsFullscreen(!!fsEl)
-    }
-    document.addEventListener("fullscreenchange", handleFsChange)
-    document.addEventListener("webkitfullscreenchange", handleFsChange)
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFsChange)
-      document.removeEventListener("webkitfullscreenchange", handleFsChange)
-    }
-  }, [])
+  // Fullscreen state now comes from useIsFullscreen() above — no
+  // component-local listener needed.
 
   // When playing/hovering state changes, reschedule (or cancel) the hide
   // timer. The mousemove listener also calls scheduleHide on every move,
@@ -235,6 +288,18 @@ export function HeroPlayerControls({
       }
     }
   }, [wrapperRef, overlayAnchor, showControls])
+
+  // If chrome auto-hid while the user was watching, scrolling back to the
+  // absolute top should restore the full hero affordance: player controls
+  // and the header chrome that listens to the visibility event.
+  useEffect(() => {
+    const revealAtTop = () => {
+      if (window.scrollY > TOP_SCROLL_CHROME_REVEAL_THRESHOLD_PX) return
+      showControls()
+    }
+    window.addEventListener("scroll", revealAtTop, { passive: true })
+    return () => window.removeEventListener("scroll", revealAtTop)
+  }, [showControls])
 
   // Hide the OS cursor when chrome auto-hides — sibling cursor styles aren't
   // enough to win over mux-player's own shadow-DOM styling, so set cursor on
@@ -625,6 +690,29 @@ export function HeroPlayerControls({
   const progressPct =
     duration > 0 ? Math.min(100, (displayTime / duration) * 100) : 0
 
+  // Dark gradient that sits BEHIND the chrome bar so the white icons stay
+  // legible. It used to live inside the sticky hero wrapper, but the
+  // chrome bar is portaled to `overlayAnchor` and scrolls up with the
+  // body section — leaving the gradient stranded at the bottom of the
+  // pinned hero where it darkened nothing. Portaling the gradient
+  // alongside the chrome keeps it under the controls at every scroll
+  // position.
+  const chromeBackdrop = (
+    <div
+      aria-hidden="true"
+      data-testid="hero-player-chrome-backdrop"
+      className={`pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[28vh] min-h-36 max-h-72 [background:var(--watch-player-controls-backdrop)] transition-opacity duration-300 ${
+        controlsVisible ? "opacity-100" : "opacity-0"
+      }`}
+      style={
+        {
+          "--watch-player-controls-backdrop":
+            WATCH_PLAYER_CONTROLS_SOFT_BACKDROP_BACKGROUND,
+        } as CSSProperties
+      }
+    />
+  )
+
   // Chrome control bar — portaled into the overlay anchor (just below the
   // sticky hero) so it rides on the body section's top edge as the body
   // slides up over the pinned hero, matching the title-overlay behavior.
@@ -634,13 +722,13 @@ export function HeroPlayerControls({
       data-visible={controlsVisible ? "true" : "false"}
       onMouseEnter={() => setHoveringControls(true)}
       onMouseLeave={() => setHoveringControls(false)}
-      className={`absolute bottom-0 left-1/2 z-10 flex w-3/5 -translate-x-1/2 items-center gap-3 pb-6 transition-opacity duration-300 md:gap-4 md:pb-7 ${
+      className={`absolute inset-x-0 bottom-0 z-10 flex w-full items-center gap-3 pb-6 transition-opacity duration-300 md:gap-4 md:pb-7 ${WATCH_PAGE_RAIL_PADDING_CLASSES} ${
         controlsVisible ? "opacity-100" : "opacity-0"
       }`}
     >
       <ChromeButton
         onClick={togglePlay}
-        ariaLabel={playing ? "Pause" : "Play"}
+        ariaLabel={playing ? t("pause") : t("play")}
         testId="hero-chrome-play"
       >
         {playing ? <PauseIcon /> : <PlayIcon />}
@@ -650,11 +738,14 @@ export function HeroPlayerControls({
         ref={timelineRef}
         role="slider"
         tabIndex={0}
-        aria-label="Seek"
+        aria-label={t("seek")}
         aria-valuemin={0}
         aria-valuemax={Math.max(0, Math.floor(duration))}
         aria-valuenow={Math.floor(displayTime)}
-        aria-valuetext={`${formatTime(displayTime)} of ${formatTime(duration)}`}
+        aria-valuetext={t("seekValue", {
+          current: formatTime(displayTime),
+          total: formatTime(duration),
+        })}
         data-testid="hero-chrome-timeline"
         data-dragging={timelineDragging ? "true" : "false"}
         onPointerDown={handleTimelinePointerDown}
@@ -663,18 +754,18 @@ export function HeroPlayerControls({
         onPointerCancel={handleTimelinePointerUp}
         onLostPointerCapture={handleTimelineLostPointerCapture}
         onKeyDown={handleTimelineKey}
-        className="group relative h-1 flex-1 cursor-pointer touch-pan-y rounded-full bg-white/20 focus:ring-2 focus:ring-white/60 focus:outline-none"
+        className="group relative h-1 min-w-0 flex-1 cursor-pointer touch-pan-y rounded-full bg-white/20 transition-colors duration-150 hover:bg-white/30 focus:bg-white/30 focus:ring-2 focus:ring-white/60 focus:outline-none"
       >
         <div
           className="absolute inset-y-0 left-0 rounded-l-full bg-white/40"
           style={{ width: `${bufferedPct}%` }}
         />
         <div
-          className="absolute inset-y-0 left-0 rounded-l-full bg-[#cb333b]"
+          className="absolute inset-y-0 left-0 rounded-l-full bg-brand-red"
           style={{ width: `${progressPct}%` }}
         />
         <div
-          className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#cb333b] shadow transition group-hover:opacity-100 group-focus:opacity-100 ${
+          className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-red shadow transition group-hover:opacity-100 group-focus:opacity-100 ${
             timelineDragging ? "opacity-100" : "opacity-0"
           }`}
           style={{ left: `${progressPct}%` }}
@@ -701,37 +792,32 @@ export function HeroPlayerControls({
           }
         }}
       >
-        <ChromeButton
-          onClick={toggleMute}
-          ariaLabel={muted || volume === 0 ? "Unmute" : "Mute"}
-          testId="hero-chrome-mute"
-        >
-          {muted || volume === 0 ? <ChromeMutedIcon /> : <ChromeVolumeIcon />}
-        </ChromeButton>
         <div
           data-testid="hero-chrome-volume-container"
           data-open={volumeOpen || volumeDragging ? "true" : "false"}
           className={`overflow-hidden transition-[width,margin] duration-200 ease-out ${
-            volumeOpen || volumeDragging ? "ml-2 w-24" : "ml-0 w-0"
+            volumeOpen || volumeDragging ? "mr-2 w-24" : "mr-0 w-0"
           }`}
         >
           <div
             ref={volumeTrackRef}
             role="slider"
             tabIndex={0}
-            aria-label="Volume"
+            aria-label={t("volume")}
             data-testid="hero-chrome-volume-slider"
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round((muted ? 0 : volume) * 100)}
-            aria-valuetext={`${Math.round((muted ? 0 : volume) * 100)} percent`}
+            aria-valuetext={t("volumeValue", {
+              percent: Math.round((muted ? 0 : volume) * 100),
+            })}
             onPointerDown={handleVolumePointerDown}
             onPointerMove={handleVolumePointerMove}
             onPointerUp={handleVolumePointerUp}
             onPointerCancel={handleVolumePointerUp}
             onLostPointerCapture={handleVolumeLostPointerCapture}
             onKeyDown={handleVolumeKey}
-            className="group relative h-1 w-full cursor-pointer touch-none rounded-full bg-white/20 focus:ring-2 focus:ring-white/60 focus:outline-none"
+            className="group relative h-1 w-full cursor-pointer touch-none rounded-full bg-white/20 transition-colors duration-150 hover:bg-white/30 focus:bg-white/30 focus:ring-2 focus:ring-white/60 focus:outline-none"
           >
             <div
               className="absolute inset-y-0 left-0 rounded-l-full bg-white"
@@ -747,11 +833,28 @@ export function HeroPlayerControls({
             />
           </div>
         </div>
+        <ChromeButton
+          onClick={toggleMute}
+          ariaLabel={muted || volume === 0 ? t("unmute") : t("mute")}
+          testId="hero-chrome-mute"
+        >
+          {muted || volume === 0 ? <ChromeMutedIcon /> : <ChromeVolumeIcon />}
+        </ChromeButton>
       </div>
+
+      {showLanguageButton && onLanguageClick ? (
+        <ChromeButton
+          onClick={onLanguageClick}
+          ariaLabel={t("changeAudioLanguage")}
+          testId="hero-chrome-language"
+        >
+          <Globe aria-hidden className="h-6 w-6" />
+        </ChromeButton>
+      ) : null}
 
       <ChromeButton
         onClick={toggleFullscreen}
-        ariaLabel={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        ariaLabel={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
         testId="hero-chrome-fullscreen"
       >
         {isFullscreen ? <ExitFullscreenIcon /> : <EnterFullscreenIcon />}
@@ -775,16 +878,30 @@ export function HeroPlayerControls({
           controlsVisible ? "cursor-pointer" : "cursor-none"
         }`}
       />
-      <div
-        aria-hidden="true"
-        className={`pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/85 via-black/45 to-transparent transition-opacity duration-300 ${
-          controlsVisible ? "opacity-100" : "opacity-0"
-        }`}
-      />
       {/* Chrome stays pointer-active even when invisible so agent-driven and
           keyboard interactions reach the controls — the wrapper-level reveal
-          listeners then bring it back to opacity-100 on the next interaction. */}
-      {overlayAnchor != null ? createPortal(chromeBar, overlayAnchor) : null}
+          listeners then bring it back to opacity-100 on the next interaction.
+          Backdrop + chrome bar share one portal so the gradient travels
+          with the controls as the body section slides up.
+
+          In fullscreen the portal target swaps to the hero wrapper itself
+          (the element the browser puts in fullscreen). The default target
+          — overlayAnchor — sits OUTSIDE the wrapper and is hidden by the
+          browser's fullscreen render, which is why the chrome disappeared
+          on entering fullscreen. Both targets render the chromeBar at the
+          bottom edge via `absolute bottom-0`, so the visual position is
+          identical in either mode. */}
+      {(() => {
+        const target = isFullscreen ? wrapperEl : overlayAnchor
+        if (target == null) return null
+        return createPortal(
+          <>
+            {chromeBackdrop}
+            {chromeBar}
+          </>,
+          target,
+        )
+      })()}
     </>
   )
 }

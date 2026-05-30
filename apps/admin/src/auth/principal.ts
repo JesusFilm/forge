@@ -17,6 +17,19 @@
  * else — distinct from `SYSTEM` (workflow-internal, in-process only)
  * and from `ADMIN` (full editorial override). Used by apps/manager to
  * proxy embedding-backfill triggers without minting an admin session.
+ *
+ * `CONSUMER_BEARER` is a request-bound rate-limit-only identity minted
+ * at GraphQL context creation when an incoming request carries a valid
+ * `Authorization: Bearer <key>` matching `WEB_ADMIN_API_KEYS`. It is
+ * granted ZERO permissions beyond PUBLIC — its sole purpose is to
+ * bucket consumer SSR traffic (apps/web) separately from anonymous-IP
+ * traffic in admin's rate-limit identifier. The principal carries the
+ * matched key as `rateLimitBucketKey` so the identifyFn can produce
+ * `consumer:<key>` without re-inspecting headers downstream.
+ *
+ * `MANAGER_BACKEND` is the request-bound service identity used by
+ * apps/manager to call Admin-owned Manager read/job contracts. It never
+ * grants human panel access.
  */
 export type Role =
   | "ADMIN"
@@ -25,11 +38,25 @@ export type Role =
   | "PUBLIC"
   | "SYSTEM"
   | "WORKFLOW_TRIGGER"
+  | "MANAGER_BACKEND"
+  | "CONSUMER_BEARER"
 
 export type Principal = {
   id: string | null
   role: Role
+  managerRole?: ManagerRole | null
+  /**
+   * Set on bearer principals that need rate-limit bucketing — the matched
+   * CSV entry from the mint-source env var. Today: `CONSUMER_BEARER`
+   * (from `WEB_ADMIN_API_KEYS`). The rate-limit identifyFn reads this
+   * without re-inspecting headers and namespaces it as `consumer:<key>`
+   * so consumer SSR traffic stays separate from anonymous-IP traffic.
+   * Never logged.
+   */
+  rateLimitBucketKey?: string
 }
+
+export type ManagerRole = "OPERATOR"
 
 /**
  * The workflow-tier principal. Used by every useworkflow job that
@@ -54,3 +81,42 @@ export const WORKFLOW_TRIGGER_PRINCIPAL = {
   id: null,
   role: "WORKFLOW_TRIGGER",
 } as const satisfies Principal
+
+export const MANAGER_BACKEND_PRINCIPAL = {
+  id: null,
+  role: "MANAGER_BACKEND",
+} as const satisfies Principal
+
+/**
+ * Factory for the request-bound consumer-bearer principal. Mints a
+ * Principal carrying the matched bearer key so the rate-limit
+ * identifyFn can bucket as `consumer:<key>` without re-inspecting the
+ * Authorization header downstream. `id: null` matches the
+ * WORKFLOW_TRIGGER convention — bearer principals are non-user
+ * identities, no DB row to point at.
+ *
+ * `CONSUMER_BEARER` grants NO permissions beyond PUBLIC. See
+ * `CONSUMER_BEARER_PERMISSIONS` in `permissions.ts` (empty set,
+ * CI-asserted) and the early-return in `hasPermission`.
+ */
+export function CONSUMER_BEARER_PRINCIPAL({
+  rateLimitBucketKey,
+}: {
+  rateLimitBucketKey: string
+}): Principal {
+  return {
+    id: null,
+    role: "CONSUMER_BEARER",
+    rateLimitBucketKey,
+  }
+}
+
+/**
+ * Editorial-tier predicate: true only for EDITOR/ADMIN. PUBLIC, VIEWER,
+ * SYSTEM, WORKFLOW_TRIGGER, MANAGER_BACKEND, CONSUMER_BEARER all return false — none
+ * should see drafts via consumer-facing relation paths
+ * (Experience.locales, Video.locales).
+ */
+export function isEditorOrAdmin(user: Principal | null): boolean {
+  return user?.role === "ADMIN" || user?.role === "EDITOR"
+}

@@ -1,12 +1,27 @@
 "use client"
 
 import Image from "next/image"
-import type { FragmentOf } from "@forge/graphql"
+import type {
+  FragmentOf,
+  LegacyFragmentValue,
+} from "@/lib/legacy-fragment-types"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichMediaItem } from "@/lib/enrichment"
 import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
 import type { RouteVideo } from "@/lib/content"
 import { mediaCollectionFragment } from "@/lib/fragments/media-collection"
+import {
+  WATCH_BASE_PATH,
+  asLocaleSlug,
+  tryAsContentSlug,
+  watchVideoPath,
+} from "@/lib/routes"
+
+// Collections carry no per-item language today, so card deep links default
+// to the English variant and rely on the watch route to re-resolve locale.
+// See todo: EnrichedMediaItem should carry a defaultLanguage (data-model gap).
+// Hoisted so the throwing constructor runs once at module load, not per card.
+const DEFAULT_COLLECTION_LOCALE = asLocaleSlug("english")
 import {
   Carousel,
   CarouselContent,
@@ -17,10 +32,9 @@ import {
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
 import { useDynamicBackground } from "./DynamicBackground"
+import { resolveMediaImageUrl } from "@/lib/media-image-url"
 
 export { mediaCollectionFragment }
-
-const BASE_PATH = "/watch"
 
 type MediaCollectionProps = {
   data: FragmentOf<typeof mediaCollectionFragment>
@@ -51,7 +65,9 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
     selectedSource === "routeVideoChildren"
       ? (routeVideo?.relatedItems ?? [])
       : (items ?? [])
-          .filter((i): i is NonNullable<typeof i> => i != null)
+          .filter(
+            (i: LegacyFragmentValue): i is NonNullable<typeof i> => i != null,
+          )
           .map(enrichMediaItem)
 
   if (
@@ -102,7 +118,7 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
           </span>
         )}
         <div className={gridClass}>
-          {enrichedItems.map((item, i) => (
+          {enrichedItems.map((item: EnrichedMediaItem, i: number) => (
             <DefaultCard
               key={item.id}
               item={item}
@@ -188,7 +204,7 @@ function CarouselVariant({
             <a href={ctaLink}>
               <button
                 aria-label={ctaLabel ?? "Watch"}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-red-500 hover:text-white"
+                className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors duration-200 hover:bg-brand-red hover:text-white"
               >
                 <PlayIcon />
                 <span>{ctaLabel ?? "Watch"}</span>
@@ -209,7 +225,7 @@ function CarouselVariant({
           className="w-full"
         >
           <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
-            {items.map((item) => (
+            {items.map((item: EnrichedMediaItem) => (
               <CarouselItem key={item.id} className="max-w-[200px] py-1 pl-5">
                 <VideoCard
                   item={item}
@@ -242,7 +258,13 @@ function VideoCard({
   item: EnrichedMediaItem
   onHover?: () => void
 }) {
-  const href = item.videoSlug ? `/watch/${item.videoSlug}` : undefined
+  // Raw <a href> (not next/link), so the `/watch` basePath must be prefixed
+  // manually. EnrichedMediaItem carries no language field, so the locale
+  // segment defaults to `english` (see DEFAULT_COLLECTION_LOCALE).
+  const slug = item.videoSlug ? tryAsContentSlug(item.videoSlug) : null
+  const href = slug
+    ? `${WATCH_BASE_PATH}${watchVideoPath(slug, DEFAULT_COLLECTION_LOCALE)}`
+    : undefined
   const Wrapper = href ? "a" : "div"
   const imageSrc = resolveMediaImageUrl(item.imageUrl)
 
@@ -270,8 +292,14 @@ function VideoCard({
                 sizes="(max-width: 768px) 50vw, 200px"
                 className="transition-transform duration-300 group-hover:scale-105"
                 style={{
+                  // `center` keeps the subject in frame regardless of the
+                  // source image's aspect ratio. Portrait poster artwork
+                  // (the original cms data) stays centered; landscape
+                  // `mobileCinematicHigh` variants (post-data-layer-flip,
+                  // when admin only carries banner-aspect rows) show the
+                  // middle of the scene instead of the left edge.
                   objectFit: "cover",
-                  objectPosition: "left top",
+                  objectPosition: "center",
                   color: "transparent",
                   maskImage:
                     "linear-gradient(to top, transparent 0%, rgba(0,0,0,0.4) 30%, black 42%)",
@@ -355,12 +383,4 @@ function DefaultCard({
 
 function formatLabel(label: string): string {
   return label.replace(/([a-z0-9])([A-Z])/g, "$1 $2").trim()
-}
-
-function resolveMediaImageUrl(url: string | null): string | null {
-  if (!url) return null
-  if (url.startsWith("http://") || url.startsWith("https://")) return url
-  if (url.startsWith(`${BASE_PATH}/`)) return url
-  if (url.startsWith("/images/")) return `${BASE_PATH}${url}`
-  return url
 }

@@ -1,5 +1,6 @@
 -- =============================================================================
--- Better Auth tables (Unit 5)
+-- Legacy admin-local auth tables (Unit 5). Current admin runtime is an Auth SSO
+-- relying client and no longer uses these tables for sessions or providers.
 -- =============================================================================
 
 CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'EDITOR', 'VIEWER');

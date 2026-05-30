@@ -2,17 +2,19 @@
 
 ## Project Overview
 
-JesusFilm (JFP) is a ministry organization. This monorepo contains our web, mobile, and CMS applications with a shared GraphQL client package.
+JesusFilm (JFP) is a ministry organization. This monorepo contains our web, mobile, TV, admin, and manager applications with a shared admin GraphQL client package.
 
 ## Architecture
 
 ```
-apps/cms (Strapi v5) -> exposes GraphQL API
+apps/admin (Next.js + Pothos + Prisma) -> exposes GraphQL API
       ->
-packages/graphql (gql.tada) -> typed client generated from Strapi schema
+packages/admin-graphql (gql.tada) -> typed client generated from admin SDL
       ->
-apps/web (Next.js)  +  apps/mobile (Expo)
+apps/web (Next.js) + apps/mobile (Expo) + apps/tv (React Native TV)
 ```
+
+The public consumer data layer uses admin GraphQL. The old Strapi CMS app and Strapi-bound `packages/graphql` client have been removed.
 
 All apps deploy to Railway. Cloudflare sits in front for DNS, WAF, and Authenticated Origin Pulls.
 
@@ -20,20 +22,22 @@ All apps deploy to Railway. Cloudflare sits in front for DNS, WAF, and Authentic
 
 This is a pnpm + Turborepo monorepo.
 
-- `apps/web/` — Next.js 16+ App Router application (`next@^16.1.6`)
-- `apps/mobile/` — React Native / Expo app (active development, EAS for builds)
-- `apps/cms/` — Strapi v5 headless CMS with GraphQL plugin
+- `apps/web/` — Next.js 16+ App Router application (`next@^16.1.6`); reads from admin via `packages/admin-graphql`
+- `apps/admin/` — Next.js + Pothos + Prisma + pgvector; web's data source post-U22
+- `apps/mobile/` — React Native / Expo app (active development, EAS for builds); reads from admin via `packages/admin-graphql`
+- `apps/tv/` — React Native TV app; reads from admin via `packages/admin-graphql`
 - `apps/roadmap/` — Next.js roadmap dashboard (reads from `docs/roadmap/`)
-- `packages/graphql/` — gql.tada typed GraphQL client (generated from Strapi's GraphQL schema)
+- `packages/admin-graphql/` — gql.tada typed GraphQL client (generated from admin's `schema.graphql`); consumed by web
 
 ## Package-Specific Instructions
 
 When working in a specific package, also read that package's `CLAUDE.md`:
 
 - Working in `apps/web/`? Also read `apps/web/CLAUDE.md`
-- Working in `apps/cms/`? Also read `apps/cms/CLAUDE.md`
+- Working in `apps/admin/`? Also read `apps/admin/CLAUDE.md`
 - Working in `apps/mobile/`? Also read `apps/mobile/CLAUDE.md`
-- Working in `packages/graphql/`? Also read `packages/graphql/CLAUDE.md`
+- Working in `apps/tv/`? Also read `apps/tv/CLAUDE.md`
+- Working in `packages/admin-graphql/`? Also read `packages/admin-graphql/CLAUDE.md`
 - Working in `apps/roadmap/`? Also read `apps/roadmap/CLAUDE.md`
 
 Package CLAUDE.md files contain conventions that override or extend global ones.
@@ -53,11 +57,13 @@ Cursor does not load this file automatically. Keep `.cursor/rules/project-contex
 - Prefer `type` over `interface` unless declaration merging is needed.
 - Use `satisfies` for type-safe object literals.
 
-### GraphQL (packages/graphql)
+### GraphQL — typed client
 
-- This package provides the typed `graphql()` function and introspection types generated from the Strapi GraphQL schema using gql.tada.
-- After any Strapi content type change: run codegen to regenerate types.
-- Operations (queries, mutations, fragments) are defined in consuming apps (e.g., `apps/web/src/lib/content.ts`, `apps/manager/src/cms/`) using the `graphql()` function exported by this package.
+Consumers use `@forge/admin-graphql` (admin's GraphQL surface). The package owns its gql.tada introspection and codegen artifact.
+
+- `packages/admin-graphql` exposes `adminGraphql()` + `AdminFragmentOf`/`AdminResultOf`/`AdminVariablesOf` type aliases + `readFragment`. SDL-only consumption — never imports from `apps/admin/src/domain/*` at runtime (sidesteps the tsx-ESM trap).
+- Operations (queries, mutations, fragments) are defined in the consuming apps, never in the client packages. Web's operations live in `apps/web/src/lib/content.ts`, `search.ts`, `recommendations.ts`, `demo-search.ts`, and the fragment files in `apps/web/src/lib/fragments/`. The shared `WatchExperience` root composition is re-exported from `@forge/admin-graphql/fragments`.
+- After any schema change on EITHER side: run that package's codegen to regenerate the introspection `.d.ts`. CI has separate drift jobs (`graphql-generate`, `admin-graphql-generate`, `admin-schema-drift`) that fail if you forget.
 
 ### Next.js (apps/web)
 
@@ -71,13 +77,6 @@ Cursor does not load this file automatically. Keep `.cursor/rules/project-contex
 - Expo managed workflow. Eject only if absolutely necessary.
 - EAS Build for CI/CD. Test builds with `eas build --profile preview`.
 - Follow Expo Router conventions for navigation.
-
-### Strapi (apps/cms)
-
-- Strapi v5 with GraphQL plugin enabled.
-- Content types defined in the admin UI.
-- API tokens seeded via bootstrap lifecycle using HMAC-SHA512 hashing.
-- GraphQL schema is the contract — apps/web and apps/mobile never call Strapi REST.
 
 ### Deployment
 
@@ -198,33 +197,51 @@ This repo uses the compound engineering workflow. After completing work:
 ### Before Starting Work
 
 1. Check `docs/roadmap/` for a relevant feature ticket. If one exists, use Compound Engineering to brainstorm against that ticket before implementation.
-2. Run `ce:plan` with explicit scope: "Add X, affecting `apps/web` and `packages/graphql`"
+2. Run `ce:plan` with explicit scope: "Add X, affecting `apps/web` and `packages/admin-graphql`"
 3. Reference `docs/solutions/` for past patterns relevant to the task.
 4. Check `todos/` for related outstanding findings.
 5. Set the roadmap feature to `status: "in-progress"` if applicable.
 
 ### The GraphQL Change Flow
 
-This is the most common cross-package workflow. Every agent should know it:
+Two parallel flows since web migrated to admin. Both follow the same pattern: schema artifact emits → codegen regenerates introspection → consuming code updates → all committed together.
 
-1. Add or modify content type in `apps/cms/` (Strapi admin or code)
-2. Run Strapi locally so the GraphQL schema is available
-3. Run codegen in `packages/graphql/` to regenerate typed operations
-4. Update or add queries/mutations/fragments in `packages/graphql/`
-5. Update consuming code in `apps/web/` and/or `apps/mobile/`
-6. Commit generated files alongside source changes
+**Admin-side change flow (web's data source):**
 
-Never skip step 3. Stale types are the #1 source of runtime GraphQL errors.
+1. Add or modify Pothos types in `apps/admin/src/graphql/types/` or related modules
+2. Run `pnpm --filter @forge/admin schema:print` to regenerate `apps/admin/schema.graphql`
+3. Run `pnpm --filter @forge/admin-graphql generate` to regenerate `packages/admin-graphql/src/admin-graphql-env.d.ts`
+4. Update or add queries/mutations/fragments using `adminGraphql()` from `@forge/admin-graphql` in `apps/web/src/lib/`
+5. Update consuming code in `apps/web/`
+6. Commit all three generated artifacts (Pothos source + `schema.graphql` + `admin-graphql-env.d.ts`) alongside source changes
+
+CI's `admin-schema-drift` catches step 2, `admin-graphql-generate` catches step 3.
+
+**Cross-app ISR refresh:** admin emits ISR revalidation webhooks to web on Experience publish / update / archive via `apps/admin/src/services/revalidate-webhook.ts`. Best-effort; never blocks admin's editor UX. See `apps/admin/CLAUDE.md` "Web ISR revalidation webhook (U21)" for deploy ordering.
 
 ### Known Patterns (add to this list as you compound)
 
 - Cloudflare + Railway: requires Authenticated Origin Pulls + DNSSEC
-- Strapi v5 API token seeding: HMAC-SHA512 in bootstrap lifecycle
 - EAS build profiles: environment variables differ per profile (development, preview, production)
 - Railway deploy hooks: use for post-deploy migrations and health checks
 - Devcontainer + pnpm: use `corepack prepare pnpm@<version> --activate` pinned to match `packageManager` in root `package.json` — see `docs/solutions/platform/devcontainer-setup.md`
 - Manager backfill pattern: claim lock synchronously before `after()`, use output table as progress tracker, constrain SQL DISTINCT ON joins — see `docs/solutions/platform/backfill-worker-pattern-manager-20260407.md`
-- Strapi v5 raw SQL: field names are snake-cased in DB (`bcp47` → `bcp_47`). Always verify with `\d tablename` against prod before writing raw SQL.
-- PostgreSQL 18 (Railway): `?::jsonb::text[]` cast is NOT supported. Use PG array literal format (`{val1,val2}`) with `?::text[]` instead. See `apps/cms/src/api/scene-embedding/services/indexer.ts` `toPgArray()`.
+- PostgreSQL `jsonb_array_elements_text(jsonb)` ≠ `json_array_elements_text(json)`. Distinct functions, NOT overloaded across the json/jsonb seam — `json_array_elements_text(jsonb)` does NOT exist (parse error 42883). When using Way A unfold (`u.col_json::jsonb`), call `jsonb_array_elements_text`. Mocked SQL-shape tests catch clause SHAPE but NOT function-resolution; only a real-DB smoke catches this. See `docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md`.
 - Mux data model: `mux_videos.duration` is always 0. Duration lives on `video_variants.duration`.
 - Local embed pipeline + manager-trigger proxy: admin owns the embedding workflows + destination Postgres; manager exposes thin REST proxies at `/api/admin-embeds/{scene,transcript}` that forward to admin's GraphQL trigger mutations via a bearer key matching admin's `WORKFLOW_API_KEYS`. Local-dev path is `pnpm --filter @forge/admin pull:mapping` + `pnpm run-embeds` against any `DATABASE_URL` — see `docs/solutions/platform/local-embed-pipeline-pattern-20260429.md`.
+- Cross-app trigger pattern (bidirectional): admin↔manager service-to-service triggers use a caller-side single key + receiver-side CSV asymmetry. Both directions are now wired: manager → admin (`/api/admin-embeds/*` → `triggerSceneEmbeddingBackfill`/`triggerTranscriptEmbeddingBackfill`, with admin holding the CSV `WORKFLOW_API_KEYS`) and admin → manager (`triggerManagerEnrichment` → `/api/admin-trigger/*`, with manager holding the CSV `ADMIN_TRIGGER_API_KEYS`). Receiver deploys keyring entry FIRST; then caller deploys env var. Reverse order produces a dead minute where the first call 401s. See `docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md`.
+- Search API authentication (`/api/search` + `Query.search`): bearer-as-passport pattern. Admin reads `Authorization: Bearer <k>` against `isAnyKnownBearer()` which OR-composes three known-caller branches — DB-backed PARTNER (Plan 003 `PartnerApiKey` table; runs FIRST so `keyId` threads into logs), CONSUMER (`WEB_ADMIN_API_KEYS` env CSV — apps/web SSR), and WORKFLOW (`WORKFLOW_API_KEYS` env CSV — workflow-trigger). The boot-time `assertBearerCsvsDisjoint` invariant guarantees each env-CSV key value lives in exactly one CSV. Rate-limit (per-IP, 30/min) fires BEFORE the auth check so junk bearers can't bypass the bucket. Phased dual-accept → required-auth via `SEARCH_AUTH_REQUIRED` env flag. The legacy `SEARCH_API_KEYS` env-CSV partner branch was retired in Plan 003. See `apps/admin/CLAUDE.md` "Search API authentication" + `docs/plans/2026-05-17-002-feat-search-api-auth-plan.md` + `docs/solutions/architecture-patterns/bearer-as-passport-multi-csv-composition-20260518.md`.
+- Partner API key store (DB-backed): `/api/search` partner credentials live in admin's `PartnerApiKey` Postgres table (NOT env-CSV) so they get per-key audit, sub-second revocation, and metadata that internal env-CSV bearers don't need. Token shape `jfp_search_<keyId>_<random>`; stored hash is `sha256(rawToken)`. The composer's PARTNER branch runs FIRST and threads `source=partner keyId=<id>` into the per-request log so operators can answer "which partners called this week" from logs alone. Hot-path Prisma lookup wrapped in `Promise.race` against a 1500ms budget; `lastUsedAt` updates fire-and-forget. Internal bearer CSVs (`WORKFLOW_API_KEYS`, `WEB_ADMIN_API_KEYS`, `BACKUP_DOWNLOAD_API_KEYS`) stay on env CSV — different threat model, different operator pattern. CLI: `pnpm --filter @forge/admin partner-keys <create|list|revoke|rotate>`; read-only dashboard at `/dashboard/partner-keys`. Legacy migration path is rotate-onto-fresh-token (no in-place import); see `apps/admin/CLAUDE.md` "Partner API key store" + `docs/plans/2026-05-18-001-feat-partner-api-key-store-plan.md`.
+- WAF passthrough verification via prior art: when verifying that Cloudflare doesn't strip `Authorization` (or any header) on a new endpoint, the empirical shortcut is "is something with the same shape ALREADY working in production?" If a sibling surface on the same domain/path-prefix has been using the header successfully for weeks (apps/web SSR's consumer-bearer to admin since 2026-05-13; manager → admin workflow-trigger since 2026-04-29), the new surface inherits identical passthrough. Skips the fresh-probe + origin-log dance entirely. See `docs/solutions/best-practices/waf-passthrough-verification-via-prior-art-20260518.md`.
+- Railway logsV2 silences JSON-stringified payloads from Next.js App Router runtime route handlers (Next.js 16 + Node 24 + standalone + logsV2:true), regardless of `console.log` / `console.warn` / `console.error`. The same `console.error` from the same file surfaces fine when the payload is plain-string but is dropped when it's `JSON.stringify(...)`. **Default rule for admin's request path:** use the `[label] event=name key=value key=value` plain-string format (matching the existing `event=query_embedding_failure` log convention), NOT `JSON.stringify`. PRs #970 + #972 attempted console-method swaps and verified that approach is wrong; PR #973 corrects to plain-string format. See `docs/solutions/runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md`.
+- AWS S3 NoSuchKey classification: never branch on the error MESSAGE — match `error.name === "NoSuchKey" | "NotFound"` (AWS SDK v3 typed surface) first, legacy `error.Code === "NoSuchKey" | "NotFound"` second, tightened regex `/not found|does not exist|ENOENT/i` as backstop only. Tests must throw the REAL typed shape (`Object.assign(new Error(...), { name: "NoSuchKey" })`), not generic `new Error("NoSuchKey: ...")` — otherwise the regex backstop satisfies the test while the typed branch stays untested. See `docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md`.
+- Mocked-vs-real testing discipline (META): mocked tests prove BRANCH SHAPE; real fixtures prove PRODUCTION CONTRACT. Every typed-discriminator branch needs at least one test where ONLY that branch can match — otherwise deleting a branch wouldn't fail any test. Same trap shows up in AWS error shapes, PG function resolution, in-house typed errors with literal-union codes, infrastructure-write tools that return success on staged-but-not-deployed changes, cross-PR file-format contracts (feat-119 PR2's `kind: "scene"` vs PR1's `kind: "scene-analysis"`), AND idempotence property tests on state-machine canonicalizers that pass vacuously when malformed inputs are their own fixed point (forge#1049 `/watch` Rule 4 episode-bare contract — augment with output-shape contract assertions). See `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md` for the META home + eight worked instances.
+- Producer-consumer report-file contract: when two stacked PRs share a file format (PR1 `--report-out` + PR2 `--from-report`), the discriminator literals (kinds, statuses) MUST align across the boundary. Pick ONE source of truth (typically the wire shape — URL paths or GraphQL enums) and align both halves to it; don't rename through layers. Test fixtures must use the producer's actual literals, not the consumer's assumptions. See `docs/solutions/best-practices/producer-consumer-report-file-contract-pattern-20260506.md`.
+- Outbound timeout MUST be shorter than the upstream caller's budget: any server-route function that calls a downstream client (Apollo, pg, http) which doesn't honor an explicit per-call timeout must wrap with `Promise.race` + a typed `TimeoutError` rejection, with a budget strictly smaller than the upstream caller's ceiling. Otherwise the upstream classifier wins the race ("network_error retryable" → retry storm) while the inner call keeps running. Pick the mechanism that matches the client (`AbortSignal.timeout` for fetch; `Promise.race` for Apollo; `statement_timeout` + race for pg). See `docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md`.
+- Fire-and-forget slot-leak guard: any `after()`-style or queue-style background dispatch that reserves in-memory state (idempotency map, semaphore, claim token) before dispatch must wrap the ENTIRE callback body in `try/finally` — not just the `await dispatch`. A naive `try { await dispatch } finally { delete }` leaks the slot if anything earlier in the callback (structured-log JSON.stringify, getter on a proxy, future side-effect) throws synchronously. Add a sync-throw test (not just async-reject) for every reserve/release pair. See `docs/solutions/best-practices/in-memory-slot-reservation-fire-and-forget-20260506.md`.
+- Client mirrors server dedupe: when a client → server pair has the server deduping by a stable id, the client MUST mirror that dedupe by the SAME key, before the request. Otherwise request and response array lengths diverge and the client synthesizes confused outcomes (was this NOT_FOUND or just deduped?). Document the dedupe key in BOTH halves' code comments so future maintainers can't accidentally diverge them. See `docs/solutions/best-practices/client-mirror-server-dedupe-per-id-contract-20260506.md`.
+- Pothos mutations — parallel arg arrays vs input-object list: default to `[InputType!]!`. Use parallel `[T1!]! + [T2!]!` arrays paired by index ONLY when ≤2 fields, the producer naturally projects them as separate arrays, AND the field set is unlikely to grow within 6 months. Length-equality validation in the resolver is a smell — input objects make it unrepresentable. See `docs/solutions/graphql/pothos-parallel-arg-arrays-vs-input-list-20260506.md`.
+- Operator-actionable projections in workflow reports: when a `succeeded/skipped/failed` count triple accumulates duplicate signals via a cascade (e.g., L outcomes per missing `(parent, child)` group), surface a deduped+sorted projection by stable id (`{ assetId, coreId, kind }`) AS A FIRST-CLASS REPORT FIELD. Dedup at projection time, not in the cascade — preserves the per-target outcome contract for dashboards while giving operators an actionable unique-set view. feat-119 PR1's `missingArtifacts` field is the canonical example. See `docs/solutions/best-practices/workflow-report-operator-actionable-projection-pattern-20260506.md`.
+- Opt-in scaffolding env vars must be `.optional()`: required Zod env vars with no default brick Railway deploys for environments that haven't been provisioned yet — even when the default code path never invokes the consumer. Required-at-schema-load is reserved for vars the always-on code consumes. For new opt-in scaffolding (canary flags, dual-source migration vars, dev-only debug toggles): use `.optional()` + runtime fallback so default mode has zero new env-var prerequisites. Operational mitigations like "deploy env var before PR merge" buried in plan notes are too easy to skip; move the precondition into the schema. See `docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md`.
+- Tier-2 `/ce-code-review` is mandatory before push when shipping-workflow triggers fire (>=400 LOC + >3 dirs, >=1000 LOC, OR any sensitive surface — auth, payments, data migrations, security config, public API, dependency manifests). Unit tests + green CI prove what code DOES, not what it SHOULD do under adversarial conditions; Tier-2 personas (security, adversarial, reliability, correctness) construct the failure scenarios that catch design-shape bugs before push. Routing rule: when a reliability/security/correctness persona flags P2+ at confidence 75+, the default bias is Apply, not Defer — especially for new env vars, schema validation, or Apollo client construction. See `docs/solutions/workflow-issues/ce-code-review-tier-2-mandatory-before-push-20260511.md`.
+- base-ui Dialog open/close verification (Chrome MCP / Playwright): `!!document.querySelector(...)` returns truthy during the close animation because base-ui keeps the Popup mounted with a `data-closed` attribute during the ~100ms transition before unmounting. For browser-driven smoke tests of any `apps/web` Dialog (`DownloadModal`, `LanguagePickerModal`, `ShareModal`, any wrapper of `src/components/ui/dialog.tsx`), inspect `data-open` / `data-closed` attributes — not element presence. Adjacent gotcha: JS-simulated clicks on base-ui Buttons can fail silently under claude-in-chrome MCP; verify the click landed via state inspection before blaming `data-open` semantics. See `docs/solutions/best-practices/base-ui-dialog-state-attribute-detection-20260520.md`.

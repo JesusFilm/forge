@@ -109,6 +109,10 @@ export const adminMessages = {
           label: "Users",
           description: "Permissions, invites, and role posture.",
         },
+        partnerKeys: {
+          label: "Partner API keys",
+          description: "Issued partner bearer tokens and revocation status.",
+        },
         settings: {
           label: "Settings",
           description: "Keys, providers, and environment controls.",
@@ -120,30 +124,40 @@ export const adminMessages = {
       description:
         "Scaffolding in place. See docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.",
       links: {
-        login: "/login",
+        login: "/api/auth/login",
         dashboard: "/dashboard",
         systemStatus: "/dashboard/system-status",
         health: "/api/health",
       },
     },
     login: {
-      brandName: "Forge",
-      hero: "Help people hear the good news of Jesus clearly.",
+      brandName: "JesusFilm",
+      hero: "Sign in with your JesusFilm account.",
       labels: {
-        signIn: "Sign In",
-        welcomeBack: "Welcome back",
+        welcomeBack: "Sign in to continue",
         emailAddress: "Email address",
         password: "Password",
         divider: "OR",
+      },
+      destination: {
+        context: "Continuing to {destination}",
+        helper: "You are signing in to access {destination}.",
+        defaultName: "Forge administration panel",
       },
       placeholders: {
         email: "admin@example.com",
         password: "••••••••••••",
       },
       actions: {
+        checkAccessStatus: "Check access status",
         continue: "Continue",
         signingIn: "Signing in…",
         continueWith: "Continue with {provider}",
+        continueToAdmin: "Continue to admin",
+        requestAccess: "Request access",
+        requestingAccess: "Requesting access…",
+        signInAgain: "Sign in again",
+        tryDifferentAccount: "Try a different account",
       },
       providers: {
         facebook: "Facebook",
@@ -154,6 +168,23 @@ export const adminMessages = {
       errors: {
         forbidden: "Your account does not have access to the admin dashboard.",
         invalidCredentials: "Invalid email or password",
+        requestAccessFailed: "Access request failed. Try signing in again.",
+      },
+      access: {
+        accountLabel: "You are signed in as",
+        approved:
+          "Access has been approved. Continue to sign in again and enter the dashboard.",
+        available:
+          "Request access and an administrator will review your account.",
+        description:
+          "This account is authenticated, but it has not been approved for Forge Admin.",
+        pending:
+          "Access has been requested and is waiting for an administrator to approve it.",
+        requested:
+          "Access requested. An administrator must approve your account before you can enter the dashboard.",
+        title: "Admin access required",
+        unavailable:
+          "No active access request was found. Sign in again to check your access.",
       },
     },
     pages: {
@@ -795,6 +826,29 @@ export const adminMessages = {
           },
         ],
       },
+      partnerKeys: {
+        eyebrow: "System / Partner API Keys",
+        title: "Partner API keys",
+        description:
+          "Issued partner bearer tokens, last-used signal, and revocation status.",
+        emptyTitle: "No partner keys issued yet",
+        emptyDescription:
+          "Issue a key via CLI: pnpm --filter @forge/admin partner-keys create --name=[label] --owner-email=[contact]",
+        statusActive: "Active",
+        statusRevoked: "Revoked",
+        unknownUser: "unknown",
+        neverUsed: "never",
+        columns: {
+          keyId: "Key ID",
+          name: "Name",
+          owner: "Owner",
+          status: "Status",
+          lastUsed: "Last used",
+          createdAt: "Created",
+          createdBy: "Created by",
+          revokedBy: "Revoked by",
+        },
+      },
       settings: {
         eyebrow: "System / Settings",
         title: "Settings & API Keys",
@@ -1091,6 +1145,10 @@ export const adminMessages = {
           label: "Usuarios",
           description: "Permisos, invitaciones y postura de roles.",
         },
+        partnerKeys: {
+          label: "Claves API de socios",
+          description: "Tokens portadores emitidos y estado de revocacion.",
+        },
         settings: {
           label: "Configuracion",
           description: "Claves, proveedores y controles de entorno.",
@@ -1102,30 +1160,40 @@ export const adminMessages = {
       description:
         "La base ya esta lista. Consulta docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.",
       links: {
-        login: "/login",
+        login: "/api/auth/login",
         dashboard: "/dashboard",
         systemStatus: "/dashboard/system-status",
         health: "/api/health",
       },
     },
     login: {
-      brandName: "Forge",
-      hero: "Ayuda a las personas a escuchar claramente las buenas nuevas de Jesus.",
+      brandName: "JesusFilm",
+      hero: "Inicia sesion con tu cuenta JesusFilm.",
       labels: {
-        signIn: "Ingresar",
-        welcomeBack: "Bienvenido de nuevo",
+        welcomeBack: "Inicia sesion para continuar",
         emailAddress: "Correo electronico",
         password: "Contrasena",
         divider: "O",
+      },
+      destination: {
+        context: "Continuando a {destination}",
+        helper: "Estas iniciando sesion para acceder a {destination}.",
+        defaultName: "panel de administracion Forge",
       },
       placeholders: {
         email: "admin@example.com",
         password: "••••••••••••",
       },
       actions: {
+        checkAccessStatus: "Comprobar estado de acceso",
         continue: "Continuar",
         signingIn: "Ingresando…",
         continueWith: "Continuar con {provider}",
+        continueToAdmin: "Continuar al admin",
+        requestAccess: "Solicitar acceso",
+        requestingAccess: "Solicitando acceso…",
+        signInAgain: "Iniciar sesion de nuevo",
+        tryDifferentAccount: "Probar otra cuenta",
       },
       providers: {
         facebook: "Facebook",
@@ -1136,6 +1204,23 @@ export const adminMessages = {
       errors: {
         forbidden: "Tu cuenta no tiene acceso al panel de administracion.",
         invalidCredentials: "Correo o contrasena no validos",
+        requestAccessFailed:
+          "No se pudo solicitar acceso. Intenta iniciar sesion de nuevo.",
+      },
+      access: {
+        accountLabel: "Iniciaste sesion como",
+        approved:
+          "El acceso fue aprobado. Continua para iniciar sesion de nuevo y entrar al panel.",
+        available: "Solicita acceso y un administrador revisara tu cuenta.",
+        description:
+          "Esta cuenta esta autenticada, pero aun no tiene aprobacion para Forge Admin.",
+        pending:
+          "El acceso fue solicitado y esta esperando la aprobacion de un administrador.",
+        requested:
+          "Acceso solicitado. Un administrador debe aprobar tu cuenta antes de que puedas entrar al panel.",
+        title: "Se requiere acceso de administrador",
+        unavailable:
+          "No se encontro una solicitud de acceso activa. Inicia sesion de nuevo para comprobar tu acceso.",
       },
     },
     pages: {} as Record<string, never>,

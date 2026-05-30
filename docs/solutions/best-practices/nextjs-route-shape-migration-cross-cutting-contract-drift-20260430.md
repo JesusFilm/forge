@@ -1,6 +1,7 @@
 ---
 title: "Migrating Next.js App Router route shapes: avoiding silent contract drift across URL builders, tests, and middleware"
 date: 2026-04-30
+last_refreshed: 2026-05-28
 category: docs/solutions/best-practices/
 module: apps/web
 problem_type: best_practice
@@ -99,7 +100,9 @@ Run these in the route-shape PR description as a checklist artifact. The grep is
 
 **Drop the prop, don't patch the fallback.** When a route shape changes such that one segment becomes optional or removable (here: `parentSlug` no longer exists in the URL), don't widen the prop to nullable and add an empty-string fallback. Drop the prop entirely from downstream consumers. `parentSlug=""` producing `${origin}/watch//${videoSlug}/${lang}` is a class of bug that becomes structurally impossible if the prop never existed.
 
-**Default to "more specific" not "more permissive" in middleware route detectors.** When tightening a route-segment match, re-derive the predicate from the route handler's preconditions — don't inherit the previous matcher. `detectWatchRoute` returning `"watch"` for any 2-seg path was a stale assumption from when 3-seg was the only watch shape. After the refactor, the matcher should require `isLocale(last)` to mirror the page handler's `isLocale(rawLocale)` check — so the proxy and the route handler agree on what a watch URL looks like.
+**Default to "more specific" not "more permissive" in middleware route detectors.** When tightening a route-segment match, re-derive the predicate from the route handler's preconditions — don't inherit the previous matcher. `detectWatchRoute` returning `"watch"` for any 2-seg path was a stale assumption from when 3-seg was the only watch shape. After the refactor, the matcher should agree with the page handler's locale shape — so the proxy and the route handler agree on what a watch URL looks like.
+
+The exact predicate is **necessary but not sufficient** when the route accepts more than one locale shape. The watch route accepts both bcp47 codes (`en`, `fr-CA`) and slug-form language identifiers (`english`, `spanish-castilian`), so `isLocale(last)` alone (bcp47-only) is too narrow. The current matcher unions both forms: `return isLocale(last) || PREFERRED_LANG_SLUG.test(last)`. See the updated code example below, and the worked recurrence in `docs/solutions/ui-bugs/series-page-locale-normalized-to-default-on-slug-form-urls-2026-05-14.md` — the same `isLocale`-as-language-validator mistake silently substituted `DEFAULT_LOCALE` on every non-bcp47 series URL because the downstream client component received the bcp47-normalised `locale` instead of the raw URL segment.
 
 ## Why This Matters
 
@@ -123,6 +126,7 @@ This learning extends — and is concretely demonstrated by — the methodologic
 - When a discriminated-union narrowing is refactored in a SectionRenderer-style dispatcher and downstream consumers depend on a particular `kind` being threaded with its associated payload (e.g., the `routeVideo` regression on the video-template fallback)
 - When a resolver's argument list grows to include `locale` (or any URL-derived parameter) — verify it actually drives selection, not just the cache key
 - Before every PR that includes both a route-handler file rename/delete _and_ a same-PR commit titled like "U-N: refit modals" — that combination is the canonical fan-out refactor and warrants a `/ce-code-review` pass before merge
+- **When a URL canonicalizer / normalizer is guarded by an idempotence property test** (`f(f(x)) === f(x)`) — that property holds VACUOUSLY for malformed inputs that no rule's precondition matches (they're their own fixed point). Add an output-shape contract property test that inspects both `kind: "redirect"` AND `kind: "canonical"` outputs against each downstream invariant. See [idempotence-property-test-vacuous-on-malformed-fixed-point-20260528.md](idempotence-property-test-vacuous-on-malformed-fixed-point-20260528.md) for the worked instance (forge#1049 Rule 4 episode-bare contract miss caught during `/ce:review`).
 
 ## Examples
 
@@ -239,16 +243,29 @@ function detectWatchRoute(pathname: string): WatchRouteKind | null {
 ```
 
 ```ts
-// After — match what page.tsx actually accepts (isLocale on the last segment),
-//   so non-locale 2-seg URLs flow through to locale-redirect instead of
-//   being captured by watch-CSP. Embed branch removed alongside the route.
+// After — match what page.tsx actually accepts. The watch route admits
+//   BOTH bcp47 codes ("en", "fr-CA") AND slug-form language identifiers
+//   ("english", "spanish-castilian") because the language picker writes
+//   slug-form URLs. `isLocale` is bcp47-only by design, so the union
+//   with PREFERRED_LANG_SLUG is required — using `isLocale` alone here
+//   was a regression in an earlier revision of this fix. Embed branch
+//   removed alongside the deleted route.
+const PREFERRED_LANG_SLUG = /^[a-z0-9-]+$/
 function isWatchRoute(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean)
   if (segments.length !== 2) return false
   const last = segments[1]
-  return last != null && isLocale(last)
+  if (last == null) return false
+  return isLocale(last) || PREFERRED_LANG_SLUG.test(last)
 }
 ```
+
+A general rule that survives the bcp47-vs-slug-form distinction: when a
+helper named like a generic "is this a valid X" check is actually scoped
+to one specific form (`isLocale` accepts only bcp47), rename it to
+disambiguate (`isBcp47Locale`) or wrap it in a broader matcher at every
+call site. Don't lean on the narrower helper as if it answered the
+broader question.
 
 ### Tag "single-line revert" hides with a positive assertion
 
@@ -286,6 +303,7 @@ expect(cls).not.toMatch(/\btransition\b/)
 - `docs/solutions/best-practices/watch-single-video-template-pages-strapi-nextjs-2026-04-11.md` — the architectural precedent this learning's defects mutated. Defines the original `resolveWatchPage` flow, `routeVideo` injection, and the rule "Keep all watch route precedence in one server-side resolver shared by page rendering and metadata" that the route-shape change literally violated.
 - `docs/solutions/best-practices/review-fix-round-2-sibling-call-site-regressions-20260421.md` — the methodological precedent. The cluster documented here is a fresh worked example of "round-1 fix lands at one site, sibling call sites of the same pattern silently rot." The grep-for-pattern checklist in that doc is exactly what would have caught all the modal/test/embed/proxy stragglers in one pass.
 - `docs/solutions/best-practices/dead-invariant-checks-from-sibling-port-20260422.md` — `parentSlug=""` is technically valid but semantically dead-after-reshape; `void locale` is an assertion intact with semantic protection gone. Same family.
+- `docs/solutions/ui-bugs/series-page-locale-normalized-to-default-on-slug-form-urls-2026-05-14.md` — worked recurrence of the `isLocale`-as-language-validator mistake on a different page-route consumer (the series page received `locale={locale}` instead of `locale={rawLocale}`, so slug-form locales silently fell back to `DEFAULT_LOCALE` and the UI displayed "English" despite the URL). Same root cause as the proxy-side example above; demonstrates that the bcp47-vs-slug-form gap can recur on any new client component added under `[slug]/[locale]/page.tsx` if the pattern isn't carried forward.
 - `docs/solutions/web/nextjs-headers-defeats-route-cache.md` — adjacent middleware/proxy concern. The `headers()` grep recipe in that doc is worth running before any route-shape change ships, since `revalidate = 60` is silently nullified by a stray `headers()` import.
 - `docs/solutions/web/nextjs16-cachecomponents-isr.md` — webhook revalidation paths must be updated to the new shape; verify Strapi `revalidatePath()` callers reference the new 2-segment URL.
 - `docs/solutions/integration-issues/expo-graphql-schema-drift-and-fragment-validation.md` — cross-app analog of silent contract drift.

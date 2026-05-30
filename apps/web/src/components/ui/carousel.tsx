@@ -31,6 +31,7 @@ type CarouselContextProps = {
 } & CarouselProps
 
 const CarouselContext = React.createContext<CarouselContextProps | null>(null)
+const HORIZONTAL_WHEEL_DELTA_THRESHOLD = 8
 
 function useCarousel() {
   const context = React.useContext(CarouselContext)
@@ -133,14 +134,39 @@ function Carousel({
   )
 }
 
-function CarouselContent({ className, ...props }: React.ComponentProps<"div">) {
-  const { carouselRef, orientation } = useCarousel()
+function CarouselContent({
+  className,
+  onWheel,
+  ...props
+}: React.ComponentProps<"div">) {
+  const { carouselRef, orientation, api } = useCarousel()
+
+  function handleWheel(event: React.WheelEvent<HTMLDivElement>) {
+    onWheel?.(event)
+    if (event.defaultPrevented) return
+    if (orientation !== "horizontal" || !api) return
+    if (
+      Math.abs(event.deltaX) <= Math.abs(event.deltaY) ||
+      Math.abs(event.deltaX) < HORIZONTAL_WHEEL_DELTA_THRESHOLD
+    ) {
+      return
+    }
+
+    if (event.deltaX > 0 && api.canScrollNext()) {
+      event.preventDefault()
+      api.scrollNext()
+    } else if (event.deltaX < 0 && api.canScrollPrev()) {
+      event.preventDefault()
+      api.scrollPrev()
+    }
+  }
 
   return (
     <div
       ref={carouselRef}
-      className="overflow-hidden"
+      className="overflow-x-clip overflow-y-visible"
       data-slot="carousel-content"
+      onWheel={handleWheel}
     >
       <div
         className={cn(
@@ -176,15 +202,23 @@ function CarouselPrevious({
   className,
   variant = "outline",
   size = "icon-sm",
+  label = "Previous slide",
+  "aria-label": ariaLabelOverride,
   ...props
-}: React.ComponentProps<typeof Button>) {
+}: React.ComponentProps<typeof Button> & { label?: string }) {
   const { orientation, scrollPrev, canScrollPrev } = useCarousel()
+  // Single source of truth for the button's accessible name. A caller may
+  // pass `aria-label` directly OR the `label` prop; pull `aria-label` out
+  // of the prop spread so it never silently overrides `label` while the
+  // (now-removed) sr-only span uses a different value.
+  const accessibleName = ariaLabelOverride ?? label
 
   return (
     <Button
       data-slot="carousel-previous"
       variant={variant}
       size={size}
+      aria-label={accessibleName}
       className={cn(
         "absolute touch-manipulation rounded-full",
         orientation === "horizontal"
@@ -197,7 +231,6 @@ function CarouselPrevious({
       {...props}
     >
       <ChevronLeftIcon />
-      <span className="sr-only">Previous slide</span>
     </Button>
   )
 }
@@ -206,15 +239,19 @@ function CarouselNext({
   className,
   variant = "outline",
   size = "icon-sm",
+  label = "Next slide",
+  "aria-label": ariaLabelOverride,
   ...props
-}: React.ComponentProps<typeof Button>) {
+}: React.ComponentProps<typeof Button> & { label?: string }) {
   const { orientation, scrollNext, canScrollNext } = useCarousel()
+  const accessibleName = ariaLabelOverride ?? label
 
   return (
     <Button
       data-slot="carousel-next"
       variant={variant}
       size={size}
+      aria-label={accessibleName}
       className={cn(
         "absolute touch-manipulation rounded-full",
         orientation === "horizontal"
@@ -227,7 +264,6 @@ function CarouselNext({
       {...props}
     >
       <ChevronRightIcon />
-      <span className="sr-only">Next slide</span>
     </Button>
   )
 }

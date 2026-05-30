@@ -1,63 +1,48 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { JobRecord } from "@/types/job"
 
-const mutateMock = vi.fn()
-const queryMock = vi.fn()
-const cmsPostMock = vi.fn()
-const publishJobEventMock = vi.fn()
-
-vi.mock("@/cms/client", () => ({
-  default: () => ({
-    mutate: mutateMock,
-    query: queryMock,
-  }),
+const { adminCreateJobMock, publishJobEventMock } = vi.hoisted(() => ({
+  adminCreateJobMock: vi.fn(),
+  publishJobEventMock: vi.fn(),
 }))
 
-vi.mock("@/services/cmsClient", () => ({
-  cmsPost: cmsPostMock,
+vi.mock("@/backend/admin-client", () => ({
+  AdminGraphqlClient: vi.fn().mockImplementation(() => ({
+    createJob: adminCreateJobMock,
+  })),
 }))
 
 vi.mock("@/lib/job-events", () => ({
   publishJobEvent: publishJobEventMock,
 }))
 
-function buildGraphqlJob(documentId: string) {
+function buildJob(overrides: Partial<JobRecord> = {}): JobRecord {
   return {
-    documentId,
+    id: "job-1",
     muxAssetId: "asset-1",
     muxPlaybackId: "playback-1",
-    languages: [],
+    languages: ["529"],
+    options: {},
     status: "pending",
-    currentStep: null,
     retries: 0,
     createdAt: "2026-04-11T00:00:00.000Z",
     updatedAt: "2026-04-11T00:00:00.000Z",
-    startedAt: null,
-    completedAt: null,
     artifacts: {},
     errors: [],
     steps: [],
+    ...overrides,
   }
 }
 
 describe("createJob", () => {
   beforeEach(() => {
-    mutateMock.mockReset()
-    queryMock.mockReset()
-    cmsPostMock.mockReset()
+    adminCreateJobMock.mockReset()
     publishJobEventMock.mockReset()
   })
 
-  afterEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it("uses the CMS internal create endpoint when a videoDocumentId is provided", async () => {
-    cmsPostMock.mockResolvedValue({ documentId: "job-1" })
-    queryMock.mockResolvedValue({
-      data: {
-        enrichmentJob: buildGraphqlJob("job-1"),
-      },
-    })
+  it("creates jobs through Admin GraphQL", async () => {
+    const createdJob = buildJob()
+    adminCreateJobMock.mockResolvedValue(createdJob)
 
     const { createJob } = await import("./state")
 
@@ -71,8 +56,7 @@ describe("createJob", () => {
       },
     })
 
-    expect(cmsPostMock).toHaveBeenCalledWith(
-      "/enrichment-job/internal-create",
+    expect(adminCreateJobMock).toHaveBeenCalledWith(
       expect.objectContaining({
         muxAssetId: "asset-1",
         muxPlaybackId: "playback-1",
@@ -80,26 +64,7 @@ describe("createJob", () => {
         videoDocumentId: "video-doc-1",
       }),
     )
-    expect(mutateMock).not.toHaveBeenCalled()
-    expect(queryMock).toHaveBeenCalled()
-    expect(job.id).toBe("job-1")
-    expect(publishJobEventMock).toHaveBeenCalledWith(job)
-  })
-
-  it("falls back to the GraphQL mutation when no videoDocumentId is provided", async () => {
-    mutateMock.mockResolvedValue({
-      data: {
-        createEnrichmentJob: buildGraphqlJob("job-2"),
-      },
-    })
-
-    const { createJob } = await import("./state")
-
-    const job = await createJob("asset-2", "playback-2")
-
-    expect(cmsPostMock).not.toHaveBeenCalled()
-    expect(mutateMock).toHaveBeenCalled()
-    expect(job.id).toBe("job-2")
-    expect(publishJobEventMock).toHaveBeenCalledWith(job)
+    expect(job).toBe(createdJob)
+    expect(publishJobEventMock).toHaveBeenCalledWith(createdJob)
   })
 })

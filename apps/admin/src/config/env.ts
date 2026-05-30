@@ -20,6 +20,14 @@ export const concurrencyEnvSchema = z.coerce
   .positive()
   .optional()
 
+export const searchTraceRawRetentionDaysEnvSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(29)
+  .optional()
+  .default(29)
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -31,33 +39,22 @@ export const env = createEnv({
     // `?connection_limit=2` — see src/db/client.ts.
     DATABASE_URL: z.string().url(),
     DATABASE_URL_SYNC: z.string().url().optional(),
-    BETTER_AUTH_SECRET: z.string().min(1).optional(),
-    BETTER_AUTH_URL: z.string().url().optional(),
-    // Cookie domain for cross-subdomain auth. Set to `.jesusfilm.org` in
-    // production so all apps on *.jesusfilm.org share the session cookie.
-    // Omit in local dev to default to host-only (localhost).
-    AUTH_COOKIE_DOMAIN: z.string().min(1).optional(),
-    // Optional Better Auth cookie prefix. Use a unique value for local
+    ADMIN_SESSION_SECRET: z.string().min(32),
+    // Optional admin OAuth cookie prefix. Use a unique value for local
     // worktree previews sharing localhost so branches do not overwrite each
     // other's session cookies.
     AUTH_COOKIE_PREFIX: z.string().min(1).optional(),
-    // Comma-separated origins allowed to call the auth API cross-origin.
-    // e.g. "https://web.jesusfilm.org,https://manager.jesusfilm.org"
-    AUTH_TRUSTED_ORIGINS: z.string().min(1).optional(),
-    FACEBOOK_CLIENT_ID: z.string().min(1).optional(),
-    FACEBOOK_CLIENT_SECRET: z.string().min(1).optional(),
-    GOOGLE_CLIENT_ID: z.string().min(1).optional(),
-    GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
-    APPLE_CLIENT_ID: z.string().min(1).optional(),
-    APPLE_CLIENT_SECRET: z.string().min(1).optional(),
-    OKTA_CLIENT_ID: z.string().min(1).optional(),
-    OKTA_CLIENT_SECRET: z.string().min(1).optional(),
-    OKTA_ISSUER: z.string().url().optional(),
-    FIREBASE_WEB_API_KEY: z.string().min(1).optional(),
-    FIREBASE_PROJECT_ID: z.string().min(1).optional(),
-    FIREBASE_CLIENT_EMAIL: z.string().email().optional(),
-    FIREBASE_PRIVATE_KEY: z.string().min(1).optional(),
-    FIREBASE_MIGRATION_CUTOFF_AT: z.string().datetime().optional(),
+    AUTH_ISSUER_URL: z.string().url(),
+    AUTH_ADMIN_CLIENT_ID: z.string().min(1),
+    AUTH_ADMIN_CLIENT_SECRET: z.string().min(1).optional(),
+    AUTH_MANAGER_SERVICE_CLIENT_ID: z.string().min(1).optional(),
+    AUTH_MANAGER_SERVICE_CLIENT_SECRET: z.string().min(1).optional(),
+    AUTH_MANAGER_SERVICE_AUDIENCE: z.string().url().optional(),
+    AUTH_MANAGER_SERVICE_ENVIRONMENT: z
+      .enum(["local", "preview", "staging", "production"])
+      .optional(),
+    ADMIN_BASE_URL: z.string().url().optional(),
+    MANAGER_ADMIN_API_KEY: z.string().min(1).optional(),
     REDIS_HOST: z.string().min(1).optional(),
     REDIS_PORT: z.coerce.number().int().positive().optional(),
     REDIS_PASSWORD: z.string().min(1).optional(),
@@ -74,10 +71,74 @@ export const env = createEnv({
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BASE_URL: z.string().url().optional(),
     WORKFLOW_API_KEYS: z.string().min(1).optional(),
+    // Narrow receiver-side CSV for Mastra -> Admin transcript vector ingest.
+    // This is deliberately separate from WORKFLOW_API_KEYS: workflow launchers
+    // must not automatically gain direct vector-write capability.
+    MASTRA_TRANSCRIPT_INGEST_API_KEYS: z.string().min(1).optional(),
+    // Narrow receiver-side CSV for Mastra -> Admin scene vector ingest.
+    // Kept separate from transcript ingest and workflow launch credentials.
+    MASTRA_SCENE_INGEST_API_KEYS: z.string().min(1).optional(),
+    // Narrow receiver-side CSV for Mastra -> Admin experience vector ingest.
+    // Kept separate from transcript/scene ingest and workflow launch credentials.
+    MASTRA_EXPERIENCE_INGEST_API_KEYS: z.string().min(1).optional(),
+    // Plan 003 — consumer-app bearer allowlist (apps/web SSR).
+    // CSV-parsed, matched against `Authorization: Bearer <key>` by
+    // `consumer-bearer.ts`. A matched key mints a CONSUMER_BEARER
+    // principal (permissions = empty set) whose sole effect is to
+    // bucket consumer SSR traffic as `consumer:<key>` in admin's
+    // rate-limit identifyFn — separate from anonymous-IP.
+    // `.optional()` because environments without web cutover (preview,
+    // local dev) don't need it. Required-without-default would brick
+    // those Railway deploys — see
+    // docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md.
+    // Distinct from `WORKFLOW_API_KEYS` so widening one set does not
+    // widen the other; the `WEB_ADMIN_API_KEYS !== WORKFLOW_API_KEYS`
+    // invariant is asserted at unit-test time.
+    WEB_ADMIN_API_KEYS: z.string().optional(),
+    // Video DB backup download signer. Production admin uses this CSV
+    // to authorize non-production callers that need a short-lived GET
+    // URL for the latest reviewed video backup. Keep separate from
+    // workflow and consumer bearer sets so backup download access does
+    // not imply GraphQL or workflow access.
+    BACKUP_DOWNLOAD_API_KEYS: z.string().min(1).optional(),
+    // Plan 002 — search API bearer-key allowlist.
+    // Plan 002 — search API required-auth flag. When "true", `/api/search`
+    // and `Query.search` return 401 for missing/invalid bearer; when
+    // "false" (the default), they accept both anonymous and bearer-auth
+    // traffic (dual-accept). Enum-of-strings rather than boolean so a
+    // stray non-empty value can't silently flip the gate (z.coerce.boolean
+    // treats "false" as truthy). Decoded at call sites with
+    // `env.SEARCH_AUTH_REQUIRED === "true"`.
+    SEARCH_AUTH_REQUIRED: z.enum(["true", "false"]).optional().default("false"),
+    // Plan 002 / Plan 003 — caller-side single bearer value for the
+    // local search eval CLI (`apps/admin/src/scripts/eval-search.ts`).
+    // When set, the CLI's `createSearchClient` attaches
+    // `Authorization: Bearer <value>` to every search request so the
+    // harness keeps working after the `SEARCH_AUTH_REQUIRED=true` flip.
+    // Post-Plan 003 (partner-key store retiring the env-CSV partner
+    // branch), the value MUST be either a partner key issued via
+    // `pnpm --filter @forge/admin partner-keys create` OR a
+    // `WORKFLOW_API_KEYS` / `WEB_ADMIN_API_KEYS` entry — the legacy
+    // env-CSV partner receiver branch no longer exists.
+    // `.optional()` because the harness still works without it during
+    // dual-accept — anonymous traffic logs as `auth=anonymous`.
+    SEARCH_API_KEY: z.string().min(1).optional(),
+    // Admin-owned production search trace sampling. Future Mastra eval jobs
+    // call the internal Admin sampling route with a dedicated bearer from
+    // this CSV; it must stay disjoint from public search, workflow launch,
+    // backup download, and vector-ingest credentials.
+    SEARCH_TRACE_SAMPLING_API_KEYS: z.string().min(1).optional(),
+    // Raw search traces expire before the 30-day hard ceiling so the daily
+    // purge has a real safety margin. Aggregates survive without query text.
+    SEARCH_TRACE_RAW_RETENTION_DAYS: searchTraceRawRetentionDaysEnvSchema,
     WORKFLOW_HMAC_SECRET: z.string().min(1).optional(),
     WORKFLOW_TARGET_WORLD: z
       .enum(["local", "@workflow/world-postgres"])
       .optional(),
+    WORKFLOW_RUNNER_ENABLED: z
+      .enum(["true", "false"])
+      .optional()
+      .default("false"),
     WORKFLOW_POSTGRES_URL: z.string().url().optional(),
     WORKFLOW_POSTGRES_JOB_PREFIX: z.string().min(1).optional(),
     WORKFLOW_POSTGRES_WORKER_CONCURRENCY: z.coerce
@@ -105,7 +166,7 @@ export const env = createEnv({
     RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
     // Manager artifacts bucket — admin reads {assetId}/scene-analysis.json
-    // and {assetId}/embeddings.json from apps/manager's S3 bucket via
+    // and {assetId}/transcript.json from apps/manager's S3 bucket via
     // readManagerArtifact() in src/storage/s3.ts. Distinct from
     // RAILWAY_S3_*, which is admin's own write bucket (cms-storage,
     // used for admin-migrations/core-id-mapping.json etc.). Read-only
@@ -116,12 +177,49 @@ export const env = createEnv({
     MANAGER_ARTIFACTS_S3_BUCKET: z.string().min(1).optional(),
     MANAGER_ARTIFACTS_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
-    // R3 — read-only Postgres URL for cms (Strapi v5). Optional at boot
-    // so admin still starts in environments without the dump enabled.
-    // The cms-pg singleton (`src/db/cms-pg.ts`) throws a clean
-    // configuration error if a runtime caller invokes it without this
-    // env set. Recommend a dedicated read-only PG role on cms.
-    CMS_DATABASE_URL: z.string().url().optional(),
+
+    // feat-119 PR2 — admin → manager outbound enrichment trigger.
+    // Admin's `triggerManagerEnrichment` GraphQL mutation POSTs to
+    // apps/manager's `/api/admin-trigger/{scene-analysis,transcript}`
+    // endpoint. Both are optional at boot so admin keeps starting
+    // when the trigger surface isn't configured; the outbound client
+    // returns a typed `DISPATCH_FAILED { reason: "config_missing" }`
+    // result per requested assetId in that case.
+    MANAGER_API_BASE_URL: z.string().url().optional(),
+    MANAGER_TRIGGER_API_KEY: z.string().min(1).optional(),
+
+    // Admin -> Mastra workflow launches. Transcript backfills send
+    // transcript source data to Mastra; Mastra returns product-level
+    // ingest outcomes after writing through Admin's internal ingest.
+    MASTRA_BASE_URL: z.string().url().optional(),
+    MASTRA_SERVICE_API_KEY: z.string().min(1).optional(),
+    MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(120_000),
+    MASTRA_SCENE_EMBEDDING_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(120_000),
+    MASTRA_EXPERIENCE_EMBEDDING_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(120_000),
+
+    // U21 — admin → web ISR revalidation webhook. Admin's publish
+    // lifecycle (Experience publish/update) POSTs `{ model, entry: {
+    // slug, locale } }` to web's `/api/revalidate` route with a bearer
+    // matching the value web holds in `REVALIDATION_SECRET`. Both
+    // optional at boot: admin runs in some environments without web
+    // (preview, local dev). `emitRevalidateWebhook` silently no-ops
+    // when either is unset. Required-without-default would brick those
+    // Railway deploys — see
+    // docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md.
+    WEB_REVALIDATE_URL: z.string().url().optional(),
+    WEB_REVALIDATE_TOKEN: z.string().min(1).optional(),
     NEXT_RUNTIME: z.enum(["nodejs", "edge"]).optional(),
     // Algolia (watch-project parity demo column on /watch/demo-keyword-search).
     // Server-side only — the demo route's `searchAlgolia` server action
@@ -137,37 +235,56 @@ export const env = createEnv({
     ALGOLIA_SEARCH_API_KEY: z.string().min(1).optional(),
     ALGOLIA_INDEX: z.string().min(1).optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).optional(),
+    // Search eval harness — local CLI only. None of these are read by
+    // production code paths; see src/scripts/eval-search.ts and
+    // src/services/search-eval/*.
+    //
+    // OPENROUTER_JUDGE_MODEL: OpenRouter model id used by the pairwise
+    // relevance judge. Defaults to the `DEFAULT_JUDGE_MODEL` constant
+    // declared inside the judge module so production builds without
+    // this env still typecheck.
+    OPENROUTER_JUDGE_MODEL: z.string().min(1).optional(),
+    // EVAL_JUDGE_CONCURRENCY / EVAL_SEARCH_CONCURRENCY: parallel-call
+    // caps for the judge and search clients. Defaults are baked into
+    // the runner; raise them locally when iterating, lower them when
+    // pointing at a shared admin instance to stay under its 30/min
+    // search rate-limit.
+    EVAL_JUDGE_CONCURRENCY: concurrencyEnvSchema,
+    EVAL_SEARCH_CONCURRENCY: concurrencyEnvSchema,
+    // The eval harness reuses ADMIN_BASE_URL as the target for `GET /api/search`.
+    // It defaults to the local dev port at the call site when unset.
+    // EVAL_GIT_SHA: stamped into the run JSON's metadata header so an
+    // operator reviewing an old report can correlate it with a commit.
+    // Optional; defaults to "unknown" at the call site. Operators set
+    // this before running a baseline so the baseline carries provenance.
+    EVAL_GIT_SHA: z.string().min(1).optional(),
   },
-  client: {
-    NEXT_PUBLIC_APP_NAME: z.string().min(1).default("forge-admin"),
-  },
+  client: {},
   skipValidation: !!process.env.CI,
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
     DATABASE_URL_SYNC: emptyToUndefined(process.env.DATABASE_URL_SYNC),
-    BETTER_AUTH_SECRET: emptyToUndefined(process.env.BETTER_AUTH_SECRET),
-    BETTER_AUTH_URL: emptyToUndefined(process.env.BETTER_AUTH_URL),
-    AUTH_COOKIE_DOMAIN: emptyToUndefined(process.env.AUTH_COOKIE_DOMAIN),
+    ADMIN_SESSION_SECRET: emptyToUndefined(process.env.ADMIN_SESSION_SECRET),
     AUTH_COOKIE_PREFIX: emptyToUndefined(process.env.AUTH_COOKIE_PREFIX),
-    AUTH_TRUSTED_ORIGINS: emptyToUndefined(process.env.AUTH_TRUSTED_ORIGINS),
-    FACEBOOK_CLIENT_ID: emptyToUndefined(process.env.FACEBOOK_CLIENT_ID),
-    FACEBOOK_CLIENT_SECRET: emptyToUndefined(
-      process.env.FACEBOOK_CLIENT_SECRET,
+    AUTH_ISSUER_URL: emptyToUndefined(process.env.AUTH_ISSUER_URL),
+    AUTH_ADMIN_CLIENT_ID: emptyToUndefined(process.env.AUTH_ADMIN_CLIENT_ID),
+    AUTH_ADMIN_CLIENT_SECRET: emptyToUndefined(
+      process.env.AUTH_ADMIN_CLIENT_SECRET,
     ),
-    GOOGLE_CLIENT_ID: emptyToUndefined(process.env.GOOGLE_CLIENT_ID),
-    GOOGLE_CLIENT_SECRET: emptyToUndefined(process.env.GOOGLE_CLIENT_SECRET),
-    APPLE_CLIENT_ID: emptyToUndefined(process.env.APPLE_CLIENT_ID),
-    APPLE_CLIENT_SECRET: emptyToUndefined(process.env.APPLE_CLIENT_SECRET),
-    OKTA_CLIENT_ID: emptyToUndefined(process.env.OKTA_CLIENT_ID),
-    OKTA_CLIENT_SECRET: emptyToUndefined(process.env.OKTA_CLIENT_SECRET),
-    OKTA_ISSUER: emptyToUndefined(process.env.OKTA_ISSUER),
-    FIREBASE_WEB_API_KEY: emptyToUndefined(process.env.FIREBASE_WEB_API_KEY),
-    FIREBASE_PROJECT_ID: emptyToUndefined(process.env.FIREBASE_PROJECT_ID),
-    FIREBASE_CLIENT_EMAIL: emptyToUndefined(process.env.FIREBASE_CLIENT_EMAIL),
-    FIREBASE_PRIVATE_KEY: emptyToUndefined(process.env.FIREBASE_PRIVATE_KEY),
-    FIREBASE_MIGRATION_CUTOFF_AT: emptyToUndefined(
-      process.env.FIREBASE_MIGRATION_CUTOFF_AT,
+    AUTH_MANAGER_SERVICE_CLIENT_ID: emptyToUndefined(
+      process.env.AUTH_MANAGER_SERVICE_CLIENT_ID,
     ),
+    AUTH_MANAGER_SERVICE_CLIENT_SECRET: emptyToUndefined(
+      process.env.AUTH_MANAGER_SERVICE_CLIENT_SECRET,
+    ),
+    AUTH_MANAGER_SERVICE_AUDIENCE: emptyToUndefined(
+      process.env.AUTH_MANAGER_SERVICE_AUDIENCE,
+    ),
+    AUTH_MANAGER_SERVICE_ENVIRONMENT: emptyToUndefined(
+      process.env.AUTH_MANAGER_SERVICE_ENVIRONMENT,
+    ),
+    ADMIN_BASE_URL: emptyToUndefined(process.env.ADMIN_BASE_URL),
+    MANAGER_ADMIN_API_KEY: emptyToUndefined(process.env.MANAGER_ADMIN_API_KEY),
     REDIS_HOST: emptyToUndefined(process.env.REDIS_HOST),
     REDIS_PORT: emptyToUndefined(process.env.REDIS_PORT),
     REDIS_PASSWORD: emptyToUndefined(process.env.REDIS_PASSWORD),
@@ -190,8 +307,32 @@ export const env = createEnv({
     OPENAI_API_KEY: emptyToUndefined(process.env.OPENAI_API_KEY),
     OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
     WORKFLOW_API_KEYS: emptyToUndefined(process.env.WORKFLOW_API_KEYS),
+    MASTRA_TRANSCRIPT_INGEST_API_KEYS: emptyToUndefined(
+      process.env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
+    ),
+    MASTRA_SCENE_INGEST_API_KEYS: emptyToUndefined(
+      process.env.MASTRA_SCENE_INGEST_API_KEYS,
+    ),
+    MASTRA_EXPERIENCE_INGEST_API_KEYS: emptyToUndefined(
+      process.env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
+    ),
+    WEB_ADMIN_API_KEYS: emptyToUndefined(process.env.WEB_ADMIN_API_KEYS),
+    BACKUP_DOWNLOAD_API_KEYS: emptyToUndefined(
+      process.env.BACKUP_DOWNLOAD_API_KEYS,
+    ),
+    SEARCH_AUTH_REQUIRED: emptyToUndefined(process.env.SEARCH_AUTH_REQUIRED),
+    SEARCH_API_KEY: emptyToUndefined(process.env.SEARCH_API_KEY),
+    SEARCH_TRACE_SAMPLING_API_KEYS: emptyToUndefined(
+      process.env.SEARCH_TRACE_SAMPLING_API_KEYS,
+    ),
+    SEARCH_TRACE_RAW_RETENTION_DAYS: emptyToUndefined(
+      process.env.SEARCH_TRACE_RAW_RETENTION_DAYS,
+    ),
     WORKFLOW_HMAC_SECRET: emptyToUndefined(process.env.WORKFLOW_HMAC_SECRET),
     WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
+    WORKFLOW_RUNNER_ENABLED: emptyToUndefined(
+      process.env.WORKFLOW_RUNNER_ENABLED,
+    ),
     WORKFLOW_POSTGRES_URL: emptyToUndefined(process.env.WORKFLOW_POSTGRES_URL),
     WORKFLOW_POSTGRES_JOB_PREFIX: emptyToUndefined(
       process.env.WORKFLOW_POSTGRES_JOB_PREFIX,
@@ -232,14 +373,171 @@ export const env = createEnv({
     MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY: emptyToUndefined(
       process.env.MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY,
     ),
-    CMS_DATABASE_URL: emptyToUndefined(process.env.CMS_DATABASE_URL),
+    MANAGER_API_BASE_URL: emptyToUndefined(process.env.MANAGER_API_BASE_URL),
+    MANAGER_TRIGGER_API_KEY: emptyToUndefined(
+      process.env.MANAGER_TRIGGER_API_KEY,
+    ),
+    MASTRA_BASE_URL: emptyToUndefined(process.env.MASTRA_BASE_URL),
+    MASTRA_SERVICE_API_KEY: emptyToUndefined(
+      process.env.MASTRA_SERVICE_API_KEY,
+    ),
+    MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
+    ),
+    MASTRA_SCENE_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_SCENE_EMBEDDING_TIMEOUT_MS,
+    ),
+    MASTRA_EXPERIENCE_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_EXPERIENCE_EMBEDDING_TIMEOUT_MS,
+    ),
+    WEB_REVALIDATE_URL: emptyToUndefined(process.env.WEB_REVALIDATE_URL),
+    WEB_REVALIDATE_TOKEN: emptyToUndefined(process.env.WEB_REVALIDATE_TOKEN),
     NEXT_RUNTIME: emptyToUndefined(process.env.NEXT_RUNTIME),
     ALGOLIA_APP_ID: emptyToUndefined(process.env.ALGOLIA_APP_ID),
     ALGOLIA_SEARCH_API_KEY: emptyToUndefined(
       process.env.ALGOLIA_SEARCH_API_KEY,
     ),
     ALGOLIA_INDEX: emptyToUndefined(process.env.ALGOLIA_INDEX),
+    OPENROUTER_JUDGE_MODEL: emptyToUndefined(
+      process.env.OPENROUTER_JUDGE_MODEL,
+    ),
+    EVAL_JUDGE_CONCURRENCY: emptyToUndefined(
+      process.env.EVAL_JUDGE_CONCURRENCY,
+    ),
+    EVAL_SEARCH_CONCURRENCY: emptyToUndefined(
+      process.env.EVAL_SEARCH_CONCURRENCY,
+    ),
+    EVAL_GIT_SHA: emptyToUndefined(process.env.EVAL_GIT_SHA),
     NODE_ENV: emptyToUndefined(process.env.NODE_ENV),
-    NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
   },
 })
+
+// ---------------------------------------------------------------------------
+// Runtime bearer-CSV disjointness invariant.
+//
+// `permissions.test.ts` source-greps each bearer module to assert each
+// reads only its own env var (CONSUMER != WORKFLOW), but nothing prevents
+// an operator from pasting the same KEY VALUE into both CSVs during
+// rotation. The auth chain in `context.ts` is `workflow → consumer →
+// public`, so a duplicated key silently mints the higher-tier principal
+// — permission widening without an audit trail.
+//
+// `assertBearerCsvsDisjoint` parses the two CSVs into Sets and throws
+// if they intersect. Called at module load below so any boot path that
+// imports `env` enforces the invariant. The error message MUST NOT
+// include the offending key value.
+// ---------------------------------------------------------------------------
+
+function parseBearerCsvSet(csv: string | undefined): ReadonlySet<string> {
+  if (!csv || csv.trim() === "") return new Set()
+  return new Set(
+    csv
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0),
+  )
+}
+
+// `BEARER_CSV_KEYS` drives both the snapshot type AND the
+// `assertBearerCsvsDisjoint` iteration. The `satisfies` clause makes the
+// compiler enforce alignment: adding a new bearer CSV requires updating
+// the constant AND the type in lockstep, or the build breaks.
+const BEARER_CSV_KEYS = [
+  "WORKFLOW_API_KEYS",
+  "MASTRA_TRANSCRIPT_INGEST_API_KEYS",
+  "MASTRA_SCENE_INGEST_API_KEYS",
+  "MASTRA_EXPERIENCE_INGEST_API_KEYS",
+  "MANAGER_ADMIN_API_KEY",
+  "WEB_ADMIN_API_KEYS",
+  "BACKUP_DOWNLOAD_API_KEYS",
+  "SEARCH_TRACE_SAMPLING_API_KEYS",
+] as const
+
+type BearerCsvKey = (typeof BEARER_CSV_KEYS)[number]
+
+export type BearerCsvSnapshot = {
+  readonly [K in BearerCsvKey]?: string
+}
+
+// Compile-time guard: every key in BearerCsvSnapshot MUST be a member
+// of BEARER_CSV_KEYS (and vice versa via the mapped type). A future
+// addition that names a key in one place but not the other won't
+// compile.
+const _bearerCsvKeysCheck: ReadonlyArray<keyof BearerCsvSnapshot> =
+  BEARER_CSV_KEYS satisfies ReadonlyArray<keyof BearerCsvSnapshot>
+void _bearerCsvKeysCheck
+
+export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
+  const sets = BEARER_CSV_KEYS.map(
+    (name) => [name, parseBearerCsvSet(snapshot[name])] as const,
+  )
+
+  // Collect ALL overlapping pairs into one error rather than throwing
+  // on the first match. An operator hitting this fail-fast at deploy
+  // time gets the complete list of CSV pairs to clean up instead of
+  // N redeploys to discover each overlap one at a time. The key
+  // values themselves are NEVER included in the error — only the
+  // CSV names and the count of overlapping values per pair.
+  const overlaps: Array<{
+    left: BearerCsvKey
+    right: BearerCsvKey
+    count: number
+  }> = []
+  for (let i = 0; i < sets.length; i += 1) {
+    for (let j = i + 1; j < sets.length; j += 1) {
+      const [leftName, left] = sets[i]
+      const [rightName, right] = sets[j]
+      let count = 0
+      for (const key of left) {
+        if (right.has(key)) count += 1
+      }
+      if (count > 0) {
+        overlaps.push({ left: leftName, right: rightName, count })
+      }
+    }
+  }
+
+  if (overlaps.length === 0) return
+
+  const summary = overlaps
+    .map(
+      ({ left, right, count }) =>
+        `${left} and ${right} (${count} key${count === 1 ? "" : "s"})`,
+    )
+    .join("; ")
+  throw new Error(
+    `Bearer API key values appear in multiple CSVs. Offending pairs: ` +
+      `${summary}. The bearer CSVs must be disjoint (admin auth chains must ` +
+      `not share bearer credentials). Check the offending Doppler entries — ` +
+      `key values redacted. See apps/admin/CLAUDE.md > "Search API ` +
+      `authentication" for the receiver-first rotation procedure.`,
+  )
+}
+
+// Boot-time invariant — fires on every import of `env`. Skipping this
+// during build-phase would let the disjointness contract bypass CI;
+// build phase passes empty/undefined for unset vars, which trivially
+// satisfies the check.
+assertBearerCsvsDisjoint({
+  WORKFLOW_API_KEYS: env.WORKFLOW_API_KEYS,
+  MASTRA_TRANSCRIPT_INGEST_API_KEYS: env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
+  MASTRA_SCENE_INGEST_API_KEYS: env.MASTRA_SCENE_INGEST_API_KEYS,
+  MASTRA_EXPERIENCE_INGEST_API_KEYS: env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
+  MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,
+  WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
+  BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
+  SEARCH_TRACE_SAMPLING_API_KEYS: env.SEARCH_TRACE_SAMPLING_API_KEYS,
+})
+
+// Plan 003 retired the SEARCH_API_KEYS env-CSV partner branch — external
+// partner credentials now live in admin's `PartnerApiKey` Postgres table
+// and are issued via `pnpm --filter @forge/admin partner-keys create`.
+// If a Doppler env still has the retired value set, code no longer reads
+// it, but operator confusion is real — flag once at boot so the stale
+// value is visible in Railway logs.
+// Plain-string format per `railway-logsv2-silences-nextjs-stdout-runtime-20260518`.
+if (process.env.SEARCH_API_KEYS && process.env.SEARCH_API_KEYS.length > 0) {
+  console.warn(
+    `[search] event=search_api_keys_env_var_retired note=migrate_to_partner_keys`,
+  )
+}
