@@ -219,7 +219,7 @@ type ClassifyFixture = {
 }
 
 function passthroughViolation(
-  side: "production" | "preview",
+  side: "preview",
   result: ProbeResult,
   expectedPath: string,
 ): string | null {
@@ -233,6 +233,18 @@ function passthroughViolation(
     return `${side} final path changed: expected ${expectedPath}, got ${result.finalPath}`
   }
   return null
+}
+
+function isDeprecatedSearchFallback(
+  preview: ProbeResult,
+  fixture: ClassifyFixture,
+): boolean {
+  return (
+    fixture.path === "/watch/search" &&
+    fixture.expect === "redirect" &&
+    statusClass(preview.status) === 2 &&
+    preview.finalPath === "/watch"
+  )
 }
 
 /**
@@ -267,32 +279,40 @@ export function classifyProbe(
   }
 
   if (fixture?.expect === "passthrough") {
-    const productionViolation = passthroughViolation(
-      "production",
-      production,
-      fixture.path,
-    )
     const previewViolation = passthroughViolation(
       "preview",
       preview,
       fixture.path,
     )
-    if (productionViolation || previewViolation) {
+    if (previewViolation) {
       return {
         outcome: "hard-regression",
-        note: `PASSTHROUGH CONTRACT BROKEN: ${[
-          productionViolation,
-          previewViolation,
-        ]
-          .filter(Boolean)
-          .join("; ")}`,
+        note: `PASSTHROUGH CONTRACT BROKEN: ${previewViolation}`,
       }
+    }
+    return {
+      outcome: "match",
+      note: "passthrough preview preserved requested path",
+    }
+  }
+
+  if (fixture && isDeprecatedSearchFallback(preview, fixture)) {
+    return {
+      outcome: "acceptable",
+      note: "deprecated search routed to the root search-modal surface",
     }
   }
 
   const pc = statusClass(production.status)
   const vc = statusClass(preview.status)
   const samePath = production.finalPath === preview.finalPath
+
+  if (vc === 3 && preview.redirectHops >= MAX_REDIRECT_HOPS) {
+    return {
+      outcome: "hard-regression",
+      note: `REDIRECT LOOP: preview returned ${preview.status} after ${preview.redirectHops} hop(s) ending at ${preview.finalPath}`,
+    }
+  }
 
   if (pc === 5) {
     return {

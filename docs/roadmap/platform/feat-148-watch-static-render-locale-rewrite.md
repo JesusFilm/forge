@@ -77,3 +77,5 @@ re-rendering even though the page routes were otherwise ISR-friendly.
 - `pnpm --filter @forge/web build`
 - Confirm `next build` output does not mark representative watch routes as dynamic.
 - Confirm repeat requests to representative watch URLs return cache HIT / ISR-equivalent headers and no admin GraphQL round-trip.
+- Confirm public watch URLs rewrite to internal `/[locale]/[htmlLang]` targets without a second-pass redirect loop, while visible direct internal-prefix requests still redirect or 404.
+- Confirm the URL probe treats modal search and reserved asset/API passthrough as intentional cutover contracts; triage any remaining hard failures as route bugs versus data/admin snapshot mismatches.

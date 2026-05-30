@@ -364,14 +364,14 @@ Drive a script that:
 1. Loads the URL lists from §5 (split by expected outcome: 200, 307/308, 404).
 2. Hits the live production site, captures `(status, final-url-after-redirects)`.
 3. Hits the rewrite preview, captures the same tuple.
-4. Diffs the two. Any divergence is a regression — but distinguish:
+4. Diffs the two against the desired cutover contract, not only the legacy production behavior. Distinguish:
    - **Hard regression**: production 200 → rewrite 4xx (broken link, user-visible).
    - **Soft regression**: production 200 → rewrite 200 but different final URL after redirect (SEO drift; canonical may change).
    - **Acceptable**: production 307 → rewrite 200 direct (the rewrite skips a redundant redirect — usually fine, but check that any one-shot query params are handled).
+   - **Intentional cutover divergence**: `/watch/search` may redirect or resolve to `/watch` because search is modal-only now, and passthrough subtrees are judged by whether the preview preserves the requested asset/API path even if legacy production redirects them to fake `.html` paths.
+   - **Redirect loop**: preview responses that still return a 3xx after the maximum redirect-hop budget are hard regressions, even when production also redirects.
 
-A starter script lives at `apps/web/scripts/probe-watch-urls.ts` — extend it with the URL lists from §5.
-
-> _Note: the script does not exist yet. Add it as a follow-up; it's the cheapest insurance against a launch-day URL regression._
+The harness lives at `apps/web/scripts/probe-watch-urls.ts`, with fixtures and classification in `apps/web/src/lib/watch-url-probe.ts`. Keep those fixtures in lockstep with §5, and record any remaining hard failures as either route bugs or data/admin snapshot mismatches rather than folding them into generic routing regressions.
 
 ---
 

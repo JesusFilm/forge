@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import {
+  MAX_REDIRECT_HOPS,
   WATCH_URL_FIXTURES,
   classifyProbe,
   probeUrl,
@@ -98,6 +99,17 @@ describe("classifyProbe", () => {
     expect(outcome).toBe("hard-regression")
   })
 
+  it("hard-regression: preview hits a redirect loop on a valid content URL", () => {
+    const { outcome, note } = classifyProbe(
+      result({ status: 200 }),
+      result({ status: 308, redirectHops: MAX_REDIRECT_HOPS }),
+      { path: "/watch/jesus.html/english.html", expect: "ok" },
+    )
+
+    expect(outcome).toBe("hard-regression")
+    expect(note).toMatch(/REDIRECT LOOP/)
+  })
+
   it("error: transport error on either side", () => {
     expect(
       classifyProbe(result({ error: "ETIMEDOUT" }), result()).outcome,
@@ -115,7 +127,28 @@ describe("classifyProbe", () => {
     expect(outcome).toBe("error")
   })
 
-  it("hard-regression: passthrough fixture redirects even if both sides match", () => {
+  it("match: passthrough fixture accepts preview preserving the requested path", () => {
+    const fixture = {
+      path: "/watch/images/jesusfilm-sign.svg",
+      expect: "passthrough" as const,
+    }
+    const productionLegacy = result({
+      status: 404,
+      finalPath: "/watch/images.html/jesusfilm-sign.html",
+      redirectHops: 1,
+    })
+    const preview = result({
+      status: 200,
+      finalPath: "/watch/images/jesusfilm-sign.svg",
+    })
+
+    const { outcome, note } = classifyProbe(productionLegacy, preview, fixture)
+
+    expect(outcome).toBe("match")
+    expect(note).toMatch(/passthrough preview preserved/)
+  })
+
+  it("hard-regression: passthrough fixture fails when preview redirects", () => {
     const fixture = {
       path: "/watch/images/jesusfilm-sign.svg",
       expect: "passthrough" as const,
@@ -126,27 +159,42 @@ describe("classifyProbe", () => {
       redirectHops: 1,
     })
 
-    const { outcome, note } = classifyProbe(broken, broken, fixture)
+    const { outcome, note } = classifyProbe(result(), broken, fixture)
 
     expect(outcome).toBe("hard-regression")
     expect(note).toMatch(/PASSTHROUGH CONTRACT BROKEN/)
-    expect(note).toMatch(/production redirected 1 hop/)
+    expect(note).toMatch(/preview redirected 1 hop/)
   })
 
-  it("hard-regression: passthrough fixture final path changes without a hop", () => {
+  it("hard-regression: passthrough fixture fails when preview final path changes without a hop", () => {
     const fixture = {
       path: "/watch/images/jesusfilm-sign.svg",
       expect: "passthrough" as const,
     }
 
     const { outcome, note } = classifyProbe(
-      result({ finalPath: "/watch/images.html/jesusfilm-sign.svg.html" }),
       result({ finalPath: "/watch/images/jesusfilm-sign.svg" }),
+      result({ finalPath: "/watch/images.html/jesusfilm-sign.svg.html" }),
       fixture,
     )
 
     expect(outcome).toBe("hard-regression")
     expect(note).toMatch(/final path changed/)
+  })
+
+  it("acceptable: deprecated /watch/search may land on root modal surface", () => {
+    const { outcome, note } = classifyProbe(
+      result({
+        status: 404,
+        finalPath: "/watch/search.html/search.html",
+        redirectHops: 1,
+      }),
+      result({ status: 200, finalPath: "/watch", redirectHops: 1 }),
+      { path: "/watch/search", expect: "redirect" },
+    )
+
+    expect(outcome).toBe("acceptable")
+    expect(note).toMatch(/root search-modal/)
   })
 })
 

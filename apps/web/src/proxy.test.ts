@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
-import { config, proxy, type ProxyRequest } from "./proxy"
+import {
+  WATCH_INTERNAL_REWRITE_HEADER,
+  config,
+  proxy,
+  type ProxyRequest,
+} from "./proxy"
 import {
   setWatchRouteManifestSourceForTest,
   type WatchRouteManifest,
@@ -37,7 +42,7 @@ afterEach(() => {
 
 function makeRequest(
   pathname: string,
-  options: { acceptLanguage?: string } = {},
+  options: { acceptLanguage?: string; headers?: HeadersInit } = {},
 ): ProxyRequest {
   // Test stand-in for the `ProxyRequest` structural subset proxy() reads.
   // No cast needed — the factory's return type matches the production
@@ -48,17 +53,30 @@ function makeRequest(
     nextUrl: Object.assign(url, {
       clone: () => new URL(url.toString()),
     }),
-    headers: new Headers(
-      options.acceptLanguage
-        ? { "accept-language": options.acceptLanguage }
-        : {},
-    ),
+    headers: (() => {
+      const headers = new Headers(options.headers)
+      if (options.acceptLanguage) {
+        headers.set("accept-language", options.acceptLanguage)
+      }
+      return headers
+    })(),
   }
 }
 
 function rewritePath(response: Response): string | null {
   const target = response.headers.get("x-middleware-rewrite")
   return target ? new URL(target).pathname : null
+}
+
+function rewrittenRequestHeaders(response: Response): Headers {
+  const headers = new Headers()
+  const overrideHeaderNames =
+    response.headers.get("x-middleware-override-headers")?.split(",") ?? []
+  for (const name of overrideHeaderNames) {
+    const value = response.headers.get(`x-middleware-request-${name}`)
+    if (value !== null) headers.set(name, value)
+  }
+  return headers
 }
 
 // ---------------------------------------------------------------------------
@@ -381,6 +399,26 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
 })
 
 describe("proxy — visible internal-prefix policy", () => {
+  it("allows proxy-originated internal rewrites without redirecting back to public URL", async () => {
+    const first = await proxy(makeRequest("/jesus.html/english.html"))
+    const internalPath = rewritePath(first)
+
+    expect(internalPath).toBe("/en/en/jesus.html/english.html")
+
+    const second = await proxy(
+      makeRequest(internalPath ?? "", {
+        headers: rewrittenRequestHeaders(first),
+      }),
+    )
+
+    expect(
+      first.headers.get(
+        `x-middleware-request-${WATCH_INTERNAL_REWRITE_HEADER}`,
+      ),
+    ).toBe("1")
+    expect(second.status).toBe(200)
+  })
+
   it("308 redirects visible internal root and route prefixes to canonical public URLs", async () => {
     for (const [visible, canonical] of [
       ["/en", "/"],
@@ -406,6 +444,15 @@ describe("proxy — visible internal-prefix policy", () => {
   it("404s invalid visible internal prefix pairs instead of serving duplicates", async () => {
     const response = await proxy(
       makeRequest("/en/es-419/jesus.html/english.html"),
+    )
+    expect(response.status).toBe(404)
+  })
+
+  it("404s invalid marked internal prefix pairs instead of treating the marker as a bypass", async () => {
+    const response = await proxy(
+      makeRequest("/en/es-419/jesus.html/english.html", {
+        headers: new Headers([[WATCH_INTERNAL_REWRITE_HEADER, "1"]]),
+      }),
     )
     expect(response.status).toBe(404)
   })

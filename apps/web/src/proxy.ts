@@ -38,6 +38,8 @@ const REDIRECT_CACHE_CONTROL = "private, max-age=0"
 const MAX_PATH_LEN = 2048
 const SAFE_PUBLIC_PATH = /^\/[A-Za-z0-9._\-/]+$/
 const DEMO_PREFIXES = new Set(["demo-search", "demo-recommendations"])
+export const WATCH_INTERNAL_REWRITE_HEADER = "x-forge-watch-internal-rewrite"
+const WATCH_INTERNAL_REWRITE_VALUE = "1"
 
 type InternalPrefixDecision =
   | { kind: "none" }
@@ -231,7 +233,14 @@ function rewriteToInternal(
   const url = request.nextUrl.clone()
   const suffix = decision.pathname === "/" ? "" : decision.pathname
   url.pathname = `/${decision.locale}/${decision.htmlLang}${suffix}`
-  return applyWatchSecurityHeaders(NextResponse.rewrite(url))
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set(
+    WATCH_INTERNAL_REWRITE_HEADER,
+    WATCH_INTERNAL_REWRITE_VALUE,
+  )
+  return applyWatchSecurityHeaders(
+    NextResponse.rewrite(url, { request: { headers: requestHeaders } }),
+  )
 }
 
 async function isRewriteAdmittedByManifest(
@@ -254,7 +263,17 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
 
   if (shouldBypassLocaleRewrite(pathname)) return NextResponse.next()
 
+  const isInternalRewrite =
+    request.headers.get(WATCH_INTERNAL_REWRITE_HEADER) ===
+    WATCH_INTERNAL_REWRITE_VALUE
   const prefix = internalPrefixDecision(pathname)
+  if (isInternalRewrite) {
+    if (prefix.kind === "redirect") {
+      return applyWatchSecurityHeaders(NextResponse.next())
+    }
+    if (prefix.kind === "not-found") return buildNotFound()
+  }
+
   if (prefix.kind === "not-found") return buildNotFound()
   if (prefix.kind === "redirect") {
     const url = request.nextUrl.clone()
