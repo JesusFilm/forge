@@ -191,7 +191,7 @@ export async function generateMetadata({
 
   if (shape.kind === "one-segment") {
     return shape.isLanguageHome
-      ? getWatchPageMetadata(shape.locale)
+      ? getWatchPageMetadata(shape.locale, { pathLocale: shape.slug })
       : getWatchPageMetadata(shape.locale, { slug: shape.slug })
   }
 

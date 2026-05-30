@@ -17,6 +17,11 @@ import {
   isUnsafeRedirectPath,
   stripHtmlSuffix,
 } from "@/lib/url-shape"
+import {
+  getWatchRouteManifest,
+  isWatchRouteAdmittedByManifest,
+  type WatchRouteManifestRoute,
+} from "@/lib/watch-route-manifest"
 
 // Structural subset of `NextRequest` that `proxy()` actually consumes.
 // Production `NextRequest` from `next/server` satisfies this shape via
@@ -40,7 +45,13 @@ type InternalPrefixDecision =
   | { kind: "not-found" }
 
 type RewriteDecision =
-  | { kind: "rewrite"; locale: string; htmlLang: string; pathname: string }
+  | {
+      kind: "rewrite"
+      locale: string
+      htmlLang: string
+      pathname: string
+      manifestRoute?: WatchRouteManifestRoute
+    }
   | { kind: "pass" }
   | { kind: "not-found" }
 
@@ -151,13 +162,14 @@ function classifyRewrite(pathname: string): RewriteDecision {
     const identity = isPublicWatchHomeLanguageSlug(slug)
       ? resolveWatchLocaleIdentity(slug)
       : { locale: DEFAULT_LOCALE, htmlLang: DEFAULT_LOCALE }
-    if (
-      !isPublicWatchHomeLanguageSlug(slug) &&
-      !isOneSegmentCollectionSlug(slug)
-    ) {
-      return { kind: "not-found" }
+    return {
+      kind: "rewrite",
+      ...identity,
+      pathname,
+      manifestRoute: isPublicWatchHomeLanguageSlug(slug)
+        ? undefined
+        : { kind: "one-segment", slug },
     }
-    return { kind: "rewrite", ...identity, pathname }
   }
 
   if (segments.length === 2) {
@@ -171,7 +183,16 @@ function classifyRewrite(pathname: string): RewriteDecision {
     if (!rawAudioSlug) return { kind: "not-found" }
     if (!isPublicWatchLanguageSlug(rawAudioSlug)) return { kind: "not-found" }
     const identity = resolveWatchLocaleIdentity(rawAudioSlug)
-    return { kind: "rewrite", ...identity, pathname }
+    return {
+      kind: "rewrite",
+      ...identity,
+      pathname,
+      manifestRoute: {
+        kind: "video",
+        contentSlug: slug,
+        audioLanguageSlug: rawAudioSlug,
+      },
+    }
   }
 
   if (segments.length === 3) {
@@ -179,17 +200,25 @@ function classifyRewrite(pathname: string): RewriteDecision {
     if (!hasHtmlSuffix(seriesSegment) || !hasHtmlSuffix(localeSegment)) {
       return { kind: "not-found" }
     }
-    if (
-      !stripSafeSlug(seriesSegment) ||
-      !stripSafeSlug(episodeSegment) ||
-      !stripSafeSlug(localeSegment)
-    ) {
+    const seriesSlug = stripSafeSlug(seriesSegment)
+    const episodeSlug = stripSafeSlug(episodeSegment)
+    const rawAudioSlug = stripSafeSlug(localeSegment)
+    if (!seriesSlug || !episodeSlug || !rawAudioSlug) {
       return { kind: "not-found" }
     }
-    const rawAudioSlug = stripHtmlSuffix(localeSegment)
     if (!isPublicWatchLanguageSlug(rawAudioSlug)) return { kind: "not-found" }
     const identity = resolveWatchLocaleIdentity(rawAudioSlug)
-    return { kind: "rewrite", ...identity, pathname }
+    return {
+      kind: "rewrite",
+      ...identity,
+      pathname,
+      manifestRoute: {
+        kind: "episode",
+        parentSlug: seriesSlug,
+        childSlug: episodeSlug,
+        audioLanguageSlug: rawAudioSlug,
+      },
+    }
   }
 
   return { kind: "not-found" }
@@ -205,7 +234,22 @@ function rewriteToInternal(
   return applyWatchSecurityHeaders(NextResponse.rewrite(url))
 }
 
-export function proxy(request: ProxyRequest): NextResponse {
+async function isRewriteAdmittedByManifest(
+  decision: Extract<RewriteDecision, { kind: "rewrite" }>,
+): Promise<boolean> {
+  if (!decision.manifestRoute) return true
+
+  const manifest = await getWatchRouteManifest()
+  if (!manifest) {
+    return decision.manifestRoute.kind === "one-segment"
+      ? isOneSegmentCollectionSlug(decision.manifestRoute.slug)
+      : true
+  }
+
+  return isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)
+}
+
+export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
 
   if (shouldBypassLocaleRewrite(pathname)) return NextResponse.next()
@@ -230,6 +274,7 @@ export function proxy(request: ProxyRequest): NextResponse {
   const rewrite = classifyRewrite(pathname)
   if (rewrite.kind === "pass") return NextResponse.next()
   if (rewrite.kind === "not-found") return buildNotFound()
+  if (!(await isRewriteAdmittedByManifest(rewrite))) return buildNotFound()
   return rewriteToInternal(request, rewrite)
 }
 

@@ -6,9 +6,12 @@ import { AVAILABLE_UI_LOCALES } from "@/i18n/locales"
 import {
   DEFAULT_LOCALE,
   isLocale,
+  publicWatchAudioLanguageSlugForLocale,
+  publicWatchHomeLanguageSlugForLocale,
   resolveWatchLocaleIdentity,
 } from "@/lib/locale"
 import { appendHtmlSuffix } from "@/lib/url-shape"
+import { clearWatchRouteManifestCache } from "@/lib/watch-route-manifest"
 
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i
 const BEARER_PREFIX = "Bearer "
@@ -55,7 +58,9 @@ export async function POST(request: Request) {
 
   if (
     !entry ||
-    !["experience", "video", "watch-setting"].includes(model ?? "")
+    !["experience", "video", "watch-route-manifest", "watch-setting"].includes(
+      model ?? "",
+    )
   ) {
     return NextResponse.json(
       { revalidated: false, reason: "unhandled model or missing entry" },
@@ -101,10 +106,10 @@ export async function POST(request: Request) {
   // and cached aliases; the internal entries are what Next's App Router now
   // renders under /[locale]/[htmlLang]. Over-revalidating a non-existent
   // variant is harmless.
-  const pushOneSeg = (seg: string) => {
+  const pushOneSeg = (seg: string, rawLocale?: string) => {
     const canonical = `/${appendHtmlSuffix(seg)}`
     push(canonical) // canonical public `/{seg}.html`
-    pushInternal(canonical, isLocale(seg) ? seg : undefined)
+    pushInternal(canonical, rawLocale)
     push(`/${seg}`) // legacy bare (overlap)
   }
   const pushTwoSeg = (a: string, b: string) => {
@@ -123,13 +128,17 @@ export async function POST(request: Request) {
     push("/")
     pushInternal("/")
     for (const loc of AVAILABLE_UI_LOCALES) {
-      pushOneSeg(loc)
+      if (!isLocale(loc)) continue
+      const homeLanguageSlug = publicWatchHomeLanguageSlugForLocale(loc)
+      pushOneSeg(homeLanguageSlug, homeLanguageSlug)
     }
   }
 
   const revalidateSlugPaths = () => {
     if (slug && locale) {
-      pushTwoSeg(slug, locale)
+      if (!isLocale(locale)) return
+      const audioLanguageSlug = publicWatchAudioLanguageSlugForLocale(locale)
+      pushTwoSeg(slug, audioLanguageSlug)
       if (locale === DEFAULT_LOCALE) {
         pushOneSeg(slug)
       }
@@ -140,8 +149,18 @@ export async function POST(request: Request) {
 
     pushOneSeg(slug)
     for (const loc of AVAILABLE_UI_LOCALES) {
-      pushTwoSeg(slug, loc)
+      if (!isLocale(loc)) continue
+      pushTwoSeg(slug, publicWatchAudioLanguageSlugForLocale(loc))
     }
+  }
+
+  if (model === "watch-route-manifest") {
+    clearWatchRouteManifestCache()
+    return NextResponse.json({
+      revalidated: true,
+      manifestCacheCleared: true,
+      paths: revalidated,
+    })
   }
 
   if (model === "watch-setting") {

@@ -24,7 +24,7 @@ could derive `<html lang>` from the public watch URL. That dynamic API opted
 every descendant route out of the Full Route Cache, so `/watch` pages kept
 re-rendering even though the page routes were otherwise ISR-friendly.
 
-## Entry Points - Read These First
+## Entry Points — Read These First
 
 1. `docs/plans/2026-05-29-001-perf-restore-watch-static-render-locale-rewrite-plan.md` - implementation plan and reviewed edge cases.
 2. `apps/web/src/app/[locale]/[htmlLang]/layout.tsx` - static locale root layout.

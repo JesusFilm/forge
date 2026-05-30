@@ -109,7 +109,9 @@ vi.mock("@/lib/youversion-passage", () => ({
   fetchYouVersionBibleQuotePassages: fetchYouVersionBibleQuotePassagesMock,
 }))
 
-import SlugRestPage from "@/app/[locale]/[htmlLang]/[...rest]/page"
+import SlugRestPage, {
+  generateMetadata,
+} from "@/app/[locale]/[htmlLang]/[...rest]/page"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
 import { stripHtmlSuffix } from "@/lib/url-shape"
 
@@ -360,6 +362,26 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
 
     expect(resolveWatchPageMock).toHaveBeenCalledWith("es")
     expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
+  })
+
+  it("canonicalizes one-segment language-home metadata to the public language URL", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: null,
+      error: null,
+    })
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "de",
+        htmlLang: "de",
+        rest: ["german.html"],
+      }),
+    })
+
+    expect(metadata.alternates?.canonical).toBe(
+      "http://localhost:3000/watch/german.html",
+    )
+    expect(resolveWatchPageMock).toHaveBeenCalledWith("de", undefined)
   })
 
   it("404s one-segment non-language misses instead of rendering the empty shell", async () => {

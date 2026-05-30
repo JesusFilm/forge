@@ -219,6 +219,11 @@ Validate on a throwaway branch, before touching real routes:
 - `generateStaticParams` does not enumerate the full catalog; build time bounded.
 - `typecheck` + `lint` + `build` + existing tests green; `proxy.test.ts` / `url-shape.test.ts` / `api/revalidate` tests extended; probe harness passes including query params, one-segment collection, direct-prefix, Accept-Language, hostile-path, and cache HIT cases.
 
+## Verification Log — 2026-05-29
+
+- `pnpm --filter @forge/web build` completed successfully. Next marked `/[locale]/[htmlLang]`, `/[locale]/[htmlLang]/[...rest]`, and `/[locale]/[htmlLang]/videos` as `○ (Static)`.
+- Runtime proof used `pnpm --filter @forge/web exec next start -p 3015` and two requests to `http://localhost:3015/watch/english.html`. The first response returned `x-nextjs-cache: MISS`; the second returned `x-nextjs-cache: HIT`, `x-nextjs-prerender: 1`, and `Cache-Control: s-maxage=60, stale-while-revalidate=31535940`.
+
 ## Ownership & sequencing
 
 - **Direction approved** by the next-intl plan owner (Vlad): reverse decision #5, relax decision #1's file-tree rule for the internal segment (public URL guarantee intact). No further sign-off gate.
