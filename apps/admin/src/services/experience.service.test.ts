@@ -1,6 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import type { Principal } from "@/auth/principal"
 import { ExperienceService } from "./experience.service"
+import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
+
+vi.mock("./watch-route-manifest-refresh.service", () => ({
+  refreshWatchRouteManifest: vi.fn().mockResolvedValue({ status: "refreshed" }),
+}))
 
 // Mock Prisma client with chained methods
 function mockPrisma() {
@@ -57,6 +62,7 @@ describe("ExperienceService", () => {
   beforeEach(() => {
     prisma = mockPrisma()
     service = new ExperienceService(prisma)
+    vi.mocked(refreshWatchRouteManifest).mockClear()
   })
 
   // ---------------------------------------------------------------------------
@@ -442,6 +448,39 @@ describe("ExperienceService", () => {
       expect(prisma.experience.update).not.toHaveBeenCalled()
     })
 
+    it("requests manifest refresh after updating a published locale", async () => {
+      const publishedLocale = { ...localeRow, status: "PUBLISHED" }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        publishedLocale,
+      )
+      prisma.experienceLocale.update.mockResolvedValueOnce({
+        ...publishedLocale,
+        title: "Published update",
+      })
+
+      await service.updateLocale({
+        input: { id: "loc-1", title: "Published update" },
+        user: EDITOR_ALICE,
+      })
+
+      expect(refreshWatchRouteManifest).toHaveBeenCalledWith({
+        prisma,
+        reason: "experience.update",
+      })
+    })
+
+    it("does not request manifest refresh for draft-only locale updates", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.experienceLocale.update.mockResolvedValueOnce(localeRow)
+
+      await service.updateLocale({
+        input: { id: "loc-1", title: "Draft update" },
+        user: EDITOR_ALICE,
+      })
+
+      expect(refreshWatchRouteManifest).not.toHaveBeenCalled()
+    })
+
     it("SYSTEM cannot update locale (editorial isolation)", async () => {
       prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
 
@@ -517,6 +556,10 @@ describe("ExperienceService", () => {
           }),
         }),
       )
+      expect(refreshWatchRouteManifest).toHaveBeenCalledWith({
+        prisma,
+        reason: "experience.publish",
+      })
     })
 
     it("VIEWER cannot publish", async () => {
@@ -698,6 +741,10 @@ describe("ExperienceService", () => {
       })
 
       expect(result.archivedAt).not.toBeNull()
+      expect(refreshWatchRouteManifest).toHaveBeenCalledWith({
+        prisma,
+        reason: "experience.archive",
+      })
     })
 
     it("EDITOR cannot archive another editor's experience", async () => {
