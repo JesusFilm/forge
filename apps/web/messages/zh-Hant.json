@@ -1,0 +1,146 @@
+{
+  "ExperienceError": {
+    "empty": "No experience content available.",
+    "failedToLoad": "Failed to load experience: {message}",
+    "unexpected": "An unexpected error occurred.",
+    "notConfigured": "Content service is not configured.",
+    "noContent": "No content is available.",
+    "homepageMisconfigured": "The watch homepage is misconfigured.",
+    "defaultTemplateMisconfigured": "The default watch template is misconfigured.",
+    "authFailed": "Unable to authenticate with the content service. Please contact support if this persists."
+  },
+  "VideosPage": {
+    "title": "All Videos",
+    "placeholder": "Catalog browsing is coming. In the meantime use search or a topic-specific URL."
+  },
+  "BibleQuotes": {
+    "title": "聖經語錄",
+    "share": "分享",
+    "readMore": "閱讀全文...",
+    "learnMore": "Learn more",
+    "freeResources": "免費資源",
+    "promoHeading": "想要深入了解聖經嗎？",
+    "joinBibleStudy": "加入我們的查經班",
+    "previousQuote": "Previous Bible quote",
+    "nextQuote": "Next Bible quote"
+  },
+  "DownloadButton": {
+    "checking": "Checking",
+    "download": "下載",
+    "sessionError": "Unable to check your session. Please try again."
+  },
+  "DownloadModal": {
+    "dialogTitle": "下載視訊",
+    "eyebrow": "下載視訊",
+    "posterAlt": "Video poster",
+    "noDownloads": "無下載",
+    "errorSessionExpired": "Your session expired. Sign in again to download.",
+    "errorSessionUnavailable": "Unable to check your session. Please try again.",
+    "errorUnavailableSource": "Download unavailable from this source",
+    "tierHighest": "最高",
+    "tierHigh": "高",
+    "tierLow": "低"
+  },
+  "HeroPlayerControls": {
+    "play": "遊戲",
+    "pause": "Pause",
+    "seek": "Seek",
+    "seekValue": "{current} of {total}",
+    "volume": "Volume",
+    "volumeValue": "{percent} percent",
+    "mute": "靜音",
+    "unmute": "解除靜音",
+    "changeAudioLanguage": "Change audio language",
+    "enterFullscreen": "Enter fullscreen",
+    "exitFullscreen": "Exit fullscreen"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Select language",
+    "searchPlaceholder": "搜尋語言...",
+    "languages": "語言",
+    "noMatches": "未找到任何語言。"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "語言",
+    "dialogTitleWithSubtitles": "Language & Subtitles",
+    "languageHeading": "語言",
+    "subtitlesHeading": "字幕",
+    "languageCount": "{count, plural, one {# language} other {# languages}}",
+    "requestSent": "Request sent",
+    "translateWithAi": "Translate with AI",
+    "noSubtitles": "No subtitles",
+    "toggleOn": "On",
+    "toggleOff": "Off",
+    "close": "關閉",
+    "apply": "申請"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
+    "seriesLabel": "SERIES · {episodes}",
+    "changeAudioLanguage": "Change audio language",
+    "share": "分享",
+    "languages": "語言"
+  },
+  "WatchModal": {
+    "close": "關閉"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "如果您可以問這段影片的創作者一個問題，您會是什麼？",
+    "fallbackBody": "與願意傾聽的人進行私人討論。",
+    "questionsShort": "Questions",
+    "questions": "相關問題",
+    "askYours": "詢問您的",
+    "chatWithPerson": "與人聊天",
+    "askBibleQuestion": "詢問聖經問題"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Message type",
+    "fieldLabel": "Ask a question about this video",
+    "send": "Send question",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "詢問聖經問題",
+        "description": "Instant answers from the Bible using AI search"
+      },
+      "prayerRequest": {
+        "label": "Request a prayer",
+        "description": "Share what you want prayer for"
+      },
+      "comment": {
+        "label": "Leave a comment",
+        "description": "Send thoughts about this video"
+      },
+      "personChat": {
+        "label": "與人聊天",
+        "description": "Talk with someone now"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Share video",
+    "heading": "分享此影片",
+    "posterAlt": "Video poster",
+    "shareOnFacebook": "Share on Facebook",
+    "shareOnFacebookUnavailable": "Share on Facebook (unavailable on this build)",
+    "shareOnX": "Share on X",
+    "shareOnXUnavailable": "Share on X (unavailable on this build)",
+    "shareDisabledHint": "Sharing requires a deployed page — works once this video is in production.",
+    "shareFormat": "Share format",
+    "shareLinkTab": "分享連結",
+    "embedCodeTab": "嵌入代碼",
+    "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
+    "copyLink": "複製連結",
+    "copyCode": "複製代碼",
+    "copied": "Copied",
+    "close": "關閉"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transcript",
+    "subheading": "Tap any line to jump to that moment.",
+    "subtitleLanguage": "Subtitle language",
+    "aiSuffix": " · AI",
+    "loading": "Loading transcript…",
+    "unavailable": "Transcript unavailable for this subtitle track.",
+    "empty": "No transcript lines found."
+  }
+}

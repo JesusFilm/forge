@@ -1,0 +1,146 @@
+{
+  "ExperienceError": {
+    "empty": "No experience content available.",
+    "failedToLoad": "Failed to load experience: {message}",
+    "unexpected": "An unexpected error occurred.",
+    "notConfigured": "Content service is not configured.",
+    "noContent": "No content is available.",
+    "homepageMisconfigured": "The watch homepage is misconfigured.",
+    "defaultTemplateMisconfigured": "The default watch template is misconfigured.",
+    "authFailed": "Unable to authenticate with the content service. Please contact support if this persists."
+  },
+  "VideosPage": {
+    "title": "All Videos",
+    "placeholder": "Catalog browsing is coming. In the meantime use search or a topic-specific URL."
+  },
+  "BibleQuotes": {
+    "title": "İncil'den Alıntılar",
+    "share": "Paylaş",
+    "readMore": "Daha fazlasını okuyun...",
+    "learnMore": "Learn more",
+    "freeResources": "Ücretsiz Kaynaklar",
+    "promoHeading": "Kutsal Kitap anlayışınızda derinleşmek ister misiniz?",
+    "joinBibleStudy": "Kutsal Kitap Çalışmamıza Katılın",
+    "previousQuote": "Previous Bible quote",
+    "nextQuote": "Next Bible quote"
+  },
+  "DownloadButton": {
+    "checking": "Checking",
+    "download": "İndir",
+    "sessionError": "Unable to check your session. Please try again."
+  },
+  "DownloadModal": {
+    "dialogTitle": "Video İndir",
+    "eyebrow": "Video İndir",
+    "posterAlt": "Video poster",
+    "noDownloads": "Mevcut İndirme Yok",
+    "errorSessionExpired": "Your session expired. Sign in again to download.",
+    "errorSessionUnavailable": "Unable to check your session. Please try again.",
+    "errorUnavailableSource": "Download unavailable from this source",
+    "tierHighest": "En yüksek",
+    "tierHigh": "Yüksek",
+    "tierLow": "Düşük"
+  },
+  "HeroPlayerControls": {
+    "play": "Oyun",
+    "pause": "Pause",
+    "seek": "Seek",
+    "seekValue": "{current} of {total}",
+    "volume": "Volume",
+    "volumeValue": "{percent} percent",
+    "mute": "Sessiz",
+    "unmute": "Sesi aç",
+    "changeAudioLanguage": "Change audio language",
+    "enterFullscreen": "Enter fullscreen",
+    "exitFullscreen": "Exit fullscreen"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Select language",
+    "searchPlaceholder": "Arama dilleri...",
+    "languages": "Diller",
+    "noMatches": "Dil bulunamadı."
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Dil",
+    "dialogTitleWithSubtitles": "Language & Subtitles",
+    "languageHeading": "Dil",
+    "subtitlesHeading": "Altyazılar",
+    "languageCount": "{count, plural, one {# language} other {# languages}}",
+    "requestSent": "Request sent",
+    "translateWithAi": "Translate with AI",
+    "noSubtitles": "No subtitles",
+    "toggleOn": "On",
+    "toggleOff": "Off",
+    "close": "Kapat",
+    "apply": "Başvurmak"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
+    "seriesLabel": "SERIES · {episodes}",
+    "changeAudioLanguage": "Change audio language",
+    "share": "Paylaş",
+    "languages": "Diller"
+  },
+  "WatchModal": {
+    "close": "Kapat"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Bu videonun yaratıcısına bir soru sorabilseydiniz, bu ne olurdu?",
+    "fallbackBody": "Dinlemeye hazır biriyle özel bir görüşme yapın.",
+    "questionsShort": "Questions",
+    "questions": "İlgili sorular",
+    "askYours": "Seninkine sor",
+    "chatWithPerson": "Bir kişiyle sohbet edin",
+    "askBibleQuestion": "Bir Kutsal Kitap sorusu sorun"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Message type",
+    "fieldLabel": "Ask a question about this video",
+    "send": "Send question",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Bir Kutsal Kitap sorusu sorun",
+        "description": "Instant answers from the Bible using AI search"
+      },
+      "prayerRequest": {
+        "label": "Request a prayer",
+        "description": "Share what you want prayer for"
+      },
+      "comment": {
+        "label": "Leave a comment",
+        "description": "Send thoughts about this video"
+      },
+      "personChat": {
+        "label": "Bir kişiyle sohbet edin",
+        "description": "Talk with someone now"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Share video",
+    "heading": "Bu videoyu paylaş",
+    "posterAlt": "Video poster",
+    "shareOnFacebook": "Share on Facebook",
+    "shareOnFacebookUnavailable": "Share on Facebook (unavailable on this build)",
+    "shareOnX": "Share on X",
+    "shareOnXUnavailable": "Share on X (unavailable on this build)",
+    "shareDisabledHint": "Sharing requires a deployed page — works once this video is in production.",
+    "shareFormat": "Share format",
+    "shareLinkTab": "Bağlantı Paylaş",
+    "embedCodeTab": "Gömme Kodu",
+    "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
+    "copyLink": "Bağlantıyı Kopyala",
+    "copyCode": "Kopya Kodu",
+    "copied": "Copied",
+    "close": "Kapat"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transcript",
+    "subheading": "Tap any line to jump to that moment.",
+    "subtitleLanguage": "Subtitle language",
+    "aiSuffix": " · AI",
+    "loading": "Loading transcript…",
+    "unavailable": "Transcript unavailable for this subtitle track.",
+    "empty": "No transcript lines found."
+  }
+}

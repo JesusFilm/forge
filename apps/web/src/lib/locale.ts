@@ -85,6 +85,20 @@ const PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE: Readonly<
   fr: "french",
   pt: "portuguese-brazil",
   de: "german-standard",
+  ar: "arabic-modern-standard",
+  id: "indonesian-isa",
+  ja: "japanese",
+  ko: "korean",
+  ms: "malay",
+  ne: "nepali",
+  ru: "russian",
+  th: "thai",
+  tl: "tagalog",
+  tr: "turkish",
+  vi: "vietnamese",
+  zh: "mandarin-china",
+  "zh-Hans": "chinese-simplified",
+  "zh-Hant": "chinese-traditional",
 })
 
 const BCP47_TAG_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i
@@ -212,6 +226,10 @@ const ISO_639_3_TO_UI_LOCALE: Readonly<Record<string, string>> = Object.freeze({
   por: "pt",
   deu: "de",
   ger: "de", // legacy ISO 639-2/B alternative
+  fil: "tl",
+  tgl: "tl",
+  nep: "ne",
+  npi: "ne",
 })
 
 function bcp47FallbackCandidates(tag: string): string[] {

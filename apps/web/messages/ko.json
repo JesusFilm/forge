@@ -1,0 +1,146 @@
+{
+  "ExperienceError": {
+    "empty": "No experience content available.",
+    "failedToLoad": "Failed to load experience: {message}",
+    "unexpected": "An unexpected error occurred.",
+    "notConfigured": "Content service is not configured.",
+    "noContent": "No content is available.",
+    "homepageMisconfigured": "The watch homepage is misconfigured.",
+    "defaultTemplateMisconfigured": "The default watch template is misconfigured.",
+    "authFailed": "Unable to authenticate with the content service. Please contact support if this persists."
+  },
+  "VideosPage": {
+    "title": "All Videos",
+    "placeholder": "Catalog browsing is coming. In the meantime use search or a topic-specific URL."
+  },
+  "BibleQuotes": {
+    "title": "성경 인용문",
+    "share": "공유",
+    "readMore": "자세히 보기...",
+    "learnMore": "Learn more",
+    "freeResources": "무료 리소스",
+    "promoHeading": "성경에 대한 이해가 더 깊어지고 싶으신가요?",
+    "joinBibleStudy": "성경 공부에 참여하세요",
+    "previousQuote": "Previous Bible quote",
+    "nextQuote": "Next Bible quote"
+  },
+  "DownloadButton": {
+    "checking": "Checking",
+    "download": "다운로드",
+    "sessionError": "Unable to check your session. Please try again."
+  },
+  "DownloadModal": {
+    "dialogTitle": "비디오 다운로드",
+    "eyebrow": "비디오 다운로드",
+    "posterAlt": "Video poster",
+    "noDownloads": "다운로드할 수 없음",
+    "errorSessionExpired": "Your session expired. Sign in again to download.",
+    "errorSessionUnavailable": "Unable to check your session. Please try again.",
+    "errorUnavailableSource": "Download unavailable from this source",
+    "tierHighest": "최고",
+    "tierHigh": "높음",
+    "tierLow": "낮음"
+  },
+  "HeroPlayerControls": {
+    "play": "플레이",
+    "pause": "Pause",
+    "seek": "Seek",
+    "seekValue": "{current} of {total}",
+    "volume": "Volume",
+    "volumeValue": "{percent} percent",
+    "mute": "음소거",
+    "unmute": "음소거 해제",
+    "changeAudioLanguage": "Change audio language",
+    "enterFullscreen": "Enter fullscreen",
+    "exitFullscreen": "Exit fullscreen"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Select language",
+    "searchPlaceholder": "언어 검색...",
+    "languages": "언어",
+    "noMatches": "언어를 찾을 수 없습니다."
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "언어",
+    "dialogTitleWithSubtitles": "Language & Subtitles",
+    "languageHeading": "언어",
+    "subtitlesHeading": "자막",
+    "languageCount": "{count, plural, one {# language} other {# languages}}",
+    "requestSent": "Request sent",
+    "translateWithAi": "Translate with AI",
+    "noSubtitles": "No subtitles",
+    "toggleOn": "On",
+    "toggleOff": "Off",
+    "close": "닫기",
+    "apply": "신청하기"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
+    "seriesLabel": "SERIES · {episodes}",
+    "changeAudioLanguage": "Change audio language",
+    "share": "공유",
+    "languages": "언어"
+  },
+  "WatchModal": {
+    "close": "닫기"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "이 동영상의 제작자에게 한 가지 질문을 할 수 있다면 무엇일까요?",
+    "fallbackBody": "경청할 준비가 되어 있는 사람과 비공개로 토론하세요.",
+    "questionsShort": "Questions",
+    "questions": "관련 질문",
+    "askYours": "질문하기",
+    "chatWithPerson": "사람과 채팅하기",
+    "askBibleQuestion": "성경 질문하기"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Message type",
+    "fieldLabel": "Ask a question about this video",
+    "send": "Send question",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "성경 질문하기",
+        "description": "Instant answers from the Bible using AI search"
+      },
+      "prayerRequest": {
+        "label": "Request a prayer",
+        "description": "Share what you want prayer for"
+      },
+      "comment": {
+        "label": "Leave a comment",
+        "description": "Send thoughts about this video"
+      },
+      "personChat": {
+        "label": "사람과 채팅하기",
+        "description": "Talk with someone now"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Share video",
+    "heading": "이 동영상 공유",
+    "posterAlt": "Video poster",
+    "shareOnFacebook": "Share on Facebook",
+    "shareOnFacebookUnavailable": "Share on Facebook (unavailable on this build)",
+    "shareOnX": "Share on X",
+    "shareOnXUnavailable": "Share on X (unavailable on this build)",
+    "shareDisabledHint": "Sharing requires a deployed page — works once this video is in production.",
+    "shareFormat": "Share format",
+    "shareLinkTab": "공유 링크",
+    "embedCodeTab": "코드 삽입",
+    "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
+    "copyLink": "링크 복사",
+    "copyCode": "코드 복사",
+    "copied": "Copied",
+    "close": "닫기"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transcript",
+    "subheading": "Tap any line to jump to that moment.",
+    "subtitleLanguage": "Subtitle language",
+    "aiSuffix": " · AI",
+    "loading": "Loading transcript…",
+    "unavailable": "Transcript unavailable for this subtitle track.",
+    "empty": "No transcript lines found."
+  }
+}

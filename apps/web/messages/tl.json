@@ -1,0 +1,146 @@
+{
+  "ExperienceError": {
+    "empty": "No experience content available.",
+    "failedToLoad": "Failed to load experience: {message}",
+    "unexpected": "An unexpected error occurred.",
+    "notConfigured": "Content service is not configured.",
+    "noContent": "No content is available.",
+    "homepageMisconfigured": "The watch homepage is misconfigured.",
+    "defaultTemplateMisconfigured": "The default watch template is misconfigured.",
+    "authFailed": "Unable to authenticate with the content service. Please contact support if this persists."
+  },
+  "VideosPage": {
+    "title": "All Videos",
+    "placeholder": "Catalog browsing is coming. In the meantime use search or a topic-specific URL."
+  },
+  "BibleQuotes": {
+    "title": "Mga Quote sa Bibliya",
+    "share": "Share",
+    "readMore": "Magbasa pa...",
+    "learnMore": "Learn more",
+    "freeResources": "Libreng Mapagkukunan",
+    "promoHeading": "Gusto mo bang lumalim ang iyong pag-unawa sa Bibliya?",
+    "joinBibleStudy": "Sumali sa Aming Pag-aaral ng Bibliya",
+    "previousQuote": "Previous Bible quote",
+    "nextQuote": "Next Bible quote"
+  },
+  "DownloadButton": {
+    "checking": "Checking",
+    "download": "I-download",
+    "sessionError": "Unable to check your session. Please try again."
+  },
+  "DownloadModal": {
+    "dialogTitle": "I-download ang Video",
+    "eyebrow": "I-download ang Video",
+    "posterAlt": "Video poster",
+    "noDownloads": "Walang Available na Downloads",
+    "errorSessionExpired": "Your session expired. Sign in again to download.",
+    "errorSessionUnavailable": "Unable to check your session. Please try again.",
+    "errorUnavailableSource": "Download unavailable from this source",
+    "tierHighest": "Pinakamataas",
+    "tierHigh": "Mataas",
+    "tierLow": "Mababa"
+  },
+  "HeroPlayerControls": {
+    "play": "I-play",
+    "pause": "Pause",
+    "seek": "Seek",
+    "seekValue": "{current} of {total}",
+    "volume": "Volume",
+    "volumeValue": "{percent} percent",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "changeAudioLanguage": "Change audio language",
+    "enterFullscreen": "Enter fullscreen",
+    "exitFullscreen": "Exit fullscreen"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Select language",
+    "searchPlaceholder": "Search languages…",
+    "languages": "Mga Wika",
+    "noMatches": "No matches"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Language",
+    "dialogTitleWithSubtitles": "Language & Subtitles",
+    "languageHeading": "Language",
+    "subtitlesHeading": "Mga Subtitle",
+    "languageCount": "{count, plural, one {# language} other {# languages}}",
+    "requestSent": "Request sent",
+    "translateWithAi": "Translate with AI",
+    "noSubtitles": "No subtitles",
+    "toggleOn": "On",
+    "toggleOff": "Off",
+    "close": "Close",
+    "apply": "Mag-apply"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
+    "seriesLabel": "SERIES · {episodes}",
+    "changeAudioLanguage": "Change audio language",
+    "share": "Share",
+    "languages": "Mga Wika"
+  },
+  "WatchModal": {
+    "close": "Close"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Kung maaari mong itanong sa gumawa ng video na ito ang isang tanong, ano ito?",
+    "fallbackBody": "Magkaroon ng pribadong pag-uusap sa isang taong handang makinig.",
+    "questionsShort": "Questions",
+    "questions": "Mga kaugnay na tanong",
+    "askYours": "Itanong ang sa iyo",
+    "chatWithPerson": "Makipag-chat sa isang tao",
+    "askBibleQuestion": "Magtanong tungkol sa Bibliya"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Message type",
+    "fieldLabel": "Ask a question about this video",
+    "send": "Send question",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Magtanong tungkol sa Bibliya",
+        "description": "Instant answers from the Bible using AI search"
+      },
+      "prayerRequest": {
+        "label": "Request a prayer",
+        "description": "Share what you want prayer for"
+      },
+      "comment": {
+        "label": "Leave a comment",
+        "description": "Send thoughts about this video"
+      },
+      "personChat": {
+        "label": "Makipag-chat sa isang tao",
+        "description": "Talk with someone now"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Share video",
+    "heading": "Ibahagi ang video na ito",
+    "posterAlt": "Video poster",
+    "shareOnFacebook": "Share on Facebook",
+    "shareOnFacebookUnavailable": "Share on Facebook (unavailable on this build)",
+    "shareOnX": "Share on X",
+    "shareOnXUnavailable": "Share on X (unavailable on this build)",
+    "shareDisabledHint": "Sharing requires a deployed page — works once this video is in production.",
+    "shareFormat": "Share format",
+    "shareLinkTab": "Ibahagi ang Link",
+    "embedCodeTab": "Embed na Code",
+    "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
+    "copyLink": "Copy Link",
+    "copyCode": "Kopyahin ang Code",
+    "copied": "Copied",
+    "close": "Close"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transcript",
+    "subheading": "Tap any line to jump to that moment.",
+    "subtitleLanguage": "Subtitle language",
+    "aiSuffix": " · AI",
+    "loading": "Loading transcript…",
+    "unavailable": "Transcript unavailable for this subtitle track.",
+    "empty": "No transcript lines found."
+  }
+}

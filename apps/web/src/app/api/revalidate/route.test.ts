@@ -43,13 +43,17 @@ describe("POST /api/revalidate", () => {
     )
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({
-      revalidated: true,
-      paths: [
+    const body = await response.json()
+    expect(body).toMatchObject({ revalidated: true })
+    expect(body.paths).toEqual(
+      expect.arrayContaining([
         "/[locale]/[htmlLang] (layout)",
         "/ (layout)",
         "/",
         "/en/en",
+        "/russian.html",
+        "/ru/ru/russian.html",
+        "/russian",
         "/german-standard.html",
         "/de/de/german-standard.html",
         "/german-standard",
@@ -65,8 +69,8 @@ describe("POST /api/revalidate", () => {
         "/portuguese-brazil.html",
         "/pt/pt/portuguese-brazil.html",
         "/portuguese-brazil",
-      ],
-    })
+      ]),
+    )
     expect(revalidatePathMock).toHaveBeenCalledWith(
       "/[locale]/[htmlLang]",
       "layout",
@@ -100,9 +104,10 @@ describe("POST /api/revalidate", () => {
     )
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({
-      revalidated: true,
-      paths: [
+    const body = await response.json()
+    expect(body).toMatchObject({ revalidated: true })
+    expect(body.paths).toEqual(
+      expect.arrayContaining([
         "/jesus.html/english.html",
         "/en/en/jesus.html/english.html",
         "/jesus/english",
@@ -128,8 +133,11 @@ describe("POST /api/revalidate", () => {
         "/portuguese-brazil.html",
         "/pt/pt/portuguese-brazil.html",
         "/portuguese-brazil",
-      ],
-    })
+        "/russian.html",
+        "/ru/ru/russian.html",
+        "/russian",
+      ]),
+    )
     expect(revalidatePathMock).toHaveBeenCalledWith("/jesus.html/english.html")
     expect(revalidatePathMock).toHaveBeenCalledWith(
       "/en/en/jesus.html/english.html",

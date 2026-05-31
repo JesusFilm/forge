@@ -3,7 +3,27 @@
 
 export const DEFAULT_LOCALE = "en" as const
 
-export const AVAILABLE_UI_LOCALES = ["de", "en", "es", "fr", "pt"] as const
+export const AVAILABLE_UI_LOCALES = [
+  "ar",
+  "de",
+  "en",
+  "es",
+  "fr",
+  "id",
+  "ja",
+  "ko",
+  "ms",
+  "ne",
+  "pt",
+  "ru",
+  "th",
+  "tl",
+  "tr",
+  "vi",
+  "zh",
+  "zh-Hans",
+  "zh-Hant",
+] as const
 
 export type UiLocale = (typeof AVAILABLE_UI_LOCALES)[number]
 

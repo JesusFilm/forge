@@ -814,16 +814,16 @@ describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-se
   })
 
   it("falls back to DEFAULT_LOCALE='en' when language family has no generated catalog", async () => {
-    // Mandarin (zh), Russian (ru), Arabic (ar), Japanese (ja), etc. — admin
-    // serves the audio but apps/web UI chrome ships only generated catalogs.
+    // Zulu is a valid public audio language, but apps/web has no generated
+    // UI chrome catalog for it yet.
     resolveWatchVideoBySlugMock.mockResolvedValue(
       makeWatchVideoResult("shortFilm", {
-        slug: "russian",
-        bcp47: "ru",
-        name: "Russian",
+        slug: "zulu",
+        bcp47: "zu",
+        name: "Zulu",
       }),
     )
-    await render2Seg("storyclubs.html", "russian.html")
+    await render2Seg("storyclubs.html", "zulu.html")
     const props = watchPageClientMock.mock.calls[0]?.[0] as { locale?: string }
     expect(props?.locale).toBe("en")
   })

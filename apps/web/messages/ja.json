@@ -1,0 +1,146 @@
+{
+  "ExperienceError": {
+    "empty": "No experience content available.",
+    "failedToLoad": "Failed to load experience: {message}",
+    "unexpected": "An unexpected error occurred.",
+    "notConfigured": "Content service is not configured.",
+    "noContent": "No content is available.",
+    "homepageMisconfigured": "The watch homepage is misconfigured.",
+    "defaultTemplateMisconfigured": "The default watch template is misconfigured.",
+    "authFailed": "Unable to authenticate with the content service. Please contact support if this persists."
+  },
+  "VideosPage": {
+    "title": "All Videos",
+    "placeholder": "Catalog browsing is coming. In the meantime use search or a topic-specific URL."
+  },
+  "BibleQuotes": {
+    "title": "聖書の引用",
+    "share": "シェア",
+    "readMore": "続きを読む...",
+    "learnMore": "Learn more",
+    "freeResources": "無料リソース",
+    "promoHeading": "聖書への理解を深めたい？",
+    "joinBibleStudy": "聖書研究に参加しよう",
+    "previousQuote": "Previous Bible quote",
+    "nextQuote": "Next Bible quote"
+  },
+  "DownloadButton": {
+    "checking": "Checking",
+    "download": "ダウンロード",
+    "sessionError": "Unable to check your session. Please try again."
+  },
+  "DownloadModal": {
+    "dialogTitle": "ビデオをダウンロード",
+    "eyebrow": "ビデオをダウンロード",
+    "posterAlt": "Video poster",
+    "noDownloads": "ダウンロード不可",
+    "errorSessionExpired": "Your session expired. Sign in again to download.",
+    "errorSessionUnavailable": "Unable to check your session. Please try again.",
+    "errorUnavailableSource": "Download unavailable from this source",
+    "tierHighest": "最高",
+    "tierHigh": "高い",
+    "tierLow": "低い"
+  },
+  "HeroPlayerControls": {
+    "play": "プレー",
+    "pause": "Pause",
+    "seek": "Seek",
+    "seekValue": "{current} of {total}",
+    "volume": "Volume",
+    "volumeValue": "{percent} percent",
+    "mute": "ミュート",
+    "unmute": "ミュート解除",
+    "changeAudioLanguage": "Change audio language",
+    "enterFullscreen": "Enter fullscreen",
+    "exitFullscreen": "Exit fullscreen"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Select language",
+    "searchPlaceholder": "検索言語...",
+    "languages": "言語",
+    "noMatches": "言語が見つかりません。"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "言語",
+    "dialogTitleWithSubtitles": "Language & Subtitles",
+    "languageHeading": "言語",
+    "subtitlesHeading": "字幕",
+    "languageCount": "{count, plural, one {# language} other {# languages}}",
+    "requestSent": "Request sent",
+    "translateWithAi": "Translate with AI",
+    "noSubtitles": "No subtitles",
+    "toggleOn": "On",
+    "toggleOff": "Off",
+    "close": "閉じる",
+    "apply": "応募する"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
+    "seriesLabel": "SERIES · {episodes}",
+    "changeAudioLanguage": "Change audio language",
+    "share": "シェア",
+    "languages": "言語"
+  },
+  "WatchModal": {
+    "close": "閉じる"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "このビデオの制作者に質問するとしたら？",
+    "fallbackBody": "話を聞いてくれる人と個人的に話し合う。",
+    "questionsShort": "Questions",
+    "questions": "関連する質問",
+    "askYours": "あなたのところへ",
+    "chatWithPerson": "人とチャットする",
+    "askBibleQuestion": "聖書について質問する"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Message type",
+    "fieldLabel": "Ask a question about this video",
+    "send": "Send question",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "聖書について質問する",
+        "description": "Instant answers from the Bible using AI search"
+      },
+      "prayerRequest": {
+        "label": "Request a prayer",
+        "description": "Share what you want prayer for"
+      },
+      "comment": {
+        "label": "Leave a comment",
+        "description": "Send thoughts about this video"
+      },
+      "personChat": {
+        "label": "人とチャットする",
+        "description": "Talk with someone now"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Share video",
+    "heading": "このビデオを共有する",
+    "posterAlt": "Video poster",
+    "shareOnFacebook": "Share on Facebook",
+    "shareOnFacebookUnavailable": "Share on Facebook (unavailable on this build)",
+    "shareOnX": "Share on X",
+    "shareOnXUnavailable": "Share on X (unavailable on this build)",
+    "shareDisabledHint": "Sharing requires a deployed page — works once this video is in production.",
+    "shareFormat": "Share format",
+    "shareLinkTab": "シェアリンク",
+    "embedCodeTab": "埋め込みコード",
+    "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
+    "copyLink": "コピーリンク",
+    "copyCode": "コピーコード",
+    "copied": "Copied",
+    "close": "閉じる"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transcript",
+    "subheading": "Tap any line to jump to that moment.",
+    "subtitleLanguage": "Subtitle language",
+    "aiSuffix": " · AI",
+    "loading": "Loading transcript…",
+    "unavailable": "Transcript unavailable for this subtitle track.",
+    "empty": "No transcript lines found."
+  }
+}
