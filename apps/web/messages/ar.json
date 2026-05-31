@@ -15,11 +15,11 @@
   },
   "BibleQuotes": {
     "title": "اقتباسات من الكتاب المقدس",
-    "share": "شارك",
+    "share": "مشاركة",
     "readMore": "اقرأ المزيد...",
     "learnMore": "Learn more",
-    "freeResources": "الموارد المجانية",
-    "promoHeading": "هل تريد أن تتعمق في فهمك للكتاب المقدس؟",
+    "freeResources": "مواد مجانية",
+    "promoHeading": "هل تريد أن تفهم الكتاب المقدس بعمق أكبر؟",
     "joinBibleStudy": "انضم إلى دراسة الكتاب المقدس",
     "previousQuote": "Previous Bible quote",
     "nextQuote": "Next Bible quote"
@@ -33,7 +33,17 @@
     "dialogTitle": "تحميل الفيديو",
     "eyebrow": "تحميل الفيديو",
     "posterAlt": "Video poster",
-    "noDownloads": "لا توجد تنزيلات متاحة",
+    "noDownloads": "لا تتوفر تنزيلات لهذا الفيديو.",
+    "fileSizeLabel": "اختر حجم الملف",
+    "termsAgreementPrefix": "أوافق على ",
+    "termsOfUse": "شروط الاستخدام",
+    "termsAgreementSuffix": "",
+    "close": "إغلاق",
+    "download": "تنزيل",
+    "checking": "جارٍ التحقق",
+    "closeTermsOfUse": "إغلاق شروط الاستخدام",
+    "cancel": "إلغاء",
+    "accept": "قبول",
     "errorSessionExpired": "Your session expired. Sign in again to download.",
     "errorSessionUnavailable": "Unable to check your session. Please try again.",
     "errorUnavailableSource": "Download unavailable from this source",
@@ -42,29 +52,29 @@
     "tierLow": "منخفضة"
   },
   "HeroPlayerControls": {
-    "play": "اللعب",
+    "play": "تشغيل",
     "pause": "Pause",
     "seek": "Seek",
     "seekValue": "{current} of {total}",
     "volume": "Volume",
     "volumeValue": "{percent} percent",
     "mute": "كتم الصوت",
-    "unmute": "إلغاء الكتم",
+    "unmute": "إلغاء كتم الصوت",
     "changeAudioLanguage": "Change audio language",
     "enterFullscreen": "Enter fullscreen",
     "exitFullscreen": "Exit fullscreen"
   },
   "LanguageCombobox": {
     "selectLanguage": "Select language",
-    "searchPlaceholder": "لغات البحث...",
+    "searchPlaceholder": "ابحث عن اللغات…",
     "languages": "اللغات",
-    "noMatches": "لم يتم العثور على أي لغات."
+    "noMatches": "لا توجد نتائج مطابقة"
   },
   "LanguagePickerModal": {
     "dialogTitle": "اللغة",
     "dialogTitleWithSubtitles": "Language & Subtitles",
     "languageHeading": "اللغة",
-    "subtitlesHeading": "الترجمات",
+    "subtitlesHeading": "الترجمات المصاحبة",
     "languageCount": "{count, plural, one {# language} other {# languages}}",
     "requestSent": "Request sent",
     "translateWithAi": "Translate with AI",
@@ -72,13 +82,13 @@
     "toggleOn": "On",
     "toggleOff": "Off",
     "close": "إغلاق",
-    "apply": "قدم طلبك"
+    "apply": "تطبيق"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
     "seriesLabel": "SERIES · {episodes}",
     "changeAudioLanguage": "Change audio language",
-    "share": "شارك",
+    "share": "مشاركة",
     "languages": "اللغات"
   },
   "WatchModal": {
@@ -86,12 +96,12 @@
   },
   "WatchStudyQuestions": {
     "placeholderQuestion": "إذا كان بإمكانك أن تسأل صانع هذا الفيديو سؤالاً، فماذا سيكون؟",
-    "fallbackBody": "قم بإجراء مناقشة خاصة مع شخص مستعد للاستماع إليك.",
+    "fallbackBody": "ابدأ محادثة خاصة مع شخص مستعد للاستماع.",
     "questionsShort": "Questions",
     "questions": "أسئلة ذات صلة",
-    "askYours": "اطلب ما تريد",
-    "chatWithPerson": "الدردشة مع شخص",
-    "askBibleQuestion": "اطرح سؤالاً على الكتاب المقدس"
+    "askYours": "اطرح سؤالك",
+    "chatWithPerson": "تحدث مع شخص",
+    "askBibleQuestion": "اطرح سؤالًا عن الكتاب المقدس"
   },
   "WatchQuestionPanel": {
     "messageType": "Message type",
@@ -99,7 +109,7 @@
     "send": "Send question",
     "prompts": {
       "bibleQuestion": {
-        "label": "اطرح سؤالاً على الكتاب المقدس",
+        "label": "اطرح سؤالًا عن الكتاب المقدس",
         "description": "Instant answers from the Bible using AI search"
       },
       "prayerRequest": {
@@ -111,7 +121,7 @@
         "description": "Send thoughts about this video"
       },
       "personChat": {
-        "label": "الدردشة مع شخص",
+        "label": "تحدث مع شخص",
         "description": "Talk with someone now"
       }
     }
@@ -130,7 +140,7 @@
     "embedCodeTab": "رمز التضمين",
     "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
     "copyLink": "نسخ الرابط",
-    "copyCode": "نسخ الرمز",
+    "copyCode": "نسخ الكود",
     "copied": "Copied",
     "close": "إغلاق"
   },

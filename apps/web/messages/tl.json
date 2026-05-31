@@ -33,7 +33,17 @@
     "dialogTitle": "I-download ang Video",
     "eyebrow": "I-download ang Video",
     "posterAlt": "Video poster",
-    "noDownloads": "Walang Available na Downloads",
+    "noDownloads": "Walang mada-download para sa video na ito.",
+    "fileSizeLabel": "Pumili ng laki ng file",
+    "termsAgreementPrefix": "Sumasang-ayon ako sa ",
+    "termsOfUse": "Mga Tuntunin sa Paggamit",
+    "termsAgreementSuffix": "",
+    "close": "Isara",
+    "download": "I-download",
+    "checking": "Tinitingnan",
+    "closeTermsOfUse": "Isara ang Mga Tuntunin sa Paggamit",
+    "cancel": "Kanselahin",
+    "accept": "Tanggapin",
     "errorSessionExpired": "Your session expired. Sign in again to download.",
     "errorSessionUnavailable": "Unable to check your session. Please try again.",
     "errorUnavailableSource": "Download unavailable from this source",
@@ -72,7 +82,7 @@
     "toggleOn": "On",
     "toggleOff": "Off",
     "close": "Close",
-    "apply": "Mag-apply"
+    "apply": "Ilapat"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
@@ -89,8 +99,8 @@
     "fallbackBody": "Magkaroon ng pribadong pag-uusap sa isang taong handang makinig.",
     "questionsShort": "Questions",
     "questions": "Mga kaugnay na tanong",
-    "askYours": "Itanong ang sa iyo",
-    "chatWithPerson": "Makipag-chat sa isang tao",
+    "askYours": "Magtanong",
+    "chatWithPerson": "Makipag-usap sa isang tao",
     "askBibleQuestion": "Magtanong tungkol sa Bibliya"
   },
   "WatchQuestionPanel": {
@@ -111,7 +121,7 @@
         "description": "Send thoughts about this video"
       },
       "personChat": {
-        "label": "Makipag-chat sa isang tao",
+        "label": "Makipag-usap sa isang tao",
         "description": "Talk with someone now"
       }
     }

@@ -14,12 +14,12 @@
     "placeholder": "Catalog browsing is coming. In the meantime use search or a topic-specific URL."
   },
   "BibleQuotes": {
-    "title": "İncil'den Alıntılar",
+    "title": "Kutsal Kitap Alıntıları",
     "share": "Paylaş",
-    "readMore": "Daha fazlasını okuyun...",
+    "readMore": "Daha fazla oku...",
     "learnMore": "Learn more",
     "freeResources": "Ücretsiz Kaynaklar",
-    "promoHeading": "Kutsal Kitap anlayışınızda derinleşmek ister misiniz?",
+    "promoHeading": "Kutsal Kitabı daha derinden anlamak ister misiniz?",
     "joinBibleStudy": "Kutsal Kitap Çalışmamıza Katılın",
     "previousQuote": "Previous Bible quote",
     "nextQuote": "Next Bible quote"
@@ -33,7 +33,17 @@
     "dialogTitle": "Video İndir",
     "eyebrow": "Video İndir",
     "posterAlt": "Video poster",
-    "noDownloads": "Mevcut İndirme Yok",
+    "noDownloads": "Bu video için indirilebilir dosya yok.",
+    "fileSizeLabel": "Dosya boyutu seçin",
+    "termsAgreementPrefix": "",
+    "termsOfUse": "Kullanım koşulları",
+    "termsAgreementSuffix": "nı kabul ediyorum",
+    "close": "Kapat",
+    "download": "İndir",
+    "checking": "Kontrol ediliyor",
+    "closeTermsOfUse": "Kullanım koşullarını kapat",
+    "cancel": "İptal",
+    "accept": "Kabul et",
     "errorSessionExpired": "Your session expired. Sign in again to download.",
     "errorSessionUnavailable": "Unable to check your session. Please try again.",
     "errorUnavailableSource": "Download unavailable from this source",
@@ -42,13 +52,13 @@
     "tierLow": "Düşük"
   },
   "HeroPlayerControls": {
-    "play": "Oyun",
+    "play": "Oynat",
     "pause": "Pause",
     "seek": "Seek",
     "seekValue": "{current} of {total}",
     "volume": "Volume",
     "volumeValue": "{percent} percent",
-    "mute": "Sessiz",
+    "mute": "Sessize al",
     "unmute": "Sesi aç",
     "changeAudioLanguage": "Change audio language",
     "enterFullscreen": "Enter fullscreen",
@@ -56,9 +66,9 @@
   },
   "LanguageCombobox": {
     "selectLanguage": "Select language",
-    "searchPlaceholder": "Arama dilleri...",
+    "searchPlaceholder": "Dil ara…",
     "languages": "Diller",
-    "noMatches": "Dil bulunamadı."
+    "noMatches": "Eşleşme bulunamadı"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Dil",
@@ -72,7 +82,7 @@
     "toggleOn": "On",
     "toggleOff": "Off",
     "close": "Kapat",
-    "apply": "Başvurmak"
+    "apply": "Uygula"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
@@ -86,12 +96,12 @@
   },
   "WatchStudyQuestions": {
     "placeholderQuestion": "Bu videonun yaratıcısına bir soru sorabilseydiniz, bu ne olurdu?",
-    "fallbackBody": "Dinlemeye hazır biriyle özel bir görüşme yapın.",
+    "fallbackBody": "Dinlemeye hazır biriyle özel bir konuşma başlatın.",
     "questionsShort": "Questions",
     "questions": "İlgili sorular",
-    "askYours": "Seninkine sor",
-    "chatWithPerson": "Bir kişiyle sohbet edin",
-    "askBibleQuestion": "Bir Kutsal Kitap sorusu sorun"
+    "askYours": "Sorunuzu sorun",
+    "chatWithPerson": "Biriyle konuşun",
+    "askBibleQuestion": "Kutsal Kitap hakkında soru sorun"
   },
   "WatchQuestionPanel": {
     "messageType": "Message type",
@@ -99,7 +109,7 @@
     "send": "Send question",
     "prompts": {
       "bibleQuestion": {
-        "label": "Bir Kutsal Kitap sorusu sorun",
+        "label": "Kutsal Kitap hakkında soru sorun",
         "description": "Instant answers from the Bible using AI search"
       },
       "prayerRequest": {
@@ -111,7 +121,7 @@
         "description": "Send thoughts about this video"
       },
       "personChat": {
-        "label": "Bir kişiyle sohbet edin",
+        "label": "Biriyle konuşun",
         "description": "Talk with someone now"
       }
     }
@@ -130,7 +140,7 @@
     "embedCodeTab": "Gömme Kodu",
     "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
     "copyLink": "Bağlantıyı Kopyala",
-    "copyCode": "Kopya Kodu",
+    "copyCode": "Kodu kopyala",
     "copied": "Copied",
     "close": "Kapat"
   },

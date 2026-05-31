@@ -34,6 +34,16 @@
     "eyebrow": "Download Video",
     "posterAlt": "Video poster",
     "noDownloads": "No downloads are available for this video.",
+    "fileSizeLabel": "Pilih saiz fail",
+    "termsAgreementPrefix": "Saya bersetuju dengan ",
+    "termsOfUse": "Terma Penggunaan",
+    "termsAgreementSuffix": "",
+    "close": "Tutup",
+    "download": "Muat turun",
+    "checking": "Menyemak",
+    "closeTermsOfUse": "Tutup Terma Penggunaan",
+    "cancel": "Batal",
+    "accept": "Terima",
     "errorSessionExpired": "Your session expired. Sign in again to download.",
     "errorSessionUnavailable": "Unable to check your session. Please try again.",
     "errorUnavailableSource": "Download unavailable from this source",
@@ -71,8 +81,8 @@
     "noSubtitles": "No subtitles",
     "toggleOn": "On",
     "toggleOff": "Off",
-    "close": "tutup",
-    "apply": "Mohon"
+    "close": "Tutup",
+    "apply": "Guna"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
@@ -82,7 +92,7 @@
     "languages": "Languages"
   },
   "WatchModal": {
-    "close": "tutup"
+    "close": "Tutup"
   },
   "WatchStudyQuestions": {
     "placeholderQuestion": "If you could ask the creator of this video a question, what would it be?",
@@ -132,7 +142,7 @@
     "copyLink": "Salin Pautan",
     "copyCode": "Copy Code",
     "copied": "Copied",
-    "close": "tutup"
+    "close": "Tutup"
   },
   "SubtitleTranscript": {
     "heading": "Transcript",

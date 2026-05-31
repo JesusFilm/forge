@@ -18,8 +18,8 @@
     "share": "Bagikan",
     "readMore": "Baca selengkapnya...",
     "learnMore": "Learn more",
-    "freeResources": "Sumber Daya Gratis",
-    "promoHeading": "Ingin bertumbuh lebih dalam lagi dalam pemahaman Anda tentang Alkitab?",
+    "freeResources": "Materi gratis",
+    "promoHeading": "Ingin memahami Alkitab lebih dalam?",
     "joinBibleStudy": "Bergabunglah dengan Pendalaman Alkitab Kami",
     "previousQuote": "Previous Bible quote",
     "nextQuote": "Next Bible quote"
@@ -33,7 +33,17 @@
     "dialogTitle": "Unduh Video",
     "eyebrow": "Unduh Video",
     "posterAlt": "Video poster",
-    "noDownloads": "Tidak Ada Unduhan yang Tersedia",
+    "noDownloads": "Tidak ada unduhan yang tersedia untuk video ini.",
+    "fileSizeLabel": "Pilih ukuran file",
+    "termsAgreementPrefix": "Saya menyetujui ",
+    "termsOfUse": "Ketentuan Penggunaan",
+    "termsAgreementSuffix": "",
+    "close": "Tutup",
+    "download": "Unduh",
+    "checking": "Memeriksa",
+    "closeTermsOfUse": "Tutup Ketentuan Penggunaan",
+    "cancel": "Batal",
+    "accept": "Setuju",
     "errorSessionExpired": "Your session expired. Sign in again to download.",
     "errorSessionUnavailable": "Unable to check your session. Please try again.",
     "errorUnavailableSource": "Download unavailable from this source",
@@ -48,8 +58,8 @@
     "seekValue": "{current} of {total}",
     "volume": "Volume",
     "volumeValue": "{percent} percent",
-    "mute": "Bisu",
-    "unmute": "Bunyikan",
+    "mute": "Bisukan",
+    "unmute": "Nyalakan suara",
     "changeAudioLanguage": "Change audio language",
     "enterFullscreen": "Enter fullscreen",
     "exitFullscreen": "Exit fullscreen"
@@ -58,7 +68,7 @@
     "selectLanguage": "Select language",
     "searchPlaceholder": "Cari bahasa...",
     "languages": "Bahasa",
-    "noMatches": "Tidak ada bahasa yang ditemukan."
+    "noMatches": "Tidak ada hasil yang cocok"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Bahasa",
@@ -72,7 +82,7 @@
     "toggleOn": "On",
     "toggleOff": "Off",
     "close": "Tutup",
-    "apply": "Menerapkan"
+    "apply": "Terapkan"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
@@ -86,12 +96,12 @@
   },
   "WatchStudyQuestions": {
     "placeholderQuestion": "Jika Anda dapat mengajukan pertanyaan kepada pembuat video ini, apakah itu?",
-    "fallbackBody": "Lakukan diskusi pribadi dengan seseorang yang siap mendengarkan.",
+    "fallbackBody": "Mulai percakapan pribadi dengan seseorang yang siap mendengarkan.",
     "questionsShort": "Questions",
     "questions": "Pertanyaan terkait",
-    "askYours": "Tanyakan kepada Anda",
-    "chatWithPerson": "Mengobrol dengan seseorang",
-    "askBibleQuestion": "Ajukan pertanyaan Alkitab"
+    "askYours": "Ajukan pertanyaan Anda",
+    "chatWithPerson": "Bicara dengan seseorang",
+    "askBibleQuestion": "Ajukan pertanyaan tentang Alkitab"
   },
   "WatchQuestionPanel": {
     "messageType": "Message type",
@@ -99,7 +109,7 @@
     "send": "Send question",
     "prompts": {
       "bibleQuestion": {
-        "label": "Ajukan pertanyaan Alkitab",
+        "label": "Ajukan pertanyaan tentang Alkitab",
         "description": "Instant answers from the Bible using AI search"
       },
       "prayerRequest": {
@@ -111,7 +121,7 @@
         "description": "Send thoughts about this video"
       },
       "personChat": {
-        "label": "Mengobrol dengan seseorang",
+        "label": "Bicara dengan seseorang",
         "description": "Talk with someone now"
       }
     }
@@ -126,11 +136,11 @@
     "shareOnXUnavailable": "Share on X (unavailable on this build)",
     "shareDisabledHint": "Sharing requires a deployed page — works once this video is in production.",
     "shareFormat": "Share format",
-    "shareLinkTab": "Bagikan Tautan",
+    "shareLinkTab": "Bagikan tautan",
     "embedCodeTab": "Kode Sematan",
     "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
     "copyLink": "Salin tautan",
-    "copyCode": "Salin Kode",
+    "copyCode": "Salin kode",
     "copied": "Copied",
     "close": "Tutup"
   },

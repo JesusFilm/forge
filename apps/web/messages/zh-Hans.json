@@ -33,7 +33,17 @@
     "dialogTitle": "下载视频",
     "eyebrow": "下载视频",
     "posterAlt": "Video poster",
-    "noDownloads": "无下载",
+    "noDownloads": "此视频暂无可下载内容。",
+    "fileSizeLabel": "选择文件大小",
+    "termsAgreementPrefix": "我同意",
+    "termsOfUse": "使用条款",
+    "termsAgreementSuffix": "",
+    "close": "关闭",
+    "download": "下载",
+    "checking": "正在检查",
+    "closeTermsOfUse": "关闭使用条款",
+    "cancel": "取消",
+    "accept": "接受",
     "errorSessionExpired": "Your session expired. Sign in again to download.",
     "errorSessionUnavailable": "Unable to check your session. Please try again.",
     "errorUnavailableSource": "Download unavailable from this source",
@@ -72,7 +82,7 @@
     "toggleOn": "On",
     "toggleOff": "Off",
     "close": "关闭",
-    "apply": "申请"
+    "apply": "应用"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
@@ -86,12 +96,12 @@
   },
   "WatchStudyQuestions": {
     "placeholderQuestion": "如果可以问这段视频的创作者一个问题，你会问什么？",
-    "fallbackBody": "与愿意倾听的人进行私下讨论。",
+    "fallbackBody": "与愿意聆听的人私下交流。",
     "questionsShort": "Questions",
     "questions": "相关问题",
-    "askYours": "问你的",
-    "chatWithPerson": "与人聊天",
-    "askBibleQuestion": "提出圣经问题"
+    "askYours": "提出你的问题",
+    "chatWithPerson": "与真人交谈",
+    "askBibleQuestion": "提出圣经相关问题"
   },
   "WatchQuestionPanel": {
     "messageType": "Message type",
@@ -99,7 +109,7 @@
     "send": "Send question",
     "prompts": {
       "bibleQuestion": {
-        "label": "提出圣经问题",
+        "label": "提出圣经相关问题",
         "description": "Instant answers from the Bible using AI search"
       },
       "prayerRequest": {
@@ -111,14 +121,14 @@
         "description": "Send thoughts about this video"
       },
       "personChat": {
-        "label": "与人聊天",
+        "label": "与真人交谈",
         "description": "Talk with someone now"
       }
     }
   },
   "ShareModal": {
     "dialogTitle": "Share video",
-    "heading": "分享视频",
+    "heading": "分享此视频",
     "posterAlt": "Video poster",
     "shareOnFacebook": "Share on Facebook",
     "shareOnFacebookUnavailable": "Share on Facebook (unavailable on this build)",
@@ -126,7 +136,7 @@
     "shareOnXUnavailable": "Share on X (unavailable on this build)",
     "shareDisabledHint": "Sharing requires a deployed page — works once this video is in production.",
     "shareFormat": "Share format",
-    "shareLinkTab": "共享链接",
+    "shareLinkTab": "分享链接",
     "embedCodeTab": "嵌入代码",
     "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
     "copyLink": "复制链接",

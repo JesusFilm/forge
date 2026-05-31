@@ -33,7 +33,17 @@
     "dialogTitle": "Download video",
     "eyebrow": "Download Video",
     "posterAlt": "Video poster",
-    "noDownloads": "कुनै डाउनलोड उपलब्ध छैन",
+    "noDownloads": "यस भिडियोका लागि कुनै डाउनलोड उपलब्ध छैन।",
+    "fileSizeLabel": "फाइलको आकार छान्नुहोस्",
+    "termsAgreementPrefix": "म ",
+    "termsOfUse": "प्रयोगका सर्तहरू",
+    "termsAgreementSuffix": "मा सहमत छु",
+    "close": "बन्द गर्नुहोस्",
+    "download": "डाउनलोड गर्नुहोस्",
+    "checking": "जाँच गर्दै",
+    "closeTermsOfUse": "प्रयोगका सर्तहरू बन्द गर्नुहोस्",
+    "cancel": "रद्द गर्नुहोस्",
+    "accept": "स्वीकार गर्नुहोस्",
     "errorSessionExpired": "Your session expired. Sign in again to download.",
     "errorSessionUnavailable": "Unable to check your session. Please try again.",
     "errorUnavailableSource": "Download unavailable from this source",
@@ -42,7 +52,7 @@
     "tierLow": "Low"
   },
   "HeroPlayerControls": {
-    "play": "खेल्नुहोस्",
+    "play": "चलाउनुहोस्",
     "pause": "Pause",
     "seek": "Seek",
     "seekValue": "{current} of {total}",
@@ -72,7 +82,7 @@
     "toggleOn": "On",
     "toggleOff": "Off",
     "close": "बन्द गर्नुहोस्",
-    "apply": "निवेदन गर्नु"
+    "apply": "लागू गर्नुहोस्"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
@@ -86,11 +96,11 @@
   },
   "WatchStudyQuestions": {
     "placeholderQuestion": "यदि तपाईंले यो भिडियोको निर्मातालाई एउटा प्रश्न सोध्नुभयो भने, त्यो के हुन्थ्यो?",
-    "fallbackBody": "सुन्न तयार भएको व्यक्तिसँग एकान्तमा छलफल गर्नुहोस्।",
+    "fallbackBody": "सुन्न तयार व्यक्तिसँग निजी कुराकानी सुरु गर्नुहोस्।",
     "questionsShort": "Questions",
     "questions": "सम्बन्धित प्रश्नहरू",
-    "askYours": "तपाईंको सोध्नुहोस्",
-    "chatWithPerson": "कुनै व्यक्तिसँग कुराकानी गर्नुहोस्",
+    "askYours": "आफ्नो प्रश्न सोध्नुहोस्",
+    "chatWithPerson": "कसैसँग कुरा गर्नुहोस्",
     "askBibleQuestion": "बाइबलको बारेमा प्रश्न सोध्नुहोस्"
   },
   "WatchQuestionPanel": {
@@ -111,7 +121,7 @@
         "description": "Send thoughts about this video"
       },
       "personChat": {
-        "label": "कुनै व्यक्तिसँग कुराकानी गर्नुहोस्",
+        "label": "कसैसँग कुरा गर्नुहोस्",
         "description": "Talk with someone now"
       }
     }

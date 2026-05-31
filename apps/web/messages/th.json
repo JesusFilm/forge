@@ -15,7 +15,7 @@
   },
   "BibleQuotes": {
     "title": "คำคมจากพระคัมภีร์",
-    "share": "แบ่งปัน",
+    "share": "แชร์",
     "readMore": "อ่านเพิ่มเติม...",
     "learnMore": "Learn more",
     "freeResources": "ทรัพยากรฟรี",
@@ -33,7 +33,17 @@
     "dialogTitle": "ดาวน์โหลดวิดีโอ",
     "eyebrow": "ดาวน์โหลดวิดีโอ",
     "posterAlt": "Video poster",
-    "noDownloads": "ไม่มีการดาวน์โหลดให้ใช้",
+    "noDownloads": "ไม่มีไฟล์ให้ดาวน์โหลดสำหรับวิดีโอนี้",
+    "fileSizeLabel": "เลือกขนาดไฟล์",
+    "termsAgreementPrefix": "ฉันยอมรับ",
+    "termsOfUse": "ข้อกำหนดการใช้งาน",
+    "termsAgreementSuffix": "",
+    "close": "ปิด",
+    "download": "ดาวน์โหลด",
+    "checking": "กำลังตรวจสอบ",
+    "closeTermsOfUse": "ปิดข้อกำหนดการใช้งาน",
+    "cancel": "ยกเลิก",
+    "accept": "ยอมรับ",
     "errorSessionExpired": "Your session expired. Sign in again to download.",
     "errorSessionUnavailable": "Unable to check your session. Please try again.",
     "errorUnavailableSource": "Download unavailable from this source",
@@ -72,13 +82,13 @@
     "toggleOn": "On",
     "toggleOff": "Off",
     "close": "ปิด",
-    "apply": "ยืนยัน"
+    "apply": "ใช้"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
     "seriesLabel": "SERIES · {episodes}",
     "changeAudioLanguage": "Change audio language",
-    "share": "แบ่งปัน",
+    "share": "แชร์",
     "languages": "ภาษา"
   },
   "WatchModal": {
@@ -86,11 +96,11 @@
   },
   "WatchStudyQuestions": {
     "placeholderQuestion": "หากคุณสามารถถามผู้สร้างวิดีโอนี้ได้หนึ่งคำถาม คุณจะถามอะไร?",
-    "fallbackBody": "พูดคุยเป็นการส่วนตัวกับคนที่พร้อมรับฟัง",
+    "fallbackBody": "เริ่มบทสนทนาส่วนตัวกับคนที่พร้อมรับฟัง",
     "questionsShort": "Questions",
     "questions": "คำถามที่เกี่ยวข้อง",
-    "askYours": "ถามของคุณ",
-    "chatWithPerson": "คุยกับคน",
+    "askYours": "ถามคำถามของคุณ",
+    "chatWithPerson": "คุยกับคนจริง",
     "askBibleQuestion": "ถามคำถามเกี่ยวกับพระคัมภีร์"
   },
   "WatchQuestionPanel": {
@@ -111,7 +121,7 @@
         "description": "Send thoughts about this video"
       },
       "personChat": {
-        "label": "คุยกับคน",
+        "label": "คุยกับคนจริง",
         "description": "Talk with someone now"
       }
     }

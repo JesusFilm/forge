@@ -14,7 +14,7 @@
     "placeholder": "Catalog browsing is coming. In the meantime use search or a topic-specific URL."
   },
   "BibleQuotes": {
-    "title": "성경 인용문",
+    "title": "성경 구절",
     "share": "공유",
     "readMore": "자세히 보기...",
     "learnMore": "Learn more",
@@ -33,7 +33,17 @@
     "dialogTitle": "비디오 다운로드",
     "eyebrow": "비디오 다운로드",
     "posterAlt": "Video poster",
-    "noDownloads": "다운로드할 수 없음",
+    "noDownloads": "이 동영상에서 사용할 수 있는 다운로드가 없습니다.",
+    "fileSizeLabel": "파일 크기 선택",
+    "termsAgreementPrefix": "",
+    "termsOfUse": "이용 약관",
+    "termsAgreementSuffix": "에 동의합니다",
+    "close": "닫기",
+    "download": "다운로드",
+    "checking": "확인 중",
+    "closeTermsOfUse": "이용 약관 닫기",
+    "cancel": "취소",
+    "accept": "동의",
     "errorSessionExpired": "Your session expired. Sign in again to download.",
     "errorSessionUnavailable": "Unable to check your session. Please try again.",
     "errorUnavailableSource": "Download unavailable from this source",
@@ -72,7 +82,7 @@
     "toggleOn": "On",
     "toggleOff": "Off",
     "close": "닫기",
-    "apply": "신청하기"
+    "apply": "적용"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
@@ -86,12 +96,12 @@
   },
   "WatchStudyQuestions": {
     "placeholderQuestion": "이 동영상의 제작자에게 한 가지 질문을 할 수 있다면 무엇일까요?",
-    "fallbackBody": "경청할 준비가 되어 있는 사람과 비공개로 토론하세요.",
+    "fallbackBody": "기꺼이 들어 줄 사람과 개인적으로 대화하세요.",
     "questionsShort": "Questions",
     "questions": "관련 질문",
     "askYours": "질문하기",
-    "chatWithPerson": "사람과 채팅하기",
-    "askBibleQuestion": "성경 질문하기"
+    "chatWithPerson": "사람과 대화하기",
+    "askBibleQuestion": "성경에 대해 질문하기"
   },
   "WatchQuestionPanel": {
     "messageType": "Message type",
@@ -99,7 +109,7 @@
     "send": "Send question",
     "prompts": {
       "bibleQuestion": {
-        "label": "성경 질문하기",
+        "label": "성경에 대해 질문하기",
         "description": "Instant answers from the Bible using AI search"
       },
       "prayerRequest": {
@@ -111,7 +121,7 @@
         "description": "Send thoughts about this video"
       },
       "personChat": {
-        "label": "사람과 채팅하기",
+        "label": "사람과 대화하기",
         "description": "Talk with someone now"
       }
     }

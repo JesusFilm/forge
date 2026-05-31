@@ -30,10 +30,20 @@
     "sessionError": "Unable to check your session. Please try again."
   },
   "DownloadModal": {
-    "dialogTitle": "下載視訊",
-    "eyebrow": "下載視訊",
+    "dialogTitle": "下載影片",
+    "eyebrow": "下載影片",
     "posterAlt": "Video poster",
-    "noDownloads": "無下載",
+    "noDownloads": "此影片暫無可下載內容。",
+    "fileSizeLabel": "選擇檔案大小",
+    "termsAgreementPrefix": "我同意",
+    "termsOfUse": "使用條款",
+    "termsAgreementSuffix": "",
+    "close": "關閉",
+    "download": "下載",
+    "checking": "正在檢查",
+    "closeTermsOfUse": "關閉使用條款",
+    "cancel": "取消",
+    "accept": "接受",
     "errorSessionExpired": "Your session expired. Sign in again to download.",
     "errorSessionUnavailable": "Unable to check your session. Please try again.",
     "errorUnavailableSource": "Download unavailable from this source",
@@ -42,7 +52,7 @@
     "tierLow": "低"
   },
   "HeroPlayerControls": {
-    "play": "遊戲",
+    "play": "播放",
     "pause": "Pause",
     "seek": "Seek",
     "seekValue": "{current} of {total}",
@@ -72,7 +82,7 @@
     "toggleOn": "On",
     "toggleOff": "Off",
     "close": "關閉",
-    "apply": "申請"
+    "apply": "套用"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
@@ -85,13 +95,13 @@
     "close": "關閉"
   },
   "WatchStudyQuestions": {
-    "placeholderQuestion": "如果您可以問這段影片的創作者一個問題，您會是什麼？",
-    "fallbackBody": "與願意傾聽的人進行私人討論。",
+    "placeholderQuestion": "如果您可以問這段影片的創作者一個問題，您會問什麼？",
+    "fallbackBody": "與願意聆聽的人私下交流。",
     "questionsShort": "Questions",
     "questions": "相關問題",
-    "askYours": "詢問您的",
-    "chatWithPerson": "與人聊天",
-    "askBibleQuestion": "詢問聖經問題"
+    "askYours": "提出你的問題",
+    "chatWithPerson": "與真人交談",
+    "askBibleQuestion": "提出聖經相關問題"
   },
   "WatchQuestionPanel": {
     "messageType": "Message type",
@@ -99,7 +109,7 @@
     "send": "Send question",
     "prompts": {
       "bibleQuestion": {
-        "label": "詢問聖經問題",
+        "label": "提出聖經相關問題",
         "description": "Instant answers from the Bible using AI search"
       },
       "prayerRequest": {
@@ -111,7 +121,7 @@
         "description": "Send thoughts about this video"
       },
       "personChat": {
-        "label": "與人聊天",
+        "label": "與真人交談",
         "description": "Talk with someone now"
       }
     }

@@ -216,6 +216,7 @@ export function DownloadModal({
   onClose,
 }: DownloadModalProps) {
   const t = useTranslations("DownloadModal")
+  const fileSizeLabel = t("fileSizeLabel")
   // Localized label for a quality tier. `bucketDownloads` carries an English
   // `label` for back-compat, but the rendered text is resolved here so it
   // translates.
@@ -528,7 +529,7 @@ export function DownloadModal({
                   htmlFor={dropdownId}
                   className="text-lg font-semibold text-stone-100"
                 >
-                  Select a file size
+                  {fileSizeLabel}
                 </label>
                 <div className="relative">
                   <button
@@ -555,7 +556,7 @@ export function DownloadModal({
                           />
                         </>
                       ) : (
-                        "Select a file size"
+                        fileSizeLabel
                       )}
                     </span>
                     <ChevronDown
@@ -643,15 +644,16 @@ export function DownloadModal({
               />
             </span>
             <span>
-              I agree to the{" "}
+              {t("termsAgreementPrefix")}
               <button
                 type="button"
                 onClick={() => setTermsOpen(true)}
                 data-testid="watch-download-modal-tos-trigger"
                 className="cursor-pointer font-normal text-brand-red underline decoration-brand-red/40 underline-offset-4 hover:decoration-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/50"
               >
-                Terms of Use
+                {t("termsOfUse")}
               </button>
+              {t("termsAgreementSuffix")}
             </span>
           </label>
 
@@ -671,18 +673,18 @@ export function DownloadModal({
               onClick={() => handleOpenChange(false)}
               className="cursor-pointer rounded-full px-5 py-3.5 text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
             >
-              Close
+              {t("close")}
             </Button>
             <Button
               variant="pill"
               onClick={handleDownload}
               disabled={!canDownload}
-              aria-label="Download"
+              aria-label={t("download")}
               data-testid="watch-download-modal-confirm"
               className="px-7 py-4 text-sm"
             >
               <DownloadIcon size={16} />
-              <span>{authChecking ? "Checking" : "Download"}</span>
+              <span>{authChecking ? t("checking") : t("download")}</span>
             </Button>
           </div>
         </div>
@@ -716,6 +718,8 @@ type TermsOfUseDialogProps = {
 }
 
 function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
+  const t = useTranslations("DownloadModal")
+
   return (
     <Dialog
       open={open}
@@ -734,7 +738,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
             data-testid="watch-download-modal-terms-title"
             className="text-2xl font-bold text-stone-50 sm:text-3xl"
           >
-            Terms of Use
+            {t("termsOfUse")}
           </DialogTitle>
           {/*
             Raw <button> (not <Button variant="...">): the circular
@@ -746,7 +750,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
           <button
             type="button"
             onClick={onCancel}
-            aria-label="Close Terms of Use"
+            aria-label={t("closeTermsOfUse")}
             data-testid="watch-download-modal-terms-close"
             className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-stone-700/60 text-stone-200 transition-colors hover:bg-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/50"
           >
@@ -777,14 +781,14 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
             data-testid="watch-download-modal-terms-cancel"
             className="cursor-pointer rounded-full bg-stone-700/60 px-5 py-2.5 text-sm font-medium text-stone-100 transition-colors hover:bg-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400/50"
           >
-            Cancel
+            {t("cancel")}
           </button>
           <Button
             variant="pill"
             onClick={onAccept}
             data-testid="watch-download-modal-terms-accept"
           >
-            Accept
+            {t("accept")}
           </Button>
         </div>
       </DialogContent>

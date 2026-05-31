@@ -1,83 +1,93 @@
 {
   "ExperienceError": {
-    "empty": "No experience content available.",
-    "failedToLoad": "Failed to load experience: {message}",
-    "unexpected": "An unexpected error occurred.",
-    "notConfigured": "Content service is not configured.",
-    "noContent": "No content is available.",
-    "homepageMisconfigured": "The watch homepage is misconfigured.",
-    "defaultTemplateMisconfigured": "The default watch template is misconfigured.",
-    "authFailed": "Unable to authenticate with the content service. Please contact support if this persists."
+    "empty": "Контент недоступен.",
+    "failedToLoad": "Не удалось загрузить страницу: {message}",
+    "unexpected": "Произошла непредвиденная ошибка.",
+    "notConfigured": "Сервис контента не настроен.",
+    "noContent": "Контент недоступен.",
+    "homepageMisconfigured": "Главная страница Watch настроена неправильно.",
+    "defaultTemplateMisconfigured": "Шаблон Watch по умолчанию настроен неправильно.",
+    "authFailed": "Не удалось подключиться к сервису контента. Если ошибка повторится, обратитесь в поддержку."
   },
   "VideosPage": {
-    "title": "All Videos",
-    "placeholder": "Catalog browsing is coming. In the meantime use search or a topic-specific URL."
+    "title": "Все видео",
+    "placeholder": "Просмотр каталога скоро появится. Пока используйте поиск или ссылку на нужную тему."
   },
   "BibleQuotes": {
-    "title": "Цитаты из Библии",
+    "title": "Библейские цитаты",
     "share": "Поделиться",
     "readMore": "Читать дальше...",
-    "learnMore": "Learn more",
-    "freeResources": "Бесплатные ресурсы",
-    "promoHeading": "Хочешь глубоко погрузиться в понимание Библии?",
-    "joinBibleStudy": "Присоединяйся к нашим библейским занятиям",
-    "previousQuote": "Previous Bible quote",
-    "nextQuote": "Next Bible quote"
+    "learnMore": "Подробнее",
+    "freeResources": "Бесплатные материалы",
+    "promoHeading": "Хотите глубже понимать Библию?",
+    "joinBibleStudy": "Присоединиться к изучению Библии",
+    "previousQuote": "Предыдущая библейская цитата",
+    "nextQuote": "Следующая библейская цитата"
   },
   "DownloadButton": {
-    "checking": "Checking",
+    "checking": "Проверяем",
     "download": "Скачать",
-    "sessionError": "Unable to check your session. Please try again."
+    "sessionError": "Не удалось проверить сеанс. Попробуйте еще раз."
   },
   "DownloadModal": {
     "dialogTitle": "Скачать видео",
     "eyebrow": "Скачать видео",
-    "posterAlt": "Video poster",
-    "noDownloads": "Загрузки нет",
-    "errorSessionExpired": "Your session expired. Sign in again to download.",
-    "errorSessionUnavailable": "Unable to check your session. Please try again.",
-    "errorUnavailableSource": "Download unavailable from this source",
-    "tierHighest": "Самый высокий",
-    "tierHigh": "Высокий",
-    "tierLow": "Низкий"
+    "posterAlt": "Постер видео",
+    "noDownloads": "Для этого видео нет доступных файлов для скачивания.",
+    "fileSizeLabel": "Выберите размер файла",
+    "termsAgreementPrefix": "Я принимаю ",
+    "termsOfUse": "Условия использования",
+    "termsAgreementSuffix": "",
+    "close": "Закрыть",
+    "download": "Скачать",
+    "checking": "Проверяем",
+    "closeTermsOfUse": "Закрыть условия использования",
+    "cancel": "Отмена",
+    "accept": "Принять",
+    "errorSessionExpired": "Сеанс истек. Войдите снова, чтобы скачать видео.",
+    "errorSessionUnavailable": "Не удалось проверить сеанс. Попробуйте еще раз.",
+    "errorUnavailableSource": "Скачивание из этого источника недоступно",
+    "tierHighest": "Максимальное",
+    "tierHigh": "Высокое",
+    "tierLow": "Низкое"
   },
   "HeroPlayerControls": {
     "play": "Воспроизвести",
-    "pause": "Pause",
-    "seek": "Seek",
-    "seekValue": "{current} of {total}",
-    "volume": "Volume",
-    "volumeValue": "{percent} percent",
-    "mute": "Отключи звук",
-    "unmute": "Unmute",
-    "changeAudioLanguage": "Change audio language",
-    "enterFullscreen": "Enter fullscreen",
-    "exitFullscreen": "Exit fullscreen"
+    "pause": "Пауза",
+    "seek": "Перемотка",
+    "seekValue": "{current} из {total}",
+    "volume": "Громкость",
+    "volumeValue": "{percent}%",
+    "mute": "Отключить звук",
+    "unmute": "Включить звук",
+    "changeAudioLanguage": "Изменить язык аудио",
+    "enterFullscreen": "На весь экран",
+    "exitFullscreen": "Выйти из полноэкранного режима"
   },
   "LanguageCombobox": {
-    "selectLanguage": "Select language",
-    "searchPlaceholder": "Языки поиска...",
+    "selectLanguage": "Выбрать язык",
+    "searchPlaceholder": "Поиск языков…",
     "languages": "Языки",
-    "noMatches": "Не найдено ни одного языка."
+    "noMatches": "Совпадений нет"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Язык",
-    "dialogTitleWithSubtitles": "Language & Subtitles",
+    "dialogTitleWithSubtitles": "Язык и субтитры",
     "languageHeading": "Язык",
     "subtitlesHeading": "Субтитры",
-    "languageCount": "{count, plural, one {# language} other {# languages}}",
-    "requestSent": "Request sent",
-    "translateWithAi": "Translate with AI",
-    "noSubtitles": "No subtitles",
-    "toggleOn": "On",
-    "toggleOff": "Off",
+    "languageCount": "{count, plural, one {# язык} few {# языка} many {# языков} other {# языка}}",
+    "requestSent": "Запрос отправлен",
+    "translateWithAi": "Перевести с помощью ИИ",
+    "noSubtitles": "Нет субтитров",
+    "toggleOn": "Вкл.",
+    "toggleOff": "Выкл.",
     "close": "Закрыть",
     "apply": "Применить"
   },
   "SeriesPage": {
-    "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
-    "seriesLabel": "SERIES · {episodes}",
-    "changeAudioLanguage": "Change audio language",
+    "episodeCount": "{count, plural, one {# СЕРИЯ} few {# СЕРИИ} many {# СЕРИЙ} other {# СЕРИИ}}",
+    "seriesLabel": "СЕРИАЛ · {episodes}",
+    "changeAudioLanguage": "Изменить язык аудио",
     "share": "Поделиться",
     "languages": "Языки"
   },
@@ -85,62 +95,62 @@
     "close": "Закрыть"
   },
   "WatchStudyQuestions": {
-    "placeholderQuestion": "Если бы ты мог задать вопрос создателю этого видео, каким бы он был?",
-    "fallbackBody": "Проведи приватную беседу с тем, кто готов тебя выслушать.",
-    "questionsShort": "Questions",
-    "questions": "Похожие вопросы",
-    "askYours": "Спроси своего",
-    "chatWithPerson": "Пообщайтесь с человеком",
-    "askBibleQuestion": "Задай вопрос по Библии"
+    "placeholderQuestion": "Если бы вы могли задать вопрос создателю этого видео, что бы вы спросили?",
+    "fallbackBody": "Начните личный разговор с человеком, который готов выслушать.",
+    "questionsShort": "Вопросы",
+    "questions": "Вопросы по теме",
+    "askYours": "Задать свой вопрос",
+    "chatWithPerson": "Поговорить с человеком",
+    "askBibleQuestion": "Задать вопрос о Библии"
   },
   "WatchQuestionPanel": {
-    "messageType": "Message type",
-    "fieldLabel": "Ask a question about this video",
-    "send": "Send question",
+    "messageType": "Тип сообщения",
+    "fieldLabel": "Задать вопрос об этом видео",
+    "send": "Отправить вопрос",
     "prompts": {
       "bibleQuestion": {
-        "label": "Задай вопрос по Библии",
-        "description": "Instant answers from the Bible using AI search"
+        "label": "Задать вопрос о Библии",
+        "description": "Мгновенные ответы из Библии с помощью ИИ-поиска"
       },
       "prayerRequest": {
-        "label": "Request a prayer",
-        "description": "Share what you want prayer for"
+        "label": "Попросить о молитве",
+        "description": "Расскажите, о чем вы хотите попросить молитвы"
       },
       "comment": {
-        "label": "Leave a comment",
-        "description": "Send thoughts about this video"
+        "label": "Оставить комментарий",
+        "description": "Поделитесь мыслями об этом видео"
       },
       "personChat": {
-        "label": "Пообщайтесь с человеком",
-        "description": "Talk with someone now"
+        "label": "Поговорить с человеком",
+        "description": "Поговорите с кем-нибудь сейчас"
       }
     }
   },
   "ShareModal": {
-    "dialogTitle": "Share video",
-    "heading": "Поделись этим видео",
-    "posterAlt": "Video poster",
-    "shareOnFacebook": "Share on Facebook",
-    "shareOnFacebookUnavailable": "Share on Facebook (unavailable on this build)",
-    "shareOnX": "Share on X",
-    "shareOnXUnavailable": "Share on X (unavailable on this build)",
-    "shareDisabledHint": "Sharing requires a deployed page — works once this video is in production.",
-    "shareFormat": "Share format",
-    "shareLinkTab": "Поделиться ссылкой",
+    "dialogTitle": "Поделиться видео",
+    "heading": "Поделиться этим видео",
+    "posterAlt": "Постер видео",
+    "shareOnFacebook": "Поделиться в Facebook",
+    "shareOnFacebookUnavailable": "Поделиться в Facebook (недоступно в этой сборке)",
+    "shareOnX": "Поделиться в X",
+    "shareOnXUnavailable": "Поделиться в X (недоступно в этой сборке)",
+    "shareDisabledHint": "Поделиться можно после публикации страницы — функция заработает, когда это видео будет в продакшене.",
+    "shareFormat": "Формат публикации",
+    "shareLinkTab": "Ссылка",
     "embedCodeTab": "Код для встраивания",
-    "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
-    "copyLink": "Копировать ссылку",
+    "copyFailed": "Не удалось скопировать автоматически — выделите текст ниже и скопируйте вручную.",
+    "copyLink": "Скопировать ссылку",
     "copyCode": "Скопировать код",
-    "copied": "Copied",
+    "copied": "Скопировано",
     "close": "Закрыть"
   },
   "SubtitleTranscript": {
-    "heading": "Transcript",
-    "subheading": "Tap any line to jump to that moment.",
-    "subtitleLanguage": "Subtitle language",
-    "aiSuffix": " · AI",
-    "loading": "Loading transcript…",
-    "unavailable": "Transcript unavailable for this subtitle track.",
-    "empty": "No transcript lines found."
+    "heading": "Расшифровка",
+    "subheading": "Нажмите на строку, чтобы перейти к этому моменту.",
+    "subtitleLanguage": "Язык субтитров",
+    "aiSuffix": " · ИИ",
+    "loading": "Загрузка расшифровки…",
+    "unavailable": "Расшифровка для этой дорожки субтитров недоступна.",
+    "empty": "Строки расшифровки не найдены."
   }
 }
