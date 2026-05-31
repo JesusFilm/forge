@@ -6,7 +6,7 @@
 // Maps the English-name kebab slug (admin Language.slug) used in /watch
 // URLs to admin's full BCP-47 tag. Consume via
 // slugToBcp47Primary() in lib/locale.ts — that helper extracts the
-// primary subtag (es-ES → es) for the UI_LOCALE_FAMILIES fallback chain.
+// primary subtag (es-ES → es) for the generated UI-catalog fallback chain.
 
 export const LANGUAGE_BCP47_MAP: Readonly<Record<string, string>> =
   Object.freeze({

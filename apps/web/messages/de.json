@@ -34,6 +34,16 @@
     "eyebrow": "Video herunterladen",
     "posterAlt": "Video-Vorschaubild",
     "noDownloads": "Für dieses Video sind keine Downloads verfügbar.",
+    "fileSizeLabel": "Dateigröße auswählen",
+    "termsAgreementPrefix": "Ich stimme den ",
+    "termsOfUse": "Nutzungsbedingungen",
+    "termsAgreementSuffix": " zu",
+    "close": "Schließen",
+    "download": "Herunterladen",
+    "checking": "Wird geprüft",
+    "closeTermsOfUse": "Nutzungsbedingungen schließen",
+    "cancel": "Abbrechen",
+    "accept": "Akzeptieren",
     "errorSessionExpired": "Deine Sitzung ist abgelaufen. Melde dich erneut an, um herunterzuladen.",
     "errorSessionUnavailable": "Sitzung konnte nicht geprüft werden. Bitte versuche es erneut.",
     "errorUnavailableSource": "Download von dieser Quelle nicht verfügbar",
@@ -43,7 +53,7 @@
   },
   "HeroPlayerControls": {
     "play": "Abspielen",
-    "pause": "Pause",
+    "pause": "Pausieren",
     "seek": "Suchen",
     "seekValue": "{current} von {total}",
     "volume": "Lautstärke",
@@ -89,8 +99,8 @@
     "fallbackBody": "Führen Sie ein privates Gespräch mit jemandem, der bereit ist zuzuhören.",
     "questionsShort": "Fragen",
     "questions": "Verwandte Fragen",
-    "askYours": "Stellen Sie Ihre",
-    "chatWithPerson": "Mit einer Person chatten",
+    "askYours": "Stellen Sie Ihre Frage",
+    "chatWithPerson": "Mit jemandem sprechen",
     "askBibleQuestion": "Eine Bibelfrage stellen"
   },
   "WatchQuestionPanel": {
@@ -111,7 +121,7 @@
         "description": "Gedanken zu diesem Video senden"
       },
       "personChat": {
-        "label": "Mit einer Person chatten",
+        "label": "Mit jemandem sprechen",
         "description": "Sprechen Sie jetzt mit jemandem"
       }
     }

@@ -34,6 +34,16 @@
     "eyebrow": "Télécharger la vidéo",
     "posterAlt": "Miniature de la vidéo",
     "noDownloads": "Aucun téléchargement n'est disponible pour cette vidéo.",
+    "fileSizeLabel": "Sélectionner une taille de fichier",
+    "termsAgreementPrefix": "J’accepte les ",
+    "termsOfUse": "Conditions d’utilisation",
+    "termsAgreementSuffix": "",
+    "close": "Fermer",
+    "download": "Télécharger",
+    "checking": "Vérification",
+    "closeTermsOfUse": "Fermer les conditions d’utilisation",
+    "cancel": "Annuler",
+    "accept": "Accepter",
     "errorSessionExpired": "Votre session a expiré. Connectez-vous de nouveau pour télécharger.",
     "errorSessionUnavailable": "Impossible de vérifier votre session. Veuillez réessayer.",
     "errorUnavailableSource": "Téléchargement indisponible depuis cette source",
@@ -43,10 +53,10 @@
   },
   "HeroPlayerControls": {
     "play": "Lire",
-    "pause": "Pause",
+    "pause": "Mettre en pause",
     "seek": "Rechercher",
     "seekValue": "{current} sur {total}",
-    "volume": "Volume",
+    "volume": "Niveau sonore",
     "volumeValue": "{percent} pour cent",
     "mute": "Couper le son",
     "unmute": "Activer le son",
@@ -87,10 +97,10 @@
   "WatchStudyQuestions": {
     "placeholderQuestion": "Si vous pouviez poser une question au créateur de cette vidéo, quelle serait-elle ?",
     "fallbackBody": "Ayez une discussion privée avec quelqu'un prêt à écouter.",
-    "questionsShort": "Questions",
+    "questionsShort": "Questions utiles",
     "questions": "Questions connexes",
-    "askYours": "Posez la vôtre",
-    "chatWithPerson": "Discuter avec une personne",
+    "askYours": "Posez votre question",
+    "chatWithPerson": "Parler avec quelqu’un",
     "askBibleQuestion": "Poser une question biblique"
   },
   "WatchQuestionPanel": {
@@ -111,8 +121,8 @@
         "description": "Envoyez vos pensées sur cette vidéo"
       },
       "personChat": {
-        "label": "Discuter avec une personne",
-        "description": "Parlez avec quelqu'un maintenant"
+        "label": "Parler avec quelqu’un",
+        "description": "Parlez avec quelqu’un maintenant"
       }
     }
   },

@@ -1,0 +1,156 @@
+{
+  "ExperienceError": {
+    "empty": "暂无内容。",
+    "failedToLoad": "页面加载失败：{message}",
+    "unexpected": "发生意外错误。",
+    "notConfigured": "内容服务尚未配置。",
+    "noContent": "暂无可用内容。",
+    "homepageMisconfigured": "Watch 首页配置有误。",
+    "defaultTemplateMisconfigured": "默认 Watch 模板配置有误。",
+    "authFailed": "无法连接内容服务。如果问题持续，请联系支持。"
+  },
+  "VideosPage": {
+    "title": "全部视频",
+    "placeholder": "目录浏览即将推出。目前请使用搜索或主题专属 URL。"
+  },
+  "BibleQuotes": {
+    "title": "圣经经文",
+    "share": "分享",
+    "readMore": "阅读全文...",
+    "learnMore": "了解更多",
+    "freeResources": "免费资源",
+    "promoHeading": "想更深入地理解圣经吗？",
+    "joinBibleStudy": "加入圣经学习",
+    "previousQuote": "上一条圣经经文",
+    "nextQuote": "下一条圣经经文"
+  },
+  "DownloadButton": {
+    "checking": "正在检查",
+    "download": "下载",
+    "sessionError": "无法检查你的会话。请重试。"
+  },
+  "DownloadModal": {
+    "dialogTitle": "下载视频",
+    "eyebrow": "下载视频",
+    "posterAlt": "视频海报",
+    "noDownloads": "此视频暂无可用下载。",
+    "fileSizeLabel": "选择文件大小",
+    "termsAgreementPrefix": "我同意",
+    "termsOfUse": "使用条款",
+    "termsAgreementSuffix": "",
+    "close": "关闭",
+    "download": "下载",
+    "checking": "正在检查",
+    "closeTermsOfUse": "关闭使用条款",
+    "cancel": "取消",
+    "accept": "同意",
+    "errorSessionExpired": "你的会话已过期。请重新登录后下载。",
+    "errorSessionUnavailable": "无法检查你的会话。请重试。",
+    "errorUnavailableSource": "无法从此来源下载",
+    "tierHighest": "最高",
+    "tierHigh": "高",
+    "tierLow": "低"
+  },
+  "HeroPlayerControls": {
+    "play": "播放",
+    "pause": "暂停",
+    "seek": "跳转",
+    "seekValue": "{current} / {total}",
+    "volume": "音量",
+    "volumeValue": "{percent}%",
+    "mute": "静音",
+    "unmute": "取消静音",
+    "changeAudioLanguage": "更改音频语言",
+    "enterFullscreen": "进入全屏",
+    "exitFullscreen": "退出全屏"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "选择语言",
+    "searchPlaceholder": "搜索语言…",
+    "languages": "语言",
+    "noMatches": "没有匹配项"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "语言",
+    "dialogTitleWithSubtitles": "语言和字幕",
+    "languageHeading": "语言",
+    "subtitlesHeading": "字幕",
+    "languageCount": "{count, plural, one {# 种语言} other {# 种语言}}",
+    "requestSent": "请求已发送",
+    "translateWithAi": "用 AI 翻译",
+    "noSubtitles": "无字幕",
+    "toggleOn": "开",
+    "toggleOff": "关",
+    "close": "关闭",
+    "apply": "应用"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {# 集} other {# 集}}",
+    "seriesLabel": "系列 · {episodes}",
+    "changeAudioLanguage": "更改音频语言",
+    "share": "分享",
+    "languages": "语言"
+  },
+  "WatchModal": {
+    "close": "关闭"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "如果你可以向这部视频的创作者提一个问题，你会问什么？",
+    "fallbackBody": "与愿意倾听的人开始一次私下交流。",
+    "questionsShort": "问题",
+    "questions": "相关问题",
+    "askYours": "提出你的问题",
+    "chatWithPerson": "与真人聊天",
+    "askBibleQuestion": "提出圣经问题"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "消息类型",
+    "fieldLabel": "提出有关此视频的问题",
+    "send": "发送问题",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "提出圣经问题",
+        "description": "使用 AI 搜索从圣经中获得即时答案"
+      },
+      "prayerRequest": {
+        "label": "请求祷告",
+        "description": "分享你希望别人为何事祷告"
+      },
+      "comment": {
+        "label": "留下评论",
+        "description": "发送你对此视频的想法"
+      },
+      "personChat": {
+        "label": "与真人聊天",
+        "description": "现在与某人交谈"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "分享视频",
+    "heading": "分享此视频",
+    "posterAlt": "视频海报",
+    "shareOnFacebook": "分享到 Facebook",
+    "shareOnFacebookUnavailable": "分享到 Facebook（此构建不可用）",
+    "shareOnX": "分享到 X",
+    "shareOnXUnavailable": "分享到 X（此构建不可用）",
+    "shareDisabledHint": "分享需要已部署的页面 — 视频上线到生产环境后即可使用。",
+    "shareFormat": "分享格式",
+    "shareLinkTab": "分享链接",
+    "embedCodeTab": "嵌入代码",
+    "copyFailed": "无法自动复制 — 请选中下方文本并手动复制。",
+    "copyLink": "复制链接",
+    "copyCode": "复制代码",
+    "copied": "已复制",
+    "close": "关闭"
+  },
+  "SubtitleTranscript": {
+    "heading": "转录文本",
+    "subheading": "点击任意一行即可跳转到对应时刻。",
+    "subtitleLanguage": "字幕语言",
+    "aiSuffix": " · AI 生成",
+    "loading": "正在加载转录文本…",
+    "unavailable": "此字幕轨道暂无转录文本。",
+    "empty": "未找到转录文本行。"
+  }
+}

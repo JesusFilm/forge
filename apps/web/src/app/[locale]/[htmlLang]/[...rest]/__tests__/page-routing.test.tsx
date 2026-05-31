@@ -813,17 +813,17 @@ describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-se
     expect(props?.locale).toBe("fr")
   })
 
-  it("falls back to DEFAULT_LOCALE='en' when language family isn't in UI_LOCALE_FAMILIES", async () => {
-    // Mandarin (zh), Russian (ru), Arabic (ar), Japanese (ja), etc. — admin
-    // serves the audio but apps/web UI chrome ships only en/es/fr/pt/de.
+  it("falls back to DEFAULT_LOCALE='en' when language family has no generated catalog", async () => {
+    // Zulu is a valid public audio language, but apps/web has no generated
+    // UI chrome catalog for it yet.
     resolveWatchVideoBySlugMock.mockResolvedValue(
       makeWatchVideoResult("shortFilm", {
-        slug: "mandarin-china",
-        bcp47: "zh",
-        name: "Mandarin, China",
+        slug: "zulu",
+        bcp47: "zu",
+        name: "Zulu",
       }),
     )
-    await render2Seg("storyclubs.html", "mandarin-china.html")
+    await render2Seg("storyclubs.html", "zulu.html")
     const props = watchPageClientMock.mock.calls[0]?.[0] as { locale?: string }
     expect(props?.locale).toBe("en")
   })

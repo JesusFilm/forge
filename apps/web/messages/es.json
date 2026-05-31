@@ -34,6 +34,16 @@
     "eyebrow": "Descargar video",
     "posterAlt": "Miniatura del video",
     "noDownloads": "No hay descargas disponibles para este video.",
+    "fileSizeLabel": "Selecciona un tamaño de archivo",
+    "termsAgreementPrefix": "Acepto los ",
+    "termsOfUse": "Términos de uso",
+    "termsAgreementSuffix": "",
+    "close": "Cerrar",
+    "download": "Descargar",
+    "checking": "Comprobando",
+    "closeTermsOfUse": "Cerrar Términos de uso",
+    "cancel": "Cancelar",
+    "accept": "Aceptar",
     "errorSessionExpired": "Tu sesión caducó. Inicia sesión de nuevo para descargar.",
     "errorSessionUnavailable": "No se pudo comprobar tu sesión. Inténtalo de nuevo.",
     "errorUnavailableSource": "Descarga no disponible desde esta fuente",
@@ -89,8 +99,8 @@
     "fallbackBody": "Ten una conversación privada con alguien dispuesto a escuchar.",
     "questionsShort": "Preguntas",
     "questions": "Preguntas relacionadas",
-    "askYours": "Haz la tuya",
-    "chatWithPerson": "Chatear con una persona",
+    "askYours": "Haz tu pregunta",
+    "chatWithPerson": "Habla con alguien",
     "askBibleQuestion": "Hacer una pregunta bíblica"
   },
   "WatchQuestionPanel": {
@@ -111,7 +121,7 @@
         "description": "Envía tus pensamientos sobre este video"
       },
       "personChat": {
-        "label": "Chatea con una persona",
+        "label": "Habla con alguien",
         "description": "Habla con alguien ahora"
       }
     }

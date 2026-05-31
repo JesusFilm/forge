@@ -1,0 +1,156 @@
+{
+  "ExperienceError": {
+    "empty": "İçerik kullanılamıyor.",
+    "failedToLoad": "Sayfa yüklenemedi: {message}",
+    "unexpected": "Beklenmeyen bir hata oluştu.",
+    "notConfigured": "İçerik servisi yapılandırılmamış.",
+    "noContent": "Kullanılabilir içerik yok.",
+    "homepageMisconfigured": "Watch ana sayfası yanlış yapılandırılmış.",
+    "defaultTemplateMisconfigured": "Varsayılan Watch şablonu yanlış yapılandırılmış.",
+    "authFailed": "İçerik servisine bağlanılamadı. Sorun devam ederse destek ekibiyle iletişime geçin."
+  },
+  "VideosPage": {
+    "title": "Tüm videolar",
+    "placeholder": "Katalog gezintisi yakında geliyor. Şimdilik aramayı veya konuya özel bir URL’yi kullanın."
+  },
+  "BibleQuotes": {
+    "title": "Kutsal Kitap ayetleri",
+    "share": "Paylaş",
+    "readMore": "Devamını oku...",
+    "learnMore": "Daha fazla bilgi",
+    "freeResources": "Ücretsiz kaynaklar",
+    "promoHeading": "Kutsal Kitabı daha derinden anlamak ister misiniz?",
+    "joinBibleStudy": "Kutsal Kitap çalışmasına katılın",
+    "previousQuote": "Önceki Kutsal Kitap ayeti",
+    "nextQuote": "Sonraki Kutsal Kitap ayeti"
+  },
+  "DownloadButton": {
+    "checking": "Kontrol ediliyor",
+    "download": "İndir",
+    "sessionError": "Oturumunuz kontrol edilemedi. Lütfen tekrar deneyin."
+  },
+  "DownloadModal": {
+    "dialogTitle": "Videoyu indir",
+    "eyebrow": "Videoyu indir",
+    "posterAlt": "Video posteri",
+    "noDownloads": "Bu video için indirme seçeneği yok.",
+    "fileSizeLabel": "Dosya boyutu seçin",
+    "termsAgreementPrefix": "",
+    "termsOfUse": "Kullanım Şartlarını",
+    "termsAgreementSuffix": " kabul ediyorum",
+    "close": "Kapat",
+    "download": "İndir",
+    "checking": "Kontrol ediliyor",
+    "closeTermsOfUse": "Kullanım Şartlarını kapat",
+    "cancel": "İptal",
+    "accept": "Kabul et",
+    "errorSessionExpired": "Oturumunuzun süresi doldu. İndirmek için tekrar oturum açın.",
+    "errorSessionUnavailable": "Oturumunuz kontrol edilemedi. Lütfen tekrar deneyin.",
+    "errorUnavailableSource": "Bu kaynaktan indirme yapılamıyor",
+    "tierHighest": "En yüksek",
+    "tierHigh": "Yüksek",
+    "tierLow": "Düşük"
+  },
+  "HeroPlayerControls": {
+    "play": "Oynat",
+    "pause": "Duraklat",
+    "seek": "İleri/geri sar",
+    "seekValue": "{current} / {total}",
+    "volume": "Ses düzeyi",
+    "volumeValue": "%{percent}",
+    "mute": "Sesi kapat",
+    "unmute": "Sesi aç",
+    "changeAudioLanguage": "Ses dilini değiştir",
+    "enterFullscreen": "Tam ekrana geç",
+    "exitFullscreen": "Tam ekrandan çık"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Dil seçin",
+    "searchPlaceholder": "Dillerde ara…",
+    "languages": "Diller",
+    "noMatches": "Eşleşme yok"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Dil",
+    "dialogTitleWithSubtitles": "Dil ve altyazılar",
+    "languageHeading": "Dil",
+    "subtitlesHeading": "Altyazılar",
+    "languageCount": "{count, plural, one {# dil} other {# dil}}",
+    "requestSent": "İstek gönderildi",
+    "translateWithAi": "AI ile çevir",
+    "noSubtitles": "Altyazı yok",
+    "toggleOn": "Açık",
+    "toggleOff": "Kapalı",
+    "close": "Kapat",
+    "apply": "Uygula"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {# BÖLÜM} other {# BÖLÜM}}",
+    "seriesLabel": "DİZİ · {episodes}",
+    "changeAudioLanguage": "Ses dilini değiştir",
+    "share": "Paylaş",
+    "languages": "Diller"
+  },
+  "WatchModal": {
+    "close": "Kapat"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Bu videonun yapımcısına bir soru sorabilseydiniz, ne sorardınız?",
+    "fallbackBody": "Dinlemeye hazır biriyle özel bir konuşma başlatın.",
+    "questionsShort": "Sorular",
+    "questions": "İlgili sorular",
+    "askYours": "Sorunuzu sorun",
+    "chatWithPerson": "Biriyle sohbet edin",
+    "askBibleQuestion": "Kutsal Kitap hakkında soru sorun"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Mesaj türü",
+    "fieldLabel": "Bu video hakkında soru sorun",
+    "send": "Soruyu gönder",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Kutsal Kitap hakkında soru sorun",
+        "description": "AI aramasıyla Kutsal Kitaptan anında yanıtlar"
+      },
+      "prayerRequest": {
+        "label": "Dua isteyin",
+        "description": "Dua edilmesini istediğiniz şeyi paylaşın"
+      },
+      "comment": {
+        "label": "Yorum bırakın",
+        "description": "Bu video hakkındaki düşüncelerinizi gönderin"
+      },
+      "personChat": {
+        "label": "Biriyle sohbet edin",
+        "description": "Şimdi biriyle konuşun"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Videoyu paylaş",
+    "heading": "Bu videoyu paylaş",
+    "posterAlt": "Video posteri",
+    "shareOnFacebook": "Facebookta paylaş",
+    "shareOnFacebookUnavailable": "Facebookta paylaş (bu derlemede kullanılamaz)",
+    "shareOnX": "Xte paylaş",
+    "shareOnXUnavailable": "Xte paylaş (bu derlemede kullanılamaz)",
+    "shareDisabledHint": "Paylaşım için yayımlanmış bir sayfa gerekir — video prodüksiyona çıktığında çalışır.",
+    "shareFormat": "Paylaşım biçimi",
+    "shareLinkTab": "Paylaşım bağlantısı",
+    "embedCodeTab": "Yerleştirme kodu",
+    "copyFailed": "Otomatik kopyalanamadı — aşağıdaki metni seçip elle kopyalayın.",
+    "copyLink": "Bağlantıyı kopyala",
+    "copyCode": "Kodu kopyala",
+    "copied": "Kopyalandı",
+    "close": "Kapat"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transkript",
+    "subheading": "O ana atlamak için herhangi bir satıra dokunun.",
+    "subtitleLanguage": "Altyazı dili",
+    "aiSuffix": " · Yapay zeka",
+    "loading": "Transkript yükleniyor…",
+    "unavailable": "Bu altyazı parçası için transkript yok.",
+    "empty": "Transkript satırı bulunamadı."
+  }
+}

@@ -334,7 +334,7 @@ describe("BibleQuotesSection — citations + promo", () => {
     expect(promo).not.toBeNull()
     expect(promo!.textContent).toContain("Free Resources")
     expect(promo!.textContent).toContain(
-      "Want to grow deep in your understanding of the Bible?",
+      "Want to understand the Bible more deeply?",
     )
     // The fixed Bible-photo background must always appear on the promo card —
     // verifies the "blank card" regression from May 11 doesn't return.

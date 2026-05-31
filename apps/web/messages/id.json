@@ -1,0 +1,156 @@
+{
+  "ExperienceError": {
+    "empty": "Konten tidak tersedia.",
+    "failedToLoad": "Gagal memuat halaman: {message}",
+    "unexpected": "Terjadi kesalahan yang tidak terduga.",
+    "notConfigured": "Layanan konten belum dikonfigurasi.",
+    "noContent": "Tidak ada konten yang tersedia.",
+    "homepageMisconfigured": "Beranda Watch salah konfigurasi.",
+    "defaultTemplateMisconfigured": "Template Watch bawaan salah konfigurasi.",
+    "authFailed": "Tidak dapat terhubung ke layanan konten. Hubungi dukungan jika masalah berlanjut."
+  },
+  "VideosPage": {
+    "title": "Semua video",
+    "placeholder": "Penjelajahan katalog akan segera tersedia. Untuk saat ini, gunakan pencarian atau URL khusus topik."
+  },
+  "BibleQuotes": {
+    "title": "Ayat Alkitab",
+    "share": "Bagikan",
+    "readMore": "Baca selengkapnya...",
+    "learnMore": "Pelajari lebih lanjut",
+    "freeResources": "Materi gratis",
+    "promoHeading": "Ingin memahami Alkitab lebih dalam?",
+    "joinBibleStudy": "Bergabung dengan pendalaman Alkitab",
+    "previousQuote": "Ayat sebelumnya",
+    "nextQuote": "Ayat berikutnya"
+  },
+  "DownloadButton": {
+    "checking": "Memeriksa",
+    "download": "Unduh",
+    "sessionError": "Tidak dapat memeriksa sesi Anda. Coba lagi."
+  },
+  "DownloadModal": {
+    "dialogTitle": "Unduh video",
+    "eyebrow": "Unduh video",
+    "posterAlt": "Poster video",
+    "noDownloads": "Tidak ada unduhan yang tersedia untuk video ini.",
+    "fileSizeLabel": "Pilih ukuran file",
+    "termsAgreementPrefix": "Saya menyetujui ",
+    "termsOfUse": "Ketentuan Penggunaan",
+    "termsAgreementSuffix": "",
+    "close": "Tutup",
+    "download": "Unduh",
+    "checking": "Memeriksa",
+    "closeTermsOfUse": "Tutup Ketentuan Penggunaan",
+    "cancel": "Batal",
+    "accept": "Setuju",
+    "errorSessionExpired": "Sesi Anda telah berakhir. Masuk lagi untuk mengunduh video.",
+    "errorSessionUnavailable": "Tidak dapat memeriksa sesi Anda. Coba lagi.",
+    "errorUnavailableSource": "Unduhan tidak tersedia dari sumber ini",
+    "tierHighest": "Tertinggi",
+    "tierHigh": "Tinggi",
+    "tierLow": "Rendah"
+  },
+  "HeroPlayerControls": {
+    "play": "Putar",
+    "pause": "Jeda",
+    "seek": "Geser posisi",
+    "seekValue": "{current} dari {total}",
+    "volume": "Volume suara",
+    "volumeValue": "{percent} persen",
+    "mute": "Bisukan",
+    "unmute": "Nyalakan suara",
+    "changeAudioLanguage": "Ubah bahasa audio",
+    "enterFullscreen": "Masuk layar penuh",
+    "exitFullscreen": "Keluar dari layar penuh"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Pilih bahasa",
+    "searchPlaceholder": "Cari bahasa…",
+    "languages": "Bahasa",
+    "noMatches": "Tidak ada hasil yang cocok"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Bahasa",
+    "dialogTitleWithSubtitles": "Bahasa & Teks",
+    "languageHeading": "Bahasa",
+    "subtitlesHeading": "Teks",
+    "languageCount": "{count, plural, one {# bahasa} other {# bahasa}}",
+    "requestSent": "Permintaan terkirim",
+    "translateWithAi": "Terjemahkan dengan AI",
+    "noSubtitles": "Tanpa teks",
+    "toggleOn": "Aktif",
+    "toggleOff": "Nonaktif",
+    "close": "Tutup",
+    "apply": "Terapkan"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {# EPISODE} other {# EPISODE}}",
+    "seriesLabel": "SERI · {episodes}",
+    "changeAudioLanguage": "Ubah bahasa audio",
+    "share": "Bagikan",
+    "languages": "Bahasa"
+  },
+  "WatchModal": {
+    "close": "Tutup"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Jika Anda bisa mengajukan satu pertanyaan kepada pembuat video ini, apa yang akan Anda tanyakan?",
+    "fallbackBody": "Mulai percakapan pribadi dengan seseorang yang siap mendengarkan.",
+    "questionsShort": "Pertanyaan",
+    "questions": "Pertanyaan terkait",
+    "askYours": "Ajukan pertanyaan Anda",
+    "chatWithPerson": "Bicara dengan seseorang",
+    "askBibleQuestion": "Ajukan pertanyaan tentang Alkitab"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Jenis pesan",
+    "fieldLabel": "Ajukan pertanyaan tentang video ini",
+    "send": "Kirim pertanyaan",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Ajukan pertanyaan tentang Alkitab",
+        "description": "Jawaban instan dari Alkitab dengan pencarian AI"
+      },
+      "prayerRequest": {
+        "label": "Minta doa",
+        "description": "Bagikan hal yang ingin Anda doakan"
+      },
+      "comment": {
+        "label": "Tinggalkan komentar",
+        "description": "Bagikan pendapat Anda tentang video ini"
+      },
+      "personChat": {
+        "label": "Bicara dengan seseorang",
+        "description": "Bicara dengan seseorang sekarang"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Bagikan video",
+    "heading": "Bagikan video ini",
+    "posterAlt": "Poster video",
+    "shareOnFacebook": "Bagikan di Facebook",
+    "shareOnFacebookUnavailable": "Bagikan di Facebook (tidak tersedia pada build ini)",
+    "shareOnX": "Bagikan di X",
+    "shareOnXUnavailable": "Bagikan di X (tidak tersedia pada build ini)",
+    "shareDisabledHint": "Berbagi memerlukan halaman yang sudah dipublikasikan — akan berfungsi setelah video ini berada di produksi.",
+    "shareFormat": "Format berbagi",
+    "shareLinkTab": "Bagikan tautan",
+    "embedCodeTab": "Kode sematan",
+    "copyFailed": "Tidak dapat menyalin otomatis — pilih teks di bawah lalu salin secara manual.",
+    "copyLink": "Salin tautan",
+    "copyCode": "Salin kode",
+    "copied": "Tersalin",
+    "close": "Tutup"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transkrip",
+    "subheading": "Ketuk baris mana pun untuk melompat ke momen itu.",
+    "subtitleLanguage": "Bahasa teks",
+    "aiSuffix": " · Kecerdasan buatan",
+    "loading": "Memuat transkrip…",
+    "unavailable": "Transkrip tidak tersedia untuk trek teks ini.",
+    "empty": "Tidak ada baris transkrip ditemukan."
+  }
+}

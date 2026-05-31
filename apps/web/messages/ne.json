@@ -1,0 +1,156 @@
+{
+  "ExperienceError": {
+    "empty": "सामग्री उपलब्ध छैन।",
+    "failedToLoad": "पृष्ठ लोड गर्न सकिएन: {message}",
+    "unexpected": "अनपेक्षित त्रुटि भयो।",
+    "notConfigured": "सामग्री सेवा कन्फिगर गरिएको छैन।",
+    "noContent": "कुनै सामग्री उपलब्ध छैन।",
+    "homepageMisconfigured": "Watch गृहपृष्ठ गलत कन्फिगर गरिएको छ।",
+    "defaultTemplateMisconfigured": "पूर्वनिर्धारित Watch टेम्प्लेट गलत कन्फिगर गरिएको छ।",
+    "authFailed": "सामग्री सेवामा जडान गर्न सकिएन। समस्या जारी रहेमा सहायता टोलीलाई सम्पर्क गर्नुहोस्।"
+  },
+  "VideosPage": {
+    "title": "सबै भिडियोहरू",
+    "placeholder": "क्याटलग ब्राउजिङ चाँडै उपलब्ध हुनेछ। अहिलेका लागि खोजी वा विषय-विशेष URL प्रयोग गर्नुहोस्।"
+  },
+  "BibleQuotes": {
+    "title": "बाइबलका पदहरू",
+    "share": "शेयर गर्नुहोस्",
+    "readMore": "थप पढ्नुहोस्...",
+    "learnMore": "थप जान्नुहोस्",
+    "freeResources": "नि:शुल्क सामग्रीहरू",
+    "promoHeading": "के तपाईं बाइबललाई अझ गहिरो रूपमा बुझ्न चाहनुहुन्छ?",
+    "joinBibleStudy": "बाइबल अध्ययनमा सहभागी हुनुहोस्",
+    "previousQuote": "अघिल्लो बाइबल पद",
+    "nextQuote": "अर्को बाइबल पद"
+  },
+  "DownloadButton": {
+    "checking": "जाँच गर्दै",
+    "download": "डाउनलोड गर्नुहोस्",
+    "sessionError": "तपाईंको सत्र जाँच गर्न सकिएन। फेरि प्रयास गर्नुहोस्।"
+  },
+  "DownloadModal": {
+    "dialogTitle": "भिडियो डाउनलोड गर्नुहोस्",
+    "eyebrow": "भिडियो डाउनलोड गर्नुहोस्",
+    "posterAlt": "भिडियो पोस्टर",
+    "noDownloads": "यस भिडियोका लागि कुनै डाउनलोड उपलब्ध छैन।",
+    "fileSizeLabel": "फाइल आकार छान्नुहोस्",
+    "termsAgreementPrefix": "म ",
+    "termsOfUse": "प्रयोगका सर्तहरू",
+    "termsAgreementSuffix": " स्वीकार गर्छु",
+    "close": "बन्द गर्नुहोस्",
+    "download": "डाउनलोड गर्नुहोस्",
+    "checking": "जाँच गर्दै",
+    "closeTermsOfUse": "प्रयोगका सर्तहरू बन्द गर्नुहोस्",
+    "cancel": "रद्द गर्नुहोस्",
+    "accept": "स्वीकार गर्नुहोस्",
+    "errorSessionExpired": "तपाईंको सत्र समाप्त भयो। डाउनलोड गर्न फेरि साइन इन गर्नुहोस्।",
+    "errorSessionUnavailable": "तपाईंको सत्र जाँच गर्न सकिएन। फेरि प्रयास गर्नुहोस्।",
+    "errorUnavailableSource": "यस स्रोतबाट डाउनलोड उपलब्ध छैन",
+    "tierHighest": "सबैभन्दा उच्च",
+    "tierHigh": "उच्च",
+    "tierLow": "कम"
+  },
+  "HeroPlayerControls": {
+    "play": "चलाउनुहोस्",
+    "pause": "पज गर्नुहोस्",
+    "seek": "खोज्नुहोस्",
+    "seekValue": "{current} / {total}",
+    "volume": "आवाज",
+    "volumeValue": "{percent} प्रतिशत",
+    "mute": "म्यूट गर्नुहोस्",
+    "unmute": "म्यूट हटाउनुहोस्",
+    "changeAudioLanguage": "अडियो भाषा परिवर्तन गर्नुहोस्",
+    "enterFullscreen": "पूरा स्क्रिनमा जानुहोस्",
+    "exitFullscreen": "पूरा स्क्रिनबाट निस्कनुहोस्"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "भाषा छान्नुहोस्",
+    "searchPlaceholder": "भाषा खोज्नुहोस्…",
+    "languages": "भाषाहरू",
+    "noMatches": "कुनै मिल्दो परिणाम छैन"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "भाषा",
+    "dialogTitleWithSubtitles": "भाषा र उपशीर्षकहरू",
+    "languageHeading": "भाषा",
+    "subtitlesHeading": "उपशीर्षकहरू",
+    "languageCount": "{count, plural, one {# भाषा} other {# भाषाहरू}}",
+    "requestSent": "अनुरोध पठाइयो",
+    "translateWithAi": "AI मार्फत अनुवाद गर्नुहोस्",
+    "noSubtitles": "उपशीर्षक छैन",
+    "toggleOn": "अन",
+    "toggleOff": "अफ",
+    "close": "बन्द गर्नुहोस्",
+    "apply": "लागू गर्नुहोस्"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {# एपिसोड} other {# एपिसोडहरू}}",
+    "seriesLabel": "श्रृंखला · {episodes}",
+    "changeAudioLanguage": "अडियो भाषा परिवर्तन गर्नुहोस्",
+    "share": "शेयर गर्नुहोस्",
+    "languages": "भाषाहरू"
+  },
+  "WatchModal": {
+    "close": "बन्द गर्नुहोस्"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "यदि तपाईंले यो भिडियोका निर्मातालाई एउटा प्रश्न सोध्न सक्नुहुन्थ्यो भने, के सोध्नुहुन्थ्यो?",
+    "fallbackBody": "सुन्न तयार व्यक्तिसँग निजी कुराकानी सुरु गर्नुहोस्।",
+    "questionsShort": "प्रश्नहरू",
+    "questions": "सम्बन्धित प्रश्नहरू",
+    "askYours": "आफ्नो प्रश्न सोध्नुहोस्",
+    "chatWithPerson": "कसैसँग कुरा गर्नुहोस्",
+    "askBibleQuestion": "बाइबलबारे प्रश्न सोध्नुहोस्"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "सन्देशको प्रकार",
+    "fieldLabel": "यस भिडियोबारे प्रश्न सोध्नुहोस्",
+    "send": "प्रश्न पठाउनुहोस्",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "बाइबलबारे प्रश्न सोध्नुहोस्",
+        "description": "AI खोज प्रयोग गरेर बाइबलबाट तुरुन्त जवाफ पाउनुहोस्"
+      },
+      "prayerRequest": {
+        "label": "प्रार्थना अनुरोध गर्नुहोस्",
+        "description": "तपाईं केका लागि प्रार्थना चाहनुहुन्छ, साझा गर्नुहोस्"
+      },
+      "comment": {
+        "label": "टिप्पणी छोड्नुहोस्",
+        "description": "यस भिडियोबारे आफ्ना विचारहरू पठाउनुहोस्"
+      },
+      "personChat": {
+        "label": "कसैसँग कुरा गर्नुहोस्",
+        "description": "अहिले कसैसँग कुरा गर्नुहोस्"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "भिडियो शेयर गर्नुहोस्",
+    "heading": "यो भिडियो शेयर गर्नुहोस्",
+    "posterAlt": "भिडियो पोस्टर",
+    "shareOnFacebook": "Facebook मा शेयर गर्नुहोस्",
+    "shareOnFacebookUnavailable": "Facebook मा शेयर गर्नुहोस् (यो बिल्डमा उपलब्ध छैन)",
+    "shareOnX": "X मा शेयर गर्नुहोस्",
+    "shareOnXUnavailable": "X मा शेयर गर्नुहोस् (यो बिल्डमा उपलब्ध छैन)",
+    "shareDisabledHint": "शेयर गर्न प्रकाशित पृष्ठ चाहिन्छ — यो भिडियो उत्पादनमा पुगेपछि यसले काम गर्छ।",
+    "shareFormat": "शेयर ढाँचा",
+    "shareLinkTab": "लिङ्क शेयर गर्नुहोस्",
+    "embedCodeTab": "एम्बेड कोड",
+    "copyFailed": "स्वचालित रूपमा कपी गर्न सकिएन — तलको पाठ चयन गरेर म्यानुअली कपी गर्नुहोस्।",
+    "copyLink": "लिङ्क कपी गर्नुहोस्",
+    "copyCode": "कोड कपी गर्नुहोस्",
+    "copied": "कपी भयो",
+    "close": "बन्द गर्नुहोस्"
+  },
+  "SubtitleTranscript": {
+    "heading": "ट्रान्सक्रिप्ट",
+    "subheading": "त्यो क्षणमा जान कुनै पनि पंक्ति ट्याप गर्नुहोस्।",
+    "subtitleLanguage": "उपशीर्षक भाषा",
+    "aiSuffix": " · एआई",
+    "loading": "ट्रान्सक्रिप्ट लोड हुँदैछ…",
+    "unavailable": "यस उपशीर्षक ट्र्याकका लागि ट्रान्सक्रिप्ट उपलब्ध छैन।",
+    "empty": "ट्रान्सक्रिप्ट पंक्तिहरू भेटिएनन्।"
+  }
+}

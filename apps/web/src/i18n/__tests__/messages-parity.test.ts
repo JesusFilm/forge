@@ -1,8 +1,11 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
-import { AVAILABLE_UI_LOCALES, hasUiLocale } from "@/i18n/locales"
-import { UI_LOCALE_FAMILIES, isLocale } from "@/lib/locale"
+import {
+  AVAILABLE_UI_LOCALES,
+  DEFAULT_LOCALE,
+  hasUiLocale,
+} from "@/i18n/generated-ui-locales"
 
 // Structural-parity gate: every key in messages/en.json must exist in
 // every other locale catalog. Locales can ship later than en (a
@@ -40,22 +43,19 @@ describe("messages catalogs — structural parity", () => {
   })
 })
 
-// Drift gate between the two parallel sources of truth:
-//   - UI_LOCALE_FAMILIES (lib/locale.ts) — static narrowing tuple driving
-//     isLocale + resolveUiLocale
-//   - AVAILABLE_UI_LOCALES (i18n/locales.ts) — filesystem-derived catalog list
-// Dropping a messages/{locale}.json without editing the tuple (or vice
-// versa) breaks the runtime invariant where bcp47 narrowing and catalog
-// availability disagree → silent English-fallback for a "supported"
-// locale. This test fails the build at that exact moment.
-describe("UI locale families ↔ filesystem catalogs — drift gate", () => {
-  it("every static UI_LOCALE_FAMILIES entry has a corresponding catalog", () => {
-    const missingCatalogs = UI_LOCALE_FAMILIES.filter((l) => !hasUiLocale(l))
-    expect(missingCatalogs).toEqual([])
+describe("generated UI locale list ↔ filesystem catalogs — drift gate", () => {
+  const filesystemLocales = readdirSync(messagesDir)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => f.slice(0, -5))
+    .sort((a, b) => a.localeCompare(b))
+
+  it("matches the generated edge-safe catalog module", () => {
+    expect([...AVAILABLE_UI_LOCALES]).toEqual(filesystemLocales)
   })
 
-  it("every catalog locale is also a recognized UI_LOCALE_FAMILIES entry", () => {
-    const unknownNarrowing = AVAILABLE_UI_LOCALES.filter((l) => !isLocale(l))
-    expect(unknownNarrowing).toEqual([])
+  it("keeps the default locale present and guarded", () => {
+    expect(DEFAULT_LOCALE).toBe(SOURCE_LOCALE)
+    expect(hasUiLocale(DEFAULT_LOCALE)).toBe(true)
+    expect(hasUiLocale("russian")).toBe(false)
   })
 })

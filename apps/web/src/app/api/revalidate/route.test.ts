@@ -19,6 +19,7 @@ describe("POST /api/revalidate", () => {
   afterEach(() => {
     clearWatchRouteManifestCacheMock.mockReset()
     revalidatePathMock.mockReset()
+    vi.doUnmock("@/i18n/generated-ui-locales")
     vi.resetModules()
   })
 
@@ -42,13 +43,17 @@ describe("POST /api/revalidate", () => {
     )
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({
-      revalidated: true,
-      paths: [
+    const body = await response.json()
+    expect(body).toMatchObject({ revalidated: true })
+    expect(body.paths).toEqual(
+      expect.arrayContaining([
         "/[locale]/[htmlLang] (layout)",
         "/ (layout)",
         "/",
         "/en/en",
+        "/russian.html",
+        "/ru/ru/russian.html",
+        "/russian",
         "/german-standard.html",
         "/de/de/german-standard.html",
         "/german-standard",
@@ -64,8 +69,8 @@ describe("POST /api/revalidate", () => {
         "/portuguese-brazil.html",
         "/pt/pt/portuguese-brazil.html",
         "/portuguese-brazil",
-      ],
-    })
+      ]),
+    )
     expect(revalidatePathMock).toHaveBeenCalledWith(
       "/[locale]/[htmlLang]",
       "layout",
@@ -99,9 +104,10 @@ describe("POST /api/revalidate", () => {
     )
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({
-      revalidated: true,
-      paths: [
+    const body = await response.json()
+    expect(body).toMatchObject({ revalidated: true })
+    expect(body.paths).toEqual(
+      expect.arrayContaining([
         "/jesus.html/english.html",
         "/en/en/jesus.html/english.html",
         "/jesus/english",
@@ -127,8 +133,11 @@ describe("POST /api/revalidate", () => {
         "/portuguese-brazil.html",
         "/pt/pt/portuguese-brazil.html",
         "/portuguese-brazil",
-      ],
-    })
+        "/russian.html",
+        "/ru/ru/russian.html",
+        "/russian",
+      ]),
+    )
     expect(revalidatePathMock).toHaveBeenCalledWith("/jesus.html/english.html")
     expect(revalidatePathMock).toHaveBeenCalledWith(
       "/en/en/jesus.html/english.html",
@@ -183,6 +192,51 @@ describe("POST /api/revalidate", () => {
     expect(revalidatePathMock).not.toHaveBeenCalledWith(
       "/jesus.html/german.html",
     )
+  })
+
+  it("infers public audio slugs for generated catalog locales outside the original core set", async () => {
+    vi.doMock("@/i18n/generated-ui-locales", () => {
+      const locales = ["en", "ru"] as const
+      return {
+        DEFAULT_LOCALE: "en",
+        AVAILABLE_UI_LOCALES: locales,
+        hasUiLocale: (candidate: string) =>
+          (locales as readonly string[]).includes(candidate),
+      }
+    })
+    const { POST } = await import("./route")
+
+    const response = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: "Bearer test-revalidation-secret",
+        },
+        body: JSON.stringify({
+          model: "video",
+          entry: {
+            slug: "jesus",
+            locale: "ru",
+          },
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      revalidated: true,
+      paths: [
+        "/jesus.html/russian.html",
+        "/ru/ru/jesus.html/russian.html",
+        "/jesus/russian",
+      ],
+    })
+    expect(revalidatePathMock).toHaveBeenCalledWith("/jesus.html/russian.html")
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/ru/ru/jesus.html/russian.html",
+    )
+    expect(revalidatePathMock).not.toHaveBeenCalledWith("/jesus.html/ru.html")
   })
 
   it("still accepts the legacy x-revalidation-secret header (fallback)", async () => {
