@@ -7,7 +7,7 @@
     "build": "pnpm run generate:ui-locales && next build",
     "start": "next start",
     "fetch-secrets": "../../scripts/fetch-secrets.sh forge-web .env",
-    "lint": "eslint .",
+    "lint": "pnpm run check:ui-locales && eslint .",
     "typecheck": "pnpm run generate:ui-locales && tsc --noEmit",
     "test": "pnpm run generate:ui-locales && vitest run",
     "test:watch": "pnpm run generate:ui-locales && vitest",
