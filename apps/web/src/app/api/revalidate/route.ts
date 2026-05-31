@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import { NextResponse } from "next/server"
 import { env } from "@/env"
-import { AVAILABLE_UI_LOCALES } from "@/i18n/locales"
+import { AVAILABLE_UI_LOCALES } from "@/i18n/generated-ui-locales"
 import {
   DEFAULT_LOCALE,
   isLocale,
@@ -128,16 +128,16 @@ export async function POST(request: Request) {
     push("/")
     pushInternal("/")
     for (const loc of AVAILABLE_UI_LOCALES) {
-      if (!isLocale(loc)) continue
       const homeLanguageSlug = publicWatchHomeLanguageSlugForLocale(loc)
+      if (!homeLanguageSlug) continue
       pushOneSeg(homeLanguageSlug, homeLanguageSlug)
     }
   }
 
   const revalidateSlugPaths = () => {
     if (slug && locale) {
-      if (!isLocale(locale)) return
       const audioLanguageSlug = publicWatchAudioLanguageSlugForLocale(locale)
+      if (!audioLanguageSlug) return
       pushTwoSeg(slug, audioLanguageSlug)
       if (locale === DEFAULT_LOCALE) {
         pushOneSeg(slug)
@@ -149,8 +149,9 @@ export async function POST(request: Request) {
 
     pushOneSeg(slug)
     for (const loc of AVAILABLE_UI_LOCALES) {
-      if (!isLocale(loc)) continue
-      pushTwoSeg(slug, publicWatchAudioLanguageSlugForLocale(loc))
+      const audioLanguageSlug = publicWatchAudioLanguageSlugForLocale(loc)
+      if (!audioLanguageSlug) continue
+      pushTwoSeg(slug, audioLanguageSlug)
     }
   }
 

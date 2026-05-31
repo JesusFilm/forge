@@ -22,6 +22,7 @@ const TEST_MANIFEST: WatchRouteManifest = {
   audioLanguageSlugs: [
     "english",
     "mandarin-china",
+    "russian",
     "spanish-castilian",
     "spanish-latin-american",
   ],
@@ -383,6 +384,11 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
   it("falls back chrome identity for unsupported audio-language families", async () => {
     const response = await proxy(makeRequest("/jesus.html/mandarin-china.html"))
     expect(rewritePath(response)).toBe("/en/en/jesus.html/mandarin-china.html")
+  })
+
+  it("falls Russian public audio URLs back to English UI while no ru catalog exists", async () => {
+    const response = await proxy(makeRequest("/jesus.html/russian.html"))
+    expect(rewritePath(response)).toBe("/en/en/jesus.html/russian.html")
   })
 
   it("404s unknown public audio slugs before they reach the app route", async () => {
