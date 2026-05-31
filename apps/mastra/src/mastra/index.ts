@@ -58,6 +58,7 @@ import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
+import { isManagerEnrichmentCallbackConfigured } from "../services/manager-enrichment-callback-client"
 
 assertMastraRuntimeEnv()
 
@@ -184,6 +185,7 @@ export const mastra = new Mastra({
             authHeader: c.req.header("authorization"),
             serviceKeys: enrichmentServiceKeys,
             configured: Boolean(env.MASTRA_ENRICHMENT_API_KEYS),
+            callbackConfigured: isManagerEnrichmentCallbackConfigured(),
             readJson: () => c.req.json(),
           })
 

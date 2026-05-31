@@ -138,6 +138,25 @@ describe("Mastra env", () => {
     expect(() => assertMastraRuntimeEnv()).not.toThrow()
   })
 
+  it("parses Manager callback config without requiring it at boot", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv(
+      "MANAGER_ENRICHMENT_CALLBACK_URL",
+      "https://manager.internal/api/internal/enrichment-callback",
+    )
+    vi.stubEnv("MANAGER_ENRICHMENT_CALLBACK_API_KEY", "callback-key")
+    vi.stubEnv("MANAGER_ENRICHMENT_CALLBACK_TIMEOUT_MS", "7500")
+
+    const { env, assertMastraRuntimeEnv } = await import("./env")
+
+    expect(env.MANAGER_ENRICHMENT_CALLBACK_URL).toBe(
+      "https://manager.internal/api/internal/enrichment-callback",
+    )
+    expect(env.MANAGER_ENRICHMENT_CALLBACK_API_KEY).toBe("callback-key")
+    expect(env.MANAGER_ENRICHMENT_CALLBACK_TIMEOUT_MS).toBe(7500)
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
   it("defaults storage to the local gateway database in development", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("DATABASE_URL", "")

@@ -4,6 +4,10 @@ import { createStep, createWorkflow } from "@mastra/core/workflows"
 import { z } from "zod"
 
 import { isValidServiceBearer } from "../../server/service-bearer"
+import {
+  sendManagerEnrichmentCallback,
+  type ManagerEnrichmentCallback,
+} from "../../services/manager-enrichment-callback-client"
 
 const JobArtifactEntrySchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("downloadable") }).strict(),
@@ -55,12 +59,34 @@ type RouteHandlerInput = {
   authHeader: string | null | undefined
   serviceKeys: readonly string[]
   configured: boolean
+  callbackConfigured?: boolean
   readJson: () => Promise<unknown>
   launch?: (
     input: ForgeVideoEnrichmentInput,
     options: { runId: string },
   ) => Promise<ForgeVideoEnrichmentOutput>
 }
+
+type WorkflowStartResult =
+  | { status: "success"; result: ForgeVideoEnrichmentOutput }
+  | { status: string }
+
+type WorkflowRun = {
+  start: (input: {
+    inputData: ForgeVideoEnrichmentInput
+  }) => Promise<WorkflowStartResult>
+}
+
+type WorkflowCreateRun = (options: { runId: string }) => Promise<WorkflowRun>
+
+type LaunchOptions = {
+  runId?: string
+  createRun?: WorkflowCreateRun
+  now?: () => string
+  onBackgroundError?: (error: unknown) => void
+}
+
+type CallbackSender = (callback: ManagerEnrichmentCallback) => Promise<void>
 
 export type ForgeVideoEnrichmentRouteOutcome = {
   status: number
@@ -79,14 +105,57 @@ const acceptVideoEnrichmentStep = createStep({
   }),
 })
 
+export class ForgeVideoEnrichmentNotImplementedError extends Error {
+  constructor(readonly runId: string) {
+    super("Mastra video enrichment workflow graph is not implemented yet")
+    this.name = "ForgeVideoEnrichmentNotImplementedError"
+  }
+}
+
+export async function reportForgeVideoEnrichmentNotImplemented(
+  input: ForgeVideoEnrichmentOutput,
+  sendCallback: CallbackSender = sendManagerEnrichmentCallback,
+): Promise<never> {
+  await sendCallback({
+    jobId: input.jobId,
+    engine: "mastra",
+    runId: input.runId,
+    sequence: 1,
+    status: "running",
+    step: "transcription",
+  })
+
+  await sendCallback({
+    jobId: input.jobId,
+    engine: "mastra",
+    runId: input.runId,
+    sequence: 2,
+    status: "failed",
+    step: "transcription",
+    error: "Mastra video enrichment workflow graph is not implemented yet",
+    jobStatus: "failed",
+  })
+
+  throw new ForgeVideoEnrichmentNotImplementedError(input.runId)
+}
+
+const failUntilVideoEnrichmentGraphExistsStep = createStep({
+  id: "fail-until-video-enrichment-graph-exists",
+  inputSchema: ForgeVideoEnrichmentOutputSchema,
+  outputSchema: ForgeVideoEnrichmentOutputSchema,
+  execute: async ({ inputData }) =>
+    reportForgeVideoEnrichmentNotImplemented(inputData),
+})
+
 export const forgeVideoEnrichmentWorkflow = createWorkflow({
   id: "forge-video-enrichment",
   description:
-    "Manager-triggered video enrichment workflow. Phase 1 route contract and runId handoff.",
+    "Manager-triggered video enrichment workflow. Phase 1 callback producer and runId handoff.",
   inputSchema: ForgeVideoEnrichmentInputSchema,
   outputSchema: ForgeVideoEnrichmentOutputSchema,
 })
   .then(acceptVideoEnrichmentStep)
+  .then(failUntilVideoEnrichmentGraphExistsStep)
   .commit()
 
 export class ForgeVideoEnrichmentWorkflowError extends Error {
@@ -101,25 +170,59 @@ export class ForgeVideoEnrichmentWorkflowError extends Error {
 
 export async function launchForgeVideoEnrichmentWorkflow(
   input: ForgeVideoEnrichmentInput,
-  options: { runId?: string } = {},
+  options: LaunchOptions = {},
 ): Promise<ForgeVideoEnrichmentOutput> {
   const runId = options.runId ?? randomUUID()
-  const run = await forgeVideoEnrichmentWorkflow.createRun({ runId })
-  const result = await run.start({ inputData: input })
-  if (result.status === "success") {
-    return result.result
+  const createRun =
+    options.createRun ??
+    (async (runOptions) =>
+      forgeVideoEnrichmentWorkflow.createRun(
+        runOptions,
+      ) as Promise<WorkflowRun>)
+  const acceptedAt = options.now?.() ?? new Date().toISOString()
+  const run = await createRun({ runId })
+
+  try {
+    const startPromise = run.start({ inputData: input })
+    void startPromise
+      .then((result) => {
+        if (result.status !== "success") {
+          throw new ForgeVideoEnrichmentWorkflowError(
+            `forge-video-enrichment run ${runId} finished with status ${result.status}`,
+            runId,
+          )
+        }
+      })
+      .catch((error: unknown) => {
+        const handler =
+          options.onBackgroundError ??
+          ((backgroundError: unknown) => {
+            console.error(
+              `[forge-video-enrichment] event=background_failed jobId=${input.jobId} runId=${runId} error=${backgroundError instanceof Error ? backgroundError.message : "unknown"}`,
+            )
+          })
+        handler(error)
+      })
+  } catch (error) {
+    throw new ForgeVideoEnrichmentWorkflowError(
+      `forge-video-enrichment run ${runId} failed to start: ${error instanceof Error ? error.message : "unknown"}`,
+      runId,
+    )
   }
 
-  throw new ForgeVideoEnrichmentWorkflowError(
-    `forge-video-enrichment run ${runId} failed to start`,
+  return {
+    ok: true,
+    jobId: input.jobId,
     runId,
-  )
+    acceptedAt,
+  }
 }
 
 export async function handleForgeVideoEnrichmentRouteRequest({
   authHeader,
   serviceKeys,
   configured,
+  callbackConfigured = true,
   readJson,
   launch = launchForgeVideoEnrichmentWorkflow,
 }: RouteHandlerInput): Promise<ForgeVideoEnrichmentRouteOutcome> {
@@ -127,6 +230,16 @@ export async function handleForgeVideoEnrichmentRouteRequest({
     return {
       status: 503,
       body: { error: "config_missing: MASTRA_ENRICHMENT_API_KEYS not set" },
+    }
+  }
+
+  if (!callbackConfigured) {
+    return {
+      status: 503,
+      body: {
+        error:
+          "config_missing: MANAGER_ENRICHMENT_CALLBACK_URL and MANAGER_ENRICHMENT_CALLBACK_API_KEY must be set",
+      },
     }
   }
 
