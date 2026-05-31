@@ -1,58 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import type { JobRecord } from "@/types/job"
 
-const {
-  getJobLookupMock,
-  mergeJobArtifactsMock,
-  updateJobMock,
-  updateStepStatusMock,
-} = vi.hoisted(() => ({
-  getJobLookupMock: vi.fn(),
-  mergeJobArtifactsMock: vi.fn(),
-  updateJobMock: vi.fn(),
-  updateStepStatusMock: vi.fn(),
+const { applyJobCallbackUpdateMock } = vi.hoisted(() => ({
+  applyJobCallbackUpdateMock: vi.fn(),
 }))
 
 vi.mock("@/lib/state", () => ({
-  getJobLookup: getJobLookupMock,
-  mergeJobArtifacts: mergeJobArtifactsMock,
-  updateJob: updateJobMock,
-  updateStepStatus: updateStepStatusMock,
+  applyJobCallbackUpdate: applyJobCallbackUpdateMock,
 }))
 
 import { applyEnrichmentCallback } from "@/lib/enrichment-callback"
 
-function job(overrides: Partial<JobRecord> = {}): JobRecord {
-  return {
-    id: "job-1",
-    muxAssetId: "asset-1",
-    muxPlaybackId: "playback-1",
-    languages: ["fr"],
-    options: {
-      engine: "mastra",
-      currentRunId: "run-1",
-    },
-    status: "running",
-    retries: 0,
-    createdAt: "2026-05-31T00:00:00.000Z",
-    updatedAt: "2026-05-31T00:00:00.000Z",
-    artifacts: {},
-    steps: [
-      { name: "translation", status: "running", retries: 0 },
-      { name: "chapters", status: "completed", retries: 0 },
-    ],
-    errors: [],
-    ...overrides,
-  }
-}
-
 describe("applyEnrichmentCallback", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    getJobLookupMock.mockResolvedValue({ status: "found", job: job() })
-    updateStepStatusMock.mockResolvedValue(job())
-    updateJobMock.mockResolvedValue(job())
-    mergeJobArtifactsMock.mockResolvedValue(job())
+    applyJobCallbackUpdateMock.mockResolvedValue({ status: "applied" })
   })
 
   it("applies a completed step with artifacts and language details", async () => {
@@ -69,27 +30,25 @@ describe("applyEnrichmentCallback", () => {
       }),
     ).resolves.toEqual({ ok: true, action: "applied" })
 
-    expect(mergeJobArtifactsMock).toHaveBeenCalledWith("job-1", {
-      "subtitles-fr": { kind: "downloadable" },
-      "translation-fr": { kind: "downloadable" },
-    })
-    expect(updateStepStatusMock).toHaveBeenCalledWith(
-      "job-1",
-      "translation",
-      "completed",
-      undefined,
-      { languageResults: [{ lang: "fr", status: "completed" }] },
-    )
-    expect(updateJobMock).toHaveBeenCalledWith("job-1", {
-      options: {
-        engine: "mastra",
-        currentRunId: "run-1",
-        callbackSequences: { translation: 2 },
-      },
+    expect(applyJobCallbackUpdateMock).toHaveBeenCalledWith({
+      jobId: "job-1",
+      runId: "run-1",
+      sequence: 2,
+      step: "translation",
+      status: "completed",
+      jobStatus: undefined,
+      error: undefined,
+      details: { languageResults: [{ lang: "fr", status: "completed" }] },
+      artifactsDelta: ["subtitles-fr", "translation-fr"],
     })
   })
 
   it("drops stale callbacks whose runId no longer owns the job", async () => {
+    applyJobCallbackUpdateMock.mockResolvedValueOnce({
+      status: "dropped",
+      reason: "stale_run",
+    })
+
     await expect(
       applyEnrichmentCallback({
         jobId: "job-1",
@@ -100,11 +59,14 @@ describe("applyEnrichmentCallback", () => {
         step: "translation",
       }),
     ).resolves.toEqual({ ok: true, action: "dropped", reason: "stale_run" })
-
-    expect(updateStepStatusMock).not.toHaveBeenCalled()
   })
 
   it("rejects unsupported artifact keys", async () => {
+    applyJobCallbackUpdateMock.mockResolvedValueOnce({
+      status: "invalid",
+      error: "Unsupported artifact keys for translation: metadata",
+    })
+
     await expect(
       applyEnrichmentCallback({
         jobId: "job-1",
@@ -113,12 +75,17 @@ describe("applyEnrichmentCallback", () => {
         sequence: 2,
         status: "completed",
         step: "translation",
-        artifactsDelta: ["https://evil.test/not-an-artifact"],
+        artifactsDelta: ["metadata"],
       }),
     ).resolves.toMatchObject({ ok: false, status: 400 })
   })
 
   it("does not regress a terminal completed step back to running", async () => {
+    applyJobCallbackUpdateMock.mockResolvedValueOnce({
+      status: "dropped",
+      reason: "stale_status",
+    })
+
     await expect(
       applyEnrichmentCallback({
         jobId: "job-1",
@@ -132,15 +99,9 @@ describe("applyEnrichmentCallback", () => {
   })
 
   it("drops same-step callbacks older than the stored sequence", async () => {
-    getJobLookupMock.mockResolvedValueOnce({
-      status: "found",
-      job: job({
-        options: {
-          engine: "mastra",
-          currentRunId: "run-1",
-          callbackSequences: { translation: 5 },
-        },
-      }),
+    applyJobCallbackUpdateMock.mockResolvedValueOnce({
+      status: "dropped",
+      reason: "stale_sequence",
     })
 
     await expect(
@@ -157,8 +118,27 @@ describe("applyEnrichmentCallback", () => {
       action: "dropped",
       reason: "stale_sequence",
     })
+  })
 
-    expect(updateStepStatusMock).not.toHaveBeenCalled()
-    expect(updateJobMock).not.toHaveBeenCalled()
+  it("returns retryable failure when the state update cannot complete", async () => {
+    applyJobCallbackUpdateMock.mockResolvedValueOnce({
+      status: "error",
+      error: new Error("admin down"),
+    })
+
+    await expect(
+      applyEnrichmentCallback({
+        jobId: "job-1",
+        engine: "mastra",
+        runId: "run-1",
+        sequence: 4,
+        status: "completed",
+        step: "translation",
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      status: 503,
+      error: "Callback job update failed; retry later",
+    })
   })
 })

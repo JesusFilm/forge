@@ -55,12 +55,24 @@ describe("launchVideoEnrichment", () => {
     expect(dispatchMastraVideoEnrichmentMock).not.toHaveBeenCalled()
   })
 
+  it("does not fall back to workflow when the job cannot be read", async () => {
+    getJobMock.mockResolvedValue(null)
+
+    await expect(launchVideoEnrichment(input)).rejects.toMatchObject({
+      name: "EnrichmentLaunchError",
+      jobId: "job-1",
+    })
+    expect(startMock).not.toHaveBeenCalled()
+    expect(dispatchMastraVideoEnrichmentMock).not.toHaveBeenCalled()
+  })
+
   it("dispatches through Mastra and persists run visibility for mastra-stamped jobs", async () => {
     getJobMock.mockResolvedValue({ options: { engine: "mastra" } })
     dispatchMastraVideoEnrichmentMock.mockResolvedValue({
       ok: true,
       runId: "run-1",
     })
+    markEnrichmentDispatchedMock.mockResolvedValue({ id: "job-1" })
 
     await expect(launchVideoEnrichment(input)).resolves.toEqual({
       ok: true,
@@ -72,6 +84,21 @@ describe("launchVideoEnrichment", () => {
     expect(startMock).not.toHaveBeenCalled()
   })
 
+  it("throws when Mastra run visibility cannot be persisted", async () => {
+    getJobMock.mockResolvedValue({ options: { engine: "mastra" } })
+    dispatchMastraVideoEnrichmentMock.mockResolvedValue({
+      ok: true,
+      runId: "run-1",
+    })
+    markEnrichmentDispatchedMock.mockResolvedValue(null)
+
+    await expect(launchVideoEnrichment(input)).rejects.toMatchObject({
+      name: "EnrichmentLaunchError",
+      jobId: "job-1",
+      message: "Mastra enrichment dispatch visibility failed for job job-1",
+    })
+  })
+
   it("throws when Mastra rejects the dispatch", async () => {
     getJobMock.mockResolvedValue({ options: { engine: "mastra" } })
     dispatchMastraVideoEnrichmentMock.mockResolvedValue({
@@ -79,9 +106,11 @@ describe("launchVideoEnrichment", () => {
       reason: "auth_failed",
     })
 
-    await expect(launchVideoEnrichment(input)).rejects.toThrow(
-      "Mastra enrichment dispatch failed for job job-1: auth_failed",
-    )
+    await expect(launchVideoEnrichment(input)).rejects.toMatchObject({
+      name: "EnrichmentLaunchError",
+      jobId: "job-1",
+      message: "Mastra enrichment dispatch failed for job job-1: auth_failed",
+    })
     expect(markEnrichmentDispatchedMock).not.toHaveBeenCalled()
   })
 })

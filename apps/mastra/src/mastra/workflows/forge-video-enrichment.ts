@@ -89,6 +89,16 @@ export const forgeVideoEnrichmentWorkflow = createWorkflow({
   .then(acceptVideoEnrichmentStep)
   .commit()
 
+export class ForgeVideoEnrichmentWorkflowError extends Error {
+  constructor(
+    message: string,
+    readonly runId: string,
+  ) {
+    super(message)
+    this.name = "ForgeVideoEnrichmentWorkflowError"
+  }
+}
+
 export async function launchForgeVideoEnrichmentWorkflow(
   input: ForgeVideoEnrichmentInput,
   options: { runId?: string } = {},
@@ -100,7 +110,10 @@ export async function launchForgeVideoEnrichmentWorkflow(
     return result.result
   }
 
-  throw new Error(`forge-video-enrichment run ${runId} failed to start`)
+  throw new ForgeVideoEnrichmentWorkflowError(
+    `forge-video-enrichment run ${runId} failed to start`,
+    runId,
+  )
 }
 
 export async function handleForgeVideoEnrichmentRouteRequest({
@@ -134,14 +147,19 @@ export async function handleForgeVideoEnrichmentRouteRequest({
   }
 
   const runId = randomUUID()
-  void launch(parsed.data, { runId }).catch((error) => {
+  try {
+    const result = await launch(parsed.data, { runId })
+    return {
+      status: 202,
+      body: { ok: true, runId: result.runId },
+    }
+  } catch (error) {
     console.error(
       `[forge-video-enrichment] event=start_failed jobId=${parsed.data.jobId} runId=${runId} error=${error instanceof Error ? error.message : "unknown"}`,
     )
-  })
-
-  return {
-    status: 202,
-    body: { ok: true, runId },
+    return {
+      status: 502,
+      body: { error: "forge-video-enrichment workflow failed to start" },
+    }
   }
 }

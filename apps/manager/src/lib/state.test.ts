@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
+  applyJobCallbackUpdate,
   buildJobUpdateData,
   createJob,
   getJob,
@@ -229,6 +230,12 @@ describe("admin job event publishing", () => {
     expect(updatedJob?.artifacts).toMatchObject({
       transcript: { kind: "downloadable" },
     })
+    expect(adminUpdateJobMock).toHaveBeenCalledWith(
+      "job-11",
+      expect.objectContaining({
+        sourceLanguageCode: "en",
+      }),
+    )
     expect(publishJobEventMock).toHaveBeenCalledWith(updatedJob)
   })
 
@@ -515,19 +522,32 @@ describe("engine stamp (P0-A)", () => {
     })
   })
 
-  it("markEnrichmentDispatched persists run visibility without clobbering sibling options", async () => {
+  it("markEnrichmentDispatched starts a fresh visible run without clobbering sibling options", async () => {
     adminGetJobMock.mockResolvedValueOnce({
       ...buildGraphqlJob("job-eng-dispatch"),
-      status: "pending",
-      options: { engine: "mastra", uploadMux: true },
+      status: "failed",
+      currentStep: "translation",
+      completedAt: "2026-05-30T00:00:00.000Z",
+      options: {
+        engine: "mastra",
+        uploadMux: true,
+        callbackSequences: { translation: 7 },
+      },
     })
     adminUpdateJobMock.mockImplementation(
       async (
         _id: string,
-        updates: { options?: unknown; status?: unknown },
+        updates: {
+          options?: unknown
+          status?: unknown
+          currentStep?: unknown
+          completedAt?: unknown
+        },
       ) => ({
         ...buildGraphqlJob("job-eng-dispatch"),
         status: updates.status,
+        currentStep: updates.currentStep,
+        completedAt: updates.completedAt,
         options: updates.options,
       }),
     )
@@ -546,11 +566,128 @@ describe("engine stamp (P0-A)", () => {
         dispatchedAt: "2026-05-31T00:00:00.000Z",
       },
       status: "running",
+      currentStep: null,
+      completedAt: null,
     })
     expect(job?.options).toMatchObject({
       engine: "mastra",
       uploadMux: true,
       currentRunId: "run-123",
     })
+    expect(job?.options.callbackSequences).toBeUndefined()
+    expect(job?.status).toBe("running")
+  })
+
+  it("applies a callback as one admin job update after re-reading inside the job lock", async () => {
+    adminGetJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-callback"),
+      id: "job-callback",
+      languages: ["fr"],
+      status: "running",
+      options: { engine: "mastra", currentRunId: "run-1" },
+      artifacts: {
+        materialization: { kind: "metadata", data: { source: "admin" } },
+      },
+      steps: [{ name: "translation", status: "running", retries: 0 }],
+    })
+    adminUpdateJobMock.mockImplementation(
+      async (_id: string, updates: Record<string, unknown>) => ({
+        ...buildGraphqlJob("job-callback"),
+        id: "job-callback",
+        ...updates,
+      }),
+    )
+
+    const result = await applyJobCallbackUpdate({
+      jobId: "job-callback",
+      runId: "run-1",
+      sequence: 2,
+      step: "translation",
+      status: "completed",
+      jobStatus: "completed",
+      details: { languageResults: [{ lang: "fr", status: "completed" }] },
+      artifactsDelta: ["subtitles-fr", "translation-fr"],
+    })
+
+    expect(result.status).toBe("applied")
+    expect(adminGetJobMock).toHaveBeenCalledTimes(1)
+    expect(adminUpdateJobMock).toHaveBeenCalledTimes(1)
+    const updates = adminUpdateJobMock.mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >
+    expect(updates.artifacts).toMatchObject({
+      materialization: { kind: "metadata" },
+      "subtitles-fr": { kind: "downloadable" },
+      "translation-fr": { kind: "downloadable" },
+    })
+    expect(updates.options).toMatchObject({
+      engine: "mastra",
+      currentRunId: "run-1",
+      callbackSequences: { translation: 2 },
+    })
+    expect(updates.status).toBe("completed")
+    expect(updates.currentStep).toBeNull()
+    expect(updates.completedAt).toEqual(expect.any(String))
+    expect(updates.steps).toEqual([
+      expect.objectContaining({
+        name: "translation",
+        status: "completed",
+        finishedAt: expect.any(String),
+        details: {
+          languageResults: [{ lang: "fr", status: "completed" }],
+        },
+      }),
+    ])
+  })
+
+  it("does not update admin when a callback sequence is stale", async () => {
+    adminGetJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-callback-stale"),
+      id: "job-callback-stale",
+      status: "running",
+      options: {
+        engine: "mastra",
+        currentRunId: "run-1",
+        callbackSequences: { translation: 5 },
+      },
+      steps: [{ name: "translation", status: "running", retries: 0 }],
+    })
+
+    await expect(
+      applyJobCallbackUpdate({
+        jobId: "job-callback-stale",
+        runId: "run-1",
+        sequence: 4,
+        step: "translation",
+        status: "completed",
+      }),
+    ).resolves.toEqual({ status: "dropped", reason: "stale_sequence" })
+
+    expect(adminUpdateJobMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects artifact keys that do not belong to the callback step", async () => {
+    adminGetJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-callback-artifact"),
+      id: "job-callback-artifact",
+      languages: ["fr"],
+      status: "running",
+      options: { engine: "mastra", currentRunId: "run-1" },
+      steps: [{ name: "translation", status: "running", retries: 0 }],
+    })
+
+    await expect(
+      applyJobCallbackUpdate({
+        jobId: "job-callback-artifact",
+        runId: "run-1",
+        sequence: 2,
+        step: "translation",
+        status: "completed",
+        artifactsDelta: ["metadata"],
+      }),
+    ).resolves.toMatchObject({ status: "invalid" })
+
+    expect(adminUpdateJobMock).not.toHaveBeenCalled()
   })
 })

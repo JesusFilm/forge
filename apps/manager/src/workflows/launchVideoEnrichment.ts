@@ -7,18 +7,46 @@ import {
   type VideoEnrichmentInput,
 } from "@/workflows/videoEnrichment"
 
+export class EnrichmentLaunchError extends Error {
+  constructor(
+    message: string,
+    readonly jobId: string,
+  ) {
+    super(message)
+    this.name = "EnrichmentLaunchError"
+  }
+}
+
 export async function launchVideoEnrichment(input: VideoEnrichmentInput) {
   const job = await getJob(input.jobId)
-  const engine = readEngineStamp(job?.options)
+  if (!job) {
+    throw new EnrichmentLaunchError(
+      `Cannot launch enrichment for missing job ${input.jobId}`,
+      input.jobId,
+    )
+  }
+
+  const engine = readEngineStamp(job.options)
   if (engine === "mastra") {
     const result = await dispatchMastraVideoEnrichment(input)
     if (!result.ok) {
-      throw new Error(
+      throw new EnrichmentLaunchError(
         `Mastra enrichment dispatch failed for job ${input.jobId}: ${result.reason}`,
+        input.jobId,
       )
     }
 
-    await markEnrichmentDispatched(input.jobId, result.runId)
+    const dispatchedJob = await markEnrichmentDispatched(
+      input.jobId,
+      result.runId,
+    )
+    if (!dispatchedJob) {
+      throw new EnrichmentLaunchError(
+        `Mastra enrichment dispatch visibility failed for job ${input.jobId}`,
+        input.jobId,
+      )
+    }
+
     return result
   }
 

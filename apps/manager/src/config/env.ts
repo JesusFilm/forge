@@ -42,6 +42,9 @@ export const env = createEnv({
     WORKFLOW_API_KEY: z.string().min(1).optional(),
     LAUNCHDARKLY_SDK_KEY: z.string().min(1).optional(),
     FORGE_ENRICHMENT_ENGINE_DEFAULT: z.string().optional(),
+    FORGE_ENRICHMENT_MASTRA_RAMP_ENABLED: z
+      .enum(["true", "false"])
+      .default("false"),
 
     // API authentication — required for production
     MANAGER_API_KEY: z.string().min(1).optional(),
@@ -134,6 +137,8 @@ export const env = createEnv({
     LAUNCHDARKLY_SDK_KEY: process.env.LAUNCHDARKLY_SDK_KEY,
     FORGE_ENRICHMENT_ENGINE_DEFAULT:
       process.env.FORGE_ENRICHMENT_ENGINE_DEFAULT,
+    FORGE_ENRICHMENT_MASTRA_RAMP_ENABLED:
+      process.env.FORGE_ENRICHMENT_MASTRA_RAMP_ENABLED,
     MANAGER_API_KEY: process.env.MANAGER_API_KEY,
     MANAGER_BASE_URL: process.env.MANAGER_BASE_URL,
     MANAGER_SESSION_SECRET: process.env.MANAGER_SESSION_SECRET,

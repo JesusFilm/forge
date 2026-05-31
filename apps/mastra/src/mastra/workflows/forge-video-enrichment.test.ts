@@ -39,7 +39,7 @@ describe("forge video enrichment route", () => {
     expect(outcome.status).toBe(401)
   })
 
-  it("acks with a server-minted run id and starts asynchronously", async () => {
+  it("acks with a server-minted run id after the workflow accepts the run", async () => {
     const launch = vi.fn(
       async (
         _input: ForgeVideoEnrichmentInput,
@@ -62,11 +62,30 @@ describe("forge video enrichment route", () => {
 
     expect(outcome.status).toBe(202)
     expect(outcome.body).toMatchObject({ ok: true, runId: expect.any(String) })
-    await vi.waitFor(() => expect(launch).toHaveBeenCalledTimes(1))
+    expect(launch).toHaveBeenCalledTimes(1)
     expect(launch).toHaveBeenCalledWith(
       validInput,
       expect.objectContaining({ runId: outcome.body.runId }),
     )
+  })
+
+  it("returns a retryable failure if the workflow cannot accept the run", async () => {
+    const launch = vi.fn(async () => {
+      throw new Error("storage down")
+    })
+
+    const outcome = await handleForgeVideoEnrichmentRouteRequest({
+      authHeader: "Bearer key",
+      serviceKeys: ["key"],
+      configured: true,
+      readJson: async () => validInput,
+      launch,
+    })
+
+    expect(outcome).toEqual({
+      status: 502,
+      body: { error: "forge-video-enrichment workflow failed to start" },
+    })
   })
 })
 

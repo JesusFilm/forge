@@ -8,6 +8,11 @@ import {
   updateMockCmsState,
 } from "@/cms/gateway"
 import { env } from "@/config/env"
+import { readEngineStamp } from "@/lib/engine-stamp"
+import {
+  buildDownloadableArtifactManifest,
+  resolveJobArtifactDescriptor,
+} from "@/lib/job-artifacts"
 import { buildInitialSteps, FORGE_WORKFLOW_STEPS } from "@/lib/workflow-steps"
 import type {
   EnrichmentEngine,
@@ -41,6 +46,25 @@ export type JobLookupResult =
       status: "error"
       error: unknown
     }
+
+export type ApplyJobCallbackUpdateInput = {
+  jobId: string
+  runId: string
+  sequence: number
+  step: WorkflowStepName
+  status: StepStatus
+  jobStatus?: Extract<JobStatus, "completed" | "failed">
+  error?: string
+  details?: JobStepDetails
+  artifactsDelta?: readonly string[]
+}
+
+export type ApplyJobCallbackUpdateResult =
+  | { status: "applied"; job: JobRecord }
+  | { status: "dropped"; reason: string }
+  | { status: "invalid"; error: string }
+  | { status: "not-found" }
+  | { status: "error"; error: unknown }
 
 let adminJobClient: AdminGraphqlClient | undefined
 
@@ -215,6 +239,21 @@ function normalizeJobOptions(raw: unknown): JobOptions {
     }
   }
   return options
+}
+
+function buildDispatchedOptions(
+  options: JobOptions,
+  runId: string,
+  dispatchedAt: string,
+): JobOptions {
+  const rest = { ...options }
+  delete rest.callbackSequences
+
+  return {
+    ...rest,
+    currentRunId: runId,
+    dispatchedAt,
+  }
 }
 
 function deriveMaterializationFields(
@@ -652,7 +691,12 @@ export async function updateJob(
               ...deriveMaterializationFields(updates.artifacts),
             }
           : updates
-      const job = await getAdminJobClient().updateJob(id, adminUpdates)
+      const job = await getAdminJobClient().updateJob(
+        id,
+        buildJobUpdateData(adminUpdates) as Parameters<
+          AdminGraphqlClient["updateJob"]
+        >[1],
+      )
       if (job) {
         publishJobEvent(job)
       }
@@ -742,12 +786,14 @@ export async function markEnrichmentDispatched(
           job.id === id
             ? {
                 ...job,
-                options: {
-                  ...job.options,
-                  currentRunId: runId,
+                options: buildDispatchedOptions(
+                  job.options,
+                  runId,
                   dispatchedAt,
-                },
-                status: job.status === "pending" ? "running" : job.status,
+                ),
+                status: "running",
+                currentStep: undefined,
+                completedAt: undefined,
                 updatedAt: dispatchedAt,
               }
             : job,
@@ -769,14 +815,15 @@ export async function markEnrichmentDispatched(
       if (!current) {
         return null
       }
-      const job = await getAdminJobClient().updateJob(id, {
-        options: {
-          ...current.options,
-          currentRunId: runId,
-          dispatchedAt,
-        },
-        status: current.status === "pending" ? "running" : current.status,
-      })
+      const job = await getAdminJobClient().updateJob(
+        id,
+        buildJobUpdateData({
+          options: buildDispatchedOptions(current.options, runId, dispatchedAt),
+          status: "running",
+          currentStep: undefined,
+          completedAt: undefined,
+        }) as Parameters<AdminGraphqlClient["updateJob"]>[1],
+      )
       if (job) {
         publishJobEvent(job)
       }
@@ -803,6 +850,14 @@ export function buildJobUpdateData(
       | "retries"
       | "steps"
       | "options"
+      | "sourceLanguageId"
+      | "sourceLanguageCode"
+      | "sourceSelectionReason"
+      | "primaryRequestedTargetLanguageCode"
+      | "resolvedTargetLanguageCodes"
+      | "sourceCollectionTitle"
+      | "sourceMediaTitle"
+      | "requestedLanguageAbbreviations"
     >
   >,
 ): Record<string, unknown> {
@@ -817,6 +872,31 @@ export function buildJobUpdateData(
   if (updates.retries !== undefined) data.retries = updates.retries
   if (updates.steps !== undefined) data.steps = toStepInput(updates.steps)
   if (updates.options !== undefined) data.options = updates.options
+  if ("sourceLanguageId" in updates) {
+    data.sourceLanguageId = updates.sourceLanguageId ?? null
+  }
+  if ("sourceLanguageCode" in updates) {
+    data.sourceLanguageCode = updates.sourceLanguageCode ?? null
+  }
+  if ("sourceSelectionReason" in updates) {
+    data.sourceSelectionReason = updates.sourceSelectionReason ?? null
+  }
+  if ("primaryRequestedTargetLanguageCode" in updates) {
+    data.primaryRequestedTargetLanguageCode =
+      updates.primaryRequestedTargetLanguageCode ?? null
+  }
+  if (updates.resolvedTargetLanguageCodes !== undefined) {
+    data.resolvedTargetLanguageCodes = updates.resolvedTargetLanguageCodes
+  }
+  if ("sourceCollectionTitle" in updates) {
+    data.sourceCollectionTitle = updates.sourceCollectionTitle ?? null
+  }
+  if ("sourceMediaTitle" in updates) {
+    data.sourceMediaTitle = updates.sourceMediaTitle ?? null
+  }
+  if (updates.requestedLanguageAbbreviations !== undefined) {
+    data.requestedLanguageAbbreviations = updates.requestedLanguageAbbreviations
+  }
 
   return data
 }
@@ -831,6 +911,263 @@ export function mergeArtifactEntries(
   }
 }
 
+const STATUS_RANK: Record<StepStatus, number> = {
+  pending: 0,
+  running: 1,
+  skipped: 2,
+  failed: 3,
+  completed: 4,
+}
+
+const CALLBACK_ARTIFACT_KEYS_BY_STEP: Partial<
+  Record<WorkflowStepName, readonly string[]>
+> = {
+  transcription: ["transcript", "subtitles", "subtitlesVtt"],
+  translation: ["translations"],
+  chapters: ["chapters", "chapters-vtt"],
+  metadata: ["metadata"],
+  embeddings: ["embeddings"],
+  audio_cleanup: ["original-audio", "cleaned-audio"],
+}
+
+const ARTIFACT_LANGUAGE_SUFFIX_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i
+const LANGUAGE_CODE_RE = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i
+
+function serializeJobUpdate<T>(
+  jobId: string,
+  update: () => Promise<T>,
+): Promise<T> {
+  const previous = jobUpdateLocks.get(jobId) ?? Promise.resolve()
+  const next = previous.then(update)
+  jobUpdateLocks.set(
+    jobId,
+    next.catch(() => {}),
+  )
+  return next
+}
+
+function isStaleStatus(current: StepStatus | undefined, next: StepStatus) {
+  if (!current) return false
+  return STATUS_RANK[next] < STATUS_RANK[current]
+}
+
+function isStaleSequence(current: number | undefined, next: number): boolean {
+  return current != null && next <= current
+}
+
+function collectArtifactLanguageCodes(job: JobRecord): Set<string> {
+  const values = [
+    ...job.languages,
+    ...(job.resolvedTargetLanguageCodes ?? []),
+    ...(job.requestedLanguageAbbreviations ?? []),
+    job.primaryRequestedTargetLanguageCode,
+    job.sourceLanguageCode,
+  ]
+
+  return new Set(
+    values
+      .filter((value): value is string => Boolean(value))
+      .map((value) => value.trim().toLowerCase())
+      .filter((value) => LANGUAGE_CODE_RE.test(value)),
+  )
+}
+
+function readTranslationArtifactLanguage(key: string): string | null {
+  const language = key.startsWith("subtitles-")
+    ? key.slice("subtitles-".length)
+    : key.startsWith("translation-")
+      ? key.slice("translation-".length)
+      : null
+
+  if (!language || !ARTIFACT_LANGUAGE_SUFFIX_RE.test(language)) {
+    return null
+  }
+
+  return language.toLowerCase()
+}
+
+function validateCallbackArtifactKeys(
+  job: JobRecord,
+  step: WorkflowStepName,
+  keys: readonly string[] | undefined,
+) {
+  if (!keys?.length) return { ok: true as const, keys: [] as string[] }
+
+  const allowedExactKeys = new Set(CALLBACK_ARTIFACT_KEYS_BY_STEP[step] ?? [])
+  const jobLanguageCodes = collectArtifactLanguageCodes(job)
+  const invalid: string[] = []
+
+  for (const key of keys) {
+    if (!resolveJobArtifactDescriptor(key)) {
+      invalid.push(key)
+      continue
+    }
+
+    if (allowedExactKeys.has(key)) {
+      continue
+    }
+
+    const artifactLanguage = readTranslationArtifactLanguage(key)
+    const languageMatchesJob =
+      jobLanguageCodes.size === 0 ||
+      jobLanguageCodes.has(artifactLanguage ?? "")
+    if (step === "translation" && artifactLanguage && languageMatchesJob) {
+      continue
+    }
+
+    invalid.push(key)
+  }
+
+  if (invalid.length > 0) {
+    return {
+      ok: false as const,
+      error: `Unsupported artifact keys for ${step}: ${invalid.join(", ")}`,
+    }
+  }
+
+  return { ok: true as const, keys: [...new Set(keys)] }
+}
+
+function buildCallbackUpdatedJob(
+  job: JobRecord,
+  input: ApplyJobCallbackUpdateInput,
+  now: string,
+): ApplyJobCallbackUpdateResult {
+  if (readEngineStamp(job.options) !== "mastra") {
+    return { status: "dropped", reason: "engine_mismatch" }
+  }
+  if (job.options.currentRunId !== input.runId) {
+    return { status: "dropped", reason: "stale_run" }
+  }
+
+  const currentStep = job.steps.find((step) => step.name === input.step)
+  if (isStaleStatus(currentStep?.status, input.status)) {
+    return { status: "dropped", reason: "stale_status" }
+  }
+  if (
+    isStaleSequence(job.options.callbackSequences?.[input.step], input.sequence)
+  ) {
+    return { status: "dropped", reason: "stale_sequence" }
+  }
+
+  const artifacts = validateCallbackArtifactKeys(
+    job,
+    input.step,
+    input.artifactsDelta,
+  )
+  if (!artifacts.ok) {
+    return { status: "invalid", error: artifacts.error }
+  }
+
+  const steps = job.steps.map((step) => {
+    if (step.name !== input.step) return step
+
+    const updated = { ...step, status: input.status }
+    if (input.status === "running" && !step.startedAt) {
+      updated.startedAt = now
+    }
+    if (input.status === "completed" || input.status === "failed") {
+      updated.finishedAt = now
+    }
+    if (input.error) {
+      updated.error = input.error
+    }
+    if (input.details !== undefined) {
+      updated.details = input.details
+    }
+    return updated
+  })
+
+  const errors = input.error
+    ? [...job.errors, { step: input.step, message: input.error, at: now }]
+    : job.errors
+  const callbackSequences = {
+    ...(job.options.callbackSequences ?? {}),
+    [input.step]: input.sequence,
+  }
+  let updatedJob: JobRecord = {
+    ...job,
+    artifacts:
+      artifacts.keys.length > 0
+        ? mergeArtifactEntries(
+            job.artifacts,
+            buildDownloadableArtifactManifest(artifacts.keys),
+          )
+        : job.artifacts,
+    errors,
+    options: {
+      ...job.options,
+      callbackSequences,
+    },
+    steps,
+    updatedAt: now,
+  }
+
+  if (input.status === "running") {
+    updatedJob = {
+      ...updatedJob,
+      status: "running",
+      currentStep: input.step,
+    }
+  } else if (input.jobStatus) {
+    updatedJob = {
+      ...updatedJob,
+      status: input.jobStatus,
+      currentStep: undefined,
+      completedAt: input.jobStatus === "completed" ? now : undefined,
+    }
+  }
+
+  return { status: "applied", job: updatedJob }
+}
+
+function buildCallbackJobUpdates(
+  current: JobRecord,
+  updated: JobRecord,
+  input: ApplyJobCallbackUpdateInput,
+): Partial<
+  Pick<
+    JobRecord,
+    | "status"
+    | "currentStep"
+    | "artifacts"
+    | "errors"
+    | "completedAt"
+    | "steps"
+    | "options"
+  >
+> {
+  const updates: Partial<
+    Pick<
+      JobRecord,
+      | "status"
+      | "currentStep"
+      | "artifacts"
+      | "errors"
+      | "completedAt"
+      | "steps"
+      | "options"
+    >
+  > = {
+    artifacts: updated.artifacts,
+    errors: updated.errors,
+    options: updated.options,
+    steps: updated.steps,
+  }
+
+  if (input.status === "running" || updated.status !== current.status) {
+    updates.status = updated.status
+  }
+  if (input.status === "running" || input.jobStatus) {
+    updates.currentStep = updated.currentStep
+  }
+  if (input.jobStatus) {
+    updates.completedAt = updated.completedAt
+  }
+
+  return updates
+}
+
 // ---------------------------------------------------------------------------
 // Per-job mutex for serializing step updates (read-then-write)
 // ---------------------------------------------------------------------------
@@ -841,13 +1178,7 @@ export async function mergeJobArtifacts(
   jobId: string,
   artifacts: JobArtifactManifest,
 ): Promise<JobRecord | null> {
-  const previous = jobUpdateLocks.get(jobId) ?? Promise.resolve()
-  const next = previous.then(() => doMergeJobArtifacts(jobId, artifacts))
-  jobUpdateLocks.set(
-    jobId,
-    next.catch(() => {}),
-  )
-  return next
+  return serializeJobUpdate(jobId, () => doMergeJobArtifacts(jobId, artifacts))
 }
 
 export async function updateStepStatus(
@@ -858,15 +1189,104 @@ export async function updateStepStatus(
   details?: JobStepDetails,
 ): Promise<JobRecord | null> {
   // Serialize per-job to avoid read-then-write race conditions.
-  const previous = jobUpdateLocks.get(jobId) ?? Promise.resolve()
-  const next = previous.then(() =>
+  return serializeJobUpdate(jobId, () =>
     doUpdateStepStatus(jobId, stepName, status, error, details),
   )
-  jobUpdateLocks.set(
-    jobId,
-    next.catch(() => {}),
-  )
-  return next
+}
+
+export async function applyJobCallbackUpdate(
+  input: ApplyJobCallbackUpdateInput,
+): Promise<ApplyJobCallbackUpdateResult> {
+  return serializeJobUpdate(input.jobId, () => doApplyJobCallbackUpdate(input))
+}
+
+async function doApplyJobCallbackUpdate(
+  input: ApplyJobCallbackUpdateInput,
+): Promise<ApplyJobCallbackUpdateResult> {
+  const now = new Date().toISOString()
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+
+  if (mockState) {
+    let result: ApplyJobCallbackUpdateResult = { status: "not-found" }
+    let appliedJob: JobRecord | null = null
+    const nextState = await updateMockCmsState(gateway, (current) => {
+      const currentJob = current.readModels.jobs.find(
+        (candidate) => candidate.id === input.jobId,
+      )
+      if (!currentJob) {
+        result = { status: "not-found" }
+        return current
+      }
+
+      const updateResult = buildCallbackUpdatedJob(currentJob, input, now)
+      result = updateResult
+      if (updateResult.status !== "applied") {
+        return current
+      }
+
+      appliedJob = updateResult.job
+      return {
+        ...current,
+        readModels: {
+          ...current.readModels,
+          jobs: current.readModels.jobs.map((candidate) =>
+            candidate.id === input.jobId ? updateResult.job : candidate,
+          ),
+        },
+      }
+    })
+
+    if (appliedJob) {
+      const job =
+        nextState?.readModels.jobs.find(
+          (candidate) => candidate.id === input.jobId,
+        ) ?? appliedJob
+      publishJobEvent(job)
+      return { status: "applied", job }
+    }
+
+    return result
+  }
+
+  if (gateway.mode === "admin") {
+    try {
+      const current = await getAdminJobClient().getJob(input.jobId)
+      if (!current) {
+        return { status: "not-found" }
+      }
+
+      const result = buildCallbackUpdatedJob(current, input, now)
+      if (result.status !== "applied") {
+        return result
+      }
+
+      const updates = buildCallbackJobUpdates(current, result.job, input)
+      const job = await getAdminJobClient().updateJob(
+        input.jobId,
+        buildJobUpdateData(updates) as Parameters<
+          AdminGraphqlClient["updateJob"]
+        >[1],
+      )
+      if (!job) {
+        return { status: "not-found" }
+      }
+
+      publishJobEvent(job)
+      return { status: "applied", job }
+    } catch (err) {
+      console.warn(
+        `[state] applyJobCallbackUpdate(${input.jobId}) failed:`,
+        err,
+      )
+      return { status: "error", error: err }
+    }
+  }
+
+  return {
+    status: "error",
+    error: new Error("Unsupported Manager backend"),
+  }
 }
 
 async function doMergeJobArtifacts(

@@ -26,6 +26,16 @@ export async function POST(
     )
   }
 
+  if (job.status === "running" && job.options.currentRunId) {
+    return NextResponse.json(
+      {
+        error: "Job already has an active Mastra run",
+        currentRunId: job.options.currentRunId,
+      },
+      { status: 409 },
+    )
+  }
+
   try {
     const result = await launchVideoEnrichment({
       jobId: job.id,

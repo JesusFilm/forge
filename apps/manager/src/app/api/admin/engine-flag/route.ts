@@ -4,6 +4,7 @@ import { z } from "zod"
 import { authenticateServiceBearerRequest } from "@/lib/auth"
 import {
   getRuntimeEnrichmentEngineOverride,
+  isMastraEnrichmentRampEnabled,
   resolveEnrichmentEngine,
   setRuntimeEnrichmentEngineOverride,
 } from "@/lib/enrichment-engine"
@@ -51,6 +52,17 @@ export async function PUT(request: Request) {
   if (parsed.data.clearOverride) {
     setRuntimeEnrichmentEngineOverride(undefined)
   } else {
+    if (parsed.data.engine === "mastra" && !isMastraEnrichmentRampEnabled()) {
+      return NextResponse.json(
+        {
+          error:
+            "Mastra enrichment ramp is disabled until the Mastra workflow emits Manager callbacks.",
+          code: "mastra_ramp_disabled",
+        },
+        { status: 409 },
+      )
+    }
+
     setRuntimeEnrichmentEngineOverride(parsed.data.engine)
   }
 

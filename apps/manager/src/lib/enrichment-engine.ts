@@ -38,6 +38,10 @@ export function getRuntimeEnrichmentEngineOverride() {
   return runtimeOverride
 }
 
+export function isMastraEnrichmentRampEnabled() {
+  return env.FORGE_ENRICHMENT_MASTRA_RAMP_ENABLED === "true"
+}
+
 function createManagerEnrichmentFlagContext(
   input: ResolveEngineInput = {},
 ): FeatureFlagContext {
@@ -56,7 +60,12 @@ function createManagerEnrichmentFlagContext(
 export async function resolveEnrichmentEngine(
   input: ResolveEngineInput = {},
 ): Promise<EnrichmentEngine> {
+  const mastraRampEnabled = isMastraEnrichmentRampEnabled()
+
   if (runtimeOverride) {
+    if (runtimeOverride === "mastra" && !mastraRampEnabled) {
+      return "workflow"
+    }
     return runtimeOverride
   }
 
@@ -65,5 +74,5 @@ export async function resolveEnrichmentEngine(
     createManagerEnrichmentFlagContext(input),
   )
 
-  return useMastra ? "mastra" : "workflow"
+  return useMastra && mastraRampEnabled ? "mastra" : "workflow"
 }

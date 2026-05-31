@@ -27,10 +27,7 @@ export async function dispatchMastraVideoEnrichment(
   options: DispatchOptions = {},
 ): Promise<MastraVideoEnrichmentDispatchResult> {
   const baseUrl = options.baseUrl ?? env.MASTRA_BASE_URL
-  const bearer =
-    options.bearer ??
-    env.MASTRA_ENRICHMENT_API_KEY ??
-    env.MASTRA_SERVICE_API_KEY
+  const bearer = options.bearer ?? env.MASTRA_ENRICHMENT_API_KEY
   const timeoutMs =
     options.timeoutMs ?? env.MASTRA_ENRICHMENT_DISPATCH_TIMEOUT_MS ?? 15_000
   const fetchImpl = options.fetchImpl ?? fetch

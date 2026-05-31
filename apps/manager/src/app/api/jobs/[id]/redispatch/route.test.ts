@@ -37,7 +37,12 @@ const request = new Request("https://manager.test/api/jobs/job-1/redispatch", {
   method: "POST",
 })
 
-function mastraJob() {
+function mastraJob(
+  overrides: {
+    status?: "pending" | "running" | "completed" | "failed"
+    options?: Record<string, unknown>
+  } = {},
+) {
   return {
     id: "job-1",
     muxAssetId: "mux-1",
@@ -45,14 +50,19 @@ function mastraJob() {
     languages: ["fr"],
     sourceLanguageCode: "en",
     videoDocumentId: "video-1",
-    options: { engine: "mastra", currentRunId: "old-run" },
-    status: "running",
+    status: "failed",
     retries: 0,
     createdAt: "",
     updatedAt: "",
     artifacts: {},
     steps: [],
     errors: [],
+    ...overrides,
+    options: {
+      engine: "mastra",
+      currentRunId: "old-run",
+      ...overrides.options,
+    },
   }
 }
 
@@ -97,6 +107,21 @@ describe("POST /api/jobs/[id]/redispatch", () => {
     })
 
     expect(response.status).toBe(409)
+    expect(launchVideoEnrichmentMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects redispatch while the previous Mastra run is still active", async () => {
+    getJobMock.mockResolvedValueOnce(mastraJob({ status: "running" }))
+
+    const response = await POST(request, {
+      params: Promise.resolve({ id: "job-1" }),
+    })
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      error: "Job already has an active Mastra run",
+      currentRunId: "old-run",
+    })
     expect(launchVideoEnrichmentMock).not.toHaveBeenCalled()
   })
 
