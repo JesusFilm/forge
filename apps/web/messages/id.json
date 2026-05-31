@@ -1,38 +1,38 @@
 {
   "ExperienceError": {
-    "empty": "No experience content available.",
-    "failedToLoad": "Failed to load experience: {message}",
-    "unexpected": "An unexpected error occurred.",
-    "notConfigured": "Content service is not configured.",
-    "noContent": "No content is available.",
-    "homepageMisconfigured": "The watch homepage is misconfigured.",
-    "defaultTemplateMisconfigured": "The default watch template is misconfigured.",
-    "authFailed": "Unable to authenticate with the content service. Please contact support if this persists."
+    "empty": "Konten tidak tersedia.",
+    "failedToLoad": "Gagal memuat halaman: {message}",
+    "unexpected": "Terjadi kesalahan yang tidak terduga.",
+    "notConfigured": "Layanan konten belum dikonfigurasi.",
+    "noContent": "Tidak ada konten yang tersedia.",
+    "homepageMisconfigured": "Beranda Watch salah konfigurasi.",
+    "defaultTemplateMisconfigured": "Template Watch bawaan salah konfigurasi.",
+    "authFailed": "Tidak dapat terhubung ke layanan konten. Hubungi dukungan jika masalah berlanjut."
   },
   "VideosPage": {
-    "title": "All Videos",
-    "placeholder": "Catalog browsing is coming. In the meantime use search or a topic-specific URL."
+    "title": "Semua video",
+    "placeholder": "Penjelajahan katalog akan segera tersedia. Untuk saat ini, gunakan pencarian atau URL khusus topik."
   },
   "BibleQuotes": {
-    "title": "Kutipan Alkitab",
+    "title": "Ayat Alkitab",
     "share": "Bagikan",
     "readMore": "Baca selengkapnya...",
-    "learnMore": "Learn more",
+    "learnMore": "Pelajari lebih lanjut",
     "freeResources": "Materi gratis",
     "promoHeading": "Ingin memahami Alkitab lebih dalam?",
-    "joinBibleStudy": "Bergabunglah dengan Pendalaman Alkitab Kami",
-    "previousQuote": "Previous Bible quote",
-    "nextQuote": "Next Bible quote"
+    "joinBibleStudy": "Bergabung dengan pendalaman Alkitab",
+    "previousQuote": "Ayat sebelumnya",
+    "nextQuote": "Ayat berikutnya"
   },
   "DownloadButton": {
-    "checking": "Checking",
+    "checking": "Memeriksa",
     "download": "Unduh",
-    "sessionError": "Unable to check your session. Please try again."
+    "sessionError": "Tidak dapat memeriksa sesi Anda. Coba lagi."
   },
   "DownloadModal": {
-    "dialogTitle": "Unduh Video",
-    "eyebrow": "Unduh Video",
-    "posterAlt": "Video poster",
+    "dialogTitle": "Unduh video",
+    "eyebrow": "Unduh video",
+    "posterAlt": "Poster video",
     "noDownloads": "Tidak ada unduhan yang tersedia untuk video ini.",
     "fileSizeLabel": "Pilih ukuran file",
     "termsAgreementPrefix": "Saya menyetujui ",
@@ -44,50 +44,50 @@
     "closeTermsOfUse": "Tutup Ketentuan Penggunaan",
     "cancel": "Batal",
     "accept": "Setuju",
-    "errorSessionExpired": "Your session expired. Sign in again to download.",
-    "errorSessionUnavailable": "Unable to check your session. Please try again.",
-    "errorUnavailableSource": "Download unavailable from this source",
+    "errorSessionExpired": "Sesi Anda telah berakhir. Masuk lagi untuk mengunduh video.",
+    "errorSessionUnavailable": "Tidak dapat memeriksa sesi Anda. Coba lagi.",
+    "errorUnavailableSource": "Unduhan tidak tersedia dari sumber ini",
     "tierHighest": "Tertinggi",
     "tierHigh": "Tinggi",
     "tierLow": "Rendah"
   },
   "HeroPlayerControls": {
     "play": "Putar",
-    "pause": "Pause",
-    "seek": "Seek",
-    "seekValue": "{current} of {total}",
-    "volume": "Volume",
-    "volumeValue": "{percent} percent",
+    "pause": "Jeda",
+    "seek": "Geser posisi",
+    "seekValue": "{current} dari {total}",
+    "volume": "Volume suara",
+    "volumeValue": "{percent} persen",
     "mute": "Bisukan",
     "unmute": "Nyalakan suara",
-    "changeAudioLanguage": "Change audio language",
-    "enterFullscreen": "Enter fullscreen",
-    "exitFullscreen": "Exit fullscreen"
+    "changeAudioLanguage": "Ubah bahasa audio",
+    "enterFullscreen": "Masuk layar penuh",
+    "exitFullscreen": "Keluar dari layar penuh"
   },
   "LanguageCombobox": {
-    "selectLanguage": "Select language",
-    "searchPlaceholder": "Cari bahasa...",
+    "selectLanguage": "Pilih bahasa",
+    "searchPlaceholder": "Cari bahasa…",
     "languages": "Bahasa",
     "noMatches": "Tidak ada hasil yang cocok"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Bahasa",
-    "dialogTitleWithSubtitles": "Language & Subtitles",
+    "dialogTitleWithSubtitles": "Bahasa & Teks",
     "languageHeading": "Bahasa",
     "subtitlesHeading": "Teks",
-    "languageCount": "{count, plural, one {# language} other {# languages}}",
-    "requestSent": "Request sent",
-    "translateWithAi": "Translate with AI",
-    "noSubtitles": "No subtitles",
-    "toggleOn": "On",
-    "toggleOff": "Off",
+    "languageCount": "{count, plural, one {# bahasa} other {# bahasa}}",
+    "requestSent": "Permintaan terkirim",
+    "translateWithAi": "Terjemahkan dengan AI",
+    "noSubtitles": "Tanpa teks",
+    "toggleOn": "Aktif",
+    "toggleOff": "Nonaktif",
     "close": "Tutup",
     "apply": "Terapkan"
   },
   "SeriesPage": {
-    "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
-    "seriesLabel": "SERIES · {episodes}",
-    "changeAudioLanguage": "Change audio language",
+    "episodeCount": "{count, plural, one {# EPISODE} other {# EPISODE}}",
+    "seriesLabel": "SERI · {episodes}",
+    "changeAudioLanguage": "Ubah bahasa audio",
     "share": "Bagikan",
     "languages": "Bahasa"
   },
@@ -95,62 +95,62 @@
     "close": "Tutup"
   },
   "WatchStudyQuestions": {
-    "placeholderQuestion": "Jika Anda dapat mengajukan pertanyaan kepada pembuat video ini, apakah itu?",
+    "placeholderQuestion": "Jika Anda bisa mengajukan satu pertanyaan kepada pembuat video ini, apa yang akan Anda tanyakan?",
     "fallbackBody": "Mulai percakapan pribadi dengan seseorang yang siap mendengarkan.",
-    "questionsShort": "Questions",
+    "questionsShort": "Pertanyaan",
     "questions": "Pertanyaan terkait",
     "askYours": "Ajukan pertanyaan Anda",
     "chatWithPerson": "Bicara dengan seseorang",
     "askBibleQuestion": "Ajukan pertanyaan tentang Alkitab"
   },
   "WatchQuestionPanel": {
-    "messageType": "Message type",
-    "fieldLabel": "Ask a question about this video",
-    "send": "Send question",
+    "messageType": "Jenis pesan",
+    "fieldLabel": "Ajukan pertanyaan tentang video ini",
+    "send": "Kirim pertanyaan",
     "prompts": {
       "bibleQuestion": {
         "label": "Ajukan pertanyaan tentang Alkitab",
-        "description": "Instant answers from the Bible using AI search"
+        "description": "Jawaban instan dari Alkitab dengan pencarian AI"
       },
       "prayerRequest": {
-        "label": "Request a prayer",
-        "description": "Share what you want prayer for"
+        "label": "Minta doa",
+        "description": "Bagikan hal yang ingin Anda doakan"
       },
       "comment": {
-        "label": "Leave a comment",
-        "description": "Send thoughts about this video"
+        "label": "Tinggalkan komentar",
+        "description": "Bagikan pendapat Anda tentang video ini"
       },
       "personChat": {
         "label": "Bicara dengan seseorang",
-        "description": "Talk with someone now"
+        "description": "Bicara dengan seseorang sekarang"
       }
     }
   },
   "ShareModal": {
-    "dialogTitle": "Share video",
+    "dialogTitle": "Bagikan video",
     "heading": "Bagikan video ini",
-    "posterAlt": "Video poster",
-    "shareOnFacebook": "Share on Facebook",
-    "shareOnFacebookUnavailable": "Share on Facebook (unavailable on this build)",
-    "shareOnX": "Share on X",
-    "shareOnXUnavailable": "Share on X (unavailable on this build)",
-    "shareDisabledHint": "Sharing requires a deployed page — works once this video is in production.",
-    "shareFormat": "Share format",
+    "posterAlt": "Poster video",
+    "shareOnFacebook": "Bagikan di Facebook",
+    "shareOnFacebookUnavailable": "Bagikan di Facebook (tidak tersedia pada build ini)",
+    "shareOnX": "Bagikan di X",
+    "shareOnXUnavailable": "Bagikan di X (tidak tersedia pada build ini)",
+    "shareDisabledHint": "Berbagi memerlukan halaman yang sudah dipublikasikan — akan berfungsi setelah video ini berada di produksi.",
+    "shareFormat": "Format berbagi",
     "shareLinkTab": "Bagikan tautan",
-    "embedCodeTab": "Kode Sematan",
-    "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
+    "embedCodeTab": "Kode sematan",
+    "copyFailed": "Tidak dapat menyalin otomatis — pilih teks di bawah lalu salin secara manual.",
     "copyLink": "Salin tautan",
     "copyCode": "Salin kode",
-    "copied": "Copied",
+    "copied": "Tersalin",
     "close": "Tutup"
   },
   "SubtitleTranscript": {
-    "heading": "Transcript",
-    "subheading": "Tap any line to jump to that moment.",
-    "subtitleLanguage": "Subtitle language",
-    "aiSuffix": " · AI",
-    "loading": "Loading transcript…",
-    "unavailable": "Transcript unavailable for this subtitle track.",
-    "empty": "No transcript lines found."
+    "heading": "Transkrip",
+    "subheading": "Ketuk baris mana pun untuk melompat ke momen itu.",
+    "subtitleLanguage": "Bahasa teks",
+    "aiSuffix": " · Kecerdasan buatan",
+    "loading": "Memuat transkrip…",
+    "unavailable": "Transkrip tidak tersedia untuk trek teks ini.",
+    "empty": "Tidak ada baris transkrip ditemukan."
   }
 }

@@ -56,7 +56,7 @@
     "pause": "Pausar",
     "seek": "Buscar",
     "seekValue": "{current} de {total}",
-    "volume": "Volume",
+    "volume": "Nível de som",
     "volumeValue": "{percent} por cento",
     "mute": "Silenciar",
     "unmute": "Ativar som",

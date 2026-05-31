@@ -1,39 +1,39 @@
 {
   "ExperienceError": {
-    "empty": "No experience content available.",
-    "failedToLoad": "Failed to load experience: {message}",
-    "unexpected": "An unexpected error occurred.",
-    "notConfigured": "Content service is not configured.",
-    "noContent": "No content is available.",
-    "homepageMisconfigured": "The watch homepage is misconfigured.",
-    "defaultTemplateMisconfigured": "The default watch template is misconfigured.",
-    "authFailed": "Unable to authenticate with the content service. Please contact support if this persists."
+    "empty": "ไม่มีเนื้อหาให้ใช้งาน",
+    "failedToLoad": "โหลดหน้าไม่สำเร็จ: {message}",
+    "unexpected": "เกิดข้อผิดพลาดที่ไม่คาดคิด",
+    "notConfigured": "ยังไม่ได้ตั้งค่าบริการเนื้อหา",
+    "noContent": "ไม่มีเนื้อหาให้ใช้งาน",
+    "homepageMisconfigured": "หน้าแรกของ Watch ตั้งค่าไม่ถูกต้อง",
+    "defaultTemplateMisconfigured": "เทมเพลต Watch เริ่มต้นตั้งค่าไม่ถูกต้อง",
+    "authFailed": "ไม่สามารถเชื่อมต่อกับบริการเนื้อหาได้ หากปัญหายังคงอยู่ โปรดติดต่อฝ่ายสนับสนุน"
   },
   "VideosPage": {
-    "title": "All Videos",
-    "placeholder": "Catalog browsing is coming. In the meantime use search or a topic-specific URL."
+    "title": "วิดีโอทั้งหมด",
+    "placeholder": "การเรียกดูแคตตาล็อกจะพร้อมใช้งานเร็ว ๆ นี้ ระหว่างนี้ให้ใช้การค้นหาหรือ URL เฉพาะหัวข้อ"
   },
   "BibleQuotes": {
-    "title": "คำคมจากพระคัมภีร์",
+    "title": "ข้อพระคัมภีร์",
     "share": "แชร์",
     "readMore": "อ่านเพิ่มเติม...",
-    "learnMore": "Learn more",
-    "freeResources": "ทรัพยากรฟรี",
-    "promoHeading": "ต้องการที่จะเข้าใจพระคัมภีร์อย่างลึกซึ้งหรือไม่?",
-    "joinBibleStudy": "เข้าร่วมการศึกษาพระคัมภีร์ของเรา",
-    "previousQuote": "Previous Bible quote",
-    "nextQuote": "Next Bible quote"
+    "learnMore": "เรียนรู้เพิ่มเติม",
+    "freeResources": "สื่อฟรี",
+    "promoHeading": "อยากเข้าใจพระคัมภีร์ให้ลึกซึ้งขึ้นไหม?",
+    "joinBibleStudy": "เข้าร่วมการศึกษาพระคัมภีร์",
+    "previousQuote": "ข้อพระคัมภีร์ก่อนหน้า",
+    "nextQuote": "ข้อพระคัมภีร์ถัดไป"
   },
   "DownloadButton": {
-    "checking": "Checking",
+    "checking": "กำลังตรวจสอบ",
     "download": "ดาวน์โหลด",
-    "sessionError": "Unable to check your session. Please try again."
+    "sessionError": "ไม่สามารถตรวจสอบเซสชันของคุณได้ โปรดลองอีกครั้ง"
   },
   "DownloadModal": {
     "dialogTitle": "ดาวน์โหลดวิดีโอ",
     "eyebrow": "ดาวน์โหลดวิดีโอ",
-    "posterAlt": "Video poster",
-    "noDownloads": "ไม่มีไฟล์ให้ดาวน์โหลดสำหรับวิดีโอนี้",
+    "posterAlt": "โปสเตอร์วิดีโอ",
+    "noDownloads": "ไม่มีไฟล์ดาวน์โหลดสำหรับวิดีโอนี้",
     "fileSizeLabel": "เลือกขนาดไฟล์",
     "termsAgreementPrefix": "ฉันยอมรับ",
     "termsOfUse": "ข้อกำหนดการใช้งาน",
@@ -44,50 +44,50 @@
     "closeTermsOfUse": "ปิดข้อกำหนดการใช้งาน",
     "cancel": "ยกเลิก",
     "accept": "ยอมรับ",
-    "errorSessionExpired": "Your session expired. Sign in again to download.",
-    "errorSessionUnavailable": "Unable to check your session. Please try again.",
-    "errorUnavailableSource": "Download unavailable from this source",
+    "errorSessionExpired": "เซสชันของคุณหมดอายุแล้ว ลงชื่อเข้าใช้อีกครั้งเพื่อดาวน์โหลด",
+    "errorSessionUnavailable": "ไม่สามารถตรวจสอบเซสชันของคุณได้ โปรดลองอีกครั้ง",
+    "errorUnavailableSource": "ไม่สามารถดาวน์โหลดจากแหล่งนี้ได้",
     "tierHighest": "สูงสุด",
     "tierHigh": "สูง",
     "tierLow": "ต่ำ"
   },
   "HeroPlayerControls": {
     "play": "เล่น",
-    "pause": "Pause",
-    "seek": "Seek",
-    "seekValue": "{current} of {total}",
-    "volume": "Volume",
-    "volumeValue": "{percent} percent",
+    "pause": "หยุดชั่วคราว",
+    "seek": "เลื่อนตำแหน่ง",
+    "seekValue": "{current} จาก {total}",
+    "volume": "ระดับเสียง",
+    "volumeValue": "{percent} เปอร์เซ็นต์",
     "mute": "ปิดเสียง",
     "unmute": "เปิดเสียง",
-    "changeAudioLanguage": "Change audio language",
-    "enterFullscreen": "Enter fullscreen",
-    "exitFullscreen": "Exit fullscreen"
+    "changeAudioLanguage": "เปลี่ยนภาษาเสียง",
+    "enterFullscreen": "เข้าสู่เต็มหน้าจอ",
+    "exitFullscreen": "ออกจากเต็มหน้าจอ"
   },
   "LanguageCombobox": {
-    "selectLanguage": "Select language",
-    "searchPlaceholder": "ค้นหาภาษา...",
+    "selectLanguage": "เลือกภาษา",
+    "searchPlaceholder": "ค้นหาภาษา…",
     "languages": "ภาษา",
-    "noMatches": "ไม่พบภาษา"
+    "noMatches": "ไม่พบผลลัพธ์ที่ตรงกัน"
   },
   "LanguagePickerModal": {
     "dialogTitle": "ภาษา",
-    "dialogTitleWithSubtitles": "Language & Subtitles",
+    "dialogTitleWithSubtitles": "ภาษาและคำบรรยาย",
     "languageHeading": "ภาษา",
     "subtitlesHeading": "คำบรรยาย",
-    "languageCount": "{count, plural, one {# language} other {# languages}}",
-    "requestSent": "Request sent",
-    "translateWithAi": "Translate with AI",
-    "noSubtitles": "No subtitles",
-    "toggleOn": "On",
-    "toggleOff": "Off",
+    "languageCount": "{count, plural, one {# ภาษา} other {# ภาษา}}",
+    "requestSent": "ส่งคำขอแล้ว",
+    "translateWithAi": "แปลด้วย AI",
+    "noSubtitles": "ไม่มีคำบรรยาย",
+    "toggleOn": "เปิด",
+    "toggleOff": "ปิด",
     "close": "ปิด",
     "apply": "ใช้"
   },
   "SeriesPage": {
-    "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
-    "seriesLabel": "SERIES · {episodes}",
-    "changeAudioLanguage": "Change audio language",
+    "episodeCount": "{count, plural, one {# ตอน} other {# ตอน}}",
+    "seriesLabel": "ซีรีส์ · {episodes}",
+    "changeAudioLanguage": "เปลี่ยนภาษาเสียง",
     "share": "แชร์",
     "languages": "ภาษา"
   },
@@ -95,62 +95,62 @@
     "close": "ปิด"
   },
   "WatchStudyQuestions": {
-    "placeholderQuestion": "หากคุณสามารถถามผู้สร้างวิดีโอนี้ได้หนึ่งคำถาม คุณจะถามอะไร?",
-    "fallbackBody": "เริ่มบทสนทนาส่วนตัวกับคนที่พร้อมรับฟัง",
-    "questionsShort": "Questions",
+    "placeholderQuestion": "ถ้าคุณถามผู้สร้างวิดีโอนี้ได้หนึ่งคำถาม คุณจะถามอะไร?",
+    "fallbackBody": "เริ่มการสนทนาส่วนตัวกับคนที่พร้อมรับฟัง",
+    "questionsShort": "คำถาม",
     "questions": "คำถามที่เกี่ยวข้อง",
     "askYours": "ถามคำถามของคุณ",
     "chatWithPerson": "คุยกับคนจริง",
     "askBibleQuestion": "ถามคำถามเกี่ยวกับพระคัมภีร์"
   },
   "WatchQuestionPanel": {
-    "messageType": "Message type",
-    "fieldLabel": "Ask a question about this video",
-    "send": "Send question",
+    "messageType": "ประเภทข้อความ",
+    "fieldLabel": "ถามคำถามเกี่ยวกับวิดีโอนี้",
+    "send": "ส่งคำถาม",
     "prompts": {
       "bibleQuestion": {
         "label": "ถามคำถามเกี่ยวกับพระคัมภีร์",
-        "description": "Instant answers from the Bible using AI search"
+        "description": "รับคำตอบทันทีจากพระคัมภีร์ด้วยการค้นหา AI"
       },
       "prayerRequest": {
-        "label": "Request a prayer",
-        "description": "Share what you want prayer for"
+        "label": "ขอคำอธิษฐาน",
+        "description": "แบ่งปันสิ่งที่คุณอยากให้ช่วยอธิษฐาน"
       },
       "comment": {
-        "label": "Leave a comment",
-        "description": "Send thoughts about this video"
+        "label": "แสดงความคิดเห็น",
+        "description": "ส่งความคิดของคุณเกี่ยวกับวิดีโอนี้"
       },
       "personChat": {
         "label": "คุยกับคนจริง",
-        "description": "Talk with someone now"
+        "description": "คุยกับใครสักคนตอนนี้"
       }
     }
   },
   "ShareModal": {
-    "dialogTitle": "Share video",
+    "dialogTitle": "แชร์วิดีโอ",
     "heading": "แชร์วิดีโอนี้",
-    "posterAlt": "Video poster",
-    "shareOnFacebook": "Share on Facebook",
-    "shareOnFacebookUnavailable": "Share on Facebook (unavailable on this build)",
-    "shareOnX": "Share on X",
-    "shareOnXUnavailable": "Share on X (unavailable on this build)",
-    "shareDisabledHint": "Sharing requires a deployed page — works once this video is in production.",
-    "shareFormat": "Share format",
-    "shareLinkTab": "แชร์ลิงก์",
-    "embedCodeTab": "รหัสฝัง",
-    "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
+    "posterAlt": "โปสเตอร์วิดีโอ",
+    "shareOnFacebook": "แชร์บน Facebook",
+    "shareOnFacebookUnavailable": "แชร์บน Facebook (ไม่พร้อมใช้งานในบิลด์นี้)",
+    "shareOnX": "แชร์บน X",
+    "shareOnXUnavailable": "แชร์บน X (ไม่พร้อมใช้งานในบิลด์นี้)",
+    "shareDisabledHint": "การแชร์ต้องใช้หน้าที่เผยแพร่แล้ว — จะใช้งานได้เมื่อวิดีโอนี้อยู่ในโปรดักชัน",
+    "shareFormat": "รูปแบบการแชร์",
+    "shareLinkTab": "ลิงก์แชร์",
+    "embedCodeTab": "โค้ดฝัง",
+    "copyFailed": "ไม่สามารถคัดลอกอัตโนมัติได้ — เลือกข้อความด้านล่างแล้วคัดลอกด้วยตนเอง",
     "copyLink": "คัดลอกลิงก์",
     "copyCode": "คัดลอกโค้ด",
-    "copied": "Copied",
+    "copied": "คัดลอกแล้ว",
     "close": "ปิด"
   },
   "SubtitleTranscript": {
-    "heading": "Transcript",
-    "subheading": "Tap any line to jump to that moment.",
-    "subtitleLanguage": "Subtitle language",
-    "aiSuffix": " · AI",
-    "loading": "Loading transcript…",
-    "unavailable": "Transcript unavailable for this subtitle track.",
-    "empty": "No transcript lines found."
+    "heading": "ถอดเสียง",
+    "subheading": "แตะบรรทัดใดก็ได้เพื่อข้ามไปยังช่วงเวลานั้น",
+    "subtitleLanguage": "ภาษาคำบรรยาย",
+    "aiSuffix": " · เอไอ",
+    "loading": "กำลังโหลดถอดเสียง…",
+    "unavailable": "ไม่มีถอดเสียงสำหรับแทร็กคำบรรยายนี้",
+    "empty": "ไม่พบบรรทัดถอดเสียง"
   }
 }

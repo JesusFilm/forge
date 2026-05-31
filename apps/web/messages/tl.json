@@ -1,156 +1,156 @@
 {
   "ExperienceError": {
-    "empty": "No experience content available.",
-    "failedToLoad": "Failed to load experience: {message}",
-    "unexpected": "An unexpected error occurred.",
-    "notConfigured": "Content service is not configured.",
-    "noContent": "No content is available.",
-    "homepageMisconfigured": "The watch homepage is misconfigured.",
-    "defaultTemplateMisconfigured": "The default watch template is misconfigured.",
-    "authFailed": "Unable to authenticate with the content service. Please contact support if this persists."
+    "empty": "Walang available na content.",
+    "failedToLoad": "Hindi na-load ang page: {message}",
+    "unexpected": "May hindi inaasahang error.",
+    "notConfigured": "Hindi naka-configure ang content service.",
+    "noContent": "Walang available na content.",
+    "homepageMisconfigured": "Mali ang configuration ng Watch homepage.",
+    "defaultTemplateMisconfigured": "Mali ang configuration ng default na Watch template.",
+    "authFailed": "Hindi makakonekta sa content service. Makipag-ugnayan sa support kung magpapatuloy ito."
   },
   "VideosPage": {
-    "title": "All Videos",
-    "placeholder": "Catalog browsing is coming. In the meantime use search or a topic-specific URL."
+    "title": "Lahat ng video",
+    "placeholder": "Malapit nang maging available ang pag-browse sa catalog. Sa ngayon, gamitin ang paghahanap o URL na partikular sa paksa."
   },
   "BibleQuotes": {
-    "title": "Mga Quote sa Bibliya",
-    "share": "Share",
+    "title": "Mga talata sa Bibliya",
+    "share": "Ibahagi",
     "readMore": "Magbasa pa...",
-    "learnMore": "Learn more",
-    "freeResources": "Libreng Mapagkukunan",
-    "promoHeading": "Gusto mo bang lumalim ang iyong pag-unawa sa Bibliya?",
-    "joinBibleStudy": "Sumali sa Aming Pag-aaral ng Bibliya",
-    "previousQuote": "Previous Bible quote",
-    "nextQuote": "Next Bible quote"
+    "learnMore": "Matuto pa",
+    "freeResources": "Libreng materyales",
+    "promoHeading": "Gusto mo bang mas malalim na maunawaan ang Bibliya?",
+    "joinBibleStudy": "Sumali sa pag-aaral ng Bibliya",
+    "previousQuote": "Nakaraang talata sa Bibliya",
+    "nextQuote": "Susunod na talata sa Bibliya"
   },
   "DownloadButton": {
-    "checking": "Checking",
+    "checking": "Tinitingnan",
     "download": "I-download",
-    "sessionError": "Unable to check your session. Please try again."
+    "sessionError": "Hindi masuri ang iyong session. Subukan muli."
   },
   "DownloadModal": {
-    "dialogTitle": "I-download ang Video",
-    "eyebrow": "I-download ang Video",
-    "posterAlt": "Video poster",
-    "noDownloads": "Walang mada-download para sa video na ito.",
+    "dialogTitle": "I-download ang video",
+    "eyebrow": "I-download ang video",
+    "posterAlt": "Poster ng video",
+    "noDownloads": "Walang download na available para sa video na ito.",
     "fileSizeLabel": "Pumili ng laki ng file",
     "termsAgreementPrefix": "Sumasang-ayon ako sa ",
-    "termsOfUse": "Mga Tuntunin sa Paggamit",
+    "termsOfUse": "Mga Tuntunin ng Paggamit",
     "termsAgreementSuffix": "",
     "close": "Isara",
     "download": "I-download",
     "checking": "Tinitingnan",
-    "closeTermsOfUse": "Isara ang Mga Tuntunin sa Paggamit",
+    "closeTermsOfUse": "Isara ang Mga Tuntunin ng Paggamit",
     "cancel": "Kanselahin",
     "accept": "Tanggapin",
-    "errorSessionExpired": "Your session expired. Sign in again to download.",
-    "errorSessionUnavailable": "Unable to check your session. Please try again.",
-    "errorUnavailableSource": "Download unavailable from this source",
+    "errorSessionExpired": "Nag-expire ang iyong session. Mag-sign in muli para mag-download.",
+    "errorSessionUnavailable": "Hindi masuri ang iyong session. Subukan muli.",
+    "errorUnavailableSource": "Hindi available ang download mula sa source na ito",
     "tierHighest": "Pinakamataas",
     "tierHigh": "Mataas",
     "tierLow": "Mababa"
   },
   "HeroPlayerControls": {
     "play": "I-play",
-    "pause": "Pause",
-    "seek": "Seek",
-    "seekValue": "{current} of {total}",
-    "volume": "Volume",
-    "volumeValue": "{percent} percent",
-    "mute": "Mute",
-    "unmute": "Unmute",
-    "changeAudioLanguage": "Change audio language",
-    "enterFullscreen": "Enter fullscreen",
-    "exitFullscreen": "Exit fullscreen"
+    "pause": "I-pause",
+    "seek": "Hanapin",
+    "seekValue": "{current} ng {total}",
+    "volume": "Lakas ng tunog",
+    "volumeValue": "{percent} porsyento",
+    "mute": "I-mute",
+    "unmute": "I-unmute",
+    "changeAudioLanguage": "Palitan ang wika ng audio",
+    "enterFullscreen": "I-fullscreen",
+    "exitFullscreen": "Lumabas sa fullscreen"
   },
   "LanguageCombobox": {
-    "selectLanguage": "Select language",
-    "searchPlaceholder": "Search languages…",
-    "languages": "Mga Wika",
-    "noMatches": "No matches"
+    "selectLanguage": "Pumili ng wika",
+    "searchPlaceholder": "Maghanap ng mga wika…",
+    "languages": "Mga wika",
+    "noMatches": "Walang tugma"
   },
   "LanguagePickerModal": {
-    "dialogTitle": "Language",
-    "dialogTitleWithSubtitles": "Language & Subtitles",
-    "languageHeading": "Language",
-    "subtitlesHeading": "Mga Subtitle",
-    "languageCount": "{count, plural, one {# language} other {# languages}}",
-    "requestSent": "Request sent",
-    "translateWithAi": "Translate with AI",
-    "noSubtitles": "No subtitles",
-    "toggleOn": "On",
-    "toggleOff": "Off",
-    "close": "Close",
+    "dialogTitle": "Wika",
+    "dialogTitleWithSubtitles": "Wika at subtitle",
+    "languageHeading": "Wika",
+    "subtitlesHeading": "Mga subtitle",
+    "languageCount": "{count, plural, one {# wika} other {# wika}}",
+    "requestSent": "Naipadala ang request",
+    "translateWithAi": "Isalin gamit ang AI",
+    "noSubtitles": "Walang subtitle",
+    "toggleOn": "Naka-on",
+    "toggleOff": "Naka-off",
+    "close": "Isara",
     "apply": "Ilapat"
   },
   "SeriesPage": {
-    "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
-    "seriesLabel": "SERIES · {episodes}",
-    "changeAudioLanguage": "Change audio language",
-    "share": "Share",
-    "languages": "Mga Wika"
+    "episodeCount": "{count, plural, one {# EPISODE} other {# EPISODE}}",
+    "seriesLabel": "SERYE · {episodes}",
+    "changeAudioLanguage": "Palitan ang wika ng audio",
+    "share": "Ibahagi",
+    "languages": "Mga wika"
   },
   "WatchModal": {
-    "close": "Close"
+    "close": "Isara"
   },
   "WatchStudyQuestions": {
-    "placeholderQuestion": "Kung maaari mong itanong sa gumawa ng video na ito ang isang tanong, ano ito?",
-    "fallbackBody": "Magkaroon ng pribadong pag-uusap sa isang taong handang makinig.",
-    "questionsShort": "Questions",
+    "placeholderQuestion": "Kung makakapagtanong ka ng isang tanong sa gumawa ng video na ito, ano iyon?",
+    "fallbackBody": "Magsimula ng pribadong usapan sa taong handang makinig.",
+    "questionsShort": "Mga tanong",
     "questions": "Mga kaugnay na tanong",
-    "askYours": "Magtanong",
-    "chatWithPerson": "Makipag-usap sa isang tao",
+    "askYours": "Itanong ang tanong mo",
+    "chatWithPerson": "Makipag-usap sa tao",
     "askBibleQuestion": "Magtanong tungkol sa Bibliya"
   },
   "WatchQuestionPanel": {
-    "messageType": "Message type",
-    "fieldLabel": "Ask a question about this video",
-    "send": "Send question",
+    "messageType": "Uri ng mensahe",
+    "fieldLabel": "Magtanong tungkol sa video na ito",
+    "send": "Ipadala ang tanong",
     "prompts": {
       "bibleQuestion": {
         "label": "Magtanong tungkol sa Bibliya",
-        "description": "Instant answers from the Bible using AI search"
+        "description": "Agarang sagot mula sa Bibliya gamit ang AI search"
       },
       "prayerRequest": {
-        "label": "Request a prayer",
-        "description": "Share what you want prayer for"
+        "label": "Humiling ng panalangin",
+        "description": "Ibahagi kung ano ang gusto mong ipagdasal"
       },
       "comment": {
-        "label": "Leave a comment",
-        "description": "Send thoughts about this video"
+        "label": "Mag-iwan ng komento",
+        "description": "Ipadala ang iyong saloobin tungkol sa video na ito"
       },
       "personChat": {
-        "label": "Makipag-usap sa isang tao",
-        "description": "Talk with someone now"
+        "label": "Makipag-usap sa tao",
+        "description": "Makipag-usap sa isang tao ngayon"
       }
     }
   },
   "ShareModal": {
-    "dialogTitle": "Share video",
+    "dialogTitle": "Ibahagi ang video",
     "heading": "Ibahagi ang video na ito",
-    "posterAlt": "Video poster",
-    "shareOnFacebook": "Share on Facebook",
-    "shareOnFacebookUnavailable": "Share on Facebook (unavailable on this build)",
-    "shareOnX": "Share on X",
-    "shareOnXUnavailable": "Share on X (unavailable on this build)",
-    "shareDisabledHint": "Sharing requires a deployed page — works once this video is in production.",
-    "shareFormat": "Share format",
-    "shareLinkTab": "Ibahagi ang Link",
-    "embedCodeTab": "Embed na Code",
-    "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
-    "copyLink": "Copy Link",
-    "copyCode": "Kopyahin ang Code",
-    "copied": "Copied",
-    "close": "Close"
+    "posterAlt": "Poster ng video",
+    "shareOnFacebook": "Ibahagi sa Facebook",
+    "shareOnFacebookUnavailable": "Ibahagi sa Facebook (hindi available sa build na ito)",
+    "shareOnX": "Ibahagi sa X",
+    "shareOnXUnavailable": "Ibahagi sa X (hindi available sa build na ito)",
+    "shareDisabledHint": "Kailangan ng published page para makapagbahagi — gagana ito kapag nasa production na ang video.",
+    "shareFormat": "Format ng pagbabahagi",
+    "shareLinkTab": "Link sa pagbabahagi",
+    "embedCodeTab": "Embed code",
+    "copyFailed": "Hindi awtomatikong makopya — piliin ang text sa ibaba at kopyahin nang manual.",
+    "copyLink": "Kopyahin ang link",
+    "copyCode": "Kopyahin ang code",
+    "copied": "Nakopya",
+    "close": "Isara"
   },
   "SubtitleTranscript": {
-    "heading": "Transcript",
-    "subheading": "Tap any line to jump to that moment.",
-    "subtitleLanguage": "Subtitle language",
-    "aiSuffix": " · AI",
-    "loading": "Loading transcript…",
-    "unavailable": "Transcript unavailable for this subtitle track.",
-    "empty": "No transcript lines found."
+    "heading": "Transkripsyon",
+    "subheading": "I-tap ang anumang linya para tumalon sa sandaling iyon.",
+    "subtitleLanguage": "Wika ng subtitle",
+    "aiSuffix": " · artipisyal na intelihensiya",
+    "loading": "Nilo-load ang transcript…",
+    "unavailable": "Hindi available ang transcript para sa subtitle track na ito.",
+    "empty": "Walang nahanap na linya ng transcript."
   }
 }

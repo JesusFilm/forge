@@ -53,7 +53,7 @@
   },
   "HeroPlayerControls": {
     "play": "Abspielen",
-    "pause": "Pause",
+    "pause": "Pausieren",
     "seek": "Suchen",
     "seekValue": "{current} von {total}",
     "volume": "Lautstärke",

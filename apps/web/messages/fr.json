@@ -53,10 +53,10 @@
   },
   "HeroPlayerControls": {
     "play": "Lire",
-    "pause": "Pause",
+    "pause": "Mettre en pause",
     "seek": "Rechercher",
     "seekValue": "{current} sur {total}",
-    "volume": "Volume",
+    "volume": "Niveau sonore",
     "volumeValue": "{percent} pour cent",
     "mute": "Couper le son",
     "unmute": "Activer le son",
@@ -97,7 +97,7 @@
   "WatchStudyQuestions": {
     "placeholderQuestion": "Si vous pouviez poser une question au créateur de cette vidéo, quelle serait-elle ?",
     "fallbackBody": "Ayez une discussion privée avec quelqu'un prêt à écouter.",
-    "questionsShort": "Questions",
+    "questionsShort": "Questions utiles",
     "questions": "Questions connexes",
     "askYours": "Posez votre question",
     "chatWithPerson": "Parler avec quelqu’un",
