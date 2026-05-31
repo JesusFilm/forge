@@ -59,9 +59,9 @@ describe("emitRevalidateWebhook", () => {
     fetchSpy.mockResolvedValueOnce(new Response(null, { status: 200 }))
 
     await emitRevalidateWebhook({
-      model: "watch-setting",
+      model: "watch-route-manifest",
       slug: null,
-      locale: "en",
+      locale: null,
     })
 
     const [, init] = fetchSpy.mock.calls[0]
@@ -70,8 +70,8 @@ describe("emitRevalidateWebhook", () => {
       entry: Record<string, unknown>
     }
     expect(body).toEqual({
-      model: "watch-setting",
-      entry: { locale: "en" },
+      model: "watch-route-manifest",
+      entry: {},
     })
   })
 

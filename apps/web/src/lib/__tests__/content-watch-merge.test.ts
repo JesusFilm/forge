@@ -23,6 +23,7 @@ function makeChild(documentId: string, slug: string, title: string) {
     title,
     label: null,
     images: [{ url: `https://cdn.example/${slug}.jpg` }],
+    durationSeconds: null,
   }
 }
 
@@ -81,6 +82,7 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
     // builder falls back to canonicalParent.children — matching the existing
     // tests' assumption that the carousel is fed from sibling content.
     children: [],
+    childDubLanguages: [],
     variants: [],
     subtitles: [],
     studyQuestions: [],

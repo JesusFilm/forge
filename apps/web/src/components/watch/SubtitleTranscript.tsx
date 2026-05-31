@@ -141,6 +141,14 @@ function pickInitialSubtitleSlug(
   return subtitles[0]!.language.slug
 }
 
+export function filterTranscriptSubtitlesForAudio(
+  subtitles: WatchSubtitle[],
+  audioSlug: string | null | undefined,
+): WatchSubtitle[] {
+  if (!audioSlug) return subtitles
+  return subtitles.filter((s) => s.language.slug === audioSlug)
+}
+
 type SubtitleTranscriptProps = {
   subtitles: WatchSubtitle[]
   playerRef: RefObject<MuxPlayerRef | null>
@@ -161,20 +169,28 @@ export function SubtitleTranscript({
   durationSeconds,
 }: SubtitleTranscriptProps) {
   const t = useTranslations("SubtitleTranscript")
-  const initialSlug = useMemo(
-    () => pickInitialSubtitleSlug(subtitles, audioSlug ?? null),
+  const transcriptSubtitles = useMemo(
+    () => filterTranscriptSubtitlesForAudio(subtitles, audioSlug),
     [subtitles, audioSlug],
   )
+  const initialSlug = useMemo(
+    () => pickInitialSubtitleSlug(transcriptSubtitles, audioSlug ?? null),
+    [transcriptSubtitles, audioSlug],
+  )
   const [selectedSlug, setSelectedSlug] = useState<string | null>(initialSlug)
+
+  useEffect(() => {
+    setSelectedSlug(initialSlug)
+  }, [initialSlug])
 
   const activeSubtitle = useMemo(() => {
     if (!selectedSlug) return null
     return (
-      subtitles.find((s) => s.language.slug === selectedSlug) ??
-      subtitles[0] ??
+      transcriptSubtitles.find((s) => s.language.slug === selectedSlug) ??
+      transcriptSubtitles[0] ??
       null
     )
-  }, [selectedSlug, subtitles])
+  }, [selectedSlug, transcriptSubtitles])
 
   const [loaded, setLoaded] = useState<{
     vttSrc: string
@@ -305,7 +321,7 @@ export function SubtitleTranscript({
     [playerRef],
   )
 
-  if (subtitles.length === 0) return null
+  if (transcriptSubtitles.length === 0) return null
 
   const languageLabel = (s: WatchSubtitle) =>
     s.language.nativeName && s.language.nativeName !== s.language.name
@@ -331,7 +347,7 @@ export function SubtitleTranscript({
               <p className="mt-1 text-sm text-stone-400">{t("subheading")}</p>
             </div>
             <div className="flex items-center gap-3">
-              {subtitles.length > 1 ? (
+              {transcriptSubtitles.length > 1 ? (
                 <label className="flex items-center gap-2 text-sm text-stone-300">
                   <span className="sr-only">{t("subtitleLanguage")}</span>
                   <select
@@ -340,7 +356,7 @@ export function SubtitleTranscript({
                     onChange={(e) => setSelectedSlug(e.target.value)}
                     className={`appearance-none rounded-full bg-stone-900/80 px-4 py-2 text-sm font-medium text-stone-100 ${GLASS_OUTLINE_CLASS} focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2`}
                   >
-                    {subtitles.map((s) => (
+                    {transcriptSubtitles.map((s) => (
                       <option key={s.documentId} value={s.language.slug}>
                         {languageLabel(s)}
                         {s.aiGenerated ? t("aiSuffix") : ""}

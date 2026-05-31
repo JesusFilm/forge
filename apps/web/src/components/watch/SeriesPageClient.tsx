@@ -23,9 +23,16 @@ import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
-import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import { resolvePosterUrl } from "@/lib/url"
+
+// Non-null `hls` marker for the synthesized LanguagePickerVariant entries.
+// `series.childDubLanguages` is server-guaranteed playable but ships no
+// stream URL; the shared LanguagePickerModal filters its input through
+// isPlayableLanguageVariant (which checks `hls != null`), so a non-null
+// placeholder satisfies the gate. The modal never reads the value — it
+// navigates by language slug — so the real URL is intentionally elided.
+const SERVER_GUARANTEED_PLAYABLE = "server-guaranteed-playable"
 
 // Narrowed from WatchModalState ("none" | "download" | "language" | "share")
 // because the series page never offers downloads (R-scope: no series-level
@@ -82,20 +89,27 @@ export function SeriesPageClient({
   const description = series.description ?? series.snippet ?? null
   const posterUrl = resolvePosterUrl(series.images?.[0], null)
 
-  // Single traversal of every child episode's variants, deduped by
-  // language slug. Series records have no variants of their own —
-  // variants live on each individual episode — so a language that
-  // appears across all 13 episodes still surfaces once.
+  // `series.childDubLanguages` is the distinct dub-language union across all
+  // episodes, aggregated + deduped server-side (DISTINCT ON) and guaranteed
+  // playable — so it carries only display fields {slug, name, bcp47}, never
+  // each episode's full dub list (the ~45 MB payload that broke
+  // unstable_cache). We re-dedupe by slug here purely as a belt-and-braces
+  // guard.
   //
-  // Three downstream consumers all need a per-language projection of
-  // the same variants, so build them in one pass keyed by slug:
+  // Three downstream consumers all need a per-language projection, built in
+  // one pass keyed by slug:
   //  - languageOptions — the inline LanguageCombobox feed (sorted A→Z
   //    by English form via deriveLanguageDisplay).
   //  - slugByBcp47 — URL locale resolution: accept either bcp47 ("en")
   //    OR slug-form ("english") and map back to the combobox option.
-  //  - variantsForLanguagePicker — the LanguagePickerModal feed, one
-  //    representative variant per language (the modal does its own
-  //    deriveLanguageDisplay sort).
+  //  - variantsForLanguagePicker — the LanguagePickerModal feed. The modal
+  //    filters its input through isPlayableLanguageVariant (it also serves
+  //    the watch page, which passes unfiltered variants). These entries are
+  //    already server-guaranteed playable but carry no dub fields, so we
+  //    synthesize the shape that filter checks: `published: true` (the server
+  //    only returns published dubs) and a non-null `hls` marker. The modal
+  //    reads only hls's PRESENCE, never its value — it navigates by slug —
+  //    so eliding the real stream URL here is safe.
   const { languageOptions, slugByBcp47, variantsForLanguagePicker } =
     useMemo(() => {
       const bySlug = new Map<
@@ -106,34 +120,30 @@ export function SeriesPageClient({
         }
       >()
       const bcp47Map = new Map<string, string>()
-      for (const child of series.children ?? []) {
-        if (!child) continue
-        for (const variant of child.variants ?? []) {
-          if (!variant) continue
-          if (!isPlayableLanguageVariant(variant)) continue
-          const slug = variant.language.slug
-          const bcp47 = variant.language.bcp47 ?? null
-          if (bcp47 && !bcp47Map.has(bcp47.toLowerCase())) {
-            bcp47Map.set(bcp47.toLowerCase(), slug)
-          }
-          if (bySlug.has(slug)) continue
-          bySlug.set(slug, {
-            display: {
-              ...deriveLanguageDisplay(slug, variant.language.name),
-              bcp47,
-            },
-            variant: {
-              documentId: variant.documentId,
-              hls: variant.hls,
-              published: variant.published,
-              language: {
-                bcp47: variant.language.bcp47,
-                slug: variant.language.slug,
-                name: variant.language.name,
-              },
-            },
-          })
+      for (const language of series.childDubLanguages ?? []) {
+        if (!language?.slug) continue
+        const slug = language.slug
+        const bcp47 = language.bcp47 ?? null
+        if (bcp47 && !bcp47Map.has(bcp47.toLowerCase())) {
+          bcp47Map.set(bcp47.toLowerCase(), slug)
         }
+        if (bySlug.has(slug)) continue
+        bySlug.set(slug, {
+          display: {
+            ...deriveLanguageDisplay(slug, language.name),
+            bcp47,
+          },
+          variant: {
+            documentId: slug,
+            published: true,
+            hls: SERVER_GUARANTEED_PLAYABLE,
+            language: {
+              bcp47: language.bcp47,
+              slug: language.slug,
+              name: language.name,
+            },
+          },
+        })
       }
       const entries = Array.from(bySlug.values())
       return {
@@ -143,7 +153,7 @@ export function SeriesPageClient({
         slugByBcp47: bcp47Map,
         variantsForLanguagePicker: entries.map((e) => e.variant),
       }
-    }, [series.children])
+    }, [series.childDubLanguages])
 
   // Resolve the current language slug from the URL locale. Accept either
   // form — language-slug form ("english") OR bcp47 ("en") — since the
@@ -307,7 +317,7 @@ export function SeriesPageClient({
           as a default backdrop. SeriesPageClient no longer wraps it. */}
       <SeriesEpisodesGrid
         episodes={episodes}
-        locale={locale}
+        languageSlug={currentLanguageSlug}
         seriesPosterUrl={posterUrl}
       />
 

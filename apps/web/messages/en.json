@@ -17,6 +17,7 @@
     "title": "Bible Quotes",
     "share": "Share",
     "readMore": "Read more...",
+    "learnMore": "Learn more",
     "freeResources": "Free Resources",
     "promoHeading": "Want to grow deep in your understanding of the Bible?",
     "joinBibleStudy": "Join our Bible study",
@@ -24,13 +25,17 @@
     "nextQuote": "Next Bible quote"
   },
   "DownloadButton": {
-    "download": "Download"
+    "checking": "Checking",
+    "download": "Download",
+    "sessionError": "Unable to check your session. Please try again."
   },
   "DownloadModal": {
     "dialogTitle": "Download video",
     "eyebrow": "Download Video",
     "posterAlt": "Video poster",
     "noDownloads": "No downloads are available for this video.",
+    "errorSessionExpired": "Your session expired. Sign in again to download.",
+    "errorSessionUnavailable": "Unable to check your session. Please try again.",
     "errorUnavailableSource": "Download unavailable from this source",
     "tierHighest": "Highest",
     "tierHigh": "High",
@@ -64,6 +69,8 @@
     "requestSent": "Request sent",
     "translateWithAi": "Translate with AI",
     "noSubtitles": "No subtitles",
+    "toggleOn": "On",
+    "toggleOff": "Off",
     "close": "Close",
     "apply": "Apply"
   },

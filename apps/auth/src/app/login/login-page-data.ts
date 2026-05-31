@@ -1,5 +1,6 @@
 import { env } from "@/config/env"
 import { prisma } from "@/db/client"
+import { resolveWebWatchCallbackURL } from "@/auth/web-callback"
 
 import type { LoginErrorCode } from "@/app/login/login-page-client"
 import type { LoginProviderId } from "@/auth/login-methods"
@@ -14,6 +15,16 @@ export function isOAuthAuthorizeRequest(params: LoginSearchParams) {
   return Boolean(
     firstParam(params.client_id) && firstParam(params.redirect_uri),
   )
+}
+
+export function resolveConsumerCallbackURL(params: LoginSearchParams) {
+  return resolveWebWatchCallbackURL(firstParam(params.callbackURL))
+}
+
+export function resolveLoginFlow(
+  params: LoginSearchParams,
+): "login" | "signup" {
+  return firstParam(params.mode) === "signup" ? "signup" : "login"
 }
 
 export function parseLoginError(

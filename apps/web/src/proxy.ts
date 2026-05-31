@@ -1,73 +1,82 @@
 import { NextResponse } from "next/server"
-import { DEFAULT_LOCALE, isLocale, parseAcceptLanguage } from "@/lib/locale"
-import { WATCH_PATHNAME_HEADER } from "@/lib/proxy-headers"
+import {
+  DEFAULT_LOCALE,
+  isLocale,
+  isPublicWatchHomeLanguageSlug,
+  isPublicWatchLanguageSlug,
+  resolveUiLocale,
+  resolveWatchLocaleIdentity,
+} from "@/lib/locale"
+import { resolveLegacyWatchEpisodeAlias } from "@/lib/watch-route-aliases"
 import { canonicalizeWatchPath } from "@/lib/url-canonicalize"
 import {
+  RESERVED_PREFIXES,
   SAFE_SLUG_PATTERN,
-  getWatchLocaleSegmentIndex,
+  UNSAFE_PATH_PATTERN,
+  hasHtmlSuffix,
+  isOneSegmentCollectionSlug,
+  isUnsafeRedirectPath,
   stripHtmlSuffix,
 } from "@/lib/url-shape"
-
-// `SAFE_SLUG_PATTERN` (kebab-case ASCII, from url-shape.ts) recognises
-// slug-form watch URLs (`/jesus/english`) in isWatchRoute so the security
-// headers + WATCH_PATHNAME_HEADER are applied to both bcp47 and slug-form
-// locale segments.
+import {
+  getWatchRouteManifest,
+  isWatchRouteAdmittedByManifest,
+  type WatchRouteManifestRoute,
+} from "@/lib/watch-route-manifest"
 
 // Structural subset of `NextRequest` that `proxy()` actually consumes.
-// Declaring the precise surface (rather than the full NextRequest type)
-// (1) documents the contract, (2) lets the test fixture satisfy the
-// signature without a double-cast, and (3) prevents accidental reliance
-// on future NextRequest fields that haven't been mocked.
-//
 // Production `NextRequest` from `next/server` satisfies this shape via
-// structural subtyping — no runtime adapter needed.
+// structural subtyping; tests build this smaller object directly.
 export type ProxyRequest = {
   nextUrl: {
     readonly pathname: string
     clone: () => URL
   }
-  // Real `Headers` (not just `{ get }`) because `nextWithPathname` forwards
-  // the inbound headers via `new Headers(request.headers)` for the
-  // WATCH_PATHNAME_HEADER contract. Production `NextRequest.headers` is a
-  // `Headers`; the test fixture builds a real `Headers` too.
   headers: Headers
 }
 
-// Cache-Control emitted on every proxy-issued redirect during the cutover
-// window. Prevents Cloudflare / browser caches from pinning a 307/308 to
-// a stale legacy URL — redirects are alias normalizations (canonicalize) or
-// Accept-Language appends and must not be reused indiscriminately.
 const REDIRECT_CACHE_CONTROL = "private, max-age=0"
+const MAX_PATH_LEN = 2048
+const SAFE_PUBLIC_PATH = /^\/[A-Za-z0-9._\-/]+$/
+const DEMO_PREFIXES = new Set(["demo-search", "demo-recommendations"])
+export const WATCH_INTERNAL_REWRITE_HEADER = "x-forge-watch-internal-rewrite"
+const WATCH_INTERNAL_REWRITE_VALUE = "1"
 
-// Note: CSP / Referrer headers (applyWatchSecurityHeaders) are intentionally
-// NOT applied to redirects. Browsers ignore CSP on 3xx responses — the policy
-// attaches to the terminal 200 the redirect lands on. Don't "fix" the apparent
-// gap by wrapping buildRedirect in applyWatchSecurityHeaders.
+type InternalPrefixDecision =
+  | { kind: "none" }
+  | { kind: "redirect"; pathname: string }
+  | { kind: "not-found" }
+
+type RewriteDecision =
+  | {
+      kind: "rewrite"
+      locale: string
+      htmlLang: string
+      pathname: string
+      internalPathname?: string
+      manifestRoute?: WatchRouteManifestRoute
+    }
+  | { kind: "pass" }
+  | { kind: "not-found" }
+
+function splitPath(pathname: string): string[] {
+  return pathname.split("/").filter(Boolean)
+}
+
 function buildRedirect(url: URL, status: 307 | 308): NextResponse {
   const response = NextResponse.redirect(url, status)
   response.headers.set("Cache-Control", REDIRECT_CACHE_CONTROL)
   return response
 }
 
-// Matched after Next.js strips `basePath: '/watch'`, so a real request
-// for `/watch/foo/en` is matched here as `/foo/en`. Recognises both
-// bcp47 codes ('en', 'es') and slug-form language identifiers
-// ('english', 'spanish', 'arabic-modern-standard'), in both bare and
-// `.html`-suffix shapes (post-Phase-2 canonical):
-//   - 2-segment: /{slug}/{locale}              (legacy)
-//   - 2-segment: /{slug}.html/{locale}.html    (canonical)
-//   - 3-segment: /{series}.html/{episode}/{locale}.html (canonical episode)
-//
-// CSP headers are applied for both shapes so the watch route policy is
-// consistent across legacy + canonical traffic during cutover.
-function isWatchRoute(pathname: string): boolean {
-  const segments = pathname.split("/").filter(Boolean)
-  const localeIdx = getWatchLocaleSegmentIndex(segments)
-  if (localeIdx < 0) return false
-  const last = segments[localeIdx]
-  if (last == null) return false
-  const bare = stripHtmlSuffix(last)
-  return isLocale(bare) || SAFE_SLUG_PATTERN.test(bare)
+function buildNotFound(): NextResponse {
+  return new NextResponse(null, { status: 404 })
+}
+
+function redirectDeprecatedSearch(request: ProxyRequest): NextResponse {
+  const url = request.nextUrl.clone()
+  url.pathname = "/"
+  return buildRedirect(url, 307)
 }
 
 function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
@@ -76,38 +85,212 @@ function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
   return response
 }
 
-// Forward the watch URL pathname to the root layout via WATCH_PATHNAME_HEADER.
-// Layouts render BEFORE pages in App Router; without this header, the layout
-// has no way to know the URL when it needs to derive UI chrome locale for
-// `<html lang>` + NextIntlClientProvider. Pages also call setRequestLocale
-// defensively, but the layout's getLocale() runs first and would otherwise
-// see the default locale every render.
-//
-// Defense-in-depth: `headers.delete()` before `set()` strips any inbound
-// client-supplied value. `Headers.set` already overwrites, so this is
-// belt-and-braces — the actual safety net against header spoofing is the
-// `resolveUiLocale` + `hasUiLocale` gate in app/layout.tsx (a spoofed
-// pathname that doesn't classify to a valid locale falls through to
-// DEFAULT_LOCALE). See `apps/web/src/lib/proxy-headers.ts` for the contract.
-function nextWithPathname(
-  request: ProxyRequest,
-  pathname: string,
-): NextResponse {
-  const headers = new Headers(request.headers)
-  headers.delete(WATCH_PATHNAME_HEADER)
-  headers.set(WATCH_PATHNAME_HEADER, pathname)
-  return NextResponse.next({ request: { headers } })
+function firstSegment(pathname: string): string | undefined {
+  return splitPath(pathname)[0]
 }
 
-export function proxy(request: ProxyRequest): NextResponse {
+function shouldBypassLocaleRewrite(pathname: string): boolean {
+  const first = firstSegment(pathname)
+  return Boolean(
+    first && (RESERVED_PREFIXES.has(first) || DEMO_PREFIXES.has(first)),
+  )
+}
+
+function isSafeCanonicalPath(pathname: string): boolean {
+  if (pathname === "/") return true
+  if (pathname.length > MAX_PATH_LEN) return false
+  if (UNSAFE_PATH_PATTERN.test(pathname)) return false
+  if (pathname.split("/").some((segment) => segment === "..")) return false
+  return SAFE_PUBLIC_PATH.test(pathname)
+}
+
+function stripSafeSlug(segment: string): string | null {
+  const stripped = stripHtmlSuffix(segment)
+  return SAFE_SLUG_PATTERN.test(stripped) ? stripped : null
+}
+
+function internalPrefixDecision(pathname: string): InternalPrefixDecision {
+  const segments = splitPath(pathname)
+  const [locale, htmlLang, ...rest] = segments
+  if (!locale || !isLocale(locale) || hasHtmlSuffix(locale)) {
+    return { kind: "none" }
+  }
+
+  if (!htmlLang) {
+    return { kind: "redirect", pathname: "/" }
+  }
+
+  // Only the normalized BCP-47-ish [htmlLang] segment is an internal prefix.
+  // Slug-form public URLs such as /en/english must keep flowing through the
+  // legacy canonicalizer instead of being de-prefixed to /.
+  const identity = resolveWatchLocaleIdentity(htmlLang)
+  if (identity.htmlLang !== htmlLang) return { kind: "none" }
+  if (identity.locale !== locale || resolveUiLocale(htmlLang) !== locale) {
+    return { kind: "not-found" }
+  }
+
+  const publicPath = rest.length > 0 ? `/${rest.join("/")}` : "/"
+  if (isUnsafeRedirectPath(publicPath) || !isSafeCanonicalPath(publicPath)) {
+    return { kind: "not-found" }
+  }
+  return { kind: "redirect", pathname: publicPath }
+}
+
+function classifyRewrite(pathname: string): RewriteDecision {
+  if (shouldBypassLocaleRewrite(pathname)) return { kind: "pass" }
+  if (pathname === "/" || pathname === "") {
+    return {
+      kind: "rewrite",
+      locale: DEFAULT_LOCALE,
+      htmlLang: DEFAULT_LOCALE,
+      pathname: "/",
+    }
+  }
+  if (!isSafeCanonicalPath(pathname)) return { kind: "not-found" }
+
+  const segments = splitPath(pathname)
+  if (segments.length === 1) {
+    const [segment] = segments
+    if (segment === "videos") {
+      return {
+        kind: "rewrite",
+        locale: DEFAULT_LOCALE,
+        htmlLang: DEFAULT_LOCALE,
+        pathname,
+      }
+    }
+    if (!hasHtmlSuffix(segment)) return { kind: "not-found" }
+    const slug = stripSafeSlug(segment)
+    if (!slug) return { kind: "not-found" }
+    if (isLocale(slug)) return { kind: "not-found" }
+    const identity = isPublicWatchHomeLanguageSlug(slug)
+      ? resolveWatchLocaleIdentity(slug)
+      : { locale: DEFAULT_LOCALE, htmlLang: DEFAULT_LOCALE }
+    return {
+      kind: "rewrite",
+      ...identity,
+      pathname,
+      manifestRoute: isPublicWatchHomeLanguageSlug(slug)
+        ? undefined
+        : { kind: "one-segment", slug },
+    }
+  }
+
+  if (segments.length === 2) {
+    const [slugSegment, localeSegment] = segments
+    if (!hasHtmlSuffix(slugSegment) || !hasHtmlSuffix(localeSegment)) {
+      return { kind: "not-found" }
+    }
+    const slug = stripSafeSlug(slugSegment)
+    if (!slug) return { kind: "not-found" }
+    const rawAudioSlug = stripSafeSlug(localeSegment)
+    if (!rawAudioSlug) return { kind: "not-found" }
+    if (!isPublicWatchLanguageSlug(rawAudioSlug)) return { kind: "not-found" }
+    const identity = resolveWatchLocaleIdentity(rawAudioSlug)
+    return {
+      kind: "rewrite",
+      ...identity,
+      pathname,
+      manifestRoute: {
+        kind: "video",
+        contentSlug: slug,
+        audioLanguageSlug: rawAudioSlug,
+      },
+    }
+  }
+
+  if (segments.length === 3) {
+    const [seriesSegment, episodeSegment, localeSegment] = segments
+    if (!hasHtmlSuffix(seriesSegment) || !hasHtmlSuffix(localeSegment)) {
+      return { kind: "not-found" }
+    }
+    const seriesSlug = stripSafeSlug(seriesSegment)
+    const episodeSlug = stripSafeSlug(episodeSegment)
+    const rawAudioSlug = stripSafeSlug(localeSegment)
+    if (!seriesSlug || !episodeSlug || !rawAudioSlug) {
+      return { kind: "not-found" }
+    }
+    if (!isPublicWatchLanguageSlug(rawAudioSlug)) return { kind: "not-found" }
+    const identity = resolveWatchLocaleIdentity(rawAudioSlug)
+    const internalEpisodeSlug =
+      resolveLegacyWatchEpisodeAlias(seriesSlug, episodeSlug) ?? episodeSlug
+    return {
+      kind: "rewrite",
+      ...identity,
+      pathname,
+      ...(internalEpisodeSlug !== episodeSlug
+        ? {
+            internalPathname: `/${seriesSegment}/${internalEpisodeSlug}/${localeSegment}`,
+          }
+        : {}),
+      manifestRoute: {
+        kind: "episode",
+        parentSlug: seriesSlug,
+        childSlug: internalEpisodeSlug,
+        audioLanguageSlug: rawAudioSlug,
+      },
+    }
+  }
+
+  return { kind: "not-found" }
+}
+
+function rewriteToInternal(
+  request: ProxyRequest,
+  decision: Extract<RewriteDecision, { kind: "rewrite" }>,
+): NextResponse {
+  const url = request.nextUrl.clone()
+  const pathname = decision.internalPathname ?? decision.pathname
+  const suffix = pathname === "/" ? "" : pathname
+  url.pathname = `/${decision.locale}/${decision.htmlLang}${suffix}`
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set(
+    WATCH_INTERNAL_REWRITE_HEADER,
+    WATCH_INTERNAL_REWRITE_VALUE,
+  )
+  return applyWatchSecurityHeaders(
+    NextResponse.rewrite(url, { request: { headers: requestHeaders } }),
+  )
+}
+
+async function isRewriteAdmittedByManifest(
+  decision: Extract<RewriteDecision, { kind: "rewrite" }>,
+): Promise<boolean> {
+  if (!decision.manifestRoute) return true
+
+  const manifest = await getWatchRouteManifest()
+  if (!manifest) {
+    return decision.manifestRoute.kind === "one-segment"
+      ? isOneSegmentCollectionSlug(decision.manifestRoute.slug)
+      : true
+  }
+
+  return isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)
+}
+
+export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
 
-  // Step 1: canonicalize legacy /watch shapes into the .html-suffix
-  // canonical. Single deterministic pass — six rules with a termination
-  // guarantee (canonicalize ∘ canonicalize === canonicalize). Reserved
-  // subtrees (api, _next, assets, favicon, robots, sitemap, .well-known)
-  // are excluded at the canonicalize level so framework asset URLs are
-  // never amplified by Rule 5's single-segment-duplicate rule.
+  if (shouldBypassLocaleRewrite(pathname)) return NextResponse.next()
+
+  const isInternalRewrite =
+    request.headers.get(WATCH_INTERNAL_REWRITE_HEADER) ===
+    WATCH_INTERNAL_REWRITE_VALUE
+  const prefix = internalPrefixDecision(pathname)
+  if (isInternalRewrite) {
+    if (prefix.kind === "redirect") {
+      return applyWatchSecurityHeaders(NextResponse.next())
+    }
+    if (prefix.kind === "not-found") return buildNotFound()
+  }
+
+  if (prefix.kind === "not-found") return buildNotFound()
+  if (prefix.kind === "redirect") {
+    const url = request.nextUrl.clone()
+    url.pathname = prefix.pathname
+    return buildRedirect(url, 308)
+  }
+
   const canonical = canonicalizeWatchPath({ rawPathname: pathname })
   if (canonical.kind === "redirect") {
     const url = request.nextUrl.clone()
@@ -115,51 +298,20 @@ export function proxy(request: ProxyRequest): NextResponse {
     return buildRedirect(url, canonical.status)
   }
 
-  // Step 2: CSP / Referrer headers for watch routes (both .html and
-  // legacy bare 2-segment forms; 3-segment episode shape included).
-  //
-  // NOTE: there is deliberately NO cookie-driven language redirect here.
-  // The URL is the sole locale carrier (see apps/web/CLAUDE.md "i18n").
-  // A stale `forge_watch_lang` cookie must NEVER override an explicit
-  // locale already named in the path — doing so hijacked canonical /
-  // shared / SEO links (e.g. `/jesus.html/english.html` → cookie's
-  // language) and was the cause of the production redirect bug.
-  if (isWatchRoute(pathname)) {
-    return applyWatchSecurityHeaders(nextWithPathname(request, pathname))
-  }
+  if (pathname === "/search") return redirectDeprecatedSearch(request)
 
-  // Step 3: Accept-Language fallback. Post-Phase-3 this serves a NARROW
-  // surface: canonicalize (Step 1) already redirects every 1-seg bare slug
-  // (Rule 5) and 2-seg bare pair (Rule 4), and canonical `.html` watch
-  // shapes exit at Step 3. What survives to here: the root `/`, the
-  // 1-segment exempt routes (`/videos`, `/search`), 4+ segment paths, and
-  // percent-encoded / non-ASCII paths the canonicalize allowlist rejected.
-  // (Canonical `.html` watch shapes already exited at Step 2.) For those, if
-  // the path doesn't already terminate in a bcp47 locale, append the
-  // Accept-Language-detected locale.
-  const segments = pathname.split("/").filter(Boolean)
-  const lastSegment = segments[segments.length - 1]
-  if (lastSegment && isLocale(lastSegment)) {
-    return nextWithPathname(request, pathname)
-  }
-
-  const detected = parseAcceptLanguage(request.headers.get("accept-language"))
-  if (!detected || detected === DEFAULT_LOCALE) {
-    return nextWithPathname(request, pathname)
-  }
-
-  const url = request.nextUrl.clone()
-  url.pathname = `${pathname === "/" ? "" : pathname}/${detected}`
-  return buildRedirect(url, 307)
+  const rewrite = classifyRewrite(pathname)
+  if (rewrite.kind === "pass") return NextResponse.next()
+  if (rewrite.kind === "not-found") return buildNotFound()
+  if (!(await isRewriteAdmittedByManifest(rewrite))) return buildNotFound()
+  return rewriteToInternal(request, rewrite)
 }
 
 export const config = {
   matcher: [
     // Reserved framework + asset subtrees that must never enter the
-    // canonicalize pipeline (Rule 5's single-segment duplicate would
-    // amplify e.g. /assets into /assets.html/assets.html). The matcher
-    // is the first line of defense; canonicalize's RESERVED_PREFIXES is
-    // the second. Both must agree.
-    "/((?!api|_next/static|_next/image|_next/data|_next/webpack-hmr|assets|favicon\\.ico|robots\\.txt|sitemap|\\.well-known).*)",
+    // canonicalize/rewrite pipeline. Demo surfaces live in a route group and
+    // keep public paths such as /demo-search without the watch locale rewrite.
+    "/((?!(?:api|assets|images|fonts|demo-search|demo-recommendations|\\.well-known)(?:/|$)|_next/(?:static|image|data|webpack-hmr)(?:/|$)|favicon\\.ico$|robots\\.txt$|sitemap(?:\\.xml)?$).*)",
   ],
 }

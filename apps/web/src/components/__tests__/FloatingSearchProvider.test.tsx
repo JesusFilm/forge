@@ -339,6 +339,9 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(logo?.querySelector("img")?.getAttribute("class")).toContain(
       "max-w-[42px]",
     )
+    expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
+      "/watch/images/jesusfilm-sign.svg",
+    )
 
     act(() => {
       languageButton?.click()
@@ -405,6 +408,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const mobileLogo = document.querySelector(
       '[data-testid="search-overlay-top-bar"] a[aria-label="JesusFilm home"]',
     )
+    const mobileLogoImage = mobileLogo?.querySelector("img")
     const bottomBackdrop = document.querySelector(
       '[data-testid="search-overlay-bottom-backdrop"]',
     )
@@ -419,6 +423,9 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(topBar?.className).toContain("sm:pt-12")
     expect(mobileLogo?.className).toContain("mb-6")
     expect(mobileLogo?.className).not.toContain("absolute")
+    expect(mobileLogoImage?.getAttribute("src")).toBe(
+      "/watch/images/jesusfilm-sign.svg",
+    )
     expect(bottomBackdrop).not.toBeNull()
     expect(bottomBackdrop?.className).toContain("absolute")
     expect(bottomBackdrop?.className).toContain("bottom-[-14rem]")

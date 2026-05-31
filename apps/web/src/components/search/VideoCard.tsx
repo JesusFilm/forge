@@ -23,8 +23,8 @@ const ENGLISH_LOCALE = asLocaleSlug("english")
 
 export const defaultHrefBuilder = (result: SearchResult): Route => {
   const slug = tryAsContentSlug(result.slug)
-  // On a malformed slug, fall back to the search index (a safe in-app Route)
-  // rather than emitting a broken deep link.
+  // On a malformed slug, fall back to the modal-capable watch home rather than
+  // emitting a broken deep link or resurrecting the deprecated /search page.
   return slug ? watchVideoPath(slug, ENGLISH_LOCALE) : searchPath()
 }
 

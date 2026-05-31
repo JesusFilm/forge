@@ -149,6 +149,54 @@ describe("Auth route wrapper", () => {
     expect(authPost).not.toHaveBeenCalled()
   })
 
+  it("keeps public web signup blocked for trusted watch callbacks", async () => {
+    const { prisma } = await import("@/db/client")
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/sign-up/email", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          callbackURL: "http://localhost:3000/watch/jesus/english",
+          email: "NEW@example.com",
+          name: "New Viewer",
+          password: "correct horse battery staple",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["sign-up", "email"] }) },
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({ error: "Not found" })
+    expect(authPost).not.toHaveBeenCalled()
+  })
+
+  it("keeps public signup blocked when callback targets watch API routes", async () => {
+    const { prisma } = await import("@/db/client")
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/sign-up/email", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          callbackURL:
+            "http://localhost:3000/watch/api/download?url=https%3A%2F%2Fstream.mux.com%2Fabc.mp4",
+          email: "new@example.com",
+          name: "New Viewer",
+          password: "correct horse battery staple",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["sign-up", "email"] }) },
+    )
+
+    expect(response.status).toBe(404)
+    expect(authPost).not.toHaveBeenCalled()
+  })
+
   it("passes unrelated auth routes through to Better Auth", async () => {
     authPost.mockResolvedValueOnce(Response.json({ ok: true }))
     const { POST } = await import("./route")
@@ -185,6 +233,31 @@ describe("Auth route wrapper", () => {
     await expect(forwardedRequest.json()).resolves.toMatchObject({
       callbackURL:
         "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_admin_local&sig=signed",
+      provider: "google",
+    })
+  })
+
+  it("forwards valid web watch callbacks through social sign-in", async () => {
+    authPost.mockResolvedValueOnce(
+      Response.json({ url: "https://google.test" }),
+    )
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/sign-in/social", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          callbackURL: "http://localhost:3000/watch/jesus/english",
+          provider: "google",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["sign-in", "social"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwardedRequest.json()).resolves.toMatchObject({
+      callbackURL: "http://localhost:3000/watch/jesus/english",
       provider: "google",
     })
   })
@@ -287,6 +360,31 @@ describe("Auth route wrapper", () => {
     await expect(forwardedRequest.json()).resolves.toMatchObject({
       callbackURL:
         "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_admin_local&sig=signed",
+      email: "user@example.com",
+      password: "password",
+    })
+  })
+
+  it("forwards valid web watch callbacks through email sign-in", async () => {
+    authPost.mockResolvedValueOnce(Response.json({ ok: true }))
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/sign-in/email", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          callbackURL: "http://localhost:3000/watch/jesus/english",
+          email: "USER@example.com",
+          password: "password",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["sign-in", "email"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwardedRequest.json()).resolves.toMatchObject({
+      callbackURL: "http://localhost:3000/watch/jesus/english",
       email: "user@example.com",
       password: "password",
     })

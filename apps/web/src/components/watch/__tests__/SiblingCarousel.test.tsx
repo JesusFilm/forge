@@ -3,9 +3,8 @@
  *
  * U6 — SiblingCarousel tests.
  *
- * Embla browser-API polyfills are in vitest.setup.ts. We mock
- * `next/navigation`'s `useParams` to feed a stable `currentLocale` and
- * `next/image` to a plain `<img>` so we don't need a Next.js runtime.
+ * Embla browser-API polyfills are in vitest.setup.ts. We mock `next/image`
+ * to a plain `<img>` so we don't need a Next.js runtime.
  *
  * Embla itself is not mocked — we let it run inside jsdom so we can spy on
  * the real `scrollTo` it installs on the captured `setApi` instance,
@@ -19,20 +18,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 // Embla browser-API polyfills (matchMedia / IntersectionObserver /
 // ResizeObserver) live in vitest.setup.ts so every Embla-backed test inherits
 // them automatically.
-
-const { useParamsMock } = vi.hoisted(() => ({
-  // The component reads `params?.locale`, so a loose return type matches the
-  // shape `next/navigation`'s `useParams` actually exposes (a record with
-  // optional segment values). Concrete returns happen via mockReturnValue in
-  // each test.
-  useParamsMock: vi.fn<() => Record<string, string | undefined>>(() => ({
-    locale: "english",
-  })),
-}))
-
-vi.mock("next/navigation", () => ({
-  useParams: useParamsMock,
-}))
 
 // `next/image` requires the Next.js runtime image-optimization layer; for a
 // dispatch-and-DOM test a plain <img> is sufficient and lets us assert on
@@ -71,8 +56,6 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
-  useParamsMock.mockReset()
-  useParamsMock.mockReturnValue({ locale: "english" })
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -141,7 +124,7 @@ describe("SiblingCarousel — happy path", () => {
     const block = makeBlock(10, 2)
 
     act(() => {
-      root.render(<SiblingCarousel block={block} />)
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
     })
 
     const items = container.querySelectorAll(
@@ -170,8 +153,8 @@ describe("SiblingCarousel — happy path", () => {
     )
     expect(content?.className).toContain("pl-10")
     expect(content?.className).toContain("md:pl-0")
-    expect(content?.className).toContain("translate-x-14")
-    expect(content?.className).toContain("md:translate-x-0")
+    expect(content?.className).not.toContain("translate-x-14")
+    expect(content?.className).not.toContain("md:translate-x-0")
     const endSpacer = container.querySelector(
       "[data-testid='sibling-carousel-end-spacer']",
     )
@@ -266,7 +249,7 @@ describe("SiblingCarousel — happy path", () => {
     }
 
     act(() => {
-      root.render(<SiblingCarousel block={block} />)
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
     })
 
     const active = container.querySelector(
@@ -283,7 +266,7 @@ describe("SiblingCarousel — happy path", () => {
     const block = makeBlock(3, 0)
 
     act(() => {
-      root.render(<SiblingCarousel block={block} />)
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
     })
 
     const items = Array.from(
@@ -313,7 +296,7 @@ describe("SiblingCarousel — happy path", () => {
     }
 
     act(() => {
-      root.render(<SiblingCarousel block={block} />)
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
     })
 
     const placeholders = container.querySelectorAll(
@@ -330,7 +313,9 @@ describe("SiblingCarousel — happy path", () => {
     // tell them apart. Pin the label strings here so a future rename
     // breaks the test rather than the agent / AT selector.
     act(() => {
-      root.render(<SiblingCarousel block={makeBlock(5, 0)} />)
+      root.render(
+        <SiblingCarousel block={makeBlock(5, 0)} languageSlug="english" />,
+      )
     })
 
     const prev = container.querySelector(
@@ -348,7 +333,9 @@ describe("SiblingCarousel — happy path", () => {
 
   it("stacks the hover play overlay above the caption blur and text", () => {
     act(() => {
-      root.render(<SiblingCarousel block={makeBlock(5, 0)} />)
+      root.render(
+        <SiblingCarousel block={makeBlock(5, 0)} languageSlug="english" />,
+      )
     })
 
     const inactive = container.querySelector(
@@ -377,7 +364,7 @@ describe("SiblingCarousel — edge cases", () => {
     }
 
     act(() => {
-      root.render(<SiblingCarousel block={block} />)
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
     })
 
     expect(
@@ -400,7 +387,7 @@ describe("SiblingCarousel — edge cases", () => {
     const block = makeBlock(15, 11)
 
     act(() => {
-      root.render(<SiblingCarousel block={block} />)
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
     })
 
     // Flush passive effects (the setApi callback installs in a useEffect).
@@ -424,19 +411,18 @@ describe("SiblingCarousel — edge cases", () => {
     expect(desktopLabel?.textContent).toBe("Clip 12 of 15")
   })
 
-  it("renders a non-clickable card (no <Link>/href) when params lack `locale`", () => {
-    useParamsMock.mockReturnValue({})
+  it("renders a non-clickable card (no <Link>/href) when languageSlug is empty", () => {
     const block = makeBlock(3, 1)
 
     act(() => {
-      root.render(<SiblingCarousel block={block} />)
+      root.render(<SiblingCarousel block={block} languageSlug="" />)
     })
 
     const item = container.querySelector(
       "[data-testid='sibling-carousel-item'][data-active='true']",
     )
     expect(item).not.toBeNull()
-    // Empty locale fails the slug regex, so `watchVideoPath` is never built.
+    // Empty languageSlug fails the slug regex, so `watchVideoPath` is never built.
     // The card still renders — as a plain <div>, not an <a> — with no href.
     expect(item!.tagName).toBe("DIV")
     expect(item!.getAttribute("href")).toBeNull()
@@ -489,6 +475,7 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
     act(() => {
       root.render(
         <SiblingCarousel
+          languageSlug="english"
           block={singleChildBlock({
             mobileCinematicHigh: "https://cdn.test/high.jpg",
             mobileCinematicLow: "https://cdn.test/low.jpg",
@@ -507,6 +494,7 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
     act(() => {
       root.render(
         <SiblingCarousel
+          languageSlug="english"
           block={singleChildBlock({
             mobileCinematicLow: "https://cdn.test/low.jpg",
             thumbnail: "https://cdn.test/thumb.jpg",
@@ -524,6 +512,7 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
     act(() => {
       root.render(
         <SiblingCarousel
+          languageSlug="english"
           block={singleChildBlock({
             thumbnail: "https://cdn.test/thumb.jpg",
             url: "https://cdn.test/url.jpg",
@@ -540,6 +529,7 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
     act(() => {
       root.render(
         <SiblingCarousel
+          languageSlug="english"
           block={singleChildBlock({
             url: "https://cdn.test/url.jpg",
           })}

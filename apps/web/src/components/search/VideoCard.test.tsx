@@ -68,10 +68,8 @@ describe("defaultHrefBuilder", () => {
     )
   })
 
-  it("falls back to /search on a malformed slug rather than a broken deep link", () => {
-    expect(defaultHrefBuilder(makeResult({ slug: "Not A Slug!" }))).toBe(
-      "/search",
-    )
+  it("falls back to / on a malformed slug rather than a broken deep link", () => {
+    expect(defaultHrefBuilder(makeResult({ slug: "Not A Slug!" }))).toBe("/")
   })
 })
 

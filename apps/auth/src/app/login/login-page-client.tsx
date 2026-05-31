@@ -35,6 +35,7 @@ const loginErrors = {
 >
 
 export function LoginPageClient({
+  callbackURL,
   enabledProviders,
   flow = "login",
   initialEmail,
@@ -42,6 +43,7 @@ export function LoginPageClient({
   oauthQuery,
   requestingAppName,
 }: {
+  callbackURL?: string
   enabledProviders: LoginProviderId[]
   flow?: "login" | "signup"
   initialEmail?: string
@@ -104,6 +106,7 @@ export function LoginPageClient({
         credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          callbackURL,
           email,
           oauth_query: oauthQuery,
         }),
@@ -164,6 +167,7 @@ export function LoginPageClient({
         body: JSON.stringify({
           oauth_query: oauthQuery,
           provider: providerId,
+          ...(callbackURL ? { callbackURL } : {}),
         }),
       })
       const redirectUrl = await resolveSocialRedirect(res)
@@ -275,7 +279,11 @@ export function LoginPageClient({
               method="post"
               onSubmit={handleSubmit}
             >
-              <input type="hidden" name="oauth_query" value={oauthQuery} />
+              {callbackURL ? (
+                <input type="hidden" name="callbackURL" value={callbackURL} />
+              ) : (
+                <input type="hidden" name="oauth_query" value={oauthQuery} />
+              )}
               <div className="grid gap-1.5">
                 <label
                   className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#d6d3d1]"
@@ -349,21 +357,23 @@ export function LoginPageClient({
               </button>
             </form>
 
-            <p className="font-noto-serif mb-0 mt-6 text-center text-[13px] leading-5 text-[#a8a29e]">
-              {flow === "signup"
-                ? "Already have an account?"
-                : "Don't have an account?"}{" "}
-              <Link
-                className="font-apercu font-bold text-[#f5f5f4] underline decoration-white/25 underline-offset-4 transition-colors duration-150 hover:decoration-white"
-                href={
-                  `${
-                    flow === "signup" ? "/login" : "/signup"
-                  }?${oauthQuery}` as Route
-                }
-              >
-                {flow === "signup" ? "Log in" : "Sign up"}
-              </Link>
-            </p>
+            {callbackURL && flow === "login" ? null : (
+              <p className="font-noto-serif mb-0 mt-6 text-center text-[13px] leading-5 text-[#a8a29e]">
+                {flow === "signup"
+                  ? "Already have an account?"
+                  : "Don't have an account?"}{" "}
+                <Link
+                  className="font-apercu font-bold text-[#f5f5f4] underline decoration-white/25 underline-offset-4 transition-colors duration-150 hover:decoration-white"
+                  href={buildModeSwitchHref({
+                    callbackURL,
+                    flow,
+                    oauthQuery,
+                  })}
+                >
+                  {flow === "signup" ? "Log in" : "Sign up"}
+                </Link>
+              </p>
+            )}
           </div>
         </section>
 
@@ -465,6 +475,25 @@ function LastUsedBadge() {
       <span className="translate-y-px">Last used</span>
     </span>
   )
+}
+
+function buildModeSwitchHref({
+  callbackURL,
+  flow,
+  oauthQuery,
+}: {
+  callbackURL?: string
+  flow: "login" | "signup"
+  oauthQuery: string
+}): Route {
+  if (callbackURL) {
+    const params = new URLSearchParams({ callbackURL })
+    const path = flow === "signup" ? "/login" : "/signup"
+    return `${path}?${params.toString()}` as Route
+  }
+
+  const path = flow === "signup" ? "/login" : "/signup"
+  return `${path}${oauthQuery ? `?${oauthQuery}` : ""}` as Route
 }
 
 function readLastLoginMethod(): LoginMethodId | null {

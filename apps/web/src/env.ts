@@ -51,6 +51,17 @@ function booleanEnv(defaultValue: boolean) {
     .default(defaultValue)
 }
 
+function emptyToUndefined(value: string | undefined): string | undefined {
+  return value === "" ? undefined : value
+}
+
+function productionDefault(
+  productionValue: string,
+  localValue: string,
+): string {
+  return process.env.NODE_ENV === "production" ? productionValue : localValue
+}
+
 const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES = [
   ".jesusfilm.org",
   ".railway.app",
@@ -66,6 +77,14 @@ const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS = [
 const ADMIN_GRAPHQL_URL_HOST_REJECT_SET = new Set<string>([
   "auth.jesusfilm.org",
 ])
+
+function optionalPositiveIntDefault(defaultValue: number) {
+  return z.preprocess((value) => {
+    if (value == null || value === "") return undefined
+    const parsed = Number(value)
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
+  }, z.number().int().positive().default(defaultValue))
+}
 
 export const env = createEnv({
   server: {
@@ -85,6 +104,8 @@ export const env = createEnv({
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: z.string().optional(),
     FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT: z.string().optional(),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: z.string().optional(),
+    FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: z.string().optional(),
+    FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT: z.string().optional(),
     FORGE_WATCH_QUESTION_PANEL_DEFAULT: z.string().optional(),
     // Admin GraphQL URL. Required — web's data layer reads from admin.
     ADMIN_GRAPHQL_URL: z
@@ -121,6 +142,22 @@ export const env = createEnv({
     // outbound bearer; admin recognizes any entry as a valid CONSUMER_BEARER.
     // Required — flipped from optional in U13.
     WEB_ADMIN_API_KEYS: z.string().min(1),
+    // Shared Auth host used by server routes to verify Better Auth sessions
+    // over HTTP. Production/stage callers validate this before forwarding
+    // cookies; local/test default to the standalone auth dev port.
+    WEB_AUTH_BASE_URL: z
+      .url()
+      .default(
+        productionDefault(
+          "https://auth.jesusfilm.org",
+          "http://localhost:3004",
+        ),
+      ),
+    // Optional: server-side YouVersion Platform access for the watch-page
+    // Bible Quotes passage panel. Kept server-only so the app key is never
+    // serialized into browser JS or request headers from the client.
+    YOUVERSION_APP_KEY: z.string().optional(),
+    YOUVERSION_DEFAULT_VERSION_ID: optionalPositiveIntDefault(3034),
   },
   client: {
     // U12 — Mux watch-page player migration flag.
@@ -183,10 +220,17 @@ export const env = createEnv({
       process.env.FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT,
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT:
       process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
+    FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT:
+      process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT,
+    FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT:
+      process.env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_QUESTION_PANEL_DEFAULT:
       process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
+    WEB_AUTH_BASE_URL: emptyToUndefined(process.env.WEB_AUTH_BASE_URL),
+    YOUVERSION_APP_KEY: process.env.YOUVERSION_APP_KEY,
+    YOUVERSION_DEFAULT_VERSION_ID: process.env.YOUVERSION_DEFAULT_VERSION_ID,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO:

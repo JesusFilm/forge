@@ -36,36 +36,7 @@
 // a server-allowed extension that isn't in this set will be silently
 // renamed to `.mp4` by the client (e.g., a .wav download would land as
 // `<slug>-highest.mp4`).
-export const SAFE_DOWNLOAD_EXTENSIONS: ReadonlySet<string> = new Set([
-  "mp4",
-  "m4v",
-  "mov",
-  "webm",
-  "mkv",
-  "mp3",
-  "m4a",
-  "aac",
-  "wav",
-  "ogg",
-])
-
-export function isAllowedDownloadOrigin(url: string): boolean {
-  let parsed: URL
-  try {
-    // Single-arg form — no `base`. Protocol-relative or malformed URLs throw
-    // and the catch returns `false`.
-    parsed = new URL(url)
-  } catch {
-    return false
-  }
-
-  if (parsed.protocol !== "https:") return false
-
-  const host = parsed.hostname
-  return (
-    host === "jesusfilm.org" ||
-    host.endsWith(".jesusfilm.org") ||
-    host === "stream.mux.com" ||
-    host.endsWith(".mux.com")
-  )
-}
+export {
+  SAFE_DOWNLOAD_EXTENSIONS,
+  isAllowedDownloadOrigin,
+} from "@forge/watch-url-policy"

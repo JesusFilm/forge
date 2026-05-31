@@ -13,7 +13,8 @@
 import Image from "next/image"
 import { ExternalLink } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import type { UseEmblaCarouselType } from "embla-carousel-react"
 
 import type { WatchBibleQuotesBlock } from "@/lib/content"
 import { formatCitation } from "@/lib/citation-format"
@@ -32,6 +33,7 @@ import {
 } from "@/components/watch/watch-section-styles"
 
 type WatchBibleCitation = WatchBibleQuotesBlock["bibleCitations"][number]
+type CarouselApi = UseEmblaCarouselType[1]
 
 type BibleQuotesSectionProps = {
   bibleCitations: WatchBibleQuotesBlock["bibleCitations"]
@@ -42,6 +44,11 @@ type BibleQuotesSectionProps = {
    * thread locale here; pass it through when wired.
    */
   locale?: string
+  /**
+   * Server-fetched YouVersion API payloads keyed by citation documentId.
+   * Keeping this as data avoids exposing the YouVersion app key to browser JS.
+   */
+  youVersionPassages?: WatchBibleQuotesBlock["youVersionPassages"]
 }
 
 const JOIN_BIBLE_STUDY_URL =
@@ -144,8 +151,50 @@ export function BibleQuotesSection({
   bibleCitations,
   onShareClick,
   locale = "en",
+  youVersionPassages = [],
 }: BibleQuotesSectionProps) {
   const t = useTranslations("BibleQuotes")
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>()
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0)
+  const youVersionPassagesByCitationId = useMemo(
+    () =>
+      new Map(
+        youVersionPassages.map((passage) => [
+          passage.citationDocumentId,
+          passage,
+        ]),
+      ),
+    [youVersionPassages],
+  )
+  const activeCitation =
+    activeSlideIndex < bibleCitations.length
+      ? bibleCitations[activeSlideIndex]
+      : null
+  const activeYouVersionPassage = activeCitation
+    ? (youVersionPassagesByCitationId.get(activeCitation.documentId) ?? null)
+    : null
+
+  const handleCarouselApi = useCallback((api: CarouselApi) => {
+    setCarouselApi(api)
+  }, [])
+
+  useEffect(() => {
+    if (!carouselApi) return
+
+    const syncActiveSlide = () => {
+      setActiveSlideIndex(carouselApi.selectedScrollSnap())
+    }
+
+    syncActiveSlide()
+    carouselApi.on("select", syncActiveSlide)
+    carouselApi.on("reInit", syncActiveSlide)
+
+    return () => {
+      carouselApi.off("select", syncActiveSlide)
+      carouselApi.off("reInit", syncActiveSlide)
+    }
+  }, [carouselApi])
+
   // The carousel always renders, even when the video has no Bible citations —
   // the trailing "Join Our Bible Study" promo card is the always-on CTA, and
   // every video page should surface it.
@@ -179,6 +228,7 @@ export function BibleQuotesSection({
         <Carousel
           aria-label={t("title")}
           opts={CAROUSEL_OPTS}
+          setApi={handleCarouselApi}
           className="w-full"
         >
           <CarouselContent
@@ -190,6 +240,9 @@ export function BibleQuotesSection({
                 key={citation.documentId}
                 data-testid="watch-bible-quotes-item"
                 className={BIBLE_QUOTE_SLIDE_CLASSES}
+                onClick={() => {
+                  setActiveSlideIndex(i)
+                }}
               >
                 <BibleCitationCard
                   citation={citation}
@@ -213,6 +266,9 @@ export function BibleQuotesSection({
             <CarouselItem
               data-testid="watch-bible-quotes-promo"
               className={BIBLE_QUOTE_SLIDE_CLASSES}
+              onClick={() => {
+                setActiveSlideIndex(bibleCitations.length)
+              }}
             >
               <div
                 className="relative flex aspect-[1.08/1] min-h-[21rem] w-full flex-col justify-end overflow-hidden rounded-xl border border-white/10 shadow-2xl shadow-stone-950/70 sm:min-h-[24rem] md:min-h-[28rem]"
@@ -279,7 +335,81 @@ export function BibleQuotesSection({
           />
         </Carousel>
       </div>
+      <YouVersionPassagePanel
+        passage={activeYouVersionPassage}
+        learnMoreLabel={t("learnMore")}
+      />
     </section>
+  )
+}
+
+function YouVersionPassagePanel({
+  learnMoreLabel,
+  passage,
+}: {
+  learnMoreLabel: string
+  passage:
+    | NonNullable<WatchBibleQuotesBlock["youVersionPassages"]>[number]
+    | null
+}) {
+  if (passage == null) {
+    return null
+  }
+
+  return (
+    <div
+      data-testid="watch-bible-quotes-youversion"
+      data-reference={passage.reference}
+      data-version-id={passage.versionId}
+      className="mt-6 overflow-hidden rounded-xl border border-white/10 bg-stone-950/70 p-4 text-white shadow-xl shadow-black/20 sm:p-5"
+    >
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <span className="text-xs font-bold tracking-normal text-white/55 uppercase">
+          YouVersion
+        </span>
+        <span className="text-sm font-semibold text-white/80">
+          {passage.humanReference}
+        </span>
+      </div>
+      <div className="space-y-2">
+        <p
+          data-testid="watch-bible-quotes-youversion-content"
+          className="whitespace-pre-line text-lg leading-relaxed text-white/90"
+        >
+          {passage.content}
+        </p>
+        {(passage.versionAbbreviation || passage.versionTitle) && (
+          <p
+            data-testid="watch-bible-quotes-youversion-version"
+            className="text-xs font-semibold text-white/60"
+          >
+            {[passage.versionAbbreviation, passage.versionTitle]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        )}
+      </div>
+      {passage.copyright && (
+        <footer className="mt-4 border-t border-white/10 pt-3">
+          <p
+            data-testid="watch-bible-quotes-youversion-copyright"
+            className="text-xs leading-relaxed text-white/55"
+          >
+            {passage.copyright}
+          </p>
+          {passage.publisherUrl && (
+            <a
+              href={passage.publisherUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-block text-xs font-semibold text-white/70 underline decoration-white/30 underline-offset-4 transition-colors hover:text-white"
+            >
+              {learnMoreLabel}
+            </a>
+          )}
+        </footer>
+      )}
+    </div>
   )
 }
 

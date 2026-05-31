@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify:categories": "tsx scripts/verify-categories.ts"
+    "verify:categories": "tsx scripts/verify-categories.ts",
+    "probe:watch-urls": "tsx scripts/probe-watch-urls.ts"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
@@ -19,6 +20,7 @@
     "@forge/admin-graphql": "workspace:*",
     "@forge/feature-flags": "workspace:*",
     "@forge/video-player": "workspace:*",
+    "@forge/watch-url-policy": "workspace:*",
     "@hebcal/hdate": "^0.21.1",
     "@mux/mux-player-react": "^3.12",
     "@mux/mux-video-react": "^0.30",

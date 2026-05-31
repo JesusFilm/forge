@@ -20,11 +20,11 @@ vi.mock("@/components/watch/SeriesHero", () => ({
 }))
 
 vi.mock("@/components/watch/SeriesEpisodesGrid", () => ({
-  SeriesEpisodesGrid: vi.fn(({ episodes, locale }) => (
+  SeriesEpisodesGrid: vi.fn(({ episodes, languageSlug }) => (
     <div
       data-testid="series-episodes-grid-mock"
       data-episode-count={episodes.length}
-      data-locale={locale}
+      data-language-slug={languageSlug}
     />
   )),
 }))
@@ -170,6 +170,7 @@ function makeSeries(overrides: Partial<Series> = {}): Series {
     primaryLanguage: { coreId: "529", bcp47: "en" },
     parents: [],
     children: [],
+    childDubLanguages: [],
     variants: [],
     studyQuestions: [],
     bibleCitations: [],
@@ -184,53 +185,43 @@ function makeChildren(count: number): Series["children"] {
     title: `Episode ${i + 1}`,
     label: "episode" as const,
     images: [],
-    variants: [],
+    durationSeconds: null,
   })) as Series["children"]
 }
 
-// Helper for tests that need playable variants on the children
-// (language aggregation, globe button visibility, dedup checks).
-type VariantSpec = {
-  documentId?: string
+// Helper for tests that exercise the language picker (aggregation, globe
+// button visibility, dedup checks). The cross-episode dub-language union is
+// aggregated + deduped server-side onto `series.childDubLanguages`, which
+// carries only display fields {slug, name, bcp47} — every entry is already
+// guaranteed playable, so there are no published/hls fields to model.
+type LanguageSpec = {
   languageSlug: string
   languageName?: string
   bcp47?: string | null
-  published?: boolean
-  hls?: string | null
 }
 
-function makeVariant({
-  documentId,
+function makeLanguage({
   languageSlug,
   languageName,
   bcp47 = null,
-  published = true,
-  hls = "https://stream.mux.com/x.m3u8",
-}: VariantSpec) {
+}: LanguageSpec) {
   return {
-    documentId: documentId ?? `var-${languageSlug}`,
-    published,
-    hls,
-    duration: 120,
-    language: {
-      slug: languageSlug,
-      name: languageName ?? languageSlug,
-      bcp47,
-    },
+    slug: languageSlug,
+    name: languageName ?? languageSlug,
+    bcp47,
   }
 }
 
-function makeChildrenWithVariants(
-  perChildVariants: VariantSpec[][],
-): Series["children"] {
-  return perChildVariants.map((vs, i) => ({
-    documentId: `episode-${i + 1}`,
-    slug: `ep-${i + 1}`,
-    title: `Episode ${i + 1}`,
-    label: "episode" as const,
-    images: [],
-    variants: vs.map(makeVariant),
-  })) as Series["children"]
+// Flattens the per-episode language specs into the single
+// `childDubLanguages` list admin emits. Duplicates across the nested arrays
+// are preserved so the client-side belt-and-braces slug dedup is still
+// exercised by the dedup test.
+function makeChildDubLanguages(
+  perChildLanguages: LanguageSpec[][],
+): Series["childDubLanguages"] {
+  return perChildLanguages
+    .flat()
+    .map(makeLanguage) as Series["childDubLanguages"]
 }
 
 describe("SeriesPageClient — pluralized label (R8, AE4)", () => {
@@ -335,20 +326,28 @@ describe("SeriesPageClient — share modal state machine", () => {
 })
 
 describe("SeriesPageClient — passthrough to children", () => {
-  it("passes the series locale into the episodes grid", () => {
+  it("passes the resolved audio language slug into the episodes grid", () => {
+    const childDubLanguages = makeChildDubLanguages([
+      [{ languageSlug: "english", bcp47: "en" }],
+    ])
     act(() => {
       root.render(
         <SeriesPageClient
-          series={makeSeries({ children: makeChildren(2) }) as Series}
+          series={
+            makeSeries({
+              children: makeChildren(2),
+              childDubLanguages,
+            }) as Series
+          }
           selectedVariant={null}
-          locale="es"
+          locale="en"
         />,
       )
     })
     const grid = container.querySelector(
       '[data-testid="series-episodes-grid-mock"]',
     )
-    expect(grid?.getAttribute("data-locale")).toBe("es")
+    expect(grid?.getAttribute("data-language-slug")).toBe("english")
     expect(grid?.getAttribute("data-episode-count")).toBe("2")
   })
 
@@ -402,14 +401,14 @@ describe("SeriesPageClient — edge cases", () => {
 
 describe("SeriesPageClient — globe button + language modal", () => {
   it("omits the globe button when fewer than 2 languages are available across children", () => {
-    const children = makeChildrenWithVariants([
+    const childDubLanguages = makeChildDubLanguages([
       [{ languageSlug: "english" }],
       [{ languageSlug: "english" }],
     ])
     act(() => {
       root.render(
         <SeriesPageClient
-          series={makeSeries({ children })}
+          series={makeSeries({ childDubLanguages })}
           selectedVariant={null}
           locale="en"
         />,
@@ -421,13 +420,13 @@ describe("SeriesPageClient — globe button + language modal", () => {
   })
 
   it("renders the globe button when 2+ languages are available", () => {
-    const children = makeChildrenWithVariants([
+    const childDubLanguages = makeChildDubLanguages([
       [{ languageSlug: "english" }, { languageSlug: "spanish" }],
     ])
     act(() => {
       root.render(
         <SeriesPageClient
-          series={makeSeries({ children })}
+          series={makeSeries({ childDubLanguages })}
           selectedVariant={null}
           locale="en"
         />,
@@ -439,13 +438,13 @@ describe("SeriesPageClient — globe button + language modal", () => {
   })
 
   it("opens the language modal when the globe button is clicked", () => {
-    const children = makeChildrenWithVariants([
+    const childDubLanguages = makeChildDubLanguages([
       [{ languageSlug: "english" }, { languageSlug: "spanish" }],
     ])
     act(() => {
       root.render(
         <SeriesPageClient
-          series={makeSeries({ children })}
+          series={makeSeries({ childDubLanguages })}
           selectedVariant={null}
           locale="en"
         />,
@@ -468,24 +467,17 @@ describe("SeriesPageClient — globe button + language modal", () => {
     expect(allMockOpens.at(-1)?.getAttribute("data-open")).toBe("true")
   })
 
-  it("dedupes variants by language slug when projecting to the picker", () => {
-    // Two children both carry English + Spanish variants. The picker
-    // projection should fold the cross-episode duplicates into one
-    // entry per language.
-    const children = makeChildrenWithVariants([
-      [
-        { documentId: "v1a", languageSlug: "english" },
-        { documentId: "v1b", languageSlug: "spanish" },
-      ],
-      [
-        { documentId: "v2a", languageSlug: "english" },
-        { documentId: "v2b", languageSlug: "spanish" },
-      ],
+  it("dedupes languages by slug when projecting to the picker", () => {
+    // Two children both carry English + Spanish dubs. The picker projection
+    // should fold the cross-episode duplicates into one entry per language.
+    const childDubLanguages = makeChildDubLanguages([
+      [{ languageSlug: "english" }, { languageSlug: "spanish" }],
+      [{ languageSlug: "english" }, { languageSlug: "spanish" }],
     ])
     act(() => {
       root.render(
         <SeriesPageClient
-          series={makeSeries({ children })}
+          series={makeSeries({ childDubLanguages })}
           selectedVariant={null}
           locale="en"
         />,
@@ -497,18 +489,20 @@ describe("SeriesPageClient — globe button + language modal", () => {
     expect(modal?.getAttribute("data-variant-count")).toBe("2")
   })
 
-  it("excludes unpublished and null-hls variants from the picker projection", () => {
-    const children = makeChildrenWithVariants([
+  it("surfaces every server-provided language (playability filtering is server-side)", () => {
+    // childDubLanguages is already filtered to playable dubs by admin, so the
+    // client trusts it verbatim — no client-side published/hls re-filter.
+    const childDubLanguages = makeChildDubLanguages([
       [
         { languageSlug: "english" },
-        { languageSlug: "spanish", published: false },
-        { languageSlug: "french", hls: null },
+        { languageSlug: "spanish" },
+        { languageSlug: "french" },
       ],
     ])
     act(() => {
       root.render(
         <SeriesPageClient
-          series={makeSeries({ children })}
+          series={makeSeries({ childDubLanguages })}
           selectedVariant={null}
           locale="en"
         />,
@@ -517,20 +511,22 @@ describe("SeriesPageClient — globe button + language modal", () => {
     const modal = container.querySelector(
       '[data-testid="language-picker-modal-mock"]',
     )
-    // Only english survives the playable-variant filter.
-    expect(modal?.getAttribute("data-variant-count")).toBe("1")
+    expect(modal?.getAttribute("data-variant-count")).toBe("3")
   })
 })
 
 describe("SeriesPageClient — handleLanguageChange navigation (Phase 4)", () => {
   it("pushes the .html-shaped two-segment watch path built by @/lib/routes", () => {
-    const children = makeChildrenWithVariants([
+    const childDubLanguages = makeChildDubLanguages([
       [{ languageSlug: "english" }, { languageSlug: "spanish-castilian" }],
     ])
     act(() => {
       root.render(
         <SeriesPageClient
-          series={makeSeries({ slug: "lumo-the-gospel-of-john", children })}
+          series={makeSeries({
+            slug: "lumo-the-gospel-of-john",
+            childDubLanguages,
+          })}
           selectedVariant={null}
           locale="english"
         />,

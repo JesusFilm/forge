@@ -1,0 +1,224 @@
+---
+title: "Bound Watch Static Route Admission with the Admin Route Manifest"
+date: "2026-05-29"
+category: "performance-issues"
+module: "apps/web watch routing"
+problem_type: "performance_issue"
+component: "frontend_stimulus"
+symptoms:
+  - "Safe-looking random watch URLs such as /anything.html/english.html could reach the force-static catch-all"
+  - "Revalidation emitted catalog-key public paths such as /jesus.html/en.html instead of real audio slugs"
+  - "The one-segment /watch/german.html language home resolved to English identity"
+  - "One-segment language-home metadata canonicalized to /watch instead of the public language URL"
+  - "Static/ISR behavior was implemented but not proven with build and runtime cache evidence"
+root_cause: "missing_validation"
+resolution_type: "code_fix"
+severity: "high"
+related_components:
+  - "service_object"
+  - "testing_framework"
+  - "development_workflow"
+tags:
+  - "watch-route"
+  - "route-manifest"
+  - "nextjs-isr"
+  - "locale-routing"
+  - "revalidatepath"
+  - "static-rendering"
+  - "hostile-paths"
+  - "audio-slugs"
+---
+
+# Bound Watch Static Route Admission with the Admin Route Manifest
+
+## Problem
+
+The watch static locale rewrite moved public URLs through static App Router routes, but several route identities were still conflated across proxy, revalidation, metadata, and locale helpers. That left syntactically safe but nonexistent paths able to reach static resolution, revalidation targeting URLs the public guard now rejects, and one-segment language homes losing their SEO/user-facing identity.
+
+The performance risk was that hostile paths such as `/watch/anything.html/english.html` could drive admin/page resolution and potentially mint unbounded ISR or notFound cache entries. The correctness risk was that public audio slugs, UI catalog keys, and `<html lang>` values drifted into one another.
+
+## Symptoms
+
+- `/anything.html/english.html` and unknown episode pairs were safe-looking enough to proceed past proxy classification toward the force-static catch-all.
+- `/api/revalidate` produced paths like `/jesus.html/en.html` and `/en/en/jesus.html/en.html`, even though public audio slots accept slugs such as `english`, not catalog keys such as `en`.
+- `/watch/german.html` was recognized as a home-only language URL, but `resolveWatchLocaleIdentity("german")` fell back to `{ locale: "en", htmlLang: "en" }`.
+- One-segment language-home metadata called `getWatchPageMetadata(shape.locale)` without `pathLocale`, so `/german.html` and similar pages canonicalized back to the watch root.
+- The route config set `dynamic = "force-static"`, but the branch still needed `next build` and runtime `x-nextjs-cache` proof.
+
+## What Didn't Work
+
+- Treating `[locale]` as a universal language identifier was the core mistake. The public route segment may be a raw audio slug (`english`, `spanish-castilian`, `german-standard`), the internal `[locale]` segment is a message catalog key (`en`, `es`, `de`), and the internal `[htmlLang]` segment can be a finer BCP-47 tag (`es-419`). Collapsing these into one value produced invalid public revalidation paths.
+- Delegating every safe-looking path to the catch-all was too permissive. Syntax validation only proves a string is safe to parse; it does not prove the content/audio or parent/episode pair exists.
+- Generating or storing every possible watch URL was rejected in the prior admin manifest work because the content-language permutation space would grow too large. The durable decision was compact admission dimensions instead: content slugs, one-segment slugs, episode pairs, and audio language slugs. (session history)
+
+## Solution
+
+Wire the admin-owned watch route manifest into proxy admission before rewriting to the internal static route tree.
+
+`apps/web/src/lib/watch-route-manifest.ts` models the compact shape and converts it into indexed sets:
+
+```ts
+export type WatchRouteManifest = {
+  version: string
+  generatedAt: string
+  contentSlugs: string[]
+  oneSegmentSlugs: string[]
+  episodePairsByParent: Record<string, string[]>
+  audioLanguageSlugs: string[]
+}
+```
+
+The admission helper is a compact dimensional prefilter: it rejects unknown one-segment slugs, unknown content slugs, unknown audio slugs, and unknown episode pairs. For two-segment video routes it checks that the content slug and audio slug are both present in the manifest; it does not prove that a specific video has that exact dub before the page resolver runs.
+
+```ts
+export function isWatchRouteAdmittedByManifest(
+  manifest: WatchRouteManifest,
+  route: WatchRouteManifestRoute,
+): boolean {
+  const index = getManifestIndex(manifest)
+  if (route.kind === "one-segment") {
+    return index.oneSegmentSlugs.has(route.slug)
+  }
+  if (route.kind === "video") {
+    return (
+      index.contentSlugs.has(route.contentSlug) &&
+      index.audioLanguageSlugs.has(route.audioLanguageSlug)
+    )
+  }
+  return (
+    index.audioLanguageSlugs.has(route.audioLanguageSlug) &&
+    (index.episodePairsByParent.get(route.parentSlug)?.has(route.childSlug) ??
+      false)
+  )
+}
+```
+
+`apps/web/src/proxy.ts` carries the classified manifest route through rewrite decisions and calls the admission check before `rewriteToInternal()`:
+
+```ts
+const rewrite = classifyRewrite(pathname)
+if (rewrite.kind === "pass") return NextResponse.next()
+if (rewrite.kind === "not-found") return buildNotFound()
+if (!(await isRewriteAdmittedByManifest(rewrite))) return buildNotFound()
+return rewriteToInternal(request, rewrite)
+```
+
+When the manifest is available, tests pin the cheap negative path:
+
+```ts
+it("404s safe-looking unknown content slugs before catch-all page resolution", async () => {
+  const response = await proxy(makeRequest("/anything.html/english.html"))
+  expect(response.status).toBe(404)
+  expect(rewritePath(response)).toBeNull()
+})
+```
+
+Revalidation now maps UI catalog locales to public slugs before calling `revalidatePath()`:
+
+```ts
+const audioLanguageSlug = publicWatchAudioLanguageSlugForLocale(locale)
+pushTwoSeg(slug, audioLanguageSlug)
+```
+
+The mapping deliberately distinguishes content audio URLs from one-segment home URLs:
+
+```ts
+const PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE = Object.freeze({
+  en: "english",
+  es: "spanish-castilian",
+  fr: "french",
+  pt: "portuguese-brazil",
+  de: "german-standard",
+})
+
+const PUBLIC_WATCH_HOME_LANGUAGE_SLUG_BY_UI_LOCALE = Object.freeze({
+  ...PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE,
+  de: "german",
+})
+```
+
+That keeps `/watch/german.html` valid as a language home without making `/watch/jesus.html/german.html` a valid content audio URL.
+
+One-segment language-home metadata now preserves the public segment for canonical/OG output:
+
+```ts
+return shape.isLanguageHome
+  ? getWatchPageMetadata(shape.locale, { pathLocale: shape.slug })
+  : getWatchPageMetadata(shape.locale, { slug: shape.slug })
+```
+
+The route segment also gained a sibling error boundary at `apps/web/src/app/[locale]/[htmlLang]/error.tsx` so root, home, and videos surfaces are covered by the same segment convention as the catch-all route.
+
+## Why This Works
+
+The fix separates three identities that travel together but are not interchangeable:
+
+- Public route slug: `english`, `spanish-castilian`, `german`, `german-standard`.
+- UI message catalog key: `en`, `es`, `de`.
+- Static HTML language tag: `en`, `es-419`, `de`.
+
+Keeping these separate prevents catalog keys from leaking into public audio slots and prevents home-only slugs from becoming valid content audio slugs.
+
+The manifest check also moves negative route admission ahead of the expensive/static boundary when web has a fresh or stale cached manifest. Instead of letting every safe-looking path become a potential ISR key and page resolver miss, proxy can reject known-impossible route dimensions before the request reaches the force-static catch-all.
+
+The implementation intentionally preserves availability if `getWatchRouteManifest()` returns `null`: one-segment non-language routes fall back to the legacy `isOneSegmentCollectionSlug` allowlist, and two-/three-segment routes fail open to the page resolver. That means the manifest bounds cache spray only once a manifest has been fetched or cached; it is not an unconditional security boundary. The manifest remains an admission gate, not a rendering payload or content resolver; admin still owns the lifecycle and web still resolves content normally for admitted paths. (session history)
+
+## Prevention
+
+- Keep route identity tests at every boundary:
+
+  ```ts
+  expect(revalidatePathMock).toHaveBeenCalledWith("/jesus.html/english.html")
+  expect(revalidatePathMock).not.toHaveBeenCalledWith("/jesus.html/en.html")
+  ```
+
+  ```ts
+  expect(resolveWatchLocaleIdentity("german")).toEqual({
+    locale: "de",
+    htmlLang: "de",
+  })
+  expect(isPublicWatchLanguageSlug("german")).toBe(false)
+  ```
+
+- Add hostile route fixtures against proxy, not only the catch-all page:
+
+  ```ts
+  const contentResponse = await proxy(
+    makeRequest("/anything.html/english.html"),
+  )
+  expect(contentResponse.status).toBe(404)
+  expect(rewritePath(contentResponse)).toBeNull()
+
+  const episodeResponse = await proxy(
+    makeRequest("/lumo-the-gospel-of-john.html/anything/english.html"),
+  )
+  expect(episodeResponse.status).toBe(404)
+  expect(rewritePath(episodeResponse)).toBeNull()
+  ```
+
+- Revalidate both public and internal route shapes, but derive public language segments from the raw public slug map. Never use `AVAILABLE_UI_LOCALES` directly as the public audio slot.
+- Clear the web manifest cache on the `watch-route-manifest` webhook so admin refreshes can propagate without waiting for the polling TTL.
+- Prove static behavior with both build output and runtime headers. Build output should show the watch routes as `○ (Static)`, and a second production-server request should return `x-nextjs-cache: HIT` with `Cache-Control: s-maxage=60`.
+
+Verification for this fix:
+
+```bash
+pnpm --filter @forge/web test -- src/app/api/revalidate/route.test.ts src/lib/locale.test.ts 'src/app/[locale]/[htmlLang]/[...rest]/__tests__/page-routing.test.tsx' src/proxy.test.ts src/lib/watch-route-manifest.test.ts
+pnpm --filter @forge/web typecheck
+pnpm --filter @forge/web lint
+pnpm --filter @forge/web build
+pnpm --filter @forge/web exec next start -p 3015
+curl -sS -D - -o /dev/null http://localhost:3015/watch/english.html
+curl -sS -D - -o /dev/null http://localhost:3015/watch/english.html
+```
+
+The production-server proof returned `x-nextjs-cache: MISS` on the first request, then `x-nextjs-cache: HIT`, `x-nextjs-prerender: 1`, and `Cache-Control: s-maxage=60, stale-while-revalidate=31535940` on the second.
+
+## Related Issues
+
+- [Admin-Owned Watch Route Manifest](../architecture-patterns/admin-owned-watch-route-manifest-20260530.md) - producer-side manifest pattern and lifecycle.
+- [Migrating Next.js App Router route shapes](../best-practices/nextjs-route-shape-migration-cross-cutting-contract-drift-20260430.md) - route-contract drift across proxy, metadata, URL builders, and revalidation.
+- [Next.js headers() in page routes silently defeats Full Route Cache](../web/nextjs-headers-defeats-route-cache.md) - original static rendering pitfall that made proxy-owned request logic necessary.
+- [Route-Level ISR with Apollo GraphQL and On-Demand Revalidation](../web/nextjs16-cachecomponents-isr.md) - ISR and revalidation background.
+- [Series page slug-form locale normalization](../ui-bugs/series-page-locale-normalized-to-default-on-slug-form-urls-2026-05-14.md) - earlier recurrence of treating slug-form language identifiers as BCP-47/catalog keys.
+- GitHub issue [#497](https://github.com/JesusFilm/forge/issues/497) - historical ISR/revalidation context.

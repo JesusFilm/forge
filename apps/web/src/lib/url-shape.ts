@@ -32,6 +32,8 @@ export const RESERVED_PREFIXES: ReadonlySet<string> = new Set([
   "api",
   "_next",
   "assets",
+  "images",
+  "fonts",
   "favicon.ico",
   "robots.txt",
   "sitemap.xml",
@@ -83,3 +85,14 @@ export function isUnsafeRedirectPath(path: string): boolean {
 // language-preference cookie validator) and url-canonicalize.ts (the Rule 5
 // single-segment-duplicate guard that rejects host-shaped segments).
 export const SAFE_SLUG_PATTERN = /^[a-z0-9-]+$/
+
+// One-segment collection landings observed in production. Most collections
+// and all single-video slugs 404 without an explicit language segment, so keep
+// this surface small instead of letting arbitrary slugs mint cache entries.
+export const ONE_SEGMENT_COLLECTION_SLUGS: ReadonlySet<string> = new Set([
+  "easter",
+])
+
+export function isOneSegmentCollectionSlug(slug: string): boolean {
+  return ONE_SEGMENT_COLLECTION_SLUGS.has(slug)
+}
