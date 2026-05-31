@@ -276,11 +276,11 @@ export function resolveUiLocaleForCatalog(
  * Examples with current catalogs:
  *   resolveUiLocale("spanish-castilian") → "es"
  *   resolveUiLocale("portuguese-mozambique") → "pt"
- *   resolveUiLocale("mandarin-china") → null  // no zh catalog yet
- *   resolveUiLocale("russian") → null         // no ru catalog yet
+ *   resolveUiLocale("mandarin-china") → "zh"
+ *   resolveUiLocale("russian") → "ru"
  *
- * Once `messages/ru.json` exists and the generated catalog list is refreshed,
- * `resolveUiLocale("russian")` resolves to "ru" without code changes.
+ * Languages without a matching generated catalog return null here; watch
+ * chrome callers fall back to `DEFAULT_LOCALE`.
  */
 export function resolveUiLocale(localeSegment: string): UiLocale | null {
   const resolved = resolveUiLocaleForCatalog(
