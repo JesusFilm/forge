@@ -37,6 +37,7 @@ describe("Mastra env", () => {
     )
     vi.stubEnv("MASTRA_STORAGE_DIR", "/data/mastra")
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "")
+    vi.stubEnv("MASTRA_ENRICHMENT_API_KEYS", "test-enrichment-key")
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
 
     const { assertMastraRuntimeEnv } = await import("./env")
@@ -66,6 +67,7 @@ describe("Mastra env", () => {
     vi.stubEnv("DATABASE_URL", "")
     vi.stubEnv("MASTRA_STORAGE_DIR", "/data/mastra")
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_ENRICHMENT_API_KEYS", "test-enrichment-key")
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
 
     const { assertMastraRuntimeEnv } = await import("./env")
@@ -97,6 +99,7 @@ describe("Mastra env", () => {
       "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
     )
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_ENRICHMENT_API_KEYS", "test-enrichment-key")
     vi.stubEnv("MASTRA_STORAGE_DIR", "")
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
 
@@ -184,6 +187,7 @@ describe("Mastra env", () => {
       "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
     )
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_ENRICHMENT_API_KEYS", "test-enrichment-key")
     vi.stubEnv("OPENAI_API_KEY", "")
     vi.stubEnv("OPENROUTER_API_KEY", "")
 

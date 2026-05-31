@@ -70,6 +70,7 @@ pnpm --filter @forge/mastra lint
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`                           | Postgres connection string for Mastra runtime storage. Required in production runtime.                                     |
 | `MASTRA_SERVICE_API_KEYS`                | CSV allowlist for service bearer calls. Required in production runtime.                                                    |
+| `MASTRA_ENRICHMENT_API_KEYS`             | Dedicated CSV allowlist for Manager video-enrichment dispatches. Required in production runtime.                           |
 | `MASTRA_NATIVE_EVAL_ENVIRONMENT`         | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                        |
 | `MASTRA_STORAGE_DIR`                     | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway. |
 | `MASTRA_STORAGE_BACKEND`                 | Mastra runtime storage backend. Use `postgres` normally; `memory` is local/test-only and rejected in production.           |
@@ -99,6 +100,18 @@ pnpm --filter @forge/mastra lint
 | `SEARCH_EVAL_JUDGE_MODEL`                | OpenRouter chat model stamp for offline search eval judging. Defaults to `anthropic/claude-haiku-4-5`.                     |
 | `PORT`                                   | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                          |
 | `MASTRA_STUDIO_PATH`                     | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                          |
+
+## Manager video enrichment handoff
+
+The service route `POST /forge-video-enrichment` is protected by
+`MASTRA_ENRICHMENT_API_KEYS`, separate from the broader
+`MASTRA_SERVICE_API_KEYS` surface. It validates the Manager-owned enrichment
+payload, mints the `runId` server-side, returns `202 { ok, runId }`, and starts
+the Mastra workflow asynchronously.
+
+Manager remains the trigger/UI/job-record owner. Mastra must report progress
+back through Manager's `/api/internal/enrichment-callback` contract rather than
+importing Manager or Admin code directly.
 
 ## Eval query generation
 

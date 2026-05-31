@@ -26,6 +26,10 @@ import {
   transcriptEmbeddingWorkflow,
 } from "./workflows/transcript-embedding"
 import {
+  forgeVideoEnrichmentWorkflow,
+  handleForgeVideoEnrichmentRouteRequest,
+} from "./workflows/forge-video-enrichment"
+import {
   handleSceneEmbeddingRouteRequest,
   sceneEmbeddingWorkflow,
 } from "./workflows/scene-embedding"
@@ -58,6 +62,9 @@ import {
 assertMastraRuntimeEnv()
 
 const serviceKeys = parseServiceApiKeys(env.MASTRA_SERVICE_API_KEYS)
+const enrichmentServiceKeys = parseServiceApiKeys(
+  env.MASTRA_ENRICHMENT_API_KEYS,
+)
 const storageDir = getMastraStorageDir()
 const storageSchemaName = "mastra"
 
@@ -89,6 +96,7 @@ const redactPromptBodies: SpanOutputProcessor = {
 export const mastra = new Mastra({
   agents: { smokeAgent },
   workflows: {
+    forgeVideoEnrichmentWorkflow,
     transcriptEmbeddingWorkflow,
     sceneEmbeddingWorkflow,
     experienceEmbeddingWorkflow,
@@ -160,6 +168,22 @@ export const mastra = new Mastra({
           const outcome = await handleTranscriptEmbeddingRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-video-enrichment", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleForgeVideoEnrichmentRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys: enrichmentServiceKeys,
+            configured: Boolean(env.MASTRA_ENRICHMENT_API_KEYS),
             readJson: () => c.req.json(),
           })
 

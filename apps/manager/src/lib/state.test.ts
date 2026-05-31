@@ -4,6 +4,7 @@ import {
   createJob,
   getJob,
   listJobSummaries,
+  markEnrichmentDispatched,
   mergeArtifactEntries,
   mergeJobArtifacts,
   normalizeJobArtifacts,
@@ -424,13 +425,25 @@ describe("engine stamp (P0-A)", () => {
       updatedAt: "2026-05-29T00:00:00.000Z",
       startedAt: null,
       completedAt: null,
-      options: { engine: "mastra", uploadMux: true },
+      options: {
+        engine: "mastra",
+        uploadMux: true,
+        callbackSequences: {
+          translation: 7,
+          scene_analysis: 9,
+          chapters: -1,
+        },
+      },
       artifacts: {},
       errors: [],
       steps: [],
     } as unknown as Parameters<typeof toJobRecord>[0])
 
-    expect(job.options).toEqual({ engine: "mastra", uploadMux: true })
+    expect(job.options).toEqual({
+      engine: "mastra",
+      uploadMux: true,
+      callbackSequences: { translation: 7 },
+    })
     expect(readEngineStamp(job.options)).toBe("mastra")
   })
 
@@ -499,6 +512,45 @@ describe("engine stamp (P0-A)", () => {
     expect(job?.options).toMatchObject({
       generateVoiceover: true,
       uploadMux: true,
+    })
+  })
+
+  it("markEnrichmentDispatched persists run visibility without clobbering sibling options", async () => {
+    adminGetJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-eng-dispatch"),
+      status: "pending",
+      options: { engine: "mastra", uploadMux: true },
+    })
+    adminUpdateJobMock.mockImplementation(
+      async (
+        _id: string,
+        updates: { options?: unknown; status?: unknown },
+      ) => ({
+        ...buildGraphqlJob("job-eng-dispatch"),
+        status: updates.status,
+        options: updates.options,
+      }),
+    )
+
+    const job = await markEnrichmentDispatched(
+      "job-eng-dispatch",
+      "run-123",
+      "2026-05-31T00:00:00.000Z",
+    )
+
+    expect(adminUpdateJobMock).toHaveBeenCalledWith("job-eng-dispatch", {
+      options: {
+        engine: "mastra",
+        uploadMux: true,
+        currentRunId: "run-123",
+        dispatchedAt: "2026-05-31T00:00:00.000Z",
+      },
+      status: "running",
+    })
+    expect(job?.options).toMatchObject({
+      engine: "mastra",
+      uploadMux: true,
+      currentRunId: "run-123",
     })
   })
 })

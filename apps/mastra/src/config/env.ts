@@ -25,6 +25,7 @@ const envSchema = z.object({
     .default("development"),
   NEXT_PHASE: z.string().optional(),
   MASTRA_SERVICE_API_KEYS: z.string().min(1).optional(),
+  MASTRA_ENRICHMENT_API_KEYS: z.string().min(1).optional(),
   MASTRA_NATIVE_EVAL_ENVIRONMENT: z.string().min(1).optional(),
   MASTRA_SEARCH_EVAL_ARTIFACT_DIR: z.string().min(1).optional(),
   MASTRA_STORAGE_BACKEND: z.enum(["postgres", "memory"]).default("postgres"),
@@ -103,6 +104,9 @@ export const env = envSchema.parse({
   MASTRA_SERVICE_API_KEYS: emptyToUndefined(
     process.env.MASTRA_SERVICE_API_KEYS,
   ),
+  MASTRA_ENRICHMENT_API_KEYS: emptyToUndefined(
+    process.env.MASTRA_ENRICHMENT_API_KEYS,
+  ),
   MASTRA_NATIVE_EVAL_ENVIRONMENT: emptyToUndefined(
     process.env.MASTRA_NATIVE_EVAL_ENVIRONMENT,
   ),
@@ -176,6 +180,7 @@ export function assertMastraRuntimeEnv() {
     ["ADMIN_TRANSCRIPT_INGEST_URL", env.ADMIN_TRANSCRIPT_INGEST_URL],
     ["DATABASE_URL", env.DATABASE_URL],
     ["MASTRA_SERVICE_API_KEYS", env.MASTRA_SERVICE_API_KEYS],
+    ["MASTRA_ENRICHMENT_API_KEYS", env.MASTRA_ENRICHMENT_API_KEYS],
     [
       "OPENROUTER_API_KEY or OPENAI_API_KEY",
       env.OPENROUTER_API_KEY ?? env.OPENAI_API_KEY,

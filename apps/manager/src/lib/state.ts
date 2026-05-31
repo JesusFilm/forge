@@ -8,7 +8,7 @@ import {
   updateMockCmsState,
 } from "@/cms/gateway"
 import { env } from "@/config/env"
-import { buildInitialSteps } from "@/lib/workflow-steps"
+import { buildInitialSteps, FORGE_WORKFLOW_STEPS } from "@/lib/workflow-steps"
 import type {
   EnrichmentEngine,
   JobArtifactEntry,
@@ -183,6 +183,36 @@ function normalizeJobOptions(raw: unknown): JobOptions {
   }
   if (candidate.engine === "workflow" || candidate.engine === "mastra") {
     options.engine = candidate.engine
+  }
+  if (typeof candidate.currentRunId === "string") {
+    options.currentRunId = candidate.currentRunId
+  }
+  if (typeof candidate.dispatchedAt === "string") {
+    options.dispatchedAt = candidate.dispatchedAt
+  }
+  if (
+    typeof candidate.callbackSequences === "object" &&
+    candidate.callbackSequences != null &&
+    !Array.isArray(candidate.callbackSequences)
+  ) {
+    const allowedSteps = new Set<WorkflowStepName>(FORGE_WORKFLOW_STEPS)
+    const callbackSequences: Partial<Record<WorkflowStepName, number>> = {}
+    for (const [key, value] of Object.entries(
+      candidate.callbackSequences as Record<string, unknown>,
+    )) {
+      const step = key as WorkflowStepName
+      if (
+        allowedSteps.has(step) &&
+        typeof value === "number" &&
+        Number.isInteger(value) &&
+        value >= 0
+      ) {
+        callbackSequences[step] = value
+      }
+    }
+    if (Object.keys(callbackSequences).length > 0) {
+      options.callbackSequences = callbackSequences
+    }
   }
   return options
 }
@@ -580,6 +610,7 @@ export async function updateJob(
       | "completedAt"
       | "retries"
       | "steps"
+      | "options"
     >
   >,
 ): Promise<JobRecord | null> {
@@ -695,6 +726,70 @@ export async function restampEngine(
   return null
 }
 
+export async function markEnrichmentDispatched(
+  id: string,
+  runId: string,
+  dispatchedAt = new Date().toISOString(),
+): Promise<JobRecord | null> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    const nextState = await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        jobs: current.readModels.jobs.map((job) =>
+          job.id === id
+            ? {
+                ...job,
+                options: {
+                  ...job.options,
+                  currentRunId: runId,
+                  dispatchedAt,
+                },
+                status: job.status === "pending" ? "running" : job.status,
+                updatedAt: dispatchedAt,
+              }
+            : job,
+        ),
+      },
+    }))
+    const job = nextState?.readModels.jobs.find(
+      (candidate) => candidate.id === id,
+    )
+    if (job) {
+      publishJobEvent(job)
+    }
+    return job ?? null
+  }
+
+  if (gateway.mode === "admin") {
+    try {
+      const current = await getAdminJobClient().getJob(id)
+      if (!current) {
+        return null
+      }
+      const job = await getAdminJobClient().updateJob(id, {
+        options: {
+          ...current.options,
+          currentRunId: runId,
+          dispatchedAt,
+        },
+        status: current.status === "pending" ? "running" : current.status,
+      })
+      if (job) {
+        publishJobEvent(job)
+      }
+      return job
+    } catch (err) {
+      console.warn(`[state] markEnrichmentDispatched(${id}) failed:`, err)
+      return null
+    }
+  }
+
+  return null
+}
+
 export function buildJobUpdateData(
   updates: Partial<
     Pick<
@@ -707,6 +802,7 @@ export function buildJobUpdateData(
       | "completedAt"
       | "retries"
       | "steps"
+      | "options"
     >
   >,
 ): Record<string, unknown> {
@@ -720,6 +816,7 @@ export function buildJobUpdateData(
   if ("completedAt" in updates) data.completedAt = updates.completedAt ?? null
   if (updates.retries !== undefined) data.retries = updates.retries
   if (updates.steps !== undefined) data.steps = toStepInput(updates.steps)
+  if (updates.options !== undefined) data.options = updates.options
 
   return data
 }

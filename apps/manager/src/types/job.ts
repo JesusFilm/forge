@@ -44,6 +44,9 @@ export interface JobOptions {
   uploadMux?: boolean
   notifyCms?: boolean
   engine?: EnrichmentEngine
+  currentRunId?: string
+  dispatchedAt?: string
+  callbackSequences?: Partial<Record<WorkflowStepName, number>>
 }
 
 export type TranslationLanguageResult = {

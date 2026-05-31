@@ -40,6 +40,8 @@ export const env = createEnv({
 
     // workflow (https://useworkflow.dev/) — optional for production durability
     WORKFLOW_API_KEY: z.string().min(1).optional(),
+    LAUNCHDARKLY_SDK_KEY: z.string().min(1).optional(),
+    FORGE_ENRICHMENT_ENGINE_DEFAULT: z.string().optional(),
 
     // API authentication — required for production
     MANAGER_API_KEY: z.string().min(1).optional(),
@@ -66,6 +68,12 @@ export const env = createEnv({
     // manager after transcript.json exists; Mastra owns chunking and vectors.
     MASTRA_BASE_URL: z.string().url().optional(),
     MASTRA_SERVICE_API_KEY: z.string().min(1).optional(),
+    MASTRA_ENRICHMENT_API_KEY: z.string().min(1).optional(),
+    MASTRA_ENRICHMENT_DISPATCH_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(15_000),
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: z.coerce
       .number()
       .int()
@@ -83,6 +91,7 @@ export const env = createEnv({
     // don't have the trigger endpoint configured; the route handlers
     // return 503 if invoked without this set.
     ADMIN_TRIGGER_API_KEYS: z.string().min(1).optional(),
+    ENRICHMENT_CALLBACK_API_KEYS: z.string().min(1).optional(),
 
     // ElevenLabs transcription (optional unless ElevenLabs routing is used)
     ELEVENLABS_REQUEST_TIMEOUT_MS: z.coerce
@@ -122,6 +131,9 @@ export const env = createEnv({
     MANAGER_MOCK_DATA_PATH:
       process.env.MANAGER_MOCK_DATA_PATH ?? ".tmp/mock-cms/store.json",
     WORKFLOW_API_KEY: process.env.WORKFLOW_API_KEY,
+    LAUNCHDARKLY_SDK_KEY: process.env.LAUNCHDARKLY_SDK_KEY,
+    FORGE_ENRICHMENT_ENGINE_DEFAULT:
+      process.env.FORGE_ENRICHMENT_ENGINE_DEFAULT,
     MANAGER_API_KEY: process.env.MANAGER_API_KEY,
     MANAGER_BASE_URL: process.env.MANAGER_BASE_URL,
     MANAGER_SESSION_SECRET: process.env.MANAGER_SESSION_SECRET,
@@ -137,9 +149,13 @@ export const env = createEnv({
     ADMIN_EMBED_TRIGGER_API_KEY: process.env.ADMIN_EMBED_TRIGGER_API_KEY,
     MASTRA_BASE_URL: process.env.MASTRA_BASE_URL,
     MASTRA_SERVICE_API_KEY: process.env.MASTRA_SERVICE_API_KEY,
+    MASTRA_ENRICHMENT_API_KEY: process.env.MASTRA_ENRICHMENT_API_KEY,
+    MASTRA_ENRICHMENT_DISPATCH_TIMEOUT_MS:
+      process.env.MASTRA_ENRICHMENT_DISPATCH_TIMEOUT_MS,
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS:
       process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
     ADMIN_TRIGGER_API_KEYS: process.env.ADMIN_TRIGGER_API_KEYS,
+    ENRICHMENT_CALLBACK_API_KEYS: process.env.ENRICHMENT_CALLBACK_API_KEYS,
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:
       process.env.ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS,

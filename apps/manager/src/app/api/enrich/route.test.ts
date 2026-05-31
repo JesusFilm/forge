@@ -6,8 +6,11 @@ const {
   clientQueryMock,
   createJobMock,
   ensureGeneratedSubtitlesForAssetMock,
+  getJobMock,
   isAudioCleanupConfiguredMock,
+  markEnrichmentDispatchedMock,
   materializeEnrichmentTargetForJobMock,
+  resolveEnrichmentEngineMock,
   runVideoEnrichmentMock,
   startMock,
   updateJobMock,
@@ -17,8 +20,11 @@ const {
   clientQueryMock: vi.fn(),
   createJobMock: vi.fn(),
   ensureGeneratedSubtitlesForAssetMock: vi.fn(),
+  getJobMock: vi.fn(),
   isAudioCleanupConfiguredMock: vi.fn(),
+  markEnrichmentDispatchedMock: vi.fn(),
   materializeEnrichmentTargetForJobMock: vi.fn(),
+  resolveEnrichmentEngineMock: vi.fn(),
   runVideoEnrichmentMock: vi.fn(),
   startMock: vi.fn(),
   updateJobMock: vi.fn(),
@@ -50,7 +56,13 @@ vi.mock("@/cms/client", () => ({
 
 vi.mock("@/lib/state", () => ({
   createJob: createJobMock,
+  getJob: getJobMock,
+  markEnrichmentDispatched: markEnrichmentDispatchedMock,
   updateJob: updateJobMock,
+}))
+
+vi.mock("@/lib/enrichment-engine", () => ({
+  resolveEnrichmentEngine: resolveEnrichmentEngineMock,
 }))
 
 vi.mock("@/services/mux", () => ({
@@ -188,6 +200,7 @@ describe("createEnrichmentJobs", () => {
     vi.clearAllMocks()
 
     authenticateRequestMock.mockResolvedValue(null)
+    resolveEnrichmentEngineMock.mockResolvedValue("workflow")
     afterMock.mockImplementation(async (callback: () => Promise<void>) => {
       await callback()
     })
@@ -252,6 +265,20 @@ describe("createEnrichmentJobs", () => {
           data: { attempts: [] },
         },
       },
+      steps: [],
+      errors: [],
+    })
+    getJobMock.mockResolvedValue({
+      id: "job-1",
+      muxAssetId: "mux-target-1",
+      muxPlaybackId: "mux-target-playback-1",
+      languages: ["fr"],
+      options: { engine: "workflow" },
+      status: "pending",
+      retries: 0,
+      createdAt: "",
+      updatedAt: "",
+      artifacts: {},
       steps: [],
       errors: [],
     })

@@ -6,10 +6,13 @@ const {
   countJobsMock,
   createJobMock,
   createMuxAssetMock,
+  getJobMock,
   getCmsGatewayMock,
   isAudioCleanupConfiguredMock,
   listJobSummariesMock,
   listJobsMock,
+  markEnrichmentDispatchedMock,
+  resolveEnrichmentEngineMock,
   runVideoEnrichmentMock,
   startMock,
   updateJobMock,
@@ -18,10 +21,13 @@ const {
   countJobsMock: vi.fn(),
   createJobMock: vi.fn(),
   createMuxAssetMock: vi.fn(),
+  getJobMock: vi.fn(),
   getCmsGatewayMock: vi.fn(),
   isAudioCleanupConfiguredMock: vi.fn(),
   listJobSummariesMock: vi.fn(),
   listJobsMock: vi.fn(),
+  markEnrichmentDispatchedMock: vi.fn(),
+  resolveEnrichmentEngineMock: vi.fn(),
   runVideoEnrichmentMock: vi.fn(),
   startMock: vi.fn(),
   updateJobMock: vi.fn(),
@@ -47,9 +53,15 @@ vi.mock("@/cms/gateway", async () => {
 vi.mock("@/lib/state", () => ({
   countJobs: countJobsMock,
   createJob: createJobMock,
+  getJob: getJobMock,
   listJobSummaries: listJobSummariesMock,
   listJobs: listJobsMock,
+  markEnrichmentDispatched: markEnrichmentDispatchedMock,
   updateJob: updateJobMock,
+}))
+
+vi.mock("@/lib/enrichment-engine", () => ({
+  resolveEnrichmentEngine: resolveEnrichmentEngineMock,
 }))
 
 vi.mock("@/services/mux", () => ({
@@ -187,6 +199,7 @@ describe("POST /api/jobs", () => {
     authenticateRequestMock.mockResolvedValue(null)
     getCmsGatewayMock.mockReturnValue({ mode: "live" })
     isAudioCleanupConfiguredMock.mockReturnValue(true)
+    resolveEnrichmentEngineMock.mockResolvedValue("workflow")
     createMuxAssetMock.mockResolvedValue({
       assetId: "mux-asset-1",
       playbackId: "mux-playback-1",
@@ -210,6 +223,20 @@ describe("POST /api/jobs", () => {
           },
         },
       },
+      steps: [],
+      errors: [],
+    })
+    getJobMock.mockResolvedValue({
+      id: "job-1",
+      muxAssetId: "mux-asset-1",
+      muxPlaybackId: "mux-playback-1",
+      languages: ["fr"],
+      options: { engine: "workflow" },
+      status: "pending",
+      retries: 0,
+      createdAt: "",
+      updatedAt: "",
+      artifacts: {},
       steps: [],
       errors: [],
     })

@@ -262,8 +262,31 @@ where admin's first call 401s.
 | ADMIN_TRIGGER_API_KEYS                 | CSV of bearer keys admin can use to call `/api/admin-trigger/*` (feat-119 PR2) |
 | MASTRA_BASE_URL                        | Internal Mastra runtime URL for transcript embedding launches                  |
 | MASTRA_SERVICE_API_KEY                 | Bearer key Manager presents to Mastra service routes                           |
+| MASTRA_ENRICHMENT_API_KEY              | Optional dedicated bearer for Mastra video-enrichment dispatches               |
+| MASTRA_ENRICHMENT_DISPATCH_TIMEOUT_MS  | Optional short ack-only timeout for video-enrichment dispatch (default 15s)    |
 | MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS | Optional timeout for the Manager to Mastra transcript launch call              |
+| LAUNCHDARKLY_SDK_KEY                   | Optional server-side LaunchDarkly SDK key                                      |
+| FORGE_ENRICHMENT_ENGINE_DEFAULT        | Local fallback for `forge.enrichment.engine` (`true` selects Mastra)           |
+| ENRICHMENT_CALLBACK_API_KEYS           | CSV of bearer keys Mastra can use to call `/api/internal/enrichment-callback`  |
 | NEXT_PUBLIC_WATCH_URL                  | Public video watch URL (optional)                                              |
+
+## Manager enrichment engine cutover (Mastra Phase 1)
+
+Video enrichment jobs carry an engine stamp in `job.options.engine`. Missing or
+corrupt stamps resolve to `workflow`, so old in-flight jobs stay on the legacy
+engine while Phase 1 ramps Mastra.
+
+- Runtime flag: `@forge/feature-flags` entry `forge.enrichment.engine`
+  (`false=workflow`, `true=mastra`) with local fallback
+  `FORGE_ENRICHMENT_ENGINE_DEFAULT`.
+- Operator/API override: `GET/PUT /api/admin/engine-flag`, authenticated with
+  the Manager service bearer. This process-local override matches the verified
+  single-replica Phase 1 window; revisit before scaling Manager above 1 replica.
+- Mastra callback receiver: `POST /api/internal/enrichment-callback`, protected
+  by `ENRICHMENT_CALLBACK_API_KEYS`. Callback keys must stay disjoint from
+  `ADMIN_TRIGGER_API_KEYS`.
+- Manual re-drive: `POST /api/jobs/[id]/redispatch` accepts only
+  Mastra-stamped jobs and mints a fresh Mastra run through the shared launcher.
 
 ## Standalone smoke
 

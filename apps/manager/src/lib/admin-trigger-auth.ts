@@ -27,11 +27,68 @@ export type AdminTriggerAuthResult =
   | { ok: false; status: 401; message: string }
   | { ok: false; status: 503; message: string }
 
-function parseAllowlist(): string[] {
-  if (!env.ADMIN_TRIGGER_API_KEYS) return []
-  return env.ADMIN_TRIGGER_API_KEYS.split(",")
+function parseAllowlist(value: string | undefined): string[] {
+  if (!value) return []
+  return value
+    .split(",")
     .map((k) => k.trim())
     .filter((k) => k.length > 0)
+}
+
+type CsvBearerAuthOptions = {
+  request: Request
+  csv: string | undefined
+  configName: string
+}
+
+export function validateCsvBearer({
+  request,
+  csv,
+  configName,
+}: CsvBearerAuthOptions): AdminTriggerAuthResult {
+  if (!csv) {
+    return {
+      ok: false,
+      status: 503,
+      message: `config_missing: ${configName} not set on apps/manager`,
+    }
+  }
+
+  const authHeader = request.headers.get("authorization")
+  if (!authHeader || !authHeader.startsWith(BEARER_PREFIX)) {
+    return {
+      ok: false,
+      status: 401,
+      message: "Authorization required",
+    }
+  }
+
+  const presented = authHeader.slice(BEARER_PREFIX.length)
+  if (presented.length === 0) {
+    return { ok: false, status: 401, message: "Invalid bearer token" }
+  }
+
+  const candidates = parseAllowlist(csv)
+  if (candidates.length === 0) {
+    return {
+      ok: false,
+      status: 503,
+      message: `config_missing: ${configName} contains no usable keys`,
+    }
+  }
+
+  let matched = false
+  const presentedBuf = Buffer.from(presented)
+  for (const candidate of candidates) {
+    const candidateBuf = Buffer.from(candidate)
+    if (candidateBuf.length !== presentedBuf.length) continue
+    if (timingSafeEqual(presentedBuf, candidateBuf)) {
+      matched = true
+    }
+  }
+
+  if (matched) return { ok: true }
+  return { ok: false, status: 401, message: "Invalid bearer token" }
 }
 
 /**
@@ -51,50 +108,27 @@ function parseAllowlist(): string[] {
 export function validateAdminTriggerBearer(
   request: Request,
 ): AdminTriggerAuthResult {
-  if (!env.ADMIN_TRIGGER_API_KEYS) {
-    return {
-      ok: false,
-      status: 503,
-      message: "config_missing: ADMIN_TRIGGER_API_KEYS not set on apps/manager",
-    }
-  }
+  return validateCsvBearer({
+    request,
+    csv: env.ADMIN_TRIGGER_API_KEYS,
+    configName: "ADMIN_TRIGGER_API_KEYS",
+  })
+}
 
-  const authHeader = request.headers.get("authorization")
-  if (!authHeader || !authHeader.startsWith(BEARER_PREFIX)) {
-    return {
-      ok: false,
-      status: 401,
-      message: "Authorization required",
-    }
-  }
+export function validateEnrichmentCallbackBearer(
+  request: Request,
+): AdminTriggerAuthResult {
+  return validateCsvBearer({
+    request,
+    csv: env.ENRICHMENT_CALLBACK_API_KEYS,
+    configName: "ENRICHMENT_CALLBACK_API_KEYS",
+  })
+}
 
-  const presented = authHeader.slice(BEARER_PREFIX.length)
-  if (presented.length === 0) {
-    return { ok: false, status: 401, message: "Invalid bearer token" }
-  }
-
-  const candidates = parseAllowlist()
-  if (candidates.length === 0) {
-    // Defensive — env-var validation gives us a non-empty string, but
-    // a value of `","` would parse to zero entries. Treat as 503 to
-    // surface operator misconfig rather than masquerade as auth fail.
-    return {
-      ok: false,
-      status: 503,
-      message: "config_missing: ADMIN_TRIGGER_API_KEYS contains no usable keys",
-    }
-  }
-
-  let matched = false
-  const presentedBuf = Buffer.from(presented)
-  for (const candidate of candidates) {
-    const candidateBuf = Buffer.from(candidate)
-    if (candidateBuf.length !== presentedBuf.length) continue
-    if (timingSafeEqual(presentedBuf, candidateBuf)) {
-      matched = true
-    }
-  }
-
-  if (matched) return { ok: true }
-  return { ok: false, status: 401, message: "Invalid bearer token" }
+export function assertBearerCsvsDisjoint(
+  left: string | undefined,
+  right: string | undefined,
+): boolean {
+  const leftKeys = new Set(parseAllowlist(left))
+  return parseAllowlist(right).every((key) => !leftKeys.has(key))
 }
