@@ -309,6 +309,51 @@ class OrchestratorRouteBodyError extends Error {
   }
 }
 
+function parseFirstJsonObjectAfterPrefix(
+  message: string,
+  prefix: string,
+): unknown | null {
+  const prefixIndex = message.indexOf(prefix)
+  if (prefixIndex < 0) return null
+
+  const startIndex = message.indexOf("{", prefixIndex + prefix.length)
+  if (startIndex < 0) return null
+
+  let depth = 0
+  let inString = false
+  let escaped = false
+  for (let index = startIndex; index < message.length; index += 1) {
+    const char = message[index]
+    if (inString) {
+      if (escaped) {
+        escaped = false
+      } else if (char === "\\") {
+        escaped = true
+      } else if (char === '"') {
+        inString = false
+      }
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+    } else if (char === "{") {
+      depth += 1
+    } else if (char === "}") {
+      depth -= 1
+      if (depth === 0) {
+        try {
+          return JSON.parse(message.slice(startIndex, index + 1))
+        } catch {
+          return null
+        }
+      }
+    }
+  }
+
+  return null
+}
+
 function childRunId(parentRunId: string, suffix: string): string {
   return `${parentRunId}-${suffix}`.replace(/[^a-zA-Z0-9._-]/g, "-")
 }
@@ -804,27 +849,37 @@ function throwWorkflowFailure(result: SearchEvalOrchestratorFailure): never {
 function workflowFailureFromUnknown(
   value: unknown,
 ): SearchEvalOrchestratorFailure | null {
+  const directParsed = SearchEvalOrchestratorResultSchema.safeParse(value)
+  if (directParsed.success && !directParsed.data.ok) return directParsed.data
+
   if (value instanceof SearchEvalOrchestratorWorkflowFailureError) {
     return value.result
   }
-  const message =
+  const texts =
     value instanceof Error
-      ? value.message
+      ? [value.message, value.stack].filter((text): text is string =>
+          Boolean(text),
+        )
       : typeof value === "string"
-        ? value
-        : ""
-  const prefixIndex = message.indexOf(WORKFLOW_FAILURE_ERROR_PREFIX)
-  if (prefixIndex < 0) return null
-  let payload: unknown
-  try {
-    payload = JSON.parse(
-      message.slice(prefixIndex + WORKFLOW_FAILURE_ERROR_PREFIX.length),
+        ? [value]
+        : []
+  for (const text of texts) {
+    const payload = parseFirstJsonObjectAfterPrefix(
+      text,
+      WORKFLOW_FAILURE_ERROR_PREFIX,
     )
-  } catch {
-    return null
+    if (payload == null) continue
+    const parsed = SearchEvalOrchestratorResultSchema.safeParse(payload)
+    if (parsed.success && !parsed.data.ok) return parsed.data
   }
-  const parsed = SearchEvalOrchestratorResultSchema.safeParse(payload)
-  return parsed.success && !parsed.data.ok ? parsed.data : null
+
+  const valueRecord = record(value)
+  if (!valueRecord) return null
+  return (
+    workflowFailureFromUnknown(valueRecord.result) ??
+    workflowFailureFromUnknown(valueRecord.cause) ??
+    workflowFailureFromUnknown(valueRecord.error)
+  )
 }
 
 function workflowFailureFromRunResult(

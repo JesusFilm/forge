@@ -942,6 +942,61 @@ describe("search eval orchestrator workflow", () => {
     },
   )
 
+  it("extracts Mastra-wrapped workflow failures with trailing stack text", () => {
+    const failure = {
+      ok: false as const,
+      reason: "offline_eval_failed" as const,
+      retryable: false,
+      mastraRunId: "run-real-data",
+      summary: {
+        mode: "full" as const,
+        baselineName: "real-world-smoke",
+        childWorkflowRuns: [
+          {
+            workflowId: "offline-search-eval" as const,
+            runId: "run-real-data-offline-search-eval",
+            status: "failed" as const,
+            action: "capture-baseline",
+            reason: "admin_config_missing",
+            retryable: false,
+          },
+        ],
+        artifacts: { baselineName: "real-world-smoke" },
+        nativeEvaluation: {},
+        counts: {},
+        passFail: { state: "not_applicable" as const, reasons: [] },
+      },
+    }
+    const wrapped = new Error(
+      `Error executing step workflow.search-eval-orchestrator: ` +
+        `SearchEvalOrchestratorWorkflowFailureError: ` +
+        `SEARCH_EVAL_ORCHESTRATOR_FAILED:${JSON.stringify(failure)}\n` +
+        "    at executeStep (chunk.js:1:1)",
+    )
+
+    expect(_internal.workflowFailureFromUnknown(wrapped)).toEqual(failure)
+    expect(_internal.routeStatusForResult(failure)).toBe(503)
+
+    const stackWrapped = new Error("Error executing workflow step")
+    stackWrapped.stack =
+      `Error: Error executing workflow step\n` +
+      `Caused by: SearchEvalOrchestratorWorkflowFailureError: ` +
+      `SEARCH_EVAL_ORCHESTRATOR_FAILED:${JSON.stringify(failure)}\n` +
+      "    at executeStep (chunk.js:1:1)"
+
+    expect(_internal.workflowFailureFromUnknown(stackWrapped)).toEqual(failure)
+    expect(
+      _internal.workflowFailureFromRunResult({
+        status: "failed",
+        error: {
+          message: `SEARCH_EVAL_ORCHESTRATOR_FAILED:${JSON.stringify(failure)}`,
+          name: "SearchEvalOrchestratorWorkflowFailureError",
+          result: failure,
+        },
+      }),
+    ).toEqual(failure)
+  })
+
   it("rejects oversized route bodies before launching", async () => {
     const launch = vi.fn()
     const response = await handleSearchEvalOrchestratorRouteRequest({
