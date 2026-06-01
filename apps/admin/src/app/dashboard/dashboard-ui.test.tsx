@@ -93,13 +93,65 @@ vi.mock("@/app/dashboard/live-data", () => ({
       key: "vid_1",
       title: "Neon Genesis: The Digital Divide",
       id: "vid_8829_x_alpha_92",
+      slug: "neon-genesis-the-digital-divide",
+      label: "FEATURE_FILM",
+      labelLabel: "Feature Film",
       sourceLabel: "Mux",
       sourceTone: "info",
       dubs: "3 dubs · EN, ES, FR",
       updated: "10/24/2023, 14:02",
       duration: "04:22",
+      previewImageUrl: "https://images.example.com/neon.jpg",
+      visitorUrl:
+        "https://www.jesusfilm.org/watch/neon-genesis-the-digital-divide.html/english.html",
     },
   ]),
+  loadVideoLibraryPage: vi.fn(async () => ({
+    rows: [
+      {
+        key: "vid_1",
+        title: "Neon Genesis: The Digital Divide",
+        id: "vid_8829_x_alpha_92",
+        slug: "neon-genesis-the-digital-divide",
+        label: "COLLECTION",
+        labelLabel: "Collection",
+        sourceLabel: "Mux",
+        sourceTone: "info",
+        dubs: "3 dubs · EN, ES, FR",
+        updated: "10/24/2023, 14:02",
+        duration: "04:22",
+        previewImageUrl: "https://images.example.com/neon.jpg",
+        visitorUrl:
+          "https://www.jesusfilm.org/watch/neon-genesis-the-digital-divide.html/english.html",
+      },
+      {
+        key: "vid_2",
+        title: "No Public Link",
+        id: "vid_no_public_link",
+        slug: "no-public-link",
+        label: null,
+        labelLabel: null,
+        sourceLabel: "Internal",
+        sourceTone: "muted",
+        dubs: "No dubs",
+        updated: "10/24/2023, 14:03",
+        duration: "--:--",
+        previewImageUrl: null,
+        visitorUrl: null,
+      },
+    ],
+    pagination: {
+      total: 95,
+      currentPage: 2,
+      pageSize: 30,
+      pageCount: 4,
+      hasPrevious: true,
+      hasNext: true,
+      offset: 30,
+      rangeStart: 31,
+      rangeEnd: 60,
+    },
+  })),
 }))
 
 vi.mock("@/app/dashboard/ops-data", () => ({
@@ -394,6 +446,7 @@ vi.mock("@/services/workflow-worker-heartbeat.service", () => ({
 }))
 
 import DashboardPage from "./page"
+import { loadVideoLibraryPage } from "@/app/dashboard/live-data"
 import SystemStatusPage from "./system-status/page"
 import ExperiencesPage from "./experiences/page"
 import VideosPage from "./videos/page"
@@ -433,10 +486,25 @@ describe("dashboard UI routes", () => {
   })
 
   it("renders videos page with localized info strip and actions", async () => {
-    const html = await htmlFrom(VideosPage())
+    const html = await htmlFrom(
+      VideosPage({ searchParams: Promise.resolve({ page: "2" }) }),
+    )
     expect(html).toContain(uiMessages.pages.videos.infoStrip.items[0])
     expect(html).toContain(uiMessages.pages.videos.actions.primary)
     expect(html).toContain(uiMessages.common.operatorNotes)
+    expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
+      { id: "test-user", role: "ADMIN" },
+      { page: 2 },
+    )
+    expect(html).toContain("Collection")
+    expect(html).toContain("https://images.example.com/neon.jpg")
+    expect(html).toContain(
+      "https://www.jesusfilm.org/watch/neon-genesis-the-digital-divide.html/english.html",
+    )
+    expect(html).toContain('target="_blank"')
+    expect(html).toContain("No public watch link available")
+    expect(html).toContain("Showing 31-60 of 95")
+    expect(html).toContain("Page 2 of 4")
   })
 
   it("renders core sync page around current sync state", async () => {

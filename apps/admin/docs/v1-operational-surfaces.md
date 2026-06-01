@@ -14,7 +14,9 @@ version of `apps/admin`.
 - `/dashboard/experiences/[id]` now supports direct locale editing, publish
   actions, locale switching, and revision/audit visibility for experience
   locales.
-- `/dashboard/videos` reads real video catalog rows and associated dub coverage.
+- `/dashboard/videos` reads paginated video catalog rows with type labels,
+  thumbnails, dub coverage, and visitor-facing watch-page handoff links when a
+  safe public URL can be resolved.
 - `/dashboard/workflows` lists real Workflow runtime runs; each
   `/dashboard/workflows/[runId]` route embeds the `@workflow/web-shared`
   trace/detail UI for runtime events.

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest"
 import {
   assertBearerCsvsDisjoint,
   concurrencyEnvSchema,
+  DEFAULT_WEB_CANONICAL_ORIGIN,
   env,
   searchTraceRawRetentionDaysEnvSchema,
 } from "@/config/env"
@@ -12,6 +13,10 @@ import {
 describe("env", () => {
   it("loads with placeholder defaults in CI mode", () => {
     expect(env.DATABASE_URL).toContain("forge_admin")
+  })
+
+  it("defaults visitor-facing web links to the canonical www watch origin", () => {
+    expect(env.WEB_CANONICAL_ORIGIN).toBe(DEFAULT_WEB_CANONICAL_ORIGIN)
   })
 
   // `createEnv` is bypassed under CI (`skipValidation`), so we test
