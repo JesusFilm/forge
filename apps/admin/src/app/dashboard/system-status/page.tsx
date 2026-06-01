@@ -2,8 +2,8 @@ import { Activity } from "lucide-react"
 import {
   DashboardPageHeader,
   PageSection,
-  PrimaryButton,
   QueueList,
+  SecondaryButton,
   StatusPill,
 } from "@/components/admin-ui"
 import { loadSystemStatusData } from "@/app/dashboard/ops-data"
@@ -62,7 +62,9 @@ export default async function SystemStatusPage() {
           canTriggerSync ? (
             <CoreSyncTriggerButton />
           ) : (
-            <PrimaryButton className="opacity-60">Read-only</PrimaryButton>
+            <SecondaryButton disabled>
+              {messages.common.readOnly}
+            </SecondaryButton>
           )
         }
       />
@@ -113,7 +115,7 @@ export default async function SystemStatusPage() {
               {data.matrix.map((row) => (
                 <tr
                   key={`${row.entity}-${row.source}`}
-                  className="hairline-b h-12 transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
+                  className="hairline-b h-12"
                 >
                   <td className="px-4 text-[13px] font-medium">{row.entity}</td>
                   <td className="px-4">

@@ -5,6 +5,7 @@ import {
   InsightGrid,
   OperatorRail,
   PageSection,
+  PrimaryButton,
 } from "@/components/admin-ui"
 import { requireSession } from "@/auth/session"
 import { getAdminMessages } from "@/i18n/server"
@@ -64,24 +65,23 @@ export default async function SearchPage({
               <input
                 type="text"
                 name="q"
+                aria-label="Search query"
                 defaultValue={data.queryText}
                 placeholder="forgiveness and restoration"
-                className="h-10 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[13px] text-[var(--color-text-primary)] outline-none"
+                className="h-10 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[13px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)]"
               />
               <input
                 type="text"
                 name="locale"
+                aria-label="Locale"
                 defaultValue={data.locale}
                 placeholder="en"
-                className="h-10 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 font-mono text-[12px] text-[var(--color-text-primary)] outline-none"
+                className="h-10 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 font-mono text-[12px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)]"
               />
-              <button
-                type="submit"
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-sm bg-[var(--color-brand)] px-4 text-[13px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)]"
-              >
+              <PrimaryButton type="submit" className="h-10 justify-center px-4">
                 <Search className="h-4 w-4" strokeWidth={1.5} />
                 Search
-              </button>
+              </PrimaryButton>
             </form>
             <div className="px-4 pb-4 text-[12px] text-[var(--color-text-secondary)]">
               {data.unavailableReason

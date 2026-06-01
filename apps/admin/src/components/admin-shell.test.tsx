@@ -26,6 +26,18 @@ describe("admin shell", () => {
     expect(html).toContain(adminMessages.es.nav.sections.overview)
     expect(html).toContain(adminMessages.es.nav.items.dashboard.label)
     expect(html).toContain(adminMessages.es.common.locales.es)
+    expect(html).toContain(
+      `aria-label="${adminMessages.es.common.openCommandPalette}"`,
+    )
+    expect(html).toContain(
+      `aria-label="${adminMessages.es.common.helpUnavailable}"`,
+    )
+    expect(html).toContain('aria-current="true"')
+    expect(html).toMatch(
+      new RegExp(
+        `<button(?=[^>]*disabled="")(?=[^>]*aria-label="${adminMessages.es.common.helpUnavailable}")`,
+      ),
+    )
   })
 
   it("hides admin-only routes for editor principals", () => {
