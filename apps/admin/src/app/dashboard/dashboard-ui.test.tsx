@@ -559,7 +559,7 @@ describe("dashboard UI routes", () => {
     expect(html).not.toContain(
       'hover:text-[var(--color-text-primary)]">⋯</button>',
     )
-    expect(html).toContain(uiMessages.common.operatorNotes)
+    expect(html).not.toContain(uiMessages.common.operatorNotes)
     expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
       { id: "test-user", role: "ADMIN" },
       { page: 2 },
