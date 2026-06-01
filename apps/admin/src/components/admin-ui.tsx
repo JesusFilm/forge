@@ -1,10 +1,5 @@
-import type { ReactNode } from "react"
-import {
-  ChevronRight,
-  MoreHorizontal,
-  Search,
-  type LucideIcon,
-} from "lucide-react"
+import type { ButtonHTMLAttributes, ReactNode } from "react"
+import { ChevronRight, Search, type LucideIcon } from "lucide-react"
 
 type StatusTone = "success" | "warning" | "danger" | "info" | "muted"
 
@@ -61,17 +56,19 @@ export function DashboardPageHeader({
 export function PrimaryButton({
   children,
   className,
-}: {
+  type = "button",
+  ...buttonProps
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode
-  className?: string
 }) {
   return (
     <button
-      type="button"
+      type={type}
       className={cx(
-        "inline-flex h-8 items-center gap-2 rounded-sm bg-[var(--color-brand)] px-3 text-[13px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)]",
+        "inline-flex h-8 cursor-pointer items-center gap-2 rounded-sm bg-[var(--color-brand)] px-3 text-[13px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:bg-[var(--color-brand)]",
         className,
       )}
+      {...buttonProps}
     >
       {children}
     </button>
@@ -81,17 +78,19 @@ export function PrimaryButton({
 export function SecondaryButton({
   children,
   className,
-}: {
+  type = "button",
+  ...buttonProps
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode
-  className?: string
 }) {
   return (
     <button
-      type="button"
+      type={type}
       className={cx(
-        "inline-flex h-8 items-center gap-2 rounded-sm border border-[var(--color-hairline)] px-3 text-[13px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]",
+        "inline-flex h-8 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] px-3 text-[13px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[var(--color-hairline)] disabled:hover:bg-transparent",
         className,
       )}
+      {...buttonProps}
     >
       {children}
     </button>
@@ -196,7 +195,7 @@ export function SearchPillButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex h-8 w-full max-w-[320px] items-center gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)]"
+      className="flex h-8 w-full max-w-[320px] cursor-pointer items-center gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-left transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-overlay)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
     >
       <Search
         className="h-4 w-4 text-[var(--color-text-muted)]"
@@ -231,7 +230,6 @@ export function DataTable({
                 {column}
               </th>
             ))}
-            <th className="w-10 px-4" />
           </tr>
         </thead>
         <tbody>
@@ -239,7 +237,7 @@ export function DataTable({
             <tr
               key={rowIndex}
               className={cx(
-                "hairline-b h-[52px] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]",
+                "hairline-b h-[52px]",
                 rowIndex === selectedRow &&
                   "border-l-2 border-[var(--color-brand)] bg-[var(--color-brand-soft)]",
               )}
@@ -249,12 +247,6 @@ export function DataTable({
                   {cell}
                 </td>
               ))}
-              <td className="px-4 text-right">
-                <MoreHorizontal
-                  className="ml-auto h-4 w-4 text-[var(--color-text-disabled)]"
-                  strokeWidth={1.5}
-                />
-              </td>
             </tr>
           ))}
         </tbody>

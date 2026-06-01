@@ -2,17 +2,10 @@
 
 import { useState } from "react"
 import { Filter, Plus, X } from "lucide-react"
-import { SecondaryButton } from "@/components/admin-ui"
+import { PrimaryButton, SecondaryButton } from "@/components/admin-ui"
 
 function SubmitButton({ label }: { label: string }) {
-  return (
-    <button
-      type="submit"
-      className="inline-flex h-8 items-center rounded-sm bg-[var(--color-brand)] px-3 text-[13px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)]"
-    >
-      {label}
-    </button>
-  )
+  return <PrimaryButton type="submit">{label}</PrimaryButton>
 }
 
 function slugFromTitle(value: string) {
@@ -31,6 +24,7 @@ export function ExperiencesActions({
 }: {
   labels: {
     filter: string
+    filterUnavailable: string
     primary: string
     modalTitle: string
     modalDescription: string
@@ -58,26 +52,38 @@ export function ExperiencesActions({
   return (
     <>
       <div className="flex items-center gap-3">
-        <SecondaryButton>
+        <SecondaryButton
+          disabled
+          title={labels.filterUnavailable}
+          aria-describedby="experience-filter-unavailable"
+        >
           <Filter className="h-4 w-4" strokeWidth={1.5} />
           {labels.filter}
         </SecondaryButton>
-        <button
+        <PrimaryButton
           type="button"
+          disabled={!canCreate}
+          title={canCreate ? undefined : labels.noPermission}
           onClick={() => {
-            if (canCreate) {
-              setError("")
-              setOpen(true)
-              return
-            }
-            setError(labels.noPermission)
+            setError("")
+            setOpen(true)
           }}
-          className="inline-flex h-8 items-center gap-2 rounded-sm bg-[var(--color-brand)] px-3 text-[13px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)]"
         >
           <Plus className="h-4 w-4" strokeWidth={1.5} />
           {labels.primary}
-        </button>
+        </PrimaryButton>
       </div>
+      <p
+        id="experience-filter-unavailable"
+        className="text-[12px] text-[var(--color-text-muted)]"
+      >
+        {labels.filterUnavailable}
+      </p>
+      {!canCreate ? (
+        <p className="text-[12px] text-[var(--color-text-muted)]">
+          {labels.noPermission}
+        </p>
+      ) : null}
       {error ? (
         <p className="text-[12px] text-[var(--color-danger)]">{error}</p>
       ) : null}
@@ -97,7 +103,7 @@ export function ExperiencesActions({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-sm border border-[var(--color-hairline)] p-1.5 text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
+                className="cursor-pointer rounded-sm border border-[var(--color-hairline)] p-1.5 text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
                 aria-label={labels.cancel}
               >
                 <X className="h-4 w-4" strokeWidth={1.5} />
@@ -177,7 +183,7 @@ export function ExperiencesActions({
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="inline-flex h-8 items-center rounded-sm border border-[var(--color-hairline)] px-3 text-[13px] text-[var(--color-text-secondary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
+                  className="inline-flex h-8 cursor-pointer items-center rounded-sm border border-[var(--color-hairline)] px-3 text-[13px] text-[var(--color-text-secondary)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
                 >
                   {labels.cancel}
                 </button>

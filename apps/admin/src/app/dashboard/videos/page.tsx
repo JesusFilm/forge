@@ -128,15 +128,31 @@ export default async function VideosPage({
         title={page.title}
         description={page.description}
         action={
-          <div className="flex items-center gap-3">
-            <SecondaryButton>
-              <Filter className="h-4 w-4" strokeWidth={1.5} />
-              {page.actions.filter}
-            </SecondaryButton>
-            <PrimaryButton>
-              <Plus className="h-4 w-4" strokeWidth={1.5} />
-              {page.actions.primary}
-            </PrimaryButton>
+          <div className="flex flex-col items-start gap-1 md:items-end">
+            <div className="flex items-center gap-3">
+              <SecondaryButton
+                disabled
+                title={page.actions.filterUnavailable}
+                aria-describedby="video-actions-unavailable"
+              >
+                <Filter className="h-4 w-4" strokeWidth={1.5} />
+                {page.actions.filter}
+              </SecondaryButton>
+              <PrimaryButton
+                disabled
+                title={page.actions.primaryUnavailable}
+                aria-describedby="video-actions-unavailable"
+              >
+                <Plus className="h-4 w-4" strokeWidth={1.5} />
+                {page.actions.primary}
+              </PrimaryButton>
+            </div>
+            <span
+              id="video-actions-unavailable"
+              className="font-mono text-[10px] text-[var(--color-text-muted)]"
+            >
+              {page.actions.filterUnavailable} {page.actions.primaryUnavailable}
+            </span>
           </div>
         }
       />
