@@ -405,6 +405,7 @@ export { type DownloadSheetProps as DownloadSheetContentProps }
 const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: HORIZONTAL_PADDING,
+    paddingTop: 20,
   },
   emptyContainer: {
     flex: 1,
