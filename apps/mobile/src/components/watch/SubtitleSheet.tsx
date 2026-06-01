@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  FlatList,
   Pressable,
   StyleSheet,
   Switch,
@@ -9,6 +8,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native"
+import { FlashList } from "@shopify/flash-list"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
@@ -189,30 +189,33 @@ export function SubtitleSheetContent({
     </View>
   )
 
+  // FlashList (not FlatList) so a large subtitle list scrolls smoothly: it
+  // recycles cells and reports an accurate content size, so early scroll
+  // gestures don't bounce back to the top while the list is still settling.
+  // It needs a bounded-height parent — the flex:1 wrapper (sole child) gives
+  // it one inside the formSheet.
   return (
-    <FlatList
-      style={styles.container}
-      data={filtered}
-      keyExtractor={keyExtractor}
-      renderItem={renderItem}
-      keyboardShouldPersistTaps="handled"
-      ListHeaderComponent={header}
-      contentContainerStyle={{
-        paddingHorizontal: HORIZONTAL_PADDING,
-        paddingBottom: insets.bottom + windowHeight * 0.25,
-      }}
-      showsVerticalScrollIndicator={false}
-      initialNumToRender={15}
-      maxToRenderPerBatch={20}
-      windowSize={5}
-      ListEmptyComponent={
-        <View style={styles.emptySearch}>
-          <Text style={[styles.emptySearchText, typography.body]}>
-            No subtitles found
-          </Text>
-        </View>
-      }
-    />
+    <View style={styles.container}>
+      <FlashList
+        data={filtered}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={header}
+        contentContainerStyle={{
+          paddingHorizontal: HORIZONTAL_PADDING,
+          paddingBottom: insets.bottom + windowHeight * 0.25,
+        }}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptySearch}>
+            <Text style={[styles.emptySearchText, typography.body]}>
+              No subtitles found
+            </Text>
+          </View>
+        }
+      />
+    </View>
   )
 }
 
