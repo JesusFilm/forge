@@ -27,7 +27,8 @@
   "DownloadButton": {
     "checking": "जाँच गर्दै",
     "download": "डाउनलोड गर्नुहोस्",
-    "sessionError": "तपाईंको सत्र जाँच गर्न सकिएन। फेरि प्रयास गर्नुहोस्।"
+    "sessionError": "तपाईंको सत्र जाँच गर्न सकिएन। फेरि प्रयास गर्नुहोस्।",
+    "saveVideo": "भिडियो सुरक्षित गर्नुहोस्"
   },
   "DownloadModal": {
     "dialogTitle": "भिडियो डाउनलोड गर्नुहोस्",
@@ -189,5 +190,33 @@
   },
   "ExperienceSkeleton": {
     "loadingContent": "सामग्री लोड हुँदैछ"
+  },
+  "VideoLabels": {
+    "video": "भिडियो",
+    "segment": "खण्ड",
+    "episode": "एपिसोड",
+    "featureFilm": "फिचर फिल्म",
+    "shortFilm": "छोटो फिल्म",
+    "series": "श्रृंखला",
+    "collection": "संग्रह",
+    "trailer": "ट्रेलर",
+    "behindTheScenes": "पर्दा पछाडि"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "क्लिप {current} / {total}",
+    "position": "{current} / {total}",
+    "chapterCount": "{count, plural, one {# अध्याय} other {# अध्याय}}",
+    "clipAriaLabel": "{title} · क्लिप {current} / {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# अध्याय} other {# अध्याय}}",
+    "chapter": "अध्याय",
+    "noImage": "तस्बिर छैन",
+    "playingNow": "अहिले चलिरहेको",
+    "previousChapter": "अघिल्लो अध्याय",
+    "nextChapter": "अर्को अध्याय"
+  },
+  "SearchResultCard": {
+    "experience": "अनुभव",
+    "episodeCount": "{count, plural, one {# एपिसोड} other {# एपिसोड}}",
+    "thumbnailAlt": "भिडियो थम्बनेल"
   }
 }

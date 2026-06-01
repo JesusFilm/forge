@@ -27,7 +27,8 @@
   "DownloadButton": {
     "checking": "Tinitingnan",
     "download": "I-download",
-    "sessionError": "Hindi masuri ang iyong session. Subukan muli."
+    "sessionError": "Hindi masuri ang iyong session. Subukan muli.",
+    "saveVideo": "I-save ang video"
   },
   "DownloadModal": {
     "dialogTitle": "I-download ang video",
@@ -189,5 +190,33 @@
   },
   "ExperienceSkeleton": {
     "loadingContent": "Naglo-load ng content"
+  },
+  "VideoLabels": {
+    "video": "Video",
+    "segment": "Segmento",
+    "episode": "Episode",
+    "featureFilm": "Tampok na pelikula",
+    "shortFilm": "Maikling pelikula",
+    "series": "Serye",
+    "collection": "Koleksyon",
+    "trailer": "Trailer",
+    "behindTheScenes": "Sa likod ng mga eksena"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Klip {current} ng {total}",
+    "position": "{current} ng {total}",
+    "chapterCount": "{count, plural, one {# kabanata} other {# kabanata}}",
+    "clipAriaLabel": "{title} · klip {current} ng {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# kabanata} other {# kabanata}}",
+    "chapter": "Kabanata",
+    "noImage": "Walang larawan",
+    "playingNow": "Kasalukuyang pinapanood",
+    "previousChapter": "Nakaraang kabanata",
+    "nextChapter": "Susunod na kabanata"
+  },
+  "SearchResultCard": {
+    "experience": "Karanasan",
+    "episodeCount": "{count, plural, one {# episode} other {# episode}}",
+    "thumbnailAlt": "Thumbnail ng video"
   }
 }

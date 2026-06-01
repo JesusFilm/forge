@@ -27,7 +27,8 @@
   "DownloadButton": {
     "checking": "Menyemak",
     "download": "Muat turun",
-    "sessionError": "Tidak dapat menyemak sesi anda. Cuba lagi."
+    "sessionError": "Tidak dapat menyemak sesi anda. Cuba lagi.",
+    "saveVideo": "Simpan video"
   },
   "DownloadModal": {
     "dialogTitle": "Muat turun video",
@@ -189,5 +190,33 @@
   },
   "ExperienceSkeleton": {
     "loadingContent": "Memuatkan kandungan"
+  },
+  "VideoLabels": {
+    "video": "Video",
+    "segment": "Segmen",
+    "episode": "Episod",
+    "featureFilm": "Filem cereka",
+    "shortFilm": "Filem pendek",
+    "series": "Siri",
+    "collection": "Koleksi",
+    "trailer": "Treler",
+    "behindTheScenes": "Di sebalik tabir"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Klip {current} daripada {total}",
+    "position": "{current} daripada {total}",
+    "chapterCount": "{count, plural, one {# bab} other {# bab}}",
+    "clipAriaLabel": "{title} · klip {current} daripada {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# bab} other {# bab}}",
+    "chapter": "Bab",
+    "noImage": "Tiada imej",
+    "playingNow": "Sedang dimainkan",
+    "previousChapter": "Bab sebelumnya",
+    "nextChapter": "Bab seterusnya"
+  },
+  "SearchResultCard": {
+    "experience": "Pengalaman",
+    "episodeCount": "{count, plural, one {# episod} other {# episod}}",
+    "thumbnailAlt": "Imej kecil video"
   }
 }

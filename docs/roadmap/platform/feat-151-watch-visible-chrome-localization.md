@@ -40,3 +40,11 @@ Keep search terms themselves stable so backend search behavior does not change.
 - `pnpm --filter @forge/web test -- src/i18n/__tests__/messages-parity.test.ts`
 - `pnpm --filter @forge/web test -- src/components/__tests__/FloatingSearchProvider.test.tsx src/components/watch/__tests__/HeroPlayer.test.tsx`
 - Production smoke for `/watch/parable-of-the-pharisee-and-tax-collector.html/russian.html` should show `ru` HTML plus localized visible chrome.
+
+## Completion Notes
+
+- Follow-up audit found remaining app-owned English in the sibling carousel,
+  media-label badges, search result cards, and the default download CTA prop.
+- Local production smoke strips script/style hydration payloads before checking
+  text, so admin catalog data like English video titles is separated from UI
+  chrome owned by the app.

@@ -49,6 +49,34 @@ vi.mock("next/image", () => ({
   ),
 }))
 
+vi.mock("next-intl", () => ({
+  useTranslations:
+    (namespace: "SiblingCarousel" | "VideoLabels") =>
+    (key: string, values?: Record<string, unknown>) => {
+      const catalogs = {
+        SiblingCarousel: {
+          clipPosition: `Clip ${values?.current} of ${values?.total}`,
+          position: `${values?.current} of ${values?.total}`,
+          chapterCount: `${values?.count} chapters`,
+          clipAriaLabel: `${values?.title} · Clip ${values?.current} of ${values?.total}`,
+          chaptersAriaLabel: `${values?.title} · ${values?.count} chapters`,
+          chapter: "Chapter",
+          noImage: "No image",
+          playingNow: "Playing now",
+          previousChapter: "Previous chapter",
+          nextChapter: "Next chapter",
+        },
+        VideoLabels: {
+          video: "Video",
+          collection: "Collection",
+        },
+      }
+
+      const group = catalogs[namespace] as Record<string, string> | undefined
+      return group?.[key] ?? key
+    },
+}))
+
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
 

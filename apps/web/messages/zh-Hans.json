@@ -27,7 +27,8 @@
   "DownloadButton": {
     "checking": "正在检查",
     "download": "下载",
-    "sessionError": "无法检查你的会话。请重试。"
+    "sessionError": "无法检查你的会话。请重试。",
+    "saveVideo": "保存视频"
   },
   "DownloadModal": {
     "dialogTitle": "下载视频",
@@ -189,5 +190,33 @@
   },
   "ExperienceSkeleton": {
     "loadingContent": "正在加载内容"
+  },
+  "VideoLabels": {
+    "video": "视频",
+    "segment": "片段",
+    "episode": "剧集",
+    "featureFilm": "长片",
+    "shortFilm": "短片",
+    "series": "系列",
+    "collection": "合集",
+    "trailer": "预告片",
+    "behindTheScenes": "幕后"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "第 {current} 个片段，共 {total} 个",
+    "position": "{current}/{total}",
+    "chapterCount": "{count, plural, other {# 章}}",
+    "clipAriaLabel": "{title} · 第 {current} 个片段，共 {total} 个",
+    "chaptersAriaLabel": "{title} · {count, plural, other {# 章}}",
+    "chapter": "章节",
+    "noImage": "无图片",
+    "playingNow": "正在播放",
+    "previousChapter": "上一章",
+    "nextChapter": "下一章"
+  },
+  "SearchResultCard": {
+    "experience": "互动体验",
+    "episodeCount": "{count, plural, other {# 集}}",
+    "thumbnailAlt": "视频缩略图"
   }
 }

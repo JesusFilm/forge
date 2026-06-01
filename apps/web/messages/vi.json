@@ -27,7 +27,8 @@
   "DownloadButton": {
     "checking": "Đang kiểm tra",
     "download": "Tải xuống",
-    "sessionError": "Không thể kiểm tra phiên của bạn. Vui lòng thử lại."
+    "sessionError": "Không thể kiểm tra phiên của bạn. Vui lòng thử lại.",
+    "saveVideo": "Lưu video"
   },
   "DownloadModal": {
     "dialogTitle": "Tải video xuống",
@@ -189,5 +190,33 @@
   },
   "ExperienceSkeleton": {
     "loadingContent": "Đang tải nội dung"
+  },
+  "VideoLabels": {
+    "video": "Video",
+    "segment": "Phân đoạn",
+    "episode": "Tập",
+    "featureFilm": "Phim truyện",
+    "shortFilm": "Phim ngắn",
+    "series": "Loạt phim",
+    "collection": "Bộ sưu tập",
+    "trailer": "Trailer",
+    "behindTheScenes": "Hậu trường"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Đoạn {current} trong {total}",
+    "position": "{current} trong {total}",
+    "chapterCount": "{count, plural, one {# chương} other {# chương}}",
+    "clipAriaLabel": "{title} · đoạn {current} trong {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# chương} other {# chương}}",
+    "chapter": "Chương",
+    "noImage": "Không có hình ảnh",
+    "playingNow": "Đang phát",
+    "previousChapter": "Chương trước",
+    "nextChapter": "Chương tiếp theo"
+  },
+  "SearchResultCard": {
+    "experience": "Trải nghiệm",
+    "episodeCount": "{count, plural, one {# tập} other {# tập}}",
+    "thumbnailAlt": "Ảnh thu nhỏ video"
   }
 }

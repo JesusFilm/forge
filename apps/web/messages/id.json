@@ -27,7 +27,8 @@
   "DownloadButton": {
     "checking": "Memeriksa",
     "download": "Unduh",
-    "sessionError": "Tidak dapat memeriksa sesi Anda. Coba lagi."
+    "sessionError": "Tidak dapat memeriksa sesi Anda. Coba lagi.",
+    "saveVideo": "Simpan video"
   },
   "DownloadModal": {
     "dialogTitle": "Unduh video",
@@ -189,5 +190,33 @@
   },
   "ExperienceSkeleton": {
     "loadingContent": "Memuat konten"
+  },
+  "VideoLabels": {
+    "video": "Video",
+    "segment": "Segmen",
+    "episode": "Episode",
+    "featureFilm": "Film panjang",
+    "shortFilm": "Film pendek",
+    "series": "Serial",
+    "collection": "Koleksi",
+    "trailer": "Trailer",
+    "behindTheScenes": "Di balik layar"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Klip {current} dari {total}",
+    "position": "{current} dari {total}",
+    "chapterCount": "{count, plural, one {# bab} other {# bab}}",
+    "clipAriaLabel": "{title} · klip {current} dari {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# bab} other {# bab}}",
+    "chapter": "Bab",
+    "noImage": "Tidak ada gambar",
+    "playingNow": "Sedang diputar",
+    "previousChapter": "Bab sebelumnya",
+    "nextChapter": "Bab berikutnya"
+  },
+  "SearchResultCard": {
+    "experience": "Pengalaman",
+    "episodeCount": "{count, plural, one {# episode} other {# episode}}",
+    "thumbnailAlt": "Gambar mini video"
   }
 }

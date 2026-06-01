@@ -27,7 +27,8 @@
   "DownloadButton": {
     "checking": "Wird geprüft",
     "download": "Herunterladen",
-    "sessionError": "Sitzung konnte nicht geprüft werden. Bitte versuche es erneut."
+    "sessionError": "Sitzung konnte nicht geprüft werden. Bitte versuche es erneut.",
+    "saveVideo": "Video speichern"
   },
   "DownloadModal": {
     "dialogTitle": "Video herunterladen",
@@ -189,5 +190,33 @@
   },
   "ExperienceSkeleton": {
     "loadingContent": "Inhalt wird geladen"
+  },
+  "VideoLabels": {
+    "video": "Video",
+    "segment": "Abschnitt",
+    "episode": "Folge",
+    "featureFilm": "Spielfilm",
+    "shortFilm": "Kurzfilm",
+    "series": "Serie",
+    "collection": "Sammlung",
+    "trailer": "Trailer",
+    "behindTheScenes": "Hinter den Kulissen"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Clip {current} von {total}",
+    "position": "{current} von {total}",
+    "chapterCount": "{count, plural, one {# Kapitel} other {# Kapitel}}",
+    "clipAriaLabel": "{title} · Clip {current} von {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# Kapitel} other {# Kapitel}}",
+    "chapter": "Kapitel",
+    "noImage": "Kein Bild",
+    "playingNow": "Wird gerade abgespielt",
+    "previousChapter": "Vorheriges Kapitel",
+    "nextChapter": "Nächstes Kapitel"
+  },
+  "SearchResultCard": {
+    "experience": "Experience",
+    "episodeCount": "{count, plural, one {# Folge} other {# Folgen}}",
+    "thumbnailAlt": "Video-Miniaturbild"
   }
 }

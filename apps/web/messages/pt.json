@@ -27,7 +27,8 @@
   "DownloadButton": {
     "checking": "Verificando",
     "download": "Baixar",
-    "sessionError": "Não foi possível verificar sua sessão. Tente novamente."
+    "sessionError": "Não foi possível verificar sua sessão. Tente novamente.",
+    "saveVideo": "Salvar vídeo"
   },
   "DownloadModal": {
     "dialogTitle": "Baixar vídeo",
@@ -189,5 +190,33 @@
   },
   "ExperienceSkeleton": {
     "loadingContent": "Carregando conteúdo"
+  },
+  "VideoLabels": {
+    "video": "Vídeo",
+    "segment": "Segmento",
+    "episode": "Episódio",
+    "featureFilm": "Longa-metragem",
+    "shortFilm": "Curta-metragem",
+    "series": "Série",
+    "collection": "Coleção",
+    "trailer": "Trailer",
+    "behindTheScenes": "Bastidores"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Clipe {current} de {total}",
+    "position": "{current} de {total}",
+    "chapterCount": "{count, plural, one {# capítulo} other {# capítulos}}",
+    "clipAriaLabel": "{title} · clipe {current} de {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# capítulo} other {# capítulos}}",
+    "chapter": "Capítulo",
+    "noImage": "Sem imagem",
+    "playingNow": "Reproduzindo agora",
+    "previousChapter": "Capítulo anterior",
+    "nextChapter": "Próximo capítulo"
+  },
+  "SearchResultCard": {
+    "experience": "Experiência",
+    "episodeCount": "{count, plural, one {# episódio} other {# episódios}}",
+    "thumbnailAlt": "Miniatura do vídeo"
   }
 }

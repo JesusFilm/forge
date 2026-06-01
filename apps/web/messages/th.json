@@ -27,7 +27,8 @@
   "DownloadButton": {
     "checking": "กำลังตรวจสอบ",
     "download": "ดาวน์โหลด",
-    "sessionError": "ไม่สามารถตรวจสอบเซสชันของคุณได้ โปรดลองอีกครั้ง"
+    "sessionError": "ไม่สามารถตรวจสอบเซสชันของคุณได้ โปรดลองอีกครั้ง",
+    "saveVideo": "บันทึกวิดีโอ"
   },
   "DownloadModal": {
     "dialogTitle": "ดาวน์โหลดวิดีโอ",
@@ -189,5 +190,33 @@
   },
   "ExperienceSkeleton": {
     "loadingContent": "กำลังโหลดเนื้อหา"
+  },
+  "VideoLabels": {
+    "video": "วิดีโอ",
+    "segment": "ช่วง",
+    "episode": "ตอน",
+    "featureFilm": "ภาพยนตร์ขนาดยาว",
+    "shortFilm": "ภาพยนตร์สั้น",
+    "series": "ซีรีส์",
+    "collection": "คอลเลกชัน",
+    "trailer": "ตัวอย่าง",
+    "behindTheScenes": "เบื้องหลัง"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "คลิป {current} จาก {total}",
+    "position": "{current} จาก {total}",
+    "chapterCount": "{count, plural, other {# บท}}",
+    "clipAriaLabel": "{title} · คลิป {current} จาก {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, other {# บท}}",
+    "chapter": "บท",
+    "noImage": "ไม่มีรูปภาพ",
+    "playingNow": "กำลังเล่นอยู่",
+    "previousChapter": "บทก่อนหน้า",
+    "nextChapter": "บทถัดไป"
+  },
+  "SearchResultCard": {
+    "experience": "ประสบการณ์",
+    "episodeCount": "{count, plural, other {# ตอน}}",
+    "thumbnailAlt": "ภาพตัวอย่างวิดีโอ"
   }
 }
