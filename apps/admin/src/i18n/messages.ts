@@ -396,8 +396,17 @@ export const adminMessages = {
         },
         table: {
           title: "Video Library",
-          meta: "ROW_THUMBNAILS / SOURCE_BADGES",
+          meta: "PAGINATED_ROWS / TYPE_LABELS / VISITOR_LINKS",
           columns: ["Thumbnail", "Video Details", "Source", "Dubs", "Updated"],
+          empty: "No active videos found.",
+          openVisitorLabel: "Open visitor-facing video page",
+          noVisitorLinkLabel: "No public watch link available",
+          pagination: {
+            summary: "Showing {start}-{end} of {total}",
+            page: "Page {current} of {count}",
+            previous: "Previous",
+            next: "Next",
+          },
           rows: [
             {
               title: "Neon Genesis: The Digital Divide",

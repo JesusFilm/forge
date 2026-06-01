@@ -5,13 +5,41 @@ import { describe, expect, it } from "vitest"
 import {
   assertBearerCsvsDisjoint,
   concurrencyEnvSchema,
+  DEFAULT_WEB_CANONICAL_ORIGIN,
   env,
   searchTraceRawRetentionDaysEnvSchema,
+  webCanonicalOriginEnvSchema,
 } from "@/config/env"
 
 describe("env", () => {
   it("loads with placeholder defaults in CI mode", () => {
     expect(env.DATABASE_URL).toContain("forge_admin")
+  })
+
+  it("defaults visitor-facing web links to the canonical www watch origin", () => {
+    expect(env.WEB_CANONICAL_ORIGIN).toBe(DEFAULT_WEB_CANONICAL_ORIGIN)
+  })
+
+  describe("webCanonicalOriginEnvSchema", () => {
+    it("normalizes HTTP(S) URLs to origins", () => {
+      expect(
+        webCanonicalOriginEnvSchema.parse(
+          "https://example.com/some/path?x=1#top",
+        ),
+      ).toBe("https://example.com")
+      expect(webCanonicalOriginEnvSchema.parse("http://localhost:3000/")).toBe(
+        "http://localhost:3000",
+      )
+    })
+
+    it("rejects non-HTTP visitor link origins", () => {
+      expect(() =>
+        webCanonicalOriginEnvSchema.parse("ftp://example.com"),
+      ).toThrow(/HTTP\(S\)/)
+      expect(() =>
+        webCanonicalOriginEnvSchema.parse("javascript:alert(1)"),
+      ).toThrow(/HTTP\(S\)|Invalid/)
+    })
   })
 
   // `createEnv` is bypassed under CI (`skipValidation`), so we test
