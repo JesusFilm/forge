@@ -17,9 +17,6 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Owns the offline search eval system: seed prompt sets, baseline/report
   artifacts, comparison workflows, judge orchestration, and developer/operator
   eval routes that call Admin search through authenticated HTTP.
-- Owns a thin search eval orchestrator that coordinates those leaf workflows
-  for baseline capture, comparison, native Evaluation sync, and release-gate
-  summaries without moving leaf logic into one mega-workflow.
 - All embedding workflows share provider-result validation for count alignment,
   finite vector values, and configured dimensions before calling Admin.
 - All embedding workflows use the shared Admin ingest client behavior but keep
@@ -50,9 +47,6 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   seed-prompt artifacts owned by Mastra. Keep the Studio-facing workflow
   seed-only until a later human promotion flow decides how staged generated
   candidates should become reviewable.
-- The search eval orchestrator must not promote generated, trace-derived, seed,
-  or user-submitted candidates. Candidate generation and seed submission are
-  opt-in staging steps; human promotion stays behind Admin review contracts.
 - Studio-facing workflows need structured Zod object input schemas on both the
   workflow and first step. Avoid `z.unknown()` for operator-run workflows, and
   prefer defaults/optional fields that render usable Studio forms.
