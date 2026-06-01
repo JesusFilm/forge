@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { Play } from "lucide-react"
 
 import {
@@ -25,6 +26,8 @@ export function SiblingCarousel({
   block: WatchSiblingCarouselBlock
   languageSlug: string
 }) {
+  const t = useTranslations("SiblingCarousel")
+  const videoLabels = useTranslations("VideoLabels")
   const { canonicalParent, currentVideoDocumentId } = block
 
   // Drop nulls AND items missing a slug — without a slug we can't build a
@@ -43,6 +46,7 @@ export function SiblingCarousel({
   const isParentMode = activeIndex < 0
   const clipIndex = activeIndex >= 0 ? activeIndex + 1 : 1
   const clipTotal = children.length
+  const parentTitle = canonicalParent.title ?? videoLabels("collection")
 
   // All carousel thumbnails ship with `loading="lazy"`. Native browser
   // lazy-loading still fetches above-fold images immediately — it only
@@ -75,8 +79,12 @@ export function SiblingCarousel({
   // simple "{N} chapters" total instead, mirroring the change in
   // aria-label below.
   const ariaLabel = isParentMode
-    ? `${canonicalParent.title ?? "Collection"} · ${clipTotal} chapters`
-    : `${canonicalParent.title ?? "Collection"} · Clip ${clipIndex} of ${clipTotal}`
+    ? t("chaptersAriaLabel", { title: parentTitle, count: clipTotal })
+    : t("clipAriaLabel", {
+        title: parentTitle,
+        current: clipIndex,
+        total: clipTotal,
+      })
 
   return (
     <section
@@ -87,17 +95,22 @@ export function SiblingCarousel({
     >
       <header className="mb-4 px-10 md:px-0">
         <p className="text-sm font-medium text-stone-300">
-          <span className="text-stone-100">
-            {canonicalParent.title ?? "Collection"}
-          </span>
+          <span className="text-stone-100">{parentTitle}</span>
           <span className="px-2 text-stone-500">·</span>
           <span data-testid="sibling-carousel-label">
             {isParentMode ? (
-              `${clipTotal} chapters`
+              t("chapterCount", { count: clipTotal })
             ) : (
               <>
-                <span className="md:hidden">{`${clipIndex} of ${clipTotal}`}</span>
-                <span className="hidden md:inline">{`Clip ${clipIndex} of ${clipTotal}`}</span>
+                <span className="md:hidden">
+                  {t("position", { current: clipIndex, total: clipTotal })}
+                </span>
+                <span className="hidden md:inline">
+                  {t("clipPosition", {
+                    current: clipIndex,
+                    total: clipTotal,
+                  })}
+                </span>
               </>
             )}
           </span>
@@ -160,7 +173,7 @@ export function SiblingCarousel({
                     data-testid="sibling-carousel-thumb-placeholder"
                     className="flex h-full w-full items-center justify-center bg-stone-900 text-xs text-stone-600"
                   >
-                    No image
+                    {t("noImage")}
                   </div>
                 )}
 
@@ -193,7 +206,7 @@ export function SiblingCarousel({
                   className="absolute inset-x-0 bottom-0 z-20 flex h-full flex-col justify-end gap-1.5 bg-gradient-to-t from-black/68 via-black/35 to-transparent p-3 sm:p-4"
                 >
                   <span className="text-[10px] font-semibold tracking-[0.18em] text-stone-200/90 uppercase drop-shadow-md sm:text-xs">
-                    Chapter
+                    {t("chapter")}
                   </span>
                   {/* Card title rendered as <span>, not <h3>: the cards are
                       sibling-navigation Link items and don't anchor their
@@ -221,7 +234,7 @@ export function SiblingCarousel({
                     data-testid="sibling-carousel-playing-now"
                     className="sr-only"
                   >
-                    Playing now
+                    {t("playingNow")}
                   </span>
                 ) : null}
               </>
@@ -274,11 +287,11 @@ export function SiblingCarousel({
             stays legible against the light circular background. */}
         <CarouselPrevious
           className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
-          label="Previous chapter"
+          label={t("previousChapter")}
         />
         <CarouselNext
           className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
-          label="Next chapter"
+          label={t("nextChapter")}
         />
       </Carousel>
     </section>

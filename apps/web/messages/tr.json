@@ -27,7 +27,8 @@
   "DownloadButton": {
     "checking": "Kontrol ediliyor",
     "download": "İndir",
-    "sessionError": "Oturumunuz kontrol edilemedi. Lütfen tekrar deneyin."
+    "sessionError": "Oturumunuz kontrol edilemedi. Lütfen tekrar deneyin.",
+    "saveVideo": "Videoyu kaydet"
   },
   "DownloadModal": {
     "dialogTitle": "Videoyu indir",
@@ -189,5 +190,33 @@
   },
   "ExperienceSkeleton": {
     "loadingContent": "İçerik yükleniyor"
+  },
+  "VideoLabels": {
+    "video": "Video",
+    "segment": "Kesit",
+    "episode": "Bölüm",
+    "featureFilm": "Uzun metrajlı film",
+    "shortFilm": "Kısa film",
+    "series": "Dizi",
+    "collection": "Koleksiyon",
+    "trailer": "Fragman",
+    "behindTheScenes": "Kamera arkası"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Klip {current}/{total}",
+    "position": "{current}/{total}",
+    "chapterCount": "{count, plural, one {# bölüm} other {# bölüm}}",
+    "clipAriaLabel": "{title} · klip {current}/{total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# bölüm} other {# bölüm}}",
+    "chapter": "Bölüm",
+    "noImage": "Görsel yok",
+    "playingNow": "Şu anda oynatılıyor",
+    "previousChapter": "Önceki bölüm",
+    "nextChapter": "Sonraki bölüm"
+  },
+  "SearchResultCard": {
+    "experience": "Deneyim",
+    "episodeCount": "{count, plural, one {# bölüm} other {# bölüm}}",
+    "thumbnailAlt": "Video küçük resmi"
   }
 }

@@ -27,7 +27,8 @@
   "DownloadButton": {
     "checking": "正在檢查",
     "download": "下載",
-    "sessionError": "無法檢查你的工作階段。請重試。"
+    "sessionError": "無法檢查你的工作階段。請重試。",
+    "saveVideo": "儲存影片"
   },
   "DownloadModal": {
     "dialogTitle": "下載影片",
@@ -189,5 +190,33 @@
   },
   "ExperienceSkeleton": {
     "loadingContent": "正在載入內容"
+  },
+  "VideoLabels": {
+    "video": "影片",
+    "segment": "片段",
+    "episode": "集",
+    "featureFilm": "長片",
+    "shortFilm": "短片",
+    "series": "系列",
+    "collection": "合集",
+    "trailer": "預告片",
+    "behindTheScenes": "幕後"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "第 {current} 個片段，共 {total} 個",
+    "position": "{current}/{total}",
+    "chapterCount": "{count, plural, other {# 章}}",
+    "clipAriaLabel": "{title} · 第 {current} 個片段，共 {total} 個",
+    "chaptersAriaLabel": "{title} · {count, plural, other {# 章}}",
+    "chapter": "章節",
+    "noImage": "無圖片",
+    "playingNow": "正在播放",
+    "previousChapter": "上一章",
+    "nextChapter": "下一章"
+  },
+  "SearchResultCard": {
+    "experience": "互動體驗",
+    "episodeCount": "{count, plural, other {# 集}}",
+    "thumbnailAlt": "影片縮圖"
   }
 }

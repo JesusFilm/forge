@@ -27,7 +27,8 @@
   "DownloadButton": {
     "checking": "確認中",
     "download": "ダウンロード",
-    "sessionError": "セッションを確認できませんでした。もう一度お試しください。"
+    "sessionError": "セッションを確認できませんでした。もう一度お試しください。",
+    "saveVideo": "動画を保存"
   },
   "DownloadModal": {
     "dialogTitle": "ビデオをダウンロード",
@@ -189,5 +190,33 @@
   },
   "ExperienceSkeleton": {
     "loadingContent": "コンテンツを読み込み中"
+  },
+  "VideoLabels": {
+    "video": "動画",
+    "segment": "セグメント",
+    "episode": "エピソード",
+    "featureFilm": "長編映画",
+    "shortFilm": "短編映画",
+    "series": "シリーズ",
+    "collection": "コレクション",
+    "trailer": "予告編",
+    "behindTheScenes": "舞台裏"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "クリップ {current}/{total}",
+    "position": "{current}/{total}",
+    "chapterCount": "{count, plural, other {# チャプター}}",
+    "clipAriaLabel": "{title} · クリップ {current}/{total}",
+    "chaptersAriaLabel": "{title} · {count, plural, other {# チャプター}}",
+    "chapter": "チャプター",
+    "noImage": "画像なし",
+    "playingNow": "再生中",
+    "previousChapter": "前のチャプター",
+    "nextChapter": "次のチャプター"
+  },
+  "SearchResultCard": {
+    "experience": "体験",
+    "episodeCount": "{count, plural, other {# エピソード}}",
+    "thumbnailAlt": "動画サムネイル"
   }
 }

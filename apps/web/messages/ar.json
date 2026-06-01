@@ -27,7 +27,8 @@
   "DownloadButton": {
     "checking": "جارٍ التحقق",
     "download": "تنزيل",
-    "sessionError": "تعذّر التحقق من جلستك. يُرجى المحاولة مرة أخرى."
+    "sessionError": "تعذّر التحقق من جلستك. يُرجى المحاولة مرة أخرى.",
+    "saveVideo": "حفظ الفيديو"
   },
   "DownloadModal": {
     "dialogTitle": "تنزيل الفيديو",
@@ -189,5 +190,33 @@
   },
   "ExperienceSkeleton": {
     "loadingContent": "جارٍ تحميل المحتوى"
+  },
+  "VideoLabels": {
+    "video": "فيديو",
+    "segment": "مقطع",
+    "episode": "حلقة",
+    "featureFilm": "فيلم طويل",
+    "shortFilm": "فيلم قصير",
+    "series": "سلسلة",
+    "collection": "مجموعة",
+    "trailer": "إعلان تشويقي",
+    "behindTheScenes": "خلف الكواليس"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "المقطع {current} من {total}",
+    "position": "{current} من {total}",
+    "chapterCount": "{count, plural, zero {# فصول} one {# فصل} two {# فصلان} few {# فصول} many {# فصلًا} other {# فصل}}",
+    "clipAriaLabel": "{title} · المقطع {current} من {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, zero {# فصول} one {# فصل} two {# فصلان} few {# فصول} many {# فصلًا} other {# فصل}}",
+    "chapter": "فصل",
+    "noImage": "لا توجد صورة",
+    "playingNow": "يتم التشغيل الآن",
+    "previousChapter": "الفصل السابق",
+    "nextChapter": "الفصل التالي"
+  },
+  "SearchResultCard": {
+    "experience": "تجربة",
+    "episodeCount": "{count, plural, zero {# حلقات} one {# حلقة} two {# حلقتان} few {# حلقات} many {# حلقة} other {# حلقة}}",
+    "thumbnailAlt": "صورة مصغرة للفيديو"
   }
 }

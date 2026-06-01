@@ -27,7 +27,8 @@
   "DownloadButton": {
     "checking": "Проверяем",
     "download": "Скачать",
-    "sessionError": "Не удалось проверить сеанс. Попробуйте еще раз."
+    "sessionError": "Не удалось проверить сеанс. Попробуйте еще раз.",
+    "saveVideo": "Сохранить видео"
   },
   "DownloadModal": {
     "dialogTitle": "Скачать видео",
@@ -189,5 +190,33 @@
   },
   "ExperienceSkeleton": {
     "loadingContent": "Загрузка контента"
+  },
+  "VideoLabels": {
+    "video": "Видео",
+    "segment": "Фрагмент",
+    "episode": "Серия",
+    "featureFilm": "Полнометражный фильм",
+    "shortFilm": "Короткометражный фильм",
+    "series": "Сериал",
+    "collection": "Коллекция",
+    "trailer": "Трейлер",
+    "behindTheScenes": "За кадром"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Фрагмент {current} из {total}",
+    "position": "{current} из {total}",
+    "chapterCount": "{count, plural, one {# глава} few {# главы} many {# глав} other {# главы}}",
+    "clipAriaLabel": "{title} · фрагмент {current} из {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# глава} few {# главы} many {# глав} other {# главы}}",
+    "chapter": "Глава",
+    "noImage": "Нет изображения",
+    "playingNow": "Сейчас воспроизводится",
+    "previousChapter": "Предыдущая глава",
+    "nextChapter": "Следующая глава"
+  },
+  "SearchResultCard": {
+    "experience": "Интерактив",
+    "episodeCount": "{count, plural, one {# серия} few {# серии} many {# серий} other {# серии}}",
+    "thumbnailAlt": "Миниатюра видео"
   }
 }

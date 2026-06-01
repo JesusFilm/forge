@@ -156,11 +156,18 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
   return { kind: "unknown" }
 }
 
-async function getDownloadButtonLabel(route: string): Promise<string> {
+async function getDownloadButtonLabel(
+  route: string,
+  locale: UiLocale,
+): Promise<string | undefined> {
   const useUpdatedCtaCopy = await isWatchCtaTextCopyEnabled({
     custom: { route },
   })
-  return useUpdatedCtaCopy ? "Save Video" : "Download"
+  if (!useUpdatedCtaCopy) return undefined
+
+  const messages = (await import(`../../../../../messages/${locale}.json`))
+    .default as { DownloadButton?: { saveVideo?: string } }
+  return messages.DownloadButton?.saveVideo ?? "Save Video"
 }
 
 async function getYouVersionBibleQuotePassages(
@@ -316,7 +323,7 @@ async function renderEpisode(shape: {
   seriesSlug: string
   episodeSlug: string
   rawLocale: string
-  locale: string
+  locale: UiLocale
 }) {
   const { seriesSlug, episodeSlug, rawLocale, locale } = shape
 
@@ -348,7 +355,7 @@ async function renderEpisode(shape: {
   const route = `/watch/${seriesSlug}.html/${episodeSlug}/${rawLocale}.html`
   const [downloadButtonLabel, questionPanelEnabled, youVersionPassages] =
     await Promise.all([
-      getDownloadButtonLabel(route),
+      getDownloadButtonLabel(route, locale),
       getQuestionPanelEnabled(route),
       getYouVersionBibleQuotePassages(route, resolved.video.bibleCitations),
     ])
@@ -388,7 +395,7 @@ async function renderVideo(shape: {
   kind: "video"
   slug: string
   rawLocale: string
-  locale: string
+  locale: UiLocale
 }) {
   const { slug, rawLocale, locale } = shape
   const route = `/watch/${slug}.html/${rawLocale}.html`
@@ -464,7 +471,7 @@ async function renderVideo(shape: {
     }
     const [downloadButtonLabel, questionPanelEnabled, youVersionPassages] =
       await Promise.all([
-        getDownloadButtonLabel(route),
+        getDownloadButtonLabel(route, locale),
         getQuestionPanelEnabled(route),
         getYouVersionBibleQuotePassages(route, watchVideo.video.bibleCitations),
       ])

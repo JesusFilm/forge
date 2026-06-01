@@ -27,7 +27,8 @@
   "DownloadButton": {
     "checking": "Checking",
     "download": "Download",
-    "sessionError": "Unable to check your session. Please try again."
+    "sessionError": "Unable to check your session. Please try again.",
+    "saveVideo": "Save Video"
   },
   "DownloadModal": {
     "dialogTitle": "Download video",
@@ -189,5 +190,33 @@
   },
   "ExperienceSkeleton": {
     "loadingContent": "Loading content"
+  },
+  "VideoLabels": {
+    "video": "Video",
+    "segment": "Segment",
+    "episode": "Episode",
+    "featureFilm": "Feature Film",
+    "shortFilm": "Short Film",
+    "series": "Series",
+    "collection": "Collection",
+    "trailer": "Trailer",
+    "behindTheScenes": "Behind the Scenes"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Clip {current} of {total}",
+    "position": "{current} of {total}",
+    "chapterCount": "{count, plural, one {# chapter} other {# chapters}}",
+    "clipAriaLabel": "{title} · Clip {current} of {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# chapter} other {# chapters}}",
+    "chapter": "Chapter",
+    "noImage": "No image",
+    "playingNow": "Playing now",
+    "previousChapter": "Previous chapter",
+    "nextChapter": "Next chapter"
+  },
+  "SearchResultCard": {
+    "experience": "Experience",
+    "episodeCount": "{count, plural, one {# episode} other {# episodes}}",
+    "thumbnailAlt": "Video thumbnail"
   }
 }
