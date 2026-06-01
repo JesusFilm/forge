@@ -13,6 +13,10 @@ import {
 import { montserrat } from "@/lib/watch-font"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 
+async function loadMessages(locale: UiLocale) {
+  return (await import(`../../../../messages/${locale}.json`)).default
+}
+
 function boundedUiLocale(locale: string): UiLocale {
   return hasUiLocale(locale) ? (locale as UiLocale) : DEFAULT_LOCALE
 }
@@ -67,6 +71,7 @@ export default async function RootLayout({
   const htmlLang =
     htmlLangIdentity.locale === locale ? htmlLangIdentity.htmlLang : locale
   setRequestLocale(locale)
+  const messages = await loadMessages(locale)
   return (
     <html
       lang={htmlLang}
@@ -83,7 +88,7 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href="https://imagedelivery.net" />
       </head>
       <body className="overflow-x-clip bg-black">
-        <NextIntlClientProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
           <FloatingSearchProvider>{children}</FloatingSearchProvider>
         </NextIntlClientProvider>
       </body>
