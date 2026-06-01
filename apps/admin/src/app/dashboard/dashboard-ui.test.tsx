@@ -566,13 +566,76 @@ describe("dashboard UI routes", () => {
     )
     expect(html).toContain("Collection")
     expect(html).toContain("https://images.example.com/neon.jpg")
+    expect(html).toMatch(
+      /<img(?=[^>]*src="https:\/\/images\.example\.com\/neon\.jpg")(?=[^>]*loading="lazy")(?=[^>]*decoding="async")/,
+    )
     expect(html).toContain(
       "https://www.jesusfilm.org/watch/neon-genesis-the-digital-divide.html/english.html",
     )
     expect(html).toContain('target="_blank"')
+    expect(html).toContain("--:--")
     expect(html).toContain("No public watch link available")
+    expect(html).toMatch(
+      /<span(?=[^>]*aria-disabled="true")(?=[^>]*aria-label="No public watch link available")/,
+    )
     expect(html).toContain("Showing 31-60 of 95")
     expect(html).toContain("Page 2 of 4")
+  })
+
+  it("renders first-page pagination with previous disabled and next linked", async () => {
+    vi.mocked(loadVideoLibraryPage).mockResolvedValueOnce({
+      rows: [],
+      pagination: {
+        total: 95,
+        currentPage: 1,
+        pageSize: 30,
+        pageCount: 4,
+        hasPrevious: false,
+        hasNext: true,
+        offset: 0,
+        rangeStart: 1,
+        rangeEnd: 30,
+      },
+    })
+
+    const html = await htmlFrom(
+      VideosPage({ searchParams: Promise.resolve({ page: "1" }) }),
+    )
+
+    expect(html).toContain("Showing 1-30 of 95")
+    expect(html).toContain("Page 1 of 4")
+    expect(html).toMatch(
+      /<span(?=[^>]*aria-disabled="true")[^>]*>[\s\S]*Previous/,
+    )
+    expect(html).toContain('href="/dashboard/videos?page=2"')
+    expect(html).not.toContain('href="/dashboard/videos?page=0"')
+  })
+
+  it("renders final-page pagination with next disabled and previous linked", async () => {
+    vi.mocked(loadVideoLibraryPage).mockResolvedValueOnce({
+      rows: [],
+      pagination: {
+        total: 95,
+        currentPage: 4,
+        pageSize: 30,
+        pageCount: 4,
+        hasPrevious: true,
+        hasNext: false,
+        offset: 90,
+        rangeStart: 91,
+        rangeEnd: 95,
+      },
+    })
+
+    const html = await htmlFrom(
+      VideosPage({ searchParams: Promise.resolve({ page: "999" }) }),
+    )
+
+    expect(html).toContain("Showing 91-95 of 95")
+    expect(html).toContain("Page 4 of 4")
+    expect(html).toContain('href="/dashboard/videos?page=3"')
+    expect(html).toMatch(/Next[\s\S]*<\/span>/)
+    expect(html).not.toContain('href="/dashboard/videos?page=5"')
   })
 
   it("renders core sync page around current sync state", async () => {

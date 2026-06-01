@@ -18,14 +18,6 @@ export type VideoLibraryPagination = {
   rangeEnd: number
 }
 
-export type VisitorVideoDub = {
-  hls?: string | null
-  published?: boolean | null
-  language?: {
-    slug?: string | null
-  } | null
-}
-
 export function firstSearchParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
 }
@@ -94,6 +86,16 @@ function preferredPublicLanguageSlug(slugs: Array<string | null | undefined>) {
   return candidates.find((slug) => slug === "english") ?? candidates[0] ?? null
 }
 
+function cleanWebOrigin(value: string) {
+  try {
+    const url = new URL(value)
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null
+    return url.origin
+  } catch {
+    return null
+  }
+}
+
 function manifestLanguageSlugsForContent(
   manifest: WatchRouteManifest | null | undefined,
   contentSlug: string,
@@ -118,20 +120,20 @@ export function buildVideoVisitorUrl({
 }) {
   const normalizedContentSlug = cleanSlug(contentSlug)
   const normalizedLanguageSlug = cleanSlug(languageSlug)
-  if (!normalizedContentSlug || !normalizedLanguageSlug) return null
+  const normalizedWebOrigin = cleanWebOrigin(webOrigin)
+  if (!normalizedContentSlug || !normalizedLanguageSlug || !normalizedWebOrigin)
+    return null
   if (!isPublicAudioLanguageSlug(normalizedLanguageSlug)) return null
 
-  return `${webOrigin.replace(/\/+$/, "")}/watch/${normalizedContentSlug}.html/${normalizedLanguageSlug}.html`
+  return `${normalizedWebOrigin}/watch/${normalizedContentSlug}.html/${normalizedLanguageSlug}.html`
 }
 
 export function resolveVideoVisitorUrl({
   contentSlug,
-  dubs,
   manifest,
   webOrigin,
 }: {
   contentSlug: string
-  dubs: readonly VisitorVideoDub[]
   manifest?: WatchRouteManifest | null
   webOrigin: string
 }) {
@@ -149,16 +151,5 @@ export function resolveVideoVisitorUrl({
     })
   }
 
-  const playableDubLanguage = preferredPublicLanguageSlug(
-    dubs
-      .filter((dub) => dub.published && dub.hls)
-      .map((dub) => dub.language?.slug),
-  )
-  if (!playableDubLanguage) return null
-
-  return buildVideoVisitorUrl({
-    contentSlug: normalizedContentSlug,
-    languageSlug: playableDubLanguage,
-    webOrigin,
-  })
+  return null
 }

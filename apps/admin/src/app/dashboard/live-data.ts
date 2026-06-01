@@ -390,8 +390,9 @@ function preferredVideoImage(images: VideoImageRow[]) {
 }
 
 async function countActiveVideos() {
+  const services = createServices(prisma)
   try {
-    return await prisma.video.count({ where: { deletedAt: null } })
+    return await services.video.countActive()
   } catch (error) {
     if (isMissingTableError(error)) {
       return 0
@@ -649,7 +650,6 @@ async function loadVideoRowSlice({
       visitorUrl: includeVisitorUrls
         ? resolveVideoVisitorUrl({
             contentSlug: video.slug,
-            dubs: dubRows,
             manifest: routeManifest,
             webOrigin: env.WEB_CANONICAL_ORIGIN,
           })

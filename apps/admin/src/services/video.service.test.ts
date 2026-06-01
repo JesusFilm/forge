@@ -16,6 +16,7 @@ function mockPrisma() {
     video: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      count: vi.fn(),
     },
     videoDub: {
       findMany: vi.fn(),
@@ -92,6 +93,17 @@ describe("VideoService", () => {
       await expect(
         service.list({ input: {}, query: {} }),
       ).resolves.not.toThrow()
+    })
+  })
+
+  describe("countActive", () => {
+    it("counts the same non-deleted video scope used by list", async () => {
+      prisma.video.count.mockResolvedValueOnce(12)
+
+      await expect(service.countActive()).resolves.toBe(12)
+      expect(prisma.video.count).toHaveBeenCalledWith({
+        where: { deletedAt: null },
+      })
     })
   })
 

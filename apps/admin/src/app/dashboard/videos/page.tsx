@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react"
+import type { ReactNode } from "react"
 import type { Route } from "next"
 import Link from "next/link"
 import {
@@ -35,14 +35,6 @@ function paginationHref(page: number): Route {
   return (
     page <= 1 ? "/dashboard/videos" : `/dashboard/videos?page=${page}`
   ) as Route
-}
-
-function thumbnailStyle(url: string | null): CSSProperties | undefined {
-  if (!url) return undefined
-  const safeUrl = url.replaceAll('"', "%22")
-  return {
-    backgroundImage: `linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.55)), url("${safeUrl}")`,
-  }
 }
 
 function paginationSummary(
@@ -189,11 +181,23 @@ export default async function VideosPage({
                         className="hairline-b transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
                       >
                         <td className="p-4 align-middle">
-                          <div
-                            className="relative flex aspect-video w-[150px] items-center justify-center rounded-sm border border-white/10 bg-[linear-gradient(135deg,#151312,#292524)] bg-cover bg-center"
-                            style={thumbnailStyle(video.previewImageUrl)}
-                          >
-                            {video.previewImageUrl ? null : (
+                          <div className="relative flex aspect-video w-[150px] items-center justify-center overflow-hidden rounded-sm border border-white/10 bg-[linear-gradient(135deg,#151312,#292524)]">
+                            {video.previewImageUrl ? (
+                              <>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={video.previewImageUrl}
+                                  alt=""
+                                  loading="lazy"
+                                  decoding="async"
+                                  className="absolute inset-0 h-full w-full object-cover"
+                                />
+                                <span
+                                  aria-hidden="true"
+                                  className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.55))]"
+                                />
+                              </>
+                            ) : (
                               <ImageIcon
                                 className="h-5 w-5 text-[var(--color-text-disabled)]"
                                 strokeWidth={1.5}
@@ -255,6 +259,7 @@ export default async function VideosPage({
                             </a>
                           ) : (
                             <span
+                              aria-disabled="true"
                               aria-label={page.table.noVisitorLinkLabel}
                               title={page.table.noVisitorLinkLabel}
                               className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-disabled)]"
@@ -263,6 +268,9 @@ export default async function VideosPage({
                                 className="h-4 w-4"
                                 strokeWidth={1.5}
                               />
+                              <span className="sr-only">
+                                {page.table.noVisitorLinkLabel}
+                              </span>
                             </span>
                           )}
                         </td>

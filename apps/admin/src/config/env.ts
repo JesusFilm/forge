@@ -8,6 +8,15 @@ const emptyToUndefined = (v: string | undefined) => (v === "" ? undefined : v)
 
 export const DEFAULT_WEB_CANONICAL_ORIGIN = "https://www.jesusfilm.org"
 
+export const webCanonicalOriginEnvSchema = z
+  .string()
+  .url()
+  .refine((value) => {
+    const protocol = new URL(value).protocol
+    return protocol === "http:" || protocol === "https:"
+  }, "WEB_CANONICAL_ORIGIN must be an HTTP(S) URL")
+  .transform((value) => new URL(value).origin)
+
 /**
  * Shared schema fragment for env vars representing a positive-int
  * concurrency cap (e.g. `SCENE_EMBEDDING_CONCURRENCY`,
@@ -59,9 +68,7 @@ export const env = createEnv({
     // Public web origin used only for outbound visitor-facing watch links
     // from admin. Optional so local/admin-only deployments do not need a new
     // env var; production defaults to the indexed www host.
-    WEB_CANONICAL_ORIGIN: z
-      .string()
-      .url()
+    WEB_CANONICAL_ORIGIN: webCanonicalOriginEnvSchema
       .optional()
       .default(DEFAULT_WEB_CANONICAL_ORIGIN),
     MANAGER_ADMIN_API_KEY: z.string().min(1).optional(),
