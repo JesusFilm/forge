@@ -34,11 +34,29 @@ export function videoLocalesFilter(
       ? args.locale
       : null
   const localeFilter = locale != null ? { locale } : {}
+  const visibleFilter = { deletedAt: null, ...localeFilter }
   if (isEditorOrAdmin(user)) {
-    return locale != null ? { where: localeFilter } : {}
+    return { where: visibleFilter }
   }
   return {
-    where: { status: "PUBLISHED" as const, ...localeFilter },
+    where: { status: "PUBLISHED" as const, ...visibleFilter },
+  }
+}
+
+export function videoStudyQuestionsFilter(args: { locale?: string | null }): {
+  where: Prisma.VideoStudyQuestionWhereInput
+  orderBy: Prisma.VideoStudyQuestionOrderByWithRelationInput[]
+} {
+  const locale =
+    typeof args.locale === "string" && args.locale.length > 0
+      ? args.locale
+      : null
+  return {
+    where: {
+      deletedAt: null,
+      ...(locale != null ? { locale } : { primary: true }),
+    },
+    orderBy: [{ order: "asc" as const }, { id: "asc" as const }],
   }
 }
 
@@ -50,7 +68,7 @@ export function videoParentsFilter(
     where: {
       parent: {
         deletedAt: null,
-        locales: { some: { status: "PUBLISHED" as const } },
+        locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
       },
     },
   }
@@ -64,7 +82,7 @@ export function videoChildrenFilter(
     where: {
       child: {
         deletedAt: null,
-        locales: { some: { status: "PUBLISHED" as const } },
+        locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
       },
     },
   }
@@ -262,12 +280,13 @@ builder.prismaObject("VideoLocale", {
   description: "Per-locale title/description/snippet/imageAlt for a Video.",
   fields: (t) => ({
     id: t.exposeID("id"),
-    locale: t.exposeString("locale"),
+    locale: t.exposeString("locale", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
     description: t.exposeString("description", { nullable: true }),
     snippet: t.exposeString("snippet", { nullable: true }),
     imageAlt: t.exposeString("imageAlt", { nullable: true }),
     status: t.expose("status", { type: LocaleStatusEnum }),
+    language: t.relation("language", { nullable: true }),
     publishedAt: t.string({
       nullable: true,
       resolve: (row) => row.publishedAt?.toISOString() ?? null,
@@ -383,7 +402,10 @@ builder.prismaObject("Video", {
       query: { where: { deletedAt: null } },
     }),
     studyQuestions: t.relation("studyQuestions", {
-      query: { where: { deletedAt: null } },
+      args: {
+        locale: t.arg.string({ required: false }),
+      },
+      query: (args) => videoStudyQuestionsFilter(args),
     }),
     bibleCitations: t.relation("bibleCitations", {
       query: { where: { deletedAt: null } },

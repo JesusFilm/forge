@@ -10,6 +10,7 @@ import {
   videoChildrenFilter,
   videoLocalesFilter,
   videoParentsFilter,
+  videoStudyQuestionsFilter,
 } from "@/graphql/types/video"
 
 const PUBLIC_USER: Principal | null = null
@@ -25,57 +26,84 @@ const CONSUMER_BEARER: Principal = {
 describe("videoLocalesFilter", () => {
   it("anonymous → PUBLISHED only", () => {
     expect(videoLocalesFilter({}, PUBLIC_USER)).toEqual({
-      where: { status: "PUBLISHED" },
+      where: { status: "PUBLISHED", deletedAt: null },
     })
   })
 
   it("VIEWER → PUBLISHED only (matches anonymous)", () => {
     expect(videoLocalesFilter({}, VIEWER)).toEqual({
-      where: { status: "PUBLISHED" },
+      where: { status: "PUBLISHED", deletedAt: null },
     })
   })
 
   it("CONSUMER_BEARER (web SSR) → PUBLISHED only", () => {
     expect(videoLocalesFilter({}, CONSUMER_BEARER)).toEqual({
-      where: { status: "PUBLISHED" },
+      where: { status: "PUBLISHED", deletedAt: null },
     })
   })
 
-  it("EDITOR → no filter (sees DRAFT + PUBLISHED)", () => {
-    expect(videoLocalesFilter({}, EDITOR)).toEqual({})
+  it("EDITOR → only non-deleted rows (sees DRAFT + PUBLISHED)", () => {
+    expect(videoLocalesFilter({}, EDITOR)).toEqual({
+      where: { deletedAt: null },
+    })
   })
 
-  it("ADMIN → no filter", () => {
-    expect(videoLocalesFilter({}, ADMIN)).toEqual({})
+  it("ADMIN → only non-deleted rows", () => {
+    expect(videoLocalesFilter({}, ADMIN)).toEqual({
+      where: { deletedAt: null },
+    })
   })
 
   it("anonymous + locale → PUBLISHED-only filter narrows to the requested locale", () => {
     expect(videoLocalesFilter({ locale: "fr" }, PUBLIC_USER)).toEqual({
-      where: { status: "PUBLISHED", locale: "fr" },
+      where: { status: "PUBLISHED", deletedAt: null, locale: "fr" },
     })
   })
 
   it("EDITOR + locale → no status filter but does narrow by locale", () => {
     expect(videoLocalesFilter({ locale: "fr" }, EDITOR)).toEqual({
-      where: { locale: "fr" },
+      where: { deletedAt: null, locale: "fr" },
     })
   })
 
   it("ADMIN + locale → no status filter but does narrow by locale", () => {
     expect(videoLocalesFilter({ locale: "fr" }, ADMIN)).toEqual({
-      where: { locale: "fr" },
+      where: { deletedAt: null, locale: "fr" },
     })
   })
 
   it("anonymous + locale=null → behaves like no locale (PUBLISHED-only across all locales)", () => {
     expect(videoLocalesFilter({ locale: null }, PUBLIC_USER)).toEqual({
-      where: { status: "PUBLISHED" },
+      where: { status: "PUBLISHED", deletedAt: null },
     })
   })
 
   it("anonymous + locale='' → behaves like no locale (PUBLISHED-only across all locales)", () => {
     expect(videoLocalesFilter({ locale: "" }, PUBLIC_USER)).toEqual({
-      where: { status: "PUBLISHED" },
+      where: { status: "PUBLISHED", deletedAt: null },
+    })
+  })
+})
+
+describe("videoStudyQuestionsFilter", () => {
+  it("omitted locale returns default primary non-deleted questions only", () => {
+    expect(videoStudyQuestionsFilter({})).toEqual({
+      where: { deletedAt: null, primary: true },
+      orderBy: [{ order: "asc" }, { id: "asc" }],
+    })
+  })
+
+  it("requested locale narrows to that locale and non-deleted rows", () => {
+    expect(videoStudyQuestionsFilter({ locale: "ru" })).toEqual({
+      where: { deletedAt: null, locale: "ru" },
+      orderBy: [{ order: "asc" }, { id: "asc" }],
+    })
+  })
+
+  it("empty locale behaves like omitted locale", () => {
+    expect(videoStudyQuestionsFilter({ locale: "" })).toEqual({
+      where: { deletedAt: null, primary: true },
+      orderBy: [{ order: "asc" }, { id: "asc" }],
     })
   })
 })
@@ -86,7 +114,7 @@ describe("videoParentsFilter", () => {
       where: {
         parent: {
           deletedAt: null,
-          locales: { some: { status: "PUBLISHED" } },
+          locales: { some: { status: "PUBLISHED", deletedAt: null } },
         },
       },
     })
@@ -97,7 +125,7 @@ describe("videoParentsFilter", () => {
       where: {
         parent: {
           deletedAt: null,
-          locales: { some: { status: "PUBLISHED" } },
+          locales: { some: { status: "PUBLISHED", deletedAt: null } },
         },
       },
     })
@@ -108,7 +136,7 @@ describe("videoParentsFilter", () => {
       where: {
         parent: {
           deletedAt: null,
-          locales: { some: { status: "PUBLISHED" } },
+          locales: { some: { status: "PUBLISHED", deletedAt: null } },
         },
       },
     })
@@ -129,7 +157,7 @@ describe("videoChildrenFilter", () => {
       where: {
         child: {
           deletedAt: null,
-          locales: { some: { status: "PUBLISHED" } },
+          locales: { some: { status: "PUBLISHED", deletedAt: null } },
         },
       },
     })
@@ -140,7 +168,7 @@ describe("videoChildrenFilter", () => {
       where: {
         child: {
           deletedAt: null,
-          locales: { some: { status: "PUBLISHED" } },
+          locales: { some: { status: "PUBLISHED", deletedAt: null } },
         },
       },
     })
@@ -151,7 +179,7 @@ describe("videoChildrenFilter", () => {
       where: {
         child: {
           deletedAt: null,
-          locales: { some: { status: "PUBLISHED" } },
+          locales: { some: { status: "PUBLISHED", deletedAt: null } },
         },
       },
     })

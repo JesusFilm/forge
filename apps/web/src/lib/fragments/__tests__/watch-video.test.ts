@@ -79,8 +79,11 @@ describe("WatchVideoFragment", () => {
 
     // studyQuestions: `value: text` alias because the consumer reads
     // `q.value`.
-    expect(printed).toMatch(/studyQuestions\s*\{[\s\S]*?value\s*:\s*text/)
-    expect(printed).toMatch(/studyQuestions\s*\{[\s\S]*?\border\b/)
+    expect(printed).toMatch(/studyQuestions\(locale:\s*\$locale\)\s*\{/)
+    expect(printed).toMatch(
+      /studyQuestions\([^)]*\)\s*\{[\s\S]*?value\s*:\s*text/,
+    )
+    expect(printed).toMatch(/studyQuestions\([^)]*\)\s*\{[\s\S]*?\border\b/)
 
     // bibleCitations + bibleBook { name } as a plain selection (admin's
     // `BibleBook.name` is JSON; the resolver coerces to string).
@@ -119,8 +122,10 @@ describe("GetWatchVideoBySlug operation", () => {
 
     expect(printed).toMatch(/videoBySlug\(/)
     expect(printed).toMatch(/slug:\s*\$videoSlug/)
-    // $locale is consumed inside the fragment's `locales(locale:)` arg.
+    // $locale is consumed inside the fragment's `locales(locale:)` and
+    // `studyQuestions(locale:)` args.
     expect(printed).toMatch(/locales\(locale:\s*\$locale\)/)
+    expect(printed).toMatch(/studyQuestions\(locale:\s*\$locale\)/)
   })
 
   it("inlines the WatchVideoFragment selection set (gql.tada @_unmask)", () => {

@@ -42,7 +42,10 @@ describe("syncVideos", () => {
               primaryLanguageId: "lang-en",
               source: "mux",
               origin: { id: "origin-1" },
-              title: [{ value: "Title", language: { id: "lang-en" } }],
+              title: [
+                { value: "Title", language: { id: "lang-en" } },
+                { value: "Russian title", language: { id: "lang-ru" } },
+              ],
               description: [
                 { value: "Description", language: { id: "lang-en" } },
               ],
@@ -55,6 +58,13 @@ describe("syncVideos", () => {
                   primary: true,
                   order: 1,
                   language: { id: "lang-en" },
+                },
+                {
+                  id: "sq-ru",
+                  value: "Russian question?",
+                  primary: false,
+                  order: 1,
+                  language: { id: "lang-ru" },
                 },
               ],
               bibleCitations: [
@@ -102,13 +112,20 @@ describe("syncVideos", () => {
         upsert: vi.fn().mockResolvedValue({ id: "video-1" }),
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
-      videoLocale: { upsert: vi.fn().mockResolvedValue(undefined) },
+      videoLocale: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({ id: "video-locale-1" }),
+        update: vi.fn().mockResolvedValue({ id: "video-locale-1" }),
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
       videoImage: {
         upsert: vi.fn().mockResolvedValue(undefined),
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
       videoStudyQuestion: {
-        upsert: vi.fn().mockResolvedValue(undefined),
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({ id: "question-1" }),
+        update: vi.fn().mockResolvedValue({ id: "question-1" }),
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
       bibleCitation: {
@@ -133,11 +150,10 @@ describe("syncVideos", () => {
     const prisma = {
       $executeRaw: vi.fn().mockResolvedValue(undefined),
       language: {
-        findMany: vi
-          .fn()
-          .mockResolvedValue([
-            { id: "language-1", coreId: "lang-en", bcp47: "en" },
-          ]),
+        findMany: vi.fn().mockResolvedValue([
+          { id: "language-1", coreId: "lang-en", bcp47: "en" },
+          { id: "language-ru", coreId: "lang-ru", bcp47: "ru" },
+        ]),
       },
       videoOrigin: {
         findMany: vi
@@ -158,6 +174,12 @@ describe("syncVideos", () => {
     })
 
     expect(stats.errors).toBe(0)
+    const videosQuery = mockedCoreQuery.mock.calls[1][0]
+    expect(videosQuery).toContain("title(primary: false)")
+    expect(videosQuery).toContain("description(primary: false)")
+    expect(videosQuery).toContain("snippet(primary: false)")
+    expect(videosQuery).toContain("imageAlt(primary: false)")
+    expect(videosQuery).toContain("studyQuestions(primary: false)")
     expect(prisma.$executeRaw).toHaveBeenCalled()
     expect(tx.video.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -168,7 +190,25 @@ describe("syncVideos", () => {
         }),
       }),
     )
-    expect(tx.videoStudyQuestion.upsert).toHaveBeenCalled()
+    expect(tx.videoLocale.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          locale: "ru",
+          languageId: "language-ru",
+          title: "Russian title",
+        }),
+      }),
+    )
+    expect(tx.videoStudyQuestion.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          coreId: "sq-ru",
+          locale: "ru",
+          languageId: "language-ru",
+          text: "Russian question?",
+        }),
+      }),
+    )
     expect(tx.videoImage.upsert).not.toHaveBeenCalled()
     expect(tx.videoSubtitle.upsert).not.toHaveBeenCalled()
     expect(tx.videoKeyword.deleteMany).toHaveBeenCalledWith({

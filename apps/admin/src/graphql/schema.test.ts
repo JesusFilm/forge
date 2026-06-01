@@ -412,6 +412,17 @@ describe("Video type", () => {
     const fields = fieldsOf("Video")
     expect(fields.subtitles).toBeUndefined()
   })
+
+  it("studyQuestions accepts an optional locale argument", () => {
+    const fields = fieldsOf("Video") as Record<
+      string,
+      { args: Array<{ name: string; type: { toString(): string } }> }
+    >
+    const localeArg = fields.studyQuestions.args.find(
+      (arg) => arg.name === "locale",
+    )
+    expect(localeArg?.type.toString()).toBe("String")
+  })
 })
 
 describe("MediaAsset type", () => {

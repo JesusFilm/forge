@@ -1,7 +1,7 @@
 ---
 id: feat-153
 title: Localized watch content metadata from Core
-status: "in-progress"
+status: "complete"
 priority: high
 area: platform
 tags:

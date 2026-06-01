@@ -278,7 +278,10 @@ export class VideoService {
   }): Promise<ChildDubLanguageRow[]> {
     const childVisibility: Prisma.VideoWhereInput = isEditorOrAdmin(user)
       ? { deletedAt: null }
-      : { deletedAt: null, locales: { some: { status: "PUBLISHED" } } }
+      : {
+          deletedAt: null,
+          locales: { some: { status: "PUBLISHED", deletedAt: null } },
+        }
 
     const dubs = await this.prisma.videoDub.findMany({
       where: {

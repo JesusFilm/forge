@@ -131,8 +131,9 @@ export async function readSearchEvalCatalogContext(
     prisma.videoLocale.findMany({
       where: {
         status: "PUBLISHED",
+        deletedAt: null,
         title: { not: null },
-        ...(locales ? { locale: { in: locales } } : {}),
+        locale: locales ? { in: locales } : { not: null },
         video: {
           deletedAt: null,
           noIndex: false,
@@ -195,6 +196,7 @@ export async function readSearchEvalCatalogContext(
   const videoAnchors: SearchEvalCatalogAnchor[] = videoLocales.flatMap(
     (row) => {
       const title = titleOrNull(row.title)
+      if (!row.locale) return []
       if (!title) return []
       return [
         {

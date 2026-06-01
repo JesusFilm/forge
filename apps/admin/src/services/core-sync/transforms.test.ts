@@ -114,6 +114,7 @@ describe("toVideoLocales", () => {
     ).toEqual([
       {
         locale: "en",
+        languageCoreId: "lang-en",
         title: "Title",
         description: "Description",
         snippet: "Snippet",
@@ -122,10 +123,41 @@ describe("toVideoLocales", () => {
       },
       {
         locale: "fr",
+        languageCoreId: "lang-fr",
         title: "Titre",
         description: null,
         snippet: null,
         imageAlt: "Alt FR",
+        primary: false,
+      },
+    ])
+  })
+
+  it("keeps Core languages without BCP-47 by language identity", () => {
+    expect(
+      toVideoLocales(
+        {
+          title: [
+            {
+              value: "No public tag",
+              primary: false,
+              language: { id: "lang-no-bcp47" },
+            },
+          ],
+          description: [],
+          snippet: [],
+          imageAlt: [],
+        },
+        { bcp47ByCoreId: new Map([["lang-no-bcp47", null]]) },
+      ),
+    ).toEqual([
+      {
+        locale: null,
+        languageCoreId: "lang-no-bcp47",
+        title: "No public tag",
+        description: null,
+        snippet: null,
+        imageAlt: null,
         primary: false,
       },
     ])

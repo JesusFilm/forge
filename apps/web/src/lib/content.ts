@@ -16,6 +16,7 @@ import {
   watchExperienceFragment,
   watchVideoFragment,
 } from "@/lib/fragments"
+import { slugToBcp47Tag } from "@/lib/locale"
 
 // Keep gql.tada introspection types live for the watch-page fragment.
 void watchVideoFragment
@@ -990,21 +991,107 @@ type ResolveWatchVideoArgs = {
   languageSlug: string
 }
 
-// Default locale used by the dedicated watch route when fetching the
-// video record. The route's URL carries an explicit language slug (per
-// the 3-segment shape `/watch/[collection]/[video]/[language]`), so the
-// locale here only controls which `VideoLocale` row hydrates the
-// title/description/snippet fields — not playback selection.
-const WATCH_VIDEO_LOCALE = "en"
+function contentLocaleForWatchLanguage(languageSlugOrLocale: string): string {
+  return slugToBcp47Tag(languageSlugOrLocale) ?? languageSlugOrLocale
+}
+
+function hasItems<T>(items: readonly T[] | null | undefined): boolean {
+  return (items?.length ?? 0) > 0
+}
+
+type ChildRelationWithLocales = {
+  child:
+    | ({
+        documentId: string | null
+        locales?: readonly unknown[] | null
+      } & Record<string, unknown>)
+    | null
+}
+
+function mergeChildRelationLocales<
+  T extends readonly ChildRelationWithLocales[] | null | undefined,
+>(relations: T, fallbackRelations: T): T {
+  const fallbackByChildId = new Map(
+    (fallbackRelations ?? []).flatMap((relation) => {
+      const id = relation.child?.documentId
+      return id ? [[id, relation] as const] : []
+    }),
+  )
+
+  return (relations ?? []).map((relation) => {
+    const child = relation.child
+    const fallbackChild = child?.documentId
+      ? fallbackByChildId.get(child.documentId)?.child
+      : null
+    if (!child || !fallbackChild || hasItems(child.locales)) return relation
+    return {
+      ...relation,
+      child: {
+        ...child,
+        locales: fallbackChild.locales,
+      },
+    }
+  }) as unknown as T
+}
+
+function mergeParentRelationLocales(
+  relations: AdminVideoRaw["parents"],
+  fallbackRelations: AdminVideoRaw["parents"],
+): AdminVideoRaw["parents"] {
+  const fallbackByParentId = new Map(
+    (fallbackRelations ?? []).flatMap((relation) => {
+      const id = relation.parent?.documentId
+      return id ? [[id, relation] as const] : []
+    }),
+  )
+
+  return (relations ?? []).map((relation) => {
+    const parent = relation.parent
+    const fallbackParent = parent?.documentId
+      ? fallbackByParentId.get(parent.documentId)?.parent
+      : null
+    if (!parent || !fallbackParent) return relation
+
+    return {
+      ...relation,
+      parent: {
+        ...parent,
+        locales: hasItems(parent.locales)
+          ? parent.locales
+          : fallbackParent.locales,
+        children: mergeChildRelationLocales(
+          parent.children,
+          fallbackParent.children,
+        ),
+      },
+    }
+  }) as AdminVideoRaw["parents"]
+}
+
+function mergeEnglishContentFallback(
+  localized: AdminVideoRaw,
+  fallback: AdminVideoRaw,
+): AdminVideoRaw {
+  return {
+    ...localized,
+    locales: hasItems(localized.locales) ? localized.locales : fallback.locales,
+    studyQuestions: hasItems(localized.studyQuestions)
+      ? localized.studyQuestions
+      : fallback.studyQuestions,
+    parents: mergeParentRelationLocales(localized.parents, fallback.parents),
+    children: mergeChildRelationLocales(localized.children, fallback.children),
+  } as AdminVideoRaw
+}
 
 async function fetchWatchVideoRecord(
   collectionSlug: string,
   videoSlug: string,
+  contentLocale: string,
 ): Promise<WatchVideoRecord | null> {
   const result = await client.query({
     query: getWatchVideoBySlugOperation,
     variables: {
-      locale: WATCH_VIDEO_LOCALE,
+      locale: contentLocale,
       videoSlug,
     },
     fetchPolicy: "no-cache",
@@ -1064,7 +1151,11 @@ async function tryResolveWatchVideo(
   videoSlug: string,
   languageSlug: string,
 ): Promise<ResolvedWatchVideo> {
-  const record = await fetchWatchVideoRecord(collectionSlug, videoSlug)
+  const record = await fetchWatchVideoRecord(
+    collectionSlug,
+    videoSlug,
+    contentLocaleForWatchLanguage(languageSlug),
+  )
   if (!record) {
     throw new WatchVideoError("VIDEO_NOT_FOUND", {
       collectionSlug,
@@ -1172,12 +1263,13 @@ export type ResolvedWatchVideoBySlug = {
 const fetchWatchVideoBySlug = cache(
   async (
     videoSlug: string,
-    locale: string,
+    languageSlug: string,
   ): Promise<WatchVideoRecord | null> => {
+    const contentLocale = contentLocaleForWatchLanguage(languageSlug)
     const result = await client.query({
       query: getWatchVideoBySlugOperation,
       variables: {
-        locale,
+        locale: contentLocale,
         videoSlug,
       },
       fetchPolicy: "no-cache",
@@ -1191,16 +1283,14 @@ const fetchWatchVideoBySlug = cache(
     const raw = result.data?.videoBySlug ?? null
     if (!raw) return null
 
-    // Locale-text fallback: admin's `locales(locale:)` arg filters on
-    // bcp47 strictly, but URLs use the language slug ("afrikaans" not
-    // "af") and many videos don't have a localized VideoLocale row in
-    // every requested language. Either case returns an empty `locales[]`
-    // — which would render an empty <h1> on the watch page. Re-fetch
-    // with "en" when the primary record came back without locale text;
-    // the variant chain already handles audio-language selection so
-    // the user still gets the right dub, just with English title /
-    // description as a graceful fallback.
-    if (!raw.locales?.[0] && locale !== "en") {
+    // Content fallback: localized display text and study questions can have
+    // different coverage. Re-fetch English when either piece is missing, then
+    // merge per part so a Russian title can still use English questions until
+    // Core/admin has translated question rows for that video.
+    if (
+      contentLocale !== "en" &&
+      (!hasItems(raw.locales) || !hasItems(raw.studyQuestions))
+    ) {
       const fallback = await client.query({
         query: getWatchVideoBySlugOperation,
         variables: { locale: "en", videoSlug },
@@ -1209,16 +1299,10 @@ const fetchWatchVideoBySlug = cache(
       const fallbackError = graphqlError(
         fallback as { error?: ErrorLike; errors?: unknown[] },
       )
-      if (!fallbackError && fallback.data?.videoBySlug?.locales?.[0]) {
-        // Use the entire EN-fetched shape, not just top-level `locales`.
-        // The fragment applies `locales(locale: $locale)` at every nesting
-        // tier (parents, parents.children, etc.); a slug-form locale like
-        // "english" matches no BCP-47 row, so all nested `locales[]` come
-        // back empty too. Returning the fallback shape fills the sibling
-        // carousel + canonical-parent titles in one go. `dubs`, `images`,
-        // `parents`, `children` aren't locale-filtered, so the two shapes
-        // are byte-equivalent outside the `locales[]` arrays we want.
-        return normalizeAdminVideo(fallback.data.videoBySlug)
+      if (!fallbackError && fallback.data?.videoBySlug) {
+        return normalizeAdminVideo(
+          mergeEnglishContentFallback(raw, fallback.data.videoBySlug),
+        )
       }
     }
 
@@ -1308,9 +1392,9 @@ export function selectPlayableVariant(
 
 async function tryResolveWatchVideoBySlug(
   videoSlug: string,
-  locale: string,
+  languageSlug: string,
 ): Promise<ResolvedWatchVideoBySlug> {
-  const record = await fetchWatchVideoBySlug(videoSlug, locale)
+  const record = await fetchWatchVideoBySlug(videoSlug, languageSlug)
   if (!record) throw new Error(WATCH_VIDEO_BY_SLUG_NOT_FOUND)
 
   const canonicalParent = record.parents[0] ?? null
@@ -1322,7 +1406,7 @@ async function tryResolveWatchVideoBySlug(
 
   const selectedVariant = selectPlayableVariant(
     playableVariants,
-    locale,
+    languageSlug,
     record.primaryLanguage?.coreId ?? null,
   )
   if (!selectedVariant) throw new Error(WATCH_VIDEO_BY_SLUG_NOT_FOUND)
@@ -1461,13 +1545,13 @@ const SERIES_BY_SLUG_NOT_FOUND = "series-by-slug:NOT_FOUND"
 
 async function tryResolveSeriesBySlug(
   videoSlug: string,
-  locale: string,
+  languageSlug: string,
 ): Promise<ResolvedSeriesBySlug> {
   // Reuses the same HTTP fetch the canonical video resolver uses, so a
   // COLLECTION-without-trailer slug never costs two admin round-trips —
   // unstable_cache wraps the per-resolver outer, fetchWatchVideoBySlug
   // is the shared HTTP call site.
-  const record = await fetchWatchVideoBySlug(videoSlug, locale)
+  const record = await fetchWatchVideoBySlug(videoSlug, languageSlug)
   if (!record) throw new Error(SERIES_BY_SLUG_NOT_FOUND)
   if (!isSeriesRecord(record)) throw new Error(SERIES_BY_SLUG_NOT_FOUND)
 
@@ -1477,7 +1561,7 @@ async function tryResolveSeriesBySlug(
 
   const selectedVariant = selectPlayableVariant(
     playableVariants,
-    locale,
+    languageSlug,
     record.primaryLanguage?.coreId ?? null,
   )
 

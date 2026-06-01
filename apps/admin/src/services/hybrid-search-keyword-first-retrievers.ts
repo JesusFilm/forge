@@ -195,6 +195,7 @@ export async function searchByKeywordWeighted(
       WHERE ${tsvector} @@ websearch_to_tsquery('simple', ${trimmed})
         AND vl.locale = ${locale}
         AND vl.status = 'published'
+        AND vl.deleted_at IS NULL
       ORDER BY v.id, rank DESC
     ) sub
     ORDER BY sub.rank DESC
@@ -276,6 +277,7 @@ export async function searchByTrigram(
       WHERE (vl.title %> ${trimmed} OR vl.description %> ${trimmed})
         AND vl.locale = ${locale}
         AND vl.status = 'published'
+        AND vl.deleted_at IS NULL
       ORDER BY v.id, similarity DESC
     ) sub
     ORDER BY sub.similarity DESC
@@ -347,6 +349,7 @@ export async function searchByExactTitle(
       WHERE ${ilikeChain}
         AND vl.locale = ${locale}
         AND vl.status = 'published'
+        AND vl.deleted_at IS NULL
       ORDER BY v.id, title_length ASC
     ) sub
     ORDER BY sub.title_length ASC

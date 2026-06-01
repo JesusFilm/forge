@@ -420,7 +420,7 @@ async function hydrateCardPillFields(
               where: {
                 child: {
                   deletedAt: null,
-                  locales: { some: { status: "PUBLISHED" } },
+                  locales: { some: { status: "PUBLISHED", deletedAt: null } },
                 },
               },
             },

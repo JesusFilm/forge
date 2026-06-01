@@ -157,7 +157,7 @@ export const watchVideoFragment = adminGraphql(`
         }
       }
     }
-    studyQuestions {
+    studyQuestions(locale: $locale) {
       documentId: id
       value: text
       order

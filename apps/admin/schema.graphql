@@ -1166,7 +1166,7 @@ type Video {
   primaryLanguage: Language
   publishedAt: String
   slug: String
-  studyQuestions: [VideoStudyQuestion!]
+  studyQuestions(locale: String): [VideoStudyQuestion!]
   videoSource: VideoSourceHost
 }
 
@@ -1350,6 +1350,7 @@ type VideoLocale {
   description: String
   id: ID
   imageAlt: String
+  language: Language
   locale: String
   publishedAt: String
   snippet: String

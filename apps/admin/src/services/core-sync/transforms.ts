@@ -65,7 +65,8 @@ export function localeFor(
 }
 
 export type VideoLocaleInput = {
-  locale: string
+  locale: string | null
+  languageCoreId: string | null
   title: string | null
   description: string | null
   snippet: string | null
@@ -82,25 +83,26 @@ export function toVideoLocales(
   },
   lookup: LanguageLookup = {},
 ): VideoLocaleInput[] {
-  const locales = new Set<string>()
+  const localeKeys = new Set<string>()
   for (const values of Object.values(fields)) {
     for (const value of values) {
-      const locale = localeFor(value, lookup)
-      if (locale) locales.add(locale)
+      const key = localizedValueKey(value, lookup)
+      if (key) localeKeys.add(key)
     }
   }
 
-  return [...locales].sort().map((locale) => ({
-    locale,
-    title: lastLocalizedValue(fields.title, locale, lookup),
-    description: lastLocalizedValue(fields.description, locale, lookup),
-    snippet: lastLocalizedValue(fields.snippet, locale, lookup),
-    imageAlt: lastLocalizedValue(fields.imageAlt, locale, lookup),
+  return [...localeKeys].sort().map((key) => ({
+    locale: localeForKey(key, lookup),
+    languageCoreId: languageCoreIdForKey(key),
+    title: lastLocalizedValue(fields.title, key, lookup),
+    description: lastLocalizedValue(fields.description, key, lookup),
+    snippet: lastLocalizedValue(fields.snippet, key, lookup),
+    imageAlt: lastLocalizedValue(fields.imageAlt, key, lookup),
     primary:
-      hasPrimaryForLocale(fields.title, locale, lookup) ||
-      hasPrimaryForLocale(fields.description, locale, lookup) ||
-      hasPrimaryForLocale(fields.snippet, locale, lookup) ||
-      hasPrimaryForLocale(fields.imageAlt, locale, lookup),
+      hasPrimaryForLocale(fields.title, key, lookup) ||
+      hasPrimaryForLocale(fields.description, key, lookup) ||
+      hasPrimaryForLocale(fields.snippet, key, lookup) ||
+      hasPrimaryForLocale(fields.imageAlt, key, lookup),
   }))
 }
 
@@ -158,22 +160,45 @@ export function mapVideoSource(source: string | null): VideoSource | null {
 
 function lastLocalizedValue(
   values: CoreLocalizedValue[],
-  locale: string,
+  key: string,
   lookup: LanguageLookup,
 ): string | null {
   let result: string | null = null
   for (const value of values) {
-    if (localeFor(value, lookup) === locale) result = value.value
+    if (localizedValueKey(value, lookup) === key) result = value.value
   }
   return result
 }
 
 function hasPrimaryForLocale(
   values: CoreLocalizedValue[],
-  locale: string,
+  key: string,
   lookup: LanguageLookup,
 ): boolean {
   return values.some(
-    (value) => localeFor(value, lookup) === locale && value.primary === true,
+    (value) =>
+      localizedValueKey(value, lookup) === key && value.primary === true,
   )
+}
+
+function localizedValueKey(
+  value: CoreLocalizedValue,
+  lookup: LanguageLookup,
+): string | null {
+  const languageId = value.language?.id
+  if (languageId) return `core:${languageId}`
+  const locale = localeFor(value, lookup)
+  return locale ? `locale:${locale}` : null
+}
+
+function localeForKey(key: string, lookup: LanguageLookup): string | null {
+  if (key.startsWith("locale:")) return key.slice("locale:".length)
+  const languageCoreId = languageCoreIdForKey(key)
+  return languageCoreId
+    ? (lookup.bcp47ByCoreId?.get(languageCoreId) ?? null)
+    : null
+}
+
+function languageCoreIdForKey(key: string): string | null {
+  return key.startsWith("core:") ? key.slice("core:".length) : null
 }

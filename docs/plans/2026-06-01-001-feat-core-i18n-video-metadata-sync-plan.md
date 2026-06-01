@@ -1,7 +1,7 @@
 ---
 title: "feat: Core i18n video metadata sync"
 type: feat
-status: active
+status: complete
 date: 2026-06-01
 origin: docs/brainstorms/2026-04-28-admin-core-sync-entity-coverage-requirements.md
 roadmap: docs/roadmap/platform/feat-153-localized-watch-content-metadata.md

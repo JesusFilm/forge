@@ -1,7 +1,7 @@
 ---
 title: "feat: Watch language rendering from localized admin content"
 type: feat
-status: active
+status: complete
 date: 2026-06-01
 origin: docs/plans/2026-06-01-001-feat-core-i18n-video-metadata-sync-plan.md
 roadmap: docs/roadmap/platform/feat-153-localized-watch-content-metadata.md
