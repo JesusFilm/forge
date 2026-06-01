@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: 20,
+    paddingTop: 36,
   },
   emptyContainer: {
     flex: 1,
