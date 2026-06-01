@@ -17,6 +17,9 @@ const SHEET_BASE_OPTIONS = {
   sheetInitialDetentIndex: 0,
   sheetGrabberVisible: true,
   sheetCornerRadius: 16,
+  // Let the inner list scroll at the smaller detent instead of the sheet
+  // hijacking the gesture to expand to full height first.
+  sheetExpandsWhenScrolledToEdge: false,
 } as const
 
 export default function WatchLayout() {
