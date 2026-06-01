@@ -13,6 +13,7 @@ import { env } from "@/config/env"
 import { WatchRouteManifestStore } from "@/services/watch-route-manifest-store"
 import {
   createVideoLibraryPagination,
+  normalizeVideoThumbnailUrl,
   resolveVideoVisitorUrl,
   VIDEO_LIBRARY_PAGE_SIZE,
 } from "./video-library-utils"
@@ -383,10 +384,10 @@ function preferredVideoImage(images: VideoImageRow[]) {
   const priority = ["videoStill", "mobileCinematicHigh", "poster", "still"]
   for (const kind of priority) {
     const match = images.find((image) => image.kind === kind && image.url)
-    if (match?.url) return match.url
+    if (match?.url) return normalizeVideoThumbnailUrl(match.url)
   }
 
-  return images.find((image) => image.url)?.url ?? null
+  return normalizeVideoThumbnailUrl(images.find((image) => image.url)?.url)
 }
 
 async function countActiveVideos() {

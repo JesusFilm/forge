@@ -5,6 +5,7 @@ export const VIDEO_LIBRARY_MAX_PAGE_SIZE = 200
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/
 const BCP47_TAG_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i
+const CLOUDFLARE_IMAGE_DELIVERY_HOST = "imagedelivery.net"
 
 export type VideoLibraryPagination = {
   total: number
@@ -76,6 +77,24 @@ export function isPublicAudioLanguageSlug(value: string | null | undefined) {
   const slug = cleanSlug(value)
   if (!slug) return false
   return !BCP47_TAG_PATTERN.test(slug)
+}
+
+export function normalizeVideoThumbnailUrl(value: string | null | undefined) {
+  const trimmed = value?.trim()
+  if (!trimmed) return null
+
+  try {
+    const url = new URL(trimmed)
+    if (url.hostname !== CLOUDFLARE_IMAGE_DELIVERY_HOST) return trimmed
+
+    const pathParts = url.pathname.split("/").filter(Boolean)
+    if (pathParts.length === 2) {
+      url.pathname = `${url.pathname.replace(/\/+$/, "")}/public`
+    }
+    return url.toString()
+  } catch {
+    return trimmed
+  }
 }
 
 function preferredPublicLanguageSlug(slugs: Array<string | null | undefined>) {
