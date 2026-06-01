@@ -34,29 +34,42 @@ export function VideoPlayer({
     p.loop = false
   })
 
+  // Switch dubbing language without interrupting playback. replaceAsync's
+  // promise resolves before the new source is ready to play, so seeking/playing
+  // there leaves the player paused on a black frame. Instead, wait for the new
+  // source to reach readyToPlay (sourceLoad / statusChange), then seek to the
+  // saved position and resume — setting currentTime before play() defines the
+  // start position, so the new dub continues in place.
   useEffect(() => {
     if (!streamingUrl || streamingUrl === initialUrl.current) return
     initialUrl.current = streamingUrl
     const resumeTime = player.currentTime
     const wasPlaying = player.playing
-    let cancelled = false
-    player
-      .replaceAsync(streamingUrl)
-      .then(() => {
-        if (cancelled) return
-        try {
-          player.currentTime = resumeTime
-          if (wasPlaying) player.play()
-        } catch {
-          // Player released between scheduling and resume
-        }
-      })
-      .catch(() => {
-        // Source failed to load — leave player in whatever state replaceAsync left it
-      })
-    return () => {
-      cancelled = true
+    let resumed = false
+
+    const resume = () => {
+      if (resumed) return
+      resumed = true
+      try {
+        if (resumeTime > 0) player.currentTime = resumeTime
+        if (wasPlaying) player.play()
+      } catch {
+        // Player released mid-switch
+      }
     }
+
+    const subs = [
+      player.addListener("sourceLoad", resume),
+      player.addListener("statusChange", ({ status }) => {
+        if (status === "readyToPlay") resume()
+      }),
+    ]
+
+    player.replaceAsync(streamingUrl).catch(() => {
+      // Source failed to load — listeners are cleaned up on unmount
+    })
+
+    return () => subs.forEach((s) => s.remove())
   }, [streamingUrl, player])
 
   // Disable Mux's auto-generated subtitle tracks from the HLS manifest.
