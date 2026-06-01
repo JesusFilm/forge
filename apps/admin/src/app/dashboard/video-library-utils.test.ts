@@ -4,6 +4,7 @@ import {
   buildVideoVisitorUrl,
   createVideoLibraryPagination,
   isPublicAudioLanguageSlug,
+  normalizeVideoThumbnailUrl,
   parseVideoLibraryPage,
   resolveVideoVisitorUrl,
 } from "./video-library-utils"
@@ -86,6 +87,29 @@ describe("video-library-utils", () => {
     expect(isPublicAudioLanguageSlug("pt-br")).toBe(false)
     expect(isPublicAudioLanguageSlug("english")).toBe(true)
     expect(isPublicAudioLanguageSlug("spanish-castilian")).toBe(true)
+  })
+
+  it("adds the public Cloudflare Image Delivery variant when one is missing", () => {
+    expect(
+      normalizeVideoThumbnailUrl(
+        "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/0ec667e3-7f67-4158-f2cb-054e665e4800",
+      ),
+    ).toBe(
+      "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/0ec667e3-7f67-4158-f2cb-054e665e4800/public",
+    )
+  })
+
+  it("keeps existing image variants and non-Cloudflare URLs unchanged", () => {
+    expect(
+      normalizeVideoThumbnailUrl(
+        "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/poster.videoStill.jpg/public",
+      ),
+    ).toBe(
+      "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/poster.videoStill.jpg/public",
+    )
+    expect(
+      normalizeVideoThumbnailUrl("https://images.example.com/neon.jpg"),
+    ).toBe("https://images.example.com/neon.jpg")
   })
 
   it("builds absolute visitor URLs from public watch slugs", () => {
