@@ -3,6 +3,7 @@ import { z } from "zod"
 import { authenticateRequest } from "@/lib/auth"
 import { getCmsGateway } from "@/cms/gateway"
 import { buildInitialTranscriptionRoutingReport } from "@/lib/transcription-routing-report"
+import { resolveEnrichmentEngine } from "@/lib/enrichment-engine"
 import {
   countJobs,
   createJob,
@@ -136,11 +137,16 @@ export async function POST(request: Request) {
 
   // Create local job record
   const languages = body.translateTo ?? []
+  const engine = await resolveEnrichmentEngine({
+    key: muxAsset.assetId,
+    custom: { route: "api.jobs" },
+  })
   const job = await createJob(
     muxAsset.assetId,
     muxAsset.playbackId,
     languages,
     {
+      engine,
       initialArtifacts: {
         transcriptionRouting: {
           kind: "metadata",

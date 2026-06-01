@@ -9,7 +9,8 @@ import {
   setTranscriptionRoutingReport,
 } from "@/lib/transcription-routing-report"
 import { buildInitialSteps } from "@/lib/workflow-steps"
-import { getJob, updateJob } from "@/lib/state"
+import { resolveEnrichmentEngine } from "@/lib/enrichment-engine"
+import { getJob, restampEngine, updateJob } from "@/lib/state"
 import type {
   RequestedTranscriptionProvider,
   TranscriptionAttempt,
@@ -195,22 +196,32 @@ export async function POST(
     )
   }
 
+  const engine = await resolveEnrichmentEngine({
+    key: updatedJob.id,
+    custom: { route: "api.jobs.transcription.rerun" },
+  })
+  const restampedJob =
+    (await restampEngine(updatedJob.id, engine)) ?? updatedJob
+
   try {
     await launchVideoEnrichment({
-      jobId: updatedJob.id,
-      assetId: updatedJob.muxAssetId,
-      muxAssetId: updatedJob.muxAssetId,
+      jobId: restampedJob.id,
+      assetId: restampedJob.muxAssetId,
+      muxAssetId: restampedJob.muxAssetId,
       language:
         existingRoutingReport?.finalSourceLanguageCode ??
         job.sourceLanguageCode ??
         "auto",
-      translateTo: job.languages,
-      initialArtifacts: updatedJob.artifacts,
+      translateTo: restampedJob.languages,
+      initialArtifacts: restampedJob.artifacts,
       requestedTranscriptionProvider: provider,
     })
   } catch (error) {
-    console.error(`Transcription rerun failed for job ${updatedJob.id}:`, error)
-    const failedJob = await updateJob(updatedJob.id, {
+    console.error(
+      `Transcription rerun failed for job ${restampedJob.id}:`,
+      error,
+    )
+    const failedJob = await updateJob(restampedJob.id, {
       status: "failed",
       currentStep: undefined,
     }).catch(console.error)
@@ -226,5 +237,5 @@ export async function POST(
     )
   }
 
-  return NextResponse.json({ job: updatedJob }, { status: 202 })
+  return NextResponse.json({ job: restampedJob }, { status: 202 })
 }

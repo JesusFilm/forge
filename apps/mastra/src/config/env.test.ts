@@ -37,6 +37,7 @@ describe("Mastra env", () => {
     )
     vi.stubEnv("MASTRA_STORAGE_DIR", "/data/mastra")
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "")
+    vi.stubEnv("MASTRA_ENRICHMENT_API_KEYS", "test-enrichment-key")
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
 
     const { assertMastraRuntimeEnv } = await import("./env")
@@ -66,6 +67,7 @@ describe("Mastra env", () => {
     vi.stubEnv("DATABASE_URL", "")
     vi.stubEnv("MASTRA_STORAGE_DIR", "/data/mastra")
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_ENRICHMENT_API_KEYS", "test-enrichment-key")
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
 
     const { assertMastraRuntimeEnv } = await import("./env")
@@ -97,11 +99,61 @@ describe("Mastra env", () => {
       "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
     )
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_ENRICHMENT_API_KEYS", "test-enrichment-key")
     vi.stubEnv("MASTRA_STORAGE_DIR", "")
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("does not require enrichment receiver keys at production boot", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_ENRICHMENT_API_KEYS", "")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("parses Manager callback config without requiring it at boot", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv(
+      "MANAGER_ENRICHMENT_CALLBACK_URL",
+      "https://manager.internal/api/internal/enrichment-callback",
+    )
+    vi.stubEnv("MANAGER_ENRICHMENT_CALLBACK_API_KEY", "callback-key")
+    vi.stubEnv("MANAGER_ENRICHMENT_CALLBACK_TIMEOUT_MS", "7500")
+
+    const { env, assertMastraRuntimeEnv } = await import("./env")
+
+    expect(env.MANAGER_ENRICHMENT_CALLBACK_URL).toBe(
+      "https://manager.internal/api/internal/enrichment-callback",
+    )
+    expect(env.MANAGER_ENRICHMENT_CALLBACK_API_KEY).toBe("callback-key")
+    expect(env.MANAGER_ENRICHMENT_CALLBACK_TIMEOUT_MS).toBe(7500)
     expect(() => assertMastraRuntimeEnv()).not.toThrow()
   })
 
@@ -184,6 +236,7 @@ describe("Mastra env", () => {
       "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
     )
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_ENRICHMENT_API_KEYS", "test-enrichment-key")
     vi.stubEnv("OPENAI_API_KEY", "")
     vi.stubEnv("OPENROUTER_API_KEY", "")
 

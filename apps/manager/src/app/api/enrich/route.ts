@@ -14,6 +14,7 @@ import type {
 } from "@/features/agents/automation-contract"
 import { buildAutomationKey } from "@/features/agents/eligibility"
 import { buildInitialTranscriptionRoutingReport } from "@/lib/transcription-routing-report"
+import { resolveEnrichmentEngine } from "@/lib/enrichment-engine"
 import { createJob, updateJob } from "@/lib/state"
 import { getEnrichmentMaterializationTarget } from "@/lib/enrichment-materialization"
 import { deriveEnrichLanguagePlan } from "@/lib/enrich-language"
@@ -312,6 +313,10 @@ export async function createEnrichmentJobs(
         const actualSourceLanguageCode =
           resolveCmsLanguageCode(actualSourceLanguage) ??
           materialization.sourceLanguageCode
+        const engine = await resolveEnrichmentEngine({
+          key: video.documentId,
+          custom: { route: "api.enrich", coreId },
+        })
         const automationArtifact: JobArtifactManifest = input.automation
           ? {
               automation: {
@@ -340,6 +345,7 @@ export async function createEnrichmentJobs(
           normalizedTargets.targetLanguageCodes,
           {
             videoDocumentId: video.documentId,
+            engine,
             initialArtifacts: {
               transcriptionRouting: {
                 kind: "metadata",

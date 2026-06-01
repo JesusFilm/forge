@@ -4,6 +4,9 @@ const {
   authenticateRequestMock,
   afterMock,
   getJobMock,
+  markEnrichmentDispatchedMock,
+  resolveEnrichmentEngineMock,
+  restampEngineMock,
   runVideoEnrichmentMock,
   startMock,
   updateJobMock,
@@ -11,6 +14,9 @@ const {
   authenticateRequestMock: vi.fn(),
   afterMock: vi.fn(),
   getJobMock: vi.fn(),
+  markEnrichmentDispatchedMock: vi.fn(),
+  resolveEnrichmentEngineMock: vi.fn(),
+  restampEngineMock: vi.fn(),
   runVideoEnrichmentMock: vi.fn(),
   startMock: vi.fn(),
   updateJobMock: vi.fn(),
@@ -36,7 +42,13 @@ vi.mock("workflow/api", () => ({
 
 vi.mock("@/lib/state", () => ({
   getJob: getJobMock,
+  markEnrichmentDispatched: markEnrichmentDispatchedMock,
+  restampEngine: restampEngineMock,
   updateJob: updateJobMock,
+}))
+
+vi.mock("@/lib/enrichment-engine", () => ({
+  resolveEnrichmentEngine: resolveEnrichmentEngineMock,
 }))
 
 vi.mock("@/workflows/videoEnrichment", () => ({
@@ -58,6 +70,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
       await callback()
     })
     runVideoEnrichmentMock.mockResolvedValue(undefined)
+    resolveEnrichmentEngineMock.mockResolvedValue("workflow")
     dispatch.mockReturnValue({
       assetId: "mux-1",
       transcript: "Transcript",
@@ -124,6 +137,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
       errors: updates.errors ?? [],
       currentStep: updates.currentStep,
     }))
+    restampEngineMock.mockResolvedValue(null)
   })
 
   it("accepts a forced rerun, preserves canonical transcription artifacts, and restarts the workflow from transcription", async () => {

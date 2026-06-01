@@ -1,0 +1,35 @@
+{
+  "runningTranscription": {
+    "jobId": "job-1",
+    "engine": "mastra",
+    "runId": "run-1",
+    "sequence": 1,
+    "status": "running",
+    "step": "transcription"
+  },
+  "completedTranslation": {
+    "jobId": "job-1",
+    "engine": "mastra",
+    "runId": "run-1",
+    "sequence": 2,
+    "status": "completed",
+    "step": "translation",
+    "artifactsDelta": ["subtitles-fr", "translation-fr"],
+    "languageResults": [
+      {
+        "lang": "fr",
+        "status": "completed"
+      }
+    ]
+  },
+  "failedMuxUploadTerminal": {
+    "jobId": "job-1",
+    "engine": "mastra",
+    "runId": "run-1",
+    "sequence": 3,
+    "status": "failed",
+    "step": "mux_upload",
+    "error": "Mux comparison failed",
+    "jobStatus": "failed"
+  }
+}
