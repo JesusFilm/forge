@@ -8,6 +8,7 @@ start_date: "2026-05-13"
 duration: 7
 depends_on:
   - "feat-119"
+  - "feat-154"
 blocks: []
 tags:
   - "admin"
@@ -19,6 +20,12 @@ tags:
 ---
 
 ## Problem
+
+`feat-154` must capture a production seed-only search-eval baseline before this
+ticket changes multilingual semantic search behavior. That baseline is the
+pre-change quality artifact used to compare localized scene embeddings,
+translated snippets, and ranking behavior against the current production search
+workflow.
 
 Today's R1 indexer (`apps/admin/src/services/scene-embedding.service.ts`) writes per-locale rows in `video_scene_locale`, but every locale row stores the **same source-language scene description** (English, from manager's `scene-analysis.json`) and the **same 1536-d embedding** generated from that English text. The 2,122 distinct locales we embed give us cross-lingual search via `text-embedding-3-small`'s multilingual vector space, but the embedded **content** is always English/source.
 
