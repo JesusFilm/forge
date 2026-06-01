@@ -328,26 +328,23 @@ export function DownloadSheetContent({
           />
         </View>
 
-        <Pressable
-          style={({ pressed }) => [styles.touRow, pressed && feedback.pressed]}
-          onPress={() => {
-            if (touAccepted) {
-              setTouAccepted(false)
-            } else {
-              setTermsVisible(true)
-            }
-          }}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: touAccepted }}
-          accessibilityLabel="I agree to the Terms of Use"
-        >
-          <View
-            style={[styles.checkbox, touAccepted && styles.checkboxChecked]}
+        <View style={styles.touRow}>
+          <Pressable
+            onPress={() => setTouAccepted((v) => !v)}
+            hitSlop={8}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: touAccepted }}
+            accessibilityLabel="I agree to the Terms of Use"
+            style={({ pressed }) => pressed && feedback.pressed}
           >
-            {touAccepted && (
-              <Ionicons name="checkmark" size={16} color="#ffffff" />
-            )}
-          </View>
+            <View
+              style={[styles.checkbox, touAccepted && styles.checkboxChecked]}
+            >
+              {touAccepted && (
+                <Ionicons name="checkmark" size={16} color="#ffffff" />
+              )}
+            </View>
+          </Pressable>
           <Text style={[styles.touText, typography.bodySmall]}>
             I agree to the{" "}
           </Text>
@@ -361,7 +358,7 @@ export function DownloadSheetContent({
               Terms of Use
             </Text>
           </Pressable>
-        </Pressable>
+        </View>
 
         <Pressable
           style={({ pressed }) => [
