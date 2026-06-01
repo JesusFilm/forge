@@ -66,6 +66,12 @@ export type ApplyJobCallbackUpdateResult =
   | { status: "not-found" }
   | { status: "error"; error: unknown }
 
+export type FailMastraFirstCallbackWatchdogResult =
+  | { status: "failed"; job: JobRecord }
+  | { status: "dropped"; reason: string }
+  | { status: "not-found" }
+  | { status: "error"; error: unknown }
+
 let adminJobClient: AdminGraphqlClient | undefined
 
 function getAdminJobClient(): AdminGraphqlClient {
@@ -254,6 +260,10 @@ function buildDispatchedOptions(
     currentRunId: runId,
     dispatchedAt,
   }
+}
+
+function hasCallbackSequence(options: JobOptions | undefined): boolean {
+  return Object.keys(options?.callbackSequences ?? {}).length > 0
 }
 
 function deriveMaterializationFields(
@@ -837,6 +847,143 @@ export async function markEnrichmentDispatched(
   return null
 }
 
+const FIRST_CALLBACK_WATCHDOG_STEP: WorkflowStepName = "transcription"
+const FIRST_CALLBACK_WATCHDOG_MESSAGE =
+  "Mastra enrichment did not emit a callback before the first-callback watchdog expired."
+
+function buildFirstCallbackWatchdogJob(
+  job: JobRecord,
+  runId: string,
+  now: string,
+): FailMastraFirstCallbackWatchdogResult {
+  if (readEngineStamp(job.options) !== "mastra") {
+    return { status: "dropped", reason: "engine_mismatch" }
+  }
+  if (job.options.currentRunId !== runId) {
+    return { status: "dropped", reason: "stale_run" }
+  }
+  if (hasCallbackSequence(job.options)) {
+    return { status: "dropped", reason: "callback_seen" }
+  }
+  if (job.status !== "pending" && job.status !== "running") {
+    return { status: "dropped", reason: "terminal_job" }
+  }
+
+  return {
+    status: "failed",
+    job: {
+      ...job,
+      status: "failed",
+      currentStep: undefined,
+      completedAt: now,
+      updatedAt: now,
+      errors: [
+        ...job.errors,
+        {
+          step: FIRST_CALLBACK_WATCHDOG_STEP,
+          message: FIRST_CALLBACK_WATCHDOG_MESSAGE,
+          at: now,
+          code: "mastra_first_callback_timeout",
+          operatorHint:
+            "Check Mastra logs for the runId, then use redispatch if the run never started.",
+          isDependencyError: true,
+        },
+      ],
+      steps: job.steps.map((step) =>
+        step.name === FIRST_CALLBACK_WATCHDOG_STEP &&
+        step.status !== "completed"
+          ? {
+              ...step,
+              status: "failed",
+              finishedAt: now,
+              error: FIRST_CALLBACK_WATCHDOG_MESSAGE,
+            }
+          : step,
+      ),
+    },
+  }
+}
+
+export async function failMastraEnrichmentIfNoCallback(
+  jobId: string,
+  runId: string,
+  now = new Date().toISOString(),
+): Promise<FailMastraFirstCallbackWatchdogResult> {
+  return serializeJobUpdate(jobId, async () => {
+    const gateway = getCmsGateway()
+    const mockState = await readMockCmsState(gateway)
+    if (mockState) {
+      let result: FailMastraFirstCallbackWatchdogResult = {
+        status: "not-found",
+      }
+      let failedJob: JobRecord | undefined
+      const nextState = await updateMockCmsState(gateway, (current) => ({
+        ...current,
+        readModels: {
+          ...current.readModels,
+          jobs: current.readModels.jobs.map((job) => {
+            if (job.id !== jobId) return job
+            result = buildFirstCallbackWatchdogJob(job, runId, now)
+            if (result.status === "failed") {
+              failedJob = result.job
+              return result.job
+            }
+            return job
+          }),
+        },
+      }))
+      if (!nextState) {
+        return { status: "error", error: new Error("Mock CMS update failed") }
+      }
+      if (failedJob) {
+        publishJobEvent(failedJob)
+      }
+      return result
+    }
+
+    if (gateway.mode === "admin") {
+      try {
+        const current = await getAdminJobClient().getJob(jobId)
+        if (!current) {
+          return { status: "not-found" }
+        }
+
+        const result = buildFirstCallbackWatchdogJob(current, runId, now)
+        if (result.status !== "failed") {
+          return result
+        }
+
+        const job = await getAdminJobClient().updateJob(
+          jobId,
+          buildJobUpdateData({
+            status: result.job.status,
+            currentStep: result.job.currentStep,
+            completedAt: result.job.completedAt,
+            errors: result.job.errors,
+            steps: result.job.steps,
+          }) as Parameters<AdminGraphqlClient["updateJob"]>[1],
+        )
+        if (job) {
+          publishJobEvent(job)
+          return { status: "failed", job }
+        }
+        return {
+          status: "error",
+          error: new Error("Admin update returned null"),
+        }
+      } catch (error) {
+        console.warn(
+          `[state] failMastraEnrichmentIfNoCallback(${jobId}) failed:`,
+          error,
+        )
+        return { status: "error", error }
+      }
+    }
+
+    return { status: "not-found" }
+  })
+}
+
 export function buildJobUpdateData(
   updates: Partial<
     Pick<
@@ -919,6 +1066,13 @@ const STATUS_RANK: Record<StepStatus, number> = {
   completed: 4,
 }
 
+const TERMINAL_STEP_STATUSES = new Set<StepStatus>([
+  "skipped",
+  "failed",
+  "completed",
+])
+const TERMINAL_JOB_STATUSES = new Set<JobStatus>(["failed", "completed"])
+
 const CALLBACK_ARTIFACT_KEYS_BY_STEP: Partial<
   Record<WorkflowStepName, readonly string[]>
 > = {
@@ -948,6 +1102,7 @@ function serializeJobUpdate<T>(
 
 function isStaleStatus(current: StepStatus | undefined, next: StepStatus) {
   if (!current) return false
+  if (TERMINAL_STEP_STATUSES.has(current) && current !== next) return true
   return STATUS_RANK[next] < STATUS_RANK[current]
 }
 
@@ -1043,6 +1198,9 @@ function buildCallbackUpdatedJob(
   const currentStep = job.steps.find((step) => step.name === input.step)
   if (isStaleStatus(currentStep?.status, input.status)) {
     return { status: "dropped", reason: "stale_status" }
+  }
+  if (TERMINAL_JOB_STATUSES.has(job.status)) {
+    return { status: "dropped", reason: "terminal_job" }
   }
   if (
     isStaleSequence(job.options.callbackSequences?.[input.step], input.sequence)

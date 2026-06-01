@@ -289,6 +289,10 @@ engine while Phase 1 ramps Mastra.
 - Mastra callback receiver: `POST /api/internal/enrichment-callback`, protected
   by `ENRICHMENT_CALLBACK_API_KEYS`. Callback keys must stay disjoint from
   `ADMIN_TRIGGER_API_KEYS`.
+- First-callback watchdog: after a Mastra run starts, Manager arms a 60s
+  process-local watchdog. When it fires it re-reads the job and fails only if
+  the same `currentRunId` still owns the job and no callback sequence has
+  landed.
 - Manual re-drive: `POST /api/jobs/[id]/redispatch` accepts only
   Mastra-stamped jobs and mints a fresh Mastra run through the shared launcher.
 

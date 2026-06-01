@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { dispatchMastraVideoEnrichment } from "@/services/mastra-enrichment"
+import {
+  dispatchMastraVideoEnrichment,
+  startMastraVideoEnrichment,
+} from "@/services/mastra-enrichment"
 import type { VideoEnrichmentInput } from "@/workflows/videoEnrichment"
 
 const input: VideoEnrichmentInput = {
@@ -55,5 +58,41 @@ describe("dispatchMastraVideoEnrichment", () => {
         fetchImpl,
       }),
     ).resolves.toEqual({ ok: false, reason: "auth_failed", status: 401 })
+  })
+
+  it("starts the accepted run with the persisted run id", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({ ok: true, runId: "run-1" }, { status: 202 }),
+    ) as unknown as typeof fetch
+
+    await expect(
+      startMastraVideoEnrichment(input, "run-1", {
+        baseUrl: "https://mastra.internal",
+        bearer: "secret",
+        fetchImpl,
+      }),
+    ).resolves.toEqual({ ok: true, runId: "run-1" })
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      new URL("/forge-video-enrichment/start", "https://mastra.internal"),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ runId: "run-1", input }),
+      }),
+    )
+  })
+
+  it("rejects a start ack for a different run id", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({ ok: true, runId: "run-2" }, { status: 202 }),
+    ) as unknown as typeof fetch
+
+    await expect(
+      startMastraVideoEnrichment(input, "run-1", {
+        baseUrl: "https://mastra.internal",
+        bearer: "secret",
+        fetchImpl,
+      }),
+    ).resolves.toEqual({ ok: false, reason: "invalid_response" })
   })
 })

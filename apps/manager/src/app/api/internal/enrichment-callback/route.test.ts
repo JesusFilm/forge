@@ -36,12 +36,16 @@ vi.mock("@/lib/enrichment-callback", async () => {
 
 import { POST } from "@/app/api/internal/enrichment-callback/route"
 
-function callbackRequest(body: unknown = validCallback()) {
+function callbackRequest(
+  body: unknown = validCallback(),
+  headers: Record<string, string> = {},
+) {
   return new Request("https://manager.test/api/internal/enrichment-callback", {
     method: "POST",
     headers: {
       authorization: "Bearer callback-key",
       "content-type": "application/json",
+      ...headers,
     },
     body: JSON.stringify(body),
   })
@@ -85,6 +89,25 @@ describe("POST /api/internal/enrichment-callback", () => {
       error: "Invalid bearer token",
     })
     expect(applyEnrichmentCallbackMock).not.toHaveBeenCalled()
+  })
+
+  it("rate limits before bearer validation", async () => {
+    const headers = { "x-forwarded-for": "203.0.113.10" }
+
+    for (let index = 0; index < 120; index += 1) {
+      const response = await POST(callbackRequest(validCallback(), headers))
+      expect(response.status).toBe(200)
+    }
+
+    validateEnrichmentCallbackBearerMock.mockClear()
+    const response = await POST(callbackRequest(validCallback(), headers))
+
+    expect(response.status).toBe(429)
+    expect(response.headers.get("retry-after")).toBeTruthy()
+    await expect(response.json()).resolves.toEqual({
+      error: "Callback rate limit exceeded",
+    })
+    expect(validateEnrichmentCallbackBearerMock).not.toHaveBeenCalled()
   })
 
   it("fails closed when callback and admin-trigger key sets overlap", async () => {

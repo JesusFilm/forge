@@ -15,6 +15,9 @@ export type MastraVideoEnrichmentDispatchResult =
       message?: string
     }
 
+export type MastraVideoEnrichmentStartResult =
+  MastraVideoEnrichmentDispatchResult
+
 type DispatchOptions = {
   baseUrl?: string
   bearer?: string
@@ -22,9 +25,10 @@ type DispatchOptions = {
   fetchImpl?: typeof fetch
 }
 
-export async function dispatchMastraVideoEnrichment(
-  input: VideoEnrichmentInput,
-  options: DispatchOptions = {},
+async function postMastraVideoEnrichment(
+  path: string,
+  body: unknown,
+  options: DispatchOptions,
 ): Promise<MastraVideoEnrichmentDispatchResult> {
   const baseUrl = options.baseUrl ?? env.MASTRA_BASE_URL
   const bearer = options.bearer ?? env.MASTRA_ENRICHMENT_API_KEY
@@ -38,13 +42,13 @@ export async function dispatchMastraVideoEnrichment(
 
   let response: Response
   try {
-    response = await fetchImpl(new URL("/forge-video-enrichment", baseUrl), {
+    response = await fetchImpl(new URL(path, baseUrl), {
       method: "POST",
       headers: {
         authorization: `Bearer ${bearer}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify(input),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(timeoutMs),
     })
   } catch (error) {
@@ -62,14 +66,37 @@ export async function dispatchMastraVideoEnrichment(
     return { ok: false, reason: "rejected", status: response.status }
   }
 
-  const body = (await response.json().catch(() => null)) as {
+  const responseBody = (await response.json().catch(() => null)) as {
     ok?: unknown
     runId?: unknown
   } | null
 
-  if (body?.ok === true && typeof body.runId === "string") {
-    return { ok: true, runId: body.runId }
+  if (responseBody?.ok === true && typeof responseBody.runId === "string") {
+    return { ok: true, runId: responseBody.runId }
   }
 
   return { ok: false, reason: "invalid_response", status: response.status }
+}
+
+export async function dispatchMastraVideoEnrichment(
+  input: VideoEnrichmentInput,
+  options: DispatchOptions = {},
+): Promise<MastraVideoEnrichmentDispatchResult> {
+  return postMastraVideoEnrichment("/forge-video-enrichment", input, options)
+}
+
+export async function startMastraVideoEnrichment(
+  input: VideoEnrichmentInput,
+  runId: string,
+  options: DispatchOptions = {},
+): Promise<MastraVideoEnrichmentStartResult> {
+  const result = await postMastraVideoEnrichment(
+    "/forge-video-enrichment/start",
+    { runId, input },
+    options,
+  )
+  if (result.ok && result.runId !== runId) {
+    return { ok: false, reason: "invalid_response" }
+  }
+  return result
 }

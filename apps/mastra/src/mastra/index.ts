@@ -28,6 +28,7 @@ import {
 import {
   forgeVideoEnrichmentWorkflow,
   handleForgeVideoEnrichmentRouteRequest,
+  handleForgeVideoEnrichmentStartRouteRequest,
 } from "./workflows/forge-video-enrichment"
 import {
   handleSceneEmbeddingRouteRequest,
@@ -182,6 +183,23 @@ export const mastra = new Mastra({
         method: "POST",
         handler: async (c) => {
           const outcome = await handleForgeVideoEnrichmentRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys: enrichmentServiceKeys,
+            configured: Boolean(env.MASTRA_ENRICHMENT_API_KEYS),
+            callbackConfigured: isManagerEnrichmentCallbackConfigured(),
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-video-enrichment/start", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleForgeVideoEnrichmentStartRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys: enrichmentServiceKeys,
             configured: Boolean(env.MASTRA_ENRICHMENT_API_KEYS),

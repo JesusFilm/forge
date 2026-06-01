@@ -3,6 +3,7 @@ import {
   applyJobCallbackUpdate,
   buildJobUpdateData,
   createJob,
+  failMastraEnrichmentIfNoCallback,
   getJob,
   listJobSummaries,
   markEnrichmentDispatched,
@@ -578,6 +579,103 @@ describe("engine stamp (P0-A)", () => {
     expect(job?.status).toBe("running")
   })
 
+  it("fails a mastra run when the first-callback watchdog sees no callback", async () => {
+    adminGetJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-watchdog"),
+      id: "job-watchdog",
+      status: "running",
+      options: {
+        engine: "mastra",
+        currentRunId: "run-1",
+        dispatchedAt: "2026-05-31T00:00:00.000Z",
+      },
+      steps: [{ name: "transcription", status: "pending", retries: 0 }],
+    })
+    adminUpdateJobMock.mockImplementation(
+      async (_id: string, updates: Record<string, unknown>) => ({
+        ...buildGraphqlJob("job-watchdog"),
+        id: "job-watchdog",
+        ...updates,
+      }),
+    )
+
+    const result = await failMastraEnrichmentIfNoCallback(
+      "job-watchdog",
+      "run-1",
+      "2026-05-31T00:01:00.000Z",
+    )
+
+    expect(result.status).toBe("failed")
+    expect(adminUpdateJobMock).toHaveBeenCalledTimes(1)
+    const updates = adminUpdateJobMock.mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >
+    expect(updates.status).toBe("failed")
+    expect(updates.currentStep).toBeNull()
+    expect(updates.completedAt).toBe("2026-05-31T00:01:00.000Z")
+    expect(updates.errors).toEqual([
+      expect.objectContaining({
+        step: "transcription",
+        code: "mastra_first_callback_timeout",
+      }),
+    ])
+    expect(updates.steps).toEqual([
+      expect.objectContaining({
+        name: "transcription",
+        status: "failed",
+        finishedAt: "2026-05-31T00:01:00.000Z",
+      }),
+    ])
+  })
+
+  it("does not fail the job when a callback sequence already exists", async () => {
+    adminGetJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-watchdog-callback"),
+      id: "job-watchdog-callback",
+      status: "running",
+      options: {
+        engine: "mastra",
+        currentRunId: "run-1",
+        callbackSequences: { transcription: 1 },
+      },
+      steps: [{ name: "transcription", status: "running", retries: 0 }],
+    })
+
+    await expect(
+      failMastraEnrichmentIfNoCallback(
+        "job-watchdog-callback",
+        "run-1",
+        "2026-05-31T00:01:00.000Z",
+      ),
+    ).resolves.toEqual({ status: "dropped", reason: "callback_seen" })
+
+    expect(adminUpdateJobMock).not.toHaveBeenCalled()
+  })
+
+  it("does not fail a newer mastra run from an older watchdog", async () => {
+    adminGetJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-watchdog-stale"),
+      id: "job-watchdog-stale",
+      status: "running",
+      options: {
+        engine: "mastra",
+        currentRunId: "run-2",
+      },
+      steps: [{ name: "transcription", status: "pending", retries: 0 }],
+    })
+
+    await expect(
+      failMastraEnrichmentIfNoCallback(
+        "job-watchdog-stale",
+        "run-1",
+        "2026-05-31T00:01:00.000Z",
+      ),
+    ).resolves.toEqual({ status: "dropped", reason: "stale_run" })
+
+    expect(adminUpdateJobMock).not.toHaveBeenCalled()
+  })
+
   it("applies a callback as one admin job update after re-reading inside the job lock", async () => {
     adminGetJobMock.mockResolvedValueOnce({
       ...buildGraphqlJob("job-callback"),
@@ -663,6 +761,88 @@ describe("engine stamp (P0-A)", () => {
         status: "completed",
       }),
     ).resolves.toEqual({ status: "dropped", reason: "stale_sequence" })
+
+    expect(adminUpdateJobMock).not.toHaveBeenCalled()
+  })
+
+  it("does not overwrite a failed terminal step with a later completed callback", async () => {
+    adminGetJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-callback-failed-terminal"),
+      id: "job-callback-failed-terminal",
+      status: "failed",
+      options: {
+        engine: "mastra",
+        currentRunId: "run-1",
+        callbackSequences: { transcription: 2 },
+      },
+      steps: [{ name: "transcription", status: "failed", retries: 0 }],
+    })
+
+    await expect(
+      applyJobCallbackUpdate({
+        jobId: "job-callback-failed-terminal",
+        runId: "run-1",
+        sequence: 3,
+        step: "transcription",
+        status: "completed",
+      }),
+    ).resolves.toEqual({ status: "dropped", reason: "stale_status" })
+
+    expect(adminUpdateJobMock).not.toHaveBeenCalled()
+  })
+
+  it("does not overwrite a completed terminal step with a later failed callback", async () => {
+    adminGetJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-callback-completed-terminal"),
+      id: "job-callback-completed-terminal",
+      status: "completed",
+      options: {
+        engine: "mastra",
+        currentRunId: "run-1",
+        callbackSequences: { metadata: 4 },
+      },
+      steps: [{ name: "metadata", status: "completed", retries: 0 }],
+    })
+
+    await expect(
+      applyJobCallbackUpdate({
+        jobId: "job-callback-completed-terminal",
+        runId: "run-1",
+        sequence: 5,
+        step: "metadata",
+        status: "failed",
+        error: "late provider error",
+      }),
+    ).resolves.toEqual({ status: "dropped", reason: "stale_status" })
+
+    expect(adminUpdateJobMock).not.toHaveBeenCalled()
+  })
+
+  it("does not reopen a terminal job with a later callback for another step", async () => {
+    adminGetJobMock.mockResolvedValueOnce({
+      ...buildGraphqlJob("job-callback-terminal-job"),
+      id: "job-callback-terminal-job",
+      status: "completed",
+      options: {
+        engine: "mastra",
+        currentRunId: "run-1",
+        callbackSequences: { metadata: 4 },
+      },
+      steps: [
+        { name: "metadata", status: "completed", retries: 0 },
+        { name: "embeddings", status: "pending", retries: 0 },
+      ],
+    })
+
+    await expect(
+      applyJobCallbackUpdate({
+        jobId: "job-callback-terminal-job",
+        runId: "run-1",
+        sequence: 1,
+        step: "embeddings",
+        status: "running",
+      }),
+    ).resolves.toEqual({ status: "dropped", reason: "terminal_job" })
 
     expect(adminUpdateJobMock).not.toHaveBeenCalled()
   })

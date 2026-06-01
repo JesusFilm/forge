@@ -9,6 +9,8 @@ import {
   type ManagerEnrichmentCallback,
 } from "../../services/manager-enrichment-callback-client"
 
+const RUN_ID_MAX_LENGTH = 128
+
 const JobArtifactEntrySchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("downloadable") }).strict(),
   z
@@ -61,6 +63,9 @@ type RouteHandlerInput = {
   configured: boolean
   callbackConfigured?: boolean
   readJson: () => Promise<unknown>
+}
+
+type StartRouteHandlerInput = RouteHandlerInput & {
   launch?: (
     input: ForgeVideoEnrichmentInput,
     options: { runId: string },
@@ -92,6 +97,13 @@ export type ForgeVideoEnrichmentRouteOutcome = {
   status: number
   body: Record<string, unknown>
 }
+
+const ForgeVideoEnrichmentStartRequestSchema = z
+  .object({
+    runId: z.string().min(1).max(RUN_ID_MAX_LENGTH),
+    input: ForgeVideoEnrichmentInputSchema,
+  })
+  .strict()
 
 const acceptVideoEnrichmentStep = createStep({
   id: "accept-video-enrichment",
@@ -224,7 +236,6 @@ export async function handleForgeVideoEnrichmentRouteRequest({
   configured,
   callbackConfigured = true,
   readJson,
-  launch = launchForgeVideoEnrichmentWorkflow,
 }: RouteHandlerInput): Promise<ForgeVideoEnrichmentRouteOutcome> {
   if (!configured) {
     return {
@@ -259,16 +270,63 @@ export async function handleForgeVideoEnrichmentRouteRequest({
     }
   }
 
-  const runId = randomUUID()
+  return {
+    status: 202,
+    body: { ok: true, runId: randomUUID() },
+  }
+}
+
+export async function handleForgeVideoEnrichmentStartRouteRequest({
+  authHeader,
+  serviceKeys,
+  configured,
+  callbackConfigured = true,
+  readJson,
+  launch = launchForgeVideoEnrichmentWorkflow,
+}: StartRouteHandlerInput): Promise<ForgeVideoEnrichmentRouteOutcome> {
+  if (!configured) {
+    return {
+      status: 503,
+      body: { error: "config_missing: MASTRA_ENRICHMENT_API_KEYS not set" },
+    }
+  }
+
+  if (!callbackConfigured) {
+    return {
+      status: 503,
+      body: {
+        error:
+          "config_missing: MANAGER_ENRICHMENT_CALLBACK_URL and MANAGER_ENRICHMENT_CALLBACK_API_KEY must be set",
+      },
+    }
+  }
+
+  if (!isValidServiceBearer({ authHeader, allowlist: serviceKeys })) {
+    return {
+      status: 401,
+      body: { error: "Service bearer required" },
+    }
+  }
+
+  const body = await readJson().catch(() => undefined)
+  const parsed = ForgeVideoEnrichmentStartRequestSchema.safeParse(body)
+  if (!parsed.success) {
+    return {
+      status: 400,
+      body: { error: "Validation failed", details: parsed.error.flatten() },
+    }
+  }
+
+  const { runId, input } = parsed.data
   try {
-    const result = await launch(parsed.data, { runId })
+    const result = await launch(input, { runId })
     return {
       status: 202,
       body: { ok: true, runId: result.runId },
     }
   } catch (error) {
     console.error(
-      `[forge-video-enrichment] event=start_failed jobId=${parsed.data.jobId} runId=${runId} error=${error instanceof Error ? error.message : "unknown"}`,
+      `[forge-video-enrichment] event=start_failed jobId=${input.jobId} runId=${runId} error=${error instanceof Error ? error.message : "unknown"}`,
     )
     return {
       status: 502,

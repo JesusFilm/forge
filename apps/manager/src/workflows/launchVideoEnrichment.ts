@@ -1,11 +1,15 @@
 import { start } from "workflow/api"
 import { readEngineStamp } from "@/lib/engine-stamp"
 import { getJob, markEnrichmentDispatched } from "@/lib/state"
-import { dispatchMastraVideoEnrichment } from "@/services/mastra-enrichment"
+import {
+  dispatchMastraVideoEnrichment,
+  startMastraVideoEnrichment,
+} from "@/services/mastra-enrichment"
 import {
   runVideoEnrichment,
   type VideoEnrichmentInput,
 } from "@/workflows/videoEnrichment"
+import { scheduleMastraFirstCallbackWatchdog } from "@/workflows/mastraEnrichmentWatchdog"
 
 export class EnrichmentLaunchError extends Error {
   constructor(
@@ -47,7 +51,17 @@ export async function launchVideoEnrichment(input: VideoEnrichmentInput) {
       )
     }
 
-    return result
+    const startResult = await startMastraVideoEnrichment(input, result.runId)
+    if (!startResult.ok) {
+      throw new EnrichmentLaunchError(
+        `Mastra enrichment start failed for job ${input.jobId}: ${startResult.reason}`,
+        input.jobId,
+      )
+    }
+
+    scheduleMastraFirstCallbackWatchdog(input.jobId, startResult.runId)
+
+    return startResult
   }
 
   return start(runVideoEnrichment, [input])

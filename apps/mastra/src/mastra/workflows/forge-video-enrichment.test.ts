@@ -4,6 +4,7 @@ import {
   ForgeVideoEnrichmentWorkflowError,
   forgeVideoEnrichmentWorkflow,
   handleForgeVideoEnrichmentRouteRequest,
+  handleForgeVideoEnrichmentStartRouteRequest,
   launchForgeVideoEnrichmentWorkflow,
   reportForgeVideoEnrichmentNotImplemented,
   type ForgeVideoEnrichmentInput,
@@ -59,7 +60,19 @@ describe("forge video enrichment route", () => {
     expect(outcome.status).toBe(401)
   })
 
-  it("acks with a server-minted run id after the workflow accepts the run", async () => {
+  it("acks with a server-minted run id before the workflow starts", async () => {
+    const outcome = await handleForgeVideoEnrichmentRouteRequest({
+      authHeader: "Bearer key",
+      serviceKeys: ["key"],
+      configured: true,
+      readJson: async () => validInput,
+    })
+
+    expect(outcome.status).toBe(202)
+    expect(outcome.body).toMatchObject({ ok: true, runId: expect.any(String) })
+  })
+
+  it("starts an accepted run when Manager posts the persisted run id", async () => {
     const launch = vi.fn(
       async (
         _input: ForgeVideoEnrichmentInput,
@@ -72,33 +85,29 @@ describe("forge video enrichment route", () => {
       }),
     )
 
-    const outcome = await handleForgeVideoEnrichmentRouteRequest({
+    const outcome = await handleForgeVideoEnrichmentStartRouteRequest({
       authHeader: "Bearer key",
       serviceKeys: ["key"],
       configured: true,
-      readJson: async () => validInput,
+      readJson: async () => ({ runId: "run-1", input: validInput }),
       launch,
     })
 
     expect(outcome.status).toBe(202)
-    expect(outcome.body).toMatchObject({ ok: true, runId: expect.any(String) })
-    expect(launch).toHaveBeenCalledTimes(1)
-    expect(launch).toHaveBeenCalledWith(
-      validInput,
-      expect.objectContaining({ runId: outcome.body.runId }),
-    )
+    expect(outcome.body).toEqual({ ok: true, runId: "run-1" })
+    expect(launch).toHaveBeenCalledWith(validInput, { runId: "run-1" })
   })
 
-  it("returns a retryable failure if the workflow cannot accept the run", async () => {
+  it("returns a retryable failure if the workflow cannot start the run", async () => {
     const launch = vi.fn(async () => {
       throw new Error("storage down")
     })
 
-    const outcome = await handleForgeVideoEnrichmentRouteRequest({
+    const outcome = await handleForgeVideoEnrichmentStartRouteRequest({
       authHeader: "Bearer key",
       serviceKeys: ["key"],
       configured: true,
-      readJson: async () => validInput,
+      readJson: async () => ({ runId: "run-1", input: validInput }),
       launch,
     })
 

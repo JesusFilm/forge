@@ -110,8 +110,11 @@ The service route `POST /forge-video-enrichment` is protected by
 `MASTRA_ENRICHMENT_API_KEYS`, separate from the broader
 `MASTRA_SERVICE_API_KEYS` surface. It validates the Manager-owned enrichment
 payload, requires Manager callback credentials to be configured, mints the
-`runId` server-side, returns `202 { ok, runId }` after the run is accepted, and
-starts the Mastra workflow asynchronously.
+`runId` server-side, and returns `202 { ok, runId }` before the run starts.
+Manager then persists `currentRunId`/`dispatchedAt` and calls
+`POST /forge-video-enrichment/start` with the same run id. That second route
+starts the Mastra workflow asynchronously so early callbacks cannot beat
+Manager's run fence.
 
 Manager remains the trigger/UI/job-record owner. Mastra must report progress
 back through Manager's `/api/internal/enrichment-callback` contract rather than
