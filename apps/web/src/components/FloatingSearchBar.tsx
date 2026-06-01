@@ -1,6 +1,7 @@
 "use client"
 
 import { Search } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import {
   useFloatingSearch,
@@ -9,10 +10,11 @@ import {
 import { FloatingSearchFieldButton } from "./FloatingSearchField"
 
 export function FloatingSearchBar() {
+  const t = useTranslations("FloatingSearch")
   const { open, closing, query, setOpen } = useFloatingSearch()
   const { pinned, searchChromeVisible } = useFloatingSearchPinned()
 
-  const display = query.trim().length > 0 ? query : "Search or browse topics…"
+  const display = query.trim().length > 0 ? query : t("placeholder")
   const isPlaceholder = query.trim().length === 0
   const topClass = pinned
     ? "top-[calc(env(safe-area-inset-top,0px)+1rem)]"
@@ -29,7 +31,7 @@ export function FloatingSearchBar() {
     <>
       <button
         type="button"
-        aria-label="Search videos"
+        aria-label={t("openSearch")}
         data-testid="floating-search-mobile-button"
         onClick={() => setOpen(true)}
         inert={chromeHidden || undefined}
@@ -43,7 +45,7 @@ export function FloatingSearchBar() {
         />
       </button>
       <FloatingSearchFieldButton
-        aria-label="Search videos"
+        aria-label={t("openSearch")}
         data-testid="floating-search-desktop-button"
         onClick={() => setOpen(true)}
         inert={chromeHidden || undefined}

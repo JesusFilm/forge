@@ -152,5 +152,42 @@
     "loading": "Loading transcript…",
     "unavailable": "Transcript unavailable for this subtitle track.",
     "empty": "No transcript lines found."
+  },
+  "FloatingSearch": {
+    "placeholder": "Search or browse topics…",
+    "openSearch": "Search videos",
+    "searchRegion": "Search videos",
+    "clearSearch": "Clear search",
+    "changeAudioLanguage": "Change audio language",
+    "home": "JesusFilm home"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Search and browse videos",
+    "home": "JesusFilm home",
+    "placeholder": "Search or browse topics…",
+    "inputLabel": "Search videos by keyword",
+    "searchFailed": "Search failed. Please try again.",
+    "loadMoreFailed": "Failed to load more results.",
+    "searching": "Searching...",
+    "connectionHint": "Please check your connection and try again.",
+    "retrySearch": "Retry search",
+    "retry": "Retry",
+    "noResults": "No results for \"{query}\"",
+    "tryDifferentKeywords": "Try different keywords or browse categories",
+    "loading": "Loading...",
+    "loadMore": "Load more",
+    "categoryBibleStories": "Bible Stories",
+    "categoryParables": "Parables",
+    "categoryAnimated": "Animated",
+    "categoryStudy": "Study",
+    "categoryFamily": "Family",
+    "categoryChristmas": "Christmas"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Play with Sound",
+    "tapToUnmute": "Tap to Unmute"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Loading content"
   }
 }

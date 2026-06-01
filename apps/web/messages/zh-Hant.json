@@ -152,5 +152,42 @@
     "loading": "正在載入逐字稿…",
     "unavailable": "此字幕軌道暫無逐字稿。",
     "empty": "未找到逐字稿行。"
+  },
+  "FloatingSearch": {
+    "placeholder": "搜尋或瀏覽主題…",
+    "openSearch": "搜尋影片",
+    "searchRegion": "搜尋影片",
+    "clearSearch": "清除搜尋",
+    "changeAudioLanguage": "變更音訊語言",
+    "home": "JesusFilm 首頁"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "搜尋並瀏覽影片",
+    "home": "JesusFilm 首頁",
+    "placeholder": "搜尋或瀏覽主題…",
+    "inputLabel": "依關鍵字搜尋影片",
+    "searchFailed": "搜尋失敗。請再試一次。",
+    "loadMoreFailed": "無法載入更多結果。",
+    "searching": "搜尋中...",
+    "connectionHint": "請檢查網路連線後再試一次。",
+    "retrySearch": "重新搜尋",
+    "retry": "重試",
+    "noResults": "找不到「{query}」的結果",
+    "tryDifferentKeywords": "請嘗試其他關鍵字或瀏覽分類",
+    "loading": "載入中...",
+    "loadMore": "載入更多",
+    "categoryBibleStories": "聖經故事",
+    "categoryParables": "比喻",
+    "categoryAnimated": "動畫",
+    "categoryStudy": "學習",
+    "categoryFamily": "家庭",
+    "categoryChristmas": "聖誕節"
+  },
+  "HeroPlayer": {
+    "playWithSound": "開啟聲音播放",
+    "tapToUnmute": "取消靜音"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "正在載入內容"
   }
 }

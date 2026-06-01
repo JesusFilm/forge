@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
+import { useTranslations } from "next-intl"
 
 import { useFloatingSearch } from "./FloatingSearchProvider"
 import { FloatingSearchFieldInput } from "./FloatingSearchField"
@@ -12,8 +13,27 @@ import { VideoCard } from "./search/VideoCard"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { CATEGORIES } from "@/lib/search-categories"
+import type { CategorySearchTerm } from "@/lib/search-categories"
+
+const CATEGORY_TITLE_KEYS: Record<
+  CategorySearchTerm,
+  | "categoryBibleStories"
+  | "categoryParables"
+  | "categoryAnimated"
+  | "categoryStudy"
+  | "categoryFamily"
+  | "categoryChristmas"
+> = {
+  "bible stories": "categoryBibleStories",
+  parables: "categoryParables",
+  animated: "categoryAnimated",
+  study: "categoryStudy",
+  family: "categoryFamily",
+  christmas: "categoryChristmas",
+}
 
 export function SearchOverlay() {
+  const t = useTranslations("SearchOverlay")
   const {
     open,
     closing,
@@ -136,7 +156,7 @@ export function SearchOverlay() {
       ref={setOverlayElement}
       role="dialog"
       aria-modal="true"
-      aria-label="Search and browse videos"
+      aria-label={t("dialogLabel")}
       onClick={() => closeAndKeepQuery()}
       className={`fixed inset-0 h-dvh min-h-dvh overflow-visible ${closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"}`}
       style={{
@@ -163,7 +183,7 @@ export function SearchOverlay() {
       >
         <Link
           href={"/" as Route}
-          aria-label="JesusFilm home"
+          aria-label={t("home")}
           // stopPropagation keeps the overlay from intercepting the click as
           // a backdrop dismiss; search("") clears the query + ?q= + cached
           // results so home navigation lands on a fresh search bar.
@@ -191,8 +211,8 @@ export function SearchOverlay() {
             value={query}
             onChange={handleInputChange}
             onClear={handleClearInput}
-            placeholder="Search or browse topics…"
-            aria-label="Search videos by keyword"
+            placeholder={t("placeholder")}
+            aria-label={t("inputLabel")}
             iconTestId="search-overlay-input-icon"
             wrapperClassName="w-full"
           />
@@ -228,12 +248,13 @@ export function SearchOverlay() {
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
               {CATEGORIES.map((cat) => {
                 const Icon = CATEGORY_ICON_BY_SEARCH_TERM[cat.searchTerm]
+                const title = t(CATEGORY_TITLE_KEYS[cat.searchTerm])
                 return (
                   <button
                     key={cat.searchTerm}
                     type="button"
                     onClick={() => handleCategoryClick(cat.searchTerm)}
-                    aria-label={cat.title}
+                    aria-label={title}
                     data-testid={`search-overlay-category-${cat.searchTerm.replace(/\s+/g, "-")}`}
                     className="relative aspect-video w-full cursor-pointer overflow-hidden rounded-lg p-3 text-white transition-transform duration-200 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 [@media(hover:hover)]:hover:scale-105 sm:p-6"
                     style={{ background: cat.gradient }}
@@ -254,7 +275,7 @@ export function SearchOverlay() {
                       className="absolute bottom-3 left-3 text-base font-semibold leading-tight sm:text-lg md:text-xl"
                       style={{ textShadow: "0 1px 3px rgba(0,0,0,0.4)" }}
                     >
-                      {cat.title}
+                      {title}
                     </span>
                   </button>
                 )
@@ -279,20 +300,22 @@ export function SearchOverlay() {
             </div>
           )}
 
-          {loading && !showSkeleton && <p className="sr-only">Searching...</p>}
+          {loading && !showSkeleton && (
+            <p className="sr-only">{t("searching")}</p>
+          )}
 
           {!loading && searched && displayResults.length === 0 && error && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <h2 className="text-lg font-semibold text-stone-200">{error}</h2>
               <p className="mt-2 text-sm text-stone-500">
-                Please check your connection and try again.
+                {t("connectionHint")}
               </p>
               <button
                 type="button"
                 onClick={() => void search(query)}
                 className="mt-4 cursor-pointer rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
               >
-                Retry search
+                {t("retrySearch")}
               </button>
             </div>
           )}
@@ -300,10 +323,10 @@ export function SearchOverlay() {
           {!loading && searched && displayResults.length === 0 && !error && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <h2 className="text-lg font-semibold text-stone-200">
-                No results for &apos;{query.trim()}&apos;
+                {t("noResults", { query: query.trim() })}
               </h2>
               <p className="mt-2 text-sm text-stone-500">
-                Try different keywords or browse categories
+                {t("tryDifferentKeywords")}
               </p>
             </div>
           )}
@@ -333,7 +356,7 @@ export function SearchOverlay() {
                     disabled={loadingMore}
                     className="mt-2 cursor-pointer rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Retry
+                    {t("retry")}
                   </button>
                 </div>
               )}
@@ -349,7 +372,7 @@ export function SearchOverlay() {
                     {loadingMore && (
                       <SpinnerIcon className="h-4 w-4 animate-spin" />
                     )}
-                    {loadingMore ? "Loading..." : "Load more"}
+                    {loadingMore ? t("loading") : t("loadMore")}
                   </button>
                 </div>
               )}

@@ -152,5 +152,42 @@
     "loading": "Transkript yükleniyor…",
     "unavailable": "Bu altyazı parçası için transkript yok.",
     "empty": "Transkript satırı bulunamadı."
+  },
+  "FloatingSearch": {
+    "placeholder": "Konu ara veya keşfet…",
+    "openSearch": "Videolarda ara",
+    "searchRegion": "Videolarda ara",
+    "clearSearch": "Aramayı temizle",
+    "changeAudioLanguage": "Ses dilini değiştir",
+    "home": "JesusFilm ana sayfası"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Videolarda ara ve keşfet",
+    "home": "JesusFilm ana sayfası",
+    "placeholder": "Konu ara veya keşfet…",
+    "inputLabel": "Anahtar kelimeyle video ara",
+    "searchFailed": "Arama başarısız oldu. Lütfen tekrar deneyin.",
+    "loadMoreFailed": "Daha fazla sonuç yüklenemedi.",
+    "searching": "Aranıyor...",
+    "connectionHint": "Bağlantınızı kontrol edip tekrar deneyin.",
+    "retrySearch": "Aramayı yeniden dene",
+    "retry": "Tekrar dene",
+    "noResults": "“{query}” için sonuç yok",
+    "tryDifferentKeywords": "Farklı anahtar kelimeler deneyin veya kategorilere göz atın",
+    "loading": "Yükleniyor...",
+    "loadMore": "Daha fazla yükle",
+    "categoryBibleStories": "Kutsal Kitap Hikayeleri",
+    "categoryParables": "Benzetmeler",
+    "categoryAnimated": "Animasyon",
+    "categoryStudy": "Çalışma",
+    "categoryFamily": "Aile",
+    "categoryChristmas": "Noel"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Sesli oynat",
+    "tapToUnmute": "Sesi aç"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "İçerik yükleniyor"
   }
 }

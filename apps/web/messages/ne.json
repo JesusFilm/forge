@@ -152,5 +152,42 @@
     "loading": "ट्रान्सक्रिप्ट लोड हुँदैछ…",
     "unavailable": "यस उपशीर्षक ट्र्याकका लागि ट्रान्सक्रिप्ट उपलब्ध छैन।",
     "empty": "ट्रान्सक्रिप्ट पंक्तिहरू भेटिएनन्।"
+  },
+  "FloatingSearch": {
+    "placeholder": "खोज्नुहोस् वा विषयहरू हेर्नुहोस्…",
+    "openSearch": "भिडियो खोज्नुहोस्",
+    "searchRegion": "भिडियो खोज्नुहोस्",
+    "clearSearch": "खोज खाली गर्नुहोस्",
+    "changeAudioLanguage": "अडियो भाषा परिवर्तन गर्नुहोस्",
+    "home": "JesusFilm गृहपृष्ठ"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "भिडियो खोज्नुहोस् र हेर्नुहोस्",
+    "home": "JesusFilm गृहपृष्ठ",
+    "placeholder": "खोज्नुहोस् वा विषयहरू हेर्नुहोस्…",
+    "inputLabel": "किवर्डबाट भिडियो खोज्नुहोस्",
+    "searchFailed": "खोज असफल भयो। फेरि प्रयास गर्नुहोस्।",
+    "loadMoreFailed": "थप नतिजा लोड गर्न सकिएन।",
+    "searching": "खोजिँदै...",
+    "connectionHint": "आफ्नो जडान जाँचेर फेरि प्रयास गर्नुहोस्।",
+    "retrySearch": "खोज फेरि प्रयास गर्नुहोस्",
+    "retry": "फेरि प्रयास गर्नुहोस्",
+    "noResults": "“{query}” का लागि कुनै नतिजा छैन",
+    "tryDifferentKeywords": "अर्का किवर्ड प्रयास गर्नुहोस् वा श्रेणीहरू हेर्नुहोस्",
+    "loading": "लोड हुँदै...",
+    "loadMore": "थप लोड गर्नुहोस्",
+    "categoryBibleStories": "बाइबलका कथाहरू",
+    "categoryParables": "दृष्टान्तहरू",
+    "categoryAnimated": "एनिमेटेड",
+    "categoryStudy": "अध्ययन",
+    "categoryFamily": "परिवार",
+    "categoryChristmas": "क्रिसमस"
+  },
+  "HeroPlayer": {
+    "playWithSound": "आवाजसहित चलाउनुहोस्",
+    "tapToUnmute": "आवाज खोल्नुहोस्"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "सामग्री लोड हुँदैछ"
   }
 }

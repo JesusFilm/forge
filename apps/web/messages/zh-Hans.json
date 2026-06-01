@@ -152,5 +152,42 @@
     "loading": "正在加载转录文本…",
     "unavailable": "此字幕轨道暂无转录文本。",
     "empty": "未找到转录文本行。"
+  },
+  "FloatingSearch": {
+    "placeholder": "搜索或浏览主题…",
+    "openSearch": "搜索视频",
+    "searchRegion": "搜索视频",
+    "clearSearch": "清除搜索",
+    "changeAudioLanguage": "更改音频语言",
+    "home": "JesusFilm 主页"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "搜索并浏览视频",
+    "home": "JesusFilm 主页",
+    "placeholder": "搜索或浏览主题…",
+    "inputLabel": "按关键词搜索视频",
+    "searchFailed": "搜索失败。请重试。",
+    "loadMoreFailed": "无法加载更多结果。",
+    "searching": "正在搜索...",
+    "connectionHint": "请检查网络连接后重试。",
+    "retrySearch": "重试搜索",
+    "retry": "重试",
+    "noResults": "没有找到“{query}”的结果",
+    "tryDifferentKeywords": "请尝试其他关键词或浏览分类",
+    "loading": "正在加载...",
+    "loadMore": "加载更多",
+    "categoryBibleStories": "圣经故事",
+    "categoryParables": "比喻",
+    "categoryAnimated": "动画",
+    "categoryStudy": "学习",
+    "categoryFamily": "家庭",
+    "categoryChristmas": "圣诞节"
+  },
+  "HeroPlayer": {
+    "playWithSound": "打开声音播放",
+    "tapToUnmute": "取消静音"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "正在加载内容"
   }
 }

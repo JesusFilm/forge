@@ -152,5 +152,42 @@
     "loading": "Nilo-load ang transcript…",
     "unavailable": "Hindi available ang transcript para sa subtitle track na ito.",
     "empty": "Walang nahanap na linya ng transcript."
+  },
+  "FloatingSearch": {
+    "placeholder": "Maghanap o mag-browse ng mga paksa…",
+    "openSearch": "Maghanap ng mga video",
+    "searchRegion": "Maghanap ng mga video",
+    "clearSearch": "I-clear ang paghahanap",
+    "changeAudioLanguage": "Palitan ang wika ng audio",
+    "home": "JesusFilm home"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Maghanap at mag-browse ng mga video",
+    "home": "JesusFilm home",
+    "placeholder": "Maghanap o mag-browse ng mga paksa…",
+    "inputLabel": "Maghanap ng video gamit ang keyword",
+    "searchFailed": "Hindi natuloy ang paghahanap. Subukan muli.",
+    "loadMoreFailed": "Hindi na-load ang karagdagang resulta.",
+    "searching": "Naghahanap...",
+    "connectionHint": "Pakisuri ang koneksyon at subukan muli.",
+    "retrySearch": "Ulitin ang paghahanap",
+    "retry": "Subukan muli",
+    "noResults": "Walang resulta para sa “{query}”",
+    "tryDifferentKeywords": "Subukan ang ibang keyword o mag-browse ng mga kategorya",
+    "loading": "Naglo-load...",
+    "loadMore": "Mag-load pa",
+    "categoryBibleStories": "Mga Kuwento sa Biblia",
+    "categoryParables": "Mga Talinghaga",
+    "categoryAnimated": "Animated",
+    "categoryStudy": "Pag-aaral",
+    "categoryFamily": "Pamilya",
+    "categoryChristmas": "Pasko"
+  },
+  "HeroPlayer": {
+    "playWithSound": "I-play na may tunog",
+    "tapToUnmute": "I-unmute"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Naglo-load ng content"
   }
 }

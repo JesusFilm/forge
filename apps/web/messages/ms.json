@@ -152,5 +152,42 @@
     "loading": "Memuatkan transkrip…",
     "unavailable": "Transkrip tidak tersedia untuk trek sari kata ini.",
     "empty": "Tiada baris transkrip ditemui."
+  },
+  "FloatingSearch": {
+    "placeholder": "Cari atau teroka topik…",
+    "openSearch": "Cari video",
+    "searchRegion": "Cari video",
+    "clearSearch": "Kosongkan carian",
+    "changeAudioLanguage": "Tukar bahasa audio",
+    "home": "Laman utama JesusFilm"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Cari dan teroka video",
+    "home": "Laman utama JesusFilm",
+    "placeholder": "Cari atau teroka topik…",
+    "inputLabel": "Cari video mengikut kata kunci",
+    "searchFailed": "Carian gagal. Cuba lagi.",
+    "loadMoreFailed": "Gagal memuatkan lagi hasil.",
+    "searching": "Mencari...",
+    "connectionHint": "Semak sambungan anda dan cuba lagi.",
+    "retrySearch": "Cuba carian lagi",
+    "retry": "Cuba lagi",
+    "noResults": "Tiada hasil untuk “{query}”",
+    "tryDifferentKeywords": "Cuba kata kunci lain atau teroka kategori",
+    "loading": "Memuatkan...",
+    "loadMore": "Muatkan lagi",
+    "categoryBibleStories": "Kisah Alkitab",
+    "categoryParables": "Perumpamaan",
+    "categoryAnimated": "Animasi",
+    "categoryStudy": "Kajian",
+    "categoryFamily": "Keluarga",
+    "categoryChristmas": "Krismas"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Mainkan dengan bunyi",
+    "tapToUnmute": "Nyahredam"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Memuatkan kandungan"
   }
 }
