@@ -34,34 +34,32 @@ export function VideoPlayer({
     p.loop = false
   })
 
-  // Switch dubbing language without interrupting playback. replaceAsync's
-  // promise resolves before the new source is ready to play, so seeking/playing
-  // there leaves the player paused on a black frame. Instead, wait for the new
-  // source to reach readyToPlay (sourceLoad / statusChange), then seek to the
-  // saved position and resume — setting currentTime before play() defines the
-  // start position, so the new dub continues in place.
+  // Switching dubbing language restarts the video from the beginning and keeps
+  // it playing (with sound). Seeking the freshly-loaded source to the previous
+  // position stalls on a black frame, so we reset to 0 instead. Once the new
+  // source is ready (sourceLoad / statusChange), unmute, rewind to the start,
+  // and play — so a language change never leaves the player paused or black.
   useEffect(() => {
     if (!streamingUrl || streamingUrl === initialUrl.current) return
     initialUrl.current = streamingUrl
-    const resumeTime = player.currentTime
-    const wasPlaying = player.playing
-    let resumed = false
+    let started = false
 
-    const resume = () => {
-      if (resumed) return
-      resumed = true
+    const playFromStart = () => {
+      if (started) return
+      started = true
       try {
-        if (resumeTime > 0) player.currentTime = resumeTime
-        if (wasPlaying) player.play()
+        player.muted = false
+        player.currentTime = 0
+        player.play()
       } catch {
         // Player released mid-switch
       }
     }
 
     const subs = [
-      player.addListener("sourceLoad", resume),
+      player.addListener("sourceLoad", playFromStart),
       player.addListener("statusChange", ({ status }) => {
-        if (status === "readyToPlay") resume()
+        if (status === "readyToPlay") playFromStart()
       }),
     ]
 
