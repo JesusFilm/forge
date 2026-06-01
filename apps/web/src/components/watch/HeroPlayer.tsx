@@ -12,6 +12,7 @@ import {
 } from "react"
 import { useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
+import { useTranslations } from "next-intl"
 import type {
   MuxPlayer as MuxPlayerType,
   MuxVideo as MuxVideoType,
@@ -138,6 +139,7 @@ export function HeroPlayer({
   overlay?: ReactNode
   subtitleVttSrc?: string | null
 }) {
+  const t = useTranslations("HeroPlayer")
   const { video, variant } = block
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MuxPlayerRef | null>(null)
@@ -626,6 +628,8 @@ export function HeroPlayer({
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch =
     showLanguageSwitch && (!chromeRevealed || controlsChromeVisible)
+  const preRevealActionLabel =
+    pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -756,11 +760,7 @@ export function HeroPlayer({
           <button
             type="button"
             data-testid="hero-player-pre-reveal-click-surface"
-            aria-label={
-              pillState === "tap-to-unmute"
-                ? "Tap to Unmute"
-                : "Play with Sound"
-            }
+            aria-label={preRevealActionLabel}
             onClick={handleUnmuteClick}
             className="absolute inset-0 z-1 cursor-pointer bg-transparent focus:outline-none"
           />
@@ -855,11 +855,7 @@ export function HeroPlayer({
                   type="button"
                   data-testid="hero-player-unmute-pill"
                   data-state={pillState}
-                  aria-label={
-                    pillState === "tap-to-unmute"
-                      ? "Tap to Unmute"
-                      : "Play with Sound"
-                  }
+                  aria-label={preRevealActionLabel}
                   onClick={handleUnmuteClick}
                   className={
                     pillState === "tap-to-unmute"
@@ -872,11 +868,7 @@ export function HeroPlayer({
                   ) : (
                     <UnmutedSpeakerIcon />
                   )}
-                  <span>
-                    {pillState === "tap-to-unmute"
-                      ? "Tap to Unmute"
-                      : "Play with Sound"}
-                  </span>
+                  <span>{preRevealActionLabel}</span>
                 </button>
               </div>
             ))

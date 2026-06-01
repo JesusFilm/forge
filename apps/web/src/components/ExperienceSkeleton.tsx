@@ -1,4 +1,7 @@
+import { useTranslations } from "next-intl"
+
 export function ExperienceSkeleton() {
+  const t = useTranslations("ExperienceSkeleton")
   // Use <div> not <main>: this is a transient Suspense fallback that can
   // coexist briefly with the resolved page's real <main> during streaming,
   // which would give the document two <main> landmarks. The real page
@@ -7,7 +10,7 @@ export function ExperienceSkeleton() {
     <div
       role="status"
       aria-busy="true"
-      aria-label="Loading content"
+      aria-label={t("loadingContent")}
       className="min-h-screen bg-stone-900"
     >
       {/* Hero placeholder */}

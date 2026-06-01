@@ -152,5 +152,42 @@
     "loading": "Загрузка расшифровки…",
     "unavailable": "Расшифровка для этой дорожки субтитров недоступна.",
     "empty": "Строки расшифровки не найдены."
+  },
+  "FloatingSearch": {
+    "placeholder": "Ищите или выбирайте темы…",
+    "openSearch": "Поиск видео",
+    "searchRegion": "Поиск видео",
+    "clearSearch": "Очистить поиск",
+    "changeAudioLanguage": "Изменить язык аудио",
+    "home": "Главная JesusFilm"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Поиск и просмотр видео",
+    "home": "Главная JesusFilm",
+    "placeholder": "Ищите или выбирайте темы…",
+    "inputLabel": "Искать видео по ключевым словам",
+    "searchFailed": "Не удалось выполнить поиск. Попробуйте еще раз.",
+    "loadMoreFailed": "Не удалось загрузить еще результаты.",
+    "searching": "Идет поиск...",
+    "connectionHint": "Проверьте подключение и попробуйте еще раз.",
+    "retrySearch": "Повторить поиск",
+    "retry": "Повторить",
+    "noResults": "Нет результатов для «{query}»",
+    "tryDifferentKeywords": "Попробуйте другие слова или выберите категорию",
+    "loading": "Загрузка...",
+    "loadMore": "Загрузить еще",
+    "categoryBibleStories": "Библейские истории",
+    "categoryParables": "Притчи",
+    "categoryAnimated": "Анимация",
+    "categoryStudy": "Изучение",
+    "categoryFamily": "Семья",
+    "categoryChristmas": "Рождество"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Воспроизвести со звуком",
+    "tapToUnmute": "Включить звук"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Загрузка контента"
   }
 }

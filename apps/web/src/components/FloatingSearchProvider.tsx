@@ -17,6 +17,7 @@ import Link from "next/link"
 import type { Route } from "next"
 import { usePathname, useRouter } from "next/navigation"
 import { Globe } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import { runSearch } from "@/lib/search-actions"
 import type { SearchResult } from "@/lib/search"
@@ -99,6 +100,8 @@ export function useFloatingSearchPinned(): FloatingSearchPinnedContextValue {
 }
 
 export function FloatingSearchProvider({ children }: { children: ReactNode }) {
+  const t = useTranslations("FloatingSearch")
+  const tSearchOverlay = useTranslations("SearchOverlay")
   const router = useRouter()
   // usePathname() returns the app-relative path (no basePath prefix). The
   // router.replace() call auto-prefixes basePath, so feeding it
@@ -367,7 +370,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         setHasMore(data.hasMore)
       } catch {
         if (requestIdRef.current === thisRequest) {
-          setError("Search failed. Please try again.")
+          setError(tSearchOverlay("searchFailed"))
         }
       } finally {
         // Only clear loading state for the winning request — otherwise a
@@ -379,7 +382,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [pathname, router],
+    [pathname, router, tSearchOverlay],
   )
 
   const loadMore = useCallback(async (): Promise<void> => {
@@ -403,13 +406,13 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       setHasMore(data.hasMore)
     } catch {
       if (requestIdRef.current === thisRequest) {
-        setError("Failed to load more results.")
+        setError(tSearchOverlay("loadMoreFailed"))
       }
     } finally {
       loadingMoreRef.current = false
       setLoadingMore(false)
     }
-  }, [query, results.length])
+  }, [query, results.length, tSearchOverlay])
 
   const closeAndKeepQuery = useCallback(() => {
     setOpen(false)
@@ -545,8 +548,8 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
             type="button"
             data-testid="floating-header-language-button"
             onClick={headerLanguageSwitcher.onClick}
-            aria-label="Change audio language"
-            title="Change audio language"
+            aria-label={t("changeAudioLanguage")}
+            title={t("changeAudioLanguage")}
             inert={headerChromeHidden || undefined}
             aria-hidden={headerChromeHidden || undefined}
             className={`fixed right-10 z-50 inline-flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[top,opacity,color] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
@@ -567,7 +570,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         ) : null}
         <Link
           href={"/" as Route}
-          aria-label="JesusFilm home"
+          aria-label={t("home")}
           data-testid="floating-header-logo"
           inert={headerChromeHidden || undefined}
           aria-hidden={headerChromeHidden || undefined}

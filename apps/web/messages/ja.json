@@ -152,5 +152,42 @@
     "loading": "トランスクリプトを読み込み中…",
     "unavailable": "この字幕トラックのトランスクリプトは利用できません。",
     "empty": "トランスクリプト行が見つかりません。"
+  },
+  "FloatingSearch": {
+    "placeholder": "検索またはトピックを閲覧…",
+    "openSearch": "動画を検索",
+    "searchRegion": "動画を検索",
+    "clearSearch": "検索をクリア",
+    "changeAudioLanguage": "音声言語を変更",
+    "home": "JesusFilm ホーム"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "動画を検索・閲覧",
+    "home": "JesusFilm ホーム",
+    "placeholder": "検索またはトピックを閲覧…",
+    "inputLabel": "キーワードで動画を検索",
+    "searchFailed": "検索できませんでした。もう一度お試しください。",
+    "loadMoreFailed": "さらに結果を読み込めませんでした。",
+    "searching": "検索中...",
+    "connectionHint": "接続を確認して、もう一度お試しください。",
+    "retrySearch": "もう一度検索",
+    "retry": "再試行",
+    "noResults": "「{query}」の結果はありません",
+    "tryDifferentKeywords": "別のキーワードを試すか、カテゴリを閲覧してください",
+    "loading": "読み込み中...",
+    "loadMore": "さらに読み込む",
+    "categoryBibleStories": "聖書の物語",
+    "categoryParables": "たとえ話",
+    "categoryAnimated": "アニメーション",
+    "categoryStudy": "学び",
+    "categoryFamily": "家族",
+    "categoryChristmas": "クリスマス"
+  },
+  "HeroPlayer": {
+    "playWithSound": "音声付きで再生",
+    "tapToUnmute": "ミュートを解除"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "コンテンツを読み込み中"
   }
 }

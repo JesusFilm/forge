@@ -152,5 +152,42 @@
     "loading": "กำลังโหลดถอดเสียง…",
     "unavailable": "ไม่มีถอดเสียงสำหรับแทร็กคำบรรยายนี้",
     "empty": "ไม่พบบรรทัดถอดเสียง"
+  },
+  "FloatingSearch": {
+    "placeholder": "ค้นหาหรือเลือกดูหัวข้อ…",
+    "openSearch": "ค้นหาวิดีโอ",
+    "searchRegion": "ค้นหาวิดีโอ",
+    "clearSearch": "ล้างการค้นหา",
+    "changeAudioLanguage": "เปลี่ยนภาษาเสียง",
+    "home": "หน้าแรก JesusFilm"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "ค้นหาและเลือกดูวิดีโอ",
+    "home": "หน้าแรก JesusFilm",
+    "placeholder": "ค้นหาหรือเลือกดูหัวข้อ…",
+    "inputLabel": "ค้นหาวิดีโอด้วยคำสำคัญ",
+    "searchFailed": "ค้นหาไม่สำเร็จ โปรดลองอีกครั้ง",
+    "loadMoreFailed": "ไม่สามารถโหลดผลลัพธ์เพิ่มเติมได้",
+    "searching": "กำลังค้นหา...",
+    "connectionHint": "โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
+    "retrySearch": "ค้นหาอีกครั้ง",
+    "retry": "ลองอีกครั้ง",
+    "noResults": "ไม่พบผลลัพธ์สำหรับ “{query}”",
+    "tryDifferentKeywords": "ลองใช้คำสำคัญอื่นหรือเลือกดูหมวดหมู่",
+    "loading": "กำลังโหลด...",
+    "loadMore": "โหลดเพิ่มเติม",
+    "categoryBibleStories": "เรื่องราวในพระคัมภีร์",
+    "categoryParables": "อุปมา",
+    "categoryAnimated": "แอนิเมชัน",
+    "categoryStudy": "ศึกษา",
+    "categoryFamily": "ครอบครัว",
+    "categoryChristmas": "คริสต์มาส"
+  },
+  "HeroPlayer": {
+    "playWithSound": "เล่นพร้อมเสียง",
+    "tapToUnmute": "เปิดเสียง"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "กำลังโหลดเนื้อหา"
   }
 }

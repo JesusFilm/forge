@@ -152,5 +152,42 @@
     "loading": "Carregando transcrição…",
     "unavailable": "Transcrição indisponível para esta faixa de legendas.",
     "empty": "Nenhuma linha de transcrição encontrada."
+  },
+  "FloatingSearch": {
+    "placeholder": "Pesquise ou explore temas…",
+    "openSearch": "Pesquisar vídeos",
+    "searchRegion": "Pesquisar vídeos",
+    "clearSearch": "Limpar pesquisa",
+    "changeAudioLanguage": "Alterar idioma do áudio",
+    "home": "Início do JesusFilm"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Pesquisar e explorar vídeos",
+    "home": "Início do JesusFilm",
+    "placeholder": "Pesquise ou explore temas…",
+    "inputLabel": "Pesquisar vídeos por palavra-chave",
+    "searchFailed": "A pesquisa falhou. Tente novamente.",
+    "loadMoreFailed": "Não foi possível carregar mais resultados.",
+    "searching": "Pesquisando...",
+    "connectionHint": "Verifique sua conexão e tente novamente.",
+    "retrySearch": "Tentar pesquisa novamente",
+    "retry": "Tentar novamente",
+    "noResults": "Nenhum resultado para “{query}”",
+    "tryDifferentKeywords": "Tente outras palavras-chave ou explore categorias",
+    "loading": "Carregando...",
+    "loadMore": "Carregar mais",
+    "categoryBibleStories": "Histórias bíblicas",
+    "categoryParables": "Parábolas",
+    "categoryAnimated": "Animações",
+    "categoryStudy": "Estudo",
+    "categoryFamily": "Família",
+    "categoryChristmas": "Natal"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Reproduzir com som",
+    "tapToUnmute": "Ativar som"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Carregando conteúdo"
   }
 }

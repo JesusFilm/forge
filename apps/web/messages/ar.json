@@ -152,5 +152,42 @@
     "loading": "جارٍ تحميل النص…",
     "unavailable": "النص غير متاح لمسار الترجمة هذا.",
     "empty": "لم يتم العثور على أسطر نصية."
+  },
+  "FloatingSearch": {
+    "placeholder": "ابحث أو تصفح المواضيع…",
+    "openSearch": "البحث عن فيديوهات",
+    "searchRegion": "البحث عن فيديوهات",
+    "clearSearch": "مسح البحث",
+    "changeAudioLanguage": "تغيير لغة الصوت",
+    "home": "صفحة JesusFilm الرئيسية"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "البحث عن الفيديوهات وتصفحها",
+    "home": "صفحة JesusFilm الرئيسية",
+    "placeholder": "ابحث أو تصفح المواضيع…",
+    "inputLabel": "البحث عن فيديوهات بالكلمات المفتاحية",
+    "searchFailed": "تعذر البحث. حاول مرة أخرى.",
+    "loadMoreFailed": "تعذر تحميل المزيد من النتائج.",
+    "searching": "جارٍ البحث...",
+    "connectionHint": "تحقق من اتصالك وحاول مرة أخرى.",
+    "retrySearch": "إعادة البحث",
+    "retry": "إعادة المحاولة",
+    "noResults": "لا توجد نتائج لـ “{query}”",
+    "tryDifferentKeywords": "جرّب كلمات مفتاحية أخرى أو تصفح الفئات",
+    "loading": "جارٍ التحميل...",
+    "loadMore": "تحميل المزيد",
+    "categoryBibleStories": "قصص الكتاب المقدس",
+    "categoryParables": "الأمثال",
+    "categoryAnimated": "رسوم متحركة",
+    "categoryStudy": "دراسة",
+    "categoryFamily": "العائلة",
+    "categoryChristmas": "عيد الميلاد"
+  },
+  "HeroPlayer": {
+    "playWithSound": "تشغيل مع الصوت",
+    "tapToUnmute": "تشغيل الصوت"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "جارٍ تحميل المحتوى"
   }
 }

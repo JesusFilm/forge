@@ -152,5 +152,42 @@
     "loading": "대본 불러오는 중…",
     "unavailable": "이 자막 트랙의 대본을 사용할 수 없습니다.",
     "empty": "대본 줄을 찾을 수 없습니다."
+  },
+  "FloatingSearch": {
+    "placeholder": "검색하거나 주제 둘러보기…",
+    "openSearch": "동영상 검색",
+    "searchRegion": "동영상 검색",
+    "clearSearch": "검색 지우기",
+    "changeAudioLanguage": "오디오 언어 변경",
+    "home": "JesusFilm 홈"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "동영상 검색 및 둘러보기",
+    "home": "JesusFilm 홈",
+    "placeholder": "검색하거나 주제 둘러보기…",
+    "inputLabel": "키워드로 동영상 검색",
+    "searchFailed": "검색에 실패했습니다. 다시 시도하세요.",
+    "loadMoreFailed": "추가 결과를 불러오지 못했습니다.",
+    "searching": "검색 중...",
+    "connectionHint": "연결 상태를 확인한 후 다시 시도하세요.",
+    "retrySearch": "다시 검색",
+    "retry": "다시 시도",
+    "noResults": "“{query}”에 대한 결과가 없습니다",
+    "tryDifferentKeywords": "다른 키워드를 사용하거나 카테고리를 둘러보세요",
+    "loading": "불러오는 중...",
+    "loadMore": "더 보기",
+    "categoryBibleStories": "성경 이야기",
+    "categoryParables": "비유",
+    "categoryAnimated": "애니메이션",
+    "categoryStudy": "공부",
+    "categoryFamily": "가족",
+    "categoryChristmas": "크리스마스"
+  },
+  "HeroPlayer": {
+    "playWithSound": "소리 켜고 재생",
+    "tapToUnmute": "음소거 해제"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "콘텐츠 불러오는 중"
   }
 }

@@ -152,5 +152,42 @@
     "loading": "Transkript wird geladen…",
     "unavailable": "Transkript für diese Untertitelspur nicht verfügbar.",
     "empty": "Keine Transkriptzeilen gefunden."
+  },
+  "FloatingSearch": {
+    "placeholder": "Suchen oder Themen entdecken…",
+    "openSearch": "Videos suchen",
+    "searchRegion": "Videos suchen",
+    "clearSearch": "Suche löschen",
+    "changeAudioLanguage": "Audiosprache ändern",
+    "home": "JesusFilm-Startseite"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Videos suchen und entdecken",
+    "home": "JesusFilm-Startseite",
+    "placeholder": "Suchen oder Themen entdecken…",
+    "inputLabel": "Videos nach Stichwort suchen",
+    "searchFailed": "Die Suche ist fehlgeschlagen. Bitte erneut versuchen.",
+    "loadMoreFailed": "Weitere Ergebnisse konnten nicht geladen werden.",
+    "searching": "Suche läuft...",
+    "connectionHint": "Bitte Verbindung prüfen und erneut versuchen.",
+    "retrySearch": "Suche erneut starten",
+    "retry": "Erneut versuchen",
+    "noResults": "Keine Ergebnisse für „{query}“",
+    "tryDifferentKeywords": "Andere Stichwörter versuchen oder Kategorien durchsuchen",
+    "loading": "Wird geladen...",
+    "loadMore": "Mehr laden",
+    "categoryBibleStories": "Biblische Geschichten",
+    "categoryParables": "Gleichnisse",
+    "categoryAnimated": "Animiert",
+    "categoryStudy": "Studium",
+    "categoryFamily": "Familie",
+    "categoryChristmas": "Weihnachten"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Mit Ton abspielen",
+    "tapToUnmute": "Ton einschalten"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Inhalt wird geladen"
   }
 }

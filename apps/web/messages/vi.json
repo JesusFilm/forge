@@ -152,5 +152,42 @@
     "loading": "Đang tải bản chép lời…",
     "unavailable": "Không có bản chép lời cho phụ đề này.",
     "empty": "Không tìm thấy dòng chép lời nào."
+  },
+  "FloatingSearch": {
+    "placeholder": "Tìm kiếm hoặc xem các chủ đề…",
+    "openSearch": "Tìm video",
+    "searchRegion": "Tìm video",
+    "clearSearch": "Xóa tìm kiếm",
+    "changeAudioLanguage": "Đổi ngôn ngữ âm thanh",
+    "home": "Trang chủ JesusFilm"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Tìm kiếm và xem video",
+    "home": "Trang chủ JesusFilm",
+    "placeholder": "Tìm kiếm hoặc xem các chủ đề…",
+    "inputLabel": "Tìm video bằng từ khóa",
+    "searchFailed": "Tìm kiếm không thành công. Vui lòng thử lại.",
+    "loadMoreFailed": "Không tải được thêm kết quả.",
+    "searching": "Đang tìm...",
+    "connectionHint": "Vui lòng kiểm tra kết nối rồi thử lại.",
+    "retrySearch": "Tìm lại",
+    "retry": "Thử lại",
+    "noResults": "Không có kết quả cho “{query}”",
+    "tryDifferentKeywords": "Thử từ khóa khác hoặc xem các danh mục",
+    "loading": "Đang tải...",
+    "loadMore": "Tải thêm",
+    "categoryBibleStories": "Câu chuyện Kinh Thánh",
+    "categoryParables": "Dụ ngôn",
+    "categoryAnimated": "Hoạt hình",
+    "categoryStudy": "Học hỏi",
+    "categoryFamily": "Gia đình",
+    "categoryChristmas": "Giáng sinh"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Phát có âm thanh",
+    "tapToUnmute": "Bật tiếng"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Đang tải nội dung"
   }
 }
