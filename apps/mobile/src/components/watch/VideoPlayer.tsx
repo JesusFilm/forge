@@ -3,7 +3,6 @@ import { AppState, StyleSheet, View, useWindowDimensions } from "react-native"
 import { Image } from "expo-image"
 import { useVideoPlayer, VideoView } from "expo-video"
 import { useEvent } from "expo"
-import { useNavigation } from "expo-router"
 import { BLACK } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { PlayerControls } from "./PlayerControls"
@@ -23,7 +22,6 @@ export function VideoPlayer({
   onPlayingChange,
 }: VideoPlayerProps) {
   const { width: screenWidth } = useWindowDimensions()
-  const navigation = useNavigation()
 
   const [hasStarted, setHasStarted] = useState(false)
   const wasPlayingRef = useRef(false)
@@ -91,16 +89,6 @@ export function VideoPlayer({
     if (isPlaying && !hasStarted) setHasStarted(true)
     onPlayingChange?.(isPlaying)
   }, [isPlaying, hasStarted, onPlayingChange])
-
-  useEffect(() => {
-    return navigation.addListener("blur", () => {
-      try {
-        player.pause()
-      } catch {
-        // Player already released
-      }
-    })
-  }, [navigation, player])
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
