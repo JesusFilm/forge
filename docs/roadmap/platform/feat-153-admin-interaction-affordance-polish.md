@@ -3,7 +3,7 @@ id: "feat-153"
 title: "Admin interaction affordance polish"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-01"
 duration: 1
 tags:
