@@ -178,6 +178,27 @@ Open `http://localhost:4111/studio/workflows/search-eval-native-suite`, run the
 default `create-sample-report` action, then inspect Studio's native Evaluation
 Datasets, Scorers, and Experiments.
 
+## Search eval orchestrator
+
+The service route `POST /forge-search-eval-orchestrator` is protected by
+`MASTRA_SERVICE_API_KEYS` and launches the `search-eval-orchestrator` workflow.
+It is a thin coordinator over the existing search eval leaf workflows:
+`eval-query-generation`, `offline-search-eval`,
+`search-eval-candidate-review`, and `search-eval-native-suite`.
+
+Default `full` mode captures the committed seed prompt baseline named
+`seed-baseline`, then syncs the resulting report and already-promoted Admin
+candidates into native Evaluation. `compare` mode compares current search
+against an existing baseline, and `release-gate` mode adds explicit pass/fail
+thresholds for losses, search failures, judge failures, judge disagreements,
+and calibration. `resumeReportId` skips offline search execution and retries
+native report sync for an existing report artifact.
+
+Candidate generation and seed candidate submission are explicit opt-ins. The
+orchestrator must never promote generated, trace-derived, seed, or
+user-submitted candidates; promotion remains a human review action through
+Admin HTTP contracts.
+
 ## Railway Storage
 
 Production `@forge/mastra` uses the existing Mastra Postgres database through
