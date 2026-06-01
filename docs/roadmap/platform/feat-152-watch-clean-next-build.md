@@ -1,7 +1,7 @@
 ---
 id: feat-152
 title: Prune stale web ISR output after Railway builds
-status: "in-progress"
+status: "complete"
 priority: high
 area: platform
 tags:
@@ -38,3 +38,12 @@ as `.next/server/app/[locale]/[htmlLang]/[...rest]` intact.
 - `pnpm --filter @forge/web build`
 - Production smoke for `/watch/parable-of-the-pharisee-and-tax-collector.html/russian.html`
   should show Russian visible chrome after redeploy.
+
+## Completion Notes
+
+- Shipped stale ISR pruning in PR #1082.
+- Triggered the watched `@forge/web` service path in PR #1083.
+- Fixed runtime locale propagation by passing explicit locale messages to the
+  watch layout provider in PR #1084.
+- Verified production `watch.jesusfilm.org` returns Russian visible chrome for
+  `/watch/parable-of-the-pharisee-and-tax-collector.html/russian.html`.
