@@ -11,6 +11,14 @@ import { WatchSessionProvider } from "../../src/contexts/WatchSessionProvider"
 const LIST_SHEET_DETENTS = [0.5, 1] as const
 const DOWNLOAD_SHEET_DETENTS = [0.75, 1] as const
 
+const SHEET_BASE_OPTIONS = {
+  headerShown: false,
+  presentation: "formSheet",
+  sheetInitialDetentIndex: 0,
+  sheetGrabberVisible: true,
+  sheetCornerRadius: 16,
+} as const
+
 export default function WatchLayout() {
   const router = useRouter()
 
@@ -45,34 +53,22 @@ export default function WatchLayout() {
         <Stack.Screen
           name="language"
           options={{
-            headerShown: false,
-            presentation: "formSheet",
+            ...SHEET_BASE_OPTIONS,
             sheetAllowedDetents: [...LIST_SHEET_DETENTS],
-            sheetInitialDetentIndex: 0,
-            sheetGrabberVisible: true,
-            sheetCornerRadius: 16,
           }}
         />
         <Stack.Screen
           name="subtitle"
           options={{
-            headerShown: false,
-            presentation: "formSheet",
+            ...SHEET_BASE_OPTIONS,
             sheetAllowedDetents: [...LIST_SHEET_DETENTS],
-            sheetInitialDetentIndex: 0,
-            sheetGrabberVisible: true,
-            sheetCornerRadius: 16,
           }}
         />
         <Stack.Screen
           name="download"
           options={{
-            headerShown: false,
-            presentation: "formSheet",
+            ...SHEET_BASE_OPTIONS,
             sheetAllowedDetents: [...DOWNLOAD_SHEET_DETENTS],
-            sheetInitialDetentIndex: 0,
-            sheetGrabberVisible: true,
-            sheetCornerRadius: 16,
           }}
         />
       </Stack>

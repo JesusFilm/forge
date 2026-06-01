@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { StyleSheet, Text, View } from "react-native"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 
 import { parseVtt, type VttCue } from "../../lib/parseVtt"
+import { validateActionUrl } from "../../lib/validateUrl"
 
 type SubtitleOverlayProps = {
   player: ExpoVideoPlayer
@@ -17,20 +18,17 @@ export function SubtitleOverlay({
 }: SubtitleOverlayProps) {
   const [cues, setCues] = useState<VttCue[]>([])
   const [activeText, setActiveText] = useState<string>("")
-  const cuesRef = useRef<VttCue[]>([])
 
   useEffect(() => {
-    cuesRef.current = cues
-  }, [cues])
-
-  useEffect(() => {
-    if (!vttSrc) {
+    // Validate the CMS-sourced URL before fetching (apps/mobile/CLAUDE.md).
+    if (!vttSrc || !validateActionUrl(vttSrc)) {
       setCues([])
       setActiveText("")
       return
     }
     let cancelled = false
-    fetch(vttSrc)
+    // Timeout so a stalled CDN can't hold the request open indefinitely.
+    fetch(vttSrc, { signal: AbortSignal.timeout(8000) })
       .then((r) => r.text())
       .then((text) => {
         if (!cancelled) setCues(parseVtt(text))
@@ -48,10 +46,12 @@ export function SubtitleOverlay({
       setActiveText("")
       return
     }
+    // The effect re-runs (and the interval restarts) whenever cues changes,
+    // so the closure always reads the current cues — no ref mirror needed.
     const interval = setInterval(() => {
       try {
         const t = player.currentTime
-        const cue = cuesRef.current.find((c) => t >= c.start && t <= c.end)
+        const cue = cues.find((c) => t >= c.start && t <= c.end)
         setActiveText((prev) => {
           const next = cue?.text ?? ""
           return prev === next ? prev : next

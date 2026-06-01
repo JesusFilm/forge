@@ -1,6 +1,5 @@
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -80,14 +79,10 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     if (best) setActiveSubtitleSlug(best)
   }, [activeVariant?.documentId])
 
-  const setVideoStable = useCallback((next: WatchVideoRecord | null) => {
-    setVideo(next)
-  }, [])
-
   const value = useMemo<WatchSessionContextValue>(
     () => ({
       video,
-      setVideo: setVideoStable,
+      setVideo,
       activeVariantIndex,
       setActiveVariantIndex,
       subtitleEnabled,
@@ -100,7 +95,6 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     }),
     [
       video,
-      setVideoStable,
       activeVariantIndex,
       subtitleEnabled,
       activeSubtitleSlug,

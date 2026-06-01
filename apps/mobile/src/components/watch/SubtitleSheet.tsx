@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   FlatList,
   Pressable,
@@ -48,6 +48,15 @@ export function SubtitleSheetContent({
   const typography = useTypography()
   const [query, setQuery] = useState("")
   const [localToggle, setLocalToggle] = useState(subtitleEnabled)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cancel the deferred close on unmount so it can't fire router.back() after
+  // the sheet was already dismissed (which would pop the watch screen).
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current)
+    }
+  }, [])
 
   const sorted = useMemo(() => sortByName(subtitles), [subtitles])
   const activeSubtitle = useMemo(
@@ -75,8 +84,9 @@ export function SubtitleSheetContent({
     (sub: WatchSubtitle) => {
       onSubtitleChange(true, sub.languageSlug)
       if (!localToggle) {
+        // Let the switch animate to ON before dismissing.
         setLocalToggle(true)
-        setTimeout(onClose, 300)
+        closeTimer.current = setTimeout(onClose, 300)
       } else {
         onClose()
       }

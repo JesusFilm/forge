@@ -73,10 +73,11 @@ export default function WatchVideoPage() {
   )
 
   // Publish the fetched video into the shared session so the sheet routes can
-  // read variants/subtitles without refetching.
+  // read variants/subtitles without refetching. Keyed on documentId so the
+  // cache-and-network double-fire (two emissions, same video) publishes once.
   useEffect(() => {
     if (normalized) setVideo(normalized)
-  }, [normalized, setVideo])
+  }, [normalized?.documentId, setVideo])
 
   const bibleQuotes = useBibleVerses(video?.bibleCitations ?? EMPTY_CITATIONS)
 
@@ -255,7 +256,7 @@ export default function WatchVideoPage() {
       )}
 
       <Snackbar
-        message="Download complete"
+        message={snackbarMessage ?? "Download complete"}
         visible={snackbarMessage != null}
         onDismiss={() => setSnackbarMessage(null)}
       />

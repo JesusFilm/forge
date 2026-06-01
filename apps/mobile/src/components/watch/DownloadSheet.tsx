@@ -397,8 +397,6 @@ export function DownloadSheetContent({
   )
 }
 
-export { type DownloadSheetProps as DownloadSheetContentProps }
-
 const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: HORIZONTAL_PADDING,

@@ -29,7 +29,7 @@ function sortByName(variants: WatchVariant[]): WatchVariant[] {
 export type LanguageSheetProps = {
   variants: WatchVariant[]
   activeVariantSlug: string
-  onLanguageChange: (variantSlug: string, hlsUrl: string) => void
+  onLanguageChange: (variantSlug: string) => void
   onClose: () => void
 }
 
@@ -65,7 +65,7 @@ export function LanguageSheetContent({
   const handleSelect = useCallback(
     (variant: WatchVariant) => {
       if (!variant.hls) return
-      onLanguageChange(variant.slug, variant.hls)
+      onLanguageChange(variant.slug)
       onClose()
     },
     [onLanguageChange, onClose],

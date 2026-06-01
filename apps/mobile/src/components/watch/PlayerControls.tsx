@@ -10,8 +10,6 @@ import { useTypography } from "../../hooks/useTypography"
 type PlayerControlsProps = {
   player: VideoPlayer
   onFullscreen: () => void
-  onCCToggle?: () => void
-  ccEnabled?: boolean
 }
 
 function formatTime(seconds: number): string {
@@ -20,12 +18,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
-export function PlayerControls({
-  player,
-  onFullscreen,
-  onCCToggle,
-  ccEnabled = false,
-}: PlayerControlsProps) {
+export function PlayerControls({ player, onFullscreen }: PlayerControlsProps) {
   const typography = useTypography()
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -115,22 +108,6 @@ export function PlayerControls({
             />
           </Pressable>
           <View style={styles.rightIconGroup}>
-            {onCCToggle != null && (
-              <Pressable
-                onPress={onCCToggle}
-                style={styles.iconButton}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  ccEnabled ? "Disable subtitles" : "Enable subtitles"
-                }
-              >
-                <Ionicons
-                  name="text"
-                  size={20}
-                  color={ccEnabled ? ACCENT : TEXT_ON_OVERLAY}
-                />
-              </Pressable>
-            )}
             <Pressable
               onPress={onFullscreen}
               style={styles.iconButton}

@@ -46,7 +46,15 @@ export function parseVtt(content: string): VttCue[] {
           textLines.push(lines[i] ?? "")
           i++
         }
-        if (textLines.length > 0) {
+        // Skip cues with unparseable timestamps (NaN) or non-positive
+        // duration — they would never match the playhead and silently
+        // suppress otherwise-valid subtitles.
+        if (
+          textLines.length > 0 &&
+          Number.isFinite(start) &&
+          Number.isFinite(end) &&
+          end > start
+        ) {
           cues.push({ start, end, text: stripVttTags(textLines.join("\n")) })
         }
       }

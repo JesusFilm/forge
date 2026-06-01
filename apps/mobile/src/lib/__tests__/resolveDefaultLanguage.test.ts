@@ -40,6 +40,13 @@ describe("resolveDefaultSlug", () => {
     expect(resolveDefaultSlug(options, "en")).toBe("spanish")
   })
 
+  it("device locale wins over the video primary language when both match", () => {
+    mockDeviceLocale("en-US")
+    const options = [opt("french", "fr"), opt("english", "en")]
+    // primary is French, but the device locale (English) takes priority
+    expect(resolveDefaultSlug(options, "fr")).toBe("english")
+  })
+
   it("matches device locale on the language prefix, ignoring region", () => {
     mockDeviceLocale("pt-BR")
     const options = [opt("english", "en"), opt("portuguese", "pt-PT")]
