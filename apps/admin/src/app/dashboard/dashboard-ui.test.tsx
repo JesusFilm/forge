@@ -404,17 +404,74 @@ import UsersPage from "./users/page"
 import SettingsPage from "./settings/page"
 import LanguagesPage from "./languages/page"
 import MediaPage from "./media/page"
+import { ExperiencesActions } from "./experiences/experiences-actions"
+import {
+  DataTable,
+  PrimaryButton,
+  SecondaryButton,
+} from "@/components/admin-ui"
+import { requireSession } from "@/auth/session"
 
 async function htmlFrom(component: Promise<ReactNode>) {
   return renderToStaticMarkup(await component)
 }
 
 describe("dashboard UI routes", () => {
+  it("renders primary buttons with explicit enabled and disabled affordances", () => {
+    const enabled = renderToStaticMarkup(
+      <PrimaryButton>Enabled primary</PrimaryButton>,
+    )
+    const disabled = renderToStaticMarkup(
+      <PrimaryButton disabled>Disabled primary</PrimaryButton>,
+    )
+
+    expect(enabled).toContain("cursor-pointer")
+    expect(enabled).toContain("hover:bg-[var(--color-brand-pressed)]")
+    expect(enabled).not.toContain('disabled=""')
+    expect(disabled).toContain('disabled=""')
+    expect(disabled).toContain("disabled:cursor-not-allowed")
+    expect(disabled).toContain("disabled:opacity-55")
+  })
+
+  it("renders secondary buttons with explicit enabled and disabled affordances", () => {
+    const enabled = renderToStaticMarkup(
+      <SecondaryButton>Enabled secondary</SecondaryButton>,
+    )
+    const disabled = renderToStaticMarkup(
+      <SecondaryButton disabled>Disabled secondary</SecondaryButton>,
+    )
+
+    expect(enabled).toContain("cursor-pointer")
+    expect(enabled).toContain("hover:bg-[var(--color-surface-raised)]")
+    expect(enabled).not.toContain('disabled=""')
+    expect(disabled).toContain('disabled=""')
+    expect(disabled).toContain("disabled:cursor-not-allowed")
+    expect(disabled).toContain("disabled:opacity-50")
+  })
+
+  it("renders read-only data tables without default row actions", () => {
+    const html = renderToStaticMarkup(
+      <DataTable columns={["Name"]} rows={[[<span key="row">Row</span>]]} />,
+    )
+
+    expect(html).toContain("Row")
+    expect(html.match(/<th[\s>]/g)).toHaveLength(1)
+    expect(html.match(/<td[\s>]/g)).toHaveLength(1)
+    expect(html).not.toContain("<svg")
+    expect(html).not.toContain("hover:bg-[var(--color-surface-raised)]")
+    expect(html).not.toContain("Quick Actions")
+  })
+
   it("renders overview page with translated shared chrome", async () => {
     const html = await htmlFrom(DashboardPage())
 
     expect(html).toContain(uiMessages.pages.dashboard.title)
     expect(html).toContain(uiMessages.pages.dashboard.action)
+    expect(html).toContain(uiMessages.pages.dashboard.actionUnavailable)
+    expect(html).toMatch(
+      /<button(?=[^>]*disabled="")(?=[^>]*aria-describedby="dashboard-sync-action-unavailable")/,
+    )
+    expect(html).toContain('disabled=""')
     expect(html).toContain(uiMessages.common.operatorNotes)
   })
 
@@ -436,6 +493,25 @@ describe("dashboard UI routes", () => {
     const html = await htmlFrom(VideosPage())
     expect(html).toContain(uiMessages.pages.videos.infoStrip.items[0])
     expect(html).toContain(uiMessages.pages.videos.actions.primary)
+    expect(html).toContain(uiMessages.pages.videos.actions.filterUnavailable)
+    expect(html).toContain(uiMessages.pages.videos.actions.primaryUnavailable)
+    expect(html).toContain(
+      uiMessages.pages.videos.actions.rowActionsUnavailable,
+    )
+    expect(html).toMatch(
+      /<button(?=[^>]*disabled="")(?=[^>]*title="Video filters are not available yet.")/,
+    )
+    expect(html).toMatch(
+      /<button(?=[^>]*disabled="")(?=[^>]*title="Manual video creation is not available yet.")/,
+    )
+    expect(html).toMatch(
+      new RegExp(
+        `<button(?=[^>]*disabled="")(?=[^>]*aria-label="${uiMessages.common.quickActions}: ${uiMessages.pages.videos.actions.rowActionsUnavailable}")`,
+      ),
+    )
+    expect(html).not.toContain(
+      'hover:text-[var(--color-text-primary)]">⋯</button>',
+    )
     expect(html).toContain(uiMessages.common.operatorNotes)
   })
 
@@ -445,6 +521,61 @@ describe("dashboard UI routes", () => {
     expect(html).toContain("Core Sync is healthy")
     expect(html).toContain("Sync State")
     expect(html).toContain("Needs Attention")
+  })
+
+  it("renders read-only core sync state for principals without trigger permission", async () => {
+    vi.mocked(requireSession).mockResolvedValueOnce({
+      id: "viewer-user",
+      role: "VIEWER",
+    })
+
+    const html = await htmlFrom(SystemStatusPage())
+
+    expect(html).toContain(uiMessages.common.readOnly)
+    expect(html).toMatch(
+      new RegExp(
+        `<button(?=[^>]*disabled="")[^>]*>${uiMessages.common.readOnly}</button>`,
+      ),
+    )
+    expect(html).not.toContain("Start Sync")
+  })
+
+  it("renders blocked experience creation as unavailable before click", () => {
+    const html = renderToStaticMarkup(
+      <ExperiencesActions
+        canCreate={false}
+        createAction={vi.fn(async () => ({
+          ok: false as const,
+          error: "forbidden" as const,
+        }))}
+        labels={{
+          filter: uiMessages.pages.experiences.actions.filter,
+          filterUnavailable:
+            uiMessages.pages.experiences.actions.filterUnavailable,
+          primary: uiMessages.pages.experiences.actions.primary,
+          modalTitle: uiMessages.pages.experiences.modal.title,
+          modalDescription: uiMessages.pages.experiences.modal.description,
+          titleLabel: uiMessages.pages.experiences.modal.titleLabel,
+          localeLabel: uiMessages.pages.experiences.modal.localeLabel,
+          slugLabel: uiMessages.pages.experiences.modal.slugLabel,
+          routeTemplateLabel:
+            uiMessages.pages.experiences.modal.routeTemplateLabel,
+          routeTemplateHelp:
+            uiMessages.pages.experiences.modal.routeTemplateHelp,
+          cancel: uiMessages.pages.experiences.modal.cancel,
+          submit: uiMessages.pages.experiences.modal.submit,
+          localeHelp: uiMessages.pages.experiences.modal.localeHelp,
+          noPermission: uiMessages.pages.experiences.modal.noPermission,
+          createFailed: uiMessages.pages.experiences.modal.createFailed,
+        }}
+      />,
+    )
+
+    expect(html).toContain(uiMessages.pages.experiences.modal.noPermission)
+    expect(html).toMatch(
+      /<button(?=[^>]*disabled="")(?=[^>]*title="You do not have permission to create experiences\.)/,
+    )
+    expect(html).not.toContain(uiMessages.pages.experiences.modal.title)
   })
 
   it("renders operational secondary routes", async () => {

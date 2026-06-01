@@ -31,15 +31,31 @@ export default async function VideosPage() {
         title={page.title}
         description={page.description}
         action={
-          <div className="flex items-center gap-3">
-            <SecondaryButton>
-              <Filter className="h-4 w-4" strokeWidth={1.5} />
-              {page.actions.filter}
-            </SecondaryButton>
-            <PrimaryButton>
-              <Plus className="h-4 w-4" strokeWidth={1.5} />
-              {page.actions.primary}
-            </PrimaryButton>
+          <div className="flex flex-col items-start gap-1 md:items-end">
+            <div className="flex items-center gap-3">
+              <SecondaryButton
+                disabled
+                title={page.actions.filterUnavailable}
+                aria-describedby="video-actions-unavailable"
+              >
+                <Filter className="h-4 w-4" strokeWidth={1.5} />
+                {page.actions.filter}
+              </SecondaryButton>
+              <PrimaryButton
+                disabled
+                title={page.actions.primaryUnavailable}
+                aria-describedby="video-actions-unavailable"
+              >
+                <Plus className="h-4 w-4" strokeWidth={1.5} />
+                {page.actions.primary}
+              </PrimaryButton>
+            </div>
+            <span
+              id="video-actions-unavailable"
+              className="font-mono text-[10px] text-[var(--color-text-muted)]"
+            >
+              {page.actions.filterUnavailable} {page.actions.primaryUnavailable}
+            </span>
           </div>
         }
       />
@@ -60,10 +76,7 @@ export default async function VideosPage() {
               </thead>
               <tbody>
                 {videoRows.map((video) => (
-                  <tr
-                    key={video.id}
-                    className="hairline-b transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
-                  >
+                  <tr key={video.id} className="hairline-b">
                     <td className="p-4 align-middle">
                       <div className="flex aspect-video w-[180px] items-end justify-end rounded-sm border border-white/5 bg-[linear-gradient(135deg,#151312,#292524)] p-2">
                         <span className="rounded-[2px] bg-black/50 px-1.5 py-0.5 font-mono text-[9px]">
@@ -97,8 +110,10 @@ export default async function VideosPage() {
                     <td className="px-4 py-3 text-right align-middle">
                       <button
                         type="button"
-                        aria-label={messages.common.quickActions}
-                        className="font-mono text-[14px] text-[var(--color-text-disabled)] transition-all duration-[120ms] ease-out hover:text-[var(--color-text-primary)]"
+                        disabled
+                        aria-label={`${messages.common.quickActions}: ${page.actions.rowActionsUnavailable}`}
+                        title={page.actions.rowActionsUnavailable}
+                        className="font-mono text-[14px] text-[var(--color-text-disabled)] opacity-50"
                       >
                         ⋯
                       </button>
