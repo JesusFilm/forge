@@ -34,40 +34,11 @@ export function VideoPlayer({
     p.loop = false
   })
 
-  // Switching dubbing language restarts the video from the beginning and keeps
-  // it playing (with sound). Seeking the freshly-loaded source to the previous
-  // position stalls on a black frame, so we reset to 0 instead. Once the new
-  // source is ready (sourceLoad / statusChange), unmute, rewind to the start,
-  // and play — so a language change never leaves the player paused or black.
   useEffect(() => {
-    if (!streamingUrl || streamingUrl === initialUrl.current) return
-    initialUrl.current = streamingUrl
-    let started = false
-
-    const playFromStart = () => {
-      if (started) return
-      started = true
-      try {
-        player.muted = false
-        player.currentTime = 0
-        player.play()
-      } catch {
-        // Player released mid-switch
-      }
+    if (streamingUrl && streamingUrl !== initialUrl.current) {
+      initialUrl.current = streamingUrl
+      player.replace(streamingUrl)
     }
-
-    const subs = [
-      player.addListener("sourceLoad", playFromStart),
-      player.addListener("statusChange", ({ status }) => {
-        if (status === "readyToPlay") playFromStart()
-      }),
-    ]
-
-    player.replaceAsync(streamingUrl).catch(() => {
-      // Source failed to load — listeners are cleaned up on unmount
-    })
-
-    return () => subs.forEach((s) => s.remove())
   }, [streamingUrl, player])
 
   // Disable Mux's auto-generated subtitle tracks from the HLS manifest.
