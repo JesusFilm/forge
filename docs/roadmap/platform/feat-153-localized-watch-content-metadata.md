@@ -11,7 +11,8 @@ tags:
   - core-sync
   - i18n
 depends_on: []
-blocks: []
+blocks:
+  - feat-154
 ---
 
 ## Problem
