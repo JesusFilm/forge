@@ -20,6 +20,7 @@ const TEST_MANIFEST: WatchRouteManifest = {
     "lumo-the-gospel-of-john": ["lumo-john-1-35-2-22", "wedding-in-cana"],
   },
   audioLanguageSlugs: [
+    "aari",
     "bangla-2",
     "english",
     "mandarin-china",
@@ -384,8 +385,8 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
   })
 
   it("falls back chrome identity for unsupported audio-language families", async () => {
-    const response = await proxy(makeRequest("/jesus.html/zulu.html"))
-    expect(rewritePath(response)).toBe("/en/en/jesus.html/zulu.html")
+    const response = await proxy(makeRequest("/jesus.html/aari.html"))
+    expect(rewritePath(response)).toBe("/en/en/jesus.html/aari.html")
   })
 
   it("uses the imported Russian UI catalog for Russian public audio URLs", async () => {

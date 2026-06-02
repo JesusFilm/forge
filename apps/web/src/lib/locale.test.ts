@@ -193,7 +193,7 @@ describe("parseAcceptLanguage", () => {
   })
 
   it("returns null when no generated catalog is available", () => {
-    expect(parseAcceptLanguage("zu-ZA,zu;q=0.9")).toBeNull()
+    expect(parseAcceptLanguage("aiw-ET,aiw;q=0.9")).toBeNull()
   })
 })
 
@@ -230,10 +230,9 @@ describe("resolveUiLocale (catalog-driven fallback)", () => {
   })
 
   it("returns null for languages outside generated UI catalogs", () => {
-    // Zulu and Swahili are valid public audio languages, but this app has no
-    // generated UI catalogs for those chrome languages yet.
-    expect(resolveUiLocale("zulu")).toBeNull()
-    expect(resolveUiLocale("swahili")).toBeNull()
+    // Aari is a valid public audio language, but it is not part of the
+    // official-language inventory catalog rollout.
+    expect(resolveUiLocale("aari")).toBeNull()
   })
 
   it("returns null for unknown slugs and content-slug shapes", () => {
@@ -261,7 +260,7 @@ describe("resolveWatchLocaleIdentity", () => {
   })
 
   it("keeps unsupported audio families in the URL while falling chrome back to English", () => {
-    expect(resolveWatchLocaleIdentity("zulu")).toEqual({
+    expect(resolveWatchLocaleIdentity("aari")).toEqual({
       locale: "en",
       htmlLang: "en",
     })
