@@ -3,7 +3,7 @@ import {
   getSearchEvalCandidateForReview,
   updateSearchEvalCandidateReviewFields,
   type UpdateSearchEvalCandidateReviewInput,
-} from "@/services/search-eval/candidates"
+} from "@/services/search-eval-candidates"
 
 import {
   authorizeSearchEvalCandidateRequest,

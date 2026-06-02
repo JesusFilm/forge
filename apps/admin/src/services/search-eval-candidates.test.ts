@@ -7,7 +7,7 @@ import {
   promoteSearchEvalCandidate,
   rejectSearchEvalCandidate,
   storeSearchEvalCandidates,
-} from "./candidates"
+} from "./search-eval-candidates"
 
 type StoredCandidateStub = {
   id: string
@@ -342,7 +342,7 @@ describe("storeSearchEvalCandidates", () => {
     const { readFile } = await import("node:fs/promises")
     const { fileURLToPath } = await import("node:url")
     const schemaPath = fileURLToPath(
-      new URL("../../../prisma/schema.prisma", import.meta.url),
+      new URL("../../prisma/schema.prisma", import.meta.url),
     )
     const schema = await readFile(schemaPath, "utf8")
     const model = schema.match(

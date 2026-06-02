@@ -19,6 +19,12 @@ tags:
   - "evals"
 ---
 
+## Historical Note
+
+This cancelled investigation references legacy Admin search-eval harness paths
+that were removed by `feat-155`. Use Mastra search-eval workflows and the flat
+Admin internal-contract services for current work.
+
 ## Problem
 
 The brainstorm intentionally deferred query-time retrieval migration. The
@@ -73,7 +79,7 @@ cannot cover.
 ```
 rg -n "hybrid|keyword-first|semantic-video|semantic-experience|fuseRankedLists|RRF" apps/admin/src/services
 rg -n "searchMode|HybridSearchResponse|public search|q \\(search query\\)" apps/admin/src/graphql apps/admin/src/app/api/search
-rg -n "strategy version|eval report|baseline|candidate" apps/admin/src/services/search-eval apps/mastra/src
+rg -n "strategy version|eval report|baseline|candidate" apps/admin/src/services apps/mastra/src
 rg -n "Dataset|Experiment|compareExperiments|startExperiment|search-eval" apps/mastra/src apps/mastra/node_modules/@mastra/core/dist/datasets
 ```
 

@@ -1,6 +1,10 @@
 import type { PrismaClient } from "@prisma/client"
 
-import { HARNESS_LOCALES, LOCALE_TIER, type HarnessLocale } from "./locales"
+import {
+  SEARCH_EVAL_LOCALES,
+  SEARCH_EVAL_LOCALE_TIER,
+  type SearchEvalLocale,
+} from "./search-eval-locale-profiles"
 
 const DEFAULT_CONTEXT_LIMIT = 30
 const MAX_CONTEXT_LIMIT = 100
@@ -13,8 +17,9 @@ export type SearchEvalCatalogContextFilters = {
 }
 
 export type SearchEvalLocaleProfile = {
-  locale: HarnessLocale
+  locale: SearchEvalLocale
   tier: 1 | 2 | 3
+  // Wire-compatible source label consumed by Mastra's strict schema.
   source: "harness"
 }
 
@@ -87,8 +92,10 @@ function sanitizeLocale(locale: string): string {
 function normalizeLocales(locales: string[] | undefined): string[] | undefined {
   if (locales == null) return undefined
   if (locales.length === 0) validation("locales must not be empty")
-  if (locales.length > HARNESS_LOCALES.length) {
-    validation(`locales must contain at most ${HARNESS_LOCALES.length} items`)
+  if (locales.length > SEARCH_EVAL_LOCALES.length) {
+    validation(
+      `locales must contain at most ${SEARCH_EVAL_LOCALES.length} items`,
+    )
   }
   return Array.from(new Set(locales.map(sanitizeLocale)))
 }
@@ -103,19 +110,15 @@ function titleOrNull(value: string | null | undefined): string | null {
   return title && title.length > 0 ? title : null
 }
 
-function isHarness(value: string): value is HarnessLocale {
-  return (HARNESS_LOCALES as readonly string[]).includes(value)
-}
-
 function localeProfilesFor(
   locales: string[] | undefined,
 ): SearchEvalLocaleProfile[] {
   const selected = locales
-    ? HARNESS_LOCALES.filter((locale) => locales.includes(locale))
-    : HARNESS_LOCALES
+    ? SEARCH_EVAL_LOCALES.filter((locale) => locales.includes(locale))
+    : SEARCH_EVAL_LOCALES
   return selected.map((locale) => ({
     locale,
-    tier: LOCALE_TIER[locale],
+    tier: SEARCH_EVAL_LOCALE_TIER[locale],
     source: "harness",
   }))
 }
@@ -250,7 +253,11 @@ export async function readSearchEvalCatalogContext(
     })
 
   return {
-    localeProfiles: localeProfilesFor(locales?.filter(isHarness)),
+    localeProfiles: localeProfilesFor(
+      locales?.filter((locale): locale is SearchEvalLocale =>
+        SEARCH_EVAL_LOCALES.includes(locale as SearchEvalLocale),
+      ),
+    ),
     anchors: [...videoAnchors, ...experienceAnchors].slice(0, limit),
   }
 }

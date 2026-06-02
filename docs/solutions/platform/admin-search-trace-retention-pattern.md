@@ -108,7 +108,7 @@ sampling and later eval workflows.
 - Deterministic labels:
   `apps/admin/src/services/search-trace-privacy.ts`.
 - Optional offline classifier:
-  `apps/admin/src/services/search-eval/query-classifier.ts`.
+  `apps/admin/src/services/search-trace-query-classifier.ts`.
 
 ## Gotchas
 

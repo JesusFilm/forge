@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 import {
   SearchEvalCatalogContextError,
   readSearchEvalCatalogContext,
-} from "./catalog-context"
+} from "./search-eval-catalog-context"
 
 function buildPrisma() {
   return {

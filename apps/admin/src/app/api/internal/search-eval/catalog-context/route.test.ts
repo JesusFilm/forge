@@ -9,9 +9,9 @@ vi.mock("@/auth/search-trace-bearer", () => ({
   isValidSearchTraceSamplingBearer,
 }))
 vi.mock("@/db/client", () => ({ prisma: {} }))
-vi.mock("@/services/search-eval/catalog-context", async (original) => {
+vi.mock("@/services/search-eval-catalog-context", async (original) => {
   const actual =
-    await original<typeof import("@/services/search-eval/catalog-context")>()
+    await original<typeof import("@/services/search-eval-catalog-context")>()
   return {
     ...actual,
     readSearchEvalCatalogContext,

@@ -10,12 +10,10 @@ import {
   type SearchTraceSensitiveQueryLabel,
 } from "@/services/search-trace-privacy"
 
-import { DEFAULT_JUDGE_MODEL } from "./judge"
-import { extractMessageContent, safeReadBody } from "./openrouter-helpers"
-
 const OPENROUTER_CHAT_COMPLETIONS_URL =
   "https://openrouter.ai/api/v1/chat/completions"
 
+const DEFAULT_QUERY_CLASSIFIER_MODEL = "anthropic/claude-haiku-4-5"
 const QUERY_CLASSIFIER_TIMEOUT_MS = 30_000
 const MAX_PROMPT_QUERY_LENGTH = 512
 const HIGH_IMPACT_RESULT_COUNT = 20
@@ -174,7 +172,9 @@ export function createSearchTraceQueryClassifier(
     )
   }
   const model =
-    options.model ?? env.OPENROUTER_JUDGE_MODEL ?? DEFAULT_JUDGE_MODEL
+    options.model ??
+    env.OPENROUTER_QUERY_CLASSIFIER_MODEL ??
+    DEFAULT_QUERY_CLASSIFIER_MODEL
   const fetchImpl = options.fetchImpl ?? fetch
   const timeoutMs = options.timeoutMs ?? QUERY_CLASSIFIER_TIMEOUT_MS
   const allowSensitiveOrAbusive = options.allowSensitiveOrAbusive === true
@@ -270,6 +270,32 @@ export function createSearchTraceQueryClassifier(
 
       return validated.data
     },
+  }
+}
+
+function extractMessageContent(payload: unknown): string | null {
+  if (payload == null || typeof payload !== "object") return null
+  const choices = (payload as Record<string, unknown>).choices
+  if (!Array.isArray(choices) || choices.length === 0) return null
+  const message = (choices[0] as Record<string, unknown>).message
+  if (message == null || typeof message !== "object") return null
+  const content = (message as Record<string, unknown>).content
+  if (typeof content === "string") return content
+  if (Array.isArray(content)) {
+    for (const part of content) {
+      if (part == null || typeof part !== "object") continue
+      const text = (part as Record<string, unknown>).text
+      if (typeof text === "string") return text
+    }
+  }
+  return null
+}
+
+async function safeReadBody(response: Response): Promise<string> {
+  try {
+    return (await response.text()).slice(0, 1000)
+  } catch {
+    return `(unreadable body, status=${response.status})`
   }
 }
 
