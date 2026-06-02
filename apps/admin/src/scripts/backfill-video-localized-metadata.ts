@@ -139,7 +139,7 @@ export async function selectAdminVideos(
       ...(args.coreId ? { coreId: args.coreId } : {}),
       ...(args.resumeAfter
         ? {
-            videoLocales: {
+            locales: {
               none: {
                 source: "CORE",
                 deletedAt: null,
