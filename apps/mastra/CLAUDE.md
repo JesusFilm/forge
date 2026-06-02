@@ -96,6 +96,7 @@ pnpm --filter @forge/mastra lint
 | `ADMIN_SEARCH_EVAL_SEARCH_URL`           | Admin internal no-trace search endpoint for offline search eval. Required only when running the offline eval workflow.     |
 | `ADMIN_SEARCH_EVAL_API_KEY`              | Bearer key Mastra presents to Admin search-eval routes. Must match Admin's dedicated sampling/eval key allowlist.          |
 | `MASTRA_SEARCH_EVAL_ARTIFACT_DIR`        | Optional directory for Mastra-owned offline search eval baseline and report JSON artifacts. Defaults under Mastra storage. |
+| `MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT`   | Set to `true` only for an intentional production import override. Defaults to `false`; local imports do not need it.       |
 | `SEARCH_EVAL_JUDGE_MODEL`                | OpenRouter chat model stamp for offline search eval judging. Defaults to `anthropic/claude-haiku-4-5`.                     |
 | `PORT`                                   | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                          |
 | `MASTRA_STUDIO_PATH`                     | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                          |
@@ -186,18 +187,59 @@ It is a thin coordinator over the existing search eval leaf workflows:
 `eval-query-generation`, `offline-search-eval`,
 `search-eval-candidate-review`, and `search-eval-native-suite`.
 
-Default `full` mode captures the committed seed prompt baseline named
-`seed-baseline`, then syncs the resulting report and already-promoted Admin
-candidates into native Evaluation. `compare` mode compares current search
-against an existing baseline, and `release-gate` mode adds explicit pass/fail
-thresholds for losses, search failures, judge failures, judge disagreements,
-and calibration. `resumeReportId` skips offline search execution and retries
-native report sync for an existing report artifact.
+Default `seed-baseline` mode captures the committed seed prompt baseline named
+`seed-baseline`, requires native report sync, rejects candidate generation,
+rejects seed-candidate submission, rejects promoted-candidate sync, and runs a
+readiness preflight before touching Admin search. Use explicit `full` mode for
+broader operator runs that coordinate generation/review/promoted-sync leaf
+workflows. `compare` mode compares current search against an existing baseline,
+and `release-gate` mode adds explicit pass/fail thresholds for losses, search
+failures, judge failures, judge disagreements, and calibration.
+`resumeReportId` skips offline search execution and retries native report sync
+for an existing report artifact.
 
 Candidate generation and seed candidate submission are explicit opt-ins. The
 orchestrator must never promote generated, trace-derived, seed, or
 user-submitted candidates; promotion remains a human review action through
 Admin HTTP contracts.
+
+For production seed capture, call the orchestrator with either `{}` or an
+explicit seed-only payload:
+
+```json
+{
+  "mode": "seed-baseline",
+  "baselineName": "prod-seed-baseline-YYYY-MM-DD",
+  "searchMode": "hybrid",
+  "contentType": "all",
+  "generateCandidates": false,
+  "submitSeedCandidates": false,
+  "nativeSync": true,
+  "syncPromoted": false
+}
+```
+
+## Search eval baseline portability
+
+The service route `POST /forge-search-eval-baseline-portability` is protected
+by `MASTRA_SERVICE_API_KEYS` and launches the
+`search-eval-baseline-portability` workflow. It provides three actions:
+
+- `preflight` checks the production Admin search URL, Admin eval bearer,
+  service bearer allowlist, non-memory production storage, database URL,
+  persistent artifact root, and an artifact write/read/delete probe.
+- `export-baseline` reads a Mastra-owned baseline plus up to three report ids,
+  validates that every prompt/result came from the committed seed prompt set,
+  then returns a bounded sanitized JSON artifact.
+- `import-baseline` validates the artifact and writes report artifacts before
+  writing the baseline marker, so a partial import is not activated as the
+  current local baseline.
+
+Production imports are disabled by default through
+`MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT=false`. Export from production, store the
+returned JSON artifact in the approved secure handoff location, then import it
+into local Mastra so native Evaluation and local artifacts can compare future
+search work against the same seed snapshot without logging into production.
 
 ## Railway Storage
 

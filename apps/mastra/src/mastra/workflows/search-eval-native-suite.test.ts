@@ -1,3 +1,7 @@
+import { mkdtemp, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
 import type { DatasetItem, DatasetRecord } from "@mastra/core/storage"
 import { describe, expect, it, vi } from "vitest"
 
@@ -6,7 +10,19 @@ import {
   handleSearchEvalNativeSuiteRouteRequest,
   runSearchEvalNativeSuiteWorkflow,
 } from "./search-eval-native-suite"
+import { createSearchEvalArtifactStore } from "../../services/offline-search-eval/artifacts"
+import {
+  importSearchEvalBaselineArtifact,
+  type SearchEvalBaselineExportArtifact,
+} from "../../services/offline-search-eval/baseline-portability"
+import { finalizeReport } from "../../services/offline-search-eval/report"
+import { SEARCH_EVAL_SEED_PROMPT_SET_VERSION } from "../../services/offline-search-eval/seed-prompt-set"
 import type { NativeSearchEvalMastra } from "../../services/offline-search-eval/native-evaluation"
+import type {
+  BaselineArtifact,
+  SearchEvalReport,
+  SearchEvalResult,
+} from "../../services/offline-search-eval/types"
 
 function fakeMastra(): NativeSearchEvalMastra & {
   records: DatasetRecord[]
@@ -15,6 +31,11 @@ function fakeMastra(): NativeSearchEvalMastra & {
   const now = new Date("2026-05-28T00:00:00.000Z")
   const records: DatasetRecord[] = []
   const items: DatasetItem[] = []
+  const experiments: Array<{
+    id: string
+    name: string
+    metadata: Record<string, unknown>
+  }> = []
   const scorers: Record<string, unknown> = {}
   async function addItems(input: {
     items: Array<{
@@ -51,10 +72,19 @@ function fakeMastra(): NativeSearchEvalMastra & {
       return { items }
     },
     async listExperiments() {
-      return { experiments: [] }
+      return { experiments }
     },
-    async startExperiment() {
-      throw new Error("not expected")
+    async startExperiment(input: {
+      name: string
+      metadata?: Record<string, unknown>
+    }) {
+      const experiment = {
+        id: `experiment-${experiments.length + 1}`,
+        name: input.name,
+        metadata: input.metadata ?? {},
+      }
+      experiments.push(experiment)
+      return { experimentId: experiment.id }
     },
   }
 
@@ -68,7 +98,10 @@ function fakeMastra(): NativeSearchEvalMastra & {
       async get() {
         return dataset
       },
-      async create(input) {
+      async create(input: {
+        name: string
+        metadata?: Record<string, unknown>
+      }) {
         records.push({
           id: "dataset-1",
           name: input.name,
@@ -86,12 +119,112 @@ function fakeMastra(): NativeSearchEvalMastra & {
     listScorers() {
       return scorers
     },
-    addScorer(scorer, key) {
+    addScorer(scorer: unknown, key?: string) {
       scorers[key ?? "unknown"] = scorer
     },
-  } as NativeSearchEvalMastra & {
+  } as unknown as NativeSearchEvalMastra & {
     records: DatasetRecord[]
     items: DatasetItem[]
+  }
+}
+
+function searchResult(): SearchEvalResult {
+  return {
+    type: "video",
+    id: "video-1",
+    slug: "video-1",
+    title: "Jesus",
+    imageUrl: null,
+    snippet: "A seed result.",
+    startSeconds: null,
+    playbackId: null,
+    score: 1,
+    label: null,
+    durationSeconds: null,
+    childCount: null,
+  }
+}
+
+function baseline(): BaselineArtifact {
+  return {
+    schemaVersion: "1",
+    kind: "baseline",
+    name: "seed-baseline",
+    capturedAt: "2026-06-02T00:00:00.000Z",
+    metadata: {
+      mastraRunId: "run-1",
+      startedAt: "2026-06-02T00:00:00.000Z",
+      finishedAt: "2026-06-02T00:00:01.000Z",
+      baselineName: "seed-baseline",
+      promptSetVersion: SEARCH_EVAL_SEED_PROMPT_SET_VERSION,
+      adminSearchUrl: "https://admin.internal/api/internal/search-eval/search",
+      judgeModel: null,
+      search: { limit: 20, mode: "hybrid", contentType: null },
+    },
+    cases: [
+      {
+        caseId: "seed-jesus",
+        locale: "en",
+        queryText: "Jesus",
+        source: "seed",
+        tags: ["core-title"],
+        results: [searchResult()],
+      },
+    ],
+  }
+}
+
+function seedReport(): SearchEvalReport {
+  const base = baseline()
+  return finalizeReport({
+    schemaVersion: "1",
+    kind: "baseline-report",
+    reportId: "report-1",
+    metadata: base.metadata,
+    baseline: {
+      name: base.name,
+      capturedAt: base.capturedAt,
+      caseCount: base.cases.length,
+      search: base.metadata.search,
+    },
+    calibration: { passed: true, matched: 0, total: 0, skipped: true },
+    cost: {
+      inputTokens: 0,
+      outputTokens: 0,
+      totalUsd: 0,
+      pricingModel: null,
+      estimated: false,
+    },
+    timings: { searchMs: 0, judgeMs: 0, totalMs: 0 },
+    judgeFailures: [],
+    outcomes: [
+      {
+        kind: "tie",
+        caseId: "seed-jesus",
+        locale: "en",
+        queryText: "Jesus",
+        source: "seed",
+        baselineResults: [searchResult()],
+        currentResults: [searchResult()],
+        verdicts: ["tie", "tie"],
+      },
+    ],
+    exploratoryGenerated: [],
+  })
+}
+
+function portabilityArtifact(): SearchEvalBaselineExportArtifact {
+  const base = baseline()
+  return {
+    schemaVersion: "1",
+    kind: "search-eval-baseline-export",
+    exportId: "export-1",
+    exportedAt: "2026-06-02T00:00:02.000Z",
+    sourceEnvironment: "production",
+    baselineName: base.name,
+    promptSetVersion: base.metadata.promptSetVersion,
+    baseline: base,
+    reports: [seedReport()],
   }
 }
 
@@ -146,6 +279,60 @@ describe("search eval native suite workflow", () => {
       adminStatus: undefined,
       adminReason: undefined,
     })
+  })
+
+  it("syncs an imported seed baseline report into local native Evaluation", async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), "forge-native-import-"))
+    try {
+      const artifactStore = createSearchEvalArtifactStore(rootDir)
+      const imported = await importSearchEvalBaselineArtifact({
+        artifact: portabilityArtifact(),
+        options: { artifactStore },
+      })
+      const mastra = fakeMastra()
+
+      const result = await runSearchEvalNativeSuiteWorkflow(
+        {
+          action: "sync-report",
+          reportId: imported.reportIds[0],
+          environmentLabel: "local",
+        },
+        { mastra, artifactStore, runId: "run-native" },
+      )
+
+      expect(result).toMatchObject({
+        ok: true,
+        action: "sync-report",
+        reportId: "report-1",
+        dataset: {
+          name: "search-eval:local:seed-baseline",
+          status: "created",
+          itemCount: 1,
+        },
+        experiment: {
+          name: "search-eval-baseline:local:seed-baseline:report-1",
+          status: "created",
+        },
+        report: {
+          mastraEvaluation: {
+            integrationStatus: "native_synced",
+            dataset: {
+              name: "search-eval:local:seed-baseline",
+              itemCount: 1,
+            },
+          },
+        },
+      })
+      await expect(artifactStore.readReport("report-1")).resolves.toMatchObject(
+        {
+          mastraEvaluation: { integrationStatus: "native_synced" },
+        },
+      )
+      expect(mastra.records).toHaveLength(1)
+      expect(mastra.items).toHaveLength(1)
+    } finally {
+      await rm(rootDir, { recursive: true, force: true })
+    }
   })
 
   it("requires service bearer auth on the route", async () => {
