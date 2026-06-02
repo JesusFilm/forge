@@ -5,10 +5,16 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { ACCENT, BG_COLOR } from "../../src/lib/color"
 import { WatchSessionProvider } from "../../src/contexts/WatchSessionProvider"
 
-// Native detents (react-native-screens) — same heights the gorhom sheets used.
-// Explicit fractional detents (not "fitToContents") avoid the Android
-// keyboard/empty-sheet bugs in react-native-screens v4.
-const LIST_SHEET_DETENTS = [0.5, 1] as const
+// Native detents (react-native-screens). The language/subtitle pickers use a
+// SINGLE tall detent: a two-detent sheet couples scrolling to the sheet's
+// resize gesture at the content edges, so scrolling a long list either expands
+// the sheet (at the smaller detent) or collapses it (at the larger one) —
+// either way the list "fights" the scroll. One fixed detent decouples them, so
+// scroll is pure scrolling and the grabber/pull-down handles dismissal.
+// Download keeps two detents: its content is short and never scrolls, so the
+// coupling can't trigger. Explicit fractional detents (not "fitToContents")
+// avoid the Android keyboard/empty-sheet bugs in react-native-screens v4.
+const LIST_SHEET_DETENTS = [0.9] as const
 const DOWNLOAD_SHEET_DETENTS = [0.75, 1] as const
 
 const SHEET_BASE_OPTIONS = {
@@ -17,9 +23,6 @@ const SHEET_BASE_OPTIONS = {
   sheetInitialDetentIndex: 0,
   sheetGrabberVisible: true,
   sheetCornerRadius: 16,
-  // Let the inner list scroll at the smaller detent instead of the sheet
-  // hijacking the gesture to expand to full height first.
-  sheetExpandsWhenScrolledToEdge: false,
 } as const
 
 export default function WatchLayout() {
