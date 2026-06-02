@@ -44,7 +44,24 @@ export type BackfillVideoLocalizedMetadataArgs = {
   limit?: number
   fullCatalog: boolean
   execute: boolean
+  verbose: boolean
   batchSize: number
+}
+
+export type BackfillVideoLocalizedMetadataProgress = {
+  batch: number
+  batches: number
+  batchSize: number
+  selected: number
+  selectedProcessed: number
+  coreVideosFetched: number
+  videosProcessed: number
+  videoLocalesUpserted: number
+  videoLocalesStaled: number
+  studyQuestionsUpserted: number
+  studyQuestionsStaled: number
+  skippedLanguages: number
+  errors: number
 }
 
 export function parseArgs(
@@ -70,6 +87,7 @@ export function parseArgs(
     limit: intFor("limit"),
     fullCatalog: argv.includes("--full-catalog"),
     execute: argv.includes("--execute"),
+    verbose: argv.includes("--verbose"),
     batchSize: intFor("batch-size") ?? DEFAULT_BATCH_SIZE,
   }
 }
@@ -224,7 +242,10 @@ async function auditLocalizedVariantCoverage(
 export async function runBackfill(
   prisma: PrismaClient,
   args: BackfillVideoLocalizedMetadataArgs,
-  options: { assertLockActive?: () => Promise<void> } = {},
+  options: {
+    assertLockActive?: () => Promise<void>
+    onProgress?: (progress: BackfillVideoLocalizedMetadataProgress) => void
+  } = {},
 ): Promise<
   VideoLocalizedMetadataResult &
     LocalizedVariantCoverageAudit & { dryRun: boolean; selected: number }
@@ -280,6 +301,7 @@ export async function runBackfill(
     languages.map((language) => [language.coreId, language.slug]),
   )
 
+  const batches = Math.ceil(selected.length / args.batchSize)
   for (let index = 0; index < selected.length; index += args.batchSize) {
     await options.assertLockActive?.()
     const batch = selected.slice(index, index + args.batchSize)
@@ -300,6 +322,21 @@ export async function runBackfill(
       CORE_SYNC_TRANSACTION_OPTIONS,
     )
     mergeResults(summary, result)
+    options.onProgress?.({
+      batch: Math.floor(index / args.batchSize) + 1,
+      batches,
+      batchSize: args.batchSize,
+      selected: selected.length,
+      selectedProcessed: Math.min(index + batch.length, selected.length),
+      coreVideosFetched: coreVideos.length,
+      videosProcessed: summary.videosProcessed,
+      videoLocalesUpserted: summary.videoLocalesUpserted,
+      videoLocalesStaled: summary.videoLocalesStaled,
+      studyQuestionsUpserted: summary.studyQuestionsUpserted,
+      studyQuestionsStaled: summary.studyQuestionsStaled,
+      skippedLanguages: summary.skippedLanguages,
+      errors: summary.errors,
+    })
     await options.assertLockActive?.()
   }
 
@@ -343,7 +380,32 @@ async function main(): Promise<void> {
   heartbeat.unref?.()
 
   try {
-    const summary = await runBackfill(prisma, args, { assertLockActive })
+    if (args.verbose) {
+      console.log(
+        JSON.stringify({
+          event: "video-localized-metadata.backfill.start",
+          execute: args.execute,
+          fullCatalog: args.fullCatalog,
+          slug: args.slug,
+          coreId: args.coreId,
+          limit: args.limit,
+          batchSize: args.batchSize,
+        }),
+      )
+    }
+    const summary = await runBackfill(prisma, args, {
+      assertLockActive,
+      onProgress: args.verbose
+        ? (progress) => {
+            console.log(
+              JSON.stringify({
+                event: "video-localized-metadata.backfill.progress",
+                ...progress,
+              }),
+            )
+          }
+        : undefined,
+    })
     console.log(
       JSON.stringify(
         {
