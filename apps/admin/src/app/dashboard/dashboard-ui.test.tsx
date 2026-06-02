@@ -100,6 +100,8 @@ vi.mock("@/app/dashboard/live-data", () => ({
       sourceTone: "info",
       dubs: "3 dubs · EN, ES, FR",
       updated: "10/24/2023, 14:02",
+      updatedAtIso: "2023-10-24T14:02:00.000Z",
+      updatedRelative: "3 years ago",
       duration: "04:22",
       previewImageUrl: "https://images.example.com/neon.jpg",
       visitorUrl:
@@ -119,6 +121,8 @@ vi.mock("@/app/dashboard/live-data", () => ({
         sourceTone: "info",
         dubs: "3 dubs · EN, ES, FR",
         updated: "10/24/2023, 14:02",
+        updatedAtIso: "2023-10-24T14:02:00.000Z",
+        updatedRelative: "3 years ago",
         duration: "04:22",
         previewImageUrl: "https://images.example.com/neon.jpg",
         visitorUrl:
@@ -135,6 +139,8 @@ vi.mock("@/app/dashboard/live-data", () => ({
         sourceTone: "muted",
         dubs: "No dubs",
         updated: "10/24/2023, 14:03",
+        updatedAtIso: "2023-10-24T14:03:00.000Z",
+        updatedRelative: "3 years ago",
         duration: "--:--",
         previewImageUrl: null,
         visitorUrl: null,
@@ -566,6 +572,9 @@ describe("dashboard UI routes", () => {
     )
     expect(html).toContain("Collection")
     expect(html).toContain("https://images.example.com/neon.jpg")
+    expect(html).toContain("3 years ago")
+    expect(html).toContain('title="10/24/2023, 14:02"')
+    expect(html).toContain('dateTime="2023-10-24T14:02:00.000Z"')
     expect(html).toMatch(
       /<img(?=[^>]*src="https:\/\/images\.example\.com\/neon\.jpg")(?=[^>]*loading="lazy")(?=[^>]*decoding="async")/,
     )

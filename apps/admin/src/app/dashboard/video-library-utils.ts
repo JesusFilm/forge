@@ -6,6 +6,10 @@ export const VIDEO_LIBRARY_MAX_PAGE_SIZE = 200
 const SLUG_PATTERN = /^[a-z0-9-]+$/
 const BCP47_TAG_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i
 const CLOUDFLARE_IMAGE_DELIVERY_HOST = "imagedelivery.net"
+const SECOND_MS = 1000
+const MINUTE_MS = 60 * SECOND_MS
+const HOUR_MS = 60 * MINUTE_MS
+const DAY_MS = 24 * HOUR_MS
 
 export type VideoLibraryPagination = {
   total: number
@@ -95,6 +99,52 @@ export function normalizeVideoThumbnailUrl(value: string | null | undefined) {
   } catch {
     return trimmed
   }
+}
+
+export function formatVideoUpdatedRelative(value: Date, now = new Date()) {
+  const diffMs = value.getTime() - now.getTime()
+  const absDiffMs = Math.abs(diffMs)
+  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "always" })
+
+  if (absDiffMs < 45 * SECOND_MS) return "just now"
+
+  if (absDiffMs < 90 * SECOND_MS) {
+    return formatter.format(Math.sign(diffMs), "minute")
+  }
+
+  if (absDiffMs < 45 * MINUTE_MS) {
+    return formatter.format(Math.round(diffMs / MINUTE_MS), "minute")
+  }
+
+  if (absDiffMs < 90 * MINUTE_MS) {
+    return formatter.format(Math.sign(diffMs), "hour")
+  }
+
+  if (absDiffMs < 22 * HOUR_MS) {
+    return formatter.format(Math.round(diffMs / HOUR_MS), "hour")
+  }
+
+  if (absDiffMs < 36 * HOUR_MS) {
+    return formatter.format(Math.sign(diffMs), "day")
+  }
+
+  if (absDiffMs < 26 * DAY_MS) {
+    return formatter.format(Math.round(diffMs / DAY_MS), "day")
+  }
+
+  if (absDiffMs < 45 * DAY_MS) {
+    return formatter.format(Math.sign(diffMs), "month")
+  }
+
+  if (absDiffMs < 320 * DAY_MS) {
+    return formatter.format(Math.round(diffMs / (30 * DAY_MS)), "month")
+  }
+
+  if (absDiffMs < 548 * DAY_MS) {
+    return formatter.format(Math.sign(diffMs), "year")
+  }
+
+  return formatter.format(Math.round(diffMs / (365 * DAY_MS)), "year")
 }
 
 function preferredPublicLanguageSlug(slugs: Array<string | null | undefined>) {

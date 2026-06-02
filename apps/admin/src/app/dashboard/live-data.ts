@@ -13,6 +13,7 @@ import { env } from "@/config/env"
 import { WatchRouteManifestStore } from "@/services/watch-route-manifest-store"
 import {
   createVideoLibraryPagination,
+  formatVideoUpdatedRelative,
   normalizeVideoThumbnailUrl,
   resolveVideoVisitorUrl,
   VIDEO_LIBRARY_PAGE_SIZE,
@@ -646,6 +647,8 @@ async function loadVideoRowSlice({
       sourceTone: source.tone,
       dubs: dubCoverage(dubRows),
       updated: formatDateTime(video.updatedAt),
+      updatedAtIso: video.updatedAt.toISOString(),
+      updatedRelative: formatVideoUpdatedRelative(video.updatedAt),
       duration: formatDuration(dubRows),
       durationSeconds: playbackDub ? durationSecondsForDub(playbackDub) : null,
       previewImageUrl: preferredVideoImage(imageRows),
