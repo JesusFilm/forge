@@ -31,10 +31,7 @@
         "locale": "en",
         "queryText": "Bible Project",
         "source": "seed",
-        "tags": [
-          "catalog",
-          "brand-intent"
-        ],
+        "tags": ["catalog", "brand-intent"],
         "operatorNotes": "Operator comment only; not expected-result truth.",
         "results": [
           {
@@ -128,10 +125,7 @@
         "locale": "en",
         "queryText": "Jesus",
         "source": "seed",
-        "tags": [
-          "core-title",
-          "catalog"
-        ],
+        "tags": ["core-title", "catalog"],
         "results": [
           {
             "type": "video",
@@ -420,10 +414,7 @@
         "locale": "en",
         "queryText": "Who is Jesus?",
         "source": "seed",
-        "tags": [
-          "question",
-          "new-believer"
-        ],
+        "tags": ["question", "new-believer"],
         "results": [
           {
             "type": "video",
@@ -712,10 +703,7 @@
         "locale": "en",
         "queryText": "videos for teens",
         "source": "seed",
-        "tags": [
-          "audience",
-          "teens"
-        ],
+        "tags": ["audience", "teens"],
         "results": []
       },
       {
@@ -723,10 +711,7 @@
         "locale": "en",
         "queryText": "resources for parents",
         "source": "seed",
-        "tags": [
-          "audience",
-          "parents"
-        ],
+        "tags": ["audience", "parents"],
         "results": []
       },
       {
@@ -734,10 +719,7 @@
         "locale": "en",
         "queryText": "new believer",
         "source": "seed",
-        "tags": [
-          "discipleship",
-          "new-believer"
-        ],
+        "tags": ["discipleship", "new-believer"],
         "results": [
           {
             "type": "video",
@@ -760,10 +742,7 @@
         "locale": "en",
         "queryText": "small group Bible study",
         "source": "seed",
-        "tags": [
-          "ministry",
-          "small-group"
-        ],
+        "tags": ["ministry", "small-group"],
         "results": []
       },
       {
@@ -771,10 +750,7 @@
         "locale": "en",
         "queryText": "church leader training",
         "source": "seed",
-        "tags": [
-          "ministry",
-          "leaders"
-        ],
+        "tags": ["ministry", "leaders"],
         "results": []
       },
       {
@@ -782,10 +758,7 @@
         "locale": "es",
         "queryText": "Jesus en espanol",
         "source": "seed",
-        "tags": [
-          "locale",
-          "core-title"
-        ],
+        "tags": ["locale", "core-title"],
         "results": []
       },
       {
@@ -793,11 +766,7 @@
         "locale": "fr",
         "queryText": "videos d'espoir pour les jeunes",
         "source": "seed",
-        "tags": [
-          "locale",
-          "audience",
-          "youth"
-        ],
+        "tags": ["locale", "audience", "youth"],
         "results": []
       }
     ]
