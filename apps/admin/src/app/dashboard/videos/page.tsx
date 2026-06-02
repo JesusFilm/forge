@@ -8,6 +8,8 @@ import {
   Filter,
   ImageIcon,
   Plus,
+  Search,
+  X,
 } from "lucide-react"
 import {
   DashboardPageHeader,
@@ -22,18 +24,21 @@ import {
 import { requireSession } from "@/auth/session"
 import { loadVideoLibraryPage } from "@/app/dashboard/live-data"
 import { getAdminMessages } from "@/i18n/server"
-import { parseVideoLibraryPage } from "../video-library-utils"
+import {
+  parseVideoLibraryPage,
+  parseVideoLibraryQuery,
+  videoLibraryHref,
+} from "../video-library-utils"
 
 type VideosPageProps = {
   searchParams?: Promise<{
     page?: string | string[]
+    q?: string | string[]
   }>
 }
 
-function paginationHref(page: number): Route {
-  return (
-    page <= 1 ? "/dashboard/videos" : `/dashboard/videos?page=${page}`
-  ) as Route
+function paginationHref(page: number, query: string): Route {
+  return videoLibraryHref({ page, query }) as Route
 }
 
 function paginationSummary(
@@ -102,9 +107,10 @@ export default async function VideosPage({
   const principal = await requireSession()
   const params = (await searchParams) ?? {}
   const requestedPage = parseVideoLibraryPage(params.page)
+  const query = parseVideoLibraryQuery(params.q)
   const { rows: videoRows, pagination } = await loadVideoLibraryPage(
     principal,
-    { page: requestedPage },
+    { page: requestedPage, query },
   )
 
   return (
@@ -120,29 +126,19 @@ export default async function VideosPage({
         description={page.description}
         action={
           <div className="flex flex-col items-start gap-1 md:items-end">
-            <div className="flex items-center gap-3">
-              <SecondaryButton
-                disabled
-                title={page.actions.filterUnavailable}
-                aria-describedby="video-actions-unavailable"
-              >
-                <Filter className="h-4 w-4" strokeWidth={1.5} />
-                {page.actions.filter}
-              </SecondaryButton>
-              <PrimaryButton
-                disabled
-                title={page.actions.primaryUnavailable}
-                aria-describedby="video-actions-unavailable"
-              >
-                <Plus className="h-4 w-4" strokeWidth={1.5} />
-                {page.actions.primary}
-              </PrimaryButton>
-            </div>
+            <PrimaryButton
+              disabled
+              title={page.actions.primaryUnavailable}
+              aria-describedby="video-actions-unavailable"
+            >
+              <Plus className="h-4 w-4" strokeWidth={1.5} />
+              {page.actions.primary}
+            </PrimaryButton>
             <span
               id="video-actions-unavailable"
               className="font-mono text-[10px] text-[var(--color-text-muted)]"
             >
-              {page.actions.filterUnavailable} {page.actions.primaryUnavailable}
+              {page.actions.primaryUnavailable}
             </span>
           </div>
         }
@@ -150,6 +146,54 @@ export default async function VideosPage({
 
       <div className="flex flex-col gap-6">
         <PageSection title={page.table.title} meta={page.table.meta}>
+          <div className="hairline-b flex flex-col gap-3 p-4 md:flex-row md:items-end md:justify-between">
+            <form
+              action="/dashboard/videos"
+              className="flex w-full flex-col gap-2 md:max-w-[760px] md:flex-row md:items-end"
+              role="search"
+            >
+              <label
+                htmlFor="video-library-search"
+                className="flex flex-1 flex-col gap-1"
+              >
+                <span className="label-text">{page.search.label}</span>
+                <span className="relative">
+                  <Search
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
+                    strokeWidth={1.5}
+                  />
+                  <input
+                    id="video-library-search"
+                    name="q"
+                    type="search"
+                    defaultValue={query}
+                    placeholder={page.search.placeholder}
+                    className="h-9 w-full rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] pl-9 pr-3 font-mono text-[12px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out placeholder:text-[var(--color-text-disabled)] focus:border-[var(--color-brand)] focus:bg-[var(--color-surface-raised)]"
+                  />
+                </span>
+              </label>
+              <div className="flex items-center gap-2">
+                <SecondaryButton type="submit">
+                  <Search className="h-4 w-4" strokeWidth={1.5} />
+                  {page.search.submit}
+                </SecondaryButton>
+                {query ? (
+                  <Link
+                    href="/dashboard/videos"
+                    className="inline-flex h-8 items-center gap-2 rounded-sm border border-[var(--color-hairline)] px-3 text-[13px] font-medium text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]"
+                  >
+                    <X className="h-4 w-4" strokeWidth={1.5} />
+                    {page.search.clear}
+                  </Link>
+                ) : null}
+              </div>
+            </form>
+            {query ? (
+              <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
+                {page.search.active.replace("{query}", query)}
+              </span>
+            ) : null}
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-[820px] w-full border-collapse text-left">
               <thead className="hairline-strong-b bg-[var(--color-surface-inset)]">
@@ -169,7 +213,7 @@ export default async function VideosPage({
                       colSpan={page.table.columns.length + 1}
                       className="px-4 py-10 text-center text-[13px] text-[var(--color-text-muted)]"
                     >
-                      {page.table.empty}
+                      {query ? page.table.emptySearch : page.table.empty}
                     </td>
                   </tr>
                 ) : (
@@ -284,7 +328,7 @@ export default async function VideosPage({
             </span>
             <div className="flex items-center gap-2">
               <PaginationControl
-                href={paginationHref(pagination.currentPage - 1)}
+                href={paginationHref(pagination.currentPage - 1, query)}
                 disabled={!pagination.hasPrevious}
               >
                 <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -294,7 +338,7 @@ export default async function VideosPage({
                 {pageCountLabel(page.table.pagination.page, pagination)}
               </span>
               <PaginationControl
-                href={paginationHref(pagination.currentPage + 1)}
+                href={paginationHref(pagination.currentPage + 1, query)}
                 disabled={!pagination.hasNext}
               >
                 {page.table.pagination.next}

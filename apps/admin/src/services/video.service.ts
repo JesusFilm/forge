@@ -8,7 +8,14 @@
 // breaks `video.service.test.ts:52`. `getByCoreId` is service-to-service
 // only (Core sync internals) and keeps its guard.
 
-import { Prisma, type PrismaClient } from "@prisma/client"
+import {
+  Prisma,
+  type LocaleStatus,
+  type PrismaClient,
+  type SourceTier,
+  type VideoLabel,
+  type VideoSource,
+} from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { isEditorOrAdmin } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
@@ -72,6 +79,307 @@ const VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_MS = 8_000
 const VIDEOS_BY_CORE_IDS_TRANSACTION_TIMEOUT_MS = 9_000
 const VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_MS}ms'`
 
+const VIDEO_LABEL_SEARCH_TOKENS = {
+  COLLECTION: ["collection"],
+  EPISODE: ["episode"],
+  FEATURE_FILM: ["feature film", "featurefilm", "film", "movie"],
+  SEGMENT: ["segment"],
+  SERIES: ["series"],
+  SHORT_FILM: ["short film", "shortfilm", "short"],
+  TRAILER: ["trailer"],
+  BEHIND_THE_SCENES: ["behind the scenes", "behindthescenes", "behind scenes"],
+} satisfies Record<VideoLabel, readonly string[]>
+
+const VIDEO_SOURCE_SEARCH_TOKENS = {
+  INTERNAL: ["internal"],
+  YOUTUBE: ["youtube", "you tube"],
+  CLOUDFLARE: ["cloudflare", "cloudflare stream"],
+  MUX: ["mux"],
+} satisfies Record<VideoSource, readonly string[]>
+
+const SOURCE_TIER_SEARCH_TOKENS = {
+  CORE: ["core", "core sync"],
+  MANAGER: ["manager", "manual"],
+} satisfies Record<SourceTier, readonly string[]>
+
+const LOCALE_STATUS_SEARCH_TOKENS = {
+  DRAFT: ["draft"],
+  PUBLISHED: ["published", "publish"],
+  ARCHIVED: ["archived", "archive"],
+} satisfies Record<LocaleStatus, readonly string[]>
+
+function normalizeSearchValue(value: string | null | undefined) {
+  return value?.replace(/\s+/g, " ").trim() ?? ""
+}
+
+function comparableSearchValue(value: string) {
+  return value.toLowerCase().replace(/[\s_-]+/g, "")
+}
+
+function containsSearch(value: string) {
+  return { contains: value, mode: "insensitive" as const }
+}
+
+function enumSearchMatches<T extends string>(
+  value: string,
+  tokensByValue: Record<T, readonly string[]>,
+) {
+  const normalized = value.toLowerCase()
+  const compact = comparableSearchValue(value)
+  const loose = normalized.length >= 3
+
+  return Object.entries(tokensByValue)
+    .filter(([, tokens]) =>
+      (tokens as readonly string[]).some((token) => {
+        const normalizedToken = token.toLowerCase()
+        const compactToken = comparableSearchValue(token)
+        return loose
+          ? normalizedToken.includes(normalized) ||
+              normalized.includes(normalizedToken) ||
+              compactToken.includes(compact) ||
+              compact.includes(compactToken)
+          : normalizedToken === normalized || compactToken === compact
+      }),
+    )
+    .map(([key]) => key as T)
+}
+
+function integerSearchValue(value: string) {
+  if (!/^-?\d+$/.test(value)) return null
+  const parsed = Number(value)
+  return Number.isSafeInteger(parsed) ? parsed : null
+}
+
+function bigintSearchValue(value: string) {
+  if (!/^\d+$/.test(value)) return null
+  try {
+    return BigInt(value)
+  } catch {
+    return null
+  }
+}
+
+function booleanSearchValue(value: string) {
+  const normalized = value.toLowerCase()
+  if (["true", "yes", "1"].includes(normalized)) return true
+  if (["false", "no", "0"].includes(normalized)) return false
+  return null
+}
+
+function dateSearchRange(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(value)) return null
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return null
+
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value)
+  if (!dateOnly) {
+    return { gte: parsed, lte: parsed }
+  }
+
+  const nextDay = new Date(parsed)
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1)
+  return { gte: parsed, lt: nextDay }
+}
+
+function sourceTierSearchFilters(search: string) {
+  const matches = enumSearchMatches(search, SOURCE_TIER_SEARCH_TOKENS)
+  return matches.length > 0 ? { in: matches } : undefined
+}
+
+function languageSearchWhere(search: string): Prisma.LanguageWhereInput {
+  const text = containsSearch(search)
+  const sourceMatches = sourceTierSearchFilters(search)
+
+  return {
+    deletedAt: null,
+    OR: [
+      { id: text },
+      { coreId: text },
+      { bcp47: text },
+      { iso3: text },
+      { slug: text },
+      { audioPreviewValue: text },
+      ...(sourceMatches ? [{ source: sourceMatches }] : []),
+    ],
+  }
+}
+
+function videoSearchWhere(rawSearch: string | null | undefined) {
+  const search = normalizeSearchValue(rawSearch)
+  const where: Prisma.VideoWhereInput = { deletedAt: null }
+  if (!search) return where
+
+  const text = containsSearch(search)
+  const labelMatches = enumSearchMatches(search, VIDEO_LABEL_SEARCH_TOKENS)
+  const videoSourceMatches = enumSearchMatches(
+    search,
+    VIDEO_SOURCE_SEARCH_TOKENS,
+  )
+  const sourceMatches = sourceTierSearchFilters(search)
+  const localeStatusMatches = enumSearchMatches(
+    search,
+    LOCALE_STATUS_SEARCH_TOKENS,
+  )
+  const integer = integerSearchValue(search)
+  const bigint = bigintSearchValue(search)
+  const boolean = booleanSearchValue(search)
+  const dateRange = dateSearchRange(search)
+
+  return {
+    deletedAt: null,
+    OR: [
+      { id: text },
+      { coreId: text },
+      { slug: text },
+      { primaryLanguageId: text },
+      { originId: text },
+      ...(sourceMatches ? [{ source: sourceMatches }] : []),
+      ...(labelMatches.length > 0 ? [{ label: { in: labelMatches } }] : []),
+      ...(videoSourceMatches.length > 0
+        ? [{ videoSource: { in: videoSourceMatches } }]
+        : []),
+      ...(boolean === null
+        ? []
+        : [{ locked: boolean }, { noIndex: boolean }, { aiMetadata: boolean }]),
+      ...(dateRange
+        ? [
+            { publishedAt: dateRange },
+            { syncedAt: dateRange },
+            { createdAt: dateRange },
+            { updatedAt: dateRange },
+          ]
+        : []),
+      { primaryLanguage: { is: languageSearchWhere(search) } },
+      {
+        origin: {
+          is: {
+            deletedAt: null,
+            OR: [
+              { id: text },
+              { coreId: text },
+              { name: text },
+              { description: text },
+              ...(sourceMatches ? [{ source: sourceMatches }] : []),
+              ...(dateRange
+                ? [
+                    { syncedAt: dateRange },
+                    { createdAt: dateRange },
+                    { updatedAt: dateRange },
+                  ]
+                : []),
+            ],
+          },
+        },
+      },
+      {
+        locales: {
+          some: {
+            OR: [
+              { id: text },
+              { locale: text },
+              { title: text },
+              { description: text },
+              { snippet: text },
+              { imageAlt: text },
+              ...(localeStatusMatches.length > 0
+                ? [{ status: { in: localeStatusMatches } }]
+                : []),
+              ...(dateRange
+                ? [
+                    { publishedAt: dateRange },
+                    { createdAt: dateRange },
+                    { updatedAt: dateRange },
+                  ]
+                : []),
+            ],
+          },
+        },
+      },
+      {
+        dubs: {
+          some: {
+            OR: [
+              { id: text },
+              { coreId: text },
+              { slug: text },
+              { hls: text },
+              { dash: text },
+              { share: text },
+              { brightcoveId: text },
+              { videoEditionId: text },
+              { muxVideoId: text },
+              { languageId: text },
+              ...(sourceMatches ? [{ source: sourceMatches }] : []),
+              ...(integer === null
+                ? []
+                : [{ duration: integer }, { version: integer }]),
+              ...(bigint === null ? [] : [{ lengthInMilliseconds: bigint }]),
+              ...(boolean === null
+                ? []
+                : [
+                    { downloadable: boolean },
+                    { published: boolean },
+                    { aiGenerated: boolean },
+                  ]),
+              ...(dateRange
+                ? [
+                    { syncedAt: dateRange },
+                    { createdAt: dateRange },
+                    { updatedAt: dateRange },
+                  ]
+                : []),
+              { language: { is: languageSearchWhere(search) } },
+              {
+                videoEdition: {
+                  is: {
+                    deletedAt: null,
+                    OR: [
+                      { id: text },
+                      { coreId: text },
+                      { name: text },
+                      ...(sourceMatches ? [{ source: sourceMatches }] : []),
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+      {
+        images: {
+          some: {
+            OR: [
+              { id: text },
+              { coreId: text },
+              { url: text },
+              { aspectRatio: text },
+              { mobileCinematicHigh: text },
+              { mobileCinematicLow: text },
+              { mobileCinematicVeryLow: text },
+              { thumbnail: text },
+              { videoStill: text },
+              { blurhash: text },
+              { kind: text },
+              ...(sourceMatches ? [{ source: sourceMatches }] : []),
+              ...(integer === null
+                ? []
+                : [{ width: integer }, { height: integer }]),
+              ...(dateRange
+                ? [
+                    { syncedAt: dateRange },
+                    { createdAt: dateRange },
+                    { updatedAt: dateRange },
+                  ]
+                : []),
+            ],
+          },
+        },
+      },
+    ],
+  } satisfies Prisma.VideoWhereInput
+}
+
 export class VideoService {
   constructor(private prisma: PrismaClient) {}
 
@@ -79,20 +387,20 @@ export class VideoService {
     input: raw,
     query,
   }: {
-    input: { limit?: number; offset?: number }
+    input: { limit?: number; offset?: number; search?: string }
     query: object
   }) {
     return this.prisma.video.findMany({
       ...query,
-      where: { deletedAt: null },
+      where: videoSearchWhere(raw.search),
       orderBy: { updatedAt: "desc" },
       take: Math.min(raw.limit ?? 50, 200),
       skip: raw.offset ?? 0,
     })
   }
 
-  async countActive() {
-    return this.prisma.video.count({ where: { deletedAt: null } })
+  async countActive(search?: string) {
+    return this.prisma.video.count({ where: videoSearchWhere(search) })
   }
 
   async getById({ id, query }: { id: string; query: object }) {

@@ -2,6 +2,7 @@ import type { WatchRouteManifest } from "@/services/watch-route-manifest.service
 
 export const VIDEO_LIBRARY_PAGE_SIZE = 30
 export const VIDEO_LIBRARY_MAX_PAGE_SIZE = 200
+export const VIDEO_LIBRARY_MAX_QUERY_LENGTH = 120
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/
 const BCP47_TAG_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i
@@ -27,6 +28,39 @@ export function parseVideoLibraryPage(value: string | string[] | undefined) {
   const parsed = Number(firstSearchParam(value))
   if (!Number.isFinite(parsed)) return 1
   return Math.max(1, Math.trunc(parsed))
+}
+
+export function parseVideoLibraryQuery(value: string | string[] | undefined) {
+  return (
+    firstSearchParam(value)
+      ?.replace(/\s+/g, " ")
+      .trim()
+      .slice(0, VIDEO_LIBRARY_MAX_QUERY_LENGTH) ?? ""
+  )
+}
+
+export function videoLibraryHref({
+  page,
+  query,
+}: {
+  page: number
+  query?: string
+}) {
+  const params = new URLSearchParams()
+  const normalizedPage = Number.isFinite(page)
+    ? Math.max(1, Math.trunc(page))
+    : 1
+  const normalizedQuery = parseVideoLibraryQuery(query)
+
+  if (normalizedPage > 1) {
+    params.set("page", normalizedPage.toString())
+  }
+  if (normalizedQuery) {
+    params.set("q", normalizedQuery)
+  }
+
+  const suffix = params.toString()
+  return suffix ? `/dashboard/videos?${suffix}` : "/dashboard/videos"
 }
 
 export function normalizeVideoLibraryPageSize(value: number | undefined) {

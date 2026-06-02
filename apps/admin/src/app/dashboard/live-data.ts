@@ -66,6 +66,7 @@ type LoadVideoRowSliceOptions = {
   principal: Principal
   limit: number
   offset: number
+  search?: string
   includeVisitorUrls?: boolean
 }
 
@@ -390,10 +391,10 @@ function preferredVideoImage(images: VideoImageRow[]) {
   return normalizeVideoThumbnailUrl(images.find((image) => image.url)?.url)
 }
 
-async function countActiveVideos() {
+async function countActiveVideos(search?: string) {
   const services = createServices(prisma)
   try {
-    return await services.video.countActive()
+    return await services.video.countActive(search)
   } catch (error) {
     if (isMissingTableError(error)) {
       return 0
@@ -530,6 +531,7 @@ async function loadVideoRowSlice({
   principal,
   limit,
   offset,
+  search,
   includeVisitorUrls = false,
 }: LoadVideoRowSliceOptions) {
   const services = createServices(prisma)
@@ -539,7 +541,7 @@ async function loadVideoRowSlice({
     // U2: VideoService.list dropped its `user` param. Route is gated by requireSession().
     void principal
     videos = await services.video.list({
-      input: { limit, offset },
+      input: { limit, offset, search },
       query: {},
     })
   } catch (error) {
@@ -672,9 +674,10 @@ export async function loadVideoLibraryPage(
   {
     page,
     pageSize = VIDEO_LIBRARY_PAGE_SIZE,
-  }: { page: number; pageSize?: number },
+    query,
+  }: { page: number; pageSize?: number; query?: string },
 ) {
-  const total = await countActiveVideos()
+  const total = await countActiveVideos(query)
   const pagination = createVideoLibraryPagination({
     total,
     requestedPage: page,
@@ -688,6 +691,7 @@ export async function loadVideoLibraryPage(
           principal,
           limit: pagination.pageSize,
           offset: pagination.offset,
+          search: query,
           includeVisitorUrls: true,
         })
 

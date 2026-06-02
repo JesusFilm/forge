@@ -6,7 +6,9 @@ import {
   isPublicAudioLanguageSlug,
   normalizeVideoThumbnailUrl,
   parseVideoLibraryPage,
+  parseVideoLibraryQuery,
   resolveVideoVisitorUrl,
+  videoLibraryHref,
 } from "./video-library-utils"
 
 const manifest: WatchRouteManifest = {
@@ -29,6 +31,24 @@ describe("video-library-utils", () => {
     expect(parseVideoLibraryPage("abc")).toBe(1)
     expect(parseVideoLibraryPage("0")).toBe(1)
     expect(parseVideoLibraryPage("-2")).toBe(1)
+  })
+
+  it("normalizes video library search queries for URL-backed filtering", () => {
+    expect(parseVideoLibraryQuery(undefined)).toBe("")
+    expect(parseVideoLibraryQuery(["  Jesus   Film  ", "ignored"])).toBe(
+      "Jesus Film",
+    )
+    expect(parseVideoLibraryQuery("x".repeat(140))).toHaveLength(120)
+  })
+
+  it("builds video library hrefs while preserving search query state", () => {
+    expect(videoLibraryHref({ page: 1, query: "" })).toBe("/dashboard/videos")
+    expect(videoLibraryHref({ page: 2, query: "Jesus Film" })).toBe(
+      "/dashboard/videos?page=2&q=Jesus+Film",
+    )
+    expect(videoLibraryHref({ page: 1, query: "  mux  " })).toBe(
+      "/dashboard/videos?q=mux",
+    )
   })
 
   it("clamps pagination beyond the final page", () => {

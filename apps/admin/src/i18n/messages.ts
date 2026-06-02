@@ -394,11 +394,20 @@ export const adminMessages = {
           primaryUnavailable: "Manual video creation is not available yet.",
           rowActionsUnavailable: "Video row actions are not available yet.",
         },
+        search: {
+          label: "Search videos",
+          placeholder:
+            "Title, Core ID, slug, source, type, language, image, or date",
+          submit: "Search",
+          clear: "Clear",
+          active: 'Filtered by "{query}"',
+        },
         table: {
           title: "Video Library",
-          meta: "PAGINATED_ROWS / TYPE_LABELS / VISITOR_LINKS",
+          meta: "SEARCHABLE_ROWS / TYPE_LABELS / VISITOR_LINKS",
           columns: ["Thumbnail", "Video Details", "Source", "Dubs", "Updated"],
           empty: "No active videos found.",
+          emptySearch: "No active videos match this search.",
           openVisitorLabel: "Open visitor-facing video page",
           noVisitorLinkLabel: "No public watch link available",
           pagination: {
