@@ -43,9 +43,27 @@ function buildPrisma() {
     },
     language: {
       findMany: vi.fn().mockResolvedValue([
-        { id: "language-en", coreId: "lang-en", bcp47: "en" },
-        { id: "language-ru", coreId: "lang-ru", bcp47: "ru" },
+        {
+          id: "language-en",
+          coreId: "lang-en",
+          bcp47: "en",
+          slug: "english",
+        },
+        {
+          id: "language-ru",
+          coreId: "lang-ru",
+          bcp47: "ru",
+          slug: "russian",
+        },
       ]),
+    },
+    videoLocale: {
+      groupBy: vi.fn().mockResolvedValue([]),
+      count: vi.fn().mockResolvedValue(0),
+    },
+    videoStudyQuestion: {
+      groupBy: vi.fn().mockResolvedValue([]),
+      count: vi.fn().mockResolvedValue(0),
     },
     $transaction: vi.fn(async (fn: (trx: typeof tx) => Promise<unknown>) =>
       fn(tx),
@@ -107,10 +125,25 @@ describe("backfill-video-localized-metadata args", () => {
       dryRun: true,
       selected: 1,
       videosProcessed: 0,
+      videoLocaleDuplicateBcp47Groups: 0,
+      studyQuestionDuplicateBcp47Groups: 0,
+      videoLocaleExactIdentityWithoutBcp47: 0,
+      studyQuestionExactIdentityWithoutBcp47: 0,
     })
     expect(coreQueryMock).not.toHaveBeenCalled()
     expect(prisma.$transaction).not.toHaveBeenCalled()
     expect(syncVideoLocalizedMetadataMock).not.toHaveBeenCalled()
+    expect(prisma.videoLocale.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        by: ["videoId", "locale"],
+        where: expect.objectContaining({
+          videoId: { in: ["video-1"] },
+          source: "CORE",
+          deletedAt: null,
+          locale: { not: null },
+        }),
+      }),
+    )
   })
 
   it("executes in batches with the shared sync transaction options and lock checks", async () => {
@@ -168,6 +201,10 @@ describe("backfill-video-localized-metadata args", () => {
           ["lang-en", "en"],
           ["lang-ru", "ru"],
         ]),
+        slugByCoreId: new Map([
+          ["lang-en", "english"],
+          ["lang-ru", "russian"],
+        ]),
         complete: true,
       }),
     )
@@ -177,6 +214,59 @@ describe("backfill-video-localized-metadata args", () => {
       videosProcessed: 2,
       videoLocalesUpserted: 3,
       studyQuestionsUpserted: 4,
+    })
+  })
+
+  it("reports localized variant coverage diagnostics after execution", async () => {
+    const prisma = buildPrisma()
+    prisma.video.findMany.mockResolvedValueOnce([
+      {
+        id: "video-1",
+        coreId: "core-video-1",
+        source: "CORE",
+        publishedAt: null,
+      },
+    ])
+    prisma.videoLocale.groupBy.mockResolvedValueOnce([
+      {
+        videoId: "video-1",
+        locale: "pt",
+        _count: { _all: 2 },
+      },
+      {
+        videoId: "video-1",
+        locale: "ru",
+        _count: { _all: 1 },
+      },
+    ])
+    prisma.videoStudyQuestion.groupBy.mockResolvedValueOnce([
+      {
+        videoId: "video-1",
+        locale: "pt",
+        _count: { _all: 2 },
+      },
+    ])
+    prisma.videoLocale.count.mockResolvedValueOnce(1)
+    prisma.videoStudyQuestion.count.mockResolvedValueOnce(2)
+    coreQueryMock.mockResolvedValueOnce({
+      data: { videos: [{ id: "core-video-1", title: [] }] },
+    })
+    syncVideoLocalizedMetadataMock.mockResolvedValueOnce(baseResult())
+
+    const summary = await runBackfill(prisma as never, {
+      slug: "jesus",
+      fullCatalog: false,
+      execute: true,
+      batchSize: 10,
+    })
+
+    expect(summary).toMatchObject({
+      dryRun: false,
+      selected: 1,
+      videoLocaleDuplicateBcp47Groups: 1,
+      studyQuestionDuplicateBcp47Groups: 1,
+      videoLocaleExactIdentityWithoutBcp47: 1,
+      studyQuestionExactIdentityWithoutBcp47: 2,
     })
   })
 })

@@ -413,15 +413,39 @@ describe("Video type", () => {
     expect(fields.subtitles).toBeUndefined()
   })
 
-  it("studyQuestions accepts an optional locale argument", () => {
+  it("localized content relations accept broad locale and exact languageSlug arguments", () => {
     const fields = fieldsOf("Video") as Record<
       string,
       { args: Array<{ name: string; type: { toString(): string } }> }
     >
-    const localeArg = fields.studyQuestions.args.find(
+    const studyLocaleArg = fields.studyQuestions.args.find(
       (arg) => arg.name === "locale",
     )
-    expect(localeArg?.type.toString()).toBe("String")
+    const studyLanguageSlugArg = fields.studyQuestions.args.find(
+      (arg) => arg.name === "languageSlug",
+    )
+    const localesLocaleArg = fields.locales.args.find(
+      (arg) => arg.name === "locale",
+    )
+    const localesLanguageSlugArg = fields.locales.args.find(
+      (arg) => arg.name === "languageSlug",
+    )
+    expect(studyLocaleArg?.type.toString()).toBe("String")
+    expect(studyLanguageSlugArg?.type.toString()).toBe("String")
+    expect(localesLocaleArg?.type.toString()).toBe("String")
+    expect(localesLanguageSlugArg?.type.toString()).toBe("String")
+  })
+
+  it("localized content rows expose variant identity diagnostics", () => {
+    const localeFields = fieldsOf("VideoLocale")
+    expect(Object.keys(localeFields)).toEqual(
+      expect.arrayContaining(["locale", "languageSlug", "languageCoreId"]),
+    )
+
+    const questionFields = fieldsOf("VideoStudyQuestion")
+    expect(Object.keys(questionFields)).toEqual(
+      expect.arrayContaining(["locale", "languageSlug", "languageCoreId"]),
+    )
   })
 })
 

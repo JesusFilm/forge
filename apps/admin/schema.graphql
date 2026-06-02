@@ -1155,7 +1155,7 @@ type Video {
   """
   PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all. Pass `locale` to narrow the result to a single BCP-47 locale (web's WatchVideo fragment uses this to avoid overfetching every locale).
   """
-  locales(locale: String): [VideoLocale!]
+  locales(languageSlug: String, locale: String): [VideoLocale!]
   locked: Boolean
   noIndex: Boolean
   origin: VideoOrigin
@@ -1166,7 +1166,7 @@ type Video {
   primaryLanguage: Language
   publishedAt: String
   slug: String
-  studyQuestions(locale: String): [VideoStudyQuestion!]
+  studyQuestions(languageSlug: String, locale: String): [VideoStudyQuestion!]
   videoSource: VideoSourceHost
 }
 
@@ -1351,6 +1351,8 @@ type VideoLocale {
   id: ID
   imageAlt: String
   language: Language
+  languageCoreId: String
+  languageSlug: String
   locale: String
   publishedAt: String
   snippet: String
@@ -1439,6 +1441,8 @@ type VideoStudyQuestion {
   coreId: String
   id: ID
   language: Language
+  languageCoreId: String
+  languageSlug: String
   locale: String
   order: Int
   primary: Boolean

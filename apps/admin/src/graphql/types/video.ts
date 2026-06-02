@@ -23,9 +23,14 @@ import type {
 // has at least one PUBLISHED locale AND is not soft-deleted.
 
 export function videoLocalesFilter(
-  args: { locale?: string | null },
+  args: { locale?: string | null; languageSlug?: string | null },
   user: Principal | null,
-): { where: Prisma.VideoLocaleWhereInput } | Record<string, never> {
+):
+  | {
+      where: Prisma.VideoLocaleWhereInput
+      orderBy: Prisma.VideoLocaleOrderByWithRelationInput[]
+    }
+  | Record<string, never> {
   // Treat empty string the same as missing — caller intent is "no locale
   // filter," not "narrow to the zero-length locale code" (which would match
   // zero rows).
@@ -33,17 +38,31 @@ export function videoLocalesFilter(
     typeof args.locale === "string" && args.locale.length > 0
       ? args.locale
       : null
+  const languageSlug =
+    typeof args.languageSlug === "string" && args.languageSlug.length > 0
+      ? args.languageSlug
+      : null
   const localeFilter = locale != null ? { locale } : {}
-  const visibleFilter = { deletedAt: null, ...localeFilter }
+  const languageSlugFilter = languageSlug != null ? { languageSlug } : {}
+  const visibleFilter = {
+    deletedAt: null,
+    ...localeFilter,
+    ...languageSlugFilter,
+  }
+  const orderBy = [{ languageSlug: "asc" as const }, { id: "asc" as const }]
   if (isEditorOrAdmin(user)) {
-    return { where: visibleFilter }
+    return { where: visibleFilter, orderBy }
   }
   return {
     where: { status: "PUBLISHED" as const, ...visibleFilter },
+    orderBy,
   }
 }
 
-export function videoStudyQuestionsFilter(args: { locale?: string | null }): {
+export function videoStudyQuestionsFilter(args: {
+  locale?: string | null
+  languageSlug?: string | null
+}): {
   where: Prisma.VideoStudyQuestionWhereInput
   orderBy: Prisma.VideoStudyQuestionOrderByWithRelationInput[]
 } {
@@ -51,12 +70,25 @@ export function videoStudyQuestionsFilter(args: { locale?: string | null }): {
     typeof args.locale === "string" && args.locale.length > 0
       ? args.locale
       : null
+  const languageSlug =
+    typeof args.languageSlug === "string" && args.languageSlug.length > 0
+      ? args.languageSlug
+      : null
   return {
     where: {
       deletedAt: null,
-      ...(locale != null ? { locale } : { primary: true }),
+      ...(locale != null
+        ? { locale }
+        : languageSlug == null
+          ? { primary: true }
+          : {}),
+      ...(languageSlug != null ? { languageSlug } : {}),
     },
-    orderBy: [{ order: "asc" as const }, { id: "asc" as const }],
+    orderBy: [
+      { order: "asc" as const },
+      { languageSlug: "asc" as const },
+      { id: "asc" as const },
+    ],
   }
 }
 
@@ -281,6 +313,8 @@ builder.prismaObject("VideoLocale", {
   fields: (t) => ({
     id: t.exposeID("id"),
     locale: t.exposeString("locale", { nullable: true }),
+    languageSlug: t.exposeString("languageSlug", { nullable: true }),
+    languageCoreId: t.exposeString("languageCoreId", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
     description: t.exposeString("description", { nullable: true }),
     snippet: t.exposeString("snippet", { nullable: true }),
@@ -301,6 +335,8 @@ builder.prismaObject("VideoStudyQuestion", {
     id: t.exposeID("id"),
     coreId: t.exposeString("coreId", { nullable: true }),
     locale: t.exposeString("locale", { nullable: true }),
+    languageSlug: t.exposeString("languageSlug", { nullable: true }),
+    languageCoreId: t.exposeString("languageCoreId", { nullable: true }),
     text: t.exposeString("text"),
     primary: t.exposeBoolean("primary"),
     order: t.exposeInt("order", { nullable: true }),
@@ -392,6 +428,7 @@ builder.prismaObject("Video", {
         "PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all. Pass `locale` to narrow the result to a single BCP-47 locale (web's WatchVideo fragment uses this to avoid overfetching every locale).",
       args: {
         locale: t.arg.string({ required: false }),
+        languageSlug: t.arg.string({ required: false }),
       },
       query: (args, ctx) => videoLocalesFilter(args, ctx.user),
     }),
@@ -404,6 +441,7 @@ builder.prismaObject("Video", {
     studyQuestions: t.relation("studyQuestions", {
       args: {
         locale: t.arg.string({ required: false }),
+        languageSlug: t.arg.string({ required: false }),
       },
       query: (args) => videoStudyQuestionsFilter(args),
     }),

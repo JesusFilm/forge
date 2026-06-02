@@ -12,6 +12,7 @@ export type CoreLocalizedValue = {
 
 export type LanguageLookup = {
   bcp47ByCoreId?: Map<string, string | null | undefined>
+  slugByCoreId?: Map<string, string | null | undefined>
 }
 
 export function toNameMap(
@@ -67,6 +68,7 @@ export function localeFor(
 export type VideoLocaleInput = {
   locale: string | null
   languageCoreId: string | null
+  languageSlug: string | null
   title: string | null
   description: string | null
   snippet: string | null
@@ -94,6 +96,7 @@ export function toVideoLocales(
   return [...localeKeys].sort().map((key) => ({
     locale: localeForKey(key, lookup),
     languageCoreId: languageCoreIdForKey(key),
+    languageSlug: languageSlugForKey(key, lookup),
     title: lastLocalizedValue(fields.title, key, lookup),
     description: lastLocalizedValue(fields.description, key, lookup),
     snippet: lastLocalizedValue(fields.snippet, key, lookup),
@@ -110,6 +113,7 @@ export type StudyQuestionInput = {
   coreId: string
   locale: string | null
   languageCoreId: string | null
+  languageSlug: string | null
   text: string
   primary: boolean
   order: number | null
@@ -123,6 +127,7 @@ export function toStudyQuestions(
     coreId: value.id,
     locale: localeFor(value, lookup),
     languageCoreId: value.language?.id ?? null,
+    languageSlug: languageSlugFor(value, lookup),
     text: value.value,
     primary: value.primary ?? false,
     order: value.order ?? null,
@@ -201,4 +206,23 @@ function localeForKey(key: string, lookup: LanguageLookup): string | null {
 
 function languageCoreIdForKey(key: string): string | null {
   return key.startsWith("core:") ? key.slice("core:".length) : null
+}
+
+function languageSlugFor(
+  value: CoreLocalizedValue,
+  lookup: LanguageLookup,
+): string | null {
+  const languageId = value.language?.id
+  if (!languageId) return null
+  return lookup.slugByCoreId?.get(languageId) ?? null
+}
+
+function languageSlugForKey(
+  key: string,
+  lookup: LanguageLookup,
+): string | null {
+  const languageCoreId = languageCoreIdForKey(key)
+  return languageCoreId
+    ? (lookup.slugByCoreId?.get(languageCoreId) ?? null)
+    : null
 }

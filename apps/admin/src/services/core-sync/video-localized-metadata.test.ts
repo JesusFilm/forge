@@ -48,6 +48,10 @@ describe("syncVideoLocalizedMetadata", () => {
         ["lang-en", "en"],
         ["lang-no-bcp47", null],
       ]),
+      slugByCoreId: new Map([
+        ["lang-en", "english"],
+        ["lang-no-bcp47", "mystery-language"],
+      ]),
     })
 
     expect(result.videoLocalesUpserted).toBe(2)
@@ -57,6 +61,8 @@ describe("syncVideoLocalizedMetadata", () => {
           videoId: "video-1",
           locale: "en",
           languageId: "language-en",
+          languageSlug: "english",
+          languageCoreId: "lang-en",
           title: "English",
         }),
       }),
@@ -67,7 +73,168 @@ describe("syncVideoLocalizedMetadata", () => {
           videoId: "video-1",
           locale: null,
           languageId: "language-no-bcp47",
+          languageSlug: "mystery-language",
+          languageCoreId: "lang-no-bcp47",
           title: "Mystery",
+        }),
+      }),
+    )
+  })
+
+  it("persists two display rows when variants share one BCP-47 locale", async () => {
+    const prisma = buildPrisma()
+
+    const result = await syncVideoLocalizedMetadata({
+      prisma: prisma as never,
+      adminVideos: [{ id: "video-1", coreId: "core-video-1" }],
+      coreVideos: [
+        {
+          id: "core-video-1",
+          title: [
+            { value: "Russian", language: { id: "lang-ru" } },
+            { value: "Russian Alt", language: { id: "lang-ru-alt" } },
+          ],
+          description: [],
+          snippet: [],
+          imageAlt: [],
+          studyQuestions: [],
+        },
+      ],
+      languageIdByCoreId: new Map([
+        ["lang-ru", "language-ru"],
+        ["lang-ru-alt", "language-ru-alt"],
+      ]),
+      bcp47ByCoreId: new Map([
+        ["lang-ru", "ru"],
+        ["lang-ru-alt", "ru"],
+      ]),
+      slugByCoreId: new Map([
+        ["lang-ru", "russian"],
+        ["lang-ru-alt", "russian-alt"],
+      ]),
+    })
+
+    expect(result.videoLocalesUpserted).toBe(2)
+    expect(prisma.videoLocale.findFirst).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: { videoId: "video-1", languageId: "language-ru" },
+      }),
+    )
+    expect(prisma.videoLocale.findFirst).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: { videoId: "video-1", languageId: "language-ru-alt" },
+      }),
+    )
+    expect(prisma.videoLocale.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          locale: "ru",
+          languageId: "language-ru",
+          languageSlug: "russian",
+          languageCoreId: "lang-ru",
+          title: "Russian",
+        }),
+      }),
+    )
+    expect(prisma.videoLocale.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          locale: "ru",
+          languageId: "language-ru-alt",
+          languageSlug: "russian-alt",
+          languageCoreId: "lang-ru-alt",
+          title: "Russian Alt",
+        }),
+      }),
+    )
+  })
+
+  it("persists study questions by video, Core question, and language identity", async () => {
+    const prisma = buildPrisma()
+
+    const result = await syncVideoLocalizedMetadata({
+      prisma: prisma as never,
+      adminVideos: [{ id: "video-1", coreId: "core-video-1" }],
+      coreVideos: [
+        {
+          id: "core-video-1",
+          title: [],
+          description: [],
+          snippet: [],
+          imageAlt: [],
+          studyQuestions: [
+            {
+              id: "question-core-1",
+              value: "Russian question?",
+              language: { id: "lang-ru" },
+            },
+            {
+              id: "question-core-1",
+              value: "Russian alt question?",
+              language: { id: "lang-ru-alt" },
+            },
+          ],
+        },
+      ],
+      languageIdByCoreId: new Map([
+        ["lang-ru", "language-ru"],
+        ["lang-ru-alt", "language-ru-alt"],
+      ]),
+      bcp47ByCoreId: new Map([
+        ["lang-ru", "ru"],
+        ["lang-ru-alt", "ru"],
+      ]),
+      slugByCoreId: new Map([
+        ["lang-ru", "russian"],
+        ["lang-ru-alt", "russian-alt"],
+      ]),
+      complete: false,
+    })
+
+    expect(result.studyQuestionsUpserted).toBe(2)
+    expect(prisma.videoStudyQuestion.findFirst).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: {
+          videoId: "video-1",
+          coreId: "question-core-1",
+          languageId: "language-ru",
+        },
+      }),
+    )
+    expect(prisma.videoStudyQuestion.findFirst).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: {
+          videoId: "video-1",
+          coreId: "question-core-1",
+          languageId: "language-ru-alt",
+        },
+      }),
+    )
+    expect(prisma.videoStudyQuestion.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          videoId: "video-1",
+          coreId: "question-core-1",
+          languageId: "language-ru",
+          languageSlug: "russian",
+          languageCoreId: "lang-ru",
+          text: "Russian question?",
+        }),
+      }),
+    )
+    expect(prisma.videoStudyQuestion.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          videoId: "video-1",
+          coreId: "question-core-1",
+          languageId: "language-ru-alt",
+          languageSlug: "russian-alt",
+          languageCoreId: "lang-ru-alt",
+          text: "Russian alt question?",
         }),
       }),
     )
@@ -91,6 +258,7 @@ describe("syncVideoLocalizedMetadata", () => {
       ],
       languageIdByCoreId: new Map(),
       bcp47ByCoreId: new Map([["lang-missing", "zz"]]),
+      slugByCoreId: new Map([["lang-missing", "missing-language"]]),
     })
 
     expect(result.skippedLanguages).toBe(1)
@@ -126,6 +294,7 @@ describe("syncVideoLocalizedMetadata", () => {
       ],
       languageIdByCoreId: new Map([["lang-en", "language-en"]]),
       bcp47ByCoreId: new Map([["lang-en", "en"]]),
+      slugByCoreId: new Map([["lang-en", "english"]]),
     })
 
     expect(result.videoLocalesUpserted).toBe(0)
@@ -133,7 +302,7 @@ describe("syncVideoLocalizedMetadata", () => {
     expect(prisma.videoLocale.create).not.toHaveBeenCalled()
   })
 
-  it("updates legacy locale-keyed rows when language identity is newly available", async () => {
+  it("does not update a locale-keyed row when Core language identity is known", async () => {
     const prisma = buildPrisma()
     prisma.videoLocale.findFirst
       .mockResolvedValueOnce(null)
@@ -163,6 +332,7 @@ describe("syncVideoLocalizedMetadata", () => {
       ],
       languageIdByCoreId: new Map([["lang-fr", "language-fr"]]),
       bcp47ByCoreId: new Map([["lang-fr", "fr"]]),
+      slugByCoreId: new Map([["lang-fr", "french"]]),
     })
 
     expect(prisma.videoLocale.findFirst).toHaveBeenNthCalledWith(
@@ -171,34 +341,41 @@ describe("syncVideoLocalizedMetadata", () => {
         where: { videoId: "video-1", languageId: "language-fr" },
       }),
     )
-    expect(prisma.videoLocale.findFirst).toHaveBeenNthCalledWith(
-      2,
+    expect(prisma.videoLocale.findFirst).toHaveBeenCalledTimes(1)
+    expect(prisma.videoLocale.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { videoId: "video-1", locale: "fr" },
-      }),
-    )
-    expect(prisma.videoLocale.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: "legacy-locale" },
         data: expect.objectContaining({
+          videoId: "video-1",
           languageId: "language-fr",
+          languageSlug: "french",
+          languageCoreId: "lang-fr",
           locale: "fr",
-          deletedAt: null,
         }),
       }),
     )
-    expect(prisma.videoLocale.create).not.toHaveBeenCalled()
-    expect(prisma.videoStudyQuestion.update).toHaveBeenCalledWith(
+    expect(prisma.videoLocale.update).not.toHaveBeenCalled()
+    expect(prisma.videoStudyQuestion.findFirst).toHaveBeenCalledTimes(1)
+    expect(prisma.videoStudyQuestion.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "legacy-question" },
-        data: expect.objectContaining({
+        where: {
+          videoId: "video-1",
+          coreId: "question-core-1",
           languageId: "language-fr",
+        },
+      }),
+    )
+    expect(prisma.videoStudyQuestion.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          coreId: "question-core-1",
+          languageId: "language-fr",
+          languageSlug: "french",
+          languageCoreId: "lang-fr",
           locale: "fr",
-          deletedAt: null,
         }),
       }),
     )
-    expect(prisma.videoStudyQuestion.create).not.toHaveBeenCalled()
+    expect(prisma.videoStudyQuestion.update).not.toHaveBeenCalled()
   })
 
   it("stales untouched Core rows after a complete sync", async () => {
@@ -232,6 +409,7 @@ describe("syncVideoLocalizedMetadata", () => {
       ],
       languageIdByCoreId: new Map([["lang-en", "language-en"]]),
       bcp47ByCoreId: new Map([["lang-en", "en"]]),
+      slugByCoreId: new Map([["lang-en", "english"]]),
       now,
     })
 
@@ -275,6 +453,7 @@ describe("syncVideoLocalizedMetadata", () => {
       ],
       languageIdByCoreId: new Map(),
       bcp47ByCoreId: new Map([["lang-missing", null]]),
+      slugByCoreId: new Map([["lang-missing", "missing-language"]]),
     })
 
     expect(result.skippedLanguages).toBe(1)
@@ -300,6 +479,7 @@ describe("syncVideoLocalizedMetadata", () => {
       ],
       languageIdByCoreId: new Map([["lang-en", "language-en"]]),
       bcp47ByCoreId: new Map([["lang-en", "en"]]),
+      slugByCoreId: new Map([["lang-en", "english"]]),
       complete: false,
     })
 

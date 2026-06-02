@@ -89,6 +89,13 @@ type AdminVideoTarget = {
   publishedAt: Date | null
 }
 
+type LocalizedVariantCoverageAudit = {
+  videoLocaleDuplicateBcp47Groups: number
+  studyQuestionDuplicateBcp47Groups: number
+  videoLocaleExactIdentityWithoutBcp47: number
+  studyQuestionExactIdentityWithoutBcp47: number
+}
+
 export async function selectAdminVideos(
   prisma: PrismaClient,
   args: BackfillVideoLocalizedMetadataArgs,
@@ -138,16 +145,97 @@ function mergeResults(
   target.diagnostics.push(...source.diagnostics)
 }
 
+function emptyVariantCoverageAudit(): LocalizedVariantCoverageAudit {
+  return {
+    videoLocaleDuplicateBcp47Groups: 0,
+    studyQuestionDuplicateBcp47Groups: 0,
+    videoLocaleExactIdentityWithoutBcp47: 0,
+    studyQuestionExactIdentityWithoutBcp47: 0,
+  }
+}
+
+async function auditLocalizedVariantCoverage(
+  prisma: PrismaClient,
+  videoIds: readonly string[],
+): Promise<LocalizedVariantCoverageAudit> {
+  if (videoIds.length === 0) return emptyVariantCoverageAudit()
+
+  const baseWhere = {
+    videoId: { in: [...videoIds] },
+    source: "CORE" as const,
+    deletedAt: null,
+  }
+  const exactIdentityWhere = {
+    OR: [{ languageSlug: { not: null } }, { languageCoreId: { not: null } }],
+  }
+
+  const [
+    videoLocaleGroups,
+    studyQuestionGroups,
+    videoLocaleExactIdentityWithoutBcp47,
+    studyQuestionExactIdentityWithoutBcp47,
+  ] = await Promise.all([
+    prisma.videoLocale.groupBy({
+      by: ["videoId", "locale"],
+      where: {
+        ...baseWhere,
+        locale: { not: null },
+        ...exactIdentityWhere,
+      },
+      _count: { _all: true },
+    }),
+    prisma.videoStudyQuestion.groupBy({
+      by: ["videoId", "locale"],
+      where: {
+        ...baseWhere,
+        locale: { not: null },
+        ...exactIdentityWhere,
+      },
+      _count: { _all: true },
+    }),
+    prisma.videoLocale.count({
+      where: {
+        ...baseWhere,
+        locale: null,
+        ...exactIdentityWhere,
+      },
+    }),
+    prisma.videoStudyQuestion.count({
+      where: {
+        ...baseWhere,
+        locale: null,
+        ...exactIdentityWhere,
+      },
+    }),
+  ])
+
+  return {
+    videoLocaleDuplicateBcp47Groups: videoLocaleGroups.filter(
+      (group) => group._count._all > 1,
+    ).length,
+    studyQuestionDuplicateBcp47Groups: studyQuestionGroups.filter(
+      (group) => group._count._all > 1,
+    ).length,
+    videoLocaleExactIdentityWithoutBcp47,
+    studyQuestionExactIdentityWithoutBcp47,
+  }
+}
+
 export async function runBackfill(
   prisma: PrismaClient,
   args: BackfillVideoLocalizedMetadataArgs,
   options: { assertLockActive?: () => Promise<void> } = {},
 ): Promise<
-  VideoLocalizedMetadataResult & { dryRun: boolean; selected: number }
+  VideoLocalizedMetadataResult &
+    LocalizedVariantCoverageAudit & { dryRun: boolean; selected: number }
 > {
   validateArgs(args)
   const selected = await selectAdminVideos(prisma, args)
   const summary: VideoLocalizedMetadataResult & {
+    videoLocaleDuplicateBcp47Groups: number
+    studyQuestionDuplicateBcp47Groups: number
+    videoLocaleExactIdentityWithoutBcp47: number
+    studyQuestionExactIdentityWithoutBcp47: number
     dryRun: boolean
     selected: number
   } = {
@@ -159,20 +247,37 @@ export async function runBackfill(
     skippedLanguages: 0,
     errors: 0,
     diagnostics: [],
+    ...emptyVariantCoverageAudit(),
     dryRun: !args.execute,
     selected: selected.length,
   }
 
-  if (!args.execute) return summary
+  const applyVariantCoverageAudit = async (): Promise<void> => {
+    Object.assign(
+      summary,
+      await auditLocalizedVariantCoverage(
+        prisma,
+        selected.map((video) => video.id),
+      ),
+    )
+  }
+
+  if (!args.execute) {
+    await applyVariantCoverageAudit()
+    return summary
+  }
 
   const languages = await prisma.language.findMany({
-    select: { id: true, coreId: true, bcp47: true },
+    select: { id: true, coreId: true, bcp47: true, slug: true },
   })
   const languageIdByCoreId = new Map(
     languages.map((language) => [language.coreId, language.id]),
   )
   const bcp47ByCoreId = new Map(
     languages.map((language) => [language.coreId, language.bcp47]),
+  )
+  const slugByCoreId = new Map(
+    languages.map((language) => [language.coreId, language.slug]),
   )
 
   for (let index = 0; index < selected.length; index += args.batchSize) {
@@ -189,6 +294,7 @@ export async function runBackfill(
           coreVideos,
           languageIdByCoreId,
           bcp47ByCoreId,
+          slugByCoreId,
           complete: true,
         }),
       CORE_SYNC_TRANSACTION_OPTIONS,
@@ -196,6 +302,8 @@ export async function runBackfill(
     mergeResults(summary, result)
     await options.assertLockActive?.()
   }
+
+  await applyVariantCoverageAudit()
 
   return summary
 }

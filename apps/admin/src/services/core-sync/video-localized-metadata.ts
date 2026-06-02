@@ -59,6 +59,7 @@ export type SyncVideoLocalizedMetadataOptions = {
   coreVideos: readonly CoreVideoLocalizedMetadata[]
   languageIdByCoreId: ReadonlyMap<string, string>
   bcp47ByCoreId: ReadonlyMap<string, string | null | undefined>
+  slugByCoreId: ReadonlyMap<string, string | null | undefined>
   complete?: boolean
   now?: Date
 }
@@ -80,6 +81,7 @@ export async function syncVideoLocalizedMetadata({
   coreVideos,
   languageIdByCoreId,
   bcp47ByCoreId,
+  slugByCoreId,
   complete = true,
   now = new Date(),
 }: SyncVideoLocalizedMetadataOptions): Promise<VideoLocalizedMetadataResult> {
@@ -119,7 +121,10 @@ export async function syncVideoLocalizedMetadata({
         snippet: coreVideo.snippet,
         imageAlt: coreVideo.imageAlt,
       },
-      { bcp47ByCoreId: new Map(bcp47ByCoreId) },
+      {
+        bcp47ByCoreId: new Map(bcp47ByCoreId),
+        slugByCoreId: new Map(slugByCoreId),
+      },
     )) {
       const languageId = resolveLanguageId({
         videoCoreId: coreVideo.id,
@@ -137,19 +142,27 @@ export async function syncVideoLocalizedMetadata({
               select: { id: true, source: true },
             })
           : null
-      const localeExisting =
-        existing == null && localeRow.locale != null
+      const legacyLocaleExisting =
+        existing == null &&
+        localeRow.languageCoreId == null &&
+        localeRow.locale != null
           ? await prisma.videoLocale.findFirst({
-              where: { videoId: adminVideo.id, locale: localeRow.locale },
+              where: {
+                videoId: adminVideo.id,
+                locale: localeRow.locale,
+                languageId: null,
+              },
               select: { id: true, source: true },
             })
           : existing
-      const existingLocale = existing ?? localeExisting
+      const existingLocale = existing ?? legacyLocaleExisting
       if (existingLocale?.source === "MANAGER") continue
 
       const data = {
         locale: localeRow.locale,
         languageId,
+        languageSlug: localeRow.languageSlug,
+        languageCoreId: localeRow.languageCoreId,
         title: localeRow.title,
         description: localeRow.description,
         snippet: localeRow.snippet,
@@ -180,6 +193,7 @@ export async function syncVideoLocalizedMetadata({
 
     for (const question of toStudyQuestions(coreVideo.studyQuestions, {
       bcp47ByCoreId: new Map(bcp47ByCoreId),
+      slugByCoreId: new Map(slugByCoreId),
     })) {
       const languageId = resolveLanguageId({
         videoCoreId: coreVideo.id,
@@ -193,24 +207,35 @@ export async function syncVideoLocalizedMetadata({
       const existing =
         languageId != null
           ? await prisma.videoStudyQuestion.findFirst({
-              where: { coreId: question.coreId, languageId },
+              where: {
+                videoId: adminVideo.id,
+                coreId: question.coreId,
+                languageId,
+              },
               select: { id: true, source: true },
             })
           : null
-      const localeExisting =
-        existing == null
+      const legacyLocaleExisting =
+        existing == null && question.languageCoreId == null
           ? await prisma.videoStudyQuestion.findFirst({
-              where: { coreId: question.coreId, locale: question.locale },
+              where: {
+                videoId: adminVideo.id,
+                coreId: question.coreId,
+                locale: question.locale,
+                languageId: null,
+              },
               select: { id: true, source: true },
             })
           : existing
-      const existingQuestion = existing ?? localeExisting
+      const existingQuestion = existing ?? legacyLocaleExisting
       if (existingQuestion?.source === "MANAGER") continue
 
       const data = {
         videoId: adminVideo.id,
         locale: question.locale,
         languageId,
+        languageSlug: question.languageSlug,
+        languageCoreId: question.languageCoreId,
         text: question.text,
         primary: question.primary,
         order: question.order,

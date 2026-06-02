@@ -711,7 +711,7 @@ async function getVideoBySlug(
 ): Promise<WatchVideoRecord | null> {
   const result = await client.query({
     query: getWatchVideoBySlugOperation,
-    variables: { locale, videoSlug: slug },
+    variables: { locale, languageSlug: null, videoSlug: slug },
     fetchPolicy: "no-cache",
   })
 
@@ -991,8 +991,17 @@ type ResolveWatchVideoArgs = {
   languageSlug: string
 }
 
-function contentLocaleForWatchLanguage(languageSlugOrLocale: string): string {
-  return slugToBcp47Tag(languageSlugOrLocale) ?? languageSlugOrLocale
+function contentIdentityForWatchLanguage(languageSlugOrLocale: string): {
+  locale: string
+  languageSlug: string | null
+} {
+  const mappedLocale = slugToBcp47Tag(languageSlugOrLocale)
+  const hasExactSlug =
+    mappedLocale != null && mappedLocale !== languageSlugOrLocale
+  return {
+    locale: mappedLocale ?? languageSlugOrLocale,
+    languageSlug: hasExactSlug ? languageSlugOrLocale : null,
+  }
 }
 
 function hasItems<T>(items: readonly T[] | null | undefined): boolean {
@@ -1068,7 +1077,7 @@ function mergeParentRelationLocales(
   }) as AdminVideoRaw["parents"]
 }
 
-function mergeEnglishContentFallback(
+function mergeContentFallback(
   localized: AdminVideoRaw,
   fallback: AdminVideoRaw,
 ): AdminVideoRaw {
@@ -1083,15 +1092,44 @@ function mergeEnglishContentFallback(
   } as AdminVideoRaw
 }
 
-async function fetchWatchVideoRecord(
-  collectionSlug: string,
+function childRelationLocalesMissing(
+  relations: readonly ChildRelationWithLocales[] | null | undefined,
+): boolean {
+  return (relations ?? []).some(
+    (relation) => relation.child != null && !hasItems(relation.child.locales),
+  )
+}
+
+function parentRelationLocalesMissing(
+  relations: AdminVideoRaw["parents"],
+): boolean {
+  return (relations ?? []).some((relation) => {
+    const parent = relation.parent
+    if (!parent) return false
+    return (
+      !hasItems(parent.locales) || childRelationLocalesMissing(parent.children)
+    )
+  })
+}
+
+function needsContentFallback(raw: AdminVideoRaw): boolean {
+  return (
+    !hasItems(raw.locales) ||
+    !hasItems(raw.studyQuestions) ||
+    parentRelationLocalesMissing(raw.parents) ||
+    childRelationLocalesMissing(raw.children)
+  )
+}
+
+async function queryWatchVideoBySlug(
   videoSlug: string,
-  contentLocale: string,
-): Promise<WatchVideoRecord | null> {
+  variables: { locale: string; languageSlug: string | null },
+): Promise<AdminVideoRaw | null> {
   const result = await client.query({
     query: getWatchVideoBySlugOperation,
     variables: {
-      locale: contentLocale,
+      locale: variables.locale,
+      languageSlug: variables.languageSlug,
       videoSlug,
     },
     fetchPolicy: "no-cache",
@@ -1102,7 +1140,60 @@ async function fetchWatchVideoRecord(
   )
   if (error) throw error
 
-  const raw = result.data?.videoBySlug ?? null
+  return result.data?.videoBySlug ?? null
+}
+
+async function fetchWatchVideoWithContentFallback({
+  videoSlug,
+  locale,
+  languageSlug,
+}: {
+  videoSlug: string
+  locale: string
+  languageSlug: string | null
+}): Promise<AdminVideoRaw | null> {
+  const exactOrBroad = await queryWatchVideoBySlug(videoSlug, {
+    locale,
+    languageSlug,
+  })
+  if (!exactOrBroad) return null
+
+  let merged = exactOrBroad
+
+  if (locale !== "en" && languageSlug != null && needsContentFallback(merged)) {
+    const broadLocale = await queryWatchVideoBySlug(videoSlug, {
+      locale,
+      languageSlug: null,
+    })
+    if (broadLocale) {
+      merged = mergeContentFallback(merged, broadLocale)
+    }
+  }
+
+  if (locale !== "en" && needsContentFallback(merged)) {
+    const english = await queryWatchVideoBySlug(videoSlug, {
+      locale: "en",
+      languageSlug: null,
+    })
+    if (english) {
+      merged = mergeContentFallback(merged, english)
+    }
+  }
+
+  return merged
+}
+
+async function fetchWatchVideoRecord(
+  collectionSlug: string,
+  videoSlug: string,
+  contentLocale: string,
+  languageSlug: string | null,
+): Promise<WatchVideoRecord | null> {
+  const raw = await fetchWatchVideoWithContentFallback({
+    videoSlug,
+    locale: contentLocale,
+    languageSlug,
+  })
   if (!raw) return null
   // Admin's `videoBySlug` resolves by slug only; the resolver enforces the
   // collection-slug match by walking `parents`. Returning the full record
@@ -1151,10 +1242,12 @@ async function tryResolveWatchVideo(
   videoSlug: string,
   languageSlug: string,
 ): Promise<ResolvedWatchVideo> {
+  const contentIdentity = contentIdentityForWatchLanguage(languageSlug)
   const record = await fetchWatchVideoRecord(
     collectionSlug,
     videoSlug,
-    contentLocaleForWatchLanguage(languageSlug),
+    contentIdentity.locale,
+    contentIdentity.languageSlug,
   )
   if (!record) {
     throw new WatchVideoError("VIDEO_NOT_FOUND", {
@@ -1265,46 +1358,13 @@ const fetchWatchVideoBySlug = cache(
     videoSlug: string,
     languageSlug: string,
   ): Promise<WatchVideoRecord | null> => {
-    const contentLocale = contentLocaleForWatchLanguage(languageSlug)
-    const result = await client.query({
-      query: getWatchVideoBySlugOperation,
-      variables: {
-        locale: contentLocale,
-        videoSlug,
-      },
-      fetchPolicy: "no-cache",
+    const contentIdentity = contentIdentityForWatchLanguage(languageSlug)
+    const raw = await fetchWatchVideoWithContentFallback({
+      videoSlug,
+      locale: contentIdentity.locale,
+      languageSlug: contentIdentity.languageSlug,
     })
-
-    const error = graphqlError(
-      result as { error?: ErrorLike; errors?: unknown[] },
-    )
-    if (error) throw error
-
-    const raw = result.data?.videoBySlug ?? null
     if (!raw) return null
-
-    // Content fallback: localized display text and study questions can have
-    // different coverage. Re-fetch English when either piece is missing, then
-    // merge per part so a Russian title can still use English questions until
-    // Core/admin has translated question rows for that video.
-    if (
-      contentLocale !== "en" &&
-      (!hasItems(raw.locales) || !hasItems(raw.studyQuestions))
-    ) {
-      const fallback = await client.query({
-        query: getWatchVideoBySlugOperation,
-        variables: { locale: "en", videoSlug },
-        fetchPolicy: "no-cache",
-      })
-      const fallbackError = graphqlError(
-        fallback as { error?: ErrorLike; errors?: unknown[] },
-      )
-      if (!fallbackError && fallback.data?.videoBySlug) {
-        return normalizeAdminVideo(
-          mergeEnglishContentFallback(raw, fallback.data.videoBySlug),
-        )
-      }
-    }
 
     return normalizeAdminVideo(raw)
   },

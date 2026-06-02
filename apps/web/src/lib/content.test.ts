@@ -389,10 +389,15 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
 
     expect(queryMock).toHaveBeenCalledTimes(2)
     const fallbackCall = queryMock.mock.calls[1][0] as {
-      variables: { locale: string; videoSlug: string }
+      variables: {
+        locale: string
+        languageSlug: string | null
+        videoSlug: string
+      }
     }
     expect(fallbackCall.variables).toEqual({
       locale: "en",
+      languageSlug: null,
       videoSlug: "jesus",
     })
     expect(result?.video.title).toBe("Jesus (English fallback)")
@@ -460,14 +465,166 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
 
     expect(queryMock).toHaveBeenCalledTimes(1)
     const primaryCall = queryMock.mock.calls[0][0] as {
-      variables: { locale: string; videoSlug: string }
+      variables: {
+        locale: string
+        languageSlug: string | null
+        videoSlug: string
+      }
     }
     expect(primaryCall.variables).toEqual({
       locale: "ru",
+      languageSlug: "russian",
       videoSlug: "jesus",
     })
     expect(result?.video.title).toBe("Jesus RU")
     expect(result?.selectedVariant.language?.slug).toBe("russian")
+  })
+
+  it("uses broad BCP-47 content before English when exact languageSlug content is missing", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            locales: [],
+            studyQuestions: [],
+            variants: [
+              {
+                documentId: "variant-ru",
+                slug: "russian",
+                hls: "https://cdn.example/jesus-ru.m3u8",
+                published: true,
+                duration: 7674,
+                language: {
+                  coreId: "3934",
+                  bcp47: "ru",
+                  slug: "russian",
+                  name: "Russian",
+                },
+                downloads: [],
+                muxVideo: { playbackId: "pb-ru" },
+              },
+            ],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            locales: [
+              {
+                documentId: "loc-ru-broad",
+                languageSlug: "russian-broad",
+                title: "Jesus RU broad",
+                description: "Russian broad description",
+                snippet: "Russian broad snippet",
+                imageAlt: "Russian broad still",
+              },
+            ],
+            studyQuestions: [
+              { documentId: "sq-ru-broad", value: "Broad question?", order: 1 },
+            ],
+          }),
+        },
+      })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug("jesus", "russian")
+
+    expect(queryMock.mock.calls.map((call) => call[0].variables)).toEqual([
+      { locale: "ru", languageSlug: "russian", videoSlug: "jesus" },
+      { locale: "ru", languageSlug: null, videoSlug: "jesus" },
+    ])
+    expect(result?.video.title).toBe("Jesus RU broad")
+    expect(result?.video.studyQuestions).toEqual([
+      { documentId: "sq-ru-broad", value: "Broad question?", order: 1 },
+    ])
+  })
+
+  it("uses broad BCP-47 content when exact child titles are missing", async () => {
+    const russianVariant = {
+      documentId: "variant-ru",
+      slug: "russian",
+      hls: "https://cdn.example/jesus-ru.m3u8",
+      published: true,
+      duration: 7674,
+      language: {
+        coreId: "3934",
+        bcp47: "ru",
+        slug: "russian",
+        name: "Russian",
+      },
+      downloads: [],
+      muxVideo: { playbackId: "pb-ru" },
+    }
+
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            locales: [
+              {
+                documentId: "loc-ru",
+                title: "Jesus RU",
+                description: "Russian description",
+                snippet: "Russian snippet",
+                imageAlt: "Russian still",
+              },
+            ],
+            studyQuestions: [
+              { documentId: "sq-ru", value: "Russian question?", order: 1 },
+            ],
+            children: [
+              {
+                child: {
+                  documentId: "child-1",
+                  slug: "the-beginning",
+                  label: "SEGMENT",
+                  locales: [],
+                  images: [],
+                  durationSeconds: 120,
+                },
+              },
+            ],
+            variants: [russianVariant],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            children: [
+              {
+                child: {
+                  documentId: "child-1",
+                  slug: "the-beginning",
+                  label: "SEGMENT",
+                  locales: [
+                    {
+                      documentId: "child-loc-ru",
+                      title: "The Beginning RU",
+                    },
+                  ],
+                  images: [],
+                  durationSeconds: 120,
+                },
+              },
+            ],
+            variants: [russianVariant],
+          }),
+        },
+      })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug("jesus", "russian")
+
+    expect(queryMock.mock.calls.map((call) => call[0].variables)).toEqual([
+      { locale: "ru", languageSlug: "russian", videoSlug: "jesus" },
+      { locale: "ru", languageSlug: null, videoSlug: "jesus" },
+    ])
+    expect(result?.video.title).toBe("Jesus RU")
+    expect(result?.video.children[0]?.title).toBe("The Beginning RU")
   })
 
   it("falls back to English questions without losing localized title or dub selection", async () => {
@@ -510,6 +667,22 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
           videoBySlug: makeAdminVideo({
             locales: [
               {
+                documentId: "loc-ru-broad",
+                title: "Jesus RU broad",
+                description: "Russian broad description",
+                snippet: "Russian broad snippet",
+                imageAlt: "Russian broad still",
+              },
+            ],
+            studyQuestions: [],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            locales: [
+              {
                 documentId: "loc-en",
                 title: "Jesus",
                 description: "English description",
@@ -528,9 +701,11 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
 
     const result = await resolveWatchVideoBySlug("jesus", "russian")
 
-    expect(
-      queryMock.mock.calls.map((call) => call[0].variables.locale),
-    ).toEqual(["ru", "en"])
+    expect(queryMock.mock.calls.map((call) => call[0].variables)).toEqual([
+      { locale: "ru", languageSlug: "russian", videoSlug: "jesus" },
+      { locale: "ru", languageSlug: null, videoSlug: "jesus" },
+      { locale: "en", languageSlug: null, videoSlug: "jesus" },
+    ])
     expect(result?.video.title).toBe("Jesus RU")
     expect(result?.video.studyQuestions).toEqual([
       { documentId: "sq-en", value: "English question?", order: 1 },

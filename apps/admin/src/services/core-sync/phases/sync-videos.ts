@@ -233,10 +233,11 @@ export async function syncVideos({
   const stats = { ...emptySyncStats }
 
   const languages = await prisma.language.findMany({
-    select: { id: true, coreId: true, bcp47: true },
+    select: { id: true, coreId: true, bcp47: true, slug: true },
   })
   const langMap = new Map(languages.map((l) => [l.coreId, l.id]))
   const bcp47ByCoreId = new Map(languages.map((l) => [l.coreId, l.bcp47]))
+  const slugByCoreId = new Map(languages.map((l) => [l.coreId, l.slug]))
   const origins = await prisma.videoOrigin.findMany({
     select: { id: true, coreId: true },
   })
@@ -413,6 +414,7 @@ export async function syncVideos({
             coreVideos: [video],
             languageIdByCoreId: langMap,
             bcp47ByCoreId,
+            slugByCoreId,
           })
           stats.errors +=
             localizedResult.errors + localizedResult.skippedLanguages

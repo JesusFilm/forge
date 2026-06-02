@@ -109,12 +109,17 @@ describe("toVideoLocales", () => {
             ["lang-en", "en"],
             ["lang-fr", "fr"],
           ]),
+          slugByCoreId: new Map([
+            ["lang-en", "english"],
+            ["lang-fr", "french"],
+          ]),
         },
       ),
     ).toEqual([
       {
         locale: "en",
         languageCoreId: "lang-en",
+        languageSlug: "english",
         title: "Title",
         description: "Description",
         snippet: "Snippet",
@@ -124,6 +129,7 @@ describe("toVideoLocales", () => {
       {
         locale: "fr",
         languageCoreId: "lang-fr",
+        languageSlug: "french",
         title: "Titre",
         description: null,
         snippet: null,
@@ -148,13 +154,64 @@ describe("toVideoLocales", () => {
           snippet: [],
           imageAlt: [],
         },
-        { bcp47ByCoreId: new Map([["lang-no-bcp47", null]]) },
+        {
+          bcp47ByCoreId: new Map([["lang-no-bcp47", null]]),
+          slugByCoreId: new Map([["lang-no-bcp47", "mystery-language"]]),
+        },
       ),
     ).toEqual([
       {
         locale: null,
         languageCoreId: "lang-no-bcp47",
+        languageSlug: "mystery-language",
         title: "No public tag",
+        description: null,
+        snippet: null,
+        imageAlt: null,
+        primary: false,
+      },
+    ])
+  })
+
+  it("does not collapse two Core language variants sharing one BCP-47 tag", () => {
+    expect(
+      toVideoLocales(
+        {
+          title: [
+            { value: "Russian", language: { id: "lang-ru" } },
+            { value: "Russian Alt", language: { id: "lang-ru-alt" } },
+          ],
+          description: [],
+          snippet: [],
+          imageAlt: [],
+        },
+        {
+          bcp47ByCoreId: new Map([
+            ["lang-ru", "ru"],
+            ["lang-ru-alt", "ru"],
+          ]),
+          slugByCoreId: new Map([
+            ["lang-ru", "russian"],
+            ["lang-ru-alt", "russian-alt"],
+          ]),
+        },
+      ),
+    ).toEqual([
+      {
+        locale: "ru",
+        languageCoreId: "lang-ru",
+        languageSlug: "russian",
+        title: "Russian",
+        description: null,
+        snippet: null,
+        imageAlt: null,
+        primary: false,
+      },
+      {
+        locale: "ru",
+        languageCoreId: "lang-ru-alt",
+        languageSlug: "russian-alt",
+        title: "Russian Alt",
         description: null,
         snippet: null,
         imageAlt: null,
@@ -184,6 +241,7 @@ describe("toStudyQuestions", () => {
         coreId: "sq-1",
         locale: "en",
         languageCoreId: "lang-en",
+        languageSlug: null,
         text: "What did you learn?",
         primary: true,
         order: 1,
