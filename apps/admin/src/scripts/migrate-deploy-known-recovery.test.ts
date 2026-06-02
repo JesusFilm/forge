@@ -68,9 +68,22 @@ describe("deployWithKnownRecovery", () => {
       .fn()
       .mockResolvedValueOnce(result(1, `P3009 ${RECOVERABLE_MIGRATION}`))
       .mockResolvedValueOnce(result(1, "resolve failed"))
+      .mockResolvedValueOnce(result(1, "still failed"))
 
     await expect(deployWithKnownRecovery(runner)).rejects.toThrow(
       /resolve --rolled-back/,
     )
+  })
+
+  it("tolerates another replica resolving the migration first", async () => {
+    const runner = vi
+      .fn()
+      .mockResolvedValueOnce(result(1, `P3009 ${RECOVERABLE_MIGRATION}`))
+      .mockResolvedValueOnce(result(1, "migration is not failed"))
+      .mockResolvedValueOnce(result(0))
+
+    await deployWithKnownRecovery(runner)
+
+    expect(runner).toHaveBeenNthCalledWith(3, ["migrate", "deploy"])
   })
 })
