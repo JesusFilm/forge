@@ -81,15 +81,22 @@ describe("backfill-video-localized-metadata args", () => {
     const args = parseArgs([])
 
     expect(args.execute).toBe(false)
+    expect(args.verbose).toBe(false)
     expect(() => validateArgs(args)).toThrow(/Refusing broad backfill/)
   })
 
   it("allows explicit full-catalog execution", () => {
-    const args = parseArgs(["--full-catalog", "--execute", "--batch-size=5"])
+    const args = parseArgs([
+      "--full-catalog",
+      "--execute",
+      "--verbose",
+      "--batch-size=5",
+    ])
 
     expect(args).toMatchObject({
       fullCatalog: true,
       execute: true,
+      verbose: true,
       batchSize: 5,
     })
     expect(() => validateArgs(args)).not.toThrow()
@@ -118,6 +125,7 @@ describe("backfill-video-localized-metadata args", () => {
       slug: "jesus",
       fullCatalog: false,
       execute: false,
+      verbose: false,
       batchSize: 10,
     })
 
@@ -149,6 +157,7 @@ describe("backfill-video-localized-metadata args", () => {
   it("executes in batches with the shared sync transaction options and lock checks", async () => {
     const prisma = buildPrisma()
     const assertLockActive = vi.fn().mockResolvedValue(undefined)
+    const onProgress = vi.fn()
     prisma.video.findMany.mockResolvedValueOnce([
       {
         id: "video-1",
@@ -179,9 +188,10 @@ describe("backfill-video-localized-metadata args", () => {
       {
         fullCatalog: true,
         execute: true,
+        verbose: false,
         batchSize: 1,
       },
-      { assertLockActive },
+      { assertLockActive, onProgress },
     )
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(2)
@@ -208,6 +218,30 @@ describe("backfill-video-localized-metadata args", () => {
       }),
     )
     expect(assertLockActive).toHaveBeenCalledTimes(4)
+    expect(onProgress).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        batch: 1,
+        batches: 2,
+        batchSize: 1,
+        selected: 2,
+        selectedProcessed: 1,
+        coreVideosFetched: 1,
+        videosProcessed: 1,
+        videoLocalesUpserted: 2,
+      }),
+    )
+    expect(onProgress).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        batch: 2,
+        batches: 2,
+        selected: 2,
+        selectedProcessed: 2,
+        videosProcessed: 2,
+        studyQuestionsUpserted: 4,
+      }),
+    )
     expect(syncVideoLocalizedMetadataMock).toHaveBeenCalledWith(
       expect.objectContaining({
         prisma: prisma.tx,
@@ -275,6 +309,7 @@ describe("backfill-video-localized-metadata args", () => {
       slug: "jesus",
       fullCatalog: false,
       execute: true,
+      verbose: false,
       batchSize: 10,
     })
 
