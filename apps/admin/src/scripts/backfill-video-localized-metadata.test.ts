@@ -91,6 +91,8 @@ describe("backfill-video-localized-metadata args", () => {
       "--execute",
       "--verbose",
       "--batch-size=5",
+      "--resume-after=2026-06-02T03:30:00.000Z",
+      "--transaction-timeout-ms=900000",
     ])
 
     expect(args).toMatchObject({
@@ -98,8 +100,16 @@ describe("backfill-video-localized-metadata args", () => {
       execute: true,
       verbose: true,
       batchSize: 5,
+      resumeAfter: new Date("2026-06-02T03:30:00.000Z"),
+      transactionTimeoutMs: 900000,
     })
     expect(() => validateArgs(args)).not.toThrow()
+  })
+
+  it("rejects an invalid resume cutoff", () => {
+    expect(() => parseArgs(["--resume-after=not-a-date"])).toThrow(
+      /--resume-after must be a valid ISO date/,
+    )
   })
 
   it("allows a targeted dry-run by slug", () => {
@@ -190,15 +200,16 @@ describe("backfill-video-localized-metadata args", () => {
         execute: true,
         verbose: false,
         batchSize: 1,
+        transactionTimeoutMs: 900000,
       },
       { assertLockActive, onProgress },
     )
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(2)
-    expect(prisma.$transaction).toHaveBeenCalledWith(
-      expect.any(Function),
-      CORE_SYNC_TRANSACTION_OPTIONS,
-    )
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      ...CORE_SYNC_TRANSACTION_OPTIONS,
+      timeout: 900000,
+    })
     expect(coreQueryMock).toHaveBeenNthCalledWith(
       1,
       expect.any(String),
@@ -267,6 +278,37 @@ describe("backfill-video-localized-metadata args", () => {
       videoLocalesUpserted: 3,
       studyQuestionsUpserted: 4,
     })
+  })
+
+  it("can resume after a previous run by skipping recently synced Core locale rows", async () => {
+    const prisma = buildPrisma()
+    const resumeAfter = new Date("2026-06-02T03:30:00.000Z")
+    prisma.video.findMany.mockResolvedValueOnce([])
+
+    await runBackfill(prisma as never, {
+      fullCatalog: true,
+      execute: false,
+      verbose: false,
+      batchSize: 10,
+      resumeAfter,
+    })
+
+    expect(prisma.video.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          source: "CORE",
+          deletedAt: null,
+          videoLocales: {
+            none: {
+              source: "CORE",
+              deletedAt: null,
+              languageCoreId: { not: null },
+              syncedAt: { gte: resumeAfter },
+            },
+          },
+        }),
+      }),
+    )
   })
 
   it("reports localized variant coverage diagnostics after execution", async () => {
