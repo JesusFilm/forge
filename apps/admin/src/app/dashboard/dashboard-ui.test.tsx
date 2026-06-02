@@ -550,15 +550,11 @@ describe("dashboard UI routes", () => {
 
   it("renders videos page with localized info strip and actions", async () => {
     const html = await htmlFrom(
-      VideosPage({ searchParams: Promise.resolve({ page: "2" }) }),
+      VideosPage({ searchParams: Promise.resolve({ page: "2", q: " mux " }) }),
     )
     expect(html).toContain(uiMessages.pages.videos.infoStrip.items[0])
     expect(html).toContain(uiMessages.pages.videos.actions.primary)
-    expect(html).toContain(uiMessages.pages.videos.actions.filterUnavailable)
     expect(html).toContain(uiMessages.pages.videos.actions.primaryUnavailable)
-    expect(html).toMatch(
-      /<button(?=[^>]*disabled="")(?=[^>]*title="Video filters are not available yet.")/,
-    )
     expect(html).toMatch(
       /<button(?=[^>]*disabled="")(?=[^>]*title="Manual video creation is not available yet.")/,
     )
@@ -568,8 +564,15 @@ describe("dashboard UI routes", () => {
     expect(html).not.toContain(uiMessages.common.operatorNotes)
     expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
       { id: "test-user", role: "ADMIN" },
-      { page: 2 },
+      { page: 2, query: "mux" },
     )
+    expect(html).toContain(uiMessages.pages.videos.search.label)
+    expect(html).toContain(uiMessages.pages.videos.search.placeholder)
+    expect(html).toContain('name="q"')
+    expect(html).toContain('value="mux"')
+    expect(html).toContain("Filtered by &quot;mux&quot;")
+    expect(html).toContain('href="/dashboard/videos?q=mux"')
+    expect(html).toContain('href="/dashboard/videos?page=3&amp;q=mux"')
     expect(html).toContain("Collection")
     expect(html).toContain("https://images.example.com/neon.jpg")
     expect(html).toContain("3 years ago")
@@ -589,6 +592,35 @@ describe("dashboard UI routes", () => {
     )
     expect(html).toContain("Showing 31-60 of 95")
     expect(html).toContain("Page 2 of 4")
+  })
+
+  it("renders filtered empty video search results", async () => {
+    vi.mocked(loadVideoLibraryPage).mockResolvedValueOnce({
+      rows: [],
+      pagination: {
+        total: 0,
+        currentPage: 1,
+        pageSize: 30,
+        pageCount: 1,
+        hasPrevious: false,
+        hasNext: false,
+        offset: 0,
+        rangeStart: 0,
+        rangeEnd: 0,
+      },
+    })
+
+    const html = await htmlFrom(
+      VideosPage({ searchParams: Promise.resolve({ q: "does-not-exist" }) }),
+    )
+
+    expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
+      { id: "test-user", role: "ADMIN" },
+      { page: 1, query: "does-not-exist" },
+    )
+    expect(html).toContain(uiMessages.pages.videos.table.emptySearch)
+    expect(html).not.toContain(uiMessages.pages.videos.table.empty)
+    expect(html).toContain('href="/dashboard/videos"')
   })
 
   it("renders first-page pagination with previous disabled and next linked", async () => {

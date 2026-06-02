@@ -94,6 +94,99 @@ describe("VideoService", () => {
         service.list({ input: {}, query: {} }),
       ).resolves.not.toThrow()
     })
+
+    it("filters across video identifiers and localized metadata when search is present", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: { search: "Jesus Film" }, query: {} })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where.deletedAt).toBeNull()
+      expect(call.where.OR).toEqual(
+        expect.arrayContaining([
+          { coreId: { contains: "Jesus Film", mode: "insensitive" } },
+          { slug: { contains: "Jesus Film", mode: "insensitive" } },
+          {
+            locales: {
+              some: {
+                OR: expect.arrayContaining([
+                  { title: { contains: "Jesus Film", mode: "insensitive" } },
+                  {
+                    description: {
+                      contains: "Jesus Film",
+                      mode: "insensitive",
+                    },
+                  },
+                ]),
+              },
+            },
+          },
+        ]),
+      )
+    })
+
+    it("adds enum filters for human-readable video label and source queries", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: { search: "feature film" }, query: {} })
+
+      let call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where.OR).toEqual(
+        expect.arrayContaining([{ label: { in: ["FEATURE_FILM"] } }]),
+      )
+
+      prisma.video.findMany.mockResolvedValueOnce([])
+      await service.list({ input: { search: "mux" }, query: {} })
+
+      call = prisma.video.findMany.mock.calls[1][0]
+      expect(call.where.OR).toEqual(
+        expect.arrayContaining([{ videoSource: { in: ["MUX"] } }]),
+      )
+    })
+
+    it("filters through dub language and image metadata", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: { search: "english" }, query: {} })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where.OR).toEqual(
+        expect.arrayContaining([
+          {
+            dubs: {
+              some: {
+                OR: expect.arrayContaining([
+                  {
+                    language: {
+                      is: expect.objectContaining({
+                        OR: expect.arrayContaining([
+                          {
+                            slug: {
+                              contains: "english",
+                              mode: "insensitive",
+                            },
+                          },
+                        ]),
+                      }),
+                    },
+                  },
+                ]),
+              },
+            },
+          },
+          {
+            images: {
+              some: {
+                OR: expect.arrayContaining([
+                  { url: { contains: "english", mode: "insensitive" } },
+                  { kind: { contains: "english", mode: "insensitive" } },
+                ]),
+              },
+            },
+          },
+        ]),
+      )
+    })
   })
 
   describe("countActive", () => {
@@ -104,6 +197,26 @@ describe("VideoService", () => {
       expect(prisma.video.count).toHaveBeenCalledWith({
         where: { deletedAt: null },
       })
+    })
+
+    it("uses the same search filter as list", async () => {
+      prisma.video.count.mockResolvedValueOnce(4)
+
+      await expect(service.countActive("published")).resolves.toBe(4)
+
+      const call = prisma.video.count.mock.calls[0][0]
+      expect(call.where.deletedAt).toBeNull()
+      expect(call.where.OR).toEqual(
+        expect.arrayContaining([
+          {
+            locales: {
+              some: {
+                OR: expect.arrayContaining([{ status: { in: ["PUBLISHED"] } }]),
+              },
+            },
+          },
+        ]),
+      )
     })
   })
 
