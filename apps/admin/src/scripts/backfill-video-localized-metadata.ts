@@ -124,7 +124,7 @@ async function fetchCoreLocalizedMetadata(
       limit: coreIds.length,
       where: {
         published: true,
-        id: { in: [...coreIds] },
+        ids: [...coreIds],
       },
     },
   )
