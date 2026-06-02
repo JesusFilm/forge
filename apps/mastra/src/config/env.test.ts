@@ -125,6 +125,15 @@ describe("Mastra env", () => {
     expect(getMastraStorageDir()).toBe(".mastra/storage")
   })
 
+  it("keeps production search eval baseline imports disabled by default", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT", "")
+
+    const { env } = await import("./env")
+
+    expect(env.MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT).toBe("false")
+  })
+
   it("uses the Railway volume mount path for storage when present", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("MASTRA_STORAGE_DIR", "")

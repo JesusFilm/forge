@@ -26,6 +26,9 @@ const envSchema = z.object({
   NEXT_PHASE: z.string().optional(),
   MASTRA_SERVICE_API_KEYS: z.string().min(1).optional(),
   MASTRA_NATIVE_EVAL_ENVIRONMENT: z.string().min(1).optional(),
+  MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT: z
+    .enum(["true", "false"])
+    .default("false"),
   MASTRA_SEARCH_EVAL_ARTIFACT_DIR: z.string().min(1).optional(),
   MASTRA_STORAGE_BACKEND: z.enum(["postgres", "memory"]).default("postgres"),
   MASTRA_STORAGE_DIR: z.string().min(1).optional(),
@@ -105,6 +108,9 @@ export const env = envSchema.parse({
   ),
   MASTRA_NATIVE_EVAL_ENVIRONMENT: emptyToUndefined(
     process.env.MASTRA_NATIVE_EVAL_ENVIRONMENT,
+  ),
+  MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT: emptyToUndefined(
+    process.env.MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT,
   ),
   MASTRA_SEARCH_EVAL_ARTIFACT_DIR: emptyToUndefined(
     process.env.MASTRA_SEARCH_EVAL_ARTIFACT_DIR,

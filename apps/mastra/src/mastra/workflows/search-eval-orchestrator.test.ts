@@ -249,18 +249,18 @@ function promotedSyncSuccess() {
 }
 
 describe("search eval orchestrator workflow", () => {
-  it("defaults to a full seed-baseline capture without candidate generation", () => {
+  it("defaults to a constrained seed-baseline capture without non-seed inputs", () => {
     expect(
       _internal.SearchEvalOrchestratorWorkflowInputSchema.parse({}),
     ).toEqual({
-      mode: "full",
+      mode: "seed-baseline",
       baselineName: "seed-baseline",
       locales: ["en", "es", "fr"],
       searchLimit: 20,
       searchMode: "hybrid",
       contentType: "all",
       nativeSync: true,
-      syncPromoted: true,
+      syncPromoted: false,
       promotedLimit: 100,
       generateCandidates: false,
       traceLimit: 25,
@@ -278,7 +278,71 @@ describe("search eval orchestrator workflow", () => {
     )
   })
 
-  it("runs full mode as offline baseline capture plus native report and promoted sync", async () => {
+  it("runs seed-baseline mode as offline baseline capture plus native report sync", async () => {
+    const outputReport = report()
+    const launchOffline = vi.fn(async (input) =>
+      offlineSuccess(input.mode, outputReport),
+    )
+    const launchNative = vi.fn(async () => nativeReportSuccess(outputReport))
+
+    const result = await runSearchEvalOrchestratorWorkflow(
+      {},
+      {
+        runId: "run-orchestrator",
+        checkReadiness: async () => ({
+          ok: true,
+          artifactRoot: null,
+          checks: [],
+        }),
+        launchOfflineSearchEval: launchOffline,
+        launchNativeSuite: launchNative,
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      mastraRunId: "run-orchestrator",
+      summary: {
+        mode: "seed-baseline",
+        artifacts: {
+          baselineName: "seed-baseline",
+          reportId: "report-1",
+          reportPath: "/tmp/search-eval/reports/report-1.json",
+        },
+        nativeEvaluation: {
+          reportSync: {
+            datasetId: "dataset-1",
+            scorerIds: ["scorer-1"],
+            experimentId: "experiment-1",
+            integrationStatus: "native_synced",
+          },
+        },
+        passFail: { state: "not_applicable", reasons: [] },
+        readiness: { ok: true, checks: [] },
+      },
+    })
+    expect(launchOffline).toHaveBeenCalledWith(
+      {
+        mode: "capture-baseline",
+        baselineName: "seed-baseline",
+        locales: ["en", "es", "fr"],
+        searchLimit: 20,
+        searchMode: "hybrid",
+        contentType: "all",
+      },
+      { runId: "run-orchestrator-offline-search-eval" },
+    )
+    expect(launchNative).toHaveBeenCalledTimes(1)
+    expect(launchNative).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "sync-report",
+        reportId: "report-1",
+      }),
+      { runId: "run-orchestrator-native-report-sync" },
+    )
+  })
+
+  it("runs explicit full mode as offline baseline capture plus native report and promoted sync", async () => {
     const outputReport = report()
     const launchOffline = vi.fn(async (input) =>
       offlineSuccess(input.mode, outputReport),
@@ -290,7 +354,7 @@ describe("search eval orchestrator workflow", () => {
     )
 
     const result = await runSearchEvalOrchestratorWorkflow(
-      {},
+      { mode: "full", syncPromoted: true },
       {
         runId: "run-orchestrator",
         launchOfflineSearchEval: launchOffline,
@@ -357,12 +421,92 @@ describe("search eval orchestrator workflow", () => {
     )
   })
 
+  it("rejects stale non-seed flags in seed-baseline mode", async () => {
+    const launchOffline = vi.fn()
+
+    const result = await runSearchEvalOrchestratorWorkflow(
+      {
+        mode: "seed-baseline",
+        generateCandidates: true,
+      },
+      {
+        runId: "run-orchestrator",
+        checkReadiness: async () => ({
+          ok: true,
+          artifactRoot: null,
+          checks: [],
+        }),
+        launchOfflineSearchEval: launchOffline,
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "invalid_input",
+      retryable: false,
+      summary: {
+        passFail: {
+          state: "failed",
+          reasons: ["seed-baseline cannot generate candidates"],
+        },
+      },
+    })
+    expect(launchOffline).not.toHaveBeenCalled()
+  })
+
+  it("fails seed-baseline mode before offline eval when readiness fails", async () => {
+    const launchOffline = vi.fn()
+
+    const result = await runSearchEvalOrchestratorWorkflow(
+      {},
+      {
+        runId: "run-orchestrator",
+        checkReadiness: async () => ({
+          ok: false,
+          artifactRoot: null,
+          checks: [
+            {
+              name: "admin_search_bearer",
+              status: "fail",
+              reason: "missing_admin_search_eval_api_key",
+            },
+          ],
+        }),
+        launchOfflineSearchEval: launchOffline,
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "readiness_failed",
+      retryable: false,
+      summary: {
+        readiness: {
+          ok: false,
+          checks: [
+            {
+              name: "admin_search_bearer",
+              status: "fail",
+              reason: "missing_admin_search_eval_api_key",
+            },
+          ],
+        },
+        passFail: {
+          state: "failed",
+          reasons: ["missing_admin_search_eval_api_key"],
+        },
+      },
+    })
+    expect(launchOffline).not.toHaveBeenCalled()
+  })
+
   it("resumes native report sync by report id without rerunning offline eval", async () => {
     const launchOffline = vi.fn()
     const launchNative = vi.fn(async () => nativeReportSuccess(report()))
 
     const result = await runSearchEvalOrchestratorWorkflow(
       {
+        mode: "full",
         resumeReportId: "report-1",
         syncPromoted: false,
       },
@@ -584,6 +728,11 @@ describe("search eval orchestrator workflow", () => {
       { syncPromoted: false },
       {
         runId: "run-orchestrator",
+        checkReadiness: async () => ({
+          ok: true,
+          artifactRoot: null,
+          checks: [],
+        }),
         launchOfflineSearchEval: launchOffline,
         launchNativeSuite: launchNative,
       },
@@ -620,6 +769,11 @@ describe("search eval orchestrator workflow", () => {
       {},
       {
         runId: "run-orchestrator",
+        checkReadiness: async () => ({
+          ok: true,
+          artifactRoot: null,
+          checks: [],
+        }),
         launchOfflineSearchEval: launchOffline,
         launchNativeSuite: launchNative,
       },
@@ -666,7 +820,7 @@ describe("search eval orchestrator workflow", () => {
     )
 
     const result = await runSearchEvalOrchestratorWorkflow(
-      {},
+      { mode: "full", syncPromoted: true },
       {
         runId: "run-orchestrator",
         launchOfflineSearchEval: vi.fn(async (input) =>
@@ -706,7 +860,7 @@ describe("search eval orchestrator workflow", () => {
     const launchOffline = vi.fn()
 
     const result = await runSearchEvalOrchestratorWorkflow(
-      { generateCandidates: true },
+      { mode: "full", generateCandidates: true },
       {
         runId: "run-orchestrator",
         launchEvalQueryGeneration: vi.fn(async () => ({
@@ -741,7 +895,7 @@ describe("search eval orchestrator workflow", () => {
     const launchOffline = vi.fn()
 
     const result = await runSearchEvalOrchestratorWorkflow(
-      { submitSeedCandidates: true },
+      { mode: "full", submitSeedCandidates: true },
       {
         runId: "run-orchestrator",
         launchCandidateReview: vi.fn(async () => ({
@@ -798,6 +952,7 @@ describe("search eval orchestrator workflow", () => {
 
     const result = await runSearchEvalOrchestratorWorkflow(
       {
+        mode: "full",
         generateCandidates: true,
         submitSeedCandidates: true,
         nativeSync: false,
@@ -874,10 +1029,10 @@ describe("search eval orchestrator workflow", () => {
     expect(response.body.result).toMatchObject({ ok: true })
     expect(launch).toHaveBeenCalledWith(
       expect.objectContaining({
-        mode: "full",
+        mode: "seed-baseline",
         baselineName: "seed-baseline",
         nativeSync: true,
-        syncPromoted: true,
+        syncPromoted: false,
       }),
       { runId: expect.any(String) },
     )

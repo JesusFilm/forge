@@ -8,6 +8,8 @@
     "build": "mastra build --studio",
     "start": "MASTRA_STUDIO_PATH=.mastra/output/studio node .mastra/output/index.mjs",
     "lint": "eslint .",
+    "seed:search-eval": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/seed-search-eval-from-artifact.ts",
+    "seed:search-eval:prod": "MASTRA_NATIVE_EVAL_ENVIRONMENT=local pnpm --dir ../.. exec tsx apps/mastra/src/scripts/seed-search-eval-from-artifact.ts --artifact docs/search-eval-baselines/temporary/prod-seed-baseline-2026-06-02-export.json --environment-label local",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

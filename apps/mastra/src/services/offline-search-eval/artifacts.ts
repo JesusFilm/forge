@@ -98,7 +98,7 @@ const BaselineCaseSchema = z
   })
   .strict()
 
-const BaselineArtifactSchema = z
+export const BaselineArtifactSchema = z
   .object({
     schemaVersion: z.literal("1"),
     kind: z.literal("baseline"),

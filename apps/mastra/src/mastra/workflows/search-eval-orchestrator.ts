@@ -5,6 +5,10 @@ import { createStep, createWorkflow } from "@mastra/core/workflows"
 import { z } from "zod"
 
 import { isValidServiceBearer } from "../../server/service-bearer"
+import {
+  checkSearchEvalBaselineReadiness,
+  type SearchEvalBaselineReadiness,
+} from "../../services/offline-search-eval/baseline-portability"
 import { SEARCH_EVAL_SEED_PROMPT_LOCALES } from "../../services/offline-search-eval/seed-prompt-set"
 import type { SearchEvalReport } from "../../services/offline-search-eval/types"
 import {
@@ -26,6 +30,7 @@ const WORKFLOW_FAILURE_ERROR_PREFIX = "SEARCH_EVAL_ORCHESTRATOR_FAILED:"
 const DEFAULT_BASELINE_NAME = "seed-baseline"
 const DEFAULT_SEARCH_MODE = "hybrid"
 const DEFAULT_CONTENT_TYPE = "all"
+const DEFAULT_MODE = "seed-baseline"
 
 const SafeNameSchema = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/)
 
@@ -34,10 +39,10 @@ const SourceSchema = z.enum(["catalog", "locale_quality", "trace"])
 export const SearchEvalOrchestratorWorkflowInputSchema = z
   .object({
     mode: z
-      .enum(["full", "compare", "release-gate"])
-      .default("full")
+      .enum(["seed-baseline", "full", "compare", "release-gate"])
+      .default(DEFAULT_MODE)
       .describe(
-        "full captures a seed baseline; compare compares against a baseline; release-gate compares and evaluates thresholds.",
+        "seed-baseline captures the production seed baseline; full coordinates general capture; compare compares against a baseline; release-gate compares and evaluates thresholds.",
       ),
     baselineName: SafeNameSchema.default(DEFAULT_BASELINE_NAME).describe(
       "Named baseline artifact to capture or compare against.",
@@ -75,7 +80,7 @@ export const SearchEvalOrchestratorWorkflowInputSchema = z
       .describe("Sync the resulting report into native Evaluation."),
     syncPromoted: z
       .boolean()
-      .default(true)
+      .default(false)
       .describe(
         "Sync already-promoted Admin candidates into native Evaluation.",
       ),
@@ -202,6 +207,21 @@ const PassFailSchema = z
   })
   .strict()
 
+const ReadinessSummarySchema = z
+  .object({
+    ok: z.boolean(),
+    checks: z.array(
+      z
+        .object({
+          name: z.string(),
+          status: z.enum(["pass", "fail"]),
+          reason: z.string().optional(),
+        })
+        .strict(),
+    ),
+  })
+  .strict()
+
 const ResumeSchema = z
   .object({
     reportId: z.string().optional(),
@@ -226,6 +246,7 @@ const SummarySchema = z
     nativeEvaluation: NativeSummarySchema,
     counts: CountsSchema,
     passFail: PassFailSchema,
+    readiness: ReadinessSummarySchema.optional(),
     resume: ResumeSchema.optional(),
   })
   .strict()
@@ -234,6 +255,7 @@ const FailureReasonSchema = z.enum([
   "invalid_input",
   "candidate_generation_failed",
   "seed_submit_failed",
+  "readiness_failed",
   "offline_eval_failed",
   "native_report_sync_failed",
   "promoted_sync_failed",
@@ -277,6 +299,7 @@ type WorkflowOptions = {
   launchCandidateReview?: typeof launchSearchEvalCandidateReviewWorkflow
   launchOfflineSearchEval?: typeof launchOfflineSearchEvalWorkflow
   launchNativeSuite?: typeof launchSearchEvalNativeSuiteWorkflow
+  checkReadiness?: () => Promise<SearchEvalBaselineReadiness>
 }
 
 type RouteHandlerInput = {
@@ -602,7 +625,7 @@ function evaluateReleaseGate(
 function offlineInputFor(input: SearchEvalOrchestratorWorkflowInput) {
   return {
     mode:
-      input.mode === "full"
+      input.mode === "full" || input.mode === "seed-baseline"
         ? ("capture-baseline" as const)
         : ("compare" as const),
     baselineName: input.baselineName,
@@ -610,6 +633,37 @@ function offlineInputFor(input: SearchEvalOrchestratorWorkflowInput) {
     searchLimit: input.searchLimit,
     searchMode: input.searchMode,
     contentType: input.contentType,
+  }
+}
+
+function seedBaselineInputViolation(
+  input: SearchEvalOrchestratorWorkflowInput,
+): string | null {
+  if (input.mode !== "seed-baseline") return null
+  if (input.generateCandidates)
+    return "seed-baseline cannot generate candidates"
+  if (input.generationSources)
+    return "seed-baseline cannot set generation sources"
+  if (input.submitSeedCandidates)
+    return "seed-baseline cannot submit seed candidates"
+  if (input.syncPromoted) return "seed-baseline cannot sync promoted candidates"
+  if (!input.nativeSync) return "seed-baseline requires native report sync"
+  if (input.resumeReportId)
+    return "seed-baseline cannot resume an existing report"
+  return null
+}
+
+function updateFromReadiness(
+  summary: z.infer<typeof SummarySchema>,
+  readiness: SearchEvalBaselineReadiness,
+) {
+  summary.readiness = {
+    ok: readiness.ok,
+    checks: readiness.checks.map((check) => ({
+      name: check.name,
+      status: check.status,
+      reason: check.reason,
+    })),
   }
 }
 
@@ -660,6 +714,36 @@ export async function runSearchEvalOrchestratorWorkflow(
     options.launchOfflineSearchEval ?? launchOfflineSearchEvalWorkflow
   const launchNative =
     options.launchNativeSuite ?? launchSearchEvalNativeSuiteWorkflow
+  const checkReadiness =
+    options.checkReadiness ?? checkSearchEvalBaselineReadiness
+
+  const seedViolation = seedBaselineInputViolation(input)
+  if (seedViolation) {
+    summary.passFail = { state: "failed", reasons: [seedViolation] }
+    return failure("invalid_input", {
+      retryable: false,
+      mastraRunId,
+      summary,
+    })
+  }
+
+  if (input.mode === "seed-baseline") {
+    const readiness = await checkReadiness()
+    updateFromReadiness(summary, readiness)
+    if (!readiness.ok) {
+      summary.passFail = {
+        state: "failed",
+        reasons: readiness.checks
+          .filter((check) => check.status === "fail")
+          .map((check) => check.reason ?? check.name),
+      }
+      return failure("readiness_failed", {
+        retryable: false,
+        mastraRunId,
+        summary,
+      })
+    }
+  }
 
   if (input.generateCandidates) {
     const runId = childRunId(mastraRunId, "eval-query-generation")
@@ -1015,6 +1099,7 @@ function invalidInput(runId = randomUUID()): SearchEvalOrchestratorFailure {
 
 function childFailureStatus(reason: string): number | null {
   if (reason === "invalid_input") return 400
+  if (reason === "readiness_failed") return 503
   if (reason === "artifact_invalid") return 400
   if (reason === "sample_not_allowed") return 403
   if (reason === "artifact_not_found") return 404
@@ -1035,6 +1120,7 @@ function childFailureStatus(reason: string): number | null {
 function routeStatusForResult(result: SearchEvalOrchestratorWorkflowResult) {
   if (result.ok) return 200
   if (result.reason === "invalid_input") return 400
+  if (result.reason === "readiness_failed") return 503
   if (result.reason === "release_gate_failed") return 409
   const failedChild = result.summary.childWorkflowRuns.find(
     (child) => child.status === "failed" && child.reason,
