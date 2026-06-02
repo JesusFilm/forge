@@ -39,7 +39,7 @@ describe("syncVideos", () => {
               slug: "video",
               label: "episode",
               publishedAt: "2026-01-01T00:00:00.000Z",
-              primaryLanguageId: "lang-en",
+              primaryLanguageId: "lang-es",
               source: "mux",
               origin: { id: "origin-1" },
               title: [
@@ -48,8 +48,12 @@ describe("syncVideos", () => {
               ],
               description: [
                 { value: "Description", language: { id: "lang-en" } },
+                { value: "Descripcion", language: { id: "lang-es" } },
               ],
-              snippet: [{ value: "Snippet", language: { id: "lang-en" } }],
+              snippet: [
+                { value: "Snippet", language: { id: "lang-en" } },
+                { value: "Resumen", language: { id: "lang-es" } },
+              ],
               imageAlt: [{ value: "Alt", language: { id: "lang-en" } }],
               studyQuestions: [
                 {
@@ -152,6 +156,7 @@ describe("syncVideos", () => {
       language: {
         findMany: vi.fn().mockResolvedValue([
           { id: "language-1", coreId: "lang-en", bcp47: "en" },
+          { id: "language-es", coreId: "lang-es", bcp47: "es" },
           { id: "language-ru", coreId: "lang-ru", bcp47: "ru" },
         ]),
       },
@@ -187,6 +192,20 @@ describe("syncVideos", () => {
           label: "EPISODE",
           videoSource: "MUX",
           originId: "origin-1",
+          primaryLanguageId: "language-es",
+        }),
+        update: expect.objectContaining({
+          primaryLanguageId: "language-es",
+        }),
+      }),
+    )
+    expect(tx.videoLocale.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          locale: "es",
+          languageId: "language-es",
+          description: "Descripcion",
+          snippet: "Resumen",
         }),
       }),
     )

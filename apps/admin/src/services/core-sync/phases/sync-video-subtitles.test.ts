@@ -23,12 +23,12 @@ describe("syncVideoSubtitles", () => {
             subtitles: [
               {
                 id: "subtitle-1",
-                languageId: "language-core-1",
+                languageId: "language-core-es",
                 primary: true,
                 edition: "edition-1",
-                vttSrc: "subtitle.vtt",
-                srtSrc: "subtitle.srt",
-                value: "Subtitle text",
+                vttSrc: "es.vtt",
+                srtSrc: "es.srt",
+                value: "Texto de subtitulo",
                 videoEdition: { id: "edition-core-1" },
               },
             ],
@@ -50,7 +50,7 @@ describe("syncVideoSubtitles", () => {
         findMany: vi
           .fn()
           .mockResolvedValue([
-            { id: "language-admin-1", coreId: "language-core-1" },
+            { id: "language-admin-es", coreId: "language-core-es" },
           ]),
       },
       videoEdition: {
@@ -76,6 +76,14 @@ describe("syncVideoSubtitles", () => {
     expect(stats.errors).toBe(0)
     expect(stats.updated).toBe(1)
     expect(tx.$executeRaw).toHaveBeenCalledOnce()
+    const [, ...values] = tx.$executeRaw.mock.calls[0] as [
+      ReadonlyArray<string>,
+      ...unknown[],
+    ]
+    expect(values[4]).toContain("language-admin-es")
+    expect(values[5]).toContain("Texto de subtitulo")
+    expect(values[7]).toContain("es.vtt")
+    expect(values[8]).toContain("es.srt")
     expect(prisma.videoSubtitle.updateMany).toHaveBeenCalledWith({
       where: {
         source: "CORE",

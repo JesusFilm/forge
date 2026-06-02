@@ -124,6 +124,55 @@ describe("runSceneEmbeddingBackfill", () => {
     })
   })
 
+  it("enumerates locale targets from primary language, subtitles, and dubs before launching Mastra", async () => {
+    queryRawMock.mockResolvedValueOnce([
+      {
+        video_id: "video-1",
+        video_edition_id: "edition-1",
+        core_id: "core-1",
+        bcp47: "es",
+      },
+      {
+        video_id: "video-1",
+        video_edition_id: "edition-1",
+        core_id: "core-1",
+        bcp47: "fr",
+      },
+      {
+        video_id: "video-1",
+        video_edition_id: "edition-1",
+        core_id: "core-1",
+        bcp47: "pt-BR",
+      },
+    ])
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+      mode: "force",
+    })
+
+    const [queryParts] = queryRawMock.mock.calls[0] as [
+      ReadonlyArray<string>,
+      ...unknown[],
+    ]
+    const queryText = queryParts.join("?")
+    expect(queryText).toContain("v.primary_language_id")
+    expect(queryText).toContain("JOIN video_subtitle s")
+    expect(queryText).toContain("JOIN language l ON l.id = d.language_id")
+    expect(launchMastraSceneEmbeddingMock).toHaveBeenCalledTimes(3)
+    expect(
+      launchMastraSceneEmbeddingMock.mock.calls.map(
+        ([payload]) => payload.locale,
+      ),
+    ).toEqual(["es", "fr", "pt-BR"])
+    expect(report).toMatchObject({
+      totalTargets: 3,
+      succeeded: 3,
+      skipped: 0,
+      failed: 0,
+    })
+  })
+
   it("keeps missing scene-analysis artifacts as operator-actionable skipped outcomes", async () => {
     loadSceneArtifactMock.mockRejectedValueOnce(
       new ManagerArtifactError("artifact_missing", "missing"),
