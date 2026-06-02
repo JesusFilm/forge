@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  FlatList,
+  type LayoutChangeEvent,
   Pressable,
   StyleSheet,
   Switch,
@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native"
+import { FlashList } from "@shopify/flash-list"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
@@ -48,6 +49,15 @@ export function SubtitleSheetContent({
   const typography = useTypography()
   const [query, setQuery] = useState("")
   const [localToggle, setLocalToggle] = useState(subtitleEnabled)
+  // FlashList virtualizes (lazy-loads only visible rows) but needs a CONCRETE
+  // height; inside a formSheet it can't derive one from flex and would render
+  // ALL rows. Measure with onLayout, seeded with an estimate so the first frame
+  // is already virtualized.
+  const [listHeight, setListHeight] = useState(() => Math.round(windowHeight))
+  const onListLayout = useCallback((e: LayoutChangeEvent) => {
+    const h = Math.round(e.nativeEvent.layout.height)
+    if (h > 0) setListHeight((prev) => (prev !== h ? h : prev))
+  }, [])
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Once a selection has committed to closing, ignore further taps. Without
   // this, a fast double-tap (first arms the 300ms deferred close, second takes
@@ -203,29 +213,29 @@ export function SubtitleSheetContent({
   )
 
   return (
-    <FlatList
-      style={styles.container}
-      data={filtered}
-      keyExtractor={keyExtractor}
-      renderItem={renderItem}
-      keyboardShouldPersistTaps="handled"
-      ListHeaderComponent={header}
-      contentContainerStyle={{
-        paddingHorizontal: HORIZONTAL_PADDING,
-        paddingBottom: insets.bottom + windowHeight * 0.25,
-      }}
-      showsVerticalScrollIndicator={false}
-      initialNumToRender={15}
-      maxToRenderPerBatch={20}
-      windowSize={5}
-      ListEmptyComponent={
-        <View style={styles.emptySearch}>
-          <Text style={[styles.emptySearchText, typography.body]}>
-            No subtitles found
-          </Text>
-        </View>
-      }
-    />
+    <View style={styles.container} onLayout={onListLayout}>
+      <View style={{ height: listHeight }}>
+        <FlashList
+          data={filtered}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={header}
+          contentContainerStyle={{
+            paddingHorizontal: HORIZONTAL_PADDING,
+            paddingBottom: insets.bottom + 24,
+          }}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptySearch}>
+              <Text style={[styles.emptySearchText, typography.body]}>
+                No subtitles found
+              </Text>
+            </View>
+          }
+        />
+      </View>
+    </View>
   )
 }
 

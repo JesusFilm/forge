@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react"
 import {
-  FlatList,
+  type LayoutChangeEvent,
   Pressable,
   StyleSheet,
   Text,
@@ -8,6 +8,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native"
+import { FlashList } from "@shopify/flash-list"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
@@ -43,6 +44,16 @@ export function LanguageSheetContent({
   const { height: windowHeight } = useWindowDimensions()
   const typography = useTypography()
   const [query, setQuery] = useState("")
+  // FlashList virtualizes (lazy-loads only the visible rows) but needs a
+  // CONCRETE height to do it — inside a formSheet it can't derive one from
+  // flex, and falls back to rendering ALL 2000+ rows (a multi-second freeze on
+  // open). Measure the available height with onLayout; seed it with an estimate
+  // so the very first frame is already virtualized, then refine to exact.
+  const [listHeight, setListHeight] = useState(() => Math.round(windowHeight))
+  const onListLayout = useCallback((e: LayoutChangeEvent) => {
+    const h = Math.round(e.nativeEvent.layout.height)
+    if (h > 0) setListHeight((prev) => (prev !== h ? h : prev))
+  }, [])
   // Ignore a second tap once a selection has committed to closing, so a fast
   // double-tap can't call router.back() twice and pop the watch screen.
   const closingRef = useRef(false)
@@ -104,9 +115,8 @@ export function LanguageSheetContent({
 
   const keyExtractor = useCallback((item: WatchVariant) => item.documentId, [])
 
-  // Search + current selection live in the list header so they share the
-  // single scroll container — avoids sibling-overlap when the formSheet host
-  // doesn't give a plain flex column a bounded height.
+  // Search + current selection live in the list header so they scroll with the
+  // list in one container.
   const header = (
     <View style={styles.header}>
       <View style={styles.searchContainer}>
@@ -167,29 +177,29 @@ export function LanguageSheetContent({
   )
 
   return (
-    <FlatList
-      style={styles.container}
-      data={filtered}
-      keyExtractor={keyExtractor}
-      renderItem={renderItem}
-      keyboardShouldPersistTaps="handled"
-      ListHeaderComponent={header}
-      contentContainerStyle={{
-        paddingHorizontal: HORIZONTAL_PADDING,
-        paddingBottom: insets.bottom + windowHeight * 0.25,
-      }}
-      showsVerticalScrollIndicator={false}
-      initialNumToRender={15}
-      maxToRenderPerBatch={20}
-      windowSize={5}
-      ListEmptyComponent={
-        <View style={styles.emptySearch}>
-          <Text style={[styles.emptySearchText, typography.body]}>
-            No languages found
-          </Text>
-        </View>
-      }
-    />
+    <View style={styles.container} onLayout={onListLayout}>
+      <View style={{ height: listHeight }}>
+        <FlashList
+          data={filtered}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={header}
+          contentContainerStyle={{
+            paddingHorizontal: HORIZONTAL_PADDING,
+            paddingBottom: insets.bottom + 24,
+          }}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptySearch}>
+              <Text style={[styles.emptySearchText, typography.body]}>
+                No languages found
+              </Text>
+            </View>
+          }
+        />
+      </View>
+    </View>
   )
 }
 
