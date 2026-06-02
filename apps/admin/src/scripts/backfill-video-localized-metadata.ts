@@ -46,6 +46,8 @@ export type BackfillVideoLocalizedMetadataArgs = {
   execute: boolean
   verbose: boolean
   batchSize: number
+  resumeAfter?: Date
+  transactionTimeoutMs?: number
 }
 
 export type BackfillVideoLocalizedMetadataProgress = {
@@ -80,6 +82,15 @@ export function parseArgs(
     }
     return parsed
   }
+  const dateFor = (name: string): Date | undefined => {
+    const raw = valueFor(name)
+    if (!raw) return undefined
+    const parsed = new Date(raw)
+    if (Number.isNaN(parsed.getTime())) {
+      throw new Error(`--${name} must be a valid ISO date`)
+    }
+    return parsed
+  }
 
   return {
     slug: valueFor("slug"),
@@ -89,6 +100,8 @@ export function parseArgs(
     execute: argv.includes("--execute"),
     verbose: argv.includes("--verbose"),
     batchSize: intFor("batch-size") ?? DEFAULT_BATCH_SIZE,
+    resumeAfter: dateFor("resume-after"),
+    transactionTimeoutMs: intFor("transaction-timeout-ms"),
   }
 }
 
@@ -124,6 +137,18 @@ export async function selectAdminVideos(
       deletedAt: null,
       ...(args.slug ? { slug: args.slug } : {}),
       ...(args.coreId ? { coreId: args.coreId } : {}),
+      ...(args.resumeAfter
+        ? {
+            videoLocales: {
+              none: {
+                source: "CORE",
+                deletedAt: null,
+                languageCoreId: { not: null },
+                syncedAt: { gte: args.resumeAfter },
+              },
+            },
+          }
+        : {}),
     },
     select: { id: true, coreId: true, source: true, publishedAt: true },
     orderBy: { updatedAt: "desc" },
@@ -302,6 +327,10 @@ export async function runBackfill(
   )
 
   const batches = Math.ceil(selected.length / args.batchSize)
+  const transactionOptions = {
+    ...CORE_SYNC_TRANSACTION_OPTIONS,
+    timeout: args.transactionTimeoutMs ?? CORE_SYNC_TRANSACTION_OPTIONS.timeout,
+  }
   for (let index = 0; index < selected.length; index += args.batchSize) {
     await options.assertLockActive?.()
     const batch = selected.slice(index, index + args.batchSize)
@@ -319,7 +348,7 @@ export async function runBackfill(
           slugByCoreId,
           complete: true,
         }),
-      CORE_SYNC_TRANSACTION_OPTIONS,
+      transactionOptions,
     )
     mergeResults(summary, result)
     options.onProgress?.({
@@ -390,6 +419,8 @@ async function main(): Promise<void> {
           coreId: args.coreId,
           limit: args.limit,
           batchSize: args.batchSize,
+          resumeAfter: args.resumeAfter?.toISOString(),
+          transactionTimeoutMs: args.transactionTimeoutMs,
         }),
       )
     }
