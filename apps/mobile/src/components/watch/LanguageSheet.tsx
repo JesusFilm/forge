@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import {
   FlatList,
   Pressable,
@@ -43,6 +43,9 @@ export function LanguageSheetContent({
   const { height: windowHeight } = useWindowDimensions()
   const typography = useTypography()
   const [query, setQuery] = useState("")
+  // Ignore a second tap once a selection has committed to closing, so a fast
+  // double-tap can't call router.back() twice and pop the watch screen.
+  const closingRef = useRef(false)
 
   const sorted = useMemo(() => sortByName(variants), [variants])
   const activeVariant = useMemo(
@@ -64,7 +67,8 @@ export function LanguageSheetContent({
 
   const handleSelect = useCallback(
     (variant: WatchVariant) => {
-      if (!variant.hls) return
+      if (closingRef.current || !variant.hls) return
+      closingRef.current = true
       onLanguageChange(variant.slug)
       onClose()
     },
@@ -115,9 +119,15 @@ export function LanguageSheetContent({
           onChangeText={setQuery}
           autoCapitalize="none"
           autoCorrect={false}
+          accessibilityLabel="Search languages"
         />
         {query.length > 0 && (
-          <Pressable onPress={() => setQuery("")} hitSlop={8}>
+          <Pressable
+            onPress={() => setQuery("")}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Clear search"
+          >
             <Ionicons name="close-circle" size={18} color={TEXT_SECONDARY} />
           </Pressable>
         )}

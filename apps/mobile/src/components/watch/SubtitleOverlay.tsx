@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { StyleSheet, Text, View } from "react-native"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
+import { useEvent } from "expo"
 
 import { parseVtt, type VttCue } from "../../lib/parseVtt"
 import { validateActionUrl } from "../../lib/validateUrl"
@@ -11,6 +12,26 @@ type SubtitleOverlayProps = {
   bottomOffset?: number
 }
 
+// Cues are sorted by start time, so the active cue is the last one whose start
+// is <= t, provided t is still before its (exclusive) end. Binary search keeps
+// the 100ms poll cheap even for a feature-length VTT with hundreds of cues.
+function findActiveCue(cues: VttCue[], t: number): VttCue | undefined {
+  let lo = 0
+  let hi = cues.length - 1
+  let ans = -1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (cues[mid].start <= t) {
+      ans = mid
+      lo = mid + 1
+    } else {
+      hi = mid - 1
+    }
+  }
+  if (ans >= 0 && t < cues[ans].end) return cues[ans]
+  return undefined
+}
+
 export function SubtitleOverlay({
   player,
   vttSrc,
@@ -18,6 +39,10 @@ export function SubtitleOverlay({
 }: SubtitleOverlayProps) {
   const [cues, setCues] = useState<VttCue[]>([])
   const [activeText, setActiveText] = useState<string>("")
+
+  const { isPlaying } = useEvent(player, "playingChange", {
+    isPlaying: player.playing,
+  })
 
   useEffect(() => {
     // Validate the CMS-sourced URL before fetching (apps/mobile/CLAUDE.md).
@@ -27,17 +52,31 @@ export function SubtitleOverlay({
       return
     }
     let cancelled = false
-    // Timeout so a stalled CDN can't hold the request open indefinitely.
-    fetch(vttSrc, { signal: AbortSignal.timeout(8000) })
-      .then((r) => r.text())
+    // AbortController so switching language (or unmounting) actually cancels
+    // the in-flight request instead of leaking it; the timer is the hard cap
+    // so a stalled CDN can't hold the request open indefinitely.
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+    fetch(vttSrc, { signal: controller.signal })
+      .then((r) => {
+        // A CDN 4xx/5xx returns an error-page body; without this guard
+        // parseVtt would silently yield zero cues and subtitles never appear.
+        if (!r.ok) throw new Error(`vtt_http_${r.status}`)
+        return r.text()
+      })
       .then((text) => {
-        if (!cancelled) setCues(parseVtt(text))
+        if (!cancelled) {
+          setCues([...parseVtt(text)].sort((a, b) => a.start - b.start))
+        }
       })
       .catch(() => {
         if (!cancelled) setCues([])
       })
+      .finally(() => clearTimeout(timeout))
     return () => {
       cancelled = true
+      controller.abort()
+      clearTimeout(timeout)
     }
   }, [vttSrc])
 
@@ -46,12 +85,9 @@ export function SubtitleOverlay({
       setActiveText("")
       return
     }
-    // The effect re-runs (and the interval restarts) whenever cues changes,
-    // so the closure always reads the current cues — no ref mirror needed.
-    const interval = setInterval(() => {
+    const update = () => {
       try {
-        const t = player.currentTime
-        const cue = cues.find((c) => t >= c.start && t <= c.end)
+        const cue = findActiveCue(cues, player.currentTime)
         setActiveText((prev) => {
           const next = cue?.text ?? ""
           return prev === next ? prev : next
@@ -59,9 +95,15 @@ export function SubtitleOverlay({
       } catch {
         // Player released
       }
-    }, 100)
+    }
+    // Reflect the current position immediately (covers paused-at-a-cue), then
+    // only poll while playing — no need to scan cues 10x/s on a paused or
+    // backgrounded player.
+    update()
+    if (!isPlaying) return
+    const interval = setInterval(update, 100)
     return () => clearInterval(interval)
-  }, [cues, player])
+  }, [cues, player, isPlaying])
 
   if (!activeText) return null
 

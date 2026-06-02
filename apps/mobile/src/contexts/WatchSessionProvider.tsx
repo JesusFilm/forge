@@ -48,20 +48,32 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   )
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null)
 
-  const activeVariant = video?.variants[activeVariantIndex] ?? null
+  // Clamp against the active index: when navigating to a different video, the
+  // index from the previous one can briefly exceed the new variant list before
+  // the default-resolution effect re-runs. Clamping avoids a one-frame
+  // undefined variant.
+  const activeVariant =
+    video && video.variants.length > 0
+      ? (video.variants[
+          Math.min(activeVariantIndex, video.variants.length - 1)
+        ] ?? null)
+      : null
 
   // Default the dubbing language: device locale → video primary → English → first.
   useEffect(() => {
     if (!video || video.variants.length === 0) return
+    // A new video: clear any subtitle selection carried over from the previous
+    // one (re-derived per the new variant by the effect below) and start with
+    // subtitles off, so state never leaks across sibling/Up-Next navigation.
+    setSubtitleEnabled(false)
+    setActiveSubtitleSlug(null)
     const options = video.variants.map((v) => ({
       slug: v.slug,
       bcp47: v.languageBcp47,
     }))
     const best = resolveDefaultSlug(options, video.primaryLanguageBcp47)
-    if (best) {
-      const idx = video.variants.findIndex((v) => v.slug === best)
-      if (idx >= 0) setActiveVariantIndex(idx)
-    }
+    const idx = best ? video.variants.findIndex((v) => v.slug === best) : -1
+    setActiveVariantIndex(idx >= 0 ? idx : 0)
   }, [video?.documentId])
 
   // Pre-select the best subtitle for the active variant (subtitles stay disabled

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
@@ -172,6 +172,15 @@ export function DownloadSheetContent({
   const insets = useSafeAreaInsets()
   const typography = useTypography()
   const downloadInFlight = useRef(false)
+  // The download outlives the sheet if the user swipes it closed mid-flight.
+  // Guard post-await side effects so we don't setState, Alert, or navigate on
+  // an unmounted route (which would pop the watch screen underneath).
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const tiered = useMemo(() => tierDownloads(downloads), [downloads])
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -203,17 +212,19 @@ export function DownloadSheetContent({
       } catch {
         // User dismissed the share sheet — not an error
       }
-      onDownloadComplete?.()
+      if (mountedRef.current) onDownloadComplete?.()
     } catch {
-      Alert.alert(
-        "Download failed",
-        "Could not download the video. Please try again.",
-      )
+      if (mountedRef.current) {
+        Alert.alert(
+          "Download failed",
+          "Could not download the video. Please try again.",
+        )
+      }
     } finally {
       downloadInFlight.current = false
-      setDownloading(false)
+      if (mountedRef.current) setDownloading(false)
     }
-  }, [touAccepted, tiered, selectedIndex])
+  }, [touAccepted, tiered, selectedIndex, onDownloadComplete])
 
   const renderQualityRow = useCallback(
     ({ item, index }: { item: TieredDownload; index: number }) => {

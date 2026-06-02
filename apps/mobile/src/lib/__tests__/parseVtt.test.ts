@@ -66,6 +66,17 @@ Bad start`
     expect(parseVtt(vtt)).toEqual([])
   })
 
+  it("drops a cue whose timestamp has an unrecognised part-count (returns NaN, not 0)", () => {
+    // A bare single-part number matches neither the HH:MM:SS nor MM:SS branch.
+    // It must parse to NaN so the isFinite guard drops it — not 0, which would
+    // make the cue flash at the very start of playback.
+    const vtt = `WEBVTT
+
+1000 --> 4000
+No colons`
+    expect(parseVtt(vtt)).toEqual([])
+  })
+
   it("skips zero/negative-duration cues", () => {
     const vtt = `WEBVTT
 

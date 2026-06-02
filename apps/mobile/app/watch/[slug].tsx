@@ -79,6 +79,16 @@ export default function WatchVideoPage() {
     if (normalized) setVideo(normalized)
   }, [normalized?.documentId, setVideo])
 
+  // Navigated to a different video that hasn't loaded yet (e.g. Up Next): drop
+  // the previous video from the session so the loading guard shows the spinner
+  // instead of the prior video's content, and the sheets don't read its stale
+  // variants. The publish effect above repopulates once the new data arrives.
+  useEffect(() => {
+    if (video && video.slug !== decodedSlug && !normalized) {
+      setVideo(null)
+    }
+  }, [decodedSlug, video, normalized, setVideo])
+
   const bibleQuotes = useBibleVerses(video?.bibleCitations ?? EMPTY_CITATIONS)
 
   const subtitleVttSrc = useMemo(() => {

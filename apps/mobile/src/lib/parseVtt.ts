@@ -16,7 +16,9 @@ function parseTimestamp(ts: string): number {
   if (parts.length === 2) {
     return parseInt(parts[0], 10) * 60 + parseFloat(parts[1])
   }
-  return 0
+  // Unrecognised shape — return NaN (not 0) so the caller's isFinite guard
+  // drops the cue instead of letting a malformed timestamp flash at t=0.
+  return NaN
 }
 
 function stripVttTags(text: string): string {

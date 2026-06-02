@@ -49,6 +49,11 @@ export function SubtitleSheetContent({
   const [query, setQuery] = useState("")
   const [localToggle, setLocalToggle] = useState(subtitleEnabled)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Once a selection has committed to closing, ignore further taps. Without
+  // this, a fast double-tap (first arms the 300ms deferred close, second takes
+  // the immediate-close branch) fires router.back() twice and pops the watch
+  // screen underneath.
+  const closingRef = useRef(false)
 
   // Cancel the deferred close on unmount so it can't fire router.back() after
   // the sheet was already dismissed (which would pop the watch screen).
@@ -82,6 +87,8 @@ export function SubtitleSheetContent({
 
   const handleSelect = useCallback(
     (sub: WatchSubtitle) => {
+      if (closingRef.current) return
+      closingRef.current = true
       onSubtitleChange(true, sub.languageSlug)
       if (!localToggle) {
         // Let the switch animate to ON before dismissing.
@@ -156,9 +163,15 @@ export function SubtitleSheetContent({
           onChangeText={setQuery}
           autoCapitalize="none"
           autoCorrect={false}
+          accessibilityLabel="Search subtitles"
         />
         {query.length > 0 && (
-          <Pressable onPress={() => setQuery("")} hitSlop={8}>
+          <Pressable
+            onPress={() => setQuery("")}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Clear search"
+          >
             <Ionicons name="close-circle" size={18} color={TEXT_SECONDARY} />
           </Pressable>
         )}

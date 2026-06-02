@@ -43,8 +43,10 @@ export function VideoPlayer({
 
   // Disable Mux's auto-generated subtitle tracks from the HLS manifest.
   // Admin CMS VTT subtitles are rendered by SubtitleOverlay instead.
-  // AVPlayer can auto-select a track at any of: source load, tracks-available,
-  // or device-locale match — force it back to null on every signal.
+  // AVPlayer can auto-select a track at source load, tracks-available, or a
+  // device-locale match — these three signals cover every re-selection. (A
+  // fourth statusChange listener was dropped: it fired on every buffer/seek
+  // tick for the same effect the targeted events already cover.)
   useEffect(() => {
     const disable = () => {
       try {
@@ -57,7 +59,6 @@ export function VideoPlayer({
       player.addListener("availableSubtitleTracksChange", disable),
       player.addListener("subtitleTrackChange", disable),
       player.addListener("sourceLoad", disable),
-      player.addListener("statusChange", disable),
     ]
     disable()
     return () => subs.forEach((s) => s.remove())
@@ -66,6 +67,15 @@ export function VideoPlayer({
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
   })
+
+  // Mirror isPlaying into a ref so the AppState listener can register once on
+  // [player] and read the current value, instead of tearing down and
+  // re-adding the subscription on every play/pause (which left a window where
+  // a background event could be missed).
+  const isPlayingRef = useRef(isPlaying)
+  useEffect(() => {
+    isPlayingRef.current = isPlaying
+  }, [isPlaying])
 
   useEffect(() => {
     if (isPlaying && !hasStarted) setHasStarted(true)
@@ -76,10 +86,14 @@ export function VideoPlayer({
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
         if (wasPlayingRef.current) {
-          player.play()
+          try {
+            player.play()
+          } catch {
+            // Already released
+          }
         }
       } else {
-        wasPlayingRef.current = isPlaying
+        wasPlayingRef.current = isPlayingRef.current
         try {
           player.pause()
         } catch {
@@ -88,7 +102,7 @@ export function VideoPlayer({
       }
     })
     return () => subscription.remove()
-  }, [player, isPlaying])
+  }, [player])
 
   useEffect(() => {
     return () => {
