@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import {
   Pressable,
   StyleSheet,
@@ -8,17 +8,13 @@ import {
   View,
 } from "react-native"
 import { FlashList } from "@shopify/flash-list"
-import { useNavigation } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useSheetListHeight } from "../../hooks/useSheetListHeight"
 import { ACCENT, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
-import {
-  feedback,
-  HORIZONTAL_PADDING,
-  LIST_SHEET_DETENTS,
-} from "../../styles/shared"
+import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
 import type { WatchVariant } from "../../lib/normalizeVideo"
 
 function displayName(v: WatchVariant): string {
@@ -48,37 +44,15 @@ export function LanguageSheetContent({
   const { height: windowHeight } = useWindowDimensions()
   const typography = useTypography()
   const [query, setQuery] = useState("")
-  // FlashList virtualizes (lazy-loads only the visible rows) but needs a
-  // CONCRETE height to do it — inside a formSheet it can't derive one from
-  // flex, and falls back to rendering ALL 2000+ rows (a multi-second freeze on
-  // open). Measure the available height with onLayout (it re-fires when the
-  // user drags between detents, so the list re-virtualizes for the new size);
-  // seed it with the initial-detent estimate so the first frame is already
-  // virtualized, then refine to exact.
-  // The formSheet content root is unbounded, so the FlashList needs an explicit
-  // height and onLayout can't measure it (it reads back our own fixed height).
-  // Drive the height off the native detent index instead: LIST_SHEET_DETENTS
-  // fraction * window, updated as the user drags the grabber, so the list fills
-  // the sheet at every detent (no gap at full, no clipped rows at the smaller one).
-  const [listHeight, setListHeight] = useState(() =>
-    Math.round(windowHeight * LIST_SHEET_DETENTS[0]),
-  )
-  const navigation = useNavigation()
-  useEffect(() => {
-    const unsub = navigation.addListener(
-      // not in expo-router's typed event map, but native-stack emits it
-      "sheetDetentChange" as never,
-      (e: { data?: { index?: number } }) => {
-        const idx = e?.data?.index ?? 0
-        const frac = LIST_SHEET_DETENTS[idx] ?? LIST_SHEET_DETENTS[0]
-        setListHeight(Math.round(windowHeight * frac))
-      },
-    )
-    return unsub
-  }, [navigation, windowHeight])
-  // Ignore a second tap once a selection has committed to closing, so a fast
-  // double-tap can't call router.back() twice and pop the watch screen.
-  const closingRef = useRef(false)
+  // FlashList virtualizes (lazy-loads only visible rows) but needs an explicit
+  // height inside the formSheet (the content root is unbounded). Derived from
+  // the native detent index — see useSheetListHeight.
+  const listHeight = useSheetListHeight(windowHeight)
+  // Debounce selection so a fast double-tap can't call router.back() twice and
+  // pop the watch screen. A timestamp (not a latched boolean) auto-expires, so
+  // an interrupted dismiss that leaves the sheet mounted can't permanently
+  // dead-lock row taps.
+  const lastSelectRef = useRef(0)
 
   const sorted = useMemo(() => sortByName(variants), [variants])
   const activeVariant = useMemo(
@@ -100,8 +74,9 @@ export function LanguageSheetContent({
 
   const handleSelect = useCallback(
     (variant: WatchVariant) => {
-      if (closingRef.current || !variant.hls) return
-      closingRef.current = true
+      const now = Date.now()
+      if (now - lastSelectRef.current < 500 || !variant.hls) return
+      lastSelectRef.current = now
       onLanguageChange(variant.slug)
       onClose()
     },

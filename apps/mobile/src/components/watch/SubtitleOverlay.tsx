@@ -12,9 +12,9 @@ type SubtitleOverlayProps = {
   bottomOffset?: number
 }
 
-// Cues are sorted by start time, so the active cue is the last one whose start
-// is <= t, provided t is still before its (exclusive) end. Binary search keeps
-// the 100ms poll cheap even for a feature-length VTT with hundreds of cues.
+// Cues are sorted by start time. Binary-search the last cue whose start is <= t,
+// then check t is still before its (exclusive) end — keeping the 100ms poll
+// cheap even for a feature-length VTT with hundreds of cues.
 function findActiveCue(cues: VttCue[], t: number): VttCue | undefined {
   let lo = 0
   let hi = cues.length - 1
@@ -28,7 +28,18 @@ function findActiveCue(cues: VttCue[], t: number): VttCue | undefined {
       hi = mid - 1
     }
   }
-  if (ans >= 0 && t < cues[ans].end) return cues[ans]
+  // `ans` is the last cue that started at or before t — usually the active one.
+  // But cues can overlap (a short cue nested in a longer one): the most-recent
+  // may have already ended while an earlier, longer cue is still active. Walk
+  // back a BOUNDED number of steps to find it. The bound keeps a gap in a long,
+  // non-overlapping VTT O(1) instead of scanning to the start of the list.
+  for (
+    let i = ans, steps = 0;
+    i >= 0 && steps < 16 && cues[i].start <= t;
+    i--, steps++
+  ) {
+    if (t < cues[i].end) return cues[i]
+  }
   return undefined
 }
 
@@ -77,6 +88,10 @@ export function SubtitleOverlay({
       cancelled = true
       controller.abort()
       clearTimeout(timeout)
+      // Drop the old cues so the previous language's subtitles don't flash
+      // against the new playhead while the next VTT is still fetching.
+      setCues([])
+      setActiveText("")
     }
   }, [vttSrc])
 
@@ -96,12 +111,12 @@ export function SubtitleOverlay({
         // Player released
       }
     }
-    // Reflect the current position immediately (covers paused-at-a-cue), then
-    // only poll while playing — no need to scan cues 10x/s on a paused or
-    // backgrounded player.
+    // Reflect the current position immediately, then poll: fast (100ms) while
+    // playing, slow (400ms) while paused. The slow paused poll is cheap (a
+    // bounded binary search) but still catches a seek/scrub made while paused,
+    // which a play-only gate would freeze the subtitle through.
     update()
-    if (!isPlaying) return
-    const interval = setInterval(update, 100)
+    const interval = setInterval(update, isPlaying ? 100 : 400)
     return () => clearInterval(interval)
   }, [cues, player, isPlaying])
 

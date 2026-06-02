@@ -9,22 +9,18 @@ import {
   View,
 } from "react-native"
 import { FlashList } from "@shopify/flash-list"
-import { useNavigation } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useSheetListHeight } from "../../hooks/useSheetListHeight"
 import {
   ACCENT,
   SURFACE_COLOR,
   TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "../../lib/color"
-import {
-  feedback,
-  HORIZONTAL_PADDING,
-  LIST_SHEET_DETENTS,
-} from "../../styles/shared"
+import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
 import type { WatchSubtitle } from "../../lib/normalizeVideo"
 
 function sortByName(subtitles: WatchSubtitle[]): WatchSubtitle[] {
@@ -53,31 +49,15 @@ export function SubtitleSheetContent({
   const typography = useTypography()
   const [query, setQuery] = useState("")
   const [localToggle, setLocalToggle] = useState(subtitleEnabled)
-  // FlashList virtualizes (lazy-loads only visible rows) but needs a CONCRETE
-  // height; inside a formSheet it can't derive one from flex (the content root
-  // is unbounded) and would render ALL rows. Drive the height off the native
-  // detent index so the list fills the sheet at each detent — see LanguageSheet.
-  const [listHeight, setListHeight] = useState(() =>
-    Math.round(windowHeight * LIST_SHEET_DETENTS[0]),
-  )
-  const navigation = useNavigation()
-  useEffect(() => {
-    const unsub = navigation.addListener(
-      "sheetDetentChange" as never,
-      (e: { data?: { index?: number } }) => {
-        const idx = e?.data?.index ?? 0
-        const frac = LIST_SHEET_DETENTS[idx] ?? LIST_SHEET_DETENTS[0]
-        setListHeight(Math.round(windowHeight * frac))
-      },
-    )
-    return unsub
-  }, [navigation, windowHeight])
+  // FlashList needs an explicit height inside the formSheet (content root is
+  // unbounded). Derived from the native detent index — see useSheetListHeight.
+  const listHeight = useSheetListHeight(windowHeight)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Once a selection has committed to closing, ignore further taps. Without
-  // this, a fast double-tap (first arms the 300ms deferred close, second takes
-  // the immediate-close branch) fires router.back() twice and pops the watch
-  // screen underneath.
-  const closingRef = useRef(false)
+  // Debounce selection so a fast double-tap (first arms the 300ms deferred
+  // close, second takes the immediate-close branch) can't fire router.back()
+  // twice and pop the watch screen. A timestamp auto-expires, so an interrupted
+  // dismiss can't permanently dead-lock row taps.
+  const lastSelectRef = useRef(0)
 
   // Cancel the deferred close on unmount so it can't fire router.back() after
   // the sheet was already dismissed (which would pop the watch screen).
@@ -111,8 +91,9 @@ export function SubtitleSheetContent({
 
   const handleSelect = useCallback(
     (sub: WatchSubtitle) => {
-      if (closingRef.current) return
-      closingRef.current = true
+      const now = Date.now()
+      if (now - lastSelectRef.current < 500) return
+      lastSelectRef.current = now
       onSubtitleChange(true, sub.languageSlug)
       if (!localToggle) {
         // Let the switch animate to ON before dismissing.
