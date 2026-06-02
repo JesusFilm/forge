@@ -332,6 +332,7 @@ export async function searchVideoSemantic(
           ON vl.video_id = v.id
           AND vl.locale = ${locale}
           AND vl.status = 'published'
+          AND vl.deleted_at IS NULL
         LEFT JOIN LATERAL (
           SELECT mv.playback_id
           FROM video_dub vd
@@ -386,6 +387,7 @@ export async function searchVideoSemantic(
           ON vl.video_id = v.id
           AND vl.locale = ${locale}
           AND vl.status = 'published'
+          AND vl.deleted_at IS NULL
         LEFT JOIN LATERAL (
           SELECT mv.playback_id
           FROM video_dub vd
@@ -507,6 +509,7 @@ export async function searchVideoKeyword(
       WHERE ${tsvector} @@ plainto_tsquery('simple', ${trimmed})
         AND vl.locale = ${locale}
         AND vl.status = 'published'
+        AND vl.deleted_at IS NULL
       ORDER BY v.id, rank DESC
     ) sub
     ORDER BY sub.rank DESC

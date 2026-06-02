@@ -660,7 +660,7 @@ describe("Catch-all routing — series-without-trailer fallthrough (2-seg)", () 
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(resolveSeriesBySlugMock).toHaveBeenCalledWith(
       "storyclubs-no-trailer",
-      "en",
+      "english",
     )
     expect(watchPageClientMock).not.toHaveBeenCalled()
   })

@@ -12,13 +12,8 @@ import { CoreBibleBookSchema, CoreVideoSchema } from "../schemas/video"
 import { emptySyncStats } from "../types"
 import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
 import { toPgArray } from "@/db/pgvector"
-import {
-  mapVideoLabel,
-  mapVideoSource,
-  toNameMap,
-  toStudyQuestions,
-  toVideoLocales,
-} from "../transforms"
+import { mapVideoLabel, mapVideoSource, toNameMap } from "../transforms"
+import { syncVideoLocalizedMetadata } from "../video-localized-metadata"
 
 const BIBLE_BOOKS_QUERY = `
   query BibleBooks {
@@ -48,17 +43,17 @@ const VIDEOS_QUERY = `
       primaryLanguageId
       source
       origin { id }
-      title { value language { bcp47 } }
-      description { value language { bcp47 } }
-      snippet { value language { bcp47 } }
-      studyQuestions {
+      title(primary: false) { value primary language { id bcp47 } }
+      description(primary: false) { value primary language { id bcp47 } }
+      snippet(primary: false) { value primary language { id bcp47 } }
+      studyQuestions(primary: false) {
         id
         value
         primary
         order
         language { id bcp47 }
       }
-      imageAlt { value language { bcp47 } }
+      imageAlt(primary: false) { value primary language { id bcp47 } }
       bibleCitations {
         id
         osisId
@@ -89,29 +84,29 @@ type CoreVideo = {
   title: Array<{
     value: string
     primary?: boolean | null
-    language: { bcp47?: string; id?: string }
+    language: { bcp47?: string | null; id?: string }
   }>
   description: Array<{
     value: string
     primary?: boolean | null
-    language: { bcp47?: string; id?: string }
+    language: { bcp47?: string | null; id?: string }
   }>
   snippet: Array<{
     value: string
     primary?: boolean | null
-    language: { bcp47?: string; id?: string }
+    language: { bcp47?: string | null; id?: string }
   }>
   studyQuestions: Array<{
     id: string
     value: string
     primary?: boolean | null
     order?: number | null
-    language: { id?: string; bcp47?: string }
+    language: { id?: string; bcp47?: string | null }
   }>
   imageAlt: Array<{
     value: string
     primary?: boolean | null
-    language: { bcp47?: string; id?: string }
+    language: { bcp47?: string | null; id?: string }
   }>
   bibleCitations: Array<{
     id: string
@@ -238,10 +233,11 @@ export async function syncVideos({
   const stats = { ...emptySyncStats }
 
   const languages = await prisma.language.findMany({
-    select: { id: true, coreId: true, bcp47: true },
+    select: { id: true, coreId: true, bcp47: true, slug: true },
   })
   const langMap = new Map(languages.map((l) => [l.coreId, l.id]))
   const bcp47ByCoreId = new Map(languages.map((l) => [l.coreId, l.bcp47]))
+  const slugByCoreId = new Map(languages.map((l) => [l.coreId, l.slug]))
   const origins = await prisma.videoOrigin.findMany({
     select: { id: true, coreId: true },
   })
@@ -405,89 +401,33 @@ export async function syncVideos({
           })
           touchedVideoIds.push(videoRow.id)
 
-          for (const localeRow of toVideoLocales(
-            {
-              title: video.title,
-              description: video.description,
-              snippet: video.snippet,
-              imageAlt: video.imageAlt,
-            },
-            { bcp47ByCoreId },
-          )) {
-            await tx.videoLocale.upsert({
-              where: {
-                videoId_locale: {
-                  videoId: videoRow.id,
-                  locale: localeRow.locale,
-                },
+          const localizedResult = await syncVideoLocalizedMetadata({
+            prisma: tx,
+            adminVideos: [
+              {
+                id: videoRow.id,
+                coreId: video.id,
+                source: "CORE",
+                publishedAt: video.publishedAt,
               },
-              create: {
-                videoId: videoRow.id,
-                locale: localeRow.locale,
-                title: localeRow.title,
-                description: localeRow.description,
-                snippet: localeRow.snippet,
-                imageAlt: localeRow.imageAlt,
-                status: "PUBLISHED",
-                publishedAt: video.publishedAt
-                  ? new Date(video.publishedAt)
-                  : null,
-              },
-              update: {
-                title: localeRow.title,
-                description: localeRow.description,
-                snippet: localeRow.snippet,
-                imageAlt: localeRow.imageAlt,
-                publishedAt: video.publishedAt
-                  ? new Date(video.publishedAt)
-                  : null,
-              },
-            })
-          }
-
-          const seenStudyQuestionIds = new Set(
-            video.studyQuestions.map((question) => question.id),
-          )
-          for (const question of toStudyQuestions(video.studyQuestions, {
+            ],
+            coreVideos: [video],
+            languageIdByCoreId: langMap,
             bcp47ByCoreId,
-          })) {
-            await tx.videoStudyQuestion.upsert({
-              where: { coreId: question.coreId },
-              create: {
-                coreId: question.coreId,
-                videoId: videoRow.id,
-                locale: question.locale,
-                languageId: question.languageCoreId
-                  ? (langMap.get(question.languageCoreId) ?? null)
-                  : null,
-                text: question.text,
-                primary: question.primary,
-                order: question.order,
-                syncedAt: new Date(),
-              },
-              update: {
-                videoId: videoRow.id,
-                locale: question.locale,
-                languageId: question.languageCoreId
-                  ? (langMap.get(question.languageCoreId) ?? null)
-                  : null,
-                text: question.text,
-                primary: question.primary,
-                order: question.order,
-                syncedAt: new Date(),
-                deletedAt: null,
-              },
-            })
-          }
-          await tx.videoStudyQuestion.updateMany({
-            where: {
-              videoId: videoRow.id,
-              source: "CORE",
-              coreId: { notIn: [...seenStudyQuestionIds] },
-              deletedAt: null,
-            },
-            data: { deletedAt: new Date() },
+            slugByCoreId,
           })
+          stats.errors +=
+            localizedResult.errors + localizedResult.skippedLanguages
+          if (localizedResult.skippedLanguages > 0) {
+            console.warn(
+              JSON.stringify({
+                event: "core-sync.video-localized-metadata.skipped-languages",
+                videoCoreId: video.id,
+                skippedLanguages: localizedResult.skippedLanguages,
+                diagnostics: localizedResult.diagnostics,
+              }),
+            )
+          }
 
           const seenCitationIds = new Set(
             video.bibleCitations.map((citation) => citation.id),

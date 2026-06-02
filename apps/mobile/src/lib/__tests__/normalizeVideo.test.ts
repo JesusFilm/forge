@@ -18,6 +18,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
     locales: [
       {
         documentId: "loc-1",
+        languageSlug: "english",
         title: "The Crucifixion",
         description: "A depiction of the crucifixion.",
         snippet: "Short snippet",
@@ -30,7 +31,13 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
           documentId: "parent-1",
           slug: "easter-story",
           label: "COLLECTION",
-          locales: [{ documentId: "ploc-1", title: "The Easter Story" }],
+          locales: [
+            {
+              documentId: "ploc-1",
+              languageSlug: "english",
+              title: "The Easter Story",
+            },
+          ],
           images: [],
           children: [
             {
@@ -38,7 +45,13 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
                 documentId: "vid-1",
                 slug: "the-crucifixion",
                 label: "SEGMENT",
-                locales: [{ documentId: "cloc-1", title: "The Crucifixion" }],
+                locales: [
+                  {
+                    documentId: "cloc-1",
+                    languageSlug: "english",
+                    title: "The Crucifixion",
+                  },
+                ],
                 images: [
                   {
                     documentId: "cimg-1",
@@ -55,7 +68,13 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
                 documentId: "vid-2",
                 slug: "the-resurrection",
                 label: "SEGMENT",
-                locales: [{ documentId: "cloc-2", title: "The Resurrection" }],
+                locales: [
+                  {
+                    documentId: "cloc-2",
+                    languageSlug: "english",
+                    title: "The Resurrection",
+                  },
+                ],
                 images: [
                   {
                     documentId: "cimg-2",
@@ -72,7 +91,13 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
                 documentId: "vid-3",
                 slug: "the-ascension",
                 label: "SEGMENT",
-                locales: [{ documentId: "cloc-3", title: "The Ascension" }],
+                locales: [
+                  {
+                    documentId: "cloc-3",
+                    languageSlug: "english",
+                    title: "The Ascension",
+                  },
+                ],
                 images: [],
               },
             },
@@ -160,9 +185,19 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
       },
     ],
     studyQuestions: [
-      { documentId: "sq-2", value: "Second question?", order: 2 },
-      { documentId: "sq-1", value: "First question?", order: 1 },
-      { documentId: "sq-3", value: "", order: 3 },
+      {
+        documentId: "sq-2",
+        languageSlug: "english",
+        value: "Second question?",
+        order: 2,
+      },
+      {
+        documentId: "sq-1",
+        languageSlug: "english",
+        value: "First question?",
+        order: 1,
+      },
+      { documentId: "sq-3", languageSlug: "english", value: "", order: 3 },
     ],
     bibleCitations: [
       {
@@ -221,7 +256,13 @@ describe("normalizeVideo", () => {
           documentId: "vid-2",
           slug: "the-resurrection",
           label: "SEGMENT",
-          locales: [{ documentId: "cloc-2", title: "The Resurrection" }],
+          locales: [
+            {
+              documentId: "cloc-2",
+              languageSlug: "english",
+              title: "The Resurrection",
+            },
+          ],
           images: [],
         },
       },
@@ -277,6 +318,63 @@ describe("normalizeVideo", () => {
     expect(result.studyQuestions[1].value).toBe("Second question?")
   })
 
+  it("chooses broad locale rows deterministically when multiple variants share BCP-47", () => {
+    const result = normalizeVideo(
+      makeRawVideo({
+        locales: [
+          {
+            documentId: "loc-z",
+            languageSlug: "russian-z",
+            title: "Russian Z",
+            description: "Russian Z description",
+            snippet: "Russian Z snippet",
+          },
+          {
+            documentId: "loc-legacy",
+            languageSlug: null,
+            title: "Legacy Russian",
+            description: "Legacy Russian description",
+            snippet: "Legacy Russian snippet",
+          },
+          {
+            documentId: "loc-a",
+            languageSlug: "russian-a",
+            title: "Russian A",
+            description: "Russian A description",
+            snippet: "Russian A snippet",
+          },
+        ],
+        studyQuestions: [
+          {
+            documentId: "sq-z",
+            languageSlug: "russian-z",
+            value: "Z question?",
+            order: 1,
+          },
+          {
+            documentId: "sq-legacy",
+            languageSlug: null,
+            value: "Legacy question?",
+            order: 1,
+          },
+          {
+            documentId: "sq-a",
+            languageSlug: "russian-a",
+            value: "A question?",
+            order: 1,
+          },
+        ],
+      }),
+    )!
+
+    expect(result.title).toBe("Russian A")
+    expect(result.studyQuestions.map((question) => question.value)).toEqual([
+      "A question?",
+      "Z question?",
+      "Legacy question?",
+    ])
+  })
+
   it("normalizes bible citations with book name from locale map", () => {
     const result = normalizeVideo(makeRawVideo())!
     expect(result.bibleCitations).toHaveLength(1)
@@ -327,7 +425,13 @@ describe("normalizeVideo", () => {
                   documentId: "vid-2",
                   slug: "from-first-parent",
                   label: "SEGMENT",
-                  locales: [{ documentId: "l1", title: "From First Parent" }],
+                  locales: [
+                    {
+                      documentId: "l1",
+                      languageSlug: "english",
+                      title: "From First Parent",
+                    },
+                  ],
                   images: [],
                 },
               },
@@ -347,7 +451,13 @@ describe("normalizeVideo", () => {
                   documentId: "vid-99",
                   slug: "from-second-parent",
                   label: "SEGMENT",
-                  locales: [{ documentId: "l2", title: "From Second Parent" }],
+                  locales: [
+                    {
+                      documentId: "l2",
+                      languageSlug: "english",
+                      title: "From Second Parent",
+                    },
+                  ],
                   images: [],
                 },
               },

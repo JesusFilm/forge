@@ -412,6 +412,41 @@ describe("Video type", () => {
     const fields = fieldsOf("Video")
     expect(fields.subtitles).toBeUndefined()
   })
+
+  it("localized content relations accept broad locale and exact languageSlug arguments", () => {
+    const fields = fieldsOf("Video") as Record<
+      string,
+      { args: Array<{ name: string; type: { toString(): string } }> }
+    >
+    const studyLocaleArg = fields.studyQuestions.args.find(
+      (arg) => arg.name === "locale",
+    )
+    const studyLanguageSlugArg = fields.studyQuestions.args.find(
+      (arg) => arg.name === "languageSlug",
+    )
+    const localesLocaleArg = fields.locales.args.find(
+      (arg) => arg.name === "locale",
+    )
+    const localesLanguageSlugArg = fields.locales.args.find(
+      (arg) => arg.name === "languageSlug",
+    )
+    expect(studyLocaleArg?.type.toString()).toBe("String")
+    expect(studyLanguageSlugArg?.type.toString()).toBe("String")
+    expect(localesLocaleArg?.type.toString()).toBe("String")
+    expect(localesLanguageSlugArg?.type.toString()).toBe("String")
+  })
+
+  it("localized content rows expose variant identity diagnostics", () => {
+    const localeFields = fieldsOf("VideoLocale")
+    expect(Object.keys(localeFields)).toEqual(
+      expect.arrayContaining(["locale", "languageSlug", "languageCoreId"]),
+    )
+
+    const questionFields = fieldsOf("VideoStudyQuestion")
+    expect(Object.keys(questionFields)).toEqual(
+      expect.arrayContaining(["locale", "languageSlug", "languageCoreId"]),
+    )
+  })
 })
 
 describe("MediaAsset type", () => {

@@ -14,8 +14,9 @@ import {
  *
  * The fragment is admin-shape: `documentId: id` alias on every node,
  * `variants: dubs` alias, `value: text` alias on study questions, and
- * locale-narrowed reads via `locales(locale: $locale)`. Tests assert
- * those aliases survive `graphql-js`'s printer.
+ * locale/variant-narrowed reads via
+ * `locales(locale: $locale, languageSlug: $languageSlug)`. Tests assert those
+ * aliases survive `graphql-js`'s printer.
  */
 
 describe("WatchVideoFragment", () => {
@@ -32,7 +33,9 @@ describe("WatchVideoFragment", () => {
     // Locale-narrowed projection for the active locale's title /
     // description / snippet / imageAlt — the resolver flattens this
     // single-element array onto the WatchVideoRecord shape.
-    expect(printed).toMatch(/locales\(locale:\s*\$locale\)/)
+    expect(printed).toMatch(
+      /locales\(locale:\s*\$locale,\s*languageSlug:\s*\$languageSlug\)/,
+    )
     expect(printed).toMatch(
       /locales\([^)]*\)\s*\{[\s\S]*?\btitle\b[\s\S]*?description[\s\S]*?snippet[\s\S]*?imageAlt/,
     )
@@ -51,7 +54,9 @@ describe("WatchVideoFragment", () => {
     // joins are present and surface their nested locales/images.
     expect(printed).toMatch(/parents\s*\{[\s\S]*?parent\s*\{/)
     expect(printed).toMatch(/children\s*\{[\s\S]*?child\s*\{/)
-    expect(printed).toMatch(/child\s*\{[\s\S]*?locales\(locale:\s*\$locale\)/)
+    expect(printed).toMatch(
+      /child\s*\{[\s\S]*?locales\(locale:\s*\$locale,\s*languageSlug:\s*\$languageSlug\)/,
+    )
     // `child.dubs` is intentionally NOT projected — a 61-chapter ×
     // 2,200-language fan-out blew the resolved payload past Next's 2MB
     // unstable_cache limit and broke the watch page. The only `dubs {`
@@ -79,8 +84,13 @@ describe("WatchVideoFragment", () => {
 
     // studyQuestions: `value: text` alias because the consumer reads
     // `q.value`.
-    expect(printed).toMatch(/studyQuestions\s*\{[\s\S]*?value\s*:\s*text/)
-    expect(printed).toMatch(/studyQuestions\s*\{[\s\S]*?\border\b/)
+    expect(printed).toMatch(
+      /studyQuestions\(locale:\s*\$locale,\s*languageSlug:\s*\$languageSlug\)\s*\{/,
+    )
+    expect(printed).toMatch(
+      /studyQuestions\([^)]*\)\s*\{[\s\S]*?value\s*:\s*text/,
+    )
+    expect(printed).toMatch(/studyQuestions\([^)]*\)\s*\{[\s\S]*?\border\b/)
 
     // bibleCitations + bibleBook { name } as a plain selection (admin's
     // `BibleBook.name` is JSON; the resolver coerces to string).
@@ -101,26 +111,29 @@ describe("WatchVideoFragment", () => {
 })
 
 describe("GetWatchVideoBySlug operation", () => {
-  it("declares every variable as required (avoids codegen-strips-optional-graphql-variables)", () => {
+  it("declares required lookup variables and the optional exact languageSlug selector", () => {
     const printed = print(getWatchVideoBySlugOperation)
 
     expect(printed).toMatch(
       /query GetWatchVideoBySlug\([\s\S]*?\$locale:\s*String!/,
     )
+    expect(printed).toMatch(/\$languageSlug:\s*String\b/)
     expect(printed).toMatch(/\$videoSlug:\s*String!/)
-    // No optional variables — every var has the trailing `!`.
-    const variableSection =
-      printed.match(/GetWatchVideoBySlug\(([^)]*)\)/)?.[1] ?? ""
-    expect(variableSection).not.toMatch(/:\s*[A-Za-z]+\s*[,)\s]/)
   })
 
-  it("invokes videoBySlug with the slug var and threads $locale into the fragment", () => {
+  it("invokes videoBySlug with the slug var and threads locale/languageSlug into the fragment", () => {
     const printed = print(getWatchVideoBySlugOperation)
 
     expect(printed).toMatch(/videoBySlug\(/)
     expect(printed).toMatch(/slug:\s*\$videoSlug/)
-    // $locale is consumed inside the fragment's `locales(locale:)` arg.
-    expect(printed).toMatch(/locales\(locale:\s*\$locale\)/)
+    // $locale and $languageSlug are consumed inside the fragment's
+    // localized content args.
+    expect(printed).toMatch(
+      /locales\(locale:\s*\$locale,\s*languageSlug:\s*\$languageSlug\)/,
+    )
+    expect(printed).toMatch(
+      /studyQuestions\(locale:\s*\$locale,\s*languageSlug:\s*\$languageSlug\)/,
+    )
   })
 
   it("inlines the WatchVideoFragment selection set (gql.tada @_unmask)", () => {
