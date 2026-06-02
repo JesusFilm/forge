@@ -1,10 +1,10 @@
 /**
- * Hard-coded BCP-47 locale list for the semantic-search eval harness.
+ * Fixed BCP-47 locale profiles for Admin's search-eval catalog context
+ * contract.
  *
- * Admin's `/api/search` accepts any locale string; the harness covers
- * a fixed set so baselines stay comparable across runs and the
- * pairwise judge sees a consistent surface. Source-of-truth for the
- * list is the brainstorm:
+ * Admin's `/api/search` accepts any locale string; offline eval generation
+ * uses a fixed set so suites stay comparable across runs and the judge sees
+ * a consistent surface. Source-of-truth for the list is the brainstorm:
  * `docs/brainstorms/2026-05-06-semantic-search-eval-harness-requirements.md`
  *
  * The 30 locales were picked by querying Core's
@@ -14,8 +14,8 @@
  * thin corpora.
  *
  * To refresh the list: re-run the Core query against
- * api-gateway.central.jesusfilm.org and update HARNESS_LOCALES +
- * LOCALE_TIER. Do NOT add `it`, `nl`, or other languages just because
+ * api-gateway.central.jesusfilm.org and update SEARCH_EVAL_LOCALES +
+ * SEARCH_EVAL_LOCALE_TIER. Do NOT add `it`, `nl`, or other languages just because
  * the LLM judge is good at them — the constraint is JFP corpus depth,
  * not judge quality.
  *
@@ -32,7 +32,7 @@
  * languages, dedupe by bcp47 keeping max total, then take top 30.)
  */
 
-export const HARNESS_LOCALES = [
+export const SEARCH_EVAL_LOCALES = [
   "en",
   "fr",
   "es",
@@ -65,21 +65,7 @@ export const HARNESS_LOCALES = [
   "pl",
 ] as const
 
-export type HarnessLocale = (typeof HARNESS_LOCALES)[number]
-
-/**
- * Quick-mode subset — high-resource locales the LLM judge handles
- * with high confidence. Used by `eval:search:quick` to keep the
- * iteration loop fast (target ~3 min wall time per run).
- */
-export const QUICK_LOCALES = [
-  "en",
-  "fr",
-  "es",
-  "de",
-  "pt",
-  "ja",
-] as const satisfies readonly HarnessLocale[]
+export type SearchEvalLocale = (typeof SEARCH_EVAL_LOCALES)[number]
 
 /**
  * Per-locale judge confidence tier. Surfaced in run output so a
@@ -93,7 +79,7 @@ export const QUICK_LOCALES = [
  */
 export type Tier = 1 | 2 | 3
 
-export const LOCALE_TIER = {
+export const SEARCH_EVAL_LOCALE_TIER = {
   // Tier 1 — Romance/Germanic
   en: 1,
   fr: 1,
@@ -127,8 +113,8 @@ export const LOCALE_TIER = {
   kk: 3,
   ta: 3,
   pl: 3,
-} as const satisfies Record<HarnessLocale, Tier>
+} as const satisfies Record<SearchEvalLocale, Tier>
 
-export function isHarnessLocale(value: string): value is HarnessLocale {
-  return (HARNESS_LOCALES as readonly string[]).includes(value)
+export function isSearchEvalLocale(value: string): value is SearchEvalLocale {
+  return (SEARCH_EVAL_LOCALES as readonly string[]).includes(value)
 }

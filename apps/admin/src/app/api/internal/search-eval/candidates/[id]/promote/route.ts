@@ -1,5 +1,5 @@
 import { prisma } from "@/db/client"
-import { promoteSearchEvalCandidate } from "@/services/search-eval/candidates"
+import { promoteSearchEvalCandidate } from "@/services/search-eval-candidates"
 
 import { parsePromoteBody } from "../action-helpers"
 import {

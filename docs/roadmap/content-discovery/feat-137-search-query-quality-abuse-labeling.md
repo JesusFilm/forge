@@ -20,6 +20,12 @@ tags:
   - "safety"
 ---
 
+## Historical Note
+
+This completed ticket references legacy Admin search-eval harness paths that
+were removed by `feat-155`. Use `apps/admin/src/services/search-trace-query-classifier.ts`
+and the Mastra search-eval workflows for current work.
+
 ## Problem
 
 Production search traces will include useful viewer intent, but they will also
@@ -42,10 +48,10 @@ optional LLM classification only for ambiguous or high-impact samples.
    - GraphQL search validation and query bounds.
 5. `apps/admin/src/services/hybrid-search.service.ts`
    - shared place to attach product-level labels to search outcomes.
-6. `apps/admin/src/services/search-eval/query-generator.ts`
-   - existing LLM query generation/classification client style.
-7. `apps/admin/src/services/search-eval/openrouter-helpers.ts`
-   - shared OpenRouter helper patterns for eval-related model calls.
+6. `apps/admin/src/services/search-trace-query-classifier.ts`
+   - optional offline query classification client.
+7. `apps/mastra/src/services/eval-query-generator.ts`
+   - current eval query generation client style.
 8. `apps/admin/prisma/schema.prisma`
    - trace label storage and indexes.
 
@@ -53,7 +59,7 @@ optional LLM classification only for ambiguous or high-impact samples.
 
 ```
 rg -n "q \\(search query\\)|query.length|trim\\(\\)|search trace|SearchTrace" apps/admin/src
-rg -n "query-generator|OpenRouter|judge|classification|schema validation" apps/admin/src/services/search-eval
+rg -n "OpenRouter|classification|schema validation" apps/admin/src/services/search-trace-query-classifier.ts apps/mastra/src/services/eval-query-generator.ts
 rg -n "spam|abuse|prompt|injection|moderation|quality" apps/admin/src docs/roadmap docs/brainstorms
 ```
 

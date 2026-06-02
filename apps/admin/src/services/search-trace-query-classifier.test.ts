@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const envMock = vi.hoisted(() => ({
   env: {
     OPENROUTER_API_KEY: undefined as string | undefined,
-    OPENROUTER_JUDGE_MODEL: undefined as string | undefined,
+    OPENROUTER_QUERY_CLASSIFIER_MODEL: undefined as string | undefined,
   },
 }))
 
@@ -16,7 +16,7 @@ import {
   createSearchTraceQueryClassifier,
   isLlmClassificationCandidate,
   sanitizeSearchTraceQueryForLlm,
-} from "./query-classifier"
+} from "./search-trace-query-classifier"
 
 function buildOpenRouterResponse(body: unknown, status = 200): Response {
   return new Response(
@@ -37,6 +37,12 @@ function buildRawOpenRouterResponse(content: unknown, status = 200): Response {
   )
 }
 
+function buildArrayContentOpenRouterResponse(body: unknown): Response {
+  return buildRawOpenRouterResponse([
+    { type: "text", text: JSON.stringify(body) },
+  ])
+}
+
 const ambiguousInput = {
   queryText: "how do I find meaning when everything is hard",
   locale: "en",
@@ -52,7 +58,7 @@ describe("search trace query classifier", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     envMock.env.OPENROUTER_API_KEY = undefined
-    envMock.env.OPENROUTER_JUDGE_MODEL = undefined
+    envMock.env.OPENROUTER_QUERY_CLASSIFIER_MODEL = undefined
   })
 
   it("classifies ambiguous traces through a bounded schema response", async () => {
@@ -81,6 +87,73 @@ describe("search trace query classifier", () => {
     expect(body.max_tokens).toBe(300)
     expect(body.temperature).toBe(0)
     expect(JSON.stringify(body)).not.toContain("prompt_tokens")
+  })
+
+  it("uses the pinned classifier default model when no model override is provided", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      buildOpenRouterResponse({
+        queryQualityLabel: "valid_viewer_intent",
+        abuseLabel: "none",
+        confidence: "high",
+        reasonCode: "felt_need",
+      }),
+    )
+    const classifier = createSearchTraceQueryClassifier({
+      apiKey: "test",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+
+    await classifier.classify(ambiguousInput)
+
+    expect(classifier.model).toBe("anthropic/claude-haiku-4-5")
+    expect(classifier.source).toBe("openrouter:anthropic/claude-haiku-4-5")
+    const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))
+    expect(body.model).toBe("anthropic/claude-haiku-4-5")
+  })
+
+  it("uses OPENROUTER_QUERY_CLASSIFIER_MODEL as the classifier model override", async () => {
+    envMock.env.OPENROUTER_QUERY_CLASSIFIER_MODEL = "openrouter/test-classifier"
+    const fetchImpl = vi.fn().mockResolvedValue(
+      buildOpenRouterResponse({
+        queryQualityLabel: "valid_viewer_intent",
+        abuseLabel: "none",
+        confidence: "high",
+        reasonCode: "felt_need",
+      }),
+    )
+    const classifier = createSearchTraceQueryClassifier({
+      apiKey: "test",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+
+    await classifier.classify(ambiguousInput)
+
+    expect(classifier.model).toBe("openrouter/test-classifier")
+    expect(classifier.source).toBe("openrouter:openrouter/test-classifier")
+    const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))
+    expect(body.model).toBe("openrouter/test-classifier")
+  })
+
+  it("parses OpenRouter text content returned as array parts", async () => {
+    const classifier = createSearchTraceQueryClassifier({
+      apiKey: "test",
+      model: "test-model",
+      fetchImpl: vi.fn().mockResolvedValue(
+        buildArrayContentOpenRouterResponse({
+          queryQualityLabel: "valid_viewer_intent",
+          abuseLabel: "none",
+          confidence: "medium",
+          reasonCode: "array_content",
+        }),
+      ) as unknown as typeof fetch,
+    })
+
+    await expect(classifier.classify(ambiguousInput)).resolves.toEqual({
+      queryQualityLabel: "valid_viewer_intent",
+      abuseLabel: "none",
+      confidence: "medium",
+      reasonCode: "array_content",
+    })
   })
 
   it("sanitizes prompt input before building the request", () => {

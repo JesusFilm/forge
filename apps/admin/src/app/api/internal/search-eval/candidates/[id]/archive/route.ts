@@ -1,5 +1,5 @@
 import { prisma } from "@/db/client"
-import { archiveSearchEvalCandidate } from "@/services/search-eval/candidates"
+import { archiveSearchEvalCandidate } from "@/services/search-eval-candidates"
 
 import { parseDecisionBody } from "../action-helpers"
 import {
