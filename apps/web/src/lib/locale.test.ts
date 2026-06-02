@@ -22,6 +22,7 @@ describe("isLocale (generated UI catalogs only)", () => {
     expect(isLocale("fr")).toBe(true)
     expect(isLocale("pt")).toBe(true)
     expect(isLocale("de")).toBe(true)
+    expect(isLocale("bn")).toBe(true)
   })
 
   it("rejects English-name kebab slugs", () => {
@@ -113,6 +114,7 @@ describe("public watch language slug guards", () => {
 
   it("infers public audio slugs for generated locales outside the original core set", () => {
     expect(publicWatchAudioLanguageSlugForLocale("ru")).toBe("russian")
+    expect(publicWatchAudioLanguageSlugForLocale("bn")).toBe("bangla-2")
     expect(publicWatchHomeLanguageSlugForLocale("es-419")).toBe(
       "spanish-latin-american",
     )
@@ -219,6 +221,7 @@ describe("resolveUiLocale (catalog-driven fallback)", () => {
 
   it("passes bcp47 UI locales through unchanged", () => {
     expect(resolveUiLocale("en")).toBe("en")
+    expect(resolveUiLocale("bn")).toBe("bn")
     expect(resolveUiLocale("es")).toBe("es")
     expect(resolveUiLocale("es-419")).toBe("es")
     expect(resolveUiLocale("fr")).toBe("fr")
@@ -265,6 +268,10 @@ describe("resolveWatchLocaleIdentity", () => {
   })
 
   it("uses imported chrome catalogs for old watch app locales", () => {
+    expect(resolveWatchLocaleIdentity("bangla-2")).toEqual({
+      locale: "bn",
+      htmlLang: "bn",
+    })
     expect(resolveWatchLocaleIdentity("russian")).toEqual({
       locale: "ru",
       htmlLang: "ru",

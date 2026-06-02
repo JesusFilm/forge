@@ -20,6 +20,7 @@ const TEST_MANIFEST: WatchRouteManifest = {
     "lumo-the-gospel-of-john": ["lumo-john-1-35-2-22", "wedding-in-cana"],
   },
   audioLanguageSlugs: [
+    "bangla-2",
     "english",
     "mandarin-china",
     "russian",
@@ -390,6 +391,11 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
   it("uses the imported Russian UI catalog for Russian public audio URLs", async () => {
     const response = await proxy(makeRequest("/jesus.html/russian.html"))
     expect(rewritePath(response)).toBe("/ru/ru/jesus.html/russian.html")
+  })
+
+  it("uses the imported Bangla UI catalog for Bangla public audio URLs", async () => {
+    const response = await proxy(makeRequest("/jesus.html/bangla-2.html"))
+    expect(rewritePath(response)).toBe("/bn/bn/jesus.html/bangla-2.html")
   })
 
   it("404s unknown public audio slugs before they reach the app route", async () => {

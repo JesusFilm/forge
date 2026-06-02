@@ -5,6 +5,7 @@ export const DEFAULT_LOCALE = "en" as const
 
 export const AVAILABLE_UI_LOCALES = [
   "ar",
+  "bn",
   "de",
   "en",
   "es",
