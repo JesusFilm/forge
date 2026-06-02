@@ -382,7 +382,7 @@ export const adminMessages = {
         eyebrow: "Index / Videos",
         title: "Video Library",
         description:
-          "Review the media catalog, source of truth, and dub coverage in one dense table.",
+          "Review the catalog and dub coverage across {total} titles.",
         infoStrip: {
           items: ["INGESTION PIPELINE: ACTIVE", "MUX EDGE ONLINE"],
           trailing: "REGION: US-EAST-1 (PROD)",
@@ -396,11 +396,26 @@ export const adminMessages = {
         },
         search: {
           label: "Search videos",
-          placeholder:
-            "Title, Core ID, slug, source, type, language, image, or date",
+          placeholder: "Search videos, IDs, languages...",
           submit: "Search",
           clear: "Clear",
           active: 'Filtered by "{query}"',
+        },
+        tabs: {
+          all: "All",
+          collections: "Collections",
+          features: "Features",
+          shortFilms: "Short films",
+          series: "Series",
+        },
+        sort: {
+          label: "Recently updated",
+          unavailable: "Sorting is not available yet.",
+        },
+        coverage: {
+          languagesDubbed: "languages dubbed",
+          noLanguages: "No dubbed languages",
+          overflow: "+{count}",
         },
         summary: {
           total: "Active videos",
