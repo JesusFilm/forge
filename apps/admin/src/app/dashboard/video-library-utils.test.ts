@@ -152,14 +152,17 @@ describe("video-library-utils", () => {
     ).toBe("https://www.jesusfilm.org/watch/jesus.html/english.html")
   })
 
-  it("does not fall back to row-level dubs when manifest data is missing", () => {
+  it("falls back to row-level public language slugs when manifest data is missing", () => {
     expect(
       resolveVideoVisitorUrl({
         contentSlug: "missing-from-manifest",
+        languageSlugs: ["spanish-castilian", "english"],
         manifest,
         webOrigin: "http://localhost:3000",
       }),
-    ).toBeNull()
+    ).toBe(
+      "http://localhost:3000/watch/missing-from-manifest.html/english.html",
+    )
   })
 
   it("does not emit visitor URLs when the manifest is unavailable", () => {
@@ -170,6 +173,17 @@ describe("video-library-utils", () => {
         webOrigin: "http://localhost:3000",
       }),
     ).toBeNull()
+  })
+
+  it("falls back to row-level public language slugs when the manifest is unavailable", () => {
+    expect(
+      resolveVideoVisitorUrl({
+        contentSlug: "jesus",
+        languageSlugs: ["en", "french"],
+        manifest: null,
+        webOrigin: "http://localhost:3000",
+      }),
+    ).toBe("http://localhost:3000/watch/jesus.html/french.html")
   })
 
   it("only emits visitor URLs for manifest-backed language pairs", () => {
