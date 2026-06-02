@@ -1,7 +1,7 @@
 ---
 title: "feat: Redesign admin video library page"
 type: feat
-status: active
+status: completed
 date: 2026-06-02
 roadmap: docs/roadmap/platform/feat-100-admin-video-and-media-editorial-workflows.md
 ---
