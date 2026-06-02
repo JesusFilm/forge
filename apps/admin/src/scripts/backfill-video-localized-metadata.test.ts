@@ -298,7 +298,7 @@ describe("backfill-video-localized-metadata args", () => {
         where: expect.objectContaining({
           source: "CORE",
           deletedAt: null,
-          videoLocales: {
+          locales: {
             none: {
               source: "CORE",
               deletedAt: null,
