@@ -51,9 +51,11 @@ export function SubtitleSheetContent({
   const [localToggle, setLocalToggle] = useState(subtitleEnabled)
   // FlashList virtualizes (lazy-loads only visible rows) but needs a CONCRETE
   // height; inside a formSheet it can't derive one from flex and would render
-  // ALL rows. Measure with onLayout, seeded with an estimate so the first frame
-  // is already virtualized.
-  const [listHeight, setListHeight] = useState(() => Math.round(windowHeight))
+  // ALL rows. Measure with onLayout (re-fires on detent drag), seeded with the
+  // initial-detent estimate so the first frame is already virtualized.
+  const [listHeight, setListHeight] = useState(() =>
+    Math.round(windowHeight * 0.75),
+  )
   const onListLayout = useCallback((e: LayoutChangeEvent) => {
     const h = Math.round(e.nativeEvent.layout.height)
     if (h > 0) setListHeight((prev) => (prev !== h ? h : prev))

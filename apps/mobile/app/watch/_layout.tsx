@@ -5,16 +5,11 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { ACCENT, BG_COLOR } from "../../src/lib/color"
 import { WatchSessionProvider } from "../../src/contexts/WatchSessionProvider"
 
-// Native detents (react-native-screens). The language/subtitle pickers use a
-// SINGLE tall detent: a two-detent sheet couples scrolling to the sheet's
-// resize gesture at the content edges, so scrolling a long list either expands
-// the sheet (at the smaller detent) or collapses it (at the larger one) —
-// either way the list "fights" the scroll. One fixed detent decouples them, so
-// scroll is pure scrolling and the grabber/pull-down handles dismissal.
-// Download keeps two detents: its content is short and never scrolls, so the
-// coupling can't trigger. Explicit fractional detents (not "fitToContents")
-// avoid the Android keyboard/empty-sheet bugs in react-native-screens v4.
-const LIST_SHEET_DETENTS = [0.9] as const
+// Native detents (react-native-screens). All three sheets open at 0.75 and the
+// user drags the grabber up to full. Explicit fractional detents (not
+// "fitToContents") avoid the Android keyboard/empty-sheet bugs in
+// react-native-screens v4.
+const LIST_SHEET_DETENTS = [0.75, 1] as const
 const DOWNLOAD_SHEET_DETENTS = [0.75, 1] as const
 
 const SHEET_BASE_OPTIONS = {
@@ -24,6 +19,18 @@ const SHEET_BASE_OPTIONS = {
   sheetGrabberVisible: true,
   sheetCornerRadius: 16,
 } as const
+
+// The language/subtitle lists are long and scrollable, so they opt OUT of the
+// default scroll-expands-to-edge behavior: otherwise the first scroll at the
+// 0.75 detent snaps the sheet to full, making 0.75 useless. With it off the
+// list scrolls at 0.75 and the user resizes deliberately via the grabber. The
+// list itself stays smooth because it's a virtualized FlashList (see
+// LanguageSheet). Download keeps the default — its content never scrolls.
+const LIST_SHEET_OPTIONS = {
+  ...SHEET_BASE_OPTIONS,
+  sheetAllowedDetents: [...LIST_SHEET_DETENTS],
+  sheetExpandsWhenScrolledToEdge: false,
+}
 
 export default function WatchLayout() {
   const router = useRouter()
@@ -56,20 +63,8 @@ export default function WatchLayout() {
             ),
           }}
         />
-        <Stack.Screen
-          name="language"
-          options={{
-            ...SHEET_BASE_OPTIONS,
-            sheetAllowedDetents: [...LIST_SHEET_DETENTS],
-          }}
-        />
-        <Stack.Screen
-          name="subtitle"
-          options={{
-            ...SHEET_BASE_OPTIONS,
-            sheetAllowedDetents: [...LIST_SHEET_DETENTS],
-          }}
-        />
+        <Stack.Screen name="language" options={LIST_SHEET_OPTIONS} />
+        <Stack.Screen name="subtitle" options={LIST_SHEET_OPTIONS} />
         <Stack.Screen
           name="download"
           options={{

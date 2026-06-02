@@ -47,9 +47,13 @@ export function LanguageSheetContent({
   // FlashList virtualizes (lazy-loads only the visible rows) but needs a
   // CONCRETE height to do it — inside a formSheet it can't derive one from
   // flex, and falls back to rendering ALL 2000+ rows (a multi-second freeze on
-  // open). Measure the available height with onLayout; seed it with an estimate
-  // so the very first frame is already virtualized, then refine to exact.
-  const [listHeight, setListHeight] = useState(() => Math.round(windowHeight))
+  // open). Measure the available height with onLayout (it re-fires when the
+  // user drags between detents, so the list re-virtualizes for the new size);
+  // seed it with the initial-detent estimate so the first frame is already
+  // virtualized, then refine to exact.
+  const [listHeight, setListHeight] = useState(() =>
+    Math.round(windowHeight * 0.75),
+  )
   const onListLayout = useCallback((e: LayoutChangeEvent) => {
     const h = Math.round(e.nativeEvent.layout.height)
     if (h > 0) setListHeight((prev) => (prev !== h ? h : prev))
