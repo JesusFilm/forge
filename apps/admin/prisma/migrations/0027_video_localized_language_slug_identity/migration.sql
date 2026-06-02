@@ -32,7 +32,9 @@ WHERE vsq."language_id" = l."id";
 DROP INDEX IF EXISTS "video_locale_video_id_locale_key";
 
 -- Localized Core questions are also language-aware. Do not rely on Core
--- question ids being globally unique across every localized row.
+-- question ids being globally unique across every localized row. Keep this
+-- as a lookup index rather than a new uniqueness constraint so legacy duplicate
+-- rows cannot block deploy-time migration.
 DROP INDEX IF EXISTS "video_study_question_core_id_key";
 
 CREATE INDEX "video_locale_video_id_locale_idx"
@@ -56,5 +58,5 @@ CREATE INDEX "video_study_question_video_id_locale_idx"
   ON "video_study_question"("video_id", "locale");
 CREATE INDEX "video_study_question_locale_deleted_at_idx"
   ON "video_study_question"("locale", "deleted_at");
-CREATE UNIQUE INDEX "video_study_question_video_id_core_id_language_id_key"
+CREATE INDEX "video_study_question_video_id_core_id_language_id_idx"
   ON "video_study_question"("video_id", "core_id", "language_id");

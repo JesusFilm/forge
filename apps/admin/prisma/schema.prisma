@@ -1334,10 +1334,10 @@ model VideoStudyQuestion {
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")
 
-  @@unique([videoId, coreId, languageId])
   @@index([videoId])
   @@index([coreId])
   @@index([languageId])
+  @@index([videoId, coreId, languageId])
   @@index([languageSlug])
   @@index([videoId, languageSlug])
   @@index([languageCoreId])
