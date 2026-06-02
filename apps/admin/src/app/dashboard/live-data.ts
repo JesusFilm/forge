@@ -651,6 +651,7 @@ async function loadVideoRowSlice({
       visitorUrl: includeVisitorUrls
         ? resolveVideoVisitorUrl({
             contentSlug: video.slug,
+            languageSlugs: dubRows.map((dub) => dub.language?.slug),
             manifest: routeManifest,
             webOrigin: env.WEB_CANONICAL_ORIGIN,
           })
