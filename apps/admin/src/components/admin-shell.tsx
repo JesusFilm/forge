@@ -170,7 +170,7 @@ export function AdminShell({
         <button
           type="button"
           className={cx(
-            "absolute inset-0 bg-black/55 backdrop-blur-[3px] transition-opacity duration-200 ease-out",
+            "absolute inset-0 cursor-pointer bg-black/55 backdrop-blur-[3px] transition-opacity duration-200 ease-out",
             isNavOpen ? "opacity-100" : "opacity-0",
           )}
           aria-label="Close navigation"
@@ -200,7 +200,7 @@ export function AdminShell({
             <button
               type="button"
               onClick={() => setNavOpen(true)}
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] xl:hidden"
+              className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] xl:hidden"
               aria-label="Open navigation"
               aria-expanded={isNavOpen}
             >
@@ -223,14 +223,19 @@ export function AdminShell({
           <div className="ml-auto flex items-center gap-4">
             <button
               type="button"
-              className="text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:text-[var(--color-text-primary)]"
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
               onClick={() => setPaletteOpen(true)}
+              aria-label={messages.common.openCommandPalette}
+              title={messages.common.openCommandPalette}
             >
               <Command className="h-4 w-4" strokeWidth={1.5} />
             </button>
             <button
               type="button"
-              className="text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:text-[var(--color-text-primary)]"
+              disabled
+              className="inline-flex h-8 w-8 items-center justify-center rounded-sm text-[var(--color-text-muted)] opacity-45 transition-all duration-[120ms] ease-out disabled:cursor-not-allowed"
+              aria-label={messages.common.helpUnavailable}
+              title={messages.common.helpUnavailable}
             >
               <HelpCircle className="h-4 w-4" strokeWidth={1.5} />
             </button>
@@ -242,23 +247,28 @@ export function AdminShell({
               </span>
             </div>
             <div className="flex items-center gap-1 rounded-sm border border-[var(--color-hairline)] p-1">
-              {supportedAdminLocales.map((supportedLocale) => (
-                <button
-                  key={supportedLocale}
-                  type="button"
-                  disabled={isSwitchingLocale}
-                  onClick={() => handleLocaleChange(supportedLocale)}
-                  aria-label={`${messages.common.localeLabel}: ${messages.common.locales[supportedLocale]}`}
-                  className={cx(
-                    "rounded-[2px] px-2 py-1 text-[11px] transition-all duration-[120ms] ease-out",
-                    supportedLocale === locale
-                      ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
-                      : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-raised)]",
-                  )}
-                >
-                  {messages.common.locales[supportedLocale]}
-                </button>
-              ))}
+              {supportedAdminLocales.map((supportedLocale) => {
+                const activeLocale = supportedLocale === locale
+                return (
+                  <button
+                    key={supportedLocale}
+                    type="button"
+                    disabled={isSwitchingLocale || activeLocale}
+                    onClick={() => handleLocaleChange(supportedLocale)}
+                    aria-current={activeLocale ? "true" : undefined}
+                    aria-label={`${messages.common.localeLabel}: ${messages.common.locales[supportedLocale]}`}
+                    className={cx(
+                      "rounded-[2px] px-2 py-1 text-[11px] transition-all duration-[120ms] ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]",
+                      activeLocale
+                        ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
+                        : "cursor-pointer text-[var(--color-text-muted)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]",
+                      isSwitchingLocale && !activeLocale && "opacity-45",
+                    )}
+                  >
+                    {messages.common.locales[supportedLocale]}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </header>
@@ -278,16 +288,26 @@ export function AdminShell({
 
       {isPaletteOpen ? (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/55 px-6 pt-24">
-          <div className="w-full max-w-2xl rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-command-palette-title"
+            className="w-full max-w-2xl rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+          >
             <div className="hairline-strong-b flex items-center gap-3 px-4 py-3">
               <Search className="h-4 w-4 text-[var(--color-text-muted)]" />
-              <span className="font-mono text-[12px] text-[var(--color-text-muted)]">
+              <span
+                id="admin-command-palette-title"
+                className="font-mono text-[12px] text-[var(--color-text-muted)]"
+              >
                 {messages.common.searchPalettePrompt}
               </span>
               <button
                 type="button"
+                autoFocus
                 onClick={() => setPaletteOpen(false)}
-                className="ml-auto rounded-sm border border-[var(--color-hairline)] px-2 py-1 font-mono text-[10px] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
+                className="ml-auto cursor-pointer rounded-sm border border-[var(--color-hairline)] px-2 py-1 font-mono text-[10px] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+                aria-label={messages.common.closeCommandPalette}
               >
                 {messages.common.escape}
               </button>
@@ -308,7 +328,7 @@ export function AdminShell({
                         href={item.href as Route}
                         onClick={() => setPaletteOpen(false)}
                         className={cx(
-                          "flex items-start gap-3 rounded-sm border px-3 py-3 transition-all duration-[120ms] ease-out",
+                          "flex cursor-pointer items-start gap-3 rounded-sm border px-3 py-3 transition-all duration-[120ms] ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]",
                           active
                             ? "border-[var(--color-hairline-strong)] bg-[var(--color-surface-raised)]"
                             : "border-[var(--color-hairline)] hover:bg-[var(--color-surface-raised)]",
@@ -342,7 +362,7 @@ export function AdminShell({
                         key={item.href}
                         href={item.href as Route}
                         onClick={() => setPaletteOpen(false)}
-                        className="flex items-center justify-between rounded-sm border border-[var(--color-hairline)] px-3 py-2 text-[13px] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
+                        className="flex cursor-pointer items-center justify-between rounded-sm border border-[var(--color-hairline)] px-3 py-2 text-[13px] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
                       >
                         <span>{messages.nav.items[item.id].label}</span>
                         <span className="font-mono text-[10px] text-[var(--color-text-muted)]">
@@ -410,7 +430,7 @@ function ShellSidebarContent({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]"
+            className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
             aria-label="Close navigation"
           >
             <X className="h-4 w-4" strokeWidth={1.5} />
@@ -434,7 +454,7 @@ function ShellSidebarContent({
                     href={item.href as Route}
                     onClick={onClose}
                     className={cx(
-                      "flex h-8 items-center gap-3 rounded-sm px-3 transition-all duration-[120ms] ease-out",
+                      "flex h-8 cursor-pointer items-center gap-3 rounded-sm px-3 transition-all duration-[120ms] ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]",
                       active
                         ? "border-l-2 border-[var(--color-text-primary)] bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
                         : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]",

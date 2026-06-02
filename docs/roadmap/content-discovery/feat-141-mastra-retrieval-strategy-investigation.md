@@ -3,7 +3,7 @@ id: "feat-141"
 title: "Mastra retrieval strategy ownership investigation"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-05-29"
 duration: 2
 depends_on:
@@ -35,6 +35,15 @@ be native Mastra Evaluation: promoted Datasets, Scorers, and Experiment results
 from feat-142. Custom JSON artifacts can remain supporting evidence, but they
 should not be the only operator-quality source once native Experiments are
 populated.
+
+## Closure Decision
+
+Closed on 2026-06-01. The current decision is to keep live retrieval strategy
+owned by Admin and not run a separate P0 investigation now. Mastra remains on
+the offline evaluation/orchestration side of the boundary; future retrieval
+strategy experiments should be opened only when promoted native Experiments show
+a concrete quality or operator-iteration need that Admin-owned orchestration
+cannot cover.
 
 ## Entry Points - Read These First
 

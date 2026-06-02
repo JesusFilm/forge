@@ -91,6 +91,10 @@ export class VideoService {
     })
   }
 
+  async countActive() {
+    return this.prisma.video.count({ where: { deletedAt: null } })
+  }
+
   async getById({ id, query }: { id: string; query: object }) {
     return this.prisma.video.findFirst({
       ...query,

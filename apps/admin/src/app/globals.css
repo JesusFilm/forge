@@ -63,6 +63,7 @@ body {
 
 a {
   color: inherit;
+  cursor: pointer;
   text-decoration: none;
 }
 
@@ -72,6 +73,16 @@ textarea,
 select {
   font-family: inherit;
   color: inherit;
+}
+
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
 }
 
 select {
@@ -143,6 +154,17 @@ optgroup {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   background: transparent;
+}
+
+button.status-pill:not(:disabled) {
+  transition:
+    border-color 120ms ease-out,
+    color 120ms ease-out,
+    background-color 120ms ease-out;
+}
+
+button.status-pill:not(:disabled):hover {
+  background-color: var(--color-surface-raised);
 }
 
 .workflow-trace-shell {

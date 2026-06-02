@@ -9,6 +9,14 @@ import {
 } from "@/domain/blocks"
 import { getAdminLocale } from "@/i18n/server"
 import { createServices } from "@/services"
+import { env } from "@/config/env"
+import { WatchRouteManifestStore } from "@/services/watch-route-manifest-store"
+import {
+  createVideoLibraryPagination,
+  normalizeVideoThumbnailUrl,
+  resolveVideoVisitorUrl,
+  VIDEO_LIBRARY_PAGE_SIZE,
+} from "./video-library-utils"
 
 function isMissingTableError(error: unknown) {
   return (
@@ -52,6 +60,13 @@ type VideoImageRow = {
   url: string | null
   kind: string | null
   createdAt: Date
+}
+
+type LoadVideoRowSliceOptions = {
+  principal: Principal
+  limit: number
+  offset: number
+  includeVisitorUrls?: boolean
 }
 
 function durationSecondsForDub(
@@ -369,10 +384,35 @@ function preferredVideoImage(images: VideoImageRow[]) {
   const priority = ["videoStill", "mobileCinematicHigh", "poster", "still"]
   for (const kind of priority) {
     const match = images.find((image) => image.kind === kind && image.url)
-    if (match?.url) return match.url
+    if (match?.url) return normalizeVideoThumbnailUrl(match.url)
   }
 
-  return images.find((image) => image.url)?.url ?? null
+  return normalizeVideoThumbnailUrl(images.find((image) => image.url)?.url)
+}
+
+async function countActiveVideos() {
+  const services = createServices(prisma)
+  try {
+    return await services.video.countActive()
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return 0
+    }
+    throw error
+  }
+}
+
+async function loadLatestWatchRouteManifest() {
+  try {
+    return (
+      (await new WatchRouteManifestStore(prisma).getLatest())?.payload ?? null
+    )
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return null
+    }
+    throw error
+  }
 }
 
 export async function loadExperienceRows(principal: Principal) {
@@ -486,7 +526,12 @@ export async function loadExperienceRows(principal: Principal) {
   })
 }
 
-export async function loadVideoRows(principal: Principal) {
+async function loadVideoRowSlice({
+  principal,
+  limit,
+  offset,
+  includeVisitorUrls = false,
+}: LoadVideoRowSliceOptions) {
   const services = createServices(prisma)
   const locale = await getAdminLocale()
   let videos: Awaited<ReturnType<typeof services.video.list>>
@@ -494,7 +539,7 @@ export async function loadVideoRows(principal: Principal) {
     // U2: VideoService.list dropped its `user` param. Route is gated by requireSession().
     void principal
     videos = await services.video.list({
-      input: { limit: 30, offset: 0 },
+      input: { limit, offset },
       query: {},
     })
   } catch (error) {
@@ -576,6 +621,10 @@ export async function loadVideoRows(principal: Principal) {
     imagesByVideo.set(item.videoId, current)
   }
 
+  const routeManifest = includeVisitorUrls
+    ? await loadLatestWatchRouteManifest()
+    : null
+
   return videos.map((video) => {
     const localeRows = localesByVideo.get(video.id) ?? []
     const dubRows = dubsByVideo.get(video.id) ?? []
@@ -590,6 +639,7 @@ export async function loadVideoRows(principal: Principal) {
       title,
       description: localeRow?.description?.trim() || null,
       id: video.coreId,
+      slug: video.slug,
       label: video.label ?? null,
       labelLabel: localizedVideoLabel(video.label ?? null, locale),
       sourceLabel: source.label,
@@ -601,6 +651,48 @@ export async function loadVideoRows(principal: Principal) {
       previewImageUrl: preferredVideoImage(imageRows),
       previewStreamUrl:
         playbackDub?.hls ?? playbackDub?.dash ?? playbackDub?.share ?? null,
+      visitorUrl: includeVisitorUrls
+        ? resolveVideoVisitorUrl({
+            contentSlug: video.slug,
+            manifest: routeManifest,
+            webOrigin: env.WEB_CANONICAL_ORIGIN,
+          })
+        : null,
     }
   })
+}
+
+export async function loadVideoRows(principal: Principal) {
+  return loadVideoRowSlice({
+    principal,
+    limit: VIDEO_LIBRARY_PAGE_SIZE,
+    offset: 0,
+  })
+}
+
+export async function loadVideoLibraryPage(
+  principal: Principal,
+  {
+    page,
+    pageSize = VIDEO_LIBRARY_PAGE_SIZE,
+  }: { page: number; pageSize?: number },
+) {
+  const total = await countActiveVideos()
+  const pagination = createVideoLibraryPagination({
+    total,
+    requestedPage: page,
+    pageSize,
+  })
+
+  const rows =
+    total === 0
+      ? []
+      : await loadVideoRowSlice({
+          principal,
+          limit: pagination.pageSize,
+          offset: pagination.offset,
+          includeVisitorUrls: true,
+        })
+
+  return { rows, pagination }
 }
