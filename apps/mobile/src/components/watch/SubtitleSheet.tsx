@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  type LayoutChangeEvent,
   Pressable,
   StyleSheet,
   Switch,
@@ -10,6 +9,7 @@ import {
   View,
 } from "react-native"
 import { FlashList } from "@shopify/flash-list"
+import { useNavigation } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
@@ -20,7 +20,11 @@ import {
   TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "../../lib/color"
-import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
+import {
+  feedback,
+  HORIZONTAL_PADDING,
+  LIST_SHEET_DETENTS,
+} from "../../styles/shared"
 import type { WatchSubtitle } from "../../lib/normalizeVideo"
 
 function sortByName(subtitles: WatchSubtitle[]): WatchSubtitle[] {
@@ -50,16 +54,24 @@ export function SubtitleSheetContent({
   const [query, setQuery] = useState("")
   const [localToggle, setLocalToggle] = useState(subtitleEnabled)
   // FlashList virtualizes (lazy-loads only visible rows) but needs a CONCRETE
-  // height; inside a formSheet it can't derive one from flex and would render
-  // ALL rows. Measure with onLayout (re-fires on detent drag), seeded with the
-  // initial-detent estimate so the first frame is already virtualized.
+  // height; inside a formSheet it can't derive one from flex (the content root
+  // is unbounded) and would render ALL rows. Drive the height off the native
+  // detent index so the list fills the sheet at each detent — see LanguageSheet.
   const [listHeight, setListHeight] = useState(() =>
-    Math.round(windowHeight * 0.75),
+    Math.round(windowHeight * LIST_SHEET_DETENTS[0]),
   )
-  const onListLayout = useCallback((e: LayoutChangeEvent) => {
-    const h = Math.round(e.nativeEvent.layout.height)
-    if (h > 0) setListHeight((prev) => (prev !== h ? h : prev))
-  }, [])
+  const navigation = useNavigation()
+  useEffect(() => {
+    const unsub = navigation.addListener(
+      "sheetDetentChange" as never,
+      (e: { data?: { index?: number } }) => {
+        const idx = e?.data?.index ?? 0
+        const frac = LIST_SHEET_DETENTS[idx] ?? LIST_SHEET_DETENTS[0]
+        setListHeight(Math.round(windowHeight * frac))
+      },
+    )
+    return unsub
+  }, [navigation, windowHeight])
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Once a selection has committed to closing, ignore further taps. Without
   // this, a fast double-tap (first arms the 300ms deferred close, second takes
@@ -215,7 +227,7 @@ export function SubtitleSheetContent({
   )
 
   return (
-    <View style={styles.container} onLayout={onListLayout}>
+    <View style={styles.container}>
       <View style={{ height: listHeight }}>
         <FlashList
           data={filtered}

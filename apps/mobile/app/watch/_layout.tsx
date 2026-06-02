@@ -4,12 +4,13 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { ACCENT, BG_COLOR } from "../../src/lib/color"
 import { WatchSessionProvider } from "../../src/contexts/WatchSessionProvider"
+import { LIST_SHEET_DETENTS } from "../../src/styles/shared"
 
 // Native detents (react-native-screens). All three sheets open at 0.75 and the
-// user drags the grabber up to full. Explicit fractional detents (not
-// "fitToContents") avoid the Android keyboard/empty-sheet bugs in
+// user drags the grabber up to full. LIST_SHEET_DETENTS is shared with the
+// sheet components so they can size the list per detent. Explicit fractional
+// detents (not "fitToContents") avoid the Android keyboard/empty-sheet bugs in
 // react-native-screens v4.
-const LIST_SHEET_DETENTS = [0.75, 1] as const
 const DOWNLOAD_SHEET_DETENTS = [0.75, 1] as const
 
 const SHEET_BASE_OPTIONS = {

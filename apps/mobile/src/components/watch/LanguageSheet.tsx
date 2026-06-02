@@ -1,6 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  type LayoutChangeEvent,
   Pressable,
   StyleSheet,
   Text,
@@ -9,12 +8,17 @@ import {
   View,
 } from "react-native"
 import { FlashList } from "@shopify/flash-list"
+import { useNavigation } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
 import { ACCENT, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
-import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
+import {
+  feedback,
+  HORIZONTAL_PADDING,
+  LIST_SHEET_DETENTS,
+} from "../../styles/shared"
 import type { WatchVariant } from "../../lib/normalizeVideo"
 
 function displayName(v: WatchVariant): string {
@@ -51,13 +55,27 @@ export function LanguageSheetContent({
   // user drags between detents, so the list re-virtualizes for the new size);
   // seed it with the initial-detent estimate so the first frame is already
   // virtualized, then refine to exact.
+  // The formSheet content root is unbounded, so the FlashList needs an explicit
+  // height and onLayout can't measure it (it reads back our own fixed height).
+  // Drive the height off the native detent index instead: [0.75, 1] -> 0.75/1.0
+  // of the window, updated as the user drags the grabber, so the list fills the
+  // sheet at every detent (no gap at full, no clipped rows at 0.75).
   const [listHeight, setListHeight] = useState(() =>
-    Math.round(windowHeight * 0.75),
+    Math.round(windowHeight * LIST_SHEET_DETENTS[0]),
   )
-  const onListLayout = useCallback((e: LayoutChangeEvent) => {
-    const h = Math.round(e.nativeEvent.layout.height)
-    if (h > 0) setListHeight((prev) => (prev !== h ? h : prev))
-  }, [])
+  const navigation = useNavigation()
+  useEffect(() => {
+    const unsub = navigation.addListener(
+      // not in expo-router's typed event map, but native-stack emits it
+      "sheetDetentChange" as never,
+      (e: { data?: { index?: number } }) => {
+        const idx = e?.data?.index ?? 0
+        const frac = LIST_SHEET_DETENTS[idx] ?? LIST_SHEET_DETENTS[0]
+        setListHeight(Math.round(windowHeight * frac))
+      },
+    )
+    return unsub
+  }, [navigation, windowHeight])
   // Ignore a second tap once a selection has committed to closing, so a fast
   // double-tap can't call router.back() twice and pop the watch screen.
   const closingRef = useRef(false)
@@ -181,7 +199,7 @@ export function LanguageSheetContent({
   )
 
   return (
-    <View style={styles.container} onLayout={onListLayout}>
+    <View style={styles.container}>
       <View style={{ height: listHeight }}>
         <FlashList
           data={filtered}
