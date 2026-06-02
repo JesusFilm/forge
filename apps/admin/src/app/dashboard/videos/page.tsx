@@ -100,6 +100,28 @@ function PaginationControl({
   )
 }
 
+function SummaryTile({
+  label,
+  value,
+  detail,
+}: {
+  label: string
+  value: string
+  detail: string
+}) {
+  return (
+    <div className="rounded-sm border border-[var(--color-hairline)] bg-[color-mix(in_oklab,var(--color-surface-raised)_76%,black)] p-3">
+      <div className="label-text">{label}</div>
+      <div className="mt-2 truncate font-mono text-lg font-medium leading-6">
+        {value}
+      </div>
+      <div className="mono-meta mt-1 truncate text-[var(--color-text-muted)]">
+        {detail}
+      </div>
+    </div>
+  )
+}
+
 export default async function VideosPage({
   searchParams,
 }: VideosPageProps = {}) {
@@ -113,6 +135,17 @@ export default async function VideosPage({
     principal,
     { page: requestedPage, query },
   )
+  const rangeLabel = paginationSummary(
+    page.table.pagination.summary,
+    pagination,
+  )
+  const currentPageLabel = pageCountLabel(
+    page.table.pagination.page,
+    pagination,
+  )
+  const queryState = query
+    ? page.search.active.replace("{query}", query)
+    : page.summary.queryAll
 
   return (
     <div className="flex flex-col gap-6">
@@ -121,41 +154,41 @@ export default async function VideosPage({
         trailing={page.infoStrip.trailing}
       />
 
-      <DashboardPageHeader
-        eyebrow={page.eyebrow}
-        title={page.title}
-        description={page.description}
-        action={
-          <div className="flex flex-col items-start gap-1 md:items-end">
-            <PrimaryButton
-              disabled
-              title={page.actions.primaryUnavailable}
-              aria-describedby="video-actions-unavailable"
-            >
-              <Plus className="h-4 w-4" strokeWidth={1.5} />
-              {page.actions.primary}
-            </PrimaryButton>
-            <span
-              id="video-actions-unavailable"
-              className="font-mono text-[10px] text-[var(--color-text-muted)]"
-            >
-              {page.actions.primaryUnavailable}
-            </span>
-          </div>
-        }
-      />
+      <section className="overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-surface)_92%,black),var(--color-surface))]">
+        <div className="grid gap-5 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:p-5">
+          <DashboardPageHeader
+            eyebrow={page.eyebrow}
+            title={page.title}
+            description={page.description}
+            action={
+              <div className="flex flex-col items-start gap-1 md:items-end">
+                <PrimaryButton
+                  disabled
+                  title={page.actions.primaryUnavailable}
+                  aria-describedby="video-actions-unavailable"
+                >
+                  <Plus className="h-4 w-4" strokeWidth={1.5} />
+                  {page.actions.primary}
+                </PrimaryButton>
+                <span
+                  id="video-actions-unavailable"
+                  className="font-mono text-[10px] text-[var(--color-text-muted)]"
+                >
+                  {page.actions.primaryUnavailable}
+                </span>
+              </div>
+            }
+          />
 
-      <div className="flex flex-col gap-6">
-        <PageSection title={page.table.title} meta={page.table.meta}>
-          <div className="hairline-b flex flex-col gap-3 p-4 md:flex-row md:items-end md:justify-between">
+          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-3">
             <form
               action="/dashboard/videos"
-              className="flex w-full flex-col gap-2 md:max-w-[760px] md:flex-row md:items-end"
+              className="flex w-full flex-col gap-3"
               role="search"
             >
               <label
                 htmlFor="video-library-search"
-                className="flex flex-1 flex-col gap-1"
+                className="flex flex-col gap-1"
               >
                 <span className="label-text">{page.search.label}</span>
                 <span className="relative">
@@ -170,11 +203,11 @@ export default async function VideosPage({
                     maxLength={VIDEO_LIBRARY_MAX_QUERY_LENGTH}
                     defaultValue={query}
                     placeholder={page.search.placeholder}
-                    className="h-9 w-full rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] pl-9 pr-3 font-mono text-[12px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out placeholder:text-[var(--color-text-disabled)] focus:border-[var(--color-brand)] focus:bg-[var(--color-surface-raised)]"
+                    className="h-10 w-full rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] pl-9 pr-3 font-mono text-[12px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out placeholder:text-[var(--color-text-disabled)] focus:border-[var(--color-brand)] focus:bg-[var(--color-surface-raised)]"
                   />
                 </span>
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <SecondaryButton type="submit">
                   <Search className="h-4 w-4" strokeWidth={1.5} />
                   {page.search.submit}
@@ -190,148 +223,170 @@ export default async function VideosPage({
                 ) : null}
               </div>
             </form>
-            {query ? (
-              <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
-                {page.search.active.replace("{query}", query)}
-              </span>
-            ) : null}
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-[820px] w-full border-collapse text-left">
-              <thead className="hairline-strong-b bg-[var(--color-surface-inset)]">
-                <tr>
-                  {page.table.columns.map((column) => (
-                    <th key={column} className="label-text px-4 py-3">
-                      {column}
-                    </th>
-                  ))}
-                  <th className="label-text w-12 px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {videoRows.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={page.table.columns.length + 1}
-                      className="px-4 py-10 text-center text-[13px] text-[var(--color-text-muted)]"
-                    >
-                      {query ? page.table.emptySearch : page.table.empty}
-                    </td>
-                  </tr>
-                ) : (
-                  videoRows.map((video) => (
-                    <tr
-                      key={video.key}
-                      className="hairline-b transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
-                    >
-                      <td className="p-4 align-middle">
-                        <div className="relative flex aspect-video w-[150px] items-center justify-center overflow-hidden rounded-sm border border-white/10 bg-[linear-gradient(135deg,#151312,#292524)]">
-                          {video.previewImageUrl ? (
-                            <>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={video.previewImageUrl}
-                                alt=""
-                                loading="lazy"
-                                decoding="async"
-                                className="absolute inset-0 h-full w-full object-cover"
-                              />
-                              <span
-                                aria-hidden="true"
-                                className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.55))]"
-                              />
-                            </>
-                          ) : (
-                            <ImageIcon
-                              className="h-5 w-5 text-[var(--color-text-disabled)]"
-                              strokeWidth={1.5}
-                            />
-                          )}
-                          <span className="absolute bottom-2 right-2 rounded-[2px] bg-black/60 px-1.5 py-0.5 font-mono text-[9px]">
-                            {video.duration}
-                          </span>
+        </div>
+
+        <div className="grid gap-3 border-t border-[var(--color-hairline)] p-4 md:grid-cols-2 xl:grid-cols-4">
+          <SummaryTile
+            label={page.summary.total}
+            value={pagination.total.toLocaleString("en")}
+            detail={page.table.title}
+          />
+          <SummaryTile
+            label={page.summary.visible}
+            value={videoRows.length.toLocaleString("en")}
+            detail={rangeLabel}
+          />
+          <SummaryTile
+            label={page.summary.page}
+            value={pagination.currentPage.toString()}
+            detail={currentPageLabel}
+          />
+          <SummaryTile
+            label={page.summary.query}
+            value={queryState}
+            detail={page.table.meta}
+          />
+        </div>
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <PageSection
+          title={page.table.title}
+          meta={page.table.meta}
+          actions={
+            <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
+              {rangeLabel}
+            </span>
+          }
+        >
+          <div className="hidden grid-cols-[180px_minmax(260px,1fr)_128px_96px_132px_48px] items-center gap-4 border-b border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-3 lg:grid">
+            {page.table.columns.map((column) => (
+              <div key={column} className="label-text">
+                {column}
+              </div>
+            ))}
+            <div className="label-text text-right" />
+          </div>
+          <div className="divide-y divide-[var(--color-hairline)]">
+            {videoRows.length === 0 ? (
+              <div className="px-4 py-10 text-center text-[13px] text-[var(--color-text-muted)]">
+                {query ? page.table.emptySearch : page.table.empty}
+              </div>
+            ) : (
+              videoRows.map((video) => (
+                <article
+                  key={video.key}
+                  className="grid gap-4 px-4 py-4 transition-colors duration-[120ms] ease-out hover:bg-[color-mix(in_oklab,var(--color-surface-raised)_74%,transparent)] lg:grid-cols-[180px_minmax(260px,1fr)_128px_96px_132px_48px] lg:items-center"
+                >
+                  <div className="relative flex aspect-video w-full max-w-[240px] items-center justify-center overflow-hidden rounded-sm border border-white/10 bg-[linear-gradient(135deg,#151312,#292524)] lg:w-[180px]">
+                    {video.previewImageUrl ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={video.previewImageUrl}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                        <span
+                          aria-hidden="true"
+                          className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.55))]"
+                        />
+                      </>
+                    ) : (
+                      <ImageIcon
+                        className="h-5 w-5 text-[var(--color-text-disabled)]"
+                        strokeWidth={1.5}
+                      />
+                    )}
+                    <span className="absolute bottom-2 right-2 rounded-[2px] bg-black/60 px-1.5 py-0.5 font-mono text-[9px]">
+                      {video.duration}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 flex-col gap-2">
+                      <div>
+                        <h3 className="truncate text-[14px] font-medium">
+                          {video.title}
+                        </h3>
+                        <div className="mono-meta truncate text-[var(--color-text-muted)]">
+                          {video.id}
                         </div>
-                      </td>
-                      <td className="px-4 py-3 align-middle">
-                        <div className="flex max-w-[280px] flex-col gap-2">
-                          <div>
-                            <div className="truncate text-[13px] font-medium">
-                              {video.title}
-                            </div>
-                            <div className="mono-meta truncate text-[var(--color-text-muted)]">
-                              {video.id}
-                            </div>
-                          </div>
-                          {video.labelLabel ? (
-                            <div>
-                              <StatusPill tone="muted">
-                                {video.labelLabel}
-                              </StatusPill>
-                            </div>
-                          ) : null}
+                        <div className="mono-meta mt-0.5 truncate text-[var(--color-text-disabled)]">
+                          {video.slug}
                         </div>
-                      </td>
-                      <td className="px-4 py-3 align-middle">
-                        <StatusPill tone={video.sourceTone}>
-                          {video.sourceLabel}
-                        </StatusPill>
-                      </td>
-                      <td className="px-4 py-3 align-middle">
-                        <span className="font-mono text-[12px] text-[var(--color-text-secondary)]">
-                          {video.dubs}
+                      </div>
+                      {video.labelLabel ? (
+                        <div>
+                          <StatusPill tone="muted">
+                            {video.labelLabel}
+                          </StatusPill>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 lg:block">
+                    <span className="label-text lg:hidden">
+                      {page.table.columns[2]}
+                    </span>
+                    <StatusPill tone={video.sourceTone}>
+                      {video.sourceLabel}
+                    </StatusPill>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 lg:block">
+                    <span className="label-text lg:hidden">
+                      {page.table.columns[3]}
+                    </span>
+                    <span className="font-mono text-[12px] text-[var(--color-text-secondary)]">
+                      {video.dubs}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 lg:block">
+                    <span className="label-text lg:hidden">
+                      {page.table.columns[4]}
+                    </span>
+                    <time
+                      dateTime={video.updatedAtIso}
+                      title={video.updated}
+                      className="mono-meta text-[var(--color-text-muted)]"
+                    >
+                      {video.updatedRelative}
+                    </time>
+                  </div>
+                  <div className="flex items-center justify-end">
+                    {video.visitorUrl ? (
+                      <a
+                        href={video.visitorUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`${page.table.openVisitorLabel}: ${video.title}`}
+                        title={page.table.openVisitorLabel}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]"
+                      >
+                        <ExternalLink className="h-4 w-4" strokeWidth={1.5} />
+                      </a>
+                    ) : (
+                      <span
+                        aria-disabled="true"
+                        aria-label={page.table.noVisitorLinkLabel}
+                        title={page.table.noVisitorLinkLabel}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-disabled)]"
+                      >
+                        <ExternalLink className="h-4 w-4" strokeWidth={1.5} />
+                        <span className="sr-only">
+                          {page.table.noVisitorLinkLabel}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 align-middle">
-                        <time
-                          dateTime={video.updatedAtIso}
-                          title={video.updated}
-                          className="mono-meta text-[var(--color-text-muted)]"
-                        >
-                          {video.updatedRelative}
-                        </time>
-                      </td>
-                      <td className="px-4 py-3 text-right align-middle">
-                        {video.visitorUrl ? (
-                          <a
-                            href={video.visitorUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            aria-label={`${page.table.openVisitorLabel}: ${video.title}`}
-                            title={page.table.openVisitorLabel}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]"
-                          >
-                            <ExternalLink
-                              className="h-4 w-4"
-                              strokeWidth={1.5}
-                            />
-                          </a>
-                        ) : (
-                          <span
-                            aria-disabled="true"
-                            aria-label={page.table.noVisitorLinkLabel}
-                            title={page.table.noVisitorLinkLabel}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-disabled)]"
-                          >
-                            <ExternalLink
-                              className="h-4 w-4"
-                              strokeWidth={1.5}
-                            />
-                            <span className="sr-only">
-                              {page.table.noVisitorLinkLabel}
-                            </span>
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                      </span>
+                    )}
+                  </div>
+                </article>
+              ))
+            )}
           </div>
           <div className="hairline-strong-t flex flex-col gap-3 px-4 py-3 text-[12px] text-[var(--color-text-muted)] md:flex-row md:items-center md:justify-between">
-            <span className="font-mono">
-              {paginationSummary(page.table.pagination.summary, pagination)}
-            </span>
+            <span className="font-mono">{rangeLabel}</span>
             <div className="flex items-center gap-2">
               <PaginationControl
                 href={paginationHref(pagination.currentPage - 1, query)}
