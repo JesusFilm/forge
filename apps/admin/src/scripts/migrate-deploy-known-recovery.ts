@@ -61,6 +61,9 @@ export async function deployWithKnownRecovery(
     RECOVERABLE_MIGRATION,
   ])
   if (resolve.code !== 0) {
+    const retryAfterResolveFailure = await runner(["migrate", "deploy"])
+    if (retryAfterResolveFailure.code === 0) return
+
     throw new Error(
       `prisma migrate resolve --rolled-back ${RECOVERABLE_MIGRATION} failed`,
     )
