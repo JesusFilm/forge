@@ -35,7 +35,8 @@ DROP INDEX IF EXISTS "video_locale_video_id_locale_key";
 -- question ids being globally unique across every localized row. Keep this
 -- as a lookup index rather than a new uniqueness constraint so legacy duplicate
 -- rows cannot block deploy-time migration.
-DROP INDEX IF EXISTS "video_study_question_core_id_key";
+ALTER TABLE "video_study_question"
+  DROP CONSTRAINT IF EXISTS "video_study_question_core_id_key";
 DROP INDEX IF EXISTS "video_study_question_video_id_core_id_language_id_key";
 
 CREATE INDEX IF NOT EXISTS "video_locale_video_id_locale_idx"
