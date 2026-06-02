@@ -189,6 +189,24 @@ describe("backfill-video-localized-metadata args", () => {
       expect.any(Function),
       CORE_SYNC_TRANSACTION_OPTIONS,
     )
+    expect(coreQueryMock).toHaveBeenNthCalledWith(
+      1,
+      expect.any(String),
+      expect.objectContaining({
+        offset: 0,
+        limit: 1,
+        where: { published: true, ids: ["core-video-1"] },
+      }),
+    )
+    expect(coreQueryMock).toHaveBeenNthCalledWith(
+      2,
+      expect.any(String),
+      expect.objectContaining({
+        offset: 0,
+        limit: 1,
+        where: { published: true, ids: ["core-video-2"] },
+      }),
+    )
     expect(assertLockActive).toHaveBeenCalledTimes(4)
     expect(syncVideoLocalizedMetadataMock).toHaveBeenCalledWith(
       expect.objectContaining({
