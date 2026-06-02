@@ -30,7 +30,7 @@ export const CARD_BORDER_RADIUS = 12
 // formSheet content root is unbounded so the list height can't be measured —
 // it's derived from these fractions + the detent-change index instead. Keep in
 // sync: index 0 is the initial detent.
-export const LIST_SHEET_DETENTS = [0.75, 1] as const
+export const LIST_SHEET_DETENTS = [0.65, 1] as const
 
 // ── Layout ─────────────────────────────────────────────────────────────────
 

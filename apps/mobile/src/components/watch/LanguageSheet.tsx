@@ -57,9 +57,9 @@ export function LanguageSheetContent({
   // virtualized, then refine to exact.
   // The formSheet content root is unbounded, so the FlashList needs an explicit
   // height and onLayout can't measure it (it reads back our own fixed height).
-  // Drive the height off the native detent index instead: [0.75, 1] -> 0.75/1.0
-  // of the window, updated as the user drags the grabber, so the list fills the
-  // sheet at every detent (no gap at full, no clipped rows at 0.75).
+  // Drive the height off the native detent index instead: LIST_SHEET_DETENTS
+  // fraction * window, updated as the user drags the grabber, so the list fills
+  // the sheet at every detent (no gap at full, no clipped rows at the smaller one).
   const [listHeight, setListHeight] = useState(() =>
     Math.round(windowHeight * LIST_SHEET_DETENTS[0]),
   )

@@ -6,12 +6,12 @@ import { ACCENT, BG_COLOR } from "../../src/lib/color"
 import { WatchSessionProvider } from "../../src/contexts/WatchSessionProvider"
 import { LIST_SHEET_DETENTS } from "../../src/styles/shared"
 
-// Native detents (react-native-screens). All three sheets open at 0.75 and the
+// Native detents (react-native-screens). All three sheets open at 0.65 and the
 // user drags the grabber up to full. LIST_SHEET_DETENTS is shared with the
 // sheet components so they can size the list per detent. Explicit fractional
 // detents (not "fitToContents") avoid the Android keyboard/empty-sheet bugs in
 // react-native-screens v4.
-const DOWNLOAD_SHEET_DETENTS = [0.75, 1] as const
+const DOWNLOAD_SHEET_DETENTS = [0.65, 1] as const
 
 const SHEET_BASE_OPTIONS = {
   headerShown: false,
@@ -23,10 +23,10 @@ const SHEET_BASE_OPTIONS = {
 
 // The language/subtitle lists are long and scrollable, so they opt OUT of the
 // default scroll-expands-to-edge behavior: otherwise the first scroll at the
-// 0.75 detent snaps the sheet to full, making 0.75 useless. With it off the
-// list scrolls at 0.75 and the user resizes deliberately via the grabber. The
-// list itself stays smooth because it's a virtualized FlashList (see
-// LanguageSheet). Download keeps the default — its content never scrolls.
+// smaller detent snaps the sheet to full, making it useless. With it off the
+// list scrolls at the smaller detent and the user resizes deliberately via the
+// grabber. The list itself stays smooth because it's a virtualized FlashList
+// (see LanguageSheet). Download keeps the default — its content never scrolls.
 const LIST_SHEET_OPTIONS = {
   ...SHEET_BASE_OPTIONS,
   sheetAllowedDetents: [...LIST_SHEET_DETENTS],
