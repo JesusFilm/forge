@@ -149,10 +149,12 @@ export function buildVideoVisitorUrl({
 
 export function resolveVideoVisitorUrl({
   contentSlug,
+  languageSlugs = [],
   manifest,
   webOrigin,
 }: {
   contentSlug: string
+  languageSlugs?: Array<string | null | undefined>
   manifest?: WatchRouteManifest | null
   webOrigin: string
 }) {
@@ -170,5 +172,12 @@ export function resolveVideoVisitorUrl({
     })
   }
 
-  return null
+  const rowLanguage = preferredPublicLanguageSlug(languageSlugs)
+  return rowLanguage
+    ? buildVideoVisitorUrl({
+        contentSlug: normalizedContentSlug,
+        languageSlug: rowLanguage,
+        webOrigin,
+      })
+    : null
 }
