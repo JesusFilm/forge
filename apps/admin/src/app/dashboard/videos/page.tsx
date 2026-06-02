@@ -236,9 +236,13 @@ export default async function VideosPage({
                         </span>
                       </td>
                       <td className="px-4 py-3 align-middle">
-                        <span className="mono-meta text-[var(--color-text-muted)]">
-                          {video.updated}
-                        </span>
+                        <time
+                          dateTime={video.updatedAtIso}
+                          title={video.updated}
+                          className="mono-meta text-[var(--color-text-muted)]"
+                        >
+                          {video.updatedRelative}
+                        </time>
                       </td>
                       <td className="px-4 py-3 text-right align-middle">
                         {video.visitorUrl ? (

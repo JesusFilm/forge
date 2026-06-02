@@ -3,6 +3,7 @@ import type { WatchRouteManifest } from "@/services/watch-route-manifest.service
 import {
   buildVideoVisitorUrl,
   createVideoLibraryPagination,
+  formatVideoUpdatedRelative,
   isPublicAudioLanguageSlug,
   normalizeVideoThumbnailUrl,
   parseVideoLibraryPage,
@@ -80,6 +81,20 @@ describe("video-library-utils", () => {
       rangeStart: 1,
       rangeEnd: 30,
     })
+  })
+
+  it("formats updated timestamps as relative ago labels", () => {
+    const now = new Date("2026-06-02T12:00:00.000Z")
+
+    expect(
+      formatVideoUpdatedRelative(new Date("2026-06-02T11:59:30.000Z"), now),
+    ).toBe("just now")
+    expect(
+      formatVideoUpdatedRelative(new Date("2026-06-02T10:00:00.000Z"), now),
+    ).toBe("2 hours ago")
+    expect(
+      formatVideoUpdatedRelative(new Date("2026-05-22T21:29:00.000Z"), now),
+    ).toBe("11 days ago")
   })
 
   it("rejects BCP-47-like values as public audio language slugs", () => {
