@@ -402,6 +402,13 @@ export const adminMessages = {
           clear: "Clear",
           active: 'Filtered by "{query}"',
         },
+        summary: {
+          total: "Active videos",
+          visible: "Visible rows",
+          page: "Page",
+          query: "Query",
+          queryAll: "All videos",
+        },
         table: {
           title: "Video Library",
           meta: "SEARCHABLE_ROWS / TYPE_LABELS / VISITOR_LINKS",
