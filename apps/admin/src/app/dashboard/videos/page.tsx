@@ -25,6 +25,7 @@ import { requireSession } from "@/auth/session"
 import { loadVideoLibraryPage } from "@/app/dashboard/live-data"
 import { getAdminMessages } from "@/i18n/server"
 import {
+  VIDEO_LIBRARY_MAX_QUERY_LENGTH,
   parseVideoLibraryPage,
   parseVideoLibraryQuery,
   videoLibraryHref,
@@ -166,6 +167,7 @@ export default async function VideosPage({
                     id="video-library-search"
                     name="q"
                     type="search"
+                    maxLength={VIDEO_LIBRARY_MAX_QUERY_LENGTH}
                     defaultValue={query}
                     placeholder={page.search.placeholder}
                     className="h-9 w-full rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] pl-9 pr-3 font-mono text-[12px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out placeholder:text-[var(--color-text-disabled)] focus:border-[var(--color-brand)] focus:bg-[var(--color-surface-raised)]"
