@@ -53,8 +53,9 @@ export const watchVideoFragment = adminGraphql(`
       coreId
       bcp47
     }
-    locales(locale: $locale) {
+    locales(locale: $locale, languageSlug: $languageSlug) {
       documentId: id
+      languageSlug
       title
       description
       snippet
@@ -66,8 +67,9 @@ export const watchVideoFragment = adminGraphql(`
         slug
         noIndex
         label
-        locales(locale: $locale) {
+        locales(locale: $locale, languageSlug: $languageSlug) {
           documentId: id
+          languageSlug
           title
         }
         images {
@@ -82,8 +84,9 @@ export const watchVideoFragment = adminGraphql(`
             documentId: id
             slug
             label
-            locales(locale: $locale) {
+            locales(locale: $locale, languageSlug: $languageSlug) {
               documentId: id
+              languageSlug
               title
             }
             images {
@@ -102,8 +105,9 @@ export const watchVideoFragment = adminGraphql(`
         documentId: id
         slug
         label
-        locales(locale: $locale) {
+        locales(locale: $locale, languageSlug: $languageSlug) {
           documentId: id
+          languageSlug
           title
         }
         images {
@@ -157,8 +161,9 @@ export const watchVideoFragment = adminGraphql(`
         }
       }
     }
-    studyQuestions {
+    studyQuestions(locale: $locale, languageSlug: $languageSlug) {
       documentId: id
+      languageSlug
       value: text
       order
     }
@@ -189,7 +194,11 @@ export const watchVideoFragment = adminGraphql(`
 // canonical.
 export const getWatchVideoBySlugOperation = adminGraphql(
   `
-    query GetWatchVideoBySlug($locale: String!, $videoSlug: String!) {
+    query GetWatchVideoBySlug(
+      $locale: String!
+      $languageSlug: String
+      $videoSlug: String!
+    ) {
       videoBySlug(slug: $videoSlug) {
         ...WatchVideo
       }

@@ -110,6 +110,7 @@ export const watchVideoFragment = adminGraphql(`
     }
     locales(locale: $locale) {
       documentId: id
+      languageSlug
       title
       description
       snippet
@@ -122,6 +123,7 @@ export const watchVideoFragment = adminGraphql(`
         label
         locales(locale: $locale) {
           documentId: id
+          languageSlug
           title
         }
         images {
@@ -138,6 +140,7 @@ export const watchVideoFragment = adminGraphql(`
             label
             locales(locale: $locale) {
               documentId: id
+              languageSlug
               title
             }
             images {
@@ -188,6 +191,7 @@ export const watchVideoFragment = adminGraphql(`
     }
     studyQuestions {
       documentId: id
+      languageSlug
       value: text
       order
     }

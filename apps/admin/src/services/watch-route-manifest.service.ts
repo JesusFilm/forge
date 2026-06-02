@@ -128,6 +128,7 @@ export class WatchRouteManifestService {
         JOIN "video_locale" vl
           ON vl."video_id" = v.id
           AND vl.status = 'published'::"LocaleStatus"
+          AND vl."deleted_at" IS NULL
         JOIN "video_dub" dub
           ON dub."video_id" = v.id
           AND dub."deleted_at" IS NULL
@@ -148,6 +149,7 @@ export class WatchRouteManifestService {
         JOIN "video_locale" parent_locale
           ON parent_locale."video_id" = parent.id
           AND parent_locale.status = 'published'::"LocaleStatus"
+          AND parent_locale."deleted_at" IS NULL
         JOIN "video_relation" relation
           ON relation."parent_id" = parent.id
         JOIN "video" child
@@ -157,6 +159,7 @@ export class WatchRouteManifestService {
         JOIN "video_locale" child_locale
           ON child_locale."video_id" = child.id
           AND child_locale.status = 'published'::"LocaleStatus"
+          AND child_locale."deleted_at" IS NULL
         JOIN "video_dub" child_dub
           ON child_dub."video_id" = child.id
           AND child_dub."deleted_at" IS NULL
@@ -177,6 +180,7 @@ export class WatchRouteManifestService {
         JOIN "video_locale" parent_locale
           ON parent_locale."video_id" = parent.id
           AND parent_locale.status = 'published'::"LocaleStatus"
+          AND parent_locale."deleted_at" IS NULL
         JOIN "video_relation" relation
           ON relation."parent_id" = parent.id
         WHERE parent."deleted_at" IS NULL
@@ -240,6 +244,7 @@ export class WatchRouteManifestService {
       JOIN "video_locale" parent_locale
         ON parent_locale."video_id" = parent.id
         AND parent_locale.status = 'published'::"LocaleStatus"
+        AND parent_locale."deleted_at" IS NULL
       JOIN "video" child
         ON child.id = relation."child_id"
         AND child."deleted_at" IS NULL
@@ -247,6 +252,7 @@ export class WatchRouteManifestService {
       JOIN "video_locale" child_locale
         ON child_locale."video_id" = child.id
         AND child_locale.status = 'published'::"LocaleStatus"
+        AND child_locale."deleted_at" IS NULL
       JOIN "video_dub" child_dub
         ON child_dub."video_id" = child.id
         AND child_dub."deleted_at" IS NULL
@@ -312,6 +318,7 @@ export class WatchRouteManifestService {
         JOIN "video_locale" vl
           ON vl."video_id" = v.id
           AND vl.status = 'published'::"LocaleStatus"
+          AND vl."deleted_at" IS NULL
         JOIN "video_dub" dub
           ON dub."video_id" = v.id
           AND dub."deleted_at" IS NULL
@@ -334,6 +341,7 @@ export class WatchRouteManifestService {
         JOIN "video_locale" parent_locale
           ON parent_locale."video_id" = parent.id
           AND parent_locale.status = 'published'::"LocaleStatus"
+          AND parent_locale."deleted_at" IS NULL
         JOIN "video_relation" relation
           ON relation."parent_id" = parent.id
         JOIN "video" child
@@ -343,6 +351,7 @@ export class WatchRouteManifestService {
         JOIN "video_locale" child_locale
           ON child_locale."video_id" = child.id
           AND child_locale.status = 'published'::"LocaleStatus"
+          AND child_locale."deleted_at" IS NULL
         JOIN "video_dub" child_dub
           ON child_dub."video_id" = child.id
           AND child_dub."deleted_at" IS NULL
@@ -384,6 +393,7 @@ export class WatchRouteManifestService {
       JOIN "video_locale" parent_locale
         ON parent_locale."video_id" = parent.id
         AND parent_locale.status = 'published'::"LocaleStatus"
+        AND parent_locale."deleted_at" IS NULL
       JOIN "video" child
         ON child.id = relation."child_id"
         AND child."deleted_at" IS NULL
@@ -391,6 +401,7 @@ export class WatchRouteManifestService {
       JOIN "video_locale" child_locale
         ON child_locale."video_id" = child.id
         AND child_locale.status = 'published'::"LocaleStatus"
+        AND child_locale."deleted_at" IS NULL
       JOIN "video_dub" child_dub
         ON child_dub."video_id" = child.id
         AND child_dub."deleted_at" IS NULL

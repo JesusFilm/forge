@@ -210,7 +210,7 @@ export async function generateMetadata({
     // doesn't drop metadata entirely. Next silently skips metadata when
     // generateMetadata throws; the page body has its own error boundary.
     try {
-      const watchVideo = await resolveWatchVideoBySlug(slug, locale)
+      const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
       if (watchVideo && isSeriesRecord(watchVideo.video)) {
         return generateSeriesMetadata(locale, {
           series: watchVideo.video,
@@ -218,7 +218,7 @@ export async function generateMetadata({
         })
       }
       if (!watchVideo) {
-        const series = await resolveSeriesBySlug(slug, locale)
+        const series = await resolveSeriesBySlug(slug, rawLocale)
         if (series) {
           return generateSeriesMetadata(locale, {
             series: series.video,
@@ -506,7 +506,7 @@ async function renderVideo(shape: {
     )
   }
 
-  const series = await resolveSeriesBySlug(slug, locale)
+  const series = await resolveSeriesBySlug(slug, rawLocale)
   if (series) {
     const actualSlug = series.selectedVariant?.language?.slug ?? null
     if (actualSlug && rawLocale !== actualSlug) {

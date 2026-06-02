@@ -559,6 +559,7 @@ async function getRecentActivity(): Promise<TableRow[]> {
     withTableFallback(
       () =>
         prisma.videoLocale.findMany({
+          where: { deletedAt: null },
           select: {
             id: true,
             title: true,
@@ -571,7 +572,7 @@ async function getRecentActivity(): Promise<TableRow[]> {
       [] as Array<{
         id: string
         title: string | null
-        locale: string
+        locale: string | null
         updatedAt: Date
       }>,
     ),
@@ -603,8 +604,8 @@ async function getRecentActivity(): Promise<TableRow[]> {
     })),
     ...videoLocales.map((row) => ({
       key: row.id,
-      title: row.title?.trim() || `Video locale ${row.locale}`,
-      detail: row.locale,
+      title: row.title?.trim() || `Video locale ${row.locale ?? "unmapped"}`,
+      detail: row.locale ?? "No public locale",
       statusLabel: "VIDEO",
       statusTone: "info" as const,
       meta: formatDateTime(row.updatedAt),

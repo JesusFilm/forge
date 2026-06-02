@@ -806,6 +806,7 @@ model Language {
   keywords         Keyword[]
   locales          LanguageLocale[]
   videoDubs        VideoDub[]
+  videoLocales     VideoLocale[]
   videoSubtitles   VideoSubtitle[]
   studyQuestions   VideoStudyQuestion[]
   countryLanguages CountryLanguage[]
@@ -1132,13 +1133,20 @@ model VideoLocale {
   videoId        String                   @map("video_id")
   video          Video                    @relation(fields: [videoId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 locale code, e.g. "en", "fr", "es-419".
-  locale         String
+  locale         String?
+  languageId     String?                  @map("language_id")
+  language       Language?                @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  languageSlug   String?                  @map("language_slug")
+  languageCoreId String?                  @map("language_core_id")
+  source         SourceTier               @default(CORE)
   title          String?
   description    String?
   snippet        String?
   imageAlt       String?                  @map("image_alt")
   status         LocaleStatus             @default(DRAFT)
   publishedAt    DateTime?                @map("published_at")
+  syncedAt       DateTime?                @map("synced_at")
+  deletedAt      DateTime?                @map("deleted_at")
   createdAt      DateTime                 @default(now()) @map("created_at")
   updatedAt      DateTime                 @updatedAt @map("updated_at")
   /// STORED generated tsvector columns — derived from `title` /
@@ -1154,8 +1162,15 @@ model VideoLocale {
   titleTsv       Unsupported("tsvector")? @map("title_tsv")
   descriptionTsv Unsupported("tsvector")? @map("description_tsv")
 
-  @@unique([videoId, locale])
+  @@unique([videoId, languageId])
   @@index([locale])
+  @@index([videoId, locale])
+  @@index([languageId])
+  @@index([languageSlug])
+  @@index([videoId, languageSlug])
+  @@index([languageCoreId])
+  @@index([locale, status, deletedAt])
+  @@index([deletedAt])
   @@map("video_locale")
 }
 
@@ -1299,27 +1314,36 @@ model VideoSubtitle {
 
 /// A study question authored against a video.
 model VideoStudyQuestion {
-  id         String     @id @default(cuid())
-  coreId     String?    @unique @map("core_id")
-  source     SourceTier @default(CORE)
-  videoId    String     @map("video_id")
-  video      Video      @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  locale     String?
-  languageId String?    @map("language_id")
-  language   Language?  @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  id             String     @id @default(cuid())
+  coreId         String?    @map("core_id")
+  source         SourceTier @default(CORE)
+  videoId        String     @map("video_id")
+  video          Video      @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  locale         String?
+  languageId     String?    @map("language_id")
+  language       Language?  @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  languageSlug   String?    @map("language_slug")
+  languageCoreId String?    @map("language_core_id")
   /// Per-locale study question text. One row per localized Core question.
-  text       String     @default("")
-  primary    Boolean    @default(false)
+  text           String     @default("")
+  primary        Boolean    @default(false)
   /// Order within the video (1-based).
-  order      Int?
-  syncedAt   DateTime?  @map("synced_at")
-  deletedAt  DateTime?  @map("deleted_at")
-  createdAt  DateTime   @default(now()) @map("created_at")
-  updatedAt  DateTime   @updatedAt @map("updated_at")
+  order          Int?
+  syncedAt       DateTime?  @map("synced_at")
+  deletedAt      DateTime?  @map("deleted_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
 
   @@index([videoId])
+  @@index([coreId])
   @@index([languageId])
+  @@index([videoId, coreId, languageId])
+  @@index([languageSlug])
+  @@index([videoId, languageSlug])
+  @@index([languageCoreId])
   @@index([locale])
+  @@index([videoId, locale])
+  @@index([locale, deletedAt])
   @@index([deletedAt])
   @@map("video_study_question")
 }

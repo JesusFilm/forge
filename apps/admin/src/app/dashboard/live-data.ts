@@ -41,7 +41,7 @@ type ExperienceLocaleRow = {
 
 type VideoLocaleRow = {
   videoId: string
-  locale: string
+  locale: string | null
   title: string | null
   description: string | null
   updatedAt: Date
@@ -556,7 +556,7 @@ async function loadVideoRowSlice({
   try {
     ;[videoLocales, videoDubs, videoImages] = await Promise.all([
       prisma.videoLocale.findMany({
-        where: { videoId: { in: ids } },
+        where: { videoId: { in: ids }, deletedAt: null },
         select: {
           videoId: true,
           locale: true,
@@ -597,8 +597,11 @@ async function loadVideoRowSlice({
     throw error
   }
 
-  const localesByVideo = new Map<string, typeof videoLocales>()
-  for (const item of videoLocales) {
+  const publicVideoLocales = videoLocales.filter(
+    (item): item is VideoLocaleRow & { locale: string } => item.locale != null,
+  )
+  const localesByVideo = new Map<string, typeof publicVideoLocales>()
+  for (const item of publicVideoLocales) {
     const current = localesByVideo.get(item.videoId) ?? []
     current.push(item)
     localesByVideo.set(item.videoId, current)

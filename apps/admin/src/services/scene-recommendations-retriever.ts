@@ -223,6 +223,7 @@ export async function queryScenesSimilar(
         ON vl.video_id = v.id
         AND vl.locale  = ${locale}
         AND vl.status  = 'published'
+        AND vl.deleted_at IS NULL
       JOIN LATERAL (
         SELECT mv.playback_id
         FROM video_dub vd

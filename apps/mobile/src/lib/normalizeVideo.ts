@@ -91,9 +91,20 @@ function pickPosterUrl(
   return img.mobileCinematicHigh ?? img.url ?? img.thumbnail ?? null
 }
 
+function compareLanguageSlug(
+  left: string | null | undefined,
+  right: string | null | undefined,
+): number {
+  const byPresence = left == null ? (right == null ? 0 : 1) : -1
+  if (byPresence !== 0) return byPresence
+  return (left ?? "").localeCompare(right ?? "")
+}
+
 function pickFirstLocale(
   locales:
     | readonly {
+        documentId?: string | null
+        languageSlug?: string | null
         title?: string | null
         description?: string | null
         snippet?: string | null
@@ -107,7 +118,11 @@ function pickFirstLocale(
 } {
   if (!locales || locales.length === 0)
     return { title: null, description: null, snippet: null }
-  const loc = locales[0]
+  const loc = [...locales].sort((a, b) => {
+    const bySlug = compareLanguageSlug(a.languageSlug, b.languageSlug)
+    if (bySlug !== 0) return bySlug
+    return (a.documentId ?? "").localeCompare(b.documentId ?? "")
+  })[0]
   return {
     title: loc.title ?? null,
     description: loc.description ?? null,
@@ -219,7 +234,13 @@ export function normalizeVideo(
 
   const studyQuestions: WatchStudyQuestion[] = (raw.studyQuestions ?? [])
     .filter((q) => q.value != null && q.value !== "")
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .sort((a, b) => {
+      const byOrder = (a.order ?? 0) - (b.order ?? 0)
+      if (byOrder !== 0) return byOrder
+      const bySlug = compareLanguageSlug(a.languageSlug, b.languageSlug)
+      if (bySlug !== 0) return bySlug
+      return (a.documentId ?? "").localeCompare(b.documentId ?? "")
+    })
     .map((q) => ({
       documentId: q.documentId ?? "",
       value: q.value ?? "",
