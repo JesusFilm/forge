@@ -277,7 +277,7 @@ export default async function VideosPage({
               videoRows.map((video) => (
                 <article
                   key={video.key}
-                  className="grid gap-4 px-4 py-4 transition-colors duration-[120ms] ease-out hover:bg-[color-mix(in_oklab,var(--color-surface-raised)_74%,transparent)] lg:grid-cols-[180px_minmax(260px,1fr)_128px_96px_132px_48px] lg:items-center"
+                  className="grid gap-4 px-4 py-4 lg:grid-cols-[180px_minmax(260px,1fr)_128px_96px_132px_48px] lg:items-center"
                 >
                   <div className="relative flex aspect-video w-full max-w-[240px] items-center justify-center overflow-hidden rounded-sm border border-white/10 bg-[linear-gradient(135deg,#151312,#292524)] lg:w-[180px]">
                     {video.previewImageUrl ? (
