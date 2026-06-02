@@ -71,6 +71,9 @@ type LoadVideoRowSliceOptions = {
   includeVisitorUrls?: boolean
 }
 
+const VIDEO_LIBRARY_LANGUAGE_TARGET = 2300
+const VIDEO_LIBRARY_LANGUAGE_CHIP_LIMIT = 5
+
 function durationSecondsForDub(
   dub: Pick<VideoDubRow, "lengthInMilliseconds" | "duration">,
 ) {
@@ -117,6 +120,15 @@ function formatDateTime(value: Date) {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone: "UTC",
+  }).format(value)
+}
+
+function formatShortDate(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
     timeZone: "UTC",
   }).format(value)
 }
@@ -380,6 +392,43 @@ function dubCoverage(dubs: VideoDubRow[]): string {
   return `${label} · ${tags.join(", ")}${suffix}`
 }
 
+function dubLanguageCodes(dubs: VideoDubRow[]) {
+  return Array.from(
+    new Set(
+      dubs
+        .map(
+          (dub) =>
+            dub.language?.iso3 ?? dub.language?.bcp47 ?? dub.language?.slug,
+        )
+        .filter((tag): tag is string => !!tag)
+        .map((tag) => tag.toUpperCase()),
+    ),
+  )
+}
+
+function dubCoverageMetric(dubs: VideoDubRow[]) {
+  const allLanguages = dubLanguageCodes(dubs)
+  const count = allLanguages.length || dubs.length
+  const percent =
+    count === 0
+      ? 0
+      : Math.min(
+          100,
+          Math.max(
+            1,
+            Math.round((count / VIDEO_LIBRARY_LANGUAGE_TARGET) * 100),
+          ),
+        )
+  const languages = allLanguages.slice(0, VIDEO_LIBRARY_LANGUAGE_CHIP_LIMIT)
+
+  return {
+    dubCount: count,
+    dubLanguages: languages,
+    dubOverflowCount: Math.max(0, count - languages.length),
+    dubCoveragePercent: percent,
+  }
+}
+
 function preferredVideoImage(images: VideoImageRow[]) {
   if (images.length === 0) return null
 
@@ -636,6 +685,7 @@ async function loadVideoRowSlice({
     const title = localeRow?.title?.trim() || video.slug
     const source = sourceLabel(video.videoSource)
     const playbackDub = preferredPlaybackDub(dubRows)
+    const coverage = dubCoverageMetric(dubRows)
 
     return {
       key: video.id,
@@ -648,9 +698,11 @@ async function loadVideoRowSlice({
       sourceLabel: source.label,
       sourceTone: source.tone,
       dubs: dubCoverage(dubRows),
+      ...coverage,
       updated: formatDateTime(video.updatedAt),
       updatedAtIso: video.updatedAt.toISOString(),
       updatedRelative: formatVideoUpdatedRelative(video.updatedAt),
+      updatedDateShort: formatShortDate(video.updatedAt),
       duration: formatDuration(dubRows),
       durationSeconds: playbackDub ? durationSecondsForDub(playbackDub) : null,
       previewImageUrl: preferredVideoImage(imageRows),

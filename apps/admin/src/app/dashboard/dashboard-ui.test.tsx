@@ -120,9 +120,14 @@ vi.mock("@/app/dashboard/live-data", () => ({
         sourceLabel: "Mux",
         sourceTone: "info",
         dubs: "3 dubs · EN, ES, FR",
+        dubCount: 3,
+        dubLanguages: ["EN", "ES", "FR"],
+        dubOverflowCount: 0,
+        dubCoveragePercent: 1,
         updated: "10/24/2023, 14:02",
         updatedAtIso: "2023-10-24T14:02:00.000Z",
         updatedRelative: "3 years ago",
+        updatedDateShort: "10/24/2023",
         duration: "04:22",
         previewImageUrl: "https://images.example.com/neon.jpg",
         visitorUrl:
@@ -138,9 +143,14 @@ vi.mock("@/app/dashboard/live-data", () => ({
         sourceLabel: "Internal",
         sourceTone: "muted",
         dubs: "No dubs",
+        dubCount: 0,
+        dubLanguages: [],
+        dubOverflowCount: 0,
+        dubCoveragePercent: 0,
         updated: "10/24/2023, 14:03",
         updatedAtIso: "2023-10-24T14:03:00.000Z",
         updatedRelative: "3 years ago",
+        updatedDateShort: "10/24/2023",
         duration: "--:--",
         previewImageUrl: null,
         visitorUrl: null,
@@ -548,19 +558,27 @@ describe("dashboard UI routes", () => {
     expect(html).not.toContain("10/24/2023, 14:02")
   })
 
-  it("renders videos page with localized info strip and actions", async () => {
+  it("renders videos page with screenshot-style library layout", async () => {
     const html = await htmlFrom(
       VideosPage({ searchParams: Promise.resolve({ page: "2", q: " mux " }) }),
     )
-    expect(html).toContain(uiMessages.pages.videos.infoStrip.items[0])
+    expect(html).toContain(uiMessages.pages.videos.title)
+    expect(html).toContain("Review the catalog and dub coverage across")
+    expect(html).toContain("95")
     expect(html).toContain(uiMessages.pages.videos.actions.primary)
     expect(html).toContain(uiMessages.pages.videos.actions.primaryUnavailable)
     expect(html).toMatch(
-      /<button(?=[^>]*disabled="")(?=[^>]*title="Manual video creation is not available yet.")/,
+      /<button(?=[^>]*aria-disabled="true")(?=[^>]*title="Manual video creation is not available yet.")/,
     )
-    expect(html).not.toContain(
-      'hover:text-[var(--color-text-primary)]">⋯</button>',
-    )
+    expect(html).toContain(uiMessages.pages.videos.tabs.all)
+    expect(html).toContain(uiMessages.pages.videos.tabs.collections)
+    expect(html).toContain(uiMessages.pages.videos.tabs.features)
+    expect(html).toContain(uiMessages.pages.videos.tabs.shortFilms)
+    expect(html).toContain(uiMessages.pages.videos.tabs.series)
+    expect(html).toContain(uiMessages.pages.videos.sort.label)
+    expect(html).not.toContain(uiMessages.pages.videos.infoStrip.items[0])
+    expect(html).not.toContain(uiMessages.pages.videos.summary.total)
+    expect(html).not.toContain(uiMessages.pages.videos.signals.title)
     expect(html).not.toContain(uiMessages.common.operatorNotes)
     expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
       { id: "test-user", role: "ADMIN" },
@@ -573,9 +591,16 @@ describe("dashboard UI routes", () => {
     expect(html).toContain("Filtered by &quot;mux&quot;")
     expect(html).toContain('href="/dashboard/videos?q=mux"')
     expect(html).toContain('href="/dashboard/videos?page=3&amp;q=mux"')
-    expect(html).toContain("Collection")
+    expect(html).toContain("COLLECTION")
+    expect(html).toContain("Mux source")
+    expect(html).toContain("Internal source")
+    expect(html).toContain("languages dubbed")
+    expect(html).toContain("EN")
+    expect(html).toContain("ES")
+    expect(html).toContain("FR")
     expect(html).toContain("https://images.example.com/neon.jpg")
     expect(html).toContain("3 years ago")
+    expect(html).toContain("10/24/2023")
     expect(html).toContain('title="10/24/2023, 14:02"')
     expect(html).toContain('dateTime="2023-10-24T14:02:00.000Z"')
     expect(html).toMatch(
@@ -589,6 +614,9 @@ describe("dashboard UI routes", () => {
     expect(html).toContain("No public watch link available")
     expect(html).toMatch(
       /<span(?=[^>]*aria-disabled="true")(?=[^>]*aria-label="No public watch link available")/,
+    )
+    expect(html).toMatch(
+      /<button(?=[^>]*aria-disabled="true")(?=[^>]*aria-label="Video row actions are not available yet.")/,
     )
     expect(html).toContain("Showing 31-60 of 95")
     expect(html).toContain("Page 2 of 4")
