@@ -48,12 +48,14 @@ function fieldValue(value: FormDataEntryValue | null) {
 }
 
 function SelectControl({
+  className,
   label,
   defaultValue,
   name,
   onChange,
   options,
 }: {
+  className?: string
   label: string
   defaultValue: string
   name: string
@@ -61,7 +63,7 @@ function SelectControl({
   options: SelectOption[]
 }) {
   return (
-    <label className="relative block min-w-0">
+    <label className={`relative block min-w-0 shrink-0 ${className ?? ""}`}>
       <span className="sr-only">{label}</span>
       <select
         name={name}
@@ -155,7 +157,7 @@ export function VideoLibraryToolbar({
         event.preventDefault()
         submitForm(event.currentTarget)
       }}
-      className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(150px,220px)_minmax(170px,240px)_220px]"
+      className="flex min-w-0 flex-col gap-3"
     >
       <div className="min-w-0">
         <label htmlFor="video-library-search" className="sr-only">
@@ -201,36 +203,43 @@ export function VideoLibraryToolbar({
         ) : null}
       </div>
 
-      <SelectControl
-        label={page.filters.categoryLabel}
-        name="type"
-        defaultValue={category}
-        options={categoryOptions}
-        onChange={submitContainingForm}
-      />
-
-      <SelectControl
-        label={page.filters.languageLabel}
-        name="language"
-        defaultValue={language}
-        options={languageSelectOptions}
-        onChange={submitContainingForm}
-      />
-
-      <div className="relative">
-        <ArrowUpDown
-          aria-hidden="true"
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
-          strokeWidth={1.5}
+      <div
+        aria-label={page.actions.filter}
+        className="-mx-1 flex min-w-0 gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1 [scrollbar-width:thin]"
+      >
+        <SelectControl
+          className="w-[168px]"
+          label={page.filters.categoryLabel}
+          name="type"
+          defaultValue={category}
+          options={categoryOptions}
+          onChange={submitContainingForm}
         />
-        <div className="[&_select]:pl-9">
-          <SelectControl
-            label={page.sort.label}
-            name="sort"
-            defaultValue={sort}
-            options={sortOptions}
-            onChange={submitContainingForm}
+
+        <SelectControl
+          className="w-[190px]"
+          label={page.filters.languageLabel}
+          name="language"
+          defaultValue={language}
+          options={languageSelectOptions}
+          onChange={submitContainingForm}
+        />
+
+        <div className="relative w-[210px] shrink-0">
+          <ArrowUpDown
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
+            strokeWidth={1.5}
           />
+          <div className="[&_select]:pl-9">
+            <SelectControl
+              label={page.sort.label}
+              name="sort"
+              defaultValue={sort}
+              options={sortOptions}
+              onChange={submitContainingForm}
+            />
+          </div>
         </div>
       </div>
 
@@ -240,7 +249,7 @@ export function VideoLibraryToolbar({
       {isSubmitting ? (
         <div
           role="status"
-          className="inline-flex h-8 items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 font-mono text-[11px] font-semibold text-[var(--color-success)] lg:col-span-4"
+          className="inline-flex h-8 items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 font-mono text-[11px] font-semibold text-[var(--color-success)]"
         >
           <LoaderCircle
             className="h-3.5 w-3.5 animate-spin text-[var(--color-success)]"
