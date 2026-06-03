@@ -71,9 +71,17 @@ export default function WatchVideoPage() {
   const { data, loading, error, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { slug: decodedSlug, locale: "en" },
     skip: !decodedSlug,
-    fetchPolicy: "cache-and-network",
-    // Render whatever the cache holds (prefetch / persisted) the moment it
-    // exists, rather than waiting for the whole payload.
+    // cache-first, NOT cache-and-network: this payload is huge for videos with
+    // many dubs (e.g. birth-of-jesus is ~9.5MB / 2,259 dubs). cache-and-network
+    // refetched and re-parsed all of it on every (re-)entry, then re-ran
+    // normalizeVideo over every dub on the JS thread — freezing the whole screen
+    // (player, buttons, expanders all dead). cache-first reads the warm cache on
+    // re-entry with no refetch. First cold load still fetches once.
+    // NOTE: if cache persistence (U7) is enabled, revisit this — a restored
+    // snapshot strips volatile URLs, so cache-first must be paired with a
+    // cold-start revalidation there.
+    fetchPolicy: "cache-first",
+    // Render whatever the cache holds (prefetch) the moment it exists.
     returnPartialData: true,
   })
 

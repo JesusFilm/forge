@@ -157,6 +157,14 @@ function dedupeByDocumentId<T extends { documentId: string | null }>(
 
 // ── Normalizer ─────────────────────────────────────────────────────
 
+// Memoize by the raw object reference. Apollo returns a referentially-stable
+// result for an unchanged cache read, so re-entering a video (cache-first) maps
+// to the same `raw` and reuses the prior record instead of re-walking every dub
+// — a video like birth-of-jesus has 2,259 dubs, so re-normalizing on each mount
+// is a multi-second JS-thread freeze. A WeakMap can't leak: entries die with the
+// cached object. New/changed data is a new reference, so this never serves stale.
+const normalizeCache = new WeakMap<object, WatchVideoRecord | null>()
+
 export function normalizeVideo(
   raw: RawVideo | null | undefined,
 ): WatchVideoRecord | null {
@@ -167,6 +175,14 @@ export function normalizeVideo(
   // as "not ready" and let the seed/skeleton carry the screen.
   if (!raw.documentId) return null
 
+  const cached = normalizeCache.get(raw)
+  if (cached !== undefined) return cached
+  const result = buildWatchVideoRecord(raw)
+  normalizeCache.set(raw, result)
+  return result
+}
+
+function buildWatchVideoRecord(raw: RawVideo): WatchVideoRecord {
   const locale = pickFirstLocale(raw.locales)
   const firstPlayable = pickFirstPlayableVariant(raw.variants)
 
