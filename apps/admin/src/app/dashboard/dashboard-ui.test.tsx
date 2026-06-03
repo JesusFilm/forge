@@ -583,6 +583,10 @@ describe("dashboard UI routes", () => {
     expect(html).not.toContain(uiMessages.pages.videos.infoStrip.items[0])
     expect(html).not.toContain(uiMessages.pages.videos.summary.total)
     expect(html).not.toContain(uiMessages.pages.videos.signals.title)
+    expect(html).not.toContain("overflow-x-auto")
+    expect(html).not.toContain("max-w-[1720px]")
+    expect(html).not.toContain("h-[62px]")
+    expect(html).not.toContain("minmax(430px")
     expect(html).not.toContain(uiMessages.common.operatorNotes)
     expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
       { id: "test-user", role: "ADMIN" },

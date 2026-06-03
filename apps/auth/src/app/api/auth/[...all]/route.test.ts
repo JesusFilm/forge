@@ -233,8 +233,47 @@ describe("Auth route wrapper", () => {
     await expect(forwardedRequest.json()).resolves.toMatchObject({
       callbackURL:
         "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_admin_local&sig=signed",
+      errorCallbackURL:
+        "http://localhost:3004/login?client_id=jfp_admin_local&sig=signed",
       provider: "google",
     })
+  })
+
+  it("returns OAuth social failures to login without exposing method hints", async () => {
+    authPost.mockResolvedValueOnce(
+      Response.json({ url: "https://google.test" }),
+    )
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/sign-in/social", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: "USER@example.com",
+          expected_login_method: "google",
+          oauth_query: "client_id=jfp_admin_local&sig=signed",
+          provider: "google",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["sign-in", "social"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    const forwardedBody = (await forwardedRequest.json()) as Record<
+      string,
+      unknown
+    >
+    expect(forwardedBody).toMatchObject({
+      callbackURL:
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_admin_local&sig=signed",
+      errorCallbackURL:
+        "http://localhost:3004/login?client_id=jfp_admin_local&sig=signed",
+      provider: "google",
+    })
+    expect(forwardedBody).not.toHaveProperty("email")
+    expect(forwardedBody).not.toHaveProperty("expected_login_method")
+    expect(forwardedBody).not.toHaveProperty("oauth_query")
   })
 
   it("forwards valid web watch callbacks through social sign-in", async () => {

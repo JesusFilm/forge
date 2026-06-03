@@ -11,7 +11,7 @@ import {
   Play,
   Plus,
 } from "lucide-react"
-import { cx } from "@/components/admin-ui"
+import { cx, PrimaryButton } from "@/components/admin-ui"
 import { requireSession } from "@/auth/session"
 import { loadVideoLibraryPage } from "@/app/dashboard/live-data"
 import { getAdminMessages } from "@/i18n/server"
@@ -97,7 +97,7 @@ function headerDescription(template: string, total: number) {
   return (
     <>
       {before}
-      <strong className="font-semibold text-[#f4f4f5]">
+      <strong className="font-semibold text-[var(--color-text-primary)]">
         {total.toLocaleString("en")}
       </strong>
       {after}
@@ -111,10 +111,10 @@ function overflowLabel(template: string, count: number) {
 
 function paginationControlClass(disabled: boolean) {
   return cx(
-    "inline-flex h-9 items-center gap-1.5 rounded-[8px] border border-[#303039] px-3 font-mono text-[12px] transition-all duration-150 ease-out",
+    "inline-flex h-8 items-center gap-1 rounded-sm border border-[var(--color-hairline)] px-2 font-mono text-[11px] transition-all duration-[120ms] ease-out",
     !disabled &&
-      "text-[#d8d8de] hover:border-[#4b4b57] hover:bg-[#27272e] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6dd6be]",
-    disabled && "text-[#63636f]",
+      "text-[var(--color-text-secondary)] hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]",
+    disabled && "text-[var(--color-text-disabled)]",
   )
 }
 
@@ -145,30 +145,33 @@ function PaginationControl({
 function videoTone(label: VideoLibraryRow["label"]): VideoTone {
   if (label === "FEATURE_FILM") {
     return {
-      label: "text-[#ff5f68]",
-      icon: "text-[#ffffff]",
-      thumbnail: "from-[#4d1019] via-[#371018] to-[#21080d]",
-      thumbnailPattern: "bg-[#ff6370]/12",
-      progress: "from-[#65cbbb] to-[#63d787]",
+      label: "text-[var(--color-danger)]",
+      icon: "text-[var(--color-danger)]",
+      thumbnail:
+        "from-[color-mix(in_oklab,var(--color-danger)_22%,var(--color-surface))] to-[var(--color-surface)]",
+      thumbnailPattern: "bg-[var(--color-danger)]/10",
+      progress: "bg-[var(--color-success)]",
     }
   }
 
   if (label === "SHORT_FILM" || label === "TRAILER") {
     return {
-      label: "text-[#f0b34f]",
-      icon: "text-[#edae4d]",
-      thumbnail: "from-[#6b501f] via-[#4b3515] to-[#2c1b08]",
-      thumbnailPattern: "bg-[#f0b34f]/12",
-      progress: "from-[#63c7b9] to-[#63d787]",
+      label: "text-[var(--color-warning)]",
+      icon: "text-[var(--color-warning)]",
+      thumbnail:
+        "from-[color-mix(in_oklab,var(--color-warning)_20%,var(--color-surface))] to-[var(--color-surface)]",
+      thumbnailPattern: "bg-[var(--color-warning)]/10",
+      progress: "bg-[var(--color-success)]",
     }
   }
 
   return {
-    label: "text-[#6fb5ff]",
-    icon: "text-[#6fb5ff]",
-    thumbnail: "from-[#2b3f70] via-[#23335e] to-[#17233f]",
-    thumbnailPattern: "bg-[#7ab8ff]/12",
-    progress: "from-[#67c9bf] to-[#66d887]",
+    label: "text-[var(--color-info)]",
+    icon: "text-[var(--color-info)]",
+    thumbnail:
+      "from-[color-mix(in_oklab,var(--color-info)_18%,var(--color-surface))] to-[var(--color-surface)]",
+    thumbnailPattern: "bg-[var(--color-info)]/10",
+    progress: "bg-[var(--color-success)]",
   }
 }
 
@@ -196,7 +199,7 @@ function VideoThumbnail({ video }: { video: VideoLibraryRow }) {
   return (
     <div
       className={cx(
-        "relative aspect-video w-full overflow-hidden rounded-[12px] border border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] sm:w-[250px]",
+        "relative aspect-video w-full overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:w-[168px]",
         tone.thumbnail,
       )}
     >
@@ -226,16 +229,16 @@ function VideoThumbnail({ video }: { video: VideoLibraryRow }) {
           />
           <span className="absolute inset-0 flex items-center justify-center">
             {isFeature ? (
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#111114] shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-                <Play className="ml-0.5 h-5 w-5 fill-current" />
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-text-primary)] text-[var(--color-bg)] shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+                <Play className="ml-0.5 h-4 w-4 fill-current" />
               </span>
             ) : (
-              <Icon className={cx("h-7 w-7", tone.icon)} strokeWidth={1.7} />
+              <Icon className={cx("h-6 w-6", tone.icon)} strokeWidth={1.7} />
             )}
           </span>
         </>
       )}
-      <span className="absolute bottom-2.5 right-2.5 rounded-[5px] bg-black/72 px-2 py-1 font-mono text-[12px] font-semibold leading-none text-[#eeeeef]">
+      <span className="absolute bottom-1.5 right-1.5 rounded-[2px] bg-black/70 px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none text-[var(--color-text-primary)]">
         {video.duration}
       </span>
     </div>
@@ -254,17 +257,17 @@ function VideoRow({
   const languages = video.dubLanguages
 
   return (
-    <article className="grid gap-6 border-b border-[#25252b] px-5 py-7 last:border-b-0 md:px-7 xl:grid-cols-[250px_minmax(300px,1fr)_minmax(300px,520px)_142px] xl:items-center">
+    <article className="grid gap-4 border-b border-[var(--color-hairline)] px-4 py-4 last:border-b-0 lg:grid-cols-[168px_minmax(0,1fr)_minmax(220px,300px)_104px] lg:items-center">
       <VideoThumbnail video={video} />
 
       <div className="min-w-0">
-        <h2 className="truncate text-[24px] font-semibold leading-8 text-[#f3f3f5]">
+        <h2 className="truncate text-[15px] font-semibold leading-5 text-[var(--color-text-primary)]">
           {video.title}
         </h2>
-        <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-[15px] leading-5 text-[#777783]">
+        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px] leading-4 text-[var(--color-text-muted)]">
           <span
             className={cx(
-              "inline-flex items-center gap-2 font-semibold tracking-normal",
+              "inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.08em]",
               tone.label,
             )}
           >
@@ -277,78 +280,75 @@ function VideoRow({
           </span>
           <span
             aria-hidden="true"
-            className="h-1 w-1 rounded-full bg-[#4a4a54]"
+            className="h-1 w-1 rounded-full bg-[var(--color-hairline-strong)]"
           />
-          <span className="max-w-[260px] truncate font-mono text-[#74747f]">
+          <span className="max-w-[220px] truncate font-mono text-[11px] text-[var(--color-text-muted)]">
             {video.slug || video.id}
           </span>
           <span
             aria-hidden="true"
-            className="h-1 w-1 rounded-full bg-[#4a4a54]"
+            className="h-1 w-1 rounded-full bg-[var(--color-hairline-strong)]"
           />
-          <span className="inline-flex items-center gap-2 text-[#85858e]">
-            <span className="h-2 w-2 rounded-full bg-[#57d47a]" />
+          <span className="inline-flex items-center gap-1.5 text-[var(--color-text-muted)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" />
             {sourceLabel(video)}
           </span>
         </div>
       </div>
 
       <div className="min-w-0">
-        <div className="flex items-end justify-between gap-4">
+        <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
-            <span className="align-baseline text-[34px] font-semibold leading-none text-[#f4f4f6]">
+            <span className="align-baseline font-mono text-[22px] font-semibold leading-none text-[var(--color-text-primary)]">
               {video.dubCount.toLocaleString("en")}
             </span>
-            <span className="ml-3 align-baseline text-[16px] text-[#777783]">
+            <span className="ml-2 align-baseline text-[12px] text-[var(--color-text-muted)]">
               {page.coverage.languagesDubbed}
             </span>
           </div>
-          <span className="font-mono text-[13px] font-semibold text-[#62ceb9]">
+          <span className="font-mono text-[11px] font-semibold text-[var(--color-success)]">
             {percent}%
           </span>
         </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#29292f]">
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-raised)]">
           <div
-            className={cx(
-              "h-full rounded-full bg-gradient-to-r",
-              tone.progress,
-            )}
+            className={cx("h-full rounded-full", tone.progress)}
             style={{ width: coverageWidth(percent) }}
           />
         </div>
-        <div className="mt-3 flex min-h-7 flex-wrap items-center gap-2">
+        <div className="mt-2 flex min-h-6 flex-wrap items-center gap-1.5">
           {languages.length > 0 ? (
             languages.map((language) => (
               <span
                 key={language}
-                className="rounded-[6px] bg-[#2b2b31] px-3 py-1.5 font-mono text-[13px] font-semibold leading-none text-[#b6b6bd]"
+                className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-2 py-1 font-mono text-[10px] font-semibold leading-none text-[var(--color-text-secondary)]"
               >
                 {language}
               </span>
             ))
           ) : (
-            <span className="text-[13px] text-[#686874]">
+            <span className="text-[11px] text-[var(--color-text-disabled)]">
               {page.coverage.noLanguages}
             </span>
           )}
           {video.dubOverflowCount > 0 ? (
-            <span className="px-2 font-mono text-[14px] text-[#7c7c87]">
+            <span className="px-1 font-mono text-[11px] text-[var(--color-text-muted)]">
               {overflowLabel(page.coverage.overflow, video.dubOverflowCount)}
             </span>
           ) : null}
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-4 xl:flex-col xl:items-end">
+      <div className="flex items-center justify-between gap-3 lg:flex-col lg:items-end">
         <time
           dateTime={video.updatedAtIso}
           title={video.updated}
           className="text-right"
         >
-          <span className="block text-[15px] font-semibold leading-5 text-[#b4b4bd]">
+          <span className="block text-[12px] font-semibold leading-4 text-[var(--color-text-secondary)]">
             {video.updatedRelative}
           </span>
-          <span className="mt-1 block font-mono text-[13px] text-[#696975]">
+          <span className="mt-0.5 block font-mono text-[10px] text-[var(--color-text-muted)]">
             {video.updatedDateShort}
           </span>
         </time>
@@ -360,9 +360,9 @@ function VideoRow({
             aria-disabled="true"
             aria-label={page.actions.rowActionsUnavailable}
             title={page.actions.rowActionsUnavailable}
-            className="inline-flex h-12 w-12 items-center justify-center rounded-[10px] border border-[#2f2f38] text-[#858590] transition-all duration-150 ease-out hover:border-[#464650] hover:bg-[#24242a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6dd6be]"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-disabled)]"
           >
-            <MoreVertical className="h-5 w-5" strokeWidth={1.6} />
+            <MoreVertical className="h-4 w-4" strokeWidth={1.6} />
           </button>
           {video.visitorUrl ? (
             <a
@@ -371,18 +371,18 @@ function VideoRow({
               rel="noreferrer"
               aria-label={`${page.table.openVisitorLabel}: ${video.title}`}
               title={page.table.openVisitorLabel}
-              className="inline-flex h-12 w-12 items-center justify-center rounded-[10px] border border-[#2f2f38] text-[#858590] transition-all duration-150 ease-out hover:border-[#595965] hover:bg-[#292930] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6dd6be]"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
             >
-              <ExternalLink className="h-5 w-5" strokeWidth={1.6} />
+              <ExternalLink className="h-4 w-4" strokeWidth={1.6} />
             </a>
           ) : (
             <span
               aria-disabled="true"
               aria-label={page.table.noVisitorLinkLabel}
               title={page.table.noVisitorLinkLabel}
-              className="inline-flex h-12 w-12 items-center justify-center rounded-[10px] border border-[#2f2f38] text-[#555561]"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-disabled)]"
             >
-              <ExternalLink className="h-5 w-5" strokeWidth={1.6} />
+              <ExternalLink className="h-4 w-4" strokeWidth={1.6} />
               <span className="sr-only">{page.table.noVisitorLinkLabel}</span>
             </span>
           )}
@@ -435,84 +435,74 @@ export default async function VideosPage({
   )
 
   return (
-    <div className="-mx-6 -my-6 min-h-full bg-[#08080a] px-6 py-8 text-[#f3f3f5]">
-      <div className="mx-auto flex w-full max-w-[1720px] flex-col gap-7">
-        <header className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_270px] xl:items-start">
-          <div>
-            <h1 className="text-[40px] font-semibold leading-tight tracking-normal text-[#f4f4f5]">
-              {page.title}
-            </h1>
-            <p className="mt-3 text-[20px] leading-7 text-[#a0a0a8]">
-              {headerDescription(page.description, pagination.total)}
-            </p>
+    <div className="flex min-w-0 flex-col gap-5">
+      <header className="flex min-w-0 flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="min-w-0">
+          <div className="label-text mb-1">{page.eyebrow}</div>
+          <h1 className="text-2xl font-semibold tracking-[-0.02em]">
+            {page.title}
+          </h1>
+          <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">
+            {headerDescription(page.description, pagination.total)}
+          </p>
+        </div>
+        <PrimaryButton
+          disabled
+          aria-disabled="true"
+          title={page.actions.primaryUnavailable}
+          className="shrink-0"
+        >
+          <Plus className="h-4 w-4" strokeWidth={1.5} />
+          {page.actions.primary}
+        </PrimaryButton>
+      </header>
+
+      <section aria-label={page.table.title}>
+        <VideoLibraryToolbar
+          key={toolbarStateKey}
+          category={category}
+          language={language}
+          languageOptions={languageOptions}
+          page={page}
+          query={query}
+          sort={sort}
+        />
+      </section>
+
+      <section className="app-card min-w-0 overflow-hidden">
+        {videoRows.length === 0 ? (
+          <div className="px-4 py-10 text-center text-[13px] text-[var(--color-text-muted)]">
+            {hasActiveFilters ? page.table.emptySearch : page.table.empty}
           </div>
-          <div className="flex xl:justify-end">
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              title={page.actions.primaryUnavailable}
-              className="inline-flex h-[62px] items-center gap-3 rounded-[12px] bg-[#d54f55] px-7 text-[20px] font-semibold text-white shadow-[0_12px_28px_rgba(213,79,85,0.22)] transition-all duration-150 ease-out disabled:cursor-not-allowed disabled:opacity-95"
+        ) : (
+          videoRows.map((video) => (
+            <VideoRow key={video.key} page={page} video={video} />
+          ))
+        )}
+
+        <div className="flex flex-col gap-3 border-t border-[var(--color-hairline)] px-4 py-3 text-[12px] text-[var(--color-text-muted)] md:flex-row md:items-center md:justify-between">
+          <span className="font-mono">{rangeLabel}</span>
+          <div className="flex items-center gap-2">
+            <PaginationControl
+              href={paginationHref(pagination.currentPage - 1, paginationState)}
+              disabled={!pagination.hasPrevious}
             >
-              <Plus className="h-6 w-6" strokeWidth={1.8} />
-              {page.actions.primary}
-            </button>
+              <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
+              {page.table.pagination.previous}
+            </PaginationControl>
+            <span className="min-w-[96px] text-center font-mono text-[11px] text-[var(--color-text-muted)]">
+              {currentPageLabel}
+            </span>
+            <PaginationControl
+              href={paginationHref(pagination.currentPage + 1, paginationState)}
+              disabled={!pagination.hasNext}
+            >
+              {page.table.pagination.next}
+              <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </PaginationControl>
           </div>
-        </header>
-
-        <section aria-label={page.table.title}>
-          <VideoLibraryToolbar
-            key={toolbarStateKey}
-            category={category}
-            language={language}
-            languageOptions={languageOptions}
-            page={page}
-            query={query}
-            sort={sort}
-          />
-        </section>
-
-        <section className="overflow-hidden rounded-[18px] border border-[#303039] bg-[#1b1b1f] shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
-          {videoRows.length === 0 ? (
-            <div className="px-6 py-16 text-center text-[15px] text-[#8b8b95]">
-              {hasActiveFilters ? page.table.emptySearch : page.table.empty}
-            </div>
-          ) : (
-            videoRows.map((video) => (
-              <VideoRow key={video.key} page={page} video={video} />
-            ))
-          )}
-
-          <div className="flex flex-col gap-3 border-t border-[#25252b] px-5 py-4 text-[13px] text-[#858590] md:flex-row md:items-center md:justify-between md:px-7">
-            <span className="font-mono">{rangeLabel}</span>
-            <div className="flex items-center gap-2">
-              <PaginationControl
-                href={paginationHref(
-                  pagination.currentPage - 1,
-                  paginationState,
-                )}
-                disabled={!pagination.hasPrevious}
-              >
-                <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
-                {page.table.pagination.previous}
-              </PaginationControl>
-              <span className="min-w-[104px] text-center font-mono text-[12px] text-[#a7a7b0]">
-                {currentPageLabel}
-              </span>
-              <PaginationControl
-                href={paginationHref(
-                  pagination.currentPage + 1,
-                  paginationState,
-                )}
-                disabled={!pagination.hasNext}
-              >
-                {page.table.pagination.next}
-                <ChevronRight className="h-4 w-4" strokeWidth={1.5} />
-              </PaginationControl>
-            </div>
-          </div>
-        </section>
-      </div>
+        </div>
+      </section>
     </div>
   )
 }

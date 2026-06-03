@@ -67,7 +67,7 @@ function SelectControl({
         name={name}
         defaultValue={defaultValue}
         onChange={(event) => onChange(event.currentTarget)}
-        className="h-[62px] w-full appearance-none rounded-[13px] border border-[#303039] bg-[#1c1c20] pl-5 pr-12 text-[17px] font-semibold text-[#d6d6dc] outline-none transition-all duration-150 ease-out hover:border-[#4b4b57] hover:bg-[#222228] focus:border-[#5a5a66] focus:ring-2 focus:ring-[#6dd6be]/25"
+        className="h-10 w-full appearance-none rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] pl-3 pr-9 text-[12px] font-medium text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] focus:border-[var(--color-brand)] focus:bg-[var(--color-surface-raised)]"
       >
         {options.map((option) => (
           <option key={option.value || "all"} value={option.value}>
@@ -77,8 +77,8 @@ function SelectControl({
       </select>
       <ChevronDown
         aria-hidden="true"
-        className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#8d8d98]"
-        strokeWidth={1.7}
+        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
+        strokeWidth={1.5}
       />
     </label>
   )
@@ -155,7 +155,7 @@ export function VideoLibraryToolbar({
         event.preventDefault()
         submitForm(event.currentTarget)
       }}
-      className="grid gap-4 xl:grid-cols-[minmax(320px,620px)_minmax(220px,260px)_minmax(220px,260px)_270px]"
+      className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(150px,220px)_minmax(170px,240px)_220px]"
     >
       <div className="min-w-0">
         <label htmlFor="video-library-search" className="sr-only">
@@ -163,8 +163,8 @@ export function VideoLibraryToolbar({
         </label>
         <div className="relative">
           <Search
-            className="pointer-events-none absolute left-5 top-1/2 h-6 w-6 -translate-y-1/2 text-[#73737f]"
-            strokeWidth={1.6}
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
+            strokeWidth={1.5}
           />
           <input
             id="video-library-search"
@@ -173,15 +173,15 @@ export function VideoLibraryToolbar({
             maxLength={VIDEO_LIBRARY_MAX_QUERY_LENGTH}
             defaultValue={query}
             placeholder={page.search.placeholder}
-            className="h-[62px] w-full rounded-[13px] border border-[#303039] bg-[#1c1c20] pl-16 pr-28 text-[18px] text-[#ededf0] outline-none transition-all duration-150 ease-out placeholder:text-[#777782] focus:border-[#5a5a66] focus:bg-[#222228] focus:ring-2 focus:ring-[#6dd6be]/25"
+            className="h-10 w-full rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] pl-9 pr-16 font-mono text-[12px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out placeholder:text-[var(--color-text-disabled)] focus:border-[var(--color-brand)] focus:bg-[var(--color-surface-raised)]"
           />
           {query ? (
             <Link
               href={clearHref}
               aria-label={page.search.clear}
-              className="absolute right-14 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-[8px] text-[#94949f] transition-all duration-150 ease-out hover:bg-[#2a2a31] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6dd6be]"
+              className="absolute right-9 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-sm text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
             >
-              <X className="h-5 w-5" strokeWidth={1.7} />
+              <X className="h-4 w-4" strokeWidth={1.5} />
             </Link>
           ) : null}
           <button
@@ -189,13 +189,13 @@ export function VideoLibraryToolbar({
             aria-label={page.search.submit}
             title={page.search.submit}
             disabled={isSubmitting}
-            className="absolute right-4 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-[8px] text-[#9fded3] transition-all duration-150 ease-out hover:bg-[#2a2a31] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6dd6be] disabled:cursor-wait disabled:opacity-70"
+            className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-sm text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] disabled:cursor-wait disabled:opacity-70"
           >
-            <ArrowRight className="h-5 w-5" strokeWidth={1.7} />
+            <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
           </button>
         </div>
         {query ? (
-          <p className="mt-2 font-mono text-[12px] text-[#777783]">
+          <p className="mt-2 font-mono text-[11px] text-[var(--color-text-muted)]">
             {page.search.active.replace("{query}", query)}
           </p>
         ) : null}
@@ -220,10 +220,10 @@ export function VideoLibraryToolbar({
       <div className="relative">
         <ArrowUpDown
           aria-hidden="true"
-          className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-[#8d8d98]"
-          strokeWidth={1.7}
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
+          strokeWidth={1.5}
         />
-        <div className="[&_select]:pl-14">
+        <div className="[&_select]:pl-9">
           <SelectControl
             label={page.sort.label}
             name="sort"
@@ -240,11 +240,11 @@ export function VideoLibraryToolbar({
       {isSubmitting ? (
         <div
           role="status"
-          className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[#303039] bg-[#222228] px-3 font-mono text-[12px] font-semibold text-[#c8f4ea] xl:col-span-4"
+          className="inline-flex h-8 items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 font-mono text-[11px] font-semibold text-[var(--color-success)] lg:col-span-4"
         >
           <LoaderCircle
-            className="h-4 w-4 animate-spin text-[#6dd6be]"
-            strokeWidth={1.8}
+            className="h-3.5 w-3.5 animate-spin text-[var(--color-success)]"
+            strokeWidth={1.5}
           />
           {page.filters.loading}
         </div>
