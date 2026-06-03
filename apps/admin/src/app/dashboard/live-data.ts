@@ -50,12 +50,29 @@ type VideoLocaleRow = {
   updatedAt: Date
 }
 
+type VideoLanguageCountryRow = {
+  order: number | null
+  primary: boolean | null
+  speakers: number | null
+  suggested: boolean | null
+  country: {
+    flagPngSrc: string | null
+    flagWebpSrc: string | null
+  } | null
+}
+
 type VideoDubRow = VideoDub & {
   language: {
     bcp47: string | null
+    countryLanguages: VideoLanguageCountryRow[]
     iso3: string | null
     slug: string | null
   } | null
+}
+
+type VideoLanguageChip = {
+  code: string
+  flagUrl: string | null
 }
 
 type VideoImageRow = {
@@ -451,22 +468,66 @@ function dubCoverage(dubs: VideoDubRow[]): string {
   return `${label} · ${tags.join(", ")}${suffix}`
 }
 
-function dubLanguageCodes(dubs: VideoDubRow[]) {
-  return Array.from(
-    new Set(
-      dubs
-        .map(
-          (dub) =>
-            dub.language?.iso3 ?? dub.language?.bcp47 ?? dub.language?.slug,
-        )
-        .filter((tag): tag is string => !!tag)
-        .map((tag) => tag.toUpperCase()),
-    ),
+function countryFlagUrl(
+  country: VideoLanguageCountryRow["country"],
+): string | null {
+  return (
+    compactText(country?.flagWebpSrc) ??
+    compactText(country?.flagPngSrc) ??
+    null
   )
 }
 
+function preferredCountryLanguage(countryLanguages: VideoLanguageCountryRow[]) {
+  return countryLanguages
+    .filter((countryLanguage) => countryFlagUrl(countryLanguage.country))
+    .sort((left, right) => {
+      const primary =
+        Number(Boolean(right.primary)) - Number(Boolean(left.primary))
+      if (primary !== 0) return primary
+
+      const suggested =
+        Number(Boolean(right.suggested)) - Number(Boolean(left.suggested))
+      if (suggested !== 0) return suggested
+
+      const order =
+        (left.order ?? Number.MAX_SAFE_INTEGER) -
+        (right.order ?? Number.MAX_SAFE_INTEGER)
+      if (order !== 0) return order
+
+      return (right.speakers ?? -1) - (left.speakers ?? -1)
+    })[0]
+}
+
+function dubLanguageChip(dub: VideoDubRow): VideoLanguageChip | null {
+  const code = compactText(
+    dub.language?.iso3 ?? dub.language?.bcp47 ?? dub.language?.slug,
+  )?.toUpperCase()
+  if (!code) return null
+
+  const countryLanguage = dub.language
+    ? preferredCountryLanguage(dub.language.countryLanguages)
+    : undefined
+
+  return {
+    code,
+    flagUrl: countryFlagUrl(countryLanguage?.country ?? null),
+  }
+}
+
+function dubLanguageChips(dubs: VideoDubRow[]) {
+  const chips = new Map<string, VideoLanguageChip>()
+  for (const dub of dubs) {
+    const chip = dubLanguageChip(dub)
+    if (!chip || chips.has(chip.code)) continue
+    chips.set(chip.code, chip)
+  }
+
+  return Array.from(chips.values())
+}
+
 function dubCoverageMetric(dubs: VideoDubRow[]) {
-  const allLanguages = dubLanguageCodes(dubs)
+  const allLanguages = dubLanguageChips(dubs)
   const count = allLanguages.length || dubs.length
   const percent =
     count === 0
@@ -760,6 +821,21 @@ async function loadVideoRowSlice({
           language: {
             select: {
               bcp47: true,
+              countryLanguages: {
+                where: { deletedAt: null },
+                select: {
+                  order: true,
+                  primary: true,
+                  speakers: true,
+                  suggested: true,
+                  country: {
+                    select: {
+                      flagPngSrc: true,
+                      flagWebpSrc: true,
+                    },
+                  },
+                },
+              },
               iso3: true,
               slug: true,
             },

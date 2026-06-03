@@ -320,10 +320,20 @@ function VideoRow({
           {languages.length > 0 ? (
             languages.map((language) => (
               <span
-                key={language}
-                className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-2 py-1 font-mono text-[10px] font-semibold leading-none text-[var(--color-text-secondary)]"
+                key={language.code}
+                className="inline-flex items-center gap-1.5 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-1.5 py-1 font-mono text-[10px] font-semibold leading-none text-[var(--color-text-secondary)]"
               >
-                {language}
+                {language.flagUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={language.flagUrl}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="h-3 w-4 rounded-[1px] object-cover"
+                  />
+                ) : null}
+                <span>{language.code}</span>
               </span>
             ))
           ) : (

@@ -121,7 +121,11 @@ vi.mock("@/app/dashboard/live-data", () => ({
         sourceTone: "info",
         dubs: "3 dubs · EN, ES, FR",
         dubCount: 3,
-        dubLanguages: ["EN", "ES", "FR"],
+        dubLanguages: [
+          { code: "EN", flagUrl: "https://flags.example.com/us.webp" },
+          { code: "ES", flagUrl: "https://flags.example.com/es.webp" },
+          { code: "FR", flagUrl: null },
+        ],
         dubOverflowCount: 0,
         dubCoveragePercent: 1,
         updated: "10/24/2023, 14:02",
@@ -622,6 +626,8 @@ describe("dashboard UI routes", () => {
     expect(html).toContain("EN")
     expect(html).toContain("ES")
     expect(html).toContain("FR")
+    expect(html).toContain("https://flags.example.com/us.webp")
+    expect(html).toContain("https://flags.example.com/es.webp")
     expect(html).toContain("https://images.example.com/neon.jpg")
     expect(html).toContain("3 years ago")
     expect(html).toContain("10/24/2023")
