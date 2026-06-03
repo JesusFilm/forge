@@ -106,6 +106,7 @@ export type BackfillTarget = {
   videoEditionId: string
   coreId: string
   cmsVideoId: number
+  primaryLanguageBcp47: string | null
   /**
    * BCP-47 locale to be stamped on the `VideoSceneLocale` row. Derived
    * per enumeration: one target per `(videoEdition, locale)` pair where
@@ -198,6 +199,7 @@ export type BackfillOutcome =
 export type MissingArtifact = {
   readonly assetId: number
   readonly coreId: string
+  readonly targetLocale?: string
   readonly kind: "scene-analysis"
 }
 
@@ -416,6 +418,7 @@ async function stepEnumerateTargets(
       video_edition_id: string
       core_id: string
       bcp47: string
+      primary_bcp47: string | null
     }>
   >`
     WITH edition_locales AS (
@@ -423,11 +426,14 @@ async function stepEnumerateTargets(
         v.id AS video_id,
         e.id AS video_edition_id,
         v.core_id AS core_id,
-        l.bcp47 AS bcp47
+        l.bcp47 AS bcp47,
+        primary_l.bcp47 AS primary_bcp47
       FROM video v
       JOIN video_dub d ON d.video_id = v.id AND d.deleted_at IS NULL
       JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
       JOIN language l ON l.id = v.primary_language_id
+      LEFT JOIN language primary_l ON primary_l.id = v.primary_language_id
+        AND primary_l.deleted_at IS NULL
       WHERE v.deleted_at IS NULL
         AND l.bcp47 IS NOT NULL
 
@@ -437,12 +443,15 @@ async function stepEnumerateTargets(
         v.id,
         e.id,
         v.core_id,
-        l.bcp47
+        l.bcp47,
+        primary_l.bcp47
       FROM video v
       JOIN video_dub d ON d.video_id = v.id AND d.deleted_at IS NULL
       JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
       JOIN video_subtitle s ON s.video_edition_id = e.id AND s.deleted_at IS NULL
       JOIN language l ON l.id = s.language_id
+      LEFT JOIN language primary_l ON primary_l.id = v.primary_language_id
+        AND primary_l.deleted_at IS NULL
       WHERE v.deleted_at IS NULL
         AND l.bcp47 IS NOT NULL
 
@@ -452,15 +461,18 @@ async function stepEnumerateTargets(
         v.id,
         e.id,
         v.core_id,
-        l.bcp47
+        l.bcp47,
+        primary_l.bcp47
       FROM video v
       JOIN video_dub d ON d.video_id = v.id AND d.deleted_at IS NULL
       JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
       JOIN language l ON l.id = d.language_id
+      LEFT JOIN language primary_l ON primary_l.id = v.primary_language_id
+        AND primary_l.deleted_at IS NULL
       WHERE v.deleted_at IS NULL
         AND l.bcp47 IS NOT NULL
     )
-    SELECT video_id, video_edition_id, core_id, bcp47
+    SELECT video_id, video_edition_id, core_id, bcp47, primary_bcp47
     FROM edition_locales
     ORDER BY core_id, bcp47
   `
@@ -475,6 +487,7 @@ async function stepEnumerateTargets(
       videoEditionId: row.video_edition_id,
       coreId: row.core_id,
       cmsVideoId,
+      primaryLanguageBcp47: row.primary_bcp47,
       locale: row.bcp47,
     })
   }
@@ -517,6 +530,7 @@ function groupTargetsByVideoEdition(
         videoEditionId: target.videoEditionId,
         coreId: target.coreId,
         cmsVideoId: target.cmsVideoId,
+        primaryLanguageBcp47: target.primaryLanguageBcp47,
         targets: targetsArr,
       } satisfies BackfillGroup
       entry = { group, targets: targetsArr }
@@ -528,15 +542,13 @@ function groupTargetsByVideoEdition(
 }
 
 /**
- * Per-group worker. Loads the scene-analysis artifact ONCE, then fans
- * out per-locale sequentially with the artifact in scope.
- *
- * Group-level artifact-load failure is cascaded to per-locale outcomes
- * with the same classification the per-locale path would have produced
- * (`artifact_missing` → skipped, anything else → failed). This
- * preserves Stage 1's per-locale outcome shape so the report's
- * succeeded/skipped/failed triple stays meaningful even when the load
- * fault is shared.
+ * Per-group worker. Fans out per-locale sequentially and loads the
+ * exact artifact each locale is allowed to embed: source locales read
+ * `{assetId}/scene-analysis.json`, localized targets read
+ * `{assetId}/scene-analysis-{locale}.json` with provenance checks.
+ * Per-locale load failures keep the report's succeeded/skipped/failed
+ * triple meaningful without cascading a localized miss to the source
+ * locale or vice versa.
  */
 async function processGroup(
   group: BackfillGroup,
@@ -556,22 +568,27 @@ async function processGroup(
   // backfill — operators monitoring useworkflow journal size should be
   // aware.
 
-  let loadedArtifact: SceneAnalysisResult
-  try {
-    loadedArtifact = await stepLoadSceneAnalysisArtifact(group.cmsVideoId)
-  } catch (error) {
-    // Cascade the load failure to all locales in the group with the
-    // right classification. A genuine "manager hasn't run scene
-    // analysis yet" → skipped. Anything else → failed (including
-    // ManagerArtifactError artifact_invalid / artifact_read_failed).
-    const durationMs = Date.now() - groupStartedAt
-    const isMissing = getManagerArtifactCode(error) === "artifact_missing"
-    const reason = isMissing
-      ? "artifact_missing"
-      : error instanceof Error
-        ? error.message
-        : String(error)
-    return group.targets.map((target) => {
+  // Per-locale fan-out. Source-language targets keep the legacy
+  // `{assetId}/scene-analysis.json` path; non-source localized targets
+  // must load their exact `{assetId}/scene-analysis-{locale}.json`
+  // artifact and pass its provenance checks before Mastra is launched.
+  const outcomes: BackfillOutcome[] = []
+  for (const target of group.targets) {
+    const artifactLocale = sceneArtifactLocaleForTarget(target)
+    let loadedArtifact: SceneAnalysisResult
+    try {
+      loadedArtifact = await stepLoadSceneAnalysisArtifact(
+        target.cmsVideoId,
+        artifactLocale,
+      )
+    } catch (error) {
+      const durationMs = Date.now() - groupStartedAt
+      const isMissing = getManagerArtifactCode(error) === "artifact_missing"
+      const reason = isMissing
+        ? "artifact_missing"
+        : error instanceof Error
+          ? error.message
+          : String(error)
       const outcome: BackfillOutcome = isMissing
         ? {
             status: "skipped",
@@ -589,19 +606,15 @@ async function processGroup(
             durationMs,
           }
       logOutcome(outcome)
-      return outcome
-    })
-  }
+      outcomes.push(outcome)
+      continue
+    }
 
-  // Per-locale fan-out with the loaded artifact in scope. Sequential
-  // inside the group so the artifact stays bounded to one stack frame
-  // and the per-target step's timing measurement is honest.
-  const outcomes: BackfillOutcome[] = []
-  for (const target of group.targets) {
     const outcome = await _internals.stepLaunchMastraSceneEmbedding(
       target,
       loadedArtifact,
       mode,
+      artifactLocale,
     )
     logOutcome(outcome)
     outcomes.push(outcome)
@@ -613,6 +626,7 @@ async function stepLaunchMastraSceneEmbedding(
   target: BackfillTarget,
   loadedArtifact: SceneAnalysisResult,
   mode: MastraSceneEmbeddingMode,
+  sourceArtifactLocale: string | null,
 ): Promise<BackfillOutcome> {
   "use step"
 
@@ -628,6 +642,7 @@ async function stepLaunchMastraSceneEmbedding(
       locale: target.locale,
       assetId: target.cmsVideoId,
       sceneAnalysis: loadedArtifact,
+      sourceArtifactLocale,
       mode,
     })
     if (!result.ok) {
@@ -734,6 +749,17 @@ function applyRetrySelection(
   )
 }
 
+function sceneArtifactLocaleForTarget(target: BackfillTarget): string | null {
+  const locale = normalizeLocale(target.locale)
+  const primary = normalizeLocale(target.primaryLanguageBcp47)
+  return primary && locale === primary ? null : locale
+}
+
+function normalizeLocale(locale: string | null | undefined): string | null {
+  const normalized = locale?.trim().toLowerCase()
+  return normalized && normalized.length > 0 ? normalized : null
+}
+
 /**
  * Project the outcome list to the deduped, sorted set of missing
  * scene-analysis artifacts. Pure function — no DB access, no side
@@ -756,18 +782,25 @@ function applyRetrySelection(
 function deriveMissingArtifacts(
   outcomes: readonly BackfillOutcome[],
 ): MissingArtifact[] {
-  const byAssetId = new Map<number, MissingArtifact>()
+  const byKey = new Map<string, MissingArtifact>()
   for (const outcome of outcomes) {
     if (outcome.status !== "skipped") continue
     if (outcome.reason !== "artifact_missing") continue
-    if (byAssetId.has(outcome.target.cmsVideoId)) continue
-    byAssetId.set(outcome.target.cmsVideoId, {
+    const targetLocale = sceneArtifactLocaleForTarget(outcome.target)
+    const key = `${outcome.target.cmsVideoId}:${targetLocale ?? ""}`
+    if (byKey.has(key)) continue
+    byKey.set(key, {
       assetId: outcome.target.cmsVideoId,
       coreId: outcome.target.coreId,
+      ...(targetLocale ? { targetLocale } : {}),
       kind: "scene-analysis",
     })
   }
-  return Array.from(byAssetId.values()).sort((a, b) => a.assetId - b.assetId)
+  return Array.from(byKey.values()).sort(
+    (a, b) =>
+      a.assetId - b.assetId ||
+      (a.targetLocale ?? "").localeCompare(b.targetLocale ?? ""),
+  )
 }
 
 function deriveGroupedFailures(

@@ -1,5 +1,8 @@
 import { env } from "@/config/env"
-import type { SceneAnalysisResult } from "@/services/manager-artifacts.service"
+import {
+  sceneAnalysisArtifactKey,
+  type SceneAnalysisResult,
+} from "@/services/manager-artifacts.service"
 
 export type MastraSceneEmbeddingMode =
   | "idempotent"
@@ -18,6 +21,7 @@ export type MastraSceneEmbeddingLaunchInput = {
   locale: string
   assetId: number | string
   sceneAnalysis: SceneAnalysisResult
+  sourceArtifactLocale?: string | null
   mode?: MastraSceneEmbeddingMode
 }
 
@@ -185,9 +189,12 @@ export async function launchMastraSceneEmbedding(
     locale: input.locale,
     sceneAnalysis: {
       scenes: normalizeScenes(input.sceneAnalysis),
-      artifactKey: `${input.assetId}/scene-analysis.json`,
+      artifactKey:
+        input.sceneAnalysis.provenance?.artifactKey ??
+        sceneAnalysisArtifactKey(input.assetId, input.sourceArtifactLocale),
       artifactVersion: "manager-scene-analysis-v1",
       provider: "manager",
+      generatedAt: input.sceneAnalysis.provenance?.generatedAt,
     },
     mode: input.mode ?? "idempotent",
   }

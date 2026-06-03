@@ -299,6 +299,89 @@ describe("triggerManagerEnrichment", () => {
     expect(sentBody.items[0].assetId).toBe(1)
   })
 
+  it("does not dedupe the same assetId across different target locales", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse({
+        results: [
+          {
+            assetId: 1,
+            coreId: "c-1",
+            targetLocale: "es",
+            managerJobId: "j-es",
+            status: "started",
+          },
+          {
+            assetId: 1,
+            coreId: "c-1",
+            targetLocale: "ar",
+            managerJobId: "j-ar",
+            status: "started",
+          },
+        ],
+      }),
+    )
+
+    const items = [
+      { assetId: 1, coreId: "c-1", targetLocale: "es" },
+      { assetId: 1, coreId: "c-1", targetLocale: "ar" },
+    ] as const
+    const results = await triggerManagerEnrichment(items, "scene-analysis")
+
+    expect(results).toEqual([
+      expect.objectContaining({
+        assetId: 1,
+        targetLocale: "es",
+        status: "STARTED",
+      }),
+      expect.objectContaining({
+        assetId: 1,
+        targetLocale: "ar",
+        status: "STARTED",
+      }),
+    ])
+    const sentBody = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string) as {
+      items: Array<{ assetId: number; targetLocale?: string }>
+    }
+    expect(sentBody.items).toEqual(items)
+  })
+
+  it("normalizes target locale casing before dedupe and dispatch", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse({
+        results: [
+          {
+            assetId: 1,
+            coreId: "c-1",
+            targetLocale: "es",
+            managerJobId: "j-es",
+            status: "started",
+          },
+        ],
+      }),
+    )
+
+    const results = await triggerManagerEnrichment(
+      [
+        { assetId: 1, coreId: "c-1", targetLocale: "ES" },
+        { assetId: 1, coreId: "c-1", targetLocale: "es" },
+      ],
+      "scene-analysis",
+    )
+
+    expect(results).toHaveLength(1)
+    expect(results[0]).toMatchObject({
+      assetId: 1,
+      targetLocale: "es",
+      status: "STARTED",
+    })
+    const sentBody = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string) as {
+      items: Array<{ assetId: number; targetLocale?: string }>
+    }
+    expect(sentBody.items).toEqual([
+      { assetId: 1, coreId: "c-1", targetLocale: "es" },
+    ])
+  })
+
   it("returns DISPATCH_FAILED parse_error when manager drops an outcome we sent (contract drift)", async () => {
     // Pre-dedupe means the request and response array lengths
     // should always match. If they don't, that's a manager-side

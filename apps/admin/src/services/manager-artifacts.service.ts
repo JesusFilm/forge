@@ -35,6 +35,31 @@ export const SceneAnalysisResultSchema = z
     scenes: z.array(SceneAnalysisSchema),
     totalInputTokens: z.number().finite().optional(),
     totalOutputTokens: z.number().finite().optional(),
+    provenance: z
+      .object({
+        artifactKey: z.string().min(1),
+        generationMode: z.enum(["source", "raw-localized"]),
+        requestedLocale: z.string().min(1).nullable(),
+        inputLanguageBcp47: z.string().min(1),
+        mediaSource: z
+          .object({
+            kind: z.literal("mux"),
+            muxAssetId: z.string().min(1),
+            playbackId: z.string().min(1),
+          })
+          .passthrough(),
+        transcriptSource: z
+          .object({
+            kind: z.enum(["subtitle-url", "mux-transcription"]),
+            languageBcp47: z.string().min(1),
+            subtitleUrl: z.string().min(1).optional(),
+            muxAssetId: z.string().min(1).optional(),
+          })
+          .passthrough(),
+        generatedAt: z.string().min(1),
+      })
+      .passthrough()
+      .optional(),
   })
   .passthrough()
 
@@ -131,22 +156,24 @@ function isArtifactMissing(error: unknown): boolean {
  */
 export async function readSceneAnalysisArtifact(
   assetId: string,
+  targetLocale?: string | null,
 ): Promise<SceneAnalysisResult> {
+  const artifactType = sceneAnalysisArtifactType(targetLocale)
   let bytes: Uint8Array
   try {
-    bytes = await readManagerArtifact(assetId, "scene-analysis", "json")
+    bytes = await readManagerArtifact(assetId, artifactType, "json")
   } catch (error) {
     if (isArtifactMissing(error)) {
       throw new ManagerArtifactError(
         "artifact_missing",
-        `scene-analysis artifact not found for assetId=${assetId}`,
+        `scene-analysis artifact not found for assetId=${assetId}${targetLocale ? ` targetLocale=${targetLocale}` : ""}`,
         error,
       )
     }
     const message = error instanceof Error ? error.message : String(error)
     throw new ManagerArtifactError(
       "artifact_read_failed",
-      `failed to read scene-analysis artifact for assetId=${assetId}: ${message}`,
+      `failed to read scene-analysis artifact for assetId=${assetId}${targetLocale ? ` targetLocale=${targetLocale}` : ""}: ${message}`,
       error,
     )
   }
@@ -157,7 +184,7 @@ export async function readSceneAnalysisArtifact(
   } catch (error) {
     throw new ManagerArtifactError(
       "artifact_invalid",
-      `scene-analysis artifact for assetId=${assetId} is not valid JSON`,
+      `scene-analysis artifact for assetId=${assetId}${targetLocale ? ` targetLocale=${targetLocale}` : ""} is not valid JSON`,
       error,
     )
   }
@@ -166,12 +193,84 @@ export async function readSceneAnalysisArtifact(
   if (!parsed.success) {
     throw new ManagerArtifactError(
       "artifact_invalid",
-      `scene-analysis artifact for assetId=${assetId} failed schema validation: ${parsed.error.message}`,
+      `scene-analysis artifact for assetId=${assetId}${targetLocale ? ` targetLocale=${targetLocale}` : ""} failed schema validation: ${parsed.error.message}`,
       parsed.error,
     )
   }
 
+  assertLocalizedSceneArtifactProvenance(parsed.data, targetLocale)
   return parsed.data
+}
+
+export function sceneAnalysisArtifactType(
+  targetLocale: string | null | undefined,
+): string {
+  const normalized = normalizeSceneAnalysisLocale(targetLocale)
+  return normalized ? `scene-analysis-${normalized}` : "scene-analysis"
+}
+
+export function sceneAnalysisArtifactKey(
+  assetId: string | number,
+  targetLocale: string | null | undefined,
+): string {
+  return `${assetId}/${sceneAnalysisArtifactType(targetLocale)}.json`
+}
+
+export function normalizeSceneAnalysisLocale(
+  targetLocale: string | null | undefined,
+): string | null {
+  const normalized = targetLocale?.trim().toLowerCase()
+  if (!normalized) return null
+  if (!/^[a-zA-Z0-9_-]+$/.test(normalized)) {
+    throw new ManagerArtifactError(
+      "artifact_invalid",
+      `invalid scene-analysis target locale: ${targetLocale}`,
+    )
+  }
+  return normalized
+}
+
+function assertLocalizedSceneArtifactProvenance(
+  artifact: SceneAnalysisResult,
+  targetLocale: string | null | undefined,
+): void {
+  const normalizedTarget = normalizeSceneAnalysisLocale(targetLocale)
+  if (!normalizedTarget) return
+
+  const provenance = artifact.provenance
+  if (!provenance) {
+    throw new ManagerArtifactError(
+      "artifact_invalid",
+      `localized scene-analysis artifact missing provenance for targetLocale=${targetLocale}`,
+    )
+  }
+
+  if (provenance.generationMode !== "raw-localized") {
+    throw new ManagerArtifactError(
+      "artifact_invalid",
+      `localized scene-analysis artifact has generationMode=${provenance.generationMode}; expected raw-localized`,
+    )
+  }
+
+  const requestedLocale = normalizeSceneAnalysisLocale(
+    provenance.requestedLocale,
+  )
+  const inputLanguage = normalizeSceneAnalysisLocale(
+    provenance.inputLanguageBcp47,
+  )
+  const transcriptLanguage = normalizeSceneAnalysisLocale(
+    provenance.transcriptSource.languageBcp47,
+  )
+  if (
+    requestedLocale !== normalizedTarget ||
+    inputLanguage !== normalizedTarget ||
+    transcriptLanguage !== normalizedTarget
+  ) {
+    throw new ManagerArtifactError(
+      "artifact_invalid",
+      `localized scene-analysis provenance does not match targetLocale=${targetLocale}`,
+    )
+  }
 }
 
 export async function readTranscriptSourceArtifact(

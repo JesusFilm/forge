@@ -41,7 +41,9 @@ export type VideoForEnrichment = {
   id: string
   coreId: string
   label: string | null
+  targetLocale: string | null
   primaryLanguageBcp47: string | null
+  languageBcp47: string | null
   muxAssetId: string | null
   subtitleUrl: string | null
 }
@@ -455,8 +457,10 @@ export class VideoService {
    */
   async getByCoreIds({
     coreIds,
+    targetLocale,
   }: {
     coreIds: readonly string[]
+    targetLocale?: string | null
   }): Promise<VideoForEnrichment[]> {
     if (coreIds.length === 0) return []
     if (coreIds.length > VIDEOS_BY_CORE_IDS_MAX) {
@@ -464,6 +468,7 @@ export class VideoService {
         `coreIds.length=${coreIds.length} exceeds max ${VIDEOS_BY_CORE_IDS_MAX}`,
       )
     }
+    const requestedTargetLocale = normalizeOptionalLocale(targetLocale)
 
     let rows: VideoForEnrichmentRow[]
     let transactionDurationMs: number | null = null
@@ -481,13 +486,24 @@ export class VideoService {
               v.id,
               v.core_id AS "coreId",
               v.label::text AS label,
+              ${requestedTargetLocale}::text AS "targetLocale",
               primary_language.bcp47 AS "primaryLanguageBcp47",
-              primary_mux.asset_id AS "muxAssetId",
-              primary_subtitle.vtt_src AS "subtitleUrl"
+              CASE
+                WHEN ${requestedTargetLocale}::text IS NULL
+                  THEN primary_language.bcp47
+                ELSE requested_language.bcp47
+              END AS "languageBcp47",
+              selected_mux.asset_id AS "muxAssetId",
+              selected_subtitle.vtt_src AS "subtitleUrl"
             FROM video v
             LEFT JOIN language primary_language
               ON primary_language.id = v.primary_language_id
               AND primary_language.deleted_at IS NULL
+            LEFT JOIN language requested_language
+              ON ${requestedTargetLocale}::text IS NOT NULL
+              AND LOWER(requested_language.bcp47) =
+                LOWER(${requestedTargetLocale}::text)
+              AND requested_language.deleted_at IS NULL
             LEFT JOIN LATERAL (
               SELECT mux_video.asset_id
               FROM video_dub dub
@@ -499,12 +515,18 @@ export class VideoService {
                 AND mux_video.deleted_at IS NULL
               WHERE dub.video_id = v.id
                 AND dub.deleted_at IS NULL
-                AND dub_language.bcp47 = primary_language.bcp47
+                AND LOWER(dub_language.bcp47) = LOWER(
+                  CASE
+                    WHEN ${requestedTargetLocale}::text IS NULL
+                      THEN primary_language.bcp47
+                    ELSE requested_language.bcp47
+                  END
+                )
                 AND mux_video.asset_id IS NOT NULL
                 AND mux_video.asset_id <> ''
               ORDER BY dub.published DESC NULLS LAST, dub.updated_at DESC
               LIMIT 1
-            ) primary_mux ON TRUE
+            ) selected_mux ON TRUE
             LEFT JOIN LATERAL (
               SELECT subtitle.vtt_src
               FROM video_subtitle subtitle
@@ -513,7 +535,13 @@ export class VideoService {
                 AND subtitle_language.deleted_at IS NULL
               WHERE subtitle.video_id = v.id
                 AND subtitle.deleted_at IS NULL
-                AND subtitle_language.bcp47 = primary_language.bcp47
+                AND LOWER(subtitle_language.bcp47) = LOWER(
+                  CASE
+                    WHEN ${requestedTargetLocale}::text IS NULL
+                      THEN primary_language.bcp47
+                    ELSE requested_language.bcp47
+                  END
+                )
                 AND subtitle.vtt_src IS NOT NULL
                 AND subtitle.vtt_src <> ''
               ORDER BY
@@ -521,7 +549,7 @@ export class VideoService {
                 (CASE WHEN subtitle.ai_generated THEN 1 ELSE 0 END) ASC,
                 subtitle.updated_at DESC
               LIMIT 1
-            ) primary_subtitle ON TRUE
+            ) selected_subtitle ON TRUE
             WHERE v.core_id IN (${Prisma.join([...coreIds])})
               AND v.deleted_at IS NULL
           `
@@ -554,7 +582,9 @@ export class VideoService {
         // tests pass `videoLabel: "shortFilm"`-style fixtures, so
         // any drift here changes the LLM prompt content.
         label: snakeUpperToCamel(video.label),
+        targetLocale: video.targetLocale,
         primaryLanguageBcp47: video.primaryLanguageBcp47,
+        languageBcp47: video.languageBcp47,
         muxAssetId: video.muxAssetId,
         subtitleUrl: video.subtitleUrl,
       }
@@ -628,6 +658,11 @@ export class VideoService {
 }
 
 type VideoForEnrichmentRow = VideoForEnrichment
+
+function normalizeOptionalLocale(locale: string | null | undefined) {
+  const normalized = locale?.trim()
+  return normalized && normalized.length > 0 ? normalized : null
+}
 
 function logSlowVideoLookup(
   coreIdCount: number,
