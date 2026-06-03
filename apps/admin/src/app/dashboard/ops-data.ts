@@ -4,6 +4,7 @@ import {
   type MediaAssetKind,
   type MediaImageEnrichmentStatus,
   type MediaAssetStatus,
+  type SourceTier,
 } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { env } from "@/config/env"
@@ -47,6 +48,142 @@ type TableRow = {
   statusLabel: string
   statusTone: "success" | "warning" | "danger" | "info" | "muted"
   meta: string
+}
+
+export type LanguageDiagnosticTone =
+  | "success"
+  | "warning"
+  | "danger"
+  | "info"
+  | "muted"
+
+export type LanguageDiagnosticName = {
+  locale: string
+  value: string
+  primary: boolean
+}
+
+export type LanguageDiagnosticCountryPreview = {
+  id: string
+  coreId: string
+  label: string
+  speakers: string
+  primary: boolean
+  suggested: boolean
+  order: number | null
+}
+
+export type LanguageDiagnosticCounts = {
+  countryLanguages: number
+  videoDubs: number
+  videoSubtitles: number
+  studyQuestions: number
+  primaryVideos: number
+  totalContentLinks: number
+}
+
+export type LanguageDiagnosticRow = {
+  id: string
+  coreId: string
+  source: string
+  title: string
+  subtitle: string
+  codeLabel: string
+  bcp47: string | null
+  iso3: string | null
+  slug: string | null
+  statusLabel: string
+  statusTone: LanguageDiagnosticTone
+  syncLabel: string
+  syncTone: LanguageDiagnosticTone
+  names: LanguageDiagnosticName[]
+  countryPreviews: LanguageDiagnosticCountryPreview[]
+  counts: LanguageDiagnosticCounts
+  audioPreview: {
+    available: boolean
+    value: string | null
+    duration: string | null
+    size: string | null
+    bitrate: string | null
+    codec: string | null
+  }
+  timestamps: {
+    createdAt: string
+    createdAtIso: string
+    updatedAt: string
+    updatedAtIso: string
+    syncedAt: string
+    syncedAtIso: string | null
+  }
+  flags: {
+    linked: boolean
+    referenceOnly: boolean
+    missingMetadata: boolean
+    countryLinked: boolean
+    hasDubs: boolean
+    hasSubtitles: boolean
+    hasStudyQuestions: boolean
+    primaryVideoLanguage: boolean
+    hasAudioPreview: boolean
+    coreSynced: boolean
+    syncMissing: boolean
+    updatedAfterSync: boolean
+    nonCoreSource: boolean
+  }
+  searchText: string
+}
+
+export type LanguageDiagnosticsSummary = {
+  softDeletedLanguages: number
+  lastSyncedAt: string
+  lastSyncedAtIso: string | null
+  lastSyncStats: Array<{ key: string; value: string }>
+}
+
+export type LanguageDiagnosticSourceRow = {
+  id: string
+  coreId: string
+  source: SourceTier
+  name: Prisma.JsonValue
+  bcp47: string | null
+  iso3: string | null
+  slug: string | null
+  audioPreviewValue: string | null
+  audioPreviewDuration: number | null
+  audioPreviewSize: bigint | null
+  audioPreviewBitrate: number | null
+  audioPreviewCodec: string | null
+  syncedAt: Date | null
+  createdAt: Date
+  updatedAt: Date
+  locales: Array<{
+    id: string
+    locale: string
+    value: string
+    primary: boolean
+    order: number | null
+  }>
+  countryLanguages: Array<{
+    id: string
+    coreId: string | null
+    speakers: number | null
+    displaySpeakers: string | null
+    primary: boolean | null
+    suggested: boolean | null
+    order: number | null
+    country: {
+      id: string
+      coreId: string
+      name: Prisma.JsonValue
+    }
+  }>
+  _count: {
+    countryLanguages: number
+    videoDubs: number
+    videoSubtitles: number
+    studyQuestions: number
+    videosAsPrimary: number
+  }
 }
 
 type SearchResultRow = {
@@ -106,7 +243,8 @@ type EmbeddingsData = {
 
 type LanguagesData = {
   metrics: Metric[]
-  rows: TableRow[]
+  diagnosticRows: LanguageDiagnosticRow[]
+  diagnostics: LanguageDiagnosticsSummary
   insights: Insight[]
 }
 
@@ -246,6 +384,327 @@ function formatDateTime(value: Date) {
     hour12: false,
     timeZone: "UTC",
   }).format(value)
+}
+
+function formatNullableDateTime(value: Date | null) {
+  return value ? formatDateTime(value) : "None"
+}
+
+function formatAudioPreviewBytes(value: bigint | null) {
+  if (value === null) return null
+
+  const bytes = Number(value)
+  if (!Number.isSafeInteger(bytes)) {
+    return `${value.toString()} B`
+  }
+
+  const units = ["B", "KB", "MB", "GB"]
+  let amount = bytes
+  let unitIndex = 0
+  while (amount >= 1024 && unitIndex < units.length - 1) {
+    amount /= 1024
+    unitIndex += 1
+  }
+
+  return unitIndex === 0
+    ? `${amount} ${units[unitIndex]}`
+    : `${amount.toFixed(1)} ${units[unitIndex]}`
+}
+
+function formatJsonValue(value: Prisma.JsonValue): string {
+  if (value === null) return "null"
+  if (typeof value === "string") return value
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value)
+  }
+
+  return JSON.stringify(value)
+}
+
+function jsonObjectEntries(value: Prisma.JsonValue) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return []
+  }
+
+  return Object.entries(value)
+    .filter(
+      (entry): entry is [string, Prisma.JsonValue] =>
+        typeof entry[0] === "string",
+    )
+    .map(([key, jsonValue]) => ({
+      key,
+      value: formatJsonValue(jsonValue),
+    }))
+}
+
+function localizedNameEntries(row: LanguageDiagnosticSourceRow) {
+  const localeEntries = row.locales
+    .map((locale) => ({
+      locale: locale.locale,
+      value: locale.value.trim(),
+      primary: locale.primary,
+      order: locale.order,
+    }))
+    .filter((entry) => entry.value.length > 0)
+  const seenLocales = new Set(localeEntries.map((entry) => entry.locale))
+  const mapEntries = jsonObjectEntries(row.name)
+    .map((entry) => ({ ...entry, value: entry.value.trim() }))
+    .filter((entry) => entry.value.length > 0)
+    .filter((entry) => !seenLocales.has(entry.key))
+    .map((entry) => ({
+      locale: entry.key,
+      value: entry.value,
+      primary: false,
+      order: null,
+    }))
+
+  return [...localeEntries, ...mapEntries]
+    .sort((left, right) => {
+      if (left.primary !== right.primary) return left.primary ? -1 : 1
+      if (left.locale === "en") return -1
+      if (right.locale === "en") return 1
+      return (left.order ?? 9999) - (right.order ?? 9999)
+    })
+    .map(({ locale, value, primary }) => ({ locale, value, primary }))
+}
+
+function displayNameFromJson(value: Prisma.JsonValue, fallback: string) {
+  const entries = jsonObjectEntries(value)
+    .map((entry) => ({ ...entry, value: entry.value.trim() }))
+    .filter((entry) => entry.value.length > 0)
+  return (
+    entries.find((entry) => entry.key === "en")?.value ??
+    entries[0]?.value ??
+    fallback
+  )
+}
+
+function displayLanguageTitle(
+  names: LanguageDiagnosticName[],
+  row: LanguageDiagnosticSourceRow,
+) {
+  return (
+    names.find((name) => name.locale === "en")?.value ??
+    names.find((name) => name.primary)?.value ??
+    names[0]?.value ??
+    row.bcp47 ??
+    row.iso3 ??
+    row.slug ??
+    row.coreId ??
+    row.id
+  )
+}
+
+function displayCodeLabel(row: LanguageDiagnosticSourceRow) {
+  const codes = [row.bcp47, row.iso3, row.slug]
+    .filter((value): value is string => Boolean(value))
+    .join(" / ")
+  return codes || "No language codes"
+}
+
+function syncStateFor(row: LanguageDiagnosticSourceRow) {
+  const nonCoreSource = row.source !== "CORE"
+  const syncMissing = !row.syncedAt
+  const updatedAfterSync = Boolean(
+    row.syncedAt && row.updatedAt.getTime() > row.syncedAt.getTime(),
+  )
+
+  if (nonCoreSource) {
+    return {
+      label: "Non-Core source",
+      tone: "info" as const,
+      nonCoreSource,
+      syncMissing,
+      updatedAfterSync,
+      coreSynced: false,
+    }
+  }
+
+  if (syncMissing) {
+    return {
+      label: "Sync missing",
+      tone: "warning" as const,
+      nonCoreSource,
+      syncMissing,
+      updatedAfterSync,
+      coreSynced: false,
+    }
+  }
+
+  if (updatedAfterSync) {
+    return {
+      label: "Updated after sync",
+      tone: "warning" as const,
+      nonCoreSource,
+      syncMissing,
+      updatedAfterSync,
+      coreSynced: false,
+    }
+  }
+
+  return {
+    label: "Core synced",
+    tone: "success" as const,
+    nonCoreSource,
+    syncMissing,
+    updatedAfterSync,
+    coreSynced: true,
+  }
+}
+
+function syncStatsEntries(value: Prisma.JsonValue | null | undefined) {
+  if (!value) return []
+
+  return jsonObjectEntries(value)
+    .slice(0, 8)
+    .map((entry) => ({ key: entry.key, value: entry.value }))
+}
+
+export function buildLanguageDiagnosticRow(
+  row: LanguageDiagnosticSourceRow,
+): LanguageDiagnosticRow {
+  const names = localizedNameEntries(row)
+  const title = displayLanguageTitle(names, row)
+  const codeLabel = displayCodeLabel(row)
+  const counts: LanguageDiagnosticCounts = {
+    countryLanguages: row._count.countryLanguages,
+    videoDubs: row._count.videoDubs,
+    videoSubtitles: row._count.videoSubtitles,
+    studyQuestions: row._count.studyQuestions,
+    primaryVideos: row._count.videosAsPrimary,
+    totalContentLinks:
+      row._count.videoDubs +
+      row._count.videoSubtitles +
+      row._count.studyQuestions +
+      row._count.videosAsPrimary,
+  }
+  const hasAudioPreview = Boolean(
+    row.audioPreviewValue?.trim() ||
+    row.audioPreviewDuration !== null ||
+    row.audioPreviewSize !== null ||
+    row.audioPreviewBitrate !== null ||
+    row.audioPreviewCodec?.trim(),
+  )
+  const missingMetadata =
+    !row.bcp47 || !row.iso3 || !row.slug || names.length === 0
+  const syncState = syncStateFor(row)
+  const linked = counts.totalContentLinks > 0
+  const statusLabel = missingMetadata
+    ? "Missing metadata"
+    : linked
+      ? "Linked"
+      : "Reference only"
+  const statusTone: LanguageDiagnosticTone = missingMetadata
+    ? "warning"
+    : linked
+      ? "success"
+      : "muted"
+  const countryPreviews = row.countryLanguages.map((countryLanguage) => ({
+    id: countryLanguage.id,
+    coreId: countryLanguage.coreId ?? countryLanguage.country.coreId,
+    label: displayNameFromJson(
+      countryLanguage.country.name,
+      countryLanguage.country.coreId,
+    ),
+    speakers:
+      countryLanguage.displaySpeakers ??
+      countryLanguage.speakers?.toLocaleString("en-US") ??
+      "Unknown speakers",
+    primary: Boolean(countryLanguage.primary),
+    suggested: Boolean(countryLanguage.suggested),
+    order: countryLanguage.order,
+  }))
+  const flagLabels = [
+    linked && "Linked",
+    !linked && "Reference only",
+    missingMetadata && "Missing metadata",
+    counts.countryLanguages > 0 && "Country linked",
+    counts.countryLanguages === 0 && "No country links",
+    counts.videoDubs > 0 && "Has dubs",
+    counts.videoSubtitles > 0 && "Has subtitles",
+    counts.studyQuestions > 0 && "Has study questions",
+    counts.primaryVideos > 0 && "Primary video language",
+    hasAudioPreview && "Audio preview",
+    syncState.label,
+  ].filter((value): value is string => Boolean(value))
+
+  return {
+    id: row.id,
+    coreId: row.coreId,
+    source: row.source,
+    title,
+    subtitle: codeLabel,
+    codeLabel,
+    bcp47: row.bcp47,
+    iso3: row.iso3,
+    slug: row.slug,
+    statusLabel,
+    statusTone,
+    syncLabel: syncState.label,
+    syncTone: syncState.tone,
+    names,
+    countryPreviews,
+    counts,
+    audioPreview: {
+      available: hasAudioPreview,
+      value: row.audioPreviewValue,
+      duration:
+        row.audioPreviewDuration === null
+          ? null
+          : `${row.audioPreviewDuration}s`,
+      size: formatAudioPreviewBytes(row.audioPreviewSize),
+      bitrate:
+        row.audioPreviewBitrate === null
+          ? null
+          : `${row.audioPreviewBitrate} kbps`,
+      codec: row.audioPreviewCodec,
+    },
+    timestamps: {
+      createdAt: formatDateTime(row.createdAt),
+      createdAtIso: row.createdAt.toISOString(),
+      updatedAt: formatDateTime(row.updatedAt),
+      updatedAtIso: row.updatedAt.toISOString(),
+      syncedAt: formatNullableDateTime(row.syncedAt),
+      syncedAtIso: row.syncedAt?.toISOString() ?? null,
+    },
+    flags: {
+      linked,
+      referenceOnly: !linked,
+      missingMetadata,
+      countryLinked: counts.countryLanguages > 0,
+      hasDubs: counts.videoDubs > 0,
+      hasSubtitles: counts.videoSubtitles > 0,
+      hasStudyQuestions: counts.studyQuestions > 0,
+      primaryVideoLanguage: counts.primaryVideos > 0,
+      hasAudioPreview,
+      coreSynced: syncState.coreSynced,
+      syncMissing: syncState.syncMissing,
+      updatedAfterSync: syncState.updatedAfterSync,
+      nonCoreSource: syncState.nonCoreSource,
+    },
+    searchText: [
+      row.id,
+      row.coreId,
+      row.source,
+      title,
+      codeLabel,
+      row.bcp47,
+      row.iso3,
+      row.slug,
+      statusLabel,
+      syncState.label,
+      ...names.flatMap((name) => [name.locale, name.value]),
+      ...countryPreviews.flatMap((country) => [
+        country.coreId,
+        country.label,
+        country.speakers,
+      ]),
+      ...flagLabels,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .join(" ")
+      .toLowerCase(),
+  }
 }
 
 function isCoreSyncLockActive(lock: CoreSyncLockView | null) {
@@ -1130,7 +1589,14 @@ export async function loadEmbeddingsData(): Promise<EmbeddingsData> {
 }
 
 export async function loadLanguagesData(): Promise<LanguagesData> {
-  const [languageCount, countryCount, localesInUse, rows] = await Promise.all([
+  const [
+    languageCount,
+    countryCount,
+    localesInUse,
+    softDeletedLanguages,
+    rows,
+    syncState,
+  ] = await Promise.all([
     withTableFallback(
       () => prisma.language.count({ where: { deletedAt: null } }),
       0,
@@ -1147,30 +1613,103 @@ export async function loadLanguagesData(): Promise<LanguagesData> {
       return results.length
     }, 0),
     withTableFallback(
+      () => prisma.language.count({ where: { deletedAt: { not: null } } }),
+      0,
+    ),
+    withTableFallback(
       () =>
         prisma.language.findMany({
           where: { deletedAt: null },
           select: {
             id: true,
+            coreId: true,
+            source: true,
+            name: true,
             bcp47: true,
             iso3: true,
             slug: true,
+            audioPreviewValue: true,
+            audioPreviewDuration: true,
+            audioPreviewSize: true,
+            audioPreviewBitrate: true,
+            audioPreviewCodec: true,
+            syncedAt: true,
+            createdAt: true,
             updatedAt: true,
-            videoDubs: { select: { id: true }, take: 1 },
+            locales: {
+              where: { deletedAt: null },
+              select: {
+                id: true,
+                locale: true,
+                value: true,
+                primary: true,
+                order: true,
+              },
+              orderBy: [
+                { primary: "desc" },
+                { order: "asc" },
+                { locale: "asc" },
+              ],
+            },
+            countryLanguages: {
+              where: { deletedAt: null },
+              select: {
+                id: true,
+                coreId: true,
+                speakers: true,
+                displaySpeakers: true,
+                primary: true,
+                suggested: true,
+                order: true,
+                country: {
+                  select: {
+                    id: true,
+                    coreId: true,
+                    name: true,
+                  },
+                },
+              },
+              orderBy: [
+                { primary: "desc" },
+                { suggested: "desc" },
+                { order: "asc" },
+              ],
+              take: 8,
+            },
+            _count: {
+              select: {
+                countryLanguages: { where: { deletedAt: null } },
+                videoDubs: { where: { deletedAt: null } },
+                videoSubtitles: { where: { deletedAt: null } },
+                studyQuestions: { where: { deletedAt: null } },
+                videosAsPrimary: { where: { deletedAt: null } },
+              },
+            },
           },
           orderBy: { updatedAt: "desc" },
-          take: 8,
         }),
-      [] as Array<{
-        id: string
-        bcp47: string | null
-        iso3: string | null
-        slug: string | null
-        updatedAt: Date
-        videoDubs: Array<{ id: string }>
-      }>,
+      [] as LanguageDiagnosticSourceRow[],
+    ),
+    withTableFallback(
+      () =>
+        prisma.syncState.findUnique({
+          where: { phase: "languages" },
+          select: { lastSyncedAt: true, stats: true },
+        }),
+      null as { lastSyncedAt: Date; stats: Prisma.JsonValue } | null,
     ),
   ])
+  const diagnosticRows = rows
+    .map((row) => buildLanguageDiagnosticRow(row))
+    .sort((left, right) =>
+      left.title.localeCompare(right.title, "en", { sensitivity: "base" }),
+    )
+  const linkedLanguages = diagnosticRows.filter(
+    (row) => row.flags.linked,
+  ).length
+  const missingMetadata = diagnosticRows.filter(
+    (row) => row.flags.missingMetadata,
+  ).length
 
   return {
     metrics: [
@@ -1190,14 +1729,13 @@ export async function loadLanguagesData(): Promise<LanguagesData> {
         footer: "CONTENT_ROWS",
       },
     ],
-    rows: rows.map((row) => ({
-      key: row.id,
-      title: row.bcp47 ?? row.iso3 ?? row.slug ?? row.id,
-      detail: `slug ${row.slug ?? "n/a"}`,
-      statusLabel: row.videoDubs.length > 0 ? "Linked" : "Reference",
-      statusTone: row.videoDubs.length > 0 ? "success" : "muted",
-      meta: formatDateTime(row.updatedAt),
-    })),
+    diagnosticRows,
+    diagnostics: {
+      softDeletedLanguages,
+      lastSyncedAt: formatNullableDateTime(syncState?.lastSyncedAt ?? null),
+      lastSyncedAtIso: syncState?.lastSyncedAt.toISOString() ?? null,
+      lastSyncStats: syncStatsEntries(syncState?.stats),
+    },
     insights: [
       {
         label: "Locale Footprint",
@@ -1206,15 +1744,15 @@ export async function loadLanguagesData(): Promise<LanguagesData> {
           "Distinct locale codes currently present on experience content.",
       },
       {
-        label: "Language Rows",
-        value: languageCount.toString(),
+        label: "Linked Languages",
+        value: linkedLanguages.toString(),
         detail:
-          "Reference languages synced from Core and available to the admin app.",
+          "Active reference languages with at least one content relationship.",
       },
       {
-        label: "Country Rows",
-        value: countryCount.toString(),
-        detail: "Reference countries available for future admin workflows.",
+        label: "Metadata Gaps",
+        value: missingMetadata.toString(),
+        detail: "Active languages missing codes, slugs, or localized names.",
       },
     ],
   }
