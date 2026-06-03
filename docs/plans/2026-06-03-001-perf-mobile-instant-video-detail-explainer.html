@@ -1,0 +1,2236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Instant Mobile Video Detail — Plan Explainer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #15110d;
+        --bg-2: #1d1813;
+        --bg-3: #261f18;
+        --bg-4: #2f261d;
+        --line: rgba(243, 236, 225, 0.1);
+        --line-2: rgba(243, 236, 225, 0.18);
+        --ink: #f3ece1;
+        --ink-dim: #b6ab98;
+        --ink-faint: #847868;
+        --accent: #ff8b3d;
+        --accent-soft: rgba(255, 139, 61, 0.14);
+        --teal: #5ec6a8;
+        --teal-soft: rgba(94, 198, 168, 0.14);
+        --danger: #ec6a60;
+        --danger-soft: rgba(236, 106, 96, 0.13);
+        --gold: #e8b04b;
+        --display: "Fraunces", Georgia, serif;
+        --body: "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+        --mono: "JetBrains Mono", ui-monospace, monospace;
+        --maxw: 1080px;
+        --r: 16px;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        background:
+          radial-gradient(
+            1200px 700px at 78% -8%,
+            rgba(255, 139, 61, 0.1),
+            transparent 60%
+          ),
+          radial-gradient(
+            900px 600px at 8% 4%,
+            rgba(94, 198, 168, 0.06),
+            transparent 55%
+          ),
+          var(--bg);
+        color: var(--ink);
+        font-family: var(--body);
+        font-size: 17px;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+        letter-spacing: 0.005em;
+        overflow-x: hidden;
+      }
+
+      .wrap {
+        max-width: var(--maxw);
+        margin: 0 auto;
+        padding: 0 28px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: var(--display);
+        font-weight: 600;
+        line-height: 1.04;
+        letter-spacing: -0.015em;
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
+      .mono {
+        font-family: var(--mono);
+        font-size: 0.86em;
+      }
+      code {
+        font-family: var(--mono);
+        font-size: 0.84em;
+        background: var(--bg-3);
+        border: 1px solid var(--line);
+        padding: 0.12em 0.42em;
+        border-radius: 6px;
+        color: #ffd6ad;
+        white-space: nowrap;
+      }
+
+      .kicker {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--accent);
+        font-weight: 500;
+      }
+
+      /* ---------- top bar ---------- */
+      header.bar {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: blur(14px);
+        background: rgba(21, 17, 13, 0.72);
+        border-bottom: 1px solid var(--line);
+      }
+      .bar-in {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 58px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--mono);
+        font-size: 13.5px;
+        color: var(--ink-dim);
+        letter-spacing: 0.04em;
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 14px var(--accent);
+      }
+      nav.bar-nav {
+        display: flex;
+        gap: 22px;
+      }
+      nav.bar-nav a {
+        color: var(--ink-dim);
+        font-size: 13.5px;
+        font-family: var(--mono);
+        letter-spacing: 0.02em;
+      }
+      nav.bar-nav a:hover {
+        color: var(--ink);
+        text-decoration: none;
+      }
+      @media (max-width: 720px) {
+        nav.bar-nav {
+          display: none;
+        }
+      }
+
+      /* ---------- hero ---------- */
+      .hero {
+        padding: 92px 0 64px;
+      }
+      .hero .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        border: 1px solid var(--line-2);
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--ink-dim);
+        letter-spacing: 0.08em;
+        margin-bottom: 26px;
+      }
+      .hero .tag b {
+        color: var(--teal);
+        font-weight: 500;
+      }
+      .hero h1 {
+        font-size: clamp(42px, 7vw, 86px);
+        max-width: 14ch;
+      }
+      .hero h1 em {
+        font-style: italic;
+        color: var(--accent);
+      }
+      .hero .lede {
+        font-size: clamp(18px, 2.3vw, 23px);
+        color: var(--ink-dim);
+        max-width: 60ch;
+        margin-top: 26px;
+        line-height: 1.5;
+      }
+      .hero .lede strong {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      .reframe {
+        margin-top: 34px;
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        background: linear-gradient(180deg, var(--danger-soft), transparent);
+        border: 1px solid rgba(236, 106, 96, 0.3);
+        border-left: 3px solid var(--danger);
+        border-radius: 14px;
+        padding: 18px 22px;
+        max-width: 70ch;
+      }
+      .reframe .x {
+        font-family: var(--display);
+        font-size: 26px;
+        color: var(--danger);
+        line-height: 1;
+        margin-top: 2px;
+      }
+      .reframe p {
+        font-size: 16px;
+        color: var(--ink-dim);
+      }
+      .reframe p b {
+        color: var(--ink);
+      }
+
+      /* ---------- before/after timeline ---------- */
+      .timeline {
+        margin-top: 58px;
+        background: var(--bg-2);
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        padding: 30px 30px 34px;
+      }
+      .timeline h3 {
+        font-size: 15px;
+        font-family: var(--mono);
+        font-weight: 500;
+        letter-spacing: 0.06em;
+        color: var(--ink-dim);
+        text-transform: uppercase;
+        margin-bottom: 26px;
+      }
+      .track {
+        display: grid;
+        grid-template-columns: 86px 1fr;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .track .label {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        color: var(--ink-faint);
+        text-align: right;
+        letter-spacing: 0.02em;
+      }
+      .track .label b {
+        display: block;
+        font-size: 13px;
+      }
+      .bar-rail {
+        position: relative;
+        height: 40px;
+        background: var(--bg-3);
+        border-radius: 9px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+      }
+      .bar-fill {
+        position: absolute;
+        inset: 0 100% 0 0;
+        display: flex;
+        align-items: center;
+        padding-left: 14px;
+        font-size: 12.5px;
+        font-family: var(--mono);
+        letter-spacing: 0.03em;
+        white-space: nowrap;
+        transition: right 1.6s cubic-bezier(0.4, 0, 0.1, 1);
+      }
+      .bar-fill.slow {
+        background: repeating-linear-gradient(
+          45deg,
+          rgba(236, 106, 96, 0.22),
+          rgba(236, 106, 96, 0.22) 9px,
+          rgba(236, 106, 96, 0.12) 9px,
+          rgba(236, 106, 96, 0.12) 18px
+        );
+        color: #ffb6b0;
+      }
+      .bar-fill.fast {
+        background: linear-gradient(
+          90deg,
+          rgba(94, 198, 168, 0.5),
+          rgba(94, 198, 168, 0.2)
+        );
+      }
+      .bar-fill.fast::after {
+        content: "";
+        position: absolute;
+        right: -5px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: var(--teal);
+        box-shadow: 0 0 14px var(--teal);
+      }
+      .rail-note {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--teal);
+        white-space: nowrap;
+        opacity: 0;
+        transition: opacity 0.4s ease 0.7s;
+      }
+      .reveal-anim .rail-note {
+        opacity: 1;
+      }
+      .reveal-anim .bar-fill.slow {
+        right: 4%;
+      }
+      .reveal-anim .bar-fill.fast {
+        right: 90%;
+        transition-duration: 0.5s;
+      }
+      .marker {
+        position: absolute;
+        top: -7px;
+        bottom: -7px;
+        width: 2px;
+        background: var(--ink);
+        opacity: 0;
+        transition: opacity 0.4s ease 1.4s;
+      }
+      .marker::after {
+        content: attr(data-t);
+        position: absolute;
+        top: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-dim);
+        white-space: nowrap;
+      }
+      .reveal-anim .marker {
+        opacity: 0.5;
+      }
+      .marker.m-slow {
+        right: 4%;
+      }
+      .marker.m-fast {
+        right: 90%;
+        transition-delay: 0.5s;
+      }
+      .ruler {
+        display: flex;
+        justify-content: space-between;
+        margin-left: 102px;
+        margin-top: 6px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-faint);
+      }
+
+      /* ---------- section scaffolding ---------- */
+      section {
+        padding: 78px 0;
+        border-top: 1px solid var(--line);
+      }
+      .sec-head {
+        max-width: 64ch;
+        margin-bottom: 44px;
+      }
+      .sec-head .kicker {
+        display: block;
+        margin-bottom: 14px;
+      }
+      .sec-head h2 {
+        font-size: clamp(30px, 4.4vw, 46px);
+      }
+      .sec-head p {
+        color: var(--ink-dim);
+        font-size: 18px;
+        margin-top: 16px;
+        max-width: 58ch;
+      }
+
+      /* ---------- cause cards ---------- */
+      .causes {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+      @media (max-width: 820px) {
+        .causes {
+          grid-template-columns: 1fr;
+        }
+      }
+      .cause {
+        background: var(--bg-2);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 24px;
+        position: relative;
+        overflow: hidden;
+      }
+      .cause .n {
+        font-family: var(--display);
+        font-size: 15px;
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .cause h4 {
+        font-family: var(--display);
+        font-size: 21px;
+        font-weight: 600;
+        margin: 8px 0 10px;
+        line-height: 1.15;
+      }
+      .cause p {
+        font-size: 14.5px;
+        color: var(--ink-dim);
+        line-height: 1.55;
+      }
+      .cause .file {
+        display: inline-block;
+        margin-top: 12px;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--ink-faint);
+      }
+
+      .usebar {
+        margin-top: 30px;
+        background: var(--bg-2);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 24px 26px;
+      }
+      .usebar .row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+      .usebar .big {
+        font-family: var(--display);
+        font-size: 40px;
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .usebar .cap {
+        font-size: 14px;
+        color: var(--ink-dim);
+      }
+      .usemeter {
+        height: 18px;
+        border-radius: 6px;
+        background: var(--bg-3);
+        border: 1px solid var(--line);
+        overflow: hidden;
+        position: relative;
+      }
+      .usemeter i {
+        position: absolute;
+        inset: 0 92% 0 0;
+        background: linear-gradient(90deg, var(--accent), var(--gold));
+        border-radius: 6px;
+        transition: right 1.2s cubic-bezier(0.4, 0, 0.1, 1);
+      }
+      .reveal-anim .usemeter i {
+        right: 92%;
+      }
+      .usemeter.full i {
+        right: 0%;
+        background: var(--bg-4);
+        transition: none;
+      }
+
+      /* ---------- stepper / phone ---------- */
+      .fix-grid {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 48px;
+        align-items: start;
+      }
+      @media (max-width: 900px) {
+        .fix-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .steps {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .step-btns {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+      }
+      .step-btn {
+        font-family: var(--mono);
+        font-size: 13px;
+        letter-spacing: 0.04em;
+        background: var(--bg-2);
+        border: 1px solid var(--line-2);
+        color: var(--ink-dim);
+        padding: 9px 16px;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .step-btn:hover {
+        color: var(--ink);
+        border-color: var(--ink-faint);
+      }
+      .step-btn[aria-selected="true"] {
+        background: var(--accent);
+        color: #1a120a;
+        border-color: var(--accent);
+        font-weight: 600;
+      }
+      .step-btn:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .step-panel {
+        background: var(--bg-2);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 24px;
+        min-height: 200px;
+      }
+      .step-panel h4 {
+        font-family: var(--display);
+        font-size: 23px;
+        margin-bottom: 6px;
+      }
+      .step-panel .when {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--teal);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .step-panel p {
+        color: var(--ink-dim);
+        font-size: 15.5px;
+        margin-top: 12px;
+        line-height: 1.6;
+      }
+      .step-panel ul {
+        list-style: none;
+        margin-top: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .step-panel li {
+        font-size: 14.5px;
+        color: var(--ink-dim);
+        padding-left: 22px;
+        position: relative;
+      }
+      .step-panel li::before {
+        content: "→";
+        position: absolute;
+        left: 0;
+        color: var(--accent);
+        font-family: var(--mono);
+      }
+
+      /* phone mock */
+      .phone {
+        width: 268px;
+        margin: 0 auto;
+        background: #0d0a07;
+        border: 8px solid #322a20;
+        border-radius: 38px;
+        padding: 12px 10px;
+        box-shadow:
+          0 40px 80px -30px rgba(0, 0, 0, 0.8),
+          inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+        position: sticky;
+        top: 84px;
+      }
+      .phone .notch {
+        width: 90px;
+        height: 6px;
+        background: #322a20;
+        border-radius: 99px;
+        margin: 0 auto 10px;
+      }
+      .screen {
+        background: var(--bg);
+        border-radius: 22px;
+        overflow: hidden;
+      }
+      .pv-player {
+        aspect-ratio: 16/9;
+        background: linear-gradient(135deg, #2a2018, #1a130d);
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .pv-player .poster {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 60% 40%, #4a3826, #241a11);
+        opacity: 0;
+        transition: opacity 0.4s;
+      }
+      .pv-player .play {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.92);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
+        opacity: 0;
+        transform: scale(0.7);
+        transition: all 0.4s;
+      }
+      .pv-player .play::after {
+        content: "";
+        border-left: 15px solid #1a120a;
+        border-top: 9px solid transparent;
+        border-bottom: 9px solid transparent;
+        margin-left: 4px;
+      }
+      .pv-player .spin {
+        width: 26px;
+        height: 26px;
+        border: 3px solid rgba(255, 255, 255, 0.18);
+        border-top-color: rgba(255, 255, 255, 0.7);
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .pv-body {
+        padding: 12px;
+      }
+      .pv-line {
+        height: 11px;
+        border-radius: 4px;
+        background: var(--bg-3);
+        margin-bottom: 9px;
+        overflow: hidden;
+        position: relative;
+      }
+      .pv-line.title {
+        height: 15px;
+        width: 78%;
+      }
+      .pv-line.sub {
+        width: 50%;
+      }
+      .pv-line.d1 {
+        width: 100%;
+      }
+      .pv-line.d2 {
+        width: 92%;
+      }
+      .pv-line.d3 {
+        width: 64%;
+      }
+      .pv-actions {
+        display: flex;
+        gap: 8px;
+        margin: 12px 0;
+      }
+      .pv-actions span {
+        flex: 1;
+        height: 30px;
+        border-radius: 8px;
+        background: var(--bg-3);
+      }
+      .pv-upnext {
+        display: flex;
+        gap: 8px;
+        margin-top: 6px;
+      }
+      .pv-upnext span {
+        width: 60px;
+        height: 40px;
+        border-radius: 7px;
+        background: var(--bg-3);
+        flex-shrink: 0;
+      }
+
+      .shimmer {
+        background: linear-gradient(
+          90deg,
+          var(--bg-3) 0%,
+          var(--bg-4) 40%,
+          var(--bg-3) 80%
+        );
+        background-size: 240% 100%;
+        animation: sh 1.5s infinite;
+      }
+      @keyframes sh {
+        to {
+          background-position: -200% 0;
+        }
+      }
+
+      /* phone state classes */
+      .screen[data-state="seed"] .pv-player .poster {
+        opacity: 1;
+      }
+      .screen[data-state="seed"] .pv-player .play {
+        opacity: 1;
+        transform: scale(1);
+      }
+      .screen[data-state="seed"] .pv-line.title {
+        background: var(--ink-dim);
+      }
+      .screen[data-state="seed"] .pv-line.sub,
+      .screen[data-state="seed"] .pv-line.d1,
+      .screen[data-state="seed"] .pv-line.d2,
+      .screen[data-state="seed"] .pv-line.d3,
+      .screen[data-state="seed"] .pv-actions span,
+      .screen[data-state="seed"] .pv-upnext span {
+      } /* remain shimmer */
+
+      .screen[data-state="core"] .pv-player .poster {
+        opacity: 1;
+      }
+      .screen[data-state="core"] .pv-player .play {
+        opacity: 1;
+        transform: scale(1);
+      }
+      .screen[data-state="core"] .pv-line.title {
+        background: var(--ink);
+      }
+      .screen[data-state="core"] .pv-line.sub {
+        background: var(--ink-faint);
+        animation: none;
+      }
+      .screen[data-state="core"] .pv-line.d1,
+      .screen[data-state="core"] .pv-line.d2,
+      .screen[data-state="core"] .pv-line.d3 {
+        background: var(--ink-faint);
+        animation: none;
+        opacity: 0.7;
+      }
+
+      .screen[data-state="complete"] .pv-player .poster {
+        opacity: 1;
+      }
+      .screen[data-state="complete"] .pv-player .play {
+        opacity: 1;
+        transform: scale(1);
+      }
+      .screen[data-state="complete"] .pv-line {
+        animation: none;
+      }
+      .screen[data-state="complete"] .pv-line.title {
+        background: var(--ink);
+      }
+      .screen[data-state="complete"] .pv-line.sub {
+        background: var(--ink-faint);
+      }
+      .screen[data-state="complete"] .pv-line.d1,
+      .screen[data-state="complete"] .pv-line.d2,
+      .screen[data-state="complete"] .pv-line.d3 {
+        background: var(--ink-faint);
+        opacity: 0.75;
+      }
+      .screen[data-state="complete"] .pv-actions span {
+        background: var(--bg-4);
+        animation: none;
+      }
+      .screen[data-state="complete"] .pv-upnext span {
+        background: var(--bg-4);
+        animation: none;
+      }
+      .screen[data-state="complete"] .pv-actions span:first-child {
+        background: var(--accent-soft);
+        border: 1px solid rgba(255, 139, 61, 0.3);
+      }
+
+      .screen[data-state="cold"] .pv-player .spin {
+        opacity: 1;
+      }
+      .screen[data-state="cold"] .pv-line.title {
+        width: 78%;
+      }
+
+      .phone-cap {
+        text-align: center;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--ink-faint);
+        margin-top: 16px;
+        letter-spacing: 0.04em;
+      }
+      .phone-cap b {
+        color: var(--teal);
+      }
+
+      /* ---------- state machine ---------- */
+      .sm-toggle {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+      }
+      .sm-toggle button {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        background: var(--bg-2);
+        border: 1px solid var(--line-2);
+        color: var(--ink-dim);
+        padding: 9px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .sm-toggle button:hover {
+        color: var(--ink);
+      }
+      .sm-toggle button[aria-pressed="true"] {
+        background: var(--bg-4);
+        color: var(--ink);
+        border-color: var(--accent);
+      }
+      .sm-toggle button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .sm-flow {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        flex-wrap: wrap;
+      }
+      .sm-node {
+        flex: 1;
+        min-width: 130px;
+        background: var(--bg-2);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 16px 18px;
+        position: relative;
+        transition: all 0.35s ease;
+        opacity: 0.4;
+      }
+      .sm-node.on {
+        opacity: 1;
+        border-color: var(--accent);
+        background: var(--bg-3);
+        box-shadow:
+          0 0 0 1px var(--accent),
+          0 18px 40px -24px var(--accent);
+      }
+      .sm-node .st {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+      }
+      .sm-node.on .st {
+        color: var(--accent);
+      }
+      .sm-node h4 {
+        font-family: var(--display);
+        font-size: 18px;
+        margin: 6px 0 4px;
+      }
+      .sm-node p {
+        font-size: 13px;
+        color: var(--ink-dim);
+        line-height: 1.45;
+      }
+      .sm-arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 6px;
+        color: var(--ink-faint);
+        font-family: var(--mono);
+        flex: 0 0 auto;
+      }
+      @media (max-width: 760px) {
+        .sm-arrow {
+          transform: rotate(90deg);
+          width: 100%;
+          height: 22px;
+        }
+        .sm-flow {
+          flex-direction: column;
+        }
+      }
+      .sm-verdict {
+        margin-top: 22px;
+        padding: 16px 20px;
+        border-radius: 12px;
+        font-size: 15px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        transition: all 0.3s;
+      }
+      .sm-verdict .em {
+        font-family: var(--display);
+        font-size: 22px;
+      }
+      .sm-verdict.good {
+        background: var(--teal-soft);
+        border: 1px solid rgba(94, 198, 168, 0.3);
+        color: #c4f1e2;
+      }
+      .sm-verdict.warn {
+        background: var(--accent-soft);
+        border: 1px solid rgba(255, 139, 61, 0.3);
+        color: #ffd2ad;
+      }
+      .sm-verdict b {
+        color: var(--ink);
+      }
+
+      /* ---------- KTD accordion ---------- */
+      .ktd {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--bg-2);
+      }
+      .ktd details {
+        border-bottom: 1px solid var(--line);
+      }
+      .ktd details:last-child {
+        border-bottom: none;
+      }
+      .ktd summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        transition: background 0.2s;
+      }
+      .ktd summary::-webkit-details-marker {
+        display: none;
+      }
+      .ktd summary:hover {
+        background: var(--bg-3);
+      }
+      .ktd summary:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+      }
+      .ktd .id {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--accent);
+        font-weight: 600;
+        flex-shrink: 0;
+        width: 46px;
+      }
+      .ktd .sm-title {
+        font-family: var(--display);
+        font-size: 19px;
+        font-weight: 600;
+        flex: 1;
+        line-height: 1.2;
+      }
+      .ktd .chev {
+        color: var(--ink-faint);
+        transition: transform 0.25s;
+        flex-shrink: 0;
+        font-family: var(--mono);
+      }
+      .ktd details[open] .chev {
+        transform: rotate(90deg);
+        color: var(--accent);
+      }
+      .ktd .body {
+        padding: 0 24px 22px 88px;
+        color: var(--ink-dim);
+        font-size: 15px;
+        line-height: 1.62;
+      }
+      .ktd .body p + p {
+        margin-top: 10px;
+      }
+      @media (max-width: 620px) {
+        .ktd .body {
+          padding-left: 24px;
+        }
+      }
+
+      /* ---------- phases tabs ---------- */
+      .ph-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 26px;
+        flex-wrap: wrap;
+      }
+      .ph-tab {
+        font-family: var(--mono);
+        font-size: 13px;
+        cursor: pointer;
+        padding: 11px 18px;
+        border-radius: 11px;
+        background: var(--bg-2);
+        border: 1px solid var(--line-2);
+        color: var(--ink-dim);
+        transition: all 0.2s;
+        text-align: left;
+      }
+      .ph-tab:hover {
+        color: var(--ink);
+      }
+      .ph-tab[aria-selected="true"] {
+        background: var(--bg-4);
+        color: var(--ink);
+        border-color: var(--accent);
+      }
+      .ph-tab:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .ph-tab b {
+        display: block;
+        font-family: var(--display);
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .ph-tab span {
+        font-size: 11px;
+        color: var(--ink-faint);
+      }
+      .ph-panel {
+        display: none;
+      }
+      .ph-panel.on {
+        display: block;
+        animation: fade 0.35s ease;
+      }
+      @keyframes fade {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .units {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      @media (max-width: 760px) {
+        .units {
+          grid-template-columns: 1fr;
+        }
+      }
+      .unit {
+        background: var(--bg-2);
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        padding: 22px;
+      }
+      .unit .uid {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .unit h4 {
+        font-family: var(--display);
+        font-size: 20px;
+        margin: 7px 0 10px;
+        line-height: 1.18;
+      }
+      .unit p {
+        font-size: 14.5px;
+        color: var(--ink-dim);
+        line-height: 1.55;
+      }
+      .unit .dep {
+        margin-top: 12px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-faint);
+      }
+
+      /* ---------- risks ---------- */
+      .risks {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+      }
+      @media (max-width: 760px) {
+        .risks {
+          grid-template-columns: 1fr;
+        }
+      }
+      .risk {
+        background: var(--bg-2);
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--ink-faint);
+        border-radius: 11px;
+        padding: 18px 20px;
+      }
+      .risk.hot {
+        border-left-color: var(--danger);
+        background: linear-gradient(
+          100deg,
+          var(--danger-soft),
+          var(--bg-2) 60%
+        );
+      }
+      .risk h4 {
+        font-family: var(--display);
+        font-size: 17px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+      .risk .pill {
+        font-family: var(--mono);
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 5px;
+        background: var(--bg-4);
+        color: var(--ink-dim);
+        letter-spacing: 0.05em;
+      }
+      .risk.hot .pill {
+        background: var(--danger);
+        color: #2a0d0b;
+      }
+      .risk p {
+        font-size: 14px;
+        color: var(--ink-dim);
+        line-height: 1.5;
+      }
+      .risk p b {
+        color: var(--teal);
+      }
+
+      /* ---------- threat model ---------- */
+      .threats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+      @media (max-width: 820px) {
+        .threats {
+          grid-template-columns: 1fr;
+        }
+      }
+      .threat {
+        background: var(--bg-2);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 24px;
+      }
+      .threat .ico {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: var(--danger-soft);
+        border: 1px solid rgba(236, 106, 96, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--display);
+        color: var(--danger);
+        font-size: 20px;
+        margin-bottom: 14px;
+      }
+      .threat h4 {
+        font-family: var(--display);
+        font-size: 19px;
+        margin-bottom: 8px;
+        line-height: 1.2;
+      }
+      .threat .desc {
+        font-size: 14px;
+        color: var(--ink-dim);
+        line-height: 1.5;
+      }
+      .threat .mit {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+        font-size: 13.5px;
+        color: var(--ink-dim);
+      }
+      .threat .mit b {
+        color: var(--teal);
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        display: block;
+        margin-bottom: 5px;
+      }
+
+      /* ---------- footer ---------- */
+      footer {
+        border-top: 1px solid var(--line);
+        padding: 54px 0 80px;
+      }
+      .foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 24px;
+      }
+      .foot .meta {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        color: var(--ink-faint);
+        line-height: 1.9;
+      }
+      .foot .meta b {
+        color: var(--ink-dim);
+      }
+      .foot .cta {
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+      .statusdot {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .statusdot i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--teal);
+        box-shadow: 0 0 10px var(--teal);
+      }
+
+      /* ---------- reveal ---------- */
+      .reveal {
+        opacity: 0;
+        transform: translateY(26px);
+        transition:
+          opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1),
+          transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+          scroll-behavior: auto;
+        }
+        .reveal {
+          opacity: 1;
+          transform: none;
+        }
+        .bar-fill.slow {
+          right: 4%;
+        }
+        .bar-fill.fast {
+          right: 96%;
+        }
+        .usemeter i {
+          right: 92%;
+        }
+        .marker {
+          opacity: 0.5;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="bar">
+      <div class="wrap bar-in">
+        <div class="brand"><span class="dot"></span> perf · mobile watch</div>
+        <nav class="bar-nav">
+          <a href="#why">Why slow</a>
+          <a href="#fix">The fix</a>
+          <a href="#playback">Playback</a>
+          <a href="#decisions">Decisions</a>
+          <a href="#phases">Phases</a>
+          <a href="#risks">Risks</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <!-- HERO -->
+      <section class="hero" style="border-top: none">
+        <div class="wrap">
+          <span class="tag"
+            >Implementation plan · <b>status: active</b> · 2026-06-03</span
+          >
+          <h1>Make the video screen feel <em>instant</em>.</h1>
+          <p class="lede">
+            Today, tapping a search result stalls behind a blank spinner for up
+            to <strong>5 seconds</strong>. This plan makes the screen paint the
+            moment you tap — and start playing from data the app already has in
+            hand.
+          </p>
+
+          <div class="reframe">
+            <span class="x">✕</span>
+            <p>
+              <b>The premise that broke the mental model:</b> the content isn't
+              local. Every tap is a cold network fetch of a huge GraphQL query
+              to production admin — and the search result's title, image, and
+              playback ID are thrown away on the way to the detail screen.
+            </p>
+          </div>
+
+          <div class="timeline" id="timeline">
+            <h3>Time to a usable screen</h3>
+            <div class="track">
+              <div class="label">Today<b>cold fetch</b></div>
+              <div class="bar-rail">
+                <div class="bar-fill slow">
+                  blank spinner — entire 100-field payload must arrive
+                </div>
+                <div class="marker m-slow" data-t="≈5.0s · video appears"></div>
+              </div>
+            </div>
+            <div class="track">
+              <div class="label">Planned<b>seed paint</b></div>
+              <div class="bar-rail">
+                <div class="bar-fill fast"></div>
+                <span class="rail-note">poster + title + play</span>
+                <div class="marker m-fast" data-t="≈0.1s"></div>
+              </div>
+            </div>
+            <div class="ruler">
+              <span>0s</span><span>1s</span><span>2s</span><span>3s</span
+              ><span>4s</span><span>5s</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- WHY SLOW -->
+      <section id="why">
+        <div class="wrap">
+          <div class="sec-head reveal">
+            <span class="kicker">The diagnosis</span>
+            <h2>Three things make it slow</h2>
+            <p>
+              None of them are "the local CMS is slow," because there is no
+              local CMS. The bottleneck is a blocking, oversized network fetch
+              with no reuse of data the app already held.
+            </p>
+          </div>
+
+          <div class="causes reveal">
+            <article class="cause">
+              <div class="n">01</div>
+              <h4>Every tap is a cold network fetch</h4>
+              <p>
+                Mobile reads from the production admin GraphQL API. The Apollo
+                cache is in-memory only — empty on every cold start. Nothing is
+                bundled or persisted.
+              </p>
+              <span class="file">src/lib/config.ts · apolloClient.ts:40</span>
+            </article>
+            <article class="cause">
+              <div class="n">02</div>
+              <h4>One enormous blocking query</h4>
+              <p>
+                The screen waits for the full
+                <span class="mono">WatchVideo</span> fragment — every image,
+                every locale, all sibling videos, every dub with every download
+                and subtitle track — before showing anything.
+              </p>
+              <span class="file">queries.ts:95–212 · [slug].tsx:154</span>
+            </article>
+            <article class="cause">
+              <div class="n">03</div>
+              <h4>The seed data is discarded</h4>
+              <p>
+                The search result already carries the slug, title, image and a
+                playable <span class="mono">playbackId</span>. But navigation
+                forwards only the slug — so the screen re-fetches everything
+                from scratch.
+              </p>
+              <span class="file">queries.ts:58–67</span>
+            </article>
+          </div>
+
+          <div class="usebar reveal" id="usebar">
+            <div class="row">
+              <span class="big">~7%</span>
+              <span class="cap"
+                >of the downloaded payload is used on first paint</span
+              >
+            </div>
+            <div class="usemeter"><i></i></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- THE FIX -->
+      <section id="fix">
+        <div class="wrap">
+          <div class="sec-head reveal">
+            <span class="kicker">The fix</span>
+            <h2>Paint from what you already have</h2>
+            <p>
+              The screen becomes a three-stage progression —
+              <b style="color: var(--accent)">seed → core → complete</b> — owned
+              by one place. A blank spinner stops being a state the screen can
+              show. Step through it:
+            </p>
+          </div>
+
+          <div class="fix-grid reveal">
+            <div class="steps">
+              <div class="step-btns" role="tablist" aria-label="Render stages">
+                <button
+                  class="step-btn"
+                  role="tab"
+                  aria-selected="true"
+                  data-step="seed"
+                >
+                  1 · Seed
+                </button>
+                <button
+                  class="step-btn"
+                  role="tab"
+                  aria-selected="false"
+                  data-step="core"
+                >
+                  2 · Core
+                </button>
+                <button
+                  class="step-btn"
+                  role="tab"
+                  aria-selected="false"
+                  data-step="complete"
+                >
+                  3 · Complete
+                </button>
+                <button
+                  class="step-btn"
+                  role="tab"
+                  aria-selected="false"
+                  data-step="cold"
+                >
+                  Cold deep link
+                </button>
+              </div>
+
+              <div class="step-panel" id="stepPanel" role="tabpanel">
+                <!-- filled by JS -->
+              </div>
+            </div>
+
+            <div>
+              <div class="phone">
+                <div class="notch"></div>
+                <div class="screen" id="phoneScreen" data-state="seed">
+                  <div class="pv-player">
+                    <div class="poster"></div>
+                    <div class="play"></div>
+                    <div class="spin"></div>
+                  </div>
+                  <div class="pv-body">
+                    <div class="pv-line title shimmer"></div>
+                    <div class="pv-line sub shimmer"></div>
+                    <div class="pv-actions">
+                      <span class="shimmer"></span><span class="shimmer"></span
+                      ><span class="shimmer"></span
+                      ><span class="shimmer"></span>
+                    </div>
+                    <div class="pv-line d1 shimmer"></div>
+                    <div class="pv-line d2 shimmer"></div>
+                    <div class="pv-line d3 shimmer"></div>
+                    <div class="pv-upnext">
+                      <span class="shimmer"></span><span class="shimmer"></span
+                      ><span class="shimmer"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p class="phone-cap" id="phoneCap">
+                <b>Seeded</b> · painted in ≈0.1s
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PLAYBACK STATE MACHINE -->
+      <section id="playback">
+        <div class="wrap">
+          <div class="sec-head reveal">
+            <span class="kicker">Optimistic playback</span>
+            <h2>Start playing before the data arrives</h2>
+            <p>
+              The HLS stream URL is just
+              <code>stream.mux.com/{playbackId}.m3u8</code> — and the search
+              result already has the playback ID. So playback starts
+              immediately. The only question is whether the resolved variant is
+              the <em>same asset</em>. We decide by comparing playback IDs, not
+              raw URLs.
+            </p>
+          </div>
+
+          <div class="reveal">
+            <div class="sm-toggle" role="group" aria-label="Playback scenario">
+              <button data-sm="same" aria-pressed="true">
+                Same asset (common)
+              </button>
+              <button data-sm="diff" aria-pressed="false">
+                Different variant (e.g. non-English locale)
+              </button>
+              <button data-sm="bad" aria-pressed="false">Bad / dead URL</button>
+            </div>
+
+            <div class="sm-flow">
+              <div class="sm-node on" id="n1">
+                <div class="st">Start</div>
+                <h4>Optimistic play</h4>
+                <p>
+                  Load <span class="mono">stream.mux.com/{seed id}</span> —
+                  synthesized URL is host-validated first.
+                </p>
+              </div>
+              <div class="sm-arrow">→</div>
+              <div class="sm-node" id="n2">
+                <div class="st">Resolve</div>
+                <h4>Compare playbackId</h4>
+                <p>
+                  Canonical variant arrives. Compare its playback ID to the
+                  optimistic one.
+                </p>
+              </div>
+              <div class="sm-arrow">→</div>
+              <div class="sm-node" id="n3">
+                <div class="st">Outcome</div>
+                <h4 id="n3title">No swap</h4>
+                <p id="n3desc">
+                  IDs match — the player keeps playing, untouched.
+                </p>
+              </div>
+            </div>
+
+            <div class="sm-verdict good" id="smVerdict">
+              <span class="em">✓</span>
+              <div>
+                <b>No reload.</b> Same playback ID means the same asset, even if
+                the stored URL string differs — so nothing swaps.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- DECISIONS -->
+      <section id="decisions">
+        <div class="wrap">
+          <div class="sec-head reveal">
+            <span class="kicker">Key technical decisions</span>
+            <h2>The eight calls that shape it</h2>
+            <p>
+              Each one was stress-tested by adversarial review. Several started
+              as something more complex and got <em>simpler</em>.
+            </p>
+          </div>
+
+          <div class="ktd reveal">
+            <details open>
+              <summary>
+                <span class="id">KTD1</span
+                ><span class="sm-title"
+                  >Seed data, not a faster query, solves the spinner</span
+                ><span class="chev">▸</span>
+              </summary>
+              <div class="body">
+                <p>
+                  First paint and playback come from the seed the caller already
+                  holds. This kills the spinner on its own and is independent of
+                  any query work — everything else just makes the canonical data
+                  arrive fast.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                <span class="id">KTD2</span
+                ><span class="sm-title"
+                  >One query with partial data — never two on the same
+                  field</span
+                ><span class="chev">▸</span>
+              </summary>
+              <div class="body">
+                <p>
+                  Two queries against the same
+                  <span class="mono">videoBySlug</span> root field fight over
+                  the cache slot and lose fields ("Cache data may be lost").
+                  Instead: keep one query, turn on
+                  <code>returnPartialData</code>, and let seed + cache stream
+                  fields in as they arrive.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                <span class="id">KTD3</span
+                ><span class="sm-title"
+                  >A faster lean fetch is a deferred admin handoff, not this
+                  plan</span
+                ><span class="chev">▸</span>
+              </summary>
+              <div class="body">
+                <p>
+                  A genuinely smaller network request needs a new server field —
+                  out of scope. Perceived speed is carried by seed + warm cache,
+                  not a faster fetch. A latency probe can decide whether to
+                  <em>file</em> that follow-up, but its outcome can't change
+                  what this plan builds.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                <span class="id">KTD4</span
+                ><span class="sm-title"
+                  >The session owns the seed→core→complete machine</span
+                ><span class="chev">▸</span>
+              </summary>
+              <div class="body">
+                <p>
+                  The shared session establishes a stable identity once,
+                  field-merges later updates, and guards the defaults with
+                  <span class="mono">userHasChosen*</span> flags — so enrichment
+                  can never reset a language or subtitle a user picked mid-load.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                <span class="id">KTD5</span
+                ><span class="sm-title"
+                  >Decide the playback swap by playbackId, not URL strings</span
+                ><span class="chev">▸</span>
+              </summary>
+              <div class="body">
+                <p>
+                  The stored <span class="mono">hls</span> URL isn't guaranteed
+                  byte-identical to the seed-built URL for the same asset.
+                  Comparing extracted playback IDs means the same asset never
+                  triggers a reload, and a genuinely different variant takes
+                  exactly one accepted swap.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                <span class="id">KTD6</span
+                ><span class="sm-title"
+                  >Validate only the synthesized URLs; trust canonical
+                  ones</span
+                ><span class="chev">▸</span>
+              </summary>
+              <div class="body">
+                <p>
+                  Seed URLs come from untrusted nav params, so they're
+                  host-allowlisted. The canonical
+                  <span class="mono">hls</span> passes through unchanged —
+                  gating it through the Mux-only allowlist would break real
+                  media served from other JFP hosts.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                <span class="id">KTD7</span
+                ><span class="sm-title"
+                  >Hand-rolled persistence, gated above the Apollo
+                  provider</span
+                ><span class="chev">▸</span>
+              </summary>
+              <div class="body">
+                <p>
+                  The standard cache-persist library is incompatible with our
+                  Apollo version and crashed launch before. This is hand-rolled:
+                  restore above the provider, time-bounded so a slow read can't
+                  freeze startup, an incremental snapshot (no synchronous
+                  extract on backgrounding), version + TTL, and signed/expiring
+                  URLs excluded.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                <span class="id">KTD8</span
+                ><span class="sm-title"
+                  >No app-wide cache normalization in this plan</span
+                ><span class="chev">▸</span>
+              </summary>
+              <div class="body">
+                <p>
+                  Normalizing every shared entity bought nothing once
+                  persistence switched to result trees — while risking the
+                  homepage. It was cut to a scoped follow-up, keeping this
+                  plan's blast radius on the watch flow.
+                </p>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- PHASES -->
+      <section id="phases">
+        <div class="wrap">
+          <div class="sec-head reveal">
+            <span class="kicker">Implementation</span>
+            <h2>Three phases that ship independently</h2>
+            <p>
+              Phase 1 alone — the seed path — kills the blank spinner. The
+              highest-risk work (persistence) is sequenced last and clearly
+              fenced.
+            </p>
+          </div>
+
+          <div class="reveal">
+            <div class="ph-tabs" role="tablist" aria-label="Phases">
+              <button
+                class="ph-tab"
+                role="tab"
+                aria-selected="true"
+                data-ph="1"
+              >
+                <b>Phase 1</b><span>Instant paint · U1–U3</span>
+              </button>
+              <button
+                class="ph-tab"
+                role="tab"
+                aria-selected="false"
+                data-ph="2"
+              >
+                <b>Phase 2</b><span>Progressive data · U4–U5</span>
+              </button>
+              <button
+                class="ph-tab"
+                role="tab"
+                aria-selected="false"
+                data-ph="3"
+              >
+                <b>Phase 3</b><span>Persistence + prefetch · U7–U8</span>
+              </button>
+            </div>
+
+            <div class="ph-panel on" data-ph="1" role="tabpanel">
+              <div class="units">
+                <article class="unit">
+                  <div class="uid">U1</div>
+                  <h4>Seed param plumbing</h4>
+                  <p>
+                    Forward the search/Up-Next seed (title, image, playbackId,
+                    slug) through navigation; decode and host-validate it
+                    defensively on the screen.
+                  </p>
+                  <div class="dep">depends on: —</div>
+                </article>
+                <article class="unit">
+                  <div class="uid">U2</div>
+                  <h4>Skeleton + render-from-seed</h4>
+                  <p>
+                    Replace the full-screen spinner with a layout-matched
+                    skeleton; paint poster/title from seed; handle the
+                    cold-deep-link and query-error paths.
+                  </p>
+                  <div class="dep">depends on: U1</div>
+                </article>
+                <article class="unit">
+                  <div class="uid">U3</div>
+                  <h4>Optimistic playback</h4>
+                  <p>
+                    Start from the seed playbackId via
+                    <span class="mono">replaceAsync</span>; swap only on a
+                    different asset; a buffer-progress watchdog handles dead
+                    URLs.
+                  </p>
+                  <div class="dep">depends on: U1</div>
+                </article>
+              </div>
+            </div>
+
+            <div class="ph-panel" data-ph="2" role="tabpanel">
+              <div class="units">
+                <article class="unit">
+                  <div class="uid">U4</div>
+                  <h4>Partial-data rendering</h4>
+                  <p>
+                    Turn on <code>returnPartialData</code> on the single query;
+                    make the normalizer produce a valid record from partial data
+                    (empty variants/siblings).
+                  </p>
+                  <div class="dep">depends on: U2</div>
+                </article>
+                <article class="unit">
+                  <div class="uid">U5</div>
+                  <h4>Session state machine + guards</h4>
+                  <p>
+                    Own seed→core→complete in the session; field-merge on stable
+                    identity; never reset user selections; define sheet loading
+                    vs empty states.
+                  </p>
+                  <div class="dep">depends on: U4</div>
+                </article>
+              </div>
+            </div>
+
+            <div class="ph-panel" data-ph="3" role="tabpanel">
+              <div class="units">
+                <article class="unit">
+                  <div class="uid">U7</div>
+                  <h4>Cache persistence</h4>
+                  <p>
+                    Restore above the provider, time-bounded; incremental
+                    snapshot writes; version + TTL; exclude volatile signed
+                    URLs. The highest-risk unit — verified on a real low-end
+                    Android device.
+                  </p>
+                  <div class="dep">depends on: — · land last</div>
+                </article>
+                <article class="unit">
+                  <div class="uid">U8</div>
+                  <h4>Prefetch on press-in</h4>
+                  <p>
+                    On touch-down of a search result, warm the query so
+                    navigation reads a warm cache. Deduped by slug, capped
+                    in-flight to avoid bursts.
+                  </p>
+                  <div class="dep">depends on: U4</div>
+                </article>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RISKS -->
+      <section id="risks">
+        <div class="wrap">
+          <div class="sec-head reveal">
+            <span class="kicker">What could break</span>
+            <h2>Risks &amp; mitigations</h2>
+            <p>
+              Surfaced by a deepening pass and an adversarial review. The
+              persistence layer carries history — it crashed launch once before.
+            </p>
+          </div>
+
+          <div class="risks reveal">
+            <div class="risk hot">
+              <h4>
+                Persistence relaunch crash
+                <span class="pill">highest risk</span>
+              </h4>
+              <p>
+                A prior persist attempt crashed launch.
+                <b>Mitigated:</b> hand-rolled, gated above the provider,
+                best-effort guarded, time-bounded read, real-device
+                verification.
+              </p>
+            </div>
+            <div class="risk hot">
+              <h4>
+                Synchronous flush on backgrounding
+                <span class="pill">crash class</span>
+              </h4>
+              <p>
+                A full cache extract on the kill-prone background transition
+                janks low-end Android. <b>Mitigated:</b> incremental snapshot —
+                background does only a tiny write.
+              </p>
+            </div>
+            <div class="risk">
+              <h4>
+                Selection-reset race <span class="pill">correctness</span>
+              </h4>
+              <p>
+                Re-publishing the video could wipe a mid-load language pick.
+                <b>Mitigated:</b> stable identity + userHasChosen guards.
+              </p>
+            </div>
+            <div class="risk">
+              <h4>
+                "Rare swap" wasn't rare <span class="pill">playback</span>
+              </h4>
+              <p>
+                Device locale can resolve a different default variant.
+                <b>Mitigated:</b> compare playbackId; same asset never swaps,
+                others take one accepted swap.
+              </p>
+            </div>
+            <div class="risk">
+              <h4>Expiring URLs go stale <span class="pill">data</span></h4>
+              <p>
+                Persisting signed download URLs guarantees future 404s.
+                <b>Mitigated:</b> volatile URLs excluded from the snapshot;
+                always re-fetched.
+              </p>
+            </div>
+            <div class="risk">
+              <h4>
+                Slow restore freezes startup
+                <span class="pill">cold start</span>
+              </h4>
+              <p>
+                An above-provider gate blocks the whole app.
+                <b>Mitigated:</b> 300–500ms read timeout → boot cold, discard a
+                late restore.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- THREAT MODEL -->
+      <section id="security">
+        <div class="wrap">
+          <div class="sec-head reveal">
+            <span class="kicker">Security threat model</span>
+            <h2>Three untrusted surfaces</h2>
+            <p>
+              This work introduces nav-param input and on-device persistence —
+              so it names the surfaces explicitly rather than assuming the API
+              is the only boundary.
+            </p>
+          </div>
+
+          <div class="threats reveal">
+            <article class="threat">
+              <div class="ico">⌥</div>
+              <h4>Deep-link seed injection</h4>
+              <p class="desc">
+                A crafted universal link could supply a malicious seed — a
+                non-Mux stream host, an arbitrary image host, an oversized
+                payload.
+              </p>
+              <div class="mit">
+                <b>Mitigation</b>Decode validates seed stream + image URLs
+                against host allowlists; returns null on malformed input.
+              </div>
+            </article>
+            <article class="threat">
+              <div class="ico">⊗</div>
+              <h4>Cache-poisoning persistence</h4>
+              <p class="desc">
+                A bad or stale entity persisted during a brief API issue could
+                survive restarts and resurface.
+              </p>
+              <div class="mit">
+                <b>Mitigation</b>Version key + short TTL eviction, volatile-URL
+                exclusion, and cache-and-network revalidation on view.
+              </div>
+            </article>
+            <article class="threat">
+              <div class="ico">↯</div>
+              <h4>Download path traversal</h4>
+              <p class="desc">
+                The local filename is derived from an untrusted download URL by
+                splitting on slashes.
+              </p>
+              <div class="mit">
+                <b>Mitigation</b>Validate the download URL and strip path
+                separators from the derived filename before writing.
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap foot">
+        <div class="meta">
+          <span class="statusdot"><i></i> <b>status:</b> active</span><br />
+          <b>type:</b> perf &nbsp; · &nbsp; <b>date:</b> 2026-06-03<br />
+          <b>origin:</b> brainstorm → plan → deepened → reviewed<br />
+          <b>units:</b> 7 active across 3 phases
+        </div>
+        <div class="cta">
+          Full plan →
+          <a href="2026-06-03-001-perf-mobile-instant-video-detail-plan.md"
+            >docs/plans/2026-06-03-001-perf-mobile-instant-video-detail-plan.md</a
+          >
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      ;(function () {
+        "use strict"
+
+        /* ---- scroll reveal ---- */
+        var io = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (e) {
+              if (e.isIntersecting) {
+                e.target.classList.add("in")
+                if (e.target.classList.contains("trigger-anim"))
+                  e.target.classList.add("reveal-anim")
+                io.unobserve(e.target)
+              }
+            })
+          },
+          { threshold: 0.18 },
+        )
+        document.querySelectorAll(".reveal").forEach(function (el) {
+          io.observe(el)
+        })
+
+        /* timeline + use-meter bars animate when scrolled in */
+        ;["timeline", "usebar"].forEach(function (id) {
+          var el = document.getElementById(id)
+          if (!el) return
+          var o = new IntersectionObserver(
+            function (entries) {
+              entries.forEach(function (e) {
+                if (e.isIntersecting) {
+                  e.target.classList.add("reveal-anim")
+                  o.unobserve(e.target)
+                }
+              })
+            },
+            { threshold: 0.4 },
+          )
+          o.observe(el)
+        })
+
+        /* ---- seed→core→complete stepper ---- */
+        var stepData = {
+          seed: {
+            when: "≈0.1s · no network",
+            title: "Seed",
+            body: "The instant you tap, the screen renders the poster, title and play button from data the search result already carried. Everything else is a skeleton.",
+            points: [
+              "Poster + title painted from nav params",
+              "Player starts from the seed playbackId",
+              "No spinner — ever",
+            ],
+            cap: "<b>Seeded</b> · painted in ≈0.1s",
+          },
+          core: {
+            when: "when the cache / network resolves core fields",
+            title: "Core",
+            body: "Canonical title, description and the active stream stream in from one query with partial data. The skeleton lines fill with real text.",
+            points: [
+              "Real title + description replace the seed",
+              "Description text resolves",
+              "Sheets still loading in the background",
+            ],
+            cap: "<b>Core</b> · canonical fields filled in",
+          },
+          complete: {
+            when: "when the full payload lands",
+            title: "Complete",
+            body: "The heavy data arrives and is field-merged into the session — every dub, download, subtitle, plus the Up Next row. User selections made earlier are never reset.",
+            points: [
+              "Up Next + action sheets enabled",
+              "All variants / subtitles available",
+              "A mid-load language pick survives",
+            ],
+            cap: "<b>Complete</b> · fully interactive",
+          },
+          cold: {
+            when: "shared link, empty cache, no seed",
+            title: "Cold deep link",
+            body: "With no seed and an empty cache, there is nothing to paint from — so the screen shows a layout-matched skeleton instead of a blank spinner. First-frame latency is honestly unchanged here; only the blank screen is fixed.",
+            points: [
+              "Skeleton, never a blank screen",
+              "Playback waits for the network",
+              "The one path with no instant-play win",
+            ],
+            cap: "<b>Cold deep link</b> · skeleton, not blank",
+          },
+        }
+        var panel = document.getElementById("stepPanel")
+        var screen = document.getElementById("phoneScreen")
+        var phoneCap = document.getElementById("phoneCap")
+        function renderStep(key) {
+          var d = stepData[key]
+          panel.innerHTML =
+            '<span class="when">' +
+            d.when +
+            "</span>" +
+            "<h4>" +
+            d.title +
+            "</h4>" +
+            "<p>" +
+            d.body +
+            "</p>" +
+            "<ul>" +
+            d.points
+              .map(function (p) {
+                return "<li>" + p + "</li>"
+              })
+              .join("") +
+            "</ul>"
+          screen.setAttribute("data-state", key)
+          phoneCap.innerHTML = d.cap
+        }
+        document.querySelectorAll(".step-btn").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            document.querySelectorAll(".step-btn").forEach(function (b) {
+              b.setAttribute("aria-selected", "false")
+            })
+            btn.setAttribute("aria-selected", "true")
+            renderStep(btn.dataset.step)
+          })
+        })
+        renderStep("seed")
+
+        /* ---- playback state machine ---- */
+        var smData = {
+          same: {
+            n3title: "No swap",
+            n3desc: "IDs match — the player keeps playing, untouched.",
+            verdictClass: "good",
+            em: "✓",
+            verdict:
+              "<b>No reload.</b> Same playback ID means the same asset, even if the stored URL string differs — so nothing swaps.",
+            active: ["n1", "n2", "n3"],
+          },
+          diff: {
+            n3title: "One accepted swap",
+            n3desc:
+              "A different variant — call replaceAsync once, continuous playback.",
+            verdictClass: "warn",
+            em: "↻",
+            verdict:
+              "<b>One smooth swap.</b> The device locale resolved a different default variant. We accept a single source swap — far better than a blank screen.",
+            active: ["n1", "n2", "n3"],
+          },
+          bad: {
+            n3title: "Watchdog fallback",
+            n3desc:
+              "Stuck on 'loading' with no buffer progress → fall back to canonical.",
+            verdictClass: "warn",
+            em: "⏱",
+            verdict:
+              "<b>Self-healing.</b> A known player bug never fires an error on a dead URL, so a buffer-progress watchdog forces the canonical source — it won't false-fire on a slow-but-healthy load.",
+            active: ["n1", "n3"],
+          },
+        }
+        var verdict = document.getElementById("smVerdict")
+        function renderSM(key) {
+          var d = smData[key]
+          document.getElementById("n3title").textContent = d.n3title
+          document.getElementById("n3desc").textContent = d.n3desc
+          ;["n1", "n2", "n3"].forEach(function (id) {
+            document
+              .getElementById(id)
+              .classList.toggle("on", d.active.indexOf(id) !== -1)
+          })
+          verdict.className = "sm-verdict " + d.verdictClass
+          verdict.innerHTML =
+            '<span class="em">' + d.em + "</span><div>" + d.verdict + "</div>"
+        }
+        document.querySelectorAll(".sm-toggle button").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            document
+              .querySelectorAll(".sm-toggle button")
+              .forEach(function (b) {
+                b.setAttribute("aria-pressed", "false")
+              })
+            btn.setAttribute("aria-pressed", "true")
+            renderSM(btn.dataset.sm)
+          })
+        })
+
+        /* ---- phase tabs ---- */
+        document.querySelectorAll(".ph-tab").forEach(function (tab) {
+          tab.addEventListener("click", function () {
+            var ph = tab.dataset.ph
+            document.querySelectorAll(".ph-tab").forEach(function (t) {
+              t.setAttribute("aria-selected", "false")
+            })
+            tab.setAttribute("aria-selected", "true")
+            document.querySelectorAll(".ph-panel").forEach(function (p) {
+              p.classList.toggle("on", p.dataset.ph === ph)
+            })
+          })
+        })
+      })()
+    </script>
+  </body>
+</html>
