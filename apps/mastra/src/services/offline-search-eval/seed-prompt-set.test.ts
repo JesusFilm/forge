@@ -18,6 +18,10 @@ describe("search eval seed prompt set", () => {
       "new believer",
       "small group Bible study",
       "church leader training",
+      "Jesus em português",
+      "Wer ist Jesus?",
+      "Кто такой Иисус?",
+      "من هو يسوع؟",
     ]) {
       expect(queries).toContain(required)
     }
@@ -40,6 +44,14 @@ describe("search eval seed prompt set", () => {
       seedPromptsForLocales(["fr"]).map((prompt) => prompt.locale),
     ).toEqual(["fr"])
 
-    expect(SEARCH_EVAL_SEED_PROMPT_LOCALES).toEqual(["en", "es", "fr"])
+    expect(SEARCH_EVAL_SEED_PROMPT_LOCALES).toEqual([
+      "en",
+      "es",
+      "fr",
+      "pt",
+      "de",
+      "ru",
+      "ar",
+    ])
   })
 })

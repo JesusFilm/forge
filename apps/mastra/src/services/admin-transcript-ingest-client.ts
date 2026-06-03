@@ -33,7 +33,9 @@ export type AdminTranscriptEmbeddingIngestPayload = {
   model: {
     name: string
     dimensions: number
+    nativeDimensions?: number
     provider?: string
+    transformVersion?: string
   }
   chunking: {
     type: "segment-aware" | "plain-text"

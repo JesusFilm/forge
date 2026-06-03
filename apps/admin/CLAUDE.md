@@ -35,6 +35,9 @@ Studio observability. Admin owns type-specific ingest routes, target
 resolution, vector storage, publication gates, pgvector indexes, public search
 contracts, and retrieval. Keep the transcript, scene, and experience ingest
 contracts separate; do not add a generic embedding blob endpoint.
+Coordinated all-content content-vector replacement uses
+`run-embeds --pipeline=all` only after a passed Mastra content search-eval gate
+report from `docs/search-eval-reports/`.
 
 Live user search stays Admin-owned. Search services may generate live query
 embeddings for retrieval, but live search orchestration does not move to
@@ -1770,13 +1773,16 @@ path and the Cloudflare 524 edge timeout. Per
    ```bash
    DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
    pnpm --filter @forge/admin run-embeds --pipeline=transcript
-   #   --pipeline=scene|transcript|experience|both         (required)
+   #   --pipeline=scene|transcript|experience|both|all     (required)
+   #   # both = scene + transcript; all = scene + transcript + experience
    #   --core-id=<id>          (repeatable; restrict to specific videos)
    #   --locale=<bcp47>        (repeatable; R1 filter)
    #   --language=<bcp47>      (repeatable; transcript filter)
+   #   --scene-mode=idempotent|repair|force|model-upgrade
    #   --transcript-mode=idempotent|repair|force|model-upgrade
    #   --experience-mode=idempotent|repair|force|model-upgrade
    #   --experience-id=<id>    (repeatable; experience filter)
+   #   --gate-report=docs/search-eval-reports/<id>.json   (required for all)
    #   --mapping-key=admin-migrations/core-id-mapping.json   (default)
    ```
 
@@ -1787,6 +1793,32 @@ path and the Cloudflare 524 edge timeout. Per
    transcript, and experience runs launch Mastra, which generates vectors
    and calls Admin ingest; Admin keeps vector storage and search retrieval
    authority.
+
+   `--pipeline=all` is the AI Gateway content replacement path. It runs scene,
+   transcript, and experience branches, and it refuses to start until
+   `--gate-report` points at a sanitized
+   `content-search-eval-gate-report` whose gate is backfill-ready, judged,
+   calibrated, passed, has zero loss/search/judge/disagreement failures, and
+   is bound to the Jesus Film AI Gateway `embeddings` provider with 4096 native
+   dimensions, 1536 final dimensions, and the
+   `matryoshka-truncate-1536-v1` transform. Local-only dry exercises can use
+   `--allow-ungated-local-backfill` only when `DATABASE_URL` points at a
+   loopback host and the database name contains `local`, `test`, `dev`, or
+   `development`; production and tunneled prod databases cannot bypass the
+   gate.
+
+   Canonical AI Gateway replacement shape:
+
+   ```bash
+   DATABASE_URL='postgresql://forge:forge@db:5432/forge_admin' \
+   pnpm --filter @forge/admin run-embeds \
+     --pipeline=all \
+     --scene-mode=model-upgrade \
+     --transcript-mode=model-upgrade \
+     --experience-mode=model-upgrade \
+     --gate-report=docs/search-eval-reports/<id>.json \
+     --report-out=.tmp/prod-embeds/content-ai-gateway-backfill.json
+   ```
 
    Scene-including runs perform a preflight before indexing: admin S3
    reachability, manager artifact S3 reachability, mapping load, and

@@ -24,9 +24,11 @@ function payload(): AdminSceneEmbeddingIngestPayload {
       contentHash: "sha256:test",
     },
     model: {
-      name: "openai/text-embedding-3-small",
-      provider: "openai",
+      name: "embeddings",
+      provider: "jesus-film-ai-gateway",
       dimensions: 1536,
+      nativeDimensions: 4096,
+      transformVersion: "matryoshka-truncate-1536-v1",
     },
     generation: {
       mode: "idempotent",
@@ -59,7 +61,7 @@ const adminResult = {
     locale: "en",
   },
   scenes: 1,
-  model: "openai/text-embedding-3-small",
+  model: "embeddings",
   dimensions: 1536,
   mastraRunId: "run-1",
 }
