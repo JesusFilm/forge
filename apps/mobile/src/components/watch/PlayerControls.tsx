@@ -10,8 +10,6 @@ import { useTypography } from "../../hooks/useTypography"
 type PlayerControlsProps = {
   player: VideoPlayer
   onFullscreen: () => void
-  onCCToggle?: () => void
-  ccEnabled?: boolean
 }
 
 function formatTime(seconds: number): string {
@@ -20,12 +18,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
-export function PlayerControls({
-  player,
-  onFullscreen,
-  onCCToggle,
-  ccEnabled = false,
-}: PlayerControlsProps) {
+export function PlayerControls({ player, onFullscreen }: PlayerControlsProps) {
   const typography = useTypography()
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -88,44 +81,33 @@ export function PlayerControls({
       </View>
 
       <View style={styles.bottomBar}>
+        <View style={styles.timeRow}>
+          <Text style={[styles.timeText, typography.caption]}>
+            {formatTime(currentTime)}
+          </Text>
+          <Text style={[styles.timeText, typography.caption]}>
+            {formatTime(duration)}
+          </Text>
+        </View>
         <View style={styles.progressTrack}>
           <View
             style={[styles.progressFill, { width: `${progress * 100}%` }]}
           />
         </View>
-        <View style={styles.timeRow}>
-          <Text style={[styles.timeText, typography.caption]}>
-            {formatTime(currentTime)}
-          </Text>
-          <View style={styles.iconGroup}>
-            <Pressable
-              onPress={toggleMute}
-              style={styles.iconButton}
-              accessibilityRole="button"
-              accessibilityLabel={isMuted ? "Unmute" : "Mute"}
-            >
-              <Ionicons
-                name={isMuted ? "volume-mute" : "volume-high"}
-                size={20}
-                color={TEXT_ON_OVERLAY}
-              />
-            </Pressable>
-            {onCCToggle != null && (
-              <Pressable
-                onPress={onCCToggle}
-                style={styles.iconButton}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  ccEnabled ? "Disable subtitles" : "Enable subtitles"
-                }
-              >
-                <Ionicons
-                  name="text"
-                  size={20}
-                  color={ccEnabled ? ACCENT : TEXT_ON_OVERLAY}
-                />
-              </Pressable>
-            )}
+        <View style={styles.iconRow}>
+          <Pressable
+            onPress={toggleMute}
+            style={styles.iconButton}
+            accessibilityRole="button"
+            accessibilityLabel={isMuted ? "Unmute" : "Mute"}
+          >
+            <Ionicons
+              name={isMuted ? "volume-mute" : "volume-high"}
+              size={20}
+              color={TEXT_ON_OVERLAY}
+            />
+          </Pressable>
+          <View style={styles.rightIconGroup}>
             <Pressable
               onPress={onFullscreen}
               style={styles.iconButton}
@@ -135,9 +117,6 @@ export function PlayerControls({
               <Ionicons name="expand" size={20} color={TEXT_ON_OVERLAY} />
             </Pressable>
           </View>
-          <Text style={[styles.timeText, typography.caption]}>
-            {formatTime(duration)}
-          </Text>
         </View>
       </View>
     </View>
@@ -175,7 +154,7 @@ const styles = StyleSheet.create({
     height: 3,
     backgroundColor: "rgba(255, 255, 255, 0.3)",
     borderRadius: 1.5,
-    marginBottom: 8,
+    marginBottom: 4,
     overflow: "hidden",
   },
   progressFill: {
@@ -187,13 +166,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    marginBottom: 6,
   },
   timeText: {
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",
-    minWidth: 36,
   },
-  iconGroup: {
+  iconRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  rightIconGroup: {
     flexDirection: "row",
     alignItems: "center",
     gap: 16,

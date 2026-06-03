@@ -16,6 +16,8 @@ import {
   formatVideoUpdatedRelative,
   normalizeVideoThumbnailUrl,
   resolveVideoVisitorUrl,
+  type VideoLibraryCategory,
+  type VideoLibrarySort,
   VIDEO_LIBRARY_PAGE_SIZE,
 } from "./video-library-utils"
 
@@ -48,12 +50,29 @@ type VideoLocaleRow = {
   updatedAt: Date
 }
 
+type VideoLanguageCountryRow = {
+  order: number | null
+  primary: boolean | null
+  speakers: number | null
+  suggested: boolean | null
+  country: {
+    flagPngSrc: string | null
+    flagWebpSrc: string | null
+  } | null
+}
+
 type VideoDubRow = VideoDub & {
   language: {
     bcp47: string | null
+    countryLanguages: VideoLanguageCountryRow[]
     iso3: string | null
     slug: string | null
   } | null
+}
+
+type VideoLanguageChip = {
+  code: string
+  flagUrl: string | null
 }
 
 type VideoImageRow = {
@@ -64,15 +83,24 @@ type VideoImageRow = {
 }
 
 type LoadVideoRowSliceOptions = {
+  category?: VideoLibraryCategory
+  language?: string
   principal: Principal
   limit: number
   offset: number
   search?: string
+  sort?: VideoLibrarySort
   includeVisitorUrls?: boolean
+}
+
+export type VideoLibraryLanguageOption = {
+  label: string
+  value: string
 }
 
 const VIDEO_LIBRARY_LANGUAGE_TARGET = 2300
 const VIDEO_LIBRARY_LANGUAGE_CHIP_LIMIT = 5
+const VIDEO_LIBRARY_LANGUAGE_OPTION_LIMIT = 200
 
 function durationSecondsForDub(
   dub: Pick<VideoDubRow, "lengthInMilliseconds" | "duration">,
@@ -357,6 +385,54 @@ function localizedVideoLabel(
   return labels[label]
 }
 
+function localizedJsonName(value: unknown, locale: string) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null
+  }
+
+  const record = value as Record<string, unknown>
+  for (const code of [...preferredLocaleCodes(locale), "en"]) {
+    const match = record[code]
+    if (typeof match === "string" && match.trim()) {
+      return match.trim()
+    }
+  }
+
+  const fallback = Object.values(record).find(
+    (item): item is string =>
+      typeof item === "string" && item.trim().length > 0,
+  )
+  return fallback?.trim() ?? null
+}
+
+function languageOptionLabel(
+  language: {
+    bcp47: string | null
+    id: string
+    iso3: string | null
+    name: unknown
+    slug: string | null
+  },
+  locale: string,
+) {
+  return (
+    localizedJsonName(language.name, locale) ??
+    language.slug ??
+    language.bcp47 ??
+    language.iso3 ??
+    language.id
+  )
+}
+
+function languageOptionValue(language: {
+  bcp47: string | null
+  id: string
+  iso3: string | null
+  slug: string | null
+}) {
+  return language.slug ?? language.bcp47 ?? language.iso3 ?? language.id
+}
+
 function formatDuration(dubs: VideoDubRow[]): string {
   const dub =
     dubs.find((item) => item.lengthInMilliseconds || item.duration) ?? null
@@ -392,22 +468,66 @@ function dubCoverage(dubs: VideoDubRow[]): string {
   return `${label} · ${tags.join(", ")}${suffix}`
 }
 
-function dubLanguageCodes(dubs: VideoDubRow[]) {
-  return Array.from(
-    new Set(
-      dubs
-        .map(
-          (dub) =>
-            dub.language?.iso3 ?? dub.language?.bcp47 ?? dub.language?.slug,
-        )
-        .filter((tag): tag is string => !!tag)
-        .map((tag) => tag.toUpperCase()),
-    ),
+function countryFlagUrl(
+  country: VideoLanguageCountryRow["country"],
+): string | null {
+  return (
+    compactText(country?.flagWebpSrc) ??
+    compactText(country?.flagPngSrc) ??
+    null
   )
 }
 
+function preferredCountryLanguage(countryLanguages: VideoLanguageCountryRow[]) {
+  return countryLanguages
+    .filter((countryLanguage) => countryFlagUrl(countryLanguage.country))
+    .sort((left, right) => {
+      const primary =
+        Number(Boolean(right.primary)) - Number(Boolean(left.primary))
+      if (primary !== 0) return primary
+
+      const suggested =
+        Number(Boolean(right.suggested)) - Number(Boolean(left.suggested))
+      if (suggested !== 0) return suggested
+
+      const order =
+        (left.order ?? Number.MAX_SAFE_INTEGER) -
+        (right.order ?? Number.MAX_SAFE_INTEGER)
+      if (order !== 0) return order
+
+      return (right.speakers ?? -1) - (left.speakers ?? -1)
+    })[0]
+}
+
+function dubLanguageChip(dub: VideoDubRow): VideoLanguageChip | null {
+  const code = compactText(
+    dub.language?.iso3 ?? dub.language?.bcp47 ?? dub.language?.slug,
+  )?.toUpperCase()
+  if (!code) return null
+
+  const countryLanguage = dub.language
+    ? preferredCountryLanguage(dub.language.countryLanguages)
+    : undefined
+
+  return {
+    code,
+    flagUrl: countryFlagUrl(countryLanguage?.country ?? null),
+  }
+}
+
+function dubLanguageChips(dubs: VideoDubRow[]) {
+  const chips = new Map<string, VideoLanguageChip>()
+  for (const dub of dubs) {
+    const chip = dubLanguageChip(dub)
+    if (!chip || chips.has(chip.code)) continue
+    chips.set(chip.code, chip)
+  }
+
+  return Array.from(chips.values())
+}
+
 function dubCoverageMetric(dubs: VideoDubRow[]) {
-  const allLanguages = dubLanguageCodes(dubs)
+  const allLanguages = dubLanguageChips(dubs)
   const count = allLanguages.length || dubs.length
   const percent =
     count === 0
@@ -441,13 +561,87 @@ function preferredVideoImage(images: VideoImageRow[]) {
   return normalizeVideoThumbnailUrl(images.find((image) => image.url)?.url)
 }
 
-async function countActiveVideos(search?: string) {
+async function countActiveVideos({
+  category,
+  language,
+  query,
+}: {
+  category?: VideoLibraryCategory
+  language?: string
+  query?: string
+}) {
   const services = createServices(prisma)
   try {
-    return await services.video.countActive(search)
+    return await services.video.countActive({
+      category,
+      language,
+      search: query,
+    })
   } catch (error) {
     if (isMissingTableError(error)) {
       return 0
+    }
+    throw error
+  }
+}
+
+async function loadVideoLibraryLanguageOptions(
+  activeLanguage?: string,
+): Promise<VideoLibraryLanguageOption[]> {
+  const locale = await getAdminLocale()
+
+  try {
+    const dubs = await prisma.videoDub.findMany({
+      where: {
+        deletedAt: null,
+        languageId: { not: null },
+        language: { deletedAt: null },
+        video: { deletedAt: null },
+      },
+      distinct: ["languageId"],
+      orderBy: [{ languageId: "asc" }],
+      take: VIDEO_LIBRARY_LANGUAGE_OPTION_LIMIT,
+      select: {
+        language: {
+          select: {
+            bcp47: true,
+            id: true,
+            iso3: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    })
+
+    const optionsByValue = new Map<string, VideoLibraryLanguageOption>()
+    for (const dub of dubs) {
+      if (!dub.language) continue
+      const value = languageOptionValue(dub.language)
+      if (!value || optionsByValue.has(value)) continue
+      optionsByValue.set(value, {
+        label: languageOptionLabel(dub.language, locale),
+        value,
+      })
+    }
+
+    const normalizedActiveLanguage = compactText(activeLanguage)
+    if (
+      normalizedActiveLanguage &&
+      !optionsByValue.has(normalizedActiveLanguage)
+    ) {
+      optionsByValue.set(normalizedActiveLanguage, {
+        label: normalizedActiveLanguage,
+        value: normalizedActiveLanguage,
+      })
+    }
+
+    return Array.from(optionsByValue.values()).sort((left, right) =>
+      left.label.localeCompare(right.label, "en", { sensitivity: "base" }),
+    )
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return []
     }
     throw error
   }
@@ -578,10 +772,13 @@ export async function loadExperienceRows(principal: Principal) {
 }
 
 async function loadVideoRowSlice({
+  category,
+  language,
   principal,
   limit,
   offset,
   search,
+  sort,
   includeVisitorUrls = false,
 }: LoadVideoRowSliceOptions) {
   const services = createServices(prisma)
@@ -591,7 +788,7 @@ async function loadVideoRowSlice({
     // U2: VideoService.list dropped its `user` param. Route is gated by requireSession().
     void principal
     videos = await services.video.list({
-      input: { limit, offset, search },
+      input: { category, language, limit, offset, search, sort },
       query: {},
     })
   } catch (error) {
@@ -624,6 +821,21 @@ async function loadVideoRowSlice({
           language: {
             select: {
               bcp47: true,
+              countryLanguages: {
+                where: { deletedAt: null },
+                select: {
+                  order: true,
+                  primary: true,
+                  speakers: true,
+                  suggested: true,
+                  country: {
+                    select: {
+                      flagPngSrc: true,
+                      flagWebpSrc: true,
+                    },
+                  },
+                },
+              },
               iso3: true,
               slug: true,
             },
@@ -731,12 +943,25 @@ export async function loadVideoRows(principal: Principal) {
 export async function loadVideoLibraryPage(
   principal: Principal,
   {
+    category,
+    language,
     page,
     pageSize = VIDEO_LIBRARY_PAGE_SIZE,
     query,
-  }: { page: number; pageSize?: number; query?: string },
+    sort,
+  }: {
+    category?: VideoLibraryCategory
+    language?: string
+    page: number
+    pageSize?: number
+    query?: string
+    sort?: VideoLibrarySort
+  },
 ) {
-  const total = await countActiveVideos(query)
+  const [total, languageOptions] = await Promise.all([
+    countActiveVideos({ category, language, query }),
+    loadVideoLibraryLanguageOptions(language),
+  ])
   const pagination = createVideoLibraryPagination({
     total,
     requestedPage: page,
@@ -747,12 +972,15 @@ export async function loadVideoLibraryPage(
     total === 0
       ? []
       : await loadVideoRowSlice({
+          category,
+          language,
           principal,
           limit: pagination.pageSize,
           offset: pagination.offset,
           search: query,
+          sort,
           includeVisitorUrls: true,
         })
 
-  return { rows, pagination }
+  return { rows, pagination, languageOptions }
 }

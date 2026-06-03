@@ -1,13 +1,13 @@
 import { Languages } from "lucide-react"
 import {
   DashboardPageHeader,
-  DataTable,
   InsightGrid,
   OperatorRail,
   PageSection,
 } from "@/components/admin-ui"
 import { getAdminMessages } from "@/i18n/server"
 import { loadLanguagesData } from "@/app/dashboard/ops-data"
+import { LanguageDiagnostics } from "@/app/dashboard/languages/language-diagnostics"
 
 export default async function LanguagesPage() {
   const messages = await getAdminMessages()
@@ -36,30 +36,16 @@ export default async function LanguagesPage() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)]">
         <div className="flex flex-col gap-6">
-          <PageSection title="Reference Languages" meta="CORE_SYNCED_ROWS">
-            <DataTable
-              columns={["Language", "State", "Updated"]}
-              rows={data.rows.map((row) => [
-                <div key={`${row.key}-title`}>
-                  <div className="text-[13px] font-medium">{row.title}</div>
-                  <div className="mono-meta text-[var(--color-text-muted)]">
-                    {row.detail}
-                  </div>
-                </div>,
-                <span
-                  key={`${row.key}-status`}
-                  className="status-pill border-white/15 text-[var(--color-text-muted)]"
-                >
-                  {row.statusLabel}
-                </span>,
-                <span
-                  key={`${row.key}-meta`}
-                  className="mono-meta text-[var(--color-text-muted)]"
-                >
-                  {row.meta}
-                </span>,
-              ])}
-            />
+          <PageSection
+            title="Language Diagnostics"
+            meta="FULL_REFERENCE_BROWSER"
+          >
+            <div className="p-4">
+              <LanguageDiagnostics
+                rows={data.diagnosticRows}
+                diagnostics={data.diagnostics}
+              />
+            </div>
           </PageSection>
 
           <PageSection title="Locale Signals" meta="COVERAGE_HEALTH">
@@ -77,11 +63,11 @@ export default async function LanguagesPage() {
         <OperatorRail
           title={messages.common.operatorNotes}
           meta={messages.common.fieldGuide}
-          notes="This route now surfaces live reference-language and locale usage data from the admin database, making it a real trust-check page for localization foundations."
+          notes="This route surfaces searchable reference-language diagnostics, locale usage, and sync provenance from the admin database."
           chips={[
             { label: "Source", value: "CORE_REFERENCE" },
             { label: "Scope", value: "LANGUAGE_FOUNDATION" },
-            { label: "Surface", value: "REFERENCE_DATA" },
+            { label: "Surface", value: "READ_ONLY_DIAGNOSTICS" },
           ]}
         />
       </div>

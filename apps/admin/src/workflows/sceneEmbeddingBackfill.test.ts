@@ -63,12 +63,14 @@ function targetRows() {
       video_edition_id: "edition-1",
       core_id: "core-1",
       bcp47: "en",
+      primary_bcp47: "en",
     },
     {
       video_id: "video-1",
       video_edition_id: "edition-1",
       core_id: "core-1",
       bcp47: "es",
+      primary_bcp47: "en",
     },
   ]
 }
@@ -95,14 +97,15 @@ describe("runSceneEmbeddingBackfill", () => {
     })
   })
 
-  it("loads scene-analysis once per edition group and launches Mastra per locale", async () => {
+  it("loads the exact scene-analysis artifact for each locale before launching Mastra", async () => {
     const report = await runSceneEmbeddingBackfill({
       mappingS3Key: "admin-migrations/core-id-mapping.json",
       mode: "force",
     })
 
-    expect(loadSceneArtifactMock).toHaveBeenCalledTimes(1)
-    expect(loadSceneArtifactMock).toHaveBeenCalledWith(42)
+    expect(loadSceneArtifactMock).toHaveBeenCalledTimes(2)
+    expect(loadSceneArtifactMock).toHaveBeenNthCalledWith(1, 42, null)
+    expect(loadSceneArtifactMock).toHaveBeenNthCalledWith(2, 42, "es")
     expect(launchMastraSceneEmbeddingMock).toHaveBeenCalledTimes(2)
     expect(launchMastraSceneEmbeddingMock).toHaveBeenCalledWith({
       target: {
@@ -113,6 +116,19 @@ describe("runSceneEmbeddingBackfill", () => {
       locale: "en",
       assetId: 42,
       sceneAnalysis: ARTIFACT,
+      sourceArtifactLocale: null,
+      mode: "force",
+    })
+    expect(launchMastraSceneEmbeddingMock).toHaveBeenCalledWith({
+      target: {
+        videoId: "video-1",
+        videoEditionId: "edition-1",
+        coreId: "core-1",
+      },
+      locale: "es",
+      assetId: 42,
+      sceneAnalysis: ARTIFACT,
+      sourceArtifactLocale: "es",
       mode: "force",
     })
     expect(report).toMatchObject({
@@ -124,8 +140,60 @@ describe("runSceneEmbeddingBackfill", () => {
     })
   })
 
+  it("enumerates locale targets from primary language, subtitles, and dubs before launching Mastra", async () => {
+    queryRawMock.mockResolvedValueOnce([
+      {
+        video_id: "video-1",
+        video_edition_id: "edition-1",
+        core_id: "core-1",
+        bcp47: "es",
+        primary_bcp47: "en",
+      },
+      {
+        video_id: "video-1",
+        video_edition_id: "edition-1",
+        core_id: "core-1",
+        bcp47: "fr",
+        primary_bcp47: "en",
+      },
+      {
+        video_id: "video-1",
+        video_edition_id: "edition-1",
+        core_id: "core-1",
+        bcp47: "pt-BR",
+        primary_bcp47: "en",
+      },
+    ])
+
+    const report = await runSceneEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+      mode: "force",
+    })
+
+    const [queryParts] = queryRawMock.mock.calls[0] as [
+      ReadonlyArray<string>,
+      ...unknown[],
+    ]
+    const queryText = queryParts.join("?")
+    expect(queryText).toContain("v.primary_language_id")
+    expect(queryText).toContain("JOIN video_subtitle s")
+    expect(queryText).toContain("JOIN language l ON l.id = d.language_id")
+    expect(launchMastraSceneEmbeddingMock).toHaveBeenCalledTimes(3)
+    expect(
+      launchMastraSceneEmbeddingMock.mock.calls.map(
+        ([payload]) => payload.locale,
+      ),
+    ).toEqual(["es", "fr", "pt-BR"])
+    expect(report).toMatchObject({
+      totalTargets: 3,
+      succeeded: 3,
+      skipped: 0,
+      failed: 0,
+    })
+  })
+
   it("keeps missing scene-analysis artifacts as operator-actionable skipped outcomes", async () => {
-    loadSceneArtifactMock.mockRejectedValueOnce(
+    loadSceneArtifactMock.mockRejectedValue(
       new ManagerArtifactError("artifact_missing", "missing"),
     )
 
@@ -137,6 +205,12 @@ describe("runSceneEmbeddingBackfill", () => {
     expect(report.skipped).toBe(2)
     expect(report.missingArtifacts).toEqual([
       { assetId: 42, coreId: "core-1", kind: "scene-analysis" },
+      {
+        assetId: 42,
+        coreId: "core-1",
+        targetLocale: "es",
+        kind: "scene-analysis",
+      },
     ])
   })
 
@@ -168,6 +242,7 @@ describe("runSceneEmbeddingBackfill", () => {
         videoEditionId: "edition-1",
         coreId: "core-1",
         cmsVideoId: 42,
+        primaryLanguageBcp47: "en",
         locale: "en",
       },
     ]

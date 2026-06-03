@@ -170,7 +170,7 @@ export const adminMessages = {
         okta: "Okta",
       },
       errors: {
-        forbidden: "Your account does not have access to the admin dashboard.",
+        forbidden: "You're signed in, but Admin access has not been approved.",
         invalidCredentials: "Invalid email or password",
         requestAccessFailed: "Access request failed. Try signing in again.",
       },
@@ -179,11 +179,11 @@ export const adminMessages = {
         approved:
           "Access has been approved. Continue to sign in again and enter the dashboard.",
         available:
-          "Request access and an administrator will review your account.",
+          "You're signed in, but Admin access has not been approved. Request access and an administrator will review your account.",
         description:
           "This account is authenticated, but it has not been approved for Forge Admin.",
         pending:
-          "Access has been requested and is waiting for an administrator to approve it.",
+          "You're signed in, but Admin access has not been approved. An administrator still needs to approve your account.",
         requested:
           "Access requested. An administrator must approve your account before you can enter the dashboard.",
         title: "Admin access required",
@@ -401,6 +401,15 @@ export const adminMessages = {
           clear: "Clear",
           active: 'Filtered by "{query}"',
         },
+        filters: {
+          categoryLabel: "Filter by video type",
+          languageLabel: "Filter by dubbed language",
+          languageSearchPlaceholder: "Filter languages...",
+          languageNoResults: "No matching languages",
+          allLanguages: "All languages",
+          loading: "Thinking...",
+          ready: "Video filters ready",
+        },
         tabs: {
           all: "All",
           collections: "Collections",
@@ -409,8 +418,13 @@ export const adminMessages = {
           series: "Series",
         },
         sort: {
-          label: "Recently updated",
-          unavailable: "Sorting is not available yet.",
+          label: "Sort videos",
+          options: {
+            recent: "Recently updated",
+            oldest: "Oldest updated",
+            created: "Recently created",
+            createdOldest: "Oldest created",
+          },
         },
         coverage: {
           languagesDubbed: "languages dubbed",
@@ -429,7 +443,7 @@ export const adminMessages = {
           meta: "SEARCHABLE_ROWS / TYPE_LABELS / VISITOR_LINKS",
           columns: ["Thumbnail", "Video Details", "Source", "Dubs", "Updated"],
           empty: "No active videos found.",
-          emptySearch: "No active videos match this search.",
+          emptySearch: "No active videos match this search or filter.",
           openVisitorLabel: "Open visitor-facing video page",
           noVisitorLinkLabel: "No public watch link available",
           pagination: {
@@ -1261,7 +1275,8 @@ export const adminMessages = {
         okta: "Okta",
       },
       errors: {
-        forbidden: "Tu cuenta no tiene acceso al panel de administracion.",
+        forbidden:
+          "Iniciaste sesion, pero el acceso de administrador aun no fue aprobado.",
         invalidCredentials: "Correo o contrasena no validos",
         requestAccessFailed:
           "No se pudo solicitar acceso. Intenta iniciar sesion de nuevo.",
@@ -1270,11 +1285,12 @@ export const adminMessages = {
         accountLabel: "Iniciaste sesion como",
         approved:
           "El acceso fue aprobado. Continua para iniciar sesion de nuevo y entrar al panel.",
-        available: "Solicita acceso y un administrador revisara tu cuenta.",
+        available:
+          "Iniciaste sesion, pero el acceso de administrador aun no fue aprobado. Solicita acceso y un administrador revisara tu cuenta.",
         description:
           "Esta cuenta esta autenticada, pero aun no tiene aprobacion para Forge Admin.",
         pending:
-          "El acceso fue solicitado y esta esperando la aprobacion de un administrador.",
+          "Iniciaste sesion, pero el acceso de administrador aun no fue aprobado. Un administrador aun debe aprobar tu cuenta.",
         requested:
           "Acceso solicitado. Un administrador debe aprobar tu cuenta antes de que puedas entrar al panel.",
         title: "Se requiere acceso de administrador",

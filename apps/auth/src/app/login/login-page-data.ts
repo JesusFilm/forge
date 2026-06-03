@@ -40,7 +40,9 @@ export function parseLoginError(
 export function toOAuthQuery(params: LoginSearchParams) {
   const oauthQuery = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
-    if (key === "email" || key === "error") continue
+    if (key === "email" || key === "error" || key === "expected_login_method") {
+      continue
+    }
     if (Array.isArray(value)) {
       for (const item of value) oauthQuery.append(key, item)
     } else if (value) {

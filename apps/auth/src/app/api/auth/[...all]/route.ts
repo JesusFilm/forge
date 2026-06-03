@@ -243,6 +243,14 @@ function buildOAuthContinuationURL(oauthQuery: string | undefined) {
   return url.toString()
 }
 
+function buildOAuthLoginURL(oauthQuery: string | undefined) {
+  if (!oauthQuery) return undefined
+
+  const url = new URL("/login", getAuthBaseUrl())
+  url.search = oauthQuery
+  return url.toString()
+}
+
 async function parseSocialSignInRequest(request: Request): Promise<{
   body: Record<string, unknown>
   callbackURL?: string
@@ -271,14 +279,20 @@ async function handleSocialSignIn(request: Request): Promise<Response> {
     oauthQuery,
   } = await parseSocialSignInRequest(request)
   const callbackURL = webCallbackURL ?? buildOAuthContinuationURL(oauthQuery)
+  const errorCallbackURL = webCallbackURL
+    ? undefined
+    : buildOAuthLoginURL(oauthQuery)
   const betterAuthBody = { ...body }
   delete betterAuthBody.callbackURL
+  delete betterAuthBody.email
+  delete betterAuthBody.expected_login_method
   delete betterAuthBody.oauth_query
 
   return authRouteHandlers.POST(
     toJsonRequest(request, {
       ...betterAuthBody,
       ...(callbackURL ? { callbackURL } : {}),
+      ...(errorCallbackURL ? { errorCallbackURL } : {}),
     }),
   )
 }

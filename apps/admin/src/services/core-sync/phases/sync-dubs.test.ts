@@ -109,7 +109,7 @@ describe("syncDubs", () => {
             id: "variant-1",
             videoId: "video-core-1",
             slug: "dub",
-            language: { id: "lang-en" },
+            language: { id: "lang-es" },
             duration: 10,
             lengthInMilliseconds: "10000",
             hls: "hls",
@@ -141,7 +141,10 @@ describe("syncDubs", () => {
     } as never)
 
     const tx = makeTxFake()
-    const prisma = makePrismaFake({ tx })
+    const prisma = makePrismaFake({
+      tx,
+      languages: [{ id: "language-es", coreId: "lang-es" }],
+    })
 
     const stats = await syncDubs({
       prisma: prisma as never,
@@ -165,6 +168,7 @@ describe("syncDubs", () => {
     expect(values[1]).toContain("variant-1")
     expect(values[2]).toContain("video-1")
     expect(values[11]).toContain("brightcove-1")
+    expect(values[12]).toContain("language-es")
     expect(values[13]).toContain("edition-admin-1")
     expect(values[14]).toContain("mux-admin-1")
     expect(values[16]).toBe(true)

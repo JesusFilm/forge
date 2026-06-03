@@ -1,10 +1,18 @@
-import { useCallback, useMemo, useState } from "react"
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import { useCallback, useMemo, useRef, useState } from "react"
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from "react-native"
+import { FlashList } from "@shopify/flash-list"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { BottomSheetFlatList, BottomSheetTextInput } from "@gorhom/bottom-sheet"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useSheetListHeight } from "../../hooks/useSheetListHeight"
 import { ACCENT, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
 import type { WatchVariant } from "../../lib/normalizeVideo"
@@ -22,7 +30,7 @@ function sortByName(variants: WatchVariant[]): WatchVariant[] {
 export type LanguageSheetProps = {
   variants: WatchVariant[]
   activeVariantSlug: string
-  onLanguageChange: (variantSlug: string, hlsUrl: string) => void
+  onLanguageChange: (variantSlug: string) => void
   onClose: () => void
 }
 
@@ -33,8 +41,18 @@ export function LanguageSheetContent({
   onClose,
 }: LanguageSheetProps) {
   const insets = useSafeAreaInsets()
+  const { height: windowHeight } = useWindowDimensions()
   const typography = useTypography()
   const [query, setQuery] = useState("")
+  // FlashList virtualizes (lazy-loads only visible rows) but needs an explicit
+  // height inside the formSheet (the content root is unbounded). Derived from
+  // the native detent index — see useSheetListHeight.
+  const listHeight = useSheetListHeight(windowHeight)
+  // Debounce selection so a fast double-tap can't call router.back() twice and
+  // pop the watch screen. A timestamp (not a latched boolean) auto-expires, so
+  // an interrupted dismiss that leaves the sheet mounted can't permanently
+  // dead-lock row taps.
+  const lastSelectRef = useRef(0)
 
   const sorted = useMemo(() => sortByName(variants), [variants])
   const activeVariant = useMemo(
@@ -56,8 +74,10 @@ export function LanguageSheetContent({
 
   const handleSelect = useCallback(
     (variant: WatchVariant) => {
-      if (!variant.hls) return
-      onLanguageChange(variant.slug, variant.hls)
+      const now = Date.now()
+      if (now - lastSelectRef.current < 500 || !variant.hls) return
+      lastSelectRef.current = now
+      onLanguageChange(variant.slug)
       onClose()
     },
     [onLanguageChange, onClose],
@@ -92,11 +112,13 @@ export function LanguageSheetContent({
 
   const keyExtractor = useCallback((item: WatchVariant) => item.documentId, [])
 
-  return (
-    <View style={styles.container}>
+  // Search + current selection live in the list header so they scroll with the
+  // list in one container.
+  const header = (
+    <View style={styles.header}>
       <View style={styles.searchContainer}>
         <Ionicons name="search-outline" size={18} color={TEXT_SECONDARY} />
-        <BottomSheetTextInput
+        <TextInput
           style={[styles.searchInput, typography.body]}
           placeholder="Search languages..."
           placeholderTextColor={TEXT_SECONDARY}
@@ -104,9 +126,15 @@ export function LanguageSheetContent({
           onChangeText={setQuery}
           autoCapitalize="none"
           autoCorrect={false}
+          accessibilityLabel="Search languages"
         />
         {query.length > 0 && (
-          <Pressable onPress={() => setQuery("")} hitSlop={8}>
+          <Pressable
+            onPress={() => setQuery("")}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Clear search"
+          >
             <Ionicons name="close-circle" size={18} color={TEXT_SECONDARY} />
           </Pressable>
         )}
@@ -142,27 +170,32 @@ export function LanguageSheetContent({
           </View>
         </View>
       )}
+    </View>
+  )
 
-      <BottomSheetFlatList
-        data={filtered}
-        keyExtractor={keyExtractor}
-        renderItem={renderItem}
-        contentContainerStyle={{
-          paddingHorizontal: HORIZONTAL_PADDING,
-          paddingBottom: insets.bottom + 16,
-        }}
-        showsVerticalScrollIndicator={false}
-        initialNumToRender={15}
-        maxToRenderPerBatch={20}
-        windowSize={5}
-        ListEmptyComponent={
-          <View style={styles.emptySearch}>
-            <Text style={[styles.emptySearchText, typography.body]}>
-              No languages found
-            </Text>
-          </View>
-        }
-      />
+  return (
+    <View style={styles.container}>
+      <View style={{ height: listHeight }}>
+        <FlashList
+          data={filtered}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={header}
+          contentContainerStyle={{
+            paddingHorizontal: HORIZONTAL_PADDING,
+            paddingBottom: insets.bottom + 24,
+          }}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptySearch}>
+              <Text style={[styles.emptySearchText, typography.body]}>
+                No languages found
+              </Text>
+            </View>
+          }
+        />
+      </View>
     </View>
   )
 }
@@ -171,11 +204,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    paddingTop: 36,
+  },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginHorizontal: HORIZONTAL_PADDING,
     marginBottom: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -189,7 +224,6 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   currentSection: {
-    paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 12,
   },
   currentLabel: {

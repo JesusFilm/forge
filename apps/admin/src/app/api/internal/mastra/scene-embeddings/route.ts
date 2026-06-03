@@ -15,6 +15,7 @@ function statusForError(error: SceneEmbeddingIngestError): number {
     case "dimension_mismatch":
     case "scene_invalid":
     case "source_hash_mismatch":
+    case "source_locale_mismatch":
       return 400
     case "target_not_found":
       return 404

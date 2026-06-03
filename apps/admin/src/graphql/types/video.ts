@@ -499,20 +499,30 @@ VideoForEnrichmentRef.implement({
       description:
         "VideoLabel as the camelCase wire-shape string ('featureFilm', 'shortFilm', 'behindTheScenes', etc.) — normalized from Prisma's TS enum identifier so manager's downstream LLM prompt stays byte-identical to the pre-feat-125 Strapi shape.",
     }),
+    targetLocale: t.exposeString("targetLocale", {
+      nullable: true,
+      description:
+        "Requested target locale used for this dispatch lookup; null when the primary-language source projection was requested.",
+    }),
     primaryLanguageBcp47: t.exposeString("primaryLanguageBcp47", {
       nullable: true,
       description:
         "BCP-47 tag of the video's primary language; null when unattested.",
     }),
+    languageBcp47: t.exposeString("languageBcp47", {
+      nullable: true,
+      description:
+        "BCP-47 tag of the actual dispatch media language. Equals the primary language for source dispatches and the requested target language for localized dispatches when available.",
+    }),
     muxAssetId: t.exposeString("muxAssetId", {
       nullable: true,
       description:
-        "Mux assetId of the primary-language dub; null when no matching variant exists.",
+        "Mux assetId of the selected dispatch dub; null when no matching variant exists.",
     }),
     subtitleUrl: t.exposeString("subtitleUrl", {
       nullable: true,
       description:
-        "VTT URL of the best primary-language subtitle (primary + non-AI preferred); null when no candidate exists.",
+        "VTT URL of the best selected-language subtitle (primary + non-AI preferred); null when no candidate exists.",
     }),
   }),
 })
@@ -568,8 +578,12 @@ builder.queryFields((t) => ({
       "Batched coreId → dispatch-fields lookup for manager's admin-trigger enrichment endpoints (feat-125). Replaces the Strapi `videos(filters: { coreId: { in } })` call. Gated by `read:video-metadata`; manager's `ADMIN_EMBED_TRIGGER_API_KEY` bearer satisfies it via the WORKFLOW_TRIGGER allowlist. Max 100 coreIds per call (matches manager's receiver-side cap).",
     args: {
       coreIds: t.arg.stringList({ required: true }),
+      targetLocale: t.arg.string({ required: false }),
     },
     resolve: (_root, args, ctx) =>
-      ctx.services.video.getByCoreIds({ coreIds: args.coreIds }),
+      ctx.services.video.getByCoreIds({
+        coreIds: args.coreIds,
+        targetLocale: args.targetLocale,
+      }),
   }),
 }))
