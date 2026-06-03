@@ -618,6 +618,7 @@ describe("dashboard UI routes", () => {
     expect(html).toContain("Mux source")
     expect(html).toContain("Internal source")
     expect(html).toContain("languages dubbed")
+    expect(html).toContain("text-[18px] font-semibold leading-6")
     expect(html).toContain("EN")
     expect(html).toContain("ES")
     expect(html).toContain("FR")

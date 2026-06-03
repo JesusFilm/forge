@@ -261,7 +261,7 @@ function VideoRow({
       <VideoThumbnail video={video} />
 
       <div className="min-w-0">
-        <h2 className="truncate text-[15px] font-semibold leading-5 text-[var(--color-text-primary)]">
+        <h2 className="truncate text-[18px] font-semibold leading-6 text-[var(--color-text-primary)]">
           {video.title}
         </h2>
         <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px] leading-4 text-[var(--color-text-muted)]">
