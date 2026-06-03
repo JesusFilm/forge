@@ -70,10 +70,19 @@ export default function WatchVideoPage() {
     variables: { slug: decodedSlug, locale: "en" },
     skip: !decodedSlug,
     fetchPolicy: "cache-and-network",
+    // Render whatever the cache holds (prefetch / persisted) the moment it
+    // exists, rather than waiting for the whole payload.
+    returnPartialData: true,
   })
 
   const normalized = useMemo(
-    () => normalizeVideo(data?.videoBySlug ?? null),
+    // returnPartialData widens videoBySlug to a deep-partial type; normalizeVideo
+    // is written to tolerate missing fields (returns null without a documentId),
+    // so treat the partial as the raw shape it guards internally.
+    () =>
+      normalizeVideo(
+        (data?.videoBySlug ?? null) as Parameters<typeof normalizeVideo>[0],
+      ),
     [data],
   )
 
@@ -86,11 +95,12 @@ export default function WatchVideoPage() {
   )
 
   // Publish the fetched video into the shared session so the sheet routes can
-  // read variants/subtitles without refetching. Keyed on documentId so the
-  // cache-and-network double-fire (two emissions, same video) publishes once.
+  // read variants/subtitles without refetching. Keyed on the normalized object
+  // so partial → full enrichment (returnPartialData) republishes; the session
+  // guards against resetting user selections across these republishes.
   useEffect(() => {
     if (normalized) setVideo(normalized)
-  }, [normalized?.documentId, setVideo])
+  }, [normalized, setVideo])
 
   // Navigated to a different video that hasn't loaded yet (e.g. Up Next): drop
   // the previous video from the session so the loading guard shows the spinner

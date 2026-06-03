@@ -2,6 +2,7 @@ import { useCallback } from "react"
 import { useRouter } from "expo-router"
 
 import { LanguageSheetContent } from "../../src/components/watch/LanguageSheet"
+import { SheetLoading } from "../../src/components/watch/SheetLoading"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 
 export default function LanguageSheetRoute() {
@@ -18,6 +19,7 @@ export default function LanguageSheetRoute() {
   )
 
   if (!video) return null
+  if (video.variants.length === 0) return <SheetLoading />
 
   return (
     <LanguageSheetContent

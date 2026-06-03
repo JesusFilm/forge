@@ -161,6 +161,11 @@ export function normalizeVideo(
   raw: RawVideo | null | undefined,
 ): WatchVideoRecord | null {
   if (raw == null) return null
+  // With returnPartialData, the cache can surface a partial Video object before
+  // the network fills it in. Without an identity there's nothing usable to
+  // publish (the session keys on documentId), so treat identity-less partials
+  // as "not ready" and let the seed/skeleton carry the screen.
+  if (!raw.documentId) return null
 
   const locale = pickFirstLocale(raw.locales)
   const firstPlayable = pickFirstPlayableVariant(raw.variants)

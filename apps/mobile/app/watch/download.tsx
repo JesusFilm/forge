@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router"
 
 import { DownloadSheetContent } from "../../src/components/watch/DownloadSheet"
+import { SheetLoading } from "../../src/components/watch/SheetLoading"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 
 export default function DownloadSheetRoute() {
@@ -8,6 +9,8 @@ export default function DownloadSheetRoute() {
   const { video, activeVariant, setSnackbarMessage } = useWatchSession()
 
   if (!video) return null
+  // Variants not enriched yet (opened during partial-data load) → show loading.
+  if (video.variants.length === 0) return <SheetLoading />
 
   return (
     <DownloadSheetContent

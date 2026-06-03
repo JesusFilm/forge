@@ -1,8 +1,10 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -41,12 +43,38 @@ const WatchSessionContext = createContext<WatchSessionContextValue | null>(null)
 
 export function WatchSessionProvider({ children }: { children: ReactNode }) {
   const [video, setVideo] = useState<WatchVideoRecord | null>(null)
-  const [activeVariantIndex, setActiveVariantIndex] = useState(0)
-  const [subtitleEnabled, setSubtitleEnabled] = useState(false)
-  const [activeSubtitleSlug, setActiveSubtitleSlug] = useState<string | null>(
-    null,
-  )
+  const [activeVariantIndex, setActiveVariantIndexState] = useState(0)
+  const [subtitleEnabled, setSubtitleEnabledState] = useState(false)
+  const [activeSubtitleSlug, setActiveSubtitleSlugState] = useState<
+    string | null
+  >(null)
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null)
+
+  // Whether the user has explicitly chosen a variant / subtitle for the current
+  // video. Guards the default-resolution effects from overriding a user's
+  // choice when partial → full data enrichment republishes the same video.
+  const userChoseVariantRef = useRef(false)
+  const userChoseSubtitleRef = useRef(false)
+  // The video / variant identity defaults were last resolved for, so the
+  // resolution effects fire once per identity even though they now also re-run
+  // when variants arrive (partial data lands variants after the documentId).
+  const resolvedVariantForRef = useRef<string | null>(null)
+  const resolvedSubtitleForRef = useRef<string | null>(null)
+
+  // Exposed setters mark explicit user intent; the resolution effects below use
+  // the raw state setters so they never trip these guards.
+  const setActiveVariantIndex = useCallback((index: number) => {
+    userChoseVariantRef.current = true
+    setActiveVariantIndexState(index)
+  }, [])
+  const setSubtitleEnabled = useCallback((enabled: boolean) => {
+    userChoseSubtitleRef.current = true
+    setSubtitleEnabledState(enabled)
+  }, [])
+  const setActiveSubtitleSlug = useCallback((slug: string | null) => {
+    userChoseSubtitleRef.current = true
+    setActiveSubtitleSlugState(slug)
+  }, [])
 
   // Clamp against the active index: when navigating to a different video, the
   // index from the previous one can briefly exceed the new variant list before
@@ -59,27 +87,41 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
         ] ?? null)
       : null
 
-  // Default the dubbing language: device locale → video primary → English → first.
+  // New video identity → reset choice tracking + subtitle state. Declared
+  // before the resolution effects so their guards see a clean slate.
+  useEffect(() => {
+    userChoseVariantRef.current = false
+    userChoseSubtitleRef.current = false
+    resolvedVariantForRef.current = null
+    resolvedSubtitleForRef.current = null
+    setSubtitleEnabledState(false)
+    setActiveSubtitleSlugState(null)
+  }, [video?.documentId])
+
+  // Default the dubbing language once per video, as soon as variants are
+  // available (they may arrive after the documentId via partial data), unless
+  // the user already chose. Device locale → video primary → English → first.
   useEffect(() => {
     if (!video || video.variants.length === 0) return
-    // A new video: clear any subtitle selection carried over from the previous
-    // one (re-derived per the new variant by the effect below) and start with
-    // subtitles off, so state never leaks across sibling/Up-Next navigation.
-    setSubtitleEnabled(false)
-    setActiveSubtitleSlug(null)
+    if (userChoseVariantRef.current) return
+    if (resolvedVariantForRef.current === video.documentId) return
+    resolvedVariantForRef.current = video.documentId
     const options = video.variants.map((v) => ({
       slug: v.slug,
       bcp47: v.languageBcp47,
     }))
     const best = resolveDefaultSlug(options, video.primaryLanguageBcp47)
     const idx = best ? video.variants.findIndex((v) => v.slug === best) : -1
-    setActiveVariantIndex(idx >= 0 ? idx : 0)
-  }, [video?.documentId])
+    setActiveVariantIndexState(idx >= 0 ? idx : 0)
+  }, [video?.documentId, video?.variants.length, video?.primaryLanguageBcp47])
 
-  // Pre-select the best subtitle for the active variant (subtitles stay disabled
-  // until the user turns them on).
+  // Pre-select the best subtitle for the active variant once (subtitles stay
+  // disabled until the user turns them on), unless the user already chose.
   useEffect(() => {
     if (!activeVariant || activeVariant.subtitles.length === 0) return
+    if (userChoseSubtitleRef.current) return
+    if (resolvedSubtitleForRef.current === activeVariant.documentId) return
+    resolvedSubtitleForRef.current = activeVariant.documentId
     const options = activeVariant.subtitles.map((s) => ({
       slug: s.languageSlug,
       bcp47: s.languageBcp47,
@@ -88,7 +130,7 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
       options,
       video?.primaryLanguageBcp47 ?? null,
     )
-    if (best) setActiveSubtitleSlug(best)
+    if (best) setActiveSubtitleSlugState(best)
   }, [activeVariant?.documentId])
 
   const value = useMemo<WatchSessionContextValue>(
@@ -108,8 +150,11 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     [
       video,
       activeVariantIndex,
+      setActiveVariantIndex,
       subtitleEnabled,
+      setSubtitleEnabled,
       activeSubtitleSlug,
+      setActiveSubtitleSlug,
       activeVariant,
       snackbarMessage,
     ],

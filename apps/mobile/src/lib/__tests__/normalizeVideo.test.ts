@@ -471,3 +471,34 @@ describe("normalizeVideo", () => {
     expect(result.siblings[0].slug).toBe("from-first-parent")
   })
 })
+
+describe("normalizeVideo — partial data (returnPartialData)", () => {
+  const partial = (o: Record<string, unknown>) =>
+    o as unknown as Parameters<typeof normalizeVideo>[0]
+
+  it("returns null for null / undefined input", () => {
+    expect(normalizeVideo(null)).toBeNull()
+    expect(normalizeVideo(undefined)).toBeNull()
+  })
+
+  it("returns null when the partial object has no documentId (no identity yet)", () => {
+    expect(normalizeVideo(partial({ slug: "lonely" }))).toBeNull()
+    expect(normalizeVideo(makeRawVideo({ documentId: "" }) as never)).toBeNull()
+  })
+
+  it("produces a valid record with empty arrays when relations are absent", () => {
+    const result = normalizeVideo(
+      partial({ documentId: "vid-9", slug: "lonely", label: "SEGMENT" }),
+    )!
+    expect(result).not.toBeNull()
+    expect(result.documentId).toBe("vid-9")
+    expect(result.slug).toBe("lonely")
+    expect(result.variants).toEqual([])
+    expect(result.siblings).toEqual([])
+    expect(result.studyQuestions).toEqual([])
+    expect(result.bibleCitations).toEqual([])
+    expect(result.streamingUrl).toBeNull()
+    expect(result.posterUrl).toBeNull()
+    expect(result.title).toBeNull()
+  })
+})
