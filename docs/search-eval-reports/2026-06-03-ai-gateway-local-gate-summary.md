@@ -55,19 +55,19 @@ storage fallback and supplying the local Core-ID mapping made partial progress,
 but were interrupted before a complete JSON report could be written. The partial
 local database state after those runs was:
 
-| Table | Total rows | Embedded rows | AI Gateway rows | Legacy or other rows |
-| --- | ---: | ---: | ---: | ---: |
-| `video_scene_locale` | 457797 | 457797 | 219 | 457578 |
-| `video_transcript` | 0 | 0 | 0 | 0 |
-| `experience_locale` | 1 | 1 | 1 | 0 |
+| Table                | Total rows | Embedded rows | AI Gateway rows | Legacy or other rows |
+| -------------------- | ---------: | ------------: | --------------: | -------------------: |
+| `video_scene_locale` |     457797 |        457797 |             219 |               457578 |
+| `video_transcript`   |          0 |             0 |               0 |                    0 |
+| `experience_locale`  |          1 |             1 |               1 |                    0 |
 
 Scene rows rewritten by locale:
 
 | Locale | Total scene rows | AI Gateway rows |
-| --- | ---: | ---: |
-| `en` | 3434 | 115 |
-| `es` | 1348 | 92 |
-| `pt` | 1220 | 12 |
+| ------ | ---------------: | --------------: |
+| `en`   |             3434 |             115 |
+| `es`   |             1348 |              92 |
+| `pt`   |             1220 |              12 |
 
 ## 2026-06-03 Local Rerun
 
@@ -82,14 +82,14 @@ and reran the content paths against the AI Gateway provider:
 The full local Core sync was rerun first. The coverage audit passed and the
 local catalog ended at:
 
-| Core sync entity | Local count |
-| --- | ---: |
-| Videos | 1099 |
-| Video locales | 22830 |
-| Video editions | 1533 |
-| Video dubs | 210315 |
-| Video dub downloads | 1366220 |
-| Mux videos | 174469 |
+| Core sync entity    | Local count |
+| ------------------- | ----------: |
+| Videos              |        1099 |
+| Video locales       |       22830 |
+| Video editions      |        1533 |
+| Video dubs          |      210315 |
+| Video dub downloads |     1366220 |
+| Mux videos          |      174469 |
 
 The local Core-ID mapping artifact was also verified before embedding reruns:
 
@@ -107,10 +107,10 @@ storage credentials, so the mapping was verified but not refreshed from CMS.
 
 The one-target smoke reruns both succeeded end to end:
 
-| Pipeline | Report | Targets | Succeeded | Failed | Embeddings |
-| --- | --- | ---: | ---: | ---: | ---: |
-| Scene | `docs/search-eval-reports/2026-06-03-local-scene-smoke-darkroom01-en.json` | 1 | 1 | 0 | 6 scene vectors |
-| Transcript | `docs/search-eval-reports/2026-06-03-local-transcript-smoke-darkroom01-en.json` | 1 | 1 | 0 | 4 transcript chunks |
+| Pipeline   | Report                                                                          | Targets | Succeeded | Failed |          Embeddings |
+| ---------- | ------------------------------------------------------------------------------- | ------: | --------: | -----: | ------------------: |
+| Scene      | `docs/search-eval-reports/2026-06-03-local-scene-smoke-darkroom01-en.json`      |       1 |         1 |      0 |     6 scene vectors |
+| Transcript | `docs/search-eval-reports/2026-06-03-local-transcript-smoke-darkroom01-en.json` |       1 |         1 |      0 | 4 transcript chunks |
 
 ### Bounded English Batch Reports
 
@@ -118,25 +118,25 @@ The first bounded English batch also succeeded. The batch used 20 Core IDs,
 which expanded to 28 `(video, edition, en)` workflow targets because several
 videos have multiple editions.
 
-| Pipeline | Report | Targets | Succeeded | Skipped | Failed | Embeddings |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Scene | `docs/search-eval-reports/2026-06-03-local-scene-batch-en-001.json` | 28 | 28 | 0 | 0 | 172 scene vectors |
-| Transcript | `docs/search-eval-reports/2026-06-03-local-transcript-batch-en-001.json` | 28 | 28 | 0 | 0 | 88 transcript chunks |
+| Pipeline   | Report                                                                   | Targets | Succeeded | Skipped | Failed |           Embeddings |
+| ---------- | ------------------------------------------------------------------------ | ------: | --------: | ------: | -----: | -------------------: |
+| Scene      | `docs/search-eval-reports/2026-06-03-local-scene-batch-en-001.json`      |      28 |        28 |       0 |      0 |    172 scene vectors |
+| Transcript | `docs/search-eval-reports/2026-06-03-local-transcript-batch-en-001.json` |      28 |        28 |       0 |      0 | 88 transcript chunks |
 
 Post-batch local database state:
 
-| Table | Total rows | Embedded rows | AI Gateway rows | Legacy or other rows |
-| --- | ---: | ---: | ---: | ---: |
-| `video_scene_locale` | 457797 | 457797 | 391 | 457406 |
-| `video_transcript` | 29 | 29 | 29 | 0 |
-| `video_transcript_chunk` | 92 | 92 | n/a | n/a |
-| `experience_locale` | 1 | 1 | 1 | 0 |
+| Table                    | Total rows | Embedded rows | AI Gateway rows | Legacy or other rows |
+| ------------------------ | ---------: | ------------: | --------------: | -------------------: |
+| `video_scene_locale`     |     457797 |        457797 |             391 |               457406 |
+| `video_transcript`       |         29 |            29 |              29 |                    0 |
+| `video_transcript_chunk` |         92 |            92 |             n/a |                  n/a |
+| `experience_locale`      |          1 |             1 |               1 |                    0 |
 
 English scene coverage after the rerun:
 
 | Locale | Total scene rows | AI Gateway rows |
-| --- | ---: | ---: |
-| `en` | 3434 | 287 |
+| ------ | ---------------: | --------------: |
+| `en`   |             3434 |             287 |
 
 ### English Post-Batch Eval
 
@@ -169,28 +169,28 @@ local language Core IDs `139485` and `143871`.
 The multilingual batches used small local workflow target sets at concurrency
 `1` for both scene and transcript embedding.
 
-| Locale | Report | Scene targets | Scene succeeded | Transcript targets | Transcript succeeded | Notes |
-| --- | --- | ---: | ---: | ---: | ---: | --- |
-| `es` | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-es-001.json` | 15 | 15 | 15 | 14 | One full-film transcript timed out with `network_error`; scenes succeeded. |
-| `es` | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-es-002.json` | 20 | 20 | 20 | 20 | Clean compact top-up batch. |
-| `fr` | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-fr-001.json` | 13 | 13 | 13 | 13 | Clean available French batch. |
-| `pt` | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-pt-001.json` | 3 | 3 | 3 | 3 | Initial small Portuguese batch. |
-| `pt` | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-pt-002.json` | 20 | 20 | 20 | 20 | Clean compact top-up batch. |
-| `de` | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-de-001.json` | 20 | 20 | 20 | 20 | Clean compact batch. |
-| `ru` | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-ru-001.json` | 20 | 20 | 20 | 20 | Clean compact batch. |
-| `ar` | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-ar-001.json` | 20 | 20 | 20 | 20 | Clean compact batch. |
+| Locale | Report                                                                     | Scene targets | Scene succeeded | Transcript targets | Transcript succeeded | Notes                                                                      |
+| ------ | -------------------------------------------------------------------------- | ------------: | --------------: | -----------------: | -------------------: | -------------------------------------------------------------------------- |
+| `es`   | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-es-001.json` |            15 |              15 |                 15 |                   14 | One full-film transcript timed out with `network_error`; scenes succeeded. |
+| `es`   | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-es-002.json` |            20 |              20 |                 20 |                   20 | Clean compact top-up batch.                                                |
+| `fr`   | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-fr-001.json` |            13 |              13 |                 13 |                   13 | Clean available French batch.                                              |
+| `pt`   | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-pt-001.json` |             3 |               3 |                  3 |                    3 | Initial small Portuguese batch.                                            |
+| `pt`   | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-pt-002.json` |            20 |              20 |                 20 |                   20 | Clean compact top-up batch.                                                |
+| `de`   | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-de-001.json` |            20 |              20 |                 20 |                   20 | Clean compact batch.                                                       |
+| `ru`   | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-ru-001.json` |            20 |              20 |                 20 |                   20 | Clean compact batch.                                                       |
+| `ar`   | `docs/search-eval-reports/2026-06-03-local-multilingual-batch-ar-001.json` |            20 |              20 |                 20 |                   20 | Clean compact batch.                                                       |
 
 Post-batch local database state for the evaluated languages:
 
 | Locale | Scene rows | AI Gateway scene rows | Transcript rows | AI Gateway transcript rows | Transcript chunks |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| `ar` | 1298 | 20 | 20 | 20 | 37 |
-| `de` | 1137 | 20 | 20 | 20 | 37 |
-| `en` | 3434 | 287 | 29 | 29 | 92 |
-| `es` | 1356 | 184 | 35 | 35 | 106 |
-| `fr` | 1679 | 84 | 13 | 13 | 52 |
-| `pt` | 1224 | 49 | 23 | 23 | 45 |
-| `ru` | 1277 | 20 | 20 | 20 | 39 |
+| ------ | ---------: | --------------------: | --------------: | -------------------------: | ----------------: |
+| `ar`   |       1298 |                    20 |              20 |                         20 |                37 |
+| `de`   |       1137 |                    20 |              20 |                         20 |                37 |
+| `en`   |       3434 |                   287 |              29 |                         29 |                92 |
+| `es`   |       1356 |                   184 |              35 |                         35 |               106 |
+| `fr`   |       1679 |                    84 |              13 |                         13 |                52 |
+| `pt`   |       1224 |                    49 |              23 |                         23 |                45 |
+| `ru`   |       1277 |                    20 |              20 |                         20 |                39 |
 
 All rows in the table above report `1536` final embedding dimensions.
 

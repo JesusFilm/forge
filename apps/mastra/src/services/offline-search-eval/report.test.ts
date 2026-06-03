@@ -391,7 +391,8 @@ describe("offline search eval reports", () => {
           caseId: "seed-new-believer",
           acceptedOutcome: "current-better",
           reviewer: "search-quality-review",
-          reason: "Current results include the exact course and related follow-up resources.",
+          reason:
+            "Current results include the exact course and related follow-up resources.",
         },
       ],
     })

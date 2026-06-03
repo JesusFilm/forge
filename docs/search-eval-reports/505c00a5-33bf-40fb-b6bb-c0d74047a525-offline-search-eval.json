@@ -62,9 +62,7 @@
     },
     "passFail": {
       "state": "failed",
-      "reasons": [
-        "judge disagreements 1 exceeded max 0"
-      ]
+      "reasons": ["judge disagreements 1 exceeded max 0"]
     },
     "resume": {
       "reportId": "505c00a5-33bf-40fb-b6bb-c0d74047a525-offline-search-eval",
@@ -547,10 +545,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "clearly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["clearly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -1123,10 +1118,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "clearly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["clearly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -1699,10 +1691,7 @@
             "childCount": 25
           }
         ],
-        "verdicts": [
-          "slightly-B-better",
-          "slightly-A-better"
-        ],
+        "verdicts": ["slightly-B-better", "slightly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -1994,10 +1983,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "slightly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["slightly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -2289,10 +2275,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "slightly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["slightly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -2599,10 +2582,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "clearly-A-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["clearly-A-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -2894,10 +2874,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "clearly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["clearly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -3189,10 +3166,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "clearly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["clearly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       }
     ],

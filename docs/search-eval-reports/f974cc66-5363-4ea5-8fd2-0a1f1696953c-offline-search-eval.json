@@ -42,10 +42,7 @@
         "reason": "Current-results-include-the-exact-New-Believer-Course-plus-related-beginner-follow-up-resources-with-no-judged-losses-or-search-failures.",
         "reviewedAt": "2026-06-03T04:59:18.656Z",
         "rawOutcomeKind": "judge-disagreement",
-        "verdicts": [
-          "clearly-A-better",
-          "clearly-A-better"
-        ]
+        "verdicts": ["clearly-A-better", "clearly-A-better"]
       }
     ]
   },
@@ -79,9 +76,7 @@
     },
     "passFail": {
       "state": "failed",
-      "reasons": [
-        "judge disagreements 1 exceeded max 0"
-      ]
+      "reasons": ["judge disagreements 1 exceeded max 0"]
     },
     "resume": {
       "reportId": "f974cc66-5363-4ea5-8fd2-0a1f1696953c-offline-search-eval",
@@ -564,10 +559,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "clearly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["clearly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -1140,10 +1132,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "clearly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["clearly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -1716,10 +1705,7 @@
             "childCount": 25
           }
         ],
-        "verdicts": [
-          "slightly-B-better",
-          "slightly-A-better"
-        ],
+        "verdicts": ["slightly-B-better", "slightly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -2011,10 +1997,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "slightly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["slightly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -2306,10 +2289,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "slightly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["slightly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -2616,10 +2596,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "clearly-A-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["clearly-A-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -2911,10 +2888,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "clearly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["clearly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -3206,10 +3180,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "clearly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["clearly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       }
     ],

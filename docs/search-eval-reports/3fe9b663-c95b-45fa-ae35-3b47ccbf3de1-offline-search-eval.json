@@ -551,10 +551,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "clearly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["clearly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -1127,10 +1124,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "clearly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["clearly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -1703,10 +1697,7 @@
             "childCount": 25
           }
         ],
-        "verdicts": [
-          "slightly-B-better",
-          "slightly-A-better"
-        ],
+        "verdicts": ["slightly-B-better", "slightly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -1998,10 +1989,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "slightly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["slightly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -2293,10 +2281,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "slightly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["slightly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -2603,10 +2588,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "clearly-A-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["clearly-A-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -2898,10 +2880,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "clearly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["clearly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -3193,10 +3172,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "clearly-B-better",
-          "clearly-A-better"
-        ],
+        "verdicts": ["clearly-B-better", "clearly-A-better"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -3207,10 +3183,7 @@
         "source": "seed",
         "baselineResults": [],
         "currentResults": [],
-        "verdicts": [
-          "tie",
-          "tie"
-        ],
+        "verdicts": ["tie", "tie"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -3221,10 +3194,7 @@
         "source": "seed",
         "baselineResults": [],
         "currentResults": [],
-        "verdicts": [
-          "both-irrelevant",
-          "both-irrelevant"
-        ],
+        "verdicts": ["both-irrelevant", "both-irrelevant"],
         "rationale": "[redacted-judge-rationale]"
       }
     ],

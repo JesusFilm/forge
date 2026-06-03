@@ -6,9 +6,7 @@
     "scene": {
       "mappingGeneratedAt": "2026-04-27T21:40:47.352Z",
       "totalTargets": 20,
-      "localeFilter": [
-        "de"
-      ],
+      "localeFilter": ["de"],
       "outcomes": [
         {
           "status": "succeeded",
@@ -301,9 +299,7 @@
     "transcript": {
       "mappingGeneratedAt": "2026-04-27T21:40:47.352Z",
       "totalTargets": 20,
-      "languageFilter": [
-        "de"
-      ],
+      "languageFilter": ["de"],
       "outcomes": [
         {
           "status": "succeeded",

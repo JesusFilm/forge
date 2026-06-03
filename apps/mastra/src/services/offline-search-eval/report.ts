@@ -325,7 +325,9 @@ function materializeHumanAdjudications(
     }
     seen.add(caseId)
 
-    const matches = report.outcomes.filter((outcome) => outcome.caseId === caseId)
+    const matches = report.outcomes.filter(
+      (outcome) => outcome.caseId === caseId,
+    )
     if (matches.length !== 1) {
       throw new Error(
         `content search-eval gate adjudication must match exactly one outcome: ${caseId}`,
@@ -375,8 +377,7 @@ function effectiveGateMetrics(
     report.totals.judgeFailures
 
   return {
-    netWinRate:
-      comparableQueries > 0 ? (wins - losses) / comparableQueries : 0,
+    netWinRate: comparableQueries > 0 ? (wins - losses) / comparableQueries : 0,
     comparableQueries,
     wins,
     losses,

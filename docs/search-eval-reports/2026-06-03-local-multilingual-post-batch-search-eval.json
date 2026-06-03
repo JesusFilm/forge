@@ -746,10 +746,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "tie",
-          "tie"
-        ],
+        "verdicts": ["tie", "tie"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -1322,10 +1319,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "tie",
-          "tie"
-        ],
+        "verdicts": ["tie", "tie"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -1898,10 +1892,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "tie",
-          "tie"
-        ],
+        "verdicts": ["tie", "tie"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -2474,10 +2465,7 @@
             "childCount": 25
           }
         ],
-        "verdicts": [
-          "tie",
-          "tie"
-        ],
+        "verdicts": ["tie", "tie"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -3050,10 +3038,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "tie",
-          "tie"
-        ],
+        "verdicts": ["tie", "tie"],
         "rationale": "[redacted-judge-rationale]"
       },
       {
@@ -3626,10 +3611,7 @@
             "childCount": 0
           }
         ],
-        "verdicts": [
-          "tie",
-          "tie"
-        ],
+        "verdicts": ["tie", "tie"],
         "rationale": "[redacted-judge-rationale]"
       }
     ],

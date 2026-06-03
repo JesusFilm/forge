@@ -229,15 +229,15 @@ embeddings stay separate.
 
 **Configuration contract:**
 
-| Env var | Purpose | Default / rule |
-| --- | --- | --- |
+| Env var                                   | Purpose                                    | Default / rule                                                                     |
+| ----------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------- |
 | `MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE` | Selects content embedding provider posture | `gateway` in production; `legacy` outside production unless gateway key is present |
-| `AI_GATEWAY_EMBEDDINGS_API_KEY` | Mastra-owned gateway embedding secret | Required when mode resolves to `gateway`; never logged |
-| `AI_GATEWAY_EMBEDDINGS_BASE_URL` | OpenAI-compatible gateway base URL | `https://ai-gateway.jesusfilm.org/v1` |
-| `AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS` | Production host allowlist | `ai-gateway.jesusfilm.org`; production rejects non-allowlisted hosts |
-| `AI_GATEWAY_EMBEDDINGS_USER_AGENT` | Non-default edge user agent | Stable Forge/Mastra user agent string |
-| `AI_GATEWAY_EMBEDDINGS_MODEL` | Request model sent to the gateway | `embeddings` |
-| `AI_GATEWAY_EMBEDDINGS_PROVIDER` | Auditable provider label | `jesus-film-ai-gateway` |
+| `AI_GATEWAY_EMBEDDINGS_API_KEY`           | Mastra-owned gateway embedding secret      | Required when mode resolves to `gateway`; never logged                             |
+| `AI_GATEWAY_EMBEDDINGS_BASE_URL`          | OpenAI-compatible gateway base URL         | `https://ai-gateway.jesusfilm.org/v1`                                              |
+| `AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS`     | Production host allowlist                  | `ai-gateway.jesusfilm.org`; production rejects non-allowlisted hosts               |
+| `AI_GATEWAY_EMBEDDINGS_USER_AGENT`        | Non-default edge user agent                | Stable Forge/Mastra user agent string                                              |
+| `AI_GATEWAY_EMBEDDINGS_MODEL`             | Request model sent to the gateway          | `embeddings`                                                                       |
+| `AI_GATEWAY_EMBEDDINGS_PROVIDER`          | Auditable provider label                   | `jesus-film-ai-gateway`                                                            |
 
 **Patterns to follow:** Existing `getTranscriptEmbeddingProviderConfig`,
 `getSceneEmbeddingProviderConfig`, and `getExperienceEmbeddingProviderConfig`

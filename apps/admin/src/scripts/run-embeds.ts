@@ -479,8 +479,7 @@ export function extractContentBackfillGateFromReport(
   const judgeFailures = finiteNumberField(g, "judgeFailures")
   const judgeDisagreements = finiteNumberField(g, "judgeDisagreements")
   const rawJudgeDisagreements =
-    optionalFiniteNumberField(g, "rawJudgeDisagreements") ??
-    judgeDisagreements
+    optionalFiniteNumberField(g, "rawJudgeDisagreements") ?? judgeDisagreements
   const adjudicatedJudgeDisagreements =
     optionalFiniteNumberField(g, "adjudicatedJudgeDisagreements") ?? 0
   const adjudicatedCurrentWins = validateHumanJudgeDisagreementAdjudications({

@@ -6,9 +6,7 @@
     "scene": {
       "mappingGeneratedAt": "2026-04-27T21:40:47.352Z",
       "totalTargets": 1,
-      "localeFilter": [
-        "en"
-      ],
+      "localeFilter": ["en"],
       "outcomes": [
         {
           "status": "succeeded",
