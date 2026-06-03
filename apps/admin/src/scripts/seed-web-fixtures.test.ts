@@ -4,16 +4,18 @@ import {
   assertNotProdUrl,
   loadFixtures,
   seedWebFixtures,
+  UnknownLanguageCoreIdError,
   type WebFixtures,
 } from "./seed-web-fixtures"
 
 // ---------------------------------------------------------------------------
 // In-memory Prisma fake. Models the unique-key behavior the seed relies
 // on (`coreId` UNIQUE on Language/Country/Keyword/Video;
-// `(videoId, locale)` UNIQUE on VideoLocale; `(parentId, childId)`
-// UNIQUE on VideoRelation; `(experienceId, locale)` UNIQUE on
-// ExperienceLocale). Insufficient for full Prisma semantics but
-// exercises the seed's idempotence + coverage contracts.
+// `(videoId, languageId)` UNIQUE on VideoLocale — the post-0026/0027
+// Language-FK identity; `(parentId, childId)` UNIQUE on VideoRelation;
+// `(experienceId, locale)` UNIQUE on ExperienceLocale). Insufficient for
+// full Prisma semantics but exercises the seed's idempotence + coverage
+// contracts.
 // ---------------------------------------------------------------------------
 
 type Row = Record<string, unknown>
@@ -92,9 +94,9 @@ function makePrisma() {
   const video = makeKeyedTable<"coreId">((r) =>
     JSON.stringify({ coreId: r.coreId }),
   )
-  const videoLocale = makeKeyedTable<"videoId_locale">((r) =>
+  const videoLocale = makeKeyedTable<"videoId_languageId">((r) =>
     JSON.stringify({
-      videoId_locale: { videoId: r.videoId, locale: r.locale },
+      videoId_languageId: { videoId: r.videoId, languageId: r.languageId },
     }),
   )
   const videoRelation = makeKeyedTable<"parentId_childId">((r) =>
@@ -296,6 +298,60 @@ describe("seedWebFixtures", () => {
       experienceLocales: prisma.experienceLocale.store.size,
     }
     expect(second).toEqual(first)
+  })
+
+  // Contract assertions (mocked-shape-vs-real-contract remedy): the fake's
+  // storage key proves the upsert SHAPE; these prove the stored rows carry
+  // the derived columns the real read path filters on (`videoLocalesFilter`
+  // orders/filters by `languageSlug`).
+  it("stores videoLocale rows with a resolved languageId + derived locale/languageSlug/languageCoreId", async () => {
+    const prisma = makePrisma()
+    await seedWebFixtures(prisma, FIXTURES)
+
+    const languagesByCoreId = new Map(
+      [...prisma.language.store.values()].map((l) => [l.coreId as string, l]),
+    )
+    const rows = [...prisma.videoLocale.store.values()]
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      expect(row.languageId).toBeTruthy()
+      expect(row.languageSlug).toBeTruthy()
+      expect(row.languageCoreId).toBeTruthy()
+      const lang = languagesByCoreId.get(row.languageCoreId as string)
+      expect(lang).toBeDefined()
+      expect(row.languageId).toBe(lang?.id)
+      expect(row.locale).toBe(lang?.bcp47)
+      expect(row.languageSlug).toBe(lang?.slug)
+    }
+  })
+
+  it("throws UnknownLanguageCoreIdError when a video locale references an unknown languageCoreId", async () => {
+    const prisma = makePrisma()
+    const fixtures: WebFixtures = {
+      ...FIXTURES,
+      videos: [
+        {
+          coreId: "fixt-bad-lang",
+          slug: "fixt-bad-lang",
+          label: "SHORT_FILM",
+          publishedAt: "2026-01-06T00:00:00.000Z",
+          locales: [
+            {
+              languageCoreId: "not-a-real-core-id",
+              title: "Bad Language",
+              description:
+                "References a languageCoreId outside the fixture set.",
+            },
+          ],
+        },
+      ],
+    }
+    await expect(seedWebFixtures(prisma, fixtures)).rejects.toThrow(
+      UnknownLanguageCoreIdError,
+    )
+    await expect(seedWebFixtures(prisma, fixtures)).rejects.toThrow(
+      /not-a-real-core-id/,
+    )
   })
 
   it("seeds at least one Video reachable via slug (videoBySlug coverage)", async () => {
