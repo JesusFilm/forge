@@ -611,8 +611,9 @@ describe("dashboard UI routes", () => {
     expect(html).toContain('name="sort"')
     expect(html).toContain('value="mux"')
     expect(html).toContain("Filtered by &quot;mux&quot;")
-    expect(html).toContain("English")
-    expect(html).toContain("Spanish")
+    expect(html).toContain("All languages")
+    expect(html).toContain('role="combobox"')
+    expect(html).toContain('aria-label="Filter by dubbed language"')
     expect(html).toContain(uiMessages.pages.videos.filters.ready)
     expect(html).toContain(uiMessages.pages.videos.sort.options.recent)
     expect(html).toContain(uiMessages.pages.videos.sort.options.oldest)
@@ -712,7 +713,8 @@ describe("dashboard UI routes", () => {
       },
     )
     expect(html).toContain('value="features" selected=""')
-    expect(html).toContain('value="english" selected=""')
+    expect(html).toContain('type="hidden" name="language" value="english"')
+    expect(html).toContain("English")
     expect(html).toContain('value="created" selected=""')
     expect(html).toContain(
       'href="/dashboard/videos?type=features&amp;language=english&amp;sort=created"',

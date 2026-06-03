@@ -404,6 +404,8 @@ export const adminMessages = {
         filters: {
           categoryLabel: "Filter by video type",
           languageLabel: "Filter by dubbed language",
+          languageSearchPlaceholder: "Filter languages...",
+          languageNoResults: "No matching languages",
           allLanguages: "All languages",
           loading: "Thinking...",
           ready: "Video filters ready",
