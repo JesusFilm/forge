@@ -64,7 +64,9 @@ describe("search trace retention service", () => {
         retentionExpiresAt: {
           lte: now,
         },
-        promotionStatus: "GENERATED",
+        promotionStatus: {
+          not: "PROMOTED",
+        },
       },
     })
   })

@@ -39,6 +39,7 @@ describe("createLoaders", () => {
       "experienceLocaleById",
       "languageById",
       "videoById",
+      "videoPrimaryDubDurationById",
     ])
   })
 
@@ -101,5 +102,110 @@ describe("createLoaders", () => {
       loaders.experienceById.load("x1"), // duplicate; batched + cached
     ])
     expect(calls).toBe(1)
+  })
+})
+
+describe("videoPrimaryDubDurationById", () => {
+  // Stub video.findMany returning the loader's exact selection shape:
+  // { id, primaryLanguageId, dubs: [{ languageId, duration }] }. The
+  // `dubs` here stand in for the already-WHERE-filtered playable set
+  // (published + hls + duration>0), pre-sorted by duration desc as the
+  // loader's query asks Postgres to do.
+  type VideoStub = {
+    id: string
+    primaryLanguageId: string | null
+    dubs: Array<{ languageId: string | null; duration: number | null }>
+  }
+  function makePrisma(rows: VideoStub[]) {
+    return {
+      experience: { findMany: async () => [] },
+      experienceLocale: { findMany: async () => [] },
+      language: { findMany: async () => [] },
+      video: {
+        findMany: async (args: { where: { id: { in: string[] } } }) => {
+          const wanted = new Set(args.where.id.in)
+          return rows.filter((r) => wanted.has(r.id))
+        },
+      },
+    } as unknown as Parameters<typeof createLoaders>[0]
+  }
+
+  it("prefers the primary-language dub over the longest dub", async () => {
+    const loaders = createLoaders(
+      makePrisma([
+        {
+          id: "v1",
+          primaryLanguageId: "lang-en",
+          // Longest is the non-primary 'es' dub; primary 'en' must still win.
+          dubs: [
+            { languageId: "lang-es", duration: 9000 },
+            { languageId: "lang-en", duration: 7674 },
+          ],
+        },
+      ]),
+    )
+    expect(await loaders.videoPrimaryDubDurationById.load("v1")).toBe(7674)
+  })
+
+  it("falls back to the longest (first) dub when the primary language has no playable dub", async () => {
+    const loaders = createLoaders(
+      makePrisma([
+        {
+          id: "v1",
+          primaryLanguageId: "lang-en",
+          dubs: [
+            { languageId: "lang-es", duration: 9000 },
+            { languageId: "lang-fr", duration: 8000 },
+          ],
+        },
+      ]),
+    )
+    expect(await loaders.videoPrimaryDubDurationById.load("v1")).toBe(9000)
+  })
+
+  it("returns null when the video has no playable dub", async () => {
+    const loaders = createLoaders(
+      makePrisma([{ id: "v1", primaryLanguageId: "lang-en", dubs: [] }]),
+    )
+    expect(await loaders.videoPrimaryDubDurationById.load("v1")).toBeNull()
+  })
+
+  it("returns null for a video id with no matching row", async () => {
+    const loaders = createLoaders(makePrisma([]))
+    expect(await loaders.videoPrimaryDubDurationById.load("missing")).toBeNull()
+  })
+
+  it("batches multiple ids into one query and preserves input order", async () => {
+    let calls = 0
+    const base = makePrisma([
+      { id: "v1", primaryLanguageId: "lang-en", dubs: [] },
+      {
+        id: "v2",
+        primaryLanguageId: null,
+        dubs: [{ languageId: null, duration: 120 }],
+      },
+    ])
+    const prisma = {
+      ...base,
+      video: {
+        findMany: async (args: { where: { id: { in: string[] } } }) => {
+          calls++
+          return (
+            base as unknown as {
+              video: { findMany: (a: unknown) => Promise<unknown> }
+            }
+          ).video.findMany(args)
+        },
+      },
+    } as unknown as Parameters<typeof createLoaders>[0]
+
+    const loaders = createLoaders(prisma)
+    const result = await loaders.videoPrimaryDubDurationById.loadMany([
+      "v2",
+      "missing",
+      "v1",
+    ])
+    expect(calls).toBe(1)
+    expect(result).toEqual([120, null, null])
   })
 })

@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { act } from "react"
+import { act, useEffect } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -70,7 +70,36 @@ function dispatchLanguageSwitcher(detail: WatchHeaderLanguageSwitcherDetail) {
   )
 }
 
+function PlaybackStatePublisher({
+  detail,
+}: {
+  detail: WatchPlayerPlaybackStateDetail
+}) {
+  useEffect(() => {
+    dispatchPlaybackState(detail)
+  }, [detail])
+
+  return <main>Page</main>
+}
+
 describe("FloatingSearchProvider — header backdrop", () => {
+  it("catches the initial watch preview state published by a child on mount", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <PlaybackStatePublisher
+            detail={{ playing: true, muted: true, preview: true }}
+          />
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const backdrop = document.querySelector(
+      '[data-testid="floating-header-backdrop"]',
+    )
+    expect(backdrop?.className).toContain("opacity-100")
+  })
+
   it("renders a fixed blurred gradient behind the floating header", () => {
     act(() => {
       root.render(
@@ -310,6 +339,9 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(logo?.querySelector("img")?.getAttribute("class")).toContain(
       "max-w-[42px]",
     )
+    expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
+      "/watch/images/jesusfilm-sign.svg",
+    )
 
     act(() => {
       languageButton?.click()
@@ -376,6 +408,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const mobileLogo = document.querySelector(
       '[data-testid="search-overlay-top-bar"] a[aria-label="JesusFilm home"]',
     )
+    const mobileLogoImage = mobileLogo?.querySelector("img")
     const bottomBackdrop = document.querySelector(
       '[data-testid="search-overlay-bottom-backdrop"]',
     )
@@ -390,6 +423,9 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(topBar?.className).toContain("sm:pt-12")
     expect(mobileLogo?.className).toContain("mb-6")
     expect(mobileLogo?.className).not.toContain("absolute")
+    expect(mobileLogoImage?.getAttribute("src")).toBe(
+      "/watch/images/jesusfilm-sign.svg",
+    )
     expect(bottomBackdrop).not.toBeNull()
     expect(bottomBackdrop?.className).toContain("absolute")
     expect(bottomBackdrop?.className).toContain("bottom-[-14rem]")

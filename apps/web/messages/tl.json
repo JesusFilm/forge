@@ -1,0 +1,222 @@
+{
+  "ExperienceError": {
+    "empty": "Walang available na content.",
+    "failedToLoad": "Hindi na-load ang page: {message}",
+    "unexpected": "May hindi inaasahang error.",
+    "notConfigured": "Hindi naka-configure ang content service.",
+    "noContent": "Walang available na content.",
+    "homepageMisconfigured": "Mali ang configuration ng Watch homepage.",
+    "defaultTemplateMisconfigured": "Mali ang configuration ng default na Watch template.",
+    "authFailed": "Hindi makakonekta sa content service. Makipag-ugnayan sa support kung magpapatuloy ito."
+  },
+  "VideosPage": {
+    "title": "Lahat ng video",
+    "placeholder": "Malapit nang maging available ang pag-browse sa catalog. Sa ngayon, gamitin ang paghahanap o URL na partikular sa paksa."
+  },
+  "BibleQuotes": {
+    "title": "Mga talata sa Bibliya",
+    "share": "Ibahagi",
+    "readMore": "Magbasa pa...",
+    "learnMore": "Matuto pa",
+    "freeResources": "Libreng materyales",
+    "promoHeading": "Gusto mo bang mas malalim na maunawaan ang Bibliya?",
+    "joinBibleStudy": "Sumali sa pag-aaral ng Bibliya",
+    "previousQuote": "Nakaraang talata sa Bibliya",
+    "nextQuote": "Susunod na talata sa Bibliya"
+  },
+  "DownloadButton": {
+    "checking": "Tinitingnan",
+    "download": "I-download",
+    "sessionError": "Hindi masuri ang iyong session. Subukan muli.",
+    "saveVideo": "I-save ang video"
+  },
+  "DownloadModal": {
+    "dialogTitle": "I-download ang video",
+    "eyebrow": "I-download ang video",
+    "posterAlt": "Poster ng video",
+    "noDownloads": "Walang download na available para sa video na ito.",
+    "fileSizeLabel": "Pumili ng laki ng file",
+    "termsAgreementPrefix": "Sumasang-ayon ako sa ",
+    "termsOfUse": "Mga Tuntunin ng Paggamit",
+    "termsAgreementSuffix": "",
+    "close": "Isara",
+    "download": "I-download",
+    "checking": "Tinitingnan",
+    "closeTermsOfUse": "Isara ang Mga Tuntunin ng Paggamit",
+    "cancel": "Kanselahin",
+    "accept": "Tanggapin",
+    "errorSessionExpired": "Nag-expire ang iyong session. Mag-sign in muli para mag-download.",
+    "errorSessionUnavailable": "Hindi masuri ang iyong session. Subukan muli.",
+    "errorUnavailableSource": "Hindi available ang download mula sa source na ito",
+    "tierHighest": "Pinakamataas",
+    "tierHigh": "Mataas",
+    "tierLow": "Mababa"
+  },
+  "HeroPlayerControls": {
+    "play": "I-play",
+    "pause": "I-pause",
+    "seek": "Hanapin",
+    "seekValue": "{current} ng {total}",
+    "volume": "Lakas ng tunog",
+    "volumeValue": "{percent} porsyento",
+    "mute": "I-mute",
+    "unmute": "I-unmute",
+    "changeAudioLanguage": "Palitan ang wika ng audio",
+    "enterFullscreen": "I-fullscreen",
+    "exitFullscreen": "Lumabas sa fullscreen"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Pumili ng wika",
+    "searchPlaceholder": "Maghanap ng mga wika…",
+    "languages": "Mga wika",
+    "noMatches": "Walang tugma"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Wika",
+    "dialogTitleWithSubtitles": "Wika at subtitle",
+    "languageHeading": "Wika",
+    "subtitlesHeading": "Mga subtitle",
+    "languageCount": "{count, plural, one {# wika} other {# wika}}",
+    "requestSent": "Naipadala ang request",
+    "translateWithAi": "Isalin gamit ang AI",
+    "noSubtitles": "Walang subtitle",
+    "toggleOn": "Naka-on",
+    "toggleOff": "Naka-off",
+    "close": "Isara",
+    "apply": "Ilapat"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {# EPISODE} other {# EPISODE}}",
+    "seriesLabel": "SERYE · {episodes}",
+    "changeAudioLanguage": "Palitan ang wika ng audio",
+    "share": "Ibahagi",
+    "languages": "Mga wika"
+  },
+  "WatchModal": {
+    "close": "Isara"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Kung makakapagtanong ka ng isang tanong sa gumawa ng video na ito, ano iyon?",
+    "fallbackBody": "Magsimula ng pribadong usapan sa taong handang makinig.",
+    "questionsShort": "Mga tanong",
+    "questions": "Mga kaugnay na tanong",
+    "askYours": "Itanong ang tanong mo",
+    "chatWithPerson": "Makipag-usap sa tao",
+    "askBibleQuestion": "Magtanong tungkol sa Bibliya"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Uri ng mensahe",
+    "fieldLabel": "Magtanong tungkol sa video na ito",
+    "send": "Ipadala ang tanong",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Magtanong tungkol sa Bibliya",
+        "description": "Agarang sagot mula sa Bibliya gamit ang AI search"
+      },
+      "prayerRequest": {
+        "label": "Humiling ng panalangin",
+        "description": "Ibahagi kung ano ang gusto mong ipagdasal"
+      },
+      "comment": {
+        "label": "Mag-iwan ng komento",
+        "description": "Ipadala ang iyong saloobin tungkol sa video na ito"
+      },
+      "personChat": {
+        "label": "Makipag-usap sa tao",
+        "description": "Makipag-usap sa isang tao ngayon"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Ibahagi ang video",
+    "heading": "Ibahagi ang video na ito",
+    "posterAlt": "Poster ng video",
+    "shareOnFacebook": "Ibahagi sa Facebook",
+    "shareOnFacebookUnavailable": "Ibahagi sa Facebook (hindi available sa build na ito)",
+    "shareOnX": "Ibahagi sa X",
+    "shareOnXUnavailable": "Ibahagi sa X (hindi available sa build na ito)",
+    "shareDisabledHint": "Kailangan ng published page para makapagbahagi — gagana ito kapag nasa production na ang video.",
+    "shareFormat": "Format ng pagbabahagi",
+    "shareLinkTab": "Link sa pagbabahagi",
+    "embedCodeTab": "Embed code",
+    "copyFailed": "Hindi awtomatikong makopya — piliin ang text sa ibaba at kopyahin nang manual.",
+    "copyLink": "Kopyahin ang link",
+    "copyCode": "Kopyahin ang code",
+    "copied": "Nakopya",
+    "close": "Isara"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transkripsyon",
+    "subheading": "I-tap ang anumang linya para tumalon sa sandaling iyon.",
+    "subtitleLanguage": "Wika ng subtitle",
+    "aiSuffix": " · artipisyal na intelihensiya",
+    "loading": "Nilo-load ang transcript…",
+    "unavailable": "Hindi available ang transcript para sa subtitle track na ito.",
+    "empty": "Walang nahanap na linya ng transcript."
+  },
+  "FloatingSearch": {
+    "placeholder": "Maghanap o mag-browse ng mga paksa…",
+    "openSearch": "Maghanap ng mga video",
+    "searchRegion": "Maghanap ng mga video",
+    "clearSearch": "I-clear ang paghahanap",
+    "changeAudioLanguage": "Palitan ang wika ng audio",
+    "home": "JesusFilm home"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Maghanap at mag-browse ng mga video",
+    "home": "JesusFilm home",
+    "placeholder": "Maghanap o mag-browse ng mga paksa…",
+    "inputLabel": "Maghanap ng video gamit ang keyword",
+    "searchFailed": "Hindi natuloy ang paghahanap. Subukan muli.",
+    "loadMoreFailed": "Hindi na-load ang karagdagang resulta.",
+    "searching": "Naghahanap...",
+    "connectionHint": "Pakisuri ang koneksyon at subukan muli.",
+    "retrySearch": "Ulitin ang paghahanap",
+    "retry": "Subukan muli",
+    "noResults": "Walang resulta para sa “{query}”",
+    "tryDifferentKeywords": "Subukan ang ibang keyword o mag-browse ng mga kategorya",
+    "loading": "Naglo-load...",
+    "loadMore": "Mag-load pa",
+    "categoryBibleStories": "Mga Kuwento sa Biblia",
+    "categoryParables": "Mga Talinghaga",
+    "categoryAnimated": "Animated",
+    "categoryStudy": "Pag-aaral",
+    "categoryFamily": "Pamilya",
+    "categoryChristmas": "Pasko"
+  },
+  "HeroPlayer": {
+    "playWithSound": "I-play na may tunog",
+    "tapToUnmute": "I-unmute"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Naglo-load ng content"
+  },
+  "VideoLabels": {
+    "video": "Video",
+    "segment": "Segmento",
+    "episode": "Episode",
+    "featureFilm": "Tampok na pelikula",
+    "shortFilm": "Maikling pelikula",
+    "series": "Serye",
+    "collection": "Koleksyon",
+    "trailer": "Trailer",
+    "behindTheScenes": "Sa likod ng mga eksena"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Klip {current} ng {total}",
+    "position": "{current} ng {total}",
+    "chapterCount": "{count, plural, one {# kabanata} other {# kabanata}}",
+    "clipAriaLabel": "{title} · klip {current} ng {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# kabanata} other {# kabanata}}",
+    "chapter": "Kabanata",
+    "noImage": "Walang larawan",
+    "playingNow": "Kasalukuyang pinapanood",
+    "previousChapter": "Nakaraang kabanata",
+    "nextChapter": "Susunod na kabanata"
+  },
+  "SearchResultCard": {
+    "experience": "Karanasan",
+    "episodeCount": "{count, plural, one {# episode} other {# episode}}",
+    "thumbnailAlt": "Thumbnail ng video"
+  }
+}

@@ -17,10 +17,14 @@ export const adminMessages = {
       operatorNotes: "Operator Notes",
       premiumStubLabel: "Premium stub wired for future data",
       fieldGuide: "FIELD_GUIDE",
-      searchPlaceholder: "Search or ⌘K",
-      searchPalettePrompt: "Search routes, tools, and editorial surfaces",
+      searchPlaceholder: "Open route palette",
+      searchPalettePrompt: "Navigate routes, tools, and editorial surfaces",
       navigate: "Navigate",
       quickActions: "Quick Actions",
+      readOnly: "Read-only",
+      openCommandPalette: "Open command palette",
+      closeCommandPalette: "Close command palette",
+      helpUnavailable: "Help is not available yet",
       context: "Context",
       paletteContext:
         "This palette is shared across the entire dashboard shell and uses the same route registry as the sidebar so future pages stay synchronized automatically.",
@@ -192,6 +196,7 @@ export const adminMessages = {
         title: "System Overview",
         description: "Real-time status of content delivery and sync pipelines.",
         action: "Run Manual Sync",
+        actionUnavailable: "Manual sync starts from Core Sync.",
         metrics: [
           {
             label: "Experiences",
@@ -345,7 +350,11 @@ export const adminMessages = {
         title: "Experiences",
         description:
           "Manage interactive spiritual journeys and storytelling sequences.",
-        actions: { filter: "Filter", primary: "New Experience" },
+        actions: {
+          filter: "Filter",
+          filterUnavailable: "Experience filters are not available yet.",
+          primary: "New Experience",
+        },
         modal: {
           title: "Create Experience",
           description:
@@ -373,16 +382,62 @@ export const adminMessages = {
         eyebrow: "Index / Videos",
         title: "Video Library",
         description:
-          "Review the media catalog, source of truth, and dub coverage in one dense table.",
+          "Review the catalog and dub coverage across {total} titles.",
         infoStrip: {
           items: ["INGESTION PIPELINE: ACTIVE", "MUX EDGE ONLINE"],
           trailing: "REGION: US-EAST-1 (PROD)",
         },
-        actions: { filter: "Filter", primary: "Add manual video" },
+        actions: {
+          filter: "Filter",
+          filterUnavailable: "Video filters are not available yet.",
+          primary: "Add manual video",
+          primaryUnavailable: "Manual video creation is not available yet.",
+          rowActionsUnavailable: "Video row actions are not available yet.",
+        },
+        search: {
+          label: "Search videos",
+          placeholder: "Search videos, IDs, languages...",
+          submit: "Search",
+          clear: "Clear",
+          active: 'Filtered by "{query}"',
+        },
+        tabs: {
+          all: "All",
+          collections: "Collections",
+          features: "Features",
+          shortFilms: "Short films",
+          series: "Series",
+        },
+        sort: {
+          label: "Recently updated",
+          unavailable: "Sorting is not available yet.",
+        },
+        coverage: {
+          languagesDubbed: "languages dubbed",
+          noLanguages: "No dubbed languages",
+          overflow: "+{count}",
+        },
+        summary: {
+          total: "Active videos",
+          visible: "Visible rows",
+          page: "Page",
+          query: "Query",
+          queryAll: "All videos",
+        },
         table: {
           title: "Video Library",
-          meta: "ROW_THUMBNAILS / SOURCE_BADGES",
+          meta: "SEARCHABLE_ROWS / TYPE_LABELS / VISITOR_LINKS",
           columns: ["Thumbnail", "Video Details", "Source", "Dubs", "Updated"],
+          empty: "No active videos found.",
+          emptySearch: "No active videos match this search.",
+          openVisitorLabel: "Open visitor-facing video page",
+          noVisitorLinkLabel: "No public watch link available",
+          pagination: {
+            summary: "Showing {start}-{end} of {total}",
+            page: "Page {current} of {count}",
+            previous: "Previous",
+            next: "Next",
+          },
           rows: [
             {
               title: "Neon Genesis: The Digital Divide",
@@ -1050,11 +1105,15 @@ export const adminMessages = {
       operatorNotes: "Notas del operador",
       premiumStubLabel: "Superficie premium lista para datos futuros",
       fieldGuide: "GUIA_DE_CAMPO",
-      searchPlaceholder: "Buscar o ⌘K",
+      searchPlaceholder: "Abrir paleta de rutas",
       searchPalettePrompt:
-        "Buscar rutas, herramientas y superficies editoriales",
+        "Navegar rutas, herramientas y superficies editoriales",
       navigate: "Navegar",
       quickActions: "Acciones rápidas",
+      readOnly: "Solo lectura",
+      openCommandPalette: "Abrir paleta de comandos",
+      closeCommandPalette: "Cerrar paleta de comandos",
+      helpUnavailable: "La ayuda aun no esta disponible",
       context: "Contexto",
       paletteContext:
         "Esta paleta se comparte en todo el panel y usa el mismo registro de rutas que la barra lateral para que las futuras páginas permanezcan sincronizadas automáticamente.",

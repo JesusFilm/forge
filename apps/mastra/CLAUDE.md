@@ -70,8 +70,10 @@ pnpm --filter @forge/mastra lint
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`                           | Postgres connection string for Mastra runtime storage. Required in production runtime.                                     |
 | `MASTRA_SERVICE_API_KEYS`                | CSV allowlist for service bearer calls. Required in production runtime.                                                    |
+| `MASTRA_NATIVE_EVAL_ENVIRONMENT`         | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                        |
 | `MASTRA_STORAGE_DIR`                     | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway. |
-| `OPENROUTER_API_KEY`                     | Preferred transcript embedding provider key; matches the repo's existing OpenRouter embedding convention.                  |
+| `MASTRA_STORAGE_BACKEND`                 | Mastra runtime storage backend. Use `postgres` normally; `memory` is local/test-only and rejected in production.           |
+| `OPENROUTER_API_KEY`                     | OpenRouter key for locale-quality eval query generation and offline compare judging. Required for compare mode.            |
 | `OPENROUTER_EMBEDDINGS_BASE_URL`         | Optional OpenRouter-compatible embedding base URL. Defaults to OpenRouter's `/api/v1` endpoint.                            |
 | `OPENAI_API_KEY`                         | Fallback model provider key for smoke agent/model-routed calls and transcript embeddings when OpenRouter is unavailable.   |
 | `OPENAI_EMBEDDINGS_BASE_URL`             | Optional OpenAI-compatible embedding provider base URL. Defaults to OpenAI's `/v1` endpoint.                               |
@@ -91,7 +93,11 @@ pnpm --filter @forge/mastra lint
 | `ADMIN_SEARCH_TRACE_SAMPLE_URL`          | Admin internal trace sample endpoint for eval query generation. Required only when running that workflow.                  |
 | `ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL`  | Admin internal compact catalog context endpoint for eval query generation. Required only when running that workflow.       |
 | `ADMIN_SEARCH_EVAL_CANDIDATES_URL`       | Admin internal generated-candidate storage endpoint for eval query generation. Required only when running that workflow.   |
+| `ADMIN_SEARCH_EVAL_SEARCH_URL`           | Admin internal no-trace search endpoint for offline search eval. Required only when running the offline eval workflow.     |
 | `ADMIN_SEARCH_EVAL_API_KEY`              | Bearer key Mastra presents to Admin search-eval routes. Must match Admin's dedicated sampling/eval key allowlist.          |
+| `MASTRA_SEARCH_EVAL_ARTIFACT_DIR`        | Optional directory for Mastra-owned offline search eval baseline and report JSON artifacts. Defaults under Mastra storage. |
+| `MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT`   | Set to `true` only for an intentional production import override. Defaults to `false`; local imports do not need it.       |
+| `SEARCH_EVAL_JUDGE_MODEL`                | OpenRouter chat model stamp for offline search eval judging. Defaults to `anthropic/claude-haiku-4-5`.                     |
 | `PORT`                                   | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                          |
 | `MASTRA_STUDIO_PATH`                     | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                          |
 
@@ -109,6 +115,131 @@ candidates as staged Admin rows with source, locale, provenance, source
 anchors, advisory judge summary, generation model/provider, Mastra run id, and
 promotion status. Trace-derived candidates keep Admin's raw trace expiry so the
 retention job can remove them before the 30-day ceiling.
+
+## Offline search eval
+
+The service route `POST /forge-offline-search-eval` is protected by
+`MASTRA_SERVICE_API_KEYS` and launches the `offline-search-eval` workflow.
+Supported modes are `capture-baseline` and `compare`. Baseline capture runs the
+Mastra-owned seed prompt set against Admin's internal no-trace search endpoint,
+then stores a named baseline artifact under the Mastra eval artifact directory.
+Comparison runs load a named baseline, call Admin search again, judge
+baseline-vs-current results with A/B swap calibration, and write a report
+artifact.
+
+Keep this workflow Studio-friendly: the workflow and first step must expose a
+strict structured input schema, not `z.unknown()`. Defaults should let an
+operator run the seed baseline from Studio without hand-written JSON:
+`mode=capture-baseline`, `baselineName=seed-baseline`, all seeded locales,
+`searchLimit=20`, `searchMode=hybrid`, and `contentType=all`. Use explicit
+`all` options for filter enums when Studio should run both corpora; avoid
+nullable defaults because Studio renders them as awkward `OR` controls.
+
+Admin remains the live search authority. Mastra never queries Admin Postgres,
+never imports Admin code, never generates live query embeddings, and never
+enters the public search request path. The Studio-facing offline eval workflow
+is seed-only for now. Generated candidates from the feat-138 staging table are
+not exposed as operator inputs, are not stored in baselines, and do not become
+regression gates.
+
+## Native search eval suite
+
+The service route `POST /forge-search-eval-native-suite` is protected by
+`MASTRA_SERVICE_API_KEYS` and launches the `search-eval-native-suite` workflow.
+The workflow projects safe search-eval reports and promoted Admin candidates
+into native Mastra Evaluation records:
+
+- `create-sample-report` writes a realistic local sample comparison report,
+  syncs it into a native Dataset, registers the pairwise search scorer, starts
+  a native Experiment, and writes the synced native ids back into the report
+  artifact. This action is local/development only.
+- `sync-report` loads an existing report artifact by `reportId`, syncs it into
+  native Evaluation, and updates the report's `mastraEvaluation` projection.
+- `sync-promoted` reads promoted candidates through Admin HTTP, then only syncs
+  rows that are both `promotionStatus=promoted` and
+  `sanitizationStatus=sanitized`.
+
+Native record names include the environment label, for example
+`search-eval:local:seed-baseline`, and native metadata carries stable keys for
+idempotent reruns. Re-running a report sync should update Dataset items by
+source key and reuse the existing report Experiment instead of duplicating
+records.
+
+For local Studio smoke without Postgres or Admin data, run Mastra with:
+
+```bash
+MASTRA_STORAGE_BACKEND=memory \
+MASTRA_NATIVE_EVAL_ENVIRONMENT=local \
+MASTRA_SERVICE_API_KEYS=local-mastra-service-key \
+MASTRA_SEARCH_EVAL_ARTIFACT_DIR=.mastra/storage/search-eval \
+pnpm --filter @forge/mastra dev
+```
+
+Open `http://localhost:4111/studio/workflows/search-eval-native-suite`, run the
+default `create-sample-report` action, then inspect Studio's native Evaluation
+Datasets, Scorers, and Experiments.
+
+## Search eval orchestrator
+
+The service route `POST /forge-search-eval-orchestrator` is protected by
+`MASTRA_SERVICE_API_KEYS` and launches the `search-eval-orchestrator` workflow.
+It is a thin coordinator over the existing search eval leaf workflows:
+`eval-query-generation`, `offline-search-eval`,
+`search-eval-candidate-review`, and `search-eval-native-suite`.
+
+Default `seed-baseline` mode captures the committed seed prompt baseline named
+`seed-baseline`, requires native report sync, rejects candidate generation,
+rejects seed-candidate submission, rejects promoted-candidate sync, and runs a
+readiness preflight before touching Admin search. Use explicit `full` mode for
+broader operator runs that coordinate generation/review/promoted-sync leaf
+workflows. `compare` mode compares current search against an existing baseline,
+and `release-gate` mode adds explicit pass/fail thresholds for losses, search
+failures, judge failures, judge disagreements, and calibration.
+`resumeReportId` skips offline search execution and retries native report sync
+for an existing report artifact.
+
+Candidate generation and seed candidate submission are explicit opt-ins. The
+orchestrator must never promote generated, trace-derived, seed, or
+user-submitted candidates; promotion remains a human review action through
+Admin HTTP contracts.
+
+For production seed capture, call the orchestrator with either `{}` or an
+explicit seed-only payload:
+
+```json
+{
+  "mode": "seed-baseline",
+  "baselineName": "prod-seed-baseline-YYYY-MM-DD",
+  "searchMode": "hybrid",
+  "contentType": "all",
+  "generateCandidates": false,
+  "submitSeedCandidates": false,
+  "nativeSync": true,
+  "syncPromoted": false
+}
+```
+
+## Search eval baseline portability
+
+The service route `POST /forge-search-eval-baseline-portability` is protected
+by `MASTRA_SERVICE_API_KEYS` and launches the
+`search-eval-baseline-portability` workflow. It provides three actions:
+
+- `preflight` checks the production Admin search URL, Admin eval bearer,
+  service bearer allowlist, non-memory production storage, database URL,
+  persistent artifact root, and an artifact write/read/delete probe.
+- `export-baseline` reads a Mastra-owned baseline plus up to three report ids,
+  validates that every prompt/result came from the committed seed prompt set,
+  then returns a bounded sanitized JSON artifact.
+- `import-baseline` validates the artifact and writes report artifacts before
+  writing the baseline marker, so a partial import is not activated as the
+  current local baseline.
+
+Production imports are disabled by default through
+`MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT=false`. Export from production, store the
+returned JSON artifact in the approved secure handoff location, then import it
+into local Mastra so native Evaluation and local artifacts can compare future
+search work against the same seed snapshot without logging into production.
 
 ## Railway Storage
 

@@ -2,11 +2,11 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import type { Route } from "next"
 import { Play } from "lucide-react"
 
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { resolveEpisodeImageUrl } from "@/lib/episode-image"
+import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 
 type Episodes = NonNullable<ResolvedSeriesBySlug["video"]["children"]>
 type Episode = NonNullable<Episodes[number]>
@@ -14,7 +14,7 @@ type Episode = NonNullable<Episodes[number]>
 type SeriesEpisodeCardProps = {
   episode: Episode
   index: number
-  locale: string
+  languageSlug: string
   // Backdrop URL surfaced via data-backdrop-url so the parent grid can
   // delegate pointer/focus events at the container level instead of
   // attaching per-card handlers (avoids 20+ rerenders during keyboard
@@ -23,7 +23,7 @@ type SeriesEpisodeCardProps = {
 }
 
 // Production-style duration label: "M:SS" or "H:MM:SS". Returns null when
-// the variant doesn't carry a usable duration so the pill collapses to
+// the chapter doesn't carry a usable duration so the pill collapses to
 // the play icon alone (still affordant) rather than rendering "0:00".
 function formatRuntime(seconds: number | null | undefined): string | null {
   if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return null
@@ -35,40 +35,31 @@ function formatRuntime(seconds: number | null | undefined): string | null {
   return h > 0 ? `${h}:${pad2(m)}:${pad2(s)}` : `${m}:${pad2(s)}`
 }
 
-// Pick the first playable variant's duration. Across languages a video's
-// runtime is functionally identical, so locale-matching here would buy
-// nothing but more conditionals. Skip unpublished or HLS-less variants
-// so the pill never reflects an editor-orphaned record.
-function pickRuntimeSeconds(episode: Episode): number | null {
-  for (const variant of episode.variants ?? []) {
-    if (!variant) continue
-    if (variant.published !== true) continue
-    if (!variant.hls) continue
-    if (typeof variant.duration === "number" && variant.duration > 0) {
-      return variant.duration
-    }
-  }
-  return null
-}
-
 export function SeriesEpisodeCard({
   episode,
   index,
-  locale,
+  languageSlug,
   backdropUrl,
 }: SeriesEpisodeCardProps) {
-  const href = `/${episode.slug}/${locale}` as Route
+  const slug = episode.slug ? tryAsContentSlug(episode.slug) : null
+  const lang = tryAsLocaleSlug(languageSlug)
+  // Episodes link as standalone videos: canonical two-segment shape.
+  const href = slug && lang ? watchVideoPath(slug, lang) : undefined
   const thumbnailUrl = resolveEpisodeImageUrl(episode)
-  const runtimeLabel = formatRuntime(pickRuntimeSeconds(episode))
+  // Per-chapter runtime now arrives precomputed as a single Int
+  // (admin's Video.durationSeconds — the primary playable dub's runtime)
+  // rather than being derived from a per-child dub list.
+  const runtimeLabel = formatRuntime(episode.durationSeconds)
 
-  return (
-    <Link
-      href={href}
-      data-testid="series-episode-card"
-      data-backdrop-url={backdropUrl ?? ""}
-      className="group animate-card-enter relative flex aspect-video w-full cursor-pointer overflow-hidden rounded-xl ring-1 ring-white/5 transition duration-300 hover:z-10 hover:scale-105 hover:ring-white/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-      style={{ animationDelay: `${index * 40}ms` }}
-    >
+  // Shared card surface. When the slug/locale is malformed (rare data bug)
+  // the href is undefined, so we render a plain <div> with identical attrs
+  // rather than a dead <Link>.
+  const cardClassName =
+    "group animate-card-enter relative flex aspect-video w-full cursor-pointer overflow-hidden rounded-xl ring-1 ring-white/5 transition duration-300 hover:z-10 hover:scale-105 hover:ring-white/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+  const cardStyle = { animationDelay: `${index * 40}ms` }
+
+  const cardContent = (
+    <>
       {thumbnailUrl ? (
         <Image
           src={thumbnailUrl}
@@ -105,6 +96,31 @@ export function SeriesEpisodeCard({
           {episode.title ?? ""}
         </h3>
       </div>
+    </>
+  )
+
+  if (!href) {
+    return (
+      <div
+        data-testid="series-episode-card"
+        data-backdrop-url={backdropUrl ?? ""}
+        className={cardClassName}
+        style={cardStyle}
+      >
+        {cardContent}
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      href={href}
+      data-testid="series-episode-card"
+      data-backdrop-url={backdropUrl ?? ""}
+      className={cardClassName}
+      style={cardStyle}
+    >
+      {cardContent}
     </Link>
   )
 }

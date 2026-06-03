@@ -7,6 +7,7 @@ import {
   type MouseEventHandler,
 } from "react"
 import { Search } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import { GLASS_OUTLINE_CLASS } from "@/lib/glass-outline"
 
@@ -79,12 +80,13 @@ export const FloatingSearchFieldInput = forwardRef<
   },
   ref,
 ) {
+  const t = useTranslations("FloatingSearch")
   const hasValue = value.trim().length > 0
 
   return (
     <div
       role="search"
-      aria-label="Search videos"
+      aria-label={t("searchRegion")}
       className={`${FIELD_BASE_CLASS} ${FIELD_SOLID_CLASS} ${wrapperClassName ?? ""}`}
     >
       <Search
@@ -104,7 +106,7 @@ export const FloatingSearchFieldInput = forwardRef<
         <button
           type="button"
           onClick={onClear}
-          aria-label="Clear search"
+          aria-label={t("clearSearch")}
           className="-mr-2 cursor-pointer rounded-full p-2 text-stone-500 transition hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-stone-950/50 focus-visible:outline-offset-2"
         >
           <svg

@@ -1,9 +1,17 @@
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
+import { useTranslations } from "next-intl"
 import { Play } from "lucide-react"
 import { formatDuration } from "@/lib/format-duration"
+import {
+  asLocaleSlug,
+  searchPath,
+  tryAsContentSlug,
+  watchVideoPath,
+} from "@/lib/routes"
 import type { AdminVideoLabel, SearchResult } from "@/lib/search"
+import { videoLabelMessageKey } from "@/lib/video-labels"
 
 type VideoCardProps = {
   result: SearchResult
@@ -11,8 +19,16 @@ type VideoCardProps = {
   hrefBuilder?: (result: SearchResult) => Route
 }
 
-const defaultHrefBuilder = (result: SearchResult): Route =>
-  `/${result.slug}/en` as Route
+// English is the default UI locale for search-result deep links. Hoisted to
+// module scope so the throwing constructor runs once at load, not per render.
+const ENGLISH_LOCALE = asLocaleSlug("english")
+
+export const defaultHrefBuilder = (result: SearchResult): Route => {
+  const slug = tryAsContentSlug(result.slug)
+  // On a malformed slug, fall back to the modal-capable watch home rather than
+  // emitting a broken deep link or resurrecting the deprecated /search page.
+  return slug ? watchVideoPath(slug, ENGLISH_LOCALE) : searchPath()
+}
 
 // Full tailwind class strings so JIT can extract them at build time.
 // Each palette is a dark, saturated gradient that reads as intentional
@@ -109,6 +125,8 @@ export function VideoCard({
   index = 0,
   hrefBuilder = defaultHrefBuilder,
 }: VideoCardProps) {
+  const t = useTranslations("SearchResultCard")
+  const videoLabels = useTranslations("VideoLabels")
   const thumbnailSrc =
     result.imageUrl ??
     (result.type === "video" && result.playbackId
@@ -122,7 +140,13 @@ export function VideoCard({
   // IS the surface signal. Non-experience cards use the new count /
   // duration pill at top-right and a type badge bottom-left.
   const pill = isExperience ? null : pickCardPill(result)
-  const typeBadge = isExperience ? null : formatVideoLabel(result.label)
+  const typeBadge = isExperience
+    ? null
+    : videoLabels(videoLabelMessageKey(result.label))
+  const pillText =
+    pill?.kind === "count" && result.childCount != null
+      ? t("episodeCount", { count: result.childCount })
+      : pill?.text
 
   return (
     <Link
@@ -135,7 +159,7 @@ export function VideoCard({
         {thumbnailSrc ? (
           <Image
             src={thumbnailSrc}
-            alt={result.title ?? "Video thumbnail"}
+            alt={result.title ?? t("thumbnailAlt")}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
             className="object-cover transition-transform duration-500 group-hover:scale-110"
@@ -183,7 +207,7 @@ export function VideoCard({
             data-testid="search-card-experience-chip"
             className="absolute top-3 right-3 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-stone-950 uppercase shadow"
           >
-            Experience
+            {t("experience")}
           </span>
         ) : pill ? (
           <span
@@ -194,7 +218,7 @@ export function VideoCard({
             {pill.kind === "duration" ? (
               <Play size={10} fill="currentColor" stroke="none" aria-hidden />
             ) : null}
-            {pill.text}
+            {pillText}
           </span>
         ) : null}
 

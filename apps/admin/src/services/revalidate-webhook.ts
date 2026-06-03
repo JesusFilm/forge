@@ -26,7 +26,11 @@ import { env } from "@/config/env"
 
 const WEB_REVALIDATE_TIMEOUT_MS = 5_000
 
-export type RevalidateModel = "experience" | "video" | "watch-setting"
+export type RevalidateModel =
+  | "experience"
+  | "video"
+  | "watch-route-manifest"
+  | "watch-setting"
 
 export type RevalidateWebhookInput = {
   model: RevalidateModel

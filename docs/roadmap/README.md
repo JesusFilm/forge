@@ -4,10 +4,10 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (May 25, 2026)
+## Status (May 29, 2026)
 
-- **Total tickets:** 154
-- **Complete:** 85
+- **Total tickets:** 155
+- **Complete:** 86
 - **In progress:** 9
 - **Not started:** 20
 - **Blocked:** 40
@@ -31,6 +31,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-127](content-discovery/feat-127-manager-durable-admin-trigger-job-state.md)                              | Manager durable admin-trigger job state for operator enrichment                                 | nisal     | P0       | 2026-05-19 | 2    | 2026-05-20 | not-started |
 | [feat-128](content-discovery/feat-128-enrichment-backfill-failure-resilience.md)                               | Enrichment backfill failure resilience                                                          | nisal     | P0       | 2026-05-19 | 1    | 2026-05-19 | complete    |
 | [feat-126](content-discovery/feat-126-manager-admin-lookup-tail-latency-recovery.md)                           | Recover manager enrichment dispatch from admin lookup tail latency                              | nisal     | P0       | 2026-05-20 | 1    | 2026-05-20 | complete    |
+| [feat-154](content-discovery/feat-154-production-search-eval-seed-baseline.md)                                 | Production search eval seed baseline capture                                                    | nisal     | P0       | 2026-06-01 | 1    | 2026-06-01 | not-started |
 | [feat-097](content-discovery/feat-097-investigate-prod-query-embedding.md)                                     | Investigate Production Query Embedding Degradation                                              | nisal     | P1       | 2026-04-15 | 2    | 2026-04-16 | complete    |
 | [feat-095](content-discovery/feat-095-experience-embedding-pipeline.md)                                        | Experience Embedding Pipeline                                                                   | nisal     | P1       | 2026-04-16 | 5    | 2026-04-20 | complete    |
 | [feat-037](content-discovery/feat-037-video-content-vectorization.md)                                          | Video Content Vectorization for Recommendations                                                 | nisal     | P1       | 2026-04-21 | 42   | 2026-06-01 | complete    |
@@ -82,6 +83,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-035](media-generation/feat-035-manager-pipeline-transparency-workspace.md)          | Manager Pipeline Transparency Workspace                   | vlad  | P1       | 2026-05-12 | 21   | 2026-06-01 | blocked     |
 | [feat-037](media-generation/feat-037-playback-qa-feedback-loop.md)                        | Playback QA and Feedback Loop                             | vlad  | P1       | 2026-05-19 | 21   | 2026-06-08 | blocked     |
 | [feat-041](media-generation/feat-041-alternative-report-sections.md)                      | Alternative Report Sections                               | vlad  | P1       | 2026-05-26 | 14   | 2026-06-08 | blocked     |
+| [feat-145](media-generation/feat-145-watch-mobile-player-controls-width.md)               | Watch Mobile Player Controls Width                        | vlad  | P1       | 2026-05-28 | 1    | 2026-05-28 | complete    |
+| [feat-146](media-generation/feat-146-watch-transcript-audio-language-match.md)            | Watch Transcript Audio Language Match                     | vlad  | P1       | 2026-05-29 | 1    | 2026-05-29 | complete    |
 | [feat-056](media-generation/feat-056-ai-video-template-system.md)                         | AI Video Template System                                  | vlad  | P1       | 2026-07-01 | 31   | 2026-07-31 | not-started |
 | [feat-057](media-generation/feat-057-automated-video-rendering-engine.md)                 | Automated Video Rendering Engine                          | vlad  | P1       | 2026-08-01 | 31   | 2026-08-31 | blocked     |
 | [feat-060](media-generation/feat-060-on-demand-personalized-video-generation.md)          | On-Demand Personalized Video Generation                   | vlad  | P1       | 2026-09-01 | 30   | 2026-09-30 | blocked     |
@@ -140,6 +143,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-129](platform/feat-129-mastra-railway-workflow-runtime.md)                 | Mastra Railway Workflow Runtime                         | vlad      | P1       | 2026-05-22 | 7    | 2026-05-28 | complete    |
 | [feat-130](platform/feat-130-mastra-observability-storage.md)                    | Mastra Observability Storage                            | vlad      | P1       | 2026-05-22 | 1    | 2026-05-22 | complete    |
 | [feat-132](platform/feat-132-admin-core-sync-production-error-triage.md)         | Admin Core Sync Production Error Triage                 | tataihono | P1       | 2026-05-24 | 1    | 2026-05-24 | not-started |
+| [feat-144](platform/feat-144-launchdarkly-feature-flag-foundation.md)            | LaunchDarkly Feature Flag Foundation                    | vlad      | P1       | 2026-05-27 | 2    | 2026-05-28 | complete    |
+| [feat-146](platform/feat-146-web-user-accounts-download-gate.md)                 | Web User Accounts and Video Download Gate               | vlad      | P1       | 2026-05-27 | 7    | 2026-06-02 | complete    |
+| [feat-145](platform/feat-145-watch-question-panel-flag.md)                       | Watch Question Panel LaunchDarkly Gate                  | vlad      | P2       | 2026-05-28 | 1    | 2026-05-28 | complete    |
+| [feat-147](platform/feat-147-watch-public-asset-passthrough.md)                  | Watch Public Asset Passthrough                          | vlad      | P1       | 2026-05-29 | 1    | 2026-05-29 | complete    |
+| [feat-149](platform/feat-149-watch-route-manifest-admin.md)                      | Admin Watch Route Manifest                              | vlad      | P1       | 2026-05-29 | 2    | 2026-05-30 | complete    |
 | [feat-040](platform/feat-040-partner-activation-network.md)                      | Partner Activation Network                              | urim      | P1       | 2026-06-16 | 28   | 2026-07-13 | blocked     |
 | [feat-042](platform/feat-042-video-contests-and-inspiration-feed.md)             | Video Contests and Inspiration Feed                     | urim      | P1       | 2026-06-30 | 28   | 2026-07-27 | blocked     |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                         | Internal Tools Branding                                 | vlad      | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |

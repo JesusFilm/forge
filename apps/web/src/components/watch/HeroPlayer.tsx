@@ -12,6 +12,7 @@ import {
 } from "react"
 import { useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
+import { useTranslations } from "next-intl"
 import type {
   MuxPlayer as MuxPlayerType,
   MuxVideo as MuxVideoType,
@@ -42,6 +43,7 @@ import type { WatchHeroPlayerBlock } from "@/lib/content"
 import { WATCH_PAGE_LEFT_RAIL_CLASSES } from "@/lib/content-width"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { getViewerId } from "@/lib/viewer-id"
+import { videoLabelMessageKey } from "@/lib/video-labels"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
@@ -138,6 +140,8 @@ export function HeroPlayer({
   overlay?: ReactNode
   subtitleVttSrc?: string | null
 }) {
+  const t = useTranslations("HeroPlayer")
+  const videoLabels = useTranslations("VideoLabels")
   const { video, variant } = block
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MuxPlayerRef | null>(null)
@@ -626,6 +630,8 @@ export function HeroPlayer({
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch =
     showLanguageSwitch && (!chromeRevealed || controlsChromeVisible)
+  const preRevealActionLabel =
+    pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -756,11 +762,7 @@ export function HeroPlayer({
           <button
             type="button"
             data-testid="hero-player-pre-reveal-click-surface"
-            aria-label={
-              pillState === "tap-to-unmute"
-                ? "Tap to Unmute"
-                : "Play with Sound"
-            }
+            aria-label={preRevealActionLabel}
             onClick={handleUnmuteClick}
             className="absolute inset-0 z-1 cursor-pointer bg-transparent focus:outline-none"
           />
@@ -840,7 +842,7 @@ export function HeroPlayer({
                     data-testid="hero-player-overlay-label"
                     className={WATCH_SECTION_EYEBROW_CLASS}
                   >
-                    {video.label}
+                    {videoLabels(videoLabelMessageKey(video.label))}
                   </span>
                 ) : null}
                 {video.title ? (
@@ -855,11 +857,7 @@ export function HeroPlayer({
                   type="button"
                   data-testid="hero-player-unmute-pill"
                   data-state={pillState}
-                  aria-label={
-                    pillState === "tap-to-unmute"
-                      ? "Tap to Unmute"
-                      : "Play with Sound"
-                  }
+                  aria-label={preRevealActionLabel}
                   onClick={handleUnmuteClick}
                   className={
                     pillState === "tap-to-unmute"
@@ -872,11 +870,7 @@ export function HeroPlayer({
                   ) : (
                     <UnmutedSpeakerIcon />
                   )}
-                  <span>
-                    {pillState === "tap-to-unmute"
-                      ? "Tap to Unmute"
-                      : "Play with Sound"}
-                  </span>
+                  <span>{preRevealActionLabel}</span>
                 </button>
               </div>
             ))

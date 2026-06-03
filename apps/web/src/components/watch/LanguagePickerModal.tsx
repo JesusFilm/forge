@@ -1,7 +1,7 @@
 "use client"
 
-import type { Route } from "next"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import type { RefObject } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
@@ -14,6 +14,7 @@ import type { WatchSubtitle } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
+import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
@@ -86,6 +87,7 @@ export function LanguagePickerModal({
   currentSubtitleSlug = null,
   onSubtitleChange,
 }: LanguagePickerModalProps) {
+  const t = useTranslations("LanguagePickerModal")
   const router = useRouter()
 
   // Per row, deriveLanguageDisplay decides whether Strapi's `name` is a
@@ -214,18 +216,26 @@ export function LanguagePickerModal({
     }
 
     if (languageDirty) {
-      navigatingRef.current.inFlight = true
-      setPendingNavTo(draftSlug)
-      writePreferredLanguageSlug(draftSlug)
-      let href: Route
-      if (kind === "series") {
-        href = `/${videoSlug}/${draftSlug}` as Route
-      } else {
-        const rawT = playerRef.current?.currentTime
-        const t = Number.isFinite(rawT) ? rawT : 0
-        href = `/${videoSlug}/${draftSlug}?t=${t}&autoplay=1` as Route
+      // Validate both segments through the route builder's brand
+      // constructors BEFORE persisting the preference cookie. If either
+      // fails the slug regex, skip the whole branch — no cookie write, no
+      // navigation — rather than poison the cookie then no-op (matches
+      // SeriesPageClient's validate-before-write ordering). The rest of
+      // handleApply (incl. onClose) still runs.
+      const slug = tryAsContentSlug(videoSlug)
+      const lang = tryAsLocaleSlug(draftSlug)
+      if (slug && lang) {
+        navigatingRef.current.inFlight = true
+        setPendingNavTo(draftSlug)
+        writePreferredLanguageSlug(draftSlug)
+        if (kind === "series") {
+          router.push(watchVideoPath(slug, lang))
+        } else {
+          const rawT = playerRef.current?.currentTime
+          const t = typeof rawT === "number" && Number.isFinite(rawT) ? rawT : 0
+          router.push(watchVideoPath(slug, lang, { t, autoplay: true }))
+        }
       }
-      router.push(href)
     }
 
     onClose()
@@ -284,21 +294,22 @@ export function LanguagePickerModal({
         portalContainer={portalContainer}
       >
         <DialogTitle className="sr-only">
-          Language{subtitles.length > 0 ? " & Subtitles" : ""}
+          {subtitles.length > 0
+            ? t("dialogTitleWithSubtitles")
+            : t("dialogTitle")}
         </DialogTitle>
 
         <div className="flex flex-col gap-14">
           <div className="flex flex-col gap-5">
-            <div className="flex items-baseline justify-between gap-3">
+            <div className="flex items-baseline gap-4">
               <h2 className="text-2xl font-semibold text-stone-100">
-                Language
+                {t("languageHeading")}
               </h2>
               <span
                 data-testid="watch-language-picker-count"
                 className="text-lg font-normal text-stone-400"
               >
-                {options.length}{" "}
-                {options.length === 1 ? "language" : "languages"}
+                {t("languageCount", { count: options.length })}
               </span>
             </div>
             <LanguageCombobox
@@ -310,25 +321,16 @@ export function LanguagePickerModal({
 
           <div className="flex flex-col gap-5">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-6">
+              <div className="flex items-baseline gap-4">
                 <h2 className="text-2xl font-semibold text-stone-100">
-                  Subtitles
+                  {t("subtitlesHeading")}
                 </h2>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={draftSubtitleEnabled}
-                  data-testid="watch-language-picker-subtitles-toggle"
-                  disabled={subtitleOptions.length === 0}
-                  onClick={() => setDraftSubtitleEnabled((value) => !value)}
-                  className="flex h-8 w-[58px] cursor-pointer items-center rounded-full bg-white p-1 transition disabled:cursor-not-allowed disabled:opacity-40"
+                <span
+                  data-testid="watch-language-picker-subtitle-count"
+                  className="text-lg font-normal text-stone-400"
                 >
-                  <span
-                    className={`size-6 rounded-full bg-stone-950 transition-transform ${
-                      draftSubtitleEnabled ? "translate-x-6" : "translate-x-0"
-                    }`}
-                  />
-                </button>
+                  {t("languageCount", { count: subtitleOptions.length })}
+                </span>
               </div>
               <div className="flex items-center gap-4">
                 {subtitleOptions.length === 0 ? (
@@ -341,27 +343,55 @@ export function LanguagePickerModal({
                     className="cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-4 py-2 text-xs font-bold tracking-wider text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100"
                   >
                     {translationRequestSent
-                      ? "Request sent"
-                      : "Translate with AI"}
+                      ? t("requestSent")
+                      : t("translateWithAi")}
                   </Button>
                 ) : null}
-                <span
-                  data-testid="watch-language-picker-subtitle-count"
-                  className="text-lg font-normal text-stone-400"
+                <button
+                  type="button"
+                  role="switch"
+                  aria-label={`${t("subtitlesHeading")} ${
+                    draftSubtitleEnabled ? t("toggleOn") : t("toggleOff")
+                  }`}
+                  aria-checked={draftSubtitleEnabled}
+                  data-state={draftSubtitleEnabled ? "on" : "off"}
+                  data-testid="watch-language-picker-subtitles-toggle"
+                  disabled={subtitleOptions.length === 0}
+                  onClick={() => setDraftSubtitleEnabled((value) => !value)}
+                  className={`relative flex h-10 w-[88px] shrink-0 cursor-pointer items-center overflow-hidden rounded-full p-1 text-[11px] font-bold uppercase transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-100 disabled:cursor-not-allowed disabled:opacity-45 ${
+                    draftSubtitleEnabled
+                      ? "bg-stone-100 text-stone-950"
+                      : "border border-stone-500/80 bg-stone-950/70 text-stone-300"
+                  }`}
                 >
-                  {subtitleOptions.length}{" "}
-                  {subtitleOptions.length === 1 ? "language" : "languages"}
-                </span>
+                  <span
+                    data-testid="watch-language-picker-subtitles-toggle-state"
+                    className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${
+                      draftSubtitleEnabled ? "left-3" : "right-3"
+                    }`}
+                  >
+                    {draftSubtitleEnabled ? t("toggleOn") : t("toggleOff")}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={`relative z-10 size-8 rounded-full shadow-sm transition-transform duration-200 ${
+                      draftSubtitleEnabled
+                        ? "translate-x-12 bg-stone-950"
+                        : "translate-x-0 bg-stone-100"
+                    }`}
+                  />
+                </button>
               </div>
             </div>
-            <LanguageCombobox
-              options={subtitleOptions}
-              value={draftSubtitleSlug ?? ""}
-              onChange={setDraftSubtitleSlug}
-              icon="subtitles"
-              disabled={!draftSubtitleEnabled || subtitleOptions.length === 0}
-              placeholder="No subtitles"
-            />
+            {draftSubtitleEnabled && subtitleOptions.length > 0 ? (
+              <LanguageCombobox
+                options={subtitleOptions}
+                value={draftSubtitleSlug ?? ""}
+                onChange={setDraftSubtitleSlug}
+                icon="subtitles"
+                placeholder={t("noSubtitles")}
+              />
+            ) : null}
           </div>
 
           <div className="flex items-center justify-end gap-9 pt-6">
@@ -371,7 +401,7 @@ export function LanguagePickerModal({
               onClick={onClose}
               className="cursor-pointer rounded-full px-5 py-3.5 text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
             >
-              Close
+              {t("close")}
             </Button>
             <Button
               variant="pill"
@@ -380,7 +410,7 @@ export function LanguagePickerModal({
               onClick={handleApply}
               className="bg-stone-300 px-7 py-4 text-sm text-stone-950 hover:bg-white hover:text-stone-950 disabled:bg-stone-300 disabled:text-stone-950"
             >
-              Apply
+              {t("apply")}
             </Button>
           </div>
         </div>

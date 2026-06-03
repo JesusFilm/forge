@@ -5,7 +5,7 @@
  *
  * Covers:
  *  - Apply disabled until selection differs from current
- *  - Apply navigates with `/{videoSlug}/{newSlug}?t={currentTime}` (no /watch/)
+ *  - Apply navigates via watchVideoPath: `/{videoSlug}.html/{newSlug}.html?t={currentTime}&autoplay=1`
  *  - Apply writes the language-preference cookie BEFORE router.push
  *  - Close does nothing besides onClose
  *  - Draft resets when the modal reopens
@@ -83,6 +83,25 @@ function makeVariant(
     },
   }
   return { ...base, ...rest }
+}
+
+function makeSubtitle(
+  documentId: string,
+  languageSlug: string,
+  name: string,
+): WatchSubtitle {
+  return {
+    documentId,
+    language: {
+      slug: languageSlug,
+      name,
+      nativeName: null,
+      bcp47: languageSlug,
+    },
+    vttSrc: `https://cdn.test/${languageSlug}.vtt`,
+    primary: false,
+    aiGenerated: false,
+  }
 }
 
 function makePlayerRef(currentTime: number) {
@@ -186,7 +205,7 @@ describe("LanguagePickerModal — globe overlay", () => {
 
     expect(writePreferredLanguageSlugMock).toHaveBeenCalledWith("spanish")
     expect(routerPushMock).toHaveBeenCalledWith(
-      "/the-call/spanish?t=42&autoplay=1",
+      "/the-call.html/spanish.html?t=42&autoplay=1",
     )
     const writeOrder =
       writePreferredLanguageSlugMock.mock.invocationCallOrder[0]!
@@ -215,7 +234,7 @@ describe("LanguagePickerModal — globe overlay", () => {
     })
 
     expect(routerPushMock).toHaveBeenCalledWith(
-      "/the-call/spanish?t=0&autoplay=1",
+      "/the-call.html/spanish.html?t=0&autoplay=1",
     )
   })
 
@@ -304,6 +323,9 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(count?.textContent).toBe("3 languages")
     expect(count?.className).toContain("font-normal")
     expect(count?.className).not.toContain("font-semibold")
+    expect(count?.parentElement?.textContent).toContain("Language")
+    expect(count?.parentElement?.className).toContain("items-baseline")
+    expect(count?.parentElement?.className).not.toContain("justify-between")
   })
 
   it("matches the production overlay shell and renders subtitle selector data", () => {
@@ -342,18 +364,31 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(
       $('[data-testid="watch-language-picker-subtitle-count"]')?.textContent,
     ).toBe("1 language")
-    expect(
-      $('[data-testid="watch-language-picker-subtitle-count"]')?.className,
-    ).toContain("font-normal")
+    const subtitleCount = $(
+      '[data-testid="watch-language-picker-subtitle-count"]',
+    )
+    expect(subtitleCount?.className).toContain("font-normal")
+    expect(subtitleCount?.parentElement?.textContent).toContain("Subtitles")
+    expect(subtitleCount?.parentElement?.className).toContain("items-baseline")
     const toggle = $(
       '[data-testid="watch-language-picker-subtitles-toggle"]',
     ) as HTMLButtonElement
     expect(toggle.disabled).toBe(false)
     expect(toggle.getAttribute("aria-checked")).toBe("true")
-    expect(toggle.className).toContain("h-8")
-    expect(toggle.className).toContain("w-[58px]")
-    expect(toggle.querySelector("span")?.className).toContain("size-6")
-    expect(toggle.querySelector("span")?.className).toContain("translate-x-6")
+    expect(toggle.getAttribute("aria-label")).toBe("Subtitles On")
+    expect(toggle.getAttribute("data-state")).toBe("on")
+    expect(toggle.className).toContain("h-10")
+    expect(toggle.className).toContain("w-[88px]")
+    expect(toggle.className).toContain("bg-stone-100")
+    expect(
+      $('[data-testid="watch-language-picker-subtitles-toggle-state"]')
+        ?.textContent,
+    ).toBe("On")
+    expect(toggle.parentElement?.contains(subtitleCount)).toBe(false)
+    expect(toggle.parentElement?.className).toContain("items-center")
+    const thumb = toggle.querySelector('span[aria-hidden="true"]')
+    expect(thumb?.className).toContain("size-8")
+    expect(thumb?.className).toContain("translate-x-12")
 
     const triggers = $$('[data-testid="language-combobox-trigger"]')
     expect(triggers.length).toBe(2)
@@ -361,6 +396,45 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(
       $('[data-testid="watch-language-picker-request-ai-translation"]'),
     ).toBeNull()
+  })
+
+  it("makes the subtitle switch state explicit and hides the selector when off", () => {
+    renderModal({
+      open: true,
+      variants: baseVariants,
+      subtitles: [makeSubtitle("sub-ru", "russian", "Russian")],
+      currentSubtitleEnabled: false,
+      currentSubtitleSlug: "russian",
+    })
+
+    const toggle = $(
+      '[data-testid="watch-language-picker-subtitles-toggle"]',
+    ) as HTMLButtonElement
+    expect(toggle.disabled).toBe(false)
+    expect(toggle.getAttribute("aria-checked")).toBe("false")
+    expect(toggle.getAttribute("aria-label")).toBe("Subtitles Off")
+    expect(toggle.getAttribute("data-state")).toBe("off")
+    expect(toggle.className).toContain("border-stone-500/80")
+    expect(
+      $('[data-testid="watch-language-picker-subtitles-toggle-state"]')
+        ?.textContent,
+    ).toBe("Off")
+    expect($$('[data-testid="language-combobox-trigger"]').length).toBe(1)
+
+    act(() => {
+      toggle.click()
+    })
+
+    expect(toggle.getAttribute("aria-checked")).toBe("true")
+    expect(toggle.getAttribute("aria-label")).toBe("Subtitles On")
+    expect(toggle.getAttribute("data-state")).toBe("on")
+    expect(
+      $('[data-testid="watch-language-picker-subtitles-toggle-state"]')
+        ?.textContent,
+    ).toBe("On")
+    const triggers = $$('[data-testid="language-combobox-trigger"]')
+    expect(triggers.length).toBe(2)
+    expect(triggers[1]?.textContent).toContain("Russian")
   })
 
   it("shows a dummy AI translation request button when subtitles are unavailable", () => {
@@ -376,7 +450,15 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(button.className).toContain("px-4")
     expect(button.className).toContain("py-2")
     const count = $('[data-testid="watch-language-picker-subtitle-count"]')
-    expect(button.parentElement?.contains(count)).toBe(true)
+    expect(count?.parentElement?.textContent).toContain("Subtitles")
+    expect(button.parentElement?.contains(count)).toBe(false)
+    const toggle = $(
+      '[data-testid="watch-language-picker-subtitles-toggle"]',
+    ) as HTMLButtonElement
+    expect(toggle.disabled).toBe(true)
+    expect(toggle.getAttribute("data-state")).toBe("off")
+    expect(button.parentElement?.contains(toggle)).toBe(true)
+    expect($$('[data-testid="language-combobox-trigger"]').length).toBe(1)
 
     act(() => {
       button.click()
@@ -451,11 +533,11 @@ describe("LanguagePickerModal — in-flight navigation guard", () => {
       $('[data-testid="watch-language-picker-apply"]')?.click()
     })
     expect(routerPushMock).toHaveBeenCalledWith(
-      "/the-call/spanish?t=42&autoplay=1",
+      "/the-call.html/spanish.html?t=42&autoplay=1",
     )
   })
 
-  it("kind='series' navigates to bare /{slug}/{newLang} (no ?t, no autoplay)", () => {
+  it("kind='series' navigates to bare /{slug}.html/{newLang}.html (no ?t, no autoplay)", () => {
     // The series page has no player. ?t= and autoplay=1 are HeroPlayer
     // gestures; they would mistakenly trigger trailer autoplay on the
     // series destination.
@@ -472,7 +554,7 @@ describe("LanguagePickerModal — in-flight navigation guard", () => {
     act(() => {
       $('[data-testid="watch-language-picker-apply"]')?.click()
     })
-    expect(routerPushMock).toHaveBeenCalledWith("/the-call/spanish")
+    expect(routerPushMock).toHaveBeenCalledWith("/the-call.html/spanish.html")
   })
 
   it("releases the navigation guard after the safety timeout (~5s)", () => {

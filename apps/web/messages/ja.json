@@ -1,0 +1,222 @@
+{
+  "ExperienceError": {
+    "empty": "コンテンツを利用できません。",
+    "failedToLoad": "ページを読み込めませんでした: {message}",
+    "unexpected": "予期しないエラーが発生しました。",
+    "notConfigured": "コンテンツサービスが設定されていません。",
+    "noContent": "利用できるコンテンツがありません。",
+    "homepageMisconfigured": "Watchのホームページ設定に問題があります。",
+    "defaultTemplateMisconfigured": "Watchの既定テンプレート設定に問題があります。",
+    "authFailed": "コンテンツサービスに接続できませんでした。問題が続く場合はサポートにお問い合わせください。"
+  },
+  "VideosPage": {
+    "title": "すべての動画",
+    "placeholder": "カタログ閲覧は近日公開予定です。今は検索またはトピック別のURLをご利用ください。"
+  },
+  "BibleQuotes": {
+    "title": "聖書のことば",
+    "share": "シェア",
+    "readMore": "続きを読む...",
+    "learnMore": "詳しく見る",
+    "freeResources": "無料リソース",
+    "promoHeading": "聖書をもっと深く理解したいですか？",
+    "joinBibleStudy": "聖書の学びに参加する",
+    "previousQuote": "前の聖書のことば",
+    "nextQuote": "次の聖書のことば"
+  },
+  "DownloadButton": {
+    "checking": "確認中",
+    "download": "ダウンロード",
+    "sessionError": "セッションを確認できませんでした。もう一度お試しください。",
+    "saveVideo": "動画を保存"
+  },
+  "DownloadModal": {
+    "dialogTitle": "ビデオをダウンロード",
+    "eyebrow": "ビデオをダウンロード",
+    "posterAlt": "動画ポスター",
+    "noDownloads": "この動画で利用できるダウンロードはありません。",
+    "fileSizeLabel": "ファイルサイズを選択",
+    "termsAgreementPrefix": "私は",
+    "termsOfUse": "利用規約",
+    "termsAgreementSuffix": "に同意します",
+    "close": "閉じる",
+    "download": "ダウンロード",
+    "checking": "確認中",
+    "closeTermsOfUse": "利用規約を閉じる",
+    "cancel": "キャンセル",
+    "accept": "同意する",
+    "errorSessionExpired": "セッションの有効期限が切れました。ダウンロードするにはもう一度サインインしてください。",
+    "errorSessionUnavailable": "セッションを確認できませんでした。もう一度お試しください。",
+    "errorUnavailableSource": "このソースからはダウンロードできません",
+    "tierHighest": "最高",
+    "tierHigh": "高",
+    "tierLow": "低"
+  },
+  "HeroPlayerControls": {
+    "play": "再生",
+    "pause": "一時停止",
+    "seek": "シーク",
+    "seekValue": "{current} / {total}",
+    "volume": "音量",
+    "volumeValue": "{percent}パーセント",
+    "mute": "ミュート",
+    "unmute": "ミュート解除",
+    "changeAudioLanguage": "音声言語を変更",
+    "enterFullscreen": "全画面にする",
+    "exitFullscreen": "全画面を終了"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "言語を選択",
+    "searchPlaceholder": "言語を検索…",
+    "languages": "言語",
+    "noMatches": "一致する言語がありません"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "言語",
+    "dialogTitleWithSubtitles": "言語と字幕",
+    "languageHeading": "言語",
+    "subtitlesHeading": "字幕",
+    "languageCount": "{count, plural, one {# 言語} other {# 言語}}",
+    "requestSent": "リクエストを送信しました",
+    "translateWithAi": "AIで翻訳",
+    "noSubtitles": "字幕なし",
+    "toggleOn": "オン",
+    "toggleOff": "オフ",
+    "close": "閉じる",
+    "apply": "適用"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {# エピソード} other {# エピソード}}",
+    "seriesLabel": "シリーズ · {episodes}",
+    "changeAudioLanguage": "音声言語を変更",
+    "share": "シェア",
+    "languages": "言語"
+  },
+  "WatchModal": {
+    "close": "閉じる"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "この動画の制作者に1つ質問できるとしたら、何を聞きますか？",
+    "fallbackBody": "話を聞く準備のある人と個人的に話せます。",
+    "questionsShort": "質問",
+    "questions": "関連する質問",
+    "askYours": "自分の質問をする",
+    "chatWithPerson": "人と話す",
+    "askBibleQuestion": "聖書について質問する"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "メッセージの種類",
+    "fieldLabel": "この動画について質問する",
+    "send": "質問を送信",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "聖書について質問する",
+        "description": "AI検索で聖書からすぐに答えを得る"
+      },
+      "prayerRequest": {
+        "label": "祈りをリクエストする",
+        "description": "祈ってほしいことを共有する"
+      },
+      "comment": {
+        "label": "コメントを残す",
+        "description": "この動画についての思いを送る"
+      },
+      "personChat": {
+        "label": "人と話す",
+        "description": "今すぐ誰かと話す"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "動画をシェア",
+    "heading": "この動画をシェア",
+    "posterAlt": "動画ポスター",
+    "shareOnFacebook": "Facebookでシェア",
+    "shareOnFacebookUnavailable": "Facebookでシェア（このビルドでは利用できません）",
+    "shareOnX": "Xでシェア",
+    "shareOnXUnavailable": "Xでシェア（このビルドでは利用できません）",
+    "shareDisabledHint": "シェアには公開済みページが必要です。この動画が本番環境に公開されると利用できます。",
+    "shareFormat": "シェア形式",
+    "shareLinkTab": "シェアリンク",
+    "embedCodeTab": "埋め込みコード",
+    "copyFailed": "自動でコピーできませんでした。下のテキストを選択して手動でコピーしてください。",
+    "copyLink": "リンクをコピー",
+    "copyCode": "コードをコピー",
+    "copied": "コピーしました",
+    "close": "閉じる"
+  },
+  "SubtitleTranscript": {
+    "heading": "トランスクリプト",
+    "subheading": "行をタップするとその時点に移動します。",
+    "subtitleLanguage": "字幕言語",
+    "aiSuffix": " · AI生成",
+    "loading": "トランスクリプトを読み込み中…",
+    "unavailable": "この字幕トラックのトランスクリプトは利用できません。",
+    "empty": "トランスクリプト行が見つかりません。"
+  },
+  "FloatingSearch": {
+    "placeholder": "検索またはトピックを閲覧…",
+    "openSearch": "動画を検索",
+    "searchRegion": "動画を検索",
+    "clearSearch": "検索をクリア",
+    "changeAudioLanguage": "音声言語を変更",
+    "home": "JesusFilm ホーム"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "動画を検索・閲覧",
+    "home": "JesusFilm ホーム",
+    "placeholder": "検索またはトピックを閲覧…",
+    "inputLabel": "キーワードで動画を検索",
+    "searchFailed": "検索できませんでした。もう一度お試しください。",
+    "loadMoreFailed": "さらに結果を読み込めませんでした。",
+    "searching": "検索中...",
+    "connectionHint": "接続を確認して、もう一度お試しください。",
+    "retrySearch": "もう一度検索",
+    "retry": "再試行",
+    "noResults": "「{query}」の結果はありません",
+    "tryDifferentKeywords": "別のキーワードを試すか、カテゴリを閲覧してください",
+    "loading": "読み込み中...",
+    "loadMore": "さらに読み込む",
+    "categoryBibleStories": "聖書の物語",
+    "categoryParables": "たとえ話",
+    "categoryAnimated": "アニメーション",
+    "categoryStudy": "学び",
+    "categoryFamily": "家族",
+    "categoryChristmas": "クリスマス"
+  },
+  "HeroPlayer": {
+    "playWithSound": "音声付きで再生",
+    "tapToUnmute": "ミュートを解除"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "コンテンツを読み込み中"
+  },
+  "VideoLabels": {
+    "video": "動画",
+    "segment": "セグメント",
+    "episode": "エピソード",
+    "featureFilm": "長編映画",
+    "shortFilm": "短編映画",
+    "series": "シリーズ",
+    "collection": "コレクション",
+    "trailer": "予告編",
+    "behindTheScenes": "舞台裏"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "クリップ {current}/{total}",
+    "position": "{current}/{total}",
+    "chapterCount": "{count, plural, other {# チャプター}}",
+    "clipAriaLabel": "{title} · クリップ {current}/{total}",
+    "chaptersAriaLabel": "{title} · {count, plural, other {# チャプター}}",
+    "chapter": "チャプター",
+    "noImage": "画像なし",
+    "playingNow": "再生中",
+    "previousChapter": "前のチャプター",
+    "nextChapter": "次のチャプター"
+  },
+  "SearchResultCard": {
+    "experience": "体験",
+    "episodeCount": "{count, plural, other {# エピソード}}",
+    "thumbnailAlt": "動画サムネイル"
+  }
+}

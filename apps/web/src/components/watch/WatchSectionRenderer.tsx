@@ -30,15 +30,23 @@ const TOP_ZONE_KINDS: Set<WatchBlock["kind"]> = new Set(["HeroPlayer"])
 
 export function WatchSectionRenderer({
   blocks,
+  downloadButtonLabel,
+  downloadError,
+  downloadPending,
   modalCallbacks,
   onPlayerReady,
   locale,
+  languageSlug,
   subtitleVttSrc,
 }: {
   blocks: MergedWatchBlock[]
+  downloadButtonLabel?: string
+  downloadError?: string | null
+  downloadPending?: boolean
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   locale?: string
+  languageSlug?: string
   subtitleVttSrc?: string | null
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
@@ -66,10 +74,14 @@ export function WatchSectionRenderer({
           key={blockKey(block, index)}
           block={block}
           index={index}
+          downloadButtonLabel={downloadButtonLabel}
+          downloadError={downloadError}
+          downloadPending={downloadPending}
           studyQuestionsBlock={studyQuestionsBlock}
           modalCallbacks={modalCallbacks}
           onPlayerReady={onPlayerReady}
           locale={locale}
+          languageSlug={languageSlug}
           subtitleVttSrc={subtitleVttSrc}
         />
       ))}
@@ -98,10 +110,14 @@ export function WatchSectionRenderer({
                   key={blockKey(block, index + topBlocks.length)}
                   block={block}
                   index={index + topBlocks.length}
+                  downloadButtonLabel={downloadButtonLabel}
+                  downloadError={downloadError}
+                  downloadPending={downloadPending}
                   studyQuestionsBlock={studyQuestionsBlock}
                   modalCallbacks={modalCallbacks}
                   onPlayerReady={onPlayerReady}
                   locale={locale}
+                  languageSlug={languageSlug}
                 />
               ))}
             </div>
@@ -115,28 +131,40 @@ export function WatchSectionRenderer({
 function WatchBlockEntry({
   block,
   index,
+  downloadButtonLabel,
+  downloadError,
+  downloadPending,
   studyQuestionsBlock,
   modalCallbacks,
   onPlayerReady,
   locale,
+  languageSlug,
   subtitleVttSrc,
 }: {
   block: MergedWatchBlock
   index: number
+  downloadButtonLabel?: string
+  downloadError?: string | null
+  downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   locale?: string
+  languageSlug?: string
   subtitleVttSrc?: string | null
 }) {
   if (isWatchBlock(block)) {
     return (
       <SyntheticBlock
         block={block}
+        downloadButtonLabel={downloadButtonLabel}
+        downloadError={downloadError}
+        downloadPending={downloadPending}
         studyQuestionsBlock={studyQuestionsBlock}
         modalCallbacks={modalCallbacks}
         onPlayerReady={onPlayerReady}
         locale={locale}
+        languageSlug={languageSlug}
         subtitleVttSrc={subtitleVttSrc}
       />
     )
@@ -146,17 +174,25 @@ function WatchBlockEntry({
 
 function SyntheticBlock({
   block,
+  downloadButtonLabel,
+  downloadError,
+  downloadPending,
   studyQuestionsBlock,
   modalCallbacks,
   onPlayerReady,
   locale,
+  languageSlug,
   subtitleVttSrc,
 }: {
   block: WatchBlock
+  downloadButtonLabel?: string
+  downloadError?: string | null
+  downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   locale?: string
+  languageSlug?: string
   subtitleVttSrc?: string | null
 }) {
   switch (block.kind) {
@@ -175,12 +211,15 @@ function SyntheticBlock({
       )
     }
     case "SiblingCarousel":
-      return <SiblingCarousel block={block} />
+      return <SiblingCarousel block={block} languageSlug={languageSlug ?? ""} />
 
     case "WatchBody":
       return (
         <WatchBody
           block={block}
+          downloadButtonLabel={downloadButtonLabel}
+          downloadError={downloadError}
+          downloadPending={downloadPending}
           studyQuestions={studyQuestionsBlock}
           onDownloadClick={modalCallbacks?.openDownload ?? noop}
         />
@@ -204,6 +243,7 @@ function SyntheticBlock({
           bibleCitations={block.bibleCitations}
           onShareClick={modalCallbacks?.openShare ?? noop}
           locale={locale}
+          youVersionPassages={block.youVersionPassages}
         />
       )
     case "Share":

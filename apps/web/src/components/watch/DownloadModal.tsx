@@ -10,24 +10,22 @@ import {
   Play,
   X as XIcon,
 } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import { formatDuration as formatDurationShared } from "@/lib/format-duration"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { TERMS_OF_USE_PARAGRAPHS } from "@/lib/terms-of-use"
-import {
-  SAFE_DOWNLOAD_EXTENSIONS,
-  isAllowedDownloadOrigin,
-} from "@/lib/download-allowlist"
 import { cn } from "@/lib/utils"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
+import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
+import { redirectToAuth } from "@/components/watch/download-session-client"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
 export type DownloadModalDownload = {
   documentId: string
   quality: string
   size: number | null
-  url: string
 }
 
 export type DownloadModalProps = {
@@ -38,6 +36,8 @@ export type DownloadModalProps = {
   /** Variant duration in seconds (used for the runtime overlay on the thumbnail). */
   durationSeconds?: number | null
   languageName?: string | null
+  variantId: string
+  videoSlug: string
   onClose: () => void
 }
 
@@ -137,14 +137,14 @@ function formatSize(bytes: number | null | undefined): string {
 // CMS-provided `size` is missing or zero. Returns null on any failure so
 // the UI can fall back to rendering just the tier label.
 async function fetchSizeFromProxy(
-  url: string,
+  params: DownloadProxyParams,
   signal: AbortSignal,
 ): Promise<number | null> {
   try {
-    const res = await fetch(
-      `${DOWNLOAD_PROXY_PATH}?url=${encodeURIComponent(url)}`,
-      { method: "HEAD", signal },
-    )
+    const res = await fetch(buildDownloadProxyUrl(params), {
+      method: "HEAD",
+      signal,
+    })
     if (!res.ok) return null
     const len = res.headers.get("content-length")
     if (!len) return null
@@ -153,6 +153,28 @@ async function fetchSizeFromProxy(
   } catch {
     return null
   }
+}
+
+type DownloadProxyParams = {
+  downloadId: string
+  filename?: string
+  variantId: string
+  videoSlug: string
+}
+
+function buildDownloadProxyUrl({
+  downloadId,
+  filename,
+  variantId,
+  videoSlug,
+}: DownloadProxyParams): string {
+  const params = new URLSearchParams({
+    downloadId,
+    variantId,
+    videoSlug,
+  })
+  if (filename) params.set("filename", filename)
+  return `${DOWNLOAD_PROXY_PATH}?${params.toString()}`
 }
 
 // Renders `({formatted})` when the size is known, nothing otherwise.
@@ -189,16 +211,28 @@ export function DownloadModal({
   posterUrl,
   durationSeconds,
   languageName,
+  variantId,
+  videoSlug,
   onClose,
 }: DownloadModalProps) {
+  const t = useTranslations("DownloadModal")
+  const fileSizeLabel = t("fileSizeLabel")
+  // Localized label for a quality tier. `bucketDownloads` carries an English
+  // `label` for back-compat, but the rendered text is resolved here so it
+  // translates.
+  const tierLabel = (tier: Tier): string =>
+    tier === "highest"
+      ? t("tierHighest")
+      : tier === "high"
+        ? t("tierHigh")
+        : t("tierLow")
   const [tosAgreed, setTosAgreed] = useState(false)
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [authChecking, setAuthChecking] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
-  // Keyed by download URL since the CMS-generated `documentId` is stable
-  // per-variant but the URL is what we probe — lookups for the same URL
-  // (which happens when the CMS sets fhd === highest) dedupe naturally.
+  // Keyed by download id so raw CDN URLs never need to enter the client bundle.
   const [probedSizes, setProbedSizes] = useState<Record<string, number | null>>(
     {},
   )
@@ -206,8 +240,8 @@ export function DownloadModal({
   // decoupled from result state — using `probedSizes` for both would put
   // it in the probe effect's deps and cause an extra no-op effect run per
   // batch. Survives modal close/reopen so a rapid open-close-open cycle
-  // doesn't re-issue HEAD requests for URLs we already tried.
-  const attemptedUrlsRef = useRef<Set<string>>(new Set())
+  // doesn't re-issue HEAD requests for downloads we already tried.
+  const attemptedDownloadIdsRef = useRef<Set<string>>(new Set())
   const dropdownId = useId()
   const dropdownListId = `${dropdownId}-list`
   const triggerRef = useRef<HTMLButtonElement | null>(null)
@@ -216,6 +250,7 @@ export function DownloadModal({
   // queueing a second proxy request before the modal-close re-render
   // hides the button.
   const downloadInFlight = useRef<boolean>(false)
+  const requestVersionRef = useRef(0)
 
   const tiers = useMemo(() => bucketDownloads(downloads), [downloads])
 
@@ -225,7 +260,7 @@ export function DownloadModal({
     (download: DownloadModalDownload): number | null => {
       const cms = download.size
       if (cms != null && cms > 0) return cms
-      const probed = probedSizes[download.url]
+      const probed = probedSizes[download.documentId]
       return probed ?? null
     },
     [probedSizes],
@@ -245,7 +280,7 @@ export function DownloadModal({
       ? selectedTier
       : defaultTier
   const selected = tiers.find((t) => t.tier === effectiveTier) ?? null
-  const canDownload = tosAgreed && selected != null
+  const canDownload = tosAgreed && selected != null && !authChecking
   const durationLabel = formatDuration(durationSeconds)
 
   const handleOpenChange = useCallback(
@@ -255,8 +290,10 @@ export function DownloadModal({
         setSelectedTier(null)
         setDropdownOpen(false)
         setError(null)
+        setAuthChecking(false)
         setTermsOpen(false)
         downloadInFlight.current = false
+        requestVersionRef.current += 1
         onClose()
       }
     },
@@ -272,25 +309,32 @@ export function DownloadModal({
   // per page-load lifetime.
   useEffect(() => {
     if (!open) return
-    const attempted = attemptedUrlsRef.current
-    const missingUrls = Array.from(
-      new Set(
-        tiers
-          .map((t) => t.download)
-          .filter((d) => !(d.size != null && d.size > 0))
-          .map((d) => d.url)
-          .filter((url) => !attempted.has(url)),
-      ),
+    const attempted = attemptedDownloadIdsRef.current
+    const missingDownloads = tiers
+      .map((t) => t.download)
+      .filter((d) => !(d.size != null && d.size > 0))
+      .filter((download) => !attempted.has(download.documentId))
+    if (missingDownloads.length === 0) return
+    const uniqueDownloads = Array.from(
+      new Map(
+        missingDownloads.map((download) => [download.documentId, download]),
+      ).values(),
     )
-    if (missingUrls.length === 0) return
     // Reserve slots synchronously so a re-open during the in-flight
     // batch doesn't trigger duplicate HEADs.
-    for (const url of missingUrls) attempted.add(url)
+    for (const download of uniqueDownloads) attempted.add(download.documentId)
     const controller = new AbortController()
     void Promise.all(
-      missingUrls.map(async (url) => {
-        const size = await fetchSizeFromProxy(url, controller.signal)
-        return [url, size] as const
+      uniqueDownloads.map(async (download) => {
+        const size = await fetchSizeFromProxy(
+          {
+            downloadId: download.documentId,
+            variantId,
+            videoSlug,
+          },
+          controller.signal,
+        )
+        return [download.documentId, size] as const
       }),
     )
       .then((results) => {
@@ -308,7 +352,7 @@ export function DownloadModal({
         console.error("[DownloadModal] size probe pipeline failed", err)
       })
     return () => controller.abort()
-  }, [open, tiers])
+  }, [open, tiers, variantId, videoSlug])
 
   // Click-outside / Escape-first close for the custom dropdown. Without
   // this, clicking elsewhere in the modal leaves the listbox open
@@ -344,50 +388,51 @@ export function DownloadModal({
     }
   }, [dropdownOpen])
 
-  function buildFilename(sourceUrl: string, tier: Tier): string {
-    // Strip query string before extracting the extension so a `?token=...`
-    // CDN URL doesn't end up with `mp4?token=abc` as the ext.
-    const path = sourceUrl.split("?")[0] ?? ""
-    const lastDot = path.lastIndexOf(".")
-    const lastSlash = path.lastIndexOf("/")
-    // Only treat the last segment's `.ext` as an extension; otherwise a
-    // URL like `https://stream.mux.com/abc` would emit `com/abc` as the
-    // extension and embed a slash in the filename.
-    const candidate =
-      lastDot > lastSlash && lastDot < path.length - 1
-        ? path.slice(lastDot + 1).toLowerCase()
-        : ""
-    const ext = SAFE_DOWNLOAD_EXTENSIONS.has(candidate) ? candidate : "mp4"
-
+  function buildFilename(tier: Tier): string {
     const slug = (videoTitle ?? "video")
       .replace(/[^a-z0-9]+/gi, "-")
       .replace(/^-|-$/g, "")
       .toLowerCase()
-    return `${slug || "video"}-${tier}.${ext}`
+    return `${slug || "video"}-${tier}.mp4`
   }
 
-  function handleDownload() {
+  async function handleDownload() {
     if (!selected) return
     if (downloadInFlight.current) return
-    const sourceUrl = selected.download.url
-    if (!isAllowedDownloadOrigin(sourceUrl)) {
-      console.error(
-        "[DownloadModal] Refusing to download from non-allowlisted origin",
-        { url: sourceUrl },
-      )
-      setError("Download unavailable from this source")
-      return
-    }
+    const requestVersion = ++requestVersionRef.current
     setError(null)
     downloadInFlight.current = true
+    setAuthChecking(true)
 
-    const filename = buildFilename(sourceUrl, selected.tier)
+    const session = await resolveDownloadSessionAccess()
+    if (requestVersionRef.current !== requestVersion) return
+    if (!session.ok && session.reason === "session-unavailable") {
+      downloadInFlight.current = false
+      setAuthChecking(false)
+      setError(t("errorSessionUnavailable"))
+      return
+    }
+    if (!session.ok) {
+      downloadInFlight.current = false
+      setAuthChecking(false)
+      setError(t("errorSessionExpired"))
+      redirectToAuth(session.loginUrl)
+      return
+    }
+    setAuthChecking(false)
+
+    const filename = buildFilename(selected.tier)
 
     // Route through our same-origin streaming proxy so the browser honors
     // the `download` attribute and `Content-Disposition: attachment`. A
     // direct cross-origin link gets navigated by the browser instead of
     // handed to the download manager.
-    const proxy = `${DOWNLOAD_PROXY_PATH}?url=${encodeURIComponent(sourceUrl)}&filename=${encodeURIComponent(filename)}`
+    const proxy = buildDownloadProxyUrl({
+      downloadId: selected.download.documentId,
+      filename,
+      variantId,
+      videoSlug,
+    })
 
     const a = document.createElement("a")
     a.href = proxy
@@ -415,7 +460,7 @@ export function DownloadModal({
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         showCloseButton={false}
       >
-        <DialogTitle className="sr-only">Download video</DialogTitle>
+        <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
         <div className="flex max-h-[82vh] flex-col gap-7 overflow-y-auto pr-2 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
           {/* Header: thumbnail + metadata */}
@@ -427,7 +472,7 @@ export function DownloadModal({
               {posterUrl ? (
                 <Image
                   src={posterUrl}
-                  alt={videoTitle ?? "Video poster"}
+                  alt={videoTitle ?? t("posterAlt")}
                   fill
                   sizes="(min-width: 640px) 224px, 100vw"
                   className="object-cover"
@@ -449,7 +494,7 @@ export function DownloadModal({
                 data-testid="watch-download-modal-eyebrow"
                 className={WATCH_SECTION_EYEBROW_CLASS}
               >
-                Download Video
+                {t("eyebrow")}
               </span>
               <h2
                 data-testid="watch-download-modal-title"
@@ -476,7 +521,7 @@ export function DownloadModal({
                 data-testid="watch-download-modal-empty"
                 className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-stone-400"
               >
-                No downloads are available for this video.
+                {t("noDownloads")}
               </p>
             ) : (
               <div className="-mx-2 flex flex-col gap-3 px-2">
@@ -484,7 +529,7 @@ export function DownloadModal({
                   htmlFor={dropdownId}
                   className="text-lg font-semibold text-stone-100"
                 >
-                  Select a file size
+                  {fileSizeLabel}
                 </label>
                 <div className="relative">
                   <button
@@ -503,7 +548,7 @@ export function DownloadModal({
                       {selected ? (
                         <>
                           <span className="font-semibold">
-                            {selected.label}
+                            {tierLabel(selected.tier)}
                           </span>
                           <SizeLabel
                             bytes={resolveSize(selected.download)}
@@ -511,7 +556,7 @@ export function DownloadModal({
                           />
                         </>
                       ) : (
-                        "Select a file size"
+                        fileSizeLabel
                       )}
                     </span>
                     <ChevronDown
@@ -559,7 +604,9 @@ export function DownloadModal({
                                   isSelected ? "opacity-100" : "opacity-0"
                                 }
                               />
-                              <span className="font-semibold">{t.label}</span>
+                              <span className="font-semibold">
+                                {tierLabel(t.tier)}
+                              </span>
                               <SizeLabel
                                 bytes={resolveSize(t.download)}
                                 className={cn(
@@ -597,15 +644,16 @@ export function DownloadModal({
               />
             </span>
             <span>
-              I agree to the{" "}
+              {t("termsAgreementPrefix")}
               <button
                 type="button"
                 onClick={() => setTermsOpen(true)}
                 data-testid="watch-download-modal-tos-trigger"
                 className="cursor-pointer font-normal text-brand-red underline decoration-brand-red/40 underline-offset-4 hover:decoration-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/50"
               >
-                Terms of Use
+                {t("termsOfUse")}
               </button>
+              {t("termsAgreementSuffix")}
             </span>
           </label>
 
@@ -625,18 +673,18 @@ export function DownloadModal({
               onClick={() => handleOpenChange(false)}
               className="cursor-pointer rounded-full px-5 py-3.5 text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
             >
-              Close
+              {t("close")}
             </Button>
             <Button
               variant="pill"
               onClick={handleDownload}
               disabled={!canDownload}
-              aria-label="Download"
+              aria-label={t("download")}
               data-testid="watch-download-modal-confirm"
               className="px-7 py-4 text-sm"
             >
               <DownloadIcon size={16} />
-              <span>Download</span>
+              <span>{authChecking ? t("checking") : t("download")}</span>
             </Button>
           </div>
         </div>
@@ -670,6 +718,8 @@ type TermsOfUseDialogProps = {
 }
 
 function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
+  const t = useTranslations("DownloadModal")
+
   return (
     <Dialog
       open={open}
@@ -688,7 +738,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
             data-testid="watch-download-modal-terms-title"
             className="text-2xl font-bold text-stone-50 sm:text-3xl"
           >
-            Terms of Use
+            {t("termsOfUse")}
           </DialogTitle>
           {/*
             Raw <button> (not <Button variant="...">): the circular
@@ -700,7 +750,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
           <button
             type="button"
             onClick={onCancel}
-            aria-label="Close Terms of Use"
+            aria-label={t("closeTermsOfUse")}
             data-testid="watch-download-modal-terms-close"
             className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-stone-700/60 text-stone-200 transition-colors hover:bg-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red/50"
           >
@@ -731,14 +781,14 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
             data-testid="watch-download-modal-terms-cancel"
             className="cursor-pointer rounded-full bg-stone-700/60 px-5 py-2.5 text-sm font-medium text-stone-100 transition-colors hover:bg-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400/50"
           >
-            Cancel
+            {t("cancel")}
           </button>
           <Button
             variant="pill"
             onClick={onAccept}
             data-testid="watch-download-modal-terms-accept"
           >
-            Accept
+            {t("accept")}
           </Button>
         </div>
       </DialogContent>

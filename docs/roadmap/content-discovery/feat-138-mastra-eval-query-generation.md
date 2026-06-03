@@ -19,6 +19,13 @@ tags:
   - "i18n"
 ---
 
+## Historical Note
+
+This completed ticket references legacy Admin search-eval harness paths that
+were removed by `feat-155`. Current query generation lives in Mastra, with
+Admin exposing only authenticated catalog, trace, candidate, and no-trace
+search contracts.
+
 ## Problem
 
 The existing search eval harness can generate and run synthetic cases, but the
@@ -38,21 +45,21 @@ regression gates.
    - Admin trace source and sampling contract.
 3. `docs/roadmap/content-discovery/feat-137-search-query-quality-abuse-labeling.md`
    - quality labels and bad-actor filtering.
-4. `apps/admin/src/services/search-eval/query-generator.ts`
+4. `apps/mastra/src/services/eval-query-generator.ts`
    - current synthetic query generation implementation.
-5. `apps/admin/src/services/search-eval/locales.ts`
-   - locale tier and judge-confidence handling.
-6. `apps/admin/src/services/search-eval/schemas.ts`
-   - eval schema validation patterns.
-7. `apps/admin/eval/README.md`
-   - existing eval artifact model and regression/calibration guidance.
+5. `apps/admin/src/services/search-eval-locale-profiles.ts`
+   - fixed locale tier/profile contract exposed by Admin.
+6. `apps/mastra/src/services/admin-search-eval-client.ts`
+   - Admin catalog/trace/candidate HTTP client and response schemas.
+7. `apps/mastra/src/services/offline-search-eval/`
+   - current eval artifact model and report guidance.
 8. `apps/mastra/src/mastra/index.ts`
    - Mastra workflow registration and protected route patterns.
 
 ## Grep These
 
 ```
-rg -n "query-generator|generate.*queries|HARNESS_LOCALES|regressions" apps/admin/src/services/search-eval apps/admin/eval
+rg -n "generate.*queries|localeProfiles|candidate" apps/mastra/src/services apps/mastra/src/mastra/workflows
 rg -n "SearchTrace|quality label|abuse|sampling" apps/admin/src apps/admin/prisma
 rg -n "createWorkflow|createStep|registerApiRoute|MASTRA_SERVICE_API_KEYS" apps/mastra/src
 ```

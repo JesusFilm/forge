@@ -9,7 +9,10 @@ import type { Principal } from "@/auth/principal"
 import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
-import type { VideoForEnrichment } from "@/services/video.service"
+import type {
+  ChildDubLanguageRow,
+  VideoForEnrichment,
+} from "@/services/video.service"
 
 // Principal-aware relation filters — extracted so the per-principal /
 // per-locale shape is unit-testable. EDITOR/ADMIN see everything;
@@ -20,9 +23,14 @@ import type { VideoForEnrichment } from "@/services/video.service"
 // has at least one PUBLISHED locale AND is not soft-deleted.
 
 export function videoLocalesFilter(
-  args: { locale?: string | null },
+  args: { locale?: string | null; languageSlug?: string | null },
   user: Principal | null,
-): { where: Prisma.VideoLocaleWhereInput } | Record<string, never> {
+):
+  | {
+      where: Prisma.VideoLocaleWhereInput
+      orderBy: Prisma.VideoLocaleOrderByWithRelationInput[]
+    }
+  | Record<string, never> {
   // Treat empty string the same as missing — caller intent is "no locale
   // filter," not "narrow to the zero-length locale code" (which would match
   // zero rows).
@@ -30,12 +38,57 @@ export function videoLocalesFilter(
     typeof args.locale === "string" && args.locale.length > 0
       ? args.locale
       : null
+  const languageSlug =
+    typeof args.languageSlug === "string" && args.languageSlug.length > 0
+      ? args.languageSlug
+      : null
   const localeFilter = locale != null ? { locale } : {}
+  const languageSlugFilter = languageSlug != null ? { languageSlug } : {}
+  const visibleFilter = {
+    deletedAt: null,
+    ...localeFilter,
+    ...languageSlugFilter,
+  }
+  const orderBy = [{ languageSlug: "asc" as const }, { id: "asc" as const }]
   if (isEditorOrAdmin(user)) {
-    return locale != null ? { where: localeFilter } : {}
+    return { where: visibleFilter, orderBy }
   }
   return {
-    where: { status: "PUBLISHED" as const, ...localeFilter },
+    where: { status: "PUBLISHED" as const, ...visibleFilter },
+    orderBy,
+  }
+}
+
+export function videoStudyQuestionsFilter(args: {
+  locale?: string | null
+  languageSlug?: string | null
+}): {
+  where: Prisma.VideoStudyQuestionWhereInput
+  orderBy: Prisma.VideoStudyQuestionOrderByWithRelationInput[]
+} {
+  const locale =
+    typeof args.locale === "string" && args.locale.length > 0
+      ? args.locale
+      : null
+  const languageSlug =
+    typeof args.languageSlug === "string" && args.languageSlug.length > 0
+      ? args.languageSlug
+      : null
+  return {
+    where: {
+      deletedAt: null,
+      ...(locale != null
+        ? { locale }
+        : languageSlug == null
+          ? { primary: true }
+          : {}),
+      ...(languageSlug != null ? { languageSlug } : {}),
+    },
+    orderBy: [
+      { order: "asc" as const },
+      { languageSlug: "asc" as const },
+      { id: "asc" as const },
+    ],
   }
 }
 
@@ -47,7 +100,7 @@ export function videoParentsFilter(
     where: {
       parent: {
         deletedAt: null,
-        locales: { some: { status: "PUBLISHED" as const } },
+        locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
       },
     },
   }
@@ -61,7 +114,7 @@ export function videoChildrenFilter(
     where: {
       child: {
         deletedAt: null,
-        locales: { some: { status: "PUBLISHED" as const } },
+        locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
       },
     },
   }
@@ -259,12 +312,15 @@ builder.prismaObject("VideoLocale", {
   description: "Per-locale title/description/snippet/imageAlt for a Video.",
   fields: (t) => ({
     id: t.exposeID("id"),
-    locale: t.exposeString("locale"),
+    locale: t.exposeString("locale", { nullable: true }),
+    languageSlug: t.exposeString("languageSlug", { nullable: true }),
+    languageCoreId: t.exposeString("languageCoreId", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
     description: t.exposeString("description", { nullable: true }),
     snippet: t.exposeString("snippet", { nullable: true }),
     imageAlt: t.exposeString("imageAlt", { nullable: true }),
     status: t.expose("status", { type: LocaleStatusEnum }),
+    language: t.relation("language", { nullable: true }),
     publishedAt: t.string({
       nullable: true,
       resolve: (row) => row.publishedAt?.toISOString() ?? null,
@@ -279,6 +335,8 @@ builder.prismaObject("VideoStudyQuestion", {
     id: t.exposeID("id"),
     coreId: t.exposeString("coreId", { nullable: true }),
     locale: t.exposeString("locale", { nullable: true }),
+    languageSlug: t.exposeString("languageSlug", { nullable: true }),
+    languageCoreId: t.exposeString("languageCoreId", { nullable: true }),
     text: t.exposeString("text"),
     primary: t.exposeBoolean("primary"),
     order: t.exposeInt("order", { nullable: true }),
@@ -295,6 +353,33 @@ builder.prismaObject("VideoRelation", {
     order: t.exposeInt("order", { nullable: true }),
     parent: t.relation("parent"),
     child: t.relation("child"),
+  }),
+})
+
+// ChildDubLanguage — a computed projection (not a prismaObject), so it's
+// invisible to classification.test.ts's prismaObject/t.relation walker by
+// construction (same posture as VideoForEnrichment below). It carries no
+// abac-gated data: only the public language display fields the /series-page
+// picker needs. Deliberately minimal — the picker navigates by slug, so a
+// dub's id/hls/duration are not projected (kept the per-language payload
+// small enough that aggregating ~2,200 languages stays well under budget).
+
+const ChildDubLanguageRef =
+  builder.objectRef<ChildDubLanguageRow>("ChildDubLanguage")
+
+ChildDubLanguageRef.implement({
+  description:
+    "One distinct playable dub language available across a parent video's children. Drives the /series-page language picker. Every entry is guaranteed playable (published + streamable) — consumers need no further filtering.",
+  fields: (t) => ({
+    slug: t.exposeString("slug", { nullable: true }),
+    name: t.field({
+      type: "JSON",
+      nullable: true,
+      description:
+        "Compatibility JSON map of locale code → name (mirrors Language.name).",
+      resolve: (row) => row.name,
+    }),
+    bcp47: t.exposeString("bcp47", { nullable: true }),
   }),
 })
 
@@ -320,11 +405,30 @@ builder.prismaObject("Video", {
     aiMetadata: t.exposeBoolean("aiMetadata"),
     primaryLanguage: t.relation("primaryLanguage", { nullable: true }),
     origin: t.relation("origin", { nullable: true }),
+    durationSeconds: t.int({
+      nullable: true,
+      description:
+        "Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g. a SERIES/COLLECTION whose runtime lives on its children). Mirrors HybridSearchResult.durationSeconds — picks the primary-language playable dub, else the longest. Lets watch/series carousels render a per-chapter runtime pill via `children { child { durationSeconds } }` without projecting every child's full dub list. Batched per request through a DataLoader.",
+      resolve: (video, _args, ctx) =>
+        ctx.loaders.videoPrimaryDubDurationById.load(video.id),
+    }),
+    childDubLanguages: t.field({
+      type: [ChildDubLanguageRef],
+      nullable: false,
+      description:
+        "Distinct playable dub languages aggregated across this video's children (one representative dub per language). Empty for videos without children. Powers the /series-page language picker without projecting every child's full dub list — the ~45 MB / 137k-record payload that exceeds Next's unstable_cache 2 MB ceiling on the Jesus film (61 chapters × ~2,200 dubs). Respects the same child-visibility rules as `children`.",
+      resolve: (video, _args, ctx) =>
+        ctx.services.video.getChildDubLanguages({
+          videoId: video.id,
+          user: ctx.user,
+        }),
+    }),
     locales: t.relation("locales", {
       description:
         "PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all. Pass `locale` to narrow the result to a single BCP-47 locale (web's WatchVideo fragment uses this to avoid overfetching every locale).",
       args: {
         locale: t.arg.string({ required: false }),
+        languageSlug: t.arg.string({ required: false }),
       },
       query: (args, ctx) => videoLocalesFilter(args, ctx.user),
     }),
@@ -335,7 +439,11 @@ builder.prismaObject("Video", {
       query: { where: { deletedAt: null } },
     }),
     studyQuestions: t.relation("studyQuestions", {
-      query: { where: { deletedAt: null } },
+      args: {
+        locale: t.arg.string({ required: false }),
+        languageSlug: t.arg.string({ required: false }),
+      },
+      query: (args) => videoStudyQuestionsFilter(args),
     }),
     bibleCitations: t.relation("bibleCitations", {
       query: { where: { deletedAt: null } },

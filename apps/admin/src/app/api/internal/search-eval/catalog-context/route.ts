@@ -5,14 +5,17 @@ import {
   SearchEvalCatalogContextError,
   readSearchEvalCatalogContext,
   type SearchEvalCatalogContextFilters,
-} from "@/services/search-eval/catalog-context"
+} from "@/services/search-eval-catalog-context"
 
 const RATE_LIMIT_MAX = 20
 const RATE_LIMIT_WINDOW_MS = 60_000
 const MAX_BODY_BYTES = 4096
 
 function tooManyRequests(): Response {
-  return Response.json({ error: "Too many requests" }, { status: 429 })
+  return Response.json(
+    { error: "Too many requests" },
+    { status: 429, headers: { "retry-after": "60" } },
+  )
 }
 
 function unauthorized(): Response {
@@ -34,6 +37,13 @@ function payloadTooLarge(): Response {
   return Response.json({ error: "JSON body is too large" }, { status: 413 })
 }
 
+function serviceUnavailable(): Response {
+  return Response.json(
+    { error: "Catalog context is temporarily unavailable" },
+    { status: 503 },
+  )
+}
+
 async function readJsonBody(request: Request): Promise<unknown | Response> {
   const contentType = request.headers.get("content-type") ?? ""
   if (!/^\s*application\/json(?:\s*;|$)/i.test(contentType)) {
@@ -49,15 +59,33 @@ async function readJsonBody(request: Request): Promise<unknown | Response> {
     if (declaredBytes > MAX_BODY_BYTES) return payloadTooLarge()
   }
 
-  let text: string
+  const body = request.body
+  if (body == null) return badRequest("Invalid JSON body")
+
+  const reader = body.getReader()
+  const chunks: Uint8Array[] = []
+  let totalBytes = 0
   try {
-    text = await request.text()
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      totalBytes += value.byteLength
+      if (totalBytes > MAX_BODY_BYTES) {
+        await reader.cancel().catch(() => undefined)
+        return payloadTooLarge()
+      }
+      chunks.push(value)
+    }
   } catch {
     return badRequest("Invalid JSON body")
   }
-  if (new TextEncoder().encode(text).byteLength > MAX_BODY_BYTES) {
-    return payloadTooLarge()
+  const bytes = new Uint8Array(totalBytes)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
   }
+  const text = new TextDecoder().decode(bytes)
 
   try {
     return JSON.parse(text)
@@ -131,7 +159,7 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const context = await readSearchEvalCatalogContext(prisma, filters)
-    console.error(
+    console.info(
       `[search] event=eval_catalog_context auth=bearer route=internal rl=${limit.source} locales=${logValue(filters.locales?.join(","))} anchor_count=${context.anchors.length}`,
     )
     return Response.json(
@@ -145,7 +173,10 @@ export async function POST(request: Request): Promise<Response> {
     if (error instanceof SearchEvalCatalogContextError) {
       return badRequest(error.message)
     }
-    throw error
+    console.error(
+      `[search] event=eval_catalog_context_failed route=internal error_class=${logValue(error instanceof Error ? error.name : typeof error)}`,
+    )
+    return serviceUnavailable()
   }
 }
 

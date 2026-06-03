@@ -91,6 +91,26 @@ vi.mock("@forge/video-player", () => ({
   MuxVideo: muxVideoMock,
 }))
 
+vi.mock("next-intl", () => ({
+  useTranslations:
+    (namespace: "HeroPlayer" | "VideoLabels") => (key: string) => {
+      const catalogs = {
+        HeroPlayer: {
+          playWithSound: "Play with Sound",
+          tapToUnmute: "Tap to Unmute",
+        },
+        VideoLabels: {
+          episode: "Episode",
+          segment: "Segment",
+          video: "Video",
+        },
+      }
+
+      const group = catalogs[namespace] as Record<string, string> | undefined
+      return group?.[key] ?? key
+    },
+}))
+
 // HeroPlayer's runtime branch wraps each backend in `next/dynamic(() =>
 // import("@forge/video-player/mux-{player,video}"), { ssr: false })` so
 // the inactive backend is build-time DCE'd out of the route chunk.
@@ -622,6 +642,19 @@ describe("HeroPlayer — custom chrome render", () => {
     expect(
       container.querySelector('[data-testid="hero-chrome-time"]'),
     ).not.toBeNull()
+  })
+
+  it("uses the full-width watch rail layout for the chrome bar", async () => {
+    await revealChrome()
+    const chrome = container.querySelector(
+      '[data-testid="hero-player-custom-chrome"]',
+    ) as HTMLElement
+
+    expect(chrome.className).toContain("inset-x-0")
+    expect(chrome.className).toContain("w-full")
+    expect(chrome.className).toContain("px-10")
+    expect(chrome.className).toContain("md:px-16")
+    expect(chrome.className).toContain("xl:px-24")
   })
 
   it("removes the unmute pill once chrome is revealed", async () => {

@@ -210,6 +210,8 @@ enum SearchEvalCandidateSource {
   CATALOG        @map("catalog")
   LOCALE_QUALITY @map("locale_quality")
   TRACE          @map("trace")
+  SEED           @map("seed")
+  USER_SUBMITTED @map("user_submitted")
 }
 
 /// Human-promotion lifecycle for generated search-eval candidates.
@@ -217,6 +219,14 @@ enum SearchEvalCandidatePromotionStatus {
   GENERATED @map("generated")
   REJECTED  @map("rejected")
   PROMOTED  @map("promoted")
+  ARCHIVED  @map("archived")
+}
+
+/// Sanitization state for a reviewed search-eval candidate.
+enum SearchEvalCandidateSanitizationStatus {
+  PENDING   @map("pending")
+  SANITIZED @map("sanitized")
+  UNSAFE    @map("unsafe")
 }
 
 // -----------------------------------------------------------------------------
@@ -471,26 +481,37 @@ model SearchTraceAggregate {
 /// Generated rows do not participate in permanent regression gates until a
 /// future human-promotion workflow sanitizes and promotes them.
 model SearchEvalCandidate {
-  id                  String                             @id @default(cuid())
-  source              SearchEvalCandidateSource
-  locale              String                             @db.VarChar(32)
-  queryText           String                             @map("query_text") @db.VarChar(512)
-  expectedResultHints Json                               @default("[]") @map("expected_result_hints")
-  sourceAnchors       Json                               @default("[]") @map("source_anchors")
-  labelProvenance     Json                               @default("{}") @map("label_provenance")
-  generationModel     String                             @map("generation_model") @db.VarChar(128)
-  generationProvider  String?                            @map("generation_provider") @db.VarChar(64)
-  judgeSummary        Json?                              @map("judge_summary")
-  promotionStatus     SearchEvalCandidatePromotionStatus @default(GENERATED) @map("promotion_status")
-  mastraRunId         String?                            @map("mastra_run_id") @db.VarChar(128)
-  dedupeKey           String                             @unique @map("dedupe_key") @db.VarChar(64)
-  retentionExpiresAt  DateTime?                          @map("retention_expires_at")
-  generatedAt         DateTime                           @default(now()) @map("generated_at")
-  createdAt           DateTime                           @default(now()) @map("created_at")
-  updatedAt           DateTime                           @updatedAt @map("updated_at")
+  id                           String                                @id @default(cuid())
+  source                       SearchEvalCandidateSource
+  locale                       String                                @db.VarChar(32)
+  queryText                    String                                @map("query_text") @db.VarChar(512)
+  expectedResultHints          Json                                  @default("[]") @map("expected_result_hints")
+  sourceAnchors                Json                                  @default("[]") @map("source_anchors")
+  labelProvenance              Json                                  @default("{}") @map("label_provenance")
+  generationModel              String                                @map("generation_model") @db.VarChar(128)
+  generationProvider           String?                               @map("generation_provider") @db.VarChar(64)
+  judgeSummary                 Json?                                 @map("judge_summary")
+  promotionStatus              SearchEvalCandidatePromotionStatus    @default(GENERATED) @map("promotion_status")
+  sanitizedQueryText           String?                               @map("sanitized_query_text") @db.VarChar(512)
+  sanitizedExpectedResultNotes String?                               @map("sanitized_expected_result_notes") @db.VarChar(2048)
+  sanitizedSourceAnchors       Json                                  @default("[]") @map("sanitized_source_anchors")
+  sanitizationStatus           SearchEvalCandidateSanitizationStatus @default(PENDING) @map("sanitization_status")
+  reviewerIdentity             String?                               @map("reviewer_identity") @db.VarChar(256)
+  reviewedAt                   DateTime?                             @map("reviewed_at")
+  reviewNotes                  String?                               @map("review_notes") @db.VarChar(2048)
+  promotedAt                   DateTime?                             @map("promoted_at")
+  promotionRunContext          Json                                  @default("{}") @map("promotion_run_context")
+  mastraRunId                  String?                               @map("mastra_run_id") @db.VarChar(128)
+  dedupeKey                    String                                @unique @map("dedupe_key") @db.VarChar(64)
+  retentionExpiresAt           DateTime?                             @map("retention_expires_at")
+  generatedAt                  DateTime                              @default(now()) @map("generated_at")
+  createdAt                    DateTime                              @default(now()) @map("created_at")
+  updatedAt                    DateTime                              @updatedAt @map("updated_at")
 
   @@index([source, locale, createdAt])
   @@index([promotionStatus, createdAt])
+  @@index([promotionStatus, reviewedAt])
+  @@index([promotedAt])
   @@index([retentionExpiresAt])
   @@index([mastraRunId])
   @@map("search_eval_candidate")
@@ -536,6 +557,22 @@ model ManagerCoverageSnapshot {
   @@unique([date])
   @@index([date])
   @@map("manager_coverage_snapshot")
+}
+
+/// Latest admin-owned watch route-admission manifest. This singleton snapshot
+/// lets apps/web fetch compact public route sets without asking admin to
+/// recompute large aggregate queries per request.
+model WatchRouteManifestSnapshot {
+  key              String   @id
+  version          String
+  generatedAt      DateTime @map("generated_at")
+  payload          Json
+  payloadSizeBytes Int      @map("payload_size_bytes")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([generatedAt])
+  @@map("watch_route_manifest_snapshot")
 }
 
 /// Admin-owned persistence for Manager enrichment jobs. Field names mirror the
@@ -769,6 +806,7 @@ model Language {
   keywords         Keyword[]
   locales          LanguageLocale[]
   videoDubs        VideoDub[]
+  videoLocales     VideoLocale[]
   videoSubtitles   VideoSubtitle[]
   studyQuestions   VideoStudyQuestion[]
   countryLanguages CountryLanguage[]
@@ -1095,13 +1133,20 @@ model VideoLocale {
   videoId        String                   @map("video_id")
   video          Video                    @relation(fields: [videoId], references: [id], onDelete: Cascade)
   /// IETF BCP-47 locale code, e.g. "en", "fr", "es-419".
-  locale         String
+  locale         String?
+  languageId     String?                  @map("language_id")
+  language       Language?                @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  languageSlug   String?                  @map("language_slug")
+  languageCoreId String?                  @map("language_core_id")
+  source         SourceTier               @default(CORE)
   title          String?
   description    String?
   snippet        String?
   imageAlt       String?                  @map("image_alt")
   status         LocaleStatus             @default(DRAFT)
   publishedAt    DateTime?                @map("published_at")
+  syncedAt       DateTime?                @map("synced_at")
+  deletedAt      DateTime?                @map("deleted_at")
   createdAt      DateTime                 @default(now()) @map("created_at")
   updatedAt      DateTime                 @updatedAt @map("updated_at")
   /// STORED generated tsvector columns — derived from `title` /
@@ -1117,8 +1162,15 @@ model VideoLocale {
   titleTsv       Unsupported("tsvector")? @map("title_tsv")
   descriptionTsv Unsupported("tsvector")? @map("description_tsv")
 
-  @@unique([videoId, locale])
+  @@unique([videoId, languageId])
   @@index([locale])
+  @@index([videoId, locale])
+  @@index([languageId])
+  @@index([languageSlug])
+  @@index([videoId, languageSlug])
+  @@index([languageCoreId])
+  @@index([locale, status, deletedAt])
+  @@index([deletedAt])
   @@map("video_locale")
 }
 
@@ -1262,27 +1314,36 @@ model VideoSubtitle {
 
 /// A study question authored against a video.
 model VideoStudyQuestion {
-  id         String     @id @default(cuid())
-  coreId     String?    @unique @map("core_id")
-  source     SourceTier @default(CORE)
-  videoId    String     @map("video_id")
-  video      Video      @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  locale     String?
-  languageId String?    @map("language_id")
-  language   Language?  @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  id             String     @id @default(cuid())
+  coreId         String?    @map("core_id")
+  source         SourceTier @default(CORE)
+  videoId        String     @map("video_id")
+  video          Video      @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  locale         String?
+  languageId     String?    @map("language_id")
+  language       Language?  @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  languageSlug   String?    @map("language_slug")
+  languageCoreId String?    @map("language_core_id")
   /// Per-locale study question text. One row per localized Core question.
-  text       String     @default("")
-  primary    Boolean    @default(false)
+  text           String     @default("")
+  primary        Boolean    @default(false)
   /// Order within the video (1-based).
-  order      Int?
-  syncedAt   DateTime?  @map("synced_at")
-  deletedAt  DateTime?  @map("deleted_at")
-  createdAt  DateTime   @default(now()) @map("created_at")
-  updatedAt  DateTime   @updatedAt @map("updated_at")
+  order          Int?
+  syncedAt       DateTime?  @map("synced_at")
+  deletedAt      DateTime?  @map("deleted_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
 
   @@index([videoId])
+  @@index([coreId])
   @@index([languageId])
+  @@index([videoId, coreId, languageId])
+  @@index([languageSlug])
+  @@index([videoId, languageSlug])
+  @@index([languageCoreId])
   @@index([locale])
+  @@index([videoId, locale])
+  @@index([locale, deletedAt])
   @@index([deletedAt])
   @@map("video_study_question")
 }

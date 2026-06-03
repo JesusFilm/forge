@@ -1,0 +1,222 @@
+{
+  "ExperienceError": {
+    "empty": "暫無內容。",
+    "failedToLoad": "頁面載入失敗：{message}",
+    "unexpected": "發生意外錯誤。",
+    "notConfigured": "內容服務尚未設定。",
+    "noContent": "暫無可用內容。",
+    "homepageMisconfigured": "Watch 首頁設定有誤。",
+    "defaultTemplateMisconfigured": "預設 Watch 範本設定有誤。",
+    "authFailed": "無法連線至內容服務。如果問題持續，請聯絡支援。"
+  },
+  "VideosPage": {
+    "title": "全部影片",
+    "placeholder": "目錄瀏覽即將推出。目前請使用搜尋或主題專屬 URL。"
+  },
+  "BibleQuotes": {
+    "title": "聖經經文",
+    "share": "分享",
+    "readMore": "閱讀全文...",
+    "learnMore": "了解更多",
+    "freeResources": "免費資源",
+    "promoHeading": "想更深入地理解聖經嗎？",
+    "joinBibleStudy": "加入查經",
+    "previousQuote": "上一則聖經經文",
+    "nextQuote": "下一則聖經經文"
+  },
+  "DownloadButton": {
+    "checking": "正在檢查",
+    "download": "下載",
+    "sessionError": "無法檢查你的工作階段。請重試。",
+    "saveVideo": "儲存影片"
+  },
+  "DownloadModal": {
+    "dialogTitle": "下載影片",
+    "eyebrow": "下載影片",
+    "posterAlt": "影片海報",
+    "noDownloads": "此影片暫無可用下載。",
+    "fileSizeLabel": "選擇檔案大小",
+    "termsAgreementPrefix": "我同意",
+    "termsOfUse": "使用條款",
+    "termsAgreementSuffix": "",
+    "close": "關閉",
+    "download": "下載",
+    "checking": "正在檢查",
+    "closeTermsOfUse": "關閉使用條款",
+    "cancel": "取消",
+    "accept": "同意",
+    "errorSessionExpired": "你的工作階段已過期。請重新登入後下載。",
+    "errorSessionUnavailable": "無法檢查你的工作階段。請重試。",
+    "errorUnavailableSource": "無法從此來源下載",
+    "tierHighest": "最高",
+    "tierHigh": "高",
+    "tierLow": "低"
+  },
+  "HeroPlayerControls": {
+    "play": "播放",
+    "pause": "暫停",
+    "seek": "跳轉",
+    "seekValue": "{current} / {total}",
+    "volume": "音量",
+    "volumeValue": "{percent}%",
+    "mute": "靜音",
+    "unmute": "取消靜音",
+    "changeAudioLanguage": "更改音訊語言",
+    "enterFullscreen": "進入全螢幕",
+    "exitFullscreen": "結束全螢幕"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "選擇語言",
+    "searchPlaceholder": "搜尋語言…",
+    "languages": "語言",
+    "noMatches": "沒有相符項目"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "語言",
+    "dialogTitleWithSubtitles": "語言和字幕",
+    "languageHeading": "語言",
+    "subtitlesHeading": "字幕",
+    "languageCount": "{count, plural, one {# 種語言} other {# 種語言}}",
+    "requestSent": "請求已傳送",
+    "translateWithAi": "用 AI 翻譯",
+    "noSubtitles": "無字幕",
+    "toggleOn": "開",
+    "toggleOff": "關",
+    "close": "關閉",
+    "apply": "套用"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {# 集} other {# 集}}",
+    "seriesLabel": "系列 · {episodes}",
+    "changeAudioLanguage": "更改音訊語言",
+    "share": "分享",
+    "languages": "語言"
+  },
+  "WatchModal": {
+    "close": "關閉"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "如果你可以向這部影片的創作者提一個問題，你會問什麼？",
+    "fallbackBody": "與願意傾聽的人開始一次私下交流。",
+    "questionsShort": "問題",
+    "questions": "相關問題",
+    "askYours": "提出你的問題",
+    "chatWithPerson": "與真人聊天",
+    "askBibleQuestion": "提出聖經問題"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "訊息類型",
+    "fieldLabel": "提出有關此影片的問題",
+    "send": "送出問題",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "提出聖經問題",
+        "description": "使用 AI 搜尋從聖經中獲得即時答案"
+      },
+      "prayerRequest": {
+        "label": "請求代禱",
+        "description": "分享你希望別人為何事禱告"
+      },
+      "comment": {
+        "label": "留下評論",
+        "description": "傳送你對此影片的想法"
+      },
+      "personChat": {
+        "label": "與真人聊天",
+        "description": "現在與某人交談"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "分享影片",
+    "heading": "分享此影片",
+    "posterAlt": "影片海報",
+    "shareOnFacebook": "分享到 Facebook",
+    "shareOnFacebookUnavailable": "分享到 Facebook（此版本不可用）",
+    "shareOnX": "分享到 X",
+    "shareOnXUnavailable": "分享到 X（此版本不可用）",
+    "shareDisabledHint": "分享需要已部署的頁面 — 影片上線到 production 後即可使用。",
+    "shareFormat": "分享格式",
+    "shareLinkTab": "分享連結",
+    "embedCodeTab": "嵌入程式碼",
+    "copyFailed": "無法自動複製 — 請選取下方文字並手動複製。",
+    "copyLink": "複製連結",
+    "copyCode": "複製程式碼",
+    "copied": "已複製",
+    "close": "關閉"
+  },
+  "SubtitleTranscript": {
+    "heading": "逐字稿",
+    "subheading": "點擊任意一行即可跳轉到對應時刻。",
+    "subtitleLanguage": "字幕語言",
+    "aiSuffix": " · AI 產生",
+    "loading": "正在載入逐字稿…",
+    "unavailable": "此字幕軌道暫無逐字稿。",
+    "empty": "未找到逐字稿行。"
+  },
+  "FloatingSearch": {
+    "placeholder": "搜尋或瀏覽主題…",
+    "openSearch": "搜尋影片",
+    "searchRegion": "搜尋影片",
+    "clearSearch": "清除搜尋",
+    "changeAudioLanguage": "變更音訊語言",
+    "home": "JesusFilm 首頁"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "搜尋並瀏覽影片",
+    "home": "JesusFilm 首頁",
+    "placeholder": "搜尋或瀏覽主題…",
+    "inputLabel": "依關鍵字搜尋影片",
+    "searchFailed": "搜尋失敗。請再試一次。",
+    "loadMoreFailed": "無法載入更多結果。",
+    "searching": "搜尋中...",
+    "connectionHint": "請檢查網路連線後再試一次。",
+    "retrySearch": "重新搜尋",
+    "retry": "重試",
+    "noResults": "找不到「{query}」的結果",
+    "tryDifferentKeywords": "請嘗試其他關鍵字或瀏覽分類",
+    "loading": "載入中...",
+    "loadMore": "載入更多",
+    "categoryBibleStories": "聖經故事",
+    "categoryParables": "比喻",
+    "categoryAnimated": "動畫",
+    "categoryStudy": "學習",
+    "categoryFamily": "家庭",
+    "categoryChristmas": "聖誕節"
+  },
+  "HeroPlayer": {
+    "playWithSound": "開啟聲音播放",
+    "tapToUnmute": "取消靜音"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "正在載入內容"
+  },
+  "VideoLabels": {
+    "video": "影片",
+    "segment": "片段",
+    "episode": "集",
+    "featureFilm": "長片",
+    "shortFilm": "短片",
+    "series": "系列",
+    "collection": "合集",
+    "trailer": "預告片",
+    "behindTheScenes": "幕後"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "第 {current} 個片段，共 {total} 個",
+    "position": "{current}/{total}",
+    "chapterCount": "{count, plural, other {# 章}}",
+    "clipAriaLabel": "{title} · 第 {current} 個片段，共 {total} 個",
+    "chaptersAriaLabel": "{title} · {count, plural, other {# 章}}",
+    "chapter": "章節",
+    "noImage": "無圖片",
+    "playingNow": "正在播放",
+    "previousChapter": "上一章",
+    "nextChapter": "下一章"
+  },
+  "SearchResultCard": {
+    "experience": "互動體驗",
+    "episodeCount": "{count, plural, other {# 集}}",
+    "thumbnailAlt": "影片縮圖"
+  }
+}

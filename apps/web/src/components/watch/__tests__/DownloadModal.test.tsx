@@ -26,7 +26,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   DownloadModal,
   type DownloadModalDownload,
+  type DownloadModalProps,
 } from "@/components/watch/DownloadModal"
+import { redirectToAuth } from "@/components/watch/download-session-client"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 
 // next/image renders an <img> in tests; the modal otherwise tries to load the
@@ -53,6 +55,20 @@ vi.mock("next/image", () => ({
   },
 }))
 
+vi.mock(
+  "@/components/watch/download-session-client",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@/components/watch/download-session-client")
+      >()
+    return {
+      ...actual,
+      redirectToAuth: vi.fn(),
+    }
+  },
+)
+
 let container: HTMLDivElement
 let root: Root
 
@@ -60,6 +76,14 @@ beforeEach(() => {
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({ authenticated: false, gateEnabled: false }),
+    ),
+  )
+  vi.mocked(redirectToAuth).mockReset()
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {})
 })
 
 afterEach(() => {
@@ -69,16 +93,30 @@ afterEach(() => {
   container.remove()
   // Drop any portal nodes left over from previous renders.
   document.body.innerHTML = ""
+  vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
 
+function TestDownloadModal({
+  variantId = "variant-1",
+  videoSlug = "jesus",
+  ...props
+}: Omit<DownloadModalProps, "variantId" | "videoSlug"> &
+  Partial<Pick<DownloadModalProps, "variantId" | "videoSlug">>) {
+  return (
+    <DownloadModal variantId={variantId} videoSlug={videoSlug} {...props} />
+  )
+}
+
 function makeDownload(
-  overrides: Partial<DownloadModalDownload> & { documentId: string },
+  overrides: Partial<DownloadModalDownload> & {
+    documentId: string
+    url?: string
+  },
 ): DownloadModalDownload {
   return {
     quality: "high",
     size: 42 * 1024 * 1024,
-    url: "https://stream.mux.com/sample.mp4",
     ...overrides,
   }
 }
@@ -95,7 +133,7 @@ describe("DownloadModal — header metadata", () => {
   it("renders title, language pill, and duration overlay when provided", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
           videoTitle="JESUS"
@@ -129,7 +167,7 @@ describe("DownloadModal — header metadata", () => {
   it("omits the duration overlay when durationSeconds is null/zero", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
           videoTitle="JESUS"
@@ -154,7 +192,7 @@ describe("DownloadModal — quality bucketing", () => {
     ]
     act(() => {
       root.render(
-        <DownloadModal open downloads={downloads} onClose={vi.fn()} />,
+        <TestDownloadModal open downloads={downloads} onClose={vi.fn()} />,
       )
     })
 
@@ -177,7 +215,7 @@ describe("DownloadModal — quality bucketing", () => {
   it("shows exactly one option (Highest) when only one download is available", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[
             makeDownload({
@@ -206,7 +244,7 @@ describe("DownloadModal — quality bucketing", () => {
   it("shows exactly two options (Highest + Low) when two downloads are available", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[
             makeDownload({
@@ -243,7 +281,7 @@ describe("DownloadModal — quality bucketing", () => {
   it("preselects Highest as the default; trigger shows it without any user click", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[
             makeDownload({
@@ -271,7 +309,7 @@ describe("DownloadModal — quality bucketing", () => {
   it("formats sizes >= 1 GB as GB and < 1 GB as MB", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[
             makeDownload({
@@ -309,7 +347,7 @@ describe("DownloadModal — quality bucketing", () => {
   it("keeps the open file-size list in document flow so the modal can scroll to it", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[
             makeDownload({ documentId: "fhd", quality: "fhd" }),
@@ -339,7 +377,7 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
   it("renders Download disabled by default", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
           onClose={vi.fn()}
@@ -356,7 +394,7 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
   it("renders the ToS agreement as a regular-label checkbox with a muted underline link", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
           onClose={vi.fn()}
@@ -382,7 +420,7 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
   it("enables Download when ToS is checked (size already defaulted to Highest)", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
           onClose={vi.fn()}
@@ -404,11 +442,11 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
     expect(confirm.disabled).toBe(false)
   })
 
-  it("closes the dialog after a successful download click", () => {
+  it("closes the dialog after a successful download click", async () => {
     const onClose = vi.fn()
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[
             makeDownload({
@@ -433,60 +471,21 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
     const confirm = $(
       '[data-testid="watch-download-modal-confirm"]',
     ) as HTMLButtonElement
-    act(() => {
+    await act(async () => {
       confirm.click()
     })
 
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it("does NOT close the dialog when the URL is rejected by the allowlist", () => {
-    vi.spyOn(console, "error").mockImplementation(() => undefined)
-    const onClose = vi.fn()
+  it("download click triggers a programmatic <a> pointing at the same-origin proxy with a filename", async () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
-          downloads={[
-            makeDownload({
-              documentId: "dl-1",
-              quality: "fhd",
-              url: "https://evil.com/bad.mp4",
-            }),
-          ]}
-          onClose={onClose}
-        />,
-      )
-    })
-
-    const tos = $(
-      '[data-testid="watch-download-modal-tos"]',
-    ) as HTMLInputElement
-    act(() => {
-      tos.click()
-    })
-
-    const confirm = $(
-      '[data-testid="watch-download-modal-confirm"]',
-    ) as HTMLButtonElement
-    act(() => {
-      confirm.click()
-    })
-
-    expect(onClose).not.toHaveBeenCalled()
-    // The inline error stays mounted so the user can see what went wrong.
-    expect($('[data-testid="watch-download-modal-error"]')).not.toBeNull()
-  })
-
-  it("download click triggers a programmatic <a> pointing at the same-origin proxy with a filename", () => {
-    const url = "https://stream.mux.com/abc.mp4"
-    act(() => {
-      root.render(
-        <DownloadModal
-          open
-          downloads={[
-            makeDownload({ documentId: "dl-1", quality: "fhd", url }),
-          ]}
+          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          variantId="variant-1"
+          videoSlug="jesus"
           videoTitle="JESUS"
           onClose={vi.fn()}
         />,
@@ -512,7 +511,7 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
     const confirm = $(
       '[data-testid="watch-download-modal-confirm"]',
     ) as HTMLButtonElement
-    act(() => {
+    await act(async () => {
       confirm.click()
     })
 
@@ -522,9 +521,12 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
     expect(a.target).toBe("")
     expect(a.rel).toBe("noopener")
     // Proxy route is same-origin, so the download attribute is honored.
-    expect(a.getAttribute("href")).toContain("/watch/api/download?url=")
-    expect(a.getAttribute("href")).toContain(encodeURIComponent(url))
-    // Filename is derived from the video title + tier, with the source ext.
+    expect(a.getAttribute("href")).toContain("/watch/api/download?")
+    expect(a.getAttribute("href")).toContain("downloadId=dl-1")
+    expect(a.getAttribute("href")).toContain("variantId=variant-1")
+    expect(a.getAttribute("href")).toContain("videoSlug=jesus")
+    expect(a.getAttribute("href")).not.toContain("stream.mux.com")
+    // Filename is derived from the video title + tier.
     const downloadAttr = a.getAttribute("download") ?? ""
     expect(downloadAttr).toBe("jesus-highest.mp4")
     expect(a.getAttribute("href")).toContain(
@@ -533,25 +535,36 @@ describe("DownloadModal — AE4 gating (ToS only; size has a default)", () => {
 
     appendSpy.mockRestore()
   })
-})
 
-describe("DownloadModal — allowlist enforcement", () => {
-  it("blocks a non-allowlisted origin: shows inline error, does NOT create anchor", () => {
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined)
+  it("re-checks auth before final download and blocks the anchor when the session is stale", async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        authenticated: false,
+        gateEnabled: true,
+        loginUrl:
+          "http://localhost:3004/login?callbackURL=http%3A%2F%2Flocalhost%2Fwatch%2Fjesus.html%2Fenglish.html",
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const created: HTMLAnchorElement[] = []
+    const realAppend = document.body.appendChild.bind(document.body)
+    vi.spyOn(document.body, "appendChild").mockImplementation(((node: Node) => {
+      if (node instanceof HTMLAnchorElement) created.push(node)
+      return realAppend(node)
+    }) as typeof document.body.appendChild)
 
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[
             makeDownload({
               documentId: "dl-1",
               quality: "fhd",
-              url: "https://evil.com/bad.mp4",
+              url: "https://stream.mux.com/abc.mp4",
             }),
           ]}
+          videoTitle="JESUS"
           onClose={vi.fn()}
         />,
       )
@@ -564,6 +577,31 @@ describe("DownloadModal — allowlist enforcement", () => {
       tos.click()
     })
 
+    const confirm = $(
+      '[data-testid="watch-download-modal-confirm"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      confirm.click()
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/watch/api/auth/session"),
+      expect.objectContaining({ credentials: "include" }),
+    )
+    expect(created).toHaveLength(0)
+    expect($('[data-testid="watch-download-modal-error"]')?.textContent).toBe(
+      "Your session expired. Sign in again to download.",
+    )
+    expect(redirectToAuth).toHaveBeenCalledWith(
+      "http://localhost:3004/login?callbackURL=http%3A%2F%2Flocalhost%2Fwatch%2Fjesus.html%2Fenglish.html",
+    )
+  })
+
+  it("shows a visible error instead of no-oping when the session check fails", async () => {
+    const fetchMock = vi.fn(
+      async () => new Response("unavailable", { status: 500 }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
     const created: HTMLAnchorElement[] = []
     const realAppend = document.body.appendChild.bind(document.body)
     vi.spyOn(document.body, "appendChild").mockImplementation(((node: Node) => {
@@ -571,17 +609,34 @@ describe("DownloadModal — allowlist enforcement", () => {
       return realAppend(node)
     }) as typeof document.body.appendChild)
 
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          videoTitle="JESUS"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const tos = $(
+      '[data-testid="watch-download-modal-tos"]',
+    ) as HTMLInputElement
+    act(() => {
+      tos.click()
+    })
+
     const confirm = $(
       '[data-testid="watch-download-modal-confirm"]',
     ) as HTMLButtonElement
-    act(() => {
+    await act(async () => {
       confirm.click()
     })
 
-    expect(created.length).toBe(0)
-    expect(consoleError).toHaveBeenCalled()
+    expect(created).toHaveLength(0)
     expect($('[data-testid="watch-download-modal-error"]')?.textContent).toBe(
-      "Download unavailable from this source",
+      "Unable to check your session. Please try again.",
     )
   })
 })
@@ -590,7 +645,7 @@ describe("DownloadModal — Terms of Use nested dialog", () => {
   it("renders the ToU trigger as a button (not an external link)", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
           onClose={vi.fn()}
@@ -608,7 +663,7 @@ describe("DownloadModal — Terms of Use nested dialog", () => {
   it("opens the nested Terms-of-Use dialog when the trigger is clicked", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
           onClose={vi.fn()}
@@ -644,7 +699,7 @@ describe("DownloadModal — Terms of Use nested dialog", () => {
   it("Cancel closes the nested dialog without ticking the ToS checkbox", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
           onClose={vi.fn()}
@@ -682,7 +737,7 @@ describe("DownloadModal — Terms of Use nested dialog", () => {
   it("Accept ticks the ToS checkbox and closes the nested dialog", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
           onClose={vi.fn()}
@@ -726,7 +781,7 @@ describe("DownloadModal — Terms of Use nested dialog", () => {
   it("the X close button dismisses the nested dialog without accepting", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
           onClose={vi.fn()}
@@ -763,7 +818,7 @@ describe("DownloadModal — Terms of Use nested dialog", () => {
 
     act(() => {
       root.render(
-        <DownloadModal open downloads={downloads} onClose={onClose} />,
+        <TestDownloadModal open downloads={downloads} onClose={onClose} />,
       )
     })
     act(() => {
@@ -805,7 +860,7 @@ describe("DownloadModal — Terms of Use nested dialog", () => {
 describe("DownloadModal — empty + lifecycle", () => {
   it("shows an empty-state message when downloads is empty", () => {
     act(() => {
-      root.render(<DownloadModal open downloads={[]} onClose={vi.fn()} />)
+      root.render(<TestDownloadModal open downloads={[]} onClose={vi.fn()} />)
     })
 
     expect($('[data-testid="watch-download-modal-empty"]')).not.toBeNull()
@@ -818,7 +873,7 @@ describe("DownloadModal — empty + lifecycle", () => {
   it("does not render any modal contents when open is false", () => {
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open={false}
           downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
           onClose={vi.fn()}
@@ -845,7 +900,7 @@ describe("DownloadModal — formatSize edge cases", () => {
     )
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[
             makeDownload({ documentId: "dl-1", quality: "fhd", size: 0 }),
@@ -867,7 +922,7 @@ describe("DownloadModal — formatSize edge cases", () => {
 })
 
 describe("DownloadModal — lazy HEAD probe", () => {
-  it("issues one HEAD per unique URL when CMS size is missing", async () => {
+  it("issues one HEAD per unique download id when CMS size is missing", async () => {
     const fetchMock = vi.fn(
       async () =>
         new Response(null, {
@@ -878,29 +933,28 @@ describe("DownloadModal — lazy HEAD probe", () => {
     vi.stubGlobal("fetch", fetchMock)
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[
             makeDownload({
               documentId: "dl-1",
               quality: "fhd",
               size: 0,
-              url: "https://stream.mux.com/a/1080p.mp4",
             }),
             makeDownload({
               documentId: "dl-2",
               quality: "high",
               size: 0,
-              url: "https://stream.mux.com/a/720p.mp4",
             }),
             makeDownload({
               documentId: "dl-3",
               quality: "low",
               size: 0,
-              url: "https://stream.mux.com/a/270p.mp4",
             }),
           ]}
+          variantId="variant-1"
           videoTitle="JESUS"
+          videoSlug="jesus"
           onClose={vi.fn()}
         />,
       )
@@ -915,7 +969,10 @@ describe("DownloadModal — lazy HEAD probe", () => {
     // All three were HEAD requests through the same-origin proxy.
     for (const call of fetchMock.mock.calls) {
       const [url, init] = call as unknown as [string, RequestInit | undefined]
-      expect(url).toContain("/watch/api/download?url=")
+      expect(url).toContain("/watch/api/download?")
+      expect(url).toContain("variantId=variant-1")
+      expect(url).toContain("videoSlug=jesus")
+      expect(url).not.toContain("stream.mux.com")
       expect(init?.method).toBe("HEAD")
     }
     // Probed size landed in the trigger label.
@@ -925,7 +982,7 @@ describe("DownloadModal — lazy HEAD probe", () => {
     expect(trigger.textContent).toContain("12.00 MB")
   })
 
-  it("deduplicates HEADs across tiers that share a URL", async () => {
+  it("deduplicates HEADs across tiers that share a download id", async () => {
     const fetchMock = vi.fn(
       async () =>
         new Response(null, {
@@ -934,30 +991,26 @@ describe("DownloadModal — lazy HEAD probe", () => {
         }),
     )
     vi.stubGlobal("fetch", fetchMock)
-    const sharedUrl = "https://stream.mux.com/shared/1080p.mp4"
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
-          // Two tiers with the SAME source URL (e.g., fhd === highest).
+          // Two tiers with the SAME download id (defensive duplicate input).
           downloads={[
             makeDownload({
-              documentId: "fhd",
+              documentId: "shared",
               quality: "fhd",
               size: 0,
-              url: sharedUrl,
             }),
             makeDownload({
-              documentId: "highest",
+              documentId: "shared",
               quality: "highest",
               size: 0,
-              url: sharedUrl,
             }),
             makeDownload({
               documentId: "low",
               quality: "low",
               size: 0,
-              url: "https://stream.mux.com/other/270p.mp4",
             }),
           ]}
           onClose={vi.fn()}
@@ -969,7 +1022,7 @@ describe("DownloadModal — lazy HEAD probe", () => {
       await Promise.resolve()
       await Promise.resolve()
     })
-    // 2 unique URLs → 2 HEADs, not 3.
+    // 2 unique download ids → 2 HEADs, not 3.
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
@@ -978,7 +1031,7 @@ describe("DownloadModal — lazy HEAD probe", () => {
     vi.stubGlobal("fetch", fetchMock)
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[
             makeDownload({
@@ -1009,14 +1062,13 @@ describe("DownloadModal — lazy HEAD probe", () => {
     vi.stubGlobal("fetch", fetchMock)
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[
             makeDownload({
               documentId: "dl-1",
               quality: "fhd",
               size: 0,
-              url: "https://stream.mux.com/x/1080p.mp4",
             }),
           ]}
           onClose={vi.fn()}
@@ -1052,14 +1104,13 @@ describe("DownloadModal — lazy HEAD probe", () => {
     vi.stubGlobal("fetch", fetchMock)
     act(() => {
       root.render(
-        <DownloadModal
+        <TestDownloadModal
           open
           downloads={[
             makeDownload({
               documentId: "dl-1",
               quality: "fhd",
               size: 0,
-              url: "https://stream.mux.com/x/1080p.mp4",
             }),
           ]}
           onClose={vi.fn()}

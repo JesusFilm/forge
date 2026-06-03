@@ -3,11 +3,13 @@
  *
  * SeriesEpisodeCard tests.
  *
- * Covers the pure-function-equivalents (formatRuntime, pickRuntimeSeconds,
- * resolveThumbnailUrl) via the rendered DOM, the "Episode N" eyebrow
- * label, and the href routing. next/image and next/link are mocked to
- * minimal pass-throughs so we can assert on src/href without
- * Next's image optimizer.
+ * Covers formatRuntime (driven by the precomputed `durationSeconds` the
+ * card now reads off each chapter) and resolveThumbnailUrl via the
+ * rendered DOM, the "Episode N" eyebrow label, and the href routing.
+ * The former client-side primary-dub picking moved server-side to admin's
+ * Video.durationSeconds resolver, so the card no longer filters variants.
+ * next/image and next/link are mocked to minimal pass-throughs so we can
+ * assert on src/href without Next's image optimizer.
  */
 
 import React, { act } from "react"
@@ -46,7 +48,6 @@ import type { ResolvedSeriesBySlug } from "@/lib/content"
 
 type Episodes = NonNullable<ResolvedSeriesBySlug["video"]["children"]>
 type Episode = NonNullable<Episodes[number]>
-type Variant = NonNullable<NonNullable<Episode["variants"]>[number]>
 
 let container: HTMLDivElement
 let root: Root
@@ -64,17 +65,6 @@ afterEach(() => {
   container.remove()
 })
 
-function makeVariant(overrides: Partial<Variant> = {}): Variant {
-  const base: Variant = {
-    documentId: "v1",
-    published: true,
-    hls: "https://stream.mux.com/x.m3u8",
-    duration: 120,
-    language: { slug: "english", name: "English", bcp47: "en" },
-  }
-  return { ...base, ...overrides }
-}
-
 function makeEpisode(overrides: Partial<Episode> = {}): Episode {
   const base: Episode = {
     documentId: "episode-1",
@@ -90,7 +80,7 @@ function makeEpisode(overrides: Partial<Episode> = {}): Episode {
         mobileCinematicLow: "https://cdn.example/low.jpg",
       },
     ],
-    variants: [makeVariant()],
+    durationSeconds: 120,
   }
   return { ...base, ...overrides }
 }
@@ -98,14 +88,14 @@ function makeEpisode(overrides: Partial<Episode> = {}): Episode {
 function renderCard(props: {
   episode: Episode
   index?: number
-  locale?: string
+  languageSlug?: string
 }) {
   act(() => {
     root.render(
       <SeriesEpisodeCard
         episode={props.episode}
         index={props.index ?? 0}
-        locale={props.locale ?? "en"}
+        languageSlug={props.languageSlug ?? "english"}
       />,
     )
   })
@@ -127,127 +117,56 @@ function getRuntimeText(): string | null {
 describe("SeriesEpisodeCard — formatRuntime via runtime pill", () => {
   it("collapses to icon-only for null duration", () => {
     renderCard({
-      episode: makeEpisode({
-        variants: [makeVariant({ duration: null as unknown as number })],
-      }),
+      episode: makeEpisode({ durationSeconds: null }),
     })
     expect(getRuntimeText()).toBeNull()
     expect(container.querySelector('[data-testid="play-icon"]')).not.toBeNull()
   })
 
-  it("collapses to icon-only for undefined duration", () => {
-    renderCard({
-      episode: makeEpisode({
-        variants: [makeVariant({ duration: undefined as unknown as number })],
-      }),
-    })
-    expect(getRuntimeText()).toBeNull()
-  })
-
   it("collapses to icon-only for duration 0", () => {
     renderCard({
-      episode: makeEpisode({
-        variants: [makeVariant({ duration: 0 })],
-      }),
+      episode: makeEpisode({ durationSeconds: 0 }),
     })
     expect(getRuntimeText()).toBeNull()
   })
 
   it("collapses to icon-only for negative duration", () => {
     renderCard({
-      episode: makeEpisode({
-        variants: [makeVariant({ duration: -10 })],
-      }),
+      episode: makeEpisode({ durationSeconds: -10 }),
     })
     expect(getRuntimeText()).toBeNull()
   })
 
   it("collapses to icon-only for NaN duration", () => {
     renderCard({
-      episode: makeEpisode({
-        variants: [makeVariant({ duration: Number.NaN })],
-      }),
+      episode: makeEpisode({ durationSeconds: Number.NaN }),
     })
     expect(getRuntimeText()).toBeNull()
   })
 
   it("renders '0:59' for 59 seconds", () => {
-    renderCard({
-      episode: makeEpisode({ variants: [makeVariant({ duration: 59 })] }),
-    })
+    renderCard({ episode: makeEpisode({ durationSeconds: 59 }) })
     expect(getRuntimeText()).toBe("0:59")
   })
 
   it("renders '1:00' for 60 seconds", () => {
-    renderCard({
-      episode: makeEpisode({ variants: [makeVariant({ duration: 60 })] }),
-    })
+    renderCard({ episode: makeEpisode({ durationSeconds: 60 }) })
     expect(getRuntimeText()).toBe("1:00")
   })
 
   it("renders '9:59' for 599 seconds", () => {
-    renderCard({
-      episode: makeEpisode({ variants: [makeVariant({ duration: 599 })] }),
-    })
+    renderCard({ episode: makeEpisode({ durationSeconds: 599 }) })
     expect(getRuntimeText()).toBe("9:59")
   })
 
   it("renders '1:00:00' for 3600 seconds", () => {
-    renderCard({
-      episode: makeEpisode({ variants: [makeVariant({ duration: 3600 })] }),
-    })
+    renderCard({ episode: makeEpisode({ durationSeconds: 3600 }) })
     expect(getRuntimeText()).toBe("1:00:00")
   })
 
   it("renders '2:03:04' for 7384 seconds", () => {
-    renderCard({
-      episode: makeEpisode({ variants: [makeVariant({ duration: 7384 })] }),
-    })
+    renderCard({ episode: makeEpisode({ durationSeconds: 7384 }) })
     expect(getRuntimeText()).toBe("2:03:04")
-  })
-})
-
-describe("SeriesEpisodeCard — pickRuntimeSeconds variant filter", () => {
-  it("ignores unpublished variants", () => {
-    renderCard({
-      episode: makeEpisode({
-        variants: [makeVariant({ published: false, duration: 600 })],
-      }),
-    })
-    expect(getRuntimeText()).toBeNull()
-  })
-
-  it("ignores variants with null hls", () => {
-    renderCard({
-      episode: makeEpisode({
-        variants: [makeVariant({ hls: null, duration: 600 })],
-      }),
-    })
-    expect(getRuntimeText()).toBeNull()
-  })
-
-  it("ignores variants where duration === 0 and falls through to next", () => {
-    renderCard({
-      episode: makeEpisode({
-        variants: [
-          makeVariant({ documentId: "v1", duration: 0 }),
-          makeVariant({ documentId: "v2", duration: 240 }),
-        ],
-      }),
-    })
-    expect(getRuntimeText()).toBe("4:00")
-  })
-
-  it("returns the first qualifying variant's duration", () => {
-    renderCard({
-      episode: makeEpisode({
-        variants: [
-          makeVariant({ documentId: "v1", duration: 120 }),
-          makeVariant({ documentId: "v2", duration: 240 }),
-        ],
-      }),
-    })
-    expect(getRuntimeText()).toBe("2:00")
   })
 })
 
@@ -347,22 +266,48 @@ describe("SeriesEpisodeCard — Episode N label", () => {
 })
 
 describe("SeriesEpisodeCard — href", () => {
-  it("routes to /{slug}/{locale}", () => {
+  it("routes to the canonical /{slug}.html/{locale}.html shape", () => {
     renderCard({
-      episode: makeEpisode({ slug: "the-birth-of-jesus" }),
-      locale: "en",
+      episode: makeEpisode({ slug: "wedding-in-cana" }),
+      languageSlug: "english",
     })
     const anchor = container.querySelector("a")
-    expect(anchor?.getAttribute("href")).toBe("/the-birth-of-jesus/en")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/wedding-in-cana.html/english.html",
+    )
   })
 
-  it("preserves a non-en locale", () => {
+  it("preserves a non-English audio language slug", () => {
     renderCard({
-      episode: makeEpisode({ slug: "ep-1" }),
-      locale: "spanish-castilian",
+      episode: makeEpisode({ slug: "the-birth-of-jesus" }),
+      languageSlug: "spanish-castilian",
     })
     const anchor = container.querySelector("a")
-    expect(anchor?.getAttribute("href")).toBe("/ep-1/spanish-castilian")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/the-birth-of-jesus.html/spanish-castilian.html",
+    )
+  })
+
+  it("renders a plain div (no <a>) when the slug is malformed", () => {
+    renderCard({
+      episode: makeEpisode({ slug: "Bad Slug!" }),
+      languageSlug: "english",
+    })
+    expect(container.querySelector("a")).toBeNull()
+    const card = container.querySelector('[data-testid="series-episode-card"]')
+    expect(card).not.toBeNull()
+    expect(card?.tagName).toBe("DIV")
+    expect(card?.hasAttribute("href")).toBe(false)
+  })
+
+  it("renders a plain div (no <a>) when the audio language slug is malformed", () => {
+    renderCard({
+      episode: makeEpisode({ slug: "wedding-in-cana" }),
+      languageSlug: "Bad Locale!",
+    })
+    expect(container.querySelector("a")).toBeNull()
+    const card = container.querySelector('[data-testid="series-episode-card"]')
+    expect(card?.tagName).toBe("DIV")
   })
 })
 

@@ -54,7 +54,9 @@ export async function purgeExpiredSearchTraces(
       retentionExpiresAt: {
         lte: now,
       },
-      promotionStatus: SearchEvalCandidatePromotionStatus.GENERATED,
+      promotionStatus: {
+        not: SearchEvalCandidatePromotionStatus.PROMOTED,
+      },
     },
   })
 

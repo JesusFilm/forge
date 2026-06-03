@@ -94,6 +94,16 @@ enum CardVariant {
 }
 
 """
+One distinct playable dub language available across a parent video's children. Drives the /series-page language picker. Every entry is guaranteed playable (published + streamable) — consumers need no further filtering.
+"""
+type ChildDubLanguage {
+  bcp47: String
+  """Compatibility JSON map of locale code → name (mirrors Language.name)."""
+  name: JSON
+  slug: String
+}
+
+"""
 Side-by-side layout container with repeatable slots. `content` dispatches into ContainerContentBlock.
 """
 type ContainerBlock {
@@ -1126,18 +1136,26 @@ type Video {
   aiMetadata: Boolean
   bibleCitations: [BibleCitation!]
   """
+  Distinct playable dub languages aggregated across this video's children (one representative dub per language). Empty for videos without children. Powers the /series-page language picker without projecting every child's full dub list — the ~45 MB / 137k-record payload that exceeds Next's unstable_cache 2 MB ceiling on the Jesus film (61 chapters × ~2,200 dubs). Respects the same child-visibility rules as `children`.
+  """
+  childDubLanguages: [ChildDubLanguage!]!
+  """
   Child Video-Video relations: rows where this Video appears on the PARENT side of the VideoRelation join. Traverse `child { … }` to read the foreign Video. PUBLIC/VIEWER see only relations whose child has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.
   """
   children: [VideoRelation!]
   coreId: String
   dubs: [VideoDub!]
+  """
+  Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g. a SERIES/COLLECTION whose runtime lives on its children). Mirrors HybridSearchResult.durationSeconds — picks the primary-language playable dub, else the longest. Lets watch/series carousels render a per-chapter runtime pill via `children { child { durationSeconds } }` without projecting every child's full dub list. Batched per request through a DataLoader.
+  """
+  durationSeconds: Int
   id: ID
   images: [VideoImage!]
   label: VideoLabel
   """
   PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all. Pass `locale` to narrow the result to a single BCP-47 locale (web's WatchVideo fragment uses this to avoid overfetching every locale).
   """
-  locales(locale: String): [VideoLocale!]
+  locales(languageSlug: String, locale: String): [VideoLocale!]
   locked: Boolean
   noIndex: Boolean
   origin: VideoOrigin
@@ -1148,7 +1166,7 @@ type Video {
   primaryLanguage: Language
   publishedAt: String
   slug: String
-  studyQuestions: [VideoStudyQuestion!]
+  studyQuestions(languageSlug: String, locale: String): [VideoStudyQuestion!]
   videoSource: VideoSourceHost
 }
 
@@ -1332,6 +1350,9 @@ type VideoLocale {
   description: String
   id: ID
   imageAlt: String
+  language: Language
+  languageCoreId: String
+  languageSlug: String
   locale: String
   publishedAt: String
   snippet: String
@@ -1420,6 +1441,8 @@ type VideoStudyQuestion {
   coreId: String
   id: ID
   language: Language
+  languageCoreId: String
+  languageSlug: String
   locale: String
   order: Int
   primary: Boolean

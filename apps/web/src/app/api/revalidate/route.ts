@@ -2,7 +2,16 @@ import { timingSafeEqual } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import { NextResponse } from "next/server"
 import { env } from "@/env"
-import { DEFAULT_LOCALE, isLocale, SUPPORTED_LOCALES } from "@/lib/locale"
+import { AVAILABLE_UI_LOCALES } from "@/i18n/generated-ui-locales"
+import {
+  DEFAULT_LOCALE,
+  isLocale,
+  publicWatchAudioLanguageSlugForLocale,
+  publicWatchHomeLanguageSlugForLocale,
+  resolveWatchLocaleIdentity,
+} from "@/lib/locale"
+import { appendHtmlSuffix } from "@/lib/url-shape"
+import { clearWatchRouteManifestCache } from "@/lib/watch-route-manifest"
 
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i
 const BEARER_PREFIX = "Bearer "
@@ -49,7 +58,9 @@ export async function POST(request: Request) {
 
   if (
     !entry ||
-    !["experience", "video", "watch-setting"].includes(model ?? "")
+    !["experience", "video", "watch-route-manifest", "watch-setting"].includes(
+      model ?? "",
+    )
   ) {
     return NextResponse.json(
       { revalidated: false, reason: "unhandled model or missing entry" },
@@ -67,43 +78,90 @@ export async function POST(request: Request) {
   }
 
   const revalidated: string[] = []
+  const seen = new Set<string>()
+
+  const push = (path: string) => {
+    if (seen.has(path)) return
+    seen.add(path)
+    revalidatePath(path)
+    revalidated.push(path)
+  }
+
+  const pushLayout = (path: string) => {
+    const key = `${path} (layout)`
+    if (seen.has(key)) return
+    seen.add(key)
+    revalidatePath(path, "layout")
+    revalidated.push(key)
+  }
+
+  const pushInternal = (publicPath: string, rawLocale?: string) => {
+    const identity = resolveWatchLocaleIdentity(rawLocale)
+    const suffix = publicPath === "/" ? "" : publicPath
+    push(`/${identity.locale}/${identity.htmlLang}${suffix}`)
+  }
+
+  // Emit BOTH the canonical public `.html` shape and the internal rewritten
+  // route path. The public entries are kept for the overlap with older deploys
+  // and cached aliases; the internal entries are what Next's App Router now
+  // renders under /[locale]/[htmlLang]. Over-revalidating a non-existent
+  // variant is harmless.
+  const pushOneSeg = (seg: string, rawLocale?: string) => {
+    const canonical = `/${appendHtmlSuffix(seg)}`
+    push(canonical) // canonical public `/{seg}.html`
+    pushInternal(canonical, rawLocale)
+    push(`/${seg}`) // legacy bare (overlap)
+  }
+  const pushTwoSeg = (a: string, b: string) => {
+    const canonical = `/${appendHtmlSuffix(a)}/${appendHtmlSuffix(b)}`
+    push(canonical) // public `/{a}.html/{b}.html`
+    pushInternal(canonical, b)
+    push(`/${a}/${b}`) // legacy bare (overlap)
+  }
 
   const revalidateAllWatchPages = () => {
-    revalidatePath("/", "layout")
-    revalidated.push("/ (layout)")
+    pushLayout("/[locale]/[htmlLang]")
+    pushLayout("/")
   }
 
   const revalidateHomepagePaths = () => {
-    revalidatePath("/")
-    revalidated.push("/")
-
-    for (const loc of SUPPORTED_LOCALES) {
-      revalidatePath(`/${loc}`)
-      revalidated.push(`/${loc}`)
+    push("/")
+    pushInternal("/")
+    for (const loc of AVAILABLE_UI_LOCALES) {
+      const homeLanguageSlug = publicWatchHomeLanguageSlugForLocale(loc)
+      if (!homeLanguageSlug) continue
+      pushOneSeg(homeLanguageSlug, homeLanguageSlug)
     }
   }
 
   const revalidateSlugPaths = () => {
     if (slug && locale) {
-      revalidatePath(`/${slug}/${locale}`)
-      revalidated.push(`/${slug}/${locale}`)
-
+      const audioLanguageSlug = publicWatchAudioLanguageSlugForLocale(locale)
+      if (!audioLanguageSlug) return
+      pushTwoSeg(slug, audioLanguageSlug)
       if (locale === DEFAULT_LOCALE) {
-        revalidatePath(`/${slug}`)
-        revalidated.push(`/${slug}`)
+        pushOneSeg(slug)
       }
       return
     }
 
     if (!slug) return
 
-    revalidatePath(`/${slug}`)
-    revalidated.push(`/${slug}`)
-
-    for (const loc of SUPPORTED_LOCALES) {
-      revalidatePath(`/${slug}/${loc}`)
-      revalidated.push(`/${slug}/${loc}`)
+    pushOneSeg(slug)
+    for (const loc of AVAILABLE_UI_LOCALES) {
+      const audioLanguageSlug = publicWatchAudioLanguageSlugForLocale(loc)
+      if (!audioLanguageSlug) continue
+      pushTwoSeg(slug, audioLanguageSlug)
     }
+  }
+
+  if (model === "watch-route-manifest") {
+    clearWatchRouteManifestCache()
+    return NextResponse.json({
+      revalidated: true,
+      manifestCacheCleared: true,
+      paths: revalidated,
+    })
   }
 
   if (model === "watch-setting") {

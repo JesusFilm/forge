@@ -5,13 +5,41 @@ import { describe, expect, it } from "vitest"
 import {
   assertBearerCsvsDisjoint,
   concurrencyEnvSchema,
+  DEFAULT_WEB_CANONICAL_ORIGIN,
   env,
   searchTraceRawRetentionDaysEnvSchema,
+  webCanonicalOriginEnvSchema,
 } from "@/config/env"
 
 describe("env", () => {
   it("loads with placeholder defaults in CI mode", () => {
     expect(env.DATABASE_URL).toContain("forge_admin")
+  })
+
+  it("defaults visitor-facing web links to the canonical www watch origin", () => {
+    expect(env.WEB_CANONICAL_ORIGIN).toBe(DEFAULT_WEB_CANONICAL_ORIGIN)
+  })
+
+  describe("webCanonicalOriginEnvSchema", () => {
+    it("normalizes HTTP(S) URLs to origins", () => {
+      expect(
+        webCanonicalOriginEnvSchema.parse(
+          "https://example.com/some/path?x=1#top",
+        ),
+      ).toBe("https://example.com")
+      expect(webCanonicalOriginEnvSchema.parse("http://localhost:3000/")).toBe(
+        "http://localhost:3000",
+      )
+    })
+
+    it("rejects non-HTTP visitor link origins", () => {
+      expect(() =>
+        webCanonicalOriginEnvSchema.parse("ftp://example.com"),
+      ).toThrow(/HTTP\(S\)/)
+      expect(() =>
+        webCanonicalOriginEnvSchema.parse("javascript:alert(1)"),
+      ).toThrow(/HTTP\(S\)|Invalid/)
+    })
   })
 
   // `createEnv` is bypassed under CI (`skipValidation`), so we test
@@ -271,6 +299,40 @@ describe("env", () => {
       expect(source).not.toMatch(/SEARCH_API_KEYS:\s*env\.SEARCH_API_KEYS/)
       // Positive control: the deprecation warn exists.
       expect(source).toMatch(/event=search_api_keys_env_var_retired/)
+    })
+
+    it("does not expose removed Admin search-eval harness env keys", async () => {
+      const { readFile } = await import("node:fs/promises")
+      const { fileURLToPath } = await import("node:url")
+      const source = await readFile(
+        fileURLToPath(new URL("./env.ts", import.meta.url)),
+        "utf8",
+      )
+
+      expect(source).not.toMatch(/\bSEARCH_API_KEY:\s*z\./)
+      expect(source).not.toMatch(/\bSEARCH_API_KEY:\s*emptyToUndefined/)
+      expect(source).not.toMatch(/\bOPENROUTER_JUDGE_MODEL\b/)
+      expect(source).not.toMatch(/\bEVAL_JUDGE_CONCURRENCY\b/)
+      expect(source).not.toMatch(/\bEVAL_SEARCH_CONCURRENCY\b/)
+      expect(source).not.toMatch(/\bEVAL_GIT_SHA\b/)
+    })
+
+    it("does not expose removed Admin search-eval harness package scripts", async () => {
+      const { readFile } = await import("node:fs/promises")
+      const { fileURLToPath } = await import("node:url")
+      const packageJson = JSON.parse(
+        await readFile(
+          fileURLToPath(new URL("../../package.json", import.meta.url)),
+          "utf8",
+        ),
+      ) as { scripts?: Record<string, string> }
+
+      expect(Object.keys(packageJson.scripts ?? {})).not.toContain(
+        "eval:search",
+      )
+      expect(JSON.stringify(packageJson.scripts ?? {})).not.toContain(
+        "eval-search.ts",
+      )
     })
 
     it("error message does NOT contain the offending key value", () => {

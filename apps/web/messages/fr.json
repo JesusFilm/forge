@@ -1,0 +1,222 @@
+{
+  "ExperienceError": {
+    "empty": "Aucun contenu d'expérience disponible.",
+    "failedToLoad": "Échec du chargement de l'expérience : {message}",
+    "unexpected": "Une erreur inattendue s'est produite.",
+    "notConfigured": "Le service de contenu n'est pas configuré.",
+    "noContent": "Aucun contenu n'est disponible.",
+    "homepageMisconfigured": "La page d'accueil Watch est mal configurée.",
+    "defaultTemplateMisconfigured": "Le modèle Watch par défaut est mal configuré.",
+    "authFailed": "Impossible de s'authentifier auprès du service de contenu. Veuillez contacter le support si cela persiste."
+  },
+  "VideosPage": {
+    "title": "Toutes les vidéos",
+    "placeholder": "La navigation dans le catalogue arrive. En attendant, utilisez la recherche ou une URL spécifique au sujet."
+  },
+  "BibleQuotes": {
+    "title": "Citations bibliques",
+    "share": "Partager",
+    "readMore": "Lire la suite...",
+    "learnMore": "En savoir plus",
+    "freeResources": "Ressources gratuites",
+    "promoHeading": "Vous voulez approfondir votre compréhension de la Bible ?",
+    "joinBibleStudy": "Rejoignez notre étude biblique",
+    "previousQuote": "Citation biblique précédente",
+    "nextQuote": "Citation biblique suivante"
+  },
+  "DownloadButton": {
+    "checking": "Vérification",
+    "download": "Télécharger",
+    "sessionError": "Impossible de vérifier votre session. Veuillez réessayer.",
+    "saveVideo": "Enregistrer la vidéo"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Télécharger la vidéo",
+    "eyebrow": "Télécharger la vidéo",
+    "posterAlt": "Miniature de la vidéo",
+    "noDownloads": "Aucun téléchargement n'est disponible pour cette vidéo.",
+    "fileSizeLabel": "Sélectionner une taille de fichier",
+    "termsAgreementPrefix": "J’accepte les ",
+    "termsOfUse": "Conditions d’utilisation",
+    "termsAgreementSuffix": "",
+    "close": "Fermer",
+    "download": "Télécharger",
+    "checking": "Vérification",
+    "closeTermsOfUse": "Fermer les conditions d’utilisation",
+    "cancel": "Annuler",
+    "accept": "Accepter",
+    "errorSessionExpired": "Votre session a expiré. Connectez-vous de nouveau pour télécharger.",
+    "errorSessionUnavailable": "Impossible de vérifier votre session. Veuillez réessayer.",
+    "errorUnavailableSource": "Téléchargement indisponible depuis cette source",
+    "tierHighest": "Maximale",
+    "tierHigh": "Élevée",
+    "tierLow": "Basse"
+  },
+  "HeroPlayerControls": {
+    "play": "Lire",
+    "pause": "Mettre en pause",
+    "seek": "Rechercher",
+    "seekValue": "{current} sur {total}",
+    "volume": "Niveau sonore",
+    "volumeValue": "{percent} pour cent",
+    "mute": "Couper le son",
+    "unmute": "Activer le son",
+    "changeAudioLanguage": "Changer la langue audio",
+    "enterFullscreen": "Plein écran",
+    "exitFullscreen": "Quitter le plein écran"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Sélectionner la langue",
+    "searchPlaceholder": "Rechercher des langues…",
+    "languages": "Langues",
+    "noMatches": "Aucune correspondance"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Langue",
+    "dialogTitleWithSubtitles": "Langue et sous-titres",
+    "languageHeading": "Langue",
+    "subtitlesHeading": "Sous-titres",
+    "languageCount": "{count, plural, one {# langue} other {# langues}}",
+    "requestSent": "Demande envoyée",
+    "translateWithAi": "Traduire avec l'IA",
+    "noSubtitles": "Aucun sous-titre",
+    "toggleOn": "Oui",
+    "toggleOff": "Non",
+    "close": "Fermer",
+    "apply": "Appliquer"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 ÉPISODE} other {# ÉPISODES}}",
+    "seriesLabel": "SÉRIE · {episodes}",
+    "changeAudioLanguage": "Changer la langue audio",
+    "share": "Partager",
+    "languages": "Langues"
+  },
+  "WatchModal": {
+    "close": "Fermer"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Si vous pouviez poser une question au créateur de cette vidéo, quelle serait-elle ?",
+    "fallbackBody": "Ayez une discussion privée avec quelqu'un prêt à écouter.",
+    "questionsShort": "Questions utiles",
+    "questions": "Questions connexes",
+    "askYours": "Posez votre question",
+    "chatWithPerson": "Parler avec quelqu’un",
+    "askBibleQuestion": "Poser une question biblique"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Type de message",
+    "fieldLabel": "Posez une question sur cette vidéo",
+    "send": "Envoyer la question",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Poser une question biblique",
+        "description": "Réponses instantanées de la Bible avec la recherche IA"
+      },
+      "prayerRequest": {
+        "label": "Demander une prière",
+        "description": "Partagez ce pour quoi vous voulez une prière"
+      },
+      "comment": {
+        "label": "Laisser un commentaire",
+        "description": "Envoyez vos pensées sur cette vidéo"
+      },
+      "personChat": {
+        "label": "Parler avec quelqu’un",
+        "description": "Parlez avec quelqu’un maintenant"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Partager la vidéo",
+    "heading": "Partagez cette vidéo",
+    "posterAlt": "Miniature de la vidéo",
+    "shareOnFacebook": "Partager sur Facebook",
+    "shareOnFacebookUnavailable": "Partager sur Facebook (indisponible sur cette version)",
+    "shareOnX": "Partager sur X",
+    "shareOnXUnavailable": "Partager sur X (indisponible sur cette version)",
+    "shareDisabledHint": "Le partage nécessite une page déployée — fonctionne une fois cette vidéo en production.",
+    "shareFormat": "Format de partage",
+    "shareLinkTab": "Lien de partage",
+    "embedCodeTab": "Code d'intégration",
+    "copyFailed": "Impossible de copier automatiquement — sélectionnez le texte ci-dessous et copiez-le manuellement.",
+    "copyLink": "Copier le lien",
+    "copyCode": "Copier le code",
+    "copied": "Copié",
+    "close": "Fermer"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transcription",
+    "subheading": "Touchez une ligne pour accéder à ce moment.",
+    "subtitleLanguage": "Langue des sous-titres",
+    "aiSuffix": " · IA",
+    "loading": "Chargement de la transcription…",
+    "unavailable": "Transcription indisponible pour cette piste de sous-titres.",
+    "empty": "Aucune ligne de transcription trouvée."
+  },
+  "FloatingSearch": {
+    "placeholder": "Rechercher ou explorer des thèmes…",
+    "openSearch": "Rechercher des vidéos",
+    "searchRegion": "Rechercher des vidéos",
+    "clearSearch": "Effacer la recherche",
+    "changeAudioLanguage": "Changer la langue audio",
+    "home": "Accueil JesusFilm"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Rechercher et explorer des vidéos",
+    "home": "Accueil JesusFilm",
+    "placeholder": "Rechercher ou explorer des thèmes…",
+    "inputLabel": "Rechercher des vidéos par mot-clé",
+    "searchFailed": "La recherche a échoué. Réessayez.",
+    "loadMoreFailed": "Impossible de charger plus de résultats.",
+    "searching": "Recherche...",
+    "connectionHint": "Vérifiez votre connexion et réessayez.",
+    "retrySearch": "Relancer la recherche",
+    "retry": "Réessayer",
+    "noResults": "Aucun résultat pour « {query} »",
+    "tryDifferentKeywords": "Essayez d’autres mots-clés ou explorez les catégories",
+    "loading": "Chargement...",
+    "loadMore": "Charger plus",
+    "categoryBibleStories": "Histoires bibliques",
+    "categoryParables": "Paraboles",
+    "categoryAnimated": "Animation",
+    "categoryStudy": "Étude",
+    "categoryFamily": "Famille",
+    "categoryChristmas": "Noël"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Lire avec le son",
+    "tapToUnmute": "Activer le son"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Chargement du contenu"
+  },
+  "VideoLabels": {
+    "video": "Vidéo",
+    "segment": "Segment",
+    "episode": "Épisode",
+    "featureFilm": "Long métrage",
+    "shortFilm": "Court métrage",
+    "series": "Série",
+    "collection": "Collection",
+    "trailer": "Bande-annonce",
+    "behindTheScenes": "Coulisses"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Extrait {current} sur {total}",
+    "position": "{current} sur {total}",
+    "chapterCount": "{count, plural, one {# chapitre} other {# chapitres}}",
+    "clipAriaLabel": "{title} · extrait {current} sur {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# chapitre} other {# chapitres}}",
+    "chapter": "Chapitre",
+    "noImage": "Aucune image",
+    "playingNow": "Lecture en cours",
+    "previousChapter": "Chapitre précédent",
+    "nextChapter": "Chapitre suivant"
+  },
+  "SearchResultCard": {
+    "experience": "Expérience",
+    "episodeCount": "{count, plural, one {# épisode} other {# épisodes}}",
+    "thumbnailAlt": "Miniature de la vidéo"
+  }
+}

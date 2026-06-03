@@ -1,0 +1,222 @@
+{
+  "ExperienceError": {
+    "empty": "Контент недоступен.",
+    "failedToLoad": "Не удалось загрузить страницу: {message}",
+    "unexpected": "Произошла непредвиденная ошибка.",
+    "notConfigured": "Сервис контента не настроен.",
+    "noContent": "Контент недоступен.",
+    "homepageMisconfigured": "Главная страница Watch настроена неправильно.",
+    "defaultTemplateMisconfigured": "Шаблон Watch по умолчанию настроен неправильно.",
+    "authFailed": "Не удалось подключиться к сервису контента. Если ошибка повторится, обратитесь в поддержку."
+  },
+  "VideosPage": {
+    "title": "Все видео",
+    "placeholder": "Просмотр каталога скоро появится. Пока используйте поиск или ссылку на нужную тему."
+  },
+  "BibleQuotes": {
+    "title": "Библейские цитаты",
+    "share": "Поделиться",
+    "readMore": "Читать дальше...",
+    "learnMore": "Подробнее",
+    "freeResources": "Бесплатные материалы",
+    "promoHeading": "Хотите глубже понимать Библию?",
+    "joinBibleStudy": "Присоединиться к изучению Библии",
+    "previousQuote": "Предыдущая библейская цитата",
+    "nextQuote": "Следующая библейская цитата"
+  },
+  "DownloadButton": {
+    "checking": "Проверяем",
+    "download": "Скачать",
+    "sessionError": "Не удалось проверить сеанс. Попробуйте еще раз.",
+    "saveVideo": "Сохранить видео"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Скачать видео",
+    "eyebrow": "Скачать видео",
+    "posterAlt": "Постер видео",
+    "noDownloads": "Для этого видео нет доступных файлов для скачивания.",
+    "fileSizeLabel": "Выберите размер файла",
+    "termsAgreementPrefix": "Я принимаю ",
+    "termsOfUse": "Условия использования",
+    "termsAgreementSuffix": "",
+    "close": "Закрыть",
+    "download": "Скачать",
+    "checking": "Проверяем",
+    "closeTermsOfUse": "Закрыть условия использования",
+    "cancel": "Отмена",
+    "accept": "Принять",
+    "errorSessionExpired": "Сеанс истек. Войдите снова, чтобы скачать видео.",
+    "errorSessionUnavailable": "Не удалось проверить сеанс. Попробуйте еще раз.",
+    "errorUnavailableSource": "Скачивание из этого источника недоступно",
+    "tierHighest": "Максимальное",
+    "tierHigh": "Высокое",
+    "tierLow": "Низкое"
+  },
+  "HeroPlayerControls": {
+    "play": "Воспроизвести",
+    "pause": "Пауза",
+    "seek": "Перемотка",
+    "seekValue": "{current} из {total}",
+    "volume": "Громкость",
+    "volumeValue": "{percent}%",
+    "mute": "Отключить звук",
+    "unmute": "Включить звук",
+    "changeAudioLanguage": "Изменить язык аудио",
+    "enterFullscreen": "На весь экран",
+    "exitFullscreen": "Выйти из полноэкранного режима"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Выбрать язык",
+    "searchPlaceholder": "Поиск языков…",
+    "languages": "Языки",
+    "noMatches": "Совпадений нет"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Язык",
+    "dialogTitleWithSubtitles": "Язык и субтитры",
+    "languageHeading": "Язык",
+    "subtitlesHeading": "Субтитры",
+    "languageCount": "{count, plural, one {# язык} few {# языка} many {# языков} other {# языка}}",
+    "requestSent": "Запрос отправлен",
+    "translateWithAi": "Перевести с помощью ИИ",
+    "noSubtitles": "Нет субтитров",
+    "toggleOn": "Вкл.",
+    "toggleOff": "Выкл.",
+    "close": "Закрыть",
+    "apply": "Применить"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {# СЕРИЯ} few {# СЕРИИ} many {# СЕРИЙ} other {# СЕРИИ}}",
+    "seriesLabel": "СЕРИАЛ · {episodes}",
+    "changeAudioLanguage": "Изменить язык аудио",
+    "share": "Поделиться",
+    "languages": "Языки"
+  },
+  "WatchModal": {
+    "close": "Закрыть"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Если бы вы могли задать вопрос создателю этого видео, что бы вы спросили?",
+    "fallbackBody": "Начните личный разговор с человеком, который готов выслушать.",
+    "questionsShort": "Вопросы",
+    "questions": "Вопросы по теме",
+    "askYours": "Задать свой вопрос",
+    "chatWithPerson": "Поговорить с человеком",
+    "askBibleQuestion": "Задать вопрос о Библии"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Тип сообщения",
+    "fieldLabel": "Задать вопрос об этом видео",
+    "send": "Отправить вопрос",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Задать вопрос о Библии",
+        "description": "Мгновенные ответы из Библии с помощью ИИ-поиска"
+      },
+      "prayerRequest": {
+        "label": "Попросить о молитве",
+        "description": "Расскажите, о чем вы хотите попросить молитвы"
+      },
+      "comment": {
+        "label": "Оставить комментарий",
+        "description": "Поделитесь мыслями об этом видео"
+      },
+      "personChat": {
+        "label": "Поговорить с человеком",
+        "description": "Поговорите с кем-нибудь сейчас"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Поделиться видео",
+    "heading": "Поделиться этим видео",
+    "posterAlt": "Постер видео",
+    "shareOnFacebook": "Поделиться в Facebook",
+    "shareOnFacebookUnavailable": "Поделиться в Facebook (недоступно в этой сборке)",
+    "shareOnX": "Поделиться в X",
+    "shareOnXUnavailable": "Поделиться в X (недоступно в этой сборке)",
+    "shareDisabledHint": "Поделиться можно после публикации страницы — функция заработает, когда это видео будет в продакшене.",
+    "shareFormat": "Формат публикации",
+    "shareLinkTab": "Ссылка",
+    "embedCodeTab": "Код для встраивания",
+    "copyFailed": "Не удалось скопировать автоматически — выделите текст ниже и скопируйте вручную.",
+    "copyLink": "Скопировать ссылку",
+    "copyCode": "Скопировать код",
+    "copied": "Скопировано",
+    "close": "Закрыть"
+  },
+  "SubtitleTranscript": {
+    "heading": "Расшифровка",
+    "subheading": "Нажмите на строку, чтобы перейти к этому моменту.",
+    "subtitleLanguage": "Язык субтитров",
+    "aiSuffix": " · ИИ",
+    "loading": "Загрузка расшифровки…",
+    "unavailable": "Расшифровка для этой дорожки субтитров недоступна.",
+    "empty": "Строки расшифровки не найдены."
+  },
+  "FloatingSearch": {
+    "placeholder": "Найдите видео или выберите тему…",
+    "openSearch": "Искать видео",
+    "searchRegion": "Поиск видео",
+    "clearSearch": "Очистить поиск",
+    "changeAudioLanguage": "Изменить язык аудио",
+    "home": "Главная JesusFilm"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Поиск и просмотр видео",
+    "home": "Главная JesusFilm",
+    "placeholder": "Найдите видео или выберите тему…",
+    "inputLabel": "Искать видео по ключевым словам",
+    "searchFailed": "Не удалось выполнить поиск. Попробуйте еще раз.",
+    "loadMoreFailed": "Не удалось загрузить еще результаты.",
+    "searching": "Выполняется поиск…",
+    "connectionHint": "Проверьте подключение и попробуйте еще раз.",
+    "retrySearch": "Повторить поиск",
+    "retry": "Повторить",
+    "noResults": "Нет результатов для «{query}»",
+    "tryDifferentKeywords": "Попробуйте другие слова или выберите категорию",
+    "loading": "Загрузка…",
+    "loadMore": "Загрузить еще",
+    "categoryBibleStories": "Библейские истории",
+    "categoryParables": "Притчи",
+    "categoryAnimated": "Анимация",
+    "categoryStudy": "Изучение",
+    "categoryFamily": "Семья",
+    "categoryChristmas": "Рождество"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Воспроизвести со звуком",
+    "tapToUnmute": "Включить звук"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Загрузка контента"
+  },
+  "VideoLabels": {
+    "video": "Видео",
+    "segment": "Фрагмент",
+    "episode": "Серия",
+    "featureFilm": "Полнометражный фильм",
+    "shortFilm": "Короткометражный фильм",
+    "series": "Сериал",
+    "collection": "Коллекция",
+    "trailer": "Трейлер",
+    "behindTheScenes": "За кадром"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Фрагмент {current} из {total}",
+    "position": "{current} из {total}",
+    "chapterCount": "{count, plural, one {# глава} few {# главы} many {# глав} other {# главы}}",
+    "clipAriaLabel": "{title} · фрагмент {current} из {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# глава} few {# главы} many {# глав} other {# главы}}",
+    "chapter": "Глава",
+    "noImage": "Нет изображения",
+    "playingNow": "Сейчас воспроизводится",
+    "previousChapter": "Предыдущая глава",
+    "nextChapter": "Следующая глава"
+  },
+  "SearchResultCard": {
+    "experience": "Интерактив",
+    "episodeCount": "{count, plural, one {# серия} few {# серии} many {# серий} other {# серии}}",
+    "thumbnailAlt": "Миниатюра видео"
+  }
+}

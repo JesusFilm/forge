@@ -16,6 +16,10 @@ function mockPrisma() {
     video: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      count: vi.fn(),
+    },
+    videoDub: {
+      findMany: vi.fn(),
     },
     $queryRaw: vi.fn(),
     $executeRaw: vi.fn(),
@@ -50,6 +54,7 @@ function rowFixture(overrides: Partial<Row> = {}): Row {
 }
 
 const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
+const EDITOR: Principal = { id: "editor-1", role: "EDITOR" }
 const PUBLIC_USER: Principal | null = null
 
 describe("VideoService", () => {
@@ -88,6 +93,130 @@ describe("VideoService", () => {
       await expect(
         service.list({ input: {}, query: {} }),
       ).resolves.not.toThrow()
+    })
+
+    it("filters across video identifiers and localized metadata when search is present", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: { search: "Jesus Film" }, query: {} })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where.deletedAt).toBeNull()
+      expect(call.where.OR).toEqual(
+        expect.arrayContaining([
+          { coreId: { contains: "Jesus Film", mode: "insensitive" } },
+          { slug: { contains: "Jesus Film", mode: "insensitive" } },
+          {
+            locales: {
+              some: {
+                OR: expect.arrayContaining([
+                  { title: { contains: "Jesus Film", mode: "insensitive" } },
+                  {
+                    description: {
+                      contains: "Jesus Film",
+                      mode: "insensitive",
+                    },
+                  },
+                ]),
+              },
+            },
+          },
+        ]),
+      )
+    })
+
+    it("adds enum filters for human-readable video label and source queries", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: { search: "feature film" }, query: {} })
+
+      let call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where.OR).toEqual(
+        expect.arrayContaining([{ label: { in: ["FEATURE_FILM"] } }]),
+      )
+
+      prisma.video.findMany.mockResolvedValueOnce([])
+      await service.list({ input: { search: "mux" }, query: {} })
+
+      call = prisma.video.findMany.mock.calls[1][0]
+      expect(call.where.OR).toEqual(
+        expect.arrayContaining([{ videoSource: { in: ["MUX"] } }]),
+      )
+    })
+
+    it("filters through dub language and image metadata", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: { search: "english" }, query: {} })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where.OR).toEqual(
+        expect.arrayContaining([
+          {
+            dubs: {
+              some: {
+                OR: expect.arrayContaining([
+                  {
+                    language: {
+                      is: expect.objectContaining({
+                        OR: expect.arrayContaining([
+                          {
+                            slug: {
+                              contains: "english",
+                              mode: "insensitive",
+                            },
+                          },
+                        ]),
+                      }),
+                    },
+                  },
+                ]),
+              },
+            },
+          },
+          {
+            images: {
+              some: {
+                OR: expect.arrayContaining([
+                  { url: { contains: "english", mode: "insensitive" } },
+                  { kind: { contains: "english", mode: "insensitive" } },
+                ]),
+              },
+            },
+          },
+        ]),
+      )
+    })
+  })
+
+  describe("countActive", () => {
+    it("counts the same non-deleted video scope used by list", async () => {
+      prisma.video.count.mockResolvedValueOnce(12)
+
+      await expect(service.countActive()).resolves.toBe(12)
+      expect(prisma.video.count).toHaveBeenCalledWith({
+        where: { deletedAt: null },
+      })
+    })
+
+    it("uses the same search filter as list", async () => {
+      prisma.video.count.mockResolvedValueOnce(4)
+
+      await expect(service.countActive("published")).resolves.toBe(4)
+
+      const call = prisma.video.count.mock.calls[0][0]
+      expect(call.where.deletedAt).toBeNull()
+      expect(call.where.OR).toEqual(
+        expect.arrayContaining([
+          {
+            locales: {
+              some: {
+                OR: expect.arrayContaining([{ status: { in: ["PUBLISHED"] } }]),
+              },
+            },
+          },
+        ]),
+      )
     })
   })
 
@@ -430,6 +559,105 @@ describe("VideoService", () => {
 
       now.mockRestore()
       warn.mockRestore()
+    })
+  })
+
+  describe("getChildDubLanguages", () => {
+    it("queries playable dubs of the video's children, deduped by language for DISTINCT ON", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([])
+
+      await service.getChildDubLanguages({ videoId: "series-1", user: VIEWER })
+
+      const call = prisma.videoDub.findMany.mock.calls[0][0]
+      // Playable predicate — must match apps/web's isPlayableLanguageVariant.
+      expect(call.where).toMatchObject({
+        deletedAt: null,
+        published: true,
+        hls: { not: null },
+        languageId: { not: null },
+        language: { slug: { not: null }, deletedAt: null },
+      })
+      // Children of `videoId`: this dub's video sits on the child side of a
+      // VideoRelation whose parent is the requested video.
+      expect(call.where.video.parents).toEqual({
+        some: { parentId: "series-1" },
+      })
+      // DISTINCT ON (language_id) — one row per language; which dub wins is
+      // irrelevant since only the (shared) language fields are projected.
+      expect(call.distinct).toEqual(["languageId"])
+      expect(call.orderBy).toEqual([{ languageId: "asc" }])
+      // Only the language display fields are selected — no dub id/hls/duration.
+      expect(call.select).toEqual({
+        language: { select: { slug: true, name: true, bcp47: true } },
+      })
+    })
+
+    it("restricts children to PUBLISHED-locale rows for a consumer/anonymous caller", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([])
+
+      await service.getChildDubLanguages({
+        videoId: "series-1",
+        user: PUBLIC_USER,
+      })
+
+      const call = prisma.videoDub.findMany.mock.calls[0][0]
+      expect(call.where.video).toMatchObject({
+        deletedAt: null,
+        locales: { some: { status: "PUBLISHED" } },
+      })
+    })
+
+    it("does NOT gate children on a published locale for an EDITOR/ADMIN caller", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([])
+
+      await service.getChildDubLanguages({ videoId: "series-1", user: EDITOR })
+
+      const call = prisma.videoDub.findMany.mock.calls[0][0]
+      expect(call.where.video.deletedAt).toBeNull()
+      expect(call.where.video.locales).toBeUndefined()
+    })
+
+    it("flattens each distinct dub's language into the minimal picker shape", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([
+        {
+          language: { slug: "english", name: { en: "English" }, bcp47: "en" },
+        },
+        {
+          language: { slug: "spanish", name: { en: "Spanish" }, bcp47: "es" },
+        },
+      ])
+
+      const result = await service.getChildDubLanguages({
+        videoId: "series-1",
+        user: VIEWER,
+      })
+
+      expect(result).toEqual([
+        { slug: "english", name: { en: "English" }, bcp47: "en" },
+        { slug: "spanish", name: { en: "Spanish" }, bcp47: "es" },
+      ])
+    })
+
+    it("surfaces null fields rather than throwing when a row's language is absent", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([{ language: null }])
+
+      const [row] = await service.getChildDubLanguages({
+        videoId: "series-1",
+        user: VIEWER,
+      })
+
+      expect(row).toEqual({ slug: null, name: null, bcp47: null })
+    })
+
+    it("returns an empty array when the video has no playable child dubs", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([])
+
+      const result = await service.getChildDubLanguages({
+        videoId: "leaf-video",
+        user: VIEWER,
+      })
+
+      expect(result).toEqual([])
     })
   })
 })

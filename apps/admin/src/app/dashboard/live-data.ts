@@ -9,6 +9,15 @@ import {
 } from "@/domain/blocks"
 import { getAdminLocale } from "@/i18n/server"
 import { createServices } from "@/services"
+import { env } from "@/config/env"
+import { WatchRouteManifestStore } from "@/services/watch-route-manifest-store"
+import {
+  createVideoLibraryPagination,
+  formatVideoUpdatedRelative,
+  normalizeVideoThumbnailUrl,
+  resolveVideoVisitorUrl,
+  VIDEO_LIBRARY_PAGE_SIZE,
+} from "./video-library-utils"
 
 function isMissingTableError(error: unknown) {
   return (
@@ -33,7 +42,7 @@ type ExperienceLocaleRow = {
 
 type VideoLocaleRow = {
   videoId: string
-  locale: string
+  locale: string | null
   title: string | null
   description: string | null
   updatedAt: Date
@@ -53,6 +62,17 @@ type VideoImageRow = {
   kind: string | null
   createdAt: Date
 }
+
+type LoadVideoRowSliceOptions = {
+  principal: Principal
+  limit: number
+  offset: number
+  search?: string
+  includeVisitorUrls?: boolean
+}
+
+const VIDEO_LIBRARY_LANGUAGE_TARGET = 2300
+const VIDEO_LIBRARY_LANGUAGE_CHIP_LIMIT = 5
 
 function durationSecondsForDub(
   dub: Pick<VideoDubRow, "lengthInMilliseconds" | "duration">,
@@ -100,6 +120,15 @@ function formatDateTime(value: Date) {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone: "UTC",
+  }).format(value)
+}
+
+function formatShortDate(value: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
     timeZone: "UTC",
   }).format(value)
 }
@@ -363,16 +392,78 @@ function dubCoverage(dubs: VideoDubRow[]): string {
   return `${label} · ${tags.join(", ")}${suffix}`
 }
 
+function dubLanguageCodes(dubs: VideoDubRow[]) {
+  return Array.from(
+    new Set(
+      dubs
+        .map(
+          (dub) =>
+            dub.language?.iso3 ?? dub.language?.bcp47 ?? dub.language?.slug,
+        )
+        .filter((tag): tag is string => !!tag)
+        .map((tag) => tag.toUpperCase()),
+    ),
+  )
+}
+
+function dubCoverageMetric(dubs: VideoDubRow[]) {
+  const allLanguages = dubLanguageCodes(dubs)
+  const count = allLanguages.length || dubs.length
+  const percent =
+    count === 0
+      ? 0
+      : Math.min(
+          100,
+          Math.max(
+            1,
+            Math.round((count / VIDEO_LIBRARY_LANGUAGE_TARGET) * 100),
+          ),
+        )
+  const languages = allLanguages.slice(0, VIDEO_LIBRARY_LANGUAGE_CHIP_LIMIT)
+
+  return {
+    dubCount: count,
+    dubLanguages: languages,
+    dubOverflowCount: Math.max(0, count - languages.length),
+    dubCoveragePercent: percent,
+  }
+}
+
 function preferredVideoImage(images: VideoImageRow[]) {
   if (images.length === 0) return null
 
   const priority = ["videoStill", "mobileCinematicHigh", "poster", "still"]
   for (const kind of priority) {
     const match = images.find((image) => image.kind === kind && image.url)
-    if (match?.url) return match.url
+    if (match?.url) return normalizeVideoThumbnailUrl(match.url)
   }
 
-  return images.find((image) => image.url)?.url ?? null
+  return normalizeVideoThumbnailUrl(images.find((image) => image.url)?.url)
+}
+
+async function countActiveVideos(search?: string) {
+  const services = createServices(prisma)
+  try {
+    return await services.video.countActive(search)
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return 0
+    }
+    throw error
+  }
+}
+
+async function loadLatestWatchRouteManifest() {
+  try {
+    return (
+      (await new WatchRouteManifestStore(prisma).getLatest())?.payload ?? null
+    )
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return null
+    }
+    throw error
+  }
 }
 
 export async function loadExperienceRows(principal: Principal) {
@@ -486,7 +577,13 @@ export async function loadExperienceRows(principal: Principal) {
   })
 }
 
-export async function loadVideoRows(principal: Principal) {
+async function loadVideoRowSlice({
+  principal,
+  limit,
+  offset,
+  search,
+  includeVisitorUrls = false,
+}: LoadVideoRowSliceOptions) {
   const services = createServices(prisma)
   const locale = await getAdminLocale()
   let videos: Awaited<ReturnType<typeof services.video.list>>
@@ -494,7 +591,7 @@ export async function loadVideoRows(principal: Principal) {
     // U2: VideoService.list dropped its `user` param. Route is gated by requireSession().
     void principal
     videos = await services.video.list({
-      input: { limit: 30, offset: 0 },
+      input: { limit, offset, search },
       query: {},
     })
   } catch (error) {
@@ -511,7 +608,7 @@ export async function loadVideoRows(principal: Principal) {
   try {
     ;[videoLocales, videoDubs, videoImages] = await Promise.all([
       prisma.videoLocale.findMany({
-        where: { videoId: { in: ids } },
+        where: { videoId: { in: ids }, deletedAt: null },
         select: {
           videoId: true,
           locale: true,
@@ -552,8 +649,11 @@ export async function loadVideoRows(principal: Principal) {
     throw error
   }
 
-  const localesByVideo = new Map<string, typeof videoLocales>()
-  for (const item of videoLocales) {
+  const publicVideoLocales = videoLocales.filter(
+    (item): item is VideoLocaleRow & { locale: string } => item.locale != null,
+  )
+  const localesByVideo = new Map<string, typeof publicVideoLocales>()
+  for (const item of publicVideoLocales) {
     const current = localesByVideo.get(item.videoId) ?? []
     current.push(item)
     localesByVideo.set(item.videoId, current)
@@ -573,6 +673,10 @@ export async function loadVideoRows(principal: Principal) {
     imagesByVideo.set(item.videoId, current)
   }
 
+  const routeManifest = includeVisitorUrls
+    ? await loadLatestWatchRouteManifest()
+    : null
+
   return videos.map((video) => {
     const localeRows = localesByVideo.get(video.id) ?? []
     const dubRows = dubsByVideo.get(video.id) ?? []
@@ -581,23 +685,74 @@ export async function loadVideoRows(principal: Principal) {
     const title = localeRow?.title?.trim() || video.slug
     const source = sourceLabel(video.videoSource)
     const playbackDub = preferredPlaybackDub(dubRows)
+    const coverage = dubCoverageMetric(dubRows)
 
     return {
       key: video.id,
       title,
       description: localeRow?.description?.trim() || null,
       id: video.coreId,
+      slug: video.slug,
       label: video.label ?? null,
       labelLabel: localizedVideoLabel(video.label ?? null, locale),
       sourceLabel: source.label,
       sourceTone: source.tone,
       dubs: dubCoverage(dubRows),
+      ...coverage,
       updated: formatDateTime(video.updatedAt),
+      updatedAtIso: video.updatedAt.toISOString(),
+      updatedRelative: formatVideoUpdatedRelative(video.updatedAt),
+      updatedDateShort: formatShortDate(video.updatedAt),
       duration: formatDuration(dubRows),
       durationSeconds: playbackDub ? durationSecondsForDub(playbackDub) : null,
       previewImageUrl: preferredVideoImage(imageRows),
       previewStreamUrl:
         playbackDub?.hls ?? playbackDub?.dash ?? playbackDub?.share ?? null,
+      visitorUrl: includeVisitorUrls
+        ? resolveVideoVisitorUrl({
+            contentSlug: video.slug,
+            languageSlugs: dubRows.map((dub) => dub.language?.slug),
+            manifest: routeManifest,
+            webOrigin: env.WEB_CANONICAL_ORIGIN,
+          })
+        : null,
     }
   })
+}
+
+export async function loadVideoRows(principal: Principal) {
+  return loadVideoRowSlice({
+    principal,
+    limit: VIDEO_LIBRARY_PAGE_SIZE,
+    offset: 0,
+  })
+}
+
+export async function loadVideoLibraryPage(
+  principal: Principal,
+  {
+    page,
+    pageSize = VIDEO_LIBRARY_PAGE_SIZE,
+    query,
+  }: { page: number; pageSize?: number; query?: string },
+) {
+  const total = await countActiveVideos(query)
+  const pagination = createVideoLibraryPagination({
+    total,
+    requestedPage: page,
+    pageSize,
+  })
+
+  const rows =
+    total === 0
+      ? []
+      : await loadVideoRowSlice({
+          principal,
+          limit: pagination.pageSize,
+          offset: pagination.offset,
+          search: query,
+          includeVisitorUrls: true,
+        })
+
+  return { rows, pagination }
 }

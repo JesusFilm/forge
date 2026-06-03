@@ -6,6 +6,17 @@ import { z } from "zod"
 // `undefined` before validation.
 const emptyToUndefined = (v: string | undefined) => (v === "" ? undefined : v)
 
+export const DEFAULT_WEB_CANONICAL_ORIGIN = "https://www.jesusfilm.org"
+
+export const webCanonicalOriginEnvSchema = z
+  .string()
+  .url()
+  .refine((value) => {
+    const protocol = new URL(value).protocol
+    return protocol === "http:" || protocol === "https:"
+  }, "WEB_CANONICAL_ORIGIN must be an HTTP(S) URL")
+  .transform((value) => new URL(value).origin)
+
 /**
  * Shared schema fragment for env vars representing a positive-int
  * concurrency cap (e.g. `SCENE_EMBEDDING_CONCURRENCY`,
@@ -54,6 +65,12 @@ export const env = createEnv({
       .enum(["local", "preview", "staging", "production"])
       .optional(),
     ADMIN_BASE_URL: z.string().url().optional(),
+    // Public web origin used only for outbound visitor-facing watch links
+    // from admin. Optional so local/admin-only deployments do not need a new
+    // env var; production defaults to the indexed www host.
+    WEB_CANONICAL_ORIGIN: webCanonicalOriginEnvSchema
+      .optional()
+      .default(DEFAULT_WEB_CANONICAL_ORIGIN),
     MANAGER_ADMIN_API_KEY: z.string().min(1).optional(),
     REDIS_HOST: z.string().min(1).optional(),
     REDIS_PORT: z.coerce.number().int().positive().optional(),
@@ -110,19 +127,6 @@ export const env = createEnv({
     // treats "false" as truthy). Decoded at call sites with
     // `env.SEARCH_AUTH_REQUIRED === "true"`.
     SEARCH_AUTH_REQUIRED: z.enum(["true", "false"]).optional().default("false"),
-    // Plan 002 / Plan 003 — caller-side single bearer value for the
-    // local search eval CLI (`apps/admin/src/scripts/eval-search.ts`).
-    // When set, the CLI's `createSearchClient` attaches
-    // `Authorization: Bearer <value>` to every search request so the
-    // harness keeps working after the `SEARCH_AUTH_REQUIRED=true` flip.
-    // Post-Plan 003 (partner-key store retiring the env-CSV partner
-    // branch), the value MUST be either a partner key issued via
-    // `pnpm --filter @forge/admin partner-keys create` OR a
-    // `WORKFLOW_API_KEYS` / `WEB_ADMIN_API_KEYS` entry — the legacy
-    // env-CSV partner receiver branch no longer exists.
-    // `.optional()` because the harness still works without it during
-    // dual-accept — anonymous traffic logs as `auth=anonymous`.
-    SEARCH_API_KEY: z.string().min(1).optional(),
     // Admin-owned production search trace sampling. Future Mastra eval jobs
     // call the internal Admin sampling route with a dedicated bearer from
     // this CSV; it must stay disjoint from public search, workflow launch,
@@ -235,29 +239,9 @@ export const env = createEnv({
     ALGOLIA_SEARCH_API_KEY: z.string().min(1).optional(),
     ALGOLIA_INDEX: z.string().min(1).optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).optional(),
-    // Search eval harness — local CLI only. None of these are read by
-    // production code paths; see src/scripts/eval-search.ts and
-    // src/services/search-eval/*.
-    //
-    // OPENROUTER_JUDGE_MODEL: OpenRouter model id used by the pairwise
-    // relevance judge. Defaults to the `DEFAULT_JUDGE_MODEL` constant
-    // declared inside the judge module so production builds without
-    // this env still typecheck.
-    OPENROUTER_JUDGE_MODEL: z.string().min(1).optional(),
-    // EVAL_JUDGE_CONCURRENCY / EVAL_SEARCH_CONCURRENCY: parallel-call
-    // caps for the judge and search clients. Defaults are baked into
-    // the runner; raise them locally when iterating, lower them when
-    // pointing at a shared admin instance to stay under its 30/min
-    // search rate-limit.
-    EVAL_JUDGE_CONCURRENCY: concurrencyEnvSchema,
-    EVAL_SEARCH_CONCURRENCY: concurrencyEnvSchema,
-    // The eval harness reuses ADMIN_BASE_URL as the target for `GET /api/search`.
-    // It defaults to the local dev port at the call site when unset.
-    // EVAL_GIT_SHA: stamped into the run JSON's metadata header so an
-    // operator reviewing an old report can correlate it with a commit.
-    // Optional; defaults to "unknown" at the call site. Operators set
-    // this before running a baseline so the baseline carries provenance.
-    EVAL_GIT_SHA: z.string().min(1).optional(),
+    // Optional OpenRouter model override used by the production search trace
+    // query classifier. Defaults to the classifier module's pinned model.
+    OPENROUTER_QUERY_CLASSIFIER_MODEL: z.string().min(1).optional(),
   },
   client: {},
   skipValidation: !!process.env.CI,
@@ -284,6 +268,9 @@ export const env = createEnv({
       process.env.AUTH_MANAGER_SERVICE_ENVIRONMENT,
     ),
     ADMIN_BASE_URL: emptyToUndefined(process.env.ADMIN_BASE_URL),
+    WEB_CANONICAL_ORIGIN:
+      emptyToUndefined(process.env.WEB_CANONICAL_ORIGIN) ??
+      DEFAULT_WEB_CANONICAL_ORIGIN,
     MANAGER_ADMIN_API_KEY: emptyToUndefined(process.env.MANAGER_ADMIN_API_KEY),
     REDIS_HOST: emptyToUndefined(process.env.REDIS_HOST),
     REDIS_PORT: emptyToUndefined(process.env.REDIS_PORT),
@@ -321,7 +308,6 @@ export const env = createEnv({
       process.env.BACKUP_DOWNLOAD_API_KEYS,
     ),
     SEARCH_AUTH_REQUIRED: emptyToUndefined(process.env.SEARCH_AUTH_REQUIRED),
-    SEARCH_API_KEY: emptyToUndefined(process.env.SEARCH_API_KEY),
     SEARCH_TRACE_SAMPLING_API_KEYS: emptyToUndefined(
       process.env.SEARCH_TRACE_SAMPLING_API_KEYS,
     ),
@@ -398,16 +384,9 @@ export const env = createEnv({
       process.env.ALGOLIA_SEARCH_API_KEY,
     ),
     ALGOLIA_INDEX: emptyToUndefined(process.env.ALGOLIA_INDEX),
-    OPENROUTER_JUDGE_MODEL: emptyToUndefined(
-      process.env.OPENROUTER_JUDGE_MODEL,
+    OPENROUTER_QUERY_CLASSIFIER_MODEL: emptyToUndefined(
+      process.env.OPENROUTER_QUERY_CLASSIFIER_MODEL,
     ),
-    EVAL_JUDGE_CONCURRENCY: emptyToUndefined(
-      process.env.EVAL_JUDGE_CONCURRENCY,
-    ),
-    EVAL_SEARCH_CONCURRENCY: emptyToUndefined(
-      process.env.EVAL_SEARCH_CONCURRENCY,
-    ),
-    EVAL_GIT_SHA: emptyToUndefined(process.env.EVAL_GIT_SHA),
     NODE_ENV: emptyToUndefined(process.env.NODE_ENV),
   },
 })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { formatDuration } from "@/lib/format-duration"
 import type { SearchResult } from "@/lib/search"
-import { formatVideoLabel, pickCardPill } from "./VideoCard"
+import { defaultHrefBuilder, formatVideoLabel, pickCardPill } from "./VideoCard"
 
 function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
   return {
@@ -58,6 +58,18 @@ describe("formatDuration", () => {
   it("returns empty string on invalid input", () => {
     expect(formatDuration(NaN)).toBe("")
     expect(formatDuration(-5)).toBe("")
+  })
+})
+
+describe("defaultHrefBuilder", () => {
+  it("builds the canonical two-segment watch path with the english locale slug", () => {
+    expect(defaultHrefBuilder(makeResult({ slug: "jesus" }))).toBe(
+      "/jesus.html/english.html",
+    )
+  })
+
+  it("falls back to / on a malformed slug rather than a broken deep link", () => {
+    expect(defaultHrefBuilder(makeResult({ slug: "Not A Slug!" }))).toBe("/")
   })
 })
 

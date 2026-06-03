@@ -1,4 +1,0 @@
-{
-  "$schema-doc": "Adversarial / regression queries for the semantic-search eval harness. Hand-edit this file when you spot a bad search result in the wild — every entry permanently joins the test set, so the harness gets stricter over time. Schema: each entry has `locale` (BCP-47), `query` (string, the user-typed input), `notes` (free-form context — what's wrong, what should appear), `addedAt` (ISO8601), `addedBy` (handle). Entries persist across runs and re-baselines.",
-  "entries": []
-}

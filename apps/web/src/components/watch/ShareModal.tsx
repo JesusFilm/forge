@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { Copy, Facebook } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 // Inline X (formerly Twitter) glyph — lucide-react still ships the legacy
 // blue-bird Twitter icon AND exports its own `XIcon` (the close-button "x"),
@@ -27,6 +28,12 @@ function XBrandIcon({ size = 18 }: { size?: number }) {
 import { env } from "@/env"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import {
+  WATCH_BASE_PATH,
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchVideoPath,
+} from "@/lib/routes"
 import {
   PUBLIC_SHARE_FALLBACK_ORIGIN,
   isPublicShareableOrigin,
@@ -68,12 +75,23 @@ export function ShareModal({
   playbackId,
   onClose,
 }: ShareModalProps) {
+  const t = useTranslations("ShareModal")
   const [tab, setTab] = useState<ShareTab>("link")
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle")
   const embedRef = useRef<HTMLTextAreaElement | null>(null)
 
   const origin = env.NEXT_PUBLIC_CANONICAL_ORIGIN
-  const canonicalUrl = `${origin}/watch/${videoSlug}/${currentLanguageSlug}`
+  // Build the watch PATH via the @/lib/routes builder, then prefix each origin
+  // manually: canonical + share-fallback are TWO different origins, so the
+  // canonical-origin-baked `watchVideoAbsolute` builder doesn't fit. Invalid
+  // slugs (which can't happen for a published video) fall back to the bare
+  // origin rather than emitting a malformed path.
+  const slug = tryAsContentSlug(videoSlug)
+  const lang = tryAsLocaleSlug(currentLanguageSlug)
+  const watchPath = slug && lang ? watchVideoPath(slug, lang) : null
+  const canonicalUrl = watchPath
+    ? `${origin}${WATCH_BASE_PATH}${watchPath}`
+    : origin
   // When the configured origin can't be reached by the FB / X scrapers
   // (localhost, private hosts, etc.) we keep the share buttons VISIBLE but
   // render them as disabled. Sharing a localhost URL via the public fallback
@@ -86,7 +104,9 @@ export function ShareModal({
   // the configured origin so devs can copy a localhost URL when that's what
   // they want.
   const shareOrigin = isShareable ? origin : PUBLIC_SHARE_FALLBACK_ORIGIN
-  const shareableUrl = `${shareOrigin}/watch/${videoSlug}/${currentLanguageSlug}`
+  const shareableUrl = watchPath
+    ? `${shareOrigin}${WATCH_BASE_PATH}${watchPath}`
+    : shareOrigin
   // buildEmbedSnippet validates playbackId against PLAYBACK_ID_PATTERN before
   // interpolating into the iframe `src` and returns "" on null/invalid; the
   // Embed Code tab is also gated on `playbackId ?` below, so an invalid id
@@ -98,7 +118,7 @@ export function ShareModal({
 
   const isEmbed = tab === "embed"
   const currentValue = isEmbed ? embedSnippet : canonicalUrl
-  const copyLabel = isEmbed ? "Copy Code" : "Copy Link"
+  const copyLabel = isEmbed ? t("copyCode") : t("copyLink")
 
   // Reset the "Copied" pill back to the default label after 2s so a second
   // click reads as a fresh copy. Cleanup clears the timer on unmount or when
@@ -179,11 +199,11 @@ export function ShareModal({
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         showCloseButton={false}
       >
-        <DialogTitle className="sr-only">Share video</DialogTitle>
+        <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
         <div className="flex max-h-[82vh] flex-col gap-6 overflow-y-auto pr-2 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
           <h2 className="text-2xl font-semibold text-stone-100">
-            Share this video
+            {t("heading")}
           </h2>
 
           <div className="flex flex-col gap-5 sm:flex-row sm:gap-6">
@@ -194,7 +214,7 @@ export function ShareModal({
               {posterUrl ? (
                 <Image
                   src={posterUrl}
-                  alt={videoTitle ?? "Video poster"}
+                  alt={videoTitle ?? t("posterAlt")}
                   fill
                   sizes="(min-width: 640px) 224px, 100vw"
                   className="object-cover"
@@ -228,7 +248,7 @@ export function ShareModal({
                   href={fbHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label="Share on Facebook"
+                  aria-label={t("shareOnFacebook")}
                   data-testid="watch-share-modal-facebook"
                   className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[#1877F2] text-white transition hover:bg-[#0c63d4] focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
                 >
@@ -238,7 +258,7 @@ export function ShareModal({
                 <button
                   type="button"
                   disabled
-                  aria-label="Share on Facebook (unavailable on this build)"
+                  aria-label={t("shareOnFacebookUnavailable")}
                   data-testid="watch-share-modal-facebook"
                   className="flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-full bg-[#1877F2] text-white opacity-50"
                 >
@@ -250,7 +270,7 @@ export function ShareModal({
                   href={xHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label="Share on X"
+                  aria-label={t("shareOnX")}
                   data-testid="watch-share-modal-x"
                   className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-black text-white transition hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
                 >
@@ -260,7 +280,7 @@ export function ShareModal({
                 <button
                   type="button"
                   disabled
-                  aria-label="Share on X (unavailable on this build)"
+                  aria-label={t("shareOnXUnavailable")}
                   data-testid="watch-share-modal-x"
                   className="flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-full bg-black text-white opacity-50"
                 >
@@ -273,8 +293,7 @@ export function ShareModal({
                 data-testid="watch-share-modal-share-disabled-hint"
                 className="text-xs font-semibold text-stone-400"
               >
-                Sharing requires a deployed page — works once this video is in
-                production.
+                {t("shareDisabledHint")}
               </p>
             ) : null}
           </div>
@@ -289,7 +308,7 @@ export function ShareModal({
           {embedSnippet ? (
             <div
               role="tablist"
-              aria-label="Share format"
+              aria-label={t("shareFormat")}
               className="flex border-b border-white/10"
             >
               <button
@@ -305,7 +324,7 @@ export function ShareModal({
                     : "border-b-2 border-transparent text-stone-400 hover:text-stone-200",
                 )}
               >
-                Share Link
+                {t("shareLinkTab")}
               </button>
               <button
                 type="button"
@@ -320,7 +339,7 @@ export function ShareModal({
                     : "border-b-2 border-transparent text-stone-400 hover:text-stone-200",
                 )}
               >
-                Embed Code
+                {t("embedCodeTab")}
               </button>
             </div>
           ) : null}
@@ -332,8 +351,7 @@ export function ShareModal({
                 role="alert"
                 className="mb-2 text-xs font-semibold text-amber-400"
               >
-                Couldn’t copy automatically — select the text below and copy
-                manually.
+                {t("copyFailed")}
               </p>
             ) : null}
             {isEmbed ? (
@@ -367,7 +385,7 @@ export function ShareModal({
               onClick={() => handleOpenChange(false)}
               className="cursor-pointer rounded-full px-5 py-3.5 text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
             >
-              Close
+              {t("close")}
             </Button>
             <Button
               variant="pill"
@@ -380,7 +398,7 @@ export function ShareModal({
               className="gap-2 px-7 py-4 text-sm"
             >
               <Copy size={16} />
-              <span>{copyStatus === "copied" ? "Copied" : copyLabel}</span>
+              <span>{copyStatus === "copied" ? t("copied") : copyLabel}</span>
             </Button>
           </div>
         </div>

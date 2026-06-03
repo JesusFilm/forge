@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { Mastra } from "@mastra/core"
 import type { AnySpan, SpanOutputProcessor } from "@mastra/core/observability"
 import { registerApiRoute } from "@mastra/core/server"
-import { MastraCompositeStore } from "@mastra/core/storage"
+import { InMemoryStore, MastraCompositeStore } from "@mastra/core/storage"
 import { DuckDBStore } from "@mastra/duckdb"
 import { PinoLogger } from "@mastra/loggers"
 import {
@@ -38,6 +38,27 @@ import {
   handleEvalQueryGenerationRouteRequest,
 } from "./workflows/eval-query-generation"
 import {
+  handleOfflineSearchEvalRouteRequest,
+  offlineSearchEvalWorkflow,
+} from "./workflows/offline-search-eval"
+import {
+  handleSearchEvalCandidateReviewRouteRequest,
+  searchEvalCandidateReviewWorkflow,
+} from "./workflows/search-eval-candidate-review"
+import {
+  configureSearchEvalNativeSuiteRuntime,
+  handleSearchEvalNativeSuiteRouteRequest,
+  searchEvalNativeSuiteWorkflow,
+} from "./workflows/search-eval-native-suite"
+import {
+  handleSearchEvalOrchestratorRouteRequest,
+  searchEvalOrchestratorWorkflow,
+} from "./workflows/search-eval-orchestrator"
+import {
+  handleSearchEvalBaselinePortabilityRouteRequest,
+  searchEvalBaselinePortabilityWorkflow,
+} from "./workflows/search-eval-baseline-portability"
+import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
@@ -50,11 +71,14 @@ const storageSchemaName = "mastra"
 
 mkdirSync(storageDir, { recursive: true })
 
-const storage = new PostgresStore({
-  id: "mastra-postgres-storage",
-  connectionString: getMastraDatabaseUrl(),
-  schemaName: storageSchemaName,
-})
+const storage =
+  env.MASTRA_STORAGE_BACKEND === "memory"
+    ? new InMemoryStore({ id: "mastra-memory-storage" })
+    : new PostgresStore({
+        id: "mastra-postgres-storage",
+        connectionString: getMastraDatabaseUrl(),
+        schemaName: storageSchemaName,
+      })
 const observabilityStore = new DuckDBStore({
   id: "mastra-observability-storage",
   path: join(storageDir, "mastra-observability.duckdb"),
@@ -77,6 +101,11 @@ export const mastra = new Mastra({
     sceneEmbeddingWorkflow,
     experienceEmbeddingWorkflow,
     evalQueryGenerationWorkflow,
+    offlineSearchEvalWorkflow,
+    searchEvalCandidateReviewWorkflow,
+    searchEvalNativeSuiteWorkflow,
+    searchEvalOrchestratorWorkflow,
+    searchEvalBaselinePortabilityWorkflow,
   },
   logger: new PinoLogger({
     name: "ForgeMastra",
@@ -195,6 +224,85 @@ export const mastra = new Mastra({
           })
         },
       }),
+      registerApiRoute("/forge-offline-search-eval", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleOfflineSearchEvalRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            request: c.req.raw,
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-search-eval-candidate-review", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSearchEvalCandidateReviewRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-search-eval-native-suite", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSearchEvalNativeSuiteRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            request: c.req.raw,
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-search-eval-orchestrator", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSearchEvalOrchestratorRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            request: c.req.raw,
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-search-eval-baseline-portability", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSearchEvalBaselinePortabilityRouteRequest(
+            {
+              authHeader: c.req.header("authorization"),
+              serviceKeys,
+              request: c.req.raw,
+            },
+          )
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
     ],
   },
 })
+
+configureSearchEvalNativeSuiteRuntime(() => mastra)

@@ -1,0 +1,222 @@
+{
+  "ExperienceError": {
+    "empty": "Không có nội dung khả dụng.",
+    "failedToLoad": "Không tải được trang: {message}",
+    "unexpected": "Đã xảy ra lỗi không mong muốn.",
+    "notConfigured": "Dịch vụ nội dung chưa được cấu hình.",
+    "noContent": "Không có nội dung khả dụng.",
+    "homepageMisconfigured": "Trang chủ Watch bị cấu hình sai.",
+    "defaultTemplateMisconfigured": "Mẫu Watch mặc định bị cấu hình sai.",
+    "authFailed": "Không thể kết nối với dịch vụ nội dung. Vui lòng liên hệ hỗ trợ nếu lỗi tiếp diễn."
+  },
+  "VideosPage": {
+    "title": "Tất cả video",
+    "placeholder": "Tính năng duyệt danh mục sắp ra mắt. Hiện tại, hãy dùng tìm kiếm hoặc URL theo chủ đề."
+  },
+  "BibleQuotes": {
+    "title": "Câu Kinh Thánh",
+    "share": "Chia sẻ",
+    "readMore": "Đọc thêm...",
+    "learnMore": "Tìm hiểu thêm",
+    "freeResources": "Tài liệu miễn phí",
+    "promoHeading": "Bạn muốn hiểu Kinh Thánh sâu hơn?",
+    "joinBibleStudy": "Tham gia học Kinh Thánh",
+    "previousQuote": "Câu Kinh Thánh trước",
+    "nextQuote": "Câu Kinh Thánh tiếp theo"
+  },
+  "DownloadButton": {
+    "checking": "Đang kiểm tra",
+    "download": "Tải xuống",
+    "sessionError": "Không thể kiểm tra phiên của bạn. Vui lòng thử lại.",
+    "saveVideo": "Lưu video"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Tải video xuống",
+    "eyebrow": "Tải video xuống",
+    "posterAlt": "Ảnh áp phích video",
+    "noDownloads": "Không có bản tải xuống nào cho video này.",
+    "fileSizeLabel": "Chọn dung lượng tệp",
+    "termsAgreementPrefix": "Tôi đồng ý với ",
+    "termsOfUse": "Điều khoản Sử dụng",
+    "termsAgreementSuffix": "",
+    "close": "Đóng",
+    "download": "Tải xuống",
+    "checking": "Đang kiểm tra",
+    "closeTermsOfUse": "Đóng Điều khoản Sử dụng",
+    "cancel": "Hủy",
+    "accept": "Đồng ý",
+    "errorSessionExpired": "Phiên của bạn đã hết hạn. Đăng nhập lại để tải xuống.",
+    "errorSessionUnavailable": "Không thể kiểm tra phiên của bạn. Vui lòng thử lại.",
+    "errorUnavailableSource": "Không thể tải xuống từ nguồn này",
+    "tierHighest": "Cao nhất",
+    "tierHigh": "Cao",
+    "tierLow": "Thấp"
+  },
+  "HeroPlayerControls": {
+    "play": "Phát",
+    "pause": "Tạm dừng",
+    "seek": "Tua",
+    "seekValue": "{current} trên {total}",
+    "volume": "Âm lượng",
+    "volumeValue": "{percent} phần trăm",
+    "mute": "Tắt tiếng",
+    "unmute": "Bật tiếng",
+    "changeAudioLanguage": "Đổi ngôn ngữ âm thanh",
+    "enterFullscreen": "Vào toàn màn hình",
+    "exitFullscreen": "Thoát toàn màn hình"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Chọn ngôn ngữ",
+    "searchPlaceholder": "Tìm ngôn ngữ…",
+    "languages": "Ngôn ngữ",
+    "noMatches": "Không có kết quả phù hợp"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Ngôn ngữ",
+    "dialogTitleWithSubtitles": "Ngôn ngữ & phụ đề",
+    "languageHeading": "Ngôn ngữ",
+    "subtitlesHeading": "Phụ đề",
+    "languageCount": "{count, plural, one {# ngôn ngữ} other {# ngôn ngữ}}",
+    "requestSent": "Đã gửi yêu cầu",
+    "translateWithAi": "Dịch bằng AI",
+    "noSubtitles": "Không có phụ đề",
+    "toggleOn": "Bật",
+    "toggleOff": "Tắt",
+    "close": "Đóng",
+    "apply": "Áp dụng"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {# TẬP} other {# TẬP}}",
+    "seriesLabel": "LOẠT PHIM · {episodes}",
+    "changeAudioLanguage": "Đổi ngôn ngữ âm thanh",
+    "share": "Chia sẻ",
+    "languages": "Ngôn ngữ"
+  },
+  "WatchModal": {
+    "close": "Đóng"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Nếu bạn có thể hỏi người tạo video này một câu, bạn sẽ hỏi gì?",
+    "fallbackBody": "Bắt đầu cuộc trò chuyện riêng với một người sẵn sàng lắng nghe.",
+    "questionsShort": "Câu hỏi",
+    "questions": "Câu hỏi liên quan",
+    "askYours": "Đặt câu hỏi của bạn",
+    "chatWithPerson": "Trò chuyện với một người",
+    "askBibleQuestion": "Đặt câu hỏi về Kinh Thánh"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Loại tin nhắn",
+    "fieldLabel": "Đặt câu hỏi về video này",
+    "send": "Gửi câu hỏi",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Đặt câu hỏi về Kinh Thánh",
+        "description": "Câu trả lời tức thì từ Kinh Thánh bằng tìm kiếm AI"
+      },
+      "prayerRequest": {
+        "label": "Yêu cầu cầu nguyện",
+        "description": "Chia sẻ điều bạn muốn được cầu nguyện"
+      },
+      "comment": {
+        "label": "Để lại bình luận",
+        "description": "Gửi suy nghĩ của bạn về video này"
+      },
+      "personChat": {
+        "label": "Trò chuyện với một người",
+        "description": "Trò chuyện với ai đó ngay bây giờ"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Chia sẻ video",
+    "heading": "Chia sẻ video này",
+    "posterAlt": "Ảnh áp phích video",
+    "shareOnFacebook": "Chia sẻ lên Facebook",
+    "shareOnFacebookUnavailable": "Chia sẻ lên Facebook (không có trong bản dựng này)",
+    "shareOnX": "Chia sẻ lên X",
+    "shareOnXUnavailable": "Chia sẻ lên X (không có trong bản dựng này)",
+    "shareDisabledHint": "Chia sẻ cần một trang đã triển khai — sẽ hoạt động khi video này ở môi trường production.",
+    "shareFormat": "Định dạng chia sẻ",
+    "shareLinkTab": "Liên kết chia sẻ",
+    "embedCodeTab": "Mã nhúng",
+    "copyFailed": "Không thể tự động sao chép — hãy chọn văn bản bên dưới và sao chép thủ công.",
+    "copyLink": "Sao chép liên kết",
+    "copyCode": "Sao chép mã",
+    "copied": "Đã sao chép",
+    "close": "Đóng"
+  },
+  "SubtitleTranscript": {
+    "heading": "Bản chép lời",
+    "subheading": "Nhấn vào bất kỳ dòng nào để chuyển đến khoảnh khắc đó.",
+    "subtitleLanguage": "Ngôn ngữ phụ đề",
+    "aiSuffix": " · trí tuệ nhân tạo",
+    "loading": "Đang tải bản chép lời…",
+    "unavailable": "Không có bản chép lời cho phụ đề này.",
+    "empty": "Không tìm thấy dòng chép lời nào."
+  },
+  "FloatingSearch": {
+    "placeholder": "Tìm kiếm hoặc xem các chủ đề…",
+    "openSearch": "Tìm video",
+    "searchRegion": "Tìm video",
+    "clearSearch": "Xóa tìm kiếm",
+    "changeAudioLanguage": "Đổi ngôn ngữ âm thanh",
+    "home": "Trang chủ JesusFilm"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Tìm kiếm và xem video",
+    "home": "Trang chủ JesusFilm",
+    "placeholder": "Tìm kiếm hoặc xem các chủ đề…",
+    "inputLabel": "Tìm video bằng từ khóa",
+    "searchFailed": "Tìm kiếm không thành công. Vui lòng thử lại.",
+    "loadMoreFailed": "Không tải được thêm kết quả.",
+    "searching": "Đang tìm...",
+    "connectionHint": "Vui lòng kiểm tra kết nối rồi thử lại.",
+    "retrySearch": "Tìm lại",
+    "retry": "Thử lại",
+    "noResults": "Không có kết quả cho “{query}”",
+    "tryDifferentKeywords": "Thử từ khóa khác hoặc xem các danh mục",
+    "loading": "Đang tải...",
+    "loadMore": "Tải thêm",
+    "categoryBibleStories": "Câu chuyện Kinh Thánh",
+    "categoryParables": "Dụ ngôn",
+    "categoryAnimated": "Hoạt hình",
+    "categoryStudy": "Học hỏi",
+    "categoryFamily": "Gia đình",
+    "categoryChristmas": "Giáng sinh"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Phát có âm thanh",
+    "tapToUnmute": "Bật tiếng"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Đang tải nội dung"
+  },
+  "VideoLabels": {
+    "video": "Video",
+    "segment": "Phân đoạn",
+    "episode": "Tập",
+    "featureFilm": "Phim truyện",
+    "shortFilm": "Phim ngắn",
+    "series": "Loạt phim",
+    "collection": "Bộ sưu tập",
+    "trailer": "Trailer",
+    "behindTheScenes": "Hậu trường"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Đoạn {current} trong {total}",
+    "position": "{current} trong {total}",
+    "chapterCount": "{count, plural, one {# chương} other {# chương}}",
+    "clipAriaLabel": "{title} · đoạn {current} trong {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# chương} other {# chương}}",
+    "chapter": "Chương",
+    "noImage": "Không có hình ảnh",
+    "playingNow": "Đang phát",
+    "previousChapter": "Chương trước",
+    "nextChapter": "Chương tiếp theo"
+  },
+  "SearchResultCard": {
+    "experience": "Trải nghiệm",
+    "episodeCount": "{count, plural, one {# tập} other {# tập}}",
+    "thumbnailAlt": "Ảnh thu nhỏ video"
+  }
+}

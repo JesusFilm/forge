@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import dynamic from "next/dynamic"
+import { useTranslations } from "next-intl"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
@@ -30,7 +31,11 @@ const ShareModal = dynamic(
     })),
   { ssr: false },
 )
+import { SubtitleTranscript } from "@/components/watch/SubtitleTranscript"
+import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
+import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
+import { redirectToAuth } from "@/components/watch/download-session-client"
 import type {
   MergedWatchBlock,
   ResolvedWatchVideo,
@@ -71,6 +76,7 @@ export type WatchModalCallbacks = {
 }
 
 type WatchPageClientProps = {
+  downloadButtonLabel?: string
   mergedBlocks: MergedWatchBlock[]
   variant: WatchVariant
   video: WatchVideoRecord
@@ -86,14 +92,17 @@ type WatchPageClientProps = {
    * BibleGateway "Read more..." link pick the right translation.
    */
   locale?: string
+  questionPanelEnabled?: boolean
 }
 
 export function WatchPageClient({
+  downloadButtonLabel,
   mergedBlocks,
   variant,
   video,
   languageSlug,
   locale,
+  questionPanelEnabled = false,
 }: WatchPageClientProps) {
   // Lifted so LanguagePickerModal can read `currentTime` for the `?t=` clamp
   // on language switches.
@@ -116,6 +125,7 @@ export function WatchPageClient({
   }, [])
 
   const currentLanguageSlug = languageSlug ?? variant.language?.slug ?? ""
+  const tDownloadButton = useTranslations("DownloadButton")
 
   const subtitles = useMemo(() => video.subtitles ?? [], [video.subtitles])
 
@@ -159,16 +169,15 @@ export function WatchPageClient({
     [subtitles, currentLanguageSlug],
   )
 
-  // Drop entries missing `quality` or `url` — unrenderable / unfollowable.
+  // Drop entries missing `quality` — unrenderable in the tier selector.
+  // Raw CDN URLs stay server-only and are resolved by `/watch/api/download`
+  // from the opaque video/variant/download ids.
   // Admin emits `VideoDubDownload.size` as a `String` (Core's bytes literal,
   // which may exceed JS number precision for very large files). Parse to
   // number for the download modal's sort bucket; non-numeric values fall
   // through as null and the modal hides the size label.
   const downloadsForModal = (variant.downloads ?? [])
-    .filter(
-      (d): d is NonNullable<typeof d> =>
-        d != null && d.quality != null && d.url != null,
-    )
+    .filter((d): d is NonNullable<typeof d> => d != null && d.quality != null)
     .map((d) => {
       const sizeNum =
         typeof d.size === "string" && d.size.length > 0
@@ -178,7 +187,6 @@ export function WatchPageClient({
         documentId: d.documentId,
         quality: d.quality as string,
         size: sizeNum != null && Number.isFinite(sizeNum) ? sizeNum : null,
-        url: d.url as string,
       }
     })
 
@@ -215,8 +223,32 @@ export function WatchPageClient({
   )
 
   const [modalState, setModalState] = useState<WatchModalState>("none")
+  const [downloadPending, setDownloadPending] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
+  const downloadPendingRef = useRef(false)
 
-  const openDownload = useCallback(() => setModalState("download"), [])
+  const openDownload = useCallback(async () => {
+    if (downloadPendingRef.current) return
+    downloadPendingRef.current = true
+    setDownloadPending(true)
+
+    try {
+      const session = await resolveDownloadSessionAccess()
+      if (!session.ok && session.reason === "session-unavailable") {
+        setDownloadError(tDownloadButton("sessionError"))
+        return
+      }
+      setDownloadError(null)
+      if (session.ok) {
+        setModalState("download")
+        return
+      }
+      redirectToAuth(session.loginUrl)
+    } finally {
+      downloadPendingRef.current = false
+      setDownloadPending(false)
+    }
+  }, [tDownloadButton])
   const openLanguage = useCallback(() => setModalState("language"), [])
   const openShare = useCallback(() => setModalState("share"), [])
   const closeModal = useCallback(() => setModalState("none"), [])
@@ -260,14 +292,29 @@ export function WatchPageClient({
     <main
       data-testid="watch-page-client"
       data-modal-state={modalState}
-      className="min-h-screen bg-stone-900 font-sans text-stone-100 [&_button]:font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans [&_h5]:font-sans [&_h6]:font-sans [&_p]:font-sans"
+      className={`min-h-screen bg-stone-900 font-sans text-stone-100 [&_button]:font-sans [&_h1]:font-sans [&_h2]:font-sans [&_h3]:font-sans [&_h4]:font-sans [&_h5]:font-sans [&_h6]:font-sans [&_p]:font-sans ${
+        questionPanelEnabled
+          ? "pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:pb-0"
+          : ""
+      }`}
     >
       <WatchSectionRenderer
         blocks={mergedBlocks}
+        downloadButtonLabel={downloadButtonLabel}
+        downloadError={downloadError}
+        downloadPending={downloadPending}
         modalCallbacks={modalCallbacks}
         onPlayerReady={handlePlayerReady}
         locale={locale}
+        languageSlug={currentLanguageSlug}
         subtitleVttSrc={subtitleVttSrc}
+      />
+
+      <SubtitleTranscript
+        subtitles={subtitles}
+        playerRef={playerRef}
+        audioSlug={currentLanguageSlug}
+        durationSeconds={variant.duration ?? null}
       />
 
       <DownloadModal
@@ -277,6 +324,8 @@ export function WatchPageClient({
         posterUrl={posterUrl}
         durationSeconds={variant.duration ?? null}
         languageName={variant.language?.name ?? null}
+        variantId={variant.documentId}
+        videoSlug={video.slug ?? ""}
         onClose={closeModal}
       />
       <LanguagePickerModal
@@ -301,6 +350,12 @@ export function WatchPageClient({
         playbackId={variant.muxVideo?.playbackId ?? null}
         onClose={closeModal}
       />
+      {questionPanelEnabled ? (
+        <WatchQuestionPanel
+          enabled={questionPanelEnabled}
+          modalSuppressed={modalState !== "none"}
+        />
+      ) : null}
     </main>
   )
 }

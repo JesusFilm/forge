@@ -1,0 +1,222 @@
+{
+  "ExperienceError": {
+    "empty": "لا يوجد محتوى متاح.",
+    "failedToLoad": "تعذّر تحميل الصفحة: {message}",
+    "unexpected": "حدث خطأ غير متوقع.",
+    "notConfigured": "خدمة المحتوى غير مهيأة.",
+    "noContent": "لا يوجد محتوى متاح.",
+    "homepageMisconfigured": "صفحة Watch الرئيسية غير مهيأة بشكل صحيح.",
+    "defaultTemplateMisconfigured": "قالب Watch الافتراضي غير مهيأ بشكل صحيح.",
+    "authFailed": "تعذّر الاتصال بخدمة المحتوى. يُرجى التواصل مع الدعم إذا استمرت المشكلة."
+  },
+  "VideosPage": {
+    "title": "كل الفيديوهات",
+    "placeholder": "سيصبح تصفح الكتالوج متاحًا قريبًا. في الوقت الحالي، استخدم البحث أو رابطًا خاصًا بالموضوع."
+  },
+  "BibleQuotes": {
+    "title": "آيات من الكتاب المقدس",
+    "share": "مشاركة",
+    "readMore": "اقرأ المزيد...",
+    "learnMore": "اعرف المزيد",
+    "freeResources": "مواد مجانية",
+    "promoHeading": "هل تريد أن تفهم الكتاب المقدس بعمق أكبر؟",
+    "joinBibleStudy": "انضم إلى دراسة الكتاب المقدس",
+    "previousQuote": "الآية السابقة",
+    "nextQuote": "الآية التالية"
+  },
+  "DownloadButton": {
+    "checking": "جارٍ التحقق",
+    "download": "تنزيل",
+    "sessionError": "تعذّر التحقق من جلستك. يُرجى المحاولة مرة أخرى.",
+    "saveVideo": "حفظ الفيديو"
+  },
+  "DownloadModal": {
+    "dialogTitle": "تنزيل الفيديو",
+    "eyebrow": "تنزيل الفيديو",
+    "posterAlt": "صورة الفيديو",
+    "noDownloads": "لا تتوفر تنزيلات لهذا الفيديو.",
+    "fileSizeLabel": "اختر حجم الملف",
+    "termsAgreementPrefix": "أوافق على ",
+    "termsOfUse": "شروط الاستخدام",
+    "termsAgreementSuffix": "",
+    "close": "إغلاق",
+    "download": "تنزيل",
+    "checking": "جارٍ التحقق",
+    "closeTermsOfUse": "إغلاق شروط الاستخدام",
+    "cancel": "إلغاء",
+    "accept": "قبول",
+    "errorSessionExpired": "انتهت جلستك. سجّل الدخول مرة أخرى لتنزيل الفيديو.",
+    "errorSessionUnavailable": "تعذّر التحقق من جلستك. يُرجى المحاولة مرة أخرى.",
+    "errorUnavailableSource": "التنزيل غير متاح من هذا المصدر",
+    "tierHighest": "الأعلى جودة",
+    "tierHigh": "عالية",
+    "tierLow": "منخفضة"
+  },
+  "HeroPlayerControls": {
+    "play": "تشغيل",
+    "pause": "إيقاف مؤقت",
+    "seek": "الانتقال في الفيديو",
+    "seekValue": "{current} من {total}",
+    "volume": "مستوى الصوت",
+    "volumeValue": "{percent}٪",
+    "mute": "كتم الصوت",
+    "unmute": "إلغاء كتم الصوت",
+    "changeAudioLanguage": "تغيير لغة الصوت",
+    "enterFullscreen": "ملء الشاشة",
+    "exitFullscreen": "الخروج من ملء الشاشة"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "اختر اللغة",
+    "searchPlaceholder": "ابحث عن اللغات…",
+    "languages": "اللغات",
+    "noMatches": "لا توجد نتائج مطابقة"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "اللغة",
+    "dialogTitleWithSubtitles": "اللغة والترجمات المصاحبة",
+    "languageHeading": "اللغة",
+    "subtitlesHeading": "الترجمات المصاحبة",
+    "languageCount": "{count, plural, one {# لغة} two {# لغتان} few {# لغات} many {# لغة} other {# لغة}}",
+    "requestSent": "تم إرسال الطلب",
+    "translateWithAi": "ترجمة باستخدام الذكاء الاصطناعي",
+    "noSubtitles": "لا توجد ترجمات",
+    "toggleOn": "تشغيل",
+    "toggleOff": "إيقاف",
+    "close": "إغلاق",
+    "apply": "تطبيق"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {# حلقة} two {# حلقتان} few {# حلقات} many {# حلقة} other {# حلقة}}",
+    "seriesLabel": "مسلسل · {episodes}",
+    "changeAudioLanguage": "تغيير لغة الصوت",
+    "share": "مشاركة",
+    "languages": "اللغات"
+  },
+  "WatchModal": {
+    "close": "إغلاق"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "إذا كان بإمكانك أن تسأل صانع هذا الفيديو سؤالًا، فماذا ستسأل؟",
+    "fallbackBody": "ابدأ محادثة خاصة مع شخص مستعد للاستماع.",
+    "questionsShort": "أسئلة",
+    "questions": "أسئلة ذات صلة",
+    "askYours": "اطرح سؤالك",
+    "chatWithPerson": "تحدث مع شخص",
+    "askBibleQuestion": "اطرح سؤالًا عن الكتاب المقدس"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "نوع الرسالة",
+    "fieldLabel": "اطرح سؤالًا عن هذا الفيديو",
+    "send": "إرسال السؤال",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "اطرح سؤالًا عن الكتاب المقدس",
+        "description": "إجابات فورية من الكتاب المقدس باستخدام بحث الذكاء الاصطناعي"
+      },
+      "prayerRequest": {
+        "label": "اطلب صلاة",
+        "description": "شارك ما تريد الصلاة لأجله"
+      },
+      "comment": {
+        "label": "اترك تعليقًا",
+        "description": "شارك أفكارك حول هذا الفيديو"
+      },
+      "personChat": {
+        "label": "تحدث مع شخص",
+        "description": "تحدث مع شخص الآن"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "مشاركة الفيديو",
+    "heading": "شارك هذا الفيديو",
+    "posterAlt": "صورة الفيديو",
+    "shareOnFacebook": "مشاركة على Facebook",
+    "shareOnFacebookUnavailable": "مشاركة على Facebook (غير متاحة في هذا الإصدار)",
+    "shareOnX": "مشاركة على X",
+    "shareOnXUnavailable": "مشاركة على X (غير متاحة في هذا الإصدار)",
+    "shareDisabledHint": "تتطلب المشاركة صفحة منشورة — ستعمل عندما يكون هذا الفيديو في الإنتاج.",
+    "shareFormat": "تنسيق المشاركة",
+    "shareLinkTab": "رابط المشاركة",
+    "embedCodeTab": "رمز التضمين",
+    "copyFailed": "تعذّر النسخ تلقائيًا — حدّد النص أدناه وانسخه يدويًا.",
+    "copyLink": "نسخ الرابط",
+    "copyCode": "نسخ الرمز",
+    "copied": "تم النسخ",
+    "close": "إغلاق"
+  },
+  "SubtitleTranscript": {
+    "heading": "النص المكتوب",
+    "subheading": "اضغط على أي سطر للانتقال إلى تلك اللحظة.",
+    "subtitleLanguage": "لغة الترجمة",
+    "aiSuffix": " · ذكاء اصطناعي",
+    "loading": "جارٍ تحميل النص…",
+    "unavailable": "النص غير متاح لمسار الترجمة هذا.",
+    "empty": "لم يتم العثور على أسطر نصية."
+  },
+  "FloatingSearch": {
+    "placeholder": "ابحث أو تصفح المواضيع…",
+    "openSearch": "البحث عن فيديوهات",
+    "searchRegion": "البحث عن فيديوهات",
+    "clearSearch": "مسح البحث",
+    "changeAudioLanguage": "تغيير لغة الصوت",
+    "home": "صفحة JesusFilm الرئيسية"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "البحث عن الفيديوهات وتصفحها",
+    "home": "صفحة JesusFilm الرئيسية",
+    "placeholder": "ابحث أو تصفح المواضيع…",
+    "inputLabel": "البحث عن فيديوهات بالكلمات المفتاحية",
+    "searchFailed": "تعذر البحث. حاول مرة أخرى.",
+    "loadMoreFailed": "تعذر تحميل المزيد من النتائج.",
+    "searching": "جارٍ البحث...",
+    "connectionHint": "تحقق من اتصالك وحاول مرة أخرى.",
+    "retrySearch": "إعادة البحث",
+    "retry": "إعادة المحاولة",
+    "noResults": "لا توجد نتائج لـ “{query}”",
+    "tryDifferentKeywords": "جرّب كلمات مفتاحية أخرى أو تصفح الفئات",
+    "loading": "جارٍ التحميل...",
+    "loadMore": "تحميل المزيد",
+    "categoryBibleStories": "قصص الكتاب المقدس",
+    "categoryParables": "الأمثال",
+    "categoryAnimated": "رسوم متحركة",
+    "categoryStudy": "دراسة",
+    "categoryFamily": "العائلة",
+    "categoryChristmas": "عيد الميلاد"
+  },
+  "HeroPlayer": {
+    "playWithSound": "تشغيل مع الصوت",
+    "tapToUnmute": "تشغيل الصوت"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "جارٍ تحميل المحتوى"
+  },
+  "VideoLabels": {
+    "video": "فيديو",
+    "segment": "مقطع",
+    "episode": "حلقة",
+    "featureFilm": "فيلم طويل",
+    "shortFilm": "فيلم قصير",
+    "series": "سلسلة",
+    "collection": "مجموعة",
+    "trailer": "إعلان تشويقي",
+    "behindTheScenes": "خلف الكواليس"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "المقطع {current} من {total}",
+    "position": "{current} من {total}",
+    "chapterCount": "{count, plural, zero {# فصول} one {# فصل} two {# فصلان} few {# فصول} many {# فصلًا} other {# فصل}}",
+    "clipAriaLabel": "{title} · المقطع {current} من {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, zero {# فصول} one {# فصل} two {# فصلان} few {# فصول} many {# فصلًا} other {# فصل}}",
+    "chapter": "فصل",
+    "noImage": "لا توجد صورة",
+    "playingNow": "يتم التشغيل الآن",
+    "previousChapter": "الفصل السابق",
+    "nextChapter": "الفصل التالي"
+  },
+  "SearchResultCard": {
+    "experience": "تجربة",
+    "episodeCount": "{count, plural, zero {# حلقات} one {# حلقة} two {# حلقتان} few {# حلقات} many {# حلقة} other {# حلقة}}",
+    "thumbnailAlt": "صورة مصغرة للفيديو"
+  }
+}

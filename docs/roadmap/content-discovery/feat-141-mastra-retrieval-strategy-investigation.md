@@ -3,11 +3,12 @@ id: "feat-141"
 title: "Mastra retrieval strategy ownership investigation"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
-start_date: "2026-05-25"
+status: "cancelled"
+start_date: "2026-05-29"
 duration: 2
 depends_on:
   - "feat-140"
+  - "feat-142"
 blocks: []
 tags:
   - "admin"
@@ -17,6 +18,12 @@ tags:
   - "observability"
   - "evals"
 ---
+
+## Historical Note
+
+This cancelled investigation references legacy Admin search-eval harness paths
+that were removed by `feat-155`. Use Mastra search-eval workflows and the flat
+Admin internal-contract services for current work.
 
 ## Problem
 
@@ -29,39 +36,59 @@ risky for latency, reliability, and public search contracts.
 This ticket is an investigation and design proof only. It should not move live
 user search orchestration into Mastra.
 
+This ticket should run after feat-142, not before it. The evidence source must
+be native Mastra Evaluation: promoted Datasets, Scorers, and Experiment results
+from feat-142. Custom JSON artifacts can remain supporting evidence, but they
+should not be the only operator-quality source once native Experiments are
+populated.
+
+## Closure Decision
+
+Closed on 2026-06-01. The current decision is to keep live retrieval strategy
+owned by Admin and not run a separate P0 investigation now. Mastra remains on
+the offline evaluation/orchestration side of the boundary; future retrieval
+strategy experiments should be opened only when promoted native Experiments show
+a concrete quality or operator-iteration need that Admin-owned orchestration
+cannot cover.
+
 ## Entry Points - Read These First
 
 1. `docs/brainstorms/2026-05-25-mastra-embedding-search-migration-requirements.md`
    - future strategy option and no-live-search V1 boundary.
 2. `docs/roadmap/content-discovery/feat-139-mastra-offline-search-eval-runner-reports.md`
-   - eval reports that should justify whether strategy migration helps.
+   - artifact-backed reports and native Evaluation projection metadata.
 3. `docs/roadmap/content-discovery/feat-140-search-eval-human-promotion-regression-gates.md`
-   - regression gates to evaluate any retrieval strategy proposal.
-4. `apps/admin/src/services/hybrid-search.service.ts`
+   - promoted regression truth that should feed native Datasets.
+4. `docs/roadmap/content-discovery/feat-142-mastra-search-eval-suite-operator-workflow.md`
+   - native Dataset/Scorer/Experiment convergence for search evals.
+5. `apps/admin/src/services/hybrid-search.service.ts`
    - current deterministic live search orchestrator.
-5. `apps/admin/src/services/hybrid-search-retrievers.ts`
+6. `apps/admin/src/services/hybrid-search-retrievers.ts`
    - current retrieval primitives and pgvector SQL.
-6. `apps/admin/src/services/hybrid-search-fusion.ts`
+7. `apps/admin/src/services/hybrid-search-fusion.ts`
    - current fusion/ranking logic.
-7. `apps/admin/src/graphql/queries/hybrid-search.ts`
+8. `apps/admin/src/graphql/queries/hybrid-search.ts`
    - public GraphQL contract that must remain stable.
-8. `apps/admin/src/app/api/search/route.ts`
+9. `apps/admin/src/app/api/search/route.ts`
    - public REST contract that must remain stable.
-9. `apps/mastra/src/mastra/index.ts`
-   - Mastra runtime and route constraints.
+10. `apps/mastra/src/mastra/index.ts`
+    - Mastra runtime and route constraints.
 
 ## Grep These
 
 ```
 rg -n "hybrid|keyword-first|semantic-video|semantic-experience|fuseRankedLists|RRF" apps/admin/src/services
 rg -n "searchMode|HybridSearchResponse|public search|q \\(search query\\)" apps/admin/src/graphql apps/admin/src/app/api/search
-rg -n "strategy version|eval report|baseline|candidate" apps/admin/src/services/search-eval apps/mastra/src
+rg -n "strategy version|eval report|baseline|candidate" apps/admin/src/services apps/mastra/src
+rg -n "Dataset|Experiment|compareExperiments|startExperiment|search-eval" apps/mastra/src apps/mastra/node_modules/@mastra/core/dist/datasets
 ```
 
 ## What To Build
 
-1. Analyze eval reports and regression gates to decide whether moving retrieval
-   strategy ownership into Mastra has measurable value.
+1. Analyze promoted native Datasets and native Experiment results to decide
+   whether moving retrieval strategy ownership into Mastra has measurable
+   value. Use custom artifact reports only as supporting evidence or as a
+   fallback before feat-142 is complete.
 2. Define the smallest possible Admin primitive contract Mastra would need if
    strategy ownership moves later. Examples: run semantic video retrieval, run
    semantic transcript retrieval, run experience retrieval, run keyword
@@ -69,7 +96,8 @@ rg -n "strategy version|eval report|baseline|candidate" apps/admin/src/services/
 3. Prototype offline only if useful: Mastra composes Admin primitives during an
    eval run, never during live user traffic.
 4. Compare offline Mastra-owned strategy results against current Admin-owned
-   live strategy using promoted regression gates.
+   live strategy using promoted native Datasets and native Experiment
+   comparisons.
 5. Produce a recommendation: keep Admin-owned live orchestration, plan a staged
    migration, or reject the strategy based on latency/reliability/quality risk.
 
@@ -83,12 +111,16 @@ rg -n "strategy version|eval report|baseline|candidate" apps/admin/src/services/
   primitives only for any offline prototype.
 - CMS/Strapi is being deleted. Do not add, preserve, or depend on CMS support in
   this ticket. Any primitive contract must be Admin/Core-owned.
-- Do not proceed without eval evidence from promoted regression gates.
+- Do not proceed before feat-142 has created native Dataset/Scorer/Experiment
+  records for search evals.
+- Do not proceed using only raw artifact reports once native
+  Dataset/Experiment records are available.
 
 ## Verification
 
-- A written recommendation exists with evidence from offline eval reports and
-  promoted regression gates.
+- A written recommendation exists with evidence from native Evaluation
+  Experiments and promoted Datasets, with artifact reports cited only as
+  supporting context when needed.
 - Any prototype runs offline only and uses authenticated Admin primitives.
 - Public search behavior remains Admin-owned and unchanged.
 - The follow-up path is explicit: no-op, staged migration proposal, or rejected

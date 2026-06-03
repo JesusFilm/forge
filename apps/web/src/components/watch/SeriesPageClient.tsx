@@ -1,9 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { Route } from "next"
 import { useRouter } from "next/navigation"
 import { ExternalLink, Globe } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
@@ -23,8 +23,16 @@ import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
-import { isPlayableLanguageVariant } from "@/lib/playable-variant"
+import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import { resolvePosterUrl } from "@/lib/url"
+
+// Non-null `hls` marker for the synthesized LanguagePickerVariant entries.
+// `series.childDubLanguages` is server-guaranteed playable but ships no
+// stream URL; the shared LanguagePickerModal filters its input through
+// isPlayableLanguageVariant (which checks `hls != null`), so a non-null
+// placeholder satisfies the gate. The modal never reads the value — it
+// navigates by language slug — so the real URL is intentionally elided.
+const SERVER_GUARANTEED_PLAYABLE = "server-guaranteed-playable"
 
 // Narrowed from WatchModalState ("none" | "download" | "language" | "share")
 // because the series page never offers downloads (R-scope: no series-level
@@ -40,18 +48,12 @@ type SeriesPageClientProps = {
   locale: string
 }
 
-// R8 pluralization rule: N === 1 → "1 EPISODE"; N === 0 or N >= 2 →
-// "{N} EPISODES". Plural form covers the empty case ("0 EPISODES") because
-// English plural matches the empty count.
-function formatEpisodeCount(count: number): string {
-  return count === 1 ? "1 EPISODE" : `${count} EPISODES`
-}
-
 export function SeriesPageClient({
   series,
   selectedVariant,
   locale,
 }: SeriesPageClientProps) {
+  const t = useTranslations("SeriesPage")
   const router = useRouter()
   const [modalState, setModalState] = useState<SeriesModalState>("none")
   const openShare = useCallback(() => setModalState("share"), [])
@@ -81,24 +83,33 @@ export function SeriesPageClient({
     (child): child is NonNullable<(typeof series.children)[number]> =>
       child != null,
   )
-  const episodeLabel = formatEpisodeCount(episodes.length)
+  // R8 pluralization: ICU plural covers N === 0 / 1 / 2+. The "SERIES · …"
+  // composite is built from the localized episode-count string.
+  const episodeLabel = t("episodeCount", { count: episodes.length })
   const description = series.description ?? series.snippet ?? null
   const posterUrl = resolvePosterUrl(series.images?.[0], null)
 
-  // Single traversal of every child episode's variants, deduped by
-  // language slug. Series records have no variants of their own —
-  // variants live on each individual episode — so a language that
-  // appears across all 13 episodes still surfaces once.
+  // `series.childDubLanguages` is the distinct dub-language union across all
+  // episodes, aggregated + deduped server-side (DISTINCT ON) and guaranteed
+  // playable — so it carries only display fields {slug, name, bcp47}, never
+  // each episode's full dub list (the ~45 MB payload that broke
+  // unstable_cache). We re-dedupe by slug here purely as a belt-and-braces
+  // guard.
   //
-  // Three downstream consumers all need a per-language projection of
-  // the same variants, so build them in one pass keyed by slug:
+  // Three downstream consumers all need a per-language projection, built in
+  // one pass keyed by slug:
   //  - languageOptions — the inline LanguageCombobox feed (sorted A→Z
   //    by English form via deriveLanguageDisplay).
   //  - slugByBcp47 — URL locale resolution: accept either bcp47 ("en")
   //    OR slug-form ("english") and map back to the combobox option.
-  //  - variantsForLanguagePicker — the LanguagePickerModal feed, one
-  //    representative variant per language (the modal does its own
-  //    deriveLanguageDisplay sort).
+  //  - variantsForLanguagePicker — the LanguagePickerModal feed. The modal
+  //    filters its input through isPlayableLanguageVariant (it also serves
+  //    the watch page, which passes unfiltered variants). These entries are
+  //    already server-guaranteed playable but carry no dub fields, so we
+  //    synthesize the shape that filter checks: `published: true` (the server
+  //    only returns published dubs) and a non-null `hls` marker. The modal
+  //    reads only hls's PRESENCE, never its value — it navigates by slug —
+  //    so eliding the real stream URL here is safe.
   const { languageOptions, slugByBcp47, variantsForLanguagePicker } =
     useMemo(() => {
       const bySlug = new Map<
@@ -109,34 +120,30 @@ export function SeriesPageClient({
         }
       >()
       const bcp47Map = new Map<string, string>()
-      for (const child of series.children ?? []) {
-        if (!child) continue
-        for (const variant of child.variants ?? []) {
-          if (!variant) continue
-          if (!isPlayableLanguageVariant(variant)) continue
-          const slug = variant.language.slug
-          const bcp47 = variant.language.bcp47 ?? null
-          if (bcp47 && !bcp47Map.has(bcp47.toLowerCase())) {
-            bcp47Map.set(bcp47.toLowerCase(), slug)
-          }
-          if (bySlug.has(slug)) continue
-          bySlug.set(slug, {
-            display: {
-              ...deriveLanguageDisplay(slug, variant.language.name),
-              bcp47,
-            },
-            variant: {
-              documentId: variant.documentId,
-              hls: variant.hls,
-              published: variant.published,
-              language: {
-                bcp47: variant.language.bcp47,
-                slug: variant.language.slug,
-                name: variant.language.name,
-              },
-            },
-          })
+      for (const language of series.childDubLanguages ?? []) {
+        if (!language?.slug) continue
+        const slug = language.slug
+        const bcp47 = language.bcp47 ?? null
+        if (bcp47 && !bcp47Map.has(bcp47.toLowerCase())) {
+          bcp47Map.set(bcp47.toLowerCase(), slug)
         }
+        if (bySlug.has(slug)) continue
+        bySlug.set(slug, {
+          display: {
+            ...deriveLanguageDisplay(slug, language.name),
+            bcp47,
+          },
+          variant: {
+            documentId: slug,
+            published: true,
+            hls: SERVER_GUARANTEED_PLAYABLE,
+            language: {
+              bcp47: language.bcp47,
+              slug: language.slug,
+              name: language.name,
+            },
+          },
+        })
       }
       const entries = Array.from(bySlug.values())
       return {
@@ -146,7 +153,7 @@ export function SeriesPageClient({
         slugByBcp47: bcp47Map,
         variantsForLanguagePicker: entries.map((e) => e.variant),
       }
-    }, [series.children])
+    }, [series.childDubLanguages])
 
   // Resolve the current language slug from the URL locale. Accept either
   // form — language-slug form ("english") OR bcp47 ("en") — since the
@@ -165,10 +172,15 @@ export function SeriesPageClient({
     (nextSlug: string) => {
       const seriesSlug = series.slug
       if (!nextSlug || !seriesSlug || nextSlug === currentLanguageSlug) return
+      // Validate both segments BEFORE writing the cookie or navigating —
+      // an invalid slug must neither persist a preference nor push a URL.
+      const slug = tryAsContentSlug(seriesSlug)
+      const lang = tryAsLocaleSlug(nextSlug)
+      if (!slug || !lang) return
       // Persist preference cookie so subsequent visits respect the choice
       // — matches the watch page's behavior via proxy.ts canonical redirect.
       writePreferredLanguageSlug(nextSlug)
-      router.push(`/${seriesSlug}/${nextSlug}` as Route)
+      router.push(watchVideoPath(slug, lang))
     },
     [router, series.slug, currentLanguageSlug],
   )
@@ -192,8 +204,8 @@ export function SeriesPageClient({
           type="button"
           data-testid="series-page-language-button"
           onClick={openLanguage}
-          aria-label="Change audio language"
-          title="Change audio language"
+          aria-label={t("changeAudioLanguage")}
+          title={t("changeAudioLanguage")}
           className="fixed top-10 right-10 z-50 inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none"
         >
           <Globe
@@ -221,7 +233,7 @@ export function SeriesPageClient({
               data-testid="series-page-label"
               className="text-sm font-semibold tracking-wider text-amber-400 uppercase md:text-base"
             >
-              {`SERIES · ${episodeLabel}`}
+              {t("seriesLabel", { episodes: episodeLabel })}
             </span>
             <div className="flex items-baseline justify-between gap-4">
               <h1
@@ -234,11 +246,11 @@ export function SeriesPageClient({
                 <Button
                   variant="pill"
                   onClick={openShare}
-                  aria-label="Share"
+                  aria-label={t("share")}
                   data-testid="series-page-share-button"
                 >
                   <ExternalLink size={16} />
-                  <span>Share</span>
+                  <span>{t("share")}</span>
                 </Button>
               </div>
             </div>
@@ -284,7 +296,7 @@ export function SeriesPageClient({
                 data-testid="series-page-languages-label"
                 className="text-xs font-semibold tracking-[0.18em] text-stone-400 uppercase"
               >
-                Languages
+                {t("languages")}
               </span>
               <LanguageCombobox
                 options={languageOptions}
@@ -305,7 +317,7 @@ export function SeriesPageClient({
           as a default backdrop. SeriesPageClient no longer wraps it. */}
       <SeriesEpisodesGrid
         episodes={episodes}
-        locale={locale}
+        languageSlug={currentLanguageSlug}
         seriesPosterUrl={posterUrl}
       />
 

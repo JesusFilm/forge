@@ -71,6 +71,7 @@ const {
   siblingCarouselMock: vi.fn(
     ({
       block,
+      languageSlug,
     }: {
       block: {
         canonicalParent: {
@@ -79,11 +80,13 @@ const {
         }
         currentVideoDocumentId: string
       }
+      languageSlug?: string
     }) => {
       const content = JSON.stringify({
         parentSlug: block.canonicalParent.slug,
         currentVideoDocumentId: block.currentVideoDocumentId,
         childCount: (block.canonicalParent.children ?? []).length,
+        languageSlug: languageSlug ?? null,
       })
       return (
         <div data-block-type="SiblingCarousel" data-content={content}>
@@ -131,11 +134,16 @@ const {
   bibleQuotesSectionMock: vi.fn(
     ({
       bibleCitations,
+      youVersionPassages = [],
     }: {
       bibleCitations: Array<unknown>
       onShareClick: () => void
+      youVersionPassages?: Array<unknown>
     }) => {
-      const content = JSON.stringify({ count: bibleCitations.length })
+      const content = JSON.stringify({
+        count: bibleCitations.length,
+        youVersionPassageCount: youVersionPassages.length,
+      })
       return (
         <div data-block-type="BibleQuotes" data-content={content}>
           BibleQuotesSection mock
@@ -283,12 +291,27 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
       )!,
       buildBibleQuotesBlock(
         (video as { bibleCitations?: unknown[] }).bibleCitations as never,
+        [
+          {
+            citationDocumentId: "bc-1",
+            content: "Server passage text.",
+            copyright: "Required attribution.",
+            humanReference: "John 1:1",
+            publisherUrl: null,
+            reference: "JHN.1.1",
+            versionAbbreviation: "BSB",
+            versionId: 3034,
+            versionTitle: "Berean Standard Bible",
+          },
+        ],
       )!,
       buildShareBlock(video),
     ]
 
     act(() => {
-      root.render(<WatchSectionRenderer blocks={blocks} />)
+      root.render(
+        <WatchSectionRenderer blocks={blocks} languageSlug="english" />,
+      )
     })
 
     const rendered = Array.from(
@@ -330,6 +353,26 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
       "[data-testid='watch-body-texture']",
     )
     expect(bodyTexture?.getAttribute("class")).toContain("opacity-30")
+    expect(bodyTexture?.getAttribute("style")).toContain(
+      "/watch/images/overlay.svg",
+    )
+    const siblingEl = container.querySelector(
+      '[data-block-type="SiblingCarousel"]',
+    )
+    const siblingContent = JSON.parse(
+      siblingEl?.getAttribute("data-content") ?? "{}",
+    )
+    expect(siblingContent.languageSlug).toBe("english")
+    const bibleQuotesEl = container.querySelector(
+      '[data-block-type="BibleQuotes"]',
+    )
+    const bibleQuotesContent = JSON.parse(
+      bibleQuotesEl?.getAttribute("data-content") ?? "{}",
+    )
+    expect(bibleQuotesContent).toEqual({
+      count: 1,
+      youVersionPassageCount: 1,
+    })
   })
 
   it("HeroPlayer placeholder serializes playbackId and hls into data-content", () => {

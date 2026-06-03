@@ -56,8 +56,62 @@ export function createLoaders(prisma: PrismaClient) {
       })
       return mapToInputOrder(ids, rows, (r) => r.id)
     }),
+
+    /**
+     * Primary-playable-dub duration (seconds) per Video id, for the
+     * `Video.durationSeconds` field resolver. Batches across a single
+     * request tick so a watch/series payload projecting
+     * `children { child { durationSeconds } }` for a 61-chapter
+     * collection resolves all of them in ONE query instead of 61.
+     *
+     * Semantics mirror `hydrateCardPillFields` in
+     * `services/hybrid-search.service.ts`: prefer the primary-language
+     * playable dub, else the longest-duration playable dub. Playable =
+     * published + has HLS + not soft-deleted + duration > 0 (the last
+     * excludes Core sync-glitch rows that report duration 0). Returns
+     * null when no playable dub exists (e.g. a SERIES/COLLECTION whose
+     * runtime lives on its children).
+     */
+    videoPrimaryDubDurationById: new DataLoader<string, number | null>(
+      async (ids) => {
+        const rows = await prisma.video.findMany({
+          where: { id: { in: ids as string[] }, deletedAt: null },
+          select: {
+            id: true,
+            primaryLanguageId: true,
+            dubs: {
+              where: {
+                published: true,
+                hls: { not: null },
+                deletedAt: null,
+                duration: { gt: 0 },
+              },
+              orderBy: [{ duration: "desc" }],
+              take: PRIMARY_DUB_DURATION_SCAN_LIMIT,
+              select: { languageId: true, duration: true },
+            },
+          },
+        })
+        const byId = new Map<string, number | null>()
+        for (const row of rows) {
+          const primaryDub = row.primaryLanguageId
+            ? row.dubs.find((d) => d.languageId === row.primaryLanguageId)
+            : undefined
+          const dub = primaryDub ?? row.dubs[0] ?? null
+          byId.set(row.id, dub?.duration ?? null)
+        }
+        return ids.map((id) => byId.get(id) ?? null)
+      },
+    ),
   }
 }
+
+// Bounds the per-video dubs scan in `videoPrimaryDubDurationById`. Matches
+// `HYDRATION_DUBS_PER_VIDEO` in hybrid-search: order by duration desc and
+// take the top N, then prefer the primary-language dub among them. On a
+// heavily-dubbed video the primary may rank below N by duration — accept
+// the longest-dub fallback rather than widen the scan.
+const PRIMARY_DUB_DURATION_SCAN_LIMIT = 5
 
 // Inferring per-row shapes from prisma without importing each model
 // type lets us avoid a hand-maintained type per loader. PrismaClient's

@@ -93,13 +93,81 @@ vi.mock("@/app/dashboard/live-data", () => ({
       key: "vid_1",
       title: "Neon Genesis: The Digital Divide",
       id: "vid_8829_x_alpha_92",
+      slug: "neon-genesis-the-digital-divide",
+      label: "FEATURE_FILM",
+      labelLabel: "Feature Film",
       sourceLabel: "Mux",
       sourceTone: "info",
       dubs: "3 dubs · EN, ES, FR",
       updated: "10/24/2023, 14:02",
+      updatedAtIso: "2023-10-24T14:02:00.000Z",
+      updatedRelative: "3 years ago",
       duration: "04:22",
+      previewImageUrl: "https://images.example.com/neon.jpg",
+      visitorUrl:
+        "https://www.jesusfilm.org/watch/neon-genesis-the-digital-divide.html/english.html",
     },
   ]),
+  loadVideoLibraryPage: vi.fn(async () => ({
+    rows: [
+      {
+        key: "vid_1",
+        title: "Neon Genesis: The Digital Divide",
+        id: "vid_8829_x_alpha_92",
+        slug: "neon-genesis-the-digital-divide",
+        label: "COLLECTION",
+        labelLabel: "Collection",
+        sourceLabel: "Mux",
+        sourceTone: "info",
+        dubs: "3 dubs · EN, ES, FR",
+        dubCount: 3,
+        dubLanguages: ["EN", "ES", "FR"],
+        dubOverflowCount: 0,
+        dubCoveragePercent: 1,
+        updated: "10/24/2023, 14:02",
+        updatedAtIso: "2023-10-24T14:02:00.000Z",
+        updatedRelative: "3 years ago",
+        updatedDateShort: "10/24/2023",
+        duration: "04:22",
+        previewImageUrl: "https://images.example.com/neon.jpg",
+        visitorUrl:
+          "https://www.jesusfilm.org/watch/neon-genesis-the-digital-divide.html/english.html",
+      },
+      {
+        key: "vid_2",
+        title: "No Public Link",
+        id: "vid_no_public_link",
+        slug: "no-public-link",
+        label: null,
+        labelLabel: null,
+        sourceLabel: "Internal",
+        sourceTone: "muted",
+        dubs: "No dubs",
+        dubCount: 0,
+        dubLanguages: [],
+        dubOverflowCount: 0,
+        dubCoveragePercent: 0,
+        updated: "10/24/2023, 14:03",
+        updatedAtIso: "2023-10-24T14:03:00.000Z",
+        updatedRelative: "3 years ago",
+        updatedDateShort: "10/24/2023",
+        duration: "--:--",
+        previewImageUrl: null,
+        visitorUrl: null,
+      },
+    ],
+    pagination: {
+      total: 95,
+      currentPage: 2,
+      pageSize: 30,
+      pageCount: 4,
+      hasPrevious: true,
+      hasNext: true,
+      offset: 30,
+      rangeStart: 31,
+      rangeEnd: 60,
+    },
+  })),
 }))
 
 vi.mock("@/app/dashboard/ops-data", () => ({
@@ -394,6 +462,7 @@ vi.mock("@/services/workflow-worker-heartbeat.service", () => ({
 }))
 
 import DashboardPage from "./page"
+import { loadVideoLibraryPage } from "@/app/dashboard/live-data"
 import SystemStatusPage from "./system-status/page"
 import ExperiencesPage from "./experiences/page"
 import VideosPage from "./videos/page"
@@ -404,17 +473,74 @@ import UsersPage from "./users/page"
 import SettingsPage from "./settings/page"
 import LanguagesPage from "./languages/page"
 import MediaPage from "./media/page"
+import { ExperiencesActions } from "./experiences/experiences-actions"
+import {
+  DataTable,
+  PrimaryButton,
+  SecondaryButton,
+} from "@/components/admin-ui"
+import { requireSession } from "@/auth/session"
 
 async function htmlFrom(component: Promise<ReactNode>) {
   return renderToStaticMarkup(await component)
 }
 
 describe("dashboard UI routes", () => {
+  it("renders primary buttons with explicit enabled and disabled affordances", () => {
+    const enabled = renderToStaticMarkup(
+      <PrimaryButton>Enabled primary</PrimaryButton>,
+    )
+    const disabled = renderToStaticMarkup(
+      <PrimaryButton disabled>Disabled primary</PrimaryButton>,
+    )
+
+    expect(enabled).toContain("cursor-pointer")
+    expect(enabled).toContain("hover:bg-[var(--color-brand-pressed)]")
+    expect(enabled).not.toContain('disabled=""')
+    expect(disabled).toContain('disabled=""')
+    expect(disabled).toContain("disabled:cursor-not-allowed")
+    expect(disabled).toContain("disabled:opacity-55")
+  })
+
+  it("renders secondary buttons with explicit enabled and disabled affordances", () => {
+    const enabled = renderToStaticMarkup(
+      <SecondaryButton>Enabled secondary</SecondaryButton>,
+    )
+    const disabled = renderToStaticMarkup(
+      <SecondaryButton disabled>Disabled secondary</SecondaryButton>,
+    )
+
+    expect(enabled).toContain("cursor-pointer")
+    expect(enabled).toContain("hover:bg-[var(--color-surface-raised)]")
+    expect(enabled).not.toContain('disabled=""')
+    expect(disabled).toContain('disabled=""')
+    expect(disabled).toContain("disabled:cursor-not-allowed")
+    expect(disabled).toContain("disabled:opacity-50")
+  })
+
+  it("renders read-only data tables without default row actions", () => {
+    const html = renderToStaticMarkup(
+      <DataTable columns={["Name"]} rows={[[<span key="row">Row</span>]]} />,
+    )
+
+    expect(html).toContain("Row")
+    expect(html.match(/<th[\s>]/g)).toHaveLength(1)
+    expect(html.match(/<td[\s>]/g)).toHaveLength(1)
+    expect(html).not.toContain("<svg")
+    expect(html).not.toContain("hover:bg-[var(--color-surface-raised)]")
+    expect(html).not.toContain("Quick Actions")
+  })
+
   it("renders overview page with translated shared chrome", async () => {
     const html = await htmlFrom(DashboardPage())
 
     expect(html).toContain(uiMessages.pages.dashboard.title)
     expect(html).toContain(uiMessages.pages.dashboard.action)
+    expect(html).toContain(uiMessages.pages.dashboard.actionUnavailable)
+    expect(html).toMatch(
+      /<button(?=[^>]*disabled="")(?=[^>]*aria-describedby="dashboard-sync-action-unavailable")/,
+    )
+    expect(html).toContain('disabled=""')
     expect(html).toContain(uiMessages.common.operatorNotes)
   })
 
@@ -432,11 +558,153 @@ describe("dashboard UI routes", () => {
     expect(html).not.toContain("10/24/2023, 14:02")
   })
 
-  it("renders videos page with localized info strip and actions", async () => {
-    const html = await htmlFrom(VideosPage())
-    expect(html).toContain(uiMessages.pages.videos.infoStrip.items[0])
+  it("renders videos page with screenshot-style library layout", async () => {
+    const html = await htmlFrom(
+      VideosPage({ searchParams: Promise.resolve({ page: "2", q: " mux " }) }),
+    )
+    expect(html).toContain(uiMessages.pages.videos.title)
+    expect(html).toContain("Review the catalog and dub coverage across")
+    expect(html).toContain("95")
     expect(html).toContain(uiMessages.pages.videos.actions.primary)
-    expect(html).toContain(uiMessages.common.operatorNotes)
+    expect(html).toContain(uiMessages.pages.videos.actions.primaryUnavailable)
+    expect(html).toMatch(
+      /<button(?=[^>]*aria-disabled="true")(?=[^>]*title="Manual video creation is not available yet.")/,
+    )
+    expect(html).toContain(uiMessages.pages.videos.tabs.all)
+    expect(html).toContain(uiMessages.pages.videos.tabs.collections)
+    expect(html).toContain(uiMessages.pages.videos.tabs.features)
+    expect(html).toContain(uiMessages.pages.videos.tabs.shortFilms)
+    expect(html).toContain(uiMessages.pages.videos.tabs.series)
+    expect(html).toContain(uiMessages.pages.videos.sort.label)
+    expect(html).not.toContain(uiMessages.pages.videos.infoStrip.items[0])
+    expect(html).not.toContain(uiMessages.pages.videos.summary.total)
+    expect(html).not.toContain(uiMessages.pages.videos.signals.title)
+    expect(html).not.toContain(uiMessages.common.operatorNotes)
+    expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
+      { id: "test-user", role: "ADMIN" },
+      { page: 2, query: "mux" },
+    )
+    expect(html).toContain(uiMessages.pages.videos.search.label)
+    expect(html).toContain(uiMessages.pages.videos.search.placeholder)
+    expect(html).toContain('name="q"')
+    expect(html).toContain('value="mux"')
+    expect(html).toContain("Filtered by &quot;mux&quot;")
+    expect(html).toContain('href="/dashboard/videos?q=mux"')
+    expect(html).toContain('href="/dashboard/videos?page=3&amp;q=mux"')
+    expect(html).toContain("COLLECTION")
+    expect(html).toContain("Mux source")
+    expect(html).toContain("Internal source")
+    expect(html).toContain("languages dubbed")
+    expect(html).toContain("EN")
+    expect(html).toContain("ES")
+    expect(html).toContain("FR")
+    expect(html).toContain("https://images.example.com/neon.jpg")
+    expect(html).toContain("3 years ago")
+    expect(html).toContain("10/24/2023")
+    expect(html).toContain('title="10/24/2023, 14:02"')
+    expect(html).toContain('dateTime="2023-10-24T14:02:00.000Z"')
+    expect(html).toMatch(
+      /<img(?=[^>]*src="https:\/\/images\.example\.com\/neon\.jpg")(?=[^>]*loading="lazy")(?=[^>]*decoding="async")/,
+    )
+    expect(html).toContain(
+      "https://www.jesusfilm.org/watch/neon-genesis-the-digital-divide.html/english.html",
+    )
+    expect(html).toContain('target="_blank"')
+    expect(html).toContain("--:--")
+    expect(html).toContain("No public watch link available")
+    expect(html).toMatch(
+      /<span(?=[^>]*aria-disabled="true")(?=[^>]*aria-label="No public watch link available")/,
+    )
+    expect(html).toMatch(
+      /<button(?=[^>]*aria-disabled="true")(?=[^>]*aria-label="Video row actions are not available yet.")/,
+    )
+    expect(html).toContain("Showing 31-60 of 95")
+    expect(html).toContain("Page 2 of 4")
+  })
+
+  it("renders filtered empty video search results", async () => {
+    vi.mocked(loadVideoLibraryPage).mockResolvedValueOnce({
+      rows: [],
+      pagination: {
+        total: 0,
+        currentPage: 1,
+        pageSize: 30,
+        pageCount: 1,
+        hasPrevious: false,
+        hasNext: false,
+        offset: 0,
+        rangeStart: 0,
+        rangeEnd: 0,
+      },
+    })
+
+    const html = await htmlFrom(
+      VideosPage({ searchParams: Promise.resolve({ q: "does-not-exist" }) }),
+    )
+
+    expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
+      { id: "test-user", role: "ADMIN" },
+      { page: 1, query: "does-not-exist" },
+    )
+    expect(html).toContain(uiMessages.pages.videos.table.emptySearch)
+    expect(html).not.toContain(uiMessages.pages.videos.table.empty)
+    expect(html).toContain('href="/dashboard/videos"')
+  })
+
+  it("renders first-page pagination with previous disabled and next linked", async () => {
+    vi.mocked(loadVideoLibraryPage).mockResolvedValueOnce({
+      rows: [],
+      pagination: {
+        total: 95,
+        currentPage: 1,
+        pageSize: 30,
+        pageCount: 4,
+        hasPrevious: false,
+        hasNext: true,
+        offset: 0,
+        rangeStart: 1,
+        rangeEnd: 30,
+      },
+    })
+
+    const html = await htmlFrom(
+      VideosPage({ searchParams: Promise.resolve({ page: "1" }) }),
+    )
+
+    expect(html).toContain("Showing 1-30 of 95")
+    expect(html).toContain("Page 1 of 4")
+    expect(html).toMatch(
+      /<span(?=[^>]*aria-disabled="true")[^>]*>[\s\S]*Previous/,
+    )
+    expect(html).toContain('href="/dashboard/videos?page=2"')
+    expect(html).not.toContain('href="/dashboard/videos?page=0"')
+  })
+
+  it("renders final-page pagination with next disabled and previous linked", async () => {
+    vi.mocked(loadVideoLibraryPage).mockResolvedValueOnce({
+      rows: [],
+      pagination: {
+        total: 95,
+        currentPage: 4,
+        pageSize: 30,
+        pageCount: 4,
+        hasPrevious: true,
+        hasNext: false,
+        offset: 90,
+        rangeStart: 91,
+        rangeEnd: 95,
+      },
+    })
+
+    const html = await htmlFrom(
+      VideosPage({ searchParams: Promise.resolve({ page: "999" }) }),
+    )
+
+    expect(html).toContain("Showing 91-95 of 95")
+    expect(html).toContain("Page 4 of 4")
+    expect(html).toContain('href="/dashboard/videos?page=3"')
+    expect(html).toMatch(/Next[\s\S]*<\/span>/)
+    expect(html).not.toContain('href="/dashboard/videos?page=5"')
   })
 
   it("renders core sync page around current sync state", async () => {
@@ -445,6 +713,61 @@ describe("dashboard UI routes", () => {
     expect(html).toContain("Core Sync is healthy")
     expect(html).toContain("Sync State")
     expect(html).toContain("Needs Attention")
+  })
+
+  it("renders read-only core sync state for principals without trigger permission", async () => {
+    vi.mocked(requireSession).mockResolvedValueOnce({
+      id: "viewer-user",
+      role: "VIEWER",
+    })
+
+    const html = await htmlFrom(SystemStatusPage())
+
+    expect(html).toContain(uiMessages.common.readOnly)
+    expect(html).toMatch(
+      new RegExp(
+        `<button(?=[^>]*disabled="")[^>]*>${uiMessages.common.readOnly}</button>`,
+      ),
+    )
+    expect(html).not.toContain("Start Sync")
+  })
+
+  it("renders blocked experience creation as unavailable before click", () => {
+    const html = renderToStaticMarkup(
+      <ExperiencesActions
+        canCreate={false}
+        createAction={vi.fn(async () => ({
+          ok: false as const,
+          error: "forbidden" as const,
+        }))}
+        labels={{
+          filter: uiMessages.pages.experiences.actions.filter,
+          filterUnavailable:
+            uiMessages.pages.experiences.actions.filterUnavailable,
+          primary: uiMessages.pages.experiences.actions.primary,
+          modalTitle: uiMessages.pages.experiences.modal.title,
+          modalDescription: uiMessages.pages.experiences.modal.description,
+          titleLabel: uiMessages.pages.experiences.modal.titleLabel,
+          localeLabel: uiMessages.pages.experiences.modal.localeLabel,
+          slugLabel: uiMessages.pages.experiences.modal.slugLabel,
+          routeTemplateLabel:
+            uiMessages.pages.experiences.modal.routeTemplateLabel,
+          routeTemplateHelp:
+            uiMessages.pages.experiences.modal.routeTemplateHelp,
+          cancel: uiMessages.pages.experiences.modal.cancel,
+          submit: uiMessages.pages.experiences.modal.submit,
+          localeHelp: uiMessages.pages.experiences.modal.localeHelp,
+          noPermission: uiMessages.pages.experiences.modal.noPermission,
+          createFailed: uiMessages.pages.experiences.modal.createFailed,
+        }}
+      />,
+    )
+
+    expect(html).toContain(uiMessages.pages.experiences.modal.noPermission)
+    expect(html).toMatch(
+      /<button(?=[^>]*disabled="")(?=[^>]*title="You do not have permission to create experiences\.)/,
+    )
+    expect(html).not.toContain(uiMessages.pages.experiences.modal.title)
   })
 
   it("renders operational secondary routes", async () => {
