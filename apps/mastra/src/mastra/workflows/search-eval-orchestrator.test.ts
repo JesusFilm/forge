@@ -6,7 +6,10 @@ import {
   runSearchEvalOrchestratorWorkflow,
   searchEvalOrchestratorWorkflow,
 } from "./search-eval-orchestrator"
+import { SEARCH_EVAL_SEED_PROMPT_LOCALES } from "../../services/offline-search-eval/seed-prompt-set"
 import type { SearchEvalReport } from "../../services/offline-search-eval/types"
+
+const DEFAULT_SEED_LOCALES = [...SEARCH_EVAL_SEED_PROMPT_LOCALES]
 
 function customArtifactProjection(
   kind: SearchEvalReport["kind"],
@@ -258,7 +261,7 @@ describe("search eval orchestrator workflow", () => {
     ).toEqual({
       mode: "seed-baseline",
       baselineName: "seed-baseline",
-      locales: ["en", "es", "fr"],
+      locales: DEFAULT_SEED_LOCALES,
       searchLimit: 20,
       searchMode: "hybrid",
       contentType: "all",
@@ -331,7 +334,7 @@ describe("search eval orchestrator workflow", () => {
       {
         mode: "capture-baseline",
         baselineName: "seed-baseline",
-        locales: ["en", "es", "fr"],
+        locales: DEFAULT_SEED_LOCALES,
         searchLimit: 20,
         searchMode: "hybrid",
         contentType: "all",
@@ -402,7 +405,7 @@ describe("search eval orchestrator workflow", () => {
       {
         mode: "capture-baseline",
         baselineName: "seed-baseline",
-        locales: ["en", "es", "fr"],
+        locales: DEFAULT_SEED_LOCALES,
         searchLimit: 20,
         searchMode: "hybrid",
         contentType: "all",
@@ -1059,7 +1062,7 @@ describe("search eval orchestrator workflow", () => {
       },
     })
     expect(launchCandidateReview).toHaveBeenCalledWith(
-      { action: "submit-seed", seedLocales: ["en", "es", "fr"] },
+      { action: "submit-seed", seedLocales: DEFAULT_SEED_LOCALES },
       { runId: "run-orchestrator-submit-seed-candidates" },
     )
     expect(
