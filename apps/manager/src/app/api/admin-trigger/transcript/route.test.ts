@@ -33,6 +33,8 @@ const { adminLookupMock } = vi.hoisted(() => ({
 
 vi.mock("@/lib/admin-video-lookup", () => ({
   lookupVideosByCoreIdFromAdmin: adminLookupMock,
+  videoLookupKey: (coreId: string, targetLocale?: string | null) =>
+    targetLocale ? `${coreId}::${targetLocale}` : coreId,
 }))
 
 const { env } = await import("@/config/env")
