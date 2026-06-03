@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  ActivityIndicator,
   Animated,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -20,9 +19,12 @@ import {
   normalizeVideo,
   type WatchBibleCitation,
 } from "../../src/lib/normalizeVideo"
-import { TEXT_PRIMARY } from "../../src/lib/color"
+import { decodeWatchSeed } from "../../src/lib/watchSeed"
+import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxThumbnail"
+import { ACCENT } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
 import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
+import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
 import { UpNextCarousel } from "../../src/components/watch/UpNextCarousel"
@@ -39,7 +41,10 @@ const PLAYER_HEIGHT_RATIO = 9 / 16
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
 
 export default function WatchVideoPage() {
-  const { slug } = useLocalSearchParams<{ slug: string }>()
+  const { slug, seed: seedParam } = useLocalSearchParams<{
+    slug: string
+    seed?: string
+  }>()
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
   const scrollViewRef = useRef<ScrollView>(null)
 
@@ -61,7 +66,7 @@ export default function WatchVideoPage() {
     setSnackbarMessage,
   } = useWatchSession()
 
-  const { data, loading, error } = useQuery(GET_VIDEO_BY_SLUG, {
+  const { data, loading, error, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { slug: decodedSlug, locale: "en" },
     skip: !decodedSlug,
     fetchPolicy: "cache-and-network",
@@ -70,6 +75,14 @@ export default function WatchVideoPage() {
   const normalized = useMemo(
     () => normalizeVideo(data?.videoBySlug ?? null),
     [data],
+  )
+
+  // Seed carried from the list surface (search / Up Next) so the screen paints
+  // instantly from data already in hand, before the query resolves.
+  const seed = useMemo(() => decodeWatchSeed(seedParam), [seedParam])
+  const seedStreamingUrl = useMemo(
+    () => muxHlsUrlFromPlaybackId(seed?.playbackId ?? null),
+    [seed],
   )
 
   // Publish the fetched video into the shared session so the sheet routes can
@@ -98,6 +111,14 @@ export default function WatchVideoPage() {
         ?.vttSrc ?? null
     )
   }, [subtitleEnabled, activeSubtitleSlug, activeVariant])
+
+  // Prefer the resolved video; fall back to the seed so first paint has
+  // content. The player source resolves to the active variant, then the
+  // video's first-playable stream, then the seed-derived Mux URL.
+  const displayTitle = video?.title ?? seed?.title ?? null
+  const displayPoster = video?.posterUrl ?? seed?.imageUrl ?? null
+  const playerSource =
+    activeVariant?.hls ?? video?.streamingUrl ?? seedStreamingUrl
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -133,11 +154,11 @@ export default function WatchVideoPage() {
           style={[styles.navTitle, { opacity: titleOpacity }]}
           numberOfLines={1}
         >
-          {video?.title ?? ""}
+          {displayTitle ?? ""}
         </Animated.Text>
       ),
     })
-  }, [navigation, video?.title, titleOpacity])
+  }, [navigation, displayTitle, titleOpacity])
 
   const handleScrollToTop = useCallback(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true })
@@ -151,27 +172,39 @@ export default function WatchVideoPage() {
     Share.share({ message: shareUrl, title: video.title ?? undefined })
   }, [video, activeVariant?.languageSlug])
 
-  if (loading && !video) {
+  const hasVideo = video != null
+
+  // Cold deep link with nothing to paint yet → layout-matched skeleton,
+  // never a blank full-screen spinner.
+  if (!hasVideo && seed == null && loading) {
     return (
-      <View style={layout.centered}>
-        <ActivityIndicator size="large" color={TEXT_PRIMARY} />
+      <View style={layout.screenContainer}>
+        <VideoDetailSkeleton />
       </View>
     )
   }
 
-  if (error || !video) {
+  // No video, no seed, not loading → genuinely nothing to show.
+  if (!hasVideo && seed == null) {
     return (
       <View style={layout.centered}>
         <Text style={text.errorTitle}>Video Not Found</Text>
         <Text style={text.errorMessage}>
           {error?.message ?? "This video could not be loaded."}
         </Text>
+        <Text
+          style={styles.retryLink}
+          onPress={() => void refetch()}
+          accessibilityRole="button"
+        >
+          Retry
+        </Text>
       </View>
     )
   }
 
   const studyQuestionsBlock: AdminBlock | null =
-    video.studyQuestions.length > 0
+    hasVideo && video.studyQuestions.length > 0
       ? {
           __typename: "RelatedQuestionsBlock",
           heading: "Study Questions",
@@ -185,7 +218,7 @@ export default function WatchVideoPage() {
       : null
 
   const bibleCitationsBlock: AdminBlock | null =
-    video.bibleCitations.length > 0
+    hasVideo && video.bibleCitations.length > 0
       ? {
           __typename: "BibleQuotesCarouselBlock",
           heading: "Bible Quotes",
@@ -204,46 +237,68 @@ export default function WatchVideoPage() {
         scrollEventThrottle={16}
       >
         <VideoPlayer
-          streamingUrl={activeVariant?.hls ?? video.streamingUrl}
-          posterUrl={video.posterUrl}
+          streamingUrl={playerSource}
+          posterUrl={displayPoster}
           subtitleVttSrc={subtitleVttSrc}
           onPlayingChange={undefined}
         />
 
         <VideoMetadata
-          label={video.label}
-          title={video.title}
+          label={video?.label ?? null}
+          title={displayTitle}
           subtitle={null}
         />
 
-        <ActionButtonRow
-          onDownload={() => router.push("/watch/download")}
-          onLanguage={() => router.push("/watch/language")}
-          onSubtitles={() => router.push("/watch/subtitle")}
-          onShare={handleShare}
-        />
-
-        <VideoDescription description={video.description} />
-
-        {video.siblings.length > 0 && (
-          <View style={styles.sectionGap}>
-            <UpNextCarousel
-              siblings={video.siblings}
-              currentSlug={video.slug}
+        {hasVideo ? (
+          <>
+            <ActionButtonRow
+              onDownload={() => router.push("/watch/download")}
+              onLanguage={() => router.push("/watch/language")}
+              onSubtitles={() => router.push("/watch/subtitle")}
+              onShare={handleShare}
             />
-          </View>
-        )}
 
-        {studyQuestionsBlock != null && (
-          <View style={styles.sectionGap}>
-            <RelatedQuestionsRenderer section={studyQuestionsBlock} />
-          </View>
-        )}
+            <VideoDescription description={video.description} />
 
-        {bibleCitationsBlock != null && (
-          <View style={styles.sectionGap}>
-            <BibleQuotesCarouselRenderer section={bibleCitationsBlock} />
-          </View>
+            {video.siblings.length > 0 && (
+              <View style={styles.sectionGap}>
+                <UpNextCarousel
+                  siblings={video.siblings}
+                  currentSlug={video.slug}
+                />
+              </View>
+            )}
+
+            {studyQuestionsBlock != null && (
+              <View style={styles.sectionGap}>
+                <RelatedQuestionsRenderer section={studyQuestionsBlock} />
+              </View>
+            )}
+
+            {bibleCitationsBlock != null && (
+              <View style={styles.sectionGap}>
+                <BibleQuotesCarouselRenderer section={bibleCitationsBlock} />
+              </View>
+            )}
+          </>
+        ) : (
+          <>
+            {error != null && (
+              <View style={styles.inlineError}>
+                <Text style={text.errorMessage}>
+                  Couldn&apos;t load full details.
+                </Text>
+                <Text
+                  style={styles.retryLink}
+                  onPress={() => void refetch()}
+                  accessibilityRole="button"
+                >
+                  Retry
+                </Text>
+              </View>
+            )}
+            <VideoDetailSkeleton variant="sections" />
+          </>
         )}
       </ScrollView>
 
@@ -290,6 +345,19 @@ const styles = StyleSheet.create({
   },
   sectionGap: {
     marginTop: 16,
+  },
+  inlineError: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  retryLink: {
+    color: ACCENT,
+    fontFamily: "System",
+    fontSize: 15,
+    fontWeight: "600",
+    marginTop: 12,
+    textAlign: "center",
   },
   scrollTopFab: {
     position: "absolute",

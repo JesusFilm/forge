@@ -5,6 +5,7 @@ import { useVideoPlayer, VideoView } from "expo-video"
 import { useEvent } from "expo"
 import { BLACK } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { extractMuxPlaybackId } from "../../lib/muxThumbnail"
 import { PlayerControls } from "./PlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 
@@ -32,13 +33,38 @@ export function VideoPlayer({
   const player = useVideoPlayer(initialUrl.current, (p) => {
     p.muted = false
     p.loop = false
+    // Favor a fast first frame on cellular over a deep prebuffer — JFP's
+    // audience skews to low-bandwidth networks. (Android-only fields are
+    // ignored on iOS.)
+    p.bufferOptions = {
+      minBufferForPlayback: 1,
+      preferredForwardBufferDuration: 8,
+      prioritizeTimeOverSizeThreshold: true,
+    }
   })
 
   useEffect(() => {
-    if (streamingUrl && streamingUrl !== initialUrl.current) {
-      initialUrl.current = streamingUrl
-      player.replace(streamingUrl)
-    }
+    if (!streamingUrl || streamingUrl === initialUrl.current) return
+
+    // Decide swap vs no-swap by Mux playback ID, not raw URL string: the
+    // optimistic seed URL is rebuilt from a playbackId while the resolved
+    // variant carries the stored `hls`, so the same asset can have two
+    // different URL strings. Reloading the same asset would needlessly
+    // restart playback.
+    const currentId = extractMuxPlaybackId(initialUrl.current)
+    const nextId = extractMuxPlaybackId(streamingUrl)
+    initialUrl.current = streamingUrl
+    if (currentId != null && nextId != null && currentId === nextId) return
+
+    // replaceAsync loads off the main thread (replace() blocks the UI thread
+    // for HLS on iOS). Fall back to the synchronous path if it rejects.
+    void player.replaceAsync(streamingUrl).catch(() => {
+      try {
+        player.replace(streamingUrl, true)
+      } catch {
+        // Player already released.
+      }
+    })
   }, [streamingUrl, player])
 
   // Disable Mux's auto-generated subtitle tracks from the HLS manifest.
