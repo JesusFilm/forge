@@ -11,9 +11,10 @@ import {
   View,
 } from "react-native"
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router"
-import { useQuery } from "@apollo/client/react"
+import { useApolloClient, useQuery } from "@apollo/client/react"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/queries"
+import { schedulePersist } from "../../src/lib/cachePersistence"
 import type { AdminBlock } from "../../src/lib/queries"
 import {
   normalizeVideo,
@@ -66,6 +67,7 @@ export default function WatchVideoPage() {
     setSnackbarMessage,
   } = useWatchSession()
 
+  const apolloClient = useApolloClient()
   const { data, loading, error, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { slug: decodedSlug, locale: "en" },
     skip: !decodedSlug,
@@ -99,8 +101,13 @@ export default function WatchVideoPage() {
   // so partial → full enrichment (returnPartialData) republishes; the session
   // guards against resetting user selections across these republishes.
   useEffect(() => {
-    if (normalized) setVideo(normalized)
-  }, [normalized, setVideo])
+    if (normalized) {
+      setVideo(normalized)
+      // Persist after a video the user is likely to revisit lands (no-op unless
+      // cache persistence is enabled).
+      schedulePersist(apolloClient)
+    }
+  }, [normalized, setVideo, apolloClient])
 
   // Navigated to a different video that hasn't loaded yet (e.g. Up Next): drop
   // the previous video from the session so the loading guard shows the spinner
