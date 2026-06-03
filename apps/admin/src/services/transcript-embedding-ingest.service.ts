@@ -73,7 +73,9 @@ export const TranscriptEmbeddingIngestPayloadSchema = z
       .object({
         name: z.string().min(1),
         dimensions: z.number().int().positive(),
+        nativeDimensions: z.number().int().positive().optional(),
         provider: z.string().min(1).optional(),
+        transformVersion: z.string().min(1).optional(),
       })
       .strict(),
     chunking: z
@@ -144,6 +146,9 @@ type ExistingTranscript = {
   sourceContentHash: string | null
   model: string
   dimensions: number
+  embeddingProvider: string | null
+  embeddingNativeDimensions: number | null
+  embeddingTransformVersion: string | null
   chunkingType: string
   maxChunkTokens: number
   overlapTokens: number
@@ -376,6 +381,9 @@ async function readExistingTranscript(
       source_content_hash AS "sourceContentHash",
       model,
       dimensions,
+      embedding_provider AS "embeddingProvider",
+      embedding_native_dimensions AS "embeddingNativeDimensions",
+      embedding_transform_version AS "embeddingTransformVersion",
       chunking_type AS "chunkingType",
       max_chunk_tokens AS "maxChunkTokens",
       overlap_tokens AS "overlapTokens",
@@ -402,6 +410,22 @@ async function countHealthyChunks(
   return Number(rows[0]?.count ?? 0)
 }
 
+function legacyOpenAiProviderMatches(
+  existing: ExistingTranscript,
+  payload: TranscriptEmbeddingIngestPayload,
+): boolean {
+  return (
+    existing.embeddingProvider == null &&
+    existing.embeddingNativeDimensions === existing.dimensions &&
+    existing.embeddingTransformVersion == null &&
+    payload.model.provider === "openai" &&
+    payload.model.nativeDimensions == null &&
+    payload.model.transformVersion == null &&
+    (existing.model === "openai/text-embedding-3-small" ||
+      existing.model === "text-embedding-3-small")
+  )
+}
+
 function existingMatches(
   existing: ExistingTranscript,
   payload: TranscriptEmbeddingIngestPayload,
@@ -411,6 +435,12 @@ function existingMatches(
     existing.sourceContentHash === hash &&
     existing.model === payload.model.name &&
     existing.dimensions === payload.model.dimensions &&
+    (existing.embeddingProvider === (payload.model.provider ?? null) ||
+      legacyOpenAiProviderMatches(existing, payload)) &&
+    existing.embeddingNativeDimensions ===
+      (payload.model.nativeDimensions ?? existing.dimensions) &&
+    existing.embeddingTransformVersion ===
+      (payload.model.transformVersion ?? null) &&
     existing.chunkingType === payload.chunking.type &&
     existing.maxChunkTokens === payload.chunking.maxChunkTokens &&
     existing.overlapTokens === payload.chunking.overlapTokens &&
@@ -461,6 +491,9 @@ async function writePayload(
       totalTokens: chunks.reduce((sum, chunk) => sum + chunk.tokenCount, 0),
       generatedAt: payload.generation.generatedAt,
       provenance: {
+        embeddingProvider: payload.model.provider,
+        embeddingNativeDimensions: payload.model.nativeDimensions,
+        embeddingTransformVersion: payload.model.transformVersion,
         sourceArtifactKey: payload.source.artifactKey,
         sourceContentHash: hash,
         sourceProvider: payload.source.provider ?? payload.model.provider,

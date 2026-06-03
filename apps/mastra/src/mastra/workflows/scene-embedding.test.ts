@@ -62,6 +62,10 @@ function input(
         },
       ],
     },
+    model: {
+      name: "embeddings",
+      provider: "jesus-film-ai-gateway",
+    },
     mode: "idempotent",
   }
 
@@ -73,9 +77,11 @@ function embeddingResult(inputs: string[]): EmbeddingProviderResult {
     embeddings: inputs.map((_, index) => vector(index + 1)),
     dimensions: EXPECTED_SCENE_EMBEDDING_DIMENSIONS,
     tokenCount: inputs.length * 6,
-    model: "openai/text-embedding-3-small",
-    provider: "openai",
-    requestModel: "text-embedding-3-small",
+    model: "embeddings",
+    provider: "jesus-film-ai-gateway",
+    requestModel: "embeddings",
+    nativeDimensions: 4096,
+    transformVersion: "matryoshka-truncate-1536-v1",
   }
 }
 
@@ -125,6 +131,8 @@ describe("scene embedding workflow", () => {
       scenes: 2,
       providerTokens: 12,
       mastraRunId: "run-scenes",
+      nativeDimensions: 4096,
+      transformVersion: "matryoshka-truncate-1536-v1",
     })
     expect(embeddingRequester).toHaveBeenCalledWith(
       [
@@ -151,6 +159,13 @@ describe("scene embedding workflow", () => {
           provider: "manager",
           contentHash: expect.stringMatching(/^sha256:/),
         }),
+        model: {
+          name: "embeddings",
+          provider: "jesus-film-ai-gateway",
+          dimensions: EXPECTED_SCENE_EMBEDDING_DIMENSIONS,
+          nativeDimensions: 4096,
+          transformVersion: "matryoshka-truncate-1536-v1",
+        },
         generation: {
           mode: "idempotent",
           generatedAt: "2026-05-25T01:00:00.000Z",
@@ -276,7 +291,7 @@ describe("scene embedding workflow", () => {
               locale: "en",
             },
             scenes: 2,
-            model: "openai/text-embedding-3-small",
+            model: "embeddings",
             dimensions: EXPECTED_SCENE_EMBEDDING_DIMENSIONS,
             mastraRunId: "run-admin",
           },
@@ -381,7 +396,7 @@ describe("scene embedding workflow", () => {
           locale: "en",
         },
         scenes: 2,
-        model: "openai/text-embedding-3-small",
+        model: "embeddings",
         dimensions: EXPECTED_SCENE_EMBEDDING_DIMENSIONS,
         mastraRunId: "run-admin-reject",
       },
@@ -428,9 +443,11 @@ describe("scene embedding workflow", () => {
         },
         scenes: 2,
         providerTokens: 12,
-        model: "openai/text-embedding-3-small",
-        provider: "openai",
+        model: "embeddings",
+        provider: "jesus-film-ai-gateway",
         dimensions: EXPECTED_SCENE_EMBEDDING_DIMENSIONS,
+        nativeDimensions: 4096,
+        transformVersion: "matryoshka-truncate-1536-v1",
         mastraRunId: runId,
         sourceContentHash: "sha256:test",
       }),

@@ -10,6 +10,7 @@ depends_on:
   - "feat-142"
 blocks:
   - "feat-155"
+  - "feat-156"
 tags:
   - "admin"
   - "mastra"

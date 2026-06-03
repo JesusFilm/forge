@@ -53,9 +53,11 @@ function buildPayload(overrides: Record<string, unknown> = {}) {
       summary: source.summary,
     },
     model: {
-      name: "openai/text-embedding-3-small",
-      provider: "openai",
+      name: "embeddings",
+      provider: "jesus-film-ai-gateway",
       dimensions: 1536,
+      nativeDimensions: 4096,
+      transformVersion: "matryoshka-truncate-1536-v1",
     },
     generation: {
       mode: "idempotent",
@@ -72,8 +74,11 @@ function existing(overrides: Record<string, unknown> = {}) {
     healthy: true,
     source_content_hash: buildPayload().source.contentHash,
     source_summary: buildPayload().source.summary,
-    model: "openai/text-embedding-3-small",
+    model: "embeddings",
     dimensions: 1536,
+    provider: "jesus-film-ai-gateway",
+    native_dimensions: 4096,
+    transform_version: "matryoshka-truncate-1536-v1",
     ...overrides,
   }
 }
@@ -128,6 +133,9 @@ describe("ingestExperienceEmbedding", () => {
         provenance: expect.objectContaining({
           sourceContentHash: buildPayload().source.contentHash,
           sourceSummary: buildPayload().source.summary,
+          provider: "jesus-film-ai-gateway",
+          nativeDimensions: 4096,
+          transformVersion: "matryoshka-truncate-1536-v1",
           generationMode: "idempotent",
           mastraRunId: "run-1",
         }),
