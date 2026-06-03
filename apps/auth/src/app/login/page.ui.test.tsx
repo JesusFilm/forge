@@ -13,17 +13,19 @@ describe("auth login UI", () => {
     const html = renderToStaticMarkup(
       <LoginPageClient
         enabledProviders={["google"]}
+        initialEmail="user@example.com"
         initialError="account_not_linked"
         oauthQuery="client_id=jfp_admin_local&sig=signed"
         requestingAppName="Jesus Film Admin"
       />,
     )
 
-    expect(html).toContain("This login method is not linked yet.")
-    expect(html).toContain("Log in with the method you used before")
+    expect(html).toContain("Use the login method for this account.")
+    expect(html).toContain("We will send you to the right sign-in method.")
     expect(html).toContain("Continue with Google")
     expect(html).toContain("Email address")
     expect(html).not.toContain("Password")
+    expect(html).toContain('value="user@example.com"')
     expect(html).toContain(
       'name="oauth_query" value="client_id=jfp_admin_local&amp;sig=signed"',
     )
@@ -77,7 +79,7 @@ describe("auth login UI", () => {
     expect(html.match(/disabled=""/g)).toHaveLength(3)
   })
 
-  it("places provider buttons before the email form divider", () => {
+  it("places the email form before direct provider buttons", () => {
     const html = renderToStaticMarkup(
       <LoginPageClient
         enabledProviders={["google"]}
@@ -86,10 +88,10 @@ describe("auth login UI", () => {
       />,
     )
 
-    expect(html.indexOf("Continue with Google")).toBeLessThan(
-      html.indexOf("OR"),
+    expect(html.indexOf("Email address")).toBeLessThan(html.indexOf("OR"))
+    expect(html.indexOf("OR")).toBeLessThan(
+      html.indexOf("Continue with Google"),
     )
-    expect(html.indexOf("OR")).toBeLessThan(html.indexOf("Email address"))
     expect(html).not.toContain("Password")
     expect(html).not.toContain('name="password"')
     expect(html).not.toContain('autoComplete="current-password"')
@@ -111,6 +113,7 @@ describe("auth login UI", () => {
         client_id: "jfp_admin_local",
         email: "user@example.com",
         error: "credentials",
+        expected_login_method: "google",
         sig: "signed",
       }),
     ).toBe("client_id=jfp_admin_local&sig=signed")
