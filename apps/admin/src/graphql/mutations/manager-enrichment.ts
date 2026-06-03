@@ -51,6 +51,7 @@ export function pairAndValidateArgs(args: {
   assetIds: readonly number[]
   coreIds: readonly string[]
   kind: string
+  targetLocales?: readonly string[] | null
 }): {
   kind: ManagerEnrichmentKind
   items: ManagerEnrichmentTriggerItem[]
@@ -86,13 +87,44 @@ export function pairAndValidateArgs(args: {
       )
     }
   }
-  const items: ManagerEnrichmentTriggerItem[] = args.assetIds.map(
-    (assetId, idx) => ({
-      assetId,
-      coreId: args.coreIds[idx]!,
-    }),
-  )
+  const targetLocales = normalizeTargetLocales(args.targetLocales)
+  const expandedCount = args.assetIds.length * (targetLocales?.length ?? 1)
+  if (expandedCount > 100) {
+    throw new ManagerEnrichmentArgsError("max 100 items per call")
+  }
+  const baseItems = args.assetIds.map((assetId, idx) => ({
+    assetId,
+    coreId: args.coreIds[idx]!,
+  }))
+  const items: ManagerEnrichmentTriggerItem[] = targetLocales
+    ? baseItems.flatMap((item) =>
+        targetLocales.map((targetLocale) => ({
+          ...item,
+          targetLocale,
+        })),
+      )
+    : baseItems
   return { kind: kind.data, items }
+}
+
+function normalizeTargetLocales(
+  targetLocales: readonly string[] | null | undefined,
+): string[] | null {
+  if (targetLocales == null) return null
+  if (targetLocales.length === 0) {
+    throw new ManagerEnrichmentArgsError(
+      "targetLocales must be omitted or contain at least one locale",
+    )
+  }
+  return targetLocales.map((locale) => {
+    const normalized = locale.trim()
+    if (normalized.length === 0) {
+      throw new ManagerEnrichmentArgsError(
+        "targetLocales entries must be non-empty strings",
+      )
+    }
+    return normalized.toLowerCase()
+  })
 }
 
 /**
@@ -104,6 +136,7 @@ export async function dispatchManagerEnrichment(args: {
   assetIds: readonly number[]
   coreIds: readonly string[]
   kind: string
+  targetLocales?: readonly string[] | null
 }): Promise<ManagerEnrichmentDispatchResult[]> {
   const { items, kind } = pairAndValidateArgs(args)
   return triggerManagerEnrichment(items, kind)
@@ -131,12 +164,18 @@ builder.mutationFields((t) => ({
         description:
           'Enrichment kind. Must be "scene-analysis" or "transcript".',
       }),
+      targetLocales: t.arg.stringList({
+        required: false,
+        description:
+          "Optional target locales/languages to run for each requested video. When supplied, Admin expands every asset/core pair across these locales and Manager must resolve matching localized media.",
+      }),
     },
     resolve: async (_root, args) => {
       return dispatchManagerEnrichment({
         assetIds: args.assetIds,
         coreIds: args.coreIds,
         kind: args.kind,
+        targetLocales: args.targetLocales,
       })
     },
   }),

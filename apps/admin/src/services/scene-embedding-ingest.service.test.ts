@@ -19,9 +19,14 @@ const { ingestSceneEmbeddings, _internals } =
 function buildPrisma() {
   const queryRaw = vi.fn(async (..._args: unknown[]): Promise<unknown[]> => [])
   const findVideo = vi.fn(
-    async (): Promise<{ id: string; coreId: string } | null> => ({
+    async (): Promise<{
+      id: string
+      coreId: string
+      primaryLanguage: { bcp47: string | null } | null
+    } | null> => ({
       id: "video-1",
       coreId: "core-1",
+      primaryLanguage: { bcp47: "en" },
     }),
   )
   const findEdition = vi.fn(
@@ -373,6 +378,51 @@ describe("ingestSceneEmbeddings", () => {
     ).rejects.toMatchObject({ code: "scene_invalid" })
 
     expect(writeSceneEmbeddingPayloadMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects target-locale writes sourced from the legacy source-language artifact", async () => {
+    const prisma = buildPrisma()
+
+    await expect(
+      ingestSceneEmbeddings(
+        prisma as never,
+        payload({
+          locale: "es",
+          source: {
+            ...(payload().source as object),
+            artifactKey: "42/scene-analysis.json",
+            contentHash: undefined,
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "source_locale_mismatch" })
+
+    expect(writeSceneEmbeddingPayloadMock).not.toHaveBeenCalled()
+  })
+
+  it("accepts target-locale writes sourced from that locale's scene artifact", async () => {
+    const prisma = buildPrisma()
+    const body = payload({
+      locale: "es",
+      source: {
+        ...(payload().source as object),
+        artifactKey: "42/scene-analysis-es.json",
+      },
+    })
+    ;(body.source as Record<string, unknown>).contentHash = hashFor(body)
+
+    const result = await ingestSceneEmbeddings(prisma as never, body)
+
+    expect(result.status).toBe("created")
+    expect(writeSceneEmbeddingPayloadMock).toHaveBeenCalledWith(
+      prisma,
+      expect.objectContaining({
+        locale: "es",
+        provenance: expect.objectContaining({
+          sourceArtifactKey: "42/scene-analysis-es.json",
+        }),
+      }),
+    )
   })
 
   it("rejects dimension drift, source hash drift, incomplete provenance, and mismatched Admin targets before writing", async () => {

@@ -35,7 +35,9 @@ import { randomUUID } from "node:crypto"
 import { z } from "zod"
 import {
   lookupVideosByCoreIdFromAdmin,
+  videoLookupKey,
   type AdminVideoLookupEnvelope,
+  type AdminVideoLookupRequest,
   type VideoForEnrichment,
 } from "@/lib/admin-video-lookup"
 import { validateAdminTriggerBearer } from "@/lib/admin-trigger-auth"
@@ -58,6 +60,12 @@ export type TriggerKind = z.infer<typeof TriggerKindSchema>
 export const AdminTriggerItemSchema = z.object({
   assetId: z.number().int().positive(),
   coreId: z.string().min(1),
+  targetLocale: z
+    .string()
+    .trim()
+    .min(1)
+    .transform((value) => value.toLowerCase())
+    .optional(),
 })
 
 export type AdminTriggerItem = z.infer<typeof AdminTriggerItemSchema>
@@ -71,13 +79,13 @@ export const AdminTriggerBodySchema = z
   })
   .strict()
   .transform((parsed) => {
-    // Dedupe by assetId — duplicate assetIds in a single call would
-    // surface as repeated `already_in_flight` results which is
-    // wasteful but technically correct. Dedupe at the boundary so
-    // operators don't accidentally double-charge themselves.
-    const seen = new Map<number, AdminTriggerItem>()
+    // Dedupe by assetId + normalized targetLocale. The same asset can
+    // legitimately run once per locale, but locale casing variants
+    // write the same artifact key and must collapse at the boundary.
+    const seen = new Map<string, AdminTriggerItem>()
     for (const item of parsed.items) {
-      if (!seen.has(item.assetId)) seen.set(item.assetId, item)
+      const key = `${item.assetId}:${item.targetLocale ?? ""}`
+      if (!seen.has(key)) seen.set(key, item)
     }
     return { items: [...seen.values()] }
   })
@@ -97,6 +105,7 @@ export type AdminTriggerStatus =
 export type AdminTriggerResult = {
   assetId: number
   coreId: string
+  targetLocale?: string
   managerJobId: string | null
   status: AdminTriggerStatus
   message?: string
@@ -157,8 +166,12 @@ function pruneExpired(now: number): void {
   }
 }
 
-function inFlightKey(kind: TriggerKind, assetId: number): string {
-  return `${kind}:${assetId}`
+function inFlightKey(
+  kind: TriggerKind,
+  assetId: number,
+  targetLocale: string | null | undefined,
+): string {
+  return `${kind}:${assetId}:${targetLocale ?? ""}`
 }
 
 /**
@@ -299,7 +312,7 @@ async function runQueuedDispatch(job: QueuedAdminTriggerJob): Promise<void> {
  * inline mocks via `ProcessAdminTriggerArgs.adminLookup`.
  */
 export type AdminLookupClient = (
-  coreIds: readonly string[],
+  requests: readonly AdminVideoLookupRequest[],
 ) => Promise<AdminVideoLookupEnvelope>
 
 // ---------------------------------------------------------------------------
@@ -311,6 +324,7 @@ export type AdminLookupClient = (
 export type AdminTriggerDispatchInput = {
   assetId: number
   coreId: string
+  targetLocale?: string
   adminVideoId: string
   muxAssetId: string
   subtitleUrl: string
@@ -366,9 +380,12 @@ export async function processAdminTriggerRequest(
   }
 
   const { items } = parsed.data
-  const coreIds = items.map((i) => i.coreId)
+  const lookupRequests = items.map((item) => ({
+    coreId: item.coreId,
+    targetLocale: item.targetLocale ?? null,
+  }))
   const adminLookup = args.adminLookup ?? lookupVideosByCoreIdFromAdmin
-  const envelope = await adminLookup(coreIds)
+  const envelope = await adminLookup(lookupRequests)
   if (!envelope.ok) {
     // Surface admin's lookup failure with a clear reason so admin's
     // outbound classifier maps it to `DISPATCH_FAILED { reason:
@@ -387,7 +404,7 @@ export async function processAdminTriggerRequest(
         // log-line size is bounded regardless of batch size, and
         // operational triage rarely needs the exact IDs (request
         // body is the source of truth).
-        coreIdCount: coreIds.length,
+        coreIdCount: lookupRequests.length,
       }),
     )
     const status = envelope.reason === "config_missing" ? 503 : 502
@@ -432,11 +449,14 @@ export async function processAdminTriggerRequest(
   const queuedJobs: QueuedAdminTriggerJob[] = []
 
   for (const item of items) {
-    const video = videos.get(item.coreId)
+    const video = videos.get(
+      videoLookupKey(item.coreId, item.targetLocale ?? null),
+    )
     if (!video) {
       results.push({
         assetId: item.assetId,
         coreId: item.coreId,
+        ...(item.targetLocale ? { targetLocale: item.targetLocale } : {}),
         managerJobId: null,
         status: "not_found",
         message: "admin returned no video for coreId",
@@ -453,13 +473,33 @@ export async function processAdminTriggerRequest(
     // signal — primary-language absence cascades into null
     // mux/subtitle via the picker, so reporting only the symptom
     // would hide the real data gap.
-    if (video.muxAssetId == null || video.primaryLanguageBcp47 == null) {
+    const dispatchLanguageBcp47 = item.targetLocale
+      ? (video.languageBcp47 ?? null)
+      : (video.languageBcp47 ?? video.primaryLanguageBcp47)
+    const targetLocaleMismatch =
+      item.targetLocale &&
+      video.targetLocale != null &&
+      video.targetLocale !== item.targetLocale
+
+    if (
+      video.muxAssetId == null ||
+      dispatchLanguageBcp47 == null ||
+      targetLocaleMismatch
+    ) {
       const missing: string[] = []
-      if (video.primaryLanguageBcp47 == null) missing.push("primary language")
-      if (video.muxAssetId == null) missing.push("mux variant")
+      if (dispatchLanguageBcp47 == null) {
+        missing.push(item.targetLocale ? "target language" : "primary language")
+      }
+      if (video.muxAssetId == null) {
+        missing.push(
+          item.targetLocale ? "localized mux variant" : "mux variant",
+        )
+      }
+      if (targetLocaleMismatch) missing.push("target locale echo")
       results.push({
         assetId: item.assetId,
         coreId: item.coreId,
+        ...(item.targetLocale ? { targetLocale: item.targetLocale } : {}),
         managerJobId: null,
         status: "validation_failed",
         message: `admin video missing required dispatch fields (${missing.join(", ")})`,
@@ -467,12 +507,13 @@ export async function processAdminTriggerRequest(
       continue
     }
 
-    const key = inFlightKey(args.kind, item.assetId)
+    const key = inFlightKey(args.kind, item.assetId, item.targetLocale)
     const existing = inFlightMap.get(key)
     if (existing) {
       results.push({
         assetId: item.assetId,
         coreId: item.coreId,
+        ...(item.targetLocale ? { targetLocale: item.targetLocale } : {}),
         managerJobId: existing.managerJobId,
         status: "already_in_flight",
       })
@@ -484,11 +525,12 @@ export async function processAdminTriggerRequest(
     const dispatchInput: AdminTriggerDispatchInput = {
       assetId: item.assetId,
       coreId: item.coreId,
+      ...(item.targetLocale ? { targetLocale: item.targetLocale } : {}),
       adminVideoId: video.id,
       muxAssetId: video.muxAssetId,
       subtitleUrl: video.subtitleUrl ?? "",
       videoLabel: video.label ?? "unknown",
-      languageBcp47: video.primaryLanguageBcp47,
+      languageBcp47: dispatchLanguageBcp47,
     }
 
     let resolveDone: () => void = () => {}
@@ -510,6 +552,7 @@ export async function processAdminTriggerRequest(
     results.push({
       assetId: item.assetId,
       coreId: item.coreId,
+      ...(item.targetLocale ? { targetLocale: item.targetLocale } : {}),
       managerJobId,
       status: "started",
     })

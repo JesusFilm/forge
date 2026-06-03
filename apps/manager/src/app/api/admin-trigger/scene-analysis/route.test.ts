@@ -39,6 +39,8 @@ const { adminLookupMock } = vi.hoisted(() => ({
 
 vi.mock("@/lib/admin-video-lookup", () => ({
   lookupVideosByCoreIdFromAdmin: adminLookupMock,
+  videoLookupKey: (coreId: string, targetLocale?: string | null) =>
+    targetLocale ? `${coreId}::${targetLocale}` : coreId,
 }))
 
 const { env } = await import("@/config/env")
@@ -77,7 +79,9 @@ describe("POST /api/admin-trigger/scene-analysis", () => {
             id: "v-A",
             coreId: "core-A",
             label: "shortFilm",
+            targetLocale: null,
             primaryLanguageBcp47: "en",
+            languageBcp47: "en",
             muxAssetId: "mux-A",
             subtitleUrl: "https://stream.mux.com/A.vtt",
           },
@@ -115,6 +119,7 @@ describe("POST /api/admin-trigger/scene-analysis", () => {
       subtitleUrl: "https://stream.mux.com/A.vtt",
       videoLabel: "shortFilm",
       languageCode: "en",
+      targetLocale: undefined,
     })
   })
 
@@ -128,7 +133,9 @@ describe("POST /api/admin-trigger/scene-analysis", () => {
             id: "v-A",
             coreId: "core-A",
             label: "shortFilm",
+            targetLocale: null,
             primaryLanguageBcp47: "en",
+            languageBcp47: "en",
             muxAssetId: "mux-A",
             subtitleUrl: null,
           },
@@ -161,6 +168,55 @@ describe("POST /api/admin-trigger/scene-analysis", () => {
       subtitleUrl: "",
       videoLabel: "shortFilm",
       languageCode: "en",
+      targetLocale: undefined,
+    })
+  })
+
+  it("passes targetLocale through to the localized scene pipeline", async () => {
+    adminLookupMock.mockResolvedValueOnce({
+      ok: true,
+      data: new Map([
+        [
+          "core-A::es",
+          {
+            id: "v-A",
+            coreId: "core-A",
+            label: "shortFilm",
+            targetLocale: "es",
+            primaryLanguageBcp47: "en",
+            languageBcp47: "es",
+            muxAssetId: "mux-ES",
+            subtitleUrl: "https://stream.mux.com/ES.vtt",
+          },
+        ],
+      ]),
+    })
+
+    const req = new Request(
+      "http://example.test/api/admin-trigger/scene-analysis",
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${BEARER}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          items: [{ assetId: 42, coreId: "core-A", targetLocale: "es" }],
+        }),
+      },
+    )
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(runSceneAnalysisPipelineMock).toHaveBeenCalledWith({
+      videoId: 42,
+      assetId: "42",
+      muxAssetId: "mux-ES",
+      subtitleUrl: "https://stream.mux.com/ES.vtt",
+      videoLabel: "shortFilm",
+      languageCode: "es",
+      targetLocale: "es",
     })
   })
 

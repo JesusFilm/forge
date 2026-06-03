@@ -41,9 +41,10 @@ import {
  */
 export async function stepLoadSceneAnalysisArtifact(
   cmsVideoId: number,
+  targetLocale?: string | null,
 ): Promise<SceneAnalysisResult> {
   "use step"
-  return readSceneAnalysisArtifact(String(cmsVideoId))
+  return readSceneAnalysisArtifact(String(cmsVideoId), targetLocale)
 }
 
 /**

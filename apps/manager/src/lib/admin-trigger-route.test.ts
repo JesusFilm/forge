@@ -9,6 +9,7 @@ vi.mock("@/config/env", () => ({
 
 import type {
   AdminVideoLookupEnvelope,
+  AdminVideoLookupRequest,
   VideoForEnrichment,
 } from "@/lib/admin-video-lookup"
 
@@ -40,7 +41,9 @@ function videoFixture(overrides: {
   id?: string
   coreId: string
   label?: string | null
+  targetLocale?: string | null
   primaryLanguageBcp47?: string | null
+  languageBcp47?: string | null
   muxAssetId?: string | null
   subtitleUrl?: string | null
 }): VideoForEnrichment {
@@ -53,10 +56,18 @@ function videoFixture(overrides: {
     id: overrides.id ?? `v-${overrides.coreId}`,
     coreId: overrides.coreId,
     label: "label" in overrides ? (overrides.label ?? null) : "featureFilm",
+    targetLocale:
+      "targetLocale" in overrides ? (overrides.targetLocale ?? null) : null,
     primaryLanguageBcp47:
       "primaryLanguageBcp47" in overrides
         ? (overrides.primaryLanguageBcp47 ?? null)
         : "en",
+    languageBcp47:
+      "languageBcp47" in overrides
+        ? (overrides.languageBcp47 ?? null)
+        : "primaryLanguageBcp47" in overrides
+          ? (overrides.primaryLanguageBcp47 ?? null)
+          : "en",
     muxAssetId:
       "muxAssetId" in overrides
         ? (overrides.muxAssetId ?? null)
@@ -70,8 +81,14 @@ function videoFixture(overrides: {
 
 function adminLookupOk(rows: VideoForEnrichment[]): AdminVideoLookupEnvelope {
   const map = new Map<string, VideoForEnrichment>()
-  for (const r of rows) map.set(r.coreId, r)
+  for (const r of rows) {
+    map.set(r.targetLocale ? `${r.coreId}::${r.targetLocale}` : r.coreId, r)
+  }
   return { ok: true, data: map }
+}
+
+function lookupCoreIds(requests: readonly AdminVideoLookupRequest[]): string[] {
+  return requests.map((request) => request.coreId)
 }
 
 const DISPATCH_OK = vi.fn(async () => ({}))
@@ -99,6 +116,31 @@ describe("AdminTriggerBodySchema", () => {
     expect(parsed.items).toEqual([
       { assetId: 1, coreId: "c-1" },
       { assetId: 2, coreId: "c-2" },
+    ])
+  })
+
+  it("keeps the same assetId when targetLocale differs", () => {
+    const parsed = AdminTriggerBodySchema.parse({
+      items: [
+        { assetId: 1, coreId: "c-1", targetLocale: "en" },
+        { assetId: 1, coreId: "c-1", targetLocale: "es" },
+      ],
+    })
+    expect(parsed.items).toEqual([
+      { assetId: 1, coreId: "c-1", targetLocale: "en" },
+      { assetId: 1, coreId: "c-1", targetLocale: "es" },
+    ])
+  })
+
+  it("normalizes targetLocale casing before same-asset dedupe", () => {
+    const parsed = AdminTriggerBodySchema.parse({
+      items: [
+        { assetId: 1, coreId: "c-1", targetLocale: "ES" },
+        { assetId: 1, coreId: "c-1", targetLocale: "es" },
+      ],
+    })
+    expect(parsed.items).toEqual([
+      { assetId: 1, coreId: "c-1", targetLocale: "es" },
     ])
   })
 
@@ -315,8 +357,11 @@ describe("processAdminTriggerRequest — happy path", () => {
 
   it("shares the concurrency cap across separate requests and trigger kinds", async () => {
     __setDispatchConcurrencyForTests(1)
-    const adminLookup = vi.fn(async (coreIds: readonly string[]) =>
-      adminLookupOk(coreIds.map((coreId) => videoFixture({ coreId }))),
+    const adminLookup = vi.fn(
+      async (requests: readonly AdminVideoLookupRequest[]) =>
+        adminLookupOk(
+          lookupCoreIds(requests).map((coreId) => videoFixture({ coreId })),
+        ),
     )
     const started: Array<{ kind: string; assetId: number }> = []
     const resolvers: Array<() => void> = []
@@ -418,8 +463,11 @@ describe("processAdminTriggerRequest — happy path", () => {
   it("returns a retryable 503 instead of accepting work when the dispatch queue is full", async () => {
     __setDispatchConcurrencyForTests(1)
     __setMaxPendingDispatchesForTests(1)
-    const adminLookup = vi.fn(async (coreIds: readonly string[]) =>
-      adminLookupOk(coreIds.map((coreId) => videoFixture({ coreId }))),
+    const adminLookup = vi.fn(
+      async (requests: readonly AdminVideoLookupRequest[]) =>
+        adminLookupOk(
+          lookupCoreIds(requests).map((coreId) => videoFixture({ coreId })),
+        ),
     )
     const dispatch = vi.fn(
       () => new Promise<unknown>(() => {}) as Promise<unknown>,
@@ -469,16 +517,17 @@ describe("processAdminTriggerRequest — happy path", () => {
     const dispatch = vi.fn(
       () => new Promise<unknown>(() => {}) as Promise<unknown>,
     )
-    const adminLookup = vi.fn(async (coreIds: readonly string[]) =>
-      adminLookupOk(
-        coreIds.flatMap((coreId) => {
-          if (coreId === "c-missing") return []
-          if (coreId === "c-no-mux") {
-            return [videoFixture({ coreId, muxAssetId: null })]
-          }
-          return [videoFixture({ coreId })]
-        }),
-      ),
+    const adminLookup = vi.fn(
+      async (requests: readonly AdminVideoLookupRequest[]) =>
+        adminLookupOk(
+          lookupCoreIds(requests).flatMap((coreId) => {
+            if (coreId === "c-missing") return []
+            if (coreId === "c-no-mux") {
+              return [videoFixture({ coreId, muxAssetId: null })]
+            }
+            return [videoFixture({ coreId })]
+          }),
+        ),
     )
 
     const first = await processAdminTriggerRequest({
@@ -623,6 +672,52 @@ describe("processAdminTriggerRequest — happy path", () => {
         muxAssetId: "mux-c-no-sub",
         subtitleUrl: "",
         languageBcp47: "en",
+      }),
+    )
+  })
+
+  it("dispatches requested target locale media and language for localized scene analysis", async () => {
+    const adminLookup = vi.fn(async () =>
+      adminLookupOk([
+        videoFixture({
+          coreId: "c-es",
+          targetLocale: "es",
+          primaryLanguageBcp47: "en",
+          languageBcp47: "es",
+          muxAssetId: "mux-c-es",
+          subtitleUrl: "https://stream.mux.com/c-es.vtt",
+        }),
+      ]),
+    )
+
+    const res = await processAdminTriggerRequest({
+      request: makeRequest({
+        items: [{ assetId: 42, coreId: "c-es", targetLocale: "es" }],
+      }),
+      kind: "scene-analysis",
+      dispatch: DISPATCH_OK,
+      adminLookup,
+      scheduleAfter: (cb) => {
+        void cb()
+      },
+    })
+    const body = (await res.json()) as {
+      results: Array<{ status: string; targetLocale?: string }>
+    }
+
+    expect(body.results[0]).toMatchObject({
+      status: "started",
+      targetLocale: "es",
+    })
+    expect(adminLookup).toHaveBeenCalledWith([
+      { coreId: "c-es", targetLocale: "es" },
+    ])
+    expect(DISPATCH_OK).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetLocale: "es",
+        muxAssetId: "mux-c-es",
+        subtitleUrl: "https://stream.mux.com/c-es.vtt",
+        languageBcp47: "es",
       }),
     )
   })

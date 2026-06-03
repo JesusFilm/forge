@@ -29,6 +29,26 @@ export type SceneAnalysisResult = {
   scenes: SceneAnalysis[]
   totalInputTokens: number
   totalOutputTokens: number
+  provenance?: SceneAnalysisProvenance
+}
+
+export type SceneAnalysisProvenance = {
+  artifactKey: string
+  generationMode: "source" | "raw-localized"
+  requestedLocale: string | null
+  inputLanguageBcp47: string
+  mediaSource: {
+    kind: "mux"
+    muxAssetId: string
+    playbackId: string
+  }
+  transcriptSource: {
+    kind: "subtitle-url" | "mux-transcription"
+    languageBcp47: string
+    subtitleUrl?: string
+    muxAssetId?: string
+  }
+  generatedAt: string
 }
 
 const VALID_DEMOGRAPHICS = [
@@ -172,6 +192,33 @@ Extract the following signals, ordered by importance:
 
 6. **Spiritual context** (ONLY if clearly evident): What spiritual background or faith journey stage would this scene resonate with most? Examples: seeker (exploring faith), new believer, mature believer, skeptic, muslim background, hindu background, buddhist background, jewish background, secular background, animist background, culturally christian, persecuted believer. Leave empty array if not clearly applicable.`
 
+const SAFE_LOCALE_COMPONENT = /^[a-zA-Z0-9_-]+$/
+
+export function normalizeSceneAnalysisLocale(
+  locale: string | null | undefined,
+): string | null {
+  const normalized = locale?.trim().toLowerCase()
+  if (!normalized) return null
+  if (!SAFE_LOCALE_COMPONENT.test(normalized)) {
+    throw new Error("Invalid scene-analysis locale")
+  }
+  return normalized
+}
+
+export function sceneAnalysisArtifactType(
+  targetLocale: string | null | undefined,
+): string {
+  const normalized = normalizeSceneAnalysisLocale(targetLocale)
+  return normalized ? `scene-analysis-${normalized}` : "scene-analysis"
+}
+
+export function sceneAnalysisArtifactKey(
+  assetId: string,
+  targetLocale: string | null | undefined,
+): string {
+  return `${assetId}/${sceneAnalysisArtifactType(targetLocale)}.json`
+}
+
 /**
  * Construct the description field by concatenating signals in priority order.
  * Themes appear first to weight them higher in the downstream embedding.
@@ -204,7 +251,11 @@ export function buildDescription(output: RawSceneSignals): string {
 export async function analyzeScene(
   playbackId: string,
   boundary: SceneBoundary,
-  metadata: { videoLabel: string; bibleVerses?: string[] },
+  metadata: {
+    videoLabel: string
+    bibleVerses?: string[]
+    outputLanguageBcp47?: string
+  },
 ): Promise<{
   analysis: SceneAnalysis
   inputTokens: number
@@ -219,6 +270,9 @@ export async function analyzeScene(
     `Scene time range: ${timeRange}`,
     boundary.chapterTitle ? `Chapter: ${boundary.chapterTitle}` : null,
     `Video type: ${metadata.videoLabel}`,
+    metadata.outputLanguageBcp47
+      ? `Output language: ${metadata.outputLanguageBcp47}. Write user-facing themes, content, and tone in this language. Keep demographics and spiritualContext as the required enum values.`
+      : null,
     metadata.bibleVerses?.length
       ? `Known bible references: ${metadata.bibleVerses.join(", ")}`
       : null,
@@ -392,7 +446,14 @@ export async function analyzeAllScenes(
   assetId: string,
   playbackId: string,
   boundaries: SceneBoundary[],
-  metadata: { videoLabel: string; bibleVerses?: string[] },
+  metadata: {
+    videoLabel: string
+    bibleVerses?: string[]
+    targetLocale?: string | null
+    inputLanguageBcp47?: string
+    muxAssetId?: string
+    transcriptSource?: SceneAnalysisProvenance["transcriptSource"]
+  },
 ): Promise<SceneAnalysisResult> {
   const scenes: SceneAnalysis[] = []
   let totalInputTokens = 0
@@ -410,22 +471,53 @@ export async function analyzeAllScenes(
     const { analysis, inputTokens, outputTokens } = await analyzeScene(
       playbackId,
       boundary,
-      metadata,
+      {
+        ...metadata,
+        outputLanguageBcp47: metadata.inputLanguageBcp47,
+      },
     )
     scenes.push(analysis)
     totalInputTokens += inputTokens
     totalOutputTokens += outputTokens
   }
 
+  const artifactType = sceneAnalysisArtifactType(metadata.targetLocale)
+  const inputLanguageBcp47 = metadata.inputLanguageBcp47 ?? "auto"
+  const transcriptSource =
+    metadata.transcriptSource ??
+    ({
+      kind: "mux-transcription",
+      languageBcp47: inputLanguageBcp47,
+      muxAssetId: metadata.muxAssetId,
+    } satisfies SceneAnalysisProvenance["transcriptSource"])
+  if (metadata.targetLocale && !metadata.muxAssetId) {
+    throw new Error("Localized scene analysis requires muxAssetId provenance")
+  }
+  const provenance: SceneAnalysisProvenance | undefined = metadata.muxAssetId
+    ? {
+        artifactKey: sceneAnalysisArtifactKey(assetId, metadata.targetLocale),
+        generationMode: metadata.targetLocale ? "raw-localized" : "source",
+        requestedLocale: normalizeSceneAnalysisLocale(metadata.targetLocale),
+        inputLanguageBcp47,
+        mediaSource: {
+          kind: "mux",
+          muxAssetId: metadata.muxAssetId,
+          playbackId,
+        },
+        transcriptSource,
+        generatedAt: new Date().toISOString(),
+      }
+    : undefined
   const result: SceneAnalysisResult = {
     scenes,
     totalInputTokens,
     totalOutputTokens,
+    ...(provenance ? { provenance } : {}),
   }
 
   await writeArtifact({
     assetId,
-    artifactType: "scene-analysis",
+    artifactType,
     ext: "json",
     body: JSON.stringify(result, null, 2),
     contentType: "application/json",
