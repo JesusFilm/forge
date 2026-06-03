@@ -10,7 +10,7 @@ import { resolveImageUrl } from "../../lib/resolveImageUrl"
 type SearchResultCardProps = {
   result: SearchResult
   index?: number
-  onSelect: (slug: string) => void
+  onSelect: (result: SearchResult) => void
 }
 
 export function SearchResultCard({
@@ -48,7 +48,7 @@ export function SearchResultCard({
       style={[styles.cardOuter, { opacity, transform: [{ scale }] }]}
     >
       <Pressable
-        onPress={() => onSelect(result.slug)}
+        onPress={() => onSelect(result)}
         accessibilityRole="button"
         accessibilityLabel={`${result.title}: ${result.snippet}`}
         style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}

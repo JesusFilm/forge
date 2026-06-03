@@ -12,6 +12,7 @@ import { useRouter } from "expo-router"
 
 import { getApolloClient } from "../../src/lib/apolloClient"
 import { SEARCH, type SearchResult } from "../../src/lib/queries"
+import { encodeWatchSeed } from "../../src/lib/watchSeed"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
 import { SearchResultSkeleton } from "../../src/components/search/SearchResultSkeleton"
 import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionProvider"
@@ -61,13 +62,20 @@ export default function DiscoverScreen() {
   const { selectExperience } = useExperienceSelection()
 
   const handleSelectResult = useCallback(
-    (slug: string, type: string) => {
-      if (type === "EXPERIENCE") {
-        selectExperience(slug)
+    (result: SearchResult) => {
+      if (result.type === "EXPERIENCE") {
+        selectExperience(result.slug)
         router.navigate("/(tabs)")
-      } else {
-        router.push(`/watch/${encodeURIComponent(slug)}`)
+        return
       }
+      // Carry seed data forward so the detail screen paints instantly.
+      const seed = encodeWatchSeed({
+        slug: result.slug,
+        title: result.title ?? null,
+        imageUrl: result.imageUrl ?? null,
+        playbackId: result.playbackId ?? null,
+      })
+      router.push(`/watch/${encodeURIComponent(result.slug)}?seed=${seed}`)
     },
     [selectExperience, router],
   )
@@ -246,7 +254,7 @@ export default function DiscoverScreen() {
       <SearchResultCard
         result={item}
         index={index}
-        onSelect={(slug) => handleSelectResult(slug, item.type)}
+        onSelect={handleSelectResult}
       />
     ),
     [handleSelectResult],
