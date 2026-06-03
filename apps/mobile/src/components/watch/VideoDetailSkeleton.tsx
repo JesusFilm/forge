@@ -1,13 +1,7 @@
-import { useEffect, useRef } from "react"
-import {
-  AccessibilityInfo,
-  Animated,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from "react-native"
+import { Animated, StyleSheet, View, useWindowDimensions } from "react-native"
 
 import { SURFACE_COLOR } from "../../lib/color"
+import { useShimmerOpacity } from "../../hooks/useShimmerOpacity"
 
 type VideoDetailSkeletonProps = {
   /**
@@ -29,45 +23,8 @@ export function VideoDetailSkeleton({
   const cardWidth = Math.round(screenWidth * 0.45)
   const cardHeight = Math.round(cardWidth / (16 / 9))
 
-  const opacity = useRef(new Animated.Value(0.4)).current
-
-  useEffect(() => {
-    let cancelled = false
-    let loop: Animated.CompositeAnimation | null = null
-
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((reduceMotion) => {
-        if (cancelled || reduceMotion) {
-          opacity.setValue(0.5)
-          return
-        }
-        loop = Animated.loop(
-          Animated.sequence([
-            Animated.timing(opacity, {
-              toValue: 0.7,
-              duration: 800,
-              useNativeDriver: true,
-            }),
-            Animated.timing(opacity, {
-              toValue: 0.3,
-              duration: 800,
-              useNativeDriver: true,
-            }),
-          ]),
-        )
-        loop.start()
-      })
-      .catch(() => opacity.setValue(0.5))
-
-    return () => {
-      cancelled = true
-      loop?.stop()
-    }
-  }, [opacity])
-
-  const Block = ({ style }: { style: object }) => (
-    <Animated.View style={[styles.block, style, { opacity }]} />
-  )
+  // Shared fade-in/out so the skeleton reads as "loading", not "failed".
+  const opacity = useShimmerOpacity()
 
   return (
     <View accessibilityLabel="Loading video" accessibilityRole="progressbar">
@@ -77,27 +34,47 @@ export function VideoDetailSkeleton({
             style={[styles.player, { height: playerHeight, opacity }]}
           />
           <View style={styles.body}>
-            <Block style={styles.title} />
+            <Animated.View style={[styles.block, styles.title, { opacity }]} />
           </View>
         </>
       )}
 
       <View style={variant === "full" ? styles.bodyNoTop : styles.body}>
         <View style={styles.actionRow}>
-          <Block style={styles.actionItem} />
-          <Block style={styles.actionItem} />
-          <Block style={styles.actionItem} />
-          <Block style={styles.actionItem} />
+          <Animated.View
+            style={[styles.block, styles.actionItem, { opacity }]}
+          />
+          <Animated.View
+            style={[styles.block, styles.actionItem, { opacity }]}
+          />
+          <Animated.View
+            style={[styles.block, styles.actionItem, { opacity }]}
+          />
+          <Animated.View
+            style={[styles.block, styles.actionItem, { opacity }]}
+          />
         </View>
 
-        <Block style={styles.lineFull} />
-        <Block style={styles.lineFull} />
-        <Block style={styles.lineShort} />
+        <Animated.View style={[styles.block, styles.lineFull, { opacity }]} />
+        <Animated.View style={[styles.block, styles.lineFull, { opacity }]} />
+        <Animated.View style={[styles.block, styles.lineShort, { opacity }]} />
 
-        <Block style={styles.sectionHeading} />
+        <Animated.View
+          style={[styles.block, styles.sectionHeading, { opacity }]}
+        />
         <View style={styles.carousel}>
-          <Block style={{ width: cardWidth, height: cardHeight }} />
-          <Block style={{ width: cardWidth, height: cardHeight }} />
+          <Animated.View
+            style={[
+              styles.block,
+              { width: cardWidth, height: cardHeight, opacity },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.block,
+              { width: cardWidth, height: cardHeight, opacity },
+            ]}
+          />
         </View>
       </View>
     </View>
