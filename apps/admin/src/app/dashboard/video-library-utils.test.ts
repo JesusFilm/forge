@@ -4,10 +4,14 @@ import {
   buildVideoVisitorUrl,
   createVideoLibraryPagination,
   formatVideoUpdatedRelative,
+  hasActiveVideoLibraryFilters,
   isPublicAudioLanguageSlug,
   normalizeVideoThumbnailUrl,
+  parseVideoLibraryCategory,
+  parseVideoLibraryLanguage,
   parseVideoLibraryPage,
   parseVideoLibraryQuery,
+  parseVideoLibrarySort,
   resolveVideoVisitorUrl,
   videoLibraryHref,
 } from "./video-library-utils"
@@ -50,6 +54,67 @@ describe("video-library-utils", () => {
     expect(videoLibraryHref({ page: 1, query: "  mux  " })).toBe(
       "/dashboard/videos?q=mux",
     )
+  })
+
+  it("normalizes video library category, language, and sort params", () => {
+    expect(parseVideoLibraryCategory("features")).toBe("features")
+    expect(parseVideoLibraryCategory("bad")).toBe("all")
+    expect(parseVideoLibraryCategory(["series", "features"])).toBe("series")
+
+    expect(parseVideoLibraryLanguage(["  Spanish   Castilian  "])).toBe(
+      "Spanish Castilian",
+    )
+    expect(parseVideoLibraryLanguage("x".repeat(140))).toHaveLength(120)
+
+    expect(parseVideoLibrarySort("created")).toBe("created")
+    expect(parseVideoLibrarySort("bad")).toBe("recent")
+  })
+
+  it("builds video library hrefs for active controls while omitting defaults", () => {
+    expect(
+      videoLibraryHref({
+        page: 1,
+        query: "Jesus",
+        category: "features",
+        language: "english",
+        sort: "created",
+      }),
+    ).toBe(
+      "/dashboard/videos?q=Jesus&type=features&language=english&sort=created",
+    )
+
+    expect(
+      videoLibraryHref({
+        page: 1,
+        category: "all",
+        language: "",
+        sort: "recent",
+      }),
+    ).toBe("/dashboard/videos")
+  })
+
+  it("detects active video library filters excluding sort-only changes", () => {
+    expect(
+      hasActiveVideoLibraryFilters({
+        query: "",
+        category: "all",
+        language: "",
+      }),
+    ).toBe(false)
+    expect(
+      hasActiveVideoLibraryFilters({
+        query: "",
+        category: "series",
+        language: "",
+      }),
+    ).toBe(true)
+    expect(
+      hasActiveVideoLibraryFilters({
+        query: "",
+        category: "all",
+        language: "english",
+      }),
+    ).toBe(true)
   })
 
   it("clamps pagination beyond the final page", () => {

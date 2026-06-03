@@ -2,8 +2,6 @@ import type { ReactNode } from "react"
 import type { Route } from "next"
 import Link from "next/link"
 import {
-  ArrowUpDown,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
@@ -12,24 +10,31 @@ import {
   MoreVertical,
   Play,
   Plus,
-  Search,
-  X,
 } from "lucide-react"
-import { cx, PrimaryButton, SecondaryButton } from "@/components/admin-ui"
+import { cx, PrimaryButton } from "@/components/admin-ui"
 import { requireSession } from "@/auth/session"
 import { loadVideoLibraryPage } from "@/app/dashboard/live-data"
 import { getAdminMessages } from "@/i18n/server"
 import {
-  VIDEO_LIBRARY_MAX_QUERY_LENGTH,
+  hasActiveVideoLibraryFilters,
+  parseVideoLibraryCategory,
+  parseVideoLibraryLanguage,
   parseVideoLibraryPage,
   parseVideoLibraryQuery,
+  parseVideoLibrarySort,
+  type VideoLibraryCategory,
+  type VideoLibrarySort,
   videoLibraryHref,
 } from "../video-library-utils"
+import { VideoLibraryToolbar } from "./video-library-toolbar"
 
 type VideosPageProps = {
   searchParams?: Promise<{
     page?: string | string[]
     q?: string | string[]
+    language?: string | string[]
+    sort?: string | string[]
+    type?: string | string[]
   }>
 }
 
@@ -45,16 +50,16 @@ type VideoTone = {
   progress: string
 }
 
-const VIDEO_TABS = [
-  { key: "all", active: true },
-  { key: "collections", active: false },
-  { key: "features", active: false },
-  { key: "shortFilms", active: false },
-  { key: "series", active: false },
-] as const
-
-function paginationHref(page: number, query: string): Route {
-  return videoLibraryHref({ page, query }) as Route
+function paginationHref(
+  page: number,
+  state: {
+    category: VideoLibraryCategory
+    language: string
+    query: string
+    sort: VideoLibrarySort
+  },
+): Route {
+  return videoLibraryHref({ page, ...state }) as Route
 }
 
 function paginationSummary(
@@ -256,7 +261,7 @@ function VideoRow({
       <VideoThumbnail video={video} />
 
       <div className="min-w-0">
-        <h2 className="truncate text-[15px] font-semibold leading-5 text-[var(--color-text-primary)]">
+        <h2 className="truncate text-[18px] font-semibold leading-6 text-[var(--color-text-primary)]">
           {video.title}
         </h2>
         <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px] leading-4 text-[var(--color-text-muted)]">
@@ -315,10 +320,20 @@ function VideoRow({
           {languages.length > 0 ? (
             languages.map((language) => (
               <span
-                key={language}
-                className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-2 py-1 font-mono text-[10px] font-semibold leading-none text-[var(--color-text-secondary)]"
+                key={language.code}
+                className="inline-flex items-center gap-1.5 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-1.5 py-1 font-mono text-[10px] font-semibold leading-none text-[var(--color-text-secondary)]"
               >
-                {language}
+                {language.flagUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={language.flagUrl}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="h-3 w-4 rounded-[1px] object-cover"
+                  />
+                ) : null}
+                <span>{language.code}</span>
               </span>
             ))
           ) : (
@@ -396,10 +411,30 @@ export default async function VideosPage({
   const params = (await searchParams) ?? {}
   const requestedPage = parseVideoLibraryPage(params.page)
   const query = parseVideoLibraryQuery(params.q)
-  const { rows: videoRows, pagination } = await loadVideoLibraryPage(
-    principal,
-    { page: requestedPage, query },
-  )
+  const category = parseVideoLibraryCategory(params.type)
+  const language = parseVideoLibraryLanguage(params.language)
+  const sort = parseVideoLibrarySort(params.sort)
+  const {
+    rows: videoRows,
+    pagination,
+    languageOptions,
+  } = await loadVideoLibraryPage(principal, {
+    category,
+    language,
+    page: requestedPage,
+    query,
+    sort,
+  })
+  const paginationState = { category, language, query, sort }
+  const toolbarStateKey = videoLibraryHref({
+    page: 1,
+    ...paginationState,
+  })
+  const hasActiveFilters = hasActiveVideoLibraryFilters({
+    category,
+    language,
+    query,
+  })
   const rangeLabel = paginationSummary(
     page.table.pagination.summary,
     pagination,
@@ -411,7 +446,7 @@ export default async function VideosPage({
 
   return (
     <div className="flex min-w-0 flex-col gap-5">
-      <header className="flex min-w-0 flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <header className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
           <div className="label-text mb-1">{page.eyebrow}</div>
           <h1 className="text-2xl font-semibold tracking-[-0.02em]">
@@ -425,97 +460,29 @@ export default async function VideosPage({
           disabled
           aria-disabled="true"
           title={page.actions.primaryUnavailable}
-          className="shrink-0"
+          className="shrink-0 whitespace-nowrap"
         >
           <Plus className="h-4 w-4" strokeWidth={1.5} />
           {page.actions.primary}
         </PrimaryButton>
       </header>
 
-      <section
-        aria-label={page.table.title}
-        className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_220px]"
-      >
-        <form action="/dashboard/videos" role="search" className="min-w-0">
-          <label htmlFor="video-library-search" className="sr-only">
-            {page.search.label}
-          </label>
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
-              strokeWidth={1.5}
-            />
-            <input
-              id="video-library-search"
-              name="q"
-              type="search"
-              maxLength={VIDEO_LIBRARY_MAX_QUERY_LENGTH}
-              defaultValue={query}
-              placeholder={page.search.placeholder}
-              className="h-10 w-full rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] pl-9 pr-10 font-mono text-[12px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out placeholder:text-[var(--color-text-disabled)] focus:border-[var(--color-brand)] focus:bg-[var(--color-surface-raised)]"
-            />
-            {query ? (
-              <Link
-                href="/dashboard/videos"
-                aria-label={page.search.clear}
-                className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-sm text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
-              >
-                <X className="h-4 w-4" strokeWidth={1.5} />
-              </Link>
-            ) : null}
-          </div>
-          <button type="submit" className="sr-only">
-            {page.search.submit}
-          </button>
-          {query ? (
-            <p className="mt-2 font-mono text-[11px] text-[var(--color-text-muted)]">
-              {page.search.active.replace("{query}", query)}
-            </p>
-          ) : null}
-        </form>
-
-        <div
-          className="flex min-w-0 flex-wrap items-center gap-1 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] p-1"
-          aria-label={page.actions.filter}
-        >
-          {VIDEO_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              disabled={!tab.active}
-              aria-current={tab.active ? "page" : undefined}
-              aria-disabled={tab.active ? undefined : "true"}
-              title={tab.active ? undefined : page.actions.filterUnavailable}
-              className={cx(
-                "h-8 rounded-[2px] px-3 text-[12px] font-medium transition-all duration-[120ms] ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]",
-                tab.active
-                  ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]"
-                  : "text-[var(--color-text-muted)] disabled:opacity-60",
-              )}
-            >
-              {page.tabs[tab.key]}
-            </button>
-          ))}
-        </div>
-
-        <SecondaryButton
-          disabled
-          aria-disabled="true"
-          title={page.sort.unavailable}
-          className="w-full justify-between"
-        >
-          <span className="inline-flex items-center gap-2">
-            <ArrowUpDown className="h-4 w-4" strokeWidth={1.5} />
-            {page.sort.label}
-          </span>
-          <ChevronDown className="h-4 w-4" strokeWidth={1.5} />
-        </SecondaryButton>
+      <section aria-label={page.table.title}>
+        <VideoLibraryToolbar
+          key={toolbarStateKey}
+          category={category}
+          language={language}
+          languageOptions={languageOptions}
+          page={page}
+          query={query}
+          sort={sort}
+        />
       </section>
 
       <section className="app-card min-w-0 overflow-hidden">
         {videoRows.length === 0 ? (
           <div className="px-4 py-10 text-center text-[13px] text-[var(--color-text-muted)]">
-            {query ? page.table.emptySearch : page.table.empty}
+            {hasActiveFilters ? page.table.emptySearch : page.table.empty}
           </div>
         ) : (
           videoRows.map((video) => (
@@ -527,7 +494,7 @@ export default async function VideosPage({
           <span className="font-mono">{rangeLabel}</span>
           <div className="flex items-center gap-2">
             <PaginationControl
-              href={paginationHref(pagination.currentPage - 1, query)}
+              href={paginationHref(pagination.currentPage - 1, paginationState)}
               disabled={!pagination.hasPrevious}
             >
               <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -537,7 +504,7 @@ export default async function VideosPage({
               {currentPageLabel}
             </span>
             <PaginationControl
-              href={paginationHref(pagination.currentPage + 1, query)}
+              href={paginationHref(pagination.currentPage + 1, paginationState)}
               disabled={!pagination.hasNext}
             >
               {page.table.pagination.next}

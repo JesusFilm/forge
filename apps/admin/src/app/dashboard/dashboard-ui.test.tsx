@@ -121,7 +121,11 @@ vi.mock("@/app/dashboard/live-data", () => ({
         sourceTone: "info",
         dubs: "3 dubs · EN, ES, FR",
         dubCount: 3,
-        dubLanguages: ["EN", "ES", "FR"],
+        dubLanguages: [
+          { code: "EN", flagUrl: "https://flags.example.com/us.webp" },
+          { code: "ES", flagUrl: "https://flags.example.com/es.webp" },
+          { code: "FR", flagUrl: null },
+        ],
         dubOverflowCount: 0,
         dubCoveragePercent: 1,
         updated: "10/24/2023, 14:02",
@@ -167,6 +171,10 @@ vi.mock("@/app/dashboard/live-data", () => ({
       rangeStart: 31,
       rangeEnd: 60,
     },
+    languageOptions: [
+      { label: "English", value: "english" },
+      { label: "Spanish", value: "spanish" },
+    ],
   })),
 }))
 
@@ -373,16 +381,82 @@ vi.mock("@/app/dashboard/ops-data", () => ({
       { label: "Countries", value: "2", footer: "ISO_MAPPED" },
       { label: "Locales In Use", value: "2", footer: "CONTENT_ROWS" },
     ],
-    rows: [
+    diagnosticRows: [
       {
-        key: "lang1",
-        title: "en",
-        detail: "slug en",
-        statusLabel: "Reference",
-        statusTone: "muted",
-        meta: "10/24/2023, 14:02",
+        id: "lang1",
+        coreId: "529",
+        source: "CORE",
+        title: "English",
+        subtitle: "en / eng / english",
+        codeLabel: "en / eng / english",
+        bcp47: "en",
+        iso3: "eng",
+        slug: "english",
+        statusLabel: "Linked",
+        statusTone: "success",
+        syncLabel: "Core synced",
+        syncTone: "success",
+        names: [{ locale: "en", value: "English", primary: true }],
+        countryPreviews: [
+          {
+            id: "cl1",
+            coreId: "US",
+            label: "United States",
+            speakers: "270M",
+            primary: true,
+            suggested: true,
+            order: 1,
+          },
+        ],
+        counts: {
+          countryLanguages: 1,
+          videoDubs: 2,
+          videoSubtitles: 4,
+          studyQuestions: 5,
+          primaryVideos: 6,
+          totalContentLinks: 17,
+        },
+        audioPreview: {
+          available: true,
+          value: "https://cdn.example.com/en.mp3",
+          duration: "12s",
+          size: "2.0 KB",
+          bitrate: "128 kbps",
+          codec: "mp3",
+        },
+        timestamps: {
+          createdAt: "10/23/2023, 14:02",
+          createdAtIso: "2023-10-23T14:02:00.000Z",
+          updatedAt: "10/24/2023, 14:02",
+          updatedAtIso: "2023-10-24T14:02:00.000Z",
+          syncedAt: "10/24/2023, 14:02",
+          syncedAtIso: "2023-10-24T14:02:00.000Z",
+        },
+        flags: {
+          linked: true,
+          referenceOnly: false,
+          missingMetadata: false,
+          countryLinked: true,
+          hasDubs: true,
+          hasSubtitles: true,
+          hasStudyQuestions: true,
+          primaryVideoLanguage: true,
+          hasAudioPreview: true,
+          coreSynced: true,
+          syncMissing: false,
+          updatedAfterSync: false,
+          nonCoreSource: false,
+        },
+        searchText:
+          "lang1 529 core english en eng english linked core synced united states",
       },
     ],
+    diagnostics: {
+      softDeletedLanguages: 0,
+      lastSyncedAt: "10/24/2023, 14:02",
+      lastSyncedAtIso: "2023-10-24T14:02:00.000Z",
+      lastSyncStats: [{ key: "updated", value: "1" }],
+    },
     insights: [
       { label: "Locale Footprint", value: "2", detail: "detail" },
       { label: "Language Rows", value: "2", detail: "detail" },
@@ -567,6 +641,7 @@ describe("dashboard UI routes", () => {
     expect(html).toContain("95")
     expect(html).toContain(uiMessages.pages.videos.actions.primary)
     expect(html).toContain(uiMessages.pages.videos.actions.primaryUnavailable)
+    expect(html).toContain("grid-cols-[minmax(0,1fr)_auto]")
     expect(html).toMatch(
       /<button(?=[^>]*aria-disabled="true")(?=[^>]*title="Manual video creation is not available yet.")/,
     )
@@ -579,29 +654,47 @@ describe("dashboard UI routes", () => {
     expect(html).not.toContain(uiMessages.pages.videos.infoStrip.items[0])
     expect(html).not.toContain(uiMessages.pages.videos.summary.total)
     expect(html).not.toContain(uiMessages.pages.videos.signals.title)
-    expect(html).not.toContain("overflow-x-auto")
+    expect(html).toContain("overflow-x-auto")
     expect(html).not.toContain("max-w-[1720px]")
     expect(html).not.toContain("h-[62px]")
     expect(html).not.toContain("minmax(430px")
     expect(html).not.toContain(uiMessages.common.operatorNotes)
     expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
       { id: "test-user", role: "ADMIN" },
-      { page: 2, query: "mux" },
+      {
+        category: "all",
+        language: "",
+        page: 2,
+        query: "mux",
+        sort: "recent",
+      },
     )
     expect(html).toContain(uiMessages.pages.videos.search.label)
     expect(html).toContain(uiMessages.pages.videos.search.placeholder)
     expect(html).toContain('name="q"')
+    expect(html).toContain('name="type"')
+    expect(html).toContain('name="language"')
+    expect(html).toContain('name="sort"')
     expect(html).toContain('value="mux"')
     expect(html).toContain("Filtered by &quot;mux&quot;")
+    expect(html).toContain("All languages")
+    expect(html).toContain('role="combobox"')
+    expect(html).toContain('aria-label="Filter by dubbed language"')
+    expect(html).toContain(uiMessages.pages.videos.filters.ready)
+    expect(html).toContain(uiMessages.pages.videos.sort.options.recent)
+    expect(html).toContain(uiMessages.pages.videos.sort.options.oldest)
     expect(html).toContain('href="/dashboard/videos?q=mux"')
     expect(html).toContain('href="/dashboard/videos?page=3&amp;q=mux"')
     expect(html).toContain("COLLECTION")
     expect(html).toContain("Mux source")
     expect(html).toContain("Internal source")
     expect(html).toContain("languages dubbed")
+    expect(html).toContain("text-[18px] font-semibold leading-6")
     expect(html).toContain("EN")
     expect(html).toContain("ES")
     expect(html).toContain("FR")
+    expect(html).toContain("https://flags.example.com/us.webp")
+    expect(html).toContain("https://flags.example.com/es.webp")
     expect(html).toContain("https://images.example.com/neon.jpg")
     expect(html).toContain("3 years ago")
     expect(html).toContain("10/24/2023")
@@ -640,6 +733,7 @@ describe("dashboard UI routes", () => {
         rangeStart: 0,
         rangeEnd: 0,
       },
+      languageOptions: [],
     })
 
     const html = await htmlFrom(
@@ -648,11 +742,52 @@ describe("dashboard UI routes", () => {
 
     expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
       { id: "test-user", role: "ADMIN" },
-      { page: 1, query: "does-not-exist" },
+      {
+        category: "all",
+        language: "",
+        page: 1,
+        query: "does-not-exist",
+        sort: "recent",
+      },
     )
     expect(html).toContain(uiMessages.pages.videos.table.emptySearch)
     expect(html).not.toContain(uiMessages.pages.videos.table.empty)
     expect(html).toContain('href="/dashboard/videos"')
+  })
+
+  it("preserves video type, language, and sort state in loader calls and links", async () => {
+    const html = await htmlFrom(
+      VideosPage({
+        searchParams: Promise.resolve({
+          language: "english",
+          page: "2",
+          q: "Jesus",
+          sort: "created",
+          type: "features",
+        }),
+      }),
+    )
+
+    expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
+      { id: "test-user", role: "ADMIN" },
+      {
+        category: "features",
+        language: "english",
+        page: 2,
+        query: "Jesus",
+        sort: "created",
+      },
+    )
+    expect(html).toContain('value="features" selected=""')
+    expect(html).toContain('type="hidden" name="language" value="english"')
+    expect(html).toContain("English")
+    expect(html).toContain('value="created" selected=""')
+    expect(html).toContain(
+      'href="/dashboard/videos?type=features&amp;language=english&amp;sort=created"',
+    )
+    expect(html).toContain(
+      'href="/dashboard/videos?page=3&amp;q=Jesus&amp;type=features&amp;language=english&amp;sort=created"',
+    )
   })
 
   it("renders first-page pagination with previous disabled and next linked", async () => {
@@ -669,6 +804,7 @@ describe("dashboard UI routes", () => {
         rangeStart: 1,
         rangeEnd: 30,
       },
+      languageOptions: [],
     })
 
     const html = await htmlFrom(
@@ -698,6 +834,7 @@ describe("dashboard UI routes", () => {
         rangeStart: 91,
         rangeEnd: 95,
       },
+      languageOptions: [],
     })
 
     const html = await htmlFrom(

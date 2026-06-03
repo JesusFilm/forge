@@ -401,6 +401,15 @@ export const adminMessages = {
           clear: "Clear",
           active: 'Filtered by "{query}"',
         },
+        filters: {
+          categoryLabel: "Filter by video type",
+          languageLabel: "Filter by dubbed language",
+          languageSearchPlaceholder: "Filter languages...",
+          languageNoResults: "No matching languages",
+          allLanguages: "All languages",
+          loading: "Thinking...",
+          ready: "Video filters ready",
+        },
         tabs: {
           all: "All",
           collections: "Collections",
@@ -409,8 +418,13 @@ export const adminMessages = {
           series: "Series",
         },
         sort: {
-          label: "Recently updated",
-          unavailable: "Sorting is not available yet.",
+          label: "Sort videos",
+          options: {
+            recent: "Recently updated",
+            oldest: "Oldest updated",
+            created: "Recently created",
+            createdOldest: "Oldest created",
+          },
         },
         coverage: {
           languagesDubbed: "languages dubbed",
@@ -429,7 +443,7 @@ export const adminMessages = {
           meta: "SEARCHABLE_ROWS / TYPE_LABELS / VISITOR_LINKS",
           columns: ["Thumbnail", "Video Details", "Source", "Dubs", "Updated"],
           empty: "No active videos found.",
-          emptySearch: "No active videos match this search.",
+          emptySearch: "No active videos match this search or filter.",
           openVisitorLabel: "Open visitor-facing video page",
           noVisitorLinkLabel: "No public watch link available",
           pagination: {
