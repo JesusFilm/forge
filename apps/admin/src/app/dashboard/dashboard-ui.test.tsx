@@ -571,6 +571,7 @@ describe("dashboard UI routes", () => {
     expect(html).toContain("95")
     expect(html).toContain(uiMessages.pages.videos.actions.primary)
     expect(html).toContain(uiMessages.pages.videos.actions.primaryUnavailable)
+    expect(html).toContain("grid-cols-[minmax(0,1fr)_auto]")
     expect(html).toMatch(
       /<button(?=[^>]*aria-disabled="true")(?=[^>]*title="Manual video creation is not available yet.")/,
     )

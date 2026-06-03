@@ -436,7 +436,7 @@ export default async function VideosPage({
 
   return (
     <div className="flex min-w-0 flex-col gap-5">
-      <header className="flex min-w-0 flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <header className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
           <div className="label-text mb-1">{page.eyebrow}</div>
           <h1 className="text-2xl font-semibold tracking-[-0.02em]">
@@ -450,7 +450,7 @@ export default async function VideosPage({
           disabled
           aria-disabled="true"
           title={page.actions.primaryUnavailable}
-          className="shrink-0"
+          className="shrink-0 whitespace-nowrap"
         >
           <Plus className="h-4 w-4" strokeWidth={1.5} />
           {page.actions.primary}
