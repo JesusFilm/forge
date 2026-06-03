@@ -28,6 +28,15 @@ Two part`
     expect(parseVtt(vtt)[0].text).toBe("Bold and spoken")
   })
 
+  it("strips script-like and nested tags completely", () => {
+    const vtt = `WEBVTT
+
+00:00:00.000 --> 00:00:02.000
+<b><script>x</script></b>Hi`
+    // No tag survives — the strip loops until stable.
+    expect(parseVtt(vtt)[0].text).toBe("xHi")
+  })
+
   it("ignores cue settings on the end timestamp line", () => {
     const vtt = `WEBVTT
 
