@@ -34,7 +34,9 @@ type Row = {
   id: string
   coreId: string
   label: string | null
+  targetLocale: string | null
   primaryLanguageBcp47: string | null
+  languageBcp47: string | null
   muxAssetId: string | null
   subtitleUrl: string | null
 }
@@ -46,7 +48,9 @@ function rowFixture(overrides: Partial<Row> = {}): Row {
     // Prisma exposes the TS enum identifier (UPPER_SNAKE_CASE);
     // the service normalizes it to camelCase on the way out.
     label: "FEATURE_FILM",
+    targetLocale: null,
     primaryLanguageBcp47: "en",
+    languageBcp47: "en",
     muxAssetId: "mux-asset-en",
     subtitleUrl: "https://example.com/en.vtt",
     ...overrides,
@@ -285,7 +289,9 @@ describe("VideoService", () => {
           id: "v-1",
           coreId: "core-1",
           label: "featureFilm",
+          targetLocale: null,
           primaryLanguageBcp47: "en",
+          languageBcp47: "en",
           muxAssetId: "mux-asset-en",
           subtitleUrl: "https://example.com/en.vtt",
         },
@@ -309,6 +315,37 @@ describe("VideoService", () => {
       expect(sql).toContain("mux_video.deleted_at IS NULL")
       expect(sql).toContain("subtitle.deleted_at IS NULL")
       expect(sql).toContain("v.deleted_at IS NULL")
+    })
+
+    it("resolves requested localized dispatch media instead of the primary-language source", async () => {
+      prisma.tx.$queryRaw.mockResolvedValueOnce([
+        rowFixture({
+          targetLocale: "es",
+          primaryLanguageBcp47: "en",
+          languageBcp47: "es",
+          muxAssetId: "mux-asset-es",
+          subtitleUrl: "https://example.com/es.vtt",
+        }),
+      ])
+
+      const [row] = await service.getByCoreIds({
+        coreIds: ["core-1"],
+        targetLocale: "es",
+      })
+
+      expect(row).toEqual(
+        expect.objectContaining({
+          targetLocale: "es",
+          primaryLanguageBcp47: "en",
+          languageBcp47: "es",
+          muxAssetId: "mux-asset-es",
+          subtitleUrl: "https://example.com/es.vtt",
+        }),
+      )
+      const sql = prisma.tx.$queryRaw.mock.calls[0][0].join(" ")
+      expect(sql).toContain("requested_language")
+      expect(sql).toContain("selected_mux.asset_id")
+      expect(sql).toContain("selected_subtitle.vtt_src")
     })
 
     it("sets a transaction-local statement timeout below manager's admin lookup timeout", async () => {
@@ -347,6 +384,7 @@ describe("VideoService", () => {
       prisma.tx.$queryRaw.mockResolvedValueOnce([
         rowFixture({
           primaryLanguageBcp47: null,
+          languageBcp47: null,
           muxAssetId: null,
           subtitleUrl: null,
         }),
@@ -355,6 +393,7 @@ describe("VideoService", () => {
       const [row] = await service.getByCoreIds({ coreIds: ["core-1"] })
 
       expect(row.primaryLanguageBcp47).toBeNull()
+      expect(row.languageBcp47).toBeNull()
       expect(row.muxAssetId).toBeNull()
       expect(row.subtitleUrl).toBeNull()
     })
@@ -454,7 +493,13 @@ describe("VideoService", () => {
       })
 
       expect(result).toHaveLength(1)
-      const coreIdJoin = prisma.tx.$queryRaw.mock.calls[0][1]
+      const coreIdJoin = prisma.tx.$queryRaw.mock.calls[0].find(
+        (value: unknown) =>
+          typeof value === "object" &&
+          value !== null &&
+          "values" in value &&
+          Array.isArray((value as { values?: unknown }).values),
+      ) as { values: string[] }
       expect(coreIdJoin.values).toEqual(["core-1", "core-1"])
     })
 

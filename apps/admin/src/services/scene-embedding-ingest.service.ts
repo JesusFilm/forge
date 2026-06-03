@@ -83,6 +83,7 @@ type ResolvedTarget = {
   videoId: string
   videoEditionId: string
   coreId: string
+  primaryLanguageBcp47: string | null
 }
 
 type ExistingSceneSummary = {
@@ -105,7 +106,12 @@ export type SceneEmbeddingIngestStatus =
 export type SceneEmbeddingIngestResult = {
   status: SceneEmbeddingIngestStatus
   reason?: string
-  target: ResolvedTarget & { locale: string }
+  target: {
+    videoId: string
+    videoEditionId: string
+    coreId: string
+    locale: string
+  }
   scenes: number
   model: string
   dimensions: number
@@ -120,6 +126,7 @@ export class SceneEmbeddingIngestError extends Error {
       | "dimension_mismatch"
       | "scene_invalid"
       | "source_hash_mismatch"
+      | "source_locale_mismatch"
       | "write_failed",
     message: string,
     readonly cause?: unknown,
@@ -218,7 +225,11 @@ async function resolveTarget(
 ): Promise<ResolvedTarget> {
   const row = await prisma.video.findFirst({
     where: { id: payload.target.admin.videoId, deletedAt: null },
-    select: { id: true, coreId: true },
+    select: {
+      id: true,
+      coreId: true,
+      primaryLanguage: { select: { bcp47: true } },
+    },
   })
   if (!row) {
     throw new SceneEmbeddingIngestError(
@@ -255,7 +266,29 @@ async function resolveTarget(
     videoId: row.id,
     videoEditionId: edition.id,
     coreId: payload.target.admin.coreId ?? row.coreId,
+    primaryLanguageBcp47: row.primaryLanguage?.bcp47 ?? null,
   }
+}
+
+function assertSourceArtifactMatchesLocale(
+  payload: SceneEmbeddingIngestPayload,
+  target: ResolvedTarget,
+): void {
+  const locale = normalizeLocale(payload.locale)
+  const primary = normalizeLocale(target.primaryLanguageBcp47)
+  const key = payload.source.artifactKey.toLowerCase()
+
+  if (key.endsWith(`/scene-analysis-${locale}.json`)) return
+  if (key.endsWith("/scene-analysis.json") && primary === locale) return
+
+  throw new SceneEmbeddingIngestError(
+    "source_locale_mismatch",
+    "scene embedding source artifact does not match target locale",
+  )
+}
+
+function normalizeLocale(locale: string | null | undefined): string {
+  return locale?.trim().toLowerCase() ?? ""
 }
 
 async function readExistingSceneSummary(
@@ -322,11 +355,20 @@ function resultForRejected(
   return {
     status: "rejected",
     reason,
-    target: { ...target, locale: payload.locale },
+    target: publicTarget(target, payload.locale),
     scenes: payload.scenes.length,
     model: payload.model.name,
     dimensions: payload.model.dimensions,
     mastraRunId: payload.generation.mastraRunId,
+  }
+}
+
+function publicTarget(target: ResolvedTarget, locale: string) {
+  return {
+    videoId: target.videoId,
+    videoEditionId: target.videoEditionId,
+    coreId: target.coreId,
+    locale,
   }
 }
 
@@ -403,6 +445,7 @@ export async function ingestSceneEmbeddings(
   const scenes = validateScenes(payload)
   const hash = sourceContentHash(payload)
   const target = await resolveTarget(prisma, payload)
+  assertSourceArtifactMatchesLocale(payload, target)
   const mode = payload.generation.mode as SceneEmbeddingGenerationMode
 
   return prisma.$transaction(
@@ -424,7 +467,7 @@ export async function ingestSceneEmbeddings(
         ) {
           return {
             status: "unchanged",
-            target: { ...target, locale: payload.locale },
+            target: publicTarget(target, payload.locale),
             scenes: payload.scenes.length,
             model: payload.model.name,
             dimensions: payload.model.dimensions,
@@ -449,7 +492,7 @@ export async function ingestSceneEmbeddings(
         ) {
           return {
             status: "unchanged",
-            target: { ...target, locale: payload.locale },
+            target: publicTarget(target, payload.locale),
             scenes: payload.scenes.length,
             model: payload.model.name,
             dimensions: payload.model.dimensions,
@@ -470,7 +513,7 @@ export async function ingestSceneEmbeddings(
 
       return {
         status,
-        target: { ...target, locale: payload.locale },
+        target: publicTarget(target, payload.locale),
         scenes: payload.scenes.length,
         model: payload.model.name,
         dimensions: payload.model.dimensions,

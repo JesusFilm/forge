@@ -128,6 +128,44 @@ describe("launchMastraSceneEmbedding", () => {
     expect(JSON.stringify(body)).not.toContain("embedding")
   })
 
+  it("posts the locale-specific scene-analysis artifact key when embedding a localized artifact", async () => {
+    const fetchImpl = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        Response.json({ result: successResult }),
+    )
+
+    await launchMastraSceneEmbedding(
+      {
+        target: {
+          videoId: "v-1",
+          videoEditionId: "e-1",
+          coreId: "core-1",
+        },
+        locale: "es",
+        assetId: 42,
+        sceneAnalysis: sceneAnalysis(),
+        sourceArtifactLocale: "es",
+      },
+      {
+        baseUrl: "https://mastra.internal",
+        bearer: "secret",
+        fetchImpl,
+      },
+    )
+
+    const body = JSON.parse(
+      String(fetchImpl.mock.calls[0]?.[1]?.body),
+    ) as Record<string, unknown>
+    expect(body).toMatchObject({
+      locale: "es",
+      sceneAnalysis: {
+        artifactKey: "42/scene-analysis-es.json",
+        artifactVersion: "manager-scene-analysis-v1",
+        provider: "manager",
+      },
+    })
+  })
+
   it("returns Mastra product failures and upstream auth failures safely", async () => {
     const productFailure = {
       ok: false,

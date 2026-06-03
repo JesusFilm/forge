@@ -22,6 +22,7 @@ describe("isLocale (generated UI catalogs only)", () => {
     expect(isLocale("fr")).toBe(true)
     expect(isLocale("pt")).toBe(true)
     expect(isLocale("de")).toBe(true)
+    expect(isLocale("bn")).toBe(true)
   })
 
   it("rejects English-name kebab slugs", () => {
@@ -113,6 +114,7 @@ describe("public watch language slug guards", () => {
 
   it("infers public audio slugs for generated locales outside the original core set", () => {
     expect(publicWatchAudioLanguageSlugForLocale("ru")).toBe("russian")
+    expect(publicWatchAudioLanguageSlugForLocale("bn")).toBe("bangla-2")
     expect(publicWatchHomeLanguageSlugForLocale("es-419")).toBe(
       "spanish-latin-american",
     )
@@ -191,7 +193,7 @@ describe("parseAcceptLanguage", () => {
   })
 
   it("returns null when no generated catalog is available", () => {
-    expect(parseAcceptLanguage("zu-ZA,zu;q=0.9")).toBeNull()
+    expect(parseAcceptLanguage("aiw-ET,aiw;q=0.9")).toBeNull()
   })
 })
 
@@ -219,6 +221,7 @@ describe("resolveUiLocale (catalog-driven fallback)", () => {
 
   it("passes bcp47 UI locales through unchanged", () => {
     expect(resolveUiLocale("en")).toBe("en")
+    expect(resolveUiLocale("bn")).toBe("bn")
     expect(resolveUiLocale("es")).toBe("es")
     expect(resolveUiLocale("es-419")).toBe("es")
     expect(resolveUiLocale("fr")).toBe("fr")
@@ -227,10 +230,9 @@ describe("resolveUiLocale (catalog-driven fallback)", () => {
   })
 
   it("returns null for languages outside generated UI catalogs", () => {
-    // Zulu and Swahili are valid public audio languages, but this app has no
-    // generated UI catalogs for those chrome languages yet.
-    expect(resolveUiLocale("zulu")).toBeNull()
-    expect(resolveUiLocale("swahili")).toBeNull()
+    // Aari is a valid public audio language, but it is not part of the
+    // official-language inventory catalog rollout.
+    expect(resolveUiLocale("aari")).toBeNull()
   })
 
   it("returns null for unknown slugs and content-slug shapes", () => {
@@ -258,13 +260,17 @@ describe("resolveWatchLocaleIdentity", () => {
   })
 
   it("keeps unsupported audio families in the URL while falling chrome back to English", () => {
-    expect(resolveWatchLocaleIdentity("zulu")).toEqual({
+    expect(resolveWatchLocaleIdentity("aari")).toEqual({
       locale: "en",
       htmlLang: "en",
     })
   })
 
   it("uses imported chrome catalogs for old watch app locales", () => {
+    expect(resolveWatchLocaleIdentity("bangla-2")).toEqual({
+      locale: "bn",
+      htmlLang: "bn",
+    })
     expect(resolveWatchLocaleIdentity("russian")).toEqual({
       locale: "ru",
       htmlLang: "ru",

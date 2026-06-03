@@ -16,6 +16,7 @@ import {
   ManagerArtifactError,
   readSceneAnalysisArtifact,
   readTranscriptSourceArtifact,
+  sceneAnalysisArtifactKey,
   type SceneAnalysisResult,
 } from "./manager-artifacts.service"
 
@@ -25,11 +26,15 @@ import {
 // test` runs without Doppler, so the fallback is the default.
 const LOCAL_DIR = join(process.cwd(), ".tmp", "artifacts")
 
-async function seedArtifact(assetId: string, body: unknown) {
+async function seedArtifact(
+  assetId: string,
+  body: unknown,
+  filename = "scene-analysis.json",
+) {
   const dir = join(LOCAL_DIR, assetId)
   await mkdir(dir, { recursive: true })
   await writeFile(
-    join(dir, "scene-analysis.json"),
+    join(dir, filename),
     typeof body === "string" ? body : JSON.stringify(body),
   )
 }
@@ -42,6 +47,8 @@ const SEEDED_IDS = [
   "test-asset-valid",
   "test-asset-empty",
   "test-asset-bad-json",
+  "test-asset-es",
+  "test-asset-es-bad-provenance",
 ]
 
 const validArtifact: SceneAnalysisResult = {
@@ -78,6 +85,54 @@ describe("readSceneAnalysisArtifact", () => {
     await seedArtifact("test-asset-valid", validArtifact)
     await seedArtifact("test-asset-empty", { scenes: [] })
     await seedArtifact("test-asset-bad-json", "not-json-at-all")
+    await seedArtifact(
+      "test-asset-es",
+      {
+        ...validArtifact,
+        provenance: {
+          artifactKey: "test-asset-es/scene-analysis-es.json",
+          generationMode: "raw-localized",
+          requestedLocale: "es",
+          inputLanguageBcp47: "es",
+          mediaSource: {
+            kind: "mux",
+            muxAssetId: "mux-es",
+            playbackId: "playback-es",
+          },
+          transcriptSource: {
+            kind: "subtitle-url",
+            languageBcp47: "es",
+            subtitleUrl: "https://example.test/es.vtt",
+          },
+          generatedAt: "2026-06-02T00:00:00.000Z",
+        },
+      },
+      "scene-analysis-es.json",
+    )
+    await seedArtifact(
+      "test-asset-es-bad-provenance",
+      {
+        ...validArtifact,
+        provenance: {
+          artifactKey: "test-asset-es-bad-provenance/scene-analysis-es.json",
+          generationMode: "source",
+          requestedLocale: null,
+          inputLanguageBcp47: "en",
+          mediaSource: {
+            kind: "mux",
+            muxAssetId: "mux-en",
+            playbackId: "playback-en",
+          },
+          transcriptSource: {
+            kind: "subtitle-url",
+            languageBcp47: "en",
+            subtitleUrl: "https://example.test/en.vtt",
+          },
+          generatedAt: "2026-06-02T00:00:00.000Z",
+        },
+      },
+      "scene-analysis-es.json",
+    )
   })
 
   afterAll(async () => {
@@ -94,6 +149,34 @@ describe("readSceneAnalysisArtifact", () => {
   it("returns an empty scenes array without error when scenes is empty", async () => {
     const result = await readSceneAnalysisArtifact("test-asset-empty")
     expect(result.scenes).toEqual([])
+  })
+
+  it("reads locale-specific artifacts and validates raw localized provenance", async () => {
+    const result = await readSceneAnalysisArtifact("test-asset-es", "es")
+
+    expect(result.scenes).toHaveLength(2)
+    expect(result.provenance).toMatchObject({
+      artifactKey: "test-asset-es/scene-analysis-es.json",
+      generationMode: "raw-localized",
+      requestedLocale: "es",
+      inputLanguageBcp47: "es",
+      transcriptSource: {
+        kind: "subtitle-url",
+        languageBcp47: "es",
+      },
+    })
+    expect(sceneAnalysisArtifactKey("test-asset-es", "es")).toBe(
+      "test-asset-es/scene-analysis-es.json",
+    )
+  })
+
+  it("rejects localized artifacts whose provenance is source-language", async () => {
+    await expect(
+      readSceneAnalysisArtifact("test-asset-es-bad-provenance", "es"),
+    ).rejects.toMatchObject({
+      name: "ManagerArtifactError",
+      code: "artifact_invalid",
+    })
   })
 
   it("throws artifact_missing when the artifact does not exist", async () => {

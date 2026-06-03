@@ -822,6 +822,10 @@ type Mutation {
     coreIds: [String!]!
     """Enrichment kind. Must be "scene-analysis" or "transcript"."""
     kind: String!
+    """
+    Optional target locales/languages to run for each requested video. When supplied, Admin expands every asset/core pair across these locales and Manager must resolve matching localized media.
+    """
+    targetLocales: [String!]
   ): JSON
   """
   Queue or retry image enrichment for a media asset. Human-protected localized fields are preserved by the workflow.
@@ -1007,7 +1011,7 @@ type Query {
   """
   Batched coreId → dispatch-fields lookup for manager's admin-trigger enrichment endpoints (feat-125). Replaces the Strapi `videos(filters: { coreId: { in } })` call. Gated by `read:video-metadata`; manager's `ADMIN_EMBED_TRIGGER_API_KEY` bearer satisfies it via the WORKFLOW_TRIGGER allowlist. Max 100 coreIds per call (matches manager's receiver-side cap).
   """
-  videosByCoreIds(coreIds: [String!]!): [VideoForEnrichment!]
+  videosByCoreIds(coreIds: [String!]!, targetLocale: String): [VideoForEnrichment!]
   """
   Per-locale homepage configuration. Replaces Strapi's `watchSetting` (consumer-migration U2, 2026-05-11). Locale-fallback is STRICT NULL.
   """
@@ -1276,15 +1280,23 @@ type VideoForEnrichment {
   """
   label: String
   """
-  Mux assetId of the primary-language dub; null when no matching variant exists.
+  BCP-47 tag of the actual dispatch media language. Equals the primary language for source dispatches and the requested target language for localized dispatches when available.
+  """
+  languageBcp47: String
+  """
+  Mux assetId of the selected dispatch dub; null when no matching variant exists.
   """
   muxAssetId: String
   """BCP-47 tag of the video's primary language; null when unattested."""
   primaryLanguageBcp47: String
   """
-  VTT URL of the best primary-language subtitle (primary + non-AI preferred); null when no candidate exists.
+  VTT URL of the best selected-language subtitle (primary + non-AI preferred); null when no candidate exists.
   """
   subtitleUrl: String
+  """
+  Requested target locale used for this dispatch lookup; null when the primary-language source projection was requested.
+  """
+  targetLocale: String
 }
 
 """Full-bleed hero video block with optional CTA overlay."""

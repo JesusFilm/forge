@@ -694,6 +694,13 @@ async function stepSceneAnalysisAndSync(input: {
     {
       videoLabel: input.videoLabel,
       bibleVerses: input.bibleVerses,
+      inputLanguageBcp47: input.language,
+      muxAssetId: input.muxAssetId,
+      transcriptSource: {
+        kind: "mux-transcription",
+        languageBcp47: input.language,
+        muxAssetId: input.muxAssetId,
+      },
     },
   )
 
