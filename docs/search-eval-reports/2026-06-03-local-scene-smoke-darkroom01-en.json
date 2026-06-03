@@ -1,0 +1,37 @@
+{
+  "event": "run-embeds.complete",
+  "pipeline": "scene",
+  "wallClockMs": 27863,
+  "reports": {
+    "scene": {
+      "mappingGeneratedAt": "2026-04-27T21:40:47.352Z",
+      "totalTargets": 1,
+      "localeFilter": [
+        "en"
+      ],
+      "outcomes": [
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nw70wpsqsl381px1wge",
+            "videoEditionId": "cmoqa7nwk0wq7qsl3wwhwi7ll",
+            "coreId": "10_Darkroom01Doubt",
+            "cmsVideoId": 508,
+            "locale": "en"
+          },
+          "locale": "en",
+          "scenesIndexed": 6,
+          "embeddingsWritten": 6,
+          "durationMs": 20945
+        }
+      ],
+      "succeeded": 1,
+      "skipped": 0,
+      "failed": 0,
+      "missingArtifacts": [],
+      "retrySelection": null,
+      "groupedFailures": []
+    }
+  },
+  "contentBackfillGateBypass": null
+}

@@ -93,7 +93,7 @@ function buildArtifact(
     },
   }))
   return {
-    model: "openai/text-embedding-3-small",
+    model: "embeddings",
     dimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
     chunks,
     averagedEmbedding: new Array(EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS).fill(
@@ -249,6 +249,11 @@ describe("indexEditionTranscript", () => {
       language: "en",
       user: ADMIN,
       loadedArtifact: buildArtifact({ chunkCount: 3 }),
+      provenance: {
+        embeddingProvider: "jesus-film-ai-gateway",
+        embeddingNativeDimensions: 4096,
+        embeddingTransformVersion: "matryoshka-truncate-1536-v1",
+      },
     })
 
     expect(result).toMatchObject({
@@ -257,7 +262,7 @@ describe("indexEditionTranscript", () => {
       chunksIndexed: 3,
       embeddingsWritten: 3,
       chunksPruned: 0,
-      model: "openai/text-embedding-3-small",
+      model: "embeddings",
       dimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
     })
     expect(videoTranscriptUpsert).toHaveBeenCalledTimes(1)
@@ -271,8 +276,11 @@ describe("indexEditionTranscript", () => {
         create: expect.objectContaining({
           videoEditionId: "edition-1",
           language: "en",
-          model: "openai/text-embedding-3-small",
+          model: "embeddings",
           dimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+          embeddingProvider: "jesus-film-ai-gateway",
+          embeddingNativeDimensions: 4096,
+          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
           chunkingType: "segment-aware",
           totalChunks: 3,
         }),
@@ -388,6 +396,7 @@ describe("indexEditionTranscript", () => {
       expect.arrayContaining([
         "openai/text-embedding-3-small",
         "text-embedding-3-small",
+        "embeddings",
       ]),
     )
     expect(typeof parsed.note).toBe("string")

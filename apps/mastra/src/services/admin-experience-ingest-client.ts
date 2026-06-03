@@ -22,7 +22,9 @@ export type AdminExperienceEmbeddingIngestPayload = {
   model: {
     name: string
     dimensions: number
+    nativeDimensions?: number
     provider?: string
+    transformVersion?: string
   }
   generation: {
     mode: ExperienceEmbeddingGenerationMode

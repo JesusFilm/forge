@@ -40,6 +40,10 @@ Origin documents:
 - Transcript, scene, and experience workflows share provider-result validation
   for count alignment, finite vector values, and configured dimensions. Invalid
   provider output must throw inside the workflow so Studio records a failed run.
+- AI Gateway content embeddings request the normal OpenAI-compatible embedding
+  response, then truncate gateway-native vectors to 1536 dimensions and
+  re-normalize them in Mastra before Admin ingest. Do not send `dimensions`
+  through LiteLLM.
 - Transcript, scene, and experience workflows share Admin ingest transport
   behavior but keep separate Admin endpoints, local schemas, and type-specific
   payload parsing. Do not replace them with a generic embedding blob route.
@@ -71,6 +75,13 @@ pnpm --filter @forge/mastra lint
 | `DATABASE_URL`                           | Postgres connection string for Mastra runtime storage. Required in production runtime.                                     |
 | `MASTRA_SERVICE_API_KEYS`                | CSV allowlist for service bearer calls. Required in production runtime.                                                    |
 | `MASTRA_NATIVE_EVAL_ENVIRONMENT`         | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                        |
+| `MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE` | Selects content embedding provider posture: `gateway` or `legacy`. Production and gateway-key env imply `gateway`.         |
+| `AI_GATEWAY_EMBEDDINGS_API_KEY`          | Mastra-owned Jesus Film AI Gateway embeddings key. Required when content provider mode resolves to `gateway`.              |
+| `AI_GATEWAY_EMBEDDINGS_BASE_URL`         | OpenAI-compatible AI Gateway embeddings base URL. Defaults to `https://ai-gateway.jesusfilm.org/v1`.                       |
+| `AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS`    | Production allowlist for gateway credential egress. Defaults to `ai-gateway.jesusfilm.org`.                                |
+| `AI_GATEWAY_EMBEDDINGS_USER_AGENT`       | Non-default user agent for AI Gateway embedding requests. Defaults to `forge-mastra-content-embeddings/1.0`.               |
+| `AI_GATEWAY_EMBEDDINGS_MODEL`            | Model sent to the AI Gateway embeddings endpoint. Defaults to `embeddings`.                                                |
+| `AI_GATEWAY_EMBEDDINGS_PROVIDER`         | Provider provenance label sent through Admin ingest metadata. Defaults to `jesus-film-ai-gateway`.                         |
 | `MASTRA_STORAGE_DIR`                     | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway. |
 | `MASTRA_STORAGE_BACKEND`                 | Mastra runtime storage backend. Use `postgres` normally; `memory` is local/test-only and rejected in production.           |
 | `OPENROUTER_API_KEY`                     | OpenRouter key for locale-quality eval query generation and offline compare judging. Required for compare mode.            |
@@ -197,6 +208,26 @@ and `release-gate` mode adds explicit pass/fail thresholds for losses, search
 failures, judge failures, judge disagreements, and calibration.
 `resumeReportId` skips offline search execution and retries native report sync
 for an existing report artifact.
+
+For the AI Gateway content embedding migration, run the release gate through
+the local helper so the sanitized gate JSON is written under
+`docs/search-eval-reports/`:
+
+```bash
+pnpm --filter @forge/mastra eval:content-embedding-gate -- \
+  --baseline-name=prod-seed-baseline-YYYY-MM-DD \
+  --environment-label=local
+```
+
+The helper requires an assigned judge, non-skipped passing calibration,
+non-negative net win rate, at least one comparable query, and no configured
+loss/search/judge/disagreement failures before it exits zero. The emitted JSON
+has `kind=content-search-eval-gate-report`, embeds the sanitized comparison
+report and orchestrator summary, and stamps the evaluated content embedding
+provider as Jesus Film AI Gateway `embeddings` with 4096 native dimensions,
+1536 final dimensions, and `matryoshka-truncate-1536-v1`. That JSON is the gate
+artifact consumed by Admin's
+`run-embeds --pipeline=all --gate-report=docs/search-eval-reports/<id>.json`.
 
 Candidate generation and seed candidate submission are explicit opt-ins. The
 orchestrator must never promote generated, trace-derived, seed, or

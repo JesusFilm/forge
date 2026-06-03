@@ -71,6 +71,8 @@ export type ExperienceEmbeddingProvenance = {
   model: string
   dimensions: number
   provider?: string
+  nativeDimensions?: number
+  transformVersion?: string
   generationMode: ExperienceEmbeddingGenerationMode
   mastraRunId: string
   generatedAt: string
@@ -402,6 +404,8 @@ export async function writeExperienceEmbeddingPayloadInTransaction(
         embedding_model = ${provenance.model},
         embedding_dimensions = ${provenance.dimensions},
         embedding_provider = ${provenance.provider ?? null},
+        embedding_native_dimensions = ${provenance.nativeDimensions ?? null},
+        embedding_transform_version = ${provenance.transformVersion ?? null},
         embedding_generation_mode = ${provenance.generationMode},
         embedding_mastra_run_id = ${provenance.mastraRunId},
         embedding_generated_at = ${new Date(provenance.generatedAt)},

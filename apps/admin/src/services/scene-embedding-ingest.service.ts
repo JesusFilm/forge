@@ -61,7 +61,9 @@ export const SceneEmbeddingIngestPayloadSchema = z
       .object({
         name: z.string().min(1),
         dimensions: z.number().int().positive(),
+        nativeDimensions: z.number().int().positive().optional(),
         provider: z.string().min(1).optional(),
+        transformVersion: z.string().min(1).optional(),
       })
       .strict(),
     generation: z
@@ -92,6 +94,12 @@ type ExistingSceneSummary = {
   sourceContentHashes: readonly string[]
   models: readonly string[]
   dimensions: readonly number[]
+  embeddingProviderCount: number
+  embeddingProviders: readonly string[]
+  embeddingNativeDimensionCount: number
+  embeddingNativeDimensions: readonly number[]
+  embeddingTransformVersionCount: number
+  embeddingTransformVersions: readonly string[]
 }
 
 export type SceneEmbeddingIngestStatus =
@@ -271,6 +279,12 @@ async function readExistingSceneSummary(
       source_hashes: string[] | null
       models: string[] | null
       dimensions: number[] | null
+      embedding_provider_count: number | bigint
+      embedding_providers: string[] | null
+      embedding_native_dimension_count: number | bigint
+      embedding_native_dimensions: number[] | null
+      embedding_transform_version_count: number | bigint
+      embedding_transform_versions: string[] | null
     }>
   >`
     SELECT
@@ -279,7 +293,13 @@ async function readExistingSceneSummary(
       COUNT(vsl.source_content_hash) AS source_hash_count,
       ARRAY_REMOVE(ARRAY_AGG(DISTINCT vsl.source_content_hash), NULL) AS source_hashes,
       ARRAY_AGG(DISTINCT vsl.model) AS models,
-      ARRAY_AGG(DISTINCT vsl.dimensions) AS dimensions
+      ARRAY_AGG(DISTINCT vsl.dimensions) AS dimensions,
+      COUNT(vsl.embedding_provider) AS embedding_provider_count,
+      ARRAY_REMOVE(ARRAY_AGG(DISTINCT vsl.embedding_provider), NULL) AS embedding_providers,
+      COUNT(vsl.embedding_native_dimensions) AS embedding_native_dimension_count,
+      ARRAY_REMOVE(ARRAY_AGG(DISTINCT vsl.embedding_native_dimensions), NULL) AS embedding_native_dimensions,
+      COUNT(vsl.embedding_transform_version) AS embedding_transform_version_count,
+      ARRAY_REMOVE(ARRAY_AGG(DISTINCT vsl.embedding_transform_version), NULL) AS embedding_transform_versions
     FROM video_scene_locale vsl
     JOIN video_scene vs ON vs.id = vsl.video_scene_id
     WHERE vs.video_edition_id = ${target.videoEditionId}
@@ -294,7 +314,60 @@ async function readExistingSceneSummary(
     sourceContentHashes: row.source_hashes ?? [],
     models: row.models ?? [],
     dimensions: row.dimensions ?? [],
+    embeddingProviderCount: Number(row.embedding_provider_count),
+    embeddingProviders: row.embedding_providers ?? [],
+    embeddingNativeDimensionCount: Number(row.embedding_native_dimension_count),
+    embeddingNativeDimensions: row.embedding_native_dimensions ?? [],
+    embeddingTransformVersionCount: Number(
+      row.embedding_transform_version_count,
+    ),
+    embeddingTransformVersions: row.embedding_transform_versions ?? [],
   }
+}
+
+function legacyOpenAiProviderMatches(
+  existing: ExistingSceneSummary,
+  payload: SceneEmbeddingIngestPayload,
+): boolean {
+  return (
+    existing.embeddingProviderCount === 0 &&
+    existing.embeddingNativeDimensionCount === existing.rowCount &&
+    existing.embeddingNativeDimensions.length === 1 &&
+    existing.embeddingNativeDimensions[0] === payload.model.dimensions &&
+    existing.embeddingTransformVersionCount === 0 &&
+    payload.model.provider === "openai" &&
+    payload.model.nativeDimensions == null &&
+    payload.model.transformVersion == null &&
+    (existing.models[0] === "openai/text-embedding-3-small" ||
+      existing.models[0] === "text-embedding-3-small")
+  )
+}
+
+function providerProvenanceMatches(
+  existing: ExistingSceneSummary,
+  payload: SceneEmbeddingIngestPayload,
+): boolean {
+  if (legacyOpenAiProviderMatches(existing, payload)) return true
+  return (
+    existing.embeddingProviderCount ===
+      (payload.model.provider ? existing.rowCount : 0) &&
+    existing.embeddingProviders.length === (payload.model.provider ? 1 : 0) &&
+    (payload.model.provider == null ||
+      existing.embeddingProviders[0] === payload.model.provider) &&
+    existing.embeddingNativeDimensionCount ===
+      (payload.model.nativeDimensions ? existing.rowCount : 0) &&
+    existing.embeddingNativeDimensions.length ===
+      (payload.model.nativeDimensions ? 1 : 0) &&
+    (payload.model.nativeDimensions == null ||
+      existing.embeddingNativeDimensions[0] ===
+        payload.model.nativeDimensions) &&
+    existing.embeddingTransformVersionCount ===
+      (payload.model.transformVersion ? existing.rowCount : 0) &&
+    existing.embeddingTransformVersions.length ===
+      (payload.model.transformVersion ? 1 : 0) &&
+    (payload.model.transformVersion == null ||
+      existing.embeddingTransformVersions[0] === payload.model.transformVersion)
+  )
 }
 
 function existingMatches(
@@ -310,7 +383,8 @@ function existingMatches(
     existing.models.length === 1 &&
     existing.models[0] === payload.model.name &&
     existing.dimensions.length === 1 &&
-    existing.dimensions[0] === payload.model.dimensions
+    existing.dimensions[0] === payload.model.dimensions &&
+    providerProvenanceMatches(existing, payload)
   )
 }
 
@@ -348,6 +422,9 @@ async function writePayload(
       dimensions: payload.model.dimensions,
       scenes,
       provenance: {
+        embeddingProvider: payload.model.provider,
+        embeddingNativeDimensions: payload.model.nativeDimensions,
+        embeddingTransformVersion: payload.model.transformVersion,
         sourceArtifactKey: payload.source.artifactKey,
         sourceArtifactVersion: payload.source.artifactVersion,
         sourceContentHash: hash,

@@ -35,7 +35,9 @@ export const ExperienceEmbeddingIngestPayloadSchema = z
       .object({
         name: z.string().min(1),
         dimensions: z.number().int().positive(),
+        nativeDimensions: z.number().int().positive().optional(),
         provider: z.string().min(1).optional(),
+        transformVersion: z.string().min(1).optional(),
       })
       .strict(),
     generation: z
@@ -65,6 +67,9 @@ type ExistingExperienceEmbeddingSummary = {
   sourceSummary: string | null
   model: string | null
   dimensions: number | null
+  provider: string | null
+  nativeDimensions: number | null
+  transformVersion: string | null
 }
 
 export type ExperienceEmbeddingIngestStatus =
@@ -193,6 +198,9 @@ async function readExistingSummary(
       source_summary: string | null
       model: string | null
       dimensions: number | null
+      provider: string | null
+      native_dimensions: number | null
+      transform_version: string | null
     }>
   >`
     SELECT
@@ -200,7 +208,10 @@ async function readExistingSummary(
       embedding_source_content_hash AS source_content_hash,
       embedding_source_summary AS source_summary,
       embedding_model AS model,
-      embedding_dimensions AS dimensions
+      embedding_dimensions AS dimensions,
+      embedding_provider AS provider,
+      embedding_native_dimensions AS native_dimensions,
+      embedding_transform_version AS transform_version
     FROM experience_locale
     WHERE id = ${localeId}
   `
@@ -212,6 +223,9 @@ async function readExistingSummary(
     sourceSummary: row.source_summary,
     model: row.model,
     dimensions: row.dimensions,
+    provider: row.provider,
+    nativeDimensions: row.native_dimensions,
+    transformVersion: row.transform_version,
   }
 }
 
@@ -223,7 +237,11 @@ function existingMatches(
     existing.sourceContentHash === payload.source.contentHash &&
     existing.sourceSummary === payload.source.summary &&
     existing.model === payload.model.name &&
-    existing.dimensions === payload.model.dimensions
+    existing.dimensions === payload.model.dimensions &&
+    existing.provider === (payload.model.provider ?? null) &&
+    existing.nativeDimensions ===
+      (payload.model.nativeDimensions ?? existing.dimensions) &&
+    existing.transformVersion === (payload.model.transformVersion ?? null)
   )
 }
 
@@ -251,7 +269,10 @@ function isFirstExperienceEmbeddingWrite(
       existing.sourceContentHash == null &&
       existing.sourceSummary == null &&
       existing.model == null &&
-      existing.dimensions == null)
+      existing.dimensions == null &&
+      existing.provider == null &&
+      existing.nativeDimensions == null &&
+      existing.transformVersion == null)
   )
 }
 
@@ -283,6 +304,8 @@ async function writePayload(
         model: payload.model.name,
         dimensions: payload.model.dimensions,
         provider: payload.model.provider,
+        nativeDimensions: payload.model.nativeDimensions,
+        transformVersion: payload.model.transformVersion,
         generationMode: payload.generation.mode,
         mastraRunId: payload.generation.mastraRunId,
         generatedAt: payload.generation.generatedAt,

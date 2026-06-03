@@ -135,6 +135,8 @@ const WorkflowSuccessSchema = z
     model: z.string(),
     provider: z.string(),
     dimensions: z.number().int().positive(),
+    nativeDimensions: z.number().int().positive().optional(),
+    transformVersion: z.string().optional(),
     mastraRunId: z.string(),
     sourceContentHash: z.string(),
   })
@@ -198,6 +200,8 @@ type EmbeddedScene = PlannedScene & { embedding: number[] }
 type EmbeddedRun = Omit<PlannedRun, "source"> & {
   source: Omit<PlannedRun["source"], "scenes"> & { scenes: EmbeddedScene[] }
   dimensions: number
+  nativeDimensions?: number
+  transformVersion?: string
   providerTokenCount: number
 }
 export type SceneEmbeddingWorkflowResult = z.infer<
@@ -503,6 +507,7 @@ export function planSceneEmbeddingRun(
   },
 ): PlannedRun {
   const input = SceneEmbeddingWorkflowInputSchema.parse(rawInput)
+  const providerConfig = getSceneEmbeddingProviderConfig()
   const scenes = assertSceneInput(input.sceneAnalysis.scenes)
   return {
     target: input.target,
@@ -518,8 +523,8 @@ export function planSceneEmbeddingRun(
       contentHash: sourceContentHash(scenes, input.locale),
     },
     model: {
-      name: input.model?.name ?? env.SCENE_EMBEDDING_MODEL,
-      provider: input.model?.provider ?? env.SCENE_EMBEDDING_PROVIDER,
+      name: input.model?.name ?? providerConfig.model,
+      provider: input.model?.provider ?? providerConfig.provider,
     },
     generation: {
       generatedAt: options.generatedAt ?? new Date().toISOString(),
@@ -548,9 +553,13 @@ export async function embedPlannedScenes(
             model: planned.model.name,
             provider: planned.model.provider,
             expectedDimensions: EXPECTED_SCENE_EMBEDDING_DIMENSIONS,
+            expectedNativeDimensions: providerConfig.expectedNativeDimensions,
+            truncateToDimensions: providerConfig.truncateToDimensions,
+            transformVersion: providerConfig.transformVersion,
+            userAgent: providerConfig.userAgent,
             context: "Scene embedding batch",
             itemLabel: "scene descriptions",
-            timeoutMs: options.timeoutMs,
+            timeoutMs: options.timeoutMs ?? providerConfig.timeoutMs,
             fetchImpl: options.fetchImpl,
           })
       return validateEmbeddingProviderResult(rawResult, input.length, {
@@ -575,6 +584,8 @@ export async function embedPlannedScenes(
       })),
     },
     dimensions: EXPECTED_SCENE_EMBEDDING_DIMENSIONS,
+    nativeDimensions: result.nativeDimensions,
+    transformVersion: result.transformVersion,
     providerTokenCount: result.tokenCount,
   }
 }
@@ -596,6 +607,12 @@ function toAdminPayload(
       name: embedded.model.name,
       provider: embedded.model.provider,
       dimensions: embedded.dimensions,
+      ...(embedded.nativeDimensions
+        ? { nativeDimensions: embedded.nativeDimensions }
+        : {}),
+      ...(embedded.transformVersion
+        ? { transformVersion: embedded.transformVersion }
+        : {}),
     },
     generation: {
       mode: embedded.mode as SceneEmbeddingGenerationMode,
@@ -628,6 +645,8 @@ function successFromAdminResult(
     model: result.model,
     provider: embedded.model.provider,
     dimensions: result.dimensions,
+    nativeDimensions: embedded.nativeDimensions,
+    transformVersion: embedded.transformVersion,
     mastraRunId: embedded.generation.mastraRunId,
     sourceContentHash: embedded.source.contentHash,
   }

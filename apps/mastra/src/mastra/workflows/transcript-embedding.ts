@@ -179,6 +179,8 @@ const WorkflowSuccessSchema = z
     model: z.string(),
     provider: z.string(),
     dimensions: z.number().int().positive(),
+    nativeDimensions: z.number().int().positive().optional(),
+    transformVersion: z.string().optional(),
     mastraRunId: z.string(),
     sourceContentHash: z.string(),
     chunking: z
@@ -263,6 +265,8 @@ type PlannedRun = {
 type EmbeddedChunk = PlannedChunk & { embedding: number[] }
 type EmbeddedRun = Omit<PlannedRun, "chunks"> & {
   dimensions: number
+  nativeDimensions?: number
+  transformVersion?: string
   providerTokenCount: number
   chunks: EmbeddedChunk[]
 }
@@ -752,6 +756,7 @@ export function planTranscriptEmbeddingRun(
   },
 ): PlannedRun {
   const input = TranscriptEmbeddingWorkflowInputSchema.parse(rawInput)
+  const providerConfig = getTranscriptEmbeddingProviderConfig()
   const sourceText = normalizeTranscriptText(input.transcript)
   const segments = normalizeSegments(input.transcript.segments)
   if (!sourceText) {
@@ -788,8 +793,8 @@ export function planTranscriptEmbeddingRun(
       contentHash: sourceContentHash({ text: sourceText, segments, chunks }),
     },
     model: {
-      name: input.model?.name ?? env.TRANSCRIPT_EMBEDDING_MODEL,
-      provider: input.model?.provider ?? env.TRANSCRIPT_EMBEDDING_PROVIDER,
+      name: input.model?.name ?? providerConfig.model,
+      provider: input.model?.provider ?? providerConfig.provider,
     },
     chunking: {
       type: usesSegments ? "segment-aware" : "plain-text",
@@ -817,6 +822,8 @@ export async function embedPlannedTranscript(
   })
   const chunks: EmbeddedRun["chunks"] = []
   let tokenCount = 0
+  let transformVersion: string | undefined
+  let nativeDimensions: number | undefined
 
   for (let index = 0; index < batches.length; index += 1) {
     const batch = batches[index]!
@@ -835,9 +842,13 @@ export async function embedPlannedTranscript(
           model: planned.model.name,
           provider: planned.model.provider,
           expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+          expectedNativeDimensions: providerConfig.expectedNativeDimensions,
+          truncateToDimensions: providerConfig.truncateToDimensions,
+          transformVersion: providerConfig.transformVersion,
+          userAgent: providerConfig.userAgent,
           context: requestContext,
           itemLabel: "chunks",
-          timeoutMs: options.timeoutMs,
+          timeoutMs: options.timeoutMs ?? providerConfig.timeoutMs,
           fetchImpl: options.fetchImpl,
         })
     const result = validateEmbeddingProviderResult(
@@ -851,6 +862,8 @@ export async function embedPlannedTranscript(
     )
 
     tokenCount += result.tokenCount
+    transformVersion ??= result.transformVersion
+    nativeDimensions ??= result.nativeDimensions
     chunks.push(
       ...batch.map((chunk, chunkIndex) => ({
         ...chunk,
@@ -862,6 +875,8 @@ export async function embedPlannedTranscript(
   return {
     ...planned,
     dimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+    nativeDimensions,
+    transformVersion,
     providerTokenCount: tokenCount,
     chunks,
   }
@@ -878,6 +893,12 @@ function toAdminPayload(
       name: embedded.model.name,
       provider: embedded.model.provider,
       dimensions: embedded.dimensions,
+      ...(embedded.nativeDimensions
+        ? { nativeDimensions: embedded.nativeDimensions }
+        : {}),
+      ...(embedded.transformVersion
+        ? { transformVersion: embedded.transformVersion }
+        : {}),
     },
     chunking: {
       type: embedded.chunking.type,
@@ -919,6 +940,8 @@ function successFromAdminResult(
     model: result.model,
     provider: embedded.model.provider,
     dimensions: result.dimensions,
+    nativeDimensions: embedded.nativeDimensions,
+    transformVersion: embedded.transformVersion,
     mastraRunId: embedded.generation.mastraRunId,
     sourceContentHash: embedded.source.contentHash,
     chunking: {

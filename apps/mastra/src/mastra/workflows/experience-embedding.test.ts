@@ -43,6 +43,10 @@ function input(
       contentHash: sourceHash(),
       summary: "chars=42;lines=3;title=present;meta=present;og=absent",
     },
+    model: {
+      name: "embeddings",
+      provider: "jesus-film-ai-gateway",
+    },
     mode: "idempotent",
   }
 
@@ -54,9 +58,11 @@ function embeddingResult(items: string[]): EmbeddingProviderResult {
     embeddings: items.map((_, index) => vector(index + 1)),
     dimensions: EXPECTED_EXPERIENCE_EMBEDDING_DIMENSIONS,
     tokenCount: items.length * 5,
-    model: "openai/text-embedding-3-small",
-    provider: "openai",
-    requestModel: "text-embedding-3-small",
+    model: "embeddings",
+    provider: "jesus-film-ai-gateway",
+    requestModel: "embeddings",
+    nativeDimensions: 4096,
+    transformVersion: "matryoshka-truncate-1536-v1",
   }
 }
 
@@ -104,12 +110,17 @@ describe("experience embedding workflow", () => {
     expect(result).toMatchObject({
       ok: true,
       status: "created",
+      providerTokens: 5,
+      model: "embeddings",
+      provider: "jesus-film-ai-gateway",
+      dimensions: EXPECTED_EXPERIENCE_EMBEDDING_DIMENSIONS,
+      nativeDimensions: 4096,
+      transformVersion: "matryoshka-truncate-1536-v1",
+      mastraRunId: "run-experience",
+      sourceContentHash: sourceHash(),
     })
-    expect(JSON.stringify(result)).not.toContain("mastraRunId")
-    expect(JSON.stringify(result)).not.toContain("providerTokens")
-    expect(JSON.stringify(result)).not.toContain(
-      "openai/text-embedding-3-small",
-    )
+    expect(JSON.stringify(result)).not.toContain('"embedding"')
+    expect(JSON.stringify(result)).not.toContain("Jesus brings hope")
     expect(embeddingRequester).toHaveBeenCalledWith(
       [sourceText()],
       expect.objectContaining({
@@ -127,6 +138,13 @@ describe("experience embedding workflow", () => {
         source: {
           contentHash: sourceHash(),
           summary: "chars=42;lines=3;title=present;meta=present;og=absent",
+        },
+        model: {
+          name: "embeddings",
+          provider: "jesus-film-ai-gateway",
+          dimensions: EXPECTED_EXPERIENCE_EMBEDDING_DIMENSIONS,
+          nativeDimensions: 4096,
+          transformVersion: "matryoshka-truncate-1536-v1",
         },
         generation: {
           mode: "idempotent",
@@ -195,7 +213,7 @@ describe("experience embedding workflow", () => {
               experienceLocaleId: "loc-1",
               locale: "en",
             },
-            model: "openai/text-embedding-3-small",
+            model: "embeddings",
             dimensions: EXPECTED_EXPERIENCE_EMBEDDING_DIMENSIONS,
             mastraRunId: "run-admin",
           },
@@ -234,13 +252,25 @@ describe("experience embedding workflow", () => {
           experienceLocaleId: "loc-1",
           locale: "en",
         },
+        providerTokens: 5,
+        model: "embeddings",
+        provider: "jesus-film-ai-gateway",
+        dimensions: EXPECTED_EXPERIENCE_EMBEDDING_DIMENSIONS,
+        nativeDimensions: 4096,
+        transformVersion: "matryoshka-truncate-1536-v1",
+        mastraRunId: "run-route",
+        sourceContentHash: sourceHash(),
       }),
     })
 
     expect(authorized.status).toBe(200)
     expect(JSON.stringify(authorized.body)).not.toContain('"embedding"')
-    expect(JSON.stringify(authorized.body)).not.toContain("mastraRunId")
     expect(JSON.stringify(authorized.body)).not.toContain("Jesus brings hope")
+    expect(authorized.body.result).toMatchObject({
+      mastraRunId: "run-route",
+      provider: "jesus-film-ai-gateway",
+      transformVersion: "matryoshka-truncate-1536-v1",
+    })
   })
 
   it("keeps committed step summaries free of source text and vectors", () => {

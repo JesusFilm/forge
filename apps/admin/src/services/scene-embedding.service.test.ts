@@ -32,7 +32,7 @@ function input(
     coreId: "core-1",
     locale: "en",
     user: SYSTEM,
-    model: "openai/text-embedding-3-small",
+    model: "embeddings",
     dimensions: EXPECTED_SCENE_EMBEDDING_DIMENSIONS,
     scenes: [
       {
@@ -50,6 +50,9 @@ function input(
       },
     ],
     provenance: {
+      embeddingProvider: "jesus-film-ai-gateway",
+      embeddingNativeDimensions: 4096,
+      embeddingTransformVersion: "matryoshka-truncate-1536-v1",
       sourceArtifactKey: "42/scene-analysis.json",
       sourceArtifactVersion: "manager-scene-analysis-v1",
       sourceContentHash: "sha256:scene",
@@ -126,7 +129,7 @@ describe("writeSceneEmbeddingPayload", () => {
       scenesIndexed: 1,
       embeddingsWritten: 1,
       scenesPruned: 0,
-      model: "openai/text-embedding-3-small",
+      model: "embeddings",
       dimensions: EXPECTED_SCENE_EMBEDDING_DIMENSIONS,
     })
 
@@ -144,6 +147,9 @@ describe("writeSceneEmbeddingPayload", () => {
       .join("\n")
     expect(sql).toContain("INSERT INTO video_scene")
     expect(sql).toContain("INSERT INTO video_scene_locale")
+    expect(sql).toContain("embedding_provider")
+    expect(sql).toContain("embedding_native_dimensions")
+    expect(sql).toContain("embedding_transform_version")
     expect(sql).toContain("source_artifact_key")
     expect(sql).toContain("mastra_run_id")
     expect(sql).toContain("u.embedding_text::vector(1536)")

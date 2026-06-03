@@ -97,6 +97,8 @@ function report(
     judgeDisagreements?: number
     calibrationPassed?: boolean
     calibrationSkipped?: boolean
+    judgeModel?: string | null
+    netWinRate?: number
   } = {},
 ): SearchEvalReport {
   const kind = options.kind ?? "baseline-report"
@@ -112,7 +114,8 @@ function report(
       baselineName: "seed-baseline",
       promptSetVersion: "seed:v1",
       adminSearchUrl: "https://admin.internal/api/internal/search-eval/search",
-      judgeModel: "judge-model",
+      judgeModel:
+        options.judgeModel === undefined ? "judge-model" : options.judgeModel,
       search: {
         limit: 20,
         mode: "hybrid",
@@ -145,7 +148,7 @@ function report(
       judgeDisagreements: options.judgeDisagreements ?? 0,
       judgeFailures: options.judgeFailures ?? 0,
       searchFailures: options.searchFailures ?? 0,
-      netWinRate: 0,
+      netWinRate: options.netWinRate ?? 0,
     },
     localeMix: { en: 1 },
     promptSourceMix: { seed: 1 },
@@ -272,6 +275,9 @@ describe("search eval orchestrator workflow", () => {
       gateMaxJudgeFailures: 0,
       gateMaxJudgeDisagreements: 0,
       gateRequireCalibration: true,
+      gateRequireAssignedJudge: true,
+      gateMinComparableQueries: 1,
+      gateMinNetWinRate: 0,
     })
     expect(searchEvalOrchestratorWorkflow.inputSchema).toBe(
       _internal.SearchEvalOrchestratorWorkflowInputSchema,
@@ -639,6 +645,16 @@ describe("search eval orchestrator workflow", () => {
       "judge calibration did not pass",
     ],
     [
+      "missing assigned judge",
+      { judgeModel: null },
+      "assigned judge model is required",
+    ],
+    [
+      "negative net win rate",
+      { netWinRate: -0.1 },
+      "net win rate -0.1 below minimum 0",
+    ],
+    [
       "search failures",
       { searchFailures: 1 },
       "search failures 1 exceeded max 0",
@@ -678,12 +694,78 @@ describe("search eval orchestrator workflow", () => {
         summary: {
           passFail: {
             state: "failed",
-            reasons: [expectedReason],
+            reasons: expect.arrayContaining([expectedReason]),
           },
         },
       })
     },
   )
+
+  it("fails release-gate mode when an evaluated locale has no comparable judged query", async () => {
+    const baseReport = report({
+      kind: "comparison-report",
+      reportId: "report-locale-coverage",
+    })
+    const outputReport: SearchEvalReport = {
+      ...baseReport,
+      totals: {
+        ...baseReport.totals,
+        queries: 2,
+        ties: 1,
+        bothIrrelevant: 1,
+      },
+      localeMix: { en: 1, es: 1 },
+      outcomes: [
+        {
+          kind: "tie",
+          caseId: "seed-en",
+          locale: "en",
+          queryText: "hope",
+          source: "seed",
+          baselineResults: [],
+          currentResults: [],
+          verdicts: ["tie", "tie"],
+        },
+        {
+          kind: "both-irrelevant",
+          caseId: "seed-es",
+          locale: "es",
+          queryText: "esperanza",
+          source: "seed",
+          baselineResults: [],
+          currentResults: [],
+          verdicts: ["both-irrelevant", "both-irrelevant"],
+        },
+      ],
+    }
+
+    const result = await runSearchEvalOrchestratorWorkflow(
+      {
+        mode: "release-gate",
+        nativeSync: false,
+        syncPromoted: false,
+      },
+      {
+        runId: "run-orchestrator",
+        launchOfflineSearchEval: vi.fn(async (input) =>
+          offlineSuccess(input.mode, outputReport),
+        ),
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "release_gate_failed",
+      summary: {
+        passFail: {
+          state: "failed",
+          reasons: expect.arrayContaining([
+            "locale es has no comparable judged queries",
+          ]),
+        },
+      },
+    })
+  })
 
   it("passes release-gate mode when comparison report stays within thresholds", async () => {
     const outputReport = report({

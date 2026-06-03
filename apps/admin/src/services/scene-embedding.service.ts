@@ -38,6 +38,9 @@ export type SceneEmbeddingGenerationMode =
   | "model-upgrade"
 
 export type SceneEmbeddingProvenance = {
+  embeddingProvider?: string
+  embeddingNativeDimensions?: number
+  embeddingTransformVersion?: string
   sourceArtifactKey?: string
   sourceArtifactVersion?: string
   sourceContentHash?: string
@@ -349,6 +352,17 @@ async function writeSceneEmbeddingPayloadWithClient(
         )
         const models = prepared.map(() => input.model)
         const dimensions = prepared.map(() => String(input.dimensions))
+        const embeddingProviders = prepared.map(
+          () => input.provenance?.embeddingProvider ?? null,
+        )
+        const embeddingNativeDimensions = prepared.map(() =>
+          input.provenance?.embeddingNativeDimensions == null
+            ? null
+            : String(input.provenance.embeddingNativeDimensions),
+        )
+        const embeddingTransformVersions = prepared.map(
+          () => input.provenance?.embeddingTransformVersion ?? null,
+        )
         const sourceArtifactKeys = prepared.map(
           () => input.provenance?.sourceArtifactKey ?? null,
         )
@@ -392,6 +406,15 @@ async function writeSceneEmbeddingPayloadWithClient(
             },
             { name: "models", length: models.length },
             { name: "dimensions", length: dimensions.length },
+            { name: "embeddingProviders", length: embeddingProviders.length },
+            {
+              name: "embeddingNativeDimensions",
+              length: embeddingNativeDimensions.length,
+            },
+            {
+              name: "embeddingTransformVersions",
+              length: embeddingTransformVersions.length,
+            },
             { name: "sourceArtifactKeys", length: sourceArtifactKeys.length },
             {
               name: "sourceArtifactVersions",
@@ -416,7 +439,7 @@ async function writeSceneEmbeddingPayloadWithClient(
           INSERT INTO video_scene_locale (
             id, video_scene_id, locale, source_text, description,
             themes, bible_verses, demographics, spiritual_context,
-            model, dimensions,
+            model, dimensions, embedding_provider, embedding_native_dimensions, embedding_transform_version,
             source_artifact_key, source_artifact_version, source_content_hash,
             source_provider, source_generated_at, generation_mode,
             mastra_run_id, generated_at, embedding,
@@ -434,6 +457,9 @@ async function writeSceneEmbeddingPayloadWithClient(
             ARRAY(SELECT jsonb_array_elements_text(u.spiritual_context_json::jsonb)),
             u.model,
             u.dimensions::int,
+            u.embedding_provider,
+            u.embedding_native_dimensions::int,
+            u.embedding_transform_version,
             u.source_artifact_key,
             u.source_artifact_version,
             u.source_content_hash,
@@ -457,6 +483,9 @@ async function writeSceneEmbeddingPayloadWithClient(
             ${toPgArray(spiritualContextJson)}::text[],
             ${toPgArray(models)}::text[],
             ${toPgArray(dimensions)}::text[],
+            ${toPgArray(embeddingProviders)}::text[],
+            ${toPgArray(embeddingNativeDimensions)}::text[],
+            ${toPgArray(embeddingTransformVersions)}::text[],
             ${toPgArray(sourceArtifactKeys)}::text[],
             ${toPgArray(sourceArtifactVersions)}::text[],
             ${toPgArray(sourceContentHashes)}::text[],
@@ -469,7 +498,7 @@ async function writeSceneEmbeddingPayloadWithClient(
           ) AS u(
             id, video_scene_id, locale, source_text, description,
             themes_json, bible_verses_json, demographics_json, spiritual_context_json,
-            model, dimensions,
+            model, dimensions, embedding_provider, embedding_native_dimensions, embedding_transform_version,
             source_artifact_key, source_artifact_version, source_content_hash,
             source_provider, source_generated_at, generation_mode,
             mastra_run_id, generated_at, embedding_text
@@ -484,6 +513,9 @@ async function writeSceneEmbeddingPayloadWithClient(
             spiritual_context       = EXCLUDED.spiritual_context,
             model                   = EXCLUDED.model,
             dimensions              = EXCLUDED.dimensions,
+            embedding_provider      = EXCLUDED.embedding_provider,
+            embedding_native_dimensions = EXCLUDED.embedding_native_dimensions,
+            embedding_transform_version = EXCLUDED.embedding_transform_version,
             source_artifact_key     = EXCLUDED.source_artifact_key,
             source_artifact_version = EXCLUDED.source_artifact_version,
             source_content_hash     = EXCLUDED.source_content_hash,

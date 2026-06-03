@@ -131,6 +131,14 @@ export const SearchEvalOrchestratorWorkflowInputSchema = z
       .max(100)
       .default(0),
     gateRequireCalibration: z.boolean().default(true),
+    gateRequireAssignedJudge: z.boolean().default(true),
+    gateMinComparableQueries: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .max(100)
+      .default(1),
+    gateMinNetWinRate: z.coerce.number().min(-1).max(1).default(0),
   })
   .strict()
 
@@ -589,11 +597,49 @@ function evaluateReleaseGate(
   }
 
   const reasons: string[] = []
+  const comparableQueries =
+    report.totals.queries -
+    report.totals.bothIrrelevant -
+    report.totals.searchFailures -
+    report.totals.judgeDisagreements -
+    report.totals.judgeFailures
+  const comparableLocales = new Set(
+    report.outcomes
+      .filter(
+        (outcome) =>
+          outcome.kind !== "both-irrelevant" &&
+          outcome.kind !== "search-failure" &&
+          outcome.kind !== "judge-disagreement" &&
+          outcome.kind !== "judge-failure",
+      )
+      .map((outcome) => outcome.locale),
+  )
+  const evaluatedLocales = new Set(
+    report.outcomes.map((outcome) => outcome.locale),
+  )
+  if (input.gateRequireAssignedJudge && !report.metadata.judgeModel) {
+    reasons.push("assigned judge model is required")
+  }
   if (
     input.gateRequireCalibration &&
     (!report.calibration.passed || report.calibration.skipped)
   ) {
     reasons.push("judge calibration did not pass")
+  }
+  if (comparableQueries < input.gateMinComparableQueries) {
+    reasons.push(
+      `comparable queries ${comparableQueries} below minimum ${input.gateMinComparableQueries}`,
+    )
+  }
+  for (const locale of evaluatedLocales) {
+    if (!comparableLocales.has(locale)) {
+      reasons.push(`locale ${locale} has no comparable judged queries`)
+    }
+  }
+  if (report.totals.netWinRate < input.gateMinNetWinRate) {
+    reasons.push(
+      `net win rate ${report.totals.netWinRate} below minimum ${input.gateMinNetWinRate}`,
+    )
   }
   if (report.totals.losses > input.gateMaxLosses) {
     reasons.push(
