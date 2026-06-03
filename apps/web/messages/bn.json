@@ -1,0 +1,222 @@
+{
+  "ExperienceError": {
+    "empty": "কোনো এক্সপেরিয়েন্স কনটেন্ট পাওয়া যায়নি।",
+    "failedToLoad": "এক্সপেরিয়েন্স লোড করা যায়নি: {message}",
+    "unexpected": "একটি অপ্রত্যাশিত ত্রুটি ঘটেছে।",
+    "notConfigured": "কনটেন্ট সার্ভিস কনফিগার করা হয়নি।",
+    "noContent": "কোনো কনটেন্ট উপলভ্য নেই।",
+    "homepageMisconfigured": "ওয়াচ হোমপেজ সঠিকভাবে কনফিগার করা হয়নি।",
+    "defaultTemplateMisconfigured": "ডিফল্ট ওয়াচ টেমপ্লেট সঠিকভাবে কনফিগার করা হয়নি।",
+    "authFailed": "কনটেন্ট সার্ভিসে প্রমাণীকরণ করা যায়নি। সমস্যা থাকলে সহায়তা টিমের সাথে যোগাযোগ করুন।"
+  },
+  "VideosPage": {
+    "title": "সব ভিডিও",
+    "placeholder": "ক্যাটালগ ব্রাউজিং শীঘ্রই আসছে। আপাতত সার্চ ব্যবহার করুন বা বিষয়ভিত্তিক URL খুলুন।"
+  },
+  "BibleQuotes": {
+    "title": "বাইবেলের উদ্ধৃতি",
+    "share": "শেয়ার করুন",
+    "readMore": "আরও পড়ুন...",
+    "learnMore": "আরও জানুন",
+    "freeResources": "বিনামূল্যের রিসোর্স",
+    "promoHeading": "বাইবেল আরও গভীরভাবে বুঝতে চান?",
+    "joinBibleStudy": "আমাদের বাইবেল অধ্যয়নে যোগ দিন",
+    "previousQuote": "আগের বাইবেল উদ্ধৃতি",
+    "nextQuote": "পরের বাইবেল উদ্ধৃতি"
+  },
+  "DownloadButton": {
+    "checking": "চেক করা হচ্ছে",
+    "download": "ডাউনলোড",
+    "sessionError": "আপনার সেশন চেক করা যায়নি। আবার চেষ্টা করুন।",
+    "saveVideo": "ভিডিও সংরক্ষণ করুন"
+  },
+  "DownloadModal": {
+    "dialogTitle": "ভিডিও ডাউনলোড করুন",
+    "eyebrow": "ভিডিও ডাউনলোড",
+    "posterAlt": "ভিডিও পোস্টার",
+    "noDownloads": "এই ভিডিওর জন্য কোনো ডাউনলোড উপলভ্য নেই।",
+    "fileSizeLabel": "ফাইলের সাইজ নির্বাচন করুন",
+    "termsAgreementPrefix": "আমি ",
+    "termsOfUse": "ব্যবহারের শর্তাবলী",
+    "termsAgreementSuffix": "-এর সাথে সম্মত।",
+    "close": "বন্ধ করুন",
+    "download": "ডাউনলোড",
+    "checking": "চেক করা হচ্ছে",
+    "closeTermsOfUse": "ব্যবহারের শর্তাবলী বন্ধ করুন",
+    "cancel": "বাতিল",
+    "accept": "গ্রহণ করুন",
+    "errorSessionExpired": "আপনার সেশনের মেয়াদ শেষ হয়েছে। ডাউনলোড করতে আবার সাইন ইন করুন।",
+    "errorSessionUnavailable": "আপনার সেশন চেক করা যায়নি। আবার চেষ্টা করুন।",
+    "errorUnavailableSource": "এই উৎস থেকে ডাউনলোড উপলভ্য নয়",
+    "tierHighest": "সর্বোচ্চ",
+    "tierHigh": "উচ্চ",
+    "tierLow": "নিম্ন"
+  },
+  "HeroPlayerControls": {
+    "play": "চালান",
+    "pause": "বিরতি",
+    "seek": "খুঁজুন",
+    "seekValue": "{current} / {total}",
+    "volume": "ভলিউম",
+    "volumeValue": "{percent} শতাংশ",
+    "mute": "শব্দ বন্ধ করুন",
+    "unmute": "শব্দ চালু করুন",
+    "changeAudioLanguage": "অডিও ভাষা পরিবর্তন করুন",
+    "enterFullscreen": "ফুলস্ক্রিনে যান",
+    "exitFullscreen": "ফুলস্ক্রিন থেকে বের হন"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "ভাষা নির্বাচন করুন",
+    "searchPlaceholder": "ভাষা সার্চ করুন…",
+    "languages": "ভাষাসমূহ",
+    "noMatches": "কোনো মিল পাওয়া যায়নি"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "ভাষা",
+    "dialogTitleWithSubtitles": "ভাষা ও সাবটাইটেল",
+    "languageHeading": "ভাষা",
+    "subtitlesHeading": "সাবটাইটেল",
+    "languageCount": "{count, plural, one {# ভাষা} other {# ভাষা}}",
+    "requestSent": "অনুরোধ পাঠানো হয়েছে",
+    "translateWithAi": "AI দিয়ে অনুবাদ করুন",
+    "noSubtitles": "কোনো সাবটাইটেল নেই",
+    "toggleOn": "চালু",
+    "toggleOff": "বন্ধ",
+    "close": "বন্ধ করুন",
+    "apply": "প্রয়োগ করুন"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {# পর্ব} other {# পর্ব}}",
+    "seriesLabel": "সিরিজ · {episodes}",
+    "changeAudioLanguage": "অডিও ভাষা পরিবর্তন করুন",
+    "share": "শেয়ার করুন",
+    "languages": "ভাষাসমূহ"
+  },
+  "WatchModal": {
+    "close": "বন্ধ করুন"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "আপনি যদি এই ভিডিওর নির্মাতাকে একটি প্রশ্ন করতে পারতেন, সেটি কী হতো?",
+    "fallbackBody": "শুনতে প্রস্তুত এমন কারও সাথে ব্যক্তিগতভাবে কথা বলুন।",
+    "questionsShort": "প্রশ্ন",
+    "questions": "সম্পর্কিত প্রশ্ন",
+    "askYours": "আপনার প্রশ্ন করুন",
+    "chatWithPerson": "একজন মানুষের সাথে চ্যাট করুন",
+    "askBibleQuestion": "বাইবেল সম্পর্কে প্রশ্ন করুন"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "বার্তার ধরন",
+    "fieldLabel": "এই ভিডিও সম্পর্কে একটি প্রশ্ন করুন",
+    "send": "প্রশ্ন পাঠান",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "বাইবেল সম্পর্কে প্রশ্ন করুন",
+        "description": "AI সার্চ ব্যবহার করে বাইবেল থেকে তাৎক্ষণিক উত্তর"
+      },
+      "prayerRequest": {
+        "label": "প্রার্থনার অনুরোধ করুন",
+        "description": "কিসের জন্য প্রার্থনা চান তা জানান"
+      },
+      "comment": {
+        "label": "মন্তব্য করুন",
+        "description": "এই ভিডিও সম্পর্কে আপনার ভাবনা পাঠান"
+      },
+      "personChat": {
+        "label": "একজন মানুষের সাথে চ্যাট করুন",
+        "description": "এখনই কারও সাথে কথা বলুন"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "ভিডিও শেয়ার করুন",
+    "heading": "এই ভিডিওটি শেয়ার করুন",
+    "posterAlt": "ভিডিও পোস্টার",
+    "shareOnFacebook": "Facebook-এ শেয়ার করুন",
+    "shareOnFacebookUnavailable": "Facebook-এ শেয়ার করুন (এই বিল্ডে উপলভ্য নয়)",
+    "shareOnX": "X-এ শেয়ার করুন",
+    "shareOnXUnavailable": "X-এ শেয়ার করুন (এই বিল্ডে উপলভ্য নয়)",
+    "shareDisabledHint": "শেয়ার করতে একটি ডিপ্লয় করা পেজ প্রয়োজন — এই ভিডিও প্রোডাকশনে গেলে কাজ করবে।",
+    "shareFormat": "শেয়ারের ধরন",
+    "shareLinkTab": "লিংক শেয়ার",
+    "embedCodeTab": "এম্বেড কোড",
+    "copyFailed": "স্বয়ংক্রিয়ভাবে কপি করা যায়নি — নিচের লেখা নির্বাচন করে ম্যানুয়ালি কপি করুন।",
+    "copyLink": "লিংক কপি করুন",
+    "copyCode": "কোড কপি করুন",
+    "copied": "কপি হয়েছে",
+    "close": "বন্ধ করুন"
+  },
+  "SubtitleTranscript": {
+    "heading": "ট্রান্সক্রিপ্ট",
+    "subheading": "সেই মুহূর্তে যেতে যেকোনো লাইনে ট্যাপ করুন।",
+    "subtitleLanguage": "সাবটাইটেলের ভাষা",
+    "aiSuffix": " · AI",
+    "loading": "ট্রান্সক্রিপ্ট লোড হচ্ছে…",
+    "unavailable": "এই সাবটাইটেল ট্র্যাকের জন্য ট্রান্সক্রিপ্ট উপলভ্য নয়।",
+    "empty": "কোনো ট্রান্সক্রিপ্ট লাইন পাওয়া যায়নি।"
+  },
+  "FloatingSearch": {
+    "placeholder": "সার্চ করুন বা বিষয় ব্রাউজ করুন…",
+    "openSearch": "ভিডিও সার্চ করুন",
+    "searchRegion": "ভিডিও সার্চ করুন",
+    "clearSearch": "সার্চ মুছুন",
+    "changeAudioLanguage": "অডিও ভাষা পরিবর্তন করুন",
+    "home": "JesusFilm হোম"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "ভিডিও সার্চ ও ব্রাউজ করুন",
+    "home": "JesusFilm হোম",
+    "placeholder": "সার্চ করুন বা বিষয় ব্রাউজ করুন…",
+    "inputLabel": "কীওয়ার্ড দিয়ে ভিডিও সার্চ করুন",
+    "searchFailed": "সার্চ ব্যর্থ হয়েছে। আবার চেষ্টা করুন।",
+    "loadMoreFailed": "আরও ফলাফল লোড করা যায়নি।",
+    "searching": "সার্চ হচ্ছে...",
+    "connectionHint": "আপনার সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।",
+    "retrySearch": "আবার সার্চ করুন",
+    "retry": "আবার চেষ্টা করুন",
+    "noResults": "\"{query}\"-এর জন্য কোনো ফলাফল নেই",
+    "tryDifferentKeywords": "অন্য কীওয়ার্ড চেষ্টা করুন বা বিভাগ ব্রাউজ করুন",
+    "loading": "লোড হচ্ছে...",
+    "loadMore": "আরও লোড করুন",
+    "categoryBibleStories": "বাইবেলের গল্প",
+    "categoryParables": "দৃষ্টান্ত",
+    "categoryAnimated": "অ্যানিমেটেড",
+    "categoryStudy": "অধ্যয়ন",
+    "categoryFamily": "পরিবার",
+    "categoryChristmas": "ক্রিসমাস"
+  },
+  "HeroPlayer": {
+    "playWithSound": "শব্দসহ চালান",
+    "tapToUnmute": "শব্দ চালু করতে ট্যাপ করুন"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "কনটেন্ট লোড হচ্ছে"
+  },
+  "VideoLabels": {
+    "video": "ভিডিও",
+    "segment": "অংশ",
+    "episode": "পর্ব",
+    "featureFilm": "পূর্ণদৈর্ঘ্য চলচ্চিত্র",
+    "shortFilm": "স্বল্পদৈর্ঘ্য চলচ্চিত্র",
+    "series": "সিরিজ",
+    "collection": "সংকলন",
+    "trailer": "ট্রেলার",
+    "behindTheScenes": "পর্দার পেছনে"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "ক্লিপ {current} / {total}",
+    "position": "{current} / {total}",
+    "chapterCount": "{count, plural, one {# অধ্যায়} other {# অধ্যায়}}",
+    "clipAriaLabel": "{title} · ক্লিপ {current} / {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# অধ্যায়} other {# অধ্যায়}}",
+    "chapter": "অধ্যায়",
+    "noImage": "কোনো ছবি নেই",
+    "playingNow": "এখন চলছে",
+    "previousChapter": "আগের অধ্যায়",
+    "nextChapter": "পরের অধ্যায়"
+  },
+  "SearchResultCard": {
+    "experience": "এক্সপেরিয়েন্স",
+    "episodeCount": "{count, plural, one {# পর্ব} other {# পর্ব}}",
+    "thumbnailAlt": "ভিডিও থাম্বনেইল"
+  }
+}
