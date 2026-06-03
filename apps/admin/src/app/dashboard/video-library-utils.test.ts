@@ -8,9 +8,11 @@ import {
   isPublicAudioLanguageSlug,
   normalizeVideoThumbnailUrl,
   parseVideoLibraryCategory,
+  parseVideoLibraryCollection,
   parseVideoLibraryLanguage,
   parseVideoLibraryPage,
   parseVideoLibraryQuery,
+  parseVideoLibrarySelectedVideo,
   parseVideoLibrarySort,
   resolveVideoVisitorUrl,
   videoLibraryHref,
@@ -70,6 +72,17 @@ describe("video-library-utils", () => {
     expect(parseVideoLibrarySort("bad")).toBe("recent")
   })
 
+  it("normalizes selected video and collection params for URL-backed drill-down", () => {
+    expect(parseVideoLibrarySelectedVideo(" the-savior ")).toBe("the-savior")
+    expect(parseVideoLibraryCollection(["magdalena-2", "ignored"])).toBe(
+      "magdalena-2",
+    )
+    expect(parseVideoLibrarySelectedVideo("core_123")).toBe("core_123")
+    expect(parseVideoLibraryCollection("bad value")).toBe("")
+    expect(parseVideoLibrarySelectedVideo("/bad")).toBe("")
+    expect(parseVideoLibraryCollection("x".repeat(160))).toHaveLength(140)
+  })
+
   it("builds video library hrefs for active controls while omitting defaults", () => {
     expect(
       videoLibraryHref({
@@ -93,6 +106,30 @@ describe("video-library-utils", () => {
     ).toBe("/dashboard/videos")
   })
 
+  it("builds video library hrefs for selected videos and collections", () => {
+    expect(
+      videoLibraryHref({
+        page: 2,
+        query: "Jesus",
+        category: "features",
+        language: "english",
+        collection: "the-story",
+        video: "magdalena-2",
+        sort: "created",
+      }),
+    ).toBe(
+      "/dashboard/videos?page=2&q=Jesus&type=features&language=english&collection=the-story&video=magdalena-2&sort=created",
+    )
+
+    expect(
+      videoLibraryHref({
+        page: 1,
+        collection: "the-story",
+        video: "",
+      }),
+    ).toBe("/dashboard/videos?collection=the-story")
+  })
+
   it("detects active video library filters excluding sort-only changes", () => {
     expect(
       hasActiveVideoLibraryFilters({
@@ -113,6 +150,14 @@ describe("video-library-utils", () => {
         query: "",
         category: "all",
         language: "english",
+      }),
+    ).toBe(true)
+    expect(
+      hasActiveVideoLibraryFilters({
+        query: "",
+        category: "all",
+        collection: "the-story",
+        language: "",
       }),
     ).toBe(true)
   })

@@ -120,6 +120,7 @@ type VideoListSort = "recent" | "oldest" | "created" | "createdOldest"
 
 type VideoListInput = {
   category?: VideoListCategory
+  collection?: string
   language?: string
   limit?: number
   offset?: number
@@ -430,12 +431,40 @@ function videoLanguageWhere(
   } satisfies Prisma.VideoWhereInput
 }
 
+function videoIdentifierWhere(identifier: string): Prisma.VideoWhereInput {
+  return {
+    OR: [{ id: identifier }, { coreId: identifier }, { slug: identifier }],
+  } satisfies Prisma.VideoWhereInput
+}
+
+function videoCollectionWhere(
+  rawCollection: string | null | undefined,
+): Prisma.VideoWhereInput | null {
+  const collection = normalizeSearchValue(rawCollection)
+  if (!collection) return null
+
+  return {
+    parents: {
+      some: {
+        parent: {
+          deletedAt: null,
+          ...videoIdentifierWhere(collection),
+        },
+      },
+    },
+  } satisfies Prisma.VideoWhereInput
+}
+
 function videoListWhere(
-  input: Pick<VideoListInput, "category" | "language" | "search">,
+  input: Pick<
+    VideoListInput,
+    "category" | "collection" | "language" | "search"
+  >,
 ) {
   const filters = [
     videoSearchWhere(input.search),
     videoCategoryWhere(input.category),
+    videoCollectionWhere(input.collection),
     videoLanguageWhere(input.language),
   ].filter((filter): filter is Prisma.VideoWhereInput => filter != null)
 
@@ -478,7 +507,9 @@ export class VideoService {
   }
 
   async countActive(
-    input?: string | Pick<VideoListInput, "category" | "language" | "search">,
+    input?:
+      | string
+      | Pick<VideoListInput, "category" | "collection" | "language" | "search">,
   ) {
     const normalizedInput =
       typeof input === "string" ? { search: input } : (input ?? {})

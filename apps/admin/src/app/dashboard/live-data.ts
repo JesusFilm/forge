@@ -84,6 +84,7 @@ type VideoImageRow = {
 
 type LoadVideoRowSliceOptions = {
   category?: VideoLibraryCategory
+  collection?: string
   language?: string
   principal: Principal
   limit: number
@@ -98,9 +99,60 @@ export type VideoLibraryLanguageOption = {
   value: string
 }
 
+export type VideoLibraryDetailField = {
+  label: string
+  value: string
+}
+
+export type VideoLibraryDetailItem = {
+  key: string
+  title: string
+  meta: string
+  detail?: string | null
+}
+
+export type VideoLibraryDetailSection = {
+  title: string
+  count?: number
+  items: VideoLibraryDetailItem[]
+  empty: string
+}
+
+export type VideoLibraryDetail = {
+  key: string
+  title: string
+  description: string | null
+  previewImageUrl: string | null
+  label: string
+  source: string
+  duration: string
+  visitorUrl: string | null
+  identity: VideoLibraryDetailField[]
+  status: VideoLibraryDetailField[]
+  timestamps: VideoLibraryDetailField[]
+  localizedContent: VideoLibraryDetailSection
+  dubs: VideoLibraryDetailSection
+  images: VideoLibraryDetailSection
+  subtitles: VideoLibraryDetailSection
+  studyQuestions: VideoLibraryDetailSection
+  bibleCitations: VideoLibraryDetailSection
+  keywords: VideoLibraryDetailSection
+  parents: VideoLibraryDetailSection
+  children: VideoLibraryDetailSection
+  technical: VideoLibraryDetailSection
+}
+
+export type VideoLibraryCollectionSummary = {
+  key: string
+  title: string
+  slug: string
+  childCount: number
+}
+
 const VIDEO_LIBRARY_LANGUAGE_TARGET = 2300
 const VIDEO_LIBRARY_LANGUAGE_CHIP_LIMIT = 5
 const VIDEO_LIBRARY_LANGUAGE_OPTION_LIMIT = 200
+const VIDEO_LIBRARY_DETAIL_RELATION_LIMIT = 80
 
 function durationSecondsForDub(
   dub: Pick<VideoDubRow, "lengthInMilliseconds" | "duration">,
@@ -169,6 +221,62 @@ function statusTone(status: LocaleStatus): "success" | "warning" | "danger" {
 
 function compactText(value: string | null | undefined) {
   return value?.replace(/\s+/g, " ").trim() || null
+}
+
+function videoIdentifierWhere(identifier: string) {
+  return {
+    OR: [{ id: identifier }, { coreId: identifier }, { slug: identifier }],
+  }
+}
+
+function displayValue(value: string | number | boolean | null | undefined) {
+  if (typeof value === "boolean") return value ? "Yes" : "No"
+  if (typeof value === "number") return value.toLocaleString("en")
+  return compactText(value?.toString())
+}
+
+function displayDateTime(value: Date | null | undefined) {
+  return value ? formatDateTime(value) : null
+}
+
+function displayLanguage(
+  language:
+    | {
+        bcp47: string | null
+        id: string
+        iso3: string | null
+        name?: unknown
+        slug: string | null
+      }
+    | null
+    | undefined,
+  locale: string,
+) {
+  if (!language) return null
+  return languageOptionLabel(
+    {
+      bcp47: language.bcp47,
+      id: language.id,
+      iso3: language.iso3,
+      name: "name" in language ? language.name : null,
+      slug: language.slug,
+    },
+    locale,
+  )
+}
+
+function detailField(
+  label: string,
+  value: string | number | boolean | null | undefined,
+): VideoLibraryDetailField | null {
+  const displayed = displayValue(value)
+  return displayed ? { label, value: displayed } : null
+}
+
+function compactFields(
+  fields: Array<VideoLibraryDetailField | null>,
+): VideoLibraryDetailField[] {
+  return fields.filter((field): field is VideoLibraryDetailField => !!field)
 }
 
 function directUrl(value: object, fields: readonly string[]): string | null {
@@ -433,7 +541,9 @@ function languageOptionValue(language: {
   return language.slug ?? language.bcp47 ?? language.iso3 ?? language.id
 }
 
-function formatDuration(dubs: VideoDubRow[]): string {
+function formatDuration(
+  dubs: Array<Pick<VideoDubRow, "duration" | "lengthInMilliseconds">>,
+): string {
   const dub =
     dubs.find((item) => item.lengthInMilliseconds || item.duration) ?? null
   if (!dub) return "--:--"
@@ -563,10 +673,12 @@ function preferredVideoImage(images: VideoImageRow[]) {
 
 async function countActiveVideos({
   category,
+  collection,
   language,
   query,
 }: {
   category?: VideoLibraryCategory
+  collection?: string
   language?: string
   query?: string
 }) {
@@ -574,12 +686,676 @@ async function countActiveVideos({
   try {
     return await services.video.countActive({
       category,
+      collection,
       language,
       search: query,
     })
   } catch (error) {
     if (isMissingTableError(error)) {
       return 0
+    }
+    throw error
+  }
+}
+
+async function loadVideoCollectionSummary(
+  collection: string | null | undefined,
+): Promise<VideoLibraryCollectionSummary | null> {
+  const identifier = compactText(collection)
+  if (!identifier) return null
+
+  const locale = await getAdminLocale()
+
+  try {
+    const video = await prisma.video.findFirst({
+      where: {
+        deletedAt: null,
+        ...videoIdentifierWhere(identifier),
+      },
+      select: {
+        id: true,
+        slug: true,
+        locales: {
+          where: { deletedAt: null },
+          select: {
+            locale: true,
+            title: true,
+          },
+          orderBy: { updatedAt: "desc" },
+        },
+      },
+    })
+
+    if (!video) return null
+
+    const childCount = await prisma.videoRelation.count({
+      where: {
+        parentId: video.id,
+        child: { deletedAt: null },
+      },
+    })
+    const localeRows = video.locales.filter(
+      (item): item is { locale: string; title: string | null } =>
+        item.locale != null,
+    )
+    const localeRow = choosePreferredLocale(localeRows, locale)
+
+    return {
+      key: video.id,
+      title: compactText(localeRow?.title) ?? video.slug,
+      slug: video.slug,
+      childCount,
+    }
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return null
+    }
+    throw error
+  }
+}
+
+function shortDetail(value: string | null | undefined, limit = 220) {
+  const text = compactText(value)
+  if (!text) return null
+  return text.length > limit ? `${text.slice(0, limit - 1).trim()}...` : text
+}
+
+function detailSection({
+  count,
+  empty,
+  items,
+  title,
+}: VideoLibraryDetailSection): VideoLibraryDetailSection {
+  return { title, count, items, empty }
+}
+
+function relationVideoTitle(
+  video: {
+    slug: string
+    locales: Array<{ locale: string | null; title: string | null }>
+  },
+  locale: string,
+) {
+  const localeRows = video.locales.filter(
+    (item): item is { locale: string; title: string | null } =>
+      item.locale != null,
+  )
+  const localeRow = choosePreferredLocale(localeRows, locale)
+  return compactText(localeRow?.title) ?? video.slug
+}
+
+export async function loadVideoLibraryDetail(
+  videoIdentifier: string | null | undefined,
+): Promise<VideoLibraryDetail | null> {
+  const identifier = compactText(videoIdentifier)
+  if (!identifier) return null
+
+  const locale = await getAdminLocale()
+
+  try {
+    const video = await prisma.video.findFirst({
+      where: {
+        deletedAt: null,
+        ...videoIdentifierWhere(identifier),
+      },
+      include: {
+        primaryLanguage: {
+          select: {
+            bcp47: true,
+            id: true,
+            iso3: true,
+            name: true,
+            slug: true,
+          },
+        },
+        origin: {
+          select: {
+            coreId: true,
+            description: true,
+            id: true,
+            name: true,
+            source: true,
+          },
+        },
+        locales: {
+          where: { deletedAt: null },
+          include: {
+            language: {
+              select: {
+                bcp47: true,
+                id: true,
+                iso3: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: VIDEO_LIBRARY_DETAIL_RELATION_LIMIT,
+        },
+        dubs: {
+          where: { deletedAt: null },
+          include: {
+            language: {
+              select: {
+                bcp47: true,
+                id: true,
+                iso3: true,
+                name: true,
+                slug: true,
+              },
+            },
+            videoEdition: {
+              select: {
+                coreId: true,
+                id: true,
+                name: true,
+              },
+            },
+            muxVideo: {
+              select: {
+                assetId: true,
+                playbackId: true,
+                uploadId: true,
+              },
+            },
+            downloads: {
+              where: { deletedAt: null },
+              select: {
+                quality: true,
+              },
+              take: 6,
+            },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: VIDEO_LIBRARY_DETAIL_RELATION_LIMIT,
+        },
+        images: {
+          where: { deletedAt: null },
+          select: {
+            aspectRatio: true,
+            height: true,
+            id: true,
+            kind: true,
+            url: true,
+            width: true,
+          },
+          orderBy: { createdAt: "asc" },
+          take: VIDEO_LIBRARY_DETAIL_RELATION_LIMIT,
+        },
+        subtitles: {
+          where: { deletedAt: null },
+          include: {
+            language: {
+              select: {
+                bcp47: true,
+                id: true,
+                iso3: true,
+                name: true,
+                slug: true,
+              },
+            },
+            videoEdition: {
+              select: {
+                name: true,
+              },
+            },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: VIDEO_LIBRARY_DETAIL_RELATION_LIMIT,
+        },
+        studyQuestions: {
+          where: { deletedAt: null },
+          include: {
+            language: {
+              select: {
+                bcp47: true,
+                id: true,
+                iso3: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+          orderBy: [{ order: "asc" }, { updatedAt: "desc" }],
+          take: VIDEO_LIBRARY_DETAIL_RELATION_LIMIT,
+        },
+        bibleCitations: {
+          where: { deletedAt: null },
+          include: {
+            bibleBook: {
+              select: {
+                name: true,
+                osisId: true,
+              },
+            },
+          },
+          orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+          take: VIDEO_LIBRARY_DETAIL_RELATION_LIMIT,
+        },
+        keywords: {
+          where: {
+            keyword: { deletedAt: null },
+          },
+          include: {
+            keyword: {
+              include: {
+                language: {
+                  select: {
+                    bcp47: true,
+                    id: true,
+                    iso3: true,
+                    name: true,
+                    slug: true,
+                  },
+                },
+              },
+            },
+          },
+          take: VIDEO_LIBRARY_DETAIL_RELATION_LIMIT,
+        },
+        parents: {
+          where: {
+            parent: { deletedAt: null },
+          },
+          include: {
+            parent: {
+              select: {
+                coreId: true,
+                id: true,
+                label: true,
+                locales: {
+                  where: { deletedAt: null },
+                  select: {
+                    locale: true,
+                    title: true,
+                  },
+                  take: 12,
+                },
+                slug: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+          take: VIDEO_LIBRARY_DETAIL_RELATION_LIMIT,
+        },
+        children: {
+          where: {
+            child: { deletedAt: null },
+          },
+          include: {
+            child: {
+              select: {
+                coreId: true,
+                id: true,
+                label: true,
+                locales: {
+                  where: { deletedAt: null },
+                  select: {
+                    locale: true,
+                    title: true,
+                  },
+                  take: 12,
+                },
+                slug: true,
+              },
+            },
+          },
+          orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+          take: VIDEO_LIBRARY_DETAIL_RELATION_LIMIT,
+        },
+        scenes: {
+          select: {
+            chapterTitle: true,
+            endSeconds: true,
+            id: true,
+            sceneIndex: true,
+            startSeconds: true,
+          },
+          orderBy: { sceneIndex: "asc" },
+          take: VIDEO_LIBRARY_DETAIL_RELATION_LIMIT,
+        },
+        transcripts: {
+          select: {
+            dimensions: true,
+            generatedAt: true,
+            id: true,
+            language: true,
+            model: true,
+            totalChunks: true,
+            totalTokens: true,
+          },
+          orderBy: { updatedAt: "desc" },
+          take: VIDEO_LIBRARY_DETAIL_RELATION_LIMIT,
+        },
+      },
+    })
+
+    if (!video) return null
+
+    const [
+      dubCount,
+      imageCount,
+      localeCount,
+      subtitleCount,
+      studyQuestionCount,
+      bibleCitationCount,
+      keywordCount,
+      parentCount,
+      childCount,
+      sceneCount,
+      transcriptCount,
+    ] = await Promise.all([
+      prisma.videoDub.count({ where: { videoId: video.id, deletedAt: null } }),
+      prisma.videoImage.count({
+        where: { videoId: video.id, deletedAt: null },
+      }),
+      prisma.videoLocale.count({
+        where: { videoId: video.id, deletedAt: null },
+      }),
+      prisma.videoSubtitle.count({
+        where: { videoId: video.id, deletedAt: null },
+      }),
+      prisma.videoStudyQuestion.count({
+        where: { videoId: video.id, deletedAt: null },
+      }),
+      prisma.bibleCitation.count({
+        where: { videoId: video.id, deletedAt: null },
+      }),
+      prisma.videoKeyword.count({
+        where: { videoId: video.id, keyword: { deletedAt: null } },
+      }),
+      prisma.videoRelation.count({
+        where: { childId: video.id, parent: { deletedAt: null } },
+      }),
+      prisma.videoRelation.count({
+        where: { parentId: video.id, child: { deletedAt: null } },
+      }),
+      prisma.videoScene.count({ where: { videoId: video.id } }),
+      prisma.videoTranscript.count({ where: { videoId: video.id } }),
+    ])
+
+    const localeRows = video.locales.filter(
+      (item): item is (typeof video.locales)[number] & { locale: string } =>
+        item.locale != null,
+    )
+    const preferredLocale = choosePreferredLocale(localeRows, locale)
+    const title = compactText(preferredLocale?.title) ?? video.slug
+    const source = sourceLabel(video.videoSource)
+    const imageRows = video.images.map((image) => ({
+      videoId: video.id,
+      url: image.url,
+      kind: image.kind,
+      createdAt: new Date(0),
+    }))
+    const routeManifest = await loadLatestWatchRouteManifest()
+    const visitorUrl = resolveVideoVisitorUrl({
+      contentSlug: video.slug,
+      languageSlugs: video.dubs.map((dub) => dub.language?.slug),
+      manifest: routeManifest,
+      webOrigin: env.WEB_CANONICAL_ORIGIN,
+    })
+
+    return {
+      key: video.id,
+      title,
+      description: shortDetail(preferredLocale?.description, 320),
+      previewImageUrl: preferredVideoImage(imageRows),
+      label: localizedVideoLabel(video.label ?? null, locale) ?? "Video",
+      source: source.label,
+      duration: formatDuration(video.dubs),
+      visitorUrl,
+      identity: compactFields([
+        detailField("Database ID", video.id),
+        detailField("Core ID", video.coreId),
+        detailField("Slug", video.slug),
+        detailField("Label", localizedVideoLabel(video.label ?? null, locale)),
+        detailField("Video source", source.label),
+        detailField("Origin", video.origin?.name),
+        detailField("Origin Core ID", video.origin?.coreId),
+        detailField(
+          "Primary language",
+          displayLanguage(video.primaryLanguage, locale),
+        ),
+      ]),
+      status: compactFields([
+        detailField("Published at", displayDateTime(video.publishedAt)),
+        detailField("Locked", video.locked),
+        detailField("No index", video.noIndex),
+        detailField("AI metadata", video.aiMetadata),
+      ]),
+      timestamps: compactFields([
+        detailField("Synced at", displayDateTime(video.syncedAt)),
+        detailField("Created at", displayDateTime(video.createdAt)),
+        detailField("Updated at", displayDateTime(video.updatedAt)),
+      ]),
+      localizedContent: detailSection({
+        title: "Localized Content",
+        count: localeCount,
+        empty: "No localized metadata",
+        items: video.locales.map((item) => ({
+          key: item.id,
+          title: compactText(item.title) ?? item.locale ?? item.id,
+          meta: [
+            item.locale,
+            item.status,
+            displayLanguage(item.language, locale),
+            displayDateTime(item.publishedAt),
+          ]
+            .map((value) => compactText(value))
+            .filter(Boolean)
+            .join(" / "),
+          detail: shortDetail(
+            item.description ?? item.snippet ?? item.imageAlt,
+          ),
+        })),
+      }),
+      dubs: detailSection({
+        title: "Dubs",
+        count: dubCount,
+        empty: "No dubs",
+        items: video.dubs.map((dub) => ({
+          key: dub.id,
+          title: displayLanguage(dub.language, locale) ?? dub.slug ?? dub.id,
+          meta: [
+            dub.published ? "Published" : "Unpublished",
+            dub.videoEdition?.name,
+            formatDuration([dub]),
+            dub.muxVideo?.playbackId ? "Mux playback" : null,
+            dub.downloads.length > 0
+              ? `${dub.downloads.length} downloads sampled`
+              : null,
+          ]
+            .map((value) => compactText(value))
+            .filter(Boolean)
+            .join(" / "),
+          detail: [dub.coreId, dub.slug, dub.hls ?? dub.dash ?? dub.share]
+            .map((value) => compactText(value))
+            .filter(Boolean)
+            .join(" / "),
+        })),
+      }),
+      images: detailSection({
+        title: "Images",
+        count: imageCount,
+        empty: "No images",
+        items: video.images.map((image) => ({
+          key: image.id,
+          title: compactText(image.kind) ?? "Image",
+          meta: [
+            image.aspectRatio,
+            image.width && image.height
+              ? `${image.width}x${image.height}`
+              : null,
+          ]
+            .map((value) => compactText(value))
+            .filter(Boolean)
+            .join(" / "),
+          detail: normalizeVideoThumbnailUrl(image.url),
+        })),
+      }),
+      subtitles: detailSection({
+        title: "Subtitles",
+        count: subtitleCount,
+        empty: "No subtitles",
+        items: video.subtitles.map((subtitle) => ({
+          key: subtitle.id,
+          title:
+            displayLanguage(subtitle.language, locale) ??
+            subtitle.value ??
+            subtitle.id,
+          meta: [
+            subtitle.videoEdition?.name,
+            subtitle.primary ? "Primary" : null,
+            subtitle.aiGenerated ? "AI generated" : null,
+          ]
+            .map((value) => compactText(value))
+            .filter(Boolean)
+            .join(" / "),
+          detail: shortDetail(
+            subtitle.vttSrc ?? subtitle.srtSrc ?? subtitle.value,
+          ),
+        })),
+      }),
+      studyQuestions: detailSection({
+        title: "Study Questions",
+        count: studyQuestionCount,
+        empty: "No study questions",
+        items: video.studyQuestions.map((question) => ({
+          key: question.id,
+          title: shortDetail(question.text, 96) ?? question.id,
+          meta: [
+            question.locale,
+            displayLanguage(question.language, locale),
+            question.primary ? "Primary" : null,
+            question.order ? `Order ${question.order}` : null,
+          ]
+            .map((value) => compactText(value))
+            .filter(Boolean)
+            .join(" / "),
+          detail: shortDetail(question.text),
+        })),
+      }),
+      bibleCitations: detailSection({
+        title: "Bible Citations",
+        count: bibleCitationCount,
+        empty: "No Bible citations",
+        items: video.bibleCitations.map((citation) => {
+          const book =
+            localizedJsonName(citation.bibleBook.name, locale) ??
+            citation.bibleBook.osisId ??
+            "Bible"
+          const range = [
+            citation.chapterStart,
+            citation.verseStart ? `:${citation.verseStart}` : null,
+            citation.chapterEnd && citation.chapterEnd !== citation.chapterStart
+              ? `-${citation.chapterEnd}`
+              : null,
+            citation.verseEnd ? `:${citation.verseEnd}` : null,
+          ]
+            .filter(Boolean)
+            .join("")
+
+          return {
+            key: citation.id,
+            title: `${book}${range ? ` ${range}` : ""}`,
+            meta: [
+              citation.osisId,
+              citation.order ? `Order ${citation.order}` : null,
+            ]
+              .map((value) => compactText(value))
+              .filter(Boolean)
+              .join(" / "),
+            detail: null,
+          }
+        }),
+      }),
+      keywords: detailSection({
+        title: "Keywords",
+        count: keywordCount,
+        empty: "No keywords",
+        items: video.keywords.map((item) => ({
+          key: `${item.videoId}-${item.keywordId}`,
+          title: item.keyword.value,
+          meta:
+            displayLanguage(item.keyword.language, locale) ??
+            item.keyword.coreId,
+          detail: null,
+        })),
+      }),
+      parents: detailSection({
+        title: "Parent Collections",
+        count: parentCount,
+        empty: "No parent collections",
+        items: video.parents.map((relation) => ({
+          key: relation.id,
+          title: relationVideoTitle(relation.parent, locale),
+          meta: [
+            relation.parent.slug,
+            localizedVideoLabel(relation.parent.label ?? null, locale),
+          ]
+            .map((value) => compactText(value))
+            .filter(Boolean)
+            .join(" / "),
+          detail: relation.parent.coreId,
+        })),
+      }),
+      children: detailSection({
+        title: "Child Videos",
+        count: childCount,
+        empty: "No child videos",
+        items: video.children.map((relation) => ({
+          key: relation.id,
+          title: relationVideoTitle(relation.child, locale),
+          meta: [
+            relation.child.slug,
+            localizedVideoLabel(relation.child.label ?? null, locale),
+            relation.order != null ? `Order ${relation.order}` : null,
+          ]
+            .map((value) => compactText(value))
+            .filter(Boolean)
+            .join(" / "),
+          detail: relation.child.coreId,
+        })),
+      }),
+      technical: detailSection({
+        title: "Technical Summaries",
+        count: sceneCount + transcriptCount,
+        empty: "No scene or transcript summaries",
+        items: [
+          ...video.scenes.map((scene) => ({
+            key: scene.id,
+            title:
+              compactText(scene.chapterTitle) ?? `Scene ${scene.sceneIndex}`,
+            meta: [
+              `${scene.startSeconds}s`,
+              scene.endSeconds != null ? `${scene.endSeconds}s` : null,
+            ]
+              .map((value) => compactText(value))
+              .filter(Boolean)
+              .join(" / "),
+            detail: null,
+          })),
+          ...video.transcripts.map((transcript) => ({
+            key: transcript.id,
+            title: `Transcript ${transcript.language}`,
+            meta: [
+              transcript.model,
+              `${transcript.totalChunks.toLocaleString("en")} chunks`,
+              `${transcript.totalTokens.toLocaleString("en")} tokens`,
+              displayDateTime(transcript.generatedAt),
+            ]
+              .map((value) => compactText(value))
+              .filter(Boolean)
+              .join(" / "),
+            detail: `${transcript.dimensions.toLocaleString("en")} dimensions`,
+          })),
+        ],
+      }),
+    }
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return null
     }
     throw error
   }
@@ -773,6 +1549,7 @@ export async function loadExperienceRows(principal: Principal) {
 
 async function loadVideoRowSlice({
   category,
+  collection,
   language,
   principal,
   limit,
@@ -788,7 +1565,7 @@ async function loadVideoRowSlice({
     // U2: VideoService.list dropped its `user` param. Route is gated by requireSession().
     void principal
     videos = await services.video.list({
-      input: { category, language, limit, offset, search, sort },
+      input: { category, collection, language, limit, offset, search, sort },
       query: {},
     })
   } catch (error) {
@@ -802,58 +1579,67 @@ async function loadVideoRowSlice({
   let videoLocales: VideoLocaleRow[] = []
   let videoDubs: VideoDubRow[] = []
   let videoImages: VideoImageRow[] = []
+  let videoChildRelations: Array<{ parentId: string }> = []
   try {
-    ;[videoLocales, videoDubs, videoImages] = await Promise.all([
-      prisma.videoLocale.findMany({
-        where: { videoId: { in: ids }, deletedAt: null },
-        select: {
-          videoId: true,
-          locale: true,
-          title: true,
-          description: true,
-          updatedAt: true,
-        },
-        orderBy: { updatedAt: "desc" },
-      }),
-      prisma.videoDub.findMany({
-        where: { videoId: { in: ids }, deletedAt: null },
-        include: {
-          language: {
-            select: {
-              bcp47: true,
-              countryLanguages: {
-                where: { deletedAt: null },
-                select: {
-                  order: true,
-                  primary: true,
-                  speakers: true,
-                  suggested: true,
-                  country: {
-                    select: {
-                      flagPngSrc: true,
-                      flagWebpSrc: true,
+    ;[videoLocales, videoDubs, videoImages, videoChildRelations] =
+      await Promise.all([
+        prisma.videoLocale.findMany({
+          where: { videoId: { in: ids }, deletedAt: null },
+          select: {
+            videoId: true,
+            locale: true,
+            title: true,
+            description: true,
+            updatedAt: true,
+          },
+          orderBy: { updatedAt: "desc" },
+        }),
+        prisma.videoDub.findMany({
+          where: { videoId: { in: ids }, deletedAt: null },
+          include: {
+            language: {
+              select: {
+                bcp47: true,
+                countryLanguages: {
+                  where: { deletedAt: null },
+                  select: {
+                    order: true,
+                    primary: true,
+                    speakers: true,
+                    suggested: true,
+                    country: {
+                      select: {
+                        flagPngSrc: true,
+                        flagWebpSrc: true,
+                      },
                     },
                   },
                 },
+                iso3: true,
+                slug: true,
               },
-              iso3: true,
-              slug: true,
             },
           },
-        },
-        orderBy: { updatedAt: "desc" },
-      }),
-      prisma.videoImage.findMany({
-        where: { videoId: { in: ids } },
-        select: {
-          videoId: true,
-          url: true,
-          kind: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: "asc" },
-      }),
-    ])
+          orderBy: { updatedAt: "desc" },
+        }),
+        prisma.videoImage.findMany({
+          where: { videoId: { in: ids } },
+          select: {
+            videoId: true,
+            url: true,
+            kind: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: "asc" },
+        }),
+        prisma.videoRelation.findMany({
+          where: {
+            parentId: { in: ids },
+            child: { deletedAt: null },
+          },
+          select: { parentId: true },
+        }),
+      ])
   } catch (error) {
     if (isMissingTableError(error)) {
       return []
@@ -885,6 +1671,14 @@ async function loadVideoRowSlice({
     imagesByVideo.set(item.videoId, current)
   }
 
+  const childCountByVideo = new Map<string, number>()
+  for (const item of videoChildRelations) {
+    childCountByVideo.set(
+      item.parentId,
+      (childCountByVideo.get(item.parentId) ?? 0) + 1,
+    )
+  }
+
   const routeManifest = includeVisitorUrls
     ? await loadLatestWatchRouteManifest()
     : null
@@ -898,6 +1692,7 @@ async function loadVideoRowSlice({
     const source = sourceLabel(video.videoSource)
     const playbackDub = preferredPlaybackDub(dubRows)
     const coverage = dubCoverageMetric(dubRows)
+    const childCount = childCountByVideo.get(video.id) ?? 0
 
     return {
       key: video.id,
@@ -907,6 +1702,10 @@ async function loadVideoRowSlice({
       slug: video.slug,
       label: video.label ?? null,
       labelLabel: localizedVideoLabel(video.label ?? null, locale),
+      childCount,
+      isCollectionTarget:
+        video.label === "COLLECTION" ||
+        (video.label === "SERIES" && childCount > 0),
       sourceLabel: source.label,
       sourceTone: source.tone,
       dubs: dubCoverage(dubRows),
@@ -944,6 +1743,7 @@ export async function loadVideoLibraryPage(
   principal: Principal,
   {
     category,
+    collection,
     language,
     page,
     pageSize = VIDEO_LIBRARY_PAGE_SIZE,
@@ -951,6 +1751,7 @@ export async function loadVideoLibraryPage(
     sort,
   }: {
     category?: VideoLibraryCategory
+    collection?: string
     language?: string
     page: number
     pageSize?: number
@@ -958,9 +1759,10 @@ export async function loadVideoLibraryPage(
     sort?: VideoLibrarySort
   },
 ) {
-  const [total, languageOptions] = await Promise.all([
-    countActiveVideos({ category, language, query }),
+  const [total, languageOptions, collectionSummary] = await Promise.all([
+    countActiveVideos({ category, collection, language, query }),
     loadVideoLibraryLanguageOptions(language),
+    loadVideoCollectionSummary(collection),
   ])
   const pagination = createVideoLibraryPagination({
     total,
@@ -973,6 +1775,7 @@ export async function loadVideoLibraryPage(
       ? []
       : await loadVideoRowSlice({
           category,
+          collection,
           language,
           principal,
           limit: pagination.pageSize,
@@ -982,5 +1785,5 @@ export async function loadVideoLibraryPage(
           includeVisitorUrls: true,
         })
 
-  return { rows, pagination, languageOptions }
+  return { rows, pagination, languageOptions, collectionSummary }
 }

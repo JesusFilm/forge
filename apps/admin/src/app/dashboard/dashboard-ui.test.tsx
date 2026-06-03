@@ -117,6 +117,8 @@ vi.mock("@/app/dashboard/live-data", () => ({
         slug: "neon-genesis-the-digital-divide",
         label: "COLLECTION",
         labelLabel: "Collection",
+        childCount: 2,
+        isCollectionTarget: true,
         sourceLabel: "Mux",
         sourceTone: "info",
         dubs: "3 dubs · EN, ES, FR",
@@ -144,6 +146,8 @@ vi.mock("@/app/dashboard/live-data", () => ({
         slug: "no-public-link",
         label: null,
         labelLabel: null,
+        childCount: 0,
+        isCollectionTarget: false,
         sourceLabel: "Internal",
         sourceTone: "muted",
         dubs: "No dubs",
@@ -175,7 +179,9 @@ vi.mock("@/app/dashboard/live-data", () => ({
       { label: "English", value: "english" },
       { label: "Spanish", value: "spanish" },
     ],
+    collectionSummary: null,
   })),
+  loadVideoLibraryDetail: vi.fn(async () => null),
 }))
 
 vi.mock("@/app/dashboard/ops-data", () => ({
@@ -536,7 +542,10 @@ vi.mock("@/services/workflow-worker-heartbeat.service", () => ({
 }))
 
 import DashboardPage from "./page"
-import { loadVideoLibraryPage } from "@/app/dashboard/live-data"
+import {
+  loadVideoLibraryDetail,
+  loadVideoLibraryPage,
+} from "@/app/dashboard/live-data"
 import SystemStatusPage from "./system-status/page"
 import ExperiencesPage from "./experiences/page"
 import VideosPage from "./videos/page"
@@ -663,6 +672,7 @@ describe("dashboard UI routes", () => {
       { id: "test-user", role: "ADMIN" },
       {
         category: "all",
+        collection: "",
         language: "",
         page: 2,
         query: "mux",
@@ -685,6 +695,12 @@ describe("dashboard UI routes", () => {
     expect(html).toContain(uiMessages.pages.videos.sort.options.oldest)
     expect(html).toContain('href="/dashboard/videos?q=mux"')
     expect(html).toContain('href="/dashboard/videos?page=3&amp;q=mux"')
+    expect(html).toContain(
+      'href="/dashboard/videos?q=mux&amp;collection=neon-genesis-the-digital-divide"',
+    )
+    expect(html).toContain(
+      'href="/dashboard/videos?page=2&amp;q=mux&amp;video=no-public-link"',
+    )
     expect(html).toContain("COLLECTION")
     expect(html).toContain("Mux source")
     expect(html).toContain("Internal source")
@@ -734,6 +750,7 @@ describe("dashboard UI routes", () => {
         rangeEnd: 0,
       },
       languageOptions: [],
+      collectionSummary: null,
     })
 
     const html = await htmlFrom(
@@ -744,6 +761,7 @@ describe("dashboard UI routes", () => {
       { id: "test-user", role: "ADMIN" },
       {
         category: "all",
+        collection: "",
         language: "",
         page: 1,
         query: "does-not-exist",
@@ -772,6 +790,7 @@ describe("dashboard UI routes", () => {
       { id: "test-user", role: "ADMIN" },
       {
         category: "features",
+        collection: "",
         language: "english",
         page: 2,
         query: "Jesus",
@@ -790,6 +809,171 @@ describe("dashboard UI routes", () => {
     )
   })
 
+  it("resets type state when drilling into a collection row", async () => {
+    const html = await htmlFrom(
+      VideosPage({
+        searchParams: Promise.resolve({
+          q: "Jesus",
+          type: "collections",
+        }),
+      }),
+    )
+
+    expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
+      { id: "test-user", role: "ADMIN" },
+      {
+        category: "collections",
+        collection: "",
+        language: "",
+        page: 1,
+        query: "Jesus",
+        sort: "recent",
+      },
+    )
+    expect(html).toContain(
+      'href="/dashboard/videos?q=Jesus&amp;collection=neon-genesis-the-digital-divide"',
+    )
+    expect(html).not.toContain(
+      'href="/dashboard/videos?q=Jesus&amp;type=collections&amp;collection=neon-genesis-the-digital-divide"',
+    )
+  })
+
+  it("renders URL-backed collection context and selected video modal", async () => {
+    vi.mocked(loadVideoLibraryPage).mockResolvedValueOnce({
+      rows: [],
+      pagination: {
+        total: 0,
+        currentPage: 1,
+        pageSize: 30,
+        pageCount: 1,
+        hasPrevious: false,
+        hasNext: false,
+        offset: 0,
+        rangeStart: 0,
+        rangeEnd: 0,
+      },
+      languageOptions: [],
+      collectionSummary: {
+        key: "collection-1",
+        title: "The Story",
+        slug: "the-story",
+        childCount: 12,
+      },
+    })
+    vi.mocked(loadVideoLibraryDetail).mockResolvedValueOnce({
+      key: "vid_2",
+      title: "No Public Link",
+      description: "Known metadata for this video",
+      previewImageUrl: null,
+      label: "Video",
+      source: "Internal",
+      duration: "--:--",
+      visitorUrl: null,
+      identity: [{ label: "Slug", value: "no-public-link" }],
+      status: [{ label: "Locked", value: "No" }],
+      timestamps: [{ label: "Updated at", value: "10/24/2023, 14:03" }],
+      localizedContent: {
+        title: "Localized Content",
+        count: 1,
+        empty: "No localized metadata",
+        items: [
+          {
+            key: "locale-1",
+            title: "No Public Link",
+            meta: "en / DRAFT",
+            detail: "Known metadata for this video",
+          },
+        ],
+      },
+      dubs: { title: "Dubs", count: 0, empty: "No dubs", items: [] },
+      images: { title: "Images", count: 0, empty: "No images", items: [] },
+      subtitles: {
+        title: "Subtitles",
+        count: 0,
+        empty: "No subtitles",
+        items: [],
+      },
+      studyQuestions: {
+        title: "Study Questions",
+        count: 0,
+        empty: "No study questions",
+        items: [],
+      },
+      bibleCitations: {
+        title: "Bible Citations",
+        count: 0,
+        empty: "No Bible citations",
+        items: [],
+      },
+      keywords: {
+        title: "Keywords",
+        count: 0,
+        empty: "No keywords",
+        items: [],
+      },
+      parents: {
+        title: "Parent Collections",
+        count: 1,
+        empty: "No parent collections",
+        items: [
+          {
+            key: "parent-1",
+            title: "The Story",
+            meta: "the-story / Collection",
+            detail: "core-parent",
+          },
+        ],
+      },
+      children: {
+        title: "Child Videos",
+        count: 0,
+        empty: "No child videos",
+        items: [],
+      },
+      technical: {
+        title: "Technical Summaries",
+        count: 0,
+        empty: "No scene or transcript summaries",
+        items: [],
+      },
+    })
+
+    const html = await htmlFrom(
+      VideosPage({
+        searchParams: Promise.resolve({
+          collection: "the-story",
+          q: "Jesus",
+          video: "no-public-link",
+        }),
+      }),
+    )
+
+    expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
+      { id: "test-user", role: "ADMIN" },
+      {
+        category: "all",
+        collection: "the-story",
+        language: "",
+        page: 1,
+        query: "Jesus",
+        sort: "recent",
+      },
+    )
+    expect(vi.mocked(loadVideoLibraryDetail)).toHaveBeenCalledWith(
+      "no-public-link",
+    )
+    expect(html).toContain(uiMessages.pages.videos.collection.title)
+    expect(html).toContain("The Story")
+    expect(html).toContain("12 child videos")
+    expect(html).toContain('href="/dashboard/videos?q=Jesus"')
+    expect(html).toContain('role="dialog"')
+    expect(html).toContain(uiMessages.pages.videos.detail.eyebrow)
+    expect(html).toContain("Known metadata for this video")
+    expect(html).toContain(
+      'href="/dashboard/videos?q=Jesus&amp;collection=the-story"',
+    )
+  })
+
   it("renders first-page pagination with previous disabled and next linked", async () => {
     vi.mocked(loadVideoLibraryPage).mockResolvedValueOnce({
       rows: [],
@@ -805,6 +989,7 @@ describe("dashboard UI routes", () => {
         rangeEnd: 30,
       },
       languageOptions: [],
+      collectionSummary: null,
     })
 
     const html = await htmlFrom(
@@ -835,6 +1020,7 @@ describe("dashboard UI routes", () => {
         rangeEnd: 95,
       },
       languageOptions: [],
+      collectionSummary: null,
     })
 
     const html = await htmlFrom(
