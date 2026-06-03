@@ -3,6 +3,26 @@ import type { WatchRouteManifest } from "@/services/watch-route-manifest.service
 export const VIDEO_LIBRARY_PAGE_SIZE = 30
 export const VIDEO_LIBRARY_MAX_PAGE_SIZE = 200
 export const VIDEO_LIBRARY_MAX_QUERY_LENGTH = 120
+export const VIDEO_LIBRARY_MAX_LANGUAGE_LENGTH = 120
+
+export const VIDEO_LIBRARY_CATEGORIES = [
+  "all",
+  "collections",
+  "features",
+  "shortFilms",
+  "series",
+] as const
+export const VIDEO_LIBRARY_SORTS = [
+  "recent",
+  "oldest",
+  "created",
+  "createdOldest",
+] as const
+export const VIDEO_LIBRARY_DEFAULT_CATEGORY = "all"
+export const VIDEO_LIBRARY_DEFAULT_SORT = "recent"
+
+export type VideoLibraryCategory = (typeof VIDEO_LIBRARY_CATEGORIES)[number]
+export type VideoLibrarySort = (typeof VIDEO_LIBRARY_SORTS)[number]
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/
 const BCP47_TAG_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i
@@ -43,18 +63,52 @@ export function parseVideoLibraryQuery(value: string | string[] | undefined) {
   )
 }
 
+export function parseVideoLibraryCategory(
+  value: string | string[] | undefined,
+): VideoLibraryCategory {
+  const candidate = firstSearchParam(value)
+  return VIDEO_LIBRARY_CATEGORIES.find((item) => item === candidate) ?? "all"
+}
+
+export function parseVideoLibraryLanguage(
+  value: string | string[] | undefined,
+) {
+  return (
+    firstSearchParam(value)
+      ?.replace(/\s+/g, " ")
+      .trim()
+      .slice(0, VIDEO_LIBRARY_MAX_LANGUAGE_LENGTH) ?? ""
+  )
+}
+
+export function parseVideoLibrarySort(
+  value: string | string[] | undefined,
+): VideoLibrarySort {
+  const candidate = firstSearchParam(value)
+  return VIDEO_LIBRARY_SORTS.find((item) => item === candidate) ?? "recent"
+}
+
 export function videoLibraryHref({
+  category,
+  language,
   page,
   query,
+  sort,
 }: {
+  category?: VideoLibraryCategory
+  language?: string
   page: number
   query?: string
+  sort?: VideoLibrarySort
 }) {
   const params = new URLSearchParams()
   const normalizedPage = Number.isFinite(page)
     ? Math.max(1, Math.trunc(page))
     : 1
   const normalizedQuery = parseVideoLibraryQuery(query)
+  const normalizedCategory = parseVideoLibraryCategory(category)
+  const normalizedLanguage = parseVideoLibraryLanguage(language)
+  const normalizedSort = parseVideoLibrarySort(sort)
 
   if (normalizedPage > 1) {
     params.set("page", normalizedPage.toString())
@@ -62,9 +116,34 @@ export function videoLibraryHref({
   if (normalizedQuery) {
     params.set("q", normalizedQuery)
   }
+  if (normalizedCategory !== VIDEO_LIBRARY_DEFAULT_CATEGORY) {
+    params.set("type", normalizedCategory)
+  }
+  if (normalizedLanguage) {
+    params.set("language", normalizedLanguage)
+  }
+  if (normalizedSort !== VIDEO_LIBRARY_DEFAULT_SORT) {
+    params.set("sort", normalizedSort)
+  }
 
   const suffix = params.toString()
   return suffix ? `/dashboard/videos?${suffix}` : "/dashboard/videos"
+}
+
+export function hasActiveVideoLibraryFilters({
+  category,
+  language,
+  query,
+}: {
+  category: VideoLibraryCategory
+  language: string
+  query: string
+}) {
+  return (
+    parseVideoLibraryQuery(query).length > 0 ||
+    parseVideoLibraryCategory(category) !== VIDEO_LIBRARY_DEFAULT_CATEGORY ||
+    parseVideoLibraryLanguage(language).length > 0
+  )
 }
 
 export function normalizeVideoLibraryPageSize(value: number | undefined) {

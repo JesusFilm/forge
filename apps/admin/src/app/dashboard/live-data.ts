@@ -16,6 +16,8 @@ import {
   formatVideoUpdatedRelative,
   normalizeVideoThumbnailUrl,
   resolveVideoVisitorUrl,
+  type VideoLibraryCategory,
+  type VideoLibrarySort,
   VIDEO_LIBRARY_PAGE_SIZE,
 } from "./video-library-utils"
 
@@ -64,15 +66,24 @@ type VideoImageRow = {
 }
 
 type LoadVideoRowSliceOptions = {
+  category?: VideoLibraryCategory
+  language?: string
   principal: Principal
   limit: number
   offset: number
   search?: string
+  sort?: VideoLibrarySort
   includeVisitorUrls?: boolean
+}
+
+export type VideoLibraryLanguageOption = {
+  label: string
+  value: string
 }
 
 const VIDEO_LIBRARY_LANGUAGE_TARGET = 2300
 const VIDEO_LIBRARY_LANGUAGE_CHIP_LIMIT = 5
+const VIDEO_LIBRARY_LANGUAGE_OPTION_LIMIT = 200
 
 function durationSecondsForDub(
   dub: Pick<VideoDubRow, "lengthInMilliseconds" | "duration">,
@@ -357,6 +368,54 @@ function localizedVideoLabel(
   return labels[label]
 }
 
+function localizedJsonName(value: unknown, locale: string) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null
+  }
+
+  const record = value as Record<string, unknown>
+  for (const code of [...preferredLocaleCodes(locale), "en"]) {
+    const match = record[code]
+    if (typeof match === "string" && match.trim()) {
+      return match.trim()
+    }
+  }
+
+  const fallback = Object.values(record).find(
+    (item): item is string =>
+      typeof item === "string" && item.trim().length > 0,
+  )
+  return fallback?.trim() ?? null
+}
+
+function languageOptionLabel(
+  language: {
+    bcp47: string | null
+    id: string
+    iso3: string | null
+    name: unknown
+    slug: string | null
+  },
+  locale: string,
+) {
+  return (
+    localizedJsonName(language.name, locale) ??
+    language.slug ??
+    language.bcp47 ??
+    language.iso3 ??
+    language.id
+  )
+}
+
+function languageOptionValue(language: {
+  bcp47: string | null
+  id: string
+  iso3: string | null
+  slug: string | null
+}) {
+  return language.slug ?? language.bcp47 ?? language.iso3 ?? language.id
+}
+
 function formatDuration(dubs: VideoDubRow[]): string {
   const dub =
     dubs.find((item) => item.lengthInMilliseconds || item.duration) ?? null
@@ -441,13 +500,87 @@ function preferredVideoImage(images: VideoImageRow[]) {
   return normalizeVideoThumbnailUrl(images.find((image) => image.url)?.url)
 }
 
-async function countActiveVideos(search?: string) {
+async function countActiveVideos({
+  category,
+  language,
+  query,
+}: {
+  category?: VideoLibraryCategory
+  language?: string
+  query?: string
+}) {
   const services = createServices(prisma)
   try {
-    return await services.video.countActive(search)
+    return await services.video.countActive({
+      category,
+      language,
+      search: query,
+    })
   } catch (error) {
     if (isMissingTableError(error)) {
       return 0
+    }
+    throw error
+  }
+}
+
+async function loadVideoLibraryLanguageOptions(
+  activeLanguage?: string,
+): Promise<VideoLibraryLanguageOption[]> {
+  const locale = await getAdminLocale()
+
+  try {
+    const dubs = await prisma.videoDub.findMany({
+      where: {
+        deletedAt: null,
+        languageId: { not: null },
+        language: { deletedAt: null },
+        video: { deletedAt: null },
+      },
+      distinct: ["languageId"],
+      orderBy: [{ languageId: "asc" }],
+      take: VIDEO_LIBRARY_LANGUAGE_OPTION_LIMIT,
+      select: {
+        language: {
+          select: {
+            bcp47: true,
+            id: true,
+            iso3: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    })
+
+    const optionsByValue = new Map<string, VideoLibraryLanguageOption>()
+    for (const dub of dubs) {
+      if (!dub.language) continue
+      const value = languageOptionValue(dub.language)
+      if (!value || optionsByValue.has(value)) continue
+      optionsByValue.set(value, {
+        label: languageOptionLabel(dub.language, locale),
+        value,
+      })
+    }
+
+    const normalizedActiveLanguage = compactText(activeLanguage)
+    if (
+      normalizedActiveLanguage &&
+      !optionsByValue.has(normalizedActiveLanguage)
+    ) {
+      optionsByValue.set(normalizedActiveLanguage, {
+        label: normalizedActiveLanguage,
+        value: normalizedActiveLanguage,
+      })
+    }
+
+    return Array.from(optionsByValue.values()).sort((left, right) =>
+      left.label.localeCompare(right.label, "en", { sensitivity: "base" }),
+    )
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return []
     }
     throw error
   }
@@ -578,10 +711,13 @@ export async function loadExperienceRows(principal: Principal) {
 }
 
 async function loadVideoRowSlice({
+  category,
+  language,
   principal,
   limit,
   offset,
   search,
+  sort,
   includeVisitorUrls = false,
 }: LoadVideoRowSliceOptions) {
   const services = createServices(prisma)
@@ -591,7 +727,7 @@ async function loadVideoRowSlice({
     // U2: VideoService.list dropped its `user` param. Route is gated by requireSession().
     void principal
     videos = await services.video.list({
-      input: { limit, offset, search },
+      input: { category, language, limit, offset, search, sort },
       query: {},
     })
   } catch (error) {
@@ -731,12 +867,25 @@ export async function loadVideoRows(principal: Principal) {
 export async function loadVideoLibraryPage(
   principal: Principal,
   {
+    category,
+    language,
     page,
     pageSize = VIDEO_LIBRARY_PAGE_SIZE,
     query,
-  }: { page: number; pageSize?: number; query?: string },
+    sort,
+  }: {
+    category?: VideoLibraryCategory
+    language?: string
+    page: number
+    pageSize?: number
+    query?: string
+    sort?: VideoLibrarySort
+  },
 ) {
-  const total = await countActiveVideos(query)
+  const [total, languageOptions] = await Promise.all([
+    countActiveVideos({ category, language, query }),
+    loadVideoLibraryLanguageOptions(language),
+  ])
   const pagination = createVideoLibraryPagination({
     total,
     requestedPage: page,
@@ -747,12 +896,15 @@ export async function loadVideoLibraryPage(
     total === 0
       ? []
       : await loadVideoRowSlice({
+          category,
+          language,
           principal,
           limit: pagination.pageSize,
           offset: pagination.offset,
           search: query,
+          sort,
           includeVisitorUrls: true,
         })
 
-  return { rows, pagination }
+  return { rows, pagination, languageOptions }
 }

@@ -191,6 +191,108 @@ describe("VideoService", () => {
         ]),
       )
     })
+
+    it("filters by video library category labels", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({
+        input: { category: "features", search: "" },
+        query: {},
+      })
+
+      let call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          { deletedAt: null },
+          { label: { in: ["FEATURE_FILM"] } },
+        ]),
+      )
+
+      prisma.video.findMany.mockResolvedValueOnce([])
+      await service.list({
+        input: { category: "collections", search: "" },
+        query: {},
+      })
+
+      call = prisma.video.findMany.mock.calls[1][0]
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          { deletedAt: null },
+          { label: { in: ["COLLECTION"] } },
+        ]),
+      )
+    })
+
+    it("does not add a category label filter for the all category", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: { category: "all" }, query: {} })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where).toEqual({ deletedAt: null })
+    })
+
+    it("combines search, category, and dubbed language filters", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({
+        input: {
+          category: "series",
+          language: "english",
+          search: "Jesus",
+        },
+        query: {},
+      })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            OR: expect.arrayContaining([
+              { slug: { contains: "Jesus", mode: "insensitive" } },
+            ]),
+          }),
+          { label: { in: ["SERIES"] } },
+          {
+            dubs: {
+              some: {
+                deletedAt: null,
+                language: {
+                  is: expect.objectContaining({
+                    OR: expect.arrayContaining([
+                      {
+                        slug: {
+                          contains: "english",
+                          mode: "insensitive",
+                        },
+                      },
+                    ]),
+                  }),
+                },
+              },
+            },
+          },
+        ]),
+      )
+    })
+
+    it("applies supported video library sort orders", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: { sort: "oldest" }, query: {} })
+
+      let call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.orderBy).toEqual([{ updatedAt: "asc" }, { createdAt: "asc" }])
+
+      prisma.video.findMany.mockResolvedValueOnce([])
+      await service.list({ input: { sort: "created" }, query: {} })
+
+      call = prisma.video.findMany.mock.calls[1][0]
+      expect(call.orderBy).toEqual([
+        { createdAt: "desc" },
+        { updatedAt: "desc" },
+      ])
+    })
   })
 
   describe("countActive", () => {
@@ -219,6 +321,35 @@ describe("VideoService", () => {
               },
             },
           },
+        ]),
+      )
+    })
+
+    it("counts with the same category and language filters as list", async () => {
+      prisma.video.count.mockResolvedValueOnce(7)
+
+      await expect(
+        service.countActive({
+          category: "shortFilms",
+          language: "spanish",
+          search: "story",
+        }),
+      ).resolves.toBe(7)
+
+      const call = prisma.video.count.mock.calls[0][0]
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            OR: expect.arrayContaining([
+              { slug: { contains: "story", mode: "insensitive" } },
+            ]),
+          }),
+          { label: { in: ["SHORT_FILM"] } },
+          expect.objectContaining({
+            dubs: expect.objectContaining({
+              some: expect.objectContaining({ deletedAt: null }),
+            }),
+          }),
         ]),
       )
     })

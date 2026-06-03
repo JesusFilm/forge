@@ -167,6 +167,10 @@ vi.mock("@/app/dashboard/live-data", () => ({
       rangeStart: 31,
       rangeEnd: 60,
     },
+    languageOptions: [
+      { label: "English", value: "english" },
+      { label: "Spanish", value: "spanish" },
+    ],
   })),
 }))
 
@@ -582,13 +586,27 @@ describe("dashboard UI routes", () => {
     expect(html).not.toContain(uiMessages.common.operatorNotes)
     expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
       { id: "test-user", role: "ADMIN" },
-      { page: 2, query: "mux" },
+      {
+        category: "all",
+        language: "",
+        page: 2,
+        query: "mux",
+        sort: "recent",
+      },
     )
     expect(html).toContain(uiMessages.pages.videos.search.label)
     expect(html).toContain(uiMessages.pages.videos.search.placeholder)
     expect(html).toContain('name="q"')
+    expect(html).toContain('name="type"')
+    expect(html).toContain('name="language"')
+    expect(html).toContain('name="sort"')
     expect(html).toContain('value="mux"')
     expect(html).toContain("Filtered by &quot;mux&quot;")
+    expect(html).toContain("English")
+    expect(html).toContain("Spanish")
+    expect(html).toContain(uiMessages.pages.videos.filters.ready)
+    expect(html).toContain(uiMessages.pages.videos.sort.options.recent)
+    expect(html).toContain(uiMessages.pages.videos.sort.options.oldest)
     expect(html).toContain('href="/dashboard/videos?q=mux"')
     expect(html).toContain('href="/dashboard/videos?page=3&amp;q=mux"')
     expect(html).toContain("COLLECTION")
@@ -636,6 +654,7 @@ describe("dashboard UI routes", () => {
         rangeStart: 0,
         rangeEnd: 0,
       },
+      languageOptions: [],
     })
 
     const html = await htmlFrom(
@@ -644,11 +663,51 @@ describe("dashboard UI routes", () => {
 
     expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
       { id: "test-user", role: "ADMIN" },
-      { page: 1, query: "does-not-exist" },
+      {
+        category: "all",
+        language: "",
+        page: 1,
+        query: "does-not-exist",
+        sort: "recent",
+      },
     )
     expect(html).toContain(uiMessages.pages.videos.table.emptySearch)
     expect(html).not.toContain(uiMessages.pages.videos.table.empty)
     expect(html).toContain('href="/dashboard/videos"')
+  })
+
+  it("preserves video type, language, and sort state in loader calls and links", async () => {
+    const html = await htmlFrom(
+      VideosPage({
+        searchParams: Promise.resolve({
+          language: "english",
+          page: "2",
+          q: "Jesus",
+          sort: "created",
+          type: "features",
+        }),
+      }),
+    )
+
+    expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
+      { id: "test-user", role: "ADMIN" },
+      {
+        category: "features",
+        language: "english",
+        page: 2,
+        query: "Jesus",
+        sort: "created",
+      },
+    )
+    expect(html).toContain('value="features" selected=""')
+    expect(html).toContain('value="english" selected=""')
+    expect(html).toContain('value="created" selected=""')
+    expect(html).toContain(
+      'href="/dashboard/videos?type=features&amp;language=english&amp;sort=created"',
+    )
+    expect(html).toContain(
+      'href="/dashboard/videos?page=3&amp;q=Jesus&amp;type=features&amp;language=english&amp;sort=created"',
+    )
   })
 
   it("renders first-page pagination with previous disabled and next linked", async () => {
@@ -665,6 +724,7 @@ describe("dashboard UI routes", () => {
         rangeStart: 1,
         rangeEnd: 30,
       },
+      languageOptions: [],
     })
 
     const html = await htmlFrom(
@@ -694,6 +754,7 @@ describe("dashboard UI routes", () => {
         rangeStart: 91,
         rangeEnd: 95,
       },
+      languageOptions: [],
     })
 
     const html = await htmlFrom(
