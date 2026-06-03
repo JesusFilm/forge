@@ -3,24 +3,25 @@ import { AppState, StyleSheet, View, useWindowDimensions } from "react-native"
 import { Image } from "expo-image"
 import { useVideoPlayer, VideoView } from "expo-video"
 import { useEvent } from "expo"
-import { useNavigation } from "expo-router"
 import { BLACK } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { PlayerControls } from "./PlayerControls"
+import { SubtitleOverlay } from "./SubtitleOverlay"
 
 type VideoPlayerProps = {
   streamingUrl: string | null
   posterUrl: string | null
+  subtitleVttSrc?: string | null
   onPlayingChange?: (isPlaying: boolean) => void
 }
 
 export function VideoPlayer({
   streamingUrl,
   posterUrl,
+  subtitleVttSrc = null,
   onPlayingChange,
 }: VideoPlayerProps) {
   const { width: screenWidth } = useWindowDimensions()
-  const navigation = useNavigation()
 
   const [hasStarted, setHasStarted] = useState(false)
   const wasPlayingRef = useRef(false)
@@ -40,9 +41,41 @@ export function VideoPlayer({
     }
   }, [streamingUrl, player])
 
+  // Disable Mux's auto-generated subtitle tracks from the HLS manifest.
+  // Admin CMS VTT subtitles are rendered by SubtitleOverlay instead.
+  // AVPlayer can auto-select a track at source load, tracks-available, or a
+  // device-locale match — these three signals cover every re-selection. (A
+  // fourth statusChange listener was dropped: it fired on every buffer/seek
+  // tick for the same effect the targeted events already cover.)
+  useEffect(() => {
+    const disable = () => {
+      try {
+        if (player.subtitleTrack != null) player.subtitleTrack = null
+      } catch {
+        // Player already released
+      }
+    }
+    const subs = [
+      player.addListener("availableSubtitleTracksChange", disable),
+      player.addListener("subtitleTrackChange", disable),
+      player.addListener("sourceLoad", disable),
+    ]
+    disable()
+    return () => subs.forEach((s) => s.remove())
+  }, [player])
+
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
   })
+
+  // Mirror isPlaying into a ref so the AppState listener can register once on
+  // [player] and read the current value, instead of tearing down and
+  // re-adding the subscription on every play/pause (which left a window where
+  // a background event could be missed).
+  const isPlayingRef = useRef(isPlaying)
+  useEffect(() => {
+    isPlayingRef.current = isPlaying
+  }, [isPlaying])
 
   useEffect(() => {
     if (isPlaying && !hasStarted) setHasStarted(true)
@@ -50,23 +83,17 @@ export function VideoPlayer({
   }, [isPlaying, hasStarted, onPlayingChange])
 
   useEffect(() => {
-    return navigation.addListener("blur", () => {
-      try {
-        player.pause()
-      } catch {
-        // Player already released
-      }
-    })
-  }, [navigation, player])
-
-  useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
         if (wasPlayingRef.current) {
-          player.play()
+          try {
+            player.play()
+          } catch {
+            // Already released
+          }
         }
       } else {
-        wasPlayingRef.current = isPlaying
+        wasPlayingRef.current = isPlayingRef.current
         try {
           player.pause()
         } catch {
@@ -75,7 +102,7 @@ export function VideoPlayer({
       }
     })
     return () => subscription.remove()
-  }, [player, isPlaying])
+  }, [player])
 
   useEffect(() => {
     return () => {
@@ -114,6 +141,8 @@ export function VideoPlayer({
           accessibilityLabel="Video thumbnail"
         />
       )}
+
+      <SubtitleOverlay player={player} vttSrc={subtitleVttSrc} />
 
       <PlayerControls player={player} onFullscreen={handleFullscreen} />
     </View>

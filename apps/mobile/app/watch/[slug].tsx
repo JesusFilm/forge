@@ -11,7 +11,7 @@ import {
   Text,
   View,
 } from "react-native"
-import { useLocalSearchParams, useNavigation } from "expo-router"
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/queries"
@@ -32,12 +32,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
 import { useBibleVerses } from "../../src/hooks/useBibleVerses"
-import type GorhomBottomSheet from "@gorhom/bottom-sheet"
-import { BottomSheet } from "../../src/components/ui/BottomSheet"
-import { DownloadSheetContent } from "../../src/components/watch/DownloadSheet"
-import { LanguageSheetContent } from "../../src/components/watch/LanguageSheet"
-import { SubtitleSheetContent } from "../../src/components/watch/SubtitleSheet"
 import { Snackbar } from "../../src/components/ui/Snackbar"
+import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 
 const PLAYER_HEIGHT_RATIO = 9 / 16
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
@@ -48,26 +44,22 @@ export default function WatchVideoPage() {
   const scrollViewRef = useRef<ScrollView>(null)
 
   const navigation = useNavigation()
+  const router = useRouter()
   const [showScrollTop, setShowScrollTop] = useState(false)
   const scrollTopOpacity = useRef(new Animated.Value(0)).current
   const titleOpacity = useRef(new Animated.Value(0)).current
   const [showNavTitle, setShowNavTitle] = useState(false)
   const insets = useSafeAreaInsets()
-  const downloadSheetRef = useRef<GorhomBottomSheet>(null)
-  const [downloadResetKey, setDownloadResetKey] = useState(0)
-  const downloadPrevIndex = useRef(-1)
-  const languageSheetRef = useRef<GorhomBottomSheet>(null)
-  const [languageResetKey, setLanguageResetKey] = useState(0)
-  const languagePrevIndex = useRef(-1)
-  const subtitleSheetRef = useRef<GorhomBottomSheet>(null)
-  const [subtitleResetKey, setSubtitleResetKey] = useState(0)
-  const subtitlePrevIndex = useRef(-1)
-  const [activeVariantIndex, setActiveVariantIndex] = useState(0)
-  const [subtitleEnabled, setSubtitleEnabled] = useState(false)
-  const [snackbarVisible, setSnackbarVisible] = useState(false)
-  const [activeSubtitleSlug, setActiveSubtitleSlug] = useState<string | null>(
-    null,
-  )
+
+  const {
+    video,
+    setVideo,
+    activeVariant,
+    subtitleEnabled,
+    activeSubtitleSlug,
+    snackbarMessage,
+    setSnackbarMessage,
+  } = useWatchSession()
 
   const { data, loading, error } = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { slug: decodedSlug, locale: "en" },
@@ -75,9 +67,37 @@ export default function WatchVideoPage() {
     fetchPolicy: "cache-and-network",
   })
 
-  const video = useMemo(() => normalizeVideo(data?.videoBySlug ?? null), [data])
-  const activeVariant = video?.variants[activeVariantIndex] ?? null
+  const normalized = useMemo(
+    () => normalizeVideo(data?.videoBySlug ?? null),
+    [data],
+  )
+
+  // Publish the fetched video into the shared session so the sheet routes can
+  // read variants/subtitles without refetching. Keyed on documentId so the
+  // cache-and-network double-fire (two emissions, same video) publishes once.
+  useEffect(() => {
+    if (normalized) setVideo(normalized)
+  }, [normalized?.documentId, setVideo])
+
+  // Navigated to a different video that hasn't loaded yet (e.g. Up Next): drop
+  // the previous video from the session so the loading guard shows the spinner
+  // instead of the prior video's content, and the sheets don't read its stale
+  // variants. The publish effect above repopulates once the new data arrives.
+  useEffect(() => {
+    if (video && video.slug !== decodedSlug && !normalized) {
+      setVideo(null)
+    }
+  }, [decodedSlug, video, normalized, setVideo])
+
   const bibleQuotes = useBibleVerses(video?.bibleCitations ?? EMPTY_CITATIONS)
+
+  const subtitleVttSrc = useMemo(() => {
+    if (!subtitleEnabled || !activeSubtitleSlug || !activeVariant) return null
+    return (
+      activeVariant.subtitles.find((s) => s.languageSlug === activeSubtitleSlug)
+        ?.vttSrc ?? null
+    )
+  }, [subtitleEnabled, activeSubtitleSlug, activeVariant])
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -186,6 +206,7 @@ export default function WatchVideoPage() {
         <VideoPlayer
           streamingUrl={activeVariant?.hls ?? video.streamingUrl}
           posterUrl={video.posterUrl}
+          subtitleVttSrc={subtitleVttSrc}
           onPlayingChange={undefined}
         />
 
@@ -196,9 +217,9 @@ export default function WatchVideoPage() {
         />
 
         <ActionButtonRow
-          onDownload={() => downloadSheetRef.current?.expand()}
-          onLanguage={() => languageSheetRef.current?.snapToIndex(0)}
-          onSubtitles={() => subtitleSheetRef.current?.snapToIndex(0)}
+          onDownload={() => router.push("/watch/download")}
+          onLanguage={() => router.push("/watch/language")}
+          onSubtitles={() => router.push("/watch/subtitle")}
           onShare={handleShare}
         />
 
@@ -244,72 +265,10 @@ export default function WatchVideoPage() {
         </Animated.View>
       )}
 
-      <BottomSheet
-        ref={downloadSheetRef}
-        snapPoints={["75%"]}
-        onChange={(index) => {
-          if (downloadPrevIndex.current === -1 && index >= 0)
-            setDownloadResetKey((k) => k + 1)
-          downloadPrevIndex.current = index
-        }}
-      >
-        <DownloadSheetContent
-          key={downloadResetKey}
-          videoTitle={video.title}
-          duration={video.duration}
-          languageName={activeVariant?.languageName ?? null}
-          downloads={activeVariant?.downloads ?? []}
-          onDownloadComplete={() => setSnackbarVisible(true)}
-        />
-      </BottomSheet>
-
-      <BottomSheet
-        ref={languageSheetRef}
-        snapPoints={["75%", "100%"]}
-        onChange={(index) => {
-          if (languagePrevIndex.current === -1 && index >= 0)
-            setLanguageResetKey((k) => k + 1)
-          languagePrevIndex.current = index
-        }}
-      >
-        <LanguageSheetContent
-          key={languageResetKey}
-          variants={video.variants}
-          activeVariantSlug={activeVariant?.slug ?? ""}
-          onLanguageChange={(variantSlug) => {
-            const idx = video.variants.findIndex((v) => v.slug === variantSlug)
-            if (idx >= 0) setActiveVariantIndex(idx)
-          }}
-          onClose={() => languageSheetRef.current?.close()}
-        />
-      </BottomSheet>
-
-      <BottomSheet
-        ref={subtitleSheetRef}
-        snapPoints={["75%", "100%"]}
-        onChange={(index) => {
-          if (subtitlePrevIndex.current === -1 && index >= 0)
-            setSubtitleResetKey((k) => k + 1)
-          subtitlePrevIndex.current = index
-        }}
-      >
-        <SubtitleSheetContent
-          key={subtitleResetKey}
-          subtitles={activeVariant?.subtitles ?? []}
-          subtitleEnabled={subtitleEnabled}
-          activeSubtitleSlug={activeSubtitleSlug}
-          onSubtitleChange={(enabled, slug) => {
-            setSubtitleEnabled(enabled)
-            setActiveSubtitleSlug(slug)
-          }}
-          onClose={() => subtitleSheetRef.current?.close()}
-        />
-      </BottomSheet>
-
       <Snackbar
-        message="Download complete"
-        visible={snackbarVisible}
-        onDismiss={() => setSnackbarVisible(false)}
+        message={snackbarMessage ?? "Download complete"}
+        visible={snackbarMessage != null}
+        onDismiss={() => setSnackbarMessage(null)}
       />
     </View>
   )

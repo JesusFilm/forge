@@ -24,6 +24,14 @@ export const HORIZONTAL_PADDING = 16
 export const CARD_GAP = 12
 export const CARD_BORDER_RADIUS = 12
 
+// Detents (fractions of the viewport) for the language/subtitle formSheets.
+// Shared by app/watch/_layout.tsx (the native sheet config) and the sheet
+// components, which compute the FlashList height per detent from these. The
+// formSheet content root is unbounded so the list height can't be measured —
+// it's derived from these fractions + the detent-change index instead. Keep in
+// sync: index 0 is the initial detent.
+export const LIST_SHEET_DETENTS = [0.65, 1] as const
+
 // ── Layout ─────────────────────────────────────────────────────────────────
 
 export const layout = StyleSheet.create({
