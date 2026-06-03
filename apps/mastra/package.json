@@ -15,13 +15,13 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@mastra/core": "1.36.0",
-    "@mastra/duckdb": "1.4.0",
-    "@mastra/loggers": "1.1.1",
-    "@mastra/observability": "1.13.0",
-    "@mastra/pg": "1.11.1",
-    "mastra": "1.10.0",
-    "zod": "^4.3.6"
+    "@mastra/core": "1.38.0",
+    "@mastra/duckdb": "1.4.1",
+    "@mastra/loggers": "1.1.2",
+    "@mastra/observability": "1.14.1",
+    "@mastra/pg": "1.12.0",
+    "mastra": "1.11.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22",
