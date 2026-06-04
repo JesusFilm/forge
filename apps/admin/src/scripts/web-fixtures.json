@@ -53,12 +53,12 @@
       "publishedAt": "2026-01-01T00:00:00.000Z",
       "locales": [
         {
-          "locale": "en",
+          "languageCoreId": "529",
           "title": "The Jesus Collection",
           "description": "An overview of the life of Jesus."
         },
         {
-          "locale": "es",
+          "languageCoreId": "496",
           "title": "La Colección de Jesús",
           "description": "Una visión general de la vida de Jesús."
         }
@@ -71,12 +71,12 @@
       "publishedAt": "2026-01-02T00:00:00.000Z",
       "locales": [
         {
-          "locale": "en",
+          "languageCoreId": "529",
           "title": "Jesus Feature Film",
           "description": "The feature-length film about the life of Jesus."
         },
         {
-          "locale": "es",
+          "languageCoreId": "496",
           "title": "Película Jesús",
           "description": "La película sobre la vida de Jesús."
         }
@@ -90,7 +90,7 @@
       "publishedAt": "2026-01-03T00:00:00.000Z",
       "locales": [
         {
-          "locale": "en",
+          "languageCoreId": "529",
           "title": "Jesus Trailer",
           "description": "Trailer for the Jesus feature film."
         }
@@ -104,12 +104,12 @@
       "publishedAt": "2026-01-04T00:00:00.000Z",
       "locales": [
         {
-          "locale": "en",
+          "languageCoreId": "529",
           "title": "Easter Explained",
           "description": "What Easter really means."
         },
         {
-          "locale": "fr",
+          "languageCoreId": "21028",
           "title": "Pâques Expliqué",
           "description": "Ce que Pâques signifie vraiment."
         }
@@ -122,7 +122,7 @@
       "publishedAt": "2026-01-05T00:00:00.000Z",
       "locales": [
         {
-          "locale": "en",
+          "languageCoreId": "529",
           "title": "My Last Day",
           "description": "The final hours of Jesus' life from a criminal's point of view."
         }
