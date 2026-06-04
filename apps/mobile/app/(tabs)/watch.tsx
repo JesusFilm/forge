@@ -11,7 +11,12 @@ import {
 import { useRouter } from "expo-router"
 
 import { getApolloClient } from "../../src/lib/apolloClient"
-import { SEARCH, type SearchResult } from "../../src/lib/queries"
+import {
+  GET_VIDEO_BY_SLUG,
+  SEARCH,
+  type SearchResult,
+} from "../../src/lib/queries"
+import { encodeWatchSeed } from "../../src/lib/watchSeed"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
 import { SearchResultSkeleton } from "../../src/components/search/SearchResultSkeleton"
 import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionProvider"
@@ -27,6 +32,7 @@ const MAX_QUERY_LENGTH = 200
 const DEBOUNCE_MS = 300
 const PAGE_SIZE = 20
 const SKELETON_DELAY_MS = 500
+const MAX_PREFETCH_INFLIGHT = 3
 
 function parseSearchError(e: unknown): string {
   const gqlErrors = (
@@ -60,14 +66,49 @@ export default function DiscoverScreen() {
   const router = useRouter()
   const { selectExperience } = useExperienceSelection()
 
+  // Warm the detail query on touch-down so navigation reads a warm cache.
+  // Deduped by slug and capped in flight so a fast scroll-and-press can't
+  // burst the heavy query against admin.
+  const prefetchedRef = useRef<Set<string>>(new Set())
+  const prefetchInFlightRef = useRef(0)
+
+  const handlePrefetch = useCallback((result: SearchResult) => {
+    if (result.type === "EXPERIENCE") return
+    const slug = result.slug
+    if (prefetchedRef.current.has(slug)) return
+    if (prefetchInFlightRef.current >= MAX_PREFETCH_INFLIGHT) return
+    prefetchedRef.current.add(slug)
+    prefetchInFlightRef.current += 1
+    getApolloClient()
+      .query({
+        query: GET_VIDEO_BY_SLUG,
+        variables: { slug, locale: "en" },
+        fetchPolicy: "cache-first",
+      })
+      .catch(() => {
+        // Allow a later real navigation to retry.
+        prefetchedRef.current.delete(slug)
+      })
+      .finally(() => {
+        prefetchInFlightRef.current -= 1
+      })
+  }, [])
+
   const handleSelectResult = useCallback(
-    (slug: string, type: string) => {
-      if (type === "EXPERIENCE") {
-        selectExperience(slug)
+    (result: SearchResult) => {
+      if (result.type === "EXPERIENCE") {
+        selectExperience(result.slug)
         router.navigate("/(tabs)")
-      } else {
-        router.push(`/watch/${encodeURIComponent(slug)}`)
+        return
       }
+      // Carry seed data forward so the detail screen paints instantly.
+      const seed = encodeWatchSeed({
+        slug: result.slug,
+        title: result.title ?? null,
+        imageUrl: result.imageUrl ?? null,
+        playbackId: result.playbackId ?? null,
+      })
+      router.push(`/watch/${encodeURIComponent(result.slug)}?seed=${seed}`)
     },
     [selectExperience, router],
   )
@@ -246,10 +287,11 @@ export default function DiscoverScreen() {
       <SearchResultCard
         result={item}
         index={index}
-        onSelect={(slug) => handleSelectResult(slug, item.type)}
+        onSelect={handleSelectResult}
+        onPressIn={handlePrefetch}
       />
     ),
-    [handleSelectResult],
+    [handleSelectResult, handlePrefetch],
   )
 
   const keyExtractor = useCallback(

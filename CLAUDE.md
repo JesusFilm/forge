@@ -28,6 +28,7 @@ This is a pnpm + Turborepo monorepo.
 - `apps/tv/` — React Native TV app; reads from admin via `packages/admin-graphql`
 - `apps/roadmap/` — Next.js roadmap dashboard (reads from `docs/roadmap/`)
 - `packages/admin-graphql/` — gql.tada typed GraphQL client (generated from admin's `schema.graphql`); consumed by web
+- `CONCEPTS.md` (repo root) — shared domain vocabulary (entities like Video, Dub, Video Edition); relevant when orienting to the codebase or discussing domain concepts
 
 ## Package-Specific Instructions
 

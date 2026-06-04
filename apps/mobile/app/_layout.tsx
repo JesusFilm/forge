@@ -1,4 +1,4 @@
-import { Component, useRef } from "react"
+import { Component, useEffect, useRef, useState } from "react"
 import { Pressable, Text, View, ScrollView } from "react-native"
 import type { ErrorInfo, ReactNode } from "react"
 
@@ -15,6 +15,9 @@ let ACCENT: string
 let BG_COLOR: string
 let ExperienceShell: typeof import("../src/contexts/ExperienceShell").ExperienceShell
 let ExperienceSelectionProvider: typeof import("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
+let isCachePersistenceEnabled: typeof import("../src/lib/cachePersistence").isCachePersistenceEnabled
+let restoreApolloCache: typeof import("../src/lib/cachePersistence").restoreApolloCache
+let startCachePersistence: typeof import("../src/lib/cachePersistence").startCachePersistence
 
 // require() is intentional — static imports cause silent white screens when
 // module-level throws (e.g., env validation) crash the entire module graph.
@@ -35,6 +38,10 @@ try {
   ExperienceShell = require("../src/contexts/ExperienceShell").ExperienceShell
   ExperienceSelectionProvider =
     require("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
+  const cachePersistence = require("../src/lib/cachePersistence")
+  isCachePersistenceEnabled = cachePersistence.isCachePersistenceEnabled
+  restoreApolloCache = cachePersistence.restoreApolloCache
+  startCachePersistence = cachePersistence.startCachePersistence
 } catch (e: unknown) {
   const err = e instanceof Error ? e : new Error(String(e))
   moduleError = `${err.message}\n\n${err.stack ?? ""}`
@@ -154,6 +161,29 @@ export default function RootLayout() {
 
   const clientRef = useRef(getApolloClient())
   const router = useRouter()
+
+  // Opt-in cache persistence: when enabled, restore the persisted snapshot into
+  // the cache BEFORE ApolloProvider mounts (so no query races the restore),
+  // bounded by a timeout inside restoreApolloCache. When disabled, hydrated
+  // starts true and this is fully inert — the default path renders immediately.
+  const [hydrated, setHydrated] = useState(() => !isCachePersistenceEnabled())
+  useEffect(() => {
+    if (hydrated) return
+    let cancelled = false
+    restoreApolloCache(clientRef.current.cache).finally(() => {
+      if (cancelled) return
+      startCachePersistence(clientRef.current)
+      setHydrated(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [hydrated])
+
+  if (!hydrated) {
+    return <View style={{ flex: 1, backgroundColor: BG_COLOR }} />
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <ErrorBoundary>

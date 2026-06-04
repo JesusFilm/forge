@@ -92,6 +92,12 @@ export type SearchResponse = NonNullable<AdminResultOf<typeof SEARCH>["search"]>
 
 // ── Video detail query (standalone, not Experience-bound) ──────────
 
+// Lean by design: the `dubs` selection deliberately OMITS each dub's
+// `downloads` + `videoEdition.subtitles`. A video like birth-of-jesus has 2,259
+// dubs; projecting their downloads/subtitles here made the payload ~9.5MB and
+// the resolver ~13s. The screen only needs one dub's downloads/subtitles (the
+// active language), fetched lazily via GET_VIDEO_DUB when the user opens the
+// Download/Subtitle sheet or turns captions on. Keep this selection lean.
 export const watchVideoFragment = adminGraphql(`
   fragment WatchVideo on Video @_unmask {
     documentId: id
@@ -166,27 +172,8 @@ export const watchVideoFragment = adminGraphql(`
         slug
         name
       }
-      downloads {
-        documentId: id
-        quality
-        size
-        url
-      }
       muxVideo {
         playbackId
-      }
-      videoEdition {
-        subtitles {
-          documentId: id
-          language {
-            slug
-            name
-            bcp47
-          }
-          vttSrc
-          primary
-          aiGenerated
-        }
       }
     }
     studyQuestions {
@@ -223,3 +210,48 @@ export const GET_VIDEO_BY_SLUG = adminGraphql(
 )
 
 export type WatchVideoData = AdminResultOf<typeof GET_VIDEO_BY_SLUG>
+
+// ── Per-dub media (lazy) ────────────────────────────────────────────
+//
+// The downloads + subtitles deliberately left out of WatchVideo above. Fetched
+// for a single dub on demand (active language only) when the user opens the
+// Download/Subtitle sheet or enables captions — so switching language fetches
+// just that dub's media, never all ~2,200. The selection MUST mirror the fields
+// trimmed from WatchVideo's `dubs` so normalizeDubMedia maps the same shape.
+export const watchDubMediaFragment = adminGraphql(`
+  fragment WatchDubMedia on VideoDub @_unmask {
+    documentId: id
+    downloads {
+      documentId: id
+      quality
+      size
+      url
+    }
+    videoEdition {
+      subtitles {
+        documentId: id
+        language {
+          slug
+          name
+          bcp47
+        }
+        vttSrc
+        primary
+        aiGenerated
+      }
+    }
+  }
+`)
+
+export const GET_VIDEO_DUB = adminGraphql(
+  `
+    query GetVideoDub($id: ID!) {
+      videoDub(id: $id) {
+        ...WatchDubMedia
+      }
+    }
+  `,
+  [watchDubMediaFragment],
+)
+
+export type WatchDubData = AdminResultOf<typeof GET_VIDEO_DUB>

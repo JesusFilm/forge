@@ -10,13 +10,16 @@ import { resolveImageUrl } from "../../lib/resolveImageUrl"
 type SearchResultCardProps = {
   result: SearchResult
   index?: number
-  onSelect: (slug: string) => void
+  onSelect: (result: SearchResult) => void
+  /** Fired on touch-down to warm the detail query before navigation. */
+  onPressIn?: (result: SearchResult) => void
 }
 
 export function SearchResultCard({
   result,
   index = 0,
   onSelect,
+  onPressIn,
 }: SearchResultCardProps) {
   const validatedImageUrl = resolveImageUrl(result.imageUrl)
   const opacity = useRef(new Animated.Value(0)).current
@@ -48,7 +51,8 @@ export function SearchResultCard({
       style={[styles.cardOuter, { opacity, transform: [{ scale }] }]}
     >
       <Pressable
-        onPress={() => onSelect(result.slug)}
+        onPress={() => onSelect(result)}
+        onPressIn={onPressIn ? () => onPressIn(result) : undefined}
         accessibilityRole="button"
         accessibilityLabel={`${result.title}: ${result.snippet}`}
         style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
