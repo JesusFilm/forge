@@ -10,7 +10,13 @@
  * Idempotent: rerun against the same DB produces no duplicates.
  *  - Reference rows keyed by `coreId` (UNIQUE in schema).
  *  - Videos keyed by `coreId` (UNIQUE) → upsert by coreId.
- *  - VideoLocale keyed by `(videoId, locale)` (UNIQUE).
+ *  - VideoLocale keyed by `(videoId, languageId)` (UNIQUE since migration
+ *    0027 dropped the old `(videoId, locale)` key). Fixtures reference the
+ *    language by `languageCoreId`; `locale` / `languageSlug` /
+ *    `languageCoreId` are derived from the resolved Language row, mirroring
+ *    core-sync's `toVideoLocales` convention. Reruns against DBs seeded
+ *    before 0026 still converge: 0026's backfill populated `language_id`
+ *    from the bcp47 join, so legacy fixture rows match the new upsert key.
  *  - VideoRelation keyed by `(parentId, childId)` (UNIQUE).
  *  - Experiences keyed by the FIRST locale's `(slug, locale)` — that
  *    pair uniquely identifies a fixture experience and lets a rerun
@@ -31,6 +37,12 @@
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, resolve } from "node:path"
+// Type-only import — erased at runtime, so the PrismaLike seam below still
+// accepts the test fake. The `satisfies` checks on the videoLocale upsert
+// payloads keep the literals aligned with the GENERATED client types, so an
+// identity-migration rename (the bug class this script was broken by) fails
+// `tsc` instead of failing at runtime against a real DB.
+import type { Prisma } from "@prisma/client"
 
 // ---------------------------------------------------------------------------
 // Prod-URL guard — fail-closed.
@@ -100,7 +112,7 @@ type KeywordFixture = {
 }
 
 type VideoLocaleFixture = {
-  locale: string
+  languageCoreId: string
   title: string
   description: string
 }
@@ -148,6 +160,45 @@ export type SeedSummary = {
   experienceLocales: number
 }
 
+/**
+ * A video-locale fixture references a `languageCoreId` that has no matching
+ * entry in the fixture `languages` array. Fixtures are a closed set, so a
+ * miss is a fixture-authoring bug — fail fast rather than skip.
+ */
+export class UnknownLanguageCoreIdError extends Error {
+  constructor(
+    readonly languageCoreId: string,
+    readonly videoCoreId: string,
+  ) {
+    super(
+      `[seed-web-fixtures] Video fixture "${videoCoreId}" references ` +
+        `languageCoreId "${languageCoreId}", which is not in the fixture ` +
+        `languages array. Add the language to web-fixtures.json.`,
+    )
+    this.name = "UnknownLanguageCoreIdError"
+  }
+}
+
+/**
+ * Two locale entries on one video fixture resolve to the same language.
+ * Under the `(videoId, languageId)` identity the second entry would silently
+ * UPDATE the first (one row in the DB, two counted in the summary) — fail
+ * fast on the authoring bug instead.
+ */
+export class DuplicateLanguageCoreIdError extends Error {
+  constructor(
+    readonly languageCoreId: string,
+    readonly videoCoreId: string,
+  ) {
+    super(
+      `[seed-web-fixtures] Video fixture "${videoCoreId}" lists ` +
+        `languageCoreId "${languageCoreId}" more than once. Each video ` +
+        `locale must reference a distinct language.`,
+    )
+    this.name = "DuplicateLanguageCoreIdError"
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Seeding — exposed for tests.
 //
@@ -182,8 +233,15 @@ export async function seedWebFixtures(
   }
 
   // ── Languages ──────────────────────────────────────────────────────
+  // Keyed by coreId (UNIQUE in schema — no dup-check needed). VideoLocale
+  // seeding below resolves languages from this map to derive the
+  // `locale` / `languageSlug` / `languageCoreId` columns.
+  const languageByCoreId = new Map<
+    string,
+    { id: string; coreId: string; bcp47: string; slug: string }
+  >()
   for (const lang of fixtures.languages) {
-    await prisma.language.upsert({
+    const row = await prisma.language.upsert({
       where: { coreId: lang.coreId },
       create: {
         coreId: lang.coreId,
@@ -198,6 +256,12 @@ export async function seedWebFixtures(
         slug: lang.slug,
         name: lang.name,
       },
+    })
+    languageByCoreId.set(lang.coreId, {
+      id: row.id,
+      coreId: lang.coreId,
+      bcp47: lang.bcp47,
+      slug: lang.slug,
     })
     summary.languages += 1
   }
@@ -244,23 +308,44 @@ export async function seedWebFixtures(
     videoIdByCoreId.set(v.coreId, video.id)
     summary.videos += 1
 
+    const seenLanguageCoreIds = new Set<string>()
     for (const loc of v.locales) {
+      if (seenLanguageCoreIds.has(loc.languageCoreId)) {
+        throw new DuplicateLanguageCoreIdError(loc.languageCoreId, v.coreId)
+      }
+      seenLanguageCoreIds.add(loc.languageCoreId)
+      const lang = languageByCoreId.get(loc.languageCoreId)
+      if (!lang) {
+        throw new UnknownLanguageCoreIdError(loc.languageCoreId, v.coreId)
+      }
+      // `locale` / `languageSlug` / `languageCoreId` are derived from the
+      // resolved Language row (core-sync's `toVideoLocales` convention) —
+      // `videoLocalesFilter` filters and orders by `languageSlug`, so rows
+      // missing it would vanish from languageSlug-filtered queries. One
+      // shared payload feeds both upsert branches so they cannot drift.
+      const localePayload = {
+        locale: lang.bcp47,
+        languageSlug: lang.slug,
+        languageCoreId: lang.coreId,
+        title: loc.title,
+        description: loc.description,
+        status: "PUBLISHED",
+        publishedAt: new Date(v.publishedAt),
+      } satisfies Prisma.VideoLocaleUncheckedUpdateInput
+      // NOTE: `languageId` must be explicit in `create` — Prisma's upsert
+      // `create` does NOT inherit fields from the compound `where`, and a
+      // NULL languageId row would break idempotence (Postgres treats NULLs
+      // as distinct in unique indexes).
       await prisma.videoLocale.upsert({
-        where: { videoId_locale: { videoId: video.id, locale: loc.locale } },
+        where: {
+          videoId_languageId: { videoId: video.id, languageId: lang.id },
+        } satisfies Prisma.VideoLocaleWhereUniqueInput,
         create: {
           videoId: video.id,
-          locale: loc.locale,
-          title: loc.title,
-          description: loc.description,
-          status: "PUBLISHED",
-          publishedAt: new Date(v.publishedAt),
-        },
-        update: {
-          title: loc.title,
-          description: loc.description,
-          status: "PUBLISHED",
-          publishedAt: new Date(v.publishedAt),
-        },
+          languageId: lang.id,
+          ...localePayload,
+        } satisfies Prisma.VideoLocaleUncheckedCreateInput,
+        update: localePayload,
       })
       summary.videoLocales += 1
     }
