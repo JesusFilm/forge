@@ -16,6 +16,7 @@ import {
   type SyncStats,
   type ProgressReporter,
   type PhaseRunner,
+  type SyncPhaseProgress,
   emptySyncStats,
 } from "./types"
 import { acquireSyncLock, refreshSyncLock, releaseSyncLock } from "./lock"
@@ -66,6 +67,7 @@ const PHASE_TABLES: Record<SyncPhase, string[]> = {
 }
 
 const LOCK_HEARTBEAT_INTERVAL_MS = 60_000
+const PROGRESS_REPORT_INTERVAL_MS = 30_000
 
 export type PhaseResult = SyncStats & { phase: string; durationMs: number }
 
@@ -87,6 +89,16 @@ export type SyncRunContext = {
 export type SyncRunStart =
   | { skipped: true; result: SyncResult }
   | { skipped: false; run: SyncRunContext }
+
+export type RunSyncPhaseOptions = {
+  onProgress?: (progress: SyncPhaseProgress) => void
+}
+
+export type RunSyncOptions = {
+  scope?: string | string[]
+  incremental?: boolean
+  onProgress?: (progress: SyncPhaseProgress) => void
+}
 
 export function resolveScope(input?: string | string[]): SyncPhase[] {
   if (!input) return [...PHASE_ORDER]
@@ -147,6 +159,7 @@ export async function runSyncPhase(
   prisma: PrismaClient,
   run: SyncRunContext,
   phase: SyncPhase,
+  options: RunSyncPhaseOptions = {},
 ): Promise<PhaseResult> {
   const ownsLock = await refreshSyncLock(prisma, run.runId)
   if (!ownsLock) {
@@ -160,10 +173,11 @@ export async function runSyncPhase(
   heartbeat.unref?.()
 
   try {
-    const progress: ProgressReporter = {
-      setTotal: () => {},
-      increment: () => {},
-    }
+    const progress = createProgressReporter({
+      phase,
+      phaseStart,
+      onProgress: options.onProgress,
+    })
 
     let since: string | undefined
     if (run.incremental) {
@@ -225,6 +239,54 @@ export async function runSyncPhase(
   }
 }
 
+function createProgressReporter({
+  phase,
+  phaseStart,
+  onProgress,
+}: {
+  phase: SyncPhase
+  phaseStart: number
+  onProgress?: (progress: SyncPhaseProgress) => void
+}): ProgressReporter {
+  let completed = 0
+  let total = 0
+  let lastReportedAt = 0
+  let hasReported = false
+
+  function report(force = false) {
+    if (!onProgress) return
+
+    const now = Date.now()
+    if (
+      !force &&
+      hasReported &&
+      now - lastReportedAt < PROGRESS_REPORT_INTERVAL_MS
+    ) {
+      return
+    }
+
+    hasReported = true
+    lastReportedAt = now
+    onProgress({
+      phase,
+      completed,
+      total,
+      elapsedMs: now - phaseStart,
+    })
+  }
+
+  return {
+    setTotal: (nextTotal) => {
+      total = Math.max(total, nextTotal)
+      report(!hasReported)
+    },
+    increment: (count = 1) => {
+      completed += count
+      report()
+    },
+  }
+}
+
 export async function finishSyncRun(
   prisma: PrismaClient,
   run: SyncRunContext,
@@ -252,7 +314,7 @@ export async function abortSyncRun(
 
 export async function runSync(
   prisma: PrismaClient,
-  options?: { scope?: string | string[]; incremental?: boolean },
+  options?: RunSyncOptions,
 ): Promise<SyncResult> {
   const start = await startSyncRun(prisma, options)
   if (start.skipped) return start.result
@@ -262,7 +324,11 @@ export async function runSync(
 
   try {
     for (const phase of start.run.phasesToRun) {
-      phases.push(await runSyncPhase(prisma, start.run, phase))
+      phases.push(
+        await runSyncPhase(prisma, start.run, phase, {
+          onProgress: options?.onProgress,
+        }),
+      )
     }
 
     const result = await finishSyncRun(prisma, start.run, phases)

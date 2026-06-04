@@ -3,7 +3,7 @@ id: "feat-157"
 title: "Admin Core Sync video phase pool resilience"
 owner: "tataihono"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-06-04"
 duration: 3
 depends_on:

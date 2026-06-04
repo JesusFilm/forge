@@ -46,8 +46,9 @@ export const env = createEnv({
     // Unit 2 — Prisma / Postgres
     //
     // DATABASE_URL: main pool. Recommend `?connection_limit=10&pool_timeout=20`.
-    // DATABASE_URL_SYNC: dedicated pool for Core sync workflow at
-    // `?connection_limit=2` — see src/db/client.ts.
+    // DATABASE_URL_SYNC: dedicated pool for Core sync workflow. Production
+    // should start around `?connection_limit=5&pool_timeout=60`, then tune
+    // against total Postgres capacity — see src/db/client.ts.
     DATABASE_URL: z.string().url(),
     DATABASE_URL_SYNC: z.string().url().optional(),
     ADMIN_SESSION_SECRET: z.string().min(32),

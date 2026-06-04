@@ -112,7 +112,8 @@ describe("syncVideos", () => {
         findUnique: vi.fn().mockResolvedValueOnce(null),
         findMany: vi
           .fn()
-          .mockResolvedValue([{ id: "child-1", coreId: "child-core-1" }]),
+          .mockResolvedValueOnce([])
+          .mockResolvedValueOnce([{ id: "child-1", coreId: "child-core-1" }]),
         upsert: vi.fn().mockResolvedValue({ id: "video-1" }),
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
@@ -164,6 +165,16 @@ describe("syncVideos", () => {
         findMany: vi
           .fn()
           .mockResolvedValue([{ id: "origin-1", coreId: "origin-1" }]),
+      },
+      keyword: {
+        findMany: vi
+          .fn()
+          .mockResolvedValue([{ id: "keyword-1", coreId: "keyword-1" }]),
+      },
+      bibleBook: {
+        findMany: vi
+          .fn()
+          .mockResolvedValue([{ id: "book-1", coreId: "book-1" }]),
       },
       $transaction: vi.fn(async (fn: (trx: typeof tx) => Promise<void>) =>
         fn(tx),
@@ -237,5 +248,98 @@ describe("syncVideos", () => {
       where: { parentId: { in: ["video-1"] } },
     })
     expect(tx.$executeRaw).toHaveBeenCalledTimes(2)
+  })
+
+  it("retries a page transaction when Prisma reports P2024 pool pressure", async () => {
+    mockedCoreQuery
+      .mockResolvedValueOnce({ data: { bibleBooks: [] } } as never)
+      .mockResolvedValueOnce({
+        data: {
+          videos: [
+            {
+              id: "video-core-1",
+              slug: "video",
+              label: null,
+              publishedAt: null,
+              primaryLanguageId: null,
+              source: null,
+              origin: null,
+              title: [
+                {
+                  value: "Unmapped title",
+                  language: { id: "lang-missing" },
+                },
+              ],
+              description: [],
+              snippet: [],
+              imageAlt: [],
+              studyQuestions: [],
+              bibleCitations: [],
+              keywords: [],
+              children: [],
+              locked: false,
+              noIndex: false,
+              updatedAt: "2026-01-02T00:00:00.000Z",
+            },
+          ],
+        },
+      } as never)
+      .mockResolvedValueOnce({ data: { videos: [] } } as never)
+
+    const tx = {
+      video: {
+        findMany: vi.fn().mockResolvedValue([]),
+        upsert: vi.fn().mockResolvedValue({ id: "video-1" }),
+      },
+      videoLocale: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+      videoStudyQuestion: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+      bibleCitation: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+      videoKeyword: {
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+      videoRelation: {
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    }
+    const prisma = {
+      language: { findMany: vi.fn().mockResolvedValue([]) },
+      videoOrigin: { findMany: vi.fn().mockResolvedValue([]) },
+      keyword: { findMany: vi.fn().mockResolvedValue([]) },
+      bibleBook: { findMany: vi.fn().mockResolvedValue([]) },
+      $transaction: vi
+        .fn()
+        .mockImplementationOnce(
+          async (fn: (trx: typeof tx) => Promise<void>) => {
+            await fn(tx)
+            throw Object.assign(new Error("pool exhausted"), { code: "P2024" })
+          },
+        )
+        .mockImplementationOnce(async (fn: (trx: typeof tx) => Promise<void>) =>
+          fn(tx),
+        ),
+      video: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    }
+
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined)
+
+    const stats = await syncVideos({
+      prisma: prisma as never,
+      progress: { setTotal: vi.fn(), increment: vi.fn() },
+    })
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2)
+    expect(stats.updated).toBe(1)
+    expect(stats.errors).toBe(1)
+    warnSpy.mockRestore()
   })
 })
