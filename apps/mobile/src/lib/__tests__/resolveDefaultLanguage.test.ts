@@ -27,6 +27,14 @@ afterEach(() => {
 })
 
 const opt = (slug: string, bcp47: string | null) => ({ slug, bcp47 })
+// For preference tests: an option carrying its unique language-entity slug.
+// `variantSlug` is what resolution returns; `languageSlug` is what a persisted
+// preference is matched against.
+const langOpt = (
+  variantSlug: string,
+  bcp47: string | null,
+  languageSlug: string,
+) => ({ slug: variantSlug, bcp47, languageSlug })
 
 describe("resolveDefaultSlug", () => {
   it("returns null for an empty option list", () => {
@@ -82,5 +90,59 @@ describe("resolveDefaultSlug", () => {
     mockDeviceLocale("en-US")
     const options = [opt("unknown", null), opt("english", "en")]
     expect(resolveDefaultSlug(options, null)).toBe("english")
+  })
+
+  describe("preferred language (app-wide persisted choice, matched by slug)", () => {
+    it("prefers the persisted language above the device locale", () => {
+      mockDeviceLocale("en-US")
+      const options = [
+        langOpt("v-english", "en", "english"),
+        langOpt("v-spanish", "es-419", "spanish"),
+      ]
+      // Device is English, but the user's persisted choice is Spanish.
+      expect(resolveDefaultSlug(options, "en", "spanish")).toBe("v-spanish")
+    })
+
+    // The reported bug: bcp47 prefixes collide across distinct languages. An
+    // exact languageSlug match must pick the right sibling, not the first by tag.
+    it("picks the exact language, not a bcp47-prefix sibling (Korean vs Kurmanji)", () => {
+      mockDeviceLocale("en-US")
+      // Kurmanji Standard's tag "ko-kmr" shares the "ko" prefix with Korean and
+      // is listed FIRST — a prefix match would wrongly return it.
+      const options = [
+        langOpt("v-kurmanji", "ko-kmr", "kurmanji-standard"),
+        langOpt("v-korean", "ko", "korean"),
+      ]
+      expect(resolveDefaultSlug(options, "en", "korean")).toBe("v-korean")
+    })
+
+    it("picks plain English, not English North American Indigenous (en vs en-nai)", () => {
+      mockDeviceLocale("de-DE")
+      const options = [
+        langOpt("v-en-nai", "en-nai", "english-north-american-indigenous"),
+        langOpt("v-en", "en", "english"),
+      ]
+      expect(resolveDefaultSlug(options, "en", "english")).toBe("v-en")
+    })
+
+    it("falls through to the device locale when no option matches the preference", () => {
+      mockDeviceLocale("en-US")
+      const options = [
+        langOpt("v-english", "en", "english"),
+        langOpt("v-french", "fr", "french"),
+      ]
+      // Preferred Japanese isn't offered → device locale (English) wins.
+      expect(resolveDefaultSlug(options, "fr", "japanese")).toBe("v-english")
+    })
+
+    it("ignores a null/empty preference and uses the existing chain", () => {
+      mockDeviceLocale("es-MX")
+      const options = [
+        langOpt("v-english", "en", "english"),
+        langOpt("v-spanish", "es-419", "spanish"),
+      ]
+      expect(resolveDefaultSlug(options, "en", null)).toBe("v-spanish")
+      expect(resolveDefaultSlug(options, "en", "")).toBe("v-spanish")
+    })
   })
 })
