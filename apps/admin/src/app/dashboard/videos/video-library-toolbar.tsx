@@ -39,6 +39,7 @@ type VideosMessages = Awaited<
 
 type VideoLibraryToolbarProps = {
   category: VideoLibraryCategory
+  collection: string
   language: string
   languageOptions: VideoLibraryLanguageOption[]
   page: VideosMessages
@@ -314,6 +315,7 @@ function SearchableLanguageControl({
 
 export function VideoLibraryToolbar({
   category,
+  collection,
   language,
   languageOptions,
   page,
@@ -352,6 +354,7 @@ export function VideoLibraryToolbar({
       page: 1,
       query: parseVideoLibraryQuery(fieldValue(formData.get("q"))),
       category: parseVideoLibraryCategory(fieldValue(formData.get("type"))),
+      collection,
       language: parseVideoLibraryLanguage(
         overrides.language ?? fieldValue(formData.get("language")),
       ),
@@ -379,6 +382,7 @@ export function VideoLibraryToolbar({
   const clearHref = videoLibraryHref({
     page: 1,
     category,
+    collection,
     language,
     sort,
   }) as Route

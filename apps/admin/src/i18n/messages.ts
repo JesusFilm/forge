@@ -394,6 +394,18 @@ export const adminMessages = {
           primaryUnavailable: "Manual video creation is not available yet.",
           rowActionsUnavailable: "Video row actions are not available yet.",
         },
+        collection: {
+          clear: "Clear collection filter",
+          childCount: "{count} child videos",
+          missing: "Collection not found",
+          title: "Collection filter",
+        },
+        detail: {
+          close: "Back to video library",
+          count: "{count} records",
+          eyebrow: "Video detail",
+          openVisitor: "Open visitor page",
+        },
         search: {
           label: "Search videos",
           placeholder: "Search videos, IDs, languages...",
@@ -444,6 +456,8 @@ export const adminMessages = {
           columns: ["Thumbnail", "Video Details", "Source", "Dubs", "Updated"],
           empty: "No active videos found.",
           emptySearch: "No active videos match this search or filter.",
+          openCollectionLabel: "Filter by collection",
+          openDetailsLabel: "Open video detail",
           openVisitorLabel: "Open visitor-facing video page",
           noVisitorLinkLabel: "No public watch link available",
           pagination: {

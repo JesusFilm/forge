@@ -13,28 +13,36 @@ import {
 } from "lucide-react"
 import { cx, PrimaryButton } from "@/components/admin-ui"
 import { requireSession } from "@/auth/session"
-import { loadVideoLibraryPage } from "@/app/dashboard/live-data"
+import {
+  loadVideoLibraryDetail,
+  loadVideoLibraryPage,
+} from "@/app/dashboard/live-data"
 import { getAdminMessages } from "@/i18n/server"
 import {
   hasActiveVideoLibraryFilters,
   parseVideoLibraryCategory,
+  parseVideoLibraryCollection,
   parseVideoLibraryLanguage,
   parseVideoLibraryPage,
   parseVideoLibraryQuery,
+  parseVideoLibrarySelectedVideo,
   parseVideoLibrarySort,
   type VideoLibraryCategory,
   type VideoLibrarySort,
   videoLibraryHref,
 } from "../video-library-utils"
 import { VideoLibraryToolbar } from "./video-library-toolbar"
+import { VideoDetailPage } from "./video-detail-page"
 
 type VideosPageProps = {
   searchParams?: Promise<{
     page?: string | string[]
     q?: string | string[]
+    collection?: string | string[]
     language?: string | string[]
     sort?: string | string[]
     type?: string | string[]
+    video?: string | string[]
   }>
 }
 
@@ -54,6 +62,7 @@ function paginationHref(
   page: number,
   state: {
     category: VideoLibraryCategory
+    collection: string
     language: string
     query: string
     sort: VideoLibrarySort
@@ -247,17 +256,54 @@ function VideoThumbnail({ video }: { video: VideoLibraryRow }) {
 
 function VideoRow({
   page,
+  state,
   video,
 }: {
   page: Awaited<ReturnType<typeof getAdminMessages>>["pages"]["videos"]
+  state: {
+    category: VideoLibraryCategory
+    collection: string
+    currentPage: number
+    language: string
+    query: string
+    sort: VideoLibrarySort
+  }
   video: VideoLibraryRow
 }) {
   const tone = videoTone(video.label)
   const percent = video.dubCoveragePercent
   const languages = video.dubLanguages
+  const targetIdentifier = video.slug || video.id
+  const targetHref = video.isCollectionTarget
+    ? videoLibraryHref({
+        category: "all",
+        collection: targetIdentifier,
+        language: state.language,
+        page: 1,
+        query: state.query,
+        sort: state.sort,
+      })
+    : videoLibraryHref({
+        category: state.category,
+        collection: state.collection,
+        language: state.language,
+        page: state.currentPage,
+        query: state.query,
+        sort: state.sort,
+        video: targetIdentifier,
+      })
+  const targetLabel = video.isCollectionTarget
+    ? `${page.table.openCollectionLabel}: ${video.title}`
+    : `${page.table.openDetailsLabel}: ${video.title}`
 
   return (
-    <article className="grid gap-4 border-b border-[var(--color-hairline)] px-4 py-4 last:border-b-0 lg:grid-cols-[168px_minmax(0,1fr)_minmax(220px,300px)_104px] lg:items-center">
+    <article className="group relative grid gap-4 border-b border-[var(--color-hairline)] px-4 py-4 transition-colors duration-[120ms] ease-out last:border-b-0 hover:bg-[var(--color-surface-raised)] lg:grid-cols-[168px_minmax(0,1fr)_minmax(220px,300px)_104px] lg:items-center">
+      <Link
+        href={targetHref as Route}
+        prefetch={false}
+        aria-label={targetLabel}
+        className="absolute inset-0 z-10 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[var(--color-brand)]"
+      />
       <VideoThumbnail video={video} />
 
       <div className="min-w-0">
@@ -349,7 +395,7 @@ function VideoRow({
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3 lg:flex-col lg:items-end">
+      <div className="relative z-20 flex items-center justify-between gap-3 lg:flex-col lg:items-end">
         <time
           dateTime={video.updatedAtIso}
           title={video.updated}
@@ -412,29 +458,64 @@ export default async function VideosPage({
   const requestedPage = parseVideoLibraryPage(params.page)
   const query = parseVideoLibraryQuery(params.q)
   const category = parseVideoLibraryCategory(params.type)
+  const collection = parseVideoLibraryCollection(params.collection)
   const language = parseVideoLibraryLanguage(params.language)
+  const selectedVideo = parseVideoLibrarySelectedVideo(params.video)
   const sort = parseVideoLibrarySort(params.sort)
+  const paginationState = { category, collection, language, query, sort }
+  const closeVideoHref = videoLibraryHref({
+    page: requestedPage,
+    ...paginationState,
+  }) as Route
+
+  if (selectedVideo) {
+    const selectedVideoDetail = await loadVideoLibraryDetail(selectedVideo)
+
+    if (selectedVideoDetail) {
+      return (
+        <VideoDetailPage
+          backHref={closeVideoHref}
+          detail={selectedVideoDetail}
+          labels={page.detail}
+        />
+      )
+    }
+  }
+
   const {
     rows: videoRows,
     pagination,
     languageOptions,
+    collectionSummary,
   } = await loadVideoLibraryPage(principal, {
     category,
+    collection,
     language,
     page: requestedPage,
     query,
     sort,
   })
-  const paginationState = { category, language, query, sort }
   const toolbarStateKey = videoLibraryHref({
     page: 1,
     ...paginationState,
   })
   const hasActiveFilters = hasActiveVideoLibraryFilters({
     category,
+    collection,
     language,
     query,
   })
+  const rowState = {
+    ...paginationState,
+    currentPage: pagination.currentPage,
+  }
+  const clearCollectionHref = videoLibraryHref({
+    category,
+    language,
+    page: 1,
+    query,
+    sort,
+  }) as Route
   const rangeLabel = paginationSummary(
     page.table.pagination.summary,
     pagination,
@@ -471,6 +552,7 @@ export default async function VideosPage({
         <VideoLibraryToolbar
           key={toolbarStateKey}
           category={category}
+          collection={collection}
           language={language}
           languageOptions={languageOptions}
           page={page}
@@ -479,6 +561,31 @@ export default async function VideosPage({
         />
       </section>
 
+      {collection ? (
+        <section className="flex flex-col gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-4 py-3 text-[13px] md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <div className="label-text mb-1">{page.collection.title}</div>
+            <div className="truncate text-[var(--color-text-primary)]">
+              {collectionSummary?.title ?? page.collection.missing}
+            </div>
+            <div className="mt-1 font-mono text-[11px] text-[var(--color-text-muted)]">
+              {collectionSummary
+                ? page.collection.childCount.replace(
+                    "{count}",
+                    collectionSummary.childCount.toLocaleString("en"),
+                  )
+                : collection}
+            </div>
+          </div>
+          <Link
+            href={clearCollectionHref}
+            className="inline-flex h-8 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] px-3 font-mono text-[11px] font-semibold text-[var(--color-text-secondary)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+          >
+            {page.collection.clear}
+          </Link>
+        </section>
+      ) : null}
+
       <section className="app-card min-w-0 overflow-hidden">
         {videoRows.length === 0 ? (
           <div className="px-4 py-10 text-center text-[13px] text-[var(--color-text-muted)]">
@@ -486,7 +593,12 @@ export default async function VideosPage({
           </div>
         ) : (
           videoRows.map((video) => (
-            <VideoRow key={video.key} page={page} video={video} />
+            <VideoRow
+              key={video.key}
+              page={page}
+              state={rowState}
+              video={video}
+            />
           ))
         )}
 

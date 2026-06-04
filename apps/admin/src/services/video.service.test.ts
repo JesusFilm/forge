@@ -232,12 +232,43 @@ describe("VideoService", () => {
       expect(call.where).toEqual({ deletedAt: null })
     })
 
-    it("combines search, category, and dubbed language filters", async () => {
+    it("filters videos through a collection parent relation", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({
+        input: { collection: "the-story" },
+        query: {},
+      })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          { deletedAt: null },
+          {
+            parents: {
+              some: {
+                parent: {
+                  deletedAt: null,
+                  OR: [
+                    { id: "the-story" },
+                    { coreId: "the-story" },
+                    { slug: "the-story" },
+                  ],
+                },
+              },
+            },
+          },
+        ]),
+      )
+    })
+
+    it("combines search, category, collection, and dubbed language filters", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
 
       await service.list({
         input: {
           category: "series",
+          collection: "the-story",
           language: "english",
           search: "Jesus",
         },
@@ -253,6 +284,20 @@ describe("VideoService", () => {
             ]),
           }),
           { label: { in: ["SERIES"] } },
+          {
+            parents: {
+              some: {
+                parent: {
+                  deletedAt: null,
+                  OR: [
+                    { id: "the-story" },
+                    { coreId: "the-story" },
+                    { slug: "the-story" },
+                  ],
+                },
+              },
+            },
+          },
           {
             dubs: {
               some: {
@@ -325,12 +370,13 @@ describe("VideoService", () => {
       )
     })
 
-    it("counts with the same category and language filters as list", async () => {
+    it("counts with the same category, collection, and language filters as list", async () => {
       prisma.video.count.mockResolvedValueOnce(7)
 
       await expect(
         service.countActive({
           category: "shortFilms",
+          collection: "the-story",
           language: "spanish",
           search: "story",
         }),
@@ -345,6 +391,19 @@ describe("VideoService", () => {
             ]),
           }),
           { label: { in: ["SHORT_FILM"] } },
+          expect.objectContaining({
+            parents: expect.objectContaining({
+              some: expect.objectContaining({
+                parent: expect.objectContaining({
+                  OR: [
+                    { id: "the-story" },
+                    { coreId: "the-story" },
+                    { slug: "the-story" },
+                  ],
+                }),
+              }),
+            }),
+          }),
           expect.objectContaining({
             dubs: expect.objectContaining({
               some: expect.objectContaining({ deletedAt: null }),

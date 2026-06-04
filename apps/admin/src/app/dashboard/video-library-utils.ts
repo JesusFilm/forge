@@ -4,6 +4,7 @@ export const VIDEO_LIBRARY_PAGE_SIZE = 30
 export const VIDEO_LIBRARY_MAX_PAGE_SIZE = 200
 export const VIDEO_LIBRARY_MAX_QUERY_LENGTH = 120
 export const VIDEO_LIBRARY_MAX_LANGUAGE_LENGTH = 120
+export const VIDEO_LIBRARY_MAX_IDENTIFIER_LENGTH = 140
 
 export const VIDEO_LIBRARY_CATEGORIES = [
   "all",
@@ -25,6 +26,7 @@ export type VideoLibraryCategory = (typeof VIDEO_LIBRARY_CATEGORIES)[number]
 export type VideoLibrarySort = (typeof VIDEO_LIBRARY_SORTS)[number]
 
 const SLUG_PATTERN = /^[a-z0-9-]+$/
+const VIDEO_LIBRARY_IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9_-]*$/i
 const BCP47_TAG_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i
 const CLOUDFLARE_IMAGE_DELIVERY_HOST = "imagedelivery.net"
 const SECOND_MS = 1000
@@ -88,18 +90,44 @@ export function parseVideoLibrarySort(
   return VIDEO_LIBRARY_SORTS.find((item) => item === candidate) ?? "recent"
 }
 
+function parseVideoLibraryIdentifier(value: string | string[] | undefined) {
+  const candidate =
+    firstSearchParam(value)
+      ?.replace(/\s+/g, " ")
+      .trim()
+      .slice(0, VIDEO_LIBRARY_MAX_IDENTIFIER_LENGTH) ?? ""
+
+  return VIDEO_LIBRARY_IDENTIFIER_PATTERN.test(candidate) ? candidate : ""
+}
+
+export function parseVideoLibrarySelectedVideo(
+  value: string | string[] | undefined,
+) {
+  return parseVideoLibraryIdentifier(value)
+}
+
+export function parseVideoLibraryCollection(
+  value: string | string[] | undefined,
+) {
+  return parseVideoLibraryIdentifier(value)
+}
+
 export function videoLibraryHref({
   category,
+  collection,
   language,
   page,
   query,
   sort,
+  video,
 }: {
   category?: VideoLibraryCategory
+  collection?: string | null
   language?: string
   page: number
   query?: string
   sort?: VideoLibrarySort
+  video?: string | null
 }) {
   const params = new URLSearchParams()
   const normalizedPage = Number.isFinite(page)
@@ -107,7 +135,11 @@ export function videoLibraryHref({
     : 1
   const normalizedQuery = parseVideoLibraryQuery(query)
   const normalizedCategory = parseVideoLibraryCategory(category)
+  const normalizedCollection = parseVideoLibraryCollection(
+    collection ?? undefined,
+  )
   const normalizedLanguage = parseVideoLibraryLanguage(language)
+  const normalizedVideo = parseVideoLibrarySelectedVideo(video ?? undefined)
   const normalizedSort = parseVideoLibrarySort(sort)
 
   if (normalizedPage > 1) {
@@ -122,6 +154,12 @@ export function videoLibraryHref({
   if (normalizedLanguage) {
     params.set("language", normalizedLanguage)
   }
+  if (normalizedCollection) {
+    params.set("collection", normalizedCollection)
+  }
+  if (normalizedVideo) {
+    params.set("video", normalizedVideo)
+  }
   if (normalizedSort !== VIDEO_LIBRARY_DEFAULT_SORT) {
     params.set("sort", normalizedSort)
   }
@@ -132,16 +170,19 @@ export function videoLibraryHref({
 
 export function hasActiveVideoLibraryFilters({
   category,
+  collection,
   language,
   query,
 }: {
   category: VideoLibraryCategory
+  collection?: string
   language: string
   query: string
 }) {
   return (
     parseVideoLibraryQuery(query).length > 0 ||
     parseVideoLibraryCategory(category) !== VIDEO_LIBRARY_DEFAULT_CATEGORY ||
+    parseVideoLibraryCollection(collection).length > 0 ||
     parseVideoLibraryLanguage(language).length > 0
   )
 }
