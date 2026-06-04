@@ -8,14 +8,19 @@ import {
   PageSection,
 } from "@/components/admin-ui"
 import { requireAdminSession } from "@/auth/session"
-import { prisma } from "@/db/client"
 import { getAdminMessages } from "@/i18n/server"
 import { loadUsersData } from "@/app/dashboard/ops-data"
+import { NotFoundError } from "@/services/errors"
+import {
+  approveUserRole,
+  grantManagerAccess as grantManagerAccessForUser,
+  revokeManagerAccess as revokeManagerAccessForUser,
+} from "@/services/user-access.service"
 
 async function approveUser(formData: FormData) {
   "use server"
 
-  await requireAdminSession()
+  const user = await requireAdminSession()
   const id = formData.get("id")
   const role = formData.get("role")
 
@@ -23,52 +28,41 @@ async function approveUser(formData: FormData) {
     return
   }
 
-  await prisma.user.update({
-    where: { id },
-    data: { role },
-    select: { id: true },
-  })
+  await approveUserRole({ user, targetUserId: id, role })
   revalidatePath("/dashboard/users")
 }
 
 async function grantManagerAccess(formData: FormData) {
   "use server"
 
-  await requireAdminSession()
+  const user = await requireAdminSession()
   const id = formData.get("id")
   if (typeof id !== "string") return
 
-  await prisma.managerMembership.upsert({
-    where: { userId: id },
-    create: {
-      userId: id,
-      role: "OPERATOR",
-    },
-    update: {
-      role: "OPERATOR",
-      revokedAt: null,
-    },
-    select: { id: true },
-  })
+  try {
+    await grantManagerAccessForUser({ user, targetUserId: id })
+  } catch (error) {
+    if (!(error instanceof NotFoundError)) {
+      throw error
+    }
+  }
   revalidatePath("/dashboard/users")
 }
 
 async function revokeManagerAccess(formData: FormData) {
   "use server"
 
-  await requireAdminSession()
+  const user = await requireAdminSession()
   const id = formData.get("id")
   if (typeof id !== "string") return
 
-  await prisma.managerMembership.updateMany({
-    where: {
-      userId: id,
-      revokedAt: null,
-    },
-    data: {
-      revokedAt: new Date(),
-    },
-  })
+  try {
+    await revokeManagerAccessForUser({ user, targetUserId: id })
+  } catch (error) {
+    if (!(error instanceof NotFoundError)) {
+      throw error
+    }
+  }
   revalidatePath("/dashboard/users")
 }
 
