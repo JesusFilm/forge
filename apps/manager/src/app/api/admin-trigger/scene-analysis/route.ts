@@ -26,6 +26,7 @@ async function dispatchSceneAnalysis(
     subtitleUrl: input.subtitleUrl,
     videoLabel: input.videoLabel,
     languageCode: input.languageBcp47,
+    targetLocale: input.targetLocale,
   })
 }
 

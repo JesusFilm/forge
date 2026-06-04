@@ -1,11 +1,42 @@
 import { z } from "zod"
 
+import {
+  DEFAULT_EMBEDDING_TRANSFORM_VERSION,
+  EXPECTED_AI_GATEWAY_EMBEDDING_NATIVE_DIMENSIONS,
+  EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+} from "../services/embedding-provider"
+
 const emptyToUndefined = (value: string | undefined) =>
   value === "" ? undefined : value
 
 const LOCAL_DATABASE_URL =
   "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway"
 const DEFAULT_OPENROUTER_EMBEDDINGS_BASE_URL = "https://openrouter.ai/api/v1"
+const DEFAULT_AI_GATEWAY_EMBEDDINGS_BASE_URL =
+  "https://ai-gateway.jesusfilm.org/v1"
+const DEFAULT_AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS = "ai-gateway.jesusfilm.org"
+const DEFAULT_AI_GATEWAY_EMBEDDINGS_USER_AGENT =
+  "forge-mastra-content-embeddings/1.0"
+const DEFAULT_AI_GATEWAY_EMBEDDINGS_MODEL = "embeddings"
+const DEFAULT_AI_GATEWAY_EMBEDDINGS_PROVIDER = "jesus-film-ai-gateway"
+const DEFAULT_AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS = 60_000
+const AI_GATEWAY_FINAL_EMBEDDING_DIMENSIONS =
+  EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS
+const AI_GATEWAY_TRANSFORM_VERSION = DEFAULT_EMBEDDING_TRANSFORM_VERSION
+
+export type ContentEmbeddingsProviderMode = "legacy" | "gateway"
+
+export type ContentEmbeddingProviderConfig = {
+  apiKey?: string
+  baseUrl: string
+  model: string
+  provider: string
+  userAgent?: string
+  timeoutMs?: number
+  expectedNativeDimensions?: number
+  truncateToDimensions?: number
+  transformVersion?: string
+}
 
 const envSchema = z.object({
   ADMIN_EXPERIENCE_INGEST_URL: z.string().url().optional(),
@@ -19,6 +50,33 @@ const envSchema = z.object({
   ADMIN_SEARCH_TRACE_SAMPLE_URL: z.string().url().optional(),
   ADMIN_SCENE_INGEST_URL: z.string().url().optional(),
   ADMIN_TRANSCRIPT_INGEST_URL: z.string().url().optional(),
+  AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS: z
+    .string()
+    .min(1)
+    .default(DEFAULT_AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS),
+  AI_GATEWAY_EMBEDDINGS_API_KEY: z.string().min(1).optional(),
+  AI_GATEWAY_EMBEDDINGS_BASE_URL: z
+    .string()
+    .url()
+    .default(DEFAULT_AI_GATEWAY_EMBEDDINGS_BASE_URL),
+  AI_GATEWAY_EMBEDDINGS_MODEL: z
+    .string()
+    .min(1)
+    .default(DEFAULT_AI_GATEWAY_EMBEDDINGS_MODEL),
+  AI_GATEWAY_EMBEDDINGS_PROVIDER: z
+    .string()
+    .min(1)
+    .default(DEFAULT_AI_GATEWAY_EMBEDDINGS_PROVIDER),
+  AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(300_000)
+    .default(DEFAULT_AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS),
+  AI_GATEWAY_EMBEDDINGS_USER_AGENT: z
+    .string()
+    .min(1)
+    .default(DEFAULT_AI_GATEWAY_EMBEDDINGS_USER_AGENT),
   DATABASE_URL: z.string().url().optional(),
   NODE_ENV: z
     .enum(["development", "test", "production"])
@@ -26,6 +84,12 @@ const envSchema = z.object({
   NEXT_PHASE: z.string().optional(),
   MASTRA_SERVICE_API_KEYS: z.string().min(1).optional(),
   MASTRA_NATIVE_EVAL_ENVIRONMENT: z.string().min(1).optional(),
+  MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE: z
+    .enum(["legacy", "gateway"])
+    .optional(),
+  MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT: z
+    .enum(["true", "false"])
+    .default("false"),
   MASTRA_SEARCH_EVAL_ARTIFACT_DIR: z.string().min(1).optional(),
   MASTRA_STORAGE_BACKEND: z.enum(["postgres", "memory"]).default("postgres"),
   MASTRA_STORAGE_DIR: z.string().min(1).optional(),
@@ -97,6 +161,27 @@ export const env = envSchema.parse({
   ADMIN_TRANSCRIPT_INGEST_URL: emptyToUndefined(
     process.env.ADMIN_TRANSCRIPT_INGEST_URL,
   ),
+  AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS,
+  ),
+  AI_GATEWAY_EMBEDDINGS_API_KEY: emptyToUndefined(
+    process.env.AI_GATEWAY_EMBEDDINGS_API_KEY,
+  ),
+  AI_GATEWAY_EMBEDDINGS_BASE_URL: emptyToUndefined(
+    process.env.AI_GATEWAY_EMBEDDINGS_BASE_URL,
+  ),
+  AI_GATEWAY_EMBEDDINGS_MODEL: emptyToUndefined(
+    process.env.AI_GATEWAY_EMBEDDINGS_MODEL,
+  ),
+  AI_GATEWAY_EMBEDDINGS_PROVIDER: emptyToUndefined(
+    process.env.AI_GATEWAY_EMBEDDINGS_PROVIDER,
+  ),
+  AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS: emptyToUndefined(
+    process.env.AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS,
+  ),
+  AI_GATEWAY_EMBEDDINGS_USER_AGENT: emptyToUndefined(
+    process.env.AI_GATEWAY_EMBEDDINGS_USER_AGENT,
+  ),
   DATABASE_URL: emptyToUndefined(process.env.DATABASE_URL),
   NODE_ENV: process.env.NODE_ENV,
   NEXT_PHASE: process.env.NEXT_PHASE,
@@ -105,6 +190,12 @@ export const env = envSchema.parse({
   ),
   MASTRA_NATIVE_EVAL_ENVIRONMENT: emptyToUndefined(
     process.env.MASTRA_NATIVE_EVAL_ENVIRONMENT,
+  ),
+  MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE: emptyToUndefined(
+    process.env.MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE,
+  ),
+  MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT: emptyToUndefined(
+    process.env.MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT,
   ),
   MASTRA_SEARCH_EVAL_ARTIFACT_DIR: emptyToUndefined(
     process.env.MASTRA_SEARCH_EVAL_ARTIFACT_DIR,
@@ -146,6 +237,35 @@ export const env = envSchema.parse({
   ),
 })
 
+function csvSet(value: string): ReadonlySet<string> {
+  return new Set(
+    value
+      .split(",")
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean),
+  )
+}
+
+function assertGatewayBaseUrlAllowedForProduction() {
+  const baseUrl = new URL(env.AI_GATEWAY_EMBEDDINGS_BASE_URL)
+  const allowedHosts = csvSet(env.AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS)
+  if (baseUrl.protocol !== "https:" || !allowedHosts.has(baseUrl.hostname)) {
+    throw new Error(
+      "AI_GATEWAY_EMBEDDINGS_BASE_URL must use https and a host listed in AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS for Mastra production",
+    )
+  }
+}
+
+export function getContentEmbeddingsProviderMode(): ContentEmbeddingsProviderMode {
+  if (env.MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE) {
+    return env.MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE
+  }
+  if (env.NODE_ENV === "production" || env.AI_GATEWAY_EMBEDDINGS_API_KEY) {
+    return "gateway"
+  }
+  return "legacy"
+}
+
 export function assertMastraRuntimeEnv() {
   if (
     env.NODE_ENV === "production" &&
@@ -158,7 +278,7 @@ export function assertMastraRuntimeEnv() {
 
   if (env.NODE_ENV !== "production") return
 
-  const missing = [
+  const missing: Array<[string, unknown]> = [
     [
       "ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY",
       env.ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY,
@@ -176,16 +296,27 @@ export function assertMastraRuntimeEnv() {
     ["ADMIN_TRANSCRIPT_INGEST_URL", env.ADMIN_TRANSCRIPT_INGEST_URL],
     ["DATABASE_URL", env.DATABASE_URL],
     ["MASTRA_SERVICE_API_KEYS", env.MASTRA_SERVICE_API_KEYS],
-    [
+  ]
+
+  if (getContentEmbeddingsProviderMode() === "gateway") {
+    missing.push([
+      "AI_GATEWAY_EMBEDDINGS_API_KEY",
+      env.AI_GATEWAY_EMBEDDINGS_API_KEY,
+    ])
+    assertGatewayBaseUrlAllowedForProduction()
+  } else {
+    missing.push([
       "OPENROUTER_API_KEY or OPENAI_API_KEY",
       env.OPENROUTER_API_KEY ?? env.OPENAI_API_KEY,
-    ],
-  ]
+    ])
+  }
+
+  const missingNames = missing
     .filter(([, value]) => !value)
     .map(([name]) => name)
 
-  if (missing.length > 0) {
-    throw new Error(`${missing.join(", ")} required for Mastra production`)
+  if (missingNames.length > 0) {
+    throw new Error(`${missingNames.join(", ")} required for Mastra production`)
   }
 }
 
@@ -201,44 +332,68 @@ export function getMastraStorageDir() {
   return ".mastra/storage"
 }
 
-export function getTranscriptEmbeddingProviderConfig() {
+function getLegacyEmbeddingProviderConfig(
+  model: string,
+  provider: string,
+): ContentEmbeddingProviderConfig {
   if (env.OPENROUTER_API_KEY) {
     return {
       apiKey: env.OPENROUTER_API_KEY,
       baseUrl: env.OPENROUTER_EMBEDDINGS_BASE_URL,
+      model,
+      provider,
     }
   }
 
   return {
     apiKey: env.OPENAI_API_KEY,
     baseUrl: env.OPENAI_EMBEDDINGS_BASE_URL,
+    model,
+    provider,
   }
+}
+
+function getGatewayEmbeddingProviderConfig(): ContentEmbeddingProviderConfig {
+  return {
+    apiKey: env.AI_GATEWAY_EMBEDDINGS_API_KEY,
+    baseUrl: env.AI_GATEWAY_EMBEDDINGS_BASE_URL,
+    model: env.AI_GATEWAY_EMBEDDINGS_MODEL,
+    provider: env.AI_GATEWAY_EMBEDDINGS_PROVIDER,
+    userAgent: env.AI_GATEWAY_EMBEDDINGS_USER_AGENT,
+    timeoutMs: env.AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS,
+    expectedNativeDimensions: EXPECTED_AI_GATEWAY_EMBEDDING_NATIVE_DIMENSIONS,
+    truncateToDimensions: AI_GATEWAY_FINAL_EMBEDDING_DIMENSIONS,
+    transformVersion: AI_GATEWAY_TRANSFORM_VERSION,
+  }
+}
+
+function getContentEmbeddingProviderConfig(
+  model: string,
+  provider: string,
+): ContentEmbeddingProviderConfig {
+  if (getContentEmbeddingsProviderMode() === "gateway") {
+    return getGatewayEmbeddingProviderConfig()
+  }
+  return getLegacyEmbeddingProviderConfig(model, provider)
+}
+
+export function getTranscriptEmbeddingProviderConfig() {
+  return getContentEmbeddingProviderConfig(
+    env.TRANSCRIPT_EMBEDDING_MODEL,
+    env.TRANSCRIPT_EMBEDDING_PROVIDER,
+  )
 }
 
 export function getSceneEmbeddingProviderConfig() {
-  if (env.OPENROUTER_API_KEY) {
-    return {
-      apiKey: env.OPENROUTER_API_KEY,
-      baseUrl: env.OPENROUTER_EMBEDDINGS_BASE_URL,
-    }
-  }
-
-  return {
-    apiKey: env.OPENAI_API_KEY,
-    baseUrl: env.OPENAI_EMBEDDINGS_BASE_URL,
-  }
+  return getContentEmbeddingProviderConfig(
+    env.SCENE_EMBEDDING_MODEL,
+    env.SCENE_EMBEDDING_PROVIDER,
+  )
 }
 
 export function getExperienceEmbeddingProviderConfig() {
-  if (env.OPENROUTER_API_KEY) {
-    return {
-      apiKey: env.OPENROUTER_API_KEY,
-      baseUrl: env.OPENROUTER_EMBEDDINGS_BASE_URL,
-    }
-  }
-
-  return {
-    apiKey: env.OPENAI_API_KEY,
-    baseUrl: env.OPENAI_EMBEDDINGS_BASE_URL,
-  }
+  return getContentEmbeddingProviderConfig(
+    env.EXPERIENCE_EMBEDDING_MODEL,
+    env.EXPERIENCE_EMBEDDING_PROVIDER,
+  )
 }

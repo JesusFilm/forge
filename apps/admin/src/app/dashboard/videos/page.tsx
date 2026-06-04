@@ -5,41 +5,70 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
-  Filter,
-  ImageIcon,
+  Film,
+  Layers,
+  MoreVertical,
+  Play,
   Plus,
-  Search,
-  X,
 } from "lucide-react"
-import {
-  DashboardPageHeader,
-  InfoStrip,
-  InsightGrid,
-  PageSection,
-  PrimaryButton,
-  SecondaryButton,
-  StatusPill,
-  cx,
-} from "@/components/admin-ui"
+import { cx, PrimaryButton } from "@/components/admin-ui"
 import { requireSession } from "@/auth/session"
-import { loadVideoLibraryPage } from "@/app/dashboard/live-data"
+import {
+  loadVideoLibraryDetail,
+  loadVideoLibraryPage,
+} from "@/app/dashboard/live-data"
 import { getAdminMessages } from "@/i18n/server"
 import {
-  VIDEO_LIBRARY_MAX_QUERY_LENGTH,
+  hasActiveVideoLibraryFilters,
+  parseVideoLibraryCategory,
+  parseVideoLibraryCollection,
+  parseVideoLibraryLanguage,
   parseVideoLibraryPage,
   parseVideoLibraryQuery,
+  parseVideoLibrarySelectedVideo,
+  parseVideoLibrarySort,
+  type VideoLibraryCategory,
+  type VideoLibrarySort,
   videoLibraryHref,
 } from "../video-library-utils"
+import { VideoLibraryToolbar } from "./video-library-toolbar"
+import { VideoDetailPage } from "./video-detail-page"
 
 type VideosPageProps = {
   searchParams?: Promise<{
     page?: string | string[]
     q?: string | string[]
+    collection?: string | string[]
+    language?: string | string[]
+    sort?: string | string[]
+    type?: string | string[]
+    video?: string | string[]
   }>
 }
 
-function paginationHref(page: number, query: string): Route {
-  return videoLibraryHref({ page, query }) as Route
+type VideoLibraryRow = Awaited<
+  ReturnType<typeof loadVideoLibraryPage>
+>["rows"][number]
+
+type VideoTone = {
+  label: string
+  icon: string
+  thumbnail: string
+  thumbnailPattern: string
+  progress: string
+}
+
+function paginationHref(
+  page: number,
+  state: {
+    category: VideoLibraryCategory
+    collection: string
+    language: string
+    query: string
+    sort: VideoLibrarySort
+  },
+): Route {
+  return videoLibraryHref({ page, ...state }) as Route
 }
 
 function paginationSummary(
@@ -68,10 +97,32 @@ function pageCountLabel(
     .replace("{count}", pagination.pageCount.toString())
 }
 
+function headerDescription(template: string, total: number) {
+  const [before, after] = template.split("{total}")
+  if (after === undefined) {
+    return template
+  }
+
+  return (
+    <>
+      {before}
+      <strong className="font-semibold text-[var(--color-text-primary)]">
+        {total.toLocaleString("en")}
+      </strong>
+      {after}
+    </>
+  )
+}
+
+function overflowLabel(template: string, count: number) {
+  return template.replace("{count}", count.toLocaleString("en"))
+}
+
 function paginationControlClass(disabled: boolean) {
   return cx(
     "inline-flex h-8 items-center gap-1 rounded-sm border border-[var(--color-hairline)] px-2 font-mono text-[11px] transition-all duration-[120ms] ease-out",
-    !disabled && "hover:bg-[var(--color-surface-raised)]",
+    !disabled &&
+      "text-[var(--color-text-secondary)] hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]",
     disabled && "text-[var(--color-text-disabled)]",
   )
 }
@@ -100,25 +151,300 @@ function PaginationControl({
   )
 }
 
-function SummaryTile({
-  label,
-  value,
-  detail,
-}: {
-  label: string
-  value: string
-  detail: string
-}) {
+function videoTone(label: VideoLibraryRow["label"]): VideoTone {
+  if (label === "FEATURE_FILM") {
+    return {
+      label: "text-[var(--color-danger)]",
+      icon: "text-[var(--color-danger)]",
+      thumbnail:
+        "from-[color-mix(in_oklab,var(--color-danger)_22%,var(--color-surface))] to-[var(--color-surface)]",
+      thumbnailPattern: "bg-[var(--color-danger)]/10",
+      progress: "bg-[var(--color-success)]",
+    }
+  }
+
+  if (label === "SHORT_FILM" || label === "TRAILER") {
+    return {
+      label: "text-[var(--color-warning)]",
+      icon: "text-[var(--color-warning)]",
+      thumbnail:
+        "from-[color-mix(in_oklab,var(--color-warning)_20%,var(--color-surface))] to-[var(--color-surface)]",
+      thumbnailPattern: "bg-[var(--color-warning)]/10",
+      progress: "bg-[var(--color-success)]",
+    }
+  }
+
+  return {
+    label: "text-[var(--color-info)]",
+    icon: "text-[var(--color-info)]",
+    thumbnail:
+      "from-[color-mix(in_oklab,var(--color-info)_18%,var(--color-surface))] to-[var(--color-surface)]",
+    thumbnailPattern: "bg-[var(--color-info)]/10",
+    progress: "bg-[var(--color-success)]",
+  }
+}
+
+function videoTypeLabel(video: VideoLibraryRow) {
+  return (video.labelLabel ?? "Video").toUpperCase()
+}
+
+function sourceLabel(video: VideoLibraryRow) {
+  return video.sourceLabel === "Internal"
+    ? "Internal source"
+    : `${video.sourceLabel} source`
+}
+
+function coverageWidth(percent: number) {
+  if (percent <= 0) return "0%"
+  return `${Math.max(2, percent)}%`
+}
+
+function VideoThumbnail({ video }: { video: VideoLibraryRow }) {
+  const tone = videoTone(video.label)
+  const isFeature = video.label === "FEATURE_FILM"
+  const Icon =
+    video.label === "COLLECTION" || video.label === "SERIES" ? Layers : Film
+
   return (
-    <div className="rounded-sm border border-[var(--color-hairline)] bg-[color-mix(in_oklab,var(--color-surface-raised)_76%,black)] p-3">
-      <div className="label-text">{label}</div>
-      <div className="mt-2 truncate font-mono text-lg font-medium leading-6">
-        {value}
-      </div>
-      <div className="mono-meta mt-1 truncate text-[var(--color-text-muted)]">
-        {detail}
-      </div>
+    <div
+      className={cx(
+        "relative aspect-video w-full overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:w-[168px]",
+        tone.thumbnail,
+      )}
+    >
+      {video.previewImageUrl ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={video.previewImageUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.48))]"
+          />
+        </>
+      ) : (
+        <>
+          <span
+            aria-hidden="true"
+            className={cx(
+              "absolute inset-0 opacity-60 [background-image:linear-gradient(90deg,rgba(255,255,255,0.16)_1px,transparent_1px)] [background-size:22px_100%]",
+              tone.thumbnailPattern,
+            )}
+          />
+          <span className="absolute inset-0 flex items-center justify-center">
+            {isFeature ? (
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-text-primary)] text-[var(--color-bg)] shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+                <Play className="ml-0.5 h-4 w-4 fill-current" />
+              </span>
+            ) : (
+              <Icon className={cx("h-6 w-6", tone.icon)} strokeWidth={1.7} />
+            )}
+          </span>
+        </>
+      )}
+      <span className="absolute bottom-1.5 right-1.5 rounded-[2px] bg-black/70 px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none text-[var(--color-text-primary)]">
+        {video.duration}
+      </span>
     </div>
+  )
+}
+
+function VideoRow({
+  page,
+  state,
+  video,
+}: {
+  page: Awaited<ReturnType<typeof getAdminMessages>>["pages"]["videos"]
+  state: {
+    category: VideoLibraryCategory
+    collection: string
+    currentPage: number
+    language: string
+    query: string
+    sort: VideoLibrarySort
+  }
+  video: VideoLibraryRow
+}) {
+  const tone = videoTone(video.label)
+  const percent = video.dubCoveragePercent
+  const languages = video.dubLanguages
+  const targetIdentifier = video.slug || video.id
+  const targetHref = video.isCollectionTarget
+    ? videoLibraryHref({
+        category: "all",
+        collection: targetIdentifier,
+        language: state.language,
+        page: 1,
+        query: state.query,
+        sort: state.sort,
+      })
+    : videoLibraryHref({
+        category: state.category,
+        collection: state.collection,
+        language: state.language,
+        page: state.currentPage,
+        query: state.query,
+        sort: state.sort,
+        video: targetIdentifier,
+      })
+  const targetLabel = video.isCollectionTarget
+    ? `${page.table.openCollectionLabel}: ${video.title}`
+    : `${page.table.openDetailsLabel}: ${video.title}`
+
+  return (
+    <article className="group relative grid gap-4 border-b border-[var(--color-hairline)] px-4 py-4 transition-colors duration-[120ms] ease-out last:border-b-0 hover:bg-[var(--color-surface-raised)] lg:grid-cols-[168px_minmax(0,1fr)_minmax(220px,300px)_104px] lg:items-center">
+      <Link
+        href={targetHref as Route}
+        prefetch={false}
+        aria-label={targetLabel}
+        className="absolute inset-0 z-10 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[var(--color-brand)]"
+      />
+      <VideoThumbnail video={video} />
+
+      <div className="min-w-0">
+        <h2 className="truncate text-[18px] font-semibold leading-6 text-[var(--color-text-primary)]">
+          {video.title}
+        </h2>
+        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px] leading-4 text-[var(--color-text-muted)]">
+          <span
+            className={cx(
+              "inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.08em]",
+              tone.label,
+            )}
+          >
+            {video.label === "COLLECTION" || video.label === "SERIES" ? (
+              <Layers className="h-4 w-4" strokeWidth={1.8} />
+            ) : (
+              <Film className="h-4 w-4" strokeWidth={1.8} />
+            )}
+            {videoTypeLabel(video)}
+          </span>
+          <span
+            aria-hidden="true"
+            className="h-1 w-1 rounded-full bg-[var(--color-hairline-strong)]"
+          />
+          <span className="max-w-[220px] truncate font-mono text-[11px] text-[var(--color-text-muted)]">
+            {video.slug || video.id}
+          </span>
+          <span
+            aria-hidden="true"
+            className="h-1 w-1 rounded-full bg-[var(--color-hairline-strong)]"
+          />
+          <span className="inline-flex items-center gap-1.5 text-[var(--color-text-muted)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" />
+            {sourceLabel(video)}
+          </span>
+        </div>
+      </div>
+
+      <div className="min-w-0">
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <span className="align-baseline font-mono text-[22px] font-semibold leading-none text-[var(--color-text-primary)]">
+              {video.dubCount.toLocaleString("en")}
+            </span>
+            <span className="ml-2 align-baseline text-[12px] text-[var(--color-text-muted)]">
+              {page.coverage.languagesDubbed}
+            </span>
+          </div>
+          <span className="font-mono text-[11px] font-semibold text-[var(--color-success)]">
+            {percent}%
+          </span>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-raised)]">
+          <div
+            className={cx("h-full rounded-full", tone.progress)}
+            style={{ width: coverageWidth(percent) }}
+          />
+        </div>
+        <div className="mt-2 flex min-h-6 flex-wrap items-center gap-1.5">
+          {languages.length > 0 ? (
+            languages.map((language) => (
+              <span
+                key={language.code}
+                className="inline-flex items-center gap-1.5 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-1.5 py-1 font-mono text-[10px] font-semibold leading-none text-[var(--color-text-secondary)]"
+              >
+                {language.flagUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={language.flagUrl}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="h-3 w-4 rounded-[1px] object-cover"
+                  />
+                ) : null}
+                <span>{language.code}</span>
+              </span>
+            ))
+          ) : (
+            <span className="text-[11px] text-[var(--color-text-disabled)]">
+              {page.coverage.noLanguages}
+            </span>
+          )}
+          {video.dubOverflowCount > 0 ? (
+            <span className="px-1 font-mono text-[11px] text-[var(--color-text-muted)]">
+              {overflowLabel(page.coverage.overflow, video.dubOverflowCount)}
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="relative z-20 flex items-center justify-between gap-3 lg:flex-col lg:items-end">
+        <time
+          dateTime={video.updatedAtIso}
+          title={video.updated}
+          className="text-right"
+        >
+          <span className="block text-[12px] font-semibold leading-4 text-[var(--color-text-secondary)]">
+            {video.updatedRelative}
+          </span>
+          <span className="mt-0.5 block font-mono text-[10px] text-[var(--color-text-muted)]">
+            {video.updatedDateShort}
+          </span>
+        </time>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            aria-label={page.actions.rowActionsUnavailable}
+            title={page.actions.rowActionsUnavailable}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-disabled)]"
+          >
+            <MoreVertical className="h-4 w-4" strokeWidth={1.6} />
+          </button>
+          {video.visitorUrl ? (
+            <a
+              href={video.visitorUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`${page.table.openVisitorLabel}: ${video.title}`}
+              title={page.table.openVisitorLabel}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+            >
+              <ExternalLink className="h-4 w-4" strokeWidth={1.6} />
+            </a>
+          ) : (
+            <span
+              aria-disabled="true"
+              aria-label={page.table.noVisitorLinkLabel}
+              title={page.table.noVisitorLinkLabel}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-disabled)]"
+            >
+              <ExternalLink className="h-4 w-4" strokeWidth={1.6} />
+              <span className="sr-only">{page.table.noVisitorLinkLabel}</span>
+            </span>
+          )}
+        </div>
+      </div>
+    </article>
   )
 }
 
@@ -131,10 +457,65 @@ export default async function VideosPage({
   const params = (await searchParams) ?? {}
   const requestedPage = parseVideoLibraryPage(params.page)
   const query = parseVideoLibraryQuery(params.q)
-  const { rows: videoRows, pagination } = await loadVideoLibraryPage(
-    principal,
-    { page: requestedPage, query },
-  )
+  const category = parseVideoLibraryCategory(params.type)
+  const collection = parseVideoLibraryCollection(params.collection)
+  const language = parseVideoLibraryLanguage(params.language)
+  const selectedVideo = parseVideoLibrarySelectedVideo(params.video)
+  const sort = parseVideoLibrarySort(params.sort)
+  const paginationState = { category, collection, language, query, sort }
+  const closeVideoHref = videoLibraryHref({
+    page: requestedPage,
+    ...paginationState,
+  }) as Route
+
+  if (selectedVideo) {
+    const selectedVideoDetail = await loadVideoLibraryDetail(selectedVideo)
+
+    if (selectedVideoDetail) {
+      return (
+        <VideoDetailPage
+          backHref={closeVideoHref}
+          detail={selectedVideoDetail}
+          labels={page.detail}
+        />
+      )
+    }
+  }
+
+  const {
+    rows: videoRows,
+    pagination,
+    languageOptions,
+    collectionSummary,
+  } = await loadVideoLibraryPage(principal, {
+    category,
+    collection,
+    language,
+    page: requestedPage,
+    query,
+    sort,
+  })
+  const toolbarStateKey = videoLibraryHref({
+    page: 1,
+    ...paginationState,
+  })
+  const hasActiveFilters = hasActiveVideoLibraryFilters({
+    category,
+    collection,
+    language,
+    query,
+  })
+  const rowState = {
+    ...paginationState,
+    currentPage: pagination.currentPage,
+  }
+  const clearCollectionHref = videoLibraryHref({
+    category,
+    language,
+    page: 1,
+    query,
+    sort,
+  }) as Route
   const rangeLabel = paginationSummary(
     page.table.pagination.summary,
     pagination,
@@ -143,283 +524,107 @@ export default async function VideosPage({
     page.table.pagination.page,
     pagination,
   )
-  const queryState = query
-    ? page.search.active.replace("{query}", query)
-    : page.summary.queryAll
 
   return (
-    <div className="flex flex-col gap-6">
-      <InfoStrip
-        items={page.infoStrip.items}
-        trailing={page.infoStrip.trailing}
-      />
-
-      <section className="overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-surface)_92%,black),var(--color-surface))]">
-        <div className="grid gap-5 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:p-5">
-          <DashboardPageHeader
-            eyebrow={page.eyebrow}
-            title={page.title}
-            description={page.description}
-            action={
-              <div className="flex flex-col items-start gap-1 md:items-end">
-                <PrimaryButton
-                  disabled
-                  title={page.actions.primaryUnavailable}
-                  aria-describedby="video-actions-unavailable"
-                >
-                  <Plus className="h-4 w-4" strokeWidth={1.5} />
-                  {page.actions.primary}
-                </PrimaryButton>
-                <span
-                  id="video-actions-unavailable"
-                  className="font-mono text-[10px] text-[var(--color-text-muted)]"
-                >
-                  {page.actions.primaryUnavailable}
-                </span>
-              </div>
-            }
-          />
-
-          <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] p-3">
-            <form
-              action="/dashboard/videos"
-              className="flex w-full flex-col gap-3"
-              role="search"
-            >
-              <label
-                htmlFor="video-library-search"
-                className="flex flex-col gap-1"
-              >
-                <span className="label-text">{page.search.label}</span>
-                <span className="relative">
-                  <Search
-                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
-                    strokeWidth={1.5}
-                  />
-                  <input
-                    id="video-library-search"
-                    name="q"
-                    type="search"
-                    maxLength={VIDEO_LIBRARY_MAX_QUERY_LENGTH}
-                    defaultValue={query}
-                    placeholder={page.search.placeholder}
-                    className="h-10 w-full rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] pl-9 pr-3 font-mono text-[12px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out placeholder:text-[var(--color-text-disabled)] focus:border-[var(--color-brand)] focus:bg-[var(--color-surface-raised)]"
-                  />
-                </span>
-              </label>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <SecondaryButton type="submit">
-                  <Search className="h-4 w-4" strokeWidth={1.5} />
-                  {page.search.submit}
-                </SecondaryButton>
-                {query ? (
-                  <Link
-                    href="/dashboard/videos"
-                    className="inline-flex h-8 items-center gap-2 rounded-sm border border-[var(--color-hairline)] px-3 text-[13px] font-medium text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]"
-                  >
-                    <X className="h-4 w-4" strokeWidth={1.5} />
-                    {page.search.clear}
-                  </Link>
-                ) : null}
-              </div>
-            </form>
-          </div>
+    <div className="flex min-w-0 flex-col gap-5">
+      <header className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+        <div className="min-w-0">
+          <div className="label-text mb-1">{page.eyebrow}</div>
+          <h1 className="text-2xl font-semibold tracking-[-0.02em]">
+            {page.title}
+          </h1>
+          <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">
+            {headerDescription(page.description, pagination.total)}
+          </p>
         </div>
+        <PrimaryButton
+          disabled
+          aria-disabled="true"
+          title={page.actions.primaryUnavailable}
+          className="shrink-0 whitespace-nowrap"
+        >
+          <Plus className="h-4 w-4" strokeWidth={1.5} />
+          {page.actions.primary}
+        </PrimaryButton>
+      </header>
 
-        <div className="grid gap-3 border-t border-[var(--color-hairline)] p-4 md:grid-cols-2 xl:grid-cols-4">
-          <SummaryTile
-            label={page.summary.total}
-            value={pagination.total.toLocaleString("en")}
-            detail={page.table.title}
-          />
-          <SummaryTile
-            label={page.summary.visible}
-            value={videoRows.length.toLocaleString("en")}
-            detail={rangeLabel}
-          />
-          <SummaryTile
-            label={page.summary.page}
-            value={pagination.currentPage.toString()}
-            detail={currentPageLabel}
-          />
-          <SummaryTile
-            label={page.summary.query}
-            value={queryState}
-            detail={page.table.meta}
-          />
-        </div>
+      <section aria-label={page.table.title}>
+        <VideoLibraryToolbar
+          key={toolbarStateKey}
+          category={category}
+          collection={collection}
+          language={language}
+          languageOptions={languageOptions}
+          page={page}
+          query={query}
+          sort={sort}
+        />
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <PageSection
-          title={page.table.title}
-          meta={page.table.meta}
-          actions={
-            <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
-              {rangeLabel}
-            </span>
-          }
-        >
-          <div className="hidden grid-cols-[180px_minmax(260px,1fr)_128px_96px_132px_48px] items-center gap-4 border-b border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-3 lg:grid">
-            {page.table.columns.map((column) => (
-              <div key={column} className="label-text">
-                {column}
-              </div>
-            ))}
-            <div className="label-text text-right" />
-          </div>
-          <div className="divide-y divide-[var(--color-hairline)]">
-            {videoRows.length === 0 ? (
-              <div className="px-4 py-10 text-center text-[13px] text-[var(--color-text-muted)]">
-                {query ? page.table.emptySearch : page.table.empty}
-              </div>
-            ) : (
-              videoRows.map((video) => (
-                <article
-                  key={video.key}
-                  className="grid gap-4 px-4 py-4 lg:grid-cols-[180px_minmax(260px,1fr)_128px_96px_132px_48px] lg:items-center"
-                >
-                  <div className="relative flex aspect-video w-full max-w-[240px] items-center justify-center overflow-hidden rounded-sm border border-white/10 bg-[linear-gradient(135deg,#151312,#292524)] lg:w-[180px]">
-                    {video.previewImageUrl ? (
-                      <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={video.previewImageUrl}
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                          className="absolute inset-0 h-full w-full object-cover"
-                        />
-                        <span
-                          aria-hidden="true"
-                          className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.08),rgba(0,0,0,0.55))]"
-                        />
-                      </>
-                    ) : (
-                      <ImageIcon
-                        className="h-5 w-5 text-[var(--color-text-disabled)]"
-                        strokeWidth={1.5}
-                      />
-                    )}
-                    <span className="absolute bottom-2 right-2 rounded-[2px] bg-black/60 px-1.5 py-0.5 font-mono text-[9px]">
-                      {video.duration}
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 flex-col gap-2">
-                      <div>
-                        <h3 className="truncate text-[14px] font-medium">
-                          {video.title}
-                        </h3>
-                        <div className="mono-meta truncate text-[var(--color-text-muted)]">
-                          {video.id}
-                        </div>
-                        <div className="mono-meta mt-0.5 truncate text-[var(--color-text-disabled)]">
-                          {video.slug}
-                        </div>
-                      </div>
-                      {video.labelLabel ? (
-                        <div>
-                          <StatusPill tone="muted">
-                            {video.labelLabel}
-                          </StatusPill>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 lg:block">
-                    <span className="label-text lg:hidden">
-                      {page.table.columns[2]}
-                    </span>
-                    <StatusPill tone={video.sourceTone}>
-                      {video.sourceLabel}
-                    </StatusPill>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 lg:block">
-                    <span className="label-text lg:hidden">
-                      {page.table.columns[3]}
-                    </span>
-                    <span className="font-mono text-[12px] text-[var(--color-text-secondary)]">
-                      {video.dubs}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 lg:block">
-                    <span className="label-text lg:hidden">
-                      {page.table.columns[4]}
-                    </span>
-                    <time
-                      dateTime={video.updatedAtIso}
-                      title={video.updated}
-                      className="mono-meta text-[var(--color-text-muted)]"
-                    >
-                      {video.updatedRelative}
-                    </time>
-                  </div>
-                  <div className="flex items-center justify-end">
-                    {video.visitorUrl ? (
-                      <a
-                        href={video.visitorUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={`${page.table.openVisitorLabel}: ${video.title}`}
-                        title={page.table.openVisitorLabel}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]"
-                      >
-                        <ExternalLink className="h-4 w-4" strokeWidth={1.5} />
-                      </a>
-                    ) : (
-                      <span
-                        aria-disabled="true"
-                        aria-label={page.table.noVisitorLinkLabel}
-                        title={page.table.noVisitorLinkLabel}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-disabled)]"
-                      >
-                        <ExternalLink className="h-4 w-4" strokeWidth={1.5} />
-                        <span className="sr-only">
-                          {page.table.noVisitorLinkLabel}
-                        </span>
-                      </span>
-                    )}
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
-          <div className="hairline-strong-t flex flex-col gap-3 px-4 py-3 text-[12px] text-[var(--color-text-muted)] md:flex-row md:items-center md:justify-between">
-            <span className="font-mono">{rangeLabel}</span>
-            <div className="flex items-center gap-2">
-              <PaginationControl
-                href={paginationHref(pagination.currentPage - 1, query)}
-                disabled={!pagination.hasPrevious}
-              >
-                <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
-                {page.table.pagination.previous}
-              </PaginationControl>
-              <span className="min-w-[96px] text-center font-mono text-[11px]">
-                {pageCountLabel(page.table.pagination.page, pagination)}
-              </span>
-              <PaginationControl
-                href={paginationHref(pagination.currentPage + 1, query)}
-                disabled={!pagination.hasNext}
-              >
-                {page.table.pagination.next}
-                <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
-              </PaginationControl>
+      {collection ? (
+        <section className="flex flex-col gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-4 py-3 text-[13px] md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <div className="label-text mb-1">{page.collection.title}</div>
+            <div className="truncate text-[var(--color-text-primary)]">
+              {collectionSummary?.title ?? page.collection.missing}
+            </div>
+            <div className="mt-1 font-mono text-[11px] text-[var(--color-text-muted)]">
+              {collectionSummary
+                ? page.collection.childCount.replace(
+                    "{count}",
+                    collectionSummary.childCount.toLocaleString("en"),
+                  )
+                : collection}
             </div>
           </div>
-        </PageSection>
+          <Link
+            href={clearCollectionHref}
+            className="inline-flex h-8 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] px-3 font-mono text-[11px] font-semibold text-[var(--color-text-secondary)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+          >
+            {page.collection.clear}
+          </Link>
+        </section>
+      ) : null}
 
-        <PageSection title={page.signals.title} meta={page.signals.meta}>
-          <div className="p-4">
-            <InsightGrid
-              items={page.signals.insights.map((item, index) => ({
-                ...item,
-                icon: index % 2 === 0 ? Filter : Plus,
-              }))}
-            />
+      <section className="app-card min-w-0 overflow-hidden">
+        {videoRows.length === 0 ? (
+          <div className="px-4 py-10 text-center text-[13px] text-[var(--color-text-muted)]">
+            {hasActiveFilters ? page.table.emptySearch : page.table.empty}
           </div>
-        </PageSection>
-      </div>
+        ) : (
+          videoRows.map((video) => (
+            <VideoRow
+              key={video.key}
+              page={page}
+              state={rowState}
+              video={video}
+            />
+          ))
+        )}
+
+        <div className="flex flex-col gap-3 border-t border-[var(--color-hairline)] px-4 py-3 text-[12px] text-[var(--color-text-muted)] md:flex-row md:items-center md:justify-between">
+          <span className="font-mono">{rangeLabel}</span>
+          <div className="flex items-center gap-2">
+            <PaginationControl
+              href={paginationHref(pagination.currentPage - 1, paginationState)}
+              disabled={!pagination.hasPrevious}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
+              {page.table.pagination.previous}
+            </PaginationControl>
+            <span className="min-w-[96px] text-center font-mono text-[11px] text-[var(--color-text-muted)]">
+              {currentPageLabel}
+            </span>
+            <PaginationControl
+              href={paginationHref(pagination.currentPage + 1, paginationState)}
+              disabled={!pagination.hasNext}
+            >
+              {page.table.pagination.next}
+              <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </PaginationControl>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

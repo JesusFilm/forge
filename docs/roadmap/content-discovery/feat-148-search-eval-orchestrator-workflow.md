@@ -8,7 +8,9 @@ start_date: "2026-05-30"
 duration: 2
 depends_on:
   - "feat-142"
-blocks: []
+blocks:
+  - "feat-155"
+  - "feat-156"
 tags:
   - "admin"
   - "mastra"

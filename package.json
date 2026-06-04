@@ -10,6 +10,7 @@
     "test": "turbo run test",
     "dev": "turbo run dev --parallel",
     "fetch-secrets": "turbo run fetch-secrets --continue=always",
+    "seed:search-eval:prod": "pnpm --filter @forge/mastra seed:search-eval:prod",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "android": "pnpm --filter @forge/mobile android",

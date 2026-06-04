@@ -42,13 +42,18 @@ A run that looks healthy but produces nonsensical data:
 
 ## What Didn't Work
 
-- **Per-item try/catch in the runner.** The original mitigation in `apps/admin/src/services/search-eval/runner.ts` absorbed errors gracefully but couldn't inject correctness back into the data. It's a safety net, not a retry policy.
+- **Per-item try/catch in the runner.** The original mitigation in the retired
+  Admin search-eval runner absorbed errors gracefully but couldn't inject
+  correctness back into the data. It's a safety net, not a retry policy.
 - **Lowering default concurrency.** Masks the symptom for small runs but breaks again the moment the upstream rate-limit window or item count changes.
 - **Runner-side rate-limit-aware throttling.** Partially helps but admin's limit is per-IP via Redis, so any future change to admin's rate-limit window silently re-breaks it. Throttling at the wrong layer is fragile.
 
 ## Solution
 
-**Retry-shape parity:** every external client invoked in the same fan-out implements the same retry contract. The canonical shape (ported from `apps/admin/src/services/search-eval/judge.ts` into `apps/admin/src/services/search-eval/search-client.ts` in commit `803af816`):
+**Retry-shape parity:** every external client invoked in the same fan-out
+implements the same retry contract. The current search-eval equivalents live in
+Mastra's offline judge and Admin HTTP client; the original PR used this
+canonical shape:
 
 ```ts
 const MAX_RETRY_ATTEMPTS = 3
@@ -148,7 +153,10 @@ Both clients now share: max 3 attempts, Retry-After honored (capped at 30s), exp
 
 ## Why This Works
 
-1. **The runner's try/catch is a safety net, not a retry policy.** `apps/admin/src/services/search-eval/runner.ts` correctly continues iterating when one item fails — that's the right behavior for a fan-out. But it cannot distinguish "this query is genuinely empty" from "this request was rate-limited and should be retried." Only the client knows.
+1. **The runner's try/catch is a safety net, not a retry policy.** A runner
+   can correctly continue iterating when one item fails, but it cannot
+   distinguish "this query is genuinely empty" from "this request was
+   rate-limited and should be retried." Only the client knows.
 
 2. **Retry is the client's responsibility.** External clients own the contract with their upstream: they know which status codes are transient, how to parse `Retry-After`, what timeout is appropriate. Pushing that decision up to the runner couples the runner to every upstream's quirks.
 
@@ -156,9 +164,20 @@ Both clients now share: max 3 attempts, Retry-After honored (capped at 30s), exp
 
 ## Prevention
 
-1. **Audit rule for new external clients.** When adding any external client to a runner-style fan-out, grep for all siblings under the same `pLimit()` / `Promise.all()` / `Promise.allSettled()` and verify they share retry semantics. If asymmetric, normalize before merging. Concrete check for this repo: `grep -nE "pLimit\\(.*\\)" apps/admin/src/services/**/*.ts` then for each hit verify every external client invoked in the same closure has retry.
+1. **Audit rule for new external clients.** When adding any external client to
+   a runner-style fan-out, grep for all siblings under the same `pLimit()` /
+   `Promise.all()` / `Promise.allSettled()` and verify they share retry
+   semantics. If asymmetric, normalize before merging. Concrete check for this
+   repo: `rg -n "pLimit\\(|Promise\\.all" apps/mastra/src/services apps/admin/src/services`
+   then for each hit verify every external client invoked in the same closure
+   has retry.
 
-2. **Test pattern.** Every external client gets a retry test suite that asserts retry on the documented set (429, 5xx, transport, timeout) and respects `Retry-After`. The canonical shape lives in `apps/admin/src/services/search-eval/search-client.test.ts` (the "retry behavior (P1 fix)" describe block). Each retry test:
+2. **Test pattern.** Every external client gets a retry test suite that asserts
+   retry on the documented set (429, 5xx, transport, timeout) and respects
+   `Retry-After`. Current examples live in
+   `apps/mastra/src/services/admin-search-eval-client.test.ts` and
+   `apps/mastra/src/services/offline-search-eval/judge.test.ts`. Each retry
+   test:
    - Mocks `fetch` to return a transient failure, then a 200.
    - Asserts `fetchImpl.toHaveBeenCalledTimes(2)` — proves retry happened.
    - For Retry-After: spies on `sleep` and asserts the wait matched the header (and was capped at 30s for large values).
@@ -167,7 +186,8 @@ Both clients now share: max 3 attempts, Retry-After honored (capped at 30s), exp
 
 3. **Code-review heuristic.** Any time a reviewer sees `pLimit(N)` followed by `.map(... → client.X())`, ask "does `X` retry?" for every distinct client. If the answer differs across clients in the same fan-out, block the PR.
 
-4. **Shared helper when ≥3 callers.** Don't extract on the first pair (premature abstraction); do extract when a third caller appears. The PR opted NOT to extract yet — only judge + search-client; revisit if a third external client lands.
+4. **Shared helper when >=3 callers.** Don't extract on the first pair
+   (premature abstraction); do extract when a third caller appears.
 
 5. **Structured log convention.** Every retry attempt emits `event=<client>.retry attempt=N status=N wait_ms=N` so a future log-based alert can fire on "retry events exceed K/min across any client." Without the convention, each client invents its own log format and the alert can't be written.
 
@@ -182,8 +202,12 @@ Both clients now share: max 3 attempts, Retry-After honored (capped at 30s), exp
 
 ## File References
 
-- `apps/admin/src/services/search-eval/judge.ts` — the original retry shape (the template).
-- `apps/admin/src/services/search-eval/search-client.ts` — the retrofitted retry (the fix, commit 803af816).
-- `apps/admin/src/services/search-eval/runner.ts` — the fan-out site where parity is enforced.
-- `apps/admin/src/services/search-eval/search-client.test.ts` — canonical retry-test shape (8 tests under "retry behavior (P1 fix)").
+- `apps/mastra/src/services/offline-search-eval/judge.ts` — OpenRouter judge
+  retry behavior for offline eval.
+- `apps/mastra/src/services/admin-search-eval-client.ts` — Admin HTTP retry
+  behavior for catalog, candidate, trace, and no-trace search contracts.
+- `apps/mastra/src/services/offline-search-eval/runner.ts` — fan-out site that
+  consumes both retryable and non-retryable failures.
+- `apps/mastra/src/services/admin-search-eval-client.test.ts` and
+  `apps/mastra/src/services/offline-search-eval/judge.test.ts` — retry tests.
 - PR: https://github.com/JesusFilm/forge/pull/922

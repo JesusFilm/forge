@@ -20,6 +20,7 @@ function mockPrisma() {
     },
     videoDub: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
     },
     $queryRaw: vi.fn(),
     $executeRaw: vi.fn(),
@@ -34,7 +35,9 @@ type Row = {
   id: string
   coreId: string
   label: string | null
+  targetLocale: string | null
   primaryLanguageBcp47: string | null
+  languageBcp47: string | null
   muxAssetId: string | null
   subtitleUrl: string | null
 }
@@ -46,7 +49,9 @@ function rowFixture(overrides: Partial<Row> = {}): Row {
     // Prisma exposes the TS enum identifier (UPPER_SNAKE_CASE);
     // the service normalizes it to camelCase on the way out.
     label: "FEATURE_FILM",
+    targetLocale: null,
     primaryLanguageBcp47: "en",
+    languageBcp47: "en",
     muxAssetId: "mux-asset-en",
     subtitleUrl: "https://example.com/en.vtt",
     ...overrides,
@@ -187,6 +192,153 @@ describe("VideoService", () => {
         ]),
       )
     })
+
+    it("filters by video library category labels", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({
+        input: { category: "features", search: "" },
+        query: {},
+      })
+
+      let call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          { deletedAt: null },
+          { label: { in: ["FEATURE_FILM"] } },
+        ]),
+      )
+
+      prisma.video.findMany.mockResolvedValueOnce([])
+      await service.list({
+        input: { category: "collections", search: "" },
+        query: {},
+      })
+
+      call = prisma.video.findMany.mock.calls[1][0]
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          { deletedAt: null },
+          { label: { in: ["COLLECTION"] } },
+        ]),
+      )
+    })
+
+    it("does not add a category label filter for the all category", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: { category: "all" }, query: {} })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where).toEqual({ deletedAt: null })
+    })
+
+    it("filters videos through a collection parent relation", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({
+        input: { collection: "the-story" },
+        query: {},
+      })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          { deletedAt: null },
+          {
+            parents: {
+              some: {
+                parent: {
+                  deletedAt: null,
+                  OR: [
+                    { id: "the-story" },
+                    { coreId: "the-story" },
+                    { slug: "the-story" },
+                  ],
+                },
+              },
+            },
+          },
+        ]),
+      )
+    })
+
+    it("combines search, category, collection, and dubbed language filters", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({
+        input: {
+          category: "series",
+          collection: "the-story",
+          language: "english",
+          search: "Jesus",
+        },
+        query: {},
+      })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            OR: expect.arrayContaining([
+              { slug: { contains: "Jesus", mode: "insensitive" } },
+            ]),
+          }),
+          { label: { in: ["SERIES"] } },
+          {
+            parents: {
+              some: {
+                parent: {
+                  deletedAt: null,
+                  OR: [
+                    { id: "the-story" },
+                    { coreId: "the-story" },
+                    { slug: "the-story" },
+                  ],
+                },
+              },
+            },
+          },
+          {
+            dubs: {
+              some: {
+                deletedAt: null,
+                language: {
+                  is: expect.objectContaining({
+                    OR: expect.arrayContaining([
+                      {
+                        slug: {
+                          contains: "english",
+                          mode: "insensitive",
+                        },
+                      },
+                    ]),
+                  }),
+                },
+              },
+            },
+          },
+        ]),
+      )
+    })
+
+    it("applies supported video library sort orders", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: { sort: "oldest" }, query: {} })
+
+      let call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.orderBy).toEqual([{ updatedAt: "asc" }, { createdAt: "asc" }])
+
+      prisma.video.findMany.mockResolvedValueOnce([])
+      await service.list({ input: { sort: "created" }, query: {} })
+
+      call = prisma.video.findMany.mock.calls[1][0]
+      expect(call.orderBy).toEqual([
+        { createdAt: "desc" },
+        { updatedAt: "desc" },
+      ])
+    })
   })
 
   describe("countActive", () => {
@@ -218,6 +370,49 @@ describe("VideoService", () => {
         ]),
       )
     })
+
+    it("counts with the same category, collection, and language filters as list", async () => {
+      prisma.video.count.mockResolvedValueOnce(7)
+
+      await expect(
+        service.countActive({
+          category: "shortFilms",
+          collection: "the-story",
+          language: "spanish",
+          search: "story",
+        }),
+      ).resolves.toBe(7)
+
+      const call = prisma.video.count.mock.calls[0][0]
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            OR: expect.arrayContaining([
+              { slug: { contains: "story", mode: "insensitive" } },
+            ]),
+          }),
+          { label: { in: ["SHORT_FILM"] } },
+          expect.objectContaining({
+            parents: expect.objectContaining({
+              some: expect.objectContaining({
+                parent: expect.objectContaining({
+                  OR: [
+                    { id: "the-story" },
+                    { coreId: "the-story" },
+                    { slug: "the-story" },
+                  ],
+                }),
+              }),
+            }),
+          }),
+          expect.objectContaining({
+            dubs: expect.objectContaining({
+              some: expect.objectContaining({ deletedAt: null }),
+            }),
+          }),
+        ]),
+      )
+    })
   })
 
   describe("getById", () => {
@@ -241,6 +436,43 @@ describe("VideoService", () => {
       const result = await service.getBySlug({ slug: "jf", query: {} })
 
       expect(result).toEqual({ id: "v-1", slug: "jf" })
+    })
+  })
+
+  describe("getDubById", () => {
+    it("returns the matching dub", async () => {
+      prisma.videoDub.findFirst.mockResolvedValueOnce({ id: "dub-1" })
+
+      const result = await service.getDubById({ id: "dub-1", query: {} })
+
+      expect(result).toEqual({ id: "dub-1" })
+    })
+
+    // NOTE: this asserts the WHERE-clause SHAPE the resolver hands Prisma — the
+    // dub itself and its parent video must both be non-deleted, mirroring what
+    // `videoBySlug { dubs }` exposes. A mock cannot prove Prisma actually emits
+    // the parent-video relation filter in SQL (the mocked-vs-real-contract gap);
+    // that negative case (live dub under a soft-deleted video -> null) was
+    // verified empirically against a real DB during review. There is no real-DB
+    // integration harness in CI, so getBySlug/getById are gated the same way.
+    it("gates on the dub id AND both the dub and its parent video being non-deleted", async () => {
+      prisma.videoDub.findFirst.mockResolvedValueOnce(null)
+
+      await service.getDubById({ id: "dub-1", query: {} })
+
+      const where = prisma.videoDub.findFirst.mock.calls[0][0].where
+      expect(where.id).toBe("dub-1")
+      expect(where).toHaveProperty("deletedAt", null)
+      expect(where.video).toEqual({ deletedAt: null })
+    })
+
+    it("threads the resolver's prisma query selection through", async () => {
+      prisma.videoDub.findFirst.mockResolvedValueOnce({ id: "dub-1" })
+      const query = { include: { downloads: true } }
+
+      await service.getDubById({ id: "dub-1", query })
+
+      expect(prisma.videoDub.findFirst.mock.calls[0][0]).toMatchObject(query)
     })
   })
 
@@ -285,7 +517,9 @@ describe("VideoService", () => {
           id: "v-1",
           coreId: "core-1",
           label: "featureFilm",
+          targetLocale: null,
           primaryLanguageBcp47: "en",
+          languageBcp47: "en",
           muxAssetId: "mux-asset-en",
           subtitleUrl: "https://example.com/en.vtt",
         },
@@ -309,6 +543,37 @@ describe("VideoService", () => {
       expect(sql).toContain("mux_video.deleted_at IS NULL")
       expect(sql).toContain("subtitle.deleted_at IS NULL")
       expect(sql).toContain("v.deleted_at IS NULL")
+    })
+
+    it("resolves requested localized dispatch media instead of the primary-language source", async () => {
+      prisma.tx.$queryRaw.mockResolvedValueOnce([
+        rowFixture({
+          targetLocale: "es",
+          primaryLanguageBcp47: "en",
+          languageBcp47: "es",
+          muxAssetId: "mux-asset-es",
+          subtitleUrl: "https://example.com/es.vtt",
+        }),
+      ])
+
+      const [row] = await service.getByCoreIds({
+        coreIds: ["core-1"],
+        targetLocale: "es",
+      })
+
+      expect(row).toEqual(
+        expect.objectContaining({
+          targetLocale: "es",
+          primaryLanguageBcp47: "en",
+          languageBcp47: "es",
+          muxAssetId: "mux-asset-es",
+          subtitleUrl: "https://example.com/es.vtt",
+        }),
+      )
+      const sql = prisma.tx.$queryRaw.mock.calls[0][0].join(" ")
+      expect(sql).toContain("requested_language")
+      expect(sql).toContain("selected_mux.asset_id")
+      expect(sql).toContain("selected_subtitle.vtt_src")
     })
 
     it("sets a transaction-local statement timeout below manager's admin lookup timeout", async () => {
@@ -347,6 +612,7 @@ describe("VideoService", () => {
       prisma.tx.$queryRaw.mockResolvedValueOnce([
         rowFixture({
           primaryLanguageBcp47: null,
+          languageBcp47: null,
           muxAssetId: null,
           subtitleUrl: null,
         }),
@@ -355,6 +621,7 @@ describe("VideoService", () => {
       const [row] = await service.getByCoreIds({ coreIds: ["core-1"] })
 
       expect(row.primaryLanguageBcp47).toBeNull()
+      expect(row.languageBcp47).toBeNull()
       expect(row.muxAssetId).toBeNull()
       expect(row.subtitleUrl).toBeNull()
     })
@@ -454,7 +721,13 @@ describe("VideoService", () => {
       })
 
       expect(result).toHaveLength(1)
-      const coreIdJoin = prisma.tx.$queryRaw.mock.calls[0][1]
+      const coreIdJoin = prisma.tx.$queryRaw.mock.calls[0].find(
+        (value: unknown) =>
+          typeof value === "object" &&
+          value !== null &&
+          "values" in value &&
+          Array.isArray((value as { values?: unknown }).values),
+      ) as { values: string[] }
       expect(coreIdJoin.values).toEqual(["core-1", "core-1"])
     })
 

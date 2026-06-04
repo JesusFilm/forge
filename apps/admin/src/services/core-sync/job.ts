@@ -17,6 +17,7 @@ import {
   createWorkflowRunLog,
   markWorkflowRunFailed,
   markWorkflowRunStarted,
+  recordCoreSyncPhaseProgress,
   recordCoreSyncRunResult,
 } from "@/services/workflow-run-log.service"
 import { runCoreSync } from "@/workflows/coreSync"
@@ -184,7 +185,18 @@ export async function runCoreSyncPhaseJob(
   start: Exclude<CoreSyncJobStart, { skipped: true }>,
   phase: SyncPhase,
 ): Promise<PhaseResult> {
-  return runSyncPhase(syncPrisma, start.run, phase)
+  return runSyncPhase(syncPrisma, start.run, phase, {
+    onProgress: start.ledgerRunId
+      ? (progress) => {
+          console.log(
+            `[core-sync] event=core-sync.phase.progress phase=${progress.phase} completed=${progress.completed} total=${progress.total} elapsedMs=${progress.elapsedMs}`,
+          )
+          void recordCoreSyncPhaseProgress(start.ledgerRunId!, progress).catch(
+            () => {},
+          )
+        }
+      : undefined,
+  })
 }
 
 export async function finishCoreSyncJob(

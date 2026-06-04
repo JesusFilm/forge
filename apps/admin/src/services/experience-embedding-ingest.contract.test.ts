@@ -22,6 +22,8 @@ type StoredExperienceLocale = {
   embeddingModel: string | null
   embeddingDimensions: number | null
   embeddingProvider: string | null
+  embeddingNativeDimensions: number | null
+  embeddingTransformVersion: string | null
   embeddingGenerationMode: string | null
   embeddingMastraRunId: string | null
   embeddingGeneratedAt: Date | null
@@ -50,6 +52,8 @@ function buildContractLocale(): StoredExperienceLocale {
     embeddingModel: null,
     embeddingDimensions: null,
     embeddingProvider: null,
+    embeddingNativeDimensions: null,
+    embeddingTransformVersion: null,
     embeddingGenerationMode: null,
     embeddingMastraRunId: null,
     embeddingGeneratedAt: null,
@@ -72,6 +76,9 @@ function buildContractPrisma(locale = buildContractLocale()) {
           source_summary: locale.embeddingSourceSummary,
           model: locale.embeddingModel,
           dimensions: locale.embeddingDimensions,
+          provider: locale.embeddingProvider,
+          native_dimensions: locale.embeddingNativeDimensions,
+          transform_version: locale.embeddingTransformVersion,
         },
       ]
     }
@@ -106,6 +113,8 @@ function buildContractPrisma(locale = buildContractLocale()) {
         model: string,
         dimensions: number,
         provider: string | null,
+        nativeDimensions: number | null,
+        transformVersion: string | null,
         generationMode: string,
         mastraRunId: string,
         generatedAt: Date,
@@ -117,6 +126,8 @@ function buildContractPrisma(locale = buildContractLocale()) {
         locale.embeddingModel = model
         locale.embeddingDimensions = dimensions
         locale.embeddingProvider = provider
+        locale.embeddingNativeDimensions = nativeDimensions
+        locale.embeddingTransformVersion = transformVersion
         locale.embeddingGenerationMode = generationMode
         locale.embeddingMastraRunId = mastraRunId
         locale.embeddingGeneratedAt = generatedAt
@@ -152,9 +163,11 @@ function contractPayload(locale: StoredExperienceLocale) {
       summary: source.summary,
     },
     model: {
-      name: "openai/text-embedding-3-small",
-      provider: "openai",
+      name: "embeddings",
+      provider: "jesus-film-ai-gateway",
       dimensions: 1536,
+      nativeDimensions: 4096,
+      transformVersion: "matryoshka-truncate-1536-v1",
     },
     generation: {
       mode: "idempotent",
@@ -187,9 +200,11 @@ describe("Mastra experience ingest contract", () => {
     expect(locale).toMatchObject({
       embeddingSourceContentHash: contractPayload(locale).source.contentHash,
       embeddingSourceSummary: contractPayload(locale).source.summary,
-      embeddingModel: "openai/text-embedding-3-small",
+      embeddingModel: "embeddings",
       embeddingDimensions: 1536,
-      embeddingProvider: "openai",
+      embeddingProvider: "jesus-film-ai-gateway",
+      embeddingNativeDimensions: 4096,
+      embeddingTransformVersion: "matryoshka-truncate-1536-v1",
       embeddingGenerationMode: "idempotent",
       embeddingMastraRunId: "mastra-run-contract",
     })

@@ -10,6 +10,7 @@ depends_on:
   - "feat-134"
 blocks:
   - "feat-136"
+  - "feat-156"
 tags:
   - "admin"
   - "manager"

@@ -1,4 +1,4 @@
-import type { WatchVideoData } from "./queries"
+import type { WatchVideoData, WatchDubData } from "./queries"
 import { pickLocalizedName } from "./pickLocalizedName"
 
 // ── Consumer types ─────────────────────────────────────────────────
@@ -31,8 +31,14 @@ export type WatchVariant = {
   languageSlug: string | null
   languageName: string | null
   languageNameNative: string | null
-  downloads: WatchDownload[]
   muxPlaybackId: string | null
+}
+
+// A single dub's downloads + subtitles, fetched lazily (GET_VIDEO_DUB) for the
+// active language only. Kept off WatchVariant because the bulk query no longer
+// projects it — see normalizeDubMedia + WatchSessionProvider.activeVariantMedia.
+export type VariantMedia = {
+  downloads: WatchDownload[]
   subtitles: WatchSubtitle[]
 }
 
@@ -155,13 +161,74 @@ function dedupeByDocumentId<T extends { documentId: string | null }>(
   })
 }
 
+// ── Per-dub media (lazy path) ──────────────────────────────────────
+
+type RawDub = NonNullable<WatchDubData["videoDub"]>
+
+// Map one lazily-fetched dub's downloads + subtitles. Same projection the bulk
+// query used to inline per dub, now run once for the active language only. A
+// missing dub (or one with no media) yields empty arrays = "loaded, nothing".
+// Returns a fresh object each call so callers can never mutate a shared empty.
+export function normalizeDubMedia(
+  raw: RawDub | null | undefined,
+): VariantMedia {
+  if (raw == null) return { downloads: [], subtitles: [] }
+  return {
+    downloads: (raw.downloads ?? [])
+      .filter(
+        (d): d is typeof d & { quality: string; url: string } =>
+          d.quality != null && d.url != null,
+      )
+      .map((d) => ({
+        documentId: d.documentId ?? "",
+        quality: d.quality,
+        size: d.size ?? "0",
+        url: d.url,
+      })),
+    subtitles: (raw.videoEdition?.subtitles ?? [])
+      .filter((s) => s.vttSrc != null && s.language != null)
+      .map((s) => ({
+        documentId: s.documentId ?? "",
+        languageSlug: s.language?.slug ?? "",
+        languageName: s.language?.name
+          ? (pickLocalizedName(s.language.name) ?? "")
+          : "",
+        languageBcp47: s.language?.bcp47 ?? "",
+        vttSrc: s.vttSrc ?? "",
+        primary: s.primary ?? false,
+        aiGenerated: s.aiGenerated ?? false,
+      })),
+  }
+}
+
 // ── Normalizer ─────────────────────────────────────────────────────
+
+// Memoize by the raw object reference. Apollo returns a referentially-stable
+// result for an unchanged cache read, so re-entering a video (cache-first) maps
+// to the same `raw` and reuses the prior record instead of re-walking every dub
+// — a video like birth-of-jesus has 2,259 dubs, so re-normalizing on each mount
+// is a multi-second JS-thread freeze. A WeakMap can't leak: entries die with the
+// cached object. New/changed data is a new reference, so this never serves stale.
+const normalizeCache = new WeakMap<object, WatchVideoRecord | null>()
 
 export function normalizeVideo(
   raw: RawVideo | null | undefined,
 ): WatchVideoRecord | null {
   if (raw == null) return null
+  // With returnPartialData, the cache can surface a partial Video object before
+  // the network fills it in. Without an identity there's nothing usable to
+  // publish (the session keys on documentId), so treat identity-less partials
+  // as "not ready" and let the seed/skeleton carry the screen.
+  if (!raw.documentId) return null
 
+  const cached = normalizeCache.get(raw)
+  if (cached !== undefined) return cached
+  const result = buildWatchVideoRecord(raw)
+  normalizeCache.set(raw, result)
+  return result
+}
+
+function buildWatchVideoRecord(raw: RawVideo): WatchVideoRecord {
   const locale = pickFirstLocale(raw.locales)
   const firstPlayable = pickFirstPlayableVariant(raw.variants)
 
@@ -187,31 +254,7 @@ export function normalizeVideo(
         const english = pickLocalizedName(v.language.name, "en")
         return native && native !== english ? native : null
       })(),
-      downloads: (v.downloads ?? [])
-        .filter(
-          (d): d is typeof d & { quality: string; url: string } =>
-            d.quality != null && d.url != null,
-        )
-        .map((d) => ({
-          documentId: d.documentId ?? "",
-          quality: d.quality,
-          size: d.size ?? "0",
-          url: d.url,
-        })),
       muxPlaybackId: v.muxVideo?.playbackId ?? null,
-      subtitles: (v.videoEdition?.subtitles ?? [])
-        .filter((s) => s.vttSrc != null && s.language != null)
-        .map((s) => ({
-          documentId: s.documentId ?? "",
-          languageSlug: s.language?.slug ?? "",
-          languageName: s.language?.name
-            ? (pickLocalizedName(s.language.name) ?? "")
-            : "",
-          languageBcp47: s.language?.bcp47 ?? "",
-          vttSrc: s.vttSrc ?? "",
-          primary: s.primary ?? false,
-          aiGenerated: s.aiGenerated ?? false,
-        })),
     }))
 
   // Siblings: parents[0].parent.children, minus self, deduped

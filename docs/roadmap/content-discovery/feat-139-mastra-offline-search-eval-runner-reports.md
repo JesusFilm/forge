@@ -19,6 +19,12 @@ tags:
   - "evals"
 ---
 
+## Historical Note
+
+This completed ticket references legacy Admin search-eval harness paths that
+were removed by `feat-155`. Current offline runner, judge, reports, and
+artifacts live under `apps/mastra/src/services/offline-search-eval/`.
+
 ## Problem
 
 Mastra should own eval retrieval only, not live query-time retrieval. The
@@ -43,16 +49,16 @@ Overview without reworking the search-eval domain.
    - "Mastra owns eval retrieval only" decision and no-live-search boundary.
 2. `docs/roadmap/content-discovery/feat-138-mastra-eval-query-generation.md`
    - candidate eval source and storage contract.
-3. `apps/admin/src/services/search-eval/runner.ts`
+3. `apps/mastra/src/services/offline-search-eval/runner.ts`
    - current eval runner composition.
-4. `apps/admin/src/services/search-eval/search-client.ts`
-   - Admin search client used by evals.
-5. `apps/admin/src/services/search-eval/judge.ts`
-   - pairwise judge and calibration behavior.
-6. `apps/admin/src/services/search-eval/reporter.ts`
+4. `apps/mastra/src/services/admin-search-eval-client.ts`
+   - Admin HTTP client used by evals.
+5. `apps/mastra/src/services/offline-search-eval/judge.ts`
+   - pairwise judge behavior.
+6. `apps/mastra/src/services/offline-search-eval/report.ts`
    - current report output shape.
-7. `apps/admin/src/scripts/eval-search.ts`
-   - current CLI entry point and modes.
+7. `apps/mastra/src/mastra/workflows/offline-search-eval.ts`
+   - current workflow entry point and modes.
 8. `apps/mastra/src/mastra/index.ts`
    - Mastra workflow registration and protected route patterns.
 9. `apps/mastra/node_modules/@mastra/core/dist/datasets/index.d.ts`

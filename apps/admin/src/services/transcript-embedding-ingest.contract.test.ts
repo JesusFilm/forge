@@ -13,6 +13,9 @@ type StoredTranscript = {
   language: string
   model: string
   dimensions: number
+  embeddingProvider: string | null
+  embeddingNativeDimensions: number | null
+  embeddingTransformVersion: string | null
   sourceContentHash: string | null
   chunkingType: string
   maxChunkTokens: number
@@ -164,6 +167,18 @@ function buildContractPrisma() {
                 videoId: stringValue(update, "videoId"),
                 model: stringValue(update, "model"),
                 dimensions: numberValue(update, "dimensions"),
+                embeddingProvider:
+                  typeof update.embeddingProvider === "string"
+                    ? update.embeddingProvider
+                    : null,
+                embeddingNativeDimensions:
+                  typeof update.embeddingNativeDimensions === "number"
+                    ? update.embeddingNativeDimensions
+                    : null,
+                embeddingTransformVersion:
+                  typeof update.embeddingTransformVersion === "string"
+                    ? update.embeddingTransformVersion
+                    : null,
                 chunkingType: stringValue(update, "chunkingType"),
                 maxChunkTokens: numberValue(update, "maxChunkTokens"),
                 overlapTokens: numberValue(update, "overlapTokens"),
@@ -181,6 +196,18 @@ function buildContractPrisma() {
                 language: stringValue(create, "language"),
                 model: stringValue(create, "model"),
                 dimensions: numberValue(create, "dimensions"),
+                embeddingProvider:
+                  typeof create.embeddingProvider === "string"
+                    ? create.embeddingProvider
+                    : null,
+                embeddingNativeDimensions:
+                  typeof create.embeddingNativeDimensions === "number"
+                    ? create.embeddingNativeDimensions
+                    : null,
+                embeddingTransformVersion:
+                  typeof create.embeddingTransformVersion === "string"
+                    ? create.embeddingTransformVersion
+                    : null,
                 sourceContentHash:
                   typeof create.sourceContentHash === "string"
                     ? create.sourceContentHash
@@ -290,9 +317,11 @@ function contractPayload(overrides?: Record<string, unknown>) {
       generatedAt: "2026-05-25T00:00:00.000Z",
     },
     model: {
-      name: "openai/text-embedding-3-small",
-      provider: "openai",
+      name: "embeddings",
+      provider: "jesus-film-ai-gateway",
       dimensions: 1536,
+      nativeDimensions: 4096,
+      transformVersion: "matryoshka-truncate-1536-v1",
     },
     chunking: {
       type: "segment-aware",
@@ -362,8 +391,11 @@ describe("Mastra transcript ingest contract", () => {
       videoId: "video-1",
       videoEditionId: "edition-1",
       language: "en",
-      model: "openai/text-embedding-3-small",
+      model: "embeddings",
       dimensions: 1536,
+      embeddingProvider: "jesus-film-ai-gateway",
+      embeddingNativeDimensions: 4096,
+      embeddingTransformVersion: "matryoshka-truncate-1536-v1",
       totalChunks: 1,
     })
     expect(chunks[0]).toMatchObject({

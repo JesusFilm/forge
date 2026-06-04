@@ -4,9 +4,14 @@ import { join, resolve } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   RunEmbedsConfigError,
+  extractContentBackfillGateFromReport,
   extractFailedSceneRetryTargetsFromReport,
+  isLocalBackfillDatabaseUrl,
+  loadContentBackfillGateReport,
   pipelineErrorDetails,
   pipelineErrorMessage,
+  requiresContentBackfillGateReport,
+  resolveGateReportPath,
   resolveReportInPath,
   resolveReportOutPath,
   runSceneBranch,
@@ -16,6 +21,64 @@ import {
 // feat-119 PR1 — `--report-out=<path>` flag tests. The path-resolve
 // helper is pure; the file-write helper is async + I/O-bound, so use a
 // real tmp dir per-test to avoid cross-test races.
+
+function validGateReport(reportId = "report-1") {
+  return {
+    schemaVersion: "1",
+    kind: "content-search-eval-gate-report",
+    exportedAt: "2026-06-03T00:00:00.000Z",
+    contentEmbeddingProvider: {
+      provider: "jesus-film-ai-gateway",
+      model: "embeddings",
+      requestModel: "embeddings",
+      nativeDimensions: 4096,
+      finalDimensions: 1536,
+      transformVersion: "matryoshka-truncate-1536-v1",
+    },
+    gate: {
+      backfillReady: true,
+      reasons: [],
+      mastraRunId: "run-1",
+      reportId,
+      baselineName: "prod-seed-baseline-2026-06-02",
+      judgeModel: "anthropic/claude-haiku-4-5",
+      passFailState: "passed",
+      netWinRate: 0.25,
+      queries: 8,
+      comparableQueries: 8,
+      losses: 0,
+      searchFailures: 0,
+      judgeFailures: 0,
+      judgeDisagreements: 0,
+      calibrationPassed: true,
+      calibrationSkipped: false,
+    },
+    orchestratorSummary: {
+      passFail: { state: "passed", reasons: [] },
+    },
+    searchEvalReport: {
+      schemaVersion: "1",
+      kind: "comparison-report",
+      reportId,
+      metadata: {
+        baselineName: "prod-seed-baseline-2026-06-02",
+        judgeModel: "anthropic/claude-haiku-4-5",
+      },
+      calibration: { passed: true, skipped: false },
+      totals: {
+        queries: 8,
+        wins: 2,
+        losses: 0,
+        ties: 6,
+        bothIrrelevant: 0,
+        judgeDisagreements: 0,
+        judgeFailures: 0,
+        searchFailures: 0,
+        netWinRate: 0.25,
+      },
+    },
+  }
+}
 
 describe("resolveReportOutPath", () => {
   it("returns undefined when the arg is unset", () => {
@@ -57,6 +120,252 @@ describe("resolveReportInPath", () => {
   it("anchors relative paths to process.cwd()", () => {
     expect(resolveReportInPath(".tmp/report.json")).toBe(
       resolve(process.cwd(), ".tmp/report.json"),
+    )
+  })
+})
+
+describe("resolveGateReportPath", () => {
+  it("returns undefined when unset or empty and anchors relative paths", () => {
+    expect(resolveGateReportPath(undefined)).toBeUndefined()
+    expect(resolveGateReportPath("")).toBeUndefined()
+    expect(
+      resolveGateReportPath("docs/search-eval-reports/run.json", "/repo"),
+    ).toBe(resolve("/repo", "docs/search-eval-reports/run.json"))
+  })
+
+  it("rejects gate reports outside docs/search-eval-reports", () => {
+    expect(() => resolveGateReportPath("/tmp/gate.json", "/repo")).toThrow(
+      /docs\/search-eval-reports/,
+    )
+  })
+})
+
+describe("requiresContentBackfillGateReport", () => {
+  it("requires no gate outside pipeline=all or when a gate report is already present", () => {
+    expect(
+      requiresContentBackfillGateReport({
+        pipeline: "both",
+        gateReportPath: undefined,
+        allowUngatedLocalBackfill: false,
+        nodeEnv: "production",
+        databaseUrl: "postgresql://prod.example.com/forge_admin",
+      }),
+    ).toBe(false)
+    expect(
+      requiresContentBackfillGateReport({
+        pipeline: "all",
+        gateReportPath: "/repo/docs/search-eval-reports/report.json",
+        allowUngatedLocalBackfill: false,
+        nodeEnv: "production",
+        databaseUrl: "postgresql://prod.example.com/forge_admin",
+      }),
+    ).toBe(false)
+  })
+
+  it("allows explicit ungated bypass only for local database targets outside production", () => {
+    expect(
+      isLocalBackfillDatabaseUrl(
+        "postgresql://forge:forge@localhost:5433/forge_admin_test",
+      ),
+    ).toBe(true)
+    expect(
+      isLocalBackfillDatabaseUrl(
+        "postgresql://forge:forge@db:5432/forge_admin_test",
+      ),
+    ).toBe(false)
+    expect(
+      isLocalBackfillDatabaseUrl(
+        "postgresql://forge:forge@localhost:5433/forge_admin_prod",
+      ),
+    ).toBe(false)
+    expect(
+      isLocalBackfillDatabaseUrl("postgresql://prod.example.com/forge_admin"),
+    ).toBe(false)
+
+    expect(
+      requiresContentBackfillGateReport({
+        pipeline: "all",
+        gateReportPath: undefined,
+        allowUngatedLocalBackfill: true,
+        nodeEnv: "development",
+        databaseUrl: "postgresql://forge:forge@localhost:5433/forge_admin_test",
+      }),
+    ).toBe(false)
+  })
+
+  it("still requires a gate report for production or remote all-content targets", () => {
+    expect(
+      requiresContentBackfillGateReport({
+        pipeline: "all",
+        gateReportPath: undefined,
+        allowUngatedLocalBackfill: true,
+        nodeEnv: "production",
+        databaseUrl: "postgresql://forge:forge@localhost:5433/forge_admin",
+      }),
+    ).toBe(true)
+    expect(
+      requiresContentBackfillGateReport({
+        pipeline: "all",
+        gateReportPath: undefined,
+        allowUngatedLocalBackfill: true,
+        nodeEnv: undefined,
+        databaseUrl: "postgresql://prod.example.com/forge_admin",
+      }),
+    ).toBe(true)
+    expect(
+      requiresContentBackfillGateReport({
+        pipeline: "all",
+        gateReportPath: undefined,
+        allowUngatedLocalBackfill: false,
+        nodeEnv: "development",
+        databaseUrl: "postgresql://forge:forge@localhost:5433/forge_admin",
+      }),
+    ).toBe(true)
+  })
+})
+
+describe("extractContentBackfillGateFromReport", () => {
+  const passingReport = validGateReport("report-1")
+
+  it("extracts the backfill gate summary", () => {
+    expect(extractContentBackfillGateFromReport(passingReport)).toEqual({
+      reportId: "report-1",
+      mastraRunId: "run-1",
+      baselineName: "prod-seed-baseline-2026-06-02",
+      judgeModel: "anthropic/claude-haiku-4-5",
+      netWinRate: 0.25,
+      comparableQueries: 8,
+      contentEmbeddingProvider: {
+        provider: "jesus-film-ai-gateway",
+        model: "embeddings",
+        requestModel: "embeddings",
+        nativeDimensions: 4096,
+        finalDimensions: 1536,
+        transformVersion: "matryoshka-truncate-1536-v1",
+      },
+    })
+  })
+
+  it("rejects failed, unjudged, or non-comparable gate reports", () => {
+    expect(() =>
+      extractContentBackfillGateFromReport({
+        ...passingReport,
+        gate: {
+          ...passingReport.gate,
+          backfillReady: false,
+          reasons: ["assigned judge model is required"],
+        },
+      }),
+    ).toThrow(/not backfill-ready/)
+
+    expect(() =>
+      extractContentBackfillGateFromReport({
+        ...passingReport,
+        gate: { ...passingReport.gate, judgeModel: null },
+      }),
+    ).toThrow(/missing string judgeModel/)
+
+    expect(() =>
+      extractContentBackfillGateFromReport({
+        ...passingReport,
+        gate: { ...passingReport.gate, comparableQueries: 0 },
+      }),
+    ).toThrow(/quality metrics/)
+  })
+
+  it("accepts a gate with an auditable current-better judge-disagreement adjudication", () => {
+    const reportId = "report-adjudicated"
+    const report = {
+      ...validGateReport(reportId),
+      gate: {
+        ...validGateReport(reportId).gate,
+        netWinRate: 1,
+        comparableQueries: 8,
+        judgeDisagreements: 0,
+        rawJudgeDisagreements: 1,
+        adjudicatedJudgeDisagreements: 1,
+        orchestratorPassFailState: "failed",
+      },
+      humanAdjudications: {
+        judgeDisagreements: [
+          {
+            caseId: "seed-new-believer",
+            locale: "en",
+            acceptedOutcome: "current-better",
+            reviewer: "search-quality-review",
+            reason:
+              "Current results include the exact course and related follow-up resources.",
+            reviewedAt: "2026-06-03T00:00:00.000Z",
+            rawOutcomeKind: "judge-disagreement",
+          },
+        ],
+      },
+      searchEvalReport: {
+        ...validGateReport(reportId).searchEvalReport,
+        totals: {
+          ...validGateReport(reportId).searchEvalReport.totals,
+          wins: 7,
+          judgeDisagreements: 1,
+          netWinRate: 1,
+        },
+        outcomes: [
+          {
+            kind: "judge-disagreement",
+            caseId: "seed-new-believer",
+            locale: "en",
+          },
+        ],
+      },
+    }
+
+    expect(extractContentBackfillGateFromReport(report)).toMatchObject({
+      reportId,
+      netWinRate: 1,
+      comparableQueries: 8,
+    })
+  })
+
+  it("rejects adjudications that do not match a judge-disagreement outcome", () => {
+    const report = {
+      ...validGateReport("report-adjudication-mismatch"),
+      gate: {
+        ...validGateReport("report-adjudication-mismatch").gate,
+        judgeDisagreements: 0,
+        rawJudgeDisagreements: 1,
+        adjudicatedJudgeDisagreements: 1,
+      },
+      humanAdjudications: {
+        judgeDisagreements: [
+          {
+            caseId: "seed-new-believer",
+            locale: "en",
+            acceptedOutcome: "current-better",
+            reviewer: "search-quality-review",
+            reason: "Reviewed current results.",
+            reviewedAt: "2026-06-03T00:00:00.000Z",
+            rawOutcomeKind: "judge-disagreement",
+          },
+        ],
+      },
+      searchEvalReport: {
+        ...validGateReport("report-adjudication-mismatch").searchEvalReport,
+        totals: {
+          ...validGateReport("report-adjudication-mismatch").searchEvalReport
+            .totals,
+          judgeDisagreements: 1,
+        },
+        outcomes: [
+          {
+            kind: "win",
+            caseId: "seed-new-believer",
+            locale: "en",
+          },
+        ],
+      },
+    }
+
+    expect(() => extractContentBackfillGateFromReport(report)).toThrow(
+      /does not match a judge-disagreement outcome/,
     )
   })
 })
@@ -453,5 +762,63 @@ describe("writeReportToPath", () => {
     await writeReportToPath(path, report)
     const written = await readFile(path, "utf8")
     expect(JSON.parse(written)).toEqual(report)
+  })
+
+  it("loads a content backfill gate report from disk", async () => {
+    const path = join(tmpDir, "docs", "search-eval-reports", "report-1.json")
+    await writeReportToPath(path, validGateReport("report-1"))
+
+    await expect(loadContentBackfillGateReport(path, tmpDir)).resolves.toEqual({
+      reportId: "report-1",
+      mastraRunId: "run-1",
+      baselineName: "prod-seed-baseline-2026-06-02",
+      judgeModel: "anthropic/claude-haiku-4-5",
+      netWinRate: 0.25,
+      comparableQueries: 8,
+      contentEmbeddingProvider: {
+        provider: "jesus-film-ai-gateway",
+        model: "embeddings",
+        requestModel: "embeddings",
+        nativeDimensions: 4096,
+        finalDimensions: 1536,
+        transformVersion: "matryoshka-truncate-1536-v1",
+      },
+    })
+  })
+
+  it("rejects synthetic or mismatched content backfill gate reports", () => {
+    expect(() =>
+      extractContentBackfillGateFromReport({
+        kind: "content-search-eval-gate-report",
+        gate: {
+          backfillReady: true,
+          passFailState: "passed",
+          calibrationPassed: true,
+          calibrationSkipped: false,
+          reportId: "report-1",
+          mastraRunId: "run-1",
+          judgeModel: "judge",
+          netWinRate: 1,
+          comparableQueries: 1,
+        },
+      }),
+    ).toThrow(/schemaVersion/)
+
+    expect(() =>
+      extractContentBackfillGateFromReport({
+        ...validGateReport("report-1"),
+        contentEmbeddingProvider: {
+          ...validGateReport("report-1").contentEmbeddingProvider,
+          nativeDimensions: 1536,
+        },
+      }),
+    ).toThrow(/contentEmbeddingProvider\.nativeDimensions/)
+
+    expect(() =>
+      extractContentBackfillGateFromReport(
+        validGateReport("report-1"),
+        join(tmpDir, "docs", "search-eval-reports", "other-report.json"),
+      ),
+    ).toThrow(/filename/)
   })
 })

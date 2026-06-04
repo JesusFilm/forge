@@ -1,4 +1,4 @@
-import { Component, useRef } from "react"
+import { Component, useEffect, useRef, useState } from "react"
 import { Pressable, Text, View, ScrollView } from "react-native"
 import type { ErrorInfo, ReactNode } from "react"
 
@@ -15,7 +15,9 @@ let ACCENT: string
 let BG_COLOR: string
 let ExperienceShell: typeof import("../src/contexts/ExperienceShell").ExperienceShell
 let ExperienceSelectionProvider: typeof import("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
-let GestureHandlerRootView: typeof import("react-native-gesture-handler").GestureHandlerRootView
+let isCachePersistenceEnabled: typeof import("../src/lib/cachePersistence").isCachePersistenceEnabled
+let restoreApolloCache: typeof import("../src/lib/cachePersistence").restoreApolloCache
+let startCachePersistence: typeof import("../src/lib/cachePersistence").startCachePersistence
 
 // require() is intentional — static imports cause silent white screens when
 // module-level throws (e.g., env validation) crash the entire module graph.
@@ -36,8 +38,10 @@ try {
   ExperienceShell = require("../src/contexts/ExperienceShell").ExperienceShell
   ExperienceSelectionProvider =
     require("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
-  GestureHandlerRootView =
-    require("react-native-gesture-handler").GestureHandlerRootView
+  const cachePersistence = require("../src/lib/cachePersistence")
+  isCachePersistenceEnabled = cachePersistence.isCachePersistenceEnabled
+  restoreApolloCache = cachePersistence.restoreApolloCache
+  startCachePersistence = cachePersistence.startCachePersistence
 } catch (e: unknown) {
   const err = e instanceof Error ? e : new Error(String(e))
   moduleError = `${err.message}\n\n${err.stack ?? ""}`
@@ -157,9 +161,31 @@ export default function RootLayout() {
 
   const clientRef = useRef(getApolloClient())
   const router = useRouter()
-  const RootWrapper = GestureHandlerRootView ?? View
+
+  // Opt-in cache persistence: when enabled, restore the persisted snapshot into
+  // the cache BEFORE ApolloProvider mounts (so no query races the restore),
+  // bounded by a timeout inside restoreApolloCache. When disabled, hydrated
+  // starts true and this is fully inert — the default path renders immediately.
+  const [hydrated, setHydrated] = useState(() => !isCachePersistenceEnabled())
+  useEffect(() => {
+    if (hydrated) return
+    let cancelled = false
+    restoreApolloCache(clientRef.current.cache).finally(() => {
+      if (cancelled) return
+      startCachePersistence(clientRef.current)
+      setHydrated(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [hydrated])
+
+  if (!hydrated) {
+    return <View style={{ flex: 1, backgroundColor: BG_COLOR }} />
+  }
+
   return (
-    <RootWrapper style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
       <ErrorBoundary>
         <ApolloProvider client={clientRef.current}>
           <SafeAreaProvider>
@@ -223,37 +249,13 @@ export default function RootLayout() {
                       ),
                     }}
                   />
-                  <Stack.Screen
-                    name="watch/[slug]"
-                    options={{
-                      headerShown: true,
-                      headerTintColor: ACCENT,
-                      headerTitle: "",
-                      headerStyle: { backgroundColor: BG_COLOR },
-                      headerShadowVisible: false,
-                      headerTitleAlign: "center",
-                      headerLeft: () => (
-                        <Pressable
-                          onPress={() => router.back()}
-                          accessibilityRole="button"
-                          accessibilityLabel="Go back"
-                          hitSlop={12}
-                        >
-                          <Ionicons
-                            name="chevron-back"
-                            size={28}
-                            color={ACCENT}
-                          />
-                        </Pressable>
-                      ),
-                    }}
-                  />
+                  <Stack.Screen name="watch" options={{ headerShown: false }} />
                 </Stack>
               </ExperienceShell>
             </ExperienceSelectionProvider>
           </SafeAreaProvider>
         </ApolloProvider>
       </ErrorBoundary>
-    </RootWrapper>
+    </View>
   )
 }

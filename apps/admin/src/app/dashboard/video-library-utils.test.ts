@@ -4,10 +4,16 @@ import {
   buildVideoVisitorUrl,
   createVideoLibraryPagination,
   formatVideoUpdatedRelative,
+  hasActiveVideoLibraryFilters,
   isPublicAudioLanguageSlug,
   normalizeVideoThumbnailUrl,
+  parseVideoLibraryCategory,
+  parseVideoLibraryCollection,
+  parseVideoLibraryLanguage,
   parseVideoLibraryPage,
   parseVideoLibraryQuery,
+  parseVideoLibrarySelectedVideo,
+  parseVideoLibrarySort,
   resolveVideoVisitorUrl,
   videoLibraryHref,
 } from "./video-library-utils"
@@ -50,6 +56,110 @@ describe("video-library-utils", () => {
     expect(videoLibraryHref({ page: 1, query: "  mux  " })).toBe(
       "/dashboard/videos?q=mux",
     )
+  })
+
+  it("normalizes video library category, language, and sort params", () => {
+    expect(parseVideoLibraryCategory("features")).toBe("features")
+    expect(parseVideoLibraryCategory("bad")).toBe("all")
+    expect(parseVideoLibraryCategory(["series", "features"])).toBe("series")
+
+    expect(parseVideoLibraryLanguage(["  Spanish   Castilian  "])).toBe(
+      "Spanish Castilian",
+    )
+    expect(parseVideoLibraryLanguage("x".repeat(140))).toHaveLength(120)
+
+    expect(parseVideoLibrarySort("created")).toBe("created")
+    expect(parseVideoLibrarySort("bad")).toBe("recent")
+  })
+
+  it("normalizes selected video and collection params for URL-backed drill-down", () => {
+    expect(parseVideoLibrarySelectedVideo(" the-savior ")).toBe("the-savior")
+    expect(parseVideoLibraryCollection(["magdalena-2", "ignored"])).toBe(
+      "magdalena-2",
+    )
+    expect(parseVideoLibrarySelectedVideo("core_123")).toBe("core_123")
+    expect(parseVideoLibraryCollection("bad value")).toBe("")
+    expect(parseVideoLibrarySelectedVideo("/bad")).toBe("")
+    expect(parseVideoLibraryCollection("x".repeat(160))).toHaveLength(140)
+  })
+
+  it("builds video library hrefs for active controls while omitting defaults", () => {
+    expect(
+      videoLibraryHref({
+        page: 1,
+        query: "Jesus",
+        category: "features",
+        language: "english",
+        sort: "created",
+      }),
+    ).toBe(
+      "/dashboard/videos?q=Jesus&type=features&language=english&sort=created",
+    )
+
+    expect(
+      videoLibraryHref({
+        page: 1,
+        category: "all",
+        language: "",
+        sort: "recent",
+      }),
+    ).toBe("/dashboard/videos")
+  })
+
+  it("builds video library hrefs for selected videos and collections", () => {
+    expect(
+      videoLibraryHref({
+        page: 2,
+        query: "Jesus",
+        category: "features",
+        language: "english",
+        collection: "the-story",
+        video: "magdalena-2",
+        sort: "created",
+      }),
+    ).toBe(
+      "/dashboard/videos?page=2&q=Jesus&type=features&language=english&collection=the-story&video=magdalena-2&sort=created",
+    )
+
+    expect(
+      videoLibraryHref({
+        page: 1,
+        collection: "the-story",
+        video: "",
+      }),
+    ).toBe("/dashboard/videos?collection=the-story")
+  })
+
+  it("detects active video library filters excluding sort-only changes", () => {
+    expect(
+      hasActiveVideoLibraryFilters({
+        query: "",
+        category: "all",
+        language: "",
+      }),
+    ).toBe(false)
+    expect(
+      hasActiveVideoLibraryFilters({
+        query: "",
+        category: "series",
+        language: "",
+      }),
+    ).toBe(true)
+    expect(
+      hasActiveVideoLibraryFilters({
+        query: "",
+        category: "all",
+        language: "english",
+      }),
+    ).toBe(true)
+    expect(
+      hasActiveVideoLibraryFilters({
+        query: "",
+        category: "all",
+        collection: "the-story",
+        language: "",
+      }),
+    ).toBe(true)
   })
 
   it("clamps pagination beyond the final page", () => {

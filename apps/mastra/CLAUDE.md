@@ -40,6 +40,10 @@ Origin documents:
 - Transcript, scene, and experience workflows share provider-result validation
   for count alignment, finite vector values, and configured dimensions. Invalid
   provider output must throw inside the workflow so Studio records a failed run.
+- AI Gateway content embeddings request the normal OpenAI-compatible embedding
+  response, then truncate gateway-native vectors to 1536 dimensions and
+  re-normalize them in Mastra before Admin ingest. Do not send `dimensions`
+  through LiteLLM.
 - Transcript, scene, and experience workflows share Admin ingest transport
   behavior but keep separate Admin endpoints, local schemas, and type-specific
   payload parsing. Do not replace them with a generic embedding blob route.
@@ -66,39 +70,47 @@ pnpm --filter @forge/mastra lint
 
 ## Environment
 
-| Variable                                 | Purpose                                                                                                                    |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                           | Postgres connection string for Mastra runtime storage. Required in production runtime.                                     |
-| `MASTRA_SERVICE_API_KEYS`                | CSV allowlist for service bearer calls. Required in production runtime.                                                    |
-| `MASTRA_NATIVE_EVAL_ENVIRONMENT`         | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                        |
-| `MASTRA_STORAGE_DIR`                     | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway. |
-| `MASTRA_STORAGE_BACKEND`                 | Mastra runtime storage backend. Use `postgres` normally; `memory` is local/test-only and rejected in production.           |
-| `OPENROUTER_API_KEY`                     | OpenRouter key for locale-quality eval query generation and offline compare judging. Required for compare mode.            |
-| `OPENROUTER_EMBEDDINGS_BASE_URL`         | Optional OpenRouter-compatible embedding base URL. Defaults to OpenRouter's `/api/v1` endpoint.                            |
-| `OPENAI_API_KEY`                         | Fallback model provider key for smoke agent/model-routed calls and transcript embeddings when OpenRouter is unavailable.   |
-| `OPENAI_EMBEDDINGS_BASE_URL`             | Optional OpenAI-compatible embedding provider base URL. Defaults to OpenAI's `/v1` endpoint.                               |
-| `TRANSCRIPT_EMBEDDING_MODEL`             | Model stamp for transcript embeddings. Defaults to `openai/text-embedding-3-small`.                                        |
-| `TRANSCRIPT_EMBEDDING_PROVIDER`          | Provider stamp for transcript embeddings. Defaults to `openai`.                                                            |
-| `SCENE_EMBEDDING_MODEL`                  | Model stamp for scene embeddings. Defaults to `openai/text-embedding-3-small`.                                             |
-| `SCENE_EMBEDDING_PROVIDER`               | Provider stamp for scene embeddings. Defaults to `openai`.                                                                 |
-| `EXPERIENCE_EMBEDDING_MODEL`             | Model stamp for experience embeddings. Defaults to `openai/text-embedding-3-small`.                                        |
-| `EXPERIENCE_EMBEDDING_PROVIDER`          | Provider stamp for experience embeddings. Defaults to `openai`.                                                            |
-| `EVAL_QUERY_GENERATION_MODEL`            | OpenRouter chat model stamp for locale-quality eval query generation. Defaults to `anthropic/claude-haiku-4-5`.            |
-| `ADMIN_TRANSCRIPT_INGEST_URL`            | Admin internal transcript ingest endpoint. Required in production runtime.                                                 |
-| `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY` | Bearer key Mastra presents to Admin transcript ingest. Required in production runtime.                                     |
-| `ADMIN_SCENE_INGEST_URL`                 | Admin internal scene ingest endpoint. Required in production runtime.                                                      |
-| `ADMIN_MASTRA_SCENE_INGEST_API_KEY`      | Bearer key Mastra presents to Admin scene ingest. Required in production runtime.                                          |
-| `ADMIN_EXPERIENCE_INGEST_URL`            | Admin internal experience ingest endpoint. Required in production runtime.                                                 |
-| `ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY` | Bearer key Mastra presents to Admin experience ingest. Required in production runtime.                                     |
-| `ADMIN_SEARCH_TRACE_SAMPLE_URL`          | Admin internal trace sample endpoint for eval query generation. Required only when running that workflow.                  |
-| `ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL`  | Admin internal compact catalog context endpoint for eval query generation. Required only when running that workflow.       |
-| `ADMIN_SEARCH_EVAL_CANDIDATES_URL`       | Admin internal generated-candidate storage endpoint for eval query generation. Required only when running that workflow.   |
-| `ADMIN_SEARCH_EVAL_SEARCH_URL`           | Admin internal no-trace search endpoint for offline search eval. Required only when running the offline eval workflow.     |
-| `ADMIN_SEARCH_EVAL_API_KEY`              | Bearer key Mastra presents to Admin search-eval routes. Must match Admin's dedicated sampling/eval key allowlist.          |
-| `MASTRA_SEARCH_EVAL_ARTIFACT_DIR`        | Optional directory for Mastra-owned offline search eval baseline and report JSON artifacts. Defaults under Mastra storage. |
-| `SEARCH_EVAL_JUDGE_MODEL`                | OpenRouter chat model stamp for offline search eval judging. Defaults to `anthropic/claude-haiku-4-5`.                     |
-| `PORT`                                   | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                          |
-| `MASTRA_STUDIO_PATH`                     | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                          |
+| Variable                                  | Purpose                                                                                                                    |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                            | Postgres connection string for Mastra runtime storage. Required in production runtime.                                     |
+| `MASTRA_SERVICE_API_KEYS`                 | CSV allowlist for service bearer calls. Required in production runtime.                                                    |
+| `MASTRA_NATIVE_EVAL_ENVIRONMENT`          | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                        |
+| `MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE` | Selects content embedding provider posture: `gateway` or `legacy`. Production and gateway-key env imply `gateway`.         |
+| `AI_GATEWAY_EMBEDDINGS_API_KEY`           | Mastra-owned Jesus Film AI Gateway embeddings key. Required when content provider mode resolves to `gateway`.              |
+| `AI_GATEWAY_EMBEDDINGS_BASE_URL`          | OpenAI-compatible AI Gateway embeddings base URL. Defaults to `https://ai-gateway.jesusfilm.org/v1`.                       |
+| `AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS`     | Production allowlist for gateway credential egress. Defaults to `ai-gateway.jesusfilm.org`.                                |
+| `AI_GATEWAY_EMBEDDINGS_USER_AGENT`        | Non-default user agent for AI Gateway embedding requests. Defaults to `forge-mastra-content-embeddings/1.0`.               |
+| `AI_GATEWAY_EMBEDDINGS_MODEL`             | Model sent to the AI Gateway embeddings endpoint. Defaults to `embeddings`.                                                |
+| `AI_GATEWAY_EMBEDDINGS_PROVIDER`          | Provider provenance label sent through Admin ingest metadata. Defaults to `jesus-film-ai-gateway`.                         |
+| `MASTRA_STORAGE_DIR`                      | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway. |
+| `MASTRA_STORAGE_BACKEND`                  | Mastra runtime storage backend. Use `postgres` normally; `memory` is local/test-only and rejected in production.           |
+| `OPENROUTER_API_KEY`                      | OpenRouter key for locale-quality eval query generation and offline compare judging. Required for compare mode.            |
+| `OPENROUTER_EMBEDDINGS_BASE_URL`          | Optional OpenRouter-compatible embedding base URL. Defaults to OpenRouter's `/api/v1` endpoint.                            |
+| `OPENAI_API_KEY`                          | Fallback model provider key for smoke agent/model-routed calls and transcript embeddings when OpenRouter is unavailable.   |
+| `OPENAI_EMBEDDINGS_BASE_URL`              | Optional OpenAI-compatible embedding provider base URL. Defaults to OpenAI's `/v1` endpoint.                               |
+| `TRANSCRIPT_EMBEDDING_MODEL`              | Model stamp for transcript embeddings. Defaults to `openai/text-embedding-3-small`.                                        |
+| `TRANSCRIPT_EMBEDDING_PROVIDER`           | Provider stamp for transcript embeddings. Defaults to `openai`.                                                            |
+| `SCENE_EMBEDDING_MODEL`                   | Model stamp for scene embeddings. Defaults to `openai/text-embedding-3-small`.                                             |
+| `SCENE_EMBEDDING_PROVIDER`                | Provider stamp for scene embeddings. Defaults to `openai`.                                                                 |
+| `EXPERIENCE_EMBEDDING_MODEL`              | Model stamp for experience embeddings. Defaults to `openai/text-embedding-3-small`.                                        |
+| `EXPERIENCE_EMBEDDING_PROVIDER`           | Provider stamp for experience embeddings. Defaults to `openai`.                                                            |
+| `EVAL_QUERY_GENERATION_MODEL`             | OpenRouter chat model stamp for locale-quality eval query generation. Defaults to `anthropic/claude-haiku-4-5`.            |
+| `ADMIN_TRANSCRIPT_INGEST_URL`             | Admin internal transcript ingest endpoint. Required in production runtime.                                                 |
+| `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY`  | Bearer key Mastra presents to Admin transcript ingest. Required in production runtime.                                     |
+| `ADMIN_SCENE_INGEST_URL`                  | Admin internal scene ingest endpoint. Required in production runtime.                                                      |
+| `ADMIN_MASTRA_SCENE_INGEST_API_KEY`       | Bearer key Mastra presents to Admin scene ingest. Required in production runtime.                                          |
+| `ADMIN_EXPERIENCE_INGEST_URL`             | Admin internal experience ingest endpoint. Required in production runtime.                                                 |
+| `ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY`  | Bearer key Mastra presents to Admin experience ingest. Required in production runtime.                                     |
+| `ADMIN_SEARCH_TRACE_SAMPLE_URL`           | Admin internal trace sample endpoint for eval query generation. Required only when running that workflow.                  |
+| `ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL`   | Admin internal compact catalog context endpoint for eval query generation. Required only when running that workflow.       |
+| `ADMIN_SEARCH_EVAL_CANDIDATES_URL`        | Admin internal generated-candidate storage endpoint for eval query generation. Required only when running that workflow.   |
+| `ADMIN_SEARCH_EVAL_SEARCH_URL`            | Admin internal no-trace search endpoint for offline search eval. Required only when running the offline eval workflow.     |
+| `ADMIN_SEARCH_EVAL_API_KEY`               | Bearer key Mastra presents to Admin search-eval routes. Must match Admin's dedicated sampling/eval key allowlist.          |
+| `MASTRA_SEARCH_EVAL_ARTIFACT_DIR`         | Optional directory for Mastra-owned offline search eval baseline and report JSON artifacts. Defaults under Mastra storage. |
+| `MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT`    | Set to `true` only for an intentional production import override. Defaults to `false`; local imports do not need it.       |
+| `SEARCH_EVAL_JUDGE_MODEL`                 | OpenRouter chat model stamp for offline search eval judging. Defaults to `anthropic/claude-haiku-4-5`.                     |
+| `PORT`                                    | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                          |
+| `MASTRA_STUDIO_PATH`                      | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                          |
 
 ## Eval query generation
 
@@ -186,18 +198,79 @@ It is a thin coordinator over the existing search eval leaf workflows:
 `eval-query-generation`, `offline-search-eval`,
 `search-eval-candidate-review`, and `search-eval-native-suite`.
 
-Default `full` mode captures the committed seed prompt baseline named
-`seed-baseline`, then syncs the resulting report and already-promoted Admin
-candidates into native Evaluation. `compare` mode compares current search
-against an existing baseline, and `release-gate` mode adds explicit pass/fail
-thresholds for losses, search failures, judge failures, judge disagreements,
-and calibration. `resumeReportId` skips offline search execution and retries
-native report sync for an existing report artifact.
+Default `seed-baseline` mode captures the committed seed prompt baseline named
+`seed-baseline`, requires native report sync, rejects candidate generation,
+rejects seed-candidate submission, rejects promoted-candidate sync, and runs a
+readiness preflight before touching Admin search. Use explicit `full` mode for
+broader operator runs that coordinate generation/review/promoted-sync leaf
+workflows. `compare` mode compares current search against an existing baseline,
+and `release-gate` mode adds explicit pass/fail thresholds for losses, search
+failures, judge failures, judge disagreements, and calibration.
+`resumeReportId` skips offline search execution and retries native report sync
+for an existing report artifact.
+
+For the AI Gateway content embedding migration, run the release gate through
+the local helper so the sanitized gate JSON is written under
+`docs/search-eval-reports/`:
+
+```bash
+pnpm --filter @forge/mastra eval:content-embedding-gate -- \
+  --baseline-name=prod-seed-baseline-YYYY-MM-DD \
+  --environment-label=local
+```
+
+The helper requires an assigned judge, non-skipped passing calibration,
+non-negative net win rate, at least one comparable query, and no configured
+loss/search/judge/disagreement failures before it exits zero. The emitted JSON
+has `kind=content-search-eval-gate-report`, embeds the sanitized comparison
+report and orchestrator summary, and stamps the evaluated content embedding
+provider as Jesus Film AI Gateway `embeddings` with 4096 native dimensions,
+1536 final dimensions, and `matryoshka-truncate-1536-v1`. That JSON is the gate
+artifact consumed by Admin's
+`run-embeds --pipeline=all --gate-report=docs/search-eval-reports/<id>.json`.
 
 Candidate generation and seed candidate submission are explicit opt-ins. The
 orchestrator must never promote generated, trace-derived, seed, or
 user-submitted candidates; promotion remains a human review action through
 Admin HTTP contracts.
+
+For production seed capture, call the orchestrator with either `{}` or an
+explicit seed-only payload:
+
+```json
+{
+  "mode": "seed-baseline",
+  "baselineName": "prod-seed-baseline-YYYY-MM-DD",
+  "searchMode": "hybrid",
+  "contentType": "all",
+  "generateCandidates": false,
+  "submitSeedCandidates": false,
+  "nativeSync": true,
+  "syncPromoted": false
+}
+```
+
+## Search eval baseline portability
+
+The service route `POST /forge-search-eval-baseline-portability` is protected
+by `MASTRA_SERVICE_API_KEYS` and launches the
+`search-eval-baseline-portability` workflow. It provides three actions:
+
+- `preflight` checks the production Admin search URL, Admin eval bearer,
+  service bearer allowlist, non-memory production storage, database URL,
+  persistent artifact root, and an artifact write/read/delete probe.
+- `export-baseline` reads a Mastra-owned baseline plus up to three report ids,
+  validates that every prompt/result came from the committed seed prompt set,
+  then returns a bounded sanitized JSON artifact.
+- `import-baseline` validates the artifact and writes report artifacts before
+  writing the baseline marker, so a partial import is not activated as the
+  current local baseline.
+
+Production imports are disabled by default through
+`MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT=false`. Export from production, store the
+returned JSON artifact in the approved secure handoff location, then import it
+into local Mastra so native Evaluation and local artifacts can compare future
+search work against the same seed snapshot without logging into production.
 
 ## Railway Storage
 

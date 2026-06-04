@@ -22,6 +22,7 @@ import {
 import { useTypography } from "../../hooks/useTypography"
 import { carousel, card, feedback, text, CARD_GAP } from "../../styles/shared"
 import type { WatchSibling } from "../../lib/normalizeVideo"
+import { encodeWatchSeed } from "../../lib/watchSeed"
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
@@ -52,7 +53,15 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
 
       const handlePress = () => {
         if (!isCurrent) {
-          router.replace(`/watch/${encodeURIComponent(item.slug)}`)
+          // Siblings carry poster + title but no playbackId — a metadata-only
+          // seed paints instantly; playback waits for the query to resolve.
+          const seed = encodeWatchSeed({
+            slug: item.slug,
+            title: item.title ?? item.label ?? null,
+            imageUrl: item.posterUrl ?? null,
+            playbackId: null,
+          })
+          router.replace(`/watch/${encodeURIComponent(item.slug)}?seed=${seed}`)
         }
       }
 

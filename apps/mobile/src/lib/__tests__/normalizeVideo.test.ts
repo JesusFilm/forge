@@ -1,4 +1,49 @@
-import { normalizeVideo } from "../normalizeVideo"
+import { normalizeVideo, normalizeDubMedia } from "../normalizeVideo"
+
+// A single dub's raw shape as returned by GET_VIDEO_DUB (the lazy per-dub media
+// query). Downloads + subtitles now live here, not on the bulk WatchVideo dubs.
+function makeRawDub(overrides: Record<string, unknown> = {}) {
+  return {
+    documentId: "dub-1",
+    downloads: [
+      {
+        documentId: "dl-1",
+        quality: "720p",
+        size: "52428800",
+        url: "https://dl.example.com/720p.mp4",
+      },
+      {
+        documentId: "dl-2",
+        quality: "480p",
+        size: "26214400",
+        url: "https://dl.example.com/480p.mp4",
+      },
+    ],
+    videoEdition: {
+      subtitles: [
+        {
+          documentId: "sub-1",
+          language: { slug: "english", name: "English", bcp47: "en" },
+          vttSrc: "https://subs.example.com/en.vtt",
+          primary: true,
+          aiGenerated: false,
+        },
+        {
+          documentId: "sub-2",
+          language: {
+            slug: "spanish",
+            name: { en: "Spanish", es: "Español" },
+            bcp47: "es",
+          },
+          vttSrc: "https://subs.example.com/es.vtt",
+          primary: false,
+          aiGenerated: true,
+        },
+      ],
+    },
+    ...overrides,
+  }
+}
 
 function makeRawVideo(overrides: Record<string, unknown> = {}) {
   return {
@@ -118,43 +163,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
           slug: "english",
           name: { en: "English" },
         },
-        downloads: [
-          {
-            documentId: "dl-1",
-            quality: "720p",
-            size: "52428800",
-            url: "https://dl.example.com/720p.mp4",
-          },
-          {
-            documentId: "dl-2",
-            quality: "480p",
-            size: "26214400",
-            url: "https://dl.example.com/480p.mp4",
-          },
-        ],
         muxVideo: { playbackId: "abc123" },
-        videoEdition: {
-          subtitles: [
-            {
-              documentId: "sub-1",
-              language: { slug: "english", name: "English", bcp47: "en" },
-              vttSrc: "https://subs.example.com/en.vtt",
-              primary: true,
-              aiGenerated: false,
-            },
-            {
-              documentId: "sub-2",
-              language: {
-                slug: "spanish",
-                name: { en: "Spanish", es: "Español" },
-                bcp47: "es",
-              },
-              vttSrc: "https://subs.example.com/es.vtt",
-              primary: false,
-              aiGenerated: true,
-            },
-          ],
-        },
       },
       {
         documentId: "dub-2",
@@ -168,9 +177,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
           slug: "spanish",
           name: { en: "Spanish", es: "Español" },
         },
-        downloads: [],
         muxVideo: { playbackId: "def456" },
-        videoEdition: { subtitles: [] },
       },
       {
         documentId: "dub-3",
@@ -179,9 +186,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
         hls: null,
         duration: null,
         language: null,
-        downloads: [],
         muxVideo: null,
-        videoEdition: null,
       },
     ],
     studyQuestions: [
@@ -286,29 +291,47 @@ describe("normalizeVideo", () => {
     expect(result.variants.every((v) => v.published)).toBe(true)
   })
 
-  it("preserves downloads with quality and URL", () => {
+  it("does not project per-dub downloads/subtitles onto bulk variants", () => {
+    // The bulk WatchVideo query is lean by design — downloads/subtitles are
+    // fetched lazily per dub (normalizeDubMedia), never inlined here.
     const result = normalizeVideo(makeRawVideo())!
     const englishVariant = result.variants.find(
       (v) => v.languageSlug === "english",
     )!
-    expect(englishVariant.downloads).toHaveLength(2)
-    expect(englishVariant.downloads[0]).toEqual({
-      documentId: "dl-1",
-      quality: "720p",
-      size: "52428800",
-      url: "https://dl.example.com/720p.mp4",
-    })
+    expect(englishVariant).not.toHaveProperty("downloads")
+    expect(englishVariant).not.toHaveProperty("subtitles")
   })
 
-  it("maps subtitles with language info", () => {
-    const result = normalizeVideo(makeRawVideo())!
-    const englishVariant = result.variants.find(
-      (v) => v.languageSlug === "english",
-    )!
-    expect(englishVariant.subtitles).toHaveLength(2)
-    expect(englishVariant.subtitles[0].languageBcp47).toBe("en")
-    expect(englishVariant.subtitles[0].primary).toBe(true)
-    expect(englishVariant.subtitles[1].aiGenerated).toBe(true)
+  describe("normalizeDubMedia (lazy per-dub media)", () => {
+    it("preserves downloads with quality and URL", () => {
+      const media = normalizeDubMedia(makeRawDub())
+      expect(media.downloads).toHaveLength(2)
+      expect(media.downloads[0]).toEqual({
+        documentId: "dl-1",
+        quality: "720p",
+        size: "52428800",
+        url: "https://dl.example.com/720p.mp4",
+      })
+    })
+
+    it("maps subtitles with language info", () => {
+      const media = normalizeDubMedia(makeRawDub())
+      expect(media.subtitles).toHaveLength(2)
+      expect(media.subtitles[0].languageBcp47).toBe("en")
+      expect(media.subtitles[0].primary).toBe(true)
+      expect(media.subtitles[1].aiGenerated).toBe(true)
+    })
+
+    it("returns empty media for a missing dub", () => {
+      expect(normalizeDubMedia(null)).toEqual({ downloads: [], subtitles: [] })
+    })
+
+    it("tolerates a dub with no downloads or subtitles", () => {
+      const media = normalizeDubMedia(
+        makeRawDub({ downloads: [], videoEdition: null }),
+      )
+      expect(media).toEqual({ downloads: [], subtitles: [] })
+    })
   })
 
   it("sorts study questions by order and filters empty", () => {
@@ -469,5 +492,36 @@ describe("normalizeVideo", () => {
     const result = normalizeVideo(raw)!
     expect(result.siblings).toHaveLength(1)
     expect(result.siblings[0].slug).toBe("from-first-parent")
+  })
+})
+
+describe("normalizeVideo — partial data (returnPartialData)", () => {
+  const partial = (o: Record<string, unknown>) =>
+    o as unknown as Parameters<typeof normalizeVideo>[0]
+
+  it("returns null for null / undefined input", () => {
+    expect(normalizeVideo(null)).toBeNull()
+    expect(normalizeVideo(undefined)).toBeNull()
+  })
+
+  it("returns null when the partial object has no documentId (no identity yet)", () => {
+    expect(normalizeVideo(partial({ slug: "lonely" }))).toBeNull()
+    expect(normalizeVideo(makeRawVideo({ documentId: "" }) as never)).toBeNull()
+  })
+
+  it("produces a valid record with empty arrays when relations are absent", () => {
+    const result = normalizeVideo(
+      partial({ documentId: "vid-9", slug: "lonely", label: "SEGMENT" }),
+    )!
+    expect(result).not.toBeNull()
+    expect(result.documentId).toBe("vid-9")
+    expect(result.slug).toBe("lonely")
+    expect(result.variants).toEqual([])
+    expect(result.siblings).toEqual([])
+    expect(result.studyQuestions).toEqual([])
+    expect(result.bibleCitations).toEqual([])
+    expect(result.streamingUrl).toBeNull()
+    expect(result.posterUrl).toBeNull()
+    expect(result.title).toBeNull()
   })
 })

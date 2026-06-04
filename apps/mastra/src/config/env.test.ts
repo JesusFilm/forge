@@ -37,6 +37,7 @@ describe("Mastra env", () => {
     )
     vi.stubEnv("MASTRA_STORAGE_DIR", "/data/mastra")
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
 
     const { assertMastraRuntimeEnv } = await import("./env")
@@ -66,6 +67,7 @@ describe("Mastra env", () => {
     vi.stubEnv("DATABASE_URL", "")
     vi.stubEnv("MASTRA_STORAGE_DIR", "/data/mastra")
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
 
     const { assertMastraRuntimeEnv } = await import("./env")
@@ -98,6 +100,7 @@ describe("Mastra env", () => {
     )
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
     vi.stubEnv("MASTRA_STORAGE_DIR", "")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
 
     const { assertMastraRuntimeEnv } = await import("./env")
@@ -125,6 +128,15 @@ describe("Mastra env", () => {
     expect(getMastraStorageDir()).toBe(".mastra/storage")
   })
 
+  it("keeps production search eval baseline imports disabled by default", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT", "")
+
+    const { env } = await import("./env")
+
+    expect(env.MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT).toBe("false")
+  })
+
   it("uses the Railway volume mount path for storage when present", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("MASTRA_STORAGE_DIR", "")
@@ -137,6 +149,13 @@ describe("Mastra env", () => {
 
   it("defaults transcript, scene, and experience embedding model and provider settings", async () => {
     vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS", "")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_BASE_URL", "")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_MODEL", "")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_PROVIDER", "")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS", "")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_USER_AGENT", "")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "")
     vi.stubEnv("TRANSCRIPT_EMBEDDING_MODEL", "")
     vi.stubEnv("TRANSCRIPT_EMBEDDING_PROVIDER", "")
     vi.stubEnv("SCENE_EMBEDDING_MODEL", "")
@@ -156,13 +175,39 @@ describe("Mastra env", () => {
     expect(env.EXPERIENCE_EMBEDDING_MODEL).toBe("openai/text-embedding-3-small")
     expect(env.EXPERIENCE_EMBEDDING_PROVIDER).toBe("openai")
     expect(env.EVAL_QUERY_GENERATION_MODEL).toBe("anthropic/claude-haiku-4-5")
+    expect(env.AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS).toBe(
+      "ai-gateway.jesusfilm.org",
+    )
+    expect(env.AI_GATEWAY_EMBEDDINGS_BASE_URL).toBe(
+      "https://ai-gateway.jesusfilm.org/v1",
+    )
+    expect(env.AI_GATEWAY_EMBEDDINGS_MODEL).toBe("embeddings")
+    expect(env.AI_GATEWAY_EMBEDDINGS_PROVIDER).toBe("jesus-film-ai-gateway")
+    expect(env.AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS).toBe(60_000)
+    expect(env.AI_GATEWAY_EMBEDDINGS_USER_AGENT).toBe(
+      "forge-mastra-content-embeddings/1.0",
+    )
     expect(env.OPENAI_EMBEDDINGS_BASE_URL).toBe("https://api.openai.com/v1")
     expect(env.OPENROUTER_EMBEDDINGS_BASE_URL).toBe(
       "https://openrouter.ai/api/v1",
     )
   })
 
-  it("requires either OpenRouter or OpenAI credentials in production runtime", async () => {
+  it("passes the AI Gateway embedding timeout through provider config", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "gateway")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS", "90000")
+
+    const { getSceneEmbeddingProviderConfig } = await import("./env")
+
+    expect(getSceneEmbeddingProviderConfig()).toMatchObject({
+      provider: "jesus-film-ai-gateway",
+      timeoutMs: 90_000,
+    })
+  })
+
+  it("requires AI Gateway credentials in production runtime by default", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
     vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
@@ -184,18 +229,19 @@ describe("Mastra env", () => {
       "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
     )
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
-    vi.stubEnv("OPENAI_API_KEY", "")
-    vi.stubEnv("OPENROUTER_API_KEY", "")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
-      "OPENROUTER_API_KEY or OPENAI_API_KEY required for Mastra production",
+      "AI_GATEWAY_EMBEDDINGS_API_KEY required for Mastra production",
     )
   })
 
-  it("prefers OpenRouter credentials for embedding provider config", async () => {
+  it("uses legacy OpenRouter credentials for embedding provider config in local mode", async () => {
     vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
     vi.stubEnv("OPENAI_API_KEY", "openai-key")
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
 
@@ -208,14 +254,161 @@ describe("Mastra env", () => {
     expect(getTranscriptEmbeddingProviderConfig()).toEqual({
       apiKey: "openrouter-key",
       baseUrl: "https://openrouter.ai/api/v1",
+      model: "openai/text-embedding-3-small",
+      provider: "openai",
     })
     expect(getSceneEmbeddingProviderConfig()).toEqual({
       apiKey: "openrouter-key",
       baseUrl: "https://openrouter.ai/api/v1",
+      model: "openai/text-embedding-3-small",
+      provider: "openai",
     })
     expect(getExperienceEmbeddingProviderConfig()).toEqual({
       apiKey: "openrouter-key",
       baseUrl: "https://openrouter.ai/api/v1",
+      model: "openai/text-embedding-3-small",
+      provider: "openai",
     })
+  })
+
+  it("prefers AI Gateway config for content embedding provider config", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
+    vi.stubEnv(
+      "AI_GATEWAY_EMBEDDINGS_BASE_URL",
+      "https://ai-gateway.jesusfilm.org/v1",
+    )
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_MODEL", "embeddings")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_PROVIDER", "jesus-film-ai-gateway")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_USER_AGENT", "forge-test/1.0")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const {
+      getContentEmbeddingsProviderMode,
+      getExperienceEmbeddingProviderConfig,
+      getSceneEmbeddingProviderConfig,
+      getTranscriptEmbeddingProviderConfig,
+    } = await import("./env")
+
+    expect(getContentEmbeddingsProviderMode()).toBe("gateway")
+    const expected = {
+      apiKey: "gateway-key",
+      baseUrl: "https://ai-gateway.jesusfilm.org/v1",
+      model: "embeddings",
+      provider: "jesus-film-ai-gateway",
+      userAgent: "forge-test/1.0",
+      timeoutMs: 60_000,
+      expectedNativeDimensions: 4096,
+      truncateToDimensions: 1536,
+      transformVersion: "matryoshka-truncate-1536-v1",
+    }
+    expect(getTranscriptEmbeddingProviderConfig()).toEqual(expected)
+    expect(getSceneEmbeddingProviderConfig()).toEqual(expected)
+    expect(getExperienceEmbeddingProviderConfig()).toEqual(expected)
+  })
+
+  it("allows explicit legacy content embedding mode in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "")
+
+    const { assertMastraRuntimeEnv, getContentEmbeddingsProviderMode } =
+      await import("./env")
+
+    expect(getContentEmbeddingsProviderMode()).toBe("legacy")
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("rejects unsafe AI Gateway base URLs in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_BASE_URL", "http://evil.test/v1")
+    vi.stubEnv(
+      "AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS",
+      "ai-gateway.jesusfilm.org",
+    )
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "AI_GATEWAY_EMBEDDINGS_BASE_URL must use https and a host listed in AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects non-allowlisted AI Gateway hosts in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_BASE_URL", "https://other.test/v1")
+    vi.stubEnv(
+      "AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS",
+      "ai-gateway.jesusfilm.org",
+    )
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "AI_GATEWAY_EMBEDDINGS_BASE_URL must use https and a host listed in AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS for Mastra production",
+    )
   })
 })

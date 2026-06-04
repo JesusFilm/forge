@@ -9,7 +9,7 @@ import {
   type SearchEvalCandidatePromotionStatusLabel,
   type SearchEvalCandidateSourceLabel,
   type StoreSearchEvalCandidateInput,
-} from "@/services/search-eval/candidates"
+} from "@/services/search-eval-candidates"
 
 const RATE_LIMIT_MAX = 20
 const RATE_LIMIT_WINDOW_MS = 60_000

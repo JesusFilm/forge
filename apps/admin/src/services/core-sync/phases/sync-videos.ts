@@ -14,6 +14,7 @@ import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
 import { toPgArray } from "@/db/pgvector"
 import { mapVideoLabel, mapVideoSource, toNameMap } from "../transforms"
 import { syncVideoLocalizedMetadata } from "../video-localized-metadata"
+import { withPrismaPoolTimeoutRetry } from "../pool-timeout-retry"
 
 const BIBLE_BOOKS_QUERY = `
   query BibleBooks {
@@ -258,29 +259,42 @@ export async function syncVideos({
         }),
       )
     } else if (parsedBooks.data.length > 0) {
-      await bulkUpsertBibleBooks(
-        prisma,
-        parsedBooks.data.map((book) => ({
-          id: randomUUID(),
-          coreId: book.id,
-          nameBase64: encodeJsonForPgArray(
-            toNameMap(book.name, { bcp47ByCoreId }),
+      await withPrismaPoolTimeoutRetry(
+        () =>
+          bulkUpsertBibleBooks(
+            prisma,
+            parsedBooks.data.map((book) => ({
+              id: randomUUID(),
+              coreId: book.id,
+              nameBase64: encodeJsonForPgArray(
+                toNameMap(book.name, { bcp47ByCoreId }),
+              ),
+              osisId: book.osisId,
+              alternateName: book.alternateName,
+              paratextAbbreviation: book.paratextAbbreviation,
+              isNewTestament: book.isNewTestament,
+              testament:
+                book.isNewTestament == null
+                  ? null
+                  : book.isNewTestament
+                    ? "NT"
+                    : "OT",
+              order: book.order,
+            })),
           ),
-          osisId: book.osisId,
-          alternateName: book.alternateName,
-          paratextAbbreviation: book.paratextAbbreviation,
-          isNewTestament: book.isNewTestament,
-          testament:
-            book.isNewTestament == null
-              ? null
-              : book.isNewTestament
-                ? "NT"
-                : "OT",
-          order: book.order,
-        })),
+        { operation: "core-sync.videos.bible-books" },
       )
     }
   }
+
+  const keywords = await prisma.keyword.findMany({
+    select: { id: true, coreId: true },
+  })
+  const keywordMap = new Map(keywords.map((k) => [k.coreId, k.id]))
+  const bibleBooks = await prisma.bibleBook.findMany({
+    select: { id: true, coreId: true },
+  })
+  const bibleBookMap = new Map(bibleBooks.map((b) => [b.coreId, b.id]))
 
   const PAGE_SIZE = 25
   let offset = 0
@@ -330,249 +344,257 @@ export async function syncVideos({
     progress.setTotal(offset + videos.length)
 
     try {
-      let pageUpdated = 0
-      await prisma.$transaction(async (tx) => {
-        const keywords = await tx.keyword.findMany({
-          select: { id: true, coreId: true },
-        })
-        const keywordMap = new Map(keywords.map((k) => [k.coreId, k.id]))
-        const bibleBooks = await tx.bibleBook.findMany({
-          select: { id: true, coreId: true },
-        })
-        const bibleBookMap = new Map(bibleBooks.map((b) => [b.coreId, b.id]))
-        const touchedVideoIds: string[] = []
-        const videoKeywordRows: Array<{ videoId: string; keywordId: string }> =
-          []
-        const pendingRelations: Array<{
-          parentId: string
-          childCoreId: string
-        }> = []
-
-        for (const video of videos) {
-          const primaryLanguageId = video.primaryLanguageId
-            ? (langMap.get(video.primaryLanguageId) ?? null)
-            : null
-          const originId = video.origin
-            ? (originMap.get(video.origin.id) ?? null)
-            : null
-
-          const existing = await tx.video.findUnique({
-            where: { coreId: video.id },
-            select: { source: true },
-          })
-          if (existing?.source === "MANAGER") {
-            continue
-          }
-
-          const videoRow = await tx.video.upsert({
-            where: { coreId: video.id },
-            create: {
-              coreId: video.id,
-              slug: video.slug,
-              label: mapVideoLabel(video.label),
-              videoSource: mapVideoSource(video.source),
-              publishedAt: video.publishedAt
-                ? new Date(video.publishedAt)
-                : null,
-              locked: video.locked,
-              noIndex: video.noIndex,
-              aiMetadata: false,
-              source: "CORE",
-              primaryLanguageId,
-              originId,
-              updatedAt: new Date(video.updatedAt),
-              syncedAt: new Date(),
-            },
-            update: {
-              slug: video.slug,
-              label: mapVideoLabel(video.label),
-              videoSource: mapVideoSource(video.source),
-              publishedAt: video.publishedAt
-                ? new Date(video.publishedAt)
-                : null,
-              locked: video.locked,
-              noIndex: video.noIndex,
-              primaryLanguageId,
-              originId,
-              updatedAt: new Date(video.updatedAt),
-              syncedAt: new Date(),
-              deletedAt: null,
-            },
-          })
-          touchedVideoIds.push(videoRow.id)
-
-          const localizedResult = await syncVideoLocalizedMetadata({
-            prisma: tx,
-            adminVideos: [
-              {
-                id: videoRow.id,
-                coreId: video.id,
-                source: "CORE",
-                publishedAt: video.publishedAt,
-              },
-            ],
-            coreVideos: [video],
-            languageIdByCoreId: langMap,
-            bcp47ByCoreId,
-            slugByCoreId,
-          })
-          stats.errors +=
-            localizedResult.errors + localizedResult.skippedLanguages
-          if (localizedResult.skippedLanguages > 0) {
-            console.warn(
-              JSON.stringify({
-                event: "core-sync.video-localized-metadata.skipped-languages",
-                videoCoreId: video.id,
-                skippedLanguages: localizedResult.skippedLanguages,
-                diagnostics: localizedResult.diagnostics,
-              }),
+      const pageResult = await withPrismaPoolTimeoutRetry(
+        async () => {
+          let pageUpdated = 0
+          let pageErrors = 0
+          await prisma.$transaction(async (tx) => {
+            const pageCoreIds = videos.map((video) => video.id)
+            const existingVideos = await tx.video.findMany({
+              where: { coreId: { in: pageCoreIds } },
+              select: { coreId: true, source: true },
+            })
+            const existingSourceByCoreId = new Map(
+              existingVideos.map((video) => [video.coreId, video.source]),
             )
-          }
+            const touchedVideoIds: string[] = []
+            const videoKeywordRows: Array<{
+              videoId: string
+              keywordId: string
+            }> = []
+            const pendingRelations: Array<{
+              parentId: string
+              childCoreId: string
+            }> = []
 
-          const seenCitationIds = new Set(
-            video.bibleCitations.map((citation) => citation.id),
-          )
-          for (const citation of video.bibleCitations) {
-            const bibleBookId = bibleBookMap.get(citation.bibleBook.id)
-            if (!bibleBookId) {
-              stats.errors++
-              console.warn(
-                JSON.stringify({
-                  event: "core-sync.video-citation.missing-bible-book",
-                  videoCoreId: video.id,
-                  citationCoreId: citation.id,
-                  bibleBookCoreId: citation.bibleBook.id,
-                }),
+            for (const video of videos) {
+              const primaryLanguageId = video.primaryLanguageId
+                ? (langMap.get(video.primaryLanguageId) ?? null)
+                : null
+              const originId = video.origin
+                ? (originMap.get(video.origin.id) ?? null)
+                : null
+
+              if (existingSourceByCoreId.get(video.id) === "MANAGER") {
+                continue
+              }
+
+              const videoRow = await tx.video.upsert({
+                where: { coreId: video.id },
+                create: {
+                  coreId: video.id,
+                  slug: video.slug,
+                  label: mapVideoLabel(video.label),
+                  videoSource: mapVideoSource(video.source),
+                  publishedAt: video.publishedAt
+                    ? new Date(video.publishedAt)
+                    : null,
+                  locked: video.locked,
+                  noIndex: video.noIndex,
+                  aiMetadata: false,
+                  source: "CORE",
+                  primaryLanguageId,
+                  originId,
+                  updatedAt: new Date(video.updatedAt),
+                  syncedAt: new Date(),
+                },
+                update: {
+                  slug: video.slug,
+                  label: mapVideoLabel(video.label),
+                  videoSource: mapVideoSource(video.source),
+                  publishedAt: video.publishedAt
+                    ? new Date(video.publishedAt)
+                    : null,
+                  locked: video.locked,
+                  noIndex: video.noIndex,
+                  primaryLanguageId,
+                  originId,
+                  updatedAt: new Date(video.updatedAt),
+                  syncedAt: new Date(),
+                  deletedAt: null,
+                },
+              })
+              touchedVideoIds.push(videoRow.id)
+
+              const localizedResult = await syncVideoLocalizedMetadata({
+                prisma: tx,
+                adminVideos: [
+                  {
+                    id: videoRow.id,
+                    coreId: video.id,
+                    source: "CORE",
+                    publishedAt: video.publishedAt,
+                  },
+                ],
+                coreVideos: [video],
+                languageIdByCoreId: langMap,
+                bcp47ByCoreId,
+                slugByCoreId,
+              })
+              pageErrors +=
+                localizedResult.errors + localizedResult.skippedLanguages
+              if (localizedResult.skippedLanguages > 0) {
+                console.warn(
+                  JSON.stringify({
+                    event:
+                      "core-sync.video-localized-metadata.skipped-languages",
+                    videoCoreId: video.id,
+                    skippedLanguages: localizedResult.skippedLanguages,
+                    diagnostics: localizedResult.diagnostics,
+                  }),
+                )
+              }
+
+              const seenCitationIds = new Set(
+                video.bibleCitations.map((citation) => citation.id),
               )
-              continue
-            }
-            await tx.bibleCitation.upsert({
-              where: { coreId: citation.id },
-              create: {
-                coreId: citation.id,
-                videoId: videoRow.id,
-                bibleBookId,
-                osisId: citation.osisId,
-                order: citation.order,
-                chapterStart: citation.chapterStart,
-                chapterEnd: citation.chapterEnd,
-                verseStart: citation.verseStart,
-                verseEnd: citation.verseEnd,
-                syncedAt: new Date(),
-              },
-              update: {
-                videoId: videoRow.id,
-                bibleBookId,
-                osisId: citation.osisId,
-                order: citation.order,
-                chapterStart: citation.chapterStart,
-                chapterEnd: citation.chapterEnd,
-                verseStart: citation.verseStart,
-                verseEnd: citation.verseEnd,
-                syncedAt: new Date(),
-                deletedAt: null,
-              },
-            })
-          }
-          await tx.bibleCitation.updateMany({
-            where: {
-              videoId: videoRow.id,
-              source: "CORE",
-              coreId: { notIn: [...seenCitationIds] },
-              deletedAt: null,
-            },
-            data: { deletedAt: new Date() },
-          })
-
-          for (const keyword of video.keywords) {
-            const keywordId = keywordMap.get(keyword.id)
-            if (!keywordId) continue
-            videoKeywordRows.push({ videoId: videoRow.id, keywordId })
-          }
-
-          for (const child of video.children) {
-            pendingRelations.push({
-              parentId: videoRow.id,
-              childCoreId: child.id,
-            })
-          }
-
-          pageUpdated++
-        }
-
-        if (touchedVideoIds.length > 0) {
-          await tx.videoKeyword.deleteMany({
-            where: { videoId: { in: touchedVideoIds } },
-          })
-          if (videoKeywordRows.length > 0) {
-            await tx.$executeRaw`
-              INSERT INTO "video_keyword" (
-                "video_id",
-                "keyword_id",
-                "created_at"
-              )
-              SELECT
-                input."video_id",
-                input."keyword_id",
-                NOW()
-              FROM unnest(
-                ${toPgArray(videoKeywordRows.map((row) => row.videoId))}::text[],
-                ${toPgArray(videoKeywordRows.map((row) => row.keywordId))}::text[]
-              ) AS input("video_id", "keyword_id")
-              ON CONFLICT ("video_id", "keyword_id") DO NOTHING
-            `
-          }
-
-          await tx.videoRelation.deleteMany({
-            where: { parentId: { in: touchedVideoIds } },
-          })
-
-          const childCoreIds = [
-            ...new Set(
-              pendingRelations.map((relation) => relation.childCoreId),
-            ),
-          ]
-          const childVideos =
-            childCoreIds.length > 0
-              ? await tx.video.findMany({
-                  where: { coreId: { in: childCoreIds } },
-                  select: { id: true, coreId: true },
+              for (const citation of video.bibleCitations) {
+                const bibleBookId = bibleBookMap.get(citation.bibleBook.id)
+                if (!bibleBookId) {
+                  pageErrors++
+                  console.warn(
+                    JSON.stringify({
+                      event: "core-sync.video-citation.missing-bible-book",
+                      videoCoreId: video.id,
+                      citationCoreId: citation.id,
+                      bibleBookCoreId: citation.bibleBook.id,
+                    }),
+                  )
+                  continue
+                }
+                await tx.bibleCitation.upsert({
+                  where: { coreId: citation.id },
+                  create: {
+                    coreId: citation.id,
+                    videoId: videoRow.id,
+                    bibleBookId,
+                    osisId: citation.osisId,
+                    order: citation.order,
+                    chapterStart: citation.chapterStart,
+                    chapterEnd: citation.chapterEnd,
+                    verseStart: citation.verseStart,
+                    verseEnd: citation.verseEnd,
+                    syncedAt: new Date(),
+                  },
+                  update: {
+                    videoId: videoRow.id,
+                    bibleBookId,
+                    osisId: citation.osisId,
+                    order: citation.order,
+                    chapterStart: citation.chapterStart,
+                    chapterEnd: citation.chapterEnd,
+                    verseStart: citation.verseStart,
+                    verseEnd: citation.verseEnd,
+                    syncedAt: new Date(),
+                    deletedAt: null,
+                  },
                 })
-              : []
-          const childIdByCoreId = new Map(
-            childVideos.map((child) => [child.coreId, child.id]),
-          )
-          const videoRelationRows = pendingRelations.flatMap((relation) => {
-            const childId = childIdByCoreId.get(relation.childCoreId)
-            return childId
-              ? [{ id: randomUUID(), parentId: relation.parentId, childId }]
-              : []
-          })
+              }
+              await tx.bibleCitation.updateMany({
+                where: {
+                  videoId: videoRow.id,
+                  source: "CORE",
+                  coreId: { notIn: [...seenCitationIds] },
+                  deletedAt: null,
+                },
+                data: { deletedAt: new Date() },
+              })
 
-          if (videoRelationRows.length > 0) {
-            await tx.$executeRaw`
-              INSERT INTO "video_relation" (
-                "id",
-                "parent_id",
-                "child_id",
-                "created_at"
+              for (const keyword of video.keywords) {
+                const keywordId = keywordMap.get(keyword.id)
+                if (!keywordId) continue
+                videoKeywordRows.push({ videoId: videoRow.id, keywordId })
+              }
+
+              for (const child of video.children) {
+                pendingRelations.push({
+                  parentId: videoRow.id,
+                  childCoreId: child.id,
+                })
+              }
+
+              pageUpdated++
+            }
+
+            if (touchedVideoIds.length > 0) {
+              await tx.videoKeyword.deleteMany({
+                where: { videoId: { in: touchedVideoIds } },
+              })
+              if (videoKeywordRows.length > 0) {
+                await tx.$executeRaw`
+                  INSERT INTO "video_keyword" (
+                    "video_id",
+                    "keyword_id",
+                    "created_at"
+                  )
+                  SELECT
+                    input."video_id",
+                    input."keyword_id",
+                    NOW()
+                  FROM unnest(
+                    ${toPgArray(videoKeywordRows.map((row) => row.videoId))}::text[],
+                    ${toPgArray(videoKeywordRows.map((row) => row.keywordId))}::text[]
+                  ) AS input("video_id", "keyword_id")
+                  ON CONFLICT ("video_id", "keyword_id") DO NOTHING
+                `
+              }
+
+              await tx.videoRelation.deleteMany({
+                where: { parentId: { in: touchedVideoIds } },
+              })
+
+              const childCoreIds = [
+                ...new Set(
+                  pendingRelations.map((relation) => relation.childCoreId),
+                ),
+              ]
+              const childVideos =
+                childCoreIds.length > 0
+                  ? await tx.video.findMany({
+                      where: { coreId: { in: childCoreIds } },
+                      select: { id: true, coreId: true },
+                    })
+                  : []
+              const childIdByCoreId = new Map(
+                childVideos.map((child) => [child.coreId, child.id]),
               )
-              SELECT
-                input."id",
-                input."parent_id",
-                input."child_id",
-                NOW()
-              FROM unnest(
-                ${toPgArray(videoRelationRows.map((row) => row.id))}::text[],
-                ${toPgArray(videoRelationRows.map((row) => row.parentId))}::text[],
-                ${toPgArray(videoRelationRows.map((row) => row.childId))}::text[]
-              ) AS input("id", "parent_id", "child_id")
-              ON CONFLICT ("parent_id", "child_id") DO NOTHING
-            `
-          }
-        }
-      }, CORE_SYNC_TRANSACTION_OPTIONS)
-      stats.updated += pageUpdated
+              const videoRelationRows = pendingRelations.flatMap((relation) => {
+                const childId = childIdByCoreId.get(relation.childCoreId)
+                return childId
+                  ? [{ id: randomUUID(), parentId: relation.parentId, childId }]
+                  : []
+              })
+
+              if (videoRelationRows.length > 0) {
+                await tx.$executeRaw`
+                  INSERT INTO "video_relation" (
+                    "id",
+                    "parent_id",
+                    "child_id",
+                    "created_at"
+                  )
+                  SELECT
+                    input."id",
+                    input."parent_id",
+                    input."child_id",
+                    NOW()
+                  FROM unnest(
+                    ${toPgArray(videoRelationRows.map((row) => row.id))}::text[],
+                    ${toPgArray(videoRelationRows.map((row) => row.parentId))}::text[],
+                    ${toPgArray(videoRelationRows.map((row) => row.childId))}::text[]
+                  ) AS input("id", "parent_id", "child_id")
+                  ON CONFLICT ("parent_id", "child_id") DO NOTHING
+                `
+              }
+            }
+          }, CORE_SYNC_TRANSACTION_OPTIONS)
+
+          return { errors: pageErrors, updated: pageUpdated }
+        },
+        { operation: `core-sync.videos.page.${offset}` },
+      )
+      stats.updated += pageResult.updated
+      stats.errors += pageResult.errors
     } catch (err) {
       stats.errors++
       console.error(
@@ -601,15 +623,29 @@ export async function syncVideos({
   }
 
   if (!since && stats.errors === 0 && seenCoreIds.size > 0) {
-    const result = await prisma.video.updateMany({
-      where: {
-        source: "CORE",
-        coreId: { notIn: [...seenCoreIds] },
-        deletedAt: null,
-      },
-      data: { deletedAt: new Date() },
-    })
-    stats.softDeleted += result.count
+    try {
+      const result = await withPrismaPoolTimeoutRetry(
+        () =>
+          prisma.video.updateMany({
+            where: {
+              source: "CORE",
+              coreId: { notIn: [...seenCoreIds] },
+              deletedAt: null,
+            },
+            data: { deletedAt: new Date() },
+          }),
+        { operation: "core-sync.videos.soft-delete" },
+      )
+      stats.softDeleted += result.count
+    } catch (err) {
+      stats.errors++
+      console.error(
+        JSON.stringify({
+          event: "core-sync.video.soft-delete.error",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      )
+    }
   }
 
   return stats

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
@@ -14,7 +14,6 @@ import {
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
-import { BottomSheetScrollView } from "@gorhom/bottom-sheet"
 import { cacheDirectory, downloadAsync } from "expo-file-system/src/legacy"
 import * as Sharing from "expo-sharing"
 
@@ -173,6 +172,15 @@ export function DownloadSheetContent({
   const insets = useSafeAreaInsets()
   const typography = useTypography()
   const downloadInFlight = useRef(false)
+  // The download outlives the sheet if the user swipes it closed mid-flight.
+  // Guard post-await side effects so we don't setState, Alert, or navigate on
+  // an unmounted route (which would pop the watch screen underneath).
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const tiered = useMemo(() => tierDownloads(downloads), [downloads])
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -204,17 +212,19 @@ export function DownloadSheetContent({
       } catch {
         // User dismissed the share sheet — not an error
       }
-      onDownloadComplete?.()
+      if (mountedRef.current) onDownloadComplete?.()
     } catch {
-      Alert.alert(
-        "Download failed",
-        "Could not download the video. Please try again.",
-      )
+      if (mountedRef.current) {
+        Alert.alert(
+          "Download failed",
+          "Could not download the video. Please try again.",
+        )
+      }
     } finally {
       downloadInFlight.current = false
-      setDownloading(false)
+      if (mountedRef.current) setDownloading(false)
     }
-  }, [touAccepted, tiered, selectedIndex])
+  }, [touAccepted, tiered, selectedIndex, onDownloadComplete])
 
   const renderQualityRow = useCallback(
     ({ item, index }: { item: TieredDownload; index: number }) => {
@@ -272,7 +282,7 @@ export function DownloadSheetContent({
 
   return (
     <>
-      <BottomSheetScrollView
+      <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: insets.bottom + 24 },
@@ -329,26 +339,23 @@ export function DownloadSheetContent({
           />
         </View>
 
-        <Pressable
-          style={({ pressed }) => [styles.touRow, pressed && feedback.pressed]}
-          onPress={() => {
-            if (touAccepted) {
-              setTouAccepted(false)
-            } else {
-              setTermsVisible(true)
-            }
-          }}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: touAccepted }}
-          accessibilityLabel="I agree to the Terms of Use"
-        >
-          <View
-            style={[styles.checkbox, touAccepted && styles.checkboxChecked]}
+        <View style={styles.touRow}>
+          <Pressable
+            onPress={() => setTouAccepted((v) => !v)}
+            hitSlop={8}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: touAccepted }}
+            accessibilityLabel="I agree to the Terms of Use"
+            style={({ pressed }) => pressed && feedback.pressed}
           >
-            {touAccepted && (
-              <Ionicons name="checkmark" size={16} color="#ffffff" />
-            )}
-          </View>
+            <View
+              style={[styles.checkbox, touAccepted && styles.checkboxChecked]}
+            >
+              {touAccepted && (
+                <Ionicons name="checkmark" size={16} color="#ffffff" />
+              )}
+            </View>
+          </Pressable>
           <Text style={[styles.touText, typography.bodySmall]}>
             I agree to the{" "}
           </Text>
@@ -362,7 +369,7 @@ export function DownloadSheetContent({
               Terms of Use
             </Text>
           </Pressable>
-        </Pressable>
+        </View>
 
         <Pressable
           style={({ pressed }) => [
@@ -387,7 +394,7 @@ export function DownloadSheetContent({
             {downloading ? "Downloading..." : "Download"}
           </Text>
         </Pressable>
-      </BottomSheetScrollView>
+      </ScrollView>
 
       <TermsModal
         visible={termsVisible}
@@ -401,19 +408,10 @@ export function DownloadSheetContent({
   )
 }
 
-export { type DownloadSheetProps as DownloadSheetContentProps }
-
-export function useDownloadSheetReset() {
-  const [resetKey, setResetKey] = useState(0)
-  const handleSheetChange = useCallback((index: number) => {
-    if (index >= 0) setResetKey((k) => k + 1)
-  }, [])
-  return { resetKey, handleSheetChange }
-}
-
 const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: HORIZONTAL_PADDING,
+    paddingTop: 36,
   },
   emptyContainer: {
     flex: 1,

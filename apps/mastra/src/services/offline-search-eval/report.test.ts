@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  assertContentSearchEvalGateDocsReportIsSafe,
+  buildContentSearchEvalGateDocsReport,
   collapseSwapVerdicts,
   finalizeReport,
   hashQuery,
@@ -18,6 +20,30 @@ const metadata = {
   judgeModel: "judge",
   search: { limit: 20, mode: null, contentType: null },
 } satisfies SearchEvalReport["metadata"]
+
+const contentEmbeddingProvider = {
+  provider: "jesus-film-ai-gateway",
+  model: "embeddings",
+  requestModel: "embeddings",
+  nativeDimensions: 4096,
+  finalDimensions: 1536,
+  transformVersion: "matryoshka-truncate-1536-v1",
+} as const
+
+const result = {
+  type: "video",
+  id: "video-1",
+  slug: "video-slug",
+  title: "Search Result Title",
+  imageUrl: null,
+  snippet: "Private source snippet that should not be committed.",
+  startSeconds: null,
+  playbackId: null,
+  score: 0.9,
+  label: null,
+  durationSeconds: null,
+  childCount: null,
+} satisfies SearchEvalReport["outcomes"][number]["baselineResults"][number]
 
 describe("offline search eval reports", () => {
   it("collapses swapped verdicts into comparison categories", () => {
@@ -203,5 +229,221 @@ describe("offline search eval reports", () => {
       judgeFailures: 1,
       netWinRate: 0,
     })
+  })
+
+  it("builds a sanitized content search-eval gate report for docs", () => {
+    const report = finalizeReport({
+      schemaVersion: "1",
+      kind: "comparison-report",
+      reportId: "run-1",
+      metadata,
+      calibration: { passed: true, matched: 1, total: 1, skipped: false },
+      judgeFailures: [],
+      cost: {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalUsd: 0,
+        pricingModel: null,
+        estimated: false,
+      },
+      timings: { searchMs: 0, judgeMs: 0, totalMs: 0 },
+      outcomes: [
+        {
+          kind: "win",
+          caseId: "seed-1",
+          locale: "en",
+          queryText: "Private user search query",
+          source: "seed",
+          baselineResults: [result],
+          currentResults: [result],
+          verdicts: ["slightly-B-better", "slightly-A-better"],
+          rationale: "The private query matched the current list.",
+        },
+      ],
+      exploratoryGenerated: [],
+    })
+
+    const docsReport = buildContentSearchEvalGateDocsReport({
+      exportedAt: "2026-06-03T00:00:00.000Z",
+      mastraRunId: "run-orchestrator",
+      report,
+      contentEmbeddingProvider,
+      summary: {
+        passFail: { state: "passed", reasons: [] },
+        artifacts: { reportPath: "/tmp/search-eval/reports/run-1.json" },
+      },
+    })
+
+    const serialized = JSON.stringify(docsReport)
+    expect(docsReport.contentEmbeddingProvider).toEqual(
+      contentEmbeddingProvider,
+    )
+    expect(docsReport.gate).toMatchObject({
+      backfillReady: true,
+      judgeModel: "judge",
+      reportId: "run-1",
+      passFailState: "passed",
+      comparableQueries: 1,
+    })
+    expect(serialized).not.toContain("Private user search query")
+    expect(serialized).not.toContain("Private source snippet")
+    expect(serialized).not.toContain("private query matched")
+    expect(serialized).toContain(_internal.REDACTED_QUERY_TEXT)
+    expect(serialized).toContain(_internal.REDACTED_RESULT_SNIPPET)
+  })
+
+  it("marks docs gate reports blocked when the comparison has no judge", () => {
+    const report = finalizeReport({
+      schemaVersion: "1",
+      kind: "comparison-report",
+      reportId: "run-no-judge",
+      metadata: { ...metadata, judgeModel: null },
+      calibration: { passed: true, matched: 1, total: 1, skipped: false },
+      judgeFailures: [],
+      cost: {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalUsd: 0,
+        pricingModel: null,
+        estimated: false,
+      },
+      timings: { searchMs: 0, judgeMs: 0, totalMs: 0 },
+      outcomes: [
+        {
+          kind: "tie",
+          caseId: "seed-1",
+          locale: "en",
+          queryText: "Jesus",
+          source: "seed",
+          baselineResults: [result],
+          currentResults: [result],
+        },
+      ],
+      exploratoryGenerated: [],
+    })
+
+    const docsReport = buildContentSearchEvalGateDocsReport({
+      mastraRunId: "run-orchestrator",
+      report,
+      contentEmbeddingProvider,
+      summary: { passFail: { state: "passed", reasons: [] } },
+    })
+
+    expect(docsReport.gate.backfillReady).toBe(false)
+    expect(docsReport.gate.reasons).toContain(
+      "migration gate requires an assigned judge model",
+    )
+  })
+
+  it("allows a docs gate when every judge disagreement is human-adjudicated", () => {
+    const report = finalizeReport({
+      schemaVersion: "1",
+      kind: "comparison-report",
+      reportId: "run-adjudicated",
+      metadata,
+      calibration: { passed: true, matched: 1, total: 1, skipped: false },
+      judgeFailures: [],
+      cost: {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalUsd: 0,
+        pricingModel: null,
+        estimated: false,
+      },
+      timings: { searchMs: 0, judgeMs: 0, totalMs: 0 },
+      outcomes: [
+        {
+          kind: "win",
+          caseId: "seed-win",
+          locale: "en",
+          queryText: "Jesus",
+          source: "seed",
+          baselineResults: [result],
+          currentResults: [result],
+        },
+        {
+          kind: "judge-disagreement",
+          caseId: "seed-new-believer",
+          locale: "en",
+          queryText: "new believer",
+          source: "seed",
+          baselineResults: [result],
+          currentResults: [result],
+          verdicts: ["clearly-A-better", "clearly-A-better"],
+        },
+      ],
+      exploratoryGenerated: [],
+    })
+
+    const docsReport = buildContentSearchEvalGateDocsReport({
+      exportedAt: "2026-06-03T00:00:00.000Z",
+      mastraRunId: "run-orchestrator",
+      report,
+      contentEmbeddingProvider,
+      summary: {
+        passFail: {
+          state: "failed",
+          reasons: ["judge disagreements 1 exceeded max 0"],
+        },
+      },
+      humanAdjudications: [
+        {
+          caseId: "seed-new-believer",
+          acceptedOutcome: "current-better",
+          reviewer: "search-quality-review",
+          reason:
+            "Current results include the exact course and related follow-up resources.",
+        },
+      ],
+    })
+
+    expect(docsReport.gate).toMatchObject({
+      backfillReady: true,
+      passFailState: "passed",
+      orchestratorPassFailState: "failed",
+      comparableQueries: 2,
+      judgeDisagreements: 0,
+      rawJudgeDisagreements: 1,
+      adjudicatedJudgeDisagreements: 1,
+      netWinRate: 1,
+    })
+    expect(docsReport.humanAdjudications?.judgeDisagreements).toEqual([
+      expect.objectContaining({
+        caseId: "seed-new-believer",
+        locale: "en",
+        acceptedOutcome: "current-better",
+        rawOutcomeKind: "judge-disagreement",
+        verdicts: ["clearly-A-better", "clearly-A-better"],
+      }),
+    ])
+  })
+
+  it("rejects prohibited secrets and raw vector keys in docs reports", () => {
+    expect(() =>
+      assertContentSearchEvalGateDocsReportIsSafe({
+        schemaVersion: "1",
+        kind: "content-search-eval-gate-report",
+        apiKey: "sk-secret123",
+      }),
+    ).toThrow(/prohibited key: apiKey/)
+
+    expect(() =>
+      assertContentSearchEvalGateDocsReportIsSafe({
+        schemaVersion: "1",
+        kind: "content-search-eval-gate-report",
+        result: { embedding: [0.1, 0.2] },
+      }),
+    ).toThrow(/prohibited key: embedding/)
+
+    expect(() =>
+      assertContentSearchEvalGateDocsReportIsSafe({
+        schemaVersion: "1",
+        kind: "content-search-eval-gate-report",
+        metadata: {
+          adminSearchUrl:
+            "https://user:pass@example.test/search?api_key=secret",
+        },
+      }),
+    ).toThrow(/prohibited string pattern/)
   })
 })

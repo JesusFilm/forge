@@ -1,10 +1,19 @@
-import { useCallback, useMemo, useState } from "react"
-import { Pressable, StyleSheet, Switch, Text, View } from "react-native"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from "react-native"
+import { FlashList } from "@shopify/flash-list"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { BottomSheetFlatList, BottomSheetTextInput } from "@gorhom/bottom-sheet"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useSheetListHeight } from "../../hooks/useSheetListHeight"
 import {
   ACCENT,
   SURFACE_COLOR,
@@ -36,9 +45,27 @@ export function SubtitleSheetContent({
   onClose,
 }: SubtitleSheetProps) {
   const insets = useSafeAreaInsets()
+  const { height: windowHeight } = useWindowDimensions()
   const typography = useTypography()
   const [query, setQuery] = useState("")
   const [localToggle, setLocalToggle] = useState(subtitleEnabled)
+  // FlashList needs an explicit height inside the formSheet (content root is
+  // unbounded). Derived from the native detent index — see useSheetListHeight.
+  const listHeight = useSheetListHeight(windowHeight)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Debounce selection so a fast double-tap (first arms the 300ms deferred
+  // close, second takes the immediate-close branch) can't fire router.back()
+  // twice and pop the watch screen. A timestamp auto-expires, so an interrupted
+  // dismiss can't permanently dead-lock row taps.
+  const lastSelectRef = useRef(0)
+
+  // Cancel the deferred close on unmount so it can't fire router.back() after
+  // the sheet was already dismissed (which would pop the watch screen).
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current)
+    }
+  }, [])
 
   const sorted = useMemo(() => sortByName(subtitles), [subtitles])
   const activeSubtitle = useMemo(
@@ -56,22 +83,27 @@ export function SubtitleSheetContent({
 
   const handleToggle = useCallback(
     (value: boolean) => {
-      if (!value) {
-        onSubtitleChange(false, null)
-        onClose()
-      } else {
-        setLocalToggle(true)
-      }
+      setLocalToggle(value)
+      onSubtitleChange(value, activeSubtitleSlug)
     },
-    [onSubtitleChange, onClose],
+    [onSubtitleChange, activeSubtitleSlug],
   )
 
   const handleSelect = useCallback(
     (sub: WatchSubtitle) => {
+      const now = Date.now()
+      if (now - lastSelectRef.current < 500) return
+      lastSelectRef.current = now
       onSubtitleChange(true, sub.languageSlug)
-      onClose()
+      if (!localToggle) {
+        // Let the switch animate to ON before dismissing.
+        setLocalToggle(true)
+        closeTimer.current = setTimeout(onClose, 300)
+      } else {
+        onClose()
+      }
     },
-    [onSubtitleChange, onClose],
+    [onSubtitleChange, onClose, localToggle],
   )
 
   const renderItem = useCallback(
@@ -110,8 +142,8 @@ export function SubtitleSheetContent({
     )
   }
 
-  return (
-    <View style={styles.container}>
+  const header = (
+    <View style={styles.header}>
       <View style={styles.toggleRow}>
         <Text style={[styles.toggleLabel, typography.titleSmall]}>
           Subtitles
@@ -128,7 +160,7 @@ export function SubtitleSheetContent({
 
       <View style={styles.searchContainer}>
         <Ionicons name="search-outline" size={18} color={TEXT_SECONDARY} />
-        <BottomSheetTextInput
+        <TextInput
           style={[styles.searchInput, typography.body]}
           placeholder="Search subtitles..."
           placeholderTextColor={TEXT_SECONDARY}
@@ -136,16 +168,21 @@ export function SubtitleSheetContent({
           onChangeText={setQuery}
           autoCapitalize="none"
           autoCorrect={false}
-          editable={localToggle}
+          accessibilityLabel="Search subtitles"
         />
         {query.length > 0 && (
-          <Pressable onPress={() => setQuery("")} hitSlop={8}>
+          <Pressable
+            onPress={() => setQuery("")}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Clear search"
+          >
             <Ionicons name="close-circle" size={18} color={TEXT_SECONDARY} />
           </Pressable>
         )}
       </View>
 
-      {localToggle && activeSubtitle && (
+      {activeSubtitle && (
         <View style={styles.currentSection}>
           <Text style={[styles.currentLabel, typography.bodySmall]}>
             Current
@@ -167,23 +204,23 @@ export function SubtitleSheetContent({
           </View>
         </View>
       )}
+    </View>
+  )
 
-      <View
-        style={[!localToggle && styles.listDisabled]}
-        pointerEvents={localToggle ? "auto" : "none"}
-      >
-        <BottomSheetFlatList
+  return (
+    <View style={styles.container}>
+      <View style={{ height: listHeight }}>
+        <FlashList
           data={filtered}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={header}
           contentContainerStyle={{
             paddingHorizontal: HORIZONTAL_PADDING,
-            paddingBottom: insets.bottom + 16,
+            paddingBottom: insets.bottom + 24,
           }}
           showsVerticalScrollIndicator={false}
-          initialNumToRender={15}
-          maxToRenderPerBatch={20}
-          windowSize={5}
           ListEmptyComponent={
             <View style={styles.emptySearch}>
               <Text style={[styles.emptySearchText, typography.body]}>
@@ -201,6 +238,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    paddingTop: 36,
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
@@ -217,7 +257,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 12,
   },
   toggleLabel: {
@@ -229,7 +268,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginHorizontal: HORIZONTAL_PADDING,
     marginBottom: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -243,16 +281,12 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   currentSection: {
-    paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 12,
   },
   currentLabel: {
     color: TEXT_SECONDARY,
     fontFamily: "System",
     marginBottom: 6,
-  },
-  listDisabled: {
-    opacity: 0.5,
   },
   listRow: {
     flexDirection: "row",

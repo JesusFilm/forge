@@ -1,6 +1,6 @@
 import type { SeedPromptCase } from "./types"
 
-export const SEARCH_EVAL_SEED_PROMPT_SET_VERSION = "search-eval-seed-prompts/v1"
+export const SEARCH_EVAL_SEED_PROMPT_SET_VERSION = "search-eval-seed-prompts/v2"
 
 export const SEARCH_EVAL_SEED_PROMPTS: readonly SeedPromptCase[] = [
   {
@@ -73,6 +73,34 @@ export const SEARCH_EVAL_SEED_PROMPTS: readonly SeedPromptCase[] = [
     queryText: "videos d'espoir pour les jeunes",
     source: "seed",
     tags: ["locale", "audience", "youth"],
+  },
+  {
+    id: "seed-portuguese-jesus",
+    locale: "pt",
+    queryText: "Jesus em português",
+    source: "seed",
+    tags: ["locale", "core-title"],
+  },
+  {
+    id: "seed-german-who-is-jesus",
+    locale: "de",
+    queryText: "Wer ist Jesus?",
+    source: "seed",
+    tags: ["locale", "question", "new-believer"],
+  },
+  {
+    id: "seed-russian-who-is-jesus",
+    locale: "ru",
+    queryText: "Кто такой Иисус?",
+    source: "seed",
+    tags: ["locale", "question", "new-believer"],
+  },
+  {
+    id: "seed-arabic-who-is-jesus",
+    locale: "ar",
+    queryText: "من هو يسوع؟",
+    source: "seed",
+    tags: ["locale", "question", "new-believer"],
   },
 ] as const
 

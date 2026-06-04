@@ -301,6 +301,40 @@ describe("env", () => {
       expect(source).toMatch(/event=search_api_keys_env_var_retired/)
     })
 
+    it("does not expose removed Admin search-eval harness env keys", async () => {
+      const { readFile } = await import("node:fs/promises")
+      const { fileURLToPath } = await import("node:url")
+      const source = await readFile(
+        fileURLToPath(new URL("./env.ts", import.meta.url)),
+        "utf8",
+      )
+
+      expect(source).not.toMatch(/\bSEARCH_API_KEY:\s*z\./)
+      expect(source).not.toMatch(/\bSEARCH_API_KEY:\s*emptyToUndefined/)
+      expect(source).not.toMatch(/\bOPENROUTER_JUDGE_MODEL\b/)
+      expect(source).not.toMatch(/\bEVAL_JUDGE_CONCURRENCY\b/)
+      expect(source).not.toMatch(/\bEVAL_SEARCH_CONCURRENCY\b/)
+      expect(source).not.toMatch(/\bEVAL_GIT_SHA\b/)
+    })
+
+    it("does not expose removed Admin search-eval harness package scripts", async () => {
+      const { readFile } = await import("node:fs/promises")
+      const { fileURLToPath } = await import("node:url")
+      const packageJson = JSON.parse(
+        await readFile(
+          fileURLToPath(new URL("../../package.json", import.meta.url)),
+          "utf8",
+        ),
+      ) as { scripts?: Record<string, string> }
+
+      expect(Object.keys(packageJson.scripts ?? {})).not.toContain(
+        "eval:search",
+      )
+      expect(JSON.stringify(packageJson.scripts ?? {})).not.toContain(
+        "eval-search.ts",
+      )
+    })
+
     it("error message does NOT contain the offending key value", () => {
       try {
         assertBearerCsvsDisjoint({

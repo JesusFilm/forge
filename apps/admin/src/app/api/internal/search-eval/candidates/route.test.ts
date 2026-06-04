@@ -15,9 +15,9 @@ vi.mock("@/auth/search-trace-bearer", () => ({
   isValidSearchTraceSamplingBearer,
 }))
 vi.mock("@/db/client", () => ({ prisma: {} }))
-vi.mock("@/services/search-eval/candidates", async (original) => {
+vi.mock("@/services/search-eval-candidates", async (original) => {
   const actual =
-    await original<typeof import("@/services/search-eval/candidates")>()
+    await original<typeof import("@/services/search-eval-candidates")>()
   return {
     ...actual,
     archiveSearchEvalCandidate,
@@ -264,7 +264,7 @@ describe("POST /api/internal/search-eval/candidates", () => {
 
   it("maps candidate validation errors to a 400 response", async () => {
     const { SearchEvalCandidateStoreError } =
-      await import("@/services/search-eval/candidates")
+      await import("@/services/search-eval-candidates")
     storeSearchEvalCandidates.mockRejectedValueOnce(
       new SearchEvalCandidateStoreError(
         "validation",

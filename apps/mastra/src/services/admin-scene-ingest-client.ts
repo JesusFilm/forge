@@ -27,7 +27,9 @@ export type AdminSceneEmbeddingIngestPayload = {
   model: {
     name: string
     dimensions: number
+    nativeDimensions?: number
     provider?: string
+    transformVersion?: string
   }
   generation: {
     mode: SceneEmbeddingGenerationMode

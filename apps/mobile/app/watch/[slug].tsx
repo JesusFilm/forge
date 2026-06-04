@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  ActivityIndicator,
   Animated,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -11,18 +10,22 @@ import {
   Text,
   View,
 } from "react-native"
-import { useLocalSearchParams, useNavigation } from "expo-router"
-import { useQuery } from "@apollo/client/react"
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router"
+import { useApolloClient, useQuery } from "@apollo/client/react"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/queries"
+import { schedulePersist } from "../../src/lib/cachePersistence"
 import type { AdminBlock } from "../../src/lib/queries"
 import {
   normalizeVideo,
   type WatchBibleCitation,
 } from "../../src/lib/normalizeVideo"
-import { TEXT_PRIMARY } from "../../src/lib/color"
+import { decodeWatchSeed } from "../../src/lib/watchSeed"
+import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxThumbnail"
+import { ACCENT } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
 import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
+import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
 import { UpNextCarousel } from "../../src/components/watch/UpNextCarousel"
@@ -32,52 +35,125 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
 import { useBibleVerses } from "../../src/hooks/useBibleVerses"
-import type GorhomBottomSheet from "@gorhom/bottom-sheet"
-import { BottomSheet } from "../../src/components/ui/BottomSheet"
-import { DownloadSheetContent } from "../../src/components/watch/DownloadSheet"
-import { LanguageSheetContent } from "../../src/components/watch/LanguageSheet"
-import { SubtitleSheetContent } from "../../src/components/watch/SubtitleSheet"
 import { Snackbar } from "../../src/components/ui/Snackbar"
+import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 
 const PLAYER_HEIGHT_RATIO = 9 / 16
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
 
 export default function WatchVideoPage() {
-  const { slug } = useLocalSearchParams<{ slug: string }>()
+  const { slug, seed: seedParam } = useLocalSearchParams<{
+    slug: string
+    seed?: string
+  }>()
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
   const scrollViewRef = useRef<ScrollView>(null)
 
   const navigation = useNavigation()
+  const router = useRouter()
   const [showScrollTop, setShowScrollTop] = useState(false)
   const scrollTopOpacity = useRef(new Animated.Value(0)).current
   const titleOpacity = useRef(new Animated.Value(0)).current
   const [showNavTitle, setShowNavTitle] = useState(false)
   const insets = useSafeAreaInsets()
-  const downloadSheetRef = useRef<GorhomBottomSheet>(null)
-  const [downloadResetKey, setDownloadResetKey] = useState(0)
-  const downloadPrevIndex = useRef(-1)
-  const languageSheetRef = useRef<GorhomBottomSheet>(null)
-  const [languageResetKey, setLanguageResetKey] = useState(0)
-  const languagePrevIndex = useRef(-1)
-  const subtitleSheetRef = useRef<GorhomBottomSheet>(null)
-  const [subtitleResetKey, setSubtitleResetKey] = useState(0)
-  const subtitlePrevIndex = useRef(-1)
-  const [activeVariantIndex, setActiveVariantIndex] = useState(0)
-  const [subtitleEnabled, setSubtitleEnabled] = useState(false)
-  const [snackbarVisible, setSnackbarVisible] = useState(false)
-  const [activeSubtitleSlug, setActiveSubtitleSlug] = useState<string | null>(
-    null,
-  )
 
-  const { data, loading, error } = useQuery(GET_VIDEO_BY_SLUG, {
+  const {
+    video,
+    setVideo,
+    activeVariant,
+    activeVariantMedia,
+    ensureActiveVariantMedia,
+    subtitleEnabled,
+    activeSubtitleSlug,
+    snackbarMessage,
+    setSnackbarMessage,
+  } = useWatchSession()
+
+  const apolloClient = useApolloClient()
+  const { data, loading, error, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { slug: decodedSlug, locale: "en" },
     skip: !decodedSlug,
-    fetchPolicy: "cache-and-network",
+    // cache-first, NOT cache-and-network: this payload is huge for videos with
+    // many dubs (e.g. birth-of-jesus is ~9.5MB / 2,259 dubs). cache-and-network
+    // refetched and re-parsed all of it on every (re-)entry, then re-ran
+    // normalizeVideo over every dub on the JS thread — freezing the whole screen
+    // (player, buttons, expanders all dead). cache-first reads the warm cache on
+    // re-entry with no refetch. First cold load still fetches once.
+    // NOTE: if cache persistence (U7) is enabled, revisit this — a restored
+    // snapshot strips volatile URLs, so cache-first must be paired with a
+    // cold-start revalidation there.
+    fetchPolicy: "cache-first",
+    // Render whatever the cache holds (prefetch) the moment it exists.
+    returnPartialData: true,
   })
 
-  const video = useMemo(() => normalizeVideo(data?.videoBySlug ?? null), [data])
-  const activeVariant = video?.variants[activeVariantIndex] ?? null
+  const normalized = useMemo(
+    // returnPartialData widens videoBySlug to a deep-partial type; normalizeVideo
+    // is written to tolerate missing fields (returns null without a documentId),
+    // so treat the partial as the raw shape it guards internally.
+    () =>
+      normalizeVideo(
+        (data?.videoBySlug ?? null) as Parameters<typeof normalizeVideo>[0],
+      ),
+    [data],
+  )
+
+  // Seed carried from the list surface (search / Up Next) so the screen paints
+  // instantly from data already in hand, before the query resolves.
+  const seed = useMemo(() => decodeWatchSeed(seedParam), [seedParam])
+  const seedStreamingUrl = useMemo(
+    () => muxHlsUrlFromPlaybackId(seed?.playbackId ?? null),
+    [seed],
+  )
+
+  // Publish the fetched video into the shared session so the sheet routes can
+  // read variants/subtitles without refetching. Keyed on the normalized object
+  // so partial → full enrichment (returnPartialData) republishes; the session
+  // guards against resetting user selections across these republishes.
+  useEffect(() => {
+    if (normalized) {
+      setVideo(normalized)
+      // Persist after a video the user is likely to revisit lands (no-op unless
+      // cache persistence is enabled).
+      schedulePersist(apolloClient)
+    }
+  }, [normalized, setVideo, apolloClient])
+
+  // Navigated to a different video that hasn't loaded yet (e.g. Up Next): drop
+  // the previous video from the session so the loading guard shows the spinner
+  // instead of the prior video's content, and the sheets don't read its stale
+  // variants. The publish effect above repopulates once the new data arrives.
+  useEffect(() => {
+    if (video && video.slug !== decodedSlug && !normalized) {
+      setVideo(null)
+    }
+  }, [decodedSlug, video, normalized, setVideo])
+
   const bibleQuotes = useBibleVerses(video?.bibleCitations ?? EMPTY_CITATIONS)
+
+  // Captions on (possibly carried over a language switch) → make sure the
+  // active dub's subtitles are fetched so the player has a track to show.
+  useEffect(() => {
+    if (subtitleEnabled) ensureActiveVariantMedia()
+  }, [subtitleEnabled, ensureActiveVariantMedia])
+
+  const subtitleVttSrc = useMemo(() => {
+    if (!subtitleEnabled || !activeSubtitleSlug || !activeVariantMedia)
+      return null
+    return (
+      activeVariantMedia.subtitles.find(
+        (s) => s.languageSlug === activeSubtitleSlug,
+      )?.vttSrc ?? null
+    )
+  }, [subtitleEnabled, activeSubtitleSlug, activeVariantMedia])
+
+  // Prefer the resolved video; fall back to the seed so first paint has
+  // content. The player source resolves to the active variant, then the
+  // video's first-playable stream, then the seed-derived Mux URL.
+  const displayTitle = video?.title ?? seed?.title ?? null
+  const displayPoster = video?.posterUrl ?? seed?.imageUrl ?? null
+  const playerSource =
+    activeVariant?.hls ?? video?.streamingUrl ?? seedStreamingUrl
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -113,11 +189,11 @@ export default function WatchVideoPage() {
           style={[styles.navTitle, { opacity: titleOpacity }]}
           numberOfLines={1}
         >
-          {video?.title ?? ""}
+          {displayTitle ?? ""}
         </Animated.Text>
       ),
     })
-  }, [navigation, video?.title, titleOpacity])
+  }, [navigation, displayTitle, titleOpacity])
 
   const handleScrollToTop = useCallback(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true })
@@ -131,27 +207,39 @@ export default function WatchVideoPage() {
     Share.share({ message: shareUrl, title: video.title ?? undefined })
   }, [video, activeVariant?.languageSlug])
 
-  if (loading && !video) {
+  const hasVideo = video != null
+
+  // Cold deep link with nothing to paint yet → layout-matched skeleton,
+  // never a blank full-screen spinner.
+  if (!hasVideo && seed == null && loading) {
     return (
-      <View style={layout.centered}>
-        <ActivityIndicator size="large" color={TEXT_PRIMARY} />
+      <View style={layout.screenContainer}>
+        <VideoDetailSkeleton />
       </View>
     )
   }
 
-  if (error || !video) {
+  // No video, no seed, not loading → genuinely nothing to show.
+  if (!hasVideo && seed == null) {
     return (
       <View style={layout.centered}>
         <Text style={text.errorTitle}>Video Not Found</Text>
         <Text style={text.errorMessage}>
           {error?.message ?? "This video could not be loaded."}
         </Text>
+        <Text
+          style={styles.retryLink}
+          onPress={() => void refetch()}
+          accessibilityRole="button"
+        >
+          Retry
+        </Text>
       </View>
     )
   }
 
   const studyQuestionsBlock: AdminBlock | null =
-    video.studyQuestions.length > 0
+    hasVideo && video.studyQuestions.length > 0
       ? {
           __typename: "RelatedQuestionsBlock",
           heading: "Study Questions",
@@ -165,7 +253,7 @@ export default function WatchVideoPage() {
       : null
 
   const bibleCitationsBlock: AdminBlock | null =
-    video.bibleCitations.length > 0
+    hasVideo && video.bibleCitations.length > 0
       ? {
           __typename: "BibleQuotesCarouselBlock",
           heading: "Bible Quotes",
@@ -184,45 +272,68 @@ export default function WatchVideoPage() {
         scrollEventThrottle={16}
       >
         <VideoPlayer
-          streamingUrl={activeVariant?.hls ?? video.streamingUrl}
-          posterUrl={video.posterUrl}
+          streamingUrl={playerSource}
+          posterUrl={displayPoster}
+          subtitleVttSrc={subtitleVttSrc}
           onPlayingChange={undefined}
         />
 
         <VideoMetadata
-          label={video.label}
-          title={video.title}
+          label={video?.label ?? null}
+          title={displayTitle}
           subtitle={null}
         />
 
-        <ActionButtonRow
-          onDownload={() => downloadSheetRef.current?.expand()}
-          onLanguage={() => languageSheetRef.current?.snapToIndex(0)}
-          onSubtitles={() => subtitleSheetRef.current?.snapToIndex(0)}
-          onShare={handleShare}
-        />
-
-        <VideoDescription description={video.description} />
-
-        {video.siblings.length > 0 && (
-          <View style={styles.sectionGap}>
-            <UpNextCarousel
-              siblings={video.siblings}
-              currentSlug={video.slug}
+        {hasVideo ? (
+          <>
+            <ActionButtonRow
+              onDownload={() => router.push("/watch/download")}
+              onLanguage={() => router.push("/watch/language")}
+              onSubtitles={() => router.push("/watch/subtitle")}
+              onShare={handleShare}
             />
-          </View>
-        )}
 
-        {studyQuestionsBlock != null && (
-          <View style={styles.sectionGap}>
-            <RelatedQuestionsRenderer section={studyQuestionsBlock} />
-          </View>
-        )}
+            <VideoDescription description={video.description} />
 
-        {bibleCitationsBlock != null && (
-          <View style={styles.sectionGap}>
-            <BibleQuotesCarouselRenderer section={bibleCitationsBlock} />
-          </View>
+            {video.siblings.length > 0 && (
+              <View style={styles.sectionGap}>
+                <UpNextCarousel
+                  siblings={video.siblings}
+                  currentSlug={video.slug}
+                />
+              </View>
+            )}
+
+            {studyQuestionsBlock != null && (
+              <View style={styles.sectionGap}>
+                <RelatedQuestionsRenderer section={studyQuestionsBlock} />
+              </View>
+            )}
+
+            {bibleCitationsBlock != null && (
+              <View style={styles.sectionGap}>
+                <BibleQuotesCarouselRenderer section={bibleCitationsBlock} />
+              </View>
+            )}
+          </>
+        ) : (
+          <>
+            {error != null && (
+              <View style={styles.inlineError}>
+                <Text style={text.errorMessage}>
+                  Couldn&apos;t load full details.
+                </Text>
+                <Text
+                  style={styles.retryLink}
+                  onPress={() => void refetch()}
+                  accessibilityRole="button"
+                >
+                  Retry
+                </Text>
+              </View>
+            )}
+            <VideoDetailSkeleton variant="sections" />
+          </>
         )}
       </ScrollView>
 
@@ -244,72 +355,10 @@ export default function WatchVideoPage() {
         </Animated.View>
       )}
 
-      <BottomSheet
-        ref={downloadSheetRef}
-        snapPoints={["75%"]}
-        onChange={(index) => {
-          if (downloadPrevIndex.current === -1 && index >= 0)
-            setDownloadResetKey((k) => k + 1)
-          downloadPrevIndex.current = index
-        }}
-      >
-        <DownloadSheetContent
-          key={downloadResetKey}
-          videoTitle={video.title}
-          duration={video.duration}
-          languageName={activeVariant?.languageName ?? null}
-          downloads={activeVariant?.downloads ?? []}
-          onDownloadComplete={() => setSnackbarVisible(true)}
-        />
-      </BottomSheet>
-
-      <BottomSheet
-        ref={languageSheetRef}
-        snapPoints={["75%", "100%"]}
-        onChange={(index) => {
-          if (languagePrevIndex.current === -1 && index >= 0)
-            setLanguageResetKey((k) => k + 1)
-          languagePrevIndex.current = index
-        }}
-      >
-        <LanguageSheetContent
-          key={languageResetKey}
-          variants={video.variants}
-          activeVariantSlug={activeVariant?.slug ?? ""}
-          onLanguageChange={(variantSlug) => {
-            const idx = video.variants.findIndex((v) => v.slug === variantSlug)
-            if (idx >= 0) setActiveVariantIndex(idx)
-          }}
-          onClose={() => languageSheetRef.current?.close()}
-        />
-      </BottomSheet>
-
-      <BottomSheet
-        ref={subtitleSheetRef}
-        snapPoints={["75%", "100%"]}
-        onChange={(index) => {
-          if (subtitlePrevIndex.current === -1 && index >= 0)
-            setSubtitleResetKey((k) => k + 1)
-          subtitlePrevIndex.current = index
-        }}
-      >
-        <SubtitleSheetContent
-          key={subtitleResetKey}
-          subtitles={activeVariant?.subtitles ?? []}
-          subtitleEnabled={subtitleEnabled}
-          activeSubtitleSlug={activeSubtitleSlug}
-          onSubtitleChange={(enabled, slug) => {
-            setSubtitleEnabled(enabled)
-            setActiveSubtitleSlug(slug)
-          }}
-          onClose={() => subtitleSheetRef.current?.close()}
-        />
-      </BottomSheet>
-
       <Snackbar
-        message="Download complete"
-        visible={snackbarVisible}
-        onDismiss={() => setSnackbarVisible(false)}
+        message={snackbarMessage ?? "Download complete"}
+        visible={snackbarMessage != null}
+        onDismiss={() => setSnackbarMessage(null)}
       />
     </View>
   )
@@ -331,6 +380,19 @@ const styles = StyleSheet.create({
   },
   sectionGap: {
     marginTop: 16,
+  },
+  inlineError: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  retryLink: {
+    color: ACCENT,
+    fontFamily: "System",
+    fontSize: 15,
+    fontWeight: "600",
+    marginTop: 12,
+    textAlign: "center",
   },
   scrollTopFab: {
     position: "absolute",

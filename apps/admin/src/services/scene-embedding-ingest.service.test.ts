@@ -19,9 +19,14 @@ const { ingestSceneEmbeddings, _internals } =
 function buildPrisma() {
   const queryRaw = vi.fn(async (..._args: unknown[]): Promise<unknown[]> => [])
   const findVideo = vi.fn(
-    async (): Promise<{ id: string; coreId: string } | null> => ({
+    async (): Promise<{
+      id: string
+      coreId: string
+      primaryLanguage: { bcp47: string | null } | null
+    } | null> => ({
       id: "video-1",
       coreId: "core-1",
+      primaryLanguage: { bcp47: "en" },
     }),
   )
   const findEdition = vi.fn(
@@ -65,9 +70,11 @@ function payload(overrides?: Record<string, unknown>) {
       generatedAt: "2026-05-25T00:00:00.000Z",
     },
     model: {
-      name: "openai/text-embedding-3-small",
-      provider: "openai",
+      name: "embeddings",
+      provider: "jesus-film-ai-gateway",
       dimensions: 1536,
+      nativeDimensions: 4096,
+      transformVersion: "matryoshka-truncate-1536-v1",
     },
     generation: {
       mode: "idempotent",
@@ -131,8 +138,14 @@ function existingSummary(overrides: Record<string, unknown> = {}) {
     healthy_count: 1,
     source_hash_count: 1,
     source_hashes: ["sha256:test"],
-    models: ["openai/text-embedding-3-small"],
+    models: ["embeddings"],
     dimensions: [1536],
+    embedding_provider_count: 1,
+    embedding_providers: ["jesus-film-ai-gateway"],
+    embedding_native_dimension_count: 1,
+    embedding_native_dimensions: [4096],
+    embedding_transform_version_count: 1,
+    embedding_transform_versions: ["matryoshka-truncate-1536-v1"],
     ...overrides,
   }
 }
@@ -174,6 +187,9 @@ describe("ingestSceneEmbeddings", () => {
           }),
         ],
         provenance: expect.objectContaining({
+          embeddingProvider: "jesus-film-ai-gateway",
+          embeddingNativeDimensions: 4096,
+          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
           sourceArtifactKey: "42/scene-analysis.json",
           sourceArtifactVersion: "manager-scene-analysis-v1",
           sourceProvider: "manager",
@@ -195,6 +211,46 @@ describe("ingestSceneEmbeddings", () => {
     const result = await ingestSceneEmbeddings(
       prisma as never,
       payload({
+        source: {
+          ...(body.source as object),
+          contentHash: hash,
+        },
+      }),
+    )
+
+    expect(result.status).toBe("unchanged")
+    expect(writeSceneEmbeddingPayloadMock).not.toHaveBeenCalled()
+  })
+
+  it("keeps migrated legacy OpenAI scene rows idempotent when provider was previously null", async () => {
+    const prisma = buildPrisma()
+    const body = payload({
+      model: {
+        name: "openai/text-embedding-3-small",
+        provider: "openai",
+        dimensions: 1536,
+      },
+    })
+    const hash = hashFor(body)
+    vi.mocked(prisma.$queryRaw)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        existingSummary({
+          source_hashes: [hash],
+          models: ["openai/text-embedding-3-small"],
+          embedding_provider_count: 0,
+          embedding_providers: [],
+          embedding_native_dimension_count: 1,
+          embedding_native_dimensions: [1536],
+          embedding_transform_version_count: 0,
+          embedding_transform_versions: [],
+        }),
+      ])
+
+    const result = await ingestSceneEmbeddings(
+      prisma as never,
+      payload({
+        model: body.model as Record<string, unknown>,
         source: {
           ...(body.source as object),
           contentHash: hash,
@@ -259,6 +315,32 @@ describe("ingestSceneEmbeddings", () => {
     )
 
     expect(result.status).toBe("unchanged")
+    expect(writeSceneEmbeddingPayloadMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects repair mode when existing scene provenance differs", async () => {
+    const prisma = buildPrisma()
+    vi.mocked(prisma.$queryRaw)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        existingSummary({ source_hashes: ["sha256:old"] }),
+      ])
+
+    const result = await ingestSceneEmbeddings(
+      prisma as never,
+      payload({
+        generation: {
+          mode: "repair",
+          generatedAt: "2026-05-25T00:01:00.000Z",
+          mastraRunId: "run-repair-mismatch",
+        },
+      }),
+    )
+
+    expect(result).toMatchObject({
+      status: "rejected",
+      reason: "repair_requires_matching_provenance",
+    })
     expect(writeSceneEmbeddingPayloadMock).not.toHaveBeenCalled()
   })
 
@@ -375,6 +457,51 @@ describe("ingestSceneEmbeddings", () => {
     expect(writeSceneEmbeddingPayloadMock).not.toHaveBeenCalled()
   })
 
+  it("rejects target-locale writes sourced from the legacy source-language artifact", async () => {
+    const prisma = buildPrisma()
+
+    await expect(
+      ingestSceneEmbeddings(
+        prisma as never,
+        payload({
+          locale: "es",
+          source: {
+            ...(payload().source as object),
+            artifactKey: "42/scene-analysis.json",
+            contentHash: undefined,
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "source_locale_mismatch" })
+
+    expect(writeSceneEmbeddingPayloadMock).not.toHaveBeenCalled()
+  })
+
+  it("accepts target-locale writes sourced from that locale's scene artifact", async () => {
+    const prisma = buildPrisma()
+    const body = payload({
+      locale: "es",
+      source: {
+        ...(payload().source as object),
+        artifactKey: "42/scene-analysis-es.json",
+      },
+    })
+    ;(body.source as Record<string, unknown>).contentHash = hashFor(body)
+
+    const result = await ingestSceneEmbeddings(prisma as never, body)
+
+    expect(result.status).toBe("created")
+    expect(writeSceneEmbeddingPayloadMock).toHaveBeenCalledWith(
+      prisma,
+      expect.objectContaining({
+        locale: "es",
+        provenance: expect.objectContaining({
+          sourceArtifactKey: "42/scene-analysis-es.json",
+        }),
+      }),
+    )
+  })
+
   it("rejects dimension drift, source hash drift, incomplete provenance, and mismatched Admin targets before writing", async () => {
     const prisma = buildPrisma()
     await expect(
@@ -382,8 +509,11 @@ describe("ingestSceneEmbeddings", () => {
         prisma as never,
         payload({
           model: {
-            name: "openai/text-embedding-3-small",
+            name: "embeddings",
+            provider: "jesus-film-ai-gateway",
             dimensions: 768,
+            nativeDimensions: 4096,
+            transformVersion: "matryoshka-truncate-1536-v1",
           },
         }),
       ),
