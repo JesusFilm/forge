@@ -5,6 +5,7 @@ import { setRequestLocale } from "next-intl/server"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
+import { WatchHomePage } from "@/components/home/WatchHomePage"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
@@ -22,6 +23,7 @@ import {
   generateSeriesMetadata,
   getWatchPageMetadata,
 } from "@/lib/experience-metadata"
+import { resolveWatchHome } from "@/lib/watch-home"
 import {
   isWatchCtaTextCopyEnabled,
   isWatchQuestionPanelEnabled,
@@ -276,9 +278,18 @@ async function renderOneSegment(shape: {
   isLanguageHome: boolean
 }) {
   const { slug, locale, isLanguageHome } = shape
-  const result = isLanguageHome
-    ? await resolveWatchPage(locale)
-    : await resolveWatchExperiencePage(locale, slug)
+  if (isLanguageHome) {
+    const home = await resolveWatchHome(locale)
+    if (home.error) {
+      return <ExperienceError message={home.error.message} />
+    }
+    if (!home.data.heroSlides.length && !home.data.sections.length) {
+      return <ExperienceEmpty />
+    }
+    return <WatchHomePage model={home.data} />
+  }
+
+  const result = await resolveWatchExperiencePage(locale, slug)
 
   if (result.error) {
     if (isWatchPageMissingError(result.error)) {

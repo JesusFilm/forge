@@ -1017,6 +1017,10 @@ type Query {
   """
   videosByCoreIds(coreIds: [String!]!, targetLocale: String): [VideoForEnrichment!]
   """
+  Fetch ordered, admin-backed Video records for Forge's public /watch home programming. Max 100 Core ids per call; unknown Core ids are omitted so consumers can report source gaps.
+  """
+  watchHomeVideos(coreIds: [String!]!): [Video!]!
+  """
   Per-locale homepage configuration. Replaces Strapi's `watchSetting` (consumer-migration U2, 2026-05-11). Locale-fallback is STRICT NULL.
   """
   watchSetting(locale: String!): WatchSetting

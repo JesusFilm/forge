@@ -1,0 +1,88 @@
+import { adminGraphql } from "@forge/admin-graphql"
+
+export const watchHomeVideoFragment = adminGraphql(`
+  fragment WatchHomeVideo on Video @_unmask {
+    documentId: id
+    coreId
+    slug
+    label
+    durationSeconds
+    primaryLanguage {
+      coreId
+      bcp47
+      slug
+    }
+    images {
+      documentId: id
+      url
+      thumbnail
+      mobileCinematicHigh
+      mobileCinematicLow
+      videoStill
+    }
+    locales(locale: $locale, languageSlug: $languageSlug) {
+      documentId: id
+      languageSlug
+      title
+      description
+      snippet
+      imageAlt
+    }
+    variants: dubs {
+      documentId: id
+      slug
+      published
+      hls
+      duration
+      language {
+        coreId
+        bcp47
+        slug
+        name
+      }
+      muxVideo {
+        playbackId
+      }
+    }
+    children {
+      child {
+        documentId: id
+        coreId
+        slug
+        label
+        durationSeconds
+        images {
+          documentId: id
+          url
+          thumbnail
+          mobileCinematicHigh
+          mobileCinematicLow
+          videoStill
+        }
+        locales(locale: $locale, languageSlug: $languageSlug) {
+          documentId: id
+          languageSlug
+          title
+          description
+          snippet
+          imageAlt
+        }
+      }
+    }
+  }
+`)
+
+export const getWatchHomeVideosOperation = adminGraphql(
+  `
+    query GetWatchHomeVideos(
+      $coreIds: [String!]!
+      $locale: String!
+      $languageSlug: String
+    ) {
+      watchHomeVideos(coreIds: $coreIds) {
+        ...WatchHomeVideo
+      }
+    }
+  `,
+  [watchHomeVideoFragment],
+)

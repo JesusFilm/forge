@@ -835,6 +835,74 @@ describe("VideoService", () => {
     })
   })
 
+  describe("getWatchHomeVideos", () => {
+    it("returns videos in caller order, omits unknown ids, and preserves duplicates", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([
+        { id: "video-2", coreId: "core-2" },
+        { id: "video-1", coreId: "core-1" },
+      ])
+
+      const result = await service.getWatchHomeVideos({
+        coreIds: ["core-1", "core-missing", "core-2", "core-1"],
+        query: { include: { images: true } },
+      })
+
+      expect(result.map((row) => row.coreId)).toEqual([
+        "core-1",
+        "core-2",
+        "core-1",
+      ])
+      expect(prisma.video.findMany).toHaveBeenCalledWith({
+        include: { images: true },
+        where: {
+          coreId: { in: ["core-1", "core-missing", "core-2"] },
+          deletedAt: null,
+        },
+      })
+    })
+
+    it("returns empty array on empty input without Prisma round-trip", async () => {
+      const result = await service.getWatchHomeVideos({
+        coreIds: [],
+        query: {},
+      })
+
+      expect(result).toEqual([])
+      expect(prisma.video.findMany).not.toHaveBeenCalled()
+    })
+
+    it("forces coreId into select-shaped queries so caller ordering stays stable", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([
+        { id: "video-1", coreId: "core-1" },
+      ])
+
+      await service.getWatchHomeVideos({
+        coreIds: ["core-1"],
+        query: { select: { id: true } },
+      })
+
+      expect(prisma.video.findMany).toHaveBeenCalledWith({
+        select: { id: true, coreId: true },
+        where: {
+          coreId: { in: ["core-1"] },
+          deletedAt: null,
+        },
+      })
+    })
+
+    it("throws VideoLookupValidationError when coreIds exceeds cap", async () => {
+      const tooMany = Array.from(
+        { length: VIDEOS_BY_CORE_IDS_MAX + 1 },
+        (_, i) => `core-${i}`,
+      )
+
+      await expect(
+        service.getWatchHomeVideos({ coreIds: tooMany, query: {} }),
+      ).rejects.toBeInstanceOf(VideoLookupValidationError)
+      expect(prisma.video.findMany).not.toHaveBeenCalled()
+    })
+  })
+
   describe("getChildDubLanguages", () => {
     it("queries playable dubs of the video's children, deduped by language for DISTINCT ON", async () => {
       prisma.videoDub.findMany.mockResolvedValueOnce([])

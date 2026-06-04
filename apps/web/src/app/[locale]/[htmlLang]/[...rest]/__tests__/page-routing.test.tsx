@@ -16,10 +16,12 @@ const {
   resolveSeriesEpisodeBySlugMock,
   resolveWatchExperiencePageMock,
   resolveWatchPageMock,
+  resolveWatchHomeMock,
   notFoundMock,
   redirectMock,
   seriesPageClientMock,
   watchPageClientMock,
+  watchHomePageMock,
   watchQuestionPanelMock,
   experienceEmptyMock,
   experienceErrorMock,
@@ -33,6 +35,7 @@ const {
   resolveSeriesEpisodeBySlugMock: vi.fn(),
   resolveWatchExperiencePageMock: vi.fn(),
   resolveWatchPageMock: vi.fn(),
+  resolveWatchHomeMock: vi.fn(),
   notFoundMock: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND")
   }),
@@ -44,6 +47,7 @@ const {
       null,
   ),
   watchPageClientMock: vi.fn((_props: unknown) => null),
+  watchHomePageMock: vi.fn((_props: unknown) => null),
   watchQuestionPanelMock: vi.fn((_props: unknown) => null),
   experienceEmptyMock: vi.fn(() => null),
   experienceErrorMock: vi.fn(() => null),
@@ -70,6 +74,10 @@ vi.mock("@/lib/content", async () => {
   }
 })
 
+vi.mock("@/lib/watch-home", () => ({
+  resolveWatchHome: resolveWatchHomeMock,
+}))
+
 vi.mock("next/navigation", () => ({
   notFound: notFoundMock,
   redirect: redirectMock,
@@ -81,6 +89,10 @@ vi.mock("@/components/watch/SeriesPageClient", () => ({
 
 vi.mock("@/components/watch/WatchPageClient", () => ({
   WatchPageClient: watchPageClientMock,
+}))
+
+vi.mock("@/components/home/WatchHomePage", () => ({
+  WatchHomePage: watchHomePageMock,
 }))
 
 vi.mock("@/components/watch/WatchQuestionPanel", () => ({
@@ -124,6 +136,7 @@ beforeEach(() => {
   resolveSeriesEpisodeBySlugMock.mockReset()
   resolveWatchExperiencePageMock.mockReset()
   resolveWatchPageMock.mockReset()
+  resolveWatchHomeMock.mockReset()
   notFoundMock.mockClear()
   redirectMock.mockClear()
   // Default: no Experience curated for the slug.
@@ -131,12 +144,17 @@ beforeEach(() => {
     data: null,
     error: new Error("No experience found"),
   })
+  resolveWatchHomeMock.mockResolvedValue({
+    data: { heroSlides: [], sections: [], missingData: [] },
+    error: null,
+  })
   resolveWatchExperiencePageMock.mockResolvedValue({
     data: null,
     error: new Error("No experience found"),
   })
   seriesPageClientMock.mockClear()
   watchPageClientMock.mockClear()
+  watchHomePageMock.mockClear()
   watchQuestionPanelMock.mockClear()
   experienceEmptyMock.mockClear()
   experienceErrorMock.mockClear()
@@ -344,23 +362,22 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
     expect(experienceEmptyMock).not.toHaveBeenCalled()
   })
 
-  it("dispatches one-segment public language slugs to localized home", async () => {
-    resolveWatchPageMock.mockResolvedValue({
+  it("dispatches one-segment public language slugs to the modern localized home", async () => {
+    resolveWatchHomeMock.mockResolvedValue({
       data: {
-        kind: "experience",
-        experience: {
-          id: "exp-es",
-          slug: "home",
-          title: "Spanish Home",
-          blocks: [{ __typename: "TextBlock", id: "blk-1", text: "Hola" }],
-        },
+        heroSlides: [{ id: "hero-es" }],
+        sections: [],
+        missingData: [],
       },
       error: null,
     })
 
     await render1Seg("spanish-castilian.html")
 
-    expect(resolveWatchPageMock).toHaveBeenCalledWith("es")
+    expect(resolveWatchHomeMock).toHaveBeenCalledWith("es")
+    expect(watchHomePageMock).toHaveBeenCalled()
+    expect(resolveWatchPageMock).not.toHaveBeenCalled()
+    expect(resolveWatchExperiencePageMock).not.toHaveBeenCalled()
     expect(resolveWatchVideoBySlugMock).not.toHaveBeenCalled()
   })
 

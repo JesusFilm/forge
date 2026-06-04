@@ -1,0 +1,568 @@
+import type { ErrorLike } from "@apollo/client"
+import { cache } from "react"
+import { unstable_cache } from "next/cache"
+import type { AdminResultOf } from "@forge/admin-graphql"
+import client from "@/lib/admin-client"
+import { formatDuration } from "@/lib/format-duration"
+import { publicWatchHomeLanguageSlugForLocale } from "@/lib/locale"
+import {
+  asLocaleSlug,
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchEpisodePath,
+  watchVideoPath,
+} from "@/lib/routes"
+import {
+  getWatchHomeCoreIds,
+  WATCH_HOME_HERO_SOURCE_IDS,
+  WATCH_HOME_SECTIONS,
+  type WatchHomeSectionConfig,
+  type WatchHomeSourceConfig,
+} from "@/lib/watch-home-config"
+import { getWatchHomeVideosOperation } from "@/lib/fragments/watch-home"
+
+type WatchHomeVideosData = AdminResultOf<typeof getWatchHomeVideosOperation>
+type AdminHomeVideo = WatchHomeVideosData["watchHomeVideos"][number]
+type AdminHomeChildRelation = NonNullable<AdminHomeVideo["children"]>[number]
+type AdminHomeChildVideo = NonNullable<AdminHomeChildRelation["child"]>
+type AdminHomeImage = NonNullable<AdminHomeVideo["images"]>[number]
+type AdminHomeVariant = NonNullable<AdminHomeVideo["variants"]>[number]
+
+export type WatchHomeMissingField =
+  | "record"
+  | "title"
+  | "image"
+  | "href"
+  | "mux-insert"
+  | "local-thumbnail"
+
+export type WatchHomeMissingData = {
+  sectionId: string
+  sourceId: string
+  field: WatchHomeMissingField
+  detail: string
+  fallback: string
+  followUp: string
+}
+
+export type WatchHomeCard = {
+  id: string
+  sourceId: string
+  coreId: string
+  title: string
+  description: string | null
+  label: string
+  metaLabel: string | null
+  href: string | null
+  imageUrl: string | null
+  imageAlt: string
+  playbackId: string | null
+  durationSeconds: number | null
+  childCount: number
+  parentCoreId: string | null
+  parentSlug: string | null
+  missingData: WatchHomeMissingData[]
+}
+
+export type WatchHomeHeroSlide = WatchHomeCard & {
+  eyebrow: string
+}
+
+export type WatchHomeSection = {
+  id: string
+  eyebrow: string
+  title: string
+  description: string | null
+  layout: "rail" | "grid"
+  orientation: "horizontal" | "vertical"
+  showSequenceNumbers: boolean
+  cards: WatchHomeCard[]
+}
+
+export type WatchHomeModel = {
+  heroSlides: WatchHomeHeroSlide[]
+  sections: WatchHomeSection[]
+  missingData: WatchHomeMissingData[]
+}
+
+export type WatchHomeResult =
+  | { data: WatchHomeModel; error: null }
+  | { data: null; error: ErrorLike | Error }
+
+const ENGLISH_LANGUAGE_SLUG = asLocaleSlug("english")
+
+const LABEL_TEXT: Record<string, string> = {
+  BEHIND_THE_SCENES: "Behind the scenes",
+  COLLECTION: "Collection",
+  EPISODE: "Episode",
+  FEATURE_FILM: "Feature film",
+  SEGMENT: "Segment",
+  SERIES: "Series",
+  SHORT_FILM: "Short film",
+  TRAILER: "Trailer",
+}
+
+function graphqlError(result: {
+  error?: ErrorLike | null
+  errors?: unknown[] | undefined
+}): ErrorLike | Error | null {
+  const graphqlErrors = result.errors?.filter(
+    (entry): entry is { message?: string } =>
+      typeof entry === "object" && entry !== null,
+  )
+  if (graphqlErrors?.length) {
+    return new Error(
+      graphqlErrors.map((entry) => entry.message ?? "Unknown").join("; "),
+    )
+  }
+
+  return result.error ?? null
+}
+
+function selectedLanguageSlug(locale: string): string {
+  return publicWatchHomeLanguageSlugForLocale(locale) ?? ENGLISH_LANGUAGE_SLUG
+}
+
+function labelText(label: string | null | undefined): string {
+  return label ? (LABEL_TEXT[label] ?? "Video") : "Video"
+}
+
+function muxThumbnail(playbackId: string | null): string | null {
+  return playbackId ? `https://image.mux.com/${playbackId}/thumbnail.jpg` : null
+}
+
+function selectPlayableVariant(
+  variants: readonly AdminHomeVariant[],
+  languageSlug: string,
+  primaryLanguageId: string | null,
+): AdminHomeVariant | null {
+  const playable = variants.filter(
+    (variant) => variant.published === true && Boolean(variant.hls),
+  )
+  if (!playable.length) return null
+
+  const localeMatch =
+    playable.find((variant) => variant.language?.slug === languageSlug) ??
+    playable.find((variant) => variant.language?.bcp47 === languageSlug)
+  const primaryMatch = primaryLanguageId
+    ? playable.find((variant) => variant.language?.coreId === primaryLanguageId)
+    : null
+
+  return localeMatch ?? primaryMatch ?? playable[0] ?? null
+}
+
+function pickAdminImage(images: readonly AdminHomeImage[]): string | null {
+  for (const image of images) {
+    const candidate =
+      image.mobileCinematicHigh ??
+      image.mobileCinematicLow ??
+      image.videoStill ??
+      image.url ??
+      image.thumbnail
+    if (candidate) return candidate
+  }
+  return null
+}
+
+function buildMetaLabel(args: {
+  label: string
+  durationSeconds: number | null
+  childCount: number
+}): string | null {
+  if (args.childCount > 0) {
+    return `${args.childCount} ${args.childCount === 1 ? "episode" : "episodes"}`
+  }
+  if (args.durationSeconds != null) {
+    const duration = formatDuration(args.durationSeconds)
+    if (duration) return duration
+  }
+  return args.label
+}
+
+function buildHref(args: {
+  slug: string | null
+  parentSlug?: string | null
+  languageSlug: string
+}): string | null {
+  const lang = tryAsLocaleSlug(args.languageSlug)
+  const slug = args.slug ? tryAsContentSlug(args.slug) : null
+  if (!lang || !slug) return null
+
+  const parentSlug = args.parentSlug ? tryAsContentSlug(args.parentSlug) : null
+  return parentSlug
+    ? watchEpisodePath(parentSlug, slug, lang)
+    : watchVideoPath(slug, lang)
+}
+
+function missingEntry(args: WatchHomeMissingData): WatchHomeMissingData {
+  return args
+}
+
+function normalizeCard(args: {
+  sectionId: string
+  sourceId: string
+  video: AdminHomeVideo | AdminHomeChildVideo
+  languageSlug: string
+  parent?: AdminHomeVideo | null
+}): WatchHomeCard | null {
+  if (!args.video.documentId || !args.video.coreId) return null
+  const locale = args.video.locales?.[0] ?? null
+  const variants =
+    "variants" in args.video && Array.isArray(args.video.variants)
+      ? args.video.variants
+      : []
+  const selectedVariant = selectPlayableVariant(
+    variants,
+    args.languageSlug,
+    "primaryLanguage" in args.video
+      ? (args.video.primaryLanguage?.coreId ?? null)
+      : null,
+  )
+  const playbackId = selectedVariant?.muxVideo?.playbackId ?? null
+  const adminImageUrl = pickAdminImage(args.video.images ?? [])
+  const imageUrl = adminImageUrl ?? muxThumbnail(playbackId)
+  const label = labelText(args.video.label)
+  const childCount =
+    "children" in args.video && Array.isArray(args.video.children)
+      ? args.video.children.length
+      : 0
+  const title = locale?.title ?? args.video.slug ?? args.video.coreId
+  const href = buildHref({
+    slug: args.video.slug ?? null,
+    parentSlug: args.parent?.slug ?? null,
+    languageSlug: args.languageSlug,
+  })
+
+  const missingData: WatchHomeMissingData[] = []
+  if (!locale?.title) {
+    missingData.push(
+      missingEntry({
+        sectionId: args.sectionId,
+        sourceId: args.sourceId,
+        field: "title",
+        detail: `Admin returned ${args.video.coreId} without a localized title for ${args.languageSlug}.`,
+        fallback: title,
+        followUp:
+          "Backfill or publish VideoLocale title data for the home language.",
+      }),
+    )
+  }
+  if (!adminImageUrl) {
+    missingData.push(
+      missingEntry({
+        sectionId: args.sectionId,
+        sourceId: args.sourceId,
+        field: "image",
+        detail: `Admin returned ${args.video.coreId} without a usable cinematic/still image.`,
+        fallback: imageUrl ? "Mux thumbnail" : "Styled placeholder",
+        followUp:
+          "Ingest the source app local thumbnail override or enrich admin/Core image fields.",
+      }),
+    )
+  }
+  if (!href) {
+    missingData.push(
+      missingEntry({
+        sectionId: args.sectionId,
+        sourceId: args.sourceId,
+        field: "href",
+        detail: `Admin record ${args.video.coreId} does not have a valid public slug/language route pair.`,
+        fallback: "Card renders without a link",
+        followUp:
+          "Fix the admin slug or language slug data before linking this card.",
+      }),
+    )
+  }
+
+  return {
+    id: args.video.documentId,
+    sourceId: args.sourceId,
+    coreId: args.video.coreId,
+    title,
+    description: locale?.snippet ?? locale?.description ?? null,
+    label,
+    metaLabel: buildMetaLabel({
+      label,
+      durationSeconds: args.video.durationSeconds ?? null,
+      childCount,
+    }),
+    href,
+    imageUrl,
+    imageAlt: locale?.imageAlt ?? title,
+    playbackId,
+    durationSeconds: args.video.durationSeconds ?? null,
+    childCount,
+    parentCoreId: args.parent?.coreId ?? null,
+    parentSlug: args.parent?.slug ?? null,
+    missingData,
+  }
+}
+
+function cardEntriesForSource(args: {
+  sectionId: string
+  source: WatchHomeSourceConfig
+  videoByCoreId: Map<string, AdminHomeVideo>
+  languageSlug: string
+  missingData: WatchHomeMissingData[]
+}): WatchHomeCard[] {
+  const parent = args.videoByCoreId.get(args.source.id)
+  if (!parent) {
+    args.missingData.push(
+      missingEntry({
+        sectionId: args.sectionId,
+        sourceId: args.source.id,
+        field: "record",
+        detail: `Admin watchHomeVideos did not return source Core id ${args.source.id}.`,
+        fallback: "Section card omitted",
+        followUp:
+          "Verify the Core id exists in admin sync or replace the source id.",
+      }),
+    )
+    return []
+  }
+
+  if ((args.source.limitChildren ?? 0) > 0) {
+    return (parent.children ?? [])
+      .slice(0, args.source.limitChildren)
+      .map((rel) =>
+        rel.child
+          ? normalizeCard({
+              sectionId: args.sectionId,
+              sourceId: args.source.id,
+              video: rel.child,
+              parent,
+              languageSlug: args.languageSlug,
+            })
+          : null,
+      )
+      .filter((card): card is WatchHomeCard => card != null)
+  }
+
+  const card = normalizeCard({
+    sectionId: args.sectionId,
+    sourceId: args.source.id,
+    video: parent,
+    languageSlug: args.languageSlug,
+  })
+  return card ? [card] : []
+}
+
+function cardsForPrimaryCollection(args: {
+  section: WatchHomeSectionConfig
+  videoByCoreId: Map<string, AdminHomeVideo>
+  languageSlug: string
+  missingData: WatchHomeMissingData[]
+}): WatchHomeCard[] {
+  const collectionId = args.section.primaryCollectionId
+  if (!collectionId) return []
+  const parent = args.videoByCoreId.get(collectionId)
+  if (!parent) {
+    args.missingData.push(
+      missingEntry({
+        sectionId: args.section.id,
+        sourceId: collectionId,
+        field: "record",
+        detail: `Admin watchHomeVideos did not return primary collection ${collectionId}.`,
+        fallback: "Section omitted",
+        followUp:
+          "Verify the collection exists in admin sync or update home programming.",
+      }),
+    )
+    return []
+  }
+
+  return (parent.children ?? [])
+    .slice(0, args.section.childLimit ?? 12)
+    .map((rel) =>
+      rel.child
+        ? normalizeCard({
+            sectionId: args.section.id,
+            sourceId: collectionId,
+            video: rel.child,
+            parent,
+            languageSlug: args.languageSlug,
+          })
+        : null,
+    )
+    .filter((card): card is WatchHomeCard => card != null)
+}
+
+function buildSections(args: {
+  videoByCoreId: Map<string, AdminHomeVideo>
+  languageSlug: string
+  missingData: WatchHomeMissingData[]
+}): WatchHomeSection[] {
+  return WATCH_HOME_SECTIONS.map((section) => {
+    const cards =
+      section.sources != null
+        ? section.sources.flatMap((source) =>
+            cardEntriesForSource({
+              sectionId: section.id,
+              source,
+              videoByCoreId: args.videoByCoreId,
+              languageSlug: args.languageSlug,
+              missingData: args.missingData,
+            }),
+          )
+        : cardsForPrimaryCollection({
+            section,
+            videoByCoreId: args.videoByCoreId,
+            languageSlug: args.languageSlug,
+            missingData: args.missingData,
+          })
+
+    return {
+      id: section.id,
+      eyebrow: section.eyebrow,
+      title: section.title,
+      description: section.description ?? null,
+      layout: section.layout,
+      orientation: section.orientation ?? "horizontal",
+      showSequenceNumbers: section.showSequenceNumbers ?? false,
+      cards,
+    }
+  }).filter((section) => section.cards.length > 0)
+}
+
+function dedupeMissingData(
+  missingData: readonly WatchHomeMissingData[],
+): WatchHomeMissingData[] {
+  const seen = new Set<string>()
+  const result: WatchHomeMissingData[] = []
+  for (const item of missingData) {
+    const key = `${item.sectionId}:${item.sourceId}:${item.field}:${item.detail}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    result.push(item)
+  }
+  return result
+}
+
+function hasCoreId(video: AdminHomeVideo): video is AdminHomeVideo & {
+  coreId: string
+} {
+  return typeof video.coreId === "string" && video.coreId.length > 0
+}
+
+export function buildWatchHomeModelFromVideos(args: {
+  videos: readonly AdminHomeVideo[]
+  locale: string
+  languageSlug?: string | null
+}): WatchHomeModel {
+  const languageSlug = args.languageSlug ?? selectedLanguageSlug(args.locale)
+  const missingData: WatchHomeMissingData[] = [
+    {
+      sectionId: "home-hero",
+      sourceId: "source-app",
+      field: "mux-insert",
+      detail:
+        "The source beta hero can include non-catalog Mux insert slides; admin currently exposes catalog videos only.",
+      fallback: "Hero uses admin video slides",
+      followUp:
+        "Add an admin-managed hero insert model or map source Mux inserts into admin.",
+    },
+    {
+      sectionId: "home-sections",
+      sourceId: "source-app",
+      field: "local-thumbnail",
+      detail:
+        "The source app has local thumbnail/poster overrides that are not represented as admin records.",
+      fallback: "Admin images or Mux thumbnails",
+      followUp:
+        "Ingest source thumbnail overrides into admin/Core image data or configure editor-owned poster assets.",
+    },
+  ]
+  const videoByCoreId = new Map(
+    args.videos.filter(hasCoreId).map((video) => [video.coreId, video]),
+  )
+
+  const heroSlides = WATCH_HOME_HERO_SOURCE_IDS.flatMap((sourceId) => {
+    const video = videoByCoreId.get(sourceId)
+    if (!video) {
+      missingData.push(
+        missingEntry({
+          sectionId: "home-hero",
+          sourceId,
+          field: "record",
+          detail: `Admin watchHomeVideos did not return hero source Core id ${sourceId}.`,
+          fallback: "Hero slide omitted",
+          followUp:
+            "Verify the Core id exists in admin sync or replace the hero source.",
+        }),
+      )
+      return []
+    }
+
+    const card = normalizeCard({
+      sectionId: "home-hero",
+      sourceId,
+      video,
+      languageSlug,
+    })
+    return card ? [{ ...card, eyebrow: "Featured" }] : []
+  })
+
+  const sections = buildSections({ videoByCoreId, languageSlug, missingData })
+  const cardMissing = [
+    ...heroSlides.flatMap((card) => card.missingData),
+    ...sections.flatMap((section) =>
+      section.cards.flatMap((card) => card.missingData),
+    ),
+  ]
+
+  return {
+    heroSlides,
+    sections,
+    missingData: dedupeMissingData([...missingData, ...cardMissing]),
+  }
+}
+
+async function fetchWatchHomeModel(
+  locale: string,
+  languageSlug: string,
+): Promise<WatchHomeModel> {
+  const result = await client.query({
+    query: getWatchHomeVideosOperation,
+    variables: {
+      coreIds: getWatchHomeCoreIds(),
+      locale,
+      languageSlug,
+    },
+    fetchPolicy: "no-cache",
+  })
+
+  const error = graphqlError(
+    result as { error?: ErrorLike; errors?: unknown[] },
+  )
+  if (error) throw error
+
+  return buildWatchHomeModelFromVideos({
+    videos: result.data?.watchHomeVideos ?? [],
+    locale,
+    languageSlug,
+  })
+}
+
+const getCachedWatchHomeModel = unstable_cache(
+  fetchWatchHomeModel,
+  ["watch-home"],
+  { revalidate: 60 },
+)
+
+export const resolveWatchHome = cache(
+  async (locale: string): Promise<WatchHomeResult> => {
+    try {
+      const languageSlug = selectedLanguageSlug(locale)
+      const model = await getCachedWatchHomeModel(locale, languageSlug)
+      return {
+        data: JSON.parse(JSON.stringify(model)) as WatchHomeModel,
+        error: null,
+      }
+    } catch (error) {
+      return {
+        data: null,
+        error: error instanceof Error ? error : new Error("Unknown error"),
+      }
+    }
+  },
+)
