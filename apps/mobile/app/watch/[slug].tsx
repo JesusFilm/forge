@@ -61,6 +61,8 @@ export default function WatchVideoPage() {
     video,
     setVideo,
     activeVariant,
+    activeVariantMedia,
+    ensureActiveVariantMedia,
     subtitleEnabled,
     activeSubtitleSlug,
     snackbarMessage,
@@ -129,13 +131,21 @@ export default function WatchVideoPage() {
 
   const bibleQuotes = useBibleVerses(video?.bibleCitations ?? EMPTY_CITATIONS)
 
+  // Captions on (possibly carried over a language switch) → make sure the
+  // active dub's subtitles are fetched so the player has a track to show.
+  useEffect(() => {
+    if (subtitleEnabled) ensureActiveVariantMedia()
+  }, [subtitleEnabled, ensureActiveVariantMedia])
+
   const subtitleVttSrc = useMemo(() => {
-    if (!subtitleEnabled || !activeSubtitleSlug || !activeVariant) return null
+    if (!subtitleEnabled || !activeSubtitleSlug || !activeVariantMedia)
+      return null
     return (
-      activeVariant.subtitles.find((s) => s.languageSlug === activeSubtitleSlug)
-        ?.vttSrc ?? null
+      activeVariantMedia.subtitles.find(
+        (s) => s.languageSlug === activeSubtitleSlug,
+      )?.vttSrc ?? null
     )
-  }, [subtitleEnabled, activeSubtitleSlug, activeVariant])
+  }, [subtitleEnabled, activeSubtitleSlug, activeVariantMedia])
 
   // Prefer the resolved video; fall back to the seed so first paint has
   // content. The player source resolves to the active variant, then the
