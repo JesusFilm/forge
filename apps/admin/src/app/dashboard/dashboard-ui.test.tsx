@@ -910,9 +910,17 @@ describe("dashboard UI routes", () => {
       },
       bibleCitations: {
         title: "Bible Citations",
-        count: 0,
+        count: 1,
         empty: "No Bible citations",
-        items: [],
+        items: [
+          {
+            key: "citation-1",
+            title: "Romans 5:8",
+            meta: "Rom / Order 1",
+            detail: null,
+            titleHref: "https://www.bible.com/bible/1/ROM.5.8.KJV",
+          },
+        ],
       },
       keywords: {
         title: "Keywords",
@@ -972,6 +980,7 @@ describe("dashboard UI routes", () => {
     expect(html).toContain('title="Open Mux player"')
     expect(html).toContain('href="https://stream.mux.com/playback-123.m3u8"')
     expect(html).toContain('title="Open stream URL"')
+    expect(html).toContain('href="https://www.bible.com/bible/1/ROM.5.8.KJV"')
     expect(html).toContain(
       'href="/dashboard/videos?q=Jesus&amp;collection=the-story"',
     )

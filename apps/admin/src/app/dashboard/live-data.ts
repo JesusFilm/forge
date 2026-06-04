@@ -114,6 +114,7 @@ export type VideoLibraryDetailItem = {
   flagUrl?: string | null
   href?: string | null
   imageUrl?: string | null
+  titleHref?: string | null
 }
 
 export type VideoLibraryDetailSection = {
@@ -261,6 +262,99 @@ function externalHttpUrl(value: string | null | undefined) {
   } catch {
     return null
   }
+}
+
+const BIBLE_DOT_COM_BOOK_CODES: Record<string, string> = {
+  Gen: "GEN",
+  Exod: "EXO",
+  Lev: "LEV",
+  Num: "NUM",
+  Deut: "DEU",
+  Josh: "JOS",
+  Judg: "JDG",
+  Ruth: "RUT",
+  "1Sam": "1SA",
+  "2Sam": "2SA",
+  "1Kgs": "1KI",
+  "2Kgs": "2KI",
+  "1Chr": "1CH",
+  "2Chr": "2CH",
+  Ezra: "EZR",
+  Neh: "NEH",
+  Esth: "EST",
+  Job: "JOB",
+  Ps: "PSA",
+  Prov: "PRO",
+  Eccl: "ECC",
+  Song: "SNG",
+  Isa: "ISA",
+  Jer: "JER",
+  Lam: "LAM",
+  Ezek: "EZK",
+  Dan: "DAN",
+  Hos: "HOS",
+  Joel: "JOL",
+  Amos: "AMO",
+  Obad: "OBA",
+  Jonah: "JON",
+  Mic: "MIC",
+  Nah: "NAM",
+  Hab: "HAB",
+  Zeph: "ZEP",
+  Hag: "HAG",
+  Zech: "ZEC",
+  Mal: "MAL",
+  Matt: "MAT",
+  Mark: "MRK",
+  Luke: "LUK",
+  John: "JHN",
+  Acts: "ACT",
+  Rom: "ROM",
+  "1Cor": "1CO",
+  "2Cor": "2CO",
+  Gal: "GAL",
+  Eph: "EPH",
+  Phil: "PHP",
+  Col: "COL",
+  "1Thess": "1TH",
+  "2Thess": "2TH",
+  "1Tim": "1TI",
+  "2Tim": "2TI",
+  Titus: "TIT",
+  Phlm: "PHM",
+  Heb: "HEB",
+  Jas: "JAS",
+  "1Pet": "1PE",
+  "2Pet": "2PE",
+  "1John": "1JN",
+  "2John": "2JN",
+  "3John": "3JN",
+  Jude: "JUD",
+  Rev: "REV",
+}
+
+function bibleDotComBookCode(osisId: string | null | undefined) {
+  const value = compactText(osisId)
+  if (!value) return null
+  const code = BIBLE_DOT_COM_BOOK_CODES[value] ?? value.toUpperCase()
+  return /^[1-3]?[A-Z]{2,3}$/.test(code) ? code : null
+}
+
+function bibleDotComHref({
+  bookOsisId,
+  chapter,
+  verse,
+}: {
+  bookOsisId: string | null | undefined
+  chapter: number | null
+  verse: number | null
+}) {
+  const bookCode = bibleDotComBookCode(bookOsisId)
+  if (!bookCode || chapter == null) return null
+
+  const reference =
+    verse == null ? `${bookCode}.${chapter}` : `${bookCode}.${chapter}.${verse}`
+  return `https://www.bible.com/bible/1/${reference}.KJV`
 }
 
 function videoIdentifierWhere(identifier: string) {
@@ -1327,6 +1421,11 @@ export async function loadVideoLibraryDetail(
           return {
             key: citation.id,
             title: `${book}${range ? ` ${range}` : ""}`,
+            titleHref: bibleDotComHref({
+              bookOsisId: citation.bibleBook.osisId,
+              chapter: citation.chapterStart,
+              verse: citation.verseStart,
+            }),
             meta: [
               citation.osisId,
               citation.order ? `Order ${citation.order}` : null,

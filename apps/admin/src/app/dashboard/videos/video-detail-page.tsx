@@ -89,7 +89,18 @@ function DetailListItemContent({ item }: { item: VideoLibraryDetailItem }) {
             className="h-3.5 w-5 shrink-0 rounded-[1px] object-cover"
           />
         ) : null}
-        <span className="min-w-0">{item.title}</span>
+        {item.titleHref && !item.href ? (
+          <a
+            href={item.titleHref}
+            target="_blank"
+            rel="noreferrer"
+            className="min-w-0 break-words transition-colors hover:text-[var(--color-brand)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+          >
+            {item.title}
+          </a>
+        ) : (
+          <span className="min-w-0">{item.title}</span>
+        )}
       </div>
       {item.meta ? (
         <div className="mt-1 break-words font-mono text-[12px] text-[var(--color-text-muted)]">
