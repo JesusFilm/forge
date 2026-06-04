@@ -239,6 +239,35 @@ describe("Auth route wrapper", () => {
     })
   })
 
+  it("consumes interactive OAuth prompts after social sign-in", async () => {
+    authPost.mockResolvedValueOnce(
+      Response.json({ url: "https://google.test" }),
+    )
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/sign-in/social", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          oauth_query:
+            "client_id=jfp_manager_production&prompt=login&sig=signed",
+          provider: "google",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["sign-in", "social"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwardedRequest.json()).resolves.toMatchObject({
+      callbackURL:
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_manager_production&sig=signed",
+      errorCallbackURL:
+        "http://localhost:3004/login?client_id=jfp_manager_production&prompt=login&sig=signed",
+      provider: "google",
+    })
+  })
+
   it("returns OAuth social failures to login without exposing method hints", async () => {
     authPost.mockResolvedValueOnce(
       Response.json({ url: "https://google.test" }),

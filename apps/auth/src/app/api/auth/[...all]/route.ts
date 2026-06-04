@@ -240,6 +240,7 @@ function buildOAuthContinuationURL(oauthQuery: string | undefined) {
 
   const url = new URL("/api/auth/oauth2/authorize", getAuthBaseUrl())
   url.search = oauthQuery
+  consumeInteractivePrompt(url.searchParams)
   return url.toString()
 }
 
@@ -249,6 +250,20 @@ function buildOAuthLoginURL(oauthQuery: string | undefined) {
   const url = new URL("/login", getAuthBaseUrl())
   url.search = oauthQuery
   return url.toString()
+}
+
+function consumeInteractivePrompt(params: URLSearchParams) {
+  const prompt = params.get("prompt")
+  if (!prompt) return
+
+  const remainingPrompts = prompt
+    .split(/\s+/)
+    .filter((value) => value !== "login" && value !== "select_account")
+
+  params.delete("prompt")
+  if (remainingPrompts.length > 0) {
+    params.set("prompt", remainingPrompts.join(" "))
+  }
 }
 
 async function parseSocialSignInRequest(request: Request): Promise<{
