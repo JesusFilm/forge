@@ -1099,8 +1099,25 @@ describe("dashboard UI routes", () => {
     expect(html).toContain("All usage")
     expect(html).toContain("All provenance")
     expect(html).toContain('aria-label="Language library results"')
-    expect(html).toContain("Visible")
-    expect(html).toContain("1 / 1")
+    expect(html).toContain('aria-label="Language signal filters"')
+    expect(html).toMatch(
+      /<button(?=[^>]*role="combobox")(?=[^>]*aria-label="Filter by language")(?=[^>]*aria-haspopup="listbox")/,
+    )
+    expect(html).toContain("Languages")
+    expect(html).toContain("Countries")
+    expect(html).toContain("Locales In Use")
+    expect(html).toMatch(
+      /<button(?=[^>]*aria-label="Filter to country-linked languages")(?=[^>]*aria-pressed="false")/,
+    )
+    expect(html).toMatch(
+      /<button(?=[^>]*aria-label="Filter to linked languages")(?=[^>]*aria-pressed="false")/,
+    )
+    expect(html).toMatch(
+      /<button(?=[^>]*aria-label="Filter by sync status")(?=[^>]*aria-pressed="false")/,
+    )
+    expect(html).toMatch(
+      /<button(?=[^>]*aria-label="Filter to soft-deleted languages")(?=[^>]*aria-pressed="false")/,
+    )
     expect(html).toContain("Last sync")
     expect(html).toContain("Soft deleted")
     expect(html).toContain("English")

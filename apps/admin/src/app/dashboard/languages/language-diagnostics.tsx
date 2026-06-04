@@ -2,13 +2,16 @@
 
 import {
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
   type ReactNode,
 } from "react"
 import {
+  Check,
   ChevronDown,
   Clock3,
   Database,
@@ -55,27 +58,29 @@ export type LanguageDiagnosticFilters = {
   sync: LanguageSyncFilter
 }
 
+type FilterOption<TValue extends string = string> = {
+  value: TValue
+  label: string
+  meta?: string
+}
+
 const defaultFilters: LanguageDiagnosticFilters = {
   operational: "all",
   geoContent: "all",
   sync: "all",
 }
 const COUNTRY_PREVIEW_LIMIT = 5
+const SIGNAL_MENU_WIDTH = 320
+const SIGNAL_MENU_VIEWPORT_GAP = 16
 
-const operationalOptions: Array<{
-  value: LanguageOperationalFilter
-  label: string
-}> = [
+const operationalOptions: Array<FilterOption<LanguageOperationalFilter>> = [
   { value: "all", label: "All active" },
   { value: "linked", label: "Linked" },
   { value: "reference-only", label: "Reference only" },
   { value: "missing-metadata", label: "Missing metadata" },
 ]
 
-const geoContentOptions: Array<{
-  value: LanguageGeoContentFilter
-  label: string
-}> = [
+const geoContentOptions: Array<FilterOption<LanguageGeoContentFilter>> = [
   { value: "all", label: "All usage" },
   { value: "country-linked", label: "Country linked" },
   { value: "no-country-links", label: "No country links" },
@@ -86,7 +91,7 @@ const geoContentOptions: Array<{
   { value: "audio-preview", label: "Audio preview" },
 ]
 
-const syncOptions: Array<{ value: LanguageSyncFilter; label: string }> = [
+const syncOptions: Array<FilterOption<LanguageSyncFilter>> = [
   { value: "all", label: "All provenance" },
   { value: "core-synced", label: "Core synced" },
   { value: "sync-missing", label: "Sync missing" },
@@ -199,6 +204,46 @@ function countryOverflowCount(
   return Math.max(0, row.counts.countryLanguages - visibleCount)
 }
 
+function metricValue(
+  metrics: Array<{ label: string; value: string; footer: string }>,
+  label: string,
+  fallback: string,
+) {
+  return (
+    metrics.find((metric) => metric.label.toLowerCase() === label)?.value ??
+    fallback
+  )
+}
+
+function optionMatchesSearch(option: FilterOption, search: string) {
+  const query = search.replace(/\s+/g, " ").trim().toLocaleLowerCase("en")
+  if (!query) return true
+
+  return `${option.label} ${option.value} ${option.meta ?? ""}`
+    .toLocaleLowerCase("en")
+    .includes(query)
+}
+
+function signalMenuStyle(trigger: HTMLDivElement | null) {
+  const rect = trigger?.getBoundingClientRect()
+  if (!rect) return null
+
+  const width = Math.min(
+    SIGNAL_MENU_WIDTH,
+    window.innerWidth - SIGNAL_MENU_VIEWPORT_GAP * 2,
+  )
+  const left = Math.min(
+    Math.max(SIGNAL_MENU_VIEWPORT_GAP, rect.left),
+    window.innerWidth - width - SIGNAL_MENU_VIEWPORT_GAP,
+  )
+
+  return {
+    left,
+    top: rect.bottom + 8,
+    width,
+  }
+}
+
 export function LanguageDiagnostics({
   rows,
   diagnostics,
@@ -211,13 +256,47 @@ export function LanguageDiagnostics({
   const [query, setQuery] = useState("")
   const [filters, setFilters] =
     useState<LanguageDiagnosticFilters>(defaultFilters)
+  const [selectedLanguageId, setSelectedLanguageId] = useState("")
+  const [showSoftDeletedOnly, setShowSoftDeletedOnly] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const selectedRow = rows.find((row) => row.id === selectedId) ?? null
-  const filteredRows = useMemo(
-    () => filterLanguageRows(rows, query, filters),
-    [rows, query, filters],
+  const selectedLanguageFilterRow =
+    rows.find((row) => row.id === selectedLanguageId) ?? null
+  const languageOptions = useMemo<Array<FilterOption>>(
+    () => [
+      {
+        value: "",
+        label: "All languages",
+        meta: `${rows.length.toLocaleString("en-US")} reference rows`,
+      },
+      ...rows.map((row) => ({
+        value: row.id,
+        label: row.title,
+        meta: row.codeLabel,
+      })),
+    ],
+    [rows],
   )
+  const filteredRows = useMemo(() => {
+    if (showSoftDeletedOnly) return []
+
+    return filterLanguageRows(rows, query, filters).filter(
+      (row) => !selectedLanguageId || row.id === selectedLanguageId,
+    )
+  }, [filters, query, rows, selectedLanguageId, showSoftDeletedOnly])
+  const lastSyncFilter: LanguageSyncFilter = diagnostics.lastSyncedAtIso
+    ? "core-synced"
+    : "sync-missing"
+  const languageCountValue = metricValue(
+    metrics,
+    "languages",
+    rows.length.toLocaleString("en-US"),
+  )
+  const countryCountValue = metricValue(metrics, "countries", "0")
+  const localesInUseValue = metricValue(metrics, "locales in use", "0")
+  const softDeletedValue =
+    diagnostics.softDeletedLanguages.toLocaleString("en-US")
 
   useEffect(() => {
     if (!selectedRow) return
@@ -241,6 +320,46 @@ export function LanguageDiagnostics({
         0,
       )
     }
+  }
+
+  function updateFilters(
+    updater:
+      | LanguageDiagnosticFilters
+      | ((current: LanguageDiagnosticFilters) => LanguageDiagnosticFilters),
+  ) {
+    setShowSoftDeletedOnly(false)
+    setFilters(updater)
+  }
+
+  function selectLanguageFilter(value: string) {
+    setShowSoftDeletedOnly(false)
+    setSelectedLanguageId(value)
+  }
+
+  function toggleCountryFilter() {
+    updateFilters((current) => ({
+      ...current,
+      geoContent:
+        current.geoContent === "country-linked" ? "all" : "country-linked",
+    }))
+  }
+
+  function toggleLocaleUsageFilter() {
+    updateFilters((current) => ({
+      ...current,
+      operational: current.operational === "linked" ? "all" : "linked",
+    }))
+  }
+
+  function toggleLastSyncFilter() {
+    updateFilters((current) => ({
+      ...current,
+      sync: current.sync === lastSyncFilter ? "all" : lastSyncFilter,
+    }))
+  }
+
+  function toggleSoftDeletedFilter() {
+    setShowSoftDeletedOnly((current) => !current)
   }
 
   function handleDialogKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -285,7 +404,10 @@ export function LanguageDiagnostics({
             id="language-library-search"
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setShowSoftDeletedOnly(false)
+              setQuery(event.target.value)
+            }}
             placeholder="Search languages, IDs, codes, countries..."
             className="h-10 w-full rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] pl-9 pr-10 font-mono text-[12px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out placeholder:text-[var(--color-text-disabled)] focus:border-[var(--color-brand)] focus:bg-[var(--color-surface-raised)]"
           />
@@ -311,7 +433,7 @@ export function LanguageDiagnostics({
             value={filters.operational}
             options={operationalOptions}
             onChange={(value) =>
-              setFilters((current) => ({ ...current, operational: value }))
+              updateFilters((current) => ({ ...current, operational: value }))
             }
           />
           <SelectFilter
@@ -320,7 +442,7 @@ export function LanguageDiagnostics({
             value={filters.geoContent}
             options={geoContentOptions}
             onChange={(value) =>
-              setFilters((current) => ({ ...current, geoContent: value }))
+              updateFilters((current) => ({ ...current, geoContent: value }))
             }
           />
           <SelectFilter
@@ -329,34 +451,56 @@ export function LanguageDiagnostics({
             value={filters.sync}
             options={syncOptions}
             onChange={(value) =>
-              setFilters((current) => ({ ...current, sync: value }))
+              updateFilters((current) => ({ ...current, sync: value }))
             }
           />
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 text-[12px] text-[var(--color-text-muted)]">
-        <LibrarySignal
-          icon={<Languages className="h-3.5 w-3.5" strokeWidth={1.5} />}
-          label="Visible"
-          value={`${filteredRows.length.toLocaleString("en-US")} / ${rows.length.toLocaleString("en-US")}`}
+      <div
+        role="group"
+        aria-label="Language signal filters"
+        className="flex flex-wrap items-center gap-2 text-[12px] text-[var(--color-text-muted)]"
+      >
+        <SearchableSignalFilter
+          label="Languages"
+          value={selectedLanguageFilterRow?.title ?? languageCountValue}
+          active={Boolean(selectedLanguageFilterRow)}
+          selectedValue={selectedLanguageId}
+          options={languageOptions}
+          placeholder="Search languages..."
+          noResultsLabel="No languages found"
+          onSelect={selectLanguageFilter}
         />
-        {metrics.map((metric) => (
-          <LibrarySignal
-            key={metric.label}
-            label={metric.label}
-            value={metric.value}
-          />
-        ))}
-        <LibrarySignal
+        <SignalFilterButton
+          label="Countries"
+          value={countryCountValue}
+          active={filters.geoContent === "country-linked"}
+          ariaLabel="Filter to country-linked languages"
+          onClick={toggleCountryFilter}
+        />
+        <SignalFilterButton
+          label="Locales In Use"
+          value={localesInUseValue}
+          active={filters.operational === "linked"}
+          ariaLabel="Filter to linked languages"
+          onClick={toggleLocaleUsageFilter}
+        />
+        <SignalFilterButton
           icon={<Clock3 className="h-3.5 w-3.5" strokeWidth={1.5} />}
           label="Last sync"
           value={diagnostics.lastSyncedAt}
+          active={filters.sync === lastSyncFilter}
+          ariaLabel="Filter by sync status"
+          onClick={toggleLastSyncFilter}
         />
-        <LibrarySignal
+        <SignalFilterButton
           icon={<Database className="h-3.5 w-3.5" strokeWidth={1.5} />}
           label="Soft deleted"
-          value={diagnostics.softDeletedLanguages.toLocaleString("en-US")}
+          value={softDeletedValue}
+          active={showSoftDeletedOnly}
+          ariaLabel="Filter to soft-deleted languages"
+          onClick={toggleSoftDeletedFilter}
         />
       </div>
 
@@ -374,7 +518,9 @@ export function LanguageDiagnostics({
           ))
         ) : (
           <div className="px-4 py-12 text-center text-[13px] text-[var(--color-text-muted)]">
-            No languages match the current search and filters.
+            {showSoftDeletedOnly
+              ? "No soft-deleted languages are present in this active reference list."
+              : "No languages match the current search and filters."}
           </div>
         )}
       </section>
@@ -584,7 +730,7 @@ function SelectFilter<TValue extends string>({
   className?: string
   label: string
   value: TValue
-  options: Array<{ value: TValue; label: string }>
+  options: Array<FilterOption<TValue>>
   onChange: (value: TValue) => void
 }) {
   return (
@@ -610,17 +756,222 @@ function SelectFilter<TValue extends string>({
   )
 }
 
-function LibrarySignal({
-  icon,
+function signalControlClass(active: boolean) {
+  return [
+    "inline-flex h-8 items-center gap-2 rounded-sm border px-2.5 text-left outline-none transition-all duration-[120ms] ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]",
+    active
+      ? "border-[var(--color-brand)] bg-[var(--color-brand-soft)] text-[var(--color-text-primary)]"
+      : "border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)]",
+  ].join(" ")
+}
+
+function SearchableSignalFilter({
+  active,
   label,
+  noResultsLabel,
+  onSelect,
+  options,
+  placeholder,
+  selectedValue,
   value,
 }: {
+  active: boolean
+  label: string
+  noResultsLabel: string
+  onSelect: (value: string) => void
+  options: FilterOption[]
+  placeholder: string
+  selectedValue: string
+  value: string
+}) {
+  const [open, setOpen] = useState(false)
+  const [searchValue, setSearchValue] = useState("")
+  const [menuStyle, setMenuStyle] = useState<{
+    left: number
+    top: number
+    width: number
+  } | null>(null)
+  const controlId = useId()
+  const listboxId = `${controlId}-listbox`
+  const rootRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const filteredOptions = useMemo(
+    () => options.filter((option) => optionMatchesSearch(option, searchValue)),
+    [options, searchValue],
+  )
+
+  useEffect(() => {
+    if (!open) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false)
+      }
+    }
+    const handleViewportChange = () => setOpen(false)
+
+    document.addEventListener("pointerdown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+    window.addEventListener("resize", handleViewportChange)
+    window.addEventListener("scroll", handleViewportChange, true)
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+      window.removeEventListener("resize", handleViewportChange)
+      window.removeEventListener("scroll", handleViewportChange, true)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    window.setTimeout(() => searchInputRef.current?.focus(), 0)
+  }, [open])
+
+  function toggleOpen() {
+    if (open) {
+      setOpen(false)
+      return
+    }
+
+    setSearchValue("")
+    setMenuStyle(signalMenuStyle(rootRef.current))
+    setOpen(true)
+  }
+
+  function selectOption(
+    optionValue: string,
+    event: MouseEvent<HTMLButtonElement>,
+  ) {
+    event.preventDefault()
+    setOpen(false)
+    onSelect(optionValue)
+  }
+
+  return (
+    <div ref={rootRef} className="relative min-w-0 shrink-0">
+      <button
+        type="button"
+        aria-controls={listboxId}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label="Filter by language"
+        className={signalControlClass(active)}
+        onClick={toggleOpen}
+        role="combobox"
+      >
+        <span className="label-text leading-none">{label}</span>
+        <span className="max-w-[170px] truncate font-mono text-[11px] font-medium text-[var(--color-text-primary)]">
+          {value}
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]"
+          strokeWidth={1.5}
+        />
+      </button>
+
+      {open ? (
+        <div
+          className="fixed z-40 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] p-1 shadow-[0_18px_50px_rgba(0,0,0,0.45)]"
+          style={menuStyle ?? undefined}
+        >
+          <label className="mb-1 flex h-9 items-center gap-2 rounded-[2px] border border-[var(--color-hairline)] bg-[var(--color-bg)] px-2">
+            <Search
+              aria-hidden="true"
+              className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]"
+              strokeWidth={1.5}
+            />
+            <span className="sr-only">{label}</span>
+            <input
+              ref={searchInputRef}
+              type="search"
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.currentTarget.value)}
+              placeholder={placeholder}
+              className="min-w-0 flex-1 border-0 bg-transparent font-mono text-[12px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-disabled)]"
+            />
+          </label>
+
+          <div
+            id={listboxId}
+            role="listbox"
+            aria-label={label}
+            className="max-h-64 overflow-y-auto overscroll-contain py-0.5 [scrollbar-width:thin]"
+          >
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option) => {
+                const selected = option.value === selectedValue
+
+                return (
+                  <button
+                    key={option.value || "all"}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={(event) => selectOption(option.value, event)}
+                    className="flex min-h-9 w-full items-center justify-between gap-3 rounded-[2px] px-2 py-1 text-left text-[12px] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:bg-[var(--color-surface-raised)] focus-visible:text-[var(--color-text-primary)] focus-visible:outline-none"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate">{option.label}</span>
+                      {option.meta ? (
+                        <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--color-text-muted)]">
+                          {option.meta}
+                        </span>
+                      ) : null}
+                    </span>
+                    <Check
+                      aria-hidden="true"
+                      className={
+                        selected
+                          ? "h-3.5 w-3.5 shrink-0 text-[var(--color-success)] opacity-100"
+                          : "h-3.5 w-3.5 shrink-0 opacity-0"
+                      }
+                      strokeWidth={1.5}
+                    />
+                  </button>
+                )
+              })
+            ) : (
+              <div className="px-2 py-4 text-center text-[12px] text-[var(--color-text-muted)]">
+                {noResultsLabel}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function SignalFilterButton({
+  active,
+  ariaLabel,
+  icon,
+  label,
+  onClick,
+  value,
+}: {
+  active: boolean
+  ariaLabel: string
   icon?: ReactNode
   label: string
+  onClick: () => void
   value: string
 }) {
   return (
-    <span className="inline-flex h-8 items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-2.5">
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      aria-pressed={active}
+      onClick={onClick}
+      className={signalControlClass(active)}
+    >
       {icon ? (
         <span className="text-[var(--color-text-muted)]">{icon}</span>
       ) : null}
@@ -628,7 +979,7 @@ function LibrarySignal({
       <span className="font-mono text-[11px] font-medium text-[var(--color-text-primary)]">
         {value}
       </span>
-    </span>
+    </button>
   )
 }
 
