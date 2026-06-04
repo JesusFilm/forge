@@ -838,28 +838,9 @@ describe("dashboard UI routes", () => {
     )
   })
 
-  it("renders URL-backed collection context and selected video modal", async () => {
-    vi.mocked(loadVideoLibraryPage).mockResolvedValueOnce({
-      rows: [],
-      pagination: {
-        total: 0,
-        currentPage: 1,
-        pageSize: 30,
-        pageCount: 1,
-        hasPrevious: false,
-        hasNext: false,
-        offset: 0,
-        rangeStart: 0,
-        rangeEnd: 0,
-      },
-      languageOptions: [],
-      collectionSummary: {
-        key: "collection-1",
-        title: "The Story",
-        slug: "the-story",
-        childCount: 12,
-      },
-    })
+  it("renders URL-backed selected video as a standalone detail page", async () => {
+    vi.mocked(loadVideoLibraryPage).mockClear()
+    vi.mocked(loadVideoLibraryDetail).mockClear()
     vi.mocked(loadVideoLibraryDetail).mockResolvedValueOnce({
       key: "vid_2",
       title: "No Public Link",
@@ -948,6 +929,38 @@ describe("dashboard UI routes", () => {
       }),
     )
 
+    expect(vi.mocked(loadVideoLibraryDetail)).toHaveBeenCalledWith(
+      "no-public-link",
+    )
+    expect(vi.mocked(loadVideoLibraryPage)).not.toHaveBeenCalled()
+    expect(html).not.toContain('role="dialog"')
+    expect(html).not.toContain(uiMessages.pages.videos.collection.title)
+    expect(html).toContain(uiMessages.pages.videos.detail.eyebrow)
+    expect(html).toContain(uiMessages.pages.videos.detail.close)
+    expect(html).toContain("Known metadata for this video")
+    expect(html).toContain(
+      'href="/dashboard/videos?q=Jesus&amp;collection=the-story"',
+    )
+  })
+
+  it("falls back to the list when selected video detail is stale", async () => {
+    vi.mocked(loadVideoLibraryPage).mockClear()
+    vi.mocked(loadVideoLibraryDetail).mockClear()
+    vi.mocked(loadVideoLibraryDetail).mockResolvedValueOnce(null)
+
+    const html = await htmlFrom(
+      VideosPage({
+        searchParams: Promise.resolve({
+          collection: "the-story",
+          q: "Jesus",
+          video: "missing-video",
+        }),
+      }),
+    )
+
+    expect(vi.mocked(loadVideoLibraryDetail)).toHaveBeenCalledWith(
+      "missing-video",
+    )
     expect(vi.mocked(loadVideoLibraryPage)).toHaveBeenCalledWith(
       { id: "test-user", role: "ADMIN" },
       {
@@ -959,19 +972,8 @@ describe("dashboard UI routes", () => {
         sort: "recent",
       },
     )
-    expect(vi.mocked(loadVideoLibraryDetail)).toHaveBeenCalledWith(
-      "no-public-link",
-    )
-    expect(html).toContain(uiMessages.pages.videos.collection.title)
-    expect(html).toContain("The Story")
-    expect(html).toContain("12 child videos")
-    expect(html).toContain('href="/dashboard/videos?q=Jesus"')
-    expect(html).toContain('role="dialog"')
-    expect(html).toContain(uiMessages.pages.videos.detail.eyebrow)
-    expect(html).toContain("Known metadata for this video")
-    expect(html).toContain(
-      'href="/dashboard/videos?q=Jesus&amp;collection=the-story"',
-    )
+    expect(html).toContain(uiMessages.pages.videos.title)
+    expect(html).not.toContain('role="dialog"')
   })
 
   it("renders first-page pagination with previous disabled and next linked", async () => {

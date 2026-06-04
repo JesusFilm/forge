@@ -32,7 +32,7 @@ import {
   videoLibraryHref,
 } from "../video-library-utils"
 import { VideoLibraryToolbar } from "./video-library-toolbar"
-import { VideoDetailModal } from "./video-detail-modal"
+import { VideoDetailPage } from "./video-detail-page"
 
 type VideosPageProps = {
   searchParams?: Promise<{
@@ -462,21 +462,39 @@ export default async function VideosPage({
   const language = parseVideoLibraryLanguage(params.language)
   const selectedVideo = parseVideoLibrarySelectedVideo(params.video)
   const sort = parseVideoLibrarySort(params.sort)
-  const [
-    { rows: videoRows, pagination, languageOptions, collectionSummary },
-    selectedVideoDetail,
-  ] = await Promise.all([
-    loadVideoLibraryPage(principal, {
-      category,
-      collection,
-      language,
-      page: requestedPage,
-      query,
-      sort,
-    }),
-    loadVideoLibraryDetail(selectedVideo),
-  ])
   const paginationState = { category, collection, language, query, sort }
+  const closeVideoHref = videoLibraryHref({
+    page: requestedPage,
+    ...paginationState,
+  }) as Route
+
+  if (selectedVideo) {
+    const selectedVideoDetail = await loadVideoLibraryDetail(selectedVideo)
+
+    if (selectedVideoDetail) {
+      return (
+        <VideoDetailPage
+          backHref={closeVideoHref}
+          detail={selectedVideoDetail}
+          labels={page.detail}
+        />
+      )
+    }
+  }
+
+  const {
+    rows: videoRows,
+    pagination,
+    languageOptions,
+    collectionSummary,
+  } = await loadVideoLibraryPage(principal, {
+    category,
+    collection,
+    language,
+    page: requestedPage,
+    query,
+    sort,
+  })
   const toolbarStateKey = videoLibraryHref({
     page: 1,
     ...paginationState,
@@ -497,10 +515,6 @@ export default async function VideosPage({
     page: 1,
     query,
     sort,
-  }) as Route
-  const closeVideoHref = videoLibraryHref({
-    page: pagination.currentPage,
-    ...paginationState,
   }) as Route
   const rangeLabel = paginationSummary(
     page.table.pagination.summary,
@@ -611,14 +625,6 @@ export default async function VideosPage({
           </div>
         </div>
       </section>
-
-      {selectedVideoDetail ? (
-        <VideoDetailModal
-          closeHref={closeVideoHref}
-          detail={selectedVideoDetail}
-          labels={page.detail}
-        />
-      ) : null}
     </div>
   )
 }

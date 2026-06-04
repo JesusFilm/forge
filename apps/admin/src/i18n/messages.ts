@@ -401,7 +401,7 @@ export const adminMessages = {
           title: "Collection filter",
         },
         detail: {
-          close: "Close video detail",
+          close: "Back to video library",
           count: "{count} records",
           eyebrow: "Video detail",
           openVisitor: "Open visitor page",
