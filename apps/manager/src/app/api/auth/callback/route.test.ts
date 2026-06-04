@@ -64,6 +64,19 @@ describe("Manager OAuth callback route", () => {
     expect(setCookie).toContain("Expires=Thu, 01 Jan 1970")
   })
 
+  it("uses the configured Manager origin for callback error redirects", async () => {
+    cookieGet.mockReturnValue(undefined)
+
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request("https://0.0.0.0:8080/api/auth/callback?code=c&state=s"),
+    )
+
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3002/login?error=invalid_state",
+    )
+  })
+
   it("sets a Manager-local session after Auth token and Admin membership validation", async () => {
     cookieGet.mockImplementation((name: string) => {
       const values: Record<string, string> = {
