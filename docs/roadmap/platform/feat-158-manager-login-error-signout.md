@@ -68,3 +68,18 @@ choose another Auth account.
   account" with `href="/api/auth/logout"`.
 - Local smoke: `GET /api/auth/logout` clears Manager/Auth cookies and redirects
   to `/api/auth/login?prompt=login` on the configured Manager origin.
+
+## Follow-up: Auth prompt consumption
+
+Manager's sign-out recovery intentionally adds `prompt=login` to the first
+OAuth authorize hop so Auth does not silently reuse the currently forbidden
+account. After the user completes an interactive Auth sign-in, Auth must treat
+that prompt as consumed before resuming the relying-client OAuth authorize URL.
+Otherwise Better Auth sees `prompt=login` again on
+`/api/auth/oauth2/authorize` and sends the user back to `/login` immediately
+after a successful Google callback.
+
+Auth owns this continuation behavior in
+`apps/auth/src/app/api/auth/[...all]/route.ts`; keep the prompt on the login
+retry URL, but strip interactive prompt values from the post-sign-in
+continuation URL.
