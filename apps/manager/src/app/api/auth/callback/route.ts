@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     state !== expectedState ||
     !codeVerifier
   ) {
-    return redirectToLogin(request, "invalid_state")
+    return redirectToLogin(config.managerBaseUrl, "invalid_state")
   }
 
   try {
@@ -59,7 +59,7 @@ export async function GET(request: Request) {
     })
 
     if (!adminSession) {
-      return redirectToLogin(request, "forbidden")
+      return redirectToLogin(config.managerBaseUrl, "forbidden")
     }
 
     const response = NextResponse.redirect(new URL(returnTo, request.url))
@@ -87,13 +87,16 @@ export async function GET(request: Request) {
       message: error instanceof Error ? error.message : "unknown",
     })
 
-    return redirectToLogin(request, "callback_failed")
+    return redirectToLogin(config.managerBaseUrl, "callback_failed")
   }
 }
 
-function redirectToLogin(request: Request, reason: string) {
+function redirectToLogin(managerBaseUrl: string, reason: string) {
   const response = NextResponse.redirect(
-    new URL(`/login?error=${encodeURIComponent(reason)}`, request.url),
+    new URL(
+      `/login?error=${encodeURIComponent(reason)}`,
+      managerBaseUrl.replace(/\/$/, ""),
+    ),
   )
   response.cookies.delete(MANAGER_SESSION_COOKIE)
   response.cookies.delete(MANAGER_OAUTH_STATE_COOKIE)
