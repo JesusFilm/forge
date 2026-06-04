@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/manager... build && cp -r apps/manager/.next/static apps/manager/.next/standalone/apps/manager/.next/static"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/manager... build && cp -r apps/manager/.next/static apps/manager/.next/standalone/apps/manager/.next/static && cp -r apps/manager/public apps/manager/.next/standalone/apps/manager/public"
 
 [deploy]
 # Audio cleanup needs ffmpeg at runtime for original-audio extraction.

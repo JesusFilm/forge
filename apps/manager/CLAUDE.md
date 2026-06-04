@@ -267,4 +267,4 @@ where admin's first call 401s.
 
 ## Standalone smoke
 
-The Railway standalone build copies `apps/manager/.next/static` into `apps/manager/.next/standalone/apps/manager/.next/static` before starting `server.js`. Follow that same shape for local standalone smoke tests; without the copied static assets the login page HTML renders but the client JS does not hydrate.
+The Railway standalone build copies `apps/manager/.next/static` into `apps/manager/.next/standalone/apps/manager/.next/static` and `apps/manager/public` into `apps/manager/.next/standalone/apps/manager/public` before starting `server.js`. Follow that same shape for local standalone smoke tests; without the copied static assets the login page HTML renders but the client JS does not hydrate, and without the copied public assets `/jesusfilm-sign.svg`, `/favicon.svg`, and regional images 404 in production.
