@@ -866,7 +866,20 @@ describe("dashboard UI routes", () => {
           },
         ],
       },
-      dubs: { title: "Dubs", count: 0, empty: "No dubs", items: [] },
+      dubs: {
+        title: "Dubs",
+        count: 1,
+        empty: "No dubs",
+        items: [
+          {
+            key: "dub-1",
+            title: "French",
+            meta: "Published / Burned in",
+            detail: "core-dub-1",
+            flagUrl: "https://flags.example.com/fr.webp",
+          },
+        ],
+      },
       images: { title: "Images", count: 0, empty: "No images", items: [] },
       subtitles: {
         title: "Subtitles",
@@ -943,6 +956,7 @@ describe("dashboard UI routes", () => {
       'href="/dashboard/videos?q=Jesus&amp;collection=the-story"',
     )
     expect(html).toContain('href="/dashboard/videos?collection=the-story"')
+    expect(html).toContain("https://flags.example.com/fr.webp")
   })
 
   it("falls back to the list when selected video detail is stale", async () => {

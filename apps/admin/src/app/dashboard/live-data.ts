@@ -110,6 +110,7 @@ export type VideoLibraryDetailItem = {
   title: string
   meta: string
   detail?: string | null
+  flagUrl?: string | null
   href?: string | null
 }
 
@@ -841,6 +842,21 @@ export async function loadVideoLibraryDetail(
             language: {
               select: {
                 bcp47: true,
+                countryLanguages: {
+                  where: { deletedAt: null },
+                  select: {
+                    order: true,
+                    primary: true,
+                    speakers: true,
+                    suggested: true,
+                    country: {
+                      select: {
+                        flagPngSrc: true,
+                        flagWebpSrc: true,
+                      },
+                    },
+                  },
+                },
                 id: true,
                 iso3: true,
                 name: true,
@@ -1156,26 +1172,31 @@ export async function loadVideoLibraryDetail(
         title: "Dubs",
         count: dubCount,
         empty: "No dubs",
-        items: video.dubs.map((dub) => ({
-          key: dub.id,
-          title: displayLanguage(dub.language, locale) ?? dub.slug ?? dub.id,
-          meta: [
-            dub.published ? "Published" : "Unpublished",
-            dub.videoEdition?.name,
-            formatDuration([dub]),
-            dub.muxVideo?.playbackId ? "Mux playback" : null,
-            dub.downloads.length > 0
-              ? `${dub.downloads.length} downloads sampled`
-              : null,
-          ]
-            .map((value) => compactText(value))
-            .filter(Boolean)
-            .join(" / "),
-          detail: [dub.coreId, dub.slug, dub.hls ?? dub.dash ?? dub.share]
-            .map((value) => compactText(value))
-            .filter(Boolean)
-            .join(" / "),
-        })),
+        items: video.dubs.map((dub) => {
+          const languageChip = dubLanguageChip(dub)
+
+          return {
+            key: dub.id,
+            title: displayLanguage(dub.language, locale) ?? dub.slug ?? dub.id,
+            meta: [
+              dub.published ? "Published" : "Unpublished",
+              dub.videoEdition?.name,
+              formatDuration([dub]),
+              dub.muxVideo?.playbackId ? "Mux playback" : null,
+              dub.downloads.length > 0
+                ? `${dub.downloads.length} downloads sampled`
+                : null,
+            ]
+              .map((value) => compactText(value))
+              .filter(Boolean)
+              .join(" / "),
+            detail: [dub.coreId, dub.slug, dub.hls ?? dub.dash ?? dub.share]
+              .map((value) => compactText(value))
+              .filter(Boolean)
+              .join(" / "),
+            flagUrl: languageChip?.flagUrl ?? null,
+          }
+        }),
       }),
       images: detailSection({
         title: "Images",
