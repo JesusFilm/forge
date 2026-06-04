@@ -902,6 +902,7 @@ describe("dashboard UI routes", () => {
             title: "The Story",
             meta: "the-story / Collection",
             detail: "core-parent",
+            href: "/dashboard/videos?collection=the-story",
           },
         ],
       },
@@ -941,6 +942,7 @@ describe("dashboard UI routes", () => {
     expect(html).toContain(
       'href="/dashboard/videos?q=Jesus&amp;collection=the-story"',
     )
+    expect(html).toContain('href="/dashboard/videos?collection=the-story"')
   })
 
   it("falls back to the list when selected video detail is stale", async () => {

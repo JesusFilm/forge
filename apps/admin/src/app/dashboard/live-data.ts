@@ -16,6 +16,7 @@ import {
   formatVideoUpdatedRelative,
   normalizeVideoThumbnailUrl,
   resolveVideoVisitorUrl,
+  videoLibraryHref,
   type VideoLibraryCategory,
   type VideoLibrarySort,
   VIDEO_LIBRARY_PAGE_SIZE,
@@ -109,6 +110,7 @@ export type VideoLibraryDetailItem = {
   title: string
   meta: string
   detail?: string | null
+  href?: string | null
 }
 
 export type VideoLibraryDetailSection = {
@@ -1298,6 +1300,13 @@ export async function loadVideoLibraryDetail(
             .filter(Boolean)
             .join(" / "),
           detail: relation.parent.coreId,
+          href: videoLibraryHref({
+            page: 1,
+            collection:
+              relation.parent.slug ??
+              relation.parent.coreId ??
+              relation.parent.id,
+          }),
         })),
       }),
       children: detailSection({

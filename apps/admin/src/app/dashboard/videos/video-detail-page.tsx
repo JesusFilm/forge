@@ -5,6 +5,7 @@ import { ArrowLeft, ExternalLink } from "lucide-react"
 import type {
   VideoLibraryDetail,
   VideoLibraryDetailField,
+  VideoLibraryDetailItem,
   VideoLibraryDetailSection,
 } from "../live-data"
 
@@ -62,6 +63,26 @@ function DetailPanel({
   )
 }
 
+function DetailListItemContent({ item }: { item: VideoLibraryDetailItem }) {
+  return (
+    <>
+      <div className="min-w-0 text-[14px] font-semibold text-[var(--color-text-primary)]">
+        {item.title}
+      </div>
+      {item.meta ? (
+        <div className="mt-1 break-words font-mono text-[12px] text-[var(--color-text-muted)]">
+          {item.meta}
+        </div>
+      ) : null}
+      {item.detail ? (
+        <div className="mt-2 break-words text-[13px] leading-5 text-[var(--color-text-secondary)]">
+          {item.detail}
+        </div>
+      ) : null}
+    </>
+  )
+}
+
 function DetailList({
   labels,
   section,
@@ -78,19 +99,16 @@ function DetailList({
         <ul className="divide-y divide-[var(--color-hairline)]">
           {section.items.map((item) => (
             <li key={item.key} className="py-3 first:pt-0 last:pb-0">
-              <div className="min-w-0 text-[14px] font-semibold text-[var(--color-text-primary)]">
-                {item.title}
-              </div>
-              {item.meta ? (
-                <div className="mt-1 break-words font-mono text-[12px] text-[var(--color-text-muted)]">
-                  {item.meta}
-                </div>
-              ) : null}
-              {item.detail ? (
-                <div className="mt-2 break-words text-[13px] leading-5 text-[var(--color-text-secondary)]">
-                  {item.detail}
-                </div>
-              ) : null}
+              {item.href ? (
+                <Link
+                  href={item.href as Route}
+                  className="-mx-2 -my-2 block rounded-sm px-2 py-2 transition-colors hover:bg-[var(--color-surface-raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+                >
+                  <DetailListItemContent item={item} />
+                </Link>
+              ) : (
+                <DetailListItemContent item={item} />
+              )}
             </li>
           ))}
         </ul>
