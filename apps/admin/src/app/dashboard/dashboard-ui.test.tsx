@@ -845,10 +845,11 @@ describe("dashboard UI routes", () => {
       key: "vid_2",
       title: "No Public Link",
       description: "Known metadata for this video",
-      previewImageUrl: null,
+      previewImageUrl: "https://images.example.com/preview.jpg",
       label: "Video",
       source: "Internal",
       duration: "--:--",
+      muxPlayerUrl: "https://player.mux.com/playback-123",
       visitorUrl: null,
       identity: [{ label: "Slug", value: "no-public-link" }],
       status: [{ label: "Locked", value: "No" }],
@@ -965,6 +966,9 @@ describe("dashboard UI routes", () => {
     expect(html).toContain(uiMessages.pages.videos.detail.eyebrow)
     expect(html).toContain(uiMessages.pages.videos.detail.close)
     expect(html).toContain("Known metadata for this video")
+    expect(html).toContain("https://images.example.com/preview.jpg")
+    expect(html).toContain('href="https://player.mux.com/playback-123"')
+    expect(html).toContain('title="Open Mux player"')
     expect(html).toContain(
       'href="/dashboard/videos?q=Jesus&amp;collection=the-story"',
     )

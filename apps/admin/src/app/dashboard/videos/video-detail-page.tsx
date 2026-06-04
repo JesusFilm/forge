@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import type { Route } from "next"
 import Link from "next/link"
-import { ArrowLeft, ExternalLink } from "lucide-react"
+import { ArrowLeft, ExternalLink, Play } from "lucide-react"
 import type {
   VideoLibraryDetail,
   VideoLibraryDetailField,
@@ -183,6 +183,23 @@ export function VideoDetailPage({
               {detail.duration}
             </div>
           )}
+          {detail.muxPlayerUrl ? (
+            <a
+              href={detail.muxPlayerUrl}
+              target="_blank"
+              rel="noreferrer"
+              title="Open Mux player"
+              aria-label={`Open ${detail.title} in Mux player`}
+              className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-95 transition-colors hover:bg-black/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand)]"
+            >
+              <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/35 bg-black/70 text-white shadow-lg backdrop-blur-sm transition-transform hover:scale-105">
+                <Play
+                  className="ml-0.5 h-6 w-6 fill-current"
+                  strokeWidth={1.8}
+                />
+              </span>
+            </a>
+          ) : null}
         </div>
 
         <div className="min-w-0 border-b border-[var(--color-hairline)] pb-5">

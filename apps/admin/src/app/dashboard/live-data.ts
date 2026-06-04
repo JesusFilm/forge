@@ -130,6 +130,7 @@ export type VideoLibraryDetail = {
   label: string
   source: string
   duration: string
+  muxPlayerUrl: string | null
   visitorUrl: string | null
   identity: VideoLibraryDetailField[]
   status: VideoLibraryDetailField[]
@@ -171,6 +172,26 @@ function preferredPlaybackDub(dubs: VideoDubRow[]) {
   return dubs.find((dub) => dub.hls)?.hls
     ? (dubs.find((dub) => dub.hls) ?? null)
     : (dubs.find((dub) => dub.dash || dub.share) ?? null)
+}
+
+function muxPlayerUrl(playbackId: string | null | undefined) {
+  const value = compactText(playbackId)
+  return value ? `https://player.mux.com/${encodeURIComponent(value)}` : null
+}
+
+function preferredMuxPlayerUrl<
+  T extends Pick<VideoDubRow, "dash" | "hls" | "share"> & {
+    muxVideo?: { playbackId: string | null } | null
+  },
+>(dubs: readonly T[]) {
+  const preferredDub =
+    dubs.find((dub) => dub.hls && compactText(dub.muxVideo?.playbackId)) ??
+    dubs.find(
+      (dub) => (dub.dash || dub.share) && compactText(dub.muxVideo?.playbackId),
+    ) ??
+    dubs.find((dub) => compactText(dub.muxVideo?.playbackId))
+
+  return muxPlayerUrl(preferredDub?.muxVideo?.playbackId)
 }
 
 function preferredLocaleCodes(locale: string) {
@@ -1123,6 +1144,7 @@ export async function loadVideoLibraryDetail(
       label: localizedVideoLabel(video.label ?? null, locale) ?? "Video",
       source: source.label,
       duration: formatDuration(video.dubs),
+      muxPlayerUrl: preferredMuxPlayerUrl(video.dubs),
       visitorUrl,
       identity: compactFields([
         detailField("Database ID", video.id),
