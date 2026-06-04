@@ -880,7 +880,20 @@ describe("dashboard UI routes", () => {
           },
         ],
       },
-      images: { title: "Images", count: 0, empty: "No images", items: [] },
+      images: {
+        title: "Images",
+        count: 1,
+        empty: "No images",
+        items: [
+          {
+            key: "image-1",
+            title: "Image",
+            meta: "hd",
+            detail: "https://images.example.com/detail.jpg",
+            imageUrl: "https://images.example.com/detail.jpg",
+          },
+        ],
+      },
       subtitles: {
         title: "Subtitles",
         count: 0,
@@ -957,6 +970,10 @@ describe("dashboard UI routes", () => {
     )
     expect(html).toContain('href="/dashboard/videos?collection=the-story"')
     expect(html).toContain("https://flags.example.com/fr.webp")
+    expect(html).toContain("https://images.example.com/detail.jpg")
+    expect(html).toMatch(
+      /<img(?=[^>]*src="https:\/\/images\.example\.com\/detail\.jpg")(?=[^>]*loading="lazy")(?=[^>]*decoding="async")/,
+    )
   })
 
   it("falls back to the list when selected video detail is stale", async () => {

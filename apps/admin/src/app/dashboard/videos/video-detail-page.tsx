@@ -66,6 +66,18 @@ function DetailPanel({
 function DetailListItemContent({ item }: { item: VideoLibraryDetailItem }) {
   return (
     <>
+      {item.imageUrl ? (
+        <div className="mb-3 aspect-video w-full overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={item.imageUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+          />
+        </div>
+      ) : null}
       <div className="flex min-w-0 items-center gap-2 text-[14px] font-semibold text-[var(--color-text-primary)]">
         {item.flagUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

@@ -112,6 +112,7 @@ export type VideoLibraryDetailItem = {
   detail?: string | null
   flagUrl?: string | null
   href?: string | null
+  imageUrl?: string | null
 }
 
 export type VideoLibraryDetailSection = {
@@ -1202,20 +1203,25 @@ export async function loadVideoLibraryDetail(
         title: "Images",
         count: imageCount,
         empty: "No images",
-        items: video.images.map((image) => ({
-          key: image.id,
-          title: compactText(image.kind) ?? "Image",
-          meta: [
-            image.aspectRatio,
-            image.width && image.height
-              ? `${image.width}x${image.height}`
-              : null,
-          ]
-            .map((value) => compactText(value))
-            .filter(Boolean)
-            .join(" / "),
-          detail: normalizeVideoThumbnailUrl(image.url),
-        })),
+        items: video.images.map((image) => {
+          const imageUrl = normalizeVideoThumbnailUrl(image.url)
+
+          return {
+            key: image.id,
+            title: compactText(image.kind) ?? "Image",
+            meta: [
+              image.aspectRatio,
+              image.width && image.height
+                ? `${image.width}x${image.height}`
+                : null,
+            ]
+              .map((value) => compactText(value))
+              .filter(Boolean)
+              .join(" / "),
+            detail: imageUrl,
+            imageUrl,
+          }
+        }),
       }),
       subtitles: detailSection({
         title: "Subtitles",
