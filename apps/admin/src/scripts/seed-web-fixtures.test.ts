@@ -2,6 +2,7 @@ import { resolve } from "node:path"
 import { describe, expect, it, beforeEach } from "vitest"
 import {
   assertNotProdUrl,
+  DuplicateLanguageCoreIdError,
   loadFixtures,
   seedWebFixtures,
   UnknownLanguageCoreIdError,
@@ -352,6 +353,62 @@ describe("seedWebFixtures", () => {
     await expect(seedWebFixtures(prisma, fixtures)).rejects.toThrow(
       /not-a-real-core-id/,
     )
+  })
+
+  it("throws DuplicateLanguageCoreIdError when one video lists the same languageCoreId twice", async () => {
+    const prisma = makePrisma()
+    const fixtures: WebFixtures = {
+      ...FIXTURES,
+      videos: [
+        {
+          coreId: "fixt-dup-lang",
+          slug: "fixt-dup-lang",
+          label: "SHORT_FILM",
+          publishedAt: "2026-01-07T00:00:00.000Z",
+          locales: [
+            {
+              languageCoreId: "529",
+              title: "First English Entry",
+              description: "First entry.",
+            },
+            {
+              languageCoreId: "529",
+              title: "Second English Entry",
+              description: "Would silently overwrite the first.",
+            },
+          ],
+        },
+      ],
+    }
+    await expect(seedWebFixtures(prisma, fixtures)).rejects.toThrow(
+      DuplicateLanguageCoreIdError,
+    )
+  })
+
+  it("refreshes derived columns on rerun when a fixture language changes (update branch)", async () => {
+    const prisma = makePrisma()
+    await seedWebFixtures(prisma, FIXTURES)
+
+    // Simulate a fixture edit between runs: the English language's slug and
+    // bcp47 change. The rerun must push the new derived values onto the
+    // EXISTING videoLocale rows via the upsert's update branch — stale
+    // derived columns on pre-seeded DBs are an idempotence divergence the
+    // count-based test above cannot see.
+    const english = FIXTURES.languages.find((l) => l.coreId === "529")
+    expect(english).toBeDefined()
+    if (!english) return
+    english.slug = "english-us"
+    english.bcp47 = "en-US"
+    await seedWebFixtures(prisma, FIXTURES)
+
+    const englishRows = [...prisma.videoLocale.store.values()].filter(
+      (r) => r.languageCoreId === "529",
+    )
+    expect(englishRows.length).toBeGreaterThan(0)
+    for (const row of englishRows) {
+      expect(row.languageSlug).toBe("english-us")
+      expect(row.locale).toBe("en-US")
+    }
   })
 
   it("seeds at least one Video reachable via slug (videoBySlug coverage)", async () => {

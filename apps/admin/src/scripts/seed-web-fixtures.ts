@@ -37,6 +37,12 @@
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, resolve } from "node:path"
+// Type-only import — erased at runtime, so the PrismaLike seam below still
+// accepts the test fake. The `satisfies` checks on the videoLocale upsert
+// payloads keep the literals aligned with the GENERATED client types, so an
+// identity-migration rename (the bug class this script was broken by) fails
+// `tsc` instead of failing at runtime against a real DB.
+import type { Prisma } from "@prisma/client"
 
 // ---------------------------------------------------------------------------
 // Prod-URL guard — fail-closed.
@@ -173,6 +179,26 @@ export class UnknownLanguageCoreIdError extends Error {
   }
 }
 
+/**
+ * Two locale entries on one video fixture resolve to the same language.
+ * Under the `(videoId, languageId)` identity the second entry would silently
+ * UPDATE the first (one row in the DB, two counted in the summary) — fail
+ * fast on the authoring bug instead.
+ */
+export class DuplicateLanguageCoreIdError extends Error {
+  constructor(
+    readonly languageCoreId: string,
+    readonly videoCoreId: string,
+  ) {
+    super(
+      `[seed-web-fixtures] Video fixture "${videoCoreId}" lists ` +
+        `languageCoreId "${languageCoreId}" more than once. Each video ` +
+        `locale must reference a distinct language.`,
+    )
+    this.name = "DuplicateLanguageCoreIdError"
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Seeding — exposed for tests.
 //
@@ -282,7 +308,12 @@ export async function seedWebFixtures(
     videoIdByCoreId.set(v.coreId, video.id)
     summary.videos += 1
 
+    const seenLanguageCoreIds = new Set<string>()
     for (const loc of v.locales) {
+      if (seenLanguageCoreIds.has(loc.languageCoreId)) {
+        throw new DuplicateLanguageCoreIdError(loc.languageCoreId, v.coreId)
+      }
+      seenLanguageCoreIds.add(loc.languageCoreId)
       const lang = languageByCoreId.get(loc.languageCoreId)
       if (!lang) {
         throw new UnknownLanguageCoreIdError(loc.languageCoreId, v.coreId)
@@ -290,7 +321,17 @@ export async function seedWebFixtures(
       // `locale` / `languageSlug` / `languageCoreId` are derived from the
       // resolved Language row (core-sync's `toVideoLocales` convention) —
       // `videoLocalesFilter` filters and orders by `languageSlug`, so rows
-      // missing it would vanish from languageSlug-filtered queries.
+      // missing it would vanish from languageSlug-filtered queries. One
+      // shared payload feeds both upsert branches so they cannot drift.
+      const localePayload = {
+        locale: lang.bcp47,
+        languageSlug: lang.slug,
+        languageCoreId: lang.coreId,
+        title: loc.title,
+        description: loc.description,
+        status: "PUBLISHED",
+        publishedAt: new Date(v.publishedAt),
+      } satisfies Prisma.VideoLocaleUncheckedUpdateInput
       // NOTE: `languageId` must be explicit in `create` — Prisma's upsert
       // `create` does NOT inherit fields from the compound `where`, and a
       // NULL languageId row would break idempotence (Postgres treats NULLs
@@ -298,27 +339,13 @@ export async function seedWebFixtures(
       await prisma.videoLocale.upsert({
         where: {
           videoId_languageId: { videoId: video.id, languageId: lang.id },
-        },
+        } satisfies Prisma.VideoLocaleWhereUniqueInput,
         create: {
           videoId: video.id,
           languageId: lang.id,
-          locale: lang.bcp47,
-          languageSlug: lang.slug,
-          languageCoreId: lang.coreId,
-          title: loc.title,
-          description: loc.description,
-          status: "PUBLISHED",
-          publishedAt: new Date(v.publishedAt),
-        },
-        update: {
-          locale: lang.bcp47,
-          languageSlug: lang.slug,
-          languageCoreId: lang.coreId,
-          title: loc.title,
-          description: loc.description,
-          status: "PUBLISHED",
-          publishedAt: new Date(v.publishedAt),
-        },
+          ...localePayload,
+        } satisfies Prisma.VideoLocaleUncheckedCreateInput,
+        update: localePayload,
       })
       summary.videoLocales += 1
     }
