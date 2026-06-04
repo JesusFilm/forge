@@ -557,6 +557,21 @@ builder.queryFields((t) => ({
         query,
       }),
   }),
+  videoDub: t.prismaField({
+    type: "VideoDub",
+    nullable: true,
+    authScopes: { public: true },
+    description:
+      "Fetch a single VideoDub by id. Lets consumers lazily load one dub's downloads + subtitles (via `videoEdition { subtitles }`) without projecting every dub — mobile's watch screen uses this so switching language/opening the download or subtitle sheet fetches just the active dub, not all ~2,200. Visibility mirrors `videoBySlug { dubs }`: the dub and its parent video must both be non-deleted.",
+    args: {
+      id: t.arg.id({ required: true }),
+    },
+    resolve: (query, _root, args, ctx) =>
+      ctx.services.video.getDubById({
+        id: String(args.id),
+        query,
+      }),
+  }),
   videos: t.prismaField({
     type: ["Video"],
     authScopes: { public: true },

@@ -20,6 +20,7 @@ function mockPrisma() {
     },
     videoDub: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
     },
     $queryRaw: vi.fn(),
     $executeRaw: vi.fn(),
@@ -435,6 +436,43 @@ describe("VideoService", () => {
       const result = await service.getBySlug({ slug: "jf", query: {} })
 
       expect(result).toEqual({ id: "v-1", slug: "jf" })
+    })
+  })
+
+  describe("getDubById", () => {
+    it("returns the matching dub", async () => {
+      prisma.videoDub.findFirst.mockResolvedValueOnce({ id: "dub-1" })
+
+      const result = await service.getDubById({ id: "dub-1", query: {} })
+
+      expect(result).toEqual({ id: "dub-1" })
+    })
+
+    // NOTE: this asserts the WHERE-clause SHAPE the resolver hands Prisma — the
+    // dub itself and its parent video must both be non-deleted, mirroring what
+    // `videoBySlug { dubs }` exposes. A mock cannot prove Prisma actually emits
+    // the parent-video relation filter in SQL (the mocked-vs-real-contract gap);
+    // that negative case (live dub under a soft-deleted video -> null) was
+    // verified empirically against a real DB during review. There is no real-DB
+    // integration harness in CI, so getBySlug/getById are gated the same way.
+    it("gates on the dub id AND both the dub and its parent video being non-deleted", async () => {
+      prisma.videoDub.findFirst.mockResolvedValueOnce(null)
+
+      await service.getDubById({ id: "dub-1", query: {} })
+
+      const where = prisma.videoDub.findFirst.mock.calls[0][0].where
+      expect(where.id).toBe("dub-1")
+      expect(where).toHaveProperty("deletedAt", null)
+      expect(where.video).toEqual({ deletedAt: null })
+    })
+
+    it("threads the resolver's prisma query selection through", async () => {
+      prisma.videoDub.findFirst.mockResolvedValueOnce({ id: "dub-1" })
+      const query = { include: { downloads: true } }
+
+      await service.getDubById({ id: "dub-1", query })
+
+      expect(prisma.videoDub.findFirst.mock.calls[0][0]).toMatchObject(query)
     })
   })
 
