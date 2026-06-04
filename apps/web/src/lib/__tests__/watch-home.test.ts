@@ -180,6 +180,57 @@ describe("buildWatchHomeModelFromVideos", () => {
     expect(vertical?.cards[0]?.parentCoreId).toBe("LUMOCollection")
   })
 
+  it("expands the Journey with Jesus course into child episode cards", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [
+        makeVideo({
+          documentId: "new-believer-course",
+          coreId: "8_NBC",
+          slug: "new-believer-course",
+          label: "SERIES",
+          children: [
+            { child: makeChild() },
+            {
+              child: makeChild({
+                documentId: "child-2",
+                coreId: "child-core-2",
+                slug: "episode-two",
+                locales: [
+                  {
+                    documentId: "child-locale-2",
+                    languageSlug: "english",
+                    title: "Episode Two",
+                    description: null,
+                    snippet: "The second episode",
+                    imageAlt: "Episode Two still",
+                  },
+                ],
+              }),
+            },
+          ],
+        }),
+      ] as never,
+    })
+
+    const course = model.sections.find(
+      (section) => section.id === "home-collection-new-believer-course",
+    )
+
+    expect(course?.cards.map((card) => card.title)).toEqual([
+      "Episode One",
+      "Episode Two",
+    ])
+    expect(course?.cards[0]?.href).toBe(
+      "/new-believer-course.html/episode-one/english.html",
+    )
+    expect(course?.cards[0]?.parentCoreId).toBe("8_NBC")
+    expect(course?.cards.some((card) => card.coreId === "8_NBC")).toBe(false)
+  })
+
   it("uses Mux thumbnails when admin images are missing and records the image gap", async () => {
     const { buildWatchHomeModelFromVideos } = await import("../watch-home")
 

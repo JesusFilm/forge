@@ -16,6 +16,8 @@ export type WatchHomeSectionConfig = {
   childLimit?: number
 }
 
+export const WATCH_HOME_CACHE_VERSION = "v2-course-children"
+
 export const collectionShowcaseSources = [
   { id: "1_jf-0-0", limitChildren: 0 },
   { id: "2_GOJ-0-0", limitChildren: 0 },
@@ -51,7 +53,7 @@ export const christmasAdventShowcaseSources = [
 ] as const satisfies readonly WatchHomeSourceConfig[]
 
 export const newBelieverCourse = [
-  { id: "8_NBC" },
+  { id: "8_NBC", limitChildren: 10 },
 ] as const satisfies readonly WatchHomeSourceConfig[]
 
 export const WATCH_HOME_HERO_SOURCE_IDS = [

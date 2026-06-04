@@ -14,6 +14,7 @@ import {
 } from "@/lib/routes"
 import {
   getWatchHomeCoreIds,
+  WATCH_HOME_CACHE_VERSION,
   WATCH_HOME_HERO_SOURCE_IDS,
   WATCH_HOME_SECTIONS,
   type WatchHomeSectionConfig,
@@ -545,7 +546,7 @@ async function fetchWatchHomeModel(
 
 const getCachedWatchHomeModel = unstable_cache(
   fetchWatchHomeModel,
-  ["watch-home"],
+  ["watch-home", WATCH_HOME_CACHE_VERSION],
   { revalidate: 60 },
 )
 
