@@ -631,7 +631,9 @@ export function LanguageDiagnostics({
                               ) : null}
                             </div>
                             <div className="mono-meta mt-1 text-[var(--color-text-muted)]">
-                              {country.coreId} / {country.speakers}
+                              {country.continentLabel
+                                ? `${country.continentLabel} / ${country.speakers}`
+                                : country.speakers}
                             </div>
                           </div>
                         ))}
@@ -1106,19 +1108,42 @@ function CountryChip({
   country: LanguageDiagnosticRow["countryPreviews"][number]
 }) {
   const flag = countryFlagEmoji(country.coreId)
+  const chipTitle = [country.label, country.continentLabel, country.speakers]
+    .filter(Boolean)
+    .join(" / ")
 
   return (
     <span
-      className="inline-flex max-w-[128px] items-center gap-1.5 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-1.5 py-1 font-mono text-[10px] font-semibold leading-none text-[var(--color-text-secondary)]"
-      title={`${country.label} / ${country.speakers}`}
+      className="inline-flex max-w-[190px] items-center gap-1.5 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-1.5 py-1 leading-none text-[var(--color-text-secondary)]"
+      title={chipTitle}
     >
       <span
         aria-hidden="true"
-        className="flex h-3.5 min-w-5 items-center justify-center overflow-hidden rounded-[1px] bg-[var(--color-bg)] text-[10px] leading-none"
+        className="flex h-4 min-w-6 items-center justify-center overflow-hidden rounded-[1px] bg-[var(--color-bg)] text-[10px] leading-none"
       >
-        {flag ?? country.coreId.slice(0, 2).toUpperCase()}
+        {country.flagUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={country.flagUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          (flag ?? country.coreId.slice(0, 2).toUpperCase())
+        )}
       </span>
-      <span className="truncate">{country.coreId}</span>
+      <span className="min-w-0">
+        <span className="block truncate text-[10px] font-semibold">
+          {country.label}
+        </span>
+        {country.continentLabel ? (
+          <span className="mt-0.5 block truncate font-mono text-[9px] uppercase text-[var(--color-text-muted)]">
+            {country.continentLabel}
+          </span>
+        ) : null}
+      </span>
     </span>
   )
 }

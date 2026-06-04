@@ -67,6 +67,8 @@ export type LanguageDiagnosticCountryPreview = {
   id: string
   coreId: string
   label: string
+  continentLabel: string | null
+  flagUrl: string | null
   speakers: string
   primary: boolean
   suggested: boolean
@@ -175,6 +177,12 @@ export type LanguageDiagnosticSourceRow = {
       id: string
       coreId: string
       name: Prisma.JsonValue
+      flagPngSrc: string | null
+      flagWebpSrc: string | null
+      continent: {
+        coreId: string
+        name: Prisma.JsonValue
+      } | null
     }
   }>
   _count: {
@@ -601,11 +609,21 @@ export function buildLanguageDiagnosticRow(
       : "muted"
   const countryPreviews = row.countryLanguages.map((countryLanguage) => ({
     id: countryLanguage.id,
-    coreId: countryLanguage.coreId ?? countryLanguage.country.coreId,
+    coreId: countryLanguage.country.coreId,
     label: displayNameFromJson(
       countryLanguage.country.name,
       countryLanguage.country.coreId,
     ),
+    continentLabel: countryLanguage.country.continent
+      ? displayNameFromJson(
+          countryLanguage.country.continent.name,
+          countryLanguage.country.continent.coreId,
+        )
+      : null,
+    flagUrl:
+      countryLanguage.country.flagWebpSrc ??
+      countryLanguage.country.flagPngSrc ??
+      null,
     speakers:
       countryLanguage.displaySpeakers ??
       countryLanguage.speakers?.toLocaleString("en-US") ??
@@ -697,6 +715,7 @@ export function buildLanguageDiagnosticRow(
       ...countryPreviews.flatMap((country) => [
         country.coreId,
         country.label,
+        country.continentLabel,
         country.speakers,
       ]),
       ...flagLabels,
@@ -1666,6 +1685,14 @@ export async function loadLanguagesData(): Promise<LanguagesData> {
                     id: true,
                     coreId: true,
                     name: true,
+                    flagPngSrc: true,
+                    flagWebpSrc: true,
+                    continent: {
+                      select: {
+                        coreId: true,
+                        name: true,
+                      },
+                    },
                   },
                 },
               },

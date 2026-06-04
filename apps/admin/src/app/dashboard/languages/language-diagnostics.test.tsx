@@ -30,6 +30,8 @@ function diagnosticRow(
         id: "cl_us",
         coreId: "US",
         label: "United States",
+        continentLabel: "North America",
+        flagUrl: "https://flags.example.com/us.webp",
         speakers: "270M",
         primary: true,
         suggested: true,

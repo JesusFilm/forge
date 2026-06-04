@@ -408,6 +408,8 @@ vi.mock("@/app/dashboard/ops-data", () => ({
             id: "cl1",
             coreId: "US",
             label: "United States",
+            continentLabel: "North America",
+            flagUrl: "https://flags.example.com/us.webp",
             speakers: "270M",
             primary: true,
             suggested: true,
@@ -1132,7 +1134,9 @@ describe("dashboard UI routes", () => {
     expect(html).toContain("17 content links")
     expect(html).toContain("1")
     expect(html).toContain("countries")
-    expect(html).toContain("US")
+    expect(html).toContain("United States")
+    expect(html).toContain("North America")
+    expect(html).toContain("https://flags.example.com/us.webp")
     expect(html).toContain("Details")
     expect(html).toMatch(
       /<button(?=[^>]*id="language-diagnostic-row-lang1")(?=[^>]*aria-haspopup="dialog")/,
