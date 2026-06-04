@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import { LogOut } from "lucide-react"
 
 import { StudioAuthShell } from "@/features/shell/studio-auth-shell"
 import { getManagerOAuthConfig } from "@/lib/oauth-client"
@@ -31,6 +32,13 @@ export default async function LoginPage({
         <div className="login-error" role="alert">
           {formatLoginError(params.error)}
         </div>
+        <a
+          className="login-button login-button-secondary"
+          href="/api/auth/logout"
+        >
+          <LogOut className="login-button-icon" aria-hidden="true" />
+          Sign out and try another account
+        </a>
       </div>
     </StudioAuthShell>
   )
