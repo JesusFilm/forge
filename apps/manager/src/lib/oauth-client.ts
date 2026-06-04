@@ -19,6 +19,10 @@ export type VerifiedManagerToken = {
   claims: JWTPayload
 }
 
+export function getManagerBaseUrl() {
+  return (env.MANAGER_BASE_URL ?? "http://localhost:3002").replace(/\/$/, "")
+}
+
 export function getManagerOAuthConfig(): ManagerOAuthConfig {
   if (!env.AUTH_ISSUER_URL) {
     throw new Error("AUTH_ISSUER_URL is required for Manager OAuth")
@@ -31,7 +35,7 @@ export function getManagerOAuthConfig(): ManagerOAuthConfig {
     issuerUrl: env.AUTH_ISSUER_URL.replace(/\/$/, ""),
     clientId: env.AUTH_MANAGER_CLIENT_ID,
     clientSecret: env.AUTH_MANAGER_CLIENT_SECRET,
-    managerBaseUrl: env.MANAGER_BASE_URL ?? "http://localhost:3002",
+    managerBaseUrl: getManagerBaseUrl(),
   }
 }
 

@@ -22,6 +22,24 @@ describe("Manager logout route", () => {
     expect(setCookie).toContain("strapi-jwt=;")
     expect(setCookie).toContain("Expires=Thu, 01 Jan 1970")
   })
+
+  it("redirects GET logout through the configured Manager origin without Auth client env", async () => {
+    stubMockEnv()
+    const { GET } = await import("./route")
+    const response = GET()
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toBe(
+      "https://manager.jesusfilm.org/api/auth/login?prompt=login",
+    )
+
+    const setCookie = response.headers.get("set-cookie") ?? ""
+    expect(setCookie).toContain("manager-session=;")
+    expect(setCookie).toContain("manager-oauth-state=;")
+    expect(setCookie).toContain("manager-oauth-verifier=;")
+    expect(setCookie).toContain("manager-oauth-return-to=;")
+    expect(setCookie).toContain("strapi-jwt=;")
+  })
 })
 
 function stubMockEnv() {
@@ -30,4 +48,5 @@ function stubMockEnv() {
   vi.stubEnv("MUX_TOKEN_ID", "mux-token-id")
   vi.stubEnv("MUX_TOKEN_SECRET", "mux-token-secret")
   vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+  vi.stubEnv("MANAGER_BASE_URL", "https://manager.jesusfilm.org")
 }

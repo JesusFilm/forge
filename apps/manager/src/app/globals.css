@@ -11224,6 +11224,32 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
   border-radius: calc(var(--ds-radius) + 2px);
 }
 
+.login-button-secondary {
+  margin-top: 0;
+  color: var(--ds-ink);
+  background: rgba(255, 254, 250, 0.64);
+  border-color: rgba(17, 17, 17, 0.14);
+}
+
+.login-button-secondary:hover:not(:disabled),
+.login-button-secondary:focus-visible:not(:disabled) {
+  color: var(--ds-ink);
+  background: rgba(255, 254, 250, 0.86);
+  border-color: rgba(17, 17, 17, 0.24);
+}
+
+.login-button-secondary:active:not(:disabled) {
+  color: var(--surface);
+  background: var(--ds-black);
+  border-color: var(--ds-black);
+}
+
+.login-button-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
 .collection-cache-clear,
 .load-more-button,
 .jobs-transcription-rerun-button,

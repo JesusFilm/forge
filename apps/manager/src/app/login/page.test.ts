@@ -1,4 +1,4 @@
-import type React from "react"
+import React from "react"
 import { describe, expect, it, vi } from "vitest"
 
 const { studioAuthShellMock } = vi.hoisted(() => ({
@@ -69,8 +69,23 @@ describe("login page", () => {
     })
     expect(element.type).toBe(studioAuthShellMock)
     expect(element.props.title).toBe("Manager access unavailable")
-    expect(element.props.children.props.children.props.children).toBe(
+
+    const card = element.props.children
+    const [error, signOut] = React.Children.toArray(
+      card.props.children,
+    ) as React.ReactElement<{
+      children: React.ReactNode
+      href?: string
+    }>[]
+
+    expect(error.props.children).toBe(
       "This account is not approved for Manager access.",
     )
+    expect(signOut.props.href).toBe("/api/auth/logout")
+    expect(
+      React.Children.toArray(signOut.props.children).some(
+        (child) => child === "Sign out and try another account",
+      ),
+    ).toBe(true)
   })
 })
