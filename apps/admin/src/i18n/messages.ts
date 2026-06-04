@@ -25,6 +25,7 @@ export const adminMessages = {
       openCommandPalette: "Open command palette",
       closeCommandPalette: "Close command palette",
       helpUnavailable: "Help is not available yet",
+      navigationLoading: "Loading route...",
       context: "Context",
       paletteContext:
         "This palette is shared across the entire dashboard shell and uses the same route registry as the sidebar so future pages stay synchronized automatically.",
@@ -1142,6 +1143,7 @@ export const adminMessages = {
       openCommandPalette: "Abrir paleta de comandos",
       closeCommandPalette: "Cerrar paleta de comandos",
       helpUnavailable: "La ayuda aun no esta disponible",
+      navigationLoading: "Cargando ruta...",
       context: "Contexto",
       paletteContext:
         "Esta paleta se comparte en todo el panel y usa el mismo registro de rutas que la barra lateral para que las futuras páginas permanezcan sincronizadas automáticamente.",

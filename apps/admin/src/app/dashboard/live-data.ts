@@ -1749,71 +1749,86 @@ async function loadVideoRowSlice({
     throw error
   }
 
+  if (videos.length === 0) {
+    return []
+  }
+
   const ids = videos.map((item) => item.id)
+  const routeManifestPromise = includeVisitorUrls
+    ? loadLatestWatchRouteManifest()
+    : Promise.resolve(null)
   let videoLocales: VideoLocaleRow[] = []
   let videoDubs: VideoDubRow[] = []
   let videoImages: VideoImageRow[] = []
   let videoChildRelations: Array<{ parentId: string }> = []
+  let routeManifest: Awaited<ReturnType<typeof loadLatestWatchRouteManifest>> =
+    null
   try {
-    ;[videoLocales, videoDubs, videoImages, videoChildRelations] =
-      await Promise.all([
-        prisma.videoLocale.findMany({
-          where: { videoId: { in: ids }, deletedAt: null },
-          select: {
-            videoId: true,
-            locale: true,
-            title: true,
-            description: true,
-            updatedAt: true,
-          },
-          orderBy: { updatedAt: "desc" },
-        }),
-        prisma.videoDub.findMany({
-          where: { videoId: { in: ids }, deletedAt: null },
-          include: {
-            language: {
-              select: {
-                bcp47: true,
-                countryLanguages: {
-                  where: { deletedAt: null },
-                  select: {
-                    order: true,
-                    primary: true,
-                    speakers: true,
-                    suggested: true,
-                    country: {
-                      select: {
-                        flagPngSrc: true,
-                        flagWebpSrc: true,
-                      },
+    ;[
+      videoLocales,
+      videoDubs,
+      videoImages,
+      videoChildRelations,
+      routeManifest,
+    ] = await Promise.all([
+      prisma.videoLocale.findMany({
+        where: { videoId: { in: ids }, deletedAt: null },
+        select: {
+          videoId: true,
+          locale: true,
+          title: true,
+          description: true,
+          updatedAt: true,
+        },
+        orderBy: { updatedAt: "desc" },
+      }),
+      prisma.videoDub.findMany({
+        where: { videoId: { in: ids }, deletedAt: null },
+        include: {
+          language: {
+            select: {
+              bcp47: true,
+              countryLanguages: {
+                where: { deletedAt: null },
+                select: {
+                  order: true,
+                  primary: true,
+                  speakers: true,
+                  suggested: true,
+                  country: {
+                    select: {
+                      flagPngSrc: true,
+                      flagWebpSrc: true,
                     },
                   },
                 },
-                iso3: true,
-                slug: true,
               },
+              iso3: true,
+              slug: true,
             },
           },
-          orderBy: { updatedAt: "desc" },
-        }),
-        prisma.videoImage.findMany({
-          where: { videoId: { in: ids } },
-          select: {
-            videoId: true,
-            url: true,
-            kind: true,
-            createdAt: true,
-          },
-          orderBy: { createdAt: "asc" },
-        }),
-        prisma.videoRelation.findMany({
-          where: {
-            parentId: { in: ids },
-            child: { deletedAt: null },
-          },
-          select: { parentId: true },
-        }),
-      ])
+        },
+        orderBy: { updatedAt: "desc" },
+      }),
+      prisma.videoImage.findMany({
+        where: { videoId: { in: ids } },
+        select: {
+          videoId: true,
+          url: true,
+          kind: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.videoRelation.findMany({
+        where: {
+          parentId: { in: ids },
+          child: { deletedAt: null },
+        },
+        select: { parentId: true },
+      }),
+      routeManifestPromise,
+    ])
   } catch (error) {
     if (isMissingTableError(error)) {
       return []
@@ -1852,10 +1867,6 @@ async function loadVideoRowSlice({
       (childCountByVideo.get(item.parentId) ?? 0) + 1,
     )
   }
-
-  const routeManifest = includeVisitorUrls
-    ? await loadLatestWatchRouteManifest()
-    : null
 
   return videos.map((video) => {
     const localeRows = localesByVideo.get(video.id) ?? []
@@ -1933,21 +1944,25 @@ export async function loadVideoLibraryPage(
     sort?: VideoLibrarySort
   },
 ) {
-  const [total, languageOptions, collectionSummary] = await Promise.all([
-    countActiveVideos({ category, collection, language, query }),
-    loadVideoLibraryLanguageOptions(language),
-    loadVideoCollectionSummary(collection),
-  ])
+  const totalPromise = countActiveVideos({
+    category,
+    collection,
+    language,
+    query,
+  })
+  const languageOptionsPromise = loadVideoLibraryLanguageOptions(language)
+  const collectionSummaryPromise = loadVideoCollectionSummary(collection)
+  const total = await totalPromise
   const pagination = createVideoLibraryPagination({
     total,
     requestedPage: page,
     pageSize,
   })
 
-  const rows =
+  const rowsPromise =
     total === 0
-      ? []
-      : await loadVideoRowSlice({
+      ? Promise.resolve([])
+      : loadVideoRowSlice({
           category,
           collection,
           language,
@@ -1958,6 +1973,11 @@ export async function loadVideoLibraryPage(
           sort,
           includeVisitorUrls: true,
         })
+  const [rows, languageOptions, collectionSummary] = await Promise.all([
+    rowsPromise,
+    languageOptionsPromise,
+    collectionSummaryPromise,
+  ])
 
   return { rows, pagination, languageOptions, collectionSummary }
 }

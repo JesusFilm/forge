@@ -3,12 +3,13 @@
 import type { Role } from "@/auth/principal"
 import type { Route } from "next"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import {
   Command,
   Globe,
   HelpCircle,
+  LoaderCircle,
   Menu,
   Search,
   Sparkles,
@@ -33,6 +34,86 @@ type ProfileView = {
   name: string | null
   email: string | null
   image: string | null
+}
+
+type NavigationFeedbackCheck = {
+  button?: number
+  currentHref: string
+  disabled?: boolean
+  download?: boolean
+  href: string
+  modified?: boolean
+  target?: string | null
+}
+
+const ADMIN_ROUTE_PENDING_TIMEOUT_MS = 8000
+export const ADMIN_NAVIGATION_PENDING_EVENT = "admin:navigation-pending"
+
+function isDashboardPathname(pathname: string) {
+  return pathname === "/dashboard" || pathname.startsWith("/dashboard/")
+}
+
+export function shouldStartAdminNavigationFeedback({
+  button = 0,
+  currentHref,
+  disabled = false,
+  download = false,
+  href,
+  modified = false,
+  target = null,
+}: NavigationFeedbackCheck) {
+  if (disabled || download || modified || button !== 0) {
+    return false
+  }
+
+  if (target && target !== "_self") {
+    return false
+  }
+
+  try {
+    const destination = new URL(href, currentHref)
+    const current = new URL(currentHref)
+
+    if (destination.origin !== current.origin) {
+      return false
+    }
+
+    if (!isDashboardPathname(destination.pathname)) {
+      return false
+    }
+
+    return (
+      destination.pathname !== current.pathname ||
+      destination.search !== current.search
+    )
+  } catch {
+    return false
+  }
+}
+
+function isElementDisabled(element: Element) {
+  return (
+    element.hasAttribute("disabled") ||
+    element.getAttribute("aria-disabled") === "true" ||
+    Boolean(element.closest("[aria-disabled='true'],[disabled]"))
+  )
+}
+
+function routeChangingFormHref(form: HTMLFormElement, currentHref: string) {
+  const method = (form.getAttribute("method") ?? "get").toLowerCase()
+  if (method !== "get") {
+    return null
+  }
+
+  const url = new URL(form.getAttribute("action") || currentHref, currentHref)
+  const searchParams = new URLSearchParams()
+  for (const [key, value] of new FormData(form)) {
+    if (typeof value === "string") {
+      searchParams.append(key, value)
+    }
+  }
+  url.search = searchParams.toString()
+  return url.href
 }
 
 function isActive(pathname: string, href: string) {
@@ -81,11 +162,14 @@ export function AdminShell({
   children: ReactNode
 }) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const { locale, messages } = useAdminI18n()
   const [isPaletteOpen, setPaletteOpen] = useState(false)
   const [isNavOpen, setNavOpen] = useState(false)
   const [isSwitchingLocale, setIsSwitchingLocale] = useState(false)
+  const [navigationPending, setNavigationPending] = useState(false)
+  const routeKey = `${pathname}?${searchParams.toString()}`
   const activeItem = getNavItem(pathname)
   const isFullCanvasRoute =
     (pathname.startsWith("/dashboard/experiences/") &&
@@ -129,6 +213,92 @@ export function AdminShell({
   useEffect(() => {
     setNavOpen(false)
   }, [pathname])
+
+  useEffect(() => {
+    setNavigationPending(false)
+  }, [routeKey])
+
+  useEffect(() => {
+    if (!navigationPending) {
+      return
+    }
+
+    const timeout = window.setTimeout(
+      () => setNavigationPending(false),
+      ADMIN_ROUTE_PENDING_TIMEOUT_MS,
+    )
+
+    return () => window.clearTimeout(timeout)
+  }, [navigationPending])
+
+  useEffect(() => {
+    function handleClick(event: MouseEvent) {
+      const target = event.target
+      if (!(target instanceof Element)) {
+        return
+      }
+
+      const anchor = target.closest("a[href]")
+      if (!(anchor instanceof HTMLAnchorElement)) {
+        return
+      }
+
+      if (
+        shouldStartAdminNavigationFeedback({
+          button: event.button,
+          currentHref: window.location.href,
+          disabled: isElementDisabled(anchor),
+          download: anchor.hasAttribute("download"),
+          href: anchor.href,
+          modified:
+            event.altKey || event.ctrlKey || event.metaKey || event.shiftKey,
+          target: anchor.target,
+        })
+      ) {
+        setNavigationPending(true)
+      }
+    }
+
+    function handlePendingEvent() {
+      setNavigationPending(true)
+    }
+
+    function handleSubmit(event: SubmitEvent) {
+      const target = event.target
+      if (!(target instanceof HTMLFormElement)) {
+        return
+      }
+
+      const href = routeChangingFormHref(target, window.location.href)
+      if (!href) {
+        return
+      }
+
+      if (
+        shouldStartAdminNavigationFeedback({
+          currentHref: window.location.href,
+          disabled: isElementDisabled(target),
+          href,
+          target: target.target,
+        })
+      ) {
+        setNavigationPending(true)
+      }
+    }
+
+    document.addEventListener("click", handleClick, true)
+    document.addEventListener("submit", handleSubmit, true)
+    window.addEventListener(ADMIN_NAVIGATION_PENDING_EVENT, handlePendingEvent)
+
+    return () => {
+      document.removeEventListener("click", handleClick, true)
+      document.removeEventListener("submit", handleSubmit, true)
+      window.removeEventListener(
+        ADMIN_NAVIGATION_PENDING_EVENT,
+        handlePendingEvent,
+      )
+    }
+  }, [])
 
   async function handleLocaleChange(nextLocale: string) {
     if (nextLocale === locale) {
@@ -272,6 +442,28 @@ export function AdminShell({
             </div>
           </div>
         </header>
+        {navigationPending ? (
+          <div
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            data-admin-navigation-feedback="pending"
+            className="sticky top-12 z-20 flex h-8 items-center gap-2 border-b border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-6 font-mono text-[11px] font-semibold uppercase text-[var(--color-success)] shadow-[0_8px_18px_rgba(0,0,0,0.18)]"
+          >
+            <LoaderCircle
+              className="h-3.5 w-3.5 animate-spin"
+              strokeWidth={1.6}
+              aria-hidden="true"
+            />
+            {messages.common.navigationLoading}
+            <span
+              aria-hidden="true"
+              className="ml-auto h-px w-24 overflow-hidden rounded-full bg-[var(--color-hairline-strong)]"
+            >
+              <span className="block h-full w-1/2 animate-pulse rounded-full bg-[var(--color-success)]" />
+            </span>
+          </div>
+        ) : null}
         <main className="flex-1 bg-[var(--color-bg)]">
           <div
             className={cx(
