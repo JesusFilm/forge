@@ -110,6 +110,7 @@ export type VideoLibraryDetailItem = {
   title: string
   meta: string
   detail?: string | null
+  detailHref?: string | null
   flagUrl?: string | null
   href?: string | null
   imageUrl?: string | null
@@ -246,6 +247,20 @@ function statusTone(status: LocaleStatus): "success" | "warning" | "danger" {
 
 function compactText(value: string | null | undefined) {
   return value?.replace(/\s+/g, " ").trim() || null
+}
+
+function externalHttpUrl(value: string | null | undefined) {
+  const url = compactText(value)
+  if (!url) return null
+
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === "http:" || parsed.protocol === "https:"
+      ? parsed.toString()
+      : null
+  } catch {
+    return null
+  }
 }
 
 function videoIdentifierWhere(identifier: string) {
@@ -1197,6 +1212,7 @@ export async function loadVideoLibraryDetail(
         empty: "No dubs",
         items: video.dubs.map((dub) => {
           const languageChip = dubLanguageChip(dub)
+          const streamUrl = externalHttpUrl(dub.hls ?? dub.dash ?? dub.share)
 
           return {
             key: dub.id,
@@ -1213,10 +1229,11 @@ export async function loadVideoLibraryDetail(
               .map((value) => compactText(value))
               .filter(Boolean)
               .join(" / "),
-            detail: [dub.coreId, dub.slug, dub.hls ?? dub.dash ?? dub.share]
+            detail: [dub.coreId, dub.slug, streamUrl]
               .map((value) => compactText(value))
               .filter(Boolean)
               .join(" / "),
+            detailHref: streamUrl,
             flagUrl: languageChip?.flagUrl ?? null,
           }
         }),

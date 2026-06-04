@@ -97,9 +97,21 @@ function DetailListItemContent({ item }: { item: VideoLibraryDetailItem }) {
         </div>
       ) : null}
       {item.detail ? (
-        <div className="mt-2 break-words text-[13px] leading-5 text-[var(--color-text-secondary)]">
-          {item.detail}
-        </div>
+        item.detailHref && !item.href ? (
+          <a
+            href={item.detailHref}
+            target="_blank"
+            rel="noreferrer"
+            title="Open stream URL"
+            className="mt-2 block break-words text-[13px] leading-5 text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+          >
+            {item.detail}
+          </a>
+        ) : (
+          <div className="mt-2 break-words text-[13px] leading-5 text-[var(--color-text-secondary)]">
+            {item.detail}
+          </div>
+        )
       ) : null}
     </>
   )

@@ -876,7 +876,8 @@ describe("dashboard UI routes", () => {
             key: "dub-1",
             title: "French",
             meta: "Published / Burned in",
-            detail: "core-dub-1",
+            detail: "core-dub-1 / https://stream.mux.com/playback-123.m3u8",
+            detailHref: "https://stream.mux.com/playback-123.m3u8",
             flagUrl: "https://flags.example.com/fr.webp",
           },
         ],
@@ -969,6 +970,8 @@ describe("dashboard UI routes", () => {
     expect(html).toContain("https://images.example.com/preview.jpg")
     expect(html).toContain('href="https://player.mux.com/playback-123"')
     expect(html).toContain('title="Open Mux player"')
+    expect(html).toContain('href="https://stream.mux.com/playback-123.m3u8"')
+    expect(html).toContain('title="Open stream URL"')
     expect(html).toContain(
       'href="/dashboard/videos?q=Jesus&amp;collection=the-story"',
     )
