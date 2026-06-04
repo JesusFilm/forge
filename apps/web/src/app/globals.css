@@ -184,6 +184,25 @@
   transform: scale(1.06);
 }
 
+@keyframes background-pan-zoom {
+  0% {
+    background-position: 50% 50%;
+    transform: scale(1);
+  }
+  50% {
+    background-position: 58% 42%;
+    transform: scale(1.04);
+  }
+  100% {
+    background-position: 50% 50%;
+    transform: scale(1);
+  }
+}
+
+.animate-background-pan-zoom {
+  animation: background-pan-zoom 18s ease-in-out infinite;
+}
+
 @keyframes mesh-gradient {
   0% {
     background-position: 0% 50%;

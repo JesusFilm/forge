@@ -10,21 +10,37 @@ type WatchHomeCardProps = {
   index?: number
   orientation?: "horizontal" | "vertical"
   showSequenceNumber?: boolean
+  onHoverImageChange?: (imageUrl: string | null) => void
   className?: string
 }
 
 function CardFrame({
   card,
   className,
+  onPointerEnter,
+  onPointerLeave,
+  onFocus,
+  onBlur,
   children,
 }: {
   card: WatchHomeCardModel
   className: string
+  onPointerEnter?: () => void
+  onPointerLeave?: () => void
+  onFocus?: () => void
+  onBlur?: () => void
   children: React.ReactNode
 }) {
   if (!card.href) {
     return (
-      <div aria-label={card.title} className={className}>
+      <div
+        aria-label={card.title}
+        className={className}
+        onPointerEnter={onPointerEnter}
+        onPointerLeave={onPointerLeave}
+        onFocus={onFocus}
+        onBlur={onBlur}
+      >
         {children}
       </div>
     )
@@ -35,6 +51,10 @@ function CardFrame({
       href={card.href as Route}
       aria-label={card.title}
       className={className}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+      onFocus={onFocus}
+      onBlur={onBlur}
     >
       {children}
     </Link>
@@ -46,6 +66,7 @@ export function WatchHomeCard({
   index = 0,
   orientation = "horizontal",
   showSequenceNumber = false,
+  onHoverImageChange,
   className,
 }: WatchHomeCardProps) {
   const isVertical = orientation === "vertical"
@@ -55,7 +76,14 @@ export function WatchHomeCard({
   )
 
   return (
-    <CardFrame card={card} className={frameClassName}>
+    <CardFrame
+      card={card}
+      className={frameClassName}
+      onPointerEnter={() => onHoverImageChange?.(card.imageUrl)}
+      onPointerLeave={() => onHoverImageChange?.(null)}
+      onFocus={() => onHoverImageChange?.(card.imageUrl)}
+      onBlur={() => onHoverImageChange?.(null)}
+    >
       <div
         className={cn(
           "relative w-full overflow-hidden rounded-lg bg-black/50",
@@ -99,13 +127,6 @@ export function WatchHomeCard({
               <Play className="h-4 w-4 fill-current" aria-hidden />
             ) : null}
             {card.metaLabel}
-          </div>
-        ) : null}
-        {card.href ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="grid h-16 w-16 place-items-center rounded-full bg-stone-900/60 text-white opacity-0 transition duration-200 group-hover:bg-red-500 group-hover:opacity-100">
-              <Play className="h-10 w-10 fill-current" aria-hidden />
-            </div>
           </div>
         ) : null}
         <div className="absolute inset-0 rounded-lg opacity-15 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] transition-opacity duration-300 group-hover:opacity-50" />

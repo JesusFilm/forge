@@ -1,6 +1,8 @@
-import Image from "next/image"
+"use client"
+
 import Link from "next/link"
 import type { Route } from "next"
+import { useState } from "react"
 import { Play } from "lucide-react"
 import { WatchHomeCard } from "@/components/home/WatchHomeCard"
 import { cn } from "@/lib/utils"
@@ -11,11 +13,20 @@ type WatchHomeSectionProps = {
   section: WatchHomeSectionModel
 }
 
+function backgroundImageStyle(imageUrl: string | null) {
+  return imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined
+}
+
 export function WatchHomeSection({ section }: WatchHomeSectionProps) {
   const isRail = section.layout === "rail"
   const cardOrientation = isRail ? "vertical" : section.orientation
   const isVertical = cardOrientation === "vertical"
   const backgroundCard = section.cards.find((card) => card.imageUrl)
+  const defaultBackgroundUrl = backgroundCard?.imageUrl ?? null
+  const [hoverBackgroundUrl, setHoverBackgroundUrl] = useState<string | null>(
+    null,
+  )
+  const currentBackgroundUrl = hoverBackgroundUrl ?? defaultBackgroundUrl
   const sectionHref = section.cards.find((card) => card.href)?.href
   const ctaHref = sectionHref ?? videosIndexPath()
 
@@ -30,23 +41,27 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
           : "bg-stone-950",
       )}
     >
-      {backgroundCard?.imageUrl ? (
+      {currentBackgroundUrl ? (
         <>
-          <Image
-            src={backgroundCard.imageUrl}
-            alt=""
-            fill
-            sizes="100vw"
-            className="absolute inset-0 z-0 scale-105 object-cover opacity-30 blur-md mix-blend-overlay"
+          <div
+            className={cn(
+              "absolute inset-0 z-0 scale-105 bg-cover bg-center bg-no-repeat opacity-30 mix-blend-overlay blur-md transition-opacity duration-500 ease-in-out",
+              hoverBackgroundUrl ? "opacity-40" : "opacity-30",
+            )}
+            style={backgroundImageStyle(currentBackgroundUrl)}
             aria-hidden
           />
           {!isRail ? (
-            <Image
-              src={backgroundCard.imageUrl}
-              alt=""
-              fill
-              sizes="100vw"
-              className="absolute inset-0 z-0 scale-125 object-cover opacity-35 blur-xl brightness-50 saturate-150 mix-blend-overlay"
+            <div
+              className={cn(
+                "animate-background-pan-zoom absolute inset-0 z-0 bg-no-repeat opacity-35 mix-blend-overlay blur-xl brightness-50 saturate-150 transition-opacity duration-500 ease-in-out",
+                hoverBackgroundUrl ? "opacity-45" : "opacity-35",
+              )}
+              style={{
+                ...backgroundImageStyle(currentBackgroundUrl),
+                backgroundSize: "200% 200%",
+                backgroundPosition: "center",
+              }}
               aria-hidden
             />
           ) : null}
@@ -96,6 +111,7 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
                 index={index}
                 orientation={cardOrientation}
                 showSequenceNumber={section.showSequenceNumbers}
+                onHoverImageChange={setHoverBackgroundUrl}
                 className="w-[158px] snap-start sm:w-[200px]"
               />
             ))}
@@ -118,6 +134,7 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
                 index={index}
                 orientation={cardOrientation}
                 showSequenceNumber={section.showSequenceNumbers}
+                onHoverImageChange={setHoverBackgroundUrl}
               />
             ))}
           </div>
