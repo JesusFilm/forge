@@ -1,9 +1,9 @@
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
-import { ArrowRight, Play } from "lucide-react"
+import { Play } from "lucide-react"
 import type { WatchHomeHeroSlide } from "@/lib/watch-home"
-import { videosIndexPath } from "@/lib/routes"
+import { cn } from "@/lib/utils"
 
 type WatchHomeHeroProps = {
   slides: WatchHomeHeroSlide[]
@@ -11,12 +11,11 @@ type WatchHomeHeroProps = {
 
 export function WatchHomeHero({ slides }: WatchHomeHeroProps) {
   const featured = slides[0] ?? null
-  const secondarySlides = slides.slice(1, 4)
 
   return (
     <section
       data-testid="watch-home-hero"
-      className="relative isolate min-h-[82svh] overflow-hidden bg-black pt-32 pb-14 text-white sm:pt-36 lg:pt-40"
+      className="relative isolate min-h-[100svh] overflow-hidden pt-28 text-white sm:pt-32 lg:pt-36"
     >
       {featured?.imageUrl ? (
         <Image
@@ -25,62 +24,34 @@ export function WatchHomeHero({ slides }: WatchHomeHeroProps) {
           fill
           priority
           sizes="100vw"
-          className="absolute inset-0 -z-20 object-cover"
+          className="absolute inset-0 -z-20 scale-105 object-cover opacity-55 blur-[2px]"
         />
       ) : (
         <div
           aria-hidden
-          className="absolute inset-0 -z-20 bg-[linear-gradient(135deg,#020617,#7f1d1d_48%,#064e3b)]"
+          className="absolute inset-0 -z-20 bg-[linear-gradient(135deg,#020617,#3f1d2b_48%,#14332c)]"
         />
       )}
       <div
         aria-hidden
-        className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(0,0,0,0.9),rgba(0,0,0,0.56)_45%,rgba(0,0,0,0.28)),linear-gradient(0deg,rgba(0,0,0,0.94),rgba(0,0,0,0.08)_55%)]"
+        className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.62),rgba(0,0,0,0.14)_42%,rgba(0,0,0,0.82)),linear-gradient(90deg,rgba(0,0,0,0.42),rgba(0,0,0,0.08)_55%)]"
       />
 
-      <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end lg:px-8">
-        <div className="max-w-3xl space-y-6">
-          <p className="text-xs font-semibold tracking-[0.28em] text-red-100 uppercase">
-            {featured?.eyebrow ?? "Featured"}
-          </p>
-          <h1 className="max-w-4xl text-4xl leading-[1.04] font-semibold tracking-normal text-white sm:text-6xl lg:text-7xl">
-            {featured?.title ?? "Jesus Film Project"}
-          </h1>
-          <p className="max-w-2xl text-base leading-7 text-stone-200 sm:text-lg lg:text-xl">
-            {featured?.description ??
-              "Watch gospel films, Bible stories, and video collections for free in languages from around the world."}
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            {featured?.href ? (
-              <Link
-                href={featured.href as Route}
-                className="inline-flex h-12 items-center gap-2 rounded-lg bg-white px-5 text-sm font-semibold text-black transition hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-              >
-                <Play className="h-4 w-4 fill-current" aria-hidden />
-                Watch now
-              </Link>
-            ) : null}
-            <Link
-              href={videosIndexPath()}
-              className="inline-flex h-12 items-center gap-2 rounded-lg border border-white/30 bg-black/25 px-5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            >
-              Browse videos
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
-          </div>
-        </div>
-
-        {secondarySlides.length ? (
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            {secondarySlides.map((slide) => {
-              const body = (
+      <div className="mx-auto flex min-h-[calc(100svh-7rem)] w-full max-w-[1920px] flex-col justify-end pb-8 sm:pb-10 lg:pb-12">
+        <h1 className="sr-only">Jesus Film Project Watch</h1>
+        <div className="w-full overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex w-max gap-2 px-4 sm:px-6 md:gap-3 lg:px-8">
+            {slides.map((slide, index) => {
+              const isActive = index === 0
+              const content = (
                 <>
                   {slide.imageUrl ? (
                     <Image
                       src={slide.imageUrl}
                       alt={slide.imageAlt}
                       fill
-                      sizes="(max-width: 1024px) 30vw, 160px"
+                      priority={isActive}
+                      sizes="(max-width: 768px) 140px, 260px"
                       className="object-cover"
                     />
                   ) : (
@@ -89,39 +60,63 @@ export function WatchHomeHero({ slides }: WatchHomeHeroProps) {
                       className="h-full w-full bg-[linear-gradient(135deg,#111827,#4c1d1d_52%,#064e3b)]"
                     />
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/78 to-black/20" />
-                  <div className="relative flex min-h-28 items-end p-4">
-                    <div>
-                      <p className="text-[10px] font-semibold tracking-[0.18em] text-red-100 uppercase">
-                        {slide.label}
-                      </p>
-                      <h2 className="line-clamp-2 text-sm font-semibold text-white">
-                        {slide.title}
-                      </h2>
-                    </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/24 to-transparent" />
+                  <div
+                    aria-hidden
+                    className={cn(
+                      "pointer-events-none absolute inset-0 rounded-lg transition",
+                      isActive
+                        ? "shadow-[inset_0_0_0_4px_#fff]"
+                        : "group-hover:shadow-[inset_0_0_0_4px_rgba(255,255,255,0.82)]",
+                    )}
+                  />
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <span
+                      className={cn(
+                        "grid h-14 w-14 place-items-center rounded-full bg-red-500 text-white opacity-0 transition group-hover:opacity-100",
+                        isActive ? "hidden" : null,
+                      )}
+                    >
+                      <Play className="h-8 w-8 fill-current" aria-hidden />
+                    </span>
+                  </div>
+                  <div className="relative flex h-full flex-col justify-end p-3 md:p-4">
+                    <p className="truncate text-[11px] leading-5 font-bold tracking-widest text-stone-100/80 uppercase">
+                      {slide.label}
+                    </p>
+                    <h2 className="line-clamp-3 text-sm leading-tight font-bold text-stone-50 [text-shadow:0_1px_3px_rgba(0,0,0,0.55)] md:text-base">
+                      {slide.title}
+                    </h2>
                   </div>
                 </>
               )
 
-              const className =
-                "group relative overflow-hidden rounded-lg border border-white/15 bg-white/5 text-left transition hover:border-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              const className = cn(
+                "beveled group relative block h-[136px] w-[140px] overflow-hidden rounded-lg bg-black text-left no-underline transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white md:w-[260px]",
+                isActive ? "opacity-100" : "opacity-60 hover:opacity-85",
+              )
 
               return slide.href ? (
                 <Link
                   key={slide.id}
                   href={slide.href as Route}
+                  aria-label={slide.title}
                   className={className}
                 >
-                  {body}
+                  {content}
                 </Link>
               ) : (
-                <div key={slide.id} className={className}>
-                  {body}
+                <div
+                  key={slide.id}
+                  aria-label={slide.title}
+                  className={className}
+                >
+                  {content}
                 </div>
               )
             })}
           </div>
-        ) : null}
+        </div>
       </div>
     </section>
   )

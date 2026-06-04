@@ -88,7 +88,7 @@ describe("WatchHomePage", () => {
     expect(container.textContent).toContain("Built for global missions")
     expect(
       container.querySelectorAll("a[href='/jesus.html/english.html']"),
-    ).toHaveLength(3)
+    ).toHaveLength(4)
   })
 
   it("renders an unlinked fallback card when href is missing", async () => {

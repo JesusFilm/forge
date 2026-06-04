@@ -175,6 +175,15 @@
   border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
+.poster-hover-zoom {
+  transition: transform 300ms ease;
+}
+
+.group:hover .poster-hover-zoom,
+.group:focus-visible .poster-hover-zoom {
+  transform: scale(1.06);
+}
+
 @keyframes mesh-gradient {
   0% {
     background-position: 0% 50%;

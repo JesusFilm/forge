@@ -50,7 +50,7 @@ export function WatchHomeCard({
 }: WatchHomeCardProps) {
   const isVertical = orientation === "vertical"
   const frameClassName = cn(
-    "group relative block overflow-hidden rounded-lg border border-white/10 bg-stone-900 text-white shadow-xl shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/25 hover:shadow-black/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
+    "beveled group relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-xl shadow-stone-950/70 transition duration-300 hover:scale-[1.02] focus-visible:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
     className,
   )
 
@@ -58,8 +58,8 @@ export function WatchHomeCard({
     <CardFrame card={card} className={frameClassName}>
       <div
         className={cn(
-          "relative w-full overflow-hidden bg-stone-800",
-          isVertical ? "aspect-[2/3]" : "aspect-[16/10]",
+          "relative w-full overflow-hidden rounded-lg bg-black/50",
+          isVertical ? "aspect-[2/3]" : "aspect-video",
         )}
       >
         {card.imageUrl ? (
@@ -70,9 +70,16 @@ export function WatchHomeCard({
             sizes={
               isVertical
                 ? "(max-width: 768px) 46vw, 220px"
-                : "(max-width: 768px) 78vw, 320px"
+                : "(max-width: 768px) 100vw, 360px"
             }
-            className="object-cover transition duration-500 group-hover:scale-105"
+            className="poster-hover-zoom object-cover"
+            style={{
+              objectPosition: "left top",
+              maskImage:
+                "linear-gradient(to top, transparent 0%, rgba(0,0,0,.4) 30%, black 42%)",
+              WebkitMaskImage:
+                "linear-gradient(to top, transparent 0%, rgba(0,0,0,.4) 30%, black 42%)",
+            }}
           />
         ) : (
           <div
@@ -80,35 +87,36 @@ export function WatchHomeCard({
             className="h-full w-full bg-[linear-gradient(135deg,#111827,#4c1d1d_52%,#064e3b)]"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+        <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-black/78 via-black/18 to-transparent" />
         {showSequenceNumber ? (
-          <div className="absolute top-3 left-3 grid h-8 w-8 place-items-center rounded-full bg-white text-sm font-bold text-black shadow">
+          <span className="absolute top-2 left-2 z-10 text-5xl leading-none font-bold text-stone-100/90 [text-shadow:0_2px_8px_rgba(0,0,0,0.7)]">
             {index + 1}
-          </div>
+          </span>
         ) : null}
         {card.metaLabel ? (
-          <div className="absolute top-3 right-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
+          <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded bg-black/35 px-2 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+            {card.childCount === 0 && card.href ? (
+              <Play className="h-4 w-4 fill-current" aria-hidden />
+            ) : null}
             {card.metaLabel}
           </div>
         ) : null}
         {card.href ? (
-          <div className="absolute bottom-3 left-3 grid h-9 w-9 place-items-center rounded-full bg-white text-black shadow transition group-hover:bg-red-500 group-hover:text-white">
-            <Play className="h-4 w-4 fill-current" aria-hidden />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="grid h-16 w-16 place-items-center rounded-full bg-stone-900/60 text-white opacity-0 transition duration-200 group-hover:bg-red-500 group-hover:opacity-100">
+              <Play className="h-10 w-10 fill-current" aria-hidden />
+            </div>
           </div>
         ) : null}
-      </div>
-      <div className="space-y-2 p-4">
-        <div className="text-xs font-semibold tracking-[0.18em] text-red-200 uppercase">
-          {card.label}
+        <div className="absolute inset-0 rounded-lg opacity-15 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] transition-opacity duration-300 group-hover:opacity-50" />
+        <div className="absolute inset-0 flex flex-col justify-end p-4">
+          <div className="truncate text-xs leading-8 font-semibold tracking-wider text-stone-300/70 uppercase mix-blend-screen">
+            {card.label}
+          </div>
+          <h3 className="line-clamp-2 -mt-1 text-left text-xl leading-tight font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">
+            {card.title}
+          </h3>
         </div>
-        <h3 className="line-clamp-2 text-base leading-snug font-semibold tracking-normal text-white">
-          {card.title}
-        </h3>
-        {card.description ? (
-          <p className="line-clamp-2 text-sm leading-5 text-stone-300">
-            {card.description}
-          </p>
-        ) : null}
       </div>
     </CardFrame>
   )

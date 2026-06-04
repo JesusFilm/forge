@@ -42,73 +42,90 @@ const highlights = [
 
 export function WatchHomePromo() {
   return (
-    <section className="border-y border-white/10 bg-[linear-gradient(135deg,#111827,#3f1d2b_48%,#14332c)] py-16 text-white sm:py-20">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl space-y-4">
-          <p className="text-xs font-semibold tracking-[0.24em] text-red-100 uppercase">
-            Built for global missions
-          </p>
-          <h2 className="text-3xl leading-tight font-semibold tracking-normal sm:text-4xl lg:text-5xl">
-            The message does not change. The way people watch does.
-          </h2>
-          <p className="text-base leading-7 text-stone-200 sm:text-lg">
-            We are rebuilding our video library and tools from the ground up,
-            committing decades of translation work to the platforms where people
-            already gather, watch, and share.
-          </p>
-        </div>
+    <section className="relative overflow-hidden bg-[linear-gradient(135deg,rgba(69,10,29,0.6),rgba(88,28,135,0.2),rgba(234,88,12,0.1))] py-[4.5rem] text-white">
+      <div className="absolute inset-0 bg-[url(/assets/overlay.svg)] bg-repeat opacity-45 mix-blend-multiply" />
+      <div className="relative mx-auto max-w-[1920px] px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-14">
+          <div className="max-w-3xl space-y-4">
+            <p className="text-xs font-semibold tracking-[0.3em] text-red-100/70 uppercase">
+              Built for global missions
+            </p>
+            <h2 className="text-3xl leading-tight font-semibold tracking-normal text-white sm:text-4xl lg:text-5xl">
+              {"The message doesn't change. The way people watch does."}
+            </h2>
+            <p className="text-lg leading-8 text-white/80 lg:text-xl">
+              We are rebuilding our video library and tools from the ground up,
+              committing decades of translation work to the platforms where
+              people already gather, watch, and share.
+            </p>
+          </div>
 
-        <div className="mt-10 grid gap-4 md:grid-cols-3">
-          {points.map(({ Icon, title, description }) => (
-            <article
-              key={title}
-              className="rounded-lg border border-white/10 bg-white/[0.06] p-5"
+          <div className="grid gap-8 md:grid-cols-3">
+            {points.map(({ Icon, title, description }) => (
+              <article
+                key={title}
+                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-transform duration-300 hover:-translate-y-1 hover:bg-white/10"
+              >
+                <Icon
+                  className="h-20 w-20 text-white/20 mix-blend-overlay"
+                  aria-hidden
+                />
+                <h3 className="mt-6 text-xl font-semibold text-white">
+                  {title}
+                </h3>
+                <p className="mt-3 text-sm leading-relaxed text-white/70">
+                  {description}
+                </p>
+              </article>
+            ))}
+          </div>
+
+          <div className="space-y-6">
+            <p className="text-lg text-white/80 lg:text-xl">
+              What we are building next
+            </p>
+            <div className="grid gap-6 md:grid-cols-3">
+              {highlights.map((highlight) => (
+                <article
+                  key={highlight.title}
+                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-stone-950/20 p-6 transition-transform duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-stone-900/60"
+                >
+                  <h3 className="text-lg font-semibold text-white">
+                    {highlight.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-white/70">
+                    {highlight.description}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-12 mb-16 text-center">
+            <p className="mb-4 text-xs font-semibold tracking-[0.3em] text-red-100/70 uppercase">
+              {"You're invited"}
+            </p>
+            <h3 className="mb-4 text-3xl font-semibold text-white">
+              Help build{" "}
+              <span className="bg-gradient-to-r from-purple-400 via-blue-500 to-pink-500 bg-clip-text text-transparent">
+                the next generation
+              </span>{" "}
+              of mission tools
+            </h3>
+            <p className="mx-auto mb-8 max-w-2xl text-lg text-white/80 lg:text-xl">
+              {
+                "We're inviting practitioners, creators, and partners into early access. Test new tools first, give feedback, and help shape products designed for real mission work."
+              }
+            </p>
+            <Link
+              href="https://mailchi.mp/jesusfilm/beta"
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="inline-flex h-12 items-center justify-center rounded-md bg-white px-10 py-3 text-base font-medium text-black transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
-              <Icon className="h-8 w-8 text-red-100/80" aria-hidden />
-              <h3 className="mt-5 text-lg font-semibold text-white">{title}</h3>
-              <p className="mt-3 text-sm leading-6 text-stone-300">
-                {description}
-              </p>
-            </article>
-          ))}
-        </div>
-
-        <div className="mt-10 grid gap-4 md:grid-cols-3">
-          {highlights.map((highlight) => (
-            <article
-              key={highlight.title}
-              className="rounded-lg border border-white/10 bg-black/20 p-5"
-            >
-              <h3 className="text-base font-semibold text-white">
-                {highlight.title}
-              </h3>
-              <p className="mt-3 text-sm leading-6 text-stone-300">
-                {highlight.description}
-              </p>
-            </article>
-          ))}
-        </div>
-
-        <div className="mt-14 max-w-3xl">
-          <p className="text-xs font-semibold tracking-[0.24em] text-red-100 uppercase">
-            You are invited
-          </p>
-          <h3 className="mt-3 text-2xl font-semibold tracking-normal sm:text-3xl">
-            Help build the next generation of mission tools
-          </h3>
-          <p className="mt-4 text-base leading-7 text-stone-200">
-            We are inviting practitioners, creators, and partners into early
-            access. Test new tools first, give feedback, and help shape products
-            designed for real mission work.
-          </p>
-          <Link
-            href="https://mailchi.mp/jesusfilm/beta"
-            target="_blank"
-            rel="noopener noreferrer nofollow"
-            className="mt-6 inline-flex h-12 items-center rounded-lg bg-white px-6 text-sm font-semibold text-black transition hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-          >
-            Become a beta tester
-          </Link>
+              Become a beta tester
+            </Link>
+          </div>
         </div>
       </div>
     </section>

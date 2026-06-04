@@ -1,6 +1,11 @@
+import Image from "next/image"
+import Link from "next/link"
+import type { Route } from "next"
+import { Play } from "lucide-react"
 import { WatchHomeCard } from "@/components/home/WatchHomeCard"
 import { cn } from "@/lib/utils"
 import type { WatchHomeSection as WatchHomeSectionModel } from "@/lib/watch-home"
+import { videosIndexPath } from "@/lib/routes"
 
 type WatchHomeSectionProps = {
   section: WatchHomeSectionModel
@@ -8,60 +13,124 @@ type WatchHomeSectionProps = {
 
 export function WatchHomeSection({ section }: WatchHomeSectionProps) {
   const isRail = section.layout === "rail"
-  const isVertical = section.orientation === "vertical"
+  const cardOrientation = isRail ? "vertical" : section.orientation
+  const isVertical = cardOrientation === "vertical"
+  const backgroundCard = section.cards.find((card) => card.imageUrl)
+  const sectionHref = section.cards.find((card) => card.href)?.href
+  const ctaHref = sectionHref ?? videosIndexPath()
 
   return (
     <section
       data-testid="watch-home-section"
       data-section-id={section.id}
-      className="py-10 text-white sm:py-14"
+      className={cn(
+        "scroll-mt-24 relative overflow-hidden py-16 text-white",
+        isRail
+          ? "bg-[linear-gradient(to_top_right,rgba(23,37,84,0.12),rgba(88,28,135,0.12),rgba(145,33,74,0.9))]"
+          : "bg-stone-950",
+      )}
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-6 max-w-3xl space-y-2">
-          <p className="text-xs font-semibold tracking-[0.22em] text-red-200 uppercase">
-            {section.eyebrow}
-          </p>
-          <h2 className="text-2xl leading-tight font-semibold tracking-normal sm:text-3xl">
-            {section.title}
-          </h2>
-          {section.description ? (
-            <p className="text-sm leading-6 text-stone-300 sm:text-base">
-              {section.description}
-            </p>
-          ) : null}
-        </div>
-
-        <div
-          className={cn(
-            isRail
-              ? "flex snap-x gap-4 overflow-x-auto pb-5 [scrollbar-width:thin]"
-              : "grid gap-4",
-            !isRail && isVertical
-              ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
-              : null,
-            !isRail && !isVertical
-              ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-              : null,
-          )}
-        >
-          {section.cards.map((card, index) => (
-            <WatchHomeCard
-              key={`${section.id}-${card.id}-${index}`}
-              card={card}
-              index={index}
-              orientation={section.orientation}
-              showSequenceNumber={section.showSequenceNumbers}
-              className={cn(
-                isRail
-                  ? isVertical
-                    ? "w-[44vw] min-w-[160px] snap-start sm:w-[220px]"
-                    : "w-[78vw] min-w-[260px] snap-start sm:w-[320px]"
-                  : null,
-              )}
+      {backgroundCard?.imageUrl ? (
+        <>
+          <Image
+            src={backgroundCard.imageUrl}
+            alt=""
+            fill
+            sizes="100vw"
+            className="absolute inset-0 z-0 scale-105 object-cover opacity-30 blur-md mix-blend-overlay"
+            aria-hidden
+          />
+          {!isRail ? (
+            <Image
+              src={backgroundCard.imageUrl}
+              alt=""
+              fill
+              sizes="100vw"
+              className="absolute inset-0 z-0 scale-125 object-cover opacity-35 blur-xl brightness-50 saturate-150 mix-blend-overlay"
+              aria-hidden
             />
-          ))}
+          ) : null}
+        </>
+      ) : null}
+      <div
+        aria-hidden
+        className={cn(
+          "absolute inset-0 z-[1] mix-blend-multiply",
+          isRail
+            ? "bg-[linear-gradient(to_top_right,rgba(23,37,84,0.16),rgba(88,28,135,0.16),rgba(145,33,74,0.72))]"
+            : "bg-[linear-gradient(to_top_right,rgba(88,28,135,0.1),rgba(88,28,135,0.1),rgba(28,25,23,0.9))]",
+        )}
+      />
+      <div
+        aria-hidden
+        className="absolute inset-0 z-[1] bg-[url(/assets/overlay.svg)] bg-repeat opacity-70 mix-blend-multiply"
+      />
+
+      <div className="relative z-[2] mx-auto max-w-[1920px] px-4 pb-6 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex max-w-4xl flex-col gap-1">
+            <p className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+              {section.eyebrow}
+            </p>
+            <h2 className="text-2xl leading-tight font-bold tracking-normal xl:text-3xl 2xl:text-4xl">
+              {section.title}
+            </h2>
+          </div>
+          <Link
+            href={ctaHref as Route}
+            className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            <Play className="h-4 w-4 fill-current" aria-hidden />
+            Watch
+          </Link>
         </div>
       </div>
+
+      {isRail ? (
+        <div className="relative z-[2] w-full overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex w-max gap-5 px-4 sm:px-6 lg:px-8">
+            {section.cards.map((card, index) => (
+              <WatchHomeCard
+                key={`${section.id}-${card.id}-${index}`}
+                card={card}
+                index={index}
+                orientation={cardOrientation}
+                showSequenceNumber={section.showSequenceNumbers}
+                className="w-[158px] snap-start sm:w-[200px]"
+              />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="relative z-[2] mx-auto max-w-[1920px] px-4 sm:px-6 lg:px-8">
+          <div
+            className={cn(
+              "grid gap-4",
+              isVertical
+                ? "grid-cols-2 md:grid-cols-4 xl:grid-cols-4"
+                : "grid-cols-1 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5",
+            )}
+          >
+            {section.cards.map((card, index) => (
+              <WatchHomeCard
+                key={`${section.id}-${card.id}-${index}`}
+                card={card}
+                index={index}
+                orientation={cardOrientation}
+                showSequenceNumber={section.showSequenceNumbers}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {section.description ? (
+        <div className="relative z-[2] mx-auto max-w-[1920px] px-4 sm:px-6 lg:px-8">
+          <p className="mt-8 max-w-5xl text-lg leading-relaxed text-stone-200/80 xl:text-xl">
+            {section.description}
+          </p>
+        </div>
+      ) : null}
     </section>
   )
 }
