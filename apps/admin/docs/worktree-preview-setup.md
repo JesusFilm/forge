@@ -158,6 +158,10 @@ curl -I -sS "http://localhost:${PORT}/dashboard/workflows" | sed -n '1,20p'
 curl -I -sS "http://localhost:${PORT}/dashboard/system-status" | sed -n '1,20p'
 ```
 
+For UI smoke checks, click between `/dashboard/videos` and
+`/dashboard/languages` after sign-in so the persistent shell, route loading
+states, and dashboard data boundaries all run through the browser.
+
 If Workflow Postgres World has runtime rows, open
 `/dashboard/workflows/<runId>` in the browser to smoke the embedded
 `@workflow/web-shared` trace/detail view.
