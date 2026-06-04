@@ -38,15 +38,22 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
         "scroll-mt-24 relative overflow-hidden py-16 text-white",
         isRail
           ? "bg-[linear-gradient(to_top_right,rgba(23,37,84,0.12),rgba(88,28,135,0.12),rgba(145,33,74,0.9))]"
-          : "bg-stone-950",
+          : "bg-[#050505]",
       )}
     >
       {currentBackgroundUrl ? (
         <>
           <div
             className={cn(
-              "absolute inset-0 z-0 scale-105 bg-cover bg-center bg-no-repeat opacity-30 mix-blend-overlay blur-md transition-opacity duration-500 ease-in-out",
-              hoverBackgroundUrl ? "opacity-40" : "opacity-30",
+              "absolute inset-0 z-0 scale-105 bg-cover bg-center bg-no-repeat blur-md transition-opacity duration-500 ease-in-out",
+              isRail
+                ? "opacity-30 mix-blend-overlay"
+                : "opacity-45 brightness-75 saturate-125",
+              hoverBackgroundUrl
+                ? isRail
+                  ? "opacity-40"
+                  : "opacity-65"
+                : null,
             )}
             style={backgroundImageStyle(currentBackgroundUrl)}
             aria-hidden
@@ -54,8 +61,8 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
           {!isRail ? (
             <div
               className={cn(
-                "animate-background-pan-zoom absolute inset-0 z-0 bg-no-repeat opacity-35 mix-blend-overlay blur-xl brightness-50 saturate-150 transition-opacity duration-500 ease-in-out",
-                hoverBackgroundUrl ? "opacity-45" : "opacity-35",
+                "animate-background-pan-zoom absolute inset-[-8%] z-0 bg-no-repeat opacity-35 blur-2xl brightness-75 saturate-150 transition-opacity duration-500 ease-in-out",
+                hoverBackgroundUrl ? "opacity-55" : "opacity-35",
               )}
               style={{
                 ...backgroundImageStyle(currentBackgroundUrl),
@@ -70,15 +77,18 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
       <div
         aria-hidden
         className={cn(
-          "absolute inset-0 z-[1] mix-blend-multiply",
+          "absolute inset-0 z-[1]",
           isRail
-            ? "bg-[linear-gradient(to_top_right,rgba(23,37,84,0.16),rgba(88,28,135,0.16),rgba(145,33,74,0.72))]"
-            : "bg-[linear-gradient(to_top_right,rgba(88,28,135,0.1),rgba(88,28,135,0.1),rgba(28,25,23,0.9))]",
+            ? "bg-[linear-gradient(to_top_right,rgba(23,37,84,0.16),rgba(88,28,135,0.16),rgba(145,33,74,0.72))] mix-blend-multiply"
+            : "bg-[linear-gradient(to_top_right,rgba(88,28,135,0.18),rgba(12,10,9,0.28)_42%,rgba(12,10,9,0.82))]",
         )}
       />
       <div
         aria-hidden
-        className="absolute inset-0 z-[1] bg-[url(/assets/overlay.svg)] bg-repeat opacity-70 mix-blend-multiply"
+        className={cn(
+          "absolute inset-0 z-[1] bg-[url(/assets/overlay.svg)] bg-repeat mix-blend-multiply",
+          isRail ? "opacity-70" : "opacity-45",
+        )}
       />
 
       <div className="relative z-[2] mx-auto max-w-[1920px] px-4 pb-6 sm:px-6 lg:px-8">
