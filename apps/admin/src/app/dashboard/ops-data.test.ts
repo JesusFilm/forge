@@ -52,6 +52,12 @@ function sourceRow(
           id: "country_us",
           coreId: "US",
           name: { en: "United States" },
+          flagPngSrc: "https://flags.example.com/us.png",
+          flagWebpSrc: "https://flags.example.com/us.webp",
+          continent: {
+            coreId: "NA",
+            name: { en: "North America" },
+          },
         },
       },
     ],
@@ -94,7 +100,10 @@ describe("buildLanguageDiagnosticRow", () => {
       codec: "mp3",
     })
     expect(row.countryPreviews[0]).toMatchObject({
+      coreId: "US",
       label: "United States",
+      continentLabel: "North America",
+      flagUrl: "https://flags.example.com/us.webp",
       speakers: "270M",
       primary: true,
       suggested: true,
@@ -112,12 +121,14 @@ describe("buildLanguageDiagnosticRow", () => {
       "has study questions",
       "primary video language",
       "audio preview",
-      "cl_us_en",
+      "us",
       "united states",
+      "north america",
       "270m",
     ]) {
       expect(row.searchText).toContain(term)
     }
+    expect(row.searchText).not.toContain("cl_us_en")
   })
 
   it("surfaces missing metadata and non-Core provenance explicitly", () => {

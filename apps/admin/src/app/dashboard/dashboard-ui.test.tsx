@@ -408,6 +408,8 @@ vi.mock("@/app/dashboard/ops-data", () => ({
             id: "cl1",
             coreId: "US",
             label: "United States",
+            continentLabel: "North America",
+            flagUrl: "https://flags.example.com/us.webp",
             speakers: "270M",
             primary: true,
             suggested: true,
@@ -1099,6 +1101,66 @@ describe("dashboard UI routes", () => {
     expect(html).toContain('href="/dashboard/videos?page=3"')
     expect(html).toMatch(/Next[\s\S]*<\/span>/)
     expect(html).not.toContain('href="/dashboard/videos?page=5"')
+  })
+
+  it("renders languages page with video-library-style controls and rows", async () => {
+    const html = await htmlFrom(LanguagesPage())
+
+    expect(html).toContain(uiMessages.pages.languages.title)
+    expect(html).toContain("Review reference metadata")
+    expect(html).toContain("Search languages, IDs, codes, countries...")
+    expect(html).toContain('aria-label="Language filters"')
+    expect(html).toContain("Operational state")
+    expect(html).toContain("Geo and content")
+    expect(html).toContain("Sync provenance")
+    expect(html).toContain("All active")
+    expect(html).toContain("All usage")
+    expect(html).toContain("All provenance")
+    expect(html).toContain('aria-label="Language library results"')
+    expect(html).toContain('aria-label="Language signal filters"')
+    expect(html).toMatch(
+      /<button(?=[^>]*role="combobox")(?=[^>]*aria-label="Filter by language")(?=[^>]*aria-haspopup="listbox")/,
+    )
+    expect(html).toContain("Languages")
+    expect(html).toContain("Countries")
+    expect(html).toContain("Locales In Use")
+    expect(html).toMatch(
+      /<button(?=[^>]*aria-label="Filter to country-linked languages")(?=[^>]*aria-pressed="false")/,
+    )
+    expect(html).toMatch(
+      /<button(?=[^>]*aria-label="Filter to linked languages")(?=[^>]*aria-pressed="false")/,
+    )
+    expect(html).toMatch(
+      /<button(?=[^>]*aria-label="Filter by sync status")(?=[^>]*aria-pressed="false")/,
+    )
+    expect(html).toMatch(
+      /<button(?=[^>]*aria-label="Filter to soft-deleted languages")(?=[^>]*aria-pressed="false")/,
+    )
+    expect(html).toContain("Last sync")
+    expect(html).toContain("Soft deleted")
+    expect(html).toContain("English")
+    expect(html).toContain("en / eng / english")
+    expect(html).toContain("CORE")
+    expect(html).toContain("Linked")
+    expect(html).toContain("Core synced")
+    expect(html).toContain("2")
+    expect(html).toContain("dubs")
+    expect(html).toContain("4 subtitles")
+    expect(html).toContain("5 study questions")
+    expect(html).toContain("17 content links")
+    expect(html).toContain("1")
+    expect(html).toContain("countries")
+    expect(html).toContain("United States")
+    expect(html).toContain("North America")
+    expect(html).toContain("https://flags.example.com/us.webp")
+    expect(html).toContain("Details")
+    expect(html).toMatch(
+      /<button(?=[^>]*id="language-diagnostic-row-lang1")(?=[^>]*aria-haspopup="dialog")/,
+    )
+    expect(html).toContain('dateTime="2023-10-24T14:02:00.000Z"')
+    expect(html).not.toContain("Language Diagnostics")
+    expect(html).not.toContain("Locale Signals")
+    expect(html).not.toContain(uiMessages.common.operatorNotes)
   })
 
   it("renders core sync page around current sync state", async () => {

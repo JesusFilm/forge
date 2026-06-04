@@ -997,9 +997,9 @@ export const adminMessages = {
       },
       languages: {
         eyebrow: "Content / Languages",
-        title: "Languages Reference Data",
+        title: "Language Library",
         description:
-          "Reference locale metadata, publication coverage, and sync provenance.",
+          "Review reference metadata, country links, and content coverage across {total} languages.",
         cards: [
           { label: "Languages", value: "212", footer: "REFERENCE_ROWS" },
           { label: "Countries", value: "247", footer: "ISO_MAPPED" },
