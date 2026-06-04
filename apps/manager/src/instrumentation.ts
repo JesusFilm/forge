@@ -1,7 +1,7 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     // Warm read-heavy caches before first request arrives.
-    // Railway rolling deploys give Manager a few seconds before traffic routes here.
+    // Railway rolling deploys give the Manager service a few seconds before traffic routes here.
     const { videoCache } = await import("@/app/api/videos/cache")
     const { languageCache } = await import("@/app/api/languages/cache")
     const { latestCoverageSnapshotCache } =
