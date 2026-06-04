@@ -530,6 +530,19 @@ export class VideoService {
     })
   }
 
+  // Fetch a single VideoDub by id so consumers can lazily load one dub's
+  // downloads + subtitles instead of projecting every dub up front (mobile's
+  // lean watch screen). PUBLIC — same posture as getById/getBySlug. Visibility
+  // mirrors reaching the dub via `videoBySlug(slug){ dubs }`: the dub and its
+  // parent video must both be non-deleted (the `dubs` relation filters
+  // `deletedAt: null`; the video query gates `deletedAt: null`).
+  async getDubById({ id, query }: { id: string; query: object }) {
+    return this.prisma.videoDub.findFirst({
+      ...query,
+      where: { id, deletedAt: null, video: { deletedAt: null } },
+    })
+  }
+
   async getByCoreId({
     coreId,
     user,

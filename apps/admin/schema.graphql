@@ -1006,6 +1006,10 @@ type Query {
   video(id: ID!): Video
   """Fetch a single Video by slug."""
   videoBySlug(slug: String!): Video
+  """
+  Fetch a single VideoDub by id. Lets consumers lazily load one dub's downloads + subtitles (via `videoEdition { subtitles }`) without projecting every dub — mobile's watch screen uses this so switching language/opening the download or subtitle sheet fetches just the active dub, not all ~2,200. Visibility mirrors `videoBySlug { dubs }`: the dub and its parent video must both be non-deleted.
+  """
+  videoDub(id: ID!): VideoDub
   """List active Videos ordered by most recent Core update."""
   videos(limit: Int = 50, offset: Int = 0): [Video!]
   """
