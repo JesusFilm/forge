@@ -5,6 +5,7 @@ import {
   type PrismaClient,
 } from "@prisma/client"
 import { prisma } from "@/db/client"
+import type { SyncPhaseProgress } from "@/services/core-sync/types"
 import type { SyncResult } from "@/services/core-sync/orchestrator"
 import type { CoreSyncTrigger } from "@/services/core-sync/job"
 
@@ -108,6 +109,36 @@ export async function markWorkflowRunFailed(
       status: WorkflowRunStatus.FAILED,
       finishedAt: new Date(),
       error: asErrorMessage(error),
+    },
+  })
+}
+
+export async function recordCoreSyncPhaseProgress(
+  workflowRunId: string,
+  progress: SyncPhaseProgress,
+  client: WorkflowRunClient = prisma,
+) {
+  const existing = await client.workflowRun.findUnique({
+    where: { id: workflowRunId },
+    select: { details: true },
+  })
+  const details =
+    existing?.details != null &&
+    typeof existing.details === "object" &&
+    !Array.isArray(existing.details)
+      ? { ...(existing.details as Record<string, Prisma.JsonValue>) }
+      : {}
+
+  return client.workflowRun.update({
+    where: { id: workflowRunId },
+    data: {
+      details: {
+        ...details,
+        coreSyncProgress: {
+          ...progress,
+          updatedAt: new Date().toISOString(),
+        },
+      },
     },
   })
 }

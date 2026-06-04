@@ -6,12 +6,14 @@ import { runCoreSync } from "@/workflows/coreSync"
 
 const syncPrisma = vi.hoisted(() => ({ name: "sync-prisma" }))
 const runSync = vi.hoisted(() => vi.fn())
+const runSyncPhase = vi.hoisted(() => vi.fn())
 const start = vi.hoisted(() => vi.fn())
 const workflowRunLog = vi.hoisted(() => ({
   createWorkflowRunLog: vi.fn(),
   attachWorkflowRuntimeRunId: vi.fn(),
   markWorkflowRunFailed: vi.fn(),
   markWorkflowRunStarted: vi.fn(),
+  recordCoreSyncPhaseProgress: vi.fn(),
   recordCoreSyncRunResult: vi.fn(),
 }))
 
@@ -24,6 +26,7 @@ vi.mock("@/services/core-sync/orchestrator", async (importOriginal) => {
   return {
     ...actual,
     runSync,
+    runSyncPhase,
   }
 })
 
@@ -36,6 +39,7 @@ describe("core sync job", () => {
     workflowRunLog.attachWorkflowRuntimeRunId.mockResolvedValue(undefined)
     workflowRunLog.markWorkflowRunFailed.mockResolvedValue(undefined)
     workflowRunLog.markWorkflowRunStarted.mockResolvedValue(undefined)
+    workflowRunLog.recordCoreSyncPhaseProgress.mockResolvedValue(undefined)
     workflowRunLog.recordCoreSyncRunResult.mockResolvedValue(undefined)
   })
 
@@ -226,5 +230,61 @@ describe("core sync job", () => {
       coverageAudit,
       trigger: "manual",
     })
+  })
+
+  it("records ledger progress for workflow phase jobs", async () => {
+    const phaseResult = {
+      phase: "videos",
+      created: 0,
+      updated: 25,
+      softDeleted: 0,
+      errors: 0,
+      durationMs: 100,
+    }
+    runSyncPhase.mockImplementationOnce(async (_prisma, _run, _phase, opts) => {
+      opts.onProgress({
+        phase: "videos",
+        completed: 25,
+        total: 50,
+        elapsedMs: 75,
+      })
+      return phaseResult
+    })
+    const { runCoreSyncPhaseJob } = await import("./job")
+
+    await expect(
+      runCoreSyncPhaseJob(
+        {
+          skipped: false,
+          run: {
+            runId: "sync-run-1",
+            incremental: true,
+            phasesToRun: ["videos"],
+            startedAtMs: Date.now(),
+          },
+          scope: ["videos"],
+          incremental: true,
+          trigger: "scheduled",
+          ledgerRunId: "ledger-run-1",
+        },
+        "videos",
+      ),
+    ).resolves.toEqual(phaseResult)
+
+    expect(runSyncPhase).toHaveBeenCalledWith(
+      syncPrisma as unknown as PrismaClient,
+      expect.objectContaining({ runId: "sync-run-1" }),
+      "videos",
+      expect.objectContaining({ onProgress: expect.any(Function) }),
+    )
+    expect(workflowRunLog.recordCoreSyncPhaseProgress).toHaveBeenCalledWith(
+      "ledger-run-1",
+      {
+        phase: "videos",
+        completed: 25,
+        total: 50,
+        elapsedMs: 75,
+      },
+    )
   })
 })

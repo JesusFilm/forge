@@ -238,4 +238,52 @@ describe("runSync", () => {
     )
     expect(result.phases[0].errors).toBe(1)
   })
+
+  it("reports throttled phase progress while a phase runs", async () => {
+    const { refreshSyncLock } = await import("./lock")
+    const { getWatermark, advanceWatermark } = await import("./watermark")
+    const { syncVideos } = await import("./phases/sync-videos")
+
+    ;(refreshSyncLock as ReturnType<typeof vi.fn>).mockResolvedValueOnce(true)
+    ;(getWatermark as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null)
+    ;(syncVideos as ReturnType<typeof vi.fn>).mockImplementationOnce(
+      async ({ progress }) => {
+        progress.setTotal(50)
+        progress.increment(25)
+        return {
+          created: 0,
+          updated: 25,
+          softDeleted: 0,
+          errors: 0,
+        }
+      },
+    )
+
+    const mockPrisma = {
+      $executeRawUnsafe: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Parameters<typeof import("./orchestrator").runSyncPhase>[0]
+    const onProgress = vi.fn()
+
+    const { runSyncPhase } = await import("./orchestrator")
+    await runSyncPhase(
+      mockPrisma,
+      {
+        runId: "sync-run-1",
+        incremental: true,
+        phasesToRun: ["videos"],
+        startedAtMs: Date.now(),
+      },
+      "videos",
+      { onProgress },
+    )
+
+    expect(onProgress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phase: "videos",
+        completed: 0,
+        total: 50,
+      }),
+    )
+    expect(advanceWatermark).toHaveBeenCalled()
+  })
 })

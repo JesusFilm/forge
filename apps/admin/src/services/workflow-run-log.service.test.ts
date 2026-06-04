@@ -6,6 +6,7 @@ import {
   createWorkflowRunLog,
   markWorkflowRunFailed,
   markWorkflowRunStarted,
+  recordCoreSyncPhaseProgress,
   recordCoreSyncRunResult,
 } from "./workflow-run-log.service"
 
@@ -13,6 +14,7 @@ function createMockClient() {
   return {
     workflowRun: {
       create: vi.fn(async (args) => ({ id: "workflow-run-1", ...args.data })),
+      findUnique: vi.fn(async () => ({ details: { scope: ["videos"] } })),
       update: vi.fn(async (args) => ({ id: args.where.id, ...args.data })),
     },
     coreSyncRun: {
@@ -171,6 +173,41 @@ describe("workflow run log service", () => {
         status: WorkflowRunStatus.FAILED,
         finishedAt: expect.any(Date),
         error: "workflow runtime down",
+      },
+    })
+  })
+
+  it("merges Core Sync progress into existing workflow details", async () => {
+    const client = createMockClient()
+
+    await recordCoreSyncPhaseProgress(
+      "workflow-run-1",
+      {
+        phase: "videos",
+        completed: 25,
+        total: 50,
+        elapsedMs: 12_345,
+      },
+      client as never,
+    )
+
+    expect(client.workflowRun.findUnique).toHaveBeenCalledWith({
+      where: { id: "workflow-run-1" },
+      select: { details: true },
+    })
+    expect(client.workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "workflow-run-1" },
+      data: {
+        details: {
+          scope: ["videos"],
+          coreSyncProgress: {
+            phase: "videos",
+            completed: 25,
+            total: 50,
+            elapsedMs: 12_345,
+            updatedAt: expect.any(String),
+          },
+        },
       },
     })
   })

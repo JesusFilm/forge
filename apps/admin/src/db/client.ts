@@ -4,8 +4,9 @@
 //   - `prisma`       — the main client for GraphQL + mutations
 //                      (connection_limit=10, pool_timeout=20 via DATABASE_URL)
 //   - `syncPrisma`   — dedicated client for Core sync background workflow
-//                      (connection_limit=2 via DATABASE_URL_SYNC) so sync
-//                      cannot starve read traffic.
+//                      (for production, start around connection_limit=5 and
+//                      pool_timeout=60 via DATABASE_URL_SYNC) so sync cannot
+//                      starve read traffic.
 //
 // Both use the Next.js HMR-safe singleton pattern: dev reloads reuse the
 // existing client from `globalThis` instead of spawning new pools.
@@ -94,9 +95,10 @@ export const prisma =
   })
 
 /**
- * Dedicated Prisma client for Core sync background workflow.
- * Isolated pool (`DATABASE_URL_SYNC` with `?connection_limit=2`) so a stalled
- * sync transaction cannot starve connections from the main pool.
+ * Dedicated Prisma client for Core sync background workflow. Production should
+ * use an isolated `DATABASE_URL_SYNC` pool sized against total Postgres
+ * capacity; a conservative starting point is
+ * `?connection_limit=5&pool_timeout=60`.
  */
 export const syncPrisma =
   globalForPrisma.syncPrisma ??

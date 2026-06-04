@@ -7,8 +7,11 @@ calls `runSync(syncPrisma, ...)`.
 ## Required Env
 
 - `DATABASE_URL` - admin app database.
-- `DATABASE_URL_SYNC` - dedicated Prisma pool for Core Sync. Use a small pool,
-  for example `connection_limit=2`.
+- `DATABASE_URL_SYNC` - dedicated Prisma pool for Core Sync. Production should
+  not reuse the failed tiny full-sync posture (`connection_limit=2` with a
+  short acquire timeout). Start around `connection_limit=5&pool_timeout=60`,
+  then tune against total Postgres capacity, admin web replica count, workflow
+  runtime pool usage, and expected operator access.
 - `WORKFLOW_TARGET_WORLD` - set to `@workflow/world-postgres` in Railway.
 - `WORKFLOW_RUNNER_ENABLED` - set to `true` only on the dedicated admin worker
   service that should execute Postgres World jobs. Leave unset or `false` on
@@ -80,6 +83,26 @@ calls `runSync(syncPrisma, ...)`.
 9. Confirm `/dashboard/workflows` lists Postgres World runtime rows.
 10. Open `/dashboard/workflows/<runId>` for a recent run and confirm the
     embedded `@workflow/web-shared` trace/detail view shows runtime events.
+
+## Full-Sync Pool Resilience Notes
+
+Before rerunning a production full sync after a pool-timeout incident, verify
+the worker's effective sync URL shape without printing the URL or credentials.
+Record only the sanitized facts operators need:
+
+- whether `DATABASE_URL_SYNC` is set on the worker service,
+- the sync `connection_limit`,
+- the sync `pool_timeout`,
+- worker process count and `WORKFLOW_POSTGRES_WORKER_CONCURRENCY`,
+- admin web replica count and main `DATABASE_URL` pool size,
+- and the remaining database connection headroom.
+
+The `videos` phase is the longest Core-owned write phase. During a full run,
+watch for `core-sync.phase.progress` and `prisma_pool_retry` signals in logs
+and for workflow ledger progress on `/dashboard/workflows` when the run was
+dispatched through the workflow endpoint. Do not continue to all-content
+embedding replacement until the Core Sync run succeeds, the video-phase
+watermarks are fresh, the lock is clear, and the coverage audit passes.
 
 ## Local Benchmark Plan
 
