@@ -9,17 +9,17 @@ import {
   type ReactNode,
 } from "react"
 import {
+  ChevronDown,
   Clock3,
   Database,
   Globe2,
   Languages,
   Link2,
   Search,
-  SlidersHorizontal,
   Volume2,
   X,
 } from "lucide-react"
-import { StatusPill, cx } from "@/components/admin-ui"
+import { StatusPill } from "@/components/admin-ui"
 import type {
   LanguageDiagnosticCounts,
   LanguageDiagnosticRow,
@@ -60,6 +60,7 @@ const defaultFilters: LanguageDiagnosticFilters = {
   geoContent: "all",
   sync: "all",
 }
+const COUNTRY_PREVIEW_LIMIT = 5
 
 const operationalOptions: Array<{
   value: LanguageOperationalFilter
@@ -169,12 +170,43 @@ export function countryLinkOverflowLabel(row: LanguageDiagnosticRow) {
   return `Showing first ${row.countryPreviews.length.toLocaleString("en-US")} of ${row.counts.countryLanguages.toLocaleString("en-US")} country links.`
 }
 
+function countryFlagEmoji(coreId: string) {
+  const code = coreId.trim().toUpperCase()
+  if (!/^[A-Z]{2}$/.test(code)) return null
+
+  return String.fromCodePoint(
+    ...Array.from(code).map(
+      (letter) => 0x1f1e6 + letter.charCodeAt(0) - "A".charCodeAt(0),
+    ),
+  )
+}
+
+function languageMark(row: LanguageDiagnosticRow) {
+  return (row.bcp47 ?? row.iso3 ?? row.slug ?? row.coreId)
+    .slice(0, 5)
+    .toUpperCase()
+}
+
+function contentLinkLabel(row: LanguageDiagnosticRow) {
+  const count = row.counts.totalContentLinks
+  return `${count.toLocaleString("en-US")} content ${count === 1 ? "link" : "links"}`
+}
+
+function countryOverflowCount(
+  row: LanguageDiagnosticRow,
+  visibleCount: number,
+) {
+  return Math.max(0, row.counts.countryLanguages - visibleCount)
+}
+
 export function LanguageDiagnostics({
   rows,
   diagnostics,
+  metrics = [],
 }: {
   rows: LanguageDiagnosticRow[]
   diagnostics: LanguageDiagnosticsSummary
+  metrics?: Array<{ label: string; value: string; footer: string }>
 }) {
   const [query, setQuery] = useState("")
   const [filters, setFilters] =
@@ -239,78 +271,61 @@ export function LanguageDiagnostics({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid gap-3 lg:grid-cols-[minmax(280px,0.75fr)_minmax(0,1fr)]">
-        <label className="flex min-h-10 items-center gap-2 rounded-sm border border-white/10 bg-[var(--color-surface-elevated)] px-3 focus-within:border-[var(--color-brand)]">
+    <div className="flex min-w-0 flex-col gap-4">
+      <div className="flex min-w-0 flex-col gap-3" role="search">
+        <label htmlFor="language-library-search" className="sr-only">
+          Search languages
+        </label>
+        <div className="relative">
           <Search
-            className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
             strokeWidth={1.5}
           />
-          <span className="sr-only">Search languages</span>
           <input
+            id="language-library-search"
+            type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search code, slug, name, country, state"
-            className="min-w-0 flex-1 bg-transparent font-mono text-[12px] text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-muted)]"
+            placeholder="Search languages, IDs, codes, countries..."
+            className="h-10 w-full rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] pl-9 pr-10 font-mono text-[12px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out placeholder:text-[var(--color-text-disabled)] focus:border-[var(--color-brand)] focus:bg-[var(--color-surface-raised)]"
           />
           {query ? (
             <button
               type="button"
               onClick={() => setQuery("")}
-              className="inline-flex h-6 w-6 items-center justify-center rounded-sm text-[var(--color-text-muted)] hover:bg-white/5 hover:text-[var(--color-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+              className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-sm text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
               aria-label="Clear language search"
             >
-              <X className="h-3.5 w-3.5" strokeWidth={1.7} />
+              <X className="h-4 w-4" strokeWidth={1.5} />
             </button>
           ) : null}
-        </label>
-
-        <div className="grid gap-2 sm:grid-cols-3">
-          <SummarySignal
-            icon={<Languages className="h-4 w-4" strokeWidth={1.5} />}
-            label="Visible"
-            value={`${filteredRows.length.toLocaleString("en-US")} / ${rows.length.toLocaleString("en-US")}`}
-          />
-          <SummarySignal
-            icon={<Clock3 className="h-4 w-4" strokeWidth={1.5} />}
-            label="Last sync"
-            value={diagnostics.lastSyncedAt}
-          />
-          <SummarySignal
-            icon={<Database className="h-4 w-4" strokeWidth={1.5} />}
-            label="Soft deleted"
-            value={diagnostics.softDeletedLanguages.toLocaleString("en-US")}
-          />
         </div>
-      </div>
 
-      <div className="flex flex-col gap-3 rounded-sm border border-white/10 bg-[var(--color-surface)] p-3">
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal
-            className="h-4 w-4 text-[var(--color-text-muted)]"
-            strokeWidth={1.5}
-          />
-          <span className="label-text">Filters</span>
-        </div>
-        <div className="grid gap-3 xl:grid-cols-3">
-          <FilterGroup
-            label="Operational"
+        <div
+          aria-label="Language filters"
+          className="-mx-1 flex min-w-0 gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1 [scrollbar-width:thin]"
+        >
+          <SelectFilter
+            className="w-[176px]"
+            label="Operational state"
             value={filters.operational}
             options={operationalOptions}
             onChange={(value) =>
               setFilters((current) => ({ ...current, operational: value }))
             }
           />
-          <FilterGroup
-            label="Geo / Content"
+          <SelectFilter
+            className="w-[212px]"
+            label="Geo and content"
             value={filters.geoContent}
             options={geoContentOptions}
             onChange={(value) =>
               setFilters((current) => ({ ...current, geoContent: value }))
             }
           />
-          <FilterGroup
-            label="Sync"
+          <SelectFilter
+            className="w-[196px]"
+            label="Sync provenance"
             value={filters.sync}
             options={syncOptions}
             onChange={(value) =>
@@ -320,56 +335,49 @@ export function LanguageDiagnostics({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-sm border border-white/10 bg-[var(--color-surface)]">
-        <div className="hidden grid-cols-[minmax(220px,1.2fr)_minmax(180px,0.8fr)_minmax(170px,0.65fr)_minmax(160px,0.55fr)] gap-3 border-b border-white/10 px-4 py-3 md:grid">
-          <span className="label-text">Language</span>
-          <span className="label-text">State</span>
-          <span className="label-text">Coverage</span>
-          <span className="label-text">Updated</span>
-        </div>
+      <div className="flex flex-wrap items-center gap-2 text-[12px] text-[var(--color-text-muted)]">
+        <LibrarySignal
+          icon={<Languages className="h-3.5 w-3.5" strokeWidth={1.5} />}
+          label="Visible"
+          value={`${filteredRows.length.toLocaleString("en-US")} / ${rows.length.toLocaleString("en-US")}`}
+        />
+        {metrics.map((metric) => (
+          <LibrarySignal
+            key={metric.label}
+            label={metric.label}
+            value={metric.value}
+          />
+        ))}
+        <LibrarySignal
+          icon={<Clock3 className="h-3.5 w-3.5" strokeWidth={1.5} />}
+          label="Last sync"
+          value={diagnostics.lastSyncedAt}
+        />
+        <LibrarySignal
+          icon={<Database className="h-3.5 w-3.5" strokeWidth={1.5} />}
+          label="Soft deleted"
+          value={diagnostics.softDeletedLanguages.toLocaleString("en-US")}
+        />
+      </div>
 
+      <section
+        className="app-card min-w-0 overflow-hidden"
+        aria-label="Language library results"
+      >
         {filteredRows.length > 0 ? (
-          <div className="divide-y divide-white/10">
-            {filteredRows.map((row) => (
-              <button
-                key={row.id}
-                id={rowButtonId(row.id)}
-                type="button"
-                onClick={() => setSelectedId(row.id)}
-                className="grid w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.035] focus-visible:bg-[var(--color-brand-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[var(--color-brand)] md:grid-cols-[minmax(220px,1.2fr)_minmax(180px,0.8fr)_minmax(170px,0.65fr)_minmax(160px,0.55fr)]"
-                aria-haspopup="dialog"
-              >
-                <div className="min-w-0">
-                  <div className="truncate text-[13px] font-medium">
-                    {row.title}
-                  </div>
-                  <div className="mono-meta truncate text-[var(--color-text-muted)]">
-                    {row.codeLabel}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusPill tone={row.statusTone}>
-                    {row.statusLabel}
-                  </StatusPill>
-                  <StatusPill tone={row.syncTone}>{row.syncLabel}</StatusPill>
-                </div>
-                <div className="mono-meta flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-[var(--color-text-muted)]">
-                  <span>{row.counts.videoDubs} dubs</span>
-                  <span>{row.counts.videoSubtitles} subtitles</span>
-                  <span>{row.counts.countryLanguages} countries</span>
-                </div>
-                <div className="mono-meta text-[var(--color-text-muted)]">
-                  {row.timestamps.updatedAt}
-                </div>
-              </button>
-            ))}
-          </div>
+          filteredRows.map((row) => (
+            <LanguageRow
+              key={row.id}
+              row={row}
+              onSelect={() => setSelectedId(row.id)}
+            />
+          ))
         ) : (
           <div className="px-4 py-12 text-center text-[13px] text-[var(--color-text-muted)]">
             No languages match the current search and filters.
           </div>
         )}
-      </div>
+      </section>
 
       {selectedRow ? (
         <div
@@ -566,61 +574,201 @@ export function LanguageDiagnostics({
   )
 }
 
-function SummarySignal({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode
-  label: string
-  value: string
-}) {
-  return (
-    <div className="flex min-h-10 items-center gap-3 rounded-sm border border-white/10 bg-[var(--color-surface)] px-3">
-      <span className="text-[var(--color-text-muted)]">{icon}</span>
-      <div className="min-w-0">
-        <div className="label-text leading-none">{label}</div>
-        <div className="mono-meta mt-1 truncate text-[var(--color-text)]">
-          {value}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function FilterGroup<TValue extends string>({
+function SelectFilter<TValue extends string>({
+  className,
   label,
   value,
   options,
   onChange,
 }: {
+  className?: string
   label: string
   value: TValue
   options: Array<{ value: TValue; label: string }>
   onChange: (value: TValue) => void
 }) {
   return (
-    <div className="min-w-0">
-      <div className="label-text mb-2">{label}</div>
-      <div className="flex flex-wrap gap-2" role="group" aria-label={label}>
+    <label className={`relative block min-w-0 shrink-0 ${className ?? ""}`}>
+      <span className="sr-only">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.currentTarget.value as TValue)}
+        className="h-10 w-full appearance-none rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] pl-3 pr-9 text-[12px] font-medium text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] focus:border-[var(--color-brand)] focus:bg-[var(--color-surface-raised)]"
+      >
         {options.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onChange(option.value)}
-            aria-pressed={option.value === value}
-            className={cx(
-              "min-h-7 rounded-sm border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]",
-              option.value === value
-                ? "border-[var(--color-brand)] bg-[var(--color-brand-soft)] text-[var(--color-text)]"
-                : "border-white/10 text-[var(--color-text-muted)] hover:border-white/20 hover:text-[var(--color-text)]",
-            )}
-          >
+          <option key={option.value} value={option.value}>
             {option.label}
-          </button>
+          </option>
         ))}
+      </select>
+      <ChevronDown
+        aria-hidden="true"
+        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
+        strokeWidth={1.5}
+      />
+    </label>
+  )
+}
+
+function LibrarySignal({
+  icon,
+  label,
+  value,
+}: {
+  icon?: ReactNode
+  label: string
+  value: string
+}) {
+  return (
+    <span className="inline-flex h-8 items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-2.5">
+      {icon ? (
+        <span className="text-[var(--color-text-muted)]">{icon}</span>
+      ) : null}
+      <span className="label-text leading-none">{label}</span>
+      <span className="font-mono text-[11px] font-medium text-[var(--color-text-primary)]">
+        {value}
+      </span>
+    </span>
+  )
+}
+
+function LanguageRow({
+  row,
+  onSelect,
+}: {
+  row: LanguageDiagnosticRow
+  onSelect: () => void
+}) {
+  const visibleCountries = row.countryPreviews.slice(0, COUNTRY_PREVIEW_LIMIT)
+  const hiddenCountries = countryOverflowCount(row, visibleCountries.length)
+
+  return (
+    <button
+      id={rowButtonId(row.id)}
+      type="button"
+      onClick={onSelect}
+      className="group grid w-full gap-4 border-b border-[var(--color-hairline)] px-4 py-4 text-left transition-colors duration-[120ms] ease-out last:border-b-0 hover:bg-[var(--color-surface-raised)] focus-visible:bg-[var(--color-brand-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[var(--color-brand)] lg:grid-cols-[minmax(0,1.2fr)_minmax(220px,0.8fr)_minmax(220px,0.8fr)_132px] lg:items-center"
+      aria-haspopup="dialog"
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+          <Languages
+            className="mb-0.5 h-3.5 w-3.5 text-[var(--color-info)]"
+            strokeWidth={1.6}
+          />
+          <span className="max-w-[42px] truncate font-mono text-[10px] font-semibold uppercase leading-none text-[var(--color-text-secondary)]">
+            {languageMark(row)}
+          </span>
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-[18px] font-semibold leading-6 text-[var(--color-text-primary)]">
+            {row.title}
+          </span>
+          <span className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px] leading-4 text-[var(--color-text-muted)]">
+            <span className="max-w-[240px] truncate font-mono text-[11px]">
+              {row.codeLabel}
+            </span>
+            <span
+              aria-hidden="true"
+              className="h-1 w-1 rounded-full bg-[var(--color-hairline-strong)]"
+            />
+            <span className="font-mono text-[11px] uppercase">
+              {row.source}
+            </span>
+          </span>
+          <span className="mt-2 flex flex-wrap items-center gap-2">
+            <StatusPill tone={row.statusTone}>{row.statusLabel}</StatusPill>
+            <StatusPill tone={row.syncTone}>{row.syncLabel}</StatusPill>
+          </span>
+        </span>
       </div>
-    </div>
+
+      <div className="min-w-0">
+        <div className="flex items-end gap-2">
+          <span className="font-mono text-[22px] font-semibold leading-none text-[var(--color-text-primary)]">
+            {row.counts.videoDubs.toLocaleString("en-US")}
+          </span>
+          <span className="text-[12px] text-[var(--color-text-muted)]">
+            dubs
+          </span>
+        </div>
+        <div className="mono-meta mt-2 flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-[var(--color-text-muted)]">
+          <span>
+            {row.counts.videoSubtitles.toLocaleString("en-US")} subtitles
+          </span>
+          <span>
+            {row.counts.studyQuestions.toLocaleString("en-US")} study questions
+          </span>
+          <span>{contentLinkLabel(row)}</span>
+        </div>
+      </div>
+
+      <div className="min-w-0">
+        <div className="flex items-end gap-2">
+          <span className="font-mono text-[22px] font-semibold leading-none text-[var(--color-text-primary)]">
+            {row.counts.countryLanguages.toLocaleString("en-US")}
+          </span>
+          <span className="text-[12px] text-[var(--color-text-muted)]">
+            countries
+          </span>
+        </div>
+        <div className="mt-2 flex min-h-6 flex-wrap items-center gap-1.5">
+          {visibleCountries.length > 0 ? (
+            visibleCountries.map((country) => (
+              <CountryChip key={country.id} country={country} />
+            ))
+          ) : (
+            <span className="text-[11px] text-[var(--color-text-disabled)]">
+              No country links
+            </span>
+          )}
+          {hiddenCountries > 0 ? (
+            <span className="px-1 font-mono text-[11px] text-[var(--color-text-muted)]">
+              +{hiddenCountries.toLocaleString("en-US")}
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <time
+        dateTime={row.timestamps.updatedAtIso}
+        title={row.timestamps.updatedAt}
+        className="text-left lg:text-right"
+      >
+        <span className="block text-[12px] font-semibold leading-4 text-[var(--color-text-secondary)]">
+          Updated
+        </span>
+        <span className="mt-1 block font-mono text-[10px] text-[var(--color-text-muted)]">
+          {row.timestamps.updatedAt}
+        </span>
+        <span className="mt-2 inline-flex h-7 items-center rounded-sm border border-[var(--color-hairline)] px-2 font-mono text-[10px] font-semibold uppercase text-[var(--color-text-muted)] transition-colors duration-[120ms] ease-out group-hover:border-[var(--color-hairline-strong)] group-hover:text-[var(--color-text-secondary)]">
+          Details
+        </span>
+      </time>
+    </button>
+  )
+}
+
+function CountryChip({
+  country,
+}: {
+  country: LanguageDiagnosticRow["countryPreviews"][number]
+}) {
+  const flag = countryFlagEmoji(country.coreId)
+
+  return (
+    <span
+      className="inline-flex max-w-[128px] items-center gap-1.5 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-1.5 py-1 font-mono text-[10px] font-semibold leading-none text-[var(--color-text-secondary)]"
+      title={`${country.label} / ${country.speakers}`}
+    >
+      <span
+        aria-hidden="true"
+        className="flex h-3.5 min-w-5 items-center justify-center overflow-hidden rounded-[1px] bg-[var(--color-bg)] text-[10px] leading-none"
+      >
+        {flag ?? country.coreId.slice(0, 2).toUpperCase()}
+      </span>
+      <span className="truncate">{country.coreId}</span>
+    </span>
   )
 }
 
