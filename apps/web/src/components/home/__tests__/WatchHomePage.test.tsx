@@ -86,6 +86,7 @@ describe("WatchHomePage", () => {
     expect(container.textContent).toContain("Jesus")
     expect(container.textContent).toContain("Discover the full story")
     expect(container.textContent).toContain("Built for global missions")
+    expect(container.textContent).toContain("Sign Up For Our Newsletter")
     expect(
       container.querySelectorAll("a[href='/jesus.html/english.html']"),
     ).toHaveLength(4)

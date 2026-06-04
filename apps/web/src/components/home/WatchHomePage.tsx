@@ -1,4 +1,5 @@
 import Image from "next/image"
+import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeHero } from "@/components/home/WatchHomeHero"
 import { WatchHomePromo } from "@/components/home/WatchHomePromo"
 import { WatchHomeSection } from "@/components/home/WatchHomeSection"
@@ -60,6 +61,7 @@ export function WatchHomePage({ model }: WatchHomePageProps) {
             <WatchHomeSection key={section.id} section={section} />
           ))}
           <WatchHomePromo />
+          <WatchHomeFooter />
         </div>
       </div>
     </main>
