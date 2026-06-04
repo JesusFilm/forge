@@ -556,6 +556,9 @@ import UsersPage from "./users/page"
 import SettingsPage from "./settings/page"
 import LanguagesPage from "./languages/page"
 import MediaPage from "./media/page"
+import DashboardLoading from "./loading"
+import VideosLoading from "./videos/loading"
+import LanguagesLoading from "./languages/loading"
 import { ExperiencesActions } from "./experiences/experiences-actions"
 import {
   DataTable,
@@ -569,6 +572,19 @@ async function htmlFrom(component: Promise<ReactNode>) {
 }
 
 describe("dashboard UI routes", () => {
+  it("renders dashboard and priority route loading fallbacks", () => {
+    const dashboard = renderToStaticMarkup(<DashboardLoading />)
+    const videos = renderToStaticMarkup(<VideosLoading />)
+    const languages = renderToStaticMarkup(<LanguagesLoading />)
+
+    expect(dashboard).toContain('role="status"')
+    expect(dashboard).toContain('aria-label="Loading dashboard"')
+    expect(videos).toContain('aria-label="Loading video library"')
+    expect(videos).toContain("Loading video library")
+    expect(languages).toContain('aria-label="Loading language diagnostics"')
+    expect(languages).toContain("Loading language diagnostics")
+  })
+
   it("renders primary buttons with explicit enabled and disabled affordances", () => {
     const enabled = renderToStaticMarkup(
       <PrimaryButton>Enabled primary</PrimaryButton>,

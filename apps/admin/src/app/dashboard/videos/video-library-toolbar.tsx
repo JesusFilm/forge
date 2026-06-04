@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react"
 import type { getAdminMessages } from "@/i18n/server"
+import { ADMIN_NAVIGATION_PENDING_EVENT } from "@/components/admin-shell"
 import {
   parseVideoLibraryCategory,
   parseVideoLibraryLanguage,
@@ -368,6 +369,7 @@ export function VideoLibraryToolbar({
     }
 
     setIsSubmitting(true)
+    window.dispatchEvent(new Event(ADMIN_NAVIGATION_PENDING_EVENT))
     router.push(href as Route)
   }
 
